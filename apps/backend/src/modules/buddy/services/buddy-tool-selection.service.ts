@@ -32,7 +32,7 @@ const SEARCH_SIGNALS = new Set([
 	'ukaž',
 	'ukaz',
 ]);
-const STATE_SIGNALS = new Set([
+export const BUDDY_STATE_SIGNALS: ReadonlySet<string> = new Set([
 	'all',
 	'any',
 	'closed',
@@ -52,6 +52,7 @@ const STATE_SIGNALS = new Set([
 	'zavrene',
 	'zavreny',
 ]);
+const STATE_SIGNALS = BUDDY_STATE_SIGNALS;
 export const BUDDY_ACTION_SIGNALS: ReadonlySet<string> = new Set([
 	'activate',
 	'adjust',
@@ -87,8 +88,20 @@ export const BUDDY_ACTION_SIGNALS: ReadonlySet<string> = new Set([
 	'zvys',
 ]);
 const ACTION_SIGNALS = BUDDY_ACTION_SIGNALS;
+export const BUDDY_COMPOUND_CONNECTOR_SIGNALS: ReadonlySet<string> = new Set([
+	'and also',
+	'as well as',
+	'and',
+	'plus',
+	'potom',
+	'then',
+	'a',
+]);
+const COMPOUND_CONNECTOR_PATTERN_SOURCE = [...BUDDY_COMPOUND_CONNECTOR_SIGNALS]
+	.sort((left, right) => right.length - left.length)
+	.join('|');
 const ACTION_CLAUSE_PATTERN = new RegExp(
-	String.raw`(?:\ba\b|\band\b|\bas well as\b|\bplus\b|\bpotom\b|\bthen\b|[,;])\s*(?:(?:also|please|take)\s+)*(?:${[...ACTION_SIGNALS].join('|')})\b`,
+	String.raw`(?:\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|[,;])\s*(?:(?:also|please|take)\s+)*(?:${[...ACTION_SIGNALS].join('|')})\b`,
 	'u',
 );
 const STATE_QUESTION_CLAUSE_PATTERN = new RegExp(
@@ -99,8 +112,10 @@ const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
 	String.raw`^(?:(?:what|which)\b|(?:can|could|would) you (?:show|tell)(?: me)?\b).*\b(?:am i able to|can i|i can)\b.*\b(?:${[...ACTION_SIGNALS].join('|')})\b`,
 	'u',
 );
-const READ_CLAUSE_PATTERN =
-	/(?:\ba\b|\band\b|\bas well as\b|\bplus\b|\bpotom\b|\bthen\b|[,;])\s*(?:check|confirm|determine|ensure|fetch|find|get|make sure|read|report|see|show|tell|verify|what|whether|which)\b/u;
+const READ_CLAUSE_PATTERN = new RegExp(
+	String.raw`(?:\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|[,;])\s*(?:check|confirm|determine|ensure|fetch|find|get|make sure|read|report|see|show|tell|verify|what|whether|which)\b`,
+	'u',
+);
 const STATE_QUESTION_PATTERN =
 	/^(?:are|can|could|did|do|does|had|has|have|how|is|may|might|what|which|where|why|will|would|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
 const PREDICATE_QUESTION_PATTERN =

@@ -2075,9 +2075,9 @@ describe('BuddyContextPlannerService', () => {
 	});
 
 	it.each([
-		'Pokud je okno otevřené, zapni světlo',
-		'Když je okno otevřené, zapni světlo',
-		'Jakmile je otevřené, zapni světlo',
+		'Pokud je okno otevřené, zapni Auroru',
+		'Když je okno otevřené, zapni Auroru',
+		'Jakmile je otevřené, zapni Auroru',
 	])('retains localized conditional state reads before an action: %s', (message) => {
 		expect(
 			service.plan({
@@ -2149,6 +2149,47 @@ describe('BuddyContextPlannerService', () => {
 			domains: ['home', 'security'],
 			scope: {},
 			queries: [{ kind: 'search-home' }, { kind: 'current-state' }, { kind: 'security-status' }],
+		});
+	});
+
+	it('keeps a historical outside-temperature request on weather retrieval', () => {
+		expect(
+			service.plan({
+				message: 'What was the outside temperature yesterday?',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['weather'],
+			queries: [{ kind: 'weather' }],
+		});
+	});
+
+	it("routes a custom device label's status through bounded home state", () => {
+		expect(
+			service.plan({
+				message: "What is Aurora's status?",
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			strategy: 'model-tools',
+		});
+	});
+
+	it('recognizes a localized read-then-action connector', () => {
+		expect(
+			service.plan({
+				message: 'Je okno otevřené a vypni světlo',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'mixed',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
 		});
 	});
 });

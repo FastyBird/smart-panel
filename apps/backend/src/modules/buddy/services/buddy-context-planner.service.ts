@@ -15,6 +15,7 @@ import {
 
 import {
 	BUDDY_ACTION_SIGNALS,
+	BUDDY_COMPOUND_CONNECTOR_SIGNALS,
 	BUDDY_CONDITION_SIGNALS,
 	BUDDY_DEVICE_ACTION_SIGNALS,
 	BUDDY_GROUNDED_STATE_SIGNALS,
@@ -23,6 +24,7 @@ import {
 	BUDDY_RELATIVE_ADJUSTMENT_SIGNALS,
 	BUDDY_SCENE_ACTION_SIGNALS,
 	BUDDY_SPACE_SIGNALS,
+	BUDDY_STATE_SIGNALS,
 } from './buddy-tool-selection.service';
 import { QUERY_HOME_STATE_TOOL_NAME, SEARCH_HOME_TOOL_NAME } from './home-context-tool-provider.service';
 
@@ -30,10 +32,14 @@ const CONTROL_DEVICE_TOOL_NAME = 'control_device';
 const RUN_SCENE_TOOL_NAME = 'run_scene';
 const SET_SPACE_LIGHTING_TOOL_NAME = 'set_space_lighting';
 const ACTION_SIGNAL_PATTERN_SOURCE = [...BUDDY_ACTION_SIGNALS, 'trigger'].join('|');
+const COMPOUND_CONNECTOR_PATTERN_SOURCE = [...BUDDY_COMPOUND_CONNECTOR_SIGNALS]
+	.sort((left, right) => right.length - left.length)
+	.join('|');
 const HOME_ENTITY_SIGNAL_PATTERN_SOURCE = [...BUDDY_HOME_SIGNALS]
 	.filter((signal) => !['energy', 'energie', 'home', 'house', 'security', 'zabezpeceni'].includes(signal))
 	.join('|');
 const GROUNDED_STATE_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_GROUNDED_STATE_SIGNALS].join('|')})\b`, 'u');
+const STATE_SIGNAL_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_STATE_SIGNALS].join('|')})\b`, 'u');
 const LIGHTING_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_LIGHTING_SIGNALS].join('|')})\b`, 'u');
 const LIGHTING_GROUP_PATTERN = new RegExp(
 	String.raw`\b(?:every|${[...BUDDY_SPACE_SIGNALS]
@@ -75,7 +81,7 @@ const HOME_STATE_PATTERN = /\b(?:cold|cooling|heating|humidity|temperature|warm)
 const READ_PATTERN =
 	/^(?:are|can you (?:check|confirm|determine|fetch|get|read|report|show|tell|verify)|check|confirm|determine|ensure|fetch|find|get|how (?:many|much)|is|list|make sure|read|report|search|see|show|tell(?: me)?|verify|what|which|will)\b/u;
 const PREDICATE_QUESTION_PATTERN =
-	/^(?:are|can|could|did|do|does|had|has|have|is|may|might|will|would|was|were|(?:how|what|when|where|which|who|why)['’]s|(?:what|why) (?:are|did|do|does|had|has|have|is|was|were))\b/u;
+	/^(?:are|can|could|did|do|does|had|has|have|is|may|might|will|would|was|were|je|jsou|jaka|jaky|ktere|kolik|(?:how|what|when|where|which|who|why)['’]s|(?:what|why) (?:are|did|do|does|had|has|have|is|was|were))\b/u;
 const ACTION_REQUEST_PATTERN =
 	/^(?:(?:can|could|may|might|will|would) you\b|are you able to\b|is it possible to\b|is there any way you can\b)/u;
 const MODAL_STATE_READ_PATTERN =
@@ -88,7 +94,7 @@ const TRIGGER_PATTERN = new RegExp(
 const TARGET_DEPENDENT_ACTION_PATTERN = /\b(?:activate|deactivate|start|stop)\b/u;
 const DEVICE_RUN_TARGET_PATTERN = /\brun\b.*\b(?:device|fan|switch)\b/u;
 const ACTION_COMMAND_PATTERN = new RegExp(
-	String.raw`^[?!,.;\s]*(?:(?:and(?: also)?|as well as|if so|please|plus|then)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	String.raw`^[?!,.;\s]*(?:(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
 const CONDITION_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_CONDITION_SIGNALS].join('|')})\b`, 'u');
@@ -144,7 +150,7 @@ const GENERIC_ACTION_TARGET_NAMES = [
 	'zarizeni',
 ] as const;
 const BARE_GENERIC_ACTION_TARGET_PATTERN = new RegExp(
-	String.raw`^(?:${[...BUDDY_ACTION_SIGNALS].join('|')})\s+(?:${GENERIC_ACTION_TARGET_NAMES.join('|')})\b`,
+	String.raw`^[?!,.;\s]*(?:${[...BUDDY_ACTION_SIGNALS].join('|')})\s+(?:${GENERIC_ACTION_TARGET_NAMES.join('|')})\b`,
 	'u',
 );
 const BUILT_IN_ACTION_SPACE_NAMES = new Set([
@@ -163,11 +169,13 @@ const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b/u;
 const TRAILING_ACTION_PATTERN = new RegExp(
-	String.raw`(?:[?!,.;]|\b(?:and(?: also)?|as well as|plus|then)\b)\s*(?:(?:if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	String.raw`(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
-const TRAILING_READ_PATTERN =
-	/(?:[?!,.;]|\b(?:and(?: also)?|as well as|plus|then)\b)\s*(?:(?:also|please)\s+)*(?:are|can|check|confirm|could|determine|did|do|does|ensure|fetch|find|get|had|has|have|how|is|make sure|may|might|read|report|see|show|tell(?: me)?|verify|was|were|what|whether|which|will|would)\b/u;
+const TRAILING_READ_PATTERN = new RegExp(
+	String.raw`(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:also|please)\s+)*(?:are|can|check|confirm|could|determine|did|do|does|ensure|fetch|find|get|had|has|have|how|is|make sure|may|might|read|report|see|show|tell(?: me)?|verify|was|were|what|whether|which|will|would)\b`,
+	'u',
+);
 
 @Injectable()
 export class BuddyContextPlannerService {
@@ -355,7 +363,10 @@ function getActionReferenceMessage(message: string): string {
 		.filter((clause) => ACTION_COMMAND_PATTERN.test(clause))
 		.map((clause) => {
 			const actionOnlyClause = clause.replace(
-				/^[?!,.;\s]*(?:(?:and(?: also)?|as well as|if so|please|plus|then)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)/u,
+				new RegExp(
+					String.raw`^[?!,.;\s]*(?:(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)`,
+					'u',
+				),
 				'',
 			);
 			const trailingCondition =
@@ -424,7 +435,7 @@ function classifyDomains(
 
 		return (
 			PREDICATE_QUESTION_PATTERN.test(normalizedClause) &&
-			GROUNDED_STATE_PATTERN.test(normalizedClause) &&
+			(GROUNDED_STATE_PATTERN.test(normalizedClause) || STATE_SIGNAL_PATTERN.test(normalizedClause)) &&
 			!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
 			!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
 			!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN)
@@ -464,16 +475,24 @@ function classifyDomains(
 	if (hasEnergy) domains.add('energy');
 	if (hasSecurity) domains.add('security');
 	if (HISTORY_PATTERN.test(message)) {
-		const hasHomeSpecificHistory = clauses.some(
-			(clause) =>
-				HISTORY_PATTERN.test(clause) &&
-				(HOME_ENTITY_PATTERN.test(clause) ||
-					HOME_VOCABULARY_PATTERN.test(clause) ||
-					HOME_INSTALLATION_PATTERN.test(clause) ||
-					HOME_STATE_PATTERN.test(clause) ||
-					explicitSpaces.some((space) => containsNormalizedPhrase(clause, normalize(space.name))) ||
-					(hasRecentReferenceHome && hasReferencePronoun(clause))),
-		);
+		const hasHomeSpecificHistory = clauses.some((clause) => {
+			if (!HISTORY_PATTERN.test(clause)) return false;
+
+			const hasExplicitSpace = explicitSpaces.some((space) => containsNormalizedPhrase(clause, normalize(space.name)));
+			const hasHomeSignal =
+				HOME_ENTITY_PATTERN.test(clause) ||
+				HOME_VOCABULARY_PATTERN.test(clause) ||
+				HOME_INSTALLATION_PATTERN.test(clause) ||
+				HOME_STATE_PATTERN.test(clause) ||
+				hasExplicitSpace ||
+				(hasRecentReferenceHome && hasReferencePronoun(clause));
+			const hasNonHomeSignal =
+				hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) ||
+				hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) ||
+				hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN);
+
+			return hasHomeSignal && (!hasNonHomeSignal || hasExplicitSpace || CONTEXTUAL_SCOPE_PATTERN.test(clause));
+		});
 
 		if (hasHomeSpecificHistory) {
 			domains.add('home');
@@ -505,7 +524,7 @@ function hasDomainSignalInClause(clause: string, domainPattern: RegExp, entityNa
 }
 
 function splitPlannerClauses(message: string): string[] {
-	return message.split(/(?:[?!,.;]|\b(?:and(?: also)?|as well as|plus|then)\b)/u);
+	return message.split(new RegExp(String.raw`(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)`, 'u'));
 }
 
 function hasCurrentStateReadClause(
