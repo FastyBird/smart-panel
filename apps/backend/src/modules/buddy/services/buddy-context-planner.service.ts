@@ -513,7 +513,7 @@ function classifyDomains(
 		clauses.some((clause) => {
 			if (!hasExplicitSpaceOccurrence(clause, space, explicitSpaces)) return false;
 
-			const clauseWithoutSpace = removeNormalizedPhrase(clause, normalize(space.name));
+			const clauseWithoutSpace = removeExplicitSpaceOccurrencesForDomain(clause, [space]);
 			const hasNonHomeSignal =
 				hasDomainSignalInClause(clauseWithoutSpace, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) ||
 				hasDomainSignalInClause(clauseWithoutSpace, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) ||
@@ -549,6 +549,7 @@ function classifyDomains(
 			const hasExplicitSpace = explicitSpaces.some((space) =>
 				hasExplicitSpaceOccurrence(clause, space, explicitSpaces),
 			);
+			const clauseWithoutExplicitSpaces = removeExplicitSpaceOccurrencesForDomain(clause, explicitSpaces);
 			const hasHomeSignal =
 				HOME_ENTITY_PATTERN.test(clause) ||
 				HOME_VOCABULARY_PATTERN.test(clause) ||
@@ -556,12 +557,21 @@ function classifyDomains(
 				HOME_STATE_PATTERN.test(clause) ||
 				hasExplicitSpace ||
 				(hasRecentReferenceHome && hasReferencePronoun(clause));
+			const hasIndependentHomeSignal =
+				HOME_ENTITY_PATTERN.test(clauseWithoutExplicitSpaces) ||
+				HOME_VOCABULARY_PATTERN.test(clauseWithoutExplicitSpaces) ||
+				HOME_INSTALLATION_PATTERN.test(clauseWithoutExplicitSpaces) ||
+				HOME_STATE_PATTERN.test(clauseWithoutExplicitSpaces) ||
+				(hasRecentReferenceHome && hasReferencePronoun(clauseWithoutExplicitSpaces));
 			const hasNonHomeSignal =
 				hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) ||
 				hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) ||
 				hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN);
 
-			return hasHomeSignal && (!hasNonHomeSignal || hasExplicitSpace || CONTEXTUAL_SCOPE_PATTERN.test(clause));
+			return (
+				hasHomeSignal &&
+				(!hasNonHomeSignal || CONTEXTUAL_SCOPE_PATTERN.test(clause) || (hasExplicitSpace && hasIndependentHomeSignal))
+			);
 		});
 
 		if (hasHomeSpecificHistory) {
@@ -583,7 +593,7 @@ function hasDomainSignalOutsideEntityName(
 ): boolean {
 	return splitPlannerClauses(message, explicitSpaces).some((clause) =>
 		hasDomainSignalInClause(
-			removeExplicitSpacePhrases(getRetrievalClause(clause), explicitSpaces),
+			removeExplicitSpaceOccurrencesForDomain(getRetrievalClause(clause), explicitSpaces),
 			domainPattern,
 			entityNamePattern,
 		),
@@ -927,14 +937,13 @@ function resolveEnergySpaceIds(
 	message: string,
 	explicitSpaces: readonly BuddyContextSpaceReference[],
 	conversationSpaceId?: string,
-): string[] {
+): Array<string | undefined> {
 	const energyClauses = splitPlannerClauses(message, explicitSpaces).filter((clause) =>
 		hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN),
 	);
-
-	if (energyClauses.some((clause) => HOME_INSTALLATION_PATTERN.test(clause) || WHOLE_HOME_SCOPE_PATTERN.test(clause))) {
-		return [];
-	}
+	const includesWholeHome = energyClauses.some(
+		(clause) => HOME_INSTALLATION_PATTERN.test(clause) || WHOLE_HOME_SCOPE_PATTERN.test(clause),
+	);
 
 	const explicitEnergySpaceIds = [
 		...new Set(
@@ -944,7 +953,9 @@ function resolveEnergySpaceIds(
 		),
 	];
 
-	if (explicitEnergySpaceIds.length > 0) return explicitEnergySpaceIds;
+	if (includesWholeHome || explicitEnergySpaceIds.length > 0) {
+		return [...(includesWholeHome ? [undefined] : []), ...explicitEnergySpaceIds];
+	}
 	if (
 		energyClauses.some((clause) =>
 			[...BUILT_IN_ACTION_SPACE_NAMES].some((spaceName) => containsNormalizedPhrase(clause, spaceName)),
@@ -1280,8 +1291,41 @@ function removeNormalizedPhrase(message: string, phrase: string): string {
 		.reduce((result, range) => `${result.slice(0, range.start)} ${result.slice(range.end)}`, message);
 }
 
-function removeExplicitSpacePhrases(message: string, spaces: readonly BuddyContextSpaceReference[]): string {
-	return spaces.reduce((result, space) => removeNormalizedPhrase(result, normalize(space.name)), message);
+function removeExplicitSpaceOccurrencesForDomain(
+	message: string,
+	spaces: readonly BuddyContextSpaceReference[],
+): string {
+	const rangesByName = new Map<string, Array<{ start: number; end: number }>>();
+
+	for (const occurrence of findExplicitSpaceOccurrences(message, spaces)) {
+		const name = normalize(occurrence.space.name);
+		const ranges = rangesByName.get(name) ?? [];
+
+		if (!ranges.some((range) => range.start === occurrence.range.start && range.end === occurrence.range.end)) {
+			ranges.push(occurrence.range);
+			rangesByName.set(name, ranges);
+		}
+	}
+
+	const rangesToRemove = [...rangesByName.values()].map(
+		(ranges) =>
+			[...ranges].sort((left, right) => {
+				const leftScore = explicitSpaceOccurrenceScore(message, left.start);
+				const rightScore = explicitSpaceOccurrenceScore(message, right.start);
+
+				return rightScore - leftScore || right.start - left.start;
+			})[0],
+	);
+
+	return rangesToRemove
+		.sort((left, right) => right.start - left.start)
+		.reduce((result, range) => `${result.slice(0, range.start)} ${result.slice(range.end)}`, message);
+}
+
+function explicitSpaceOccurrenceScore(message: string, occurrenceStart: number): number {
+	const prefix = message.slice(0, occurrenceStart);
+
+	return /\b(?:at|did|does|for|from|in|inside|of|was|were)\s+(?:the\s+)?$/u.test(prefix) ? 1 : 0;
 }
 
 function findNormalizedPhraseRanges(message: string, phrase: string): Array<{ start: number; end: number }> {
@@ -1375,13 +1419,13 @@ function buildQueries(
 	requiresReadForAction: boolean,
 	spaceIds: readonly string[] = [],
 	includeCurrentStateForRead = true,
-	energySpaceIds: readonly string[] = spaceIds,
+	energySpaceIds: readonly (string | undefined)[] = spaceIds,
 	currentStateSpaceIds: readonly string[] = spaceIds,
 	historySpaceIds: readonly string[] = spaceIds,
 ): BuddyContextQueryPlan[] {
 	const queries: BuddyContextQueryPlan[] = [];
 	const scopes = spaceIds.length > 0 ? spaceIds.map((spaceId) => ({ spaceId })) : [{}];
-	const energyScopes = energySpaceIds.length > 0 ? energySpaceIds.map((spaceId) => ({ spaceId })) : [{}];
+	const energyScopes = energySpaceIds.length > 0 ? energySpaceIds.map((spaceId) => (spaceId ? { spaceId } : {})) : [{}];
 	const currentStateScopes =
 		currentStateSpaceIds.length > 0 ? currentStateSpaceIds.map((spaceId) => ({ spaceId })) : [{}];
 	const historyScopes = historySpaceIds.length > 0 ? historySpaceIds.map((spaceId) => ({ spaceId })) : [{}];

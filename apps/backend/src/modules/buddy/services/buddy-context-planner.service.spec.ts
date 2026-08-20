@@ -2785,4 +2785,33 @@ describe('BuddyContextPlannerService', () => {
 			strategy: 'prefetch',
 		});
 	});
+
+	it('retains both whole-home and scoped energy queries in one compound', () => {
+		expect(
+			service.plan({
+				message: 'How much energy did the house use, and how much energy did Bedroom use?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['energy'],
+			queries: [{ kind: 'energy-summary' }, { kind: 'energy-summary', spaceId: 'space-bedroom' }],
+			strategy: 'prefetch',
+		});
+	});
+
+	it('masks only the configured-space occurrence of a repeated domain word', () => {
+		expect(
+			service.plan({
+				message: 'How much energy did Energy use today?',
+				knownSpaces: [{ id: 'space-energy', name: 'Energy' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['energy'],
+			scope: { spaceId: 'space-energy' },
+			queries: [{ kind: 'energy-summary', spaceId: 'space-energy' }],
+			strategy: 'prefetch',
+		});
+	});
 });
