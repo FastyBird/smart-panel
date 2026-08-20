@@ -112,7 +112,7 @@ const CONDITION_PATTERN =
 	/\b(?:after|as long as|as soon as|assuming(?: that)?|before|given that|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|so long as|unless|until|when|whenever|while)\b/u;
 const LEADING_CONDITION_PATTERN =
 	/^(?:after|as long as|as soon as|assuming(?: that)?|before|given that|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|so long as|unless|until|when|whenever|while)\b/u;
-const GROUNDED_STATE_SIGNALS = new Set([
+export const BUDDY_GROUNDED_STATE_SIGNALS: ReadonlySet<string> = new Set([
 	'active',
 	'closed',
 	'high',
@@ -124,12 +124,13 @@ const GROUNDED_STATE_SIGNALS = new Set([
 	'open',
 	'unlocked',
 ]);
+const GROUNDED_STATE_SIGNALS = BUDDY_GROUNDED_STATE_SIGNALS;
 const GROUNDED_ACTION_FILTER_PATTERN = new RegExp(
 	String.raw`\b(?:that|which)\s+(?:are|is|was|were)\s+(?:${[...GROUNDED_STATE_SIGNALS].join('|')})\b`,
 	'u',
 );
 const EXPLICIT_STATE_REQUEST_SIGNALS = new Set(['all', 'any', 'count', 'current', 'state', 'status', 'value']);
-const RELATIVE_ADJUSTMENT_SIGNALS = new Set([
+export const BUDDY_RELATIVE_ADJUSTMENT_SIGNALS: ReadonlySet<string> = new Set([
 	'brighten',
 	'brighter',
 	'colder',
@@ -154,6 +155,7 @@ const RELATIVE_ADJUSTMENT_SIGNALS = new Set([
 	'up',
 	'warmer',
 ]);
+const RELATIVE_ADJUSTMENT_SIGNALS = BUDDY_RELATIVE_ADJUSTMENT_SIGNALS;
 export const BUDDY_HOME_SIGNALS: ReadonlySet<string> = new Set([
 	'air',
 	'bathroom',
@@ -239,8 +241,17 @@ export const BUDDY_DEVICE_ACTION_SIGNALS: ReadonlySet<string> = new Set([
 	'zvys',
 ]);
 const DEVICE_ACTION_SIGNALS = BUDDY_DEVICE_ACTION_SIGNALS;
-const LIGHTING_SIGNALS = new Set(['lamp', 'lampa', 'light', 'lighting', 'lights', 'svetla', 'svetlo']);
-const SPACE_SIGNALS = new Set([
+export const BUDDY_LIGHTING_SIGNALS: ReadonlySet<string> = new Set([
+	'lamp',
+	'lampa',
+	'light',
+	'lighting',
+	'lights',
+	'svetla',
+	'svetlo',
+]);
+const LIGHTING_SIGNALS = BUDDY_LIGHTING_SIGNALS;
+export const BUDDY_SPACE_SIGNALS: ReadonlySet<string> = new Set([
 	'all',
 	'bathroom',
 	'bedroom',
@@ -258,6 +269,7 @@ const SPACE_SIGNALS = new Set([
 	'pokoj',
 	'svetla',
 ]);
+const SPACE_SIGNALS = BUDDY_SPACE_SIGNALS;
 const DEVICE_SIGNALS = new Set([
 	'air',
 	'blind',

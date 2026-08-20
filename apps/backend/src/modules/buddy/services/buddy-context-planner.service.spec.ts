@@ -1676,4 +1676,151 @@ describe('BuddyContextPlannerService', () => {
 			});
 		}
 	});
+
+	it('preserves a conjunction inside a multi-space lighting target', () => {
+		expect(
+			service.plan({
+				message: 'Turn Bedroom and Kitchen lights off',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceIds: ['space-bedroom', 'space-kitchen'] },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device', 'set_space_lighting'],
+		});
+	});
+
+	it('uses a unique recent reference for a possessive entity pronoun', () => {
+		expect(
+			service.plan({
+				message: 'What is its temperature?',
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-hall-thermostat',
+						name: 'Hall thermostat',
+						compatibleActionTypes: ['set'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { referencedEntityIds: ['device-hall-thermostat'] },
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+		});
+	});
+
+	it('reuses localized lighting-group vocabulary', () => {
+		expect(
+			service.plan({
+				message: 'Zapni světla v ložnici',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Ložnice' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device', 'set_space_lighting'],
+		});
+	});
+
+	it('prefetches a leading state read before a trailing action', () => {
+		expect(
+			service.plan({
+				message: 'Is the window open, and turn off Reading Lamp',
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			intent: 'mixed',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			strategy: 'deterministic-action',
+		});
+	});
+
+	it('clarifies an articleless lamp category in a built-in space', () => {
+		expect(
+			service.plan({
+				message: 'Turn on bedroom lamp',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it('preserves a recent home reference beside an unrelated weather clause', () => {
+		expect(
+			service.plan({
+				message: 'Will it rain tomorrow, and is it on?',
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-reading-lamp',
+						name: 'Reading lamp',
+						compatibleActionTypes: ['turn'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'weather'],
+			scope: { referencedEntityIds: ['device-reading-lamp'] },
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }, { kind: 'weather' }],
+		});
+	});
+
+	it('routes a category-free custom device state question through bounded search', () => {
+		expect(
+			service.plan({
+				message: 'Is Aurora on?',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state'],
+		});
+	});
+
+	it('does not treat a conditional state predicate as a second write', () => {
+		expect(
+			service.plan({
+				message: 'Run Movie Night if the window is open',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			intent: 'mixed',
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			toolNames: ['search_home', 'query_home_state', 'run_scene'],
+		});
+	});
+
+	it.each(['Increase the bedroom thermostat by 2 degrees', 'Brighten the bedroom lamp'])(
+		'prefetches baseline state for a relative adjustment: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+					providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+				}),
+			).toMatchObject({
+				intent: 'mixed',
+				queries: [
+					{ kind: 'search-home', spaceId: 'space-bedroom' },
+					{ kind: 'current-state', spaceId: 'space-bedroom' },
+				],
+			});
+		},
+	);
 });

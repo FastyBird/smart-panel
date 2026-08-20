@@ -16,8 +16,12 @@ import {
 import {
 	BUDDY_ACTION_SIGNALS,
 	BUDDY_DEVICE_ACTION_SIGNALS,
+	BUDDY_GROUNDED_STATE_SIGNALS,
 	BUDDY_HOME_SIGNALS,
+	BUDDY_LIGHTING_SIGNALS,
+	BUDDY_RELATIVE_ADJUSTMENT_SIGNALS,
 	BUDDY_SCENE_ACTION_SIGNALS,
+	BUDDY_SPACE_SIGNALS,
 } from './buddy-tool-selection.service';
 import { QUERY_HOME_STATE_TOOL_NAME, SEARCH_HOME_TOOL_NAME } from './home-context-tool-provider.service';
 
@@ -28,6 +32,14 @@ const ACTION_SIGNAL_PATTERN_SOURCE = [...BUDDY_ACTION_SIGNALS, 'trigger'].join('
 const HOME_ENTITY_SIGNAL_PATTERN_SOURCE = [...BUDDY_HOME_SIGNALS]
 	.filter((signal) => !['energy', 'energie', 'home', 'house', 'security', 'zabezpeceni'].includes(signal))
 	.join('|');
+const GROUNDED_STATE_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_GROUNDED_STATE_SIGNALS].join('|')})\b`, 'u');
+const LIGHTING_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_LIGHTING_SIGNALS].join('|')})\b`, 'u');
+const LIGHTING_GROUP_PATTERN = new RegExp(
+	String.raw`\b(?:every|${[...BUDDY_SPACE_SIGNALS]
+		.filter((signal) => ['all', 'lighting', 'lights', 'pokoj', 'room', 'svetla'].includes(signal))
+		.join('|')})\b`,
+	'u',
+);
 
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
 const WEATHER_PATTERN =
@@ -71,9 +83,12 @@ const CONDITION_PATTERN =
 	/\b(?:after|as long as|as soon as|assuming|before|given that|if|in case|once|only if|provided|so long as|unless|until|when|whenever|while)\b/u;
 const LEADING_CONDITION_PATTERN =
 	/^(?:after|as long as|as soon as|assuming|before|given that|if|in case|once|only if|provided|so long as|unless|until|when|whenever|while)\b/u;
-const RELATIVE_PATTERN = /\b(?:brighter|colder|cooler|darker|down|higher|hotter|less|lower|more|times as|up|warmer)\b/u;
-const PRONOUN_PATTERN = /\b(?:it|that|them|these|they|this|those)\b|\bthe one\b/u;
-const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:it|that|this)\b|\bthe one\b/u;
+const RELATIVE_PATTERN = new RegExp(
+	String.raw`\b(?:${[...BUDDY_RELATIVE_ADJUSTMENT_SIGNALS].join('|')}|times as)\b`,
+	'u',
+);
+const PRONOUN_PATTERN = /\b(?:it|its|that|them|these|they|this|those)\b|\bthe one\b/u;
+const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:it|its|that|this)\b|\bthe one\b/u;
 const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
 	String.raw`^(?:(?:what|which)\b|(?:can|could|would) you (?:show|tell)(?: me)?\b).*\b(?:am i able to|can i|i can)\b.*\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
@@ -155,6 +170,8 @@ export class BuddyContextPlannerService {
 		const hasTrailingRead = TRAILING_READ_PATTERN.test(normalizedMessage);
 		const actionMessage = getActionMessage(normalizedMessage, trailingActionMatch);
 		const actionReferenceMessage = getActionReferenceMessage(actionMessage);
+		const hasLeadingHomeRead =
+			trailingActionMatch !== null && hasHomeStateReadClause(normalizedMessage.slice(0, trailingActionMatch.index));
 		const isReadOnlyPredicate =
 			!hasTrailingAction &&
 			(isPredicateQuestion ||
@@ -164,10 +181,13 @@ export class BuddyContextPlannerService {
 		const hasWrite =
 			!isGenericExplanation &&
 			!isReadOnlyPredicate &&
-			ACTION_COMMAND_PATTERN.test(actionMessage) &&
-			(WRITE_PATTERN.test(actionMessage) ||
-				TARGET_DEPENDENT_ACTION_PATTERN.test(actionMessage) ||
-				DEVICE_RUN_TARGET_PATTERN.test(actionMessage));
+			splitPlannerClauses(actionReferenceMessage).some(
+				(clause) =>
+					ACTION_COMMAND_PATTERN.test(clause) &&
+					(WRITE_PATTERN.test(clause) ||
+						TARGET_DEPENDENT_ACTION_PATTERN.test(clause) ||
+						DEVICE_RUN_TARGET_PATTERN.test(clause)),
+			);
 		const hasTrigger =
 			!isGenericExplanation &&
 			!isReadOnlyPredicate &&
@@ -198,7 +218,10 @@ export class BuddyContextPlannerService {
 				!hasAction);
 		const requiresReadForAction =
 			hasAction &&
-			(CONDITION_PATTERN.test(normalizedMessage) || RELATIVE_PATTERN.test(normalizedMessage) || hasTrailingRead);
+			(CONDITION_PATTERN.test(normalizedMessage) ||
+				RELATIVE_PATTERN.test(normalizedMessage) ||
+				hasTrailingRead ||
+				hasLeadingHomeRead);
 		const intent = classifyIntent(hasWrite, hasTrigger, hasRead || requiresReadForAction);
 		const ambiguityRisk = classifyAmbiguityRisk(
 			normalizedMessage,
@@ -285,7 +308,7 @@ export class BuddyContextPlannerService {
 				currentStateSpaceIds,
 				historySpaceIds,
 			),
-			toolNames: buildToolNames(domains, hasWrite, hasTrigger, strategy, normalizedMessage),
+			toolNames: buildToolNames(domains, hasWrite, hasTrigger, strategy, normalizedMessage, explicitSpaces),
 			ambiguityRisk,
 			strategy,
 		};
@@ -333,7 +356,6 @@ function classifyDomains(
 	const hasWeather = hasDomainSignalOutsideEntityName(message, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN);
 	const hasEnergy = hasDomainSignalOutsideEntityName(message, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN);
 	const hasSecurity = hasDomainSignalOutsideEntityName(message, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN);
-	const hasNonHomeDomain = hasWeather || hasEnergy || hasSecurity;
 	const clauses = splitPlannerClauses(message);
 	const hasInstallationHome = clauses.some(
 		(clause) =>
@@ -348,7 +370,30 @@ function classifyDomains(
 			(!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) ||
 				CONTEXTUAL_SCOPE_PATTERN.test(clause)),
 	);
-	const hasRecentReferenceHome = hasRecentReferencePronoun && (hasAction || !hasNonHomeDomain);
+	const hasRecentReferenceHome =
+		hasRecentReferencePronoun &&
+		(hasAction ||
+			clauses.some((clause) => {
+				const referenceClause = stripContextualScopeReferences(clause);
+
+				return (
+					PRONOUN_PATTERN.test(referenceClause) &&
+					!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
+					!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
+					!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN)
+				);
+			}));
+	const hasCategoryFreeHomeState = clauses.some((clause) => {
+		const normalizedClause = clause.trim();
+
+		return (
+			PREDICATE_QUESTION_PATTERN.test(normalizedClause) &&
+			GROUNDED_STATE_PATTERN.test(normalizedClause) &&
+			!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
+			!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
+			!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN)
+		);
+	});
 
 	if (
 		HOME_ENTITY_PATTERN.test(message) ||
@@ -356,6 +401,7 @@ function classifyDomains(
 		hasContextualHomeState ||
 		hasHomeActionOrPredicate ||
 		hasRecentReferenceHome ||
+		hasCategoryFreeHomeState ||
 		hasExplicitSpace ||
 		hasInstallationHome
 	) {
@@ -412,6 +458,20 @@ function hasCurrentStateReadClause(message: string): boolean {
 			CURRENT_STATE_PATTERN.test(normalizedClause) ||
 			READ_PATTERN.test(normalizedClause) ||
 			PREDICATE_QUESTION_PATTERN.test(normalizedClause)
+		);
+	});
+}
+
+function hasHomeStateReadClause(message: string): boolean {
+	return splitPlannerClauses(message).some((clause) => {
+		const normalizedClause = clause.trim();
+
+		return (
+			HOME_ENTITY_PATTERN.test(normalizedClause) ||
+			HOME_VOCABULARY_PATTERN.test(normalizedClause) ||
+			HOME_STATE_PATTERN.test(normalizedClause) ||
+			CONTEXTUAL_SCOPE_PATTERN.test(normalizedClause) ||
+			(PREDICATE_QUESTION_PATTERN.test(normalizedClause) && GROUNDED_STATE_PATTERN.test(normalizedClause))
 		);
 	});
 }
@@ -481,7 +541,10 @@ function classifyAmbiguityRisk(
 		) {
 			return 'action';
 		}
-		if (hasGenericActionTarget(actionReferenceMessage, explicitSpaces, conversationSpaceId !== undefined)) {
+		if (
+			hasGenericActionTarget(actionReferenceMessage, explicitSpaces, conversationSpaceId !== undefined) &&
+			!hasMultiSpaceLightingTarget(message, explicitSpaces)
+		) {
 			return 'action';
 		}
 
@@ -523,11 +586,10 @@ function hasGenericActionTargetClause(
 	return explicitSpaces.some((space) => {
 		const normalizedSpaceName = normalize(space.name);
 
-		return (
-			!BUILT_IN_ACTION_SPACE_NAMES.has(normalizedSpaceName) &&
-			GENERIC_ACTION_TARGET_NAMES.some((target) =>
+		return GENERIC_ACTION_TARGET_NAMES.some(
+			(target) =>
+				(!BUILT_IN_ACTION_SPACE_NAMES.has(normalizedSpaceName) || target === 'lamp' || target === 'lamps') &&
 				containsNormalizedPhrase(message, `${normalizedSpaceName} ${target}`),
-			)
 		);
 	});
 }
@@ -866,6 +928,7 @@ function buildToolNames(
 	hasTrigger: boolean,
 	strategy: BuddyContextStrategy,
 	message: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
 ): string[] {
 	if (strategy !== 'model-tools') return [];
 
@@ -874,18 +937,41 @@ function buildToolNames(
 	if (domains.includes('home')) names.push(SEARCH_HOME_TOOL_NAME, QUERY_HOME_STATE_TOOL_NAME);
 	if (hasWrite) {
 		names.push(CONTROL_DEVICE_TOOL_NAME);
-		const hasLightingGroupTarget = splitPlannerClauses(message).some(
-			(clause) =>
-				ACTION_COMMAND_PATTERN.test(clause) &&
-				/\b(?:lamp|lamps|light|lighting|lights)\b/u.test(clause) &&
-				/\b(?:all|every|lighting|lights|room)\b/u.test(clause),
-		);
+		const hasLightingGroupTarget =
+			splitPlannerClauses(message).some(
+				(clause) =>
+					ACTION_COMMAND_PATTERN.test(clause) && LIGHTING_PATTERN.test(clause) && LIGHTING_GROUP_PATTERN.test(clause),
+			) || hasMultiSpaceLightingTarget(message, explicitSpaces);
 
 		if (hasLightingGroupTarget) names.push(SET_SPACE_LIGHTING_TOOL_NAME);
 	}
 	if (hasTrigger) names.push(RUN_SCENE_TOOL_NAME);
 
 	return names;
+}
+
+function hasMultiSpaceLightingTarget(message: string, explicitSpaces: readonly BuddyContextSpaceReference[]): boolean {
+	if (explicitSpaces.length < 2 || !ACTION_COMMAND_PATTERN.test(message) || !LIGHTING_PATTERN.test(message)) {
+		return false;
+	}
+
+	const spaceRanges = explicitSpaces
+		.flatMap((space) => findNormalizedPhraseRanges(message, normalize(space.name)))
+		.sort((left, right) => left.start - right.start);
+
+	if (spaceRanges.length < 2) return false;
+
+	const firstSpace = spaceRanges[0];
+	const lastSpace = spaceRanges[spaceRanges.length - 1];
+	const targetPrefix = message.slice(0, firstSpace.start);
+	const targetConjunction = message.slice(firstSpace.end, lastSpace.start);
+	const targetSuffix = message.slice(lastSpace.end);
+
+	return (
+		ACTION_COMMAND_PATTERN.test(targetPrefix) &&
+		/\band\b/u.test(targetConjunction) &&
+		/^\s*(?:lamp|lamps|light|lighting|lights|lampa|svetla|svetlo)\b/u.test(targetSuffix)
+	);
 }
 
 function resolveRecentReferences(
