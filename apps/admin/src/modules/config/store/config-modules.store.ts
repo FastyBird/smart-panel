@@ -365,8 +365,12 @@ export const useConfigModule = defineStore<'config-module_config_module', Config
 					return commit(transformed);
 				}
 
-				// Updating the record on api failed, we need to refresh the record
-				await get({ type: payload.data.type });
+				// Updating the record on api failed, so the optimistic write above has to be rolled
+				// back to whatever the server actually holds. Forced, because a plain read would
+				// be allowed to join a request that went out before that optimistic write: its
+				// answer carries a lower number and would be dropped, leaving the value the failed
+				// edit put there in place.
+				await get({ type: payload.data.type, force: true });
 
 				let errorReason: string | null = 'Failed to update module config.';
 

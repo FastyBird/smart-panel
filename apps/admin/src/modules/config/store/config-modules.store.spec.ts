@@ -195,6 +195,44 @@ describe('ConfigModule Store', () => {
 		);
 	});
 
+	// The rollback after a failed edit has to undo the optimistic write, and the optimistic write
+	// is newer than any request already in flight. A plain read would be allowed to join one of
+	// those, and its answer - correctly judged older - would be dropped, leaving the value the
+	// failed edit put there sitting in the store while `edit()` reports failure.
+	it('rolls back a failed edit even while an older read is in flight', async () => {
+		let resolveInFlight!: (value: unknown) => void;
+
+		const inFlightRequest = new Promise((resolve) => {
+			resolveInFlight = resolve;
+		});
+
+		store.data = { [mockModule.type]: { ...mockModule } };
+
+		(backendClient.GET as Mock).mockReturnValueOnce(inFlightRequest).mockResolvedValueOnce({
+			data: { data: { ...mockModuleRes, mockValue: 'server value' } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		(backendClient.PATCH as Mock).mockResolvedValue({
+			data: undefined,
+			error: new Error('Patch error'),
+			response: { status: 500 },
+		});
+
+		// Issued before the edit, so its answer describes the configuration from before it.
+		const pendingGet = store.get({ type: 'custom-module' });
+
+		const failedEdit = store.edit({ data: { ...mockModule, mockValue: 'optimistic value' } } as IConfigModulesEditActionPayload);
+
+		resolveInFlight({ data: { data: mockModuleRes }, error: undefined, response: { status: 200 } });
+
+		await expect(failedEdit).rejects.toThrow(ConfigApiException);
+		await pendingGet;
+
+		expect((store.data[mockModule.type] as ICustomModuleConfig).mockValue).toBe('server value');
+	});
+
 	it('should fetch all modules successfully', async () => {
 		(backendClient.GET as Mock).mockResolvedValue({
 			data: { data: [mockModuleRes] },
