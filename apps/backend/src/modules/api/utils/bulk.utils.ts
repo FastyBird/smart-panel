@@ -28,23 +28,52 @@ export interface RunBulkOperationOptions {
 }
 
 /**
- * Describes a thrown non-Error for the log, without the description itself
- * being able to throw.
+ * Reads a thrown `Error`'s own message, or `undefined` when there is nothing
+ * readable there.
+ */
+const readMessage = (error: Error): string | undefined => {
+	try {
+		const { message } = error;
+
+		return typeof message === 'string' && message.length > 0 ? message : undefined;
+	} catch {
+		return undefined;
+	}
+};
+
+/**
+ * Describes a thrown value for the log, without the description itself being
+ * able to throw.
  *
- * `String(value)` runs code the thrower controls - a `Symbol.toPrimitive`, or
- * on a null-prototype object no conversion at all - and a throw here would
- * escape the catch, abandoning every item still to come. Collecting failures
- * per item exists precisely so one bad item cannot do that. It also renders
- * anything object-shaped as a useless `[object Object]`, so the fields are
- * serialized instead where that is possible.
+ * Nothing about a thrown value is safe to touch unguarded. `String(value)` runs
+ * code the thrower controls - a `Symbol.toPrimitive`, or on a null-prototype
+ * object no conversion at all - and an `Error` is no better: `message` and
+ * `stack` are plain properties on the exceptions raised here, but a getter that
+ * throws is a getter that throws inside the catch block, escaping it and
+ * abandoning every item still to come. Collecting failures per item exists
+ * precisely so one bad item cannot do that, so every read below is guarded.
  */
 const describeThrown = (value: unknown): string => {
-	if (value === undefined) {
-		return 'undefined';
-	}
-
 	if (typeof value === 'string') {
 		return value;
+	}
+
+	if (value instanceof Error) {
+		try {
+			const { stack } = value;
+
+			if (typeof stack === 'string' && stack.length > 0) {
+				return stack;
+			}
+		} catch {
+			// Falls through to the message, which is guarded in turn.
+		}
+
+		return readMessage(value) ?? '<unreadable Error>';
+	}
+
+	if (value === undefined) {
+		return 'undefined';
 	}
 
 	try {
@@ -105,11 +134,15 @@ export const runBulkOperation = async (
 			failure.id = id;
 
 			const isSafe = safeErrors.some((SafeError) => error instanceof SafeError);
+			const safeMessage = isSafe && error instanceof Error ? readMessage(error) : undefined;
 
-			if (isSafe && error instanceof Error && error.message.length > 0) {
-				failure.reason = error.message;
+			if (typeof safeMessage === 'string') {
+				failure.reason = safeMessage;
 			} else {
-				logger.error(`Bulk operation failed for id=${id}`, error instanceof Error ? error : describeThrown(error));
+				// The description, never the value: the logger's own formatter reads
+				// `stack` and `message` off an `Error` it is handed, which would put an
+				// unguarded accessor right back into the path this catch has to survive.
+				logger.error(`Bulk operation failed for id=${id}`, describeThrown(error));
 
 				failure.reason = fallbackReason;
 			}

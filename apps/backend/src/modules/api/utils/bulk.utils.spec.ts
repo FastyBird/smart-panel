@@ -92,9 +92,6 @@ describe('runBulkOperation', () => {
 		expect(result.failed).toEqual([{ id: 'a', reason: 'Scene could not be removed' }]);
 	});
 
-	// A selection can carry the same item twice - two rows of one item in
-	// different groupings, for instance. Acting once keeps the caller's counts
-	// honest.
 	// Describing the thrown value for the log must not itself throw. A
 	// null-prototype object has no conversion to a primitive at all, and
 	// `Symbol.toPrimitive` is code the thrower controls - either would escape the
@@ -124,6 +121,76 @@ describe('runBulkOperation', () => {
 		expect(perform).toHaveBeenCalledTimes(2);
 	});
 
+	// An `Error` is no safer to read than any other thrown value: `message` and
+	// `stack` are ordinary properties on the exceptions raised here, but a getter
+	// that throws throws inside the catch block, which is exactly where a throw
+	// abandons the rest of the selection.
+	describe('an Error whose own accessors throw', () => {
+		const errorWithThrowingAccessor = (accessor: 'message' | 'stack'): Error => {
+			const error = new ModuleRefusalError('readable');
+
+			Object.defineProperty(error, accessor, {
+				get: () => {
+					throw new Error('boom');
+				},
+			});
+
+			return error;
+		};
+
+		it('does not abandon the remaining items when the message cannot be read', async () => {
+			const perform = jest
+				.fn()
+				.mockRejectedValueOnce(errorWithThrowingAccessor('message'))
+				.mockResolvedValueOnce(undefined);
+
+			const result = await runBulkOperation(['a', 'b'], perform, {
+				fallbackReason: 'Item could not be processed',
+				safeErrors: [ModuleRefusalError],
+				logger,
+			});
+
+			expect(result.succeeded).toEqual(['b']);
+			expect(result.failed).toEqual([{ id: 'a', reason: 'Item could not be processed' }]);
+			expect(perform).toHaveBeenCalledTimes(2);
+		});
+
+		// The logger formats an `Error` it is handed by reading `stack` first, so
+		// handing it the raw value would put the throwing accessor back in the path.
+		it('does not abandon the remaining items when the stack cannot be read', async () => {
+			const perform = jest
+				.fn()
+				.mockRejectedValueOnce(errorWithThrowingAccessor('stack'))
+				.mockResolvedValueOnce(undefined);
+
+			const result = await runBulkOperation(['a', 'b'], perform, {
+				fallbackReason: 'Item could not be processed',
+				logger,
+			});
+
+			expect(result.succeeded).toEqual(['b']);
+			expect(result.failed).toEqual([{ id: 'a', reason: 'Item could not be processed' }]);
+			expect(perform).toHaveBeenCalledTimes(2);
+		});
+
+		it('still logs the failure, describing what little could be read', async () => {
+			const error = errorWithThrowingAccessor('stack');
+			const perform = jest.fn().mockRejectedValue(error);
+
+			const logged = jest.spyOn(logger, 'error').mockImplementation(() => undefined);
+
+			await runBulkOperation(['a'], perform, {
+				fallbackReason: 'Item could not be processed',
+				logger,
+			});
+
+			expect(logged).toHaveBeenCalledWith('Bulk operation failed for id=a', 'readable');
+		});
+	});
+
+	// A selection can carry the same item twice - two rows of one item in
+	// different groupings, for instance. Acting once keeps the caller's counts
+	// honest.
 	it('acts once on an item listed twice', async () => {
 		const perform = jest.fn().mockResolvedValue(undefined);
 
@@ -198,7 +265,13 @@ describe('runBulkOperation', () => {
 			});
 
 			expect(errorSpy).toHaveBeenCalledTimes(1);
-			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('id=a'), error);
+			// The description rather than the value itself - the logger would otherwise
+			// read `stack` and `message` off it unguarded - but it still carries what
+			// was sanitized out of the response.
+			expect(errorSpy).toHaveBeenCalledWith(
+				expect.stringContaining('id=a'),
+				expect.stringContaining('SELECT * FROM users WHERE id = ?'),
+			);
 		});
 	});
 });
