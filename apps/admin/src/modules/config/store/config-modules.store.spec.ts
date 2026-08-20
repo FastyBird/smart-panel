@@ -271,10 +271,11 @@ describe('ConfigModule Store', () => {
 		expect((store.data[mockModule.type] as ICustomModuleConfig).mockValue).toBe('my value');
 	});
 
-	// The other side of that window. Once the edit's answer is in hand the entry is released, and a
-	// read issued after the edit went out is the newer story again - which is why the edit response
-	// takes its number when the request was sent rather than when it came back.
-	it('does not let a slow edit response overwrite a refresh issued after it', async () => {
+	// The same window seen from the other end: a read issued while the write was outstanding is
+	// dropped whenever it lands, not only when it lands first. Its snapshot may have been taken
+	// either side of the write and nothing here can tell which, so the entry keeps the confirmed
+	// edit - reverting one of those is the worse of the two mistakes.
+	it('drops a refresh issued during an edit even when it lands after the edit', async () => {
 		let resolvePatch!: (value: unknown) => void;
 		let resolveGet!: (value: unknown) => void;
 
@@ -293,7 +294,7 @@ describe('ConfigModule Store', () => {
 
 		const pendingEdit = store.edit({ data: { ...mockModule, mockValue: 'my value' } } as IConfigModulesEditActionPayload);
 
-		// Issued after the PATCH went out, and answered after it comes back.
+		// Issued while the PATCH is still outstanding.
 		const pendingGet = store.get({ type: 'custom-module', force: true });
 
 		resolvePatch({
@@ -304,13 +305,34 @@ describe('ConfigModule Store', () => {
 
 		await pendingEdit;
 
-		resolveGet({
+		// And answered only afterwards, with what the server held before the edit was committed.
+		resolveGet({ data: { data: mockModuleRes }, error: undefined, response: { status: 200 } });
+
+		await pendingGet;
+
+		expect((store.data[mockModule.type] as ICustomModuleConfig).mockValue).toBe('my value');
+	});
+
+	// The hold is not permanent. Once the edit's answer is in hand the entry is released, and a
+	// refresh issued after that overlaps nothing and is the newer story again.
+	it('applies a refresh issued once the edit has settled', async () => {
+		store.data = { [mockModule.type]: { ...mockModule } };
+
+		(backendClient.PATCH as Mock).mockResolvedValueOnce({
+			data: { data: { ...mockModuleRes, mockValue: 'my value' } },
+			error: undefined,
+			response: { status: 200 },
+		});
+
+		(backendClient.GET as Mock).mockResolvedValueOnce({
 			data: { data: { ...mockModuleRes, mockValue: 'someone else' } },
 			error: undefined,
 			response: { status: 200 },
 		});
 
-		await pendingGet;
+		await store.edit({ data: { ...mockModule, mockValue: 'my value' } } as IConfigModulesEditActionPayload);
+
+		await store.get({ type: 'custom-module', force: true });
 
 		expect((store.data[mockModule.type] as ICustomModuleConfig).mockValue).toBe('someone else');
 	});

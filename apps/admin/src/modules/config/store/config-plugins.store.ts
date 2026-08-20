@@ -190,6 +190,12 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 				// describes the configuration as of now, whatever is written while it travels.
 				const requestedAt = nextSequence();
 
+				// Whether a write for this type was in flight at that moment. The server can answer
+				// a read from either side of an uncommitted write and nothing here distinguishes
+				// the two, so a read that overlapped one never speaks for the entry - however late
+				// it lands, and however new its number looks.
+				const overlapsWrite = writePending(payload.type);
+
 				try {
 					const {
 						data: responseData,
@@ -208,10 +214,9 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 
 						const transformed = transformConfigPluginResponse(responseData.data, element?.schemas?.pluginConfigSchema || ConfigPluginSchema);
 
-						// A write for this type is in flight, so this answer is not guaranteed to
-						// include it - the server may not have committed it when it was read. The
-						// caller still gets the entry, just the copy the write is putting there.
-						if (writePending(payload.type)) {
+						// The caller still gets the entry, just the copy the write left behind rather
+						// than the one this answer carries.
+						if (overlapsWrite) {
 							return data.value[payload.type] ?? transformed;
 						}
 
@@ -262,6 +267,11 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 				// story.
 				const requestedAt = nextSequence();
 
+				// The types whose write was in flight at that moment. This answer cannot speak for
+				// them either way - it may have been assembled before the write was committed - so
+				// they keep what they hold, present or absent from it.
+				const overlappedWrites = new Set(Object.keys(pendingWrites));
+
 				try {
 					const { data: responseData, error, response } = await backend.client.GET(`/${MODULES_PREFIX}/${CONFIG_MODULE_PREFIX}/config/plugins`);
 
@@ -279,7 +289,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 
 							const transformed = transformConfigPluginResponse(plugin, element?.schemas?.pluginConfigSchema || ConfigPluginSchema);
 
-							if (writePending(transformed.type) || (appliedSequence[transformed.type] ?? 0) > requestedAt) {
+							if (overlappedWrites.has(transformed.type) || (appliedSequence[transformed.type] ?? 0) > requestedAt) {
 								const local = data.value[transformed.type];
 
 								if (local) {
@@ -301,6 +311,14 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 							}
 						}
 
+						// A type whose write overlapped this request is not described reliably by the
+						// answer, present or absent, so it keeps what it holds.
+						for (const type of overlappedWrites) {
+							if (!(type in applied) && data.value[type]) {
+								applied[type] = data.value[type];
+							}
+						}
+
 						// An entry this response does not carry is evicted, and the eviction takes this
 						// response's number like every other write it makes: a read still in flight
 						// from before it must not put back what a newer answer says is gone.
@@ -313,7 +331,7 @@ export const useConfigPlugin = defineStore<'config-module_config_plugin', Config
 						const known = new Set([...Object.keys(data.value), ...Object.keys(appliedSequence), ...Object.keys(pendingGetPromises)]);
 
 						for (const type of known) {
-							if (!(type in applied)) {
+							if (!(type in applied) && !overlappedWrites.has(type)) {
 								appliedSequence[type] = requestedAt;
 							}
 						}
