@@ -2800,6 +2800,45 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('propagates an energy request across conjoined configured spaces', () => {
+		expect(
+			service.plan({
+				message: 'How much energy did Bedroom and Kitchen use today?',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['energy'],
+			scope: { spaceIds: ['space-bedroom', 'space-kitchen'] },
+			queries: [
+				{ kind: 'energy-summary', spaceId: 'space-bedroom' },
+				{ kind: 'energy-summary', spaceId: 'space-kitchen' },
+			],
+			strategy: 'prefetch',
+		});
+	});
+
+	it('associates a leading temporal adjunct with the following home-state clause', () => {
+		expect(
+			service.plan({
+				message: 'Yesterday, what was the Bedroom temperature?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			scope: { spaceId: 'space-bedroom' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+			strategy: 'prefetch',
+		});
+	});
+
 	it('masks only the configured-space occurrence of a repeated domain word', () => {
 		expect(
 			service.plan({

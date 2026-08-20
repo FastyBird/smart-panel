@@ -459,8 +459,12 @@ function classifyDomains(
 		explicitSpaces,
 	);
 	const clauses = splitPlannerClauses(message, explicitSpaces);
+	const conjoinedEnergySpaceIds = new Set(resolveConjoinedEnergySpaceIds(message, explicitSpaces));
 	const hasHomeEntity = clauses.some((clause) => {
-		const retrievalClause = getRetrievalClause(clause);
+		const retrievalClause = removeExplicitSpaceOccurrencesForDomain(
+			getRetrievalClause(clause),
+			explicitSpaces.filter((space) => conjoinedEnergySpaceIds.has(space.id)),
+		);
 		const hasHomeSignal = HOME_ENTITY_PATTERN.test(retrievalClause) || HOME_VOCABULARY_PATTERN.test(retrievalClause);
 		const hasNonHomeSignal =
 			hasDomainSignalInClause(retrievalClause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) ||
@@ -525,6 +529,7 @@ function classifyDomains(
 				HOME_VOCABULARY_PATTERN.test(clauseWithoutSpace) ||
 				HOME_STATE_PATTERN.test(clauseWithoutSpace) ||
 				CONTEXTUAL_SCOPE_PATTERN.test(clauseWithoutSpace);
+			if (conjoinedEnergySpaceIds.has(space.id) && !hasHomeSignal) return false;
 
 			return !hasNonHomeSignal || hasHomeSignal;
 		}),
@@ -641,7 +646,23 @@ function splitPlannerClauses(message: string, protectedSpaces: readonly BuddyCon
 
 	clauses.push(message.slice(clauseStart));
 
-	return clauses;
+	return mergeLeadingTemporalAdjuncts(clauses);
+}
+
+function mergeLeadingTemporalAdjuncts(clauses: string[]): string[] {
+	const merged = [...clauses];
+
+	while (
+		merged.length > 1 &&
+		hasHistorySignalInClause(merged[0].trim()) &&
+		!HOME_ENTITY_PATTERN.test(merged[0]) &&
+		!HOME_STATE_PATTERN.test(merged[0]) &&
+		!ACTION_COMMAND_PATTERN.test(merged[0])
+	) {
+		merged.splice(0, 2, `${merged[0]} ${merged[1]}`);
+	}
+
+	return merged;
 }
 
 function findPatternRanges(message: string, pattern: RegExp): Array<{ start: number; end: number }> {
@@ -948,13 +969,14 @@ function resolveEnergySpaceIds(
 		(clause) => HOME_INSTALLATION_PATTERN.test(clause) || WHOLE_HOME_SCOPE_PATTERN.test(clause),
 	);
 
-	const explicitEnergySpaceIds = [
+	const directEnergySpaceIds = [
 		...new Set(
 			explicitSpaces
 				.filter((space) => energyClauses.some((clause) => hasExplicitSpaceOccurrence(clause, space, explicitSpaces)))
 				.map((space) => space.id),
 		),
 	];
+	const explicitEnergySpaceIds = expandConjoinedSpaceIds(message, explicitSpaces, directEnergySpaceIds);
 
 	if (includesWholeHome || explicitEnergySpaceIds.length > 0) {
 		return [...(includesWholeHome ? [undefined] : []), ...explicitEnergySpaceIds];
@@ -1064,7 +1086,7 @@ function resolveTemporalHomeSpaceIds(
 
 	if (temporalClauses.some((clause) => WHOLE_HOME_SCOPE_PATTERN.test(clause))) return [];
 
-	const explicitTemporalSpaceIds = expandConjoinedTemporalSpaceIds(
+	const explicitTemporalSpaceIds = expandConjoinedSpaceIds(
 		message,
 		explicitSpaces,
 		resolveTemporalExplicitSpaceIds(temporalClauses, explicitSpaces, temporalPattern),
@@ -1097,12 +1119,28 @@ function resolveConjoinedTemporalSpaceIds(
 		TEMPORAL_HISTORY_PATTERN,
 	);
 
-	return expandConjoinedTemporalSpaceIds(message, explicitSpaces, directlyTemporalSpaceIds).filter(
+	return expandConjoinedSpaceIds(message, explicitSpaces, directlyTemporalSpaceIds).filter(
 		(spaceId) => !directlyTemporalSpaceIds.includes(spaceId),
 	);
 }
 
-function expandConjoinedTemporalSpaceIds(
+function resolveConjoinedEnergySpaceIds(
+	message: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+): string[] {
+	const energyClauses = splitPlannerClauses(message, explicitSpaces).filter((clause) =>
+		hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN),
+	);
+	const directlyEnergySpaceIds = explicitSpaces
+		.filter((space) => energyClauses.some((clause) => hasExplicitSpaceOccurrence(clause, space, explicitSpaces)))
+		.map((space) => space.id);
+
+	return expandConjoinedSpaceIds(message, explicitSpaces, directlyEnergySpaceIds).filter(
+		(spaceId) => !directlyEnergySpaceIds.includes(spaceId),
+	);
+}
+
+function expandConjoinedSpaceIds(
 	message: string,
 	explicitSpaces: readonly BuddyContextSpaceReference[],
 	selectedSpaceIds: readonly string[],
