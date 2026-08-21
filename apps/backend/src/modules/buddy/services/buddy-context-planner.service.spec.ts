@@ -2573,10 +2573,14 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it('clarifies an apart-from lighting exclusion', () => {
+	it.each([
+		'Turn all Bedroom lights on apart from the bedside lamp',
+		'Turn all Bedroom lights on with the exception of the bedside lamp',
+		'Turn all Bedroom lights on with exception of the bedside lamp',
+	])('clarifies another lighting exclusion: %s', (message) => {
 		expect(
 			service.plan({
-				message: 'Turn all Bedroom lights on apart from the bedside lamp',
+				message,
 				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
@@ -3858,6 +3862,9 @@ describe('BuddyContextPlannerService', () => {
 		'Turn Bedroom lights on for an hour',
 		'Turn Bedroom lights on for the next 10 minutes',
 		'Turn Bedroom lights on for next ten minutes',
+		'Turn Bedroom lights on for 90 mins',
+		'Turn Bedroom lights on for 30 secs',
+		'Turn Bedroom lights on for 2 hrs',
 		'Turn Bedroom lights on in 30 mins',
 		'Turn Bedroom lights on next month',
 		'Turn Bedroom lights on this weekend',
