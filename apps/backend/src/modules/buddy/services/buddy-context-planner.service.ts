@@ -398,12 +398,16 @@ export class BuddyContextPlannerService {
 				}),
 			),
 		];
-		const hasUnscopedAggregateReadClause = currentStateReadClauses.some(
-			(clause) =>
-				UNSCOPED_AGGREGATE_READ_PATTERN.test(clause.trim()) &&
-				!CONTEXTUAL_SCOPE_PATTERN.test(clause) &&
-				!explicitSpaces.some((space) => hasExplicitSpaceOccurrence(clause, space, explicitSpaces)),
-		);
+		const hasUnscopedCurrentStateReadClause = currentStateReadClauses.some((clause) => {
+			const clauseWithoutExplicitSpaces = removeExplicitSpaceOccurrencesForDomain(clause, explicitSpaces);
+
+			return (
+				WHOLE_HOME_SCOPE_PATTERN.test(clauseWithoutExplicitSpaces) ||
+				(UNSCOPED_AGGREGATE_READ_PATTERN.test(clause.trim()) &&
+					!CONTEXTUAL_SCOPE_PATTERN.test(clause) &&
+					!explicitSpaces.some((space) => hasExplicitSpaceOccurrence(clause, space, explicitSpaces)))
+			);
+		});
 		const isDeviceActionClause = (clause: string): boolean =>
 			!hasExplicitSceneKindTarget(getActionObjectClause(clause)) &&
 			(((WRITE_PATTERN.test(clause) || TARGET_DEPENDENT_ACTION_PATTERN.test(clause)) &&
@@ -598,7 +602,7 @@ export class BuddyContextPlannerService {
 							? actionScopeIds.filter((spaceId) => !independentCurrentStateSpaceIds.includes(spaceId))
 							: []),
 					]
-				: hasUnscopedAggregateReadClause
+				: hasUnscopedCurrentStateReadClause
 					? [...new Set([...(resolvedCurrentStateSpaceIds ?? []), undefined])]
 					: (resolvedCurrentStateSpaceIds ?? []);
 		const shouldIncludeCurrentStateForRead = includeCurrentStateForRead && resolvedCurrentStateSpaceIds !== undefined;
@@ -1904,9 +1908,14 @@ function resolveCurrentStateSpaceIds(
 	});
 	if (currentStateClauses.length === 0) return undefined;
 	if (
-		currentStateClauses.some(
-			(clause) => HOME_INSTALLATION_PATTERN.test(clause) || WHOLE_HOME_SCOPE_PATTERN.test(clause),
-		)
+		currentStateClauses.some((clause) => {
+			const clauseWithoutExplicitSpaces = removeExplicitSpaceOccurrencesForDomain(clause, explicitSpaces);
+
+			return (
+				HOME_INSTALLATION_PATTERN.test(clauseWithoutExplicitSpaces) ||
+				WHOLE_HOME_SCOPE_PATTERN.test(clauseWithoutExplicitSpaces)
+			);
+		})
 	) {
 		return [];
 	}

@@ -2365,6 +2365,24 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('retains an explicit whole-house clause beside a scoped current-state read', () => {
+		expect(
+			service.plan({
+				message: 'What is the Bedroom temperature and what lights are on throughout the house?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home' },
+				{ kind: 'current-state', spaceId: 'space-bedroom' },
+				{ kind: 'current-state' },
+			],
+		});
+	});
+
 	it('preserves an explicit room span inside a mixed weather clause', () => {
 		expect(
 			service.plan({
@@ -2378,6 +2396,24 @@ describe('BuddyContextPlannerService', () => {
 			queries: [
 				{ kind: 'search-home', spaceId: 'space-bedroom' },
 				{ kind: 'current-state', spaceId: 'space-bedroom' },
+				{ kind: 'weather' },
+			],
+		});
+	});
+
+	it('keeps a configured Home space scoped inside a mixed weather clause', () => {
+		expect(
+			service.plan({
+				message: 'Compare Home temperature with outside temperature',
+				knownSpaces: [{ id: 'space-home', name: 'Home' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'weather'],
+			scope: { spaceId: 'space-home' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-home' },
+				{ kind: 'current-state', spaceId: 'space-home' },
 				{ kind: 'weather' },
 			],
 		});
