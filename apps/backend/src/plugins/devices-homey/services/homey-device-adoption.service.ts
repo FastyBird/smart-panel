@@ -158,18 +158,23 @@ export class HomeyDeviceAdoptionService {
 
 		if (existing === null) {
 			const preallocatedDeviceId = randomUUID();
+			let creationCompleted = false;
 			try {
 				await lease.assertOwned();
 				const created = await this.devicesService.create<HomeyDeviceEntity, CreateHomeyDeviceDto>({
 					...this.createDeviceDto(selection, preview),
 					id: preallocatedDeviceId,
 				});
+				creationCompleted = true;
 				await lease.assertOwned();
 				await this.applyCreatedValues(created, preview, lease);
 
 				return this.success(preview.device.id, HomeyAdoptionStatus.CREATED, created.id);
 			} catch (error) {
 				if (error instanceof HomeyAdoptionLockLostError) {
+					throw error;
+				}
+				if (creationCompleted) {
 					throw error;
 				}
 				await lease.assertOwned();

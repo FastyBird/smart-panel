@@ -1,11 +1,11 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { unlink } from 'node:fs/promises';
 import { Server, createConnection, createServer } from 'node:net';
-import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
 import { DataSource } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
+
+import { sharedLockSocketPath } from '../../../common/utils/shared-lock-socket-path.utils';
 
 const ADOPTION_LOCK_TABLE = 'devices_homey_adoption_locks';
 const ADOPTION_LOCK_CLAIM_TTL_MS = 60_000;
@@ -175,9 +175,7 @@ export class HomeyAdoptionLockService {
 
 	private ownerSocketPath(ownerToken: string): string {
 		const database = this.dataSource.options.type === 'sqlite' ? this.dataSource.options.database : ':memory:';
-		const directory = typeof database === 'string' && database !== ':memory:' ? dirname(resolve(database)) : tmpdir();
-		const tokenHash = createHash('sha256').update(ownerToken).digest('hex').slice(0, 24);
 
-		return join(directory, `.homey-adoption-${tokenHash}.sock`);
+		return sharedLockSocketPath('homey-adoption', database, ownerToken);
 	}
 }

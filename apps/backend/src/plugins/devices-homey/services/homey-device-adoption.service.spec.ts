@@ -305,6 +305,21 @@ describe('HomeyDeviceAdoptionService', () => {
 		expect(propertiesService.update).not.toHaveBeenCalled();
 	});
 
+	it('keeps an announced device when a post-create ownership check fails', async () => {
+		(lease.assertOwned as jest.Mock)
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error('ownership check unavailable'));
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({
+			status: HomeyAdoptionStatus.FAILED,
+			failureCode: HomeyAdoptionFailureCode.PERSISTENCE_FAILED,
+		});
+		expect(devicesService.create).toHaveBeenCalledTimes(1);
+		expect(devicesService.rollbackUnannouncedCreate).not.toHaveBeenCalled();
+		expect(devicesService.findOne).not.toHaveBeenCalled();
+	});
+
 	it('holds the database-backed claim from the fresh preview through persistence', async () => {
 		let claimHeld = false;
 		adoptionLock.runExclusive = async <T>(

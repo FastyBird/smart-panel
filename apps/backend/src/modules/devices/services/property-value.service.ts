@@ -846,6 +846,11 @@ export class PropertyValueService {
 
 			if (!result.length) {
 				this.logger.debug(`No stored value found for id=${property.id}`);
+				if (bypassCache && this.cacheVersion(key) === cacheVersionAtQueryStart) {
+					this.valuesMap.delete(key);
+					this.recentValuesMap.delete(key);
+					this.bumpCacheVersion(key);
+				}
 
 				return { state: null, storageBinding: boundResult?.binding };
 			}

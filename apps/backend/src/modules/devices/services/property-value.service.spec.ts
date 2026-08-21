@@ -320,6 +320,23 @@ describe('PropertyValueService', () => {
 			expect(service['valuesMap'].get(property.id)).toEqual(expect.objectContaining({ value: 100 }));
 		});
 
+		it('clears stale value and trend caches after an authoritative storage miss', async () => {
+			const property = {
+				id: 'test-property-id',
+				dataType: DataTypeType.INT,
+			} as ChannelPropertyEntity;
+			service['valuesMap'].set(property.id, new PropertyValueState(42));
+			service['recentValuesMap'].set(property.id, [40, 42]);
+			storageService.queryActiveStrictBound.mockResolvedValue({
+				rows: [],
+				binding: {} as StorageBackendBinding,
+			});
+
+			await expect(service.readLatestPersisted(property)).resolves.toBeNull();
+			expect(service['valuesMap'].has(property.id)).toBe(false);
+			expect(service['recentValuesMap'].has(property.id)).toBe(false);
+		});
+
 		it('does not replace a cache entry published while an authoritative query is in flight', async () => {
 			const property = {
 				id: 'test-property-id',
@@ -340,6 +357,29 @@ describe('PropertyValueService', () => {
 			resolveQuery([{ numberValue: 100 }]);
 
 			await expect(persistedRead).resolves.toEqual(expect.objectContaining({ value: 100 }));
+			expect(service['valuesMap'].get(property.id)).toEqual(expect.objectContaining({ value: 200 }));
+		});
+
+		it('does not clear a cache entry published while an authoritative miss is in flight', async () => {
+			const property = {
+				id: 'test-property-id',
+				dataType: DataTypeType.INT,
+				invalid: null,
+			} as ChannelPropertyEntity;
+			let resolveQuery: (rows: Array<{ numberValue: number }>) => void = () => {};
+			storageService.queryActiveStrictBound.mockImplementation(
+				() =>
+					new Promise((resolve) => {
+						resolveQuery = (rows) => resolve({ rows, binding: {} as StorageBackendBinding });
+					}),
+			);
+			service['valuesMap'].set(property.id, new PropertyValueState(42));
+			const persistedRead = service.readLatestPersisted(property);
+
+			await expect(service.write(property, 200)).resolves.toBe(true);
+			resolveQuery([]);
+
+			await expect(persistedRead).resolves.toBeNull();
 			expect(service['valuesMap'].get(property.id)).toEqual(expect.objectContaining({ value: 200 }));
 		});
 

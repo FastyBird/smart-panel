@@ -36,9 +36,9 @@ removes the index and both columns.
 
 Migration `1000000000022-AddHomeyAdoptionLocks` adds a provider-private claim table keyed by the authoritative Homey
 device ID. It serializes the complete adoption boundary across backend processes without adding lock state to public
-device models. Each candidate opens a token-specific Unix-domain socket beside the shared SQLite database before
-publishing its token. Contenders probe the published socket, which remains live at the kernel while its JavaScript
-worker is paused and is visible across PID namespaces that share the database directory. A dead socket permits exactly
+device models. Each candidate opens a token-specific Unix-domain socket at a bounded host-shared IPC address derived
+from the database identity before publishing its token. Contenders probe the published socket, which remains live at
+the kernel while its JavaScript worker is paused and is visible to backend processes sharing that IPC namespace. A dead socket permits exactly
 one contender to replace the old token through a database compare-and-swap. A clean completion removes only its own
 claim and closes its socket; after a crash or failed claim delete, the closed socket makes the row immediately
 reclaimable without guessing process liveness from a PID or timestamp.
@@ -95,7 +95,9 @@ comparison. Persisted reads and strict writes also capture a per-property cache 
 if the version is unchanged when the operation completes, preventing slower storage work from replacing a newer value
 or trend published by a concurrent normal writer. Every property write and deletion enters the same process-local keyed
 queue and then acquires a shared SQLite claim fenced by a live Unix socket. That second boundary serializes writers from
-independent backend processes and lets a survivor reclaim a claim after its owner exits unexpectedly. Homey performs its
+independent backend processes and lets a survivor reclaim a claim after its owner exits unexpectedly. Socket addresses
+use a fixed short IPC directory plus a hash of the database identity and owner token, so deeply nested database paths
+cannot exceed the platform socket-path limit. Homey performs its
 final persisted read, ownership checks, snapshot compare-and-set, and bound strict write while holding both boundaries;
 if the durable value changed after the adoption snapshot, the preview is not allowed to replace it. The
 strict value event carries the exact `PropertyValueState` returned by persistence and is emitted immediately after the
