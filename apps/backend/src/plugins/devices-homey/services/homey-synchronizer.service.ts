@@ -448,6 +448,27 @@ export class HomeySynchronizerService {
 				continue;
 			}
 
+			if (event.type === HomeyEventType.DEVICE_ADDED || event.type === HomeyEventType.DEVICE_UPDATED) {
+				const current = currentDevices.get(event.deviceId);
+
+				if (current !== undefined) {
+					for (const capability of current.capabilities) {
+						if (!capability.readable || capability.available === false) {
+							continue;
+						}
+
+						await this.synchronizeCapabilityValue(
+							event.deviceId,
+							capability.id,
+							capability.value,
+							event.sequence === null ? event.occurredAt : null,
+							event.sequence,
+							result,
+						);
+					}
+				}
+			}
+
 			const context = this.prepareDeviceEvent(event.deviceId, event.sequence, event.occurredAt, result);
 
 			if (context !== null) {

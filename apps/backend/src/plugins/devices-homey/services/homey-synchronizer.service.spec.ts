@@ -582,6 +582,24 @@ describe('HomeySynchronizerService', () => {
 		expect(connectivityService.trySetConnectionState).not.toHaveBeenCalled();
 	});
 
+	it('carries a lifecycle refresh sequence into the fresh capability values', async () => {
+		const current = homeyDevice({
+			capabilities: homeyDevice().capabilities.map((capability) => ({ ...capability, lastUpdatedAt: null })),
+		});
+		const update: HomeyEvent = {
+			type: HomeyEventType.DEVICE_UPDATED,
+			deviceId: 'homey-light',
+			occurredAt: null,
+			sequence: 2,
+		};
+
+		await service.synchronizeDevices([current], [], [update]);
+		propertiesService.update.mockClear();
+		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 1)], new Map());
+
+		expect(propertiesService.update).not.toHaveBeenCalled();
+	});
+
 	it('uses the refreshed device after a device update event and isolates per-property failures', async () => {
 		await service.refreshIndex();
 		propertiesService.update.mockRejectedValueOnce(new Error('storage unavailable'));
