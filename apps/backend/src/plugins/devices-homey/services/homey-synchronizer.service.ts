@@ -45,7 +45,7 @@ export class HomeySynchronizerService {
 	private adoptedDevices = new Map<string, HomeyDeviceEntity>();
 	private propertiesByDeviceCapability = new Map<string, Map<string, HomeyIndexedProperty[]>>();
 	private lastAppliedOrder = new Map<string, HomeyEventOrder>();
-	private lastAppliedAvailabilityOrder = new Map<string, HomeyEventOrder>();
+	private lastAppliedDeviceOrder = new Map<string, HomeyEventOrder>();
 	private arrivalOrder = 0;
 	private indexDirty = true;
 	private indexRefresh: Promise<void> | null = null;
@@ -148,56 +148,54 @@ export class HomeySynchronizerService {
 					);
 					break;
 				case HomeyEventType.DEVICE_AVAILABILITY_CHANGED: {
-					const adopted = this.adoptedDevices.get(event.deviceId);
+					const context = this.prepareDeviceEvent(event.deviceId, event.sequence, event.occurredAt, result);
 
-					if (adopted === undefined) {
-						result.ignored += 1;
-						break;
-					}
-
-					const order = this.createOrder(event.sequence, event.occurredAt);
-					const previousOrder = this.lastAppliedAvailabilityOrder.get(event.deviceId);
-
-					if (previousOrder !== undefined && !this.isNewerOrder(order, previousOrder)) {
-						result.ignored += 1;
+					if (context === null) {
 						break;
 					}
 
 					const applied = await this.setConnectionState(
-						adopted.id,
+						context.adopted.id,
 						event.available ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
 						result,
 					);
 
 					if (applied) {
-						this.lastAppliedAvailabilityOrder.set(event.deviceId, order);
+						this.lastAppliedDeviceOrder.set(event.deviceId, context.order);
 					}
 					break;
 				}
 				case HomeyEventType.DEVICE_ADDED:
 				case HomeyEventType.DEVICE_UPDATED: {
-					const current = currentDevices.get(event.deviceId);
+					const context = this.prepareDeviceEvent(event.deviceId, event.sequence, event.occurredAt, result);
 
-					if (current === undefined) {
-						const adopted = this.adoptedDevices.get(event.deviceId);
-						if (adopted === undefined) {
-							result.ignored += 1;
-						} else {
-							await this.setConnectionState(adopted.id, ConnectionState.LOST, result);
-						}
+					if (context === null) {
 						break;
 					}
 
-					await this.synchronizeDevice(current, result);
+					const current = currentDevices.get(event.deviceId);
+					let applied: boolean;
+
+					if (current === undefined) {
+						applied = await this.setConnectionState(context.adopted.id, ConnectionState.LOST, result);
+					} else {
+						applied = await this.synchronizeDevice(current, result);
+					}
+
+					if (applied) {
+						this.lastAppliedDeviceOrder.set(event.deviceId, context.order);
+					}
 					break;
 				}
 				case HomeyEventType.DEVICE_REMOVED: {
-					const adopted = this.adoptedDevices.get(event.deviceId);
+					const context = this.prepareDeviceEvent(event.deviceId, event.sequence, event.occurredAt, result);
 
-					if (adopted === undefined) {
-						result.ignored += 1;
-					} else {
-						await this.setConnectionState(adopted.id, ConnectionState.LOST, result);
+					if (context === null) {
+						break;
+					}
+
+					if (await this.setConnectionState(context.adopted.id, ConnectionState.LOST, result)) {
+						this.lastAppliedDeviceOrder.set(event.deviceId, context.order);
 					}
 					break;
 				}
@@ -216,7 +214,7 @@ export class HomeySynchronizerService {
 		this.adoptedDevices.clear();
 		this.propertiesByDeviceCapability.clear();
 		this.lastAppliedOrder.clear();
-		this.lastAppliedAvailabilityOrder.clear();
+		this.lastAppliedDeviceOrder.clear();
 		this.arrivalOrder = 0;
 		this.indexDirty = true;
 		this.indexGeneration += 1;
@@ -294,15 +292,15 @@ export class HomeySynchronizerService {
 		this.indexDirty = this.indexGeneration !== generation;
 	}
 
-	private async synchronizeDevice(device: HomeyDevice, result: MutableSynchronizationResult): Promise<void> {
+	private async synchronizeDevice(device: HomeyDevice, result: MutableSynchronizationResult): Promise<boolean> {
 		const adopted = this.adoptedDevices.get(device.id);
 
 		if (adopted === undefined) {
 			result.ignored += 1;
-			return;
+			return false;
 		}
 
-		await this.setConnectionState(
+		const connectionStateApplied = await this.setConnectionState(
 			adopted.id,
 			device.available ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
 			result,
@@ -316,6 +314,8 @@ export class HomeySynchronizerService {
 
 			await this.synchronizeCapability(device.id, capability, result);
 		}
+
+		return connectionStateApplied;
 	}
 
 	private async synchronizeCapability(
@@ -462,6 +462,30 @@ export class HomeySynchronizerService {
 			timestamp: this.parseTimestamp(updatedAt),
 			arrival: ++this.arrivalOrder,
 		};
+	}
+
+	private prepareDeviceEvent(
+		homeyDeviceId: string,
+		sequence: string | number | null,
+		occurredAt: string | null,
+		result: MutableSynchronizationResult,
+	): { readonly adopted: HomeyDeviceEntity; readonly order: HomeyEventOrder } | null {
+		const adopted = this.adoptedDevices.get(homeyDeviceId);
+
+		if (adopted === undefined) {
+			result.ignored += 1;
+			return null;
+		}
+
+		const order = this.createOrder(sequence, occurredAt);
+		const previousOrder = this.lastAppliedDeviceOrder.get(homeyDeviceId);
+
+		if (previousOrder !== undefined && !this.isNewerOrder(order, previousOrder)) {
+			result.ignored += 1;
+			return null;
+		}
+
+		return { adopted, order };
 	}
 
 	private compareSequences(candidate: string | number | null, current: string | number | null): number | null {

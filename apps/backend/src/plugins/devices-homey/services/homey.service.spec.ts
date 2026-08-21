@@ -647,6 +647,40 @@ describe('HomeyService', () => {
 		await service.stop();
 	});
 
+	it('keeps a pending reconnect after locally processed capability traffic', async () => {
+		await service.start();
+		connector.getDevice.mockRejectedValueOnce(
+			new HomeyConnectorError(HomeyConnectorErrorCategory.UNAVAILABLE, HomeyConnectorOperation.GET_DEVICE),
+		);
+
+		await emitLiveEvent({
+			type: HomeyEventType.DEVICE_UPDATED,
+			deviceId: staleDevice.id,
+			occurredAt: null,
+			sequence: 1,
+		});
+		await emitLiveEvent({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: true,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 2,
+		});
+
+		expect(connector.getDevice.mock.calls).toHaveLength(1);
+		expect(service.getStatus()).toMatchObject({
+			connectionState: HomeyConnectionState.RECONNECTING,
+			healthy: false,
+			lastErrorCategory: HomeyConnectorErrorCategory.UNAVAILABLE,
+			lastError: 'Homey connection is temporarily unavailable',
+		});
+		expect(jest.getTimerCount()).toBe(1);
+
+		await service.stop();
+	});
+
 	it('does not retry authentication failures encountered while reconnecting', async () => {
 		const rejectedConnector = createConnectorMock(() => undefined, jest.fn());
 		rejectedConnector.connect.mockRejectedValue(

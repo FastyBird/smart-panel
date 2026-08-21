@@ -340,8 +340,11 @@ export class HomeyService extends BaseManagedPluginService {
 	private flushLiveEvents(connector: HomeyConnector, generation: number, events: readonly HomeyEvent[]): Promise<void> {
 		return this.enqueueSynchronization(async () => {
 			try {
-				await this.reconcileEvents(connector, generation, events);
-				this.markRuntimeHealthy(connector, generation);
+				const authoritativeTraffic = await this.reconcileEvents(connector, generation, events);
+
+				if (authoritativeTraffic) {
+					this.markRuntimeHealthy(connector, generation);
+				}
 			} catch (error) {
 				if (this.isCurrentGeneration(connector, generation)) {
 					this.handleRuntimeFailure(error, 'Homey event synchronization failed', generation);
@@ -356,19 +359,28 @@ export class HomeyService extends BaseManagedPluginService {
 		generation: number,
 		events: readonly HomeyEvent[],
 		authoritativeReadback = false,
-	): Promise<void> {
+	): Promise<boolean> {
 		if (!this.isCurrentGeneration(connector, generation)) {
-			return;
+			return false;
 		}
 
 		const containsZoneEvent = events.some((event) => this.isZoneEvent(event));
 
 		let inventoryReplaced = false;
+		let authoritativeTraffic = false;
 
 		if (containsZoneEvent) {
-			this.zones = await connector.getZones();
-			this.replaceDevices(await connector.getDevices());
+			const zones = await connector.getZones();
+			const devices = await connector.getDevices();
+
+			if (!this.isCurrentGeneration(connector, generation)) {
+				return false;
+			}
+
+			this.zones = zones;
+			this.replaceDevices(devices);
 			inventoryReplaced = true;
+			authoritativeTraffic = true;
 		}
 
 		const deviceIds = [...new Set(events.flatMap((event) => ('deviceId' in event ? [event.deviceId] : [])))];
@@ -380,8 +392,10 @@ export class HomeyService extends BaseManagedPluginService {
 				const device = await connector.getDevice(deviceId);
 
 				if (!this.isCurrentGeneration(connector, generation)) {
-					return;
+					return false;
 				}
+
+				authoritativeTraffic = true;
 
 				if (device) {
 					this.devices.set(device.id, device);
@@ -393,7 +407,8 @@ export class HomeyService extends BaseManagedPluginService {
 			}
 		} else {
 			for (const event of events) {
-				await this.updateInventoryFromEvent(connector, generation, event);
+				authoritativeTraffic =
+					(await this.updateInventoryFromEvent(connector, generation, event)) || authoritativeTraffic;
 			}
 		}
 
@@ -409,20 +424,22 @@ export class HomeyService extends BaseManagedPluginService {
 			}
 			this.lastEventAt = this.now();
 		}
+
+		return authoritativeTraffic;
 	}
 
 	private async updateInventoryFromEvent(
 		connector: HomeyConnector,
 		generation: number,
 		event: HomeyEvent,
-	): Promise<void> {
+	): Promise<boolean> {
 		switch (event.type) {
 			case HomeyEventType.DEVICE_ADDED:
 			case HomeyEventType.DEVICE_UPDATED: {
 				const device = await connector.getDevice(event.deviceId);
 
 				if (!this.isCurrentGeneration(connector, generation)) {
-					return;
+					return false;
 				}
 
 				if (device === null) {
@@ -430,11 +447,11 @@ export class HomeyService extends BaseManagedPluginService {
 				} else {
 					this.devices.set(device.id, device);
 				}
-				return;
+				return true;
 			}
 			case HomeyEventType.DEVICE_REMOVED:
 				this.devices.delete(event.deviceId);
-				return;
+				return false;
 			case HomeyEventType.DEVICE_AVAILABILITY_CHANGED: {
 				const device = this.devices.get(event.deviceId);
 
@@ -445,13 +462,13 @@ export class HomeyService extends BaseManagedPluginService {
 						availabilityMessage: event.availabilityMessage,
 					});
 				}
-				return;
+				return false;
 			}
 			case HomeyEventType.CAPABILITY_VALUE_CHANGED: {
 				const device = this.devices.get(event.deviceId);
 
 				if (device === undefined) {
-					return;
+					return false;
 				}
 
 				this.devices.set(event.deviceId, {
@@ -462,12 +479,12 @@ export class HomeyService extends BaseManagedPluginService {
 							: capability,
 					),
 				});
-				return;
+				return false;
 			}
 			case HomeyEventType.ZONE_ADDED:
 			case HomeyEventType.ZONE_UPDATED:
 			case HomeyEventType.ZONE_REMOVED:
-				return;
+				return false;
 		}
 	}
 
