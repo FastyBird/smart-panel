@@ -52,8 +52,9 @@ export const LIGHTING_GROUP_EXCLUSION_PATTERN =
 const UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:one|two|three|four|five|six|seven|eight|nine)`;
 const SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:zero|${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE}|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)`;
 const WORD_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:${SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE}|(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[-\s]${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE})?|(?:${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE}\s+)?hundred(?:\s+and\s+${SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE})?|(?:a\s+)?dozens?(?:\s+of)?)`;
+const TRUSTED_LIGHTING_TARGET_MODIFIER_PATTERN_SOURCE = String.raw`(?:bedside|ceiling|desk|outdoor|outside)`;
 export const PARTIAL_LIGHTING_GROUP_PATTERN = new RegExp(
-	String.raw`\b(?:a couple of|a few|a pair of|a quarter|a third|alternate|both(?:\s+of(?:\s+the)?)?|either(?=\s+(?:lamp|lamps|light|lights)\b)|either\s+of(?:\s+the)?|every\s+other|half|most of|one third|one quarter|part of|portion of|several|some|\d+|${WORD_LIGHTING_QUANTITY_PATTERN_SOURCE}|(?:(?:a|the)\s+)?majority\s+of)\b.*\b(?:lamp|lamps|light|lights)\b`,
+	String.raw`\b(?:a couple of|a few|a pair of|a quarter|a third|alternate|both(?:\s+of(?:\s+the)?)?|either(?=\s+(?:${TRUSTED_LIGHTING_TARGET_MODIFIER_PATTERN_SOURCE}\s+)?(?:lamp|lamps|light|lights)\b)|either\s+of(?:\s+the)?|every\s+other|half|most of|one third|one quarter|part of|portion of|several|some|\d+|${WORD_LIGHTING_QUANTITY_PATTERN_SOURCE}|(?:(?:a|the)\s+)?majority\s+of)\b.*\b(?:lamp|lamps|light|lights)\b`,
 	'u',
 );
 export const ZERO_QUANTITY_LIGHTING_PATTERN = /\b(?:no|none|zero)\b.*\b(?:lamp|lamps|light|lights)\b/u;
@@ -183,8 +184,10 @@ export const SCENE_RUN_PATTERN = new RegExp(
 );
 export const DEVICE_ACTION_TARGET_PATTERN =
 	/\b(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
-export const TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN =
-	/\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|reading|security|upstairs)\s+(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)|(?:bedside|desk)\s+(?:lamp|lamps|light|lights)|ceiling\s+(?:fan|fans|light|lights)|(?:outdoor|outside)\s+(?:light|lights|sensor|sensors)|power\s+(?:switch|switches))\b/u;
+export const TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN = new RegExp(
+	String.raw`\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|reading|security|upstairs)\s+(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)|${TRUSTED_LIGHTING_TARGET_MODIFIER_PATTERN_SOURCE}\s+(?:lamp|lamps|light|lights)|ceiling\s+(?:fan|fans)|(?:outdoor|outside)\s+(?:sensor|sensors)|power\s+(?:switch|switches))\b`,
+	'u',
+);
 export const PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN =
 	/\b(?:air purifiers?|aquarium pumps?|coffee makers?|dehumidifiers?|humidifiers?|irrigation|media volume|robot vacuums?|skylights?|sprinklers?)\b/u;
 export const CLEAR_NON_HOME_ACTION_OBJECT_PATTERN =
