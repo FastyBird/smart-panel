@@ -298,6 +298,7 @@ export function hasGenericActionTargetClause(
 	const hasResolvedContextualSpace = hasConversationSpace && CONTEXTUAL_SCOPE_PATTERN.test(message);
 
 	if (LIGHTING_GROUP_EXCLUSION_PATTERN.test(message)) return true;
+	if (hasClauseSpace && /\beither\b.*\b(?:lamp|lamps|light|lights)\b/u.test(message)) return true;
 	if (PARTIAL_LIGHTING_GROUP_PATTERN.test(message)) return true;
 	if (clauseSpaces.length > 1 && /\bor\b/u.test(message)) return true;
 	if (

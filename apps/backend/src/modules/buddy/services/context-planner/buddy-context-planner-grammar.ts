@@ -233,6 +233,10 @@ export const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:ho|it|its|that|this)\b|\
 export const PLURAL_REFERENCE_PRONOUN_PATTERN = /\b(?:their|them|these|they|those)\b/u;
 export const PLURAL_HOME_TARGET_PATTERN =
 	/\b(?:blinds|devices|doors|fans|heaters|lamps|lights|scenes|sensors|switches|thermostats|windows)\b/u;
+export const RELATIVE_REFERENCE_ANTECEDENT_PATTERN = new RegExp(
+	String.raw`(?:${HOME_ENTITY_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN.source})\s*$`,
+	'u',
+);
 const WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE = String.raw`(?:${GROUNDED_STATE_PATTERN_SOURCE}|${HOME_STATE_PATTERN.source}|running|triggered)`;
 const AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE = String.raw`(?:already|not|still|${CURRENT_STATE_PATTERN.source})`;
 const AGGREGATE_STATE_VALUE_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}`;

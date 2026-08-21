@@ -378,31 +378,34 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it.each(['Is it on?', 'Is that turned on?', 'Is that switched off?'])(
-		'uses a unique recent reference for the pronoun-only state read %s',
-		(message) => {
-			expect(
-				service.plan({
-					message,
-					recentEntityReferences: [
-						{
-							kind: 'device',
-							id: 'device-reading-lamp',
-							name: 'Reading lamp',
-							compatibleActionTypes: ['turn'],
-						},
-					],
-					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-				}),
-			).toMatchObject({
-				domains: ['home'],
-				intent: 'read',
-				scope: { referencedEntityIds: ['device-reading-lamp'] },
-				queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
-				strategy: 'model-tools',
-			});
-		},
-	);
+	it.each([
+		'Is it on?',
+		'Is that turned on?',
+		'Is that switched off?',
+		'Maybe that appears open?',
+		'Perhaps that seems open?',
+	])('uses a unique recent reference for the pronoun-only state read %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				recentEntityReferences: [
+					{
+						kind: 'device',
+						id: 'device-reading-lamp',
+						name: 'Reading lamp',
+						compatibleActionTypes: ['turn'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			scope: { referencedEntityIds: ['device-reading-lamp'] },
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			strategy: 'model-tools',
+		});
+	});
 
 	it('clarifies a singular pronoun state read with multiple recent references', () => {
 		expect(
@@ -5895,6 +5898,7 @@ describe('BuddyContextPlannerService', () => {
 		'Turn a pair of Bedroom lights on',
 		'Turn either of the Bedroom lights on',
 		'Turn either light in Bedroom on',
+		'Turn either living room light on',
 		'Turn either bedside lamp on',
 		'Turn either outdoor light on',
 		'Turn either ceiling light on',
@@ -5906,7 +5910,10 @@ describe('BuddyContextPlannerService', () => {
 	])('clarifies a word-quantity lighting subset: %s', (message) => {
 		const plan = service.plan({
 			message,
-			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			knownSpaces: [
+				{ id: 'space-bedroom', name: 'Bedroom' },
+				{ id: 'space-living-room', name: 'Living Room' },
+			],
 			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 		});
 
