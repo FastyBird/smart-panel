@@ -66,6 +66,12 @@ const WEATHER_PATTERN = new RegExp(
 	'u',
 );
 const ENERGY_PATTERN = /\b(?:consumption|electricity|energy|kwh|power|production|usage)\b/u;
+const ENERGY_PREDICATE_PATTERN_SOURCE = String.raw`(?:consum(?:e|ed|es|ption)|produc(?:e|ed|es|tion)|us(?:e|ed|es|age))`;
+const REPEATED_ENERGY_CONNECTOR_PATTERN = new RegExp(
+	String.raw`^\s*${ENERGY_PREDICATE_PATTERN_SOURCE}\s*,?\s+(?:and|or|plus)\s+$`,
+	'u',
+);
+const LEADING_ENERGY_PREDICATE_PATTERN = new RegExp(String.raw`^\s*${ENERGY_PREDICATE_PATTERN_SOURCE}\b`, 'u');
 const DOMAIN_ENTITY_CATEGORY_PATTERN_SOURCE =
 	'device|devices|fan|fans|lamp|lamps|light|lights|sensor|sensors|switch|switches';
 const WEATHER_ENTITY_NAME_PATTERN = new RegExp(
@@ -148,7 +154,7 @@ const PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN =
 const CLEAR_NON_HOME_ACTION_OBJECT_PATTERN =
 	/^(?:(?:a|an|my|our|the|your)\s+)?(?:another|app|application|around|bluetooth|browser|build|car|chrome|conversation|countdown|deployment|dialog|dinner|dishwasher|docker|document|figma|file|hand|jest|lanes?|meeting|new|npm|page|password|payroll|recording|reminder|right|sandwich|screen|spotify|tabs?|talking|terminal|tests?|timer|voice|volume)\b/u;
 const ACTION_COMMAND_PATTERN = new RegExp(
-	String.raw`^[?!,.;\s]*(?:(?:a|also|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|i(?: want you to| would like you to|'d like you to)|is it possible to|is there any way you can)\s+(?:(?:also|please)\s+)*)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	String.raw`^[?!,.;\s]*(?:(?:a|also|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|only|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|i(?: want you to| would like you to|'d like you to)|is it possible to|is there any way you can)\s+(?:(?:also|only|please)\s+)*)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
 const CONDITION_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_CONDITION_SIGNALS].join('|')})\b`, 'u');
@@ -261,7 +267,7 @@ const WHOLE_HOME_SCOPE_PATTERN =
 const UNSCOPED_AGGREGATE_READ_PATTERN =
 	/^(?:(?:are|is)(?:\s+there)?\s+(?:all|any)\b|do(?:es)?\s+any\b|count\b|how many\b)/u;
 const TRAILING_ACTION_PATTERN = new RegExp(
-	String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:if so|only|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:(?:only|please)\s+)*)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
 const TRAILING_READ_PATTERN = new RegExp(
@@ -773,7 +779,7 @@ function getActionReferenceMessage(
 		.map((clause) => {
 			const actionOnlyClause = clause.replace(
 				new RegExp(
-					String.raw`^[?!,.;\s]*(?:(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|i(?: want you to| would like you to|'d like you to)|is it possible to|is there any way you can)\s+(?:please\s+)?)?`,
+					String.raw`^[?!,.;\s]*(?:(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|only|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|i(?: want you to| would like you to|'d like you to)|is it possible to|is there any way you can)\s+(?:(?:only|please)\s+)*)?`,
 					'u',
 				),
 				'',
@@ -1098,6 +1104,19 @@ function findConjoinedSpaceTargetRanges(
 		const left = occurrences[index];
 		const right = occurrences[index + 1];
 		const connector = message.slice(left.range.end, right.range.start);
+		const hasRepeatedEnergyPredicate =
+			REPEATED_ENERGY_CONNECTOR_PATTERN.test(connector) &&
+			LEADING_ENERGY_PREDICATE_PATTERN.test(message.slice(right.range.end)) &&
+			hasDomainSignalInClause(
+				removeExplicitSpaceOccurrencesForDomain(message.slice(0, left.range.start), spaces),
+				ENERGY_PATTERN,
+				ENERGY_ENTITY_NAME_PATTERN,
+			);
+
+		if (hasRepeatedEnergyPredicate) {
+			ranges.push({ start: left.range.end, end: right.range.start });
+			continue;
+		}
 
 		if (!/^\s*(?:,\s*|,?\s+(?:and|or)\s+)$/u.test(connector)) continue;
 		let chainEndIndex = index + 1;
@@ -2187,7 +2206,7 @@ function findDuplicateNameSpaceIds(spaces: readonly BuddyContextSpaceReference[]
 	const spacesByName = new Map<string, BuddyContextSpaceReference[]>();
 
 	for (const space of spaces) {
-		const name = normalize(space.name);
+		const name = getNormalizedPhraseTokens(normalize(space.name)).join(' ');
 
 		spacesByName.set(name, [...(spacesByName.get(name) ?? []), space]);
 	}
@@ -2308,7 +2327,7 @@ function findNormalizedPhraseRanges(message: string, phrase: string): Array<{ st
 	if (phrase.length === 0) return [];
 
 	const ranges: Array<{ start: number; end: number }> = [];
-	const searchableTokens = phrase.split(/[^\p{Letter}\p{Number}]+/u).filter((token) => token.length > 0);
+	const searchableTokens = getNormalizedPhraseTokens(phrase);
 	if (searchableTokens.length === 0) return [];
 	const flexiblePhrase = searchableTokens
 		.map((token) => token.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'))
@@ -2327,6 +2346,10 @@ function findNormalizedPhraseRanges(message: string, phrase: string): Array<{ st
 	}
 
 	return ranges;
+}
+
+function getNormalizedPhraseTokens(phrase: string): string[] {
+	return phrase.split(/[^\p{Letter}\p{Number}]+/u).filter((token) => token.length > 0);
 }
 
 function getRequestedActionTypes(message: string): BuddyContextActionType[] {

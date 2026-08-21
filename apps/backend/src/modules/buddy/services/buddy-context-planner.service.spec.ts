@@ -667,6 +667,36 @@ describe('BuddyContextPlannerService', () => {
 	});
 
 	it.each([
+		'Only turn Bedroom lights off if Kitchen lights are on',
+		'Please only turn Bedroom lights off if Kitchen lights are on',
+		'Can you only turn Bedroom lights off if Kitchen lights are on',
+		'If Kitchen lights are on, only turn Bedroom lights off',
+	])('recognizes an only-qualified conditional action: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'mixed',
+			scope: { spaceId: 'space-bedroom' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'current-state', spaceId: 'space-kitchen' },
+			],
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'query_home_state', 'control_device', 'set_space_lighting'],
+		});
+	});
+
+	it.each([
 		'If the window is open, will the heater turn on?',
 		'If the window is open, when will the heater turn on?',
 		'If the window is open will the heater turn on?',
@@ -2811,6 +2841,28 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it.each(['Living Room', 'Living-Room'])(
+		'clarifies separator-equivalent configured space names: %s',
+		(messageSpaceName) => {
+			expect(
+				service.plan({
+					message: `Turn ${messageSpaceName} lights off`,
+					knownSpaces: [
+						{ id: 'space-living-room-east', name: 'Living Room' },
+						{ id: 'space-living-room-west', name: 'Living-Room' },
+					],
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				domains: ['home'],
+				scope: {},
+				ambiguityRisk: 'action',
+				strategy: 'clarify',
+				toolNames: [],
+			});
+		},
+	);
+
 	it('propagates an exclusion across a conjoined configured-space list', () => {
 		expect(
 			service.plan({
@@ -3287,6 +3339,27 @@ describe('BuddyContextPlannerService', () => {
 		expect(
 			service.plan({
 				message: 'How much energy did Bedroom and Kitchen use today?',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['energy'],
+			scope: { spaceIds: ['space-bedroom', 'space-kitchen'] },
+			queries: [
+				{ kind: 'energy-summary', spaceId: 'space-bedroom' },
+				{ kind: 'energy-summary', spaceId: 'space-kitchen' },
+			],
+			strategy: 'prefetch',
+		});
+	});
+
+	it('propagates a repeated energy predicate across coordinated configured spaces', () => {
+		expect(
+			service.plan({
+				message: 'How much energy did Bedroom use and Kitchen use today?',
 				knownSpaces: [
 					{ id: 'space-bedroom', name: 'Bedroom' },
 					{ id: 'space-kitchen', name: 'Kitchen' },
