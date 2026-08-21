@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { DataSource } from 'typeorm';
 
 import { AddPropertyValueLocks1000000000023 } from '../../../migrations/1000000000023-AddPropertyValueLocks';
+import { PropertyValueLockEntity } from '../entities/property-value-lock.entity';
 
 import { PropertyValueLockService } from './property-value-lock.service';
 
@@ -17,8 +18,18 @@ describe('PropertyValueLockService', () => {
 
 	beforeEach(async () => {
 		databasePath = join(tmpdir(), `smart-panel-property-value-${randomUUID()}.sqlite`);
-		firstDataSource = new DataSource({ type: 'sqlite', database: databasePath, entities: [], synchronize: false });
-		secondDataSource = new DataSource({ type: 'sqlite', database: databasePath, entities: [], synchronize: false });
+		firstDataSource = new DataSource({
+			type: 'sqlite',
+			database: databasePath,
+			entities: [PropertyValueLockEntity],
+			synchronize: false,
+		});
+		secondDataSource = new DataSource({
+			type: 'sqlite',
+			database: databasePath,
+			entities: [PropertyValueLockEntity],
+			synchronize: false,
+		});
 		await firstDataSource.initialize();
 		const queryRunner = firstDataSource.createQueryRunner();
 		await new AddPropertyValueLocks1000000000023().up(queryRunner);
@@ -68,6 +79,24 @@ describe('PropertyValueLockService', () => {
 		releaseFirst();
 		await Promise.all([first, second]);
 		expect(order).toEqual(['first-entered', 'first-released', 'second-entered']);
+	});
+
+	it('is created when TypeORM synchronizes a fresh schema', async () => {
+		const synchronized = new DataSource({
+			type: 'sqlite',
+			database: ':memory:',
+			entities: [PropertyValueLockEntity],
+			synchronize: true,
+		});
+		await synchronized.initialize();
+
+		try {
+			await expect(
+				new PropertyValueLockService(synchronized).runExclusive('temperature', () => Promise.resolve('written')),
+			).resolves.toBe('written');
+		} finally {
+			await synchronized.destroy();
+		}
 	});
 
 	it('allows independent properties to proceed concurrently', async () => {

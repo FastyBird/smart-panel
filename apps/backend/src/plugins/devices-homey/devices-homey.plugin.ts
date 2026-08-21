@@ -45,6 +45,7 @@ import { UpdateHomeyChannelDto } from './dto/update-channel.dto';
 import { HomeyUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateHomeyDeviceDto } from './dto/update-device.dto';
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from './entities/devices-homey.entity';
+import { HomeyAdoptionLockEntity } from './entities/homey-adoption-lock.entity';
 import { HomeyMappingLoaderService } from './mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from './mappings/mapping-transformer.service';
 import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-storage.service';
@@ -64,7 +65,12 @@ import { HomeyService } from './services/homey.service';
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([HomeyDeviceEntity, HomeyChannelEntity, HomeyChannelPropertyEntity]),
+		TypeOrmModule.forFeature([
+			HomeyDeviceEntity,
+			HomeyChannelEntity,
+			HomeyChannelPropertyEntity,
+			HomeyAdoptionLockEntity,
+		]),
 		DevicesModule,
 		ConfigModule,
 		ExtensionsModule,

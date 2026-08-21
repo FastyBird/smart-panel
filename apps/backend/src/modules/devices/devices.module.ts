@@ -46,6 +46,7 @@ import {
 	DeviceControlEntity,
 	DeviceEntity,
 } from './entities/devices.entity';
+import { PropertyValueLockEntity } from './entities/property-value-lock.entity';
 import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { DevicesConfigModel } from './models/config.model';
 import { DevicesStatsProvider } from './providers/devices-stats.provider';
@@ -100,6 +101,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 			ChannelControlEntity,
 			ChannelPropertyEntity,
 			SpaceEntity,
+			PropertyValueLockEntity,
 		]),
 		StorageModule,
 		IntentsModule,

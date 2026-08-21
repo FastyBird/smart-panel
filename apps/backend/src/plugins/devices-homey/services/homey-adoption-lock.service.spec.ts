@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { DataSource } from 'typeorm';
 
 import { AddHomeyAdoptionLocks1000000000022 } from '../../../migrations/1000000000022-AddHomeyAdoptionLocks';
+import { HomeyAdoptionLockEntity } from '../entities/homey-adoption-lock.entity';
 
 import { HomeyAdoptionLockService } from './homey-adoption-lock.service';
 
@@ -17,8 +18,18 @@ describe('HomeyAdoptionLockService', () => {
 
 	beforeEach(async () => {
 		databasePath = join(tmpdir(), `smart-panel-homey-adoption-${randomUUID()}.sqlite`);
-		firstDataSource = new DataSource({ type: 'sqlite', database: databasePath, entities: [], synchronize: false });
-		secondDataSource = new DataSource({ type: 'sqlite', database: databasePath, entities: [], synchronize: false });
+		firstDataSource = new DataSource({
+			type: 'sqlite',
+			database: databasePath,
+			entities: [HomeyAdoptionLockEntity],
+			synchronize: false,
+		});
+		secondDataSource = new DataSource({
+			type: 'sqlite',
+			database: databasePath,
+			entities: [HomeyAdoptionLockEntity],
+			synchronize: false,
+		});
 		await firstDataSource.initialize();
 		const queryRunner = firstDataSource.createQueryRunner();
 		await new AddHomeyAdoptionLocks1000000000022().up(queryRunner);
@@ -68,6 +79,24 @@ describe('HomeyAdoptionLockService', () => {
 		releaseFirst();
 		await Promise.all([first, second]);
 		expect(order).toEqual(['first-entered', 'first-released', 'second-entered']);
+	});
+
+	it('is created when TypeORM synchronizes a fresh schema', async () => {
+		const synchronized = new DataSource({
+			type: 'sqlite',
+			database: ':memory:',
+			entities: [HomeyAdoptionLockEntity],
+			synchronize: true,
+		});
+		await synchronized.initialize();
+
+		try {
+			await expect(
+				new HomeyAdoptionLockService(synchronized).runExclusive('homey-light', () => Promise.resolve('adopted')),
+			).resolves.toBe('adopted');
+		} finally {
+			await synchronized.destroy();
+		}
 	});
 
 	it('recovers an abandoned claim whose owner socket is dead even before its timestamp expires', async () => {
