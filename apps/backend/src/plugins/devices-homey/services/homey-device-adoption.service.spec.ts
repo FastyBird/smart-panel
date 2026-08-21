@@ -255,6 +255,28 @@ describe('HomeyDeviceAdoptionService', () => {
 		expect(createDto.channels[0].properties[0].format).toStrictEqual(['open', 'close', 'stop']);
 	});
 
+	it.each([
+		[{ minimum: 0, maximum: null, step: 0.001 }, [0, null]],
+		[{ minimum: null, maximum: 100, step: 1 }, [null, 100]],
+	] as const)('persists one-sided mapping bounds as nullable endpoint pairs', async (range, expectedFormat) => {
+		const boundedProperty = {
+			...preview().channels[0].properties[2],
+			range: { ...range },
+		};
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), {
+				channels: [{ ...preview().channels[0], properties: [boundedProperty] }],
+			}),
+		);
+
+		await service.adoptOne(selection());
+
+		const createDto = devicesService.create.mock.calls[0][0] as unknown as {
+			channels: Array<{ properties: Array<{ format: Array<number | null> }> }>;
+		};
+		expect(createDto.channels[0].properties[0].format).toStrictEqual(expectedFormat);
+	});
+
 	it('fails closed when a fresh preview is stale, unsupported, or missing', async () => {
 		mappingPreviewService.generatePreview.mockResolvedValueOnce(Object.assign(preview(), { readyToAdopt: false }));
 

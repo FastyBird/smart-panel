@@ -472,8 +472,8 @@ export class HomeyDeviceAdoptionService {
 		const format =
 			property.dataType === DataTypeType.ENUM && panelEnumValues.length > 0
 				? [...panelEnumValues]
-				: property.range !== null && property.range.minimum !== null && property.range.maximum !== null
-					? [property.range.minimum, property.range.maximum]
+				: property.range !== null && (property.range.minimum !== null || property.range.maximum !== null)
+					? ([property.range.minimum, property.range.maximum] as unknown as number[])
 					: null;
 
 		return {
