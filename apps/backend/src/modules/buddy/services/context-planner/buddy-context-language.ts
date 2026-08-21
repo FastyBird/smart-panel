@@ -57,7 +57,7 @@ export function findLeadingConditionalActionIndex(
 
 function isConditionalOutcomeQuestion(message: string, actionIndex: number): boolean {
 	if (!/\?\s*$/u.test(message)) return false;
-	if (/\b(?:how|what|when|where|which|who|why)\b[^?]*\?\s*$/u.test(message.slice(actionIndex))) return true;
+	if (/\bwhat\s+(?:changes?|happens?|occurs?)\s*\?\s*$/u.test(message.slice(actionIndex))) return true;
 	if (
 		new RegExp(
 			String.raw`(?<!that\s)(?<!which\s)(?<!who\s)\b${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we|you)\s+|[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$`,
@@ -71,7 +71,13 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 	if (LEADING_CONDITION_PATTERN.test(message) && trailingBoundary >= 0) {
 		const mainClause = message.slice(actionIndex + trailingBoundary + 1).trim();
 
-		if (READ_PATTERN.test(mainClause) || PREDICATE_QUESTION_PATTERN.test(mainClause)) return true;
+		if (
+			READ_PATTERN.test(mainClause) ||
+			PREDICATE_QUESTION_PATTERN.test(mainClause) ||
+			(/\?\s*$/u.test(mainClause) && !ACTION_COMMAND_PATTERN.test(mainClause))
+		) {
+			return true;
+		}
 	}
 
 	const prefix = message.slice(0, actionIndex);

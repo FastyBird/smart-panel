@@ -4182,6 +4182,8 @@ describe('BuddyContextPlannerService', () => {
 		'Are any outlets on?',
 		'Are any cameras on?',
 		'Are any valves open?',
+		'Are any smoke detectors triggered?',
+		'Are any smoke sensors triggered?',
 		'Is every window currently closed?',
 		'Are any windows not closed?',
 		'Are there any lights that are still on?',
@@ -6884,6 +6886,7 @@ describe('BuddyContextPlannerService', () => {
 		'If we disable the Bedroom lights is the camera safer?',
 		"If we disable the Bedroom lights isn't the camera safer?",
 		'If we disable the Bedroom lights will you still see?',
+		'If we disable the Bedroom lights, the camera still works?',
 	])('keeps an unpunctuated hypothetical action on the read path: %s', (message) => {
 		const plan = service.plan({
 			message,
@@ -6894,6 +6897,17 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.intent).toBe('read');
 		expect(plan.toolNames).not.toContain('control_device');
 		expect(plan.toolNames).not.toContain('set_space_lighting');
+	});
+
+	it('keeps a wh relative target inside a conditional command', () => {
+		const plan = service.plan({
+			message: 'If the window is open, turn off the Bedroom light where the baby sleeps?',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk: 'action', strategy: 'clarify' });
+		expect(plan.toolNames).toEqual([]);
 	});
 
 	it.each([
