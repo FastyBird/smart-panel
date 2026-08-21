@@ -479,7 +479,9 @@ export function normalizeGerundActionRequest(message: string): string {
 		'gu',
 	);
 
-	return normalizedShutRequest.replace(binaryStateCommandPattern, (_match, prefix: string, action: string) => {
+	return normalizedShutRequest.replace(binaryStateCommandPattern, (match, prefix: string, action: string) => {
+		if (/\ba\s*$/u.test(prefix)) return match;
+
 		return `${prefix}turn ${action === 'enable' ? 'on' : 'off'}`;
 	});
 }

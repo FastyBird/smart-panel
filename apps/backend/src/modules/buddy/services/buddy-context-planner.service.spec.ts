@@ -4120,6 +4120,7 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows left open?',
 		'Are any fans running?',
 		'Is any air purifier running?',
+		'Are any outdoor lights on?',
 		'Do we have all windows open?',
 		'Do I have every window open?',
 		'Check if every window is closed',
@@ -4167,6 +4168,7 @@ describe('BuddyContextPlannerService', () => {
 		'Can you check if any windows are open in Bedroom?',
 		'Check if every window is closed in Bedroom?',
 		'Are none of the windows open in Bedroom?',
+		'Are any Bedroom lights on?',
 	])('keeps a locally qualified aggregate read scoped: %s', (message) => {
 		expect(
 			service.plan({
@@ -6744,6 +6746,18 @@ describe('BuddyContextPlannerService', () => {
 		};
 
 		expect(service.plan({ ...input, message })).toEqual(service.plan({ ...input, message: equivalentMessage }));
+	});
+
+	it('does not treat a binary-state noun modifier as an action', () => {
+		const plan = service.plan({
+			message: 'Is there a disable switch?',
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'read', ambiguityRisk: 'none' });
+		expect(plan.toolNames).not.toContain('control_device');
+		expect(plan.toolNames).not.toContain('set_space_lighting');
 	});
 
 	it.each([
