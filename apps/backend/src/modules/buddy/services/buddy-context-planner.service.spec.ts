@@ -4137,6 +4137,8 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows not closed?',
 		'Are there any lights that are still on?',
 		'Are there any lights that remain on?',
+		'Are there any lights that still remain on?',
+		'Are there any lights which currently remain on?',
 		'Are there any lights which are on?',
 		'Are any windows being left open?',
 		'Are there any windows that are being left open?',
@@ -6859,6 +6861,22 @@ describe('BuddyContextPlannerService', () => {
 		};
 
 		expect(service.plan({ ...input, message })).toEqual(service.plan({ ...input, message: equivalentMessage }));
+	});
+
+	it.each([
+		['Enable and then disable the Bedroom lights', 'Turn on and then turn off the Bedroom lights'],
+		['Enable, then disable the Bedroom lights', 'Turn on, then turn off the Bedroom lights'],
+	])('normalizes coordinated binary-state actions before a shared target: %s', (message, equivalentMessage) => {
+		const input = {
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable' as const, supportsStructuredToolResults: true },
+		};
+
+		const plan = service.plan({ ...input, message });
+
+		expect(plan).toEqual(service.plan({ ...input, message: equivalentMessage }));
+		expect(plan).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify' });
+		expect(plan.toolNames).toEqual([]);
 	});
 
 	it.each([

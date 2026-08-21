@@ -554,6 +554,9 @@ export function normalizeGerundActionRequest(message: string): string {
 	);
 	const normalizeBinaryStateCommands = (value: string): string =>
 		value.replace(binaryStateCommandPattern, (match, prefix: string, action: string, offset: number) => {
+			const actionTail = value.slice(offset + match.length);
+			const hasSequencedBinaryAction = /^\s*(?:,\s*)?(?:and\s+)?then\s+(?:disable|enable)\b/u.test(actionTail);
+
 			if (/\ba\s*$/u.test(prefix)) return match;
 			if (
 				new RegExp(
@@ -564,9 +567,8 @@ export function normalizeGerundActionRequest(message: string): string {
 				return match;
 			}
 			if (
-				new RegExp(String.raw`^\s*(?:[?!,.;]|${binaryLabelConnectorPatternSource}\b|$)`, 'u').test(
-					value.slice(offset + match.length),
-				)
+				!hasSequencedBinaryAction &&
+				new RegExp(String.raw`^\s*(?:[?!,.;]|${binaryLabelConnectorPatternSource}\b|$)`, 'u').test(actionTail)
 			) {
 				return match;
 			}
