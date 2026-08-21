@@ -4,16 +4,20 @@ import {
 	ACTION_COMMAND_PATTERN,
 	ACTION_COMMAND_PREFIX_PATTERN_SOURCE,
 	ACTION_SIGNAL_PATTERN_SOURCE,
+	COMPOUND_CONNECTOR_PATTERN_SOURCE,
 	CONDITION_PATTERN,
 	CONTEXTUAL_SCOPE_REFERENCE_PATTERN,
 	DEVICE_ACTION_TARGET_PATTERN,
 	ENERGY_PATTERN,
 	HOME_ENTITY_PATTERN,
 	HOME_STATE_PATTERN,
+	LEADING_CONDITION_PATTERN,
 	LOCALIZED_REFERENCE_PRONOUN_PATTERN,
 	LOCALIZED_STATE_REFERENCE_PRONOUN_PATTERN,
 	PLURAL_REFERENCE_PRONOUN_PATTERN,
+	PREDICATE_QUESTION_PATTERN,
 	PRONOUN_PATTERN,
+	READ_PATTERN,
 	RELATIVE_REFERENCE_PRONOUN_PATTERN,
 	SCENE_TARGET_PATTERN,
 	SECURITY_PATTERN,
@@ -22,6 +26,57 @@ import {
 	TRAILING_ACTION_PREFIX_PATTERN_SOURCE,
 	WEATHER_PATTERN,
 } from './buddy-context-planner-grammar';
+
+export function findLeadingConditionalActionIndex(
+	message: string,
+	actionPatternSource = ACTION_SIGNAL_PATTERN_SOURCE,
+): number | undefined {
+	if (!LEADING_CONDITION_PATTERN.test(message)) return undefined;
+
+	const actionPattern = new RegExp(String.raw`\b(?:${actionPatternSource})\b`, 'gu');
+	const actionMatches = [...message.matchAll(actionPattern)].filter(
+		(match) => !/\b(?:are|is|was|were)\s*$/u.test(message.slice(0, match.index)),
+	);
+	let commandMatch = actionMatches.at(-1);
+
+	for (let index = actionMatches.length - 2; index >= 0 && commandMatch; index -= 1) {
+		const candidate = actionMatches[index];
+		const connector = message.slice(candidate.index + candidate[0].length, commandMatch.index);
+
+		if (!new RegExp(String.raw`\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b`, 'u').test(connector)) break;
+		commandMatch = candidate;
+	}
+	if (commandMatch && isConditionalOutcomeQuestion(message, commandMatch.index)) return undefined;
+
+	return commandMatch?.index;
+}
+
+function isConditionalOutcomeQuestion(message: string, actionIndex: number): boolean {
+	if (!/\?\s*$/u.test(message)) return false;
+	const trailingBoundary = message.slice(actionIndex).search(/[,;]/u);
+
+	if (LEADING_CONDITION_PATTERN.test(message) && trailingBoundary >= 0) {
+		const mainClause = message.slice(actionIndex + trailingBoundary + 1).trim();
+
+		if (READ_PATTERN.test(mainClause) || PREDICATE_QUESTION_PATTERN.test(mainClause)) return true;
+	}
+
+	const prefix = message.slice(0, actionIndex);
+	const clauseBoundary = Math.max(prefix.lastIndexOf(','), prefix.lastIndexOf(';'));
+	const outcomePattern =
+		/^(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:(?:can|could|may|might|must|should|will|would)\s+(?!you\b)|(?:are|did|do|does|had|has|have|is|was|were)\b)/u;
+
+	if (clauseBoundary >= 0) return outcomePattern.test(prefix.slice(clauseBoundary + 1).trim());
+
+	const unpunctuatedModalPattern = new RegExp(
+		String.raw`(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:can|could|did|do|does|may|might|must|should|will|would)\s+(?!you\b)`,
+		'gu',
+	);
+	const modalMatch = [...prefix.matchAll(unpunctuatedModalPattern)].at(-1);
+	if (!modalMatch) return false;
+
+	return !new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'u').test(prefix.slice(modalMatch.index));
+}
 
 export function splitConditionSegments(clause: string): string[] {
 	const conditionMarkers = [...clause.matchAll(/\b(?:if|when|while)\b/gu)].filter((marker) => marker.index > 0);
@@ -478,10 +533,21 @@ export function normalizeGerundActionRequest(message: string): string {
 		String.raw`(${ACTION_COMMAND_PREFIX_PATTERN_SOURCE}|${TRAILING_ACTION_PREFIX_PATTERN_SOURCE})(enable|disable)\b`,
 		'gu',
 	);
-
-	return normalizedShutRequest.replace(binaryStateCommandPattern, (match, prefix: string, action: string) => {
+	const leadingConditionalActionIndex = findLeadingConditionalActionIndex(
+		normalizedShutRequest,
+		String.raw`${ACTION_SIGNAL_PATTERN_SOURCE}|enable|disable`,
+	);
+	const normalizeBinaryStateCommand = (match: string, prefix: string, action: string): string => {
 		if (/\ba\s*$/u.test(prefix)) return match;
 
 		return `${prefix}turn ${action === 'enable' ? 'on' : 'off'}`;
-	});
+	};
+	const normalizedConditionalRequest =
+		leadingConditionalActionIndex === undefined
+			? normalizedShutRequest
+			: `${normalizedShutRequest.slice(0, leadingConditionalActionIndex)}${normalizedShutRequest
+					.slice(leadingConditionalActionIndex)
+					.replace(binaryStateCommandPattern, normalizeBinaryStateCommand)}`;
+
+	return normalizedConditionalRequest.replace(binaryStateCommandPattern, normalizeBinaryStateCommand);
 }

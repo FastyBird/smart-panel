@@ -4107,6 +4107,7 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows still open?',
 		'Is every window currently closed?',
 		'Are any windows not closed?',
+		'Are there any lights that are still on?',
 		'Are any thermostats heating?',
 		'Are any humidity sensors high?',
 		'Are any humidity sensors low?',
@@ -6749,6 +6750,7 @@ describe('BuddyContextPlannerService', () => {
 			'Are the Bedroom lights on? If so disable the Bedroom lights',
 			'Are the Bedroom lights on? If so turn off the Bedroom lights',
 		],
+		['If the window is open enable the Bedroom lights', 'If the window is open turn the Bedroom lights on'],
 	])('maps a binary-state action to turn semantics: %s', (message, equivalentMessage) => {
 		const input = {
 			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
