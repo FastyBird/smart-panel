@@ -46,6 +46,7 @@ import {
 	DeviceControlEntity,
 	DeviceEntity,
 } from './entities/devices.entity';
+import { PropertyValueLockEntity } from './entities/property-value-lock.entity';
 import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { DevicesConfigModel } from './models/config.model';
 import { DevicesStatsProvider } from './providers/devices-stats.provider';
@@ -70,6 +71,7 @@ import { ModuleResetService } from './services/module-reset.service';
 import { PlatformRegistryService } from './services/platform.registry.service';
 import { PropertyCommandService } from './services/property-command.service';
 import { PropertyTimeseriesService } from './services/property-timeseries.service';
+import { PropertyValueLockService } from './services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from './services/property-value-source.registry.service';
 import { PropertyValueService } from './services/property-value.service';
 import { StatsService } from './services/stats.service';
@@ -99,6 +101,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 			ChannelControlEntity,
 			ChannelPropertyEntity,
 			SpaceEntity,
+			PropertyValueLockEntity,
 		]),
 		StorageModule,
 		IntentsModule,
@@ -134,6 +137,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		DevicesSeederService,
 		PlatformRegistryService,
 		PropertyValueSourceRegistryService,
+		PropertyValueLockService,
 		PropertyValueService,
 		PropertyTimeseriesService,
 		PropertyCommandService,

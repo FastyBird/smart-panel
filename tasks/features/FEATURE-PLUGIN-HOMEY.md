@@ -111,8 +111,8 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [ ] Mapping definitions cover the agreed MVP light, switch, sensor, climate, cover, lock, battery, and energy capabilities.
 - [x] Unknown capabilities create preview warnings without failing otherwise supported devices.
 - [x] Mapping preview returns category, channels, properties, identifiers, values, access, conversions, and warnings.
-- [ ] Single and batch adoption are idempotent and return per-device outcomes.
-- [ ] Adoption reuses generic device/channel/property identifiers without a migration, or an incremental migration is added if evidence shows one is required.
+- [x] Single and batch adoption are idempotent and return per-device outcomes.
+- [x] Adoption reuses generic device/channel/property identifiers without a migration, or an incremental migration is added if evidence shows one is required.
 - [ ] Initial reconciliation populates current values and availability for adopted devices.
 - [ ] Subscriptions are established before the authoritative initial reconciliation, and a tested startup barrier prevents snapshot/event races from losing the newest value.
 - [ ] Real-time Homey events update only adopted, mapped properties.
@@ -126,8 +126,8 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [ ] Status, test-connection, device inventory, mapping-preview, and adoption endpoints follow repository controller conventions.
 - [x] Server-discovery endpoints are required only when compatibility evidence establishes a stable Homey-specific advertisement; they are intentionally omitted from the manual-only local MVP.
 - [ ] Every controller action has the required Swagger tags, operation metadata, response envelope, validation, authorization, and error responses.
-- [ ] `pnpm run generate:openapi` succeeds after backend Swagger changes.
-- [ ] No generated OpenAPI, admin API type, panel API client, or generated spec file is edited manually.
+- [x] `pnpm run generate:openapi` succeeds after backend Swagger changes.
+- [x] No generated OpenAPI, admin API type, panel API client, or generated spec file is edited manually.
 
 ### Admin
 

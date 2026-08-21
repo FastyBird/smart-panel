@@ -1698,6 +1698,22 @@ describe('DevicesService', () => {
 		});
 	});
 
+	describe('rollbackUnannouncedCreate', () => {
+		it('cleans an unannounced hierarchy without emitting a device deletion', async () => {
+			const target = toInstance(MockDevice, mockDevice);
+			const channel = { id: 'channel-id', properties: [{ id: 'property-id' }] };
+			jest.spyOn(repository, 'findOne').mockResolvedValue(target);
+			channelsService.findAll.mockResolvedValue([channel] as never);
+			jest.spyOn(repository, 'remove').mockResolvedValue(target);
+
+			await expect(service.rollbackUnannouncedCreate(mockDevice.id)).resolves.toBe(true);
+			expect(propertiesService.remove).toHaveBeenCalledWith('property-id');
+			expect(repository.remove).toHaveBeenCalledWith(target);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CHANNEL_DELETED, channel);
+			expect(eventEmitter.emit).not.toHaveBeenCalledWith(EventType.DEVICE_DELETED, expect.anything());
+		});
+	});
+
 	describe('remove', () => {
 		it('should remove a device', async () => {
 			const queryBuilderMock: any = {

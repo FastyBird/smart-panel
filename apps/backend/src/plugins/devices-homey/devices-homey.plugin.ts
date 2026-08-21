@@ -24,6 +24,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { HomeyLocalConnectorFactory } from './connectors/homey-local-connector.factory';
 import { HomeySdkClientFactoryService } from './connectors/homey-sdk.client';
+import { HomeyAdoptionController } from './controllers/homey-adoption.controller';
 import { HomeyDevicesController } from './controllers/homey-devices.controller';
 import { HomeyMappingPreviewController } from './controllers/homey-mapping-preview.controller';
 import { HomeyStatusController } from './controllers/homey-status.controller';
@@ -44,12 +45,15 @@ import { UpdateHomeyChannelDto } from './dto/update-channel.dto';
 import { HomeyUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateHomeyDeviceDto } from './dto/update-device.dto';
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from './entities/devices-homey.entity';
+import { HomeyAdoptionLockEntity } from './entities/homey-adoption-lock.entity';
 import { HomeyMappingLoaderService } from './mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from './mappings/mapping-transformer.service';
 import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-storage.service';
 import { HomeyConfigModel } from './models/config.model';
+import { HomeyAdoptionLockService } from './services/homey-adoption-lock.service';
 import { HomeyConfigValidatorService } from './services/homey-config-validator.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
+import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
 import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
 import { HomeyMappingPreviewService } from './services/homey-mapping-preview.service';
 import { HomeyService } from './services/homey.service';
@@ -61,7 +65,12 @@ import { HomeyService } from './services/homey.service';
 })
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([HomeyDeviceEntity, HomeyChannelEntity, HomeyChannelPropertyEntity]),
+		TypeOrmModule.forFeature([
+			HomeyDeviceEntity,
+			HomeyChannelEntity,
+			HomeyChannelPropertyEntity,
+			HomeyAdoptionLockEntity,
+		]),
 		DevicesModule,
 		ConfigModule,
 		ExtensionsModule,
@@ -81,6 +90,8 @@ import { HomeyService } from './services/homey.service';
 		HomeyPropertyMappingStorageService,
 		HomeyDeviceInventoryService,
 		HomeyMappingPreviewService,
+		HomeyAdoptionLockService,
+		HomeyDeviceAdoptionService,
 		HomeyService,
 	],
 	controllers: [
@@ -88,6 +99,7 @@ import { HomeyService } from './services/homey.service';
 		HomeyTestConnectionController,
 		HomeyDevicesController,
 		HomeyMappingPreviewController,
+		HomeyAdoptionController,
 	],
 	exports: [
 		HomeyMappingLoaderService,
@@ -95,6 +107,7 @@ import { HomeyService } from './services/homey.service';
 		HomeyPropertyMappingStorageService,
 		HomeyDeviceInventoryService,
 		HomeyMappingPreviewService,
+		HomeyDeviceAdoptionService,
 		HomeyService,
 	],
 })

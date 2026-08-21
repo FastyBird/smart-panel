@@ -9,6 +9,7 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 
 import { HomeyLocalConnectorFactory } from './connectors/homey-local-connector.factory';
 import { HomeySdkClientFactoryService } from './connectors/homey-sdk.client';
+import { HomeyAdoptionController } from './controllers/homey-adoption.controller';
 import { HomeyDevicesController } from './controllers/homey-devices.controller';
 import { HomeyMappingPreviewController } from './controllers/homey-mapping-preview.controller';
 import { HomeyTestConnectionController } from './controllers/homey-test-connection.controller';
@@ -20,7 +21,9 @@ import { HomeyMappingLoaderService } from './mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from './mappings/mapping-transformer.service';
 import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-storage.service';
 import { HomeyConfigModel } from './models/config.model';
+import { HomeyAdoptionLockService } from './services/homey-adoption-lock.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
+import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
 import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
 import { HomeyMappingPreviewService } from './services/homey-mapping-preview.service';
 import { HomeyService } from './services/homey.service';
@@ -93,6 +96,8 @@ describe('DevicesHomeyPlugin', () => {
 				HomeyPropertyMappingStorageService,
 				HomeyDeviceInventoryService,
 				HomeyMappingPreviewService,
+				HomeyAdoptionLockService,
+				HomeyDeviceAdoptionService,
 			]),
 		);
 		expect(providers).toContainEqual({
@@ -102,5 +107,6 @@ describe('DevicesHomeyPlugin', () => {
 		expect(controllers).toContain(HomeyTestConnectionController);
 		expect(controllers).toContain(HomeyDevicesController);
 		expect(controllers).toContain(HomeyMappingPreviewController);
+		expect(controllers).toContain(HomeyAdoptionController);
 	});
 });

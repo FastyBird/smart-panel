@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { buildSqliteFtsNameRankExpression } from '../../../common/utils/sqlite-fts.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { type StorageBackendBinding } from '../../storage/services/storage.service';
 import {
 	ChannelCategory,
 	DEVICES_MODULE_NAME,
@@ -23,6 +24,7 @@ import { DevicesException, DevicesNotFoundException, DevicesValidationException 
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
+import { type PropertyValueState } from '../models/property-value-state.model';
 import { SUPPORTED_PROPERTY_COMMAND_DATA_TYPES } from '../utils/property-command-value.utils';
 import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
@@ -100,6 +102,14 @@ export interface VisiblePropertySearchSummaryInput {
 export interface VisiblePropertySearchSummaryPage {
 	properties: VisiblePropertySearchSummary[];
 	total: number;
+}
+
+export interface ChannelPropertyUpdateOptions {
+	strictValuePersistence?: boolean;
+	storageBinding?: StorageBackendBinding;
+	comparePersistedValue?: boolean;
+	expectedPersistedState?: PropertyValueState | null;
+	beforeValuePersistence?: () => Promise<void>;
 }
 
 @Injectable()
@@ -769,6 +779,7 @@ export class ChannelsPropertiesService {
 	async update<TProperty extends ChannelPropertyEntity, TUpdateDTO extends UpdateChannelPropertyDto>(
 		id: string,
 		updateDto: TUpdateDTO,
+		options: ChannelPropertyUpdateOptions = {},
 	): Promise<TProperty> {
 		this.logger.debug(`Updating data source with id=${id}`);
 
@@ -783,92 +794,119 @@ export class ChannelsPropertiesService {
 		// Get the fields to update from DTO (excluding undefined values)
 		const updateFields = omitBy(toInstance(mapping.class, dtoInstance), isUndefined);
 
-		// Check if any entity fields (non-value) are actually being changed by comparing with existing values
-		const entityFieldsChanged = Object.keys(updateFields).some((key) => {
-			if (key === 'value' || key === 'type') {
-				return false;
-			}
-
-			const newValue = (updateFields as Record<string, unknown>)[key];
-			const existingValue = (property as unknown as Record<string, unknown>)[key];
-
-			// Deep comparison for arrays (like format)
-			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
-				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
-			}
-
-			// Deep comparison for plain objects
-			if (
-				typeof newValue === 'object' &&
-				typeof existingValue === 'object' &&
-				newValue !== null &&
-				existingValue !== null
-			) {
-				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
-			}
-
-			// Handle null/undefined comparison
-			if (newValue === null && existingValue === null) {
-				return false;
-			}
-			if (newValue === null || existingValue === null) {
-				return true;
-			}
-
-			// Simple value comparison
-			return newValue !== existingValue;
-		});
-
-		Object.assign(property, updateFields);
-
 		// The type owner's last look at the merged row, before anything is written — the only point at
 		// which an invariant spanning a field the PATCH sent and a field it did not is decidable.
 		// Same lock as the create path above, for the same reason: a PATCH can move a property's data
 		// type or permissions, which is exactly what a device recategorisation judges its structure by.
-		const raw = await this.structureLock.runExclusive(async (): Promise<TProperty> => {
+		// The ticket remains held through value persistence and readback as well. Stale pruning removes
+		// the row under this same lock; releasing after save would let pruning delete the property and its
+		// history before this PATCH resumed and appended an orphaned measurement for the deleted id.
+		return this.structureLock.runExclusive(async (): Promise<TProperty> => {
+			// Re-read after acquiring the ticket. Stale pruning may have removed the row while this update
+			// was validating; saving the earlier entity would otherwise insert it again.
+			const current = (await this.getOneOrThrow(id)) as TProperty;
+			const entityFieldsChanged = Object.keys(updateFields).some((key) => {
+				if (key === 'value' || key === 'type') {
+					return false;
+				}
+
+				const newValue = (updateFields as Record<string, unknown>)[key];
+				const existingValue = (current as unknown as Record<string, unknown>)[key];
+
+				if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
+				if (
+					typeof newValue === 'object' &&
+					typeof existingValue === 'object' &&
+					newValue !== null &&
+					existingValue !== null
+				) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
+				if (newValue === null && existingValue === null) {
+					return false;
+				}
+				if (newValue === null || existingValue === null) {
+					return true;
+				}
+
+				return newValue !== existingValue;
+			});
+			Object.assign(current, updateFields);
+
 			if (mapping.beforeUpdate) {
-				await mapping.beforeUpdate(property as TProperty);
+				await mapping.beforeUpdate(current);
 			}
 
-			return repository.save(property as TProperty);
+			const raw = await repository.save(current);
+
+			// Track if value actually changed
+			//
+			// Deliberately not mirroring create()'s refusal above for a projected property. Here the value
+			// has a second, legitimate meaning: both property controllers dispatch it to the device's own
+			// platform right after this returns, and for a virtual device that platform forwards it to the
+			// source's — so the request is coherent and rejecting it would remove the only way to command a
+			// virtual device over REST. It is only the optimistic local echo into the source's series that is
+			// not coherent, and PropertyValueService.write() drops exactly that, leaving the source's own
+			// report to record what the hardware actually did.
+			let valueChanged = false;
+			let persistedValueState: PropertyValueState | null = null;
+			if (typeof updateDto.value !== 'undefined') {
+				if (options.strictValuePersistence && options.comparePersistedValue) {
+					const result = await this.propertyValueService.writeStrictIfPersistedDifferent(
+						raw,
+						updateDto.value,
+						options.expectedPersistedState ?? null,
+						options.beforeValuePersistence,
+					);
+					valueChanged = result.changed;
+					persistedValueState = result.state;
+				} else if (options.strictValuePersistence) {
+					await options.beforeValuePersistence?.();
+					const result = await this.propertyValueService.writeStrictWithState(
+						raw,
+						updateDto.value,
+						options.storageBinding,
+					);
+					valueChanged = result.changed;
+					persistedValueState = result.state;
+				} else {
+					valueChanged = await this.propertyValueService.write(raw, updateDto.value);
+				}
+			}
+			const strictValueEventEmitted = options.strictValuePersistence === true && valueChanged;
+
+			if (strictValueEventEmitted) {
+				// Persistence is already durable. Publish before post-update readback/hooks so a later failure
+				// cannot make an idempotent retry skip the only value event for this measurement.
+				raw.value = persistedValueState;
+				this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, raw);
+			}
+
+			let updatedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
+
+			if (mapping.afterUpdate) {
+				await mapping.afterUpdate(updatedProperty);
+
+				updatedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
+			}
+
+			this.logger.debug(`Successfully updated property with id=${updatedProperty.id}`);
+
+			// Emit separate events for structural changes vs value-only changes
+			// This allows listeners to differentiate between metadata updates (which may require cache invalidation)
+			// and value updates (which don't need cache invalidation)
+			if (entityFieldsChanged) {
+				// Metadata changed - emit CHANNEL_PROPERTY_UPDATED (covers both metadata and value changes)
+				this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, updatedProperty);
+			} else if (valueChanged && !strictValueEventEmitted) {
+				// Only value changed - emit CHANNEL_PROPERTY_VALUE_SET
+				this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, updatedProperty);
+			}
+
+			return updatedProperty;
 		});
-
-		// Track if value actually changed
-		//
-		// Deliberately not mirroring create()'s refusal above for a projected property. Here the value
-		// has a second, legitimate meaning: both property controllers dispatch it to the device's own
-		// platform right after this returns, and for a virtual device that platform forwards it to the
-		// source's — so the request is coherent and rejecting it would remove the only way to command a
-		// virtual device over REST. It is only the optimistic local echo into the source's series that is
-		// not coherent, and PropertyValueService.write() drops exactly that, leaving the source's own
-		// report to record what the hardware actually did.
-		let valueChanged = false;
-		if (typeof updateDto.value !== 'undefined') {
-			valueChanged = await this.propertyValueService.write(raw, updateDto.value);
-		}
-
-		let updatedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
-
-		if (mapping.afterUpdate) {
-			await mapping.afterUpdate(updatedProperty);
-
-			updatedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
-		}
-
-		this.logger.debug(`Successfully updated property with id=${updatedProperty.id}`);
-
-		// Emit separate events for structural changes vs value-only changes
-		// This allows listeners to differentiate between metadata updates (which may require cache invalidation)
-		// and value updates (which don't need cache invalidation)
-		if (entityFieldsChanged) {
-			// Metadata changed - emit CHANNEL_PROPERTY_UPDATED (covers both metadata and value changes)
-			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, updatedProperty);
-		} else if (valueChanged) {
-			// Only value changed - emit CHANNEL_PROPERTY_VALUE_SET
-			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, updatedProperty);
-		}
-
-		return updatedProperty;
 	}
 
 	async remove(id: string, manager: EntityManager = this.dataSource.manager): Promise<void> {

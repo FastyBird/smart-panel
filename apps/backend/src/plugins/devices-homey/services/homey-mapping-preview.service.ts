@@ -318,6 +318,7 @@ export class HomeyMappingPreviewService {
 		);
 		property.sourceRange = this.createRange(capability.minimum, capability.maximum, capability.step);
 		property.enumValues = capability.enumValues.map((value) => value.id);
+		property.panelEnumValues = [];
 		property.currentValue = null;
 		property.valueAvailable = false;
 		property.capabilityAvailable = capability.available;
@@ -436,6 +437,10 @@ export class HomeyMappingPreviewService {
 		if (property.valueAvailable) {
 			potentialPanelValues.push(property.currentValue);
 		}
+		property.panelEnumValues =
+			property.dataType === DataTypeType.ENUM
+				? [...new Set(potentialPanelValues.filter((value): value is string => typeof value === 'string'))]
+				: [];
 
 		if (
 			!potentialPanelDomain.convertible ||
@@ -620,6 +625,8 @@ export class HomeyMappingPreviewService {
 						convertible = false;
 					}
 				}
+			} else if (mappingCanWrite) {
+				values.push(...this.getHomeyDomainValues(capability));
 			}
 
 			return { values, convertible };

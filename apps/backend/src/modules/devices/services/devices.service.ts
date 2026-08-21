@@ -1023,6 +1023,42 @@ export class DevicesService {
 		return updatedDevice;
 	}
 
+	/**
+	 * Remove a hierarchy whose create persisted but rejected before DEVICE_CREATED.
+	 * Children may already have emitted their create events, so their normal cleanup and
+	 * channel deletion events still run; the unannounced parent deliberately emits no
+	 * DEVICE_DELETED event.
+	 */
+	async rollbackUnannouncedCreate(id: string): Promise<boolean> {
+		const target = await this.repository.findOne({ where: { id }, loadEagerRelations: false });
+
+		if (target === null) {
+			return false;
+		}
+
+		const orphanedChannels = await this.channelsService.findAll(id);
+
+		for (const channel of orphanedChannels) {
+			for (const property of channel.properties ?? []) {
+				await this.channelsPropertiesService.remove(property.id);
+			}
+		}
+
+		const rollbackTarget = await this.repository.findOne({ where: { id }, loadEagerRelations: false });
+
+		if (rollbackTarget === null) {
+			return false;
+		}
+
+		await this.repository.remove(rollbackTarget);
+
+		for (const channel of orphanedChannels) {
+			this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
+		}
+
+		return true;
+	}
+
 	async remove(id: string): Promise<void> {
 		this.logger.debug(`Removing device with id=${id}`);
 

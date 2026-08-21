@@ -1,13 +1,14 @@
 import { Expose } from 'class-transformer';
-import { ChildEntity } from 'typeorm';
+import { IsOptional, IsString } from 'class-validator';
+import { ChildEntity, Column, Index } from 'typeorm';
 
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_HOMEY_TYPE } from '../devices-homey.constants';
 
 @ApiSchema({ name: 'DevicesHomeyPluginDataDevice' })
-@ChildEntity()
+@ChildEntity(DEVICES_HOMEY_TYPE)
 export class HomeyDeviceEntity extends DeviceEntity {
 	@ApiProperty({
 		description: 'Device type',
@@ -26,7 +27,7 @@ export class HomeyDeviceEntity extends DeviceEntity {
 }
 
 @ApiSchema({ name: 'DevicesHomeyPluginDataChannel' })
-@ChildEntity()
+@ChildEntity(DEVICES_HOMEY_TYPE)
 export class HomeyChannelEntity extends ChannelEntity {
 	@ApiProperty({
 		description: 'Channel type',
@@ -45,8 +46,36 @@ export class HomeyChannelEntity extends ChannelEntity {
 }
 
 @ApiSchema({ name: 'DevicesHomeyPluginDataChannelProperty' })
-@ChildEntity()
+@Index('UQ_homey_capability_mapping_channel', ['homeyCapabilityId', 'homeyMappingName', 'channel'], {
+	unique: true,
+	where: `"type" = '${DEVICES_HOMEY_TYPE}' AND "homeyCapabilityId" IS NOT NULL AND "homeyMappingName" IS NOT NULL`,
+})
+@ChildEntity(DEVICES_HOMEY_TYPE)
 export class HomeyChannelPropertyEntity extends ChannelPropertyEntity {
+	@ApiPropertyOptional({
+		name: 'homey_capability_id',
+		description: 'Authoritative full Homey capability identifier for adopted mapping properties',
+		type: 'string',
+		nullable: true,
+	})
+	@Expose({ name: 'homey_capability_id' })
+	@IsOptional()
+	@IsString()
+	@Column({ nullable: true })
+	homeyCapabilityId: string | null;
+
+	@ApiPropertyOptional({
+		name: 'homey_mapping_name',
+		description: 'Stable mapping descriptor that disambiguates capability fan-out',
+		type: 'string',
+		nullable: true,
+	})
+	@Expose({ name: 'homey_mapping_name' })
+	@IsOptional()
+	@IsString()
+	@Column({ nullable: true })
+	homeyMappingName: string | null;
+
 	@ApiProperty({
 		description: 'Channel property type',
 		type: 'string',

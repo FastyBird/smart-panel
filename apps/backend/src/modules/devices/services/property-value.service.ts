@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { StorageService } from '../../storage/services/storage.service';
+import { type StorageBackendBinding, StorageService } from '../../storage/services/storage.service';
 import { DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState, type PropertyValueTrend } from '../models/property-value-state.model';
 
+import { PropertyValueLease, PropertyValueLockService } from './property-value-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 
 /**
@@ -73,6 +74,21 @@ interface BoundedPropertyValueSourceGroup {
 	indexes: number[];
 }
 
+export interface PersistedPropertyValueSnapshot {
+	readonly state: PropertyValueState | null;
+	readonly storageBinding: StorageBackendBinding;
+}
+
+export interface PropertyValueWriteResult {
+	readonly changed: boolean;
+	readonly state: PropertyValueState | null;
+}
+
+interface InternalPropertyValueReadResult {
+	readonly state: PropertyValueState | null;
+	readonly storageBinding?: StorageBackendBinding;
+}
+
 @Injectable()
 export class PropertyValueService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyValueService');
@@ -84,10 +100,13 @@ export class PropertyValueService {
 	 * Stores last N numeric values per property.
 	 */
 	private recentValuesMap: Map<ChannelPropertyEntity['id'], number[]> = new Map();
+	private readonly cacheVersions = new Map<ChannelPropertyEntity['id'], number>();
+	private readonly valueTails = new Map<ChannelPropertyEntity['id'], Promise<void>>();
 
 	constructor(
 		private readonly storageService: StorageService,
 		private readonly valueSourceRegistry: PropertyValueSourceRegistryService,
+		private readonly valueLock: PropertyValueLockService,
 	) {}
 
 	/**
@@ -95,6 +114,67 @@ export class PropertyValueService {
 	 * @returns true if value changed, false if value was the same or invalid
 	 */
 	async write(property: ChannelPropertyEntity, value: string | boolean | number | null): Promise<boolean> {
+		const key = this.valueSourceRegistry.resolve(property);
+
+		return (await this.withValueLock(key, () => this.writeInternal(property, value, false))).changed;
+	}
+
+	/**
+	 * Persist a value to at least one storage backend before publishing it to the
+	 * process-local cache. Reconciliation callers can then retry a failed write
+	 * without the cache falsely claiming that the measurement already exists.
+	 */
+	async writeStrict(
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+		storageBinding?: StorageBackendBinding,
+	): Promise<boolean> {
+		return (await this.writeStrictWithState(property, value, storageBinding)).changed;
+	}
+
+	async writeStrictWithState(
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+		storageBinding?: StorageBackendBinding,
+	): Promise<PropertyValueWriteResult> {
+		const key = this.valueSourceRegistry.resolve(property);
+
+		return this.withValueLock(key, () => this.writeInternal(property, value, true, storageBinding));
+	}
+
+	async writeStrictIfPersistedDifferent(
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+		expectedPersistedState: PropertyValueState | null,
+		beforeWrite?: () => Promise<void>,
+	): Promise<PropertyValueWriteResult> {
+		const key = this.valueSourceRegistry.resolve(property);
+
+		return this.withValueLock(key, async (valueLease) => {
+			const latest = await this.readLatestInternal(property, true, true, true);
+			await beforeWrite?.();
+
+			if (latest.state?.value === value) {
+				return { changed: false, state: latest.state };
+			}
+			if (!this.samePersistedState(latest.state, expectedPersistedState)) {
+				return { changed: false, state: latest.state };
+			}
+			if (!latest.storageBinding) {
+				throw new Error('Persisted property value read did not bind a storage backend');
+			}
+			await valueLease.assertOwned();
+
+			return this.writeInternal(property, value, true, latest.storageBinding);
+		});
+	}
+
+	private async writeInternal(
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+		strict: boolean,
+		storageBinding?: StorageBackendBinding,
+	): Promise<PropertyValueWriteResult> {
 		const key = this.valueSourceRegistry.resolve(property);
 
 		// A projected property owns no series — the value belongs to its source, and only the source's
@@ -122,26 +202,27 @@ export class PropertyValueService {
 				`Skipping write for projected property id=${property.id}: its value belongs to source property id=${key}`,
 			);
 
-			return false;
+			return { changed: false, state: null };
 		}
 
 		// Skip null values - device hasn't reported this property yet
 		if (value === null || value === undefined) {
-			return false;
+			return { changed: false, state: null };
 		}
 
 		// Skip invalid/sentinel values (e.g., -1 when sensor is off)
 		// These are defined in the property's invalid field
 		if (property.invalid !== null && this.isInvalidValue(property.invalid, value)) {
 			this.logger.debug(`Skipping invalid/sentinel value for property id=${property.id}: value=${value}`);
-			return false;
+			return { changed: false, state: null };
 		}
 
 		const cached = this.valuesMap.get(key);
-		if (cached && cached.value === value) {
+		if (!strict && cached && cached.value === value) {
 			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate
 			cached.lastUpdated = new Date().toISOString();
-			return false;
+			this.bumpCacheVersion(key);
+			return { changed: false, state: cached };
 		}
 
 		// Validate value against format constraints
@@ -150,7 +231,7 @@ export class PropertyValueService {
 			this.logger.warn(
 				`Invalid value for property id=${property.id}: ${validationError}. Value=${JSON.stringify(value)}`,
 			);
-			return false;
+			return { changed: false, state: null };
 		}
 
 		const formattedValue: { stringValue?: string; numberValue?: number } = {};
@@ -178,10 +259,27 @@ export class PropertyValueService {
 			default:
 				this.logger.error(`Unsupported data type dataType=${property.dataType} id=${property.id}`);
 
-				return false;
+				return { changed: false, state: null };
 		}
 
-		const now = new Date().toISOString();
+		const timestamp = new Date();
+		const now = timestamp.toISOString();
+		const point = {
+			measurement: 'property_value',
+			tags: { propertyId: key },
+			fields: formattedValue,
+			timestamp,
+		};
+
+		const cacheVersionAtWriteStart = this.cacheVersion(key);
+
+		if (strict) {
+			await this.storageService.writePointsStrict([point], storageBinding);
+
+			if (this.cacheVersion(key) !== cacheVersionAtWriteStart) {
+				return { changed: true, state: new PropertyValueState(value, now) };
+			}
+		}
 
 		// Update recent values cache for trend computation
 		if (
@@ -201,21 +299,18 @@ export class PropertyValueService {
 		const state = new PropertyValueState(value, now, trend);
 
 		// Update local cache regardless of storage availability
-		this.valuesMap.set(key, state);
+		this.setCachedState(key, state);
+
+		if (strict) {
+			return { changed: true, state };
+		}
 
 		if (!this.storageService.isConnected()) {
-			return true; // Value changed in cache
+			return { changed: true, state }; // Value changed in cache
 		}
 
 		try {
-			await this.storageService.writePoints([
-				{
-					measurement: 'property_value',
-					tags: { propertyId: key },
-					fields: formattedValue,
-					timestamp: new Date(),
-				},
-			]);
+			await this.storageService.writePoints([point]);
 
 			this.logger.debug(`Value saved id=${property.id} dataType=${property.dataType} value=${value}`);
 		} catch (error) {
@@ -227,15 +322,34 @@ export class PropertyValueService {
 			);
 		}
 
-		return true; // Value changed
+		return { changed: true, state }; // Value changed
 	}
 
 	async readLatest(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
-		return this.readLatestInternal(property, false);
+		return (await this.readLatestInternal(property, false)).state;
 	}
 
 	async readLatestStrict(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
-		return this.readLatestInternal(property, true);
+		return (await this.readLatestInternal(property, true)).state;
+	}
+
+	/**
+	 * Read the latest durable measurement without trusting this process's cache.
+	 * Cross-process reconciliation uses this to compare against the shared source
+	 * of truth, then refreshes the local cache from the authoritative result.
+	 */
+	async readLatestPersisted(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
+		return (await this.readLatestPersistedSnapshot(property)).state;
+	}
+
+	async readLatestPersistedSnapshot(property: ChannelPropertyEntity): Promise<PersistedPropertyValueSnapshot> {
+		const result = await this.readLatestInternal(property, true, true, true);
+
+		if (!result.storageBinding) {
+			throw new Error('Persisted property value read did not bind a storage backend');
+		}
+
+		return { state: result.state, storageBinding: result.storageBinding };
 	}
 
 	async readLatestManyStrict(
@@ -300,7 +414,7 @@ export class PropertyValueService {
 				const state = propertyRows[0] ? this.toState(property, key, propertyRows[0]) : null;
 
 				if (state) {
-					this.valuesMap.set(key, state);
+					this.setCachedState(key, state);
 				}
 			}
 
@@ -493,7 +607,7 @@ export class PropertyValueService {
 			const source: BoundedPropertyValueSource = useCache ? 'cache' : 'storage';
 
 			if (!useCache && storedState) {
-				this.valuesMap.set(sourcePropertyId, storedState);
+				this.setCachedState(sourcePropertyId, storedState);
 			}
 
 			for (const index of group.indexes) {
@@ -518,6 +632,48 @@ export class PropertyValueService {
 		}
 
 		return cachedTime >= storedTime;
+	}
+
+	private cacheVersion(key: ChannelPropertyEntity['id']): number {
+		return this.cacheVersions.get(key) ?? 0;
+	}
+
+	private bumpCacheVersion(key: ChannelPropertyEntity['id']): void {
+		this.cacheVersions.set(key, this.cacheVersion(key) + 1);
+	}
+
+	private setCachedState(key: ChannelPropertyEntity['id'], state: PropertyValueState): void {
+		this.valuesMap.set(key, state);
+		this.bumpCacheVersion(key);
+	}
+
+	private samePersistedState(left: PropertyValueState | null, right: PropertyValueState | null): boolean {
+		return left?.value === right?.value && left?.lastUpdated === right?.lastUpdated;
+	}
+
+	private withValueLock<T>(
+		key: ChannelPropertyEntity['id'],
+		operation: (lease: PropertyValueLease) => Promise<T>,
+	): Promise<T> {
+		const previous = this.valueTails.get(key) ?? Promise.resolve();
+		let release: () => void = () => {};
+		const ticket = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const tail = previous.then(
+			() => ticket,
+			() => ticket,
+		);
+		this.valueTails.set(key, tail);
+
+		const runOperation = (): Promise<T> => this.valueLock.runExclusive(key, operation);
+
+		return previous.then(runOperation, runOperation).finally(() => {
+			release();
+			if (this.valueTails.get(key) === tail) {
+				this.valueTails.delete(key);
+			}
+		});
 	}
 
 	private updateRecentValuesFromRows(
@@ -646,15 +802,18 @@ export class PropertyValueService {
 	private async readLatestInternal(
 		property: ChannelPropertyEntity,
 		strict: boolean,
-	): Promise<PropertyValueState | null> {
+		bypassCache = false,
+		activeBackendOnly = false,
+	): Promise<InternalPropertyValueReadResult> {
 		const key = this.valueSourceRegistry.resolve(property);
+		const cacheVersionAtQueryStart = this.cacheVersion(key);
 
 		// Check local cache first
 		const cached = this.valuesMap.get(key);
-		if (cached) {
+		if (!bypassCache && cached) {
 			this.logger.debug(`Loaded cached value for property id=${property.id}, value=${cached.value}`);
 
-			return cached;
+			return { state: cached };
 		}
 
 		// Return null if storage not connected
@@ -663,7 +822,7 @@ export class PropertyValueService {
 				throw new Error('Property value storage is unavailable');
 			}
 
-			return null;
+			return { state: null };
 		}
 
 		try {
@@ -676,39 +835,55 @@ export class PropertyValueService {
 
 			this.logger.debug(`Fetching latest value id=${property.id}`);
 
-			const result = await (strict
-				? this.storageService.queryStrict<PropertyValueRow>(query)
-				: this.storageService.query<PropertyValueRow>(query));
+			const boundResult = activeBackendOnly
+				? await this.storageService.queryActiveStrictBound<PropertyValueRow>(query)
+				: null;
+			const result = boundResult
+				? boundResult.rows
+				: strict
+					? await this.storageService.queryStrict<PropertyValueRow>(query)
+					: await this.storageService.query<PropertyValueRow>(query);
 
 			if (!result.length) {
 				this.logger.debug(`No stored value found for id=${property.id}`);
+				if (bypassCache && this.cacheVersion(key) === cacheVersionAtQueryStart) {
+					this.valuesMap.delete(key);
+					this.recentValuesMap.delete(key);
+					this.bumpCacheVersion(key);
+				}
 
-				return null;
+				return { state: null, storageBinding: boundResult?.binding };
 			}
 
 			// Results are ordered DESC, so first = latest
 			const latest = result[0];
 
-			// Build recent values cache from query results (for trend computation)
-			if (this.isNumericDataType(property.dataType) && result.length >= 1) {
-				// Results are DESC, reverse to get ASC order for trend
-				const recentValues: number[] = [];
-				for (let i = result.length - 1; i >= 0; i--) {
-					const val = result[i].numberValue;
-					if (val != null) {
-						recentValues.push(val);
+			const cacheUnchanged = this.cacheVersion(key) === cacheVersionAtQueryStart;
+
+			if (cacheUnchanged) {
+				// Build recent values cache from query results (for trend computation)
+				if (this.isNumericDataType(property.dataType) && result.length >= 1) {
+					// Results are DESC, reverse to get ASC order for trend
+					const recentValues: number[] = [];
+					for (let i = result.length - 1; i >= 0; i--) {
+						const val = result[i].numberValue;
+						if (val != null) {
+							recentValues.push(val);
+						}
 					}
+					this.recentValuesMap.set(key, recentValues);
 				}
-				this.recentValuesMap.set(key, recentValues);
 			}
 
 			const state = this.toState(property, key, latest);
 
 			this.logger.debug(`Read latest value id=${property.id} dataType=${property.dataType} value=${state.value}`);
 
-			this.valuesMap.set(key, state);
+			if (cacheUnchanged) {
+				this.setCachedState(key, state);
+			}
 
-			return state;
+			return { state, storageBinding: boundResult?.binding };
 		} catch (error) {
 			const err = error as Error;
 
@@ -717,7 +892,7 @@ export class PropertyValueService {
 				throw error;
 			}
 
-			return null;
+			return { state: null };
 		}
 	}
 
@@ -763,6 +938,10 @@ export class PropertyValueService {
 	async delete(property: ChannelPropertyEntity): Promise<void> {
 		const key = this.valueSourceRegistry.resolve(property);
 
+		return this.withValueLock(key, () => this.deleteInternal(property, key));
+	}
+
+	private async deleteInternal(property: ChannelPropertyEntity, key: ChannelPropertyEntity['id']): Promise<void> {
 		// A projected property owns no series — the value belongs to its source. Deleting here would
 		// destroy the source device's entire history, so bail out before clearing caches or storage.
 		if (key !== property.id) {
@@ -772,6 +951,7 @@ export class PropertyValueService {
 		// Always clear local cache
 		this.valuesMap.delete(property.id);
 		this.recentValuesMap.delete(property.id);
+		this.bumpCacheVersion(property.id);
 
 		if (!this.storageService.isConnected()) {
 			return;
@@ -795,6 +975,15 @@ export class PropertyValueService {
 
 	async deleteSinceStrict(property: ChannelPropertyEntity, since: Date): Promise<void> {
 		const key = this.valueSourceRegistry.resolve(property);
+
+		return this.withValueLock(key, () => this.deleteSinceStrictInternal(property, since, key));
+	}
+
+	private async deleteSinceStrictInternal(
+		property: ChannelPropertyEntity,
+		since: Date,
+		key: ChannelPropertyEntity['id'],
+	): Promise<void> {
 		if (key !== property.id) {
 			return;
 		}
@@ -804,6 +993,7 @@ export class PropertyValueService {
 
 		this.valuesMap.delete(key);
 		this.recentValuesMap.delete(key);
+		this.bumpCacheVersion(key);
 		const firstTransientMillisecond = new Date(since.getTime() + 1);
 		await this.storageService.queryStrict(
 			`DELETE FROM property_value WHERE propertyId = '${this.escapeTagValue(key)}' AND time >= '${firstTransientMillisecond.toISOString()}'`,
