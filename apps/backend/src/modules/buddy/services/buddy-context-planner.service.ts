@@ -53,7 +53,7 @@ const LIGHTING_GROUP_PATTERN = new RegExp(
 const LIGHTING_GROUP_EXCLUSION_PATTERN =
 	/\b(?:but not|but|except|excluding|instead of|krome|other than|rather than|without)\b/u;
 const PARTIAL_LIGHTING_GROUP_PATTERN =
-	/\b(?:a couple of|a few|a majority of|eight|five|four|half|most of|nine|one|one third|one quarter|part of|portion of|seven|several|six|some|three|two|\d+)\b.*\b(?:lamp|lamps|light|lights)\b/u;
+	/\b(?:a couple of|a few|a majority of|a quarter|a third|eight|five|four|half|most of|nine|one|one third|one quarter|part of|portion of|seven|several|six|some|three|two|\d+)\b.*\b(?:lamp|lamps|light|lights)\b/u;
 const ZERO_QUANTITY_LIGHTING_PATTERN = /\b(?:no|none|zero)\b.*\b(?:lamp|lamps|light|lights)\b/u;
 
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
@@ -173,7 +173,8 @@ const QUOTED_SCENE_TARGET_PATTERN = /"[^"]+"\s+(?:automation|preset|routine|scen
 const EXPLICIT_SCENE_KIND_SUFFIX_PATTERN =
 	/\b(?:automation|preset|routine|scene)s?(?:\s+(?:asap|at\s+once|for\s+(?:me|us)|immediately|now|please|right\s+(?:away|now)|straight\s+away))*\s*[?!.,]*$/u;
 const EXPLICIT_SCENE_KIND_PREFIX_PATTERN = /^\s*(?:the\s+)?(?:automation|preset|routine|scene)s?\b(?:\s+called\b)?/u;
-const ACTION_TARGET_NEGATION_PATTERN = /\b(?:neither|rather than|instead of)\b|,\s*not\b|\bnot\s+(?:off|on)\b/u;
+const ACTION_TARGET_NEGATION_PATTERN =
+	/\b(?:and\s+not|neither|rather than|instead of)\b|,\s*not\b|\bnot\s+(?:off|on)\b/u;
 const ACTION_PROHIBITION_PREFIX_PATTERN =
 	/^(?:(?:but|please)\s+)?(?:avoid\b|be\s+sure\b[^,;.!?]*\bnot\s+to\b|do\b[^,;.!?]*(?:\bnot\b|\banything\s+(?:but|except)\b|\beverything\s+other\s+than\b)|don't\b|ensure\s+you\s+do\s+not\b|i\s+(?:(?:do\s+not|don't)\s+want|forbid)\s+you\s+to\b|i\s+request\s+you\s+not\b|it\s+is\s+(?:forbidden|not\s+allowed)\s+to\b|make\s+(?:[\p{Letter}-]+\s+){0,3}(?:certain|sure)\b[^,;.!?]*(?:\bnot\s+to\b|\bto\s+never\b|\byou\s+(?:do\s+not|don't|never)\b)|never\b|no\s+way\s+should\b|refrain\s+from\b|remember\s+not\s+to\b|try\b[^,;.!?]*\bnot\s+to\b|under\s+no\s+circumstances\b|you(?:'re|\s+are)\s+not\s+allowed\s+to\b|you\s+(?:had\s+better\s+not\b|may\s+under\s+no\s+circumstances\b|ought\s+not\b|(?:(?:cannot|can't|couldn't|mayn't|mightn't|mustn't|shouldn't|won't|wouldn't)\b|(?:must|should|will|would)\b[^,;.!?]*\bnot\b|are\b[^,;.!?]*(?:forbidden|not\s+allowed)\b))|(?:can|could|would)\s+you\b[^,;.!?]*\bnot\b)/u;
 const PRONOUN_PATTERN = /\b(?:ho|it|its|that|their|them|these|they|this|those)\b|\bthe one\b/u;
@@ -295,7 +296,7 @@ export class BuddyContextPlannerService {
 			explicitSpaceIds,
 			conversationSpaceId,
 		);
-		const isGenericExplanation = isGeneralExplanation(normalizedMessage, explicitSpaces.length > 0);
+		const isGenericExplanation = isGeneralExplanation(normalizedMessage, explicitSpaces);
 		const isPredicateQuestion = isStatePredicateQuestion(normalizedMessage);
 		const isWrappedStateRead = MODAL_STATE_READ_PATTERN.test(normalizedMessage);
 		const isConditionalOutcomeRead =
@@ -626,19 +627,21 @@ export class BuddyContextPlannerService {
 			...actionReferenceSearchSpaceIds,
 			...scopedSearchSpaceIds,
 		].filter((spaceId, index, values) => values.indexOf(spaceId) === index);
-		const aggregateScopeSpaceIds = [
-			...new Set(
-				hasAction
-					? actionScopeIds.length > 0
-						? actionScopeIds
-						: scopedReferences.length > 0
-							? []
-							: input.conversationSpaceId
-								? [input.conversationSpaceId]
-								: []
-					: querySpaceIds,
-			),
-		];
+		const aggregateScopeSpaceIds = isGenericExplanation
+			? []
+			: [
+					...new Set(
+						hasAction
+							? actionScopeIds.length > 0
+								? actionScopeIds
+								: scopedReferences.length > 0
+									? []
+									: input.conversationSpaceId
+										? [input.conversationSpaceId]
+										: []
+							: querySpaceIds,
+					),
+				];
 		const scope = {
 			...(aggregateScopeSpaceIds.length === 1
 				? { spaceId: aggregateScopeSpaceIds[0] }
@@ -1183,8 +1186,18 @@ function hasHomeActionConditionClause(
 	);
 }
 
-function isGeneralExplanation(message: string, hasExplicitSpace = false): boolean {
-	if (hasExplicitSpace || POSSESSIVE_HOME_ENTITY_PATTERN.test(message)) return false;
+function isGeneralExplanation(message: string, explicitSpaces: readonly BuddyContextSpaceReference[] = []): boolean {
+	const indefiniteDefinitionSubject =
+		/^what (?:is|are) (?:a|an)\s+([\p{Letter}\p{Number}][\p{Letter}\p{Number}\s-]*?)[?!.]*$/u
+			.exec(message)?.[1]
+			?.trim();
+	if (
+		indefiniteDefinitionSubject &&
+		explicitSpaces.some((space) => normalize(space.name) === indefiniteDefinitionSubject)
+	) {
+		return true;
+	}
+	if (explicitSpaces.length > 0 || POSSESSIVE_HOME_ENTITY_PATTERN.test(message)) return false;
 	if (/\b(?:my|our)\b/u.test(message) && /\b(?:energy|power|secure|security|weather)\b/u.test(message)) return false;
 	const isConceptualDomainRequest =
 		/^(?:define|describe|explain|tell me about|what (?:is|are))\b/u.test(message) &&

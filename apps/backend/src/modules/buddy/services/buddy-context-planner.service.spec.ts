@@ -4554,6 +4554,50 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
+	it('clarifies a conjunction-based negative lighting target', () => {
+		expect(
+			service.plan({
+				message: 'Turn off the Bedroom lights and not the Kitchen lights',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+	});
+
+	it.each(['Turn a third of the Bedroom lights off', 'Turn a quarter of the Bedroom lights off'])(
+		'clarifies an article-based fractional lighting group: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+		},
+	);
+
+	it('preserves a generic definition that resembles a configured space name', () => {
+		expect(
+			service.plan({
+				message: 'What is a bedroom?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toEqual({
+			domains: ['general'],
+			intent: 'none',
+			scope: {},
+			queries: [],
+			toolNames: [],
+			ambiguityRisk: 'none',
+			strategy: 'no-home-context',
+		});
+	});
+
 	it.each([
 		'Turn Bedroom lights off and compare Kitchen and Office temperature',
 		'Turn Bedroom lights off and what are Kitchen and Office temperatures?',
