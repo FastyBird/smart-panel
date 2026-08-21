@@ -2816,6 +2816,28 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('does not resolve a space-qualified relative clause as a recent reference', () => {
+		const plan = service.plan({
+			message: 'Are the lights in Bedroom that are on?',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			recentEntityReferences: [
+				{
+					kind: 'device',
+					id: 'device-reading-lamp',
+					name: 'Reading lamp',
+					compatibleActionTypes: ['turn'],
+				},
+			],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.scope).toEqual({ spaceId: 'space-bedroom' });
+		expect(plan.queries).toEqual([
+			{ kind: 'search-home', spaceId: 'space-bedroom' },
+			{ kind: 'current-state', spaceId: 'space-bedroom' },
+		]);
+	});
+
 	it('clarifies a plural home-state pronoun without recent references', () => {
 		expect(
 			service.plan({
@@ -6826,6 +6848,7 @@ describe('BuddyContextPlannerService', () => {
 	it.each([
 		'If we disable the Bedroom lights will the camera still work?',
 		'If we turn off the Bedroom lights will the camera still work?',
+		'If we disable the Bedroom lights will John wake?',
 	])('keeps an unpunctuated hypothetical action on the read path: %s', (message) => {
 		const plan = service.plan({
 			message,
@@ -6866,6 +6889,7 @@ describe('BuddyContextPlannerService', () => {
 	it.each([
 		['Enable and then disable the Bedroom lights', 'Turn on and then turn off the Bedroom lights'],
 		['Enable, then disable the Bedroom lights', 'Turn on, then turn off the Bedroom lights'],
+		['Enable and disable the Bedroom lights', 'Turn on and turn off the Bedroom lights'],
 	])('normalizes coordinated binary-state actions before a shared target: %s', (message, equivalentMessage) => {
 		const input = {
 			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],

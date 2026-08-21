@@ -14,6 +14,7 @@ import {
 	LEADING_CONDITION_PATTERN,
 	LOCALIZED_REFERENCE_PRONOUN_PATTERN,
 	LOCALIZED_STATE_REFERENCE_PRONOUN_PATTERN,
+	PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN,
 	PLURAL_REFERENCE_PRONOUN_PATTERN,
 	PREDICATE_QUESTION_PATTERN,
 	PRONOUN_PATTERN,
@@ -55,7 +56,7 @@ export function findLeadingConditionalActionIndex(
 function isConditionalOutcomeQuestion(message: string, actionIndex: number): boolean {
 	if (!/\?\s*$/u.test(message)) return false;
 	if (
-		/\b(?:can|could|did|do|does|may|might|must|should|will|would)\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we)\s+)[^?]*\?\s*$/u.test(
+		/(?<!that\s)(?<!which\s)(?<!who\s)\b(?:can|could|did|do|does|may|might|must|should|will|would)\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we)\s+|(?!you\b)[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$/u.test(
 			message.slice(actionIndex),
 		)
 	) {
@@ -548,6 +549,12 @@ export function normalizeGerundActionRequest(message: string): string {
 		'gu',
 	);
 	const binaryLabelConnectorPatternSource = String.raw`(?:or|${COMPOUND_CONNECTOR_PATTERN_SOURCE})`;
+	const binaryTargetTokenPatternSource = String.raw`[\p{Letter}\p{Number}'’-]+`;
+	const binaryDeviceTargetPatternSource = String.raw`(?:(?:my|our|the|your)\s+(?:${binaryTargetTokenPatternSource}\s+){0,7}|(?:${binaryTargetTokenPatternSource}\s+){1,7})${DEVICE_ACTION_TARGET_PATTERN.source}`;
+	const binaryStateTargetPattern = new RegExp(
+		String.raw`^\s+(?:${binaryDeviceTargetPatternSource}|(?:(?:my|our|the|your)\s+)?${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source})`,
+		'u',
+	);
 	const leadingConditionalActionIndex = findLeadingConditionalActionIndex(
 		normalizedShutRequest,
 		String.raw`${ACTION_SIGNAL_PATTERN_SOURCE}|enable|disable`,
@@ -555,7 +562,12 @@ export function normalizeGerundActionRequest(message: string): string {
 	const normalizeBinaryStateCommands = (value: string): string =>
 		value.replace(binaryStateCommandPattern, (match, prefix: string, action: string, offset: number) => {
 			const actionTail = value.slice(offset + match.length);
-			const hasSequencedBinaryAction = /^\s*(?:,\s*)?(?:and\s+)?then\s+(?:disable|enable)\b/u.test(actionTail);
+			const coordinatedActionMatch = /^\s*(?:(?:,\s*)?(?:and\s+)?then|and)\s+(?:disable|enable)\b/u.exec(actionTail);
+			const hasCoordinatedBinaryAction =
+				coordinatedActionMatch !== null &&
+				(/then\b/u.test(coordinatedActionMatch[0]) ||
+					binaryStateTargetPattern.test(actionTail.slice(coordinatedActionMatch[0].length)));
+			const hasDirectBinaryTarget = binaryStateTargetPattern.test(actionTail);
 
 			if (/\ba\s*$/u.test(prefix)) return match;
 			if (
@@ -567,12 +579,13 @@ export function normalizeGerundActionRequest(message: string): string {
 				return match;
 			}
 			if (
-				!hasSequencedBinaryAction &&
+				!hasCoordinatedBinaryAction &&
 				new RegExp(String.raw`^\s*(?:[?!,.;]|${binaryLabelConnectorPatternSource}\b|$)`, 'u').test(actionTail)
 			) {
 				return match;
 			}
 			if (
+				!hasDirectBinaryTarget &&
 				new RegExp(String.raw`\b${binaryLabelConnectorPatternSource}\b`, 'u').test(prefix) &&
 				/\b(?:disable|enable)\s*$/u.test(value.slice(0, offset))
 			) {
