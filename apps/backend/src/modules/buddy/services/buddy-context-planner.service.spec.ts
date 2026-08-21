@@ -5810,19 +5810,22 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
-	it.each(['Turn ten Bedroom lights on', 'Turn a dozen Bedroom lights on', 'Turn twenty-one Bedroom lights on'])(
-		'clarifies a word-quantity lighting subset: %s',
-		(message) => {
-			const plan = service.plan({
-				message,
-				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
-				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-			});
+	it.each([
+		'Turn ten Bedroom lights on',
+		'Turn a dozen Bedroom lights on',
+		'Turn twenty-one Bedroom lights on',
+		'Turn every other Bedroom light off',
+		'Turn alternate Bedroom lights off',
+	])('clarifies a word-quantity lighting subset: %s', (message) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
 
-			expect(plan).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify' });
-			expect(plan.toolNames).toEqual([]);
-		},
-	);
+		expect(plan).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify' });
+		expect(plan.toolNames).toEqual([]);
+	});
 
 	it.each(['Turn all Bedroom lights on', 'Turn every Bedroom light on'])(
 		'keeps an explicit whole lighting group actionable: %s',
@@ -6668,4 +6671,48 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk: 'action', strategy: 'clarify' });
 		expect(plan.toolNames).toEqual([]);
 	});
+
+	it.each(['Could you shut off the Bedroom lights?', 'Shut down the Bedroom lights'])(
+		'recognizes a shut-off device action: %s',
+		(message) => {
+			const plan = service.plan({
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			});
+
+			expect(plan).toMatchObject({ intent: 'write', ambiguityRisk: 'none', strategy: 'model-tools' });
+			expect(plan.toolNames).toContain('control_device');
+			expect(plan.toolNames).toContain('set_space_lighting');
+		},
+	);
+
+	it.each([
+		'What was the Bedroom temperature two days earlier?',
+		'What was the Bedroom temperature three hours prior?',
+	])('routes a relative earlier period to history: %s', (message) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.domains).toContain('history');
+		expect(plan.queries).toContainEqual({ kind: 'property-timeseries', spaceId: 'space-bedroom' });
+		expect(plan.queries).not.toContainEqual({ kind: 'current-state', spaceId: 'space-bedroom' });
+	});
+
+	it.each(['Turn Bedroom lights on for 1½ hours', 'Turn Bedroom lights on for ¾ hour'])(
+		'clarifies a Unicode fractional action duration: %s',
+		(message) => {
+			const plan = service.plan({
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			});
+
+			expect(plan).toMatchObject({ intent: 'write', ambiguityRisk: 'action', strategy: 'clarify' });
+			expect(plan.toolNames).toEqual([]);
+		},
+	);
 });

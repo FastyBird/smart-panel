@@ -460,7 +460,14 @@ export function normalizeGerundActionRequest(message: string): string {
 		'gu',
 	);
 
-	return message.replace(politeGerundRequest, (_match, mindPrefix, tryPrefix, gerund: string) => {
-		return `${mindPrefix ?? tryPrefix} ${gerundActions[gerund]}`;
-	});
+	const normalizedGerundRequest = message.replace(
+		politeGerundRequest,
+		(_match, mindPrefix, tryPrefix, gerund: string) => {
+			return `${mindPrefix ?? tryPrefix} ${gerundActions[gerund]}`;
+		},
+	);
+	const shutCommandPattern =
+		/(^[?!,.;\s]*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?|(?:[?!,.;]|\b(?:and|then)\b)\s*)shut\s+(?:down|off)\b/gu;
+
+	return normalizedGerundRequest.replace(shutCommandPattern, '$1turn off');
 }
