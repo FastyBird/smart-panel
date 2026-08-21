@@ -72,6 +72,11 @@ Device, channel, and property metadata updates follow the same ordering: their u
 non-atomic service call, and rollback restores the snapshot only when a fresh read still exactly matches the metadata
 that adoption intended to write.
 
+Top-level device creation likewise receives a preallocated UUID. If its final service readback rejects after the full
+hierarchy was persisted but before `DEVICE_CREATED`, adoption verifies that exact UUID and provider identity, then uses
+the Devices service's unannounced-create rollback path. Child value/history cleanup and child deletion events still run,
+while no unmatched `DEVICE_DELETED` event is emitted for a parent that was never announced.
+
 Terminal adoption values use the Devices module's strict property-value path. The active read backend must acknowledge
 the measurement before the process-local cache is updated; a transient storage failure therefore remains retryable on
 the next idempotent adoption instead of being hidden by a cache-only value. Existing-hierarchy snapshots query the same
@@ -79,4 +84,6 @@ active backend that strict persistence requires and bypass each process's local 
 failure aborts reconciliation instead of falling through to potentially stale fallback history, preventing stale or
 unknown previous values from becoming duplicate appends. Each terminal value write performs one more authoritative
 read immediately before persistence, so an intervening normal property update that already stored the preview value is
-not duplicated or overwritten based on the earlier snapshot.
+not duplicated or overwritten based on the earlier snapshot. Persisted reads also capture the process-cache entry at
+query start and refresh it only if that entry is unchanged when the query completes, preventing a slower snapshot from
+replacing a newer value published by a concurrent normal writer.

@@ -684,6 +684,8 @@ export class PropertyValueService {
 		activeBackendOnly = false,
 	): Promise<PropertyValueState | null> {
 		const key = this.valueSourceRegistry.resolve(property);
+		const cacheAtQueryStart = this.valuesMap.get(key);
+		const cacheTimestampAtQueryStart = cacheAtQueryStart?.lastUpdated;
 
 		// Check local cache first
 		const cached = this.valuesMap.get(key);
@@ -727,24 +729,32 @@ export class PropertyValueService {
 			// Results are ordered DESC, so first = latest
 			const latest = result[0];
 
-			// Build recent values cache from query results (for trend computation)
-			if (this.isNumericDataType(property.dataType) && result.length >= 1) {
-				// Results are DESC, reverse to get ASC order for trend
-				const recentValues: number[] = [];
-				for (let i = result.length - 1; i >= 0; i--) {
-					const val = result[i].numberValue;
-					if (val != null) {
-						recentValues.push(val);
+			const currentCache = this.valuesMap.get(key);
+			const cacheUnchanged =
+				currentCache === cacheAtQueryStart && currentCache?.lastUpdated === cacheTimestampAtQueryStart;
+
+			if (cacheUnchanged) {
+				// Build recent values cache from query results (for trend computation)
+				if (this.isNumericDataType(property.dataType) && result.length >= 1) {
+					// Results are DESC, reverse to get ASC order for trend
+					const recentValues: number[] = [];
+					for (let i = result.length - 1; i >= 0; i--) {
+						const val = result[i].numberValue;
+						if (val != null) {
+							recentValues.push(val);
+						}
 					}
+					this.recentValuesMap.set(key, recentValues);
 				}
-				this.recentValuesMap.set(key, recentValues);
 			}
 
 			const state = this.toState(property, key, latest);
 
 			this.logger.debug(`Read latest value id=${property.id} dataType=${property.dataType} value=${state.value}`);
 
-			this.valuesMap.set(key, state);
+			if (cacheUnchanged) {
+				this.valuesMap.set(key, state);
+			}
 
 			return state;
 		} catch (error) {

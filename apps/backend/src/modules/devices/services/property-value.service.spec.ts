@@ -200,6 +200,29 @@ describe('PropertyValueService', () => {
 			expect(service['valuesMap'].get(property.id)).toEqual(expect.objectContaining({ value: 100 }));
 		});
 
+		it('does not replace a cache entry published while an authoritative query is in flight', async () => {
+			const property = {
+				id: 'test-property-id',
+				dataType: DataTypeType.INT,
+				invalid: null,
+			} as ChannelPropertyEntity;
+			let resolveQuery: (rows: Array<{ numberValue: number }>) => void = () => {};
+			storageService.queryActiveStrict.mockImplementation(
+				() =>
+					new Promise((resolve) => {
+						resolveQuery = resolve;
+					}),
+			);
+			service['valuesMap'].set(property.id, new PropertyValueState(42));
+			const persistedRead = service.readLatestPersisted(property);
+
+			await expect(service.write(property, 200)).resolves.toBe(true);
+			resolveQuery([{ numberValue: 100 }]);
+
+			await expect(persistedRead).resolves.toEqual(expect.objectContaining({ value: 100 }));
+			expect(service['valuesMap'].get(property.id)).toEqual(expect.objectContaining({ value: 200 }));
+		});
+
 		it('should batch strict reads for every uncached property', async () => {
 			const properties = [
 				{ id: 'property-a', dataType: DataTypeType.INT },

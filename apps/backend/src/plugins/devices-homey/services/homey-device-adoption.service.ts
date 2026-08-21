@@ -150,11 +150,13 @@ export class HomeyDeviceAdoptionService {
 		);
 
 		if (existing === null) {
+			const preallocatedDeviceId = randomUUID();
 			try {
 				await lease.assertOwned();
-				const created = await this.devicesService.create<HomeyDeviceEntity, CreateHomeyDeviceDto>(
-					this.createDeviceDto(selection, preview),
-				);
+				const created = await this.devicesService.create<HomeyDeviceEntity, CreateHomeyDeviceDto>({
+					...this.createDeviceDto(selection, preview),
+					id: preallocatedDeviceId,
+				});
 				await lease.assertOwned();
 				await this.applyCreatedValues(created, preview, lease);
 
@@ -164,6 +166,32 @@ export class HomeyDeviceAdoptionService {
 					throw error;
 				}
 				await lease.assertOwned();
+				let partial: HomeyDeviceEntity | null;
+
+				try {
+					partial = await this.devicesService.findOne<HomeyDeviceEntity>(preallocatedDeviceId, DEVICES_HOMEY_TYPE);
+				} catch {
+					this.logger.warn('Homey device partial-create ownership could not be verified');
+
+					return this.failure(preview.device.id, HomeyAdoptionFailureCode.ROLLBACK_FAILED);
+				}
+
+				if (partial !== null && partial.identifier === preview.device.id) {
+					try {
+						await lease.assertOwned();
+						await this.devicesService.rollbackUnannouncedCreate(preallocatedDeviceId);
+					} catch (cleanupError) {
+						if (cleanupError instanceof HomeyAdoptionLockLostError) {
+							throw cleanupError;
+						}
+						this.logger.warn('Homey device partial-create rollback failed');
+
+						return this.failure(preview.device.id, HomeyAdoptionFailureCode.ROLLBACK_FAILED);
+					}
+
+					return this.failure(preview.device.id, HomeyAdoptionFailureCode.PERSISTENCE_FAILED);
+				}
+
 				// A different process may have won the provider-scoped unique insert. Its parent row is
 				// visible before DevicesService.create() finishes the nested channels, properties, and their
 				// initial value writes, so an immediate reconciliation could mutate that half-built hierarchy

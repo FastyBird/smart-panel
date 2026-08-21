@@ -133,7 +133,9 @@ const existingDevice = (deviceId = 'homey-light'): HomeyDeviceEntity =>
 
 describe('HomeyDeviceAdoptionService', () => {
 	let mappingPreviewService: jest.Mocked<Pick<HomeyMappingPreviewService, 'generatePreview'>>;
-	let devicesService: jest.Mocked<Pick<DevicesService, 'findOne' | 'findOneBy' | 'create' | 'update'>>;
+	let devicesService: jest.Mocked<
+		Pick<DevicesService, 'findOne' | 'findOneBy' | 'create' | 'update' | 'rollbackUnannouncedCreate'>
+	>;
 	let channelsService: jest.Mocked<
 		Pick<ChannelsService, 'findAll' | 'findOne' | 'findOneBy' | 'create' | 'update' | 'remove'>
 	>;
@@ -152,11 +154,12 @@ describe('HomeyDeviceAdoptionService', () => {
 		lease = { assertOwned: jest.fn().mockResolvedValue(undefined) };
 		mappingPreviewService = { generatePreview: jest.fn().mockResolvedValue(preview()) };
 		devicesService = {
-			findOne: jest.fn().mockResolvedValue(existingDevice()),
+			findOne: jest.fn((id) => Promise.resolve(id === existingDevice().id ? existingDevice() : null)),
 			findOneBy: jest.fn().mockResolvedValue(null),
 			create: jest.fn().mockResolvedValue(existingDevice()),
 			update: jest.fn(),
-		};
+			rollbackUnannouncedCreate: jest.fn().mockResolvedValue(true),
+		} as unknown as typeof devicesService;
 		channelsService = {
 			findAll: jest.fn().mockResolvedValue([]),
 			findOne: jest.fn().mockResolvedValue(null),
@@ -275,6 +278,27 @@ describe('HomeyDeviceAdoptionService', () => {
 			{ type: DEVICES_HOMEY_TYPE, value: 0 },
 			{ strictValuePersistence: true },
 		);
+	});
+
+	it('rolls back a device persisted before its create readback rejects', async () => {
+		let inserted: HomeyDeviceEntity | null = null;
+		devicesService.create.mockImplementation((dto) => {
+			inserted = Object.assign(new HomeyDeviceEntity(), {
+				id: dto.id,
+				identifier: dto.identifier,
+			});
+
+			return Promise.reject(new Error('post-create readback failed'));
+		});
+		devicesService.findOne.mockImplementation((id) => Promise.resolve(id === inserted?.id ? inserted : null));
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({
+			status: HomeyAdoptionStatus.FAILED,
+			failureCode: HomeyAdoptionFailureCode.PERSISTENCE_FAILED,
+		});
+		expect(inserted?.id).toEqual(expect.any(String));
+		expect(devicesService.rollbackUnannouncedCreate).toHaveBeenCalledWith(inserted?.id);
+		expect(propertiesService.update).not.toHaveBeenCalled();
 	});
 
 	it('holds the database-backed claim from the fresh preview through persistence', async () => {
