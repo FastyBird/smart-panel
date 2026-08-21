@@ -4117,6 +4117,7 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows right now open?',
 		'Is every one of the windows closed?',
 		'Does every one of my windows remain closed?',
+		'Are any windows left open?',
 		'Do we have all windows open?',
 		'Do I have every window open?',
 		'Check if every window is closed',
@@ -6728,6 +6729,8 @@ describe('BuddyContextPlannerService', () => {
 		['Disable the Bedroom lights', 'Turn off the Bedroom lights'],
 		['Also enable the Bedroom lights', 'Also turn on the Bedroom lights'],
 		['Please can you disable the Bedroom lights', 'Please can you turn off the Bedroom lights'],
+		['Would you mind enabling the Bedroom lights?', 'Would you mind turning on the Bedroom lights?'],
+		['Could you try disabling the Bedroom fan?', 'Could you try turning off the Bedroom fan?'],
 		[
 			'Are the Bedroom lights on? If so disable the Bedroom lights',
 			'Are the Bedroom lights on? If so turn off the Bedroom lights',
