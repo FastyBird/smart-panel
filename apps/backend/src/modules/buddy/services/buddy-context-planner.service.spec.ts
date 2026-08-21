@@ -4182,6 +4182,7 @@ describe('BuddyContextPlannerService', () => {
 	});
 
 	it.each([
+		'Is every browser window open?',
 		'Can you check if any files are open?',
 		'Can you check if any browser tabs are open?',
 		'Can you check if any browser windows are open?',
