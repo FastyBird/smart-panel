@@ -4,7 +4,7 @@ import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { isUndefined, omitBy } from 'lodash';
 
-import { getErrorReason, injectStoresManager, useBackend, useLogger } from '../../../common';
+import { getErrorReason, injectStoresManager, markFirstLoad, useBackend, useLogger } from '../../../common';
 import { PLUGINS_PREFIX } from '../../../app.constants';
 import {
 	DashboardApiException,
@@ -544,7 +544,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 			});
 		});
 
-		dataSourcesStore.firstLoad.push(card.id);
+		markFirstLoad(dataSourcesStore.firstLoad, card.id);
 	};
 
 	const insertTilesRelations = (card: ICard, tiles: ITileRes[]): void => {
@@ -570,10 +570,10 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 				});
 			});
 
-			dataSourcesStore.firstLoad.push(tile.id);
+			markFirstLoad(dataSourcesStore.firstLoad, tile.id);
 		});
 
-		tilesStore.firstLoad.push(card.id);
+		markFirstLoad(tilesStore.firstLoad, card.id);
 	};
 
 	return {

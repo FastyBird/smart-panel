@@ -1,3 +1,5 @@
+import { effectScope } from 'vue';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useSockets } from './useSockets';
@@ -35,10 +37,14 @@ describe('useSockets', () => {
 
 	it('subscribes to connect and disconnect when called outside a component setup', () => {
 		// `useSockets` is called from `scenes.store.ts` — a Pinia store setup, which runs with no
-		// active component instance. Plain `onMounted` silently declines to register there (Vue
-		// only warns), so the listeners were never attached and `connected` / `active` on that
-		// instance stayed frozen at their initial values for the life of the app.
-		useSockets();
+		// active component instance but inside Pinia's own effect scope (`effectScope().run(setup)`).
+		// Plain `onMounted` silently declines to register there (Vue only warns), so the listeners
+		// were never attached and `connected` / `active` on that instance stayed frozen at their
+		// initial values for the life of the app. The effect scope is what makes the listeners safe
+		// to attach — see the "no scope at all" case below for the contrast.
+		const scope = effectScope();
+
+		scope.run(() => useSockets());
 
 		expect(mockOn).toHaveBeenCalledWith('connect', expect.any(Function));
 		expect(mockOn).toHaveBeenCalledWith('disconnect', expect.any(Function));
@@ -48,7 +54,9 @@ describe('useSockets', () => {
 		socketInstanceMock.connected = false;
 		socketInstanceMock.active = false;
 
-		const { connected, active } = useSockets();
+		const scope = effectScope();
+
+		const { connected, active } = scope.run(() => useSockets())!;
 
 		const onConnect = mockOn.mock.calls.find(([event]) => event === 'connect')?.[1] as () => void;
 		const onDisconnect = mockOn.mock.calls.find(([event]) => event === 'disconnect')?.[1] as () => void;
@@ -60,6 +68,24 @@ describe('useSockets', () => {
 		onDisconnect();
 		expect(connected.value).toBe(false);
 		expect(active.value).toBe(false);
+	});
+
+	it('does not attach listeners when there is no scope to release them', () => {
+		// Called bare — no component, no effectScope. `tryOnScopeDispose` would be a silent
+		// no-op here, so attaching listeners would leak them on the app-lifetime socket forever.
+		useSockets();
+
+		expect(mockOn).not.toHaveBeenCalled();
+	});
+
+	it('attaches and releases listeners inside a bare effect scope', () => {
+		const scope = effectScope();
+
+		scope.run(() => useSockets());
+		expect(mockOn).toHaveBeenCalledTimes(2);
+
+		scope.stop();
+		expect(mockOff).toHaveBeenCalledTimes(2);
 	});
 
 	it('still defers to the component lifecycle when called inside a component setup', async () => {

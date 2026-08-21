@@ -70,6 +70,11 @@ export class SystemLogsReporterService {
 	) {}
 
 	start(): void {
+		// Re-entry must not stack window listeners or duplicate consola reporters.
+		if (this.reporter) {
+			return;
+		}
+
 		if (typeof window !== 'undefined') {
 			this.onUnload = () => {
 				if (this.queue.length) {

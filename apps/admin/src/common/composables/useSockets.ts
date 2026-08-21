@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { getCurrentScope, ref } from 'vue';
 
 import { v4 as uuid } from 'uuid';
 
@@ -24,6 +24,11 @@ export const useSockets = (): IUseSockets => {
 		active.value = false;
 	};
 
+	// Captured at call time — the same condition `tryOnScopeDispose` keys off. Without a
+	// scope the dispose hook is a silent no-op, so attaching listeners here would leak them
+	// on the app-lifetime socket.
+	const canDispose = getCurrentScope() !== undefined;
+
 	// `tryOnMounted`, not `onMounted`: this composable is also called from a Pinia store setup
 	// (`scenes_module-scenes`) and from composables that stores reach through, none of which run
 	// with an active component instance. Plain `onMounted` only warns and declines to register
@@ -35,8 +40,10 @@ export const useSockets = (): IUseSockets => {
 		connected.value = sockets.connected;
 		active.value = sockets.active;
 
-		sockets.on('connect', onConnect);
-		sockets.on('disconnect', onDisconnect);
+		if (canDispose) {
+			sockets.on('connect', onConnect);
+			sockets.on('disconnect', onDisconnect);
+		}
 	});
 
 	// Scope-based rather than `onBeforeUnmount` for the same reason, and because it is the

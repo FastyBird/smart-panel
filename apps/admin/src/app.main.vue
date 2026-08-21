@@ -25,20 +25,27 @@ const eventBus = useEventBus();
 
 const loadingOverlay = ref<boolean>(false);
 
-let overlayTimer: number;
+let overlayTimer: number | undefined;
 
 const hideOverlay = (): void => {
 	loadingOverlay.value = false;
 
-	window.clearInterval(overlayTimer);
+	window.clearTimeout(overlayTimer);
+
+	overlayTimer = undefined;
 };
 
 const overlayLoadingListener = (status?: unknown): void => {
 	if (typeof status === 'number') {
-		overlayTimer = window.setInterval(hideOverlay, status * 1000);
+		window.clearTimeout(overlayTimer);
+
+		overlayTimer = window.setTimeout(hideOverlay, status * 1000);
+
 		loadingOverlay.value = true;
 	} else if (typeof status === 'boolean') {
-		window.clearInterval(overlayTimer);
+		window.clearTimeout(overlayTimer);
+
+		overlayTimer = undefined;
 
 		loadingOverlay.value = status;
 	} else {
@@ -52,6 +59,8 @@ onBeforeMount((): void => {
 
 onBeforeUnmount((): void => {
 	eventBus.unregister('loadingOverlay', overlayLoadingListener);
+
+	window.clearTimeout(overlayTimer);
 });
 
 useMeta({

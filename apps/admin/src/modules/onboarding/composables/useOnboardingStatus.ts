@@ -17,6 +17,12 @@ const lastFetched = ref<number | null>(null);
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+// Hoisted to module scope: the onboarding router guard calls the composable on every
+// navigation with no active effect scope, so per-call computeds would be created outside
+// any owner. The refs they read are module singletons anyway.
+const needsOnboarding = computed(() => status.value !== null && !status.value.hasOwner);
+const isOnboardingCompleted = computed(() => status.value?.onboardingCompleted ?? false);
+
 /**
  * Standalone cache invalidation — safe to call outside Vue setup context.
  * Use this when you need to clear the onboarding status cache from services
@@ -29,9 +35,6 @@ export const invalidateOnboardingStatus = (): void => {
 
 export const useOnboardingStatus = () => {
 	const backend = useBackend();
-
-	const needsOnboarding = computed(() => status.value !== null && !status.value.hasOwner);
-	const isOnboardingCompleted = computed(() => status.value?.onboardingCompleted ?? false);
 
 	const fetchStatus = async (force = false): Promise<IOnboardingStatus | null> => {
 		if (!force && status.value && lastFetched.value) {
