@@ -143,6 +143,7 @@ describe('HomeyDeviceAdoptionService', () => {
 	let propertyValueService: jest.Mocked<
 		Pick<PropertyValueService, 'readLatest' | 'readLatestStrict' | 'readLatestPersisted' | 'write' | 'delete'>
 	>;
+	let structureLock: { runExclusive: jest.Mock };
 	let adoptionLock: Pick<HomeyAdoptionLockService, 'runExclusive'>;
 	let service: HomeyDeviceAdoptionService;
 	let lease: HomeyAdoptionLease;
@@ -179,7 +180,7 @@ describe('HomeyDeviceAdoptionService', () => {
 			write: jest.fn().mockResolvedValue(true),
 			delete: jest.fn(),
 		};
-		const structureLock = {
+		structureLock = {
 			runExclusive: jest.fn((operation: () => Promise<unknown>) => operation()),
 		};
 		adoptionLock = {
@@ -303,6 +304,72 @@ describe('HomeyDeviceAdoptionService', () => {
 
 		await expect(service.adoptOne(selection())).resolves.toMatchObject({ status: HomeyAdoptionStatus.CREATED });
 		expect(claimHeld).toBe(false);
+	});
+
+	it('releases the global structure lock before persisted reads and terminal value writes', async () => {
+		const device = existingDevice();
+		const channel = Object.assign(new HomeyChannelEntity(), {
+			id: '8421af4e-84f9-4822-bac6-3dbe49ac4893',
+			identifier: 'light',
+			name: 'Light',
+			category: ChannelCategory.LIGHT,
+		});
+		const property = Object.assign(new HomeyChannelPropertyEntity(), {
+			id: 'dba32214-aa13-4134-9578-2093351507f8',
+			identifier: 'onoff::light-power',
+			homeyCapabilityId: 'onoff',
+			homeyMappingName: 'light-power',
+			name: 'Light power',
+			category: PropertyCategory.ON,
+			permissions: [PermissionType.READ_WRITE],
+			dataType: DataTypeType.BOOL,
+			format: null,
+			invalid: null,
+			step: null,
+		});
+		let structureLockHeld = false;
+		structureLock.runExclusive.mockImplementation(async (operation: () => Promise<unknown>) => {
+			structureLockHeld = true;
+
+			try {
+				return await operation();
+			} finally {
+				structureLockHeld = false;
+			}
+		});
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), {
+				channels: [
+					{
+						...preview().channels[0],
+						properties: [{ ...preview().channels[0].properties[0], currentValue: true }],
+					},
+				],
+			}),
+		);
+		devicesService.findOneBy.mockResolvedValue(device);
+		channelsService.findAll.mockResolvedValue([channel]);
+		channelsService.findOneBy.mockResolvedValue(channel);
+		propertiesService.findAll.mockResolvedValue([property]);
+		propertiesService.findOneBy.mockResolvedValue(property);
+		propertyValueService.readLatestPersisted.mockImplementation(() => {
+			expect(structureLockHeld).toBe(false);
+
+			return Promise.resolve(Object.assign(new PropertyValueState(), { value: false }));
+		});
+		propertiesService.update.mockImplementation(() => {
+			expect(structureLockHeld).toBe(false);
+
+			return Promise.resolve(property);
+		});
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({ status: HomeyAdoptionStatus.UPDATED });
+		expect(propertyValueService.readLatestPersisted).toHaveBeenCalledTimes(1);
+		expect(propertiesService.update).toHaveBeenCalledWith(
+			property.id,
+			{ type: DEVICES_HOMEY_TYPE, value: true },
+			{ strictValuePersistence: true },
+		);
 	});
 
 	it('persists the transformed panel enum domain instead of Homey enum identifiers', async () => {

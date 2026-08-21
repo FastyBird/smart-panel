@@ -120,7 +120,7 @@ export class HomeyDeviceAdoptionService {
 		try {
 			await lease.assertOwned();
 
-			return await this.structureLock.runExclusive(() => this.persist(selection, preview, lease));
+			return await this.persist(selection, preview, lease);
 		} catch {
 			this.logger.warn('Homey adoption persistence failed before reconciliation completed');
 
@@ -302,71 +302,78 @@ export class HomeyDeviceAdoptionService {
 		const deferredRemovals: DeferredRemoval[] = [];
 		const pendingValues: PendingValueWrite[] = [];
 		let changed = false;
+		// Storage snapshots can be slow and do not mutate the hierarchy, so collect them before taking the
+		// process-global structure lock. Only the structural reconciliation and its rollback are serialized.
+		const snapshot = await this.snapshotHierarchy(device.id);
+		const structuralFailure = await this.structureLock.runExclusive(
+			async (): Promise<HomeyAdoptionResultModel | null> => {
+				try {
+					for (const desiredChannel of preview.channels) {
+						changed =
+							(await this.reconcileChannel(
+								device.id,
+								desiredChannel,
+								snapshot,
+								pendingValues,
+								deferredRemovals,
+								journal,
+								lease,
+							)) || changed;
+					}
 
-		try {
-			// Existing rows are updated in place so rollback retains their full external history. Current
-			// values are captured only for change detection; append-only writes are deferred until rollback
-			// is no longer possible and are never "restored" by appending artificial compensation points.
-			const snapshot = await this.snapshotHierarchy(device.id);
+					changed = (await this.deferStaleChannels(device.id, preview.channels, deferredRemovals)) || changed;
 
-			for (const desiredChannel of preview.channels) {
-				changed =
-					(await this.reconcileChannel(
-						device.id,
-						desiredChannel,
-						snapshot,
-						pendingValues,
-						deferredRemovals,
-						journal,
-						lease,
-					)) || changed;
-			}
+					const desiredName = selection.name ?? preview.device.name;
+					const desiredCategory = preview.selectedCategory;
+					if (
+						device.name !== desiredName ||
+						device.category !== desiredCategory ||
+						device.identifier !== preview.device.id
+					) {
+						const previous: UpdateHomeyDeviceDto = {
+							type: DEVICES_HOMEY_TYPE,
+							name: device.name,
+							category: device.category,
+							identifier: device.identifier,
+						};
 
-			changed = (await this.deferStaleChannels(device.id, preview.channels, deferredRemovals)) || changed;
+						const desiredDevice: UpdateHomeyDeviceDto = {
+							type: DEVICES_HOMEY_TYPE,
+							name: desiredName,
+							category: desiredCategory,
+							identifier: preview.device.id,
+						};
+						journal.push(() => this.restoreDeviceMetadata(device.id, desiredDevice, previous, lease));
+						await lease.assertOwned();
+						await this.devicesService.update(device.id, desiredDevice);
+						changed = true;
+					}
 
-			const desiredName = selection.name ?? preview.device.name;
-			const desiredCategory = preview.selectedCategory;
-			if (
-				device.name !== desiredName ||
-				device.category !== desiredCategory ||
-				device.identifier !== preview.device.id
-			) {
-				const previous: UpdateHomeyDeviceDto = {
-					type: DEVICES_HOMEY_TYPE,
-					name: device.name,
-					category: device.category,
-					identifier: device.identifier,
-				};
+					for (const pending of pendingValues) {
+						if (pending.previous?.value !== pending.value) {
+							changed = true;
+						}
+					}
 
-				const desiredDevice: UpdateHomeyDeviceDto = {
-					type: DEVICES_HOMEY_TYPE,
-					name: desiredName,
-					category: desiredCategory,
-					identifier: preview.device.id,
-				};
-				journal.push(() => this.restoreDeviceMetadata(device.id, desiredDevice, previous, lease));
-				await lease.assertOwned();
-				await this.devicesService.update(device.id, desiredDevice);
-				changed = true;
-			}
+					return null;
+				} catch (error) {
+					if (error instanceof HomeyAdoptionLockLostError) {
+						throw error;
+					}
+					await lease.assertOwned();
+					const rolledBack = await this.rollback(journal, lease);
+					this.logger.warn(rolledBack ? 'Homey adoption failed and was rolled back' : 'Homey adoption rollback failed');
 
-			for (const pending of pendingValues) {
-				if (pending.previous?.value !== pending.value) {
-					changed = true;
+					return this.failure(
+						preview.device.id,
+						rolledBack ? HomeyAdoptionFailureCode.PERSISTENCE_FAILED : HomeyAdoptionFailureCode.ROLLBACK_FAILED,
+					);
 				}
-			}
-		} catch (error) {
-			if (error instanceof HomeyAdoptionLockLostError) {
-				throw error;
-			}
-			await lease.assertOwned();
-			const rolledBack = await this.rollback(journal, lease);
-			this.logger.warn(rolledBack ? 'Homey adoption failed and was rolled back' : 'Homey adoption rollback failed');
+			},
+		);
 
-			return this.failure(
-				preview.device.id,
-				rolledBack ? HomeyAdoptionFailureCode.PERSISTENCE_FAILED : HomeyAdoptionFailureCode.ROLLBACK_FAILED,
-			);
+		if (structuralFailure !== null) {
+			return structuralFailure;
 		}
 
 		// Value writes append measurements and stale removals erase complete value/status series. Commit
@@ -507,10 +514,20 @@ export class HomeyDeviceAdoptionService {
 				property = createdProperty;
 				changed = true;
 			} else if (this.propertyMetadataChanged(property, desiredDto)) {
-				const previous = snapshot.propertiesById.get(property.id);
-				if (!previous) {
+				const persistedSnapshot = snapshot.propertiesById.get(property.id);
+				if (!persistedSnapshot) {
 					throw new Error('Homey property snapshot is unavailable');
 				}
+				// The persisted value was read before taking the global structure lock. Capture rollback metadata
+				// from the row observed under the lock so an unrelated edit made during that slow read is never
+				// replaced with stale metadata.
+				const previous: PropertySnapshot = {
+					entity: property,
+					createDto: this.snapshotPropertyDto(property, persistedSnapshot.value),
+					homeyCapabilityId: property.homeyCapabilityId,
+					homeyMappingName: property.homeyMappingName,
+					value: persistedSnapshot.value,
+				};
 
 				journal.push(() => this.restorePropertyMetadata(previous, desiredDto, channel.id, lease));
 				await lease.assertOwned();

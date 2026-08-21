@@ -39,7 +39,9 @@ device ID. It serializes the complete adoption boundary across backend processes
 device models. Claims use renewable, owner-scoped leases: a clean completion removes only its own claim, while a
 crashed process cannot strand a device because a later request may atomically replace the expired claim after proving
 the same-host owner PID is no longer alive. Expiry alone never permits takeover from a paused live process, closing the
-window in which it could resume an already-authorized mutation after a successor acquired the claim.
+window in which it could resume an already-authorized mutation after a successor acquired the claim. Active tokens are
+tracked process-wide; a completed token becomes reclaimable even if its first delete fails, and an unreferenced retry
+keeps attempting that delete in the background.
 
 ## Mutation and rollback boundary
 
@@ -54,8 +56,10 @@ operations could absorb unrelated statements from other requests, so Homey adopt
 5. On failure, completed mutations are compensated in reverse order from the captured snapshot.
 6. Each batch selection completes independently and returns a fixed, sanitized outcome.
 
-The structure lock prevents unrelated in-process hierarchy races. The renewable adoption claim covers snapshot,
-reconciliation, and terminal value writes across processes; database identity constraints remain the final creation
+The structure lock prevents unrelated in-process hierarchy races. It covers only structural reconciliation and its
+rollback; potentially slow persisted-value snapshots are collected before taking it, and terminal value writes and
+stale-series cleanup run after releasing it. The renewable adoption claim still covers the complete snapshot,
+reconciliation, and terminal-value boundary across processes; database identity constraints remain the final creation
 guard. A concurrent unique-insert loss from an older or external writer is re-read only after its expected hierarchy
 and initial measurements are visible, then reconciled as an idempotent update rather than returned as a duplicate
 conflict. Every adoption mutation first verifies the claim against the shared database. A heartbeat that observes a
