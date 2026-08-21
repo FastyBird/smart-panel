@@ -764,8 +764,8 @@ export class BuddyContextPlannerService {
 								? actionScopeIds
 								: scopedReferences.length > 0
 									? []
-									: input.conversationSpaceId
-										? [input.conversationSpaceId]
+									: conversationSpaceId
+										? [conversationSpaceId]
 										: []
 							: resolvedReadScopeIds,
 					),

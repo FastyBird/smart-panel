@@ -1759,6 +1759,18 @@ describe('BuddyContextPlannerService', () => {
 		expect(result.queries).toEqual([{ kind: 'search-home' }, { kind: 'current-state' }]);
 	});
 
+	it('does not restore conversation scope for an action naming an unresolved built-in room', () => {
+		const result = service.plan({
+			message: 'Set kitchen light to 40%',
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(result).toMatchObject({ domains: ['home'], intent: 'write', scope: {} });
+		expect(result.queries).toEqual([{ kind: 'search-home' }]);
+		expect(result.queries).not.toContainEqual(expect.objectContaining({ spaceId: 'space-office' }));
+	});
+
 	it('retains every configured space in an explicit multi-space read', () => {
 		expect(
 			service.plan({
