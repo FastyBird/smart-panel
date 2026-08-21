@@ -1136,6 +1136,50 @@ describe('ChannelsPropertiesService', () => {
 	});
 
 	describe('update', () => {
+		it('holds the structure lock through value persistence and readback', async () => {
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(channelsPropertiesService, 'getOneOrThrow').mockResolvedValue(property);
+			jest.spyOn(repository, 'save').mockResolvedValue(property);
+			let valueWriteEntered: () => void = () => {};
+			const writeEntered = new Promise<void>((resolve) => {
+				valueWriteEntered = resolve;
+			});
+			let releaseValueWrite: () => void = () => {};
+			propertyValueService.write.mockImplementation(
+				() =>
+					new Promise<boolean>((resolve) => {
+						valueWriteEntered();
+						releaseValueWrite = () => resolve(true);
+					}),
+			);
+
+			const update = channelsPropertiesService.update(property.id, {
+				type: 'mock',
+				value: 'new value',
+			} as UpdateMockChannelPropertyDto);
+			await writeEntered;
+			let removalEntered = false;
+			const removal = structureLock.runExclusive(() => {
+				removalEntered = true;
+
+				return Promise.resolve();
+			});
+
+			await Promise.resolve();
+			expect(removalEntered).toBe(false);
+			releaseValueWrite();
+			await expect(update).resolves.toEqual(property);
+			await expect(removal).resolves.toBeUndefined();
+			expect(removalEntered).toBe(true);
+		});
+
 		it('uses strict value persistence when the caller requires retry-safe storage', async () => {
 			const storageBinding = {} as StorageBackendBinding;
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({

@@ -102,7 +102,7 @@ export class HomeyAdoptionLockService {
 				`WHERE "deviceIdentifier" = ? AND "ownerToken" = ?`,
 			[ownerToken, now + ADOPTION_LOCK_CLAIM_TTL_MS, deviceIdentifier, currentOwnerToken],
 		);
-		await unlink(this.ownerSocketPath(currentOwnerToken)).catch(() => undefined);
+		await unlink(await this.ownerSocketPath(currentOwnerToken)).catch(() => undefined);
 
 		return this.isOwned(deviceIdentifier, ownerToken);
 	}
@@ -124,7 +124,7 @@ export class HomeyAdoptionLockService {
 	}
 
 	private async openOwnerSocket(ownerToken: string): Promise<HomeyAdoptionOwnerSocket> {
-		const socketPath = this.ownerSocketPath(ownerToken);
+		const socketPath = await this.ownerSocketPath(ownerToken);
 		const server = createServer((socket) => socket.destroy());
 
 		await new Promise<void>((resolveListen, reject) => {
@@ -151,8 +151,8 @@ export class HomeyAdoptionLockService {
 		await unlink(ownerSocket.path).catch(() => undefined);
 	}
 
-	private isOwnerSocketAlive(ownerToken: string): Promise<boolean> {
-		const socketPath = this.ownerSocketPath(ownerToken);
+	private async isOwnerSocketAlive(ownerToken: string): Promise<boolean> {
+		const socketPath = await this.ownerSocketPath(ownerToken);
 
 		return new Promise<boolean>((resolveProbe) => {
 			const socket = createConnection(socketPath);
@@ -173,7 +173,7 @@ export class HomeyAdoptionLockService {
 		});
 	}
 
-	private ownerSocketPath(ownerToken: string): string {
+	private ownerSocketPath(ownerToken: string): Promise<string> {
 		const database = this.dataSource.options.type === 'sqlite' ? this.dataSource.options.database : ':memory:';
 
 		return sharedLockSocketPath('homey-adoption', database, ownerToken);
