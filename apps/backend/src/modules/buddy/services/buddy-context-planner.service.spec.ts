@@ -1862,6 +1862,27 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it.each([
+		'What was the Bedroom temperature during the previous day?',
+		'What was the Bedroom temperature during the previous week?',
+		'What was the Bedroom temperature during the previous month?',
+		'What was the Bedroom temperature during the previous year?',
+	])('routes a previous-period history request to timeseries: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'property-timeseries', spaceId: 'space-bedroom' },
+			],
+		});
+	});
+
 	it('routes a natural-language calendar date to timeseries', () => {
 		expect(
 			service.plan({
@@ -2575,6 +2596,8 @@ describe('BuddyContextPlannerService', () => {
 
 	it.each([
 		'Turn all Bedroom lights on apart from the bedside lamp',
+		'Turn all Bedroom lights on save the bedside lamp',
+		'Turn all Bedroom lights on save for the bedside lamp',
 		'Turn all Bedroom lights on with the exception of the bedside lamp',
 		'Turn all Bedroom lights on with exception of the bedside lamp',
 	])('clarifies another lighting exclusion: %s', (message) => {
@@ -3112,6 +3135,19 @@ describe('BuddyContextPlannerService', () => {
 
 		expect(result).toMatchObject({ scope: { spaceId: 'space-kids-room' } });
 		expect(result.queries).toContainEqual({ kind: 'current-state', spaceId: 'space-kids-room' });
+	});
+
+	it.each(['💡', '---'])('ignores a configured space name without searchable tokens: %s', (spaceName) => {
+		expect(
+			service.plan({
+				message: 'What is the temperature?',
+				knownSpaces: [{ id: 'space-symbol', name: spaceName }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: {},
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+		});
 	});
 
 	it.each([
@@ -3863,6 +3899,8 @@ describe('BuddyContextPlannerService', () => {
 		'Turn Bedroom lights on for the next 10 minutes',
 		'Turn Bedroom lights on for next ten minutes',
 		'Turn Bedroom lights on for 90 mins',
+		'Turn Bedroom lights on for 1.5 hours',
+		'Turn Bedroom lights on for the next 1.5 hrs',
 		'Turn Bedroom lights on for 30 secs',
 		'Turn Bedroom lights on for 2 hrs',
 		'Turn Bedroom lights on in 30 mins',

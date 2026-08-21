@@ -51,7 +51,7 @@ const LIGHTING_GROUP_PATTERN = new RegExp(
 	'u',
 );
 const LIGHTING_GROUP_EXCLUSION_PATTERN =
-	/\b(?:apart from|but not|but|except|excluding|instead of|krome|other than|rather than|with(?: the)? exception of|without)\b/u;
+	/\b(?:apart from|but not|but|except|excluding|instead of|krome|other than|rather than|save for|save|with(?: the)? exception of|without)\b/u;
 const PARTIAL_LIGHTING_GROUP_PATTERN =
 	/\b(?:a couple of|a few|a majority of|a quarter|a third|eight|five|four|half|most of|nine|one|one third|one quarter|part of|portion of|seven|several|six|some|three|two|\d+)\b.*\b(?:lamp|lamps|light|lights)\b/u;
 const ZERO_QUANTITY_LIGHTING_PATTERN = /\b(?:no|none|zero)\b.*\b(?:lamp|lamps|light|lights)\b/u;
@@ -102,13 +102,13 @@ const UNSUPPORTED_ACTION_TEMPORAL_ADJUNCT_PATTERN =
 const UNSUPPORTED_ACTION_TEMPORAL_CALENDAR_PATTERN =
 	/\b(?:at\s+(?:supper|tea\s+time|the\s+weekend)|biannually|bimonthly|(?:around|at|by|come|effective|for|next|on|over|starting)\s+(?:christmas|easter|halloween|thanksgiving)|hourly|in\s+q[1-4]|next\s+(?:bank\s+)?holiday|next\s+quarter|(?:around|at|by|come|effective|for|on|over|starting)\s+(?:(?:my|our|the|your)\s+)?(?:[\p{Letter}'’-]+\s+){0,2}(?:anniversary|birthday|day|eve|holiday)\b|on\s+(?:\d{1,2}\/\d{1,2}|(?:the\s+)?(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)\s+of\s+(?:april|august|december|february|january|july|june|march|may|november|october|september)|(?:april|august|december|february|january|july|june|march|may|november|october|september)\s+\d{1,2}(?:st|nd|rd|th)?)|weeknights)\b/u;
 const ACTION_DURATION_PATTERN =
-	/\bfor\s+(?:(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|(?:a|an)\s+|half\s+(?:a|an)\s+)(?:seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?)\b/u;
+	/\bfor\s+(?:(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|(?:a|an)\s+|half\s+(?:a|an)\s+)(?:seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?)\b/u;
 const NONNUMERIC_ACTION_DURATION_PATTERN =
 	/\bfor\s+(?:(?:a|an)\s+|half\s+(?:a|an)\s+)(?:seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|months?)\b/u;
 const QUALIFIED_ACTION_DURATION_PATTERN =
-	/\bfor\s+(?:the\s+)?next\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|months?)\b/u;
+	/\bfor\s+(?:the\s+)?next\s+(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?|months?)\b/u;
 const HISTORY_PATTERN =
-	/\b(?:chart|graph|history|historical|past|trend|vcera|yesterday)\b|\bhow\s+(?:did|has|have|is|was)\b.*\b(?:change|changed|changing|varied)\b|\b(?:at\s+)?what time did\b|\bwhen did\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|day|evening|hour|minute|month|morning|night|week|weekend|year))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*\b(?:did|was|were)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
+	/\b(?:chart|graph|history|historical|past|trend|vcera|yesterday)\b|\bhow\s+(?:did|has|have|is|was)\b.*\b(?:change|changed|changing|varied)\b|\b(?:at\s+)?what time did\b|\bwhen did\b|\b(?:earlier today|(?:last|previous) (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|day|evening|hour|minute|month|morning|night|week|weekend|year))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*\b(?:did|was|were)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
 const LEADING_WEEKDAY_HISTORY_PATTERN = /^\s*on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*$/u;
 const TEMPORAL_HISTORY_PATTERN = new RegExp(
 	String.raw`(?:${HISTORY_PATTERN.source}|${CLOCK_TIME_HISTORY_PATTERN.source})`,
@@ -2169,7 +2169,7 @@ function isExcludedExplicitSpaceOccurrence(message: string, occurrenceStart: num
 			.split(/[?!,.;]/u)
 			.at(-1) ?? '';
 
-	return /\b(?:apart from|but not|but|except|excluding|krome|other than|with(?: the)? exception of|without)\s+(?:(?:in|the)\s+)*$/u.test(
+	return /\b(?:apart from|but not|but|except|excluding|krome|other than|save for|save|with(?: the)? exception of|without)\s+(?:(?:in|the)\s+)*$/u.test(
 		precedingClause,
 	);
 }
@@ -2299,9 +2299,9 @@ function findNormalizedPhraseRanges(message: string, phrase: string): Array<{ st
 	if (phrase.length === 0) return [];
 
 	const ranges: Array<{ start: number; end: number }> = [];
-	const flexiblePhrase = phrase
-		.split(/[^\p{Letter}\p{Number}]+/u)
-		.filter((token) => token.length > 0)
+	const searchableTokens = phrase.split(/[^\p{Letter}\p{Number}]+/u).filter((token) => token.length > 0);
+	if (searchableTokens.length === 0) return [];
+	const flexiblePhrase = searchableTokens
 		.map((token) => token.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'))
 		.join(String.raw`[\s\p{Dash_Punctuation}'’]+`);
 	const phrasePattern = new RegExp(flexiblePhrase, 'gu');
