@@ -551,7 +551,7 @@ export class HomeyDeviceAdoptionService {
 				(property): property is HomeyChannelPropertyEntity => property.type === DEVICES_HOMEY_TYPE,
 			);
 			for (const property of properties) {
-				const value = await this.propertyValueService.readLatest(property);
+				const value = await this.propertyValueService.readLatestStrict(property);
 				const propertySnapshot: PropertySnapshot = {
 					entity: property,
 					createDto: this.snapshotPropertyDto(property, value),

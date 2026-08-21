@@ -60,4 +60,6 @@ conflict.
 
 Terminal adoption values use the Devices module's strict property-value path. The active read backend must acknowledge
 the measurement before the process-local cache is updated; a transient storage failure therefore remains retryable on
-the next idempotent adoption instead of being hidden by a cache-only value.
+the next idempotent adoption instead of being hidden by a cache-only value. Existing-hierarchy snapshots likewise use
+strict reads and abort reconciliation when history is unavailable, preventing an unknown previous value from becoming
+a duplicate append.

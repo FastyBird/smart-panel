@@ -134,7 +134,9 @@ describe('HomeyDeviceAdoptionService', () => {
 	let propertiesService: jest.Mocked<
 		Pick<ChannelsPropertiesService, 'findAll' | 'findOne' | 'findOneBy' | 'create' | 'update' | 'remove'>
 	>;
-	let propertyValueService: jest.Mocked<Pick<PropertyValueService, 'readLatest' | 'write' | 'delete'>>;
+	let propertyValueService: jest.Mocked<
+		Pick<PropertyValueService, 'readLatest' | 'readLatestStrict' | 'write' | 'delete'>
+	>;
 	let adoptionLock: Pick<HomeyAdoptionLockService, 'runExclusive'>;
 	let service: HomeyDeviceAdoptionService;
 
@@ -162,6 +164,7 @@ describe('HomeyDeviceAdoptionService', () => {
 		};
 		propertyValueService = {
 			readLatest: jest.fn().mockResolvedValue(null),
+			readLatestStrict: jest.fn((property) => propertyValueService.readLatest(property)),
 			write: jest.fn().mockResolvedValue(true),
 			delete: jest.fn(),
 		};
@@ -486,6 +489,46 @@ describe('HomeyDeviceAdoptionService', () => {
 			panelDeviceId: device.id,
 		});
 		expect(channelsService.remove).not.toHaveBeenCalled();
+	});
+
+	it('fails closed before reconciliation when an existing value snapshot is unavailable', async () => {
+		const device = existingDevice();
+		const channel = Object.assign(new HomeyChannelEntity(), {
+			id: '8421af4e-84f9-4822-bac6-3dbe49ac4893',
+			identifier: 'light',
+			name: 'Light',
+			category: ChannelCategory.LIGHT,
+		});
+		const property = Object.assign(new HomeyChannelPropertyEntity(), {
+			id: 'dba32214-aa13-4134-9578-2093351507f8',
+			identifier: 'onoff::light-power',
+			homeyCapabilityId: 'onoff',
+			homeyMappingName: 'light-power',
+			name: 'Light power',
+			category: PropertyCategory.ON,
+			permissions: [PermissionType.READ_WRITE],
+			dataType: DataTypeType.BOOL,
+			format: null,
+			invalid: null,
+			step: null,
+		});
+
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), {
+				channels: [{ ...preview().channels[0], properties: [preview().channels[0].properties[0]] }],
+			}),
+		);
+		devicesService.findOneBy.mockResolvedValue(device);
+		channelsService.findAll.mockResolvedValue([channel]);
+		propertiesService.findAll.mockResolvedValue([property]);
+		propertyValueService.readLatestStrict.mockRejectedValueOnce(new Error('storage unavailable'));
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({
+			status: HomeyAdoptionStatus.FAILED,
+			failureCode: HomeyAdoptionFailureCode.PERSISTENCE_FAILED,
+		});
+		expect(channelsService.findOneBy).not.toHaveBeenCalled();
+		expect(propertiesService.update).not.toHaveBeenCalled();
 	});
 
 	it('uses parent and provider scoped lookups and applies current values through the property service path', async () => {

@@ -87,4 +87,35 @@ describe('HomeyAdoptionLockService', () => {
 
 		await expect(secondLock.runExclusive('homey-light', () => Promise.resolve('retry'))).resolves.toBe('retry');
 	});
+
+	it('accepts authoritative ownership after a transient heartbeat query failure', async () => {
+		jest.useFakeTimers();
+		let releaseOperation: () => void = () => {};
+		let operationEntered: () => void = () => {};
+		const entered = new Promise<void>((resolve) => {
+			operationEntered = resolve;
+		});
+		const held = new Promise<void>((resolve) => {
+			releaseOperation = resolve;
+		});
+
+		try {
+			const operation = firstLock.runExclusive('homey-light', async () => {
+				operationEntered();
+				await held;
+
+				return 'completed';
+			});
+			await entered;
+			const query = jest.spyOn(firstDataSource, 'query').mockRejectedValueOnce(new Error('database busy'));
+
+			await jest.advanceTimersByTimeAsync(20_000);
+			query.mockRestore();
+			releaseOperation();
+
+			await expect(operation).resolves.toBe('completed');
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 });

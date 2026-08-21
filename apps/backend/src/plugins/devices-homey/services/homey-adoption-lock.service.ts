@@ -23,16 +23,13 @@ export class HomeyAdoptionLockService {
 		await this.acquire(deviceIdentifier, ownerToken);
 
 		let renewal = Promise.resolve();
-		let leaseLost = false;
 		const heartbeat = setInterval(() => {
 			renewal = renewal
 				.then(async () => {
-					if (!(await this.renew(deviceIdentifier, ownerToken))) {
-						leaseLost = true;
-					}
+					await this.renew(deviceIdentifier, ownerToken);
 				})
 				.catch(() => {
-					leaseLost = true;
+					this.logger.warn('Homey adoption lock heartbeat failed; ownership will be rechecked');
 				});
 		}, ADOPTION_LOCK_HEARTBEAT_MS);
 		heartbeat.unref();
@@ -41,7 +38,7 @@ export class HomeyAdoptionLockService {
 			const result = await operation();
 			await renewal;
 
-			if (leaseLost || !(await this.isOwned(deviceIdentifier, ownerToken))) {
+			if (!(await this.isOwned(deviceIdentifier, ownerToken))) {
 				throw new Error('Homey adoption lock ownership was lost');
 			}
 
