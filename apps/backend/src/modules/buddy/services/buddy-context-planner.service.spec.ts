@@ -6876,6 +6876,21 @@ describe('BuddyContextPlannerService', () => {
 	});
 
 	it.each([
+		['Enable mode is currently selected?', 'none'],
+		['Enable switch is available?', 'read'],
+	] as const)('preserves a sentence-initial binary-state label: %s', (message, intent) => {
+		const plan = service.plan({
+			message,
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent, ambiguityRisk: 'none' });
+		expect(plan.toolNames).not.toContain('control_device');
+		expect(plan.toolNames).not.toContain('set_space_lighting');
+	});
+
+	it.each([
 		'If we disable the Bedroom lights will the camera still work?',
 		'If we turn off the Bedroom lights will the camera still work?',
 		'If we disable the Bedroom lights will John wake?',
@@ -6887,6 +6902,9 @@ describe('BuddyContextPlannerService', () => {
 		"If we disable the Bedroom lights isn't the camera safer?",
 		'If we disable the Bedroom lights will you still see?',
 		'If we disable the Bedroom lights, the camera still works?',
+		'If we disable the Bedroom lights what about the camera?',
+		'If we disable the Bedroom lights how about the camera?',
+		'If we disable the Bedroom lights what next?',
 	])('keeps an unpunctuated hypothetical action on the read path: %s', (message) => {
 		const plan = service.plan({
 			message,

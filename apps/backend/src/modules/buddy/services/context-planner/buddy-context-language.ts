@@ -57,7 +57,13 @@ export function findLeadingConditionalActionIndex(
 
 function isConditionalOutcomeQuestion(message: string, actionIndex: number): boolean {
 	if (!/\?\s*$/u.test(message)) return false;
-	if (/\bwhat\s+(?:changes?|happens?|occurs?)\s*\?\s*$/u.test(message.slice(actionIndex))) return true;
+	if (
+		/\b(?:how\s+about\b[^?]*|what\s+(?:about\b[^?]*|changes?|happens?|next\b|occurs?))\s*\?\s*$/u.test(
+			message.slice(actionIndex),
+		)
+	) {
+		return true;
+	}
 	if (
 		new RegExp(
 			String.raw`(?<!that\s)(?<!which\s)(?<!who\s)\b${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we|you)\s+|[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$`,
@@ -582,6 +588,13 @@ export function normalizeGerundActionRequest(message: string): string {
 			const hasDirectBinaryTarget = binaryStateTargetPattern.test(actionTail);
 
 			if (/\ba\s*$/u.test(prefix)) return match;
+			if (
+				/^\s+(?:[\p{Letter}\p{Number}'’-]+\s+){1,4}(?:appear|appears|are|is|look|looks|remain|remains|seem|seems|stay|stays|was|were)\b/u.test(
+					actionTail,
+				)
+			) {
+				return match;
+			}
 			if (
 				new RegExp(
 					String.raw`^\s+([\p{Letter}\p{Number}-]+)\s+${binaryLabelConnectorPatternSource}\s+(?:disable|enable)\s+\1\b`,
