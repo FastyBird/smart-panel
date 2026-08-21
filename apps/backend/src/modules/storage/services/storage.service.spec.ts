@@ -101,6 +101,37 @@ describe('StorageService', () => {
 		expect(primary.query).not.toHaveBeenCalled();
 	});
 
+	it('fails an active-backend query closed when the available primary rejects', async () => {
+		const service = new StorageService({
+			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),
+		} as unknown as ConfigService);
+		const primary = createPlugin('primary');
+		const fallback = createPlugin('fallback');
+		const primaryError = new Error('primary unavailable');
+		primary.queryStrict = jest.fn().mockRejectedValue(primaryError);
+		fallback.query.mockResolvedValue([{ value: 41 }]);
+		service.registerPlugin(primary.name, primary);
+		service.registerPlugin(fallback.name, fallback);
+
+		await expect(service.queryActiveStrict('SELECT * FROM test')).rejects.toBe(primaryError);
+		expect(fallback.query).not.toHaveBeenCalled();
+	});
+
+	it('uses fallback for an active-backend query only when primary is unavailable', async () => {
+		const service = new StorageService({
+			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),
+		} as unknown as ConfigService);
+		const primary = createPlugin('primary');
+		const fallback = createPlugin('fallback');
+		primary.isAvailable.mockReturnValue(false);
+		fallback.query.mockResolvedValue([{ value: 42 }]);
+		service.registerPlugin(primary.name, primary);
+		service.registerPlugin(fallback.name, fallback);
+
+		await expect(service.queryActiveStrict<{ value: number }>('SELECT * FROM test')).resolves.toEqual([{ value: 42 }]);
+		expect(primary.query).not.toHaveBeenCalled();
+	});
+
 	it('does not start a fallback query after the primary request is aborted', async () => {
 		const service = new StorageService({
 			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),

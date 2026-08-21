@@ -237,6 +237,26 @@ export class StorageService {
 		throw new Error('No storage backend is available');
 	}
 
+	/**
+	 * Query the backend that strict reconciliation writes currently require.
+	 * Unlike queryStrict(), an available primary is authoritative: its read
+	 * failure is propagated instead of comparing stale fallback data and then
+	 * writing the result to primary.
+	 */
+	async queryActiveStrict<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
+		this.throwIfQueryAborted(options?.signal);
+
+		if (this.primary?.isAvailable()) {
+			return this.primary.queryStrict?.<T>(query, options) ?? this.primary.query<T>(query, options);
+		}
+
+		if (this.fallback?.isAvailable()) {
+			return this.fallback.queryStrict?.<T>(query, options) ?? this.fallback.query<T>(query, options);
+		}
+
+		throw new Error('No storage backend is available');
+	}
+
 	async queryRaw<T>(query: string, options?: StorageQueryOptions): Promise<T> {
 		this.throwIfQueryAborted(options?.signal);
 

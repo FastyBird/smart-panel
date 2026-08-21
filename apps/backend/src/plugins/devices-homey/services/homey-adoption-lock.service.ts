@@ -30,7 +30,7 @@ export class HomeyAdoptionLockService {
 	constructor(private readonly dataSource: DataSource) {}
 
 	async runExclusive<T>(deviceIdentifier: string, operation: (lease: HomeyAdoptionLease) => Promise<T>): Promise<T> {
-		const ownerToken = randomUUID();
+		const ownerToken = `${process.pid}:${randomUUID()}`;
 		await this.acquire(deviceIdentifier, ownerToken);
 		let ownershipLost = false;
 		const lease: HomeyAdoptionLease = {
@@ -92,13 +92,51 @@ export class HomeyAdoptionLockService {
 		await this.dataSource.query(
 			`INSERT INTO "${ADOPTION_LOCK_TABLE}" ("deviceIdentifier", "ownerToken", "expiresAt") ` +
 				`VALUES (?, ?, ?) ` +
-				`ON CONFLICT("deviceIdentifier") DO UPDATE SET ` +
-				`"ownerToken" = excluded."ownerToken", "expiresAt" = excluded."expiresAt" ` +
-				`WHERE "${ADOPTION_LOCK_TABLE}"."expiresAt" <= ?`,
-			[deviceIdentifier, ownerToken, now + ADOPTION_LOCK_LEASE_MS, now],
+				`ON CONFLICT("deviceIdentifier") DO NOTHING`,
+			[deviceIdentifier, ownerToken, now + ADOPTION_LOCK_LEASE_MS],
+		);
+
+		if (await this.isOwned(deviceIdentifier, ownerToken)) {
+			return true;
+		}
+
+		const claims = await this.dataSource.query<Array<{ ownerToken: string; expiresAt: number }>>(
+			`SELECT "ownerToken", "expiresAt" FROM "${ADOPTION_LOCK_TABLE}" WHERE "deviceIdentifier" = ?`,
+			[deviceIdentifier],
+		);
+		const claim = claims[0];
+
+		// An expired timestamp is not sufficient proof that another process stopped. A paused live process
+		// can resume between an ownership check and its mutation, so takeover is allowed only after the
+		// same-host owner PID is no longer alive. Legacy tokens without a PID remain reclaimable.
+		if (claim === undefined || claim.expiresAt > now || this.isOwnerProcessAlive(claim.ownerToken)) {
+			return false;
+		}
+
+		await this.dataSource.query(
+			`UPDATE "${ADOPTION_LOCK_TABLE}" SET "ownerToken" = ?, "expiresAt" = ? ` +
+				`WHERE "deviceIdentifier" = ? AND "ownerToken" = ? AND "expiresAt" <= ?`,
+			[ownerToken, now + ADOPTION_LOCK_LEASE_MS, deviceIdentifier, claim.ownerToken, now],
 		);
 
 		return this.isOwned(deviceIdentifier, ownerToken);
+	}
+
+	private isOwnerProcessAlive(ownerToken: string): boolean {
+		const separator = ownerToken.indexOf(':');
+		const pid = Number(separator > 0 ? ownerToken.slice(0, separator) : Number.NaN);
+
+		if (!Number.isSafeInteger(pid) || pid <= 0) {
+			return false;
+		}
+
+		try {
+			process.kill(pid, 0);
+
+			return true;
+		} catch (error) {
+			return (error as NodeJS.ErrnoException).code === 'EPERM';
+		}
 	}
 
 	private async renew(deviceIdentifier: string, ownerToken: string): Promise<boolean> {

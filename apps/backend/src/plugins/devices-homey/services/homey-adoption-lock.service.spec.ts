@@ -80,6 +80,22 @@ describe('HomeyAdoptionLockService', () => {
 		await expect(firstDataSource.query(`SELECT "ownerToken" FROM "devices_homey_adoption_locks"`)).resolves.toEqual([]);
 	});
 
+	it('does not replace an expired claim while its owning process is still alive', async () => {
+		const liveOwner = `${process.pid}:paused-owner`;
+		await firstDataSource.query(
+			`INSERT INTO "devices_homey_adoption_locks" ("deviceIdentifier", "ownerToken", "expiresAt") VALUES (?, ?, ?)`,
+			['homey-light', liveOwner, 0],
+		);
+		const lockInternals = secondLock as unknown as {
+			tryAcquire(deviceIdentifier: string, ownerToken: string): Promise<boolean>;
+		};
+
+		await expect(lockInternals.tryAcquire('homey-light', `${process.pid}:replacement`)).resolves.toBe(false);
+		await expect(firstDataSource.query(`SELECT "ownerToken" FROM "devices_homey_adoption_locks"`)).resolves.toEqual([
+			{ ownerToken: liveOwner },
+		]);
+	});
+
 	it('releases its claim when the protected adoption fails', async () => {
 		await expect(
 			firstLock.runExclusive('homey-light', () => Promise.reject(new Error('persistence failed'))),

@@ -29,6 +29,7 @@ describe('PropertyValueService', () => {
 			writePointsStrict: jest.fn(),
 			query: jest.fn(),
 			queryStrict: jest.fn(),
+			queryActiveStrict: jest.fn(),
 			isConnected: jest.fn().mockReturnValue(true),
 		};
 
@@ -189,10 +190,13 @@ describe('PropertyValueService', () => {
 				dataType: DataTypeType.INT,
 			} as ChannelPropertyEntity;
 			service['valuesMap'].set(property.id, new PropertyValueState(42));
-			storageService.queryStrict.mockResolvedValue([{ numberValue: 100 }]);
+			storageService.queryActiveStrict.mockResolvedValue([{ numberValue: 100 }]);
 
 			await expect(service.readLatestPersisted(property)).resolves.toEqual(expect.objectContaining({ value: 100 }));
-			expect(storageService.queryStrict).toHaveBeenCalledWith(expect.stringContaining('SELECT * FROM property_value'));
+			expect(storageService.queryActiveStrict).toHaveBeenCalledWith(
+				expect.stringContaining('SELECT * FROM property_value'),
+			);
+			expect(storageService.queryStrict).not.toHaveBeenCalled();
 			expect(service['valuesMap'].get(property.id)).toEqual(expect.objectContaining({ value: 100 }));
 		});
 

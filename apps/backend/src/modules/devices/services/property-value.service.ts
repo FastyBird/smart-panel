@@ -269,7 +269,7 @@ export class PropertyValueService {
 	 * of truth, then refreshes the local cache from the authoritative result.
 	 */
 	async readLatestPersisted(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
-		return this.readLatestInternal(property, true, true);
+		return this.readLatestInternal(property, true, true, true);
 	}
 
 	async readLatestManyStrict(
@@ -681,6 +681,7 @@ export class PropertyValueService {
 		property: ChannelPropertyEntity,
 		strict: boolean,
 		bypassCache = false,
+		activeBackendOnly = false,
 	): Promise<PropertyValueState | null> {
 		const key = this.valueSourceRegistry.resolve(property);
 
@@ -711,9 +712,11 @@ export class PropertyValueService {
 
 			this.logger.debug(`Fetching latest value id=${property.id}`);
 
-			const result = await (strict
-				? this.storageService.queryStrict<PropertyValueRow>(query)
-				: this.storageService.query<PropertyValueRow>(query));
+			const result = await (activeBackendOnly
+				? this.storageService.queryActiveStrict<PropertyValueRow>(query)
+				: strict
+					? this.storageService.queryStrict<PropertyValueRow>(query)
+					: this.storageService.query<PropertyValueRow>(query));
 
 			if (!result.length) {
 				this.logger.debug(`No stored value found for id=${property.id}`);

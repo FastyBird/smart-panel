@@ -37,7 +37,9 @@ removes the index and both columns.
 Migration `1000000000022-AddHomeyAdoptionLocks` adds a provider-private claim table keyed by the authoritative Homey
 device ID. It serializes the complete adoption boundary across backend processes without adding lock state to public
 device models. Claims use renewable, owner-scoped leases: a clean completion removes only its own claim, while a
-crashed process cannot strand a device because a later request may atomically replace the expired claim.
+crashed process cannot strand a device because a later request may atomically replace the expired claim after proving
+the same-host owner PID is no longer alive. Expiry alone never permits takeover from a paused live process, closing the
+window in which it could resume an already-authorized mutation after a successor acquired the claim.
 
 ## Mutation and rollback boundary
 
@@ -69,6 +71,7 @@ that adoption intended to write.
 
 Terminal adoption values use the Devices module's strict property-value path. The active read backend must acknowledge
 the measurement before the process-local cache is updated; a transient storage failure therefore remains retryable on
-the next idempotent adoption instead of being hidden by a cache-only value. Existing-hierarchy snapshots likewise use
-authoritative strict reads that bypass each process's local cache and abort reconciliation when shared history is
-unavailable, preventing stale or unknown previous values from becoming duplicate appends.
+the next idempotent adoption instead of being hidden by a cache-only value. Existing-hierarchy snapshots query the same
+active backend that strict persistence requires and bypass each process's local cache. An available primary's read
+failure aborts reconciliation instead of falling through to potentially stale fallback history, preventing stale or
+unknown previous values from becoming duplicate appends.
