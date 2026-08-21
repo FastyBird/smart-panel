@@ -61,6 +61,7 @@ const preview = (deviceId = 'homey-light', withProperties = true): HomeyMappingP
 								range: null,
 								sourceRange: null,
 								enumValues: [],
+								panelEnumValues: [],
 								currentValue: false,
 								valueAvailable: true,
 								capabilityAvailable: true,
@@ -81,6 +82,7 @@ const preview = (deviceId = 'homey-light', withProperties = true): HomeyMappingP
 								range: null,
 								sourceRange: null,
 								enumValues: [],
+								panelEnumValues: [],
 								currentValue: 'off',
 								valueAvailable: true,
 								capabilityAvailable: true,
@@ -101,6 +103,7 @@ const preview = (deviceId = 'homey-light', withProperties = true): HomeyMappingP
 								range: { minimum: 0, maximum: 100, step: 1 },
 								sourceRange: { minimum: 0, maximum: 1, step: 0.01 },
 								enumValues: [],
+								panelEnumValues: [],
 								currentValue: 0,
 								valueAvailable: true,
 								capabilityAvailable: true,
@@ -200,6 +203,7 @@ describe('HomeyDeviceAdoptionService', () => {
 					identifier: 'onoff::light-state-label',
 					homeyCapabilityId: 'onoff',
 					homeyMappingName: 'light-state-label',
+					format: null,
 				}),
 				expect.objectContaining({
 					identifier: 'dim::light-brightness',
@@ -211,6 +215,44 @@ describe('HomeyDeviceAdoptionService', () => {
 			]),
 		);
 		expect(properties).toHaveLength(3);
+	});
+
+	it('persists the transformed panel enum domain instead of Homey enum identifiers', async () => {
+		const commandProperty = {
+			...preview().channels[0].properties[0],
+			capabilityId: 'windowcoverings_state',
+			capabilityBaseId: 'windowcoverings_state',
+			mappingName: 'window-covering-command',
+			category: PropertyCategory.COMMAND,
+			dataType: DataTypeType.ENUM,
+			direction: 'write_only' as const,
+			permissions: [PermissionType.WRITE_ONLY],
+			readable: false,
+			writable: true,
+			enumValues: ['up', 'down', 'idle'],
+			panelEnumValues: ['open', 'close', 'stop'],
+			currentValue: null,
+			valueAvailable: false,
+		};
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), {
+				channels: [
+					{
+						...preview().channels[0],
+						identifier: 'window-covering',
+						category: ChannelCategory.WINDOW_COVERING,
+						properties: [commandProperty],
+					},
+				],
+			}),
+		);
+
+		await service.adoptOne(selection());
+
+		const createDto = devicesService.create.mock.calls[0][0] as unknown as {
+			channels: Array<{ properties: Array<{ format: string[] }> }>;
+		};
+		expect(createDto.channels[0].properties[0].format).toStrictEqual(['open', 'close', 'stop']);
 	});
 
 	it('fails closed when a fresh preview is stale, unsupported, or missing', async () => {
@@ -359,6 +401,107 @@ describe('HomeyDeviceAdoptionService', () => {
 			property.id,
 			expect.objectContaining({ value: false, type: DEVICES_HOMEY_TYPE }),
 		);
+	});
+
+	it('updates changed categories in place and preserves history when a later mutation rolls back', async () => {
+		const device = existingDevice();
+		const channel = Object.assign(new HomeyChannelEntity(), {
+			id: '8421af4e-84f9-4822-bac6-3dbe49ac4893',
+			identifier: 'light',
+			name: 'Light',
+			category: ChannelCategory.LIGHT,
+		});
+		const property = Object.assign(new HomeyChannelPropertyEntity(), {
+			id: 'dba32214-aa13-4134-9578-2093351507f8',
+			identifier: 'onoff::light-power',
+			homeyCapabilityId: 'onoff',
+			homeyMappingName: 'light-power',
+			name: 'Light power',
+			category: PropertyCategory.STATE,
+			permissions: [PermissionType.READ_WRITE],
+			dataType: DataTypeType.BOOL,
+			format: null,
+			invalid: null,
+			step: null,
+		});
+		const desiredProperty = { ...preview().channels[0].properties[0], valueAvailable: false, currentValue: null };
+		const updatedProperty = Object.assign(new HomeyChannelPropertyEntity(), {
+			...property,
+			category: PropertyCategory.ON,
+		});
+
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), {
+				channels: [{ ...preview().channels[0], properties: [desiredProperty] }],
+			}),
+		);
+		devicesService.findOneBy.mockResolvedValue(device);
+		channelsService.findAll.mockResolvedValue([channel]);
+		channelsService.findOneBy.mockResolvedValue(channel);
+		propertiesService.findAll.mockResolvedValue([property]);
+		propertiesService.findOneBy.mockResolvedValue(property);
+		propertiesService.findOne.mockResolvedValue(updatedProperty);
+		propertiesService.update.mockResolvedValue(updatedProperty);
+		devicesService.update.mockRejectedValueOnce(new Error('later write failed'));
+
+		await expect(service.adoptOne({ ...selection(), name: 'Renamed' })).resolves.toMatchObject({
+			status: HomeyAdoptionStatus.FAILED,
+			failureCode: HomeyAdoptionFailureCode.PERSISTENCE_FAILED,
+		});
+		expect(propertiesService.update).toHaveBeenNthCalledWith(
+			1,
+			property.id,
+			expect.objectContaining({ category: PropertyCategory.ON }),
+		);
+		expect(propertiesService.update).toHaveBeenNthCalledWith(
+			2,
+			property.id,
+			expect.objectContaining({ category: PropertyCategory.STATE }),
+		);
+		expect(propertiesService.remove).not.toHaveBeenCalled();
+		expect(propertyValueService.delete).not.toHaveBeenCalled();
+		expect(propertyValueService.write).not.toHaveBeenCalled();
+	});
+
+	it('defers stale property removal until later reversible mutations have succeeded', async () => {
+		const device = existingDevice();
+		const channel = Object.assign(new HomeyChannelEntity(), {
+			id: '8421af4e-84f9-4822-bac6-3dbe49ac4893',
+			identifier: 'light',
+			name: 'Light',
+			category: ChannelCategory.LIGHT,
+		});
+		const staleProperty = Object.assign(new HomeyChannelPropertyEntity(), {
+			id: 'dba32214-aa13-4134-9578-2093351507f8',
+			identifier: 'obsolete::mapping',
+			homeyCapabilityId: 'obsolete',
+			homeyMappingName: 'mapping',
+			name: 'Obsolete',
+			category: PropertyCategory.STATE,
+			permissions: [PermissionType.READ_ONLY],
+			dataType: DataTypeType.STRING,
+			format: null,
+			invalid: null,
+			step: null,
+		});
+
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), {
+				channels: [{ ...preview().channels[0], properties: [] }],
+			}),
+		);
+		devicesService.findOneBy.mockResolvedValue(device);
+		channelsService.findAll.mockResolvedValue([channel]);
+		channelsService.findOneBy.mockResolvedValue(channel);
+		propertiesService.findAll.mockResolvedValue([staleProperty]);
+		devicesService.update.mockRejectedValueOnce(new Error('later write failed'));
+
+		await expect(service.adoptOne({ ...selection(), name: 'Renamed' })).resolves.toMatchObject({
+			status: HomeyAdoptionStatus.FAILED,
+			failureCode: HomeyAdoptionFailureCode.PERSISTENCE_FAILED,
+		});
+		expect(propertiesService.remove).not.toHaveBeenCalled();
+		expect(propertyValueService.delete).not.toHaveBeenCalled();
 	});
 
 	it('removes newly created local structure when an existing-device reconciliation fails', async () => {

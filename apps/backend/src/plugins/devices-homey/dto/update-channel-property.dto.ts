@@ -1,13 +1,28 @@
-import { Expose } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Expose, Transform } from 'class-transformer';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
+import { PropertyCategory } from '../../../modules/devices/devices.constants';
 import { UpdateChannelPropertyDto } from '../../../modules/devices/dto/update-channel-property.dto';
 import { DEVICES_HOMEY_TYPE } from '../devices-homey.constants';
 
 @ApiSchema({ name: 'DevicesHomeyPluginUpdateChannelProperty' })
 export class UpdateHomeyChannelPropertyDto extends UpdateChannelPropertyDto {
+	@ApiPropertyOptional({
+		description: 'Property category',
+		enum: PropertyCategory,
+		example: PropertyCategory.GENERIC,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsNotEmpty({ message: '[{"field":"category","reason":"Category must be a valid property category."}]' })
+	@IsEnum(PropertyCategory, {
+		message: '[{"field":"category","reason":"Category must be a valid property category."}]',
+	})
+	category?: PropertyCategory;
+
 	@ApiPropertyOptional({
 		name: 'homey_capability_id',
 		description: 'Authoritative full Homey capability identifier when reconciling provider metadata',

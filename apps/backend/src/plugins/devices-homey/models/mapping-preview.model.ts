@@ -273,6 +273,16 @@ export class HomeyMappingPreviewPropertyModel {
 	@IsString({ each: true })
 	enumValues: string[];
 
+	@ApiProperty({
+		name: 'panel_enum_values',
+		description: 'Transformed enum identifiers accepted by the Smart Panel property',
+		type: [String],
+	})
+	@Expose({ name: 'panel_enum_values' })
+	@IsArray()
+	@IsString({ each: true })
+	panelEnumValues: string[];
+
 	@ApiPropertyOptional({
 		name: 'current_value',
 		description: 'Current value transformed into Smart Panel representation',

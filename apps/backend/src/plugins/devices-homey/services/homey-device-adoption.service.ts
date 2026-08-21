@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { ChannelCategory } from '../../../modules/devices/devices.constants';
+import { ChannelCategory, DataTypeType } from '../../../modules/devices/devices.constants';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -15,6 +15,7 @@ import { CreateHomeyChannelDto } from '../dto/create-channel.dto';
 import { CreateHomeyDeviceChannelPropertyDto } from '../dto/create-device-channel-property.dto';
 import { CreateHomeyDeviceChannelDto } from '../dto/create-device-channel.dto';
 import { CreateHomeyDeviceDto } from '../dto/create-device.dto';
+import { UpdateHomeyChannelDto } from '../dto/update-channel.dto';
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from '../entities/devices-homey.entity';
 import {
 	HomeyMappingPreviewDeviceNotFoundError,
@@ -37,15 +38,13 @@ interface PropertySnapshot {
 	readonly value: PropertyValueState | null;
 }
 
-interface ChannelSnapshot {
-	readonly entity: HomeyChannelEntity;
-	readonly properties: readonly PropertySnapshot[];
-}
-
 interface ExistingHierarchySnapshot {
-	readonly channels: readonly ChannelSnapshot[];
 	readonly propertiesById: ReadonlyMap<string, PropertySnapshot>;
 }
+
+type DeferredRemoval =
+	| { readonly kind: 'channel'; readonly id: string }
+	| { readonly kind: 'property'; readonly id: string };
 
 interface PendingValueWrite {
 	readonly property: HomeyChannelPropertyEntity;
@@ -155,19 +154,28 @@ export class HomeyDeviceAdoptionService {
 		device: HomeyDeviceEntity,
 	): Promise<HomeyAdoptionResultModel> {
 		const journal: UndoOperation[] = [];
+		const deferredRemovals: DeferredRemoval[] = [];
+		let changed = false;
 
 		try {
-			// All value state is captured before the first mutation. A later failure can therefore restore
-			// both the relational hierarchy and every initial value it has already replaced.
+			// All value state is captured before the first mutation. Existing rows are updated in place so
+			// rollback retains their full external history, not only the latest value represented here.
 			const snapshot = await this.snapshotHierarchy(device.id);
 			const pendingValues: PendingValueWrite[] = [];
-			let changed = false;
 
 			for (const desiredChannel of preview.channels) {
-				changed = (await this.reconcileChannel(device.id, desiredChannel, snapshot, pendingValues, journal)) || changed;
+				changed =
+					(await this.reconcileChannel(
+						device.id,
+						desiredChannel,
+						snapshot,
+						pendingValues,
+						deferredRemovals,
+						journal,
+					)) || changed;
 			}
 
-			changed = (await this.removeStaleChannels(device.id, preview.channels, snapshot, journal)) || changed;
+			changed = (await this.deferStaleChannels(device.id, preview.channels, deferredRemovals)) || changed;
 
 			const desiredName = selection.name ?? preview.device.name;
 			const desiredCategory = preview.selectedCategory;
@@ -209,12 +217,6 @@ export class HomeyDeviceAdoptionService {
 					journal.push(() => this.restoreValue(pending.property, pending.previous));
 				}
 			}
-
-			return this.success(
-				preview.device.id,
-				changed ? HomeyAdoptionStatus.UPDATED : HomeyAdoptionStatus.SKIPPED,
-				device.id,
-			);
 		} catch {
 			const rolledBack = await this.rollback(journal);
 			this.logger.warn(rolledBack ? 'Homey adoption failed and was rolled back' : 'Homey adoption rollback failed');
@@ -224,6 +226,18 @@ export class HomeyDeviceAdoptionService {
 				rolledBack ? HomeyAdoptionFailureCode.PERSISTENCE_FAILED : HomeyAdoptionFailureCode.ROLLBACK_FAILED,
 			);
 		}
+
+		// Stale rows are the only destructive mutations: removing a property also erases its complete
+		// value/status series. Commit that terminal pruning only after every operation that can require
+		// compensating rollback has succeeded. A failed prune remains for the next idempotent adoption;
+		// it must never turn an already-pruned historical series into a pretend rollback.
+		await this.pruneStale(deferredRemovals);
+
+		return this.success(
+			preview.device.id,
+			changed ? HomeyAdoptionStatus.UPDATED : HomeyAdoptionStatus.SKIPPED,
+			device.id,
+		);
 	}
 
 	private async reconcileChannel(
@@ -231,6 +245,7 @@ export class HomeyDeviceAdoptionService {
 		desired: HomeyMappingPreviewChannelModel,
 		snapshot: ExistingHierarchySnapshot,
 		pendingValues: PendingValueWrite[],
+		deferredRemovals: DeferredRemoval[],
 		journal: UndoOperation[],
 	): Promise<boolean> {
 		let changed = false;
@@ -240,18 +255,6 @@ export class HomeyDeviceAdoptionService {
 			deviceId,
 			DEVICES_HOMEY_TYPE,
 		);
-
-		if (channel && channel.category !== desired.category) {
-			const old = snapshot.channels.find((candidate) => candidate.entity.id === channel?.id);
-			if (!old) {
-				throw new Error('Homey channel snapshot is unavailable');
-			}
-
-			await this.channelsService.remove(channel.id);
-			journal.push(() => this.restoreChannel(deviceId, old));
-			channel = null;
-			changed = true;
-		}
 
 		if (channel === null) {
 			channel = await this.channelsService.create<HomeyChannelEntity, CreateHomeyChannelDto>({
@@ -263,17 +266,23 @@ export class HomeyDeviceAdoptionService {
 				await this.channelsService.remove(createdChannelId);
 			});
 			changed = true;
-		} else if (channel.name !== desired.name || channel.identifier !== desired.identifier) {
+		} else if (
+			channel.name !== desired.name ||
+			channel.identifier !== desired.identifier ||
+			channel.category !== desired.category
+		) {
 			const previous = {
 				type: DEVICES_HOMEY_TYPE,
 				name: channel.name,
 				identifier: channel.identifier,
+				category: channel.category,
 			};
 
-			await this.channelsService.update(channel.id, {
+			channel = await this.channelsService.update<HomeyChannelEntity, UpdateHomeyChannelDto>(channel.id, {
 				type: DEVICES_HOMEY_TYPE,
 				name: desired.name,
 				identifier: desired.identifier,
+				category: desired.category,
 			});
 			const updatedChannelId = channel.id;
 			journal.push(async () => {
@@ -283,7 +292,14 @@ export class HomeyDeviceAdoptionService {
 		}
 
 		changed =
-			(await this.reconcileProperties(channel, desired.properties, snapshot, pendingValues, journal)) || changed;
+			(await this.reconcileProperties(
+				channel,
+				desired.properties,
+				snapshot,
+				pendingValues,
+				deferredRemovals,
+				journal,
+			)) || changed;
 
 		return changed;
 	}
@@ -293,6 +309,7 @@ export class HomeyDeviceAdoptionService {
 		desiredProperties: readonly HomeyMappingPreviewPropertyModel[],
 		snapshot: ExistingHierarchySnapshot,
 		pendingValues: PendingValueWrite[],
+		deferredRemovals: DeferredRemoval[],
 		journal: UndoOperation[],
 	): Promise<boolean> {
 		let changed = false;
@@ -307,18 +324,6 @@ export class HomeyDeviceAdoptionService {
 				channel.id,
 				DEVICES_HOMEY_TYPE,
 			);
-
-			if (property && property.category !== desired.category) {
-				const old = snapshot.propertiesById.get(property.id);
-				if (!old) {
-					throw new Error('Homey property snapshot is unavailable');
-				}
-
-				await this.channelsPropertiesService.remove(property.id);
-				journal.push(() => this.restoreProperty(channel.id, old));
-				property = null;
-				changed = true;
-			}
 
 			const desiredDto = this.createPropertyDto(desired, false);
 			if (property === null) {
@@ -337,6 +342,7 @@ export class HomeyDeviceAdoptionService {
 				await this.channelsPropertiesService.update(property.id, {
 					type: DEVICES_HOMEY_TYPE,
 					identifier: desiredDto.identifier,
+					category: desiredDto.category,
 					name: desiredDto.name,
 					permissions: desiredDto.permissions,
 					data_type: desiredDto.data_type,
@@ -384,24 +390,17 @@ export class HomeyDeviceAdoptionService {
 				continue;
 			}
 
-			const old = snapshot.propertiesById.get(candidate.id);
-			if (!old) {
-				throw new Error('Homey stale property snapshot is unavailable');
-			}
-
-			await this.channelsPropertiesService.remove(candidate.id);
-			journal.push(() => this.restoreProperty(channel.id, old));
+			deferredRemovals.push({ kind: 'property', id: candidate.id });
 			changed = true;
 		}
 
 		return changed;
 	}
 
-	private async removeStaleChannels(
+	private async deferStaleChannels(
 		deviceId: string,
 		desiredChannels: readonly HomeyMappingPreviewChannelModel[],
-		snapshot: ExistingHierarchySnapshot,
-		journal: UndoOperation[],
+		deferredRemovals: DeferredRemoval[],
 	): Promise<boolean> {
 		const desiredIdentifiers = new Set(desiredChannels.map((channel) => channel.identifier));
 		const current = await this.channelsService.findAll(deviceId);
@@ -417,13 +416,7 @@ export class HomeyDeviceAdoptionService {
 				continue;
 			}
 
-			const old = snapshot.channels.find((channel) => channel.entity.id === candidate.id);
-			if (!old) {
-				throw new Error('Homey stale channel snapshot is unavailable');
-			}
-
-			await this.channelsService.remove(candidate.id);
-			journal.push(() => this.restoreChannel(deviceId, old));
+			deferredRemovals.push({ kind: 'channel', id: candidate.id });
 			changed = true;
 		}
 
@@ -434,15 +427,12 @@ export class HomeyDeviceAdoptionService {
 		const channels = (await this.channelsService.findAll(deviceId)).filter(
 			(channel): channel is HomeyChannelEntity => channel.type === DEVICES_HOMEY_TYPE,
 		);
-		const snapshots: ChannelSnapshot[] = [];
 		const propertiesById = new Map<string, PropertySnapshot>();
 
 		for (const channel of channels) {
 			const properties = (await this.channelsPropertiesService.findAll(channel.id)).filter(
 				(property): property is HomeyChannelPropertyEntity => property.type === DEVICES_HOMEY_TYPE,
 			);
-			const propertySnapshots: PropertySnapshot[] = [];
-
 			for (const property of properties) {
 				const value = await this.propertyValueService.readLatest(property);
 				const propertySnapshot: PropertySnapshot = {
@@ -450,14 +440,11 @@ export class HomeyDeviceAdoptionService {
 					createDto: this.snapshotPropertyDto(property, value),
 					value,
 				};
-				propertySnapshots.push(propertySnapshot);
 				propertiesById.set(property.id, propertySnapshot);
 			}
-
-			snapshots.push({ entity: channel, properties: propertySnapshots });
 		}
 
-		return { channels: snapshots, propertiesById };
+		return { propertiesById };
 	}
 
 	private createDeviceDto(
@@ -491,9 +478,10 @@ export class HomeyDeviceAdoptionService {
 		property: HomeyMappingPreviewPropertyModel,
 		includeValue: boolean,
 	): CreateHomeyDeviceChannelPropertyDto {
+		const panelEnumValues = property.panelEnumValues ?? [];
 		const format =
-			property.enumValues.length > 0
-				? [...property.enumValues]
+			property.dataType === DataTypeType.ENUM && panelEnumValues.length > 0
+				? [...panelEnumValues]
 				: property.range !== null && property.range.minimum !== null && property.range.maximum !== null
 					? [property.range.minimum, property.range.maximum]
 					: null;
@@ -537,27 +525,11 @@ export class HomeyDeviceAdoptionService {
 		} as CreateHomeyDeviceChannelPropertyDto;
 	}
 
-	private async restoreChannel(deviceId: string, snapshot: ChannelSnapshot): Promise<void> {
-		await this.channelsService.create({
-			id: snapshot.entity.id,
-			type: DEVICES_HOMEY_TYPE,
-			identifier: snapshot.entity.identifier,
-			name: snapshot.entity.name,
-			category: snapshot.entity.category,
-			description: snapshot.entity.description,
-			device: deviceId,
-			properties: snapshot.properties.map((property) => property.createDto),
-		});
-	}
-
-	private async restoreProperty(channelId: string, snapshot: PropertySnapshot): Promise<void> {
-		await this.channelsPropertiesService.create(channelId, snapshot.createDto);
-	}
-
 	private async restorePropertyMetadata(snapshot: PropertySnapshot): Promise<void> {
 		await this.channelsPropertiesService.update(snapshot.entity.id, {
 			type: DEVICES_HOMEY_TYPE,
 			identifier: snapshot.createDto.identifier,
+			category: snapshot.createDto.category,
 			name: snapshot.createDto.name,
 			permissions: snapshot.createDto.permissions,
 			data_type: snapshot.createDto.data_type,
@@ -584,6 +556,7 @@ export class HomeyDeviceAdoptionService {
 	): boolean {
 		return (
 			property.identifier !== desired.identifier ||
+			property.category !== desired.category ||
 			property.name !== desired.name ||
 			property.dataType !== desired.data_type ||
 			property.invalid !== desired.invalid ||
@@ -593,6 +566,20 @@ export class HomeyDeviceAdoptionService {
 			JSON.stringify(property.permissions) !== JSON.stringify(desired.permissions) ||
 			JSON.stringify(property.format) !== JSON.stringify(desired.format)
 		);
+	}
+
+	private async pruneStale(removals: readonly DeferredRemoval[]): Promise<void> {
+		for (const removal of removals) {
+			try {
+				if (removal.kind === 'property') {
+					await this.channelsPropertiesService.remove(removal.id);
+				} else {
+					await this.channelsService.remove(removal.id);
+				}
+			} catch {
+				this.logger.warn('Homey stale structure pruning was deferred until the next adoption');
+			}
+		}
 	}
 
 	private propertyIdentifier(property: HomeyMappingPreviewPropertyModel): string {

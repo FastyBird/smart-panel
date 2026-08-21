@@ -466,6 +466,32 @@ describe('HomeyMappingPreviewService', () => {
 		expect(preview.readyToAdopt).toBe(false);
 	});
 
+	it('exposes transformed panel enum values separately from Homey enum identifiers', async () => {
+		const fixture = readDeviceFixture('cover');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'windowcoverings_state'
+					? {
+							...capability,
+							enumValues: [
+								{ id: 'up', title: 'Up' },
+								{ id: 'down', title: 'Down' },
+								{ id: 'idle', title: 'Idle' },
+							],
+						}
+					: capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+		const command = findProperty(preview, 'windowcoverings_state');
+
+		expect(command?.enumValues).toStrictEqual(['up', 'down', 'idle']);
+		expect(command?.panelEnumValues).toStrictEqual(['open', 'close', 'stop']);
+	});
+
 	it('blocks map write outputs outside the declared Homey enum domain', async () => {
 		const fixture = readDeviceFixture('light');
 		const device: HomeyDevice = {
