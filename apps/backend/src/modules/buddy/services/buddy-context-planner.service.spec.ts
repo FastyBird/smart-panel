@@ -6762,20 +6762,22 @@ describe('BuddyContextPlannerService', () => {
 		expect(service.plan({ ...input, message })).toEqual(service.plan({ ...input, message: equivalentMessage }));
 	});
 
-	it.each(['Is there a disable switch?', 'Is the enable and disable switch available?'])(
-		'does not treat a binary-state noun as an action: %s',
-		(message) => {
-			const plan = service.plan({
-				message,
-				conversationSpaceId: 'space-office',
-				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-			});
+	it.each([
+		'Is there a disable switch?',
+		'Is the enable and disable switch available?',
+		'Is the enable plus disable switch available?',
+		'Is the enable as well as disable switch available?',
+	])('does not treat a binary-state noun as an action: %s', (message) => {
+		const plan = service.plan({
+			message,
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
 
-			expect(plan).toMatchObject({ intent: 'read', ambiguityRisk: 'none' });
-			expect(plan.toolNames).not.toContain('control_device');
-			expect(plan.toolNames).not.toContain('set_space_lighting');
-		},
-	);
+		expect(plan).toMatchObject({ intent: 'read', ambiguityRisk: 'none' });
+		expect(plan.toolNames).not.toContain('control_device');
+		expect(plan.toolNames).not.toContain('set_space_lighting');
+	});
 
 	it.each([
 		'If we disable the Bedroom lights will the camera still work?',

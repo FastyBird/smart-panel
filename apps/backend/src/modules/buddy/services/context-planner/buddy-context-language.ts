@@ -547,7 +547,12 @@ export function normalizeGerundActionRequest(message: string): string {
 	const normalizeBinaryStateCommands = (value: string): string =>
 		value.replace(binaryStateCommandPattern, (match, prefix: string, action: string, offset: number) => {
 			if (/\ba\s*$/u.test(prefix)) return match;
-			if (/\b(?:and|or)\b/u.test(prefix) && /\b(?:disable|enable)\s*$/u.test(value.slice(0, offset))) return match;
+			if (
+				new RegExp(String.raw`\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b`, 'u').test(prefix) &&
+				/\b(?:disable|enable)\s*$/u.test(value.slice(0, offset))
+			) {
+				return match;
+			}
 
 			return `${prefix}turn ${action === 'enable' ? 'on' : 'off'}`;
 		});
