@@ -27,6 +27,8 @@ export const COMPOUND_CONNECTOR_PATTERN_SOURCE = [...BUDDY_COMPOUND_CONNECTOR_SI
 	.sort((left, right) => right.length - left.length)
 	.join('|');
 export const ACTION_REQUEST_PREFIX_PATTERN_SOURCE = String.raw`(?:(?:can|could|may|might|will|would) you|are you able to|i(?: need you to| want you to| would like you to|'d like you to)|is it possible to|is there any way you can)`;
+export const ACTION_COMMAND_PREFIX_PATTERN_SOURCE = String.raw`^[?!,.;\s]*(?:(?:a|also|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|only|please)\s+)*(?:${ACTION_REQUEST_PREFIX_PATTERN_SOURCE}\s+(?:(?:also|only|please)\s+)*)?`;
+export const TRAILING_ACTION_PREFIX_PATTERN_SOURCE = String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:also|if so|only|please)\s+)*(?:${ACTION_REQUEST_PREFIX_PATTERN_SOURCE}\s+(?:(?:also|only|please)\s+)*)?`;
 export const ACTION_CONTINUATION_CONNECTOR_PATTERN = new RegExp(
 	String.raw`^\s*(?:(?:,\s*)?(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})|(?:,\s*)?and\s+then|,)\s*$`,
 	'u',
@@ -34,10 +36,8 @@ export const ACTION_CONTINUATION_CONNECTOR_PATTERN = new RegExp(
 export const HOME_ENTITY_SIGNAL_PATTERN_SOURCE = [...BUDDY_HOME_SIGNALS]
 	.filter((signal) => !['energy', 'energie', 'home', 'house', 'security', 'zabezpeceni'].includes(signal))
 	.join('|');
-export const GROUNDED_STATE_PATTERN = new RegExp(
-	String.raw`\b(?:${[...BUDDY_GROUNDED_STATE_SIGNALS].join('|')})\b`,
-	'u',
-);
+export const GROUNDED_STATE_PATTERN_SOURCE = [...BUDDY_GROUNDED_STATE_SIGNALS].join('|');
+export const GROUNDED_STATE_PATTERN = new RegExp(String.raw`\b(?:${GROUNDED_STATE_PATTERN_SOURCE})\b`, 'u');
 export const STATE_SIGNAL_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_STATE_SIGNALS].join('|')})\b`, 'u');
 export const ACTION_CONDITION_STATE_PATTERN = /\b(?:dark|darker|light|lighter|ready)\b/u;
 export const LIGHTING_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_LIGHTING_SIGNALS].join('|')})\b`, 'u');
@@ -52,8 +52,9 @@ export const LIGHTING_GROUP_EXCLUSION_PATTERN =
 const UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:one|two|three|four|five|six|seven|eight|nine)`;
 const SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:zero|${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE}|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)`;
 const WORD_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:${SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE}|(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[-\s]${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE})?|(?:${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE}\s+)?hundred(?:\s+and\s+${SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE})?|(?:a\s+)?dozens?(?:\s+of)?)`;
+const TRUSTED_LIGHTING_TARGET_MODIFIER_PATTERN_SOURCE = String.raw`(?:bedside|ceiling|desk|outdoor|outside)`;
 export const PARTIAL_LIGHTING_GROUP_PATTERN = new RegExp(
-	String.raw`\b(?:a couple of|a few|a pair of|a quarter|a third|alternate|both(?:\s+of(?:\s+the)?)?|every\s+other|half|most of|one third|one quarter|part of|portion of|several|some|\d+|${WORD_LIGHTING_QUANTITY_PATTERN_SOURCE}|(?:(?:a|the)\s+)?majority\s+of)\b.*\b(?:lamp|lamps|light|lights)\b`,
+	String.raw`\b(?:a couple of|a few|a pair of|a quarter|a third|alternate|both(?:\s+of(?:\s+the)?)?|either(?=\s+(?:${TRUSTED_LIGHTING_TARGET_MODIFIER_PATTERN_SOURCE}\s+)?(?:lamp|lamps|light|lights)\b)|either\s+of(?:\s+the)?|every\s+other|half|most of|one third|one quarter|part of|portion of|several|some|\d+|${WORD_LIGHTING_QUANTITY_PATTERN_SOURCE}|(?:(?:a|the)\s+)?majority\s+of)\b.*\b(?:lamp|lamps|light|lights)\b`,
 	'u',
 );
 export const ZERO_QUANTITY_LIGHTING_PATTERN = /\b(?:no|none|zero)\b.*\b(?:lamp|lamps|light|lights)\b/u;
@@ -149,10 +150,10 @@ export const TEMPORAL_HISTORY_PATTERN = new RegExp(
 );
 export const CURRENT_STATE_PATTERN = /\b(?:at present|current|currently|now|right now)\b/u;
 export const HOME_ENTITY_PATTERN =
-	/\b(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|lamps|light|lighting|lights|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
+	/\b(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|lamps|light|lighting|lights|lock|locks|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
 export const HOME_VOCABULARY_PATTERN = new RegExp(String.raw`\b(?:${HOME_ENTITY_SIGNAL_PATTERN_SOURCE})\b`, 'u');
 export const POSSESSIVE_HOME_ENTITY_PATTERN =
-	/\b(?:my|our)\s+(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|light|lighting|lights|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
+	/\b(?:my|our)\s+(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|light|lighting|lights|lock|locks|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
 export const GENERAL_KNOWLEDGE_INVENTORY_PATTERN = /^how (?:many|much)\b.*\b(?:does|do) (?:a|an)\b/u;
 export const HOME_INSTALLATION_PATTERN = /\b(?:home|house)\b/u;
 export const HOME_STATE_PATTERN = /\b(?:cold|cooling|heating|humidity|temperature|warm)\b/u;
@@ -183,14 +184,16 @@ export const SCENE_RUN_PATTERN = new RegExp(
 );
 export const DEVICE_ACTION_TARGET_PATTERN =
 	/\b(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
-export const TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN =
-	/\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|reading|security|upstairs)\s+(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)|bedside\s+(?:lamp|lamps|light|lights)|(?:outdoor|outside)\s+(?:light|lights|sensor|sensors)|power\s+(?:switch|switches))\b/u;
+export const TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN = new RegExp(
+	String.raw`\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|reading|security|upstairs)\s+(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)|${TRUSTED_LIGHTING_TARGET_MODIFIER_PATTERN_SOURCE}\s+(?:lamp|lamps|light|lights)|ceiling\s+(?:fan|fans)|(?:outdoor|outside)\s+(?:sensor|sensors)|power\s+(?:switch|switches))\b`,
+	'u',
+);
 export const PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN =
-	/\b(?:air purifier|aquarium pump|coffee maker|irrigation|media volume|robot vacuum|skylight|sprinkler)\b/u;
+	/\b(?:air purifiers?|aquarium pumps?|coffee makers?|dehumidifiers?|humidifiers?|irrigation|media volume|robot vacuums?|skylights?|sprinklers?)\b/u;
 export const CLEAR_NON_HOME_ACTION_OBJECT_PATTERN =
 	/^(?:(?:a|an|my|our|the|your)\s+)?(?:another|app|application|around|bluetooth|browser|build|car|chrome|conversation|countdown|deployment|dialog|dinner|dishwasher|docker|document|figma|file|hand|jest|lanes?|meeting|new|npm|page|password|payroll|recording|reminder|right|sandwich|screen|spotify|tabs?|talking|terminal|tests?|timer|voice|volume)\b/u;
 export const ACTION_COMMAND_PATTERN = new RegExp(
-	String.raw`^[?!,.;\s]*(?:(?:a|also|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|only|please)\s+)*(?:${ACTION_REQUEST_PREFIX_PATTERN_SOURCE}\s+(?:(?:also|only|please)\s+)*)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	String.raw`${ACTION_COMMAND_PREFIX_PATTERN_SOURCE}(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
 export const CONDITION_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_CONDITION_SIGNALS].join('|')})\b`, 'u');
@@ -229,8 +232,20 @@ export const PRONOUN_PATTERN = /\b(?:ho|it|its|that|their|them|these|they|this|t
 export const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:ho|it|its|that|this)\b|\bthe one\b/u;
 export const PLURAL_REFERENCE_PRONOUN_PATTERN = /\b(?:their|them|these|they|those)\b/u;
 export const PLURAL_HOME_TARGET_PATTERN =
-	/\b(?:blinds|devices|doors|fans|heaters|lamps|lights|scenes|sensors|switches|thermostats|windows)\b/u;
-export const RELATIVE_REFERENCE_PRONOUN_PATTERN = /\bthat\s+(?:are|is|was|were)\b/gu;
+	/\b(?:blinds|devices|doors|fans|heaters|lamps|lights|locks|scenes|sensors|switches|thermostats|windows)\b/u;
+export const RELATIVE_REFERENCE_ANTECEDENT_PATTERN = new RegExp(
+	String.raw`(?:${HOME_ENTITY_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN.source})(?:\s+[\p{Letter}\p{Number}'’-]+){0,5}\s*$`,
+	'u',
+);
+const WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE = String.raw`(?:${GROUNDED_STATE_PATTERN_SOURCE}|${HOME_STATE_PATTERN.source}|running|triggered)`;
+const AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE = String.raw`(?:already|not|still|${CURRENT_STATE_PATTERN.source})`;
+const AGGREGATE_STATE_VALUE_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}`;
+const PROGRESSIVE_STATE_LINKER_PATTERN_SOURCE = String.raw`being\s+(?:left|powered|switched|turned)`;
+const STATE_LINKING_VERB_PATTERN_SOURCE = String.raw`(?:${PROGRESSIVE_STATE_LINKER_PATTERN_SOURCE}|appear|appears|are|is|left|look|looks|powered|remain|remains|seem|seems|stay|stays|switched|turned|was|were)`;
+export const RELATIVE_REFERENCE_PRONOUN_PATTERN = new RegExp(
+	String.raw`\b(?:that|which)\s+(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?${STATE_LINKING_VERB_PATTERN_SOURCE}\b(?=\s+(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?(?:${STATE_LINKING_VERB_PATTERN_SOURCE}\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}\b)`,
+	'gu',
+);
 export const TEMPORAL_THIS_REFERENCE_PATTERN =
 	/\bthis\s+(?:afternoon|day|evening|hour|minute|month|morning|night|week|weekend|year)\b/gu;
 export const LOCALIZED_REFERENCE_PRONOUN_PATTERN =
@@ -300,17 +315,22 @@ export const BUILT_IN_ACTION_SPACE_NAMES = new Set([
 ]);
 export const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs) thermostat\b/u;
-export const WHOLE_HOME_SCOPE_PATTERN =
-	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\banywhere(?:\s+at\s+all)?\b(?!\s+(?:around|at|else|here|in|inside|near|within)\b)|\beverywhere\b|\b(?:all|any|each|every)(?:\s+one)?(?:\s+of\s+the)?\s+(?:rooms?|spaces?)\b/u;
+const WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:all|any|each|every)(?:\s+one)?`;
+export const WHOLE_HOME_SCOPE_PATTERN = new RegExp(
+	String.raw`\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\banywhere(?:\s+at\s+all)?\b(?!\s+(?:around|at|else|here|in|inside|near|within)\b)|\beverywhere\b|\b${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}(?:\s+of\s+the)?\s+(?:rooms?|spaces?)\b`,
+	'u',
+);
 export const ANYWHERE_ELSE_PATTERN = /\banywhere else\b/u;
-const WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE = String.raw`(?:active|closed|inactive|locked|off|on|open|unlocked)`;
-const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|switch(?:es)?|thermostats?)|${HOME_ENTITY_PATTERN.source})`;
+const AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE = String.raw`(?:air\s+(?:conditioners?|dehumidifiers?|humidifiers?|purifiers?)|av\s+receivers?|cameras?|doorbells?|game\s+consoles?|heating\s+units?|outlets?|projectors?|pumps?|robot\s+vacuums?|set[-\s]top\s+boxes|speakers?|sprinklers?|televisions?|tvs?|valves?|water\s+heaters?|window\s+coverings?)`;
+const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|smoke\s+(?:detectors?|sensors?)|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|locks?|switch(?:es)?|thermostats?)|${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source})`;
+const AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}|none)`;
+const AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE = String.raw`(?=\s+(?:(?:of\s+)?(?:my|our|the|your)\s+)?(?:${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}(?:\s+(?:${RELATIVE_REFERENCE_PRONOUN_PATTERN.source}\s+)?(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?(?:${STATE_LINKING_VERB_PATTERN_SOURCE}\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}\b|\s+remains?\b(?=\s*[?!,.;]?$)|\s*[?!,.;]?\s*$))`;
 export const UNSCOPED_AGGREGATE_READ_PATTERN = new RegExp(
-	String.raw`^(?:(?:(?:please\s+)?(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:check|confirm|determine|fetch|get|read|report|see|show|tell|verify)(?: me)?)\s+(?:if|whether)\s+(?:(?:are|is)(?:\s+there)?\s+|there\s+(?:are|is)\s+)?(?:all|any)\b(?=\s+(?:(?:of\s+)?(?:my|our|the|your)\s+)?(?:${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}(?:\s+(?:(?:are|is|remain|remains|stay|stays)\s+(?:(?:already|currently|still)\s+)?${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}|${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE})\b|\s+remains?\b(?=\s*[?!,.;]?$)|\s*[?!,.;]?\s*$))|(?:are|is)(?:\s+there)?\s+(?:all|any)\b|(?:do(?:\s+(?:i|we)\s+have)?|does)\s+any\b|count\b|how many\b)`,
+	String.raw`^(?:(?:(?:please\s+)?(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:check|confirm|determine|fetch|get|read|report|see|show|tell|verify)(?: me)?)\s+(?:if|whether)\s+(?:(?:are|is)(?:\s+there)?\s+|there\s+(?:are|is)\s+)?${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|(?:are|is)(?:\s+there)?\s+${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|do(?:es)?\s+${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|do\s+(?:i|we)\s+have\s+${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|count\b|how many\b)`,
 	'u',
 );
 export const TRAILING_ACTION_PATTERN = new RegExp(
-	String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:if so|only|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:(?:only|please)\s+)*)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	String.raw`${TRAILING_ACTION_PREFIX_PATTERN_SOURCE}(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
 export const TRAILING_READ_PATTERN = new RegExp(

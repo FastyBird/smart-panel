@@ -378,10 +378,16 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it('uses a unique recent reference for a pronoun-only state read', () => {
+	it.each([
+		'Is it on?',
+		'Is that turned on?',
+		'Is that switched off?',
+		'Maybe that appears open?',
+		'Perhaps that seems open?',
+	])('uses a unique recent reference for the pronoun-only state read %s', (message) => {
 		expect(
 			service.plan({
-				message: 'Is it on?',
+				message,
 				recentEntityReferences: [
 					{
 						kind: 'device',
@@ -2406,6 +2412,28 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('preserves a demonstrative reference before a target adjective', () => {
+		const plan = service.plan({
+			message: 'Is that left window open?',
+			recentEntityReferences: [
+				{
+					kind: 'device',
+					id: 'device-window',
+					name: 'Window',
+					compatibleActionTypes: ['open'],
+				},
+			],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			scope: { referencedEntityIds: ['device-window'] },
+			ambiguityRisk: 'none',
+		});
+	});
+
 	it.each([
 		'What was the bedroom temperature in the last hour?',
 		'What was the bedroom temperature in the last day?',
@@ -2786,6 +2814,50 @@ describe('BuddyContextPlannerService', () => {
 			ambiguityRisk: 'none',
 			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
 		});
+	});
+
+	it('does not resolve a space-qualified relative clause as a recent reference', () => {
+		const plan = service.plan({
+			message: 'Are the lights in Bedroom that are on?',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			recentEntityReferences: [
+				{
+					kind: 'device',
+					id: 'device-reading-lamp',
+					name: 'Reading lamp',
+					compatibleActionTypes: ['turn'],
+				},
+			],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.scope).toEqual({ spaceId: 'space-bedroom' });
+		expect(plan.queries).toEqual([
+			{ kind: 'search-home', spaceId: 'space-bedroom' },
+			{ kind: 'current-state', spaceId: 'space-bedroom' },
+		]);
+	});
+
+	it('does not resolve a postpositive-space relative clause as a recent reference', () => {
+		const plan = service.plan({
+			message: 'Are the lights downstairs that are on?',
+			knownSpaces: [{ id: 'space-downstairs', name: 'Downstairs' }],
+			recentEntityReferences: [
+				{
+					kind: 'device',
+					id: 'device-reading-lamp',
+					name: 'Reading lamp',
+					compatibleActionTypes: ['turn'],
+				},
+			],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.scope).toEqual({ spaceId: 'space-downstairs' });
+		expect(plan.queries).toEqual([
+			{ kind: 'search-home', spaceId: 'space-downstairs' },
+			{ kind: 'current-state', spaceId: 'space-downstairs' },
+		]);
 	});
 
 	it('clarifies a plural home-state pronoun without recent references', () => {
@@ -4095,6 +4167,61 @@ describe('BuddyContextPlannerService', () => {
 	it.each([
 		'Are any windows open?',
 		'Are there any windows open?',
+		'Is every window closed?',
+		'Is each window closed?',
+		'Are none of the windows open?',
+		'Does every window remain closed?',
+		'Do all windows remain closed?',
+		'Do none of the windows remain open?',
+		'Does any window appear open?',
+		'Does any window look open?',
+		'Does any window seem open?',
+		'Are any windows still open?',
+		'Are any locks locked?',
+		'Are all smart locks locked?',
+		'Are any outlets on?',
+		'Are any cameras on?',
+		'Are any valves open?',
+		'Are any smoke detectors triggered?',
+		'Are any smoke sensors triggered?',
+		'Is every window currently closed?',
+		'Are any windows not closed?',
+		'Are there any lights that are still on?',
+		'Are there any lights that remain on?',
+		'Are there any lights that still remain on?',
+		'Are there any lights which currently remain on?',
+		'Are there any lights that are currently turned on?',
+		'Are there any lights which are on?',
+		'Are any windows being left open?',
+		'Are there any windows that are being left open?',
+		'Are any thermostats heating?',
+		'Are any humidity sensors high?',
+		'Are any humidity sensors low?',
+		'Does any window currently appear open?',
+		'Are any lights turned on?',
+		'Are all lights switched off?',
+		'Are any windows now open?',
+		'Are any windows right now open?',
+		'Is every one of the windows closed?',
+		'Is any one of the windows open?',
+		'Can you check if any one of the windows is open?',
+		'Does every one of my windows remain closed?',
+		'Are any windows left open?',
+		'Are any fans running?',
+		'Is any air purifier running?',
+		'Are any air purifiers running?',
+		'Are any robot vacuums running?',
+		'Are any dehumidifiers on?',
+		'Are any humidifiers on?',
+		'Are any outdoor lights on?',
+		'Are any desk lamps on?',
+		'Are any ceiling fans running?',
+		'Are any lights powered on?',
+		'Are any fans powered off?',
+		'Are any sensors triggered?',
+		'Do we have all windows open?',
+		'Do I have every window open?',
+		'Check if every window is closed',
 		'Can you check if any windows are open?',
 		'Can you check whether any windows are open?',
 		'Can you check if all windows are closed?',
@@ -4135,10 +4262,15 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.queries).toEqual([{ kind: 'search-home' }, { kind: 'current-state' }]);
 	});
 
-	it('keeps a locally qualified wrapped aggregate read scoped', () => {
+	it.each([
+		'Can you check if any windows are open in Bedroom?',
+		'Check if every window is closed in Bedroom?',
+		'Are none of the windows open in Bedroom?',
+		'Are any Bedroom lights on?',
+	])('keeps a locally qualified aggregate read scoped: %s', (message) => {
 		expect(
 			service.plan({
-				message: 'Can you check if any windows are open in Bedroom?',
+				message,
 				conversationSpaceId: 'space-office',
 				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
@@ -4152,26 +4284,29 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it.each(['Can you check if any windows are open in here?', 'Can you check if the windows are open?'])(
-		'keeps an ordinary wrapped read in the conversation space: %s',
-		(message) => {
-			expect(
-				service.plan({
-					message,
-					conversationSpaceId: 'space-office',
-					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-				}),
-			).toMatchObject({
-				scope: { spaceId: 'space-office' },
-				queries: [
-					{ kind: 'search-home', spaceId: 'space-office' },
-					{ kind: 'current-state', spaceId: 'space-office' },
-				],
-			});
-		},
-	);
+	it.each([
+		'Can you check if any windows are open in here?',
+		'Check if every window is closed in here?',
+		'Are none of the windows open in here?',
+		'Can you check if the windows are open?',
+	])('keeps an ordinary wrapped read in the conversation space: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceId: 'space-office' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-office' },
+				{ kind: 'current-state', spaceId: 'space-office' },
+			],
+		});
+	});
 
 	it.each([
+		'Is every browser window open?',
 		'Can you check if any files are open?',
 		'Can you check if any browser tabs are open?',
 		'Can you check if any browser windows are open?',
@@ -4182,6 +4317,8 @@ describe('BuddyContextPlannerService', () => {
 		'Can you check if any light processes are on?',
 		'Can you check if any support tickets are open?',
 		'Can you check whether all tests are passing?',
+		'Does every traffic light remain on?',
+		'Does every CPU fan remain running?',
 	])('does not globalize a wrapped non-home aggregate: %s', (message) => {
 		const plan = service.plan({
 			message,
@@ -5813,6 +5950,12 @@ describe('BuddyContextPlannerService', () => {
 
 	it.each([
 		'Turn a pair of Bedroom lights on',
+		'Turn either of the Bedroom lights on',
+		'Turn either light in Bedroom on',
+		'Turn either living room light on',
+		'Turn either bedside lamp on',
+		'Turn either outdoor light on',
+		'Turn either ceiling light on',
 		'Turn ten Bedroom lights on',
 		'Turn a dozen Bedroom lights on',
 		'Turn twenty-one Bedroom lights on',
@@ -5821,7 +5964,10 @@ describe('BuddyContextPlannerService', () => {
 	])('clarifies a word-quantity lighting subset: %s', (message) => {
 		const plan = service.plan({
 			message,
-			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			knownSpaces: [
+				{ id: 'space-bedroom', name: 'Bedroom' },
+				{ id: 'space-living-room', name: 'Living Room' },
+			],
 			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 		});
 
@@ -6690,6 +6836,146 @@ describe('BuddyContextPlannerService', () => {
 	);
 
 	it.each([
+		['Enable the Bedroom lights', 'Turn on the Bedroom lights'],
+		['Disable the Bedroom lights', 'Turn off the Bedroom lights'],
+		['Also enable the Bedroom lights', 'Also turn on the Bedroom lights'],
+		['Please can you disable the Bedroom lights', 'Please can you turn off the Bedroom lights'],
+		['Would you mind enabling the Bedroom lights?', 'Would you mind turning on the Bedroom lights?'],
+		['Could you try disabling the Bedroom fan?', 'Could you try turning off the Bedroom fan?'],
+		[
+			'Are the Bedroom lights on? If so disable the Bedroom lights',
+			'Are the Bedroom lights on? If so turn off the Bedroom lights',
+		],
+		['If the window is open enable the Bedroom lights', 'If the window is open turn the Bedroom lights on'],
+		['Enable the lights that are off', 'Turn on the lights that are off'],
+	])('maps a binary-state action to turn semantics: %s', (message, equivalentMessage) => {
+		const input = {
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable' as const, supportsStructuredToolResults: true },
+		};
+
+		expect(service.plan({ ...input, message })).toEqual(service.plan({ ...input, message: equivalentMessage }));
+	});
+
+	it.each([
+		'Is there a disable switch?',
+		'Is the enable and disable switch available?',
+		'Is the enable plus disable switch available?',
+		'Is the enable as well as disable switch available?',
+		'Which switch mode is selected, enable or disable?',
+		'Which switch mode is selected, enable mode or disable mode?',
+	])('does not treat a binary-state noun as an action: %s', (message) => {
+		const plan = service.plan({
+			message,
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'read', ambiguityRisk: 'none' });
+		expect(plan.toolNames).not.toContain('control_device');
+		expect(plan.toolNames).not.toContain('set_space_lighting');
+	});
+
+	it.each([
+		['Enable mode is currently selected?', 'none'],
+		['Enable switch is available?', 'read'],
+	] as const)('preserves a sentence-initial binary-state label: %s', (message, intent) => {
+		const plan = service.plan({
+			message,
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent, ambiguityRisk: 'none' });
+		expect(plan.toolNames).not.toContain('control_device');
+		expect(plan.toolNames).not.toContain('set_space_lighting');
+	});
+
+	it.each([
+		'If we disable the Bedroom lights will the camera still work?',
+		'If we turn off the Bedroom lights will the camera still work?',
+		'If we disable the Bedroom lights will John wake?',
+		"If we disable the Bedroom lights won't the camera still work?",
+		"If we disable the Bedroom lights can't John sleep?",
+		"If we disable the Bedroom lights wouldn't John wake?",
+		'If we disable the Bedroom lights what happens?',
+		'If we disable the Bedroom lights is the camera safer?',
+		"If we disable the Bedroom lights isn't the camera safer?",
+		'If we disable the Bedroom lights will you still see?',
+		'If we disable the Bedroom lights, the camera still works?',
+		'If we disable the Bedroom lights the camera still works?',
+		'If we disable the Bedroom lights what about the camera?',
+		'If we disable the Bedroom lights how about the camera?',
+		'If we disable the Bedroom lights what next?',
+	])('keeps an unpunctuated hypothetical action on the read path: %s', (message) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('read');
+		expect(plan.toolNames).not.toContain('control_device');
+		expect(plan.toolNames).not.toContain('set_space_lighting');
+	});
+
+	it.each([
+		'If the window is open, turn off the Bedroom light where the baby sleeps?',
+		'If the window is open, turn off the Bedroom light that still works?',
+	])('keeps a relative target inside a conditional command: %s', (message) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk: 'action', strategy: 'clarify' });
+		expect(plan.toolNames).toEqual([]);
+	});
+
+	it.each([
+		[
+			'Turn the Kitchen lights on plus disable the Bedroom lights',
+			'Turn the Kitchen lights on plus turn off the Bedroom lights',
+		],
+		[
+			'Turn the Kitchen lights on, also disable the Bedroom lights',
+			'Turn the Kitchen lights on, also turn off the Bedroom lights',
+		],
+		[
+			'Turn the Kitchen lights on and can you disable the Bedroom lights',
+			'Turn the Kitchen lights on and can you turn off the Bedroom lights',
+		],
+	])('normalizes a binary-state action after a compound connector: %s', (message, equivalentMessage) => {
+		const input = {
+			knownSpaces: [
+				{ id: 'space-bedroom', name: 'Bedroom' },
+				{ id: 'space-kitchen', name: 'Kitchen' },
+			],
+			providerCapabilities: { toolCalling: 'reliable' as const, supportsStructuredToolResults: true },
+		};
+
+		expect(service.plan({ ...input, message })).toEqual(service.plan({ ...input, message: equivalentMessage }));
+	});
+
+	it.each([
+		['Enable and then disable the Bedroom lights', 'Turn on and then turn off the Bedroom lights'],
+		['Enable, then disable the Bedroom lights', 'Turn on, then turn off the Bedroom lights'],
+		['Enable and disable the Bedroom lights', 'Turn on and turn off the Bedroom lights'],
+	])('normalizes coordinated binary-state actions before a shared target: %s', (message, equivalentMessage) => {
+		const input = {
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable' as const, supportsStructuredToolResults: true },
+		};
+
+		const plan = service.plan({ ...input, message });
+
+		expect(plan).toEqual(service.plan({ ...input, message: equivalentMessage }));
+		expect(plan).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify' });
+		expect(plan.toolNames).toEqual([]);
+	});
+
+	it.each([
 		'What was the Bedroom temperature two days earlier?',
 		'What was the Bedroom temperature three hours prior?',
 	])('routes a relative earlier period to history: %s', (message) => {
@@ -6717,4 +7003,15 @@ describe('BuddyContextPlannerService', () => {
 			expect(plan.toolNames).toEqual([]);
 		},
 	);
+
+	it('recognizes a modal relative target clause without executing an unresolved subset', () => {
+		const plan = service.plan({
+			message: 'If the window is open, turn off the lights that could wake the baby?',
+			conversationSpaceId: 'space-bedroom',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk: 'action', strategy: 'clarify' });
+		expect(plan.toolNames).toEqual([]);
+	});
 });

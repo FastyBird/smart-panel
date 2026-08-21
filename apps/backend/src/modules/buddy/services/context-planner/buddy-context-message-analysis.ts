@@ -2,6 +2,7 @@ import { BuddyContextDomain, BuddyContextSpaceReference } from '../../models/con
 
 import {
 	findExplicitSpaceOccurrences,
+	findLeadingConditionalActionIndex,
 	findPatternRanges,
 	getActionTargetClause,
 	getRetrievalClause,
@@ -14,12 +15,12 @@ import {
 } from './buddy-context-language';
 import {
 	ACTION_COMMAND_PATTERN,
+	ACTION_COMMAND_PREFIX_PATTERN_SOURCE,
 	ACTION_CONDITION_STATE_PATTERN,
 	ACTION_CONTINUATION_CONNECTOR_PATTERN,
 	ACTION_DURATION_PATTERN,
 	ACTION_RANGE_PATTERN,
 	ACTION_REQUEST_PATTERN,
-	ACTION_REQUEST_PREFIX_PATTERN_SOURCE,
 	ACTION_SIGNAL_PATTERN_SOURCE,
 	CLOCK_TIME_HISTORY_PATTERN,
 	COMPOUND_CONNECTOR_PATTERN_SOURCE,
@@ -78,54 +79,6 @@ export function getActionMessage(message: string, trailingActionMatch: RegExpExe
 	return unpunctuatedActionIndex === undefined ? message : message.slice(unpunctuatedActionIndex);
 }
 
-export function findLeadingConditionalActionIndex(message: string): number | undefined {
-	if (!LEADING_CONDITION_PATTERN.test(message)) return undefined;
-
-	const actionPattern = new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'gu');
-	const actionMatches = [...message.matchAll(actionPattern)].filter(
-		(match) => !/\b(?:are|is|was|were)\s*$/u.test(message.slice(0, match.index)),
-	);
-	let commandMatch = actionMatches.at(-1);
-
-	for (let index = actionMatches.length - 2; index >= 0 && commandMatch; index -= 1) {
-		const candidate = actionMatches[index];
-		const connector = message.slice(candidate.index + candidate[0].length, commandMatch.index);
-
-		if (!new RegExp(String.raw`\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b`, 'u').test(connector)) break;
-		commandMatch = candidate;
-	}
-	if (commandMatch && isConditionalOutcomeQuestion(message, commandMatch.index)) return undefined;
-
-	return commandMatch?.index;
-}
-
-export function isConditionalOutcomeQuestion(message: string, actionIndex: number): boolean {
-	if (!/\?\s*$/u.test(message)) return false;
-	const trailingBoundary = message.slice(actionIndex).search(/[,;]/u);
-
-	if (LEADING_CONDITION_PATTERN.test(message) && trailingBoundary >= 0) {
-		const mainClause = message.slice(actionIndex + trailingBoundary + 1).trim();
-
-		if (READ_PATTERN.test(mainClause) || PREDICATE_QUESTION_PATTERN.test(mainClause)) return true;
-	}
-
-	const prefix = message.slice(0, actionIndex);
-	const clauseBoundary = Math.max(prefix.lastIndexOf(','), prefix.lastIndexOf(';'));
-	const outcomePattern =
-		/^(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:(?:can|could|may|might|must|should|will|would)\s+(?!you\b)|(?:are|did|do|does|had|has|have|is|was|were)\b)/u;
-
-	if (clauseBoundary >= 0) return outcomePattern.test(prefix.slice(clauseBoundary + 1).trim());
-
-	const unpunctuatedModalPattern = new RegExp(
-		String.raw`(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:can|could|did|do|does|may|might|must|should|will|would)\s+(?!you\b)`,
-		'gu',
-	);
-	const modalMatch = [...prefix.matchAll(unpunctuatedModalPattern)].at(-1);
-	if (!modalMatch) return false;
-
-	return !new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'u').test(prefix.slice(modalMatch.index));
-}
-
 export function getActionReferenceMessage(
 	message: string,
 	explicitSpaces: readonly BuddyContextSpaceReference[] = [],
@@ -133,13 +86,7 @@ export function getActionReferenceMessage(
 	return splitPlannerClauses(message, explicitSpaces)
 		.filter((clause) => ACTION_COMMAND_PATTERN.test(clause))
 		.map((clause) => {
-			const actionOnlyClause = clause.replace(
-				new RegExp(
-					String.raw`^[?!,.;\s]*(?:(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|only|please)\s+)*(?:${ACTION_REQUEST_PREFIX_PATTERN_SOURCE}\s+(?:(?:only|please)\s+)*)?`,
-					'u',
-				),
-				'',
-			);
+			const actionOnlyClause = clause.replace(new RegExp(ACTION_COMMAND_PREFIX_PATTERN_SOURCE, 'u'), '');
 
 			return getActionTargetClause(actionOnlyClause);
 		})

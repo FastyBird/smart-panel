@@ -19,6 +19,7 @@ import {
 	findDuplicateNameSpaceIds,
 	findExcludedOnlyExplicitSpaceIds,
 	findExplicitSpaces,
+	findLeadingConditionalActionIndex,
 	getActionConditionClause,
 	getActionObjectClause,
 	getActionTargetClause,
@@ -34,7 +35,6 @@ import {
 } from './buddy-context-language';
 import {
 	classifyDomains,
-	findLeadingConditionalActionIndex,
 	getActionClausesWithTargetContinuations,
 	getActionMessage,
 	getActionReferenceMessage,

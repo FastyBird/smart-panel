@@ -2,24 +2,117 @@ import { BuddyContextEntityReference, BuddyContextSpaceReference } from '../../m
 
 import {
 	ACTION_COMMAND_PATTERN,
+	ACTION_COMMAND_PREFIX_PATTERN_SOURCE,
 	ACTION_SIGNAL_PATTERN_SOURCE,
+	COMPOUND_CONNECTOR_PATTERN_SOURCE,
 	CONDITION_PATTERN,
 	CONTEXTUAL_SCOPE_REFERENCE_PATTERN,
 	DEVICE_ACTION_TARGET_PATTERN,
 	ENERGY_PATTERN,
 	HOME_ENTITY_PATTERN,
 	HOME_STATE_PATTERN,
+	LEADING_CONDITION_PATTERN,
 	LOCALIZED_REFERENCE_PRONOUN_PATTERN,
 	LOCALIZED_STATE_REFERENCE_PRONOUN_PATTERN,
+	PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN,
 	PLURAL_REFERENCE_PRONOUN_PATTERN,
+	PREDICATE_QUESTION_PATTERN,
 	PRONOUN_PATTERN,
+	READ_PATTERN,
+	RELATIVE_REFERENCE_ANTECEDENT_PATTERN,
 	RELATIVE_REFERENCE_PRONOUN_PATTERN,
 	SCENE_TARGET_PATTERN,
 	SECURITY_PATTERN,
 	SINGULAR_REFERENCE_PRONOUN_PATTERN,
 	TEMPORAL_THIS_REFERENCE_PATTERN,
+	TRAILING_ACTION_PREFIX_PATTERN_SOURCE,
 	WEATHER_PATTERN,
 } from './buddy-context-planner-grammar';
+
+const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:am|are(?:n't)?|can(?:not|'t)?|could(?:n't)?|did(?:n't)?|do|does|don't|doesn't|had(?:n't)?|has(?:n't)?|have(?:n't)?|is(?:n't)?|may|might(?:n't)?|must(?:n't)?|should(?:n't)?|was(?:n't)?|were(?:n't)?|will|won't|would(?:n't)?)`;
+const CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE = String.raw`(?:appears?|changes?|fails?|happens?|improves?|looks?|remains?|seems?|stays?|wakes?|works?)`;
+
+export function findLeadingConditionalActionIndex(
+	message: string,
+	actionPatternSource = ACTION_SIGNAL_PATTERN_SOURCE,
+): number | undefined {
+	if (!LEADING_CONDITION_PATTERN.test(message)) return undefined;
+
+	const actionPattern = new RegExp(String.raw`\b(?:${actionPatternSource})\b`, 'gu');
+	const actionMatches = [...message.matchAll(actionPattern)].filter(
+		(match) => !/\b(?:are|is|was|were)\s*$/u.test(message.slice(0, match.index)),
+	);
+	let commandMatch = actionMatches.at(-1);
+
+	for (let index = actionMatches.length - 2; index >= 0 && commandMatch; index -= 1) {
+		const candidate = actionMatches[index];
+		const connector = message.slice(candidate.index + candidate[0].length, commandMatch.index);
+
+		if (!new RegExp(String.raw`\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b`, 'u').test(connector)) break;
+		commandMatch = candidate;
+	}
+	if (commandMatch && isConditionalOutcomeQuestion(message, commandMatch.index)) return undefined;
+
+	return commandMatch?.index;
+}
+
+function isConditionalOutcomeQuestion(message: string, actionIndex: number): boolean {
+	if (!/\?\s*$/u.test(message)) return false;
+	if (
+		/\b(?:how\s+about\b[^?]*|what\s+(?:about\b[^?]*|changes?|happens?|next\b|occurs?))\s*\?\s*$/u.test(
+			message.slice(actionIndex),
+		)
+	) {
+		return true;
+	}
+	const subjectFirstOutcomeMatch = new RegExp(
+		String.raw`\b(?:(?:a|an|my|our|the|their|this|these|those|your)\s+)?[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,3}\s+(?:(?:already|currently|still)\s+)?${CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
+		'u',
+	).exec(message.slice(actionIndex));
+
+	if (subjectFirstOutcomeMatch && !/\b(?:that|where|which|who)\b/u.test(subjectFirstOutcomeMatch[0])) {
+		return true;
+	}
+	if (
+		new RegExp(
+			String.raw`(?<!that\s)(?<!which\s)(?<!who\s)\b${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we|you)\s+|[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$`,
+			'u',
+		).test(message.slice(actionIndex))
+	) {
+		return true;
+	}
+	const trailingBoundary = message.slice(actionIndex).search(/[,;]/u);
+
+	if (LEADING_CONDITION_PATTERN.test(message) && trailingBoundary >= 0) {
+		const mainClause = message.slice(actionIndex + trailingBoundary + 1).trim();
+
+		if (
+			READ_PATTERN.test(mainClause) ||
+			PREDICATE_QUESTION_PATTERN.test(mainClause) ||
+			(/\?\s*$/u.test(mainClause) && !ACTION_COMMAND_PATTERN.test(mainClause))
+		) {
+			return true;
+		}
+	}
+
+	const prefix = message.slice(0, actionIndex);
+	const clauseBoundary = Math.max(prefix.lastIndexOf(','), prefix.lastIndexOf(';'));
+	const outcomePattern = new RegExp(
+		String.raw`^(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?!you\b)`,
+		'u',
+	);
+
+	if (clauseBoundary >= 0) return outcomePattern.test(prefix.slice(clauseBoundary + 1).trim());
+
+	const unpunctuatedModalPattern = new RegExp(
+		String.raw`(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?!you\b)`,
+		'gu',
+	);
+	const modalMatch = [...prefix.matchAll(unpunctuatedModalPattern)].at(-1);
+	if (!modalMatch) return false;
+
+	return !new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'u').test(prefix.slice(modalMatch.index));
+}
 
 export function splitConditionSegments(clause: string): string[] {
 	const conditionMarkers = [...clause.matchAll(/\b(?:if|when|while)\b/gu)].filter((marker) => marker.index > 0);
@@ -417,7 +510,13 @@ export function hasPluralReferencePronoun(message: string): boolean {
 }
 
 export function stripRelativeReferencePronouns(message: string): string {
-	return message.replace(RELATIVE_REFERENCE_PRONOUN_PATTERN, ' ').replace(TEMPORAL_THIS_REFERENCE_PATTERN, ' ');
+	return message
+		.replace(RELATIVE_REFERENCE_PRONOUN_PATTERN, (match: string, offset: number) => {
+			const prefix = message.slice(0, offset).trimEnd();
+
+			return RELATIVE_REFERENCE_ANTECEDENT_PATTERN.test(prefix) ? ' ' : match;
+		})
+		.replace(TEMPORAL_THIS_REFERENCE_PATTERN, ' ');
 }
 
 export function normalize(value: string): string {
@@ -438,7 +537,9 @@ export function normalizeGerundActionRequest(message: string): string {
 		closing: 'close',
 		deactivating: 'deactivate',
 		decreasing: 'decrease',
+		disabling: 'disable',
 		dimming: 'dim',
+		enabling: 'enable',
 		increasing: 'increase',
 		locking: 'lock',
 		lowering: 'lower',
@@ -469,5 +570,76 @@ export function normalizeGerundActionRequest(message: string): string {
 	const shutCommandPattern =
 		/(^[?!,.;\s]*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?|(?:[?!,.;]|\b(?:and|then)\b)\s*)shut\s+(?:down|off)\b/gu;
 
-	return normalizedGerundRequest.replace(shutCommandPattern, '$1turn off');
+	const normalizedShutRequest = normalizedGerundRequest.replace(shutCommandPattern, '$1turn off');
+	const binaryStateCommandPattern = new RegExp(
+		String.raw`(${ACTION_COMMAND_PREFIX_PATTERN_SOURCE}|${TRAILING_ACTION_PREFIX_PATTERN_SOURCE})(enable|disable)\b`,
+		'gu',
+	);
+	const binaryLabelConnectorPatternSource = String.raw`(?:or|${COMPOUND_CONNECTOR_PATTERN_SOURCE})`;
+	const binaryTargetTokenPatternSource = String.raw`[\p{Letter}\p{Number}'’-]+`;
+	const binaryDeviceTargetPatternSource = String.raw`(?:(?:my|our|the|your)\s+(?:${binaryTargetTokenPatternSource}\s+){0,7}|(?:${binaryTargetTokenPatternSource}\s+){1,7})${DEVICE_ACTION_TARGET_PATTERN.source}`;
+	const binaryRelativeTargetPattern = new RegExp(
+		String.raw`^\s+(?:(?:${binaryTargetTokenPatternSource}\s+){0,7}${DEVICE_ACTION_TARGET_PATTERN.source}|(?:(?:my|our|the|your)\s+)?${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source})\s+(?:that|which)\b`,
+		'u',
+	);
+	const binaryStateTargetPattern = new RegExp(
+		String.raw`^\s+(?:${binaryDeviceTargetPatternSource}|(?:(?:my|our|the|your)\s+)?${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source})`,
+		'u',
+	);
+	const leadingConditionalActionIndex = findLeadingConditionalActionIndex(
+		normalizedShutRequest,
+		String.raw`${ACTION_SIGNAL_PATTERN_SOURCE}|enable|disable`,
+	);
+	const normalizeBinaryStateCommands = (value: string): string =>
+		value.replace(binaryStateCommandPattern, (match, prefix: string, action: string, offset: number) => {
+			const actionTail = value.slice(offset + match.length);
+			const coordinatedActionMatch = /^\s*(?:(?:,\s*)?(?:and\s+)?then|and)\s+(?:disable|enable)\b/u.exec(actionTail);
+			const hasCoordinatedBinaryAction =
+				coordinatedActionMatch !== null &&
+				(/then\b/u.test(coordinatedActionMatch[0]) ||
+					binaryStateTargetPattern.test(actionTail.slice(coordinatedActionMatch[0].length)));
+			const hasDirectBinaryTarget = binaryStateTargetPattern.test(actionTail);
+			const hasRelativeBinaryTarget = binaryRelativeTargetPattern.test(actionTail);
+
+			if (/\ba\s*$/u.test(prefix)) return match;
+			if (
+				!hasRelativeBinaryTarget &&
+				/^\s+(?:[\p{Letter}\p{Number}'’-]+\s+){1,4}(?:appear|appears|are|is|look|looks|remain|remains|seem|seems|stay|stays|was|were)\b/u.test(
+					actionTail,
+				)
+			) {
+				return match;
+			}
+			if (
+				new RegExp(
+					String.raw`^\s+([\p{Letter}\p{Number}-]+)\s+${binaryLabelConnectorPatternSource}\s+(?:disable|enable)\s+\1\b`,
+					'u',
+				).test(value.slice(offset + match.length))
+			) {
+				return match;
+			}
+			if (
+				!hasCoordinatedBinaryAction &&
+				new RegExp(String.raw`^\s*(?:[?!,.;]|${binaryLabelConnectorPatternSource}\b|$)`, 'u').test(actionTail)
+			) {
+				return match;
+			}
+			if (
+				!hasDirectBinaryTarget &&
+				new RegExp(String.raw`\b${binaryLabelConnectorPatternSource}\b`, 'u').test(prefix) &&
+				/\b(?:disable|enable)\s*$/u.test(value.slice(0, offset))
+			) {
+				return match;
+			}
+
+			return `${prefix}turn ${action === 'enable' ? 'on' : 'off'}`;
+		});
+	const normalizedConditionalRequest =
+		leadingConditionalActionIndex === undefined
+			? normalizedShutRequest
+			: `${normalizedShutRequest.slice(0, leadingConditionalActionIndex)}${normalizeBinaryStateCommands(
+					normalizedShutRequest.slice(leadingConditionalActionIndex),
+				)}`;
+
+	return normalizeBinaryStateCommands(normalizedConditionalRequest);
 }
