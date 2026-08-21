@@ -2838,6 +2838,28 @@ describe('BuddyContextPlannerService', () => {
 		]);
 	});
 
+	it('does not resolve a postpositive-space relative clause as a recent reference', () => {
+		const plan = service.plan({
+			message: 'Are the lights downstairs that are on?',
+			knownSpaces: [{ id: 'space-downstairs', name: 'Downstairs' }],
+			recentEntityReferences: [
+				{
+					kind: 'device',
+					id: 'device-reading-lamp',
+					name: 'Reading lamp',
+					compatibleActionTypes: ['turn'],
+				},
+			],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.scope).toEqual({ spaceId: 'space-downstairs' });
+		expect(plan.queries).toEqual([
+			{ kind: 'search-home', spaceId: 'space-downstairs' },
+			{ kind: 'current-state', spaceId: 'space-downstairs' },
+		]);
+	});
+
 	it('clarifies a plural home-state pronoun without recent references', () => {
 		expect(
 			service.plan({
@@ -6856,6 +6878,8 @@ describe('BuddyContextPlannerService', () => {
 		"If we disable the Bedroom lights can't John sleep?",
 		"If we disable the Bedroom lights wouldn't John wake?",
 		'If we disable the Bedroom lights what happens?',
+		'If we disable the Bedroom lights is the camera safer?',
+		"If we disable the Bedroom lights isn't the camera safer?",
 	])('keeps an unpunctuated hypothetical action on the read path: %s', (message) => {
 		const plan = service.plan({
 			message,

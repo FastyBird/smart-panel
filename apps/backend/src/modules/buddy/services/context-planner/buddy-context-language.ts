@@ -29,7 +29,7 @@ import {
 	WEATHER_PATTERN,
 } from './buddy-context-planner-grammar';
 
-const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:can(?:not|'t)?|could(?:n't)?|did(?:n't)?|do|does|don't|doesn't|may|might(?:n't)?|must(?:n't)?|should(?:n't)?|will|won't|would(?:n't)?)`;
+const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:am|are(?:n't)?|can(?:not|'t)?|could(?:n't)?|did(?:n't)?|do|does|don't|doesn't|had(?:n't)?|has(?:n't)?|have(?:n't)?|is(?:n't)?|may|might(?:n't)?|must(?:n't)?|should(?:n't)?|was(?:n't)?|were(?:n't)?|will|won't|would(?:n't)?)`;
 
 export function findLeadingConditionalActionIndex(
 	message: string,
@@ -77,7 +77,7 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 	const prefix = message.slice(0, actionIndex);
 	const clauseBoundary = Math.max(prefix.lastIndexOf(','), prefix.lastIndexOf(';'));
 	const outcomePattern = new RegExp(
-		String.raw`^(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?!you\b)|(?:are|had|has|have|is|was|were)\b)`,
+		String.raw`^(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?!you\b)`,
 		'u',
 	);
 
