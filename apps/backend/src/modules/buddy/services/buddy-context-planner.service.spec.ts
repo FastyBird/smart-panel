@@ -4125,6 +4125,8 @@ describe('BuddyContextPlannerService', () => {
 		'Is any air purifier running?',
 		'Are any air purifiers running?',
 		'Are any robot vacuums running?',
+		'Are any dehumidifiers on?',
+		'Are any humidifiers on?',
 		'Are any outdoor lights on?',
 		'Are any desk lamps on?',
 		'Are any ceiling fans running?',
@@ -6768,6 +6770,21 @@ describe('BuddyContextPlannerService', () => {
 		});
 
 		expect(plan).toMatchObject({ intent: 'read', ambiguityRisk: 'none' });
+		expect(plan.toolNames).not.toContain('control_device');
+		expect(plan.toolNames).not.toContain('set_space_lighting');
+	});
+
+	it.each([
+		'If we disable the Bedroom lights will the camera still work?',
+		'If we turn off the Bedroom lights will the camera still work?',
+	])('keeps an unpunctuated hypothetical action on the read path: %s', (message) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('read');
 		expect(plan.toolNames).not.toContain('control_device');
 		expect(plan.toolNames).not.toContain('set_space_lighting');
 	});

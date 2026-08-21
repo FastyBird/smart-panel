@@ -53,6 +53,13 @@ export function findLeadingConditionalActionIndex(
 
 function isConditionalOutcomeQuestion(message: string, actionIndex: number): boolean {
 	if (!/\?\s*$/u.test(message)) return false;
+	if (
+		/\b(?:can|could|did|do|does|may|might|must|should|will|would)\s+(?!you\b)[^?]*\?\s*$/u.test(
+			message.slice(actionIndex),
+		)
+	) {
+		return true;
+	}
 	const trailingBoundary = message.slice(actionIndex).search(/[,;]/u);
 
 	if (LEADING_CONDITION_PATTERN.test(message) && trailingBoundary >= 0) {
