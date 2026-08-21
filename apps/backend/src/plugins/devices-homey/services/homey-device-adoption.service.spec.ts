@@ -11,6 +11,7 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
+import { type StorageBackendBinding } from '../../../modules/storage/services/storage.service';
 import { DEVICES_HOMEY_TYPE } from '../devices-homey.constants';
 import { HomeyAdoptDeviceDto } from '../dto/adoption.dto';
 import { CreateHomeyDeviceChannelPropertyDto } from '../dto/create-device-channel-property.dto';
@@ -143,14 +144,19 @@ describe('HomeyDeviceAdoptionService', () => {
 		Pick<ChannelsPropertiesService, 'findAll' | 'findOne' | 'findOneBy' | 'create' | 'update' | 'remove'>
 	>;
 	let propertyValueService: jest.Mocked<
-		Pick<PropertyValueService, 'readLatest' | 'readLatestStrict' | 'readLatestPersisted' | 'write' | 'delete'>
+		Pick<
+			PropertyValueService,
+			'readLatest' | 'readLatestStrict' | 'readLatestPersisted' | 'readLatestPersistedSnapshot' | 'write' | 'delete'
+		>
 	>;
 	let structureLock: { runExclusive: jest.Mock };
 	let adoptionLock: Pick<HomeyAdoptionLockService, 'runExclusive'>;
 	let service: HomeyDeviceAdoptionService;
 	let lease: HomeyAdoptionLease;
+	let storageBinding: StorageBackendBinding;
 
 	beforeEach(() => {
+		storageBinding = {} as StorageBackendBinding;
 		lease = { assertOwned: jest.fn().mockResolvedValue(undefined) };
 		mappingPreviewService = { generatePreview: jest.fn().mockResolvedValue(preview()) };
 		devicesService = {
@@ -180,6 +186,10 @@ describe('HomeyDeviceAdoptionService', () => {
 			readLatest: jest.fn().mockResolvedValue(null),
 			readLatestStrict: jest.fn((property) => propertyValueService.readLatest(property)),
 			readLatestPersisted: jest.fn((property) => propertyValueService.readLatestStrict(property)),
+			readLatestPersistedSnapshot: jest.fn(async (property) => ({
+				state: await propertyValueService.readLatestPersisted(property),
+				storageBinding,
+			})),
 			write: jest.fn().mockResolvedValue(true),
 			delete: jest.fn(),
 		};
@@ -264,19 +274,19 @@ describe('HomeyDeviceAdoptionService', () => {
 			1,
 			'created-property-0',
 			{ type: DEVICES_HOMEY_TYPE, value: false },
-			{ strictValuePersistence: true },
+			{ strictValuePersistence: true, storageBinding },
 		);
 		expect(propertiesService.update).toHaveBeenNthCalledWith(
 			2,
 			'created-property-1',
 			{ type: DEVICES_HOMEY_TYPE, value: 'off' },
-			{ strictValuePersistence: true },
+			{ strictValuePersistence: true, storageBinding },
 		);
 		expect(propertiesService.update).toHaveBeenNthCalledWith(
 			3,
 			'created-property-2',
 			{ type: DEVICES_HOMEY_TYPE, value: 0 },
-			{ strictValuePersistence: true },
+			{ strictValuePersistence: true, storageBinding },
 		);
 	});
 
@@ -392,7 +402,7 @@ describe('HomeyDeviceAdoptionService', () => {
 		expect(propertiesService.update).toHaveBeenCalledWith(
 			property.id,
 			{ type: DEVICES_HOMEY_TYPE, value: true },
-			{ strictValuePersistence: true },
+			{ strictValuePersistence: true, storageBinding },
 		);
 	});
 
@@ -770,7 +780,7 @@ describe('HomeyDeviceAdoptionService', () => {
 		expect(propertiesService.update).toHaveBeenCalledWith(
 			property.id,
 			expect.objectContaining({ value: false, type: DEVICES_HOMEY_TYPE }),
-			{ strictValuePersistence: true },
+			{ strictValuePersistence: true, storageBinding },
 		);
 	});
 
@@ -842,7 +852,7 @@ describe('HomeyDeviceAdoptionService', () => {
 				type: DEVICES_HOMEY_TYPE,
 				value: false,
 			},
-			{ strictValuePersistence: true },
+			{ strictValuePersistence: true, storageBinding },
 		);
 		expect(propertiesService.update).toHaveBeenNthCalledWith(
 			2,
@@ -851,7 +861,7 @@ describe('HomeyDeviceAdoptionService', () => {
 				type: DEVICES_HOMEY_TYPE,
 				value: 'off',
 			},
-			{ strictValuePersistence: true },
+			{ strictValuePersistence: true, storageBinding },
 		);
 		expect(propertyValueService.write).not.toHaveBeenCalled();
 		expect(propertyValueService.delete).not.toHaveBeenCalled();

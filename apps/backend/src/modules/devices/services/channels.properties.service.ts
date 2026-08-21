@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { buildSqliteFtsNameRankExpression } from '../../../common/utils/sqlite-fts.utils';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { type StorageBackendBinding } from '../../storage/services/storage.service';
 import {
 	ChannelCategory,
 	DEVICES_MODULE_NAME,
@@ -104,6 +105,7 @@ export interface VisiblePropertySearchSummaryPage {
 
 export interface ChannelPropertyUpdateOptions {
 	strictValuePersistence?: boolean;
+	storageBinding?: StorageBackendBinding;
 }
 
 @Injectable()
@@ -850,7 +852,7 @@ export class ChannelsPropertiesService {
 		let valueChanged = false;
 		if (typeof updateDto.value !== 'undefined') {
 			valueChanged = options.strictValuePersistence
-				? await this.propertyValueService.writeStrict(raw, updateDto.value)
+				? await this.propertyValueService.writeStrict(raw, updateDto.value, options.storageBinding)
 				: await this.propertyValueService.write(raw, updateDto.value);
 		}
 

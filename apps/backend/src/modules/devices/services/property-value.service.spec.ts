@@ -9,7 +9,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { StorageService } from '../../storage/services/storage.service';
+import { type StorageBackendBinding, StorageService } from '../../storage/services/storage.service';
 import { StorageQueryOptions } from '../../storage/storage.types';
 import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
@@ -30,6 +30,7 @@ describe('PropertyValueService', () => {
 			query: jest.fn(),
 			queryStrict: jest.fn(),
 			queryActiveStrict: jest.fn(),
+			queryActiveStrictBound: jest.fn(),
 			isConnected: jest.fn().mockReturnValue(true),
 		};
 
@@ -91,6 +92,32 @@ describe('PropertyValueService', () => {
 			await expect(service.writeStrict(property, 42)).resolves.toBe(true);
 			expect(service['valuesMap'].get(property.id)).toEqual(expect.objectContaining({ value: 42 }));
 			expect(storageService.writePointsStrict).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not replace a newer cache value when a strict write completes late', async () => {
+			const property = {
+				id: 'strict-property-id',
+				dataType: DataTypeType.INT,
+				invalid: null,
+				format: null,
+				step: null,
+			} as ChannelPropertyEntity;
+			let resolveStrictWrite: () => void = () => {};
+			storageService.writePointsStrict.mockImplementation(
+				() =>
+					new Promise<void>((resolve) => {
+						resolveStrictWrite = resolve;
+					}),
+			);
+			storageService.writePoints.mockResolvedValue();
+			const strictWrite = service.writeStrict(property, 42);
+
+			await expect(service.write(property, 200)).resolves.toBe(true);
+			resolveStrictWrite();
+
+			await expect(strictWrite).resolves.toBe(true);
+			expect(service['valuesMap'].get(property.id)).toEqual(expect.objectContaining({ value: 200 }));
+			expect(service['recentValuesMap'].get(property.id)).toEqual([200]);
 		});
 
 		it('should log an error when an unsupported data type is used', async () => {
@@ -190,10 +217,14 @@ describe('PropertyValueService', () => {
 				dataType: DataTypeType.INT,
 			} as ChannelPropertyEntity;
 			service['valuesMap'].set(property.id, new PropertyValueState(42));
-			storageService.queryActiveStrict.mockResolvedValue([{ numberValue: 100 }]);
+			const storageBinding = {} as StorageBackendBinding;
+			storageService.queryActiveStrictBound.mockResolvedValue({
+				rows: [{ numberValue: 100 }],
+				binding: storageBinding,
+			});
 
 			await expect(service.readLatestPersisted(property)).resolves.toEqual(expect.objectContaining({ value: 100 }));
-			expect(storageService.queryActiveStrict).toHaveBeenCalledWith(
+			expect(storageService.queryActiveStrictBound).toHaveBeenCalledWith(
 				expect.stringContaining('SELECT * FROM property_value'),
 			);
 			expect(storageService.queryStrict).not.toHaveBeenCalled();
@@ -207,10 +238,10 @@ describe('PropertyValueService', () => {
 				invalid: null,
 			} as ChannelPropertyEntity;
 			let resolveQuery: (rows: Array<{ numberValue: number }>) => void = () => {};
-			storageService.queryActiveStrict.mockImplementation(
+			storageService.queryActiveStrictBound.mockImplementation(
 				() =>
 					new Promise((resolve) => {
-						resolveQuery = resolve;
+						resolveQuery = (rows) => resolve({ rows, binding: {} as StorageBackendBinding });
 					}),
 			);
 			service['valuesMap'].set(property.id, new PropertyValueState(42));
@@ -221,6 +252,23 @@ describe('PropertyValueService', () => {
 
 			await expect(persistedRead).resolves.toEqual(expect.objectContaining({ value: 100 }));
 			expect(service['valuesMap'].get(property.id)).toEqual(expect.objectContaining({ value: 200 }));
+		});
+
+		it('returns the backend binding with an authoritative persisted snapshot', async () => {
+			const property = {
+				id: 'test-property-id',
+				dataType: DataTypeType.INT,
+			} as ChannelPropertyEntity;
+			const storageBinding = {} as StorageBackendBinding;
+			storageService.queryActiveStrictBound.mockResolvedValue({
+				rows: [{ numberValue: 100 }],
+				binding: storageBinding,
+			});
+
+			await expect(service.readLatestPersistedSnapshot(property)).resolves.toEqual({
+				state: expect.objectContaining({ value: 100 }),
+				storageBinding,
+			});
 		});
 
 		it('should batch strict reads for every uncached property', async () => {

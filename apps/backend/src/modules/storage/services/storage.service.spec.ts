@@ -132,6 +132,44 @@ describe('StorageService', () => {
 		expect(primary.query).not.toHaveBeenCalled();
 	});
 
+	it('binds a reconciliation write to the backend that supplied its strict read', async () => {
+		const service = new StorageService({
+			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),
+		} as unknown as ConfigService);
+		const primary = createPlugin('primary');
+		const fallback = createPlugin('fallback');
+		primary.isAvailable.mockReturnValue(false);
+		fallback.query.mockResolvedValue([{ value: 41 }]);
+		service.registerPlugin(primary.name, primary);
+		service.registerPlugin(fallback.name, fallback);
+
+		const result = await service.queryActiveStrictBound<{ value: number }>('SELECT * FROM test');
+		primary.isAvailable.mockReturnValue(true);
+
+		await service.writePointsStrict([{ measurement: 'property_value', fields: { numberValue: 42 } }], result.binding);
+
+		expect(result.rows).toEqual([{ value: 41 }]);
+		expect(fallback.writePoints).toHaveBeenCalledTimes(1);
+		expect(primary.writePoints).not.toHaveBeenCalled();
+	});
+
+	it('rejects a bound write after the queried backend is replaced', async () => {
+		const service = new StorageService({
+			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),
+		} as unknown as ConfigService);
+		const primary = createPlugin('primary');
+		primary.query.mockResolvedValue([]);
+		service.registerPlugin(primary.name, primary);
+		const { binding } = await service.queryActiveStrictBound('SELECT * FROM test');
+
+		service.unregisterPlugin(primary.name);
+
+		await expect(
+			service.writePointsStrict([{ measurement: 'property_value', fields: { numberValue: 42 } }], binding),
+		).rejects.toThrow('Bound storage backend is no longer available');
+		expect(primary.writePoints).not.toHaveBeenCalled();
+	});
+
 	it('does not start a fallback query after the primary request is aborted', async () => {
 		const service = new StorageService({
 			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),

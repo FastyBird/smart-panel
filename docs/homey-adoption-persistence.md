@@ -84,6 +84,8 @@ active backend that strict persistence requires and bypass each process's local 
 failure aborts reconciliation instead of falling through to potentially stale fallback history, preventing stale or
 unknown previous values from becoming duplicate appends. Each terminal value write performs one more authoritative
 read immediately before persistence, so an intervening normal property update that already stored the preview value is
-not duplicated or overwritten based on the earlier snapshot. Persisted reads also capture the process-cache entry at
-query start and refresh it only if that entry is unchanged when the query completes, preventing a slower snapshot from
-replacing a newer value published by a concurrent normal writer.
+not duplicated or overwritten based on the earlier snapshot. That read returns an opaque backend binding, and the
+following strict write must use the exact backend that supplied the comparison even if primary availability changes in
+between. Persisted reads and strict writes also capture a per-property cache version and publish their result only if
+the version is unchanged when the operation completes, preventing slower storage work from replacing a newer value or
+trend published by a concurrent normal writer.

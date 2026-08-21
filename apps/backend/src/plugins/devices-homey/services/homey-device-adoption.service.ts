@@ -908,9 +908,9 @@ export class HomeyDeviceAdoptionService {
 				// property writer may therefore have persisted after it; compare against the active backend again
 				// at the terminal boundary so an already-current value is not appended twice or overwritten by
 				// an older preview solely because pending.previous is stale.
-				const latest = await this.propertyValueService.readLatestPersisted(pending.property);
+				const latest = await this.propertyValueService.readLatestPersistedSnapshot(pending.property);
 
-				if (latest?.value === pending.value) {
+				if (latest.state?.value === pending.value) {
 					continue;
 				}
 
@@ -921,7 +921,7 @@ export class HomeyDeviceAdoptionService {
 						type: DEVICES_HOMEY_TYPE,
 						value: pending.value,
 					},
-					{ strictValuePersistence: true },
+					{ strictValuePersistence: true, storageBinding: latest.storageBinding },
 				);
 			} catch {
 				await lease.assertOwned();

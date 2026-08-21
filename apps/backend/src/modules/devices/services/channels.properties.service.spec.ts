@@ -16,6 +16,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { type StorageBackendBinding } from '../../storage/services/storage.service';
 import { ChannelCategory, DataTypeType, EventType, PermissionType, PropertyCategory } from '../devices.constants';
 import { DevicesException, DevicesValidationException } from '../devices.exceptions';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
@@ -1134,6 +1135,7 @@ describe('ChannelsPropertiesService', () => {
 
 	describe('update', () => {
 		it('uses strict value persistence when the caller requires retry-safe storage', async () => {
+			const storageBinding = {} as StorageBackendBinding;
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
 				type: 'mock',
 				class: MockChannelProperty,
@@ -1150,12 +1152,13 @@ describe('ChannelsPropertiesService', () => {
 			await channelsPropertiesService.update(
 				mockChannelProperty.id,
 				{ type: 'mock', value: 'new value' } as UpdateMockChannelPropertyDto,
-				{ strictValuePersistence: true },
+				{ strictValuePersistence: true, storageBinding },
 			);
 
 			expect(propertyValueService.writeStrict).toHaveBeenCalledWith(
 				expect.objectContaining({ id: mockChannelProperty.id }),
 				'new value',
+				storageBinding,
 			);
 			expect(propertyValueService.write).not.toHaveBeenCalled();
 			expect(eventEmitter.emit).toHaveBeenCalledWith(

@@ -7,12 +7,29 @@ import { StorageConfigModel } from '../models/config.model';
 import { STORAGE_MODULE_NAME } from '../storage.constants';
 import { StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../storage.types';
 
+declare const storageBackendBindingBrand: unique symbol;
+
+export interface StorageBackendBinding {
+	readonly [storageBackendBindingBrand]: true;
+}
+
+export interface BoundStorageQueryResult<T> {
+	readonly rows: T[];
+	readonly binding: StorageBackendBinding;
+}
+
+interface StorageBackendBindingState {
+	readonly plugin: StoragePlugin;
+	readonly role: 'primary' | 'fallback';
+}
+
 @Injectable()
 export class StorageService {
 	private readonly logger = createExtensionLogger(STORAGE_MODULE_NAME, 'StorageService');
 
 	private primary: StoragePlugin | null = null;
 	private fallback: StoragePlugin | null = null;
+	private readonly backendBindings = new WeakMap<StorageBackendBinding, StorageBackendBindingState>();
 
 	/**
 	 * All schemas registered so far, keyed by measurement name.
@@ -147,7 +164,19 @@ export class StorageService {
 	 * Callers that retry state reconciliation use this path so a failed best-effort
 	 * write cannot be mistaken for a persisted measurement.
 	 */
-	async writePointsStrict(points: StoragePoint[]): Promise<void> {
+	async writePointsStrict(points: StoragePoint[], binding?: StorageBackendBinding): Promise<void> {
+		if (binding) {
+			const state = this.backendBindings.get(binding);
+
+			if (!state || this[state.role] !== state.plugin || !state.plugin.isAvailable()) {
+				throw new Error('Bound storage backend is no longer available');
+			}
+
+			await state.plugin.writePoints(points);
+
+			return;
+		}
+
 		const primaryAvailable = this.primary?.isAvailable() ?? false;
 		const fallbackAvailable = this.fallback?.isAvailable() ?? false;
 
@@ -244,17 +273,36 @@ export class StorageService {
 	 * writing the result to primary.
 	 */
 	async queryActiveStrict<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
+		return (await this.queryActiveStrictBound<T>(query, options)).rows;
+	}
+
+	/**
+	 * Query the active backend and return an opaque binding that lets a later
+	 * strict write target the exact same plugin. Reconciliation must not compare
+	 * fallback state and then write to a primary that recovered in between.
+	 */
+	async queryActiveStrictBound<T>(query: string, options?: StorageQueryOptions): Promise<BoundStorageQueryResult<T>> {
 		this.throwIfQueryAborted(options?.signal);
+		let state: StorageBackendBindingState;
 
 		if (this.primary?.isAvailable()) {
-			return this.primary.queryStrict?.<T>(query, options) ?? this.primary.query<T>(query, options);
+			state = { plugin: this.primary, role: 'primary' };
+		} else if (this.fallback?.isAvailable()) {
+			state = { plugin: this.fallback, role: 'fallback' };
+		} else {
+			throw new Error('No storage backend is available');
 		}
 
-		if (this.fallback?.isAvailable()) {
-			return this.fallback.queryStrict?.<T>(query, options) ?? this.fallback.query<T>(query, options);
+		const rows = await (state.plugin.queryStrict?.<T>(query, options) ?? state.plugin.query<T>(query, options));
+
+		if (this[state.role] !== state.plugin) {
+			throw new Error('Active storage backend changed during query');
 		}
 
-		throw new Error('No storage backend is available');
+		const binding = {} as StorageBackendBinding;
+		this.backendBindings.set(binding, state);
+
+		return { rows, binding };
 	}
 
 	async queryRaw<T>(query: string, options?: StorageQueryOptions): Promise<T> {
