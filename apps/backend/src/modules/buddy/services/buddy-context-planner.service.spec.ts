@@ -3172,6 +3172,8 @@ describe('BuddyContextPlannerService', () => {
 				'Set the Bedroom thermostat',
 				'Change the Bedroom thermostat',
 				'Adjust the Bedroom thermostat',
+				'Turn the Bedroom lights',
+				'Switch the Bedroom lights',
 			]) {
 				expect(
 					service.plan({
@@ -5806,6 +5808,20 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
+	it.each(['Turn ten Bedroom lights on', 'Turn a dozen Bedroom lights on', 'Turn twenty-one Bedroom lights on'])(
+		'clarifies a word-quantity lighting subset: %s',
+		(message) => {
+			const plan = service.plan({
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			});
+
+			expect(plan).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify' });
+			expect(plan.toolNames).toEqual([]);
+		},
+	);
+
 	it.each(['Turn all Bedroom lights on', 'Turn every Bedroom light on'])(
 		'keeps an explicit whole lighting group actionable: %s',
 		(message) => {
@@ -6612,5 +6628,28 @@ describe('BuddyContextPlannerService', () => {
 			domains: ['weather', 'energy'],
 			queries: [{ kind: 'weather' }, { kind: 'energy-summary', spaceId: 'space-bedroom' }],
 		});
+	});
+
+	it('retains a bare temporal continuation in a scoped comparison', () => {
+		const plan = service.plan({
+			message: 'Compare Bedroom temperature now and yesterday',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.domains).toEqual(['home', 'history']);
+		expect(plan.queries).toContainEqual({ kind: 'current-state', spaceId: 'space-bedroom' });
+		expect(plan.queries).toContainEqual({ kind: 'property-timeseries', spaceId: 'space-bedroom' });
+	});
+
+	it('clarifies a temporally prefixed follow-up action', () => {
+		const plan = service.plan({
+			message: 'Turn Bedroom lights off and in 10 minutes turn them on',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'write', ambiguityRisk: 'action', strategy: 'clarify' });
+		expect(plan.toolNames).toEqual([]);
 	});
 });

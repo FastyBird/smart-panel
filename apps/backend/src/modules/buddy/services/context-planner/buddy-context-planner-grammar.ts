@@ -48,8 +48,13 @@ export const LIGHTING_GROUP_PATTERN = new RegExp(
 );
 export const LIGHTING_GROUP_EXCLUSION_PATTERN =
 	/\b(?:apart from|but not|but|except|excluding|instead of|krome|other than|rather than|save for|save|with(?: the)? exception of|without)\b/u;
-export const PARTIAL_LIGHTING_GROUP_PATTERN =
-	/\b(?:a couple of|a few|a quarter|a third|both(?:\s+of(?:\s+the)?)?|eight|five|four|half|most of|nine|one|one third|one quarter|part of|portion of|seven|several|six|some|three|two|\d+|(?:(?:a|the)\s+)?majority\s+of)\b.*\b(?:lamp|lamps|light|lights)\b/u;
+const UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:one|two|three|four|five|six|seven|eight|nine)`;
+const SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:zero|${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE}|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)`;
+const WORD_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:${SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE}|(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[-\s]${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE})?|(?:${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE}\s+)?hundred(?:\s+and\s+${SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE})?|(?:a\s+)?dozens?(?:\s+of)?)`;
+export const PARTIAL_LIGHTING_GROUP_PATTERN = new RegExp(
+	String.raw`\b(?:a couple of|a few|a quarter|a third|both(?:\s+of(?:\s+the)?)?|half|most of|one third|one quarter|part of|portion of|several|some|\d+|${WORD_LIGHTING_QUANTITY_PATTERN_SOURCE}|(?:(?:a|the)\s+)?majority\s+of)\b.*\b(?:lamp|lamps|light|lights)\b`,
+	'u',
+);
 export const ZERO_QUANTITY_LIGHTING_PATTERN = /\b(?:no|none|zero)\b.*\b(?:lamp|lamps|light|lights)\b/u;
 
 export const DOMAIN_ORDER: readonly BuddyContextDomain[] = [

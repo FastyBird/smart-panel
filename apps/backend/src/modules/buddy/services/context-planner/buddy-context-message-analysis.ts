@@ -51,6 +51,7 @@ import {
 	QUALIFIED_ACTION_DURATION_PATTERN,
 	READ_PATTERN,
 	REPEATED_ENERGY_CONNECTOR_PATTERN,
+	SCHEDULED_ACTION_PATTERN,
 	SECURITY_ENTITY_NAME_PATTERN,
 	SECURITY_PATTERN,
 	STATE_SIGNAL_PATTERN,
@@ -483,6 +484,10 @@ export function splitPlannerClauses(
 		...findPatternRanges(message, CLOCK_TIME_HISTORY_PATTERN),
 		...findPatternRanges(message, ACTION_RANGE_PATTERN),
 		...findPatternRanges(message, ACTION_DURATION_PATTERN),
+		...findPatternRanges(
+			message,
+			/\b(?:current|currently|now|today)\s+and\s+(?:yesterday|(?:last|previous)\s+(?:day|hour|month|night|week|weekend|year))\b/u,
+		),
 		...findPatternRanges(message, /\d+\.\d+/u),
 	];
 	const separatorPattern = new RegExp(
@@ -601,9 +606,13 @@ export function getActionClauseSelection(
 			searchStart = previousClauseEnd;
 		}
 
-		if (ACTION_COMMAND_PATTERN.test(clause)) {
+		const prefixedActionClause = getTemporallyPrefixedActionClause(clause);
+
+		if (ACTION_COMMAND_PATTERN.test(clause) || prefixedActionClause) {
 			actionClauses.push({ sourceClause: clause, validationClause: clause });
-			inheritedAction = new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'u').exec(clause)?.[0];
+			inheritedAction = new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'u').exec(
+				prefixedActionClause ?? clause,
+			)?.[0];
 			continue;
 		}
 
@@ -626,6 +635,19 @@ export function getActionClauseSelection(
 	}
 
 	return actionClauses;
+}
+
+function getTemporallyPrefixedActionClause(clause: string): string | undefined {
+	const actionSignal = new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'u').exec(clause);
+
+	if (!actionSignal || actionSignal.index === 0) return undefined;
+
+	const temporalPrefix = clause.slice(0, actionSignal.index).trim();
+	const actionClause = clause.slice(actionSignal.index);
+
+	return SCHEDULED_ACTION_PATTERN.test(temporalPrefix) && ACTION_COMMAND_PATTERN.test(actionClause)
+		? actionClause
+		: undefined;
 }
 
 export function hasActionTargetContinuationValue(clause: string): boolean {

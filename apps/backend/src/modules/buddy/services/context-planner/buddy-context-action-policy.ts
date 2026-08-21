@@ -438,7 +438,7 @@ export function hasPlausibleCustomActionTarget(clause: string): boolean {
 }
 
 export function hasMissingRequiredActionValue(clause: string): boolean {
-	if (!/\b(?:adjust|change|set)\b/u.test(clause)) return false;
+	if (!/\b(?:adjust|change|set|switch|turn)\b/u.test(clause)) return false;
 
 	const actionObject = getActionObjectClause(clause);
 	const hasExplicitValue =
