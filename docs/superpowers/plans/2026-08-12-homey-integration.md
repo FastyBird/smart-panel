@@ -353,23 +353,35 @@ exercise conflicts, orphaned mappings, access mismatches, failed conversions, lo
 
 **Proposed service:** `services/device-adoption.service.ts`
 
-- [ ] Re-fetch the device and recompute/validate mapping immediately before mutation.
-- [ ] Create/update the plugin-specific device by full Homey device ID.
-- [ ] Create/reconcile channels by stable mapping key.
-- [ ] Create/reconcile properties by full Homey capability ID.
-- [ ] Apply current transformed values through normal Devices service paths.
-- [ ] Isolate each batch selection in its own transaction where repository transaction patterns permit.
-- [ ] Return created/updated/skipped/failed per device with sanitized errors.
-- [ ] Make retry idempotent and prevent duplicates under concurrent requests.
-- [ ] Never mutate or delete anything in Homey.
-- [ ] Add single and batch adoption endpoints and tests for partial success, stale preview, duplicate request, unknown device, unsupported mapping, and rollback.
+- [x] Re-fetch the device and recompute/validate mapping immediately before mutation.
+- [x] Create/update the plugin-specific device by full Homey device ID.
+- [x] Create/reconcile channels by stable mapping key.
+- [x] Create/reconcile properties by full Homey capability ID.
+- [x] Apply current transformed values through normal Devices service paths.
+- [x] Isolate each batch selection in its own transaction where repository transaction patterns permit.
+- [x] Return created/updated/skipped/failed per device with sanitized errors.
+- [x] Make retry idempotent and prevent duplicates under concurrent requests.
+- [x] Never mutate or delete anything in Homey.
+- [x] Add single and batch adoption endpoints and tests for partial success, stale preview, duplicate request, unknown device, unsupported mapping, and rollback.
+
+Adoption serializes each Homey ID before a fresh preview, then reconciles local state under the repository's re-entrant
+structure lock. Long SQLite transactions are not used because the shared connection can capture unrelated writes;
+instead the service snapshots the existing hierarchy and values and compensates completed operations in reverse order.
+Single and ordered batch endpoints return only fixed per-device outcomes, and focused tests cover partial success,
+stale/unknown/unsupported selections, concurrent retries, authoritative identifiers, value application, rollback, and
+rollback failure without exposing caught error details.
 
 ### Task 3.6: Verify persistence assumptions
 
-- [ ] Prove device uniqueness is scoped by provider/entity type plus identifier.
-- [ ] Prove channel and property lookup/reconciliation use the appropriate parent/type scope.
-- [ ] Document that no migration is required.
-- [ ] If proof fails, design the minimum new entity metadata and add an incremental TypeORM migration with upgrade/rollback tests.
+- [x] Prove device uniqueness is scoped by provider/entity type plus identifier.
+- [x] Prove channel and property lookup/reconciliation use the appropriate parent/type scope.
+- [x] Document the migration decision (the no-migration assumption failed for intentional capability fan-out).
+- [x] If proof fails, design the minimum new entity metadata and add an incremental TypeORM migration with upgrade/rollback tests.
+
+The property proof found intentional capability fan-out: one full Homey capability may create multiple mapped
+properties in one channel. `homeyCapabilityId` plus `homeyMappingName` now preserve and disambiguate that identity;
+the deterministic base identifier remains parent-scoped. The incremental migration and its upgrade/rollback evidence
+are documented in `docs/homey-adoption-persistence.md`.
 
 ---
 

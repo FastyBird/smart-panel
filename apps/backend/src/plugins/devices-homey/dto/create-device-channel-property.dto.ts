@@ -3,15 +3,14 @@ import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { UpdateChannelPropertyDto } from '../../../modules/devices/dto/update-channel-property.dto';
+import { CreateDeviceChannelPropertyDto } from '../../../modules/devices/dto/create-device-channel-property.dto';
 import { DEVICES_HOMEY_TYPE } from '../devices-homey.constants';
 
-@ApiSchema({ name: 'DevicesHomeyPluginUpdateChannelProperty' })
-export class UpdateHomeyChannelPropertyDto extends UpdateChannelPropertyDto {
+@ApiSchema({ name: 'DevicesHomeyPluginCreateDeviceChannelProperty' })
+export class CreateHomeyDeviceChannelPropertyDto extends CreateDeviceChannelPropertyDto {
 	@ApiPropertyOptional({
 		name: 'homey_capability_id',
-		description: 'Authoritative full Homey capability identifier when reconciling provider metadata',
-		type: 'string',
+		description: 'Authoritative full Homey capability identifier for an adopted mapping property',
 	})
 	@Expose({ name: 'homey_capability_id' })
 	@IsOptional()
@@ -22,8 +21,7 @@ export class UpdateHomeyChannelPropertyDto extends UpdateChannelPropertyDto {
 
 	@ApiPropertyOptional({
 		name: 'homey_mapping_name',
-		description: 'Stable mapping descriptor when reconciling provider metadata',
-		type: 'string',
+		description: 'Stable mapping descriptor that disambiguates capability fan-out',
 	})
 	@Expose({ name: 'homey_mapping_name' })
 	@IsOptional()

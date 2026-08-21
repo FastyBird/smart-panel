@@ -1,5 +1,8 @@
+import { HomeyAdoptDeviceDto, HomeyBatchAdoptDevicesDto } from './dto/adoption.dto';
 import { CreateHomeyChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateHomeyChannelDto } from './dto/create-channel.dto';
+import { CreateHomeyDeviceChannelPropertyDto } from './dto/create-device-channel-property.dto';
+import { CreateHomeyDeviceChannelDto } from './dto/create-device-channel.dto';
 import { CreateHomeyDeviceDto } from './dto/create-device.dto';
 import { ListHomeyDevicesQueryDto } from './dto/list-homey-devices.dto';
 import { HomeyMappingPreviewRequestDto } from './dto/mapping-preview.dto';
@@ -14,6 +17,12 @@ import { UpdateHomeyChannelDto } from './dto/update-channel.dto';
 import { HomeyUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateHomeyDeviceDto } from './dto/update-device.dto';
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from './entities/devices-homey.entity';
+import {
+	HomeyAdoptionResponseModel,
+	HomeyAdoptionResultModel,
+	HomeyBatchAdoptionModel,
+	HomeyBatchAdoptionResponseModel,
+} from './models/adoption.model';
 import { HomeyConfigModel } from './models/config.model';
 import {
 	HomeyCapabilitySummaryModel,
@@ -51,6 +60,12 @@ export const DEVICES_HOMEY_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	HomeyMappingPreviewDeviceModel,
 	HomeyMappingPreviewModel,
 	HomeyMappingPreviewResponseModel,
+	HomeyAdoptDeviceDto,
+	HomeyBatchAdoptDevicesDto,
+	HomeyAdoptionResultModel,
+	HomeyBatchAdoptionModel,
+	HomeyAdoptionResponseModel,
+	HomeyBatchAdoptionResponseModel,
 	HomeyStatusModel,
 	HomeyStatusResponseModel,
 	HomeyTestConnectionDto,
@@ -63,6 +78,8 @@ export const DEVICES_HOMEY_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	HomeyChannelEntity,
 	HomeyChannelPropertyEntity,
 	CreateHomeyDeviceDto,
+	CreateHomeyDeviceChannelDto,
+	CreateHomeyDeviceChannelPropertyDto,
 	UpdateHomeyDeviceDto,
 	CreateHomeyChannelDto,
 	UpdateHomeyChannelDto,

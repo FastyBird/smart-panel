@@ -8,7 +8,9 @@ describe('Homey entities', () => {
 		const channel = Object.assign(new HomeyChannelEntity(), { id: 'channel-id', identifier: 'lighting' });
 		const property = Object.assign(new HomeyChannelPropertyEntity(), {
 			id: 'property-id',
-			identifier: 'measure_temperature.inside',
+			identifier: 'measure_temperature.inside::sensor-temperature',
+			homeyCapabilityId: 'measure_temperature.inside',
+			homeyMappingName: 'sensor-temperature',
 		});
 
 		expect(device.type).toBe(DEVICES_HOMEY_TYPE);
@@ -16,6 +18,8 @@ describe('Homey entities', () => {
 		expect(channel.type).toBe(DEVICES_HOMEY_TYPE);
 		expect(channel.identifier).toBe('lighting');
 		expect(property.type).toBe(DEVICES_HOMEY_TYPE);
-		expect(property.identifier).toBe('measure_temperature.inside');
+		expect(property.identifier).toBe('measure_temperature.inside::sensor-temperature');
+		expect(property.homeyCapabilityId).toBe('measure_temperature.inside');
+		expect(property.homeyMappingName).toBe('sensor-temperature');
 	});
 });

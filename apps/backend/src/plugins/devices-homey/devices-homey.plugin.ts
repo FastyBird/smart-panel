@@ -24,6 +24,7 @@ import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { HomeyLocalConnectorFactory } from './connectors/homey-local-connector.factory';
 import { HomeySdkClientFactoryService } from './connectors/homey-sdk.client';
+import { HomeyAdoptionController } from './controllers/homey-adoption.controller';
 import { HomeyDevicesController } from './controllers/homey-devices.controller';
 import { HomeyMappingPreviewController } from './controllers/homey-mapping-preview.controller';
 import { HomeyStatusController } from './controllers/homey-status.controller';
@@ -50,6 +51,7 @@ import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-
 import { HomeyConfigModel } from './models/config.model';
 import { HomeyConfigValidatorService } from './services/homey-config-validator.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
+import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
 import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
 import { HomeyMappingPreviewService } from './services/homey-mapping-preview.service';
 import { HomeyService } from './services/homey.service';
@@ -81,6 +83,7 @@ import { HomeyService } from './services/homey.service';
 		HomeyPropertyMappingStorageService,
 		HomeyDeviceInventoryService,
 		HomeyMappingPreviewService,
+		HomeyDeviceAdoptionService,
 		HomeyService,
 	],
 	controllers: [
@@ -88,6 +91,7 @@ import { HomeyService } from './services/homey.service';
 		HomeyTestConnectionController,
 		HomeyDevicesController,
 		HomeyMappingPreviewController,
+		HomeyAdoptionController,
 	],
 	exports: [
 		HomeyMappingLoaderService,
@@ -95,6 +99,7 @@ import { HomeyService } from './services/homey.service';
 		HomeyPropertyMappingStorageService,
 		HomeyDeviceInventoryService,
 		HomeyMappingPreviewService,
+		HomeyDeviceAdoptionService,
 		HomeyService,
 	],
 })

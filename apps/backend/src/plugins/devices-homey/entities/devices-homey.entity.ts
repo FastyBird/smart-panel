@@ -1,7 +1,8 @@
 import { Expose } from 'class-transformer';
-import { ChildEntity } from 'typeorm';
+import { IsOptional, IsString } from 'class-validator';
+import { ChildEntity, Column } from 'typeorm';
 
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DEVICES_HOMEY_TYPE } from '../devices-homey.constants';
@@ -47,6 +48,30 @@ export class HomeyChannelEntity extends ChannelEntity {
 @ApiSchema({ name: 'DevicesHomeyPluginDataChannelProperty' })
 @ChildEntity()
 export class HomeyChannelPropertyEntity extends ChannelPropertyEntity {
+	@ApiPropertyOptional({
+		name: 'homey_capability_id',
+		description: 'Authoritative full Homey capability identifier for adopted mapping properties',
+		type: 'string',
+		nullable: true,
+	})
+	@Expose({ name: 'homey_capability_id' })
+	@IsOptional()
+	@IsString()
+	@Column({ nullable: true })
+	homeyCapabilityId: string | null;
+
+	@ApiPropertyOptional({
+		name: 'homey_mapping_name',
+		description: 'Stable mapping descriptor that disambiguates capability fan-out',
+		type: 'string',
+		nullable: true,
+	})
+	@Expose({ name: 'homey_mapping_name' })
+	@IsOptional()
+	@IsString()
+	@Column({ nullable: true })
+	homeyMappingName: string | null;
+
 	@ApiProperty({
 		description: 'Channel property type',
 		type: 'string',
