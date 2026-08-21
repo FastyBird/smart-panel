@@ -3115,21 +3115,44 @@ describe('BuddyContextPlannerService', () => {
 	it.each([
 		{ toolCalling: 'reliable' as const, supportsStructuredToolResults: true },
 		{ toolCalling: 'unsupported' as const, supportsStructuredToolResults: false },
-	])('clarifies a set command without a target value for $toolCalling providers', (providerCapabilities) => {
-		expect(
-			service.plan({
-				message: 'Set the Bedroom thermostat',
-				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
-				providerCapabilities,
-			}),
-		).toMatchObject({ intent: 'write', ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+	])(
+		'clarifies a value-dependent command without a target value for $toolCalling providers',
+		(providerCapabilities) => {
+			for (const message of [
+				'Set the Bedroom thermostat',
+				'Change the Bedroom thermostat',
+				'Adjust the Bedroom thermostat',
+			]) {
+				expect(
+					service.plan({
+						message,
+						knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+						providerCapabilities,
+					}),
+				).toMatchObject({ intent: 'write', ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+			}
 
+			expect(
+				service.plan({
+					message: 'Set the coffee maker',
+					providerCapabilities,
+				}),
+			).toMatchObject({ intent: 'write', ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+		},
+	);
+
+	it.each([
+		'Change the Bedroom thermostat to 20 degrees',
+		'Adjust the Bedroom thermostat by 2 degrees',
+		'Adjust the Bedroom thermostat up',
+	])('retains a complete value-dependent action: %s', (message) => {
 		expect(
 			service.plan({
-				message: 'Set the coffee maker',
-				providerCapabilities,
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
-		).toMatchObject({ intent: 'write', ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+		).toMatchObject({ ambiguityRisk: 'none', strategy: 'model-tools' });
 	});
 
 	it('propagates exclusions across repeated prepositions in a space list', () => {
@@ -3629,6 +3652,8 @@ describe('BuddyContextPlannerService', () => {
 		'Are there any windows open?',
 		'Is there any door open?',
 		'Do any windows remain open?',
+		'Do we have any windows open?',
+		'Do I have any doors open?',
 		'Are all doors closed?',
 		'How many lights are on?',
 	])('treats an unscoped aggregate as whole-home despite conversation scope: %s', (message) => {
@@ -4766,18 +4791,21 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
-	it.each(['Turn most of the Bedroom lights off', 'Turn a majority of the Bedroom lights off'])(
-		'clarifies a majority-only lighting request: %s',
-		(message) => {
-			expect(
-				service.plan({
-					message,
-					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
-					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-				}),
-			).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
-		},
-	);
+	it.each([
+		'Turn most of the Bedroom lights off',
+		'Turn a majority of the Bedroom lights off',
+		'Turn the majority of Bedroom lights off',
+		'Turn the majority of the Bedroom lights off',
+		'Turn majority of Bedroom lights off',
+	])('clarifies a majority-only lighting request: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+	});
 
 	it('clarifies a conjunction-based negative lighting target', () => {
 		expect(

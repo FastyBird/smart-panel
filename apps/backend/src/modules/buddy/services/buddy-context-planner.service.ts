@@ -53,7 +53,7 @@ const LIGHTING_GROUP_PATTERN = new RegExp(
 const LIGHTING_GROUP_EXCLUSION_PATTERN =
 	/\b(?:apart from|but not|but|except|excluding|instead of|krome|other than|rather than|save for|save|with(?: the)? exception of|without)\b/u;
 const PARTIAL_LIGHTING_GROUP_PATTERN =
-	/\b(?:a couple of|a few|a majority of|a quarter|a third|eight|five|four|half|most of|nine|one|one third|one quarter|part of|portion of|seven|several|six|some|three|two|\d+)\b.*\b(?:lamp|lamps|light|lights)\b/u;
+	/\b(?:a couple of|a few|a quarter|a third|eight|five|four|half|most of|nine|one|one third|one quarter|part of|portion of|seven|several|six|some|three|two|\d+|(?:(?:a|the)\s+)?majority\s+of)\b.*\b(?:lamp|lamps|light|lights)\b/u;
 const ZERO_QUANTITY_LIGHTING_PATTERN = /\b(?:no|none|zero)\b.*\b(?:lamp|lamps|light|lights)\b/u;
 
 const DOMAIN_ORDER: readonly BuddyContextDomain[] = ['general', 'home', 'weather', 'energy', 'security', 'history'];
@@ -265,7 +265,7 @@ const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\beverywhere\b|\b(?:all|each|every) (?:rooms?|spaces?)\b/u;
 const UNSCOPED_AGGREGATE_READ_PATTERN =
-	/^(?:(?:are|is)(?:\s+there)?\s+(?:all|any)\b|do(?:es)?\s+any\b|count\b|how many\b)/u;
+	/^(?:(?:are|is)(?:\s+there)?\s+(?:all|any)\b|(?:do(?:\s+(?:i|we)\s+have)?|does)\s+any\b|count\b|how many\b)/u;
 const TRAILING_ACTION_PATTERN = new RegExp(
 	String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:if so|only|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:(?:only|please)\s+)*)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
@@ -1356,7 +1356,7 @@ function classifyAmbiguityRisk(
 		}
 		if (actionTargetClauses.some((clause) => ACTION_RANGE_PATTERN.test(clause))) return 'action';
 		if (actionTargetClauses.some((clause) => ACTION_NON_SCALAR_BOUND_PATTERN.test(clause))) return 'action';
-		if (actionTargetClauses.some(hasMissingSetActionValue)) return 'action';
+		if (actionTargetClauses.some(hasMissingRequiredActionValue)) return 'action';
 		if (
 			actionTargetClauses.some(hasConflictingDeviceSceneTarget) ||
 			CONFLICTING_DEVICE_SCENE_QUALIFIER_PATTERN.test(actionMessage)
@@ -1574,12 +1574,13 @@ function hasPlausibleCustomActionTarget(clause: string): boolean {
 	return significantTokens.length >= 1;
 }
 
-function hasMissingSetActionValue(clause: string): boolean {
-	if (!/\bset\b/u.test(clause)) return false;
+function hasMissingRequiredActionValue(clause: string): boolean {
+	if (!/\b(?:adjust|change|set)\b/u.test(clause)) return false;
 
 	const actionObject = getActionObjectClause(clause);
 	const hasExplicitValue =
 		/\b(?:at|to)\s+\S/u.test(actionObject) ||
+		RELATIVE_PATTERN.test(actionObject) ||
 		/\b(?:active|blue|closed|cooler|dimmer|eco|green|higher|inactive|locked|lower|off|on|open|red|unlocked|warmer|white)\b/u.test(
 			actionObject,
 		) ||
