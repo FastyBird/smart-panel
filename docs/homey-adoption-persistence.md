@@ -57,3 +57,7 @@ reconciliation, and terminal value writes across processes; database identity co
 guard. A concurrent unique-insert loss from an older or external writer is re-read only after its expected hierarchy
 and initial measurements are visible, then reconciled as an idempotent update rather than returned as a duplicate
 conflict.
+
+Terminal adoption values use the Devices module's strict property-value path. The active read backend must acknowledge
+the measurement before the process-local cache is updated; a transient storage failure therefore remains retryable on
+the next idempotent adoption instead of being hidden by a cache-only value.

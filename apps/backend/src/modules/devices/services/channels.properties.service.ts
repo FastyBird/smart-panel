@@ -102,6 +102,10 @@ export interface VisiblePropertySearchSummaryPage {
 	total: number;
 }
 
+export interface ChannelPropertyUpdateOptions {
+	strictValuePersistence?: boolean;
+}
+
 @Injectable()
 export class ChannelsPropertiesService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelsPropertiesService');
@@ -769,6 +773,7 @@ export class ChannelsPropertiesService {
 	async update<TProperty extends ChannelPropertyEntity, TUpdateDTO extends UpdateChannelPropertyDto>(
 		id: string,
 		updateDto: TUpdateDTO,
+		options: ChannelPropertyUpdateOptions = {},
 	): Promise<TProperty> {
 		this.logger.debug(`Updating data source with id=${id}`);
 
@@ -844,7 +849,9 @@ export class ChannelsPropertiesService {
 		// report to record what the hardware actually did.
 		let valueChanged = false;
 		if (typeof updateDto.value !== 'undefined') {
-			valueChanged = await this.propertyValueService.write(raw, updateDto.value);
+			valueChanged = options.strictValuePersistence
+				? await this.propertyValueService.writeStrict(raw, updateDto.value)
+				: await this.propertyValueService.write(raw, updateDto.value);
 		}
 
 		let updatedProperty = (await this.getOneOrThrow(property.id)) as TProperty;

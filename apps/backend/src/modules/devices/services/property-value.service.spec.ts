@@ -26,6 +26,7 @@ describe('PropertyValueService', () => {
 	beforeEach(async () => {
 		const mockStorageService = {
 			writePoints: jest.fn(),
+			writePointsStrict: jest.fn(),
 			query: jest.fn(),
 			queryStrict: jest.fn(),
 			isConnected: jest.fn().mockReturnValue(true),
@@ -69,6 +70,26 @@ describe('PropertyValueService', () => {
 					timestamp: expect.any(Date),
 				},
 			]);
+		});
+
+		it('does not cache a strict value until storage persists it', async () => {
+			const property = {
+				id: 'strict-property-id',
+				dataType: DataTypeType.INT,
+				invalid: null,
+				format: null,
+				step: null,
+			} as ChannelPropertyEntity;
+			storageService.writePointsStrict
+				.mockRejectedValueOnce(new Error('storage unavailable'))
+				.mockResolvedValueOnce(undefined);
+
+			await expect(service.writeStrict(property, 42)).rejects.toThrow('storage unavailable');
+			expect(service['valuesMap'].has(property.id)).toBe(false);
+
+			await expect(service.writeStrict(property, 42)).resolves.toBe(true);
+			expect(service['valuesMap'].get(property.id)).toEqual(expect.objectContaining({ value: 42 }));
+			expect(storageService.writePointsStrict).toHaveBeenCalledTimes(2);
 		});
 
 		it('should log an error when an unsupported data type is used', async () => {

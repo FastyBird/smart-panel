@@ -170,6 +170,7 @@ describe('ChannelsPropertiesService', () => {
 					provide: PropertyValueService,
 					useValue: {
 						write: jest.fn(() => {}),
+						writeStrict: jest.fn(() => {}),
 						readLatestStrict: jest.fn(),
 						readLatestManyStrict: jest.fn(),
 					},
@@ -1132,6 +1133,37 @@ describe('ChannelsPropertiesService', () => {
 	});
 
 	describe('update', () => {
+		it('uses strict value persistence when the caller requires retry-safe storage', async () => {
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest
+				.spyOn(channelsPropertiesService, 'getOneOrThrow')
+				.mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
+			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
+			propertyValueService.writeStrict.mockResolvedValue(true);
+
+			await channelsPropertiesService.update(
+				mockChannelProperty.id,
+				{ type: 'mock', value: 'new value' } as UpdateMockChannelPropertyDto,
+				{ strictValuePersistence: true },
+			);
+
+			expect(propertyValueService.writeStrict).toHaveBeenCalledWith(
+				expect.objectContaining({ id: mockChannelProperty.id }),
+				'new value',
+			);
+			expect(propertyValueService.write).not.toHaveBeenCalled();
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
+				EventType.CHANNEL_PROPERTY_VALUE_SET,
+				expect.objectContaining({ id: mockChannelProperty.id }),
+			);
+		});
+
 		it('should update existing and return a channel property', async () => {
 			const updateDto: UpdateMockChannelPropertyDto = {
 				type: 'mock',

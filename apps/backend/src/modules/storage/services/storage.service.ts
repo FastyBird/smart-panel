@@ -142,6 +142,46 @@ export class StorageService {
 		}
 	}
 
+	/**
+	 * Write to every available backend while requiring the active read backend to persist.
+	 * Callers that retry state reconciliation use this path so a failed best-effort
+	 * write cannot be mistaken for a persisted measurement.
+	 */
+	async writePointsStrict(points: StoragePoint[]): Promise<void> {
+		const primaryAvailable = this.primary?.isAvailable() ?? false;
+		const fallbackAvailable = this.fallback?.isAvailable() ?? false;
+
+		if (primaryAvailable) {
+			try {
+				await this.primary?.writePoints(points);
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.error(`Primary strict write failed: ${err.message}`);
+				throw error;
+			}
+
+			if (fallbackAvailable) {
+				try {
+					await this.fallback?.writePoints(points);
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.warn(`Fallback strict write failed after primary persistence: ${err.message}`);
+				}
+			}
+
+			return;
+		}
+		if (fallbackAvailable) {
+			await this.fallback?.writePoints(points);
+
+			return;
+		}
+
+		throw new Error('No storage backend is available');
+	}
+
 	async query<T>(query: string, options?: StorageQueryOptions): Promise<T[]> {
 		this.throwIfQueryAborted(options?.signal);
 

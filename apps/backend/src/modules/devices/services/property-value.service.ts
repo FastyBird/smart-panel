@@ -95,6 +95,23 @@ export class PropertyValueService {
 	 * @returns true if value changed, false if value was the same or invalid
 	 */
 	async write(property: ChannelPropertyEntity, value: string | boolean | number | null): Promise<boolean> {
+		return this.writeInternal(property, value, false);
+	}
+
+	/**
+	 * Persist a value to at least one storage backend before publishing it to the
+	 * process-local cache. Reconciliation callers can then retry a failed write
+	 * without the cache falsely claiming that the measurement already exists.
+	 */
+	async writeStrict(property: ChannelPropertyEntity, value: string | boolean | number | null): Promise<boolean> {
+		return this.writeInternal(property, value, true);
+	}
+
+	private async writeInternal(
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+		strict: boolean,
+	): Promise<boolean> {
 		const key = this.valueSourceRegistry.resolve(property);
 
 		// A projected property owns no series — the value belongs to its source, and only the source's
@@ -138,7 +155,7 @@ export class PropertyValueService {
 		}
 
 		const cached = this.valuesMap.get(key);
-		if (cached && cached.value === value) {
+		if (!strict && cached && cached.value === value) {
 			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate
 			cached.lastUpdated = new Date().toISOString();
 			return false;
@@ -181,7 +198,18 @@ export class PropertyValueService {
 				return false;
 		}
 
-		const now = new Date().toISOString();
+		const timestamp = new Date();
+		const now = timestamp.toISOString();
+		const point = {
+			measurement: 'property_value',
+			tags: { propertyId: key },
+			fields: formattedValue,
+			timestamp,
+		};
+
+		if (strict) {
+			await this.storageService.writePointsStrict([point]);
+		}
 
 		// Update recent values cache for trend computation
 		if (
@@ -203,19 +231,16 @@ export class PropertyValueService {
 		// Update local cache regardless of storage availability
 		this.valuesMap.set(key, state);
 
+		if (strict) {
+			return true;
+		}
+
 		if (!this.storageService.isConnected()) {
 			return true; // Value changed in cache
 		}
 
 		try {
-			await this.storageService.writePoints([
-				{
-					measurement: 'property_value',
-					tags: { propertyId: key },
-					fields: formattedValue,
-					timestamp: new Date(),
-				},
-			]);
+			await this.storageService.writePoints([point]);
 
 			this.logger.debug(`Value saved id=${property.id} dataType=${property.dataType} value=${value}`);
 		} catch (error) {

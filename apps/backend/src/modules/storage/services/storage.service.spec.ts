@@ -10,9 +10,53 @@ describe('StorageService', () => {
 		({
 			name,
 			isAvailable: jest.fn().mockReturnValue(true),
+			writePoints: jest.fn(),
 			query: jest.fn(),
 			registerSchema: jest.fn(),
 		}) as unknown as jest.Mocked<StoragePlugin>;
+
+	it('uses fallback persistence when the primary backend is unavailable', async () => {
+		const service = new StorageService({
+			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),
+		} as unknown as ConfigService);
+		const primary = createPlugin('primary');
+		const fallback = createPlugin('fallback');
+		const point = { measurement: 'property_value', fields: { numberValue: 42 } };
+		primary.isAvailable.mockReturnValue(false);
+		fallback.writePoints.mockResolvedValue();
+		service.registerPlugin(primary.name, primary);
+		service.registerPlugin(fallback.name, fallback);
+
+		await expect(service.writePointsStrict([point])).resolves.toBeUndefined();
+		expect(primary.writePoints).not.toHaveBeenCalled();
+		expect(fallback.writePoints).toHaveBeenCalledWith([point]);
+	});
+
+	it('rejects a strict write without touching fallback when the active primary fails', async () => {
+		const service = new StorageService({
+			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),
+		} as unknown as ConfigService);
+		const primary = createPlugin('primary');
+		const fallback = createPlugin('fallback');
+		primary.writePoints.mockRejectedValue(new Error('primary unavailable'));
+		service.registerPlugin(primary.name, primary);
+		service.registerPlugin(fallback.name, fallback);
+
+		await expect(
+			service.writePointsStrict([{ measurement: 'property_value', fields: { numberValue: 42 } }]),
+		).rejects.toThrow('primary unavailable');
+		expect(fallback.writePoints).not.toHaveBeenCalled();
+	});
+
+	it('rejects a strict write when no backend is available', async () => {
+		const service = new StorageService({
+			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),
+		} as unknown as ConfigService);
+
+		await expect(
+			service.writePointsStrict([{ measurement: 'property_value', fields: { numberValue: 42 } }]),
+		).rejects.toThrow('No storage backend is available');
+	});
 
 	it('propagates a primary strict query failure when no fallback is available', async () => {
 		const service = new StorageService({

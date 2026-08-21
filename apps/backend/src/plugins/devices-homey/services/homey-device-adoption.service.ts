@@ -684,10 +684,14 @@ export class HomeyDeviceAdoptionService {
 			}
 
 			try {
-				await this.channelsPropertiesService.update(pending.property.id, {
-					type: DEVICES_HOMEY_TYPE,
-					value: pending.value,
-				});
+				await this.channelsPropertiesService.update(
+					pending.property.id,
+					{
+						type: DEVICES_HOMEY_TYPE,
+						value: pending.value,
+					},
+					{ strictValuePersistence: true },
+				);
 			} catch {
 				this.logger.warn('Homey current value persistence was deferred until the next adoption');
 			}

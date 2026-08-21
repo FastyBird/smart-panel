@@ -515,6 +515,7 @@ describe('HomeyDeviceAdoptionService', () => {
 		expect(propertiesService.update).toHaveBeenCalledWith(
 			property.id,
 			expect.objectContaining({ value: false, type: DEVICES_HOMEY_TYPE }),
+			{ strictValuePersistence: true },
 		);
 	});
 
@@ -579,14 +580,24 @@ describe('HomeyDeviceAdoptionService', () => {
 			status: HomeyAdoptionStatus.UPDATED,
 			failureCode: null,
 		});
-		expect(propertiesService.update).toHaveBeenNthCalledWith(1, powerProperty.id, {
-			type: DEVICES_HOMEY_TYPE,
-			value: false,
-		});
-		expect(propertiesService.update).toHaveBeenNthCalledWith(2, stateProperty.id, {
-			type: DEVICES_HOMEY_TYPE,
-			value: 'off',
-		});
+		expect(propertiesService.update).toHaveBeenNthCalledWith(
+			1,
+			powerProperty.id,
+			{
+				type: DEVICES_HOMEY_TYPE,
+				value: false,
+			},
+			{ strictValuePersistence: true },
+		);
+		expect(propertiesService.update).toHaveBeenNthCalledWith(
+			2,
+			stateProperty.id,
+			{
+				type: DEVICES_HOMEY_TYPE,
+				value: 'off',
+			},
+			{ strictValuePersistence: true },
+		);
 		expect(propertyValueService.write).not.toHaveBeenCalled();
 		expect(propertyValueService.delete).not.toHaveBeenCalled();
 	});
