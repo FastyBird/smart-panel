@@ -544,17 +544,19 @@ export function normalizeGerundActionRequest(message: string): string {
 		normalizedShutRequest,
 		String.raw`${ACTION_SIGNAL_PATTERN_SOURCE}|enable|disable`,
 	);
-	const normalizeBinaryStateCommand = (match: string, prefix: string, action: string): string => {
-		if (/\ba\s*$/u.test(prefix)) return match;
+	const normalizeBinaryStateCommands = (value: string): string =>
+		value.replace(binaryStateCommandPattern, (match, prefix: string, action: string, offset: number) => {
+			if (/\ba\s*$/u.test(prefix)) return match;
+			if (/\b(?:and|or)\b/u.test(prefix) && /\b(?:disable|enable)\s*$/u.test(value.slice(0, offset))) return match;
 
-		return `${prefix}turn ${action === 'enable' ? 'on' : 'off'}`;
-	};
+			return `${prefix}turn ${action === 'enable' ? 'on' : 'off'}`;
+		});
 	const normalizedConditionalRequest =
 		leadingConditionalActionIndex === undefined
 			? normalizedShutRequest
-			: `${normalizedShutRequest.slice(0, leadingConditionalActionIndex)}${normalizedShutRequest
-					.slice(leadingConditionalActionIndex)
-					.replace(binaryStateCommandPattern, normalizeBinaryStateCommand)}`;
+			: `${normalizedShutRequest.slice(0, leadingConditionalActionIndex)}${normalizeBinaryStateCommands(
+					normalizedShutRequest.slice(leadingConditionalActionIndex),
+				)}`;
 
-	return normalizedConditionalRequest.replace(binaryStateCommandPattern, normalizeBinaryStateCommand);
+	return normalizeBinaryStateCommands(normalizedConditionalRequest);
 }
