@@ -176,7 +176,7 @@ describe('HomeyDeviceAdoptionService', () => {
 		};
 		propertiesService = {
 			findAll: jest.fn().mockResolvedValue([]),
-			findOne: jest.fn(),
+			findOne: jest.fn().mockResolvedValue(null),
 			findOneBy: jest.fn().mockResolvedValue(null),
 			create: jest.fn(),
 			update: jest.fn(),
@@ -1178,6 +1178,110 @@ describe('HomeyDeviceAdoptionService', () => {
 		});
 		expect(propertiesService.remove).not.toHaveBeenCalled();
 		expect(propertyValueService.delete).not.toHaveBeenCalled();
+	});
+
+	it('revalidates stale property identity under the structure lock before removal', async () => {
+		const device = existingDevice();
+		const channel = Object.assign(new HomeyChannelEntity(), {
+			id: '8421af4e-84f9-4822-bac6-3dbe49ac4893',
+			identifier: 'light',
+			name: 'Light',
+			category: ChannelCategory.LIGHT,
+		});
+		const staleProperty = Object.assign(new HomeyChannelPropertyEntity(), {
+			id: 'dba32214-aa13-4134-9578-2093351507f8',
+			identifier: 'obsolete::mapping',
+			homeyCapabilityId: 'obsolete',
+			homeyMappingName: 'mapping',
+			name: 'Obsolete',
+			category: PropertyCategory.STATE,
+			permissions: [PermissionType.READ_ONLY],
+			dataType: DataTypeType.STRING,
+			format: null,
+			invalid: null,
+			step: null,
+		});
+		let structureLockHeld = false;
+		structureLock.runExclusive.mockImplementation(async (operation: () => Promise<unknown>) => {
+			structureLockHeld = true;
+
+			try {
+				return await operation();
+			} finally {
+				structureLockHeld = false;
+			}
+		});
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), {
+				channels: [{ ...preview().channels[0], properties: [] }],
+			}),
+		);
+		devicesService.findOneBy.mockResolvedValue(device);
+		devicesService.findOne.mockResolvedValue(device);
+		channelsService.findAll.mockResolvedValue([channel]);
+		channelsService.findOneBy.mockResolvedValue(channel);
+		propertiesService.findAll.mockResolvedValue([staleProperty]);
+		propertiesService.findOne.mockImplementation(() => {
+			expect(structureLockHeld).toBe(true);
+
+			return Promise.resolve(Object.assign(new HomeyChannelPropertyEntity(), staleProperty, { identifier: 'changed' }));
+		});
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({ status: HomeyAdoptionStatus.UPDATED });
+		expect(propertiesService.findOne).toHaveBeenCalledWith(staleProperty.id, channel.id, DEVICES_HOMEY_TYPE);
+		expect(propertiesService.remove).not.toHaveBeenCalled();
+	});
+
+	it('removes a freshly revalidated stale property while holding the structure lock', async () => {
+		const device = existingDevice();
+		const channel = Object.assign(new HomeyChannelEntity(), {
+			id: '8421af4e-84f9-4822-bac6-3dbe49ac4893',
+			identifier: 'light',
+			name: 'Light',
+			category: ChannelCategory.LIGHT,
+		});
+		const staleProperty = Object.assign(new HomeyChannelPropertyEntity(), {
+			id: 'dba32214-aa13-4134-9578-2093351507f8',
+			identifier: 'obsolete::mapping',
+			homeyCapabilityId: 'obsolete',
+			homeyMappingName: 'mapping',
+			name: 'Obsolete',
+			category: PropertyCategory.STATE,
+			permissions: [PermissionType.READ_ONLY],
+			dataType: DataTypeType.STRING,
+			format: null,
+			invalid: null,
+			step: null,
+		});
+		let structureLockHeld = false;
+		structureLock.runExclusive.mockImplementation(async (operation: () => Promise<unknown>) => {
+			structureLockHeld = true;
+
+			try {
+				return await operation();
+			} finally {
+				structureLockHeld = false;
+			}
+		});
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), {
+				channels: [{ ...preview().channels[0], properties: [] }],
+			}),
+		);
+		devicesService.findOneBy.mockResolvedValue(device);
+		devicesService.findOne.mockResolvedValue(device);
+		channelsService.findAll.mockResolvedValue([channel]);
+		channelsService.findOneBy.mockResolvedValue(channel);
+		propertiesService.findAll.mockResolvedValue([staleProperty]);
+		propertiesService.findOne.mockResolvedValue(staleProperty);
+		propertiesService.remove.mockImplementation(() => {
+			expect(structureLockHeld).toBe(true);
+
+			return Promise.resolve();
+		});
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({ status: HomeyAdoptionStatus.UPDATED });
+		expect(propertiesService.remove).toHaveBeenCalledWith(staleProperty.id);
 	});
 
 	it('removes a property inserted before its create call rejects', async () => {

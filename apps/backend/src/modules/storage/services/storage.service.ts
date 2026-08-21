@@ -21,6 +21,7 @@ export interface BoundStorageQueryResult<T> {
 interface StorageBackendBindingState {
 	readonly plugin: StoragePlugin;
 	readonly role: 'primary' | 'fallback';
+	readonly mirror?: StorageBackendBindingState;
 }
 
 @Injectable()
@@ -174,6 +175,17 @@ export class StorageService {
 
 			await state.plugin.writePoints(points);
 
+			const mirror = state.mirror;
+			if (mirror && this[mirror.role] === mirror.plugin && mirror.plugin.isAvailable()) {
+				try {
+					await mirror.plugin.writePoints(points);
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.warn(`Bound strict write mirror failed after required persistence: ${err.message}`);
+				}
+			}
+
 			return;
 		}
 
@@ -286,7 +298,13 @@ export class StorageService {
 		let state: StorageBackendBindingState;
 
 		if (this.primary?.isAvailable()) {
-			state = { plugin: this.primary, role: 'primary' };
+			state = {
+				plugin: this.primary,
+				role: 'primary',
+				...(this.fallback?.isAvailable() && this.fallback !== this.primary
+					? { mirror: { plugin: this.fallback, role: 'fallback' as const } }
+					: {}),
+			};
 		} else if (this.fallback?.isAvailable()) {
 			state = { plugin: this.fallback, role: 'fallback' };
 		} else {

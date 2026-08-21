@@ -1167,6 +1167,64 @@ describe('ChannelsPropertiesService', () => {
 			);
 		});
 
+		it('emits a strict value event before a post-persistence readback failure', async () => {
+			const storageBinding = {} as StorageBackendBinding;
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest
+				.spyOn(channelsPropertiesService, 'getOneOrThrow')
+				.mockResolvedValueOnce(property)
+				.mockResolvedValueOnce(property)
+				.mockRejectedValueOnce(new Error('post-write readback failed'));
+			jest.spyOn(repository, 'save').mockResolvedValue(property);
+			propertyValueService.writeStrict.mockResolvedValue(true);
+
+			await expect(
+				channelsPropertiesService.update(
+					property.id,
+					{ type: 'mock', value: 'durable value' } as UpdateMockChannelPropertyDto,
+					{ strictValuePersistence: true, storageBinding },
+				),
+			).rejects.toThrow('post-write readback failed');
+
+			expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
+				EventType.CHANNEL_PROPERTY_VALUE_SET,
+				expect.objectContaining({ id: property.id }),
+			);
+		});
+
+		it('does not save an entity removed before the update acquires the structure lock', async () => {
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest
+				.spyOn(channelsPropertiesService, 'getOneOrThrow')
+				.mockResolvedValueOnce(property)
+				.mockRejectedValueOnce(new Error('property was pruned'));
+
+			await expect(
+				channelsPropertiesService.update(property.id, {
+					type: 'mock',
+					name: 'late update',
+				} as UpdateMockChannelPropertyDto),
+			).rejects.toThrow('property was pruned');
+
+			expect(repository.save).not.toHaveBeenCalled();
+			expect(propertyValueService.write).not.toHaveBeenCalled();
+		});
+
 		it('should update existing and return a channel property', async () => {
 			const updateDto: UpdateMockChannelPropertyDto = {
 				type: 'mock',
@@ -1228,6 +1286,7 @@ describe('ChannelsPropertiesService', () => {
 				where: jest.fn().mockReturnThis(),
 				getOne: jest
 					.fn()
+					.mockResolvedValueOnce(toInstance(MockChannelProperty, mockChannelProperty))
 					.mockResolvedValueOnce(toInstance(MockChannelProperty, mockChannelProperty))
 					.mockResolvedValueOnce(toInstance(MockChannelProperty, mockUpdatedProperty)),
 			};

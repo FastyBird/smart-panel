@@ -826,18 +826,21 @@ export class ChannelsPropertiesService {
 			return newValue !== existingValue;
 		});
 
-		Object.assign(property, updateFields);
-
 		// The type owner's last look at the merged row, before anything is written — the only point at
 		// which an invariant spanning a field the PATCH sent and a field it did not is decidable.
 		// Same lock as the create path above, for the same reason: a PATCH can move a property's data
 		// type or permissions, which is exactly what a device recategorisation judges its structure by.
 		const raw = await this.structureLock.runExclusive(async (): Promise<TProperty> => {
+			// Re-read after acquiring the ticket. Stale pruning may have removed the row while this update
+			// was validating; saving the earlier entity would otherwise insert it again.
+			const current = (await this.getOneOrThrow(id)) as TProperty;
+			Object.assign(current, updateFields);
+
 			if (mapping.beforeUpdate) {
-				await mapping.beforeUpdate(property as TProperty);
+				await mapping.beforeUpdate(current);
 			}
 
-			return repository.save(property as TProperty);
+			return repository.save(current);
 		});
 
 		// Track if value actually changed
@@ -854,6 +857,13 @@ export class ChannelsPropertiesService {
 			valueChanged = options.strictValuePersistence
 				? await this.propertyValueService.writeStrict(raw, updateDto.value, options.storageBinding)
 				: await this.propertyValueService.write(raw, updateDto.value);
+		}
+		const strictValueEventEmitted = options.strictValuePersistence === true && valueChanged;
+
+		if (strictValueEventEmitted) {
+			// Persistence is already durable. Publish before post-update readback/hooks so a later failure
+			// cannot make an idempotent retry skip the only value event for this measurement.
+			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, raw);
 		}
 
 		let updatedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
@@ -872,7 +882,7 @@ export class ChannelsPropertiesService {
 		if (entityFieldsChanged) {
 			// Metadata changed - emit CHANNEL_PROPERTY_UPDATED (covers both metadata and value changes)
 			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, updatedProperty);
-		} else if (valueChanged) {
+		} else if (valueChanged && !strictValueEventEmitted) {
 			// Only value changed - emit CHANNEL_PROPERTY_VALUE_SET
 			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, updatedProperty);
 		}

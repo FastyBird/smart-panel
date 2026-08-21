@@ -56,14 +56,17 @@ operations could absorb unrelated statements from other requests, so Homey adopt
 5. On failure, completed mutations are compensated in reverse order from the captured snapshot.
 6. Each batch selection completes independently and returns a fixed, sanitized outcome.
 
-The structure lock prevents unrelated in-process hierarchy races. It covers only structural reconciliation and its
-rollback; potentially slow persisted-value snapshots are collected before taking it, and terminal value writes and
-stale-series cleanup run after releasing it. The adoption claim still covers the complete snapshot,
-reconciliation, and terminal-value boundary across processes; database identity constraints remain the final creation
-guard. A concurrent unique-insert loss from an older or external writer is re-read only after its expected hierarchy
-and initial measurements are visible, then reconciled as an idempotent update rather than returned as a duplicate
-conflict. Every adoption mutation verifies that its token is still the shared database owner, so an externally replaced
-or corrupted claim stops the worker before another create, update, value write, removal, or compensation.
+The structure lock prevents unrelated in-process hierarchy races. Potentially slow persisted-value snapshots are
+collected before taking it, and terminal value writes run after releasing it. Once all reversible mutations and value
+writes succeed, stale pruning reacquires the structure lock, freshly verifies each provider identity, and only then
+removes it. Core channel and property updates likewise re-read their row after acquiring the lock, so a request that
+started before pruning cannot save its stale entity after deletion and resurrect it. The adoption claim still covers
+the complete snapshot, reconciliation, and terminal-value boundary across processes; database identity constraints
+remain the final creation guard. A concurrent unique-insert loss from an older or external writer is re-read only after
+its expected hierarchy and initial measurements are visible, then reconciled as an idempotent update rather than
+returned as a duplicate conflict. Every adoption mutation verifies that its token is still the shared database owner,
+so an externally replaced or corrupted claim stops the worker before another create, update, value write, removal, or
+compensation.
 
 Channel and property creates receive server-generated IDs before their non-atomic service calls begin. Adoption
 registers guarded compensations first, so a create that inserts its row and then rejects during readback or post-create
@@ -86,6 +89,10 @@ unknown previous values from becoming duplicate appends. Each terminal value wri
 read immediately before persistence, so an intervening normal property update that already stored the preview value is
 not duplicated or overwritten based on the earlier snapshot. That read returns an opaque backend binding, and the
 following strict write must use the exact backend that supplied the comparison even if primary availability changes in
-between. Persisted reads and strict writes also capture a per-property cache version and publish their result only if
-the version is unchanged when the operation completes, preventing slower storage work from replacing a newer value or
-trend published by a concurrent normal writer.
+between. When primary supplied the read and fallback was healthy at that point, the primary remains the required target
+and fallback still receives the normal best-effort mirror; a newly recovered primary is not added after a fallback
+comparison. Persisted reads and strict writes also capture a per-property cache version and publish their result only
+if the version is unchanged when the operation completes, preventing slower storage work from replacing a newer value
+or trend published by a concurrent normal writer. The strict value event is emitted immediately after durable
+persistence, before fallible readback and plugin post-update hooks, so an idempotent retry cannot permanently skip the
+event after a post-persistence failure.

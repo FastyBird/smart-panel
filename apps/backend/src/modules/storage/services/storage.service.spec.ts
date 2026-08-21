@@ -153,6 +153,25 @@ describe('StorageService', () => {
 		expect(primary.writePoints).not.toHaveBeenCalled();
 	});
 
+	it('best-effort mirrors a primary-bound write to the fallback that was healthy at read time', async () => {
+		const service = new StorageService({
+			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),
+		} as unknown as ConfigService);
+		const primary = createPlugin('primary');
+		const fallback = createPlugin('fallback');
+		primary.query.mockResolvedValue([{ value: 41 }]);
+		fallback.writePoints.mockRejectedValue(new Error('fallback unavailable'));
+		service.registerPlugin(primary.name, primary);
+		service.registerPlugin(fallback.name, fallback);
+		const { binding } = await service.queryActiveStrictBound('SELECT * FROM test');
+		const points = [{ measurement: 'property_value', fields: { numberValue: 42 } }];
+
+		await expect(service.writePointsStrict(points, binding)).resolves.toBeUndefined();
+
+		expect(primary.writePoints).toHaveBeenCalledWith(points);
+		expect(fallback.writePoints).toHaveBeenCalledWith(points);
+	});
+
 	it('rejects a bound write after the queried backend is replaced', async () => {
 		const service = new StorageService({
 			getModuleConfig: jest.fn().mockReturnValue({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),

@@ -571,15 +571,18 @@ export class ChannelsService {
 		// out: a channel's category is part of the structure a device recategorisation judges itself
 		// against, and the hook that judges *this* change reads the device's category in turn.
 		await this.structureLock.runExclusive(async (): Promise<void> => {
-			const previous = { ...channel } as Readonly<Partial<TChannel>>;
+			// Re-read after acquiring the ticket. Stale pruning may have removed the row while this update
+			// was validating; saving the earlier entity would otherwise insert it again.
+			const current = (await this.getOneOrThrow(id)) as TChannel;
+			const previous = { ...current } as Readonly<Partial<TChannel>>;
 
-			Object.assign(channel, updateFields);
+			Object.assign(current, updateFields);
 
 			if (mapping.beforeUpdate) {
-				await mapping.beforeUpdate(channel as TChannel, previous);
+				await mapping.beforeUpdate(current, previous);
 			}
 
-			await repository.save(channel as TChannel);
+			await repository.save(current);
 		});
 
 		let updatedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;

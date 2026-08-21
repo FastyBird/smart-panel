@@ -55,8 +55,15 @@ interface ExistingHierarchySnapshot {
 }
 
 type DeferredRemoval =
-	| { readonly kind: 'channel'; readonly id: string }
-	| { readonly kind: 'property'; readonly id: string };
+	| { readonly kind: 'channel'; readonly id: string; readonly deviceId: string; readonly identifier: string }
+	| {
+			readonly kind: 'property';
+			readonly id: string;
+			readonly channelId: string;
+			readonly identifier: string;
+			readonly homeyCapabilityId: string;
+			readonly homeyMappingName: string;
+	  };
 
 interface PendingValueWrite {
 	readonly property: HomeyChannelPropertyEntity;
@@ -414,7 +421,7 @@ export class HomeyDeviceAdoptionService {
 		// Individual failures remain for the next idempotent adoption rather than corrupting history with
 		// compensating points or turning an already-pruned series into a pretend rollback.
 		await this.applyPendingValues(pendingValues, lease);
-		await this.pruneStale(deferredRemovals, lease);
+		await this.structureLock.runExclusive(() => this.pruneStale(deferredRemovals, lease));
 
 		return this.success(
 			preview.device.id,
@@ -613,7 +620,14 @@ export class HomeyDeviceAdoptionService {
 				continue;
 			}
 
-			deferredRemovals.push({ kind: 'property', id: candidate.id });
+			deferredRemovals.push({
+				kind: 'property',
+				id: candidate.id,
+				channelId: channel.id,
+				identifier: candidate.identifier,
+				homeyCapabilityId: homeyCandidate.homeyCapabilityId,
+				homeyMappingName: homeyCandidate.homeyMappingName,
+			});
 			changed = true;
 		}
 
@@ -639,7 +653,12 @@ export class HomeyDeviceAdoptionService {
 				continue;
 			}
 
-			deferredRemovals.push({ kind: 'channel', id: candidate.id });
+			deferredRemovals.push({
+				kind: 'channel',
+				id: candidate.id,
+				deviceId,
+				identifier: candidate.identifier,
+			});
 			changed = true;
 		}
 
@@ -937,8 +956,35 @@ export class HomeyDeviceAdoptionService {
 			await lease.assertOwned();
 			try {
 				if (removal.kind === 'property') {
+					const current = await this.channelsPropertiesService.findOne<HomeyChannelPropertyEntity>(
+						removal.id,
+						removal.channelId,
+						DEVICES_HOMEY_TYPE,
+					);
+					if (
+						current === null ||
+						current.identifier !== removal.identifier ||
+						current.homeyCapabilityId !== removal.homeyCapabilityId ||
+						current.homeyMappingName !== removal.homeyMappingName
+					) {
+						continue;
+					}
+
 					await this.channelsPropertiesService.remove(removal.id);
 				} else {
+					const current = await this.channelsService.findOne<HomeyChannelEntity>(
+						removal.id,
+						removal.deviceId,
+						DEVICES_HOMEY_TYPE,
+					);
+					if (
+						current === null ||
+						current.identifier !== removal.identifier ||
+						current.category === ChannelCategory.DEVICE_INFORMATION
+					) {
+						continue;
+					}
+
 					await this.channelsService.remove(removal.id);
 				}
 			} catch {
