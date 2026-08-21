@@ -22,6 +22,9 @@ describe('HomeyStatusController', () => {
 			lastInventorySyncAt: '2026-08-15T10:00:01.000Z',
 			lastEventAt: '2026-08-15T10:00:02.000Z',
 			reconnectCount: 1,
+			reconciliationCount: 4,
+			reconciliationFailureCount: 1,
+			lastReconciliationDurationMs: 125,
 			lastErrorCategory: null,
 			lastError: null,
 		});
@@ -42,6 +45,9 @@ describe('HomeyStatusController', () => {
 			last_inventory_sync_at: '2026-08-15T10:00:01.000Z',
 			last_event_at: '2026-08-15T10:00:02.000Z',
 			reconnect_count: 1,
+			reconciliation_count: 4,
+			reconciliation_failure_count: 1,
+			last_reconciliation_duration_ms: 125,
 			last_error_category: null,
 		});
 		expect(JSON.stringify(serialized)).not.toContain('api_key');

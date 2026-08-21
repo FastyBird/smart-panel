@@ -102,6 +102,35 @@ export class HomeyStatusModel {
 	@Min(0)
 	reconnectCount: number;
 
+	@ApiProperty({
+		description: 'Authoritative inventory reconciliation attempts since the last explicit start',
+		name: 'reconciliation_count',
+	})
+	@Expose({ name: 'reconciliation_count' })
+	@IsInt()
+	@Min(0)
+	reconciliationCount: number;
+
+	@ApiProperty({
+		description: 'Authoritative inventory reconciliation attempts that failed since the last explicit start',
+		name: 'reconciliation_failure_count',
+	})
+	@Expose({ name: 'reconciliation_failure_count' })
+	@IsInt()
+	@Min(0)
+	reconciliationFailureCount: number;
+
+	@ApiPropertyOptional({
+		description: 'Duration of the latest authoritative inventory reconciliation in milliseconds',
+		nullable: true,
+		name: 'last_reconciliation_duration_ms',
+	})
+	@Expose({ name: 'last_reconciliation_duration_ms' })
+	@IsOptional()
+	@IsInt()
+	@Min(0)
+	lastReconciliationDurationMs: number | null;
+
 	@ApiPropertyOptional({
 		description: 'Normalized category for the current sanitized connector error',
 		enum: HomeyConnectorErrorCategory,
