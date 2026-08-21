@@ -36,12 +36,12 @@ removes the index and both columns.
 
 Migration `1000000000022-AddHomeyAdoptionLocks` adds a provider-private claim table keyed by the authoritative Homey
 device ID. It serializes the complete adoption boundary across backend processes without adding lock state to public
-device models. Claims use renewable, owner-scoped leases: a clean completion removes only its own claim, while a
-crashed process cannot strand a device because a later request may atomically replace the expired claim after proving
-the same-host owner PID is no longer alive. Expiry alone never permits takeover from a paused live process, closing the
-window in which it could resume an already-authorized mutation after a successor acquired the claim. Active tokens are
-tracked process-wide; a completed token becomes reclaimable even if its first delete fails, and an unreferenced retry
-keeps attempting that delete in the background.
+device models. Each candidate opens a token-specific Unix-domain socket beside the shared SQLite database before
+publishing its token. Contenders probe the published socket, which remains live at the kernel while its JavaScript
+worker is paused and is visible across PID namespaces that share the database directory. A dead socket permits exactly
+one contender to replace the old token through a database compare-and-swap. A clean completion removes only its own
+claim and closes its socket; after a crash or failed claim delete, the closed socket makes the row immediately
+reclaimable without guessing process liveness from a PID or timestamp.
 
 ## Mutation and rollback boundary
 
@@ -58,13 +58,12 @@ operations could absorb unrelated statements from other requests, so Homey adopt
 
 The structure lock prevents unrelated in-process hierarchy races. It covers only structural reconciliation and its
 rollback; potentially slow persisted-value snapshots are collected before taking it, and terminal value writes and
-stale-series cleanup run after releasing it. The renewable adoption claim still covers the complete snapshot,
+stale-series cleanup run after releasing it. The adoption claim still covers the complete snapshot,
 reconciliation, and terminal-value boundary across processes; database identity constraints remain the final creation
 guard. A concurrent unique-insert loss from an older or external writer is re-read only after its expected hierarchy
 and initial measurements are visible, then reconciled as an idempotent update rather than returned as a duplicate
-conflict. Every adoption mutation first verifies the claim against the shared database. A heartbeat that observes a
-replacement owner also marks the in-flight lease as lost, so the superseded worker cannot issue another create,
-update, value write, removal, or compensation.
+conflict. Every adoption mutation verifies that its token is still the shared database owner, so an externally replaced
+or corrupted claim stops the worker before another create, update, value write, removal, or compensation.
 
 Channel and property creates receive server-generated IDs before their non-atomic service calls begin. Adoption
 registers guarded compensations first, so a create that inserts its row and then rejects during readback or post-create

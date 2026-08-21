@@ -152,7 +152,7 @@ describe('HomeyDeviceAdoptionService', () => {
 		lease = { assertOwned: jest.fn().mockResolvedValue(undefined) };
 		mappingPreviewService = { generatePreview: jest.fn().mockResolvedValue(preview()) };
 		devicesService = {
-			findOne: jest.fn().mockResolvedValue(null),
+			findOne: jest.fn().mockResolvedValue(existingDevice()),
 			findOneBy: jest.fn().mockResolvedValue(null),
 			create: jest.fn().mockResolvedValue(existingDevice()),
 			update: jest.fn(),
@@ -372,6 +372,26 @@ describe('HomeyDeviceAdoptionService', () => {
 		);
 	});
 
+	it('re-reads device metadata under the structure lock before reconciling it', async () => {
+		const staleDevice = existingDevice();
+		const concurrentlyEdited = Object.assign(existingDevice(), {
+			name: 'Concurrent name',
+			category: DeviceCategory.GENERIC,
+		});
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(preview('homey-light', false));
+		devicesService.findOneBy.mockResolvedValue(staleDevice);
+		devicesService.findOne.mockResolvedValue(concurrentlyEdited);
+		channelsService.findAll.mockResolvedValue([]);
+		devicesService.update.mockResolvedValue(existingDevice());
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({ status: HomeyAdoptionStatus.UPDATED });
+		expect(devicesService.findOne).toHaveBeenCalledWith(staleDevice.id, DEVICES_HOMEY_TYPE);
+		expect(devicesService.update).toHaveBeenCalledWith(
+			staleDevice.id,
+			expect.objectContaining({ name: 'Living light', category: DeviceCategory.LIGHTING }),
+		);
+	});
+
 	it('persists the transformed panel enum domain instead of Homey enum identifiers', async () => {
 		const commandProperty = {
 			...preview().channels[0].properties[0],
@@ -482,6 +502,7 @@ describe('HomeyDeviceAdoptionService', () => {
 		let stored: HomeyDeviceEntity | null = null;
 		mappingPreviewService.generatePreview.mockResolvedValue(preview('same', false));
 		devicesService.findOneBy.mockImplementation(() => Promise.resolve(stored));
+		devicesService.findOne.mockImplementation(() => Promise.resolve(stored));
 		devicesService.create.mockImplementation(() => {
 			stored = existingDevice('same');
 			return Promise.resolve(stored);

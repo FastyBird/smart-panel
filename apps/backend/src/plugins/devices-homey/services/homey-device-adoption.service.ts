@@ -308,6 +308,11 @@ export class HomeyDeviceAdoptionService {
 		const structuralFailure = await this.structureLock.runExclusive(
 			async (): Promise<HomeyAdoptionResultModel | null> => {
 				try {
+					const lockedDevice = await this.devicesService.findOne<HomeyDeviceEntity>(device.id, DEVICES_HOMEY_TYPE);
+					if (lockedDevice === null) {
+						throw new Error('Homey device is unavailable during reconciliation');
+					}
+
 					for (const desiredChannel of preview.channels) {
 						changed =
 							(await this.reconcileChannel(
@@ -326,15 +331,15 @@ export class HomeyDeviceAdoptionService {
 					const desiredName = selection.name ?? preview.device.name;
 					const desiredCategory = preview.selectedCategory;
 					if (
-						device.name !== desiredName ||
-						device.category !== desiredCategory ||
-						device.identifier !== preview.device.id
+						lockedDevice.name !== desiredName ||
+						lockedDevice.category !== desiredCategory ||
+						lockedDevice.identifier !== preview.device.id
 					) {
 						const previous: UpdateHomeyDeviceDto = {
 							type: DEVICES_HOMEY_TYPE,
-							name: device.name,
-							category: device.category,
-							identifier: device.identifier,
+							name: lockedDevice.name,
+							category: lockedDevice.category,
+							identifier: lockedDevice.identifier,
 						};
 
 						const desiredDevice: UpdateHomeyDeviceDto = {

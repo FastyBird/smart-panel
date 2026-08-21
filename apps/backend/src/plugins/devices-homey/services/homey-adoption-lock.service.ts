@@ -1,17 +1,22 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { unlink } from 'node:fs/promises';
+import { Server, createConnection, createServer } from 'node:net';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { DataSource } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
 
-import { createExtensionLogger } from '../../../common/logger';
-import { DEVICES_HOMEY_PLUGIN_NAME } from '../devices-homey.constants';
-
 const ADOPTION_LOCK_TABLE = 'devices_homey_adoption_locks';
-const ADOPTION_LOCK_LEASE_MS = 60_000;
-const ADOPTION_LOCK_HEARTBEAT_MS = 20_000;
+const ADOPTION_LOCK_CLAIM_TTL_MS = 60_000;
 const ADOPTION_LOCK_POLL_INTERVAL_MS = 50;
 const ADOPTION_LOCK_WAIT_TIMEOUT_MS = 30_000;
-const ADOPTION_LOCK_RELEASE_RETRY_MS = 1_000;
+const ADOPTION_LOCK_SOCKET_PROBE_MS = 250;
+
+interface HomeyAdoptionOwnerSocket {
+	readonly path: string;
+	readonly server: Server;
+}
 
 export class HomeyAdoptionLockLostError extends Error {
 	constructor() {
@@ -26,58 +31,32 @@ export interface HomeyAdoptionLease {
 
 @Injectable()
 export class HomeyAdoptionLockService {
-	private static readonly activeOwnerTokens = new Set<string>();
-	private readonly logger = createExtensionLogger(DEVICES_HOMEY_PLUGIN_NAME, 'HomeyAdoptionLockService');
-	private readonly deferredReleases = new Map<string, NodeJS.Timeout>();
-
 	constructor(private readonly dataSource: DataSource) {}
 
 	async runExclusive<T>(deviceIdentifier: string, operation: (lease: HomeyAdoptionLease) => Promise<T>): Promise<T> {
-		const ownerToken = `${process.pid}:${randomUUID()}`;
-		await this.acquire(deviceIdentifier, ownerToken);
-		HomeyAdoptionLockService.activeOwnerTokens.add(ownerToken);
-		let ownershipLost = false;
-		const lease: HomeyAdoptionLease = {
-			assertOwned: async (): Promise<void> => {
-				if (ownershipLost || !(await this.isOwned(deviceIdentifier, ownerToken))) {
-					ownershipLost = true;
-					throw new HomeyAdoptionLockLostError();
-				}
-			},
-		};
-
-		let renewal = Promise.resolve();
-		const heartbeat = setInterval(() => {
-			renewal = renewal
-				.then(async () => {
-					if (!(await this.renew(deviceIdentifier, ownerToken))) {
-						ownershipLost = true;
-					}
-				})
-				.catch(() => {
-					this.logger.warn('Homey adoption lock heartbeat failed; ownership will be rechecked');
-				});
-		}, ADOPTION_LOCK_HEARTBEAT_MS);
-		heartbeat.unref();
+		const ownerToken = randomUUID();
+		const ownerSocket = await this.openOwnerSocket(ownerToken);
+		let acquired = false;
 
 		try {
+			await this.acquire(deviceIdentifier, ownerToken);
+			acquired = true;
+			const lease: HomeyAdoptionLease = {
+				assertOwned: async (): Promise<void> => {
+					if (!ownerSocket.server.listening || !(await this.isOwned(deviceIdentifier, ownerToken))) {
+						throw new HomeyAdoptionLockLostError();
+					}
+				},
+			};
 			const result = await operation(lease);
-			await renewal;
-
-			if (!(await this.isOwned(deviceIdentifier, ownerToken))) {
-				ownershipLost = true;
-			}
 			await lease.assertOwned();
 
 			return result;
 		} finally {
-			clearInterval(heartbeat);
-			await renewal.catch(() => undefined);
-			HomeyAdoptionLockService.activeOwnerTokens.delete(ownerToken);
-			await this.release(deviceIdentifier, ownerToken).catch(() => {
-				this.logger.warn('Homey adoption lock release failed and will be retried');
-				this.deferRelease(deviceIdentifier, ownerToken);
-			});
+			if (acquired) {
+				await this.release(deviceIdentifier, ownerToken).catch(() => undefined);
+			}
+			await this.closeOwnerSocket(ownerSocket);
 		}
 	}
 
@@ -89,7 +68,7 @@ export class HomeyAdoptionLockService {
 				throw new Error('Homey adoption lock could not be acquired');
 			}
 
-			await new Promise<void>((resolve) => setTimeout(resolve, ADOPTION_LOCK_POLL_INTERVAL_MS));
+			await new Promise<void>((resolvePoll) => setTimeout(resolvePoll, ADOPTION_LOCK_POLL_INTERVAL_MS));
 		}
 	}
 
@@ -97,111 +76,41 @@ export class HomeyAdoptionLockService {
 		const now = Date.now();
 		await this.dataSource.query(
 			`INSERT INTO "${ADOPTION_LOCK_TABLE}" ("deviceIdentifier", "ownerToken", "expiresAt") ` +
-				`VALUES (?, ?, ?) ` +
-				`ON CONFLICT("deviceIdentifier") DO NOTHING`,
-			[deviceIdentifier, ownerToken, now + ADOPTION_LOCK_LEASE_MS],
+				`VALUES (?, ?, ?) ON CONFLICT("deviceIdentifier") DO NOTHING`,
+			[deviceIdentifier, ownerToken, now + ADOPTION_LOCK_CLAIM_TTL_MS],
 		);
 
 		if (await this.isOwned(deviceIdentifier, ownerToken)) {
 			return true;
 		}
 
-		const claims = await this.dataSource.query<Array<{ ownerToken: string; expiresAt: number }>>(
-			`SELECT "ownerToken", "expiresAt" FROM "${ADOPTION_LOCK_TABLE}" WHERE "deviceIdentifier" = ?`,
+		const claims = await this.dataSource.query<Array<{ ownerToken: string }>>(
+			`SELECT "ownerToken" FROM "${ADOPTION_LOCK_TABLE}" WHERE "deviceIdentifier" = ?`,
 			[deviceIdentifier],
 		);
-		const claim = claims[0];
-		const inactiveCurrentProcessOwner =
-			this.ownerProcessId(claim?.ownerToken) === process.pid &&
-			!HomeyAdoptionLockService.activeOwnerTokens.has(claim?.ownerToken ?? '');
+		const currentOwnerToken = claims[0]?.ownerToken;
 
-		// An expired timestamp is not sufficient proof that another process stopped. A paused live process
-		// can resume between an ownership check and its mutation, so takeover is allowed only after the
-		// same-host owner PID is no longer alive. A process-wide inactive token is already complete and can
-		// be replaced immediately after a failed release. Legacy tokens without a PID remain reclaimable.
-		if (
-			claim === undefined ||
-			(!inactiveCurrentProcessOwner && (claim.expiresAt > now || this.isOwnerProcessAlive(claim.ownerToken)))
-		) {
+		if (currentOwnerToken === undefined || (await this.isOwnerSocketAlive(currentOwnerToken))) {
 			return false;
 		}
 
+		// The candidate socket is already listening before this compare-and-swap publishes its token.
+		// Exactly one contender can replace the dead owner, and every later contender can immediately
+		// prove the winner is live even across PID namespaces.
 		await this.dataSource.query(
 			`UPDATE "${ADOPTION_LOCK_TABLE}" SET "ownerToken" = ?, "expiresAt" = ? ` +
-				`WHERE "deviceIdentifier" = ? AND "ownerToken" = ? AND ("expiresAt" <= ? OR ? = 1)`,
-			[
-				ownerToken,
-				now + ADOPTION_LOCK_LEASE_MS,
-				deviceIdentifier,
-				claim.ownerToken,
-				now,
-				inactiveCurrentProcessOwner ? 1 : 0,
-			],
+				`WHERE "deviceIdentifier" = ? AND "ownerToken" = ?`,
+			[ownerToken, now + ADOPTION_LOCK_CLAIM_TTL_MS, deviceIdentifier, currentOwnerToken],
 		);
-
-		return this.isOwned(deviceIdentifier, ownerToken);
-	}
-
-	private isOwnerProcessAlive(ownerToken: string): boolean {
-		const pid = this.ownerProcessId(ownerToken);
-
-		if (!Number.isSafeInteger(pid) || pid <= 0) {
-			return false;
-		}
-		if (pid === process.pid) {
-			return HomeyAdoptionLockService.activeOwnerTokens.has(ownerToken);
-		}
-
-		try {
-			process.kill(pid, 0);
-
-			return true;
-		} catch (error) {
-			return (error as NodeJS.ErrnoException).code === 'EPERM';
-		}
-	}
-
-	private ownerProcessId(ownerToken?: string): number {
-		const separator = ownerToken?.indexOf(':') ?? -1;
-
-		return Number(separator > 0 ? ownerToken?.slice(0, separator) : Number.NaN);
-	}
-
-	private deferRelease(deviceIdentifier: string, ownerToken: string): void {
-		if (this.deferredReleases.has(ownerToken)) {
-			return;
-		}
-
-		const retry = (): void => {
-			void this.release(deviceIdentifier, ownerToken)
-				.then(() => {
-					this.deferredReleases.delete(ownerToken);
-				})
-				.catch(() => {
-					const timer = setTimeout(retry, ADOPTION_LOCK_RELEASE_RETRY_MS);
-					timer.unref();
-					this.deferredReleases.set(ownerToken, timer);
-				});
-		};
-		const timer = setTimeout(retry, ADOPTION_LOCK_RELEASE_RETRY_MS);
-		timer.unref();
-		this.deferredReleases.set(ownerToken, timer);
-	}
-
-	private async renew(deviceIdentifier: string, ownerToken: string): Promise<boolean> {
-		await this.dataSource.query(
-			`UPDATE "${ADOPTION_LOCK_TABLE}" SET "expiresAt" = ? ` + `WHERE "deviceIdentifier" = ? AND "ownerToken" = ?`,
-			[Date.now() + ADOPTION_LOCK_LEASE_MS, deviceIdentifier, ownerToken],
-		);
+		await unlink(this.ownerSocketPath(currentOwnerToken)).catch(() => undefined);
 
 		return this.isOwned(deviceIdentifier, ownerToken);
 	}
 
 	private async isOwned(deviceIdentifier: string, ownerToken: string): Promise<boolean> {
 		const rows = await this.dataSource.query<Array<{ ownerToken: string }>>(
-			`SELECT "ownerToken" FROM "${ADOPTION_LOCK_TABLE}" ` +
-				`WHERE "deviceIdentifier" = ? AND "ownerToken" = ? AND "expiresAt" > ?`,
-			[deviceIdentifier, ownerToken, Date.now()],
+			`SELECT "ownerToken" FROM "${ADOPTION_LOCK_TABLE}" ` + `WHERE "deviceIdentifier" = ? AND "ownerToken" = ?`,
+			[deviceIdentifier, ownerToken],
 		);
 
 		return rows.some((row) => row.ownerToken === ownerToken);
@@ -212,5 +121,63 @@ export class HomeyAdoptionLockService {
 			`DELETE FROM "${ADOPTION_LOCK_TABLE}" WHERE "deviceIdentifier" = ? AND "ownerToken" = ?`,
 			[deviceIdentifier, ownerToken],
 		);
+	}
+
+	private async openOwnerSocket(ownerToken: string): Promise<HomeyAdoptionOwnerSocket> {
+		const socketPath = this.ownerSocketPath(ownerToken);
+		const server = createServer((socket) => socket.destroy());
+
+		await new Promise<void>((resolveListen, reject) => {
+			const onError = (error: Error): void => {
+				server.off('listening', onListening);
+				reject(error);
+			};
+			const onListening = (): void => {
+				server.off('error', onError);
+				resolveListen();
+			};
+			server.once('error', onError);
+			server.once('listening', onListening);
+			server.listen(socketPath);
+		});
+
+		return { path: socketPath, server };
+	}
+
+	private async closeOwnerSocket(ownerSocket: HomeyAdoptionOwnerSocket): Promise<void> {
+		await new Promise<void>((resolveClose) => {
+			ownerSocket.server.close(() => resolveClose());
+		});
+		await unlink(ownerSocket.path).catch(() => undefined);
+	}
+
+	private isOwnerSocketAlive(ownerToken: string): Promise<boolean> {
+		const socketPath = this.ownerSocketPath(ownerToken);
+
+		return new Promise<boolean>((resolveProbe) => {
+			const socket = createConnection(socketPath);
+			let settled = false;
+			const finish = (alive: boolean): void => {
+				if (settled) {
+					return;
+				}
+				settled = true;
+				clearTimeout(timeout);
+				socket.destroy();
+				resolveProbe(alive);
+			};
+			const timeout = setTimeout(() => finish(false), ADOPTION_LOCK_SOCKET_PROBE_MS);
+			timeout.unref();
+			socket.once('connect', () => finish(true));
+			socket.once('error', () => finish(false));
+		});
+	}
+
+	private ownerSocketPath(ownerToken: string): string {
+		const database = this.dataSource.options.type === 'sqlite' ? this.dataSource.options.database : ':memory:';
+		const directory = typeof database === 'string' && database !== ':memory:' ? dirname(resolve(database)) : tmpdir();
+		const tokenHash = createHash('sha256').update(ownerToken).digest('hex').slice(0, 24);
+
+		return join(directory, `.homey-adoption-${tokenHash}.sock`);
 	}
 }
