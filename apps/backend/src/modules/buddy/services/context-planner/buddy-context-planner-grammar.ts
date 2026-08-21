@@ -28,6 +28,7 @@ export const COMPOUND_CONNECTOR_PATTERN_SOURCE = [...BUDDY_COMPOUND_CONNECTOR_SI
 	.join('|');
 export const ACTION_REQUEST_PREFIX_PATTERN_SOURCE = String.raw`(?:(?:can|could|may|might|will|would) you|are you able to|i(?: need you to| want you to| would like you to|'d like you to)|is it possible to|is there any way you can)`;
 export const ACTION_COMMAND_PREFIX_PATTERN_SOURCE = String.raw`^[?!,.;\s]*(?:(?:a|also|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|only|please)\s+)*(?:${ACTION_REQUEST_PREFIX_PATTERN_SOURCE}\s+(?:(?:also|only|please)\s+)*)?`;
+export const TRAILING_ACTION_PREFIX_PATTERN_SOURCE = String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:if so|only|please)\s+)*(?:${ACTION_REQUEST_PREFIX_PATTERN_SOURCE}\s+(?:(?:also|only|please)\s+)*)?`;
 export const ACTION_CONTINUATION_CONNECTOR_PATTERN = new RegExp(
 	String.raw`^\s*(?:(?:,\s*)?(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})|(?:,\s*)?and\s+then|,)\s*$`,
 	'u',
@@ -35,10 +36,8 @@ export const ACTION_CONTINUATION_CONNECTOR_PATTERN = new RegExp(
 export const HOME_ENTITY_SIGNAL_PATTERN_SOURCE = [...BUDDY_HOME_SIGNALS]
 	.filter((signal) => !['energy', 'energie', 'home', 'house', 'security', 'zabezpeceni'].includes(signal))
 	.join('|');
-export const GROUNDED_STATE_PATTERN = new RegExp(
-	String.raw`\b(?:${[...BUDDY_GROUNDED_STATE_SIGNALS].join('|')})\b`,
-	'u',
-);
+export const GROUNDED_STATE_PATTERN_SOURCE = [...BUDDY_GROUNDED_STATE_SIGNALS].join('|');
+export const GROUNDED_STATE_PATTERN = new RegExp(String.raw`\b(?:${GROUNDED_STATE_PATTERN_SOURCE})\b`, 'u');
 export const STATE_SIGNAL_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_STATE_SIGNALS].join('|')})\b`, 'u');
 export const ACTION_CONDITION_STATE_PATTERN = /\b(?:dark|darker|light|lighter|ready)\b/u;
 export const LIGHTING_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_LIGHTING_SIGNALS].join('|')})\b`, 'u');
@@ -304,17 +303,18 @@ export const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 export const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\banywhere(?:\s+at\s+all)?\b(?!\s+(?:around|at|else|here|in|inside|near|within)\b)|\beverywhere\b|\b(?:all|any|each|every)(?:\s+one)?(?:\s+of\s+the)?\s+(?:rooms?|spaces?)\b/u;
 export const ANYWHERE_ELSE_PATTERN = /\banywhere else\b/u;
-const WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE = String.raw`(?:active|closed|inactive|locked|off|on|open|unlocked|${HOME_STATE_PATTERN.source})`;
-const AGGREGATE_STATE_VALUE_PATTERN_SOURCE = String.raw`(?:(?:already|currently|not|still)\s+)?${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}`;
+const WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE = String.raw`(?:${GROUNDED_STATE_PATTERN_SOURCE}|${HOME_STATE_PATTERN.source})`;
+const AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE = String.raw`(?:already|currently|not|still)`;
+const AGGREGATE_STATE_VALUE_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}`;
 const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|switch(?:es)?|thermostats?)|${HOME_ENTITY_PATTERN.source})`;
 const AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:all|any|each|every|none)`;
-const AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE = String.raw`(?=\s+(?:(?:of\s+)?(?:my|our|the|your)\s+)?(?:${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}(?:\s+(?:(?:appear|appears|are|is|look|looks|remain|remains|seem|seems|stay|stays)\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}\b|\s+remains?\b(?=\s*[?!,.;]?$)|\s*[?!,.;]?\s*$))`;
+const AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE = String.raw`(?=\s+(?:(?:of\s+)?(?:my|our|the|your)\s+)?(?:${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}(?:\s+(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?(?:(?:appear|appears|are|is|look|looks|remain|remains|seem|seems|stay|stays)\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}\b|\s+remains?\b(?=\s*[?!,.;]?$)|\s*[?!,.;]?\s*$))`;
 export const UNSCOPED_AGGREGATE_READ_PATTERN = new RegExp(
 	String.raw`^(?:(?:(?:please\s+)?(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:check|confirm|determine|fetch|get|read|report|see|show|tell|verify)(?: me)?)\s+(?:if|whether)\s+(?:(?:are|is)(?:\s+there)?\s+|there\s+(?:are|is)\s+)?${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|(?:are|is)(?:\s+there)?\s+${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|do(?:es)?\s+${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|do\s+(?:i|we)\s+have\s+${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|count\b|how many\b)`,
 	'u',
 );
 export const TRAILING_ACTION_PATTERN = new RegExp(
-	String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:if so|only|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:(?:only|please)\s+)*)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	String.raw`${TRAILING_ACTION_PREFIX_PATTERN_SOURCE}(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
 export const TRAILING_READ_PATTERN = new RegExp(

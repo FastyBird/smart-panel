@@ -3,9 +3,7 @@ import { BuddyContextEntityReference, BuddyContextSpaceReference } from '../../m
 import {
 	ACTION_COMMAND_PATTERN,
 	ACTION_COMMAND_PREFIX_PATTERN_SOURCE,
-	ACTION_REQUEST_PREFIX_PATTERN_SOURCE,
 	ACTION_SIGNAL_PATTERN_SOURCE,
-	COMPOUND_CONNECTOR_PATTERN_SOURCE,
 	CONDITION_PATTERN,
 	CONTEXTUAL_SCOPE_REFERENCE_PATTERN,
 	DEVICE_ACTION_TARGET_PATTERN,
@@ -21,6 +19,7 @@ import {
 	SECURITY_PATTERN,
 	SINGULAR_REFERENCE_PRONOUN_PATTERN,
 	TEMPORAL_THIS_REFERENCE_PATTERN,
+	TRAILING_ACTION_PREFIX_PATTERN_SOURCE,
 	WEATHER_PATTERN,
 } from './buddy-context-planner-grammar';
 
@@ -474,7 +473,7 @@ export function normalizeGerundActionRequest(message: string): string {
 
 	const normalizedShutRequest = normalizedGerundRequest.replace(shutCommandPattern, '$1turn off');
 	const binaryStateCommandPattern = new RegExp(
-		String.raw`(${ACTION_COMMAND_PREFIX_PATTERN_SOURCE}|(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:also|only|please)\s+)*(?:${ACTION_REQUEST_PREFIX_PATTERN_SOURCE}\s+(?:(?:also|only|please)\s+)*)?)(enable|disable)\b`,
+		String.raw`(${ACTION_COMMAND_PREFIX_PATTERN_SOURCE}|${TRAILING_ACTION_PREFIX_PATTERN_SOURCE})(enable|disable)\b`,
 		'gu',
 	);
 
