@@ -403,6 +403,79 @@ describe('HomeyDeviceAdoptionService', () => {
 		);
 	});
 
+	it('keeps append-only value writes terminal when a later property write fails', async () => {
+		const device = existingDevice();
+		const channel = Object.assign(new HomeyChannelEntity(), {
+			id: '8421af4e-84f9-4822-bac6-3dbe49ac4893',
+			identifier: 'light',
+			name: 'Light',
+			category: ChannelCategory.LIGHT,
+		});
+		const powerProperty = Object.assign(new HomeyChannelPropertyEntity(), {
+			id: 'dba32214-aa13-4134-9578-2093351507f8',
+			identifier: 'onoff::light-power',
+			homeyCapabilityId: 'onoff',
+			homeyMappingName: 'light-power',
+			name: 'Light power',
+			category: PropertyCategory.ON,
+			permissions: [PermissionType.READ_WRITE],
+			dataType: DataTypeType.BOOL,
+			format: null,
+			invalid: null,
+			step: null,
+		});
+		const stateProperty = Object.assign(new HomeyChannelPropertyEntity(), {
+			id: '91e4c7aa-eb5a-4f7b-bf62-ef9481f8565e',
+			identifier: 'onoff::light-state-label',
+			homeyCapabilityId: 'onoff',
+			homeyMappingName: 'light-state-label',
+			name: 'Light state label',
+			category: PropertyCategory.STATE,
+			permissions: [PermissionType.READ_ONLY],
+			dataType: DataTypeType.STRING,
+			format: null,
+			invalid: null,
+			step: null,
+		});
+
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), {
+				channels: [{ ...preview().channels[0], properties: preview().channels[0].properties.slice(0, 2) }],
+			}),
+		);
+		devicesService.findOneBy.mockResolvedValue(device);
+		channelsService.findAll.mockResolvedValue([channel]);
+		channelsService.findOneBy.mockResolvedValue(channel);
+		propertiesService.findAll.mockResolvedValue([powerProperty, stateProperty]);
+		propertiesService.findOneBy.mockResolvedValueOnce(powerProperty).mockResolvedValueOnce(stateProperty);
+		propertyValueService.readLatest.mockImplementation((property) =>
+			Promise.resolve(
+				Object.assign(new PropertyValueState(), {
+					value: property.id === powerProperty.id ? true : 'on',
+					lastUpdated: new Date().toISOString(),
+				}),
+			),
+		);
+		propertiesService.update
+			.mockResolvedValueOnce(powerProperty)
+			.mockRejectedValueOnce(new Error('second write failed'));
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({
+			status: HomeyAdoptionStatus.UPDATED,
+			failureCode: null,
+		});
+		expect(propertiesService.update).toHaveBeenNthCalledWith(1, powerProperty.id, {
+			type: DEVICES_HOMEY_TYPE,
+			value: false,
+		});
+		expect(propertiesService.update).toHaveBeenNthCalledWith(2, stateProperty.id, {
+			type: DEVICES_HOMEY_TYPE,
+			value: 'off',
+		});
+		expect(propertyValueService.write).not.toHaveBeenCalled();
+		expect(propertyValueService.delete).not.toHaveBeenCalled();
+	});
+
 	it('updates changed categories in place and preserves history when a later mutation rolls back', async () => {
 		const device = existingDevice();
 		const channel = Object.assign(new HomeyChannelEntity(), {

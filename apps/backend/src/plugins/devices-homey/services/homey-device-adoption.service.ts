@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory, DataTypeType } from '../../../modules/devices/devices.constants';
-import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
@@ -50,7 +49,6 @@ interface PendingValueWrite {
 	readonly property: HomeyChannelPropertyEntity;
 	readonly value: string | number | boolean;
 	readonly previous: PropertyValueState | null;
-	readonly restorePrevious: boolean;
 }
 
 @Injectable()
@@ -155,13 +153,14 @@ export class HomeyDeviceAdoptionService {
 	): Promise<HomeyAdoptionResultModel> {
 		const journal: UndoOperation[] = [];
 		const deferredRemovals: DeferredRemoval[] = [];
+		const pendingValues: PendingValueWrite[] = [];
 		let changed = false;
 
 		try {
-			// All value state is captured before the first mutation. Existing rows are updated in place so
-			// rollback retains their full external history, not only the latest value represented here.
+			// Existing rows are updated in place so rollback retains their full external history. Current
+			// values are captured only for change detection; append-only writes are deferred until rollback
+			// is no longer possible and are never "restored" by appending artificial compensation points.
 			const snapshot = await this.snapshotHierarchy(device.id);
-			const pendingValues: PendingValueWrite[] = [];
 
 			for (const desiredChannel of preview.channels) {
 				changed =
@@ -207,15 +206,6 @@ export class HomeyDeviceAdoptionService {
 				if (pending.previous?.value !== pending.value) {
 					changed = true;
 				}
-
-				await this.channelsPropertiesService.update(pending.property.id, {
-					type: DEVICES_HOMEY_TYPE,
-					value: pending.value,
-				});
-
-				if (pending.restorePrevious) {
-					journal.push(() => this.restoreValue(pending.property, pending.previous));
-				}
 			}
 		} catch {
 			const rolledBack = await this.rollback(journal);
@@ -227,10 +217,11 @@ export class HomeyDeviceAdoptionService {
 			);
 		}
 
-		// Stale rows are the only destructive mutations: removing a property also erases its complete
-		// value/status series. Commit that terminal pruning only after every operation that can require
-		// compensating rollback has succeeded. A failed prune remains for the next idempotent adoption;
-		// it must never turn an already-pruned historical series into a pretend rollback.
+		// Value writes append measurements and stale removals erase complete value/status series. Commit
+		// both terminal operations only after every mutation that can require rollback has succeeded.
+		// Individual failures remain for the next idempotent adoption rather than corrupting history with
+		// compensating points or turning an already-pruned series into a pretend rollback.
+		await this.applyPendingValues(pendingValues);
 		await this.pruneStale(deferredRemovals);
 
 		return this.success(
@@ -370,7 +361,6 @@ export class HomeyDeviceAdoptionService {
 					property,
 					value: desired.currentValue,
 					previous,
-					restorePrevious: snapshot.propertiesById.has(property.id),
 				});
 			}
 		}
@@ -541,15 +531,6 @@ export class HomeyDeviceAdoptionService {
 		});
 	}
 
-	private async restoreValue(property: ChannelPropertyEntity, previous: PropertyValueState | null): Promise<void> {
-		if (previous === null) {
-			await this.propertyValueService.delete(property);
-			return;
-		}
-
-		await this.propertyValueService.write(property, previous.value);
-	}
-
 	private propertyMetadataChanged(
 		property: HomeyChannelPropertyEntity,
 		desired: CreateHomeyDeviceChannelPropertyDto,
@@ -566,6 +547,19 @@ export class HomeyDeviceAdoptionService {
 			JSON.stringify(property.permissions) !== JSON.stringify(desired.permissions) ||
 			JSON.stringify(property.format) !== JSON.stringify(desired.format)
 		);
+	}
+
+	private async applyPendingValues(writes: readonly PendingValueWrite[]): Promise<void> {
+		for (const pending of writes) {
+			try {
+				await this.channelsPropertiesService.update(pending.property.id, {
+					type: DEVICES_HOMEY_TYPE,
+					value: pending.value,
+				});
+			} catch {
+				this.logger.warn('Homey current value persistence was deferred until the next adoption');
+			}
+		}
 	}
 
 	private async pruneStale(removals: readonly DeferredRemoval[]): Promise<void> {
