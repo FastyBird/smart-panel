@@ -5760,18 +5760,19 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it.each(['I want you to turn the Bedroom lights off', "I'd like you to turn the Bedroom lights off"])(
-		'recognizes a declarative action-request prefix: %s',
-		(message) => {
-			expect(
-				service.plan({
-					message,
-					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
-					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-				}),
-			).toMatchObject({ intent: 'write', ambiguityRisk: 'none', strategy: 'model-tools' });
-		},
-	);
+	it.each([
+		'I want you to turn the Bedroom lights off',
+		"I'd like you to turn the Bedroom lights off",
+		'I need you to turn the Bedroom lights off',
+	])('recognizes a declarative action-request prefix: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({ intent: 'write', ambiguityRisk: 'none', strategy: 'model-tools' });
+	});
 
 	it.each([
 		'Turn most of the Bedroom lights off',
@@ -5811,6 +5812,7 @@ describe('BuddyContextPlannerService', () => {
 	);
 
 	it.each([
+		'Turn a pair of Bedroom lights on',
 		'Turn ten Bedroom lights on',
 		'Turn a dozen Bedroom lights on',
 		'Turn twenty-one Bedroom lights on',

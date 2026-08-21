@@ -19,6 +19,7 @@ import {
 	ACTION_DURATION_PATTERN,
 	ACTION_RANGE_PATTERN,
 	ACTION_REQUEST_PATTERN,
+	ACTION_REQUEST_PREFIX_PATTERN_SOURCE,
 	ACTION_SIGNAL_PATTERN_SOURCE,
 	CLOCK_TIME_HISTORY_PATTERN,
 	COMPOUND_CONNECTOR_PATTERN_SOURCE,
@@ -134,7 +135,7 @@ export function getActionReferenceMessage(
 		.map((clause) => {
 			const actionOnlyClause = clause.replace(
 				new RegExp(
-					String.raw`^[?!,.;\s]*(?:(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|only|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|i(?: want you to| would like you to|'d like you to)|is it possible to|is there any way you can)\s+(?:(?:only|please)\s+)*)?`,
+					String.raw`^[?!,.;\s]*(?:(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|only|please)\s+)*(?:${ACTION_REQUEST_PREFIX_PATTERN_SOURCE}\s+(?:(?:only|please)\s+)*)?`,
 					'u',
 				),
 				'',

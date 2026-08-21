@@ -26,6 +26,7 @@ export const ACTION_SIGNAL_PATTERN_SOURCE = [...BUDDY_ACTION_SIGNALS, 'trigger',
 export const COMPOUND_CONNECTOR_PATTERN_SOURCE = [...BUDDY_COMPOUND_CONNECTOR_SIGNALS]
 	.sort((left, right) => right.length - left.length)
 	.join('|');
+export const ACTION_REQUEST_PREFIX_PATTERN_SOURCE = String.raw`(?:(?:can|could|may|might|will|would) you|are you able to|i(?: need you to| want you to| would like you to|'d like you to)|is it possible to|is there any way you can)`;
 export const ACTION_CONTINUATION_CONNECTOR_PATTERN = new RegExp(
 	String.raw`^\s*(?:(?:,\s*)?(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})|(?:,\s*)?and\s+then|,)\s*$`,
 	'u',
@@ -52,7 +53,7 @@ const UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:one|two|three|four|f
 const SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:zero|${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE}|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)`;
 const WORD_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:${SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE}|(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[-\s]${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE})?|(?:${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE}\s+)?hundred(?:\s+and\s+${SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE})?|(?:a\s+)?dozens?(?:\s+of)?)`;
 export const PARTIAL_LIGHTING_GROUP_PATTERN = new RegExp(
-	String.raw`\b(?:a couple of|a few|a quarter|a third|alternate|both(?:\s+of(?:\s+the)?)?|every\s+other|half|most of|one third|one quarter|part of|portion of|several|some|\d+|${WORD_LIGHTING_QUANTITY_PATTERN_SOURCE}|(?:(?:a|the)\s+)?majority\s+of)\b.*\b(?:lamp|lamps|light|lights)\b`,
+	String.raw`\b(?:a couple of|a few|a pair of|a quarter|a third|alternate|both(?:\s+of(?:\s+the)?)?|every\s+other|half|most of|one third|one quarter|part of|portion of|several|some|\d+|${WORD_LIGHTING_QUANTITY_PATTERN_SOURCE}|(?:(?:a|the)\s+)?majority\s+of)\b.*\b(?:lamp|lamps|light|lights)\b`,
 	'u',
 );
 export const ZERO_QUANTITY_LIGHTING_PATTERN = /\b(?:no|none|zero)\b.*\b(?:lamp|lamps|light|lights)\b/u;
@@ -159,8 +160,7 @@ export const READ_PATTERN =
 	/^(?:are|can you (?:check|compare|confirm|determine|fetch|get|read|report|show|tell|verify)|check|compare|confirm|determine|ensure|fetch|find|get|how (?:many|much)|is|list|make sure|read|report|search|see|show|tell(?: me)?|verify|what|which|will)\b/u;
 export const PREDICATE_QUESTION_PATTERN =
 	/^(?:are|can|could|did|do|does|had|has|have|is|may|might|must|should|when|will|would|was|were|je|jsou|jaka|jaky|ktere|kolik|(?:how|what|when|where|which|who|why)['’]s|(?:what|why) (?:are|did|do|does|had|has|have|is|was|were))\b/u;
-export const ACTION_REQUEST_PATTERN =
-	/^(?:(?:can|could|may|might|will|would) you\b|are you able to\b|i(?: want you to| would like you to|'d like you to)\b|is it possible to\b|is there any way you can\b)/u;
+export const ACTION_REQUEST_PATTERN = new RegExp(String.raw`^${ACTION_REQUEST_PREFIX_PATTERN_SOURCE}\b`, 'u');
 export const ACTION_CANCELLATION_PATTERN = new RegExp(
 	String.raw`(?:[?!,.;—–]|\b(?:and(?:\s+then)?|then)\b)\s*(?:abort(?:\s+(?:it|that))?\b|actually\s+(?:do\s+not|don't)\b|cancel\s+(?:it|that)\b|disregard\s+(?:it|that)\b|forget\s+it\b|ignore\s+(?:it|that)\b|never\s*mind\b|no\b\s*,?\s*(?:no\s+)?(?:action|only\s+(?:check\s+)?status|status\s+only)\b|do\s+nothing\b|do(?:\s+not|n't)\s+execute\b|just\s+status\b|read\s+only\b|scratch\s+(?:it|that)\b|status\s+only\b)`,
 	'u',
@@ -190,7 +190,7 @@ export const PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN =
 export const CLEAR_NON_HOME_ACTION_OBJECT_PATTERN =
 	/^(?:(?:a|an|my|our|the|your)\s+)?(?:another|app|application|around|bluetooth|browser|build|car|chrome|conversation|countdown|deployment|dialog|dinner|dishwasher|docker|document|figma|file|hand|jest|lanes?|meeting|new|npm|page|password|payroll|recording|reminder|right|sandwich|screen|spotify|tabs?|talking|terminal|tests?|timer|voice|volume)\b/u;
 export const ACTION_COMMAND_PATTERN = new RegExp(
-	String.raw`^[?!,.;\s]*(?:(?:a|also|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|only|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|i(?: want you to| would like you to|'d like you to)|is it possible to|is there any way you can)\s+(?:(?:also|only|please)\s+)*)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
+	String.raw`^[?!,.;\s]*(?:(?:a|also|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|only|please)\s+)*(?:${ACTION_REQUEST_PREFIX_PATTERN_SOURCE}\s+(?:(?:also|only|please)\s+)*)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
 export const CONDITION_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_CONDITION_SIGNALS].join('|')})\b`, 'u');
