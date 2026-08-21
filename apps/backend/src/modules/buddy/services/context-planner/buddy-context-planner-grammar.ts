@@ -304,7 +304,7 @@ export const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 export const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\banywhere(?:\s+at\s+all)?\b(?!\s+(?:around|at|else|here|in|inside|near|within)\b)|\beverywhere\b|\b(?:all|any|each|every)(?:\s+one)?(?:\s+of\s+the)?\s+(?:rooms?|spaces?)\b/u;
 export const ANYWHERE_ELSE_PATTERN = /\banywhere else\b/u;
-const WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE = String.raw`(?:active|closed|inactive|locked|off|on|open|unlocked)`;
+const WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE = String.raw`(?:active|closed|inactive|locked|off|on|open|unlocked|${HOME_STATE_PATTERN.source})`;
 const AGGREGATE_STATE_VALUE_PATTERN_SOURCE = String.raw`(?:(?:already|currently|not|still)\s+)?${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}`;
 const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|switch(?:es)?|thermostats?)|${HOME_ENTITY_PATTERN.source})`;
 const AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:all|any|each|every|none)`;
