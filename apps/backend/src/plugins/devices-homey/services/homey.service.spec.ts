@@ -92,7 +92,10 @@ describe('HomeyService', () => {
 	let connector: jest.Mocked<HomeyConnector>;
 	let connectorFactory: jest.Mocked<HomeyConnectorFactory>;
 	let synchronizer: jest.Mocked<
-		Pick<HomeySynchronizerService, 'synchronizeSnapshot' | 'synchronizeDevices' | 'synchronizeEvents' | 'reset'>
+		Pick<
+			HomeySynchronizerService,
+			'filterEvents' | 'synchronizeSnapshot' | 'synchronizeDevices' | 'synchronizeEvents' | 'reset'
+		>
 	>;
 	let listener: HomeyEventListener | null;
 	let unsubscribe: jest.Mock;
@@ -117,6 +120,7 @@ describe('HomeyService', () => {
 		}, unsubscribe);
 		connectorFactory = { create: jest.fn().mockReturnValue(connector) };
 		synchronizer = {
+			filterEvents: jest.fn((events) => [...events]),
 			synchronizeSnapshot: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0 }),
 			synchronizeDevices: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0 }),
 			synchronizeEvents: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0 }),
@@ -295,6 +299,34 @@ describe('HomeyService', () => {
 		expect(synchronizer.synchronizeEvents).toHaveBeenCalledTimes(1);
 		expect(synchronizer.synchronizeEvents).toHaveBeenCalledWith([first, final], expect.any(Map));
 		expect(connector.getDevice.mock.calls).toHaveLength(0);
+
+		await service.stop();
+	});
+
+	it('filters stale device events before mutating the inventory cache', async () => {
+		await service.start();
+		const update: HomeyEvent = {
+			type: HomeyEventType.DEVICE_UPDATED,
+			deviceId: staleDevice.id,
+			occurredAt: null,
+			sequence: 2,
+		};
+		const removal: HomeyEvent = {
+			type: HomeyEventType.DEVICE_REMOVED,
+			deviceId: staleDevice.id,
+			occurredAt: null,
+			sequence: 1,
+		};
+		synchronizer.filterEvents.mockReturnValueOnce([update]);
+
+		void listener?.(update);
+		void listener?.(removal);
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
+
+		expect(synchronizer.filterEvents).toHaveBeenCalledWith([update, removal]);
+		expect(synchronizer.synchronizeEvents).toHaveBeenCalledWith([update], expect.any(Map));
+		expect(service.getInventorySnapshot()).toStrictEqual([staleDevice]);
 
 		await service.stop();
 	});

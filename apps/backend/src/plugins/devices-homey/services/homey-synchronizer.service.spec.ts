@@ -333,7 +333,7 @@ describe('HomeySynchronizerService', () => {
 		});
 	});
 
-	it('updates availability and treats upstream removal as lost without a delete path', async () => {
+	it('coalesces availability and removal to the final lost state without a delete path', async () => {
 		await service.refreshIndex();
 
 		await service.synchronizeEvents(
@@ -357,7 +357,6 @@ describe('HomeySynchronizerService', () => {
 		);
 
 		expect(connectivityService.setConnectionState.mock.calls).toEqual([
-			['panel-device', { state: ConnectionState.DISCONNECTED }],
 			['panel-device', { state: ConnectionState.LOST }],
 		]);
 		expect(devicesService).not.toHaveProperty('remove');
@@ -425,6 +424,26 @@ describe('HomeySynchronizerService', () => {
 			state: ConnectionState.CONNECTED,
 		});
 		expect(propertiesService.update).not.toHaveBeenCalled();
+	});
+
+	it('filters a stale removal before callers mutate their inventory cache', async () => {
+		await service.refreshIndex();
+		const update: HomeyEvent = {
+			type: HomeyEventType.DEVICE_UPDATED,
+			deviceId: 'homey-light',
+			occurredAt: null,
+			sequence: 2,
+		};
+		const removal: HomeyEvent = {
+			type: HomeyEventType.DEVICE_REMOVED,
+			deviceId: 'homey-light',
+			occurredAt: null,
+			sequence: 1,
+		};
+
+		expect(service.filterEvents([update, removal])).toEqual([update]);
+		await service.synchronizeEvents([update], new Map([['homey-light', homeyDevice()]]));
+		expect(service.filterEvents([removal])).toEqual([]);
 	});
 
 	it('uses the refreshed device after a device update event and isolates per-property failures', async () => {

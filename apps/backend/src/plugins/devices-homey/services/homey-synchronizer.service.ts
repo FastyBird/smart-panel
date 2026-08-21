@@ -130,7 +130,7 @@ export class HomeySynchronizerService {
 		await this.ensureIndex();
 		const result = this.emptyResult();
 
-		for (const event of this.coalesceEvents(events)) {
+		for (const event of this.filterEvents(events)) {
 			if (!this.isValidEvent(event)) {
 				result.ignored += 1;
 				continue;
@@ -154,15 +154,12 @@ export class HomeySynchronizerService {
 						break;
 					}
 
-					const applied = await this.setConnectionState(
+					await this.setConnectionState(
 						context.adopted.id,
 						event.available ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
 						result,
 					);
-
-					if (applied) {
-						this.lastAppliedDeviceOrder.set(event.deviceId, context.order);
-					}
+					this.lastAppliedDeviceOrder.set(event.deviceId, context.order);
 					break;
 				}
 				case HomeyEventType.DEVICE_ADDED:
@@ -174,17 +171,13 @@ export class HomeySynchronizerService {
 					}
 
 					const current = currentDevices.get(event.deviceId);
-					let applied: boolean;
-
 					if (current === undefined) {
-						applied = await this.setConnectionState(context.adopted.id, ConnectionState.LOST, result);
+						await this.setConnectionState(context.adopted.id, ConnectionState.LOST, result);
 					} else {
-						applied = await this.synchronizeDevice(current, result);
+						await this.synchronizeDevice(current, result);
 					}
 
-					if (applied) {
-						this.lastAppliedDeviceOrder.set(event.deviceId, context.order);
-					}
+					this.lastAppliedDeviceOrder.set(event.deviceId, context.order);
 					break;
 				}
 				case HomeyEventType.DEVICE_REMOVED: {
@@ -194,9 +187,8 @@ export class HomeySynchronizerService {
 						break;
 					}
 
-					if (await this.setConnectionState(context.adopted.id, ConnectionState.LOST, result)) {
-						this.lastAppliedDeviceOrder.set(event.deviceId, context.order);
-					}
+					await this.setConnectionState(context.adopted.id, ConnectionState.LOST, result);
+					this.lastAppliedDeviceOrder.set(event.deviceId, context.order);
 					break;
 				}
 				case HomeyEventType.ZONE_ADDED:
@@ -208,6 +200,21 @@ export class HomeySynchronizerService {
 		}
 
 		return result;
+	}
+
+	filterEvents(events: readonly HomeyEvent[]): HomeyEvent[] {
+		return this.coalesceEvents(events).filter((event) => {
+			if (!this.isDeviceEvent(event)) {
+				return true;
+			}
+
+			const previousOrder = this.lastAppliedDeviceOrder.get(event.deviceId);
+
+			return (
+				previousOrder === undefined ||
+				this.isNewerOrder(this.createOrder(event.sequence, event.occurredAt), previousOrder)
+			);
+		});
 	}
 
 	reset(): void {
@@ -292,15 +299,15 @@ export class HomeySynchronizerService {
 		this.indexDirty = this.indexGeneration !== generation;
 	}
 
-	private async synchronizeDevice(device: HomeyDevice, result: MutableSynchronizationResult): Promise<boolean> {
+	private async synchronizeDevice(device: HomeyDevice, result: MutableSynchronizationResult): Promise<void> {
 		const adopted = this.adoptedDevices.get(device.id);
 
 		if (adopted === undefined) {
 			result.ignored += 1;
-			return false;
+			return;
 		}
 
-		const connectionStateApplied = await this.setConnectionState(
+		await this.setConnectionState(
 			adopted.id,
 			device.available ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
 			result,
@@ -314,8 +321,6 @@ export class HomeySynchronizerService {
 
 			await this.synchronizeCapability(device.id, capability, result);
 		}
-
-		return connectionStateApplied;
 	}
 
 	private async synchronizeCapability(
@@ -379,67 +384,71 @@ export class HomeySynchronizerService {
 		panelDeviceId: string,
 		state: ConnectionState,
 		result: MutableSynchronizationResult,
-	): Promise<boolean> {
+	): Promise<void> {
 		try {
 			await this.deviceConnectivityService.setConnectionState(panelDeviceId, { state });
 			result.updated += 1;
-			return true;
 		} catch {
 			result.failed += 1;
 			this.logger.warn('Could not update an adopted Homey device connection state', { resource: panelDeviceId });
-			return false;
 		}
 	}
 
 	private coalesceEvents(events: readonly HomeyEvent[]): HomeyEvent[] {
 		const selectedCapabilityIndexes = new Map<string, number>();
+		const selectedDeviceIndexes = new Map<string, number>();
 
 		for (let index = 0; index < events.length; index += 1) {
 			const event = events[index];
 
-			if (event.type !== HomeyEventType.CAPABILITY_VALUE_CHANGED) {
-				continue;
-			}
+			if (event.type === HomeyEventType.CAPABILITY_VALUE_CHANGED) {
+				const key = `${event.deviceId}\u0000${event.capabilityId}`;
+				const selectedIndex = selectedCapabilityIndexes.get(key);
 
-			const key = `${event.deviceId}\u0000${event.capabilityId}`;
-			const selectedIndex = selectedCapabilityIndexes.get(key);
+				if (selectedIndex === undefined || this.isLaterEvent(event, events[selectedIndex])) {
+					selectedCapabilityIndexes.set(key, index);
+				}
+			} else if (this.isDeviceEvent(event)) {
+				const selectedIndex = selectedDeviceIndexes.get(event.deviceId);
 
-			if (selectedIndex === undefined || this.isLaterCapabilityEvent(event, events[selectedIndex])) {
-				selectedCapabilityIndexes.set(key, index);
+				if (selectedIndex === undefined || this.isLaterEvent(event, events[selectedIndex])) {
+					selectedDeviceIndexes.set(event.deviceId, index);
+				}
 			}
 		}
 
 		return events.filter((event, index) => {
-			if (event.type !== HomeyEventType.CAPABILITY_VALUE_CHANGED) {
-				return true;
+			if (event.type === HomeyEventType.CAPABILITY_VALUE_CHANGED) {
+				return selectedCapabilityIndexes.get(`${event.deviceId}\u0000${event.capabilityId}`) === index;
 			}
 
-			return selectedCapabilityIndexes.get(`${event.deviceId}\u0000${event.capabilityId}`) === index;
+			return !this.isDeviceEvent(event) || selectedDeviceIndexes.get(event.deviceId) === index;
 		});
 	}
 
-	private isLaterCapabilityEvent(
-		candidate: Extract<HomeyEvent, { type: HomeyEventType.CAPABILITY_VALUE_CHANGED }>,
-		current: HomeyEvent,
-	): boolean {
-		if (current.type !== HomeyEventType.CAPABILITY_VALUE_CHANGED) {
-			return true;
-		}
-
+	private isLaterEvent(candidate: HomeyEvent, current: HomeyEvent): boolean {
 		const sequenceComparison = this.compareSequences(candidate.sequence, current.sequence);
 
 		if (sequenceComparison !== null) {
 			return sequenceComparison > 0;
 		}
 
-		const candidateTimestamp = this.parseTimestamp(candidate.lastUpdatedAt ?? candidate.occurredAt);
-		const currentTimestamp = this.parseTimestamp(current.lastUpdatedAt ?? current.occurredAt);
+		const candidateTimestamp = this.eventTimestamp(candidate);
+		const currentTimestamp = this.eventTimestamp(current);
 
 		if (candidateTimestamp !== null && currentTimestamp !== null && candidateTimestamp !== currentTimestamp) {
 			return candidateTimestamp > currentTimestamp;
 		}
 
 		return true;
+	}
+
+	private eventTimestamp(event: HomeyEvent): number | null {
+		return this.parseTimestamp(
+			event.type === HomeyEventType.CAPABILITY_VALUE_CHANGED
+				? (event.lastUpdatedAt ?? event.occurredAt)
+				: event.occurredAt,
+		);
 	}
 
 	private isNewerOrder(candidate: HomeyEventOrder, current: HomeyEventOrder): boolean {
@@ -486,6 +495,24 @@ export class HomeySynchronizerService {
 		}
 
 		return { adopted, order };
+	}
+
+	private isDeviceEvent(
+		event: HomeyEvent,
+	): event is Exclude<
+		HomeyEvent,
+		| Extract<HomeyEvent, { type: HomeyEventType.CAPABILITY_VALUE_CHANGED }>
+		| Extract<
+				HomeyEvent,
+				{ type: HomeyEventType.ZONE_ADDED | HomeyEventType.ZONE_UPDATED | HomeyEventType.ZONE_REMOVED }
+		  >
+	> {
+		return (
+			event.type === HomeyEventType.DEVICE_AVAILABILITY_CHANGED ||
+			event.type === HomeyEventType.DEVICE_ADDED ||
+			event.type === HomeyEventType.DEVICE_UPDATED ||
+			event.type === HomeyEventType.DEVICE_REMOVED
+		);
 	}
 
 	private compareSequences(candidate: string | number | null, current: string | number | null): number | null {

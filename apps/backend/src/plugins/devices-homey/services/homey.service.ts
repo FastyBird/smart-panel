@@ -386,6 +386,7 @@ export class HomeyService extends BaseManagedPluginService {
 		const deviceIds = [...new Set(events.flatMap((event) => ('deviceId' in event ? [event.deviceId] : [])))];
 		const refreshedDevices: HomeyDevice[] = [];
 		const missingDeviceIds: string[] = [];
+		const selectedEvents = inventoryReplaced || authoritativeReadback ? events : this.synchronizer.filterEvents(events);
 
 		if (authoritativeReadback) {
 			for (const deviceId of deviceIds) {
@@ -405,8 +406,8 @@ export class HomeyService extends BaseManagedPluginService {
 					missingDeviceIds.push(deviceId);
 				}
 			}
-		} else {
-			for (const event of events) {
+		} else if (!inventoryReplaced) {
+			for (const event of selectedEvents) {
 				authoritativeTraffic =
 					(await this.updateInventoryFromEvent(connector, generation, event)) || authoritativeTraffic;
 			}
@@ -419,8 +420,8 @@ export class HomeyService extends BaseManagedPluginService {
 				this.recordSynchronizationResult(
 					await this.synchronizer.synchronizeDevices(refreshedDevices, missingDeviceIds),
 				);
-			} else {
-				this.recordSynchronizationResult(await this.synchronizer.synchronizeEvents(events, this.devices));
+			} else if (selectedEvents.length > 0) {
+				this.recordSynchronizationResult(await this.synchronizer.synchronizeEvents(selectedEvents, this.devices));
 			}
 			this.lastEventAt = this.now();
 		}
