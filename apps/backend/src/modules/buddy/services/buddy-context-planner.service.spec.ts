@@ -4099,6 +4099,8 @@ describe('BuddyContextPlannerService', () => {
 		'Is each window closed?',
 		'Are none of the windows open?',
 		'Does every window remain closed?',
+		'Do all windows remain closed?',
+		'Do none of the windows remain open?',
 		'Check if every window is closed',
 		'Can you check if any windows are open?',
 		'Can you check whether any windows are open?',
@@ -6705,6 +6707,8 @@ describe('BuddyContextPlannerService', () => {
 	it.each([
 		['Enable the Bedroom lights', 'Turn on the Bedroom lights'],
 		['Disable the Bedroom lights', 'Turn off the Bedroom lights'],
+		['Also enable the Bedroom lights', 'Also turn on the Bedroom lights'],
+		['Please can you disable the Bedroom lights', 'Please can you turn off the Bedroom lights'],
 	])('maps a binary-state action to turn semantics: %s', (message, equivalentMessage) => {
 		const input = {
 			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],

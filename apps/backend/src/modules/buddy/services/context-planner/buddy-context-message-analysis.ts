@@ -14,12 +14,12 @@ import {
 } from './buddy-context-language';
 import {
 	ACTION_COMMAND_PATTERN,
+	ACTION_COMMAND_PREFIX_PATTERN_SOURCE,
 	ACTION_CONDITION_STATE_PATTERN,
 	ACTION_CONTINUATION_CONNECTOR_PATTERN,
 	ACTION_DURATION_PATTERN,
 	ACTION_RANGE_PATTERN,
 	ACTION_REQUEST_PATTERN,
-	ACTION_REQUEST_PREFIX_PATTERN_SOURCE,
 	ACTION_SIGNAL_PATTERN_SOURCE,
 	CLOCK_TIME_HISTORY_PATTERN,
 	COMPOUND_CONNECTOR_PATTERN_SOURCE,
@@ -133,13 +133,7 @@ export function getActionReferenceMessage(
 	return splitPlannerClauses(message, explicitSpaces)
 		.filter((clause) => ACTION_COMMAND_PATTERN.test(clause))
 		.map((clause) => {
-			const actionOnlyClause = clause.replace(
-				new RegExp(
-					String.raw`^[?!,.;\s]*(?:(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE}|if so|only|please)\s+)*(?:${ACTION_REQUEST_PREFIX_PATTERN_SOURCE}\s+(?:(?:only|please)\s+)*)?`,
-					'u',
-				),
-				'',
-			);
+			const actionOnlyClause = clause.replace(new RegExp(ACTION_COMMAND_PREFIX_PATTERN_SOURCE, 'u'), '');
 
 			return getActionTargetClause(actionOnlyClause);
 		})

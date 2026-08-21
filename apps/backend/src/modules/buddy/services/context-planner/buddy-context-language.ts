@@ -2,7 +2,7 @@ import { BuddyContextEntityReference, BuddyContextSpaceReference } from '../../m
 
 import {
 	ACTION_COMMAND_PATTERN,
-	ACTION_REQUEST_PREFIX_PATTERN_SOURCE,
+	ACTION_COMMAND_PREFIX_PATTERN_SOURCE,
 	ACTION_SIGNAL_PATTERN_SOURCE,
 	COMPOUND_CONNECTOR_PATTERN_SOURCE,
 	CONDITION_PATTERN,
@@ -473,7 +473,7 @@ export function normalizeGerundActionRequest(message: string): string {
 
 	const normalizedShutRequest = normalizedGerundRequest.replace(shutCommandPattern, '$1turn off');
 	const binaryStateCommandPattern = new RegExp(
-		String.raw`(^[?!,.;\s]*(?:(?:please)\s+|(?:${ACTION_REQUEST_PREFIX_PATTERN_SOURCE})\s+(?:(?:also|only|please)\s+)*)?|(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:also|please)\s+)*)(enable|disable)\b`,
+		String.raw`(${ACTION_COMMAND_PREFIX_PATTERN_SOURCE}|(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:also|please)\s+)*)(enable|disable)\b`,
 		'gu',
 	);
 
