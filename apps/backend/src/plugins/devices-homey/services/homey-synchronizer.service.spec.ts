@@ -167,6 +167,10 @@ function capabilityEvent(
 	};
 }
 
+function inventory(device: HomeyDevice = homeyDevice()): ReadonlyMap<string, HomeyDevice> {
+	return new Map([[device.id, device]]);
+}
+
 describe('HomeySynchronizerService', () => {
 	let devicesService: jest.Mocked<Pick<DevicesService, 'findAll'>>;
 	let propertiesService: jest.Mocked<Pick<ChannelsPropertiesService, 'update'>>;
@@ -246,7 +250,7 @@ describe('HomeySynchronizerService', () => {
 	it('preserves null as a valid normalized capability value', async () => {
 		await service.refreshIndex();
 
-		await service.synchronizeEvents([capabilityEvent('onoff', null, null)], new Map());
+		await service.synchronizeEvents([capabilityEvent('onoff', null, null)], inventory());
 
 		expect(propertiesService.update.mock.calls).toEqual([
 			['property-power', { type: DEVICES_HOMEY_TYPE, value: null }],
@@ -264,7 +268,7 @@ describe('HomeySynchronizerService', () => {
 				capabilityEvent('vendor_unknown', 1, null),
 				invalid,
 			],
-			new Map(),
+			inventory(),
 		);
 
 		expect(result).toEqual({ updated: 0, ignored: 3, failed: 0 });
@@ -281,7 +285,7 @@ describe('HomeySynchronizerService', () => {
 				capabilityEvent('dim', 0.5, '2026-08-21T10:01:01.000Z'),
 				capabilityEvent('onoff', false, '2026-08-21T10:01:02.000Z'),
 			],
-			new Map(),
+			inventory(),
 		);
 
 		expect(propertiesService.update.mock.calls).toEqual([
@@ -295,9 +299,9 @@ describe('HomeySynchronizerService', () => {
 		await service.refreshIndex();
 		const newest = capabilityEvent('onoff', true, '2026-08-21T10:02:00.000Z');
 
-		await service.synchronizeEvents([newest], new Map());
-		await service.synchronizeEvents([newest], new Map());
-		await service.synchronizeEvents([capabilityEvent('onoff', false, '2026-08-21T10:01:00.000Z')], new Map());
+		await service.synchronizeEvents([newest], inventory());
+		await service.synchronizeEvents([newest], inventory());
+		await service.synchronizeEvents([capabilityEvent('onoff', false, '2026-08-21T10:01:00.000Z')], inventory());
 
 		expect(propertiesService.update).toHaveBeenCalledTimes(2);
 		expect(propertiesService.update).toHaveBeenCalledWith('property-power', {
@@ -311,7 +315,7 @@ describe('HomeySynchronizerService', () => {
 
 		await service.synchronizeEvents(
 			[capabilityEvent('onoff', false, null, 2), capabilityEvent('onoff', true, null, 1)],
-			new Map(),
+			inventory(),
 		);
 
 		expect(propertiesService.update.mock.calls).toEqual([
@@ -323,8 +327,8 @@ describe('HomeySynchronizerService', () => {
 	it('rejects an older numeric sequence received in a later batch', async () => {
 		await service.refreshIndex();
 
-		await service.synchronizeEvents([capabilityEvent('onoff', true, null, 2)], new Map());
-		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 1)], new Map());
+		await service.synchronizeEvents([capabilityEvent('onoff', true, null, 2)], inventory());
+		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 1)], inventory());
 
 		expect(propertiesService.update).toHaveBeenCalledTimes(2);
 		expect(propertiesService.update).toHaveBeenCalledWith('property-power', {
@@ -333,10 +337,47 @@ describe('HomeySynchronizerService', () => {
 		});
 	});
 
+	it('blocks older capability events after a newer write failure and allows an equal-order retry', async () => {
+		await service.refreshIndex();
+		propertiesService.update.mockRejectedValueOnce(new Error('storage unavailable'));
+		const newest = capabilityEvent('onoff', true, null, 2);
+
+		await service.synchronizeEvents([newest], inventory());
+		propertiesService.update.mockClear();
+		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 1)], inventory());
+
+		expect(propertiesService.update).not.toHaveBeenCalled();
+
+		await service.synchronizeEvents([newest], inventory());
+
+		expect(propertiesService.update.mock.calls).toEqual([
+			['property-power', { type: DEVICES_HOMEY_TYPE, value: true }],
+		]);
+	});
+
+	it('rejects capability events missing from authoritative inventory or unavailable upstream', async () => {
+		await service.synchronizeSnapshot([]);
+		propertiesService.update.mockClear();
+
+		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 2)], new Map());
+		await service.synchronizeEvents(
+			[capabilityEvent('onoff', false, null, 3)],
+			inventory(
+				homeyDevice({
+					capabilities: homeyDevice().capabilities.map((capability) =>
+						capability.id === 'onoff' ? { ...capability, available: false } : capability,
+					),
+				}),
+			),
+		);
+
+		expect(propertiesService.update).not.toHaveBeenCalled();
+	});
+
 	it('preserves a numeric sequence watermark across an unsequenced snapshot', async () => {
 		await service.refreshIndex();
 
-		await service.synchronizeEvents([capabilityEvent('onoff', true, null, 2)], new Map());
+		await service.synchronizeEvents([capabilityEvent('onoff', true, null, 2)], inventory());
 		await service.synchronizeSnapshot([
 			homeyDevice({
 				capabilities: homeyDevice().capabilities.map((capability) => ({
@@ -347,7 +388,7 @@ describe('HomeySynchronizerService', () => {
 		]);
 		propertiesService.update.mockClear();
 
-		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 1)], new Map());
+		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 1)], inventory());
 
 		expect(propertiesService.update).not.toHaveBeenCalled();
 	});
@@ -581,7 +622,7 @@ describe('HomeySynchronizerService', () => {
 
 		await service.synchronizeSnapshot([current], [event]);
 		propertiesService.update.mockClear();
-		await service.synchronizeEvents([{ ...event, value: false, sequence: 1 }], new Map());
+		await service.synchronizeEvents([{ ...event, value: false, sequence: 1 }], inventory(current));
 
 		expect(propertiesService.update).not.toHaveBeenCalled();
 	});
@@ -622,7 +663,7 @@ describe('HomeySynchronizerService', () => {
 					sequence: 1,
 				},
 			],
-			new Map(),
+			inventory(current),
 		);
 
 		expect(propertiesService.update).not.toHaveBeenCalled();
@@ -642,7 +683,7 @@ describe('HomeySynchronizerService', () => {
 
 		await service.synchronizeDevices([current], [], [update]);
 		propertiesService.update.mockClear();
-		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 1)], new Map());
+		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 1)], inventory(current));
 
 		expect(propertiesService.update).not.toHaveBeenCalled();
 	});
@@ -673,7 +714,7 @@ describe('HomeySynchronizerService', () => {
 		devicesService.findAll.mockResolvedValueOnce([adoptedDevice([replacement])]);
 		service.invalidateFromEntity();
 
-		await service.synchronizeEvents([capabilityEvent('onoff', false, null)], new Map());
+		await service.synchronizeEvents([capabilityEvent('onoff', false, null)], inventory());
 
 		expect(devicesService.findAll).toHaveBeenCalledTimes(2);
 		expect(propertiesService.update).toHaveBeenLastCalledWith('replacement-power', {
@@ -699,7 +740,7 @@ describe('HomeySynchronizerService', () => {
 		service.invalidateFromEntity();
 		resolveInitial([adoptedDevice([powerProperty])]);
 		await refresh;
-		await service.synchronizeEvents([capabilityEvent('onoff', false, null)], new Map());
+		await service.synchronizeEvents([capabilityEvent('onoff', false, null)], inventory());
 
 		expect(devicesService.findAll).toHaveBeenCalledTimes(2);
 		expect(propertiesService.update).toHaveBeenCalledWith('replacement-power', {

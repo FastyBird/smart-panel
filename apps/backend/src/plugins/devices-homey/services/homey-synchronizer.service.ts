@@ -45,6 +45,7 @@ export class HomeySynchronizerService {
 	private adoptedDevices = new Map<string, HomeyDeviceEntity>();
 	private propertiesByDeviceCapability = new Map<string, Map<string, HomeyIndexedProperty[]>>();
 	private lastAppliedOrder = new Map<string, HomeyEventOrder>();
+	private lastObservedOrder = new Map<string, HomeyEventOrder>();
 	private lastAppliedDeviceOrder = new Map<string, HomeyEventOrder>();
 	private lastObservedDeviceOrder = new Map<string, HomeyEventOrder>();
 	private arrivalOrder = 0;
@@ -160,14 +161,29 @@ export class HomeySynchronizerService {
 
 			switch (event.type) {
 				case HomeyEventType.CAPABILITY_VALUE_CHANGED:
-					await this.synchronizeCapabilityValue(
-						event.deviceId,
-						event.capabilityId,
-						event.value,
-						event.lastUpdatedAt ?? event.occurredAt,
-						event.sequence,
-						result,
-					);
+					{
+						const currentCapability = currentDevices
+							.get(event.deviceId)
+							?.capabilities.find((capability) => capability.id === event.capabilityId);
+
+						if (
+							currentCapability === undefined ||
+							!currentCapability.readable ||
+							currentCapability.available === false
+						) {
+							result.ignored += 1;
+							break;
+						}
+
+						await this.synchronizeCapabilityValue(
+							event.deviceId,
+							event.capabilityId,
+							event.value,
+							event.lastUpdatedAt ?? event.occurredAt,
+							event.sequence,
+							result,
+						);
+					}
 					break;
 				case HomeyEventType.DEVICE_AVAILABILITY_CHANGED: {
 					if (!currentDevices.has(event.deviceId)) {
@@ -249,6 +265,7 @@ export class HomeySynchronizerService {
 		this.adoptedDevices.clear();
 		this.propertiesByDeviceCapability.clear();
 		this.lastAppliedOrder.clear();
+		this.lastObservedOrder.clear();
 		this.lastAppliedDeviceOrder.clear();
 		this.lastObservedDeviceOrder.clear();
 		this.arrivalOrder = 0;
@@ -387,12 +404,19 @@ export class HomeySynchronizerService {
 		const order = this.createOrder(sequence, updatedAt);
 
 		for (const binding of bindings) {
+			const previousObservedOrder = this.lastObservedOrder.get(binding.property.id);
 			const previousOrder = this.lastAppliedOrder.get(binding.property.id);
 
-			if (previousOrder !== undefined && !this.isNewerOrder(order, previousOrder)) {
+			if (
+				(previousObservedOrder !== undefined && this.compareOrders(order, previousObservedOrder) < 0) ||
+				(previousOrder !== undefined && !this.isNewerOrder(order, previousOrder))
+			) {
 				result.ignored += 1;
 				continue;
 			}
+
+			const observedOrder = this.preserveSequenceWatermark(order, previousObservedOrder);
+			this.lastObservedOrder.set(binding.property.id, observedOrder);
 
 			try {
 				const transformed = this.transformer.read(binding.mapping, value);
@@ -400,7 +424,7 @@ export class HomeySynchronizerService {
 					type: DEVICES_HOMEY_TYPE,
 					value: transformed,
 				});
-				this.lastAppliedOrder.set(binding.property.id, this.preserveSequenceWatermark(order, previousOrder));
+				this.lastAppliedOrder.set(binding.property.id, this.preserveSequenceWatermark(observedOrder, previousOrder));
 				result.updated += 1;
 			} catch {
 				result.failed += 1;
