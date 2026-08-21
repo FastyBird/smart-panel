@@ -2555,6 +2555,20 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('clarifies an apart-from lighting exclusion', () => {
+		expect(
+			service.plan({
+				message: 'Turn all Bedroom lights on apart from the bedside lamp',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
 	it('preserves connector words inside a configured space name', () => {
 		expect(
 			service.plan({
@@ -3046,6 +3060,17 @@ describe('BuddyContextPlannerService', () => {
 			).toMatchObject({ scope: { spaceId: 'space-living-room' } });
 		},
 	);
+
+	it.each(["kid's room", 'kid’s room'])('matches a configured apostrophe-bearing space name: %s', (spacePhrase) => {
+		const result = service.plan({
+			message: `What is the temperature in ${spacePhrase}?`,
+			knownSpaces: [{ id: 'space-kids-room', name: "Kid's Room" }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(result).toMatchObject({ scope: { spaceId: 'space-kids-room' } });
+		expect(result.queries).toContainEqual({ kind: 'current-state', spaceId: 'space-kids-room' });
+	});
 
 	it.each([
 		'What was the Bedroom temperature between 8am and 10am?',
@@ -3787,6 +3812,8 @@ describe('BuddyContextPlannerService', () => {
 		'Turn Bedroom lights on on weekdays',
 		'Turn Bedroom lights on in fifteen minutes',
 		'Turn Bedroom lights on in half an hour',
+		'Turn Bedroom lights on for half an hour',
+		'Turn Bedroom lights on for an hour',
 		'Turn Bedroom lights on in 30 mins',
 		'Turn Bedroom lights on next month',
 		'Turn Bedroom lights on this weekend',
