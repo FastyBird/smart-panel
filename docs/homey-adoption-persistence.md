@@ -77,4 +77,6 @@ the measurement before the process-local cache is updated; a transient storage f
 the next idempotent adoption instead of being hidden by a cache-only value. Existing-hierarchy snapshots query the same
 active backend that strict persistence requires and bypass each process's local cache. An available primary's read
 failure aborts reconciliation instead of falling through to potentially stale fallback history, preventing stale or
-unknown previous values from becoming duplicate appends.
+unknown previous values from becoming duplicate appends. Each terminal value write performs one more authoritative
+read immediately before persistence, so an intervening normal property update that already stored the preview value is
+not duplicated or overwritten based on the earlier snapshot.

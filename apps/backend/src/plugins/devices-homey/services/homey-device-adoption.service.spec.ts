@@ -364,12 +364,58 @@ describe('HomeyDeviceAdoptionService', () => {
 		});
 
 		await expect(service.adoptOne(selection())).resolves.toMatchObject({ status: HomeyAdoptionStatus.UPDATED });
-		expect(propertyValueService.readLatestPersisted).toHaveBeenCalledTimes(1);
+		expect(propertyValueService.readLatestPersisted).toHaveBeenCalledTimes(2);
 		expect(propertiesService.update).toHaveBeenCalledWith(
 			property.id,
 			{ type: DEVICES_HOMEY_TYPE, value: true },
 			{ strictValuePersistence: true },
 		);
+	});
+
+	it('rechecks persisted values before terminal writes and skips an intervening equal update', async () => {
+		const device = existingDevice();
+		const channel = Object.assign(new HomeyChannelEntity(), {
+			id: '8421af4e-84f9-4822-bac6-3dbe49ac4893',
+			identifier: 'light',
+			name: 'Light',
+			category: ChannelCategory.LIGHT,
+		});
+		const property = Object.assign(new HomeyChannelPropertyEntity(), {
+			id: 'dba32214-aa13-4134-9578-2093351507f8',
+			identifier: 'onoff::light-power',
+			homeyCapabilityId: 'onoff',
+			homeyMappingName: 'light-power',
+			name: 'Light power',
+			category: PropertyCategory.ON,
+			permissions: [PermissionType.READ_WRITE],
+			dataType: DataTypeType.BOOL,
+			format: null,
+			invalid: null,
+			step: null,
+		});
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), {
+				channels: [
+					{
+						...preview().channels[0],
+						properties: [{ ...preview().channels[0].properties[0], currentValue: true }],
+					},
+				],
+			}),
+		);
+		devicesService.findOneBy.mockResolvedValue(device);
+		devicesService.findOne.mockResolvedValue(device);
+		channelsService.findAll.mockResolvedValue([channel]);
+		channelsService.findOneBy.mockResolvedValue(channel);
+		propertiesService.findAll.mockResolvedValue([property]);
+		propertiesService.findOneBy.mockResolvedValue(property);
+		propertyValueService.readLatestPersisted
+			.mockResolvedValueOnce(Object.assign(new PropertyValueState(), { value: false }))
+			.mockResolvedValueOnce(Object.assign(new PropertyValueState(), { value: true }));
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({ status: HomeyAdoptionStatus.UPDATED });
+		expect(propertyValueService.readLatestPersisted).toHaveBeenCalledTimes(2);
+		expect(propertiesService.update).not.toHaveBeenCalled();
 	});
 
 	it('re-reads device metadata under the structure lock before reconciling it', async () => {
@@ -561,6 +607,7 @@ describe('HomeyDeviceAdoptionService', () => {
 		propertyValueService.readLatest
 			.mockResolvedValueOnce(null)
 			.mockResolvedValueOnce(current)
+			.mockResolvedValueOnce(current)
 			.mockResolvedValueOnce(current);
 
 		await expect(service.adoptOne(selection())).resolves.toMatchObject({
@@ -568,7 +615,7 @@ describe('HomeyDeviceAdoptionService', () => {
 			panelDeviceId: complete.id,
 		});
 		expect(devicesService.findOneBy).toHaveBeenCalledTimes(4);
-		expect(propertyValueService.readLatest).toHaveBeenCalledTimes(3);
+		expect(propertyValueService.readLatest).toHaveBeenCalledTimes(4);
 		expect(devicesService.findOneBy.mock.invocationCallOrder[3]).toBeLessThan(
 			channelsService.findOneBy.mock.invocationCallOrder[0],
 		);
