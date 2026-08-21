@@ -44,6 +44,10 @@ const ACTION_SIGNAL_PATTERN_SOURCE = [...BUDDY_ACTION_SIGNALS, 'trigger', POWER_
 const COMPOUND_CONNECTOR_PATTERN_SOURCE = [...BUDDY_COMPOUND_CONNECTOR_SIGNALS]
 	.sort((left, right) => right.length - left.length)
 	.join('|');
+const ACTION_CONTINUATION_CONNECTOR_PATTERN = new RegExp(
+	String.raw`^\s*(?:(?:,\s*)?(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})|(?:,\s*)?and\s+then|,)\s*$`,
+	'u',
+);
 const HOME_ENTITY_SIGNAL_PATTERN_SOURCE = [...BUDDY_HOME_SIGNALS]
 	.filter((signal) => !['energy', 'energie', 'home', 'house', 'security', 'zabezpeceni'].includes(signal))
 	.join('|');
@@ -1347,7 +1351,7 @@ function getActionClauseSelection(
 	for (const clause of clauses) {
 		const clauseStart = sourceMessage.indexOf(clause, searchStart);
 		const connector = clauseStart >= 0 ? sourceMessage.slice(previousClauseEnd, clauseStart) : '';
-		const hasContinuationConnector = /^\s*(?:(?:,\s*)?and(?:\s+then)?|,|plus|then)\s*$/u.test(connector);
+		const hasContinuationConnector = ACTION_CONTINUATION_CONNECTOR_PATTERN.test(connector);
 		if (clauseStart >= 0) {
 			previousClauseEnd = clauseStart + clause.length;
 			searchStart = previousClauseEnd;

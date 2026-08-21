@@ -4517,6 +4517,26 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it.each(['as well as', 'and also'])('inherits an action across the established %s connector', (connector) => {
+		const plan = service.plan({
+			message: `Set Bedroom thermostat to 20 ${connector} Office thermostat to 21`,
+			knownSpaces: [
+				{ id: 'space-bedroom', name: 'Bedroom' },
+				{ id: 'space-office', name: 'Office' },
+			],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			scope: { spaceIds: ['space-bedroom', 'space-office'] },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+		});
+		expect(plan.queries).not.toContainEqual({ kind: 'current-state', spaceId: 'space-office' });
+	});
+
 	it.each([
 		'Turn Bedroom lights off and the Kitchen fan is on',
 		'Turn Bedroom lights off, but the Kitchen fan is on',
