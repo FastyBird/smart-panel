@@ -118,4 +118,53 @@ describe('HomeyAdoptionLockService', () => {
 			jest.useRealTimers();
 		}
 	});
+
+	it('fences protected writes as soon as a heartbeat confirms ownership loss', async () => {
+		jest.useFakeTimers();
+		let releaseOperation: () => void = () => {};
+		let operationEntered: () => void = () => {};
+		const entered = new Promise<void>((resolve) => {
+			operationEntered = resolve;
+		});
+		const held = new Promise<void>((resolve) => {
+			releaseOperation = resolve;
+		});
+		const lockInternals = firstLock as unknown as {
+			renew(deviceIdentifier: string, ownerToken: string): Promise<boolean>;
+		};
+		const renew = jest.spyOn(lockInternals, 'renew');
+		let writes = 0;
+
+		try {
+			const operation = firstLock.runExclusive('homey-light', async (lease) => {
+				operationEntered();
+				await held;
+				await lease.assertOwned();
+				writes += 1;
+			});
+			await entered;
+			const [{ ownerToken }] = await firstDataSource.query<Array<{ ownerToken: string }>>(
+				`SELECT "ownerToken" FROM "devices_homey_adoption_locks" WHERE "deviceIdentifier" = ?`,
+				['homey-light'],
+			);
+			await secondDataSource.query(
+				`UPDATE "devices_homey_adoption_locks" SET "ownerToken" = ?, "expiresAt" = ? WHERE "deviceIdentifier" = ?`,
+				['replacement-owner', Date.now() + 120_000, 'homey-light'],
+			);
+
+			await jest.advanceTimersByTimeAsync(20_000);
+			expect(renew).toHaveBeenCalledTimes(1);
+			await expect(renew.mock.results[0].value).resolves.toBe(false);
+			await secondDataSource.query(
+				`UPDATE "devices_homey_adoption_locks" SET "ownerToken" = ?, "expiresAt" = ? WHERE "deviceIdentifier" = ?`,
+				[ownerToken, Date.now() + 120_000, 'homey-light'],
+			);
+			releaseOperation();
+
+			await expect(operation).rejects.toThrow('Homey adoption lock ownership was lost');
+			expect(writes).toBe(0);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 });

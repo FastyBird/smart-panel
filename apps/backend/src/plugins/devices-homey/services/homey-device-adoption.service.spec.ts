@@ -19,7 +19,11 @@ import { HomeyMappingPreviewDeviceNotFoundError } from '../errors/homey-mapping-
 import { HomeyAdoptionFailureCode, HomeyAdoptionStatus } from '../models/adoption.model';
 import { HomeyMappingPreviewModel } from '../models/mapping-preview.model';
 
-import { HomeyAdoptionLockService } from './homey-adoption-lock.service';
+import {
+	HomeyAdoptionLease,
+	HomeyAdoptionLockLostError,
+	HomeyAdoptionLockService,
+} from './homey-adoption-lock.service';
 import { HomeyDeviceAdoptionService } from './homey-device-adoption.service';
 import { HomeyMappingPreviewService } from './homey-mapping-preview.service';
 
@@ -129,7 +133,7 @@ const existingDevice = (deviceId = 'homey-light'): HomeyDeviceEntity =>
 
 describe('HomeyDeviceAdoptionService', () => {
 	let mappingPreviewService: jest.Mocked<Pick<HomeyMappingPreviewService, 'generatePreview'>>;
-	let devicesService: jest.Mocked<Pick<DevicesService, 'findOneBy' | 'create' | 'update'>>;
+	let devicesService: jest.Mocked<Pick<DevicesService, 'findOne' | 'findOneBy' | 'create' | 'update'>>;
 	let channelsService: jest.Mocked<
 		Pick<ChannelsService, 'findAll' | 'findOne' | 'findOneBy' | 'create' | 'update' | 'remove'>
 	>;
@@ -141,10 +145,13 @@ describe('HomeyDeviceAdoptionService', () => {
 	>;
 	let adoptionLock: Pick<HomeyAdoptionLockService, 'runExclusive'>;
 	let service: HomeyDeviceAdoptionService;
+	let lease: HomeyAdoptionLease;
 
 	beforeEach(() => {
+		lease = { assertOwned: jest.fn().mockResolvedValue(undefined) };
 		mappingPreviewService = { generatePreview: jest.fn().mockResolvedValue(preview()) };
 		devicesService = {
+			findOne: jest.fn().mockResolvedValue(null),
 			findOneBy: jest.fn().mockResolvedValue(null),
 			create: jest.fn().mockResolvedValue(existingDevice()),
 			update: jest.fn(),
@@ -176,7 +183,10 @@ describe('HomeyDeviceAdoptionService', () => {
 			runExclusive: jest.fn((operation: () => Promise<unknown>) => operation()),
 		};
 		adoptionLock = {
-			runExclusive: <T>(_deviceIdentifier: string, operation: () => Promise<T>): Promise<T> => operation(),
+			runExclusive: <T>(
+				_deviceIdentifier: string,
+				operation: (operationLease: HomeyAdoptionLease) => Promise<T>,
+			): Promise<T> => operation(lease),
 		};
 
 		service = new HomeyDeviceAdoptionService(
@@ -268,11 +278,14 @@ describe('HomeyDeviceAdoptionService', () => {
 
 	it('holds the database-backed claim from the fresh preview through persistence', async () => {
 		let claimHeld = false;
-		adoptionLock.runExclusive = async <T>(_deviceIdentifier: string, operation: () => Promise<T>): Promise<T> => {
+		adoptionLock.runExclusive = async <T>(
+			_deviceIdentifier: string,
+			operation: (operationLease: HomeyAdoptionLease) => Promise<T>,
+		): Promise<T> => {
 			claimHeld = true;
 
 			try {
-				return await operation();
+				return await operation(lease);
 			} finally {
 				claimHeld = false;
 			}
@@ -796,6 +809,165 @@ describe('HomeyDeviceAdoptionService', () => {
 			property.id,
 			expect.objectContaining({ homeyCapabilityId: null, homeyMappingName: null }),
 		);
+	});
+
+	it('restores property metadata when update saves and then rejects during readback', async () => {
+		const device = existingDevice();
+		const channel = Object.assign(new HomeyChannelEntity(), {
+			id: '8421af4e-84f9-4822-bac6-3dbe49ac4893',
+			identifier: 'light',
+			name: 'Light',
+			category: ChannelCategory.LIGHT,
+		});
+		const property = Object.assign(new HomeyChannelPropertyEntity(), {
+			id: 'dba32214-aa13-4134-9578-2093351507f8',
+			identifier: 'onoff::light-power',
+			homeyCapabilityId: 'onoff',
+			homeyMappingName: 'light-power',
+			name: 'Legacy power',
+			category: PropertyCategory.STATE,
+			permissions: [PermissionType.READ_WRITE],
+			dataType: DataTypeType.BOOL,
+			format: null,
+			invalid: null,
+			step: null,
+		});
+		const desiredProperty = { ...preview().channels[0].properties[0], valueAvailable: false, currentValue: null };
+		let persisted = property;
+
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), { channels: [{ ...preview().channels[0], properties: [desiredProperty] }] }),
+		);
+		devicesService.findOneBy.mockResolvedValue(device);
+		channelsService.findAll.mockResolvedValue([channel]);
+		channelsService.findOneBy.mockResolvedValue(channel);
+		propertiesService.findAll.mockResolvedValue([property]);
+		propertiesService.findOneBy.mockResolvedValue(property);
+		propertiesService.findOne.mockImplementation(() => Promise.resolve(persisted));
+		propertiesService.update
+			.mockImplementationOnce((_id, dto) => {
+				const metadata = dto as { name?: string; category?: PropertyCategory };
+				persisted = Object.assign(new HomeyChannelPropertyEntity(), property, {
+					name: metadata.name,
+					category: metadata.category,
+				});
+
+				return Promise.reject(new Error('post-save readback failed'));
+			})
+			.mockResolvedValueOnce(property);
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({
+			status: HomeyAdoptionStatus.FAILED,
+			failureCode: HomeyAdoptionFailureCode.PERSISTENCE_FAILED,
+		});
+		expect(propertiesService.update).toHaveBeenCalledTimes(2);
+		expect(propertiesService.update).toHaveBeenNthCalledWith(
+			2,
+			property.id,
+			expect.objectContaining({ name: 'Legacy power', category: PropertyCategory.STATE }),
+		);
+	});
+
+	it('restores channel metadata when update saves and then rejects during readback', async () => {
+		const device = existingDevice();
+		const channel = Object.assign(new HomeyChannelEntity(), {
+			id: '8421af4e-84f9-4822-bac6-3dbe49ac4893',
+			identifier: 'light',
+			name: 'Legacy light',
+			category: ChannelCategory.GENERIC,
+		});
+		let persisted = channel;
+
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), { channels: [{ ...preview().channels[0], properties: [] }] }),
+		);
+		devicesService.findOneBy.mockResolvedValue(device);
+		channelsService.findAll.mockResolvedValue([channel]);
+		channelsService.findOneBy.mockResolvedValue(channel);
+		channelsService.findOne.mockImplementation(() => Promise.resolve(persisted));
+		propertiesService.findAll.mockResolvedValue([]);
+		channelsService.update
+			.mockImplementationOnce((_id, dto) => {
+				const metadata = dto as { name?: string; category?: ChannelCategory };
+				persisted = Object.assign(new HomeyChannelEntity(), channel, {
+					name: metadata.name,
+					category: metadata.category,
+				});
+
+				return Promise.reject(new Error('post-save readback failed'));
+			})
+			.mockResolvedValueOnce(channel);
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({
+			status: HomeyAdoptionStatus.FAILED,
+			failureCode: HomeyAdoptionFailureCode.PERSISTENCE_FAILED,
+		});
+		expect(channelsService.update).toHaveBeenCalledTimes(2);
+		expect(channelsService.update).toHaveBeenNthCalledWith(
+			2,
+			channel.id,
+			expect.objectContaining({ name: 'Legacy light', category: ChannelCategory.GENERIC }),
+		);
+	});
+
+	it('restores device metadata when update saves and then rejects during readback', async () => {
+		const device = existingDevice();
+		let persisted = device;
+
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(preview('homey-light', false));
+		devicesService.findOneBy.mockResolvedValue(device);
+		devicesService.findOne.mockImplementation(() => Promise.resolve(persisted));
+		channelsService.findAll.mockResolvedValue([]);
+		devicesService.update
+			.mockImplementationOnce((_id, dto) => {
+				persisted = Object.assign(new HomeyDeviceEntity(), device, { name: dto.name });
+
+				return Promise.reject(new Error('post-save readback failed'));
+			})
+			.mockResolvedValueOnce(device);
+
+		await expect(service.adoptOne({ ...selection(), name: 'Renamed' })).resolves.toMatchObject({
+			status: HomeyAdoptionStatus.FAILED,
+			failureCode: HomeyAdoptionFailureCode.PERSISTENCE_FAILED,
+		});
+		expect(devicesService.update).toHaveBeenCalledTimes(2);
+		expect(devicesService.update).toHaveBeenNthCalledWith(
+			2,
+			device.id,
+			expect.objectContaining({ name: 'Living light' }),
+		);
+	});
+
+	it('stops issuing adoption mutations after the lease reports ownership loss', async () => {
+		const device = existingDevice();
+		const createdChannel = Object.assign(new HomeyChannelEntity(), {
+			id: '90c9cfb7-dc60-4e36-aa7e-7d77c3cbdf94',
+			identifier: 'light',
+			name: 'Light',
+			category: ChannelCategory.LIGHT,
+		});
+		let ownershipLost = false;
+		lease.assertOwned = jest.fn(
+			(): Promise<void> => (ownershipLost ? Promise.reject(new HomeyAdoptionLockLostError()) : Promise.resolve()),
+		);
+
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(preview());
+		devicesService.findOneBy.mockResolvedValue(device);
+		channelsService.findAll.mockResolvedValue([]);
+		channelsService.findOneBy.mockResolvedValue(null);
+		channelsService.create.mockImplementation(() => {
+			ownershipLost = true;
+
+			return Promise.resolve(createdChannel);
+		});
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({
+			status: HomeyAdoptionStatus.FAILED,
+			failureCode: HomeyAdoptionFailureCode.PERSISTENCE_FAILED,
+		});
+		expect(channelsService.create).toHaveBeenCalledTimes(1);
+		expect(propertiesService.create).not.toHaveBeenCalled();
+		expect(channelsService.remove).not.toHaveBeenCalled();
 	});
 
 	it('defers stale property removal until later reversible mutations have succeeded', async () => {

@@ -12,21 +12,43 @@ const ADOPTION_LOCK_HEARTBEAT_MS = 20_000;
 const ADOPTION_LOCK_POLL_INTERVAL_MS = 50;
 const ADOPTION_LOCK_WAIT_TIMEOUT_MS = 30_000;
 
+export class HomeyAdoptionLockLostError extends Error {
+	constructor() {
+		super('Homey adoption lock ownership was lost');
+		this.name = 'HomeyAdoptionLockLostError';
+	}
+}
+
+export interface HomeyAdoptionLease {
+	assertOwned(): Promise<void>;
+}
+
 @Injectable()
 export class HomeyAdoptionLockService {
 	private readonly logger = createExtensionLogger(DEVICES_HOMEY_PLUGIN_NAME, 'HomeyAdoptionLockService');
 
 	constructor(private readonly dataSource: DataSource) {}
 
-	async runExclusive<T>(deviceIdentifier: string, operation: () => Promise<T>): Promise<T> {
+	async runExclusive<T>(deviceIdentifier: string, operation: (lease: HomeyAdoptionLease) => Promise<T>): Promise<T> {
 		const ownerToken = randomUUID();
 		await this.acquire(deviceIdentifier, ownerToken);
+		let ownershipLost = false;
+		const lease: HomeyAdoptionLease = {
+			assertOwned: async (): Promise<void> => {
+				if (ownershipLost || !(await this.isOwned(deviceIdentifier, ownerToken))) {
+					ownershipLost = true;
+					throw new HomeyAdoptionLockLostError();
+				}
+			},
+		};
 
 		let renewal = Promise.resolve();
 		const heartbeat = setInterval(() => {
 			renewal = renewal
 				.then(async () => {
-					await this.renew(deviceIdentifier, ownerToken);
+					if (!(await this.renew(deviceIdentifier, ownerToken))) {
+						ownershipLost = true;
+					}
 				})
 				.catch(() => {
 					this.logger.warn('Homey adoption lock heartbeat failed; ownership will be rechecked');
@@ -35,12 +57,13 @@ export class HomeyAdoptionLockService {
 		heartbeat.unref();
 
 		try {
-			const result = await operation();
+			const result = await operation(lease);
 			await renewal;
 
 			if (!(await this.isOwned(deviceIdentifier, ownerToken))) {
-				throw new Error('Homey adoption lock ownership was lost');
+				ownershipLost = true;
 			}
+			await lease.assertOwned();
 
 			return result;
 		} finally {

@@ -56,11 +56,16 @@ The structure lock prevents unrelated in-process hierarchy races. The renewable 
 reconciliation, and terminal value writes across processes; database identity constraints remain the final creation
 guard. A concurrent unique-insert loss from an older or external writer is re-read only after its expected hierarchy
 and initial measurements are visible, then reconciled as an idempotent update rather than returned as a duplicate
-conflict.
+conflict. Every adoption mutation first verifies the claim against the shared database. A heartbeat that observes a
+replacement owner also marks the in-flight lease as lost, so the superseded worker cannot issue another create,
+update, value write, removal, or compensation.
 
 Channel and property creates receive server-generated IDs before their non-atomic service calls begin. Adoption
 registers guarded compensations first, so a create that inserts its row and then rejects during readback or post-create
 processing cannot escape the rollback journal; cleanup verifies the provider identity before removing a partial row.
+Device, channel, and property metadata updates follow the same ordering: their undo is registered before the
+non-atomic service call, and rollback restores the snapshot only when a fresh read still exactly matches the metadata
+that adoption intended to write.
 
 Terminal adoption values use the Devices module's strict property-value path. The active read backend must acknowledge
 the measurement before the process-local cache is updated; a transient storage failure therefore remains retryable on

@@ -17,6 +17,7 @@ import { CreateHomeyDeviceChannelPropertyDto } from '../dto/create-device-channe
 import { CreateHomeyDeviceChannelDto } from '../dto/create-device-channel.dto';
 import { CreateHomeyDeviceDto } from '../dto/create-device.dto';
 import { UpdateHomeyChannelDto } from '../dto/update-channel.dto';
+import { UpdateHomeyDeviceDto } from '../dto/update-device.dto';
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from '../entities/devices-homey.entity';
 import {
 	HomeyMappingPreviewDeviceNotFoundError,
@@ -29,7 +30,11 @@ import {
 	HomeyMappingPreviewPropertyModel,
 } from '../models/mapping-preview.model';
 
-import { HomeyAdoptionLockService } from './homey-adoption-lock.service';
+import {
+	HomeyAdoptionLease,
+	HomeyAdoptionLockLostError,
+	HomeyAdoptionLockService,
+} from './homey-adoption-lock.service';
 import { HomeyMappingPreviewService } from './homey-mapping-preview.service';
 
 const CONCURRENT_CREATION_POLL_INTERVAL_MS = 50;
@@ -77,7 +82,7 @@ export class HomeyDeviceAdoptionService {
 	async adoptOne(selection: HomeyAdoptDeviceDto): Promise<HomeyAdoptionResultModel> {
 		return this.withDeviceLock(selection.deviceId, async () => {
 			try {
-				return await this.adoptionLock.runExclusive(selection.deviceId, () => this.adoptLocked(selection));
+				return await this.adoptionLock.runExclusive(selection.deviceId, (lease) => this.adoptLocked(selection, lease));
 			} catch {
 				this.logger.warn('Homey adoption persistence failed before reconciliation completed');
 
@@ -86,7 +91,10 @@ export class HomeyDeviceAdoptionService {
 		});
 	}
 
-	private async adoptLocked(selection: HomeyAdoptDeviceDto): Promise<HomeyAdoptionResultModel> {
+	private async adoptLocked(
+		selection: HomeyAdoptDeviceDto,
+		lease: HomeyAdoptionLease,
+	): Promise<HomeyAdoptionResultModel> {
 		let preview: HomeyMappingPreviewModel;
 
 		try {
@@ -110,7 +118,9 @@ export class HomeyDeviceAdoptionService {
 		}
 
 		try {
-			return await this.structureLock.runExclusive(() => this.persist(selection, preview));
+			await lease.assertOwned();
+
+			return await this.structureLock.runExclusive(() => this.persist(selection, preview, lease));
 		} catch {
 			this.logger.warn('Homey adoption persistence failed before reconciliation completed');
 
@@ -131,6 +141,7 @@ export class HomeyDeviceAdoptionService {
 	private async persist(
 		selection: HomeyAdoptDeviceDto,
 		preview: HomeyMappingPreviewModel,
+		lease: HomeyAdoptionLease,
 	): Promise<HomeyAdoptionResultModel> {
 		let existing = await this.devicesService.findOneBy<HomeyDeviceEntity>(
 			'identifier',
@@ -140,13 +151,19 @@ export class HomeyDeviceAdoptionService {
 
 		if (existing === null) {
 			try {
+				await lease.assertOwned();
 				const created = await this.devicesService.create<HomeyDeviceEntity, CreateHomeyDeviceDto>(
 					this.createDeviceDto(selection, preview),
 				);
-				await this.applyCreatedValues(created, preview);
+				await lease.assertOwned();
+				await this.applyCreatedValues(created, preview, lease);
 
 				return this.success(preview.device.id, HomeyAdoptionStatus.CREATED, created.id);
-			} catch {
+			} catch (error) {
+				if (error instanceof HomeyAdoptionLockLostError) {
+					throw error;
+				}
+				await lease.assertOwned();
 				// A different process may have won the provider-scoped unique insert. Its parent row is
 				// visible before DevicesService.create() finishes the nested channels, properties, and their
 				// initial value writes, so an immediate reconciliation could mutate that half-built hierarchy
@@ -174,7 +191,7 @@ export class HomeyDeviceAdoptionService {
 			}
 		}
 
-		return this.reconcileExisting(selection, preview, existing);
+		return this.reconcileExisting(selection, preview, existing, lease);
 	}
 
 	private async waitForConcurrentCreation(
@@ -279,6 +296,7 @@ export class HomeyDeviceAdoptionService {
 		selection: HomeyAdoptDeviceDto,
 		preview: HomeyMappingPreviewModel,
 		device: HomeyDeviceEntity,
+		lease: HomeyAdoptionLease,
 	): Promise<HomeyAdoptionResultModel> {
 		const journal: UndoOperation[] = [];
 		const deferredRemovals: DeferredRemoval[] = [];
@@ -300,6 +318,7 @@ export class HomeyDeviceAdoptionService {
 						pendingValues,
 						deferredRemovals,
 						journal,
+						lease,
 					)) || changed;
 			}
 
@@ -312,22 +331,22 @@ export class HomeyDeviceAdoptionService {
 				device.category !== desiredCategory ||
 				device.identifier !== preview.device.id
 			) {
-				const previous = {
+				const previous: UpdateHomeyDeviceDto = {
 					type: DEVICES_HOMEY_TYPE,
 					name: device.name,
 					category: device.category,
 					identifier: device.identifier,
 				};
 
-				await this.devicesService.update(device.id, {
+				const desiredDevice: UpdateHomeyDeviceDto = {
 					type: DEVICES_HOMEY_TYPE,
 					name: desiredName,
 					category: desiredCategory,
 					identifier: preview.device.id,
-				});
-				journal.push(async () => {
-					await this.devicesService.update(device.id, previous);
-				});
+				};
+				journal.push(() => this.restoreDeviceMetadata(device.id, desiredDevice, previous, lease));
+				await lease.assertOwned();
+				await this.devicesService.update(device.id, desiredDevice);
 				changed = true;
 			}
 
@@ -336,8 +355,12 @@ export class HomeyDeviceAdoptionService {
 					changed = true;
 				}
 			}
-		} catch {
-			const rolledBack = await this.rollback(journal);
+		} catch (error) {
+			if (error instanceof HomeyAdoptionLockLostError) {
+				throw error;
+			}
+			await lease.assertOwned();
+			const rolledBack = await this.rollback(journal, lease);
 			this.logger.warn(rolledBack ? 'Homey adoption failed and was rolled back' : 'Homey adoption rollback failed');
 
 			return this.failure(
@@ -350,8 +373,8 @@ export class HomeyDeviceAdoptionService {
 		// both terminal operations only after every mutation that can require rollback has succeeded.
 		// Individual failures remain for the next idempotent adoption rather than corrupting history with
 		// compensating points or turning an already-pruned series into a pretend rollback.
-		await this.applyPendingValues(pendingValues);
-		await this.pruneStale(deferredRemovals);
+		await this.applyPendingValues(pendingValues, lease);
+		await this.pruneStale(deferredRemovals, lease);
 
 		return this.success(
 			preview.device.id,
@@ -367,6 +390,7 @@ export class HomeyDeviceAdoptionService {
 		pendingValues: PendingValueWrite[],
 		deferredRemovals: DeferredRemoval[],
 		journal: UndoOperation[],
+		lease: HomeyAdoptionLease,
 	): Promise<boolean> {
 		let changed = false;
 		let channel = await this.channelsService.findOneBy<HomeyChannelEntity>(
@@ -381,13 +405,15 @@ export class HomeyDeviceAdoptionService {
 			let createdChannel: HomeyChannelEntity | null = null;
 			journal.push(async () => {
 				if (createdChannel !== null) {
+					await lease.assertOwned();
 					await this.channelsService.remove(createdChannel.id);
 
 					return;
 				}
 
-				await this.removeCreatedChannel(preallocatedChannelId, deviceId, desired.identifier);
+				await this.removeCreatedChannel(preallocatedChannelId, deviceId, desired.identifier, lease);
 			});
+			await lease.assertOwned();
 			createdChannel = await this.channelsService.create<HomeyChannelEntity, CreateHomeyChannelDto>({
 				...this.createChannelDto(desired),
 				id: preallocatedChannelId,
@@ -400,23 +426,26 @@ export class HomeyDeviceAdoptionService {
 			channel.identifier !== desired.identifier ||
 			channel.category !== desired.category
 		) {
-			const previous = {
+			const previous: UpdateHomeyChannelDto = {
 				type: DEVICES_HOMEY_TYPE,
 				name: channel.name,
 				identifier: channel.identifier,
 				category: channel.category,
 			};
 
-			channel = await this.channelsService.update<HomeyChannelEntity, UpdateHomeyChannelDto>(channel.id, {
+			const desiredChannel: UpdateHomeyChannelDto = {
 				type: DEVICES_HOMEY_TYPE,
 				name: desired.name,
 				identifier: desired.identifier,
 				category: desired.category,
-			});
+			};
 			const updatedChannelId = channel.id;
-			journal.push(async () => {
-				await this.channelsService.update(updatedChannelId, previous);
-			});
+			journal.push(() => this.restoreChannelMetadata(updatedChannelId, deviceId, desiredChannel, previous, lease));
+			await lease.assertOwned();
+			channel = await this.channelsService.update<HomeyChannelEntity, UpdateHomeyChannelDto>(
+				channel.id,
+				desiredChannel,
+			);
 			changed = true;
 		}
 
@@ -428,6 +457,7 @@ export class HomeyDeviceAdoptionService {
 				pendingValues,
 				deferredRemovals,
 				journal,
+				lease,
 			)) || changed;
 
 		return changed;
@@ -440,6 +470,7 @@ export class HomeyDeviceAdoptionService {
 		pendingValues: PendingValueWrite[],
 		deferredRemovals: DeferredRemoval[],
 		journal: UndoOperation[],
+		lease: HomeyAdoptionLease,
 	): Promise<boolean> {
 		let changed = false;
 		const desiredIdentifiers = new Set<string>();
@@ -460,13 +491,15 @@ export class HomeyDeviceAdoptionService {
 				let createdProperty: HomeyChannelPropertyEntity | null = null;
 				journal.push(async () => {
 					if (createdProperty !== null) {
+						await lease.assertOwned();
 						await this.channelsPropertiesService.remove(createdProperty.id);
 
 						return;
 					}
 
-					await this.removeCreatedProperty(preallocatedPropertyId, channel.id, desiredDto);
+					await this.removeCreatedProperty(preallocatedPropertyId, channel.id, desiredDto, lease);
 				});
+				await lease.assertOwned();
 				createdProperty = await this.channelsPropertiesService.create(channel.id, {
 					...desiredDto,
 					id: preallocatedPropertyId,
@@ -479,6 +512,8 @@ export class HomeyDeviceAdoptionService {
 					throw new Error('Homey property snapshot is unavailable');
 				}
 
+				journal.push(() => this.restorePropertyMetadata(previous, desiredDto, channel.id, lease));
+				await lease.assertOwned();
 				await this.channelsPropertiesService.update(property.id, {
 					type: DEVICES_HOMEY_TYPE,
 					identifier: desiredDto.identifier,
@@ -492,7 +527,6 @@ export class HomeyDeviceAdoptionService {
 					homeyCapabilityId: desiredDto.homeyCapabilityId,
 					homeyMappingName: desiredDto.homeyMappingName,
 				});
-				journal.push(() => this.restorePropertyMetadata(previous));
 				property = await this.channelsPropertiesService.findOne<HomeyChannelPropertyEntity>(
 					property.id,
 					channel.id,
@@ -632,7 +666,11 @@ export class HomeyDeviceAdoptionService {
 		} as CreateHomeyDeviceChannelPropertyDto;
 	}
 
-	private async applyCreatedValues(device: HomeyDeviceEntity, preview: HomeyMappingPreviewModel): Promise<void> {
+	private async applyCreatedValues(
+		device: HomeyDeviceEntity,
+		preview: HomeyMappingPreviewModel,
+		lease: HomeyAdoptionLease,
+	): Promise<void> {
 		const channels = new Map(
 			(device.channels ?? [])
 				.filter(
@@ -662,7 +700,7 @@ export class HomeyDeviceAdoptionService {
 			}
 		}
 
-		await this.applyPendingValues(pendingValues);
+		await this.applyPendingValues(pendingValues, lease);
 	}
 
 	private snapshotPropertyDto(
@@ -686,7 +724,62 @@ export class HomeyDeviceAdoptionService {
 		} as CreateHomeyDeviceChannelPropertyDto;
 	}
 
-	private async restorePropertyMetadata(snapshot: PropertySnapshot): Promise<void> {
+	private async restoreDeviceMetadata(
+		deviceId: string,
+		expected: UpdateHomeyDeviceDto,
+		previous: UpdateHomeyDeviceDto,
+		lease: HomeyAdoptionLease,
+	): Promise<void> {
+		const current = await this.devicesService.findOne<HomeyDeviceEntity>(deviceId, DEVICES_HOMEY_TYPE);
+
+		if (
+			current !== null &&
+			current.identifier === expected.identifier &&
+			current.name === expected.name &&
+			current.category === expected.category
+		) {
+			await lease.assertOwned();
+			await this.devicesService.update(deviceId, previous);
+		}
+	}
+
+	private async restoreChannelMetadata(
+		channelId: string,
+		deviceId: string,
+		expected: UpdateHomeyChannelDto,
+		previous: UpdateHomeyChannelDto,
+		lease: HomeyAdoptionLease,
+	): Promise<void> {
+		const current = await this.channelsService.findOne<HomeyChannelEntity>(channelId, deviceId, DEVICES_HOMEY_TYPE);
+
+		if (
+			current !== null &&
+			current.identifier === expected.identifier &&
+			current.name === expected.name &&
+			current.category === expected.category
+		) {
+			await lease.assertOwned();
+			await this.channelsService.update(channelId, previous);
+		}
+	}
+
+	private async restorePropertyMetadata(
+		snapshot: PropertySnapshot,
+		expected: CreateHomeyDeviceChannelPropertyDto,
+		channelId: string,
+		lease: HomeyAdoptionLease,
+	): Promise<void> {
+		const current = await this.channelsPropertiesService.findOne<HomeyChannelPropertyEntity>(
+			snapshot.entity.id,
+			channelId,
+			DEVICES_HOMEY_TYPE,
+		);
+
+		if (current === null || this.propertyMetadataChanged(current, expected)) {
+			return;
+		}
+
+		await lease.assertOwned();
 		await this.channelsPropertiesService.update(snapshot.entity.id, {
 			type: DEVICES_HOMEY_TYPE,
 			identifier: snapshot.createDto.identifier,
@@ -702,10 +795,16 @@ export class HomeyDeviceAdoptionService {
 		});
 	}
 
-	private async removeCreatedChannel(channelId: string, deviceId: string, desiredIdentifier: string): Promise<void> {
+	private async removeCreatedChannel(
+		channelId: string,
+		deviceId: string,
+		desiredIdentifier: string,
+		lease: HomeyAdoptionLease,
+	): Promise<void> {
 		const channel = await this.channelsService.findOne<HomeyChannelEntity>(channelId, deviceId, DEVICES_HOMEY_TYPE);
 
 		if (channel !== null && channel.identifier === desiredIdentifier) {
+			await lease.assertOwned();
 			await this.channelsService.remove(channelId);
 		}
 	}
@@ -714,6 +813,7 @@ export class HomeyDeviceAdoptionService {
 		propertyId: string,
 		channelId: string,
 		desired: CreateHomeyDeviceChannelPropertyDto,
+		lease: HomeyAdoptionLease,
 	): Promise<void> {
 		const property = await this.channelsPropertiesService.findOne<HomeyChannelPropertyEntity>(
 			propertyId,
@@ -727,6 +827,7 @@ export class HomeyDeviceAdoptionService {
 			property.homeyCapabilityId === desired.homeyCapabilityId &&
 			property.homeyMappingName === desired.homeyMappingName
 		) {
+			await lease.assertOwned();
 			await this.channelsPropertiesService.remove(propertyId);
 		}
 	}
@@ -749,12 +850,13 @@ export class HomeyDeviceAdoptionService {
 		);
 	}
 
-	private async applyPendingValues(writes: readonly PendingValueWrite[]): Promise<void> {
+	private async applyPendingValues(writes: readonly PendingValueWrite[], lease: HomeyAdoptionLease): Promise<void> {
 		for (const pending of writes) {
 			if (pending.previous?.value === pending.value) {
 				continue;
 			}
 
+			await lease.assertOwned();
 			try {
 				await this.channelsPropertiesService.update(
 					pending.property.id,
@@ -765,13 +867,17 @@ export class HomeyDeviceAdoptionService {
 					{ strictValuePersistence: true },
 				);
 			} catch {
+				await lease.assertOwned();
 				this.logger.warn('Homey current value persistence was deferred until the next adoption');
 			}
 		}
+
+		await lease.assertOwned();
 	}
 
-	private async pruneStale(removals: readonly DeferredRemoval[]): Promise<void> {
+	private async pruneStale(removals: readonly DeferredRemoval[], lease: HomeyAdoptionLease): Promise<void> {
 		for (const removal of removals) {
+			await lease.assertOwned();
 			try {
 				if (removal.kind === 'property') {
 					await this.channelsPropertiesService.remove(removal.id);
@@ -779,9 +885,12 @@ export class HomeyDeviceAdoptionService {
 					await this.channelsService.remove(removal.id);
 				}
 			} catch {
+				await lease.assertOwned();
 				this.logger.warn('Homey stale structure pruning was deferred until the next adoption');
 			}
 		}
+
+		await lease.assertOwned();
 	}
 
 	private propertyIdentifier(property: HomeyMappingPreviewPropertyModel): string {
@@ -792,10 +901,11 @@ export class HomeyDeviceAdoptionService {
 		return value.replaceAll(/[-_.]+/g, ' ').replace(/^./, (character) => character.toUpperCase());
 	}
 
-	private async rollback(journal: readonly UndoOperation[]): Promise<boolean> {
+	private async rollback(journal: readonly UndoOperation[], lease: HomeyAdoptionLease): Promise<boolean> {
 		let succeeded = true;
 
 		for (const undo of [...journal].reverse()) {
+			await lease.assertOwned();
 			try {
 				await undo();
 			} catch {
