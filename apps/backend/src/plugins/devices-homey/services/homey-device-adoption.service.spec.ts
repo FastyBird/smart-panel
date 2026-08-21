@@ -339,6 +339,61 @@ describe('HomeyDeviceAdoptionService', () => {
 		expect(mappingPreviewService.generatePreview).toHaveBeenCalledTimes(2);
 	});
 
+	it('waits for a concurrent winning create to finish its expected hierarchy before reconciliation', async () => {
+		const desiredPreview = Object.assign(preview(), {
+			channels: [{ ...preview().channels[0], properties: [preview().channels[0].properties[0]] }],
+		});
+		const incomplete = Object.assign(existingDevice(), { channels: [] });
+		const channel = Object.assign(new HomeyChannelEntity(), {
+			id: '8421af4e-84f9-4822-bac6-3dbe49ac4893',
+			identifier: 'light',
+			name: 'Light',
+			category: ChannelCategory.LIGHT,
+		});
+		const property = Object.assign(new HomeyChannelPropertyEntity(), {
+			id: 'dba32214-aa13-4134-9578-2093351507f8',
+			identifier: 'onoff::light-power',
+			homeyCapabilityId: 'onoff',
+			homeyMappingName: 'light-power',
+			name: 'Light power',
+			category: PropertyCategory.ON,
+			permissions: [PermissionType.READ_WRITE],
+			dataType: DataTypeType.BOOL,
+			format: null,
+			invalid: null,
+			step: null,
+		});
+		channel.properties = [property];
+		const complete = Object.assign(existingDevice(), { channels: [channel] });
+		const current = Object.assign(new PropertyValueState(), {
+			value: false,
+			lastUpdated: new Date().toISOString(),
+		});
+
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(desiredPreview);
+		devicesService.findOneBy
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce(incomplete)
+			.mockResolvedValueOnce(complete);
+		devicesService.create.mockRejectedValueOnce(new Error('provider identity already exists'));
+		channelsService.findAll.mockResolvedValue([channel]);
+		channelsService.findOneBy.mockResolvedValue(channel);
+		propertiesService.findAll.mockResolvedValue([property]);
+		propertiesService.findOneBy.mockResolvedValue(property);
+		propertiesService.update.mockResolvedValue(property);
+		propertyValueService.readLatest.mockResolvedValue(current);
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({
+			status: HomeyAdoptionStatus.SKIPPED,
+			panelDeviceId: complete.id,
+		});
+		expect(devicesService.findOneBy).toHaveBeenCalledTimes(3);
+		expect(devicesService.findOneBy.mock.invocationCallOrder[2]).toBeLessThan(
+			channelsService.findOneBy.mock.invocationCallOrder[0],
+		);
+		expect(channelsService.create).not.toHaveBeenCalled();
+	});
+
 	it('preserves the provider connectivity channel during mapping reconciliation', async () => {
 		const device = existingDevice();
 		const deviceInformation = Object.assign(new HomeyChannelEntity(), {

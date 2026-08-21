@@ -29,6 +29,9 @@ import {
 
 import { HomeyMappingPreviewService } from './homey-mapping-preview.service';
 
+const CONCURRENT_CREATION_POLL_INTERVAL_MS = 50;
+const CONCURRENT_CREATION_TIMEOUT_MS = 5_000;
+
 type UndoOperation = () => Promise<void>;
 
 interface PropertySnapshot {
@@ -127,16 +130,26 @@ export class HomeyDeviceAdoptionService {
 
 				return this.success(preview.device.id, HomeyAdoptionStatus.CREATED, created.id);
 			} catch {
-				// A different process may have won the provider-scoped unique insert. Re-read and reconcile
-				// that row; every other failure remains a fixed, secret-safe persistence result.
-				existing = await this.devicesService.findOneBy<HomeyDeviceEntity>(
+				// A different process may have won the provider-scoped unique insert. Its parent row is
+				// visible before DevicesService.create() finishes the nested channels and properties, so an
+				// immediate reconciliation could mutate that half-built hierarchy and make the winner roll
+				// the shared parent back. Only hand off after every child this preview expects is visible.
+				const concurrent = await this.devicesService.findOneBy<HomeyDeviceEntity>(
 					'identifier',
 					preview.device.id,
 					DEVICES_HOMEY_TYPE,
 				);
 
-				if (existing === null) {
+				if (concurrent === null) {
 					this.logger.warn('Homey device creation failed and no concurrent adoption was found');
+
+					return this.failure(preview.device.id, HomeyAdoptionFailureCode.PERSISTENCE_FAILED);
+				}
+
+				existing = await this.waitForConcurrentCreation(concurrent, preview);
+
+				if (existing === null) {
+					this.logger.warn('Concurrent Homey device creation did not complete before adoption handoff');
 
 					return this.failure(preview.device.id, HomeyAdoptionFailureCode.PERSISTENCE_FAILED);
 				}
@@ -144,6 +157,57 @@ export class HomeyDeviceAdoptionService {
 		}
 
 		return this.reconcileExisting(selection, preview, existing);
+	}
+
+	private async waitForConcurrentCreation(
+		initial: HomeyDeviceEntity,
+		preview: HomeyMappingPreviewModel,
+	): Promise<HomeyDeviceEntity | null> {
+		const deadline = Date.now() + CONCURRENT_CREATION_TIMEOUT_MS;
+		let candidate: HomeyDeviceEntity | null = initial;
+
+		while (candidate !== null) {
+			if (this.hasExpectedHierarchy(candidate, preview)) {
+				return candidate;
+			}
+			if (Date.now() >= deadline) {
+				return null;
+			}
+
+			await new Promise<void>((resolve) => setTimeout(resolve, CONCURRENT_CREATION_POLL_INTERVAL_MS));
+			candidate = await this.devicesService.findOneBy<HomeyDeviceEntity>(
+				'identifier',
+				preview.device.id,
+				DEVICES_HOMEY_TYPE,
+			);
+		}
+
+		return null;
+	}
+
+	private hasExpectedHierarchy(device: HomeyDeviceEntity, preview: HomeyMappingPreviewModel): boolean {
+		const channels = new Map(
+			(device.channels ?? [])
+				.filter(
+					(channel): channel is HomeyChannelEntity =>
+						channel.type === DEVICES_HOMEY_TYPE && channel.identifier !== null,
+				)
+				.map((channel) => [channel.identifier, channel]),
+		);
+
+		return preview.channels.every((desiredChannel) => {
+			const channel = channels.get(desiredChannel.identifier);
+
+			return (
+				channel !== undefined &&
+				desiredChannel.properties.every((desiredProperty) =>
+					(channel.properties ?? []).some(
+						(property) =>
+							property.type === DEVICES_HOMEY_TYPE && property.identifier === this.propertyIdentifier(desiredProperty),
+					),
+				)
+			);
+		});
 	}
 
 	private async reconcileExisting(
