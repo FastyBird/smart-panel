@@ -2,6 +2,7 @@ import { BuddyContextEntityReference, BuddyContextSpaceReference } from '../../m
 
 import {
 	ACTION_COMMAND_PATTERN,
+	ACTION_REQUEST_PREFIX_PATTERN_SOURCE,
 	ACTION_SIGNAL_PATTERN_SOURCE,
 	CONDITION_PATTERN,
 	CONTEXTUAL_SCOPE_REFERENCE_PATTERN,
@@ -469,5 +470,13 @@ export function normalizeGerundActionRequest(message: string): string {
 	const shutCommandPattern =
 		/(^[?!,.;\s]*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?|(?:[?!,.;]|\b(?:and|then)\b)\s*)shut\s+(?:down|off)\b/gu;
 
-	return normalizedGerundRequest.replace(shutCommandPattern, '$1turn off');
+	const normalizedShutRequest = normalizedGerundRequest.replace(shutCommandPattern, '$1turn off');
+	const binaryStateCommandPattern = new RegExp(
+		String.raw`(^[?!,.;\s]*(?:(?:please)\s+|(?:${ACTION_REQUEST_PREFIX_PATTERN_SOURCE})\s+(?:(?:also|only|please)\s+)*)?|(?:[?!,.;]|\b(?:and|then)\b)\s*(?:(?:also|please)\s+)*)(enable|disable)\b`,
+		'gu',
+	);
+
+	return normalizedShutRequest.replace(binaryStateCommandPattern, (_match, prefix: string, action: string) => {
+		return `${prefix}turn ${action === 'enable' ? 'on' : 'off'}`;
+	});
 }

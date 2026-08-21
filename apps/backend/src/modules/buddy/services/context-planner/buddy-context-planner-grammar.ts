@@ -53,7 +53,7 @@ const UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:one|two|three|four|f
 const SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:zero|${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE}|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)`;
 const WORD_LIGHTING_QUANTITY_PATTERN_SOURCE = String.raw`(?:${SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE}|(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[-\s]${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE})?|(?:${UNIT_LIGHTING_QUANTITY_PATTERN_SOURCE}\s+)?hundred(?:\s+and\s+${SMALL_LIGHTING_QUANTITY_PATTERN_SOURCE})?|(?:a\s+)?dozens?(?:\s+of)?)`;
 export const PARTIAL_LIGHTING_GROUP_PATTERN = new RegExp(
-	String.raw`\b(?:a couple of|a few|a pair of|a quarter|a third|alternate|both(?:\s+of(?:\s+the)?)?|every\s+other|half|most of|one third|one quarter|part of|portion of|several|some|\d+|${WORD_LIGHTING_QUANTITY_PATTERN_SOURCE}|(?:(?:a|the)\s+)?majority\s+of)\b.*\b(?:lamp|lamps|light|lights)\b`,
+	String.raw`\b(?:a couple of|a few|a pair of|a quarter|a third|alternate|both(?:\s+of(?:\s+the)?)?|either\s+of(?:\s+the)?|every\s+other|half|most of|one third|one quarter|part of|portion of|several|some|\d+|${WORD_LIGHTING_QUANTITY_PATTERN_SOURCE}|(?:(?:a|the)\s+)?majority\s+of)\b.*\b(?:lamp|lamps|light|lights)\b`,
 	'u',
 );
 export const ZERO_QUANTITY_LIGHTING_PATTERN = /\b(?:no|none|zero)\b.*\b(?:lamp|lamps|light|lights)\b/u;
@@ -305,8 +305,9 @@ export const WHOLE_HOME_SCOPE_PATTERN =
 export const ANYWHERE_ELSE_PATTERN = /\banywhere else\b/u;
 const WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE = String.raw`(?:active|closed|inactive|locked|off|on|open|unlocked)`;
 const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|switch(?:es)?|thermostats?)|${HOME_ENTITY_PATTERN.source})`;
+const AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:all|any|each|every|none)`;
 export const UNSCOPED_AGGREGATE_READ_PATTERN = new RegExp(
-	String.raw`^(?:(?:(?:please\s+)?(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:check|confirm|determine|fetch|get|read|report|see|show|tell|verify)(?: me)?)\s+(?:if|whether)\s+(?:(?:are|is)(?:\s+there)?\s+|there\s+(?:are|is)\s+)?(?:all|any)\b(?=\s+(?:(?:of\s+)?(?:my|our|the|your)\s+)?(?:${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}(?:\s+(?:(?:are|is|remain|remains|stay|stays)\s+(?:(?:already|currently|still)\s+)?${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}|${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE})\b|\s+remains?\b(?=\s*[?!,.;]?$)|\s*[?!,.;]?\s*$))|(?:are|is)(?:\s+there)?\s+(?:all|any)\b|(?:do(?:\s+(?:i|we)\s+have)?|does)\s+any\b|count\b|how many\b)`,
+	String.raw`^(?:(?:(?:please\s+)?(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:check|confirm|determine|fetch|get|read|report|see|show|tell|verify)(?: me)?)\s+(?:if|whether)\s+(?:(?:are|is)(?:\s+there)?\s+|there\s+(?:are|is)\s+)?${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b(?=\s+(?:(?:of\s+)?(?:my|our|the|your)\s+)?(?:${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}(?:\s+(?:(?:are|is|remain|remains|stay|stays)\s+(?:(?:already|currently|still)\s+)?${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}|${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE})\b|\s+remains?\b(?=\s*[?!,.;]?$)|\s*[?!,.;]?\s*$))|(?:are|is)(?:\s+there)?\s+${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b|(?:do(?:\s+(?:i|we)\s+have)?|does)\s+any\b|count\b|how many\b)`,
 	'u',
 );
 export const TRAILING_ACTION_PATTERN = new RegExp(

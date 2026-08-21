@@ -4095,6 +4095,10 @@ describe('BuddyContextPlannerService', () => {
 	it.each([
 		'Are any windows open?',
 		'Are there any windows open?',
+		'Is every window closed?',
+		'Is each window closed?',
+		'Are none of the windows open?',
+		'Check if every window is closed',
 		'Can you check if any windows are open?',
 		'Can you check whether any windows are open?',
 		'Can you check if all windows are closed?',
@@ -4135,10 +4139,14 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.queries).toEqual([{ kind: 'search-home' }, { kind: 'current-state' }]);
 	});
 
-	it('keeps a locally qualified wrapped aggregate read scoped', () => {
+	it.each([
+		'Can you check if any windows are open in Bedroom?',
+		'Check if every window is closed in Bedroom?',
+		'Are none of the windows open in Bedroom?',
+	])('keeps a locally qualified aggregate read scoped: %s', (message) => {
 		expect(
 			service.plan({
-				message: 'Can you check if any windows are open in Bedroom?',
+				message,
 				conversationSpaceId: 'space-office',
 				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
@@ -4152,24 +4160,26 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it.each(['Can you check if any windows are open in here?', 'Can you check if the windows are open?'])(
-		'keeps an ordinary wrapped read in the conversation space: %s',
-		(message) => {
-			expect(
-				service.plan({
-					message,
-					conversationSpaceId: 'space-office',
-					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-				}),
-			).toMatchObject({
-				scope: { spaceId: 'space-office' },
-				queries: [
-					{ kind: 'search-home', spaceId: 'space-office' },
-					{ kind: 'current-state', spaceId: 'space-office' },
-				],
-			});
-		},
-	);
+	it.each([
+		'Can you check if any windows are open in here?',
+		'Check if every window is closed in here?',
+		'Are none of the windows open in here?',
+		'Can you check if the windows are open?',
+	])('keeps an ordinary wrapped read in the conversation space: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: { spaceId: 'space-office' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-office' },
+				{ kind: 'current-state', spaceId: 'space-office' },
+			],
+		});
+	});
 
 	it.each([
 		'Can you check if any files are open?',
@@ -5813,6 +5823,7 @@ describe('BuddyContextPlannerService', () => {
 
 	it.each([
 		'Turn a pair of Bedroom lights on',
+		'Turn either of the Bedroom lights on',
 		'Turn ten Bedroom lights on',
 		'Turn a dozen Bedroom lights on',
 		'Turn twenty-one Bedroom lights on',
@@ -6688,6 +6699,18 @@ describe('BuddyContextPlannerService', () => {
 			expect(plan.toolNames).toContain('set_space_lighting');
 		},
 	);
+
+	it.each([
+		['Enable the Bedroom lights', 'Turn on the Bedroom lights'],
+		['Disable the Bedroom lights', 'Turn off the Bedroom lights'],
+	])('maps a binary-state action to turn semantics: %s', (message, equivalentMessage) => {
+		const input = {
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable' as const, supportsStructuredToolResults: true },
+		};
+
+		expect(service.plan({ ...input, message })).toEqual(service.plan({ ...input, message: equivalentMessage }));
+	});
 
 	it.each([
 		'What was the Bedroom temperature two days earlier?',
