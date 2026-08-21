@@ -2406,6 +2406,28 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('preserves a demonstrative reference before a target adjective', () => {
+		const plan = service.plan({
+			message: 'Is that left window open?',
+			recentEntityReferences: [
+				{
+					kind: 'device',
+					id: 'device-window',
+					name: 'Window',
+					compatibleActionTypes: ['open'],
+				},
+			],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			scope: { referencedEntityIds: ['device-window'] },
+			ambiguityRisk: 'none',
+		});
+	});
+
 	it.each([
 		'What was the bedroom temperature in the last hour?',
 		'What was the bedroom temperature in the last day?',
