@@ -466,7 +466,20 @@ describe('HomeyService', () => {
 		);
 		expect(connector.getDevice.mock.calls).toContainEqual([staleDevice.id]);
 		expect(synchronizer.synchronizeSnapshot).toHaveBeenCalledWith([staleDevice]);
-		expect(synchronizer.synchronizeDevices).toHaveBeenCalledWith([freshDevice], []);
+		expect(synchronizer.synchronizeDevices).toHaveBeenCalledWith(
+			[freshDevice],
+			[],
+			[
+				{
+					type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+					deviceId: staleDevice.id,
+					available: false,
+					availabilityMessage: 'Offline',
+					occurredAt: null,
+					sequence: null,
+				},
+			],
+		);
 		expect(synchronizer.synchronizeSnapshot.mock.invocationCallOrder[0]).toBeLessThan(
 			synchronizer.synchronizeDevices.mock.invocationCallOrder[0],
 		);

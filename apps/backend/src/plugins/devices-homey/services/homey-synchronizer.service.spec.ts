@@ -170,7 +170,7 @@ function capabilityEvent(
 describe('HomeySynchronizerService', () => {
 	let devicesService: jest.Mocked<Pick<DevicesService, 'findAll'>>;
 	let propertiesService: jest.Mocked<Pick<ChannelsPropertiesService, 'update'>>;
-	let connectivityService: jest.Mocked<Pick<DeviceConnectivityService, 'setConnectionState'>>;
+	let connectivityService: jest.Mocked<Pick<DeviceConnectivityService, 'trySetConnectionState'>>;
 	let mappingLoader: jest.Mocked<Pick<HomeyMappingLoaderService, 'getPropertyMappings'>>;
 	let service: HomeySynchronizerService;
 	let powerProperty: HomeyChannelPropertyEntity;
@@ -185,7 +185,7 @@ describe('HomeySynchronizerService', () => {
 			findAll: jest.fn().mockResolvedValue([adoptedDevice([powerProperty, stateProperty, brightnessProperty])]),
 		};
 		propertiesService = { update: jest.fn().mockResolvedValue(new HomeyChannelPropertyEntity()) };
-		connectivityService = { setConnectionState: jest.fn().mockResolvedValue(undefined) };
+		connectivityService = { trySetConnectionState: jest.fn().mockResolvedValue(true) };
 		mappingLoader = {
 			getPropertyMappings: jest.fn().mockReturnValue([powerMapping, stateMapping, brightnessMapping]),
 		};
@@ -206,7 +206,7 @@ describe('HomeySynchronizerService', () => {
 		});
 
 		expect(devicesService.findAll).toHaveBeenCalledWith(DEVICES_HOMEY_TYPE);
-		expect(connectivityService.setConnectionState).toHaveBeenCalledWith('panel-device', {
+		expect(connectivityService.trySetConnectionState).toHaveBeenCalledWith('panel-device', {
 			state: ConnectionState.CONNECTED,
 		});
 		expect(propertiesService.update.mock.calls).toEqual([
@@ -220,7 +220,7 @@ describe('HomeySynchronizerService', () => {
 		await service.synchronizeSnapshot([]);
 		await service.synchronizeSnapshot([homeyDevice({ available: false, availabilityMessage: 'Unavailable' })]);
 
-		expect(connectivityService.setConnectionState.mock.calls).toEqual([
+		expect(connectivityService.trySetConnectionState.mock.calls).toEqual([
 			['panel-device', { state: ConnectionState.LOST }],
 			['panel-device', { state: ConnectionState.DISCONNECTED }],
 		]);
@@ -269,7 +269,7 @@ describe('HomeySynchronizerService', () => {
 
 		expect(result).toEqual({ updated: 0, ignored: 3, failed: 0 });
 		expect(propertiesService.update).not.toHaveBeenCalled();
-		expect(connectivityService.setConnectionState).not.toHaveBeenCalled();
+		expect(connectivityService.trySetConnectionState).not.toHaveBeenCalled();
 	});
 
 	it('coalesces bursts by full property identity while preserving final selected order and value', async () => {
@@ -356,7 +356,7 @@ describe('HomeySynchronizerService', () => {
 			new Map(),
 		);
 
-		expect(connectivityService.setConnectionState.mock.calls).toEqual([
+		expect(connectivityService.trySetConnectionState.mock.calls).toEqual([
 			['panel-device', { state: ConnectionState.LOST }],
 		]);
 		expect(devicesService).not.toHaveProperty('remove');
@@ -377,10 +377,29 @@ describe('HomeySynchronizerService', () => {
 		await service.synchronizeEvents([available, stale], new Map());
 		await service.synchronizeEvents([stale], new Map());
 
-		expect(connectivityService.setConnectionState).toHaveBeenCalledTimes(1);
-		expect(connectivityService.setConnectionState).toHaveBeenCalledWith('panel-device', {
+		expect(connectivityService.trySetConnectionState).toHaveBeenCalledTimes(1);
+		expect(connectivityService.trySetConnectionState).toHaveBeenCalledWith('panel-device', {
 			state: ConnectionState.CONNECTED,
 		});
+	});
+
+	it('retries an equal-sequence device event until connectivity is actually applied', async () => {
+		await service.refreshIndex();
+		connectivityService.trySetConnectionState.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+		const event: HomeyEvent = {
+			type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+			deviceId: 'homey-light',
+			available: false,
+			availabilityMessage: 'Offline',
+			occurredAt: null,
+			sequence: 2,
+		};
+
+		await service.synchronizeEvents([event], new Map());
+		await service.synchronizeEvents([event], new Map());
+		await service.synchronizeEvents([event], new Map());
+
+		expect(connectivityService.trySetConnectionState).toHaveBeenCalledTimes(2);
 	});
 
 	it('shares device ordering across availability, add, update, and removal events', async () => {
@@ -419,8 +438,8 @@ describe('HomeySynchronizerService', () => {
 			new Map([['homey-light', homeyDevice()]]),
 		);
 
-		expect(connectivityService.setConnectionState).toHaveBeenCalledTimes(1);
-		expect(connectivityService.setConnectionState).toHaveBeenCalledWith('panel-device', {
+		expect(connectivityService.trySetConnectionState).toHaveBeenCalledTimes(1);
+		expect(connectivityService.trySetConnectionState).toHaveBeenCalledWith('panel-device', {
 			state: ConnectionState.CONNECTED,
 		});
 		expect(propertiesService.update).not.toHaveBeenCalled();
@@ -444,6 +463,49 @@ describe('HomeySynchronizerService', () => {
 		expect(service.filterEvents([update, removal])).toEqual([update]);
 		await service.synchronizeEvents([update], new Map([['homey-light', homeyDevice()]]));
 		expect(service.filterEvents([removal])).toEqual([]);
+	});
+
+	it('commits buffered startup ordering after applying fresh targeted readback', async () => {
+		const current = homeyDevice({
+			capabilities: homeyDevice().capabilities.map((capability) => ({ ...capability, lastUpdatedAt: null })),
+		});
+		const capability: HomeyEvent = {
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: 'homey-light',
+			capabilityId: 'onoff',
+			value: false,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 2,
+		};
+		const availability: HomeyEvent = {
+			type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+			deviceId: 'homey-light',
+			available: false,
+			availabilityMessage: 'Stale event payload',
+			occurredAt: null,
+			sequence: 2,
+		};
+
+		await service.synchronizeDevices([current], [], [capability, availability]);
+		propertiesService.update.mockClear();
+		connectivityService.trySetConnectionState.mockClear();
+
+		await service.synchronizeEvents(
+			[
+				{ ...capability, value: false, sequence: 1 },
+				{
+					type: HomeyEventType.DEVICE_REMOVED,
+					deviceId: 'homey-light',
+					occurredAt: null,
+					sequence: 1,
+				},
+			],
+			new Map(),
+		);
+
+		expect(propertiesService.update).not.toHaveBeenCalled();
+		expect(connectivityService.trySetConnectionState).not.toHaveBeenCalled();
 	});
 
 	it('uses the refreshed device after a device update event and isolates per-property failures', async () => {

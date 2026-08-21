@@ -32,11 +32,18 @@ export class DeviceConnectivityService {
 		deviceId: DeviceEntity['id'],
 		state: { state: ConnectionState; reason?: string; ts?: number },
 	): Promise<void> {
+		await this.trySetConnectionState(deviceId, state);
+	}
+
+	async trySetConnectionState(
+		deviceId: DeviceEntity['id'],
+		state: { state: ConnectionState; reason?: string; ts?: number },
+	): Promise<boolean> {
 		const device = await this.devicesService.findOne(deviceId);
 
 		if (!device) {
 			// Device not found - this can happen during initialization, just skip
-			return;
+			return false;
 		}
 
 		let channel: ChannelEntity;
@@ -48,12 +55,12 @@ export class DeviceConnectivityService {
 		} catch {
 			// Channel or property not found/created - this can happen during initialization
 			// Just skip setting connection state, it will be set later when channels are created
-			return;
+			return false;
 		}
 
 		if (!property) {
 			// Property not found - skip
-			return;
+			return false;
 		}
 
 		const last = property.value?.value;
@@ -70,7 +77,7 @@ export class DeviceConnectivityService {
 				changed = true;
 			} catch {
 				// Property may have been deleted or doesn't exist - skip
-				return;
+				return false;
 			}
 		}
 
@@ -84,7 +91,7 @@ export class DeviceConnectivityService {
 			}
 		} catch {
 			// Connection state service error - skip
-			return;
+			return false;
 		}
 
 		if (changed) {
@@ -95,6 +102,8 @@ export class DeviceConnectivityService {
 
 			this.eventEmitter.emit(EventType.DEVICE_CONNECTION_CHANGED, { device, state: state.state, reason: state.reason });
 		}
+
+		return true;
 	}
 
 	private async findOrCreateConnectionChannel(device: DeviceEntity, create: boolean): Promise<ChannelEntity> {

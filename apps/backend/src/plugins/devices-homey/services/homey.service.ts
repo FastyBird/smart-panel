@@ -418,7 +418,7 @@ export class HomeyService extends BaseManagedPluginService {
 				this.recordSynchronizationResult(await this.synchronizer.synchronizeSnapshot([...this.devices.values()]));
 			} else if (authoritativeReadback) {
 				this.recordSynchronizationResult(
-					await this.synchronizer.synchronizeDevices(refreshedDevices, missingDeviceIds),
+					await this.synchronizer.synchronizeDevices(refreshedDevices, missingDeviceIds, events),
 				);
 			} else if (selectedEvents.length > 0) {
 				this.recordSynchronizationResult(await this.synchronizer.synchronizeEvents(selectedEvents, this.devices));
