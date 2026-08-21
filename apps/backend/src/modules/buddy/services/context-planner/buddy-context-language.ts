@@ -540,6 +540,7 @@ export function normalizeGerundActionRequest(message: string): string {
 		String.raw`(${ACTION_COMMAND_PREFIX_PATTERN_SOURCE}|${TRAILING_ACTION_PREFIX_PATTERN_SOURCE})(enable|disable)\b`,
 		'gu',
 	);
+	const binaryLabelConnectorPatternSource = String.raw`(?:or|${COMPOUND_CONNECTOR_PATTERN_SOURCE})`;
 	const leadingConditionalActionIndex = findLeadingConditionalActionIndex(
 		normalizedShutRequest,
 		String.raw`${ACTION_SIGNAL_PATTERN_SOURCE}|enable|disable`,
@@ -548,7 +549,14 @@ export function normalizeGerundActionRequest(message: string): string {
 		value.replace(binaryStateCommandPattern, (match, prefix: string, action: string, offset: number) => {
 			if (/\ba\s*$/u.test(prefix)) return match;
 			if (
-				new RegExp(String.raw`\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b`, 'u').test(prefix) &&
+				new RegExp(String.raw`^\s*(?:[?!,.;]|${binaryLabelConnectorPatternSource}\b|$)`, 'u').test(
+					value.slice(offset + match.length),
+				)
+			) {
+				return match;
+			}
+			if (
+				new RegExp(String.raw`\b${binaryLabelConnectorPatternSource}\b`, 'u').test(prefix) &&
 				/\b(?:disable|enable)\s*$/u.test(value.slice(0, offset))
 			) {
 				return match;

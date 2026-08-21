@@ -4108,6 +4108,7 @@ describe('BuddyContextPlannerService', () => {
 		'Is every window currently closed?',
 		'Are any windows not closed?',
 		'Are there any lights that are still on?',
+		'Are there any lights that remain on?',
 		'Are any thermostats heating?',
 		'Are any humidity sensors high?',
 		'Are any humidity sensors low?',
@@ -6771,6 +6772,7 @@ describe('BuddyContextPlannerService', () => {
 		'Is the enable and disable switch available?',
 		'Is the enable plus disable switch available?',
 		'Is the enable as well as disable switch available?',
+		'Which switch mode is selected, enable or disable?',
 	])('does not treat a binary-state noun as an action: %s', (message) => {
 		const plan = service.plan({
 			message,

@@ -233,7 +233,11 @@ export const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:ho|it|its|that|this)\b|\
 export const PLURAL_REFERENCE_PRONOUN_PATTERN = /\b(?:their|them|these|they|those)\b/u;
 export const PLURAL_HOME_TARGET_PATTERN =
 	/\b(?:blinds|devices|doors|fans|heaters|lamps|lights|scenes|sensors|switches|thermostats|windows)\b/u;
-export const RELATIVE_REFERENCE_PRONOUN_PATTERN = /\bthat\s+(?:are|is|was|were)\b/gu;
+const STATE_LINKING_VERB_PATTERN_SOURCE = String.raw`(?:appear|appears|are|is|left|look|looks|powered|remain|remains|seem|seems|stay|stays|switched|turned|was|were)`;
+export const RELATIVE_REFERENCE_PRONOUN_PATTERN = new RegExp(
+	String.raw`\bthat\s+${STATE_LINKING_VERB_PATTERN_SOURCE}\b`,
+	'gu',
+);
 export const TEMPORAL_THIS_REFERENCE_PATTERN =
 	/\bthis\s+(?:afternoon|day|evening|hour|minute|month|morning|night|week|weekend|year)\b/gu;
 export const LOCALIZED_REFERENCE_PRONOUN_PATTERN =
@@ -314,7 +318,7 @@ const AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE = String.raw`(?:already|not|still|
 const AGGREGATE_STATE_VALUE_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}`;
 const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|switch(?:es)?|thermostats?)|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source})`;
 const AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}|none)`;
-const AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE = String.raw`(?=\s+(?:(?:of\s+)?(?:my|our|the|your)\s+)?(?:${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}(?:\s+(?:${RELATIVE_REFERENCE_PRONOUN_PATTERN.source}\s+)?(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?(?:(?:appear|appears|are|is|left|look|looks|powered|remain|remains|seem|seems|stay|stays|switched|turned)\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}\b|\s+remains?\b(?=\s*[?!,.;]?$)|\s*[?!,.;]?\s*$))`;
+const AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE = String.raw`(?=\s+(?:(?:of\s+)?(?:my|our|the|your)\s+)?(?:${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}(?:\s+(?:${RELATIVE_REFERENCE_PRONOUN_PATTERN.source}\s+)?(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?(?:${STATE_LINKING_VERB_PATTERN_SOURCE}\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}\b|\s+remains?\b(?=\s*[?!,.;]?$)|\s*[?!,.;]?\s*$))`;
 export const UNSCOPED_AGGREGATE_READ_PATTERN = new RegExp(
 	String.raw`^(?:(?:(?:please\s+)?(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:check|confirm|determine|fetch|get|read|report|see|show|tell|verify)(?: me)?)\s+(?:if|whether)\s+(?:(?:are|is)(?:\s+there)?\s+|there\s+(?:are|is)\s+)?${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|(?:are|is)(?:\s+there)?\s+${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|do(?:es)?\s+${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|do\s+(?:i|we)\s+have\s+${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|count\b|how many\b)`,
 	'u',
