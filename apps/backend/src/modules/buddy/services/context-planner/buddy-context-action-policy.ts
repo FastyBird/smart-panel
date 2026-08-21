@@ -207,7 +207,7 @@ export function classifyAmbiguityRisk(
 		const hasUnsafeGenericActionClause = splitPlannerClauses(actionReferenceMessage, explicitSpaces).some(
 			(clause) =>
 				hasGenericActionTargetClause(clause, explicitSpaces, actionScopeIds.length > 0) &&
-				!hasMultiSpaceLightingTarget(clause, explicitSpaces),
+				!hasBothExplicitSpaceLightingTarget(clause, explicitSpaces),
 		);
 		if (hasUnsafeGenericActionClause) {
 			return 'action';
@@ -626,4 +626,24 @@ export function hasMultiSpaceLightingTarget(
 		!/\bor\b/u.test(targetConjunction) &&
 		/^\s*(?:lamps|lighting|lights|svetla)\b/u.test(targetSuffix)
 	);
+}
+
+function hasBothExplicitSpaceLightingTarget(
+	message: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+): boolean {
+	if (!hasMultiSpaceLightingTarget(message, explicitSpaces)) return false;
+
+	const spaceOccurrences = findExplicitSpaceOccurrences(message, explicitSpaces).sort(
+		(left, right) => left.range.start - right.range.start,
+	);
+	const uniqueSpaceIds = new Set(spaceOccurrences.map((occurrence) => occurrence.space.id));
+
+	if (uniqueSpaceIds.size !== 2 || spaceOccurrences.length < 2) return false;
+
+	const targetPrefix = message.slice(0, spaceOccurrences[0].range.start);
+
+	if (!/\bboth(?:\s+of(?:\s+the)?)?\s*$/u.test(targetPrefix)) return false;
+
+	return !PARTIAL_LIGHTING_GROUP_PATTERN.test(message.replace(/\bboth(?:\s+of(?:\s+the)?)?\b/u, ' '));
 }

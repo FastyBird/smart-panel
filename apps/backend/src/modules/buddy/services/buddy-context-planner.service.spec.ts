@@ -4091,6 +4091,26 @@ describe('BuddyContextPlannerService', () => {
 	it.each([
 		'Are any windows open?',
 		'Are there any windows open?',
+		'Can you check if any windows are open?',
+		'Can you check whether any windows are open?',
+		'Can you check if all windows are closed?',
+		'Can you please check if any windows are open?',
+		'Can you check if any open windows remain?',
+		'Can you check if any door sensors are active?',
+		'Can you check if any window sensors are open?',
+		'Can you check if any light switches are on?',
+		'Can you check if any light switch is on?',
+		'Can you check if any power switch is off?',
+		'Can you check if any smart lights are on?',
+		'Can you check if any smart switch is on?',
+		'Can you check if any motion sensors are active?',
+		'Can you check whether any of our windows are open?',
+		'Can you tell me whether there are any windows open?',
+		'Could you tell me if any doors are unlocked?',
+		'Check whether any windows are open',
+		'Please check whether any windows are open',
+		'Please check whether any unlocked doors remain',
+		'Tell me whether any windows are open',
 		'Are there windows open anywhere?',
 		'Are there windows open in any room?',
 		'Is there any door open?',
@@ -4100,16 +4120,113 @@ describe('BuddyContextPlannerService', () => {
 		'Are all doors closed?',
 		'How many lights are on?',
 	])('treats an unscoped aggregate as whole-home despite conversation scope: %s', (message) => {
+		const plan = service.plan({
+			message,
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ domains: ['home'], intent: 'read' });
+		expect(plan.scope).toEqual({});
+		expect(plan.queries).toEqual([{ kind: 'search-home' }, { kind: 'current-state' }]);
+	});
+
+	it('keeps a locally qualified wrapped aggregate read scoped', () => {
 		expect(
 			service.plan({
-				message,
+				message: 'Can you check if any windows are open in Bedroom?',
 				conversationSpaceId: 'space-office',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
 		).toMatchObject({
-			scope: {},
-			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+			scope: { spaceId: 'space-bedroom' },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'current-state', spaceId: 'space-bedroom' },
+			],
 		});
+	});
+
+	it.each(['Can you check if any windows are open in here?', 'Can you check if the windows are open?'])(
+		'keeps an ordinary wrapped read in the conversation space: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					conversationSpaceId: 'space-office',
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				scope: { spaceId: 'space-office' },
+				queries: [
+					{ kind: 'search-home', spaceId: 'space-office' },
+					{ kind: 'current-state', spaceId: 'space-office' },
+				],
+			});
+		},
+	);
+
+	it.each([
+		'Can you check if any files are open?',
+		'Can you check if any browser tabs are open?',
+		'Can you check if any browser windows are open?',
+		'Can you check if any car doors are open?',
+		'Can you check if any device drivers are active?',
+		'Can you check if any active device drivers remain?',
+		'Can you check if any Windows services are active?',
+		'Can you check if any light processes are on?',
+		'Can you check if any support tickets are open?',
+		'Can you check whether all tests are passing?',
+	])('does not globalize a wrapped non-home aggregate: %s', (message) => {
+		const plan = service.plan({
+			message,
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.scope).toEqual({ spaceId: 'space-office' });
+		expect(plan.queries).toEqual([
+			{ kind: 'search-home', spaceId: 'space-office' },
+			{ kind: 'current-state', spaceId: 'space-office' },
+		]);
+	});
+
+	it.each([
+		'Can you check if any open windows remain, and what is the Kitchen temperature?',
+		'What is the Kitchen temperature, and can you check if any unlocked doors remain?',
+	])('keeps a wrapped whole-home aggregate global beside an explicit read: %s', (message) => {
+		const plan = service.plan({
+			message,
+			conversationSpaceId: 'space-office',
+			knownSpaces: [{ id: 'space-kitchen', name: 'Kitchen' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.queries).toHaveLength(4);
+		expect(plan.queries).toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		expect(plan.queries).toContainEqual({ kind: 'search-home', spaceId: 'space-kitchen' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state', spaceId: 'space-kitchen' });
+		expect(plan.queries).not.toContainEqual({ kind: 'search-home', spaceId: 'space-office' });
+		expect(plan.queries).not.toContainEqual({ kind: 'current-state', spaceId: 'space-office' });
+	});
+
+	it('keeps a wrapped non-home aggregate locally scoped beside an explicit read', () => {
+		const plan = service.plan({
+			message: 'Can you check if any browser windows are open, and what is the Kitchen temperature?',
+			conversationSpaceId: 'space-office',
+			knownSpaces: [{ id: 'space-kitchen', name: 'Kitchen' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.queries).toHaveLength(4);
+		expect(plan.queries).toContainEqual({ kind: 'search-home', spaceId: 'space-office' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state', spaceId: 'space-office' });
+		expect(plan.queries).toContainEqual({ kind: 'search-home', spaceId: 'space-kitchen' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state', spaceId: 'space-kitchen' });
+		expect(plan.queries).not.toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).not.toContainEqual({ kind: 'current-state' });
 	});
 
 	it.each(['Are there windows open anywhere in Bedroom?', 'Are there windows open anywhere in the Bedroom?'])(
@@ -5666,6 +5783,84 @@ describe('BuddyContextPlannerService', () => {
 				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 			}),
 		).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+	});
+
+	it.each(['Turn both Bedroom lights on', 'Turn both of Bedroom lights on', 'Turn both of the Bedroom lights on'])(
+		'clarifies a both-only lighting request: %s',
+		(message) => {
+			const plan = service.plan({
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			});
+
+			expect(plan).toMatchObject({
+				domains: ['home'],
+				intent: 'write',
+				ambiguityRisk: 'action',
+				strategy: 'clarify',
+			});
+			expect(plan.scope).toEqual({ spaceId: 'space-bedroom' });
+			expect(plan.queries).toEqual([{ kind: 'search-home', spaceId: 'space-bedroom' }]);
+			expect(plan.toolNames).toEqual([]);
+		},
+	);
+
+	it.each(['Turn all Bedroom lights on', 'Turn every Bedroom light on'])(
+		'keeps an explicit whole lighting group actionable: %s',
+		(message) => {
+			const plan = service.plan({
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			});
+
+			expect(plan).toMatchObject({
+				ambiguityRisk: 'none',
+				strategy: 'model-tools',
+			});
+			expect(plan.toolNames).toContain('set_space_lighting');
+		},
+	);
+
+	it.each([
+		'Turn both Bedroom and Kitchen lights on',
+		'Turn Bedroom and Kitchen lights on',
+		'Turn all Bedroom and Kitchen lights on',
+		'Turn every Bedroom and Kitchen light on',
+	])('keeps explicitly named whole lighting spaces actionable: %s', (message) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [
+				{ id: 'space-bedroom', name: 'Bedroom' },
+				{ id: 'space-kitchen', name: 'Kitchen' },
+			],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'write', ambiguityRisk: 'none', strategy: 'model-tools' });
+		expect(plan.scope).toEqual({ spaceIds: ['space-bedroom', 'space-kitchen'] });
+		expect(plan.toolNames).toContain('set_space_lighting');
+	});
+
+	it.each([
+		'Turn some Bedroom and Kitchen lights on',
+		'Turn half of the Bedroom and Kitchen lights on',
+		'Turn three Bedroom and Kitchen lights on',
+		'Turn most of the Bedroom and Kitchen lights on',
+		'Turn a few Bedroom and Kitchen lights on',
+	])('clarifies a partial selection across multiple lighting spaces: %s', (message) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [
+				{ id: 'space-bedroom', name: 'Bedroom' },
+				{ id: 'space-kitchen', name: 'Kitchen' },
+			],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ ambiguityRisk: 'action', strategy: 'clarify' });
+		expect(plan.toolNames).toEqual([]);
 	});
 
 	it('clarifies a conjunction-based negative lighting target', () => {

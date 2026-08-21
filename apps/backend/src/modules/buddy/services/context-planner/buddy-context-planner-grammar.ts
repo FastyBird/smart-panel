@@ -49,7 +49,7 @@ export const LIGHTING_GROUP_PATTERN = new RegExp(
 export const LIGHTING_GROUP_EXCLUSION_PATTERN =
 	/\b(?:apart from|but not|but|except|excluding|instead of|krome|other than|rather than|save for|save|with(?: the)? exception of|without)\b/u;
 export const PARTIAL_LIGHTING_GROUP_PATTERN =
-	/\b(?:a couple of|a few|a quarter|a third|eight|five|four|half|most of|nine|one|one third|one quarter|part of|portion of|seven|several|six|some|three|two|\d+|(?:(?:a|the)\s+)?majority\s+of)\b.*\b(?:lamp|lamps|light|lights)\b/u;
+	/\b(?:a couple of|a few|a quarter|a third|both(?:\s+of(?:\s+the)?)?|eight|five|four|half|most of|nine|one|one third|one quarter|part of|portion of|seven|several|six|some|three|two|\d+|(?:(?:a|the)\s+)?majority\s+of)\b.*\b(?:lamp|lamps|light|lights)\b/u;
 export const ZERO_QUANTITY_LIGHTING_PATTERN = /\b(?:no|none|zero)\b.*\b(?:lamp|lamps|light|lights)\b/u;
 
 export const DOMAIN_ORDER: readonly BuddyContextDomain[] = [
@@ -298,8 +298,12 @@ export const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 export const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\banywhere(?:\s+at\s+all)?\b(?!\s+(?:around|at|else|here|in|inside|near|within)\b)|\beverywhere\b|\b(?:all|any|each|every)(?:\s+one)?(?:\s+of\s+the)?\s+(?:rooms?|spaces?)\b/u;
 export const ANYWHERE_ELSE_PATTERN = /\banywhere else\b/u;
-export const UNSCOPED_AGGREGATE_READ_PATTERN =
-	/^(?:(?:are|is)(?:\s+there)?\s+(?:all|any)\b|(?:do(?:\s+(?:i|we)\s+have)?|does)\s+any\b|count\b|how many\b)/u;
+const WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE = String.raw`(?:active|closed|inactive|locked|off|on|open|unlocked)`;
+const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|switch(?:es)?|thermostats?)|${HOME_ENTITY_PATTERN.source})`;
+export const UNSCOPED_AGGREGATE_READ_PATTERN = new RegExp(
+	String.raw`^(?:(?:(?:please\s+)?(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:check|confirm|determine|fetch|get|read|report|see|show|tell|verify)(?: me)?)\s+(?:if|whether)\s+(?:(?:are|is)(?:\s+there)?\s+|there\s+(?:are|is)\s+)?(?:all|any)\b(?=\s+(?:(?:of\s+)?(?:my|our|the|your)\s+)?(?:${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}(?:\s+(?:(?:are|is|remain|remains|stay|stays)\s+(?:(?:already|currently|still)\s+)?${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}|${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE})\b|\s+remains?\b(?=\s*[?!,.;]?$)|\s*[?!,.;]?\s*$))|(?:are|is)(?:\s+there)?\s+(?:all|any)\b|(?:do(?:\s+(?:i|we)\s+have)?|does)\s+any\b|count\b|how many\b)`,
+	'u',
+);
 export const TRAILING_ACTION_PATTERN = new RegExp(
 	String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:if so|only|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:(?:only|please)\s+)*)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
