@@ -4101,6 +4101,9 @@ describe('BuddyContextPlannerService', () => {
 		'Does every window remain closed?',
 		'Do all windows remain closed?',
 		'Do none of the windows remain open?',
+		'Does any window appear open?',
+		'Does any window look open?',
+		'Does any window seem open?',
 		'Check if every window is closed',
 		'Can you check if any windows are open?',
 		'Can you check whether any windows are open?',
@@ -6718,7 +6721,16 @@ describe('BuddyContextPlannerService', () => {
 		expect(service.plan({ ...input, message })).toEqual(service.plan({ ...input, message: equivalentMessage }));
 	});
 
-	it('normalizes a binary-state action after a compound connector', () => {
+	it.each([
+		[
+			'Turn the Kitchen lights on plus disable the Bedroom lights',
+			'Turn the Kitchen lights on plus turn off the Bedroom lights',
+		],
+		[
+			'Turn the Kitchen lights on and can you disable the Bedroom lights',
+			'Turn the Kitchen lights on and can you turn off the Bedroom lights',
+		],
+	])('normalizes a binary-state action after a compound connector: %s', (message, equivalentMessage) => {
 		const input = {
 			knownSpaces: [
 				{ id: 'space-bedroom', name: 'Bedroom' },
@@ -6727,9 +6739,7 @@ describe('BuddyContextPlannerService', () => {
 			providerCapabilities: { toolCalling: 'reliable' as const, supportsStructuredToolResults: true },
 		};
 
-		expect(service.plan({ ...input, message: 'Turn the Kitchen lights on plus disable the Bedroom lights' })).toEqual(
-			service.plan({ ...input, message: 'Turn the Kitchen lights on plus turn off the Bedroom lights' }),
-		);
+		expect(service.plan({ ...input, message })).toEqual(service.plan({ ...input, message: equivalentMessage }));
 	});
 
 	it.each([
