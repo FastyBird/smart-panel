@@ -15,6 +15,7 @@ import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
 
+import { PropertyValueLockService } from './property-value-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
@@ -37,6 +38,15 @@ describe('PropertyValueService', () => {
 		module = await Test.createTestingModule({
 			providers: [
 				PropertyValueService,
+				{
+					provide: PropertyValueLockService,
+					useValue: {
+						runExclusive: jest.fn(
+							<T>(_key: string, operation: (lease: { assertOwned(): Promise<void> }) => Promise<T>) =>
+								operation({ assertOwned: jest.fn().mockResolvedValue(undefined) }),
+						),
+					},
+				},
 				{
 					provide: StorageService,
 					useValue: mockStorageService,

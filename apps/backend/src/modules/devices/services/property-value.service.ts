@@ -6,6 +6,7 @@ import { DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState, type PropertyValueTrend } from '../models/property-value-state.model';
 
+import { PropertyValueLease, PropertyValueLockService } from './property-value-lock.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 
 /**
@@ -105,6 +106,7 @@ export class PropertyValueService {
 	constructor(
 		private readonly storageService: StorageService,
 		private readonly valueSourceRegistry: PropertyValueSourceRegistryService,
+		private readonly valueLock: PropertyValueLockService,
 	) {}
 
 	/**
@@ -148,7 +150,7 @@ export class PropertyValueService {
 	): Promise<PropertyValueWriteResult> {
 		const key = this.valueSourceRegistry.resolve(property);
 
-		return this.withValueLock(key, async () => {
+		return this.withValueLock(key, async (valueLease) => {
 			const latest = await this.readLatestInternal(property, true, true, true);
 			await beforeWrite?.();
 
@@ -161,6 +163,7 @@ export class PropertyValueService {
 			if (!latest.storageBinding) {
 				throw new Error('Persisted property value read did not bind a storage backend');
 			}
+			await valueLease.assertOwned();
 
 			return this.writeInternal(property, value, true, latest.storageBinding);
 		});
@@ -648,7 +651,10 @@ export class PropertyValueService {
 		return left?.value === right?.value && left?.lastUpdated === right?.lastUpdated;
 	}
 
-	private withValueLock<T>(key: ChannelPropertyEntity['id'], operation: () => Promise<T>): Promise<T> {
+	private withValueLock<T>(
+		key: ChannelPropertyEntity['id'],
+		operation: (lease: PropertyValueLease) => Promise<T>,
+	): Promise<T> {
 		const previous = this.valueTails.get(key) ?? Promise.resolve();
 		let release: () => void = () => {};
 		const ticket = new Promise<void>((resolve) => {
@@ -660,7 +666,9 @@ export class PropertyValueService {
 		);
 		this.valueTails.set(key, tail);
 
-		return previous.then(operation, operation).finally(() => {
+		const runOperation = (): Promise<T> => this.valueLock.runExclusive(key, operation);
+
+		return previous.then(runOperation, runOperation).finally(() => {
 			release();
 			if (this.valueTails.get(key) === tail) {
 				this.valueTails.delete(key);
