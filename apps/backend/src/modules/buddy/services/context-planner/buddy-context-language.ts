@@ -481,7 +481,22 @@ export function hasPluralReferencePronoun(message: string): boolean {
 }
 
 export function stripRelativeReferencePronouns(message: string): string {
-	return message.replace(RELATIVE_REFERENCE_PRONOUN_PATTERN, ' ').replace(TEMPORAL_THIS_REFERENCE_PATTERN, ' ');
+	return message
+		.replace(RELATIVE_REFERENCE_PRONOUN_PATTERN, (match: string, offset: number) => {
+			const prefix = message.slice(0, offset).trimEnd();
+
+			if (
+				prefix.length === 0 ||
+				/\b(?:about|and|are|but|can|check|confirm|could|determine|did|does|had|has|have|if|is|may|might|must|or|report|shall|should|show|tell|then|verify|was|were|whether|will|would)$/u.test(
+					prefix,
+				)
+			) {
+				return match;
+			}
+
+			return ' ';
+		})
+		.replace(TEMPORAL_THIS_REFERENCE_PATTERN, ' ');
 }
 
 export function normalize(value: string): string {

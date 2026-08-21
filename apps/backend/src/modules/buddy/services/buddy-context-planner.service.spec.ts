@@ -378,28 +378,31 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it('uses a unique recent reference for a pronoun-only state read', () => {
-		expect(
-			service.plan({
-				message: 'Is it on?',
-				recentEntityReferences: [
-					{
-						kind: 'device',
-						id: 'device-reading-lamp',
-						name: 'Reading lamp',
-						compatibleActionTypes: ['turn'],
-					},
-				],
-				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-			}),
-		).toMatchObject({
-			domains: ['home'],
-			intent: 'read',
-			scope: { referencedEntityIds: ['device-reading-lamp'] },
-			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
-			strategy: 'model-tools',
-		});
-	});
+	it.each(['Is it on?', 'Is that turned on?', 'Is that switched off?'])(
+		'uses a unique recent reference for the pronoun-only state read %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					recentEntityReferences: [
+						{
+							kind: 'device',
+							id: 'device-reading-lamp',
+							name: 'Reading lamp',
+							compatibleActionTypes: ['turn'],
+						},
+					],
+					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+				}),
+			).toMatchObject({
+				domains: ['home'],
+				intent: 'read',
+				scope: { referencedEntityIds: ['device-reading-lamp'] },
+				queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+				strategy: 'model-tools',
+			});
+		},
+	);
 
 	it('clarifies a singular pronoun state read with multiple recent references', () => {
 		expect(
