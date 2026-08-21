@@ -183,7 +183,26 @@ describe('HomeyDeviceAdoptionService', () => {
 		);
 	});
 
-	it('creates the full hierarchy with authoritative capability identity and falsy initial values', async () => {
+	it('creates the full hierarchy before applying falsy initial values through strict persistence', async () => {
+		const desiredPreview = preview();
+		const createdDevice = existingDevice();
+		createdDevice.channels = desiredPreview.channels.map((desiredChannel, channelIndex) => {
+			const channel = Object.assign(new HomeyChannelEntity(), {
+				id: `created-channel-${channelIndex}`,
+				identifier: desiredChannel.identifier,
+			});
+			channel.properties = desiredChannel.properties.map((desiredProperty, propertyIndex) =>
+				Object.assign(new HomeyChannelPropertyEntity(), {
+					id: `created-property-${propertyIndex}`,
+					identifier: `${desiredProperty.capabilityId}::${desiredProperty.mappingName}`,
+				}),
+			);
+
+			return channel;
+		});
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(desiredPreview);
+		devicesService.create.mockResolvedValueOnce(createdDevice);
+
 		const result = await service.adoptOne(selection());
 
 		expect(result).toMatchObject({ status: HomeyAdoptionStatus.CREATED, panelDeviceId: existingDevice().id });
@@ -203,7 +222,6 @@ describe('HomeyDeviceAdoptionService', () => {
 					identifier: 'onoff::light-power',
 					homeyCapabilityId: 'onoff',
 					homeyMappingName: 'light-power',
-					value: false,
 				}),
 				expect.objectContaining({
 					identifier: 'onoff::light-state-label',
@@ -216,11 +234,29 @@ describe('HomeyDeviceAdoptionService', () => {
 					homeyCapabilityId: 'dim',
 					homeyMappingName: 'light-brightness',
 					format: [0, 100],
-					value: 0,
 				}),
 			]),
 		);
 		expect(properties).toHaveLength(3);
+		expect(properties.every((property) => !Object.hasOwn(property, 'value'))).toBe(true);
+		expect(propertiesService.update).toHaveBeenNthCalledWith(
+			1,
+			'created-property-0',
+			{ type: DEVICES_HOMEY_TYPE, value: false },
+			{ strictValuePersistence: true },
+		);
+		expect(propertiesService.update).toHaveBeenNthCalledWith(
+			2,
+			'created-property-1',
+			{ type: DEVICES_HOMEY_TYPE, value: 'off' },
+			{ strictValuePersistence: true },
+		);
+		expect(propertiesService.update).toHaveBeenNthCalledWith(
+			3,
+			'created-property-2',
+			{ type: DEVICES_HOMEY_TYPE, value: 0 },
+			{ strictValuePersistence: true },
+		);
 	});
 
 	it('holds the database-backed claim from the fresh preview through persistence', async () => {

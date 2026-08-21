@@ -139,8 +139,9 @@ export class HomeyDeviceAdoptionService {
 		if (existing === null) {
 			try {
 				const created = await this.devicesService.create<HomeyDeviceEntity, CreateHomeyDeviceDto>(
-					this.createDeviceDto(selection, preview, true),
+					this.createDeviceDto(selection, preview),
 				);
+				await this.applyCreatedValues(created, preview);
 
 				return this.success(preview.device.id, HomeyAdoptionStatus.CREATED, created.id);
 			} catch {
@@ -375,7 +376,7 @@ export class HomeyDeviceAdoptionService {
 
 		if (channel === null) {
 			channel = await this.channelsService.create<HomeyChannelEntity, CreateHomeyChannelDto>({
-				...this.createChannelDto(desired, false),
+				...this.createChannelDto(desired),
 				device: deviceId,
 			} as CreateHomeyChannelDto);
 			const createdChannelId = channel.id;
@@ -442,7 +443,7 @@ export class HomeyDeviceAdoptionService {
 				DEVICES_HOMEY_TYPE,
 			);
 
-			const desiredDto = this.createPropertyDto(desired, false);
+			const desiredDto = this.createPropertyDto(desired);
 			if (property === null) {
 				property = await this.channelsPropertiesService.create(channel.id, desiredDto);
 				const createdPropertyId = property.id;
@@ -565,37 +566,27 @@ export class HomeyDeviceAdoptionService {
 		return { propertiesById };
 	}
 
-	private createDeviceDto(
-		selection: HomeyAdoptDeviceDto,
-		preview: HomeyMappingPreviewModel,
-		includeValues: boolean,
-	): CreateHomeyDeviceDto {
+	private createDeviceDto(selection: HomeyAdoptDeviceDto, preview: HomeyMappingPreviewModel): CreateHomeyDeviceDto {
 		return {
 			type: DEVICES_HOMEY_TYPE,
 			identifier: preview.device.id,
 			name: selection.name ?? preview.device.name,
 			category: preview.selectedCategory,
-			channels: preview.channels.map((channel) => this.createChannelDto(channel, includeValues)),
+			channels: preview.channels.map((channel) => this.createChannelDto(channel)),
 		} as CreateHomeyDeviceDto;
 	}
 
-	private createChannelDto(
-		channel: HomeyMappingPreviewChannelModel,
-		includeValues: boolean,
-	): CreateHomeyDeviceChannelDto {
+	private createChannelDto(channel: HomeyMappingPreviewChannelModel): CreateHomeyDeviceChannelDto {
 		return {
 			type: DEVICES_HOMEY_TYPE,
 			identifier: channel.identifier,
 			name: channel.name,
 			category: channel.category,
-			properties: channel.properties.map((property) => this.createPropertyDto(property, includeValues)),
+			properties: channel.properties.map((property) => this.createPropertyDto(property)),
 		} as CreateHomeyDeviceChannelDto;
 	}
 
-	private createPropertyDto(
-		property: HomeyMappingPreviewPropertyModel,
-		includeValue: boolean,
-	): CreateHomeyDeviceChannelPropertyDto {
+	private createPropertyDto(property: HomeyMappingPreviewPropertyModel): CreateHomeyDeviceChannelPropertyDto {
 		const panelEnumValues = property.panelEnumValues ?? [];
 		const format =
 			property.dataType === DataTypeType.ENUM && panelEnumValues.length > 0
@@ -616,10 +607,40 @@ export class HomeyDeviceAdoptionService {
 			format,
 			invalid: null,
 			step: property.range?.step ?? null,
-			...(includeValue && property.valueAvailable && property.currentValue !== null
-				? { value: property.currentValue }
-				: {}),
 		} as CreateHomeyDeviceChannelPropertyDto;
+	}
+
+	private async applyCreatedValues(device: HomeyDeviceEntity, preview: HomeyMappingPreviewModel): Promise<void> {
+		const channels = new Map(
+			(device.channels ?? [])
+				.filter(
+					(channel): channel is HomeyChannelEntity =>
+						channel.type === DEVICES_HOMEY_TYPE && channel.identifier !== null,
+				)
+				.map((channel) => [channel.identifier, channel]),
+		);
+		const pendingValues: PendingValueWrite[] = [];
+
+		for (const desiredChannel of preview.channels) {
+			const channel = channels.get(desiredChannel.identifier);
+
+			for (const desiredProperty of desiredChannel.properties) {
+				if (!desiredProperty.valueAvailable || desiredProperty.currentValue === null) {
+					continue;
+				}
+
+				const property = (channel?.properties ?? []).find(
+					(candidate): candidate is HomeyChannelPropertyEntity =>
+						candidate.type === DEVICES_HOMEY_TYPE && candidate.identifier === this.propertyIdentifier(desiredProperty),
+				);
+
+				if (property !== undefined) {
+					pendingValues.push({ property, value: desiredProperty.currentValue, previous: null });
+				}
+			}
+		}
+
+		await this.applyPendingValues(pendingValues);
 	}
 
 	private snapshotPropertyDto(
