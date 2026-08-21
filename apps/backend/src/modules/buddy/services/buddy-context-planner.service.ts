@@ -33,7 +33,10 @@ const RUN_SCENE_TOOL_NAME = 'run_scene';
 const SET_SPACE_LIGHTING_TOOL_NAME = 'set_space_lighting';
 const MAX_EXPLICIT_SPACE_SCOPES = 20;
 const MAX_RECENT_ENTITY_REFERENCES = 20;
-const ACTION_SIGNAL_PATTERN_SOURCE = [...BUDDY_ACTION_SIGNALS, 'trigger'].join('|');
+const POWER_ACTION_TARGET_PATTERN_SOURCE = String.raw`(?:(?!\b(?:and|or|plus|then)\b)[^?!,.;]){1,80}`;
+const POWER_ACTION_TAIL_PATTERN_SOURCE = String.raw`\s+(?:(?:off|on)\b|${POWER_ACTION_TARGET_PATTERN_SOURCE}\s+(?:off|on)\b)`;
+const POWER_ACTION_PATTERN_SOURCE = String.raw`power(?=${POWER_ACTION_TAIL_PATTERN_SOURCE})`;
+const ACTION_SIGNAL_PATTERN_SOURCE = [...BUDDY_ACTION_SIGNALS, 'trigger', POWER_ACTION_PATTERN_SOURCE].join('|');
 const COMPOUND_CONNECTOR_PATTERN_SOURCE = [...BUDDY_COMPOUND_CONNECTOR_SIGNALS]
 	.sort((left, right) => right.length - left.length)
 	.join('|');
@@ -65,7 +68,10 @@ const WEATHER_PATTERN = new RegExp(
 	String.raw`${EXPLICIT_WEATHER_PATTERN.source}|${FUTURE_TEMPERATURE_PATTERN.source}`,
 	'u',
 );
-const ENERGY_PATTERN = /\b(?:consumption|electricity|energy|kwh|power|production|usage)\b/u;
+const ENERGY_PATTERN = new RegExp(
+	String.raw`\b(?:consumption|electricity|energy|kwh|power(?!${POWER_ACTION_TAIL_PATTERN_SOURCE})|production|usage)\b`,
+	'u',
+);
 const ENERGY_PREDICATE_PATTERN_SOURCE = String.raw`(?:consum(?:e|ed|es|ption)|produc(?:e|ed|es|tion)|us(?:e|ed|es|age))`;
 const REPEATED_ENERGY_CONNECTOR_PATTERN = new RegExp(
 	String.raw`^\s*${ENERGY_PREDICATE_PATTERN_SOURCE}\s*,?\s+(?:and|or|plus)\s+$`,
@@ -137,7 +143,10 @@ const ACTION_REQUEST_PATTERN =
 	/^(?:(?:can|could|may|might|will|would) you\b|are you able to\b|i(?: want you to| would like you to|'d like you to)\b|is it possible to\b|is there any way you can\b)/u;
 const MODAL_STATE_READ_PATTERN =
 	/^(?:can|could|may|might|will|would) you (?:check|confirm|determine|fetch|get|read|report|show|tell|verify)(?: me)?\b.*\b(?:how|if|what|when|where|whether|which|why)\b/u;
-const WRITE_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_DEVICE_ACTION_SIGNALS].join('|')})\b`, 'u');
+const WRITE_PATTERN = new RegExp(
+	String.raw`\b(?:${[...BUDDY_DEVICE_ACTION_SIGNALS].join('|')}|${POWER_ACTION_PATTERN_SOURCE})\b`,
+	'u',
+);
 const TRIGGER_PATTERN = new RegExp(
 	String.raw`\b(?:activate|deactivate|start|stop|trigger|${[...BUDDY_SCENE_ACTION_SIGNALS].join('|')})\b`,
 	'u',
@@ -348,6 +357,7 @@ export class BuddyContextPlannerService {
 		const plannerClauses = splitPlannerClauses(normalizedMessage, explicitSpaces);
 		const actionMessageClauses = splitPlannerClauses(actionMessage, explicitSpaces);
 		const actionClauses = actionMessageClauses.filter((clause) => ACTION_COMMAND_PATTERN.test(clause));
+		const plannerActionSourceClauses = getActionSourceClausesWithTargetContinuations(plannerClauses);
 		const hasProhibitedActionRequest = hasActionProhibition(normalizedMessage);
 		const independentHomeReadClauses = plannerClauses.filter((clause) => {
 			const normalizedClause = clause.trim();
@@ -357,7 +367,7 @@ export class BuddyContextPlannerService {
 				(WRITE_PATTERN.test(normalizedClause) || TRIGGER_PATTERN.test(normalizedClause));
 
 			return (
-				(!ACTION_COMMAND_PATTERN.test(clause) ||
+				(!plannerActionSourceClauses.includes(clause) ||
 					(READ_PATTERN.test(normalizedClause) && !ACTION_REQUEST_PATTERN.test(normalizedClause))) &&
 				(hasHomeStateReadClause(clause, explicitSpaces) || isActionStatusRead)
 			);
@@ -503,27 +513,7 @@ export class BuddyContextPlannerService {
 			hasAction &&
 			(actionConditionReadClauses.length > 0 || hasActionScopedStateRequirement || currentStateReadClauses.length > 0);
 		const intent = classifyIntent(effectiveHasWrite, effectiveHasTrigger, hasRead || requiresReadForAction);
-		const actionScopeClauses: string[] = [];
-		let acceptsActionTargetContinuation = false;
-		for (const clause of actionMessageClauses) {
-			if (ACTION_COMMAND_PATTERN.test(clause)) {
-				actionScopeClauses.push(clause);
-				acceptsActionTargetContinuation = true;
-				continue;
-			}
-
-			const isActionTargetContinuation: boolean = Boolean(
-				acceptsActionTargetContinuation &&
-				!READ_PATTERN.test(clause.trim()) &&
-				!PREDICATE_QUESTION_PATTERN.test(clause.trim()) &&
-				!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
-				!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
-				!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN) &&
-				(HOME_ENTITY_PATTERN.test(clause) || HOME_VOCABULARY_PATTERN.test(clause)),
-			);
-			if (isActionTargetContinuation) actionScopeClauses.push(clause);
-			acceptsActionTargetContinuation = isActionTargetContinuation;
-		}
+		const actionScopeClauses = getActionClausesWithTargetContinuations(actionMessageClauses);
 		const actionTargetScopeClauses = actionScopeClauses.map((clause) => getActionTargetClause(clause));
 		const actionScopeIds = [
 			...new Set([
@@ -1052,7 +1042,7 @@ function splitPlannerClauses(message: string, protectedSpaces: readonly BuddyCon
 					: [clause.slice(0, actionIndex), clause.slice(actionIndex)];
 			});
 
-	return mergeLeadingTemporalAdjuncts(conditionalClauses);
+	return mergeActionTargetDurationContinuations(mergeLeadingTemporalAdjuncts(conditionalClauses));
 }
 
 function mergeLeadingTemporalAdjuncts(clauses: string[]): string[] {
@@ -1072,6 +1062,78 @@ function mergeLeadingTemporalAdjuncts(clauses: string[]): string[] {
 	}
 
 	return merged;
+}
+
+function mergeActionTargetDurationContinuations(clauses: string[]): string[] {
+	const merged: string[] = [];
+
+	for (const clause of clauses) {
+		const previousClause = merged.at(-1);
+		const isDurationContinuation =
+			previousClause !== undefined &&
+			ACTION_COMMAND_PATTERN.test(previousClause) &&
+			WRITE_PATTERN.test(previousClause) &&
+			!ACTION_COMMAND_PATTERN.test(clause) &&
+			!READ_PATTERN.test(clause.trim()) &&
+			!PREDICATE_QUESTION_PATTERN.test(clause.trim()) &&
+			!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
+			!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
+			!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN) &&
+			(HOME_ENTITY_PATTERN.test(clause) || HOME_VOCABULARY_PATTERN.test(clause)) &&
+			GROUNDED_STATE_PATTERN.test(clause) &&
+			(ACTION_DURATION_PATTERN.test(clause) ||
+				NONNUMERIC_ACTION_DURATION_PATTERN.test(clause) ||
+				QUALIFIED_ACTION_DURATION_PATTERN.test(clause));
+
+		if (isDurationContinuation) {
+			merged[merged.length - 1] = `${previousClause} and ${clause}`;
+			continue;
+		}
+
+		merged.push(clause);
+	}
+
+	return merged;
+}
+
+function getActionClausesWithTargetContinuations(clauses: readonly string[]): string[] {
+	return getActionClauseSelection(clauses).map(({ validationClause }) => validationClause);
+}
+
+function getActionSourceClausesWithTargetContinuations(clauses: readonly string[]): string[] {
+	return getActionClauseSelection(clauses).map(({ sourceClause }) => sourceClause);
+}
+
+function getActionClauseSelection(
+	clauses: readonly string[],
+): Array<{ sourceClause: string; validationClause: string }> {
+	const actionClauses: Array<{ sourceClause: string; validationClause: string }> = [];
+	let inheritedAction: string | undefined;
+
+	for (const clause of clauses) {
+		if (ACTION_COMMAND_PATTERN.test(clause)) {
+			actionClauses.push({ sourceClause: clause, validationClause: clause });
+			inheritedAction = new RegExp(String.raw`\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`, 'u').exec(clause)?.[0];
+			continue;
+		}
+
+		const isActionTargetContinuation = Boolean(
+			inheritedAction &&
+			!READ_PATTERN.test(clause.trim()) &&
+			!PREDICATE_QUESTION_PATTERN.test(clause.trim()) &&
+			!hasDomainSignalInClause(clause, WEATHER_PATTERN, WEATHER_ENTITY_NAME_PATTERN) &&
+			!hasDomainSignalInClause(clause, ENERGY_PATTERN, ENERGY_ENTITY_NAME_PATTERN) &&
+			!hasDomainSignalInClause(clause, SECURITY_PATTERN, SECURITY_ENTITY_NAME_PATTERN) &&
+			(HOME_ENTITY_PATTERN.test(clause) || HOME_VOCABULARY_PATTERN.test(clause)),
+		);
+
+		if (isActionTargetContinuation && inheritedAction) {
+			actionClauses.push({ sourceClause: clause, validationClause: `${inheritedAction} ${clause}` });
+		}
+		if (!isActionTargetContinuation) inheritedAction = undefined;
+	}
+
+	return actionClauses;
 }
 
 function findPatternRanges(message: string, pattern: RegExp): Array<{ start: number; end: number }> {
@@ -1321,7 +1383,7 @@ function classifyAmbiguityRisk(
 		const splitActionClauses = splitPlannerClauses(actionMessage, explicitSpaces);
 		const firstActionClauseIndex = splitActionClauses.findIndex((clause) => ACTION_COMMAND_PATTERN.test(clause));
 		const leadingActionAdjuncts = firstActionClauseIndex > 0 ? splitActionClauses.slice(0, firstActionClauseIndex) : [];
-		const scopedActionClauses = splitActionClauses.filter((clause) => ACTION_COMMAND_PATTERN.test(clause));
+		const scopedActionClauses = getActionClausesWithTargetContinuations(splitActionClauses);
 		const actionTargetClauses = scopedActionClauses.map((clause) => getActionTargetClause(clause));
 		if (hasNegatedAction(message, actionMessage, explicitSpaces)) return 'action';
 		if (hasUnresolvedNamedAction) return 'action';
@@ -1636,9 +1698,9 @@ function hasNegatedAction(
 	actionMessage: string,
 	explicitSpaces: readonly BuddyContextSpaceReference[],
 ): boolean {
-	const actionClauses = splitPlannerClauses(actionMessage, explicitSpaces)
-		.filter((clause) => ACTION_COMMAND_PATTERN.test(clause))
-		.map((clause) => clause.trim());
+	const actionClauses = getActionClausesWithTargetContinuations(splitPlannerClauses(actionMessage, explicitSpaces)).map(
+		(clause) => clause.trim(),
+	);
 	if (hasActionProhibition(message)) return true;
 
 	return (
@@ -2365,6 +2427,7 @@ function getRequestedActionTypes(message: string): BuddyContextActionType[] {
 		[/\b(?:lock|zamkni)\b/u, 'lock'],
 		[/\bmake\b/u, 'make'],
 		[/\b(?:open|otevri)\b/u, 'open'],
+		[new RegExp(String.raw`\bpower${POWER_ACTION_TAIL_PATTERN_SOURCE}`, 'u'), 'turn'],
 		[/\b(?:run|spust)\b/u, 'run'],
 		[/\b(?:set|nastav)\b/u, 'set'],
 		[/\bstart\b/u, 'start'],

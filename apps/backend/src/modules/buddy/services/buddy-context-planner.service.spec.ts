@@ -3344,6 +3344,111 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it.each([
+		'Could you power off the Bedroom lights?',
+		'Power on the Bedroom lights',
+		'Power the Bedroom lights off',
+		'Power Bedroom lights on',
+	])('recognizes a power action instead of an energy read: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			scope: { spaceId: 'space-bedroom' },
+			queries: [{ kind: 'search-home', spaceId: 'space-bedroom' }],
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'control_device', 'set_space_lighting'],
+		});
+	});
+
+	it('maps a pronoun power action to turn semantics', () => {
+		expect(
+			service.plan({
+				message: 'Power it off',
+				recentEntityReferences: [
+					{
+						kind: 'property',
+						id: 'property-bedroom-light',
+						name: 'Bedroom light',
+						spaceId: 'space-bedroom',
+						compatibleActionTypes: ['turn'],
+					},
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			scope: { referencedEntityIds: ['property-bedroom-light'] },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
+			toolNames: ['search_home', 'control_device'],
+		});
+	});
+
+	it.each(['How much power did Bedroom use?', 'What is Bedroom power usage?', 'Show Bedroom power consumption'])(
+		'keeps an ordinary power question on energy retrieval: %s',
+		(message) => {
+			expect(
+				service.plan({
+					message,
+					knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+					providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+				}),
+			).toMatchObject({
+				domains: ['energy'],
+				intent: 'read',
+				queries: [{ kind: 'energy-summary', spaceId: 'space-bedroom' }],
+				strategy: 'prefetch',
+			});
+		},
+	);
+
+	it('keeps a power-off predicate on the home-state read path', () => {
+		expect(
+			service.plan({
+				message: 'Is the Bedroom power off?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'read',
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'current-state', spaceId: 'space-bedroom' },
+			],
+			strategy: 'model-tools',
+		});
+	});
+
+	it('does not let a later state predicate turn a power summary into an action', () => {
+		expect(
+			service.plan({
+				message: 'How much power did Bedroom use, and are Kitchen lights off?',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'energy'],
+			intent: 'read',
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'current-state', spaceId: 'space-kitchen' },
+				{ kind: 'energy-summary', spaceId: 'space-bedroom' },
+			],
+		});
+	});
+
 	it('retains both whole-home and scoped energy queries in one compound', () => {
 		expect(
 			service.plan({
@@ -3719,6 +3824,73 @@ describe('BuddyContextPlannerService', () => {
 			ambiguityRisk: 'action',
 			strategy: 'clarify',
 			toolNames: [],
+		});
+	});
+
+	it.each([
+		{ toolCalling: 'reliable' as const, supportsStructuredToolResults: true },
+		{ toolCalling: 'unsupported' as const, supportsStructuredToolResults: false },
+	])('validates a duration on a verb-elided action continuation for $toolCalling providers', (providerCapabilities) => {
+		expect(
+			service.plan({
+				message: 'Turn Bedroom lights off and Kitchen lights on for 10 minutes',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities,
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			scope: { spaceIds: ['space-bedroom', 'space-kitchen'] },
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+			],
+			ambiguityRisk: 'action',
+			strategy: 'clarify',
+			toolNames: [],
+		});
+	});
+
+	it('keeps an explicit history question separate from a preceding action', () => {
+		expect(
+			service.plan({
+				message: 'Turn Bedroom lights off and were Kitchen lights on for 10 minutes?',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'unsupported', supportsStructuredToolResults: false },
+			}),
+		).toMatchObject({
+			domains: ['home', 'history'],
+			intent: 'mixed',
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home', spaceId: 'space-kitchen' },
+				{ kind: 'property-timeseries', spaceId: 'space-kitchen' },
+			],
+		});
+	});
+
+	it('retains an immediate verb-elided action continuation', () => {
+		expect(
+			service.plan({
+				message: 'Turn Bedroom lights off and Kitchen lights on',
+				knownSpaces: [
+					{ id: 'space-bedroom', name: 'Bedroom' },
+					{ id: 'space-kitchen', name: 'Kitchen' },
+				],
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			domains: ['home'],
+			intent: 'write',
+			scope: { spaceIds: ['space-bedroom', 'space-kitchen'] },
+			ambiguityRisk: 'none',
+			strategy: 'model-tools',
 		});
 	});
 
