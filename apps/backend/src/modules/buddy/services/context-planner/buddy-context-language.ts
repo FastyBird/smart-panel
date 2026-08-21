@@ -29,6 +29,8 @@ import {
 	WEATHER_PATTERN,
 } from './buddy-context-planner-grammar';
 
+const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:can(?:not|'t)?|could(?:n't)?|did(?:n't)?|do|does|don't|doesn't|may|might(?:n't)?|must(?:n't)?|should(?:n't)?|will|won't|would(?:n't)?)`;
+
 export function findLeadingConditionalActionIndex(
 	message: string,
 	actionPatternSource = ACTION_SIGNAL_PATTERN_SOURCE,
@@ -56,9 +58,10 @@ export function findLeadingConditionalActionIndex(
 function isConditionalOutcomeQuestion(message: string, actionIndex: number): boolean {
 	if (!/\?\s*$/u.test(message)) return false;
 	if (
-		/(?<!that\s)(?<!which\s)(?<!who\s)\b(?:can|could|did|do|does|may|might|must|should|will|would)\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we)\s+|(?!you\b)[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$/u.test(
-			message.slice(actionIndex),
-		)
+		new RegExp(
+			String.raw`(?<!that\s)(?<!which\s)(?<!who\s)\b${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we)\s+|(?!you\b)[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$`,
+			'u',
+		).test(message.slice(actionIndex))
 	) {
 		return true;
 	}
@@ -72,13 +75,15 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 
 	const prefix = message.slice(0, actionIndex);
 	const clauseBoundary = Math.max(prefix.lastIndexOf(','), prefix.lastIndexOf(';'));
-	const outcomePattern =
-		/^(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:(?:can|could|may|might|must|should|will|would)\s+(?!you\b)|(?:are|did|do|does|had|has|have|is|was|were)\b)/u;
+	const outcomePattern = new RegExp(
+		String.raw`^(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?!you\b)|(?:are|had|has|have|is|was|were)\b)`,
+		'u',
+	);
 
 	if (clauseBoundary >= 0) return outcomePattern.test(prefix.slice(clauseBoundary + 1).trim());
 
 	const unpunctuatedModalPattern = new RegExp(
-		String.raw`(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?(?:can|could|did|do|does|may|might|must|should|will|would)\s+(?!you\b)`,
+		String.raw`(?:(?:how|what|when|where|which|who|why)\b(?:\s+\p{Letter}+){0,2}\s+)?${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?!you\b)`,
 		'gu',
 	);
 	const modalMatch = [...prefix.matchAll(unpunctuatedModalPattern)].at(-1);

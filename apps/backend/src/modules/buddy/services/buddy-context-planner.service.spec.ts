@@ -4161,6 +4161,7 @@ describe('BuddyContextPlannerService', () => {
 		'Are there any lights that remain on?',
 		'Are there any lights that still remain on?',
 		'Are there any lights which currently remain on?',
+		'Are there any lights that are currently turned on?',
 		'Are there any lights which are on?',
 		'Are any windows being left open?',
 		'Are there any windows that are being left open?',
@@ -6849,6 +6850,9 @@ describe('BuddyContextPlannerService', () => {
 		'If we disable the Bedroom lights will the camera still work?',
 		'If we turn off the Bedroom lights will the camera still work?',
 		'If we disable the Bedroom lights will John wake?',
+		"If we disable the Bedroom lights won't the camera still work?",
+		"If we disable the Bedroom lights can't John sleep?",
+		"If we disable the Bedroom lights wouldn't John wake?",
 	])('keeps an unpunctuated hypothetical action on the read path: %s', (message) => {
 		const plan = service.plan({
 			message,
