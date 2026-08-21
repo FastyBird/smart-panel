@@ -154,6 +154,7 @@ function capabilityEvent(
 	capabilityId: string,
 	value: boolean | number | string | null,
 	lastUpdatedAt: string | null,
+	sequence: string | number | null = null,
 ): Extract<HomeyEvent, { type: HomeyEventType.CAPABILITY_VALUE_CHANGED }> {
 	return {
 		type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
@@ -162,7 +163,7 @@ function capabilityEvent(
 		value,
 		lastUpdatedAt,
 		occurredAt: lastUpdatedAt,
-		sequence: null,
+		sequence,
 	};
 }
 
@@ -297,6 +298,33 @@ describe('HomeySynchronizerService', () => {
 		await service.synchronizeEvents([newest], new Map());
 		await service.synchronizeEvents([newest], new Map());
 		await service.synchronizeEvents([capabilityEvent('onoff', false, '2026-08-21T10:01:00.000Z')], new Map());
+
+		expect(propertiesService.update).toHaveBeenCalledTimes(2);
+		expect(propertiesService.update).toHaveBeenCalledWith('property-power', {
+			type: DEVICES_HOMEY_TYPE,
+			value: true,
+		});
+	});
+
+	it('prefers numeric event sequence over arrival order within a burst', async () => {
+		await service.refreshIndex();
+
+		await service.synchronizeEvents(
+			[capabilityEvent('onoff', false, null, 2), capabilityEvent('onoff', true, null, 1)],
+			new Map(),
+		);
+
+		expect(propertiesService.update.mock.calls).toEqual([
+			['property-power', { type: DEVICES_HOMEY_TYPE, value: false }],
+			['property-state', { type: DEVICES_HOMEY_TYPE, value: 'off' }],
+		]);
+	});
+
+	it('rejects an older numeric sequence received in a later batch', async () => {
+		await service.refreshIndex();
+
+		await service.synchronizeEvents([capabilityEvent('onoff', true, null, 2)], new Map());
+		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 1)], new Map());
 
 		expect(propertiesService.update).toHaveBeenCalledTimes(2);
 		expect(propertiesService.update).toHaveBeenCalledWith('property-power', {

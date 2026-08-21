@@ -33,12 +33,19 @@ interface MutableSynchronizationResult {
 	failed: number;
 }
 
+interface HomeyEventOrder {
+	readonly sequence: string | number | null;
+	readonly timestamp: number | null;
+	readonly arrival: number;
+}
+
 @Injectable()
 export class HomeySynchronizerService {
 	private readonly logger = createExtensionLogger(DEVICES_HOMEY_PLUGIN_NAME, 'Synchronizer');
 	private adoptedDevices = new Map<string, HomeyDeviceEntity>();
 	private propertiesByDeviceCapability = new Map<string, Map<string, HomeyIndexedProperty[]>>();
-	private lastAppliedAt = new Map<string, number>();
+	private lastAppliedOrder = new Map<string, HomeyEventOrder>();
+	private arrivalOrder = 0;
 	private indexDirty = true;
 	private indexRefresh: Promise<void> | null = null;
 	private indexGeneration = 0;
@@ -135,6 +142,7 @@ export class HomeySynchronizerService {
 						event.capabilityId,
 						event.value,
 						event.lastUpdatedAt ?? event.occurredAt,
+						event.sequence,
 						result,
 					);
 					break;
@@ -194,7 +202,8 @@ export class HomeySynchronizerService {
 	reset(): void {
 		this.adoptedDevices.clear();
 		this.propertiesByDeviceCapability.clear();
-		this.lastAppliedAt.clear();
+		this.lastAppliedOrder.clear();
+		this.arrivalOrder = 0;
 		this.indexDirty = true;
 		this.indexGeneration += 1;
 	}
@@ -305,6 +314,7 @@ export class HomeySynchronizerService {
 			capability.id,
 			capability.value,
 			capability.lastUpdatedAt,
+			null,
 			result,
 		);
 	}
@@ -314,6 +324,7 @@ export class HomeySynchronizerService {
 		capabilityId: string,
 		value: HomeyCapabilityValue,
 		updatedAt: string | null,
+		sequence: string | number | null,
 		result: MutableSynchronizationResult,
 	): Promise<void> {
 		const bindings = this.propertiesByDeviceCapability.get(homeyDeviceId)?.get(capabilityId);
@@ -323,11 +334,16 @@ export class HomeySynchronizerService {
 			return;
 		}
 
-		for (const binding of bindings) {
-			const timestamp = this.parseTimestamp(updatedAt);
-			const previousTimestamp = this.lastAppliedAt.get(binding.property.id);
+		const order: HomeyEventOrder = {
+			sequence,
+			timestamp: this.parseTimestamp(updatedAt),
+			arrival: ++this.arrivalOrder,
+		};
 
-			if (timestamp !== null && previousTimestamp !== undefined && timestamp <= previousTimestamp) {
+		for (const binding of bindings) {
+			const previousOrder = this.lastAppliedOrder.get(binding.property.id);
+
+			if (previousOrder !== undefined && !this.isNewerOrder(order, previousOrder)) {
 				result.ignored += 1;
 				continue;
 			}
@@ -338,9 +354,7 @@ export class HomeySynchronizerService {
 					type: DEVICES_HOMEY_TYPE,
 					value: transformed,
 				});
-				if (timestamp !== null) {
-					this.lastAppliedAt.set(binding.property.id, timestamp);
-				}
+				this.lastAppliedOrder.set(binding.property.id, order);
 				result.updated += 1;
 			} catch {
 				result.failed += 1;
@@ -400,10 +414,46 @@ export class HomeySynchronizerService {
 			return true;
 		}
 
+		const sequenceComparison = this.compareSequences(candidate.sequence, current.sequence);
+
+		if (sequenceComparison !== null) {
+			return sequenceComparison > 0;
+		}
+
 		const candidateTimestamp = this.parseTimestamp(candidate.lastUpdatedAt ?? candidate.occurredAt);
 		const currentTimestamp = this.parseTimestamp(current.lastUpdatedAt ?? current.occurredAt);
 
-		return candidateTimestamp === null || currentTimestamp === null || candidateTimestamp >= currentTimestamp;
+		if (candidateTimestamp !== null && currentTimestamp !== null && candidateTimestamp !== currentTimestamp) {
+			return candidateTimestamp > currentTimestamp;
+		}
+
+		return true;
+	}
+
+	private isNewerOrder(candidate: HomeyEventOrder, current: HomeyEventOrder): boolean {
+		const sequenceComparison = this.compareSequences(candidate.sequence, current.sequence);
+
+		if (sequenceComparison !== null) {
+			return sequenceComparison > 0;
+		}
+
+		if (candidate.timestamp !== null && current.timestamp !== null) {
+			return candidate.timestamp > current.timestamp;
+		}
+
+		return candidate.arrival > current.arrival;
+	}
+
+	private compareSequences(candidate: string | number | null, current: string | number | null): number | null {
+		if (typeof candidate === 'number' && typeof current === 'number') {
+			return Math.sign(candidate - current);
+		}
+
+		if (typeof candidate === 'string' && typeof current === 'string' && candidate === current) {
+			return 0;
+		}
+
+		return null;
 	}
 
 	private isValidEvent(event: HomeyEvent): boolean {
