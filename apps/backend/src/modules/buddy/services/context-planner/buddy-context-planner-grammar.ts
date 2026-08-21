@@ -184,7 +184,7 @@ export const SCENE_RUN_PATTERN = new RegExp(
 export const DEVICE_ACTION_TARGET_PATTERN =
 	/\b(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
 export const TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN =
-	/\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|reading|security|upstairs)\s+(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)|bedside\s+(?:lamp|lamps|light|lights)|(?:outdoor|outside)\s+(?:light|lights|sensor|sensors)|power\s+(?:switch|switches))\b/u;
+	/\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|reading|security|upstairs)\s+(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)|(?:bedside|desk)\s+(?:lamp|lamps|light|lights)|ceiling\s+(?:fan|fans|light|lights)|(?:outdoor|outside)\s+(?:light|lights|sensor|sensors)|power\s+(?:switch|switches))\b/u;
 export const PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN =
 	/\b(?:air purifiers?|aquarium pumps?|coffee makers?|irrigation|media volume|robot vacuums?|skylights?|sprinklers?)\b/u;
 export const CLEAR_NON_HOME_ACTION_OBJECT_PATTERN =
@@ -300,16 +300,18 @@ export const BUILT_IN_ACTION_SPACE_NAMES = new Set([
 ]);
 export const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs) thermostat\b/u;
-export const WHOLE_HOME_SCOPE_PATTERN =
-	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\banywhere(?:\s+at\s+all)?\b(?!\s+(?:around|at|else|here|in|inside|near|within)\b)|\beverywhere\b|\b(?:all|any|each|every)(?:\s+one)?(?:\s+of\s+the)?\s+(?:rooms?|spaces?)\b/u;
+const WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:all|any|each|every)(?:\s+one)?`;
+export const WHOLE_HOME_SCOPE_PATTERN = new RegExp(
+	String.raw`\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\banywhere(?:\s+at\s+all)?\b(?!\s+(?:around|at|else|here|in|inside|near|within)\b)|\beverywhere\b|\b${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}(?:\s+of\s+the)?\s+(?:rooms?|spaces?)\b`,
+	'u',
+);
 export const ANYWHERE_ELSE_PATTERN = /\banywhere else\b/u;
 const WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE = String.raw`(?:${GROUNDED_STATE_PATTERN_SOURCE}|${HOME_STATE_PATTERN.source}|running)`;
 const AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE = String.raw`(?:already|not|still|${CURRENT_STATE_PATTERN.source})`;
 const AGGREGATE_STATE_VALUE_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}`;
-const NAMED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:[\p{Letter}\p{Number}-]+\s+){1,2}(?:devices?|fans?|heaters?|lamps?|lights?|sensors?|switch(?:es)?|thermostats?)`;
-const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|switch(?:es)?|thermostats?)|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN.source}|${NAMED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}|${HOME_ENTITY_PATTERN.source})`;
-const AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:all|any|(?:each|every)(?:\s+one)?|none)`;
-const AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE = String.raw`(?=\s+(?:(?:of\s+)?(?:my|our|the|your)\s+)?(?:${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}(?:\s+(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?(?:(?:appear|appears|are|is|left|look|looks|remain|remains|seem|seems|stay|stays|switched|turned)\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}\b|\s+remains?\b(?=\s*[?!,.;]?$)|\s*[?!,.;]?\s*$))`;
+const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|switch(?:es)?|thermostats?)|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source})`;
+const AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}|none)`;
+const AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE = String.raw`(?=\s+(?:(?:of\s+)?(?:my|our|the|your)\s+)?(?:${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}(?:\s+(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?(?:(?:appear|appears|are|is|left|look|looks|powered|remain|remains|seem|seems|stay|stays|switched|turned)\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}\b|\s+remains?\b(?=\s*[?!,.;]?$)|\s*[?!,.;]?\s*$))`;
 export const UNSCOPED_AGGREGATE_READ_PATTERN = new RegExp(
 	String.raw`^(?:(?:(?:please\s+)?(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:check|confirm|determine|fetch|get|read|report|see|show|tell|verify)(?: me)?)\s+(?:if|whether)\s+(?:(?:are|is)(?:\s+there)?\s+|there\s+(?:are|is)\s+)?${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|(?:are|is)(?:\s+there)?\s+${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|do(?:es)?\s+${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|do\s+(?:i|we)\s+have\s+${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b${AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE}|count\b|how many\b)`,
 	'u',

@@ -4116,6 +4116,8 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows now open?',
 		'Are any windows right now open?',
 		'Is every one of the windows closed?',
+		'Is any one of the windows open?',
+		'Can you check if any one of the windows is open?',
 		'Does every one of my windows remain closed?',
 		'Are any windows left open?',
 		'Are any fans running?',
@@ -4125,6 +4127,8 @@ describe('BuddyContextPlannerService', () => {
 		'Are any outdoor lights on?',
 		'Are any desk lamps on?',
 		'Are any ceiling fans running?',
+		'Are any lights powered on?',
+		'Are any fans powered off?',
 		'Do we have all windows open?',
 		'Do I have every window open?',
 		'Check if every window is closed',
@@ -4223,6 +4227,8 @@ describe('BuddyContextPlannerService', () => {
 		'Can you check if any light processes are on?',
 		'Can you check if any support tickets are open?',
 		'Can you check whether all tests are passing?',
+		'Does every traffic light remain on?',
+		'Does every CPU fan remain running?',
 	])('does not globalize a wrapped non-home aggregate: %s', (message) => {
 		const plan = service.plan({
 			message,
