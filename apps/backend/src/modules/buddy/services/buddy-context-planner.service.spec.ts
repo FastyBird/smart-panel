@@ -4111,6 +4111,8 @@ describe('BuddyContextPlannerService', () => {
 		'Are any humidity sensors high?',
 		'Are any humidity sensors low?',
 		'Does any window currently appear open?',
+		'Are any lights turned on?',
+		'Are all lights switched off?',
 		'Do we have all windows open?',
 		'Do I have every window open?',
 		'Check if every window is closed',
@@ -5840,6 +5842,7 @@ describe('BuddyContextPlannerService', () => {
 	it.each([
 		'Turn a pair of Bedroom lights on',
 		'Turn either of the Bedroom lights on',
+		'Turn either light in Bedroom on',
 		'Turn ten Bedroom lights on',
 		'Turn a dozen Bedroom lights on',
 		'Turn twenty-one Bedroom lights on',
