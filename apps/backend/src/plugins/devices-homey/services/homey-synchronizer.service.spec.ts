@@ -1,0 +1,398 @@
+import {
+	ChannelCategory,
+	ConnectionState,
+	DataTypeType,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
+import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
+import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { DEVICES_HOMEY_TYPE } from '../devices-homey.constants';
+import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from '../entities/devices-homey.entity';
+import { HomeyMappingLoaderService } from '../mappings/mapping-loader.service';
+import { HomeyMappingTransformerService } from '../mappings/mapping-transformer.service';
+import { ResolvedHomeyPropertyMapping } from '../mappings/mapping.types';
+import { HomeyCapabilityType, createHomeyCapability } from '../models/homey-capability.model';
+import { HomeyDevice } from '../models/homey-device.model';
+import { HomeyEvent, HomeyEventType } from '../models/homey-event.model';
+
+import { HomeySynchronizerService } from './homey-synchronizer.service';
+
+const powerMapping: ResolvedHomeyPropertyMapping = {
+	kind: 'properties',
+	source: 'builtin',
+	name: 'light-power',
+	priority: 100,
+	exclusive: false,
+	conflict: 'error',
+	match: {
+		classes: ['light'],
+		capabilityBaseIds: ['onoff'],
+		allCapabilities: [],
+		noneCapabilities: [],
+		driverIds: [],
+		manufacturers: [],
+		models: [],
+	},
+	property: {
+		channel: 'light',
+		category: PropertyCategory.ON,
+		dataType: DataTypeType.BOOL,
+		direction: 'bidirectional',
+	},
+};
+
+const stateMapping: ResolvedHomeyPropertyMapping = {
+	...powerMapping,
+	name: 'light-state-label',
+	property: {
+		...powerMapping.property,
+		category: PropertyCategory.STATE,
+		dataType: DataTypeType.STRING,
+		direction: 'read_only',
+		transform: { type: 'map', read: { true: 'on', false: 'off' } },
+	},
+};
+
+const brightnessMapping: ResolvedHomeyPropertyMapping = {
+	...powerMapping,
+	name: 'light-brightness',
+	match: { ...powerMapping.match, capabilityBaseIds: ['dim'] },
+	property: {
+		...powerMapping.property,
+		category: PropertyCategory.BRIGHTNESS,
+		dataType: DataTypeType.UCHAR,
+		transform: { type: 'scale', input_range: [0, 1], output_range: [0, 100], clamp: true },
+	},
+};
+
+function property(id: string, homeyCapabilityId: string, homeyMappingName: string): HomeyChannelPropertyEntity {
+	return Object.assign(new HomeyChannelPropertyEntity(), {
+		id,
+		identifier: `${homeyCapabilityId}::${homeyMappingName}`,
+		homeyCapabilityId,
+		homeyMappingName,
+		category: PropertyCategory.ON,
+		name: homeyMappingName,
+		permissions: [PermissionType.READ_ONLY],
+		dataType: DataTypeType.BOOL,
+		format: null,
+		invalid: null,
+		step: null,
+	});
+}
+
+function adoptedDevice(properties: HomeyChannelPropertyEntity[]): HomeyDeviceEntity {
+	const channel = Object.assign(new HomeyChannelEntity(), {
+		id: 'panel-channel',
+		identifier: 'light',
+		name: 'Light',
+		category: ChannelCategory.LIGHT,
+		properties,
+	});
+
+	return Object.assign(new HomeyDeviceEntity(), {
+		id: 'panel-device',
+		identifier: 'homey-light',
+		name: 'Light',
+		channels: [channel],
+	});
+}
+
+function homeyDevice(overrides: Partial<HomeyDevice> = {}): HomeyDevice {
+	return {
+		id: 'homey-light',
+		name: 'Light',
+		class: 'light',
+		zoneId: 'zone-living',
+		zoneName: 'Living room',
+		zonePath: ['Living room'],
+		available: true,
+		availabilityMessage: null,
+		driverId: 'homey:app:driver:light',
+		manufacturer: 'Example',
+		model: 'Light',
+		energy: null,
+		capabilities: [
+			createHomeyCapability({
+				id: 'onoff',
+				title: 'Power',
+				value: true,
+				type: HomeyCapabilityType.BOOLEAN,
+				unit: null,
+				minimum: null,
+				maximum: null,
+				step: null,
+				enumValues: [],
+				readable: true,
+				writable: true,
+				available: true,
+				lastUpdatedAt: '2026-08-21T10:00:00.000Z',
+			}),
+			createHomeyCapability({
+				id: 'dim',
+				title: 'Brightness',
+				value: 0.25,
+				type: HomeyCapabilityType.NUMBER,
+				unit: null,
+				minimum: 0,
+				maximum: 1,
+				step: 0.01,
+				enumValues: [],
+				readable: true,
+				writable: true,
+				available: true,
+				lastUpdatedAt: '2026-08-21T10:00:00.000Z',
+			}),
+		],
+		...overrides,
+	};
+}
+
+function capabilityEvent(
+	capabilityId: string,
+	value: boolean | number | string | null,
+	lastUpdatedAt: string | null,
+): Extract<HomeyEvent, { type: HomeyEventType.CAPABILITY_VALUE_CHANGED }> {
+	return {
+		type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+		deviceId: 'homey-light',
+		capabilityId,
+		value,
+		lastUpdatedAt,
+		occurredAt: lastUpdatedAt,
+		sequence: null,
+	};
+}
+
+describe('HomeySynchronizerService', () => {
+	let devicesService: jest.Mocked<Pick<DevicesService, 'findAll'>>;
+	let propertiesService: jest.Mocked<Pick<ChannelsPropertiesService, 'update'>>;
+	let connectivityService: jest.Mocked<Pick<DeviceConnectivityService, 'setConnectionState'>>;
+	let mappingLoader: jest.Mocked<Pick<HomeyMappingLoaderService, 'getPropertyMappings'>>;
+	let service: HomeySynchronizerService;
+	let powerProperty: HomeyChannelPropertyEntity;
+	let stateProperty: HomeyChannelPropertyEntity;
+	let brightnessProperty: HomeyChannelPropertyEntity;
+
+	beforeEach(() => {
+		powerProperty = property('property-power', 'onoff', powerMapping.name);
+		stateProperty = property('property-state', 'onoff', stateMapping.name);
+		brightnessProperty = property('property-brightness', 'dim', brightnessMapping.name);
+		devicesService = {
+			findAll: jest.fn().mockResolvedValue([adoptedDevice([powerProperty, stateProperty, brightnessProperty])]),
+		};
+		propertiesService = { update: jest.fn().mockResolvedValue(new HomeyChannelPropertyEntity()) };
+		connectivityService = { setConnectionState: jest.fn().mockResolvedValue(undefined) };
+		mappingLoader = {
+			getPropertyMappings: jest.fn().mockReturnValue([powerMapping, stateMapping, brightnessMapping]),
+		};
+		service = new HomeySynchronizerService(
+			devicesService as unknown as DevicesService,
+			propertiesService as unknown as ChannelsPropertiesService,
+			connectivityService as unknown as DeviceConnectivityService,
+			mappingLoader as unknown as HomeyMappingLoaderService,
+			new HomeyMappingTransformerService(),
+		);
+	});
+
+	it('indexes adopted full capability identities and applies the authoritative startup snapshot', async () => {
+		await expect(service.synchronizeSnapshot([homeyDevice()])).resolves.toEqual({
+			updated: 4,
+			ignored: 0,
+			failed: 0,
+		});
+
+		expect(devicesService.findAll).toHaveBeenCalledWith(DEVICES_HOMEY_TYPE);
+		expect(connectivityService.setConnectionState).toHaveBeenCalledWith('panel-device', {
+			state: ConnectionState.CONNECTED,
+		});
+		expect(propertiesService.update.mock.calls).toEqual([
+			['property-power', { type: DEVICES_HOMEY_TYPE, value: true }],
+			['property-state', { type: DEVICES_HOMEY_TYPE, value: 'on' }],
+			['property-brightness', { type: DEVICES_HOMEY_TYPE, value: 25 }],
+		]);
+	});
+
+	it('marks missing and unavailable adopted devices without deleting them', async () => {
+		await service.synchronizeSnapshot([]);
+		await service.synchronizeSnapshot([homeyDevice({ available: false, availabilityMessage: 'Unavailable' })]);
+
+		expect(connectivityService.setConnectionState.mock.calls).toEqual([
+			['panel-device', { state: ConnectionState.LOST }],
+			['panel-device', { state: ConnectionState.DISCONNECTED }],
+		]);
+		expect(propertiesService.update).toHaveBeenCalledTimes(3);
+	});
+
+	it('does not publish a value for an unavailable capability', async () => {
+		const unavailable = homeyDevice({
+			capabilities: homeyDevice().capabilities.map((capability) =>
+				capability.id === 'onoff' ? { ...capability, available: false } : capability,
+			),
+		});
+
+		await service.synchronizeSnapshot([unavailable]);
+
+		expect(propertiesService.update).toHaveBeenCalledTimes(1);
+		expect(propertiesService.update).toHaveBeenCalledWith('property-brightness', {
+			type: DEVICES_HOMEY_TYPE,
+			value: 25,
+		});
+	});
+
+	it('preserves null as a valid normalized capability value', async () => {
+		await service.refreshIndex();
+
+		await service.synchronizeEvents([capabilityEvent('onoff', null, null)], new Map());
+
+		expect(propertiesService.update.mock.calls).toEqual([
+			['property-power', { type: DEVICES_HOMEY_TYPE, value: null }],
+			['property-state', { type: DEVICES_HOMEY_TYPE, value: null }],
+		]);
+	});
+
+	it('filters unknown devices, unmapped capabilities, and invalid runtime values', async () => {
+		await service.refreshIndex();
+
+		const invalid = { ...capabilityEvent('onoff', true, null), value: { leaked: true } } as unknown as HomeyEvent;
+		const result = await service.synchronizeEvents(
+			[
+				{ ...capabilityEvent('onoff', true, null), deviceId: 'unadopted' },
+				capabilityEvent('vendor_unknown', 1, null),
+				invalid,
+			],
+			new Map(),
+		);
+
+		expect(result).toEqual({ updated: 0, ignored: 3, failed: 0 });
+		expect(propertiesService.update).not.toHaveBeenCalled();
+		expect(connectivityService.setConnectionState).not.toHaveBeenCalled();
+	});
+
+	it('coalesces bursts by full property identity while preserving final selected order and value', async () => {
+		await service.refreshIndex();
+
+		await service.synchronizeEvents(
+			[
+				capabilityEvent('onoff', true, '2026-08-21T10:01:00.000Z'),
+				capabilityEvent('dim', 0.5, '2026-08-21T10:01:01.000Z'),
+				capabilityEvent('onoff', false, '2026-08-21T10:01:02.000Z'),
+			],
+			new Map(),
+		);
+
+		expect(propertiesService.update.mock.calls).toEqual([
+			['property-brightness', { type: DEVICES_HOMEY_TYPE, value: 50 }],
+			['property-power', { type: DEVICES_HOMEY_TYPE, value: false }],
+			['property-state', { type: DEVICES_HOMEY_TYPE, value: 'off' }],
+		]);
+	});
+
+	it('ignores duplicate and out-of-order timestamped capability events', async () => {
+		await service.refreshIndex();
+		const newest = capabilityEvent('onoff', true, '2026-08-21T10:02:00.000Z');
+
+		await service.synchronizeEvents([newest], new Map());
+		await service.synchronizeEvents([newest], new Map());
+		await service.synchronizeEvents([capabilityEvent('onoff', false, '2026-08-21T10:01:00.000Z')], new Map());
+
+		expect(propertiesService.update).toHaveBeenCalledTimes(2);
+		expect(propertiesService.update).toHaveBeenCalledWith('property-power', {
+			type: DEVICES_HOMEY_TYPE,
+			value: true,
+		});
+	});
+
+	it('updates availability and treats upstream removal as lost without a delete path', async () => {
+		await service.refreshIndex();
+
+		await service.synchronizeEvents(
+			[
+				{
+					type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+					deviceId: 'homey-light',
+					available: false,
+					availabilityMessage: 'Unavailable',
+					occurredAt: null,
+					sequence: null,
+				},
+				{
+					type: HomeyEventType.DEVICE_REMOVED,
+					deviceId: 'homey-light',
+					occurredAt: null,
+					sequence: null,
+				},
+			],
+			new Map(),
+		);
+
+		expect(connectivityService.setConnectionState.mock.calls).toEqual([
+			['panel-device', { state: ConnectionState.DISCONNECTED }],
+			['panel-device', { state: ConnectionState.LOST }],
+		]);
+		expect(devicesService).not.toHaveProperty('remove');
+	});
+
+	it('uses the refreshed device after a device update event and isolates per-property failures', async () => {
+		await service.refreshIndex();
+		propertiesService.update.mockRejectedValueOnce(new Error('storage unavailable'));
+		const current = homeyDevice();
+		const result = await service.synchronizeEvents(
+			[
+				{
+					type: HomeyEventType.DEVICE_UPDATED,
+					deviceId: current.id,
+					occurredAt: null,
+					sequence: null,
+				},
+			],
+			new Map([[current.id, current]]),
+		);
+
+		expect(result).toEqual({ updated: 3, ignored: 0, failed: 1 });
+		expect(propertiesService.update).toHaveBeenCalledTimes(3);
+	});
+
+	it('rebuilds an invalidated index before processing later events', async () => {
+		await service.refreshIndex();
+		const replacement = property('replacement-power', 'onoff', powerMapping.name);
+		devicesService.findAll.mockResolvedValueOnce([adoptedDevice([replacement])]);
+		service.invalidateFromEntity();
+
+		await service.synchronizeEvents([capabilityEvent('onoff', false, null)], new Map());
+
+		expect(devicesService.findAll).toHaveBeenCalledTimes(2);
+		expect(propertiesService.update).toHaveBeenLastCalledWith('replacement-power', {
+			type: DEVICES_HOMEY_TYPE,
+			value: false,
+		});
+	});
+
+	it('repeats an in-flight refresh when the device structure changes during its database read', async () => {
+		let resolveInitial: (devices: HomeyDeviceEntity[]) => void = () => undefined;
+		const replacement = property('replacement-power', 'onoff', powerMapping.name);
+		devicesService.findAll
+			.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						resolveInitial = resolve;
+					}),
+			)
+			.mockResolvedValueOnce([adoptedDevice([replacement])]);
+
+		const refresh = service.refreshIndex();
+		await Promise.resolve();
+		service.invalidateFromEntity();
+		resolveInitial([adoptedDevice([powerProperty])]);
+		await refresh;
+		await service.synchronizeEvents([capabilityEvent('onoff', false, null)], new Map());
+
+		expect(devicesService.findAll).toHaveBeenCalledTimes(2);
+		expect(propertiesService.update).toHaveBeenCalledWith('replacement-power', {
+			type: DEVICES_HOMEY_TYPE,
+			value: false,
+		});
+	});
+});

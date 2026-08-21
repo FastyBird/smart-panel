@@ -392,14 +392,22 @@ are documented in `docs/homey-adoption-persistence.md`.
 
 **Proposed service:** `services/homey-synchronizer.service.ts`
 
-- [ ] Maintain an index from adopted Homey device/full capability IDs to Smart Panel properties.
-- [ ] Subscribe through the active connector before the authoritative initial inventory reconciliation; buffer/serialize events through the startup barrier so a snapshot cannot overwrite a newer event.
-- [ ] Validate/filter events and ignore unadopted or unmapped capabilities.
-- [ ] Transform values and update properties through the standard Devices service path.
-- [ ] Update whole-device/capability availability when corresponding events arrive.
-- [ ] Coalesce bursts per property while preserving the final order/value.
-- [ ] Avoid feedback loops when a command confirmation event returns.
-- [ ] Add tests for unknown devices, unknown capabilities, duplicate/out-of-order events, bursts, invalid values, unsubscribe, and a capability change during the startup snapshot/subscription boundary.
+- [x] Maintain an index from adopted Homey device/full capability IDs to Smart Panel properties.
+- [x] Subscribe through the active connector before the authoritative initial inventory reconciliation; buffer/serialize events through the startup barrier so a snapshot cannot overwrite a newer event.
+- [x] Validate/filter events and ignore unadopted or unmapped capabilities.
+- [x] Transform values and update properties through the standard Devices service path.
+- [x] Update whole-device/capability availability when corresponding events arrive.
+- [x] Coalesce bursts per property while preserving the final order/value.
+- [x] Avoid feedback loops when a command confirmation event returns.
+- [x] Add tests for unknown devices, unknown capabilities, duplicate/out-of-order events, bursts, invalid values, unsubscribe, and a capability change during the startup snapshot/subscription boundary.
+
+`HomeySynchronizerService` rebuilds its mapping index from provider-scoped adopted entities and invalidates it on generic
+device/channel/property structure events. Startup subscribes first, applies the inventory snapshot, and then performs
+fresh targeted reads for every upstream device touched while the barrier was active. Live capability batches retain the
+newest timestamped value per full capability ID, apply every intentional mapping fan-out through the normal property
+service, and never call the connector, so confirmation events cannot feed back into command transport. Device
+availability maps to generic connection state; unavailable capabilities remain in the normalized inventory but do not
+publish stale values. Removed or missing upstream devices become `lost` and no upstream or local deletion path is used.
 
 ### Task 4.2: Implement reconciliation fallback
 

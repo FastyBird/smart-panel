@@ -26,6 +26,7 @@ import { HomeyConnectionTestService } from './services/homey-connection-test.ser
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
 import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
 import { HomeyMappingPreviewService } from './services/homey-mapping-preview.service';
+import { HomeySynchronizerService } from './services/homey-synchronizer.service';
 import { HomeyService } from './services/homey.service';
 
 describe('DevicesHomeyPlugin', () => {
@@ -98,6 +99,7 @@ describe('DevicesHomeyPlugin', () => {
 				HomeyMappingPreviewService,
 				HomeyAdoptionLockService,
 				HomeyDeviceAdoptionService,
+				HomeySynchronizerService,
 			]),
 		);
 		expect(providers).toContainEqual({

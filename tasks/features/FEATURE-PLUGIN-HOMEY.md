@@ -113,11 +113,11 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [x] Mapping preview returns category, channels, properties, identifiers, values, access, conversions, and warnings.
 - [x] Single and batch adoption are idempotent and return per-device outcomes.
 - [x] Adoption reuses generic device/channel/property identifiers without a migration, or an incremental migration is added if evidence shows one is required.
-- [ ] Initial reconciliation populates current values and availability for adopted devices.
-- [ ] Subscriptions are established before the authoritative initial reconciliation, and a tested startup barrier prevents snapshot/event races from losing the newest value.
-- [ ] Real-time Homey events update only adopted, mapped properties.
+- [x] Initial reconciliation populates current values and availability for adopted devices.
+- [x] Subscriptions are established before the authoritative initial reconciliation, and a tested startup barrier prevents snapshot/event races from losing the newest value.
+- [x] Real-time Homey events update only adopted, mapped properties.
 - [ ] Reconnect performs a full reconciliation and bounded periodic reconciliation repairs missed events.
-- [ ] A missing upstream device is marked unavailable/orphaned but never automatically deleted.
+- [x] A missing upstream device is marked unavailable/orphaned but never automatically deleted.
 - [ ] Writable property commands validate and transform values, use the full capability ID, and await authoritative confirmation.
 - [ ] A missing confirmation triggers at most one targeted read before returning a timeout/error.
 
