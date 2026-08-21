@@ -45,6 +45,7 @@ export class HomeySynchronizerService {
 	private adoptedDevices = new Map<string, HomeyDeviceEntity>();
 	private propertiesByDeviceCapability = new Map<string, Map<string, HomeyIndexedProperty[]>>();
 	private lastAppliedOrder = new Map<string, HomeyEventOrder>();
+	private lastAppliedAvailabilityOrder = new Map<string, HomeyEventOrder>();
 	private arrivalOrder = 0;
 	private indexDirty = true;
 	private indexRefresh: Promise<void> | null = null;
@@ -154,11 +155,23 @@ export class HomeySynchronizerService {
 						break;
 					}
 
-					await this.setConnectionState(
+					const order = this.createOrder(event.sequence, event.occurredAt);
+					const previousOrder = this.lastAppliedAvailabilityOrder.get(event.deviceId);
+
+					if (previousOrder !== undefined && !this.isNewerOrder(order, previousOrder)) {
+						result.ignored += 1;
+						break;
+					}
+
+					const applied = await this.setConnectionState(
 						adopted.id,
 						event.available ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED,
 						result,
 					);
+
+					if (applied) {
+						this.lastAppliedAvailabilityOrder.set(event.deviceId, order);
+					}
 					break;
 				}
 				case HomeyEventType.DEVICE_ADDED:
@@ -203,6 +216,7 @@ export class HomeySynchronizerService {
 		this.adoptedDevices.clear();
 		this.propertiesByDeviceCapability.clear();
 		this.lastAppliedOrder.clear();
+		this.lastAppliedAvailabilityOrder.clear();
 		this.arrivalOrder = 0;
 		this.indexDirty = true;
 		this.indexGeneration += 1;
@@ -334,11 +348,7 @@ export class HomeySynchronizerService {
 			return;
 		}
 
-		const order: HomeyEventOrder = {
-			sequence,
-			timestamp: this.parseTimestamp(updatedAt),
-			arrival: ++this.arrivalOrder,
-		};
+		const order = this.createOrder(sequence, updatedAt);
 
 		for (const binding of bindings) {
 			const previousOrder = this.lastAppliedOrder.get(binding.property.id);
@@ -369,13 +379,15 @@ export class HomeySynchronizerService {
 		panelDeviceId: string,
 		state: ConnectionState,
 		result: MutableSynchronizationResult,
-	): Promise<void> {
+	): Promise<boolean> {
 		try {
 			await this.deviceConnectivityService.setConnectionState(panelDeviceId, { state });
 			result.updated += 1;
+			return true;
 		} catch {
 			result.failed += 1;
 			this.logger.warn('Could not update an adopted Homey device connection state', { resource: panelDeviceId });
+			return false;
 		}
 	}
 
@@ -442,6 +454,14 @@ export class HomeySynchronizerService {
 		}
 
 		return candidate.arrival > current.arrival;
+	}
+
+	private createOrder(sequence: string | number | null, updatedAt: string | null): HomeyEventOrder {
+		return {
+			sequence,
+			timestamp: this.parseTimestamp(updatedAt),
+			arrival: ++this.arrivalOrder,
+		};
 	}
 
 	private compareSequences(candidate: string | number | null, current: string | number | null): number | null {

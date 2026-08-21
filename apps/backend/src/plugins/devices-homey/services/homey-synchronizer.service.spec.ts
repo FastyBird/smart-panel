@@ -363,6 +363,27 @@ describe('HomeySynchronizerService', () => {
 		expect(devicesService).not.toHaveProperty('remove');
 	});
 
+	it('rejects stale availability sequences within one batch and across later batches', async () => {
+		await service.refreshIndex();
+		const available: Extract<HomeyEvent, { type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED }> = {
+			type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+			deviceId: 'homey-light',
+			available: true,
+			availabilityMessage: null,
+			occurredAt: null,
+			sequence: 2,
+		};
+		const stale = { ...available, available: false, availabilityMessage: 'Offline', sequence: 1 };
+
+		await service.synchronizeEvents([available, stale], new Map());
+		await service.synchronizeEvents([stale], new Map());
+
+		expect(connectivityService.setConnectionState).toHaveBeenCalledTimes(1);
+		expect(connectivityService.setConnectionState).toHaveBeenCalledWith('panel-device', {
+			state: ConnectionState.CONNECTED,
+		});
+	});
+
 	it('uses the refreshed device after a device update event and isolates per-property failures', async () => {
 		await service.refreshIndex();
 		propertiesService.update.mockRejectedValueOnce(new Error('storage unavailable'));
