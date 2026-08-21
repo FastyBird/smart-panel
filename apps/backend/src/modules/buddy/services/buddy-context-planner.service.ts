@@ -105,6 +105,8 @@ const ACTION_DURATION_PATTERN =
 	/\bfor\s+(?:(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|(?:a|an)\s+|half\s+(?:a|an)\s+)(?:seconds?|minutes?|hours?|days?|weeks?)\b/u;
 const NONNUMERIC_ACTION_DURATION_PATTERN =
 	/\bfor\s+(?:(?:a|an)\s+|half\s+(?:a|an)\s+)(?:seconds?|minutes?|hours?|days?|weeks?|months?)\b/u;
+const QUALIFIED_ACTION_DURATION_PATTERN =
+	/\bfor\s+(?:the\s+)?next\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:seconds?|minutes?|hours?|days?|weeks?|months?)\b/u;
 const HISTORY_PATTERN =
 	/\b(?:chart|graph|history|historical|past|trend|vcera|yesterday)\b|\bhow\s+(?:did|has|have|is|was)\b.*\b(?:change|changed|changing|varied)\b|\b(?:at\s+)?what time did\b|\bwhen did\b|\b(?:earlier today|last (?:day|hour|minute|month|night|week|weekend|year)|this (?:afternoon|day|evening|hour|minute|month|morning|night|week|weekend|year))\b|\b(?:last|since)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b(?:did|was|were)\b.*\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\bon\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b.*\b(?:did|was|were)\b|\b(?:did|was|were)\b.*\btoday\b|\b(?:has|have)\b.*\bbeen\b.*\btoday\b|\btoday\b.*\b(?:did|was|were)\b|\btoday\b.*\b(?:has|have)\b.*\bbeen\b|\b(?:for|last|over)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\b|\b(?:(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+|\d+\s*)(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:[12]?\d|3[01])(?:st|nd|rd|th)?(?:,?\s+\d{4})?\b|\b(?:[12]?\d|3[01])(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december)(?:\s+\d{4})?\b/u;
 const LEADING_WEEKDAY_HISTORY_PATTERN = /^\s*on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*$/u;
@@ -256,7 +258,8 @@ const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs) thermostat\b/u;
 const WHOLE_HOME_SCOPE_PATTERN =
 	/\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\beverywhere\b|\b(?:all|each|every) (?:rooms?|spaces?)\b/u;
-const UNSCOPED_AGGREGATE_READ_PATTERN = /^(?:(?:are|is)\s+(?:all|any)\b|count\b|how many\b)/u;
+const UNSCOPED_AGGREGATE_READ_PATTERN =
+	/^(?:(?:are|is)(?:\s+there)?\s+(?:all|any)\b|do(?:es)?\s+any\b|count\b|how many\b)/u;
 const TRAILING_ACTION_PATTERN = new RegExp(
 	String.raw`(?:[?!,.;]|\b(?:a|${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:if so|please)\s+)*(?:(?:(?:can|could|may|might|will|would) you|are you able to|is it possible to|is there any way you can)\s+(?:please\s+)?)?(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
@@ -1335,6 +1338,7 @@ function classifyAmbiguityRisk(
 				return (
 					SCHEDULED_ACTION_PATTERN.test(temporalClause) ||
 					NONNUMERIC_ACTION_DURATION_PATTERN.test(temporalClause) ||
+					QUALIFIED_ACTION_DURATION_PATTERN.test(temporalClause) ||
 					UNSUPPORTED_ACTION_TEMPORAL_PATTERN.test(temporalClause) ||
 					UNSUPPORTED_ACTION_TEMPORAL_ADJUNCT_PATTERN.test(temporalClause) ||
 					UNSUPPORTED_ACTION_TEMPORAL_CALENDAR_PATTERN.test(temporalClause)
@@ -1344,6 +1348,7 @@ function classifyAmbiguityRisk(
 				(clause) =>
 					SCHEDULED_ACTION_PATTERN.test(clause.trim()) ||
 					NONNUMERIC_ACTION_DURATION_PATTERN.test(clause.trim()) ||
+					QUALIFIED_ACTION_DURATION_PATTERN.test(clause.trim()) ||
 					UNSUPPORTED_ACTION_TEMPORAL_PATTERN.test(clause.trim()) ||
 					UNSUPPORTED_ACTION_TEMPORAL_ADJUNCT_PATTERN.test(clause.trim()) ||
 					UNSUPPORTED_ACTION_TEMPORAL_CALENDAR_PATTERN.test(clause.trim()),

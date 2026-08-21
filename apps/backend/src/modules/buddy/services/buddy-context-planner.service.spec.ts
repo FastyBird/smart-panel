@@ -3437,21 +3437,25 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it.each(['Are any windows open?', 'Are all doors closed?', 'How many lights are on?'])(
-		'treats an unscoped aggregate as whole-home despite conversation scope: %s',
-		(message) => {
-			expect(
-				service.plan({
-					message,
-					conversationSpaceId: 'space-office',
-					providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
-				}),
-			).toMatchObject({
-				scope: {},
-				queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
-			});
-		},
-	);
+	it.each([
+		'Are any windows open?',
+		'Are there any windows open?',
+		'Is there any door open?',
+		'Do any windows remain open?',
+		'Are all doors closed?',
+		'How many lights are on?',
+	])('treats an unscoped aggregate as whole-home despite conversation scope: %s', (message) => {
+		expect(
+			service.plan({
+				message,
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			scope: {},
+			queries: [{ kind: 'search-home' }, { kind: 'current-state' }],
+		});
+	});
 
 	it.each(['Turn Bedroom lights on every Monday', 'Turn Bedroom lights on after 30 seconds'])(
 		'clarifies an unsupported action schedule: %s',
@@ -3814,6 +3818,8 @@ describe('BuddyContextPlannerService', () => {
 		'Turn Bedroom lights on in half an hour',
 		'Turn Bedroom lights on for half an hour',
 		'Turn Bedroom lights on for an hour',
+		'Turn Bedroom lights on for the next 10 minutes',
+		'Turn Bedroom lights on for next ten minutes',
 		'Turn Bedroom lights on in 30 mins',
 		'Turn Bedroom lights on next month',
 		'Turn Bedroom lights on this weekend',
