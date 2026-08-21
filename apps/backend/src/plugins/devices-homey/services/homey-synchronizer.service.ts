@@ -386,7 +386,7 @@ export class HomeySynchronizerService {
 					type: DEVICES_HOMEY_TYPE,
 					value: transformed,
 				});
-				this.lastAppliedOrder.set(binding.property.id, order);
+				this.lastAppliedOrder.set(binding.property.id, this.preserveSequenceWatermark(order, previousOrder));
 				result.updated += 1;
 			} catch {
 				result.failed += 1;
@@ -465,7 +465,7 @@ export class HomeySynchronizerService {
 
 	private coalesceEvents(events: readonly HomeyEvent[]): HomeyEvent[] {
 		const selectedCapabilityIndexes = new Map<string, number>();
-		const selectedDeviceIndexes = new Map<string, number>();
+		const selectedDeviceIndexes = new Map<string, { latest: number; latestRefresh: number | null }>();
 
 		for (let index = 0; index < events.length; index += 1) {
 			const event = events[index];
@@ -478,11 +478,19 @@ export class HomeySynchronizerService {
 					selectedCapabilityIndexes.set(key, index);
 				}
 			} else if (this.isDeviceEvent(event)) {
-				const selectedIndex = selectedDeviceIndexes.get(event.deviceId);
+				const selected = selectedDeviceIndexes.get(event.deviceId);
+				const isRefresh = event.type === HomeyEventType.DEVICE_ADDED || event.type === HomeyEventType.DEVICE_UPDATED;
+				const latest =
+					selected === undefined || this.isLaterEvent(event, events[selected.latest]) ? index : selected.latest;
+				const latestRefresh = !isRefresh
+					? (selected?.latestRefresh ?? null)
+					: selected?.latestRefresh === null || selected?.latestRefresh === undefined
+						? index
+						: this.isLaterEvent(event, events[selected.latestRefresh])
+							? index
+							: selected.latestRefresh;
 
-				if (selectedIndex === undefined || this.isLaterEvent(event, events[selectedIndex])) {
-					selectedDeviceIndexes.set(event.deviceId, index);
-				}
+				selectedDeviceIndexes.set(event.deviceId, { latest, latestRefresh });
 			}
 		}
 
@@ -491,8 +499,31 @@ export class HomeySynchronizerService {
 				return selectedCapabilityIndexes.get(`${event.deviceId}\u0000${event.capabilityId}`) === index;
 			}
 
-			return !this.isDeviceEvent(event) || selectedDeviceIndexes.get(event.deviceId) === index;
+			if (!this.isDeviceEvent(event)) {
+				return true;
+			}
+
+			const selected = selectedDeviceIndexes.get(event.deviceId);
+
+			if (selected === undefined || selected.latest === index) {
+				return true;
+			}
+
+			return (
+				selected.latestRefresh === index && events[selected.latest].type === HomeyEventType.DEVICE_AVAILABILITY_CHANGED
+			);
 		});
+	}
+
+	private preserveSequenceWatermark(
+		order: HomeyEventOrder,
+		previousOrder: HomeyEventOrder | undefined,
+	): HomeyEventOrder {
+		if (order.sequence !== null || typeof previousOrder?.sequence !== 'number') {
+			return order;
+		}
+
+		return { ...order, sequence: previousOrder.sequence };
 	}
 
 	private isLaterEvent(candidate: HomeyEvent, current: HomeyEvent): boolean {

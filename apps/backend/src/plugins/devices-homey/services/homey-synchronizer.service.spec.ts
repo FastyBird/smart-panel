@@ -333,6 +333,25 @@ describe('HomeySynchronizerService', () => {
 		});
 	});
 
+	it('preserves a numeric sequence watermark across an unsequenced snapshot', async () => {
+		await service.refreshIndex();
+
+		await service.synchronizeEvents([capabilityEvent('onoff', true, null, 2)], new Map());
+		await service.synchronizeSnapshot([
+			homeyDevice({
+				capabilities: homeyDevice().capabilities.map((capability) => ({
+					...capability,
+					lastUpdatedAt: null,
+				})),
+			}),
+		]);
+		propertiesService.update.mockClear();
+
+		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 1)], new Map());
+
+		expect(propertiesService.update).not.toHaveBeenCalled();
+	});
+
 	it('coalesces availability and removal to the final lost state without a delete path', async () => {
 		await service.refreshIndex();
 
@@ -463,6 +482,25 @@ describe('HomeySynchronizerService', () => {
 		expect(service.filterEvents([update, removal])).toEqual([update]);
 		await service.synchronizeEvents([update], new Map([['homey-light', homeyDevice()]]));
 		expect(service.filterEvents([removal])).toEqual([]);
+	});
+
+	it('retains a refresh event before a newer availability event for the same device', () => {
+		const update: HomeyEvent = {
+			type: HomeyEventType.DEVICE_UPDATED,
+			deviceId: 'homey-light',
+			occurredAt: null,
+			sequence: 1,
+		};
+		const availability: HomeyEvent = {
+			type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+			deviceId: 'homey-light',
+			available: false,
+			availabilityMessage: 'Offline',
+			occurredAt: null,
+			sequence: 2,
+		};
+
+		expect(service.filterEvents([update, availability])).toEqual([update, availability]);
 	});
 
 	it('commits buffered startup ordering after applying fresh targeted readback', async () => {
