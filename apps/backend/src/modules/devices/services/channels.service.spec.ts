@@ -556,6 +556,29 @@ describe('ChannelsService', () => {
 			expect(repository.save).not.toHaveBeenCalled();
 		});
 
+		it('detects a change against the row re-read under the structure lock', async () => {
+			const initial = toInstance(MockChannel, mockChannel);
+			const concurrent = toInstance(MockChannel, { ...mockChannel, name: 'Concurrent name' });
+			const restored = toInstance(MockChannel, mockChannel);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannel,
+				createDto: CreateMockChannelDto,
+				updateDto: UpdateMockChannelDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest
+				.spyOn(service, 'getOneOrThrow')
+				.mockResolvedValueOnce(initial)
+				.mockResolvedValueOnce(concurrent)
+				.mockResolvedValueOnce(restored);
+			jest.spyOn(repository, 'save').mockResolvedValue(restored);
+
+			await service.update(initial.id, { type: 'mock', name: initial.name } as UpdateMockChannelDto);
+
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CHANNEL_UPDATED, restored);
+		});
+
 		it('should update and return the channel', async () => {
 			const updateDto: UpdateMockChannelDto = {
 				type: 'mock',

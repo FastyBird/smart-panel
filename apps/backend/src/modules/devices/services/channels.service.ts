@@ -535,46 +535,38 @@ export class ChannelsService {
 		// Get the fields to update from DTO (excluding undefined values)
 		const updateFields = omitBy(toInstance(mapping.class, dtoInstance), isUndefined);
 
-		// Check if any entity fields are actually being changed by comparing with existing values
-		const entityFieldsChanged = Object.keys(updateFields).some((key) => {
-			const newValue = (updateFields as Record<string, unknown>)[key];
-			const existingValue = (channel as unknown as Record<string, unknown>)[key];
-
-			// Deep comparison for arrays
-			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
-				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
-			}
-
-			// Deep comparison for plain objects
-			if (
-				typeof newValue === 'object' &&
-				typeof existingValue === 'object' &&
-				newValue !== null &&
-				existingValue !== null
-			) {
-				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
-			}
-
-			// Handle null/undefined comparison
-			if (newValue === null && existingValue === null) {
-				return false;
-			}
-			if (newValue === null || existingValue === null) {
-				return true;
-			}
-
-			// Simple value comparison
-			return newValue !== existingValue;
-		});
-
 		// Under the structure lock, and with the hook inside it, for the reason the create above spells
 		// out: a channel's category is part of the structure a device recategorisation judges itself
 		// against, and the hook that judges *this* change reads the device's category in turn.
-		await this.structureLock.runExclusive(async (): Promise<void> => {
+		const entityFieldsChanged = await this.structureLock.runExclusive(async (): Promise<boolean> => {
 			// Re-read after acquiring the ticket. Stale pruning may have removed the row while this update
 			// was validating; saving the earlier entity would otherwise insert it again.
 			const current = (await this.getOneOrThrow(id)) as TChannel;
 			const previous = { ...current } as Readonly<Partial<TChannel>>;
+			const entityFieldsChanged = Object.keys(updateFields).some((key) => {
+				const newValue = (updateFields as Record<string, unknown>)[key];
+				const existingValue = (current as unknown as Record<string, unknown>)[key];
+
+				if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
+				if (
+					typeof newValue === 'object' &&
+					typeof existingValue === 'object' &&
+					newValue !== null &&
+					existingValue !== null
+				) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
+				if (newValue === null && existingValue === null) {
+					return false;
+				}
+				if (newValue === null || existingValue === null) {
+					return true;
+				}
+
+				return newValue !== existingValue;
+			});
 
 			Object.assign(current, updateFields);
 
@@ -583,6 +575,8 @@ export class ChannelsService {
 			}
 
 			await repository.save(current);
+
+			return entityFieldsChanged;
 		});
 
 		let updatedChannel = (await this.getOneOrThrow(channel.id)) as TChannel;

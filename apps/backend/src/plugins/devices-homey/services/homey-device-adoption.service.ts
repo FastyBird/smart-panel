@@ -923,24 +923,18 @@ export class HomeyDeviceAdoptionService {
 		for (const pending of writes) {
 			await lease.assertOwned();
 			try {
-				// The hierarchy snapshot intentionally happens outside the global structure lock. Another normal
-				// property writer may therefore have persisted after it; compare against the active backend again
-				// at the terminal boundary so an already-current value is not appended twice or overwritten by
-				// an older preview solely because pending.previous is stale.
-				const latest = await this.propertyValueService.readLatestPersistedSnapshot(pending.property);
-
-				if (latest.state?.value === pending.value) {
-					continue;
-				}
-
-				await lease.assertOwned();
 				await this.channelsPropertiesService.update(
 					pending.property.id,
 					{
 						type: DEVICES_HOMEY_TYPE,
 						value: pending.value,
 					},
-					{ strictValuePersistence: true, storageBinding: latest.storageBinding },
+					{
+						strictValuePersistence: true,
+						comparePersistedValue: true,
+						expectedPersistedState: pending.previous,
+						beforeValuePersistence: () => lease.assertOwned(),
+					},
 				);
 			} catch {
 				await lease.assertOwned();

@@ -78,6 +78,11 @@ export interface PersistedPropertyValueSnapshot {
 	readonly storageBinding: StorageBackendBinding;
 }
 
+export interface PropertyValueWriteResult {
+	readonly changed: boolean;
+	readonly state: PropertyValueState | null;
+}
+
 interface InternalPropertyValueReadResult {
 	readonly state: PropertyValueState | null;
 	readonly storageBinding?: StorageBackendBinding;
@@ -95,6 +100,7 @@ export class PropertyValueService {
 	 */
 	private recentValuesMap: Map<ChannelPropertyEntity['id'], number[]> = new Map();
 	private readonly cacheVersions = new Map<ChannelPropertyEntity['id'], number>();
+	private readonly valueTails = new Map<ChannelPropertyEntity['id'], Promise<void>>();
 
 	constructor(
 		private readonly storageService: StorageService,
@@ -106,7 +112,9 @@ export class PropertyValueService {
 	 * @returns true if value changed, false if value was the same or invalid
 	 */
 	async write(property: ChannelPropertyEntity, value: string | boolean | number | null): Promise<boolean> {
-		return this.writeInternal(property, value, false);
+		const key = this.valueSourceRegistry.resolve(property);
+
+		return (await this.withValueLock(key, () => this.writeInternal(property, value, false))).changed;
 	}
 
 	/**
@@ -119,7 +127,43 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		storageBinding?: StorageBackendBinding,
 	): Promise<boolean> {
-		return this.writeInternal(property, value, true, storageBinding);
+		return (await this.writeStrictWithState(property, value, storageBinding)).changed;
+	}
+
+	async writeStrictWithState(
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+		storageBinding?: StorageBackendBinding,
+	): Promise<PropertyValueWriteResult> {
+		const key = this.valueSourceRegistry.resolve(property);
+
+		return this.withValueLock(key, () => this.writeInternal(property, value, true, storageBinding));
+	}
+
+	async writeStrictIfPersistedDifferent(
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+		expectedPersistedState: PropertyValueState | null,
+		beforeWrite?: () => Promise<void>,
+	): Promise<PropertyValueWriteResult> {
+		const key = this.valueSourceRegistry.resolve(property);
+
+		return this.withValueLock(key, async () => {
+			const latest = await this.readLatestInternal(property, true, true, true);
+			await beforeWrite?.();
+
+			if (latest.state?.value === value) {
+				return { changed: false, state: latest.state };
+			}
+			if (!this.samePersistedState(latest.state, expectedPersistedState)) {
+				return { changed: false, state: latest.state };
+			}
+			if (!latest.storageBinding) {
+				throw new Error('Persisted property value read did not bind a storage backend');
+			}
+
+			return this.writeInternal(property, value, true, latest.storageBinding);
+		});
 	}
 
 	private async writeInternal(
@@ -127,7 +171,7 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		strict: boolean,
 		storageBinding?: StorageBackendBinding,
-	): Promise<boolean> {
+	): Promise<PropertyValueWriteResult> {
 		const key = this.valueSourceRegistry.resolve(property);
 
 		// A projected property owns no series — the value belongs to its source, and only the source's
@@ -155,19 +199,19 @@ export class PropertyValueService {
 				`Skipping write for projected property id=${property.id}: its value belongs to source property id=${key}`,
 			);
 
-			return false;
+			return { changed: false, state: null };
 		}
 
 		// Skip null values - device hasn't reported this property yet
 		if (value === null || value === undefined) {
-			return false;
+			return { changed: false, state: null };
 		}
 
 		// Skip invalid/sentinel values (e.g., -1 when sensor is off)
 		// These are defined in the property's invalid field
 		if (property.invalid !== null && this.isInvalidValue(property.invalid, value)) {
 			this.logger.debug(`Skipping invalid/sentinel value for property id=${property.id}: value=${value}`);
-			return false;
+			return { changed: false, state: null };
 		}
 
 		const cached = this.valuesMap.get(key);
@@ -175,7 +219,7 @@ export class PropertyValueService {
 			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate
 			cached.lastUpdated = new Date().toISOString();
 			this.bumpCacheVersion(key);
-			return false;
+			return { changed: false, state: cached };
 		}
 
 		// Validate value against format constraints
@@ -184,7 +228,7 @@ export class PropertyValueService {
 			this.logger.warn(
 				`Invalid value for property id=${property.id}: ${validationError}. Value=${JSON.stringify(value)}`,
 			);
-			return false;
+			return { changed: false, state: null };
 		}
 
 		const formattedValue: { stringValue?: string; numberValue?: number } = {};
@@ -212,7 +256,7 @@ export class PropertyValueService {
 			default:
 				this.logger.error(`Unsupported data type dataType=${property.dataType} id=${property.id}`);
 
-				return false;
+				return { changed: false, state: null };
 		}
 
 		const timestamp = new Date();
@@ -230,7 +274,7 @@ export class PropertyValueService {
 			await this.storageService.writePointsStrict([point], storageBinding);
 
 			if (this.cacheVersion(key) !== cacheVersionAtWriteStart) {
-				return true;
+				return { changed: true, state: new PropertyValueState(value, now) };
 			}
 		}
 
@@ -255,11 +299,11 @@ export class PropertyValueService {
 		this.setCachedState(key, state);
 
 		if (strict) {
-			return true;
+			return { changed: true, state };
 		}
 
 		if (!this.storageService.isConnected()) {
-			return true; // Value changed in cache
+			return { changed: true, state }; // Value changed in cache
 		}
 
 		try {
@@ -275,7 +319,7 @@ export class PropertyValueService {
 			);
 		}
 
-		return true; // Value changed
+		return { changed: true, state }; // Value changed
 	}
 
 	async readLatest(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
@@ -600,6 +644,30 @@ export class PropertyValueService {
 		this.bumpCacheVersion(key);
 	}
 
+	private samePersistedState(left: PropertyValueState | null, right: PropertyValueState | null): boolean {
+		return left?.value === right?.value && left?.lastUpdated === right?.lastUpdated;
+	}
+
+	private withValueLock<T>(key: ChannelPropertyEntity['id'], operation: () => Promise<T>): Promise<T> {
+		const previous = this.valueTails.get(key) ?? Promise.resolve();
+		let release: () => void = () => {};
+		const ticket = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const tail = previous.then(
+			() => ticket,
+			() => ticket,
+		);
+		this.valueTails.set(key, tail);
+
+		return previous.then(operation, operation).finally(() => {
+			release();
+			if (this.valueTails.get(key) === tail) {
+				this.valueTails.delete(key);
+			}
+		});
+	}
+
 	private updateRecentValuesFromRows(
 		property: ChannelPropertyEntity,
 		sourcePropertyId: ChannelPropertyEntity['id'],
@@ -857,6 +925,10 @@ export class PropertyValueService {
 	async delete(property: ChannelPropertyEntity): Promise<void> {
 		const key = this.valueSourceRegistry.resolve(property);
 
+		return this.withValueLock(key, () => this.deleteInternal(property, key));
+	}
+
+	private async deleteInternal(property: ChannelPropertyEntity, key: ChannelPropertyEntity['id']): Promise<void> {
 		// A projected property owns no series — the value belongs to its source. Deleting here would
 		// destroy the source device's entire history, so bail out before clearing caches or storage.
 		if (key !== property.id) {
@@ -890,6 +962,15 @@ export class PropertyValueService {
 
 	async deleteSinceStrict(property: ChannelPropertyEntity, since: Date): Promise<void> {
 		const key = this.valueSourceRegistry.resolve(property);
+
+		return this.withValueLock(key, () => this.deleteSinceStrictInternal(property, since, key));
+	}
+
+	private async deleteSinceStrictInternal(
+		property: ChannelPropertyEntity,
+		since: Date,
+		key: ChannelPropertyEntity['id'],
+	): Promise<void> {
 		if (key !== property.id) {
 			return;
 		}

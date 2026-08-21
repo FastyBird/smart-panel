@@ -11,7 +11,6 @@ import { ChannelsService } from '../../../modules/devices/services/channels.serv
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
-import { type StorageBackendBinding } from '../../../modules/storage/services/storage.service';
 import { DEVICES_HOMEY_TYPE } from '../devices-homey.constants';
 import { HomeyAdoptDeviceDto } from '../dto/adoption.dto';
 import { CreateHomeyDeviceChannelPropertyDto } from '../dto/create-device-channel-property.dto';
@@ -153,10 +152,8 @@ describe('HomeyDeviceAdoptionService', () => {
 	let adoptionLock: Pick<HomeyAdoptionLockService, 'runExclusive'>;
 	let service: HomeyDeviceAdoptionService;
 	let lease: HomeyAdoptionLease;
-	let storageBinding: StorageBackendBinding;
 
 	beforeEach(() => {
-		storageBinding = {} as StorageBackendBinding;
 		lease = { assertOwned: jest.fn().mockResolvedValue(undefined) };
 		mappingPreviewService = { generatePreview: jest.fn().mockResolvedValue(preview()) };
 		devicesService = {
@@ -186,10 +183,7 @@ describe('HomeyDeviceAdoptionService', () => {
 			readLatest: jest.fn().mockResolvedValue(null),
 			readLatestStrict: jest.fn((property) => propertyValueService.readLatest(property)),
 			readLatestPersisted: jest.fn((property) => propertyValueService.readLatestStrict(property)),
-			readLatestPersistedSnapshot: jest.fn(async (property) => ({
-				state: await propertyValueService.readLatestPersisted(property),
-				storageBinding,
-			})),
+			readLatestPersistedSnapshot: jest.fn(),
 			write: jest.fn().mockResolvedValue(true),
 			delete: jest.fn(),
 		};
@@ -274,19 +268,19 @@ describe('HomeyDeviceAdoptionService', () => {
 			1,
 			'created-property-0',
 			{ type: DEVICES_HOMEY_TYPE, value: false },
-			{ strictValuePersistence: true, storageBinding },
+			expect.objectContaining({ strictValuePersistence: true, comparePersistedValue: true }),
 		);
 		expect(propertiesService.update).toHaveBeenNthCalledWith(
 			2,
 			'created-property-1',
 			{ type: DEVICES_HOMEY_TYPE, value: 'off' },
-			{ strictValuePersistence: true, storageBinding },
+			expect.objectContaining({ strictValuePersistence: true, comparePersistedValue: true }),
 		);
 		expect(propertiesService.update).toHaveBeenNthCalledWith(
 			3,
 			'created-property-2',
 			{ type: DEVICES_HOMEY_TYPE, value: 0 },
-			{ strictValuePersistence: true, storageBinding },
+			expect.objectContaining({ strictValuePersistence: true, comparePersistedValue: true }),
 		);
 	});
 
@@ -398,15 +392,15 @@ describe('HomeyDeviceAdoptionService', () => {
 		});
 
 		await expect(service.adoptOne(selection())).resolves.toMatchObject({ status: HomeyAdoptionStatus.UPDATED });
-		expect(propertyValueService.readLatestPersisted).toHaveBeenCalledTimes(2);
+		expect(propertyValueService.readLatestPersisted).toHaveBeenCalledTimes(1);
 		expect(propertiesService.update).toHaveBeenCalledWith(
 			property.id,
 			{ type: DEVICES_HOMEY_TYPE, value: true },
-			{ strictValuePersistence: true, storageBinding },
+			expect.objectContaining({ strictValuePersistence: true, comparePersistedValue: true }),
 		);
 	});
 
-	it('rechecks persisted values before terminal writes and skips an intervening equal update', async () => {
+	it('delegates terminal equality checks to the atomic strict persistence path', async () => {
 		const device = existingDevice();
 		const channel = Object.assign(new HomeyChannelEntity(), {
 			id: '8421af4e-84f9-4822-bac6-3dbe49ac4893',
@@ -443,13 +437,17 @@ describe('HomeyDeviceAdoptionService', () => {
 		channelsService.findOneBy.mockResolvedValue(channel);
 		propertiesService.findAll.mockResolvedValue([property]);
 		propertiesService.findOneBy.mockResolvedValue(property);
-		propertyValueService.readLatestPersisted
-			.mockResolvedValueOnce(Object.assign(new PropertyValueState(), { value: false }))
-			.mockResolvedValueOnce(Object.assign(new PropertyValueState(), { value: true }));
+		propertyValueService.readLatestPersisted.mockResolvedValueOnce(
+			Object.assign(new PropertyValueState(), { value: false }),
+		);
 
 		await expect(service.adoptOne(selection())).resolves.toMatchObject({ status: HomeyAdoptionStatus.UPDATED });
-		expect(propertyValueService.readLatestPersisted).toHaveBeenCalledTimes(2);
-		expect(propertiesService.update).not.toHaveBeenCalled();
+		expect(propertyValueService.readLatestPersisted).toHaveBeenCalledTimes(1);
+		expect(propertiesService.update).toHaveBeenCalledWith(
+			property.id,
+			{ type: DEVICES_HOMEY_TYPE, value: true },
+			expect.objectContaining({ strictValuePersistence: true, comparePersistedValue: true }),
+		);
 	});
 
 	it('re-reads device metadata under the structure lock before reconciling it', async () => {
@@ -649,12 +647,16 @@ describe('HomeyDeviceAdoptionService', () => {
 			panelDeviceId: complete.id,
 		});
 		expect(devicesService.findOneBy).toHaveBeenCalledTimes(4);
-		expect(propertyValueService.readLatest).toHaveBeenCalledTimes(4);
+		expect(propertyValueService.readLatest).toHaveBeenCalledTimes(3);
 		expect(devicesService.findOneBy.mock.invocationCallOrder[3]).toBeLessThan(
 			channelsService.findOneBy.mock.invocationCallOrder[0],
 		);
 		expect(channelsService.create).not.toHaveBeenCalled();
-		expect(propertiesService.update).not.toHaveBeenCalled();
+		expect(propertiesService.update).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({ type: DEVICES_HOMEY_TYPE, value: false }),
+			expect.objectContaining({ strictValuePersistence: true, comparePersistedValue: true }),
+		);
 	});
 
 	it('preserves the provider connectivity channel during mapping reconciliation', async () => {
@@ -780,7 +782,7 @@ describe('HomeyDeviceAdoptionService', () => {
 		expect(propertiesService.update).toHaveBeenCalledWith(
 			property.id,
 			expect.objectContaining({ value: false, type: DEVICES_HOMEY_TYPE }),
-			{ strictValuePersistence: true, storageBinding },
+			expect.objectContaining({ strictValuePersistence: true, comparePersistedValue: true }),
 		);
 	});
 
@@ -852,7 +854,7 @@ describe('HomeyDeviceAdoptionService', () => {
 				type: DEVICES_HOMEY_TYPE,
 				value: false,
 			},
-			{ strictValuePersistence: true, storageBinding },
+			expect.objectContaining({ strictValuePersistence: true, comparePersistedValue: true }),
 		);
 		expect(propertiesService.update).toHaveBeenNthCalledWith(
 			2,
@@ -861,7 +863,7 @@ describe('HomeyDeviceAdoptionService', () => {
 				type: DEVICES_HOMEY_TYPE,
 				value: 'off',
 			},
-			{ strictValuePersistence: true, storageBinding },
+			expect.objectContaining({ strictValuePersistence: true, comparePersistedValue: true }),
 		);
 		expect(propertyValueService.write).not.toHaveBeenCalled();
 		expect(propertyValueService.delete).not.toHaveBeenCalled();

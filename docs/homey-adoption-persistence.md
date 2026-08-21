@@ -93,6 +93,9 @@ between. When primary supplied the read and fallback was healthy at that point, 
 and fallback still receives the normal best-effort mirror; a newly recovered primary is not added after a fallback
 comparison. Persisted reads and strict writes also capture a per-property cache version and publish their result only
 if the version is unchanged when the operation completes, preventing slower storage work from replacing a newer value
-or trend published by a concurrent normal writer. The strict value event is emitted immediately after durable
-persistence, before fallible readback and plugin post-update hooks, so an idempotent retry cannot permanently skip the
+or trend published by a concurrent normal writer. Every property write and deletion enters the same keyed value queue.
+Homey performs its final persisted read, ownership check, snapshot compare-and-set, and bound strict write in one queue
+operation; if the durable value changed after the adoption snapshot, the preview is not allowed to replace it. The
+strict value event carries the exact `PropertyValueState` returned by persistence and is emitted immediately after the
+durable write, before fallible readback and plugin post-update hooks, so an idempotent retry cannot permanently skip the
 event after a post-persistence failure.

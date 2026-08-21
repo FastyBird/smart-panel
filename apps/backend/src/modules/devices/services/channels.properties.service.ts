@@ -24,6 +24,7 @@ import { DevicesException, DevicesNotFoundException, DevicesValidationException 
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
+import { type PropertyValueState } from '../models/property-value-state.model';
 import { SUPPORTED_PROPERTY_COMMAND_DATA_TYPES } from '../utils/property-command-value.utils';
 import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
@@ -106,6 +107,9 @@ export interface VisiblePropertySearchSummaryPage {
 export interface ChannelPropertyUpdateOptions {
 	strictValuePersistence?: boolean;
 	storageBinding?: StorageBackendBinding;
+	comparePersistedValue?: boolean;
+	expectedPersistedState?: PropertyValueState | null;
+	beforeValuePersistence?: () => Promise<void>;
 }
 
 @Injectable()
@@ -790,57 +794,49 @@ export class ChannelsPropertiesService {
 		// Get the fields to update from DTO (excluding undefined values)
 		const updateFields = omitBy(toInstance(mapping.class, dtoInstance), isUndefined);
 
-		// Check if any entity fields (non-value) are actually being changed by comparing with existing values
-		const entityFieldsChanged = Object.keys(updateFields).some((key) => {
-			if (key === 'value' || key === 'type') {
-				return false;
-			}
-
-			const newValue = (updateFields as Record<string, unknown>)[key];
-			const existingValue = (property as unknown as Record<string, unknown>)[key];
-
-			// Deep comparison for arrays (like format)
-			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
-				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
-			}
-
-			// Deep comparison for plain objects
-			if (
-				typeof newValue === 'object' &&
-				typeof existingValue === 'object' &&
-				newValue !== null &&
-				existingValue !== null
-			) {
-				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
-			}
-
-			// Handle null/undefined comparison
-			if (newValue === null && existingValue === null) {
-				return false;
-			}
-			if (newValue === null || existingValue === null) {
-				return true;
-			}
-
-			// Simple value comparison
-			return newValue !== existingValue;
-		});
-
 		// The type owner's last look at the merged row, before anything is written — the only point at
 		// which an invariant spanning a field the PATCH sent and a field it did not is decidable.
 		// Same lock as the create path above, for the same reason: a PATCH can move a property's data
 		// type or permissions, which is exactly what a device recategorisation judges its structure by.
-		const raw = await this.structureLock.runExclusive(async (): Promise<TProperty> => {
+		const { raw, entityFieldsChanged } = await this.structureLock.runExclusive(async () => {
 			// Re-read after acquiring the ticket. Stale pruning may have removed the row while this update
 			// was validating; saving the earlier entity would otherwise insert it again.
 			const current = (await this.getOneOrThrow(id)) as TProperty;
+			const entityFieldsChanged = Object.keys(updateFields).some((key) => {
+				if (key === 'value' || key === 'type') {
+					return false;
+				}
+
+				const newValue = (updateFields as Record<string, unknown>)[key];
+				const existingValue = (current as unknown as Record<string, unknown>)[key];
+
+				if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
+				if (
+					typeof newValue === 'object' &&
+					typeof existingValue === 'object' &&
+					newValue !== null &&
+					existingValue !== null
+				) {
+					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+				}
+				if (newValue === null && existingValue === null) {
+					return false;
+				}
+				if (newValue === null || existingValue === null) {
+					return true;
+				}
+
+				return newValue !== existingValue;
+			});
 			Object.assign(current, updateFields);
 
 			if (mapping.beforeUpdate) {
 				await mapping.beforeUpdate(current);
 			}
 
-			return repository.save(current);
+			return { raw: await repository.save(current), entityFieldsChanged };
 		});
 
 		// Track if value actually changed
@@ -853,16 +849,36 @@ export class ChannelsPropertiesService {
 		// not coherent, and PropertyValueService.write() drops exactly that, leaving the source's own
 		// report to record what the hardware actually did.
 		let valueChanged = false;
+		let persistedValueState: PropertyValueState | null = null;
 		if (typeof updateDto.value !== 'undefined') {
-			valueChanged = options.strictValuePersistence
-				? await this.propertyValueService.writeStrict(raw, updateDto.value, options.storageBinding)
-				: await this.propertyValueService.write(raw, updateDto.value);
+			if (options.strictValuePersistence && options.comparePersistedValue) {
+				const result = await this.propertyValueService.writeStrictIfPersistedDifferent(
+					raw,
+					updateDto.value,
+					options.expectedPersistedState ?? null,
+					options.beforeValuePersistence,
+				);
+				valueChanged = result.changed;
+				persistedValueState = result.state;
+			} else if (options.strictValuePersistence) {
+				await options.beforeValuePersistence?.();
+				const result = await this.propertyValueService.writeStrictWithState(
+					raw,
+					updateDto.value,
+					options.storageBinding,
+				);
+				valueChanged = result.changed;
+				persistedValueState = result.state;
+			} else {
+				valueChanged = await this.propertyValueService.write(raw, updateDto.value);
+			}
 		}
 		const strictValueEventEmitted = options.strictValuePersistence === true && valueChanged;
 
 		if (strictValueEventEmitted) {
 			// Persistence is already durable. Publish before post-update readback/hooks so a later failure
 			// cannot make an idempotent retry skip the only value event for this measurement.
+			raw.value = persistedValueState;
 			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, raw);
 		}
 
