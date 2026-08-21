@@ -17,10 +17,11 @@ import {
 import { HomeyInventoryUnavailableError } from '../errors/homey-inventory.error';
 import { HomeyConfigModel } from '../models/config.model';
 import { HomeyDevice } from '../models/homey-device.model';
-import { HomeyEventType } from '../models/homey-event.model';
+import { HomeyEvent, HomeyEventType } from '../models/homey-event.model';
 import { HomeySystemInfo } from '../models/homey-system-info.model';
 import { HomeyZone } from '../models/homey-zone.model';
 
+import { HomeySynchronizerService } from './homey-synchronizer.service';
 import { HomeyService } from './homey.service';
 
 const INITIAL_TIME = new Date('2026-08-15T10:00:00.000Z');
@@ -90,6 +91,12 @@ describe('HomeyService', () => {
 	let configService: jest.Mocked<Pick<ConfigService, 'getPluginConfig'>>;
 	let connector: jest.Mocked<HomeyConnector>;
 	let connectorFactory: jest.Mocked<HomeyConnectorFactory>;
+	let synchronizer: jest.Mocked<
+		Pick<
+			HomeySynchronizerService,
+			'filterEvents' | 'synchronizeSnapshot' | 'synchronizeDevices' | 'synchronizeEvents' | 'reset'
+		>
+	>;
 	let listener: HomeyEventListener | null;
 	let unsubscribe: jest.Mock;
 	let service: HomeyService;
@@ -112,13 +119,30 @@ describe('HomeyService', () => {
 			listener = nextListener;
 		}, unsubscribe);
 		connectorFactory = { create: jest.fn().mockReturnValue(connector) };
-		service = new HomeyService(configService as unknown as ConfigService, connectorFactory);
+		synchronizer = {
+			filterEvents: jest.fn((events) => [...events]),
+			synchronizeSnapshot: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0 }),
+			synchronizeDevices: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0 }),
+			synchronizeEvents: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0 }),
+			reset: jest.fn(),
+		};
+		service = new HomeyService(
+			configService as unknown as ConfigService,
+			synchronizer as unknown as HomeySynchronizerService,
+			connectorFactory,
+		);
 	});
 
 	afterEach(() => {
 		jest.useRealTimers();
 		jest.restoreAllMocks();
 	});
+
+	async function emitLiveEvent(event: HomeyEvent): Promise<void> {
+		void listener?.(event);
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
+	}
 
 	it('exposes the managed connector identity and starts stopped', () => {
 		expect(service.pluginName).toBe(DEVICES_HOMEY_PLUGIN_NAME);
@@ -226,7 +250,7 @@ describe('HomeyService', () => {
 		connect.resolve();
 		await start;
 		jest.setSystemTime(new Date('2026-08-15T10:01:00.000Z'));
-		await listener?.({
+		await emitLiveEvent({
 			type: HomeyEventType.DEVICE_UPDATED,
 			deviceId: staleDevice.id,
 			occurredAt: null,
@@ -248,6 +272,102 @@ describe('HomeyService', () => {
 		disconnect.resolve();
 		await stop;
 		expect(service.getStatus().serviceState).toBe('stopped');
+	});
+
+	it('batches live capability bursts without issuing a targeted read for each value event', async () => {
+		await service.start();
+		connector.getDevice.mockClear();
+		synchronizer.synchronizeEvents.mockClear();
+		const first: HomeyEvent = {
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'dim',
+			value: 0.25,
+			lastUpdatedAt: '2026-08-15T10:01:00.000Z',
+			occurredAt: '2026-08-15T10:01:00.000Z',
+			sequence: null,
+		};
+		const final: HomeyEvent = { ...first, value: 0.5, lastUpdatedAt: '2026-08-15T10:01:01.000Z' };
+
+		void listener?.(first);
+		void listener?.(final);
+
+		expect(synchronizer.synchronizeEvents).not.toHaveBeenCalled();
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
+
+		expect(synchronizer.synchronizeEvents).toHaveBeenCalledTimes(1);
+		expect(synchronizer.synchronizeEvents).toHaveBeenCalledWith([first, final], expect.any(Map));
+		expect(connector.getDevice.mock.calls).toHaveLength(0);
+
+		await service.stop();
+	});
+
+	it('filters stale device events before mutating the inventory cache', async () => {
+		await service.start();
+		const update: HomeyEvent = {
+			type: HomeyEventType.DEVICE_UPDATED,
+			deviceId: staleDevice.id,
+			occurredAt: null,
+			sequence: 2,
+		};
+		const removal: HomeyEvent = {
+			type: HomeyEventType.DEVICE_REMOVED,
+			deviceId: staleDevice.id,
+			occurredAt: null,
+			sequence: 1,
+		};
+		synchronizer.filterEvents.mockReturnValueOnce([update]);
+
+		void listener?.(update);
+		void listener?.(removal);
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
+
+		expect(synchronizer.filterEvents).toHaveBeenCalledWith([update, removal]);
+		expect(synchronizer.synchronizeDevices).toHaveBeenCalledWith([staleDevice], [], [update]);
+		expect(synchronizer.synchronizeEvents).not.toHaveBeenCalled();
+		expect(service.getInventorySnapshot()).toStrictEqual([staleDevice]);
+
+		await service.stop();
+	});
+
+	it('applies a targeted refresh independently when a newer availability event arrived first', async () => {
+		await service.start();
+		synchronizer.synchronizeDevices.mockClear();
+		synchronizer.synchronizeEvents.mockClear();
+		const freshDevice = {
+			...staleDevice,
+			capabilities: staleDevice.capabilities.map((capability) =>
+				capability.id === 'onoff' ? { ...capability, value: false } : capability,
+			),
+		};
+		connector.getDevice.mockResolvedValueOnce(freshDevice);
+		const availability: HomeyEvent = {
+			type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+			deviceId: staleDevice.id,
+			available: false,
+			availabilityMessage: 'Offline',
+			occurredAt: null,
+			sequence: 2,
+		};
+		const delayedUpdate: HomeyEvent = {
+			type: HomeyEventType.DEVICE_UPDATED,
+			deviceId: staleDevice.id,
+			occurredAt: null,
+			sequence: 1,
+		};
+
+		void listener?.(availability);
+		void listener?.(delayedUpdate);
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
+
+		expect(connector.getDevice.mock.calls).toContainEqual([staleDevice.id]);
+		expect(synchronizer.synchronizeDevices).toHaveBeenCalledWith([freshDevice], [], [availability, delayedUpdate]);
+		expect(synchronizer.synchronizeEvents).not.toHaveBeenCalled();
+
+		await service.stop();
 	});
 
 	it('keeps authoritative inventory available in degraded polling mode', async () => {
@@ -384,6 +504,24 @@ describe('HomeyService', () => {
 			connector.getDevices.mock.invocationCallOrder[0],
 		);
 		expect(connector.getDevice.mock.calls).toContainEqual([staleDevice.id]);
+		expect(synchronizer.synchronizeSnapshot).toHaveBeenCalledWith([staleDevice]);
+		expect(synchronizer.synchronizeDevices).toHaveBeenCalledWith(
+			[freshDevice],
+			[],
+			[
+				{
+					type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+					deviceId: staleDevice.id,
+					available: false,
+					availabilityMessage: 'Offline',
+					occurredAt: null,
+					sequence: null,
+				},
+			],
+		);
+		expect(synchronizer.synchronizeSnapshot.mock.invocationCallOrder[0]).toBeLessThan(
+			synchronizer.synchronizeDevices.mock.invocationCallOrder[0],
+		);
 		expect(await service.isHealthy()).toBe(true);
 
 		await service.stop();
@@ -487,7 +625,7 @@ describe('HomeyService', () => {
 			new HomeyConnectorError(HomeyConnectorErrorCategory.UNAVAILABLE, HomeyConnectorOperation.GET_DEVICE),
 		);
 
-		await listener?.({
+		await emitLiveEvent({
 			type: HomeyEventType.DEVICE_UPDATED,
 			deviceId: staleDevice.id,
 			occurredAt: null,
@@ -538,7 +676,7 @@ describe('HomeyService', () => {
 			new HomeyConnectorError(HomeyConnectorErrorCategory.UNAVAILABLE, HomeyConnectorOperation.GET_DEVICE),
 		);
 
-		await listener?.({
+		await emitLiveEvent({
 			type: HomeyEventType.DEVICE_UPDATED,
 			deviceId: staleDevice.id,
 			occurredAt: null,
@@ -578,10 +716,10 @@ describe('HomeyService', () => {
 			sequence: null,
 		} as const;
 
-		await listener?.(event);
+		await emitLiveEvent(event);
 		expect(service.getStatus().connectionState).toBe(HomeyConnectionState.RECONNECTING);
 
-		await listener?.(event);
+		await emitLiveEvent(event);
 		expect(service.getStatus().connectionState).toBe(HomeyConnectionState.CONNECTED);
 		expect(jest.getTimerCount()).toBe(1);
 
@@ -589,6 +727,40 @@ describe('HomeyService', () => {
 
 		expect(connectorFactory.create.mock.calls).toHaveLength(1);
 		expect(service.getStatus().connectionState).toBe(HomeyConnectionState.CONNECTED);
+
+		await service.stop();
+	});
+
+	it('keeps a pending reconnect after locally processed capability traffic', async () => {
+		await service.start();
+		connector.getDevice.mockRejectedValueOnce(
+			new HomeyConnectorError(HomeyConnectorErrorCategory.UNAVAILABLE, HomeyConnectorOperation.GET_DEVICE),
+		);
+
+		await emitLiveEvent({
+			type: HomeyEventType.DEVICE_UPDATED,
+			deviceId: staleDevice.id,
+			occurredAt: null,
+			sequence: 1,
+		});
+		await emitLiveEvent({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: true,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 2,
+		});
+
+		expect(connector.getDevice.mock.calls).toHaveLength(1);
+		expect(service.getStatus()).toMatchObject({
+			connectionState: HomeyConnectionState.RECONNECTING,
+			healthy: false,
+			lastErrorCategory: HomeyConnectorErrorCategory.UNAVAILABLE,
+			lastError: 'Homey connection is temporarily unavailable',
+		});
+		expect(jest.getTimerCount()).toBe(1);
 
 		await service.stop();
 	});
@@ -604,7 +776,7 @@ describe('HomeyService', () => {
 			new HomeyConnectorError(HomeyConnectorErrorCategory.UNAVAILABLE, HomeyConnectorOperation.GET_DEVICE),
 		);
 
-		await listener?.({
+		await emitLiveEvent({
 			type: HomeyEventType.DEVICE_UPDATED,
 			deviceId: staleDevice.id,
 			occurredAt: null,
@@ -629,7 +801,7 @@ describe('HomeyService', () => {
 			new HomeyConnectorError(HomeyConnectorErrorCategory.AUTHENTICATION, HomeyConnectorOperation.GET_DEVICE),
 		);
 
-		await listener?.({
+		await emitLiveEvent({
 			type: HomeyEventType.DEVICE_UPDATED,
 			deviceId: staleDevice.id,
 			occurredAt: null,
@@ -654,7 +826,10 @@ describe('HomeyService', () => {
 			sequence: null,
 		} as const;
 
-		await Promise.all([listener?.(event), listener?.(event)]);
+		void listener?.(event);
+		void listener?.(event);
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
 
 		expect(jest.getTimerCount()).toBe(1);
 		expect(connectorFactory.create.mock.calls).toHaveLength(1);
@@ -680,7 +855,7 @@ describe('HomeyService', () => {
 			sequence: null,
 		} as const;
 
-		await listener?.(event);
+		await emitLiveEvent(event);
 
 		let rejectRead: (error: Error) => void = () => undefined;
 		connector.getDevice.mockImplementationOnce(
@@ -689,7 +864,9 @@ describe('HomeyService', () => {
 					rejectRead = reject;
 				}),
 		);
-		const activeReconciliation = listener?.(event);
+		void listener?.(event);
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
 
 		await jest.advanceTimersByTimeAsync(1000);
 
@@ -697,8 +874,6 @@ describe('HomeyService', () => {
 		expect(connector.disconnect.mock.calls).toHaveLength(0);
 
 		rejectRead(new Error('in-flight read ended'));
-		await activeReconciliation;
-
 		for (let index = 0; index < 10; index += 1) {
 			await Promise.resolve();
 		}
@@ -713,16 +888,31 @@ describe('HomeyService', () => {
 		await service.start();
 		connector.getZones.mockClear();
 		connector.getDevices.mockClear();
-
-		await listener?.({
+		synchronizer.synchronizeSnapshot.mockClear();
+		const zoneEvent: HomeyEvent = {
 			type: HomeyEventType.ZONE_UPDATED,
 			zoneId: zones[0].id,
 			occurredAt: null,
-			sequence: null,
-		});
+			sequence: 1,
+		};
+		const capabilityEvent: HomeyEvent = {
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: false,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 2,
+		};
+
+		void listener?.(zoneEvent);
+		void listener?.(capabilityEvent);
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
 
 		expect(connector.getZones.mock.calls).toHaveLength(1);
 		expect(connector.getDevices.mock.calls).toHaveLength(1);
+		expect(synchronizer.synchronizeSnapshot).toHaveBeenCalledWith([staleDevice], [zoneEvent, capabilityEvent]);
 
 		await service.stop();
 	});
@@ -768,7 +958,10 @@ describe('HomeyService', () => {
 	});
 
 	it('fails safely when the production connector factory is not registered', async () => {
-		service = new HomeyService(configService as unknown as ConfigService);
+		service = new HomeyService(
+			configService as unknown as ConfigService,
+			synchronizer as unknown as HomeySynchronizerService,
+		);
 
 		await expect(service.start()).rejects.toThrow('Homey service failed to start');
 		expect(service.getStatus()).toMatchObject({

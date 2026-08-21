@@ -27,6 +27,7 @@ import { HomeyZone } from '../models/homey-zone.model';
 import { HomeyStatusModel } from '../models/status.model';
 
 import { calculateHomeyReconnectDelay } from './homey-reconnect-backoff';
+import { HomeySynchronizationResult, HomeySynchronizerService } from './homey-synchronizer.service';
 
 @Injectable()
 export class HomeyService extends BaseManagedPluginService {
@@ -52,6 +53,8 @@ export class HomeyService extends BaseManagedPluginService {
 	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 	private reconnectAttempt = 0;
 	private reconnectCount = 0;
+	private liveEvents: HomeyEvent[] = [];
+	private liveEventFlush: ReturnType<typeof setImmediate> | null = null;
 	private lastConnectedAt: string | null = null;
 	private lastInventorySyncAt: string | null = null;
 	private lastEventAt: string | null = null;
@@ -59,6 +62,7 @@ export class HomeyService extends BaseManagedPluginService {
 
 	constructor(
 		private readonly configService: ConfigService,
+		private readonly synchronizer: HomeySynchronizerService,
 		@Optional()
 		@Inject(HOMEY_CONNECTOR_FACTORY)
 		private readonly connectorFactory: HomeyConnectorFactory | null = null,
@@ -277,6 +281,7 @@ export class HomeyService extends BaseManagedPluginService {
 
 		await this.enqueueSynchronization(async () => {
 			this.replaceDevices(await connector.getDevices());
+			this.recordSynchronizationResult(await this.synchronizer.synchronizeSnapshot([...this.devices.values()]));
 
 			if (this.startupEvents) {
 				await this.reconcileStartupEvents(connector, generation);
@@ -296,18 +301,18 @@ export class HomeyService extends BaseManagedPluginService {
 			const events = this.startupEvents.slice(cursor);
 			cursor += events.length;
 			pass += 1;
-			await this.reconcileEvents(connector, generation, events);
+			await this.reconcileEvents(connector, generation, events, true);
 		}
 
 		const remainingEvents = this.startupEvents?.slice(cursor) ?? [];
 		this.startupEvents = null;
 
 		if (remainingEvents.length > 0) {
-			await this.reconcileEvents(connector, generation, remainingEvents);
+			await this.reconcileEvents(connector, generation, remainingEvents, true);
 		}
 	}
 
-	private onConnectorEvent(connector: HomeyConnector, generation: number, event: HomeyEvent): Promise<void> | void {
+	private onConnectorEvent(connector: HomeyConnector, generation: number, event: HomeyEvent): void {
 		if (!this.isCurrentGeneration(connector, generation)) {
 			return;
 		}
@@ -318,10 +323,28 @@ export class HomeyService extends BaseManagedPluginService {
 			return;
 		}
 
+		this.liveEvents.push(event);
+
+		if (this.liveEventFlush !== null) {
+			return;
+		}
+
+		this.liveEventFlush = setImmediate(() => {
+			this.liveEventFlush = null;
+			const events = this.liveEvents;
+			this.liveEvents = [];
+			void this.flushLiveEvents(connector, generation, events);
+		});
+	}
+
+	private flushLiveEvents(connector: HomeyConnector, generation: number, events: readonly HomeyEvent[]): Promise<void> {
 		return this.enqueueSynchronization(async () => {
 			try {
-				await this.reconcileEvents(connector, generation, [event]);
-				this.markRuntimeHealthy(connector, generation);
+				const authoritativeTraffic = await this.reconcileEvents(connector, generation, events);
+
+				if (authoritativeTraffic) {
+					this.markRuntimeHealthy(connector, generation);
+				}
 			} catch (error) {
 				if (this.isCurrentGeneration(connector, generation)) {
 					this.handleRuntimeFailure(error, 'Homey event synchronization failed', generation);
@@ -335,36 +358,160 @@ export class HomeyService extends BaseManagedPluginService {
 		connector: HomeyConnector,
 		generation: number,
 		events: readonly HomeyEvent[],
-	): Promise<void> {
+		authoritativeReadback = false,
+	): Promise<boolean> {
 		if (!this.isCurrentGeneration(connector, generation)) {
-			return;
+			return false;
 		}
 
 		const containsZoneEvent = events.some((event) => this.isZoneEvent(event));
 
+		let inventoryReplaced = false;
+		let authoritativeTraffic = false;
+
 		if (containsZoneEvent) {
-			this.zones = await connector.getZones();
-			this.replaceDevices(await connector.getDevices());
+			const zones = await connector.getZones();
+			const devices = await connector.getDevices();
+
+			if (!this.isCurrentGeneration(connector, generation)) {
+				return false;
+			}
+
+			this.zones = zones;
+			this.replaceDevices(devices);
+			inventoryReplaced = true;
+			authoritativeTraffic = true;
 		}
 
 		const deviceIds = [...new Set(events.flatMap((event) => ('deviceId' in event ? [event.deviceId] : [])))];
+		const refreshedDevices: HomeyDevice[] = [];
+		const missingDeviceIds: string[] = [];
+		const selectedEvents = inventoryReplaced || authoritativeReadback ? events : this.synchronizer.filterEvents(events);
+		const targetedDeviceIds = new Set(
+			authoritativeReadback
+				? deviceIds
+				: selectedEvents.flatMap((event) =>
+						event.type === HomeyEventType.DEVICE_ADDED || event.type === HomeyEventType.DEVICE_UPDATED
+							? [event.deviceId]
+							: [],
+					),
+		);
 
-		for (const deviceId of deviceIds) {
-			const device = await connector.getDevice(deviceId);
+		if (!inventoryReplaced) {
+			for (const deviceId of targetedDeviceIds) {
+				const device = await connector.getDevice(deviceId);
 
-			if (!this.isCurrentGeneration(connector, generation)) {
-				return;
+				if (!this.isCurrentGeneration(connector, generation)) {
+					return false;
+				}
+
+				authoritativeTraffic = true;
+
+				if (device) {
+					this.devices.set(device.id, device);
+					refreshedDevices.push(device);
+				} else {
+					this.devices.delete(deviceId);
+					missingDeviceIds.push(deviceId);
+				}
 			}
 
-			if (device) {
-				this.devices.set(device.id, device);
-			} else {
-				this.devices.delete(deviceId);
+			for (const event of selectedEvents) {
+				if ('deviceId' in event && targetedDeviceIds.has(event.deviceId)) {
+					continue;
+				}
+
+				authoritativeTraffic =
+					(await this.updateInventoryFromEvent(connector, generation, event)) || authoritativeTraffic;
 			}
 		}
 
 		if (events.length > 0 && this.isCurrentGeneration(connector, generation)) {
+			if (inventoryReplaced) {
+				this.recordSynchronizationResult(
+					await this.synchronizer.synchronizeSnapshot([...this.devices.values()], events),
+				);
+			} else if (targetedDeviceIds.size > 0) {
+				const readbackEvents = selectedEvents.filter(
+					(event) => 'deviceId' in event && targetedDeviceIds.has(event.deviceId),
+				);
+				this.recordSynchronizationResult(
+					await this.synchronizer.synchronizeDevices(refreshedDevices, missingDeviceIds, readbackEvents),
+				);
+
+				const remainingEvents = selectedEvents.filter(
+					(event) => !('deviceId' in event) || !targetedDeviceIds.has(event.deviceId),
+				);
+
+				if (remainingEvents.length > 0) {
+					this.recordSynchronizationResult(await this.synchronizer.synchronizeEvents(remainingEvents, this.devices));
+				}
+			} else if (selectedEvents.length > 0) {
+				this.recordSynchronizationResult(await this.synchronizer.synchronizeEvents(selectedEvents, this.devices));
+			}
 			this.lastEventAt = this.now();
+		}
+
+		return authoritativeTraffic;
+	}
+
+	private async updateInventoryFromEvent(
+		connector: HomeyConnector,
+		generation: number,
+		event: HomeyEvent,
+	): Promise<boolean> {
+		switch (event.type) {
+			case HomeyEventType.DEVICE_ADDED:
+			case HomeyEventType.DEVICE_UPDATED: {
+				const device = await connector.getDevice(event.deviceId);
+
+				if (!this.isCurrentGeneration(connector, generation)) {
+					return false;
+				}
+
+				if (device === null) {
+					this.devices.delete(event.deviceId);
+				} else {
+					this.devices.set(device.id, device);
+				}
+				return true;
+			}
+			case HomeyEventType.DEVICE_REMOVED:
+				this.devices.delete(event.deviceId);
+				return false;
+			case HomeyEventType.DEVICE_AVAILABILITY_CHANGED: {
+				const device = this.devices.get(event.deviceId);
+
+				if (device !== undefined) {
+					this.devices.set(event.deviceId, {
+						...device,
+						available: event.available,
+						availabilityMessage: event.availabilityMessage,
+					});
+				}
+				return false;
+			}
+			case HomeyEventType.CAPABILITY_VALUE_CHANGED: {
+				const device = this.devices.get(event.deviceId);
+
+				if (device === undefined) {
+					return false;
+				}
+
+				this.devices.set(event.deviceId, {
+					...device,
+					capabilities: device.capabilities.map((capability) =>
+						capability.id === event.capabilityId
+							? { ...capability, value: event.value, lastUpdatedAt: event.lastUpdatedAt }
+							: capability,
+					),
+				});
+				return false;
+			}
+			case HomeyEventType.ZONE_ADDED:
+			case HomeyEventType.ZONE_UPDATED:
+			case HomeyEventType.ZONE_REMOVED:
+				return false;
 		}
 	}
 
@@ -420,6 +567,7 @@ export class HomeyService extends BaseManagedPluginService {
 
 				this.zones = zonesResult.value;
 				this.replaceDevices(devicesResult.value);
+				this.recordSynchronizationResult(await this.synchronizer.synchronizeSnapshot(devicesResult.value));
 				this.recordSuccessfulInventorySync(connector, generation);
 
 				if (this.unsubscribe) {
@@ -541,6 +689,7 @@ export class HomeyService extends BaseManagedPluginService {
 	private async cleanupRuntime(): Promise<boolean> {
 		this.clearReconciliationTimer();
 		this.clearReconnectTimer();
+		this.clearLiveEventFlush();
 		this.startupEvents = null;
 		const unsubscribe = this.unsubscribe;
 		const connector = this.connector;
@@ -557,6 +706,7 @@ export class HomeyService extends BaseManagedPluginService {
 		}
 
 		await this.synchronizationTail;
+		this.synchronizer.reset();
 
 		if (connector) {
 			try {
@@ -592,13 +742,31 @@ export class HomeyService extends BaseManagedPluginService {
 		}
 	}
 
+	private clearLiveEventFlush(): void {
+		if (this.liveEventFlush !== null) {
+			clearImmediate(this.liveEventFlush);
+			this.liveEventFlush = null;
+		}
+
+		this.liveEvents = [];
+	}
+
 	private hasRuntimeResources(): boolean {
 		return (
 			this.connector !== null ||
 			this.unsubscribe !== null ||
 			this.reconciliationTimer !== null ||
-			this.reconnectTimer !== null
+			this.reconnectTimer !== null ||
+			this.liveEventFlush !== null
 		);
+	}
+
+	private recordSynchronizationResult(result: HomeySynchronizationResult): void {
+		if (result.failed > 0) {
+			this.logger.warn('Homey synchronization completed with isolated property failures', {
+				failed: result.failed,
+			});
+		}
 	}
 
 	private isCurrentGeneration(connector: HomeyConnector, generation: number): boolean {
