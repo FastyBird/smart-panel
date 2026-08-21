@@ -4,6 +4,7 @@ import {
 	ACTION_COMMAND_PATTERN,
 	ACTION_REQUEST_PREFIX_PATTERN_SOURCE,
 	ACTION_SIGNAL_PATTERN_SOURCE,
+	COMPOUND_CONNECTOR_PATTERN_SOURCE,
 	CONDITION_PATTERN,
 	CONTEXTUAL_SCOPE_REFERENCE_PATTERN,
 	DEVICE_ACTION_TARGET_PATTERN,
@@ -472,7 +473,7 @@ export function normalizeGerundActionRequest(message: string): string {
 
 	const normalizedShutRequest = normalizedGerundRequest.replace(shutCommandPattern, '$1turn off');
 	const binaryStateCommandPattern = new RegExp(
-		String.raw`(^[?!,.;\s]*(?:(?:please)\s+|(?:${ACTION_REQUEST_PREFIX_PATTERN_SOURCE})\s+(?:(?:also|only|please)\s+)*)?|(?:[?!,.;]|\b(?:and|then)\b)\s*(?:(?:also|please)\s+)*)(enable|disable)\b`,
+		String.raw`(^[?!,.;\s]*(?:(?:please)\s+|(?:${ACTION_REQUEST_PREFIX_PATTERN_SOURCE})\s+(?:(?:also|only|please)\s+)*)?|(?:[?!,.;]|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)\s*(?:(?:also|please)\s+)*)(enable|disable)\b`,
 		'gu',
 	);
 

@@ -4098,6 +4098,7 @@ describe('BuddyContextPlannerService', () => {
 		'Is every window closed?',
 		'Is each window closed?',
 		'Are none of the windows open?',
+		'Does every window remain closed?',
 		'Check if every window is closed',
 		'Can you check if any windows are open?',
 		'Can you check whether any windows are open?',
@@ -6711,6 +6712,20 @@ describe('BuddyContextPlannerService', () => {
 		};
 
 		expect(service.plan({ ...input, message })).toEqual(service.plan({ ...input, message: equivalentMessage }));
+	});
+
+	it('normalizes a binary-state action after a compound connector', () => {
+		const input = {
+			knownSpaces: [
+				{ id: 'space-bedroom', name: 'Bedroom' },
+				{ id: 'space-kitchen', name: 'Kitchen' },
+			],
+			providerCapabilities: { toolCalling: 'reliable' as const, supportsStructuredToolResults: true },
+		};
+
+		expect(service.plan({ ...input, message: 'Turn the Kitchen lights on plus disable the Bedroom lights' })).toEqual(
+			service.plan({ ...input, message: 'Turn the Kitchen lights on plus turn off the Bedroom lights' }),
+		);
 	});
 
 	it.each([
