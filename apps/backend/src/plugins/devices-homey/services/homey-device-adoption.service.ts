@@ -37,6 +37,8 @@ type UndoOperation = () => Promise<void>;
 interface PropertySnapshot {
 	readonly entity: HomeyChannelPropertyEntity;
 	readonly createDto: CreateHomeyDeviceChannelPropertyDto;
+	readonly homeyCapabilityId: string | null;
+	readonly homeyMappingName: string | null;
 	readonly value: PropertyValueState | null;
 }
 
@@ -131,9 +133,10 @@ export class HomeyDeviceAdoptionService {
 				return this.success(preview.device.id, HomeyAdoptionStatus.CREATED, created.id);
 			} catch {
 				// A different process may have won the provider-scoped unique insert. Its parent row is
-				// visible before DevicesService.create() finishes the nested channels and properties, so an
-				// immediate reconciliation could mutate that half-built hierarchy and make the winner roll
-				// the shared parent back. Only hand off after every child this preview expects is visible.
+				// visible before DevicesService.create() finishes the nested channels, properties, and their
+				// initial value writes, so an immediate reconciliation could mutate that half-built hierarchy
+				// and make the winner roll the shared parent back or duplicate history. Only hand off after
+				// every expected child and initial measurement are visible.
 				const concurrent = await this.devicesService.findOneBy<HomeyDeviceEntity>(
 					'identifier',
 					preview.device.id,
@@ -167,7 +170,7 @@ export class HomeyDeviceAdoptionService {
 		let candidate: HomeyDeviceEntity | null = initial;
 
 		while (candidate !== null) {
-			if (this.hasExpectedHierarchy(candidate, preview)) {
+			if (await this.isConcurrentCreationComplete(candidate, preview)) {
 				return candidate;
 			}
 			if (Date.now() >= deadline) {
@@ -183,6 +186,53 @@ export class HomeyDeviceAdoptionService {
 		}
 
 		return null;
+	}
+
+	private async isConcurrentCreationComplete(
+		device: HomeyDeviceEntity,
+		preview: HomeyMappingPreviewModel,
+	): Promise<boolean> {
+		if (!this.hasExpectedHierarchy(device, preview)) {
+			return false;
+		}
+
+		const channels = new Map(
+			(device.channels ?? [])
+				.filter(
+					(channel): channel is HomeyChannelEntity =>
+						channel.type === DEVICES_HOMEY_TYPE && channel.identifier !== null,
+				)
+				.map((channel) => [channel.identifier, channel]),
+		);
+
+		for (const desiredChannel of preview.channels) {
+			const channel = channels.get(desiredChannel.identifier);
+
+			for (const desiredProperty of desiredChannel.properties) {
+				if (!desiredProperty.valueAvailable || desiredProperty.currentValue === null) {
+					continue;
+				}
+
+				const property = (channel?.properties ?? []).find(
+					(candidate): candidate is HomeyChannelPropertyEntity =>
+						candidate.type === DEVICES_HOMEY_TYPE && candidate.identifier === this.propertyIdentifier(desiredProperty),
+				);
+
+				if (property === undefined) {
+					return false;
+				}
+
+				try {
+					if ((await this.propertyValueService.readLatest(property)) === null) {
+						return false;
+					}
+				} catch {
+					return false;
+				}
+			}
+		}
+
+		return true;
 	}
 
 	private hasExpectedHierarchy(device: HomeyDeviceEntity, preview: HomeyMappingPreviewModel): boolean {
@@ -492,6 +542,8 @@ export class HomeyDeviceAdoptionService {
 				const propertySnapshot: PropertySnapshot = {
 					entity: property,
 					createDto: this.snapshotPropertyDto(property, value),
+					homeyCapabilityId: property.homeyCapabilityId,
+					homeyMappingName: property.homeyMappingName,
 					value,
 				};
 				propertiesById.set(property.id, propertySnapshot);
@@ -590,8 +642,8 @@ export class HomeyDeviceAdoptionService {
 			format: snapshot.createDto.format,
 			invalid: snapshot.createDto.invalid,
 			step: snapshot.createDto.step,
-			homeyCapabilityId: snapshot.createDto.homeyCapabilityId,
-			homeyMappingName: snapshot.createDto.homeyMappingName,
+			homeyCapabilityId: snapshot.homeyCapabilityId,
+			homeyMappingName: snapshot.homeyMappingName,
 		});
 	}
 
@@ -615,6 +667,10 @@ export class HomeyDeviceAdoptionService {
 
 	private async applyPendingValues(writes: readonly PendingValueWrite[]): Promise<void> {
 		for (const pending of writes) {
+			if (pending.previous?.value === pending.value) {
+				continue;
+			}
+
 			try {
 				await this.channelsPropertiesService.update(pending.property.id, {
 					type: DEVICES_HOMEY_TYPE,
