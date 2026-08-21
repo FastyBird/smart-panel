@@ -4132,6 +4132,8 @@ describe('BuddyContextPlannerService', () => {
 		'Are there any lights that are still on?',
 		'Are there any lights that remain on?',
 		'Are there any lights which are on?',
+		'Are any windows being left open?',
+		'Are there any windows that are being left open?',
 		'Are any thermostats heating?',
 		'Are any humidity sensors high?',
 		'Are any humidity sensors low?',
@@ -6796,6 +6798,7 @@ describe('BuddyContextPlannerService', () => {
 		'Is the enable plus disable switch available?',
 		'Is the enable as well as disable switch available?',
 		'Which switch mode is selected, enable or disable?',
+		'Which switch mode is selected, enable mode or disable mode?',
 	])('does not treat a binary-state noun as an action: %s', (message) => {
 		const plan = service.plan({
 			message,

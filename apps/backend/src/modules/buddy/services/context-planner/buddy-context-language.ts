@@ -549,6 +549,14 @@ export function normalizeGerundActionRequest(message: string): string {
 		value.replace(binaryStateCommandPattern, (match, prefix: string, action: string, offset: number) => {
 			if (/\ba\s*$/u.test(prefix)) return match;
 			if (
+				new RegExp(
+					String.raw`^\s+([\p{Letter}\p{Number}-]+)\s+${binaryLabelConnectorPatternSource}\s+(?:disable|enable)\s+\1\b`,
+					'u',
+				).test(value.slice(offset + match.length))
+			) {
+				return match;
+			}
+			if (
 				new RegExp(String.raw`^\s*(?:[?!,.;]|${binaryLabelConnectorPatternSource}\b|$)`, 'u').test(
 					value.slice(offset + match.length),
 				)

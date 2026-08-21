@@ -236,9 +236,10 @@ export const PLURAL_HOME_TARGET_PATTERN =
 const WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE = String.raw`(?:${GROUNDED_STATE_PATTERN_SOURCE}|${HOME_STATE_PATTERN.source}|running|triggered)`;
 const AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE = String.raw`(?:already|not|still|${CURRENT_STATE_PATTERN.source})`;
 const AGGREGATE_STATE_VALUE_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}`;
-const STATE_LINKING_VERB_PATTERN_SOURCE = String.raw`(?:appear|appears|are|is|left|look|looks|powered|remain|remains|seem|seems|stay|stays|switched|turned|was|were)`;
+const PROGRESSIVE_STATE_LINKER_PATTERN_SOURCE = String.raw`being\s+(?:left|powered|switched|turned)`;
+const STATE_LINKING_VERB_PATTERN_SOURCE = String.raw`(?:${PROGRESSIVE_STATE_LINKER_PATTERN_SOURCE}|appear|appears|are|is|left|look|looks|powered|remain|remains|seem|seems|stay|stays|switched|turned|was|were)`;
 export const RELATIVE_REFERENCE_PRONOUN_PATTERN = new RegExp(
-	String.raw`\b(?:that|which)\s+${STATE_LINKING_VERB_PATTERN_SOURCE}\b(?=\s+${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}\b)`,
+	String.raw`\b(?:that|which)\s+${STATE_LINKING_VERB_PATTERN_SOURCE}\b(?=\s+(?:${PROGRESSIVE_STATE_LINKER_PATTERN_SOURCE}\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}\b)`,
 	'gu',
 );
 export const TEMPORAL_THIS_REFERENCE_PATTERN =
