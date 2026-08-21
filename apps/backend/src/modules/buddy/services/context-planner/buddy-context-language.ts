@@ -60,7 +60,7 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 	if (/\b(?:how|what|when|where|which|who|why)\b[^?]*\?\s*$/u.test(message.slice(actionIndex))) return true;
 	if (
 		new RegExp(
-			String.raw`(?<!that\s)(?<!which\s)(?<!who\s)\b${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we)\s+|(?!you\b)[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$`,
+			String.raw`(?<!that\s)(?<!which\s)(?<!who\s)\b${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we|you)\s+|[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$`,
 			'u',
 		).test(message.slice(actionIndex))
 	) {
