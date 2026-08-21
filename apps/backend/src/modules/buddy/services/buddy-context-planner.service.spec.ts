@@ -6919,9 +6919,12 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.toolNames).not.toContain('set_space_lighting');
 	});
 
-	it('keeps a wh relative target inside a conditional command', () => {
+	it.each([
+		'If the window is open, turn off the Bedroom light where the baby sleeps?',
+		'If the window is open, turn off the Bedroom light that still works?',
+	])('keeps a relative target inside a conditional command: %s', (message) => {
 		const plan = service.plan({
-			message: 'If the window is open, turn off the Bedroom light where the baby sleeps?',
+			message,
 			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
 			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 		});

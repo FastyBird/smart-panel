@@ -65,12 +65,12 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 	) {
 		return true;
 	}
-	if (
-		new RegExp(
-			String.raw`\b(?:(?:a|an|my|our|the|their|this|these|those|your)\s+)?[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,3}\s+(?:(?:already|currently|still)\s+)?${CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
-			'u',
-		).test(message.slice(actionIndex))
-	) {
+	const subjectFirstOutcomeMatch = new RegExp(
+		String.raw`\b(?:(?:a|an|my|our|the|their|this|these|those|your)\s+)?[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,3}\s+(?:(?:already|currently|still)\s+)?${CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
+		'u',
+	).exec(message.slice(actionIndex));
+
+	if (subjectFirstOutcomeMatch && !/\b(?:that|where|which|who)\b/u.test(subjectFirstOutcomeMatch[0])) {
 		return true;
 	}
 	if (
