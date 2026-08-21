@@ -263,6 +263,15 @@ export class PropertyValueService {
 		return this.readLatestInternal(property, true);
 	}
 
+	/**
+	 * Read the latest durable measurement without trusting this process's cache.
+	 * Cross-process reconciliation uses this to compare against the shared source
+	 * of truth, then refreshes the local cache from the authoritative result.
+	 */
+	async readLatestPersisted(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
+		return this.readLatestInternal(property, true, true);
+	}
+
 	async readLatestManyStrict(
 		properties: ChannelPropertyEntity[],
 	): Promise<Map<ChannelPropertyEntity['id'], PropertyValueState | null>> {
@@ -671,12 +680,13 @@ export class PropertyValueService {
 	private async readLatestInternal(
 		property: ChannelPropertyEntity,
 		strict: boolean,
+		bypassCache = false,
 	): Promise<PropertyValueState | null> {
 		const key = this.valueSourceRegistry.resolve(property);
 
 		// Check local cache first
 		const cached = this.valuesMap.get(key);
-		if (cached) {
+		if (!bypassCache && cached) {
 			this.logger.debug(`Loaded cached value for property id=${property.id}, value=${cached.value}`);
 
 			return cached;

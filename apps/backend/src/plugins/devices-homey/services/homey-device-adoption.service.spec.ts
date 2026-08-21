@@ -135,7 +135,7 @@ describe('HomeyDeviceAdoptionService', () => {
 		Pick<ChannelsPropertiesService, 'findAll' | 'findOne' | 'findOneBy' | 'create' | 'update' | 'remove'>
 	>;
 	let propertyValueService: jest.Mocked<
-		Pick<PropertyValueService, 'readLatest' | 'readLatestStrict' | 'write' | 'delete'>
+		Pick<PropertyValueService, 'readLatest' | 'readLatestStrict' | 'readLatestPersisted' | 'write' | 'delete'>
 	>;
 	let adoptionLock: Pick<HomeyAdoptionLockService, 'runExclusive'>;
 	let service: HomeyDeviceAdoptionService;
@@ -165,6 +165,7 @@ describe('HomeyDeviceAdoptionService', () => {
 		propertyValueService = {
 			readLatest: jest.fn().mockResolvedValue(null),
 			readLatestStrict: jest.fn((property) => propertyValueService.readLatest(property)),
+			readLatestPersisted: jest.fn((property) => propertyValueService.readLatestStrict(property)),
 			write: jest.fn().mockResolvedValue(true),
 			delete: jest.fn(),
 		};

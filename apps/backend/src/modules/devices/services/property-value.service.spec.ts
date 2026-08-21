@@ -183,6 +183,19 @@ describe('PropertyValueService', () => {
 			await expect(service.readLatestStrict(property)).resolves.toEqual(expect.objectContaining({ value: 42 }));
 		});
 
+		it('should bypass and refresh a stale process cache for an authoritative persisted read', async () => {
+			const property = {
+				id: 'test-property-id',
+				dataType: DataTypeType.INT,
+			} as ChannelPropertyEntity;
+			service['valuesMap'].set(property.id, new PropertyValueState(42));
+			storageService.queryStrict.mockResolvedValue([{ numberValue: 100 }]);
+
+			await expect(service.readLatestPersisted(property)).resolves.toEqual(expect.objectContaining({ value: 100 }));
+			expect(storageService.queryStrict).toHaveBeenCalledWith(expect.stringContaining('SELECT * FROM property_value'));
+			expect(service['valuesMap'].get(property.id)).toEqual(expect.objectContaining({ value: 100 }));
+		});
+
 		it('should batch strict reads for every uncached property', async () => {
 			const properties = [
 				{ id: 'property-a', dataType: DataTypeType.INT },
