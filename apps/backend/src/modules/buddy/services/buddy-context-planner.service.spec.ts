@@ -6847,6 +6847,7 @@ describe('BuddyContextPlannerService', () => {
 			'Are the Bedroom lights on? If so turn off the Bedroom lights',
 		],
 		['If the window is open enable the Bedroom lights', 'If the window is open turn the Bedroom lights on'],
+		['Enable the lights that are off', 'Turn on the lights that are off'],
 	])('maps a binary-state action to turn semantics: %s', (message, equivalentMessage) => {
 		const input = {
 			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
@@ -6902,6 +6903,7 @@ describe('BuddyContextPlannerService', () => {
 		"If we disable the Bedroom lights isn't the camera safer?",
 		'If we disable the Bedroom lights will you still see?',
 		'If we disable the Bedroom lights, the camera still works?',
+		'If we disable the Bedroom lights the camera still works?',
 		'If we disable the Bedroom lights what about the camera?',
 		'If we disable the Bedroom lights how about the camera?',
 		'If we disable the Bedroom lights what next?',

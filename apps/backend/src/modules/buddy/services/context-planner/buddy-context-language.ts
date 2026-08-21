@@ -30,6 +30,7 @@ import {
 } from './buddy-context-planner-grammar';
 
 const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:am|are(?:n't)?|can(?:not|'t)?|could(?:n't)?|did(?:n't)?|do|does|don't|doesn't|had(?:n't)?|has(?:n't)?|have(?:n't)?|is(?:n't)?|may|might(?:n't)?|must(?:n't)?|should(?:n't)?|was(?:n't)?|were(?:n't)?|will|won't|would(?:n't)?)`;
+const CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE = String.raw`(?:appears?|changes?|fails?|happens?|improves?|looks?|remains?|seems?|stays?|wakes?|works?)`;
 
 export function findLeadingConditionalActionIndex(
 	message: string,
@@ -61,6 +62,14 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 		/\b(?:how\s+about\b[^?]*|what\s+(?:about\b[^?]*|changes?|happens?|next\b|occurs?))\s*\?\s*$/u.test(
 			message.slice(actionIndex),
 		)
+	) {
+		return true;
+	}
+	if (
+		new RegExp(
+			String.raw`\b(?:(?:a|an|my|our|the|their|this|these|those|your)\s+)?[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,3}\s+(?:(?:already|currently|still)\s+)?${CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
+			'u',
+		).test(message.slice(actionIndex))
 	) {
 		return true;
 	}
@@ -569,6 +578,10 @@ export function normalizeGerundActionRequest(message: string): string {
 	const binaryLabelConnectorPatternSource = String.raw`(?:or|${COMPOUND_CONNECTOR_PATTERN_SOURCE})`;
 	const binaryTargetTokenPatternSource = String.raw`[\p{Letter}\p{Number}'’-]+`;
 	const binaryDeviceTargetPatternSource = String.raw`(?:(?:my|our|the|your)\s+(?:${binaryTargetTokenPatternSource}\s+){0,7}|(?:${binaryTargetTokenPatternSource}\s+){1,7})${DEVICE_ACTION_TARGET_PATTERN.source}`;
+	const binaryRelativeTargetPattern = new RegExp(
+		String.raw`^\s+(?:(?:${binaryTargetTokenPatternSource}\s+){0,7}${DEVICE_ACTION_TARGET_PATTERN.source}|(?:(?:my|our|the|your)\s+)?${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source})\s+(?:that|which)\b`,
+		'u',
+	);
 	const binaryStateTargetPattern = new RegExp(
 		String.raw`^\s+(?:${binaryDeviceTargetPatternSource}|(?:(?:my|our|the|your)\s+)?${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source})`,
 		'u',
@@ -586,9 +599,11 @@ export function normalizeGerundActionRequest(message: string): string {
 				(/then\b/u.test(coordinatedActionMatch[0]) ||
 					binaryStateTargetPattern.test(actionTail.slice(coordinatedActionMatch[0].length)));
 			const hasDirectBinaryTarget = binaryStateTargetPattern.test(actionTail);
+			const hasRelativeBinaryTarget = binaryRelativeTargetPattern.test(actionTail);
 
 			if (/\ba\s*$/u.test(prefix)) return match;
 			if (
+				!hasRelativeBinaryTarget &&
 				/^\s+(?:[\p{Letter}\p{Number}'’-]+\s+){1,4}(?:appear|appears|are|is|look|looks|remain|remains|seem|seems|stay|stays|was|were)\b/u.test(
 					actionTail,
 				)
