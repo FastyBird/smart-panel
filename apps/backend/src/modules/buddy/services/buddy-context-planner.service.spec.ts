@@ -4155,6 +4155,8 @@ describe('BuddyContextPlannerService', () => {
 		'Does any window look open?',
 		'Does any window seem open?',
 		'Are any windows still open?',
+		'Are any locks locked?',
+		'Are all smart locks locked?',
 		'Is every window currently closed?',
 		'Are any windows not closed?',
 		'Are there any lights that are still on?',
@@ -6853,6 +6855,7 @@ describe('BuddyContextPlannerService', () => {
 		"If we disable the Bedroom lights won't the camera still work?",
 		"If we disable the Bedroom lights can't John sleep?",
 		"If we disable the Bedroom lights wouldn't John wake?",
+		'If we disable the Bedroom lights what happens?',
 	])('keeps an unpunctuated hypothetical action on the read path: %s', (message) => {
 		const plan = service.plan({
 			message,

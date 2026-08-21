@@ -57,6 +57,7 @@ export function findLeadingConditionalActionIndex(
 
 function isConditionalOutcomeQuestion(message: string, actionIndex: number): boolean {
 	if (!/\?\s*$/u.test(message)) return false;
+	if (/\b(?:how|what|when|where|which|who|why)\b[^?]*\?\s*$/u.test(message.slice(actionIndex))) return true;
 	if (
 		new RegExp(
 			String.raw`(?<!that\s)(?<!which\s)(?<!who\s)\b${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we)\s+|(?!you\b)[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$`,

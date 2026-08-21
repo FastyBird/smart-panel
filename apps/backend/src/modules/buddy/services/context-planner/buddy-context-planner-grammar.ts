@@ -150,10 +150,10 @@ export const TEMPORAL_HISTORY_PATTERN = new RegExp(
 );
 export const CURRENT_STATE_PATTERN = /\b(?:at present|current|currently|now|right now)\b/u;
 export const HOME_ENTITY_PATTERN =
-	/\b(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|lamps|light|lighting|lights|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
+	/\b(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|lamps|light|lighting|lights|lock|locks|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
 export const HOME_VOCABULARY_PATTERN = new RegExp(String.raw`\b(?:${HOME_ENTITY_SIGNAL_PATTERN_SOURCE})\b`, 'u');
 export const POSSESSIVE_HOME_ENTITY_PATTERN =
-	/\b(?:my|our)\s+(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|light|lighting|lights|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
+	/\b(?:my|our)\s+(?:air|blind|blinds|device|devices|door|doors|fan|fans|garage|heater|heaters|lamp|light|lighting|lights|lock|locks|room|scene|scenes|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)\b/u;
 export const GENERAL_KNOWLEDGE_INVENTORY_PATTERN = /^how (?:many|much)\b.*\b(?:does|do) (?:a|an)\b/u;
 export const HOME_INSTALLATION_PATTERN = /\b(?:home|house)\b/u;
 export const HOME_STATE_PATTERN = /\b(?:cold|cooling|heating|humidity|temperature|warm)\b/u;
@@ -232,7 +232,7 @@ export const PRONOUN_PATTERN = /\b(?:ho|it|its|that|their|them|these|they|this|t
 export const SINGULAR_REFERENCE_PRONOUN_PATTERN = /\b(?:ho|it|its|that|this)\b|\bthe one\b/u;
 export const PLURAL_REFERENCE_PRONOUN_PATTERN = /\b(?:their|them|these|they|those)\b/u;
 export const PLURAL_HOME_TARGET_PATTERN =
-	/\b(?:blinds|devices|doors|fans|heaters|lamps|lights|scenes|sensors|switches|thermostats|windows)\b/u;
+	/\b(?:blinds|devices|doors|fans|heaters|lamps|lights|locks|scenes|sensors|switches|thermostats|windows)\b/u;
 export const RELATIVE_REFERENCE_ANTECEDENT_PATTERN = new RegExp(
 	String.raw`(?:${HOME_ENTITY_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN.source})(?:\s+(?:in|inside|within)\s+(?:(?:my|our|the|your)\s+)?[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,4})?\s*$`,
 	'u',
@@ -321,7 +321,7 @@ export const WHOLE_HOME_SCOPE_PATTERN = new RegExp(
 	'u',
 );
 export const ANYWHERE_ELSE_PATTERN = /\banywhere else\b/u;
-const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|switch(?:es)?|thermostats?)|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source})`;
+const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|locks?|switch(?:es)?|thermostats?)|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source})`;
 const AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}|none)`;
 const AGGREGATE_HOME_TARGET_LOOKAHEAD_PATTERN_SOURCE = String.raw`(?=\s+(?:(?:of\s+)?(?:my|our|the|your)\s+)?(?:${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}(?:\s+(?:${RELATIVE_REFERENCE_PRONOUN_PATTERN.source}\s+)?(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?(?:${STATE_LINKING_VERB_PATTERN_SOURCE}\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}\b|\s+remains?\b(?=\s*[?!,.;]?$)|\s*[?!,.;]?\s*$))`;
 export const UNSCOPED_AGGREGATE_READ_PATTERN = new RegExp(
