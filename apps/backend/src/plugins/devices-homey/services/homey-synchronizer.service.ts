@@ -637,10 +637,16 @@ export class HomeySynchronizerService {
 	}
 
 	private recordDeviceOrder(homeyDeviceId: string, order: HomeyEventOrder, applied: boolean): void {
-		this.lastObservedDeviceOrder.set(homeyDeviceId, order);
+		this.lastObservedDeviceOrder.set(
+			homeyDeviceId,
+			this.preserveSequenceWatermark(order, this.lastObservedDeviceOrder.get(homeyDeviceId)),
+		);
 
 		if (applied) {
-			this.lastAppliedDeviceOrder.set(homeyDeviceId, order);
+			this.lastAppliedDeviceOrder.set(
+				homeyDeviceId,
+				this.preserveSequenceWatermark(order, this.lastAppliedDeviceOrder.get(homeyDeviceId)),
+			);
 		}
 	}
 

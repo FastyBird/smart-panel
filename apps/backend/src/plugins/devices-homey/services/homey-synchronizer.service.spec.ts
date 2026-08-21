@@ -466,6 +466,53 @@ describe('HomeySynchronizerService', () => {
 		expect(propertiesService.update).not.toHaveBeenCalled();
 	});
 
+	it('preserves a numeric device watermark across an unsequenced device event', async () => {
+		await service.refreshIndex();
+		const currentDevices = new Map([['homey-light', homeyDevice()]]);
+
+		await service.synchronizeEvents(
+			[
+				{
+					type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+					deviceId: 'homey-light',
+					available: true,
+					availabilityMessage: null,
+					occurredAt: null,
+					sequence: 2,
+				},
+			],
+			currentDevices,
+		);
+		await service.synchronizeEvents(
+			[
+				{
+					type: HomeyEventType.DEVICE_UPDATED,
+					deviceId: 'homey-light',
+					occurredAt: null,
+					sequence: null,
+				},
+			],
+			currentDevices,
+		);
+		connectivityService.trySetConnectionState.mockClear();
+
+		await service.synchronizeEvents(
+			[
+				{
+					type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+					deviceId: 'homey-light',
+					available: false,
+					availabilityMessage: 'Delayed',
+					occurredAt: null,
+					sequence: 1,
+				},
+			],
+			currentDevices,
+		);
+
+		expect(connectivityService.trySetConnectionState).not.toHaveBeenCalled();
+	});
+
 	it('filters a stale removal before callers mutate their inventory cache', async () => {
 		await service.refreshIndex();
 		const update: HomeyEvent = {
