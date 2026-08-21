@@ -32,7 +32,7 @@ const SEARCH_SIGNALS = new Set([
 	'ukaž',
 	'ukaz',
 ]);
-const STATE_SIGNALS = new Set([
+export const BUDDY_STATE_SIGNALS: ReadonlySet<string> = new Set([
 	'all',
 	'any',
 	'closed',
@@ -52,7 +52,8 @@ const STATE_SIGNALS = new Set([
 	'zavrene',
 	'zavreny',
 ]);
-const ACTION_SIGNALS = new Set([
+const STATE_SIGNALS = BUDDY_STATE_SIGNALS;
+export const BUDDY_ACTION_SIGNALS: ReadonlySet<string> = new Set([
 	'activate',
 	'adjust',
 	'brighten',
@@ -86,8 +87,20 @@ const ACTION_SIGNALS = new Set([
 	'zavri',
 	'zvys',
 ]);
+const ACTION_SIGNALS = BUDDY_ACTION_SIGNALS;
+export const BUDDY_COMPOUND_CONNECTOR_SIGNALS: ReadonlySet<string> = new Set([
+	'and also',
+	'as well as',
+	'and',
+	'plus',
+	'potom',
+	'then',
+]);
+const COMPOUND_CONNECTOR_PATTERN_SOURCE = [...BUDDY_COMPOUND_CONNECTOR_SIGNALS]
+	.sort((left, right) => right.length - left.length)
+	.join('|');
 const ACTION_CLAUSE_PATTERN = new RegExp(
-	String.raw`(?:\ba\b|\band\b|\bas well as\b|\bplus\b|\bpotom\b|\bthen\b|[,;])\s*(?:(?:also|please|take)\s+)*(?:${[...ACTION_SIGNALS].join('|')})\b`,
+	String.raw`(?:\ba\b|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|[,;])\s*(?:(?:also|please|take)\s+)*(?:${[...ACTION_SIGNALS].join('|')})\b`,
 	'u',
 );
 const STATE_QUESTION_CLAUSE_PATTERN = new RegExp(
@@ -98,8 +111,10 @@ const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
 	String.raw`^(?:(?:what|which)\b|(?:can|could|would) you (?:show|tell)(?: me)?\b).*\b(?:am i able to|can i|i can)\b.*\b(?:${[...ACTION_SIGNALS].join('|')})\b`,
 	'u',
 );
-const READ_CLAUSE_PATTERN =
-	/(?:\ba\b|\band\b|\bas well as\b|\bplus\b|\bpotom\b|\bthen\b|[,;])\s*(?:check|confirm|determine|ensure|fetch|find|get|make sure|read|report|see|show|tell|verify|what|whether|which)\b/u;
+const READ_CLAUSE_PATTERN = new RegExp(
+	String.raw`(?:\ba\b|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|[,;])\s*(?:check|confirm|determine|ensure|fetch|find|get|make sure|read|report|see|show|tell|verify|what|whether|which)\b`,
+	'u',
+);
 const STATE_QUESTION_PATTERN =
 	/^(?:are|can|could|did|do|does|had|has|have|how|is|may|might|what|which|where|why|will|would|was|were|je|jsou|jaka|jaky|ktere|kolik)\b/u;
 const PREDICATE_QUESTION_PATTERN =
@@ -107,11 +122,34 @@ const PREDICATE_QUESTION_PATTERN =
 const UNKNOWN_ACTION_REQUEST_PATTERN = /^(?:(?:can|could|may|might|will|would)\s+you\b|please\b)/u;
 const ACTION_REQUEST_AUXILIARIES = new Set(['able', 'possible', 'way']);
 const ACTION_REQUEST_MODALS = new Set(['can', 'could', 'may', 'might', 'will', 'would']);
-const CONDITION_PATTERN =
-	/\b(?:after|as long as|as soon as|assuming(?: that)?|before|given that|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|so long as|unless|until|when|whenever|while)\b/u;
-const LEADING_CONDITION_PATTERN =
-	/^(?:after|as long as|as soon as|assuming(?: that)?|before|given that|if|in case|jakmile|jestlize|kdyz|once|only if|pokud|provided(?: that)?|so long as|unless|until|when|whenever|while)\b/u;
-const GROUNDED_STATE_SIGNALS = new Set([
+export const BUDDY_CONDITION_SIGNALS: ReadonlySet<string> = new Set([
+	'after',
+	'as long as',
+	'as soon as',
+	'assuming',
+	'assuming that',
+	'before',
+	'given that',
+	'if',
+	'in case',
+	'jakmile',
+	'jestlize',
+	'kdyz',
+	'once',
+	'only if',
+	'pokud',
+	'provided',
+	'provided that',
+	'so long as',
+	'unless',
+	'until',
+	'when',
+	'whenever',
+	'while',
+]);
+const CONDITION_PATTERN = new RegExp(String.raw`\b(?:${[...BUDDY_CONDITION_SIGNALS].join('|')})\b`, 'u');
+const LEADING_CONDITION_PATTERN = new RegExp(String.raw`^(?:${[...BUDDY_CONDITION_SIGNALS].join('|')})\b`, 'u');
+export const BUDDY_GROUNDED_STATE_SIGNALS: ReadonlySet<string> = new Set([
 	'active',
 	'closed',
 	'high',
@@ -123,12 +161,13 @@ const GROUNDED_STATE_SIGNALS = new Set([
 	'open',
 	'unlocked',
 ]);
+const GROUNDED_STATE_SIGNALS = BUDDY_GROUNDED_STATE_SIGNALS;
 const GROUNDED_ACTION_FILTER_PATTERN = new RegExp(
 	String.raw`\b(?:that|which)\s+(?:are|is|was|were)\s+(?:${[...GROUNDED_STATE_SIGNALS].join('|')})\b`,
 	'u',
 );
 const EXPLICIT_STATE_REQUEST_SIGNALS = new Set(['all', 'any', 'count', 'current', 'state', 'status', 'value']);
-const RELATIVE_ADJUSTMENT_SIGNALS = new Set([
+export const BUDDY_RELATIVE_ADJUSTMENT_SIGNALS: ReadonlySet<string> = new Set([
 	'brighten',
 	'brighter',
 	'colder',
@@ -153,7 +192,8 @@ const RELATIVE_ADJUSTMENT_SIGNALS = new Set([
 	'up',
 	'warmer',
 ]);
-const HOME_SIGNALS = new Set([
+const RELATIVE_ADJUSTMENT_SIGNALS = BUDDY_RELATIVE_ADJUSTMENT_SIGNALS;
+export const BUDDY_HOME_SIGNALS: ReadonlySet<string> = new Set([
 	'air',
 	'bathroom',
 	'bedroom',
@@ -205,10 +245,12 @@ const HOME_SIGNALS = new Set([
 	'zaluzie',
 	'zarizeni',
 ]);
+const HOME_SIGNALS = BUDDY_HOME_SIGNALS;
 const SCENE_SIGNALS = new Set(['automation', 'preset', 'routine', 'scene', 'scena']);
-const SCENE_ACTION_SIGNALS = new Set(['run', 'spust']);
+export const BUDDY_SCENE_ACTION_SIGNALS: ReadonlySet<string> = new Set(['run', 'spust']);
+const SCENE_ACTION_SIGNALS = BUDDY_SCENE_ACTION_SIGNALS;
 const AMBIGUOUS_ACTION_SIGNALS = new Set(['activate', 'deactivate', 'start', 'stop']);
-const DEVICE_ACTION_SIGNALS = new Set([
+export const BUDDY_DEVICE_ACTION_SIGNALS: ReadonlySet<string> = new Set([
 	'adjust',
 	'brighten',
 	'change',
@@ -235,8 +277,19 @@ const DEVICE_ACTION_SIGNALS = new Set([
 	'zavri',
 	'zvys',
 ]);
-const LIGHTING_SIGNALS = new Set(['lamp', 'lampa', 'light', 'lighting', 'lights', 'svetla', 'svetlo']);
-const SPACE_SIGNALS = new Set([
+const DEVICE_ACTION_SIGNALS = BUDDY_DEVICE_ACTION_SIGNALS;
+export const BUDDY_LIGHTING_SIGNALS: ReadonlySet<string> = new Set([
+	'lamp',
+	'lamps',
+	'lampa',
+	'light',
+	'lighting',
+	'lights',
+	'svetla',
+	'svetlo',
+]);
+const LIGHTING_SIGNALS = BUDDY_LIGHTING_SIGNALS;
+export const BUDDY_SPACE_SIGNALS: ReadonlySet<string> = new Set([
 	'all',
 	'bathroom',
 	'bedroom',
@@ -244,6 +297,7 @@ const SPACE_SIGNALS = new Set([
 	'garage',
 	'kitchen',
 	'lighting',
+	'lamps',
 	'lights',
 	'room',
 	'upstairs',
@@ -254,6 +308,7 @@ const SPACE_SIGNALS = new Set([
 	'pokoj',
 	'svetla',
 ]);
+const SPACE_SIGNALS = BUDDY_SPACE_SIGNALS;
 const DEVICE_SIGNALS = new Set([
 	'air',
 	'blind',
@@ -550,7 +605,7 @@ function normalize(value: string): string {
 		.trim();
 }
 
-function intersects(tokens: Set<string>, signals: Set<string>): boolean {
+function intersects(tokens: ReadonlySet<string>, signals: ReadonlySet<string>): boolean {
 	for (const token of tokens) {
 		if (signals.has(token)) return true;
 	}
@@ -612,6 +667,12 @@ function hasUnknownLeadingIntentBeforeRead(normalizedMessage: string): boolean {
 }
 
 function isGenericHomeExplanation(normalizedMessage: string, tokens: Set<string>): boolean {
+	const isArticleFreeDefinition =
+		/^what (?:is|are) (?:smart )?(?:device|devices|home|home automation|lighting|scene|scenes|sensor|sensors|thermostat|thermostats)[?!.]*$/u.test(
+			normalizedMessage,
+		);
+
+	if (isArticleFreeDefinition) return true;
 	if (!intersects(tokens, HOME_SIGNALS)) return false;
 	if (/^(?:explain how to|how (?:can|could|do|would) i|(?:show|tell) me how to)\b/u.test(normalizedMessage)) {
 		return true;

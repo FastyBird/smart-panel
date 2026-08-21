@@ -34,6 +34,7 @@ import { MediaActivityEventListener } from './listeners/media-activity-event.lis
 import { BuddyConfigModel } from './models/config.model';
 import { ActionObserverService } from './services/action-observer.service';
 import { AnomalyDetectorEvaluator } from './services/anomaly-detector.service';
+import { BuddyContextPlannerService } from './services/buddy-context-planner.service';
 import { BuddyContextService } from './services/buddy-context.service';
 import { BuddyConversationService } from './services/buddy-conversation.service';
 import { BuddyPersonalityService } from './services/buddy-personality.service';
@@ -88,6 +89,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		EvaluatorRulesLoaderService,
 		ActionObserverService,
 		BuddyContextService,
+		BuddyContextPlannerService,
 		BuddyProviderStatusService,
 		BuddyPersonalityService,
 		BuddyContextCacheListener,
