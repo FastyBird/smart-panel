@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -375,14 +377,23 @@ export class HomeyDeviceAdoptionService {
 		);
 
 		if (channel === null) {
-			channel = await this.channelsService.create<HomeyChannelEntity, CreateHomeyChannelDto>({
+			const preallocatedChannelId: string = randomUUID();
+			let createdChannel: HomeyChannelEntity | null = null;
+			journal.push(async () => {
+				if (createdChannel !== null) {
+					await this.channelsService.remove(createdChannel.id);
+
+					return;
+				}
+
+				await this.removeCreatedChannel(preallocatedChannelId, deviceId, desired.identifier);
+			});
+			createdChannel = await this.channelsService.create<HomeyChannelEntity, CreateHomeyChannelDto>({
 				...this.createChannelDto(desired),
+				id: preallocatedChannelId,
 				device: deviceId,
 			} as CreateHomeyChannelDto);
-			const createdChannelId = channel.id;
-			journal.push(async () => {
-				await this.channelsService.remove(createdChannelId);
-			});
+			channel = createdChannel;
 			changed = true;
 		} else if (
 			channel.name !== desired.name ||
@@ -445,11 +456,22 @@ export class HomeyDeviceAdoptionService {
 
 			const desiredDto = this.createPropertyDto(desired);
 			if (property === null) {
-				property = await this.channelsPropertiesService.create(channel.id, desiredDto);
-				const createdPropertyId = property.id;
+				const preallocatedPropertyId: string = randomUUID();
+				let createdProperty: HomeyChannelPropertyEntity | null = null;
 				journal.push(async () => {
-					await this.channelsPropertiesService.remove(createdPropertyId);
+					if (createdProperty !== null) {
+						await this.channelsPropertiesService.remove(createdProperty.id);
+
+						return;
+					}
+
+					await this.removeCreatedProperty(preallocatedPropertyId, channel.id, desiredDto);
 				});
+				createdProperty = await this.channelsPropertiesService.create(channel.id, {
+					...desiredDto,
+					id: preallocatedPropertyId,
+				});
+				property = createdProperty;
 				changed = true;
 			} else if (this.propertyMetadataChanged(property, desiredDto)) {
 				const previous = snapshot.propertiesById.get(property.id);
@@ -678,6 +700,35 @@ export class HomeyDeviceAdoptionService {
 			homeyCapabilityId: snapshot.homeyCapabilityId,
 			homeyMappingName: snapshot.homeyMappingName,
 		});
+	}
+
+	private async removeCreatedChannel(channelId: string, deviceId: string, desiredIdentifier: string): Promise<void> {
+		const channel = await this.channelsService.findOne<HomeyChannelEntity>(channelId, deviceId, DEVICES_HOMEY_TYPE);
+
+		if (channel !== null && channel.identifier === desiredIdentifier) {
+			await this.channelsService.remove(channelId);
+		}
+	}
+
+	private async removeCreatedProperty(
+		propertyId: string,
+		channelId: string,
+		desired: CreateHomeyDeviceChannelPropertyDto,
+	): Promise<void> {
+		const property = await this.channelsPropertiesService.findOne<HomeyChannelPropertyEntity>(
+			propertyId,
+			channelId,
+			DEVICES_HOMEY_TYPE,
+		);
+
+		if (
+			property !== null &&
+			property.identifier === desired.identifier &&
+			property.homeyCapabilityId === desired.homeyCapabilityId &&
+			property.homeyMappingName === desired.homeyMappingName
+		) {
+			await this.channelsPropertiesService.remove(propertyId);
+		}
 	}
 
 	private propertyMetadataChanged(

@@ -130,7 +130,9 @@ const existingDevice = (deviceId = 'homey-light'): HomeyDeviceEntity =>
 describe('HomeyDeviceAdoptionService', () => {
 	let mappingPreviewService: jest.Mocked<Pick<HomeyMappingPreviewService, 'generatePreview'>>;
 	let devicesService: jest.Mocked<Pick<DevicesService, 'findOneBy' | 'create' | 'update'>>;
-	let channelsService: jest.Mocked<Pick<ChannelsService, 'findAll' | 'findOneBy' | 'create' | 'update' | 'remove'>>;
+	let channelsService: jest.Mocked<
+		Pick<ChannelsService, 'findAll' | 'findOne' | 'findOneBy' | 'create' | 'update' | 'remove'>
+	>;
 	let propertiesService: jest.Mocked<
 		Pick<ChannelsPropertiesService, 'findAll' | 'findOne' | 'findOneBy' | 'create' | 'update' | 'remove'>
 	>;
@@ -149,6 +151,7 @@ describe('HomeyDeviceAdoptionService', () => {
 		};
 		channelsService = {
 			findAll: jest.fn().mockResolvedValue([]),
+			findOne: jest.fn().mockResolvedValue(null),
 			findOneBy: jest.fn().mockResolvedValue(null),
 			create: jest.fn(),
 			update: jest.fn(),
@@ -834,6 +837,77 @@ describe('HomeyDeviceAdoptionService', () => {
 		});
 		expect(propertiesService.remove).not.toHaveBeenCalled();
 		expect(propertyValueService.delete).not.toHaveBeenCalled();
+	});
+
+	it('removes a property inserted before its create call rejects', async () => {
+		const device = existingDevice();
+		const channel = Object.assign(new HomeyChannelEntity(), {
+			id: '8421af4e-84f9-4822-bac6-3dbe49ac4893',
+			identifier: 'light',
+			name: 'Light',
+			category: ChannelCategory.LIGHT,
+		});
+		let inserted: HomeyChannelPropertyEntity | null = null;
+
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), {
+				channels: [{ ...preview().channels[0], properties: [preview().channels[0].properties[0]] }],
+			}),
+		);
+		devicesService.findOneBy.mockResolvedValue(device);
+		channelsService.findAll.mockResolvedValue([channel]);
+		channelsService.findOneBy.mockResolvedValue(channel);
+		propertiesService.findAll.mockResolvedValue([]);
+		propertiesService.findOneBy.mockResolvedValue(null);
+		propertiesService.create.mockImplementation((_channelId, dto) => {
+			const homeyDto = dto as CreateHomeyDeviceChannelPropertyDto;
+			inserted = Object.assign(new HomeyChannelPropertyEntity(), {
+				id: homeyDto.id,
+				identifier: homeyDto.identifier,
+				homeyCapabilityId: homeyDto.homeyCapabilityId,
+				homeyMappingName: homeyDto.homeyMappingName,
+			});
+
+			return Promise.reject(new Error('post-insert readback failed'));
+		});
+		propertiesService.findOne.mockImplementation(() => Promise.resolve(inserted));
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({
+			status: HomeyAdoptionStatus.FAILED,
+			failureCode: HomeyAdoptionFailureCode.PERSISTENCE_FAILED,
+		});
+		expect(inserted?.id).toEqual(expect.any(String));
+		expect(propertiesService.remove).toHaveBeenCalledWith(inserted?.id);
+	});
+
+	it('removes a channel inserted before its create call rejects', async () => {
+		const device = existingDevice();
+		let inserted: HomeyChannelEntity | null = null;
+
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), {
+				channels: [{ ...preview().channels[0], properties: [] }],
+			}),
+		);
+		devicesService.findOneBy.mockResolvedValue(device);
+		channelsService.findAll.mockResolvedValue([]);
+		channelsService.findOneBy.mockResolvedValue(null);
+		channelsService.create.mockImplementation((dto) => {
+			inserted = Object.assign(new HomeyChannelEntity(), {
+				id: dto.id,
+				identifier: dto.identifier,
+			});
+
+			return Promise.reject(new Error('post-insert readback failed'));
+		});
+		channelsService.findOne.mockImplementation(() => Promise.resolve(inserted));
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({
+			status: HomeyAdoptionStatus.FAILED,
+			failureCode: HomeyAdoptionFailureCode.PERSISTENCE_FAILED,
+		});
+		expect(inserted?.id).toEqual(expect.any(String));
+		expect(channelsService.remove).toHaveBeenCalledWith(inserted?.id);
 	});
 
 	it('removes newly created local structure when an existing-device reconciliation fails', async () => {

@@ -58,6 +58,10 @@ guard. A concurrent unique-insert loss from an older or external writer is re-re
 and initial measurements are visible, then reconciled as an idempotent update rather than returned as a duplicate
 conflict.
 
+Channel and property creates receive server-generated IDs before their non-atomic service calls begin. Adoption
+registers guarded compensations first, so a create that inserts its row and then rejects during readback or post-create
+processing cannot escape the rollback journal; cleanup verifies the provider identity before removing a partial row.
+
 Terminal adoption values use the Devices module's strict property-value path. The active read backend must acknowledge
 the measurement before the process-local cache is updated; a transient storage failure therefore remains retryable on
 the next idempotent adoption instead of being hidden by a cache-only value. Existing-hierarchy snapshots likewise use
