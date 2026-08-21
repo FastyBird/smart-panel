@@ -186,7 +186,7 @@ export const DEVICE_ACTION_TARGET_PATTERN =
 export const TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN =
 	/\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|reading|security|upstairs)\s+(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|sensor|sensors|switch|switches|thermostat|thermostats|window|windows)|bedside\s+(?:lamp|lamps|light|lights)|(?:outdoor|outside)\s+(?:light|lights|sensor|sensors)|power\s+(?:switch|switches))\b/u;
 export const PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN =
-	/\b(?:air purifier|aquarium pump|coffee maker|irrigation|media volume|robot vacuum|skylight|sprinkler)\b/u;
+	/\b(?:air purifiers?|aquarium pumps?|coffee makers?|irrigation|media volume|robot vacuums?|skylights?|sprinklers?)\b/u;
 export const CLEAR_NON_HOME_ACTION_OBJECT_PATTERN =
 	/^(?:(?:a|an|my|our|the|your)\s+)?(?:another|app|application|around|bluetooth|browser|build|car|chrome|conversation|countdown|deployment|dialog|dinner|dishwasher|docker|document|figma|file|hand|jest|lanes?|meeting|new|npm|page|password|payroll|recording|reminder|right|sandwich|screen|spotify|tabs?|talking|terminal|tests?|timer|voice|volume)\b/u;
 export const ACTION_COMMAND_PATTERN = new RegExp(
