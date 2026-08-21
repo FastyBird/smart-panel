@@ -492,6 +492,67 @@ describe('HomeyMappingPreviewService', () => {
 		expect(command?.panelEnumValues).toStrictEqual(['open', 'close', 'stop']);
 	});
 
+	it('exposes the canonical enum domain for a write-only identity mapping', async () => {
+		const fixture = readDeviceFixture('cover');
+		const device: HomeyDevice = {
+			...fixture,
+			capabilities: fixture.capabilities.map((capability) =>
+				capability.id === 'windowcoverings_state'
+					? {
+							...capability,
+							value: null,
+							enumValues: [
+								{ id: 'open', title: 'Open' },
+								{ id: 'close', title: 'Close' },
+								{ id: 'stop', title: 'Stop' },
+							],
+						}
+					: capability,
+			),
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+		const propertyResolution = mappingLoader.resolvePropertyMappings(device);
+		jest.spyOn(mappingLoader, 'resolvePropertyMappings').mockReturnValue({
+			conflicts: propertyResolution.conflicts,
+			mappings: propertyResolution.mappings.map((binding) =>
+				binding.mapping.name === 'window-covering-command'
+					? {
+							...binding,
+							mapping: {
+								...binding.mapping,
+								property: {
+									...binding.mapping.property,
+									direction: 'write_only',
+									transform: undefined,
+								},
+							},
+						}
+					: binding,
+			),
+		});
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+		const command = preview.channels
+			.flatMap((channel) => channel.properties)
+			.find((property) => property.mappingName === 'window-covering-command');
+
+		expect(command).toMatchObject({
+			conversion: { type: 'identity' },
+			dataType: DataTypeType.ENUM,
+			enumValues: ['open', 'close', 'stop'],
+			writable: true,
+		});
+		expect(command?.panelEnumValues).toStrictEqual(['open', 'close', 'stop']);
+		expect(
+			preview.warnings.filter(
+				(warning) =>
+					warning.identifier === 'windowcoverings_state' &&
+					warning.code === HomeyMappingPreviewWarningCode.INVALID_PROPERTY_VALUE_DOMAIN,
+			),
+		).toStrictEqual([]);
+		expect(preview.readyToAdopt).toBe(true);
+	});
+
 	it('blocks map write outputs outside the declared Homey enum domain', async () => {
 		const fixture = readDeviceFixture('light');
 		const device: HomeyDevice = {

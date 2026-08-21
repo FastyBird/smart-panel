@@ -625,6 +625,8 @@ export class HomeyMappingPreviewService {
 						convertible = false;
 					}
 				}
+			} else if (mappingCanWrite) {
+				values.push(...this.getHomeyDomainValues(capability));
 			}
 
 			return { values, convertible };
