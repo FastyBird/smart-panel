@@ -525,20 +525,25 @@ export class HomeyDeviceAdoptionService {
 		lease: HomeyAdoptionLease,
 	): Promise<boolean> {
 		let changed = false;
-		const desiredIdentifiers = new Set<string>();
+		const matchedPropertyIds = new Set<string>();
+		const currentProperties = (await this.channelsPropertiesService.findAll(channel.id, DEVICES_HOMEY_TYPE)).filter(
+			(property): property is HomeyChannelPropertyEntity => property.type === DEVICES_HOMEY_TYPE,
+		);
 
 		for (const desired of desiredProperties) {
 			const identifier = this.propertyIdentifier(desired);
-			desiredIdentifiers.add(identifier);
-			let property = await this.channelsPropertiesService.findOneBy<HomeyChannelPropertyEntity>(
-				'identifier',
-				identifier,
-				channel.id,
-				DEVICES_HOMEY_TYPE,
-			);
+			let property =
+				currentProperties.find(
+					(candidate) =>
+						candidate.homeyCapabilityId === desired.capabilityId && candidate.homeyMappingName === desired.mappingName,
+				) ?? currentProperties.find((candidate) => candidate.identifier === identifier);
+
+			if (property !== undefined) {
+				matchedPropertyIds.add(property.id);
+			}
 
 			const desiredDto = this.createPropertyDto(desired);
-			if (property === null) {
+			if (property === undefined) {
 				const preallocatedPropertyId: string = randomUUID();
 				let createdProperty: HomeyChannelPropertyEntity | null = null;
 				journal.push(async () => {
@@ -610,18 +615,13 @@ export class HomeyDeviceAdoptionService {
 			}
 		}
 
-		const currentProperties = await this.channelsPropertiesService.findAll(channel.id);
 		for (const candidate of currentProperties) {
-			const homeyCandidate = candidate as HomeyChannelPropertyEntity;
 			if (
-				candidate.type !== DEVICES_HOMEY_TYPE ||
 				candidate.identifier === null ||
-				typeof homeyCandidate.homeyCapabilityId !== 'string' ||
-				typeof homeyCandidate.homeyMappingName !== 'string'
+				typeof candidate.homeyCapabilityId !== 'string' ||
+				typeof candidate.homeyMappingName !== 'string' ||
+				matchedPropertyIds.has(candidate.id)
 			) {
-				continue;
-			}
-			if (desiredIdentifiers.has(candidate.identifier)) {
 				continue;
 			}
 
@@ -630,8 +630,8 @@ export class HomeyDeviceAdoptionService {
 				id: candidate.id,
 				channelId: channel.id,
 				identifier: candidate.identifier,
-				homeyCapabilityId: homeyCandidate.homeyCapabilityId,
-				homeyMappingName: homeyCandidate.homeyMappingName,
+				homeyCapabilityId: candidate.homeyCapabilityId,
+				homeyMappingName: candidate.homeyMappingName,
 			});
 			changed = true;
 		}

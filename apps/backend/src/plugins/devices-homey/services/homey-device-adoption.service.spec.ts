@@ -788,12 +788,7 @@ describe('HomeyDeviceAdoptionService', () => {
 
 		expect(result).toMatchObject({ status: HomeyAdoptionStatus.UPDATED, failureCode: null });
 		expect(channelsService.findOneBy).toHaveBeenCalledWith('identifier', 'light', device.id, DEVICES_HOMEY_TYPE);
-		expect(propertiesService.findOneBy).toHaveBeenCalledWith(
-			'identifier',
-			'onoff::light-power',
-			channel.id,
-			DEVICES_HOMEY_TYPE,
-		);
+		expect(propertiesService.findAll).toHaveBeenCalledWith(channel.id, DEVICES_HOMEY_TYPE);
 		expect(propertiesService.update).toHaveBeenCalledWith(
 			property.id,
 			expect.objectContaining({ value: false, type: DEVICES_HOMEY_TYPE }),
@@ -942,6 +937,61 @@ describe('HomeyDeviceAdoptionService', () => {
 		expect(propertiesService.remove).not.toHaveBeenCalled();
 		expect(propertyValueService.delete).not.toHaveBeenCalled();
 		expect(propertyValueService.write).not.toHaveBeenCalled();
+	});
+
+	it('repairs a mutable identifier by resolving the property through its stable Homey identity', async () => {
+		const device = existingDevice();
+		const channel = Object.assign(new HomeyChannelEntity(), {
+			id: '8421af4e-84f9-4822-bac6-3dbe49ac4893',
+			identifier: 'light',
+			name: 'Light',
+			category: ChannelCategory.LIGHT,
+		});
+		const property = Object.assign(new HomeyChannelPropertyEntity(), {
+			id: 'dba32214-aa13-4134-9578-2093351507f8',
+			identifier: 'operator-renamed-property',
+			homeyCapabilityId: 'onoff',
+			homeyMappingName: 'light-power',
+			name: 'Light power',
+			category: PropertyCategory.ON,
+			permissions: [PermissionType.READ_WRITE],
+			dataType: DataTypeType.BOOL,
+			format: null,
+			invalid: null,
+			step: null,
+		});
+		const updatedProperty = Object.assign(new HomeyChannelPropertyEntity(), property, {
+			identifier: 'onoff::light-power',
+		});
+		const desiredProperty = { ...preview().channels[0].properties[0], valueAvailable: false, currentValue: null };
+
+		mappingPreviewService.generatePreview.mockResolvedValueOnce(
+			Object.assign(preview(), {
+				channels: [{ ...preview().channels[0], properties: [desiredProperty] }],
+			}),
+		);
+		devicesService.findOneBy.mockResolvedValue(device);
+		devicesService.findOne.mockResolvedValue(device);
+		channelsService.findAll.mockResolvedValue([channel]);
+		channelsService.findOneBy.mockResolvedValue(channel);
+		propertiesService.findAll.mockResolvedValue([property]);
+		propertiesService.findOne.mockResolvedValue(updatedProperty);
+		propertiesService.update.mockResolvedValue(updatedProperty);
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({
+			status: HomeyAdoptionStatus.UPDATED,
+			failureCode: null,
+		});
+		expect(propertiesService.create).not.toHaveBeenCalled();
+		expect(propertiesService.update).toHaveBeenCalledWith(
+			property.id,
+			expect.objectContaining({
+				identifier: 'onoff::light-power',
+				homeyCapabilityId: 'onoff',
+				homeyMappingName: 'light-power',
+			}),
+		);
+		expect(propertiesService.remove).not.toHaveBeenCalled();
 	});
 
 	it('restores explicit null Homey identity metadata when a later mutation rolls back', async () => {
