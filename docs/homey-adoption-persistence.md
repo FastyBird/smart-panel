@@ -32,7 +32,9 @@ The device and channel assumptions were proven by the existing constraints. The 
 the MVP mapping set contains deliberate one-to-many capability mappings. Migration
 `1000000000021-AddHomeyCapabilityIdentity` is therefore required. It adds two nullable columns to the shared property
 table so other property subclasses remain unaffected, creates the unique domain index, and has a tested rollback that
-removes the index and both columns.
+removes the index and both columns. `HomeyChannelPropertyEntity` declares the same partial unique index and an explicit
+`devices-homey` inheritance discriminator, so `FB_DB_SYNC=true` schemas enforce the identical identity domain without
+running migrations.
 
 Migration `1000000000022-AddHomeyAdoptionLocks` adds a provider-private claim table keyed by the authoritative Homey
 device ID. It serializes the complete adoption boundary across backend processes without adding lock state to public

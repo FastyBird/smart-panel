@@ -1,6 +1,6 @@
 import { Expose } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
-import { ChildEntity, Column } from 'typeorm';
+import { ChildEntity, Column, Index } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -8,7 +8,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { DEVICES_HOMEY_TYPE } from '../devices-homey.constants';
 
 @ApiSchema({ name: 'DevicesHomeyPluginDataDevice' })
-@ChildEntity()
+@ChildEntity(DEVICES_HOMEY_TYPE)
 export class HomeyDeviceEntity extends DeviceEntity {
 	@ApiProperty({
 		description: 'Device type',
@@ -27,7 +27,7 @@ export class HomeyDeviceEntity extends DeviceEntity {
 }
 
 @ApiSchema({ name: 'DevicesHomeyPluginDataChannel' })
-@ChildEntity()
+@ChildEntity(DEVICES_HOMEY_TYPE)
 export class HomeyChannelEntity extends ChannelEntity {
 	@ApiProperty({
 		description: 'Channel type',
@@ -46,7 +46,11 @@ export class HomeyChannelEntity extends ChannelEntity {
 }
 
 @ApiSchema({ name: 'DevicesHomeyPluginDataChannelProperty' })
-@ChildEntity()
+@Index('UQ_homey_capability_mapping_channel', ['homeyCapabilityId', 'homeyMappingName', 'channel'], {
+	unique: true,
+	where: `"type" = '${DEVICES_HOMEY_TYPE}' AND "homeyCapabilityId" IS NOT NULL AND "homeyMappingName" IS NOT NULL`,
+})
+@ChildEntity(DEVICES_HOMEY_TYPE)
 export class HomeyChannelPropertyEntity extends ChannelPropertyEntity {
 	@ApiPropertyOptional({
 		name: 'homey_capability_id',
