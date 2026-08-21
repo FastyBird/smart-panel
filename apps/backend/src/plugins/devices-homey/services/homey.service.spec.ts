@@ -325,8 +325,47 @@ describe('HomeyService', () => {
 		await flushMicrotasks();
 
 		expect(synchronizer.filterEvents).toHaveBeenCalledWith([update, removal]);
-		expect(synchronizer.synchronizeEvents).toHaveBeenCalledWith([update], expect.any(Map));
+		expect(synchronizer.synchronizeDevices).toHaveBeenCalledWith([staleDevice], [], [update]);
+		expect(synchronizer.synchronizeEvents).not.toHaveBeenCalled();
 		expect(service.getInventorySnapshot()).toStrictEqual([staleDevice]);
+
+		await service.stop();
+	});
+
+	it('applies a targeted refresh independently when a newer availability event arrived first', async () => {
+		await service.start();
+		synchronizer.synchronizeDevices.mockClear();
+		synchronizer.synchronizeEvents.mockClear();
+		const freshDevice = {
+			...staleDevice,
+			capabilities: staleDevice.capabilities.map((capability) =>
+				capability.id === 'onoff' ? { ...capability, value: false } : capability,
+			),
+		};
+		connector.getDevice.mockResolvedValueOnce(freshDevice);
+		const availability: HomeyEvent = {
+			type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+			deviceId: staleDevice.id,
+			available: false,
+			availabilityMessage: 'Offline',
+			occurredAt: null,
+			sequence: 2,
+		};
+		const delayedUpdate: HomeyEvent = {
+			type: HomeyEventType.DEVICE_UPDATED,
+			deviceId: staleDevice.id,
+			occurredAt: null,
+			sequence: 1,
+		};
+
+		void listener?.(availability);
+		void listener?.(delayedUpdate);
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
+
+		expect(connector.getDevice.mock.calls).toContainEqual([staleDevice.id]);
+		expect(synchronizer.synchronizeDevices).toHaveBeenCalledWith([freshDevice], [], [availability, delayedUpdate]);
+		expect(synchronizer.synchronizeEvents).not.toHaveBeenCalled();
 
 		await service.stop();
 	});
@@ -849,16 +888,31 @@ describe('HomeyService', () => {
 		await service.start();
 		connector.getZones.mockClear();
 		connector.getDevices.mockClear();
-
-		await emitLiveEvent({
+		synchronizer.synchronizeSnapshot.mockClear();
+		const zoneEvent: HomeyEvent = {
 			type: HomeyEventType.ZONE_UPDATED,
 			zoneId: zones[0].id,
 			occurredAt: null,
-			sequence: null,
-		});
+			sequence: 1,
+		};
+		const capabilityEvent: HomeyEvent = {
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: false,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 2,
+		};
+
+		void listener?.(zoneEvent);
+		void listener?.(capabilityEvent);
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
 
 		expect(connector.getZones.mock.calls).toHaveLength(1);
 		expect(connector.getDevices.mock.calls).toHaveLength(1);
+		expect(synchronizer.synchronizeSnapshot).toHaveBeenCalledWith([staleDevice], [zoneEvent, capabilityEvent]);
 
 		await service.stop();
 	});

@@ -83,21 +83,30 @@ export class HomeySynchronizerService {
 		await this.ensureIndex();
 	}
 
-	async synchronizeSnapshot(devices: readonly HomeyDevice[]): Promise<HomeySynchronizationResult> {
+	async synchronizeSnapshot(
+		devices: readonly HomeyDevice[],
+		readbackEvents: readonly HomeyEvent[] = [],
+	): Promise<HomeySynchronizationResult> {
 		await this.refreshIndex();
 		const upstreamDevices = new Map(devices.map((device) => [device.id, device]));
 		const result = this.emptyResult();
+		const connectionStateApplied = new Map<string, boolean>();
 
 		for (const [homeyDeviceId, adopted] of this.adoptedDevices) {
 			const upstream = upstreamDevices.get(homeyDeviceId);
 
 			if (upstream === undefined) {
-				await this.setConnectionState(adopted.id, ConnectionState.LOST, result);
+				connectionStateApplied.set(
+					homeyDeviceId,
+					await this.setConnectionState(adopted.id, ConnectionState.LOST, result),
+				);
 				continue;
 			}
 
-			await this.synchronizeDevice(upstream, result);
+			connectionStateApplied.set(homeyDeviceId, await this.synchronizeDevice(upstream, result));
 		}
+
+		await this.commitReadbackOrder(readbackEvents, upstreamDevices, connectionStateApplied, result);
 
 		return result;
 	}
@@ -161,6 +170,11 @@ export class HomeySynchronizerService {
 					);
 					break;
 				case HomeyEventType.DEVICE_AVAILABILITY_CHANGED: {
+					if (!currentDevices.has(event.deviceId)) {
+						result.ignored += 1;
+						break;
+					}
+
 					const context = this.prepareDeviceEvent(event.deviceId, event.sequence, event.occurredAt, result);
 
 					if (context === null) {

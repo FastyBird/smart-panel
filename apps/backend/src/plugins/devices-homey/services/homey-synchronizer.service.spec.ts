@@ -393,8 +393,9 @@ describe('HomeySynchronizerService', () => {
 		};
 		const stale = { ...available, available: false, availabilityMessage: 'Offline', sequence: 1 };
 
-		await service.synchronizeEvents([available, stale], new Map());
-		await service.synchronizeEvents([stale], new Map());
+		const currentDevices = new Map([['homey-light', homeyDevice()]]);
+		await service.synchronizeEvents([available, stale], currentDevices);
+		await service.synchronizeEvents([stale], currentDevices);
 
 		expect(connectivityService.trySetConnectionState).toHaveBeenCalledTimes(1);
 		expect(connectivityService.trySetConnectionState).toHaveBeenCalledWith('panel-device', {
@@ -414,9 +415,10 @@ describe('HomeySynchronizerService', () => {
 			sequence: 2,
 		};
 
-		await service.synchronizeEvents([event], new Map());
-		await service.synchronizeEvents([event], new Map());
-		await service.synchronizeEvents([event], new Map());
+		const currentDevices = new Map([['homey-light', homeyDevice()]]);
+		await service.synchronizeEvents([event], currentDevices);
+		await service.synchronizeEvents([event], currentDevices);
+		await service.synchronizeEvents([event], currentDevices);
 
 		expect(connectivityService.trySetConnectionState).toHaveBeenCalledTimes(2);
 	});
@@ -501,6 +503,40 @@ describe('HomeySynchronizerService', () => {
 		};
 
 		expect(service.filterEvents([update, availability])).toEqual([update, availability]);
+	});
+
+	it('does not resurrect an adopted device from availability when authoritative inventory omits it', async () => {
+		await service.synchronizeSnapshot([]);
+		connectivityService.trySetConnectionState.mockClear();
+
+		await service.synchronizeEvents(
+			[
+				{
+					type: HomeyEventType.DEVICE_AVAILABILITY_CHANGED,
+					deviceId: 'homey-light',
+					available: true,
+					availabilityMessage: null,
+					occurredAt: null,
+					sequence: 2,
+				},
+			],
+			new Map(),
+		);
+
+		expect(connectivityService.trySetConnectionState).not.toHaveBeenCalled();
+	});
+
+	it('commits zone-triggered snapshot event ordering from fresh values', async () => {
+		const current = homeyDevice({
+			capabilities: homeyDevice().capabilities.map((capability) => ({ ...capability, lastUpdatedAt: null })),
+		});
+		const event = capabilityEvent('onoff', false, null, 2);
+
+		await service.synchronizeSnapshot([current], [event]);
+		propertiesService.update.mockClear();
+		await service.synchronizeEvents([{ ...event, value: false, sequence: 1 }], new Map());
+
+		expect(propertiesService.update).not.toHaveBeenCalled();
 	});
 
 	it('commits buffered startup ordering after applying fresh targeted readback', async () => {

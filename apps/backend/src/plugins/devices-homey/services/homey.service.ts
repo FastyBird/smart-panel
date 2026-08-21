@@ -387,9 +387,18 @@ export class HomeyService extends BaseManagedPluginService {
 		const refreshedDevices: HomeyDevice[] = [];
 		const missingDeviceIds: string[] = [];
 		const selectedEvents = inventoryReplaced || authoritativeReadback ? events : this.synchronizer.filterEvents(events);
+		const targetedDeviceIds = new Set(
+			authoritativeReadback
+				? deviceIds
+				: selectedEvents.flatMap((event) =>
+						event.type === HomeyEventType.DEVICE_ADDED || event.type === HomeyEventType.DEVICE_UPDATED
+							? [event.deviceId]
+							: [],
+					),
+		);
 
-		if (authoritativeReadback) {
-			for (const deviceId of deviceIds) {
+		if (!inventoryReplaced) {
+			for (const deviceId of targetedDeviceIds) {
 				const device = await connector.getDevice(deviceId);
 
 				if (!this.isCurrentGeneration(connector, generation)) {
@@ -406,8 +415,12 @@ export class HomeyService extends BaseManagedPluginService {
 					missingDeviceIds.push(deviceId);
 				}
 			}
-		} else if (!inventoryReplaced) {
+
 			for (const event of selectedEvents) {
+				if ('deviceId' in event && targetedDeviceIds.has(event.deviceId)) {
+					continue;
+				}
+
 				authoritativeTraffic =
 					(await this.updateInventoryFromEvent(connector, generation, event)) || authoritativeTraffic;
 			}
@@ -415,11 +428,24 @@ export class HomeyService extends BaseManagedPluginService {
 
 		if (events.length > 0 && this.isCurrentGeneration(connector, generation)) {
 			if (inventoryReplaced) {
-				this.recordSynchronizationResult(await this.synchronizer.synchronizeSnapshot([...this.devices.values()]));
-			} else if (authoritativeReadback) {
 				this.recordSynchronizationResult(
-					await this.synchronizer.synchronizeDevices(refreshedDevices, missingDeviceIds, events),
+					await this.synchronizer.synchronizeSnapshot([...this.devices.values()], events),
 				);
+			} else if (targetedDeviceIds.size > 0) {
+				const readbackEvents = selectedEvents.filter(
+					(event) => 'deviceId' in event && targetedDeviceIds.has(event.deviceId),
+				);
+				this.recordSynchronizationResult(
+					await this.synchronizer.synchronizeDevices(refreshedDevices, missingDeviceIds, readbackEvents),
+				);
+
+				const remainingEvents = selectedEvents.filter(
+					(event) => !('deviceId' in event) || !targetedDeviceIds.has(event.deviceId),
+				);
+
+				if (remainingEvents.length > 0) {
+					this.recordSynchronizationResult(await this.synchronizer.synchronizeEvents(remainingEvents, this.devices));
+				}
 			} else if (selectedEvents.length > 0) {
 				this.recordSynchronizationResult(await this.synchronizer.synchronizeEvents(selectedEvents, this.devices));
 			}
