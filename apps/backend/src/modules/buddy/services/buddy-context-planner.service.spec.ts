@@ -4118,6 +4118,7 @@ describe('BuddyContextPlannerService', () => {
 		'Is every one of the windows closed?',
 		'Does every one of my windows remain closed?',
 		'Are any windows left open?',
+		'Are any fans running?',
 		'Do we have all windows open?',
 		'Do I have every window open?',
 		'Check if every window is closed',
