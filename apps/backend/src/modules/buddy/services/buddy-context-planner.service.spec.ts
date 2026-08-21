@@ -4131,6 +4131,7 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows not closed?',
 		'Are there any lights that are still on?',
 		'Are there any lights that remain on?',
+		'Are there any lights which are on?',
 		'Are any thermostats heating?',
 		'Are any humidity sensors high?',
 		'Are any humidity sensors low?',
