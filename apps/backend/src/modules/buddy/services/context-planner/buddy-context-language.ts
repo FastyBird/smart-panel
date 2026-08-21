@@ -54,7 +54,7 @@ export function findLeadingConditionalActionIndex(
 function isConditionalOutcomeQuestion(message: string, actionIndex: number): boolean {
 	if (!/\?\s*$/u.test(message)) return false;
 	if (
-		/\b(?:can|could|did|do|does|may|might|must|should|will|would)\s+(?!you\b)[^?]*\?\s*$/u.test(
+		/\b(?:can|could|did|do|does|may|might|must|should|will|would)\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we)\s+)[^?]*\?\s*$/u.test(
 			message.slice(actionIndex),
 		)
 	) {

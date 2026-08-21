@@ -4132,6 +4132,7 @@ describe('BuddyContextPlannerService', () => {
 		'Are any ceiling fans running?',
 		'Are any lights powered on?',
 		'Are any fans powered off?',
+		'Are any sensors triggered?',
 		'Do we have all windows open?',
 		'Do I have every window open?',
 		'Check if every window is closed',
@@ -6847,4 +6848,15 @@ describe('BuddyContextPlannerService', () => {
 			expect(plan.toolNames).toEqual([]);
 		},
 	);
+
+	it('recognizes a modal relative target clause without executing an unresolved subset', () => {
+		const plan = service.plan({
+			message: 'If the window is open, turn off the lights that could wake the baby?',
+			conversationSpaceId: 'space-bedroom',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk: 'action', strategy: 'clarify' });
+		expect(plan.toolNames).toEqual([]);
+	});
 });

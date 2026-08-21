@@ -306,7 +306,7 @@ export const WHOLE_HOME_SCOPE_PATTERN = new RegExp(
 	'u',
 );
 export const ANYWHERE_ELSE_PATTERN = /\banywhere else\b/u;
-const WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE = String.raw`(?:${GROUNDED_STATE_PATTERN_SOURCE}|${HOME_STATE_PATTERN.source}|running)`;
+const WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE = String.raw`(?:${GROUNDED_STATE_PATTERN_SOURCE}|${HOME_STATE_PATTERN.source}|running|triggered)`;
 const AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE = String.raw`(?:already|not|still|${CURRENT_STATE_PATTERN.source})`;
 const AGGREGATE_STATE_VALUE_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}`;
 const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|switch(?:es)?|thermostats?)|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source})`;
