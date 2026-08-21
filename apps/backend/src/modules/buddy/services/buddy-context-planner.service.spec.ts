@@ -3172,6 +3172,7 @@ describe('BuddyContextPlannerService', () => {
 				'Set the Bedroom thermostat',
 				'Change the Bedroom thermostat',
 				'Adjust the Bedroom thermostat',
+				'Make the Bedroom lights',
 				'Turn the Bedroom lights',
 				'Switch the Bedroom lights',
 			]) {
@@ -3197,6 +3198,7 @@ describe('BuddyContextPlannerService', () => {
 		'Change the Bedroom thermostat to 20 degrees',
 		'Adjust the Bedroom thermostat by 2 degrees',
 		'Adjust the Bedroom thermostat up',
+		'Make Bedroom lights blue',
 	])('retains a complete value-dependent action: %s', (message) => {
 		expect(
 			service.plan({
@@ -6650,6 +6652,20 @@ describe('BuddyContextPlannerService', () => {
 		});
 
 		expect(plan).toMatchObject({ intent: 'write', ambiguityRisk: 'action', strategy: 'clarify' });
+		expect(plan.toolNames).toEqual([]);
+	});
+
+	it('clarifies an until condition that requires future monitoring', () => {
+		const plan = service.plan({
+			message: 'Turn Bedroom lights on until Kitchen is warm',
+			knownSpaces: [
+				{ id: 'space-bedroom', name: 'Bedroom' },
+				{ id: 'space-kitchen', name: 'Kitchen' },
+			],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk: 'action', strategy: 'clarify' });
 		expect(plan.toolNames).toEqual([]);
 	});
 });

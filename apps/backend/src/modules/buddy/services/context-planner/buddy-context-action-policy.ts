@@ -173,7 +173,9 @@ export function classifyAmbiguityRisk(
 			scopedActionClauses.some((clause) => {
 				const conditionClause = getActionConditionClause(clause);
 				const temporalClause = (
-					conditionClause && hasHomeActionConditionClause(conditionClause, explicitSpaces)
+					conditionClause &&
+					hasHomeActionConditionClause(conditionClause, explicitSpaces) &&
+					!/^\s*until\b/u.test(conditionClause)
 						? getActionTargetClause(clause)
 						: getActionTemporalClause(clause)
 				).replace(RELATIVE_SCALAR_ADJUSTMENT_PATTERN, ' ');
@@ -438,7 +440,7 @@ export function hasPlausibleCustomActionTarget(clause: string): boolean {
 }
 
 export function hasMissingRequiredActionValue(clause: string): boolean {
-	if (!/\b(?:adjust|change|set|switch|turn)\b/u.test(clause)) return false;
+	if (!/\b(?:adjust|change|set|switch|turn)\b|\bmake\b(?!\s+sure\b)/u.test(clause)) return false;
 
 	const actionObject = getActionObjectClause(clause);
 	const hasExplicitValue =
