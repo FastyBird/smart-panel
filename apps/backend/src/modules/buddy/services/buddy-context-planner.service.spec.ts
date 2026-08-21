@@ -4123,6 +4123,8 @@ describe('BuddyContextPlannerService', () => {
 		'Are any air purifiers running?',
 		'Are any robot vacuums running?',
 		'Are any outdoor lights on?',
+		'Are any desk lamps on?',
+		'Are any ceiling fans running?',
 		'Do we have all windows open?',
 		'Do I have every window open?',
 		'Check if every window is closed',
