@@ -398,6 +398,12 @@ export class BuddyContextPlannerService {
 				}),
 			),
 		];
+		const hasUnscopedAggregateReadClause = currentStateReadClauses.some(
+			(clause) =>
+				UNSCOPED_AGGREGATE_READ_PATTERN.test(clause.trim()) &&
+				!CONTEXTUAL_SCOPE_PATTERN.test(clause) &&
+				!explicitSpaces.some((space) => hasExplicitSpaceOccurrence(clause, space, explicitSpaces)),
+		);
 		const isDeviceActionClause = (clause: string): boolean =>
 			!hasExplicitSceneKindTarget(getActionObjectClause(clause)) &&
 			(((WRITE_PATTERN.test(clause) || TARGET_DEPENDENT_ACTION_PATTERN.test(clause)) &&
@@ -592,7 +598,9 @@ export class BuddyContextPlannerService {
 							? actionScopeIds.filter((spaceId) => !independentCurrentStateSpaceIds.includes(spaceId))
 							: []),
 					]
-				: (resolvedCurrentStateSpaceIds ?? []);
+				: hasUnscopedAggregateReadClause
+					? [...new Set([...(resolvedCurrentStateSpaceIds ?? []), undefined])]
+					: (resolvedCurrentStateSpaceIds ?? []);
 		const shouldIncludeCurrentStateForRead = includeCurrentStateForRead && resolvedCurrentStateSpaceIds !== undefined;
 		const historySpaceIds = domains.includes('history')
 			? resolveTemporalHomeSpaceIds(
@@ -1325,6 +1333,7 @@ function classifyAmbiguityRisk(
 		}
 		if (actionTargetClauses.some((clause) => ACTION_RANGE_PATTERN.test(clause))) return 'action';
 		if (actionTargetClauses.some((clause) => ACTION_NON_SCALAR_BOUND_PATTERN.test(clause))) return 'action';
+		if (actionTargetClauses.some(hasMissingSetActionValue)) return 'action';
 		if (
 			actionTargetClauses.some(hasConflictingDeviceSceneTarget) ||
 			CONFLICTING_DEVICE_SCENE_QUALIFIER_PATTERN.test(actionMessage)
@@ -1538,6 +1547,20 @@ function hasPlausibleCustomActionTarget(clause: string): boolean {
 		.filter((token) => token.length > 0 && !/^(?:a|all|an|my|off|on|our|the|to|trigger|your)$/u.test(token));
 
 	return significantTokens.length >= 1;
+}
+
+function hasMissingSetActionValue(clause: string): boolean {
+	if (!/\bset\b/u.test(clause)) return false;
+
+	const actionObject = getActionObjectClause(clause);
+	const hasExplicitValue =
+		/\b(?:at|to)\s+\S/u.test(actionObject) ||
+		/\b(?:active|blue|closed|cooler|dimmer|eco|green|higher|inactive|locked|lower|off|on|open|red|unlocked|warmer|white)\b/u.test(
+			actionObject,
+		) ||
+		/[-+]?\d+(?:\.\d+)?\s*(?:%|celsius\b|degrees?\b|fahrenheit\b|percent\b|°\s*(?:c|f)?)?/u.test(actionObject);
+
+	return !hasExplicitValue;
 }
 
 function isClearlyNonHomeActionClause(clause: string): boolean {

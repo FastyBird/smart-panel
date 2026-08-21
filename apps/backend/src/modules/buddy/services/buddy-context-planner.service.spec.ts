@@ -189,6 +189,24 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
+	it('retains an unscoped aggregate beside a scoped current-state read', () => {
+		expect(
+			service.plan({
+				message: 'What is the Bedroom temperature and are any windows open?',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				conversationSpaceId: 'space-bedroom',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			}),
+		).toMatchObject({
+			queries: [
+				{ kind: 'search-home', spaceId: 'space-bedroom' },
+				{ kind: 'search-home' },
+				{ kind: 'current-state', spaceId: 'space-bedroom' },
+				{ kind: 'current-state' },
+			],
+		});
+	});
+
 	it.each([
 		{ message: 'What was the weather yesterday?', domains: ['weather'], query: { kind: 'weather' } },
 		{
@@ -2977,6 +2995,26 @@ describe('BuddyContextPlannerService', () => {
 			strategy: 'clarify',
 			toolNames: [],
 		});
+	});
+
+	it.each([
+		{ toolCalling: 'reliable' as const, supportsStructuredToolResults: true },
+		{ toolCalling: 'unsupported' as const, supportsStructuredToolResults: false },
+	])('clarifies a set command without a target value for $toolCalling providers', (providerCapabilities) => {
+		expect(
+			service.plan({
+				message: 'Set the Bedroom thermostat',
+				knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+				providerCapabilities,
+			}),
+		).toMatchObject({ intent: 'write', ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
+
+		expect(
+			service.plan({
+				message: 'Set the coffee maker',
+				providerCapabilities,
+			}),
+		).toMatchObject({ intent: 'write', ambiguityRisk: 'action', strategy: 'clarify', toolNames: [] });
 	});
 
 	it('propagates exclusions across repeated prepositions in a space list', () => {
