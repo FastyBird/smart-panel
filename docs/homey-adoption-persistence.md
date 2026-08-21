@@ -34,19 +34,26 @@ the MVP mapping set contains deliberate one-to-many capability mappings. Migrati
 table so other property subclasses remain unaffected, creates the unique domain index, and has a tested rollback that
 removes the index and both columns.
 
+Migration `1000000000022-AddHomeyAdoptionLocks` adds a provider-private claim table keyed by the authoritative Homey
+device ID. It serializes the complete adoption boundary across backend processes without adding lock state to public
+device models. Claims use renewable, owner-scoped leases: a clean completion removes only its own claim, while a
+crashed process cannot strand a device because a later request may atomically replace the expired claim.
+
 ## Mutation and rollback boundary
 
 The backend uses one shared SQLite connection. Holding a repository transaction across the awaited Devices service
 operations could absorb unrelated statements from other requests, so Homey adoption follows the established
 `DeviceStructureLockService` pattern instead:
 
-1. Requests for the same Homey ID are serialized before the fresh read.
+1. Requests for the same Homey ID acquire the database-backed claim before any local persistence read or mutation.
 2. The fresh mapping is validated before any mutation.
 3. The complete existing Homey hierarchy and current values are captured.
 4. Core Devices services reconcile the local hierarchy and apply initial values.
 5. On failure, completed mutations are compensated in reverse order from the captured snapshot.
 6. Each batch selection completes independently and returns a fixed, sanitized outcome.
 
-The structure lock prevents in-process check-then-write races; the database constraints remain the final guard across
-processes. A concurrent unique-insert loss is re-read and reconciled as an idempotent update rather than returned as a
-duplicate conflict.
+The structure lock prevents unrelated in-process hierarchy races. The renewable adoption claim covers snapshot,
+reconciliation, and terminal value writes across processes; database identity constraints remain the final creation
+guard. A concurrent unique-insert loss from an older or external writer is re-read only after its expected hierarchy
+and initial measurements are visible, then reconciled as an idempotent update rather than returned as a duplicate
+conflict.

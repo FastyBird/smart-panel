@@ -19,6 +19,7 @@ import { HomeyMappingPreviewDeviceNotFoundError } from '../errors/homey-mapping-
 import { HomeyAdoptionFailureCode, HomeyAdoptionStatus } from '../models/adoption.model';
 import { HomeyMappingPreviewModel } from '../models/mapping-preview.model';
 
+import { HomeyAdoptionLockService } from './homey-adoption-lock.service';
 import { HomeyDeviceAdoptionService } from './homey-device-adoption.service';
 import { HomeyMappingPreviewService } from './homey-mapping-preview.service';
 
@@ -134,6 +135,7 @@ describe('HomeyDeviceAdoptionService', () => {
 		Pick<ChannelsPropertiesService, 'findAll' | 'findOne' | 'findOneBy' | 'create' | 'update' | 'remove'>
 	>;
 	let propertyValueService: jest.Mocked<Pick<PropertyValueService, 'readLatest' | 'write' | 'delete'>>;
+	let adoptionLock: Pick<HomeyAdoptionLockService, 'runExclusive'>;
 	let service: HomeyDeviceAdoptionService;
 
 	beforeEach(() => {
@@ -166,6 +168,9 @@ describe('HomeyDeviceAdoptionService', () => {
 		const structureLock = {
 			runExclusive: jest.fn((operation: () => Promise<unknown>) => operation()),
 		};
+		adoptionLock = {
+			runExclusive: <T>(_deviceIdentifier: string, operation: () => Promise<T>): Promise<T> => operation(),
+		};
 
 		service = new HomeyDeviceAdoptionService(
 			mappingPreviewService as unknown as HomeyMappingPreviewService,
@@ -174,6 +179,7 @@ describe('HomeyDeviceAdoptionService', () => {
 			propertiesService as unknown as ChannelsPropertiesService,
 			propertyValueService as unknown as PropertyValueService,
 			structureLock as unknown as DeviceStructureLockService,
+			adoptionLock as unknown as HomeyAdoptionLockService,
 		);
 	});
 
@@ -215,6 +221,32 @@ describe('HomeyDeviceAdoptionService', () => {
 			]),
 		);
 		expect(properties).toHaveLength(3);
+	});
+
+	it('holds the database-backed claim from the fresh preview through persistence', async () => {
+		let claimHeld = false;
+		adoptionLock.runExclusive = async <T>(_deviceIdentifier: string, operation: () => Promise<T>): Promise<T> => {
+			claimHeld = true;
+
+			try {
+				return await operation();
+			} finally {
+				claimHeld = false;
+			}
+		};
+		mappingPreviewService.generatePreview.mockImplementation(() => {
+			expect(claimHeld).toBe(true);
+
+			return Promise.resolve(preview());
+		});
+		devicesService.create.mockImplementation(() => {
+			expect(claimHeld).toBe(true);
+
+			return Promise.resolve(existingDevice());
+		});
+
+		await expect(service.adoptOne(selection())).resolves.toMatchObject({ status: HomeyAdoptionStatus.CREATED });
+		expect(claimHeld).toBe(false);
 	});
 
 	it('persists the transformed panel enum domain instead of Homey enum identifiers', async () => {

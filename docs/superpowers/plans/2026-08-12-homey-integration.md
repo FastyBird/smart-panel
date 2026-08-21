@@ -364,12 +364,13 @@ exercise conflicts, orphaned mappings, access mismatches, failed conversions, lo
 - [x] Never mutate or delete anything in Homey.
 - [x] Add single and batch adoption endpoints and tests for partial success, stale preview, duplicate request, unknown device, unsupported mapping, and rollback.
 
-Adoption serializes each Homey ID before a fresh preview, then reconciles local state under the repository's re-entrant
-structure lock. Long SQLite transactions are not used because the shared connection can capture unrelated writes;
-instead the service snapshots the existing hierarchy and values and compensates completed operations in reverse order.
-Single and ordered batch endpoints return only fixed per-device outcomes, and focused tests cover partial success,
-stale/unknown/unsupported selections, concurrent retries, authoritative identifiers, value application, rollback, and
-rollback failure without exposing caught error details.
+Adoption serializes each Homey ID with a renewable database-backed claim before local persistence work, then reconciles
+local state under the repository's re-entrant structure lock. The claim covers the snapshot, reversible reconciliation,
+and terminal value writes across backend processes. Long SQLite transactions are not used because the shared connection
+can capture unrelated writes; instead the service snapshots the existing hierarchy and values and compensates completed
+operations in reverse order. Single and ordered batch endpoints return only fixed per-device outcomes, and focused tests
+cover partial success, stale/unknown/unsupported selections, concurrent retries, authoritative identifiers, value
+application, rollback, and rollback failure without exposing caught error details.
 
 ### Task 3.6: Verify persistence assumptions
 

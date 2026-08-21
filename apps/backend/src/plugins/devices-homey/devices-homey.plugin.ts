@@ -49,6 +49,7 @@ import { HomeyMappingLoaderService } from './mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from './mappings/mapping-transformer.service';
 import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-storage.service';
 import { HomeyConfigModel } from './models/config.model';
+import { HomeyAdoptionLockService } from './services/homey-adoption-lock.service';
 import { HomeyConfigValidatorService } from './services/homey-config-validator.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
@@ -83,6 +84,7 @@ import { HomeyService } from './services/homey.service';
 		HomeyPropertyMappingStorageService,
 		HomeyDeviceInventoryService,
 		HomeyMappingPreviewService,
+		HomeyAdoptionLockService,
 		HomeyDeviceAdoptionService,
 		HomeyService,
 	],

@@ -27,6 +27,7 @@ import {
 	HomeyMappingPreviewPropertyModel,
 } from '../models/mapping-preview.model';
 
+import { HomeyAdoptionLockService } from './homey-adoption-lock.service';
 import { HomeyMappingPreviewService } from './homey-mapping-preview.service';
 
 const CONCURRENT_CREATION_POLL_INTERVAL_MS = 50;
@@ -68,40 +69,51 @@ export class HomeyDeviceAdoptionService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly propertyValueService: PropertyValueService,
 		private readonly structureLock: DeviceStructureLockService,
+		private readonly adoptionLock: HomeyAdoptionLockService,
 	) {}
 
 	async adoptOne(selection: HomeyAdoptDeviceDto): Promise<HomeyAdoptionResultModel> {
 		return this.withDeviceLock(selection.deviceId, async () => {
-			let preview: HomeyMappingPreviewModel;
-
 			try {
-				preview = await this.mappingPreviewService.generatePreview({
-					deviceId: selection.deviceId,
-					deviceCategory: selection.deviceCategory,
-				});
-			} catch (error) {
-				if (error instanceof HomeyMappingPreviewDeviceNotFoundError) {
-					return this.failure(selection.deviceId, HomeyAdoptionFailureCode.DEVICE_NOT_FOUND);
-				}
-				if (error instanceof HomeyMappingPreviewUnavailableError) {
-					return this.failure(selection.deviceId, HomeyAdoptionFailureCode.UNAVAILABLE);
-				}
-
-				return this.failure(selection.deviceId, HomeyAdoptionFailureCode.UNAVAILABLE);
-			}
-
-			if (!preview.readyToAdopt || preview.selectedCategory === null) {
-				return this.failure(selection.deviceId, HomeyAdoptionFailureCode.UNSUPPORTED_MAPPING);
-			}
-
-			try {
-				return await this.structureLock.runExclusive(() => this.persist(selection, preview));
+				return await this.adoptionLock.runExclusive(selection.deviceId, () => this.adoptLocked(selection));
 			} catch {
 				this.logger.warn('Homey adoption persistence failed before reconciliation completed');
 
 				return this.failure(selection.deviceId, HomeyAdoptionFailureCode.PERSISTENCE_FAILED);
 			}
 		});
+	}
+
+	private async adoptLocked(selection: HomeyAdoptDeviceDto): Promise<HomeyAdoptionResultModel> {
+		let preview: HomeyMappingPreviewModel;
+
+		try {
+			preview = await this.mappingPreviewService.generatePreview({
+				deviceId: selection.deviceId,
+				deviceCategory: selection.deviceCategory,
+			});
+		} catch (error) {
+			if (error instanceof HomeyMappingPreviewDeviceNotFoundError) {
+				return this.failure(selection.deviceId, HomeyAdoptionFailureCode.DEVICE_NOT_FOUND);
+			}
+			if (error instanceof HomeyMappingPreviewUnavailableError) {
+				return this.failure(selection.deviceId, HomeyAdoptionFailureCode.UNAVAILABLE);
+			}
+
+			return this.failure(selection.deviceId, HomeyAdoptionFailureCode.UNAVAILABLE);
+		}
+
+		if (!preview.readyToAdopt || preview.selectedCategory === null) {
+			return this.failure(selection.deviceId, HomeyAdoptionFailureCode.UNSUPPORTED_MAPPING);
+		}
+
+		try {
+			return await this.structureLock.runExclusive(() => this.persist(selection, preview));
+		} catch {
+			this.logger.warn('Homey adoption persistence failed before reconciliation completed');
+
+			return this.failure(selection.deviceId, HomeyAdoptionFailureCode.PERSISTENCE_FAILED);
+		}
 	}
 
 	async adoptBatch(selections: readonly HomeyAdoptDeviceDto[]): Promise<HomeyAdoptionResultModel[]> {
