@@ -4,7 +4,11 @@ import { createExtensionLogger } from '../../../common/logger';
 import { PermissionType } from '../../../modules/devices/devices.constants';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { validatePropertyCommandValue } from '../../../modules/devices/utils/property-command-value.utils';
-import { DEVICES_HOMEY_PLUGIN_NAME, DEVICES_HOMEY_TYPE } from '../devices-homey.constants';
+import {
+	DEVICES_HOMEY_PLUGIN_NAME,
+	DEVICES_HOMEY_TYPE,
+	HOMEY_COMMAND_MAX_DURATION_MS,
+} from '../devices-homey.constants';
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from '../entities/devices-homey.entity';
 import { HomeyMappingLoaderService } from '../mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from '../mappings/mapping-transformer.service';
@@ -37,6 +41,10 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 
 	getType(): string {
 		return DEVICES_HOMEY_TYPE;
+	}
+
+	getCommandTimeoutMs(commandCount: number): number {
+		return Math.max(0, commandCount) * HOMEY_COMMAND_MAX_DURATION_MS;
 	}
 
 	process(update: HomeyDevicePropertyData): Promise<boolean> {

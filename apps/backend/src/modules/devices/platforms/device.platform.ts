@@ -12,5 +12,7 @@ export interface IDevicePlatform {
 
 	processBatch(updates: Array<IDevicePropertyData>): Promise<boolean>;
 
+	getCommandTimeoutMs?(commandCount: number): number;
+
 	getType(): string;
 }

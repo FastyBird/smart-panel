@@ -1067,6 +1067,71 @@ describe('HomeyService', () => {
 		await service.stop();
 	});
 
+	it('rejects an older write-only readback after a newer inventory snapshot', async () => {
+		let resolveReadback: ((device: HomeyDevice | null) => void) | undefined;
+		const currentDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'onoff',
+					title: 'Power',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: '2026-08-15T10:02:00.000Z',
+				}),
+			],
+		};
+		const olderReadback = {
+			...currentDevice,
+			capabilities: currentDevice.capabilities.map((capability) => ({
+				...capability,
+				value: true,
+				lastUpdatedAt: '2026-08-15T10:01:00.000Z',
+			})),
+		};
+		const noReadableEvidence = {
+			updated: 0,
+			ignored: 1,
+			failed: 0,
+			acceptedEvents: [],
+			acceptedCapabilityValues: [],
+		};
+		config.reconciliationInterval = HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS + 1;
+		connector.getDevices.mockResolvedValue([currentDevice]);
+		synchronizer.synchronizeSnapshot.mockResolvedValueOnce(noReadableEvidence);
+		await service.start();
+		synchronizer.synchronizeSnapshot.mockResolvedValueOnce(noReadableEvidence);
+		synchronizer.hasReadableCapabilityBinding.mockResolvedValueOnce(false);
+		connector.getDevice.mockClear().mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveReadback = resolve;
+			}),
+		);
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+		await jest.advanceTimersByTimeAsync(1);
+		await flushMicrotasks();
+		resolveReadback?.(olderReadback);
+		await flushMicrotasks();
+
+		await expect(command).resolves.toBe(false);
+		expect(
+			service.getInventorySnapshot()?.[0].capabilities.find((capability) => capability.id === 'onoff')?.value,
+		).toBe(false);
+
+		await service.stop();
+	});
+
 	it('rejects an unconfirmed command after exactly one mismatching readback', async () => {
 		await service.start();
 		connector.getDevice.mockClear().mockResolvedValue(staleDevice);

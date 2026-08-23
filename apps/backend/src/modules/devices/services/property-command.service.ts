@@ -5,7 +5,12 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
-import { DEFAULT_TTL_DEVICE_COMMAND, IntentTargetStatus, IntentType } from '../../intents/intents.constants';
+import {
+	DEFAULT_TTL_DEVICE_COMMAND,
+	INTENT_CLEANUP_INTERVAL,
+	IntentTargetStatus,
+	IntentType,
+} from '../../intents/intents.constants';
 import { IntentContext, IntentTarget, IntentTargetResult } from '../../intents/models/intent.model';
 import { IntentsService } from '../../intents/services/intents.service';
 import { UserRole } from '../../users/users.constants';
@@ -198,22 +203,6 @@ export class PropertyCommandService {
 		for (const command of commands) {
 			valueMap[`device:${command.device}:${command.channel}:${command.property}`] = command.value;
 		}
-
-		// Create the intent with the value map and optional requestId for tracking
-		const intent = this.intentsService.createIntent({
-			requestId: options.requestId,
-			type: IntentType.DEVICE_SET_PROPERTY,
-			context: options.context,
-			targets,
-			value: valueMap,
-			ttlMs: DEFAULT_TTL_DEVICE_COMMAND,
-		});
-
-		this.logger.log(
-			`Created intent ${intent.id} for ${targets.length} target(s)${options.requestId ? ` requestId=${options.requestId}` : ''}`,
-		);
-
-		// Group properties by device ID
 		const groupedProperties: Record<string, PropertyCommandValueDto[]> = {};
 
 		commands.forEach((prop) => {
@@ -223,6 +212,20 @@ export class PropertyCommandService {
 
 			groupedProperties[prop.device].push(prop);
 		});
+
+		// Create the intent with the value map and optional requestId for tracking
+		const intent = this.intentsService.createIntent({
+			requestId: options.requestId,
+			type: IntentType.DEVICE_SET_PROPERTY,
+			context: options.context,
+			targets,
+			value: valueMap,
+			ttlMs: await this.resolveCommandIntentTtlMs(groupedProperties),
+		});
+
+		this.logger.log(
+			`Created intent ${intent.id} for ${targets.length} target(s)${options.requestId ? ` requestId=${options.requestId}` : ''}`,
+		);
 
 		const results: DevicePropertyCommandResult[] = [];
 
@@ -280,6 +283,31 @@ export class PropertyCommandService {
 
 			return { success: false, results: 'Internal error' };
 		}
+	}
+
+	private async resolveCommandIntentTtlMs(
+		groupedProperties: Readonly<Record<string, readonly PropertyCommandValueDto[]>>,
+	): Promise<number> {
+		let completionWindowMs = 0;
+		let hasCustomTimeout = false;
+
+		for (const [deviceId, commands] of Object.entries(groupedProperties)) {
+			const device = await this.devicesService.findOne(deviceId);
+			const timeoutMs = device
+				? this.platformRegistryService.get(device)?.getCommandTimeoutMs?.(commands.length)
+				: null;
+
+			if (typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0) {
+				completionWindowMs += timeoutMs;
+				hasCustomTimeout = true;
+			} else {
+				completionWindowMs += DEFAULT_TTL_DEVICE_COMMAND;
+			}
+		}
+
+		return hasCustomTimeout
+			? completionWindowMs + DEFAULT_TTL_DEVICE_COMMAND + INTENT_CLEANUP_INTERVAL
+			: DEFAULT_TTL_DEVICE_COMMAND;
 	}
 
 	private async processDeviceCommands(

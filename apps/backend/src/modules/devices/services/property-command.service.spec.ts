@@ -7,6 +7,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
+import { DEFAULT_TTL_DEVICE_COMMAND, INTENT_CLEANUP_INTERVAL } from '../../intents/intents.constants';
 import { IntentsService } from '../../intents/services/intents.service';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
@@ -236,11 +237,20 @@ describe('PropertyCommandService', () => {
 			.mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
 		jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
 		jest.spyOn(mockPlatform, 'processBatch').mockResolvedValue(true);
+		mockPlatform.getCommandTimeoutMs = jest.fn().mockReturnValue(12000);
 
 		const result = await service.handleInternal(mockWsUser, validPayload);
 
 		expect(result.success).toBe(true);
 		expect(result.results).toEqual([{ device: mockDevice.id, success: true }]);
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		expect(mockPlatform.getCommandTimeoutMs).toHaveBeenCalledWith(1);
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		expect(intentsService.createIntent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				ttlMs: 12000 + DEFAULT_TTL_DEVICE_COMMAND + INTENT_CLEANUP_INTERVAL,
+			}),
+		);
 		expect(loggerLogSpy).toHaveBeenCalledWith(
 			expect.stringContaining(
 				`[PropertyCommandService] Successfully executed batch command for deviceId=${mockDevice.id}`,

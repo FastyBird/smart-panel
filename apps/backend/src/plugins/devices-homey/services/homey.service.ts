@@ -98,8 +98,10 @@ export class HomeyService extends BaseManagedPluginService {
 	private readonly pendingCommandConfirmations = new Map<string, PendingHomeyCommandConfirmation>();
 	private readonly commandCancellationListeners = new Set<() => void>();
 	private readonly capabilityObservationRevisions = new Map<string, number>();
+	private readonly deviceInventoryRevisions = new Map<string, number>();
 	private readonly acceptedCapabilityStates = new Map<string, AcceptedHomeyCapabilityState>();
 	private capabilityObservationRevision = 0;
+	private deviceInventoryRevision = 0;
 	private acceptedCapabilityRevision = 0;
 
 	constructor(
@@ -483,10 +485,10 @@ export class HomeyService extends BaseManagedPluginService {
 				authoritativeTraffic = true;
 
 				if (device) {
-					this.devices.set(device.id, device);
+					this.setDevice(device);
 					refreshedDevices.push(device);
 				} else {
-					this.devices.delete(deviceId);
+					this.deleteDevice(deviceId);
 					missingDeviceIds.push(deviceId);
 				}
 			}
@@ -554,20 +556,20 @@ export class HomeyService extends BaseManagedPluginService {
 				}
 
 				if (device === null) {
-					this.devices.delete(event.deviceId);
+					this.deleteDevice(event.deviceId);
 				} else {
-					this.devices.set(device.id, device);
+					this.setDevice(device);
 				}
 				return true;
 			}
 			case HomeyEventType.DEVICE_REMOVED:
-				this.devices.delete(event.deviceId);
+				this.deleteDevice(event.deviceId);
 				return false;
 			case HomeyEventType.DEVICE_AVAILABILITY_CHANGED: {
 				const device = this.devices.get(event.deviceId);
 
 				if (device !== undefined) {
-					this.devices.set(event.deviceId, {
+					this.setDevice({
 						...device,
 						available: event.available,
 						availabilityMessage: event.availabilityMessage,
@@ -594,7 +596,21 @@ export class HomeyService extends BaseManagedPluginService {
 	}
 
 	private replaceDevices(devices: readonly HomeyDevice[]): void {
+		for (const deviceId of new Set([...this.devices.keys(), ...devices.map((device) => device.id)])) {
+			this.deviceInventoryRevisions.set(deviceId, ++this.deviceInventoryRevision);
+		}
 		this.devices = new Map(devices.map((device) => [device.id, device]));
+	}
+
+	private setDevice(device: HomeyDevice): void {
+		this.devices.set(device.id, device);
+		this.deviceInventoryRevisions.set(device.id, ++this.deviceInventoryRevision);
+	}
+
+	private deleteDevice(deviceId: string): void {
+		if (this.devices.delete(deviceId)) {
+			this.deviceInventoryRevisions.set(deviceId, ++this.deviceInventoryRevision);
+		}
 	}
 
 	private scheduleReconciliation(generation: number): void {
@@ -854,6 +870,7 @@ export class HomeyService extends BaseManagedPluginService {
 
 			this.removePendingCommandConfirmation(key, pending);
 			const observedRevision = this.capabilityObservationRevisions.get(key) ?? 0;
+			const inventoryRevision = this.deviceInventoryRevisions.get(deviceId) ?? 0;
 			const acceptedRevision = this.acceptedCapabilityStates.get(key)?.revision ?? 0;
 			const readback = await this.settleWithin(connector.getDevice(deviceId), HOMEY_COMMAND_WRITE_TIMEOUT_MS);
 
@@ -892,6 +909,14 @@ export class HomeyService extends BaseManagedPluginService {
 				if (currentDevice === undefined || !currentDevice.available) {
 					return;
 				}
+				const hasReadableCapabilityBinding = await this.synchronizer.hasReadableCapabilityBinding(
+					deviceId,
+					capabilityId,
+				);
+
+				if (!hasReadableCapabilityBinding && (this.deviceInventoryRevisions.get(deviceId) ?? 0) !== inventoryRevision) {
+					return;
+				}
 
 				const currentAcceptedState = this.acceptedCapabilityStates.get(key);
 				const observationChanged = (this.capabilityObservationRevisions.get(key) ?? 0) !== observedRevision;
@@ -910,7 +935,7 @@ export class HomeyService extends BaseManagedPluginService {
 					return;
 				}
 
-				if (!(await this.synchronizer.hasReadableCapabilityBinding(deviceId, capabilityId))) {
+				if (!hasReadableCapabilityBinding) {
 					readbackAccepted = true;
 					this.recordAcceptedCapabilityEvents([readbackEvent], generation);
 					return;
@@ -972,7 +997,7 @@ export class HomeyService extends BaseManagedPluginService {
 			const device = this.devices.get(event.deviceId);
 
 			if (device !== undefined) {
-				this.devices.set(event.deviceId, {
+				this.setDevice({
 					...device,
 					capabilities: device.capabilities.map((capability) =>
 						capability.id === event.capabilityId
@@ -1074,6 +1099,7 @@ export class HomeyService extends BaseManagedPluginService {
 		await this.synchronizationTail;
 		this.synchronizer.reset();
 		this.capabilityObservationRevisions.clear();
+		this.deviceInventoryRevisions.clear();
 		this.acceptedCapabilityStates.clear();
 
 		if (connector) {

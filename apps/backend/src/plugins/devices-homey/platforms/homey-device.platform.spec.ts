@@ -4,6 +4,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import { HOMEY_COMMAND_MAX_DURATION_MS } from '../devices-homey.constants';
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from '../entities/devices-homey.entity';
 import { HomeyMappingLoaderService } from '../mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from '../mappings/mapping-transformer.service';
@@ -217,6 +218,16 @@ function mappingLoader(resolvedMapping: ResolvedHomeyPropertyMapping) {
 }
 
 describe('HomeyDevicePlatform', () => {
+	it('reports the bounded sequential command window for intent TTL selection', () => {
+		const platform = new HomeyDevicePlatform(
+			{} as HomeyService,
+			{} as HomeyMappingLoaderService,
+			{} as HomeyMappingTransformerService,
+		);
+
+		expect(platform.getCommandTimeoutMs(2)).toBe(HOMEY_COMMAND_MAX_DURATION_MS * 2);
+	});
+
 	it.each(commandCases)('transforms and sends a validated $label command', async (command) => {
 		const resolvedMapping = mapping(command);
 		const upstream = deviceWithCapability(command);
