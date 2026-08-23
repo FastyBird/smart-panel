@@ -883,7 +883,7 @@ export class HomeyService extends BaseManagedPluginService {
 			};
 			let readbackAccepted = false;
 
-			await this.enqueueSynchronization(async () => {
+			const synchronization = this.enqueueSynchronization(async () => {
 				if (!this.isCurrentGeneration(connector, generation)) {
 					return;
 				}
@@ -927,6 +927,11 @@ export class HomeyService extends BaseManagedPluginService {
 					this.recordAcceptedCapabilityEvents(result.acceptedEvents, generation);
 				}
 			});
+			const synchronized = await this.settleWithin(synchronization, HOMEY_COMMAND_WRITE_TIMEOUT_MS);
+
+			if (synchronized.status !== 'fulfilled') {
+				return false;
+			}
 
 			return readbackAccepted && this.isCurrentGeneration(connector, generation);
 		} finally {
