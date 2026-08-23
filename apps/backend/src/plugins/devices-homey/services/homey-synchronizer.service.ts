@@ -275,6 +275,10 @@ export class HomeySynchronizerService {
 		});
 	}
 
+	hasReadableCapabilityBinding(homeyDeviceId: string, capabilityId: string): boolean {
+		return (this.propertiesByDeviceCapability.get(homeyDeviceId)?.get(capabilityId)?.length ?? 0) > 0;
+	}
+
 	reset(): void {
 		this.adoptedDevices.clear();
 		this.propertiesByDeviceCapability.clear();

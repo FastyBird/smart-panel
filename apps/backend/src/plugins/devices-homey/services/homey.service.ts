@@ -893,6 +893,13 @@ export class HomeyService extends BaseManagedPluginService {
 					return;
 				}
 
+				if (!this.synchronizer.hasReadableCapabilityBinding(deviceId, capabilityId)) {
+					readbackAccepted = true;
+					this.devices.set(confirmedDevice.id, confirmedDevice);
+					this.recordAcceptedCapabilityEvents([readbackEvent], generation);
+					return;
+				}
+
 				const result = await this.synchronizer.synchronizeEvents(
 					[readbackEvent],
 					new Map([[confirmedDevice.id, confirmedDevice]]),

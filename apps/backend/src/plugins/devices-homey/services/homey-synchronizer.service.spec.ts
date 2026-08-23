@@ -259,6 +259,14 @@ describe('HomeySynchronizerService', () => {
 		]);
 	});
 
+	it('reports whether a capability has a readable property binding', async () => {
+		await service.refreshIndex();
+
+		expect(service.hasReadableCapabilityBinding('homey-light', 'onoff')).toBe(true);
+		expect(service.hasReadableCapabilityBinding('homey-light', 'vendor_write_only')).toBe(false);
+		expect(service.hasReadableCapabilityBinding('unadopted', 'onoff')).toBe(false);
+	});
+
 	it('filters unknown devices, unmapped capabilities, and invalid runtime values', async () => {
 		await service.refreshIndex();
 
