@@ -733,7 +733,7 @@ export class HomeyService extends BaseManagedPluginService {
 	): Promise<boolean> {
 		const previous = this.commandTails.get(key) ?? Promise.resolve();
 		let retainedWrite: Promise<void> = Promise.resolve();
-		const result = this.waitForCommandTail(previous).then((ready) => {
+		const result = this.waitForCommandTail(previous, HOMEY_COMMAND_WRITE_TIMEOUT_MS).then((ready) => {
 			if (!ready) {
 				return false;
 			}
@@ -745,10 +745,12 @@ export class HomeyService extends BaseManagedPluginService {
 				);
 			});
 		});
-		const tail: Promise<void> = result.then(
-			() => retainedWrite,
-			() => retainedWrite,
-		);
+		const retainBarrier = (): Promise<void> =>
+			result.then(
+				() => retainedWrite,
+				() => retainedWrite,
+			);
+		const tail: Promise<void> = previous.then(retainBarrier, retainBarrier);
 		this.commandTails.set(key, tail);
 		void tail.then(() => {
 			if (this.commandTails.get(key) === tail) {
@@ -759,7 +761,7 @@ export class HomeyService extends BaseManagedPluginService {
 		return result;
 	}
 
-	private waitForCommandTail(tail: Promise<void>): Promise<boolean> {
+	private waitForCommandTail(tail: Promise<void>, timeoutMs: number): Promise<boolean> {
 		return new Promise((resolve) => {
 			let settled = false;
 			const complete = (ready: boolean): void => {
@@ -768,10 +770,12 @@ export class HomeyService extends BaseManagedPluginService {
 				}
 
 				settled = true;
+				clearTimeout(timer);
 				this.commandCancellationListeners.delete(cancel);
 				resolve(ready);
 			};
 			const cancel = (): void => complete(false);
+			const timer = setTimeout(() => complete(false), timeoutMs);
 			this.commandCancellationListeners.add(cancel);
 			void tail.then(
 				() => complete(true),

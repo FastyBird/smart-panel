@@ -816,7 +816,7 @@ describe('HomeyService', () => {
 		await service.stop();
 	});
 
-	it('retains a timed-out transport write as the serialization barrier', async () => {
+	it('bounds a queued caller without releasing the timed-out transport barrier', async () => {
 		const pendingWrite = deferred();
 		await service.start();
 		connector.setCapabilityValue
@@ -830,6 +830,10 @@ describe('HomeyService', () => {
 		expect(connector.setCapabilityValue.mock.calls).toEqual([[staleDevice.id, 'onoff', true]]);
 		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_WRITE_TIMEOUT_MS);
 		await expect(first).resolves.toBe(false);
+		await expect(second).resolves.toBe(false);
+		expect(connector.setCapabilityValue.mock.calls).toHaveLength(1);
+		const third = service.executeCapabilityCommand(staleDevice.id, 'onoff', false);
+		await flushMicrotasks();
 		expect(connector.setCapabilityValue.mock.calls).toHaveLength(1);
 
 		pendingWrite.resolve();
@@ -850,7 +854,7 @@ describe('HomeyService', () => {
 		});
 		await jest.advanceTimersByTimeAsync(0);
 
-		await expect(second).resolves.toBe(true);
+		await expect(third).resolves.toBe(true);
 		await service.stop();
 	});
 
@@ -867,7 +871,10 @@ describe('HomeyService', () => {
 		await flushMicrotasks();
 		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_WRITE_TIMEOUT_MS);
 		await expect(first).resolves.toBe(false);
+		const cancelledQueued = service.executeCapabilityCommand(staleDevice.id, 'onoff', false);
+		await flushMicrotasks();
 		await service.stop();
+		await expect(cancelledQueued).resolves.toBe(false);
 		await service.start();
 
 		const second = service.executeCapabilityCommand(staleDevice.id, 'onoff', false);
