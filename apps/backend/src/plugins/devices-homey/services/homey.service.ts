@@ -31,7 +31,17 @@ import { HomeyStatusModel } from '../models/status.model';
 import { homeyCapabilityValuesEqual } from '../platforms/homey-command-value';
 
 import { calculateHomeyReconnectDelay } from './homey-reconnect-backoff';
-import { HomeySynchronizationResult, HomeySynchronizerService } from './homey-synchronizer.service';
+import {
+	HomeyAcceptedCapabilityValue,
+	HomeySynchronizationResult,
+	HomeySynchronizerService,
+} from './homey-synchronizer.service';
+
+const HOMEY_EVENT_OBSERVATION_REVISION = Symbol('homeyEventObservationRevision');
+
+type ObservedHomeyEvent = HomeyEvent & {
+	readonly [HOMEY_EVENT_OBSERVATION_REVISION]?: number;
+};
 
 type HomeyReconciliationSource = 'startup' | 'reconnect' | 'periodic';
 
@@ -335,8 +345,9 @@ export class HomeyService extends BaseManagedPluginService {
 
 			await this.enqueueSynchronization(async () => {
 				this.replaceDevices(await connector.getDevices());
-				this.recordSynchronizationResult(await this.synchronizer.synchronizeSnapshot([...this.devices.values()]));
-				this.recordCapabilityEvidence([...this.devices.values()]);
+				const result = await this.synchronizer.synchronizeSnapshot([...this.devices.values()]);
+				this.recordSynchronizationResult(result);
+				this.recordCapabilityEvidence(result.acceptedCapabilityValues ?? []);
 
 				if (this.startupEvents) {
 					await this.reconcileStartupEvents(connector, generation);
@@ -373,20 +384,21 @@ export class HomeyService extends BaseManagedPluginService {
 			return;
 		}
 
+		let observedEvent: ObservedHomeyEvent = event;
+
 		if (event.type === HomeyEventType.CAPABILITY_VALUE_CHANGED) {
-			this.capabilityObservationRevisions.set(
-				this.commandKey(event.deviceId, event.capabilityId),
-				++this.capabilityObservationRevision,
-			);
+			const observationRevision = ++this.capabilityObservationRevision;
+			this.capabilityObservationRevisions.set(this.commandKey(event.deviceId, event.capabilityId), observationRevision);
+			observedEvent = { ...event, [HOMEY_EVENT_OBSERVATION_REVISION]: observationRevision };
 		}
 
 		if (this.startupEvents) {
-			this.startupEvents.push(event);
+			this.startupEvents.push(observedEvent);
 
 			return;
 		}
 
-		this.liveEvents.push(event);
+		this.liveEvents.push(observedEvent);
 
 		if (this.liveEventFlush !== null) {
 			return;
@@ -495,7 +507,7 @@ export class HomeyService extends BaseManagedPluginService {
 			if (inventoryReplaced) {
 				const result = await this.synchronizer.synchronizeSnapshot([...this.devices.values()], events);
 				this.recordSynchronizationResult(result);
-				this.recordCapabilityEvidence([...this.devices.values()]);
+				this.recordCapabilityEvidence(result.acceptedCapabilityValues ?? []);
 				confirmationEvents.push(...result.acceptedEvents);
 			} else if (targetedDeviceIds.size > 0) {
 				const readbackEvents = selectedEvents.filter(
@@ -503,7 +515,7 @@ export class HomeyService extends BaseManagedPluginService {
 				);
 				const result = await this.synchronizer.synchronizeDevices(refreshedDevices, missingDeviceIds, readbackEvents);
 				this.recordSynchronizationResult(result);
-				this.recordCapabilityEvidence(refreshedDevices);
+				this.recordCapabilityEvidence(result.acceptedCapabilityValues ?? []);
 				confirmationEvents.push(...result.acceptedEvents);
 
 				const remainingEvents = selectedEvents.filter(
@@ -626,8 +638,9 @@ export class HomeyService extends BaseManagedPluginService {
 
 					this.zones = zonesResult.value;
 					this.replaceDevices(devicesResult.value);
-					this.recordSynchronizationResult(await this.synchronizer.synchronizeSnapshot(devicesResult.value));
-					this.recordCapabilityEvidence(devicesResult.value);
+					const result = await this.synchronizer.synchronizeSnapshot(devicesResult.value);
+					this.recordSynchronizationResult(result);
+					this.recordCapabilityEvidence(result.acceptedCapabilityValues ?? []);
 					this.recordSuccessfulInventorySync(connector, generation);
 
 					if (this.unsubscribe) {
@@ -887,12 +900,7 @@ export class HomeyService extends BaseManagedPluginService {
 					return;
 				}
 
-				const currentCapability = this.devices
-					.get(deviceId)
-					?.capabilities.find((candidate) => candidate.id === capabilityId);
-				const currentValue = currentCapability?.value;
-
-				if (currentValue !== undefined && homeyCapabilityValuesEqual(currentValue, value)) {
+				if (currentAcceptedState !== undefined && homeyCapabilityValuesEqual(currentAcceptedState.value, value)) {
 					readbackAccepted = true;
 					return;
 				}
@@ -970,11 +978,12 @@ export class HomeyService extends BaseManagedPluginService {
 				value: event.value,
 			});
 			const pending = this.pendingCommandConfirmations.get(key);
+			const observationRevision = (event as ObservedHomeyEvent)[HOMEY_EVENT_OBSERVATION_REVISION] ?? 0;
 
 			if (
 				pending !== undefined &&
 				pending.generation === generation &&
-				(this.capabilityObservationRevisions.get(key) ?? 0) > pending.observationRevision &&
+				observationRevision > pending.observationRevision &&
 				homeyCapabilityValuesEqual(pending.value, event.value)
 			) {
 				this.pendingCommandConfirmations.delete(key);
@@ -983,18 +992,12 @@ export class HomeyService extends BaseManagedPluginService {
 		}
 	}
 
-	private recordCapabilityEvidence(devices: readonly HomeyDevice[]): void {
-		for (const device of devices) {
-			for (const capability of device.capabilities) {
-				if (!capability.readable || capability.available === false) {
-					continue;
-				}
-
-				this.acceptedCapabilityStates.set(this.commandKey(device.id, capability.id), {
-					revision: ++this.acceptedCapabilityRevision,
-					value: capability.value,
-				});
-			}
+	private recordCapabilityEvidence(values: readonly HomeyAcceptedCapabilityValue[]): void {
+		for (const value of values) {
+			this.acceptedCapabilityStates.set(this.commandKey(value.deviceId, value.capabilityId), {
+				revision: ++this.acceptedCapabilityRevision,
+				value: value.value,
+			});
 		}
 	}
 

@@ -29,6 +29,13 @@ export interface HomeySynchronizationResult {
 
 export interface HomeyEventSynchronizationResult extends HomeySynchronizationResult {
 	readonly acceptedEvents: readonly HomeyEvent[];
+	readonly acceptedCapabilityValues?: readonly HomeyAcceptedCapabilityValue[];
+}
+
+export interface HomeyAcceptedCapabilityValue {
+	readonly deviceId: string;
+	readonly capabilityId: string;
+	readonly value: HomeyCapabilityValue;
 }
 
 interface MutableSynchronizationResult {
@@ -96,6 +103,7 @@ export class HomeySynchronizerService {
 		const upstreamDevices = new Map(devices.map((device) => [device.id, device]));
 		const result = this.emptyResult();
 		const connectionStateApplied = new Map<string, boolean>();
+		const acceptedCapabilityValues: HomeyAcceptedCapabilityValue[] = [];
 
 		for (const [homeyDeviceId, adopted] of this.adoptedDevices) {
 			const upstream = upstreamDevices.get(homeyDeviceId);
@@ -108,7 +116,10 @@ export class HomeySynchronizerService {
 				continue;
 			}
 
-			connectionStateApplied.set(homeyDeviceId, await this.synchronizeDevice(upstream, result));
+			connectionStateApplied.set(
+				homeyDeviceId,
+				await this.synchronizeDevice(upstream, result, acceptedCapabilityValues),
+			);
 		}
 
 		const acceptedEvents = await this.commitReadbackOrder(
@@ -118,7 +129,7 @@ export class HomeySynchronizerService {
 			result,
 		);
 
-		return { ...result, acceptedEvents };
+		return { ...result, acceptedEvents, acceptedCapabilityValues };
 	}
 
 	async synchronizeDevices(
@@ -129,9 +140,10 @@ export class HomeySynchronizerService {
 		await this.ensureIndex();
 		const result = this.emptyResult();
 		const connectionStateApplied = new Map<string, boolean>();
+		const acceptedCapabilityValues: HomeyAcceptedCapabilityValue[] = [];
 
 		for (const device of devices) {
-			connectionStateApplied.set(device.id, await this.synchronizeDevice(device, result));
+			connectionStateApplied.set(device.id, await this.synchronizeDevice(device, result, acceptedCapabilityValues));
 		}
 
 		for (const homeyDeviceId of missingDeviceIds) {
@@ -152,7 +164,7 @@ export class HomeySynchronizerService {
 			result,
 		);
 
-		return { ...result, acceptedEvents };
+		return { ...result, acceptedEvents, acceptedCapabilityValues };
 	}
 
 	async synchronizeEvents(
@@ -363,7 +375,11 @@ export class HomeySynchronizerService {
 		this.indexDirty = this.indexGeneration !== generation;
 	}
 
-	private async synchronizeDevice(device: HomeyDevice, result: MutableSynchronizationResult): Promise<boolean> {
+	private async synchronizeDevice(
+		device: HomeyDevice,
+		result: MutableSynchronizationResult,
+		acceptedCapabilityValues?: HomeyAcceptedCapabilityValue[],
+	): Promise<boolean> {
 		const adopted = this.adoptedDevices.get(device.id);
 
 		if (adopted === undefined) {
@@ -383,7 +399,13 @@ export class HomeySynchronizerService {
 				continue;
 			}
 
-			await this.synchronizeCapability(device.id, capability, result);
+			if (await this.synchronizeCapability(device.id, capability, result)) {
+				acceptedCapabilityValues?.push({
+					deviceId: device.id,
+					capabilityId: capability.id,
+					value: capability.value,
+				});
+			}
 		}
 
 		return connectionStateApplied;
@@ -393,8 +415,8 @@ export class HomeySynchronizerService {
 		homeyDeviceId: string,
 		capability: HomeyCapability,
 		result: MutableSynchronizationResult,
-	): Promise<void> {
-		await this.synchronizeCapabilityValue(
+	): Promise<boolean> {
+		return this.synchronizeCapabilityValue(
 			homeyDeviceId,
 			capability.id,
 			capability.value,

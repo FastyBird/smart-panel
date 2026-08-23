@@ -208,6 +208,10 @@ describe('HomeySynchronizerService', () => {
 			ignored: 0,
 			failed: 0,
 			acceptedEvents: [],
+			acceptedCapabilityValues: [
+				{ deviceId: 'homey-light', capabilityId: 'onoff', value: true },
+				{ deviceId: 'homey-light', capabilityId: 'dim', value: 0.25 },
+			],
 		});
 
 		expect(devicesService.findAll).toHaveBeenCalledWith(DEVICES_HOMEY_TYPE);
