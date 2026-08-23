@@ -41,6 +41,11 @@ interface PendingHomeyCommandConfirmation {
 	readonly resolve: (confirmed: boolean) => void;
 }
 
+interface AcceptedHomeyCapabilityState {
+	readonly revision: number;
+	readonly value: HomeyCapabilityValue;
+}
+
 type HomeyBoundedResult<T> =
 	| { readonly status: 'fulfilled'; readonly value: T }
 	| { readonly status: 'rejected' | 'timed_out' | 'cancelled' };
@@ -81,6 +86,10 @@ export class HomeyService extends BaseManagedPluginService {
 	private readonly commandTails = new Map<string, Promise<void>>();
 	private readonly pendingCommandConfirmations = new Map<string, PendingHomeyCommandConfirmation>();
 	private readonly commandCancellationListeners = new Set<() => void>();
+	private readonly capabilityObservationRevisions = new Map<string, number>();
+	private readonly acceptedCapabilityStates = new Map<string, AcceptedHomeyCapabilityState>();
+	private capabilityObservationRevision = 0;
+	private acceptedCapabilityRevision = 0;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -362,6 +371,13 @@ export class HomeyService extends BaseManagedPluginService {
 			return;
 		}
 
+		if (event.type === HomeyEventType.CAPABILITY_VALUE_CHANGED) {
+			this.capabilityObservationRevisions.set(
+				this.commandKey(event.deviceId, event.capabilityId),
+				++this.capabilityObservationRevision,
+			);
+		}
+
 		if (this.startupEvents) {
 			this.startupEvents.push(event);
 
@@ -501,7 +517,7 @@ export class HomeyService extends BaseManagedPluginService {
 				confirmationEvents.push(...result.acceptedEvents);
 			}
 			this.lastEventAt = this.now();
-			this.confirmPendingCommands(confirmationEvents, generation);
+			this.recordAcceptedCapabilityEvents(confirmationEvents, generation);
 		}
 
 		return authoritativeTraffic;
@@ -544,20 +560,6 @@ export class HomeyService extends BaseManagedPluginService {
 				return false;
 			}
 			case HomeyEventType.CAPABILITY_VALUE_CHANGED: {
-				const device = this.devices.get(event.deviceId);
-
-				if (device === undefined) {
-					return false;
-				}
-
-				this.devices.set(event.deviceId, {
-					...device,
-					capabilities: device.capabilities.map((capability) =>
-						capability.id === event.capabilityId
-							? { ...capability, value: event.value, lastUpdatedAt: event.lastUpdatedAt }
-							: capability,
-					),
-				});
 				return false;
 			}
 			case HomeyEventType.ZONE_ADDED:
@@ -828,6 +830,8 @@ export class HomeyService extends BaseManagedPluginService {
 			}
 
 			this.removePendingCommandConfirmation(key, pending);
+			const observedRevision = this.capabilityObservationRevisions.get(key) ?? 0;
+			const acceptedRevision = this.acceptedCapabilityStates.get(key)?.revision ?? 0;
 			const readback = await this.settleWithin(connector.getDevice(deviceId), HOMEY_COMMAND_WRITE_TIMEOUT_MS);
 
 			if (
@@ -861,6 +865,28 @@ export class HomeyService extends BaseManagedPluginService {
 					return;
 				}
 
+				const currentAcceptedState = this.acceptedCapabilityStates.get(key);
+				const observationChanged = (this.capabilityObservationRevisions.get(key) ?? 0) !== observedRevision;
+				const acceptanceChanged = (currentAcceptedState?.revision ?? 0) !== acceptedRevision;
+
+				if (observationChanged || acceptanceChanged) {
+					readbackAccepted =
+						acceptanceChanged &&
+						currentAcceptedState !== undefined &&
+						homeyCapabilityValuesEqual(currentAcceptedState.value, value);
+					return;
+				}
+
+				const currentCapability = this.devices
+					.get(deviceId)
+					?.capabilities.find((candidate) => candidate.id === capabilityId);
+				const currentValue = currentCapability?.value;
+
+				if (currentValue !== undefined && homeyCapabilityValuesEqual(currentValue, value)) {
+					readbackAccepted = true;
+					return;
+				}
+
 				const result = await this.synchronizer.synchronizeEvents(
 					[readbackEvent],
 					new Map([[confirmedDevice.id, confirmedDevice]]),
@@ -870,6 +896,7 @@ export class HomeyService extends BaseManagedPluginService {
 
 				if (readbackAccepted) {
 					this.devices.set(confirmedDevice.id, confirmedDevice);
+					this.recordAcceptedCapabilityEvents(result.acceptedEvents, generation);
 				}
 			});
 
@@ -902,13 +929,29 @@ export class HomeyService extends BaseManagedPluginService {
 		});
 	}
 
-	private confirmPendingCommands(events: readonly HomeyEvent[], generation: number): void {
+	private recordAcceptedCapabilityEvents(events: readonly HomeyEvent[], generation: number): void {
 		for (const event of events) {
 			if (event.type !== HomeyEventType.CAPABILITY_VALUE_CHANGED) {
 				continue;
 			}
 
 			const key = this.commandKey(event.deviceId, event.capabilityId);
+			const device = this.devices.get(event.deviceId);
+
+			if (device !== undefined) {
+				this.devices.set(event.deviceId, {
+					...device,
+					capabilities: device.capabilities.map((capability) =>
+						capability.id === event.capabilityId
+							? { ...capability, value: event.value, lastUpdatedAt: event.lastUpdatedAt }
+							: capability,
+					),
+				});
+			}
+			this.acceptedCapabilityStates.set(key, {
+				revision: ++this.acceptedCapabilityRevision,
+				value: event.value,
+			});
 			const pending = this.pendingCommandConfirmations.get(key);
 
 			if (
@@ -986,6 +1029,8 @@ export class HomeyService extends BaseManagedPluginService {
 
 		await this.synchronizationTail;
 		this.synchronizer.reset();
+		this.capabilityObservationRevisions.clear();
+		this.acceptedCapabilityStates.clear();
 
 		if (connector) {
 			try {

@@ -512,6 +512,43 @@ describe('HomeyService', () => {
 		await service.stop();
 	});
 
+	it('accepts an authoritative idempotent readback without requiring a newer persistence event', async () => {
+		const currentDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'onoff',
+					title: 'Power',
+					value: true,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: '2026-08-15T10:00:00.000Z',
+				}),
+			],
+		};
+		connector.getDevices.mockResolvedValueOnce([currentDevice]);
+		await service.start();
+		connector.getDevice.mockClear().mockResolvedValue(currentDevice);
+		synchronizer.synchronizeEvents.mockClear();
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+
+		await expect(command).resolves.toBe(true);
+		expect(connector.getDevice.mock.calls).toEqual([[staleDevice.id]]);
+		expect(synchronizer.synchronizeEvents.mock.calls).toHaveLength(0);
+
+		await service.stop();
+	});
+
 	it('rejects a stale matching readback after a newer queued event was accepted', async () => {
 		let resolveReadback: ((device: HomeyDevice | null) => void) | undefined;
 		const currentDevice = {
@@ -530,16 +567,14 @@ describe('HomeyService', () => {
 					readable: true,
 					writable: true,
 					available: true,
-					lastUpdatedAt: '2026-08-15T10:00:00.000Z',
+					lastUpdatedAt: null,
 				}),
 			],
 		};
 		const staleReadback = {
 			...currentDevice,
 			capabilities: currentDevice.capabilities.map((capability) =>
-				capability.id === 'onoff'
-					? { ...capability, value: true, lastUpdatedAt: '2026-08-15T09:59:00.000Z' }
-					: capability,
+				capability.id === 'onoff' ? { ...capability, value: true, lastUpdatedAt: null } : capability,
 			),
 		};
 		connector.getDevices.mockResolvedValueOnce([currentDevice]);
@@ -563,7 +598,7 @@ describe('HomeyService', () => {
 			deviceId: staleDevice.id,
 			capabilityId: 'onoff',
 			value: false,
-			lastUpdatedAt: '2026-08-15T10:01:00.000Z',
+			lastUpdatedAt: null,
 			occurredAt: null,
 			sequence: 2,
 		});
