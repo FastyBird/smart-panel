@@ -2,6 +2,7 @@ import { PluginsTypeMapperService } from '../../modules/config/services/plugins-
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
+import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
@@ -21,6 +22,7 @@ import { HomeyMappingLoaderService } from './mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from './mappings/mapping-transformer.service';
 import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-storage.service';
 import { HomeyConfigModel } from './models/config.model';
+import { HomeyDevicePlatform } from './platforms/homey-device.platform';
 import { HomeyAdoptionLockService } from './services/homey-adoption-lock.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
@@ -39,7 +41,9 @@ describe('DevicesHomeyPlugin', () => {
 		const discriminatorRegistry = { register: jest.fn() };
 		const extensionsService = { registerPluginMetadata: jest.fn() };
 		const pluginServiceManager = { register: jest.fn() };
+		const platformRegistry = { register: jest.fn() };
 		const homeyService = { pluginName: DEVICES_HOMEY_PLUGIN_NAME, serviceId: 'connector' };
+		const homeyDevicePlatform = { getType: () => DEVICES_HOMEY_TYPE };
 
 		const plugin = new DevicesHomeyPlugin(
 			configMapper as unknown as PluginsTypeMapperService,
@@ -51,6 +55,8 @@ describe('DevicesHomeyPlugin', () => {
 			extensionsService as unknown as ExtensionsService,
 			pluginServiceManager as unknown as PluginServiceManagerService,
 			homeyService as unknown as HomeyService,
+			platformRegistry as unknown as PlatformRegistryService,
+			homeyDevicePlatform as unknown as HomeyDevicePlatform,
 		);
 
 		plugin.onModuleInit();
@@ -81,6 +87,7 @@ describe('DevicesHomeyPlugin', () => {
 			expect.objectContaining({ type: DEVICES_HOMEY_PLUGIN_NAME, name: 'Homey', defaultEnabled: false }),
 		);
 		expect(pluginServiceManager.register).toHaveBeenCalledWith(homeyService);
+		expect(platformRegistry.register).toHaveBeenCalledWith(homeyDevicePlatform);
 	});
 
 	it('provides a production SDK-backed connector factory through the transport-neutral token', () => {
@@ -100,6 +107,7 @@ describe('DevicesHomeyPlugin', () => {
 				HomeyAdoptionLockService,
 				HomeyDeviceAdoptionService,
 				HomeySynchronizerService,
+				HomeyDevicePlatform,
 			]),
 		);
 		expect(providers).toContainEqual({

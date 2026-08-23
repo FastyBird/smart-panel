@@ -14,6 +14,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../module
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
+import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
@@ -50,6 +51,7 @@ import { HomeyMappingLoaderService } from './mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from './mappings/mapping-transformer.service';
 import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-storage.service';
 import { HomeyConfigModel } from './models/config.model';
+import { HomeyDevicePlatform } from './platforms/homey-device.platform';
 import { HomeyAdoptionLockService } from './services/homey-adoption-lock.service';
 import { HomeyConfigValidatorService } from './services/homey-config-validator.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
@@ -95,6 +97,7 @@ import { HomeyService } from './services/homey.service';
 		HomeyDeviceAdoptionService,
 		HomeySynchronizerService,
 		HomeyService,
+		HomeyDevicePlatform,
 	],
 	controllers: [
 		HomeyStatusController,
@@ -125,6 +128,8 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 		private readonly extensionsService: ExtensionsService,
 		private readonly pluginServiceManager: PluginServiceManagerService,
 		private readonly homeyService: HomeyService,
+		private readonly platformRegistry: PlatformRegistryService,
+		private readonly homeyDevicePlatform: HomeyDevicePlatform,
 	) {}
 
 	onModuleInit(): void {
@@ -200,6 +205,7 @@ The local connector is under development. Configuration credentials are write-on
 		});
 
 		this.pluginServiceManager.register(this.homeyService);
+		this.platformRegistry.register(this.homeyDevicePlatform);
 	}
 
 	private registerDiscriminator(

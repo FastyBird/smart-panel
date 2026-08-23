@@ -435,16 +435,26 @@ fake-timer coverage proves periodic scheduling, overlap prevention, reconnect re
 - `platforms/homey-device.platform.ts`
 - Command transformation/confirmation helpers and specs
 
-- [ ] Register a device platform for Homey-backed devices.
-- [ ] Resolve the property mapping and full capability ID.
-- [ ] Validate writable access, value type, enum/range, and device availability.
-- [ ] Apply the inverse transformation.
-- [ ] Serialize writes per device/capability.
-- [ ] Send the command through the connector with a bounded timeout.
-- [ ] Await a matching event as authoritative confirmation.
-- [ ] Perform at most one targeted read when confirmation times out.
-- [ ] Return a rejected/timeout result without treating an unconfirmed optimistic value as final.
-- [ ] Test on/off, dim normalization, temperature/range conversion, enums, covers, lock, concurrent commands, disconnect mid-command, rejection, event confirmation, and read fallback.
+- [x] Register a device platform for Homey-backed devices.
+- [x] Resolve the property mapping and full capability ID.
+- [x] Validate writable access, value type, enum/range, and device availability.
+- [x] Apply the inverse transformation.
+- [x] Serialize writes per device/capability.
+- [x] Send the command through the connector with a bounded timeout.
+- [x] Await a matching event as authoritative confirmation.
+- [x] Perform at most one targeted read when confirmation times out.
+- [x] Return a rejected/timeout result without treating an unconfirmed optimistic value as final.
+- [x] Test on/off, dim normalization, temperature/range conversion, enums, covers, lock, concurrent commands, disconnect mid-command, rejection, event confirmation, and read fallback.
+
+`HomeyDevicePlatform` defensively revalidates the adopted entity hierarchy, current upstream device/capability
+availability, writable mapping direction, panel constraints, and transformed Homey type/range/step/enum constraints
+before any batch write is sent. It preserves full suffixed capability IDs and applies the persisted mapping's inverse
+transform. `HomeyService` serializes each device/capability stream, bounds connector writes, and only returns success
+after the matching event has passed through synchronization or one bounded authoritative device read confirms and
+synchronizes the value. Stop/reconnect cancels pending writes and confirmation timers; rejection, timeout, and
+mismatching readback return failure without writing an optimistic value into local state. Focused tests cover boolean,
+scaled dim and color-temperature values, enums, cover and lock transforms, concurrent ordering, event confirmation,
+single-read fallback, transport rejection, write timeout, and disconnect cancellation.
 
 ### Task 4.4: Add observability and operational diagnostics
 
