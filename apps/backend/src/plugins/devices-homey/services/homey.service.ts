@@ -273,26 +273,27 @@ export class HomeyService extends BaseManagedPluginService {
 		generation: number,
 		source: Extract<HomeyReconciliationSource, 'startup' | 'reconnect'>,
 	): Promise<HomeyConnectorError | null> {
-		this.systemInfo = await connector.getSystemInfo();
-		this.lastSystemInfo = this.systemInfo;
-		this.zones = await connector.getZones();
-		this.startupEvents = [];
 		let subscriptionFailure: HomeyConnectorError | null = null;
 
-		try {
-			this.unsubscribe = await connector.subscribe((event) => this.onConnectorEvent(connector, generation, event));
-		} catch (error) {
-			this.startupEvents = null;
+		await this.runInventoryReconciliation(source, async () => {
+			this.systemInfo = await connector.getSystemInfo();
+			this.lastSystemInfo = this.systemInfo;
+			this.zones = await connector.getZones();
+			this.startupEvents = [];
 
-			if (!this.isDegradableSubscriptionFailure(error)) {
-				throw error;
+			try {
+				this.unsubscribe = await connector.subscribe((event) => this.onConnectorEvent(connector, generation, event));
+			} catch (error) {
+				this.startupEvents = null;
+
+				if (!this.isDegradableSubscriptionFailure(error)) {
+					throw error;
+				}
+
+				subscriptionFailure = error;
 			}
 
-			subscriptionFailure = error;
-		}
-
-		await this.enqueueSynchronization(() =>
-			this.runInventoryReconciliation(source, async () => {
+			await this.enqueueSynchronization(async () => {
 				this.replaceDevices(await connector.getDevices());
 				this.recordSynchronizationResult(await this.synchronizer.synchronizeSnapshot([...this.devices.values()]));
 
@@ -301,8 +302,8 @@ export class HomeyService extends BaseManagedPluginService {
 				}
 
 				this.recordSuccessfulInventorySync(connector, generation);
-			}),
-		);
+			});
+		});
 
 		return subscriptionFailure;
 	}

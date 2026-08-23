@@ -490,6 +490,30 @@ describe('HomeyService', () => {
 		await service.stop();
 	});
 
+	it('records startup metadata read failures as reconciliation attempts', async () => {
+		connector.getZones.mockImplementationOnce(() => {
+			jest.setSystemTime(new Date(INITIAL_TIME.getTime() + 125));
+
+			return Promise.reject(
+				new HomeyConnectorError(HomeyConnectorErrorCategory.UNAVAILABLE, HomeyConnectorOperation.GET_ZONES),
+			);
+		});
+
+		await service.start();
+
+		expect(service.getStatus()).toMatchObject({
+			connectionState: HomeyConnectionState.RECONNECTING,
+			reconciliationCount: 1,
+			reconciliationFailureCount: 1,
+			lastReconciliationDurationMs: 125,
+			lastInventorySyncAt: null,
+		});
+		expect(connector.subscribe.mock.calls).toHaveLength(0);
+		expect(connector.getDevices.mock.calls).toHaveLength(0);
+
+		await service.stop();
+	});
+
 	it('performs a targeted authoritative read for an event received during the startup snapshot', async () => {
 		const freshDevice = { ...staleDevice, available: false, availabilityMessage: 'Offline' };
 		connector.getDevice.mockResolvedValue(freshDevice);
