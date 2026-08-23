@@ -37,6 +37,7 @@ type HomeyReconciliationSource = 'startup' | 'reconnect' | 'periodic';
 
 interface PendingHomeyCommandConfirmation {
 	readonly generation: number;
+	readonly observationRevision: number;
 	readonly value: HomeyCapabilityValue;
 	readonly resolve: (confirmed: boolean) => void;
 }
@@ -335,6 +336,7 @@ export class HomeyService extends BaseManagedPluginService {
 			await this.enqueueSynchronization(async () => {
 				this.replaceDevices(await connector.getDevices());
 				this.recordSynchronizationResult(await this.synchronizer.synchronizeSnapshot([...this.devices.values()]));
+				this.recordCapabilityEvidence([...this.devices.values()]);
 
 				if (this.startupEvents) {
 					await this.reconcileStartupEvents(connector, generation);
@@ -493,6 +495,7 @@ export class HomeyService extends BaseManagedPluginService {
 			if (inventoryReplaced) {
 				const result = await this.synchronizer.synchronizeSnapshot([...this.devices.values()], events);
 				this.recordSynchronizationResult(result);
+				this.recordCapabilityEvidence([...this.devices.values()]);
 				confirmationEvents.push(...result.acceptedEvents);
 			} else if (targetedDeviceIds.size > 0) {
 				const readbackEvents = selectedEvents.filter(
@@ -500,6 +503,7 @@ export class HomeyService extends BaseManagedPluginService {
 				);
 				const result = await this.synchronizer.synchronizeDevices(refreshedDevices, missingDeviceIds, readbackEvents);
 				this.recordSynchronizationResult(result);
+				this.recordCapabilityEvidence(refreshedDevices);
 				confirmationEvents.push(...result.acceptedEvents);
 
 				const remainingEvents = selectedEvents.filter(
@@ -623,6 +627,7 @@ export class HomeyService extends BaseManagedPluginService {
 					this.zones = zonesResult.value;
 					this.replaceDevices(devicesResult.value);
 					this.recordSynchronizationResult(await this.synchronizer.synchronizeSnapshot(devicesResult.value));
+					this.recordCapabilityEvidence(devicesResult.value);
 					this.recordSuccessfulInventorySync(connector, generation);
 
 					if (this.unsubscribe) {
@@ -805,6 +810,7 @@ export class HomeyService extends BaseManagedPluginService {
 		});
 		const pending: PendingHomeyCommandConfirmation = {
 			generation,
+			observationRevision: this.capabilityObservationRevisions.get(key) ?? 0,
 			value,
 			resolve: resolveConfirmation,
 		};
@@ -957,10 +963,26 @@ export class HomeyService extends BaseManagedPluginService {
 			if (
 				pending !== undefined &&
 				pending.generation === generation &&
+				(this.capabilityObservationRevisions.get(key) ?? 0) > pending.observationRevision &&
 				homeyCapabilityValuesEqual(pending.value, event.value)
 			) {
 				this.pendingCommandConfirmations.delete(key);
 				pending.resolve(true);
+			}
+		}
+	}
+
+	private recordCapabilityEvidence(devices: readonly HomeyDevice[]): void {
+		for (const device of devices) {
+			for (const capability of device.capabilities) {
+				if (!capability.readable || capability.available === false) {
+					continue;
+				}
+
+				this.acceptedCapabilityStates.set(this.commandKey(device.id, capability.id), {
+					revision: ++this.acceptedCapabilityRevision,
+					value: capability.value,
+				});
 			}
 		}
 	}
@@ -1040,8 +1062,6 @@ export class HomeyService extends BaseManagedPluginService {
 				disconnectSucceeded = false;
 			}
 		}
-		this.commandTails.clear();
-
 		if (disconnectSucceeded && (unsubscribeSucceeded || connector !== null)) {
 			this.unsubscribe = null;
 			this.connector = null;
