@@ -446,14 +446,56 @@ describe('HomeyService', () => {
 		await service.stop();
 	});
 
-	it('cancels an unconfirmed command when the connector stops', async () => {
+	it('retains a timed-out transport write as the serialization barrier', async () => {
+		const pendingWrite = deferred();
 		await service.start();
-		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		connector.setCapabilityValue
+			.mockClear()
+			.mockImplementationOnce(() => pendingWrite.promise)
+			.mockResolvedValueOnce(undefined);
+		const first = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		const second = service.executeCapabilityCommand(staleDevice.id, 'onoff', false);
+		await flushMicrotasks();
+
+		expect(connector.setCapabilityValue.mock.calls).toEqual([[staleDevice.id, 'onoff', true]]);
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_WRITE_TIMEOUT_MS);
+		await expect(first).resolves.toBe(false);
+		expect(connector.setCapabilityValue.mock.calls).toHaveLength(1);
+
+		pendingWrite.resolve();
+		await flushMicrotasks();
+		expect(connector.setCapabilityValue.mock.calls).toEqual([
+			[staleDevice.id, 'onoff', true],
+			[staleDevice.id, 'onoff', false],
+		]);
+
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: false,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 1,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+
+		await expect(second).resolves.toBe(true);
+		await service.stop();
+	});
+
+	it('cancels an active write and its queued successor when the connector stops', async () => {
+		await service.start();
+		connector.setCapabilityValue.mockClear().mockImplementationOnce(() => new Promise(() => undefined));
+		const active = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		const queued = service.executeCapabilityCommand(staleDevice.id, 'onoff', false);
 		await flushMicrotasks();
 
 		await service.stop();
 
-		await expect(command).resolves.toBe(false);
+		await expect(active).resolves.toBe(false);
+		await expect(queued).resolves.toBe(false);
+		expect(connector.setCapabilityValue.mock.calls).toEqual([[staleDevice.id, 'onoff', true]]);
 		expect(jest.getTimerCount()).toBe(0);
 	});
 

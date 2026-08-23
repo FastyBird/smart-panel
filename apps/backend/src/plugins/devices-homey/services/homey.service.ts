@@ -250,9 +250,10 @@ export class HomeyService extends BaseManagedPluginService {
 		value: HomeyCapabilityValue,
 	): Promise<boolean> {
 		const key = this.commandKey(deviceId, capabilityId);
+		const generation = this.generation;
 
-		return this.enqueueCapabilityCommand(key, () =>
-			this.executeSerializedCapabilityCommand(key, deviceId, capabilityId, value),
+		return this.enqueueCapabilityCommand(key, (retainWrite) =>
+			this.executeSerializedCapabilityCommand(key, deviceId, capabilityId, value, generation, retainWrite),
 		);
 	}
 
@@ -713,12 +714,27 @@ export class HomeyService extends BaseManagedPluginService {
 		return result;
 	}
 
-	private enqueueCapabilityCommand(key: string, operation: () => Promise<boolean>): Promise<boolean> {
+	private enqueueCapabilityCommand(
+		key: string,
+		operation: (retainWrite: (write: Promise<void>) => void) => Promise<boolean>,
+	): Promise<boolean> {
 		const previous = this.commandTails.get(key) ?? Promise.resolve();
-		const result = previous.then(operation);
+		let retainedWrite: Promise<void> = Promise.resolve();
+		const result = this.waitForCommandTail(previous).then((ready) => {
+			if (!ready) {
+				return false;
+			}
+
+			return operation((write) => {
+				retainedWrite = write.then(
+					(): void => undefined,
+					(): void => undefined,
+				);
+			});
+		});
 		const tail: Promise<void> = result.then(
-			(): void => undefined,
-			(): void => undefined,
+			() => retainedWrite,
+			() => retainedWrite,
 		);
 		this.commandTails.set(key, tail);
 		void tail.then(() => {
@@ -730,14 +746,41 @@ export class HomeyService extends BaseManagedPluginService {
 		return result;
 	}
 
+	private waitForCommandTail(tail: Promise<void>): Promise<boolean> {
+		return new Promise((resolve) => {
+			let settled = false;
+			const complete = (ready: boolean): void => {
+				if (settled) {
+					return;
+				}
+
+				settled = true;
+				this.commandCancellationListeners.delete(cancel);
+				resolve(ready);
+			};
+			const cancel = (): void => complete(false);
+			this.commandCancellationListeners.add(cancel);
+			void tail.then(
+				() => complete(true),
+				() => complete(true),
+			);
+		});
+	}
+
 	private async executeSerializedCapabilityCommand(
 		key: string,
 		deviceId: string,
 		capabilityId: string,
 		value: HomeyCapabilityValue,
+		expectedGeneration: number,
+		retainWrite: (write: Promise<void>) => void,
 	): Promise<boolean> {
+		if (this.generation !== expectedGeneration) {
+			return false;
+		}
+
 		const connector = this.connector;
-		const generation = this.generation;
+		const generation = expectedGeneration;
 
 		if (
 			connector === null ||
@@ -760,10 +803,9 @@ export class HomeyService extends BaseManagedPluginService {
 		this.pendingCommandConfirmations.set(key, pending);
 
 		try {
-			const write = await this.settleWithin(
-				connector.setCapabilityValue(deviceId, capabilityId, value),
-				HOMEY_COMMAND_WRITE_TIMEOUT_MS,
-			);
+			const writeOperation = connector.setCapabilityValue(deviceId, capabilityId, value);
+			retainWrite(writeOperation);
+			const write = await this.settleWithin(writeOperation, HOMEY_COMMAND_WRITE_TIMEOUT_MS);
 
 			if (write.status !== 'fulfilled' || !this.isCurrentGeneration(connector, generation)) {
 				return false;
@@ -904,7 +946,6 @@ export class HomeyService extends BaseManagedPluginService {
 		this.clearLiveEventFlush();
 		this.startupEvents = null;
 		this.cancelCommandOperations();
-		await Promise.all(this.commandTails.values());
 		const unsubscribe = this.unsubscribe;
 		const connector = this.connector;
 		let unsubscribeSucceeded = true;
@@ -930,6 +971,7 @@ export class HomeyService extends BaseManagedPluginService {
 				disconnectSucceeded = false;
 			}
 		}
+		this.commandTails.clear();
 
 		if (disconnectSucceeded && (unsubscribeSucceeded || connector !== null)) {
 			this.unsubscribe = null;
