@@ -266,9 +266,16 @@ describe('HomeySynchronizerService', () => {
 	it('reports whether a capability has a readable property binding', async () => {
 		await service.refreshIndex();
 
-		expect(service.hasReadableCapabilityBinding('homey-light', 'onoff')).toBe(true);
-		expect(service.hasReadableCapabilityBinding('homey-light', 'vendor_write_only')).toBe(false);
-		expect(service.hasReadableCapabilityBinding('unadopted', 'onoff')).toBe(false);
+		await expect(service.hasReadableCapabilityBinding('homey-light', 'onoff')).resolves.toBe(true);
+		await expect(service.hasReadableCapabilityBinding('homey-light', 'vendor_write_only')).resolves.toBe(false);
+		await expect(service.hasReadableCapabilityBinding('unadopted', 'onoff')).resolves.toBe(false);
+
+		const replacement = property('replacement-brightness', 'dim', brightnessMapping.name);
+		devicesService.findAll.mockResolvedValueOnce([adoptedDevice([replacement])]);
+		service.invalidateIndex();
+
+		await expect(service.hasReadableCapabilityBinding('homey-light', 'onoff')).resolves.toBe(false);
+		await expect(service.hasReadableCapabilityBinding('homey-light', 'dim')).resolves.toBe(true);
 	});
 
 	it('filters unknown devices, unmapped capabilities, and invalid runtime values', async () => {
@@ -359,7 +366,8 @@ describe('HomeySynchronizerService', () => {
 		propertiesService.update.mockRejectedValueOnce(new Error('storage unavailable'));
 		const newest = capabilityEvent('onoff', true, null, 2);
 
-		await service.synchronizeEvents([newest], inventory());
+		const partiallyApplied = await service.synchronizeEvents([newest], inventory());
+		expect(partiallyApplied.acceptedEvents).toEqual([]);
 		propertiesService.update.mockClear();
 		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 1)], inventory());
 

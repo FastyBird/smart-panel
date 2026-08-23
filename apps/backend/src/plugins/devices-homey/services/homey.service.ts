@@ -887,6 +887,11 @@ export class HomeyService extends BaseManagedPluginService {
 				if (!this.isCurrentGeneration(connector, generation)) {
 					return;
 				}
+				const currentDevice = this.devices.get(deviceId);
+
+				if (currentDevice === undefined || !currentDevice.available) {
+					return;
+				}
 
 				const currentAcceptedState = this.acceptedCapabilityStates.get(key);
 				const observationChanged = (this.capabilityObservationRevisions.get(key) ?? 0) !== observedRevision;
@@ -905,9 +910,8 @@ export class HomeyService extends BaseManagedPluginService {
 					return;
 				}
 
-				if (!this.synchronizer.hasReadableCapabilityBinding(deviceId, capabilityId)) {
+				if (!(await this.synchronizer.hasReadableCapabilityBinding(deviceId, capabilityId))) {
 					readbackAccepted = true;
-					this.devices.set(confirmedDevice.id, confirmedDevice);
 					this.recordAcceptedCapabilityEvents([readbackEvent], generation);
 					return;
 				}
@@ -920,7 +924,6 @@ export class HomeyService extends BaseManagedPluginService {
 				readbackAccepted = result.acceptedEvents.includes(readbackEvent);
 
 				if (readbackAccepted) {
-					this.devices.set(confirmedDevice.id, confirmedDevice);
 					this.recordAcceptedCapabilityEvents(result.acceptedEvents, generation);
 				}
 			});

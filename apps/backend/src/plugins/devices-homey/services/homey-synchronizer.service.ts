@@ -287,7 +287,9 @@ export class HomeySynchronizerService {
 		});
 	}
 
-	hasReadableCapabilityBinding(homeyDeviceId: string, capabilityId: string): boolean {
+	async hasReadableCapabilityBinding(homeyDeviceId: string, capabilityId: string): Promise<boolean> {
+		await this.ensureIndex();
+
 		return (this.propertiesByDeviceCapability.get(homeyDeviceId)?.get(capabilityId)?.length ?? 0) > 0;
 	}
 
@@ -442,7 +444,7 @@ export class HomeySynchronizerService {
 		}
 
 		const order = this.createOrder(sequence, updatedAt);
-		let applied = false;
+		let allBindingsApplied = true;
 
 		for (const binding of bindings) {
 			const previousObservedOrder = this.lastObservedOrder.get(binding.property.id);
@@ -453,6 +455,7 @@ export class HomeySynchronizerService {
 				(previousOrder !== undefined && !this.isNewerOrder(order, previousOrder))
 			) {
 				result.ignored += 1;
+				allBindingsApplied = false;
 				continue;
 			}
 
@@ -467,16 +470,16 @@ export class HomeySynchronizerService {
 				});
 				this.lastAppliedOrder.set(binding.property.id, this.preserveSequenceWatermark(observedOrder, previousOrder));
 				result.updated += 1;
-				applied = true;
 			} catch {
 				result.failed += 1;
+				allBindingsApplied = false;
 				this.logger.warn('Ignored a Homey capability update that could not be mapped or persisted', {
 					resource: binding.property.id,
 				});
 			}
 		}
 
-		return applied;
+		return allBindingsApplied;
 	}
 
 	private async commitReadbackOrder(
