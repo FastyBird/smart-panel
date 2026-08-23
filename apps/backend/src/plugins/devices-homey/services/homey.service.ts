@@ -475,16 +475,16 @@ export class HomeyService extends BaseManagedPluginService {
 			const confirmationEvents: HomeyEvent[] = [];
 
 			if (inventoryReplaced) {
-				this.recordSynchronizationResult(
-					await this.synchronizer.synchronizeSnapshot([...this.devices.values()], events),
-				);
+				const result = await this.synchronizer.synchronizeSnapshot([...this.devices.values()], events);
+				this.recordSynchronizationResult(result);
+				confirmationEvents.push(...result.acceptedEvents);
 			} else if (targetedDeviceIds.size > 0) {
 				const readbackEvents = selectedEvents.filter(
 					(event) => 'deviceId' in event && targetedDeviceIds.has(event.deviceId),
 				);
-				this.recordSynchronizationResult(
-					await this.synchronizer.synchronizeDevices(refreshedDevices, missingDeviceIds, readbackEvents),
-				);
+				const result = await this.synchronizer.synchronizeDevices(refreshedDevices, missingDeviceIds, readbackEvents);
+				this.recordSynchronizationResult(result);
+				confirmationEvents.push(...result.acceptedEvents);
 
 				const remainingEvents = selectedEvents.filter(
 					(event) => !('deviceId' in event) || !targetedDeviceIds.has(event.deviceId),
@@ -845,17 +845,35 @@ export class HomeyService extends BaseManagedPluginService {
 				return false;
 			}
 			const confirmedDevice = readback.value;
+			const readbackEvent: HomeyEvent = {
+				type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+				deviceId,
+				capabilityId,
+				value: capability.value,
+				lastUpdatedAt: capability.lastUpdatedAt,
+				occurredAt: null,
+				sequence: null,
+			};
+			let readbackAccepted = false;
 
 			await this.enqueueSynchronization(async () => {
 				if (!this.isCurrentGeneration(connector, generation)) {
 					return;
 				}
 
-				this.devices.set(confirmedDevice.id, confirmedDevice);
-				this.recordSynchronizationResult(await this.synchronizer.synchronizeDevices([confirmedDevice]));
+				const result = await this.synchronizer.synchronizeEvents(
+					[readbackEvent],
+					new Map([[confirmedDevice.id, confirmedDevice]]),
+				);
+				this.recordSynchronizationResult(result);
+				readbackAccepted = result.acceptedEvents.includes(readbackEvent);
+
+				if (readbackAccepted) {
+					this.devices.set(confirmedDevice.id, confirmedDevice);
+				}
 			});
 
-			return this.isCurrentGeneration(connector, generation);
+			return readbackAccepted && this.isCurrentGeneration(connector, generation);
 		} finally {
 			this.removePendingCommandConfirmation(key, pending);
 		}

@@ -124,8 +124,8 @@ describe('HomeyService', () => {
 		connectorFactory = { create: jest.fn().mockReturnValue(connector) };
 		synchronizer = {
 			filterEvents: jest.fn((events) => [...events]),
-			synchronizeSnapshot: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0 }),
-			synchronizeDevices: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0 }),
+			synchronizeSnapshot: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0, acceptedEvents: [] }),
+			synchronizeDevices: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0, acceptedEvents: [] }),
 			synchronizeEvents: jest.fn((events: readonly HomeyEvent[], _currentDevices: ReadonlyMap<string, HomeyDevice>) =>
 				Promise.resolve({ updated: 0, ignored: 0, failed: 0, acceptedEvents: [...events] }),
 			),
@@ -337,6 +337,95 @@ describe('HomeyService', () => {
 		await service.stop();
 	});
 
+	it('confirms from a capability event accepted through a targeted device refresh', async () => {
+		const refreshedDevice = {
+			...staleDevice,
+			capabilities: staleDevice.capabilities.map((capability) =>
+				capability.id === 'onoff' ? { ...capability, value: true } : capability,
+			),
+		};
+		await service.start();
+		connector.getDevice.mockClear().mockResolvedValue(refreshedDevice);
+		synchronizer.synchronizeDevices.mockImplementationOnce((_devices, _missingDeviceIds, events) =>
+			Promise.resolve({
+				updated: 1,
+				ignored: 0,
+				failed: 0,
+				acceptedEvents: events.filter((event) => event.type === HomeyEventType.CAPABILITY_VALUE_CHANGED),
+			}),
+		);
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+
+		void listener?.({
+			type: HomeyEventType.DEVICE_UPDATED,
+			deviceId: staleDevice.id,
+			occurredAt: null,
+			sequence: 2,
+		});
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: true,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 2,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
+
+		await expect(command).resolves.toBe(true);
+		expect(connector.getDevice.mock.calls).toEqual([[staleDevice.id]]);
+
+		await service.stop();
+	});
+
+	it('confirms from a capability event accepted through a zone-triggered snapshot', async () => {
+		const refreshedDevice = {
+			...staleDevice,
+			capabilities: staleDevice.capabilities.map((capability) =>
+				capability.id === 'onoff' ? { ...capability, value: true } : capability,
+			),
+		};
+		await service.start();
+		connector.getDevice.mockClear();
+		connector.getDevices.mockResolvedValueOnce([refreshedDevice]);
+		synchronizer.synchronizeSnapshot.mockImplementationOnce((_devices, events) =>
+			Promise.resolve({
+				updated: 1,
+				ignored: 0,
+				failed: 0,
+				acceptedEvents: events.filter((event) => event.type === HomeyEventType.CAPABILITY_VALUE_CHANGED),
+			}),
+		);
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+
+		void listener?.({
+			type: HomeyEventType.ZONE_UPDATED,
+			zoneId: 'zone-living',
+			occurredAt: null,
+			sequence: 2,
+		});
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: true,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 2,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
+
+		await expect(command).resolves.toBe(true);
+		expect(connector.getDevice.mock.calls).toHaveLength(0);
+
+		await service.stop();
+	});
+
 	it('does not confirm a command from a matching event rejected by synchronization ordering', async () => {
 		await service.start();
 		connector.getDevice.mockClear().mockResolvedValue(staleDevice);
@@ -399,7 +488,7 @@ describe('HomeyService', () => {
 		};
 		await service.start();
 		connector.getDevice.mockClear().mockResolvedValue(confirmedDevice);
-		synchronizer.synchronizeDevices.mockClear();
+		synchronizer.synchronizeEvents.mockClear();
 		const command = service.executeCapabilityCommand(staleDevice.id, 'dim', 0.5);
 		await flushMicrotasks();
 
@@ -408,7 +497,85 @@ describe('HomeyService', () => {
 		await expect(command).resolves.toBe(true);
 		expect(connector.getDevice.mock.calls).toHaveLength(1);
 		expect(connector.getDevice.mock.calls[0]).toEqual([staleDevice.id]);
-		expect(synchronizer.synchronizeDevices).toHaveBeenCalledWith([confirmedDevice]);
+		expect(synchronizer.synchronizeEvents).toHaveBeenCalledWith(
+			[
+				expect.objectContaining({
+					type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+					deviceId: staleDevice.id,
+					capabilityId: 'dim',
+					value: 0.5,
+				}),
+			],
+			expect.any(Map),
+		);
+
+		await service.stop();
+	});
+
+	it('rejects a stale matching readback after a newer queued event was accepted', async () => {
+		let resolveReadback: ((device: HomeyDevice | null) => void) | undefined;
+		const currentDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'onoff',
+					title: 'Power',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: '2026-08-15T10:00:00.000Z',
+				}),
+			],
+		};
+		const staleReadback = {
+			...currentDevice,
+			capabilities: currentDevice.capabilities.map((capability) =>
+				capability.id === 'onoff'
+					? { ...capability, value: true, lastUpdatedAt: '2026-08-15T09:59:00.000Z' }
+					: capability,
+			),
+		};
+		connector.getDevices.mockResolvedValueOnce([currentDevice]);
+		await service.start();
+		connector.getDevice.mockClear().mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveReadback = resolve;
+			}),
+		);
+		synchronizer.synchronizeEvents
+			.mockImplementationOnce((events) =>
+				Promise.resolve({ updated: 1, ignored: 0, failed: 0, acceptedEvents: [...events] }),
+			)
+			.mockResolvedValueOnce({ updated: 0, ignored: 1, failed: 0, acceptedEvents: [] });
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: false,
+			lastUpdatedAt: '2026-08-15T10:01:00.000Z',
+			occurredAt: null,
+			sequence: 2,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
+		resolveReadback?.(staleReadback);
+		await flushMicrotasks();
+
+		await expect(command).resolves.toBe(false);
+		expect(
+			service.getInventorySnapshot()?.[0].capabilities.find((capability) => capability.id === 'onoff')?.value,
+		).toBe(false);
 
 		await service.stop();
 	});

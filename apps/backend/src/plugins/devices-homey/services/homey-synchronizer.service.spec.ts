@@ -207,6 +207,7 @@ describe('HomeySynchronizerService', () => {
 			updated: 4,
 			ignored: 0,
 			failed: 0,
+			acceptedEvents: [],
 		});
 
 		expect(devicesService.findAll).toHaveBeenCalledWith(DEVICES_HOMEY_TYPE);
@@ -624,11 +625,12 @@ describe('HomeySynchronizerService', () => {
 		});
 		const event = capabilityEvent('onoff', false, null, 2);
 
-		await service.synchronizeSnapshot([current], [event]);
+		const result = await service.synchronizeSnapshot([current], [event]);
 		propertiesService.update.mockClear();
 		await service.synchronizeEvents([{ ...event, value: false, sequence: 1 }], inventory(current));
 
 		expect(propertiesService.update).not.toHaveBeenCalled();
+		expect(result.acceptedEvents).toEqual([{ ...event, value: true }]);
 	});
 
 	it('commits buffered startup ordering after applying fresh targeted readback', async () => {
@@ -653,7 +655,7 @@ describe('HomeySynchronizerService', () => {
 			sequence: 2,
 		};
 
-		await service.synchronizeDevices([current], [], [capability, availability]);
+		const result = await service.synchronizeDevices([current], [], [capability, availability]);
 		propertiesService.update.mockClear();
 		connectivityService.trySetConnectionState.mockClear();
 
@@ -672,6 +674,7 @@ describe('HomeySynchronizerService', () => {
 
 		expect(propertiesService.update).not.toHaveBeenCalled();
 		expect(connectivityService.trySetConnectionState).not.toHaveBeenCalled();
+		expect(result.acceptedEvents).toEqual([{ ...capability, value: true }]);
 	});
 
 	it('carries a lifecycle refresh sequence into the fresh capability values', async () => {
