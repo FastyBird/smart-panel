@@ -472,6 +472,8 @@ export class HomeyService extends BaseManagedPluginService {
 		}
 
 		if (events.length > 0 && this.isCurrentGeneration(connector, generation)) {
+			const confirmationEvents: HomeyEvent[] = [];
+
 			if (inventoryReplaced) {
 				this.recordSynchronizationResult(
 					await this.synchronizer.synchronizeSnapshot([...this.devices.values()], events),
@@ -489,13 +491,17 @@ export class HomeyService extends BaseManagedPluginService {
 				);
 
 				if (remainingEvents.length > 0) {
-					this.recordSynchronizationResult(await this.synchronizer.synchronizeEvents(remainingEvents, this.devices));
+					const result = await this.synchronizer.synchronizeEvents(remainingEvents, this.devices);
+					this.recordSynchronizationResult(result);
+					confirmationEvents.push(...result.acceptedEvents);
 				}
 			} else if (selectedEvents.length > 0) {
-				this.recordSynchronizationResult(await this.synchronizer.synchronizeEvents(selectedEvents, this.devices));
+				const result = await this.synchronizer.synchronizeEvents(selectedEvents, this.devices);
+				this.recordSynchronizationResult(result);
+				confirmationEvents.push(...result.acceptedEvents);
 			}
 			this.lastEventAt = this.now();
-			this.confirmPendingCommands(events, generation);
+			this.confirmPendingCommands(confirmationEvents, generation);
 		}
 
 		return authoritativeTraffic;

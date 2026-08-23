@@ -271,7 +271,7 @@ describe('HomeySynchronizerService', () => {
 			inventory(),
 		);
 
-		expect(result).toEqual({ updated: 0, ignored: 3, failed: 0 });
+		expect(result).toEqual({ updated: 0, ignored: 3, failed: 0, acceptedEvents: [] });
 		expect(propertiesService.update).not.toHaveBeenCalled();
 		expect(connectivityService.trySetConnectionState).not.toHaveBeenCalled();
 	});
@@ -326,15 +326,19 @@ describe('HomeySynchronizerService', () => {
 
 	it('rejects an older numeric sequence received in a later batch', async () => {
 		await service.refreshIndex();
+		const newest = capabilityEvent('onoff', true, null, 2);
+		const stale = capabilityEvent('onoff', false, null, 1);
 
-		await service.synchronizeEvents([capabilityEvent('onoff', true, null, 2)], inventory());
-		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 1)], inventory());
+		const accepted = await service.synchronizeEvents([newest], inventory());
+		const rejected = await service.synchronizeEvents([stale], inventory());
 
 		expect(propertiesService.update).toHaveBeenCalledTimes(2);
 		expect(propertiesService.update).toHaveBeenCalledWith('property-power', {
 			type: DEVICES_HOMEY_TYPE,
 			value: true,
 		});
+		expect(accepted.acceptedEvents).toEqual([newest]);
+		expect(rejected.acceptedEvents).toEqual([]);
 	});
 
 	it('blocks older capability events after a newer write failure and allows an equal-order retry', async () => {
@@ -704,7 +708,7 @@ describe('HomeySynchronizerService', () => {
 			new Map([[current.id, current]]),
 		);
 
-		expect(result).toEqual({ updated: 3, ignored: 0, failed: 1 });
+		expect(result).toEqual({ updated: 3, ignored: 0, failed: 1, acceptedEvents: [] });
 		expect(propertiesService.update).toHaveBeenCalledTimes(3);
 	});
 

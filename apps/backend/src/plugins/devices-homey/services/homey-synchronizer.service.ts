@@ -27,6 +27,10 @@ export interface HomeySynchronizationResult {
 	readonly failed: number;
 }
 
+export interface HomeyEventSynchronizationResult extends HomeySynchronizationResult {
+	readonly acceptedEvents: readonly HomeyEvent[];
+}
+
 interface MutableSynchronizationResult {
 	updated: number;
 	ignored: number;
@@ -149,9 +153,10 @@ export class HomeySynchronizerService {
 	async synchronizeEvents(
 		events: readonly HomeyEvent[],
 		currentDevices: ReadonlyMap<string, HomeyDevice>,
-	): Promise<HomeySynchronizationResult> {
+	): Promise<HomeyEventSynchronizationResult> {
 		await this.ensureIndex();
 		const result = this.emptyResult();
+		const acceptedEvents: HomeyEvent[] = [];
 
 		for (const event of this.filterEvents(events)) {
 			if (!this.isValidEvent(event)) {
@@ -175,7 +180,7 @@ export class HomeySynchronizerService {
 							break;
 						}
 
-						await this.synchronizeCapabilityValue(
+						const applied = await this.synchronizeCapabilityValue(
 							event.deviceId,
 							event.capabilityId,
 							event.value,
@@ -183,6 +188,10 @@ export class HomeySynchronizerService {
 							event.sequence,
 							result,
 						);
+
+						if (applied) {
+							acceptedEvents.push(event);
+						}
 					}
 					break;
 				case HomeyEventType.DEVICE_AVAILABILITY_CHANGED: {
@@ -243,7 +252,7 @@ export class HomeySynchronizerService {
 			}
 		}
 
-		return result;
+		return { ...result, acceptedEvents };
 	}
 
 	filterEvents(events: readonly HomeyEvent[]): HomeyEvent[] {
@@ -393,15 +402,16 @@ export class HomeySynchronizerService {
 		updatedAt: string | null,
 		sequence: string | number | null,
 		result: MutableSynchronizationResult,
-	): Promise<void> {
+	): Promise<boolean> {
 		const bindings = this.propertiesByDeviceCapability.get(homeyDeviceId)?.get(capabilityId);
 
 		if (bindings === undefined || bindings.length === 0 || !this.isCapabilityValue(value)) {
 			result.ignored += 1;
-			return;
+			return false;
 		}
 
 		const order = this.createOrder(sequence, updatedAt);
+		let applied = false;
 
 		for (const binding of bindings) {
 			const previousObservedOrder = this.lastObservedOrder.get(binding.property.id);
@@ -426,6 +436,7 @@ export class HomeySynchronizerService {
 				});
 				this.lastAppliedOrder.set(binding.property.id, this.preserveSequenceWatermark(observedOrder, previousOrder));
 				result.updated += 1;
+				applied = true;
 			} catch {
 				result.failed += 1;
 				this.logger.warn('Ignored a Homey capability update that could not be mapped or persisted', {
@@ -433,6 +444,8 @@ export class HomeySynchronizerService {
 				});
 			}
 		}
+
+		return applied;
 	}
 
 	private async commitReadbackOrder(

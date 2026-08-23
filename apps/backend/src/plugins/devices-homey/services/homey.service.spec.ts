@@ -126,7 +126,9 @@ describe('HomeyService', () => {
 			filterEvents: jest.fn((events) => [...events]),
 			synchronizeSnapshot: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0 }),
 			synchronizeDevices: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0 }),
-			synchronizeEvents: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0 }),
+			synchronizeEvents: jest.fn((events: readonly HomeyEvent[], _currentDevices: ReadonlyMap<string, HomeyDevice>) =>
+				Promise.resolve({ updated: 0, ignored: 0, failed: 0, acceptedEvents: [...events] }),
+			),
 			reset: jest.fn(),
 		};
 		service = new HomeyService(
@@ -331,6 +333,45 @@ describe('HomeyService', () => {
 		await expect(command).resolves.toBe(true);
 		expect(synchronizer.synchronizeEvents).toHaveBeenCalled();
 		expect(connector.getDevice.mock.calls).toHaveLength(0);
+
+		await service.stop();
+	});
+
+	it('does not confirm a command from a matching event rejected by synchronization ordering', async () => {
+		await service.start();
+		connector.getDevice.mockClear().mockResolvedValue(staleDevice);
+		synchronizer.synchronizeDevices.mockClear();
+		synchronizer.synchronizeEvents.mockResolvedValueOnce({
+			updated: 0,
+			ignored: 1,
+			failed: 0,
+			acceptedEvents: [],
+		});
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+		let settled = false;
+		void command.then(() => {
+			settled = true;
+		});
+
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: true,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 1,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+
+		expect(settled).toBe(false);
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+
+		await expect(command).resolves.toBe(false);
+		expect(connector.getDevice.mock.calls).toEqual([[staleDevice.id]]);
+		expect(synchronizer.synchronizeDevices).not.toHaveBeenCalled();
 
 		await service.stop();
 	});
