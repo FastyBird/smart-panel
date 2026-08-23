@@ -29,6 +29,8 @@ import { HomeyStatusModel } from '../models/status.model';
 import { calculateHomeyReconnectDelay } from './homey-reconnect-backoff';
 import { HomeySynchronizationResult, HomeySynchronizerService } from './homey-synchronizer.service';
 
+type HomeyReconciliationSource = 'startup' | 'reconnect' | 'periodic';
+
 @Injectable()
 export class HomeyService extends BaseManagedPluginService {
 	private readonly logger = createExtensionLogger(DEVICES_HOMEY_PLUGIN_NAME, 'HomeyService');
@@ -59,6 +61,9 @@ export class HomeyService extends BaseManagedPluginService {
 	private lastInventorySyncAt: string | null = null;
 	private lastEventAt: string | null = null;
 	private lastErrorCategory: HomeyConnectorErrorCategory | null = null;
+	private reconciliationCount = 0;
+	private reconciliationFailureCount = 0;
+	private lastReconciliationDurationMs: number | null = null;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -94,7 +99,7 @@ export class HomeyService extends BaseManagedPluginService {
 
 				await connector.connect();
 				this.recordSuccessfulConnection();
-				const subscriptionFailure = await this.synchronizeStartup(connector, generation);
+				const subscriptionFailure = await this.synchronizeStartup(connector, generation, 'startup');
 
 				this.state = 'started';
 
@@ -200,6 +205,9 @@ export class HomeyService extends BaseManagedPluginService {
 		status.lastInventorySyncAt = this.lastInventorySyncAt;
 		status.lastEventAt = this.lastEventAt;
 		status.reconnectCount = this.reconnectCount;
+		status.reconciliationCount = this.reconciliationCount;
+		status.reconciliationFailureCount = this.reconciliationFailureCount;
+		status.lastReconciliationDurationMs = this.lastReconciliationDurationMs;
 		status.lastErrorCategory = this.lastErrorCategory;
 		status.lastError = this.lastError;
 
@@ -260,34 +268,41 @@ export class HomeyService extends BaseManagedPluginService {
 		});
 	}
 
-	private async synchronizeStartup(connector: HomeyConnector, generation: number): Promise<HomeyConnectorError | null> {
-		this.systemInfo = await connector.getSystemInfo();
-		this.lastSystemInfo = this.systemInfo;
-		this.zones = await connector.getZones();
-		this.startupEvents = [];
+	private async synchronizeStartup(
+		connector: HomeyConnector,
+		generation: number,
+		source: Extract<HomeyReconciliationSource, 'startup' | 'reconnect'>,
+	): Promise<HomeyConnectorError | null> {
 		let subscriptionFailure: HomeyConnectorError | null = null;
 
-		try {
-			this.unsubscribe = await connector.subscribe((event) => this.onConnectorEvent(connector, generation, event));
-		} catch (error) {
-			this.startupEvents = null;
+		await this.runInventoryReconciliation(source, async () => {
+			this.systemInfo = await connector.getSystemInfo();
+			this.lastSystemInfo = this.systemInfo;
+			this.zones = await connector.getZones();
+			this.startupEvents = [];
 
-			if (!this.isDegradableSubscriptionFailure(error)) {
-				throw error;
+			try {
+				this.unsubscribe = await connector.subscribe((event) => this.onConnectorEvent(connector, generation, event));
+			} catch (error) {
+				this.startupEvents = null;
+
+				if (!this.isDegradableSubscriptionFailure(error)) {
+					throw error;
+				}
+
+				subscriptionFailure = error;
 			}
 
-			subscriptionFailure = error;
-		}
+			await this.enqueueSynchronization(async () => {
+				this.replaceDevices(await connector.getDevices());
+				this.recordSynchronizationResult(await this.synchronizer.synchronizeSnapshot([...this.devices.values()]));
 
-		await this.enqueueSynchronization(async () => {
-			this.replaceDevices(await connector.getDevices());
-			this.recordSynchronizationResult(await this.synchronizer.synchronizeSnapshot([...this.devices.values()]));
+				if (this.startupEvents) {
+					await this.reconcileStartupEvents(connector, generation);
+				}
 
-			if (this.startupEvents) {
-				await this.reconcileStartupEvents(connector, generation);
-			}
-
-			this.recordSuccessfulInventorySync(connector, generation);
+				this.recordSuccessfulInventorySync(connector, generation);
+			});
 		});
 
 		return subscriptionFailure;
@@ -551,31 +566,33 @@ export class HomeyService extends BaseManagedPluginService {
 
 		await this.enqueueSynchronization(async () => {
 			try {
-				const [zonesResult, devicesResult] = await Promise.allSettled([connector.getZones(), connector.getDevices()]);
+				await this.runInventoryReconciliation('periodic', async () => {
+					const [zonesResult, devicesResult] = await Promise.allSettled([connector.getZones(), connector.getDevices()]);
 
-				if (zonesResult.status === 'rejected') {
-					throw zonesResult.reason as unknown;
-				}
+					if (zonesResult.status === 'rejected') {
+						throw zonesResult.reason as unknown;
+					}
 
-				if (devicesResult.status === 'rejected') {
-					throw devicesResult.reason as unknown;
-				}
+					if (devicesResult.status === 'rejected') {
+						throw devicesResult.reason as unknown;
+					}
 
-				if (!this.isCurrentGeneration(connector, generation)) {
-					return;
-				}
+					if (!this.isCurrentGeneration(connector, generation)) {
+						return;
+					}
 
-				this.zones = zonesResult.value;
-				this.replaceDevices(devicesResult.value);
-				this.recordSynchronizationResult(await this.synchronizer.synchronizeSnapshot(devicesResult.value));
-				this.recordSuccessfulInventorySync(connector, generation);
+					this.zones = zonesResult.value;
+					this.replaceDevices(devicesResult.value);
+					this.recordSynchronizationResult(await this.synchronizer.synchronizeSnapshot(devicesResult.value));
+					this.recordSuccessfulInventorySync(connector, generation);
 
-				if (this.unsubscribe) {
-					this.markRuntimeHealthy(connector, generation);
-				} else {
-					this.connectionState = HomeyConnectionState.DEGRADED_POLLING;
-					this.healthy = false;
-				}
+					if (this.unsubscribe) {
+						this.markRuntimeHealthy(connector, generation);
+					} else {
+						this.connectionState = HomeyConnectionState.DEGRADED_POLLING;
+						this.healthy = false;
+					}
+				});
 			} catch (error) {
 				if (this.isCurrentGeneration(connector, generation)) {
 					this.handleRuntimeFailure(error, 'Homey inventory reconciliation failed', generation);
@@ -634,7 +651,7 @@ export class HomeyService extends BaseManagedPluginService {
 				this.connector = connector;
 				await connector.connect();
 				this.recordSuccessfulConnection();
-				const subscriptionFailure = await this.synchronizeStartup(connector, generation);
+				const subscriptionFailure = await this.synchronizeStartup(connector, generation, 'reconnect');
 
 				if (subscriptionFailure) {
 					this.markRuntimeDegraded(subscriptionFailure, generation);
@@ -769,6 +786,37 @@ export class HomeyService extends BaseManagedPluginService {
 		}
 	}
 
+	private async runInventoryReconciliation(
+		source: HomeyReconciliationSource,
+		operation: () => Promise<void>,
+	): Promise<void> {
+		const startedAt = Date.now();
+		this.reconciliationCount += 1;
+
+		try {
+			await operation();
+			this.lastReconciliationDurationMs = Math.max(0, Date.now() - startedAt);
+			this.logger.log('Homey inventory reconciliation completed', {
+				count: this.reconciliationCount,
+				deviceCount: this.devices.size,
+				durationMs: this.lastReconciliationDurationMs,
+				failureCount: this.reconciliationFailureCount,
+				source,
+			});
+		} catch (error) {
+			this.reconciliationFailureCount += 1;
+			this.lastReconciliationDurationMs = Math.max(0, Date.now() - startedAt);
+			this.logger.warn('Homey inventory reconciliation attempt failed', {
+				count: this.reconciliationCount,
+				durationMs: this.lastReconciliationDurationMs,
+				failureCount: this.reconciliationFailureCount,
+				source,
+			});
+
+			throw error;
+		}
+	}
+
 	private isCurrentGeneration(connector: HomeyConnector, generation: number): boolean {
 		return this.connector === connector && this.generation === generation;
 	}
@@ -871,6 +919,9 @@ export class HomeyService extends BaseManagedPluginService {
 		this.lastEventAt = null;
 		this.lastErrorCategory = null;
 		this.reconnectCount = 0;
+		this.reconciliationCount = 0;
+		this.reconciliationFailureCount = 0;
+		this.lastReconciliationDurationMs = null;
 	}
 
 	private recordSuccessfulConnection(): void {

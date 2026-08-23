@@ -203,6 +203,9 @@ describe('HomeyService', () => {
 			lastInventorySyncAt: INITIAL_TIME.toISOString(),
 			lastEventAt: null,
 			reconnectCount: 0,
+			reconciliationCount: 1,
+			reconciliationFailureCount: 0,
+			lastReconciliationDurationMs: 0,
 			lastErrorCategory: null,
 		});
 
@@ -398,6 +401,9 @@ describe('HomeyService', () => {
 			degraded: true,
 			lastInventorySyncAt: '2026-08-15T10:10:00.000Z',
 			reconnectCount: 0,
+			reconciliationCount: 2,
+			reconciliationFailureCount: 0,
+			lastReconciliationDurationMs: 0,
 		});
 
 		await service.stop();
@@ -428,6 +434,8 @@ describe('HomeyService', () => {
 			degraded: false,
 			lastConnectedAt: '2026-08-15T10:00:01.000Z',
 			reconnectCount: 1,
+			reconciliationCount: 2,
+			reconciliationFailureCount: 0,
 			lastErrorCategory: null,
 		});
 
@@ -478,6 +486,30 @@ describe('HomeyService', () => {
 			lastErrorCategory: null,
 			lastError: null,
 		});
+
+		await service.stop();
+	});
+
+	it('records startup metadata read failures as reconciliation attempts', async () => {
+		connector.getZones.mockImplementationOnce(() => {
+			jest.setSystemTime(new Date(INITIAL_TIME.getTime() + 125));
+
+			return Promise.reject(
+				new HomeyConnectorError(HomeyConnectorErrorCategory.UNAVAILABLE, HomeyConnectorOperation.GET_ZONES),
+			);
+		});
+
+		await service.start();
+
+		expect(service.getStatus()).toMatchObject({
+			connectionState: HomeyConnectionState.RECONNECTING,
+			reconciliationCount: 1,
+			reconciliationFailureCount: 1,
+			lastReconciliationDurationMs: 125,
+			lastInventorySyncAt: null,
+		});
+		expect(connector.subscribe.mock.calls).toHaveLength(0);
+		expect(connector.getDevices.mock.calls).toHaveLength(0);
 
 		await service.stop();
 	});
@@ -555,6 +587,11 @@ describe('HomeyService', () => {
 			await Promise.resolve();
 		}
 
+		expect(service.getStatus()).toMatchObject({
+			reconciliationCount: 2,
+			reconciliationFailureCount: 0,
+			lastReconciliationDurationMs: config.reconciliationInterval * 2,
+		});
 		expect(jest.getTimerCount()).toBe(1);
 
 		await service.stop();
@@ -601,6 +638,8 @@ describe('HomeyService', () => {
 		expect(service.getStatus().connectionState).toBe(HomeyConnectionState.RECONNECTING);
 		expect(service.getStatus()).toMatchObject({
 			lastInventorySyncAt: INITIAL_TIME.toISOString(),
+			reconciliationCount: 2,
+			reconciliationFailureCount: 1,
 			lastErrorCategory: HomeyConnectorErrorCategory.UNAVAILABLE,
 		});
 		expect(jest.getTimerCount()).toBe(1);
@@ -1001,6 +1040,9 @@ describe('HomeyService', () => {
 			lastInventorySyncAt: null,
 			lastEventAt: null,
 			reconnectCount: 0,
+			reconciliationCount: 0,
+			reconciliationFailureCount: 0,
+			lastReconciliationDurationMs: null,
 			lastErrorCategory: null,
 			lastError: null,
 		});

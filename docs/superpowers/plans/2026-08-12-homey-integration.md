@@ -411,14 +411,22 @@ publish stale values. Removed or missing upstream devices become `lost` and no u
 
 ### Task 4.2: Implement reconciliation fallback
 
-- [ ] Reconcile all adopted devices immediately after every successful reconnect.
-- [ ] Reconcile inventory periodically at a conservative bounded interval.
-- [ ] Update current values, availability, renamed metadata where policy permits, and missing-upstream status.
-- [ ] Never delete orphaned Smart Panel devices automatically.
-- [ ] Prevent overlapping reconciliation runs and cap per-device errors.
-- [ ] Transition to `degraded_polling` when events are unavailable but reads succeed.
-- [ ] Expose reconciliation duration/count/failure metrics in status/logging.
-- [ ] Add fake-timer tests for scheduling, overlap prevention, reconnect, and shutdown.
+- [x] Reconcile all adopted devices immediately after every successful reconnect.
+- [x] Reconcile inventory periodically at a conservative bounded interval.
+- [x] Update current values, availability, renamed metadata where policy permits, and missing-upstream status.
+- [x] Never delete orphaned Smart Panel devices automatically.
+- [x] Prevent overlapping reconciliation runs and cap per-device errors.
+- [x] Transition to `degraded_polling` when events are unavailable but reads succeed.
+- [x] Expose reconciliation duration/count/failure metrics in status/logging.
+- [x] Add fake-timer tests for scheduling, overlap prevention, reconnect, and shutdown.
+
+Startup and every successful reconnect run a serialized authoritative snapshot before healthy state is published. A
+bounded configurable timer repeats that snapshot without overlap, and degraded event subscriptions retain the same
+read path in `degraded_polling`. Snapshot synchronization refreshes values and availability, marks missing upstream
+devices `lost`, isolates property failures into aggregate results, and has no local or upstream deletion path. Smart
+Panel names remain operator-owned, so upstream renames refresh inventory and discovery metadata without overwriting an
+adopted name. Status and sanitized structured logs expose attempt count, failed-attempt count, and latest duration;
+fake-timer coverage proves periodic scheduling, overlap prevention, reconnect reconciliation, and shutdown cleanup.
 
 ### Task 4.3: Implement Homey device control platform
 
