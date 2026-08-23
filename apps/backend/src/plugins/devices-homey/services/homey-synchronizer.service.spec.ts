@@ -361,6 +361,19 @@ describe('HomeySynchronizerService', () => {
 		expect(rejected.acceptedEvents).toEqual([]);
 	});
 
+	it('rejects a conflicting capability value at an already-applied order', async () => {
+		await service.refreshIndex();
+		const applied = capabilityEvent('onoff', true, null, 2);
+		const conflicting = capabilityEvent('onoff', false, null, 2);
+
+		await service.synchronizeEvents([applied], inventory());
+		propertiesService.update.mockClear();
+		const rejected = await service.synchronizeEvents([conflicting], inventory());
+
+		expect(propertiesService.update).not.toHaveBeenCalled();
+		expect(rejected.acceptedEvents).toEqual([]);
+	});
+
 	it('blocks older capability events after a newer write failure and allows an equal-order retry', async () => {
 		await service.refreshIndex();
 		propertiesService.update.mockRejectedValueOnce(new Error('storage unavailable'));

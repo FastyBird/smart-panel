@@ -56,6 +56,7 @@ export class HomeySynchronizerService {
 	private adoptedDevices = new Map<string, HomeyDeviceEntity>();
 	private propertiesByDeviceCapability = new Map<string, Map<string, HomeyIndexedProperty[]>>();
 	private lastAppliedOrder = new Map<string, HomeyEventOrder>();
+	private lastAppliedValues = new Map<string, HomeyCapabilityValue>();
 	private lastObservedOrder = new Map<string, HomeyEventOrder>();
 	private lastAppliedDeviceOrder = new Map<string, HomeyEventOrder>();
 	private lastObservedDeviceOrder = new Map<string, HomeyEventOrder>();
@@ -297,6 +298,7 @@ export class HomeySynchronizerService {
 		this.adoptedDevices.clear();
 		this.propertiesByDeviceCapability.clear();
 		this.lastAppliedOrder.clear();
+		this.lastAppliedValues.clear();
 		this.lastObservedOrder.clear();
 		this.lastAppliedDeviceOrder.clear();
 		this.lastObservedDeviceOrder.clear();
@@ -461,7 +463,11 @@ export class HomeySynchronizerService {
 
 			if (appliedComparison !== null && appliedComparison <= 0) {
 				result.ignored += 1;
-				allBindingsApplied = appliedComparison === 0 && allBindingsApplied;
+				allBindingsApplied =
+					appliedComparison === 0 &&
+					this.lastAppliedValues.has(binding.property.id) &&
+					Object.is(this.lastAppliedValues.get(binding.property.id), value) &&
+					allBindingsApplied;
 				continue;
 			}
 
@@ -475,6 +481,7 @@ export class HomeySynchronizerService {
 					value: transformed,
 				});
 				this.lastAppliedOrder.set(binding.property.id, this.preserveSequenceWatermark(observedOrder, previousOrder));
+				this.lastAppliedValues.set(binding.property.id, value);
 				result.updated += 1;
 			} catch {
 				result.failed += 1;
