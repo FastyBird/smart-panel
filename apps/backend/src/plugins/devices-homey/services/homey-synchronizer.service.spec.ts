@@ -373,11 +373,12 @@ describe('HomeySynchronizerService', () => {
 
 		expect(propertiesService.update).not.toHaveBeenCalled();
 
-		await service.synchronizeEvents([newest], inventory());
+		const retried = await service.synchronizeEvents([newest], inventory());
 
 		expect(propertiesService.update.mock.calls).toEqual([
 			['property-power', { type: DEVICES_HOMEY_TYPE, value: true }],
 		]);
+		expect(retried.acceptedEvents).toEqual([newest]);
 	});
 
 	it('rejects capability events missing from authoritative inventory or unavailable upstream', async () => {

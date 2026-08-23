@@ -449,13 +449,19 @@ export class HomeySynchronizerService {
 		for (const binding of bindings) {
 			const previousObservedOrder = this.lastObservedOrder.get(binding.property.id);
 			const previousOrder = this.lastAppliedOrder.get(binding.property.id);
+			const observedComparison =
+				previousObservedOrder === undefined ? null : this.compareOrders(order, previousObservedOrder);
+			const appliedComparison = previousOrder === undefined ? null : this.compareOrders(order, previousOrder);
 
-			if (
-				(previousObservedOrder !== undefined && this.compareOrders(order, previousObservedOrder) < 0) ||
-				(previousOrder !== undefined && !this.isNewerOrder(order, previousOrder))
-			) {
+			if (observedComparison !== null && observedComparison < 0) {
 				result.ignored += 1;
 				allBindingsApplied = false;
+				continue;
+			}
+
+			if (appliedComparison !== null && appliedComparison <= 0) {
+				result.ignored += 1;
+				allBindingsApplied = appliedComparison === 0 && allBindingsApplied;
 				continue;
 			}
 
