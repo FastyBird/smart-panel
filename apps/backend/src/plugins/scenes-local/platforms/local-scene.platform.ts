@@ -7,6 +7,7 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { DEFAULT_TTL_SCENE } from '../../../modules/intents/intents.constants';
 import { SceneActionEntity, SceneEntity } from '../../../modules/scenes/entities/scenes.entity';
 import { ActionExecutionResultModel } from '../../../modules/scenes/models/scenes.model';
 import {
@@ -48,6 +49,20 @@ export class LocalScenePlatform implements IScenePlatform {
 
 	getType(): string {
 		return SCENES_LOCAL_TYPE;
+	}
+
+	async getCommandTtlMs(actions: readonly SceneActionEntity[]): Promise<number> {
+		const executions = [];
+
+		for (const action of actions) {
+			const validation = await this.validateActionWithDetails(action);
+
+			if (validation.valid && validation.device !== undefined) {
+				executions.push({ device: validation.device, commandCount: 1 });
+			}
+		}
+
+		return this.platformRegistryService.getCommandTtlMs(executions, DEFAULT_TTL_SCENE);
 	}
 
 	/**

@@ -143,7 +143,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			},
 			targets,
 			value: this.buildClimateIntentValue(intent),
-			ttlMs: DEFAULT_TTL_SPACE_COMMAND,
+			ttlMs: this.getClimateIntentTtlMs(primaryDevices),
 		});
 
 		// Capture snapshot for undo BEFORE executing the climate intent
@@ -247,6 +247,23 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		return devices.map((device) => ({
 			deviceId: device.device.id,
 		}));
+	}
+
+	private getClimateIntentTtlMs(devices: readonly PrimaryClimateDevice[]): number {
+		return this.platformRegistryService.getCommandTtlMs(
+			devices.map((device) => ({
+				device: device.device,
+				commandCount: [
+					device.heaterOnProperty,
+					device.heaterSetpointProperty,
+					device.coolerOnProperty,
+					device.coolerSetpointProperty,
+					device.thermostatLockedProperty,
+					device.fanOnProperty,
+				].filter((property) => property !== null).length,
+			})),
+			DEFAULT_TTL_SPACE_COMMAND,
+		);
 	}
 
 	/**

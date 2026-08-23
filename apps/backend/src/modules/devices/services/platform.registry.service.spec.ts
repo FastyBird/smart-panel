@@ -7,6 +7,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Logger } from '@nestjs/common';
 
+import { INTENT_CLEANUP_INTERVAL } from '../../intents/intents.constants';
 import { DeviceEntity } from '../entities/devices.entity';
 import { IDevicePlatform } from '../platforms/device.platform';
 
@@ -81,5 +82,13 @@ describe('PlatformRegistryService', () => {
 		const platforms = service.list();
 
 		expect(platforms).toEqual(['mock-platform']);
+	});
+
+	it('should extend an intent TTL by registered platform completion windows', () => {
+		const timedPlatform = { ...mockPlatform, getCommandTimeoutMs: jest.fn((count: number) => count * 10000) };
+		service.register(timedPlatform);
+		const device = { type: 'mock-platform' } as DeviceEntity;
+
+		expect(service.getCommandTtlMs([{ device, commandCount: 2 }], 5000)).toBe(20000 + 5000 + INTENT_CLEANUP_INTERVAL);
 	});
 });
