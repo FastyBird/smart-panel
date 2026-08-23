@@ -883,6 +883,62 @@ describe('HomeyService', () => {
 		await service.stop();
 	});
 
+	it('prevents a timed-out queued readback from superseding a later command', async () => {
+		const blocker = deferred();
+		const currentDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'onoff',
+					title: 'Power',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		};
+		const firstReadback = {
+			...currentDevice,
+			capabilities: currentDevice.capabilities.map((capability) => ({ ...capability, value: true })),
+		};
+		connector.getDevices.mockResolvedValueOnce([currentDevice]);
+		await service.start();
+		connector.getDevice.mockClear().mockResolvedValueOnce(firstReadback).mockResolvedValueOnce(currentDevice);
+		const internal = service as unknown as {
+			enqueueSynchronization(operation: () => Promise<void>): Promise<void>;
+		};
+		const blockedSynchronization = internal.enqueueSynchronization(() => blocker.promise);
+		await flushMicrotasks();
+		const first = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_WRITE_TIMEOUT_MS);
+		await expect(first).resolves.toBe(false);
+
+		const second = service.executeCapabilityCommand(staleDevice.id, 'onoff', false);
+		await flushMicrotasks();
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+		await flushMicrotasks();
+		blocker.resolve();
+		await blockedSynchronization;
+		await flushMicrotasks();
+
+		await expect(second).resolves.toBe(true);
+		expect(
+			service.getInventorySnapshot()?.[0].capabilities.find((capability) => capability.id === 'onoff')?.value,
+		).toBe(false);
+
+		await service.stop();
+	});
+
 	it('rejects a stale matching readback after a newer queued event was accepted', async () => {
 		let resolveReadback: ((device: HomeyDevice | null) => void) | undefined;
 		const currentDevice = {

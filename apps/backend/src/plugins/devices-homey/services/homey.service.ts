@@ -97,10 +97,12 @@ export class HomeyService extends BaseManagedPluginService {
 	private readonly commandTails = new Map<string, Promise<void>>();
 	private readonly pendingCommandConfirmations = new Map<string, PendingHomeyCommandConfirmation>();
 	private readonly commandCancellationListeners = new Set<() => void>();
+	private readonly capabilityCommandRevisions = new Map<string, number>();
 	private readonly capabilityObservationRevisions = new Map<string, number>();
 	private readonly deviceInventoryRevisions = new Map<string, number>();
 	private readonly acceptedCapabilityStates = new Map<string, AcceptedHomeyCapabilityState>();
 	private capabilityObservationRevision = 0;
+	private capabilityCommandRevision = 0;
 	private deviceInventoryRevision = 0;
 	private acceptedCapabilityRevision = 0;
 
@@ -836,6 +838,8 @@ export class HomeyService extends BaseManagedPluginService {
 		) {
 			return false;
 		}
+		const commandRevision = ++this.capabilityCommandRevision;
+		this.capabilityCommandRevisions.set(key, commandRevision);
 
 		let resolveConfirmation = (_confirmed: boolean): void => undefined;
 		const confirmation = new Promise<boolean>((resolve) => {
@@ -901,7 +905,10 @@ export class HomeyService extends BaseManagedPluginService {
 			let readbackAccepted = false;
 
 			const synchronization = this.enqueueSynchronization(async () => {
-				if (!this.isCurrentGeneration(connector, generation)) {
+				if (
+					!this.isCurrentGeneration(connector, generation) ||
+					this.capabilityCommandRevisions.get(key) !== commandRevision
+				) {
 					return;
 				}
 				const currentDevice = this.devices.get(deviceId);
@@ -1098,6 +1105,7 @@ export class HomeyService extends BaseManagedPluginService {
 
 		await this.synchronizationTail;
 		this.synchronizer.reset();
+		this.capabilityCommandRevisions.clear();
 		this.capabilityObservationRevisions.clear();
 		this.deviceInventoryRevisions.clear();
 		this.acceptedCapabilityStates.clear();
