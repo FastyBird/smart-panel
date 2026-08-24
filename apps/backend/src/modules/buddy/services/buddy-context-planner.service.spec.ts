@@ -4221,6 +4221,10 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows now open?',
 		'Are any windows right now open?',
 		'Are any windows fully open?',
+		'Are any windows open right now?',
+		'Are any windows open currently?',
+		'Are any windows open at the moment?',
+		'Are any windows open please?',
 		'Are any doors completely closed?',
 		'Are any windows partially open?',
 		'Are any windows almost fully open?',
@@ -7193,11 +7197,25 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.toolNames).toContain('set_space_lighting');
 	});
 
+	it('clarifies a polite coordinated imperative instead of treating it as an outcome', () => {
+		const plan = service.plan({
+			message: 'If the window is open turn on the Bedroom lights then please start recording?',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk: 'action', strategy: 'clarify' });
+		expect(plan.toolNames).toEqual([]);
+	});
+
 	it.each([
 		'If the window is open turn on the Bedroom lights so the camera starts recording?',
 		'If the window is open turn on the Bedroom lights as John starts reading?',
 		'If the window is open turn on the Bedroom lights before the camera stops recording?',
 		'If the window is open turn on the Bedroom lights because the baby starts crying?',
+		'If the window is open turn on the Bedroom lights although John keeps sleeping?',
+		'If the window is open turn on the Bedroom lights though John keeps sleeping?',
+		'If the window is open turn on the Bedroom lights even though John keeps sleeping?',
 		'If the window is open turn on the Bedroom lights unless the camera stops recording?',
 	])('keeps a subordinate clause out of conditional outcome subjects: %s', (message) => {
 		const plan = service.plan({
