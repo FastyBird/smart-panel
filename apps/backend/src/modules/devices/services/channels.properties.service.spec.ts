@@ -1180,6 +1180,38 @@ describe('ChannelsPropertiesService', () => {
 			expect(removalEntered).toBe(true);
 		});
 
+		it('resolves a value timestamp inside the serialized update before persistence', async () => {
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			const valueTimestamp = new Date('2026-08-24T10:00:00.000Z');
+			const resolveValueTimestamp = jest.fn().mockReturnValue(valueTimestamp);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(channelsPropertiesService, 'getOneOrThrow').mockResolvedValue(property);
+			jest.spyOn(repository, 'save').mockResolvedValue(property);
+			propertyValueService.write.mockResolvedValue(true);
+
+			await channelsPropertiesService.update(
+				property.id,
+				{ type: 'mock', value: 'new value' } as UpdateMockChannelPropertyDto,
+				{ resolveValueTimestamp },
+			);
+
+			expect(resolveValueTimestamp).toHaveBeenCalledTimes(1);
+			expect(propertyValueService.write).toHaveBeenCalledWith(
+				expect.objectContaining({ id: property.id }),
+				'new value',
+				valueTimestamp,
+			);
+			expect(resolveValueTimestamp.mock.invocationCallOrder[0]).toBeLessThan(
+				propertyValueService.write.mock.invocationCallOrder[0],
+			);
+		});
+
 		it('uses strict value persistence when the caller requires retry-safe storage', async () => {
 			const storageBinding = {} as StorageBackendBinding;
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({

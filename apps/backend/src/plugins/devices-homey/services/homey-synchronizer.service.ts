@@ -549,8 +549,17 @@ export class HomeySynchronizerService {
 					type: DEVICES_HOMEY_TYPE,
 					value: transformed,
 				};
-				const valueTimestamp = this.createValueTimestamp(binding.property.id, receivedTimestamp);
-				await this.channelsPropertiesService.update(binding.property.id, updateDto, { valueTimestamp });
+				let valueTimestamp: Date | undefined;
+				await this.channelsPropertiesService.update(binding.property.id, updateDto, {
+					resolveValueTimestamp: () => {
+						valueTimestamp = this.createValueTimestamp(binding.property.id, receivedTimestamp);
+
+						return valueTimestamp;
+					},
+				});
+				if (valueTimestamp === undefined) {
+					throw new Error('Homey value timestamp was not resolved before persistence');
+				}
 				this.lastAppliedOrder.set(binding.property.id, this.preserveSequenceWatermark(observedOrder, previousOrder));
 				this.lastAppliedValues.set(binding.property.id, value);
 				this.lastPersistedValueTimestamp.set(binding.property.id, valueTimestamp.getTime());

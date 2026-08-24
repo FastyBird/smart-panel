@@ -39,6 +39,7 @@ describe('DevicesChannelsPropertiesController', () => {
 	let channelsService: ChannelsService;
 	let channelsPropertiesService: ChannelsPropertiesService;
 	let mapper: ChannelsPropertiesTypeMapperService;
+	let propertyCommandService: PropertyCommandService;
 	let propertyTimeseriesService: PropertyTimeseriesService;
 
 	const mockDevice = {
@@ -156,6 +157,7 @@ describe('DevicesChannelsPropertiesController', () => {
 		channelsService = module.get<ChannelsService>(ChannelsService);
 		channelsPropertiesService = module.get<ChannelsPropertiesService>(ChannelsPropertiesService);
 		mapper = module.get<ChannelsPropertiesTypeMapperService>(ChannelsPropertiesTypeMapperService);
+		propertyCommandService = module.get<PropertyCommandService>(PropertyCommandService);
 		propertyTimeseriesService = module.get<PropertyTimeseriesService>(PropertyTimeseriesService);
 	});
 
@@ -252,6 +254,33 @@ describe('DevicesChannelsPropertiesController', () => {
 
 			expect(result.data).toEqual(toInstance(ChannelPropertyEntity, mockChannelProperty));
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith(mockChannelProperty.id, updateDto);
+		});
+
+		it('should dispatch a command value without persisting an optimistic measurement', async () => {
+			const updateDto: UpdateChannelPropertyDto = {
+				type: 'mock',
+				value: 'reported-later',
+			};
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: ChannelPropertyEntity,
+				createDto: CreateChannelPropertyDto,
+				updateDto: UpdateChannelPropertyDto,
+			});
+
+			await controller.update(mockDevice.id, mockChannel.id, mockChannelProperty.id, { data: updateDto });
+
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+				mockChannelProperty.id,
+				expect.objectContaining({ type: 'mock', value: undefined }),
+			);
+			expect(propertyCommandService.processApiPropertyCommand).toHaveBeenCalledWith(
+				mockDevice.id,
+				mockChannel.id,
+				mockChannelProperty.id,
+				'reported-later',
+			);
 		});
 
 		it('should delete a property', async () => {

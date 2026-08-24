@@ -371,17 +371,20 @@ export class ChannelsPropertiesController {
 			throw ValidationExceptionFactory.createException(errors);
 		}
 
+		const commandValue = dtoInstance.value;
+		dtoInstance.value = undefined;
+
 		try {
 			const updatedProperty = await this.channelsPropertiesService.update(property.id, dtoInstance);
 
 			this.logger.debug(`Successfully updated property id=${updatedProperty.id} for channelId=${channel.id}`);
 
 			// If value was provided, send command to the physical device (fire-and-forget)
-			if (typeof updateDto.data.value !== 'undefined' && updateDto.data.value !== null) {
+			if (typeof commandValue !== 'undefined' && commandValue !== null) {
 				const deviceId = typeof channel.device === 'string' ? channel.device : channel.device.id;
 
 				this.propertyCommandService
-					.processApiPropertyCommand(deviceId, channel.id, updatedProperty.id, updateDto.data.value)
+					.processApiPropertyCommand(deviceId, channel.id, updatedProperty.id, commandValue)
 					.catch((err: Error) => {
 						this.logger.error(`Failed to send device command for property id=${updatedProperty.id}: ${err.message}`);
 					});
