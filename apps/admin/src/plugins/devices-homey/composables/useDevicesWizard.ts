@@ -14,6 +14,7 @@ import type {
 	IWizardRow,
 	IWizardRowStatus,
 } from '../../../modules/devices';
+import { DevicesHomeyPluginAdoptionStatus } from '../../../openapi.constants';
 import { DEVICES_HOMEY_PLUGIN_NAME } from '../devices-homey.constants';
 import type { IHomeyAdoptionResult, IHomeyInventoryDevice } from '../store/homey.types';
 import { homeyInventoryStoreKey } from '../store/keys';
@@ -166,19 +167,16 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			flashMessage.error(failureMessage);
 			if (inventory.adoptionResults.length > 0) {
 				const completed = new Map(inventory.adoptionResults.map((result) => [result.deviceId, result]));
+				inventory.adoptionResults = selection.map(
+					(item): IHomeyAdoptionResult =>
+						completed.get(item.key) ?? {
+							deviceId: item.key,
+							status: DevicesHomeyPluginAdoptionStatus.failed,
+							message: failureMessage,
+						}
+				);
 
-				return selection.map((item) => {
-					const result = completed.get(item.key);
-					return result
-						? transformResult(result)
-						: {
-								key: item.key,
-								name: item.name,
-								identifier: item.key,
-								status: 'failed',
-								error: failureMessage,
-							};
-				});
+				return inventory.adoptionResults.map(transformResult);
 			}
 			throw caught;
 		}

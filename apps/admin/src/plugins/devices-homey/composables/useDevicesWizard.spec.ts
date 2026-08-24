@@ -176,6 +176,11 @@ describe('Homey useDevicesWizard', () => {
 				error: 'Homey is offline',
 			},
 		]);
+		expect(adapter.results.value).toEqual(results);
+		expect(inventory.adoptionResults).toEqual([
+			expect.objectContaining({ deviceId: 'homey-light', status: DevicesHomeyPluginAdoptionStatus.created }),
+			expect.objectContaining({ deviceId: 'homey-switch', status: DevicesHomeyPluginAdoptionStatus.failed, message: 'Homey is offline' }),
+		]);
 		expect(flashMessage.error).toHaveBeenCalledWith('Homey is offline');
 	});
 
