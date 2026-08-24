@@ -34,6 +34,7 @@ const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:am|are(?:n't)
 const CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE = String.raw`(?:appears?|changes?|fails?|happens?|improves?|looks?|remains?|seems?|stays?|wakes?|works?)`;
 const CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE = String.raw`(?:again|altogether|now|once|still|today|tonight|[\p{Letter}'’-]+ly)`;
 const CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE = String.raw`(?:becomes?|keeps?|starts?|stops?)\s+(?:(?:being|far|much|on|quite|really|to|very)\s+)?[\p{Letter}\p{Number}'’-]+(?:\s+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})?`;
+const CONDITIONAL_OUTCOME_TRANSITIVE_ACTION_GERUND_PATTERN_SOURCE = String.raw`(?:activating|adjusting|brightening|changing|closing|deactivating|decreasing|disabling|dimming|enabling|increasing|locking|lowering|making|opening|raising|setting|switching|triggering|turning|unlocking)`;
 const CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE = String.raw`(?!to\b)[\p{Letter}\p{Number}'’-]+`;
 const CONDITIONAL_OUTCOME_BARE_SUBJECT_COMMAND_PATTERN_SOURCE = String.raw`(?:${ACTION_SIGNAL_PATTERN_SOURCE}|ask|get|have|help|let|tell)`;
 const CONDITIONAL_OUTCOME_SUBJECT_PREFIX_EXCLUSION_PATTERN_SOURCE = String.raw`(?!(?:because|so|that|to|where|which|who|whose)\b|${CONDITION_PATTERN.source}|(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)`;
@@ -46,6 +47,10 @@ const CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE = String.raw`(?:activ
 const CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${DEVICE_ACTION_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${PRONOUN_PATTERN.source}|${SCENE_TARGET_PATTERN.source})`;
 const CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN = new RegExp(
 	String.raw`^(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b[^?]{0,120}\b${CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE}\b\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?(?:(?:(?:and\s+)?then\s+)${CONDITIONAL_OUTCOME_POST_CONNECTOR_SUBJECT_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE})\s+${CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_ZERO_RELATIVE_TARGET_PATTERN = new RegExp(
+	String.raw`^(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b[^?]{0,120}\b${CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE}\b\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s+(?:keeps?|starts?|stops?)\s+(?:(?:being|on|to)\s+)?${CONDITIONAL_OUTCOME_TRANSITIVE_ACTION_GERUND_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})?\s*\?\s*$`,
 	'u',
 );
 const CONDITIONAL_OUTCOME_RELATIVE_ADVERB_PATTERN_SOURCE = String.raw`(?:already|currently|maybe|never|often|perhaps|still|very|[\p{Letter}'’-]+ly)`;
@@ -125,7 +130,12 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 	if (subjectFirstOutcomeMatch && !/\b(?:that|where|which|who)\b/u.test(subjectFirstOutcomeMatch[0])) {
 		return true;
 	}
-	if (CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN.test(actionMessage)) return true;
+	if (
+		CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN.test(actionMessage) &&
+		!CONDITIONAL_OUTCOME_ZERO_RELATIVE_TARGET_PATTERN.test(actionMessage)
+	) {
+		return true;
+	}
 	const auxiliaryOutcomeTailPattern = new RegExp(
 		String.raw`^${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we|you)\s+|[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$`,
 		'u',
