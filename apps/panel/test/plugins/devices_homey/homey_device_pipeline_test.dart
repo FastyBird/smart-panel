@@ -11,10 +11,12 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/channels/light.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/control_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/generic_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/lock.dart';
@@ -69,6 +71,9 @@ const fourthPropertyId = 'c3119230-cfd9-4bbe-896d-322bd68bfa63';
 const manufacturerPropertyId = '4b649dac-fb01-40db-9d26-69f75b6079dc';
 const modelPropertyId = '0c631313-c94d-4de2-9455-0d87ff6b5743';
 const serialNumberPropertyId = '4bbd00b7-87ff-44f5-a69f-fddf72d2c356';
+const redPropertyId = 'beeeef2b-4aa3-4d87-b3ca-dc182eef1027';
+const greenPropertyId = 'f68afe04-7aeb-4b40-84ca-32d4b3c078f9';
+const bluePropertyId = '8cd39807-f5dd-4519-b3eb-8ae62b8ad41d';
 
 Map<String, dynamic> _deviceJson(
   String category, {
@@ -240,6 +245,7 @@ ChannelView _buildDeviceInformationChannel() =>
 List<ChannelView> _representativeChannels(
   String category, {
   bool lightOn = true,
+  List<int>? lightRgb,
 }) {
   final deviceInformation = _buildDeviceInformationChannel();
 
@@ -256,6 +262,35 @@ List<ChannelView> _representativeChannels(
             value: lightOn,
             permissions: const ['rw'],
           ),
+          if (lightRgb != null) ...[
+            _buildProperty(
+              id: redPropertyId,
+              channel: lightChannelId,
+              category: 'color_red',
+              dataType: 'uchar',
+              value: lightRgb[0],
+              permissions: const ['rw'],
+              format: const [0, 255],
+            ),
+            _buildProperty(
+              id: greenPropertyId,
+              channel: lightChannelId,
+              category: 'color_green',
+              dataType: 'uchar',
+              value: lightRgb[1],
+              permissions: const ['rw'],
+              format: const [0, 255],
+            ),
+            _buildProperty(
+              id: bluePropertyId,
+              channel: lightChannelId,
+              category: 'color_blue',
+              dataType: 'uchar',
+              value: lightRgb[2],
+              permissions: const ['rw'],
+              format: const [0, 255],
+            ),
+          ],
         ]),
         _buildChannel(powerChannelId, 'electrical_power', [
           _buildProperty(
@@ -374,8 +409,16 @@ List<ChannelView> _representativeChannels(
   throw ArgumentError.value(category, 'category');
 }
 
-DeviceView _buildRepresentativeDevice(String category, {bool lightOn = true}) {
-  final channels = _representativeChannels(category, lightOn: lightOn);
+DeviceView _buildRepresentativeDevice(
+  String category, {
+  bool lightOn = true,
+  List<int>? lightRgb,
+}) {
+  final channels = _representativeChannels(
+    category,
+    lightOn: lightOn,
+    lightRgb: lightRgb,
+  );
   final model = buildDeviceModel(
     homeyType,
     _deviceJson(
@@ -834,5 +877,92 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+
+    testWidgets('waits for every grouped color component to converge', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final controlState = locator<DeviceControlStateService>();
+      controlState.clearForDevice(deviceId);
+      addTearDown(() => controlState.clearForDevice(deviceId));
+
+      var renderedDevice =
+          _buildRepresentativeDevice('lighting', lightRgb: const [0, 0, 0])
+              as LightingDeviceView;
+      late StateSetter updateHost;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              updateHost = setState;
+              return LightingDeviceDetail(device: renderedDevice);
+            },
+          ),
+        ),
+      );
+
+      controlState.setGroupPending(
+        deviceId,
+        LightChannelController.colorGroupId,
+        const [
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: redPropertyId,
+            desiredValue: 10,
+          ),
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: greenPropertyId,
+            desiredValue: 20,
+          ),
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: bluePropertyId,
+            desiredValue: 30,
+          ),
+        ],
+      );
+      controlState.setGroupSettling(
+        deviceId,
+        LightChannelController.colorGroupId,
+      );
+
+      updateHost(() {
+        renderedDevice =
+            _buildRepresentativeDevice('lighting', lightRgb: const [10, 0, 0])
+                as LightingDeviceView;
+      });
+      await tester.pump();
+
+      expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isSettling,
+        isTrue,
+        reason: 'one Homey RGB component does not confirm the whole group',
+      );
+
+      updateHost(() {
+        renderedDevice =
+            _buildRepresentativeDevice('lighting', lightRgb: const [10, 20, 30])
+                as LightingDeviceView;
+      });
+      await tester.pump();
+
+      expect(
+        controlState.getGroupState(
+          deviceId,
+          LightChannelController.colorGroupId,
+        ),
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+    });
   });
 }

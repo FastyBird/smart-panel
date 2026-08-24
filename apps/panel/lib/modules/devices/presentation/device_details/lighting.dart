@@ -195,13 +195,17 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         for (final property in channel.properties)
           '${channel.id}:${property.id}': property.value?.value,
     };
+    final newValues = <String, dynamic>{};
     final changedProperties = <String>{};
 
     for (final channel in newDevice.lightChannels) {
       for (final property in channel.properties) {
         final propertyKey = '${channel.id}:${property.id}';
         final actualValue = property.value?.value;
-        if (actualValue == null || oldValues[propertyKey] == actualValue) {
+        if (actualValue == null) continue;
+
+        newValues[propertyKey] = actualValue;
+        if (oldValues[propertyKey] == actualValue) {
           continue;
         }
 
@@ -226,9 +230,20 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           '${property.channelId}:${property.propertyId}',
         ),
       );
-      if (colorChanged) {
-        // A changed authoritative color value supersedes the grouped
-        // optimistic values, whether it confirms or overrides them.
+      final colorConverged = colorState.properties.every((property) {
+        final propertyKey = '${property.channelId}:${property.propertyId}';
+        if (!newValues.containsKey(propertyKey)) return false;
+
+        final desired = property.desiredValue;
+        final actual = newValues[propertyKey];
+        if (desired is num && actual is num) {
+          return (desired - actual).abs() <= 0.5;
+        }
+        return desired == actual;
+      });
+      if (colorChanged && colorConverged) {
+        // Keep grouped optimism until every authoritative component has
+        // arrived; Homey may emit RGB/HSV property changes separately.
         controlState.clearGroup(
           newDevice.id,
           LightChannelController.colorGroupId,
