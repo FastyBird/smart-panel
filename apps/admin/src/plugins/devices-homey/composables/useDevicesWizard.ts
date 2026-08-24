@@ -162,9 +162,23 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 			return adoption.map(transformResult);
 		} catch (caught: unknown) {
-			flashMessage.error(caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.adoption'));
+			const failureMessage = caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.adoption');
+			flashMessage.error(failureMessage);
 			if (inventory.adoptionResults.length > 0) {
-				return inventory.adoptionResults.map(transformResult);
+				const completed = new Map(inventory.adoptionResults.map((result) => [result.deviceId, result]));
+
+				return selection.map((item) => {
+					const result = completed.get(item.key);
+					return result
+						? transformResult(result)
+						: {
+								key: item.key,
+								name: item.name,
+								identifier: item.key,
+								status: 'failed',
+								error: failureMessage,
+							};
+				});
 			}
 			throw caught;
 		}

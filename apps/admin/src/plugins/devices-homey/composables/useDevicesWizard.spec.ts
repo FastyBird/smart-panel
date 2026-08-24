@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-	DevicesHomeyPluginAdoptionStatus,
-	DevicesHomeyPluginSupportState,
-	DevicesModuleDeviceCategory,
-} from '../../../openapi.constants';
+import { DevicesHomeyPluginAdoptionStatus, DevicesHomeyPluginSupportState, DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import type { IHomeyAdoptionResult, IHomeyInventoryDevice } from '../store/homey.types';
 
 import { useDevicesWizard } from './useDevicesWizard';
@@ -165,9 +161,21 @@ describe('Homey useDevicesWizard', () => {
 		inventory.adoptBatch.mockRejectedValue(failure);
 		const adapter = useDevicesWizard();
 
-		const results = await adapter.adopt([{ key: 'homey-light', name: 'Custom desk light', category: DevicesModuleDeviceCategory.lighting }]);
+		const results = await adapter.adopt([
+			{ key: 'homey-light', name: 'Custom desk light', category: DevicesModuleDeviceCategory.lighting },
+			{ key: 'homey-switch', name: 'Hall switch', category: DevicesModuleDeviceCategory.switcher },
+		]);
 
-		expect(results).toEqual([expect.objectContaining({ key: 'homey-light', status: 'created', name: 'Custom desk light' })]);
+		expect(results).toEqual([
+			expect.objectContaining({ key: 'homey-light', status: 'created', name: 'Custom desk light' }),
+			{
+				key: 'homey-switch',
+				name: 'Hall switch',
+				identifier: 'homey-switch',
+				status: 'failed',
+				error: 'Homey is offline',
+			},
+		]);
 		expect(flashMessage.error).toHaveBeenCalledWith('Homey is offline');
 	});
 
