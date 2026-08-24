@@ -34,14 +34,16 @@ const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:am|are(?:n't)
 const CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE = String.raw`(?:appears?|changes?|fails?|happens?|improves?|looks?|remains?|seems?|stays?|wakes?|works?)`;
 const CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE = String.raw`(?:again|altogether|now|once|still|today|tonight|[\p{Letter}'’-]+ly)`;
 const CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE = String.raw`(?:becomes?|keeps?|starts?|stops?)\s+(?:(?:being|far|much|on|quite|really|to|very)\s+)?[\p{Letter}\p{Number}'’-]+(?:\s+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})?`;
-const CONDITIONAL_OUTCOME_INTRANSITIVE_GERUND_PATTERN_SOURCE = String.raw`(?:arriving|blinking|crying|falling|flickering|flashing|glowing|laughing|leaking|raining|reading|recording|ringing|running|sleeping|waiting|working)`;
-const CONDITIONAL_OUTCOME_OBJECT_GAP_GERUND_PATTERN_SOURCE = String.raw`(?!${CONDITIONAL_OUTCOME_INTRANSITIVE_GERUND_PATTERN_SOURCE}\b)[\p{Letter}'’-]+ing`;
+const CONDITIONAL_OUTCOME_HUMAN_STATE_GERUND_PATTERN_SOURCE = String.raw`(?:arriving|crying|falling|laughing|reading|running|sleeping|waiting|working)`;
+const CONDITIONAL_OUTCOME_OBJECT_GAP_GERUND_PATTERN_SOURCE = String.raw`(?!${CONDITIONAL_OUTCOME_HUMAN_STATE_GERUND_PATTERN_SOURCE}\b)[\p{Letter}'’-]+ing`;
 const CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE = String.raw`(?!to\b)[\p{Letter}\p{Number}'’-]+`;
 const CONDITIONAL_OUTCOME_BARE_SUBJECT_COMMAND_PATTERN_SOURCE = String.raw`(?:${ACTION_SIGNAL_PATTERN_SOURCE}|ask|get|have|help|let|tell)`;
 const CONDITIONAL_OUTCOME_SUBJECT_PREFIX_EXCLUSION_PATTERN_SOURCE = String.raw`(?!(?:as|because|so|that|to|where|which|who|whose)\b|${CONDITION_PATTERN.source}|(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)`;
 const CONDITIONAL_OUTCOME_DETERMINED_SUBJECT_PATTERN_SOURCE = String.raw`(?:a|an|her|his|its|my|our|the|their|this|these|those|your)\s+${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE}){0,3}`;
 const CONDITIONAL_OUTCOME_BARE_SUBJECT_PATTERN_SOURCE = String.raw`(?!(?:${CONDITIONAL_OUTCOME_BARE_SUBJECT_COMMAND_PATTERN_SOURCE})\b)${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE}`;
 const CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE = String.raw`${CONDITIONAL_OUTCOME_SUBJECT_PREFIX_EXCLUSION_PATTERN_SOURCE}(?:${CONDITIONAL_OUTCOME_DETERMINED_SUBJECT_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_BARE_SUBJECT_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE})?)`;
+const CONDITIONAL_OUTCOME_NON_AGENT_SUBJECT_PATTERN_SOURCE = String.raw`(?:(?:a|an|her|his|its|my|our|the|their|this|these|those|your)\s+)?(?:[\p{Letter}\p{Number}'’-]+\s+){0,2}(?:alarm|camera|controller|device|door|fan|heater|home|house|humidity|light|lock|power|room|router|sensor|switch|system|temperature|thermostat|window)s?`;
+const CONDITIONAL_OUTCOME_OBJECT_GAP_SUBJECT_PATTERN_SOURCE = String.raw`(?!${CONDITIONAL_OUTCOME_NON_AGENT_SUBJECT_PATTERN_SOURCE}\b)${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}`;
 const CONDITIONAL_OUTCOME_POST_CONNECTOR_SUBJECT_PATTERN_SOURCE = String.raw`${CONDITIONAL_OUTCOME_SUBJECT_PREFIX_EXCLUSION_PATTERN_SOURCE}(?:${CONDITIONAL_OUTCOME_DETERMINED_SUBJECT_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_BARE_SUBJECT_PATTERN_SOURCE})`;
 const CONDITIONAL_OUTCOME_SPOKEN_SCALAR_VALUE_PATTERN_SOURCE = String.raw`(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[-\s](?:one|two|three|four|five|six|seven|eight|nine))?|one\s+hundred)`;
 const CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE = String.raw`(?:active|blue|brighter|closed|cooler|dimmer|down|eco|green|higher|inactive|locked|lower|off|on|open|red|unlocked|up|warmer|white|(?:at|by|to)\s+(?:[-+]?\d+(?:\.\d+)?|(?:(?:minus|negative)\s+)?${CONDITIONAL_OUTCOME_SPOKEN_SCALAR_VALUE_PATTERN_SOURCE})\s*(?:%|celsius|degrees?|fahrenheit|k|kelvin|percent|°\s*(?:c|f))?)`;
@@ -51,7 +53,7 @@ const CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN = new RegExp(
 	'u',
 );
 const CONDITIONAL_OUTCOME_ZERO_RELATIVE_TARGET_PATTERN = new RegExp(
-	String.raw`^(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b[^?]{0,120}\b${CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE}\b\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s+(?:keeps?|starts?|stops?)\s+(?:(?:being|on|to)\s+)?${CONDITIONAL_OUTCOME_OBJECT_GAP_GERUND_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})?\s*\?\s*$`,
+	String.raw`^(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b[^?]{0,120}\b${CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE}\b\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?${CONDITIONAL_OUTCOME_OBJECT_GAP_SUBJECT_PATTERN_SOURCE}\s+(?:keeps?|starts?|stops?)\s+(?:(?:being|on|to)\s+)?${CONDITIONAL_OUTCOME_OBJECT_GAP_GERUND_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})?\s*\?\s*$`,
 	'u',
 );
 const CONDITIONAL_OUTCOME_RELATIVE_ADVERB_PATTERN_SOURCE = String.raw`(?:already|currently|maybe|never|often|perhaps|still|very|[\p{Letter}'’-]+ly)`;
