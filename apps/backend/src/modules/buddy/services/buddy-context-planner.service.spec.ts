@@ -7024,4 +7024,16 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk: 'action', strategy: 'clarify' });
 		expect(plan.toolNames).toEqual([]);
 	});
+
+	it('keeps a phrasal make action on the command path', () => {
+		const plan = service.plan({
+			message: 'If the window is open make the Bedroom lights become brighter?',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk: 'none', strategy: 'model-tools' });
+		expect(plan.toolNames).toContain('control_device');
+		expect(plan.toolNames).toContain('set_space_lighting');
+	});
 });

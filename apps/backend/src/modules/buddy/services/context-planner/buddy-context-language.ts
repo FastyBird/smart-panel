@@ -30,7 +30,13 @@ import {
 } from './buddy-context-planner-grammar';
 
 const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:am|are(?:n't)?|can(?:not|'t)?|could(?:n't)?|did(?:n't)?|do|does|don't|doesn't|had(?:n't)?|has(?:n't)?|have(?:n't)?|is(?:n't)?|may|might(?:n't)?|must(?:n't)?|should(?:n't)?|was(?:n't)?|were(?:n't)?|will|won't|would(?:n't)?)`;
-const CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE = String.raw`(?:appears?|changes?|fails?|happens?|improves?|looks?|remains?|seems?|stays?|wakes?|works?|(?:becomes?|keeps?|starts?|stops?)\s+[\p{Letter}\p{Number}'’-]+)`;
+const CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE = String.raw`(?:appears?|changes?|fails?|happens?|improves?|looks?|remains?|seems?|stays?|wakes?|works?)`;
+const CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE = String.raw`(?:becomes?|keeps?|starts?|stops?)\s+[\p{Letter}\p{Number}'’-]+`;
+const CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE = String.raw`(?:(?:a|an|my|our|the|their|this|these|those|your)\s+[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,3}|he|it|she|they|we|you)`;
+const CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN = new RegExp(
+	String.raw`^(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b[^?]{0,120}\b(?:${DEVICE_ACTION_TARGET_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source})\b\s+${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s+${CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
+	'u',
+);
 const CONDITIONAL_OUTCOME_RELATIVE_PREFIX_PATTERN = /\b(?:that|which|who)\s+(?:(?:already|currently|still)\s+)*$/u;
 
 export function findLeadingConditionalActionIndex(
@@ -66,15 +72,16 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 	) {
 		return true;
 	}
+	const actionMessage = message.slice(actionIndex);
 	const subjectFirstOutcomeMatch = new RegExp(
 		String.raw`\b(?:(?:a|an|my|our|the|their|this|these|those|your)\s+)?[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,3}\s+(?:(?:already|currently|still)\s+)?${CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
 		'u',
-	).exec(message.slice(actionIndex));
+	).exec(actionMessage);
 
 	if (subjectFirstOutcomeMatch && !/\b(?:that|where|which|who)\b/u.test(subjectFirstOutcomeMatch[0])) {
 		return true;
 	}
-	const actionMessage = message.slice(actionIndex);
+	if (CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN.test(actionMessage)) return true;
 	const auxiliaryOutcomeMatch = new RegExp(
 		String.raw`\b${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we|you)\s+|[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$`,
 		'u',
