@@ -65,8 +65,8 @@ const CONDITIONAL_OUTCOME_COORDINATED_RELATIVE_PREFIX_PATTERN = new RegExp(
 	String.raw`\b(?:that|which)\s+${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE}(?:${CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE})\s+(?:and|but|or)\s+${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE}$`,
 	'u',
 );
-const CONDITIONAL_OUTCOME_WHERE_RELATIVE_PREFIX_PATTERN = new RegExp(
-	String.raw`\bwhere\s+${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s*$`,
+const CONDITIONAL_OUTCOME_SUBJECT_RELATIVE_PREFIX_PATTERN = new RegExp(
+	String.raw`\b(?:(?:about|after|around|at|before|by|during|for|from|in|of|on|through|to|under|with|within|without)\s+which|where)\s+${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s*$`,
 	'u',
 );
 const CONDITIONAL_OUTCOME_WHO_PREFIX_PATTERN = new RegExp(
@@ -85,7 +85,7 @@ const CONDITIONAL_OUTCOME_WH_SUBJECT_AUXILIARY_TAIL_PATTERN = new RegExp(
 function hasConditionalOutcomeRelativePrefix(prefix: string): boolean {
 	if (CONDITIONAL_OUTCOME_RELATIVE_PRONOUN_PATTERN.test(prefix)) return true;
 	if (CONDITIONAL_OUTCOME_COORDINATED_RELATIVE_PREFIX_PATTERN.test(prefix)) return true;
-	if (CONDITIONAL_OUTCOME_WHERE_RELATIVE_PREFIX_PATTERN.test(prefix)) return true;
+	if (CONDITIONAL_OUTCOME_SUBJECT_RELATIVE_PREFIX_PATTERN.test(prefix)) return true;
 
 	const whoMatch = CONDITIONAL_OUTCOME_WHO_PREFIX_PATTERN.exec(prefix);
 	if (!whoMatch) return false;
