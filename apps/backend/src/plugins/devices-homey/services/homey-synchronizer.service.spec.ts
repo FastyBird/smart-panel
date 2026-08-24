@@ -442,6 +442,30 @@ describe('HomeySynchronizerService', () => {
 		expect(rejected.acceptedEvents).toEqual([]);
 	});
 
+	it('persists newer sequences at a monotonic effective timestamp', async () => {
+		await service.refreshIndex();
+		const firstTimestamp = '2026-08-21T10:02:00.000Z';
+		const secondTimestamp = '2026-08-21T10:01:00.000Z';
+
+		await service.synchronizeEvents([capabilityEvent('onoff', true, firstTimestamp, 1)], inventory());
+		await service.synchronizeEvents([capabilityEvent('onoff', false, secondTimestamp, 2)], inventory());
+
+		expect(propertiesService.update.mock.calls).toEqual([
+			['property-power', { type: DEVICES_HOMEY_TYPE, value: true }, { valueTimestamp: new Date(firstTimestamp) }],
+			['property-state', { type: DEVICES_HOMEY_TYPE, value: 'on' }, { valueTimestamp: new Date(firstTimestamp) }],
+			[
+				'property-power',
+				{ type: DEVICES_HOMEY_TYPE, value: false },
+				{ valueTimestamp: new Date('2026-08-21T10:02:00.001Z') },
+			],
+			[
+				'property-state',
+				{ type: DEVICES_HOMEY_TYPE, value: 'off' },
+				{ valueTimestamp: new Date('2026-08-21T10:02:00.001Z') },
+			],
+		]);
+	});
+
 	it('rejects a conflicting capability value at an already-applied order', async () => {
 		await service.refreshIndex();
 		const applied = capabilityEvent('onoff', true, null, 2);

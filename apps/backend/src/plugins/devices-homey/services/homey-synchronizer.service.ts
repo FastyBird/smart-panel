@@ -75,6 +75,7 @@ export class HomeySynchronizerService {
 	private propertiesByDeviceCapability = new Map<string, Map<string, HomeyIndexedProperty[]>>();
 	private lastAppliedOrder = new Map<string, HomeyEventOrder>();
 	private lastAppliedValues = new Map<string, HomeyCapabilityValue>();
+	private lastPersistedValueTimestamp = new Map<string, number>();
 	private lastObservedOrder = new Map<string, HomeyEventOrder>();
 	private lastAppliedDeviceOrder = new Map<string, HomeyEventOrder>();
 	private lastObservedDeviceOrder = new Map<string, HomeyEventOrder>();
@@ -336,6 +337,7 @@ export class HomeySynchronizerService {
 		this.propertiesByDeviceCapability.clear();
 		this.lastAppliedOrder.clear();
 		this.lastAppliedValues.clear();
+		this.lastPersistedValueTimestamp.clear();
 		this.lastObservedOrder.clear();
 		this.lastAppliedDeviceOrder.clear();
 		this.lastObservedDeviceOrder.clear();
@@ -484,7 +486,6 @@ export class HomeySynchronizerService {
 
 		const order = this.createOrder(sequence, updatedAt);
 		const observedTimestamp = this.parseTimestamp(updatedAt);
-		const valueTimestamp = observedTimestamp === null ? undefined : new Date(observedTimestamp);
 		let allBindingsApplied = true;
 
 		for (const binding of bindings) {
@@ -519,6 +520,7 @@ export class HomeySynchronizerService {
 					type: DEVICES_HOMEY_TYPE,
 					value: transformed,
 				};
+				const valueTimestamp = this.createValueTimestamp(binding.property.id, observedTimestamp);
 				if (valueTimestamp === undefined) {
 					await this.channelsPropertiesService.update(binding.property.id, updateDto);
 				} else {
@@ -526,6 +528,7 @@ export class HomeySynchronizerService {
 				}
 				this.lastAppliedOrder.set(binding.property.id, this.preserveSequenceWatermark(observedOrder, previousOrder));
 				this.lastAppliedValues.set(binding.property.id, value);
+				this.lastPersistedValueTimestamp.set(binding.property.id, valueTimestamp?.getTime() ?? Date.now());
 				result.updated += 1;
 			} catch {
 				result.failed += 1;
@@ -756,6 +759,20 @@ export class HomeySynchronizerService {
 			timestamp: this.parseTimestamp(updatedAt),
 			arrival: ++this.arrivalOrder,
 		};
+	}
+
+	private createValueTimestamp(propertyId: string, observedTimestamp: number | null): Date | undefined {
+		const previousTimestamp = this.lastPersistedValueTimestamp.get(propertyId);
+
+		if (observedTimestamp === null && previousTimestamp === undefined) {
+			return undefined;
+		}
+
+		const candidateTimestamp = observedTimestamp ?? Date.now();
+		const effectiveTimestamp =
+			previousTimestamp === undefined ? candidateTimestamp : Math.max(candidateTimestamp, previousTimestamp + 1);
+
+		return new Date(effectiveTimestamp);
 	}
 
 	private prepareDeviceEvent(
