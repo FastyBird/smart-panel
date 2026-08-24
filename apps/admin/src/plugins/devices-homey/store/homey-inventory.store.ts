@@ -156,13 +156,15 @@ export const useHomeyInventory = defineStore('devices_homey_plugin-inventory', (
 		}
 	};
 
-	const adoptBatch = async (selections: IHomeyAdoptSelection[]): Promise<IHomeyAdoptionResult[]> => {
+	const adoptBatch = async (selections: IHomeyAdoptSelection[], signal?: AbortSignal): Promise<IHomeyAdoptionResult[]> => {
+		signal?.throwIfAborted();
 		adopting.value = true;
 		adoptionResults.value = [];
 		const results: IHomeyAdoptionResult[] = [];
 
 		try {
 			for (let offset = 0; offset < selections.length; offset += MAX_HOMEY_ADOPTION_BATCH_SIZE) {
+				signal?.throwIfAborted();
 				const chunk = selections.slice(offset, offset + MAX_HOMEY_ADOPTION_BATCH_SIZE);
 				const {
 					data: responseData,
@@ -176,8 +178,10 @@ export const useHomeyInventory = defineStore('devices_homey_plugin-inventory', (
 							...(selection.name ? { name: selection.name } : {}),
 						})),
 					},
+					signal,
 				});
 
+				signal?.throwIfAborted();
 				if (!responseData) {
 					throw new DevicesHomeyApiException(
 						getErrorReason<DevicesHomeyPluginAdoptBatchOperation>(error, 'Failed to adopt the selected Homey devices.'),

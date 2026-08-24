@@ -35,7 +35,7 @@
 		"breadcrumb": "Homey",
 		"columns": { "identifier": "Homey-Geräte-ID", "class": "Klasse", "zone": "Zone", "capabilities": "Funktionen" },
 		"values": { "noZone": "Keine Zone", "capabilities": "{count} Funktionen" },
-		"statuses": { "unavailable": "In Homey nicht verfügbar" },
+		"statuses": { "unavailable": "In Homey nicht verfügbar", "needsAttention": "Homey-Gerätezuordnung prüfen" },
 		"actions": { "refresh": "Inventar aktualisieren", "openConfig": "Homey-Konfiguration öffnen" },
 		"errors": {
 			"inventory": "Das Homey-Inventar konnte nicht geladen werden",

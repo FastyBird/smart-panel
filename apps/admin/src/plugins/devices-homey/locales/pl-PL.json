@@ -35,7 +35,7 @@
 		"breadcrumb": "Homey",
 		"columns": { "identifier": "ID urządzenia Homey", "class": "Klasa", "zone": "Strefa", "capabilities": "Możliwości" },
 		"values": { "noZone": "Bez strefy", "capabilities": "Możliwości: {count}" },
-		"statuses": { "unavailable": "Niedostępne w Homey" },
+		"statuses": { "unavailable": "Niedostępne w Homey", "needsAttention": "Sprawdź mapowanie urządzenia Homey" },
 		"actions": { "refresh": "Odśwież inwentarz", "openConfig": "Otwórz konfigurację Homey" },
 		"errors": {
 			"inventory": "Nie udało się załadować inwentarza Homey",

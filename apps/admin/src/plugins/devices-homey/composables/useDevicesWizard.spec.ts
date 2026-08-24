@@ -117,10 +117,11 @@ describe('Homey useDevicesWizard', () => {
 
 		await adapter.adopt([{ key: row.key, name: row.suggestedName, category: row.suggestedCategory! }]);
 
-		expect(inventory.adoptBatch).toHaveBeenCalledWith([
-			{ deviceId: 'homey-light', name: 'Custom desk lamp', deviceCategory: DevicesModuleDeviceCategory.generic },
-		]);
-		expect(inventory.preview).toHaveBeenCalledWith('homey-light');
+		expect(inventory.adoptBatch).toHaveBeenCalledWith(
+			[{ deviceId: 'homey-light', name: 'Custom desk lamp', deviceCategory: DevicesModuleDeviceCategory.generic }],
+			expect.any(AbortSignal)
+		);
+		expect(inventory.preview).toHaveBeenCalledWith('homey-light', undefined, expect.any(AbortSignal));
 	});
 
 	it('falls back to the current mapping category when a saved category is stale', async () => {
@@ -162,9 +163,10 @@ describe('Homey useDevicesWizard', () => {
 
 		await adapter.adopt([{ key: row.key, name: row.suggestedName, category: DevicesModuleDeviceCategory.lighting }]);
 
-		expect(inventory.adoptBatch).toHaveBeenCalledWith([
-			{ deviceId: 'homey-light', name: 'Custom desk lamp', deviceCategory: DevicesModuleDeviceCategory.lighting },
-		]);
+		expect(inventory.adoptBatch).toHaveBeenCalledWith(
+			[{ deviceId: 'homey-light', name: 'Custom desk lamp', deviceCategory: DevicesModuleDeviceCategory.lighting }],
+			expect.any(AbortSignal)
+		);
 	});
 
 	it('loads panel-device metadata before publishing the Homey inventory', async () => {
@@ -223,6 +225,26 @@ describe('Homey useDevicesWizard', () => {
 		expect(adapter.rows.value).toEqual([]);
 	});
 
+	it('aborts an in-flight adoption when the wizard is disposed', async () => {
+		let adoptionSignal: AbortSignal | undefined;
+		inventory.adoptBatch.mockImplementation(
+			(_requests: IHomeyAdoptSelection[], signal?: AbortSignal) =>
+				new Promise<IHomeyAdoptionResult[]>((_resolve, reject) => {
+					adoptionSignal = signal;
+					signal?.addEventListener('abort', () => reject(signal.reason));
+				})
+		);
+		const adapter = useDevicesWizard();
+
+		const adoption = adapter.adopt([{ key: 'homey-light', name: 'Desk light', category: DevicesModuleDeviceCategory.lighting }]);
+		await vi.waitFor(() => expect(inventory.adoptBatch).toHaveBeenCalledOnce());
+		await adapter.dispose?.();
+
+		await expect(adoption).resolves.toEqual([]);
+		expect(adoptionSignal?.aborted).toBe(true);
+		expect(inventory.adoptionResults).toEqual([]);
+	});
+
 	it('signals a new wizard session after refreshing inventory', async () => {
 		const adapter = useDevicesWizard();
 
@@ -252,7 +274,13 @@ describe('Homey useDevicesWizard', () => {
 
 		await adapter.start();
 
-		expect(adapter.rows.value[0]).toEqual(expect.objectContaining({ status: 'needs_attention', adoptable: false }));
+		expect(adapter.rows.value[0]).toEqual(
+			expect.objectContaining({
+				status: 'needs_attention',
+				statusLabel: 'devicesHomeyPlugin.wizard.statuses.needsAttention',
+				adoptable: false,
+			})
+		);
 	});
 
 	it('isolates a mapping-preview failure to the affected device', async () => {
@@ -319,7 +347,7 @@ describe('Homey useDevicesWizard', () => {
 
 		await adapter.adopt([{ key: 'homey-light', name: 'Upstream name', category: DevicesModuleDeviceCategory.lighting }]);
 
-		expect(inventory.adoptBatch).toHaveBeenCalledWith([{ deviceId: 'homey-light' }]);
+		expect(inventory.adoptBatch).toHaveBeenCalledWith([{ deviceId: 'homey-light' }], expect.any(AbortSignal));
 	});
 
 	it('bounds concurrent adoption-time mapping previews', async () => {
@@ -373,9 +401,10 @@ describe('Homey useDevicesWizard', () => {
 			{ key: 'homey-new', name: 'New panel light', category: DevicesModuleDeviceCategory.lighting },
 		]);
 
-		expect(inventory.adoptBatch).toHaveBeenCalledWith([
-			{ deviceId: 'homey-new', name: 'New panel light', deviceCategory: DevicesModuleDeviceCategory.lighting },
-		]);
+		expect(inventory.adoptBatch).toHaveBeenCalledWith(
+			[{ deviceId: 'homey-new', name: 'New panel light', deviceCategory: DevicesModuleDeviceCategory.lighting }],
+			expect.any(AbortSignal)
+		);
 		expect(results).toEqual([
 			{
 				key: 'homey-missing',
@@ -427,9 +456,10 @@ describe('Homey useDevicesWizard', () => {
 			{ key: 'homey-switch', name: 'Hall switch', category: DevicesModuleDeviceCategory.switcher },
 		]);
 
-		expect(inventory.adoptBatch).toHaveBeenCalledWith([
-			{ deviceId: 'homey-switch', name: 'Hall switch', deviceCategory: DevicesModuleDeviceCategory.switcher },
-		]);
+		expect(inventory.adoptBatch).toHaveBeenCalledWith(
+			[{ deviceId: 'homey-switch', name: 'Hall switch', deviceCategory: DevicesModuleDeviceCategory.switcher }],
+			expect.any(AbortSignal)
+		);
 		expect(results).toEqual([
 			expect.objectContaining({
 				key: 'homey-light',

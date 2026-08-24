@@ -60,6 +60,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const sessionGeneration = ref(0);
 	let loadPromise: Promise<void> | null = null;
 	let loadAbortController: AbortController | null = null;
+	const adoptionAbortControllers = new Set<AbortController>();
 	let disposed = false;
 
 	const devices = computed(() =>
@@ -96,7 +97,11 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 						subLabel,
 						identifier: device.id,
 						status,
-						statusLabel: !device.available ? t('devicesHomeyPlugin.wizard.statuses.unavailable') : undefined,
+						statusLabel: !device.available
+							? t('devicesHomeyPlugin.wizard.statuses.unavailable')
+							: status === 'needs_attention'
+								? t('devicesHomeyPlugin.wizard.statuses.needsAttention')
+								: undefined,
 						adoptable: !previewFailed && device.available && device.supportState === 'supported' && preview?.readyToAdopt === true,
 						selectedByDefault: false,
 						willUpdate: device.adopted,
@@ -163,6 +168,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			loading.value = true;
 			previewsReady.value = false;
 			previewFailures.value = {};
+			inventory.adoptionResults = [];
+			submittedNames.value = {};
 			try {
 				await devicesStore.fetch();
 				abortController.signal.throwIfAborted();
@@ -211,9 +218,14 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	async function dispose(): Promise<void> {
 		disposed = true;
 		loadAbortController?.abort();
+		for (const abortController of adoptionAbortControllers) abortController.abort();
 	}
 
 	const adopt = async (selection: IWizardAdoptSelection[]): Promise<IWizardResult[]> => {
+		if (disposed) return [];
+
+		const abortController = new AbortController();
+		adoptionAbortControllers.add(abortController);
 		submittedNames.value = Object.fromEntries(selection.map((item) => [item.key, item.name]));
 		adopting.value = true;
 		let preflightFailures: IHomeyAdoptionResult[] = [];
@@ -238,7 +250,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 						return { request: { deviceId: item.key } satisfies IHomeyAdoptSelection };
 					}
 
-					const preview = inventoryDevice?.adopted ? await inventory.preview(item.key) : null;
+					const preview = inventoryDevice?.adopted ? await inventory.preview(item.key, undefined, abortController.signal) : null;
 					if (preview !== null && !preview.validCategories.includes(item.category)) {
 						return {
 							failure: {
@@ -257,6 +269,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 						} satisfies IHomeyAdoptSelection,
 					};
 				} catch (caught: unknown) {
+					abortController.signal.throwIfAborted();
 					return {
 						failure: {
 							deviceId: item.key,
@@ -268,7 +281,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			});
 			const requests = preparations.flatMap(({ request }) => (request === undefined ? [] : [request]));
 			preflightFailures = preparations.flatMap(({ failure }) => (failure === undefined ? [] : [failure]));
-			const adoption = requests.length > 0 ? await inventory.adoptBatch(requests) : [];
+			const adoption = requests.length > 0 ? await inventory.adoptBatch(requests, abortController.signal) : [];
+			abortController.signal.throwIfAborted();
 			const completed = new Map([...adoption, ...preflightFailures].map((result) => [result.deviceId, result]));
 			inventory.adoptionResults = selection.flatMap((item) => {
 				const result = completed.get(item.key);
@@ -277,6 +291,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 			return inventory.adoptionResults.map(transformResult);
 		} catch (caught: unknown) {
+			if (abortController.signal.aborted) return [];
+
 			const failureMessage = caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.adoption');
 			flashMessage.error(failureMessage);
 			if (inventory.adoptionResults.length > 0 || preflightFailures.length > 0) {
@@ -294,6 +310,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			}
 			throw caught;
 		} finally {
+			adoptionAbortControllers.delete(abortController);
 			adopting.value = false;
 		}
 	};

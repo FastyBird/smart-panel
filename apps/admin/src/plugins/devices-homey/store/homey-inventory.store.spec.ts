@@ -133,4 +133,20 @@ describe('Homey inventory store batch adoption', () => {
 		expect(store.previews).toEqual({});
 		expect(store.previewing).toEqual([]);
 	});
+
+	it('does not publish adoption results after its request is aborted', async () => {
+		const abortController = new AbortController();
+		post.mockImplementation(async (_path: string, request: { signal?: AbortSignal }) => {
+			expect(request.signal).toBe(abortController.signal);
+			abortController.abort();
+
+			return adoptionResponse(['homey-light']);
+		});
+		const store = useHomeyInventory();
+
+		await expect(store.adoptBatch([{ deviceId: 'homey-light' }], abortController.signal)).rejects.toBe(abortController.signal.reason);
+
+		expect(store.adoptionResults).toEqual([]);
+		expect(store.adopting).toBe(false);
+	});
 });

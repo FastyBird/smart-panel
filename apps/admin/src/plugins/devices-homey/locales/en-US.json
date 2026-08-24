@@ -47,7 +47,8 @@
 			"capabilities": "{count} capabilities"
 		},
 		"statuses": {
-			"unavailable": "Unavailable in Homey"
+			"unavailable": "Unavailable in Homey",
+			"needsAttention": "Review the Homey device mapping"
 		},
 		"actions": {
 			"refresh": "Refresh inventory",

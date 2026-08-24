@@ -33,7 +33,7 @@
 		"breadcrumb": "Homey",
 		"columns": { "identifier": "ID zařízení Homey", "class": "Třída", "zone": "Zóna", "capabilities": "Funkce" },
 		"values": { "noZone": "Bez zóny", "capabilities": "Počet funkcí: {count}" },
-		"statuses": { "unavailable": "V Homey není dostupné" },
+		"statuses": { "unavailable": "V Homey není dostupné", "needsAttention": "Zkontrolujte mapování zařízení Homey" },
 		"actions": { "refresh": "Obnovit inventář", "openConfig": "Otevřít nastavení Homey" },
 		"errors": {
 			"inventory": "Inventář Homey se nepodařilo načíst",
