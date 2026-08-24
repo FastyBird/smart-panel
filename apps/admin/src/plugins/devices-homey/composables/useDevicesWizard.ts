@@ -15,7 +15,7 @@ import type {
 	IWizardRowStatus,
 } from '../../../modules/devices';
 import { DevicesHomeyPluginAdoptionStatus } from '../../../openapi.constants';
-import { DEVICES_HOMEY_PLUGIN_NAME, MAX_HOMEY_CONCURRENT_PREVIEWS } from '../devices-homey.constants';
+import { DEVICES_HOMEY_PLUGIN_NAME, MAX_HOMEY_CONCURRENT_PREVIEWS, MAX_HOMEY_DEVICE_NAME_LENGTH } from '../devices-homey.constants';
 import type { IHomeyAdoptSelection, IHomeyAdoptionResult, IHomeyInventoryDevice, IHomeyMappingPreview } from '../store/homey.types';
 import { homeyInventoryStoreKey } from '../store/keys';
 
@@ -57,6 +57,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const adopting = ref(false);
 	const previewsReady = ref(false);
 	const previewFailures = ref<Record<string, true>>({});
+	const sessionGeneration = ref(0);
 	let loadPromise: Promise<void> | null = null;
 
 	const devices = computed(() =>
@@ -173,6 +174,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 					previewResults.filter((deviceId): deviceId is string => deviceId !== null).map((deviceId) => [deviceId, true as const])
 				);
 				previewsReady.value = true;
+				sessionGeneration.value += 1;
 			} catch (caught: unknown) {
 				error.value = caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.inventory');
 			} finally {
@@ -203,6 +205,16 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		try {
 			const preparations = await mapWithConcurrencyLimit(selection, async (item) => {
 				try {
+					if (item.name.length > MAX_HOMEY_DEVICE_NAME_LENGTH) {
+						return {
+							failure: {
+								deviceId: item.key,
+								status: DevicesHomeyPluginAdoptionStatus.failed,
+								message: t('devicesHomeyPlugin.wizard.errors.nameTooLong', { max: MAX_HOMEY_DEVICE_NAME_LENGTH }),
+							} satisfies IHomeyAdoptionResult,
+						};
+					}
+
 					const inventoryDevice = inventory.findById(item.key);
 					const adoptedDevice = inventoryDevice?.adoptedDeviceId ? devicesStore.findById(inventoryDevice.adoptedDeviceId) : null;
 
@@ -287,6 +299,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			{ key: 'capabilities', label: t('devicesHomeyPlugin.wizard.columns.capabilities'), steps: ['discover'], width: 140 },
 		],
 		controls,
+		sessionKey: computed(() => (sessionGeneration.value === 0 ? null : `homey-session-${sessionGeneration.value}`)),
 		ready: computed(() => previewsReady.value || error.value !== null),
 		busy: computed(() => loading.value || adopting.value || inventory.fetching || inventory.adopting),
 		capabilities: { addMore: true },

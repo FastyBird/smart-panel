@@ -48,7 +48,8 @@
 		},
 		"errors": {
 			"inventory": "The Homey inventory could not be loaded",
-			"adoption": "The selected Homey devices could not be adopted"
+			"adoption": "The selected Homey devices could not be adopted",
+			"nameTooLong": "Device name must not exceed {max} characters"
 		}
 	}
 }

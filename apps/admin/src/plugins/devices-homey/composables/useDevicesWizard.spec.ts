@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DevicesHomeyPluginAdoptionStatus, DevicesHomeyPluginSupportState, DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { MAX_HOMEY_CONCURRENT_PREVIEWS } from '../devices-homey.constants';
+import { MAX_HOMEY_CONCURRENT_PREVIEWS, MAX_HOMEY_DEVICE_NAME_LENGTH } from '../devices-homey.constants';
 import type { IHomeyAdoptSelection, IHomeyAdoptionResult, IHomeyInventoryDevice } from '../store/homey.types';
 
 import { useDevicesWizard } from './useDevicesWizard';
@@ -199,6 +199,18 @@ describe('Homey useDevicesWizard', () => {
 		expect(inventory.fetch).toHaveBeenCalledOnce();
 	});
 
+	it('signals a new wizard session after refreshing inventory', async () => {
+		const adapter = useDevicesWizard();
+
+		expect(adapter.sessionKey?.value).toBeNull();
+		await adapter.start();
+		expect(adapter.sessionKey?.value).toBe('homey-session-1');
+
+		await adapter.restart!();
+
+		expect(adapter.sessionKey?.value).toBe('homey-session-2');
+	});
+
 	it('keeps a supported device unavailable for selection when its mapping preview is not ready', async () => {
 		const supported = device();
 		inventory.fetch.mockResolvedValue([supported]);
@@ -353,6 +365,30 @@ describe('Homey useDevicesWizard', () => {
 		expect(inventory.adoptionResults).toEqual([
 			expect.objectContaining({ deviceId: 'homey-missing', status: DevicesHomeyPluginAdoptionStatus.failed, message: 'Device disappeared' }),
 			expect.objectContaining({ deviceId: 'homey-new', status: DevicesHomeyPluginAdoptionStatus.created }),
+		]);
+	});
+
+	it('rejects an overlong name without invalidating other adoption requests', async () => {
+		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-switch', status: DevicesHomeyPluginAdoptionStatus.created }]);
+		const adapter = useDevicesWizard();
+		const overlongName = 'x'.repeat(MAX_HOMEY_DEVICE_NAME_LENGTH + 1);
+
+		const results = await adapter.adopt([
+			{ key: 'homey-light', name: overlongName, category: DevicesModuleDeviceCategory.lighting },
+			{ key: 'homey-switch', name: 'Hall switch', category: DevicesModuleDeviceCategory.switcher },
+		]);
+
+		expect(inventory.adoptBatch).toHaveBeenCalledWith([
+			{ deviceId: 'homey-switch', name: 'Hall switch', deviceCategory: DevicesModuleDeviceCategory.switcher },
+		]);
+		expect(results).toEqual([
+			expect.objectContaining({
+				key: 'homey-light',
+				name: overlongName,
+				status: DevicesHomeyPluginAdoptionStatus.failed,
+				error: `devicesHomeyPlugin.wizard.errors.nameTooLong:{"max":${MAX_HOMEY_DEVICE_NAME_LENGTH}}`,
+			}),
+			expect.objectContaining({ key: 'homey-switch', name: 'Hall switch', status: DevicesHomeyPluginAdoptionStatus.created }),
 		]);
 	});
 

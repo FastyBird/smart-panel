@@ -30,6 +30,10 @@
 		"values": { "noZone": "Sin zona", "capabilities": "{count} capacidades" },
 		"statuses": { "unavailable": "No disponible en Homey" },
 		"actions": { "refresh": "Actualizar inventario", "openConfig": "Abrir configuración de Homey" },
-		"errors": { "inventory": "No se pudo cargar el inventario de Homey", "adoption": "No se pudieron añadir los dispositivos Homey seleccionados" }
+		"errors": {
+			"inventory": "No se pudo cargar el inventario de Homey",
+			"adoption": "No se pudieron añadir los dispositivos Homey seleccionados",
+			"nameTooLong": "El nombre del dispositivo no debe superar los {max} caracteres"
+		}
 	}
 }

@@ -30,6 +30,10 @@
 		"values": { "noZone": "Bez strefy", "capabilities": "Możliwości: {count}" },
 		"statuses": { "unavailable": "Niedostępne w Homey" },
 		"actions": { "refresh": "Odśwież inwentarz", "openConfig": "Otwórz konfigurację Homey" },
-		"errors": { "inventory": "Nie udało się załadować inwentarza Homey", "adoption": "Nie udało się dodać wybranych urządzeń Homey" }
+		"errors": {
+			"inventory": "Nie udało się załadować inwentarza Homey",
+			"adoption": "Nie udało się dodać wybranych urządzeń Homey",
+			"nameTooLong": "Nazwa urządzenia nie może przekraczać {max} znaków"
+		}
 	}
 }

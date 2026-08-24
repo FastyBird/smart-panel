@@ -32,7 +32,8 @@
 		"actions": { "refresh": "Inventar aktualisieren", "openConfig": "Homey-Konfiguration öffnen" },
 		"errors": {
 			"inventory": "Das Homey-Inventar konnte nicht geladen werden",
-			"adoption": "Die ausgewählten Homey-Geräte konnten nicht hinzugefügt werden"
+			"adoption": "Die ausgewählten Homey-Geräte konnten nicht hinzugefügt werden",
+			"nameTooLong": "Der Gerätename darf höchstens {max} Zeichen lang sein"
 		}
 	}
 }

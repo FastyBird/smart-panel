@@ -28,6 +28,10 @@
 		"values": { "noZone": "Bez zóny", "capabilities": "Počet funkcií: {count}" },
 		"statuses": { "unavailable": "V Homey nie je dostupné" },
 		"actions": { "refresh": "Obnoviť inventár", "openConfig": "Otvoriť nastavenie Homey" },
-		"errors": { "inventory": "Inventár Homey sa nepodarilo načítať", "adoption": "Vybrané zariadenia Homey sa nepodarilo pridať" }
+		"errors": {
+			"inventory": "Inventár Homey sa nepodarilo načítať",
+			"adoption": "Vybrané zariadenia Homey sa nepodarilo pridať",
+			"nameTooLong": "Názov zariadenia nesmie byť dlhší ako {max} znakov"
+		}
 	}
 }
