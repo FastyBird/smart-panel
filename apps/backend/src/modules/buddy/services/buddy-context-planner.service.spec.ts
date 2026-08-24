@@ -6937,6 +6937,8 @@ describe('BuddyContextPlannerService', () => {
 		'If we turn the Bedroom lights off the camera stops recording?',
 		'If we turn off the Bedroom lights then the camera stops recording?',
 		'If we turn off the Bedroom camera the alarm stops working?',
+		'If we turn off the Bedroom lighting the camera stops recording?',
+		'If we dim the Bedroom lighting the alarm keeps working?',
 		'If we unlock the Bedroom locks the alarm stops working?',
 		'If we set the Bedroom lights to 20 percent the camera keeps working?',
 		'If we dim the Bedroom lights by 20 percent the camera stops recording?',
