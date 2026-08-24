@@ -5,6 +5,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
@@ -462,6 +463,33 @@ describe('HomeySynchronizerService', () => {
 				'property-state',
 				{ type: DEVICES_HOMEY_TYPE, value: 'off' },
 				{ valueTimestamp: new Date('2026-08-21T10:02:00.001Z') },
+			],
+		]);
+	});
+
+	it('rebuilds persistence watermarks from loaded values after reset', async () => {
+		await service.refreshIndex();
+		await service.synchronizeEvents([capabilityEvent('onoff', true, '2026-08-21T10:02:00.000Z', 1)], inventory());
+
+		const durableTimestamp = '2026-08-21T10:03:00.000Z';
+		powerProperty.value = new PropertyValueState(true, durableTimestamp);
+		stateProperty.value = new PropertyValueState('on', durableTimestamp);
+		service.reset();
+		propertiesService.update.mockClear();
+		await service.refreshIndex();
+
+		await service.synchronizeEvents([capabilityEvent('onoff', false, '2026-08-21T10:01:00.000Z', 2)], inventory());
+
+		expect(propertiesService.update.mock.calls).toEqual([
+			[
+				'property-power',
+				{ type: DEVICES_HOMEY_TYPE, value: false },
+				{ valueTimestamp: new Date('2026-08-21T10:03:00.001Z') },
+			],
+			[
+				'property-state',
+				{ type: DEVICES_HOMEY_TYPE, value: 'off' },
+				{ valueTimestamp: new Date('2026-08-21T10:03:00.001Z') },
 			],
 		]);
 	});

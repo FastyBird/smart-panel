@@ -337,7 +337,6 @@ export class HomeySynchronizerService {
 		this.propertiesByDeviceCapability.clear();
 		this.lastAppliedOrder.clear();
 		this.lastAppliedValues.clear();
-		this.lastPersistedValueTimestamp.clear();
 		this.lastObservedOrder.clear();
 		this.lastAppliedDeviceOrder.clear();
 		this.lastObservedDeviceOrder.clear();
@@ -378,6 +377,7 @@ export class HomeySynchronizerService {
 		const devices = await this.devicesService.findAll<HomeyDeviceEntity>(DEVICES_HOMEY_TYPE);
 		const adoptedDevices = new Map<string, HomeyDeviceEntity>();
 		const propertiesByDeviceCapability = new Map<string, Map<string, HomeyIndexedProperty[]>>();
+		const persistedValueTimestamps = new Map<string, number>();
 
 		for (const device of devices) {
 			if (device.identifier === null || !device.enabled) {
@@ -404,6 +404,16 @@ export class HomeySynchronizerService {
 						continue;
 					}
 
+					const loadedTimestamp = this.parseTimestamp(property.value?.lastUpdated ?? null);
+					const currentTimestamp = this.lastPersistedValueTimestamp.get(property.id);
+					const persistedTimestamp =
+						loadedTimestamp === null
+							? currentTimestamp
+							: Math.max(loadedTimestamp, currentTimestamp ?? loadedTimestamp);
+					if (persistedTimestamp !== undefined) {
+						persistedValueTimestamps.set(property.id, persistedTimestamp);
+					}
+
 					const bindings = capabilities.get(property.homeyCapabilityId) ?? [];
 					bindings.push({ panelDeviceId: device.id, property, mapping });
 					capabilities.set(property.homeyCapabilityId, bindings);
@@ -415,6 +425,7 @@ export class HomeySynchronizerService {
 
 		this.adoptedDevices = adoptedDevices;
 		this.propertiesByDeviceCapability = propertiesByDeviceCapability;
+		this.lastPersistedValueTimestamp = persistedValueTimestamps;
 		this.indexDirty = this.indexGeneration !== generation;
 	}
 
