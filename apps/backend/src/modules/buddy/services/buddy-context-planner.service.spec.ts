@@ -7074,6 +7074,28 @@ describe('BuddyContextPlannerService', () => {
 	});
 
 	it.each([
+		'If the window is open turn on the Bedroom lights so the camera starts recording?',
+		'If the window is open turn on the Bedroom lights before the camera stops recording?',
+		'If the window is open turn on the Bedroom lights because the baby starts crying?',
+		'If the window is open turn on the Bedroom lights unless the camera stops recording?',
+	])('keeps a subordinate clause out of conditional outcome subjects: %s', (message) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('mixed');
+		if (plan.strategy === 'clarify') {
+			expect(plan.ambiguityRisk).toBe('action');
+			expect(plan.toolNames).toEqual([]);
+		} else {
+			expect(plan.toolNames).toContain('control_device');
+			expect(plan.toolNames).toContain('set_space_lighting');
+		}
+	});
+
+	it.each([
 		['If the window is open turn on the Bedroom lights for guests who could otherwise fall?', 'none', 'model-tools'],
 		['If the window is open turn on the Bedroom lights near guests who could otherwise fall?', 'action', 'clarify'],
 	] as const)('keeps a who-relative command complement on the action path: %s', (message, ambiguityRisk, strategy) => {
