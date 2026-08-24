@@ -134,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElCard, ElDescriptions, ElDescriptionsItem, ElTag } from 'element-plus';
@@ -233,18 +233,18 @@ const testCandidateConnection = async (): Promise<void> => {
 	await runConnectionTest(candidateRequest.value);
 };
 
-watch(
-	() => [props.candidateUrl, props.candidateApiKey],
-	() => {
-		testGeneration += 1;
-		testRequestFailed.value = false;
-		statusStore.clearLastTest();
-	}
-);
+const invalidateConnectionTest = (): void => {
+	testGeneration += 1;
+	testRequestFailed.value = false;
+	statusStore.clearLastTest();
+};
+
+watch(() => [props.candidateUrl, props.candidateApiKey], invalidateConnectionTest);
 
 onMounted(() => {
-	testGeneration += 1;
-	statusStore.clearLastTest();
+	invalidateConnectionTest();
 	void refreshStatus();
 });
+
+onBeforeUnmount(invalidateConnectionTest);
 </script>

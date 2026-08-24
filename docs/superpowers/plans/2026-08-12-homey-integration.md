@@ -523,7 +523,7 @@ state, Homey name/ID/version, latest inventory sync and event timestamps, adopte
 category-specific recovery guidance. Focused component/store/schema tests cover idle and working states, secret
 preservation/replacement/removal, exact test payloads, validation, successful identity, categorized failures, and fixed
 request errors. Results are invalidated when candidate inputs change, including while a request is in flight, and when
-the form is reopened; the complete 2,251-test admin suite and production build pass.
+the form is reopened; the complete 2,252-test admin suite and production build pass.
 
 ### Task 5.3: Implement the generic wizard adapter
 

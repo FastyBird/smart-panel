@@ -21,12 +21,12 @@ describe('normalizeHomeyUrlInput', () => {
 		expect(createSavedHomeyConnectionTestRequest()).toEqual({ data: { mode: 'saved' } });
 	});
 
-	it('builds a complete candidate test without modifying the newly entered key', () => {
+	it('builds a complete candidate test with the same trimmed key that saving persists', () => {
 		expect(createCandidateHomeyConnectionTestRequest('http://homey.local:4859', ' candidate-key ')).toEqual({
 			data: {
 				mode: 'candidate',
 				url: 'http://homey.local:4859',
-				api_key: ' candidate-key ',
+				api_key: 'candidate-key',
 			},
 		});
 	});

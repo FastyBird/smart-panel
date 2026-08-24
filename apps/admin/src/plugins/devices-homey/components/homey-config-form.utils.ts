@@ -23,7 +23,7 @@ export const createCandidateHomeyConnectionTestRequest = (
 		data: {
 			mode: DevicesHomeyPluginTestCandidateConnectionMode.candidate,
 			url,
-			api_key: apiKey,
+			api_key: apiKey.trim(),
 		},
 	};
 };

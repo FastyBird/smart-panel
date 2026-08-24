@@ -246,6 +246,35 @@ describe('HomeyConnectionPanel', () => {
 		expect(wrapper.text()).not.toContain('Stale Homey');
 	});
 
+	it('discards a test result completed after its panel is unmounted', async () => {
+		let completeTest: (() => void) | undefined;
+		statusStore.testConnection.mockImplementationOnce(
+			() =>
+				new Promise<IHomeyTestConnection>((resolve) => {
+					completeTest = () => {
+						const result: IHomeyTestConnection = {
+							mode: 'candidate',
+							success: true,
+							homeyName: 'Unmounted Homey',
+						};
+						statusStore.lastTest = result;
+						resolve(result);
+					};
+				})
+		);
+		const oldPanel = mountPanel({ candidateUrl: 'http://homey.local:4859', candidateApiKey: 'candidate-key' });
+		await flushPromises();
+
+		await oldPanel.get('[data-test-id="homey-test-candidate"]').trigger('click');
+		oldPanel.unmount();
+		const reopenedPanel = mountPanel({ candidateUrl: 'http://homey.local:4859', candidateApiKey: 'candidate-key' });
+		completeTest?.();
+		await flushPromises();
+
+		expect(statusStore.lastTest).toBeNull();
+		expect(reopenedPanel.text()).not.toContain('Unmounted Homey');
+	});
+
 	it('shows a fixed request error without exposing the thrown detail', async () => {
 		statusStore.testConnection.mockRejectedValueOnce(new Error('private transport detail'));
 		const wrapper = mountPanel();
