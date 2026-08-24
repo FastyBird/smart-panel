@@ -7059,6 +7059,21 @@ describe('BuddyContextPlannerService', () => {
 	});
 
 	it.each([
+		'If the window is open turn on the Bedroom lights and help John start reading?',
+		'If the window is open turn on the Bedroom lights and let John start reading?',
+	])('keeps a coordinated command out of conditional outcome subjects: %s', (message) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('mixed');
+		expect(plan.toolNames).toContain('control_device');
+		expect(plan.toolNames).toContain('set_space_lighting');
+	});
+
+	it.each([
 		['If the window is open turn on the Bedroom lights for guests who could otherwise fall?', 'none', 'model-tools'],
 		['If the window is open turn on the Bedroom lights near guests who could otherwise fall?', 'action', 'clarify'],
 	] as const)('keeps a who-relative command complement on the action path: %s', (message, ambiguityRisk, strategy) => {

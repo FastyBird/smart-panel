@@ -33,7 +33,7 @@ import {
 const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:am|are(?:n't)?|can(?:not|'t)?|could(?:n't)?|did(?:n't)?|do|does|don't|doesn't|had(?:n't)?|has(?:n't)?|have(?:n't)?|is(?:n't)?|may|might(?:n't)?|must(?:n't)?|should(?:n't)?|was(?:n't)?|were(?:n't)?|will|won't|would(?:n't)?)`;
 const CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE = String.raw`(?:appears?|changes?|fails?|happens?|improves?|looks?|remains?|seems?|stays?|wakes?|works?)`;
 const CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE = String.raw`(?:becomes?|keeps?|starts?|stops?)\s+(?:(?:being|far|much|on|quite|really|to|very)\s+)?[\p{Letter}\p{Number}'’-]+`;
-const CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE = String.raw`(?:(?:a|an|my|our|the|their|this|these|those|your)\s+)?[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,3}`;
+const CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE = String.raw`(?!(?:(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\s+)?(?:${ACTION_SIGNAL_PATTERN_SOURCE}|help|let)\b)(?:(?:a|an|my|our|the|their|this|these|those|your)\s+)?[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,3}`;
 const CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE = String.raw`(?:active|blue|brighter|closed|cooler|dimmer|eco|green|higher|inactive|locked|lower|off|on|open|red|unlocked|warmer|white|(?:at|by|to)\s+(?:[-+]?\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:%|celsius|degrees?|fahrenheit|percent|°\s*(?:c|f))?)`;
 const CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${DEVICE_ACTION_TARGET_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source})`;
 const CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN = new RegExp(
