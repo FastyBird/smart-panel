@@ -7047,4 +7047,16 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.toolNames).toContain('control_device');
 		expect(plan.toolNames).toContain('set_space_lighting');
 	});
+
+	it('keeps a who-relative command complement on the action path', () => {
+		const plan = service.plan({
+			message: 'If the window is open turn on the Bedroom lights for guests who could otherwise fall?',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk: 'none', strategy: 'model-tools' });
+		expect(plan.toolNames).toContain('control_device');
+		expect(plan.toolNames).toContain('set_space_lighting');
+	});
 });

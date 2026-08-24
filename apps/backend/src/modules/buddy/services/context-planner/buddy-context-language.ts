@@ -39,7 +39,10 @@ const CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN = new RegExp(
 	String.raw`^(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b[^?]{0,120}\b(?:${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${DEVICE_ACTION_TARGET_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source})\b\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?(?:(?:and\s+)?then\s+)?${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s+${CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
 	'u',
 );
-const CONDITIONAL_OUTCOME_RELATIVE_PREFIX_PATTERN = /\b(?:that|which)\s+(?:(?:already|currently|still)\s+)*$/u;
+const CONDITIONAL_OUTCOME_RELATIVE_PREFIX_PATTERN = new RegExp(
+	String.raw`(?:\b(?:that|which)|\b(?:for|to|with)\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+)?[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,2}\s+who)\s+(?:(?:already|currently|still)\s+)*$`,
+	'u',
+);
 
 export function findLeadingConditionalActionIndex(
 	message: string,
