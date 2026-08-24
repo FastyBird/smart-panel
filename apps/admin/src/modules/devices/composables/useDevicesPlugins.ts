@@ -63,6 +63,12 @@ export const useDevicesPlugins = (): IUseDevicesPlugins => {
 				return (plugin.elements ?? [])
 					.filter((el) => el.modules === undefined || el.modules.includes(DEVICES_MODULE_NAME))
 					.filter((el) => {
+						const isWizardOnly = !!el.components?.deviceWizardAdapter && !el.components.deviceAddForm;
+
+						if (isWizardOnly) {
+							return false;
+						}
+
 						const hasTypeComponent = !!el.components && typeOptionComponents.some((key) => el.components && key in el.components);
 						const hasTypeSchema = !!el.schemas && pluginSchemas.some((key) => el.schemas && key in el.schemas);
 

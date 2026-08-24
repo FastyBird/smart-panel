@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DEVICES_MODULE_NAME } from '../devices.constants';
-import { DeviceSchema } from '../store/devices.store.schemas';
+import { DeviceCreateReqSchema, DeviceSchema } from '../store/devices.store.schemas';
 
 import { useDevicesPlugins } from './useDevicesPlugins';
 
@@ -55,6 +55,10 @@ const mockPluginList = [
 				name: 'Wizard Type',
 				components: {
 					deviceWizardAdapter: () => ({}),
+				},
+				schemas: {
+					deviceSchema,
+					deviceCreateReqSchema: DeviceCreateReqSchema,
 				},
 			},
 			{
