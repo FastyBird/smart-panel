@@ -7079,6 +7079,18 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.toolNames).toContain('set_space_lighting');
 	});
 
+	it('keeps an infinitive action complement out of conditional outcome subjects', () => {
+		const plan = service.plan({
+			message: 'If the window is open make the Bedroom lights a little brighter to start reading?',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('mixed');
+		expect(plan.toolNames).toContain('control_device');
+		expect(plan.toolNames).toContain('set_space_lighting');
+	});
+
 	it.each([
 		'If the window is open turn on the Bedroom lights and help John start reading?',
 		'If the window is open turn on the Bedroom lights and let John start reading?',
