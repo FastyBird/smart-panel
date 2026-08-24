@@ -4202,6 +4202,9 @@ describe('BuddyContextPlannerService', () => {
 		'Are all lights switched off?',
 		'Are any windows now open?',
 		'Are any windows right now open?',
+		'Are any windows fully open?',
+		'Are any doors completely closed?',
+		'Are any windows partially open?',
 		'Is every one of the windows closed?',
 		'Is any one of the windows open?',
 		'Can you check if any one of the windows is open?',
@@ -6904,6 +6907,9 @@ describe('BuddyContextPlannerService', () => {
 		'If we disable the Bedroom lights will you still see?',
 		'If we disable the Bedroom lights, the camera still works?',
 		'If we disable the Bedroom lights the camera still works?',
+		'If we disable the Bedroom lights the camera keeps working?',
+		'If we disable the Bedroom lights the camera stops recording?',
+		'If we disable the Bedroom lights the camera becomes safer?',
 		'If we disable the Bedroom lights what about the camera?',
 		'If we disable the Bedroom lights how about the camera?',
 		'If we disable the Bedroom lights what next?',
@@ -7004,9 +7010,13 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
-	it('recognizes a modal relative target clause without executing an unresolved subset', () => {
+	it.each([
+		'If the window is open, turn off the lights that could wake the baby?',
+		'If the window is open, turn off the lights that still could wake the baby?',
+		'If the window is open, turn off the lights which currently might wake the baby?',
+	])('recognizes a modal relative target clause without executing an unresolved subset: %s', (message) => {
 		const plan = service.plan({
-			message: 'If the window is open, turn off the lights that could wake the baby?',
+			message,
 			conversationSpaceId: 'space-bedroom',
 			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 		});

@@ -238,7 +238,7 @@ export const RELATIVE_REFERENCE_ANTECEDENT_PATTERN = new RegExp(
 	'u',
 );
 const WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE = String.raw`(?:${GROUNDED_STATE_PATTERN_SOURCE}|${HOME_STATE_PATTERN.source}|running|triggered)`;
-const AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE = String.raw`(?:already|not|still|${CURRENT_STATE_PATTERN.source})`;
+const AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE = String.raw`(?:already|completely|fully|not|partially|slightly|still|${CURRENT_STATE_PATTERN.source})`;
 const AGGREGATE_STATE_VALUE_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_STATE_MODIFIER_PATTERN_SOURCE}\s+)?${WRAPPED_AGGREGATE_STATE_PATTERN_SOURCE}`;
 const PROGRESSIVE_STATE_LINKER_PATTERN_SOURCE = String.raw`being\s+(?:left|powered|switched|turned)`;
 const STATE_LINKING_VERB_PATTERN_SOURCE = String.raw`(?:${PROGRESSIVE_STATE_LINKER_PATTERN_SOURCE}|appear|appears|are|is|left|look|looks|powered|remain|remains|seem|seems|stay|stays|switched|turned|was|were)`;
