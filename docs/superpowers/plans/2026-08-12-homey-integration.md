@@ -508,20 +508,18 @@ remains scoped to Task 5.3. All six supported admin locales carry the same non-e
 
 ### Task 5.2: Implement secret-safe configuration UI
 
-- [x] Add mode selection with local mode active and cloud mode marked unavailable until Phase 7.
+- [ ] Add mode selection with local mode active and cloud mode marked unavailable until Phase 7.
 - [x] Add URL, API-key replacement input, explicit clear action, bounded timeout/interval inputs, and enabled state.
 - [x] Show only whether an API key is configured; never populate the key field from GET data.
 - [x] Preserve the stored key when the field is untouched.
-- [x] Add separate test actions/payloads for the fully saved configuration and a complete candidate URL/newly entered key pair; disable candidate testing until both fields are present.
-- [x] Display connector state, Homey identity/version, last sync/event, and sanitized error guidance.
-- [x] Unit-test initial state, preserve/replace/clear payloads, saved-vs-candidate test payloads, candidate URL without a new key, validation, working state, successful test, and categorized failures.
+- [ ] Add separate test actions/payloads for the fully saved configuration and a complete candidate URL/newly entered key pair; disable candidate testing until both fields are present.
+- [ ] Display connector state, Homey identity/version, last sync/event, and sanitized error guidance.
+- [ ] Unit-test initial state, preserve/replace/clear payloads, saved-vs-candidate test payloads, candidate URL without a new key, validation, working state, successful test, and categorized failures.
 
-The Homey configuration form now exposes local mode while reserving cloud mode for Milestone 7. It validates and
-normalizes the endpoint and bounded timing fields, treats the API key as a write-only preserve/replace/clear value, and
-keeps saved-configuration testing separate from complete candidate credentials. Operational status is presented with
-Homey identity, version, synchronization/event timestamps, and localized sanitized failure guidance. Focused schemas,
-utilities, stores, and component tests cover secret handling, validation, request modes, concurrent requests, stale
-results, and disposal.
+The current Homey configuration form covers enabled state, endpoint, bounded timing fields, and write-only API-key
+replacement while preserving an untouched stored key. The status/test stores and schemas are registered, but the mode
+selector, saved-versus-candidate test actions, connector health presentation, and their component coverage remain to be
+implemented before this task can close.
 
 ### Task 5.3: Implement the generic wizard adapter
 
@@ -530,18 +528,17 @@ results, and disposal.
 - [x] Start/load Homey inventory and expose normalized wizard rows.
 - [x] Map name, model/class, zone, capability count, availability, and support/adoption status into built-in/extra cells.
 - [x] Provide stable device ID keys, suggested name/category, and category options.
-- [x] Fetch or derive read-only mapping summaries for confirmation.
+- [ ] Expose fetched read-only mapping summaries on confirmation rows.
 - [x] Submit batch adoption and translate per-device results.
 - [x] Clean up polling/subscriptions on wizard disposal.
 - [x] Handle offline, empty, loading, reconnect, unsupported, already adopted, and partial-success states.
 - [x] Add adapter/store/component tests using generated API mocks.
 
 The shared wizard adapter loads inventory before rendering selection rows, preserves full Homey identifiers, derives
-category choices and mapping summaries, and submits bounded batch adoption with per-device outcomes. Inventory,
-preview, refresh, and adoption requests are isolated from stale or disposed sessions; partial transport and provider
-results remain visible instead of discarding successful work. Tests cover empty/offline inventory, unsupported and
-already-adopted rows, refresh serialization, mapping failures, mixed batch outcomes, cancellation, and Unicode-safe
-adoption input validation.
+category choices, and submits bounded batch adoption with per-device outcomes. It fetches mapping previews for
+readiness and suggested category, but does not yet expose the channel/property summary on confirmation rows. Inventory,
+preview, refresh, and adoption requests remain isolated from stale or disposed sessions; partial transport and provider
+results remain visible instead of discarding successful work.
 
 ### Task 5.4: Generate OpenAPI clients and verify the admin app
 
