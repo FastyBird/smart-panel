@@ -43,6 +43,7 @@ export const useHomeyStatus = defineStore('devices_homey_plugin-status', () => {
 
 	const testConnection = async (payload: DevicesHomeyPluginTestConnectionRequestSchema): Promise<IHomeyTestConnection> => {
 		testing.value = true;
+		lastTest.value = null;
 
 		try {
 			const { data, error, response } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOMEY_PLUGIN_PREFIX}/test-connection`, {

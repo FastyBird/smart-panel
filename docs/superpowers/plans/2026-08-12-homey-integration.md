@@ -508,18 +508,21 @@ remains scoped to Task 5.3. All six supported admin locales carry the same non-e
 
 ### Task 5.2: Implement secret-safe configuration UI
 
-- [ ] Add mode selection with local mode active and cloud mode marked unavailable until Phase 7.
+- [x] Add mode selection with local mode active and cloud mode marked unavailable until Phase 7.
 - [x] Add URL, API-key replacement input, explicit clear action, bounded timeout/interval inputs, and enabled state.
 - [x] Show only whether an API key is configured; never populate the key field from GET data.
 - [x] Preserve the stored key when the field is untouched.
-- [ ] Add separate test actions/payloads for the fully saved configuration and a complete candidate URL/newly entered key pair; disable candidate testing until both fields are present.
-- [ ] Display connector state, Homey identity/version, last sync/event, and sanitized error guidance.
-- [ ] Unit-test initial state, preserve/replace/clear payloads, saved-vs-candidate test payloads, candidate URL without a new key, validation, working state, successful test, and categorized failures.
+- [x] Add separate test actions/payloads for the fully saved configuration and a complete candidate URL/newly entered key pair; disable candidate testing until both fields are present.
+- [x] Display connector state, Homey identity/version, last sync/event, and sanitized error guidance.
+- [x] Unit-test initial state, preserve/replace/clear payloads, saved-vs-candidate test payloads, candidate URL without a new key, validation, working state, successful test, and categorized failures.
 
-The current Homey configuration form covers enabled state, endpoint, bounded timing fields, and write-only API-key
-replacement while preserving an untouched stored key. The status/test stores and schemas are registered, but the mode
-selector, saved-versus-candidate test actions, connector health presentation, and their component coverage remain to be
-implemented before this task can close.
+The Homey configuration form presents local mode as active and cloud mode as unavailable until Phase 7. Its saved test
+sends no connector overrides, while candidate testing remains disabled until a safe URL and newly entered nonblank key
+are both present; the candidate payload never falls back to the stored secret. The operational panel shows connector
+state, Homey name/ID/version, latest inventory sync and event timestamps, adopted-device count, and sanitized
+category-specific recovery guidance. Focused component/store/schema tests cover idle and working states, secret
+preservation/replacement/removal, exact test payloads, validation, successful identity, categorized failures, and fixed
+request errors; the complete 2,247-test admin suite and production build pass.
 
 ### Task 5.3: Implement the generic wizard adapter
 

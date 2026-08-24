@@ -4,6 +4,7 @@
 			"title": "Lokale Homey-Verbindung",
 			"description": "Direkte Verbindung mit einem Homey Pro im lokalen Netzwerk. Homey Cloud wird noch nicht unterstützt."
 		},
+		"mode": { "label": "Verbindungsmodus", "local": "Lokal", "cloud": "Cloud", "cloudUnavailable": "Demnächst" },
 		"enabled": "Aktiviert",
 		"url": {
 			"label": "Lokale API-URL",
@@ -25,6 +26,52 @@
 			"reconciliationIntervalRequired": "Das Inventarabgleichsintervall ist erforderlich",
 			"reconciliationIntervalRange": "Das Inventarabgleichsintervall muss zwischen {min} und {max} ms liegen"
 		}
+	},
+	"status": {
+		"title": "Verbindungsstatus",
+		"description": "Betriebsstatus der gespeicherten Homey-Integration.",
+		"refresh": "Aktualisieren",
+		"loadFailed": "Der aktuelle Homey-Status konnte nicht geladen werden.",
+		"notAvailable": "Nicht verfügbar",
+		"fields": {
+			"connection": "Verbindung",
+			"homey": "Homey",
+			"version": "Version",
+			"lastSync": "Letzter Inventarabgleich",
+			"lastEvent": "Letztes Ereignis",
+			"adoptedDevices": "Übernommene Geräte"
+		},
+		"states": {
+			"stopped": "Gestoppt",
+			"connecting": "Verbindung wird hergestellt",
+			"connected": "Verbunden",
+			"degraded_polling": "Eingeschränkte Abfrage",
+			"reconnecting": "Verbindung wird wiederhergestellt",
+			"authentication_failed": "Authentifizierung fehlgeschlagen",
+			"error": "Fehler"
+		},
+		"guidance": {
+			"authentication": "Ersetzen Sie den gespeicherten API-Schlüssel und testen Sie die Verbindung erneut.",
+			"authorization": "Erteilen Sie dem API-Schlüssel die erforderlichen Homey-Lese- und Steuerberechtigungen.",
+			"timeout": "Prüfen Sie Homey-Adresse, Netzwerkpfad und Verbindungszeitlimit.",
+			"unavailable": "Prüfen Sie, ob Homey läuft und vom Smart Panel erreichbar ist.",
+			"protocol": "Stellen Sie sicher, dass der konfigurierte Endpunkt eine kompatible lokale Homey-API ist.",
+			"validation": "Prüfen Sie URL und Verbindungseinstellungen.",
+			"unsupported": "Die verbundene Homey-API wird von dieser Integration nicht unterstützt."
+		}
+	},
+	"connectionTest": {
+		"title": "Verbindung testen",
+		"description": "Testen Sie entweder die auf dem Server gespeicherte Konfiguration oder die oben eingegebene vollständige URL mit neuem Schlüssel.",
+		"saved": "Gespeicherte Konfiguration testen",
+		"candidate": "Eingegebene URL und Schlüssel testen",
+		"savedUnavailable": "Speichern Sie eine vollständige URL und einen API-Schlüssel, bevor Sie die gespeicherte Konfiguration testen.",
+		"candidateUnavailable": "Geben Sie eine gültige URL und einen neuen API-Schlüssel ein, um ungespeicherte Einstellungen zu testen.",
+		"success": "Homey-Verbindung erfolgreich",
+		"successDescription": "Verbunden mit {identity}.",
+		"failure": "Homey-Verbindung fehlgeschlagen",
+		"failureFallback": "Homey hat den Verbindungstest abgelehnt.",
+		"requestFailed": "Die Anfrage für den Verbindungstest konnte nicht abgeschlossen werden."
 	},
 	"messages": {
 		"config": { "updated": "Homey-Konfiguration wurde aktualisiert", "updateFailed": "Homey-Konfiguration konnte nicht aktualisiert werden" }

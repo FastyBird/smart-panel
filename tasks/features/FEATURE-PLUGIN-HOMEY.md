@@ -131,9 +131,9 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 
 ### Admin
 
-- [ ] The Homey plugin configuration form supports local URL, write-only API key, test connection, and health display.
+- [x] The Homey plugin configuration form supports local URL, write-only API key, test connection, and health display.
 - [x] The form never repopulates or displays a stored API key.
-- [ ] The form distinguishes testing the fully saved configuration from testing a complete candidate URL/new-key pair and never submits an endpoint override without a new key.
+- [x] The form distinguishes testing the fully saved configuration from testing a complete candidate URL/new-key pair and never submits an endpoint override without a new key.
 - [x] A `deviceWizardAdapter` integrates Homey with the shared three-step adoption wizard.
 - [x] Discovery rows show name, identifier, class/model, zone, availability, capability count, and adoption/support status.
 - [ ] Confirm rows provide sensible names/categories and a read-only mapping summary.

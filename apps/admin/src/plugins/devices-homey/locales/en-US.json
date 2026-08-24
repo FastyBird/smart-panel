@@ -4,6 +4,12 @@
 			"title": "Local Homey connection",
 			"description": "Connect directly to a Homey Pro on the local network. Homey Cloud support is not available yet."
 		},
+		"mode": {
+			"label": "Connection mode",
+			"local": "Local",
+			"cloud": "Cloud",
+			"cloudUnavailable": "Coming later"
+		},
 		"enabled": "Enabled",
 		"url": {
 			"label": "Local API URL",
@@ -25,6 +31,52 @@
 			"reconciliationIntervalRequired": "Inventory reconciliation interval is required",
 			"reconciliationIntervalRange": "Inventory reconciliation interval must be between {min} and {max} ms"
 		}
+	},
+	"status": {
+		"title": "Connection status",
+		"description": "Operational state reported by the saved Homey integration.",
+		"refresh": "Refresh",
+		"loadFailed": "The current Homey status could not be loaded.",
+		"notAvailable": "Not available",
+		"fields": {
+			"connection": "Connection",
+			"homey": "Homey",
+			"version": "Version",
+			"lastSync": "Last inventory sync",
+			"lastEvent": "Last event",
+			"adoptedDevices": "Adopted devices"
+		},
+		"states": {
+			"stopped": "Stopped",
+			"connecting": "Connecting",
+			"connected": "Connected",
+			"degraded_polling": "Degraded polling",
+			"reconnecting": "Reconnecting",
+			"authentication_failed": "Authentication failed",
+			"error": "Error"
+		},
+		"guidance": {
+			"authentication": "Replace the saved API key and test the connection again.",
+			"authorization": "Grant the API key the required Homey read and control permissions.",
+			"timeout": "Check the Homey address, network path, and connection timeout.",
+			"unavailable": "Check that Homey is running and reachable from Smart Panel.",
+			"protocol": "Confirm that the configured endpoint is a compatible Homey local API.",
+			"validation": "Review the URL and connection settings.",
+			"unsupported": "The connected Homey API is not supported by this integration."
+		}
+	},
+	"connectionTest": {
+		"title": "Test connection",
+		"description": "Test either the configuration already saved on the server or the complete URL and new key entered above.",
+		"saved": "Test saved configuration",
+		"candidate": "Test entered URL and key",
+		"savedUnavailable": "Save a complete URL and API key before testing the saved configuration.",
+		"candidateUnavailable": "Enter both a valid URL and a new API key to test unsaved settings.",
+		"success": "Homey connection succeeded",
+		"successDescription": "Connected to {identity}.",
+		"failure": "Homey connection failed",
+		"failureFallback": "Homey rejected the connection test.",
+		"requestFailed": "The connection test request could not be completed."
 	},
 	"messages": {
 		"config": {

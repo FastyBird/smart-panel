@@ -4,6 +4,7 @@
 			"title": "Conexión local de Homey",
 			"description": "Conéctate directamente a un Homey Pro en la red local. Homey Cloud aún no está disponible."
 		},
+		"mode": { "label": "Modo de conexión", "local": "Local", "cloud": "Cloud", "cloudUnavailable": "Próximamente" },
 		"enabled": "Activado",
 		"url": {
 			"label": "URL de API local",
@@ -25,6 +26,52 @@
 			"reconciliationIntervalRequired": "El intervalo de conciliación del inventario es obligatorio",
 			"reconciliationIntervalRange": "El intervalo de conciliación del inventario debe estar entre {min} y {max} ms"
 		}
+	},
+	"status": {
+		"title": "Estado de conexión",
+		"description": "Estado operativo informado por la integración de Homey guardada.",
+		"refresh": "Actualizar",
+		"loadFailed": "No se pudo cargar el estado actual de Homey.",
+		"notAvailable": "No disponible",
+		"fields": {
+			"connection": "Conexión",
+			"homey": "Homey",
+			"version": "Versión",
+			"lastSync": "Última sincronización del inventario",
+			"lastEvent": "Último evento",
+			"adoptedDevices": "Dispositivos añadidos"
+		},
+		"states": {
+			"stopped": "Detenido",
+			"connecting": "Conectando",
+			"connected": "Conectado",
+			"degraded_polling": "Consulta degradada",
+			"reconnecting": "Reconectando",
+			"authentication_failed": "Error de autenticación",
+			"error": "Error"
+		},
+		"guidance": {
+			"authentication": "Sustituye la clave de API guardada y vuelve a probar la conexión.",
+			"authorization": "Concede a la clave de API los permisos de lectura y control necesarios de Homey.",
+			"timeout": "Comprueba la dirección de Homey, la ruta de red y el tiempo de espera de conexión.",
+			"unavailable": "Comprueba que Homey esté en ejecución y sea accesible desde Smart Panel.",
+			"protocol": "Confirma que el endpoint configurado sea una API local de Homey compatible.",
+			"validation": "Revisa la URL y los ajustes de conexión.",
+			"unsupported": "La API de Homey conectada no es compatible con esta integración."
+		}
+	},
+	"connectionTest": {
+		"title": "Probar conexión",
+		"description": "Prueba la configuración ya guardada en el servidor o la URL completa y la clave nueva introducidas arriba.",
+		"saved": "Probar configuración guardada",
+		"candidate": "Probar URL y clave introducidas",
+		"savedUnavailable": "Guarda una URL completa y una clave de API antes de probar la configuración guardada.",
+		"candidateUnavailable": "Introduce una URL válida y una clave de API nueva para probar ajustes sin guardar.",
+		"success": "Conexión con Homey correcta",
+		"successDescription": "Conectado a {identity}.",
+		"failure": "Falló la conexión con Homey",
+		"failureFallback": "Homey rechazó la prueba de conexión.",
+		"requestFailed": "No se pudo completar la solicitud de prueba de conexión."
 	},
 	"messages": {
 		"config": { "updated": "La configuración de Homey se actualizó", "updateFailed": "No se pudo actualizar la configuración de Homey" }
