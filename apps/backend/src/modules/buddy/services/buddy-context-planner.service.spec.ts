@@ -6921,6 +6921,7 @@ describe('BuddyContextPlannerService', () => {
 		'If we dim the Bedroom lights by 20 percent the camera stops recording?',
 		'If the window is open turn off the Bedroom lights which could wake the baby will the alarm sound?',
 		'If we turn off the Bedroom lights who currently will still be able to see?',
+		'If we turn the Bedroom lights off who will still be able to see?',
 		'If we disable the Bedroom lights what about the camera?',
 		'If we disable the Bedroom lights how about the camera?',
 		'If we disable the Bedroom lights what next?',
@@ -7048,15 +7049,22 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.toolNames).toContain('set_space_lighting');
 	});
 
-	it('keeps a who-relative command complement on the action path', () => {
+	it.each([
+		['If the window is open turn on the Bedroom lights for guests who could otherwise fall?', 'none', 'model-tools'],
+		['If the window is open turn on the Bedroom lights near guests who could otherwise fall?', 'action', 'clarify'],
+	] as const)('keeps a who-relative command complement on the action path: %s', (message, ambiguityRisk, strategy) => {
 		const plan = service.plan({
-			message: 'If the window is open turn on the Bedroom lights for guests who could otherwise fall?',
+			message,
 			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
 			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 		});
 
-		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk: 'none', strategy: 'model-tools' });
-		expect(plan.toolNames).toContain('control_device');
-		expect(plan.toolNames).toContain('set_space_lighting');
+		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk, strategy });
+		if (strategy === 'model-tools') {
+			expect(plan.toolNames).toContain('control_device');
+			expect(plan.toolNames).toContain('set_space_lighting');
+		} else {
+			expect(plan.toolNames).toEqual([]);
+		}
 	});
 });

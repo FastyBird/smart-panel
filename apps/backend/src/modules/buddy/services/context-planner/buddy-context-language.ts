@@ -35,14 +35,26 @@ const CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE = String.raw`(?:appears?|chan
 const CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE = String.raw`(?:becomes?|keeps?|starts?|stops?)\s+(?:(?:being|much|on|to)\s+)?[\p{Letter}\p{Number}'’-]+`;
 const CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE = String.raw`(?:(?:a|an|my|our|the|their|this|these|those|your)\s+[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,3}|he|it|she|they|we|you)`;
 const CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE = String.raw`(?:active|blue|brighter|closed|cooler|dimmer|eco|green|higher|inactive|locked|lower|off|on|open|red|unlocked|warmer|white|(?:at|by|to)\s+(?:[-+]?\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:%|celsius|degrees?|fahrenheit|percent|°\s*(?:c|f))?)`;
+const CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${DEVICE_ACTION_TARGET_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source})`;
 const CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN = new RegExp(
-	String.raw`^(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b[^?]{0,120}\b(?:${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${DEVICE_ACTION_TARGET_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source})\b\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?(?:(?:and\s+)?then\s+)?${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s+${CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
+	String.raw`^(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b[^?]{0,120}\b${CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE}\b\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?(?:(?:and\s+)?then\s+)?${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s+${CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
 	'u',
 );
-const CONDITIONAL_OUTCOME_RELATIVE_PREFIX_PATTERN = new RegExp(
-	String.raw`(?:\b(?:that|which)|\b(?:for|to|with)\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+)?[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,2}\s+who)\s+(?:(?:already|currently|still)\s+)*$`,
+const CONDITIONAL_OUTCOME_RELATIVE_PRONOUN_PATTERN = /\b(?:that|which)\s+(?:(?:already|currently|still)\s+)*$/u;
+const CONDITIONAL_OUTCOME_WHO_PREFIX_PATTERN = /\bwho\s+(?:(?:already|currently|still)\s+)*$/u;
+const CONDITIONAL_OUTCOME_DIRECT_WHO_SUBJECT_PATTERN = new RegExp(
+	String.raw`(?:${CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE}|\b${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE})\s*$`,
 	'u',
 );
+
+function hasConditionalOutcomeRelativePrefix(prefix: string): boolean {
+	if (CONDITIONAL_OUTCOME_RELATIVE_PRONOUN_PATTERN.test(prefix)) return true;
+
+	const whoMatch = CONDITIONAL_OUTCOME_WHO_PREFIX_PATTERN.exec(prefix);
+	if (!whoMatch) return false;
+
+	return !CONDITIONAL_OUTCOME_DIRECT_WHO_SUBJECT_PATTERN.test(prefix.slice(0, whoMatch.index));
+}
 
 export function findLeadingConditionalActionIndex(
 	message: string,
@@ -95,7 +107,7 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 		...actionMessage.matchAll(new RegExp(String.raw`\b${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\b`, 'gu')),
 	].find(
 		(match) =>
-			!CONDITIONAL_OUTCOME_RELATIVE_PREFIX_PATTERN.test(actionMessage.slice(0, match.index)) &&
+			!hasConditionalOutcomeRelativePrefix(actionMessage.slice(0, match.index)) &&
 			auxiliaryOutcomeTailPattern.test(actionMessage.slice(match.index)),
 	);
 
