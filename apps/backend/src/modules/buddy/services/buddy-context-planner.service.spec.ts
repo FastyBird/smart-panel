@@ -7058,6 +7058,8 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open, turn off the lights that still could wake the baby?',
 		'If the window is open turn off the Bedroom lights that probably could wake the baby?',
 		'If the window is open turn off the Bedroom lights which perhaps might wake the baby?',
+		'If the window is open turn off the Bedroom lights which work but might fail?',
+		'If the window is open turn off the Bedroom lights that work and could fail?',
 		'If the window is open turn off the Bedroom lights that John says could wake the baby?',
 		'If the window is open, turn off the lights which currently might wake the baby?',
 	])('recognizes a modal relative target clause without executing an unresolved subset: %s', (message) => {
