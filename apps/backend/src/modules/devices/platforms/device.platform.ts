@@ -14,5 +14,7 @@ export interface IDevicePlatform {
 
 	getCommandTimeoutMs?(commandCount: number): number;
 
+	usesAuthoritativePropertyReadback?(): boolean;
+
 	getType(): string;
 }

@@ -49,6 +49,10 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 		return Math.max(0, commandCount) * HOMEY_COMMAND_MAX_DURATION_MS;
 	}
 
+	usesAuthoritativePropertyReadback(): boolean {
+		return true;
+	}
+
 	process(update: HomeyDevicePropertyData): Promise<boolean> {
 		return this.processBatch([update]);
 	}

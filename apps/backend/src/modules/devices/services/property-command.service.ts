@@ -13,6 +13,7 @@ import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { WebsocketNotAllowedException } from '../../websocket/websocket.exceptions';
 import { ConnectionState, DEVICES_MODULE_NAME, PermissionType } from '../devices.constants';
 import { PropertyCommandDto, PropertyCommandValueDto } from '../dto/property-command.dto';
+import { DeviceEntity } from '../entities/devices.entity';
 import { IDevicePropertyData } from '../platforms/device.platform';
 import { PropertyCommandValue, validatePropertyCommandValue } from '../utils/property-command-value.utils';
 
@@ -410,5 +411,11 @@ export class PropertyCommandService {
 
 			this.logger.warn(`[API Command] Failed for deviceId=${deviceId}: ${reason}`);
 		}
+	}
+
+	async usesAuthoritativePropertyReadback(device: DeviceEntity | string): Promise<boolean> {
+		const resolvedDevice = typeof device === 'string' ? await this.devicesService.findOne(device) : device;
+
+		return resolvedDevice !== null && this.platformRegistryService.usesAuthoritativePropertyReadback(resolvedDevice);
 	}
 }

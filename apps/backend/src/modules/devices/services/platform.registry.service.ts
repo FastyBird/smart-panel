@@ -63,6 +63,10 @@ export class PlatformRegistryService {
 		return hasCustomTimeout ? completionWindowMs + defaultTtlMs + INTENT_CLEANUP_INTERVAL : defaultTtlMs;
 	}
 
+	usesAuthoritativePropertyReadback(device: DeviceEntity): boolean {
+		return this.get(device)?.usesAuthoritativePropertyReadback?.() ?? false;
+	}
+
 	list(): string[] {
 		return Object.keys(this.platforms);
 	}

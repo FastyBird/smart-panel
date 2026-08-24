@@ -84,6 +84,18 @@ describe('PlatformRegistryService', () => {
 		expect(platforms).toEqual(['mock-platform']);
 	});
 
+	it('should require platforms to opt into authoritative property readback', () => {
+		service.register(mockPlatform);
+		const device = { type: 'mock-platform' } as DeviceEntity;
+
+		expect(service.usesAuthoritativePropertyReadback(device)).toBe(false);
+
+		service = new PlatformRegistryService();
+		service.register({ ...mockPlatform, usesAuthoritativePropertyReadback: () => true });
+
+		expect(service.usesAuthoritativePropertyReadback(device)).toBe(true);
+	});
+
 	it('should extend an intent TTL by registered platform completion windows', () => {
 		const timedPlatform = { ...mockPlatform, getCommandTimeoutMs: jest.fn((count: number) => count * 10000) };
 		service.register(timedPlatform);

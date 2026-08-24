@@ -133,6 +133,7 @@ describe('ChannelsPropertiesController', () => {
 					provide: PropertyCommandService,
 					useValue: {
 						processApiPropertyCommand: jest.fn().mockResolvedValue(undefined),
+						usesAuthoritativePropertyReadback: jest.fn().mockResolvedValue(false),
 					},
 				},
 			],
@@ -234,7 +235,37 @@ describe('ChannelsPropertiesController', () => {
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith(mockChannelProperty.id, updateDto);
 		});
 
-		it('should dispatch a command value without persisting an optimistic measurement', async () => {
+		it('should persist a command value for a command-only platform', async () => {
+			const updateDto: UpdateChannelPropertyDto = {
+				type: 'mock',
+				value: 'command-state',
+			};
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: ChannelPropertyEntity,
+				createDto: CreateChannelPropertyDto,
+				updateDto: UpdateChannelPropertyDto,
+			});
+			jest
+				.spyOn(channelsService, 'findOne')
+				.mockResolvedValue(Object.assign(toInstance(ChannelEntity, mockChannel), { device: mockDevice }));
+
+			await controller.update(mockChannel.id, mockChannelProperty.id, { data: updateDto });
+
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+				mockChannelProperty.id,
+				expect.objectContaining({ type: 'mock', value: 'command-state' }),
+			);
+			expect(propertyCommandService.processApiPropertyCommand).toHaveBeenCalledWith(
+				mockDevice.id,
+				mockChannel.id,
+				mockChannelProperty.id,
+				'command-state',
+			);
+		});
+
+		it('should not persist a command value for an authoritative-readback platform', async () => {
 			const updateDto: UpdateChannelPropertyDto = {
 				type: 'mock',
 				value: 'reported-later',
@@ -249,6 +280,7 @@ describe('ChannelsPropertiesController', () => {
 			jest
 				.spyOn(channelsService, 'findOne')
 				.mockResolvedValue(Object.assign(toInstance(ChannelEntity, mockChannel), { device: mockDevice }));
+			jest.spyOn(propertyCommandService, 'usesAuthoritativePropertyReadback').mockResolvedValue(true);
 
 			await controller.update(mockChannel.id, mockChannelProperty.id, { data: updateDto });
 
