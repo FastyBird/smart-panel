@@ -804,13 +804,14 @@ void main() {
         final sent = await tester.runAsync(
           () => propertiesRepository.setValue(propertyId, true),
         );
-        commandResult.complete(sent!);
-        await tester.pump();
 
         expect(sent, isTrue);
         expect(
-          controlState.isSettling(deviceId, lightChannelId, propertyId),
+          controlState
+              .getState(deviceId, lightChannelId, propertyId)
+              ?.isPending,
           isTrue,
+          reason: 'the Homey event arrives before the command acknowledgment',
         );
 
         updateHost(() {
@@ -821,7 +822,9 @@ void main() {
         await tester.pump();
 
         expect(
-          controlState.isSettling(deviceId, lightChannelId, propertyId),
+          controlState
+              .getState(deviceId, lightChannelId, propertyId)
+              ?.isPending,
           isTrue,
           reason: 'an equivalent rebuilt snapshot is not confirmation',
         );
@@ -872,6 +875,15 @@ void main() {
         expect(
           controlState.getState(deviceId, lightChannelId, propertyId),
           isNull,
+        );
+
+        commandResult.complete(sent!);
+        await tester.pump();
+
+        expect(
+          controlState.getState(deviceId, lightChannelId, propertyId),
+          isNull,
+          reason: 'the later acknowledgment must not reopen confirmed state',
         );
         expect(find.byType(LightingDeviceDetail), findsOneWidget);
         expect(tester.takeException(), isNull);

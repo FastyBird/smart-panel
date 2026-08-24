@@ -183,6 +183,13 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     }
   }
 
+  bool _valuesConverged(dynamic desired, dynamic actual) {
+    if (desired is num && actual is num) {
+      return (desired - actual).abs() <= 0.5;
+    }
+    return desired == actual;
+  }
+
   void _checkConvergence(
     LightingDeviceView oldDevice,
     LightingDeviceView newDevice,
@@ -211,6 +218,21 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
 
         changedProperties.add(propertyKey);
 
+        final propertyState = controlState.getState(
+          newDevice.id,
+          channel.id,
+          property.id,
+        );
+        if (propertyState?.isPending ?? false) {
+          // Homey synchronizes the authoritative capability event before the
+          // command acknowledgment resolves. Consume a matching value now so
+          // the later setSettling call is a harmless no-op.
+          if (_valuesConverged(propertyState?.desiredValue, actualValue)) {
+            controlState.clear(newDevice.id, channel.id, property.id);
+          }
+          continue;
+        }
+
         controlState.checkPropertyConvergence(
           newDevice.id,
           channel.id,
@@ -224,7 +246,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       newDevice.id,
       LightChannelController.colorGroupId,
     );
-    if (colorState != null && (colorState.isSettling || colorState.isMixed)) {
+    if (colorState != null &&
+        (colorState.isPending || colorState.isSettling || colorState.isMixed)) {
       final colorChanged = colorState.properties.any(
         (property) => changedProperties.contains(
           '${property.channelId}:${property.propertyId}',
@@ -236,10 +259,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
 
         final desired = property.desiredValue;
         final actual = newValues[propertyKey];
-        if (desired is num && actual is num) {
-          return (desired - actual).abs() <= 0.5;
-        }
-        return desired == actual;
+        return _valuesConverged(desired, actual);
       });
       if (colorChanged && colorConverged) {
         // Keep grouped optimism until every authoritative component has
