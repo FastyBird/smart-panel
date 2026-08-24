@@ -7009,6 +7009,7 @@ describe('BuddyContextPlannerService', () => {
 		'If we turn off the Bedroom lights and then who will still be able to see?',
 		'If we turn the Bedroom lights off, then who will still be able to see?',
 		'If we turn the Bedroom lights off who will still be able to see?',
+		'If we turn off the Bedroom lights in which room could John still read?',
 		'If we disable the Bedroom lights what about the camera?',
 		'If we disable the Bedroom lights how about the camera?',
 		'If we disable the Bedroom lights what next?',

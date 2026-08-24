@@ -74,8 +74,13 @@ const CONDITIONAL_OUTCOME_COORDINATED_RELATIVE_PREFIX_PATTERN = new RegExp(
 	String.raw`\b(?:that|which)\s+${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE}(?:${CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE})\s+(?:and|but|or)\s+${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE}$`,
 	'u',
 );
+const CONDITIONAL_OUTCOME_RELATIVE_PREPOSITION_PATTERN_SOURCE = String.raw`(?:about|after|around|at|before|by|during|for|from|in|of|on|through|to|under|with|within|without)`;
 const CONDITIONAL_OUTCOME_SUBJECT_RELATIVE_PREFIX_PATTERN = new RegExp(
-	String.raw`\b(?:(?:about|after|around|at|before|by|during|for|from|in|of|on|through|to|under|with|within|without)\s+which|where)\s+${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s*$`,
+	String.raw`\b(?:${CONDITIONAL_OUTCOME_RELATIVE_PREPOSITION_PATTERN_SOURCE}\s+which|where)\s+${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s*$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_PREPOSITION_FRONTED_WH_PREFIX_PATTERN = new RegExp(
+	String.raw`\b${CONDITIONAL_OUTCOME_RELATIVE_PREPOSITION_PATTERN_SOURCE}\s+which\s+${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s*$`,
 	'u',
 );
 const CONDITIONAL_OUTCOME_WHO_PREFIX_PATTERN = new RegExp(
@@ -177,12 +182,15 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 	].find((match) => {
 		const prefix = actionMessage.slice(0, match.index);
 		const tail = actionMessage.slice(match.index);
+		const hasRelativePrefix = hasConditionalOutcomeRelativePrefix(prefix);
+		const hasExplicitSubjectTail = auxiliaryOutcomeTailPattern.test(tail);
 
 		return (
-			!hasConditionalOutcomeRelativePrefix(prefix) &&
-			(auxiliaryOutcomeTailPattern.test(actionMessage.slice(match.index)) ||
-				(CONDITIONAL_OUTCOME_WH_SUBJECT_AUXILIARY_TAIL_PATTERN.test(tail) &&
-					hasConditionalOutcomeDirectWhSubject(prefix)))
+			(hasExplicitSubjectTail &&
+				(!hasRelativePrefix || CONDITIONAL_OUTCOME_PREPOSITION_FRONTED_WH_PREFIX_PATTERN.test(prefix))) ||
+			(!hasRelativePrefix &&
+				CONDITIONAL_OUTCOME_WH_SUBJECT_AUXILIARY_TAIL_PATTERN.test(tail) &&
+				hasConditionalOutcomeDirectWhSubject(prefix))
 		);
 	});
 
