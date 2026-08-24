@@ -50,6 +50,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
   LightingDeviceController? _controller;
+  final Map<String, _DeferredPropertyDivergence>
+      _deferredPropertyDivergences = {};
   Object? _trackedColorGeneration;
   final Set<String> _authoritativeColorUpdates = {};
 
@@ -180,6 +182,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   }
 
   void _onControlStateChanged() {
+    _consumeDeferredDivergences();
     if (mounted && !_isAnyDragging) {
       setState(() {});
     }
@@ -232,15 +235,26 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           property.id,
         );
         if (propertyState?.isPending ?? false) {
-          // While the command generation is pending, only its requested value
-          // can confirm it. Divergent updates may still belong to the previous
-          // generation; command failure or the settling phase handles them.
           if (_valuesConverged(propertyState?.desiredValue, actualValue)) {
+            _deferredPropertyDivergences.remove(propertyKey);
             controlState.clear(newDevice.id, channel.id, property.id);
+          } else {
+            // The event may arrive before the command acknowledgment. Retain
+            // it for this generation, but do not accept divergence until the
+            // controller moves that generation into settling.
+            _deferredPropertyDivergences[propertyKey] =
+                _DeferredPropertyDivergence(
+              deviceId: newDevice.id,
+              channelId: channel.id,
+              propertyId: property.id,
+              generation: propertyState!.generation,
+              actualValue: actualValue,
+            );
           }
           continue;
         }
 
+        _deferredPropertyDivergences.remove(propertyKey);
         controlState.checkPropertyConvergence(
           newDevice.id,
           channel.id,
@@ -268,41 +282,102 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     if (colorState.isPending || colorState.isSettling || colorState.isMixed) {
       for (final property in colorState.properties) {
         final propertyKey = '${property.channelId}:${property.propertyId}';
-        final belongsToActiveCommand = !colorState.isPending ||
-            _valuesConverged(
-              property.desiredValue,
-              newValues[propertyKey],
-            );
-        if (changedProperties.contains(propertyKey) &&
-            belongsToActiveCommand) {
+        if (changedProperties.contains(propertyKey)) {
           _authoritativeColorUpdates.add(propertyKey);
         }
       }
 
-      final colorComplete = colorState.properties.every((property) {
-        final propertyKey = '${property.channelId}:${property.propertyId}';
-        if (!newValues.containsKey(propertyKey)) return false;
-
-        final desired = property.desiredValue;
-        final actual = newValues[propertyKey];
-        if (colorState.isPending) {
-          return _valuesConverged(desired, actual);
-        }
-        return _authoritativeColorUpdates.contains(propertyKey) ||
-            _valuesConverged(desired, actual);
-      });
-      if (_authoritativeColorUpdates.isNotEmpty && colorComplete) {
-        // Pending commands clear only on requested-value confirmation. Once
-        // their generation is acknowledged and settling, a complete divergent
-        // set is authoritative too (for example device-side quantization).
-        controlState.clearGroup(
-          newDevice.id,
-          LightChannelController.colorGroupId,
-        );
-        _trackedColorGeneration = null;
-        _authoritativeColorUpdates.clear();
-      }
+      _clearColorStateIfComplete(
+        controlState,
+        newDevice.id,
+        colorState,
+        newValues,
+      );
     }
+  }
+
+  void _consumeDeferredDivergences() {
+    final controlState = _deviceControlStateService;
+    if (controlState == null) return;
+
+    for (final entry in _deferredPropertyDivergences.entries.toList()) {
+      final divergence = entry.value;
+      final state = controlState.getState(
+        divergence.deviceId,
+        divergence.channelId,
+        divergence.propertyId,
+      );
+      if (state == null ||
+          !identical(state.generation, divergence.generation)) {
+        _deferredPropertyDivergences.remove(entry.key);
+        continue;
+      }
+      if (!state.isSettling && !state.isMixed) continue;
+
+      _deferredPropertyDivergences.remove(entry.key);
+      controlState.checkPropertyConvergence(
+        divergence.deviceId,
+        divergence.channelId,
+        divergence.propertyId,
+        divergence.actualValue,
+      );
+    }
+
+    final colorState = controlState.getGroupState(
+      widget._device.id,
+      LightChannelController.colorGroupId,
+    );
+    if (colorState == null) {
+      _trackedColorGeneration = null;
+      _authoritativeColorUpdates.clear();
+      return;
+    }
+    if (!identical(_trackedColorGeneration, colorState.generation)) {
+      _trackedColorGeneration = colorState.generation;
+      _authoritativeColorUpdates.clear();
+      return;
+    }
+    if (!colorState.isSettling && !colorState.isMixed) return;
+
+    final currentValues = <String, dynamic>{
+      for (final channel in widget._device.lightChannels)
+        for (final property in channel.properties)
+          '${channel.id}:${property.id}': property.value?.value,
+    };
+    _clearColorStateIfComplete(
+      controlState,
+      widget._device.id,
+      colorState,
+      currentValues,
+    );
+  }
+
+  void _clearColorStateIfComplete(
+    DeviceControlStateService controlState,
+    String deviceId,
+    DeviceControlState colorState,
+    Map<String, dynamic> actualValues,
+  ) {
+    final colorComplete = colorState.properties.every((property) {
+      final propertyKey = '${property.channelId}:${property.propertyId}';
+      if (!actualValues.containsKey(propertyKey)) return false;
+
+      final converged = _valuesConverged(
+        property.desiredValue,
+        actualValues[propertyKey],
+      );
+      return colorState.isPending
+          ? converged
+          : _authoritativeColorUpdates.contains(propertyKey) || converged;
+    });
+    if (_authoritativeColorUpdates.isEmpty || !colorComplete) return;
+
+    controlState.clearGroup(
+      deviceId,
+      LightChannelController.colorGroupId,
+    );
+    _trackedColorGeneration = null;
+    _authoritativeColorUpdates.clear();
   }
 
   @override
@@ -942,6 +1017,22 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       ],
     );
   }
+}
+
+class _DeferredPropertyDivergence {
+  final String deviceId;
+  final String channelId;
+  final String propertyId;
+  final Object generation;
+  final dynamic actualValue;
+
+  const _DeferredPropertyDivergence({
+    required this.deviceId,
+    required this.channelId,
+    required this.propertyId,
+    required this.generation,
+    required this.actualValue,
+  });
 }
 
 // --------------------------------------------------------------------------
