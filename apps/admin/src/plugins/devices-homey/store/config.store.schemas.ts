@@ -3,9 +3,10 @@ import { type ZodType, z } from 'zod';
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
 import type { DevicesHomeyPluginConfigSchema, DevicesHomeyPluginUpdateConfigSchema } from '../../../openapi.constants';
 import { DEVICES_HOMEY_PLUGIN_NAME } from '../devices-homey.constants';
+import { HomeyUrlSchema } from '../schemas/homey-url.schemas';
 
 export const HomeyConfigSchema = ConfigPluginSchema.extend({
-	url: z.string().url().nullable().optional(),
+	url: HomeyUrlSchema.nullable().optional(),
 	apiKey: z.string().trim().min(1).nullable().optional(),
 	apiKeyConfigured: z.boolean().default(false),
 	connectionTimeout: z.number().int().positive(),
@@ -15,7 +16,7 @@ export const HomeyConfigSchema = ConfigPluginSchema.extend({
 export const HomeyConfigUpdateReqSchema: ZodType<DevicesHomeyPluginUpdateConfigSchema> = ConfigPluginUpdateReqSchema.and(
 	z.object({
 		type: z.literal(DEVICES_HOMEY_PLUGIN_NAME),
-		url: z.string().url().nullable().optional(),
+		url: HomeyUrlSchema.nullable().optional(),
 		api_key: z.string().trim().min(1).nullable().optional(),
 		connection_timeout: z.number().int().positive().optional(),
 		reconciliation_interval: z.number().int().positive().optional(),
@@ -25,7 +26,7 @@ export const HomeyConfigUpdateReqSchema: ZodType<DevicesHomeyPluginUpdateConfigS
 export const HomeyConfigResSchema: ZodType<DevicesHomeyPluginConfigSchema> = ConfigPluginResSchema.and(
 	z.object({
 		type: z.literal(DEVICES_HOMEY_PLUGIN_NAME),
-		url: z.string().url().nullable().optional(),
+		url: HomeyUrlSchema.nullable().optional(),
 		api_key: z.string().trim().min(1).nullable().optional(),
 		api_key_configured: z.boolean(),
 		connection_timeout: z.number().int().positive(),

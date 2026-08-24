@@ -5,6 +5,7 @@ import { orderBy } from 'natural-orderby';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
 import { RouteNames as ConfigRouteNames } from '../../../modules/config';
+import { devicesStoreKey } from '../../../modules/devices';
 import type {
 	IDeviceWizardAdapter,
 	IWizardAdoptSelection,
@@ -28,6 +29,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const { t } = useI18n();
 	const flashMessage = useFlashMessage();
 	const storesManager = injectStoresManager();
+	const devicesStore = storesManager.getStore(devicesStoreKey);
 	const inventory = storesManager.getStore(homeyInventoryStoreKey);
 	const error = ref<string | null>(null);
 
@@ -37,6 +39,14 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		devices.value.map((device) => {
 			const status = rowStatus(device);
 			const subLabel = [device.manufacturer, device.model].filter(Boolean).join(' · ') || device.class;
+			const adoptedDevice = device.adoptedDeviceId ? devicesStore.findById(device.adoptedDeviceId) : null;
+			const suggestedCategory = adoptedDevice?.category ?? device.suggestedCategory ?? null;
+			const categoryOptions = Array.from(
+				new Set([suggestedCategory, device.suggestedCategory].filter((category) => category !== null && category !== undefined))
+			).map((category) => ({
+				value: category,
+				label: t(`devicesModule.categories.devices.${category}`),
+			}));
 
 			return {
 				key: device.id,
@@ -48,16 +58,9 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				adoptable: device.available && device.supportState === 'supported',
 				selectedByDefault: false,
 				willUpdate: device.adopted,
-				suggestedName: device.name,
-				suggestedCategory: device.suggestedCategory ?? null,
-				categoryOptions: device.suggestedCategory
-					? [
-							{
-								value: device.suggestedCategory,
-								label: t(`devicesModule.categories.devices.${device.suggestedCategory}`),
-							},
-						]
-					: [],
+				suggestedName: adoptedDevice?.name ?? device.name,
+				suggestedCategory,
+				categoryOptions,
 				cells: {
 					class: { render: 'text', value: device.class },
 					zone: {
@@ -109,7 +112,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	async function load(): Promise<void> {
 		error.value = null;
 		try {
-			await inventory.fetch();
+			await Promise.all([devicesStore.fetch(), inventory.fetch()]);
 		} catch (caught: unknown) {
 			error.value = caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.inventory');
 		}
@@ -122,7 +125,17 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 	const adopt = async (selection: IWizardAdoptSelection[]): Promise<IWizardResult[]> => {
 		try {
-			const adoption = await inventory.adoptBatch(selection.map((item) => ({ deviceId: item.key, name: item.name, deviceCategory: item.category })));
+			const adoption = await inventory.adoptBatch(
+				selection.map((item) => {
+					const inventoryDevice = inventory.findById(item.key);
+					const adoptedDevice = inventoryDevice?.adoptedDeviceId ? devicesStore.findById(inventoryDevice.adoptedDeviceId) : null;
+
+					return {
+						deviceId: item.key,
+						...(inventoryDevice?.adopted && adoptedDevice === null ? {} : { name: item.name, deviceCategory: item.category }),
+					};
+				})
+			);
 
 			return adoption.map(transformResult);
 		} catch (caught: unknown) {

@@ -16,6 +16,11 @@ const inventory = {
 	fetch: vi.fn(),
 	adoptBatch: vi.fn(),
 };
+const devicesStore = {
+	findById: vi.fn(),
+	fetch: vi.fn(),
+};
+const stores: unknown[] = [];
 
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({
@@ -30,7 +35,7 @@ vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
 	return {
 		...actual,
-		injectStoresManager: () => ({ getStore: () => inventory }),
+		injectStoresManager: () => ({ getStore: () => stores.shift() }),
 		useFlashMessage: () => flashMessage,
 	};
 });
@@ -52,18 +57,51 @@ const device = (overrides: Partial<IHomeyInventoryDevice> = {}): IHomeyInventory
 describe('Homey useDevicesWizard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		stores.splice(0, stores.length, devicesStore, inventory);
 		inventory.adoptionResults = [];
 		inventory.findAll.mockReturnValue([device()]);
 		inventory.findById.mockImplementation((id) => (id === 'homey-light' ? device() : null));
 		inventory.fetch.mockResolvedValue([]);
+		devicesStore.findById.mockReturnValue(null);
+		devicesStore.fetch.mockResolvedValue([]);
 	});
 
-	it('keeps supported adopted devices selectable for idempotent reconciliation', () => {
-		inventory.findAll.mockReturnValue([device({ adopted: true, adoptedDeviceId: '4a2515a6-7e87-4e51-96cc-832698237613' })]);
+	it('keeps supported adopted devices selectable without replacing customized metadata', async () => {
+		const adopted = device({ adopted: true, adoptedDeviceId: '4a2515a6-7e87-4e51-96cc-832698237613' });
+		inventory.findAll.mockReturnValue([adopted]);
+		inventory.findById.mockReturnValue(adopted);
+		devicesStore.findById.mockReturnValue({ name: 'Custom desk lamp', category: DevicesModuleDeviceCategory.generic });
+		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-light', status: 'skipped' }]);
 
-		const row = useDevicesWizard().rows.value[0];
+		const adapter = useDevicesWizard();
+		const row = adapter.rows.value[0];
 
-		expect(row).toEqual(expect.objectContaining({ status: 'already_registered', adoptable: true, willUpdate: true }));
+		expect(row).toEqual(
+			expect.objectContaining({
+				status: 'already_registered',
+				adoptable: true,
+				willUpdate: true,
+				suggestedName: 'Custom desk lamp',
+				suggestedCategory: DevicesModuleDeviceCategory.generic,
+			})
+		);
+
+		await adapter.adopt([{ key: row.key, name: row.suggestedName, category: row.suggestedCategory! }]);
+
+		expect(inventory.adoptBatch).toHaveBeenCalledWith([
+			{ deviceId: 'homey-light', name: 'Custom desk lamp', deviceCategory: DevicesModuleDeviceCategory.generic },
+		]);
+	});
+
+	it('omits metadata overrides when the adopted panel device is not loaded', async () => {
+		const adopted = device({ adopted: true, adoptedDeviceId: '4a2515a6-7e87-4e51-96cc-832698237613' });
+		inventory.findById.mockReturnValue(adopted);
+		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-light', status: 'skipped' }]);
+		const adapter = useDevicesWizard();
+
+		await adapter.adopt([{ key: 'homey-light', name: 'Upstream name', category: DevicesModuleDeviceCategory.lighting }]);
+
+		expect(inventory.adoptBatch).toHaveBeenCalledWith([{ deviceId: 'homey-light' }]);
 	});
 
 	it('preserves a skipped adoption as a no-change wizard result', async () => {
