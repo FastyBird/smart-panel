@@ -58,8 +58,9 @@ describe('DeviceWizardResultsStep', () => {
 		expect(wrapper.findAll('tbody tr')).toHaveLength(2);
 	});
 
-	it('sorts failed rows to the top ahead of created and updated, tie-broken by name', async () => {
+	it('sorts failed rows to the top ahead of created, updated, and skipped rows', async () => {
 		const wrapper = mountStep([
+			result({ key: 'skipped', identifier: 'skipped', name: 'Skipped Row', status: 'skipped' }),
 			result({ key: 'updated', identifier: 'updated', name: 'Update Row', status: 'updated' }),
 			result({ key: 'created', identifier: 'created', name: 'Create Row', status: 'created' }),
 			result({ key: 'failed-z', identifier: 'failed-z', name: 'Zulu Failure', status: 'failed', error: 'boom' }),
@@ -70,11 +71,12 @@ describe('DeviceWizardResultsStep', () => {
 
 		const rows = wrapper.findAll('tbody tr');
 
-		expect(rows).toHaveLength(4);
+		expect(rows).toHaveLength(5);
 		expect(rows[0].text()).toContain('Alpha Failure');
 		expect(rows[1].text()).toContain('Zulu Failure');
 		expect(rows[2].text()).toContain('Create Row');
 		expect(rows[3].text()).toContain('Update Row');
+		expect(rows[4].text()).toContain('Skipped Row');
 	});
 
 	it('renders only the extra columns scoped to the results step', async () => {

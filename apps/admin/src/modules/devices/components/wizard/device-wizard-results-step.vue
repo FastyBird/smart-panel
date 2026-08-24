@@ -106,14 +106,18 @@ const hasFailures = computed<boolean>(() => props.results.some((item) => item.st
 const extraColumns = computed<IWizardColumn[]>(() => props.columns.filter((column) => column.steps.includes('results')));
 
 // Failures rise to the top so the user immediately sees what needs attention, then created
-// devices, then updates, falling back to name within each bucket.
+// devices, then updates and no-change results, falling back to name within each bucket.
 const sortedResults = computed<IWizardResult[]>(() => {
 	const rank = (status: IWizardResult['status']): number => {
 		if (status === 'failed') {
 			return 0;
 		}
 
-		return status === 'created' ? 1 : 2;
+		if (status === 'created') {
+			return 1;
+		}
+
+		return status === 'updated' ? 2 : 3;
 	};
 
 	return props.results.slice().sort((a, b) => {

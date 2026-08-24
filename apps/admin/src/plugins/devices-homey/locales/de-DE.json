@@ -1,0 +1,48 @@
+{
+	"config": {
+		"local": {
+			"title": "Lokale Homey-Verbindung",
+			"description": "Direkte Verbindung mit einem Homey Pro im lokalen Netzwerk. Homey Cloud wird noch nicht unterstützt."
+		},
+		"enabled": "Aktiviert",
+		"url": {
+			"label": "Lokale API-URL",
+			"placeholder": "http://homey.local:4859",
+			"required": "Geben Sie die lokale Homey-API-URL ein",
+			"invalid": "Geben Sie eine HTTP- oder HTTPS-URL ohne eingebettete Zugangsdaten ein"
+		},
+		"apiKey": {
+			"label": "Lokaler API-Schlüssel",
+			"placeholder": "Neuen Schlüssel eingeben, um den gespeicherten zu ersetzen",
+			"required": "Geben Sie einen Homey-API-Schlüssel ein oder behalten Sie ihn bei, bevor Sie die Integration aktivieren",
+			"invalid": "Geben Sie einen nicht leeren API-Schlüssel ein oder entfernen Sie den Ersatz"
+		},
+		"connectionTimeout": "Verbindungszeitlimit (ms)",
+		"reconciliationInterval": "Inventarabgleichsintervall (ms)",
+		"validation": {
+			"connectionTimeoutRequired": "Das Verbindungszeitlimit ist erforderlich",
+			"connectionTimeoutRange": "Das Verbindungszeitlimit muss zwischen {min} und {max} ms liegen",
+			"reconciliationIntervalRequired": "Das Inventarabgleichsintervall ist erforderlich",
+			"reconciliationIntervalRange": "Das Inventarabgleichsintervall muss zwischen {min} und {max} ms liegen"
+		}
+	},
+	"messages": {
+		"config": { "updated": "Homey-Konfiguration wurde aktualisiert", "updateFailed": "Homey-Konfiguration konnte nicht aktualisiert werden" }
+	},
+	"wizard": {
+		"title": "Homey-Geräte hinzufügen",
+		"subtitle": "Unterstützte Geräte aus dem verbundenen Homey-Inventar auswählen",
+		"breadcrumb": "Homey",
+		"columns": { "identifier": "Homey-Geräte-ID", "class": "Klasse", "zone": "Zone", "capabilities": "Funktionen" },
+		"values": { "noZone": "Keine Zone", "capabilities": "{count} Funktionen" },
+		"statuses": { "unavailable": "In Homey nicht verfügbar", "needsAttention": "Homey-Gerätezuordnung prüfen" },
+		"actions": { "refresh": "Inventar aktualisieren", "openConfig": "Homey-Konfiguration öffnen" },
+		"errors": {
+			"inventory": "Das Homey-Inventar konnte nicht geladen werden",
+			"adoption": "Die ausgewählten Homey-Geräte konnten nicht hinzugefügt werden",
+			"nameTooLong": "Der Gerätename darf höchstens {max} Zeichen lang sein",
+			"mappingChanged": "Die Gerätezuordnung hat sich geändert; aktualisieren Sie das Inventar und prüfen Sie die Kategorie",
+			"panelMetadataUnavailable": "Die Metadaten des vorhandenen Panel-Geräts sind nicht verfügbar; aktualisieren Sie das Inventar und versuchen Sie es erneut"
+		}
+	}
+}

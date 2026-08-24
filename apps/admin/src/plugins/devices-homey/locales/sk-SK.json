@@ -1,0 +1,46 @@
+{
+	"config": {
+		"local": {
+			"title": "Lokálne pripojenie Homey",
+			"description": "Pripojte sa priamo k Homey Pro v lokálnej sieti. Homey Cloud zatiaľ nie je podporovaný."
+		},
+		"enabled": "Povolené",
+		"url": {
+			"label": "URL lokálneho API",
+			"placeholder": "http://homey.local:4859",
+			"required": "Zadajte URL lokálneho API Homey",
+			"invalid": "Zadajte adresu HTTP alebo HTTPS bez vložených prihlasovacích údajov"
+		},
+		"apiKey": {
+			"label": "Kľúč lokálneho API",
+			"placeholder": "Zadajte nový kľúč na nahradenie uloženého kľúča",
+			"required": "Pred povolením integrácie zadajte alebo ponechajte kľúč API Homey",
+			"invalid": "Zadajte neprázdny kľúč API alebo náhradný kľúč odstráňte"
+		},
+		"connectionTimeout": "Časový limit pripojenia (ms)",
+		"reconciliationInterval": "Interval synchronizácie inventára (ms)",
+		"validation": {
+			"connectionTimeoutRequired": "Časový limit pripojenia je povinný",
+			"connectionTimeoutRange": "Časový limit pripojenia musí byť medzi {min} a {max} ms",
+			"reconciliationIntervalRequired": "Interval synchronizácie inventára je povinný",
+			"reconciliationIntervalRange": "Interval synchronizácie inventára musí byť medzi {min} a {max} ms"
+		}
+	},
+	"messages": { "config": { "updated": "Nastavenie Homey bolo aktualizované", "updateFailed": "Nastavenie Homey sa nepodarilo aktualizovať" } },
+	"wizard": {
+		"title": "Pridať zariadenia Homey",
+		"subtitle": "Vyberte podporované zariadenia z pripojeného Homey",
+		"breadcrumb": "Homey",
+		"columns": { "identifier": "ID zariadenia Homey", "class": "Trieda", "zone": "Zóna", "capabilities": "Funkcie" },
+		"values": { "noZone": "Bez zóny", "capabilities": "Počet funkcií: {count}" },
+		"statuses": { "unavailable": "V Homey nie je dostupné", "needsAttention": "Skontrolujte mapovanie zariadenia Homey" },
+		"actions": { "refresh": "Obnoviť inventár", "openConfig": "Otvoriť nastavenie Homey" },
+		"errors": {
+			"inventory": "Inventár Homey sa nepodarilo načítať",
+			"adoption": "Vybrané zariadenia Homey sa nepodarilo pridať",
+			"nameTooLong": "Názov zariadenia nesmie byť dlhší ako {max} znakov",
+			"mappingChanged": "Mapovanie zariadenia sa zmenilo; obnovte inventár a skontrolujte jeho kategóriu",
+			"panelMetadataUnavailable": "Metadáta existujúceho zariadenia panela nie sú dostupné; obnovte inventár a skúste to znova"
+		}
+	}
+}

@@ -494,10 +494,17 @@ devices-homey.plugin.ts
 index.ts
 ```
 
-- [ ] Register the plugin, config component, add/edit components only where needed, and wizard adapter.
-- [ ] Add stores/schemas/transformers for config, status, inventory, preview, and adoption results.
-- [ ] Follow generated OpenAPI types after backend generation; do not create shadow API types without need.
-- [ ] Add all required locale files and update locale consistency tests.
+- [x] Register the plugin, config component, add/edit components only where needed, and wizard adapter.
+- [x] Add stores/schemas/transformers for config, status, inventory, preview, and adoption results.
+- [x] Follow generated OpenAPI types after backend generation; do not create shadow API types without need.
+- [x] Add all required locale files and update locale consistency tests.
+
+The admin app now installs Homey as a core devices/config plugin. Its initial local configuration form participates in
+the shared secret-preservation contract, while dedicated Pinia stores own operational status/connection testing and
+inventory/preview/adoption workflows. Runtime Zod validation transforms the generated snake-case API models into the
+admin's camel-case state without defining parallel wire types. The generic devices wizard is registered with stable
+Homey device IDs and an initial inventory/adoption adapter; the richer preview, lifecycle, and partial-result behavior
+remains scoped to Task 5.3. All six supported admin locales carry the same non-empty key set.
 
 ### Task 5.2: Implement secret-safe configuration UI
 

@@ -1,15 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ZodTypeAny } from 'zod';
 
-// Every plugin's edit-form schema reaches for `ConfigPluginEditFormSchema` through the config
-// module's barrel, which pulls in the whole component tree behind it. Only that one export is
-// needed here, and it has a path of its own.
-vi.mock('../modules/config', async () => {
-	const schemas = await vi.importActual<typeof import('../modules/config/schemas/plugins.schemas')>('../modules/config/schemas/plugins.schemas');
-
-	return { ConfigPluginEditFormSchema: schemas.ConfigPluginEditFormSchema };
-});
-
 import { ClaudeSetupTokenConfigEditFormSchema } from './buddy-claude-setup-token/schemas/config.schemas';
 import { ClaudeSetupTokenConfigSchema } from './buddy-claude-setup-token/store/config.store.schemas';
 import { ClaudeConfigEditFormSchema } from './buddy-claude/schemas/config.schemas';
@@ -28,6 +19,8 @@ import { VoiceaiConfigEditFormSchema } from './buddy-voiceai/schemas/config.sche
 import { VoiceaiConfigSchema } from './buddy-voiceai/store/config.store.schemas';
 import { HomeAssistantConfigEditFormSchema } from './devices-home-assistant/schemas/config.schemas';
 import { HomeAssistantConfigSchema } from './devices-home-assistant/store/config.store.schemas';
+import { HomeyConfigEditFormSchema } from './devices-homey/schemas/config.schemas';
+import { HomeyConfigSchema } from './devices-homey/store/config.store.schemas';
 import { Zigbee2mqttConfigEditFormSchema } from './devices-zigbee2mqtt/schemas/config.schemas';
 import { Zigbee2mqttConfigSchema } from './devices-zigbee2mqtt/store/config.store.schemas';
 import { InfluxV1ConfigEditFormSchema } from './influx-v1/schemas/config.schemas';
@@ -38,6 +31,15 @@ import { OpenWeatherMapOneCallConfigEditFormSchema } from './weather-openweather
 import { OpenWeatherMapOneCallConfigSchema } from './weather-openweathermap-onecall/store/config.store.schemas';
 import { OpenWeatherMapConfigEditFormSchema } from './weather-openweathermap/schemas/config.schemas';
 import { OpenWeatherMapConfigSchema } from './weather-openweathermap/store/config.store.schemas';
+
+// Every plugin's edit-form schema reaches for `ConfigPluginEditFormSchema` through the config
+// module's barrel, which pulls in the whole component tree behind it. Only that one export is
+// needed here, and it has a path of its own.
+vi.mock('../modules/config', async () => {
+	const schemas = await vi.importActual<typeof import('../modules/config/schemas/plugins.schemas')>('../modules/config/schemas/plugins.schemas');
+
+	return { ConfigPluginEditFormSchema: schemas.ConfigPluginEditFormSchema };
+});
 
 /**
  * Every secret the backend redacts, and the two schemas a removal has to pass on its way out:
@@ -61,6 +63,7 @@ const REDACTED_SECRETS: { plugin: string; field: string; editForm: unknown; stor
 	{ plugin: 'buddy-telegram', field: 'botToken', editForm: TelegramConfigEditFormSchema, store: TelegramConfigSchema },
 	{ plugin: 'buddy-voiceai', field: 'apiKey', editForm: VoiceaiConfigEditFormSchema, store: VoiceaiConfigSchema },
 	{ plugin: 'devices-home-assistant', field: 'apiKey', editForm: HomeAssistantConfigEditFormSchema, store: HomeAssistantConfigSchema },
+	{ plugin: 'devices-homey', field: 'apiKey', editForm: HomeyConfigEditFormSchema, store: HomeyConfigSchema },
 	{ plugin: 'devices-zigbee2mqtt', field: 'mqtt.password', editForm: Zigbee2mqttConfigEditFormSchema, store: Zigbee2mqttConfigSchema },
 	{ plugin: 'devices-zigbee2mqtt', field: 'tls.key', editForm: Zigbee2mqttConfigEditFormSchema, store: Zigbee2mqttConfigSchema },
 	{ plugin: 'influx-v1', field: 'password', editForm: InfluxV1ConfigEditFormSchema, store: InfluxV1ConfigSchema },

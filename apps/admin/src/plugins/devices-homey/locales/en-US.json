@@ -1,0 +1,65 @@
+{
+	"config": {
+		"local": {
+			"title": "Local Homey connection",
+			"description": "Connect directly to a Homey Pro on the local network. Homey Cloud support is not available yet."
+		},
+		"enabled": "Enabled",
+		"url": {
+			"label": "Local API URL",
+			"placeholder": "http://homey.local:4859",
+			"required": "Enter the Homey local API URL",
+			"invalid": "Enter an HTTP or HTTPS URL without embedded credentials"
+		},
+		"apiKey": {
+			"label": "Local API key",
+			"placeholder": "Enter a new key to replace the configured key",
+			"required": "Enter or keep a Homey API key before enabling the integration",
+			"invalid": "Enter a non-blank API key or remove the replacement"
+		},
+		"connectionTimeout": "Connection timeout (ms)",
+		"reconciliationInterval": "Inventory reconciliation interval (ms)",
+		"validation": {
+			"connectionTimeoutRequired": "Connection timeout is required",
+			"connectionTimeoutRange": "Connection timeout must be between {min} and {max} ms",
+			"reconciliationIntervalRequired": "Inventory reconciliation interval is required",
+			"reconciliationIntervalRange": "Inventory reconciliation interval must be between {min} and {max} ms"
+		}
+	},
+	"messages": {
+		"config": {
+			"updated": "Homey configuration was updated",
+			"updateFailed": "Homey configuration could not be updated"
+		}
+	},
+	"wizard": {
+		"title": "Add Homey devices",
+		"subtitle": "Select supported devices from the connected Homey inventory",
+		"breadcrumb": "Homey",
+		"columns": {
+			"identifier": "Homey device ID",
+			"class": "Class",
+			"zone": "Zone",
+			"capabilities": "Capabilities"
+		},
+		"values": {
+			"noZone": "No zone",
+			"capabilities": "{count} capabilities"
+		},
+		"statuses": {
+			"unavailable": "Unavailable in Homey",
+			"needsAttention": "Review the Homey device mapping"
+		},
+		"actions": {
+			"refresh": "Refresh inventory",
+			"openConfig": "Open Homey configuration"
+		},
+		"errors": {
+			"inventory": "The Homey inventory could not be loaded",
+			"adoption": "The selected Homey devices could not be adopted",
+			"nameTooLong": "Device name must not exceed {max} characters",
+			"mappingChanged": "The device mapping changed; refresh the inventory and review its category",
+			"panelMetadataUnavailable": "The existing panel device metadata is unavailable; refresh the inventory and try again"
+		}
+	}
+}

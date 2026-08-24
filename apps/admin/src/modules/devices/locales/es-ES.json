@@ -990,7 +990,8 @@
       "willCreate": "Se creará",
       "willUpdate": "Se actualizará",
       "created": "Creado",
-      "updated": "Actualizado"
+      "updated": "Actualizado",
+      "skipped": "Sin cambios"
     },
     "columns": {
       "name": "Nombre",

@@ -14,6 +14,7 @@ const CATEGORY_GROUPS: { group: CategoryGroup; values: string[] }[] = [
 ];
 
 const WIZARD_STATUSES: IWizardRowStatus[] = ['checking', 'ready', 'needs_credentials', 'already_registered', 'unsupported', 'failed'];
+const WIZARD_RESULT_STATUSES = ['created', 'updated', 'skipped', 'failed'] as const;
 
 const readGroup = (messages: Record<string, unknown>, group: CategoryGroup): Record<string, unknown> => {
 	const categories = messages.categories as Record<string, unknown> | undefined;
@@ -40,6 +41,14 @@ describe('Devices module locales', () => {
 			const missing = WIZARD_STATUSES.filter((status) => typeof statuses[status] !== 'string' || statuses[status] === '');
 
 			expect(missing, `Missing wizard status translations in ${locale}: ${missing.join(', ')}`).toEqual([]);
+		});
+
+		it('translates every wizard result status', (): void => {
+			const wizard = locales[locale].wizard as Record<string, unknown> | undefined;
+			const statuses = (wizard?.statuses as Record<string, unknown> | undefined) ?? {};
+			const missing = WIZARD_RESULT_STATUSES.filter((status) => typeof statuses[status] !== 'string' || statuses[status] === '');
+
+			expect(missing, `Missing wizard result status translations in ${locale}: ${missing.join(', ')}`).toEqual([]);
 		});
 	});
 });
