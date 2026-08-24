@@ -1344,6 +1344,149 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('reconciles a single-property snapshot after remount', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final controlState = locator<DeviceControlStateService>();
+      controlState.clearForDevice(deviceId);
+      addTearDown(() => controlState.clearForDevice(deviceId));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: LightingDeviceDetail(
+            device: _buildRepresentativeDevice(
+              'lighting',
+              lightOn: false,
+            ) as LightingDeviceView,
+          ),
+        ),
+      );
+      controlState.setPending(deviceId, lightChannelId, propertyId, true);
+      controlState.setSettling(deviceId, lightChannelId, propertyId);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(
+        controlState
+            .getState(deviceId, lightChannelId, propertyId)
+            ?.isMixed,
+        isTrue,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: LightingDeviceDetail(
+            device: _buildRepresentativeDevice(
+              'lighting',
+              lightOn: true,
+              lightOnLastUpdated: DateTime.utc(2026, 8, 24, 10, 1),
+            ) as LightingDeviceView,
+          ),
+        ),
+      );
+
+      expect(
+        controlState.getState(deviceId, lightChannelId, propertyId),
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('reconciles a grouped color snapshot after remount', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final controlState = locator<DeviceControlStateService>();
+      controlState.clearForDevice(deviceId);
+      addTearDown(() => controlState.clearForDevice(deviceId));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: LightingDeviceDetail(
+            device: _buildRepresentativeDevice(
+              'lighting',
+              lightRgb: const [0, 0, 0],
+            ) as LightingDeviceView,
+          ),
+        ),
+      );
+      controlState.setGroupPending(
+        deviceId,
+        LightChannelController.colorGroupId,
+        const [
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: redPropertyId,
+            desiredValue: 10,
+          ),
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: greenPropertyId,
+            desiredValue: 20,
+          ),
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: bluePropertyId,
+            desiredValue: 30,
+          ),
+        ],
+      );
+      controlState.setGroupSettling(
+        deviceId,
+        LightChannelController.colorGroupId,
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isMixed,
+        isTrue,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: LightingDeviceDetail(
+            device: _buildRepresentativeDevice(
+              'lighting',
+              lightRgb: const [10, 20, 30],
+              lightRgbLastUpdated: List.filled(
+                3,
+                DateTime.utc(2026, 8, 24, 10, 1),
+              ),
+            ) as LightingDeviceView,
+          ),
+        ),
+      );
+
+      expect(
+        controlState.getGroupState(
+          deviceId,
+          LightChannelController.colorGroupId,
+        ),
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('ignores grouped repository echoes as color confirmation', (
       tester,
     ) async {

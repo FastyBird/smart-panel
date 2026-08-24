@@ -109,6 +109,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
 
     try {
       _deviceControlStateService = locator<DeviceControlStateService>();
+      _reconcileExistingControlState(_deviceControlStateService!);
       _deviceControlStateService?.addListener(_onControlStateChanged);
     } catch (e) {
       if (kDebugMode) {
@@ -198,6 +199,92 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       return (desired - actual).abs() <= 0.5;
     }
     return desired == actual;
+  }
+
+  void _reconcileExistingControlState(
+    DeviceControlStateService controlState,
+  ) {
+    final currentValues = <String, dynamic>{};
+    final currentLastUpdated = <String, DateTime?>{};
+
+    for (final channel in widget._device.lightChannels) {
+      for (final property in channel.properties) {
+        final propertyKey = '${channel.id}:${property.id}';
+        final actualValue = property.value?.value;
+        currentValues[propertyKey] = actualValue;
+        currentLastUpdated[propertyKey] = property.lastUpdated;
+        if (property.lastUpdated == null) continue;
+
+        final state = controlState.getState(
+          widget._device.id,
+          channel.id,
+          property.id,
+        );
+        if ((state?.isPending ?? false) ||
+            (state?.isSettling ?? false)) {
+          _deferPropertySnapshot(
+            propertyKey,
+            widget._device.id,
+            channel.id,
+            property.id,
+            state!.generation,
+            actualValue,
+          );
+        } else if (state?.isMixed ?? false) {
+          controlState.checkPropertyConvergence(
+            widget._device.id,
+            channel.id,
+            property.id,
+            actualValue,
+          );
+        }
+      }
+    }
+
+    final colorState = controlState.getGroupState(
+      widget._device.id,
+      LightChannelController.colorGroupId,
+    );
+    if (colorState == null ||
+        (!colorState.isPending &&
+            !colorState.isSettling &&
+            !colorState.isMixed)) {
+      return;
+    }
+
+    _trackColorGeneration(
+      colorState,
+      widget._device,
+      captureBaseline: false,
+    );
+    for (final property in colorState.properties) {
+      final propertyKey = '${property.channelId}:${property.propertyId}';
+      if (currentLastUpdated[propertyKey] == null ||
+          !currentValues.containsKey(propertyKey)) {
+        continue;
+      }
+      if (_valuesConverged(
+        property.desiredValue,
+        currentValues[propertyKey],
+      )) {
+        _authoritativeColorUpdates.add(propertyKey);
+        if (!colorState.isPending) {
+          _postAckColorMatches.add(propertyKey);
+        }
+        _postAckColorDivergences.remove(propertyKey);
+      } else {
+        _baselineColorMatches.remove(propertyKey);
+        _authoritativeColorUpdates.remove(propertyKey);
+        _postAckColorMatches.remove(propertyKey);
+        _postAckColorDivergences.add(propertyKey);
+      }
+    }
+    _clearColorStateIfComplete(
+      controlState,
+      widget._device.id,
+      colorState,
+      currentValues,
+    );
   }
 
   void _checkConvergence(
@@ -516,6 +603,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   void _trackColorGeneration(
     DeviceControlState colorState,
     LightingDeviceView device,
+    {bool captureBaseline = true}
   ) {
     _trackedColorGeneration = colorState.generation;
     _baselineColorMatches.clear();
@@ -528,6 +616,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         for (final property in channel.properties)
           '${channel.id}:${property.id}': property.value?.value,
     };
+    if (!captureBaseline) return;
+
     for (final property in colorState.properties) {
       final propertyKey = '${property.channelId}:${property.propertyId}';
       if (currentValues.containsKey(propertyKey) &&
