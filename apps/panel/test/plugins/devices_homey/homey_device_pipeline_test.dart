@@ -1595,6 +1595,85 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('confirms unchanged grouped color components from baseline', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final controlState = locator<DeviceControlStateService>();
+      controlState.clearForDevice(deviceId);
+      addTearDown(() => controlState.clearForDevice(deviceId));
+
+      var renderedDevice =
+          _buildRepresentativeDevice('lighting', lightRgb: const [10, 20, 30])
+              as LightingDeviceView;
+      late StateSetter updateHost;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              updateHost = setState;
+              return LightingDeviceDetail(device: renderedDevice);
+            },
+          ),
+        ),
+      );
+
+      controlState.setGroupPending(
+        deviceId,
+        LightChannelController.colorGroupId,
+        const [
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: redPropertyId,
+            desiredValue: 40,
+          ),
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: greenPropertyId,
+            desiredValue: 20,
+          ),
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: bluePropertyId,
+            desiredValue: 30,
+          ),
+        ],
+      );
+      controlState.setGroupSettling(
+        deviceId,
+        LightChannelController.colorGroupId,
+      );
+
+      updateHost(() {
+        renderedDevice = _buildRepresentativeDevice(
+          'lighting',
+          lightRgb: const [40, 20, 30],
+          lightRgbLastUpdated: [
+            DateTime.utc(2026, 8, 24, 10, 1),
+            null,
+            null,
+          ],
+        ) as LightingDeviceView;
+      });
+      await tester.pump();
+
+      expect(
+        controlState.getGroupState(
+          deviceId,
+          LightChannelController.colorGroupId,
+        ),
+        isNull,
+        reason: 'unchanged components do not receive Homey capability events',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('retains pre-ack grouped color divergence for settling', (
       tester,
     ) async {

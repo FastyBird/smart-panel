@@ -53,6 +53,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   final Map<String, _DeferredPropertySnapshot>
       _deferredPropertySnapshots = {};
   Object? _trackedColorGeneration;
+  final Set<String> _baselineColorMatches = {};
   final Set<String> _authoritativeColorUpdates = {};
   final Set<String> _postAckColorMatches = {};
   final Set<String> _postAckColorDivergences = {};
@@ -293,6 +294,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     );
     if (colorState == null) {
       _trackedColorGeneration = null;
+      _baselineColorMatches.clear();
       _authoritativeColorUpdates.clear();
       _postAckColorMatches.clear();
       _postAckColorDivergences.clear();
@@ -300,10 +302,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     }
 
     if (!identical(_trackedColorGeneration, colorState.generation)) {
-      _trackedColorGeneration = colorState.generation;
-      _authoritativeColorUpdates.clear();
-      _postAckColorMatches.clear();
-      _postAckColorDivergences.clear();
+      _trackColorGeneration(colorState, newDevice);
     }
 
     if (colorState.isPending || colorState.isSettling || colorState.isMixed) {
@@ -325,6 +324,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           // before acknowledgment it may be delayed state from the previous
           // color. Accept a complete divergent set only after settling expires.
           _authoritativeColorUpdates.remove(propertyKey);
+          _baselineColorMatches.remove(propertyKey);
           _postAckColorMatches.remove(propertyKey);
           _postAckColorDivergences.add(propertyKey);
         }
@@ -372,16 +372,14 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     );
     if (colorState == null) {
       _trackedColorGeneration = null;
+      _baselineColorMatches.clear();
       _authoritativeColorUpdates.clear();
       _postAckColorMatches.clear();
       _postAckColorDivergences.clear();
       return;
     }
     if (!identical(_trackedColorGeneration, colorState.generation)) {
-      _trackedColorGeneration = colorState.generation;
-      _authoritativeColorUpdates.clear();
-      _postAckColorMatches.clear();
-      _postAckColorDivergences.clear();
+      _trackColorGeneration(colorState, widget._device);
       return;
     }
     if (!colorState.isSettling && !colorState.isMixed) return;
@@ -417,6 +415,33 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     );
   }
 
+  void _trackColorGeneration(
+    DeviceControlState colorState,
+    LightingDeviceView device,
+  ) {
+    _trackedColorGeneration = colorState.generation;
+    _baselineColorMatches.clear();
+    _authoritativeColorUpdates.clear();
+    _postAckColorMatches.clear();
+    _postAckColorDivergences.clear();
+
+    final currentValues = <String, dynamic>{
+      for (final channel in device.lightChannels)
+        for (final property in channel.properties)
+          '${channel.id}:${property.id}': property.value?.value,
+    };
+    for (final property in colorState.properties) {
+      final propertyKey = '${property.channelId}:${property.propertyId}';
+      if (currentValues.containsKey(propertyKey) &&
+          _valuesConverged(
+            property.desiredValue,
+            currentValues[propertyKey],
+          )) {
+        _baselineColorMatches.add(propertyKey);
+      }
+    }
+  }
+
   void _clearColorStateIfComplete(
     DeviceControlStateService controlState,
     String deviceId,
@@ -429,7 +454,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       final propertyKey = '${property.channelId}:${property.propertyId}';
       if (!actualValues.containsKey(propertyKey)) return false;
 
-      return _postAckColorMatches.contains(propertyKey) &&
+      return (_baselineColorMatches.contains(propertyKey) ||
+              _postAckColorMatches.contains(propertyKey)) &&
           _valuesConverged(
             property.desiredValue,
             actualValues[propertyKey],
@@ -440,9 +466,11 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           final propertyKey = '${property.channelId}:${property.propertyId}';
           return actualValues.containsKey(propertyKey) &&
               (_authoritativeColorUpdates.contains(propertyKey) ||
+                  _baselineColorMatches.contains(propertyKey) ||
                   _postAckColorDivergences.contains(propertyKey));
         });
-    if ((_authoritativeColorUpdates.isEmpty &&
+    if ((_baselineColorMatches.isEmpty &&
+            _authoritativeColorUpdates.isEmpty &&
             _postAckColorDivergences.isEmpty) ||
         (!colorComplete && !divergentComplete)) {
       return;
@@ -453,6 +481,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       LightChannelController.colorGroupId,
     );
     _trackedColorGeneration = null;
+    _baselineColorMatches.clear();
     _authoritativeColorUpdates.clear();
     _postAckColorMatches.clear();
     _postAckColorDivergences.clear();
