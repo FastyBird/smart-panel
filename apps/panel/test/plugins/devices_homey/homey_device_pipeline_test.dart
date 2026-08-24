@@ -909,7 +909,7 @@ void main() {
       },
     );
 
-    testWidgets('accepts an authoritative null as lighting divergence', (
+    testWidgets('accepts a settled authoritative null as lighting divergence', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(1280, 800);
@@ -939,6 +939,7 @@ void main() {
       );
 
       controlState.setPending(deviceId, lightChannelId, propertyId, true);
+      controlState.setSettling(deviceId, lightChannelId, propertyId);
       final authoritativeEventAt = controlState
           .getState(deviceId, lightChannelId, propertyId)!
           .createdAt
@@ -1136,8 +1137,8 @@ void main() {
         deviceId,
         LightChannelController.colorGroupId,
       )!;
-      final previousCommandEventAt = activeState.createdAt.subtract(
-        const Duration(milliseconds: 1),
+      final previousCommandEventAt = activeState.createdAt.add(
+        const Duration(days: 365),
       );
 
       updateHost(() {
@@ -1154,11 +1155,11 @@ void main() {
             .getGroupState(deviceId, LightChannelController.colorGroupId)
             ?.isPending,
         isTrue,
-        reason: 'events predating the active generation belong to its predecessor',
+        reason: 'provider clock skew must not make stale values confirm the active generation',
       );
 
-      final activeCommandEventAt = activeState.createdAt.add(
-        const Duration(milliseconds: 1),
+      final activeCommandEventAt = activeState.createdAt.subtract(
+        const Duration(days: 365),
       );
       updateHost(() {
         renderedDevice = _buildRepresentativeDevice(
@@ -1177,6 +1178,70 @@ void main() {
         isNull,
       );
       expect(tester.takeException(), isNull);
+    });
+
+    test('ignores completion from an older color command generation', () async {
+      final controlState = locator<DeviceControlStateService>();
+      controlState.clearForDevice(deviceId);
+      addTearDown(() => controlState.clearForDevice(deviceId));
+
+      final devicesService = locator<DevicesService>() as _MockDevicesService;
+      reset(devicesService);
+      final completions = List.generate(6, (_) => Completer<bool>());
+      var commandCall = 0;
+      when(
+        () => devicesService.setPropertyValue(any(), any()),
+      ).thenAnswer((_) => completions[commandCall++].future);
+      final controller = LightingDeviceController(
+        device: _buildRepresentativeDevice(
+          'lighting',
+          lightRgb: const [0, 0, 0],
+        ) as LightingDeviceView,
+        controlState: controlState,
+        devicesService: devicesService,
+      ).light;
+
+      controller.setColorRGB(10, 20, 30);
+      final firstGeneration = controlState.getGroupState(
+        deviceId,
+        LightChannelController.colorGroupId,
+      )!;
+      controller.setColorRGB(40, 50, 60);
+      final secondGeneration = controlState.getGroupState(
+        deviceId,
+        LightChannelController.colorGroupId,
+      )!;
+      expect(identical(secondGeneration, firstGeneration), isFalse);
+
+      for (final completion in completions.take(3)) {
+        completion.complete(false);
+      }
+      await Future<void>.delayed(Duration.zero);
+
+      final afterFirstCompletion = controlState.getGroupState(
+        deviceId,
+        LightChannelController.colorGroupId,
+      );
+      expect(identical(afterFirstCompletion, secondGeneration), isTrue);
+      expect(afterFirstCompletion?.isPending, isTrue);
+
+      for (final completion in completions.skip(3)) {
+        completion.complete(true);
+      }
+      await Future<void>.delayed(Duration.zero);
+
+      final afterSecondCompletion = controlState.getGroupState(
+        deviceId,
+        LightChannelController.colorGroupId,
+      );
+      expect(
+        identical(
+          afterSecondCompletion?.generation,
+          secondGeneration.generation,
+        ),
+        isTrue,
+      );
+      expect(afterSecondCompletion?.isSettling, isTrue);
     });
   });
 }

@@ -267,20 +267,7 @@ class LightChannelController {
   /// Set power state with optimistic UI.
   void setPower(bool value) {
     final prop = channel.onProp;
-
-    _controlState.setPending(deviceId, channel.id, prop.id, value);
-
-    _devicesService.setPropertyValue(prop.id, value).then((success) {
-      if (success) {
-        _controlState.setSettling(deviceId, channel.id, prop.id);
-      } else {
-        _controlState.clear(deviceId, channel.id, prop.id);
-        _onError?.call(prop.id, Exception('Failed to set power'));
-      }
-    }).catchError((error) {
-      _controlState.clear(deviceId, channel.id, prop.id);
-      _onError?.call(prop.id, error);
-    });
+    _runPropertyCommand(prop.id, value, 'Failed to set power');
   }
 
   /// Toggle power state with optimistic UI.
@@ -293,19 +280,7 @@ class LightChannelController {
     final prop = channel.brightnessProp;
     if (prop == null) return;
 
-    _controlState.setPending(deviceId, channel.id, prop.id, value);
-
-    _devicesService.setPropertyValue(prop.id, value).then((success) {
-      if (success) {
-        _controlState.setSettling(deviceId, channel.id, prop.id);
-      } else {
-        _controlState.clear(deviceId, channel.id, prop.id);
-        _onError?.call(prop.id, Exception('Failed to set brightness'));
-      }
-    }).catchError((error) {
-      _controlState.clear(deviceId, channel.id, prop.id);
-      _onError?.call(prop.id, error);
-    });
+    _runPropertyCommand(prop.id, value, 'Failed to set brightness');
   }
 
   /// Set color white level with optimistic UI.
@@ -313,19 +288,7 @@ class LightChannelController {
     final prop = channel.colorWhiteProp;
     if (prop == null) return;
 
-    _controlState.setPending(deviceId, channel.id, prop.id, value);
-
-    _devicesService.setPropertyValue(prop.id, value).then((success) {
-      if (success) {
-        _controlState.setSettling(deviceId, channel.id, prop.id);
-      } else {
-        _controlState.clear(deviceId, channel.id, prop.id);
-        _onError?.call(prop.id, Exception('Failed to set color white'));
-      }
-    }).catchError((error) {
-      _controlState.clear(deviceId, channel.id, prop.id);
-      _onError?.call(prop.id, error);
-    });
+    _runPropertyCommand(prop.id, value, 'Failed to set color white');
   }
 
   /// Set color temperature in Kelvin with optimistic UI.
@@ -333,19 +296,7 @@ class LightChannelController {
     final prop = channel.temperatureProp;
     if (prop == null) return;
 
-    _controlState.setPending(deviceId, channel.id, prop.id, value);
-
-    _devicesService.setPropertyValue(prop.id, value).then((success) {
-      if (success) {
-        _controlState.setSettling(deviceId, channel.id, prop.id);
-      } else {
-        _controlState.clear(deviceId, channel.id, prop.id);
-        _onError?.call(prop.id, Exception('Failed to set color temperature'));
-      }
-    }).catchError((error) {
-      _controlState.clear(deviceId, channel.id, prop.id);
-      _onError?.call(prop.id, error);
-    });
+    _runPropertyCommand(prop.id, value, 'Failed to set color temperature');
   }
 
   /// Set RGB color with optimistic UI using group API.
@@ -377,12 +328,15 @@ class LightChannelController {
         ),
       ],
     );
+    final commandGeneration =
+        _controlState.getGroupState(deviceId, colorGroupId)?.generation;
 
     Future.wait([
       _devicesService.setPropertyValue(redProp.id, red),
       _devicesService.setPropertyValue(greenProp.id, green),
       _devicesService.setPropertyValue(blueProp.id, blue),
     ]).then((results) {
+      if (!_isCurrentGroupGeneration(commandGeneration)) return;
       if (results.every((success) => success)) {
         _controlState.setGroupSettling(deviceId, colorGroupId);
       } else {
@@ -390,6 +344,7 @@ class LightChannelController {
         _onError?.call(redProp.id, Exception('Failed to set RGB color'));
       }
     }).catchError((error) {
+      if (!_isCurrentGroupGeneration(commandGeneration)) return;
       _controlState.clearGroup(deviceId, colorGroupId);
       _onError?.call(redProp.id, error);
     });
@@ -435,6 +390,8 @@ class LightChannelController {
 
     // 1. Set pending state FIRST (before starting API calls)
     _controlState.setGroupPending(deviceId, colorGroupId, properties);
+    final commandGeneration =
+        _controlState.getGroupState(deviceId, colorGroupId)?.generation;
 
     // 2. Start API calls AFTER pending state is set
     final futures = <Future<bool>>[];
@@ -449,6 +406,7 @@ class LightChannelController {
     }
 
     Future.wait(futures).then((results) {
+      if (!_isCurrentGroupGeneration(commandGeneration)) return;
       if (results.every((success) => success)) {
         _controlState.setGroupSettling(deviceId, colorGroupId);
       } else {
@@ -456,6 +414,7 @@ class LightChannelController {
         _onError?.call(firstPropId!, Exception('Failed to set HSV color'));
       }
     }).catchError((error) {
+      if (!_isCurrentGroupGeneration(commandGeneration)) return;
       _controlState.clearGroup(deviceId, colorGroupId);
       _onError?.call(firstPropId!, error);
     });
@@ -481,6 +440,52 @@ class LightChannelController {
   // ===========================================================================
   // PRIVATE HELPERS
   // ===========================================================================
+
+  void _runPropertyCommand(
+    String propertyId,
+    dynamic value,
+    String failureMessage,
+  ) {
+    _controlState.setPending(deviceId, channel.id, propertyId, value);
+    final commandGeneration = _controlState
+        .getState(deviceId, channel.id, propertyId)
+        ?.generation;
+
+    _devicesService.setPropertyValue(propertyId, value).then((success) {
+      if (!_isCurrentPropertyGeneration(propertyId, commandGeneration)) return;
+      if (success) {
+        _controlState.setSettling(deviceId, channel.id, propertyId);
+      } else {
+        _controlState.clear(deviceId, channel.id, propertyId);
+        _onError?.call(propertyId, Exception(failureMessage));
+      }
+    }).catchError((error) {
+      if (!_isCurrentPropertyGeneration(propertyId, commandGeneration)) return;
+      _controlState.clear(deviceId, channel.id, propertyId);
+      _onError?.call(propertyId, error);
+    });
+  }
+
+  bool _isCurrentPropertyGeneration(
+    String propertyId,
+    Object? commandGeneration,
+  ) {
+    return commandGeneration != null &&
+        identical(
+          _controlState
+              .getState(deviceId, channel.id, propertyId)
+              ?.generation,
+          commandGeneration,
+        );
+  }
+
+  bool _isCurrentGroupGeneration(Object? commandGeneration) {
+    return commandGeneration != null &&
+        identical(
+          _controlState.getGroupState(deviceId, colorGroupId)?.generation,
+          commandGeneration,
+        );
+  }
 
   bool _isAnyColorPropertyLocked() {
     final redProp = channel.colorRedProp;

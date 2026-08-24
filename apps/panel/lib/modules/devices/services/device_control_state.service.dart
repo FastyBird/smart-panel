@@ -207,6 +207,7 @@ class DeviceControlStateService extends ChangeNotifier {
         _onSettlingTimeout(key);
       }),
       createdAt: currentState.createdAt,
+      generation: currentState.generation,
     );
 
     if (kDebugMode) {
@@ -471,6 +472,7 @@ class DeviceControlStateService extends ChangeNotifier {
       settlingTimer: timer,
       settlingStartedAt: DateTime.now(),
       createdAt: currentState.createdAt,
+      generation: currentState.generation,
     );
 
     if (kDebugMode) {
@@ -670,6 +672,7 @@ class DeviceControlStateService extends ChangeNotifier {
       state: DeviceControlUIState.mixed,
       properties: currentState!.properties,
       createdAt: currentState.createdAt,
+      generation: currentState.generation,
     );
 
     if (kDebugMode) {

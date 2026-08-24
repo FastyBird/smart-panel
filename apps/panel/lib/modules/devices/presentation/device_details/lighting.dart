@@ -50,7 +50,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
   LightingDeviceController? _controller;
-  DateTime? _trackedColorStateCreatedAt;
+  Object? _trackedColorGeneration;
   final Set<String> _authoritativeColorUpdates = {};
 
   // Selected channel index for multi-channel devices
@@ -210,7 +210,6 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           '${channel.id}:${property.id}': property.lastUpdated,
     };
     final newValues = <String, dynamic>{};
-    final newLastUpdated = <String, DateTime?>{};
     final changedProperties = <String>{};
 
     for (final channel in newDevice.lightChannels) {
@@ -219,7 +218,6 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         final actualValue = property.value?.value;
         final actualLastUpdated = property.lastUpdated;
         newValues[propertyKey] = actualValue;
-        newLastUpdated[propertyKey] = actualLastUpdated;
         if (oldValues.containsKey(propertyKey) &&
             oldValues[propertyKey] == actualValue &&
             oldLastUpdated[propertyKey] == actualLastUpdated) {
@@ -233,19 +231,13 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           channel.id,
           property.id,
         );
-        if (propertyState != null &&
-            actualLastUpdated != null &&
-            actualLastUpdated.isBefore(propertyState.createdAt)) {
-          // A delayed event from an earlier command must not confirm or
-          // override the currently active optimistic generation.
-          continue;
-        }
         if (propertyState?.isPending ?? false) {
-          // Homey synchronizes the authoritative capability event before the
-          // command acknowledgment resolves. A changed value is authoritative
-          // confirmation or divergence, including null, so the later
-          // setSettling call must be a harmless no-op.
-          controlState.clear(newDevice.id, channel.id, property.id);
+          // While the command generation is pending, only its requested value
+          // can confirm it. Divergent updates may still belong to the previous
+          // generation; command failure or the settling phase handles them.
+          if (_valuesConverged(propertyState?.desiredValue, actualValue)) {
+            controlState.clear(newDevice.id, channel.id, property.id);
+          }
           continue;
         }
 
@@ -263,22 +255,24 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       LightChannelController.colorGroupId,
     );
     if (colorState == null) {
-      _trackedColorStateCreatedAt = null;
+      _trackedColorGeneration = null;
       _authoritativeColorUpdates.clear();
       return;
     }
 
-    if (_trackedColorStateCreatedAt != colorState.createdAt) {
-      _trackedColorStateCreatedAt = colorState.createdAt;
+    if (!identical(_trackedColorGeneration, colorState.generation)) {
+      _trackedColorGeneration = colorState.generation;
       _authoritativeColorUpdates.clear();
     }
 
     if (colorState.isPending || colorState.isSettling || colorState.isMixed) {
       for (final property in colorState.properties) {
         final propertyKey = '${property.channelId}:${property.propertyId}';
-        final lastUpdated = newLastUpdated[propertyKey];
-        final belongsToActiveCommand = lastUpdated == null ||
-            !lastUpdated.isBefore(colorState.createdAt);
+        final belongsToActiveCommand = !colorState.isPending ||
+            _valuesConverged(
+              property.desiredValue,
+              newValues[propertyKey],
+            );
         if (changedProperties.contains(propertyKey) &&
             belongsToActiveCommand) {
           _authoritativeColorUpdates.add(propertyKey);
@@ -291,18 +285,21 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
 
         final desired = property.desiredValue;
         final actual = newValues[propertyKey];
+        if (colorState.isPending) {
+          return _valuesConverged(desired, actual);
+        }
         return _authoritativeColorUpdates.contains(propertyKey) ||
             _valuesConverged(desired, actual);
       });
       if (_authoritativeColorUpdates.isNotEmpty && colorComplete) {
-        // Keep grouped optimism until every authoritative component has
-        // arrived or was already at its desired value. A complete divergent
+        // Pending commands clear only on requested-value confirmation. Once
+        // their generation is acknowledged and settling, a complete divergent
         // set is authoritative too (for example device-side quantization).
         controlState.clearGroup(
           newDevice.id,
           LightChannelController.colorGroupId,
         );
-        _trackedColorStateCreatedAt = null;
+        _trackedColorGeneration = null;
         _authoritativeColorUpdates.clear();
       }
     }
@@ -408,14 +405,6 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         }
 
         controller.setBrightness(value);
-
-        if (prop != null) {
-          _deviceControlStateService?.setSettling(
-            controller.deviceId,
-            controller.channel.id,
-            prop.id,
-          );
-        }
       },
     );
   }
@@ -454,14 +443,6 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         }
 
         controller.setColorTemperature(value);
-
-        if (prop != null) {
-          _deviceControlStateService?.setSettling(
-            controller.deviceId,
-            controller.channel.id,
-            prop.id,
-          );
-        }
       },
     );
   }
@@ -547,13 +528,6 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         }
 
         controller.setColor(color);
-
-        if (colorProperties.isNotEmpty) {
-          _deviceControlStateService?.setGroupSettling(
-            deviceId,
-            LightChannelController.colorGroupId,
-          );
-        }
       },
     );
   }
@@ -592,14 +566,6 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         }
 
         controller.setColorWhite(value);
-
-        if (prop != null) {
-          _deviceControlStateService?.setSettling(
-            controller.deviceId,
-            controller.channel.id,
-            prop.id,
-          );
-        }
       },
     );
   }

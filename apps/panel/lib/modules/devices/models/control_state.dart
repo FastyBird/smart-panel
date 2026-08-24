@@ -53,13 +53,18 @@ class DeviceControlState {
   /// Timestamp when this state was created.
   final DateTime createdAt;
 
-  const DeviceControlState({
+  /// Stable local identity for one optimistic command generation.
+  /// Preserved across pending, settling, and mixed transitions.
+  final Object generation;
+
+  DeviceControlState({
     this.state = DeviceControlUIState.idle,
     this.properties = const [],
     this.settlingTimer,
     this.settlingStartedAt,
     required this.createdAt,
-  });
+    Object? generation,
+  }) : generation = generation ?? Object();
 
   /// Create a copy with updated fields.
   DeviceControlState copyWith({
@@ -80,6 +85,7 @@ class DeviceControlState {
           ? null
           : (settlingStartedAt ?? this.settlingStartedAt),
       createdAt: createdAt,
+      generation: generation,
     );
   }
 
@@ -166,6 +172,7 @@ class DeviceControlState {
       state: DeviceControlUIState.mixed,
       properties: properties,
       createdAt: createdAt,
+      generation: generation,
     );
   }
 
