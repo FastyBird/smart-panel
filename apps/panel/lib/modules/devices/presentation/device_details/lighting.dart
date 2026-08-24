@@ -52,6 +52,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   LightingDeviceController? _controller;
   final Map<String, _DeferredPropertySnapshot>
       _deferredPropertySnapshots = {};
+  final Map<String, Object> _trackedPropertyGenerations = {};
+  final Map<String, Object> _baselinePropertyMatches = {};
   Object? _trackedColorGeneration;
   final Set<String> _baselineColorMatches = {};
   final Set<String> _authoritativeColorUpdates = {};
@@ -239,11 +241,21 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           channel.id,
           property.id,
         );
+        if (propertyState == null) {
+          _trackedPropertyGenerations.remove(propertyKey);
+          _baselinePropertyMatches.remove(propertyKey);
+        }
         if (actualLastUpdated == null) {
           // ChannelPropertiesRepository emits a local optimistic copy without
           // measurement metadata before dispatching the command. It is UI
           // feedback, not provider confirmation.
           continue;
+        }
+        final baselineGeneration = _baselinePropertyMatches[propertyKey];
+        if (propertyState != null &&
+            identical(baselineGeneration, propertyState.generation) &&
+            !_valuesConverged(propertyState.desiredValue, actualValue)) {
+          _baselinePropertyMatches.remove(propertyKey);
         }
         if (propertyState?.isPending ?? false) {
           // A provider snapshot received before this command is acknowledged
@@ -342,6 +354,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     final controlState = _deviceControlStateService;
     if (controlState == null) return;
 
+    _trackPropertyGenerations(controlState);
+
     for (final entry in _deferredPropertySnapshots.entries.toList()) {
       final snapshot = entry.value;
       final state = controlState.getState(
@@ -364,6 +378,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         snapshot.actualValue,
       );
     }
+
+    _clearBaselinePropertyStates(controlState);
 
     final colorState = controlState.getGroupState(
       widget._device.id,
@@ -394,6 +410,89 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       colorState,
       currentValues,
     );
+  }
+
+  void _trackPropertyGenerations(
+    DeviceControlStateService controlState,
+  ) {
+    final activePropertyKeys = <String>{};
+
+    for (final channel in widget._device.lightChannels) {
+      for (final property in channel.properties) {
+        final propertyKey = '${channel.id}:${property.id}';
+        activePropertyKeys.add(propertyKey);
+        final state = controlState.getState(
+          widget._device.id,
+          channel.id,
+          property.id,
+        );
+        if (state == null) {
+          _trackedPropertyGenerations.remove(propertyKey);
+          _baselinePropertyMatches.remove(propertyKey);
+          continue;
+        }
+        if (identical(
+          _trackedPropertyGenerations[propertyKey],
+          state.generation,
+        )) {
+          continue;
+        }
+
+        _trackedPropertyGenerations[propertyKey] = state.generation;
+        _baselinePropertyMatches.remove(propertyKey);
+        if (state.isPending &&
+            _valuesConverged(
+              state.desiredValue,
+              property.value?.value,
+            )) {
+          _baselinePropertyMatches[propertyKey] = state.generation;
+        }
+      }
+    }
+
+    for (final propertyKey in _trackedPropertyGenerations.keys.toList()) {
+      if (!activePropertyKeys.contains(propertyKey)) {
+        _trackedPropertyGenerations.remove(propertyKey);
+        _baselinePropertyMatches.remove(propertyKey);
+        _deferredPropertySnapshots.remove(propertyKey);
+      }
+    }
+  }
+
+  void _clearBaselinePropertyStates(
+    DeviceControlStateService controlState,
+  ) {
+    for (final channel in widget._device.lightChannels) {
+      for (final property in channel.properties) {
+        final propertyKey = '${channel.id}:${property.id}';
+        final state = controlState.getState(
+          widget._device.id,
+          channel.id,
+          property.id,
+        );
+        if (state == null ||
+            !state.isMixed ||
+            _deferredPropertySnapshots.containsKey(propertyKey) ||
+            !identical(
+              _baselinePropertyMatches[propertyKey],
+              state.generation,
+            ) ||
+            !_valuesConverged(
+              state.desiredValue,
+              property.value?.value,
+            )) {
+          continue;
+        }
+
+        _trackedPropertyGenerations.remove(propertyKey);
+        _baselinePropertyMatches.remove(propertyKey);
+        controlState.clear(
+          widget._device.id,
+          channel.id,
+          property.id,
+        );
+      }
+    }
   }
 
   void _deferPropertySnapshot(

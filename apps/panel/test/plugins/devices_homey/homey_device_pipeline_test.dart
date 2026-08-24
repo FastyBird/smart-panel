@@ -1302,6 +1302,48 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('clears an idempotent property command from its baseline', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final controlState = locator<DeviceControlStateService>();
+      controlState.clearForDevice(deviceId);
+      addTearDown(() => controlState.clearForDevice(deviceId));
+
+      final renderedDevice =
+          _buildRepresentativeDevice('lighting', lightOn: true)
+              as LightingDeviceView;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: LightingDeviceDetail(device: renderedDevice),
+        ),
+      );
+
+      controlState.setPending(deviceId, lightChannelId, propertyId, true);
+      controlState.setSettling(deviceId, lightChannelId, propertyId);
+
+      expect(
+        controlState
+            .getState(deviceId, lightChannelId, propertyId)
+            ?.isSettling,
+        isTrue,
+      );
+      await tester.pump(const Duration(milliseconds: 900));
+
+      expect(
+        controlState.getState(deviceId, lightChannelId, propertyId),
+        isNull,
+        reason: 'Homey need not emit an event for an already-equal value',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('ignores grouped repository echoes as color confirmation', (
       tester,
     ) async {
