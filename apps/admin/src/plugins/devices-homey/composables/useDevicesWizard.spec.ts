@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DevicesHomeyPluginAdoptionStatus, DevicesHomeyPluginSupportState, DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import { MAX_HOMEY_CONCURRENT_PREVIEWS } from '../devices-homey.constants';
-import type { IHomeyAdoptionResult, IHomeyInventoryDevice } from '../store/homey.types';
+import type { IHomeyAdoptSelection, IHomeyAdoptionResult, IHomeyInventoryDevice } from '../store/homey.types';
 
 import { useDevicesWizard } from './useDevicesWizard';
 
@@ -175,6 +175,30 @@ describe('Homey useDevicesWizard', () => {
 		expect(devicesStore.fetch.mock.invocationCallOrder[0]).toBeLessThan(inventory.fetch.mock.invocationCallOrder[0]!);
 	});
 
+	it('serializes refresh while inventory loading is in progress', async () => {
+		let resolveDevices!: (devices: never[]) => void;
+		devicesStore.fetch.mockReturnValue(
+			new Promise((resolve) => {
+				resolveDevices = resolve;
+			})
+		);
+		const adapter = useDevicesWizard();
+
+		const initialLoad = adapter.start();
+		const refresh = adapter.controls.value.find((control) => control.type === 'action' && control.id === 'refresh');
+		expect(refresh).toEqual(expect.objectContaining({ loading: true, disabled: true }));
+
+		const overlappingRefresh = adapter.restart!();
+		expect(devicesStore.fetch).toHaveBeenCalledOnce();
+		expect(inventory.fetch).not.toHaveBeenCalled();
+
+		resolveDevices([]);
+		await Promise.all([initialLoad, overlappingRefresh]);
+
+		expect(devicesStore.fetch).toHaveBeenCalledOnce();
+		expect(inventory.fetch).toHaveBeenCalledOnce();
+	});
+
 	it('keeps a supported device unavailable for selection when its mapping preview is not ready', async () => {
 		const supported = device();
 		inventory.fetch.mockResolvedValue([supported]);
@@ -260,6 +284,76 @@ describe('Homey useDevicesWizard', () => {
 		await adapter.adopt([{ key: 'homey-light', name: 'Upstream name', category: DevicesModuleDeviceCategory.lighting }]);
 
 		expect(inventory.adoptBatch).toHaveBeenCalledWith([{ deviceId: 'homey-light' }]);
+	});
+
+	it('bounds concurrent adoption-time mapping previews', async () => {
+		const adoptedDevices = Array.from({ length: 12 }, (_, index) =>
+			device({ id: `homey-device-${index}`, name: `Device ${index}`, adopted: true, adoptedDeviceId: `panel-device-${index}` })
+		);
+		inventory.findById.mockImplementation((id) => adoptedDevices.find((item) => item.id === id) ?? null);
+		devicesStore.findById.mockReturnValue({ name: 'Panel device', category: DevicesModuleDeviceCategory.lighting });
+		let activePreviews = 0;
+		let maximumActivePreviews = 0;
+		inventory.preview.mockImplementation(async () => {
+			activePreviews += 1;
+			maximumActivePreviews = Math.max(maximumActivePreviews, activePreviews);
+			await Promise.resolve();
+			activePreviews -= 1;
+
+			return {
+				suggestedCategory: DevicesModuleDeviceCategory.lighting,
+				validCategories: [DevicesModuleDeviceCategory.lighting],
+				readyToAdopt: true,
+			};
+		});
+		inventory.adoptBatch.mockImplementation(async (requests: IHomeyAdoptSelection[]) =>
+			requests.map(({ deviceId }) => ({ deviceId, status: DevicesHomeyPluginAdoptionStatus.updated }))
+		);
+		const adapter = useDevicesWizard();
+
+		await adapter.adopt(
+			adoptedDevices.map((item) => ({
+				key: item.id,
+				name: item.name,
+				category: DevicesModuleDeviceCategory.lighting,
+			}))
+		);
+
+		expect(maximumActivePreviews).toBe(MAX_HOMEY_CONCURRENT_PREVIEWS);
+		expect(inventory.adoptBatch).toHaveBeenCalledOnce();
+	});
+
+	it('continues adoption when one adopted-device preview fails', async () => {
+		const disappeared = device({ id: 'homey-missing', name: 'Missing light', adopted: true, adoptedDeviceId: 'panel-missing' });
+		const newDevice = device({ id: 'homey-new', name: 'New light' });
+		inventory.findById.mockImplementation((id) => [disappeared, newDevice].find((item) => item.id === id) ?? null);
+		devicesStore.findById.mockReturnValue({ name: 'Missing panel light', category: DevicesModuleDeviceCategory.lighting });
+		inventory.preview.mockRejectedValue(new Error('Device disappeared'));
+		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-new', status: DevicesHomeyPluginAdoptionStatus.created }]);
+		const adapter = useDevicesWizard();
+
+		const results = await adapter.adopt([
+			{ key: 'homey-missing', name: 'Missing panel light', category: DevicesModuleDeviceCategory.lighting },
+			{ key: 'homey-new', name: 'New panel light', category: DevicesModuleDeviceCategory.lighting },
+		]);
+
+		expect(inventory.adoptBatch).toHaveBeenCalledWith([
+			{ deviceId: 'homey-new', name: 'New panel light', deviceCategory: DevicesModuleDeviceCategory.lighting },
+		]);
+		expect(results).toEqual([
+			{
+				key: 'homey-missing',
+				name: 'Missing panel light',
+				identifier: 'homey-missing',
+				status: DevicesHomeyPluginAdoptionStatus.failed,
+				error: 'Device disappeared',
+			},
+			expect.objectContaining({ key: 'homey-new', name: 'New panel light', status: DevicesHomeyPluginAdoptionStatus.created }),
+		]);
+		expect(inventory.adoptionResults).toEqual([
+			expect.objectContaining({ deviceId: 'homey-missing', status: DevicesHomeyPluginAdoptionStatus.failed, message: 'Device disappeared' }),
+			expect.objectContaining({ deviceId: 'homey-new', status: DevicesHomeyPluginAdoptionStatus.created }),
+		]);
 	});
 
 	it('preserves a skipped adoption as a no-change wizard result', async () => {

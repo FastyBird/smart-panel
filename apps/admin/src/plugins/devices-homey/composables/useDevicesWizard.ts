@@ -16,8 +16,26 @@ import type {
 } from '../../../modules/devices';
 import { DevicesHomeyPluginAdoptionStatus } from '../../../openapi.constants';
 import { DEVICES_HOMEY_PLUGIN_NAME, MAX_HOMEY_CONCURRENT_PREVIEWS } from '../devices-homey.constants';
-import type { IHomeyAdoptionResult, IHomeyInventoryDevice, IHomeyMappingPreview } from '../store/homey.types';
+import type { IHomeyAdoptSelection, IHomeyAdoptionResult, IHomeyInventoryDevice, IHomeyMappingPreview } from '../store/homey.types';
 import { homeyInventoryStoreKey } from '../store/keys';
+
+const mapWithConcurrencyLimit = async <T, R>(items: T[], task: (item: T) => Promise<R>): Promise<R[]> => {
+	const results = new Array<R>(items.length);
+	let nextIndex = 0;
+	const worker = async (): Promise<void> => {
+		while (nextIndex < items.length) {
+			const currentIndex = nextIndex++;
+			const item = items[currentIndex];
+			if (item === undefined) return;
+
+			results[currentIndex] = await task(item);
+		}
+	};
+
+	await Promise.all(Array.from({ length: Math.min(MAX_HOMEY_CONCURRENT_PREVIEWS, items.length) }, () => worker()));
+
+	return results;
+};
 
 const rowStatus = (device: IHomeyInventoryDevice, preview?: IHomeyMappingPreview, previewFailed = false): IWizardRowStatus => {
 	if (previewFailed) return 'needs_attention';
@@ -39,6 +57,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const adopting = ref(false);
 	const previewsReady = ref(false);
 	const previewFailures = ref<Record<string, true>>({});
+	let loadPromise: Promise<void> | null = null;
 
 	const devices = computed(() =>
 		orderBy(
@@ -107,8 +126,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			id: 'refresh',
 			label: t('devicesHomeyPlugin.wizard.actions.refresh'),
 			icon: 'mdi:refresh',
-			loading: inventory.fetching,
-			disabled: adopting.value || inventory.adopting,
+			loading: loading.value || inventory.fetching,
+			disabled: loading.value || adopting.value || inventory.fetching || inventory.adopting,
 			handler: restart,
 		};
 
@@ -130,40 +149,47 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		];
 	});
 
-	async function load(): Promise<void> {
-		error.value = null;
-		loading.value = true;
-		previewsReady.value = false;
-		previewFailures.value = {};
-		try {
-			await devicesStore.fetch();
-			const inventoryDevices = await inventory.fetch();
-			const previewDevices = inventoryDevices.filter((device) => device.available && device.supportState === 'supported');
-			const failedPreviews: string[] = [];
-			let nextPreviewIndex = 0;
-			const previewWorker = async (): Promise<void> => {
-				while (nextPreviewIndex < previewDevices.length) {
-					const device = previewDevices[nextPreviewIndex++];
-					if (device === undefined) return;
+	function load(): Promise<void> {
+		if (loadPromise !== null) return loadPromise;
 
+		const currentLoad = (async () => {
+			error.value = null;
+			loading.value = true;
+			previewsReady.value = false;
+			previewFailures.value = {};
+			try {
+				await devicesStore.fetch();
+				const inventoryDevices = await inventory.fetch();
+				const previewDevices = inventoryDevices.filter((device) => device.available && device.supportState === 'supported');
+				const previewResults = await mapWithConcurrencyLimit(previewDevices, async (device) => {
 					try {
 						await inventory.preview(device.id);
+						return null;
 					} catch {
-						failedPreviews.push(device.id);
+						return device.id;
 					}
-				}
-			};
-			await Promise.all(Array.from({ length: Math.min(MAX_HOMEY_CONCURRENT_PREVIEWS, previewDevices.length) }, () => previewWorker()));
-			previewFailures.value = Object.fromEntries(failedPreviews.map((deviceId) => [deviceId, true as const]));
-			previewsReady.value = true;
-		} catch (caught: unknown) {
-			error.value = caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.inventory');
-		} finally {
-			loading.value = false;
-		}
+				});
+				previewFailures.value = Object.fromEntries(
+					previewResults.filter((deviceId): deviceId is string => deviceId !== null).map((deviceId) => [deviceId, true as const])
+				);
+				previewsReady.value = true;
+			} catch (caught: unknown) {
+				error.value = caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.inventory');
+			} finally {
+				loading.value = false;
+			}
+		})();
+		loadPromise = currentLoad;
+		void currentLoad.then(() => {
+			if (loadPromise === currentLoad) loadPromise = null;
+		});
+
+		return currentLoad;
 	}
 
 	async function restart(): Promise<void> {
+		if (loadPromise !== null) return loadPromise;
+
 		inventory.adoptionResults = [];
 		submittedNames.value = {};
 		await load();
@@ -172,35 +198,53 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const adopt = async (selection: IWizardAdoptSelection[]): Promise<IWizardResult[]> => {
 		submittedNames.value = Object.fromEntries(selection.map((item) => [item.key, item.name]));
 		adopting.value = true;
+		let preflightFailures: IHomeyAdoptionResult[] = [];
 
 		try {
-			const requests = await Promise.all(
-				selection.map(async (item) => {
+			const preparations = await mapWithConcurrencyLimit(selection, async (item) => {
+				try {
 					const inventoryDevice = inventory.findById(item.key);
 					const adoptedDevice = inventoryDevice?.adoptedDeviceId ? devicesStore.findById(inventoryDevice.adoptedDeviceId) : null;
 
 					if (inventoryDevice?.adopted && adoptedDevice === null) {
-						return { deviceId: item.key };
+						return { request: { deviceId: item.key } satisfies IHomeyAdoptSelection };
 					}
 
 					const preview = inventoryDevice?.adopted ? await inventory.preview(item.key) : null;
 					const deviceCategory = preview?.validCategories.includes(item.category) === false ? undefined : item.category;
 
 					return {
-						deviceId: item.key,
-						name: item.name,
-						...(deviceCategory === undefined ? {} : { deviceCategory }),
+						request: {
+							deviceId: item.key,
+							name: item.name,
+							...(deviceCategory === undefined ? {} : { deviceCategory }),
+						} satisfies IHomeyAdoptSelection,
 					};
-				})
-			);
-			const adoption = await inventory.adoptBatch(requests);
+				} catch (caught: unknown) {
+					return {
+						failure: {
+							deviceId: item.key,
+							status: DevicesHomeyPluginAdoptionStatus.failed,
+							message: caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.adoption'),
+						} satisfies IHomeyAdoptionResult,
+					};
+				}
+			});
+			const requests = preparations.flatMap(({ request }) => (request === undefined ? [] : [request]));
+			preflightFailures = preparations.flatMap(({ failure }) => (failure === undefined ? [] : [failure]));
+			const adoption = requests.length > 0 ? await inventory.adoptBatch(requests) : [];
+			const completed = new Map([...adoption, ...preflightFailures].map((result) => [result.deviceId, result]));
+			inventory.adoptionResults = selection.flatMap((item) => {
+				const result = completed.get(item.key);
+				return result === undefined ? [] : [result];
+			});
 
-			return adoption.map(transformResult);
+			return inventory.adoptionResults.map(transformResult);
 		} catch (caught: unknown) {
 			const failureMessage = caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.adoption');
 			flashMessage.error(failureMessage);
-			if (inventory.adoptionResults.length > 0) {
-				const completed = new Map(inventory.adoptionResults.map((result) => [result.deviceId, result]));
+			if (inventory.adoptionResults.length > 0 || preflightFailures.length > 0) {
+				const completed = new Map([...inventory.adoptionResults, ...preflightFailures].map((result) => [result.deviceId, result]));
 				inventory.adoptionResults = selection.map(
 					(item): IHomeyAdoptionResult =>
 						completed.get(item.key) ?? {
