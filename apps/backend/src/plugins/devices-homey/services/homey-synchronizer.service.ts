@@ -75,6 +75,7 @@ export class HomeySynchronizerService {
 	private propertiesByDeviceCapability = new Map<string, Map<string, HomeyIndexedProperty[]>>();
 	private lastAppliedOrder = new Map<string, HomeyEventOrder>();
 	private lastAppliedValues = new Map<string, HomeyCapabilityValue>();
+	private lastPersistedValueTimestamp = new Map<string, number>();
 	private lastObservedOrder = new Map<string, HomeyEventOrder>();
 	private lastAppliedDeviceOrder = new Map<string, HomeyEventOrder>();
 	private lastObservedDeviceOrder = new Map<string, HomeyEventOrder>();
@@ -102,6 +103,24 @@ export class HomeySynchronizerService {
 	@OnEvent(EventType.CHANNEL_PROPERTY_DELETED)
 	invalidateFromEntity(): void {
 		this.invalidateIndex();
+	}
+
+	@OnEvent(EventType.CHANNEL_PROPERTY_VALUE_SET)
+	recordPersistedPropertyValue(property: HomeyChannelPropertyEntity): void {
+		if (property.type !== DEVICES_HOMEY_TYPE) {
+			return;
+		}
+
+		const timestamp = this.parseTimestamp(property.value?.lastUpdated ?? null);
+		if (timestamp === null) {
+			return;
+		}
+
+		const previousTimestamp = this.lastPersistedValueTimestamp.get(property.id);
+		this.lastPersistedValueTimestamp.set(
+			property.id,
+			previousTimestamp === undefined ? timestamp : Math.max(timestamp, previousTimestamp),
+		);
 	}
 
 	invalidateIndex(): void {
@@ -376,6 +395,7 @@ export class HomeySynchronizerService {
 		const devices = await this.devicesService.findAll<HomeyDeviceEntity>(DEVICES_HOMEY_TYPE);
 		const adoptedDevices = new Map<string, HomeyDeviceEntity>();
 		const propertiesByDeviceCapability = new Map<string, Map<string, HomeyIndexedProperty[]>>();
+		const persistedValueTimestamps = new Map<string, number>();
 
 		for (const device of devices) {
 			if (device.identifier === null || !device.enabled) {
@@ -402,6 +422,16 @@ export class HomeySynchronizerService {
 						continue;
 					}
 
+					const loadedTimestamp = this.parseTimestamp(property.value?.lastUpdated ?? null);
+					const currentTimestamp = this.lastPersistedValueTimestamp.get(property.id);
+					const persistedTimestamp =
+						loadedTimestamp === null
+							? currentTimestamp
+							: Math.max(loadedTimestamp, currentTimestamp ?? loadedTimestamp);
+					if (persistedTimestamp !== undefined) {
+						persistedValueTimestamps.set(property.id, persistedTimestamp);
+					}
+
 					const bindings = capabilities.get(property.homeyCapabilityId) ?? [];
 					bindings.push({ panelDeviceId: device.id, property, mapping });
 					capabilities.set(property.homeyCapabilityId, bindings);
@@ -413,6 +443,7 @@ export class HomeySynchronizerService {
 
 		this.adoptedDevices = adoptedDevices;
 		this.propertiesByDeviceCapability = propertiesByDeviceCapability;
+		this.lastPersistedValueTimestamp = persistedValueTimestamps;
 		this.indexDirty = this.indexGeneration !== generation;
 	}
 
@@ -483,6 +514,7 @@ export class HomeySynchronizerService {
 		}
 
 		const order = this.createOrder(sequence, updatedAt);
+		const receivedTimestamp = Date.now();
 		let allBindingsApplied = true;
 
 		for (const binding of bindings) {
@@ -513,12 +545,24 @@ export class HomeySynchronizerService {
 
 			try {
 				const transformed = this.transformer.read(binding.mapping, value);
-				await this.channelsPropertiesService.update(binding.property.id, {
+				const updateDto = {
 					type: DEVICES_HOMEY_TYPE,
 					value: transformed,
+				};
+				let valueTimestamp: Date | undefined;
+				await this.channelsPropertiesService.update(binding.property.id, updateDto, {
+					resolveValueTimestamp: () => {
+						valueTimestamp = this.createValueTimestamp(binding.property.id, receivedTimestamp);
+
+						return valueTimestamp;
+					},
 				});
+				if (valueTimestamp === undefined) {
+					throw new Error('Homey value timestamp was not resolved before persistence');
+				}
 				this.lastAppliedOrder.set(binding.property.id, this.preserveSequenceWatermark(observedOrder, previousOrder));
 				this.lastAppliedValues.set(binding.property.id, value);
+				this.lastPersistedValueTimestamp.set(binding.property.id, valueTimestamp.getTime());
 				result.updated += 1;
 			} catch {
 				result.failed += 1;
@@ -749,6 +793,14 @@ export class HomeySynchronizerService {
 			timestamp: this.parseTimestamp(updatedAt),
 			arrival: ++this.arrivalOrder,
 		};
+	}
+
+	private createValueTimestamp(propertyId: string, receivedTimestamp: number): Date {
+		const previousTimestamp = this.lastPersistedValueTimestamp.get(propertyId);
+		const effectiveTimestamp =
+			previousTimestamp === undefined ? receivedTimestamp : Math.max(receivedTimestamp, previousTimestamp + 1);
+
+		return new Date(effectiveTimestamp);
 	}
 
 	private prepareDeviceEvent(

@@ -84,6 +84,27 @@ describe('PropertyValueService', () => {
 			]);
 		});
 
+		it('preserves a provider measurement timestamp in storage and cache', async () => {
+			const property = {
+				id: 'timestamped-property-id',
+				dataType: DataTypeType.INT,
+				invalid: null,
+				format: null,
+				step: null,
+			} as ChannelPropertyEntity;
+			const measuredAt = new Date('2026-08-24T10:01:02.345Z');
+
+			await expect(service.write(property, 42, measuredAt)).resolves.toBe(true);
+
+			expect(storageService.writePoints).toHaveBeenCalledWith([expect.objectContaining({ timestamp: measuredAt })]);
+			expect(await service.readLatest(property)).toEqual(
+				expect.objectContaining({
+					value: 42,
+					lastUpdated: measuredAt.toISOString(),
+				}),
+			);
+		});
+
 		it('does not cache a strict value until storage persists it', async () => {
 			const property = {
 				id: 'strict-property-id',

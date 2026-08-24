@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { PermissionType } from '../../../modules/devices/devices.constants';
+import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { validatePropertyCommandValue } from '../../../modules/devices/utils/property-command-value.utils';
 import {
@@ -47,6 +48,22 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 
 	getCommandTimeoutMs(commandCount: number): number {
 		return Math.max(0, commandCount) * HOMEY_COMMAND_MAX_DURATION_MS;
+	}
+
+	usesAuthoritativePropertyReadback(property: ChannelPropertyEntity): boolean {
+		if (
+			!(property instanceof HomeyChannelPropertyEntity) ||
+			typeof property.homeyCapabilityId !== 'string' ||
+			typeof property.homeyMappingName !== 'string'
+		) {
+			return false;
+		}
+
+		const mapping = this.mappingLoader
+			.getPropertyMappings()
+			.find((candidate) => candidate.name === property.homeyMappingName);
+
+		return mapping !== undefined && mapping.property.direction !== 'write_only';
 	}
 
 	process(update: HomeyDevicePropertyData): Promise<boolean> {

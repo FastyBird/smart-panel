@@ -29,6 +29,8 @@ void main() {
     late MockDevicesService mockDevicesService;
     late LightChannelView lightChannel;
     late LightChannelController controller;
+    late Map<String, DeviceControlState> propertyStates;
+    DeviceControlState? groupState;
 
     const deviceId = 'device-123';
     const channelId = 'channel-456';
@@ -45,6 +47,52 @@ void main() {
     setUp(() {
       mockControlState = MockDeviceControlStateService();
       mockDevicesService = MockDevicesService();
+      propertyStates = {};
+      groupState = null;
+
+      when(
+        () => mockControlState.setPending(
+          any(),
+          any(),
+          any(),
+          any(),
+          silent: any(named: 'silent'),
+        ),
+      ).thenAnswer((invocation) {
+        final propertyId = invocation.positionalArguments[2] as String;
+        propertyStates[propertyId] = DeviceControlState(
+          createdAt: DateTime.now(),
+        ).toPending([
+          PropertyConfig(
+            channelId: invocation.positionalArguments[1] as String,
+            propertyId: propertyId,
+            desiredValue: invocation.positionalArguments[3],
+          ),
+        ]);
+      });
+      when(
+        () => mockControlState.getState(any(), any(), any()),
+      ).thenAnswer(
+        (invocation) =>
+            propertyStates[invocation.positionalArguments[2] as String],
+      );
+      when(
+        () => mockControlState.setGroupPending(
+          any(),
+          any(),
+          any(),
+          silent: any(named: 'silent'),
+        ),
+      ).thenAnswer((invocation) {
+        groupState = DeviceControlState(
+          createdAt: DateTime.now(),
+        ).toPending(
+          invocation.positionalArguments[2] as List<PropertyConfig>,
+        );
+      });
+      when(
+        () => mockControlState.getGroupState(any(), any()),
+      ).thenAnswer((_) => groupState);
 
       // Create test channel with RGB properties
       lightChannel = LightChannelView(
@@ -239,12 +287,6 @@ void main() {
     group('commands', () {
       test('setPower calls setPending and then setSettling after API call',
           () async {
-        when(() => mockControlState.setPending(
-              deviceId,
-              channelId,
-              onPropId,
-              false,
-            )).thenReturn(null);
         when(() => mockDevicesService.setPropertyValue(onPropId, false))
             .thenAnswer((_) async => true);
         when(() => mockControlState.setSettling(
@@ -277,12 +319,6 @@ void main() {
       test('togglePower toggles current power state', () {
         when(() => mockControlState.isLocked(deviceId, channelId, onPropId))
             .thenReturn(false);
-        when(() => mockControlState.setPending(
-              deviceId,
-              channelId,
-              onPropId,
-              false, // Toggle from true to false
-            )).thenReturn(null);
         when(() => mockDevicesService.setPropertyValue(onPropId, false))
             .thenAnswer((_) async => true);
         when(() => mockControlState.setSettling(
@@ -302,12 +338,6 @@ void main() {
       });
 
       test('setBrightness calls setPending and then setSettling', () async {
-        when(() => mockControlState.setPending(
-              deviceId,
-              channelId,
-              brightnessPropId,
-              50,
-            )).thenReturn(null);
         when(() => mockDevicesService.setPropertyValue(brightnessPropId, 50))
             .thenAnswer((_) async => true);
         when(() => mockControlState.setSettling(
@@ -338,11 +368,6 @@ void main() {
 
       test('setColorRGB calls setGroupPending and then setGroupSettling',
           () async {
-        when(() => mockControlState.setGroupPending(
-              deviceId,
-              LightChannelController.colorGroupId,
-              any(),
-            )).thenReturn(null);
         when(() => mockDevicesService.setPropertyValue(colorRedPropId, 100))
             .thenAnswer((_) async => true);
         when(() => mockDevicesService.setPropertyValue(colorGreenPropId, 150))
@@ -377,11 +402,6 @@ void main() {
       });
 
       test('setColor with RGB light calls setColorRGB', () async {
-        when(() => mockControlState.setGroupPending(
-              deviceId,
-              LightChannelController.colorGroupId,
-              any(),
-            )).thenReturn(null);
         when(() => mockDevicesService.setPropertyValue(colorRedPropId, 128))
             .thenAnswer((_) async => true);
         when(() => mockDevicesService.setPropertyValue(colorGreenPropId, 64))
@@ -430,12 +450,6 @@ void main() {
           },
         );
 
-        when(() => mockControlState.setPending(
-              deviceId,
-              channelId,
-              onPropId,
-              false,
-            )).thenReturn(null);
         when(() => mockDevicesService.setPropertyValue(onPropId, false))
             .thenAnswer((_) async => false);
         when(() => mockControlState.clear(
@@ -472,12 +486,6 @@ void main() {
           },
         );
 
-        when(() => mockControlState.setPending(
-              deviceId,
-              channelId,
-              brightnessPropId,
-              50,
-            )).thenReturn(null);
         when(() => mockDevicesService.setPropertyValue(brightnessPropId, 50))
             .thenAnswer((_) async => false);
         when(() => mockControlState.clear(
@@ -514,11 +522,6 @@ void main() {
           },
         );
 
-        when(() => mockControlState.setGroupPending(
-              deviceId,
-              LightChannelController.colorGroupId,
-              any(),
-            )).thenReturn(null);
         when(() => mockDevicesService.setPropertyValue(colorRedPropId, 100))
             .thenAnswer((_) async => false);
         when(() => mockDevicesService.setPropertyValue(colorGreenPropId, 150))
@@ -557,12 +560,6 @@ void main() {
           },
         );
 
-        when(() => mockControlState.setPending(
-              deviceId,
-              channelId,
-              onPropId,
-              false,
-            )).thenReturn(null);
         when(() => mockDevicesService.setPropertyValue(onPropId, false))
             .thenAnswer((_) => Future.error(Exception('Network error')));
         when(() => mockControlState.clear(

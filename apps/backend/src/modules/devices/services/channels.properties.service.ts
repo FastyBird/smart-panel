@@ -110,6 +110,8 @@ export interface ChannelPropertyUpdateOptions {
 	comparePersistedValue?: boolean;
 	expectedPersistedState?: PropertyValueState | null;
 	beforeValuePersistence?: () => Promise<void>;
+	valueTimestamp?: Date;
+	resolveValueTimestamp?: () => Date;
 }
 
 @Injectable()
@@ -843,22 +845,22 @@ export class ChannelsPropertiesService {
 
 			// Track if value actually changed
 			//
-			// Deliberately not mirroring create()'s refusal above for a projected property. Here the value
-			// has a second, legitimate meaning: both property controllers dispatch it to the device's own
-			// platform right after this returns, and for a virtual device that platform forwards it to the
-			// source's — so the request is coherent and rejecting it would remove the only way to command a
-			// virtual device over REST. It is only the optimistic local echo into the source's series that is
-			// not coherent, and PropertyValueService.write() drops exactly that, leaving the source's own
-			// report to record what the hardware actually did.
+			// Deliberately not mirroring create()'s refusal above for a projected property. Service-level
+			// updates can carry provider measurements, while the REST controllers remove command values and
+			// dispatch them through PropertyCommandService instead. A projected property still owns no series,
+			// so PropertyValueService.write() drops any value here and leaves the source's own report to record
+			// what the hardware actually did.
 			let valueChanged = false;
 			let persistedValueState: PropertyValueState | null = null;
 			if (typeof updateDto.value !== 'undefined') {
+				const valueTimestamp = options.resolveValueTimestamp?.() ?? options.valueTimestamp;
 				if (options.strictValuePersistence && options.comparePersistedValue) {
 					const result = await this.propertyValueService.writeStrictIfPersistedDifferent(
 						raw,
 						updateDto.value,
 						options.expectedPersistedState ?? null,
 						options.beforeValuePersistence,
+						valueTimestamp,
 					);
 					valueChanged = result.changed;
 					persistedValueState = result.state;
@@ -868,11 +870,12 @@ export class ChannelsPropertiesService {
 						raw,
 						updateDto.value,
 						options.storageBinding,
+						valueTimestamp,
 					);
 					valueChanged = result.changed;
 					persistedValueState = result.state;
 				} else {
-					valueChanged = await this.propertyValueService.write(raw, updateDto.value);
+					valueChanged = await this.propertyValueService.write(raw, updateDto.value, valueTimestamp);
 				}
 			}
 			const strictValueEventEmitted = options.strictValuePersistence === true && valueChanged;

@@ -132,22 +132,22 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 ### Admin
 
 - [ ] The Homey plugin configuration form supports local URL, write-only API key, test connection, and health display.
-- [ ] The form never repopulates or displays a stored API key.
+- [x] The form never repopulates or displays a stored API key.
 - [ ] The form distinguishes testing the fully saved configuration from testing a complete candidate URL/new-key pair and never submits an endpoint override without a new key.
-- [ ] A `deviceWizardAdapter` integrates Homey with the shared three-step adoption wizard.
-- [ ] Discovery rows show name, identifier, class/model, zone, availability, capability count, and adoption/support status.
+- [x] A `deviceWizardAdapter` integrates Homey with the shared three-step adoption wizard.
+- [x] Discovery rows show name, identifier, class/model, zone, availability, capability count, and adoption/support status.
 - [ ] Confirm rows provide sensible names/categories and a read-only mapping summary.
-- [ ] Batch results show created, updated, skipped, and failed outcomes with sanitized errors.
-- [ ] Stores/composables handle offline, empty, mixed-support, partial-success, and reconnect states.
-- [ ] All required locale files and locale schema tests are updated.
+- [x] Batch results show created, updated, skipped, and failed outcomes with sanitized errors.
+- [x] Stores/composables handle offline, empty, mixed-support, partial-success, and reconnect states.
+- [x] All required locale files and locale schema tests are updated.
 
 ### Panel
 
-- [ ] Adopted Homey devices load through the normal Devices API without Homey credentials.
-- [ ] Real-time property changes use the existing Smart Panel WebSocket/state path.
-- [ ] Representative lighting, sensor, thermostat, cover, lock, and energy devices render in existing detail widgets.
-- [ ] Supported commands follow existing panel optimistic/confirmation behavior.
-- [ ] `melos rebuild-all` and `melos analyze` succeed after generated API/spec changes.
+- [x] Adopted Homey devices load through the normal Devices API without Homey credentials.
+- [x] Real-time property changes use the existing Smart Panel WebSocket/state path.
+- [x] Representative lighting, sensor, thermostat, cover, lock, and energy devices render in existing detail widgets.
+- [x] Supported commands follow existing panel optimistic/confirmation behavior.
+- [x] `melos rebuild-all` and `melos analyze` succeed after generated API/spec changes.
 
 ### Tests and quality
 

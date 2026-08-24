@@ -121,6 +121,48 @@ void main() {
           'test-value',
         );
       });
+
+      test('preserves command generation through settling and mixed states', () {
+        fakeAsync((async) {
+          service.setPending('device-1', 'channel-1', 'property-1', 10);
+          final pendingGeneration = service
+              .getState('device-1', 'channel-1', 'property-1')!
+              .generation;
+
+          service.setSettling('device-1', 'channel-1', 'property-1');
+          expect(
+            identical(
+              service
+                  .getState('device-1', 'channel-1', 'property-1')!
+                  .generation,
+              pendingGeneration,
+            ),
+            isTrue,
+          );
+
+          async.elapse(const Duration(milliseconds: 900));
+          expect(
+            identical(
+              service
+                  .getState('device-1', 'channel-1', 'property-1')!
+                  .generation,
+              pendingGeneration,
+            ),
+            isTrue,
+          );
+
+          service.setPending('device-1', 'channel-1', 'property-1', 20);
+          expect(
+            identical(
+              service
+                  .getState('device-1', 'channel-1', 'property-1')!
+                  .generation,
+              pendingGeneration,
+            ),
+            isFalse,
+          );
+        });
+      });
     });
 
     group('timer expiration', () {

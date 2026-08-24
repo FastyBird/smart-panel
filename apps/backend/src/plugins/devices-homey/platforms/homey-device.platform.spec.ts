@@ -228,6 +228,35 @@ describe('HomeyDevicePlatform', () => {
 		expect(platform.getCommandTimeoutMs(2)).toBe(HOMEY_COMMAND_MAX_DURATION_MS * 2);
 	});
 
+	it('reports authoritative readback from the current resolved property mapping', () => {
+		const readableMapping = mapping(commandCases[0]);
+		const writeOnlyMapping = mapping(commandCases.find((command) => command.label === 'cover command'));
+		const platform = new HomeyDevicePlatform(
+			{} as HomeyService,
+			{
+				getPropertyMappings: () => [readableMapping, writeOnlyMapping],
+			} as unknown as HomeyMappingLoaderService,
+			{} as HomeyMappingTransformerService,
+		);
+		const property = Object.assign(new HomeyChannelPropertyEntity(), {
+			homeyCapabilityId: 'capability.main',
+			homeyMappingName: readableMapping.name,
+			permissions: [PermissionType.WRITE_ONLY],
+		});
+
+		expect(platform.usesAuthoritativePropertyReadback(property)).toBe(true);
+
+		property.homeyMappingName = writeOnlyMapping.name;
+		property.permissions = [PermissionType.READ_WRITE];
+		expect(platform.usesAuthoritativePropertyReadback(property)).toBe(false);
+
+		property.homeyMappingName = 'removed-mapping';
+		expect(platform.usesAuthoritativePropertyReadback(property)).toBe(false);
+
+		property.homeyCapabilityId = null;
+		expect(platform.usesAuthoritativePropertyReadback(property)).toBe(false);
+	});
+
 	it.each(commandCases)('transforms and sends a validated $label command', async (command) => {
 		const resolvedMapping = mapping(command);
 		const upstream = deviceWithCapability(command);

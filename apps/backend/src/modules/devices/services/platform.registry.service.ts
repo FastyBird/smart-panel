@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { INTENT_CLEANUP_INTERVAL } from '../../intents/intents.constants';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
-import { DeviceEntity } from '../entities/devices.entity';
+import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { IDevicePlatform } from '../platforms/device.platform';
 
 export interface DevicePlatformCommandBudget {
@@ -61,6 +61,10 @@ export class PlatformRegistryService {
 		}
 
 		return hasCustomTimeout ? completionWindowMs + defaultTtlMs + INTENT_CLEANUP_INTERVAL : defaultTtlMs;
+	}
+
+	usesAuthoritativePropertyReadback(device: DeviceEntity, property: ChannelPropertyEntity): boolean {
+		return this.get(device)?.usesAuthoritativePropertyReadback?.(property) ?? false;
 	}
 
 	list(): string[] {

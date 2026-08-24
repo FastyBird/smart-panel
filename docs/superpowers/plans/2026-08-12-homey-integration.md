@@ -509,32 +509,47 @@ remains scoped to Task 5.3. All six supported admin locales carry the same non-e
 ### Task 5.2: Implement secret-safe configuration UI
 
 - [ ] Add mode selection with local mode active and cloud mode marked unavailable until Phase 7.
-- [ ] Add URL, API-key replacement input, explicit clear action, bounded timeout/interval inputs, and enabled state.
-- [ ] Show only whether an API key is configured; never populate the key field from GET data.
-- [ ] Preserve the stored key when the field is untouched.
+- [x] Add URL, API-key replacement input, explicit clear action, bounded timeout/interval inputs, and enabled state.
+- [x] Show only whether an API key is configured; never populate the key field from GET data.
+- [x] Preserve the stored key when the field is untouched.
 - [ ] Add separate test actions/payloads for the fully saved configuration and a complete candidate URL/newly entered key pair; disable candidate testing until both fields are present.
 - [ ] Display connector state, Homey identity/version, last sync/event, and sanitized error guidance.
 - [ ] Unit-test initial state, preserve/replace/clear payloads, saved-vs-candidate test payloads, candidate URL without a new key, validation, working state, successful test, and categorized failures.
+
+The current Homey configuration form covers enabled state, endpoint, bounded timing fields, and write-only API-key
+replacement while preserving an untouched stored key. The status/test stores and schemas are registered, but the mode
+selector, saved-versus-candidate test actions, connector health presentation, and their component coverage remain to be
+implemented before this task can close.
 
 ### Task 5.3: Implement the generic wizard adapter
 
 **Reference:** `apps/admin/src/modules/devices/components/wizard/device-wizard.types.ts` and current Shelly/Z2M factories.
 
-- [ ] Start/load Homey inventory and expose normalized wizard rows.
-- [ ] Map name, model/class, zone, capability count, availability, and support/adoption status into built-in/extra cells.
-- [ ] Provide stable device ID keys, suggested name/category, and category options.
-- [ ] Fetch or derive read-only mapping summaries for confirmation.
-- [ ] Submit batch adoption and translate per-device results.
-- [ ] Clean up polling/subscriptions on wizard disposal.
-- [ ] Handle offline, empty, loading, reconnect, unsupported, already adopted, and partial-success states.
-- [ ] Add adapter/store/component tests using generated API mocks.
+- [x] Start/load Homey inventory and expose normalized wizard rows.
+- [x] Map name, model/class, zone, capability count, availability, and support/adoption status into built-in/extra cells.
+- [x] Provide stable device ID keys, suggested name/category, and category options.
+- [ ] Expose fetched read-only mapping summaries on confirmation rows.
+- [x] Submit batch adoption and translate per-device results.
+- [x] Clean up polling/subscriptions on wizard disposal.
+- [x] Handle offline, empty, loading, reconnect, unsupported, already adopted, and partial-success states.
+- [x] Add adapter/store/component tests using generated API mocks.
+
+The shared wizard adapter loads inventory before rendering selection rows, preserves full Homey identifiers, derives
+category choices, and submits bounded batch adoption with per-device outcomes. It fetches mapping previews for
+readiness and suggested category, but does not yet expose the channel/property summary on confirmation rows. Inventory,
+preview, refresh, and adoption requests remain isolated from stale or disposed sessions; partial transport and provider
+results remain visible instead of discarding successful work.
 
 ### Task 5.4: Generate OpenAPI clients and verify the admin app
 
-- [ ] Run `pnpm run generate:openapi` after Swagger models/controllers stabilize.
-- [ ] Update manually maintained `apps/admin/src/openapi.constants.ts` exports only if needed.
-- [ ] Fix admin compile/test issues against generated types without editing `apps/admin/src/openapi.ts`.
-- [ ] Run admin unit tests, build, and JS lint/type checks.
+- [x] Run `pnpm run generate:openapi` after Swagger models/controllers stabilize.
+- [x] Update manually maintained `apps/admin/src/openapi.constants.ts` exports only if needed.
+- [x] Fix admin compile/test issues against generated types without editing `apps/admin/src/openapi.ts`.
+- [x] Run admin unit tests, build, and JS lint/type checks.
+
+The backend-generated OpenAPI contract includes Homey config, status, inventory, preview, adoption, and provider entity
+models. The admin constants expose only the required generated types and enums. The complete 2,224-test admin suite,
+type-check, lint, and CI web build pass without manual edits to generated sources.
 
 **Verification:**
 
@@ -547,12 +562,19 @@ pnpm run lint:js
 
 ### Task 5.5: Integrate and verify the panel
 
-- [ ] Determine whether the new backend entity discriminator needs plugin-specific Dart model mappers.
-- [ ] If required, add minimal mappers/registration under `apps/panel/lib/plugins/devices-homey/` following current provider patterns.
-- [ ] Do not add a Homey HTTP/Socket.IO client or credentials to Flutter.
-- [ ] Regenerate API/spec clients with `melos rebuild-all` after backend generation.
-- [ ] Add/extend tests for representative Homey-backed lighting, sensor, thermostat, cover, lock, and energy device rendering/control.
-- [ ] Run `melos analyze` and relevant Flutter tests.
+- [x] Determine whether the new backend entity discriminator needs plugin-specific Dart model mappers.
+- [x] If required, add minimal mappers/registration under `apps/panel/lib/plugins/devices-homey/` following current provider patterns.
+- [x] Do not add a Homey HTTP/Socket.IO client or credentials to Flutter.
+- [x] Regenerate API/spec clients with `melos rebuild-all` after backend generation.
+- [x] Add/extend tests for representative Homey-backed lighting, sensor, thermostat, cover, lock, and energy device rendering/control.
+- [x] Run `melos analyze` and relevant Flutter tests.
+
+No Homey-specific Dart model mapper is required. The panel's generic provider models preserve the `devices-homey`
+discriminator and unconsumed provider metadata while the existing category mappers construct the standard lighting,
+sensor, thermostat, window-covering, lock, and energy views. A focused pipeline suite proves normal API model loading,
+detail-widget selection, authoritative property replacement, and credential-free WebSocket command dispatch. Flutter
+contains no Homey endpoint, API key, or transport client. Regenerated clients/specs and analysis pass; the full panel
+suite completes with 1,032 passing tests and five existing locator-dependent skips.
 
 ---
 
