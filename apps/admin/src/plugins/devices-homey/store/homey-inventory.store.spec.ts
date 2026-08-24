@@ -7,13 +7,14 @@ import { MAX_HOMEY_ADOPTION_BATCH_SIZE } from '../devices-homey.constants';
 import { useHomeyInventory } from './homey-inventory.store';
 
 const post = vi.fn();
+const get = vi.fn();
 
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
 
 	return {
 		...actual,
-		useBackend: () => ({ client: { POST: post } }),
+		useBackend: () => ({ client: { GET: get, POST: post } }),
 		getErrorReason: () => 'Homey adoption failed',
 	};
 });
@@ -74,5 +75,30 @@ describe('Homey inventory store batch adoption', () => {
 			selections.slice(0, MAX_HOMEY_ADOPTION_BATCH_SIZE).map(({ deviceId }) => deviceId)
 		);
 		expect(store.adopting).toBe(false);
+	});
+
+	it('invalidates mapping previews when refreshed inventory replaces the cache', async () => {
+		get.mockResolvedValue({ data: { data: [] }, response: { status: 200 } });
+		const store = useHomeyInventory();
+		store.previews['homey-light'] = {
+			suggestedCategory: null,
+			selectedCategory: null,
+			validCategories: [],
+			channels: [],
+			unsupportedCapabilityIds: [],
+			warnings: [],
+			readyToAdopt: false,
+			device: {
+				id: 'homey-light',
+				name: 'Desk light',
+				class: 'light',
+				zonePath: [],
+				available: true,
+			},
+		};
+
+		await store.fetch();
+
+		expect(store.previews).toEqual({});
 	});
 });

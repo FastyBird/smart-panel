@@ -54,6 +54,7 @@ export const useHomeyInventory = defineStore('devices_homey_plugin-inventory', (
 			if (responseData) {
 				const devices = responseData.data.map(transformHomeyInventoryDevice);
 				data.value = Object.fromEntries(devices.map((device) => [device.id, device]));
+				previews.value = {};
 				firstLoad.value = true;
 
 				return devices;

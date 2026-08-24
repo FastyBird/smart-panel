@@ -104,6 +104,7 @@ describe('Homey useDevicesWizard', () => {
 		expect(inventory.adoptBatch).toHaveBeenCalledWith([
 			{ deviceId: 'homey-light', name: 'Custom desk lamp', deviceCategory: DevicesModuleDeviceCategory.generic },
 		]);
+		expect(inventory.preview).toHaveBeenCalledWith('homey-light');
 	});
 
 	it('falls back to the current mapping category when a saved category is stale', async () => {
@@ -117,6 +118,10 @@ describe('Homey useDevicesWizard', () => {
 				validCategories: [DevicesModuleDeviceCategory.lighting],
 			},
 		};
+		inventory.preview.mockResolvedValue({
+			suggestedCategory: DevicesModuleDeviceCategory.lighting,
+			validCategories: [DevicesModuleDeviceCategory.lighting],
+		});
 		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-light', status: 'updated' }]);
 
 		const adapter = useDevicesWizard();
@@ -133,6 +138,16 @@ describe('Homey useDevicesWizard', () => {
 		await adapter.adopt([{ key: row.key, name: row.suggestedName, category: DevicesModuleDeviceCategory.generic }]);
 
 		expect(inventory.adoptBatch).toHaveBeenCalledWith([{ deviceId: 'homey-light', name: 'Custom desk lamp' }]);
+	});
+
+	it('loads panel-device metadata before publishing the Homey inventory', async () => {
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		expect(devicesStore.fetch).toHaveBeenCalledOnce();
+		expect(inventory.fetch).toHaveBeenCalledOnce();
+		expect(devicesStore.fetch.mock.invocationCallOrder[0]).toBeLessThan(inventory.fetch.mock.invocationCallOrder[0]!);
 	});
 
 	it('omits metadata overrides when the adopted panel device is not loaded', async () => {

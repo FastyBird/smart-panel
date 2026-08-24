@@ -116,7 +116,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	async function load(): Promise<void> {
 		error.value = null;
 		try {
-			const [, inventoryDevices] = await Promise.all([devicesStore.fetch(), inventory.fetch()]);
+			await devicesStore.fetch();
+			const inventoryDevices = await inventory.fetch();
 			await Promise.all(
 				inventoryDevices
 					.filter((device) => {
@@ -149,7 +150,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 						return { deviceId: item.key };
 					}
 
-					const preview = inventoryDevice?.adopted ? (inventory.previews[item.key] ?? (await inventory.preview(item.key))) : null;
+					const preview = inventoryDevice?.adopted ? await inventory.preview(item.key) : null;
 					const deviceCategory = preview?.validCategories.includes(item.category) === false ? undefined : item.category;
 
 					return {
