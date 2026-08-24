@@ -204,16 +204,25 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         for (final property in channel.properties)
           '${channel.id}:${property.id}': property.value?.value,
     };
+    final oldLastUpdated = <String, DateTime?>{
+      for (final channel in oldDevice.lightChannels)
+        for (final property in channel.properties)
+          '${channel.id}:${property.id}': property.lastUpdated,
+    };
     final newValues = <String, dynamic>{};
+    final newLastUpdated = <String, DateTime?>{};
     final changedProperties = <String>{};
 
     for (final channel in newDevice.lightChannels) {
       for (final property in channel.properties) {
         final propertyKey = '${channel.id}:${property.id}';
         final actualValue = property.value?.value;
+        final actualLastUpdated = property.lastUpdated;
         newValues[propertyKey] = actualValue;
+        newLastUpdated[propertyKey] = actualLastUpdated;
         if (oldValues.containsKey(propertyKey) &&
-            oldValues[propertyKey] == actualValue) {
+            oldValues[propertyKey] == actualValue &&
+            oldLastUpdated[propertyKey] == actualLastUpdated) {
           continue;
         }
 
@@ -224,6 +233,13 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           channel.id,
           property.id,
         );
+        if (propertyState != null &&
+            actualLastUpdated != null &&
+            actualLastUpdated.isBefore(propertyState.createdAt)) {
+          // A delayed event from an earlier command must not confirm or
+          // override the currently active optimistic generation.
+          continue;
+        }
         if (propertyState?.isPending ?? false) {
           // Homey synchronizes the authoritative capability event before the
           // command acknowledgment resolves. A changed value is authoritative
@@ -260,7 +276,11 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     if (colorState.isPending || colorState.isSettling || colorState.isMixed) {
       for (final property in colorState.properties) {
         final propertyKey = '${property.channelId}:${property.propertyId}';
-        if (changedProperties.contains(propertyKey)) {
+        final lastUpdated = newLastUpdated[propertyKey];
+        final belongsToActiveCommand = lastUpdated == null ||
+            !lastUpdated.isBefore(colorState.createdAt);
+        if (changedProperties.contains(propertyKey) &&
+            belongsToActiveCommand) {
           _authoritativeColorUpdates.add(propertyKey);
         }
       }

@@ -123,6 +123,7 @@ Map<String, dynamic> _propertyJson({
   String mappingName = 'fixture-mapping',
   String? unit,
   List<dynamic>? format,
+  String lastUpdated = '2026-08-24T10:00:00.000Z',
 }) => {
   'id': id,
   'type': homeyType,
@@ -136,7 +137,7 @@ Map<String, dynamic> _propertyJson({
   'invalid': null,
   'step': null,
   'default_value': null,
-  'value': {'value': value, 'last_updated': '2026-08-24T10:00:00.000Z'},
+  'value': {'value': value, 'last_updated': lastUpdated},
   'homey_capability_id': capabilityId,
   'homey_mapping_name': mappingName,
   'created_at': '2026-08-24T10:00:00.000Z',
@@ -183,6 +184,7 @@ ChannelPropertyView _buildProperty({
   List<String> permissions = const ['ro'],
   List<dynamic>? format,
   String? unit,
+  DateTime? lastUpdated,
 }) => buildChannelPropertyView(
   buildChannelPropertyModel(
     homeyType,
@@ -197,6 +199,8 @@ ChannelPropertyView _buildProperty({
       mappingName: 'fixture-$category',
       format: format,
       unit: unit,
+      lastUpdated: lastUpdated?.toUtc().toIso8601String() ??
+          '2026-08-24T10:00:00.000Z',
     ),
   ),
 );
@@ -245,7 +249,9 @@ ChannelView _buildDeviceInformationChannel() =>
 List<ChannelView> _representativeChannels(
   String category, {
   bool? lightOn = true,
+  DateTime? lightOnLastUpdated,
   List<int>? lightRgb,
+  List<DateTime?>? lightRgbLastUpdated,
 }) {
   final deviceInformation = _buildDeviceInformationChannel();
 
@@ -261,6 +267,7 @@ List<ChannelView> _representativeChannels(
             dataType: 'bool',
             value: lightOn,
             permissions: const ['rw'],
+            lastUpdated: lightOnLastUpdated,
           ),
           if (lightRgb != null) ...[
             _buildProperty(
@@ -271,6 +278,7 @@ List<ChannelView> _representativeChannels(
               value: lightRgb[0],
               permissions: const ['rw'],
               format: const [0, 255],
+              lastUpdated: lightRgbLastUpdated?[0],
             ),
             _buildProperty(
               id: greenPropertyId,
@@ -280,6 +288,7 @@ List<ChannelView> _representativeChannels(
               value: lightRgb[1],
               permissions: const ['rw'],
               format: const [0, 255],
+              lastUpdated: lightRgbLastUpdated?[1],
             ),
             _buildProperty(
               id: bluePropertyId,
@@ -289,6 +298,7 @@ List<ChannelView> _representativeChannels(
               value: lightRgb[2],
               permissions: const ['rw'],
               format: const [0, 255],
+              lastUpdated: lightRgbLastUpdated?[2],
             ),
           ],
         ]),
@@ -412,12 +422,16 @@ List<ChannelView> _representativeChannels(
 DeviceView _buildRepresentativeDevice(
   String category, {
   bool? lightOn = true,
+  DateTime? lightOnLastUpdated,
   List<int>? lightRgb,
+  List<DateTime?>? lightRgbLastUpdated,
 }) {
   final channels = _representativeChannels(
     category,
     lightOn: lightOn,
+    lightOnLastUpdated: lightOnLastUpdated,
     lightRgb: lightRgb,
+    lightRgbLastUpdated: lightRgbLastUpdated,
   );
   final model = buildDeviceModel(
     homeyType,
@@ -800,6 +814,9 @@ void main() {
         expect(pending?.isPending, isTrue);
         expect(pending?.desiredValue, isTrue);
         expect(controller.isOn, isTrue);
+        final authoritativeEventAt = pending!.createdAt.add(
+          const Duration(milliseconds: 1),
+        );
 
         final sent = await tester.runAsync(
           () => propertiesRepository.setValue(propertyId, true),
@@ -866,9 +883,11 @@ void main() {
         expect(authoritativeValue, isTrue);
 
         updateHost(() {
-          renderedDevice =
-              _buildRepresentativeDevice('lighting', lightOn: true)
-                  as LightingDeviceView;
+          renderedDevice = _buildRepresentativeDevice(
+            'lighting',
+            lightOn: true,
+            lightOnLastUpdated: authoritativeEventAt,
+          ) as LightingDeviceView;
         });
         await tester.pump();
 
@@ -920,11 +939,17 @@ void main() {
       );
 
       controlState.setPending(deviceId, lightChannelId, propertyId, true);
+      final authoritativeEventAt = controlState
+          .getState(deviceId, lightChannelId, propertyId)!
+          .createdAt
+          .add(const Duration(milliseconds: 1));
 
       updateHost(() {
-        renderedDevice =
-            _buildRepresentativeDevice('lighting', lightOn: null)
-                as LightingDeviceView;
+        renderedDevice = _buildRepresentativeDevice(
+          'lighting',
+          lightOn: null,
+          lightOnLastUpdated: authoritativeEventAt,
+        ) as LightingDeviceView;
       });
       await tester.pump();
 
@@ -989,11 +1014,23 @@ void main() {
         deviceId,
         LightChannelController.colorGroupId,
       );
+      final colorState = controlState.getGroupState(
+        deviceId,
+        LightChannelController.colorGroupId,
+      )!;
+      final firstEventAt = colorState.createdAt.add(
+        const Duration(milliseconds: 1),
+      );
+      final secondEventAt = colorState.createdAt.add(
+        const Duration(milliseconds: 2),
+      );
 
       updateHost(() {
-        renderedDevice =
-            _buildRepresentativeDevice('lighting', lightRgb: const [10, 0, 0])
-                as LightingDeviceView;
+        renderedDevice = _buildRepresentativeDevice(
+          'lighting',
+          lightRgb: const [10, 0, 0],
+          lightRgbLastUpdated: [firstEventAt, null, null],
+        ) as LightingDeviceView;
       });
       await tester.pump();
 
@@ -1006,9 +1043,129 @@ void main() {
       );
 
       updateHost(() {
-        renderedDevice =
-            _buildRepresentativeDevice('lighting', lightRgb: const [10, 20, 25])
-                as LightingDeviceView;
+        renderedDevice = _buildRepresentativeDevice(
+          'lighting',
+          lightRgb: const [10, 20, 25],
+          lightRgbLastUpdated: [firstEventAt, secondEventAt, secondEventAt],
+        ) as LightingDeviceView;
+      });
+      await tester.pump();
+
+      expect(
+        controlState.getGroupState(
+          deviceId,
+          LightChannelController.colorGroupId,
+        ),
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('ignores late color events from the previous command', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final controlState = locator<DeviceControlStateService>();
+      controlState.clearForDevice(deviceId);
+      addTearDown(() => controlState.clearForDevice(deviceId));
+
+      var renderedDevice =
+          _buildRepresentativeDevice('lighting', lightRgb: const [0, 0, 0])
+              as LightingDeviceView;
+      late StateSetter updateHost;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              updateHost = setState;
+              return LightingDeviceDetail(device: renderedDevice);
+            },
+          ),
+        ),
+      );
+
+      controlState.setGroupPending(
+        deviceId,
+        LightChannelController.colorGroupId,
+        const [
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: redPropertyId,
+            desiredValue: 10,
+          ),
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: greenPropertyId,
+            desiredValue: 20,
+          ),
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: bluePropertyId,
+            desiredValue: 30,
+          ),
+        ],
+      );
+      controlState.setGroupPending(
+        deviceId,
+        LightChannelController.colorGroupId,
+        const [
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: redPropertyId,
+            desiredValue: 40,
+          ),
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: greenPropertyId,
+            desiredValue: 50,
+          ),
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: bluePropertyId,
+            desiredValue: 60,
+          ),
+        ],
+      );
+      final activeState = controlState.getGroupState(
+        deviceId,
+        LightChannelController.colorGroupId,
+      )!;
+      final previousCommandEventAt = activeState.createdAt.subtract(
+        const Duration(milliseconds: 1),
+      );
+
+      updateHost(() {
+        renderedDevice = _buildRepresentativeDevice(
+          'lighting',
+          lightRgb: const [10, 20, 30],
+          lightRgbLastUpdated: List.filled(3, previousCommandEventAt),
+        ) as LightingDeviceView;
+      });
+      await tester.pump();
+
+      expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isPending,
+        isTrue,
+        reason: 'events predating the active generation belong to its predecessor',
+      );
+
+      final activeCommandEventAt = activeState.createdAt.add(
+        const Duration(milliseconds: 1),
+      );
+      updateHost(() {
+        renderedDevice = _buildRepresentativeDevice(
+          'lighting',
+          lightRgb: const [40, 50, 60],
+          lightRgbLastUpdated: List.filled(3, activeCommandEventAt),
+        ) as LightingDeviceView;
       });
       await tester.pump();
 
