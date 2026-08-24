@@ -4225,6 +4225,8 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows open currently?',
 		'Are any windows open at the moment?',
 		'Are any windows open please?',
+		'Are any windows open, please?',
+		'Are any windows open, currently?',
 		'Are any windows open and unlocked?',
 		'Are any windows almost open or fully closed?',
 		'Are any windows open but unlocked?',
@@ -4328,6 +4330,7 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows open and unlocked near me?',
 		'Are any windows open but unlocked near me?',
 		'Are any windows open that are near me?',
+		'Are any windows open, nearby?',
 	])('keeps an ordinary wrapped read in the conversation space: %s', (message) => {
 		expect(
 			service.plan({
@@ -7226,6 +7229,7 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open turn on the Bedroom lights before the camera stops recording?',
 		'If the window is open turn on the Bedroom lights because the baby starts crying?',
 		'If the window is open turn on the Bedroom lights since John starts reading?',
+		'If the window is open turn on the Bedroom lights wherever John starts reading?',
 		'If the window is open turn on the Bedroom lights although John keeps sleeping?',
 		'If the window is open turn on the Bedroom lights though John keeps sleeping?',
 		'If the window is open turn on the Bedroom lights even though John keeps sleeping?',
