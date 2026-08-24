@@ -7077,6 +7077,8 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open turn on the Bedroom lights and help John start reading?',
 		'If the window is open turn on the Bedroom lights and let John start reading?',
 		'If the window is open turn on the Bedroom lights and ask John to start reading?',
+		'If the window is open turn on the Bedroom lights and ask the camera to start recording?',
+		'If the window is open turn on the Bedroom lights and tell the camera to start recording?',
 	])('keeps a coordinated command out of conditional outcome subjects: %s', (message) => {
 		const plan = service.plan({
 			message,
