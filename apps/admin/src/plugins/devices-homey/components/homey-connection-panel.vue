@@ -134,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElCard, ElDescriptions, ElDescriptionsItem, ElTag } from 'element-plus';
@@ -161,6 +161,7 @@ const { t } = useI18n();
 const statusStore = useHomeyStatus();
 const statusLoadFailed = ref(false);
 const testRequestFailed = ref(false);
+let testGeneration = 0;
 
 const notAvailable = computed<string>(() => t('devicesHomeyPlugin.status.notAvailable'));
 const candidateRequest = computed(() => createCandidateHomeyConnectionTestRequest(props.candidateUrl, props.candidateApiKey));
@@ -212,12 +213,15 @@ const refreshStatus = async (): Promise<void> => {
 const runConnectionTest = async (request: ReturnType<typeof createSavedHomeyConnectionTestRequest>): Promise<void> => {
 	if (statusStore.testing) return;
 
+	const generation = ++testGeneration;
 	testRequestFailed.value = false;
 
 	try {
 		await statusStore.testConnection(request);
 	} catch {
-		testRequestFailed.value = true;
+		if (generation === testGeneration) testRequestFailed.value = true;
+	} finally {
+		if (generation !== testGeneration) statusStore.clearLastTest();
 	}
 };
 
@@ -229,7 +233,18 @@ const testCandidateConnection = async (): Promise<void> => {
 	await runConnectionTest(candidateRequest.value);
 };
 
+watch(
+	() => [props.candidateUrl, props.candidateApiKey],
+	() => {
+		testGeneration += 1;
+		testRequestFailed.value = false;
+		statusStore.clearLastTest();
+	}
+);
+
 onMounted(() => {
+	testGeneration += 1;
+	statusStore.clearLastTest();
 	void refreshStatus();
 });
 </script>

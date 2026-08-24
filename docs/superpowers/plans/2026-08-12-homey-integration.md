@@ -522,7 +522,8 @@ are both present; the candidate payload never falls back to the stored secret. T
 state, Homey name/ID/version, latest inventory sync and event timestamps, adopted-device count, and sanitized
 category-specific recovery guidance. Focused component/store/schema tests cover idle and working states, secret
 preservation/replacement/removal, exact test payloads, validation, successful identity, categorized failures, and fixed
-request errors; the complete 2,247-test admin suite and production build pass.
+request errors. Results are invalidated when candidate inputs change, including while a request is in flight, and when
+the form is reopened; the complete 2,251-test admin suite and production build pass.
 
 ### Task 5.3: Implement the generic wizard adapter
 

@@ -72,6 +72,15 @@ describe('Homey status store', () => {
 		expect(store.testing).toBe(false);
 	});
 
+	it('clears a retained connection test result explicitly', () => {
+		const store = useHomeyStatus();
+		store.lastTest = { mode: 'saved', success: true };
+
+		store.clearLastTest();
+
+		expect(store.lastTest).toBeNull();
+	});
+
 	it('loads and normalizes the current connector status', async () => {
 		get.mockResolvedValue(statusResponse);
 		const store = useHomeyStatus();

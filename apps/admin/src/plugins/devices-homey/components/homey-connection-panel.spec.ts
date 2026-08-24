@@ -16,6 +16,7 @@ interface IStatusStoreMock {
 	testing: boolean;
 	fetch: ReturnType<typeof vi.fn>;
 	testConnection: ReturnType<typeof vi.fn>;
+	clearLastTest: ReturnType<typeof vi.fn>;
 }
 
 let statusStore: IStatusStoreMock;
@@ -71,6 +72,9 @@ describe('HomeyConnectionPanel', () => {
 			testing: false,
 			fetch: vi.fn().mockResolvedValue(connectedStatus()),
 			testConnection: vi.fn().mockResolvedValue({ mode: 'saved', success: true }),
+			clearLastTest: vi.fn(() => {
+				statusStore.lastTest = null;
+			}),
 		});
 	});
 
@@ -176,6 +180,70 @@ describe('HomeyConnectionPanel', () => {
 
 		expect(wrapper.text()).toContain('The Homey API key does not have the required permissions.');
 		expect(wrapper.text()).toContain('devicesHomeyPlugin.status.guidance.authorization');
+	});
+
+	it('clears a completed candidate result when its inputs change', async () => {
+		const wrapper = mountPanel({ candidateUrl: 'http://homey.local:4859', candidateApiKey: 'candidate-key' });
+		await flushPromises();
+
+		statusStore.lastTest = {
+			mode: 'candidate',
+			success: true,
+			homeyId: 'verified-homey-id',
+			homeyName: 'Verified Homey',
+			homeyVersion: '13.4.0',
+		};
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('Verified Homey · verified-homey-id · 13.4.0');
+
+		await wrapper.setProps({ candidateUrl: 'http://new-homey.local:4859' });
+		await flushPromises();
+
+		expect(statusStore.lastTest).toBeNull();
+		expect(wrapper.text()).not.toContain('Verified Homey · verified-homey-id · 13.4.0');
+	});
+
+	it('clears a retained result when the panel is reopened', async () => {
+		statusStore.lastTest = {
+			mode: 'saved',
+			success: true,
+			homeyName: 'Previously Verified Homey',
+		};
+
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		expect(statusStore.lastTest).toBeNull();
+		expect(wrapper.text()).not.toContain('Previously Verified Homey');
+	});
+
+	it('discards a candidate result completed after its inputs change', async () => {
+		let completeTest: (() => void) | undefined;
+		statusStore.testConnection.mockImplementationOnce(
+			() =>
+				new Promise<IHomeyTestConnection>((resolve) => {
+					completeTest = () => {
+						const result: IHomeyTestConnection = {
+							mode: 'candidate',
+							success: true,
+							homeyName: 'Stale Homey',
+						};
+						statusStore.lastTest = result;
+						resolve(result);
+					};
+				})
+		);
+		const wrapper = mountPanel({ candidateUrl: 'http://homey.local:4859', candidateApiKey: 'candidate-key' });
+		await flushPromises();
+
+		await wrapper.get('[data-test-id="homey-test-candidate"]').trigger('click');
+		await wrapper.setProps({ candidateApiKey: 'replacement-key' });
+		completeTest?.();
+		await flushPromises();
+
+		expect(statusStore.lastTest).toBeNull();
+		expect(wrapper.text()).not.toContain('Stale Homey');
 	});
 
 	it('shows a fixed request error without exposing the thrown detail', async () => {
