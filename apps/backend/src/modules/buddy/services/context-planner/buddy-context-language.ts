@@ -33,8 +33,9 @@ const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:am|are(?:n't)
 const CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE = String.raw`(?:appears?|changes?|fails?|happens?|improves?|looks?|remains?|seems?|stays?|wakes?|works?)`;
 const CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE = String.raw`(?:becomes?|keeps?|starts?|stops?)\s+[\p{Letter}\p{Number}'’-]+`;
 const CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE = String.raw`(?:(?:a|an|my|our|the|their|this|these|those|your)\s+[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,3}|he|it|she|they|we|you)`;
+const CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE = String.raw`(?:active|blue|brighter|closed|cooler|dimmer|eco|green|higher|inactive|locked|lower|off|on|open|red|unlocked|warmer|white|(?:at|to)\s+(?:[-+]?\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:%|celsius|degrees?|fahrenheit|percent|°\s*(?:c|f))?)`;
 const CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN = new RegExp(
-	String.raw`^(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b[^?]{0,120}\b(?:${DEVICE_ACTION_TARGET_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source})\b\s+${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s+${CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
+	String.raw`^(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b[^?]{0,120}\b(?:${DEVICE_ACTION_TARGET_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source})\b\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s+${CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
 	'u',
 );
 const CONDITIONAL_OUTCOME_RELATIVE_PREFIX_PATTERN = /\b(?:that|which|who)\s+(?:(?:already|currently|still)\s+)*$/u;
