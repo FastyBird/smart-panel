@@ -183,17 +183,32 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     }
   }
 
-  void _checkConvergence(LightingDeviceView device) {
+  void _checkConvergence(
+    LightingDeviceView oldDevice,
+    LightingDeviceView newDevice,
+  ) {
     final controlState = _deviceControlStateService;
     if (controlState == null) return;
 
-    for (final channel in device.lightChannels) {
+    final oldValues = <String, dynamic>{
+      for (final channel in oldDevice.lightChannels)
+        for (final property in channel.properties)
+          '${channel.id}:${property.id}': property.value?.value,
+    };
+    final changedProperties = <String>{};
+
+    for (final channel in newDevice.lightChannels) {
       for (final property in channel.properties) {
+        final propertyKey = '${channel.id}:${property.id}';
         final actualValue = property.value?.value;
-        if (actualValue == null) continue;
+        if (actualValue == null || oldValues[propertyKey] == actualValue) {
+          continue;
+        }
+
+        changedProperties.add(propertyKey);
 
         controlState.checkPropertyConvergence(
-          device.id,
+          newDevice.id,
           channel.id,
           property.id,
           actualValue,
@@ -202,13 +217,23 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     }
 
     final colorState = controlState.getGroupState(
-      device.id,
+      newDevice.id,
       LightChannelController.colorGroupId,
     );
     if (colorState != null && (colorState.isSettling || colorState.isMixed)) {
-      // A new authoritative device snapshot supersedes the grouped optimistic
-      // color values, whether it confirms them or reports an external change.
-      controlState.clearGroup(device.id, LightChannelController.colorGroupId);
+      final colorChanged = colorState.properties.any(
+        (property) => changedProperties.contains(
+          '${property.channelId}:${property.propertyId}',
+        ),
+      );
+      if (colorChanged) {
+        // A changed authoritative color value supersedes the grouped
+        // optimistic values, whether it confirms or overrides them.
+        controlState.clearGroup(
+          newDevice.id,
+          LightChannelController.colorGroupId,
+        );
+      }
     }
   }
 
@@ -216,7 +241,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   void didUpdateWidget(covariant LightingDeviceDetail oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!identical(oldWidget._device, widget._device)) {
-      _checkConvergence(widget._device);
+      _checkConvergence(oldWidget._device, widget._device);
     }
     _initController();
   }

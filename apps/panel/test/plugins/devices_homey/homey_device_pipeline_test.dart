@@ -769,6 +769,19 @@ void main() {
           controlState.isSettling(deviceId, lightChannelId, propertyId),
           isTrue,
         );
+
+        updateHost(() {
+          renderedDevice =
+              _buildRepresentativeDevice('lighting', lightOn: false)
+                  as LightingDeviceView;
+        });
+        await tester.pump();
+
+        expect(
+          controlState.isSettling(deviceId, lightChannelId, propertyId),
+          isTrue,
+          reason: 'an equivalent rebuilt snapshot is not confirmation',
+        );
         expect(socket.lastEvent, DevicesModuleConstants.setPropertyEvent);
         expect(socket.lastHandler, DevicesModuleEventHandlerName.setProperty);
         expect(socket.lastData, {
