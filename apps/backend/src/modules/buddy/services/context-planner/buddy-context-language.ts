@@ -38,7 +38,7 @@ const CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN = new RegExp(
 	String.raw`^(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b[^?]{0,120}\b(?:${DEVICE_ACTION_TARGET_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source})\b\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s+${CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
 	'u',
 );
-const CONDITIONAL_OUTCOME_RELATIVE_PREFIX_PATTERN = /\b(?:that|which|who)\s+(?:(?:already|currently|still)\s+)*$/u;
+const CONDITIONAL_OUTCOME_RELATIVE_PREFIX_PATTERN = /\b(?:that|which)\s+(?:(?:already|currently|still)\s+)*$/u;
 
 export function findLeadingConditionalActionIndex(
 	message: string,
