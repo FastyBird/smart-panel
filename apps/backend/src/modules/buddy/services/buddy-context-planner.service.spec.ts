@@ -6937,6 +6937,7 @@ describe('BuddyContextPlannerService', () => {
 		'If we turn the Bedroom lights off the camera stops recording?',
 		'If we turn off the Bedroom lights then the camera stops recording?',
 		'If we turn off the Bedroom camera the alarm stops working?',
+		'If we unlock the Bedroom locks the alarm stops working?',
 		'If we set the Bedroom lights to 20 percent the camera keeps working?',
 		'If we dim the Bedroom lights by 20 percent the camera stops recording?',
 		'If the window is open turn off the Bedroom lights which could wake the baby will the alarm sound?',
@@ -7048,6 +7049,8 @@ describe('BuddyContextPlannerService', () => {
 	it.each([
 		'If the window is open, turn off the lights that could wake the baby?',
 		'If the window is open, turn off the lights that still could wake the baby?',
+		'If the window is open turn off the Bedroom lights that probably could wake the baby?',
+		'If the window is open turn off the Bedroom lights which perhaps might wake the baby?',
 		'If the window is open turn off the Bedroom lights that John says could wake the baby?',
 		'If the window is open, turn off the lights which currently might wake the baby?',
 	])('recognizes a modal relative target clause without executing an unresolved subset: %s', (message) => {
@@ -7115,6 +7118,11 @@ describe('BuddyContextPlannerService', () => {
 
 	it.each([
 		['If the window is open turn on the Bedroom lights for guests who could otherwise fall?', 'none', 'model-tools'],
+		[
+			'If the window is open turn on the Bedroom lights for guests who probably could otherwise fall?',
+			'none',
+			'model-tools',
+		],
 		['If the window is open turn on the Bedroom lights near guests who could otherwise fall?', 'action', 'clarify'],
 	] as const)('keeps a who-relative command complement on the action path: %s', (message, ambiguityRisk, strategy) => {
 		const plan = service.plan({

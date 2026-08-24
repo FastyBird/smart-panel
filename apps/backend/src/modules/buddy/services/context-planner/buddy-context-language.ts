@@ -36,16 +36,20 @@ const CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE = String.raw`(?:becom
 const CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE = String.raw`[\p{Letter}\p{Number}'’-]+`;
 const CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE = String.raw`(?!(?:because|so|to)\b|${CONDITION_PATTERN.source}|(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)(?:(?:a|an|my|our|the|their|this|these|those|your)\s+${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE}){0,3}|${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE})?)`;
 const CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE = String.raw`(?:active|blue|brighter|closed|cooler|dimmer|eco|green|higher|inactive|locked|lower|off|on|open|red|unlocked|warmer|white|(?:at|by|to)\s+(?:[-+]?\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:%|celsius|degrees?|fahrenheit|percent|°\s*(?:c|f))?)`;
-const CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${DEVICE_ACTION_TARGET_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${SCENE_TARGET_PATTERN.source})`;
+const CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${DEVICE_ACTION_TARGET_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${SCENE_TARGET_PATTERN.source}|\blocks?\b)`;
 const CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN = new RegExp(
 	String.raw`^(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b[^?]{0,120}\b${CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE}\b\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?(?:(?:and\s+)?then\s+)?${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s+${CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
 	'u',
 );
+const CONDITIONAL_OUTCOME_RELATIVE_ADVERB_PATTERN_SOURCE = String.raw`(?:already|currently|maybe|never|often|perhaps|still|very|[\p{Letter}'’-]+ly)`;
 const CONDITIONAL_OUTCOME_RELATIVE_PRONOUN_PATTERN = new RegExp(
-	String.raw`\b(?:that|which)\s+(?:(?:already|currently|still)\s+)*(?:(?:${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE})\s+(?:(?:already|currently|still)\s+)*(?:believes?|claims?|expects?|reports?|says?|thinks?)\s+(?:(?:already|currently|still)\s+)*)?$`,
+	String.raw`\b(?:that|which)\s+(?:(?:${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_PATTERN_SOURCE})\s+){0,2}(?:(?:${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE})\s+(?:(?:${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_PATTERN_SOURCE})\s+){0,2}(?:believes?|claims?|expects?|reports?|says?|thinks?)\s+(?:(?:${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_PATTERN_SOURCE})\s+){0,2})?$`,
 	'u',
 );
-const CONDITIONAL_OUTCOME_WHO_PREFIX_PATTERN = /\bwho\s+(?:(?:already|currently|still)\s+)*$/u;
+const CONDITIONAL_OUTCOME_WHO_PREFIX_PATTERN = new RegExp(
+	String.raw`\bwho\s+(?:(?:${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_PATTERN_SOURCE})\s+){0,2}$`,
+	'u',
+);
 const CONDITIONAL_OUTCOME_DIRECT_WHO_SUBJECT_PATTERN = new RegExp(
 	String.raw`(?:${CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE}|\b${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE})(?:\s*,?\s+(?:and\s+)?then)?\s*$`,
 	'u',
