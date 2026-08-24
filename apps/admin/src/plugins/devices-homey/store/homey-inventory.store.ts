@@ -30,7 +30,8 @@ export const useHomeyInventory = defineStore('devices_homey_plugin-inventory', (
 	const findAll = (): IHomeyInventoryDevice[] => Object.values(data.value);
 	const findById = (id: string): IHomeyInventoryDevice | null => data.value[id] ?? null;
 
-	const fetch = async (filters: IHomeyInventoryFilters = {}): Promise<IHomeyInventoryDevice[]> => {
+	const fetch = async (filters: IHomeyInventoryFilters = {}, signal?: AbortSignal): Promise<IHomeyInventoryDevice[]> => {
+		signal?.throwIfAborted();
 		fetching.value = true;
 
 		try {
@@ -49,8 +50,10 @@ export const useHomeyInventory = defineStore('devices_homey_plugin-inventory', (
 						search: filters.search,
 					},
 				},
+				signal,
 			});
 
+			signal?.throwIfAborted();
 			if (responseData) {
 				const devices = responseData.data.map(transformHomeyInventoryDevice);
 				data.value = Object.fromEntries(devices.map((device) => [device.id, device]));
@@ -89,7 +92,12 @@ export const useHomeyInventory = defineStore('devices_homey_plugin-inventory', (
 		);
 	};
 
-	const preview = async (deviceId: string, deviceCategory?: IHomeyInventoryDevice['suggestedCategory']): Promise<IHomeyMappingPreview> => {
+	const preview = async (
+		deviceId: string,
+		deviceCategory?: IHomeyInventoryDevice['suggestedCategory'],
+		signal?: AbortSignal
+	): Promise<IHomeyMappingPreview> => {
+		signal?.throwIfAborted();
 		previewing.value.push(deviceId);
 
 		try {
@@ -99,8 +107,10 @@ export const useHomeyInventory = defineStore('devices_homey_plugin-inventory', (
 				response,
 			} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOMEY_PLUGIN_PREFIX}/mapping-preview`, {
 				body: { device_id: deviceId, ...(deviceCategory ? { device_category: deviceCategory } : {}) },
+				signal,
 			});
 
+			signal?.throwIfAborted();
 			if (responseData) {
 				return (previews.value[deviceId] = transformHomeyMappingPreview(responseData.data));
 			}

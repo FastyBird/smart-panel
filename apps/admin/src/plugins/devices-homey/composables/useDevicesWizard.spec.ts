@@ -201,6 +201,28 @@ describe('Homey useDevicesWizard', () => {
 		expect(inventory.fetch).toHaveBeenCalledOnce();
 	});
 
+	it('aborts an in-flight inventory load when the wizard is disposed', async () => {
+		let loadSignal: AbortSignal | undefined;
+		inventory.fetch.mockImplementation(
+			(_filters: unknown, signal?: AbortSignal) =>
+				new Promise<IHomeyInventoryDevice[]>((_resolve, reject) => {
+					loadSignal = signal;
+					signal?.addEventListener('abort', () => reject(signal.reason));
+				})
+		);
+		const adapter = useDevicesWizard();
+
+		const load = adapter.start();
+		await vi.waitFor(() => expect(inventory.fetch).toHaveBeenCalledOnce());
+		await adapter.dispose?.();
+		await load;
+
+		expect(loadSignal?.aborted).toBe(true);
+		expect(inventory.preview).not.toHaveBeenCalled();
+		expect(adapter.sessionKey?.value).toBeNull();
+		expect(adapter.rows.value).toEqual([]);
+	});
+
 	it('signals a new wizard session after refreshing inventory', async () => {
 		const adapter = useDevicesWizard();
 

@@ -101,4 +101,36 @@ describe('Homey inventory store batch adoption', () => {
 
 		expect(store.previews).toEqual({});
 	});
+
+	it('does not publish inventory after its request is aborted', async () => {
+		const abortController = new AbortController();
+		get.mockImplementation(async (_path: string, request: { signal?: AbortSignal }) => {
+			expect(request.signal).toBe(abortController.signal);
+			abortController.abort();
+
+			return { data: { data: [] }, response: { status: 200 } };
+		});
+		const store = useHomeyInventory();
+
+		await expect(store.fetch({}, abortController.signal)).rejects.toBe(abortController.signal.reason);
+
+		expect(store.firstLoad).toBe(false);
+		expect(store.fetching).toBe(false);
+	});
+
+	it('does not publish a mapping preview after its request is aborted', async () => {
+		const abortController = new AbortController();
+		post.mockImplementation(async (_path: string, request: { signal?: AbortSignal }) => {
+			expect(request.signal).toBe(abortController.signal);
+			abortController.abort();
+
+			return { data: {}, response: { status: 200 } };
+		});
+		const store = useHomeyInventory();
+
+		await expect(store.preview('homey-light', undefined, abortController.signal)).rejects.toBe(abortController.signal.reason);
+
+		expect(store.previews).toEqual({});
+		expect(store.previewing).toEqual([]);
+	});
 });

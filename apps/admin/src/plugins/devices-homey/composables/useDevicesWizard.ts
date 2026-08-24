@@ -59,6 +59,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const previewFailures = ref<Record<string, true>>({});
 	const sessionGeneration = ref(0);
 	let loadPromise: Promise<void> | null = null;
+	let loadAbortController: AbortController | null = null;
+	let disposed = false;
 
 	const devices = computed(() =>
 		orderBy(
@@ -152,7 +154,10 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 	function load(): Promise<void> {
 		if (loadPromise !== null) return loadPromise;
+		if (disposed) return Promise.resolve();
 
+		const abortController = new AbortController();
+		loadAbortController = abortController;
 		const currentLoad = (async () => {
 			error.value = null;
 			loading.value = true;
@@ -160,25 +165,31 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			previewFailures.value = {};
 			try {
 				await devicesStore.fetch();
-				const inventoryDevices = await inventory.fetch();
+				abortController.signal.throwIfAborted();
+				const inventoryDevices = await inventory.fetch({}, abortController.signal);
 				const previewDevices = inventoryDevices.filter((device) => device.available && device.supportState === 'supported');
 				const previewResults = await mapWithConcurrencyLimit(previewDevices, async (device) => {
 					try {
-						await inventory.preview(device.id);
+						await inventory.preview(device.id, undefined, abortController.signal);
 						return null;
 					} catch {
+						abortController.signal.throwIfAborted();
 						return device.id;
 					}
 				});
+				abortController.signal.throwIfAborted();
 				previewFailures.value = Object.fromEntries(
 					previewResults.filter((deviceId): deviceId is string => deviceId !== null).map((deviceId) => [deviceId, true as const])
 				);
 				previewsReady.value = true;
 				sessionGeneration.value += 1;
 			} catch (caught: unknown) {
-				error.value = caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.inventory');
+				if (!abortController.signal.aborted) {
+					error.value = caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.inventory');
+				}
 			} finally {
 				loading.value = false;
+				if (loadAbortController === abortController) loadAbortController = null;
 			}
 		})();
 		loadPromise = currentLoad;
@@ -195,6 +206,11 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		inventory.adoptionResults = [];
 		submittedNames.value = {};
 		await load();
+	}
+
+	async function dispose(): Promise<void> {
+		disposed = true;
+		loadAbortController?.abort();
 	}
 
 	const adopt = async (selection: IWizardAdoptSelection[]): Promise<IWizardResult[]> => {
@@ -314,6 +330,6 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		start: load,
 		adopt,
 		restart,
-		dispose: async () => undefined,
+		dispose,
 	};
 };
