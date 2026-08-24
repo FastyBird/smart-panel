@@ -4207,6 +4207,8 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows partially open?',
 		'Are any windows almost fully open?',
 		'Are any windows only partially open?',
+		'Do any windows remain only partially open?',
+		'Does any window appear almost fully open?',
 		'Is every one of the windows closed?',
 		'Is any one of the windows open?',
 		'Can you check if any one of the windows is open?',
@@ -6879,6 +6881,19 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan).toMatchObject({ intent: 'read', ambiguityRisk: 'none' });
 		expect(plan.toolNames).not.toContain('control_device');
 		expect(plan.toolNames).not.toContain('set_space_lighting');
+	});
+
+	it.each([
+		'If we run the Movie Night scene the camera stops recording?',
+		'If we trigger the Bedtime routine the alarm keeps working?',
+	])('keeps a declarative scene outcome on the read path: %s', (message) => {
+		const plan = service.plan({
+			message,
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('read');
+		expect(plan.toolNames).not.toContain('run_scene');
 	});
 
 	it.each([
