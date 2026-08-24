@@ -7110,6 +7110,21 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.toolNames).toContain('set_space_lighting');
 	});
 
+	it.each([
+		'If the window is open turn off the Bedroom lights which keep flickering?',
+		'If the window is open turn off the Bedroom lights which keep flashing?',
+	])('keeps a phrasal relative target on the command path: %s', (message) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('mixed');
+		expect(plan.toolNames).toContain('control_device');
+		expect(plan.toolNames).toContain('set_space_lighting');
+	});
+
 	it('keeps an infinitive action complement out of conditional outcome subjects', () => {
 		const plan = service.plan({
 			message: 'If the window is open make the Bedroom lights a little brighter to start reading?',
