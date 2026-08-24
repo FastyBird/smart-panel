@@ -7141,6 +7141,7 @@ describe('BuddyContextPlannerService', () => {
 
 	it.each([
 		['If the window is open turn on the Bedroom lights for guests who could otherwise fall?', 'none', 'model-tools'],
+		['If the window is open turn on the Bedroom lights for guests in white who might wake?', 'none', 'model-tools'],
 		[
 			'If the window is open turn on the Bedroom lights for guests who probably could otherwise fall?',
 			'none',
