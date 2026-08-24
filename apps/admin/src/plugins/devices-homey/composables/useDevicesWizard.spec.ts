@@ -5,10 +5,16 @@ import type { IHomeyAdoptionResult, IHomeyInventoryDevice } from '../store/homey
 
 import { useDevicesWizard } from './useDevicesWizard';
 
+type MockPreview = {
+	suggestedCategory: DevicesModuleDeviceCategory;
+	validCategories: DevicesModuleDeviceCategory[];
+	readyToAdopt: boolean;
+};
+
 const flashMessage = { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() };
 const inventory = {
 	adoptionResults: [] as IHomeyAdoptionResult[],
-	previews: {},
+	previews: {} as Record<string, MockPreview>,
 	fetching: false,
 	adopting: false,
 	firstLoad: true,
@@ -65,9 +71,15 @@ describe('Homey useDevicesWizard', () => {
 		inventory.findAll.mockReturnValue([device()]);
 		inventory.findById.mockImplementation((id) => (id === 'homey-light' ? device() : null));
 		inventory.fetch.mockResolvedValue([]);
-		inventory.preview.mockResolvedValue({
-			suggestedCategory: DevicesModuleDeviceCategory.lighting,
-			validCategories: [DevicesModuleDeviceCategory.lighting, DevicesModuleDeviceCategory.generic],
+		inventory.preview.mockImplementation(async (id) => {
+			const preview = {
+				suggestedCategory: DevicesModuleDeviceCategory.lighting,
+				validCategories: [DevicesModuleDeviceCategory.lighting, DevicesModuleDeviceCategory.generic],
+				readyToAdopt: true,
+			};
+			inventory.previews[id] = preview;
+
+			return preview;
 		});
 		devicesStore.findById.mockReturnValue(null);
 		devicesStore.fetch.mockResolvedValue([]);
@@ -82,11 +94,14 @@ describe('Homey useDevicesWizard', () => {
 			'homey-light': {
 				suggestedCategory: DevicesModuleDeviceCategory.lighting,
 				validCategories: [DevicesModuleDeviceCategory.lighting, DevicesModuleDeviceCategory.generic],
+				readyToAdopt: true,
 			},
 		};
+		inventory.fetch.mockResolvedValue([adopted]);
 		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-light', status: 'skipped' }]);
 
 		const adapter = useDevicesWizard();
+		await adapter.start();
 		const row = adapter.rows.value[0];
 
 		expect(row).toEqual(
@@ -116,15 +131,24 @@ describe('Homey useDevicesWizard', () => {
 			'homey-light': {
 				suggestedCategory: DevicesModuleDeviceCategory.lighting,
 				validCategories: [DevicesModuleDeviceCategory.lighting],
+				readyToAdopt: true,
 			},
 		};
-		inventory.preview.mockResolvedValue({
-			suggestedCategory: DevicesModuleDeviceCategory.lighting,
-			validCategories: [DevicesModuleDeviceCategory.lighting],
+		inventory.fetch.mockResolvedValue([adopted]);
+		inventory.preview.mockImplementation(async (id) => {
+			const preview = {
+				suggestedCategory: DevicesModuleDeviceCategory.lighting,
+				validCategories: [DevicesModuleDeviceCategory.lighting],
+				readyToAdopt: true,
+			};
+			inventory.previews[id] = preview;
+
+			return preview;
 		});
 		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-light', status: 'updated' }]);
 
 		const adapter = useDevicesWizard();
+		await adapter.start();
 		const row = adapter.rows.value[0];
 
 		expect(row.suggestedCategory).toBe(DevicesModuleDeviceCategory.lighting);
@@ -148,6 +172,26 @@ describe('Homey useDevicesWizard', () => {
 		expect(devicesStore.fetch).toHaveBeenCalledOnce();
 		expect(inventory.fetch).toHaveBeenCalledOnce();
 		expect(devicesStore.fetch.mock.invocationCallOrder[0]).toBeLessThan(inventory.fetch.mock.invocationCallOrder[0]!);
+	});
+
+	it('keeps a supported device unavailable for selection when its mapping preview is not ready', async () => {
+		const supported = device();
+		inventory.fetch.mockResolvedValue([supported]);
+		inventory.preview.mockImplementation(async (id) => {
+			const preview = {
+				suggestedCategory: DevicesModuleDeviceCategory.lighting,
+				validCategories: [DevicesModuleDeviceCategory.lighting],
+				readyToAdopt: false,
+			};
+			inventory.previews[id] = preview;
+
+			return preview;
+		});
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		expect(adapter.rows.value[0]).toEqual(expect.objectContaining({ status: 'needs_attention', adoptable: false }));
 	});
 
 	it('omits metadata overrides when the adopted panel device is not loaded', async () => {

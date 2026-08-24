@@ -16,13 +16,13 @@ import type {
 } from '../../../modules/devices';
 import { DevicesHomeyPluginAdoptionStatus } from '../../../openapi.constants';
 import { DEVICES_HOMEY_PLUGIN_NAME } from '../devices-homey.constants';
-import type { IHomeyAdoptionResult, IHomeyInventoryDevice } from '../store/homey.types';
+import type { IHomeyAdoptionResult, IHomeyInventoryDevice, IHomeyMappingPreview } from '../store/homey.types';
 import { homeyInventoryStoreKey } from '../store/keys';
 
-const rowStatus = (device: IHomeyInventoryDevice): IWizardRowStatus => {
+const rowStatus = (device: IHomeyInventoryDevice, preview?: IHomeyMappingPreview): IWizardRowStatus => {
 	if (device.adopted) return 'already_registered';
 	if (device.supportState === 'unsupported') return 'unsupported';
-	if (device.supportState === 'conflicted' || !device.available) return 'needs_attention';
+	if (device.supportState === 'conflicted' || !device.available || preview?.readyToAdopt === false) return 'needs_attention';
 	return 'ready';
 };
 
@@ -34,52 +34,61 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const inventory = storesManager.getStore(homeyInventoryStoreKey);
 	const error = ref<string | null>(null);
 	const submittedNames = ref<Record<string, string>>({});
+	const loading = ref(false);
+	const previewsReady = ref(false);
 
-	const devices = computed(() => orderBy(inventory.findAll(), [(device) => rowStatus(device), (device) => device.name], ['asc', 'asc']));
+	const devices = computed(() =>
+		orderBy(inventory.findAll(), [(device) => rowStatus(device, inventory.previews[device.id]), (device) => device.name], ['asc', 'asc'])
+	);
 
 	const rows = computed<IWizardRow[]>(() =>
-		devices.value.map((device) => {
-			const status = rowStatus(device);
-			const subLabel = [device.manufacturer, device.model].filter(Boolean).join(' · ') || device.class;
-			const adoptedDevice = device.adoptedDeviceId ? devicesStore.findById(device.adoptedDeviceId) : null;
-			const preview = inventory.previews[device.id];
-			const adoptedCategoryIsValid = adoptedDevice !== null && (preview === undefined || preview.validCategories.includes(adoptedDevice.category));
-			const suggestedCategory = (adoptedCategoryIsValid ? adoptedDevice.category : preview?.suggestedCategory) ?? device.suggestedCategory ?? null;
-			const categories =
-				preview?.validCategories ?? [suggestedCategory, device.suggestedCategory].filter((category) => category !== null && category !== undefined);
-			const categoryOptions = Array.from(new Set(categories)).map((category) => ({
-				value: category,
-				label: t(`devicesModule.categories.devices.${category}`),
-			}));
+		previewsReady.value
+			? devices.value.map((device) => {
+					const subLabel = [device.manufacturer, device.model].filter(Boolean).join(' · ') || device.class;
+					const adoptedDevice = device.adoptedDeviceId ? devicesStore.findById(device.adoptedDeviceId) : null;
+					const preview = inventory.previews[device.id];
+					const status = rowStatus(device, preview);
+					const adoptedCategoryIsValid =
+						adoptedDevice !== null && (preview === undefined || preview.validCategories.includes(adoptedDevice.category));
+					const suggestedCategory =
+						(adoptedCategoryIsValid ? adoptedDevice.category : preview?.suggestedCategory) ?? device.suggestedCategory ?? null;
+					const categories =
+						preview?.validCategories ??
+						[suggestedCategory, device.suggestedCategory].filter((category) => category !== null && category !== undefined);
+					const categoryOptions = Array.from(new Set(categories)).map((category) => ({
+						value: category,
+						label: t(`devicesModule.categories.devices.${category}`),
+					}));
 
-			return {
-				key: device.id,
-				label: device.name,
-				subLabel,
-				identifier: device.id,
-				status,
-				statusLabel: !device.available ? t('devicesHomeyPlugin.wizard.statuses.unavailable') : undefined,
-				adoptable: device.available && device.supportState === 'supported',
-				selectedByDefault: false,
-				willUpdate: device.adopted,
-				suggestedName: adoptedDevice?.name ?? device.name,
-				suggestedCategory,
-				categoryOptions,
-				cells: {
-					class: { render: 'text', value: device.class },
-					zone: {
-						render: 'text',
-						value: device.zonePath.join(' / ') || t('devicesHomeyPlugin.wizard.values.noZone'),
-						muted: !device.zonePath.length,
-					},
-					capabilities: {
-						render: 'tag',
-						value: t('devicesHomeyPlugin.wizard.values.capabilities', { count: device.capabilities.length }),
-						variant: device.supportState === 'supported' ? 'success' : 'warning',
-					},
-				},
-			};
-		})
+					return {
+						key: device.id,
+						label: device.name,
+						subLabel,
+						identifier: device.id,
+						status,
+						statusLabel: !device.available ? t('devicesHomeyPlugin.wizard.statuses.unavailable') : undefined,
+						adoptable: device.available && device.supportState === 'supported' && preview?.readyToAdopt === true,
+						selectedByDefault: false,
+						willUpdate: device.adopted,
+						suggestedName: adoptedDevice?.name ?? device.name,
+						suggestedCategory,
+						categoryOptions,
+						cells: {
+							class: { render: 'text', value: device.class },
+							zone: {
+								render: 'text',
+								value: device.zonePath.join(' / ') || t('devicesHomeyPlugin.wizard.values.noZone'),
+								muted: !device.zonePath.length,
+							},
+							capabilities: {
+								render: 'tag',
+								value: t('devicesHomeyPlugin.wizard.values.capabilities', { count: device.capabilities.length }),
+								variant: device.supportState === 'supported' ? 'success' : 'warning',
+							},
+						},
+					};
+				})
+			: []
 	);
 
 	const results = computed<IWizardResult[]>(() => inventory.adoptionResults.map(transformResult));
@@ -115,19 +124,19 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 	async function load(): Promise<void> {
 		error.value = null;
+		loading.value = true;
+		previewsReady.value = false;
 		try {
 			await devicesStore.fetch();
 			const inventoryDevices = await inventory.fetch();
 			await Promise.all(
-				inventoryDevices
-					.filter((device) => {
-						const adoptedDevice = device.adoptedDeviceId ? devicesStore.findById(device.adoptedDeviceId) : null;
-						return device.adopted && adoptedDevice !== null && adoptedDevice.category !== device.suggestedCategory;
-					})
-					.map((device) => inventory.preview(device.id))
+				inventoryDevices.filter((device) => device.available && device.supportState === 'supported').map((device) => inventory.preview(device.id))
 			);
+			previewsReady.value = true;
 		} catch (caught: unknown) {
 			error.value = caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.inventory');
+		} finally {
+			loading.value = false;
 		}
 	}
 
@@ -208,8 +217,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			{ key: 'capabilities', label: t('devicesHomeyPlugin.wizard.columns.capabilities'), steps: ['discover'], width: 140 },
 		],
 		controls,
-		ready: computed(() => inventory.firstLoad || error.value !== null),
-		busy: computed(() => inventory.fetching || inventory.adopting),
+		ready: computed(() => previewsReady.value || error.value !== null),
+		busy: computed(() => loading.value || inventory.fetching || inventory.adopting),
 		capabilities: { addMore: true },
 		start: load,
 		adopt,
