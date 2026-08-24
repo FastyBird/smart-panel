@@ -7061,6 +7061,7 @@ describe('BuddyContextPlannerService', () => {
 	it.each([
 		'If the window is open turn on the Bedroom lights and help John start reading?',
 		'If the window is open turn on the Bedroom lights and let John start reading?',
+		'If the window is open turn on the Bedroom lights and ask John to start reading?',
 	])('keeps a coordinated command out of conditional outcome subjects: %s', (message) => {
 		const plan = service.plan({
 			message,
