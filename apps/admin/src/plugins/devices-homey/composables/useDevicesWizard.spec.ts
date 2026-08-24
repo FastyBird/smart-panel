@@ -339,15 +339,23 @@ describe('Homey useDevicesWizard', () => {
 		expect(adapter.rows.value).toHaveLength(supportedDevices.length);
 	});
 
-	it('omits metadata overrides when the adopted panel device is not loaded', async () => {
+	it('fails reconciliation when the adopted panel device metadata is not loaded', async () => {
 		const adopted = device({ adopted: true, adoptedDeviceId: '4a2515a6-7e87-4e51-96cc-832698237613' });
 		inventory.findById.mockReturnValue(adopted);
-		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-light', status: 'skipped' }]);
 		const adapter = useDevicesWizard();
 
-		await adapter.adopt([{ key: 'homey-light', name: 'Upstream name', category: DevicesModuleDeviceCategory.lighting }]);
+		const results = await adapter.adopt([{ key: 'homey-light', name: 'Upstream name', category: DevicesModuleDeviceCategory.lighting }]);
 
-		expect(inventory.adoptBatch).toHaveBeenCalledWith([{ deviceId: 'homey-light' }], expect.any(AbortSignal));
+		expect(inventory.adoptBatch).not.toHaveBeenCalled();
+		expect(results).toEqual([
+			{
+				key: 'homey-light',
+				name: 'Upstream name',
+				identifier: 'homey-light',
+				status: DevicesHomeyPluginAdoptionStatus.failed,
+				error: 'devicesHomeyPlugin.wizard.errors.panelMetadataUnavailable',
+			},
+		]);
 	});
 
 	it('bounds concurrent adoption-time mapping previews', async () => {

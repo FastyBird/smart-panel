@@ -39,7 +39,8 @@
 			"inventory": "Inventár Homey sa nepodarilo načítať",
 			"adoption": "Vybrané zariadenia Homey sa nepodarilo pridať",
 			"nameTooLong": "Názov zariadenia nesmie byť dlhší ako {max} znakov",
-			"mappingChanged": "Mapovanie zariadenia sa zmenilo; obnovte inventár a skontrolujte jeho kategóriu"
+			"mappingChanged": "Mapovanie zariadenia sa zmenilo; obnovte inventár a skontrolujte jeho kategóriu",
+			"panelMetadataUnavailable": "Metadáta existujúceho zariadenia panela nie sú dostupné; obnovte inventár a skúste to znova"
 		}
 	}
 }

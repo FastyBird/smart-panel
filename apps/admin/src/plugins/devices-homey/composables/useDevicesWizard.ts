@@ -247,7 +247,13 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 					const adoptedDevice = inventoryDevice?.adoptedDeviceId ? devicesStore.findById(inventoryDevice.adoptedDeviceId) : null;
 
 					if (inventoryDevice?.adopted && adoptedDevice === null) {
-						return { request: { deviceId: item.key } satisfies IHomeyAdoptSelection };
+						return {
+							failure: {
+								deviceId: item.key,
+								status: DevicesHomeyPluginAdoptionStatus.failed,
+								message: t('devicesHomeyPlugin.wizard.errors.panelMetadataUnavailable'),
+							} satisfies IHomeyAdoptionResult,
+						};
 					}
 
 					const preview = inventoryDevice?.adopted ? await inventory.preview(item.key, undefined, abortController.signal) : null;

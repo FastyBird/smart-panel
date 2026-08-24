@@ -41,7 +41,8 @@
 			"inventory": "No se pudo cargar el inventario de Homey",
 			"adoption": "No se pudieron añadir los dispositivos Homey seleccionados",
 			"nameTooLong": "El nombre del dispositivo no debe superar los {max} caracteres",
-			"mappingChanged": "La asignación del dispositivo cambió; actualiza el inventario y revisa su categoría"
+			"mappingChanged": "La asignación del dispositivo cambió; actualiza el inventario y revisa su categoría",
+			"panelMetadataUnavailable": "Los metadatos del dispositivo del panel no están disponibles; actualiza el inventario e inténtalo de nuevo"
 		}
 	}
 }

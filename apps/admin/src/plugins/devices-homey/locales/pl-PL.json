@@ -41,7 +41,8 @@
 			"inventory": "Nie udało się załadować inwentarza Homey",
 			"adoption": "Nie udało się dodać wybranych urządzeń Homey",
 			"nameTooLong": "Nazwa urządzenia nie może przekraczać {max} znaków",
-			"mappingChanged": "Mapowanie urządzenia uległo zmianie; odśwież inwentarz i sprawdź jego kategorię"
+			"mappingChanged": "Mapowanie urządzenia uległo zmianie; odśwież inwentarz i sprawdź jego kategorię",
+			"panelMetadataUnavailable": "Metadane istniejącego urządzenia panelu są niedostępne; odśwież inwentarz i spróbuj ponownie"
 		}
 	}
 }

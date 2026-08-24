@@ -58,7 +58,8 @@
 			"inventory": "The Homey inventory could not be loaded",
 			"adoption": "The selected Homey devices could not be adopted",
 			"nameTooLong": "Device name must not exceed {max} characters",
-			"mappingChanged": "The device mapping changed; refresh the inventory and review its category"
+			"mappingChanged": "The device mapping changed; refresh the inventory and review its category",
+			"panelMetadataUnavailable": "The existing panel device metadata is unavailable; refresh the inventory and try again"
 		}
 	}
 }
