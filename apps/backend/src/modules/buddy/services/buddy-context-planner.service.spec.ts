@@ -7164,6 +7164,7 @@ describe('BuddyContextPlannerService', () => {
 
 	it.each([
 		'If the window is open turn on the Bedroom lights so the camera starts recording?',
+		'If the window is open turn on the Bedroom lights as John starts reading?',
 		'If the window is open turn on the Bedroom lights before the camera stops recording?',
 		'If the window is open turn on the Bedroom lights because the baby starts crying?',
 		'If the window is open turn on the Bedroom lights unless the camera stops recording?',
