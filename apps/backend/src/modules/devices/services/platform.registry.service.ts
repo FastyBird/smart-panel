@@ -1,9 +1,15 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { INTENT_CLEANUP_INTERVAL } from '../../intents/intents.constants';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
 import { DeviceEntity } from '../entities/devices.entity';
 import { IDevicePlatform } from '../platforms/device.platform';
+
+export interface DevicePlatformCommandBudget {
+	readonly device: DeviceEntity;
+	readonly commandCount: number;
+}
 
 @Injectable()
 export class PlatformRegistryService {
@@ -37,6 +43,24 @@ export class PlatformRegistryService {
 		}
 
 		return platform;
+	}
+
+	getCommandTtlMs(executions: readonly DevicePlatformCommandBudget[], defaultTtlMs: number): number {
+		let completionWindowMs = 0;
+		let hasCustomTimeout = false;
+
+		for (const execution of executions) {
+			const timeoutMs = this.get(execution.device)?.getCommandTimeoutMs?.(execution.commandCount);
+
+			if (typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0) {
+				completionWindowMs += timeoutMs;
+				hasCustomTimeout = true;
+			} else {
+				completionWindowMs += defaultTtlMs;
+			}
+		}
+
+		return hasCustomTimeout ? completionWindowMs + defaultTtlMs + INTENT_CLEANUP_INTERVAL : defaultTtlMs;
 	}
 
 	list(): string[] {

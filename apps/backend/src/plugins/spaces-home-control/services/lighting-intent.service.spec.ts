@@ -13,6 +13,7 @@ import {
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { DEFAULT_TTL_SPACE_COMMAND } from '../../../modules/intents/intents.constants';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
@@ -30,7 +31,10 @@ import { SpaceUndoHistoryService } from './space-undo-history.service';
 describe('LightingIntentService', () => {
 	let service: LightingIntentService;
 	let spacesService: jest.Mocked<SpacesService>;
-	let platformRegistryService: { get: jest.Mock };
+	let platformRegistryService: {
+		get: jest.Mock;
+		getCommandTtlMs: jest.MockedFunction<PlatformRegistryService['getCommandTtlMs']>;
+	};
 	let lightingRoleService: jest.Mocked<SpaceLightingRoleService>;
 	let intentsService: jest.Mocked<IntentsService>;
 
@@ -93,6 +97,7 @@ describe('LightingIntentService', () => {
 					provide: PlatformRegistryService,
 					useValue: {
 						get: jest.fn().mockReturnValue(mockPlatform),
+						getCommandTtlMs: jest.fn().mockReturnValue(DEFAULT_TTL_SPACE_COMMAND),
 					},
 				},
 				{
@@ -174,6 +179,7 @@ describe('LightingIntentService', () => {
 		const onlineDevice = createMockDeviceWithLightChannel('online-device', true, ConnectionState.CONNECTED);
 
 		spacesService.findDevicesBySpace.mockResolvedValue([onlineDevice] as unknown as DeviceEntity[]);
+		jest.spyOn(platformRegistryService, 'getCommandTtlMs').mockReturnValueOnce(47500);
 
 		await service.executeLightingIntent(
 			mockSpaceId,
@@ -190,8 +196,14 @@ describe('LightingIntentService', () => {
 					roleKey: undefined,
 					extra: { source: 'mcp', actorId: 'client-1' },
 				},
+				ttlMs: 47500,
 			}),
 		);
+		const [budgets, defaultTtlMs] = platformRegistryService.getCommandTtlMs.mock.calls[0];
+		expect(budgets).toHaveLength(1);
+		expect(budgets[0]?.device.id).toBe('online-device');
+		expect(budgets[0]?.commandCount).toBeGreaterThan(0);
+		expect(defaultTtlMs).toBe(DEFAULT_TTL_SPACE_COMMAND);
 	});
 
 	it('does not control hidden or disabled lighting devices', async () => {

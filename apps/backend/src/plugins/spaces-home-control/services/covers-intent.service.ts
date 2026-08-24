@@ -193,7 +193,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			},
 			targets,
 			value: this.buildCoversIntentValue(intent),
-			ttlMs: DEFAULT_TTL_SPACE_COMMAND,
+			ttlMs: this.getCoversIntentTtlMs(covers),
 		});
 
 		// Capture snapshot for undo BEFORE executing the intent
@@ -343,6 +343,18 @@ export class CoversIntentService extends SpaceIntentBaseService {
 			deviceId: cover.device.id,
 			channelId: cover.coverChannel.id,
 		}));
+	}
+
+	private getCoversIntentTtlMs(covers: readonly CoverDevice[]): number {
+		return this.platformRegistryService.getCommandTtlMs(
+			covers.map((cover) => ({
+				device: cover.device,
+				commandCount: [cover.positionProperty, cover.commandProperty, cover.tiltProperty].filter(
+					(property) => property !== null,
+				).length,
+			})),
+			DEFAULT_TTL_SPACE_COMMAND,
+		);
 	}
 
 	/**

@@ -11,6 +11,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { DEFAULT_TTL_SPACE_COMMAND } from '../../../modules/intents/intents.constants';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
@@ -72,6 +73,7 @@ describe('CoversIntentService', () => {
 					provide: PlatformRegistryService,
 					useValue: {
 						get: jest.fn().mockReturnValue(mockPlatform),
+						getCommandTtlMs: jest.fn().mockReturnValue(DEFAULT_TTL_SPACE_COMMAND),
 					},
 				},
 				{

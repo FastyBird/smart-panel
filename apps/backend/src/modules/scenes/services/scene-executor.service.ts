@@ -27,6 +27,8 @@ export interface IScenePlatform {
 	 */
 	execute(scene: SceneEntity, actions: SceneActionEntity[]): Promise<ActionExecutionResultModel[]>;
 
+	getCommandTtlMs?(actions: readonly SceneActionEntity[]): Promise<number>;
+
 	/**
 	 * Validate if an action can be executed
 	 */
@@ -99,7 +101,8 @@ export class SceneExecutorService {
 
 		// Extract device targets from enabled scene actions only for granular tracking
 		// Note: Must filter to enabled actions since executeActions() only runs enabled ones
-		const deviceTargets = this.extractIntentTargets((scene.actions || []).filter((a) => a.enabled));
+		const enabledActions = (scene.actions || []).filter((action) => action.enabled);
+		const deviceTargets = this.extractIntentTargets(enabledActions);
 
 		// Build targets array: scene target first, then device targets
 		const targets: IntentTarget[] = [
@@ -116,7 +119,7 @@ export class SceneExecutorService {
 			},
 			targets,
 			value: { sceneId: scene.id, sceneName: scene.name },
-			ttlMs: DEFAULT_TTL_SCENE,
+			ttlMs: await this.resolveSceneIntentTtlMs(enabledActions),
 		});
 
 		this.logger.log(
@@ -224,6 +227,35 @@ export class SceneExecutorService {
 
 			throw new ScenesExecutionException(`Scene execution failed: ${err.message}`);
 		}
+	}
+
+	private async resolveSceneIntentTtlMs(actions: readonly SceneActionEntity[]): Promise<number> {
+		const actionsByPlatform = new Map<string, SceneActionEntity[]>();
+
+		for (const action of actions) {
+			const grouped = actionsByPlatform.get(action.type) ?? [];
+			grouped.push(action);
+			actionsByPlatform.set(action.type, grouped);
+		}
+
+		let ttlMs = DEFAULT_TTL_SCENE;
+
+		for (const [type, grouped] of actionsByPlatform) {
+			const platform = this.getPlatform(type);
+			let platformTtlMs: number | undefined;
+
+			try {
+				platformTtlMs = await platform?.getCommandTtlMs?.(grouped);
+			} catch {
+				platformTtlMs = undefined;
+			}
+
+			if (typeof platformTtlMs === 'number' && Number.isFinite(platformTtlMs) && platformTtlMs > ttlMs) {
+				ttlMs = platformTtlMs;
+			}
+		}
+
+		return ttlMs;
 	}
 
 	/**

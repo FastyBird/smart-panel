@@ -207,6 +207,11 @@ describe('HomeySynchronizerService', () => {
 			updated: 4,
 			ignored: 0,
 			failed: 0,
+			acceptedEvents: [],
+			acceptedCapabilityValues: [
+				{ deviceId: 'homey-light', capabilityId: 'onoff', value: true },
+				{ deviceId: 'homey-light', capabilityId: 'dim', value: 0.25 },
+			],
 		});
 
 		expect(devicesService.findAll).toHaveBeenCalledWith(DEVICES_HOMEY_TYPE);
@@ -258,6 +263,21 @@ describe('HomeySynchronizerService', () => {
 		]);
 	});
 
+	it('reports whether a capability has a readable property binding', async () => {
+		await service.refreshIndex();
+
+		await expect(service.hasReadableCapabilityBinding('homey-light', 'onoff')).resolves.toBe(true);
+		await expect(service.hasReadableCapabilityBinding('homey-light', 'vendor_write_only')).resolves.toBe(false);
+		await expect(service.hasReadableCapabilityBinding('unadopted', 'onoff')).resolves.toBe(false);
+
+		const replacement = property('replacement-brightness', 'dim', brightnessMapping.name);
+		devicesService.findAll.mockResolvedValueOnce([adoptedDevice([replacement])]);
+		service.invalidateIndex();
+
+		await expect(service.hasReadableCapabilityBinding('homey-light', 'onoff')).resolves.toBe(false);
+		await expect(service.hasReadableCapabilityBinding('homey-light', 'dim')).resolves.toBe(true);
+	});
+
 	it('filters unknown devices, unmapped capabilities, and invalid runtime values', async () => {
 		await service.refreshIndex();
 
@@ -271,7 +291,7 @@ describe('HomeySynchronizerService', () => {
 			inventory(),
 		);
 
-		expect(result).toEqual({ updated: 0, ignored: 3, failed: 0 });
+		expect(result).toEqual({ updated: 0, ignored: 3, failed: 0, acceptedEvents: [] });
 		expect(propertiesService.update).not.toHaveBeenCalled();
 		expect(connectivityService.trySetConnectionState).not.toHaveBeenCalled();
 	});
@@ -326,15 +346,32 @@ describe('HomeySynchronizerService', () => {
 
 	it('rejects an older numeric sequence received in a later batch', async () => {
 		await service.refreshIndex();
+		const newest = capabilityEvent('onoff', true, null, 2);
+		const stale = capabilityEvent('onoff', false, null, 1);
 
-		await service.synchronizeEvents([capabilityEvent('onoff', true, null, 2)], inventory());
-		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 1)], inventory());
+		const accepted = await service.synchronizeEvents([newest], inventory());
+		const rejected = await service.synchronizeEvents([stale], inventory());
 
 		expect(propertiesService.update).toHaveBeenCalledTimes(2);
 		expect(propertiesService.update).toHaveBeenCalledWith('property-power', {
 			type: DEVICES_HOMEY_TYPE,
 			value: true,
 		});
+		expect(accepted.acceptedEvents).toEqual([newest]);
+		expect(rejected.acceptedEvents).toEqual([]);
+	});
+
+	it('rejects a conflicting capability value at an already-applied order', async () => {
+		await service.refreshIndex();
+		const applied = capabilityEvent('onoff', true, null, 2);
+		const conflicting = capabilityEvent('onoff', false, null, 2);
+
+		await service.synchronizeEvents([applied], inventory());
+		propertiesService.update.mockClear();
+		const rejected = await service.synchronizeEvents([conflicting], inventory());
+
+		expect(propertiesService.update).not.toHaveBeenCalled();
+		expect(rejected.acceptedEvents).toEqual([]);
 	});
 
 	it('blocks older capability events after a newer write failure and allows an equal-order retry', async () => {
@@ -342,17 +379,19 @@ describe('HomeySynchronizerService', () => {
 		propertiesService.update.mockRejectedValueOnce(new Error('storage unavailable'));
 		const newest = capabilityEvent('onoff', true, null, 2);
 
-		await service.synchronizeEvents([newest], inventory());
+		const partiallyApplied = await service.synchronizeEvents([newest], inventory());
+		expect(partiallyApplied.acceptedEvents).toEqual([]);
 		propertiesService.update.mockClear();
 		await service.synchronizeEvents([capabilityEvent('onoff', false, null, 1)], inventory());
 
 		expect(propertiesService.update).not.toHaveBeenCalled();
 
-		await service.synchronizeEvents([newest], inventory());
+		const retried = await service.synchronizeEvents([newest], inventory());
 
 		expect(propertiesService.update.mock.calls).toEqual([
 			['property-power', { type: DEVICES_HOMEY_TYPE, value: true }],
 		]);
+		expect(retried.acceptedEvents).toEqual([newest]);
 	});
 
 	it('rejects capability events missing from authoritative inventory or unavailable upstream', async () => {
@@ -620,11 +659,12 @@ describe('HomeySynchronizerService', () => {
 		});
 		const event = capabilityEvent('onoff', false, null, 2);
 
-		await service.synchronizeSnapshot([current], [event]);
+		const result = await service.synchronizeSnapshot([current], [event]);
 		propertiesService.update.mockClear();
 		await service.synchronizeEvents([{ ...event, value: false, sequence: 1 }], inventory(current));
 
 		expect(propertiesService.update).not.toHaveBeenCalled();
+		expect(result.acceptedEvents).toEqual([{ ...event, value: true }]);
 	});
 
 	it('commits buffered startup ordering after applying fresh targeted readback', async () => {
@@ -649,7 +689,7 @@ describe('HomeySynchronizerService', () => {
 			sequence: 2,
 		};
 
-		await service.synchronizeDevices([current], [], [capability, availability]);
+		const result = await service.synchronizeDevices([current], [], [capability, availability]);
 		propertiesService.update.mockClear();
 		connectivityService.trySetConnectionState.mockClear();
 
@@ -668,6 +708,7 @@ describe('HomeySynchronizerService', () => {
 
 		expect(propertiesService.update).not.toHaveBeenCalled();
 		expect(connectivityService.trySetConnectionState).not.toHaveBeenCalled();
+		expect(result.acceptedEvents).toEqual([{ ...capability, value: true }]);
 	});
 
 	it('carries a lifecycle refresh sequence into the fresh capability values', async () => {
@@ -704,7 +745,7 @@ describe('HomeySynchronizerService', () => {
 			new Map([[current.id, current]]),
 		);
 
-		expect(result).toEqual({ updated: 3, ignored: 0, failed: 1 });
+		expect(result).toEqual({ updated: 3, ignored: 0, failed: 1, acceptedEvents: [] });
 		expect(propertiesService.update).toHaveBeenCalledTimes(3);
 	});
 

@@ -7,6 +7,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
+import { DEFAULT_TTL_DEVICE_COMMAND, INTENT_CLEANUP_INTERVAL } from '../../intents/intents.constants';
 import { IntentsService } from '../../intents/services/intents.service';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../../websocket/dto/client-user.dto';
@@ -180,7 +181,10 @@ describe('PropertyCommandService', () => {
 				},
 				{
 					provide: PlatformRegistryService,
-					useValue: { get: jest.fn() },
+					useValue: {
+						get: jest.fn(),
+						getCommandTtlMs: jest.fn().mockReturnValue(DEFAULT_TTL_DEVICE_COMMAND),
+					},
 				},
 				{
 					provide: IntentsService,
@@ -236,11 +240,25 @@ describe('PropertyCommandService', () => {
 			.mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
 		jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
 		jest.spyOn(mockPlatform, 'processBatch').mockResolvedValue(true);
+		const ttlSpy = jest
+			.spyOn(platformRegistryService, 'getCommandTtlMs')
+			.mockReturnValue(12000 + DEFAULT_TTL_DEVICE_COMMAND + INTENT_CLEANUP_INTERVAL);
 
 		const result = await service.handleInternal(mockWsUser, validPayload);
 
 		expect(result.success).toBe(true);
 		expect(result.results).toEqual([{ device: mockDevice.id, success: true }]);
+		const [budgets, defaultTtlMs] = ttlSpy.mock.calls[0];
+		expect(budgets).toHaveLength(1);
+		expect(budgets[0]?.device.id).toBe(mockDevice.id);
+		expect(budgets[0]?.commandCount).toBe(1);
+		expect(defaultTtlMs).toBe(DEFAULT_TTL_DEVICE_COMMAND);
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		expect(intentsService.createIntent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				ttlMs: 12000 + DEFAULT_TTL_DEVICE_COMMAND + INTENT_CLEANUP_INTERVAL,
+			}),
+		);
 		expect(loggerLogSpy).toHaveBeenCalledWith(
 			expect.stringContaining(
 				`[PropertyCommandService] Successfully executed batch command for deviceId=${mockDevice.id}`,

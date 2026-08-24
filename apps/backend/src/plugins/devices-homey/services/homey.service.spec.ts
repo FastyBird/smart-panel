@@ -7,6 +7,8 @@ import {
 	DEFAULT_HOMEY_RECONCILIATION_INTERVAL_MS,
 	DEVICES_HOMEY_CONNECTOR_SERVICE_ID,
 	DEVICES_HOMEY_PLUGIN_NAME,
+	HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS,
+	HOMEY_COMMAND_WRITE_TIMEOUT_MS,
 	HomeyConnectionState,
 } from '../devices-homey.constants';
 import {
@@ -16,6 +18,7 @@ import {
 } from '../errors/homey-connector.error';
 import { HomeyInventoryUnavailableError } from '../errors/homey-inventory.error';
 import { HomeyConfigModel } from '../models/config.model';
+import { HomeyCapabilityType, createHomeyCapability } from '../models/homey-capability.model';
 import { HomeyDevice } from '../models/homey-device.model';
 import { HomeyEvent, HomeyEventType } from '../models/homey-event.model';
 import { HomeySystemInfo } from '../models/homey-system-info.model';
@@ -80,6 +83,18 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
 	return { promise, resolve };
 }
 
+function acceptedCapabilityValues(devices: readonly HomeyDevice[]) {
+	return devices.flatMap((device) =>
+		device.capabilities
+			.filter((capability) => capability.readable && capability.available !== false)
+			.map((capability) => ({
+				deviceId: device.id,
+				capabilityId: capability.id,
+				value: capability.value,
+			})),
+	);
+}
+
 async function flushMicrotasks(): Promise<void> {
 	for (let index = 0; index < 10; index += 1) {
 		await Promise.resolve();
@@ -94,7 +109,12 @@ describe('HomeyService', () => {
 	let synchronizer: jest.Mocked<
 		Pick<
 			HomeySynchronizerService,
-			'filterEvents' | 'synchronizeSnapshot' | 'synchronizeDevices' | 'synchronizeEvents' | 'reset'
+			| 'filterEvents'
+			| 'hasReadableCapabilityBinding'
+			| 'synchronizeSnapshot'
+			| 'synchronizeDevices'
+			| 'synchronizeEvents'
+			| 'reset'
 		>
 	>;
 	let listener: HomeyEventListener | null;
@@ -121,9 +141,28 @@ describe('HomeyService', () => {
 		connectorFactory = { create: jest.fn().mockReturnValue(connector) };
 		synchronizer = {
 			filterEvents: jest.fn((events) => [...events]),
-			synchronizeSnapshot: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0 }),
-			synchronizeDevices: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0 }),
-			synchronizeEvents: jest.fn().mockResolvedValue({ updated: 0, ignored: 0, failed: 0 }),
+			hasReadableCapabilityBinding: jest.fn().mockResolvedValue(true),
+			synchronizeSnapshot: jest.fn((devices: readonly HomeyDevice[]) =>
+				Promise.resolve({
+					updated: 0,
+					ignored: 0,
+					failed: 0,
+					acceptedEvents: [],
+					acceptedCapabilityValues: acceptedCapabilityValues(devices),
+				}),
+			),
+			synchronizeDevices: jest.fn((devices: readonly HomeyDevice[]) =>
+				Promise.resolve({
+					updated: 0,
+					ignored: 0,
+					failed: 0,
+					acceptedEvents: [],
+					acceptedCapabilityValues: acceptedCapabilityValues(devices),
+				}),
+			),
+			synchronizeEvents: jest.fn((events: readonly HomeyEvent[], _currentDevices: ReadonlyMap<string, HomeyDevice>) =>
+				Promise.resolve({ updated: 0, ignored: 0, failed: 0, acceptedEvents: [...events] }),
+			),
 			reset: jest.fn(),
 		};
 		service = new HomeyService(
@@ -300,7 +339,1031 @@ describe('HomeyService', () => {
 		await flushMicrotasks();
 
 		expect(synchronizer.synchronizeEvents).toHaveBeenCalledTimes(1);
-		expect(synchronizer.synchronizeEvents).toHaveBeenCalledWith([first, final], expect.any(Map));
+		expect(synchronizer.synchronizeEvents).toHaveBeenCalledWith(
+			[expect.objectContaining(first), expect.objectContaining(final)],
+			expect.any(Map),
+		);
+		expect(connector.getDevice.mock.calls).toHaveLength(0);
+
+		await service.stop();
+	});
+
+	it('waits for a matching synchronized event as authoritative command confirmation', async () => {
+		await service.start();
+		connector.getDevice.mockClear();
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+
+		expect(connector.setCapabilityValue.mock.calls).toContainEqual([staleDevice.id, 'onoff', true]);
+
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: true,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 1,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+
+		await expect(command).resolves.toBe(true);
+		expect(synchronizer.synchronizeEvents).toHaveBeenCalled();
+		expect(connector.getDevice.mock.calls).toHaveLength(0);
+
+		await service.stop();
+	});
+
+	it('does not confirm a command from a matching event observed before the command started', async () => {
+		await service.start();
+		connector.getDevice.mockClear().mockResolvedValue(staleDevice);
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: true,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 1,
+		});
+
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+
+		await expect(command).resolves.toBe(false);
+		expect(connector.getDevice.mock.calls).toEqual([[staleDevice.id]]);
+
+		await service.stop();
+	});
+
+	it('ties command confirmation to the accepted event observation revision', async () => {
+		await service.start();
+		connector.getDevice.mockClear().mockResolvedValue(staleDevice);
+		synchronizer.synchronizeEvents.mockImplementationOnce((events) =>
+			Promise.resolve({
+				updated: 1,
+				ignored: 1,
+				failed: 0,
+				acceptedEvents: events.slice(0, 1),
+			}),
+		);
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: true,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 1,
+		});
+
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: false,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 2,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+
+		await expect(command).resolves.toBe(false);
+		expect(connector.getDevice.mock.calls).toEqual([[staleDevice.id]]);
+
+		await service.stop();
+	});
+
+	it('confirms from a capability event accepted through a targeted device refresh', async () => {
+		const refreshedDevice = {
+			...staleDevice,
+			capabilities: staleDevice.capabilities.map((capability) =>
+				capability.id === 'onoff' ? { ...capability, value: true } : capability,
+			),
+		};
+		await service.start();
+		connector.getDevice.mockClear().mockResolvedValue(refreshedDevice);
+		synchronizer.synchronizeDevices.mockImplementationOnce((_devices, _missingDeviceIds, events) =>
+			Promise.resolve({
+				updated: 1,
+				ignored: 0,
+				failed: 0,
+				acceptedEvents: events.filter((event) => event.type === HomeyEventType.CAPABILITY_VALUE_CHANGED),
+			}),
+		);
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+
+		void listener?.({
+			type: HomeyEventType.DEVICE_UPDATED,
+			deviceId: staleDevice.id,
+			occurredAt: null,
+			sequence: 2,
+		});
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: true,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 2,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
+
+		await expect(command).resolves.toBe(true);
+		expect(connector.getDevice.mock.calls).toEqual([[staleDevice.id]]);
+
+		await service.stop();
+	});
+
+	it('confirms from a capability event accepted through a zone-triggered snapshot', async () => {
+		const refreshedDevice = {
+			...staleDevice,
+			capabilities: staleDevice.capabilities.map((capability) =>
+				capability.id === 'onoff' ? { ...capability, value: true } : capability,
+			),
+		};
+		await service.start();
+		connector.getDevice.mockClear();
+		connector.getDevices.mockResolvedValueOnce([refreshedDevice]);
+		synchronizer.synchronizeSnapshot.mockImplementationOnce((_devices, events) =>
+			Promise.resolve({
+				updated: 1,
+				ignored: 0,
+				failed: 0,
+				acceptedEvents: events.filter((event) => event.type === HomeyEventType.CAPABILITY_VALUE_CHANGED),
+			}),
+		);
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+
+		void listener?.({
+			type: HomeyEventType.ZONE_UPDATED,
+			zoneId: 'zone-living',
+			occurredAt: null,
+			sequence: 2,
+		});
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: true,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 2,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
+
+		await expect(command).resolves.toBe(true);
+		expect(connector.getDevice.mock.calls).toHaveLength(0);
+
+		await service.stop();
+	});
+
+	it('does not confirm a command from a matching event rejected by synchronization ordering', async () => {
+		await service.start();
+		connector.getDevice.mockClear().mockResolvedValue(staleDevice);
+		synchronizer.synchronizeDevices.mockClear();
+		synchronizer.synchronizeEvents.mockResolvedValueOnce({
+			updated: 0,
+			ignored: 1,
+			failed: 0,
+			acceptedEvents: [],
+		});
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+		let settled = false;
+		void command.then(() => {
+			settled = true;
+		});
+
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: true,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 1,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+
+		expect(settled).toBe(false);
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+
+		await expect(command).resolves.toBe(false);
+		expect(connector.getDevice.mock.calls).toEqual([[staleDevice.id]]);
+		expect(synchronizer.synchronizeDevices).not.toHaveBeenCalled();
+
+		await service.stop();
+	});
+
+	it('performs one targeted read and synchronizes it when event confirmation times out', async () => {
+		const confirmedDevice: HomeyDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'dim',
+					title: 'Dim',
+					value: 0.5,
+					type: HomeyCapabilityType.NUMBER,
+					unit: null,
+					minimum: 0,
+					maximum: 1,
+					step: 0.01,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		};
+		await service.start();
+		connector.getDevice.mockClear().mockResolvedValue(confirmedDevice);
+		synchronizer.synchronizeEvents.mockClear();
+		const command = service.executeCapabilityCommand(staleDevice.id, 'dim', 0.5);
+		await flushMicrotasks();
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+
+		await expect(command).resolves.toBe(true);
+		expect(connector.getDevice.mock.calls).toHaveLength(1);
+		expect(connector.getDevice.mock.calls[0]).toEqual([staleDevice.id]);
+		expect(synchronizer.synchronizeEvents).toHaveBeenCalledWith(
+			[
+				expect.objectContaining({
+					type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+					deviceId: staleDevice.id,
+					capabilityId: 'dim',
+					value: 0.5,
+				}),
+			],
+			expect.any(Map),
+		);
+
+		await service.stop();
+	});
+
+	it('accepts an authoritative idempotent readback without requiring a newer persistence event', async () => {
+		const currentDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'onoff',
+					title: 'Power',
+					value: true,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: '2026-08-15T10:00:00.000Z',
+				}),
+			],
+		};
+		connector.getDevices.mockResolvedValueOnce([currentDevice]);
+		await service.start();
+		connector.getDevice.mockClear().mockResolvedValue(currentDevice);
+		synchronizer.synchronizeEvents.mockClear();
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+
+		await expect(command).resolves.toBe(true);
+		expect(connector.getDevice.mock.calls).toEqual([[staleDevice.id]]);
+		expect(synchronizer.synchronizeEvents.mock.calls).toHaveLength(0);
+
+		await service.stop();
+	});
+
+	it('accepts a changed authoritative readback for a write-only capability binding', async () => {
+		const currentDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'onoff',
+					title: 'Power',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		};
+		const confirmedDevice = {
+			...currentDevice,
+			capabilities: currentDevice.capabilities.map((capability) => ({ ...capability, value: true })),
+		};
+		connector.getDevices.mockResolvedValueOnce([currentDevice]);
+		await service.start();
+		connector.getDevice.mockClear().mockResolvedValue(confirmedDevice);
+		synchronizer.hasReadableCapabilityBinding.mockResolvedValueOnce(false);
+		synchronizer.synchronizeEvents.mockClear();
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+
+		await expect(command).resolves.toBe(true);
+		expect(synchronizer.synchronizeEvents.mock.calls).toHaveLength(0);
+		expect(
+			service.getInventorySnapshot()?.[0].capabilities.find((capability) => capability.id === 'onoff')?.value,
+		).toBe(true);
+
+		await service.stop();
+	});
+
+	it('merges a targeted readback without rolling back a newer sibling capability', async () => {
+		let resolveReadback: ((device: HomeyDevice | null) => void) | undefined;
+		const currentDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'onoff',
+					title: 'Power',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+				createHomeyCapability({
+					id: 'dim',
+					title: 'Brightness',
+					value: 0.2,
+					type: HomeyCapabilityType.NUMBER,
+					unit: null,
+					minimum: 0,
+					maximum: 1,
+					step: 0.01,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		};
+		const confirmedDevice = {
+			...currentDevice,
+			capabilities: currentDevice.capabilities.map((capability) =>
+				capability.id === 'onoff' ? { ...capability, value: true } : capability,
+			),
+		};
+		connector.getDevices.mockResolvedValueOnce([currentDevice]);
+		await service.start();
+		connector.getDevice.mockClear().mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveReadback = resolve;
+			}),
+		);
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+
+		await emitLiveEvent({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'dim',
+			value: 0.9,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 2,
+		});
+		resolveReadback?.(confirmedDevice);
+		await flushMicrotasks();
+
+		await expect(command).resolves.toBe(true);
+		expect(service.getInventorySnapshot()?.[0].capabilities).toEqual([
+			expect.objectContaining({ id: 'onoff', value: true }),
+			expect.objectContaining({ id: 'dim', value: 0.9 }),
+		]);
+
+		await service.stop();
+	});
+
+	it('does not resurrect a device removed while a targeted readback is in flight', async () => {
+		let resolveReadback: ((device: HomeyDevice | null) => void) | undefined;
+		const currentDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'onoff',
+					title: 'Power',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		};
+		const confirmedDevice = {
+			...currentDevice,
+			capabilities: currentDevice.capabilities.map((capability) => ({ ...capability, value: true })),
+		};
+		connector.getDevices.mockResolvedValueOnce([currentDevice]);
+		await service.start();
+		connector.getDevice.mockClear().mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveReadback = resolve;
+			}),
+		);
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+
+		await emitLiveEvent({
+			type: HomeyEventType.DEVICE_REMOVED,
+			deviceId: staleDevice.id,
+			occurredAt: null,
+			sequence: 2,
+		});
+		resolveReadback?.(confirmedDevice);
+		await flushMicrotasks();
+
+		await expect(command).resolves.toBe(false);
+		expect(service.getInventorySnapshot()).toEqual([]);
+
+		await service.stop();
+	});
+
+	it('bounds waiting for queued fallback synchronization without dropping the operation', async () => {
+		const blocker = deferred();
+		const currentDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'onoff',
+					title: 'Power',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		};
+		const confirmedDevice = {
+			...currentDevice,
+			capabilities: currentDevice.capabilities.map((capability) => ({ ...capability, value: true })),
+		};
+		connector.getDevices.mockResolvedValueOnce([currentDevice]);
+		await service.start();
+		connector.getDevice.mockClear().mockResolvedValue(confirmedDevice);
+		const internal = service as unknown as {
+			enqueueSynchronization(operation: () => Promise<void>): Promise<void>;
+		};
+		const blockedSynchronization = internal.enqueueSynchronization(() => blocker.promise);
+		await flushMicrotasks();
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+		await flushMicrotasks();
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_WRITE_TIMEOUT_MS);
+
+		await expect(command).resolves.toBe(false);
+		expect(
+			service.getInventorySnapshot()?.[0].capabilities.find((capability) => capability.id === 'onoff')?.value,
+		).toBe(false);
+
+		blocker.resolve();
+		await blockedSynchronization;
+		await flushMicrotasks();
+
+		expect(
+			service.getInventorySnapshot()?.[0].capabilities.find((capability) => capability.id === 'onoff')?.value,
+		).toBe(true);
+
+		await service.stop();
+	});
+
+	it('prevents a timed-out queued readback from superseding a later command', async () => {
+		const blocker = deferred();
+		const currentDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'onoff',
+					title: 'Power',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		};
+		const firstReadback = {
+			...currentDevice,
+			capabilities: currentDevice.capabilities.map((capability) => ({ ...capability, value: true })),
+		};
+		connector.getDevices.mockResolvedValueOnce([currentDevice]);
+		await service.start();
+		connector.getDevice.mockClear().mockResolvedValueOnce(firstReadback).mockResolvedValueOnce(currentDevice);
+		const internal = service as unknown as {
+			enqueueSynchronization(operation: () => Promise<void>): Promise<void>;
+		};
+		const blockedSynchronization = internal.enqueueSynchronization(() => blocker.promise);
+		await flushMicrotasks();
+		const first = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_WRITE_TIMEOUT_MS);
+		await expect(first).resolves.toBe(false);
+
+		const second = service.executeCapabilityCommand(staleDevice.id, 'onoff', false);
+		await flushMicrotasks();
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+		await flushMicrotasks();
+		blocker.resolve();
+		await blockedSynchronization;
+		await flushMicrotasks();
+
+		await expect(second).resolves.toBe(true);
+		expect(
+			service.getInventorySnapshot()?.[0].capabilities.find((capability) => capability.id === 'onoff')?.value,
+		).toBe(false);
+
+		await service.stop();
+	});
+
+	it('rejects a stale matching readback after a newer queued event was accepted', async () => {
+		let resolveReadback: ((device: HomeyDevice | null) => void) | undefined;
+		const currentDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'onoff',
+					title: 'Power',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		};
+		const staleReadback = {
+			...currentDevice,
+			capabilities: currentDevice.capabilities.map((capability) =>
+				capability.id === 'onoff' ? { ...capability, value: true, lastUpdatedAt: null } : capability,
+			),
+		};
+		connector.getDevices.mockResolvedValueOnce([currentDevice]);
+		await service.start();
+		connector.getDevice.mockClear().mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveReadback = resolve;
+			}),
+		);
+		synchronizer.synchronizeEvents
+			.mockImplementationOnce((events) =>
+				Promise.resolve({ updated: 1, ignored: 0, failed: 0, acceptedEvents: [...events] }),
+			)
+			.mockResolvedValueOnce({ updated: 0, ignored: 1, failed: 0, acceptedEvents: [] });
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: false,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 2,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+		await flushMicrotasks();
+		resolveReadback?.(staleReadback);
+		await flushMicrotasks();
+
+		await expect(command).resolves.toBe(false);
+		expect(
+			service.getInventorySnapshot()?.[0].capabilities.find((capability) => capability.id === 'onoff')?.value,
+		).toBe(false);
+
+		await service.stop();
+	});
+
+	it('rejects a delayed readback after periodic reconciliation records newer snapshot evidence', async () => {
+		let resolveReadback: ((device: HomeyDevice | null) => void) | undefined;
+		const currentDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'onoff',
+					title: 'Power',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		};
+		const staleReadback = {
+			...currentDevice,
+			capabilities: currentDevice.capabilities.map((capability) => ({ ...capability, value: true })),
+		};
+		config.reconciliationInterval = HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS + 1;
+		connector.getDevices.mockResolvedValue([currentDevice]);
+		await service.start();
+		connector.getDevice.mockClear().mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveReadback = resolve;
+			}),
+		);
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+		await jest.advanceTimersByTimeAsync(1);
+		await flushMicrotasks();
+		resolveReadback?.(staleReadback);
+		await flushMicrotasks();
+
+		await expect(command).resolves.toBe(false);
+		expect(
+			service.getInventorySnapshot()?.[0].capabilities.find((capability) => capability.id === 'onoff')?.value,
+		).toBe(false);
+
+		await service.stop();
+	});
+
+	it('does not record rejected periodic snapshot values as command evidence', async () => {
+		let resolveReadback: ((device: HomeyDevice | null) => void) | undefined;
+		const currentDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'onoff',
+					title: 'Power',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: '2026-08-15T10:02:00.000Z',
+				}),
+			],
+		};
+		const rejectedSnapshot = {
+			...currentDevice,
+			capabilities: currentDevice.capabilities.map((capability) => ({
+				...capability,
+				value: true,
+				lastUpdatedAt: '2026-08-15T10:01:00.000Z',
+			})),
+		};
+		config.reconciliationInterval = HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS + 1;
+		connector.getDevices.mockResolvedValueOnce([currentDevice]);
+		await service.start();
+		connector.getDevices.mockResolvedValueOnce([rejectedSnapshot]);
+		connector.getDevice.mockClear().mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveReadback = resolve;
+			}),
+		);
+		synchronizer.synchronizeSnapshot.mockResolvedValueOnce({
+			updated: 0,
+			ignored: 1,
+			failed: 0,
+			acceptedEvents: [],
+			acceptedCapabilityValues: [],
+		});
+		synchronizer.synchronizeEvents.mockResolvedValueOnce({
+			updated: 0,
+			ignored: 1,
+			failed: 0,
+			acceptedEvents: [],
+		});
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+		await jest.advanceTimersByTimeAsync(1);
+		await flushMicrotasks();
+		resolveReadback?.(rejectedSnapshot);
+		await flushMicrotasks();
+
+		await expect(command).resolves.toBe(false);
+		expect(synchronizer.synchronizeEvents).toHaveBeenCalledTimes(1);
+
+		await service.stop();
+	});
+
+	it('rejects an older write-only readback after a newer inventory snapshot', async () => {
+		let resolveReadback: ((device: HomeyDevice | null) => void) | undefined;
+		const currentDevice = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'onoff',
+					title: 'Power',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: '2026-08-15T10:02:00.000Z',
+				}),
+			],
+		};
+		const olderReadback = {
+			...currentDevice,
+			capabilities: currentDevice.capabilities.map((capability) => ({
+				...capability,
+				value: true,
+				lastUpdatedAt: '2026-08-15T10:01:00.000Z',
+			})),
+		};
+		const noReadableEvidence = {
+			updated: 0,
+			ignored: 1,
+			failed: 0,
+			acceptedEvents: [],
+			acceptedCapabilityValues: [],
+		};
+		config.reconciliationInterval = HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS + 1;
+		connector.getDevices.mockResolvedValue([currentDevice]);
+		synchronizer.synchronizeSnapshot.mockResolvedValueOnce(noReadableEvidence);
+		await service.start();
+		synchronizer.synchronizeSnapshot.mockResolvedValueOnce(noReadableEvidence);
+		synchronizer.hasReadableCapabilityBinding.mockResolvedValueOnce(false);
+		connector.getDevice.mockClear().mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveReadback = resolve;
+			}),
+		);
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+		await jest.advanceTimersByTimeAsync(1);
+		await flushMicrotasks();
+		resolveReadback?.(olderReadback);
+		await flushMicrotasks();
+
+		await expect(command).resolves.toBe(false);
+		expect(
+			service.getInventorySnapshot()?.[0].capabilities.find((capability) => capability.id === 'onoff')?.value,
+		).toBe(false);
+
+		await service.stop();
+	});
+
+	it('rejects an unconfirmed command after exactly one mismatching readback', async () => {
+		await service.start();
+		connector.getDevice.mockClear().mockResolvedValue(staleDevice);
+		synchronizer.synchronizeDevices.mockClear();
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+		let settled = false;
+		void command.then(() => {
+			settled = true;
+		});
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: false,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 1,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+
+		expect(settled).toBe(false);
+
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS);
+
+		await expect(command).resolves.toBe(false);
+		expect(connector.getDevice.mock.calls).toHaveLength(1);
+		expect(synchronizer.synchronizeDevices.mock.calls).toHaveLength(0);
+
+		await service.stop();
+	});
+
+	it('serializes concurrent writes to the same device capability', async () => {
+		await service.start();
+		connector.setCapabilityValue.mockClear();
+		const first = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		const second = service.executeCapabilityCommand(staleDevice.id, 'onoff', false);
+		await flushMicrotasks();
+
+		expect(connector.setCapabilityValue.mock.calls).toEqual([[staleDevice.id, 'onoff', true]]);
+
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: true,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 1,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+		await expect(first).resolves.toBe(true);
+		await flushMicrotasks();
+
+		expect(connector.setCapabilityValue.mock.calls).toEqual([
+			[staleDevice.id, 'onoff', true],
+			[staleDevice.id, 'onoff', false],
+		]);
+
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: false,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 2,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+
+		await expect(second).resolves.toBe(true);
+		await service.stop();
+	});
+
+	it('bounds a queued caller without releasing the timed-out transport barrier', async () => {
+		const pendingWrite = deferred();
+		await service.start();
+		connector.setCapabilityValue
+			.mockClear()
+			.mockImplementationOnce(() => pendingWrite.promise)
+			.mockResolvedValueOnce(undefined);
+		const first = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		const second = service.executeCapabilityCommand(staleDevice.id, 'onoff', false);
+		await flushMicrotasks();
+
+		expect(connector.setCapabilityValue.mock.calls).toEqual([[staleDevice.id, 'onoff', true]]);
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_WRITE_TIMEOUT_MS);
+		await expect(first).resolves.toBe(false);
+		await expect(second).resolves.toBe(false);
+		expect(connector.setCapabilityValue.mock.calls).toHaveLength(1);
+		const third = service.executeCapabilityCommand(staleDevice.id, 'onoff', false);
+		await flushMicrotasks();
+		expect(connector.setCapabilityValue.mock.calls).toHaveLength(1);
+
+		pendingWrite.resolve();
+		await flushMicrotasks();
+		expect(connector.setCapabilityValue.mock.calls).toEqual([
+			[staleDevice.id, 'onoff', true],
+			[staleDevice.id, 'onoff', false],
+		]);
+
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'onoff',
+			value: false,
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 1,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+
+		await expect(third).resolves.toBe(true);
+		await service.stop();
+	});
+
+	it('retains a timed-out transport barrier across connector generations', async () => {
+		const pendingWrite = deferred();
+		let replacementListener: HomeyEventListener | null = null;
+		const replacement = createConnectorMock((nextListener) => {
+			replacementListener = nextListener;
+		}, jest.fn());
+		connectorFactory.create.mockReturnValueOnce(connector).mockReturnValueOnce(replacement);
+		connector.setCapabilityValue.mockClear().mockImplementationOnce(() => pendingWrite.promise);
+		await service.start();
+		const first = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_WRITE_TIMEOUT_MS);
+		await expect(first).resolves.toBe(false);
+		const cancelledQueued = service.executeCapabilityCommand(staleDevice.id, 'onoff', false);
+		await flushMicrotasks();
+		await service.stop();
+		await expect(cancelledQueued).resolves.toBe(false);
+		await service.start();
+
+		const second = service.executeCapabilityCommand(staleDevice.id, 'onoff', false);
+		await flushMicrotasks();
+		expect(replacement.setCapabilityValue.mock.calls).toHaveLength(0);
+
+		pendingWrite.resolve();
+		await flushMicrotasks();
+		expect(replacement.setCapabilityValue.mock.calls).toEqual([[staleDevice.id, 'onoff', false]]);
+		expect(replacementListener).not.toBeNull();
+
+		await service.stop();
+		await expect(second).resolves.toBe(false);
+	});
+
+	it('cancels an active write and its queued successor when the connector stops', async () => {
+		await service.start();
+		connector.setCapabilityValue.mockClear().mockImplementationOnce(() => new Promise(() => undefined));
+		const active = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		const queued = service.executeCapabilityCommand(staleDevice.id, 'onoff', false);
+		await flushMicrotasks();
+
+		await service.stop();
+
+		await expect(active).resolves.toBe(false);
+		await expect(queued).resolves.toBe(false);
+		expect(connector.setCapabilityValue.mock.calls).toEqual([[staleDevice.id, 'onoff', true]]);
+		expect(jest.getTimerCount()).toBe(0);
+	});
+
+	it('rejects connector write failures and bounds a stalled write without readback', async () => {
+		await service.start();
+		connector.getDevice.mockClear();
+		connector.setCapabilityValue.mockRejectedValueOnce(new Error('transport detail'));
+
+		await expect(service.executeCapabilityCommand(staleDevice.id, 'onoff', true)).resolves.toBe(false);
+
+		connector.setCapabilityValue.mockImplementationOnce(() => new Promise(() => undefined));
+		const stalled = service.executeCapabilityCommand(staleDevice.id, 'onoff', false);
+		await flushMicrotasks();
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_WRITE_TIMEOUT_MS);
+
+		await expect(stalled).resolves.toBe(false);
 		expect(connector.getDevice.mock.calls).toHaveLength(0);
 
 		await service.stop();
@@ -951,7 +2014,10 @@ describe('HomeyService', () => {
 
 		expect(connector.getZones.mock.calls).toHaveLength(1);
 		expect(connector.getDevices.mock.calls).toHaveLength(1);
-		expect(synchronizer.synchronizeSnapshot).toHaveBeenCalledWith([staleDevice], [zoneEvent, capabilityEvent]);
+		expect(synchronizer.synchronizeSnapshot).toHaveBeenCalledWith(
+			[staleDevice],
+			[zoneEvent, expect.objectContaining(capabilityEvent)],
+		);
 
 		await service.stop();
 	});

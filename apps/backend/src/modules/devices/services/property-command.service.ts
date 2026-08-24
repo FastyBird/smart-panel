@@ -198,22 +198,6 @@ export class PropertyCommandService {
 		for (const command of commands) {
 			valueMap[`device:${command.device}:${command.channel}:${command.property}`] = command.value;
 		}
-
-		// Create the intent with the value map and optional requestId for tracking
-		const intent = this.intentsService.createIntent({
-			requestId: options.requestId,
-			type: IntentType.DEVICE_SET_PROPERTY,
-			context: options.context,
-			targets,
-			value: valueMap,
-			ttlMs: DEFAULT_TTL_DEVICE_COMMAND,
-		});
-
-		this.logger.log(
-			`Created intent ${intent.id} for ${targets.length} target(s)${options.requestId ? ` requestId=${options.requestId}` : ''}`,
-		);
-
-		// Group properties by device ID
 		const groupedProperties: Record<string, PropertyCommandValueDto[]> = {};
 
 		commands.forEach((prop) => {
@@ -223,6 +207,20 @@ export class PropertyCommandService {
 
 			groupedProperties[prop.device].push(prop);
 		});
+
+		// Create the intent with the value map and optional requestId for tracking
+		const intent = this.intentsService.createIntent({
+			requestId: options.requestId,
+			type: IntentType.DEVICE_SET_PROPERTY,
+			context: options.context,
+			targets,
+			value: valueMap,
+			ttlMs: await this.resolveCommandIntentTtlMs(groupedProperties),
+		});
+
+		this.logger.log(
+			`Created intent ${intent.id} for ${targets.length} target(s)${options.requestId ? ` requestId=${options.requestId}` : ''}`,
+		);
 
 		const results: DevicePropertyCommandResult[] = [];
 
@@ -280,6 +278,26 @@ export class PropertyCommandService {
 
 			return { success: false, results: 'Internal error' };
 		}
+	}
+
+	private async resolveCommandIntentTtlMs(
+		groupedProperties: Readonly<Record<string, readonly PropertyCommandValueDto[]>>,
+	): Promise<number> {
+		const executions = [];
+
+		for (const [deviceId, commands] of Object.entries(groupedProperties)) {
+			try {
+				const device = await this.devicesService.findOne(deviceId);
+
+				if (device !== null) {
+					executions.push({ device, commandCount: commands.length });
+				}
+			} catch {
+				return DEFAULT_TTL_DEVICE_COMMAND;
+			}
+		}
+
+		return this.platformRegistryService.getCommandTtlMs(executions, DEFAULT_TTL_DEVICE_COMMAND);
 	}
 
 	private async processDeviceCommands(

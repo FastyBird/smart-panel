@@ -239,7 +239,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			},
 			targets,
 			value: this.buildLightingIntentValue(intent),
-			ttlMs: DEFAULT_TTL_SPACE_COMMAND,
+			ttlMs: this.getLightingIntentTtlMs(lights),
 		});
 
 		// Capture snapshot for undo BEFORE executing the intent
@@ -364,6 +364,27 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			deviceId: light.device.id,
 			channelId: light.lightChannel.id,
 		}));
+	}
+
+	private getLightingIntentTtlMs(lights: readonly LightDevice[]): number {
+		return this.platformRegistryService.getCommandTtlMs(
+			lights.map((light) => ({
+				device: light.device,
+				commandCount:
+					1 +
+					[
+						light.brightnessProperty,
+						light.colorRedProperty,
+						light.colorGreenProperty,
+						light.colorBlueProperty,
+						light.hueProperty,
+						light.saturationProperty,
+						light.colorTempProperty,
+						light.whiteProperty,
+					].filter((property) => property !== null).length,
+			})),
+			DEFAULT_TTL_SPACE_COMMAND,
+		);
 	}
 
 	/**
