@@ -166,6 +166,40 @@ const rules = computed<FormRules<IHomeyConfigEditForm>>(() => ({
 			trigger: ['change', 'blur'],
 		},
 	],
+	connectionTimeout: [
+		{
+			required: true,
+			message: t('devicesHomeyPlugin.config.validation.connectionTimeoutRequired'),
+			trigger: ['change', 'blur'],
+		},
+		{
+			type: 'number',
+			min: MIN_HOMEY_CONNECTION_TIMEOUT_MS,
+			max: MAX_HOMEY_CONNECTION_TIMEOUT_MS,
+			message: t('devicesHomeyPlugin.config.validation.connectionTimeoutRange', {
+				min: MIN_HOMEY_CONNECTION_TIMEOUT_MS,
+				max: MAX_HOMEY_CONNECTION_TIMEOUT_MS,
+			}),
+			trigger: ['change', 'blur'],
+		},
+	],
+	reconciliationInterval: [
+		{
+			required: true,
+			message: t('devicesHomeyPlugin.config.validation.reconciliationIntervalRequired'),
+			trigger: ['change', 'blur'],
+		},
+		{
+			type: 'number',
+			min: MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
+			max: MAX_HOMEY_RECONCILIATION_INTERVAL_MS,
+			message: t('devicesHomeyPlugin.config.validation.reconciliationIntervalRange', {
+				min: MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
+				max: MAX_HOMEY_RECONCILIATION_INTERVAL_MS,
+			}),
+			trigger: ['change', 'blur'],
+		},
+	],
 }));
 
 watch(formResult, (value) => emit('update:remote-form-result', value));

@@ -17,7 +17,13 @@
 			"required": "Před povolením integrace zadejte nebo ponechte klíč API Homey"
 		},
 		"connectionTimeout": "Časový limit připojení (ms)",
-		"reconciliationInterval": "Interval synchronizace inventáře (ms)"
+		"reconciliationInterval": "Interval synchronizace inventáře (ms)",
+		"validation": {
+			"connectionTimeoutRequired": "Časový limit připojení je povinný",
+			"connectionTimeoutRange": "Časový limit připojení musí být mezi {min} a {max} ms",
+			"reconciliationIntervalRequired": "Interval synchronizace inventáře je povinný",
+			"reconciliationIntervalRange": "Interval synchronizace inventáře musí být mezi {min} a {max} ms"
+		}
 	},
 	"messages": { "config": { "updated": "Nastavení Homey bylo aktualizováno", "updateFailed": "Nastavení Homey se nepodařilo aktualizovat" } },
 	"wizard": {

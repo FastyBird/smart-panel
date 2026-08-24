@@ -17,7 +17,13 @@
 			"required": "Geben Sie einen Homey-API-Schlüssel ein oder behalten Sie ihn bei, bevor Sie die Integration aktivieren"
 		},
 		"connectionTimeout": "Verbindungszeitlimit (ms)",
-		"reconciliationInterval": "Inventarabgleichsintervall (ms)"
+		"reconciliationInterval": "Inventarabgleichsintervall (ms)",
+		"validation": {
+			"connectionTimeoutRequired": "Das Verbindungszeitlimit ist erforderlich",
+			"connectionTimeoutRange": "Das Verbindungszeitlimit muss zwischen {min} und {max} ms liegen",
+			"reconciliationIntervalRequired": "Das Inventarabgleichsintervall ist erforderlich",
+			"reconciliationIntervalRange": "Das Inventarabgleichsintervall muss zwischen {min} und {max} ms liegen"
+		}
 	},
 	"messages": {
 		"config": { "updated": "Homey-Konfiguration wurde aktualisiert", "updateFailed": "Homey-Konfiguration konnte nicht aktualisiert werden" }

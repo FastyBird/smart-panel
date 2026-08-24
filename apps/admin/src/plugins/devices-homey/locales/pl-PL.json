@@ -17,7 +17,13 @@
 			"required": "Wprowadź lub zachowaj klucz API Homey przed włączeniem integracji"
 		},
 		"connectionTimeout": "Limit czasu połączenia (ms)",
-		"reconciliationInterval": "Interwał uzgadniania inwentarza (ms)"
+		"reconciliationInterval": "Interwał uzgadniania inwentarza (ms)",
+		"validation": {
+			"connectionTimeoutRequired": "Limit czasu połączenia jest wymagany",
+			"connectionTimeoutRange": "Limit czasu połączenia musi wynosić od {min} do {max} ms",
+			"reconciliationIntervalRequired": "Interwał uzgadniania inwentarza jest wymagany",
+			"reconciliationIntervalRange": "Interwał uzgadniania inwentarza musi wynosić od {min} do {max} ms"
+		}
 	},
 	"messages": {
 		"config": { "updated": "Konfiguracja Homey została zaktualizowana", "updateFailed": "Nie udało się zaktualizować konfiguracji Homey" }

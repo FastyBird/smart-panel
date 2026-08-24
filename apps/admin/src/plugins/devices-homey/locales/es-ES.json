@@ -17,7 +17,13 @@
 			"required": "Introduce o conserva una clave de API de Homey antes de activar la integración"
 		},
 		"connectionTimeout": "Tiempo de espera de conexión (ms)",
-		"reconciliationInterval": "Intervalo de conciliación del inventario (ms)"
+		"reconciliationInterval": "Intervalo de conciliación del inventario (ms)",
+		"validation": {
+			"connectionTimeoutRequired": "El tiempo de espera de conexión es obligatorio",
+			"connectionTimeoutRange": "El tiempo de espera de conexión debe estar entre {min} y {max} ms",
+			"reconciliationIntervalRequired": "El intervalo de conciliación del inventario es obligatorio",
+			"reconciliationIntervalRange": "El intervalo de conciliación del inventario debe estar entre {min} y {max} ms"
+		}
 	},
 	"messages": {
 		"config": { "updated": "La configuración de Homey se actualizó", "updateFailed": "No se pudo actualizar la configuración de Homey" }
