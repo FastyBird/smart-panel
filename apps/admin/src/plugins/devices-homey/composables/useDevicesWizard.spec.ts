@@ -471,6 +471,20 @@ describe('Homey useDevicesWizard', () => {
 		]);
 	});
 
+	it('counts astral Unicode characters like the backend name validator', async () => {
+		const unicodeName = '💡'.repeat(128);
+		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-light', status: DevicesHomeyPluginAdoptionStatus.created }]);
+		const adapter = useDevicesWizard();
+
+		const results = await adapter.adopt([{ key: 'homey-light', name: unicodeName, category: DevicesModuleDeviceCategory.lighting }]);
+
+		expect(inventory.adoptBatch).toHaveBeenCalledWith(
+			[{ deviceId: 'homey-light', name: unicodeName, deviceCategory: DevicesModuleDeviceCategory.lighting }],
+			expect.any(AbortSignal)
+		);
+		expect(results).toEqual([expect.objectContaining({ key: 'homey-light', name: unicodeName, status: DevicesHomeyPluginAdoptionStatus.created })]);
+	});
+
 	it('preserves a skipped adoption as a no-change wizard result', async () => {
 		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-light', status: 'skipped', panelDeviceId: '4a2515a6-7e87-4e51-96cc-832698237613' }]);
 		const adapter = useDevicesWizard();

@@ -233,7 +233,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		try {
 			const preparations = await mapWithConcurrencyLimit(selection, async (item) => {
 				try {
-					if (item.name.length > MAX_HOMEY_DEVICE_NAME_LENGTH) {
+					if (Array.from(item.name).length > MAX_HOMEY_DEVICE_NAME_LENGTH) {
 						return {
 							failure: {
 								deviceId: item.key,
