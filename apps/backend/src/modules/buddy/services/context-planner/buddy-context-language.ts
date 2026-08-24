@@ -83,17 +83,19 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 		return true;
 	}
 	if (CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN.test(actionMessage)) return true;
-	const auxiliaryOutcomeMatch = new RegExp(
-		String.raw`\b${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we|you)\s+|[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$`,
+	const auxiliaryOutcomeTailPattern = new RegExp(
+		String.raw`^${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we|you)\s+|[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$`,
 		'u',
-	).exec(actionMessage);
+	);
+	const auxiliaryOutcomeMatch = [
+		...actionMessage.matchAll(new RegExp(String.raw`\b${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\b`, 'gu')),
+	].find(
+		(match) =>
+			!CONDITIONAL_OUTCOME_RELATIVE_PREFIX_PATTERN.test(actionMessage.slice(0, match.index)) &&
+			auxiliaryOutcomeTailPattern.test(actionMessage.slice(match.index)),
+	);
 
-	if (
-		auxiliaryOutcomeMatch &&
-		!CONDITIONAL_OUTCOME_RELATIVE_PREFIX_PATTERN.test(actionMessage.slice(0, auxiliaryOutcomeMatch.index))
-	) {
-		return true;
-	}
+	if (auxiliaryOutcomeMatch) return true;
 	const trailingBoundary = message.slice(actionIndex).search(/[,;]/u);
 
 	if (LEADING_CONDITION_PATTERN.test(message) && trailingBoundary >= 0) {
