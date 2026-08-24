@@ -1206,6 +1206,7 @@ describe('ChannelsPropertiesService', () => {
 				expect.objectContaining({ id: mockChannelProperty.id }),
 				'new value',
 				storageBinding,
+				undefined,
 			);
 			expect(propertyValueService.write).not.toHaveBeenCalled();
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
@@ -1248,6 +1249,7 @@ describe('ChannelsPropertiesService', () => {
 				'new value',
 				null,
 				beforeValuePersistence,
+				undefined,
 			);
 			expect(propertyValueService.writeStrictWithState).not.toHaveBeenCalled();
 			expect(eventEmitter.emit).toHaveBeenCalledWith(

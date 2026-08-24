@@ -483,6 +483,8 @@ export class HomeySynchronizerService {
 		}
 
 		const order = this.createOrder(sequence, updatedAt);
+		const observedTimestamp = this.parseTimestamp(updatedAt);
+		const valueTimestamp = observedTimestamp === null ? undefined : new Date(observedTimestamp);
 		let allBindingsApplied = true;
 
 		for (const binding of bindings) {
@@ -513,10 +515,15 @@ export class HomeySynchronizerService {
 
 			try {
 				const transformed = this.transformer.read(binding.mapping, value);
-				await this.channelsPropertiesService.update(binding.property.id, {
+				const updateDto = {
 					type: DEVICES_HOMEY_TYPE,
 					value: transformed,
-				});
+				};
+				if (valueTimestamp === undefined) {
+					await this.channelsPropertiesService.update(binding.property.id, updateDto);
+				} else {
+					await this.channelsPropertiesService.update(binding.property.id, updateDto, { valueTimestamp });
+				}
 				this.lastAppliedOrder.set(binding.property.id, this.preserveSequenceWatermark(observedOrder, previousOrder));
 				this.lastAppliedValues.set(binding.property.id, value);
 				result.updated += 1;

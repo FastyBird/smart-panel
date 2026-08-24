@@ -113,10 +113,15 @@ export class PropertyValueService {
 	 * Write property value to storage
 	 * @returns true if value changed, false if value was the same or invalid
 	 */
-	async write(property: ChannelPropertyEntity, value: string | boolean | number | null): Promise<boolean> {
+	async write(
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+		valueTimestamp?: Date,
+	): Promise<boolean> {
 		const key = this.valueSourceRegistry.resolve(property);
 
-		return (await this.withValueLock(key, () => this.writeInternal(property, value, false))).changed;
+		return (await this.withValueLock(key, () => this.writeInternal(property, value, false, undefined, valueTimestamp)))
+			.changed;
 	}
 
 	/**
@@ -136,10 +141,11 @@ export class PropertyValueService {
 		property: ChannelPropertyEntity,
 		value: string | boolean | number | null,
 		storageBinding?: StorageBackendBinding,
+		valueTimestamp?: Date,
 	): Promise<PropertyValueWriteResult> {
 		const key = this.valueSourceRegistry.resolve(property);
 
-		return this.withValueLock(key, () => this.writeInternal(property, value, true, storageBinding));
+		return this.withValueLock(key, () => this.writeInternal(property, value, true, storageBinding, valueTimestamp));
 	}
 
 	async writeStrictIfPersistedDifferent(
@@ -147,6 +153,7 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		expectedPersistedState: PropertyValueState | null,
 		beforeWrite?: () => Promise<void>,
+		valueTimestamp?: Date,
 	): Promise<PropertyValueWriteResult> {
 		const key = this.valueSourceRegistry.resolve(property);
 
@@ -165,7 +172,7 @@ export class PropertyValueService {
 			}
 			await valueLease.assertOwned();
 
-			return this.writeInternal(property, value, true, latest.storageBinding);
+			return this.writeInternal(property, value, true, latest.storageBinding, valueTimestamp);
 		});
 	}
 
@@ -174,6 +181,7 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		strict: boolean,
 		storageBinding?: StorageBackendBinding,
+		valueTimestamp?: Date,
 	): Promise<PropertyValueWriteResult> {
 		const key = this.valueSourceRegistry.resolve(property);
 
@@ -220,7 +228,7 @@ export class PropertyValueService {
 		const cached = this.valuesMap.get(key);
 		if (!strict && cached && cached.value === value) {
 			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate
-			cached.lastUpdated = new Date().toISOString();
+			cached.lastUpdated = (valueTimestamp ?? new Date()).toISOString();
 			this.bumpCacheVersion(key);
 			return { changed: false, state: cached };
 		}
@@ -262,7 +270,7 @@ export class PropertyValueService {
 				return { changed: false, state: null };
 		}
 
-		const timestamp = new Date();
+		const timestamp = valueTimestamp ?? new Date();
 		const now = timestamp.toISOString();
 		const point = {
 			measurement: 'property_value',

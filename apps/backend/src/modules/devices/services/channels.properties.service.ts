@@ -110,6 +110,7 @@ export interface ChannelPropertyUpdateOptions {
 	comparePersistedValue?: boolean;
 	expectedPersistedState?: PropertyValueState | null;
 	beforeValuePersistence?: () => Promise<void>;
+	valueTimestamp?: Date;
 }
 
 @Injectable()
@@ -859,6 +860,7 @@ export class ChannelsPropertiesService {
 						updateDto.value,
 						options.expectedPersistedState ?? null,
 						options.beforeValuePersistence,
+						options.valueTimestamp,
 					);
 					valueChanged = result.changed;
 					persistedValueState = result.state;
@@ -868,11 +870,12 @@ export class ChannelsPropertiesService {
 						raw,
 						updateDto.value,
 						options.storageBinding,
+						options.valueTimestamp,
 					);
 					valueChanged = result.changed;
 					persistedValueState = result.state;
 				} else {
-					valueChanged = await this.propertyValueService.write(raw, updateDto.value);
+					valueChanged = await this.propertyValueService.write(raw, updateDto.value, options.valueTimestamp);
 				}
 			}
 			const strictValueEventEmitted = options.strictValuePersistence === true && valueChanged;
