@@ -3680,6 +3680,24 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.toolNames).not.toContain('set_space_lighting');
 	});
 
+	it('keeps a contextual-pronoun hypothetical outcome on the read path', () => {
+		const plan = service.plan({
+			message: 'If we turn it off the camera stops recording?',
+			recentEntityReferences: [
+				{
+					kind: 'device',
+					id: 'device-reading-lamp',
+					name: 'Reading lamp',
+					compatibleActionTypes: ['turn'],
+				},
+			],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('read');
+		expect(plan.toolNames).not.toContain('control_device');
+	});
+
 	it.each([
 		'Power switches can turn Bedroom lights on',
 		'Power outage shut Bedroom lights off',
