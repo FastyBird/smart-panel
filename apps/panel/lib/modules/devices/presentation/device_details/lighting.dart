@@ -262,19 +262,18 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         }
 
         if (propertyState?.isSettling ?? false) {
-          if (_valuesConverged(propertyState?.desiredValue, actualValue)) {
-            _deferredPropertySnapshots.remove(propertyKey);
-            controlState.clear(newDevice.id, channel.id, property.id);
-          } else {
-            _deferPropertySnapshot(
-              propertyKey,
-              newDevice.id,
-              channel.id,
-              property.id,
-              propertyState!.generation,
-              actualValue,
-            );
-          }
+          // A matching provider snapshot received after acknowledgment can
+          // still be a delayed event from an older ABA command. Keep the
+          // newest snapshot generation-scoped for the full settling window so
+          // subsequent delayed events cannot update an unprotected UI.
+          _deferPropertySnapshot(
+            propertyKey,
+            newDevice.id,
+            channel.id,
+            property.id,
+            propertyState!.generation,
+            actualValue,
+          );
           continue;
         }
 

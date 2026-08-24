@@ -935,9 +935,16 @@ void main() {
         await tester.pump();
 
         expect(
+          controlState
+              .getState(deviceId, lightChannelId, propertyId)
+              ?.isSettling,
+          isTrue,
+          reason: 'post-ack provider data remains protected while settling',
+        );
+        await tester.pump(const Duration(milliseconds: 900));
+        expect(
           controlState.getState(deviceId, lightChannelId, propertyId),
           isNull,
-          reason: 'a post-ack provider snapshot confirms the generation',
         );
         expect(find.byType(LightingDeviceDetail), findsOneWidget);
         expect(tester.takeException(), isNull);
@@ -995,23 +1002,6 @@ void main() {
         )!;
         final thirdGeneration = thirdState.generation;
 
-        updateHost(() {
-          renderedDevice = _buildRepresentativeDevice(
-            'lighting',
-            lightOn: true,
-            lightOnLastUpdated: DateTime.utc(2026, 8, 24, 10, 1),
-          ) as LightingDeviceView;
-        });
-        await tester.pump();
-
-        final stillPending = controlState.getState(
-          deviceId,
-          lightChannelId,
-          propertyId,
-        );
-        expect(stillPending?.isPending, isTrue);
-        expect(identical(stillPending?.generation, thirdGeneration), isTrue);
-
         commandResults[2].complete(true);
         await tester.pump();
 
@@ -1022,6 +1012,40 @@ void main() {
         );
         expect(settling?.isSettling, isTrue);
         expect(identical(settling?.generation, thirdGeneration), isTrue);
+
+        updateHost(() {
+          renderedDevice = _buildRepresentativeDevice(
+            'lighting',
+            lightOn: true,
+            lightOnLastUpdated: DateTime.utc(2026, 8, 24, 10, 1),
+          ) as LightingDeviceView;
+        });
+        await tester.pump();
+
+        expect(
+          controlState
+              .getState(deviceId, lightChannelId, propertyId)
+              ?.isSettling,
+          isTrue,
+          reason: 'a stale matching event cannot clear the settling generation',
+        );
+
+        updateHost(() {
+          renderedDevice = _buildRepresentativeDevice(
+            'lighting',
+            lightOn: false,
+            lightOnLastUpdated: DateTime.utc(2026, 8, 24, 10, 1, 0, 1),
+          ) as LightingDeviceView;
+        });
+        await tester.pump();
+
+        expect(
+          controlState
+              .getState(deviceId, lightChannelId, propertyId)
+              ?.isSettling,
+          isTrue,
+          reason: 'the delayed intermediate event remains behind the lock',
+        );
 
         commandResults[0].complete(true);
         commandResults[1].complete(true);
@@ -1042,15 +1066,23 @@ void main() {
           renderedDevice = _buildRepresentativeDevice(
             'lighting',
             lightOn: true,
-            lightOnLastUpdated: DateTime.utc(2026, 8, 24, 10, 1, 0, 1),
+            lightOnLastUpdated: DateTime.utc(2026, 8, 24, 10, 1, 0, 2),
           ) as LightingDeviceView;
         });
         await tester.pump();
 
         expect(
+          controlState
+              .getState(deviceId, lightChannelId, propertyId)
+              ?.isSettling,
+          isTrue,
+          reason: 'the latest provider snapshot is retained until timeout',
+        );
+        await tester.pump(const Duration(milliseconds: 900));
+        expect(
           controlState.getState(deviceId, lightChannelId, propertyId),
           isNull,
-          reason: 'only a post-ack provider snapshot confirms the command',
+          reason: 'settling consumes the newest generation-scoped snapshot',
         );
         expect(tester.takeException(), isNull);
       },
@@ -1255,6 +1287,14 @@ void main() {
       });
       await tester.pump();
 
+      expect(
+        controlState
+            .getState(deviceId, lightChannelId, propertyId)
+            ?.isSettling,
+        isTrue,
+        reason: 'post-ack confirmation remains protected while settling',
+      );
+      await tester.pump(const Duration(milliseconds: 900));
       expect(
         controlState.getState(deviceId, lightChannelId, propertyId),
         isNull,
