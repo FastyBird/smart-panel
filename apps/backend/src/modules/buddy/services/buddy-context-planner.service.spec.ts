@@ -6957,6 +6957,7 @@ describe('BuddyContextPlannerService', () => {
 		'If we disable the Bedroom lights, the camera still works?',
 		'If we disable the Bedroom lights the camera still works?',
 		'If we disable the Bedroom lights the camera keeps working?',
+		'If we disable the Bedroom lights the camera keeps recording in the dark?',
 		'If we disable the Bedroom lights the camera stops recording?',
 		'If we disable the Bedroom lights the camera becomes safer?',
 		'If we disable the Bedroom lights the camera keeps rebooting?',
@@ -7148,6 +7149,7 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open turn off the Bedroom lights John keeps activating?',
 		'If the window is open turn off the Bedroom lights the cleaner keeps cleaning?',
 		'If the window is open turn off the Bedroom lights the cleaner keeps repairing?',
+		'If the window is open turn off the Bedroom lights the cleaner keeps repairing in the workshop?',
 		'If the window is open turn off the Bedroom lights John starts to repair?',
 	])('keeps a phrasal relative target on the command path: %s', (message) => {
 		const plan = service.plan({
