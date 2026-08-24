@@ -54,6 +54,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       _deferredPropertyDivergences = {};
   Object? _trackedColorGeneration;
   final Set<String> _authoritativeColorUpdates = {};
+  final Set<String> _postAckColorDivergences = {};
 
   // Selected channel index for multi-channel devices
   int _selectedChannelIndex = 0;
@@ -213,6 +214,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           '${channel.id}:${property.id}': property.lastUpdated,
     };
     final newValues = <String, dynamic>{};
+    final newLastUpdated = <String, DateTime?>{};
     final changedProperties = <String>{};
 
     for (final channel in newDevice.lightChannels) {
@@ -221,6 +223,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         final actualValue = property.value?.value;
         final actualLastUpdated = property.lastUpdated;
         newValues[propertyKey] = actualValue;
+        newLastUpdated[propertyKey] = actualLastUpdated;
         if (oldValues.containsKey(propertyKey) &&
             oldValues[propertyKey] == actualValue &&
             oldLastUpdated[propertyKey] == actualLastUpdated) {
@@ -234,6 +237,12 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           channel.id,
           property.id,
         );
+        if (actualLastUpdated == null) {
+          // ChannelPropertiesRepository emits a local optimistic copy without
+          // measurement metadata before dispatching the command. It is UI
+          // feedback, not provider confirmation.
+          continue;
+        }
         if (propertyState?.isPending ?? false) {
           if (_valuesConverged(propertyState?.desiredValue, actualValue)) {
             _deferredPropertyDivergences.remove(propertyKey);
@@ -271,22 +280,34 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     if (colorState == null) {
       _trackedColorGeneration = null;
       _authoritativeColorUpdates.clear();
+      _postAckColorDivergences.clear();
       return;
     }
 
     if (!identical(_trackedColorGeneration, colorState.generation)) {
       _trackedColorGeneration = colorState.generation;
       _authoritativeColorUpdates.clear();
+      _postAckColorDivergences.clear();
     }
 
     if (colorState.isPending || colorState.isSettling || colorState.isMixed) {
       for (final property in colorState.properties) {
         final propertyKey = '${property.channelId}:${property.propertyId}';
+        if (newLastUpdated[propertyKey] == null ||
+            !changedProperties.contains(propertyKey)) {
+          continue;
+        }
         final actualValue = newValues[propertyKey];
-        final correlatedUpdate = colorState.isPending ||
-            _valuesConverged(property.desiredValue, actualValue);
-        if (changedProperties.contains(propertyKey) && correlatedUpdate) {
+        if (colorState.isPending ||
+            _valuesConverged(property.desiredValue, actualValue)) {
           _authoritativeColorUpdates.add(propertyKey);
+          _postAckColorDivergences.remove(propertyKey);
+        } else {
+          // A post-ack divergent snapshot cannot be assigned to this command
+          // immediately: it may be delayed state from the previous color.
+          // Retain the latest authoritative component and accept a complete
+          // divergent set only if the settling window expires.
+          _postAckColorDivergences.add(propertyKey);
         }
       }
 
@@ -333,11 +354,13 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     if (colorState == null) {
       _trackedColorGeneration = null;
       _authoritativeColorUpdates.clear();
+      _postAckColorDivergences.clear();
       return;
     }
     if (!identical(_trackedColorGeneration, colorState.generation)) {
       _trackedColorGeneration = colorState.generation;
       _authoritativeColorUpdates.clear();
+      _postAckColorDivergences.clear();
       return;
     }
     if (!colorState.isSettling && !colorState.isMixed) return;
@@ -373,7 +396,22 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           ? converged
           : _authoritativeColorUpdates.contains(propertyKey) || converged;
     });
-    if (_authoritativeColorUpdates.isEmpty || !colorComplete) return;
+    final divergentComplete = colorState.isMixed &&
+        colorState.properties.every((property) {
+          final propertyKey = '${property.channelId}:${property.propertyId}';
+          return actualValues.containsKey(propertyKey) &&
+              (_authoritativeColorUpdates.contains(propertyKey) ||
+                  _postAckColorDivergences.contains(propertyKey) ||
+                  _valuesConverged(
+                    property.desiredValue,
+                    actualValues[propertyKey],
+                  ));
+        });
+    if ((_authoritativeColorUpdates.isEmpty &&
+            _postAckColorDivergences.isEmpty) ||
+        (!colorComplete && !divergentComplete)) {
+      return;
+    }
 
     controlState.clearGroup(
       deviceId,
@@ -381,6 +419,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     );
     _trackedColorGeneration = null;
     _authoritativeColorUpdates.clear();
+    _postAckColorDivergences.clear();
   }
 
   @override
