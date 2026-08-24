@@ -5,7 +5,12 @@
 			"description": "Direkte Verbindung mit einem Homey Pro im lokalen Netzwerk. Homey Cloud wird noch nicht unterstützt."
 		},
 		"enabled": "Aktiviert",
-		"url": { "label": "Lokale API-URL", "placeholder": "http://homey.local:4859", "required": "Geben Sie die lokale Homey-API-URL ein" },
+		"url": {
+			"label": "Lokale API-URL",
+			"placeholder": "http://homey.local:4859",
+			"required": "Geben Sie die lokale Homey-API-URL ein",
+			"invalid": "Geben Sie eine HTTP- oder HTTPS-URL ohne eingebettete Zugangsdaten ein"
+		},
 		"apiKey": { "label": "Lokaler API-Schlüssel", "placeholder": "Neuen Schlüssel eingeben, um den gespeicherten zu ersetzen" },
 		"connectionTimeout": "Verbindungszeitlimit (ms)",
 		"reconciliationInterval": "Inventarabgleichsintervall (ms)"

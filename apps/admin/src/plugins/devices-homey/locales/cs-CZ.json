@@ -5,7 +5,12 @@
 			"description": "Připojte se přímo k Homey Pro v místní síti. Homey Cloud zatím není podporován."
 		},
 		"enabled": "Povoleno",
-		"url": { "label": "URL místního API", "placeholder": "http://homey.local:4859", "required": "Zadejte URL místního API Homey" },
+		"url": {
+			"label": "URL místního API",
+			"placeholder": "http://homey.local:4859",
+			"required": "Zadejte URL místního API Homey",
+			"invalid": "Zadejte adresu HTTP nebo HTTPS bez vložených přihlašovacích údajů"
+		},
 		"apiKey": { "label": "Klíč místního API", "placeholder": "Zadejte nový klíč pro nahrazení uloženého klíče" },
 		"connectionTimeout": "Časový limit připojení (ms)",
 		"reconciliationInterval": "Interval synchronizace inventáře (ms)"

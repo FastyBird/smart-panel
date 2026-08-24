@@ -58,8 +58,8 @@
 			>
 				<el-input-number
 					v-model="model.connectionTimeout"
-					:min="1000"
-					:max="120000"
+					:min="MIN_HOMEY_CONNECTION_TIMEOUT_MS"
+					:max="MAX_HOMEY_CONNECTION_TIMEOUT_MS"
 					:step="1000"
 					class="w-full"
 				/>
@@ -72,8 +72,8 @@
 			>
 				<el-input-number
 					v-model="model.reconciliationInterval"
-					:min="30000"
-					:max="86400000"
+					:min="MIN_HOMEY_RECONCILIATION_INTERVAL_MS"
+					:max="MAX_HOMEY_RECONCILIATION_INTERVAL_MS"
 					:step="30000"
 					class="w-full"
 				/>
@@ -89,7 +89,14 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
 
 import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import {
+	MAX_HOMEY_CONNECTION_TIMEOUT_MS,
+	MAX_HOMEY_RECONCILIATION_INTERVAL_MS,
+	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
+	MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
+} from '../devices-homey.constants';
 import type { IHomeyConfigEditForm } from '../schemas/config.types';
+import { isSafeHomeyUrl } from '../schemas/homey-url.schemas';
 
 import type { IHomeyConfigFormProps } from './homey-config-form.types';
 import { normalizeHomeyUrlInput } from './homey-config-form.utils';
@@ -132,7 +139,20 @@ const url = computed<string>({
 });
 
 const rules = computed<FormRules<IHomeyConfigEditForm>>(() => ({
-	url: [{ required: model.enabled, message: t('devicesHomeyPlugin.config.url.required'), trigger: 'change' }],
+	url: [
+		{
+			validator: (_rule, value, callback) => {
+				if (model.enabled && (value === null || value === undefined || value === '')) {
+					callback(new Error(t('devicesHomeyPlugin.config.url.required')));
+				} else if (typeof value === 'string' && value !== '' && !isSafeHomeyUrl(value)) {
+					callback(new Error(t('devicesHomeyPlugin.config.url.invalid')));
+				} else {
+					callback();
+				}
+			},
+			trigger: ['change', 'blur'],
+		},
+	],
 }));
 
 watch(formResult, (value) => emit('update:remote-form-result', value));

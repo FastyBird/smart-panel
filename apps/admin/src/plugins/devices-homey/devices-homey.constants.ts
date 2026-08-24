@@ -3,3 +3,11 @@ export const DEVICES_HOMEY_PLUGIN_PREFIX = 'devices-homey';
 export const DEVICES_HOMEY_PLUGIN_NAME = 'devices-homey-plugin';
 
 export const DEVICES_HOMEY_TYPE = 'devices-homey';
+
+export const MIN_HOMEY_CONNECTION_TIMEOUT_MS = 1_000;
+
+export const MAX_HOMEY_CONNECTION_TIMEOUT_MS = 60_000;
+
+export const MIN_HOMEY_RECONCILIATION_INTERVAL_MS = 30_000;
+
+export const MAX_HOMEY_RECONCILIATION_INTERVAL_MS = 3_600_000;

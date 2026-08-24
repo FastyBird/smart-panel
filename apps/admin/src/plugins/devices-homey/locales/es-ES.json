@@ -5,7 +5,12 @@
 			"description": "Conéctate directamente a un Homey Pro en la red local. Homey Cloud aún no está disponible."
 		},
 		"enabled": "Activado",
-		"url": { "label": "URL de API local", "placeholder": "http://homey.local:4859", "required": "Introduce la URL de API local de Homey" },
+		"url": {
+			"label": "URL de API local",
+			"placeholder": "http://homey.local:4859",
+			"required": "Introduce la URL de API local de Homey",
+			"invalid": "Introduce una URL HTTP o HTTPS sin credenciales integradas"
+		},
 		"apiKey": { "label": "Clave de API local", "placeholder": "Introduce una clave nueva para sustituir la configurada" },
 		"connectionTimeout": "Tiempo de espera de conexión (ms)",
 		"reconciliationInterval": "Intervalo de conciliación del inventario (ms)"

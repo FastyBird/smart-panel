@@ -8,7 +8,8 @@
 		"url": {
 			"label": "Local API URL",
 			"placeholder": "http://homey.local:4859",
-			"required": "Enter the Homey local API URL"
+			"required": "Enter the Homey local API URL",
+			"invalid": "Enter an HTTP or HTTPS URL without embedded credentials"
 		},
 		"apiKey": {
 			"label": "Local API key",

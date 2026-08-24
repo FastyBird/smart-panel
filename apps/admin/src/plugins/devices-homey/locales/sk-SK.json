@@ -5,7 +5,12 @@
 			"description": "Pripojte sa priamo k Homey Pro v lokálnej sieti. Homey Cloud zatiaľ nie je podporovaný."
 		},
 		"enabled": "Povolené",
-		"url": { "label": "URL lokálneho API", "placeholder": "http://homey.local:4859", "required": "Zadajte URL lokálneho API Homey" },
+		"url": {
+			"label": "URL lokálneho API",
+			"placeholder": "http://homey.local:4859",
+			"required": "Zadajte URL lokálneho API Homey",
+			"invalid": "Zadajte adresu HTTP alebo HTTPS bez vložených prihlasovacích údajov"
+		},
 		"apiKey": { "label": "Kľúč lokálneho API", "placeholder": "Zadajte nový kľúč na nahradenie uloženého kľúča" },
 		"connectionTimeout": "Časový limit pripojenia (ms)",
 		"reconciliationInterval": "Interval synchronizácie inventára (ms)"
