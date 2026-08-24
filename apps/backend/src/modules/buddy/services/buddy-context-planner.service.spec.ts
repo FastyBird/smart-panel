@@ -4314,6 +4314,8 @@ describe('BuddyContextPlannerService', () => {
 		'Check if every window is closed in here?',
 		'Are none of the windows open in here?',
 		'Can you check if the windows are open?',
+		'Are any windows almost open nearby?',
+		'Are any windows fully open near me?',
 	])('keeps an ordinary wrapped read in the conversation space: %s', (message) => {
 		expect(
 			service.plan({
@@ -6963,6 +6965,7 @@ describe('BuddyContextPlannerService', () => {
 		'If we turn off the Bedroom lights her security camera stops recording?',
 		'If we turn off the Bedroom lights his hallway camera keeps working?',
 		'If we turn off the Bedroom lights our front porch security camera stops recording?',
+		'If we turn off the Bedroom lights the camera stops remotely?',
 		'If we turn off the Bedroom lights John stops sleeping?',
 		'If we turn off the Bedroom lights guests keep waiting?',
 		'If we turn the Bedroom lights off the camera stops recording?',
@@ -7143,6 +7146,18 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.intent).toBe('mixed');
 		expect(plan.toolNames).toContain('control_device');
 		expect(plan.toolNames).toContain('set_space_lighting');
+	});
+
+	it('keeps a finite zero-relative camera target on the command path', () => {
+		const plan = service.plan({
+			message: 'If the window is open turn off the Bedroom camera the operator stops remotely?',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('mixed');
+		expect(plan.toolNames).toContain('control_device');
+		expect(plan.toolNames).not.toContain('set_space_lighting');
 	});
 
 	it('keeps an infinitive action complement out of conditional outcome subjects', () => {
