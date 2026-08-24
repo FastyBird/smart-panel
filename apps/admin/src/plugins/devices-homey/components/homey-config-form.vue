@@ -14,6 +14,23 @@
 		/>
 
 		<el-form-item
+			:label="t('devicesHomeyPlugin.config.mode.label')"
+			class="mt-3"
+		>
+			<el-radio-group model-value="local">
+				<el-radio-button value="local">
+					{{ t('devicesHomeyPlugin.config.mode.local') }}
+				</el-radio-button>
+				<el-radio-button
+					value="cloud"
+					disabled
+				>
+					{{ t('devicesHomeyPlugin.config.mode.cloud') }} — {{ t('devicesHomeyPlugin.config.mode.cloudUnavailable') }}
+				</el-radio-button>
+			</el-radio-group>
+		</el-form-item>
+
+		<el-form-item
 			:label="t('devicesHomeyPlugin.config.enabled')"
 			prop="enabled"
 			label-position="left"
@@ -79,6 +96,11 @@
 				/>
 			</el-form-item>
 		</div>
+
+		<homey-connection-panel
+			:candidate-url="model.url"
+			:candidate-api-key="model.apiKey"
+		/>
 	</el-form>
 </template>
 
@@ -86,7 +108,7 @@
 import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, ElRadioButton, ElRadioGroup, ElSwitch, type FormRules } from 'element-plus';
 
 import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import {
@@ -99,6 +121,7 @@ import { hasUsableHomeyApiKey, isBlankHomeyApiKeyReplacement } from '../schemas/
 import type { IHomeyConfigEditForm } from '../schemas/config.types';
 import { isSafeHomeyUrl } from '../schemas/homey-url.schemas';
 
+import HomeyConnectionPanel from './HomeyConnectionPanel.vue';
 import type { IHomeyConfigFormProps } from './homey-config-form.types';
 import { normalizeHomeyUrlInput } from './homey-config-form.utils';
 

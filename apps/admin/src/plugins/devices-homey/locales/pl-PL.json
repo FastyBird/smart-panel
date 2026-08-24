@@ -4,6 +4,7 @@
 			"title": "Lokalne połączenie Homey",
 			"description": "Połącz się bezpośrednio z Homey Pro w sieci lokalnej. Homey Cloud nie jest jeszcze obsługiwany."
 		},
+		"mode": { "label": "Tryb połączenia", "local": "Lokalny", "cloud": "Cloud", "cloudUnavailable": "Wkrótce" },
 		"enabled": "Włączone",
 		"url": {
 			"label": "Adres lokalnego API",
@@ -25,6 +26,52 @@
 			"reconciliationIntervalRequired": "Interwał uzgadniania inwentarza jest wymagany",
 			"reconciliationIntervalRange": "Interwał uzgadniania inwentarza musi wynosić od {min} do {max} ms"
 		}
+	},
+	"status": {
+		"title": "Stan połączenia",
+		"description": "Stan działania zgłaszany przez zapisaną integrację Homey.",
+		"refresh": "Odśwież",
+		"loadFailed": "Nie udało się załadować bieżącego stanu Homey.",
+		"notAvailable": "Niedostępne",
+		"fields": {
+			"connection": "Połączenie",
+			"homey": "Homey",
+			"version": "Wersja",
+			"lastSync": "Ostatnia synchronizacja inwentarza",
+			"lastEvent": "Ostatnie zdarzenie",
+			"adoptedDevices": "Dodane urządzenia"
+		},
+		"states": {
+			"stopped": "Zatrzymano",
+			"connecting": "Łączenie",
+			"connected": "Połączono",
+			"degraded_polling": "Ograniczone odpytywanie",
+			"reconnecting": "Ponowne łączenie",
+			"authentication_failed": "Uwierzytelnianie nie powiodło się",
+			"error": "Błąd"
+		},
+		"guidance": {
+			"authentication": "Zastąp zapisany klucz API i ponownie przetestuj połączenie.",
+			"authorization": "Nadaj kluczowi API wymagane uprawnienia Homey do odczytu i sterowania.",
+			"timeout": "Sprawdź adres Homey, trasę sieciową i limit czasu połączenia.",
+			"unavailable": "Sprawdź, czy Homey działa i jest dostępne ze Smart Panelu.",
+			"protocol": "Potwierdź, że skonfigurowany endpoint jest zgodnym lokalnym API Homey.",
+			"validation": "Sprawdź adres URL i ustawienia połączenia.",
+			"unsupported": "Połączone API Homey nie jest obsługiwane przez tę integrację."
+		}
+	},
+	"connectionTest": {
+		"title": "Test połączenia",
+		"description": "Przetestuj konfigurację zapisaną na serwerze albo pełny adres URL i nowy klucz wprowadzone powyżej.",
+		"saved": "Testuj zapisaną konfigurację",
+		"candidate": "Testuj wprowadzony URL i klucz",
+		"savedUnavailable": "Zapisz pełny adres URL i klucz API przed testem zapisanej konfiguracji.",
+		"candidateUnavailable": "Wprowadź prawidłowy adres URL i nowy klucz API, aby przetestować niezapisane ustawienia.",
+		"success": "Połączenie z Homey powiodło się",
+		"successDescription": "Połączono z {identity}.",
+		"failure": "Połączenie z Homey nie powiodło się",
+		"failureFallback": "Homey odrzuciło test połączenia.",
+		"requestFailed": "Nie udało się ukończyć żądania testu połączenia."
 	},
 	"messages": {
 		"config": { "updated": "Konfiguracja Homey została zaktualizowana", "updateFailed": "Nie udało się zaktualizować konfiguracji Homey" }

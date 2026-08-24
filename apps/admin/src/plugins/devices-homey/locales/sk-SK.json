@@ -4,6 +4,7 @@
 			"title": "Lokálne pripojenie Homey",
 			"description": "Pripojte sa priamo k Homey Pro v lokálnej sieti. Homey Cloud zatiaľ nie je podporovaný."
 		},
+		"mode": { "label": "Režim pripojenia", "local": "Lokálne", "cloud": "Cloud", "cloudUnavailable": "Pripravujeme" },
 		"enabled": "Povolené",
 		"url": {
 			"label": "URL lokálneho API",
@@ -25,6 +26,52 @@
 			"reconciliationIntervalRequired": "Interval synchronizácie inventára je povinný",
 			"reconciliationIntervalRange": "Interval synchronizácie inventára musí byť medzi {min} a {max} ms"
 		}
+	},
+	"status": {
+		"title": "Stav pripojenia",
+		"description": "Prevádzkový stav hlásený uloženou integráciou Homey.",
+		"refresh": "Obnoviť",
+		"loadFailed": "Aktuálny stav Homey sa nepodarilo načítať.",
+		"notAvailable": "Nie je k dispozícii",
+		"fields": {
+			"connection": "Pripojenie",
+			"homey": "Homey",
+			"version": "Verzia",
+			"lastSync": "Posledná synchronizácia inventára",
+			"lastEvent": "Posledná udalosť",
+			"adoptedDevices": "Pridané zariadenia"
+		},
+		"states": {
+			"stopped": "Zastavené",
+			"connecting": "Pripájanie",
+			"connected": "Pripojené",
+			"degraded_polling": "Obmedzené dopytovanie",
+			"reconnecting": "Obnovovanie pripojenia",
+			"authentication_failed": "Overenie zlyhalo",
+			"error": "Chyba"
+		},
+		"guidance": {
+			"authentication": "Nahraďte uložený kľúč API a pripojenie znova otestujte.",
+			"authorization": "Udeľte kľúču API potrebné oprávnenia Homey na čítanie a ovládanie.",
+			"timeout": "Skontrolujte adresu Homey, sieťovú cestu a časový limit pripojenia.",
+			"unavailable": "Skontrolujte, či je Homey spustené a dostupné zo Smart Panelu.",
+			"protocol": "Overte, že nakonfigurovaný koncový bod je kompatibilné lokálne API Homey.",
+			"validation": "Skontrolujte URL a nastavenia pripojenia.",
+			"unsupported": "Pripojené API Homey táto integrácia nepodporuje."
+		}
+	},
+	"connectionTest": {
+		"title": "Test pripojenia",
+		"description": "Otestujte nastavenie uložené na serveri alebo úplnú URL a nový kľúč zadané vyššie.",
+		"saved": "Otestovať uložené nastavenie",
+		"candidate": "Otestovať zadanú URL a kľúč",
+		"savedUnavailable": "Pred testom uloženého nastavenia uložte úplnú URL a kľúč API.",
+		"candidateUnavailable": "Na test neuloženého nastavenia zadajte platnú URL aj nový kľúč API.",
+		"success": "Pripojenie k Homey bolo úspešné",
+		"successDescription": "Pripojené k {identity}.",
+		"failure": "Pripojenie k Homey zlyhalo",
+		"failureFallback": "Homey test pripojenia odmietlo.",
+		"requestFailed": "Požiadavku na test pripojenia sa nepodarilo dokončiť."
 	},
 	"messages": { "config": { "updated": "Nastavenie Homey bolo aktualizované", "updateFailed": "Nastavenie Homey sa nepodarilo aktualizovať" } },
 	"wizard": {

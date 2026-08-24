@@ -43,6 +43,7 @@ export const useHomeyStatus = defineStore('devices_homey_plugin-status', () => {
 
 	const testConnection = async (payload: DevicesHomeyPluginTestConnectionRequestSchema): Promise<IHomeyTestConnection> => {
 		testing.value = true;
+		clearLastTest();
 
 		try {
 			const { data, error, response } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOMEY_PLUGIN_PREFIX}/test-connection`, {
@@ -62,7 +63,11 @@ export const useHomeyStatus = defineStore('devices_homey_plugin-status', () => {
 		}
 	};
 
-	return { status, lastTest, fetching, testing, fetch, testConnection };
+	const clearLastTest = (): void => {
+		lastTest.value = null;
+	};
+
+	return { status, lastTest, fetching, testing, fetch, testConnection, clearLastTest };
 });
 
 export const registerHomeyStatusStore = (pinia: Pinia): ReturnType<typeof useHomeyStatus> => useHomeyStatus(pinia);
