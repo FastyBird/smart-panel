@@ -20,6 +20,7 @@ import {
 	PropertyCategory,
 } from '../devices.constants';
 import { PropertyCommandDto } from '../dto/property-command.dto';
+import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
 import { IDevicePlatform } from '../platforms/device.platform';
@@ -184,6 +185,7 @@ describe('PropertyCommandService', () => {
 					useValue: {
 						get: jest.fn(),
 						getCommandTtlMs: jest.fn().mockReturnValue(DEFAULT_TTL_DEVICE_COMMAND),
+						usesAuthoritativePropertyReadback: jest.fn().mockReturnValue(false),
 					},
 				},
 				{
@@ -231,6 +233,28 @@ describe('PropertyCommandService', () => {
 			},
 		],
 	};
+
+	it('evaluates authoritative readback against the merged property update', async () => {
+		const device = toInstance(MockDevice, mockDevice);
+		const property = toInstance(MockChannelProperty, { ...mockChannelProperty, mockValue: 'readable' });
+		const update = {
+			type: 'mock',
+			value: true,
+			mockValue: 'write-only',
+		} as UpdateChannelPropertyDto & { mockValue: string };
+		const readbackSpy = jest
+			.spyOn(platformRegistryService, 'usesAuthoritativePropertyReadback')
+			.mockImplementation((_device, effectiveProperty) => {
+				expect(effectiveProperty).toBeInstanceOf(MockChannelProperty);
+				expect((effectiveProperty as MockChannelProperty).mockValue).toBe('write-only');
+				expect(property.mockValue).toBe('readable');
+
+				return false;
+			});
+
+		await expect(service.usesAuthoritativePropertyReadback(device, property, update)).resolves.toBe(false);
+		expect(readbackSpy).toHaveBeenCalledWith(device, expect.objectContaining({ value: true }));
+	});
 
 	it('should validate and process a valid command', async () => {
 		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));

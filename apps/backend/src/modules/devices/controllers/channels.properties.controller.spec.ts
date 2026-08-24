@@ -288,6 +288,11 @@ describe('ChannelsPropertiesController', () => {
 				mockChannelProperty.id,
 				expect.objectContaining({ type: 'mock', value: undefined }),
 			);
+			expect(propertyCommandService.usesAuthoritativePropertyReadback).toHaveBeenCalledWith(
+				mockDevice,
+				expect.objectContaining({ id: mockChannelProperty.id }),
+				expect.objectContaining({ type: 'mock', value: 'reported-later' }),
+			);
 			expect(propertyCommandService.processApiPropertyCommand).toHaveBeenCalledWith(
 				mockDevice.id,
 				mockChannel.id,

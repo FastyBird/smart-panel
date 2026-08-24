@@ -405,10 +405,11 @@ export class DevicesChannelsPropertiesController {
 		}
 
 		const commandValue = dtoInstance.value;
+		const effectivePropertyUpdate = { ...dtoInstance };
 		if (
 			typeof commandValue !== 'undefined' &&
 			commandValue !== null &&
-			(await this.propertyCommandService.usesAuthoritativePropertyReadback(device, property))
+			(await this.propertyCommandService.usesAuthoritativePropertyReadback(device, property, effectivePropertyUpdate))
 		) {
 			dtoInstance.value = undefined;
 		}
