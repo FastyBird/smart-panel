@@ -447,7 +447,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     DeviceControlState colorState,
     Map<String, dynamic> actualValues,
   ) {
-    if (colorState.isPending) return;
+    if (colorState.isPending || colorState.isSettling) return;
 
     final colorComplete = colorState.properties.every((property) {
       final propertyKey = '${property.channelId}:${property.propertyId}';

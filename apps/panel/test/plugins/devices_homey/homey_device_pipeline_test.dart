@@ -1405,6 +1405,14 @@ void main() {
       await tester.pump();
 
       expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isSettling,
+        isTrue,
+        reason: 'post-ack color remains protected while settling',
+      );
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(
         controlState.getGroupState(
           deviceId,
           LightChannelController.colorGroupId,
@@ -1464,6 +1472,18 @@ void main() {
       )!;
       final thirdGeneration = thirdState.generation;
 
+      for (var index = 6; index < 9; index++) {
+        commandResults[index].complete(true);
+      }
+      await tester.pump();
+
+      final settling = controlState.getGroupState(
+        deviceId,
+        LightChannelController.colorGroupId,
+      );
+      expect(settling?.isSettling, isTrue);
+      expect(identical(settling?.generation, thirdGeneration), isTrue);
+
       updateHost(() {
         renderedDevice = _buildRepresentativeDevice(
           'lighting',
@@ -1476,24 +1496,33 @@ void main() {
       });
       await tester.pump();
 
-      final stillPending = controlState.getGroupState(
-        deviceId,
-        LightChannelController.colorGroupId,
+      expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isSettling,
+        isTrue,
+        reason: 'stale matching color cannot clear the settling generation',
       );
-      expect(stillPending?.isPending, isTrue);
-      expect(identical(stillPending?.generation, thirdGeneration), isTrue);
 
-      for (var index = 6; index < 9; index++) {
-        commandResults[index].complete(true);
-      }
+      updateHost(() {
+        renderedDevice = _buildRepresentativeDevice(
+          'lighting',
+          lightRgb: const [40, 50, 60],
+          lightRgbLastUpdated: List.filled(
+            3,
+            DateTime.utc(2026, 8, 24, 10, 1, 0, 1),
+          ),
+        ) as LightingDeviceView;
+      });
       await tester.pump();
 
-      final settling = controlState.getGroupState(
-        deviceId,
-        LightChannelController.colorGroupId,
+      expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isSettling,
+        isTrue,
+        reason: 'delayed intermediate color remains behind the group lock',
       );
-      expect(settling?.isSettling, isTrue);
-      expect(identical(settling?.generation, thirdGeneration), isTrue);
 
       for (var index = 0; index < 6; index++) {
         commandResults[index].complete(true);
@@ -1517,19 +1546,27 @@ void main() {
           lightRgb: const [10, 20, 30],
           lightRgbLastUpdated: List.filled(
             3,
-            DateTime.utc(2026, 8, 24, 10, 1, 0, 1),
+            DateTime.utc(2026, 8, 24, 10, 1, 0, 2),
           ),
         ) as LightingDeviceView;
       });
       await tester.pump();
 
       expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isSettling,
+        isTrue,
+        reason: 'latest color snapshot remains protected until timeout',
+      );
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(
         controlState.getGroupState(
           deviceId,
           LightChannelController.colorGroupId,
         ),
         isNull,
-        reason: 'only post-ack color snapshots confirm immediately',
+        reason: 'settling consumes the newest grouped color snapshot',
       );
       expect(tester.takeException(), isNull);
     });
@@ -1626,6 +1663,13 @@ void main() {
       await tester.pump();
 
       expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isSettling,
+        isTrue,
+      );
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(
         controlState.getGroupState(
           deviceId,
           LightChannelController.colorGroupId,
@@ -1704,12 +1748,20 @@ void main() {
       await tester.pump();
 
       expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isSettling,
+        isTrue,
+        reason: 'unchanged components remain protected while settling',
+      );
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(
         controlState.getGroupState(
           deviceId,
           LightChannelController.colorGroupId,
         ),
         isNull,
-        reason: 'unchanged components do not receive Homey capability events',
+        reason: 'unchanged components do not require Homey capability events',
       );
       expect(tester.takeException(), isNull);
     });
@@ -1893,6 +1945,13 @@ void main() {
       });
       await tester.pump();
 
+      expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isSettling,
+        isTrue,
+      );
+      await tester.pump(const Duration(milliseconds: 900));
       expect(
         controlState.getGroupState(
           deviceId,
@@ -2110,6 +2169,13 @@ void main() {
       });
       await tester.pump();
 
+      expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isSettling,
+        isTrue,
+      );
+      await tester.pump(const Duration(milliseconds: 900));
       expect(
         controlState.getGroupState(
           deviceId,
