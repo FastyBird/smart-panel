@@ -147,6 +147,7 @@ export const useHomeyInventory = defineStore('devices_homey_plugin-inventory', (
 
 	const adoptBatch = async (selections: IHomeyAdoptSelection[]): Promise<IHomeyAdoptionResult[]> => {
 		adopting.value = true;
+		adoptionResults.value = [];
 		const results: IHomeyAdoptionResult[] = [];
 
 		try {

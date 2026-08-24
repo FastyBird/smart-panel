@@ -32,6 +32,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const devicesStore = storesManager.getStore(devicesStoreKey);
 	const inventory = storesManager.getStore(homeyInventoryStoreKey);
 	const error = ref<string | null>(null);
+	const submittedNames = ref<Record<string, string>>({});
 
 	const devices = computed(() => orderBy(inventory.findAll(), [(device) => rowStatus(device), (device) => device.name], ['asc', 'asc']));
 
@@ -130,10 +131,13 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 	async function restart(): Promise<void> {
 		inventory.adoptionResults = [];
+		submittedNames.value = {};
 		await load();
 	}
 
 	const adopt = async (selection: IWizardAdoptSelection[]): Promise<IWizardResult[]> => {
+		submittedNames.value = Object.fromEntries(selection.map((item) => [item.key, item.name]));
+
 		try {
 			const requests = await Promise.all(
 				selection.map(async (item) => {
@@ -159,6 +163,9 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			return adoption.map(transformResult);
 		} catch (caught: unknown) {
 			flashMessage.error(caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.adoption'));
+			if (inventory.adoptionResults.length > 0) {
+				return inventory.adoptionResults.map(transformResult);
+			}
 			throw caught;
 		}
 	};
@@ -167,7 +174,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		const device = inventory.findById(result.deviceId);
 		return {
 			key: result.deviceId,
-			name: device?.name ?? result.deviceId,
+			name: submittedNames.value[result.deviceId] ?? device?.name ?? result.deviceId,
 			identifier: result.deviceId,
 			status: result.status,
 			error: result.message ?? null,

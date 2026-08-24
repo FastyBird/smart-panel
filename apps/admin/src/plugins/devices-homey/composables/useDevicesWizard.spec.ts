@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DevicesHomeyPluginSupportState, DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import type { IHomeyInventoryDevice } from '../store/homey.types';
+import {
+	DevicesHomeyPluginAdoptionStatus,
+	DevicesHomeyPluginSupportState,
+	DevicesModuleDeviceCategory,
+} from '../../../openapi.constants';
+import type { IHomeyAdoptionResult, IHomeyInventoryDevice } from '../store/homey.types';
 
 import { useDevicesWizard } from './useDevicesWizard';
 
 const flashMessage = { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() };
 const inventory = {
-	adoptionResults: [],
+	adoptionResults: [] as IHomeyAdoptionResult[],
 	previews: {},
 	fetching: false,
 	adopting: false,
@@ -150,9 +154,21 @@ describe('Homey useDevicesWizard', () => {
 		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-light', status: 'skipped', panelDeviceId: '4a2515a6-7e87-4e51-96cc-832698237613' }]);
 		const adapter = useDevicesWizard();
 
-		const results = await adapter.adopt([{ key: 'homey-light', name: 'Desk light', category: DevicesModuleDeviceCategory.lighting }]);
+		const results = await adapter.adopt([{ key: 'homey-light', name: 'Custom desk light', category: DevicesModuleDeviceCategory.lighting }]);
 
-		expect(results[0]).toEqual(expect.objectContaining({ status: 'skipped' }));
+		expect(results[0]).toEqual(expect.objectContaining({ status: 'skipped', name: 'Custom desk light' }));
+	});
+
+	it('returns completed chunk results when a later batch request fails', async () => {
+		const failure = new Error('Homey is offline');
+		inventory.adoptionResults = [{ deviceId: 'homey-light', status: DevicesHomeyPluginAdoptionStatus.created }];
+		inventory.adoptBatch.mockRejectedValue(failure);
+		const adapter = useDevicesWizard();
+
+		const results = await adapter.adopt([{ key: 'homey-light', name: 'Custom desk light', category: DevicesModuleDeviceCategory.lighting }]);
+
+		expect(results).toEqual([expect.objectContaining({ key: 'homey-light', status: 'created', name: 'Custom desk light' })]);
+		expect(flashMessage.error).toHaveBeenCalledWith('Homey is offline');
 	});
 
 	it('surfaces batch request failures and leaves the rejection for the wizard shell', async () => {
