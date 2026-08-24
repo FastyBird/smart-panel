@@ -4229,6 +4229,7 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows almost open or fully closed?',
 		'Are any windows open but unlocked?',
 		'Are any windows open yet unlocked?',
+		'Are any windows open that face the street?',
 		'Are any doors completely closed?',
 		'Are any windows partially open?',
 		'Are any windows almost fully open?',
@@ -4326,6 +4327,7 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows fully open near me?',
 		'Are any windows open and unlocked near me?',
 		'Are any windows open but unlocked near me?',
+		'Are any windows open that are near me?',
 	])('keeps an ordinary wrapped read in the conversation space: %s', (message) => {
 		expect(
 			service.plan({
