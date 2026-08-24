@@ -1341,11 +1341,155 @@ void main() {
       await tester.pump();
 
       expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isPending,
+        isTrue,
+        reason: 'pre-ack color data cannot confirm the pending generation',
+      );
+
+      controlState.setGroupSettling(
+        deviceId,
+        LightChannelController.colorGroupId,
+      );
+      updateHost(() {
+        renderedDevice = _buildRepresentativeDevice(
+          'lighting',
+          lightRgb: const [10, 20, 30],
+          lightRgbLastUpdated: List.filled(
+            3,
+            DateTime.utc(2026, 8, 24, 10, 1, 0, 1),
+          ),
+        ) as LightingDeviceView;
+      });
+      await tester.pump();
+
+      expect(
         controlState.getGroupState(
           deviceId,
           LightChannelController.colorGroupId,
         ),
         isNull,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('keeps the current color generation through a delayed ABA match', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final controlState = locator<DeviceControlStateService>();
+      controlState.clearForDevice(deviceId);
+      addTearDown(() => controlState.clearForDevice(deviceId));
+      final devicesService = locator<DevicesService>() as _MockDevicesService;
+      reset(devicesService);
+      final commandResults = List.generate(9, (_) => Completer<bool>());
+      var commandIndex = 0;
+      when(
+        () => devicesService.setPropertyValue(any(), any()),
+      ).thenAnswer((_) => commandResults[commandIndex++].future);
+
+      var renderedDevice =
+          _buildRepresentativeDevice('lighting', lightRgb: const [0, 0, 0])
+              as LightingDeviceView;
+      late StateSetter updateHost;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              updateHost = setState;
+              return LightingDeviceDetail(device: renderedDevice);
+            },
+          ),
+        ),
+      );
+
+      final controller = LightingDeviceController(
+        device: renderedDevice,
+        controlState: controlState,
+        devicesService: devicesService,
+      ).light;
+      controller.setColorRGB(10, 20, 30);
+      controller.setColorRGB(40, 50, 60);
+      controller.setColorRGB(10, 20, 30);
+      final thirdState = controlState.getGroupState(
+        deviceId,
+        LightChannelController.colorGroupId,
+      )!;
+      final thirdGeneration = thirdState.generation;
+
+      updateHost(() {
+        renderedDevice = _buildRepresentativeDevice(
+          'lighting',
+          lightRgb: const [10, 20, 30],
+          lightRgbLastUpdated: List.filled(
+            3,
+            DateTime.utc(2026, 8, 24, 10, 1),
+          ),
+        ) as LightingDeviceView;
+      });
+      await tester.pump();
+
+      final stillPending = controlState.getGroupState(
+        deviceId,
+        LightChannelController.colorGroupId,
+      );
+      expect(stillPending?.isPending, isTrue);
+      expect(identical(stillPending?.generation, thirdGeneration), isTrue);
+
+      for (var index = 6; index < 9; index++) {
+        commandResults[index].complete(true);
+      }
+      await tester.pump();
+
+      final settling = controlState.getGroupState(
+        deviceId,
+        LightChannelController.colorGroupId,
+      );
+      expect(settling?.isSettling, isTrue);
+      expect(identical(settling?.generation, thirdGeneration), isTrue);
+
+      for (var index = 0; index < 6; index++) {
+        commandResults[index].complete(true);
+      }
+      await tester.pump();
+
+      expect(
+        identical(
+          controlState
+              .getGroupState(deviceId, LightChannelController.colorGroupId)
+              ?.generation,
+          thirdGeneration,
+        ),
+        isTrue,
+        reason: 'older color acknowledgments cannot mutate the generation',
+      );
+
+      updateHost(() {
+        renderedDevice = _buildRepresentativeDevice(
+          'lighting',
+          lightRgb: const [10, 20, 30],
+          lightRgbLastUpdated: List.filled(
+            3,
+            DateTime.utc(2026, 8, 24, 10, 1, 0, 1),
+          ),
+        ) as LightingDeviceView;
+      });
+      await tester.pump();
+
+      expect(
+        controlState.getGroupState(
+          deviceId,
+          LightChannelController.colorGroupId,
+        ),
+        isNull,
+        reason: 'only post-ack color snapshots confirm immediately',
       );
       expect(tester.takeException(), isNull);
     });
