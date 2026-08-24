@@ -103,7 +103,7 @@ export interface IWizardResult {
 	key: string;
 	name: string;
 	identifier: string;
-	status: 'created' | 'updated' | 'failed';
+	status: 'created' | 'updated' | 'skipped' | 'failed';
 	error: string | null;
 	/** Data source for an IWizardColumn whose `steps` includes 'results'. */
 	cells?: Record<string, IWizardCell>;
@@ -199,7 +199,7 @@ export const wizardResultTagType = (status: IWizardResult['status']): 'success' 
 		return 'success';
 	}
 
-	if (status === 'updated') {
+	if (status === 'updated' || status === 'skipped') {
 		return 'info';
 	}
 

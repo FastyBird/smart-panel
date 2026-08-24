@@ -31,7 +31,7 @@
 			:error="fieldErrors['url']"
 		>
 			<el-input
-				v-model="model.url"
+				v-model="url"
 				name="url"
 				:placeholder="t('devicesHomeyPlugin.config.url.placeholder')"
 			/>
@@ -83,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
@@ -92,6 +92,7 @@ import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPl
 import type { IHomeyConfigEditForm } from '../schemas/config.types';
 
 import type { IHomeyConfigFormProps } from './homey-config-form.types';
+import { normalizeHomeyUrlInput } from './homey-config-form.utils';
 
 defineOptions({ name: 'HomeyConfigForm' });
 
@@ -123,9 +124,16 @@ const fieldErrors = computed<Record<string, string | undefined>>(() =>
 	Object.fromEntries(props.remoteFormErrors.map((error) => [error.field, error.message]))
 );
 
-const rules = reactive<FormRules<IHomeyConfigEditForm>>({
-	url: [{ required: true, message: t('devicesHomeyPlugin.config.url.required'), trigger: 'change' }],
+const url = computed<string>({
+	get: () => model.url ?? '',
+	set: (value) => {
+		model.url = normalizeHomeyUrlInput(value);
+	},
 });
+
+const rules = computed<FormRules<IHomeyConfigEditForm>>(() => ({
+	url: [{ required: model.enabled, message: t('devicesHomeyPlugin.config.url.required'), trigger: 'change' }],
+}));
 
 watch(formResult, (value) => emit('update:remote-form-result', value));
 watch(formChanged, (value) => emit('update:remote-form-changed', value));

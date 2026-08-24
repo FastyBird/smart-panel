@@ -990,7 +990,8 @@
 			"willCreate": "Bude vytvořeno",
 			"willUpdate": "Bude aktualizováno",
 			"created": "Vytvořeno",
-			"updated": "Aktualizováno"
+			"updated": "Aktualizováno",
+			"skipped": "Beze změn"
 		},
 		"columns": {
 			"name": "Název",

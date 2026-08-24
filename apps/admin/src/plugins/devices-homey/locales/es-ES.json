@@ -21,6 +21,6 @@
 		"values": { "noZone": "Sin zona", "capabilities": "{count} capacidades" },
 		"statuses": { "unavailable": "No disponible en Homey" },
 		"actions": { "refresh": "Actualizar inventario", "openConfig": "Abrir configuración de Homey" },
-		"errors": { "inventory": "No se pudo cargar el inventario de Homey" }
+		"errors": { "inventory": "No se pudo cargar el inventario de Homey", "adoption": "No se pudieron añadir los dispositivos Homey seleccionados" }
 	}
 }

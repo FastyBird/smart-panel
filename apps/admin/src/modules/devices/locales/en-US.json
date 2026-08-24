@@ -990,7 +990,8 @@
 			"willCreate": "Will create",
 			"willUpdate": "Will update",
 			"created": "Created",
-			"updated": "Updated"
+			"updated": "Updated",
+			"skipped": "No changes"
 		},
 		"columns": {
 			"name": "Name",

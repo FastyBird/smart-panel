@@ -45,7 +45,8 @@
 			"openConfig": "Open Homey configuration"
 		},
 		"errors": {
-			"inventory": "The Homey inventory could not be loaded"
+			"inventory": "The Homey inventory could not be loaded",
+			"adoption": "The selected Homey devices could not be adopted"
 		}
 	}
 }

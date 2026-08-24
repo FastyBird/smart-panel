@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n';
 
 import { orderBy } from 'natural-orderby';
 
-import { injectStoresManager } from '../../../common';
+import { injectStoresManager, useFlashMessage } from '../../../common';
 import { RouteNames as ConfigRouteNames } from '../../../modules/config';
 import type {
 	IDeviceWizardAdapter,
@@ -26,6 +26,7 @@ const rowStatus = (device: IHomeyInventoryDevice): IWizardRowStatus => {
 
 export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const { t } = useI18n();
+	const flashMessage = useFlashMessage();
 	const storesManager = injectStoresManager();
 	const inventory = storesManager.getStore(homeyInventoryStoreKey);
 	const error = ref<string | null>(null);
@@ -44,9 +45,9 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				identifier: device.id,
 				status,
 				statusLabel: !device.available ? t('devicesHomeyPlugin.wizard.statuses.unavailable') : undefined,
-				adoptable: status === 'ready',
+				adoptable: device.available && device.supportState === 'supported',
 				selectedByDefault: false,
-				willUpdate: false,
+				willUpdate: device.adopted,
 				suggestedName: device.name,
 				suggestedCategory: device.suggestedCategory ?? null,
 				categoryOptions: device.suggestedCategory
@@ -120,9 +121,14 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	}
 
 	const adopt = async (selection: IWizardAdoptSelection[]): Promise<IWizardResult[]> => {
-		const adoption = await inventory.adoptBatch(selection.map((item) => ({ deviceId: item.key, name: item.name, deviceCategory: item.category })));
+		try {
+			const adoption = await inventory.adoptBatch(selection.map((item) => ({ deviceId: item.key, name: item.name, deviceCategory: item.category })));
 
-		return adoption.map(transformResult);
+			return adoption.map(transformResult);
+		} catch (caught: unknown) {
+			flashMessage.error(caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.adoption'));
+			throw caught;
+		}
 	};
 
 	function transformResult(result: IHomeyAdoptionResult): IWizardResult {
@@ -131,7 +137,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			key: result.deviceId,
 			name: device?.name ?? result.deviceId,
 			identifier: result.deviceId,
-			status: result.status === 'failed' ? 'failed' : result.status === 'created' ? 'created' : 'updated',
+			status: result.status,
 			error: result.message ?? null,
 		};
 	}
