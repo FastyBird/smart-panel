@@ -233,18 +233,18 @@ const testCandidateConnection = async (): Promise<void> => {
 	await runConnectionTest(candidateRequest.value);
 };
 
-const invalidateConnectionTest = (): void => {
+const invalidateConnectionTestResult = (): void => {
 	testGeneration += 1;
 	testRequestFailed.value = false;
 	statusStore.clearLastTest();
 };
 
-watch(() => [props.candidateUrl, props.candidateApiKey], invalidateConnectionTest);
+watch(() => [props.candidateUrl, props.candidateApiKey], invalidateConnectionTestResult);
 
 onMounted(() => {
-	invalidateConnectionTest();
+	invalidateConnectionTestResult();
 	void refreshStatus();
 });
 
-onBeforeUnmount(invalidateConnectionTest);
+onBeforeUnmount(invalidateConnectionTestResult);
 </script>

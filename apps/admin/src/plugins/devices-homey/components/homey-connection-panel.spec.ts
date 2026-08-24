@@ -7,7 +7,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { DevicesHomeyPluginConnectionState, DevicesHomeyPluginErrorCategory } from '../../../openapi.constants';
 import type { IHomeyStatus, IHomeyTestConnection } from '../store/homey.types';
 
-import HomeyConnectionPanel from './homey-connection-panel.vue';
+import HomeyConnectionPanel from './HomeyConnectionPanel.vue';
 
 interface IStatusStoreMock {
 	status: IHomeyStatus | null;

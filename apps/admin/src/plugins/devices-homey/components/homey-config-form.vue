@@ -121,9 +121,9 @@ import { hasUsableHomeyApiKey, isBlankHomeyApiKeyReplacement } from '../schemas/
 import type { IHomeyConfigEditForm } from '../schemas/config.types';
 import { isSafeHomeyUrl } from '../schemas/homey-url.schemas';
 
+import HomeyConnectionPanel from './HomeyConnectionPanel.vue';
 import type { IHomeyConfigFormProps } from './homey-config-form.types';
 import { normalizeHomeyUrlInput } from './homey-config-form.utils';
-import HomeyConnectionPanel from './homey-connection-panel.vue';
 
 defineOptions({ name: 'HomeyConfigForm' });
 
