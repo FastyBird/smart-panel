@@ -14,7 +14,8 @@
 		"apiKey": {
 			"label": "Clave de API local",
 			"placeholder": "Introduce una clave nueva para sustituir la configurada",
-			"required": "Introduce o conserva una clave de API de Homey antes de activar la integración"
+			"required": "Introduce o conserva una clave de API de Homey antes de activar la integración",
+			"invalid": "Introduce una clave de API no vacía o elimina el reemplazo"
 		},
 		"connectionTimeout": "Tiempo de espera de conexión (ms)",
 		"reconciliationInterval": "Intervalo de conciliación del inventario (ms)",
@@ -39,7 +40,8 @@
 		"errors": {
 			"inventory": "No se pudo cargar el inventario de Homey",
 			"adoption": "No se pudieron añadir los dispositivos Homey seleccionados",
-			"nameTooLong": "El nombre del dispositivo no debe superar los {max} caracteres"
+			"nameTooLong": "El nombre del dispositivo no debe superar los {max} caracteres",
+			"mappingChanged": "La asignación del dispositivo cambió; actualiza el inventario y revisa su categoría"
 		}
 	}
 }

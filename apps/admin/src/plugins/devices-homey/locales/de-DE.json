@@ -14,7 +14,8 @@
 		"apiKey": {
 			"label": "Lokaler API-Schlüssel",
 			"placeholder": "Neuen Schlüssel eingeben, um den gespeicherten zu ersetzen",
-			"required": "Geben Sie einen Homey-API-Schlüssel ein oder behalten Sie ihn bei, bevor Sie die Integration aktivieren"
+			"required": "Geben Sie einen Homey-API-Schlüssel ein oder behalten Sie ihn bei, bevor Sie die Integration aktivieren",
+			"invalid": "Geben Sie einen nicht leeren API-Schlüssel ein oder entfernen Sie den Ersatz"
 		},
 		"connectionTimeout": "Verbindungszeitlimit (ms)",
 		"reconciliationInterval": "Inventarabgleichsintervall (ms)",
@@ -39,7 +40,8 @@
 		"errors": {
 			"inventory": "Das Homey-Inventar konnte nicht geladen werden",
 			"adoption": "Die ausgewählten Homey-Geräte konnten nicht hinzugefügt werden",
-			"nameTooLong": "Der Gerätename darf höchstens {max} Zeichen lang sein"
+			"nameTooLong": "Der Gerätename darf höchstens {max} Zeichen lang sein",
+			"mappingChanged": "Die Gerätezuordnung hat sich geändert; aktualisieren Sie das Inventar und prüfen Sie die Kategorie"
 		}
 	}
 }

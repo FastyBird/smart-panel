@@ -14,7 +14,8 @@
 		"apiKey": {
 			"label": "Local API key",
 			"placeholder": "Enter a new key to replace the configured key",
-			"required": "Enter or keep a Homey API key before enabling the integration"
+			"required": "Enter or keep a Homey API key before enabling the integration",
+			"invalid": "Enter a non-blank API key or remove the replacement"
 		},
 		"connectionTimeout": "Connection timeout (ms)",
 		"reconciliationInterval": "Inventory reconciliation interval (ms)",
@@ -55,7 +56,8 @@
 		"errors": {
 			"inventory": "The Homey inventory could not be loaded",
 			"adoption": "The selected Homey devices could not be adopted",
-			"nameTooLong": "Device name must not exceed {max} characters"
+			"nameTooLong": "Device name must not exceed {max} characters",
+			"mappingChanged": "The device mapping changed; refresh the inventory and review its category"
 		}
 	}
 }

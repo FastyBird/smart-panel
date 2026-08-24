@@ -51,6 +51,13 @@ describe('HomeyConfigEditFormSchema', () => {
 		expect(HomeyConfigEditFormSchema.safeParse(createConfig({ enabled: false, apiKey: null, apiKeyConfigured: true })).success).toBe(true);
 	});
 
+	it('rejects a whitespace-only key replacement while disabled', () => {
+		const result = HomeyConfigEditFormSchema.safeParse(createConfig({ enabled: false, apiKey: '   ', apiKeyConfigured: true }));
+
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.error.issues).toEqual(expect.arrayContaining([expect.objectContaining({ path: ['apiKey'] })]));
+	});
+
 	it.each([
 		['connection timeout minimum', { connectionTimeout: MIN_HOMEY_CONNECTION_TIMEOUT_MS }],
 		['connection timeout maximum', { connectionTimeout: MAX_HOMEY_CONNECTION_TIMEOUT_MS }],

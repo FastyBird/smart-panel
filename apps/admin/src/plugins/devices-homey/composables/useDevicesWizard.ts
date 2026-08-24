@@ -223,13 +223,21 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 					}
 
 					const preview = inventoryDevice?.adopted ? await inventory.preview(item.key) : null;
-					const deviceCategory = preview?.validCategories.includes(item.category) === false ? undefined : item.category;
+					if (preview !== null && !preview.validCategories.includes(item.category)) {
+						return {
+							failure: {
+								deviceId: item.key,
+								status: DevicesHomeyPluginAdoptionStatus.failed,
+								message: t('devicesHomeyPlugin.wizard.errors.mappingChanged'),
+							} satisfies IHomeyAdoptionResult,
+						};
+					}
 
 					return {
 						request: {
 							deviceId: item.key,
 							name: item.name,
-							...(deviceCategory === undefined ? {} : { deviceCategory }),
+							deviceCategory: item.category,
 						} satisfies IHomeyAdoptSelection,
 					};
 				} catch (caught: unknown) {

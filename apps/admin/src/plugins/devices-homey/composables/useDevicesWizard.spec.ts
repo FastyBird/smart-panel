@@ -160,9 +160,11 @@ describe('Homey useDevicesWizard', () => {
 			},
 		]);
 
-		await adapter.adopt([{ key: row.key, name: row.suggestedName, category: DevicesModuleDeviceCategory.generic }]);
+		await adapter.adopt([{ key: row.key, name: row.suggestedName, category: DevicesModuleDeviceCategory.lighting }]);
 
-		expect(inventory.adoptBatch).toHaveBeenCalledWith([{ deviceId: 'homey-light', name: 'Custom desk lamp' }]);
+		expect(inventory.adoptBatch).toHaveBeenCalledWith([
+			{ deviceId: 'homey-light', name: 'Custom desk lamp', deviceCategory: DevicesModuleDeviceCategory.lighting },
+		]);
 	});
 
 	it('loads panel-device metadata before publishing the Homey inventory', async () => {
@@ -365,6 +367,31 @@ describe('Homey useDevicesWizard', () => {
 		expect(inventory.adoptionResults).toEqual([
 			expect.objectContaining({ deviceId: 'homey-missing', status: DevicesHomeyPluginAdoptionStatus.failed, message: 'Device disappeared' }),
 			expect.objectContaining({ deviceId: 'homey-new', status: DevicesHomeyPluginAdoptionStatus.created }),
+		]);
+	});
+
+	it('fails an adopted device when its confirmed category is no longer valid', async () => {
+		const adopted = device({ adopted: true, adoptedDeviceId: 'panel-light' });
+		inventory.findById.mockReturnValue(adopted);
+		devicesStore.findById.mockReturnValue({ name: 'Custom desk lamp', category: DevicesModuleDeviceCategory.generic });
+		inventory.preview.mockResolvedValue({
+			suggestedCategory: DevicesModuleDeviceCategory.lighting,
+			validCategories: [DevicesModuleDeviceCategory.lighting],
+			readyToAdopt: true,
+		});
+		const adapter = useDevicesWizard();
+
+		const results = await adapter.adopt([{ key: 'homey-light', name: 'Custom desk lamp', category: DevicesModuleDeviceCategory.generic }]);
+
+		expect(inventory.adoptBatch).not.toHaveBeenCalled();
+		expect(results).toEqual([
+			{
+				key: 'homey-light',
+				name: 'Custom desk lamp',
+				identifier: 'homey-light',
+				status: DevicesHomeyPluginAdoptionStatus.failed,
+				error: 'devicesHomeyPlugin.wizard.errors.mappingChanged',
+			},
 		]);
 	});
 

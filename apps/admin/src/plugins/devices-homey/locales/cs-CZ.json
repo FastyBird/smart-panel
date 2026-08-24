@@ -14,7 +14,8 @@
 		"apiKey": {
 			"label": "Klíč místního API",
 			"placeholder": "Zadejte nový klíč pro nahrazení uloženého klíče",
-			"required": "Před povolením integrace zadejte nebo ponechte klíč API Homey"
+			"required": "Před povolením integrace zadejte nebo ponechte klíč API Homey",
+			"invalid": "Zadejte neprázdný klíč API nebo náhradní klíč odeberte"
 		},
 		"connectionTimeout": "Časový limit připojení (ms)",
 		"reconciliationInterval": "Interval synchronizace inventáře (ms)",
@@ -37,7 +38,8 @@
 		"errors": {
 			"inventory": "Inventář Homey se nepodařilo načíst",
 			"adoption": "Vybraná zařízení Homey se nepodařilo přidat",
-			"nameTooLong": "Název zařízení nesmí být delší než {max} znaků"
+			"nameTooLong": "Název zařízení nesmí být delší než {max} znaků",
+			"mappingChanged": "Mapování zařízení se změnilo; obnovte inventář a zkontrolujte jeho kategorii"
 		}
 	}
 }

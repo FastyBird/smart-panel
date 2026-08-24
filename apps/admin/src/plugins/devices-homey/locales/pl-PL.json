@@ -14,7 +14,8 @@
 		"apiKey": {
 			"label": "Klucz lokalnego API",
 			"placeholder": "Wprowadź nowy klucz, aby zastąpić zapisany",
-			"required": "Wprowadź lub zachowaj klucz API Homey przed włączeniem integracji"
+			"required": "Wprowadź lub zachowaj klucz API Homey przed włączeniem integracji",
+			"invalid": "Wprowadź niepusty klucz API lub usuń jego zamiennik"
 		},
 		"connectionTimeout": "Limit czasu połączenia (ms)",
 		"reconciliationInterval": "Interwał uzgadniania inwentarza (ms)",
@@ -39,7 +40,8 @@
 		"errors": {
 			"inventory": "Nie udało się załadować inwentarza Homey",
 			"adoption": "Nie udało się dodać wybranych urządzeń Homey",
-			"nameTooLong": "Nazwa urządzenia nie może przekraczać {max} znaków"
+			"nameTooLong": "Nazwa urządzenia nie może przekraczać {max} znaków",
+			"mappingChanged": "Mapowanie urządzenia uległo zmianie; odśwież inwentarz i sprawdź jego kategorię"
 		}
 	}
 }
