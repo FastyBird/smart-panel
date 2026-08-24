@@ -266,7 +266,16 @@ describe('HomeySynchronizerService', () => {
 				homeyDevice({ available: false, availabilityMessage: 'Unavailable' }),
 				unsupported,
 			]),
-		).resolves.toEqual({ adopted: 2, missing: 1, unsupported: 1, unavailable: 1 });
+		).resolves.toEqual({
+			adopted: 2,
+			adoptedDevices: [
+				{ homeyDeviceId: 'homey-light', panelDeviceId: 'panel-device' },
+				{ homeyDeviceId: 'homey-missing', panelDeviceId: 'panel-missing' },
+			],
+			missing: 1,
+			unsupported: 1,
+			unavailable: 1,
+		});
 	});
 
 	it('does not publish a value for an unavailable capability', async () => {

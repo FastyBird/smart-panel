@@ -12,6 +12,7 @@ import {
 	HOMEY_COMMAND_WRITE_TIMEOUT_MS,
 	HomeyConnectionState,
 } from '../devices-homey.constants';
+import { HomeyDeviceEntity } from '../entities/devices-homey.entity';
 import {
 	HomeyConnectorError,
 	HomeyConnectorErrorCategory,
@@ -113,6 +114,7 @@ describe('HomeyService', () => {
 			| 'filterEvents'
 			| 'getOperationalDiagnostics'
 			| 'hasReadableCapabilityBinding'
+			| 'invalidateIndex'
 			| 'synchronizeSnapshot'
 			| 'synchronizeDevices'
 			| 'synchronizeEvents'
@@ -145,11 +147,13 @@ describe('HomeyService', () => {
 			filterEvents: jest.fn((events) => [...events]),
 			getOperationalDiagnostics: jest.fn().mockResolvedValue({
 				adopted: 1,
+				adoptedDevices: [{ panelDeviceId: 'panel-device', homeyDeviceId: staleDevice.id }],
 				missing: 0,
 				unsupported: 0,
 				unavailable: 0,
 			}),
 			hasReadableCapabilityBinding: jest.fn().mockResolvedValue(true),
+			invalidateIndex: jest.fn(),
 			synchronizeSnapshot: jest.fn((devices: readonly HomeyDevice[]) =>
 				Promise.resolve({
 					updated: 0,
@@ -269,6 +273,44 @@ describe('HomeyService', () => {
 		expect(service.getState()).toBe('stopped');
 		expect(await service.isHealthy()).toBe(false);
 		expect(service.getInventorySnapshot()).toBeNull();
+	});
+
+	it('updates adopted and missing counts immediately after local Homey entity changes', async () => {
+		await service.start();
+		const localDevice = Object.assign(new HomeyDeviceEntity(), {
+			enabled: true,
+			id: 'panel-missing',
+			identifier: 'homey-missing',
+		});
+
+		service.onAdoptedDeviceUpserted(localDevice);
+		expect(service.getStatus()).toMatchObject({ adoptedDeviceCount: 2, missingDeviceCount: 1 });
+
+		localDevice.enabled = false;
+		service.onAdoptedDeviceUpserted(localDevice);
+		expect(service.getStatus()).toMatchObject({ adoptedDeviceCount: 1, missingDeviceCount: 0 });
+
+		localDevice.enabled = true;
+		localDevice.identifier = staleDevice.id;
+		service.onAdoptedDeviceUpserted(localDevice);
+		expect(service.getStatus()).toMatchObject({ adoptedDeviceCount: 2, missingDeviceCount: 0 });
+
+		service.onAdoptedDeviceDeleted(localDevice);
+		expect(service.getStatus()).toMatchObject({ adoptedDeviceCount: 1, missingDeviceCount: 0 });
+
+		await service.stop();
+		const existingDevice = Object.assign(new HomeyDeviceEntity(), {
+			enabled: false,
+			id: 'panel-device',
+			identifier: staleDevice.id,
+		});
+		service.onAdoptedDeviceUpserted(existingDevice);
+		expect(service.getStatus()).toMatchObject({ adoptedDeviceCount: 0, missingDeviceCount: 0 });
+
+		existingDevice.enabled = true;
+		service.onAdoptedDeviceUpserted(existingDevice);
+		expect(service.getStatus()).toMatchObject({ adoptedDeviceCount: 1, missingDeviceCount: 0 });
+		expect(synchronizer.invalidateIndex).toHaveBeenCalledTimes(6);
 	});
 
 	it('emits structured state and inventory diagnostics without endpoint, secret, identity, or values', async () => {

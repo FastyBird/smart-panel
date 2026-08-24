@@ -33,9 +33,15 @@ export interface HomeySynchronizationResult {
 
 export interface HomeyOperationalDiagnostics {
 	readonly adopted: number;
+	readonly adoptedDevices: readonly HomeyAdoptedDeviceDiagnostic[];
 	readonly missing: number;
 	readonly unsupported: number;
 	readonly unavailable: number;
+}
+
+export interface HomeyAdoptedDeviceDiagnostic {
+	readonly panelDeviceId: string;
+	readonly homeyDeviceId: string;
 }
 
 export interface HomeyEventSynchronizationResult extends HomeySynchronizationResult {
@@ -309,10 +315,15 @@ export class HomeySynchronizerService {
 	async getOperationalDiagnostics(devices: readonly HomeyDevice[]): Promise<HomeyOperationalDiagnostics> {
 		await this.ensureIndex();
 		const upstreamIds = new Set(devices.map((device) => device.id));
+		const adoptedDevices = [...this.adoptedDevices.values()].map((device) => ({
+			homeyDeviceId: device.identifier,
+			panelDeviceId: device.id,
+		}));
 
 		return {
-			adopted: this.adoptedDevices.size,
-			missing: [...this.adoptedDevices.keys()].filter((deviceId) => !upstreamIds.has(deviceId)).length,
+			adopted: adoptedDevices.length,
+			adoptedDevices,
+			missing: adoptedDevices.filter((device) => !upstreamIds.has(device.homeyDeviceId)).length,
 			unsupported: devices.filter(
 				(device) => resolveHomeyDeviceSupport(this.mappingLoader, device).state !== HomeyDeviceSupportState.SUPPORTED,
 			).length,

@@ -1,7 +1,10 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { EventType } from '../../../modules/devices/devices.constants';
+import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
 import { ConfigChangeResult } from '../../../modules/extensions/services/managed-plugin-service.interface';
 import { HomeyConnectorFactory } from '../connectors/homey-connector.factory';
@@ -10,6 +13,7 @@ import { HomeyUnsubscribe } from '../connectors/homey-connector.types';
 import {
 	DEVICES_HOMEY_CONNECTOR_SERVICE_ID,
 	DEVICES_HOMEY_PLUGIN_NAME,
+	DEVICES_HOMEY_TYPE,
 	HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS,
 	HOMEY_COMMAND_WRITE_TIMEOUT_MS,
 	HOMEY_CONNECTOR_FACTORY,
@@ -99,10 +103,13 @@ export class HomeyService extends BaseManagedPluginService {
 	private lastReconciliationDurationMs: number | null = null;
 	private operationalDiagnostics: HomeyOperationalDiagnostics = {
 		adopted: 0,
+		adoptedDevices: [],
 		missing: 0,
 		unsupported: 0,
 		unavailable: 0,
 	};
+	private operationalInventoryDeviceIds = new Set<string>();
+	private operationalDiagnosticsRevision = 0;
 	private readonly commandTails = new Map<string, Promise<void>>();
 	private readonly pendingCommandConfirmations = new Map<string, PendingHomeyCommandConfirmation>();
 	private readonly commandCancellationListeners = new Set<() => void>();
@@ -282,6 +289,41 @@ export class HomeyService extends BaseManagedPluginService {
 		return structuredClone([...this.devices.values()]);
 	}
 
+	@OnEvent(EventType.DEVICE_CREATED)
+	@OnEvent(EventType.DEVICE_UPDATED)
+	onAdoptedDeviceUpserted(device: DeviceEntity): void {
+		if (device.type !== DEVICES_HOMEY_TYPE) {
+			return;
+		}
+
+		this.synchronizer.invalidateIndex();
+		const adoptedDevices = new Map(
+			this.operationalDiagnostics.adoptedDevices.map((adopted) => [adopted.panelDeviceId, adopted.homeyDeviceId]),
+		);
+
+		if (device.enabled && typeof device.identifier === 'string') {
+			adoptedDevices.set(device.id, device.identifier);
+		} else {
+			adoptedDevices.delete(device.id);
+		}
+
+		this.recordLocalAdoptedDiagnostics(adoptedDevices);
+	}
+
+	@OnEvent(EventType.DEVICE_DELETED)
+	onAdoptedDeviceDeleted(device: DeviceEntity): void {
+		if (device.type !== DEVICES_HOMEY_TYPE) {
+			return;
+		}
+
+		this.synchronizer.invalidateIndex();
+		const adoptedDevices = new Map(
+			this.operationalDiagnostics.adoptedDevices.map((adopted) => [adopted.panelDeviceId, adopted.homeyDeviceId]),
+		);
+		adoptedDevices.delete(device.id);
+		this.recordLocalAdoptedDiagnostics(adoptedDevices);
+	}
+
 	async executeCapabilityCommand(
 		deviceId: string,
 		capabilityId: string,
@@ -374,9 +416,7 @@ export class HomeyService extends BaseManagedPluginService {
 				const result = await this.synchronizer.synchronizeSnapshot([...this.devices.values()]);
 				this.recordSynchronizationResult(result);
 				this.recordCapabilityEvidence(result.acceptedCapabilityValues ?? []);
-				this.recordOperationalDiagnostics(
-					await this.synchronizer.getOperationalDiagnostics([...this.devices.values()]),
-				);
+				await this.refreshOperationalDiagnostics([...this.devices.values()]);
 
 				if (this.startupEvents) {
 					await this.reconcileStartupEvents(connector, generation);
@@ -571,9 +611,7 @@ export class HomeyService extends BaseManagedPluginService {
 			this.recordAcceptedCapabilityEvents(confirmationEvents, generation);
 
 			if (events.some((event) => event.type !== HomeyEventType.CAPABILITY_VALUE_CHANGED)) {
-				this.recordOperationalDiagnostics(
-					await this.synchronizer.getOperationalDiagnostics([...this.devices.values()]),
-				);
+				await this.refreshOperationalDiagnostics([...this.devices.values()]);
 			}
 		}
 
@@ -696,7 +734,7 @@ export class HomeyService extends BaseManagedPluginService {
 					const result = await this.synchronizer.synchronizeSnapshot(devicesResult.value);
 					this.recordSynchronizationResult(result);
 					this.recordCapabilityEvidence(result.acceptedCapabilityValues ?? []);
-					this.recordOperationalDiagnostics(await this.synchronizer.getOperationalDiagnostics(devicesResult.value));
+					await this.refreshOperationalDiagnostics(devicesResult.value);
 					this.recordSuccessfulInventorySync(connector, generation);
 
 					if (this.unsubscribe) {
@@ -1218,6 +1256,37 @@ export class HomeyService extends BaseManagedPluginService {
 		this.operationalDiagnostics = diagnostics;
 	}
 
+	private async refreshOperationalDiagnostics(devices: readonly HomeyDevice[]): Promise<void> {
+		const revision = this.operationalDiagnosticsRevision;
+		const diagnostics = await this.synchronizer.getOperationalDiagnostics(devices);
+		const upstreamIds = new Set(devices.map((device) => device.id));
+		this.operationalInventoryDeviceIds = upstreamIds;
+
+		if (revision === this.operationalDiagnosticsRevision) {
+			this.recordOperationalDiagnostics(diagnostics);
+			return;
+		}
+
+		const adoptedDevices = this.operationalDiagnostics.adoptedDevices;
+		this.recordOperationalDiagnostics({
+			...diagnostics,
+			adopted: adoptedDevices.length,
+			adoptedDevices,
+			missing: adoptedDevices.filter((device) => !upstreamIds.has(device.homeyDeviceId)).length,
+		});
+	}
+
+	private recordLocalAdoptedDiagnostics(adoptedDevices: ReadonlyMap<string, string>): void {
+		const adopted = [...adoptedDevices].map(([panelDeviceId, homeyDeviceId]) => ({ panelDeviceId, homeyDeviceId }));
+		this.operationalDiagnosticsRevision += 1;
+		this.operationalDiagnostics = {
+			...this.operationalDiagnostics,
+			adopted: adopted.length,
+			adoptedDevices: adopted,
+			missing: adopted.filter((device) => !this.operationalInventoryDeviceIds.has(device.homeyDeviceId)).length,
+		};
+	}
+
 	private async runInventoryReconciliation(
 		source: HomeyReconciliationSource,
 		operation: () => Promise<void>,
@@ -1365,7 +1434,9 @@ export class HomeyService extends BaseManagedPluginService {
 		this.reconciliationCount = 0;
 		this.reconciliationFailureCount = 0;
 		this.lastReconciliationDurationMs = null;
-		this.operationalDiagnostics = { adopted: 0, missing: 0, unsupported: 0, unavailable: 0 };
+		this.operationalDiagnostics = { adopted: 0, adoptedDevices: [], missing: 0, unsupported: 0, unavailable: 0 };
+		this.operationalInventoryDeviceIds.clear();
+		this.operationalDiagnosticsRevision = 0;
 	}
 
 	private recordSuccessfulConnection(): void {
