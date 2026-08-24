@@ -905,19 +905,153 @@ void main() {
         await tester.pump();
 
         expect(
-          controlState.getState(deviceId, lightChannelId, propertyId),
-          isNull,
+          controlState
+              .getState(deviceId, lightChannelId, propertyId)
+              ?.isPending,
+          isTrue,
+          reason: 'a pre-ack provider snapshot cannot confirm this generation',
         );
 
         commandResult.complete(sent!);
         await tester.pump();
 
         expect(
+          controlState
+              .getState(deviceId, lightChannelId, propertyId)
+              ?.isSettling,
+          isTrue,
+          reason: 'the current acknowledgment starts its settling window',
+        );
+
+        updateHost(() {
+          renderedDevice = _buildRepresentativeDevice(
+            'lighting',
+            lightOn: true,
+            lightOnLastUpdated: authoritativeEventAt.add(
+              const Duration(milliseconds: 1),
+            ),
+          ) as LightingDeviceView;
+        });
+        await tester.pump();
+
+        expect(
           controlState.getState(deviceId, lightChannelId, propertyId),
           isNull,
-          reason: 'the later acknowledgment must not reopen confirmed state',
+          reason: 'a post-ack provider snapshot confirms the generation',
         );
         expect(find.byType(LightingDeviceDetail), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'keeps the current single-property generation through a delayed ABA match',
+      (tester) async {
+        tester.view.physicalSize = const Size(1280, 800);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final controlState = locator<DeviceControlStateService>();
+        controlState.clearForDevice(deviceId);
+        addTearDown(() => controlState.clearForDevice(deviceId));
+        final devicesService = locator<DevicesService>() as _MockDevicesService;
+        reset(devicesService);
+        final commandResults = List.generate(3, (_) => Completer<bool>());
+        var commandIndex = 0;
+        when(
+          () => devicesService.setPropertyValue(propertyId, any()),
+        ).thenAnswer((_) => commandResults[commandIndex++].future);
+
+        var renderedDevice =
+            _buildRepresentativeDevice('lighting', lightOn: false)
+                as LightingDeviceView;
+        late StateSetter updateHost;
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: StatefulBuilder(
+              builder: (context, setState) {
+                updateHost = setState;
+                return LightingDeviceDetail(device: renderedDevice);
+              },
+            ),
+          ),
+        );
+
+        final controller = LightingDeviceController(
+          device: renderedDevice,
+          controlState: controlState,
+          devicesService: devicesService,
+        );
+        controller.setPower(true);
+        controller.setPower(false);
+        controller.setPower(true);
+        final thirdState = controlState.getState(
+          deviceId,
+          lightChannelId,
+          propertyId,
+        )!;
+        final thirdGeneration = thirdState.generation;
+
+        updateHost(() {
+          renderedDevice = _buildRepresentativeDevice(
+            'lighting',
+            lightOn: true,
+            lightOnLastUpdated: DateTime.utc(2026, 8, 24, 10, 1),
+          ) as LightingDeviceView;
+        });
+        await tester.pump();
+
+        final stillPending = controlState.getState(
+          deviceId,
+          lightChannelId,
+          propertyId,
+        );
+        expect(stillPending?.isPending, isTrue);
+        expect(identical(stillPending?.generation, thirdGeneration), isTrue);
+
+        commandResults[2].complete(true);
+        await tester.pump();
+
+        final settling = controlState.getState(
+          deviceId,
+          lightChannelId,
+          propertyId,
+        );
+        expect(settling?.isSettling, isTrue);
+        expect(identical(settling?.generation, thirdGeneration), isTrue);
+
+        commandResults[0].complete(true);
+        commandResults[1].complete(true);
+        await tester.pump();
+
+        expect(
+          identical(
+            controlState
+                .getState(deviceId, lightChannelId, propertyId)
+                ?.generation,
+            thirdGeneration,
+          ),
+          isTrue,
+          reason: 'older acknowledgments cannot mutate the current generation',
+        );
+
+        updateHost(() {
+          renderedDevice = _buildRepresentativeDevice(
+            'lighting',
+            lightOn: true,
+            lightOnLastUpdated: DateTime.utc(2026, 8, 24, 10, 1, 0, 1),
+          ) as LightingDeviceView;
+        });
+        await tester.pump();
+
+        expect(
+          controlState.getState(deviceId, lightChannelId, propertyId),
+          isNull,
+          reason: 'only a post-ack provider snapshot confirms the command',
+        );
         expect(tester.takeException(), isNull);
       },
     );
@@ -1099,6 +1233,24 @@ void main() {
           'lighting',
           lightOn: true,
           lightOnLastUpdated: DateTime.utc(2026, 8, 24, 10, 1),
+        ) as LightingDeviceView;
+      });
+      await tester.pump();
+
+      expect(
+        controlState
+            .getState(deviceId, lightChannelId, propertyId)
+            ?.isPending,
+        isTrue,
+        reason: 'pre-ack provider data cannot confirm the pending generation',
+      );
+
+      controlState.setSettling(deviceId, lightChannelId, propertyId);
+      updateHost(() {
+        renderedDevice = _buildRepresentativeDevice(
+          'lighting',
+          lightOn: true,
+          lightOnLastUpdated: DateTime.utc(2026, 8, 24, 10, 1, 0, 1),
         ) as LightingDeviceView;
       });
       await tester.pump();

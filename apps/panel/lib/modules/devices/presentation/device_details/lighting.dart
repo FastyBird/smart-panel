@@ -50,8 +50,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
   LightingDeviceController? _controller;
-  final Map<String, _DeferredPropertyDivergence>
-      _deferredPropertyDivergences = {};
+  final Map<String, _DeferredPropertySnapshot>
+      _deferredPropertySnapshots = {};
   Object? _trackedColorGeneration;
   final Set<String> _authoritativeColorUpdates = {};
   final Set<String> _postAckColorDivergences = {};
@@ -183,7 +183,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   }
 
   void _onControlStateChanged() {
-    _consumeDeferredDivergences();
+    _consumeDeferredSnapshots();
     if (mounted && !_isAnyDragging) {
       setState(() {});
     }
@@ -244,28 +244,27 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           continue;
         }
         if (propertyState?.isPending ?? false) {
-          if (_valuesConverged(propertyState?.desiredValue, actualValue)) {
-            _deferredPropertyDivergences.remove(propertyKey);
-            controlState.clear(newDevice.id, channel.id, property.id);
-          } else {
-            _deferPropertyDivergence(
-              propertyKey,
-              newDevice.id,
-              channel.id,
-              property.id,
-              propertyState!.generation,
-              actualValue,
-            );
-          }
+          // A provider snapshot received before this command is acknowledged
+          // may belong to an older command generation, even when its value
+          // matches (for example on -> off -> on). Keep it associated with
+          // this generation, but never let it complete pending state.
+          _deferPropertySnapshot(
+            propertyKey,
+            newDevice.id,
+            channel.id,
+            property.id,
+            propertyState!.generation,
+            actualValue,
+          );
           continue;
         }
 
         if (propertyState?.isSettling ?? false) {
           if (_valuesConverged(propertyState?.desiredValue, actualValue)) {
-            _deferredPropertyDivergences.remove(propertyKey);
+            _deferredPropertySnapshots.remove(propertyKey);
             controlState.clear(newDevice.id, channel.id, property.id);
           } else {
-            _deferPropertyDivergence(
+            _deferPropertySnapshot(
               propertyKey,
               newDevice.id,
               channel.id,
@@ -277,7 +276,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           continue;
         }
 
-        _deferredPropertyDivergences.remove(propertyKey);
+        _deferredPropertySnapshots.remove(propertyKey);
         controlState.checkPropertyConvergence(
           newDevice.id,
           channel.id,
@@ -332,30 +331,30 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     }
   }
 
-  void _consumeDeferredDivergences() {
+  void _consumeDeferredSnapshots() {
     final controlState = _deviceControlStateService;
     if (controlState == null) return;
 
-    for (final entry in _deferredPropertyDivergences.entries.toList()) {
-      final divergence = entry.value;
+    for (final entry in _deferredPropertySnapshots.entries.toList()) {
+      final snapshot = entry.value;
       final state = controlState.getState(
-        divergence.deviceId,
-        divergence.channelId,
-        divergence.propertyId,
+        snapshot.deviceId,
+        snapshot.channelId,
+        snapshot.propertyId,
       );
       if (state == null ||
-          !identical(state.generation, divergence.generation)) {
-        _deferredPropertyDivergences.remove(entry.key);
+          !identical(state.generation, snapshot.generation)) {
+        _deferredPropertySnapshots.remove(entry.key);
         continue;
       }
       if (!state.isMixed) continue;
 
-      _deferredPropertyDivergences.remove(entry.key);
+      _deferredPropertySnapshots.remove(entry.key);
       controlState.checkPropertyConvergence(
-        divergence.deviceId,
-        divergence.channelId,
-        divergence.propertyId,
-        divergence.actualValue,
+        snapshot.deviceId,
+        snapshot.channelId,
+        snapshot.propertyId,
+        snapshot.actualValue,
       );
     }
 
@@ -390,7 +389,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     );
   }
 
-  void _deferPropertyDivergence(
+  void _deferPropertySnapshot(
     String propertyKey,
     String deviceId,
     String channelId,
@@ -398,8 +397,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     Object generation,
     dynamic actualValue,
   ) {
-    _deferredPropertyDivergences[propertyKey] =
-        _DeferredPropertyDivergence(
+    _deferredPropertySnapshots[propertyKey] =
+        _DeferredPropertySnapshot(
       deviceId: deviceId,
       channelId: channelId,
       propertyId: propertyId,
@@ -1091,14 +1090,14 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   }
 }
 
-class _DeferredPropertyDivergence {
+class _DeferredPropertySnapshot {
   final String deviceId;
   final String channelId;
   final String propertyId;
   final Object generation;
   final dynamic actualValue;
 
-  const _DeferredPropertyDivergence({
+  const _DeferredPropertySnapshot({
     required this.deviceId,
     required this.channelId,
     required this.propertyId,
