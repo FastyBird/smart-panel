@@ -22,6 +22,7 @@ import {
 	ACTION_RANGE_PATTERN,
 	ACTION_REQUEST_PATTERN,
 	ACTION_SIGNAL_PATTERN_SOURCE,
+	AGGREGATE_STATE_COORDINATION_PATTERN,
 	CLOCK_TIME_HISTORY_PATTERN,
 	COMPOUND_CONNECTOR_PATTERN_SOURCE,
 	CONTEXTUAL_SCOPE_PATTERN,
@@ -432,6 +433,7 @@ export function splitPlannerClauses(
 		...findPatternRanges(message, CLOCK_TIME_HISTORY_PATTERN),
 		...findPatternRanges(message, ACTION_RANGE_PATTERN),
 		...findPatternRanges(message, ACTION_DURATION_PATTERN),
+		...findPatternRanges(message, AGGREGATE_STATE_COORDINATION_PATTERN),
 		...findPatternRanges(
 			message,
 			/\b(?:current|currently|now|today)\s+and\s+(?:yesterday|(?:last|previous)\s+(?:day|hour|month|night|week|weekend|year))\b/u,

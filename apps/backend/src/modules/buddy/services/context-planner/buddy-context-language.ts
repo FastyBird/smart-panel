@@ -81,6 +81,10 @@ const CONDITIONAL_OUTCOME_WHO_PREFIX_PATTERN = new RegExp(
 	String.raw`\bwho\s+(?:(?:${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_PATTERN_SOURCE})\s+){0,2}$`,
 	'u',
 );
+const CONDITIONAL_OUTCOME_DIRECT_WH_SUBJECT_PREFIX_PATTERN = new RegExp(
+	String.raw`\b(?:what|which|whose)\s+${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s*$`,
+	'u',
+);
 const CONDITIONAL_OUTCOME_DIRECT_WHO_SUBJECT_PATTERN = new RegExp(
 	String.raw`^${CONDITIONAL_OUTCOME_FIRST_ACTION_TARGET_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE})?(?:\s*,?\s+(?:and\s+)?then)?\s*$`,
 	'u',
@@ -99,6 +103,15 @@ function hasConditionalOutcomeRelativePrefix(prefix: string): boolean {
 	if (!whoMatch) return false;
 
 	return !CONDITIONAL_OUTCOME_DIRECT_WHO_SUBJECT_PATTERN.test(prefix.slice(0, whoMatch.index));
+}
+
+function hasConditionalOutcomeDirectWhSubject(prefix: string): boolean {
+	const whoMatch = CONDITIONAL_OUTCOME_WHO_PREFIX_PATTERN.exec(prefix);
+	if (whoMatch !== null && CONDITIONAL_OUTCOME_DIRECT_WHO_SUBJECT_PATTERN.test(prefix.slice(0, whoMatch.index))) {
+		return true;
+	}
+
+	return CONDITIONAL_OUTCOME_DIRECT_WH_SUBJECT_PREFIX_PATTERN.test(prefix);
 }
 
 export function findLeadingConditionalActionIndex(
@@ -155,12 +168,17 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 	);
 	const auxiliaryOutcomeMatch = [
 		...actionMessage.matchAll(new RegExp(String.raw`\b${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\b`, 'gu')),
-	].find(
-		(match) =>
-			!hasConditionalOutcomeRelativePrefix(actionMessage.slice(0, match.index)) &&
+	].find((match) => {
+		const prefix = actionMessage.slice(0, match.index);
+		const tail = actionMessage.slice(match.index);
+
+		return (
+			!hasConditionalOutcomeRelativePrefix(prefix) &&
 			(auxiliaryOutcomeTailPattern.test(actionMessage.slice(match.index)) ||
-				CONDITIONAL_OUTCOME_WH_SUBJECT_AUXILIARY_TAIL_PATTERN.test(actionMessage.slice(match.index))),
-	);
+				(CONDITIONAL_OUTCOME_WH_SUBJECT_AUXILIARY_TAIL_PATTERN.test(tail) &&
+					hasConditionalOutcomeDirectWhSubject(prefix)))
+		);
+	});
 
 	if (auxiliaryOutcomeMatch) return true;
 	const trailingBoundary = message.slice(actionIndex).search(/[,;]/u);
