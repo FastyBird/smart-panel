@@ -51,7 +51,19 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 	}
 
 	usesAuthoritativePropertyReadback(property: ChannelPropertyEntity): boolean {
-		return property.permissions.includes(PermissionType.READ_WRITE);
+		if (
+			!(property instanceof HomeyChannelPropertyEntity) ||
+			typeof property.homeyCapabilityId !== 'string' ||
+			typeof property.homeyMappingName !== 'string'
+		) {
+			return false;
+		}
+
+		const mapping = this.mappingLoader
+			.getPropertyMappings()
+			.find((candidate) => candidate.name === property.homeyMappingName);
+
+		return mapping !== undefined && mapping.property.direction !== 'write_only';
 	}
 
 	process(update: HomeyDevicePropertyData): Promise<boolean> {
