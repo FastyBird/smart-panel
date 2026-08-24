@@ -514,7 +514,7 @@ export class HomeySynchronizerService {
 		}
 
 		const order = this.createOrder(sequence, updatedAt);
-		const observedTimestamp = this.parseTimestamp(updatedAt);
+		const receivedTimestamp = Date.now();
 		let allBindingsApplied = true;
 
 		for (const binding of bindings) {
@@ -549,15 +549,11 @@ export class HomeySynchronizerService {
 					type: DEVICES_HOMEY_TYPE,
 					value: transformed,
 				};
-				const valueTimestamp = this.createValueTimestamp(binding.property.id, observedTimestamp);
-				if (valueTimestamp === undefined) {
-					await this.channelsPropertiesService.update(binding.property.id, updateDto);
-				} else {
-					await this.channelsPropertiesService.update(binding.property.id, updateDto, { valueTimestamp });
-				}
+				const valueTimestamp = this.createValueTimestamp(binding.property.id, receivedTimestamp);
+				await this.channelsPropertiesService.update(binding.property.id, updateDto, { valueTimestamp });
 				this.lastAppliedOrder.set(binding.property.id, this.preserveSequenceWatermark(observedOrder, previousOrder));
 				this.lastAppliedValues.set(binding.property.id, value);
-				this.lastPersistedValueTimestamp.set(binding.property.id, valueTimestamp?.getTime() ?? Date.now());
+				this.lastPersistedValueTimestamp.set(binding.property.id, valueTimestamp.getTime());
 				result.updated += 1;
 			} catch {
 				result.failed += 1;
@@ -790,16 +786,10 @@ export class HomeySynchronizerService {
 		};
 	}
 
-	private createValueTimestamp(propertyId: string, observedTimestamp: number | null): Date | undefined {
+	private createValueTimestamp(propertyId: string, receivedTimestamp: number): Date {
 		const previousTimestamp = this.lastPersistedValueTimestamp.get(propertyId);
-
-		if (observedTimestamp === null && previousTimestamp === undefined) {
-			return undefined;
-		}
-
-		const candidateTimestamp = observedTimestamp ?? Date.now();
 		const effectiveTimestamp =
-			previousTimestamp === undefined ? candidateTimestamp : Math.max(candidateTimestamp, previousTimestamp + 1);
+			previousTimestamp === undefined ? receivedTimestamp : Math.max(receivedTimestamp, previousTimestamp + 1);
 
 		return new Date(effectiveTimestamp);
 	}

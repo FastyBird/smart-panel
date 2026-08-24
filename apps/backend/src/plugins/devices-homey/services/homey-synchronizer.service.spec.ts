@@ -20,6 +20,13 @@ import { HomeyEvent, HomeyEventType } from '../models/homey-event.model';
 
 import { HomeySynchronizerService } from './homey-synchronizer.service';
 
+const BACKEND_RECEIVED_AT = '2026-08-24T10:00:00.000Z';
+const BACKEND_RECEIVED_AT_MS = new Date(BACKEND_RECEIVED_AT).getTime();
+
+function backendValueTimestamp(offset = 0): { valueTimestamp: Date } {
+	return { valueTimestamp: new Date(BACKEND_RECEIVED_AT_MS + offset) };
+}
+
 const powerMapping: ResolvedHomeyPropertyMapping = {
 	kind: 'properties',
 	source: 'builtin',
@@ -188,6 +195,7 @@ describe('HomeySynchronizerService', () => {
 	let brightnessProperty: HomeyChannelPropertyEntity;
 
 	beforeEach(() => {
+		jest.spyOn(Date, 'now').mockReturnValue(BACKEND_RECEIVED_AT_MS);
 		powerProperty = property('property-power', 'onoff', powerMapping.name);
 		stateProperty = property('property-state', 'onoff', stateMapping.name);
 		brightnessProperty = property('property-brightness', 'dim', brightnessMapping.name);
@@ -217,6 +225,10 @@ describe('HomeySynchronizerService', () => {
 		);
 	});
 
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	it('indexes adopted full capability identities and applies the authoritative startup snapshot', async () => {
 		await expect(service.synchronizeSnapshot([homeyDevice()])).resolves.toEqual({
 			updated: 4,
@@ -233,7 +245,7 @@ describe('HomeySynchronizerService', () => {
 		expect(connectivityService.trySetConnectionState).toHaveBeenCalledWith('panel-device', {
 			state: ConnectionState.CONNECTED,
 		});
-		const valueTimestamp = { valueTimestamp: new Date('2026-08-21T10:00:00.000Z') };
+		const valueTimestamp = backendValueTimestamp();
 		expect(propertiesService.update.mock.calls).toEqual([
 			['property-power', { type: DEVICES_HOMEY_TYPE, value: true }, valueTimestamp],
 			['property-state', { type: DEVICES_HOMEY_TYPE, value: 'on' }, valueTimestamp],
@@ -296,7 +308,7 @@ describe('HomeySynchronizerService', () => {
 				type: DEVICES_HOMEY_TYPE,
 				value: 25,
 			},
-			{ valueTimestamp: new Date('2026-08-21T10:00:00.000Z') },
+			backendValueTimestamp(),
 		);
 	});
 
@@ -306,27 +318,26 @@ describe('HomeySynchronizerService', () => {
 		await service.synchronizeEvents([capabilityEvent('onoff', null, null)], inventory());
 
 		expect(propertiesService.update.mock.calls).toEqual([
-			['property-power', { type: DEVICES_HOMEY_TYPE, value: null }],
-			['property-state', { type: DEVICES_HOMEY_TYPE, value: null }],
+			['property-power', { type: DEVICES_HOMEY_TYPE, value: null }, backendValueTimestamp()],
+			['property-state', { type: DEVICES_HOMEY_TYPE, value: null }, backendValueTimestamp()],
 		]);
 	});
 
-	it('passes the originating Homey event timestamp to value persistence', async () => {
+	it('orders by Homey event metadata while persisting backend receive timestamps', async () => {
 		await service.refreshIndex();
-		const measuredAt = '2026-08-24T10:01:02.345Z';
+		const futureProviderTimestamp = '2027-08-24T10:00:00.000Z';
+		const pastProviderTimestamp = '2025-08-24T10:00:00.000Z';
 
-		await service.synchronizeEvents([capabilityEvent('onoff', false, measuredAt)], inventory());
+		await service.synchronizeEvents([capabilityEvent('onoff', false, futureProviderTimestamp, 1)], inventory());
+		await service.synchronizeEvents([capabilityEvent('onoff', true, pastProviderTimestamp, 2)], inventory());
+		await service.synchronizeEvents([capabilityEvent('onoff', false, '2028-08-24T10:00:00.000Z', 1)], inventory());
 
-		expect(propertiesService.update).toHaveBeenCalledWith(
-			'property-power',
-			{ type: DEVICES_HOMEY_TYPE, value: false },
-			{ valueTimestamp: new Date(measuredAt) },
-		);
-		expect(propertiesService.update).toHaveBeenCalledWith(
-			'property-state',
-			{ type: DEVICES_HOMEY_TYPE, value: 'off' },
-			{ valueTimestamp: new Date(measuredAt) },
-		);
+		expect(propertiesService.update.mock.calls).toEqual([
+			['property-power', { type: DEVICES_HOMEY_TYPE, value: false }, backendValueTimestamp()],
+			['property-state', { type: DEVICES_HOMEY_TYPE, value: 'off' }, backendValueTimestamp()],
+			['property-power', { type: DEVICES_HOMEY_TYPE, value: true }, backendValueTimestamp(1)],
+			['property-state', { type: DEVICES_HOMEY_TYPE, value: 'on' }, backendValueTimestamp(1)],
+		]);
 	});
 
 	it('reports whether a capability has a readable property binding', async () => {
@@ -375,21 +386,9 @@ describe('HomeySynchronizerService', () => {
 		);
 
 		expect(propertiesService.update.mock.calls).toEqual([
-			[
-				'property-brightness',
-				{ type: DEVICES_HOMEY_TYPE, value: 50 },
-				{ valueTimestamp: new Date('2026-08-21T10:01:01.000Z') },
-			],
-			[
-				'property-power',
-				{ type: DEVICES_HOMEY_TYPE, value: false },
-				{ valueTimestamp: new Date('2026-08-21T10:01:02.000Z') },
-			],
-			[
-				'property-state',
-				{ type: DEVICES_HOMEY_TYPE, value: 'off' },
-				{ valueTimestamp: new Date('2026-08-21T10:01:02.000Z') },
-			],
+			['property-brightness', { type: DEVICES_HOMEY_TYPE, value: 50 }, backendValueTimestamp()],
+			['property-power', { type: DEVICES_HOMEY_TYPE, value: false }, backendValueTimestamp()],
+			['property-state', { type: DEVICES_HOMEY_TYPE, value: 'off' }, backendValueTimestamp()],
 		]);
 	});
 
@@ -408,7 +407,7 @@ describe('HomeySynchronizerService', () => {
 				type: DEVICES_HOMEY_TYPE,
 				value: true,
 			},
-			{ valueTimestamp: new Date('2026-08-21T10:02:00.000Z') },
+			backendValueTimestamp(),
 		);
 	});
 
@@ -421,8 +420,8 @@ describe('HomeySynchronizerService', () => {
 		);
 
 		expect(propertiesService.update.mock.calls).toEqual([
-			['property-power', { type: DEVICES_HOMEY_TYPE, value: false }],
-			['property-state', { type: DEVICES_HOMEY_TYPE, value: 'off' }],
+			['property-power', { type: DEVICES_HOMEY_TYPE, value: false }, backendValueTimestamp()],
+			['property-state', { type: DEVICES_HOMEY_TYPE, value: 'off' }, backendValueTimestamp()],
 		]);
 	});
 
@@ -435,10 +434,14 @@ describe('HomeySynchronizerService', () => {
 		const rejected = await service.synchronizeEvents([stale], inventory());
 
 		expect(propertiesService.update).toHaveBeenCalledTimes(2);
-		expect(propertiesService.update).toHaveBeenCalledWith('property-power', {
-			type: DEVICES_HOMEY_TYPE,
-			value: true,
-		});
+		expect(propertiesService.update).toHaveBeenCalledWith(
+			'property-power',
+			{
+				type: DEVICES_HOMEY_TYPE,
+				value: true,
+			},
+			backendValueTimestamp(),
+		);
 		expect(accepted.acceptedEvents).toEqual([newest]);
 		expect(rejected.acceptedEvents).toEqual([]);
 	});
@@ -452,18 +455,10 @@ describe('HomeySynchronizerService', () => {
 		await service.synchronizeEvents([capabilityEvent('onoff', false, secondTimestamp, 2)], inventory());
 
 		expect(propertiesService.update.mock.calls).toEqual([
-			['property-power', { type: DEVICES_HOMEY_TYPE, value: true }, { valueTimestamp: new Date(firstTimestamp) }],
-			['property-state', { type: DEVICES_HOMEY_TYPE, value: 'on' }, { valueTimestamp: new Date(firstTimestamp) }],
-			[
-				'property-power',
-				{ type: DEVICES_HOMEY_TYPE, value: false },
-				{ valueTimestamp: new Date('2026-08-21T10:02:00.001Z') },
-			],
-			[
-				'property-state',
-				{ type: DEVICES_HOMEY_TYPE, value: 'off' },
-				{ valueTimestamp: new Date('2026-08-21T10:02:00.001Z') },
-			],
+			['property-power', { type: DEVICES_HOMEY_TYPE, value: true }, backendValueTimestamp()],
+			['property-state', { type: DEVICES_HOMEY_TYPE, value: 'on' }, backendValueTimestamp()],
+			['property-power', { type: DEVICES_HOMEY_TYPE, value: false }, backendValueTimestamp(1)],
+			['property-state', { type: DEVICES_HOMEY_TYPE, value: 'off' }, backendValueTimestamp(1)],
 		]);
 	});
 
@@ -471,7 +466,7 @@ describe('HomeySynchronizerService', () => {
 		await service.refreshIndex();
 		await service.synchronizeEvents([capabilityEvent('onoff', true, '2026-08-21T10:02:00.000Z', 1)], inventory());
 
-		const durableTimestamp = '2026-08-21T10:03:00.000Z';
+		const durableTimestamp = new Date(BACKEND_RECEIVED_AT_MS + 60_000).toISOString();
 		powerProperty.value = new PropertyValueState(true, durableTimestamp);
 		stateProperty.value = new PropertyValueState('on', durableTimestamp);
 		service.reset();
@@ -484,19 +479,19 @@ describe('HomeySynchronizerService', () => {
 			[
 				'property-power',
 				{ type: DEVICES_HOMEY_TYPE, value: false },
-				{ valueTimestamp: new Date('2026-08-21T10:03:00.001Z') },
+				{ valueTimestamp: new Date(BACKEND_RECEIVED_AT_MS + 60_001) },
 			],
 			[
 				'property-state',
 				{ type: DEVICES_HOMEY_TYPE, value: 'off' },
-				{ valueTimestamp: new Date('2026-08-21T10:03:00.001Z') },
+				{ valueTimestamp: new Date(BACKEND_RECEIVED_AT_MS + 60_001) },
 			],
 		]);
 	});
 
 	it('includes local property writes in the persistence watermark', async () => {
 		await service.refreshIndex();
-		const commandTimestamp = '2026-08-21T10:04:00.000Z';
+		const commandTimestamp = new Date(BACKEND_RECEIVED_AT_MS + 120_000).toISOString();
 		powerProperty.value = new PropertyValueState(true, commandTimestamp);
 		service.recordPersistedPropertyValue(powerProperty);
 
@@ -505,7 +500,7 @@ describe('HomeySynchronizerService', () => {
 		expect(propertiesService.update).toHaveBeenCalledWith(
 			'property-power',
 			{ type: DEVICES_HOMEY_TYPE, value: false },
-			{ valueTimestamp: new Date('2026-08-21T10:04:00.001Z') },
+			{ valueTimestamp: new Date(BACKEND_RECEIVED_AT_MS + 120_001) },
 		);
 	});
 
@@ -537,7 +532,7 @@ describe('HomeySynchronizerService', () => {
 		const retried = await service.synchronizeEvents([newest], inventory());
 
 		expect(propertiesService.update.mock.calls).toEqual([
-			['property-power', { type: DEVICES_HOMEY_TYPE, value: true }],
+			['property-power', { type: DEVICES_HOMEY_TYPE, value: true }, backendValueTimestamp()],
 		]);
 		expect(retried.acceptedEvents).toEqual([newest]);
 	});
@@ -906,10 +901,14 @@ describe('HomeySynchronizerService', () => {
 		await service.synchronizeEvents([capabilityEvent('onoff', false, null)], inventory());
 
 		expect(devicesService.findAll).toHaveBeenCalledTimes(2);
-		expect(propertiesService.update).toHaveBeenLastCalledWith('replacement-power', {
-			type: DEVICES_HOMEY_TYPE,
-			value: false,
-		});
+		expect(propertiesService.update).toHaveBeenLastCalledWith(
+			'replacement-power',
+			{
+				type: DEVICES_HOMEY_TYPE,
+				value: false,
+			},
+			backendValueTimestamp(),
+		);
 	});
 
 	it('repeats an in-flight refresh when the device structure changes during its database read', async () => {
@@ -932,9 +931,13 @@ describe('HomeySynchronizerService', () => {
 		await service.synchronizeEvents([capabilityEvent('onoff', false, null)], inventory());
 
 		expect(devicesService.findAll).toHaveBeenCalledTimes(2);
-		expect(propertiesService.update).toHaveBeenCalledWith('replacement-power', {
-			type: DEVICES_HOMEY_TYPE,
-			value: false,
-		});
+		expect(propertiesService.update).toHaveBeenCalledWith(
+			'replacement-power',
+			{
+				type: DEVICES_HOMEY_TYPE,
+				value: false,
+			},
+			backendValueTimestamp(),
+		);
 	});
 });
