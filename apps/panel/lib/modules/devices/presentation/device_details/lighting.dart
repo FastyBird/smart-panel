@@ -248,16 +248,30 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
             _deferredPropertyDivergences.remove(propertyKey);
             controlState.clear(newDevice.id, channel.id, property.id);
           } else {
-            // The event may arrive before the command acknowledgment. Retain
-            // it for this generation, but do not accept divergence until the
-            // controller moves that generation into settling.
-            _deferredPropertyDivergences[propertyKey] =
-                _DeferredPropertyDivergence(
-              deviceId: newDevice.id,
-              channelId: channel.id,
-              propertyId: property.id,
-              generation: propertyState!.generation,
-              actualValue: actualValue,
+            _deferPropertyDivergence(
+              propertyKey,
+              newDevice.id,
+              channel.id,
+              property.id,
+              propertyState!.generation,
+              actualValue,
+            );
+          }
+          continue;
+        }
+
+        if (propertyState?.isSettling ?? false) {
+          if (_valuesConverged(propertyState?.desiredValue, actualValue)) {
+            _deferredPropertyDivergences.remove(propertyKey);
+            controlState.clear(newDevice.id, channel.id, property.id);
+          } else {
+            _deferPropertyDivergence(
+              propertyKey,
+              newDevice.id,
+              channel.id,
+              property.id,
+              propertyState!.generation,
+              actualValue,
             );
           }
           continue;
@@ -298,15 +312,13 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           continue;
         }
         final actualValue = newValues[propertyKey];
-        if (colorState.isPending ||
-            _valuesConverged(property.desiredValue, actualValue)) {
+        if (_valuesConverged(property.desiredValue, actualValue)) {
           _authoritativeColorUpdates.add(propertyKey);
           _postAckColorDivergences.remove(propertyKey);
         } else {
-          // A post-ack divergent snapshot cannot be assigned to this command
-          // immediately: it may be delayed state from the previous color.
-          // Retain the latest authoritative component and accept a complete
-          // divergent set only if the settling window expires.
+          // Divergence cannot be assigned to this command immediately: even
+          // before acknowledgment it may be delayed state from the previous
+          // color. Accept a complete divergent set only after settling expires.
           _postAckColorDivergences.add(propertyKey);
         }
       }
@@ -336,7 +348,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         _deferredPropertyDivergences.remove(entry.key);
         continue;
       }
-      if (!state.isSettling && !state.isMixed) continue;
+      if (!state.isMixed) continue;
 
       _deferredPropertyDivergences.remove(entry.key);
       controlState.checkPropertyConvergence(
@@ -375,6 +387,24 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       widget._device.id,
       colorState,
       currentValues,
+    );
+  }
+
+  void _deferPropertyDivergence(
+    String propertyKey,
+    String deviceId,
+    String channelId,
+    String propertyId,
+    Object generation,
+    dynamic actualValue,
+  ) {
+    _deferredPropertyDivergences[propertyKey] =
+        _DeferredPropertyDivergence(
+      deviceId: deviceId,
+      channelId: channelId,
+      propertyId: propertyId,
+      generation: generation,
+      actualValue: actualValue,
     );
   }
 

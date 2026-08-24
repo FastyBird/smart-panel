@@ -968,6 +968,13 @@ void main() {
       await tester.pump();
 
       expect(
+        controlState
+            .getState(deviceId, lightChannelId, propertyId)
+            ?.isSettling,
+        isTrue,
+      );
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(
         controlState.getState(deviceId, lightChannelId, propertyId),
         isNull,
       );
@@ -1025,9 +1032,17 @@ void main() {
       await tester.pump();
 
       expect(
+        controlState
+            .getState(deviceId, lightChannelId, propertyId)
+            ?.isSettling,
+        isTrue,
+        reason: 'divergence remains deferred during the settling window',
+      );
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(
         controlState.getState(deviceId, lightChannelId, propertyId),
         isNull,
-        reason: 'the retained divergence is authoritative after acknowledgment',
+        reason: 'stable divergence is authoritative after settling expires',
       );
       expect(tester.takeException(), isNull);
     });
@@ -1360,6 +1375,13 @@ void main() {
       await tester.pump();
 
       expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isSettling,
+        isTrue,
+      );
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(
         controlState.getGroupState(
           deviceId,
           LightChannelController.colorGroupId,
@@ -1646,6 +1668,19 @@ void main() {
             ?.isPending,
         isTrue,
         reason: 'provider clock skew must not make stale values confirm the active generation',
+      );
+
+      controlState.setGroupSettling(
+        deviceId,
+        LightChannelController.colorGroupId,
+      );
+      await tester.pump();
+      expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isSettling,
+        isTrue,
+        reason: 'pre-ack stale components must not clear on acknowledgment',
       );
 
       final activeCommandEventAt = activeState.createdAt.subtract(
