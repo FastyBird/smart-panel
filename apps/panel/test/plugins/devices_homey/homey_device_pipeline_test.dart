@@ -1,7 +1,13 @@
 import 'package:dio/dio.dart';
+import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/devices_module/devices_module_client.dart';
+import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/command_dispatch.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
@@ -15,7 +21,11 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail
 import 'package:fastybird_smart_panel/modules/devices/repositories/channel_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/channels.dart';
 import 'package:fastybird_smart_panel/modules/devices/repositories/devices.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_energy.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_power.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
@@ -28,14 +38,20 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/lock.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/consumption.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/on.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/power.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/temperature.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 const homeyType = 'devices-homey';
 const deviceId = '046f5102-1a8b-4e7d-a70e-20fe1fa836b1';
+const deviceInformationChannelId = '375c48c4-d939-4267-b7e1-a8bfc4710fc2';
 const lightChannelId = '7833d7c9-250c-46e6-9c27-438ac92f0a39';
 const temperatureChannelId = '00f25c17-488b-44db-a413-59c31bd1803c';
 const thermostatChannelId = '5f59626d-5b9a-4207-a195-c959a4467f50';
@@ -45,6 +61,11 @@ const powerChannelId = '26673bf2-63f4-44e1-8476-28ccca1c78d0';
 const energyChannelId = '625b095a-5c13-47f0-89aa-837056eda993';
 const propertyId = '80aa6c9c-918c-4751-af94-837a689f31dc';
 const secondPropertyId = '349ebbb0-bce1-4248-982e-a320b91dfd5b';
+const thirdPropertyId = '2a0c26f9-0c56-4fc8-83f9-e24469035a1d';
+const fourthPropertyId = 'c3119230-cfd9-4bbe-896d-322bd68bfa63';
+const manufacturerPropertyId = '4b649dac-fb01-40db-9d26-69f75b6079dc';
+const modelPropertyId = '0c631313-c94d-4de2-9455-0d87ff6b5743';
+const serialNumberPropertyId = '4bbd00b7-87ff-44f5-a69f-fddf72d2c356';
 
 Map<String, dynamic> _deviceJson(
   String category, {
@@ -136,53 +157,303 @@ class _FakeSocketService extends SocketService {
   }
 }
 
+class _MockDevicesService extends Mock implements DevicesService {}
+
+class _MockPropertyTimeseriesService extends Mock
+    implements PropertyTimeseriesService {}
+
+class _MockDisplayRepository extends Mock implements DisplayRepository {}
+
+class _MockConfigModuleService extends Mock implements ConfigModuleService {}
+
+ChannelPropertyView _buildProperty({
+  required String id,
+  required String channel,
+  required String category,
+  required String dataType,
+  required dynamic value,
+  List<String> permissions = const ['ro'],
+  List<dynamic>? format,
+  String? unit,
+}) => buildChannelPropertyView(
+  buildChannelPropertyModel(
+    homeyType,
+    _propertyJson(
+      id: id,
+      channel: channel,
+      category: category,
+      dataType: dataType,
+      value: value,
+      permissions: permissions,
+      capabilityId: 'fixture_$category',
+      mappingName: 'fixture-$category',
+      format: format,
+      unit: unit,
+    ),
+  ),
+);
+
+ChannelView _buildChannel(
+  String id,
+  String category,
+  List<ChannelPropertyView> properties,
+) => buildChannelView(
+  buildChannelModel(
+    homeyType,
+    _channelJson(
+      id,
+      category,
+      properties: properties.map((property) => property.id).toList(),
+    ),
+  ),
+  properties,
+);
+
+ChannelView _buildDeviceInformationChannel() =>
+    _buildChannel(deviceInformationChannelId, 'device_information', [
+      _buildProperty(
+        id: manufacturerPropertyId,
+        channel: deviceInformationChannelId,
+        category: 'manufacturer',
+        dataType: 'string',
+        value: 'Athom',
+      ),
+      _buildProperty(
+        id: modelPropertyId,
+        channel: deviceInformationChannelId,
+        category: 'model',
+        dataType: 'string',
+        value: 'Homey fixture',
+      ),
+      _buildProperty(
+        id: serialNumberPropertyId,
+        channel: deviceInformationChannelId,
+        category: 'serial_number',
+        dataType: 'string',
+        value: 'sanitized-fixture',
+      ),
+    ]);
+
+List<ChannelView> _representativeChannels(String category) {
+  final deviceInformation = _buildDeviceInformationChannel();
+
+  switch (category) {
+    case 'lighting':
+      return [
+        deviceInformation,
+        _buildChannel(lightChannelId, 'light', [
+          _buildProperty(
+            id: propertyId,
+            channel: lightChannelId,
+            category: 'on',
+            dataType: 'bool',
+            value: true,
+            permissions: const ['rw'],
+          ),
+        ]),
+      ];
+    case 'sensor':
+      return [
+        deviceInformation,
+        _buildChannel(temperatureChannelId, 'temperature', [
+          _buildProperty(
+            id: propertyId,
+            channel: temperatureChannelId,
+            category: 'temperature',
+            dataType: 'float',
+            value: 21.5,
+            unit: '°C',
+          ),
+        ]),
+      ];
+    case 'thermostat':
+      return [
+        deviceInformation,
+        _buildChannel(temperatureChannelId, 'temperature', [
+          _buildProperty(
+            id: propertyId,
+            channel: temperatureChannelId,
+            category: 'temperature',
+            dataType: 'float',
+            value: 21.5,
+            unit: '°C',
+          ),
+        ]),
+        _buildChannel(thermostatChannelId, 'thermostat', const []),
+      ];
+    case 'window_covering':
+      return [
+        deviceInformation,
+        _buildChannel(coverChannelId, 'window_covering', [
+          _buildProperty(
+            id: propertyId,
+            channel: coverChannelId,
+            category: 'status',
+            dataType: 'enum',
+            value: 'opened',
+            format: const ['opened', 'closed', 'opening', 'closing', 'stopped'],
+          ),
+          _buildProperty(
+            id: secondPropertyId,
+            channel: coverChannelId,
+            category: 'command',
+            dataType: 'enum',
+            value: 'stop',
+            permissions: const ['wo'],
+            format: const ['open', 'close', 'stop'],
+          ),
+          _buildProperty(
+            id: thirdPropertyId,
+            channel: coverChannelId,
+            category: 'position',
+            dataType: 'uchar',
+            value: 75,
+            permissions: const ['rw'],
+            format: const [0, 100],
+          ),
+          _buildProperty(
+            id: fourthPropertyId,
+            channel: coverChannelId,
+            category: 'type',
+            dataType: 'enum',
+            value: 'roller',
+            format: const ['roller'],
+          ),
+        ]),
+      ];
+    case 'lock':
+      return [
+        deviceInformation,
+        _buildChannel(lockChannelId, 'lock', [
+          _buildProperty(
+            id: propertyId,
+            channel: lockChannelId,
+            category: 'on',
+            dataType: 'bool',
+            value: true,
+            permissions: const ['rw'],
+          ),
+          _buildProperty(
+            id: secondPropertyId,
+            channel: lockChannelId,
+            category: 'status',
+            dataType: 'enum',
+            value: 'locked',
+            format: const ['locked', 'unlocked'],
+          ),
+        ]),
+      ];
+  }
+
+  throw ArgumentError.value(category, 'category');
+}
+
+DeviceView _buildRepresentativeDevice(String category) {
+  final channels = _representativeChannels(category);
+  final model = buildDeviceModel(
+    homeyType,
+    _deviceJson(
+      category,
+      channels: channels.map((channel) => channel.id).toList(),
+    ),
+  );
+
+  return buildDeviceView(model, channels);
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  registerFallbackValue(TimeRange.oneDay);
+
+  setUpAll(() async {
+    await locator.reset();
+
+    locator.registerSingleton<ScreenService>(
+      ScreenService(screenWidth: 1280, screenHeight: 800, pixelRatio: 1),
+      dispose: (service) => service.dispose(),
+    );
+    locator.registerSingleton<VisualDensityService>(
+      VisualDensityService(pixelRatio: 1),
+    );
+    locator.registerSingleton<DevicesService>(_MockDevicesService());
+    locator.registerSingleton<DisplayRepository>(_MockDisplayRepository());
+    locator.registerSingleton<ConfigModuleService>(_MockConfigModuleService());
+    locator.registerSingleton<EventBus>(EventBus());
+    locator.registerSingleton<DeviceControlStateService>(
+      DeviceControlStateService(),
+      dispose: (service) => service.dispose(),
+    );
+
+    final timeseriesService = _MockPropertyTimeseriesService();
+    when(
+      () => timeseriesService.getTimeseries(
+        channelId: any(named: 'channelId'),
+        propertyId: any(named: 'propertyId'),
+        timeRange: any(named: 'timeRange'),
+      ),
+    ).thenAnswer((_) async => PropertyTimeseries(points: []));
+    locator.registerSingleton<PropertyTimeseriesService>(timeseriesService);
+  });
+
+  tearDownAll(locator.reset);
+
   group('Homey generic device pipeline', () {
     final deviceCases =
-        <({String category, Matcher viewMatcher, Matcher widgetMatcher})>[
+        <({String category, Matcher viewMatcher, Type widgetType})>[
           (
             category: 'lighting',
             viewMatcher: isA<LightingDeviceView>(),
-            widgetMatcher: isA<LightingDeviceDetail>(),
+            widgetType: LightingDeviceDetail,
           ),
           (
             category: 'sensor',
             viewMatcher: isA<SensorDeviceView>(),
-            widgetMatcher: isA<SensorDeviceDetail>(),
+            widgetType: SensorDeviceDetail,
           ),
           (
             category: 'thermostat',
             viewMatcher: isA<ThermostatDeviceView>(),
-            widgetMatcher: isA<ThermostatDeviceDetail>(),
+            widgetType: ThermostatDeviceDetail,
           ),
           (
             category: 'window_covering',
             viewMatcher: isA<WindowCoveringDeviceView>(),
-            widgetMatcher: isA<WindowCoveringDeviceDetail>(),
+            widgetType: WindowCoveringDeviceDetail,
           ),
           (
             category: 'lock',
             viewMatcher: isA<LockDeviceView>(),
-            widgetMatcher: isA<LockDeviceDetail>(),
+            widgetType: LockDeviceDetail,
           ),
         ];
 
     for (final testCase in deviceCases) {
-      test(
-        'loads ${testCase.category} through the normal model and detail widget mappers',
-        () {
+      testWidgets(
+        'renders ${testCase.category} through the normal model and detail widget mappers',
+        (tester) async {
+          tester.view.physicalSize = const Size(1280, 800);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+
           expect(deviceModelMappers, isNot(contains(homeyType)));
 
-          final model = buildDeviceModel(
-            homeyType,
-            _deviceJson(testCase.category),
-          );
-          final view = buildDeviceView(model, const []);
+          final view = _buildRepresentativeDevice(testCase.category);
 
-          expect(model.type, homeyType);
           expect(view, testCase.viewMatcher);
           expect(view.type, homeyType);
-          expect(buildDeviceWidget(view), testCase.widgetMatcher);
+
+          await tester.pumpWidget(
+            MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: buildDeviceWidget(view),
+            ),
+          );
+          await tester.pump();
+
+          expect(find.byType(testCase.widgetType), findsOneWidget);
+          expect(tester.takeException(), isNull);
         },
       );
     }
