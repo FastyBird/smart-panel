@@ -105,6 +105,24 @@ export class HomeySynchronizerService {
 		this.invalidateIndex();
 	}
 
+	@OnEvent(EventType.CHANNEL_PROPERTY_VALUE_SET)
+	recordPersistedPropertyValue(property: HomeyChannelPropertyEntity): void {
+		if (property.type !== DEVICES_HOMEY_TYPE) {
+			return;
+		}
+
+		const timestamp = this.parseTimestamp(property.value?.lastUpdated ?? null);
+		if (timestamp === null) {
+			return;
+		}
+
+		const previousTimestamp = this.lastPersistedValueTimestamp.get(property.id);
+		this.lastPersistedValueTimestamp.set(
+			property.id,
+			previousTimestamp === undefined ? timestamp : Math.max(timestamp, previousTimestamp),
+		);
+	}
+
 	invalidateIndex(): void {
 		this.indexDirty = true;
 		this.indexGeneration += 1;

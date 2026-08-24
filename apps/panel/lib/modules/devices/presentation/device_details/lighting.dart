@@ -282,7 +282,10 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     if (colorState.isPending || colorState.isSettling || colorState.isMixed) {
       for (final property in colorState.properties) {
         final propertyKey = '${property.channelId}:${property.propertyId}';
-        if (changedProperties.contains(propertyKey)) {
+        final actualValue = newValues[propertyKey];
+        final correlatedUpdate = colorState.isPending ||
+            _valuesConverged(property.desiredValue, actualValue);
+        if (changedProperties.contains(propertyKey) && correlatedUpdate) {
           _authoritativeColorUpdates.add(propertyKey);
         }
       }

@@ -1104,7 +1104,7 @@ void main() {
       updateHost(() {
         renderedDevice = _buildRepresentativeDevice(
           'lighting',
-          lightRgb: const [10, 20, 25],
+          lightRgb: const [10, 20, 30],
           lightRgbLastUpdated: [firstEventAt, secondEventAt, secondEventAt],
         ) as LightingDeviceView;
       });
@@ -1193,6 +1193,103 @@ void main() {
         deviceId,
         LightChannelController.colorGroupId,
       );
+      await tester.pump();
+
+      expect(
+        controlState.getGroupState(
+          deviceId,
+          LightChannelController.colorGroupId,
+        ),
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('does not correlate post-ack color from an older command', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final controlState = locator<DeviceControlStateService>();
+      controlState.clearForDevice(deviceId);
+      addTearDown(() => controlState.clearForDevice(deviceId));
+
+      var renderedDevice =
+          _buildRepresentativeDevice('lighting', lightRgb: const [0, 0, 0])
+              as LightingDeviceView;
+      late StateSetter updateHost;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              updateHost = setState;
+              return LightingDeviceDetail(device: renderedDevice);
+            },
+          ),
+        ),
+      );
+
+      controlState.setGroupPending(
+        deviceId,
+        LightChannelController.colorGroupId,
+        const [
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: redPropertyId,
+            desiredValue: 40,
+          ),
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: greenPropertyId,
+            desiredValue: 50,
+          ),
+          PropertyConfig(
+            channelId: lightChannelId,
+            propertyId: bluePropertyId,
+            desiredValue: 60,
+          ),
+        ],
+      );
+      controlState.setGroupSettling(
+        deviceId,
+        LightChannelController.colorGroupId,
+      );
+
+      updateHost(() {
+        renderedDevice = _buildRepresentativeDevice(
+          'lighting',
+          lightRgb: const [10, 20, 30],
+          lightRgbLastUpdated: List.filled(
+            3,
+            DateTime.utc(2026, 8, 24, 10, 1),
+          ),
+        ) as LightingDeviceView;
+      });
+      await tester.pump();
+
+      expect(
+        controlState
+            .getGroupState(deviceId, LightChannelController.colorGroupId)
+            ?.isSettling,
+        isTrue,
+        reason: 'post-ack divergence is not correlated to the active command',
+      );
+
+      updateHost(() {
+        renderedDevice = _buildRepresentativeDevice(
+          'lighting',
+          lightRgb: const [40, 50, 60],
+          lightRgbLastUpdated: List.filled(
+            3,
+            DateTime.utc(2026, 8, 24, 10, 2),
+          ),
+        ) as LightingDeviceView;
+      });
       await tester.pump();
 
       expect(

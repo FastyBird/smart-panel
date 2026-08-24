@@ -494,6 +494,21 @@ describe('HomeySynchronizerService', () => {
 		]);
 	});
 
+	it('includes local property writes in the persistence watermark', async () => {
+		await service.refreshIndex();
+		const commandTimestamp = '2026-08-21T10:04:00.000Z';
+		powerProperty.value = new PropertyValueState(true, commandTimestamp);
+		service.recordPersistedPropertyValue(powerProperty);
+
+		await service.synchronizeEvents([capabilityEvent('onoff', false, '2026-08-21T10:01:00.000Z', 1)], inventory());
+
+		expect(propertiesService.update).toHaveBeenCalledWith(
+			'property-power',
+			{ type: DEVICES_HOMEY_TYPE, value: false },
+			{ valueTimestamp: new Date('2026-08-21T10:04:00.001Z') },
+		);
+	});
+
 	it('rejects a conflicting capability value at an already-applied order', async () => {
 		await service.refreshIndex();
 		const applied = capabilityEvent('onoff', true, null, 2);
