@@ -3,11 +3,17 @@ import { describe, expect, it, vi } from 'vitest';
 import type {
 	DevicesHomeyPluginAdoptionResultSchema,
 	DevicesHomeyPluginInventoryDeviceSchema,
+	DevicesHomeyPluginMappingPreviewSchema,
 	DevicesHomeyPluginStatusSchema,
 } from '../../../openapi.constants';
 import { DevicesHomeyValidationException } from '../devices-homey.exceptions';
 
-import { transformHomeyAdoptionResult, transformHomeyInventoryDevice, transformHomeyStatus } from './homey.transformers';
+import {
+	transformHomeyAdoptionResult,
+	transformHomeyInventoryDevice,
+	transformHomeyMappingPreview,
+	transformHomeyStatus,
+} from './homey.transformers';
 
 vi.mock('../../../common', async () => {
 	const actual = await vi.importActual('../../../common');
@@ -82,6 +88,64 @@ describe('Homey transformers', () => {
 			failureCode: 'unsupported_mapping',
 			message: 'No compatible mapping is available.',
 		});
+	});
+
+	it('accepts null ranges for non-numeric mapping preview properties', () => {
+		const result = transformHomeyMappingPreview({
+			device: {
+				id: 'homey-device',
+				name: 'Desk light',
+				class: 'light',
+				zone_id: null,
+				zone_path: ['Office'],
+				available: true,
+			},
+			suggested_category: 'lighting',
+			selected_category: 'lighting',
+			valid_categories: ['lighting'],
+			channels: [
+				{
+					identifier: 'light',
+					mapping_name: 'light',
+					mapping_source: 'builtin',
+					category: 'light',
+					name: 'Light',
+					properties: [
+						{
+							capability_id: 'onoff',
+							capability_base_id: 'onoff',
+							mapping_name: 'onoff',
+							mapping_source: 'builtin',
+							category: 'on',
+							data_type: 'bool',
+							direction: 'bidirectional',
+							permissions: ['read', 'write'],
+							readable: true,
+							writable: true,
+							unit: null,
+							range: null,
+							source_range: null,
+							enum_values: [],
+							panel_enum_values: [],
+							current_value: true,
+							value_available: true,
+							capability_available: true,
+							conversion: {
+								type: 'identity',
+								reversible: true,
+								lossy: false,
+								ambiguous: false,
+							},
+						},
+					],
+				},
+			],
+			unsupported_capability_ids: [],
+			warnings: [],
+			ready_to_adopt: true,
+		} as unknown as DevicesHomeyPluginMappingPreviewSchema);
+
+		expect(result.channels[0]?.properties[0]).toEqual(expect.objectContaining({ range: null, sourceRange: null }));
 	});
 
 	it('rejects invalid inventory responses', () => {
