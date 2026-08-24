@@ -660,9 +660,14 @@ void main() {
   });
 
   group('Homey state and control pipeline', () {
-    test(
+    testWidgets(
       'drives optimistic control to authoritative Homey state without credentials',
-      () async {
+      (tester) async {
+        tester.view.physicalSize = const Size(1280, 800);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
         final apiClient = DevicesModuleClient(
           Dio(),
           baseUrl: 'http://localhost',
@@ -709,18 +714,35 @@ void main() {
           isFalse,
         );
 
-        final controlState = DeviceControlStateService();
-        addTearDown(controlState.dispose);
-        final devicesService = _MockDevicesService();
+        final controlState = locator<DeviceControlStateService>();
+        controlState.clearForDevice(deviceId);
+        addTearDown(() => controlState.clearForDevice(deviceId));
+        final devicesService = locator<DevicesService>() as _MockDevicesService;
+        reset(devicesService);
         final commandResult = Completer<bool>();
         when(
           () => devicesService.setPropertyValue(propertyId, true),
         ).thenAnswer((_) => commandResult.future);
 
+        var renderedDevice =
+            _buildRepresentativeDevice('lighting', lightOn: false)
+                as LightingDeviceView;
+        late StateSetter updateHost;
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: StatefulBuilder(
+              builder: (context, setState) {
+                updateHost = setState;
+                return LightingDeviceDetail(device: renderedDevice);
+              },
+            ),
+          ),
+        );
+
         final controller = LightingDeviceController(
-          device:
-              _buildRepresentativeDevice('lighting', lightOn: false)
-                  as LightingDeviceView,
+          device: renderedDevice,
           controlState: controlState,
           devicesService: devicesService,
         );
@@ -736,9 +758,11 @@ void main() {
         expect(pending?.desiredValue, isTrue);
         expect(controller.isOn, isTrue);
 
-        final sent = await propertiesRepository.setValue(propertyId, true);
-        commandResult.complete(sent);
-        await Future<void>.delayed(Duration.zero);
+        final sent = await tester.runAsync(
+          () => propertiesRepository.setValue(propertyId, true),
+        );
+        commandResult.complete(sent!);
+        await tester.pump();
 
         expect(sent, isTrue);
         expect(
@@ -782,25 +806,19 @@ void main() {
             (synchronized.value as BooleanValueType).value;
         expect(authoritativeValue, isTrue);
 
-        controlState.checkPropertyConvergence(
-          deviceId,
-          lightChannelId,
-          propertyId,
-          authoritativeValue,
-        );
+        updateHost(() {
+          renderedDevice =
+              _buildRepresentativeDevice('lighting', lightOn: true)
+                  as LightingDeviceView;
+        });
+        await tester.pump();
 
         expect(
           controlState.getState(deviceId, lightChannelId, propertyId),
           isNull,
         );
-        final synchronizedController = LightingDeviceController(
-          device:
-              _buildRepresentativeDevice('lighting', lightOn: true)
-                  as LightingDeviceView,
-          controlState: controlState,
-          devicesService: devicesService,
-        );
-        expect(synchronizedController.isOn, isTrue);
+        expect(find.byType(LightingDeviceDetail), findsOneWidget);
+        expect(tester.takeException(), isNull);
       },
     );
   });

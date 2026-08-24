@@ -183,9 +183,41 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     }
   }
 
+  void _checkConvergence(LightingDeviceView device) {
+    final controlState = _deviceControlStateService;
+    if (controlState == null) return;
+
+    for (final channel in device.lightChannels) {
+      for (final property in channel.properties) {
+        final actualValue = property.value?.value;
+        if (actualValue == null) continue;
+
+        controlState.checkPropertyConvergence(
+          device.id,
+          channel.id,
+          property.id,
+          actualValue,
+        );
+      }
+    }
+
+    final colorState = controlState.getGroupState(
+      device.id,
+      LightChannelController.colorGroupId,
+    );
+    if (colorState != null && (colorState.isSettling || colorState.isMixed)) {
+      // A new authoritative device snapshot supersedes the grouped optimistic
+      // color values, whether it confirms them or reports an external change.
+      controlState.clearGroup(device.id, LightChannelController.colorGroupId);
+    }
+  }
+
   @override
   void didUpdateWidget(covariant LightingDeviceDetail oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget._device, widget._device)) {
+      _checkConvergence(widget._device);
+    }
     _initController();
   }
 
@@ -1271,4 +1303,3 @@ Color _sampleGradient(List<Color> colors, double t) {
   final localT = (t * segments - segment).clamp(0.0, 1.0);
   return Color.lerp(colors[segment], colors[segment + 1], localT)!;
 }
-
