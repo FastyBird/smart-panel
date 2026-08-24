@@ -109,7 +109,7 @@ export class HomeyService extends BaseManagedPluginService {
 		unavailable: 0,
 	};
 	private operationalInventoryDeviceIds = new Set<string>();
-	private operationalDiagnosticsRevision = 0;
+	private readonly operationalAdoptedDeviceOverrides = new Map<string, string | null>();
 	private readonly commandTails = new Map<string, Promise<void>>();
 	private readonly pendingCommandConfirmations = new Map<string, PendingHomeyCommandConfirmation>();
 	private readonly commandCancellationListeners = new Set<() => void>();
@@ -303,8 +303,10 @@ export class HomeyService extends BaseManagedPluginService {
 
 		if (device.enabled && typeof device.identifier === 'string') {
 			adoptedDevices.set(device.id, device.identifier);
+			this.operationalAdoptedDeviceOverrides.set(device.id, device.identifier);
 		} else {
 			adoptedDevices.delete(device.id);
+			this.operationalAdoptedDeviceOverrides.set(device.id, null);
 		}
 
 		this.recordLocalAdoptedDiagnostics(adoptedDevices);
@@ -321,6 +323,7 @@ export class HomeyService extends BaseManagedPluginService {
 			this.operationalDiagnostics.adoptedDevices.map((adopted) => [adopted.panelDeviceId, adopted.homeyDeviceId]),
 		);
 		adoptedDevices.delete(device.id);
+		this.operationalAdoptedDeviceOverrides.set(device.id, null);
 		this.recordLocalAdoptedDiagnostics(adoptedDevices);
 	}
 
@@ -1257,28 +1260,32 @@ export class HomeyService extends BaseManagedPluginService {
 	}
 
 	private async refreshOperationalDiagnostics(devices: readonly HomeyDevice[]): Promise<void> {
-		const revision = this.operationalDiagnosticsRevision;
 		const diagnostics = await this.synchronizer.getOperationalDiagnostics(devices);
 		const upstreamIds = new Set(devices.map((device) => device.id));
 		this.operationalInventoryDeviceIds = upstreamIds;
+		const adoptedDevices = new Map(
+			diagnostics.adoptedDevices.map((adopted) => [adopted.panelDeviceId, adopted.homeyDeviceId]),
+		);
 
-		if (revision === this.operationalDiagnosticsRevision) {
-			this.recordOperationalDiagnostics(diagnostics);
-			return;
+		for (const [panelDeviceId, homeyDeviceId] of this.operationalAdoptedDeviceOverrides) {
+			if (homeyDeviceId === null) {
+				adoptedDevices.delete(panelDeviceId);
+			} else {
+				adoptedDevices.set(panelDeviceId, homeyDeviceId);
+			}
 		}
 
-		const adoptedDevices = this.operationalDiagnostics.adoptedDevices;
+		const adopted = [...adoptedDevices].map(([panelDeviceId, homeyDeviceId]) => ({ panelDeviceId, homeyDeviceId }));
 		this.recordOperationalDiagnostics({
 			...diagnostics,
-			adopted: adoptedDevices.length,
-			adoptedDevices,
-			missing: adoptedDevices.filter((device) => !upstreamIds.has(device.homeyDeviceId)).length,
+			adopted: adopted.length,
+			adoptedDevices: adopted,
+			missing: adopted.filter((device) => !upstreamIds.has(device.homeyDeviceId)).length,
 		});
 	}
 
 	private recordLocalAdoptedDiagnostics(adoptedDevices: ReadonlyMap<string, string>): void {
 		const adopted = [...adoptedDevices].map(([panelDeviceId, homeyDeviceId]) => ({ panelDeviceId, homeyDeviceId }));
-		this.operationalDiagnosticsRevision += 1;
 		this.operationalDiagnostics = {
 			...this.operationalDiagnostics,
 			adopted: adopted.length,
@@ -1436,7 +1443,7 @@ export class HomeyService extends BaseManagedPluginService {
 		this.lastReconciliationDurationMs = null;
 		this.operationalDiagnostics = { adopted: 0, adoptedDevices: [], missing: 0, unsupported: 0, unavailable: 0 };
 		this.operationalInventoryDeviceIds.clear();
-		this.operationalDiagnosticsRevision = 0;
+		this.operationalAdoptedDeviceOverrides.clear();
 	}
 
 	private recordSuccessfulConnection(): void {

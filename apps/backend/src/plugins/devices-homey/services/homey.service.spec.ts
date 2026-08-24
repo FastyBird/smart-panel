@@ -313,6 +313,40 @@ describe('HomeyService', () => {
 		expect(synchronizer.invalidateIndex).toHaveBeenCalledTimes(6);
 	});
 
+	it('merges a concurrent local adoption into the complete authoritative startup set', async () => {
+		let resolveDiagnostics: (
+			diagnostics: Awaited<ReturnType<HomeySynchronizerService['getOperationalDiagnostics']>>,
+		) => void = () => undefined;
+		synchronizer.getOperationalDiagnostics.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveDiagnostics = resolve;
+			}),
+		);
+		const start = service.start();
+		await flushMicrotasks();
+		const concurrentDevice = Object.assign(new HomeyDeviceEntity(), {
+			enabled: true,
+			id: 'panel-concurrent',
+			identifier: 'homey-concurrent',
+		});
+		service.onAdoptedDeviceUpserted(concurrentDevice);
+
+		resolveDiagnostics({
+			adopted: 2,
+			adoptedDevices: [
+				{ panelDeviceId: 'panel-device', homeyDeviceId: staleDevice.id },
+				{ panelDeviceId: 'panel-existing', homeyDeviceId: 'homey-existing' },
+			],
+			missing: 1,
+			unsupported: 0,
+			unavailable: 0,
+		});
+		await start;
+
+		expect(service.getStatus()).toMatchObject({ adoptedDeviceCount: 3, missingDeviceCount: 2 });
+		await service.stop();
+	});
+
 	it('emits structured state and inventory diagnostics without endpoint, secret, identity, or values', async () => {
 		const log = jest.spyOn(ExtensionLoggerService.prototype, 'log');
 
