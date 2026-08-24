@@ -13,7 +13,8 @@
 		},
 		"apiKey": {
 			"label": "Local API key",
-			"placeholder": "Enter a new key to replace the configured key"
+			"placeholder": "Enter a new key to replace the configured key",
+			"required": "Enter or keep a Homey API key before enabling the integration"
 		},
 		"connectionTimeout": "Connection timeout (ms)",
 		"reconciliationInterval": "Inventory reconciliation interval (ms)"

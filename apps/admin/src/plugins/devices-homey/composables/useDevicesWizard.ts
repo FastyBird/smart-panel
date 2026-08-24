@@ -40,10 +40,12 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			const status = rowStatus(device);
 			const subLabel = [device.manufacturer, device.model].filter(Boolean).join(' · ') || device.class;
 			const adoptedDevice = device.adoptedDeviceId ? devicesStore.findById(device.adoptedDeviceId) : null;
-			const suggestedCategory = adoptedDevice?.category ?? device.suggestedCategory ?? null;
-			const categoryOptions = Array.from(
-				new Set([suggestedCategory, device.suggestedCategory].filter((category) => category !== null && category !== undefined))
-			).map((category) => ({
+			const preview = inventory.previews[device.id];
+			const adoptedCategoryIsValid = adoptedDevice !== null && (preview === undefined || preview.validCategories.includes(adoptedDevice.category));
+			const suggestedCategory = (adoptedCategoryIsValid ? adoptedDevice.category : preview?.suggestedCategory) ?? device.suggestedCategory ?? null;
+			const categories =
+				preview?.validCategories ?? [suggestedCategory, device.suggestedCategory].filter((category) => category !== null && category !== undefined);
+			const categoryOptions = Array.from(new Set(categories)).map((category) => ({
 				value: category,
 				label: t(`devicesModule.categories.devices.${category}`),
 			}));
@@ -112,7 +114,15 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	async function load(): Promise<void> {
 		error.value = null;
 		try {
-			await Promise.all([devicesStore.fetch(), inventory.fetch()]);
+			const [, inventoryDevices] = await Promise.all([devicesStore.fetch(), inventory.fetch()]);
+			await Promise.all(
+				inventoryDevices
+					.filter((device) => {
+						const adoptedDevice = device.adoptedDeviceId ? devicesStore.findById(device.adoptedDeviceId) : null;
+						return device.adopted && adoptedDevice !== null && adoptedDevice.category !== device.suggestedCategory;
+					})
+					.map((device) => inventory.preview(device.id))
+			);
 		} catch (caught: unknown) {
 			error.value = caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.inventory');
 		}
@@ -125,17 +135,26 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 	const adopt = async (selection: IWizardAdoptSelection[]): Promise<IWizardResult[]> => {
 		try {
-			const adoption = await inventory.adoptBatch(
-				selection.map((item) => {
+			const requests = await Promise.all(
+				selection.map(async (item) => {
 					const inventoryDevice = inventory.findById(item.key);
 					const adoptedDevice = inventoryDevice?.adoptedDeviceId ? devicesStore.findById(inventoryDevice.adoptedDeviceId) : null;
 
+					if (inventoryDevice?.adopted && adoptedDevice === null) {
+						return { deviceId: item.key };
+					}
+
+					const preview = inventoryDevice?.adopted ? (inventory.previews[item.key] ?? (await inventory.preview(item.key))) : null;
+					const deviceCategory = preview?.validCategories.includes(item.category) === false ? undefined : item.category;
+
 					return {
 						deviceId: item.key,
-						...(inventoryDevice?.adopted && adoptedDevice === null ? {} : { name: item.name, deviceCategory: item.category }),
+						name: item.name,
+						...(deviceCategory === undefined ? {} : { deviceCategory }),
 					};
 				})
 			);
+			const adoption = await inventory.adoptBatch(requests);
 
 			return adoption.map(transformResult);
 		} catch (caught: unknown) {

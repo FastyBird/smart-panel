@@ -11,7 +11,11 @@
 			"required": "Wprowadź adres lokalnego API Homey",
 			"invalid": "Wprowadź adres HTTP lub HTTPS bez osadzonych danych logowania"
 		},
-		"apiKey": { "label": "Klucz lokalnego API", "placeholder": "Wprowadź nowy klucz, aby zastąpić zapisany" },
+		"apiKey": {
+			"label": "Klucz lokalnego API",
+			"placeholder": "Wprowadź nowy klucz, aby zastąpić zapisany",
+			"required": "Wprowadź lub zachowaj klucz API Homey przed włączeniem integracji"
+		},
 		"connectionTimeout": "Limit czasu połączenia (ms)",
 		"reconciliationInterval": "Interwał uzgadniania inwentarza (ms)"
 	},

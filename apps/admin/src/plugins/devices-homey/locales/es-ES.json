@@ -11,7 +11,11 @@
 			"required": "Introduce la URL de API local de Homey",
 			"invalid": "Introduce una URL HTTP o HTTPS sin credenciales integradas"
 		},
-		"apiKey": { "label": "Clave de API local", "placeholder": "Introduce una clave nueva para sustituir la configurada" },
+		"apiKey": {
+			"label": "Clave de API local",
+			"placeholder": "Introduce una clave nueva para sustituir la configurada",
+			"required": "Introduce o conserva una clave de API de Homey antes de activar la integración"
+		},
 		"connectionTimeout": "Tiempo de espera de conexión (ms)",
 		"reconciliationInterval": "Intervalo de conciliación del inventario (ms)"
 	},

@@ -8,12 +8,14 @@ import { useDevicesWizard } from './useDevicesWizard';
 const flashMessage = { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() };
 const inventory = {
 	adoptionResults: [],
+	previews: {},
 	fetching: false,
 	adopting: false,
 	firstLoad: true,
 	findAll: vi.fn<() => IHomeyInventoryDevice[]>(),
 	findById: vi.fn(),
 	fetch: vi.fn(),
+	preview: vi.fn(),
 	adoptBatch: vi.fn(),
 };
 const devicesStore = {
@@ -59,9 +61,14 @@ describe('Homey useDevicesWizard', () => {
 		vi.clearAllMocks();
 		stores.splice(0, stores.length, devicesStore, inventory);
 		inventory.adoptionResults = [];
+		inventory.previews = {};
 		inventory.findAll.mockReturnValue([device()]);
 		inventory.findById.mockImplementation((id) => (id === 'homey-light' ? device() : null));
 		inventory.fetch.mockResolvedValue([]);
+		inventory.preview.mockResolvedValue({
+			suggestedCategory: DevicesModuleDeviceCategory.lighting,
+			validCategories: [DevicesModuleDeviceCategory.lighting, DevicesModuleDeviceCategory.generic],
+		});
 		devicesStore.findById.mockReturnValue(null);
 		devicesStore.fetch.mockResolvedValue([]);
 	});
@@ -71,6 +78,12 @@ describe('Homey useDevicesWizard', () => {
 		inventory.findAll.mockReturnValue([adopted]);
 		inventory.findById.mockReturnValue(adopted);
 		devicesStore.findById.mockReturnValue({ name: 'Custom desk lamp', category: DevicesModuleDeviceCategory.generic });
+		inventory.previews = {
+			'homey-light': {
+				suggestedCategory: DevicesModuleDeviceCategory.lighting,
+				validCategories: [DevicesModuleDeviceCategory.lighting, DevicesModuleDeviceCategory.generic],
+			},
+		};
 		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-light', status: 'skipped' }]);
 
 		const adapter = useDevicesWizard();
@@ -91,6 +104,35 @@ describe('Homey useDevicesWizard', () => {
 		expect(inventory.adoptBatch).toHaveBeenCalledWith([
 			{ deviceId: 'homey-light', name: 'Custom desk lamp', deviceCategory: DevicesModuleDeviceCategory.generic },
 		]);
+	});
+
+	it('falls back to the current mapping category when a saved category is stale', async () => {
+		const adopted = device({ adopted: true, adoptedDeviceId: '4a2515a6-7e87-4e51-96cc-832698237613' });
+		inventory.findAll.mockReturnValue([adopted]);
+		inventory.findById.mockReturnValue(adopted);
+		devicesStore.findById.mockReturnValue({ name: 'Custom desk lamp', category: DevicesModuleDeviceCategory.generic });
+		inventory.previews = {
+			'homey-light': {
+				suggestedCategory: DevicesModuleDeviceCategory.lighting,
+				validCategories: [DevicesModuleDeviceCategory.lighting],
+			},
+		};
+		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-light', status: 'updated' }]);
+
+		const adapter = useDevicesWizard();
+		const row = adapter.rows.value[0];
+
+		expect(row.suggestedCategory).toBe(DevicesModuleDeviceCategory.lighting);
+		expect(row.categoryOptions).toEqual([
+			{
+				value: DevicesModuleDeviceCategory.lighting,
+				label: 'devicesModule.categories.devices.lighting',
+			},
+		]);
+
+		await adapter.adopt([{ key: row.key, name: row.suggestedName, category: DevicesModuleDeviceCategory.generic }]);
+
+		expect(inventory.adoptBatch).toHaveBeenCalledWith([{ deviceId: 'homey-light', name: 'Custom desk lamp' }]);
 	});
 
 	it('omits metadata overrides when the adopted panel device is not loaded', async () => {

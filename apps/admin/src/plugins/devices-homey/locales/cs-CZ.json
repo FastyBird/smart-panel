@@ -11,7 +11,11 @@
 			"required": "Zadejte URL místního API Homey",
 			"invalid": "Zadejte adresu HTTP nebo HTTPS bez vložených přihlašovacích údajů"
 		},
-		"apiKey": { "label": "Klíč místního API", "placeholder": "Zadejte nový klíč pro nahrazení uloženého klíče" },
+		"apiKey": {
+			"label": "Klíč místního API",
+			"placeholder": "Zadejte nový klíč pro nahrazení uloženého klíče",
+			"required": "Před povolením integrace zadejte nebo ponechte klíč API Homey"
+		},
 		"connectionTimeout": "Časový limit připojení (ms)",
 		"reconciliationInterval": "Interval synchronizace inventáře (ms)"
 	},

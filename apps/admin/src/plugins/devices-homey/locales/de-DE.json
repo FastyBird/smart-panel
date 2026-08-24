@@ -11,7 +11,11 @@
 			"required": "Geben Sie die lokale Homey-API-URL ein",
 			"invalid": "Geben Sie eine HTTP- oder HTTPS-URL ohne eingebettete Zugangsdaten ein"
 		},
-		"apiKey": { "label": "Lokaler API-Schlüssel", "placeholder": "Neuen Schlüssel eingeben, um den gespeicherten zu ersetzen" },
+		"apiKey": {
+			"label": "Lokaler API-Schlüssel",
+			"placeholder": "Neuen Schlüssel eingeben, um den gespeicherten zu ersetzen",
+			"required": "Geben Sie einen Homey-API-Schlüssel ein oder behalten Sie ihn bei, bevor Sie die Integration aktivieren"
+		},
 		"connectionTimeout": "Verbindungszeitlimit (ms)",
 		"reconciliationInterval": "Inventarabgleichsintervall (ms)"
 	},

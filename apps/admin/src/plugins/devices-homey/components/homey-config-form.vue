@@ -95,6 +95,7 @@ import {
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
 	MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
 } from '../devices-homey.constants';
+import { hasUsableHomeyApiKey } from '../schemas/config.schemas';
 import type { IHomeyConfigEditForm } from '../schemas/config.types';
 import { isSafeHomeyUrl } from '../schemas/homey-url.schemas';
 
@@ -146,6 +147,18 @@ const rules = computed<FormRules<IHomeyConfigEditForm>>(() => ({
 					callback(new Error(t('devicesHomeyPlugin.config.url.required')));
 				} else if (typeof value === 'string' && value !== '' && !isSafeHomeyUrl(value)) {
 					callback(new Error(t('devicesHomeyPlugin.config.url.invalid')));
+				} else {
+					callback();
+				}
+			},
+			trigger: ['change', 'blur'],
+		},
+	],
+	apiKey: [
+		{
+			validator: (_rule, value, callback) => {
+				if (model.enabled && !hasUsableHomeyApiKey(value, model.apiKeyConfigured)) {
+					callback(new Error(t('devicesHomeyPlugin.config.apiKey.required')));
 				} else {
 					callback();
 				}

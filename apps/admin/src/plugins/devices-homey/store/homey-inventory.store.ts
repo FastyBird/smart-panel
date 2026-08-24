@@ -11,7 +11,7 @@ import type {
 	DevicesHomeyPluginGetDevicesOperation,
 	DevicesHomeyPluginPreviewMappingOperation,
 } from '../../../openapi.constants';
-import { DEVICES_HOMEY_PLUGIN_PREFIX } from '../devices-homey.constants';
+import { DEVICES_HOMEY_PLUGIN_PREFIX, MAX_HOMEY_ADOPTION_BATCH_SIZE } from '../devices-homey.constants';
 import { DevicesHomeyApiException } from '../devices-homey.exceptions';
 
 import { transformHomeyAdoptionResult, transformHomeyInventoryDevice, transformHomeyMappingPreview } from './homey.transformers';
@@ -147,30 +147,37 @@ export const useHomeyInventory = defineStore('devices_homey_plugin-inventory', (
 
 	const adoptBatch = async (selections: IHomeyAdoptSelection[]): Promise<IHomeyAdoptionResult[]> => {
 		adopting.value = true;
+		const results: IHomeyAdoptionResult[] = [];
 
 		try {
-			const {
-				data: responseData,
-				error,
-				response,
-			} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOMEY_PLUGIN_PREFIX}/adopt/batch`, {
-				body: {
-					devices: selections.map((selection) => ({
-						device_id: selection.deviceId,
-						...(selection.deviceCategory ? { device_category: selection.deviceCategory } : {}),
-						...(selection.name ? { name: selection.name } : {}),
-					})),
-				},
-			});
+			for (let offset = 0; offset < selections.length; offset += MAX_HOMEY_ADOPTION_BATCH_SIZE) {
+				const chunk = selections.slice(offset, offset + MAX_HOMEY_ADOPTION_BATCH_SIZE);
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOMEY_PLUGIN_PREFIX}/adopt/batch`, {
+					body: {
+						devices: chunk.map((selection) => ({
+							device_id: selection.deviceId,
+							...(selection.deviceCategory ? { device_category: selection.deviceCategory } : {}),
+							...(selection.name ? { name: selection.name } : {}),
+						})),
+					},
+				});
 
-			if (responseData) {
-				return (adoptionResults.value = responseData.data.results.map(transformHomeyAdoptionResult));
+				if (!responseData) {
+					throw new DevicesHomeyApiException(
+						getErrorReason<DevicesHomeyPluginAdoptBatchOperation>(error, 'Failed to adopt the selected Homey devices.'),
+						response.status
+					);
+				}
+
+				results.push(...responseData.data.results.map(transformHomeyAdoptionResult));
+				adoptionResults.value = [...results];
 			}
 
-			throw new DevicesHomeyApiException(
-				getErrorReason<DevicesHomeyPluginAdoptBatchOperation>(error, 'Failed to adopt the selected Homey devices.'),
-				response.status
-			);
+			return results;
 		} finally {
 			adopting.value = false;
 		}
