@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DevicesHomeyPluginAdoptionStatus, DevicesHomeyPluginSupportState, DevicesModuleDeviceCategory } from '../../../openapi.constants';
+import { MAX_HOMEY_CONCURRENT_PREVIEWS } from '../devices-homey.constants';
 import type { IHomeyAdoptionResult, IHomeyInventoryDevice } from '../store/homey.types';
 
 import { useDevicesWizard } from './useDevicesWizard';
@@ -220,6 +221,34 @@ describe('Homey useDevicesWizard', () => {
 			expect.objectContaining({ status: 'needs_attention', adoptable: false })
 		);
 		expect(adapter.ready.value).toBe(true);
+	});
+
+	it('bounds concurrent mapping-preview requests for large inventories', async () => {
+		const supportedDevices = Array.from({ length: 12 }, (_, index) => device({ id: `homey-device-${index}`, name: `Device ${index}` }));
+		inventory.findAll.mockReturnValue(supportedDevices);
+		inventory.fetch.mockResolvedValue(supportedDevices);
+		let activePreviews = 0;
+		let maximumActivePreviews = 0;
+		inventory.preview.mockImplementation(async (id) => {
+			activePreviews += 1;
+			maximumActivePreviews = Math.max(maximumActivePreviews, activePreviews);
+			await Promise.resolve();
+			activePreviews -= 1;
+			const preview = {
+				suggestedCategory: DevicesModuleDeviceCategory.lighting,
+				validCategories: [DevicesModuleDeviceCategory.lighting],
+				readyToAdopt: true,
+			};
+			inventory.previews[id] = preview;
+
+			return preview;
+		});
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		expect(maximumActivePreviews).toBe(MAX_HOMEY_CONCURRENT_PREVIEWS);
+		expect(adapter.rows.value).toHaveLength(supportedDevices.length);
 	});
 
 	it('omits metadata overrides when the adopted panel device is not loaded', async () => {

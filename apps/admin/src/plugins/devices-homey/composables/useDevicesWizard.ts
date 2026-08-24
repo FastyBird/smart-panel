@@ -15,7 +15,7 @@ import type {
 	IWizardRowStatus,
 } from '../../../modules/devices';
 import { DevicesHomeyPluginAdoptionStatus } from '../../../openapi.constants';
-import { DEVICES_HOMEY_PLUGIN_NAME } from '../devices-homey.constants';
+import { DEVICES_HOMEY_PLUGIN_NAME, MAX_HOMEY_CONCURRENT_PREVIEWS } from '../devices-homey.constants';
 import type { IHomeyAdoptionResult, IHomeyInventoryDevice, IHomeyMappingPreview } from '../store/homey.types';
 import { homeyInventoryStoreKey } from '../store/keys';
 
@@ -138,21 +138,23 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		try {
 			await devicesStore.fetch();
 			const inventoryDevices = await inventory.fetch();
-			const failedPreviews = await Promise.all(
-				inventoryDevices
-					.filter((device) => device.available && device.supportState === 'supported')
-					.map(async (device) => {
-						try {
-							await inventory.preview(device.id);
-							return null;
-						} catch {
-							return device.id;
-						}
-					})
-			);
-			previewFailures.value = Object.fromEntries(
-				failedPreviews.filter((deviceId): deviceId is string => deviceId !== null).map((deviceId) => [deviceId, true as const])
-			);
+			const previewDevices = inventoryDevices.filter((device) => device.available && device.supportState === 'supported');
+			const failedPreviews: string[] = [];
+			let nextPreviewIndex = 0;
+			const previewWorker = async (): Promise<void> => {
+				while (nextPreviewIndex < previewDevices.length) {
+					const device = previewDevices[nextPreviewIndex++];
+					if (device === undefined) return;
+
+					try {
+						await inventory.preview(device.id);
+					} catch {
+						failedPreviews.push(device.id);
+					}
+				}
+			};
+			await Promise.all(Array.from({ length: Math.min(MAX_HOMEY_CONCURRENT_PREVIEWS, previewDevices.length) }, () => previewWorker()));
+			previewFailures.value = Object.fromEntries(failedPreviews.map((deviceId) => [deviceId, true as const]));
 			previewsReady.value = true;
 		} catch (caught: unknown) {
 			error.value = caught instanceof Error ? caught.message : t('devicesHomeyPlugin.wizard.errors.inventory');
