@@ -6983,6 +6983,7 @@ describe('BuddyContextPlannerService', () => {
 		'If we disable the Bedroom lights what about the camera?',
 		'If we disable the Bedroom lights how about the camera?',
 		'If we disable the Bedroom lights what next?',
+		'If we disable the Bedroom lights where could accidents happen?',
 	])('keeps an unpunctuated hypothetical action on the read path: %s', (message) => {
 		const plan = service.plan({
 			message,
@@ -7089,6 +7090,7 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open turn off the Bedroom lights that work and could fail?',
 		'If the window is open turn off the Bedroom lights that John says could wake the baby?',
 		'If the window is open, turn off the lights which currently might wake the baby?',
+		'If the window is open turn off the Bedroom lights in the area where accidents could happen?',
 	])('recognizes a modal relative target clause without executing an unresolved subset: %s', (message) => {
 		const plan = service.plan({
 			message,
