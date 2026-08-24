@@ -1,3 +1,4 @@
+import { ExtensionLoggerService } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { HomeyConnectorFactory } from '../connectors/homey-connector.factory';
 import { HomeyConnector } from '../connectors/homey-connector.interface';
@@ -110,6 +111,7 @@ describe('HomeyService', () => {
 		Pick<
 			HomeySynchronizerService,
 			| 'filterEvents'
+			| 'getOperationalDiagnostics'
 			| 'hasReadableCapabilityBinding'
 			| 'synchronizeSnapshot'
 			| 'synchronizeDevices'
@@ -141,6 +143,12 @@ describe('HomeyService', () => {
 		connectorFactory = { create: jest.fn().mockReturnValue(connector) };
 		synchronizer = {
 			filterEvents: jest.fn((events) => [...events]),
+			getOperationalDiagnostics: jest.fn().mockResolvedValue({
+				adopted: 1,
+				missing: 0,
+				unsupported: 0,
+				unavailable: 0,
+			}),
 			hasReadableCapabilityBinding: jest.fn().mockResolvedValue(true),
 			synchronizeSnapshot: jest.fn((devices: readonly HomeyDevice[]) =>
 				Promise.resolve({
@@ -233,6 +241,7 @@ describe('HomeyService', () => {
 		}
 		expect(service.getInventorySnapshot()).toStrictEqual([staleDevice]);
 		expect(service.getStatus()).toMatchObject({
+			adoptedDeviceCount: 1,
 			connectionState: HomeyConnectionState.CONNECTED,
 			degraded: false,
 			homeyId: systemInfo.id,
@@ -241,9 +250,13 @@ describe('HomeyService', () => {
 			lastConnectedAt: INITIAL_TIME.toISOString(),
 			lastInventorySyncAt: INITIAL_TIME.toISOString(),
 			lastEventAt: null,
+			lastEventAgeMs: null,
+			missingDeviceCount: 0,
 			reconnectCount: 0,
 			reconciliationCount: 1,
 			reconciliationFailureCount: 0,
+			unavailableDeviceCount: 0,
+			unsupportedDeviceCount: 0,
 			lastReconciliationDurationMs: 0,
 			lastErrorCategory: null,
 		});
@@ -256,6 +269,62 @@ describe('HomeyService', () => {
 		expect(service.getState()).toBe('stopped');
 		expect(await service.isHealthy()).toBe(false);
 		expect(service.getInventorySnapshot()).toBeNull();
+	});
+
+	it('emits structured state and inventory diagnostics without endpoint, secret, identity, or values', async () => {
+		const log = jest.spyOn(ExtensionLoggerService.prototype, 'log');
+
+		await service.start();
+		await service.stop();
+
+		const stateTransitions = log.mock.calls.filter(([message]) => message === 'Homey connection state changed');
+		expect(stateTransitions).toEqual(
+			expect.arrayContaining([
+				[
+					'Homey connection state changed',
+					expect.objectContaining({
+						from: HomeyConnectionState.STOPPED,
+						reason: 'service_start',
+						to: HomeyConnectionState.CONNECTING,
+					}),
+				],
+				[
+					'Homey connection state changed',
+					expect.objectContaining({
+						from: HomeyConnectionState.CONNECTING,
+						to: HomeyConnectionState.CONNECTED,
+					}),
+				],
+			]),
+		);
+		const inventorySummary = log.mock.calls.find(([message]) => message === 'Homey inventory reconciliation completed');
+		expect(inventorySummary?.[1]).toEqual(
+			expect.objectContaining({ adopted: 1, deviceCount: 1, missing: 0, unavailable: 0, unsupported: 0 }),
+		);
+		const serialized = JSON.stringify([...stateTransitions, inventorySummary]);
+		expect(serialized).not.toContain(config.apiKey);
+		expect(serialized).not.toContain(config.url);
+		expect(serialized).not.toContain(staleDevice.id);
+		expect(serialized).not.toContain('"value"');
+	});
+
+	it('rate-limits repeated sanitized command failures', async () => {
+		const warn = jest.spyOn(ExtensionLoggerService.prototype, 'warn');
+		connector.setCapabilityValue.mockRejectedValue(new Error('configured-secret transport detail'));
+
+		await service.start();
+		await expect(service.executeCapabilityCommand(staleDevice.id, 'onoff', true)).resolves.toBe(false);
+		await expect(service.executeCapabilityCommand(staleDevice.id, 'onoff', false)).resolves.toBe(false);
+
+		const commandFailures = warn.mock.calls.filter(
+			([message]) => message === 'Homey capability command failed or could not be confirmed',
+		);
+		expect(commandFailures).toHaveLength(1);
+		expect(JSON.stringify(commandFailures)).not.toContain('configured-secret');
+		expect(JSON.stringify(commandFailures)).not.toContain(staleDevice.id);
+		expect(JSON.stringify(commandFailures)).not.toContain('onoff');
+
+		await service.stop();
 	});
 
 	it('reads one fresh device only while connected and returns a defensive copy', async () => {
@@ -300,6 +369,8 @@ describe('HomeyService', () => {
 		});
 
 		expect(service.getStatus().lastEventAt).toBe('2026-08-15T10:01:00.000Z');
+		jest.setSystemTime(new Date('2026-08-15T10:01:05.000Z'));
+		expect(service.getStatus().lastEventAgeMs).toBe(5000);
 
 		const disconnect = deferred();
 		connector.disconnect.mockReturnValueOnce(disconnect.promise);

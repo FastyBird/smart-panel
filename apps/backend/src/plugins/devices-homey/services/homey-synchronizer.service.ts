@@ -8,12 +8,16 @@ import { DeviceConnectivityService } from '../../../modules/devices/services/dev
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_HOMEY_PLUGIN_NAME, DEVICES_HOMEY_TYPE } from '../devices-homey.constants';
 import { HomeyChannelPropertyEntity, HomeyDeviceEntity } from '../entities/devices-homey.entity';
+import { resolveHomeyDeviceSupport } from '../mappings/device-support';
 import { HomeyMappingLoaderService } from '../mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from '../mappings/mapping-transformer.service';
 import { ResolvedHomeyPropertyMapping } from '../mappings/mapping.types';
 import { HomeyCapability, HomeyCapabilityValue } from '../models/homey-capability.model';
 import { HomeyDevice } from '../models/homey-device.model';
 import { HomeyEvent, HomeyEventType } from '../models/homey-event.model';
+import { HomeyDeviceSupportState } from '../models/inventory.model';
+
+import { HomeyFailureLogLimiter } from './homey-failure-log-limiter';
 
 interface HomeyIndexedProperty {
 	readonly panelDeviceId: string;
@@ -25,6 +29,13 @@ export interface HomeySynchronizationResult {
 	readonly updated: number;
 	readonly ignored: number;
 	readonly failed: number;
+}
+
+export interface HomeyOperationalDiagnostics {
+	readonly adopted: number;
+	readonly missing: number;
+	readonly unsupported: number;
+	readonly unavailable: number;
 }
 
 export interface HomeyEventSynchronizationResult extends HomeySynchronizationResult {
@@ -53,6 +64,7 @@ interface HomeyEventOrder {
 @Injectable()
 export class HomeySynchronizerService {
 	private readonly logger = createExtensionLogger(DEVICES_HOMEY_PLUGIN_NAME, 'Synchronizer');
+	private readonly failureLogLimiter = new HomeyFailureLogLimiter();
 	private adoptedDevices = new Map<string, HomeyDeviceEntity>();
 	private propertiesByDeviceCapability = new Map<string, Map<string, HomeyIndexedProperty[]>>();
 	private lastAppliedOrder = new Map<string, HomeyEventOrder>();
@@ -294,6 +306,20 @@ export class HomeySynchronizerService {
 		return (this.propertiesByDeviceCapability.get(homeyDeviceId)?.get(capabilityId)?.length ?? 0) > 0;
 	}
 
+	async getOperationalDiagnostics(devices: readonly HomeyDevice[]): Promise<HomeyOperationalDiagnostics> {
+		await this.ensureIndex();
+		const upstreamIds = new Set(devices.map((device) => device.id));
+
+		return {
+			adopted: this.adoptedDevices.size,
+			missing: [...this.adoptedDevices.keys()].filter((deviceId) => !upstreamIds.has(deviceId)).length,
+			unsupported: devices.filter(
+				(device) => resolveHomeyDeviceSupport(this.mappingLoader, device).state !== HomeyDeviceSupportState.SUPPORTED,
+			).length,
+			unavailable: devices.filter((device) => !device.available).length,
+		};
+	}
+
 	reset(): void {
 		this.adoptedDevices.clear();
 		this.propertiesByDeviceCapability.clear();
@@ -486,9 +512,13 @@ export class HomeySynchronizerService {
 			} catch {
 				result.failed += 1;
 				allBindingsApplied = false;
-				this.logger.warn('Ignored a Homey capability update that could not be mapped or persisted', {
-					resource: binding.property.id,
-				});
+				const decision = this.failureLogLimiter.consume('capability-update');
+
+				if (decision.log) {
+					this.logger.warn('Ignored a Homey capability update that could not be mapped or persisted', {
+						suppressed: decision.suppressed,
+					});
+				}
 			}
 		}
 
@@ -586,7 +616,13 @@ export class HomeySynchronizerService {
 		}
 
 		result.failed += 1;
-		this.logger.warn('Could not update an adopted Homey device connection state', { resource: panelDeviceId });
+		const decision = this.failureLogLimiter.consume('connection-state-update');
+
+		if (decision.log) {
+			this.logger.warn('Could not update an adopted Homey device connection state', {
+				suppressed: decision.suppressed,
+			});
+		}
 		return false;
 	}
 

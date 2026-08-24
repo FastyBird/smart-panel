@@ -96,6 +96,47 @@ export class HomeyStatusModel {
 	@IsDateString()
 	lastEventAt: string | null;
 
+	@ApiPropertyOptional({
+		description: 'Age of the latest successfully processed Homey event in milliseconds',
+		nullable: true,
+		name: 'last_event_age_ms',
+	})
+	@Expose({ name: 'last_event_age_ms' })
+	@IsOptional()
+	@IsInt()
+	@Min(0)
+	lastEventAgeMs: number | null;
+
+	@ApiProperty({ description: 'Enabled Smart Panel devices adopted from Homey', name: 'adopted_device_count' })
+	@Expose({ name: 'adopted_device_count' })
+	@IsInt()
+	@Min(0)
+	adoptedDeviceCount: number;
+
+	@ApiProperty({ description: 'Adopted devices missing from the latest Homey inventory', name: 'missing_device_count' })
+	@Expose({ name: 'missing_device_count' })
+	@IsInt()
+	@Min(0)
+	missingDeviceCount: number;
+
+	@ApiProperty({
+		description: 'Homey inventory devices without complete mapping support',
+		name: 'unsupported_device_count',
+	})
+	@Expose({ name: 'unsupported_device_count' })
+	@IsInt()
+	@Min(0)
+	unsupportedDeviceCount: number;
+
+	@ApiProperty({
+		description: 'Homey inventory devices currently reported unavailable',
+		name: 'unavailable_device_count',
+	})
+	@Expose({ name: 'unavailable_device_count' })
+	@IsInt()
+	@Min(0)
+	unavailableDeviceCount: number;
+
 	@ApiProperty({ description: 'Reconnect attempts executed since the last explicit start', name: 'reconnect_count' })
 	@Expose({ name: 'reconnect_count' })
 	@IsInt()

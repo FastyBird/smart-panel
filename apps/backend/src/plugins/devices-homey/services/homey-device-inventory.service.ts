@@ -10,18 +10,11 @@ import {
 } from '../dto/list-homey-devices.dto';
 import { HomeyDeviceEntity } from '../entities/devices-homey.entity';
 import { HomeyInventoryDeviceNotFoundError, HomeyInventoryUnavailableError } from '../errors/homey-inventory.error';
+import { resolveHomeyDeviceSupport } from '../mappings/device-support';
 import { HomeyMappingLoaderService } from '../mappings/mapping-loader.service';
-import {
-	HomeyMappingConflict,
-	HomeyMappingResolution,
-	ResolvedHomeyChannelMapping,
-	ResolvedHomeyDeviceMapping,
-	ResolvedHomeyPropertyBinding,
-} from '../mappings/mapping.types';
 import { HomeyDevice } from '../models/homey-device.model';
 import {
 	HomeyCapabilitySummaryModel,
-	HomeyDeviceSupportReason,
 	HomeyDeviceSupportState,
 	HomeyInventoryDeviceModel,
 } from '../models/inventory.model';
@@ -83,9 +76,7 @@ export class HomeyDeviceInventoryService {
 
 	private toInventoryDevice(device: HomeyDevice, adoptedDevice: HomeyDeviceEntity | null): HomeyInventoryDeviceModel {
 		const deviceResolution = this.mappingLoader.resolveDeviceMappings(device);
-		const channelResolution = this.mappingLoader.resolveChannelMappings(device);
-		const propertyResolution = this.mappingLoader.resolvePropertyMappings(device);
-		const supportReasons = this.getSupportReasons(deviceResolution, channelResolution, propertyResolution);
+		const support = resolveHomeyDeviceSupport(this.mappingLoader, device);
 		const inventoryDevice = new HomeyInventoryDeviceModel();
 
 		inventoryDevice.id = device.id;
@@ -112,68 +103,13 @@ export class HomeyDeviceInventoryService {
 
 				return summary;
 			});
-		inventoryDevice.supportReasons = supportReasons;
-		inventoryDevice.supportState = this.getSupportState(supportReasons);
+		inventoryDevice.supportReasons = [...support.reasons];
+		inventoryDevice.supportState = support.state;
 		inventoryDevice.suggestedCategory = deviceResolution.mappings[0]?.deviceCategory ?? null;
 		inventoryDevice.adopted = adoptedDevice !== null;
 		inventoryDevice.adoptedDeviceId = adoptedDevice?.id ?? null;
 
 		return inventoryDevice;
-	}
-
-	private getSupportReasons(
-		deviceResolution: HomeyMappingResolution<ResolvedHomeyDeviceMapping>,
-		channelResolution: HomeyMappingResolution<ResolvedHomeyChannelMapping>,
-		propertyResolution: HomeyMappingResolution<ResolvedHomeyPropertyBinding>,
-	): HomeyDeviceSupportReason[] {
-		const reasons: HomeyDeviceSupportReason[] = [];
-		const deviceConflict = this.hasBlockingConflict(deviceResolution.conflicts);
-
-		if (deviceConflict) {
-			reasons.push(HomeyDeviceSupportReason.DEVICE_MAPPING_CONFLICT);
-		} else if (deviceResolution.mappings.length === 0) {
-			reasons.push(HomeyDeviceSupportReason.NO_DEVICE_MAPPING);
-			return reasons;
-		}
-
-		if (this.hasBlockingConflict(channelResolution.conflicts)) {
-			reasons.push(HomeyDeviceSupportReason.CHANNEL_MAPPING_CONFLICT);
-		} else if (channelResolution.mappings.length === 0) {
-			reasons.push(HomeyDeviceSupportReason.NO_CHANNEL_MAPPING);
-		}
-
-		if (this.hasBlockingConflict(propertyResolution.conflicts)) {
-			reasons.push(HomeyDeviceSupportReason.PROPERTY_MAPPING_CONFLICT);
-		} else if (propertyResolution.mappings.length === 0) {
-			reasons.push(HomeyDeviceSupportReason.NO_PROPERTY_MAPPING);
-		} else if (!this.hasCompatiblePropertyMapping(channelResolution, propertyResolution)) {
-			reasons.push(HomeyDeviceSupportReason.NO_COMPATIBLE_PROPERTY_MAPPING);
-		}
-
-		return reasons;
-	}
-
-	private hasCompatiblePropertyMapping(
-		channelResolution: HomeyMappingResolution<ResolvedHomeyChannelMapping>,
-		propertyResolution: HomeyMappingResolution<ResolvedHomeyPropertyBinding>,
-	): boolean {
-		const channelIdentifiers = new Set(channelResolution.mappings.map((mapping) => mapping.channel.identifier));
-
-		return propertyResolution.mappings.some((binding) => channelIdentifiers.has(binding.mapping.property.channel));
-	}
-
-	private hasBlockingConflict(conflicts: readonly HomeyMappingConflict[]): boolean {
-		return conflicts.some((conflict) => conflict.policy === 'error');
-	}
-
-	private getSupportState(reasons: readonly HomeyDeviceSupportReason[]): HomeyDeviceSupportState {
-		if (reasons.length === 0) {
-			return HomeyDeviceSupportState.SUPPORTED;
-		}
-
-		return reasons.some((reason) => reason.endsWith('_conflict'))
-			? HomeyDeviceSupportState.CONFLICTED
-			: HomeyDeviceSupportState.UNSUPPORTED;
 	}
 
 	private matchesFilters(device: HomeyInventoryDeviceModel, query: ListHomeyDevicesQueryDto): boolean {

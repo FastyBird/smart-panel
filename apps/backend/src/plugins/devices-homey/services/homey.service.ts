@@ -30,9 +30,11 @@ import { HomeyZone } from '../models/homey-zone.model';
 import { HomeyStatusModel } from '../models/status.model';
 import { homeyCapabilityValuesEqual } from '../platforms/homey-command-value';
 
+import { HomeyFailureLogLimiter } from './homey-failure-log-limiter';
 import { calculateHomeyReconnectDelay } from './homey-reconnect-backoff';
 import {
 	HomeyAcceptedCapabilityValue,
+	HomeyOperationalDiagnostics,
 	HomeySynchronizationResult,
 	HomeySynchronizerService,
 } from './homey-synchronizer.service';
@@ -64,6 +66,7 @@ type HomeyBoundedResult<T> =
 @Injectable()
 export class HomeyService extends BaseManagedPluginService {
 	private readonly logger = createExtensionLogger(DEVICES_HOMEY_PLUGIN_NAME, 'HomeyService');
+	private readonly failureLogLimiter = new HomeyFailureLogLimiter();
 
 	readonly pluginName = DEVICES_HOMEY_PLUGIN_NAME;
 	readonly serviceId = DEVICES_HOMEY_CONNECTOR_SERVICE_ID;
@@ -94,6 +97,12 @@ export class HomeyService extends BaseManagedPluginService {
 	private reconciliationCount = 0;
 	private reconciliationFailureCount = 0;
 	private lastReconciliationDurationMs: number | null = null;
+	private operationalDiagnostics: HomeyOperationalDiagnostics = {
+		adopted: 0,
+		missing: 0,
+		unsupported: 0,
+		unavailable: 0,
+	};
 	private readonly commandTails = new Map<string, Promise<void>>();
 	private readonly pendingCommandConfirmations = new Map<string, PendingHomeyCommandConfirmation>();
 	private readonly commandCancellationListeners = new Set<() => void>();
@@ -130,7 +139,7 @@ export class HomeyService extends BaseManagedPluginService {
 			this.resetRuntimeHealth();
 			this.lastError = null;
 			this.healthy = false;
-			this.connectionState = HomeyConnectionState.CONNECTING;
+			this.transitionConnectionState(HomeyConnectionState.CONNECTING, 'service_start');
 			const generation = ++this.generation;
 
 			try {
@@ -184,7 +193,7 @@ export class HomeyService extends BaseManagedPluginService {
 			this.state = 'stopping';
 			this.generation += 1;
 			this.healthy = false;
-			this.connectionState = HomeyConnectionState.STOPPED;
+			this.transitionConnectionState(HomeyConnectionState.STOPPED, 'service_stop');
 
 			const cleaned = await this.cleanupRuntime();
 
@@ -245,6 +254,11 @@ export class HomeyService extends BaseManagedPluginService {
 		status.lastConnectedAt = this.lastConnectedAt;
 		status.lastInventorySyncAt = this.lastInventorySyncAt;
 		status.lastEventAt = this.lastEventAt;
+		status.lastEventAgeMs = this.calculateLastEventAgeMs();
+		status.adoptedDeviceCount = this.operationalDiagnostics.adopted;
+		status.missingDeviceCount = this.operationalDiagnostics.missing;
+		status.unsupportedDeviceCount = this.operationalDiagnostics.unsupported;
+		status.unavailableDeviceCount = this.operationalDiagnostics.unavailable;
 		status.reconnectCount = this.reconnectCount;
 		status.reconciliationCount = this.reconciliationCount;
 		status.reconciliationFailureCount = this.reconciliationFailureCount;
@@ -276,9 +290,17 @@ export class HomeyService extends BaseManagedPluginService {
 		const key = this.commandKey(deviceId, capabilityId);
 		const generation = this.generation;
 
-		return this.enqueueCapabilityCommand(key, (retainWrite) =>
+		const successful = await this.enqueueCapabilityCommand(key, (retainWrite) =>
 			this.executeSerializedCapabilityCommand(key, deviceId, capabilityId, value, generation, retainWrite),
 		);
+
+		if (!successful) {
+			this.logRateLimitedFailure('command', 'warn', 'Homey capability command failed or could not be confirmed', {
+				outcome: 'rejected_or_unconfirmed',
+			});
+		}
+
+		return successful;
 	}
 
 	async getFreshDevice(deviceId: string): Promise<HomeyDevice | null> {
@@ -352,6 +374,9 @@ export class HomeyService extends BaseManagedPluginService {
 				const result = await this.synchronizer.synchronizeSnapshot([...this.devices.values()]);
 				this.recordSynchronizationResult(result);
 				this.recordCapabilityEvidence(result.acceptedCapabilityValues ?? []);
+				this.recordOperationalDiagnostics(
+					await this.synchronizer.getOperationalDiagnostics([...this.devices.values()]),
+				);
 
 				if (this.startupEvents) {
 					await this.reconcileStartupEvents(connector, generation);
@@ -427,7 +452,12 @@ export class HomeyService extends BaseManagedPluginService {
 			} catch (error) {
 				if (this.isCurrentGeneration(connector, generation)) {
 					this.handleRuntimeFailure(error, 'Homey event synchronization failed', generation);
-					this.logger.error(this.lastError ?? 'Homey event synchronization failed');
+					this.logRateLimitedFailure(
+						'event-synchronization',
+						'error',
+						this.lastError ?? 'Homey event synchronization failed',
+						{ category: this.lastErrorCategory },
+					);
 				}
 			}
 		});
@@ -506,6 +536,7 @@ export class HomeyService extends BaseManagedPluginService {
 		}
 
 		if (events.length > 0 && this.isCurrentGeneration(connector, generation)) {
+			this.logger.debug('Processing normalized Homey event batch', { eventCount: events.length });
 			const confirmationEvents: HomeyEvent[] = [];
 
 			if (inventoryReplaced) {
@@ -538,6 +569,12 @@ export class HomeyService extends BaseManagedPluginService {
 			}
 			this.lastEventAt = this.now();
 			this.recordAcceptedCapabilityEvents(confirmationEvents, generation);
+
+			if (events.some((event) => event.type !== HomeyEventType.CAPABILITY_VALUE_CHANGED)) {
+				this.recordOperationalDiagnostics(
+					await this.synchronizer.getOperationalDiagnostics([...this.devices.values()]),
+				);
+			}
 		}
 
 		return authoritativeTraffic;
@@ -659,19 +696,19 @@ export class HomeyService extends BaseManagedPluginService {
 					const result = await this.synchronizer.synchronizeSnapshot(devicesResult.value);
 					this.recordSynchronizationResult(result);
 					this.recordCapabilityEvidence(result.acceptedCapabilityValues ?? []);
+					this.recordOperationalDiagnostics(await this.synchronizer.getOperationalDiagnostics(devicesResult.value));
 					this.recordSuccessfulInventorySync(connector, generation);
 
 					if (this.unsubscribe) {
 						this.markRuntimeHealthy(connector, generation);
 					} else {
-						this.connectionState = HomeyConnectionState.DEGRADED_POLLING;
+						this.transitionConnectionState(HomeyConnectionState.DEGRADED_POLLING, 'subscription_unavailable');
 						this.healthy = false;
 					}
 				});
 			} catch (error) {
 				if (this.isCurrentGeneration(connector, generation)) {
 					this.handleRuntimeFailure(error, 'Homey inventory reconciliation failed', generation);
-					this.logger.error(this.lastError ?? 'Homey inventory reconciliation failed');
 				}
 			}
 		});
@@ -692,7 +729,7 @@ export class HomeyService extends BaseManagedPluginService {
 
 		if (!preserveDegradedPolling) {
 			this.clearReconciliationTimer();
-			this.connectionState = HomeyConnectionState.RECONNECTING;
+			this.transitionConnectionState(HomeyConnectionState.RECONNECTING, 'reconnect_scheduled');
 		}
 		this.healthy = false;
 		const delay = calculateHomeyReconnectDelay(this.reconnectAttempt);
@@ -709,7 +746,7 @@ export class HomeyService extends BaseManagedPluginService {
 				return;
 			}
 
-			this.connectionState = HomeyConnectionState.RECONNECTING;
+			this.transitionConnectionState(HomeyConnectionState.RECONNECTING, 'reconnect_started');
 			this.healthy = false;
 			this.reconnectCount += 1;
 			const generation = ++this.generation;
@@ -744,7 +781,9 @@ export class HomeyService extends BaseManagedPluginService {
 					this.scheduleReconnect(retryGeneration);
 				}
 
-				this.logger.error(this.lastError ?? 'Homey service failed to reconnect');
+				this.logRateLimitedFailure('reconnect', 'error', this.lastError ?? 'Homey service failed to reconnect', {
+					category: this.lastErrorCategory,
+				});
 			}
 		});
 	}
@@ -1164,10 +1203,19 @@ export class HomeyService extends BaseManagedPluginService {
 
 	private recordSynchronizationResult(result: HomeySynchronizationResult): void {
 		if (result.failed > 0) {
-			this.logger.warn('Homey synchronization completed with isolated property failures', {
-				failed: result.failed,
-			});
+			this.logRateLimitedFailure(
+				'synchronization-result',
+				'warn',
+				'Homey synchronization completed with isolated property failures',
+				{
+					failed: result.failed,
+				},
+			);
 		}
+	}
+
+	private recordOperationalDiagnostics(diagnostics: HomeyOperationalDiagnostics): void {
+		this.operationalDiagnostics = diagnostics;
 	}
 
 	private async runInventoryReconciliation(
@@ -1181,16 +1229,20 @@ export class HomeyService extends BaseManagedPluginService {
 			await operation();
 			this.lastReconciliationDurationMs = Math.max(0, Date.now() - startedAt);
 			this.logger.log('Homey inventory reconciliation completed', {
+				adopted: this.operationalDiagnostics.adopted,
 				count: this.reconciliationCount,
 				deviceCount: this.devices.size,
 				durationMs: this.lastReconciliationDurationMs,
 				failureCount: this.reconciliationFailureCount,
+				missing: this.operationalDiagnostics.missing,
 				source,
+				unavailable: this.operationalDiagnostics.unavailable,
+				unsupported: this.operationalDiagnostics.unsupported,
 			});
 		} catch (error) {
 			this.reconciliationFailureCount += 1;
 			this.lastReconciliationDurationMs = Math.max(0, Date.now() - startedAt);
-			this.logger.warn('Homey inventory reconciliation attempt failed', {
+			this.logRateLimitedFailure('reconciliation', 'warn', 'Homey inventory reconciliation attempt failed', {
 				count: this.reconciliationCount,
 				durationMs: this.lastReconciliationDurationMs,
 				failureCount: this.reconciliationFailureCount,
@@ -1217,22 +1269,28 @@ export class HomeyService extends BaseManagedPluginService {
 			switch (error.category) {
 				case HomeyConnectorErrorCategory.AUTHENTICATION:
 				case HomeyConnectorErrorCategory.AUTHORIZATION:
-					this.connectionState = HomeyConnectionState.AUTHENTICATION_FAILED;
+					this.transitionConnectionState(HomeyConnectionState.AUTHENTICATION_FAILED, 'authentication_failed');
 					this.lastError = 'Homey authentication or authorization failed';
+					this.logRateLimitedFailure(
+						'authentication',
+						'warn',
+						'Homey reconnect retries suspended until configuration changes',
+						{ category: error.category },
+					);
 					return;
 				case HomeyConnectorErrorCategory.TIMEOUT:
 				case HomeyConnectorErrorCategory.UNAVAILABLE:
-					this.connectionState = transientState;
+					this.transitionConnectionState(transientState, 'transient_failure');
 					this.lastError = 'Homey connection is temporarily unavailable';
 					return;
 				default:
-					this.connectionState = HomeyConnectionState.ERROR;
+					this.transitionConnectionState(HomeyConnectionState.ERROR, 'connector_failure');
 					this.lastError = fallback;
 					return;
 			}
 		}
 
-		this.connectionState = HomeyConnectionState.ERROR;
+		this.transitionConnectionState(HomeyConnectionState.ERROR, 'unexpected_failure');
 		this.lastError = fallback;
 	}
 
@@ -1244,7 +1302,7 @@ export class HomeyService extends BaseManagedPluginService {
 		const recovered = this.connectionState !== HomeyConnectionState.CONNECTED;
 		this.clearReconnectTimer();
 		this.reconnectAttempt = 0;
-		this.connectionState = HomeyConnectionState.CONNECTED;
+		this.transitionConnectionState(HomeyConnectionState.CONNECTED, 'runtime_healthy');
 		this.healthy = true;
 		this.lastError = null;
 		this.lastErrorCategory = null;
@@ -1268,7 +1326,7 @@ export class HomeyService extends BaseManagedPluginService {
 	}
 
 	private markRuntimeDegraded(error: HomeyConnectorError, generation: number): void {
-		this.connectionState = HomeyConnectionState.DEGRADED_POLLING;
+		this.transitionConnectionState(HomeyConnectionState.DEGRADED_POLLING, 'subscription_unavailable');
 		this.healthy = false;
 		this.lastErrorCategory = error.category;
 		this.lastError = error.retryable
@@ -1297,6 +1355,7 @@ export class HomeyService extends BaseManagedPluginService {
 	}
 
 	private resetRuntimeHealth(): void {
+		this.failureLogLimiter.reset();
 		this.lastSystemInfo = null;
 		this.lastConnectedAt = null;
 		this.lastInventorySyncAt = null;
@@ -1306,6 +1365,7 @@ export class HomeyService extends BaseManagedPluginService {
 		this.reconciliationCount = 0;
 		this.reconciliationFailureCount = 0;
 		this.lastReconciliationDurationMs = null;
+		this.operationalDiagnostics = { adopted: 0, missing: 0, unsupported: 0, unavailable: 0 };
 	}
 
 	private recordSuccessfulConnection(): void {
@@ -1320,6 +1380,38 @@ export class HomeyService extends BaseManagedPluginService {
 
 	private now(): string {
 		return new Date().toISOString();
+	}
+
+	private calculateLastEventAgeMs(): number | null {
+		if (this.lastEventAt === null) {
+			return null;
+		}
+
+		return Math.max(0, Date.now() - new Date(this.lastEventAt).getTime());
+	}
+
+	private transitionConnectionState(next: HomeyConnectionState, reason: string): void {
+		const previous = this.connectionState;
+
+		if (previous === next) {
+			return;
+		}
+
+		this.connectionState = next;
+		this.logger.log('Homey connection state changed', { from: previous, reason, to: next });
+	}
+
+	private logRateLimitedFailure(
+		key: string,
+		level: 'error' | 'warn',
+		message: string,
+		context: Record<string, unknown>,
+	): void {
+		const decision = this.failureLogLimiter.consume(key);
+
+		if (decision.log) {
+			this.logger[level](message, { ...context, suppressed: decision.suppressed });
+		}
 	}
 
 	private getCurrentPluginConfigOrDefault(): HomeyConfigModel {
