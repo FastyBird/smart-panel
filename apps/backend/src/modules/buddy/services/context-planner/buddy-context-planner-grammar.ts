@@ -325,7 +325,7 @@ export const AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE = String.raw`(?:air\s+(?:c
 const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|smoke\s+(?:detectors?|sensors?)|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|locks?|switch(?:es)?|thermostats?)|${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source})`;
 const AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}|none)`;
 const AGGREGATE_READ_TRAILING_ADJUNCT_PATTERN_SOURCE = String.raw`(?:at\s+(?:present|the\s+moment)|currently|now|please|right\s+now|today|tonight)`;
-const AGGREGATE_READ_COORDINATED_STATE_PATTERN_SOURCE = String.raw`(?:and|or)\s+(?:${STATE_LINKING_VERB_PATTERN_SOURCE}\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}`;
+const AGGREGATE_READ_COORDINATED_STATE_PATTERN_SOURCE = String.raw`(?:and|but|or|yet)\s+(?:${STATE_LINKING_VERB_PATTERN_SOURCE}\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}`;
 export const AGGREGATE_STATE_COORDINATION_PATTERN = new RegExp(
 	String.raw`\b${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b[^?!,.;]{0,80}\b${WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}\b[^?!,.;]{0,40}\b${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}\s+${AGGREGATE_READ_COORDINATED_STATE_PATTERN_SOURCE}\b(?=\s*(?:(?:${AGGREGATE_READ_TRAILING_ADJUNCT_PATTERN_SOURCE})\s*)*(?:(?:here|in\s+here|in\s+this\s+room|near\s+me|nearby|this\s+space)\s*)?[?!,.;]?$)`,
 	'gu',
