@@ -1,0 +1,26 @@
+{
+	"config": {
+		"local": {
+			"title": "Lokalne połączenie Homey",
+			"description": "Połącz się bezpośrednio z Homey Pro w sieci lokalnej. Homey Cloud nie jest jeszcze obsługiwany."
+		},
+		"enabled": "Włączone",
+		"url": { "label": "Adres lokalnego API", "placeholder": "http://homey.local:4859", "required": "Wprowadź adres lokalnego API Homey" },
+		"apiKey": { "label": "Klucz lokalnego API", "placeholder": "Wprowadź nowy klucz, aby zastąpić zapisany" },
+		"connectionTimeout": "Limit czasu połączenia (ms)",
+		"reconciliationInterval": "Interwał uzgadniania inwentarza (ms)"
+	},
+	"messages": {
+		"config": { "updated": "Konfiguracja Homey została zaktualizowana", "updateFailed": "Nie udało się zaktualizować konfiguracji Homey" }
+	},
+	"wizard": {
+		"title": "Dodaj urządzenia Homey",
+		"subtitle": "Wybierz obsługiwane urządzenia z inwentarza połączonego Homey",
+		"breadcrumb": "Homey",
+		"columns": { "identifier": "ID urządzenia Homey", "class": "Klasa", "zone": "Strefa", "capabilities": "Możliwości" },
+		"values": { "noZone": "Bez strefy", "capabilities": "Możliwości: {count}" },
+		"statuses": { "unavailable": "Niedostępne w Homey" },
+		"actions": { "refresh": "Odśwież inwentarz", "openConfig": "Otwórz konfigurację Homey" },
+		"errors": { "inventory": "Nie udało się załadować inwentarza Homey" }
+	}
+}

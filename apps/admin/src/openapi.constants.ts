@@ -172,6 +172,34 @@ export {
 	DevicesHomeAssistantPluginDataWizardCandidateStatus,
 } from './openapi';
 
+// Devices Homey Plugin Schemas
+export type DevicesHomeyPluginUpdateConfigSchema = components['schemas']['DevicesHomeyPluginUpdateConfig'];
+export type DevicesHomeyPluginConfigSchema = components['schemas']['DevicesHomeyPluginDataConfig'];
+export type DevicesHomeyPluginInventoryDeviceSchema = components['schemas']['DevicesHomeyPluginDataInventoryDevice'];
+export type DevicesHomeyPluginMappingPreviewSchema = components['schemas']['DevicesHomeyPluginDataMappingPreview'];
+export type DevicesHomeyPluginAdoptionResultSchema = components['schemas']['DevicesHomeyPluginDataAdoptionResult'];
+export type DevicesHomeyPluginStatusSchema = components['schemas']['DevicesHomeyPluginDataStatus'];
+export type DevicesHomeyPluginTestConnectionRequestSchema = components['schemas']['DevicesHomeyPluginReqTestConnection'];
+export type DevicesHomeyPluginTestConnectionSchema = components['schemas']['DevicesHomeyPluginDataTestConnection'];
+export type DevicesHomeyPluginCreateDeviceSchema = components['schemas']['DevicesHomeyPluginCreateDevice'];
+export type DevicesHomeyPluginUpdateDeviceSchema = components['schemas']['DevicesHomeyPluginUpdateDevice'];
+export type DevicesHomeyPluginDeviceSchema = components['schemas']['DevicesHomeyPluginDataDevice'];
+export type DevicesHomeyPluginCreateChannelSchema = components['schemas']['DevicesHomeyPluginCreateDeviceChannel'];
+export type DevicesHomeyPluginChannelSchema = components['schemas']['DevicesHomeyPluginDataChannel'];
+export type DevicesHomeyPluginCreateChannelPropertySchema = components['schemas']['DevicesHomeyPluginCreateDeviceChannelProperty'];
+export type DevicesHomeyPluginChannelPropertySchema = components['schemas']['DevicesHomeyPluginDataChannelProperty'];
+export {
+	DevicesHomeyPluginDataAdoptionResultFailure_code as DevicesHomeyPluginAdoptionFailureCode,
+	DevicesHomeyPluginDataAdoptionResultStatus as DevicesHomeyPluginAdoptionStatus,
+	DevicesHomeyPluginDataInventoryDeviceSupport_reasons as DevicesHomeyPluginSupportReason,
+	DevicesHomeyPluginDataInventoryDeviceSupport_state as DevicesHomeyPluginSupportState,
+	DevicesHomeyPluginDataStatusConnection_state as DevicesHomeyPluginConnectionState,
+	DevicesHomeyPluginDataStatusLast_error_category as DevicesHomeyPluginErrorCategory,
+	PathsPluginsDevicesHomeyDevicesGetParametersQueryAdoption as DevicesHomeyPluginInventoryAdoptionFilter,
+	PathsPluginsDevicesHomeyDevicesGetParametersQueryAvailability as DevicesHomeyPluginInventoryAvailabilityFilter,
+	PathsPluginsDevicesHomeyDevicesGetParametersQuerySupport as DevicesHomeyPluginInventorySupportFilter,
+} from './openapi';
+
 // Data Sources Device Channel Plugin Schemas
 export type DataSourcesDeviceChannelPluginCreateDeviceChannelDataSourceSchema =
 	components['schemas']['DataSourcesDeviceChannelPluginCreateDeviceChannelDataSource'];
@@ -464,6 +492,15 @@ export type DevicesHomeAssistantPluginCreateWizardOperation = operations['create
 export type DevicesHomeAssistantPluginGetWizardOperation = operations['get-devices-home-assistant-plugin-wizard'];
 export type DevicesHomeAssistantPluginDeleteWizardOperation = operations['delete-devices-home-assistant-plugin-wizard'];
 export type DevicesHomeAssistantPluginAdoptWizardOperation = operations['adopt-devices-home-assistant-plugin-wizard'];
+
+// Devices Homey Plugin Operations
+export type DevicesHomeyPluginGetStatusOperation = operations['get-devices-homey-plugin-status'];
+export type DevicesHomeyPluginTestConnectionOperation = operations['test-devices-homey-plugin-connection'];
+export type DevicesHomeyPluginGetDevicesOperation = operations['get-devices-homey-plugin-devices'];
+export type DevicesHomeyPluginGetDeviceOperation = operations['get-devices-homey-plugin-device'];
+export type DevicesHomeyPluginPreviewMappingOperation = operations['preview-devices-homey-plugin-device-mapping'];
+export type DevicesHomeyPluginAdoptDeviceOperation = operations['create-devices-homey-plugin-adoption'];
+export type DevicesHomeyPluginAdoptBatchOperation = operations['create-devices-homey-plugin-batch-adoption'];
 
 // Devices WLED Plugin Operations
 export type DevicesWledPluginGetDiscoveryOperation = operations['get-devices-wled-plugin-discovery'];

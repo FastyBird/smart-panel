@@ -1,0 +1,24 @@
+{
+	"config": {
+		"local": {
+			"title": "Místní připojení Homey",
+			"description": "Připojte se přímo k Homey Pro v místní síti. Homey Cloud zatím není podporován."
+		},
+		"enabled": "Povoleno",
+		"url": { "label": "URL místního API", "placeholder": "http://homey.local:4859", "required": "Zadejte URL místního API Homey" },
+		"apiKey": { "label": "Klíč místního API", "placeholder": "Zadejte nový klíč pro nahrazení uloženého klíče" },
+		"connectionTimeout": "Časový limit připojení (ms)",
+		"reconciliationInterval": "Interval synchronizace inventáře (ms)"
+	},
+	"messages": { "config": { "updated": "Nastavení Homey bylo aktualizováno", "updateFailed": "Nastavení Homey se nepodařilo aktualizovat" } },
+	"wizard": {
+		"title": "Přidat zařízení Homey",
+		"subtitle": "Vyberte podporovaná zařízení z připojeného Homey",
+		"breadcrumb": "Homey",
+		"columns": { "identifier": "ID zařízení Homey", "class": "Třída", "zone": "Zóna", "capabilities": "Funkce" },
+		"values": { "noZone": "Bez zóny", "capabilities": "Počet funkcí: {count}" },
+		"statuses": { "unavailable": "V Homey není dostupné" },
+		"actions": { "refresh": "Obnovit inventář", "openConfig": "Otevřít nastavení Homey" },
+		"errors": { "inventory": "Inventář Homey se nepodařilo načíst" }
+	}
+}

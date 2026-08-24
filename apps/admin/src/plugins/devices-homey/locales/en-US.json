@@ -1,0 +1,51 @@
+{
+	"config": {
+		"local": {
+			"title": "Local Homey connection",
+			"description": "Connect directly to a Homey Pro on the local network. Homey Cloud support is not available yet."
+		},
+		"enabled": "Enabled",
+		"url": {
+			"label": "Local API URL",
+			"placeholder": "http://homey.local:4859",
+			"required": "Enter the Homey local API URL"
+		},
+		"apiKey": {
+			"label": "Local API key",
+			"placeholder": "Enter a new key to replace the configured key"
+		},
+		"connectionTimeout": "Connection timeout (ms)",
+		"reconciliationInterval": "Inventory reconciliation interval (ms)"
+	},
+	"messages": {
+		"config": {
+			"updated": "Homey configuration was updated",
+			"updateFailed": "Homey configuration could not be updated"
+		}
+	},
+	"wizard": {
+		"title": "Add Homey devices",
+		"subtitle": "Select supported devices from the connected Homey inventory",
+		"breadcrumb": "Homey",
+		"columns": {
+			"identifier": "Homey device ID",
+			"class": "Class",
+			"zone": "Zone",
+			"capabilities": "Capabilities"
+		},
+		"values": {
+			"noZone": "No zone",
+			"capabilities": "{count} capabilities"
+		},
+		"statuses": {
+			"unavailable": "Unavailable in Homey"
+		},
+		"actions": {
+			"refresh": "Refresh inventory",
+			"openConfig": "Open Homey configuration"
+		},
+		"errors": {
+			"inventory": "The Homey inventory could not be loaded"
+		}
+	}
+}
