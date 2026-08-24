@@ -6960,6 +6960,7 @@ describe('BuddyContextPlannerService', () => {
 		'If we turn the Bedroom lights down the camera stops recording?',
 		'If we turn the Bedroom lights up the alarm keeps working?',
 		'If we turn off the Bedroom lights then the camera stops recording?',
+		'If we turn off the Bedroom lights then John stops sleeping?',
 		'If we turn off the Bedroom camera the alarm stops working?',
 		'If we turn off the Bedroom lighting the camera stops recording?',
 		'If we dim the Bedroom lighting the alarm keeps working?',
@@ -7113,6 +7114,7 @@ describe('BuddyContextPlannerService', () => {
 	it.each([
 		'If the window is open turn off the Bedroom lights which keep flickering?',
 		'If the window is open turn off the Bedroom lights which keep flashing?',
+		'If the window is open turn off the Bedroom lights whose bulbs keep flickering?',
 	])('keeps a phrasal relative target on the command path: %s', (message) => {
 		const plan = service.plan({
 			message,
@@ -7145,6 +7147,7 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open turn on the Bedroom lights and tell the camera to start recording?',
 		'If the window is open turn on the Bedroom lights then help John start reading?',
 		'If the window is open turn on the Bedroom lights and then ask John to start reading?',
+		'If the window is open turn on the Bedroom lights then ensure John keeps reading?',
 	])('keeps a coordinated command out of conditional outcome subjects: %s', (message) => {
 		const plan = service.plan({
 			message,
