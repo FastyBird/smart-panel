@@ -408,7 +408,7 @@ export class DevicesChannelsPropertiesController {
 		if (
 			typeof commandValue !== 'undefined' &&
 			commandValue !== null &&
-			(await this.propertyCommandService.usesAuthoritativePropertyReadback(device))
+			(await this.propertyCommandService.usesAuthoritativePropertyReadback(device, property))
 		) {
 			dtoInstance.value = undefined;
 		}

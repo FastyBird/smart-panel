@@ -226,7 +226,16 @@ describe('HomeyDevicePlatform', () => {
 		);
 
 		expect(platform.getCommandTimeoutMs(2)).toBe(HOMEY_COMMAND_MAX_DURATION_MS * 2);
-		expect(platform.usesAuthoritativePropertyReadback()).toBe(true);
+		expect(
+			platform.usesAuthoritativePropertyReadback(
+				Object.assign(new HomeyChannelPropertyEntity(), { permissions: [PermissionType.READ_WRITE] }),
+			),
+		).toBe(true);
+		expect(
+			platform.usesAuthoritativePropertyReadback(
+				Object.assign(new HomeyChannelPropertyEntity(), { permissions: [PermissionType.WRITE_ONLY] }),
+			),
+		).toBe(false);
 	});
 
 	it.each(commandCases)('transforms and sends a validated $label command', async (command) => {

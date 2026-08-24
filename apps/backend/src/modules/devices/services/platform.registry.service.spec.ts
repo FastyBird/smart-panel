@@ -8,7 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { Logger } from '@nestjs/common';
 
 import { INTENT_CLEANUP_INTERVAL } from '../../intents/intents.constants';
-import { DeviceEntity } from '../entities/devices.entity';
+import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { IDevicePlatform } from '../platforms/device.platform';
 
 import { PlatformRegistryService } from './platform.registry.service';
@@ -87,13 +87,14 @@ describe('PlatformRegistryService', () => {
 	it('should require platforms to opt into authoritative property readback', () => {
 		service.register(mockPlatform);
 		const device = { type: 'mock-platform' } as DeviceEntity;
+		const property = {} as ChannelPropertyEntity;
 
-		expect(service.usesAuthoritativePropertyReadback(device)).toBe(false);
+		expect(service.usesAuthoritativePropertyReadback(device, property)).toBe(false);
 
 		service = new PlatformRegistryService();
 		service.register({ ...mockPlatform, usesAuthoritativePropertyReadback: () => true });
 
-		expect(service.usesAuthoritativePropertyReadback(device)).toBe(true);
+		expect(service.usesAuthoritativePropertyReadback(device, property)).toBe(true);
 	});
 
 	it('should extend an intent TTL by registered platform completion windows', () => {

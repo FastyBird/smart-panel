@@ -14,7 +14,7 @@ export interface IDevicePlatform {
 
 	getCommandTimeoutMs?(commandCount: number): number;
 
-	usesAuthoritativePropertyReadback?(): boolean;
+	usesAuthoritativePropertyReadback?(property: ChannelPropertyEntity): boolean;
 
 	getType(): string;
 }
