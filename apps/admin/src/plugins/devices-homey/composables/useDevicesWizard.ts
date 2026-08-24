@@ -19,7 +19,8 @@ import { DEVICES_HOMEY_PLUGIN_NAME } from '../devices-homey.constants';
 import type { IHomeyAdoptionResult, IHomeyInventoryDevice, IHomeyMappingPreview } from '../store/homey.types';
 import { homeyInventoryStoreKey } from '../store/keys';
 
-const rowStatus = (device: IHomeyInventoryDevice, preview?: IHomeyMappingPreview): IWizardRowStatus => {
+const rowStatus = (device: IHomeyInventoryDevice, preview?: IHomeyMappingPreview, previewFailed = false): IWizardRowStatus => {
+	if (previewFailed) return 'needs_attention';
 	if (device.adopted) return 'already_registered';
 	if (device.supportState === 'unsupported') return 'unsupported';
 	if (device.supportState === 'conflicted' || !device.available || preview?.readyToAdopt === false) return 'needs_attention';
@@ -35,10 +36,16 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	const error = ref<string | null>(null);
 	const submittedNames = ref<Record<string, string>>({});
 	const loading = ref(false);
+	const adopting = ref(false);
 	const previewsReady = ref(false);
+	const previewFailures = ref<Record<string, true>>({});
 
 	const devices = computed(() =>
-		orderBy(inventory.findAll(), [(device) => rowStatus(device, inventory.previews[device.id]), (device) => device.name], ['asc', 'asc'])
+		orderBy(
+			inventory.findAll(),
+			[(device) => rowStatus(device, inventory.previews[device.id], previewFailures.value[device.id]), (device) => device.name],
+			['asc', 'asc']
+		)
 	);
 
 	const rows = computed<IWizardRow[]>(() =>
@@ -47,7 +54,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 					const subLabel = [device.manufacturer, device.model].filter(Boolean).join(' · ') || device.class;
 					const adoptedDevice = device.adoptedDeviceId ? devicesStore.findById(device.adoptedDeviceId) : null;
 					const preview = inventory.previews[device.id];
-					const status = rowStatus(device, preview);
+					const previewFailed = previewFailures.value[device.id] === true;
+					const status = rowStatus(device, preview, previewFailed);
 					const adoptedCategoryIsValid =
 						adoptedDevice !== null && (preview === undefined || preview.validCategories.includes(adoptedDevice.category));
 					const suggestedCategory =
@@ -67,7 +75,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 						identifier: device.id,
 						status,
 						statusLabel: !device.available ? t('devicesHomeyPlugin.wizard.statuses.unavailable') : undefined,
-						adoptable: device.available && device.supportState === 'supported' && preview?.readyToAdopt === true,
+						adoptable: !previewFailed && device.available && device.supportState === 'supported' && preview?.readyToAdopt === true,
 						selectedByDefault: false,
 						willUpdate: device.adopted,
 						suggestedName: adoptedDevice?.name ?? device.name,
@@ -100,7 +108,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			label: t('devicesHomeyPlugin.wizard.actions.refresh'),
 			icon: 'mdi:refresh',
 			loading: inventory.fetching,
-			disabled: inventory.adopting,
+			disabled: adopting.value || inventory.adopting,
 			handler: restart,
 		};
 
@@ -126,11 +134,24 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		error.value = null;
 		loading.value = true;
 		previewsReady.value = false;
+		previewFailures.value = {};
 		try {
 			await devicesStore.fetch();
 			const inventoryDevices = await inventory.fetch();
-			await Promise.all(
-				inventoryDevices.filter((device) => device.available && device.supportState === 'supported').map((device) => inventory.preview(device.id))
+			const failedPreviews = await Promise.all(
+				inventoryDevices
+					.filter((device) => device.available && device.supportState === 'supported')
+					.map(async (device) => {
+						try {
+							await inventory.preview(device.id);
+							return null;
+						} catch {
+							return device.id;
+						}
+					})
+			);
+			previewFailures.value = Object.fromEntries(
+				failedPreviews.filter((deviceId): deviceId is string => deviceId !== null).map((deviceId) => [deviceId, true as const])
 			);
 			previewsReady.value = true;
 		} catch (caught: unknown) {
@@ -148,6 +169,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 
 	const adopt = async (selection: IWizardAdoptSelection[]): Promise<IWizardResult[]> => {
 		submittedNames.value = Object.fromEntries(selection.map((item) => [item.key, item.name]));
+		adopting.value = true;
 
 		try {
 			const requests = await Promise.all(
@@ -189,6 +211,8 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 				return inventory.adoptionResults.map(transformResult);
 			}
 			throw caught;
+		} finally {
+			adopting.value = false;
 		}
 	};
 
@@ -218,7 +242,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 		],
 		controls,
 		ready: computed(() => previewsReady.value || error.value !== null),
-		busy: computed(() => loading.value || inventory.fetching || inventory.adopting),
+		busy: computed(() => loading.value || adopting.value || inventory.fetching || inventory.adopting),
 		capabilities: { addMore: true },
 		start: load,
 		adopt,

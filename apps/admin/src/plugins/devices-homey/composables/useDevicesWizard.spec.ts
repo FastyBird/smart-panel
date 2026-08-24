@@ -194,6 +194,34 @@ describe('Homey useDevicesWizard', () => {
 		expect(adapter.rows.value[0]).toEqual(expect.objectContaining({ status: 'needs_attention', adoptable: false }));
 	});
 
+	it('isolates a mapping-preview failure to the affected device', async () => {
+		const readyDevice = device({ id: 'homey-light' });
+		const failedDevice = device({ id: 'homey-switch', name: 'Hall switch' });
+		inventory.findAll.mockReturnValue([readyDevice, failedDevice]);
+		inventory.fetch.mockResolvedValue([readyDevice, failedDevice]);
+		inventory.preview.mockImplementation(async (id) => {
+			if (id === 'homey-switch') throw new Error('Device disappeared');
+			const preview = {
+				suggestedCategory: DevicesModuleDeviceCategory.lighting,
+				validCategories: [DevicesModuleDeviceCategory.lighting],
+				readyToAdopt: true,
+			};
+			inventory.previews[id] = preview;
+
+			return preview;
+		});
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		expect(adapter.rows.value).toHaveLength(2);
+		expect(adapter.rows.value.find((row) => row.key === 'homey-light')).toEqual(expect.objectContaining({ adoptable: true }));
+		expect(adapter.rows.value.find((row) => row.key === 'homey-switch')).toEqual(
+			expect.objectContaining({ status: 'needs_attention', adoptable: false })
+		);
+		expect(adapter.ready.value).toBe(true);
+	});
+
 	it('omits metadata overrides when the adopted panel device is not loaded', async () => {
 		const adopted = device({ adopted: true, adoptedDeviceId: '4a2515a6-7e87-4e51-96cc-832698237613' });
 		inventory.findById.mockReturnValue(adopted);
@@ -241,6 +269,32 @@ describe('Homey useDevicesWizard', () => {
 			expect.objectContaining({ deviceId: 'homey-switch', status: DevicesHomeyPluginAdoptionStatus.failed, message: 'Homey is offline' }),
 		]);
 		expect(flashMessage.error).toHaveBeenCalledWith('Homey is offline');
+	});
+
+	it('stays busy while an adopted-device preview is refreshed before reconciliation', async () => {
+		const adopted = device({ adopted: true, adoptedDeviceId: '4a2515a6-7e87-4e51-96cc-832698237613' });
+		inventory.findById.mockReturnValue(adopted);
+		devicesStore.findById.mockReturnValue({ name: 'Custom desk lamp', category: DevicesModuleDeviceCategory.lighting });
+		let resolvePreview!: (preview: MockPreview) => void;
+		inventory.preview.mockReturnValue(
+			new Promise((resolve) => {
+				resolvePreview = resolve;
+			})
+		);
+		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-light', status: 'updated' }]);
+		const adapter = useDevicesWizard();
+
+		const operation = adapter.adopt([{ key: 'homey-light', name: 'Custom desk lamp', category: DevicesModuleDeviceCategory.lighting }]);
+		expect(adapter.busy.value).toBe(true);
+
+		resolvePreview({
+			suggestedCategory: DevicesModuleDeviceCategory.lighting,
+			validCategories: [DevicesModuleDeviceCategory.lighting],
+			readyToAdopt: true,
+		});
+		await operation;
+
+		expect(adapter.busy.value).toBe(false);
 	});
 
 	it('surfaces batch request failures and leaves the rejection for the wizard shell', async () => {
