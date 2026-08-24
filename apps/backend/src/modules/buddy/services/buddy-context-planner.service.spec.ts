@@ -7112,6 +7112,7 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open, turn off the lights which currently might wake the baby?',
 		'If the window is open turn off the Bedroom lights in the area where accidents could happen?',
 		'If the window is open turn off the Bedroom lights in which accidents could happen?',
+		'If the window is open turn off the Bedroom switches which John could work?',
 	])('recognizes a modal relative target clause without executing an unresolved subset: %s', (message) => {
 		const plan = service.plan({
 			message,
