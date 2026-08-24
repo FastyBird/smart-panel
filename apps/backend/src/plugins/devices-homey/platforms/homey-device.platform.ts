@@ -13,6 +13,7 @@ import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } fro
 import { HomeyMappingLoaderService } from '../mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from '../mappings/mapping-transformer.service';
 import { HomeyCapabilityValue } from '../models/homey-capability.model';
+import { HomeyFailureLogLimiter } from '../services/homey-failure-log-limiter';
 import { HomeyService } from '../services/homey.service';
 
 import { validateHomeyCapabilityCommandValue } from './homey-command-value';
@@ -32,6 +33,7 @@ interface PreparedHomeyCommand {
 @Injectable()
 export class HomeyDevicePlatform implements IDevicePlatform {
 	private readonly logger = createExtensionLogger(DEVICES_HOMEY_PLUGIN_NAME, 'DevicePlatform');
+	private readonly failureLogLimiter = new HomeyFailureLogLimiter();
 
 	constructor(
 		private readonly homeyService: HomeyService,
@@ -59,7 +61,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 		const inventory = this.homeyService.getInventorySnapshot();
 
 		if (inventory === null) {
-			this.logger.warn('Homey inventory is unavailable for command validation');
+			this.logCommandFailure('inventory-unavailable', 'Homey inventory is unavailable for command validation');
 
 			return false;
 		}
@@ -84,7 +86,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 					[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
 				)
 			) {
-				this.logger.warn('Homey command target is incomplete or disabled');
+				this.logCommandFailure('target-invalid', 'Homey command target is incomplete or disabled');
 
 				return false;
 			}
@@ -92,7 +94,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 			const upstreamDevice = upstreamDevices.get(device.identifier);
 
 			if (upstreamDevice === undefined || !upstreamDevice.available) {
-				this.logger.warn('Homey command target is unavailable', { resource: device.id });
+				this.logCommandFailure('target-unavailable', 'Homey command target is unavailable');
 
 				return false;
 			}
@@ -115,7 +117,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 				mapping.property.category !== property.category ||
 				mapping.property.direction === 'read_only'
 			) {
-				this.logger.warn('Homey command mapping is unavailable or stale', { resource: property.id });
+				this.logCommandFailure('mapping-unavailable', 'Homey command mapping is unavailable or stale');
 
 				return false;
 			}
@@ -123,7 +125,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 			const panelValidation = validatePropertyCommandValue(property, value);
 
 			if (!panelValidation.valid || panelValidation.value === undefined) {
-				this.logger.warn('Homey panel command value is invalid', { resource: property.id });
+				this.logCommandFailure('panel-value-invalid', 'Homey panel command value is invalid');
 
 				return false;
 			}
@@ -133,13 +135,13 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 			try {
 				transformed = this.transformer.write(mapping, panelValidation.value);
 			} catch {
-				this.logger.warn('Homey command transformation failed', { resource: property.id });
+				this.logCommandFailure('transformation-failed', 'Homey command transformation failed');
 
 				return false;
 			}
 
 			if (!validateHomeyCapabilityCommandValue(capability, transformed).valid) {
-				this.logger.warn('Homey transformed command value is invalid', { resource: property.id });
+				this.logCommandFailure('transformed-value-invalid', 'Homey transformed command value is invalid');
 
 				return false;
 			}
@@ -162,5 +164,13 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 
 	private referencesEntity(reference: { readonly id: string } | string, expectedId: string): boolean {
 		return (typeof reference === 'string' ? reference : reference.id) === expectedId;
+	}
+
+	private logCommandFailure(key: string, message: string): void {
+		const decision = this.failureLogLimiter.consume(key);
+
+		if (decision.log) {
+			this.logger.warn(message, { suppressed: decision.suppressed });
+		}
 	}
 }

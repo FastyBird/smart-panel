@@ -458,11 +458,20 @@ single-read fallback, transport rejection, write timeout, and disconnect cancell
 
 ### Task 4.4: Add observability and operational diagnostics
 
-- [ ] Add structured sanitized logs for state transitions, inventory/reconciliation summaries, and command failures.
-- [ ] Keep routine value payloads at trace/debug and rate-limit repetitive failures.
-- [ ] Expose adopted, missing, unsupported, and unavailable counts.
-- [ ] Add last-event age so a silent broken subscription is visible.
-- [ ] Stop aggressive retries on authentication failure until configuration changes or slow retry policy permits.
+- [x] Add structured sanitized logs for state transitions, inventory/reconciliation summaries, and command failures.
+- [x] Keep routine value payloads at trace/debug and rate-limit repetitive failures.
+- [x] Expose adopted, missing, unsupported, and unavailable counts.
+- [x] Add last-event age so a silent broken subscription is visible.
+- [x] Stop aggressive retries on authentication failure until configuration changes or slow retry policy permits.
+
+`HomeyService` now emits structured, secret-free connection transitions and reconciliation summaries without Homey
+device/capability identities or routine values. Repetitive synchronization, reconciliation, reconnect, and command
+failures share a one-minute suppression window and report how many equivalent failures were suppressed when logging
+resumes. The status response exposes counts from the latest authoritative inventory reconciliation: enabled adopted
+devices, adopted devices missing upstream, unsupported upstream devices, and unavailable upstream devices. It also
+computes `last_event_age_ms` at read time so a stalled subscription is visible without waiting for another event.
+Authentication and authorization failures remain in `authentication_failed` with no reconnect or reconciliation timer;
+a saved configuration change follows the managed-plugin restart path and resets the retry suppression state.
 
 ---
 

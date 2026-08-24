@@ -104,7 +104,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [ ] `devices-homey` is registered as a managed backend plugin.
 - [ ] A `HomeyConnector` abstraction prevents SDK/transport objects from leaking into domain services.
 - [ ] The local connector supports connection testing, inventory, zones, device reads, events, and capability writes.
-- [ ] Health exposes connected, degraded polling, reconnecting, authentication failed, and stopped states.
+- [x] Health exposes connected, degraded polling, reconnecting, authentication failed, and stopped states.
 - [x] Manual URL setup works without mDNS.
 - [ ] Authenticated device discovery lists all logical Homey devices with adoption/support status.
 - [ ] Normalization preserves full device and capability IDs, including capability suffixes.
@@ -116,10 +116,10 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [x] Initial reconciliation populates current values and availability for adopted devices.
 - [x] Subscriptions are established before the authoritative initial reconciliation, and a tested startup barrier prevents snapshot/event races from losing the newest value.
 - [x] Real-time Homey events update only adopted, mapped properties.
-- [ ] Reconnect performs a full reconciliation and bounded periodic reconciliation repairs missed events.
+- [x] Reconnect performs a full reconciliation and bounded periodic reconciliation repairs missed events.
 - [x] A missing upstream device is marked unavailable/orphaned but never automatically deleted.
-- [ ] Writable property commands validate and transform values, use the full capability ID, and await authoritative confirmation.
-- [ ] A missing confirmation triggers at most one targeted read before returning a timeout/error.
+- [x] Writable property commands validate and transform values, use the full capability ID, and await authoritative confirmation.
+- [x] A missing confirmation triggers at most one targeted read before returning a timeout/error.
 
 ### Backend API and OpenAPI
 

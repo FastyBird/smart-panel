@@ -175,7 +175,12 @@ describe('HomeySynchronizerService', () => {
 	let devicesService: jest.Mocked<Pick<DevicesService, 'findAll'>>;
 	let propertiesService: jest.Mocked<Pick<ChannelsPropertiesService, 'update'>>;
 	let connectivityService: jest.Mocked<Pick<DeviceConnectivityService, 'trySetConnectionState'>>;
-	let mappingLoader: jest.Mocked<Pick<HomeyMappingLoaderService, 'getPropertyMappings'>>;
+	let mappingLoader: jest.Mocked<
+		Pick<
+			HomeyMappingLoaderService,
+			'getPropertyMappings' | 'resolveChannelMappings' | 'resolveDeviceMappings' | 'resolvePropertyMappings'
+		>
+	>;
 	let service: HomeySynchronizerService;
 	let powerProperty: HomeyChannelPropertyEntity;
 	let stateProperty: HomeyChannelPropertyEntity;
@@ -192,6 +197,15 @@ describe('HomeySynchronizerService', () => {
 		connectivityService = { trySetConnectionState: jest.fn().mockResolvedValue(true) };
 		mappingLoader = {
 			getPropertyMappings: jest.fn().mockReturnValue([powerMapping, stateMapping, brightnessMapping]),
+			resolveDeviceMappings: jest.fn().mockReturnValue({ mappings: [{}], conflicts: [] }),
+			resolveChannelMappings: jest.fn().mockReturnValue({
+				mappings: [{ channel: { identifier: 'light' } }],
+				conflicts: [],
+			}),
+			resolvePropertyMappings: jest.fn().mockReturnValue({
+				mappings: [{ mapping: { property: { channel: 'light' } } }],
+				conflicts: [],
+			}),
 		};
 		service = new HomeySynchronizerService(
 			devicesService as unknown as DevicesService,
@@ -234,6 +248,34 @@ describe('HomeySynchronizerService', () => {
 			['panel-device', { state: ConnectionState.DISCONNECTED }],
 		]);
 		expect(propertiesService.update).toHaveBeenCalledTimes(3);
+	});
+
+	it('summarizes adopted, missing, unsupported, and unavailable inventory without exposing identities', async () => {
+		const missing = adoptedDevice([]);
+		missing.id = 'panel-missing';
+		missing.identifier = 'homey-missing';
+		devicesService.findAll.mockResolvedValueOnce([adoptedDevice([]), missing]);
+		const unsupported = homeyDevice({ id: 'homey-speaker', class: 'speaker' });
+		mappingLoader.resolveDeviceMappings.mockImplementation((device) => ({
+			mappings: device.class === 'speaker' ? [] : ([{}] as never[]),
+			conflicts: [],
+		}));
+
+		await expect(
+			service.getOperationalDiagnostics([
+				homeyDevice({ available: false, availabilityMessage: 'Unavailable' }),
+				unsupported,
+			]),
+		).resolves.toEqual({
+			adopted: 2,
+			adoptedDevices: [
+				{ homeyDeviceId: 'homey-light', panelDeviceId: 'panel-device' },
+				{ homeyDeviceId: 'homey-missing', panelDeviceId: 'panel-missing' },
+			],
+			missing: 1,
+			unsupported: 1,
+			unavailable: 1,
+		});
 	});
 
 	it('does not publish a value for an unavailable capability', async () => {
