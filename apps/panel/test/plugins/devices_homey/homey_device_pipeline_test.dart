@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/devices_module/devices_module_client.dart';
@@ -9,6 +11,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/devices/constants.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
@@ -234,7 +237,10 @@ ChannelView _buildDeviceInformationChannel() =>
       ),
     ]);
 
-List<ChannelView> _representativeChannels(String category) {
+List<ChannelView> _representativeChannels(
+  String category, {
+  bool lightOn = true,
+}) {
   final deviceInformation = _buildDeviceInformationChannel();
 
   switch (category) {
@@ -247,8 +253,28 @@ List<ChannelView> _representativeChannels(String category) {
             channel: lightChannelId,
             category: 'on',
             dataType: 'bool',
-            value: true,
+            value: lightOn,
             permissions: const ['rw'],
+          ),
+        ]),
+        _buildChannel(powerChannelId, 'electrical_power', [
+          _buildProperty(
+            id: thirdPropertyId,
+            channel: powerChannelId,
+            category: 'power',
+            dataType: 'float',
+            value: 42.5,
+            unit: 'W',
+          ),
+        ]),
+        _buildChannel(energyChannelId, 'electrical_energy', [
+          _buildProperty(
+            id: fourthPropertyId,
+            channel: energyChannelId,
+            category: 'consumption',
+            dataType: 'float',
+            value: 12.75,
+            unit: 'kWh',
           ),
         ]),
       ];
@@ -348,8 +374,8 @@ List<ChannelView> _representativeChannels(String category) {
   throw ArgumentError.value(category, 'category');
 }
 
-DeviceView _buildRepresentativeDevice(String category) {
-  final channels = _representativeChannels(category);
+DeviceView _buildRepresentativeDevice(String category, {bool lightOn = true}) {
+  final channels = _representativeChannels(category, lightOn: lightOn);
   final model = buildDeviceModel(
     homeyType,
     _deviceJson(
@@ -635,7 +661,7 @@ void main() {
 
   group('Homey state and control pipeline', () {
     test(
-      'applies authoritative updates and dispatches commands without Homey credentials',
+      'drives optimistic control to authoritative Homey state without credentials',
       () async {
         final apiClient = DevicesModuleClient(
           Dio(),
@@ -683,9 +709,42 @@ void main() {
           isFalse,
         );
 
+        final controlState = DeviceControlStateService();
+        addTearDown(controlState.dispose);
+        final devicesService = _MockDevicesService();
+        final commandResult = Completer<bool>();
+        when(
+          () => devicesService.setPropertyValue(propertyId, true),
+        ).thenAnswer((_) => commandResult.future);
+
+        final controller = LightingDeviceController(
+          device:
+              _buildRepresentativeDevice('lighting', lightOn: false)
+                  as LightingDeviceView,
+          controlState: controlState,
+          devicesService: devicesService,
+        );
+
+        controller.setPower(true);
+
+        final pending = controlState.getState(
+          deviceId,
+          lightChannelId,
+          propertyId,
+        );
+        expect(pending?.isPending, isTrue);
+        expect(pending?.desiredValue, isTrue);
+        expect(controller.isOn, isTrue);
+
         final sent = await propertiesRepository.setValue(propertyId, true);
+        commandResult.complete(sent);
+        await Future<void>.delayed(Duration.zero);
 
         expect(sent, isTrue);
+        expect(
+          controlState.isSettling(deviceId, lightChannelId, propertyId),
+          isTrue,
+        );
         expect(socket.lastEvent, DevicesModuleConstants.setPropertyEvent);
         expect(socket.lastHandler, DevicesModuleEventHandlerName.setProperty);
         expect(socket.lastData, {
@@ -710,7 +769,7 @@ void main() {
             channel: lightChannelId,
             category: 'on',
             dataType: 'bool',
-            value: false,
+            value: true,
             permissions: const ['rw'],
             capabilityId: 'onoff',
             mappingName: 'light-power',
@@ -719,7 +778,29 @@ void main() {
 
         final synchronized = propertiesRepository.getItem(propertyId)!;
         expect(synchronized, isA<GenericChannelPropertyModel>());
-        expect((synchronized.value as BooleanValueType).value, isFalse);
+        final authoritativeValue =
+            (synchronized.value as BooleanValueType).value;
+        expect(authoritativeValue, isTrue);
+
+        controlState.checkPropertyConvergence(
+          deviceId,
+          lightChannelId,
+          propertyId,
+          authoritativeValue,
+        );
+
+        expect(
+          controlState.getState(deviceId, lightChannelId, propertyId),
+          isNull,
+        );
+        final synchronizedController = LightingDeviceController(
+          device:
+              _buildRepresentativeDevice('lighting', lightOn: true)
+                  as LightingDeviceView,
+          controlState: controlState,
+          devicesService: devicesService,
+        );
+        expect(synchronizedController.isOn, isTrue);
       },
     );
   });
