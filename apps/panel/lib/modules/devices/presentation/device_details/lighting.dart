@@ -50,6 +50,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
   LightingDeviceController? _controller;
+  DateTime? _trackedColorStateCreatedAt;
+  final Set<String> _authoritativeColorUpdates = {};
 
   // Selected channel index for multi-channel devices
   int _selectedChannelIndex = 0;
@@ -209,10 +211,9 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       for (final property in channel.properties) {
         final propertyKey = '${channel.id}:${property.id}';
         final actualValue = property.value?.value;
-        if (actualValue == null) continue;
-
         newValues[propertyKey] = actualValue;
-        if (oldValues[propertyKey] == actualValue) {
+        if (oldValues.containsKey(propertyKey) &&
+            oldValues[propertyKey] == actualValue) {
           continue;
         }
 
@@ -225,11 +226,10 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         );
         if (propertyState?.isPending ?? false) {
           // Homey synchronizes the authoritative capability event before the
-          // command acknowledgment resolves. Consume a matching value now so
-          // the later setSettling call is a harmless no-op.
-          if (_valuesConverged(propertyState?.desiredValue, actualValue)) {
-            controlState.clear(newDevice.id, channel.id, property.id);
-          }
+          // command acknowledgment resolves. A changed value is authoritative
+          // confirmation or divergence, including null, so the later
+          // setSettling call must be a harmless no-op.
+          controlState.clear(newDevice.id, channel.id, property.id);
           continue;
         }
 
@@ -246,28 +246,44 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       newDevice.id,
       LightChannelController.colorGroupId,
     );
-    if (colorState != null &&
-        (colorState.isPending || colorState.isSettling || colorState.isMixed)) {
-      final colorChanged = colorState.properties.any(
-        (property) => changedProperties.contains(
-          '${property.channelId}:${property.propertyId}',
-        ),
-      );
-      final colorConverged = colorState.properties.every((property) {
+    if (colorState == null) {
+      _trackedColorStateCreatedAt = null;
+      _authoritativeColorUpdates.clear();
+      return;
+    }
+
+    if (_trackedColorStateCreatedAt != colorState.createdAt) {
+      _trackedColorStateCreatedAt = colorState.createdAt;
+      _authoritativeColorUpdates.clear();
+    }
+
+    if (colorState.isPending || colorState.isSettling || colorState.isMixed) {
+      for (final property in colorState.properties) {
+        final propertyKey = '${property.channelId}:${property.propertyId}';
+        if (changedProperties.contains(propertyKey)) {
+          _authoritativeColorUpdates.add(propertyKey);
+        }
+      }
+
+      final colorComplete = colorState.properties.every((property) {
         final propertyKey = '${property.channelId}:${property.propertyId}';
         if (!newValues.containsKey(propertyKey)) return false;
 
         final desired = property.desiredValue;
         final actual = newValues[propertyKey];
-        return _valuesConverged(desired, actual);
+        return _authoritativeColorUpdates.contains(propertyKey) ||
+            _valuesConverged(desired, actual);
       });
-      if (colorChanged && colorConverged) {
+      if (_authoritativeColorUpdates.isNotEmpty && colorComplete) {
         // Keep grouped optimism until every authoritative component has
-        // arrived; Homey may emit RGB/HSV property changes separately.
+        // arrived or was already at its desired value. A complete divergent
+        // set is authoritative too (for example device-side quantization).
         controlState.clearGroup(
           newDevice.id,
           LightChannelController.colorGroupId,
         );
+        _trackedColorStateCreatedAt = null;
+        _authoritativeColorUpdates.clear();
       }
     }
   }

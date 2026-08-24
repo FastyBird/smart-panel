@@ -244,7 +244,7 @@ ChannelView _buildDeviceInformationChannel() =>
 
 List<ChannelView> _representativeChannels(
   String category, {
-  bool lightOn = true,
+  bool? lightOn = true,
   List<int>? lightRgb,
 }) {
   final deviceInformation = _buildDeviceInformationChannel();
@@ -411,7 +411,7 @@ List<ChannelView> _representativeChannels(
 
 DeviceView _buildRepresentativeDevice(
   String category, {
-  bool lightOn = true,
+  bool? lightOn = true,
   List<int>? lightRgb,
 }) {
   final channels = _representativeChannels(
@@ -890,7 +890,52 @@ void main() {
       },
     );
 
-    testWidgets('waits for every grouped color component to converge', (
+    testWidgets('accepts an authoritative null as lighting divergence', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1280, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final controlState = locator<DeviceControlStateService>();
+      controlState.clearForDevice(deviceId);
+      addTearDown(() => controlState.clearForDevice(deviceId));
+
+      var renderedDevice =
+          _buildRepresentativeDevice('lighting', lightOn: false)
+              as LightingDeviceView;
+      late StateSetter updateHost;
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              updateHost = setState;
+              return LightingDeviceDetail(device: renderedDevice);
+            },
+          ),
+        ),
+      );
+
+      controlState.setPending(deviceId, lightChannelId, propertyId, true);
+
+      updateHost(() {
+        renderedDevice =
+            _buildRepresentativeDevice('lighting', lightOn: null)
+                as LightingDeviceView;
+      });
+      await tester.pump();
+
+      expect(
+        controlState.getState(deviceId, lightChannelId, propertyId),
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('waits for every authoritative grouped color component', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(1280, 800);
@@ -962,7 +1007,7 @@ void main() {
 
       updateHost(() {
         renderedDevice =
-            _buildRepresentativeDevice('lighting', lightRgb: const [10, 20, 30])
+            _buildRepresentativeDevice('lighting', lightRgb: const [10, 20, 25])
                 as LightingDeviceView;
       });
       await tester.pump();
