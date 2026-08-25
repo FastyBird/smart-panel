@@ -479,10 +479,13 @@ const isTimestampKey = (key: string): boolean =>
 export const isHomeyAddressKey = (key: string): boolean =>
 	CAMEL_CASE_ADDRESS_KEY_PATTERN.test(key) || BOUNDED_ADDRESS_KEY_PATTERN.test(key);
 
-const isPersonalKey = (key: string): boolean =>
+export const isHomeyPersonalKey = (key: string): boolean =>
 	CAMEL_CASE_PERSONAL_KEY_PATTERN.test(key) ||
 	BOUNDED_PERSONAL_KEY_PATTERN.test(key) ||
 	LOCATION_METADATA_KEY_PATTERN.test(key);
+
+export const isHomeyGeneratedPseudonym = (value: unknown): value is string =>
+	typeof value === 'string' && GENERATED_PSEUDONYM_PATTERN.test(value);
 
 const isReferenceArrayKey = (key: string): boolean =>
 	CAMEL_CASE_REFERENCE_ARRAY_KEY_PATTERN.test(key) || BOUNDED_REFERENCE_ARRAY_KEY_PATTERN.test(key);
@@ -540,7 +543,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		return redactScalar(value, REDACTION.secret);
 	}
 
-	if (isPersonalKey(key)) {
+	if (isHomeyPersonalKey(key)) {
 		return redactScalar(value, REDACTION.privateTerm);
 	}
 
@@ -1107,7 +1110,7 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 			return;
 		}
 
-		if (isPersonalKey(key)) {
+		if (isHomeyPersonalKey(key)) {
 			if (key !== 'name' || typeof nestedValue !== 'string' || !GENERATED_PSEUDONYM_PATTERN.test(nestedValue)) {
 				assertRedactedScalar(nestedValue, REDACTION.privateTerm);
 			}
