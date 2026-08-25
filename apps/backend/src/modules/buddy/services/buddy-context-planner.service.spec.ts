@@ -4312,6 +4312,7 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows open yet unlocked?',
 		'Are any windows open that face the street?',
 		'Are any windows fully open that face the street?',
+		'Are any windows open that face the street behind the large apartment building nearby?',
 		'Are any doors completely closed?',
 		'Are any windows partially open?',
 		'Are any windows almost fully open?',
@@ -7317,9 +7318,12 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.toolNames).toContain('set_space_lighting');
 	});
 
-	it('clarifies a polite coordinated imperative instead of treating it as an outcome', () => {
+	it.each([
+		'If the window is open turn on the Bedroom lights then please start recording?',
+		'If the window is open turn on the Bedroom lights the camera keeps working in darkness and start recording?',
+	])('clarifies an ambiguous coordinated imperative instead of treating it as an outcome: %s', (message) => {
 		const plan = service.plan({
-			message: 'If the window is open turn on the Bedroom lights then please start recording?',
+			message,
 			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
 			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 		});
@@ -7335,6 +7339,7 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open turn on the Bedroom lights before the camera stops recording?',
 		'If the window is open turn on the Bedroom lights before the camera breaks?',
 		'If the window is open turn on the Bedroom lights because the baby starts crying?',
+		'If the window is open turn on the Bedroom lights because the circuit breaks?',
 		'If the window is open turn on the Bedroom lights since John starts reading?',
 		'If the window is open turn on the Bedroom lights wherever John starts reading?',
 		'If the window is open turn on the Bedroom lights while John starts reading?',
