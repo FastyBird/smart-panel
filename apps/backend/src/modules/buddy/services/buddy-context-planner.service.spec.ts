@@ -281,6 +281,30 @@ describe('BuddyContextPlannerService', () => {
 	});
 
 	it.each([
+		{
+			message: 'Are any windows open or is energy usage high?',
+			domains: ['home', 'energy'],
+			query: { kind: 'energy-summary', spaceId: 'space-office' },
+		},
+		{
+			message: 'Are any windows open or is weather stormy?',
+			domains: ['home', 'weather'],
+			query: { kind: 'weather' },
+		},
+	])('retains aggregate scope before a bare domain alternative: $message', ({ message, domains, query }) => {
+		const plan = service.plan({
+			message,
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.domains).toEqual(domains);
+		expect(plan.queries).toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		expect(plan.queries).toContainEqual(query);
+	});
+
+	it.each([
 		{ message: 'What was the weather yesterday?', domains: ['weather'], query: { kind: 'weather' } },
 		{
 			message: 'How much energy did we use yesterday?',
@@ -7268,6 +7292,7 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open turn on the Bedroom lights and then ask John to start reading?',
 		'If the window is open turn on the Bedroom lights then ensure John keeps reading?',
 		'If the window is open turn on the Bedroom lights then kindly start recording?',
+		'If the window is open turn on the Bedroom lights then silently start recording?',
 		'If the window is open turn on the Bedroom lights then urgently start recording?',
 	])('keeps a coordinated command out of conditional outcome subjects: %s', (message) => {
 		const plan = service.plan({

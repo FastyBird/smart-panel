@@ -87,6 +87,10 @@ const INDEPENDENT_ALTERNATIVE_BARE_HOME_SUBJECT_PATTERN = new RegExp(
 	String.raw`^(?:${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${DEVICE_ACTION_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${SECURITY_SUBJECT_PATTERN.source})\b`,
 	'u',
 );
+const INDEPENDENT_ALTERNATIVE_BARE_DOMAIN_SUBJECT_PATTERN = new RegExp(
+	String.raw`^(?:${ENERGY_PATTERN.source}|${WEATHER_PATTERN.source})`,
+	'u',
+);
 
 function hasIndependentAlternativeSubject(
 	alternative: string,
@@ -102,6 +106,7 @@ function hasIndependentAlternativeSubject(
 		INDEPENDENT_ALTERNATIVE_PRONOUN_SUBJECT_PATTERN.test(subject) ||
 		INDEPENDENT_ALTERNATIVE_BARE_HOME_STATE_SUBJECT_PATTERN.test(subject) ||
 		INDEPENDENT_ALTERNATIVE_BARE_HOME_SUBJECT_PATTERN.test(subject) ||
+		INDEPENDENT_ALTERNATIVE_BARE_DOMAIN_SUBJECT_PATTERN.test(subject) ||
 		POWER_STATE_READ_PATTERN.test(subject) ||
 		findExplicitSpaceOccurrences(subject, explicitSpaces).some((occurrence) => occurrence.range.start === 0)
 	);
