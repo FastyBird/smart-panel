@@ -41,9 +41,11 @@ const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 	'homey-plugin-device-mapping',
 	'homey-reconnect-backoff',
 ]);
+const PUBLIC_COMPILED_SECRET_NAMES = new Set(['secretFields']);
 const COMPILED_SYMBOL_NAME_PATTERN = /^[A-Z][A-Z0-9_]+$/;
 const COMMENT_PATTERN = /\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g;
 const URL_PATTERN = /(?:[A-Z][A-Z0-9+.-]*:)?\/\/[^\s"']+/i;
+const PUBLIC_SCHEMA_URLS = new Set(['http://json-schema.org/draft-07/schema#']);
 const SERIALIZED_STRING_PROPERTY_PATTERN = /(["'])([^"']+)\1\s*:\s*(["'])([^"']*)\3/g;
 const LOOSE_PROPERTY_PATTERN = /^\s*(?:[-*]\s+)?["'`]?([A-Za-z][A-Za-z0-9_.-]*)["'`]?\s*[:=]\s*(.*?)\s*$/gm;
 const FORBIDDEN_PATTERNS: readonly ForbiddenPattern[] = [
@@ -231,8 +233,17 @@ const containsUnsafeCompiledLiteral = (node: ts.Expression): boolean => {
 		return node.elements.some((element) => ts.isExpression(element) && containsUnsafeCompiledLiteral(element));
 	}
 
+	if (ts.isObjectLiteralExpression(node)) {
+		return node.properties.some(
+			(property) => ts.isPropertyAssignment(property) && containsUnsafeCompiledLiteral(property.initializer),
+		);
+	}
+
 	return false;
 };
+
+const isCompiledSecretName = (name: string | undefined): name is string =>
+	name !== undefined && !PUBLIC_COMPILED_SECRET_NAMES.has(name) && isHomeySecretKey(name);
 
 const containsCompiledSecret = (text: string): boolean => {
 	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
@@ -245,17 +256,17 @@ const containsCompiledSecret = (text: string): boolean => {
 		if (ts.isPropertyAssignment(node)) {
 			const name = compiledPropertyName(node.name);
 
-			found = name !== undefined && isHomeySecretKey(name) && containsUnsafeCompiledLiteral(node.initializer);
+			found = isCompiledSecretName(name) && containsUnsafeCompiledLiteral(node.initializer);
 		} else if (ts.isPropertyDeclaration(node) && node.initializer !== undefined) {
 			const name = compiledPropertyName(node.name);
 
-			found = name !== undefined && isHomeySecretKey(name) && containsUnsafeCompiledLiteral(node.initializer);
+			found = isCompiledSecretName(name) && containsUnsafeCompiledLiteral(node.initializer);
 		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
-			found = isHomeySecretKey(node.name.text) && containsUnsafeCompiledLiteral(node.initializer);
+			found = isCompiledSecretName(node.name.text) && containsUnsafeCompiledLiteral(node.initializer);
 		} else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
 			const name = compiledAssignedPropertyName(node.left);
 
-			found = name !== undefined && isHomeySecretKey(name) && containsUnsafeCompiledLiteral(node.right);
+			found = isCompiledSecretName(name) && containsUnsafeCompiledLiteral(node.right);
 		}
 
 		ts.forEachChild(node, visit);
@@ -313,6 +324,22 @@ const containsLooseSecretAssignment = (text: string): boolean =>
 		return !['', '[~3~]', 'false', 'null', 'true', 'undefined'].includes(value);
 	});
 
+const containsStructuredUrl = (value: unknown): boolean => {
+	if (typeof value === 'string') {
+		return !PUBLIC_SCHEMA_URLS.has(value) && URL_PATTERN.test(value);
+	}
+
+	if (Array.isArray(value)) {
+		return value.some((entry) => containsStructuredUrl(entry));
+	}
+
+	if (value === null || typeof value !== 'object') {
+		return false;
+	}
+
+	return Object.values(value as JsonRecord).some((entry) => containsStructuredUrl(entry));
+};
+
 const assertTextSafe = (label: string, text: string, compiledSource = false): void => {
 	for (const forbidden of FORBIDDEN_PATTERNS) {
 		if (forbidden.pattern.test(text)) {
@@ -346,16 +373,17 @@ const assertTextSafe = (label: string, text: string, compiledSource = false): vo
 const assertFixtureTextSafe = (label: string, text: string, extension: string): void => {
 	assertTextSafe(label, text);
 
-	if (URL_PATTERN.test(text)) {
-		throw new Error(`${label} contains a URL`);
-	}
-
 	const structuredValue =
 		extension === '.json'
 			? (JSON.parse(text) as unknown)
 			: extension === '.yaml' || extension === '.yml'
 				? (parseYaml(text) as unknown)
 				: undefined;
+
+	if (structuredValue === undefined ? URL_PATTERN.test(text) : containsStructuredUrl(structuredValue)) {
+		throw new Error(`${label} contains a URL`);
+	}
+
 	const containsSecret =
 		structuredValue === undefined ? containsLooseSecretAssignment(text) : containsStructuredSecret(structuredValue);
 
@@ -470,7 +498,7 @@ describe('Homey security artifact gate', () => {
 			const extension = extname(path);
 			const label = path.slice(BACKEND_ROOT.length + 1);
 
-			if (extension === '.yaml' || extension === '.yml') {
+			if (extension === '.json' || extension === '.yaml' || extension === '.yml') {
 				assertFixtureTextSafe(label, text, extension);
 			} else {
 				assertTextSafe(label, text, path.endsWith('.js') || path.endsWith('.d.ts'));
@@ -555,6 +583,9 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertTextSafe('unsafe compiled module', "const api_key = 'opaque-secret';", true)).toThrow(
 			'unsafe compiled module contains a compiled secret value',
 		);
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const credentials = { value: 'opaque-secret' };", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() => assertTextSafe('unsafe fixture', '{"address":"192.168.1.23"}')).toThrow(
 			'unsafe fixture contains an IPv4 address',
 		);
