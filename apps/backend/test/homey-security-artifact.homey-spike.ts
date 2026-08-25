@@ -100,7 +100,7 @@ const configuredExpectedHost = (): string | undefined => {
 	const value = process.env.FB_HOMEY_SHS_EXPECTED_HOST?.trim();
 	const normalizedValue = value?.toLowerCase().replace(/\.$/, '');
 
-	return normalizedValue === undefined || PUBLIC_HOMEY_HOSTS.has(normalizedValue) ? undefined : value;
+	return normalizedValue === undefined || PUBLIC_HOMEY_HOSTS.has(normalizedValue) ? undefined : normalizedValue;
 };
 
 const configuredPrivateValues = (): readonly string[] =>
@@ -227,8 +227,12 @@ const containsUnsafeCompiledLiteral = (node: ts.Expression): boolean => {
 		return node.text.length > 0 && node.text !== '[~3~]';
 	}
 
-	if (ts.isNumericLiteral(node) || ts.isBigIntLiteral(node)) {
-		return true;
+	if (ts.isNumericLiteral(node)) {
+		return node.text !== '0';
+	}
+
+	if (ts.isBigIntLiteral(node)) {
+		return node.text !== '0n';
 	}
 
 	if (
@@ -247,6 +251,24 @@ const containsUnsafeCompiledLiteral = (node: ts.Expression): boolean => {
 		return node.properties.some(
 			(property) => ts.isPropertyAssignment(property) && containsUnsafeCompiledLiteral(property.initializer),
 		);
+	}
+
+	if (ts.isBinaryExpression(node)) {
+		return containsUnsafeCompiledLiteral(node.left) || containsUnsafeCompiledLiteral(node.right);
+	}
+
+	if (
+		ts.isParenthesizedExpression(node) ||
+		ts.isAsExpression(node) ||
+		ts.isTypeAssertionExpression(node) ||
+		ts.isNonNullExpression(node) ||
+		ts.isSatisfiesExpression(node)
+	) {
+		return containsUnsafeCompiledLiteral(node.expression);
+	}
+
+	if (ts.isConditionalExpression(node)) {
+		return containsUnsafeCompiledLiteral(node.whenTrue) || containsUnsafeCompiledLiteral(node.whenFalse);
 	}
 
 	return false;
@@ -295,7 +317,7 @@ const containsCompiledSecret = (text: string): boolean => {
 };
 
 const containsUnsafeSecretLeaf = (value: unknown): boolean => {
-	if (value === null || value === '' || value === '[~3~]' || typeof value === 'boolean') {
+	if (value === null || value === 0 || value === '' || value === '[~3~]' || typeof value === 'boolean') {
 		return false;
 	}
 
@@ -333,7 +355,7 @@ const containsLooseSecretAssignment = (text: string): boolean =>
 			return false;
 		}
 
-		return !['', '[~3~]', 'false', 'null', 'true', 'undefined'].includes(rawValue);
+		return !['', '0', '[~3~]', 'false', 'null', 'true', 'undefined'].includes(rawValue);
 	});
 
 const containsStructuredUrl = (value: unknown): boolean => {
@@ -564,6 +586,7 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertFixtureTextSafe('unsafe fixture', '{"pinCode":1234}', '.json')).toThrow(
 			'unsafe fixture contains a structured secret value',
 		);
+		expect(() => assertFixtureTextSafe('safe fixture', '{"pinCode":0}', '.json')).not.toThrow();
 		expect(() => assertFixtureTextSafe('unsafe fixture', 'api_key: opaque-secret-value', '.yaml')).toThrow(
 			'unsafe fixture contains a structured secret value',
 		);
@@ -621,6 +644,9 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "function connect(apiKey = 'opaque-secret') {}", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const apiKey = process.env.API_KEY ?? 'opaque-secret';", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() => assertTextSafe('unsafe fixture', '{"address":"192.168.1.23"}')).toThrow(
 			'unsafe fixture contains an IPv4 address',
 		);
@@ -665,6 +691,10 @@ describe('Homey security artifact gate', () => {
 
 		try {
 			expect(() => assertTextSafe('safe fixture', '{"url":"http://homey.local:4859"}')).not.toThrow();
+			process.env.FB_HOMEY_SHS_EXPECTED_HOST = 'private-homey.local.';
+			expect(() => assertTextSafe('unsafe fixture', '{"host":"private-homey.local"}')).toThrow(
+				'unsafe fixture contains a configured private Homey value',
+			);
 			expect(() => assertTextSafe('unsafe fixture', '{"name":"Ada"}')).toThrow(
 				'unsafe fixture contains a configured private Homey value',
 			);
