@@ -587,11 +587,17 @@ suite completes with 1,032 passing tests and five existing locator-dependent ski
 
 ### Task 6.1: Complete automated verification
 
-- [ ] Backend normalization, connector, mapping, preview, adoption, sync, reconciliation, control, config-secret, controller, and lifecycle suites pass.
-- [ ] Admin config, status, inventory, wizard adapter, results, and locale suites pass.
-- [ ] Panel representative widget/control tests pass.
-- [ ] OpenAPI/spec generation is clean and generated diffs are intentional.
-- [ ] Default CI requires no live Homey/SHS access.
+- [x] Backend normalization, connector, mapping, preview, adoption, sync, reconciliation, control, config-secret, controller, and lifecycle suites pass.
+- [x] Admin config, status, inventory, wizard adapter, results, and locale suites pass.
+- [x] Panel representative widget/control tests pass.
+- [x] OpenAPI/spec generation is clean and generated diffs are intentional.
+- [x] Default CI requires no live Homey/SHS access.
+
+The 2026-08-25 automated local gate passed 36 Homey backend suites with 447 tests, seven credential-free compatibility
+spike suites with 122 tests, the complete 300-file/2,253-test admin suite, and all 23 representative Homey panel
+pipeline tests. OpenAPI plus device/channel spec regeneration produced no diff. PR #828 also passed the default backend
+unit/E2E, admin, panel, testing-app, web-build, schema, and analysis jobs; its Homey spike job received no live SHS
+credentials, while every live or mutating probe remains protected by its explicit environment gate and allowlist.
 
 ### Task 6.2: Run the live lifecycle matrix
 
