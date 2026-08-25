@@ -4246,6 +4246,8 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows open, currently?',
 		'Are any windows open and unlocked?',
 		'Are any windows open or are unlocked?',
+		'Are any windows open or will remain closed?',
+		'Are any windows open or can be closed?',
 		'Are any windows open and unlocked or closed?',
 		'Are any windows open and unlocked or closed yet locked?',
 		'Are any windows almost open or fully closed?',
@@ -6941,6 +6943,8 @@ describe('BuddyContextPlannerService', () => {
 
 	it.each([
 		'If we run the Movie Night scene the camera stops recording?',
+		'If we run the Lights Out scene the camera stops recording?',
+		'If we run the Window Watch scene the camera stops recording?',
 		'If we trigger the Bedtime routine the alarm keeps working?',
 	])('keeps a declarative scene outcome on the read path: %s', (message) => {
 		const plan = service.plan({
