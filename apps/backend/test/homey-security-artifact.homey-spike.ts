@@ -27,7 +27,7 @@ const BUILD_ROOT = resolve(BACKEND_ROOT, 'dist/plugins/devices-homey');
 const FIXTURE_REPOSITORY_PATH = 'apps/backend/src/plugins/devices-homey/__fixtures__';
 const OPENAPI_PATH = resolve(REPOSITORY_ROOT, 'spec/api/v1/openapi.json');
 const SNAPSHOT_ROOT = resolve(REPOSITORY_ROOT, 'apps');
-const BUILD_EXTENSIONS = new Set(['.js', '.json', '.map']);
+const BUILD_EXTENSIONS = new Set(['.js', '.json', '.map', '.yaml', '.yml']);
 const FIXTURE_EXTENSIONS = new Set(['.json', '.md', '.txt', '.yaml', '.yml']);
 const IP_ADDRESS_CANDIDATE_PATTERN = /[A-Za-z0-9:.%_-]{2,}/g;
 const HOMEY_TOKEN_PATTERN = /(?:homey|hpat|pat)[_-][A-Za-z0-9_-]{16,}/gi;
@@ -398,6 +398,28 @@ const visitSchema = (schemaName: string, value: unknown, path: readonly string[]
 	}
 };
 
+const visitPublishedValues = (label: string, value: unknown, path: readonly string[] = []): void => {
+	if (Array.isArray(value)) {
+		value.forEach((entry, index) => visitPublishedValues(label, entry, [...path, index.toString()]));
+
+		return;
+	}
+
+	if (value === null || typeof value !== 'object') {
+		return;
+	}
+
+	for (const [key, child] of Object.entries(value as JsonRecord)) {
+		const childPath = [...path, key];
+
+		if (['default', 'enum', 'example', 'examples'].includes(key) && containsStructuredSecret(child)) {
+			throw new Error(`${label}.${childPath.join('.')} publishes a secret value`);
+		}
+
+		visitPublishedValues(label, child, childPath);
+	}
+};
+
 describe('Homey security artifact gate', () => {
 	it('keeps generated Homey OpenAPI schemas and routes secret-safe', () => {
 		const document = readJson(OPENAPI_PATH) as OpenApiDocument;
@@ -411,6 +433,8 @@ describe('Homey security artifact gate', () => {
 		expect(Object.keys(homeySchemas).length).toBeGreaterThan(0);
 		expect(Object.keys(homeyPaths).length).toBeGreaterThan(0);
 		Object.entries(homeySchemas).forEach(([name, schema]) => visitSchema(name, schema));
+		visitPublishedValues('generated Homey OpenAPI schemas', homeySchemas);
+		visitPublishedValues('generated Homey OpenAPI routes', homeyPaths);
 		assertTextSafe('generated Homey OpenAPI schemas', JSON.stringify(homeySchemas));
 		assertTextSafe('generated Homey OpenAPI routes', JSON.stringify(homeyPaths));
 	});
@@ -443,8 +467,14 @@ describe('Homey security artifact gate', () => {
 
 		for (const path of buildFiles) {
 			const text = readFileSync(path, 'utf8');
+			const extension = extname(path);
+			const label = path.slice(BACKEND_ROOT.length + 1);
 
-			assertTextSafe(path.slice(BACKEND_ROOT.length + 1), text, path.endsWith('.js') || path.endsWith('.d.ts'));
+			if (extension === '.yaml' || extension === '.yml') {
+				assertFixtureTextSafe(label, text, extension);
+			} else {
+				assertTextSafe(label, text, path.endsWith('.js') || path.endsWith('.d.ts'));
+			}
 		}
 	});
 
@@ -469,6 +499,11 @@ describe('Homey security artifact gate', () => {
 				properties: { pinCode: { type: 'string' } },
 			}),
 		).toThrow('UnsafeHomeySchema.properties.pinCode is not write-only');
+		expect(() =>
+			visitPublishedValues('UnsafeHomeySchema', {
+				example: { pinCode: 1234 },
+			}),
+		).toThrow('UnsafeHomeySchema.example publishes a secret value');
 		expect(() => assertTextSafe('unsafe fixture', '{"api_key":"must-not-be-reported"}')).toThrow(
 			'unsafe fixture contains a serialized secret value',
 		);
