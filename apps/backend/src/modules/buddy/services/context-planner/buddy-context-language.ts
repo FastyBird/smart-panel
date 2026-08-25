@@ -37,8 +37,11 @@ const CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_SEQUENCE_PATTERN_SOURCE = String.raw
 const CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_PATTERN_SOURCE = String.raw`(?:at|by|during|for|from|in|near|on|through|under|with|without)\s+[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,3}`;
 const CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE = String.raw`(?:becomes?|keeps?|starts?|stops?)\s+(?:(?:being|far|much|on|quite|really|to|very)\s+)?[\p{Letter}\p{Number}'’-]+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_SEQUENCE_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_PATTERN_SOURCE})?`;
 const CONDITIONAL_OUTCOME_OBJECT_GAP_GERUND_PATTERN_SOURCE = String.raw`(?:activating|adjusting|cleaning|closing|controlling|dimming|disabling|fixing|locking|monitoring|opening|polishing|recording|repairing|setting|switching|testing|triggering|turning|unlocking|using|watching)`;
-const CONDITIONAL_OUTCOME_OBJECT_GAP_INFINITIVE_PATTERN_SOURCE = String.raw`(?:activate|adjust|clean|close|control|dim|disable|fix|lock|monitor|open|record|repair|set|switch|trigger|turn|unlock|use|watch)`;
+const CONDITIONAL_OUTCOME_OBJECT_GAP_INFINITIVE_PATTERN_SOURCE = String.raw`(?:activate|adjust|clean|close|control|dim|disable|fix|lock|monitor|open|polish|record|repair|set|switch|test|trigger|turn|unlock|use|watch)`;
 const CONDITIONAL_OUTCOME_OBJECT_GAP_PREDICATE_PATTERN_SOURCE = String.raw`(?:(?:(?:being|on)\s+)?${CONDITIONAL_OUTCOME_OBJECT_GAP_GERUND_PATTERN_SOURCE}|to\s+${CONDITIONAL_OUTCOME_OBJECT_GAP_INFINITIVE_PATTERN_SOURCE})`;
+const CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_GERUND_PATTERN_SOURCE = String.raw`(?:activating|adjusting|closing|controlling|dimming|disabling|fixing|locking|opening|polishing|repairing|setting|switching|testing|triggering|turning|unlocking|using|watching)`;
+const CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_INFINITIVE_PATTERN_SOURCE = String.raw`(?:activate|adjust|close|control|dim|disable|fix|lock|open|polish|repair|set|switch|test|trigger|turn|unlock|use|watch)`;
+const CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_PREDICATE_PATTERN_SOURCE = String.raw`(?:(?:(?:being|on)\s+)?${CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_GERUND_PATTERN_SOURCE}|to\s+${CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_INFINITIVE_PATTERN_SOURCE})`;
 const CONDITIONAL_OUTCOME_FINITE_OBJECT_GAP_PREDICATE_PATTERN_SOURCE = String.raw`(?:starts?|stops?)\s+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE}`;
 const CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE = String.raw`(?!(?:that|to|where|which|who|whose)\b)[\p{Letter}\p{Number}'’-]+`;
 const CONDITIONAL_OUTCOME_IMPERATIVE_MODIFIER_PATTERN_SOURCE = String.raw`(?:kindly|promptly|quickly|urgently)`;
@@ -60,7 +63,7 @@ const CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN = new RegExp(
 	'u',
 );
 const CONDITIONAL_OUTCOME_ZERO_RELATIVE_TARGET_PATTERN = new RegExp(
-	String.raw`^${CONDITIONAL_OUTCOME_FIRST_ACTION_TARGET_PATTERN_SOURCE}\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?${CONDITIONAL_OUTCOME_OBJECT_GAP_SUBJECT_PATTERN_SOURCE}\s+(?:(?:keeps?|starts?|stops?)\s+${CONDITIONAL_OUTCOME_OBJECT_GAP_PREDICATE_PATTERN_SOURCE}${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_SEQUENCE_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_FINITE_OBJECT_GAP_PREDICATE_PATTERN_SOURCE})(?:\s+${CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_PATTERN_SOURCE})?\s*\?\s*$`,
+	String.raw`^${CONDITIONAL_OUTCOME_FIRST_ACTION_TARGET_PATTERN_SOURCE}\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?(?:${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s+(?:keeps?|starts?|stops?)\s+${CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_PREDICATE_PATTERN_SOURCE}${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_SEQUENCE_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_OBJECT_GAP_SUBJECT_PATTERN_SOURCE}\s+(?:(?:keeps?|starts?|stops?)\s+${CONDITIONAL_OUTCOME_OBJECT_GAP_PREDICATE_PATTERN_SOURCE}${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_SEQUENCE_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_FINITE_OBJECT_GAP_PREDICATE_PATTERN_SOURCE}))(?:\s+${CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_PATTERN_SOURCE})?\s*\?\s*$`,
 	'u',
 );
 const CONDITIONAL_OUTCOME_RELATIVE_ADVERB_PATTERN_SOURCE = String.raw`(?:already|currently|maybe|never|often|perhaps|still|very|[\p{Letter}'’-]+ly)`;
@@ -101,8 +104,9 @@ const CONDITIONAL_OUTCOME_WHICH_OBJECT_RELATIVE_PREFIX_PATTERN = new RegExp(
 	String.raw`^${CONDITIONAL_OUTCOME_FIRST_ACTION_TARGET_PATTERN_SOURCE}\s+which\s+${CONDITIONAL_OUTCOME_OBJECT_GAP_SUBJECT_PATTERN_SOURCE}\s*$`,
 	'u',
 );
-const CONDITIONAL_OUTCOME_DIRECT_WHICH_SUBJECT_PREFIX_PATTERN = new RegExp(
-	String.raw`^${CONDITIONAL_OUTCOME_FIRST_ACTION_TARGET_PATTERN_SOURCE}\s+which\s+(?:individuals?|one|ones|people|persons?)\s*$`,
+const CONDITIONAL_OUTCOME_DIRECT_WHICH_PRONOUN_PREFIX_PATTERN = /\bwhich\s+(?:one|ones)\s*$/u;
+const CONDITIONAL_OUTCOME_MODAL_OBJECT_GAP_TAIL_PATTERN = new RegExp(
+	String.raw`^${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE}(?:${CONDITIONAL_OUTCOME_OBJECT_GAP_INFINITIVE_PATTERN_SOURCE}|work)\s*\?\s*$`,
 	'u',
 );
 const CONDITIONAL_OUTCOME_WH_SUBJECT_AUXILIARY_TAIL_PATTERN = new RegExp(
@@ -110,13 +114,15 @@ const CONDITIONAL_OUTCOME_WH_SUBJECT_AUXILIARY_TAIL_PATTERN = new RegExp(
 	'u',
 );
 
-function hasConditionalOutcomeRelativePrefix(prefix: string): boolean {
+function hasConditionalOutcomeRelativePrefix(prefix: string, tail: string): boolean {
 	if (CONDITIONAL_OUTCOME_RELATIVE_PRONOUN_PATTERN.test(prefix)) return true;
 	if (CONDITIONAL_OUTCOME_COORDINATED_RELATIVE_PREFIX_PATTERN.test(prefix)) return true;
 	if (CONDITIONAL_OUTCOME_SUBJECT_RELATIVE_PREFIX_PATTERN.test(prefix)) return true;
 	if (
 		CONDITIONAL_OUTCOME_WHICH_OBJECT_RELATIVE_PREFIX_PATTERN.test(prefix) &&
-		!CONDITIONAL_OUTCOME_DIRECT_WHICH_SUBJECT_PREFIX_PATTERN.test(prefix)
+		(!CONDITIONAL_OUTCOME_DIRECT_WH_SUBJECT_PREFIX_PATTERN.test(prefix) ||
+			(!CONDITIONAL_OUTCOME_DIRECT_WHICH_PRONOUN_PREFIX_PATTERN.test(prefix) &&
+				CONDITIONAL_OUTCOME_MODAL_OBJECT_GAP_TAIL_PATTERN.test(tail)))
 	) {
 		return true;
 	}
@@ -193,7 +199,7 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 	].find((match) => {
 		const prefix = actionMessage.slice(0, match.index);
 		const tail = actionMessage.slice(match.index);
-		const hasRelativePrefix = hasConditionalOutcomeRelativePrefix(prefix);
+		const hasRelativePrefix = hasConditionalOutcomeRelativePrefix(prefix, tail);
 		const hasExplicitSubjectTail = auxiliaryOutcomeTailPattern.test(tail);
 
 		return (

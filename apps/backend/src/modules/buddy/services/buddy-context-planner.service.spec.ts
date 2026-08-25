@@ -7065,6 +7065,8 @@ describe('BuddyContextPlannerService', () => {
 		'If we turn the Bedroom lights off who will still be able to see?',
 		'If we turn off the Bedroom lights in which room could John still read?',
 		'If we turn off the Bedroom lights which person will still see?',
+		'If we turn off the Bedroom lights which guests will still be able to see?',
+		'If we turn off the Bedroom lights which children will still be able to see?',
 		'If we turn off the Bedroom lights which one will still work?',
 		'If we turn off the Bedroom lights where else could John read?',
 		'If we turn off the Bedroom lights where exactly could John read?',
@@ -7214,6 +7216,8 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open turn off the Bedroom lights the cleaner keeps repairing in the workshop?',
 		'If the window is open turn off the Bedroom lights the electrician keeps testing?',
 		'If the window is open turn off the Bedroom lights the cleaner keeps polishing?',
+		'If the window is open turn off the Bedroom lights the controller keeps activating?',
+		'If the window is open turn off the Bedroom lights the router keeps testing?',
 		'If the window is open turn off the Bedroom lights John starts to repair?',
 	])('keeps a phrasal relative target on the command path: %s', (message) => {
 		const plan = service.plan({
