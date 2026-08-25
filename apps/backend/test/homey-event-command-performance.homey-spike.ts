@@ -22,6 +22,7 @@ import { HomeySynchronizerService } from '../src/plugins/devices-homey/services/
 import { HomeyService } from '../src/plugins/devices-homey/services/homey.service';
 
 const SAMPLE_COUNT = 30;
+const SYNCHRONIZATION_BACKLOG_MS = 25;
 const WARMUP_COUNT = 3;
 const P95_DESIGN_TARGET_MS = 250;
 
@@ -75,6 +76,11 @@ const percentile = (samples: readonly number[], ratio: number): number => {
 
 	return sorted[index] ?? 0;
 };
+
+const wait = (durationMs: number): Promise<void> =>
+	new Promise((resolve) => {
+		setTimeout(resolve, durationMs);
+	});
 
 describe('Homey event and command performance gate', () => {
 	it('meets the event-handoff and command-start p95 targets without per-event inventory reads', async () => {
@@ -153,11 +159,12 @@ describe('Homey event and command performance gate', () => {
 				acceptedEvents: [],
 				acceptedCapabilityValues: [],
 			}),
-			synchronizeEvents: jest.fn((events: readonly HomeyEvent[]) => {
+			synchronizeEvents: jest.fn(async (events: readonly HomeyEvent[]) => {
 				resolveEventHandoff?.(performance.now() - eventReceivedAt);
 				resolveEventHandoff = null;
+				await wait(SYNCHRONIZATION_BACKLOG_MS);
 
-				return Promise.resolve({ updated: 0, ignored: 0, failed: 0, acceptedEvents: [...events] });
+				return { updated: 0, ignored: 0, failed: 0, acceptedEvents: [...events] };
 			}),
 			reset: jest.fn(),
 		};
@@ -233,7 +240,7 @@ describe('Homey event and command performance gate', () => {
 		expect(connector.getDevice.mock.calls).toHaveLength(0);
 
 		process.stdout.write(
-			`Homey latency gate: event handoff p95=${eventP95Ms.toFixed(2)}ms, command start p95=${commandP95Ms.toFixed(2)}ms.\n`,
+			`Homey latency gate (${SYNCHRONIZATION_BACKLOG_MS}ms synchronization backlog): event handoff p95=${eventP95Ms.toFixed(2)}ms, command start p95=${commandP95Ms.toFixed(2)}ms.\n`,
 		);
 
 		await service.stop();
