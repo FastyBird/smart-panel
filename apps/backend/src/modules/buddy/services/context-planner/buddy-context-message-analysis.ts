@@ -79,6 +79,10 @@ const INDEPENDENT_ALTERNATIVE_AUXILIARY_PATTERN = new RegExp(
 const INDEPENDENT_ALTERNATIVE_DETERMINED_SUBJECT_PATTERN =
 	/^(?:a|an|her|his|its|my|our|the|their|this|these|those|your)\s+[\p{Letter}\p{Number}'’-]+\b/u;
 const INDEPENDENT_ALTERNATIVE_PRONOUN_SUBJECT_PATTERN = /^(?:he|i|it|she|they|we|you)\b/u;
+const INDEPENDENT_ALTERNATIVE_BARE_HOME_STATE_SUBJECT_PATTERN = new RegExp(
+	String.raw`^${HOME_STATE_PATTERN.source}`,
+	'u',
+);
 const INDEPENDENT_ALTERNATIVE_BARE_HOME_SUBJECT_PATTERN = new RegExp(
 	String.raw`^(?:${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${DEVICE_ACTION_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${SECURITY_SUBJECT_PATTERN.source})\b`,
 	'u',
@@ -96,7 +100,9 @@ function hasIndependentAlternativeSubject(
 	return (
 		INDEPENDENT_ALTERNATIVE_DETERMINED_SUBJECT_PATTERN.test(subject) ||
 		INDEPENDENT_ALTERNATIVE_PRONOUN_SUBJECT_PATTERN.test(subject) ||
+		INDEPENDENT_ALTERNATIVE_BARE_HOME_STATE_SUBJECT_PATTERN.test(subject) ||
 		INDEPENDENT_ALTERNATIVE_BARE_HOME_SUBJECT_PATTERN.test(subject) ||
+		POWER_STATE_READ_PATTERN.test(subject) ||
 		findExplicitSpaceOccurrences(subject, explicitSpaces).some((occurrence) => occurrence.range.start === 0)
 	);
 }

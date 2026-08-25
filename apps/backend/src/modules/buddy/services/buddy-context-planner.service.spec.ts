@@ -250,6 +250,9 @@ describe('BuddyContextPlannerService', () => {
 		["Are any windows open or isn't the heater off?", [], 'space-office'],
 		['Are any windows open or are heaters off?', [], 'space-office'],
 		["Are any windows open or aren't heaters off?", [], 'space-office'],
+		['Are any windows open or is power off?', [], 'space-office'],
+		['Are any windows open or is heating on?', [], 'space-office'],
+		['Are any windows open or is temperature low?', [], 'space-office'],
 		['Are any windows open or is Kitchen heater off?', [{ id: 'space-kitchen', name: 'Kitchen' }], 'space-kitchen'],
 	])('retains aggregate scope before an independent alternative read: %s', (message, knownSpaces, readSpaceId) => {
 		const plan = service.plan({
@@ -7252,6 +7255,8 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open turn on the Bedroom lights then help John start reading?',
 		'If the window is open turn on the Bedroom lights and then ask John to start reading?',
 		'If the window is open turn on the Bedroom lights then ensure John keeps reading?',
+		'If the window is open turn on the Bedroom lights then kindly start recording?',
+		'If the window is open turn on the Bedroom lights then urgently start recording?',
 	])('keeps a coordinated command out of conditional outcome subjects: %s', (message) => {
 		const plan = service.plan({
 			message,
