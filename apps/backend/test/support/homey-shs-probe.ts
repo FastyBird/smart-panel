@@ -236,7 +236,7 @@ export interface SanitizationAliases {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const isSecretKey = (key: string): boolean =>
+export const isHomeySecretKey = (key: string): boolean =>
 	SECRET_KEY_PATTERN.test(key) ||
 	CAMEL_CASE_SECRET_CODE_KEY_PATTERN.test(key) ||
 	BOUNDED_SECRET_CODE_KEY_PATTERN.test(key);
@@ -536,7 +536,7 @@ const redactScalar = (value: unknown, marker: string): unknown => {
 const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): unknown => {
 	const capabilityMapEntry = isCapabilityMap(context.path, context.rootKind);
 
-	if (!capabilityMapEntry && isSecretKey(key)) {
+	if (!capabilityMapEntry && isHomeySecretKey(key)) {
 		return redactScalar(value, REDACTION.secret);
 	}
 
@@ -1102,7 +1102,7 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 			return;
 		}
 
-		if (!capabilityMapEntry && isSecretKey(key)) {
+		if (!capabilityMapEntry && isHomeySecretKey(key)) {
 			assertRedactedScalar(nestedValue, REDACTION.secret);
 			return;
 		}

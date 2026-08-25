@@ -4,6 +4,8 @@ import { isIP } from 'node:net';
 import { extname, resolve } from 'node:path';
 import ts from 'typescript';
 
+import { isHomeySecretKey } from './support/homey-shs-probe';
+
 type JsonRecord = Record<string, unknown>;
 
 interface OpenApiDocument {
@@ -26,14 +28,11 @@ const OPENAPI_PATH = resolve(REPOSITORY_ROOT, 'spec/api/v1/openapi.json');
 const SNAPSHOT_ROOT = resolve(REPOSITORY_ROOT, 'apps');
 const BUILD_EXTENSIONS = new Set(['.js', '.json', '.map']);
 const FIXTURE_EXTENSIONS = new Set(['.json', '.md', '.txt', '.yaml', '.yml']);
-const SECRET_PROPERTY_PATTERN =
-	/^(?:access[_-]?token|api[_-]?key|authorization|credential|password|refresh[_-]?token|secret)$/i;
 const IP_ADDRESS_CANDIDATE_PATTERN = /[A-Za-z0-9:.%_-]{2,}/g;
 const HOMEY_TOKEN_PATTERN = /\b(?:homey|hpat|pat)_[A-Za-z0-9_-]{16,}\b/i;
 const COMPILED_SYMBOL_NAME_PATTERN = /^[A-Z][A-Z0-9_]+$/;
 const COMMENT_PATTERN = /\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g;
-const SERIALIZED_SECRET_PATTERN =
-	/["'](?:access[_-]?token|api[_-]?key|authorization|credential|password|refresh[_-]?token|secret)["']\s*:\s*(["'])([^"']*)\1/gi;
+const SERIALIZED_STRING_PROPERTY_PATTERN = /(["'])([^"']+)\1\s*:\s*(["'])([^"']*)\3/g;
 const FORBIDDEN_PATTERNS: readonly ForbiddenPattern[] = [
 	{
 		label: 'an IPv4 address',
@@ -64,6 +63,8 @@ const collectFiles = (root: string, include: (path: string) => boolean): string[
 const configuredPrivateValues = (): readonly string[] =>
 	[
 		process.env.FB_HOMEY_SHS_API_KEY,
+		process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY,
+		process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY,
 		process.env.FB_HOMEY_SHS_EXPECTED_HOST,
 		...(process.env.FB_HOMEY_SHS_PRIVATE_TERMS?.split(',') ?? []),
 	]
@@ -123,10 +124,11 @@ const containsHomeyToken = (text: string, compiledSource: boolean): boolean => {
 };
 
 const containsSerializedSecret = (text: string): boolean =>
-	[...text.matchAll(SERIALIZED_SECRET_PATTERN)].some((match) => {
-		const value = match[2];
+	[...text.matchAll(SERIALIZED_STRING_PROPERTY_PATTERN)].some((match) => {
+		const key = match[2];
+		const value = match[4];
 
-		return value !== undefined && value.length > 0 && value !== '[~3~]';
+		return key !== undefined && isHomeySecretKey(key) && value !== undefined && value.length > 0 && value !== '[~3~]';
 	});
 
 const assertTextSafe = (label: string, text: string, compiledSource = false): void => {
@@ -169,16 +171,18 @@ const visitSchema = (schemaName: string, value: unknown, path: readonly string[]
 	for (const [key, child] of Object.entries(value as JsonRecord)) {
 		const childPath = [...path, key];
 
-		if (SECRET_PROPERTY_PATTERN.test(key) && child !== null && typeof child === 'object') {
+		if (child !== null && typeof child === 'object') {
 			const secretSchema = child as JsonRecord;
 
-			if (secretSchema.writeOnly !== true) {
-				throw new Error(`${schemaName}.${childPath.join('.')} is not write-only`);
-			}
+			if (isHomeySecretKey(key) && secretSchema.type !== 'boolean') {
+				if (secretSchema.writeOnly !== true) {
+					throw new Error(`${schemaName}.${childPath.join('.')} is not write-only`);
+				}
 
-			for (const forbiddenKeyword of ['default', 'enum', 'example', 'examples']) {
-				if (forbiddenKeyword in secretSchema) {
-					throw new Error(`${schemaName}.${childPath.join('.')} publishes ${forbiddenKeyword}`);
+				for (const forbiddenKeyword of ['default', 'enum', 'example', 'examples']) {
+					if (forbiddenKeyword in secretSchema) {
+						throw new Error(`${schemaName}.${childPath.join('.')} publishes ${forbiddenKeyword}`);
+					}
 				}
 			}
 		}
@@ -248,7 +252,20 @@ describe('Homey security artifact gate', () => {
 				properties: { api_key: { type: 'string', writeOnly: true, example: 'must-not-be-reported' } },
 			}),
 		).toThrow('UnsafeHomeySchema.properties.api_key publishes example');
+		expect(() =>
+			visitSchema('UnsafeHomeySchema', {
+				properties: { accessToken: { type: 'string' } },
+			}),
+		).toThrow('UnsafeHomeySchema.properties.accessToken is not write-only');
+		expect(() =>
+			visitSchema('UnsafeHomeySchema', {
+				properties: { pinCode: { type: 'string' } },
+			}),
+		).toThrow('UnsafeHomeySchema.properties.pinCode is not write-only');
 		expect(() => assertTextSafe('unsafe fixture', '{"api_key":"must-not-be-reported"}')).toThrow(
+			'unsafe fixture contains a serialized secret value',
+		);
+		expect(() => assertTextSafe('unsafe fixture', '{"cookie":"must-not-be-reported"}')).toThrow(
 			'unsafe fixture contains a serialized secret value',
 		);
 		expect(() => assertTextSafe('unsafe fixture', '{"api_key":"[~3~]unredacted-password"}')).toThrow(
@@ -273,11 +290,21 @@ describe('Homey security artifact gate', () => {
 			'unsafe fixture contains an IPv6 address',
 		);
 		const previousPrivateTerms = process.env.FB_HOMEY_SHS_PRIVATE_TERMS;
+		const previousReplacementApiKey = process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY;
+		const previousDeviceOnlyApiKey = process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY;
 
 		process.env.FB_HOMEY_SHS_PRIVATE_TERMS = 'Ada';
+		process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY = 'opaque-replacement-value';
+		process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY = 'opaque-device-value';
 
 		try {
 			expect(() => assertTextSafe('unsafe fixture', '{"name":"Ada"}')).toThrow(
+				'unsafe fixture contains a configured private Homey value',
+			);
+			expect(() => assertTextSafe('unsafe fixture', '{"value":"opaque-replacement-value"}')).toThrow(
+				'unsafe fixture contains a configured private Homey value',
+			);
+			expect(() => assertTextSafe('unsafe fixture', '{"value":"opaque-device-value"}')).toThrow(
 				'unsafe fixture contains a configured private Homey value',
 			);
 		} finally {
@@ -285,6 +312,18 @@ describe('Homey security artifact gate', () => {
 				delete process.env.FB_HOMEY_SHS_PRIVATE_TERMS;
 			} else {
 				process.env.FB_HOMEY_SHS_PRIVATE_TERMS = previousPrivateTerms;
+			}
+
+			if (previousReplacementApiKey === undefined) {
+				delete process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY;
+			} else {
+				process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY = previousReplacementApiKey;
+			}
+
+			if (previousDeviceOnlyApiKey === undefined) {
+				delete process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY;
+			} else {
+				process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY = previousDeviceOnlyApiKey;
 			}
 		}
 	});
