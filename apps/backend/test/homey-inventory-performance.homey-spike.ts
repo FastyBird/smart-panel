@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 
@@ -19,6 +20,8 @@ const SAMPLE_COUNT = 30;
 const WARMUP_COUNT = 3;
 const P95_REGRESSION_BUDGET_MS = 1000;
 const FIXTURE_ROOT = resolve(__dirname, '../src/plugins/devices-homey/__fixtures__/current');
+
+let userDataPath: string;
 
 const readJson = (path: string): unknown => JSON.parse(readFileSync(path, 'utf8')) as unknown;
 
@@ -53,10 +56,18 @@ const buildFixtureGeneratedInventory = (): JsonRecord => {
 };
 
 describe('Homey inventory performance gate', () => {
+	beforeAll(() => {
+		userDataPath = mkdtempSync(resolve(tmpdir(), 'homey-inventory-performance-'));
+	});
+
+	afterAll(() => {
+		rmSync(userDataPath, { force: true, recursive: true });
+	});
+
 	it('normalizes and resolves mappings for 250 fixture-generated devices within the regression budget', () => {
 		const rawInventory = buildFixtureGeneratedInventory();
 		const zones = transformHomeyLocalZones(readJson(resolve(FIXTURE_ROOT, 'zones.json')));
-		const loader = new HomeyMappingLoaderService();
+		const loader = new HomeyMappingLoaderService({ userDataPath });
 		loader.loadAllMappings();
 		let normalizedCount = 0;
 		let conflictCount = 0;
