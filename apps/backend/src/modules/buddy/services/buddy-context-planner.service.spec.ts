@@ -7248,6 +7248,7 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open turn off the Bedroom lights the controller keeps activating?',
 		'If the window is open turn off the Bedroom lights the router keeps testing?',
 		'If the window is open turn off the Bedroom lights the electrician breaks?',
+		'If the window is open turn off the Bedroom lights the electricians break?',
 		'If the window is open turn off the Bedroom lights John starts to repair?',
 	])('keeps a phrasal relative target on the command path: %s', (message) => {
 		const plan = service.plan({
