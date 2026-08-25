@@ -7233,6 +7233,8 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open turn on the Bedroom lights because the baby starts crying?',
 		'If the window is open turn on the Bedroom lights since John starts reading?',
 		'If the window is open turn on the Bedroom lights wherever John starts reading?',
+		'If the window is open turn on the Bedroom lights while John starts reading?',
+		'If the window is open turn on the Bedroom lights whilst John starts reading?',
 		'If the window is open turn on the Bedroom lights although John keeps sleeping?',
 		'If the window is open turn on the Bedroom lights though John keeps sleeping?',
 		'If the window is open turn on the Bedroom lights even though John keeps sleeping?',
