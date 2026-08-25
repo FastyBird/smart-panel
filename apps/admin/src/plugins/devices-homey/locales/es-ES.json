@@ -80,8 +80,13 @@
 		"title": "Añadir dispositivos Homey",
 		"subtitle": "Selecciona dispositivos compatibles del inventario de Homey conectado",
 		"breadcrumb": "Homey",
-		"columns": { "identifier": "ID de dispositivo Homey", "class": "Clase", "zone": "Zona", "capabilities": "Capacidades" },
-		"values": { "noZone": "Sin zona", "capabilities": "{count} capacidades" },
+		"columns": { "identifier": "ID de dispositivo Homey", "class": "Clase", "zone": "Zona", "capabilities": "Capacidades", "mapping": "Mapeo" },
+		"values": {
+			"noZone": "Sin zona",
+			"capabilities": "{count} capacidades",
+			"mappingSummary": "{channels} canales · {properties} propiedades",
+			"mappingWarnings": "{count} advertencias de mapeo"
+		},
 		"statuses": { "unavailable": "No disponible en Homey", "needsAttention": "Revisa la asignación del dispositivo Homey" },
 		"actions": { "refresh": "Actualizar inventario", "openConfig": "Abrir configuración de Homey" },
 		"errors": {

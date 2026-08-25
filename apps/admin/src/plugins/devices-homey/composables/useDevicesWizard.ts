@@ -9,6 +9,7 @@ import { devicesStoreKey } from '../../../modules/devices';
 import type {
 	IDeviceWizardAdapter,
 	IWizardAdoptSelection,
+	IWizardCell,
 	IWizardControl,
 	IWizardResult,
 	IWizardRow,
@@ -62,6 +63,19 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 	let loadAbortController: AbortController | null = null;
 	const adoptionAbortControllers = new Set<AbortController>();
 	let disposed = false;
+
+	const mappingSummaryCell = (preview: IHomeyMappingPreview): IWizardCell => {
+		const channels = preview.channels.length;
+		const properties = preview.channels.reduce((count, channel) => count + channel.properties.length, 0);
+		const warnings = preview.warnings.length;
+
+		return {
+			render: 'tag',
+			value: t('devicesHomeyPlugin.wizard.values.mappingSummary', { channels, properties }),
+			variant: warnings > 0 ? 'warning' : 'success',
+			...(warnings > 0 ? { tooltip: t('devicesHomeyPlugin.wizard.values.mappingWarnings', { count: warnings }) } : {}),
+		};
+	};
 
 	const devices = computed(() =>
 		orderBy(
@@ -120,6 +134,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 								value: t('devicesHomeyPlugin.wizard.values.capabilities', { count: device.capabilities.length }),
 								variant: device.supportState === 'supported' ? 'success' : 'warning',
 							},
+							...(preview === undefined ? {} : { mapping: mappingSummaryCell(preview) }),
 						},
 					};
 				})
@@ -344,6 +359,7 @@ export const useDevicesWizard = (): IDeviceWizardAdapter => {
 			{ key: 'class', label: t('devicesHomeyPlugin.wizard.columns.class'), steps: ['discover'], width: 140 },
 			{ key: 'zone', label: t('devicesHomeyPlugin.wizard.columns.zone'), steps: ['discover'], minWidth: 160 },
 			{ key: 'capabilities', label: t('devicesHomeyPlugin.wizard.columns.capabilities'), steps: ['discover'], width: 140 },
+			{ key: 'mapping', label: t('devicesHomeyPlugin.wizard.columns.mapping'), steps: ['confirm'], minWidth: 220 },
 		],
 		controls,
 		sessionKey: computed(() => (sessionGeneration.value === 0 ? null : `homey-session-${sessionGeneration.value}`)),

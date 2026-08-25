@@ -80,8 +80,13 @@
 		"title": "Dodaj urządzenia Homey",
 		"subtitle": "Wybierz obsługiwane urządzenia z inwentarza połączonego Homey",
 		"breadcrumb": "Homey",
-		"columns": { "identifier": "ID urządzenia Homey", "class": "Klasa", "zone": "Strefa", "capabilities": "Możliwości" },
-		"values": { "noZone": "Bez strefy", "capabilities": "Możliwości: {count}" },
+		"columns": { "identifier": "ID urządzenia Homey", "class": "Klasa", "zone": "Strefa", "capabilities": "Możliwości", "mapping": "Mapowanie" },
+		"values": {
+			"noZone": "Bez strefy",
+			"capabilities": "Możliwości: {count}",
+			"mappingSummary": "{channels} kanałów · {properties} właściwości",
+			"mappingWarnings": "Liczba ostrzeżeń mapowania: {count}"
+		},
 		"statuses": { "unavailable": "Niedostępne w Homey", "needsAttention": "Sprawdź mapowanie urządzenia Homey" },
 		"actions": { "refresh": "Odśwież inwentarz", "openConfig": "Otwórz konfigurację Homey" },
 		"errors": {

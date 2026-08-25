@@ -78,8 +78,13 @@
 		"title": "Pridať zariadenia Homey",
 		"subtitle": "Vyberte podporované zariadenia z pripojeného Homey",
 		"breadcrumb": "Homey",
-		"columns": { "identifier": "ID zariadenia Homey", "class": "Trieda", "zone": "Zóna", "capabilities": "Funkcie" },
-		"values": { "noZone": "Bez zóny", "capabilities": "Počet funkcií: {count}" },
+		"columns": { "identifier": "ID zariadenia Homey", "class": "Trieda", "zone": "Zóna", "capabilities": "Funkcie", "mapping": "Mapovanie" },
+		"values": {
+			"noZone": "Bez zóny",
+			"capabilities": "Počet funkcií: {count}",
+			"mappingSummary": "{channels} kanálov · {properties} vlastností",
+			"mappingWarnings": "Počet upozornení mapovania: {count}"
+		},
 		"statuses": { "unavailable": "V Homey nie je dostupné", "needsAttention": "Skontrolujte mapovanie zariadenia Homey" },
 		"actions": { "refresh": "Obnoviť inventár", "openConfig": "Otvoriť nastavenie Homey" },
 		"errors": {
