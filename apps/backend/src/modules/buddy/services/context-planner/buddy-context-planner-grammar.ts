@@ -261,8 +261,8 @@ export const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
 	String.raw`^(?:(?:what|which)\b|(?:can|could|would) you (?:show|tell)(?: me)?\b).*\b(?:am i able to|can i|i can)\b.*\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
-export const CONTEXTUAL_SCOPE_PATTERN = /\b(?:here|in this room|this space)\b/u;
-export const CONTEXTUAL_SCOPE_REFERENCE_PATTERN = /\b(?:in this room|this space)\b/gu;
+export const CONTEXTUAL_SCOPE_PATTERN = /\b(?:here|(?:in\s+)?this room|this space)\b/u;
+export const CONTEXTUAL_SCOPE_REFERENCE_PATTERN = /\b(?:(?:in\s+)?this room|this space)\b/gu;
 export const GENERIC_ACTION_TARGET_PATTERN =
 	/\b(?:a|all|an|any|every|the)\s+(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blind|blinds|device|devices|door|doors|fan|fans|heater|heaters|lamp|lamps|light|lights|scene|scenes|switch|switches|thermostat|thermostats|window|windows)\b|\b(?:(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs)\s+)?(?:blinds|devices|doors|fans|heaters|lamps|lights|scenes|switches|thermostats|windows)\b|^[?!,.;\s]*(?:(?:and(?: also)?|as well as|if so|please|plus|then)\s+)*(?:(?:can|could|may|might|will|would) you\s+(?:please\s+)?)?(?:activate|adjust|brighten|change|close|deactivate|decrease|dim|increase|lock|lower|make|open|raise|run|set|start|stop|switch|trigger|turn|unlock)\s+(?:off\s+|on\s+)?(?:blind|device|door|fan|heater|lamp|light|scene|switch|thermostat|window)\b/u;
 export const GENERIC_ACTION_TARGET_NAMES = [
@@ -327,11 +327,11 @@ const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|do
 const AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}|none)`;
 const AGGREGATE_READ_EMPHATIC_SUFFIX_PATTERN_SOURCE = String.raw`(?:at\s+all|whatsoever)`;
 const AGGREGATE_READ_TRAILING_ADJUNCT_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_READ_EMPHATIC_SUFFIX_PATTERN_SOURCE}|at\s+(?:present|the\s+moment)|currently|now|please|right\s+now|today|tonight)`;
-const AGGREGATE_READ_LOCAL_QUALIFIER_PATTERN_SOURCE = String.raw`(?:here|in\s+here|in\s+this\s+room|near\s+me|nearby|this\s+space)`;
+const AGGREGATE_READ_LOCAL_QUALIFIER_PATTERN_SOURCE = String.raw`(?:${CONTEXTUAL_SCOPE_PATTERN.source}|in\s+here|near\s+me|nearby)`;
 const AGGREGATE_READ_COORDINATED_MODAL_PATTERN_SOURCE = String.raw`(?:can(?:not|'t)?|could(?:n't)?|may|might(?:n't)?|must(?:n't)?|should(?:n't)?|will|won't|would(?:n't)?)`;
 const AGGREGATE_READ_COORDINATED_MODAL_PREDICATE_PATTERN_SOURCE = String.raw`${AGGREGATE_READ_COORDINATED_MODAL_PATTERN_SOURCE}\s+(?:(?:be|${STATE_LINKING_VERB_PATTERN_SOURCE})\s+${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}|(?:close|fail|open|work)(?:\s+(?:again|soon|[\p{Letter}'’-]+ly))?)`;
 const AGGREGATE_READ_COORDINATED_STATE_PATTERN_SOURCE = String.raw`(?:and|but|or|yet)\s+(?:${AGGREGATE_READ_COORDINATED_MODAL_PREDICATE_PATTERN_SOURCE}|(?:${STATE_LINKING_VERB_PATTERN_SOURCE}\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE})`;
-const AGGREGATE_READ_RELATIVE_TAIL_PATTERN_SOURCE = String.raw`(?:that|which|who|whose)\s+(?:(?!(?:here|me|nearby)\b)[\p{Letter}\p{Number}'’-]+\s*){1,8}`;
+const AGGREGATE_READ_RELATIVE_TAIL_PATTERN_SOURCE = String.raw`(?:that|which|who|whose)\s+(?:(?!(?:${AGGREGATE_READ_LOCAL_QUALIFIER_PATTERN_SOURCE}))[\p{Letter}\p{Number}'’-]+\s*){1,8}`;
 export const AGGREGATE_STATE_COORDINATION_PATTERN = new RegExp(
 	String.raw`\b${AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE}\b[^?!,.;]{0,80}\b${WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE}\b[^?!,.;]{0,40}\b${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}(?:\s+${AGGREGATE_READ_COORDINATED_STATE_PATTERN_SOURCE}){1,3}\b(?=\s*(?:(?:${AGGREGATE_READ_TRAILING_ADJUNCT_PATTERN_SOURCE})\s*)*(?:(?:${AGGREGATE_READ_LOCAL_QUALIFIER_PATTERN_SOURCE})\s*)?[?!,.;]?$)`,
 	'gu',
