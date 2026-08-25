@@ -33,12 +33,17 @@ const HOMEY_TOKEN_PATTERN = /\b(?:homey|hpat|pat)_[A-Za-z0-9_-]{16,}\b/i;
 const COMPILED_SYMBOL_NAME_PATTERN = /^[A-Z][A-Z0-9_]+$/;
 const COMMENT_PATTERN = /\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g;
 const SERIALIZED_STRING_PROPERTY_PATTERN = /(["'])([^"']+)\1\s*:\s*(["'])([^"']*)\3/g;
+const LOOSE_PROPERTY_PATTERN = /^\s*(?:[-*]\s+)?["'`]?([A-Za-z][A-Za-z0-9_.-]*)["'`]?\s*[:=]\s*(.*?)\s*$/gm;
 const FORBIDDEN_PATTERNS: readonly ForbiddenPattern[] = [
 	{
 		label: 'an IPv4 address',
 		pattern: /\b(?:\d{1,3}\.){3}\d{1,3}\b/,
 	},
-	{ label: 'a MAC address', pattern: /\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b/i },
+	{
+		label: 'a MAC address',
+		pattern:
+			/\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b|\b[0-9a-f]{4}(?:\.[0-9a-f]{4}){2}\b|(?<![0-9a-f-])[0-9a-f]{12}(?![0-9a-f-])/i,
+	},
 	{ label: 'an email address', pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i },
 ];
 
@@ -111,8 +116,15 @@ const containsHomeyToken = (text: string, compiledSource: boolean): boolean => {
 			node.kind === ts.SyntaxKind.TemplateTail
 		) {
 			const value = (node as ts.StringLiteralLike).text;
+			const parent = node.parent;
+			const isPublicSymbolDescription =
+				COMPILED_SYMBOL_NAME_PATTERN.test(value) &&
+				ts.isCallExpression(parent) &&
+				ts.isIdentifier(parent.expression) &&
+				parent.expression.text === 'Symbol' &&
+				parent.arguments[0] === node;
 
-			found = !COMPILED_SYMBOL_NAME_PATTERN.test(value) && HOMEY_TOKEN_PATTERN.test(value);
+			found = !isPublicSymbolDescription && HOMEY_TOKEN_PATTERN.test(value);
 		}
 
 		ts.forEachChild(node, visit);
@@ -129,6 +141,53 @@ const containsSerializedSecret = (text: string): boolean =>
 		const value = match[4];
 
 		return key !== undefined && isHomeySecretKey(key) && value !== undefined && value.length > 0 && value !== '[~3~]';
+	});
+
+const containsUnsafeSecretLeaf = (value: unknown): boolean => {
+	if (value === null || value === '' || value === '[~3~]' || typeof value === 'boolean') {
+		return false;
+	}
+
+	if (Array.isArray(value)) {
+		return value.some((entry) => containsUnsafeSecretLeaf(entry));
+	}
+
+	if (typeof value === 'object') {
+		return Object.values(value as JsonRecord).some((entry) => containsUnsafeSecretLeaf(entry));
+	}
+
+	return true;
+};
+
+const containsStructuredSecret = (value: unknown): boolean => {
+	if (Array.isArray(value)) {
+		return value.some((entry) => containsStructuredSecret(entry));
+	}
+
+	if (value === null || typeof value !== 'object') {
+		return false;
+	}
+
+	return Object.entries(value as JsonRecord).some(
+		([key, child]) => (isHomeySecretKey(key) && containsUnsafeSecretLeaf(child)) || containsStructuredSecret(child),
+	);
+};
+
+const containsLooseSecretAssignment = (text: string): boolean =>
+	[...text.matchAll(LOOSE_PROPERTY_PATTERN)].some((match) => {
+		const key = match[1];
+		const rawValue = match[2]
+			?.replace(/\s+#.*$/, '')
+			.replace(/[,;]\s*$/, '')
+			.trim();
+
+		if (key === undefined || rawValue === undefined || !isHomeySecretKey(key)) {
+			return false;
+		}
+
+		const value = rawValue.replace(/^(["'`])(.*)\1$/, '$2');
+
+		return !['', '[~3~]', 'false', 'null', 'true', 'undefined'].includes(value);
 	});
 
 const assertTextSafe = (label: string, text: string, compiledSource = false): void => {
@@ -154,6 +213,17 @@ const assertTextSafe = (label: string, text: string, compiledSource = false): vo
 		if (text.toLocaleLowerCase().includes(privateValue.toLocaleLowerCase())) {
 			throw new Error(`${label} contains a configured private Homey value`);
 		}
+	}
+};
+
+const assertFixtureTextSafe = (label: string, text: string, extension: string): void => {
+	assertTextSafe(label, text);
+
+	const containsSecret =
+		extension === '.json' ? containsStructuredSecret(JSON.parse(text) as unknown) : containsLooseSecretAssignment(text);
+
+	if (containsSecret) {
+		throw new Error(`${label} contains a structured secret value`);
 	}
 };
 
@@ -219,7 +289,7 @@ describe('Homey security artifact gate', () => {
 		expect(unsupportedFiles).toEqual([]);
 
 		for (const path of [...fixtureFiles, ...snapshotFiles]) {
-			assertTextSafe(path.slice(REPOSITORY_ROOT.length + 1), readFileSync(path, 'utf8'));
+			assertFixtureTextSafe(path.slice(REPOSITORY_ROOT.length + 1), readFileSync(path, 'utf8'), extname(path));
 		}
 	});
 
@@ -268,6 +338,12 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertTextSafe('unsafe fixture', '{"cookie":"must-not-be-reported"}')).toThrow(
 			'unsafe fixture contains a serialized secret value',
 		);
+		expect(() => assertFixtureTextSafe('unsafe fixture', '{"pinCode":1234}', '.json')).toThrow(
+			'unsafe fixture contains a structured secret value',
+		);
+		expect(() => assertFixtureTextSafe('unsafe fixture', 'api_key: opaque-secret-value', '.yaml')).toThrow(
+			'unsafe fixture contains a structured secret value',
+		);
 		expect(() => assertTextSafe('unsafe fixture', '{"api_key":"[~3~]unredacted-password"}')).toThrow(
 			'unsafe fixture contains a serialized secret value',
 		);
@@ -277,6 +353,9 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe('unsafe compiled module', 'throw new Error("request failed for homey_abcdefghijklmnop")', true),
 		).toThrow('unsafe compiled module contains a Homey personal access token');
+		expect(() => assertTextSafe('unsafe compiled module', 'const leaked = "HOMEY_ABCDEFGHIJKLMNOP";', true)).toThrow(
+			'unsafe compiled module contains a Homey personal access token',
+		);
 		expect(() =>
 			assertTextSafe('safe compiled module', 'const homey_local_connector_factory_1 = {};', true),
 		).not.toThrow();
@@ -288,6 +367,12 @@ describe('Homey security artifact gate', () => {
 		);
 		expect(() => assertTextSafe('unsafe fixture', '{"address":"fe80::1%en0"}')).toThrow(
 			'unsafe fixture contains an IPv6 address',
+		);
+		expect(() => assertTextSafe('unsafe fixture', '{"mac":"aabb.ccdd.eeff"}')).toThrow(
+			'unsafe fixture contains a MAC address',
+		);
+		expect(() => assertTextSafe('unsafe fixture', '{"mac":"aabbccddeeff"}')).toThrow(
+			'unsafe fixture contains a MAC address',
 		);
 		const previousPrivateTerms = process.env.FB_HOMEY_SHS_PRIVATE_TERMS;
 		const previousReplacementApiKey = process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY;
