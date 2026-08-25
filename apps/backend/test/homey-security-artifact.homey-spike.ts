@@ -353,8 +353,15 @@ const containsCompiledSecret = (text: string): boolean => {
 			found = isCompiledSecretName(node.name.text) && containsUnsafeCompiledLiteral(node.initializer);
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found = isCompiledSecretName(node.name.text) && containsUnsafeCompiledLiteral(node.initializer);
-		} else if (ts.isBindingElement(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
-			found = isCompiledSecretName(node.name.text) && containsUnsafeCompiledLiteral(node.initializer);
+		} else if (ts.isBindingElement(node) && node.initializer !== undefined) {
+			const name =
+				node.propertyName !== undefined
+					? compiledPropertyName(node.propertyName)
+					: ts.isIdentifier(node.name)
+						? node.name.text
+						: undefined;
+
+			found = isCompiledSecretName(name) && containsUnsafeCompiledLiteral(node.initializer);
 		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
 			const name = compiledAssignedPropertyName(node.left);
 
@@ -378,6 +385,22 @@ const compiledStaticString = (node: ts.Expression): string | undefined => {
 		return compiledStaticString(node.expression);
 	}
 
+	if (ts.isTemplateExpression(node)) {
+		let value = node.head.text;
+
+		for (const span of node.templateSpans) {
+			const expression = compiledStaticString(span.expression);
+
+			if (expression === undefined) {
+				return undefined;
+			}
+
+			value += expression + span.literal.text;
+		}
+
+		return value;
+	}
+
 	if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
 		const left = compiledStaticString(node.left);
 		const right = compiledStaticString(node.right);
@@ -399,7 +422,10 @@ const containsCompiledPrivateUrl = (text: string): boolean => {
 		if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
 			found = containsStructuredUrl(node.text);
 		} else if (ts.isTemplateExpression(node)) {
+			const staticString = compiledStaticString(node);
+
 			found =
+				(staticString !== undefined && containsStructuredUrl(staticString)) ||
 				containsStructuredUrl(node.head.text) ||
 				node.templateSpans.some((span) => containsStructuredUrl(span.literal.text));
 		} else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
@@ -818,6 +844,9 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe('unsafe compiled module', "function connect(apiKey = 'opaque-secret') {}", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
+			assertTextSafe('unsafe compiled module', "const { apiKey: key = 'opaque-secret' } = config;", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = process.env.API_KEY ?? 'opaque-secret';", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() => assertTextSafe('unsafe compiled module', "const apiKey = String('opaque-secret');", true)).toThrow(
@@ -834,6 +863,9 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a private URL');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const endpoint = 'http://' + 'private-homey.local:4859';", true),
+		).toThrow('unsafe compiled module contains a private URL');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const endpoint = `http://${'private-homey.local'}:4859`;", true),
 		).toThrow('unsafe compiled module contains a private URL');
 		expect(() => assertTextSafe('unsafe fixture', '{"address":"192.168.1.23"}')).toThrow(
 			'unsafe fixture contains an IPv4 address',
