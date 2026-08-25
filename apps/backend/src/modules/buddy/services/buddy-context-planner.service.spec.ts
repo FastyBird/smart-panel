@@ -320,6 +320,20 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.queries).not.toContainEqual({ kind: 'current-state', spaceId: 'space-office' });
 	});
 
+	it.each(['Are any windows open or will John wake?', 'Are any windows open or will Mary Jane wake?'])(
+		'retains whole-home scope before a named-subject alternative: %s',
+		(message) => {
+			const plan = service.plan({
+				message,
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			});
+
+			expect(plan.queries).toContainEqual({ kind: 'search-home' });
+			expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		},
+	);
+
 	it.each(['Are any windows open or which lights are on?', 'Are any windows open or what lights are on?'])(
 		'retains whole-home scope before an interrogative alternative: %s',
 		(message) => {
