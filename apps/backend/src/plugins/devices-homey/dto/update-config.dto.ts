@@ -13,7 +13,7 @@ import {
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
 	MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
 } from '../devices-homey.constants';
-import { IsSafeHomeyUrl } from '../validators/homey-url.validator';
+import { IsSafeHomeyUrl, MAX_HOMEY_URL_LENGTH } from '../validators/homey-url.validator';
 
 @ApiSchema({ name: 'DevicesHomeyPluginUpdateConfig' })
 export class HomeyUpdatePluginConfigDto extends UpdatePluginConfigDto {
@@ -28,12 +28,13 @@ export class HomeyUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@ApiPropertyOptional({
 		description: 'Homey local API base URL',
 		example: 'http://homey.local:4859',
+		maxLength: MAX_HOMEY_URL_LENGTH,
 		nullable: true,
 	})
 	@Expose()
 	@IsOptional()
 	@IsSafeHomeyUrl({
-		message: '[{"field":"url","reason":"URL must use HTTP or HTTPS without embedded credentials."}]',
+		message: `[{"field":"url","reason":"URL must be at most ${MAX_HOMEY_URL_LENGTH} characters and use HTTP or HTTPS without embedded credentials."}]`,
 	})
 	url?: string | null;
 

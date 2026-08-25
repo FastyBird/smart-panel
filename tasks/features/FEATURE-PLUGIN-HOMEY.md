@@ -85,7 +85,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [ ] Socket.IO connection, subscription, disconnect, restart, and reconnect behavior are recorded.
 - [ ] Device add, rename, zone move, unavailable, and removal behavior is captured only with a separately gated, explicitly allowlisted disposable virtual/test device; suffixed-capability behavior may use read-only fixtures/devices.
 - [x] mDNS behavior is verified; automatic discovery is explicitly deferred because no attributable stable Homey service was observed.
-- [ ] The SDK license/distribution decision and SDK-vs-direct-protocol choice are recorded.
+- [x] The SDK license/distribution decision and SDK-vs-direct-protocol choice are recorded.
 - [ ] Sanitized fixtures contain no API keys, household identifiers, private IP addresses, or personal names.
 - [x] Fixture-backed tests can run without live SHS access.
 
@@ -156,7 +156,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [x] Live SHS tests are environment-gated; write tests require an explicit device/capability allowlist.
 - [x] Backend unit tests, admin unit tests, JS lint/type checks, OpenAPI generation, and relevant panel tests pass.
 - [x] The plugin remains fully testable after the one-month SHS subscription expires.
-- [ ] No new dependency is merged without its license, maintenance, runtime, and replacement implications being documented.
+- [x] No new dependency is merged without its license, maintenance, runtime, and replacement implications being documented.
 
 ### Phase 2 cloud
 

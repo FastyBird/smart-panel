@@ -3,7 +3,7 @@ import { IsDefined, IsEnum, IsIn, IsNotEmpty, IsObject, IsString, Matches, Valid
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
-import { IsSafeHomeyUrl } from '../validators/homey-url.validator';
+import { IsSafeHomeyUrl, MAX_HOMEY_URL_LENGTH } from '../validators/homey-url.validator';
 
 export enum HomeyTestConnectionMode {
 	SAVED = 'saved',
@@ -53,12 +53,13 @@ export class HomeyTestCandidateConnectionDto {
 	@ApiProperty({
 		description: 'Complete unsaved Homey local API URL',
 		example: 'http://homey.local:4859',
+		maxLength: MAX_HOMEY_URL_LENGTH,
 	})
 	@Expose()
 	@IsDefined({ message: '[{"field":"url","reason":"Candidate URL is required."}]' })
 	@IsNotEmpty({ message: '[{"field":"url","reason":"Candidate URL is required."}]' })
 	@IsSafeHomeyUrl({
-		message: '[{"field":"url","reason":"URL must use HTTP or HTTPS without embedded credentials."}]',
+		message: `[{"field":"url","reason":"URL must be at most ${MAX_HOMEY_URL_LENGTH} characters and use HTTP or HTTPS without embedded credentials."}]`,
 	})
 	url: string;
 

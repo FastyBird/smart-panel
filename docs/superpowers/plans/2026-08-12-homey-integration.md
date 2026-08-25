@@ -80,9 +80,17 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 
 - [x] Review the exact `homey-api` package version, license text, transitive dependencies, Node 24 support, release activity, and bundle/runtime implications.
 - [ ] Exercise connect/disconnect, timeouts, subscription cleanup, and reconnect behavior in a disposable spike.
-- [ ] Record one decision: `use SDK behind connector` or `use documented HTTP/Socket.IO directly`.
-- [ ] Record replacement considerations so the rest of the plugin does not depend on SDK-specific objects.
-- [ ] Do not add the dependency to production packages until this decision is reviewed.
+- [x] Record one decision: `use SDK behind connector` or `use documented HTTP/Socket.IO directly`.
+- [x] Record replacement considerations so the rest of the plugin does not depend on SDK-specific objects.
+- [x] Do not add the dependency to production packages until this decision is reviewed.
+
+The local MVP uses exact-pinned `homey-api` `3.19.2` behind `HomeySdkClient` and `HomeyLocalTransport`; no SDK object
+crosses into normalized device services. The package license permits use with Homey products and remains packaged with
+the dependency. Its Node 24 engine is now reflected in root, backend, and packaged-server manifests. The legacy Socket.IO
+chain's unpatched moderate `parseuri` advisory is accepted only with the documented HTTP(S), credential, 2,048-character,
+administrator-only endpoint boundary and bounded operations. A direct documented HTTP/Socket.IO adapter is the recorded
+replacement and must pass the existing connector contract. Live restart/network evidence remains open above and in
+Task 6.2.
 
 ### Task 0.4: Build the sanitized fixture corpus
 
@@ -593,8 +601,8 @@ suite completes with 1,032 passing tests and five existing locator-dependent ski
 - [x] OpenAPI/spec generation is clean and generated diffs are intentional.
 - [x] Default CI requires no live Homey/SHS access.
 
-The 2026-08-25 automated local gate passed 36 Homey backend suites with 448 tests, seven credential-free compatibility
-spike suites with 122 tests, the complete 300-file/2,253-test admin suite, and all 23 representative Homey panel
+The 2026-08-25 automated local gate passed 36 Homey backend suites with 449 tests, seven credential-free compatibility
+spike suites with 123 tests, the complete 300-file/2,253-test admin suite, and all 23 representative Homey panel
 pipeline tests. OpenAPI plus device/channel spec regeneration produced no diff. PR #828 also passed the default backend
 unit/E2E, admin, panel, testing-app, web-build, schema, and analysis jobs; its Homey spike job received no live SHS
 credentials, while every live or mutating probe remains protected by its explicit environment gate and allowlist.

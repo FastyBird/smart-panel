@@ -128,6 +128,7 @@
     "discord.js": "^14.16.3",
     "dotenv": "^17.3.1",
     "fastify": "^5.10.0",
+    "homey-api": "3.19.2",
     "influx": "^5.12.0",
     "inquirer": "^13.3.0",
     "lodash.isundefined": "^3.0.1",
@@ -182,7 +183,6 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "globals": "^17.4.0",
-    "homey-api": "3.19.2",
     "jest": "^30.3.0",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.8.1",
@@ -196,7 +196,7 @@
     "typescript-eslint": "^8.57.0"
   },
   "engines": {
-    "node": ">=20",
+    "node": ">=24",
     "npm": ">=10"
   }
 }
