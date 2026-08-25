@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { isIP } from 'node:net';
 import { extname, resolve } from 'node:path';
 
 type JsonRecord = Record<string, unknown>;
@@ -24,15 +25,17 @@ const SNAPSHOT_ROOT = resolve(REPOSITORY_ROOT, 'apps');
 const BUILD_EXTENSIONS = new Set(['.js', '.json', '.map']);
 const SECRET_PROPERTY_PATTERN =
 	/^(?:access[_-]?token|api[_-]?key|authorization|credential|password|refresh[_-]?token|secret)$/i;
+const IP_ADDRESS_CANDIDATE_PATTERN = /[A-Za-z0-9:.%_-]{2,}/g;
 const FORBIDDEN_PATTERNS: readonly ForbiddenPattern[] = [
 	{
-		label: 'private IPv4 address',
-		pattern: /\b(?:10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2})\b/,
+		label: 'an IPv4 address',
+		pattern: /\b(?:\d{1,3}\.){3}\d{1,3}\b/,
 	},
-	{ label: 'email address', pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i },
-	{ label: 'Homey personal access token', pattern: /\b(?:hpat|pat)_[A-Za-z0-9_-]{16,}\b/i },
+	{ label: 'a MAC address', pattern: /\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b/i },
+	{ label: 'an email address', pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i },
+	{ label: 'a Homey personal access token', pattern: /\b(?:hpat|pat)_[A-Za-z0-9_-]{16,}\b/i },
 	{
-		label: 'serialized secret value',
+		label: 'a serialized secret value',
 		pattern:
 			/["'](?:access[_-]?token|api[_-]?key|authorization|credential|password|refresh[_-]?token|secret)["']\s*:\s*["'](?!\[~3~\])[^"]+["']/i,
 	},
@@ -63,13 +66,24 @@ const configuredPrivateValues = (): readonly string[] =>
 		...(process.env.FB_HOMEY_SHS_PRIVATE_TERMS?.split(',') ?? []),
 	]
 		.map((value) => value?.trim())
-		.filter((value): value is string => value !== undefined && value.length >= 4);
+		.filter((value): value is string => value !== undefined && value.length >= 3);
+
+const containsIpv6Address = (text: string): boolean =>
+	[...text.matchAll(IP_ADDRESS_CANDIDATE_PATTERN)].some((match) => {
+		const candidate = match[0].replace(/^\.+|\.+$/g, '').split('%')[0];
+
+		return candidate !== undefined && candidate !== '::' && isIP(candidate) === 6;
+	});
 
 const assertTextSafe = (label: string, text: string): void => {
 	for (const forbidden of FORBIDDEN_PATTERNS) {
 		if (forbidden.pattern.test(text)) {
-			throw new Error(`${label} contains a ${forbidden.label}`);
+			throw new Error(`${label} contains ${forbidden.label}`);
 		}
+	}
+
+	if (containsIpv6Address(text)) {
+		throw new Error(`${label} contains an IPv6 address`);
 	}
 
 	for (const privateValue of configuredPrivateValues()) {
@@ -171,7 +185,28 @@ describe('Homey security artifact gate', () => {
 			'unsafe fixture contains a serialized secret value',
 		);
 		expect(() => assertTextSafe('unsafe fixture', '{"address":"192.168.1.23"}')).toThrow(
-			'unsafe fixture contains a private IPv4 address',
+			'unsafe fixture contains an IPv4 address',
 		);
+		expect(() => assertTextSafe('unsafe fixture', '{"address":"169.254.1.20"}')).toThrow(
+			'unsafe fixture contains an IPv4 address',
+		);
+		expect(() => assertTextSafe('unsafe fixture', '{"address":"fe80::1%en0"}')).toThrow(
+			'unsafe fixture contains an IPv6 address',
+		);
+		const previousPrivateTerms = process.env.FB_HOMEY_SHS_PRIVATE_TERMS;
+
+		process.env.FB_HOMEY_SHS_PRIVATE_TERMS = 'Ada';
+
+		try {
+			expect(() => assertTextSafe('unsafe fixture', '{"name":"Ada"}')).toThrow(
+				'unsafe fixture contains a configured private Homey value',
+			);
+		} finally {
+			if (previousPrivateTerms === undefined) {
+				delete process.env.FB_HOMEY_SHS_PRIVATE_TERMS;
+			} else {
+				process.env.FB_HOMEY_SHS_PRIVATE_TERMS = previousPrivateTerms;
+			}
+		}
 	});
 });
