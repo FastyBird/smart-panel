@@ -53,7 +53,7 @@ const PUBLIC_ARTIFACT_URLS = new Set([
 const PUBLIC_HOMEY_HOSTS = new Set(['homey', 'homey.local']);
 const SERIALIZED_STRING_PROPERTY_PATTERN = /(["'])([^"']+)\1\s*:\s*(["'])([^"']*)\3/g;
 const LOOSE_PROPERTY_PATTERN =
-	/(?=(?:^|[{\s,;])["'`]?([A-Za-z][A-Za-z0-9_.-]*)["'`]?\s*[:=]\s*(?:(["'`])([^"'`\r\n]*)\2|([^,;}\r\n`]+)))/gm;
+	/(?=(?:^|[{\s,;])["'`]?([A-Za-z][A-Za-z0-9_. -]*)["'`]?\s*[:=]\s*(?:(["'`])([^"'`\r\n]*)\2|([^,;}\r\n`]+)))/gm;
 const FORBIDDEN_PATTERNS: readonly ForbiddenPattern[] = [
 	{
 		label: 'an IPv4 address',
@@ -276,6 +276,33 @@ const containsUnsafeCompiledLiteral = (node: ts.Expression): boolean => {
 		return containsUnsafeCompiledLiteral(node.whenTrue) || containsUnsafeCompiledLiteral(node.whenFalse);
 	}
 
+	if (ts.isCallExpression(node)) {
+		return node.arguments.some((argument) => containsUnsafeCompiledLiteral(argument));
+	}
+
+	if (ts.isNewExpression(node)) {
+		return node.arguments?.some((argument) => containsUnsafeCompiledLiteral(argument)) ?? false;
+	}
+
+	if (ts.isTemplateExpression(node)) {
+		return (
+			node.head.text.length > 0 ||
+			node.templateSpans.some((span) => span.literal.text.length > 0 || containsUnsafeCompiledLiteral(span.expression))
+		);
+	}
+
+	if (ts.isTaggedTemplateExpression(node)) {
+		return containsUnsafeCompiledLiteral(node.template);
+	}
+
+	if (ts.isAwaitExpression(node)) {
+		return containsUnsafeCompiledLiteral(node.expression);
+	}
+
+	if (ts.isPrefixUnaryExpression(node)) {
+		return containsUnsafeCompiledLiteral(node.operand);
+	}
+
 	return false;
 };
 
@@ -389,7 +416,7 @@ const containsStructuredAddress = (value: unknown): boolean => {
 
 const containsLooseSecretAssignment = (text: string): boolean =>
 	[...text.matchAll(LOOSE_PROPERTY_PATTERN)].some((match) => {
-		const key = match[1];
+		const key = match[1]?.trim();
 		const rawValue = (match[3] ?? match[4])?.replace(/\s+#.*$/, '').trim();
 
 		if (key === undefined || rawValue === undefined || !isHomeySecretKey(key)) {
@@ -649,6 +676,9 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertFixtureTextSafe('unsafe fixture', "Captured payload: { api_key: 'opaque-secret' }", '.md'),
 		).toThrow('unsafe fixture contains a structured secret value');
+		expect(() => assertFixtureTextSafe('unsafe fixture', 'API key: opaque-secret-value', '.md')).toThrow(
+			'unsafe fixture contains a structured secret value',
+		);
 		expect(() => assertFixtureTextSafe('unsafe fixture', 'endpoint: http://private-homey.local:4859', '.yaml')).toThrow(
 			'unsafe fixture contains a URL',
 		);
@@ -700,6 +730,9 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = process.env.API_KEY ?? 'opaque-secret';", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() => assertTextSafe('unsafe compiled module', "const apiKey = String('opaque-secret');", true)).toThrow(
+			'unsafe compiled module contains a compiled secret value',
+		);
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const endpoint = 'http://private-homey.local:4859';", true),
 		).toThrow('unsafe compiled module contains a private URL');
