@@ -601,8 +601,8 @@ suite completes with 1,032 passing tests and five existing locator-dependent ski
 - [x] OpenAPI/spec generation is clean and generated diffs are intentional.
 - [x] Default CI requires no live Homey/SHS access.
 
-The 2026-08-25 automated local gate passed 36 Homey backend suites with 449 tests, seven credential-free compatibility
-spike suites with 123 tests, the complete 300-file/2,253-test admin suite, and all 23 representative Homey panel
+The 2026-08-25 automated local gate passed 36 Homey backend suites with 449 tests, eight credential-free compatibility
+and performance suites with 124 tests, the complete 300-file/2,253-test admin suite, and all 23 representative Homey panel
 pipeline tests. OpenAPI plus device/channel spec regeneration produced no diff. PR #828 also passed the default backend
 unit/E2E, admin, panel, testing-app, web-build, schema, and analysis jobs; its Homey spike job received no live SHS
 credentials, while every live or mutating probe remains protected by its explicit environment gate and allowlist.
@@ -629,12 +629,21 @@ representative lifecycle failure paths.
 
 ### Task 6.3: Validate performance and security
 
-- [ ] Measure inventory/normalization with up to 250 fixture-generated devices and on supported panel/backend hardware where available.
+- [x] Measure inventory/normalization with up to 250 fixture-generated devices and on supported panel/backend hardware where available.
 - [ ] Measure capability event handoff and command-start latency against design targets.
 - [ ] Confirm no full inventory call occurs per event.
 - [ ] Scan config responses, logs, fixtures, snapshots, build artifacts, and generated OpenAPI examples for secrets/private data.
 - [ ] Verify all external calls have timeouts and reconnect loops have upper bounds.
 - [ ] Verify no route or service can delete/pair/rename an upstream Homey device.
+
+The 2026-08-25 credential-free inventory gate generated 250 unique devices by cycling the nine immutable live raw
+fixtures, then ran the production local transformer plus all built-in device/channel/property mapping resolution. After
+three warm-up passes, 30 measured Node 24 runs on the available development backend host completed at p50 `14.35 ms`,
+p95 `19.13 ms`, and maximum `23.01 ms`, with all 250 devices normalized and no mapping conflicts. The repeatable gate is
+`pnpm --filter ./apps/backend run homey:performance-gate`; its deliberately generous `1,000 ms` p95 CI budget detects
+major regressions and is not a Homey network-latency guarantee. No supported panel/backend appliance was available in
+this workspace, so the same command should be rerun there when hardware is available without reopening the
+credential-free corpus requirement.
 
 ### Task 6.4: Documentation and release checklist
 
