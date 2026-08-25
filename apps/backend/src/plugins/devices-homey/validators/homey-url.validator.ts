@@ -1,7 +1,9 @@
 import { ValidateBy, ValidationOptions } from 'class-validator';
 
+export const MAX_HOMEY_URL_LENGTH = 2048;
+
 export const isSafeHomeyUrl = (value: unknown): value is string => {
-	if (typeof value !== 'string') {
+	if (typeof value !== 'string' || value.length > MAX_HOMEY_URL_LENGTH) {
 		return false;
 	}
 
@@ -20,7 +22,8 @@ export const IsSafeHomeyUrl = (validationOptions?: ValidationOptions): PropertyD
 			name: 'isSafeHomeyUrl',
 			validator: {
 				validate: isSafeHomeyUrl,
-				defaultMessage: () => 'Homey URL must use HTTP or HTTPS without embedded credentials',
+				defaultMessage: () =>
+					`Homey URL must be at most ${MAX_HOMEY_URL_LENGTH} characters and use HTTP or HTTPS without embedded credentials`,
 			},
 		},
 		validationOptions,

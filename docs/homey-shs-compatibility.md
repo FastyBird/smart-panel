@@ -11,8 +11,8 @@ credential-rotation evidence pending
 ## Purpose
 
 This record is the evidence gate for the Homey local connector. It separates facts established from published artifacts
-and offline tests from behavior observed against the subscribed Homey Self-Hosted Server (SHS). A production connector,
-Socket.IO choice, or mDNS implementation must not be finalized from assumptions in this document.
+and offline tests from behavior observed against the subscribed Homey Self-Hosted Server (SHS). Production connector,
+Socket.IO, and mDNS decisions below identify which evidence supports them and which live gaps remain open.
 
 Never add a real endpoint, Homey ID, API key, device ID, zone or device name, private address, or raw response to this
 file. Live results use synthetic aliases and sanitized captures only.
@@ -30,8 +30,8 @@ file. Live results use synthetic aliases and sanitized captures only.
 | API-key revocation and replacement                    | Operator-controlled probe ready                 | Revoke only a dedicated test key during the gated observation window |
 | Disposable-device lifecycle                           | Guarded operator probe ready                    | Use only the separately gated virtual/test device                    |
 | mDNS discovery                                        | Deferred; manual URL only for local MVP         | Revisit only after an attributable stable service is verified        |
-| SDK decision                                          | Live session/cleanup passed; provisional hold   | Complete event, timeout, cleanup-failure, and reconnect comparison   |
-| Sanitized fixture corpus                              | Nine representative live fixtures promoted      | Add event/reconnect fixtures and missing capability families/classes |
+| SDK decision                                          | SDK selected behind connector boundary          | Re-evaluate the pinned package and audit result on every upgrade     |
+| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture     | Add event/reconnect fixtures from the remaining live lifecycle runs  |
 
 ## Installation evidence
 
@@ -122,7 +122,7 @@ Automation is not a substitute for review. Before promoting any capture into com
 
 ## Realtime SDK probe and live mutation gate
 
-The realtime probe exercises the reviewed `homey-api` `3.19.2` package as a development-only compatibility tool. It
+The realtime probe exercises the same reviewed `homey-api` `3.19.2` package used by the production local connector. It
 connects and subscribes to the devices manager, records only allowlisted event labels and ordering, disconnects and
 destroys the client, then verifies that a generated invalid key is rejected by the same pinned SHS endpoint. Raw event
 payloads, errors, endpoints, keys, IDs, and values are never written to the report. Run it from the same interactive
@@ -451,36 +451,48 @@ under the same ignored capture root and restrictive directory/file modes as the 
 
 ## SDK artifact review
 
-Artifact snapshot inspected on 2026-08-12:
+Artifact snapshot inspected on 2026-08-12 and rechecked on 2026-08-25:
 
-| Property             | Finding                                                                                                    |
-| -------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Package              | `homey-api` `3.19.2`, published 2026-07-29; installed as a development-only spike dependency               |
-| Runtime declaration  | Node.js `>=24`; current agent/workspace guidance requires 24, while package manifests still declare `>=20` |
-| License              | Use permitted with Homey products; source proprietary to Athom B.V.; no warranty                           |
-| Installed size       | Approximately 1.19 MB unpacked across 128 files                                                            |
-| Runtime dependencies | `engine.io-client ^3.5.5`, `socket.io-client ^2.5.0`, `node-fetch ^2.6.7`, `form-data ^4.0.0`              |
-| Local entry point    | `HomeyAPI.createLocalAPI({ address, token })`                                                              |
-| HTTP behavior        | Bearer authentication and generated manager paths described above                                          |
-| Realtime behavior    | WebSocket-only Socket.IO; live connect, subscribe, unsubscribe, disconnect, and destroy order verified     |
+| Property             | Finding                                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Package              | `homey-api` `3.19.2`, published 2026-07-29 and pinned exactly as a production dependency                      |
+| Release activity     | Eight releases from 2026-03-25 through 2026-07-29; `3.19.2` remained the latest on 2026-08-25                 |
+| Runtime declaration  | Node.js `>=24`; root, backend, and packaged-server engine declarations are aligned to `>=24`                  |
+| License              | Use permitted with Homey products; source proprietary to Athom B.V.; no warranty; packaged `LICENSE` retained |
+| Installed size       | Approximately 1.19 MB unpacked across 128 files                                                               |
+| Runtime dependencies | Resolved to `engine.io-client 3.5.6`, `socket.io-client 2.5.0`, `node-fetch 2.7.0`, `form-data 4.0.6`         |
+| Local entry point    | `HomeyAPI.createLocalAPI({ address, token })`                                                                 |
+| HTTP behavior        | Bearer authentication and generated manager paths described above                                             |
+| Realtime behavior    | WebSocket-only Socket.IO; live connect, subscribe, unsubscribe, disconnect, and destroy order verified        |
 
-### Provisional dependency decision
+### Final dependency decision
 
-Do not move `homey-api` into production dependencies yet. Use direct, built-in HTTP for read-only inventory and fixture
-capture; the development-only SDK probe exists solely to measure realtime behavior. The final connector decision
-remains open until the live spike compares:
+**Decision:** use the official `homey-api` SDK behind the local connector boundary for the local MVP. Direct built-in
+HTTP remains the independent read-only compatibility/capture path, not the production realtime transport. The decision
+is based on the live SHS session and cleanup evidence, the SDK-native manager/capability contract, and the production
+adapter suites covering bounded creation and operations, subscription cleanup, reconnect coalescing, duplicate-listener
+prevention, late-client disposal, and normalized error handling. The outstanding live restart/network matrix remains a
+release-evidence gap, not an SDK abstraction gap.
 
-- Socket.IO authentication and manager subscription behavior;
-- disconnect and idempotent cleanup;
-- automatic reconnect, restart recovery, and duplicate listeners;
-- request and subscription timeout control;
-- error classification for invalid/revoked keys and missing scopes; and
-- the maintenance and security implications of the SDK's older HTTP and Socket.IO dependency chain; and
-- whether adopting the SDK also requires raising the public Node.js engine declaration from `>=20` to `>=24`.
+The package license permits use with Homey products. Smart Panel loads it only for a user-configured Homey integration,
+does not copy or modify its proprietary source, and preserves the package's own `LICENSE` in installed production
+dependencies. Because backend source imports the SDK at runtime and production installers omit development dependencies,
+`homey-api` is a production dependency. Its exact pin prevents an unreviewed proprietary/runtime update from entering a
+release.
 
-If the SDK passes, it remains behind `HomeyConnector` and no SDK object enters mapping, adoption, synchronization, or
-control services. If it fails, the replacement is direct documented HTTP plus a connector-owned Socket.IO transport.
-Either route must retain plain normalized models and the same connector contract tests.
+The 2026-08-25 `pnpm audit` reported one moderate advisory on this dependency path:
+`homey-api > engine.io-client > parseuri 0.0.6` ([GHSA-6fx8-h7jm-663j](https://github.com/advisories/GHSA-6fx8-h7jm-663j)).
+No patched `parseuri` release exists for that legacy chain. The affected parser receives only an administrator-supplied
+Homey endpoint; Smart Panel restricts it to credential-free HTTP(S), caps it at 2,048 characters before the SDK sees it,
+and applies bounded connect/operation timeouts. This accepted residual risk must be rechecked on every SDK upgrade and
+blocks relaxing the endpoint validation.
+
+Only production `homey-sdk.client.ts` imports `homey-api`; compatibility probes import it independently under `test/`.
+SDK values stay behind `HomeySdkClient`/`HomeyLocalTransport` interfaces, and the connector transforms them into plain
+normalized models before mapping, adoption, synchronization, or control code can consume them. The replacement is a
+connector-owned adapter using the documented HTTP and Socket.IO protocol. It must pass the existing transport,
+connector-contract, normalization, lifecycle, and command suites without changing any downstream service or stored
+device model.
 
 ## Live result matrix
 

@@ -3,6 +3,7 @@ import { validateSync } from 'class-validator';
 
 import { ConfigSecretsService } from '../../../modules/config/services/config-secrets.service';
 import { HomeyUpdatePluginConfigDto } from '../dto/update-config.dto';
+import { MAX_HOMEY_URL_LENGTH, isSafeHomeyUrl } from '../validators/homey-url.validator';
 
 import { HomeyConfigModel } from './config.model';
 
@@ -61,6 +62,19 @@ describe('Homey configuration', () => {
 			url,
 		});
 
+		expect(validateSync(config)).toEqual(expect.arrayContaining([expect.objectContaining({ property: 'url' })]));
+		expect(validateSync(update)).toEqual(expect.arrayContaining([expect.objectContaining({ property: 'url' })]));
+	});
+
+	it('rejects URLs above the bounded SDK transport input length', () => {
+		const url = `http://homey.local/${'a'.repeat(MAX_HOMEY_URL_LENGTH)}`;
+		const config = Object.assign(new HomeyConfigModel(), { url });
+		const update = plainToInstance(HomeyUpdatePluginConfigDto, {
+			type: 'devices-homey-plugin',
+			url,
+		});
+
+		expect(isSafeHomeyUrl(url)).toBe(false);
 		expect(validateSync(config)).toEqual(expect.arrayContaining([expect.objectContaining({ property: 'url' })]));
 		expect(validateSync(update)).toEqual(expect.arrayContaining([expect.objectContaining({ property: 'url' })]));
 	});

@@ -13,7 +13,7 @@ import {
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
 	MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
 } from '../devices-homey.constants';
-import { IsSafeHomeyUrl } from '../validators/homey-url.validator';
+import { IsSafeHomeyUrl, MAX_HOMEY_URL_LENGTH } from '../validators/homey-url.validator';
 
 @ApiSchema({ name: 'DevicesHomeyPluginDataConfig' })
 export class HomeyConfigModel extends PluginConfigModel {
@@ -28,6 +28,7 @@ export class HomeyConfigModel extends PluginConfigModel {
 	@ApiPropertyOptional({
 		description: 'Homey local API base URL',
 		example: 'http://homey.local:4859',
+		maxLength: MAX_HOMEY_URL_LENGTH,
 		nullable: true,
 	})
 	@Expose()

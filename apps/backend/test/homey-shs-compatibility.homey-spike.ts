@@ -2,7 +2,7 @@ import { lstatSync, readFileSync, readlinkSync } from 'node:fs';
 import { mkdir, mkdtemp, readlink, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 import {
 	assertDistinctHomeyEnumCapabilityOptionIds,
@@ -44,6 +44,37 @@ const jsonResponse = (body: unknown, status = 200, headers: Record<string, strin
 	new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...headers } });
 
 describe('Homey SHS compatibility probe', () => {
+	it('keeps the reviewed Homey SDK available to production installs with its license', () => {
+		const rootPackage = JSON.parse(readFileSync(resolve(__dirname, '../../../package.json'), 'utf8')) as {
+			engines: { node: string };
+		};
+		const backendPackage = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf8')) as {
+			dependencies: Record<string, string>;
+			devDependencies: Record<string, string>;
+			engines: { node: string };
+		};
+		const packagedServer = JSON.parse(readFileSync(resolve(__dirname, '../../../build/package.json'), 'utf8')) as {
+			engines: { node: string };
+		};
+		const homeyPackagePath = require.resolve('homey-api/package.json');
+		const homeyPackage = JSON.parse(readFileSync(homeyPackagePath, 'utf8')) as {
+			engines: { node: string };
+			license: string;
+			version: string;
+		};
+		const license = readFileSync(resolve(dirname(homeyPackagePath), 'LICENSE'), 'utf8');
+
+		expect(backendPackage.dependencies['homey-api']).toBe('3.19.2');
+		expect(backendPackage.devDependencies).not.toHaveProperty('homey-api');
+		expect([rootPackage.engines.node, backendPackage.engines.node, packagedServer.engines.node]).toEqual([
+			'>=24',
+			'>=24',
+			'>=24',
+		]);
+		expect(homeyPackage).toMatchObject({ engines: { node: '>=24' }, license: 'SEE LICENSE', version: '3.19.2' });
+		expect(license).toContain('Package may be used freely with Homey products');
+	});
+
 	it('keeps the Homey Socket.IO 2 client on its callback-based parser generation', () => {
 		const requireFromHomeyApi = createRequire(require.resolve('homey-api/package.json'));
 		const socketIoClientPackagePath = requireFromHomeyApi.resolve('socket.io-client/package.json');
