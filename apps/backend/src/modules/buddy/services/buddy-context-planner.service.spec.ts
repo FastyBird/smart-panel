@@ -4252,6 +4252,8 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows open or are unlocked?',
 		'Are any windows open or will remain closed?',
 		'Are any windows open or can be closed?',
+		'Are any windows open or can open fully?',
+		'Are any windows open or will fail soon?',
 		'Are any windows open and unlocked or closed?',
 		'Are any windows open and unlocked or closed yet locked?',
 		'Are any windows almost open or fully closed?',

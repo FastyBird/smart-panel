@@ -23,12 +23,14 @@ import {
 	ACTION_RANGE_PATTERN,
 	ACTION_REQUEST_PATTERN,
 	ACTION_SIGNAL_PATTERN_SOURCE,
+	AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE,
 	AGGREGATE_STATE_COORDINATION_PATTERN,
 	AGGREGATE_SUFFIX_COMMA_PATTERN,
 	CLOCK_TIME_HISTORY_PATTERN,
 	COMPOUND_CONNECTOR_PATTERN_SOURCE,
 	CONTEXTUAL_SCOPE_PATTERN,
 	CURRENT_STATE_PATTERN,
+	DEVICE_ACTION_TARGET_PATTERN,
 	DOMAIN_ORDER,
 	ENERGY_ELLIPSIS_READ_PATTERN,
 	ENERGY_ENTITY_NAME_PATTERN,
@@ -47,6 +49,7 @@ import {
 	LEADING_UNSUPPORTED_ACTION_TEMPORAL_PATTERN,
 	LEADING_WEEKDAY_HISTORY_PATTERN,
 	NONNUMERIC_ACTION_DURATION_PATTERN,
+	PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN,
 	POSSESSIVE_HOME_ENTITY_PATTERN,
 	POWER_EVENT_STATE_READ_PATTERN,
 	POWER_MEASUREMENT_READ_PATTERN,
@@ -67,6 +70,35 @@ import {
 	WEATHER_PATTERN,
 	WRITE_PATTERN,
 } from './buddy-context-planner-grammar';
+
+const INDEPENDENT_ALTERNATIVE_AUXILIARY_PATTERN = new RegExp(
+	String.raw`^\s*${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+`,
+	'u',
+);
+const INDEPENDENT_ALTERNATIVE_DETERMINED_SUBJECT_PATTERN =
+	/^(?:a|an|her|his|its|my|our|the|their|this|these|those|your)\s+[\p{Letter}\p{Number}'’-]+\b/u;
+const INDEPENDENT_ALTERNATIVE_PRONOUN_SUBJECT_PATTERN = /^(?:he|i|it|she|they|we|you)\b/u;
+const INDEPENDENT_ALTERNATIVE_BARE_HOME_SUBJECT_PATTERN = new RegExp(
+	String.raw`^(?:${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${DEVICE_ACTION_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source})\b`,
+	'u',
+);
+
+function hasIndependentAlternativeSubject(
+	alternative: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+): boolean {
+	const auxiliaryMatch = INDEPENDENT_ALTERNATIVE_AUXILIARY_PATTERN.exec(alternative);
+	if (!auxiliaryMatch) return false;
+
+	const subject = alternative.slice(auxiliaryMatch[0].length);
+
+	return (
+		INDEPENDENT_ALTERNATIVE_DETERMINED_SUBJECT_PATTERN.test(subject) ||
+		INDEPENDENT_ALTERNATIVE_PRONOUN_SUBJECT_PATTERN.test(subject) ||
+		INDEPENDENT_ALTERNATIVE_BARE_HOME_SUBJECT_PATTERN.test(subject) ||
+		findExplicitSpaceOccurrences(subject, explicitSpaces).some((occurrence) => occurrence.range.start === 0)
+	);
+}
 
 export function getActionMessage(message: string, trailingActionMatch: RegExpExecArray | null): string {
 	if (trailingActionMatch) return message.slice(trailingActionMatch.index);
@@ -444,7 +476,7 @@ export function splitPlannerClauses(
 		...findPatternRanges(message, /\d+\.\d+/u),
 	];
 	const separatorPattern = new RegExp(
-		String.raw`(?:,\s*(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})(?:\s+then)?\b|[?!,.;]|\band\s+then\b|\bor\b(?=\s+${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|her|his|its|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we|you)\b|(?!(?:appear|appears|be|been|being|become|becomes|keep|keeps|look|looks|not|remain|remains|seem|seems|stay|stays|still)\b)[\p{Letter}\p{Number}'’-]+\b(?=\s+[\p{Letter}\p{Number}'’-]+)))|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|\ba\b(?=\s*(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b))`,
+		String.raw`(?:,\s*(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})(?:\s+then)?\b|[?!,.;]|\band\s+then\b|\bor\b(?=\s+${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+)|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|\ba\b(?=\s*(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b))`,
 		'gu',
 	);
 	const clauses: string[] = [];
@@ -455,6 +487,9 @@ export function splitPlannerClauses(
 		const separatorEnd = separatorStart + separator[0].length;
 
 		if (protectedRanges.some((range) => range.start <= separatorStart && range.end >= separatorEnd)) continue;
+		if (separator[0] === 'or' && !hasIndependentAlternativeSubject(message.slice(separatorEnd), protectedSpaces)) {
+			continue;
+		}
 
 		clauses.push(message.slice(clauseStart, separatorStart));
 		clauseStart = separatorEnd;
