@@ -80,8 +80,11 @@ const INDEPENDENT_ALTERNATIVE_AUXILIARY_PATTERN = new RegExp(
 const INDEPENDENT_ALTERNATIVE_DETERMINED_SUBJECT_PATTERN =
 	/^(?:a|an|her|his|its|my|our|the|their|this|these|those|your)\s+[\p{Letter}\p{Number}'’-]+\b/u;
 const INDEPENDENT_ALTERNATIVE_PRONOUN_SUBJECT_PATTERN = /^(?:he|i|it|she|there|they|we|you)\b/u;
-const INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN_SOURCE = String.raw`(?:how\s+many|what|which)\b`;
-const INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN = /^(?:how\s+many|what|which)\b/u;
+const INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN_SOURCE = String.raw`(?:how\s+many|what|which)\s+[\p{Letter}\p{Number}'’-]+\b`;
+const INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN = new RegExp(
+	String.raw`^${INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN_SOURCE}`,
+	'u',
+);
 const INDEPENDENT_ALTERNATIVE_BARE_HOME_STATE_SUBJECT_PATTERN = new RegExp(
 	String.raw`^${HOME_STATE_PATTERN.source}`,
 	'u',
@@ -99,7 +102,7 @@ const INDEPENDENT_ALTERNATIVE_SUBJECTLESS_PREDICATE_PATTERN = new RegExp(
 	'u',
 );
 const INDEPENDENT_ALTERNATIVE_SUBJECTLESS_MODAL_PATTERN =
-	/^(?:can(?:not|'t)?|could(?:n't)?|may|might(?:n't)?|must(?:n't)?|shall|shan't|should(?:n't)?|will|won't|would(?:n't)?)$/u;
+	/^(?:can(?:not|'t)?|could(?:n't)?|may|might(?:n't)?|must(?:n't)?|ought(?:n't)?|shall|shan't|should(?:n't)?|will|won't|would(?:n't)?)$/u;
 
 function hasIndependentAlternativeSubject(
 	alternative: string,

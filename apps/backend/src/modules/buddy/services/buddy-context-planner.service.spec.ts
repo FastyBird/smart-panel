@@ -254,6 +254,7 @@ describe('BuddyContextPlannerService', () => {
 		['Are any windows open or is heating on?', [], 'space-office'],
 		['Are any windows open or is temperature low?', [], 'space-office'],
 		['Are any windows open or is there a door unlocked?', [], 'space-office'],
+		['Are any windows open or ought the heater be off?', [], 'space-office'],
 		['Are any windows open or shall the heater stay off?', [], 'space-office'],
 		['Are any windows open or is Kitchen heater off?', [{ id: 'space-kitchen', name: 'Kitchen' }], 'space-kitchen'],
 	])('retains aggregate scope before an independent alternative read: %s', (message, knownSpaces, readSpaceId) => {
@@ -299,6 +300,19 @@ describe('BuddyContextPlannerService', () => {
 	it('retains whole-home scope across an aggregate interrogative alternative', () => {
 		const plan = service.plan({
 			message: 'Are any windows open or how many lights are on?',
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.queries).toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		expect(plan.queries).not.toContainEqual({ kind: 'search-home', spaceId: 'space-office' });
+		expect(plan.queries).not.toContainEqual({ kind: 'current-state', spaceId: 'space-office' });
+	});
+
+	it('does not split an incomplete interrogative alternative', () => {
+		const plan = service.plan({
+			message: 'Are any windows open or what?',
 			conversationSpaceId: 'space-office',
 			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 		});
