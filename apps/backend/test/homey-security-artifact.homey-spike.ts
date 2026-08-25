@@ -3,6 +3,7 @@ import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { isIP } from 'node:net';
 import { extname, resolve } from 'node:path';
 import ts from 'typescript';
+import { parse as parseYaml } from 'yaml';
 
 import { isHomeySecretKey } from './support/homey-shs-probe';
 
@@ -29,8 +30,9 @@ const SNAPSHOT_ROOT = resolve(REPOSITORY_ROOT, 'apps');
 const BUILD_EXTENSIONS = new Set(['.js', '.json', '.map']);
 const FIXTURE_EXTENSIONS = new Set(['.json', '.md', '.txt', '.yaml', '.yml']);
 const IP_ADDRESS_CANDIDATE_PATTERN = /[A-Za-z0-9:.%_-]{2,}/g;
-const HOMEY_TOKEN_PATTERN = /\b(?:homey|hpat|pat)[_-][A-Za-z0-9_-]{16,}\b/gi;
+const HOMEY_TOKEN_PATTERN = /(?:homey|hpat|pat)[_-][A-Za-z0-9_-]{16,}/gi;
 const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
+	'homey_capability_mapping_channel',
 	'homey-config-validator',
 	'homey-device-inventory',
 	'homey-failure-log-limiter',
@@ -248,6 +250,8 @@ const containsCompiledSecret = (text: string): boolean => {
 			const name = compiledPropertyName(node.name);
 
 			found = name !== undefined && isHomeySecretKey(name) && containsUnsafeCompiledLiteral(node.initializer);
+		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
+			found = isHomeySecretKey(node.name.text) && containsUnsafeCompiledLiteral(node.initializer);
 		} else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
 			const name = compiledAssignedPropertyName(node.left);
 
@@ -346,8 +350,14 @@ const assertFixtureTextSafe = (label: string, text: string, extension: string): 
 		throw new Error(`${label} contains a URL`);
 	}
 
+	const structuredValue =
+		extension === '.json'
+			? (JSON.parse(text) as unknown)
+			: extension === '.yaml' || extension === '.yml'
+				? (parseYaml(text) as unknown)
+				: undefined;
 	const containsSecret =
-		extension === '.json' ? containsStructuredSecret(JSON.parse(text) as unknown) : containsLooseSecretAssignment(text);
+		structuredValue === undefined ? containsLooseSecretAssignment(text) : containsStructuredSecret(structuredValue);
 
 	if (containsSecret) {
 		throw new Error(`${label} contains a structured secret value`);
@@ -471,6 +481,9 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertFixtureTextSafe('unsafe fixture', 'api_key: opaque-secret-value', '.yaml')).toThrow(
 			'unsafe fixture contains a structured secret value',
 		);
+		expect(() => assertFixtureTextSafe('unsafe fixture', 'config: { api_key: opaque-secret-value }', '.yaml')).toThrow(
+			'unsafe fixture contains a structured secret value',
+		);
 		expect(() => assertFixtureTextSafe('unsafe fixture', 'endpoint: http://private-homey.local:4859', '.yaml')).toThrow(
 			'unsafe fixture contains a URL',
 		);
@@ -481,6 +494,9 @@ describe('Homey security artifact gate', () => {
 			'unsafe fixture contains a Homey personal access token',
 		);
 		expect(() => assertTextSafe('unsafe fixture', '{"value":"homey-abcdefghijklmnop"}')).toThrow(
+			'unsafe fixture contains a Homey personal access token',
+		);
+		expect(() => assertTextSafe('unsafe fixture', '{"value":"prefix_homey_abcdefghijklmnop"}')).toThrow(
 			'unsafe fixture contains a Homey personal access token',
 		);
 		expect(() =>
@@ -499,6 +515,9 @@ describe('Homey security artifact gate', () => {
 			'unsafe compiled module contains a compiled secret value',
 		);
 		expect(() => assertTextSafe('unsafe compiled module', "config['accessToken'] = 'opaque-secret';", true)).toThrow(
+			'unsafe compiled module contains a compiled secret value',
+		);
+		expect(() => assertTextSafe('unsafe compiled module', "const api_key = 'opaque-secret';", true)).toThrow(
 			'unsafe compiled module contains a compiled secret value',
 		);
 		expect(() => assertTextSafe('unsafe fixture', '{"address":"192.168.1.23"}')).toThrow(
