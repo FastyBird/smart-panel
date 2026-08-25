@@ -250,6 +250,8 @@ export const RELATIVE_REFERENCE_PRONOUN_PATTERN = new RegExp(
 );
 export const TEMPORAL_THIS_REFERENCE_PATTERN =
 	/\bthis\s+(?:afternoon|day|evening|hour|minute|month|morning|night|week|weekend|year)\b/gu;
+export const OUTCOME_PREDICATE_PATTERN_SOURCE = String.raw`(?:appears?|breaks?|changes?|fails?|happens?|improves?|looks?|remains?|seems?|stays?|wakes?|works?)`;
+export const OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE = String.raw`(?:again|altogether|now|once|soon|still|suddenly|today|tonight|[\p{Letter}'’-]+ly)`;
 export const LOCALIZED_REFERENCE_PRONOUN_PATTERN =
 	/\b(?:aktivuj|nastav|odemkni|otevri|sniz|spust|vypni|zamkni|zapni|zavri|zvys)\s+(?:ho|to)\b/u;
 export const LOCALIZED_STATE_REFERENCE_PRONOUN_PATTERN = new RegExp(
@@ -330,7 +332,8 @@ const AGGREGATE_READ_EMPHATIC_SUFFIX_PATTERN_SOURCE = String.raw`(?:at\s+all|wha
 const AGGREGATE_READ_TRAILING_ADJUNCT_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_READ_EMPHATIC_SUFFIX_PATTERN_SOURCE}|${ACTION_COURTESY_SUFFIX_PATTERN_SOURCE}|at\s+(?:present|the\s+moment)|currently|now|please|right\s+now|today|tonight)`;
 const AGGREGATE_READ_LOCAL_QUALIFIER_PATTERN_SOURCE = String.raw`(?:${CONTEXTUAL_SCOPE_PATTERN.source}|in\s+here|near\s+me|nearby)`;
 const AGGREGATE_READ_COORDINATED_MODAL_PATTERN_SOURCE = String.raw`(?:can(?:not|'t)?|could(?:n't)?|may|might(?:n't)?|must(?:n't)?|should(?:n't)?|will|won't|would(?:n't)?)`;
-const AGGREGATE_READ_COORDINATED_MODAL_PREDICATE_PATTERN_SOURCE = String.raw`${AGGREGATE_READ_COORDINATED_MODAL_PATTERN_SOURCE}\s+(?:(?:be|${STATE_LINKING_VERB_PATTERN_SOURCE})\s+${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}|(?:close|fail|open|work)(?:\s+(?:again|soon|[\p{Letter}'’-]+ly))?)`;
+const AGGREGATE_READ_MODAL_PREDICATE_PATTERN_SOURCE = String.raw`(?:${OUTCOME_PREDICATE_PATTERN_SOURCE}|(?!(?:here|nearby)\b)[\p{Letter}'’-]+)`;
+const AGGREGATE_READ_COORDINATED_MODAL_PREDICATE_PATTERN_SOURCE = String.raw`${AGGREGATE_READ_COORDINATED_MODAL_PATTERN_SOURCE}\s+(?:(?:${OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})\s+){0,2}(?:(?:be|${STATE_LINKING_VERB_PATTERN_SOURCE})\s+${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}|${AGGREGATE_READ_MODAL_PREDICATE_PATTERN_SOURCE})(?:(?:\s+${OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})){0,2}`;
 const AGGREGATE_READ_COORDINATED_STATE_PATTERN_SOURCE = String.raw`(?:and|but|or|yet)\s+(?:${AGGREGATE_READ_COORDINATED_MODAL_PREDICATE_PATTERN_SOURCE}|(?:${STATE_LINKING_VERB_PATTERN_SOURCE}\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE})`;
 const AGGREGATE_READ_RELATIVE_TAIL_PATTERN_SOURCE = String.raw`(?:that|which|who|whose)\s+(?:(?!(?:${AGGREGATE_READ_LOCAL_QUALIFIER_PATTERN_SOURCE}))[\p{Letter}\p{Number}'’-]+\s*){1,8}`;
 export const AGGREGATE_STATE_COORDINATION_PATTERN = new RegExp(
