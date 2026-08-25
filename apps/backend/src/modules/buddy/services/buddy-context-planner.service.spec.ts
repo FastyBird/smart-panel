@@ -7156,6 +7156,7 @@ describe('BuddyContextPlannerService', () => {
 		'If we turn the Bedroom lights up the alarm keeps working?',
 		'If we turn off the Bedroom lights then the camera stops recording?',
 		'If we turn off the Bedroom lights then John stops sleeping?',
+		'If the window is open turn on the Bedroom lights then the baby fails?',
 		'If we turn off the Bedroom lights John keeps running?',
 		'If we turn off the Bedroom lights John keeps dancing?',
 		'If we turn off the Bedroom lights guests keep singing?',
