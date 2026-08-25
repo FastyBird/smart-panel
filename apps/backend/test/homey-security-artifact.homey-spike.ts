@@ -51,7 +51,7 @@ const LOOSE_PROPERTY_PATTERN = /^\s*(?:[-*]\s+)?["'`]?([A-Za-z][A-Za-z0-9_.-]*)[
 const FORBIDDEN_PATTERNS: readonly ForbiddenPattern[] = [
 	{
 		label: 'an IPv4 address',
-		pattern: /\b(?:\d{1,3}\.){3}\d{1,3}\b/,
+		pattern: /(?:\d{1,3}\.){3}\d{1,3}/,
 	},
 	{
 		label: 'a MAC address',
@@ -199,6 +199,10 @@ const compiledPropertyName = (name: ts.PropertyName): string | undefined => {
 };
 
 const compiledAssignedPropertyName = (expression: ts.Expression): string | undefined => {
+	if (ts.isIdentifier(expression)) {
+		return expression.text;
+	}
+
 	if (ts.isPropertyAccessExpression(expression)) {
 		return expression.name.text;
 	}
@@ -583,6 +587,9 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertTextSafe('unsafe compiled module', "const api_key = 'opaque-secret';", true)).toThrow(
 			'unsafe compiled module contains a compiled secret value',
 		);
+		expect(() => assertTextSafe('unsafe compiled module', "api_key = 'opaque-secret';", true)).toThrow(
+			'unsafe compiled module contains a compiled secret value',
+		);
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const credentials = { value: 'opaque-secret' };", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
@@ -590,6 +597,9 @@ describe('Homey security artifact gate', () => {
 			'unsafe fixture contains an IPv4 address',
 		);
 		expect(() => assertTextSafe('unsafe fixture', '{"address":"169.254.1.20"}')).toThrow(
+			'unsafe fixture contains an IPv4 address',
+		);
+		expect(() => assertTextSafe('unsafe fixture', '{"address":"prefix192.168.1.23"}')).toThrow(
 			'unsafe fixture contains an IPv4 address',
 		);
 		expect(() => assertTextSafe('unsafe fixture', '{"address":"fe80::1%en0"}')).toThrow(
