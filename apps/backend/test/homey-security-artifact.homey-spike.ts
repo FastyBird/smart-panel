@@ -255,6 +255,9 @@ const containsUnsafeCompiledLiteral = (node: ts.Expression): boolean => {
 const isCompiledSecretName = (name: string | undefined): name is string =>
 	name !== undefined && !PUBLIC_COMPILED_SECRET_NAMES.has(name) && isHomeySecretKey(name);
 
+const isAssignmentOperatorKind = (kind: ts.SyntaxKind): boolean =>
+	kind >= ts.SyntaxKind.FirstAssignment && kind <= ts.SyntaxKind.LastAssignment;
+
 const containsCompiledSecret = (text: string): boolean => {
 	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 	let found = false;
@@ -277,7 +280,7 @@ const containsCompiledSecret = (text: string): boolean => {
 			found = isCompiledSecretName(node.name.text) && containsUnsafeCompiledLiteral(node.initializer);
 		} else if (ts.isBindingElement(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found = isCompiledSecretName(node.name.text) && containsUnsafeCompiledLiteral(node.initializer);
-		} else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
 			const name = compiledAssignedPropertyName(node.left);
 
 			found = isCompiledSecretName(name) && containsUnsafeCompiledLiteral(node.right);
@@ -598,6 +601,9 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe('unsafe compiled module', "const config = { api_key: 'opaque-secret' };", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() => assertTextSafe('unsafe compiled module', "config.api_key = 'opaque-secret';", true)).toThrow(
+			'unsafe compiled module contains a compiled secret value',
+		);
+		expect(() => assertTextSafe('unsafe compiled module', "config.apiKey ??= 'opaque-secret';", true)).toThrow(
 			'unsafe compiled module contains a compiled secret value',
 		);
 		expect(() => assertTextSafe('unsafe compiled module', "config['accessToken'] = 'opaque-secret';", true)).toThrow(
