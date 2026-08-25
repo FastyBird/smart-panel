@@ -532,17 +532,18 @@ the form is reopened; the complete 2,252-test admin suite and production build p
 - [x] Start/load Homey inventory and expose normalized wizard rows.
 - [x] Map name, model/class, zone, capability count, availability, and support/adoption status into built-in/extra cells.
 - [x] Provide stable device ID keys, suggested name/category, and category options.
-- [ ] Expose fetched read-only mapping summaries on confirmation rows.
+- [x] Expose fetched read-only mapping summaries on confirmation rows.
 - [x] Submit batch adoption and translate per-device results.
 - [x] Clean up polling/subscriptions on wizard disposal.
 - [x] Handle offline, empty, loading, reconnect, unsupported, already adopted, and partial-success states.
 - [x] Add adapter/store/component tests using generated API mocks.
 
 The shared wizard adapter loads inventory before rendering selection rows, preserves full Homey identifiers, derives
-category choices, and submits bounded batch adoption with per-device outcomes. It fetches mapping previews for
-readiness and suggested category, but does not yet expose the channel/property summary on confirmation rows. Inventory,
-preview, refresh, and adoption requests remain isolated from stale or disposed sessions; partial transport and provider
-results remain visible instead of discarding successful work.
+category choices, and submits bounded batch adoption with per-device outcomes. Its confirmation rows expose the fetched
+preview as a read-only channel/property count, using warning styling and a warning-count tooltip when mapping review is
+needed. Inventory, preview, refresh, and adoption requests remain isolated from stale or disposed sessions; partial
+transport and provider results remain visible instead of discarding successful work. The complete 2,253-test admin
+suite, type-check, lint, and production build pass.
 
 ### Task 5.4: Generate OpenAPI clients and verify the admin app
 

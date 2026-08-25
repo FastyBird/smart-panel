@@ -10,7 +10,18 @@ type MockPreview = {
 	suggestedCategory: DevicesModuleDeviceCategory;
 	validCategories: DevicesModuleDeviceCategory[];
 	readyToAdopt: boolean;
+	channels: { properties: unknown[] }[];
+	warnings: unknown[];
 };
+
+const mappingPreview = (overrides: Partial<MockPreview> = {}): MockPreview => ({
+	suggestedCategory: DevicesModuleDeviceCategory.lighting,
+	validCategories: [DevicesModuleDeviceCategory.lighting],
+	readyToAdopt: true,
+	channels: [],
+	warnings: [],
+	...overrides,
+});
 
 const flashMessage = { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() };
 const inventory = {
@@ -73,11 +84,9 @@ describe('Homey useDevicesWizard', () => {
 		inventory.findById.mockImplementation((id) => (id === 'homey-light' ? device() : null));
 		inventory.fetch.mockResolvedValue([]);
 		inventory.preview.mockImplementation(async (id) => {
-			const preview = {
-				suggestedCategory: DevicesModuleDeviceCategory.lighting,
+			const preview = mappingPreview({
 				validCategories: [DevicesModuleDeviceCategory.lighting, DevicesModuleDeviceCategory.generic],
-				readyToAdopt: true,
-			};
+			});
 			inventory.previews[id] = preview;
 
 			return preview;
@@ -92,11 +101,9 @@ describe('Homey useDevicesWizard', () => {
 		inventory.findById.mockReturnValue(adopted);
 		devicesStore.findById.mockReturnValue({ name: 'Custom desk lamp', category: DevicesModuleDeviceCategory.generic });
 		inventory.previews = {
-			'homey-light': {
-				suggestedCategory: DevicesModuleDeviceCategory.lighting,
+			'homey-light': mappingPreview({
 				validCategories: [DevicesModuleDeviceCategory.lighting, DevicesModuleDeviceCategory.generic],
-				readyToAdopt: true,
-			},
+			}),
 		};
 		inventory.fetch.mockResolvedValue([adopted]);
 		inventory.adoptBatch.mockResolvedValue([{ deviceId: 'homey-light', status: 'skipped' }]);
@@ -130,19 +137,11 @@ describe('Homey useDevicesWizard', () => {
 		inventory.findById.mockReturnValue(adopted);
 		devicesStore.findById.mockReturnValue({ name: 'Custom desk lamp', category: DevicesModuleDeviceCategory.generic });
 		inventory.previews = {
-			'homey-light': {
-				suggestedCategory: DevicesModuleDeviceCategory.lighting,
-				validCategories: [DevicesModuleDeviceCategory.lighting],
-				readyToAdopt: true,
-			},
+			'homey-light': mappingPreview(),
 		};
 		inventory.fetch.mockResolvedValue([adopted]);
 		inventory.preview.mockImplementation(async (id) => {
-			const preview = {
-				suggestedCategory: DevicesModuleDeviceCategory.lighting,
-				validCategories: [DevicesModuleDeviceCategory.lighting],
-				readyToAdopt: true,
-			};
+			const preview = mappingPreview();
 			inventory.previews[id] = preview;
 
 			return preview;
@@ -261,11 +260,9 @@ describe('Homey useDevicesWizard', () => {
 		const supported = device();
 		inventory.fetch.mockResolvedValue([supported]);
 		inventory.preview.mockImplementation(async (id) => {
-			const preview = {
-				suggestedCategory: DevicesModuleDeviceCategory.lighting,
-				validCategories: [DevicesModuleDeviceCategory.lighting],
+			const preview = mappingPreview({
 				readyToAdopt: false,
-			};
+			});
 			inventory.previews[id] = preview;
 
 			return preview;
@@ -283,6 +280,43 @@ describe('Homey useDevicesWizard', () => {
 		);
 	});
 
+	it('exposes fetched mapping summaries only on confirmation rows', async () => {
+		const cleanDevice = device({ id: 'homey-light', name: 'Desk light' });
+		const warningDevice = device({ id: 'homey-switch', name: 'Hall switch' });
+		inventory.findAll.mockReturnValue([cleanDevice, warningDevice]);
+		inventory.fetch.mockResolvedValue([cleanDevice, warningDevice]);
+		inventory.preview.mockImplementation(async (id) => {
+			const preview = mappingPreview({
+				channels: [{ properties: [{}, {}] }, { properties: [{}] }],
+				warnings: id === 'homey-switch' ? [{}] : [],
+			});
+			inventory.previews[id] = preview;
+
+			return preview;
+		});
+		const adapter = useDevicesWizard();
+
+		await adapter.start();
+
+		expect(adapter.columns).toContainEqual({
+			key: 'mapping',
+			label: 'devicesHomeyPlugin.wizard.columns.mapping',
+			steps: ['confirm'],
+			minWidth: 220,
+		});
+		expect(adapter.rows.value.find((row) => row.key === 'homey-light')?.cells?.mapping).toEqual({
+			render: 'tag',
+			value: 'devicesHomeyPlugin.wizard.values.mappingSummary:{"channels":2,"properties":3}',
+			variant: 'success',
+		});
+		expect(adapter.rows.value.find((row) => row.key === 'homey-switch')?.cells?.mapping).toEqual({
+			render: 'tag',
+			value: 'devicesHomeyPlugin.wizard.values.mappingSummary:{"channels":2,"properties":3}',
+			variant: 'warning',
+			tooltip: 'devicesHomeyPlugin.wizard.values.mappingWarnings:{"count":1}',
+		});
+	});
+
 	it('isolates a mapping-preview failure to the affected device', async () => {
 		const readyDevice = device({ id: 'homey-light' });
 		const failedDevice = device({ id: 'homey-switch', name: 'Hall switch' });
@@ -290,11 +324,7 @@ describe('Homey useDevicesWizard', () => {
 		inventory.fetch.mockResolvedValue([readyDevice, failedDevice]);
 		inventory.preview.mockImplementation(async (id) => {
 			if (id === 'homey-switch') throw new Error('Device disappeared');
-			const preview = {
-				suggestedCategory: DevicesModuleDeviceCategory.lighting,
-				validCategories: [DevicesModuleDeviceCategory.lighting],
-				readyToAdopt: true,
-			};
+			const preview = mappingPreview();
 			inventory.previews[id] = preview;
 
 			return preview;
@@ -322,11 +352,7 @@ describe('Homey useDevicesWizard', () => {
 			maximumActivePreviews = Math.max(maximumActivePreviews, activePreviews);
 			await Promise.resolve();
 			activePreviews -= 1;
-			const preview = {
-				suggestedCategory: DevicesModuleDeviceCategory.lighting,
-				validCategories: [DevicesModuleDeviceCategory.lighting],
-				readyToAdopt: true,
-			};
+			const preview = mappingPreview();
 			inventory.previews[id] = preview;
 
 			return preview;
@@ -372,11 +398,7 @@ describe('Homey useDevicesWizard', () => {
 			await Promise.resolve();
 			activePreviews -= 1;
 
-			return {
-				suggestedCategory: DevicesModuleDeviceCategory.lighting,
-				validCategories: [DevicesModuleDeviceCategory.lighting],
-				readyToAdopt: true,
-			};
+			return mappingPreview();
 		});
 		inventory.adoptBatch.mockImplementation(async (requests: IHomeyAdoptSelection[]) =>
 			requests.map(({ deviceId }) => ({ deviceId, status: DevicesHomeyPluginAdoptionStatus.updated }))
@@ -433,11 +455,7 @@ describe('Homey useDevicesWizard', () => {
 		const adopted = device({ adopted: true, adoptedDeviceId: 'panel-light' });
 		inventory.findById.mockReturnValue(adopted);
 		devicesStore.findById.mockReturnValue({ name: 'Custom desk lamp', category: DevicesModuleDeviceCategory.generic });
-		inventory.preview.mockResolvedValue({
-			suggestedCategory: DevicesModuleDeviceCategory.lighting,
-			validCategories: [DevicesModuleDeviceCategory.lighting],
-			readyToAdopt: true,
-		});
+		inventory.preview.mockResolvedValue(mappingPreview());
 		const adapter = useDevicesWizard();
 
 		const results = await adapter.adopt([{ key: 'homey-light', name: 'Custom desk lamp', category: DevicesModuleDeviceCategory.generic }]);
@@ -547,11 +565,7 @@ describe('Homey useDevicesWizard', () => {
 		const operation = adapter.adopt([{ key: 'homey-light', name: 'Custom desk lamp', category: DevicesModuleDeviceCategory.lighting }]);
 		expect(adapter.busy.value).toBe(true);
 
-		resolvePreview({
-			suggestedCategory: DevicesModuleDeviceCategory.lighting,
-			validCategories: [DevicesModuleDeviceCategory.lighting],
-			readyToAdopt: true,
-		});
+		resolvePreview(mappingPreview());
 		await operation;
 
 		expect(adapter.busy.value).toBe(false);

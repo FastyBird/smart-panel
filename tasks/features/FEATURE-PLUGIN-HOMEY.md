@@ -136,7 +136,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [x] The form distinguishes testing the fully saved configuration from testing a complete candidate URL/new-key pair and never submits an endpoint override without a new key.
 - [x] A `deviceWizardAdapter` integrates Homey with the shared three-step adoption wizard.
 - [x] Discovery rows show name, identifier, class/model, zone, availability, capability count, and adoption/support status.
-- [ ] Confirm rows provide sensible names/categories and a read-only mapping summary.
+- [x] Confirm rows provide sensible names/categories and a read-only mapping summary.
 - [x] Batch results show created, updated, skipped, and failed outcomes with sanitized errors.
 - [x] Stores/composables handle offline, empty, mixed-support, partial-success, and reconnect states.
 - [x] All required locale files and locale schema tests are updated.

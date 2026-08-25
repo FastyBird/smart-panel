@@ -80,8 +80,13 @@
 		"title": "Homey-Geräte hinzufügen",
 		"subtitle": "Unterstützte Geräte aus dem verbundenen Homey-Inventar auswählen",
 		"breadcrumb": "Homey",
-		"columns": { "identifier": "Homey-Geräte-ID", "class": "Klasse", "zone": "Zone", "capabilities": "Funktionen" },
-		"values": { "noZone": "Keine Zone", "capabilities": "{count} Funktionen" },
+		"columns": { "identifier": "Homey-Geräte-ID", "class": "Klasse", "zone": "Zone", "capabilities": "Funktionen", "mapping": "Zuordnung" },
+		"values": {
+			"noZone": "Keine Zone",
+			"capabilities": "{count} Funktionen",
+			"mappingSummary": "{channels} Kanäle · {properties} Eigenschaften",
+			"mappingWarnings": "{count} Zuordnungswarnungen"
+		},
 		"statuses": { "unavailable": "In Homey nicht verfügbar", "needsAttention": "Homey-Gerätezuordnung prüfen" },
 		"actions": { "refresh": "Inventar aktualisieren", "openConfig": "Homey-Konfiguration öffnen" },
 		"errors": {

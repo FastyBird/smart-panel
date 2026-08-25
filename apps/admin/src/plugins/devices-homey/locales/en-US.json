@@ -92,11 +92,14 @@
 			"identifier": "Homey device ID",
 			"class": "Class",
 			"zone": "Zone",
-			"capabilities": "Capabilities"
+			"capabilities": "Capabilities",
+			"mapping": "Mapping"
 		},
 		"values": {
 			"noZone": "No zone",
-			"capabilities": "{count} capabilities"
+			"capabilities": "{count} capabilities",
+			"mappingSummary": "{channels} channels · {properties} properties",
+			"mappingWarnings": "{count} mapping warnings"
 		},
 		"statuses": {
 			"unavailable": "Unavailable in Homey",
