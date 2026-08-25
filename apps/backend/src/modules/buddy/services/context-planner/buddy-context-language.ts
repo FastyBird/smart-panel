@@ -45,7 +45,7 @@ const CONDITIONAL_OUTCOME_OBJECT_GAP_PREDICATE_PATTERN_SOURCE = String.raw`(?:(?
 const CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_GERUND_PATTERN_SOURCE = String.raw`(?:activating|adjusting|closing|controlling|dimming|disabling|fixing|locking|opening|polishing|repairing|setting|switching|testing|triggering|turning|unlocking|using|watching)`;
 const CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_INFINITIVE_PATTERN_SOURCE = String.raw`(?:activate|adjust|close|control|dim|disable|fix|lock|open|polish|repair|set|switch|test|trigger|turn|unlock|use|watch)`;
 const CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_PREDICATE_PATTERN_SOURCE = String.raw`(?:(?:(?:being|on)\s+)?${CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_GERUND_PATTERN_SOURCE}|to\s+${CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_INFINITIVE_PATTERN_SOURCE})`;
-const CONDITIONAL_OUTCOME_FINITE_OBJECT_GAP_PREDICATE_PATTERN_SOURCE = String.raw`(?:starts?|stops?)\s+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE}`;
+const CONDITIONAL_OUTCOME_FINITE_OBJECT_GAP_PREDICATE_PATTERN_SOURCE = String.raw`(?:breaks|(?:starts?|stops?)\s+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})`;
 const CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE = String.raw`(?!(?:that|to|where|which|who|whose)\b)[\p{Letter}\p{Number}'’-]+`;
 const CONDITIONAL_OUTCOME_BARE_SUBJECT_COMMAND_PATTERN_SOURCE = String.raw`(?:${ACTION_SIGNAL_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE}|also|ask|get|have|help|let|only|please|tell)`;
 const CONDITIONAL_OUTCOME_SUBJECT_PREFIX_EXCLUSION_PATTERN_SOURCE = String.raw`(?!(?:albeit|although|as|because|even\s+(?:if|though)|lest|since|so|that|though|to|where|whereas|wherein|wherever|whether|which|whilst|who|whose)\b|${CONDITION_PATTERN.source}|(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)`;
@@ -183,7 +183,11 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 		'u',
 	).exec(actionMessage);
 
-	if (subjectFirstOutcomeMatch && !/\b(?:that|where|which|who)\b/u.test(subjectFirstOutcomeMatch[0])) {
+	if (
+		subjectFirstOutcomeMatch &&
+		!/\b(?:that|where|which|who)\b/u.test(subjectFirstOutcomeMatch[0]) &&
+		!CONDITIONAL_OUTCOME_ZERO_RELATIVE_TARGET_PATTERN.test(actionMessage)
+	) {
 		return true;
 	}
 	if (
