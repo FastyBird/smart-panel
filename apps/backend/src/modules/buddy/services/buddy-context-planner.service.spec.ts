@@ -253,6 +253,7 @@ describe('BuddyContextPlannerService', () => {
 		['Are any windows open or is power off?', [], 'space-office'],
 		['Are any windows open or is heating on?', [], 'space-office'],
 		['Are any windows open or is temperature low?', [], 'space-office'],
+		['Are any windows open or shall the heater stay off?', [], 'space-office'],
 		['Are any windows open or is Kitchen heater off?', [{ id: 'space-kitchen', name: 'Kitchen' }], 'space-kitchen'],
 	])('retains aggregate scope before an independent alternative read: %s', (message, knownSpaces, readSpaceId) => {
 		const plan = service.plan({
@@ -4285,6 +4286,7 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows open at the moment?',
 		'Are any windows open at all?',
 		'Are any windows open whatsoever?',
+		'Are any windows open yet?',
 		'Are any windows open please?',
 		'Are any windows open, please?',
 		'Are any windows open, currently?',
