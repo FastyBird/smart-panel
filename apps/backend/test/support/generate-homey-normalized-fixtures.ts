@@ -9,7 +9,12 @@ import {
 
 interface HomeyFixtureManifest {
 	fixtures: string[];
-	syntheticDeviceFixtures?: string[];
+}
+
+interface HomeySyntheticFixtureManifest {
+	deviceFixtures: string[];
+	schemaVersion: number;
+	version: string;
 }
 
 const readJson = async (path: string): Promise<unknown> => JSON.parse(await readFile(path, 'utf8')) as unknown;
@@ -31,19 +36,24 @@ const main = async (): Promise<void> => {
 	const outputRoot = resolve(fixtureRoot, 'expected/v1');
 	const devicesRoot = resolve(outputRoot, 'devices');
 	const manifest = (await readJson(resolve(sourceRoot, 'manifest.json'))) as HomeyFixtureManifest;
+	const syntheticManifest = (await readJson(
+		resolve(fixtureRoot, 'synthetic/manifest.json'),
+	)) as HomeySyntheticFixtureManifest;
 	const zones = transformHomeyLocalZones(await readJson(resolve(sourceRoot, 'zones.json')));
 
 	if (
 		!Array.isArray(manifest.fixtures) ||
 		!manifest.fixtures.every((path) => typeof path === 'string') ||
-		(manifest.syntheticDeviceFixtures !== undefined &&
-			(!Array.isArray(manifest.syntheticDeviceFixtures) ||
-				!manifest.syntheticDeviceFixtures.every((path) => typeof path === 'string')))
+		syntheticManifest.schemaVersion !== 1 ||
+		typeof syntheticManifest.version !== 'string' ||
+		!/^[A-Za-z0-9._-]+$/.test(syntheticManifest.version) ||
+		!Array.isArray(syntheticManifest.deviceFixtures) ||
+		!syntheticManifest.deviceFixtures.every((path) => typeof path === 'string')
 	) {
 		throw new Error('Homey fixture manifest is malformed');
 	}
 
-	const syntheticDeviceFixtures = manifest.syntheticDeviceFixtures ?? [];
+	const syntheticSourceRoot = resolve(fixtureRoot, 'synthetic', syntheticManifest.version);
 
 	await mkdir(devicesRoot, { recursive: true });
 	await writeJson(resolve(outputRoot, 'zones.json'), zones);
@@ -53,8 +63,8 @@ const main = async (): Promise<void> => {
 		await writeJson(resolve(devicesRoot, basename(fixturePath)), device);
 	}
 
-	for (const fixturePath of syntheticDeviceFixtures) {
-		const device = transformHomeyLocalDevice(await readJson(resolve(sourceRoot, fixturePath)), zones);
+	for (const fixturePath of syntheticManifest.deviceFixtures) {
+		const device = transformHomeyLocalDevice(await readJson(resolve(syntheticSourceRoot, fixturePath)), zones);
 		const syntheticDeviceRoot = resolve(outputRoot, 'synthetic/devices');
 
 		await mkdir(syntheticDeviceRoot, { recursive: true });
@@ -65,11 +75,12 @@ const main = async (): Promise<void> => {
 		schemaVersion: 1,
 		sourceFixtureVersion: basename(await realpath(sourceRoot)),
 		fixtures: manifest.fixtures,
-		syntheticDeviceFixtures,
+		syntheticFixtureVersion: syntheticManifest.version,
+		syntheticDeviceFixtures: syntheticManifest.deviceFixtures,
 	});
 
 	process.stdout.write(
-		`Generated ${manifest.fixtures.length} captured and ${syntheticDeviceFixtures.length} synthetic normalized Homey fixtures.\n`,
+		`Generated ${manifest.fixtures.length} captured and ${syntheticManifest.deviceFixtures.length} synthetic normalized Homey fixtures.\n`,
 	);
 };
 

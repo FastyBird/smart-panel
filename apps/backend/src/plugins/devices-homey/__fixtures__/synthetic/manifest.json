@@ -1,0 +1,5 @@
+{
+	"schemaVersion": 1,
+	"version": "v1",
+	"deviceFixtures": ["devices/lock.json"]
+}

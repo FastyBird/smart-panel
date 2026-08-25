@@ -12,5 +12,6 @@
 		"devices/repeated-capabilities.json",
 		"devices/unavailable.json"
 	],
-	"syntheticDeviceFixtures": ["synthetic/devices/lock.json"]
+	"syntheticFixtureVersion": "v1",
+	"syntheticDeviceFixtures": ["devices/lock.json"]
 }

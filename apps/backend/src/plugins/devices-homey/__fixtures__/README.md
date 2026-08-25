@@ -22,8 +22,9 @@ not assert that Homey classified the source device as `sensor`.
 
 The live inventory contained no device with Homey's `lock` class. A non-lock device exposed a suffixed child-lock
 capability, but that is not promoted as live lock evidence. `knownDeviceClassGaps` in the manifest records this
-explicitly. `synthetic/devices/lock.json` is a published-protocol contract fixture, carries an explicit synthetic
-provenance marker, and covers normalization plus mapping without implying that a physical lock was captured.
+explicitly. `synthetic/v1/devices/lock.json` is a separately versioned published-protocol contract fixture, carries an
+explicit synthetic provenance marker, and covers normalization plus mapping without implying that a physical lock was
+captured or mutating the immutable live corpus.
 
 Known live-evidence gaps are listed in `manifest.json`. Do not invent fixtures for those capabilities; add them only from
 a separately sanitized capture or a documented synthetic protocol fixture clearly marked as synthetic.
@@ -31,9 +32,9 @@ a separately sanitized capture or a documented synthetic protocol fixture clearl
 The original sanitized capture collapsed live enum option IDs before this corpus was promoted. Those corrupted option
 lists are omitted from the live fixtures and recorded under `knownMetadataGaps`. `synthetic/enum-capability.json` is
 explicitly synthetic and preserves distinct option IDs for transport-independent enum contract tests. Synthetic device
-fixtures are also listed separately under `syntheticDeviceFixtures`, so normalization generation and tests cannot treat
-them as captured inventory. A future live capture produced by the corrected probe may replace these gaps; promotion now
-rejects redacted or duplicate enum IDs.
+contracts live outside `versions/` and are pinned independently through `synthetic/manifest.json`, so normalization
+generation and tests cannot treat them as captured inventory. A future live capture produced by the corrected probe may
+replace these gaps; promotion now rejects redacted or duplicate enum IDs.
 
 To regenerate the selected subset from an ignored sanitized capture:
 
