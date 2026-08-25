@@ -1,6 +1,7 @@
 import { BuddyContextDomain, BuddyContextSpaceReference } from '../../models/context-plan.model';
 
 import {
+	CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE,
 	findExplicitSpaceOccurrences,
 	findLeadingConditionalActionIndex,
 	findPatternRanges,
@@ -22,10 +23,15 @@ import {
 	ACTION_RANGE_PATTERN,
 	ACTION_REQUEST_PATTERN,
 	ACTION_SIGNAL_PATTERN_SOURCE,
+	AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE,
+	AGGREGATE_STATE_COORDINATION_PATTERN,
+	AGGREGATE_SUBJECT_QUANTIFIER_PATTERN_SOURCE,
+	AGGREGATE_SUFFIX_COMMA_PATTERN,
 	CLOCK_TIME_HISTORY_PATTERN,
 	COMPOUND_CONNECTOR_PATTERN_SOURCE,
 	CONTEXTUAL_SCOPE_PATTERN,
 	CURRENT_STATE_PATTERN,
+	DEVICE_ACTION_TARGET_PATTERN,
 	DOMAIN_ORDER,
 	ENERGY_ELLIPSIS_READ_PATTERN,
 	ENERGY_ENTITY_NAME_PATTERN,
@@ -44,6 +50,7 @@ import {
 	LEADING_UNSUPPORTED_ACTION_TEMPORAL_PATTERN,
 	LEADING_WEEKDAY_HISTORY_PATTERN,
 	NONNUMERIC_ACTION_DURATION_PATTERN,
+	PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN,
 	POSSESSIVE_HOME_ENTITY_PATTERN,
 	POWER_EVENT_STATE_READ_PATTERN,
 	POWER_MEASUREMENT_READ_PATTERN,
@@ -56,7 +63,9 @@ import {
 	SCHEDULED_ACTION_PATTERN,
 	SECURITY_ENTITY_NAME_PATTERN,
 	SECURITY_PATTERN,
+	SECURITY_SUBJECT_PATTERN,
 	STATE_SIGNAL_PATTERN,
+	SUBJECTLESS_POWER_PREDICATE_PATTERN_SOURCE,
 	TEMPORAL_HISTORY_PATTERN,
 	TRIGGER_PATTERN,
 	UNSUPPORTED_MEASUREMENT_READ_PATTERN,
@@ -64,6 +73,73 @@ import {
 	WEATHER_PATTERN,
 	WRITE_PATTERN,
 } from './buddy-context-planner-grammar';
+
+const INDEPENDENT_ALTERNATIVE_AUXILIARY_PATTERN = new RegExp(
+	String.raw`^\s*${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+`,
+	'u',
+);
+const INDEPENDENT_ALTERNATIVE_DETERMINED_SUBJECT_PATTERN = new RegExp(
+	String.raw`^(?:a|an|her|his|its|my|our|the|their|this|these|those|your|${AGGREGATE_SUBJECT_QUANTIFIER_PATTERN_SOURCE})\s+[\p{Letter}\p{Number}'’-]+\b`,
+	'u',
+);
+const INDEPENDENT_ALTERNATIVE_PRONOUN_SUBJECT_PATTERN =
+	/^(?:anybody|anyone|everybody|everyone|he|i|it|nobody|no\s+one|she|somebody|someone|there|they|we|you)\b/u;
+const INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN_SOURCE = String.raw`(?:how\s+many|what|which)\s+[\p{Letter}\p{Number}'’-]+\b`;
+const INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN = new RegExp(
+	String.raw`^${INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN_SOURCE}`,
+	'u',
+);
+const INDEPENDENT_ALTERNATIVE_CONNECTOR_PATTERN_SOURCE = String.raw`(?:but|or|yet)`;
+const INDEPENDENT_ALTERNATIVE_CONNECTOR_PATTERN = new RegExp(
+	String.raw`\b${INDEPENDENT_ALTERNATIVE_CONNECTOR_PATTERN_SOURCE}$`,
+	'u',
+);
+const INDEPENDENT_ALTERNATIVE_BARE_HOME_STATE_SUBJECT_PATTERN = new RegExp(
+	String.raw`^${HOME_STATE_PATTERN.source}`,
+	'u',
+);
+const INDEPENDENT_ALTERNATIVE_BARE_HOME_SUBJECT_PATTERN = new RegExp(
+	String.raw`^(?:${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${DEVICE_ACTION_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${SECURITY_SUBJECT_PATTERN.source})\b`,
+	'u',
+);
+const INDEPENDENT_ALTERNATIVE_BARE_DOMAIN_SUBJECT_PATTERN = new RegExp(
+	String.raw`^(?:${ENERGY_PATTERN.source}|${WEATHER_PATTERN.source})`,
+	'u',
+);
+const INDEPENDENT_ALTERNATIVE_SUBJECTLESS_PREDICATE_PATTERN = new RegExp(
+	String.raw`^${SUBJECTLESS_POWER_PREDICATE_PATTERN_SOURCE}\b`,
+	'u',
+);
+const INDEPENDENT_ALTERNATIVE_SUBJECTLESS_MODAL_PATTERN =
+	/^(?:can(?:not|'t)?|could(?:n't)?|may|might(?:n't)?|must(?:n't)?|ought(?:n't)?|shall|shan't|should(?:n't)?|will|won't|would(?:n't)?)$/u;
+
+function hasIndependentAlternativeSubject(
+	alternative: string,
+	explicitSpaces: readonly BuddyContextSpaceReference[],
+): boolean {
+	if (INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN.test(alternative.trimStart())) return true;
+
+	const auxiliaryMatch = INDEPENDENT_ALTERNATIVE_AUXILIARY_PATTERN.exec(alternative);
+	if (!auxiliaryMatch) return false;
+
+	const subject = alternative.slice(auxiliaryMatch[0].length);
+	if (
+		INDEPENDENT_ALTERNATIVE_SUBJECTLESS_MODAL_PATTERN.test(auxiliaryMatch[0].trim()) &&
+		INDEPENDENT_ALTERNATIVE_SUBJECTLESS_PREDICATE_PATTERN.test(subject)
+	) {
+		return false;
+	}
+
+	return (
+		INDEPENDENT_ALTERNATIVE_DETERMINED_SUBJECT_PATTERN.test(subject) ||
+		INDEPENDENT_ALTERNATIVE_PRONOUN_SUBJECT_PATTERN.test(subject) ||
+		INDEPENDENT_ALTERNATIVE_BARE_HOME_STATE_SUBJECT_PATTERN.test(subject) ||
+		INDEPENDENT_ALTERNATIVE_BARE_HOME_SUBJECT_PATTERN.test(subject) ||
+		INDEPENDENT_ALTERNATIVE_BARE_DOMAIN_SUBJECT_PATTERN.test(subject) ||
+		POWER_STATE_READ_PATTERN.test(subject) ||
+		findExplicitSpaceOccurrences(subject, explicitSpaces).some((occurrence) => occurrence.range.start === 0)
+	);
+}
 
 export function getActionMessage(message: string, trailingActionMatch: RegExpExecArray | null): string {
 	if (trailingActionMatch) return message.slice(trailingActionMatch.index);
@@ -432,6 +508,8 @@ export function splitPlannerClauses(
 		...findPatternRanges(message, CLOCK_TIME_HISTORY_PATTERN),
 		...findPatternRanges(message, ACTION_RANGE_PATTERN),
 		...findPatternRanges(message, ACTION_DURATION_PATTERN),
+		...findPatternRanges(message, AGGREGATE_STATE_COORDINATION_PATTERN),
+		...findPatternRanges(message, AGGREGATE_SUFFIX_COMMA_PATTERN),
 		...findPatternRanges(
 			message,
 			/\b(?:current|currently|now|today)\s+and\s+(?:yesterday|(?:last|previous)\s+(?:day|hour|month|night|week|weekend|year))\b/u,
@@ -439,7 +517,7 @@ export function splitPlannerClauses(
 		...findPatternRanges(message, /\d+\.\d+/u),
 	];
 	const separatorPattern = new RegExp(
-		String.raw`(?:,\s*(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})(?:\s+then)?\b|[?!,.;]|\band\s+then\b|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|\ba\b(?=\s*(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b))`,
+		String.raw`(?:,\s*(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})(?:\s+then)?\b|(?:,\s*)?\b${INDEPENDENT_ALTERNATIVE_CONNECTOR_PATTERN_SOURCE}\b(?=\s+(?:${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+|${INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN_SOURCE}))|[?!,.;]|\band\s+then\b|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|\ba\b(?=\s*(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b))`,
 		'gu',
 	);
 	const clauses: string[] = [];
@@ -450,6 +528,12 @@ export function splitPlannerClauses(
 		const separatorEnd = separatorStart + separator[0].length;
 
 		if (protectedRanges.some((range) => range.start <= separatorStart && range.end >= separatorEnd)) continue;
+		if (
+			INDEPENDENT_ALTERNATIVE_CONNECTOR_PATTERN.test(separator[0]) &&
+			!hasIndependentAlternativeSubject(message.slice(separatorEnd), protectedSpaces)
+		) {
+			continue;
+		}
 
 		clauses.push(message.slice(clauseStart, separatorStart));
 		clauseStart = separatorEnd;

@@ -4,6 +4,7 @@ import {
 	ACTION_COMMAND_PATTERN,
 	ACTION_COMMAND_PREFIX_PATTERN_SOURCE,
 	ACTION_SIGNAL_PATTERN_SOURCE,
+	AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE,
 	COMPOUND_CONNECTOR_PATTERN_SOURCE,
 	CONDITION_PATTERN,
 	CONTEXTUAL_SCOPE_REFERENCE_PATTERN,
@@ -14,6 +15,8 @@ import {
 	LEADING_CONDITION_PATTERN,
 	LOCALIZED_REFERENCE_PRONOUN_PATTERN,
 	LOCALIZED_STATE_REFERENCE_PRONOUN_PATTERN,
+	OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE,
+	OUTCOME_PREDICATE_PATTERN_SOURCE,
 	PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN,
 	PLURAL_REFERENCE_PRONOUN_PATTERN,
 	PREDICATE_QUESTION_PATTERN,
@@ -29,8 +32,128 @@ import {
 	WEATHER_PATTERN,
 } from './buddy-context-planner-grammar';
 
-const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:am|are(?:n't)?|can(?:not|'t)?|could(?:n't)?|did(?:n't)?|do|does|don't|doesn't|had(?:n't)?|has(?:n't)?|have(?:n't)?|is(?:n't)?|may|might(?:n't)?|must(?:n't)?|should(?:n't)?|was(?:n't)?|were(?:n't)?|will|won't|would(?:n't)?)`;
-const CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE = String.raw`(?:appears?|changes?|fails?|happens?|improves?|looks?|remains?|seems?|stays?|wakes?|works?)`;
+export const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:am|are(?:n't)?|can(?:not|'t)?|could(?:n't)?|did(?:n't)?|do|does|don't|doesn't|had(?:n't)?|has(?:n't)?|have(?:n't)?|is(?:n't)?|may|might(?:n't)?|must(?:n't)?|ought(?:n't)?|shall|shan't|should(?:n't)?|was(?:n't)?|were(?:n't)?|will|won't|would(?:n't)?)`;
+const CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE = OUTCOME_PREDICATE_PATTERN_SOURCE;
+const CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE = OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE;
+const CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_SEQUENCE_PATTERN_SOURCE = String.raw`(?:\s+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE}){0,2}`;
+const CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_TOKEN_PATTERN_SOURCE = String.raw`(?!(?:(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})|(?:${ACTION_SIGNAL_PATTERN_SOURCE}))\b)[\p{Letter}\p{Number}'’-]+`;
+const CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_PATTERN_SOURCE = String.raw`(?:at|by|during|for|from|in|near|on|through|under|with|without)\s+${CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_TOKEN_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_TOKEN_PATTERN_SOURCE}){0,3}`;
+const CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_SEQUENCE_PATTERN_SOURCE = String.raw`(?:\s+${CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_PATTERN_SOURCE}){0,2}`;
+const CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE = String.raw`(?:becomes?|keeps?|starts?|stops?)\s+(?:(?:being|far|much|on|quite|really|to|very)\s+)?[\p{Letter}\p{Number}'’-]+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_SEQUENCE_PATTERN_SOURCE}${CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_SEQUENCE_PATTERN_SOURCE}`;
+const CONDITIONAL_OUTCOME_OBJECT_GAP_GERUND_PATTERN_SOURCE = String.raw`(?:activating|adjusting|cleaning|closing|controlling|dimming|disabling|fixing|locking|monitoring|opening|polishing|recording|repairing|setting|switching|testing|triggering|turning|unlocking|using|watching)`;
+const CONDITIONAL_OUTCOME_OBJECT_GAP_INFINITIVE_PATTERN_SOURCE = String.raw`(?:activate|adjust|clean|close|control|dim|disable|fix|lock|monitor|open|polish|record|repair|set|switch|test|trigger|turn|unlock|use|watch)`;
+const CONDITIONAL_OUTCOME_OBJECT_GAP_PREDICATE_PATTERN_SOURCE = String.raw`(?:(?:(?:being|on)\s+)?${CONDITIONAL_OUTCOME_OBJECT_GAP_GERUND_PATTERN_SOURCE}|to\s+${CONDITIONAL_OUTCOME_OBJECT_GAP_INFINITIVE_PATTERN_SOURCE})`;
+const CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_GERUND_PATTERN_SOURCE = String.raw`(?:activating|adjusting|closing|controlling|dimming|disabling|fixing|locking|opening|polishing|repairing|setting|switching|testing|triggering|turning|unlocking|using|watching)`;
+const CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_INFINITIVE_PATTERN_SOURCE = String.raw`(?:activate|adjust|close|control|dim|disable|fix|lock|open|polish|repair|set|switch|test|trigger|turn|unlock|use|watch)`;
+const CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_PREDICATE_PATTERN_SOURCE = String.raw`(?:(?:(?:being|on)\s+)?${CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_GERUND_PATTERN_SOURCE}|to\s+${CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_INFINITIVE_PATTERN_SOURCE})`;
+const CONDITIONAL_OUTCOME_FINITE_OBJECT_GAP_PREDICATE_PATTERN_SOURCE = String.raw`(?:breaks?|(?:starts?|stops?)\s+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})`;
+const CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE = String.raw`(?!(?:that|to|where|which|who|whose)\b)[\p{Letter}\p{Number}'’-]+`;
+const CONDITIONAL_OUTCOME_BARE_SUBJECT_COMMAND_PATTERN_SOURCE = String.raw`(?:${ACTION_SIGNAL_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE}|also|ask|first|get|have|help|just|let|only|please|tell)`;
+const CONDITIONAL_OUTCOME_SUBORDINATE_PREFIX_PATTERN_SOURCE = String.raw`(?:(?:albeit|although|as|because|even\s+(?:if|though)|lest|since|so|that|though|to|where|whereas|wherein|wherever|whether|which|whilst|who|whose)\b|${CONDITION_PATTERN.source}|(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)`;
+const CONDITIONAL_OUTCOME_SUBJECT_PREFIX_EXCLUSION_PATTERN_SOURCE = String.raw`(?!${CONDITIONAL_OUTCOME_SUBORDINATE_PREFIX_PATTERN_SOURCE})`;
+const CONDITIONAL_OUTCOME_SUBORDINATE_PATTERN = new RegExp(CONDITIONAL_OUTCOME_SUBORDINATE_PREFIX_PATTERN_SOURCE, 'u');
+const CONDITIONAL_OUTCOME_SUBORDINATE_PREFIX_PATTERN = new RegExp(
+	String.raw`${CONDITIONAL_OUTCOME_SUBORDINATE_PREFIX_PATTERN_SOURCE}\s*$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_DETERMINED_SUBJECT_PATTERN_SOURCE = String.raw`(?:a|an|her|his|its|my|our|the|their|this|these|those|your)\s+${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE}){0,3}`;
+const CONDITIONAL_OUTCOME_BARE_SUBJECT_PATTERN_SOURCE = String.raw`(?!(?:${CONDITIONAL_OUTCOME_BARE_SUBJECT_COMMAND_PATTERN_SOURCE})\b)${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE}`;
+const CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE = String.raw`${CONDITIONAL_OUTCOME_SUBJECT_PREFIX_EXCLUSION_PATTERN_SOURCE}(?:${CONDITIONAL_OUTCOME_DETERMINED_SUBJECT_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_BARE_SUBJECT_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE})?)`;
+const CONDITIONAL_OUTCOME_NON_AGENT_SUBJECT_PATTERN_SOURCE = String.raw`(?:(?:a|an|her|his|its|my|our|the|their|this|these|those|your)\s+)?(?:[\p{Letter}\p{Number}'’-]+\s+){0,3}(?:${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|(?:alarm|camera|controller|detector|device|door|fan|heater|home|house|humidity|light|lock|power|room|router|sensor|switch|system|temperature|thermostat|window)s?)`;
+const CONDITIONAL_OUTCOME_OBJECT_GAP_SUBJECT_PATTERN_SOURCE = String.raw`(?!${CONDITIONAL_OUTCOME_NON_AGENT_SUBJECT_PATTERN_SOURCE}\b)${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}`;
+const CONDITIONAL_OUTCOME_POST_CONNECTOR_SUBJECT_PATTERN_SOURCE = String.raw`${CONDITIONAL_OUTCOME_SUBJECT_PREFIX_EXCLUSION_PATTERN_SOURCE}(?:${CONDITIONAL_OUTCOME_DETERMINED_SUBJECT_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_BARE_SUBJECT_PATTERN_SOURCE})`;
+const CONDITIONAL_OUTCOME_SPOKEN_SCALAR_VALUE_PATTERN_SOURCE = String.raw`(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[-\s](?:one|two|three|four|five|six|seven|eight|nine))?|one\s+hundred)`;
+const CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE = String.raw`(?:active|blue|brighter|closed|cooler|dimmer|down|eco|green|higher|inactive|locked|lower|off|on|open|red|unlocked|up|warmer|white|(?:at|by|to)\s+(?:[-+]?\d+(?:\.\d+)?|(?:(?:minus|negative)\s+)?${CONDITIONAL_OUTCOME_SPOKEN_SCALAR_VALUE_PATTERN_SOURCE})\s*(?:%|celsius|degrees?|fahrenheit|k|kelvin|percent|°\s*(?:c|f))?)`;
+const CONDITIONAL_OUTCOME_NAMED_SCENE_TARGET_PATTERN_SOURCE = String.raw`(?:[\p{Letter}\p{Number}'’-]+\s+){0,5}${SCENE_TARGET_PATTERN.source}`;
+const CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE = String.raw`(?:${CONDITIONAL_OUTCOME_NAMED_SCENE_TARGET_PATTERN_SOURCE}|${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${DEVICE_ACTION_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${PRONOUN_PATTERN.source})`;
+const CONDITIONAL_OUTCOME_FIRST_ACTION_TARGET_PATTERN_SOURCE = String.raw`(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b(?:(?!\b${CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE}\b)[^?]){0,120}\b${CONDITIONAL_OUTCOME_ACTION_TARGET_PATTERN_SOURCE}\b`;
+const CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN = new RegExp(
+	String.raw`^${CONDITIONAL_OUTCOME_FIRST_ACTION_TARGET_PATTERN_SOURCE}\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?(?:(?:(?:and\s+)?then\s+)${CONDITIONAL_OUTCOME_POST_CONNECTOR_SUBJECT_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE})\s+${CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_FINITE_QUESTION_PATTERN = new RegExp(
+	String.raw`^${CONDITIONAL_OUTCOME_FIRST_ACTION_TARGET_PATTERN_SOURCE}\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?(?:(?:(?:and\s+)?then\s+)${CONDITIONAL_OUTCOME_POST_CONNECTOR_SUBJECT_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE})\s+(?:(?:already|currently|still)\s+)?${CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_ZERO_RELATIVE_TARGET_PATTERN = new RegExp(
+	String.raw`^${CONDITIONAL_OUTCOME_FIRST_ACTION_TARGET_PATTERN_SOURCE}\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?(?:${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s+(?:keeps?|starts?|stops?)\s+${CONDITIONAL_OUTCOME_STRONG_OBJECT_GAP_PREDICATE_PATTERN_SOURCE}${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_SEQUENCE_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_OBJECT_GAP_SUBJECT_PATTERN_SOURCE}\s+(?:(?:keeps?|starts?|stops?)\s+${CONDITIONAL_OUTCOME_OBJECT_GAP_PREDICATE_PATTERN_SOURCE}${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_SEQUENCE_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_FINITE_OBJECT_GAP_PREDICATE_PATTERN_SOURCE}))${CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_SEQUENCE_PATTERN_SOURCE}\s*\?\s*$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_RELATIVE_ADVERB_PATTERN_SOURCE = String.raw`(?:already|currently|maybe|never|often|perhaps|still|very|[\p{Letter}'’-]+ly)`;
+const CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE = String.raw`(?:(?:${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_PATTERN_SOURCE})\s+){0,2}`;
+const CONDITIONAL_OUTCOME_DETERMINED_REPORT_SUBJECT_PATTERN_SOURCE = String.raw`(?:he|i|it|she|they|we|you|${CONDITIONAL_OUTCOME_DETERMINED_SUBJECT_PATTERN_SOURCE})`;
+const CONDITIONAL_OUTCOME_REPORTING_PREDICATE_PATTERN_SOURCE = String.raw`${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE}(?:believes?|claims?|expects?|reports?|says?|thinks?)\s+${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE}`;
+const CONDITIONAL_OUTCOME_RELATIVE_PRONOUN_PATTERN = new RegExp(
+	String.raw`\b(?:(?:that|which)\s+${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE}|that\s+${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE}(?:${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE})\s+${CONDITIONAL_OUTCOME_REPORTING_PREDICATE_PATTERN_SOURCE}|which\s+${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE}(?:${CONDITIONAL_OUTCOME_DETERMINED_REPORT_SUBJECT_PATTERN_SOURCE})\s+${CONDITIONAL_OUTCOME_REPORTING_PREDICATE_PATTERN_SOURCE})$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_COORDINATED_RELATIVE_PREFIX_PATTERN = new RegExp(
+	String.raw`\b(?:that|which)\s+${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE}(?:${CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE})\s+(?:and|but|or)\s+${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE}$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_RELATIVE_PREPOSITION_PATTERN_SOURCE = String.raw`(?:about|after|around|at|before|by|during|for|from|in|of|on|through|to|under|with|within|without)`;
+const CONDITIONAL_OUTCOME_SUBJECT_RELATIVE_PREFIX_PATTERN = new RegExp(
+	String.raw`\b(?:${CONDITIONAL_OUTCOME_RELATIVE_PREPOSITION_PATTERN_SOURCE}\s+which|where)\s+${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s*$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_PREPOSITION_FRONTED_WH_PREFIX_PATTERN = new RegExp(
+	String.raw`\b${CONDITIONAL_OUTCOME_RELATIVE_PREPOSITION_PATTERN_SOURCE}\s+which\s+${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s*$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_FRONTED_WHERE_PREFIX_PATTERN = /\bwhere\s+(?:else|exactly)\s*$/u;
+const CONDITIONAL_OUTCOME_WHO_PREFIX_PATTERN = new RegExp(
+	String.raw`\bwho\s+(?:(?:${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_PATTERN_SOURCE})\s+){0,2}$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_DIRECT_WH_SUBJECT_PREFIX_PATTERN = new RegExp(
+	String.raw`\b(?:what|which|whose)\s+${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s*$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_DIRECT_WHO_SUBJECT_PATTERN = new RegExp(
+	String.raw`^${CONDITIONAL_OUTCOME_FIRST_ACTION_TARGET_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE})?(?:\s*,?\s+(?:and\s+)?then)?\s*$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_WHICH_OBJECT_RELATIVE_PREFIX_PATTERN = new RegExp(
+	String.raw`^${CONDITIONAL_OUTCOME_FIRST_ACTION_TARGET_PATTERN_SOURCE}\s+which\s+${CONDITIONAL_OUTCOME_OBJECT_GAP_SUBJECT_PATTERN_SOURCE}\s*$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_DIRECT_WHICH_PRONOUN_PREFIX_PATTERN = /\bwhich\s+(?:one|ones)\s*$/u;
+const CONDITIONAL_OUTCOME_MODAL_OBJECT_GAP_TAIL_PATTERN = new RegExp(
+	String.raw`^${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE}(?:${CONDITIONAL_OUTCOME_OBJECT_GAP_INFINITIVE_PATTERN_SOURCE}|work)\s*\?\s*$`,
+	'u',
+);
+const CONDITIONAL_OUTCOME_WH_SUBJECT_AUXILIARY_TAIL_PATTERN = new RegExp(
+	String.raw`^${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_SEQUENCE_PATTERN_SOURCE}(?:${CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE})\s*\?\s*$`,
+	'u',
+);
+
+function hasConditionalOutcomeRelativePrefix(prefix: string, tail: string): boolean {
+	if (CONDITIONAL_OUTCOME_RELATIVE_PRONOUN_PATTERN.test(prefix)) return true;
+	if (CONDITIONAL_OUTCOME_COORDINATED_RELATIVE_PREFIX_PATTERN.test(prefix)) return true;
+	if (CONDITIONAL_OUTCOME_SUBJECT_RELATIVE_PREFIX_PATTERN.test(prefix)) return true;
+	if (
+		CONDITIONAL_OUTCOME_WHICH_OBJECT_RELATIVE_PREFIX_PATTERN.test(prefix) &&
+		(!CONDITIONAL_OUTCOME_DIRECT_WH_SUBJECT_PREFIX_PATTERN.test(prefix) ||
+			(!CONDITIONAL_OUTCOME_DIRECT_WHICH_PRONOUN_PREFIX_PATTERN.test(prefix) &&
+				CONDITIONAL_OUTCOME_MODAL_OBJECT_GAP_TAIL_PATTERN.test(tail)))
+	) {
+		return true;
+	}
+
+	const whoMatch = CONDITIONAL_OUTCOME_WHO_PREFIX_PATTERN.exec(prefix);
+	if (!whoMatch) return false;
+
+	return !CONDITIONAL_OUTCOME_DIRECT_WHO_SUBJECT_PATTERN.test(prefix.slice(0, whoMatch.index));
+}
+
+function hasConditionalOutcomeDirectWhSubject(prefix: string): boolean {
+	const whoMatch = CONDITIONAL_OUTCOME_WHO_PREFIX_PATTERN.exec(prefix);
+	if (whoMatch !== null && CONDITIONAL_OUTCOME_DIRECT_WHO_SUBJECT_PATTERN.test(prefix.slice(0, whoMatch.index))) {
+		return true;
+	}
+
+	return CONDITIONAL_OUTCOME_DIRECT_WH_SUBJECT_PREFIX_PATTERN.test(prefix);
+}
 
 export function findLeadingConditionalActionIndex(
 	message: string,
@@ -65,22 +188,57 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 	) {
 		return true;
 	}
+	const actionMessage = message.slice(actionIndex);
 	const subjectFirstOutcomeMatch = new RegExp(
 		String.raw`\b(?:(?:a|an|my|our|the|their|this|these|those|your)\s+)?[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,3}\s+(?:(?:already|currently|still)\s+)?${CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE}\s*\?\s*$`,
 		'u',
-	).exec(message.slice(actionIndex));
+	).exec(actionMessage);
 
-	if (subjectFirstOutcomeMatch && !/\b(?:that|where|which|who)\b/u.test(subjectFirstOutcomeMatch[0])) {
-		return true;
-	}
 	if (
-		new RegExp(
-			String.raw`(?<!that\s)(?<!which\s)(?<!who\s)\b${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we|you)\s+|[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$`,
-			'u',
-		).test(message.slice(actionIndex))
+		subjectFirstOutcomeMatch &&
+		!/\b(?:that|where|which|who)\b/u.test(subjectFirstOutcomeMatch[0]) &&
+		!CONDITIONAL_OUTCOME_SUBORDINATE_PATTERN.test(subjectFirstOutcomeMatch[0]) &&
+		!CONDITIONAL_OUTCOME_SUBORDINATE_PREFIX_PATTERN.test(actionMessage.slice(0, subjectFirstOutcomeMatch.index)) &&
+		!CONDITIONAL_OUTCOME_ZERO_RELATIVE_TARGET_PATTERN.test(actionMessage)
 	) {
 		return true;
 	}
+	if (
+		CONDITIONAL_OUTCOME_FINITE_QUESTION_PATTERN.test(actionMessage) &&
+		!CONDITIONAL_OUTCOME_ZERO_RELATIVE_TARGET_PATTERN.test(actionMessage)
+	) {
+		return true;
+	}
+	if (
+		CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN.test(actionMessage) &&
+		!CONDITIONAL_OUTCOME_ZERO_RELATIVE_TARGET_PATTERN.test(actionMessage)
+	) {
+		return true;
+	}
+	const auxiliaryOutcomeTailPattern = new RegExp(
+		String.raw`^${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we|you)\s+|[\p{Letter}][\p{Letter}'’-]*\s+)[^?]*\?\s*$`,
+		'u',
+	);
+	const auxiliaryOutcomeMatch = [
+		...actionMessage.matchAll(new RegExp(String.raw`\b${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\b`, 'gu')),
+	].find((match) => {
+		const prefix = actionMessage.slice(0, match.index);
+		const tail = actionMessage.slice(match.index);
+		const hasRelativePrefix = hasConditionalOutcomeRelativePrefix(prefix, tail);
+		const hasExplicitSubjectTail = auxiliaryOutcomeTailPattern.test(tail);
+
+		return (
+			(hasExplicitSubjectTail &&
+				(!hasRelativePrefix ||
+					CONDITIONAL_OUTCOME_PREPOSITION_FRONTED_WH_PREFIX_PATTERN.test(prefix) ||
+					CONDITIONAL_OUTCOME_FRONTED_WHERE_PREFIX_PATTERN.test(prefix))) ||
+			(!hasRelativePrefix &&
+				CONDITIONAL_OUTCOME_WH_SUBJECT_AUXILIARY_TAIL_PATTERN.test(tail) &&
+				hasConditionalOutcomeDirectWhSubject(prefix))
+		);
+	});
+
+	if (auxiliaryOutcomeMatch) return true;
 	const trailingBoundary = message.slice(actionIndex).search(/[,;]/u);
 
 	if (LEADING_CONDITION_PATTERN.test(message) && trailingBoundary >= 0) {

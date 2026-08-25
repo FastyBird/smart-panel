@@ -246,6 +246,145 @@ describe('BuddyContextPlannerService', () => {
 	});
 
 	it.each([
+		['Are any windows open but is the heater off?', [], 'space-office'],
+		['Are any windows open yet is the heater off?', [], 'space-office'],
+		['Are any windows open or is the heater off?', [], 'space-office'],
+		["Are any windows open or isn't the heater off?", [], 'space-office'],
+		['Are any windows open or are heaters off?', [], 'space-office'],
+		["Are any windows open or aren't heaters off?", [], 'space-office'],
+		['Are any windows open or is power off?', [], 'space-office'],
+		['Are any windows open or is heating on?', [], 'space-office'],
+		['Are any windows open or is temperature low?', [], 'space-office'],
+		['Are any windows open or is there a door unlocked?', [], 'space-office'],
+		['Are any windows open or has anyone left a door unlocked?', [], 'space-office'],
+		['Are any windows open or has somebody left a door unlocked?', [], 'space-office'],
+		['Are any windows open or has someone left a door unlocked?', [], 'space-office'],
+		['Are any windows open or ought the heater be off?', [], 'space-office'],
+		['Are any windows open or shall the heater stay off?', [], 'space-office'],
+		['Are any windows open or is Kitchen heater off?', [{ id: 'space-kitchen', name: 'Kitchen' }], 'space-kitchen'],
+	])('retains aggregate scope before an independent alternative read: %s', (message, knownSpaces, readSpaceId) => {
+		const plan = service.plan({
+			message,
+			conversationSpaceId: 'space-office',
+			knownSpaces,
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.queries).toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state', spaceId: readSpaceId });
+	});
+
+	it('retains aggregate scope before a bare security alternative', () => {
+		const plan = service.plan({
+			message: 'Are any windows open or is alarm off?',
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.domains).toEqual(['home', 'security']);
+		expect(plan.queries).toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		expect(plan.queries).toContainEqual({ kind: 'security-status' });
+	});
+
+	it.each([
+		'Are any windows open or are all doors unlocked?',
+		'Are any windows open or are any doors unlocked?',
+		'Are any windows open or is every door unlocked?',
+		'Are any windows open or are none of the doors unlocked?',
+		'Are any windows open or are some doors unlocked?',
+	])('retains whole-home scope across a quantified alternative: %s', (message) => {
+		const plan = service.plan({
+			message,
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.queries).toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		expect(plan.queries).not.toContainEqual({ kind: 'search-home', spaceId: 'space-office' });
+		expect(plan.queries).not.toContainEqual({ kind: 'current-state', spaceId: 'space-office' });
+	});
+
+	it('keeps a comma-prefixed subjectless alternative in the aggregate clause', () => {
+		const plan = service.plan({
+			message: 'Are any lights on, or will switch off?',
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.queries).toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		expect(plan.queries).not.toContainEqual({ kind: 'search-home', spaceId: 'space-office' });
+		expect(plan.queries).not.toContainEqual({ kind: 'current-state', spaceId: 'space-office' });
+	});
+
+	it.each(['Are any windows open or which lights are on?', 'Are any windows open or what lights are on?'])(
+		'retains whole-home scope before an interrogative alternative: %s',
+		(message) => {
+			const plan = service.plan({
+				message,
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			});
+
+			expect(plan.queries).toContainEqual({ kind: 'search-home' });
+			expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		},
+	);
+
+	it('retains whole-home scope across an aggregate interrogative alternative', () => {
+		const plan = service.plan({
+			message: 'Are any windows open or how many lights are on?',
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.queries).toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		expect(plan.queries).not.toContainEqual({ kind: 'search-home', spaceId: 'space-office' });
+		expect(plan.queries).not.toContainEqual({ kind: 'current-state', spaceId: 'space-office' });
+	});
+
+	it('does not split an incomplete interrogative alternative', () => {
+		const plan = service.plan({
+			message: 'Are any windows open or what?',
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.queries).toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		expect(plan.queries).not.toContainEqual({ kind: 'search-home', spaceId: 'space-office' });
+		expect(plan.queries).not.toContainEqual({ kind: 'current-state', spaceId: 'space-office' });
+	});
+
+	it.each([
+		{
+			message: 'Are any windows open or is energy usage high?',
+			domains: ['home', 'energy'],
+			query: { kind: 'energy-summary', spaceId: 'space-office' },
+		},
+		{
+			message: 'Are any windows open or is weather stormy?',
+			domains: ['home', 'weather'],
+			query: { kind: 'weather' },
+		},
+	])('retains aggregate scope before a bare domain alternative: $message', ({ message, domains, query }) => {
+		const plan = service.plan({
+			message,
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.domains).toEqual(domains);
+		expect(plan.queries).toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		expect(plan.queries).toContainEqual(query);
+	});
+
+	it.each([
 		{ message: 'What was the weather yesterday?', domains: ['weather'], query: { kind: 'weather' } },
 		{
 			message: 'How much energy did we use yesterday?',
@@ -3680,6 +3819,24 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.toolNames).not.toContain('set_space_lighting');
 	});
 
+	it('keeps a contextual-pronoun hypothetical outcome on the read path', () => {
+		const plan = service.plan({
+			message: 'If we turn it off the camera stops recording?',
+			recentEntityReferences: [
+				{
+					kind: 'device',
+					id: 'device-reading-lamp',
+					name: 'Reading lamp',
+					compatibleActionTypes: ['turn'],
+				},
+			],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('read');
+		expect(plan.toolNames).not.toContain('control_device');
+	});
+
 	it.each([
 		'Power switches can turn Bedroom lights on',
 		'Power outage shut Bedroom lights off',
@@ -4202,6 +4359,45 @@ describe('BuddyContextPlannerService', () => {
 		'Are all lights switched off?',
 		'Are any windows now open?',
 		'Are any windows right now open?',
+		'Are any windows fully open?',
+		'Are any windows open right now?',
+		'Are any windows open currently?',
+		'Are any windows open at the moment?',
+		'Are any windows open at all?',
+		'Are any windows open whatsoever?',
+		'Are any windows open yet?',
+		'Are any windows open outside this room?',
+		'Are any windows open beyond this room?',
+		'Are any windows open that do not belong to this room?',
+		'Are any windows open that do not currently belong to this room?',
+		"Are any windows open that don't currently belong to this room?",
+		'Are any windows open that no longer belong to this room?',
+		'Are any windows open please?',
+		'Are any windows open, please?',
+		'Are any windows open, currently?',
+		'Are any windows open and unlocked?',
+		'Are any windows open or are unlocked?',
+		'Are any windows open or will remain closed?',
+		'Are any windows open or can be closed?',
+		'Are any windows open or can open fully?',
+		'Are any lights on or will switch off?',
+		'Are any windows open or will fail soon?',
+		'Are any windows open or could suddenly break?',
+		'Are any windows open or may unexpectedly jam?',
+		'Are any windows open and unlocked or closed?',
+		'Are any windows open and unlocked or closed yet locked?',
+		'Are any windows almost open or fully closed?',
+		'Are any windows open but unlocked?',
+		'Are any windows open yet unlocked?',
+		'Are any windows open that face the street?',
+		'Are any windows fully open that face the street?',
+		'Are any windows open that face the street behind the large apartment building nearby?',
+		'Are any doors completely closed?',
+		'Are any windows partially open?',
+		'Are any windows almost fully open?',
+		'Are any windows only partially open?',
+		'Do any windows remain only partially open?',
+		'Does any window appear almost fully open?',
 		'Is every one of the windows closed?',
 		'Is any one of the windows open?',
 		'Can you check if any one of the windows is open?',
@@ -4223,6 +4419,7 @@ describe('BuddyContextPlannerService', () => {
 		'Do I have every window open?',
 		'Check if every window is closed',
 		'Can you check if any windows are open?',
+		'Can you check if any windows are open for me?',
 		'Can you check whether any windows are open?',
 		'Can you check if all windows are closed?',
 		'Can you please check if any windows are open?',
@@ -4289,6 +4486,14 @@ describe('BuddyContextPlannerService', () => {
 		'Check if every window is closed in here?',
 		'Are none of the windows open in here?',
 		'Can you check if the windows are open?',
+		'Are any windows almost open nearby?',
+		'Are any windows fully open near me?',
+		'Are any windows open and unlocked near me?',
+		'Are any windows open and unlocked or closed near me?',
+		'Are any windows open but unlocked near me?',
+		'Are any windows open that are near me?',
+		'Are any windows fully open that belong to this room?',
+		'Are any windows open, nearby?',
 	])('keeps an ordinary wrapped read in the conversation space: %s', (message) => {
 		expect(
 			service.plan({
@@ -6877,6 +7082,21 @@ describe('BuddyContextPlannerService', () => {
 	});
 
 	it.each([
+		'If we run the Movie Night scene the camera stops recording?',
+		'If we run the Lights Out scene the camera stops recording?',
+		'If we run the Window Watch scene the camera stops recording?',
+		'If we trigger the Bedtime routine the alarm keeps working?',
+	])('keeps a declarative scene outcome on the read path: %s', (message) => {
+		const plan = service.plan({
+			message,
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('read');
+		expect(plan.toolNames).not.toContain('run_scene');
+	});
+
+	it.each([
 		['Enable mode is currently selected?', 'none'],
 		['Enable switch is available?', 'read'],
 	] as const)('preserves a sentence-initial binary-state label: %s', (message, intent) => {
@@ -6904,9 +7124,73 @@ describe('BuddyContextPlannerService', () => {
 		'If we disable the Bedroom lights will you still see?',
 		'If we disable the Bedroom lights, the camera still works?',
 		'If we disable the Bedroom lights the camera still works?',
+		'If we disable the Bedroom lights the camera keeps working?',
+		'If we disable the Bedroom lights the camera keeps recording in the dark?',
+		'If we turn off the Bedroom lights the camera keeps recording in the dark basement at night?',
+		'If we disable the Bedroom lights the camera stops recording?',
+		'If we disable the Bedroom lights the camera becomes safer?',
+		'If we disable the Bedroom lights the camera keeps rebooting?',
+		'If we disable the Bedroom lights the camera keeps restarting?',
+		'If we disable the Bedroom lights the camera keeps disconnecting?',
+		'If we disable the Bedroom lights the camera keeps overheating?',
+		'If we disable the Bedroom lights the air purifier keeps restarting?',
+		'If we disable the Bedroom lights the television keeps restarting?',
+		'If we disable the Bedroom lights the smoke detector keeps restarting?',
+		'If we disable the Bedroom lights the outlet keeps restarting?',
+		'If we turn off the Bedroom lights the camera starts to record?',
+		'If we turn off the Bedroom lights the camera stops being active?',
+		'If we turn off the Bedroom lights the camera becomes much safer?',
+		'If we turn off the Bedroom lights the camera becomes very unsafe?',
+		'If we turn off the Bedroom lights the camera keeps on working?',
+		'If we turn off the Bedroom lights the camera starts recording again?',
+		'If we disable the Bedroom lights the camera stops recording again immediately?',
+		'If we turn off the Bedroom lights the camera stops working completely?',
+		'If we turn off the Bedroom lights her security camera stops recording?',
+		'If we turn off the Bedroom lights his hallway camera keeps working?',
+		'If we turn off the Bedroom lights our front porch security camera stops recording?',
+		'If we turn off the Bedroom lights the camera stops remotely?',
+		'If we turn off the Bedroom lights John stops sleeping?',
+		'If we turn off the Bedroom lights guests keep waiting?',
+		'If we turn the Bedroom lights off the camera stops recording?',
+		'If we turn the Bedroom lights down the camera stops recording?',
+		'If we turn the Bedroom lights up the alarm keeps working?',
+		'If we turn off the Bedroom lights then the camera stops recording?',
+		'If we turn off the Bedroom lights then John stops sleeping?',
+		'If the window is open turn on the Bedroom lights then the baby fails?',
+		'If we turn off the Bedroom lights John keeps running?',
+		'If we turn off the Bedroom lights John keeps dancing?',
+		'If we turn off the Bedroom lights guests keep singing?',
+		'If we turn off the Bedroom lights John starts to run?',
+		'If we turn off the Bedroom lights John starts to swim?',
+		'If we turn off the Bedroom camera the alarm stops working?',
+		'If we turn off the Bedroom lighting the camera stops recording?',
+		'If we dim the Bedroom lighting the alarm keeps working?',
+		'If we unlock the Bedroom locks the alarm stops working?',
+		'If we set the Bedroom lights to 20 percent the camera keeps working?',
+		'If we set the Bedroom lights to fifty percent the camera stops recording?',
+		'If we set the Bedroom lights to 2700 kelvin the camera stops recording?',
+		'If we set the Bedroom lights to 3000 K the alarm keeps working?',
+		'If we set the Bedroom thermostat to twenty-one degrees the camera keeps working?',
+		'If we set the Bedroom thermostat to negative five celsius the alarm stops working?',
+		'If we dim the Bedroom lights by 20 percent the camera stops recording?',
+		'If the window is open turn off the Bedroom lights which could wake the baby will the alarm sound?',
+		'If we turn off the Bedroom lights which system reports will fail?',
+		'If we turn off the Bedroom lights who currently will still be able to see?',
+		'If we turn off the Bedroom lights then who currently will still be able to see?',
+		'If we turn off the Bedroom lights and then who will still be able to see?',
+		'If we turn the Bedroom lights off, then who will still be able to see?',
+		'If we turn the Bedroom lights off who will still be able to see?',
+		'If we turn off the Bedroom lights in which room could John still read?',
+		'If we turn off the Bedroom lights which person will still see?',
+		'If we turn off the Bedroom lights which guests will still be able to see?',
+		'If we turn off the Bedroom lights which children will still be able to see?',
+		'If we turn off the Bedroom lights which one will still work?',
+		'If we turn off the Bedroom lights where else could John read?',
+		'If we turn off the Bedroom lights where exactly could John read?',
 		'If we disable the Bedroom lights what about the camera?',
 		'If we disable the Bedroom lights how about the camera?',
 		'If we disable the Bedroom lights what next?',
+		'If we disable the Bedroom lights where could accidents happen?',
 	])('keeps an unpunctuated hypothetical action on the read path: %s', (message) => {
 		const plan = service.plan({
 			message,
@@ -7004,14 +7288,195 @@ describe('BuddyContextPlannerService', () => {
 		},
 	);
 
-	it('recognizes a modal relative target clause without executing an unresolved subset', () => {
+	it.each([
+		'If the window is open, turn off the lights that could wake the baby?',
+		'If the window is open, turn off the lights that still could wake the baby?',
+		'If the window is open turn off the Bedroom lights that probably could wake the baby?',
+		'If the window is open turn off the Bedroom lights which perhaps might wake the baby?',
+		'If the window is open turn off the Bedroom lights which work but might fail?',
+		'If the window is open turn off the Bedroom lights that work and could fail?',
+		'If the window is open turn off the Bedroom lights that John says could wake the baby?',
+		'If the window is open, turn off the lights which currently might wake the baby?',
+		'If the window is open turn off the Bedroom lights in the area where accidents could happen?',
+		'If the window is open turn off the Bedroom lights in which accidents could happen?',
+		'If the window is open turn off the Bedroom switches which John could work?',
+	])('recognizes a modal relative target clause without executing an unresolved subset: %s', (message) => {
 		const plan = service.plan({
-			message: 'If the window is open, turn off the lights that could wake the baby?',
+			message,
 			conversationSpaceId: 'space-bedroom',
 			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 		});
 
 		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk: 'action', strategy: 'clarify' });
 		expect(plan.toolNames).toEqual([]);
+	});
+
+	it('keeps a phrasal make action on the command path', () => {
+		const plan = service.plan({
+			message: 'If the window is open make the Bedroom lights become brighter?',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk: 'none', strategy: 'model-tools' });
+		expect(plan.toolNames).toContain('control_device');
+		expect(plan.toolNames).toContain('set_space_lighting');
+	});
+
+	it.each([
+		'If the window is open turn off the Bedroom lights which keep flickering?',
+		'If the window is open turn off the Bedroom lights which keep flashing?',
+		'If the window is open turn off the Bedroom lights whose bulbs keep flickering?',
+		'If the window is open turn off the Bedroom lights John keeps activating?',
+		'If the window is open turn off the Bedroom lights the cleaner keeps cleaning?',
+		'If the window is open turn off the Bedroom lights the cleaner keeps repairing?',
+		'If the window is open turn off the Bedroom lights the cleaner keeps repairing in the workshop?',
+		'If the window is open turn off the Bedroom lights the electrician keeps testing?',
+		'If the window is open turn off the Bedroom lights the cleaner keeps polishing?',
+		'If the window is open turn off the Bedroom lights the controller keeps activating?',
+		'If the window is open turn off the Bedroom lights the router keeps testing?',
+		'If the window is open turn off the Bedroom lights the electrician breaks?',
+		'If the window is open turn off the Bedroom lights the electricians break?',
+		'If the window is open turn off the Bedroom lights John starts to repair?',
+	])('keeps a phrasal relative target on the command path: %s', (message) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('mixed');
+		expect(plan.toolNames).toContain('control_device');
+		expect(plan.toolNames).toContain('set_space_lighting');
+	});
+
+	it('keeps a finite zero-relative camera target on the command path', () => {
+		const plan = service.plan({
+			message: 'If the window is open turn off the Bedroom camera the operator stops remotely?',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('mixed');
+		expect(plan.toolNames).toContain('control_device');
+		expect(plan.toolNames).not.toContain('set_space_lighting');
+	});
+
+	it('keeps an infinitive action complement out of conditional outcome subjects', () => {
+		const plan = service.plan({
+			message: 'If the window is open make the Bedroom lights a little brighter to start reading?',
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('mixed');
+		expect(plan.toolNames).toContain('control_device');
+		expect(plan.toolNames).toContain('set_space_lighting');
+	});
+
+	it.each([
+		'If the window is open turn on the Bedroom lights and help John start reading?',
+		'If the window is open turn on the Bedroom lights and let John start reading?',
+		'If the window is open turn on the Bedroom lights and ask John to start reading?',
+		'If the window is open turn on the Bedroom lights and ask the camera to start recording?',
+		'If the window is open turn on the Bedroom lights and tell the camera to start recording?',
+		'If the window is open turn on the Bedroom lights then help John start reading?',
+		'If the window is open turn on the Bedroom lights and then ask John to start reading?',
+		'If the window is open turn on the Bedroom lights then ensure John keeps reading?',
+		'If the window is open turn on the Bedroom lights then first start recording?',
+		'If the window is open turn on the Bedroom lights then just start recording?',
+		'If the window is open turn on the Bedroom lights then kindly start recording?',
+		'If the window is open turn on the Bedroom lights then silently start recording?',
+		'If the window is open turn on the Bedroom lights then urgently start recording?',
+	])('keeps a coordinated command out of conditional outcome subjects: %s', (message) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('mixed');
+		expect(plan.toolNames).toContain('control_device');
+		expect(plan.toolNames).toContain('set_space_lighting');
+	});
+
+	it.each([
+		'If the window is open turn on the Bedroom lights then please start recording?',
+		'If the window is open turn on the Bedroom lights the camera keeps working in darkness and start recording?',
+	])('clarifies an ambiguous coordinated imperative instead of treating it as an outcome: %s', (message) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk: 'action', strategy: 'clarify' });
+		expect(plan.toolNames).toEqual([]);
+	});
+
+	it.each([
+		'If the window is open turn on the Bedroom lights so the camera starts recording?',
+		'If the window is open turn on the Bedroom lights so that the camera will work?',
+		'If the window is open turn on the Bedroom lights as John starts reading?',
+		'If the window is open turn on the Bedroom lights before the camera stops recording?',
+		'If the window is open turn on the Bedroom lights before the camera breaks?',
+		'If the window is open turn on the Bedroom lights because the baby starts crying?',
+		'If the window is open turn on the Bedroom lights because the circuit breaks?',
+		'If the window is open turn on the Bedroom lights since John starts reading?',
+		'If the window is open turn on the Bedroom lights wherever John starts reading?',
+		'If the window is open turn on the Bedroom lights while John starts reading?',
+		'If the window is open turn on the Bedroom lights whilst John starts reading?',
+		'If the window is open turn on the Bedroom lights whether John keeps reading?',
+		'If the window is open turn on the Bedroom lights lest John start sleeping?',
+		'If the window is open turn on the Bedroom lights although John keeps sleeping?',
+		'If the window is open turn on the Bedroom lights though John keeps sleeping?',
+		'If the window is open turn on the Bedroom lights even though John keeps sleeping?',
+		'If the window is open turn on the Bedroom lights unless the camera stops recording?',
+	])('keeps a subordinate clause out of conditional outcome subjects: %s', (message) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.intent).toBe('mixed');
+		if (plan.strategy === 'clarify') {
+			expect(plan.ambiguityRisk).toBe('action');
+			expect(plan.toolNames).toEqual([]);
+		} else {
+			expect(plan.toolNames).toContain('control_device');
+			expect(plan.toolNames).toContain('set_space_lighting');
+		}
+	});
+
+	it.each([
+		['If the window is open turn on the Bedroom lights for guests who could otherwise fall?', 'none', 'model-tools'],
+		['If the window is open turn on the Bedroom lights for guests in white who might wake?', 'none', 'model-tools'],
+		['If the window is open turn on the Bedroom lights for guests by the door who might wake?', 'none', 'model-tools'],
+		[
+			'If the window is open turn on the Bedroom lights for the camera operator who starts working?',
+			'none',
+			'model-tools',
+		],
+		[
+			'If the window is open turn on the Bedroom lights for guests who probably could otherwise fall?',
+			'none',
+			'model-tools',
+		],
+		['If the window is open turn on the Bedroom lights near guests who could otherwise fall?', 'action', 'clarify'],
+	] as const)('keeps a who-relative command complement on the action path: %s', (message, ambiguityRisk, strategy) => {
+		const plan = service.plan({
+			message,
+			knownSpaces: [{ id: 'space-bedroom', name: 'Bedroom' }],
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan).toMatchObject({ intent: 'mixed', ambiguityRisk, strategy });
+		if (strategy === 'model-tools') {
+			expect(plan.toolNames).toContain('control_device');
+			expect(plan.toolNames).toContain('set_space_lighting');
+		} else {
+			expect(plan.toolNames).toEqual([]);
+		}
 	});
 });
