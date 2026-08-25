@@ -264,7 +264,8 @@ export const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
 	String.raw`^(?:(?:what|which)\b|(?:can|could|would) you (?:show|tell)(?: me)?\b).*\b(?:am i able to|can i|i can)\b.*\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
-const CONTEXTUAL_ROOM_SCOPE_PATTERN_SOURCE = String.raw`(?:in\s+this room|belong(?:ed|ing|s)?\s+to\s+this room)`;
+const CONTEXTUAL_ROOM_MEMBERSHIP_PATTERN_SOURCE = String.raw`(?<!do not )(?<!does not )(?<!did not )(?<!don't )(?<!doesn't )(?<!didn't )(?<!never )(?<!no longer )belong(?:ed|ing|s)?\s+to\s+this room`;
+const CONTEXTUAL_ROOM_SCOPE_PATTERN_SOURCE = String.raw`(?:in\s+this room|${CONTEXTUAL_ROOM_MEMBERSHIP_PATTERN_SOURCE})`;
 export const CONTEXTUAL_SCOPE_PATTERN = new RegExp(
 	String.raw`\b(?:here|this space|${CONTEXTUAL_ROOM_SCOPE_PATTERN_SOURCE})\b`,
 	'u',

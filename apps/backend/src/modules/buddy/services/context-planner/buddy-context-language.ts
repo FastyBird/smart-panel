@@ -49,6 +49,7 @@ const CONDITIONAL_OUTCOME_FINITE_OBJECT_GAP_PREDICATE_PATTERN_SOURCE = String.ra
 const CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE = String.raw`(?!(?:that|to|where|which|who|whose)\b)[\p{Letter}\p{Number}'’-]+`;
 const CONDITIONAL_OUTCOME_BARE_SUBJECT_COMMAND_PATTERN_SOURCE = String.raw`(?:${ACTION_SIGNAL_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE}|also|ask|get|have|help|let|only|please|tell)`;
 const CONDITIONAL_OUTCOME_SUBJECT_PREFIX_EXCLUSION_PATTERN_SOURCE = String.raw`(?!(?:albeit|although|as|because|even\s+(?:if|though)|lest|since|so|that|though|to|where|whereas|wherein|wherever|whether|which|whilst|who|whose)\b|${CONDITION_PATTERN.source}|(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b)`;
+const CONDITIONAL_OUTCOME_SUBORDINATE_PREFIX_PATTERN = new RegExp(String.raw`${CONDITION_PATTERN.source}\s*$`, 'u');
 const CONDITIONAL_OUTCOME_DETERMINED_SUBJECT_PATTERN_SOURCE = String.raw`(?:a|an|her|his|its|my|our|the|their|this|these|those|your)\s+${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE}){0,3}`;
 const CONDITIONAL_OUTCOME_BARE_SUBJECT_PATTERN_SOURCE = String.raw`(?!(?:${CONDITIONAL_OUTCOME_BARE_SUBJECT_COMMAND_PATTERN_SOURCE})\b)${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE}`;
 const CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE = String.raw`${CONDITIONAL_OUTCOME_SUBJECT_PREFIX_EXCLUSION_PATTERN_SOURCE}(?:${CONDITIONAL_OUTCOME_DETERMINED_SUBJECT_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_BARE_SUBJECT_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_SUBJECT_TOKEN_PATTERN_SOURCE})?)`;
@@ -186,6 +187,8 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 	if (
 		subjectFirstOutcomeMatch &&
 		!/\b(?:that|where|which|who)\b/u.test(subjectFirstOutcomeMatch[0]) &&
+		!CONDITION_PATTERN.test(subjectFirstOutcomeMatch[0]) &&
+		!CONDITIONAL_OUTCOME_SUBORDINATE_PREFIX_PATTERN.test(actionMessage.slice(0, subjectFirstOutcomeMatch.index)) &&
 		!CONDITIONAL_OUTCOME_ZERO_RELATIVE_TARGET_PATTERN.test(actionMessage)
 	) {
 		return true;
