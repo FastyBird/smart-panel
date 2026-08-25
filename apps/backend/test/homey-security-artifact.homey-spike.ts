@@ -10,6 +10,7 @@ import {
 	isHomeyGeneratedPseudonym,
 	isHomeyPersonalKey,
 	isHomeySecretKey,
+	isPublicHomeyCapabilityBase,
 } from './support/homey-shs-probe';
 
 type JsonRecord = Record<string, unknown>;
@@ -121,6 +122,12 @@ const configuredExpectedHost = (): string | undefined => {
 	return normalizedValue === undefined || PUBLIC_HOMEY_HOSTS.has(normalizedValue) ? undefined : normalizedValue;
 };
 
+const configuredWriteCapabilityId = (): string | undefined => {
+	const value = process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID?.trim();
+
+	return value === undefined || isPublicHomeyCapabilityBase(value) ? undefined : value;
+};
+
 const configuredPrivateValues = (): readonly string[] =>
 	[
 		process.env.FB_HOMEY_SHS_API_KEY,
@@ -135,7 +142,7 @@ const configuredPrivateValues = (): readonly string[] =>
 		process.env.FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID,
 		process.env.FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID,
 		process.env.FB_HOMEY_SHS_WRITE_DEVICE_ID,
-		process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID,
+		configuredWriteCapabilityId(),
 		configuredWriteStringValue(),
 		...(process.env.FB_HOMEY_SHS_PRIVATE_TERMS?.split(',') ?? []),
 	]
@@ -534,17 +541,37 @@ const containsStructuredPersonalValue = (value: unknown): boolean => {
 	});
 };
 
-const containsLooseSecretAssignment = (text: string): boolean =>
-	[...text.matchAll(LOOSE_PROPERTY_PATTERN)].some((match) => {
+const loosePropertyAssignments = (text: string): ReadonlyArray<readonly [string, string]> =>
+	[...text.matchAll(LOOSE_PROPERTY_PATTERN)].flatMap((match) => {
 		const key = match[1]?.trim();
 		const rawValue = (match[3] ?? match[4])?.replace(/\s+#.*$/, '').trim();
 
-		if (key === undefined || rawValue === undefined || !isHomeySecretKey(key)) {
-			return false;
+		if (key === undefined || rawValue === undefined) {
+			return [];
 		}
 
-		return !['', '0', '[~3~]', 'false', 'null', 'true', 'undefined'].includes(rawValue);
+		return [[key, rawValue] as const];
 	});
+
+const containsLooseSecretAssignment = (text: string): boolean =>
+	loosePropertyAssignments(text).some(
+		([key, rawValue]) =>
+			isHomeySecretKey(key) && !['', '0', '[~3~]', 'false', 'null', 'true', 'undefined'].includes(rawValue),
+	);
+
+const containsLooseAddressAssignment = (text: string): boolean =>
+	loosePropertyAssignments(text).some(
+		([key, rawValue]) => isHomeyAddressKey(key) && !['0', '[~0~]', 'false', 'null'].includes(rawValue),
+	);
+
+const containsLoosePersonalAssignment = (text: string): boolean =>
+	loosePropertyAssignments(text).some(
+		([key, rawValue]) =>
+			isHomeyPersonalKey(key) &&
+			!['0', '[~2~]', 'false', 'null'].includes(rawValue) &&
+			!isHomeyGeneratedPseudonym(rawValue) &&
+			!PUBLIC_SYNTHETIC_PERSONAL_VALUES.has(rawValue),
+	);
 
 const containsStructuredUrl = (value: unknown): boolean => {
 	if (typeof value === 'string') {
@@ -617,11 +644,19 @@ const assertFixtureTextSafe = (label: string, text: string, extension: string, c
 		throw new Error(`${label} contains a structured secret value`);
 	}
 
-	if (structuredValue !== undefined && containsStructuredAddress(structuredValue)) {
+	const containsAddress =
+		structuredValue === undefined ? containsLooseAddressAssignment(text) : containsStructuredAddress(structuredValue);
+
+	if (containsAddress) {
 		throw new Error(`${label} contains a structured address value`);
 	}
 
-	if (checkPersonalValues && structuredValue !== undefined && containsStructuredPersonalValue(structuredValue)) {
+	const containsPersonalValue =
+		structuredValue === undefined
+			? containsLoosePersonalAssignment(text)
+			: containsStructuredPersonalValue(structuredValue);
+
+	if (checkPersonalValues && containsPersonalValue) {
 		throw new Error(`${label} contains a structured personal value`);
 	}
 };
@@ -860,6 +895,15 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertFixtureTextSafe('unsafe fixture', 'API key: opaque-secret-value', '.md')).toThrow(
 			'unsafe fixture contains a structured secret value',
 		);
+		expect(() => assertFixtureTextSafe('unsafe fixture', 'hostname: family-homey.local', '.md')).toThrow(
+			'unsafe fixture contains a structured address value',
+		);
+		expect(() => assertFixtureTextSafe('unsafe fixture', 'name: Alice Bedroom', '.txt')).toThrow(
+			'unsafe fixture contains a structured personal value',
+		);
+		expect(() =>
+			assertFixtureTextSafe('safe fixture', 'hostname: [~0~]\nname: device-label-000001', '.md'),
+		).not.toThrow();
 		expect(() => assertFixtureTextSafe('unsafe fixture', 'endpoint: http://private-homey.local:4859', '.yaml')).toThrow(
 			'unsafe fixture contains a URL',
 		);
@@ -1000,6 +1044,13 @@ describe('Homey security artifact gate', () => {
 					'unsafe fixture contains a configured private Homey value',
 				);
 			}
+
+			process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID = 'onoff';
+			expect(() => assertTextSafe('safe fixture', '{"capability":"onoff"}')).not.toThrow();
+			process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID = 'onoff.private-device';
+			expect(() => assertTextSafe('unsafe fixture', '{"capability":"onoff.private-device"}')).toThrow(
+				'unsafe fixture contains a configured private Homey value',
+			);
 		} finally {
 			if (previousPrivateTerms === undefined) {
 				delete process.env.FB_HOMEY_SHS_PRIVATE_TERMS;

@@ -174,6 +174,9 @@ const PUBLIC_HOMEY_CAPABILITY_BASES = new Set([
 	'windowcoverings_state',
 	'windowcoverings_tilt_set',
 ]);
+
+export const isPublicHomeyCapabilityBase = (value: string): boolean => PUBLIC_HOMEY_CAPABILITY_BASES.has(value);
+
 const PUBLIC_HOMEY_ENUM_STATES = new Map<string, ReadonlySet<string>>([
 	['battery_charging_state', new Set(['charging', 'discharging', 'full'])],
 	['light_mode', new Set(['color', 'temperature'])],
