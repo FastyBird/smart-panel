@@ -640,9 +640,10 @@ The 2026-08-25 credential-free inventory gate generated 250 unique devices by cy
 fixtures, then ran the production local transformer plus all built-in device/channel/property mapping resolution. After
 three warm-up passes, 30 measured Node 24 runs on the available development backend host completed at p50 `14.35 ms`,
 p95 `19.13 ms`, and maximum `23.01 ms`, with all 250 devices normalized and no mapping conflicts. The repeatable gate is
-`pnpm run homey:performance-gate`; its deliberately generous `1,000 ms` p95 CI budget detects major regressions and is
-not a Homey network-latency guarantee. No supported panel/backend appliance was available in this workspace, so the same
-command should be rerun there when hardware is available without reopening the credential-free corpus requirement.
+`pnpm --filter ./apps/backend run homey:performance-gate`; its deliberately generous `1,000 ms` p95 CI budget detects
+major regressions and is not a Homey network-latency guarantee. No supported panel/backend appliance was available in
+this workspace, so the same command should be rerun there when hardware is available without reopening the
+credential-free corpus requirement.
 
 ### Task 6.4: Documentation and release checklist
 

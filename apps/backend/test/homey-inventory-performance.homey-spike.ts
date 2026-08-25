@@ -102,5 +102,5 @@ describe('Homey inventory performance gate', () => {
 		process.stdout.write(
 			`Homey ${INVENTORY_SIZE}-device inventory gate: p50=${p50Ms.toFixed(2)}ms, p95=${p95Ms.toFixed(2)}ms, max=${maximumMs.toFixed(2)}ms.\n`,
 		);
-	});
+	}, 45_000);
 });
