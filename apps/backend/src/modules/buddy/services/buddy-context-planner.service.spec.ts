@@ -245,6 +245,18 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
+	it('retains aggregate scope before an independent alternative read', () => {
+		const plan = service.plan({
+			message: 'Are any windows open or is the heater off?',
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.queries).toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state', spaceId: 'space-office' });
+	});
+
 	it.each([
 		{ message: 'What was the weather yesterday?', domains: ['weather'], query: { kind: 'weather' } },
 		{
@@ -4228,6 +4240,7 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows open, please?',
 		'Are any windows open, currently?',
 		'Are any windows open and unlocked?',
+		'Are any windows open or are unlocked?',
 		'Are any windows open and unlocked or closed?',
 		'Are any windows open and unlocked or closed yet locked?',
 		'Are any windows almost open or fully closed?',
@@ -7239,6 +7252,7 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open turn on the Bedroom lights while John starts reading?',
 		'If the window is open turn on the Bedroom lights whilst John starts reading?',
 		'If the window is open turn on the Bedroom lights whether John keeps reading?',
+		'If the window is open turn on the Bedroom lights lest John start sleeping?',
 		'If the window is open turn on the Bedroom lights although John keeps sleeping?',
 		'If the window is open turn on the Bedroom lights though John keeps sleeping?',
 		'If the window is open turn on the Bedroom lights even though John keeps sleeping?',
