@@ -25,6 +25,7 @@ import {
 	ACTION_SIGNAL_PATTERN_SOURCE,
 	AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE,
 	AGGREGATE_STATE_COORDINATION_PATTERN,
+	AGGREGATE_SUBJECT_QUANTIFIER_PATTERN_SOURCE,
 	AGGREGATE_SUFFIX_COMMA_PATTERN,
 	CLOCK_TIME_HISTORY_PATTERN,
 	COMPOUND_CONNECTOR_PATTERN_SOURCE,
@@ -77,8 +78,10 @@ const INDEPENDENT_ALTERNATIVE_AUXILIARY_PATTERN = new RegExp(
 	String.raw`^\s*${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+`,
 	'u',
 );
-const INDEPENDENT_ALTERNATIVE_DETERMINED_SUBJECT_PATTERN =
-	/^(?:a|an|her|his|its|my|our|the|their|this|these|those|your)\s+[\p{Letter}\p{Number}'’-]+\b/u;
+const INDEPENDENT_ALTERNATIVE_DETERMINED_SUBJECT_PATTERN = new RegExp(
+	String.raw`^(?:a|an|her|his|its|my|our|the|their|this|these|those|your|${AGGREGATE_SUBJECT_QUANTIFIER_PATTERN_SOURCE})\s+[\p{Letter}\p{Number}'’-]+\b`,
+	'u',
+);
 const INDEPENDENT_ALTERNATIVE_PRONOUN_SUBJECT_PATTERN =
 	/^(?:anybody|anyone|everybody|everyone|he|i|it|nobody|no\s+one|she|somebody|someone|there|they|we|you)\b/u;
 const INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN_SOURCE = String.raw`(?:how\s+many|what|which)\s+[\p{Letter}\p{Number}'’-]+\b`;

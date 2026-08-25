@@ -330,6 +330,7 @@ export const BUILT_IN_ACTION_SPACE_NAMES = new Set([
 export const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs) thermostat\b/u;
 const WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:all|any|each|every)(?:\s+one)?`;
+export const AGGREGATE_SUBJECT_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}|some)`;
 export const WHOLE_HOME_SCOPE_PATTERN = new RegExp(
 	String.raw`\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\banywhere(?:\s+at\s+all)?\b(?!\s+(?:around|at|else|here|in|inside|near|within)\b)|\beverywhere\b|\b${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}(?:\s+of\s+the)?\s+(?:rooms?|spaces?)\b`,
 	'u',
@@ -337,7 +338,7 @@ export const WHOLE_HOME_SCOPE_PATTERN = new RegExp(
 export const ANYWHERE_ELSE_PATTERN = /\banywhere else\b/u;
 export const AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE = String.raw`(?:air\s+(?:conditioners?|dehumidifiers?|humidifiers?|purifiers?)|av\s+receivers?|cameras?|doorbells?|game\s+consoles?|heating\s+units?|outlets?|projectors?|pumps?|robot\s+vacuums?|set[-\s]top\s+boxes|speakers?|sprinklers?|televisions?|tvs?|valves?|water\s+heaters?|window\s+coverings?)`;
 const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|smoke\s+(?:detectors?|sensors?)|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|locks?|switch(?:es)?|thermostats?)|${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source})`;
-const AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}|none)`;
+const AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_SUBJECT_QUANTIFIER_PATTERN_SOURCE}|none)`;
 const AGGREGATE_READ_EMPHATIC_SUFFIX_PATTERN_SOURCE = String.raw`(?:at\s+all|whatsoever)`;
 const AGGREGATE_READ_OUTWARD_QUALIFIER_PATTERN_SOURCE = String.raw`(?:beyond|outside(?:\s+of)?)\s+this\s+room`;
 const AGGREGATE_READ_TRAILING_ADJUNCT_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_READ_EMPHATIC_SUFFIX_PATTERN_SOURCE}|${AGGREGATE_READ_OUTWARD_QUALIFIER_PATTERN_SOURCE}|${ACTION_COURTESY_SUFFIX_PATTERN_SOURCE}|at\s+(?:present|the\s+moment)|currently|now|please|right\s+now|today|tonight|yet)`;
