@@ -4243,6 +4243,8 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows open right now?',
 		'Are any windows open currently?',
 		'Are any windows open at the moment?',
+		'Are any windows open at all?',
+		'Are any windows open whatsoever?',
 		'Are any windows open please?',
 		'Are any windows open, please?',
 		'Are any windows open, currently?',
