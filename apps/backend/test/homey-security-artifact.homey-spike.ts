@@ -26,6 +26,7 @@ const BUILD_EXTENSIONS = new Set(['.js', '.json', '.map']);
 const SECRET_PROPERTY_PATTERN =
 	/^(?:access[_-]?token|api[_-]?key|authorization|credential|password|refresh[_-]?token|secret)$/i;
 const IP_ADDRESS_CANDIDATE_PATTERN = /[A-Za-z0-9:.%_-]{2,}/g;
+const COMPILED_IDENTIFIER_PATTERN = /(?<!["'])\bhomey_[a-z0-9_]{16,}\b(?!["'])|\bHOMEY_[A-Z0-9_]{16,}\b/g;
 const FORBIDDEN_PATTERNS: readonly ForbiddenPattern[] = [
 	{
 		label: 'an IPv4 address',
@@ -33,7 +34,7 @@ const FORBIDDEN_PATTERNS: readonly ForbiddenPattern[] = [
 	},
 	{ label: 'a MAC address', pattern: /\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b/i },
 	{ label: 'an email address', pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i },
-	{ label: 'a Homey personal access token', pattern: /\b(?:hpat|pat)_[A-Za-z0-9_-]{16,}\b/i },
+	{ label: 'a Homey personal access token', pattern: /\b(?:homey|hpat|pat)_[A-Za-z0-9_-]{16,}\b/i },
 	{
 		label: 'a serialized secret value',
 		pattern:
@@ -160,13 +161,18 @@ describe('Homey security artifact gate', () => {
 			BUILD_ROOT,
 			(path) => path.endsWith('.d.ts') || BUILD_EXTENSIONS.has(extname(path)),
 		);
+		const compiledModuleFiles = buildFiles.filter((path) => path.endsWith('.d.ts') || path.endsWith('.js'));
 
 		if (process.env.HOMEY_SECURITY_REQUIRE_BUILD === '1') {
-			expect(buildFiles.length).toBeGreaterThan(0);
+			expect(compiledModuleFiles.length).toBeGreaterThan(0);
 		}
 
 		for (const path of buildFiles) {
-			assertTextSafe(path.slice(BACKEND_ROOT.length + 1), readFileSync(path, 'utf8'));
+			const text = readFileSync(path, 'utf8');
+			const artifactText =
+				path.endsWith('.js') || path.endsWith('.d.ts') ? text.replace(COMPILED_IDENTIFIER_PATTERN, '') : text;
+
+			assertTextSafe(path.slice(BACKEND_ROOT.length + 1), artifactText);
 		}
 	});
 
@@ -183,6 +189,9 @@ describe('Homey security artifact gate', () => {
 		).toThrow('UnsafeHomeySchema.properties.api_key publishes example');
 		expect(() => assertTextSafe('unsafe fixture', '{"api_key":"must-not-be-reported"}')).toThrow(
 			'unsafe fixture contains a serialized secret value',
+		);
+		expect(() => assertTextSafe('unsafe fixture', '{"value":"homey_abcdefghijklmnop"}')).toThrow(
+			'unsafe fixture contains a Homey personal access token',
 		);
 		expect(() => assertTextSafe('unsafe fixture', '{"address":"192.168.1.23"}')).toThrow(
 			'unsafe fixture contains an IPv4 address',
