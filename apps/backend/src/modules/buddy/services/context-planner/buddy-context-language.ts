@@ -83,6 +83,7 @@ const CONDITIONAL_OUTCOME_PREPOSITION_FRONTED_WH_PREFIX_PATTERN = new RegExp(
 	String.raw`\b${CONDITIONAL_OUTCOME_RELATIVE_PREPOSITION_PATTERN_SOURCE}\s+which\s+${CONDITIONAL_OUTCOME_SUBJECT_PATTERN_SOURCE}\s*$`,
 	'u',
 );
+const CONDITIONAL_OUTCOME_FRONTED_WHERE_PREFIX_PATTERN = /\bwhere\s+(?:else|exactly)\s*$/u;
 const CONDITIONAL_OUTCOME_WHO_PREFIX_PATTERN = new RegExp(
 	String.raw`\bwho\s+(?:(?:${CONDITIONAL_OUTCOME_RELATIVE_ADVERB_PATTERN_SOURCE})\s+){0,2}$`,
 	'u',
@@ -187,7 +188,9 @@ function isConditionalOutcomeQuestion(message: string, actionIndex: number): boo
 
 		return (
 			(hasExplicitSubjectTail &&
-				(!hasRelativePrefix || CONDITIONAL_OUTCOME_PREPOSITION_FRONTED_WH_PREFIX_PATTERN.test(prefix))) ||
+				(!hasRelativePrefix ||
+					CONDITIONAL_OUTCOME_PREPOSITION_FRONTED_WH_PREFIX_PATTERN.test(prefix) ||
+					CONDITIONAL_OUTCOME_FRONTED_WHERE_PREFIX_PATTERN.test(prefix))) ||
 			(!hasRelativePrefix &&
 				CONDITIONAL_OUTCOME_WH_SUBJECT_AUXILIARY_TAIL_PATTERN.test(tail) &&
 				hasConditionalOutcomeDirectWhSubject(prefix))
