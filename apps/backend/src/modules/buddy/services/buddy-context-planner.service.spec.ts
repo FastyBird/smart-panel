@@ -245,16 +245,21 @@ describe('BuddyContextPlannerService', () => {
 		});
 	});
 
-	it('retains aggregate scope before an independent alternative read', () => {
+	it.each([
+		['Are any windows open or is the heater off?', [], 'space-office'],
+		['Are any windows open or are heaters off?', [], 'space-office'],
+		['Are any windows open or is Kitchen heater off?', [{ id: 'space-kitchen', name: 'Kitchen' }], 'space-kitchen'],
+	])('retains aggregate scope before an independent alternative read: %s', (message, knownSpaces, readSpaceId) => {
 		const plan = service.plan({
-			message: 'Are any windows open or is the heater off?',
+			message,
 			conversationSpaceId: 'space-office',
+			knownSpaces,
 			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 		});
 
 		expect(plan.queries).toContainEqual({ kind: 'search-home' });
 		expect(plan.queries).toContainEqual({ kind: 'current-state' });
-		expect(plan.queries).toContainEqual({ kind: 'current-state', spaceId: 'space-office' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state', spaceId: readSpaceId });
 	});
 
 	it.each([
