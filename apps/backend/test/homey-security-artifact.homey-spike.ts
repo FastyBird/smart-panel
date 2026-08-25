@@ -29,7 +29,16 @@ const SNAPSHOT_ROOT = resolve(REPOSITORY_ROOT, 'apps');
 const BUILD_EXTENSIONS = new Set(['.js', '.json', '.map']);
 const FIXTURE_EXTENSIONS = new Set(['.json', '.md', '.txt', '.yaml', '.yml']);
 const IP_ADDRESS_CANDIDATE_PATTERN = /[A-Za-z0-9:.%_-]{2,}/g;
-const HOMEY_TOKEN_PATTERN = /\b(?:homey|hpat|pat)_[A-Za-z0-9_-]{16,}\b/i;
+const HOMEY_TOKEN_PATTERN = /\b(?:homey|hpat|pat)[_-][A-Za-z0-9_-]{16,}\b/gi;
+const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
+	'homey-config-validator',
+	'homey-device-inventory',
+	'homey-failure-log-limiter',
+	'homey-plugin-batch-adoption',
+	'homey-plugin-connection',
+	'homey-plugin-device-mapping',
+	'homey-reconnect-backoff',
+]);
 const COMPILED_SYMBOL_NAME_PATTERN = /^[A-Z][A-Z0-9_]+$/;
 const COMMENT_PATTERN = /\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g;
 const SERIALIZED_STRING_PROPERTY_PATTERN = /(["'])([^"']+)\1\s*:\s*(["'])([^"']*)\3/g;
@@ -96,13 +105,16 @@ const containsIpv6Address = (text: string): boolean =>
 		return candidate !== undefined && candidate !== '::' && isIP(candidate) === 6;
 	});
 
+const containsHomeyTokenCandidate = (text: string): boolean =>
+	[...text.matchAll(HOMEY_TOKEN_PATTERN)].some((match) => !PUBLIC_HOMEY_TOKEN_COLLISIONS.has(match[0].toLowerCase()));
+
 const containsHomeyToken = (text: string, compiledSource: boolean): boolean => {
 	if (!compiledSource) {
-		return HOMEY_TOKEN_PATTERN.test(text);
+		return containsHomeyTokenCandidate(text);
 	}
 
 	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-	let found = [...text.matchAll(COMMENT_PATTERN)].some((match) => HOMEY_TOKEN_PATTERN.test(match[0]));
+	let found = [...text.matchAll(COMMENT_PATTERN)].some((match) => containsHomeyTokenCandidate(match[0]));
 	const visit = (node: ts.Node): void => {
 		if (found) {
 			return;
@@ -124,7 +136,7 @@ const containsHomeyToken = (text: string, compiledSource: boolean): boolean => {
 				parent.expression.text === 'Symbol' &&
 				parent.arguments[0] === node;
 
-			found = !isPublicSymbolDescription && HOMEY_TOKEN_PATTERN.test(value);
+			found = !isPublicSymbolDescription && containsHomeyTokenCandidate(value);
 		}
 
 		ts.forEachChild(node, visit);
@@ -142,6 +154,64 @@ const containsSerializedSecret = (text: string): boolean =>
 
 		return key !== undefined && isHomeySecretKey(key) && value !== undefined && value.length > 0 && value !== '[~3~]';
 	});
+
+const compiledPropertyName = (name: ts.PropertyName): string | undefined => {
+	if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
+		return name.text;
+	}
+
+	if (ts.isComputedPropertyName(name) && ts.isStringLiteral(name.expression)) {
+		return name.expression.text;
+	}
+
+	return undefined;
+};
+
+const containsUnsafeCompiledLiteral = (node: ts.Expression): boolean => {
+	if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+		return node.text.length > 0 && node.text !== '[~3~]';
+	}
+
+	if (ts.isNumericLiteral(node) || ts.isBigIntLiteral(node)) {
+		return true;
+	}
+
+	if (
+		node.kind === ts.SyntaxKind.TrueKeyword ||
+		node.kind === ts.SyntaxKind.FalseKeyword ||
+		node.kind === ts.SyntaxKind.NullKeyword
+	) {
+		return false;
+	}
+
+	if (ts.isArrayLiteralExpression(node)) {
+		return node.elements.some((element) => ts.isExpression(element) && containsUnsafeCompiledLiteral(element));
+	}
+
+	return false;
+};
+
+const containsCompiledSecret = (text: string): boolean => {
+	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	let found = false;
+	const visit = (node: ts.Node): void => {
+		if (found) {
+			return;
+		}
+
+		if (ts.isPropertyAssignment(node)) {
+			const name = compiledPropertyName(node.name);
+
+			found = name !== undefined && isHomeySecretKey(name) && containsUnsafeCompiledLiteral(node.initializer);
+		}
+
+		ts.forEachChild(node, visit);
+	};
+
+	visit(sourceFile);
+
+	return found;
+};
 
 const containsUnsafeSecretLeaf = (value: unknown): boolean => {
 	if (value === null || value === '' || value === '[~3~]' || typeof value === 'boolean') {
@@ -207,6 +277,10 @@ const assertTextSafe = (label: string, text: string, compiledSource = false): vo
 
 	if (containsSerializedSecret(text)) {
 		throw new Error(`${label} contains a serialized secret value`);
+	}
+
+	if (compiledSource && containsCompiledSecret(text)) {
+		throw new Error(`${label} contains a compiled secret value`);
 	}
 
 	for (const privateValue of configuredPrivateValues()) {
@@ -350,6 +424,9 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertTextSafe('unsafe fixture', '{"value":"homey_abcdefghijklmnop"}')).toThrow(
 			'unsafe fixture contains a Homey personal access token',
 		);
+		expect(() => assertTextSafe('unsafe fixture', '{"value":"homey-abcdefghijklmnop"}')).toThrow(
+			'unsafe fixture contains a Homey personal access token',
+		);
 		expect(() =>
 			assertTextSafe('unsafe compiled module', 'throw new Error("request failed for homey_abcdefghijklmnop")', true),
 		).toThrow('unsafe compiled module contains a Homey personal access token');
@@ -359,6 +436,9 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe('safe compiled module', 'const homey_local_connector_factory_1 = {};', true),
 		).not.toThrow();
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const config = { api_key: 'opaque-secret' };", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() => assertTextSafe('unsafe fixture', '{"address":"192.168.1.23"}')).toThrow(
 			'unsafe fixture contains an IPv4 address',
 		);
