@@ -246,6 +246,8 @@ describe('BuddyContextPlannerService', () => {
 	});
 
 	it.each([
+		['Are any windows open but is the heater off?', [], 'space-office'],
+		['Are any windows open yet is the heater off?', [], 'space-office'],
 		['Are any windows open or is the heater off?', [], 'space-office'],
 		["Are any windows open or isn't the heater off?", [], 'space-office'],
 		['Are any windows open or are heaters off?', [], 'space-office'],
