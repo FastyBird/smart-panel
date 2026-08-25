@@ -41,6 +41,7 @@ const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 ]);
 const COMPILED_SYMBOL_NAME_PATTERN = /^[A-Z][A-Z0-9_]+$/;
 const COMMENT_PATTERN = /\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g;
+const URL_PATTERN = /(?:[A-Z][A-Z0-9+.-]*:)?\/\/[^\s"']+/i;
 const SERIALIZED_STRING_PROPERTY_PATTERN = /(["'])([^"']+)\1\s*:\s*(["'])([^"']*)\3/g;
 const LOOSE_PROPERTY_PATTERN = /^\s*(?:[-*]\s+)?["'`]?([A-Za-z][A-Za-z0-9_.-]*)["'`]?\s*[:=]\s*(.*?)\s*$/gm;
 const FORBIDDEN_PATTERNS: readonly ForbiddenPattern[] = [
@@ -80,6 +81,13 @@ const configuredPrivateValues = (): readonly string[] =>
 		process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY,
 		process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY,
 		process.env.FB_HOMEY_SHS_EXPECTED_HOST,
+		process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER,
+		process.env.FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID,
+		process.env.FB_HOMEY_SHS_LIFECYCLE_OWNER_URI,
+		process.env.FB_HOMEY_SHS_LIFECYCLE_INITIAL_NAME,
+		process.env.FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME,
+		process.env.FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID,
+		process.env.FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID,
 		...(process.env.FB_HOMEY_SHS_PRIVATE_TERMS?.split(',') ?? []),
 	]
 		.map((value) => value?.trim())
@@ -293,6 +301,10 @@ const assertTextSafe = (label: string, text: string, compiledSource = false): vo
 const assertFixtureTextSafe = (label: string, text: string, extension: string): void => {
 	assertTextSafe(label, text);
 
+	if (URL_PATTERN.test(text)) {
+		throw new Error(`${label} contains a URL`);
+	}
+
 	const containsSecret =
 		extension === '.json' ? containsStructuredSecret(JSON.parse(text) as unknown) : containsLooseSecretAssignment(text);
 
@@ -418,6 +430,9 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertFixtureTextSafe('unsafe fixture', 'api_key: opaque-secret-value', '.yaml')).toThrow(
 			'unsafe fixture contains a structured secret value',
 		);
+		expect(() => assertFixtureTextSafe('unsafe fixture', 'endpoint: http://private-homey.local:4859', '.yaml')).toThrow(
+			'unsafe fixture contains a URL',
+		);
 		expect(() => assertTextSafe('unsafe fixture', '{"api_key":"[~3~]unredacted-password"}')).toThrow(
 			'unsafe fixture contains a serialized secret value',
 		);
@@ -457,10 +472,12 @@ describe('Homey security artifact gate', () => {
 		const previousPrivateTerms = process.env.FB_HOMEY_SHS_PRIVATE_TERMS;
 		const previousReplacementApiKey = process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY;
 		const previousDeviceOnlyApiKey = process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY;
+		const previousLifecycleDeviceMarker = process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER;
 
 		process.env.FB_HOMEY_SHS_PRIVATE_TERMS = 'Ada';
 		process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY = 'opaque-replacement-value';
 		process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY = 'opaque-device-value';
+		process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER = 'private-lifecycle-marker';
 
 		try {
 			expect(() => assertTextSafe('unsafe fixture', '{"name":"Ada"}')).toThrow(
@@ -470,6 +487,9 @@ describe('Homey security artifact gate', () => {
 				'unsafe fixture contains a configured private Homey value',
 			);
 			expect(() => assertTextSafe('unsafe fixture', '{"value":"opaque-device-value"}')).toThrow(
+				'unsafe fixture contains a configured private Homey value',
+			);
+			expect(() => assertTextSafe('unsafe fixture', '{"value":"private-lifecycle-marker"}')).toThrow(
 				'unsafe fixture contains a configured private Homey value',
 			);
 		} finally {
@@ -489,6 +509,12 @@ describe('Homey security artifact gate', () => {
 				delete process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY;
 			} else {
 				process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY = previousDeviceOnlyApiKey;
+			}
+
+			if (previousLifecycleDeviceMarker === undefined) {
+				delete process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER;
+			} else {
+				process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER = previousLifecycleDeviceMarker;
 			}
 		}
 	});
