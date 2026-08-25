@@ -147,6 +147,7 @@ describe('Homey SHS compatibility probe', () => {
 			knownDeviceClassGaps: string[];
 			knownMetadataGaps: string[];
 			provenance: Record<string, unknown>;
+			syntheticDeviceFixtures: string[];
 			syntheticFixtures: string[];
 		};
 
@@ -161,7 +162,8 @@ describe('Homey SHS compatibility probe', () => {
 		);
 		expect(manifest.knownDeviceClassGaps).toEqual(['lock']);
 		expect(manifest.knownMetadataGaps).toEqual(['live_enum_option_ids']);
-		expect(manifest.syntheticFixtures).toEqual(['synthetic/enum-capability.json']);
+		expect(manifest.syntheticFixtures).toEqual(['synthetic/enum-capability.json', 'synthetic/devices/lock.json']);
+		expect(manifest.syntheticDeviceFixtures).toEqual(['synthetic/devices/lock.json']);
 		const syntheticEnum = readFixture('synthetic/enum-capability.json') as {
 			provenance: string;
 			values: Array<{ id: string }>;
@@ -170,6 +172,17 @@ describe('Homey SHS compatibility probe', () => {
 		expect(syntheticEnum.provenance).toBe('synthetic-protocol-contract');
 		expect(syntheticEnum.values.map(({ id }) => id)).toEqual(['mode_a', 'mode_b', 'mode_c']);
 		assertDistinctHomeyEnumCapabilityOptionIds(syntheticEnum);
+
+		const syntheticLock = readFixture('synthetic/devices/lock.json') as {
+			capabilities: string[];
+			class: string;
+			fixtureProvenance: string;
+		};
+
+		expect(syntheticLock.fixtureProvenance).toBe('synthetic-published-protocol-contract');
+		expect(syntheticLock.class).toBe('lock');
+		expect(syntheticLock.capabilities).toEqual(['locked']);
+		assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices: { lock: syntheticLock } }, []);
 	});
 
 	it('finds a deterministic global fixture assignment instead of choosing greedily', () => {

@@ -152,7 +152,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 ### Tests and quality
 
 - [x] Unit tests cover normalization, mappings, transformations, preview, adoption, event processing, reconnects, command confirmation, and secret handling.
-- [ ] Fixture integration tests cover every MVP capability family and representative lifecycle failures.
+- [x] Fixture integration tests cover every MVP capability family and representative lifecycle failures.
 - [x] Live SHS tests are environment-gated; write tests require an explicit device/capability allowlist.
 - [x] Backend unit tests, admin unit tests, JS lint/type checks, OpenAPI generation, and relevant panel tests pass.
 - [x] The plugin remains fully testable after the one-month SHS subscription expires.

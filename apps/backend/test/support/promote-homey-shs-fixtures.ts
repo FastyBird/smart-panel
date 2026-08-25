@@ -81,7 +81,8 @@ const main = async (): Promise<void> => {
 		knownCoverageGaps: deriveKnownCoverageGaps(publishedDevices),
 		knownDeviceClassGaps: deriveKnownDeviceClassGaps(publishedDevices),
 		knownMetadataGaps: deriveKnownMetadataGaps(publishedDevices),
-		syntheticFixtures: ['synthetic/enum-capability.json'],
+		syntheticFixtures: ['synthetic/enum-capability.json', 'synthetic/devices/lock.json'],
+		syntheticDeviceFixtures: ['synthetic/devices/lock.json'],
 	};
 	const versionsRoot = resolve(outputRoot, 'versions');
 	await mkdir(versionsRoot, { recursive: true });

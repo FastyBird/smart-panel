@@ -1,0 +1,20 @@
+{
+	"fixtureProvenance": "synthetic-published-protocol-contract",
+	"id": "synthetic-lock-device",
+	"name": "Synthetic lock contract",
+	"class": "lock",
+	"zone": null,
+	"available": true,
+	"capabilities": ["locked"],
+	"capabilitiesObj": {
+		"locked": {
+			"id": "locked",
+			"type": "boolean",
+			"title": "Locked",
+			"getable": true,
+			"setable": true,
+			"value": true,
+			"lastUpdated": null
+		}
+	}
+}

@@ -11,5 +11,6 @@
 		"devices/energy-meter.json",
 		"devices/repeated-capabilities.json",
 		"devices/unavailable.json"
-	]
+	],
+	"syntheticDeviceFixtures": ["synthetic/devices/lock.json"]
 }

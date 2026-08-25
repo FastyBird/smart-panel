@@ -11,9 +11,13 @@ import { HomeyMappingTransformerService } from './mapping-transformer.service';
 import { ResolvedHomeyPropertyBinding } from './mapping.types';
 
 const EXPECTED_FIXTURE_ROOT = resolve(__dirname, '../__fixtures__/expected/v1/devices');
+const EXPECTED_SYNTHETIC_FIXTURE_ROOT = resolve(__dirname, '../__fixtures__/expected/v1/synthetic/devices');
 
 const readDeviceFixture = (name: string): HomeyDevice =>
 	JSON.parse(readFileSync(resolve(EXPECTED_FIXTURE_ROOT, `${name}.json`), 'utf8')) as HomeyDevice;
+
+const readSyntheticDeviceFixture = (name: string): HomeyDevice =>
+	JSON.parse(readFileSync(resolve(EXPECTED_SYNTHETIC_FIXTURE_ROOT, `${name}.json`), 'utf8')) as HomeyDevice;
 
 const capability = (
 	id: string,
@@ -259,7 +263,7 @@ describe('Homey MVP mapping catalog', () => {
 	});
 
 	it('maps published lock and tilt contracts with inverse control values', () => {
-		const lock = publishedContractDevice('lock', [capability('locked', true, { writable: true })]);
+		const lock = readSyntheticDeviceFixture('lock');
 		const lockBindings = bindingsByName(lock);
 		expectMappedChannelsComplete(lock);
 		expect(loader.resolveDeviceMappings(lock).mappings[0]?.deviceCategory).toBe(DeviceCategory.LOCK);

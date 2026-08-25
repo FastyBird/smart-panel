@@ -28,5 +28,6 @@
 	],
 	"knownDeviceClassGaps": ["lock"],
 	"knownMetadataGaps": ["live_enum_option_ids"],
-	"syntheticFixtures": ["synthetic/enum-capability.json"]
+	"syntheticFixtures": ["synthetic/enum-capability.json", "synthetic/devices/lock.json"],
+	"syntheticDeviceFixtures": ["synthetic/devices/lock.json"]
 }

@@ -15,6 +15,7 @@ import {
 interface HomeyNormalizedFixtureManifest {
 	fixtures: string[];
 	sourceFixtureVersion: string;
+	syntheticDeviceFixtures: string[];
 }
 
 const FIXTURE_ROOT = resolve(__dirname, '../__fixtures__');
@@ -57,10 +58,20 @@ describe('Homey local protocol transformer', () => {
 		expect(transformHomeyLocalDevice(readJson(resolve(sourceRoot, fixturePath)), zones)).toStrictEqual(expected);
 	});
 
+	it.each(manifest.syntheticDeviceFixtures)('matches the synthetic golden normalized output for %s', (fixturePath) => {
+		const zones = transformHomeyLocalZones(rawZones);
+		const expected = readJson(resolve(EXPECTED_ROOT, fixturePath));
+		const raw = readJson(resolve(sourceRoot, fixturePath)) as { fixtureProvenance?: string };
+
+		expect(raw.fixtureProvenance).toBe('synthetic-published-protocol-contract');
+		expect(transformHomeyLocalDevice(raw, zones)).toStrictEqual(expected);
+	});
+
 	it('keeps the complete golden output free of endpoints and credential-shaped values', () => {
 		const serialized = JSON.stringify([
 			expectedZones,
 			...manifest.fixtures.map((fixturePath) => readJson(resolve(EXPECTED_ROOT, 'devices', basename(fixturePath)))),
+			...manifest.syntheticDeviceFixtures.map((fixturePath) => readJson(resolve(EXPECTED_ROOT, fixturePath))),
 		]);
 
 		expect(serialized).not.toMatch(/https?:\\?\/\\?\//i);
