@@ -17,7 +17,8 @@ export const MAX_EXPLICIT_SPACE_SCOPES = 20;
 export const MAX_RECENT_ENTITY_REFERENCES = 20;
 export const POWER_ACTION_TARGET_TOKEN_PATTERN_SOURCE = String.raw`(?!\b(?:already|appears?|are|be|been|brought|can|compare|consume|consumed|consumes|consumption|could|currently|draw|drawn|draws|electricity|energy|forced|go|goes|has|is|kept|knocked|kwh|left|looks?|made|may|might|must|neither|never|no|not|produce|produced|produces|production|remain|remains|report|seem|seems|should|show|shut|status|stay|stays|still|switched|switching|turn|turned|turning|usage|use|used|uses|was|were|went|whether|will|would)\b)[\p{Letter}\d'’-]+`;
 export const POWER_ACTION_TARGET_PATTERN_SOURCE = String.raw`(?:(?:(?:my|our|the|your)\s+)?(?:it|them)|${POWER_ACTION_TARGET_TOKEN_PATTERN_SOURCE}(?:\s+${POWER_ACTION_TARGET_TOKEN_PATTERN_SOURCE}){0,7})`;
-export const POWER_ACTION_SUFFIX_PATTERN_SOURCE = String.raw`(?=\s*(?:(?:asap|for\s+me|immediately|now|please|right\s+now)\s*)*(?:\b(?:after|at|before|for|if|in|on|throughout|til|till|until|when|while)\b|(?:[\p{Letter}\d.]+\s+){1,4}from\s+now\b|[?!,.;]|$))`;
+const ACTION_COURTESY_SUFFIX_PATTERN_SOURCE = String.raw`for\s+me`;
+export const POWER_ACTION_SUFFIX_PATTERN_SOURCE = String.raw`(?=\s*(?:(?:asap|${ACTION_COURTESY_SUFFIX_PATTERN_SOURCE}|immediately|now|please|right\s+now)\s*)*(?:\b(?:after|at|before|for|if|in|on|throughout|til|till|until|when|while)\b|(?:[\p{Letter}\d.]+\s+){1,4}from\s+now\b|[?!,.;]|$))`;
 export const POWER_ACTION_TAIL_PATTERN_SOURCE = String.raw`\s+(?:(?:off|on)\s+${POWER_ACTION_TARGET_PATTERN_SOURCE}\b|${POWER_ACTION_TARGET_PATTERN_SOURCE}\s+(?:off|on)\b)${POWER_ACTION_SUFFIX_PATTERN_SOURCE}`;
 export const POWER_EVENT_SUBJECT_PATTERN_SOURCE = String.raw`(?:availability|backup|cut|failure|fault|outage|recovery|restoration|surge)`;
 export const POWER_EVENT_STATE_SUBJECT_PATTERN_SOURCE = String.raw`(?:${POWER_EVENT_SUBJECT_PATTERN_SOURCE}|blackout|brownout|interruption|issue|loss|malfunction|problem|spike)`;
@@ -326,7 +327,7 @@ export const AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE = String.raw`(?:air\s+(?:c
 const WRAPPED_AGGREGATE_HOME_TARGET_PATTERN_SOURCE = String.raw`(?:(?:contact|door|humidity|motion|temperature|window)\s+sensors?|smoke\s+(?:detectors?|sensors?)|(?:light|power)\s+switch(?:es)?|smart\s+(?:devices?|lights?|locks?|switch(?:es)?|thermostats?)|${AGGREGATE_DEVICE_CATEGORY_PATTERN_SOURCE}|${PLAUSIBLE_CUSTOM_HOME_TARGET_PATTERN.source}|${TRUSTED_UNSCOPED_DEVICE_TARGET_PATTERN.source}|${HOME_ENTITY_PATTERN.source})`;
 const AGGREGATE_READ_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}|none)`;
 const AGGREGATE_READ_EMPHATIC_SUFFIX_PATTERN_SOURCE = String.raw`(?:at\s+all|whatsoever)`;
-const AGGREGATE_READ_TRAILING_ADJUNCT_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_READ_EMPHATIC_SUFFIX_PATTERN_SOURCE}|at\s+(?:present|the\s+moment)|currently|now|please|right\s+now|today|tonight)`;
+const AGGREGATE_READ_TRAILING_ADJUNCT_PATTERN_SOURCE = String.raw`(?:${AGGREGATE_READ_EMPHATIC_SUFFIX_PATTERN_SOURCE}|${ACTION_COURTESY_SUFFIX_PATTERN_SOURCE}|at\s+(?:present|the\s+moment)|currently|now|please|right\s+now|today|tonight)`;
 const AGGREGATE_READ_LOCAL_QUALIFIER_PATTERN_SOURCE = String.raw`(?:${CONTEXTUAL_SCOPE_PATTERN.source}|in\s+here|near\s+me|nearby)`;
 const AGGREGATE_READ_COORDINATED_MODAL_PATTERN_SOURCE = String.raw`(?:can(?:not|'t)?|could(?:n't)?|may|might(?:n't)?|must(?:n't)?|should(?:n't)?|will|won't|would(?:n't)?)`;
 const AGGREGATE_READ_COORDINATED_MODAL_PREDICATE_PATTERN_SOURCE = String.raw`${AGGREGATE_READ_COORDINATED_MODAL_PATTERN_SOURCE}\s+(?:(?:be|${STATE_LINKING_VERB_PATTERN_SOURCE})\s+${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}|(?:close|fail|open|work)(?:\s+(?:again|soon|[\p{Letter}'’-]+ly))?)`;

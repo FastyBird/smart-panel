@@ -4304,6 +4304,7 @@ describe('BuddyContextPlannerService', () => {
 		'Do I have every window open?',
 		'Check if every window is closed',
 		'Can you check if any windows are open?',
+		'Can you check if any windows are open for me?',
 		'Can you check whether any windows are open?',
 		'Can you check if all windows are closed?',
 		'Can you please check if any windows are open?',
@@ -7211,6 +7212,8 @@ describe('BuddyContextPlannerService', () => {
 		'If the window is open turn off the Bedroom lights the cleaner keeps cleaning?',
 		'If the window is open turn off the Bedroom lights the cleaner keeps repairing?',
 		'If the window is open turn off the Bedroom lights the cleaner keeps repairing in the workshop?',
+		'If the window is open turn off the Bedroom lights the electrician keeps testing?',
+		'If the window is open turn off the Bedroom lights the cleaner keeps polishing?',
 		'If the window is open turn off the Bedroom lights John starts to repair?',
 	])('keeps a phrasal relative target on the command path: %s', (message) => {
 		const plan = service.plan({
