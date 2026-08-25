@@ -253,6 +253,7 @@ describe('BuddyContextPlannerService', () => {
 		['Are any windows open or is power off?', [], 'space-office'],
 		['Are any windows open or is heating on?', [], 'space-office'],
 		['Are any windows open or is temperature low?', [], 'space-office'],
+		['Are any windows open or is there a door unlocked?', [], 'space-office'],
 		['Are any windows open or shall the heater stay off?', [], 'space-office'],
 		['Are any windows open or is Kitchen heater off?', [{ id: 'space-kitchen', name: 'Kitchen' }], 'space-kitchen'],
 	])('retains aggregate scope before an independent alternative read: %s', (message, knownSpaces, readSpaceId) => {
@@ -279,6 +280,33 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.queries).toContainEqual({ kind: 'search-home' });
 		expect(plan.queries).toContainEqual({ kind: 'current-state' });
 		expect(plan.queries).toContainEqual({ kind: 'security-status' });
+	});
+
+	it.each(['Are any windows open or which lights are on?', 'Are any windows open or what lights are on?'])(
+		'retains whole-home scope before an interrogative alternative: %s',
+		(message) => {
+			const plan = service.plan({
+				message,
+				conversationSpaceId: 'space-office',
+				providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+			});
+
+			expect(plan.queries).toContainEqual({ kind: 'search-home' });
+			expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		},
+	);
+
+	it('retains whole-home scope across an aggregate interrogative alternative', () => {
+		const plan = service.plan({
+			message: 'Are any windows open or how many lights are on?',
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.queries).toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		expect(plan.queries).not.toContainEqual({ kind: 'search-home', spaceId: 'space-office' });
+		expect(plan.queries).not.toContainEqual({ kind: 'current-state', spaceId: 'space-office' });
 	});
 
 	it.each([

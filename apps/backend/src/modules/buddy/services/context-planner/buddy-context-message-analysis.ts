@@ -79,7 +79,9 @@ const INDEPENDENT_ALTERNATIVE_AUXILIARY_PATTERN = new RegExp(
 );
 const INDEPENDENT_ALTERNATIVE_DETERMINED_SUBJECT_PATTERN =
 	/^(?:a|an|her|his|its|my|our|the|their|this|these|those|your)\s+[\p{Letter}\p{Number}'’-]+\b/u;
-const INDEPENDENT_ALTERNATIVE_PRONOUN_SUBJECT_PATTERN = /^(?:he|i|it|she|they|we|you)\b/u;
+const INDEPENDENT_ALTERNATIVE_PRONOUN_SUBJECT_PATTERN = /^(?:he|i|it|she|there|they|we|you)\b/u;
+const INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN_SOURCE = String.raw`(?:how\s+many|what|which)\b`;
+const INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN = /^(?:how\s+many|what|which)\b/u;
 const INDEPENDENT_ALTERNATIVE_BARE_HOME_STATE_SUBJECT_PATTERN = new RegExp(
 	String.raw`^${HOME_STATE_PATTERN.source}`,
 	'u',
@@ -103,6 +105,8 @@ function hasIndependentAlternativeSubject(
 	alternative: string,
 	explicitSpaces: readonly BuddyContextSpaceReference[],
 ): boolean {
+	if (INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN.test(alternative.trimStart())) return true;
+
 	const auxiliaryMatch = INDEPENDENT_ALTERNATIVE_AUXILIARY_PATTERN.exec(alternative);
 	if (!auxiliaryMatch) return false;
 
@@ -501,7 +505,7 @@ export function splitPlannerClauses(
 		...findPatternRanges(message, /\d+\.\d+/u),
 	];
 	const separatorPattern = new RegExp(
-		String.raw`(?:,\s*(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})(?:\s+then)?\b|[?!,.;]|\band\s+then\b|\bor\b(?=\s+${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+)|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|\ba\b(?=\s*(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b))`,
+		String.raw`(?:,\s*(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})(?:\s+then)?\b|[?!,.;]|\band\s+then\b|\bor\b(?=\s+(?:${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+|${INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN_SOURCE}))|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|\ba\b(?=\s*(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b))`,
 		'gu',
 	);
 	const clauses: string[] = [];
