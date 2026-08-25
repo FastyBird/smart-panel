@@ -75,6 +75,22 @@ const collectFiles = (root: string, include: (path: string) => boolean): string[
 	});
 };
 
+const configuredWriteStringValue = (): string | undefined => {
+	const rawValue = process.env.FB_HOMEY_SHS_WRITE_VALUE;
+
+	if (rawValue === undefined) {
+		return undefined;
+	}
+
+	try {
+		const value = JSON.parse(rawValue) as unknown;
+
+		return typeof value === 'string' ? value : undefined;
+	} catch {
+		return undefined;
+	}
+};
+
 const configuredPrivateValues = (): readonly string[] =>
 	[
 		process.env.FB_HOMEY_SHS_API_KEY,
@@ -88,6 +104,9 @@ const configuredPrivateValues = (): readonly string[] =>
 		process.env.FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME,
 		process.env.FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID,
 		process.env.FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID,
+		process.env.FB_HOMEY_SHS_WRITE_DEVICE_ID,
+		process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID,
+		configuredWriteStringValue(),
 		...(process.env.FB_HOMEY_SHS_PRIVATE_TERMS?.split(',') ?? []),
 	]
 		.map((value) => value?.trim())
@@ -175,6 +194,20 @@ const compiledPropertyName = (name: ts.PropertyName): string | undefined => {
 	return undefined;
 };
 
+const compiledAssignedPropertyName = (expression: ts.Expression): string | undefined => {
+	if (ts.isPropertyAccessExpression(expression)) {
+		return expression.name.text;
+	}
+
+	if (ts.isElementAccessExpression(expression) && ts.isStringLiteral(expression.argumentExpression)) {
+		return COMPILED_SYMBOL_NAME_PATTERN.test(expression.argumentExpression.text)
+			? undefined
+			: expression.argumentExpression.text;
+	}
+
+	return undefined;
+};
+
 const containsUnsafeCompiledLiteral = (node: ts.Expression): boolean => {
 	if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
 		return node.text.length > 0 && node.text !== '[~3~]';
@@ -211,6 +244,14 @@ const containsCompiledSecret = (text: string): boolean => {
 			const name = compiledPropertyName(node.name);
 
 			found = name !== undefined && isHomeySecretKey(name) && containsUnsafeCompiledLiteral(node.initializer);
+		} else if (ts.isPropertyDeclaration(node) && node.initializer !== undefined) {
+			const name = compiledPropertyName(node.name);
+
+			found = name !== undefined && isHomeySecretKey(name) && containsUnsafeCompiledLiteral(node.initializer);
+		} else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+			const name = compiledAssignedPropertyName(node.left);
+
+			found = name !== undefined && isHomeySecretKey(name) && containsUnsafeCompiledLiteral(node.right);
 		}
 
 		ts.forEachChild(node, visit);
@@ -454,6 +495,12 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const config = { api_key: 'opaque-secret' };", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() => assertTextSafe('unsafe compiled module', "config.api_key = 'opaque-secret';", true)).toThrow(
+			'unsafe compiled module contains a compiled secret value',
+		);
+		expect(() => assertTextSafe('unsafe compiled module', "config['accessToken'] = 'opaque-secret';", true)).toThrow(
+			'unsafe compiled module contains a compiled secret value',
+		);
 		expect(() => assertTextSafe('unsafe fixture', '{"address":"192.168.1.23"}')).toThrow(
 			'unsafe fixture contains an IPv4 address',
 		);
@@ -473,11 +520,17 @@ describe('Homey security artifact gate', () => {
 		const previousReplacementApiKey = process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY;
 		const previousDeviceOnlyApiKey = process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY;
 		const previousLifecycleDeviceMarker = process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER;
+		const previousWriteDeviceId = process.env.FB_HOMEY_SHS_WRITE_DEVICE_ID;
+		const previousWriteCapabilityId = process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID;
+		const previousWriteValue = process.env.FB_HOMEY_SHS_WRITE_VALUE;
 
 		process.env.FB_HOMEY_SHS_PRIVATE_TERMS = 'Ada';
 		process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY = 'opaque-replacement-value';
 		process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY = 'opaque-device-value';
 		process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER = 'private-lifecycle-marker';
+		process.env.FB_HOMEY_SHS_WRITE_DEVICE_ID = 'private-write-device';
+		process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID = 'private-write-capability';
+		process.env.FB_HOMEY_SHS_WRITE_VALUE = '"private-write-value"';
 
 		try {
 			expect(() => assertTextSafe('unsafe fixture', '{"name":"Ada"}')).toThrow(
@@ -492,6 +545,11 @@ describe('Homey security artifact gate', () => {
 			expect(() => assertTextSafe('unsafe fixture', '{"value":"private-lifecycle-marker"}')).toThrow(
 				'unsafe fixture contains a configured private Homey value',
 			);
+			for (const privateWriteValue of ['private-write-device', 'private-write-capability', 'private-write-value']) {
+				expect(() => assertTextSafe('unsafe fixture', `{"value":"${privateWriteValue}"}`)).toThrow(
+					'unsafe fixture contains a configured private Homey value',
+				);
+			}
 		} finally {
 			if (previousPrivateTerms === undefined) {
 				delete process.env.FB_HOMEY_SHS_PRIVATE_TERMS;
@@ -515,6 +573,24 @@ describe('Homey security artifact gate', () => {
 				delete process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER;
 			} else {
 				process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER = previousLifecycleDeviceMarker;
+			}
+
+			if (previousWriteDeviceId === undefined) {
+				delete process.env.FB_HOMEY_SHS_WRITE_DEVICE_ID;
+			} else {
+				process.env.FB_HOMEY_SHS_WRITE_DEVICE_ID = previousWriteDeviceId;
+			}
+
+			if (previousWriteCapabilityId === undefined) {
+				delete process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID;
+			} else {
+				process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID = previousWriteCapabilityId;
+			}
+
+			if (previousWriteValue === undefined) {
+				delete process.env.FB_HOMEY_SHS_WRITE_VALUE;
+			} else {
+				process.env.FB_HOMEY_SHS_WRITE_VALUE = previousWriteValue;
 			}
 		}
 	});
