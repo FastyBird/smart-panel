@@ -333,6 +333,25 @@ const isCompiledSecretName = (name: string | undefined): name is string =>
 const isAssignmentOperatorKind = (kind: ts.SyntaxKind): boolean =>
 	kind >= ts.SyntaxKind.FirstAssignment && kind <= ts.SyntaxKind.LastAssignment;
 
+const containsUnsafeReturnedLiteral = (body: ts.Block): boolean => {
+	let found = false;
+	const visit = (node: ts.Node): void => {
+		if (found) {
+			return;
+		}
+
+		if (ts.isReturnStatement(node) && node.expression !== undefined) {
+			found = containsUnsafeCompiledLiteral(node.expression);
+		}
+
+		ts.forEachChild(node, visit);
+	};
+
+	visit(body);
+
+	return found;
+};
+
 const containsCompiledSecret = (text: string): boolean => {
 	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 	let found = false;
@@ -349,6 +368,10 @@ const containsCompiledSecret = (text: string): boolean => {
 			const name = compiledPropertyName(node.name);
 
 			found = isCompiledSecretName(name) && containsUnsafeCompiledLiteral(node.initializer);
+		} else if ((ts.isGetAccessorDeclaration(node) || ts.isMethodDeclaration(node)) && node.body !== undefined) {
+			const name = compiledPropertyName(node.name);
+
+			found = isCompiledSecretName(name) && containsUnsafeReturnedLiteral(node.body);
 		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found = isCompiledSecretName(node.name.text) && containsUnsafeCompiledLiteral(node.initializer);
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
@@ -472,6 +495,17 @@ const containsStructuredSecret = (value: unknown): boolean => {
 	);
 };
 
+const isSafeAddressValue = (value: unknown): boolean =>
+	value === null || value === 0 || value === false || value === '[~0~]';
+
+const isSafePersonalValue = (value: unknown): boolean =>
+	value === null ||
+	value === 0 ||
+	value === false ||
+	value === '[~2~]' ||
+	isHomeyGeneratedPseudonym(value) ||
+	(typeof value === 'string' && PUBLIC_SYNTHETIC_PERSONAL_VALUES.has(value));
+
 const containsStructuredAddress = (value: unknown): boolean => {
 	if (Array.isArray(value)) {
 		return value.some((entry) => containsStructuredAddress(entry));
@@ -482,9 +516,7 @@ const containsStructuredAddress = (value: unknown): boolean => {
 	}
 
 	return Object.entries(value as JsonRecord).some(([key, child]) => {
-		const safeAddressValue = child === null || child === 0 || child === false || child === '[~0~]';
-
-		return (isHomeyAddressKey(key) && !safeAddressValue) || containsStructuredAddress(child);
+		return (isHomeyAddressKey(key) && !isSafeAddressValue(child)) || containsStructuredAddress(child);
 	});
 };
 
@@ -498,14 +530,7 @@ const containsStructuredPersonalValue = (value: unknown): boolean => {
 	}
 
 	return Object.entries(value as JsonRecord).some(([key, child]) => {
-		const safeRedaction = child === null || child === 0 || child === false || child === '[~2~]';
-		const safePseudonym = isHomeyGeneratedPseudonym(child);
-		const safeSyntheticValue = typeof child === 'string' && PUBLIC_SYNTHETIC_PERSONAL_VALUES.has(child);
-
-		return (
-			(isHomeyPersonalKey(key) && !safeRedaction && !safePseudonym && !safeSyntheticValue) ||
-			containsStructuredPersonalValue(child)
-		);
+		return (isHomeyPersonalKey(key) && !isSafePersonalValue(child)) || containsStructuredPersonalValue(child);
 	});
 };
 
@@ -640,9 +665,20 @@ const visitPublishedValues = (
 	value: unknown,
 	path: readonly string[] = [],
 	secretParameter = false,
+	addressParameter = false,
+	personalParameter = false,
 ): void => {
 	if (Array.isArray(value)) {
-		value.forEach((entry, index) => visitPublishedValues(label, entry, [...path, index.toString()], secretParameter));
+		value.forEach((entry, index) =>
+			visitPublishedValues(
+				label,
+				entry,
+				[...path, index.toString()],
+				secretParameter,
+				addressParameter,
+				personalParameter,
+			),
+		);
 
 		return;
 	}
@@ -652,7 +688,11 @@ const visitPublishedValues = (
 	}
 
 	const record = value as JsonRecord;
-	const nestedSecretParameter = secretParameter || (typeof record.name === 'string' && isHomeySecretKey(record.name));
+	const parameterName = typeof record.name === 'string' ? record.name : undefined;
+	const nestedSecretParameter = secretParameter || (parameterName !== undefined && isHomeySecretKey(parameterName));
+	const nestedAddressParameter = addressParameter || (parameterName !== undefined && isHomeyAddressKey(parameterName));
+	const nestedPersonalParameter =
+		personalParameter || (parameterName !== undefined && isHomeyPersonalKey(parameterName));
 
 	for (const [key, child] of Object.entries(record)) {
 		const childPath = [...path, key];
@@ -665,9 +705,24 @@ const visitPublishedValues = (
 			if (containsStructuredUrl(child)) {
 				throw new Error(`${label}.${childPath.join('.')} publishes a URL`);
 			}
+
+			if (containsStructuredAddress(child) || (nestedAddressParameter && !isSafeAddressValue(child))) {
+				throw new Error(`${label}.${childPath.join('.')} publishes an address value`);
+			}
+
+			if (containsStructuredPersonalValue(child) || (nestedPersonalParameter && !isSafePersonalValue(child))) {
+				throw new Error(`${label}.${childPath.join('.')} publishes a personal value`);
+			}
 		}
 
-		visitPublishedValues(label, child, childPath, nestedSecretParameter);
+		visitPublishedValues(
+			label,
+			child,
+			childPath,
+			nestedSecretParameter,
+			nestedAddressParameter,
+			nestedPersonalParameter,
+		);
 	}
 };
 
@@ -765,6 +820,16 @@ describe('Homey security artifact gate', () => {
 				parameters: [{ name: 'apiKey', schema: { example: 'opaque-secret' } }],
 			}),
 		).toThrow('UnsafeHomeyOperation.parameters.0.schema.example publishes a secret value');
+		expect(() =>
+			visitPublishedValues('UnsafeHomeyOperation', {
+				parameters: [{ name: 'hostname', schema: { example: 'family-homey.local' } }],
+			}),
+		).toThrow('UnsafeHomeyOperation.parameters.0.schema.example publishes an address value');
+		expect(() =>
+			visitPublishedValues('UnsafeHomeySchema', {
+				example: { name: 'Alice Bedroom' },
+			}),
+		).toThrow('UnsafeHomeySchema.example publishes a personal value');
 		expect(() => assertTextSafe('unsafe fixture', '{"api_key":"must-not-be-reported"}')).toThrow(
 			'unsafe fixture contains a serialized secret value',
 		);
@@ -845,6 +910,9 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const { apiKey: key = 'opaque-secret' } = config;", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "class Config { get apiKey() { return 'opaque-secret'; } }", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = process.env.API_KEY ?? 'opaque-secret';", true),
