@@ -67,7 +67,8 @@ describe('Homey SHS compatibility probe', () => {
 	});
 
 	it('keeps the promoted live fixture corpus safe and representative', () => {
-		const fixtureRoot = resolve(__dirname, '../src/plugins/devices-homey/__fixtures__/current');
+		const fixtureCollectionRoot = resolve(__dirname, '../src/plugins/devices-homey/__fixtures__');
+		const fixtureRoot = resolve(fixtureCollectionRoot, 'current');
 
 		expect(lstatSync(fixtureRoot).isSymbolicLink()).toBe(true);
 		expect(readlinkSync(fixtureRoot)).toMatch(/^versions\/[A-Za-z0-9._-]+$/);
@@ -170,6 +171,27 @@ describe('Homey SHS compatibility probe', () => {
 		expect(syntheticEnum.provenance).toBe('synthetic-protocol-contract');
 		expect(syntheticEnum.values.map(({ id }) => id)).toEqual(['mode_a', 'mode_b', 'mode_c']);
 		assertDistinctHomeyEnumCapabilityOptionIds(syntheticEnum);
+
+		const syntheticManifest = JSON.parse(
+			readFileSync(resolve(fixtureCollectionRoot, 'synthetic/manifest.json'), 'utf8'),
+		) as { deviceFixtures: string[]; version: string };
+		expect(syntheticManifest).toEqual({
+			deviceFixtures: ['devices/lock.json'],
+			schemaVersion: 1,
+			version: 'v1',
+		});
+		const syntheticLock = JSON.parse(
+			readFileSync(resolve(fixtureCollectionRoot, 'synthetic', syntheticManifest.version, 'devices/lock.json'), 'utf8'),
+		) as {
+			capabilities: string[];
+			class: string;
+			fixtureProvenance: string;
+		};
+
+		expect(syntheticLock.fixtureProvenance).toBe('synthetic-published-protocol-contract');
+		expect(syntheticLock.class).toBe('lock');
+		expect(syntheticLock.capabilities).toEqual(['locked']);
+		assertHomeyCaptureSafe({ metadata: {}, systemInfo: {}, zones: {}, devices: { lock: syntheticLock } }, []);
 	});
 
 	it('finds a deterministic global fixture assignment instead of choosing greedily', () => {

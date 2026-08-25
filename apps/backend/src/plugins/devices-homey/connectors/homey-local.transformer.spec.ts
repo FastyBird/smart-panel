@@ -15,6 +15,8 @@ import {
 interface HomeyNormalizedFixtureManifest {
 	fixtures: string[];
 	sourceFixtureVersion: string;
+	syntheticDeviceFixtures: string[];
+	syntheticFixtureVersion: string;
 }
 
 const FIXTURE_ROOT = resolve(__dirname, '../__fixtures__');
@@ -23,6 +25,7 @@ const EXPECTED_ROOT = resolve(FIXTURE_ROOT, 'expected/v1');
 const readJson = (path: string): unknown => JSON.parse(readFileSync(path, 'utf8')) as unknown;
 const manifest = readJson(resolve(EXPECTED_ROOT, 'manifest.json')) as HomeyNormalizedFixtureManifest;
 const sourceRoot = resolve(FIXTURE_ROOT, 'versions', manifest.sourceFixtureVersion);
+const syntheticSourceRoot = resolve(FIXTURE_ROOT, 'synthetic', manifest.syntheticFixtureVersion);
 const rawZones = readJson(resolve(sourceRoot, 'zones.json'));
 const expectedZones = readJson(resolve(EXPECTED_ROOT, 'zones.json'));
 
@@ -57,10 +60,22 @@ describe('Homey local protocol transformer', () => {
 		expect(transformHomeyLocalDevice(readJson(resolve(sourceRoot, fixturePath)), zones)).toStrictEqual(expected);
 	});
 
+	it.each(manifest.syntheticDeviceFixtures)('matches the synthetic golden normalized output for %s', (fixturePath) => {
+		const zones = transformHomeyLocalZones(rawZones);
+		const expected = readJson(resolve(EXPECTED_ROOT, 'synthetic', fixturePath));
+		const raw = readJson(resolve(syntheticSourceRoot, fixturePath)) as { fixtureProvenance?: string };
+
+		expect(raw.fixtureProvenance).toBe('synthetic-published-protocol-contract');
+		expect(transformHomeyLocalDevice(raw, zones)).toStrictEqual(expected);
+	});
+
 	it('keeps the complete golden output free of endpoints and credential-shaped values', () => {
 		const serialized = JSON.stringify([
 			expectedZones,
 			...manifest.fixtures.map((fixturePath) => readJson(resolve(EXPECTED_ROOT, 'devices', basename(fixturePath)))),
+			...manifest.syntheticDeviceFixtures.map((fixturePath) =>
+				readJson(resolve(EXPECTED_ROOT, 'synthetic', fixturePath)),
+			),
 		]);
 
 		expect(serialized).not.toMatch(/https?:\\?\/\\?\//i);

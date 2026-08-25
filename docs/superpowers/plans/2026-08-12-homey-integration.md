@@ -593,11 +593,18 @@ suite completes with 1,032 passing tests and five existing locator-dependent ski
 - [x] OpenAPI/spec generation is clean and generated diffs are intentional.
 - [x] Default CI requires no live Homey/SHS access.
 
-The 2026-08-25 automated local gate passed 36 Homey backend suites with 447 tests, seven credential-free compatibility
+The 2026-08-25 automated local gate passed 36 Homey backend suites with 448 tests, seven credential-free compatibility
 spike suites with 122 tests, the complete 300-file/2,253-test admin suite, and all 23 representative Homey panel
 pipeline tests. OpenAPI plus device/channel spec regeneration produced no diff. PR #828 also passed the default backend
 unit/E2E, admin, panel, testing-app, web-build, schema, and analysis jobs; its Homey spike job received no live SHS
 credentials, while every live or mutating probe remains protected by its explicit environment gate and allowlist.
+
+The fixture matrix now covers the lock family through a manifest-declared synthetic published-protocol fixture. The raw
+fixture carries an explicit synthetic provenance marker, passes the repository privacy checks, is normalized by the same
+transformer as captured devices, and feeds the same MVP mapping assertions. The live corpus continues to record `lock`
+as a capture gap, so synthetic contract coverage cannot be mistaken for evidence from a physical device. Captured
+unavailable inventory plus fixture-backed preview, synchronization, connector, and reconciliation suites cover the
+representative lifecycle failure paths.
 
 ### Task 6.2: Run the live lifecycle matrix
 

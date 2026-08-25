@@ -1,0 +1,32 @@
+{
+	"id": "synthetic-lock-device",
+	"name": "Synthetic lock contract",
+	"class": "lock",
+	"zoneId": null,
+	"zoneName": null,
+	"zonePath": [],
+	"available": true,
+	"availabilityMessage": null,
+	"driverId": null,
+	"manufacturer": null,
+	"model": null,
+	"energy": null,
+	"capabilities": [
+		{
+			"id": "locked",
+			"title": "Locked",
+			"value": true,
+			"type": "boolean",
+			"unit": null,
+			"minimum": null,
+			"maximum": null,
+			"step": null,
+			"enumValues": [],
+			"readable": true,
+			"writable": true,
+			"available": null,
+			"lastUpdatedAt": null,
+			"baseId": "locked"
+		}
+	]
+}
