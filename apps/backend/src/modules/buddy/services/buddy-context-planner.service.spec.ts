@@ -264,6 +264,19 @@ describe('BuddyContextPlannerService', () => {
 		expect(plan.queries).toContainEqual({ kind: 'current-state', spaceId: readSpaceId });
 	});
 
+	it('retains aggregate scope before a bare security alternative', () => {
+		const plan = service.plan({
+			message: 'Are any windows open or is alarm off?',
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.domains).toEqual(['home', 'security']);
+		expect(plan.queries).toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		expect(plan.queries).toContainEqual({ kind: 'security-status' });
+	});
+
 	it.each([
 		{ message: 'What was the weather yesterday?', domains: ['weather'], query: { kind: 'weather' } },
 		{

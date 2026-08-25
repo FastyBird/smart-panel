@@ -109,7 +109,8 @@ export const ENERGY_ENTITY_NAME_PATTERN = new RegExp(
 	String.raw`\bpower\s+(?:${DOMAIN_ENTITY_CATEGORY_PATTERN_SOURCE})\b`,
 	'gu',
 );
-export const SECURITY_PATTERN = /\b(?:alarm|armed|intrusion|secure|security)\b/u;
+export const SECURITY_SUBJECT_PATTERN = /\b(?:alarm|intrusion|security)\b/u;
+export const SECURITY_PATTERN = new RegExp(String.raw`${SECURITY_SUBJECT_PATTERN.source}|\b(?:armed|secure)\b`, 'u');
 export const SECURITY_ENTITY_NAME_PATTERN = new RegExp(
 	String.raw`\b(?:alarm|security)\s+(?:${DOMAIN_ENTITY_CATEGORY_PATTERN_SOURCE})\b`,
 	'gu',
