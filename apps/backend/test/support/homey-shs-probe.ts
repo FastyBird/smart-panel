@@ -476,7 +476,7 @@ const isTimestampKey = (key: string): boolean =>
 	BOUNDED_TIMESTAMP_KEY_PATTERN.test(key) ||
 	HUMAN_TIMESTAMP_KEY_PATTERN.test(key);
 
-const isAddressKey = (key: string): boolean =>
+export const isHomeyAddressKey = (key: string): boolean =>
 	CAMEL_CASE_ADDRESS_KEY_PATTERN.test(key) || BOUNDED_ADDRESS_KEY_PATTERN.test(key);
 
 const isPersonalKey = (key: string): boolean =>
@@ -548,7 +548,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		return redactScalar(value, FIXTURE_TIMESTAMP);
 	}
 
-	if (value !== null && !capabilityMapEntry && isAddressKey(key)) {
+	if (value !== null && !capabilityMapEntry && isHomeyAddressKey(key)) {
 		return redactScalar(value, REDACTION.address);
 	}
 
@@ -1119,7 +1119,7 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 			return;
 		}
 
-		if (nestedValue !== null && !capabilityMapEntry && isAddressKey(key)) {
+		if (nestedValue !== null && !capabilityMapEntry && isHomeyAddressKey(key)) {
 			assertRedactedScalar(nestedValue, REDACTION.address);
 			return;
 		}
@@ -1474,7 +1474,7 @@ export const assertHomeyCaptureSafe = (
 			if (typeof value === 'string') {
 				const endpointShaped =
 					globallyIdentifiableHost ||
-					isAddressKey(key) ||
+					isHomeyAddressKey(key) ||
 					ENDPOINT_KEY_PATTERN.test(key) ||
 					value.includes('://') ||
 					new RegExp(`${escapedHost}:\\d+`, 'i').test(value);
@@ -1491,7 +1491,7 @@ export const assertHomeyCaptureSafe = (
 
 				Object.entries(value).forEach(([nestedKey, nestedValue]) => {
 					const endpointShapedKey =
-						isAddressKey(nestedKey) ||
+						isHomeyAddressKey(nestedKey) ||
 						ENDPOINT_KEY_PATTERN.test(nestedKey) ||
 						nestedKey.includes('://') ||
 						new RegExp(`${escapedHost}:\\d+`, 'i').test(nestedKey);
