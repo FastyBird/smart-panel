@@ -30,7 +30,7 @@ import {
 	WEATHER_PATTERN,
 } from './buddy-context-planner-grammar';
 
-const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:am|are(?:n't)?|can(?:not|'t)?|could(?:n't)?|did(?:n't)?|do|does|don't|doesn't|had(?:n't)?|has(?:n't)?|have(?:n't)?|is(?:n't)?|may|might(?:n't)?|must(?:n't)?|should(?:n't)?|was(?:n't)?|were(?:n't)?|will|won't|would(?:n't)?)`;
+export const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:am|are(?:n't)?|can(?:not|'t)?|could(?:n't)?|did(?:n't)?|do|does|don't|doesn't|had(?:n't)?|has(?:n't)?|have(?:n't)?|is(?:n't)?|may|might(?:n't)?|must(?:n't)?|should(?:n't)?|was(?:n't)?|were(?:n't)?|will|won't|would(?:n't)?)`;
 const CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE = String.raw`(?:appears?|changes?|fails?|happens?|improves?|looks?|remains?|seems?|stays?|wakes?|works?)`;
 const CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE = String.raw`(?:again|altogether|now|once|still|today|tonight|[\p{Letter}'’-]+ly)`;
 const CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_SEQUENCE_PATTERN_SOURCE = String.raw`(?:\s+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE}){0,2}`;

@@ -1,6 +1,7 @@
 import { BuddyContextDomain, BuddyContextSpaceReference } from '../../models/context-plan.model';
 
 import {
+	CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE,
 	findExplicitSpaceOccurrences,
 	findLeadingConditionalActionIndex,
 	findPatternRanges,
@@ -443,7 +444,7 @@ export function splitPlannerClauses(
 		...findPatternRanges(message, /\d+\.\d+/u),
 	];
 	const separatorPattern = new RegExp(
-		String.raw`(?:,\s*(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})(?:\s+then)?\b|[?!,.;]|\band\s+then\b|\bor\b(?=\s+(?:are|can|could|did|do|does|had|has|have|is|may|might|was|were|will|would)\s+(?:(?:a|an|her|his|its|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we|you)\b|(?!(?:appear|appears|be|been|being|become|becomes|keep|keeps|look|looks|not|remain|remains|seem|seems|stay|stays|still)\b)[\p{Letter}\p{Number}'’-]+\b(?=\s+[\p{Letter}\p{Number}'’-]+)))|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|\ba\b(?=\s*(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b))`,
+		String.raw`(?:,\s*(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})(?:\s+then)?\b|[?!,.;]|\band\s+then\b|\bor\b(?=\s+${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+(?:(?:a|an|her|his|its|my|our|the|their|this|these|those|your)\s+|(?:he|i|it|she|they|we|you)\b|(?!(?:appear|appears|be|been|being|become|becomes|keep|keeps|look|looks|not|remain|remains|seem|seems|stay|stays|still)\b)[\p{Letter}\p{Number}'’-]+\b(?=\s+[\p{Letter}\p{Number}'’-]+)))|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|\ba\b(?=\s*(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b))`,
 		'gu',
 	);
 	const clauses: string[] = [];

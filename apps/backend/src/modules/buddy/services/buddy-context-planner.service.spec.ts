@@ -247,7 +247,9 @@ describe('BuddyContextPlannerService', () => {
 
 	it.each([
 		['Are any windows open or is the heater off?', [], 'space-office'],
+		["Are any windows open or isn't the heater off?", [], 'space-office'],
 		['Are any windows open or are heaters off?', [], 'space-office'],
+		["Are any windows open or aren't heaters off?", [], 'space-office'],
 		['Are any windows open or is Kitchen heater off?', [{ id: 'space-kitchen', name: 'Kitchen' }], 'space-kitchen'],
 	])('retains aggregate scope before an independent alternative read: %s', (message, knownSpaces, readSpaceId) => {
 		const plan = service.plan({
