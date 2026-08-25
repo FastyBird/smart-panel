@@ -196,6 +196,12 @@ describe('Homey event and command performance gate', () => {
 			return handoff;
 		};
 		const measureCommandStart = async (value: boolean): Promise<number> => {
+			const blockerTransportStarted = new Promise<number>((resolve) => {
+				resolveCommandStart = resolve;
+			});
+			commandReceivedAt = performance.now();
+			const blocker = service.executeCapabilityCommand(device.id, 'onoff', !value);
+			await blockerTransportStarted;
 			const transportStarted = new Promise<number>((resolve) => {
 				resolveCommandStart = resolve;
 			});
@@ -203,7 +209,7 @@ describe('Homey event and command performance gate', () => {
 			const command = service.executeCapabilityCommand(device.id, 'onoff', value);
 			const latencyMs = await transportStarted;
 
-			await expect(command).resolves.toBe(true);
+			await expect(Promise.all([blocker, command])).resolves.toEqual([true, true]);
 
 			return latencyMs;
 		};
@@ -240,7 +246,7 @@ describe('Homey event and command performance gate', () => {
 		expect(connector.getDevice.mock.calls).toHaveLength(0);
 
 		process.stdout.write(
-			`Homey latency gate (${SYNCHRONIZATION_BACKLOG_MS}ms synchronization backlog): event handoff p95=${eventP95Ms.toFixed(2)}ms, command start p95=${commandP95Ms.toFixed(2)}ms.\n`,
+			`Homey latency gate (${SYNCHRONIZATION_BACKLOG_MS}ms synchronization backlog): event handoff p95=${eventP95Ms.toFixed(2)}ms, queued command start p95=${commandP95Ms.toFixed(2)}ms.\n`,
 		);
 
 		await service.stop();

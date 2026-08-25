@@ -647,10 +647,11 @@ credential-free corpus requirement.
 
 The 2026-08-25 credential-free latency gate ran the production `HomeyService` event queue and serialized command path
 against instrumented connector and Devices synchronizer boundaries. After three warm-up passes, 30 measured samples
-completed at p95 `28.58 ms` from connector event receipt to the Devices synchronization handoff while each preceding
-synchronization remained busy for `25 ms`, and p95 `0.12 ms` from validated command invocation to connector transport
-start. Both remain below the `250 ms` design targets. The gate also asserts that capability updates leave the startup
-inventory call count unchanged and issue no targeted device reads. Run it from the repository root with
+completed at p95 `29.66 ms` from connector event receipt to the Devices synchronization handoff while each preceding
+synchronization remained busy for `25 ms`, and p95 `28.55 ms` from validated command invocation to connector transport
+start while queued behind an in-flight command on the same capability. Both remain below the `250 ms` design targets.
+The gate also asserts that capability updates leave the startup inventory call count unchanged and issue no targeted
+device reads. Run it from the repository root with
 `pnpm --filter ./apps/backend run homey:latency-gate`; the measurements cover backend scheduling and synchronization-queue
 overhead and deliberately exclude Homey network response time and subsequent command confirmation.
 
