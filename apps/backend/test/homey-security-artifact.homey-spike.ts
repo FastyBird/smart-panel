@@ -45,6 +45,7 @@ const COMPILED_SYMBOL_NAME_PATTERN = /^[A-Z][A-Z0-9_]+$/;
 const COMMENT_PATTERN = /\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g;
 const URL_PATTERN = /(?:[A-Z][A-Z0-9+.-]*:)?\/\/[^\s"']+/i;
 const PUBLIC_SCHEMA_URLS = new Set(['http://homey.local:4859', 'http://json-schema.org/draft-07/schema#']);
+const PUBLIC_HOMEY_HOSTS = new Set(['homey', 'homey.local']);
 const SERIALIZED_STRING_PROPERTY_PATTERN = /(["'])([^"']+)\1\s*:\s*(["'])([^"']*)\3/g;
 const LOOSE_PROPERTY_PATTERN =
 	/(?=(?:^|[{\s,;])["'`]?([A-Za-z][A-Za-z0-9_.-]*)["'`]?\s*[:=]\s*(?:(["'`])([^"'`\r\n]*)\2|([^,;}\r\n`]+)))/gm;
@@ -95,12 +96,19 @@ const configuredWriteStringValue = (): string | undefined => {
 	}
 };
 
+const configuredExpectedHost = (): string | undefined => {
+	const value = process.env.FB_HOMEY_SHS_EXPECTED_HOST?.trim();
+	const normalizedValue = value?.toLowerCase().replace(/\.$/, '');
+
+	return normalizedValue === undefined || PUBLIC_HOMEY_HOSTS.has(normalizedValue) ? undefined : value;
+};
+
 const configuredPrivateValues = (): readonly string[] =>
 	[
 		process.env.FB_HOMEY_SHS_API_KEY,
 		process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY,
 		process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY,
-		process.env.FB_HOMEY_SHS_EXPECTED_HOST,
+		configuredExpectedHost(),
 		process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER,
 		process.env.FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID,
 		process.env.FB_HOMEY_SHS_LIFECYCLE_OWNER_URI,
@@ -634,6 +642,7 @@ describe('Homey security artifact gate', () => {
 		const previousPrivateTerms = process.env.FB_HOMEY_SHS_PRIVATE_TERMS;
 		const previousReplacementApiKey = process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY;
 		const previousDeviceOnlyApiKey = process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY;
+		const previousExpectedHost = process.env.FB_HOMEY_SHS_EXPECTED_HOST;
 		const previousLifecycleDeviceMarker = process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER;
 		const previousWriteDeviceId = process.env.FB_HOMEY_SHS_WRITE_DEVICE_ID;
 		const previousWriteCapabilityId = process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID;
@@ -642,12 +651,14 @@ describe('Homey security artifact gate', () => {
 		process.env.FB_HOMEY_SHS_PRIVATE_TERMS = 'Ada';
 		process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY = 'opaque-replacement-value';
 		process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY = 'opaque-device-value';
+		process.env.FB_HOMEY_SHS_EXPECTED_HOST = 'homey.local';
 		process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER = 'private-lifecycle-marker';
 		process.env.FB_HOMEY_SHS_WRITE_DEVICE_ID = 'private-write-device';
 		process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID = 'private-write-capability';
 		process.env.FB_HOMEY_SHS_WRITE_VALUE = '"private-write-value"';
 
 		try {
+			expect(() => assertTextSafe('safe fixture', '{"url":"http://homey.local:4859"}')).not.toThrow();
 			expect(() => assertTextSafe('unsafe fixture', '{"name":"Ada"}')).toThrow(
 				'unsafe fixture contains a configured private Homey value',
 			);
@@ -682,6 +693,12 @@ describe('Homey security artifact gate', () => {
 				delete process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY;
 			} else {
 				process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY = previousDeviceOnlyApiKey;
+			}
+
+			if (previousExpectedHost === undefined) {
+				delete process.env.FB_HOMEY_SHS_EXPECTED_HOST;
+			} else {
+				process.env.FB_HOMEY_SHS_EXPECTED_HOST = previousExpectedHost;
 			}
 
 			if (previousLifecycleDeviceMarker === undefined) {
