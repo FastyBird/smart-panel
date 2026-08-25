@@ -79,7 +79,8 @@ const INDEPENDENT_ALTERNATIVE_AUXILIARY_PATTERN = new RegExp(
 );
 const INDEPENDENT_ALTERNATIVE_DETERMINED_SUBJECT_PATTERN =
 	/^(?:a|an|her|his|its|my|our|the|their|this|these|those|your)\s+[\p{Letter}\p{Number}'’-]+\b/u;
-const INDEPENDENT_ALTERNATIVE_PRONOUN_SUBJECT_PATTERN = /^(?:he|i|it|she|there|they|we|you)\b/u;
+const INDEPENDENT_ALTERNATIVE_PRONOUN_SUBJECT_PATTERN =
+	/^(?:anybody|anyone|everybody|everyone|he|i|it|nobody|no\s+one|she|somebody|someone|there|they|we|you)\b/u;
 const INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN_SOURCE = String.raw`(?:how\s+many|what|which)\s+[\p{Letter}\p{Number}'’-]+\b`;
 const INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN = new RegExp(
 	String.raw`^${INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN_SOURCE}`,
