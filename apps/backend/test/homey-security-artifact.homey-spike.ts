@@ -1,6 +1,8 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { isIP } from 'node:net';
 import { extname, resolve } from 'node:path';
+import ts from 'typescript';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -19,14 +21,19 @@ interface ForbiddenPattern {
 const BACKEND_ROOT = resolve(__dirname, '..');
 const REPOSITORY_ROOT = resolve(__dirname, '../../..');
 const BUILD_ROOT = resolve(BACKEND_ROOT, 'dist/plugins/devices-homey');
-const FIXTURE_ROOT = resolve(BACKEND_ROOT, 'src/plugins/devices-homey/__fixtures__');
+const FIXTURE_REPOSITORY_PATH = 'apps/backend/src/plugins/devices-homey/__fixtures__';
 const OPENAPI_PATH = resolve(REPOSITORY_ROOT, 'spec/api/v1/openapi.json');
 const SNAPSHOT_ROOT = resolve(REPOSITORY_ROOT, 'apps');
 const BUILD_EXTENSIONS = new Set(['.js', '.json', '.map']);
+const FIXTURE_EXTENSIONS = new Set(['.json', '.md', '.txt', '.yaml', '.yml']);
 const SECRET_PROPERTY_PATTERN =
 	/^(?:access[_-]?token|api[_-]?key|authorization|credential|password|refresh[_-]?token|secret)$/i;
 const IP_ADDRESS_CANDIDATE_PATTERN = /[A-Za-z0-9:.%_-]{2,}/g;
-const COMPILED_IDENTIFIER_PATTERN = /(?<!["'])\bhomey_[a-z0-9_]{16,}\b(?!["'])|\bHOMEY_[A-Z0-9_]{16,}\b/g;
+const HOMEY_TOKEN_PATTERN = /\b(?:homey|hpat|pat)_[A-Za-z0-9_-]{16,}\b/i;
+const COMPILED_SYMBOL_NAME_PATTERN = /^[A-Z][A-Z0-9_]+$/;
+const COMMENT_PATTERN = /\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g;
+const SERIALIZED_SECRET_PATTERN =
+	/["'](?:access[_-]?token|api[_-]?key|authorization|credential|password|refresh[_-]?token|secret)["']\s*:\s*(["'])([^"']*)\1/gi;
 const FORBIDDEN_PATTERNS: readonly ForbiddenPattern[] = [
 	{
 		label: 'an IPv4 address',
@@ -34,12 +41,6 @@ const FORBIDDEN_PATTERNS: readonly ForbiddenPattern[] = [
 	},
 	{ label: 'a MAC address', pattern: /\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b/i },
 	{ label: 'an email address', pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i },
-	{ label: 'a Homey personal access token', pattern: /\b(?:homey|hpat|pat)_[A-Za-z0-9_-]{16,}\b/i },
-	{
-		label: 'a serialized secret value',
-		pattern:
-			/["'](?:access[_-]?token|api[_-]?key|authorization|credential|password|refresh[_-]?token|secret)["']\s*:\s*["'](?!\[~3~\])[^"]+["']/i,
-	},
 ];
 
 const readJson = (path: string): unknown => JSON.parse(readFileSync(path, 'utf8')) as unknown;
@@ -69,6 +70,19 @@ const configuredPrivateValues = (): readonly string[] =>
 		.map((value) => value?.trim())
 		.filter((value): value is string => value !== undefined && value.length >= 3);
 
+const trackedFixtureFiles = (): readonly string[] => {
+	const output = execFileSync('git', ['ls-files', '-z', '--', FIXTURE_REPOSITORY_PATH], {
+		cwd: REPOSITORY_ROOT,
+		encoding: 'utf8',
+	});
+
+	return output
+		.split('\0')
+		.filter((path) => path.length > 0)
+		.map((path) => resolve(REPOSITORY_ROOT, path))
+		.filter((path) => lstatSync(path).isFile());
+};
+
 const containsIpv6Address = (text: string): boolean =>
 	[...text.matchAll(IP_ADDRESS_CANDIDATE_PATTERN)].some((match) => {
 		const candidate = match[0].replace(/^\.+|\.+$/g, '').split('%')[0];
@@ -76,7 +90,46 @@ const containsIpv6Address = (text: string): boolean =>
 		return candidate !== undefined && candidate !== '::' && isIP(candidate) === 6;
 	});
 
-const assertTextSafe = (label: string, text: string): void => {
+const containsHomeyToken = (text: string, compiledSource: boolean): boolean => {
+	if (!compiledSource) {
+		return HOMEY_TOKEN_PATTERN.test(text);
+	}
+
+	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	let found = [...text.matchAll(COMMENT_PATTERN)].some((match) => HOMEY_TOKEN_PATTERN.test(match[0]));
+	const visit = (node: ts.Node): void => {
+		if (found) {
+			return;
+		}
+
+		if (
+			ts.isStringLiteral(node) ||
+			ts.isNoSubstitutionTemplateLiteral(node) ||
+			node.kind === ts.SyntaxKind.TemplateHead ||
+			node.kind === ts.SyntaxKind.TemplateMiddle ||
+			node.kind === ts.SyntaxKind.TemplateTail
+		) {
+			const value = (node as ts.StringLiteralLike).text;
+
+			found = !COMPILED_SYMBOL_NAME_PATTERN.test(value) && HOMEY_TOKEN_PATTERN.test(value);
+		}
+
+		ts.forEachChild(node, visit);
+	};
+
+	visit(sourceFile);
+
+	return found;
+};
+
+const containsSerializedSecret = (text: string): boolean =>
+	[...text.matchAll(SERIALIZED_SECRET_PATTERN)].some((match) => {
+		const value = match[2];
+
+		return value !== undefined && value.length > 0 && value !== '[~3~]';
+	});
+
+const assertTextSafe = (label: string, text: string, compiledSource = false): void => {
 	for (const forbidden of FORBIDDEN_PATTERNS) {
 		if (forbidden.pattern.test(text)) {
 			throw new Error(`${label} contains ${forbidden.label}`);
@@ -85,6 +138,14 @@ const assertTextSafe = (label: string, text: string): void => {
 
 	if (containsIpv6Address(text)) {
 		throw new Error(`${label} contains an IPv6 address`);
+	}
+
+	if (containsHomeyToken(text, compiledSource)) {
+		throw new Error(`${label} contains a Homey personal access token`);
+	}
+
+	if (containsSerializedSecret(text)) {
+		throw new Error(`${label} contains a serialized secret value`);
 	}
 
 	for (const privateValue of configuredPrivateValues()) {
@@ -144,12 +205,14 @@ describe('Homey security artifact gate', () => {
 	});
 
 	it('keeps committed Homey fixtures and snapshots free of private values', () => {
-		const fixtureFiles = collectFiles(FIXTURE_ROOT, (path) => extname(path) === '.json');
+		const fixtureFiles = trackedFixtureFiles();
+		const unsupportedFiles = fixtureFiles.filter((path) => !FIXTURE_EXTENSIONS.has(extname(path)));
 		const snapshotFiles = collectFiles(SNAPSHOT_ROOT, (path) => path.endsWith('.snap')).filter(
 			(path) => path.toLocaleLowerCase().includes('homey') || readFileSync(path, 'utf8').includes('devices-homey'),
 		);
 
 		expect(fixtureFiles.length).toBeGreaterThan(0);
+		expect(unsupportedFiles).toEqual([]);
 
 		for (const path of [...fixtureFiles, ...snapshotFiles]) {
 			assertTextSafe(path.slice(REPOSITORY_ROOT.length + 1), readFileSync(path, 'utf8'));
@@ -169,10 +232,8 @@ describe('Homey security artifact gate', () => {
 
 		for (const path of buildFiles) {
 			const text = readFileSync(path, 'utf8');
-			const artifactText =
-				path.endsWith('.js') || path.endsWith('.d.ts') ? text.replace(COMPILED_IDENTIFIER_PATTERN, '') : text;
 
-			assertTextSafe(path.slice(BACKEND_ROOT.length + 1), artifactText);
+			assertTextSafe(path.slice(BACKEND_ROOT.length + 1), text, path.endsWith('.js') || path.endsWith('.d.ts'));
 		}
 	});
 
@@ -190,9 +251,18 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertTextSafe('unsafe fixture', '{"api_key":"must-not-be-reported"}')).toThrow(
 			'unsafe fixture contains a serialized secret value',
 		);
+		expect(() => assertTextSafe('unsafe fixture', '{"api_key":"[~3~]unredacted-password"}')).toThrow(
+			'unsafe fixture contains a serialized secret value',
+		);
 		expect(() => assertTextSafe('unsafe fixture', '{"value":"homey_abcdefghijklmnop"}')).toThrow(
 			'unsafe fixture contains a Homey personal access token',
 		);
+		expect(() =>
+			assertTextSafe('unsafe compiled module', 'throw new Error("request failed for homey_abcdefghijklmnop")', true),
+		).toThrow('unsafe compiled module contains a Homey personal access token');
+		expect(() =>
+			assertTextSafe('safe compiled module', 'const homey_local_connector_factory_1 = {};', true),
+		).not.toThrow();
 		expect(() => assertTextSafe('unsafe fixture', '{"address":"192.168.1.23"}')).toThrow(
 			'unsafe fixture contains an IPv4 address',
 		);
