@@ -290,7 +290,15 @@ const containsUnsafeCompiledLiteral = (node: ts.Expression): boolean => {
 	}
 
 	if (ts.isCallExpression(node)) {
-		return node.arguments.some((argument) => containsUnsafeCompiledLiteral(argument));
+		const receiver =
+			ts.isPropertyAccessExpression(node.expression) || ts.isElementAccessExpression(node.expression)
+				? node.expression.expression
+				: undefined;
+
+		return (
+			(receiver !== undefined && containsUnsafeCompiledLiteral(receiver)) ||
+			node.arguments.some((argument) => containsUnsafeCompiledLiteral(argument))
+		);
 	}
 
 	if (ts.isNewExpression(node)) {
@@ -361,6 +369,25 @@ const containsCompiledSecret = (text: string): boolean => {
 	return found;
 };
 
+const compiledStaticString = (node: ts.Expression): string | undefined => {
+	if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+		return node.text;
+	}
+
+	if (ts.isParenthesizedExpression(node)) {
+		return compiledStaticString(node.expression);
+	}
+
+	if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+		const left = compiledStaticString(node.left);
+		const right = compiledStaticString(node.right);
+
+		return left === undefined || right === undefined ? undefined : left + right;
+	}
+
+	return undefined;
+};
+
 const containsCompiledPrivateUrl = (text: string): boolean => {
 	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 	let found = false;
@@ -375,6 +402,10 @@ const containsCompiledPrivateUrl = (text: string): boolean => {
 			found =
 				containsStructuredUrl(node.head.text) ||
 				node.templateSpans.some((span) => containsStructuredUrl(span.literal.text));
+		} else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+			const staticString = compiledStaticString(node);
+
+			found = staticString !== undefined && containsStructuredUrl(staticString);
 		}
 
 		ts.forEachChild(node, visit);
@@ -578,9 +609,14 @@ const visitSchema = (schemaName: string, value: unknown, path: readonly string[]
 	}
 };
 
-const visitPublishedValues = (label: string, value: unknown, path: readonly string[] = []): void => {
+const visitPublishedValues = (
+	label: string,
+	value: unknown,
+	path: readonly string[] = [],
+	secretParameter = false,
+): void => {
 	if (Array.isArray(value)) {
-		value.forEach((entry, index) => visitPublishedValues(label, entry, [...path, index.toString()]));
+		value.forEach((entry, index) => visitPublishedValues(label, entry, [...path, index.toString()], secretParameter));
 
 		return;
 	}
@@ -589,11 +625,14 @@ const visitPublishedValues = (label: string, value: unknown, path: readonly stri
 		return;
 	}
 
-	for (const [key, child] of Object.entries(value as JsonRecord)) {
+	const record = value as JsonRecord;
+	const nestedSecretParameter = secretParameter || (typeof record.name === 'string' && isHomeySecretKey(record.name));
+
+	for (const [key, child] of Object.entries(record)) {
 		const childPath = [...path, key];
 
 		if (['default', 'enum', 'example', 'examples'].includes(key)) {
-			if (containsStructuredSecret(child)) {
+			if (containsStructuredSecret(child) || (nestedSecretParameter && containsUnsafeSecretLeaf(child))) {
 				throw new Error(`${label}.${childPath.join('.')} publishes a secret value`);
 			}
 
@@ -602,7 +641,7 @@ const visitPublishedValues = (label: string, value: unknown, path: readonly stri
 			}
 		}
 
-		visitPublishedValues(label, child, childPath);
+		visitPublishedValues(label, child, childPath, nestedSecretParameter);
 	}
 };
 
@@ -695,6 +734,11 @@ describe('Homey security artifact gate', () => {
 				example: 'http://private-homey.local:4859',
 			}),
 		).toThrow('UnsafeHomeySchema.example publishes a URL');
+		expect(() =>
+			visitPublishedValues('UnsafeHomeyOperation', {
+				parameters: [{ name: 'apiKey', schema: { example: 'opaque-secret' } }],
+			}),
+		).toThrow('UnsafeHomeyOperation.parameters.0.schema.example publishes a secret value');
 		expect(() => assertTextSafe('unsafe fixture', '{"api_key":"must-not-be-reported"}')).toThrow(
 			'unsafe fixture contains a serialized secret value',
 		);
@@ -779,11 +823,17 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertTextSafe('unsafe compiled module', "const apiKey = String('opaque-secret');", true)).toThrow(
 			'unsafe compiled module contains a compiled secret value',
 		);
+		expect(() => assertTextSafe('unsafe compiled module', "const apiKey = 'opaque-secret'.trim();", true)).toThrow(
+			'unsafe compiled module contains a compiled secret value',
+		);
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const endpoint = 'http://private-homey.local:4859';", true),
 		).toThrow('unsafe compiled module contains a private URL');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', 'const endpoint = `http://private-homey.local:${port}`;', true),
+		).toThrow('unsafe compiled module contains a private URL');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const endpoint = 'http://' + 'private-homey.local:4859';", true),
 		).toThrow('unsafe compiled module contains a private URL');
 		expect(() => assertTextSafe('unsafe fixture', '{"address":"192.168.1.23"}')).toThrow(
 			'unsafe fixture contains an IPv4 address',
