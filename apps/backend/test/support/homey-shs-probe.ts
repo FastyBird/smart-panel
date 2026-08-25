@@ -314,7 +314,7 @@ const escapeRegularExpression = (value: string): string => value.replace(/[.*+?^
 
 const ipv6Address = (candidate: string): string => candidate.split('%', 1)[0];
 
-const findIpv6Range = (candidate: string): { end: number; start: number } | null => {
+export const findHomeyIpv6Range = (candidate: string): { end: number; start: number } | null => {
 	const addressCandidate = ipv6Address(candidate);
 	let bestRange: { end: number; start: number } | null = null;
 
@@ -348,12 +348,12 @@ const findIpv6Range = (candidate: string): { end: number; start: number } | null
 const replaceIpv6Candidate = (candidate: string, replacement: string): string => {
 	let remainder = candidate;
 	let sanitized = '';
-	let range = findIpv6Range(remainder);
+	let range = findHomeyIpv6Range(remainder);
 
 	while (range !== null) {
 		sanitized += `${remainder.slice(0, range.start)}${replacement}`;
 		remainder = remainder.slice(range.end);
-		range = findIpv6Range(remainder);
+		range = findHomeyIpv6Range(remainder);
 	}
 
 	return sanitized + remainder;

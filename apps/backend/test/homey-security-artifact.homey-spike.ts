@@ -1,11 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
-import { isIP } from 'node:net';
 import { extname, resolve } from 'node:path';
 import ts from 'typescript';
 import { parse as parseYaml } from 'yaml';
 
-import { isHomeySecretKey } from './support/homey-shs-probe';
+import { findHomeyIpv6Range, isHomeySecretKey } from './support/homey-shs-probe';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -130,11 +129,9 @@ const trackedFixtureFiles = (): readonly string[] => {
 };
 
 const containsIpv6Address = (text: string): boolean =>
-	[...text.matchAll(IP_ADDRESS_CANDIDATE_PATTERN)].some((match) => {
-		const candidate = match[0].replace(/^\.+|\.+$/g, '').split('%')[0];
-
-		return candidate !== undefined && candidate !== '::' && isIP(candidate) === 6;
-	});
+	[...text.matchAll(IP_ADDRESS_CANDIDATE_PATTERN)].some(
+		(match) => match[0] !== '::' && findHomeyIpv6Range(match[0]) !== null,
+	);
 
 const containsHomeyTokenCandidate = (text: string): boolean =>
 	[...text.matchAll(HOMEY_TOKEN_PATTERN)].some((match) => !PUBLIC_HOMEY_TOKEN_COLLISIONS.has(match[0].toLowerCase()));
@@ -603,6 +600,12 @@ describe('Homey security artifact gate', () => {
 			'unsafe fixture contains an IPv4 address',
 		);
 		expect(() => assertTextSafe('unsafe fixture', '{"address":"fe80::1%en0"}')).toThrow(
+			'unsafe fixture contains an IPv6 address',
+		);
+		expect(() => assertTextSafe('unsafe fixture', '{"address":"host-fe80::1"}')).toThrow(
+			'unsafe fixture contains an IPv6 address',
+		);
+		expect(() => assertTextSafe('unsafe fixture', '{"address":"prefix2001:db8::1"}')).toThrow(
 			'unsafe fixture contains an IPv6 address',
 		);
 		expect(() => assertTextSafe('unsafe fixture', '{"mac":"aabb.ccdd.eeff"}')).toThrow(
