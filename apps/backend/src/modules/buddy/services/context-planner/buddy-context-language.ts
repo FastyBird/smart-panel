@@ -33,8 +33,9 @@ import {
 const CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE = String.raw`(?:am|are(?:n't)?|can(?:not|'t)?|could(?:n't)?|did(?:n't)?|do|does|don't|doesn't|had(?:n't)?|has(?:n't)?|have(?:n't)?|is(?:n't)?|may|might(?:n't)?|must(?:n't)?|should(?:n't)?|was(?:n't)?|were(?:n't)?|will|won't|would(?:n't)?)`;
 const CONDITIONAL_OUTCOME_PREDICATE_PATTERN_SOURCE = String.raw`(?:appears?|changes?|fails?|happens?|improves?|looks?|remains?|seems?|stays?|wakes?|works?)`;
 const CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE = String.raw`(?:again|altogether|now|once|still|today|tonight|[\p{Letter}'’-]+ly)`;
+const CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_SEQUENCE_PATTERN_SOURCE = String.raw`(?:\s+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE}){0,2}`;
 const CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_PATTERN_SOURCE = String.raw`(?:at|by|during|for|from|in|near|on|through|under|with|without)\s+[\p{Letter}\p{Number}'’-]+(?:\s+[\p{Letter}\p{Number}'’-]+){0,3}`;
-const CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE = String.raw`(?:becomes?|keeps?|starts?|stops?)\s+(?:(?:being|far|much|on|quite|really|to|very)\s+)?[\p{Letter}\p{Number}'’-]+(?:\s+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})?(?:\s+${CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_PATTERN_SOURCE})?`;
+const CONDITIONAL_OUTCOME_PHRASAL_PREDICATE_PATTERN_SOURCE = String.raw`(?:becomes?|keeps?|starts?|stops?)\s+(?:(?:being|far|much|on|quite|really|to|very)\s+)?[\p{Letter}\p{Number}'’-]+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_SEQUENCE_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_PATTERN_SOURCE})?`;
 const CONDITIONAL_OUTCOME_HUMAN_STATE_GERUND_PATTERN_SOURCE = String.raw`(?:arriving|crying|falling|laughing|reading|running|sleeping|waiting|working)`;
 const CONDITIONAL_OUTCOME_HUMAN_STATE_INFINITIVE_PATTERN_SOURCE = String.raw`(?:arrive|cry|fall|laugh|read|run|sleep|wait|work)`;
 const CONDITIONAL_OUTCOME_OBJECT_GAP_GERUND_PATTERN_SOURCE = String.raw`(?!${CONDITIONAL_OUTCOME_HUMAN_STATE_GERUND_PATTERN_SOURCE}\b)[\p{Letter}'’-]+ing`;
@@ -60,7 +61,7 @@ const CONDITIONAL_OUTCOME_PHRASAL_QUESTION_PATTERN = new RegExp(
 	'u',
 );
 const CONDITIONAL_OUTCOME_ZERO_RELATIVE_TARGET_PATTERN = new RegExp(
-	String.raw`^${CONDITIONAL_OUTCOME_FIRST_ACTION_TARGET_PATTERN_SOURCE}\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?${CONDITIONAL_OUTCOME_OBJECT_GAP_SUBJECT_PATTERN_SOURCE}\s+(?:(?:keeps?|starts?|stops?)\s+${CONDITIONAL_OUTCOME_OBJECT_GAP_PREDICATE_PATTERN_SOURCE}(?:\s+${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})?|${CONDITIONAL_OUTCOME_FINITE_OBJECT_GAP_PREDICATE_PATTERN_SOURCE})(?:\s+${CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_PATTERN_SOURCE})?\s*\?\s*$`,
+	String.raw`^${CONDITIONAL_OUTCOME_FIRST_ACTION_TARGET_PATTERN_SOURCE}\s+(?:${CONDITIONAL_OUTCOME_ACTION_COMPLEMENT_PATTERN_SOURCE}\s+)?${CONDITIONAL_OUTCOME_OBJECT_GAP_SUBJECT_PATTERN_SOURCE}\s+(?:(?:keeps?|starts?|stops?)\s+${CONDITIONAL_OUTCOME_OBJECT_GAP_PREDICATE_PATTERN_SOURCE}${CONDITIONAL_OUTCOME_PREDICATE_ADJUNCT_SEQUENCE_PATTERN_SOURCE}|${CONDITIONAL_OUTCOME_FINITE_OBJECT_GAP_PREDICATE_PATTERN_SOURCE})(?:\s+${CONDITIONAL_OUTCOME_PREPOSITIONAL_ADJUNCT_PATTERN_SOURCE})?\s*\?\s*$`,
 	'u',
 );
 const CONDITIONAL_OUTCOME_RELATIVE_ADVERB_PATTERN_SOURCE = String.raw`(?:already|currently|maybe|never|often|perhaps|still|very|[\p{Letter}'’-]+ly)`;
