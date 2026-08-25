@@ -290,10 +290,24 @@ describe('BuddyContextPlannerService', () => {
 		'Are any windows open or are all doors unlocked?',
 		'Are any windows open or are any doors unlocked?',
 		'Are any windows open or is every door unlocked?',
+		'Are any windows open or are none of the doors unlocked?',
 		'Are any windows open or are some doors unlocked?',
 	])('retains whole-home scope across a quantified alternative: %s', (message) => {
 		const plan = service.plan({
 			message,
+			conversationSpaceId: 'space-office',
+			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
+		});
+
+		expect(plan.queries).toContainEqual({ kind: 'search-home' });
+		expect(plan.queries).toContainEqual({ kind: 'current-state' });
+		expect(plan.queries).not.toContainEqual({ kind: 'search-home', spaceId: 'space-office' });
+		expect(plan.queries).not.toContainEqual({ kind: 'current-state', spaceId: 'space-office' });
+	});
+
+	it('keeps a comma-prefixed subjectless alternative in the aggregate clause', () => {
+		const plan = service.plan({
+			message: 'Are any lights on, or will switch off?',
 			conversationSpaceId: 'space-office',
 			providerCapabilities: { toolCalling: 'reliable', supportsStructuredToolResults: true },
 		});

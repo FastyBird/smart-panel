@@ -512,7 +512,7 @@ export function splitPlannerClauses(
 		...findPatternRanges(message, /\d+\.\d+/u),
 	];
 	const separatorPattern = new RegExp(
-		String.raw`(?:,\s*(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})(?:\s+then)?\b|[?!,.;]|\band\s+then\b|\bor\b(?=\s+(?:${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+|${INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN_SOURCE}))|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|\ba\b(?=\s*(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b))`,
+		String.raw`(?:,\s*(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})(?:\s+then)?\b|(?:,\s*)?\bor\b(?=\s+(?:${CONDITIONAL_OUTCOME_AUXILIARY_PATTERN_SOURCE}\s+|${INDEPENDENT_ALTERNATIVE_INTERROGATIVE_PATTERN_SOURCE}))|[?!,.;]|\band\s+then\b|\b(?:${COMPOUND_CONNECTOR_PATTERN_SOURCE})\b|\ba\b(?=\s*(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b))`,
 		'gu',
 	);
 	const clauses: string[] = [];
@@ -523,7 +523,10 @@ export function splitPlannerClauses(
 		const separatorEnd = separatorStart + separator[0].length;
 
 		if (protectedRanges.some((range) => range.start <= separatorStart && range.end >= separatorEnd)) continue;
-		if (separator[0] === 'or' && !hasIndependentAlternativeSubject(message.slice(separatorEnd), protectedSpaces)) {
+		if (
+			/\bor$/u.test(separator[0]) &&
+			!hasIndependentAlternativeSubject(message.slice(separatorEnd), protectedSpaces)
+		) {
 			continue;
 		}
 

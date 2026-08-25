@@ -330,7 +330,7 @@ export const BUILT_IN_ACTION_SPACE_NAMES = new Set([
 export const EXACT_BUILT_IN_THERMOSTAT_TARGET_PATTERN =
 	/\b(?:bathroom|bedroom|downstairs|garage|hallway|kitchen|living room|office|upstairs) thermostat\b/u;
 const WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:all|any|each|every)(?:\s+one)?`;
-export const AGGREGATE_SUBJECT_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}|some)`;
+export const AGGREGATE_SUBJECT_QUANTIFIER_PATTERN_SOURCE = String.raw`(?:${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}|none\s+of\s+the|some)`;
 export const WHOLE_HOME_SCOPE_PATTERN = new RegExp(
 	String.raw`\b(?:entire|whole) (?:home|house)\b|\b(?:across|throughout) (?:the )?(?:home|house)\b|\banywhere(?:\s+at\s+all)?\b(?!\s+(?:around|at|else|here|in|inside|near|within)\b)|\beverywhere\b|\b${WHOLE_HOME_QUANTIFIER_PATTERN_SOURCE}(?:\s+of\s+the)?\s+(?:rooms?|spaces?)\b`,
 	'u',
@@ -346,7 +346,7 @@ const AGGREGATE_READ_LOCAL_QUALIFIER_PATTERN_SOURCE = String.raw`(?:${CONTEXTUAL
 const AGGREGATE_READ_COORDINATED_MODAL_PATTERN_SOURCE = String.raw`(?:can(?:not|'t)?|could(?:n't)?|may|might(?:n't)?|must(?:n't)?|shall|shan't|should(?:n't)?|will|won't|would(?:n't)?)`;
 const AGGREGATE_READ_MODAL_PREDICATE_PATTERN_SOURCE = String.raw`(?:${OUTCOME_PREDICATE_PATTERN_SOURCE}|(?!(?:here|nearby)\b)[\p{Letter}'’-]+)`;
 const AGGREGATE_READ_COORDINATED_MODAL_PREDICATE_PATTERN_SOURCE = String.raw`${AGGREGATE_READ_COORDINATED_MODAL_PATTERN_SOURCE}\s+(?:(?:${OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})\s+){0,2}(?:(?:be|${STATE_LINKING_VERB_PATTERN_SOURCE})\s+${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}|${SUBJECTLESS_POWER_PREDICATE_PATTERN_SOURCE}|${AGGREGATE_READ_MODAL_PREDICATE_PATTERN_SOURCE})(?:(?:\s+${OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})){0,2}`;
-const AGGREGATE_READ_COORDINATED_STATE_PATTERN_SOURCE = String.raw`(?:and|but|or|yet)\s+(?:${AGGREGATE_READ_COORDINATED_MODAL_PREDICATE_PATTERN_SOURCE}|(?:${STATE_LINKING_VERB_PATTERN_SOURCE}\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE})`;
+const AGGREGATE_READ_COORDINATED_STATE_PATTERN_SOURCE = String.raw`(?:,\s*)?(?:and|but|or|yet)\s+(?:${AGGREGATE_READ_COORDINATED_MODAL_PREDICATE_PATTERN_SOURCE}|(?:${STATE_LINKING_VERB_PATTERN_SOURCE}\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE})`;
 const AGGREGATE_READ_RELATIVE_LOCAL_QUALIFIER_PATTERN_SOURCE = String.raw`(?:${CONTEXTUAL_SCOPE_PATTERN.source}|in\s+here|near\s+me)`;
 const AGGREGATE_READ_RELATIVE_EARLY_NEARBY_PATTERN_SOURCE = String.raw`(?:[\p{Letter}\p{Number}'’-]+\s+){0,3}nearby\b`;
 const AGGREGATE_READ_RELATIVE_TAIL_PATTERN_SOURCE = String.raw`(?:that|which|who|whose)\s+(?![^?!,.;]{0,200}(?:${AGGREGATE_READ_RELATIVE_LOCAL_QUALIFIER_PATTERN_SOURCE}))(?!(?:${AGGREGATE_READ_RELATIVE_EARLY_NEARBY_PATTERN_SOURCE}))[^?!,.;]{1,200}`;
