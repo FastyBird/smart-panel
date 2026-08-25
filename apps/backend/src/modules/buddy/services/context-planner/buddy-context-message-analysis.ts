@@ -64,6 +64,7 @@ import {
 	SECURITY_PATTERN,
 	SECURITY_SUBJECT_PATTERN,
 	STATE_SIGNAL_PATTERN,
+	SUBJECTLESS_POWER_PREDICATE_PATTERN_SOURCE,
 	TEMPORAL_HISTORY_PATTERN,
 	TRIGGER_PATTERN,
 	UNSUPPORTED_MEASUREMENT_READ_PATTERN,
@@ -91,6 +92,12 @@ const INDEPENDENT_ALTERNATIVE_BARE_DOMAIN_SUBJECT_PATTERN = new RegExp(
 	String.raw`^(?:${ENERGY_PATTERN.source}|${WEATHER_PATTERN.source})`,
 	'u',
 );
+const INDEPENDENT_ALTERNATIVE_SUBJECTLESS_PREDICATE_PATTERN = new RegExp(
+	String.raw`^${SUBJECTLESS_POWER_PREDICATE_PATTERN_SOURCE}\b`,
+	'u',
+);
+const INDEPENDENT_ALTERNATIVE_SUBJECTLESS_MODAL_PATTERN =
+	/^(?:can(?:not|'t)?|could(?:n't)?|may|might(?:n't)?|must(?:n't)?|shall|shan't|should(?:n't)?|will|won't|would(?:n't)?)$/u;
 
 function hasIndependentAlternativeSubject(
 	alternative: string,
@@ -100,6 +107,12 @@ function hasIndependentAlternativeSubject(
 	if (!auxiliaryMatch) return false;
 
 	const subject = alternative.slice(auxiliaryMatch[0].length);
+	if (
+		INDEPENDENT_ALTERNATIVE_SUBJECTLESS_MODAL_PATTERN.test(auxiliaryMatch[0].trim()) &&
+		INDEPENDENT_ALTERNATIVE_SUBJECTLESS_PREDICATE_PATTERN.test(subject)
+	) {
+		return false;
+	}
 
 	return (
 		INDEPENDENT_ALTERNATIVE_DETERMINED_SUBJECT_PATTERN.test(subject) ||

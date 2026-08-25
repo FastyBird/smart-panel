@@ -23,6 +23,7 @@ export const POWER_ACTION_TAIL_PATTERN_SOURCE = String.raw`\s+(?:(?:off|on)\s+${
 export const POWER_EVENT_SUBJECT_PATTERN_SOURCE = String.raw`(?:availability|backup|cut|failure|fault|outage|recovery|restoration|surge)`;
 export const POWER_EVENT_STATE_SUBJECT_PATTERN_SOURCE = String.raw`(?:${POWER_EVENT_SUBJECT_PATTERN_SOURCE}|blackout|brownout|interruption|issue|loss|malfunction|problem|spike)`;
 export const POWER_ACTION_PATTERN_SOURCE = String.raw`power(?!\s+${POWER_EVENT_SUBJECT_PATTERN_SOURCE}\b)(?=${POWER_ACTION_TAIL_PATTERN_SOURCE})`;
+export const SUBJECTLESS_POWER_PREDICATE_PATTERN_SOURCE = String.raw`(?:power|shut|switch|turn)\s+(?:down|off|on|up)`;
 export const ACTION_SIGNAL_PATTERN_SOURCE = [...BUDDY_ACTION_SIGNALS, 'trigger', POWER_ACTION_PATTERN_SOURCE].join('|');
 export const COMPOUND_CONNECTOR_PATTERN_SOURCE = [...BUDDY_COMPOUND_CONNECTOR_SIGNALS]
 	.sort((left, right) => right.length - left.length)
@@ -264,7 +265,8 @@ export const CAPABILITY_DISCOVERY_PATTERN = new RegExp(
 	String.raw`^(?:(?:what|which)\b|(?:can|could|would) you (?:show|tell)(?: me)?\b).*\b(?:am i able to|can i|i can)\b.*\b(?:${ACTION_SIGNAL_PATTERN_SOURCE})\b`,
 	'u',
 );
-const CONTEXTUAL_ROOM_MEMBERSHIP_PATTERN_SOURCE = String.raw`(?<!do not )(?<!does not )(?<!did not )(?<!don't )(?<!doesn't )(?<!didn't )(?<!never )(?<!no longer )belong(?:ed|ing|s)?\s+to\s+this room`;
+const CONTEXTUAL_ROOM_MEMBERSHIP_NEGATION_PATTERN_SOURCE = String.raw`(?<!\b(?:do|does|did)\s+not(?:\s+${OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE}){0,2}\s)(?<!\b(?:don't|doesn't|didn't|never|no\s+longer)(?:\s+${OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE}){0,2}\s)`;
+const CONTEXTUAL_ROOM_MEMBERSHIP_PATTERN_SOURCE = String.raw`${CONTEXTUAL_ROOM_MEMBERSHIP_NEGATION_PATTERN_SOURCE}belong(?:ed|ing|s)?\s+to\s+this room`;
 const CONTEXTUAL_ROOM_SCOPE_PATTERN_SOURCE = String.raw`(?:in\s+this room|${CONTEXTUAL_ROOM_MEMBERSHIP_PATTERN_SOURCE})`;
 export const CONTEXTUAL_SCOPE_PATTERN = new RegExp(
 	String.raw`\b(?:here|this space|${CONTEXTUAL_ROOM_SCOPE_PATTERN_SOURCE})\b`,
@@ -342,7 +344,7 @@ const AGGREGATE_READ_TRAILING_ADJUNCT_PATTERN_SOURCE = String.raw`(?:${AGGREGATE
 const AGGREGATE_READ_LOCAL_QUALIFIER_PATTERN_SOURCE = String.raw`(?:${CONTEXTUAL_SCOPE_PATTERN.source}|in\s+here|near\s+me|nearby)`;
 const AGGREGATE_READ_COORDINATED_MODAL_PATTERN_SOURCE = String.raw`(?:can(?:not|'t)?|could(?:n't)?|may|might(?:n't)?|must(?:n't)?|shall|shan't|should(?:n't)?|will|won't|would(?:n't)?)`;
 const AGGREGATE_READ_MODAL_PREDICATE_PATTERN_SOURCE = String.raw`(?:${OUTCOME_PREDICATE_PATTERN_SOURCE}|(?!(?:here|nearby)\b)[\p{Letter}'’-]+)`;
-const AGGREGATE_READ_COORDINATED_MODAL_PREDICATE_PATTERN_SOURCE = String.raw`${AGGREGATE_READ_COORDINATED_MODAL_PATTERN_SOURCE}\s+(?:(?:${OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})\s+){0,2}(?:(?:be|${STATE_LINKING_VERB_PATTERN_SOURCE})\s+${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}|${AGGREGATE_READ_MODAL_PREDICATE_PATTERN_SOURCE})(?:(?:\s+${OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})){0,2}`;
+const AGGREGATE_READ_COORDINATED_MODAL_PREDICATE_PATTERN_SOURCE = String.raw`${AGGREGATE_READ_COORDINATED_MODAL_PATTERN_SOURCE}\s+(?:(?:${OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})\s+){0,2}(?:(?:be|${STATE_LINKING_VERB_PATTERN_SOURCE})\s+${AGGREGATE_STATE_VALUE_PATTERN_SOURCE}|${SUBJECTLESS_POWER_PREDICATE_PATTERN_SOURCE}|${AGGREGATE_READ_MODAL_PREDICATE_PATTERN_SOURCE})(?:(?:\s+${OUTCOME_PREDICATE_ADJUNCT_PATTERN_SOURCE})){0,2}`;
 const AGGREGATE_READ_COORDINATED_STATE_PATTERN_SOURCE = String.raw`(?:and|but|or|yet)\s+(?:${AGGREGATE_READ_COORDINATED_MODAL_PREDICATE_PATTERN_SOURCE}|(?:${STATE_LINKING_VERB_PATTERN_SOURCE}\s+)?${AGGREGATE_STATE_VALUE_PATTERN_SOURCE})`;
 const AGGREGATE_READ_RELATIVE_TAIL_PATTERN_SOURCE = String.raw`(?:that|which|who|whose)\s+(?:(?!(?:${AGGREGATE_READ_LOCAL_QUALIFIER_PATTERN_SOURCE}))[\p{Letter}\p{Number}'’-]+\s*){1,8}`;
 export const AGGREGATE_STATE_COORDINATION_PATTERN = new RegExp(
