@@ -2355,9 +2355,23 @@ const containsUnsafeCompiledAlias = (
 			return false;
 		}
 	};
-	const resolveClassReceiver = (expression: ts.Expression): ts.ClassLikeDeclaration | undefined => {
+	function resolveClassReceiver(
+		expression: ts.Expression,
+		resolving = new Set<ts.Node>(),
+	): ts.ClassLikeDeclaration | undefined {
 		if (ts.isIdentifier(expression)) {
-			return resolveCompiledBinding(expression)?.classDeclaration;
+			const binding = resolveCompiledBinding(expression);
+
+			if (binding === undefined || resolving.has(binding.declaration)) {
+				return undefined;
+			}
+
+			return (
+				binding.classDeclaration ??
+				(binding.initializer === undefined
+					? undefined
+					: resolveClassReceiver(binding.initializer, new Set(resolving).add(binding.declaration)))
+			);
 		}
 
 		if (ts.isClassExpression(expression)) {
@@ -2371,11 +2385,75 @@ const containsUnsafeCompiledAlias = (
 			ts.isNonNullExpression(expression) ||
 			ts.isSatisfiesExpression(expression)
 		) {
-			return resolveClassReceiver(expression.expression);
+			return resolveClassReceiver(expression.expression, resolving);
+		}
+
+		if (ts.isCallExpression(expression)) {
+			return resolveReturnedClass(expression.expression, resolving);
 		}
 
 		return undefined;
-	};
+	}
+	function resolveReturnedClass(callee: ts.Expression, resolving: Set<ts.Node>): ts.ClassLikeDeclaration | undefined {
+		const resolveBodyReturn = (body: ts.Block, nestedResolving: Set<ts.Node>): ts.ClassLikeDeclaration | undefined => {
+			let returnedClass: ts.ClassLikeDeclaration | undefined;
+			const visitReturn = (node: ts.Node): void => {
+				if (returnedClass !== undefined) {
+					return;
+				}
+
+				if (ts.isReturnStatement(node) && node.expression !== undefined) {
+					returnedClass = resolveClassReceiver(node.expression, nestedResolving);
+				}
+
+				if (returnedClass === undefined) {
+					ts.forEachChild(node, visitReturn);
+				}
+			};
+
+			visitReturn(body);
+
+			return returnedClass;
+		};
+
+		if (ts.isIdentifier(callee)) {
+			for (const binding of resolveCompiledBindings(callee, visibleThroughPosition)) {
+				if (resolving.has(binding.declaration)) {
+					continue;
+				}
+
+				const nestedResolving = new Set(resolving).add(binding.declaration);
+				const resolvedInitializer =
+					binding.initializer === undefined ? undefined : resolveReturnedClass(binding.initializer, nestedResolving);
+				const resolvedCallable =
+					binding.callable?.body === undefined ? undefined : resolveBodyReturn(binding.callable.body, nestedResolving);
+
+				if (resolvedInitializer !== undefined || resolvedCallable !== undefined) {
+					return resolvedInitializer ?? resolvedCallable;
+				}
+			}
+
+			return undefined;
+		}
+
+		if (
+			ts.isParenthesizedExpression(callee) ||
+			ts.isAsExpression(callee) ||
+			ts.isTypeAssertionExpression(callee) ||
+			ts.isNonNullExpression(callee) ||
+			ts.isSatisfiesExpression(callee)
+		) {
+			return resolveReturnedClass(callee.expression, resolving);
+		}
+
+		if (ts.isArrowFunction(callee)) {
+			return ts.isBlock(callee.body)
+				? resolveBodyReturn(callee.body, resolving)
+				: resolveClassReceiver(callee.body, resolving);
+		}
+
+		return ts.isFunctionExpression(callee) ? resolveBodyReturn(callee.body, resolving) : undefined;
+	}
 	const inspect = (expression: ts.Expression, resolving: Set<ts.Node>): boolean => {
 		if (ts.isIdentifier(expression)) {
 			const bindings = resolveCompiledBindings(expression, visibleThroughPosition);
@@ -2671,9 +2749,7 @@ const containsUnsafeCompiledAlias = (
 										?.filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
 										.some((clause) =>
 											clause.types.some((type) => {
-												const baseClass = ts.isIdentifier(type.expression)
-													? resolveCompiledBinding(type.expression)?.classDeclaration
-													: undefined;
+												const baseClass = resolveClassReceiver(type.expression);
 
 												return baseClass !== undefined && inspectDynamicClassProperties(baseClass, nestedClasses);
 											}),
@@ -2729,9 +2805,7 @@ const containsUnsafeCompiledAlias = (
 							?.filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
 							.some((clause) =>
 								clause.types.some((type) => {
-									const baseClass = ts.isIdentifier(type.expression)
-										? resolveCompiledBinding(type.expression)?.classDeclaration
-										: undefined;
+									const baseClass = resolveClassReceiver(type.expression);
 
 									return (
 										baseClass !== undefined &&
@@ -3053,9 +3127,7 @@ const containsUnsafeCompiledAlias = (
 											?.filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
 											.some((clause) =>
 												clause.types.some((type) => {
-													const baseClass = ts.isIdentifier(type.expression)
-														? resolveCompiledBinding(type.expression)?.classDeclaration
-														: undefined;
+													const baseClass = resolveClassReceiver(type.expression);
 
 													return baseClass !== undefined && inspectClassMethod(baseClass, expectStatic, nestedClasses);
 												}),
@@ -3561,9 +3633,7 @@ const containsUnsafeCompiledAlias = (
 								?.filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
 								.some((clause) =>
 									clause.types.some((type) => {
-										const baseClass = ts.isIdentifier(type.expression)
-											? resolveCompiledBinding(type.expression)?.classDeclaration
-											: undefined;
+										const baseClass = resolveClassReceiver(type.expression);
 
 										return baseClass !== undefined && inspectStaticClassCallable(baseClass, nestedClasses);
 									}),
@@ -3861,9 +3931,7 @@ const containsUnsafeCompiledAlias = (
 								?.filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
 								.some((clause) =>
 									clause.types.some((type) => {
-										const baseClass = ts.isIdentifier(type.expression)
-											? resolveCompiledBinding(type.expression)?.classDeclaration
-											: undefined;
+										const baseClass = resolveClassReceiver(type.expression);
 
 										return baseClass !== undefined && inspectClassValue(baseClass, memberName, nestedValues);
 									}),
@@ -3940,9 +4008,7 @@ const containsUnsafeCompiledAlias = (
 								?.filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
 								.some((clause) =>
 									clause.types.some((type) => {
-										const baseClass = ts.isIdentifier(type.expression)
-											? resolveCompiledBinding(type.expression)?.classDeclaration
-											: undefined;
+										const baseClass = resolveClassReceiver(type.expression);
 
 										return baseClass !== undefined && inspectClassCallable(baseClass, nestedClasses);
 									}),
@@ -6448,6 +6514,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"class Base { value = 'opaque-secret'; } class Source extends Base {} const apiKey = new Source().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"function makeBase() { return class { value = 'opaque-secret'; }; } const apiKey = new (class extends makeBase() {})().value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
