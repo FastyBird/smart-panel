@@ -457,14 +457,18 @@ const sanitizeCapabilityIdentifier = (value: string, aliases: SanitizationAliase
 	return `${safeBase}.${pseudonym('capability-suffix', value.slice(separator + 1), aliases)}`;
 };
 
-const assertSanitizedCapabilityIdentifier = (value: unknown): void => {
+export const isHomeySanitizedCapabilityIdentifier = (value: unknown): value is string => {
 	if (typeof value !== 'string') {
-		throw new Error('Sanitized Homey capture contains an unredacted sensitive field');
+		return false;
 	}
 
 	const separator = value.indexOf('.');
 
-	if (separator >= 0 && !GENERATED_PSEUDONYM_PATTERN.test(value.slice(separator + 1))) {
+	return separator < 0 || GENERATED_PSEUDONYM_PATTERN.test(value.slice(separator + 1));
+};
+
+const assertSanitizedCapabilityIdentifier = (value: unknown): void => {
+	if (!isHomeySanitizedCapabilityIdentifier(value)) {
 		throw new Error('Sanitized Homey capture contains an unredacted sensitive field');
 	}
 };
@@ -491,6 +495,8 @@ const isTimestampKey = (key: string): boolean =>
 	CAMEL_CASE_TIMESTAMP_KEY_PATTERN.test(key) ||
 	BOUNDED_TIMESTAMP_KEY_PATTERN.test(key) ||
 	HUMAN_TIMESTAMP_KEY_PATTERN.test(key);
+
+export const isHomeyTimestampKey = (key: string): boolean => isTimestampKey(key);
 
 export const isHomeyAddressKey = (key: string): boolean =>
 	CAMEL_CASE_ADDRESS_KEY_PATTERN.test(key) || BOUNDED_ADDRESS_KEY_PATTERN.test(key);

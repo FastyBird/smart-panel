@@ -14,7 +14,9 @@ import {
 	isHomeyPersonalKey,
 	isHomeyReferenceArrayKey,
 	isHomeyReferenceKey,
+	isHomeySanitizedCapabilityIdentifier,
 	isHomeySecretKey,
+	isHomeyTimestampKey,
 	isHomeyUuid,
 	isPublicHomeyCapabilityBase,
 } from './support/homey-shs-probe';
@@ -80,6 +82,8 @@ const PUBLIC_ARTIFACT_URLS = new Set([
 	'https://smart-panel.fastybird.com/docs',
 ]);
 const PUBLIC_HOMEY_HOSTS = new Set(['homey', 'homey.local']);
+const FIXTURE_TIMESTAMP = '2000-01-01T00:00:00.000Z';
+const PUBLIC_FIXTURE_DATES = new Set(['2026-08-13']);
 const SERIALIZED_STRING_PROPERTY_PATTERN = /(["'])([^"']+)\1\s*:\s*(["'])([^"']*)\3/g;
 const LOOSE_PROPERTY_PATTERN =
 	/(?=(?:^|[{\s,;])["'`]?([A-Za-z][A-Za-z0-9_. -]*)["'`]?\s*[:=]\s*(?:(["'`])([^"'`\r\n]*)\2|([^,;}\r\n`]+)))/gm;
@@ -892,6 +896,27 @@ const containsStructuredEndpoint = (value: unknown): boolean => {
 	);
 };
 
+const isSafeTimestampValue = (value: unknown): boolean =>
+	value === null ||
+	value === 0 ||
+	value === false ||
+	value === FIXTURE_TIMESTAMP ||
+	(typeof value === 'string' && PUBLIC_FIXTURE_DATES.has(value));
+
+const containsStructuredTimestamp = (value: unknown): boolean => {
+	if (Array.isArray(value)) {
+		return value.some((entry) => containsStructuredTimestamp(entry));
+	}
+
+	if (value === null || typeof value !== 'object') {
+		return false;
+	}
+
+	return Object.entries(value as JsonRecord).some(
+		([key, child]) => (isHomeyTimestampKey(key) && !isSafeTimestampValue(child)) || containsStructuredTimestamp(child),
+	);
+};
+
 const isCapabilityIdentifierPath = (key: string, path: readonly string[], syntheticProtocolRoot: boolean): boolean => {
 	const directCapabilityEntry =
 		path.length === 2 &&
@@ -929,6 +954,18 @@ const containsStructuredIdentifier = (
 
 	return Object.entries(record).some(([key, child]) => {
 		const childPath = [...path, key];
+		const capabilityIdentifierPath = isCapabilityIdentifierPath(key, path, nestedSyntheticProtocolRoot);
+		const capabilityIdentifierValue = capabilityIdentifierPath && !isHomeySanitizedCapabilityIdentifier(child);
+		const capabilityListValue =
+			key === 'capabilities' &&
+			Array.isArray(child) &&
+			child.some((entry) => typeof entry === 'string' && !isHomeySanitizedCapabilityIdentifier(entry));
+		const capabilityMapKey =
+			(key === 'capabilitiesObj' || key === 'capabilityOptions') &&
+			child !== null &&
+			typeof child === 'object' &&
+			!Array.isArray(child) &&
+			Object.keys(child as JsonRecord).some((entryKey) => !isHomeySanitizedCapabilityIdentifier(entryKey));
 		const identifierMapValue =
 			isHomeyIdentifierMapKey(key) &&
 			child !== null &&
@@ -940,13 +977,16 @@ const containsStructuredIdentifier = (
 		const identifierValue =
 			!isHomeyReferenceArrayKey(key) &&
 			(isHomeyReferenceKey(key) || isHomeyIdentifierKey(key)) &&
-			!isCapabilityIdentifierPath(key, path, nestedSyntheticProtocolRoot) &&
+			!capabilityIdentifierPath &&
 			!isSafeIdentifierValue(child);
 		const referenceArrayValue =
 			isHomeyReferenceArrayKey(key) &&
 			(Array.isArray(child) ? child.some((entry) => !isSafeIdentifierValue(entry)) : !isSafeIdentifierValue(child));
 
 		return (
+			capabilityIdentifierValue ||
+			capabilityListValue ||
+			capabilityMapKey ||
 			identifierMapValue ||
 			identifierValue ||
 			referenceArrayValue ||
@@ -999,6 +1039,14 @@ const containsLooseIdentifierAssignment = (text: string): boolean =>
 			unambiguousIdentifierKey && !['0', '[]', 'false', 'null'].includes(rawValue) && !isSafeIdentifierValue(rawValue)
 		);
 	});
+
+const containsLooseTimestampAssignment = (text: string): boolean =>
+	loosePropertyAssignments(text).some(
+		([key, rawValue]) =>
+			isHomeyTimestampKey(key) &&
+			!['0', 'false', 'null', FIXTURE_TIMESTAMP].includes(rawValue) &&
+			!PUBLIC_FIXTURE_DATES.has(rawValue),
+	);
 
 const containsStructuredUrl = (value: unknown): boolean => {
 	if (typeof value === 'string') {
@@ -1087,6 +1135,15 @@ const assertFixtureTextSafe = (
 
 	if (containsEndpoint) {
 		throw new Error(`${label} contains a structured endpoint value`);
+	}
+
+	const containsTimestamp =
+		structuredValue === undefined
+			? containsLooseTimestampAssignment(text)
+			: containsStructuredTimestamp(structuredValue);
+
+	if (containsTimestamp) {
+		throw new Error(`${label} contains a structured timestamp value`);
 	}
 
 	const containsSecret =
@@ -1397,6 +1454,15 @@ describe('Homey security artifact gate', () => {
 		);
 		expect(() => assertFixtureTextSafe('unsafe fixture', '{"endpoint":"private-homey.local:4859"}', '.json')).toThrow(
 			'unsafe fixture contains a structured endpoint value',
+		);
+		expect(() => assertFixtureTextSafe('unsafe fixture', '{"capabilities":["onoff.private-device"]}', '.json')).toThrow(
+			'unsafe fixture contains a structured identifier value',
+		);
+		expect(() =>
+			assertFixtureTextSafe('safe fixture', '{"capabilities":["onoff.capability-suffix-000001"]}', '.json'),
+		).not.toThrow();
+		expect(() => assertFixtureTextSafe('unsafe fixture', '{"updatedAt":"2026-08-25T12:34:56.000Z"}', '.json')).toThrow(
+			'unsafe fixture contains a structured timestamp value',
 		);
 		expect(() => assertFixtureTextSafe('unsafe fixture', 'api_key: opaque-secret-value', '.yaml')).toThrow(
 			'unsafe fixture contains a structured secret value',
