@@ -1790,6 +1790,78 @@ const containsUnsafeCompiledAlias = (
 
 		return [];
 	};
+	const isJsonParseCall = (callee: ts.Expression, resolving = new Set<ts.Node>()): boolean => {
+		if (
+			ts.isPropertyAccessExpression(callee) &&
+			ts.isIdentifier(callee.expression) &&
+			callee.expression.text === 'JSON' &&
+			callee.name.text === 'parse'
+		) {
+			return true;
+		}
+
+		if (ts.isIdentifier(callee)) {
+			const binding = resolveCompiledBinding(callee);
+
+			return (
+				binding?.initializer !== undefined &&
+				!resolving.has(binding.declaration) &&
+				isJsonParseCall(binding.initializer, new Set(resolving).add(binding.declaration))
+			);
+		}
+
+		if (
+			ts.isParenthesizedExpression(callee) ||
+			ts.isAsExpression(callee) ||
+			ts.isTypeAssertionExpression(callee) ||
+			ts.isNonNullExpression(callee) ||
+			ts.isSatisfiesExpression(callee)
+		) {
+			return isJsonParseCall(callee.expression, resolving);
+		}
+
+		return false;
+	};
+	const jsonParsedPropertyIsUnsafe = (call: ts.CallExpression, propertyName: string): boolean => {
+		if (!isJsonParseCall(call.expression) || call.arguments.length === 0) {
+			return false;
+		}
+
+		const serialized = compiledStaticString(call.arguments[0]);
+
+		if (serialized === undefined) {
+			return false;
+		}
+
+		try {
+			const parsed = JSON.parse(serialized) as unknown;
+			const selectedValue =
+				parsed !== null && typeof parsed === 'object' ? (parsed as Record<string, unknown>)[propertyName] : undefined;
+			const inspectValue = (value: unknown): boolean => {
+				if (typeof value === 'string') {
+					return !isSafeCompiledString(value, safeStrings);
+				}
+
+				if (typeof value === 'number') {
+					return value !== 0;
+				}
+
+				if (typeof value === 'bigint') {
+					return value !== 0n;
+				}
+
+				if (Array.isArray(value)) {
+					return value.some(inspectValue);
+				}
+
+				return value !== null && typeof value === 'object' && Object.values(value).some(inspectValue);
+			};
+
+			return inspectValue(selectedValue);
+		} catch {
+			return false;
+		}
+	};
 	const resolveClassReceiver = (expression: ts.Expression): ts.ClassLikeDeclaration | undefined => {
 		if (ts.isIdentifier(expression)) {
 			return resolveCompiledBinding(expression)?.classDeclaration;
@@ -2291,6 +2363,10 @@ const containsUnsafeCompiledAlias = (
 				}
 
 				if (ts.isCallExpression(receiver)) {
+					if (jsonParsedPropertyIsUnsafe(receiver, selectedPropertyName)) {
+						return true;
+					}
+
 					if (
 						mutationResultValues(receiver, selectedPropertyName).some(
 							(value) => containsUnsafeCompiledLiteral(value, safeStrings) || inspect(value, nestedResolving),
@@ -3687,7 +3763,27 @@ const containsCompiledSecret = (text: string): boolean => {
 				names.some((name) => isCompiledSecretName(name)) &&
 				compiledBindingValues(node).some((value) => containsUnsafeCompiledValue(value));
 		} else if (ts.isCallExpression(node)) {
-			found = secretCallArguments(resolveCallParameterSets(node.expression), node.arguments);
+			const invocationPropertyName =
+				ts.isPropertyAccessExpression(node.expression) || ts.isElementAccessExpression(node.expression)
+					? ts.isPropertyAccessExpression(node.expression)
+						? node.expression.name.text
+						: node.expression.argumentExpression === undefined
+							? undefined
+							: compiledStaticPropertyExpressionName(node.expression.argumentExpression)
+					: undefined;
+			const invokedCallee =
+				(invocationPropertyName === 'call' || invocationPropertyName === 'apply') &&
+				(ts.isPropertyAccessExpression(node.expression) || ts.isElementAccessExpression(node.expression))
+					? node.expression.expression
+					: node.expression;
+			const invokedArguments: readonly ts.Expression[] =
+				invocationPropertyName === 'call'
+					? node.arguments.slice(1)
+					: invocationPropertyName === 'apply' && node.arguments[1] !== undefined
+						? [ts.factory.createSpreadElement(node.arguments[1])]
+						: node.arguments;
+
+			found = secretCallArguments(resolveCallParameterSets(invokedCallee), invokedArguments);
 		} else if (ts.isNewExpression(node)) {
 			const classDeclaration = ts.isIdentifier(node.expression)
 				? resolveCompiledBinding(node.expression)?.classDeclaration
@@ -5390,6 +5486,20 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"function connect(apiKey) {} connect.call(null, 'opaque-secret');",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"function connect(apiKey) {} connect.apply(null, ['opaque-secret']);",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const connect = ({ apiKey }) => {}; connect({ apiKey: 'opaque-secret' });",
 				true,
 			),
@@ -5850,6 +5960,9 @@ describe('Homey security artifact gate', () => {
 				"const apiKey = structuredClone({ value: 'opaque-secret' }).value;",
 				true,
 			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', `const apiKey = JSON.parse('{"value":"opaque-secret"}').value;`, true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe(
