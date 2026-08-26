@@ -1075,6 +1075,64 @@ const compiledPropertyWriteValues = (
 	}
 
 	const expectedProperties = [...targetPath.properties, propertyName];
+	const sameReceiverPath = (
+		candidate: ReturnType<typeof resolveCompiledReceiverPath>,
+		expected: ReturnType<typeof resolveCompiledReceiverPath>,
+	): boolean =>
+		candidate !== undefined &&
+		expected !== undefined &&
+		candidate.binding.declaration === expected.binding.declaration &&
+		candidate.properties.length === expected.properties.length &&
+		candidate.properties.every((property, index) => property === expected.properties[index]);
+	const mutationPropertyValues = (
+		source: ts.Expression,
+		selectedPropertyName: string,
+		resolving = new Set<ts.Node>(),
+	): readonly ts.Expression[] => {
+		if (ts.isIdentifier(source)) {
+			const binding = resolveCompiledBinding(source);
+
+			if (binding?.initializer === undefined || resolving.has(binding.declaration)) {
+				return [];
+			}
+
+			return mutationPropertyValues(
+				binding.initializer,
+				selectedPropertyName,
+				new Set(resolving).add(binding.declaration),
+			);
+		}
+
+		if (
+			ts.isParenthesizedExpression(source) ||
+			ts.isAsExpression(source) ||
+			ts.isTypeAssertionExpression(source) ||
+			ts.isNonNullExpression(source) ||
+			ts.isSatisfiesExpression(source)
+		) {
+			return mutationPropertyValues(source.expression, selectedPropertyName, resolving);
+		}
+
+		if (!ts.isObjectLiteralExpression(source)) {
+			return [];
+		}
+
+		return source.properties.flatMap((property): readonly ts.Expression[] => {
+			if (ts.isPropertyAssignment(property)) {
+				const candidateName = compiledPropertyName(property.name);
+
+				return candidateName === selectedPropertyName || candidateName === undefined ? [property.initializer] : [];
+			}
+
+			if (ts.isShorthandPropertyAssignment(property)) {
+				return property.name.text === selectedPropertyName ? [property.name] : [];
+			}
+
+			return ts.isSpreadAssignment(property)
+				? mutationPropertyValues(property.expression, selectedPropertyName, resolving)
+				: [];
+		});
+	};
 
 	const visit = (node: ts.Node): void => {
 		if (
@@ -1089,10 +1147,7 @@ const compiledPropertyWriteValues = (
 				compiledStaticPropertyExpressionName(node.left.argumentExpression) === undefined
 					? resolveCompiledReceiverPath(node.left.expression)
 					: undefined;
-			const sameDynamicReceiver =
-				dynamicWriteReceiverPath?.binding.declaration === targetPath.binding.declaration &&
-				dynamicWriteReceiverPath.properties.length === targetPath.properties.length &&
-				dynamicWriteReceiverPath.properties.every((property, index) => property === targetPath.properties[index]);
+			const sameDynamicReceiver = sameReceiverPath(dynamicWriteReceiverPath, targetPath);
 
 			if (
 				sameDynamicReceiver ||
@@ -1101,6 +1156,35 @@ const compiledPropertyWriteValues = (
 					writePath.properties.every((property, index) => property === expectedProperties[index]))
 			) {
 				values.push(node.right);
+			}
+		} else if (
+			ts.isCallExpression(node) &&
+			node.getStart(sourceFile) < usePosition &&
+			ts.isPropertyAccessExpression(node.expression) &&
+			ts.isIdentifier(node.expression.expression) &&
+			node.arguments.length > 0
+		) {
+			const helperName = `${node.expression.expression.text}.${node.expression.name.text}`;
+			const mutationTarget = resolveCompiledReceiverPath(node.arguments[0]);
+
+			if (sameReceiverPath(mutationTarget, targetPath)) {
+				if (helperName === 'Object.assign') {
+					for (const source of node.arguments.slice(1)) {
+						values.push(...mutationPropertyValues(source, propertyName));
+					}
+				} else if (helperName === 'Object.defineProperty' && node.arguments.length >= 3) {
+					const selectedName = compiledStaticPropertyExpressionName(node.arguments[1]);
+
+					if (selectedName === propertyName || selectedName === undefined) {
+						values.push(...mutationPropertyValues(node.arguments[2], 'value'));
+					}
+				} else if (helperName === 'Reflect.set' && node.arguments.length >= 3) {
+					const selectedName = compiledStaticPropertyExpressionName(node.arguments[1]);
+
+					if (selectedName === propertyName || selectedName === undefined) {
+						values.push(node.arguments[2]);
+					}
+				}
 			}
 		}
 
@@ -1765,6 +1849,21 @@ const containsUnsafeCompiledAlias = (
 					return (
 						inspectProperty(receiver.whenTrue, nestedResolving, selectedPropertyName, resolvingProperties) ||
 						inspectProperty(receiver.whenFalse, nestedResolving, selectedPropertyName, resolvingProperties)
+					);
+				}
+
+				if (
+					ts.isBinaryExpression(receiver) &&
+					[
+						ts.SyntaxKind.AmpersandAmpersandToken,
+						ts.SyntaxKind.BarBarToken,
+						ts.SyntaxKind.QuestionQuestionToken,
+						ts.SyntaxKind.CommaToken,
+					].includes(receiver.operatorToken.kind)
+				) {
+					return (
+						inspectProperty(receiver.left, nestedResolving, selectedPropertyName, resolvingProperties) ||
+						inspectProperty(receiver.right, nestedResolving, selectedPropertyName, resolvingProperties)
 					);
 				}
 
@@ -2602,6 +2701,21 @@ const containsUnsafeCompiledAlias = (
 					return (
 						inspectCallableProperty(receiver.whenTrue, nestedResolving) ||
 						inspectCallableProperty(receiver.whenFalse, nestedResolving)
+					);
+				}
+
+				if (
+					ts.isBinaryExpression(receiver) &&
+					[
+						ts.SyntaxKind.AmpersandAmpersandToken,
+						ts.SyntaxKind.BarBarToken,
+						ts.SyntaxKind.QuestionQuestionToken,
+						ts.SyntaxKind.CommaToken,
+					].includes(receiver.operatorToken.kind)
+				) {
+					return (
+						inspectCallableProperty(receiver.left, nestedResolving) ||
+						inspectCallableProperty(receiver.right, nestedResolving)
 					);
 				}
 
@@ -4667,6 +4781,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const source = { value: '' }; Object.assign(source, { value: 'opaque-secret' }); const apiKey = source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const source = { value: '' }; const read = () => source.value; source.value = 'opaque-secret'; const apiKey = read();",
 				true,
 			),
@@ -4887,6 +5008,12 @@ describe('Homey security artifact gate', () => {
 				"const apiKey = (choose ? safe : { value: 'opaque-secret' }).value;",
 				true,
 			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const apiKey = (choose && { value: 'opaque-secret' }).value;", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const apiKey = (safe, { value: 'opaque-secret' }).value;", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe(
