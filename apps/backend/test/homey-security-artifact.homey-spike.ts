@@ -329,6 +329,7 @@ const containsUnsafeCompiledLiteral = (
 				: undefined;
 
 		return (
+			containsUnsafeCompiledLiteral(node.expression, safeStrings) ||
 			(receiver !== undefined && containsUnsafeCompiledLiteral(receiver, safeStrings)) ||
 			node.arguments.some((argument) => containsUnsafeCompiledLiteral(argument, safeStrings))
 		);
@@ -773,7 +774,8 @@ const containsStructuredIdentifier = (
 			!isCapabilityIdentifierPath(key, path, nestedSyntheticProtocolRoot) &&
 			!isSafeIdentifierValue(child);
 		const referenceArrayValue =
-			isHomeyReferenceArrayKey(key) && Array.isArray(child) && child.some((entry) => !isSafeIdentifierValue(entry));
+			isHomeyReferenceArrayKey(key) &&
+			(Array.isArray(child) ? child.some((entry) => !isSafeIdentifierValue(entry)) : !isSafeIdentifierValue(child));
 
 		return (
 			identifierValue ||
@@ -1175,6 +1177,9 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertFixtureTextSafe('unsafe fixture', '{"driverId":"opaque-driver"}', '.json')).toThrow(
 			'unsafe fixture contains a structured identifier value',
 		);
+		expect(() => assertFixtureTextSafe('unsafe fixture', '{"deviceIds":"opaque-household-id"}', '.json')).toThrow(
+			'unsafe fixture contains a structured identifier value',
+		);
 		expect(() =>
 			assertFixtureTextSafe(
 				'safe fixture',
@@ -1247,6 +1252,9 @@ describe('Homey security artifact gate', () => {
 			'unsafe declaration contains a compiled secret value',
 		);
 		expect(() => assertTextSafe('unsafe compiled module', "const apiKey = () => 'opaque-secret';", true)).toThrow(
+			'unsafe compiled module contains a compiled secret value',
+		);
+		expect(() => assertTextSafe('unsafe compiled module', "const apiKey = (() => 'opaque-secret')();", true)).toThrow(
 			'unsafe compiled module contains a compiled secret value',
 		);
 		expect(() =>
