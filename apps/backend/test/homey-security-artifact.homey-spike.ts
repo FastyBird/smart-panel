@@ -1290,11 +1290,13 @@ const containsCompiledSecret = (text: string): boolean => {
 				) ||
 				(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body)) ||
 				(node.type !== undefined && containsUnsafeCompiledType(node.type));
-		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
+		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
 			found =
 				isCompiledSecretName(node.name.text) &&
-				!(node.name.text === 'secretFields' && isPublicSecretFieldsDescriptor(node.initializer)) &&
-				containsUnsafeCompiledValue(node.initializer);
+				((node.initializer !== undefined &&
+					!(node.name.text === 'secretFields' && isPublicSecretFieldsDescriptor(node.initializer)) &&
+					containsUnsafeCompiledValue(node.initializer)) ||
+					(node.type !== undefined && containsUnsafeCompiledType(node.type)));
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
 			found =
 				isCompiledSecretName(node.name.text) &&
@@ -1382,8 +1384,10 @@ const containsCompiledAddress = (text: string): boolean => {
 				) ||
 				(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, SAFE_COMPILED_ADDRESS_STRINGS)) ||
 				unsafeAddressType(node.name.text, node.type);
-		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
-			found = unsafeAddress(node.name.text, node.initializer);
+		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+			found =
+				(node.initializer !== undefined && unsafeAddress(node.name.text, node.initializer)) ||
+				unsafeAddressType(node.name.text, node.type);
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
 			found =
 				(node.initializer !== undefined && unsafeAddress(node.name.text, node.initializer)) ||
@@ -1478,8 +1482,10 @@ const containsCompiledIdentifier = (text: string): boolean => {
 				) ||
 				(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledIdentifierValue)) ||
 				unsafeIdentifierType(node.name.text, node.type);
-		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
-			found = unsafeIdentifier(node.name.text, node.initializer);
+		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+			found =
+				(node.initializer !== undefined && unsafeIdentifier(node.name.text, node.initializer)) ||
+				unsafeIdentifierType(node.name.text, node.type);
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
 			found =
 				(node.initializer !== undefined && unsafeIdentifier(node.name.text, node.initializer)) ||
@@ -1559,8 +1565,10 @@ const containsCompiledEndpoint = (text: string): boolean => {
 				) ||
 				(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, isSafeEndpointValue)) ||
 				unsafeEndpointType(node.name.text, node.type);
-		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
-			found = unsafeEndpoint(node.name.text, node.initializer);
+		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+			found =
+				(node.initializer !== undefined && unsafeEndpoint(node.name.text, node.initializer)) ||
+				unsafeEndpointType(node.name.text, node.type);
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
 			found =
 				(node.initializer !== undefined && unsafeEndpoint(node.name.text, node.initializer)) ||
@@ -1654,8 +1662,10 @@ const containsCompiledPersonalValue = (text: string): boolean => {
 				) ||
 				(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledPersonalValue)) ||
 				unsafePersonalType(node.name.text, node.type);
-		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
-			found = unsafePersonalValue(node.name.text, node.initializer);
+		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+			found =
+				(node.initializer !== undefined && unsafePersonalValue(node.name.text, node.initializer)) ||
+				unsafePersonalType(node.name.text, node.type);
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
 			found =
 				(node.initializer !== undefined && unsafePersonalValue(node.name.text, node.initializer)) ||
@@ -1736,8 +1746,10 @@ const containsCompiledIcon = (text: string): boolean => {
 				) ||
 				(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledIconValue)) ||
 				unsafeIconType(node.name.text, node.type);
-		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
-			found = unsafeIcon(node.name.text, node.initializer);
+		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
+			found =
+				(node.initializer !== undefined && unsafeIcon(node.name.text, node.initializer)) ||
+				unsafeIconType(node.name.text, node.type);
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
 			found =
 				(node.initializer !== undefined && unsafeIcon(node.name.text, node.initializer)) ||
@@ -2743,6 +2755,24 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe('unsafe declaration', "declare function connect(apiKey: 'opaque-secret'): void", true),
 		).toThrow('unsafe declaration contains a compiled secret value');
+		expect(() => assertTextSafe('unsafe declaration', "declare const apiKey: 'opaque-secret';", true)).toThrow(
+			'unsafe declaration contains a compiled secret value',
+		);
+		expect(() => assertTextSafe('unsafe declaration', "declare const hostname: 'family-homey.local';", true)).toThrow(
+			'unsafe declaration contains a compiled address value',
+		);
+		expect(() => assertTextSafe('unsafe declaration', "declare const deviceId: 'opaque-household-id';", true)).toThrow(
+			'unsafe declaration contains a compiled identifier value',
+		);
+		expect(() =>
+			assertTextSafe('unsafe declaration', "declare const endpoint: 'private-homey.local:4859';", true),
+		).toThrow('unsafe declaration contains a compiled endpoint value');
+		expect(() => assertTextSafe('unsafe declaration', "declare const deviceName: 'Alice Bedroom';", true)).toThrow(
+			'unsafe declaration contains a compiled personal value',
+		);
+		expect(() => assertTextSafe('unsafe declaration', "declare const icon: 'custom-household-icon';", true)).toThrow(
+			'unsafe declaration contains a compiled icon value',
+		);
 		expect(() =>
 			assertTextSafe('unsafe declaration', "declare function connect(hostname: 'family-homey.local'): void", true),
 		).toThrow('unsafe declaration contains a compiled address value');
