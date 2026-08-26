@@ -1418,11 +1418,11 @@ const compiledPropertyWriteValues = (
 				: compiledStaticPropertyExpressionName(call.expression.argumentExpression);
 
 		if (methodName === 'push' || methodName === 'unshift') {
-			return call.arguments;
+			return expandMutationSources(call.arguments);
 		}
 
 		if (methodName === 'splice') {
-			return call.arguments.slice(2);
+			return expandMutationSources(call.arguments.slice(2));
 		}
 
 		return methodName === 'fill' ? call.arguments.slice(0, 1) : [];
@@ -2153,16 +2153,22 @@ const containsUnsafeCompiledAlias = (
 				? undefined
 				: compiledStaticPropertyExpressionName(call.expression.argumentExpression);
 
-		if (methodName !== 'concat') {
+		if (
+			methodName !== 'concat' &&
+			!['filter', 'reverse', 'slice', 'sort', 'toReversed', 'toSorted', 'with'].includes(methodName ?? '')
+		) {
 			return [];
 		}
 
-		const values = [call.expression.expression, ...call.arguments].flatMap(
-			(expression): readonly ts.Expression[] => resolveArrayElements(expression, new Set()) ?? [expression],
-		);
+		const values =
+			methodName === 'concat'
+				? [call.expression.expression, ...call.arguments].flatMap(
+						(expression): readonly ts.Expression[] => resolveArrayElements(expression, new Set()) ?? [expression],
+					)
+				: (resolveArrayElements(call.expression.expression, new Set()) ?? [call.expression.expression]);
 		const index = Number(selectedPropertyName);
 
-		return values.slice(index, index + 1);
+		return methodName === 'filter' ? values : values.slice(index, index + 1);
 	};
 	const objectEntriesResultValues = (
 		call: ts.CallExpression,
@@ -2854,6 +2860,7 @@ const containsUnsafeCompiledAlias = (
 					if (
 						[
 							...collectionTransformResultValues(receiver),
+							...concatenatedResultValues(receiver, selectedPropertyName),
 							...descriptorQueryValues(receiver, selectedPropertyName),
 							...objectKeysResultValues(receiver, selectedPropertyName),
 							...objectValuesResultValues(receiver, selectedPropertyName),
@@ -6724,6 +6731,16 @@ describe('Homey security artifact gate', () => {
 				"const source = []; source.push('opaque-secret'); const apiKey = source[0];",
 				true,
 			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = []; source.push(...['opaque-secret']); const apiKey = source[0];",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const apiKey = ['opaque-secret'].slice()[0];", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe(
