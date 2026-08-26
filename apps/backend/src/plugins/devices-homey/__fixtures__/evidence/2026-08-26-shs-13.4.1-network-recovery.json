@@ -1,0 +1,164 @@
+{
+	"metadata": {
+		"probe": "homey-shs-recovery",
+		"scenario": "network-interruption",
+		"schemaVersion": 2,
+		"sdkVersion": "3.19.2"
+	},
+	"recovery": {
+		"disconnectObserved": true,
+		"inventoryReadSucceeded": true,
+		"managerResubscribed": true,
+		"transportReconnected": true
+	},
+	"session": {
+		"cleanupCompleted": true,
+		"events": [
+			{
+				"event": "sdk.create.resolved",
+				"order": 1
+			},
+			{
+				"event": "manager.subscribe.resolved",
+				"order": 2
+			},
+			{
+				"event": "recovery.window.open",
+				"order": 3
+			},
+			{
+				"event": "socket.disconnect",
+				"order": 4
+			},
+			{
+				"event": "socket.reconnect_attempt",
+				"order": 5
+			},
+			{
+				"event": "socket.reconnecting",
+				"order": 6
+			},
+			{
+				"event": "socket.reconnect_error",
+				"order": 7
+			},
+			{
+				"event": "socket.reconnect_attempt",
+				"order": 8
+			},
+			{
+				"event": "socket.reconnecting",
+				"order": 9
+			},
+			{
+				"event": "socket.reconnect_error",
+				"order": 10
+			},
+			{
+				"event": "socket.reconnect_attempt",
+				"order": 11
+			},
+			{
+				"event": "socket.reconnecting",
+				"order": 12
+			},
+			{
+				"event": "socket.reconnect_error",
+				"order": 13
+			},
+			{
+				"event": "socket.reconnect_attempt",
+				"order": 14
+			},
+			{
+				"event": "socket.reconnecting",
+				"order": 15
+			},
+			{
+				"event": "socket.reconnect_error",
+				"order": 16
+			},
+			{
+				"event": "socket.reconnect_attempt",
+				"order": 17
+			},
+			{
+				"event": "socket.reconnecting",
+				"order": 18
+			},
+			{
+				"event": "socket.reconnect_error",
+				"order": 19
+			},
+			{
+				"event": "socket.reconnect_attempt",
+				"order": 20
+			},
+			{
+				"event": "socket.reconnecting",
+				"order": 21
+			},
+			{
+				"event": "socket.reconnect_error",
+				"order": 22
+			},
+			{
+				"event": "socket.reconnect_attempt",
+				"order": 23
+			},
+			{
+				"event": "socket.reconnecting",
+				"order": 24
+			},
+			{
+				"event": "socket.reconnect_error",
+				"order": 25
+			},
+			{
+				"event": "socket.reconnect_attempt",
+				"order": 26
+			},
+			{
+				"event": "socket.reconnecting",
+				"order": 27
+			},
+			{
+				"event": "socket.reconnect_error",
+				"order": 28
+			},
+			{
+				"event": "socket.reconnect_attempt",
+				"order": 29
+			},
+			{
+				"event": "socket.reconnecting",
+				"order": 30
+			},
+			{
+				"event": "socket.reconnect",
+				"order": 31
+			},
+			{
+				"event": "manager.resubscribe.observed",
+				"order": 32
+			},
+			{
+				"event": "inventory.read.resolved",
+				"order": 33
+			},
+			{
+				"event": "manager.unsubscribe.resolved",
+				"order": 34
+			},
+			{
+				"event": "socket.disconnect.resolved",
+				"order": 35
+			},
+			{
+				"event": "sdk.destroyed",
+				"order": 36
+			}
+		],
+		"managerSubscribed": true
+	}
+}
