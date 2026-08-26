@@ -252,13 +252,18 @@ const containsSerializedSecret = (text: string): boolean =>
 		return key !== undefined && isHomeySecretKey(key) && value !== undefined && value.length > 0 && value !== '[~3~]';
 	});
 
+const compiledStaticPropertyExpressionName = (expression: ts.Expression): string | undefined =>
+	ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression) || ts.isNumericLiteral(expression)
+		? expression.text
+		: undefined;
+
 const compiledPropertyName = (name: ts.PropertyName): string | undefined => {
 	if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
 		return name.text;
 	}
 
-	if (ts.isComputedPropertyName(name) && ts.isStringLiteral(name.expression)) {
-		return name.expression.text;
+	if (ts.isComputedPropertyName(name)) {
+		return compiledStaticPropertyExpressionName(name.expression);
 	}
 
 	return undefined;
@@ -273,10 +278,10 @@ const compiledAssignedPropertyName = (expression: ts.Expression): string | undef
 		return expression.name.text;
 	}
 
-	if (ts.isElementAccessExpression(expression) && ts.isStringLiteral(expression.argumentExpression)) {
-		return COMPILED_SYMBOL_NAME_PATTERN.test(expression.argumentExpression.text)
-			? undefined
-			: expression.argumentExpression.text;
+	if (ts.isElementAccessExpression(expression) && expression.argumentExpression !== undefined) {
+		const name = compiledStaticPropertyExpressionName(expression.argumentExpression);
+
+		return name === undefined || COMPILED_SYMBOL_NAME_PATTERN.test(name) ? undefined : name;
 	}
 
 	return undefined;
@@ -616,10 +621,9 @@ const containsUnsafeCompiledAlias = (
 		if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
 			const propertyName = ts.isPropertyAccessExpression(expression)
 				? expression.name.text
-				: expression.argumentExpression !== undefined &&
-					  (ts.isStringLiteral(expression.argumentExpression) || ts.isNumericLiteral(expression.argumentExpression))
-					? expression.argumentExpression.text
-					: undefined;
+				: expression.argumentExpression === undefined
+					? undefined
+					: compiledStaticPropertyExpressionName(expression.argumentExpression);
 			const inspectProperty = (receiver: ts.Expression, nestedResolving: Set<string>): boolean => {
 				if (propertyName === undefined) {
 					return false;
@@ -779,10 +783,9 @@ const containsUnsafeCompiledAlias = (
 		if (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) {
 			const propertyName = ts.isPropertyAccessExpression(callee)
 				? callee.name.text
-				: callee.argumentExpression !== undefined &&
-					  (ts.isStringLiteral(callee.argumentExpression) || ts.isNumericLiteral(callee.argumentExpression))
-					? callee.argumentExpression.text
-					: undefined;
+				: callee.argumentExpression === undefined
+					? undefined
+					: compiledStaticPropertyExpressionName(callee.argumentExpression);
 			const inspectCallableProperty = (receiver: ts.Expression, nestedResolving: Set<string>): boolean => {
 				if (propertyName === undefined) {
 					return false;
@@ -2508,6 +2511,9 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe('unsafe compiled module', "const config = { api_key: 'opaque-secret' };", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
+			assertTextSafe('unsafe compiled module', "const config = { [`apiKey`]: 'opaque-secret' };", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = { read() { return 'opaque-secret'; } };", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
@@ -2530,6 +2536,9 @@ describe('Homey security artifact gate', () => {
 			'unsafe compiled module contains a compiled secret value',
 		);
 		expect(() => assertTextSafe('unsafe compiled module', "config['accessToken'] = 'opaque-secret';", true)).toThrow(
+			'unsafe compiled module contains a compiled secret value',
+		);
+		expect(() => assertTextSafe('unsafe compiled module', "config[`accessToken`] = 'opaque-secret';", true)).toThrow(
 			'unsafe compiled module contains a compiled secret value',
 		);
 		expect(() => assertTextSafe('unsafe compiled module', "const api_key = 'opaque-secret';", true)).toThrow(
