@@ -474,6 +474,10 @@ const isDriverMetadata = (path: string[]): boolean => path.includes('data') || p
 const isIdentifierMap = (key: string): boolean =>
 	CAMEL_CASE_IDENTIFIER_MAP_KEY_PATTERN.test(key) || BOUNDED_IDENTIFIER_MAP_KEY_PATTERN.test(key);
 
+export const isHomeyIdentifierMapKey = (key: string): boolean => isIdentifierMap(key);
+
+export const isHomeyEndpointKey = (key: string): boolean => ENDPOINT_KEY_PATTERN.test(key);
+
 export const isHomeyIdentifierKey = (key: string): boolean => IDENTIFIER_KEY_PATTERN.test(key);
 
 export const isHomeyReferenceKey = (key: string): boolean => REFERENCE_KEY_PATTERN.test(key);
