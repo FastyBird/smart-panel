@@ -82,5 +82,8 @@ corpus. The filename records the observation date and SHS version. Each report m
 labels, booleans, ordering numbers, public dependency versions, and non-sensitive status codes, and must have a focused
 test that re-applies the report safety assertions. The 2026-08-14 SDK session evidence records connection,
 subscription, cleanup, and invalid-key behavior only; it does not claim capability-event, write, or reconnect coverage.
+The 2026-08-26 mDNS evidence records the Homey and co-hosted HAP service types, ports, and TXT key names observed on SHS
+`13.4.1`; it contains no service instance names, hosts, addresses, or TXT values and does not by itself establish
+restart stability or authorize automatic discovery.
 
 Before committing regenerated fixtures, inspect every value and key and confirm that no private source value survives.

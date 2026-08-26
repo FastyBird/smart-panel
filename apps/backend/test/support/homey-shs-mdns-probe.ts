@@ -7,6 +7,7 @@ const DEFAULT_OBSERVE_MS = 5_000;
 const MIN_OBSERVE_MS = 1_000;
 const MAX_OBSERVE_MS = 30_000;
 const PUBLIC_IDENTIFIER_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
+const PUBLIC_TXT_KEY_PATTERN = /^(?:[A-Za-z0-9._-]{1,64}|[cs]#)$/;
 const URL_PATTERN = /(?:https?|wss?):\/\//i;
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 const IPV4_PATTERN = /(?:^|[^\d])(?:\d{1,3}\.){3}\d{1,3}(?:$|[^\d])/;
@@ -198,7 +199,7 @@ const toSafeServiceReport = (service: HomeyMdnsService): HomeyShsMdnsServiceRepo
 
 	const txtKeys = Object.keys(service.txt ?? {}).sort();
 
-	if (txtKeys.some((key) => !PUBLIC_IDENTIFIER_PATTERN.test(key))) {
+	if (txtKeys.some((key) => !PUBLIC_TXT_KEY_PATTERN.test(key))) {
 		throw new Error('Homey mDNS service metadata was not safe to record');
 	}
 
@@ -322,7 +323,7 @@ export function assertHomeyShsMdnsReportSchema(value: unknown): asserts value is
 			service.port < 1 ||
 			service.port > 65_535 ||
 			!Array.isArray(service.txtKeys) ||
-			service.txtKeys.some((key) => typeof key !== 'string' || !PUBLIC_IDENTIFIER_PATTERN.test(key))
+			service.txtKeys.some((key) => typeof key !== 'string' || !PUBLIC_TXT_KEY_PATTERN.test(key))
 		) {
 			throw new Error('Homey mDNS report service schema is invalid');
 		}

@@ -1669,11 +1669,15 @@ export const assertHomeyCaptureSafe = (
 					return nestedValue !== REDACTION.privateTerm;
 				}
 
-				if (section === 'zones' && nestedKey === 'icon') {
+				if (section === 'zones' && nestedKey === 'icon' && nestedValue !== null) {
 					return nestedValue !== REDACTION.privateTerm;
 				}
 
-				if ((section === 'devices' || section === 'individualDevice') && DEVICE_ICON_KEY_PATTERN.test(nestedKey)) {
+				if (
+					nestedValue !== null &&
+					(section === 'devices' || section === 'individualDevice') &&
+					DEVICE_ICON_KEY_PATTERN.test(nestedKey)
+				) {
 					return nestedValue !== REDACTION.privateTerm;
 				}
 
@@ -1705,7 +1709,7 @@ export const assertHomeyCaptureSafe = (
 			});
 		}
 
-		return HUMAN_TIMESTAMP_KEY_PATTERN.test(key) || LOCATION_METADATA_KEY_PATTERN.test(key);
+		return false;
 	};
 
 	if (containsUnredactedSourceMetadata(capture)) {

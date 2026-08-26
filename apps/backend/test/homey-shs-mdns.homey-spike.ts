@@ -92,6 +92,24 @@ describe('Homey SHS mDNS compatibility probe', () => {
 		expect(() => assertHomeyShsMdnsReportSafe(evidence, config)).not.toThrow();
 	});
 
+	it('preserves the sanitized live Homey and HAP advertisement evidence', async () => {
+		const evidencePath = resolve(
+			__dirname,
+			'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-26-shs-13.4.1-mdns-homey-advertisement.json',
+		);
+		const evidence = JSON.parse(await readFile(evidencePath, 'utf8')) as unknown;
+		const config = loadHomeyShsMdnsProbeConfig(BASE_ENVIRONMENT);
+
+		assertHomeyShsMdnsReportSchema(evidence);
+		expect(evidence.observation.services).toContainEqual({
+			port: 4859,
+			protocol: 'tcp',
+			txtKeys: ['id', 'model', 'name', 'version'],
+			type: 'homey',
+		});
+		expect(() => assertHomeyShsMdnsReportSafe(evidence, config)).not.toThrow();
+	});
+
 	it('loads a key-free, exact-host configuration with bounded observation', () => {
 		const config = loadHomeyShsMdnsProbeConfig(BASE_ENVIRONMENT, '/tmp/homey-mdns-spike');
 
@@ -188,6 +206,28 @@ describe('Homey SHS mDNS compatibility probe', () => {
 		expect(() => assertHomeyShsMdnsReportSafe(report, config)).not.toThrow();
 	});
 
+	it('accepts standard HomeKit TXT counter keys without recording their values', async () => {
+		const config = loadHomeyShsMdnsProbeConfig(BASE_ENVIRONMENT);
+		const harness = createMdnsHarness();
+		const report = await probeHomeyShsMdns(config, harness.factory, () => {
+			harness.emit({
+				addresses: ['192.0.2.10'],
+				port: 48000,
+				protocol: 'tcp',
+				txt: { 'c#': 'private counter', 's#': 'private state' },
+				type: 'hap',
+			});
+
+			return Promise.resolve();
+		});
+
+		expect(report.observation.services).toStrictEqual([
+			{ port: 48000, protocol: 'tcp', txtKeys: ['c#', 's#'], type: 'hap' },
+		]);
+		expect(JSON.stringify(report)).not.toContain('private');
+		expect(() => assertHomeyShsMdnsReportSafe(report, config)).not.toThrow();
+	});
+
 	it('rejects unsafe matched metadata with a fixed error and still cleans up', async () => {
 		const config = loadHomeyShsMdnsProbeConfig(BASE_ENVIRONMENT);
 		const harness = createMdnsHarness();
@@ -207,6 +247,22 @@ describe('Homey SHS mDNS compatibility probe', () => {
 		).rejects.toThrow('Homey mDNS service metadata was not safe to record');
 		expect(harness.isStopped()).toBe(true);
 		expect(harness.isDestroyed()).toBe(true);
+
+		const hashHarness = createMdnsHarness();
+
+		await expect(
+			probeHomeyShsMdns(config, hashHarness.factory, () => {
+				hashHarness.emit({
+					addresses: ['192.0.2.10'],
+					port: 4859,
+					protocol: 'tcp',
+					txt: { 'unsafe#key': 'value' },
+					type: 'homey',
+				});
+
+				return Promise.resolve();
+			}),
+		).rejects.toThrow('Homey mDNS service metadata was not safe to record');
 	});
 
 	it('sanitizes observer and cleanup errors while attempting all cleanup', async () => {
