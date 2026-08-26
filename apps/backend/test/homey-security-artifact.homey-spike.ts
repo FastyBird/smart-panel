@@ -1938,6 +1938,64 @@ const containsUnsafeCompiledAlias = (
 			...compiledPropertyWriteValues(call.arguments[0], propertyName, call.getStart(call.getSourceFile())),
 		];
 	};
+	const objectValuesResultValues = (
+		call: ts.CallExpression,
+		selectedPropertyName: string,
+	): readonly ts.Expression[] => {
+		if (compiledMutationHelperName(call.expression) !== 'Object.values' || call.arguments.length === 0) {
+			return [];
+		}
+
+		const resolveObjectValues = (
+			expression: ts.Expression,
+			resolving = new Set<ts.Node>(),
+		): readonly ts.Expression[] | undefined => {
+			if (ts.isIdentifier(expression)) {
+				const binding = resolveCompiledBinding(expression);
+
+				return binding?.initializer === undefined || resolving.has(binding.declaration)
+					? undefined
+					: resolveObjectValues(binding.initializer, new Set(resolving).add(binding.declaration));
+			}
+
+			if (
+				ts.isParenthesizedExpression(expression) ||
+				ts.isAsExpression(expression) ||
+				ts.isTypeAssertionExpression(expression) ||
+				ts.isNonNullExpression(expression) ||
+				ts.isSatisfiesExpression(expression)
+			) {
+				return resolveObjectValues(expression.expression, resolving);
+			}
+
+			if (!ts.isObjectLiteralExpression(expression)) {
+				return undefined;
+			}
+
+			return expression.properties.flatMap((property): readonly ts.Expression[] => {
+				if (ts.isPropertyAssignment(property)) {
+					return [property.initializer];
+				}
+
+				if (ts.isShorthandPropertyAssignment(property)) {
+					return [property.name];
+				}
+
+				return ts.isSpreadAssignment(property)
+					? (resolveObjectValues(property.expression, resolving) ?? [property.expression])
+					: [];
+			});
+		};
+		const values = resolveObjectValues(call.arguments[0]);
+
+		if (values === undefined) {
+			return [call.arguments[0]];
+		}
+
+		return /^\d+$/.test(selectedPropertyName)
+			? values.slice(Number(selectedPropertyName), Number(selectedPropertyName) + 1)
+			: values;
+	};
 	const isJsonParseCall = (callee: ts.Expression, resolving = new Set<ts.Node>()): boolean => {
 		if (
 			ts.isPropertyAccessExpression(callee) &&
@@ -2523,6 +2581,7 @@ const containsUnsafeCompiledAlias = (
 						[
 							...collectionTransformResultValues(receiver),
 							...descriptorQueryValues(receiver, selectedPropertyName),
+							...objectValuesResultValues(receiver, selectedPropertyName),
 						].some((value) => containsUnsafeCompiledLiteral(value, safeStrings) || inspect(value, nestedResolving))
 					) {
 						return true;
@@ -6190,6 +6249,9 @@ describe('Homey security artifact gate', () => {
 				"const apiKey = Object.getOwnPropertyDescriptor({ value: 'opaque-secret' }, 'value').value;",
 				true,
 			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const apiKey = Object.values({ value: 'opaque-secret' })[0];", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = Object.freeze({ value: 'opaque-secret' }).value;", true),
