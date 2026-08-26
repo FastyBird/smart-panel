@@ -1333,6 +1333,13 @@ const containsUnsafeCompiledAlias = (
 			return inspectCallableBody(callee.body, resolving);
 		}
 
+		if (ts.isCallExpression(callee)) {
+			return (
+				inspectCallable(callee.expression, resolving) ||
+				callee.arguments.some((argument) => inspect(argument, resolving))
+			);
+		}
+
 		return false;
 	};
 
@@ -2869,6 +2876,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const fallback = () => 'opaque-secret'; const apiKey = fallback();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const fallback = () => () => 'opaque-secret'; const apiKey = fallback()();",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
