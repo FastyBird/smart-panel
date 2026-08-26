@@ -58,7 +58,14 @@ const PUBLIC_SYNTHETIC_PERSONAL_VALUES = new Set([
 	'Synthetic mode B',
 	'Synthetic mode C',
 ]);
-const PUBLIC_SYNTHETIC_IDENTIFIER_VALUES = new Set(['synthetic-lock-device', 'synthetic_mode']);
+const PUBLIC_SYNTHETIC_IDENTIFIER_VALUES = new Set([
+	'123e4567-e89b-12d3-a456-426614174000',
+	'550e8400-e29b-41d4-a716-446655440000',
+	'b27b7c58-76f6-407a-bc78-4068e4cfd082',
+	'f1e09ba1-429f-4c6a-a2fd-aca6a7c4a8c6',
+	'synthetic-lock-device',
+	'synthetic_mode',
+]);
 const REDACTION_SENTINEL_PATTERN = /^\[~[0-7]~\]$/;
 const COMPILED_SYMBOL_NAME_PATTERN = /^[A-Z][A-Z0-9_]+$/;
 const COMMENT_PATTERN = /\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g;
@@ -723,32 +730,56 @@ const isSafeIdentifierValue = (value: unknown): boolean =>
 	(typeof value === 'string' &&
 		(REDACTION_SENTINEL_PATTERN.test(value) || PUBLIC_SYNTHETIC_IDENTIFIER_VALUES.has(value)));
 
-const isCapabilityIdentifierPath = (key: string, path: readonly string[]): boolean =>
-	(key === 'id' || key === 'baseId') &&
-	path.some((segment) =>
-		['capabilities', 'capabilitiesObj', 'capabilityOptions', 'enumValues', 'values'].includes(segment),
-	);
+const isCapabilityIdentifierPath = (key: string, path: readonly string[], syntheticProtocolRoot: boolean): boolean => {
+	const directCapabilityEntry =
+		path.length === 2 &&
+		/^\d+$/.test(path[1] ?? '') &&
+		(path[0] === 'capabilities' || (syntheticProtocolRoot && path[0] === 'values'));
+	const directCapabilityMapEntry =
+		path.length === 2 && (path[0] === 'capabilitiesObj' || path[0] === 'capabilityOptions');
+	const directEnumOption =
+		path.length === 4 &&
+		/^\d+$/.test(path[3] ?? '') &&
+		((path[0] === 'capabilities' && path[2] === 'enumValues') ||
+			((path[0] === 'capabilitiesObj' || path[0] === 'capabilityOptions') && path[2] === 'values'));
 
-const containsStructuredIdentifier = (value: unknown, path: readonly string[] = []): boolean => {
+	return (key === 'id' || key === 'baseId') && (directCapabilityEntry || directCapabilityMapEntry || directEnumOption);
+};
+
+const containsStructuredIdentifier = (
+	value: unknown,
+	path: readonly string[] = [],
+	syntheticProtocolRoot = false,
+): boolean => {
 	if (Array.isArray(value)) {
-		return value.some((entry, index) => containsStructuredIdentifier(entry, [...path, index.toString()]));
+		return value.some((entry, index) =>
+			containsStructuredIdentifier(entry, [...path, index.toString()], syntheticProtocolRoot),
+		);
 	}
 
 	if (value === null || typeof value !== 'object') {
-		return typeof value === 'string' && isHomeyUuid(value);
+		return typeof value === 'string' && isHomeyUuid(value) && !isSafeIdentifierValue(value);
 	}
 
-	return Object.entries(value as JsonRecord).some(([key, child]) => {
+	const record = value as JsonRecord;
+	const nestedSyntheticProtocolRoot =
+		syntheticProtocolRoot || (path.length === 0 && record.provenance === 'synthetic-protocol-contract');
+
+	return Object.entries(record).some(([key, child]) => {
 		const childPath = [...path, key];
 		const identifierValue =
 			!isHomeyReferenceArrayKey(key) &&
 			(isHomeyReferenceKey(key) || isHomeyIdentifierKey(key)) &&
-			!isCapabilityIdentifierPath(key, path) &&
+			!isCapabilityIdentifierPath(key, path, nestedSyntheticProtocolRoot) &&
 			!isSafeIdentifierValue(child);
 		const referenceArrayValue =
 			isHomeyReferenceArrayKey(key) && Array.isArray(child) && child.some((entry) => !isSafeIdentifierValue(entry));
 
-		return identifierValue || referenceArrayValue || containsStructuredIdentifier(child, childPath);
+		return (
+			identifierValue ||
+			referenceArrayValue ||
+			containsStructuredIdentifier(child, childPath, nestedSyntheticProtocolRoot)
+		);
 	});
 };
 
@@ -783,6 +814,16 @@ const containsLoosePersonalAssignment = (text: string): boolean =>
 			!isHomeyGeneratedPseudonym(rawValue) &&
 			!PUBLIC_SYNTHETIC_PERSONAL_VALUES.has(rawValue),
 	);
+
+const containsLooseIdentifierAssignment = (text: string): boolean =>
+	loosePropertyAssignments(text).some(([key, rawValue]) => {
+		const unambiguousIdentifierKey =
+			isHomeyReferenceKey(key) || (isHomeyIdentifierKey(key) && key !== 'id' && key !== 'baseId');
+
+		return (
+			unambiguousIdentifierKey && !['0', '[]', 'false', 'null'].includes(rawValue) && !isSafeIdentifierValue(rawValue)
+		);
+	});
 
 const containsStructuredUrl = (value: unknown): boolean => {
 	if (typeof value === 'string') {
@@ -881,7 +922,12 @@ const assertFixtureTextSafe = (
 		throw new Error(`${label} contains a structured personal value`);
 	}
 
-	if (checkIdentifiers && structuredValue !== undefined && containsStructuredIdentifier(structuredValue)) {
+	const containsIdentifier =
+		structuredValue === undefined
+			? containsLooseIdentifierAssignment(text)
+			: containsStructuredIdentifier(structuredValue);
+
+	if (checkIdentifiers && containsIdentifier) {
 		throw new Error(`${label} contains a structured identifier value`);
 	}
 };
@@ -927,6 +973,7 @@ const visitPublishedValues = (
 	secretParameter = false,
 	addressParameter = false,
 	personalParameter = false,
+	identifierParameter = false,
 ): void => {
 	if (Array.isArray(value)) {
 		value.forEach((entry, index) =>
@@ -937,6 +984,7 @@ const visitPublishedValues = (
 				secretParameter,
 				addressParameter,
 				personalParameter,
+				identifierParameter,
 			),
 		);
 
@@ -953,6 +1001,9 @@ const visitPublishedValues = (
 	const nestedAddressParameter = addressParameter || (parameterName !== undefined && isHomeyAddressKey(parameterName));
 	const nestedPersonalParameter =
 		personalParameter || (parameterName !== undefined && isHomeyPersonalKey(parameterName));
+	const nestedIdentifierParameter =
+		identifierParameter ||
+		(parameterName !== undefined && (isHomeyReferenceKey(parameterName) || isHomeyIdentifierKey(parameterName)));
 
 	for (const [key, child] of Object.entries(record)) {
 		const childPath = [...path, key];
@@ -973,6 +1024,10 @@ const visitPublishedValues = (
 			if (containsStructuredPersonalValue(child) || (nestedPersonalParameter && !isSafePersonalValue(child))) {
 				throw new Error(`${label}.${childPath.join('.')} publishes a personal value`);
 			}
+
+			if (containsStructuredIdentifier(child) || (nestedIdentifierParameter && !isSafeIdentifierValue(child))) {
+				throw new Error(`${label}.${childPath.join('.')} publishes an identifier value`);
+			}
 		}
 
 		visitPublishedValues(
@@ -982,6 +1037,7 @@ const visitPublishedValues = (
 			nestedSecretParameter,
 			nestedAddressParameter,
 			nestedPersonalParameter,
+			nestedIdentifierParameter,
 		);
 	}
 };
@@ -1090,6 +1146,11 @@ describe('Homey security artifact gate', () => {
 				example: { name: 'Alice Bedroom' },
 			}),
 		).toThrow('UnsafeHomeySchema.example publishes a personal value');
+		expect(() =>
+			visitPublishedValues('UnsafeHomeySchema', {
+				example: { deviceId: 'opaque-household-id' },
+			}),
+		).toThrow('UnsafeHomeySchema.example publishes an identifier value');
 		expect(() => assertTextSafe('unsafe fixture', '{"api_key":"must-not-be-reported"}')).toThrow(
 			'unsafe fixture contains a serialized secret value',
 		);
@@ -1121,6 +1182,9 @@ describe('Homey security artifact gate', () => {
 				'.json',
 			),
 		).not.toThrow();
+		expect(() =>
+			assertFixtureTextSafe('unsafe fixture', '{"capabilities":[{"metadata":{"id":"opaque-household-id"}}]}', '.json'),
+		).toThrow('unsafe fixture contains a structured identifier value');
 		expect(() => assertFixtureTextSafe('unsafe fixture', 'api_key: opaque-secret-value', '.yaml')).toThrow(
 			'unsafe fixture contains a structured secret value',
 		);
@@ -1138,6 +1202,9 @@ describe('Homey security artifact gate', () => {
 		);
 		expect(() => assertFixtureTextSafe('unsafe fixture', 'name: Alice Bedroom', '.txt')).toThrow(
 			'unsafe fixture contains a structured personal value',
+		);
+		expect(() => assertFixtureTextSafe('unsafe fixture', 'deviceId: opaque-household-id', '.md')).toThrow(
+			'unsafe fixture contains a structured identifier value',
 		);
 		expect(() =>
 			assertFixtureTextSafe('safe fixture', 'hostname: [~0~]\nname: device-label-000001', '.md'),
