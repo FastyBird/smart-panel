@@ -1977,11 +1977,10 @@ const containsUnsafeCompiledAlias = (
 		}
 
 		if (helperName === 'Object.fromEntries' && call.arguments.length >= 1) {
-			const entries = resolveArrayElements(call.arguments[0], new Set());
-
-			if (entries === undefined) {
-				return [call.arguments[0]];
-			}
+			const entries = [
+				...(resolveArrayElements(call.arguments[0], new Set()) ?? [call.arguments[0]]),
+				...compiledReceiverWriteValues(call.arguments[0], call.getStart(call.getSourceFile())),
+			];
 
 			return entries.flatMap((entry): readonly ts.Expression[] => {
 				const pair = resolveArrayElements(entry, new Set());
@@ -2401,6 +2400,10 @@ const containsUnsafeCompiledAlias = (
 
 		if (methodName === 'with') {
 			return [...values.slice(index, index + 1), ...call.arguments.slice(1, 2), ...writeValues];
+		}
+
+		if (methodName === 'toSpliced') {
+			return [...values, ...call.arguments.slice(2), ...writeValues];
 		}
 
 		return methodName === 'filter' || methodName === 'flat' || methodName === 'splice' || methodName === 'toSpliced'
@@ -7812,6 +7815,13 @@ describe('Homey security artifact gate', () => {
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = []; source.push(['value', 'opaque-secret']); const apiKey = Object.fromEntries(source).value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = (choose && { value: 'opaque-secret' }).value;", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
@@ -8068,6 +8078,9 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = ['opaque-secret'].toSpliced(0, 0)[0];", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const apiKey = [''].toSpliced(0, 1, 'opaque-secret')[0];", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = [''].with(0, 'opaque-secret')[0];", true),
