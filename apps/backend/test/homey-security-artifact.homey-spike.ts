@@ -74,6 +74,9 @@ const PUBLIC_SYNTHETIC_IDENTIFIER_VALUES = new Set([
 	'synthetic_mode',
 ]);
 const PUBLIC_COMPILED_IDENTIFIER_LABELS = new Set(['event device id', 'event zone id']);
+const PUBLIC_COMPILED_PERSONAL_VALUES = new Set(['Homey', 'class', 'device name', 'mode', 'zone name']);
+const PUBLIC_COMPILED_PERSONAL_IDENTIFIER_PATTERN =
+	/^(?:DevicesHomey[A-Za-z0-9]*|[A-Z][A-Za-z0-9]*Error|is[A-Z][A-Za-z0-9]*|[a-z0-9]+(?:[_-][a-z0-9]+)+)$/;
 const REDACTION_SENTINEL_PATTERN = /^\[~[0-7]~\]$/;
 const COMPILED_SYMBOL_NAME_PATTERN = /^[A-Z][A-Z0-9_]+$/;
 const COMMENT_PATTERN = /\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g;
@@ -388,12 +391,12 @@ const containsUnsafeCompiledLiteral = (
 
 	if (ts.isArrowFunction(node)) {
 		return ts.isBlock(node.body)
-			? containsUnsafeReturnedLiteral(node.body, safeStrings)
+			? containsUnsafeCompiledBodyLiteral(node.body, safeStrings)
 			: containsUnsafeCompiledLiteral(node.body, safeStrings);
 	}
 
 	if (ts.isFunctionExpression(node)) {
-		return containsUnsafeReturnedLiteral(node.body, safeStrings);
+		return containsUnsafeCompiledBodyLiteral(node.body, safeStrings);
 	}
 
 	return false;
@@ -468,28 +471,6 @@ const containsUnsafeCompiledType = (
 const isAssignmentOperatorKind = (kind: ts.SyntaxKind): boolean =>
 	kind >= ts.SyntaxKind.FirstAssignment && kind <= ts.SyntaxKind.LastAssignment;
 
-const containsUnsafeReturnedLiteral = (
-	body: ts.Block,
-	safeStrings: SafeCompiledString = SAFE_COMPILED_SECRET_STRINGS,
-): boolean => {
-	let found = false;
-	const visit = (node: ts.Node): void => {
-		if (found) {
-			return;
-		}
-
-		if (ts.isReturnStatement(node) && node.expression !== undefined) {
-			found = containsUnsafeCompiledLiteral(node.expression, safeStrings);
-		}
-
-		ts.forEachChild(node, visit);
-	};
-
-	visit(body);
-
-	return found;
-};
-
 const containsUnsafeCompiledBodyLiteral = (
 	body: ts.Block,
 	safeStrings: SafeCompiledString = SAFE_COMPILED_SECRET_STRINGS,
@@ -553,7 +534,7 @@ const containsCompiledSecret = (text: string): boolean => {
 			isCompiledSecretName(compiledPropertyName(node.name))
 		) {
 			found =
-				('body' in node && node.body !== undefined && containsUnsafeReturnedLiteral(node.body)) ||
+				('body' in node && node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body)) ||
 				(node.type !== undefined && containsUnsafeCompiledType(node.type));
 		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found =
@@ -611,6 +592,19 @@ const containsCompiledAddress = (text: string): boolean => {
 				(node.initializer !== undefined && unsafeAddress(name, node.initializer)) || unsafeAddressType(name, node.type);
 		} else if (ts.isPropertySignature(node)) {
 			found = unsafeAddressType(compiledPropertyName(node.name), node.type);
+		} else if (ts.isSetAccessorDeclaration(node)) {
+			const name = compiledPropertyName(node.name);
+
+			found =
+				name !== undefined &&
+				isHomeyAddressKey(name) &&
+				(node.parameters.some(
+					(parameter) =>
+						(parameter.initializer !== undefined &&
+							containsUnsafeCompiledLiteral(parameter.initializer, SAFE_COMPILED_ADDRESS_STRINGS)) ||
+						(parameter.type !== undefined && containsUnsafeCompiledType(parameter.type, SAFE_COMPILED_ADDRESS_STRINGS)),
+				) ||
+					(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, SAFE_COMPILED_ADDRESS_STRINGS)));
 		} else if (ts.isGetAccessorDeclaration(node) || ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) {
 			const name = compiledPropertyName(node.name);
 
@@ -619,7 +613,7 @@ const containsCompiledAddress = (text: string): boolean => {
 					node.body !== undefined &&
 					name !== undefined &&
 					isHomeyAddressKey(name) &&
-					containsUnsafeReturnedLiteral(node.body, SAFE_COMPILED_ADDRESS_STRINGS)) ||
+					containsUnsafeCompiledBodyLiteral(node.body, SAFE_COMPILED_ADDRESS_STRINGS)) ||
 				unsafeAddressType(name, node.type);
 		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found = unsafeAddress(node.name.text, node.initializer);
@@ -677,13 +671,25 @@ const containsCompiledIdentifier = (text: string): boolean => {
 				unsafeIdentifierType(name, node.type);
 		} else if (ts.isPropertySignature(node)) {
 			found = unsafeIdentifierType(compiledPropertyName(node.name), node.type);
+		} else if (ts.isSetAccessorDeclaration(node)) {
+			const name = compiledPropertyName(node.name);
+
+			found =
+				isPrivateIdentifierName(name) &&
+				(node.parameters.some(
+					(parameter) =>
+						(parameter.initializer !== undefined &&
+							containsUnsafeCompiledLiteral(parameter.initializer, isSafeCompiledIdentifierValue)) ||
+						(parameter.type !== undefined && containsUnsafeCompiledType(parameter.type, isSafeCompiledIdentifierValue)),
+				) ||
+					(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledIdentifierValue)));
 		} else if (ts.isGetAccessorDeclaration(node)) {
 			const name = compiledPropertyName(node.name);
 
 			found =
 				(node.body !== undefined &&
 					isPrivateIdentifierName(name) &&
-					containsUnsafeReturnedLiteral(node.body, isSafeCompiledIdentifierValue)) ||
+					containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledIdentifierValue)) ||
 				unsafeIdentifierType(name, node.type);
 		} else if (ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) {
 			const name = compiledPropertyName(node.name);
@@ -693,7 +699,7 @@ const containsCompiledIdentifier = (text: string): boolean => {
 				('body' in node &&
 					node.body !== undefined &&
 					privateReferenceMethod &&
-					containsUnsafeReturnedLiteral(node.body, isSafeCompiledIdentifierValue)) ||
+					containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledIdentifierValue)) ||
 				(privateReferenceMethod && unsafeIdentifierType(name, node.type));
 		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found = unsafeIdentifier(node.name.text, node.initializer);
@@ -744,6 +750,18 @@ const containsCompiledEndpoint = (text: string): boolean => {
 				unsafeEndpointType(name, node.type);
 		} else if (ts.isPropertySignature(node)) {
 			found = unsafeEndpointType(compiledPropertyName(node.name), node.type);
+		} else if (ts.isSetAccessorDeclaration(node)) {
+			const name = compiledPropertyName(node.name);
+
+			found =
+				isEndpointValueName(name) &&
+				(node.parameters.some(
+					(parameter) =>
+						(parameter.initializer !== undefined &&
+							containsUnsafeCompiledLiteral(parameter.initializer, isSafeEndpointValue)) ||
+						(parameter.type !== undefined && containsUnsafeCompiledType(parameter.type, isSafeEndpointValue)),
+				) ||
+					(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, isSafeEndpointValue)));
 		} else if (ts.isGetAccessorDeclaration(node) || ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) {
 			const name = compiledPropertyName(node.name);
 			const endpointName = isEndpointValueName(name);
@@ -752,7 +770,7 @@ const containsCompiledEndpoint = (text: string): boolean => {
 				('body' in node &&
 					node.body !== undefined &&
 					endpointName &&
-					containsUnsafeReturnedLiteral(node.body, isSafeEndpointValue)) ||
+					containsUnsafeCompiledBodyLiteral(node.body, isSafeEndpointValue)) ||
 				(endpointName && unsafeEndpointType(name, node.type));
 		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found = unsafeEndpoint(node.name.text, node.initializer);
@@ -769,6 +787,91 @@ const containsCompiledEndpoint = (text: string): boolean => {
 			found = unsafeEndpoint(name, node.initializer);
 		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
 			found = unsafeEndpoint(compiledAssignedPropertyName(node.left), node.right);
+		}
+
+		ts.forEachChild(node, visit);
+	};
+
+	visit(sourceFile);
+
+	return found;
+};
+
+const containsCompiledPersonalValue = (text: string): boolean => {
+	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	let found = false;
+	const isCompiledPersonalName = (name: string | undefined): name is string =>
+		name !== undefined && !COMPILED_SYMBOL_NAME_PATTERN.test(name) && isHomeyPersonalKey(name);
+	const isSafeCompiledPersonalValue = (value: string): boolean =>
+		value === '[~2~]' ||
+		isHomeyGeneratedPseudonym(value) ||
+		PUBLIC_SYNTHETIC_PERSONAL_VALUES.has(value) ||
+		PUBLIC_COMPILED_PERSONAL_VALUES.has(value) ||
+		PUBLIC_COMPILED_PERSONAL_IDENTIFIER_PATTERN.test(value) ||
+		isHomeyAddressKey(value) ||
+		isHomeyEndpointKey(value) ||
+		isHomeyIconKey(value) ||
+		isHomeyIdentifierKey(value) ||
+		isHomeyPersonalKey(value) ||
+		isHomeyReferenceKey(value) ||
+		isHomeySecretKey(value) ||
+		isHomeyTimestampKey(value);
+	const unsafePersonalValue = (name: string | undefined, expression: ts.Expression): boolean =>
+		isCompiledPersonalName(name) && containsUnsafeCompiledLiteral(expression, isSafeCompiledPersonalValue);
+	const unsafePersonalType = (name: string | undefined, type: ts.TypeNode | undefined): boolean =>
+		isCompiledPersonalName(name) && type !== undefined && containsUnsafeCompiledType(type, isSafeCompiledPersonalValue);
+	const visit = (node: ts.Node): void => {
+		if (found) {
+			return;
+		}
+
+		if (ts.isPropertyAssignment(node)) {
+			found = unsafePersonalValue(compiledPropertyName(node.name), node.initializer);
+		} else if (ts.isPropertyDeclaration(node)) {
+			const name = compiledPropertyName(node.name);
+
+			found =
+				(node.initializer !== undefined && unsafePersonalValue(name, node.initializer)) ||
+				unsafePersonalType(name, node.type);
+		} else if (ts.isPropertySignature(node)) {
+			found = unsafePersonalType(compiledPropertyName(node.name), node.type);
+		} else if (ts.isSetAccessorDeclaration(node)) {
+			const name = compiledPropertyName(node.name);
+
+			found =
+				isCompiledPersonalName(name) &&
+				(node.parameters.some(
+					(parameter) =>
+						(parameter.initializer !== undefined &&
+							containsUnsafeCompiledLiteral(parameter.initializer, isSafeCompiledPersonalValue)) ||
+						(parameter.type !== undefined && containsUnsafeCompiledType(parameter.type, isSafeCompiledPersonalValue)),
+				) ||
+					(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledPersonalValue)));
+		} else if (ts.isGetAccessorDeclaration(node) || ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) {
+			const name = compiledPropertyName(node.name);
+			const personalName = isCompiledPersonalName(name);
+
+			found =
+				('body' in node &&
+					node.body !== undefined &&
+					personalName &&
+					containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledPersonalValue)) ||
+				(personalName && unsafePersonalType(name, node.type));
+		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
+			found = unsafePersonalValue(node.name.text, node.initializer);
+		} else if (ts.isParameter(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
+			found = unsafePersonalValue(node.name.text, node.initializer);
+		} else if (ts.isBindingElement(node) && node.initializer !== undefined) {
+			const name =
+				node.propertyName !== undefined
+					? compiledPropertyName(node.propertyName)
+					: ts.isIdentifier(node.name)
+						? node.name.text
+						: undefined;
+
+			found = unsafePersonalValue(name, node.initializer);
+		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
+			found = unsafePersonalValue(compiledAssignedPropertyName(node.left), node.right);
 		}
 
 		ts.forEachChild(node, visit);
@@ -1018,6 +1121,7 @@ const containsStructuredIdentifier = (
 
 	return Object.entries(record).some(([key, child]) => {
 		const childPath = [...path, key];
+		const identifierKey = isHomeyUuid(key) && !isSafeIdentifierValue(key);
 		const capabilityIdentifierPath = isCapabilityIdentifierPath(key, path, nestedSyntheticProtocolRoot);
 		const capabilityIdentifierValue = capabilityIdentifierPath && !isHomeySanitizedCapabilityIdentifier(child);
 		const capabilityListValue =
@@ -1048,6 +1152,7 @@ const containsStructuredIdentifier = (
 			(Array.isArray(child) ? child.some((entry) => !isSafeIdentifierValue(entry)) : !isSafeIdentifierValue(child));
 
 		return (
+			identifierKey ||
 			capabilityIdentifierValue ||
 			capabilityListValue ||
 			capabilityMapKey ||
@@ -1171,6 +1276,10 @@ const assertTextSafe = (label: string, text: string, compiledSource = false): vo
 
 	if (compiledSource && containsCompiledEndpoint(text)) {
 		throw new Error(`${label} contains a compiled endpoint value`);
+	}
+
+	if (compiledSource && containsCompiledPersonalValue(text)) {
+		throw new Error(`${label} contains a compiled personal value`);
 	}
 
 	for (const privateValue of configuredPrivateValues()) {
@@ -1299,6 +1408,7 @@ const visitPublishedValues = (
 	personalParameter = false,
 	identifierParameter = false,
 	endpointParameter = false,
+	iconParameter = false,
 ): void => {
 	if (Array.isArray(value)) {
 		value.forEach((entry, index) =>
@@ -1311,6 +1421,7 @@ const visitPublishedValues = (
 				personalParameter,
 				identifierParameter,
 				endpointParameter,
+				iconParameter,
 			),
 		);
 
@@ -1332,6 +1443,7 @@ const visitPublishedValues = (
 		(parameterName !== undefined && (isHomeyReferenceKey(parameterName) || isHomeyIdentifierKey(parameterName)));
 	const nestedEndpointParameter =
 		endpointParameter || (parameterName !== undefined && isHomeyEndpointKey(parameterName));
+	const nestedIconParameter = iconParameter || (parameterName !== undefined && isHomeyIconKey(parameterName));
 
 	for (const [key, child] of Object.entries(record)) {
 		const childPath = [...path, key];
@@ -1347,6 +1459,10 @@ const visitPublishedValues = (
 
 			if (containsStructuredEndpoint(child) || (nestedEndpointParameter && !isSafeEndpointValue(child))) {
 				throw new Error(`${label}.${childPath.join('.')} publishes an endpoint value`);
+			}
+
+			if (containsStructuredIcon(child) || (nestedIconParameter && !isSafeIconValue(child))) {
+				throw new Error(`${label}.${childPath.join('.')} publishes an icon value`);
 			}
 
 			if (containsStructuredAddress(child) || (nestedAddressParameter && !isSafeAddressValue(child))) {
@@ -1371,6 +1487,7 @@ const visitPublishedValues = (
 			nestedPersonalParameter,
 			nestedIdentifierParameter,
 			nestedEndpointParameter,
+			nestedIconParameter,
 		);
 	}
 };
@@ -1489,6 +1606,11 @@ describe('Homey security artifact gate', () => {
 				example: { endpoint: 'private-homey.local:4859' },
 			}),
 		).toThrow('UnsafeHomeySchema.example publishes an endpoint value');
+		expect(() =>
+			visitPublishedValues('UnsafeHomeySchema', {
+				example: { icon: 'custom-household-icon' },
+			}),
+		).toThrow('UnsafeHomeySchema.example publishes an icon value');
 		expect(() => assertTextSafe('unsafe fixture', '{"api_key":"must-not-be-reported"}')).toThrow(
 			'unsafe fixture contains a serialized secret value',
 		);
@@ -1509,6 +1631,9 @@ describe('Homey security artifact gate', () => {
 		);
 		expect(() =>
 			assertFixtureTextSafe('unsafe fixture', '{"deviceId":"8d4d7584-1111-4111-8111-0123456789ab"}', '.json'),
+		).toThrow('unsafe fixture contains a structured identifier value');
+		expect(() =>
+			assertFixtureTextSafe('unsafe fixture', '{"metadata":{"8d4d7584-1111-4111-8111-0123456789ab":{}}}', '.json'),
 		).toThrow('unsafe fixture contains a structured identifier value');
 		expect(() => assertFixtureTextSafe('unsafe fixture', '{"driverId":"opaque-driver"}', '.json')).toThrow(
 			'unsafe fixture contains a structured identifier value',
@@ -1617,15 +1742,46 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = function () { return 'opaque-secret'; };", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const apiKey = () => { const value = 'opaque-secret'; return value; };",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() => assertTextSafe('unsafe compiled module', "const hostname = 'family-homey.local';", true)).toThrow(
 			'unsafe compiled module contains a compiled address value',
 		);
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Config { set hostname(value) { this.value = value || 'family-homey.local'; } }",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled address value');
 		expect(() => assertTextSafe('unsafe compiled module', "const deviceId = 'opaque-household-id';", true)).toThrow(
 			'unsafe compiled module contains a compiled identifier value',
 		);
 		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Config { set deviceId(value) { this.value = value || 'opaque-household-id'; } }",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled identifier value');
+		expect(() =>
 			assertTextSafe('unsafe compiled module', "const endpoint = 'private-homey.local:4859';", true),
 		).toThrow('unsafe compiled module contains a compiled endpoint value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Config { set endpoint(value) { this.value = value || 'private-homey.local:4859'; } }",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled endpoint value');
+		expect(() => assertTextSafe('unsafe compiled module', "const deviceName = 'Alice Bedroom';", true)).toThrow(
+			'unsafe compiled module contains a compiled personal value',
+		);
 		expect(() =>
 			assertTextSafe('unsafe declaration', "interface Config { hostname: 'family-homey.local' }", true),
 		).toThrow('unsafe declaration contains a compiled address value');
