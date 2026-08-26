@@ -93,21 +93,29 @@ describe('Homey SHS mDNS compatibility probe', () => {
 	});
 
 	it('preserves the sanitized live Homey and HAP advertisement evidence', async () => {
-		const evidencePath = resolve(
+		const preRestartEvidencePath = resolve(
 			__dirname,
 			'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-26-shs-13.4.1-mdns-homey-advertisement.json',
 		);
-		const evidence = JSON.parse(await readFile(evidencePath, 'utf8')) as unknown;
+		const postRestartEvidencePath = resolve(
+			__dirname,
+			'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-26-shs-13.4.1-mdns-post-restart.json',
+		);
+		const evidence = JSON.parse(await readFile(preRestartEvidencePath, 'utf8')) as unknown;
+		const postRestartEvidence = JSON.parse(await readFile(postRestartEvidencePath, 'utf8')) as unknown;
 		const config = loadHomeyShsMdnsProbeConfig(BASE_ENVIRONMENT);
 
 		assertHomeyShsMdnsReportSchema(evidence);
+		assertHomeyShsMdnsReportSchema(postRestartEvidence);
 		expect(evidence.observation.services).toContainEqual({
 			port: 4859,
 			protocol: 'tcp',
 			txtKeys: ['id', 'model', 'name', 'version'],
 			type: 'homey',
 		});
+		expect(postRestartEvidence).toStrictEqual(evidence);
 		expect(() => assertHomeyShsMdnsReportSafe(evidence, config)).not.toThrow();
+		expect(() => assertHomeyShsMdnsReportSafe(postRestartEvidence, config)).not.toThrow();
 	});
 
 	it('loads a key-free, exact-host configuration with bounded observation', () => {

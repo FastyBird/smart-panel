@@ -82,9 +82,9 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [ ] SHS version, image digest, network topology, ports, and test date are recorded.
 - [ ] A least-privilege API key can read devices, zones, system information, and current capability values.
 - [ ] A designated harmless writable capability can be controlled and its resulting event observed.
-- [ ] Socket.IO connection, subscription, disconnect, restart, and reconnect behavior are recorded.
+- [x] Socket.IO connection, subscription, disconnect, restart, and reconnect behavior are recorded.
 - [ ] Device add, rename, zone move, unavailable, and removal behavior is captured only with a separately gated, explicitly allowlisted disposable virtual/test device; suffixed-capability behavior may use read-only fixtures/devices.
-- [x] mDNS behavior is verified; automatic discovery is explicitly deferred because no attributable stable Homey service was observed.
+- [x] mDNS behavior is verified; automatic discovery remains deferred pending safe identity and endpoint verification.
 - [x] The SDK license/distribution decision and SDK-vs-direct-protocol choice are recorded.
 - [ ] Sanitized fixtures contain no API keys, household identifiers, private IP addresses, or personal names.
 - [x] Fixture-backed tests can run without live SHS access.

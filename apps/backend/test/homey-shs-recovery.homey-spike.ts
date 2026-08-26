@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import {
 	type HomeyRecoverySdkFactory,
@@ -161,6 +161,25 @@ const fastConfig = (overrides: Partial<HomeyShsRecoveryProbeConfig> = {}): Homey
 });
 
 describe('Homey SHS recovery compatibility probe', () => {
+	it('preserves the sanitized live SHS restart recovery evidence', async () => {
+		const evidencePath = resolve(
+			__dirname,
+			'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-26-shs-13.4.1-restart-recovery.json',
+		);
+		const evidence = JSON.parse(await readFile(evidencePath, 'utf8')) as unknown;
+		const config = loadHomeyShsRecoveryProbeConfig(BASE_ENVIRONMENT);
+
+		assertHomeyShsRecoveryReportSchema(evidence);
+		expect(evidence.recovery).toStrictEqual({
+			disconnectObserved: true,
+			inventoryReadSucceeded: true,
+			managerResubscribed: true,
+			transportReconnected: true,
+		});
+		expect(evidence.session.events).toHaveLength(15);
+		expect(() => assertHomeyShsRecoveryReportSafe(evidence, config)).not.toThrow();
+	});
+
 	it('requires the exact operator acknowledgement and refuses mutation gates', () => {
 		expect(() =>
 			loadHomeyShsRecoveryProbeConfig({

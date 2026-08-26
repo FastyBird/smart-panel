@@ -1,0 +1,30 @@
+{
+	"metadata": {
+		"probe": "homey-shs-mdns",
+		"schemaVersion": 1
+	},
+	"observation": {
+		"durationMs": 10000,
+		"matchedServices": 3,
+		"services": [
+			{
+				"port": 47756,
+				"protocol": "tcp",
+				"txtKeys": ["c#", "ci", "ff", "id", "md", "pv", "s#", "sf", "sh"],
+				"type": "hap"
+			},
+			{
+				"port": 48000,
+				"protocol": "tcp",
+				"txtKeys": ["c#", "ci", "ff", "id", "md", "pv", "s#", "sf", "sh"],
+				"type": "hap"
+			},
+			{
+				"port": 4859,
+				"protocol": "tcp",
+				"txtKeys": ["id", "model", "name", "version"],
+				"type": "homey"
+			}
+		]
+	}
+}

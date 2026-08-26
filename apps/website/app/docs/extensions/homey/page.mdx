@@ -9,10 +9,10 @@ and adopt them, keeps their state synchronized, and sends supported controls bac
 <Callout type="warning">
   **The Homey release gate is not complete.** Current live evidence covers Homey
   SHS 13.4.0 and 13.4.1 over HTTP port 4859 for sanitized inventory capture and
-  limited SDK connection/session behavior. Homey Pro, HTTPS, capability
-  writes/events, restart and network recovery, and credential rotation have not
-  completed the required live matrix. Use this integration for evaluation, not
-  as a production-ready support claim.
+  limited SDK connection/session behavior and SHS restart recovery. Homey Pro,
+  HTTPS, capability writes/events, network recovery, and credential rotation
+  have not completed the required live matrix. Use this integration for
+  evaluation, not as a production-ready support claim.
 </Callout>
 
 Only a **local Homey connection** is implemented. Homey Cloud/OAuth is not available yet. Smart Panel does not pair,
@@ -100,8 +100,9 @@ Panel requires a new key for the unsaved connection test; it never sends a store
 ### Manual Server Selection
 
 Enter the Homey URL manually. Smart Panel does not currently offer automatic Homey server discovery. A Homey-specific
-advertisement has been observed, but its restart stability, safe identity deduplication, and endpoint verification have
-not completed the release gate. Device discovery begins only after a Homey connection has been configured.
+advertisement remained stable across a controlled restart, but safe identity deduplication and spoof-resistant endpoint
+verification have not completed the release gate. Device discovery begins only after a Homey connection has been
+configured.
 
 ## Discover and Adopt Devices
 

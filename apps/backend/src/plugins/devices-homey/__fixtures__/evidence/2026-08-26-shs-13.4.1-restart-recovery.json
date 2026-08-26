@@ -1,0 +1,35 @@
+{
+	"metadata": {
+		"probe": "homey-shs-recovery",
+		"scenario": "restart",
+		"schemaVersion": 2,
+		"sdkVersion": "3.19.2"
+	},
+	"recovery": {
+		"disconnectObserved": true,
+		"inventoryReadSucceeded": true,
+		"managerResubscribed": true,
+		"transportReconnected": true
+	},
+	"session": {
+		"cleanupCompleted": true,
+		"events": [
+			{ "event": "sdk.create.resolved", "order": 1 },
+			{ "event": "manager.subscribe.resolved", "order": 2 },
+			{ "event": "recovery.window.open", "order": 3 },
+			{ "event": "socket.disconnect", "order": 4 },
+			{ "event": "socket.reconnect_attempt", "order": 5 },
+			{ "event": "socket.reconnecting", "order": 6 },
+			{ "event": "socket.reconnect_error", "order": 7 },
+			{ "event": "socket.reconnect_attempt", "order": 8 },
+			{ "event": "socket.reconnecting", "order": 9 },
+			{ "event": "socket.reconnect", "order": 10 },
+			{ "event": "manager.resubscribe.observed", "order": 11 },
+			{ "event": "inventory.read.resolved", "order": 12 },
+			{ "event": "manager.unsubscribe.resolved", "order": 13 },
+			{ "event": "socket.disconnect.resolved", "order": 14 },
+			{ "event": "sdk.destroyed", "order": 15 }
+		],
+		"managerSubscribed": true
+	}
+}
