@@ -683,11 +683,15 @@ gated compatibility probes under `test/`.
 - `docs/homey-shs-compatibility.md`
 - Plugin README or module documentation if current plugins use one
 
-- [ ] Document SHS installation/network/port assumptions and least-privilege API-key creation.
-- [ ] Document local configuration, discovery/manual URL, adoption, supported capability families, limitations, and troubleshooting.
-- [ ] Document backups/secret behavior without revealing storage internals unnecessarily.
-- [ ] Document fixture refresh procedure for future SHS/Homey versions.
+- [x] Document SHS installation/network/port assumptions and least-privilege API-key creation.
+- [x] Document local configuration, discovery/manual URL, adoption, supported capability families, limitations, and troubleshooting.
+- [x] Document backups/secret behavior without revealing storage internals unnecessarily.
+- [x] Document fixture refresh procedure for future SHS/Homey versions.
 - [ ] Update `FEATURE-PLUGIN-HOMEY` acceptance checkboxes and status to `review` only when evidence is recorded.
+
+The operator guide is published at `apps/website/app/docs/extensions/homey/page.mdx`; the fixture refresh runbook is
+maintained beside the reviewed fixture corpus. The feature remains `in-progress`: Task 6.2 live-matrix observations and
+the unchecked acceptance evidence above are still required before the final checklist/status update.
 
 **Local MVP gate:** All Phase 0 and Phase 1 acceptance criteria in `tasks/features/FEATURE-PLUGIN-HOMEY.md` are checked or carry an approved, explicit deferral. Cloud criteria remain unchecked.
 

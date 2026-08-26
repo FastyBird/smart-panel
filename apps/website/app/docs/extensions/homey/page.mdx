@@ -1,0 +1,210 @@
+import { Callout } from "nextra/components";
+
+# Homey (Experimental)
+
+The experimental Homey integration is designed to connect Smart Panel directly to a Homey Pro or Homey Self-Hosted
+Server (SHS) on the local network. It imports logical devices already managed by Homey, lets an administrator review
+and adopt them, keeps their state synchronized, and sends supported controls back to Homey.
+
+<Callout type="warning">
+  **The Homey release gate is not complete.** Current live evidence covers Homey
+  SHS 13.4.0 over HTTP port 4859 for sanitized inventory capture and limited SDK
+  connection/session behavior. Homey Pro, HTTPS, capability writes/events,
+  restart and network recovery, and credential rotation have not completed the
+  required live matrix. Use this integration for evaluation, not as a
+  production-ready support claim.
+</Callout>
+
+Only a **local Homey connection** is implemented. Homey Cloud/OAuth is not available yet. Smart Panel does not pair,
+rename, move, or remove devices in Homey.
+
+## Before You Start
+
+You need:
+
+- a configured Homey Pro or [Homey Self-Hosted Server](https://support.homey.app/hc/en-us/articles/23975096785948-How-to-install-Homey-Self-Hosted-Server-on-Linux);
+- network access from the **Smart Panel backend** to Homey's local API;
+- the complete local API URL, including `http://` or `https://` and any non-standard port; and
+- a dedicated Homey API key with only the permissions Smart Panel needs.
+
+SHS uses port `4859` for HTTP and `4860` for HTTPS by default. Those ports can be overridden in the SHS deployment.
+Use the address and port reachable from the machine or container running Smart Panel, which may differ from an address
+that works in your desktop browser.
+
+Examples:
+
+```text
+http://192.168.1.50:4859
+https://homey.example.net
+```
+
+Do not put a username, password, API path, query string, or API key in the URL. Prefer HTTPS when the network endpoint
+has a certificate trusted by the Smart Panel host. Do not expose the local API directly to the public internet merely
+to connect Smart Panel; use a private network or a correctly secured reverse proxy when the services are on different
+networks.
+
+For SHS installation and network settings, follow Homey's platform-specific installation guide. Homey's
+[port-forwarding guide](https://support.homey.app/hc/en-us/articles/24722267664156-Set-up-port-forwarding-for-Homey-Self-Hosted-Server)
+documents the default HTTPS port, but port forwarding is not required when Smart Panel and Homey can communicate on
+the same private network.
+
+## Create a Least-Privilege API Key
+
+In the [Homey Web App](https://my.homey.app), open **Settings → API Keys**, choose **New API Key**, give the key a name
+such as `Smart Panel`, and grant all four permissions:
+
+| Permission              | Why Smart Panel needs it                                   |
+| ----------------------- | ---------------------------------------------------------- |
+| `homey.system.readonly` | Test the connection and identify the Homey instance        |
+| `homey.zone.readonly`   | Read the zone hierarchy shown during adoption              |
+| `homey.device.readonly` | Discover devices, read capabilities, and synchronize state |
+| `homey.device.control`  | Send commands to supported writable capabilities           |
+
+`homey.device.control` is currently mandatory because adopted writable mappings remain visible as controls in Smart
+Panel. A scope-aware read-only presentation is not implemented, so omitting this permission would leave visible commands
+that fail authorization. Do not grant device-management, pairing, app, Flow, user, or administrator permissions. Smart
+Panel's integration has no upstream create, rename, move, or delete operation.
+
+Create the key, copy it immediately, and store a recovery copy in your password manager. Homey displays the key only
+once. You can revoke it later from the same **API Keys** page. See Homey's
+[API key guide](https://support.homey.app/hc/en-us/articles/8178797067292-Create-and-use-API-Keys-on-Homey-Pro) for the current
+Homey UI.
+
+## Configure the Connection
+
+1. In the Smart Panel Admin UI, open **Config → Plugins → Homey**.
+2. Keep **Connection mode** set to **Local**.
+3. Enter the local API URL and the new API key.
+4. Leave the connection timeout and reconciliation interval at their defaults unless your network needs tuning.
+5. Choose **Test entered URL and key**. This test is available only when both fields contain a complete candidate
+   connection.
+6. Save the form and enable the plugin.
+7. Confirm that **Connection status** changes to **Connected** and identifies the expected Homey.
+
+After saving, the key field is empty by design. The configured indicator confirms that a key exists, but neither the
+Admin UI nor the configuration API can read it back. Leaving the replacement field untouched preserves the saved key;
+entering a new value replaces it, and the field's explicit clear action removes it.
+
+Use **Test saved configuration** to test the URL and key already stored by the backend. If you change the URL, Smart
+Panel requires a new key for the unsaved connection test; it never sends a stored key to an overridden address.
+
+### Manual Server Selection
+
+Enter the Homey URL manually. Smart Panel does not currently offer automatic Homey server discovery because the local
+network advertisements observed during compatibility testing did not provide a stable, Homey-specific identity that
+could be selected safely. Device discovery begins only after a Homey connection has been configured.
+
+## Discover and Adopt Devices
+
+1. Open **Devices** in the Admin UI and choose **Add device**.
+2. Select **Homey** to open the Homey adoption wizard.
+3. Review the discovered Homey device name, identifier, class, model, zone, availability, capability count, and support
+   status. Refresh the inventory if Homey changed while the wizard was open.
+4. Select supported devices and continue to the confirmation step.
+5. Review each suggested Smart Panel category, name, mapping summary, and any warnings.
+6. Confirm the batch. The results identify devices that were created, updated, skipped, or failed.
+
+Adoption is idempotent: selecting the same Homey device again updates its mapping instead of creating a duplicate.
+Unsupported capabilities appear as warnings and do not prevent adoption when the device still has a complete supported
+mapping. Devices that cannot form a supported mapping remain visible in the inventory but cannot be adopted.
+
+Once adopted, devices use the normal Smart Panel device, space, dashboard, real-time state, and control paths. The
+panel display never receives the Homey URL or API key.
+
+## Supported Capability Families
+
+Support depends on both Homey's device class and its standardized capability IDs. The local MVP includes:
+
+| Family                      | Supported state and controls                                                             |
+| --------------------------- | ---------------------------------------------------------------------------------------- |
+| Lights                      | Power, brightness, hue, saturation, and color temperature                                |
+| Outlets and switches        | Power; outlets can also expose instantaneous power and accumulated energy                |
+| Environmental sensors       | Temperature, humidity, pressure, illuminance, and carbon dioxide                         |
+| Safety and presence sensors | Motion, contact, smoke, and carbon monoxide alarms                                       |
+| Thermostats                 | Current temperature for devices exposing the complete standard thermostat capability set |
+| Window coverings            | Open, close, stop, position, and tilt when exposed by the device                         |
+| Locks                       | Locked/unlocked state and control                                                        |
+| Battery                     | Percentage and low/OK status                                                             |
+
+Smart Panel preserves full suffixed Homey capability IDs, so independent repeated capabilities are not collapsed into
+one value. Vendor-specific classes or capabilities may be reported as unsupported or omitted from the mapping preview.
+
+<Callout type="info">
+  Thermostat target temperature and operating-mode control are intentionally not
+  exposed in this release. Smart Panel does not infer heating/cooling activity
+  from a configured mode when Homey provides no authoritative activity signal.
+</Callout>
+
+## Synchronization and Availability
+
+The integration subscribes to Homey events for real-time updates. It also runs a bounded periodic reconciliation to
+populate initial values and repair events missed during a connection interruption. A reconnect is followed by a full
+reconciliation before the connection is considered healthy.
+
+If event subscription is unavailable while reads still work, the connection reports **Degraded polling** and continues
+to reconcile. If an adopted device disappears from Homey, Smart Panel marks it unavailable/orphaned; it never deletes
+the Smart Panel device and never sends an unpair or delete request to Homey. An operator can later decide what to do
+with the local Smart Panel device.
+
+## API Keys and Backups
+
+Treat a Smart Panel system backup as a credential. Configuration APIs and the Admin UI expose only whether the Homey
+key is configured, but system backups include the resolved configuration needed to restore the integration. Smart
+Panel backups are not encrypted by the application.
+
+- Store and transfer backups only through trusted, access-controlled locations.
+- Do not attach a backup to an issue or support request.
+- After restoring onto a replacement host, retire or isolate the old host before enabling both copies.
+- If a backup or either host may have been exposed, revoke the Homey key, create a new least-privilege key, save it in
+  Smart Panel, and test the connection again.
+
+Write-only configuration prevents accidental disclosure through normal API reads; it is not a substitute for backup,
+host, and filesystem security.
+
+## Troubleshooting
+
+### The connection test cannot run
+
+For **Test entered URL and key**, provide both a valid HTTP(S) URL and a new, non-blank key. To reuse the existing
+write-only key, save the URL first and use **Test saved configuration**.
+
+### Authentication failed
+
+The key is missing, revoked, or invalid. Create or copy a new key, replace the saved value, and run the saved connection
+test. The integration avoids rapid reconnect attempts after an authentication failure.
+
+### Authorization failed
+
+Review all four required permissions above. The current UI does not downgrade writable mappings when
+`homey.device.control` is absent. Do not solve authorization failures by granting broad device-management or
+administrator access.
+
+### Timeout or Homey unavailable
+
+- Verify the URL, scheme, and port from the Smart Panel backend host or container.
+- Check firewall, VLAN, guest-network, container, reverse-proxy, DNS, and certificate-trust rules.
+- Confirm that SHS is running and listening on the configured port.
+- Increase the connection timeout only after checking the network path.
+
+### Degraded polling or reconnecting
+
+The event connection is unavailable or was interrupted. Smart Panel continues bounded reconciliation where possible and
+reconnects with bounded backoff. Check Homey and proxy support for long-lived Socket.IO/WebSocket connections. If the
+state does not recover, test the saved connection and inspect the sanitized backend logs.
+
+### A device is missing or unsupported
+
+Refresh the wizard inventory and verify that the device is available in Homey. Adoption is based on Homey's logical
+device class and standardized capabilities, not only its product name. Vendor-specific capability sets may require a
+future mapping. A previously adopted device that disappeared upstream remains in Smart Panel as unavailable.
+
+## Current Limitations
+
+- Experimental status while the required live compatibility matrix remains incomplete.
+- Local Homey Pro/SHS connections only; Homey Cloud/OAuth is a later phase.
+- Manual Homey URL configuration; no automatic server discovery.
+- No pairing, commissioning, renaming, zone moves, removal, app, Flow, firmware, backup, or user administration in
+  Homey.
+- No automatic deletion of Smart Panel devices that disappear from Homey.
+- No exhaustive mapping for vendor-specific capabilities.
+- Thermostat target, mode, and activity control remain deferred as described above.

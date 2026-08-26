@@ -36,14 +36,39 @@ contracts live outside `versions/` and are pinned independently through `synthet
 generation and tests cannot treat them as captured inventory. A future live capture produced by the corrected probe may
 replace these gaps; promotion now rejects redacted or duplicate enum IDs.
 
-To regenerate the selected subset from an ignored sanitized capture:
+## Refreshing fixtures for a new Homey or SHS version
 
-```bash
-cd apps/backend
-pnpm run homey:promote-fixtures -- test/.homey-shs-captures/<capture-directory>
-pnpm run homey:generate-normalized-fixtures
-pnpm run test:homey-spike
-```
+Never promote raw Homey responses. The capture command writes a locally ignored, already sanitized corpus and rejects
+known secret, private-address, email, identifier, and private-term shapes before reporting success.
+
+1. Create a dedicated read-only API key with `homey.system.readonly`, `homey.zone.readonly`, and
+   `homey.device.readonly`. Do not use a household administrator key.
+2. From `apps/backend`, follow the interactive read-only capture commands in the repository's Homey compatibility
+   document. Enter the URL, exact expected host, API key, and comma-separated private-term defense list without placing
+   the key in shell history, then run `pnpm run homey:probe`. That document is the source of truth for environment
+   variable names, validation rules, and optional bounds.
+
+3. Record the Homey/SHS version, deployment image digest, network topology, ports, and test date in the same compatibility
+   document. Never record the API key, private host, private addresses, or household names.
+4. Inspect the generated capture under `test/.homey-shs-captures/`. Review every key and value even though the probe
+   passed. The full capture remains ignored and local; never add it to Git.
+5. Promote only the smallest representative subset:
+
+   ```bash
+   pnpm run homey:promote-fixtures -- test/.homey-shs-captures/<capture-directory>
+   pnpm run homey:generate-normalized-fixtures
+   pnpm run test:homey-spike
+   ```
+
+6. Review the new immutable raw version, the `current` symlink change, manifest evidence gaps, normalized golden output,
+   and the complete Git diff. Promotion must not turn an unobserved capability into live evidence. Use a separately
+   versioned, explicitly synthetic published-protocol fixture when a contract needs coverage but no physical device was
+   observed.
+7. Run `pnpm run homey:security-gate` before committing. Unset every live Homey probe variable listed in the
+   compatibility document afterward.
+
+If any command reports a possible secret or private value, stop. Expand the sanitizer/private-term coverage and produce
+a new capture; never edit a leaked value out of a capture and treat the remainder as trusted.
 
 `expected/v1` contains the reviewed transport-neutral output for every representative device and the complete zone
 hierarchy. Its manifest pins the immutable raw fixture version used as input. These files are golden expectations, not
