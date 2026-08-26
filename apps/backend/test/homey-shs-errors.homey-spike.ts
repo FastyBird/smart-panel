@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
 import {
 	type HomeyShsErrorReport,
 	type HomeyShsProbeFetch,
@@ -38,6 +41,32 @@ const createLiveFetch = (): jest.MockedFunction<HomeyShsProbeFetch> =>
 	});
 
 describe('Homey SHS error compatibility probe', () => {
+	it('preserves the sanitized live SHS error-matrix evidence', async () => {
+		const evidencePath = resolve(
+			__dirname,
+			'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-26-shs-13.4.1-error-matrix.json',
+		);
+		const evidence = JSON.parse(await readFile(evidencePath, 'utf8')) as HomeyShsErrorReport;
+		const config = loadHomeyShsErrorProbeConfig(BASE_ENVIRONMENT);
+
+		expect(evidence).toStrictEqual({
+			metadata: { probe: 'homey-shs-errors', schemaVersion: 1 },
+			scenarios: {
+				badUrl: { category: 'validation', rejected: true },
+				invalidKey: { category: 'authentication', rejected: true, statusCode: 401 },
+				missingScope: {
+					allowedRequestStatusCode: 200,
+					category: 'authorization',
+					rejected: true,
+					statusCode: 403,
+				},
+				requestTimeout: { category: 'timeout', rejected: true },
+				unavailableHost: { category: 'unavailable', rejected: true },
+			},
+		});
+		expect(() => assertHomeyShsErrorReportSafe(evidence, config)).not.toThrow();
+	});
+
 	it('requires a distinct device-only key for missing-scope evidence', () => {
 		expect(() =>
 			loadHomeyShsErrorProbeConfig({

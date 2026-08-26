@@ -70,7 +70,7 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - [x] Capture capabilities with values, types, units, ranges, enums, readable/writable flags, and repeated/suffixed IDs.
 - [ ] Verify Socket.IO connection and record subscription/event ordering for capability changes and availability changes.
 - [ ] Write the allowlisted test capability and confirm the resulting event plus subsequent read.
-- [ ] Test invalid key, missing scopes, bad URL, unavailable host, and request timeout behavior.
+- [x] Test invalid key, missing scopes, bad URL, unavailable host, and request timeout behavior.
 - [ ] Test SHS restart, network interruption/restoration, and API-key revocation.
 - [ ] On the separately gated disposable device only, test add, rename, zone move, unavailable, and removal events or inventory deltas; clean up the disposable device after capture.
 - [x] Inspect mDNS advertisements before and after restart. Record exact service type/TXT fields only if stable.
@@ -636,6 +636,11 @@ firewall rule blocked only the test host's path to SHS ports `4859` and `4860` f
 report proved disconnect, nine reconnect attempts during that finite interruption, reconnect, manager resubscription,
 a fresh inventory read, and complete cleanup. It does not close the event-flow criterion because no capability or
 availability event was observed across the interruption.
+
+The 2026-08-26 SHS `13.4.1` error probe closed the non-mutating error-classification matrix: generated invalid-key
+authentication, a device-read-only key's missing system scope, shared bad-URL validation, and probe-owned loopback
+unavailable/timeout simulations all produced their expected sanitized categories. This closes only the insufficiently
+scoped sub-slice of the API-key lifecycle item above; revocation and replacement remain open.
 
 ### Task 6.3: Validate performance and security
 
