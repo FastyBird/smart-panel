@@ -252,10 +252,52 @@ const containsSerializedSecret = (text: string): boolean =>
 		return key !== undefined && isHomeySecretKey(key) && value !== undefined && value.length > 0 && value !== '[~3~]';
 	});
 
-const compiledStaticPropertyExpressionName = (expression: ts.Expression): string | undefined =>
-	ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression) || ts.isNumericLiteral(expression)
-		? expression.text
-		: undefined;
+const compiledStaticString = (node: ts.Expression): string | undefined => {
+	if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+		return node.text;
+	}
+
+	if (ts.isParenthesizedExpression(node)) {
+		return compiledStaticString(node.expression);
+	}
+
+	if (ts.isTemplateExpression(node)) {
+		let value = node.head.text;
+
+		for (const span of node.templateSpans) {
+			const expression = compiledStaticString(span.expression);
+
+			if (expression === undefined) {
+				return undefined;
+			}
+
+			value += expression + span.literal.text;
+		}
+
+		return value;
+	}
+
+	if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+		const left = compiledStaticString(node.left);
+		const right = compiledStaticString(node.right);
+
+		return left === undefined || right === undefined ? undefined : left + right;
+	}
+
+	return undefined;
+};
+
+const compiledStaticPropertyExpressionName = (expression: ts.Expression): string | undefined => {
+	if (
+		ts.isStringLiteral(expression) ||
+		ts.isNoSubstitutionTemplateLiteral(expression) ||
+		ts.isNumericLiteral(expression)
+	) {
+		return expression.text;
+	}
+
+	return compiledStaticString(expression);
+};
 
 const compiledPropertyName = (name: ts.PropertyName): string | undefined => {
 	if (ts.isIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) {
@@ -285,6 +327,28 @@ const compiledAssignedPropertyName = (expression: ts.Expression): string | undef
 	}
 
 	return undefined;
+};
+
+const compiledThisPropertyName = (expression: ts.Expression): string | undefined => {
+	if (
+		ts.isParenthesizedExpression(expression) ||
+		ts.isAsExpression(expression) ||
+		ts.isTypeAssertionExpression(expression) ||
+		ts.isNonNullExpression(expression) ||
+		ts.isSatisfiesExpression(expression)
+	) {
+		return compiledThisPropertyName(expression.expression);
+	}
+
+	if (ts.isPropertyAccessExpression(expression) && expression.expression.kind === ts.SyntaxKind.ThisKeyword) {
+		return expression.name.text;
+	}
+
+	return ts.isElementAccessExpression(expression) &&
+		expression.expression.kind === ts.SyntaxKind.ThisKeyword &&
+		expression.argumentExpression !== undefined
+		? compiledStaticPropertyExpressionName(expression.argumentExpression)
+		: undefined;
 };
 
 const compiledBindingValues = (binding: ts.BindingElement): readonly ts.Expression[] => {
@@ -522,6 +586,14 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 				if (ts.isShorthandPropertyAssignment(property) && property.name.text === propertyName) {
 					return property.name;
 				}
+
+				if (ts.isSpreadAssignment(property)) {
+					const spreadValue = selectBindingValue(pattern, binding, index, property.expression, resolvingSources);
+
+					if (spreadValue !== undefined) {
+						return spreadValue;
+					}
+				}
 			}
 		}
 
@@ -719,8 +791,13 @@ const containsUnsafeCompiledAlias = (
 				: expression.argumentExpression === undefined
 					? undefined
 					: compiledStaticPropertyExpressionName(expression.argumentExpression);
-			const inspectProperty = (receiver: ts.Expression, nestedResolving: Set<string>): boolean => {
-				if (propertyName === undefined) {
+			const inspectProperty = (
+				receiver: ts.Expression,
+				nestedResolving: Set<string>,
+				selectedPropertyName = propertyName,
+				resolvingProperties = new Set<string>(),
+			): boolean => {
+				if (selectedPropertyName === undefined) {
 					return false;
 				}
 
@@ -731,7 +808,12 @@ const containsUnsafeCompiledAlias = (
 						return false;
 					}
 
-					return inspectProperty(initializer, new Set(nestedResolving).add(receiver.text));
+					return inspectProperty(
+						initializer,
+						new Set(nestedResolving).add(receiver.text),
+						selectedPropertyName,
+						resolvingProperties,
+					);
 				}
 
 				if (
@@ -741,36 +823,71 @@ const containsUnsafeCompiledAlias = (
 					ts.isNonNullExpression(receiver) ||
 					ts.isSatisfiesExpression(receiver)
 				) {
-					return inspectProperty(receiver.expression, nestedResolving);
+					return inspectProperty(receiver.expression, nestedResolving, selectedPropertyName, resolvingProperties);
 				}
 
 				if (ts.isObjectLiteralExpression(receiver)) {
+					const propertyReference = `${receiver.pos}:${selectedPropertyName}`;
+
+					if (resolvingProperties.has(propertyReference)) {
+						return false;
+					}
+
+					const nestedResolvingProperties = new Set(resolvingProperties).add(propertyReference);
+
 					return receiver.properties.some((property) => {
-						if (ts.isPropertyAssignment(property) && compiledPropertyName(property.name) === propertyName) {
+						if (ts.isPropertyAssignment(property) && compiledPropertyName(property.name) === selectedPropertyName) {
 							return (
 								containsUnsafeCompiledLiteral(property.initializer, safeStrings) ||
 								inspect(property.initializer, nestedResolving)
 							);
 						}
 
-						if (ts.isShorthandPropertyAssignment(property) && property.name.text === propertyName) {
+						if (ts.isShorthandPropertyAssignment(property) && property.name.text === selectedPropertyName) {
 							return inspect(property.name, nestedResolving);
 						}
 
 						if (
 							ts.isGetAccessorDeclaration(property) &&
-							compiledPropertyName(property.name) === propertyName &&
+							compiledPropertyName(property.name) === selectedPropertyName &&
 							property.body !== undefined
 						) {
-							return inspectCallableBody(property.body, nestedResolving);
+							let found = false;
+							const visitReturn = (child: ts.Node): void => {
+								if (found) {
+									return;
+								}
+
+								if (ts.isReturnStatement(child) && child.expression !== undefined) {
+									const returned = child.expression;
+									const receiverPropertyName = compiledThisPropertyName(returned);
+
+									found =
+										(receiverPropertyName !== undefined &&
+											inspectProperty(receiver, nestedResolving, receiverPropertyName, nestedResolvingProperties)) ||
+										containsUnsafeCompiledLiteral(returned, safeStrings) ||
+										inspect(returned, nestedResolving);
+								}
+
+								if (!found) {
+									ts.forEachChild(child, visitReturn);
+								}
+							};
+
+							visitReturn(property.body);
+
+							return found;
 						}
 
-						return ts.isSpreadAssignment(property) && inspectProperty(property.expression, nestedResolving);
+						return (
+							ts.isSpreadAssignment(property) &&
+							inspectProperty(property.expression, nestedResolving, selectedPropertyName, nestedResolvingProperties)
+						);
 					});
 				}
 
-				if (/^\d+$/.test(propertyName)) {
-					const element = resolveArrayElements(receiver, nestedResolving)?.[Number(propertyName)];
+				if (/^\d+$/.test(selectedPropertyName)) {
+					const element = resolveArrayElements(receiver, nestedResolving)?.[Number(selectedPropertyName)];
 
 					if (element === undefined) {
 						return false;
@@ -1588,41 +1705,6 @@ const containsCompiledIcon = (text: string): boolean => {
 	visit(sourceFile);
 
 	return found;
-};
-
-const compiledStaticString = (node: ts.Expression): string | undefined => {
-	if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-		return node.text;
-	}
-
-	if (ts.isParenthesizedExpression(node)) {
-		return compiledStaticString(node.expression);
-	}
-
-	if (ts.isTemplateExpression(node)) {
-		let value = node.head.text;
-
-		for (const span of node.templateSpans) {
-			const expression = compiledStaticString(span.expression);
-
-			if (expression === undefined) {
-				return undefined;
-			}
-
-			value += expression + span.literal.text;
-		}
-
-		return value;
-	}
-
-	if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
-		const left = compiledStaticString(node.left);
-		const right = compiledStaticString(node.right);
-
-		return left === undefined || right === undefined ? undefined : left + right;
-	}
-
-	return undefined;
 };
 
 const containsCompiledPrivateUrl = (text: string): boolean => {
@@ -2658,6 +2740,12 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe('unsafe compiled module', "const config = { [`apiKey`]: 'opaque-secret' };", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
+			assertTextSafe('unsafe compiled module', "const config = { ['api' + 'Key']: 'opaque-secret' };", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const config = { [`api${'Key'}`]: 'opaque-secret' };", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = { read() { return 'opaque-secret'; } };", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
@@ -2732,6 +2820,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const source = { ...{ fallback: 'opaque-secret' } }; const { fallback } = source; const apiKey = fallback;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const source = { value: 'family-homey.local' }; const { value: hostname } = source;",
 				true,
 			),
@@ -2775,6 +2870,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const source = { get value() { return 'opaque-secret'; } }; const apiKey = source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { stored: 'opaque-secret', get value() { return this.stored; } }; const apiKey = source.value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
