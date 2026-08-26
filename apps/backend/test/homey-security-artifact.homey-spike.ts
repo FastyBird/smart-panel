@@ -1404,7 +1404,13 @@ const compiledPropertyWriteValues = (
 						values.push(...mutationPropertyValues(node.arguments[2], 'value'));
 					}
 				} else if (helperName === 'Object.defineProperties' && node.arguments.length >= 2) {
-					for (const descriptor of mutationPropertyValues(node.arguments[1], propertyName)) {
+					const descriptors = mutationPropertyValues(node.arguments[1], propertyName);
+
+					if (descriptors.length === 0) {
+						values.push(node.arguments[1]);
+					}
+
+					for (const descriptor of descriptors) {
 						values.push(descriptor);
 						values.push(...mutationPropertyValues(descriptor, 'value'));
 					}
@@ -1554,6 +1560,11 @@ const containsUnsafeCompiledAlias = (
 		arguments_: readonly ts.Expression[],
 		callback: () => boolean,
 	): boolean => {
+		const expandedArguments = arguments_.flatMap((argument): readonly ts.Expression[] =>
+			ts.isSpreadElement(argument)
+				? (resolveArrayElements(argument.expression, new Set()) ?? [argument.expression])
+				: [argument],
+		);
 		const previousArguments = new Map<ts.Node, readonly ts.Expression[] | undefined>();
 		const bindArgument = (
 			bindingName: ts.BindingName,
@@ -1618,10 +1629,10 @@ const containsUnsafeCompiledAlias = (
 		parameters.forEach((parameter, index) => {
 			const argumentValues =
 				parameter.dotDotDotToken === undefined
-					? [arguments_[index] ?? parameter.initializer].filter(
+					? [expandedArguments[index] ?? parameter.initializer].filter(
 							(argument): argument is ts.Expression => argument !== undefined,
 						)
-					: arguments_.slice(index);
+					: expandedArguments.slice(index);
 
 			if (argumentValues.length > 0) {
 				bindArgument(parameter.name, parameter, argumentValues);
@@ -1995,6 +2006,89 @@ const containsUnsafeCompiledAlias = (
 		return /^\d+$/.test(selectedPropertyName)
 			? values.slice(Number(selectedPropertyName), Number(selectedPropertyName) + 1)
 			: values;
+	};
+	const objectEntriesResultValues = (
+		call: ts.CallExpression,
+		entryPropertyName: string,
+		pairPropertyName: string,
+	): readonly ts.Expression[] => {
+		if (
+			compiledMutationHelperName(call.expression) !== 'Object.entries' ||
+			call.arguments.length === 0 ||
+			pairPropertyName !== '1'
+		) {
+			return [];
+		}
+
+		const resolveEntryValues = (
+			expression: ts.Expression,
+			resolving = new Set<ts.Node>(),
+		): readonly ts.Expression[] | undefined => {
+			if (ts.isIdentifier(expression)) {
+				const binding = resolveCompiledBinding(expression);
+
+				return binding?.initializer === undefined || resolving.has(binding.declaration)
+					? undefined
+					: resolveEntryValues(binding.initializer, new Set(resolving).add(binding.declaration));
+			}
+
+			if (
+				ts.isParenthesizedExpression(expression) ||
+				ts.isAsExpression(expression) ||
+				ts.isTypeAssertionExpression(expression) ||
+				ts.isNonNullExpression(expression) ||
+				ts.isSatisfiesExpression(expression)
+			) {
+				return resolveEntryValues(expression.expression, resolving);
+			}
+
+			if (!ts.isObjectLiteralExpression(expression)) {
+				return undefined;
+			}
+
+			return expression.properties.flatMap((property): readonly ts.Expression[] => {
+				if (ts.isPropertyAssignment(property)) {
+					return [property.initializer];
+				}
+
+				if (ts.isShorthandPropertyAssignment(property)) {
+					return [property.name];
+				}
+
+				return ts.isSpreadAssignment(property)
+					? (resolveEntryValues(property.expression, resolving) ?? [property.expression])
+					: [];
+			});
+		};
+		const values = resolveEntryValues(call.arguments[0]);
+
+		if (values === undefined) {
+			return [call.arguments[0]];
+		}
+
+		return /^\d+$/.test(entryPropertyName)
+			? values.slice(Number(entryPropertyName), Number(entryPropertyName) + 1)
+			: values;
+	};
+	const pluralDescriptorQueryValues = (
+		call: ts.CallExpression,
+		descriptorPropertyName: string,
+		selectedPropertyName: string,
+	): readonly ts.Expression[] => {
+		if (
+			selectedPropertyName !== 'value' ||
+			compiledMutationHelperName(call.expression) !== 'Object.getOwnPropertyDescriptors' ||
+			call.arguments.length === 0
+		) {
+			return [];
+		}
+
+		const selectedValue = resolvePropertyValue(call.arguments[0], descriptorPropertyName, new Set());
+
+		return [
+			...(selectedValue === undefined ? [] : [selectedValue]),
+			...compiledPropertyWriteValues(call.arguments[0], descriptorPropertyName, call.getStart(call.getSourceFile())),
+		];
 	};
 	const isJsonParseCall = (callee: ts.Expression, resolving = new Set<ts.Node>()): boolean => {
 		if (
@@ -2539,6 +2633,18 @@ const containsUnsafeCompiledAlias = (
 						: receiver.argumentExpression === undefined
 							? undefined
 							: compiledStaticPropertyExpressionName(receiver.argumentExpression);
+
+					if (
+						receiverPropertyName !== undefined &&
+						ts.isCallExpression(receiver.expression) &&
+						[
+							...objectEntriesResultValues(receiver.expression, receiverPropertyName, selectedPropertyName),
+							...pluralDescriptorQueryValues(receiver.expression, receiverPropertyName, selectedPropertyName),
+						].some((value) => containsUnsafeCompiledLiteral(value, safeStrings) || inspect(value, nestedResolving))
+					) {
+						return true;
+					}
+
 					const resolvedReceiver =
 						receiverPropertyName === undefined
 							? undefined
@@ -2822,6 +2928,42 @@ const containsUnsafeCompiledAlias = (
 
 				if (ts.isNewExpression(receiver)) {
 					const classDeclaration = resolveClassReceiver(receiver.expression);
+					const returnedObjectFound =
+						classDeclaration?.members.some((member) => {
+							if (!ts.isConstructorDeclaration(member) || member.body === undefined) {
+								return false;
+							}
+
+							return withCallArguments(member.parameters, receiver.arguments ?? [], () => {
+								let found = false;
+								const visitReturn = (child: ts.Node): void => {
+									if (found) {
+										return;
+									}
+
+									if (ts.isReturnStatement(child) && child.expression !== undefined) {
+										found = inspectProperty(
+											child.expression,
+											nestedResolving,
+											selectedPropertyName,
+											resolvingProperties,
+										);
+									}
+
+									if (!found) {
+										ts.forEachChild(child, visitReturn);
+									}
+								};
+
+								visitReturn(member.body);
+
+								return found;
+							});
+						}) ?? false;
+
+					if (returnedObjectFound) {
+						return true;
+					}
 
 					if (
 						classDeclaration !== undefined &&
@@ -5922,6 +6064,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const stored = 'opaque-secret'; const source = {}; Object.defineProperties(source, Object.fromEntries([['value', { get: () => stored }]])); const apiKey = source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const source = {}; Object.defineProperty(source, 'value', { get() { return 'opaque-secret'; } }); const apiKey = source.value;",
 				true,
 			),
@@ -6035,6 +6184,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"class Source { constructor() { this.value = 'opaque-secret'; } } const apiKey = new Source().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const stored = 'opaque-secret'; class Source { constructor() { return { value: stored }; } } const apiKey = new Source().value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
@@ -6187,6 +6343,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const stored = 'opaque-secret'; function make(value) { return { value }; } const args = [stored]; const apiKey = make(...args).value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"function make({ value }) { return { value }; } const apiKey = make({ value: 'opaque-secret' }).value;",
 				true,
 			),
@@ -6251,7 +6414,21 @@ describe('Homey security artifact gate', () => {
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const stored = 'opaque-secret'; const apiKey = Object.getOwnPropertyDescriptors({ value: stored }).value.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = Object.values({ value: 'opaque-secret' })[0];", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const stored = 'opaque-secret'; const apiKey = Object.entries({ value: stored })[0][1];",
+				true,
+			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = Object.freeze({ value: 'opaque-secret' }).value;", true),
