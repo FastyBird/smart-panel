@@ -482,7 +482,26 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 		binding: ts.BindingElement,
 		index: number,
 		source: ts.Expression,
+		resolvingSources = new Set<string>(),
 	): ts.Expression | undefined => {
+		if (ts.isIdentifier(source)) {
+			const initializer = resolveCompiledAlias(source);
+
+			return initializer === undefined || resolvingSources.has(source.text)
+				? undefined
+				: selectBindingValue(pattern, binding, index, initializer, new Set(resolvingSources).add(source.text));
+		}
+
+		if (
+			ts.isParenthesizedExpression(source) ||
+			ts.isAsExpression(source) ||
+			ts.isTypeAssertionExpression(source) ||
+			ts.isNonNullExpression(source) ||
+			ts.isSatisfiesExpression(source)
+		) {
+			return selectBindingValue(pattern, binding, index, source.expression, resolvingSources);
+		}
+
 		if (ts.isObjectBindingPattern(pattern) && ts.isObjectLiteralExpression(source)) {
 			const propertyName =
 				binding.propertyName === undefined
@@ -569,8 +588,8 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 		ts.forEachChild(node, visit);
 	};
 
-	visit(sourceFile);
 	COMPILED_BINDING_CACHE.set(sourceFile, bindings);
+	visit(sourceFile);
 
 	return bindings;
 };
@@ -2548,6 +2567,20 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const [fallback] = ['opaque-secret']; const apiKey = fallback;", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { fallback: 'opaque-secret' }; const { fallback } = source; const apiKey = fallback;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = ['opaque-secret']; const [fallback] = source; const apiKey = fallback;",
+				true,
+			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe declaration', "declare function connect(apiKey: 'opaque-secret'): void", true),
