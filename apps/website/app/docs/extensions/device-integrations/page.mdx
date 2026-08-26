@@ -19,7 +19,7 @@ device → channel → property hierarchy.
 | Plugin | Protocol | Discovery | Description |
 |--------|----------|-----------|-------------|
 | **Home Assistant** | WebSocket | Automatic | Imports devices and entities from a Home Assistant instance. Bidirectional real-time sync — state changes and commands flow both ways instantly. Requires a long-lived access token. |
-| [**Homey**](/docs/extensions/homey) | Local API / Socket.IO | Manual server, automatic device inventory | Connects to Homey Pro or Homey Self-Hosted Server on the local network. Provides reviewed adoption, real-time state, reconciliation, and supported controls through a least-privilege API key. |
+| [**Homey (Experimental)**](/docs/extensions/homey) | Local API / Socket.IO | Manual server, automatic device inventory | Implements reviewed adoption, synchronization, and supported controls for local Homey APIs. The live release gate is incomplete; verified live scope is currently limited to SHS 13.4.0 over HTTP for inventory and selected session behavior. |
 | **Shelly NG** | mDNS / RPC | Automatic | Discovers and controls Shelly Next-Generation devices (Plus, Pro, BLU series) on the local network. No cloud dependency — all communication stays local. |
 | **Shelly v1** | HTTP / CoAP | Automatic | Support for first-generation Shelly devices using the original HTTP and CoAP APIs. |
 | **WLED** | HTTP | Automatic | Controls WLED-based LED strips and lights discovered on the local network. |

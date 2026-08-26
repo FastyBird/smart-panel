@@ -8,7 +8,7 @@ A smart touchscreen interface for your smart home.
 
 **FastyBird Smart Panel** is a modular and extensible **user interface platform** designed to bring your smart home system to life on touchscreen displays.
 
-It provides a seamless way to interact with your home setup, acting as a **real-time control dashboard** for systems like Home Assistant, Homey, Shelly, Zigbee2MQTT, WLED, and more.
+It provides a seamless way to interact with your home setup, acting as a **real-time control dashboard** for systems like Home Assistant, Shelly, Zigbee2MQTT, WLED, and more, with an experimental Homey integration under validation.
 
 ---
 
@@ -50,7 +50,7 @@ Crafted with **Flutter**, the display app runs smoothly on Raspberry Pi and othe
 | Integration | Protocol | Description |
 |-------------|----------|-------------|
 | **Home Assistant** | WebSocket API | Full entity sync with Home Assistant instances |
-| **Homey** | Local API / Socket.IO | Reviewed adoption, real-time state, reconciliation, and control for local Homey Pro and Homey SHS instances |
+| **Homey (Experimental)** | Local API / Socket.IO | Local adoption, state, reconciliation, and controls; required live release validation is still in progress |
 | **Shelly (Gen 2+)** | HTTP/CoAP | Native support for Shelly Gen 2+ (NG) devices |
 | **Shelly (Gen 1)** | HTTP/CoAP | Support for Shelly Gen 1 devices |
 | **Zigbee2MQTT** | MQTT | Integration with Zigbee devices via Zigbee2MQTT |

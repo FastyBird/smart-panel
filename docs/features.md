@@ -36,7 +36,7 @@ FastyBird Smart Panel is an open-source smart home control platform designed for
 ### Key Highlights
 
 - **Wall-mounted touch control** - Purpose-built for embedded touch displays
-- **Multi-ecosystem support** - Integrates Home Assistant, Homey, Shelly, Zigbee2MQTT, WLED, and more
+- **Multi-ecosystem support** - Integrates Home Assistant, Shelly, Zigbee2MQTT, WLED, and more, with experimental Homey support under validation
 - **Offline-first architecture** - Works without cloud dependency; local processing and control
 - **AI-powered assistant** - Built-in Buddy AI with support for Claude, OpenAI, and local Ollama models
 - **Modular & extensible** - Plugin-based architecture with an Extension SDK for custom integrations
@@ -101,7 +101,10 @@ Smart Panel connects to multiple smart home ecosystems through dedicated integra
 
 **Supported HA domains**: climate, cover, light, switch, lock, media_player, camera, sensor, humidifier, thermostat, valve, vacuum, water_heater, fan, binary_sensor, and 24+ more.
 
-### Homey
+### Homey (Experimental)
+
+The implementation is not yet a production support claim. Live evidence currently covers Homey SHS 13.4.0 over HTTP
+for sanitized inventory and selected connection/session behavior; the remaining live release matrix is still pending.
 
 - **Protocol**: Local HTTP(S) API and Socket.IO events
 - **Targets**: Homey Pro and Homey Self-Hosted Server reachable on the local network
@@ -880,7 +883,7 @@ The Vue.js admin interface provides comprehensive management for the entire syst
 
 ## Integration Coverage Matrix
 
-| Device Type | Home Assistant | Homey | Shelly NG | Shelly V1 | Zigbee2MQTT | WLED | Simulator |
+| Device Type | Home Assistant | Homey (experimental) | Shelly NG | Shelly V1 | Zigbee2MQTT | WLED | Simulator |
 |------------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | Lighting | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Switches/Outlets | ✅ | ✅ | ✅ | ✅ | ✅ | - | ✅ |

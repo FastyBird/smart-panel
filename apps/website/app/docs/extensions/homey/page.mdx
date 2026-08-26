@@ -1,16 +1,22 @@
 import { Callout } from "nextra/components";
 
-# Homey
+# Homey (Experimental)
 
-The Homey integration connects Smart Panel directly to a Homey Pro or Homey Self-Hosted Server (SHS) on the local
-network. It imports logical devices already managed by Homey, lets an administrator review and adopt them, keeps their
-state synchronized, and sends supported controls back to Homey.
+The experimental Homey integration is designed to connect Smart Panel directly to a Homey Pro or Homey Self-Hosted
+Server (SHS) on the local network. It imports logical devices already managed by Homey, lets an administrator review
+and adopt them, keeps their state synchronized, and sends supported controls back to Homey.
 
 <Callout type="warning">
-  This release supports a **local Homey connection only**. Homey Cloud/OAuth is
-  not available yet. Smart Panel also does not pair, rename, move, or remove
-  devices in Homey.
+  **The Homey release gate is not complete.** Current live evidence covers Homey
+  SHS 13.4.0 over HTTP port 4859 for sanitized inventory capture and limited SDK
+  connection/session behavior. Homey Pro, HTTPS, capability writes/events,
+  restart and network recovery, and credential rotation have not completed the
+  required live matrix. Use this integration for evaluation, not as a
+  production-ready support claim.
 </Callout>
+
+Only a **local Homey connection** is implemented. Homey Cloud/OAuth is not available yet. Smart Panel does not pair,
+rename, move, or remove devices in Homey.
 
 ## Before You Start
 
@@ -45,7 +51,7 @@ the same private network.
 ## Create a Least-Privilege API Key
 
 In the [Homey Web App](https://my.homey.app), open **Settings → API Keys**, choose **New API Key**, give the key a name
-such as `Smart Panel`, and grant:
+such as `Smart Panel`, and grant all four permissions:
 
 | Permission              | Why Smart Panel needs it                                   |
 | ----------------------- | ---------------------------------------------------------- |
@@ -54,9 +60,10 @@ such as `Smart Panel`, and grant:
 | `homey.device.readonly` | Discover devices, read capabilities, and synchronize state |
 | `homey.device.control`  | Send commands to supported writable capabilities           |
 
-Omit `homey.device.control` for a read-only display. Do not grant device-management, pairing, app, Flow, user, or
-administrator permissions. Smart Panel's production integration has no upstream create, rename, move, or delete
-operation.
+`homey.device.control` is currently mandatory because adopted writable mappings remain visible as controls in Smart
+Panel. A scope-aware read-only presentation is not implemented, so omitting this permission would leave visible commands
+that fail authorization. Do not grant device-management, pairing, app, Flow, user, or administrator permissions. Smart
+Panel's integration has no upstream create, rename, move, or delete operation.
 
 Create the key, copy it immediately, and store a recovery copy in your password manager. Homey displays the key only
 once. You can revoke it later from the same **API Keys** page. See Homey's
@@ -168,8 +175,9 @@ test. The integration avoids rapid reconnect attempts after an authentication fa
 
 ### Authorization failed
 
-Review the four permissions above. Read-only operation needs the three `readonly` permissions; device control also
-needs `homey.device.control`. Do not solve this by granting broad device-management or administrator access.
+Review all four required permissions above. The current UI does not downgrade writable mappings when
+`homey.device.control` is absent. Do not solve authorization failures by granting broad device-management or
+administrator access.
 
 ### Timeout or Homey unavailable
 
@@ -192,6 +200,7 @@ future mapping. A previously adopted device that disappeared upstream remains in
 
 ## Current Limitations
 
+- Experimental status while the required live compatibility matrix remains incomplete.
 - Local Homey Pro/SHS connections only; Homey Cloud/OAuth is a later phase.
 - Manual Homey URL configuration; no automatic server discovery.
 - No pairing, commissioning, renaming, zone moves, removal, app, Flow, firmware, backup, or user administration in

@@ -43,23 +43,13 @@ known secret, private-address, email, identifier, and private-term shapes before
 
 1. Create a dedicated read-only API key with `homey.system.readonly`, `homey.zone.readonly`, and
    `homey.device.readonly`. Do not use a household administrator key.
-2. From `apps/backend`, enter the live values interactively so the key does not appear in shell history:
+2. From `apps/backend`, follow the interactive read-only capture commands in the repository's Homey compatibility
+   document. Enter the URL, exact expected host, API key, and comma-separated private-term defense list without placing
+   the key in shell history, then run `pnpm run homey:probe`. That document is the source of truth for environment
+   variable names, validation rules, and optional bounds.
 
-   ```bash
-   read -r FB_HOMEY_SHS_URL
-   read -r FB_HOMEY_SHS_EXPECTED_HOST
-   read -r -s FB_HOMEY_SHS_API_KEY
-   read -r FB_HOMEY_SHS_PRIVATE_TERMS
-   export FB_HOMEY_SHS_URL FB_HOMEY_SHS_EXPECTED_HOST FB_HOMEY_SHS_API_KEY FB_HOMEY_SHS_PRIVATE_TERMS
-   pnpm run homey:probe
-   ```
-
-   `FB_HOMEY_SHS_EXPECTED_HOST` must exactly match the URL host. `FB_HOMEY_SHS_PRIVATE_TERMS` is a comma-separated
-   defense-in-depth list of household names or other strings that must never survive sanitization. See
-   `docs/homey-shs-compatibility.md` for the complete probe contract and optional bounds.
-
-3. Record the Homey/SHS version, deployment image digest, network topology, ports, and test date in
-   `docs/homey-shs-compatibility.md`. Never record the API key, private host, private addresses, or household names.
+3. Record the Homey/SHS version, deployment image digest, network topology, ports, and test date in the same compatibility
+   document. Never record the API key, private host, private addresses, or household names.
 4. Inspect the generated capture under `test/.homey-shs-captures/`. Review every key and value even though the probe
    passed. The full capture remains ignored and local; never add it to Git.
 5. Promote only the smallest representative subset:
@@ -74,12 +64,8 @@ known secret, private-address, email, identifier, and private-term shapes before
    and the complete Git diff. Promotion must not turn an unobserved capability into live evidence. Use a separately
    versioned, explicitly synthetic published-protocol fixture when a contract needs coverage but no physical device was
    observed.
-7. Run `pnpm run homey:security-gate` before committing. Unset every live variable afterward:
-
-   ```bash
-   unset FB_HOMEY_SHS_URL FB_HOMEY_SHS_EXPECTED_HOST FB_HOMEY_SHS_API_KEY FB_HOMEY_SHS_PRIVATE_TERMS
-   unset FB_HOMEY_SHS_TIMEOUT_MS FB_HOMEY_SHS_CAPTURE_DIR
-   ```
+7. Run `pnpm run homey:security-gate` before committing. Unset every live Homey probe variable listed in the
+   compatibility document afterward.
 
 If any command reports a possible secret or private value, stop. Expand the sanitizer/private-term coverage and produce
 a new capture; never edit a leaked value out of a capture and treat the remainder as trusted.
