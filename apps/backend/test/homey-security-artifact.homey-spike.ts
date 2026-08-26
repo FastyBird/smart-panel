@@ -1294,24 +1294,70 @@ const compiledPropertyWriteValues = (
 					(element) => !ts.isOmittedExpression(element) && bindingNameReferences(element.name, referencedName),
 				);
 	const methodWriteValues = (call: ts.CallExpression, selectedPropertyName: string): readonly ts.Expression[] => {
-		if (!ts.isPropertyAccessExpression(call.expression) && !ts.isElementAccessExpression(call.expression)) {
+		const resolveMethodReference = (
+			expression: ts.Expression,
+			resolving = new Set<ts.Node>(),
+		): { methodName: string; receiver: ts.Expression } | undefined => {
+			if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
+				const methodName = ts.isPropertyAccessExpression(expression)
+					? expression.name.text
+					: expression.argumentExpression === undefined
+						? undefined
+						: compiledStaticPropertyExpressionName(expression.argumentExpression);
+
+				return methodName === undefined ? undefined : { methodName, receiver: expression.expression };
+			}
+
+			if (ts.isIdentifier(expression)) {
+				const binding = resolveCompiledBinding(expression);
+
+				return binding?.initializer === undefined || resolving.has(binding.declaration)
+					? undefined
+					: resolveMethodReference(binding.initializer, new Set(resolving).add(binding.declaration));
+			}
+
+			if (
+				ts.isParenthesizedExpression(expression) ||
+				ts.isAsExpression(expression) ||
+				ts.isTypeAssertionExpression(expression) ||
+				ts.isNonNullExpression(expression) ||
+				ts.isSatisfiesExpression(expression)
+			) {
+				return resolveMethodReference(expression.expression, resolving);
+			}
+
+			return undefined;
+		};
+		const invocation = resolveMethodReference(call.expression);
+
+		if (invocation === undefined) {
 			return [];
 		}
 
-		const methodName = ts.isPropertyAccessExpression(call.expression)
-			? call.expression.name.text
-			: call.expression.argumentExpression === undefined
-				? undefined
-				: compiledStaticPropertyExpressionName(call.expression.argumentExpression);
+		const detachedInvocation =
+			invocation.methodName === 'call' || invocation.methodName === 'apply'
+				? resolveMethodReference(invocation.receiver)
+				: undefined;
+		const methodName = detachedInvocation?.methodName ?? invocation.methodName;
+		const methodReceiver = detachedInvocation?.receiver ?? invocation.receiver;
+		const effectiveReceiver = detachedInvocation === undefined ? invocation.receiver : call.arguments[0];
+		const effectiveArguments =
+			detachedInvocation === undefined
+				? call.arguments
+				: invocation.methodName === 'call'
+					? call.arguments.slice(1)
+					: call.arguments[1] === undefined
+						? []
+						: expandMutationSources([ts.factory.createSpreadElement(call.arguments[1])]);
 
 		if (
-			methodName === undefined ||
-			!sameReceiverPath(resolveCompiledReceiverPath(call.expression.expression), targetPath)
+			effectiveReceiver === undefined ||
+			!sameReceiverPath(resolveCompiledReceiverPath(effectiveReceiver), targetPath)
 		) {
 			return [];
 		}
 
-		return resolveReceiverMethods(call.expression.expression, methodName).flatMap(({ body, parameters }) => {
+		return resolveReceiverMethods(methodReceiver, methodName).flatMap(({ body, parameters }) => {
 			const methodValues: ts.Expression[] = [];
 			const visitMethod = (node: ts.Node): void => {
 				if (
@@ -1342,8 +1388,8 @@ const compiledPropertyWriteValues = (
 
 						methodValues.push(
 							...(parameter.dotDotDotToken === undefined
-								? call.arguments.slice(index, index + 1)
-								: call.arguments.slice(index)),
+								? effectiveArguments.slice(index, index + 1)
+								: effectiveArguments.slice(index)),
 						);
 					});
 				}
@@ -1355,6 +1401,31 @@ const compiledPropertyWriteValues = (
 
 			return methodValues;
 		});
+	};
+	const arrayMutationValues = (call: ts.CallExpression, selectedPropertyName: string): readonly ts.Expression[] => {
+		if (
+			!/^\d+$/.test(selectedPropertyName) ||
+			(!ts.isPropertyAccessExpression(call.expression) && !ts.isElementAccessExpression(call.expression)) ||
+			!sameReceiverPath(resolveCompiledReceiverPath(call.expression.expression), targetPath)
+		) {
+			return [];
+		}
+
+		const methodName = ts.isPropertyAccessExpression(call.expression)
+			? call.expression.name.text
+			: call.expression.argumentExpression === undefined
+				? undefined
+				: compiledStaticPropertyExpressionName(call.expression.argumentExpression);
+
+		if (methodName === 'push' || methodName === 'unshift') {
+			return call.arguments;
+		}
+
+		if (methodName === 'splice') {
+			return call.arguments.slice(2);
+		}
+
+		return methodName === 'fill' ? call.arguments.slice(0, 1) : [];
 	};
 
 	const visit = (node: ts.Node): void => {
@@ -1385,6 +1456,7 @@ const compiledPropertyWriteValues = (
 			const mutationTarget = resolveCompiledReceiverPath(node.arguments[0]);
 
 			values.push(...methodWriteValues(node, propertyName));
+			values.push(...arrayMutationValues(node, propertyName));
 
 			if (sameReceiverPath(mutationTarget, targetPath)) {
 				if (helperName === 'Object.assign') {
@@ -3090,6 +3162,15 @@ const containsUnsafeCompiledAlias = (
 							return (
 								containsUnsafeCompiledLiteral(property.initializer, safeStrings) ||
 								inspect(property.initializer, nestedResolving)
+							);
+						}
+
+						if (ts.isPropertyAssignment(property) && compiledPropertyName(property.name) === '__proto__') {
+							return inspectProperty(
+								property.initializer,
+								nestedResolving,
+								selectedPropertyName,
+								nestedResolvingProperties,
 							);
 						}
 
@@ -6237,6 +6318,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const source = { value: '', set(value) { this.value = value; } }; const set = source.set; set.call(source, 'opaque-secret'); const apiKey = source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const source = { value: '' }; const alias = source; alias.value = 'opaque-secret'; const apiKey = source.value;",
 				true,
 			),
@@ -6526,6 +6614,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const apiKey = ({ __proto__: { value: 'opaque-secret' } }).value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const apiKey = Object.getOwnPropertyDescriptor({ value: 'opaque-secret' }, 'value').value;",
 				true,
 			),
@@ -6620,6 +6715,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const apiKey = [].concat([{ value: 'opaque-secret' }])[0].value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = []; source.push('opaque-secret'); const apiKey = source[0];",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
