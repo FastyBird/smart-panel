@@ -4768,6 +4768,50 @@ const containsCompiledSecret = (text: string): boolean => {
 
 				found = callbacks.some((callback) => secretCallArguments(resolveCallParameterSets(callback), settledValues));
 			}
+
+			if (!found && invocationReceiver !== undefined) {
+				const collectionCallbackMethods = new Set([
+					'every',
+					'filter',
+					'find',
+					'findIndex',
+					'findLast',
+					'findLastIndex',
+					'flatMap',
+					'forEach',
+					'map',
+					'reduce',
+					'reduceRight',
+					'some',
+					'sort',
+					'toSorted',
+				]);
+				const isArrayFrom =
+					invocationPropertyName === 'from' &&
+					ts.isIdentifier(invocationReceiver) &&
+					invocationReceiver.text === 'Array';
+				const callback = isArrayFrom ? node.arguments[1] : node.arguments[0];
+				const collectionSource = isArrayFrom ? node.arguments[0] : invocationReceiver;
+
+				if (
+					callback !== undefined &&
+					collectionSource !== undefined &&
+					(isArrayFrom || collectionCallbackMethods.has(invocationPropertyName ?? ''))
+				) {
+					const callbackAcceptsSecret = resolveCallParameterSets(callback).some(({ parameters }) =>
+						parameters.some((parameter) => bindingNameContainsSecret(parameter.name)),
+					);
+					const callbackValues = [
+						collectionSource,
+						...compiledPropertyWriteValues(collectionSource, '0', node.getStart(sourceFile)),
+						...(invocationPropertyName === 'reduce' || invocationPropertyName === 'reduceRight'
+							? node.arguments.slice(1, 2)
+							: []),
+					];
+
+					found = callbackAcceptsSecret && callbackValues.some((value) => containsUnsafeCompiledValue(value));
+				}
+			}
 		} else if (ts.isNewExpression(node)) {
 			const classDeclaration = ts.isIdentifier(node.expression)
 				? resolveCompiledBinding(node.expression)?.classDeclaration
@@ -6536,6 +6580,28 @@ describe('Homey security artifact gate', () => {
 				"const stored = 'opaque-secret'; Promise.all([stored]).then(([apiKey]) => {});",
 				true,
 			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() => assertTextSafe('unsafe compiled module', "['opaque-secret'].forEach(apiKey => {});", true)).toThrow(
+			'unsafe compiled module contains a compiled secret value',
+		);
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "new Map([['x', 'opaque-secret']]).forEach(apiKey => {});", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = new Set(); source.add('opaque-secret'); source.forEach(apiKey => {});",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() => assertTextSafe('unsafe compiled module', "['opaque-secret'].some(apiKey => true);", true)).toThrow(
+			'unsafe compiled module contains a compiled secret value',
+		);
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "['safe'].reduce((apiKey) => apiKey, 'opaque-secret');", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "Array.from(['opaque-secret'], apiKey => apiKey);", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe(
