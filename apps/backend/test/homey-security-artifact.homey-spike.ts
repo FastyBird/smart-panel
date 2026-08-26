@@ -1165,6 +1165,46 @@ const compiledPropertyWriteValues = (
 				: [];
 		});
 	};
+	const expandMutationSources = (sources: readonly ts.Expression[]): readonly ts.Expression[] => {
+		const resolveSpreadSources = (
+			expression: ts.Expression,
+			resolving = new Set<ts.Node>(),
+		): readonly ts.Expression[] | undefined => {
+			if (ts.isIdentifier(expression)) {
+				const binding = resolveCompiledBinding(expression);
+
+				return binding?.initializer === undefined || resolving.has(binding.declaration)
+					? undefined
+					: resolveSpreadSources(binding.initializer, new Set(resolving).add(binding.declaration));
+			}
+
+			if (
+				ts.isParenthesizedExpression(expression) ||
+				ts.isAsExpression(expression) ||
+				ts.isTypeAssertionExpression(expression) ||
+				ts.isNonNullExpression(expression) ||
+				ts.isSatisfiesExpression(expression)
+			) {
+				return resolveSpreadSources(expression.expression, resolving);
+			}
+
+			if (!ts.isArrayLiteralExpression(expression)) {
+				return undefined;
+			}
+
+			return expression.elements.flatMap((element): readonly ts.Expression[] => {
+				if (ts.isSpreadElement(element)) {
+					return resolveSpreadSources(element.expression, resolving) ?? [element.expression];
+				}
+
+				return ts.isExpression(element) ? [element] : [];
+			});
+		};
+
+		return sources.flatMap((source): readonly ts.Expression[] =>
+			ts.isSpreadElement(source) ? (resolveSpreadSources(source.expression) ?? [source.expression]) : [source],
+		);
+	};
 	const resolveReceiverMethods = (
 		receiver: ts.Expression,
 		methodName: string,
@@ -1348,7 +1388,7 @@ const compiledPropertyWriteValues = (
 
 			if (sameReceiverPath(mutationTarget, targetPath)) {
 				if (helperName === 'Object.assign') {
-					for (const source of node.arguments.slice(1)) {
+					for (const source of expandMutationSources(node.arguments.slice(1))) {
 						const sourceValues = mutationPropertyValues(source, propertyName);
 
 						values.push(...(sourceValues.length === 0 ? [source] : sourceValues));
@@ -3600,7 +3640,7 @@ const containsCompiledSecret = (text: string): boolean => {
 	const resolveCallParameterSets = (
 		callee: ts.Expression,
 		resolving = new Set<ts.Node>(),
-	): readonly (readonly ts.ParameterDeclaration[])[] => {
+	): readonly { boundArguments: readonly ts.Expression[]; parameters: readonly ts.ParameterDeclaration[] }[] => {
 		if (ts.isIdentifier(callee)) {
 			return resolveCompiledBindings(callee, callee.getStart(sourceFile)).flatMap((binding) => {
 				if (resolving.has(binding.declaration)) {
@@ -3608,7 +3648,7 @@ const containsCompiledSecret = (text: string): boolean => {
 				}
 
 				if (binding.callable !== undefined) {
-					return [binding.callable.parameters];
+					return [{ boundArguments: [], parameters: binding.callable.parameters }];
 				}
 
 				const initializer = binding.initializer;
@@ -3622,7 +3662,25 @@ const containsCompiledSecret = (text: string): boolean => {
 		}
 
 		if (ts.isArrowFunction(callee) || ts.isFunctionExpression(callee)) {
-			return [callee.parameters];
+			return [{ boundArguments: [], parameters: callee.parameters }];
+		}
+
+		if (
+			ts.isCallExpression(callee) &&
+			(ts.isPropertyAccessExpression(callee.expression) || ts.isElementAccessExpression(callee.expression))
+		) {
+			const invocationPropertyName = ts.isPropertyAccessExpression(callee.expression)
+				? callee.expression.name.text
+				: callee.expression.argumentExpression === undefined
+					? undefined
+					: compiledStaticPropertyExpressionName(callee.expression.argumentExpression);
+
+			if (invocationPropertyName === 'bind') {
+				return resolveCallParameterSets(callee.expression.expression, resolving).map((resolved) => ({
+					boundArguments: [...resolved.boundArguments, ...callee.arguments.slice(1)],
+					parameters: resolved.parameters,
+				}));
+			}
 		}
 
 		if (
@@ -3638,7 +3696,10 @@ const containsCompiledSecret = (text: string): boolean => {
 		return [];
 	};
 	const secretCallArguments = (
-		parameterSets: readonly (readonly ts.ParameterDeclaration[])[],
+		parameterSets: readonly {
+			boundArguments: readonly ts.Expression[];
+			parameters: readonly ts.ParameterDeclaration[];
+		}[],
 		arguments_: readonly ts.Expression[],
 	): boolean => {
 		const resolveSpreadElements = (
@@ -3675,24 +3736,30 @@ const containsCompiledSecret = (text: string): boolean => {
 				return ts.isExpression(element) ? [element] : [];
 			});
 		};
-		const expandedArguments = arguments_.flatMap((argument): readonly ts.Expression[] =>
-			ts.isSpreadElement(argument) ? (resolveSpreadElements(argument.expression) ?? [argument.expression]) : [argument],
-		);
+		const expandArguments = (values: readonly ts.Expression[]): readonly ts.Expression[] =>
+			values.flatMap((argument): readonly ts.Expression[] =>
+				ts.isSpreadElement(argument)
+					? (resolveSpreadElements(argument.expression) ?? [argument.expression])
+					: [argument],
+			);
+		const expandedArguments = expandArguments(arguments_);
 
-		return parameterSets.some((parameters) =>
-			parameters.some((parameter, index) => {
+		return parameterSets.some(({ boundArguments, parameters }) => {
+			const effectiveArguments = [...expandArguments(boundArguments), ...expandedArguments];
+
+			return parameters.some((parameter, index) => {
 				if (!bindingNameContainsSecret(parameter.name)) {
 					return false;
 				}
 
 				const parameterArguments =
 					parameter.dotDotDotToken === undefined
-						? expandedArguments.slice(index, index + 1)
-						: expandedArguments.slice(index);
+						? effectiveArguments.slice(index, index + 1)
+						: effectiveArguments.slice(index);
 
 				return parameterArguments.some((argument) => containsUnsafeCompiledValue(argument));
-			}),
-		);
+			});
+		});
 	};
 	const visit = (node: ts.Node): void => {
 		if (found) {
@@ -3758,10 +3825,23 @@ const containsCompiledSecret = (text: string): boolean => {
 				node.propertyName === undefined ? undefined : compiledPropertyName(node.propertyName),
 				ts.isIdentifier(node.name) ? node.name.text : undefined,
 			];
+			const selectedPropertyName =
+				node.propertyName === undefined
+					? ts.isIdentifier(node.name)
+						? node.name.text
+						: undefined
+					: compiledPropertyName(node.propertyName);
+			const bindingValues = compiledBindingValues(node);
 
 			found =
 				names.some((name) => isCompiledSecretName(name)) &&
-				compiledBindingValues(node).some((value) => containsUnsafeCompiledValue(value));
+				(bindingValues.some((value) => containsUnsafeCompiledValue(value)) ||
+					(selectedPropertyName !== undefined &&
+						bindingValues.some((value) =>
+							compiledPropertyWriteValues(value, selectedPropertyName, node.getStart(sourceFile)).some((writeValue) =>
+								containsUnsafeCompiledValue(writeValue),
+							),
+						)));
 		} else if (ts.isCallExpression(node)) {
 			const invocationPropertyName =
 				ts.isPropertyAccessExpression(node.expression) || ts.isElementAccessExpression(node.expression)
@@ -3772,12 +3852,14 @@ const containsCompiledSecret = (text: string): boolean => {
 							: compiledStaticPropertyExpressionName(node.expression.argumentExpression)
 					: undefined;
 			const invokedCallee =
-				(invocationPropertyName === 'call' || invocationPropertyName === 'apply') &&
+				(invocationPropertyName === 'call' ||
+					invocationPropertyName === 'apply' ||
+					invocationPropertyName === 'bind') &&
 				(ts.isPropertyAccessExpression(node.expression) || ts.isElementAccessExpression(node.expression))
 					? node.expression.expression
 					: node.expression;
 			const invokedArguments: readonly ts.Expression[] =
-				invocationPropertyName === 'call'
+				invocationPropertyName === 'call' || invocationPropertyName === 'bind'
 					? node.arguments.slice(1)
 					: invocationPropertyName === 'apply' && node.arguments[1] !== undefined
 						? [ts.factory.createSpreadElement(node.arguments[1])]
@@ -3792,7 +3874,9 @@ const containsCompiledSecret = (text: string): boolean => {
 					: undefined;
 			const constructor = classDeclaration?.members.find(ts.isConstructorDeclaration);
 
-			found = constructor !== undefined && secretCallArguments([constructor.parameters], node.arguments ?? []);
+			found =
+				constructor !== undefined &&
+				secretCallArguments([{ boundArguments: [], parameters: constructor.parameters }], node.arguments ?? []);
 		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
 			const name = compiledAssignedPropertyName(node.left);
 
@@ -5500,6 +5584,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"function connect(apiKey) {} const bound = connect.bind(null, 'opaque-secret'); bound();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const connect = ({ apiKey }) => {}; connect({ apiKey: 'opaque-secret' });",
 				true,
 			),
@@ -5602,6 +5693,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const source = { value: '' }; source.value = 'opaque-secret'; const { value: apiKey } = source;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const source = { value: '' }; source[key] = 'opaque-secret'; const apiKey = source.value;",
 				true,
 			),
@@ -5610,6 +5708,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const source = { value: '' }; Object.assign(source, { value: 'opaque-secret' }); const apiKey = source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = {}; Object.assign(source, ...[{ value: 'opaque-secret' }]); const apiKey = source.value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
