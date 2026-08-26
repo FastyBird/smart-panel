@@ -482,6 +482,10 @@ export const isHomeyIdentifierMapKey = (key: string): boolean => isIdentifierMap
 
 export const isHomeyEndpointKey = (key: string): boolean => ENDPOINT_KEY_PATTERN.test(key);
 
+export const isHomeyIconKey = (key: string): boolean => DEVICE_ICON_KEY_PATTERN.test(key);
+
+export const isHomeyIsoTimestamp = (value: string): boolean => ISO_TIMESTAMP_PATTERN.test(value);
+
 export const isHomeyIdentifierKey = (key: string): boolean => IDENTIFIER_KEY_PATTERN.test(key);
 
 export const isHomeyReferenceKey = (key: string): boolean => REFERENCE_KEY_PATTERN.test(key);

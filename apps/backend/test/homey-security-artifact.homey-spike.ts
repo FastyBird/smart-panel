@@ -9,8 +9,10 @@ import {
 	isHomeyAddressKey,
 	isHomeyEndpointKey,
 	isHomeyGeneratedPseudonym,
+	isHomeyIconKey,
 	isHomeyIdentifierKey,
 	isHomeyIdentifierMapKey,
+	isHomeyIsoTimestamp,
 	isHomeyPersonalKey,
 	isHomeyReferenceArrayKey,
 	isHomeyReferenceKey,
@@ -298,15 +300,18 @@ const containsUnsafeCompiledLiteral = (
 	}
 
 	if (ts.isArrayLiteralExpression(node)) {
-		return node.elements.some(
-			(element) => ts.isExpression(element) && containsUnsafeCompiledLiteral(element, safeStrings),
+		return node.elements.some((element) =>
+			ts.isSpreadElement(element)
+				? containsUnsafeCompiledLiteral(element.expression, safeStrings)
+				: ts.isExpression(element) && containsUnsafeCompiledLiteral(element, safeStrings),
 		);
 	}
 
 	if (ts.isObjectLiteralExpression(node)) {
 		return node.properties.some(
 			(property) =>
-				ts.isPropertyAssignment(property) && containsUnsafeCompiledLiteral(property.initializer, safeStrings),
+				(ts.isPropertyAssignment(property) && containsUnsafeCompiledLiteral(property.initializer, safeStrings)) ||
+				(ts.isSpreadAssignment(property) && containsUnsafeCompiledLiteral(property.expression, safeStrings)),
 		);
 	}
 
@@ -903,13 +908,30 @@ const isSafeTimestampValue = (value: unknown): boolean =>
 	value === FIXTURE_TIMESTAMP ||
 	(typeof value === 'string' && PUBLIC_FIXTURE_DATES.has(value));
 
+const isSafeIconValue = (value: unknown): boolean =>
+	value === null || value === 0 || value === false || value === '[~2~]';
+
+const containsStructuredIcon = (value: unknown): boolean => {
+	if (Array.isArray(value)) {
+		return value.some((entry) => containsStructuredIcon(entry));
+	}
+
+	if (value === null || typeof value !== 'object') {
+		return false;
+	}
+
+	return Object.entries(value as JsonRecord).some(
+		([key, child]) => (isHomeyIconKey(key) && !isSafeIconValue(child)) || containsStructuredIcon(child),
+	);
+};
+
 const containsStructuredTimestamp = (value: unknown): boolean => {
 	if (Array.isArray(value)) {
 		return value.some((entry) => containsStructuredTimestamp(entry));
 	}
 
 	if (value === null || typeof value !== 'object') {
-		return false;
+		return typeof value === 'string' && isHomeyIsoTimestamp(value) && !isSafeTimestampValue(value);
 	}
 
 	return Object.entries(value as JsonRecord).some(
@@ -1043,9 +1065,15 @@ const containsLooseIdentifierAssignment = (text: string): boolean =>
 const containsLooseTimestampAssignment = (text: string): boolean =>
 	loosePropertyAssignments(text).some(
 		([key, rawValue]) =>
-			isHomeyTimestampKey(key) &&
-			!['0', 'false', 'null', FIXTURE_TIMESTAMP].includes(rawValue) &&
-			!PUBLIC_FIXTURE_DATES.has(rawValue),
+			(isHomeyTimestampKey(key) &&
+				!['0', 'false', 'null', FIXTURE_TIMESTAMP].includes(rawValue) &&
+				!PUBLIC_FIXTURE_DATES.has(rawValue)) ||
+			(isHomeyIsoTimestamp(rawValue) && !isSafeTimestampValue(rawValue)),
+	);
+
+const containsLooseIconAssignment = (text: string): boolean =>
+	loosePropertyAssignments(text).some(
+		([key, rawValue]) => isHomeyIconKey(key) && !['0', '[~2~]', 'false', 'null'].includes(rawValue),
 	);
 
 const containsStructuredUrl = (value: unknown): boolean => {
@@ -1144,6 +1172,13 @@ const assertFixtureTextSafe = (
 
 	if (containsTimestamp) {
 		throw new Error(`${label} contains a structured timestamp value`);
+	}
+
+	const containsIcon =
+		structuredValue === undefined ? containsLooseIconAssignment(text) : containsStructuredIcon(structuredValue);
+
+	if (containsIcon) {
+		throw new Error(`${label} contains a structured icon value`);
 	}
 
 	const containsSecret =
@@ -1464,6 +1499,12 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertFixtureTextSafe('unsafe fixture', '{"updatedAt":"2026-08-25T12:34:56.000Z"}', '.json')).toThrow(
 			'unsafe fixture contains a structured timestamp value',
 		);
+		expect(() =>
+			assertFixtureTextSafe('unsafe fixture', '{"observation":"2026-08-25T12:34:56.000Z"}', '.json'),
+		).toThrow('unsafe fixture contains a structured timestamp value');
+		expect(() => assertFixtureTextSafe('unsafe fixture', '{"icon":"custom-household-icon"}', '.json')).toThrow(
+			'unsafe fixture contains a structured icon value',
+		);
 		expect(() => assertFixtureTextSafe('unsafe fixture', 'api_key: opaque-secret-value', '.yaml')).toThrow(
 			'unsafe fixture contains a structured secret value',
 		);
@@ -1549,6 +1590,12 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const config = { api_key: 'opaque-secret' };", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const apiKey = { ...{ value: 'opaque-secret' } };", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() => assertTextSafe('unsafe compiled module', "const apiKey = [...['opaque-secret']];", true)).toThrow(
+			'unsafe compiled module contains a compiled secret value',
+		);
 		expect(() => assertTextSafe('unsafe compiled module', "config.api_key = 'opaque-secret';", true)).toThrow(
 			'unsafe compiled module contains a compiled secret value',
 		);
