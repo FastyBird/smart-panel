@@ -1,0 +1,31 @@
+{
+	"metadata": {
+		"probe": "homey-shs-errors",
+		"schemaVersion": 2
+	},
+	"scenarios": {
+		"authenticationRejection": {
+			"category": "authentication",
+			"rejected": true,
+			"statusCode": 401
+		},
+		"badUrlValidation": {
+			"category": "validation",
+			"rejected": true
+		},
+		"missingScope": {
+			"allowedRequestStatusCode": 200,
+			"category": "authorization",
+			"rejected": true,
+			"statusCode": 403
+		},
+		"requestTimeout": {
+			"category": "timeout",
+			"rejected": true
+		},
+		"unavailableSimulation": {
+			"category": "unavailable",
+			"rejected": true
+		}
+	}
+}

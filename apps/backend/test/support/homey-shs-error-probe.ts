@@ -7,7 +7,7 @@ import { type HomeyShsProbeConfig, loadHomeyShsProbeConfig } from './homey-shs-p
 
 const DEVICE_PATH = '/api/manager/devices/device';
 const SYSTEM_PATH = '/api/manager/system/';
-const REPORT_SCHEMA_VERSION = 1;
+const REPORT_SCHEMA_VERSION = 2;
 const MAX_LOCAL_SIMULATION_TIMEOUT_MS = 250;
 const LOCAL_REFUSAL_TIMEOUT_MS = 250;
 
@@ -22,11 +22,11 @@ export interface HomeyShsErrorProbeConfig extends HomeyShsProbeConfig {
 export interface HomeyShsErrorReport {
 	metadata: {
 		probe: 'homey-shs-errors';
-		schemaVersion: 1;
+		schemaVersion: 2;
 	};
 	scenarios: {
-		badUrl: { category: 'validation'; rejected: true };
-		invalidKey: { category: 'authentication'; rejected: true; statusCode: 401 | 403 };
+		badUrlValidation: { category: 'validation'; rejected: true };
+		authenticationRejection: { category: 'authentication'; rejected: true; statusCode: 401 | 403 };
 		missingScope: {
 			allowedRequestStatusCode: number;
 			category: 'authorization';
@@ -34,7 +34,7 @@ export interface HomeyShsErrorReport {
 			statusCode: 403;
 		};
 		requestTimeout: { category: 'timeout'; rejected: true };
-		unavailableHost: { category: 'unavailable'; rejected: true };
+		unavailableSimulation: { category: 'unavailable'; rejected: true };
 	};
 }
 
@@ -105,7 +105,7 @@ const requireResponse = (result: Response | ClassifiedFailure, label: string): R
 	throw new Error(`Homey ${label} request failed as ${result.category}`);
 };
 
-const verifyBadUrlValidation = (): HomeyShsErrorReport['scenarios']['badUrl'] => {
+const verifyBadUrlValidation = (): HomeyShsErrorReport['scenarios']['badUrlValidation'] => {
 	try {
 		loadHomeyShsProbeConfig({
 			FB_HOMEY_SHS_API_KEY: 'synthetic-invalid-url-key',
@@ -124,7 +124,7 @@ const verifyBadUrlValidation = (): HomeyShsErrorReport['scenarios']['badUrl'] =>
 const verifyInvalidKey = async (
 	config: HomeyShsErrorProbeConfig,
 	fetchImplementation: HomeyShsProbeFetch,
-): Promise<HomeyShsErrorReport['scenarios']['invalidKey']> => {
+): Promise<HomeyShsErrorReport['scenarios']['authenticationRejection']> => {
 	const invalidKey = `invalid-homey-probe-${randomBytes(24).toString('hex')}`;
 	const response = requireResponse(
 		await request(new URL(SYSTEM_PATH, config.origin), config.timeoutMs, fetchImplementation, invalidKey),
@@ -220,7 +220,7 @@ const close = async (server: Server): Promise<void> => {
 export const probeLocalNetworkFailures = async (
 	timeoutMs: number,
 	fetchImplementation: HomeyShsProbeFetch = fetch,
-): Promise<Pick<HomeyShsErrorReport['scenarios'], 'requestTimeout' | 'unavailableHost'>> => {
+): Promise<Pick<HomeyShsErrorReport['scenarios'], 'requestTimeout' | 'unavailableSimulation'>> => {
 	const simulationTimeoutMs = Math.min(timeoutMs, MAX_LOCAL_SIMULATION_TIMEOUT_MS);
 	const unavailableServer = createServer();
 	const unavailablePort = await listen(unavailableServer);
@@ -266,7 +266,7 @@ export const probeLocalNetworkFailures = async (
 
 	return {
 		requestTimeout: { category: 'timeout', rejected: true },
-		unavailableHost: { category: 'unavailable', rejected: true },
+		unavailableSimulation: { category: 'unavailable', rejected: true },
 	};
 };
 
@@ -280,8 +280,8 @@ export const probeHomeyShsErrors = async (
 	return {
 		metadata: { probe: 'homey-shs-errors', schemaVersion: REPORT_SCHEMA_VERSION },
 		scenarios: {
-			badUrl: verifyBadUrlValidation(),
-			invalidKey: await verifyInvalidKey(config, fetchImplementation),
+			badUrlValidation: verifyBadUrlValidation(),
+			authenticationRejection: await verifyInvalidKey(config, fetchImplementation),
 			missingScope: await verifyMissingScope(config, fetchImplementation),
 			...localFailures,
 		},

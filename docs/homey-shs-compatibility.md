@@ -2,7 +2,7 @@
 
 **Status:** In progress; safe inventory, SDK session/cleanup, SHS restart and network recovery, and stable
 restart-spanning mDNS evidence captured; automatic mDNS discovery remains deferred, and live capability-event, write,
-error-matrix, lifecycle, and credential-rotation evidence is pending
+remaining permission-scope, lifecycle, and credential-rotation evidence is pending
 
 **Started:** 2026-08-12
 
@@ -26,7 +26,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read             | Add allowlisted write and read-back evidence                         |
 | Socket.IO events and reconnect                        | SHS restart and network recovery passed                  | Capture capability/availability event-flow continuity                |
 | Allowlisted capability write                          | Hard-gated probe implemented, disabled                   | Use only the designated harmless test capability                     |
-| Error classification                                  | SDK invalid key returned `401`; matrix pending           | Verify missing-scope, bad-URL, unavailable, and timeout behavior     |
+| Error classification                                  | Five-scenario slice passed                               | Test keys missing zone and device permissions                        |
 | API-key revocation and replacement                    | Operator-controlled probe ready                          | Revoke only a dedicated test key during the gated observation window |
 | Disposable-device lifecycle                           | Guarded operator probe ready                             | Use only the separately gated virtual/test device                    |
 | mDNS discovery                                        | Stable across one controlled restart; manual URL remains | Design safe identity verification before reconsidering discovery     |
@@ -474,6 +474,12 @@ keys anywhere except the configured SHS origin. Every request uses `GET`, blocks
 URLs, addresses, keys, and private terms are never written. A report is created only after all five scenarios pass,
 under the same ignored capture root and restrictive directory/file modes as the inventory and realtime probes.
 
+The 2026-08-26 combined live/local run passed all five classifications. Against SHS `13.4.1`, a generated invalid key
+returned `401`; a device-read-only key first completed an allowed inventory request with `200` and then received `403`
+for the forbidden system-information request. The shared validator rejected the non-HTTP candidate, while probe-owned
+loopback servers produced the unavailable and timeout categories. The reviewed report is committed as
+`__fixtures__/evidence/2026-08-26-shs-13.4.1-error-matrix.json`. It does not prove API-key revocation or replacement.
+
 ## SDK artifact review
 
 Artifact snapshot inspected on 2026-08-12 and rechecked on 2026-08-25:
@@ -528,10 +534,11 @@ Fill this matrix using synthetic aliases only.
 | ----------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | HTTP `4859` ping and authenticated reads  | Pass                                | Read-only system, zone, and device requests completed without redirects                                                                              |
 | HTTPS `4860` ping and authenticated reads | Pending                             |                                                                                                                                                      |
-| Invalid key                               | Partial pass                        | The SDK local factory rejected a generated invalid key with HTTP `401`; revocation and the restricted-scope matrix remain pending                    |
-| Missing system/zone/device scope          | Pending                             |                                                                                                                                                      |
-| Bad URL and unavailable host              | Pending                             |                                                                                                                                                      |
-| Request timeout                           | Pending                             |                                                                                                                                                      |
+| Invalid key                               | Pass                                | Both the SDK session probe and error-matrix probe rejected independently generated invalid keys with HTTP `401`                                      |
+| Missing system scope on device-only key   | Pass                                | The restricted key completed the allowed device inventory read with `200`, then the system-information read returned `403`                           |
+| Missing zone and device scopes            | Pending                             | Exercise independently valid keys that omit each permission before closing the broad missing-scope matrix                                            |
+| Bad URL and unavailable host              | Pass                                | Shared validation rejected a non-HTTP URL; a probe-owned closed loopback port produced the unavailable category                                      |
+| Request timeout                           | Pass                                | A probe-owned loopback server that withheld its response produced the timeout category within the local simulation cap                               |
 | Complete inventory and individual read    | Pass                                | Complete inventory captured: 118 devices and 16 zones; the selected individual-device response matched its pseudonymized inventory identity          |
 | Suffixed capability IDs                   | Pass in inventory and explicit read | 1,142 capability entries, including 170 suffixed entries; 55 devices repeat a base ID; an explicit suffixed capability GET returned a numeric scalar |
 | Socket.IO connect and subscribe           | Pass                                | SDK creation, socket connect, manager subscribe/unsubscribe, socket disconnect, disconnect resolution, and SDK destruction completed in strict order |

@@ -637,6 +637,12 @@ report proved disconnect, nine reconnect attempts during that finite interruptio
 a fresh inventory read, and complete cleanup. It does not close the event-flow criterion because no capability or
 availability event was observed across the interruption.
 
+The 2026-08-26 SHS `13.4.1` error probe recorded a non-mutating five-scenario slice: generated invalid-key
+authentication, a device-read-only key's missing system scope, shared bad-URL validation, and probe-owned loopback
+unavailable/timeout simulations all produced their expected sanitized categories. The broad task remains open until
+independently valid keys missing zone and device permissions are exercised. This also closes only the insufficiently
+scoped sub-slice of the API-key lifecycle item above; revocation and replacement remain open.
+
 ### Task 6.3: Validate performance and security
 
 - [x] Measure inventory/normalization with up to 250 fixture-generated devices and on supported panel/backend hardware where available.
