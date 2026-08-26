@@ -618,7 +618,7 @@ representative lifecycle failure paths.
 
 - [ ] Fresh startup with SHS online.
 - [ ] Startup with SHS offline, then recovery.
-- [x] SHS restart during event flow.
+- [ ] SHS restart during event flow.
 - [ ] Network interruption/restoration.
 - [ ] API key revoked, replaced, and insufficiently scoped.
 - [ ] Separately gated add/rename/zone-move/unavailable/removal lifecycle tests on the allowlisted disposable device only, followed by cleanup.
@@ -626,6 +626,10 @@ representative lifecycle failure paths.
 - [ ] Allowlisted Smart Panel control for every writable MVP mapping family available.
 - [ ] Burst updates and concurrent commands.
 - [ ] Plugin disable/enable and backend shutdown with no leaked connections/timers.
+
+The 2026-08-26 SHS `13.4.1` restart probe closed the transport/session recovery slice: it observed disconnect,
+reconnect, manager resubscription, a fresh inventory read, and complete cleanup. This does not close the event-flow
+criterion above because no capability or availability event was observed before and after that restart.
 
 ### Task 6.3: Validate performance and security
 
