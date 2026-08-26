@@ -2438,6 +2438,37 @@ const containsUnsafeCompiledAlias = (
 						}
 
 						const nestedValues = new Set(resolvingValues).add(reference);
+						const constructorValueFound = declaration.members.some((member) => {
+							if (!ts.isConstructorDeclaration(member) || member.body === undefined) {
+								return false;
+							}
+
+							let found = false;
+							const visitConstructorWrite = (child: ts.Node): void => {
+								if (
+									ts.isBinaryExpression(child) &&
+									isAssignmentOperatorKind(child.operatorToken.kind) &&
+									compiledAssignedPropertyName(child.left) === memberName &&
+									(ts.isPropertyAccessExpression(child.left) || ts.isElementAccessExpression(child.left)) &&
+									child.left.expression.kind === ts.SyntaxKind.ThisKeyword
+								) {
+									found = withCallArguments(
+										member.parameters,
+										receiver.arguments ?? [],
+										() =>
+											containsUnsafeCompiledLiteral(child.right, safeStrings) || inspect(child.right, nestedResolving),
+									);
+								}
+
+								if (!found) {
+									ts.forEachChild(child, visitConstructorWrite);
+								}
+							};
+
+							visitConstructorWrite(member.body);
+
+							return found;
+						});
 						const ownValueFound = declaration.members.some((member) => {
 							if (!('name' in member)) {
 								return false;
@@ -2468,6 +2499,7 @@ const containsUnsafeCompiledAlias = (
 						});
 
 						return (
+							constructorValueFound ||
 							ownValueFound ||
 							(declaration.heritageClauses
 								?.filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
@@ -2597,13 +2629,23 @@ const containsUnsafeCompiledAlias = (
 							}
 
 							let returnsReceiverProperty = false;
+							const collectReceiverProperties = (child: ts.Node): void => {
+								if (ts.isExpression(child)) {
+									if (compiledThisPropertyName(child) !== undefined) {
+										returnsReceiverProperty = true;
+									} else if (
+										ts.isElementAccessExpression(child) &&
+										child.expression.kind === ts.SyntaxKind.ThisKeyword
+									) {
+										returnsReceiverProperty = true;
+									}
+								}
+
+								ts.forEachChild(child, collectReceiverProperties);
+							};
 							const visitReturn = (child: ts.Node): void => {
-								if (
-									ts.isReturnStatement(child) &&
-									child.expression !== undefined &&
-									compiledThisPropertyName(child.expression) !== undefined
-								) {
-									returnsReceiverProperty = true;
+								if (ts.isReturnStatement(child) && child.expression !== undefined) {
+									collectReceiverProperties(child.expression);
 								}
 
 								if (!returnsReceiverProperty) {
@@ -4277,6 +4319,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const source = { safe: '', stored: 'opaque-secret', fallback() { return flag ? this.safe : this.stored; } }; const apiKey = source.fallback();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const source = { fallback: () => 'opaque-secret' }; const apiKey = source['fallback']();",
 				true,
 			),
@@ -4738,6 +4787,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"class Source { stored = 'opaque-secret'; fallback() { return this.stored; } } const apiKey = new Source().fallback();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const stored = 'opaque-secret'; class Source { constructor(value) { this.stored = value; } fallback() { return this.stored; } } const apiKey = new Source(stored).fallback();",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
