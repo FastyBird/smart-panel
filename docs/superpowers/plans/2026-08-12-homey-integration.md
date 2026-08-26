@@ -633,8 +633,8 @@ representative lifecycle failure paths.
 - [x] Measure capability event handoff and command-start latency against design targets.
 - [x] Confirm no full inventory call occurs per event.
 - [x] Scan config responses, logs, fixtures, snapshots, build artifacts, and generated OpenAPI examples for secrets/private data.
-- [ ] Verify all external calls have timeouts and reconnect loops have upper bounds.
-- [ ] Verify no route or service can delete/pair/rename an upstream Homey device.
+- [x] Verify all external calls have timeouts and reconnect loops have upper bounds.
+- [x] Verify no route or service can delete/pair/rename an upstream Homey device.
 
 The 2026-08-25 credential-free inventory gate generated 250 unique devices by cycling the nine immutable live raw
 fixtures, then ran the production local transformer plus all built-in device/channel/property mapping resolution. After
@@ -662,6 +662,17 @@ shapes, serialized secrets, and any configured live-test private values. It then
 performance, and security suites (129 tests) plus 37 Homey/config security suites (469 tests), including the response,
 logging, redaction, and error-sanitization coverage. Run the complete gate from `apps/backend` with
 `pnpm run homey:security-gate`; the scan reports only the artifact and violation category, never the matched value.
+
+The 2026-08-26 production-boundary audit confirmed that the exact-pinned SDK is imported only by the reviewed client
+adapter and that every promise-returning SDK operation is invoked through the adapter's outer connection-timeout
+watchdog. SDK reads and the sole allowed upstream mutation, a capability-value write, also receive the SDK-native
+`$timeout`. Configuration bounds the connection timeout to 1–60 seconds; reconnect calculation and scheduling cap every
+attempt at 30 seconds, including non-finite and very large attempt counters. `homey-production-boundary.spec.ts` locks
+the production connector, local transport, client, device, and manager type surfaces so adding a pairing, device
+creation/update/rename, or deletion operation requires an explicit security-gate change. It also enforces that no other
+production plugin file imports `homey-api`. Controllers and services depend only on the locked `HomeyConnector` surface,
+whose only upstream state mutation is `setCapabilityValue`; upstream lifecycle operations remain confined to separately
+gated compatibility probes under `test/`.
 
 ### Task 6.4: Documentation and release checklist
 
