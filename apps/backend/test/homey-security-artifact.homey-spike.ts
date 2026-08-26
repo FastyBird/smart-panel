@@ -1105,6 +1105,7 @@ const containsUnsafeCompiledAlias = (
 	resolvingAliases = new Set<ts.Node>(),
 ): boolean => {
 	const visibleThroughPosition = node.getStart(node.getSourceFile());
+	const activeParameterArguments = new Map<ts.ParameterDeclaration, ts.Expression>();
 	const resolveArrayElements = (
 		expression: ts.Expression,
 		resolving: Set<ts.Node>,
@@ -1216,6 +1217,38 @@ const containsUnsafeCompiledAlias = (
 
 		return undefined;
 	};
+	const withCallArguments = (
+		parameters: readonly ts.ParameterDeclaration[],
+		arguments_: readonly ts.Expression[],
+		callback: () => boolean,
+	): boolean => {
+		const previousArguments = new Map<ts.ParameterDeclaration, ts.Expression | undefined>();
+
+		parameters.forEach((parameter, index) => {
+			if (!ts.isIdentifier(parameter.name)) {
+				return;
+			}
+
+			const argument = arguments_[index] ?? parameter.initializer;
+
+			if (argument !== undefined) {
+				previousArguments.set(parameter, activeParameterArguments.get(parameter));
+				activeParameterArguments.set(parameter, argument);
+			}
+		});
+
+		try {
+			return callback();
+		} finally {
+			for (const [parameter, previousArgument] of previousArguments) {
+				if (previousArgument === undefined) {
+					activeParameterArguments.delete(parameter);
+				} else {
+					activeParameterArguments.set(parameter, previousArgument);
+				}
+			}
+		}
+	};
 	const inspect = (expression: ts.Expression, resolving: Set<ts.Node>): boolean => {
 		if (ts.isIdentifier(expression)) {
 			const bindings = resolveCompiledBindings(expression, visibleThroughPosition);
@@ -1230,11 +1263,19 @@ const containsUnsafeCompiledAlias = (
 				}
 
 				const nestedResolving = new Set(resolving).add(binding.declaration);
+				const parameterArgument = ts.isParameter(binding.declaration)
+					? activeParameterArguments.get(binding.declaration)
+					: undefined;
 
-				return [binding.initializer, binding.fallbackInitializer].some(
-					(initializer) =>
-						initializer !== undefined &&
-						(containsUnsafeCompiledLiteral(initializer, safeStrings) || inspect(initializer, nestedResolving)),
+				return (
+					(parameterArgument !== undefined &&
+						(containsUnsafeCompiledLiteral(parameterArgument, safeStrings) ||
+							inspect(parameterArgument, nestedResolving))) ||
+					[binding.initializer, binding.fallbackInitializer].some(
+						(initializer) =>
+							initializer !== undefined &&
+							(containsUnsafeCompiledLiteral(initializer, safeStrings) || inspect(initializer, nestedResolving)),
+					)
 				);
 			});
 		}
@@ -1555,7 +1596,11 @@ const containsUnsafeCompiledAlias = (
 				}
 
 				if (ts.isCallExpression(receiver)) {
-					const inspectReturnedProperty = (callee: ts.Expression, resolvingCalls: Set<ts.Node>): boolean => {
+					const inspectReturnedProperty = (
+						callee: ts.Expression,
+						resolvingCalls: Set<ts.Node>,
+						callArguments: readonly ts.Expression[],
+					): boolean => {
 						const inspectReturnBody = (body: ts.Block, nestedCalls: Set<ts.Node>): boolean => {
 							let found = false;
 							const visitReturn = (child: ts.Node): void => {
@@ -1584,12 +1629,17 @@ const containsUnsafeCompiledAlias = (
 								}
 
 								const nestedCalls = new Set(resolvingCalls).add(binding.declaration);
+								const callable = binding.callable;
 
 								return (
 									[binding.initializer, binding.fallbackInitializer].some(
-										(initializer) => initializer !== undefined && inspectReturnedProperty(initializer, nestedCalls),
+										(initializer) =>
+											initializer !== undefined && inspectReturnedProperty(initializer, nestedCalls, callArguments),
 									) ||
-									(binding.callable?.body !== undefined && inspectReturnBody(binding.callable.body, nestedCalls))
+									(callable?.body !== undefined &&
+										withCallArguments(callable.parameters, callArguments, () =>
+											inspectReturnBody(callable.body, nestedCalls),
+										))
 								);
 							});
 						}
@@ -1601,7 +1651,7 @@ const containsUnsafeCompiledAlias = (
 							ts.isNonNullExpression(callee) ||
 							ts.isSatisfiesExpression(callee)
 						) {
-							return inspectReturnedProperty(callee.expression, resolvingCalls);
+							return inspectReturnedProperty(callee.expression, resolvingCalls, callArguments);
 						}
 
 						if (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) {
@@ -1615,23 +1665,87 @@ const containsUnsafeCompiledAlias = (
 									? undefined
 									: resolvePropertyValue(callee.expression, calleePropertyName, resolvingCalls);
 
-							return callable !== undefined && inspectReturnedProperty(callable, resolvingCalls);
+							if (callable !== undefined && inspectReturnedProperty(callable, resolvingCalls, callArguments)) {
+								return true;
+							}
+
+							const inspectMethodProperty = (
+								methodReceiver: ts.Expression,
+								resolvingMethods: Set<ts.Node>,
+							): boolean => {
+								if (calleePropertyName === undefined) {
+									return false;
+								}
+
+								if (ts.isIdentifier(methodReceiver)) {
+									return resolveCompiledBindings(methodReceiver, visibleThroughPosition).some((binding) => {
+										if (resolvingMethods.has(binding.declaration)) {
+											return false;
+										}
+
+										const nestedMethods = new Set(resolvingMethods).add(binding.declaration);
+
+										return [binding.initializer, binding.fallbackInitializer].some(
+											(initializer) => initializer !== undefined && inspectMethodProperty(initializer, nestedMethods),
+										);
+									});
+								}
+
+								if (
+									ts.isParenthesizedExpression(methodReceiver) ||
+									ts.isAsExpression(methodReceiver) ||
+									ts.isTypeAssertionExpression(methodReceiver) ||
+									ts.isNonNullExpression(methodReceiver) ||
+									ts.isSatisfiesExpression(methodReceiver)
+								) {
+									return inspectMethodProperty(methodReceiver.expression, resolvingMethods);
+								}
+
+								if (!ts.isObjectLiteralExpression(methodReceiver)) {
+									return false;
+								}
+
+								return methodReceiver.properties.some((property) => {
+									if (
+										ts.isMethodDeclaration(property) &&
+										compiledPropertyName(property.name) === calleePropertyName &&
+										property.body !== undefined
+									) {
+										return withCallArguments(property.parameters, callArguments, () =>
+											inspectReturnBody(property.body, resolvingMethods),
+										);
+									}
+
+									return (
+										ts.isSpreadAssignment(property) && inspectMethodProperty(property.expression, resolvingMethods)
+									);
+								});
+							};
+
+							return inspectMethodProperty(callee.expression, resolvingCalls);
 						}
 
 						if (ts.isArrowFunction(callee)) {
-							return ts.isBlock(callee.body)
-								? inspectReturnBody(callee.body, resolvingCalls)
-								: inspectProperty(callee.body, resolvingCalls, selectedPropertyName, resolvingProperties);
+							return withCallArguments(callee.parameters, callArguments, () =>
+								ts.isBlock(callee.body)
+									? inspectReturnBody(callee.body, resolvingCalls)
+									: inspectProperty(callee.body, resolvingCalls, selectedPropertyName, resolvingProperties),
+							);
 						}
 
 						if (ts.isFunctionExpression(callee)) {
-							return inspectReturnBody(callee.body, resolvingCalls);
+							return withCallArguments(callee.parameters, callArguments, () =>
+								inspectReturnBody(callee.body, resolvingCalls),
+							);
 						}
 
-						return ts.isCallExpression(callee) && inspectReturnedProperty(callee.expression, resolvingCalls);
+						return (
+							ts.isCallExpression(callee) &&
+							inspectReturnedProperty(callee.expression, resolvingCalls, callee.arguments)
+						);
 					};
 
-					return inspectReturnedProperty(receiver.expression, nestedResolving);
+					return inspectReturnedProperty(receiver.expression, nestedResolving, receiver.arguments);
 				}
 
 				if (ts.isNewExpression(receiver) && ts.isIdentifier(receiver.expression)) {
@@ -1934,7 +2048,11 @@ const containsUnsafeCompiledAlias = (
 				}
 
 				if (ts.isCallExpression(receiver)) {
-					const inspectReturnedReceiver = (factory: ts.Expression, resolvingFactories: Set<ts.Node>): boolean => {
+					const inspectReturnedReceiver = (
+						factory: ts.Expression,
+						resolvingFactories: Set<ts.Node>,
+						callArguments: readonly ts.Expression[],
+					): boolean => {
 						const inspectReturnBody = (body: ts.Block, nestedFactories: Set<ts.Node>): boolean => {
 							let found = false;
 							const visitReturn = (child: ts.Node): void => {
@@ -1963,12 +2081,17 @@ const containsUnsafeCompiledAlias = (
 								}
 
 								const nestedFactories = new Set(resolvingFactories).add(binding.declaration);
+								const callable = binding.callable;
 
 								return (
 									[binding.initializer, binding.fallbackInitializer].some(
-										(initializer) => initializer !== undefined && inspectReturnedReceiver(initializer, nestedFactories),
+										(initializer) =>
+											initializer !== undefined && inspectReturnedReceiver(initializer, nestedFactories, callArguments),
 									) ||
-									(binding.callable?.body !== undefined && inspectReturnBody(binding.callable.body, nestedFactories))
+									(callable?.body !== undefined &&
+										withCallArguments(callable.parameters, callArguments, () =>
+											inspectReturnBody(callable.body, nestedFactories),
+										))
 								);
 							});
 						}
@@ -1980,23 +2103,96 @@ const containsUnsafeCompiledAlias = (
 							ts.isNonNullExpression(factory) ||
 							ts.isSatisfiesExpression(factory)
 						) {
-							return inspectReturnedReceiver(factory.expression, resolvingFactories);
+							return inspectReturnedReceiver(factory.expression, resolvingFactories, callArguments);
+						}
+
+						if (ts.isPropertyAccessExpression(factory) || ts.isElementAccessExpression(factory)) {
+							const factoryPropertyName = ts.isPropertyAccessExpression(factory)
+								? factory.name.text
+								: factory.argumentExpression === undefined
+									? undefined
+									: compiledStaticPropertyExpressionName(factory.argumentExpression);
+							const callable =
+								factoryPropertyName === undefined
+									? undefined
+									: resolvePropertyValue(factory.expression, factoryPropertyName, resolvingFactories);
+
+							if (callable !== undefined && inspectReturnedReceiver(callable, resolvingFactories, callArguments)) {
+								return true;
+							}
+
+							const inspectMethodFactory = (methodReceiver: ts.Expression, resolvingMethods: Set<ts.Node>): boolean => {
+								if (factoryPropertyName === undefined) {
+									return false;
+								}
+
+								if (ts.isIdentifier(methodReceiver)) {
+									return resolveCompiledBindings(methodReceiver, visibleThroughPosition).some((binding) => {
+										if (resolvingMethods.has(binding.declaration)) {
+											return false;
+										}
+
+										const nestedMethods = new Set(resolvingMethods).add(binding.declaration);
+
+										return [binding.initializer, binding.fallbackInitializer].some(
+											(initializer) => initializer !== undefined && inspectMethodFactory(initializer, nestedMethods),
+										);
+									});
+								}
+
+								if (
+									ts.isParenthesizedExpression(methodReceiver) ||
+									ts.isAsExpression(methodReceiver) ||
+									ts.isTypeAssertionExpression(methodReceiver) ||
+									ts.isNonNullExpression(methodReceiver) ||
+									ts.isSatisfiesExpression(methodReceiver)
+								) {
+									return inspectMethodFactory(methodReceiver.expression, resolvingMethods);
+								}
+
+								if (!ts.isObjectLiteralExpression(methodReceiver)) {
+									return false;
+								}
+
+								return methodReceiver.properties.some((property) => {
+									if (
+										ts.isMethodDeclaration(property) &&
+										compiledPropertyName(property.name) === factoryPropertyName &&
+										property.body !== undefined
+									) {
+										return withCallArguments(property.parameters, callArguments, () =>
+											inspectReturnBody(property.body, resolvingMethods),
+										);
+									}
+
+									return ts.isSpreadAssignment(property) && inspectMethodFactory(property.expression, resolvingMethods);
+								});
+							};
+
+							return inspectMethodFactory(factory.expression, resolvingFactories);
 						}
 
 						if (ts.isArrowFunction(factory)) {
-							return ts.isBlock(factory.body)
-								? inspectReturnBody(factory.body, resolvingFactories)
-								: inspectCallableProperty(factory.body, resolvingFactories);
+							return withCallArguments(factory.parameters, callArguments, () =>
+								ts.isBlock(factory.body)
+									? inspectReturnBody(factory.body, resolvingFactories)
+									: inspectCallableProperty(factory.body, resolvingFactories),
+							);
 						}
 
 						if (ts.isFunctionExpression(factory)) {
-							return inspectReturnBody(factory.body, resolvingFactories);
+							return withCallArguments(factory.parameters, callArguments, () =>
+								inspectReturnBody(factory.body, resolvingFactories),
+							);
 						}
 
-						return ts.isCallExpression(factory) && inspectReturnedReceiver(factory.expression, resolvingFactories);
+						return (
+							ts.isCallExpression(factory) &&
+							inspectReturnedReceiver(factory.expression, resolvingFactories, factory.arguments)
+						);
 					};
 
-					return inspectReturnedReceiver(receiver.expression, nestedResolving);
+					return inspectReturnedReceiver(receiver.expression, nestedResolving, receiver.arguments);
 				}
 
 				if (ts.isNewExpression(receiver) && ts.isIdentifier(receiver.expression)) {
@@ -4326,7 +4522,35 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const factory = { make() { return { value: 'opaque-secret' }; } }; const apiKey = factory.make().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"function make(value) { return { value }; } const apiKey = make('opaque-secret').value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const factory = () => ({ fallback: () => 'opaque-secret' }); const apiKey = factory().fallback();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"function make(value) { return { fallback: () => value }; } const apiKey = make('opaque-secret').fallback();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const factory = { make() { return { fallback: () => 'opaque-secret' }; } }; const apiKey = factory.make().fallback();",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
