@@ -1549,6 +1549,15 @@ const containsUnsafeCompiledAlias = (
 			return selectedValue === undefined ? [call.arguments[1]] : [selectedValue];
 		}
 
+		if (
+			['Object.freeze', 'Object.seal', 'Object.preventExtensions'].includes(helperName) &&
+			call.arguments.length >= 1
+		) {
+			const selectedValue = resolvePropertyValue(call.arguments[0], propertyName, new Set());
+
+			return selectedValue === undefined ? [call.arguments[0]] : [selectedValue];
+		}
+
 		return [];
 	};
 	const inspect = (expression: ts.Expression, resolving: Set<ts.Node>): boolean => {
@@ -5358,6 +5367,9 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = Object.create({ value: 'opaque-secret' }).value;", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const apiKey = Object.freeze({ value: 'opaque-secret' }).value;", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = (choose && { value: 'opaque-secret' }).value;", true),
