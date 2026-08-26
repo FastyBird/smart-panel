@@ -282,6 +282,21 @@ const compiledAssignedPropertyName = (expression: ts.Expression): string | undef
 	return undefined;
 };
 
+const compiledBindingValues = (binding: ts.BindingElement): readonly ts.Expression[] => {
+	const values: ts.Expression[] = binding.initializer === undefined ? [] : [binding.initializer];
+	let current: ts.Node = binding.parent;
+
+	while (ts.isObjectBindingPattern(current) || ts.isArrayBindingPattern(current) || ts.isBindingElement(current)) {
+		current = current.parent;
+	}
+
+	if (ts.isVariableDeclaration(current) && current.initializer !== undefined) {
+		values.push(current.initializer);
+	}
+
+	return values;
+};
+
 const SAFE_COMPILED_SECRET_STRINGS = new Set(['', '[~3~]']);
 const SAFE_COMPILED_ADDRESS_STRINGS = new Set(['[~0~]']);
 type SafeCompiledString = ReadonlySet<string> | ((value: string) => boolean);
@@ -761,13 +776,15 @@ const containsCompiledSecret = (text: string): boolean => {
 				isCompiledSecretName(node.name.text) &&
 				((node.initializer !== undefined && containsUnsafeCompiledValue(node.initializer)) ||
 					(node.type !== undefined && containsUnsafeCompiledType(node.type)));
-		} else if (ts.isBindingElement(node) && node.initializer !== undefined) {
+		} else if (ts.isBindingElement(node)) {
 			const names = [
 				node.propertyName === undefined ? undefined : compiledPropertyName(node.propertyName),
 				ts.isIdentifier(node.name) ? node.name.text : undefined,
 			];
 
-			found = names.some((name) => isCompiledSecretName(name)) && containsUnsafeCompiledValue(node.initializer);
+			found =
+				names.some((name) => isCompiledSecretName(name)) &&
+				compiledBindingValues(node).some((value) => containsUnsafeCompiledValue(value));
 		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
 			const name = compiledAssignedPropertyName(node.left);
 
@@ -837,13 +854,13 @@ const containsCompiledAddress = (text: string): boolean => {
 			found =
 				(node.initializer !== undefined && unsafeAddress(node.name.text, node.initializer)) ||
 				unsafeAddressType(node.name.text, node.type);
-		} else if (ts.isBindingElement(node) && node.initializer !== undefined) {
+		} else if (ts.isBindingElement(node)) {
 			const names = [
 				node.propertyName === undefined ? undefined : compiledPropertyName(node.propertyName),
 				ts.isIdentifier(node.name) ? node.name.text : undefined,
 			];
 
-			found = names.some((name) => unsafeAddress(name, node.initializer));
+			found = compiledBindingValues(node).some((value) => names.some((name) => unsafeAddress(name, value)));
 		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
 			found = unsafeAddress(compiledAssignedPropertyName(node.left), node.right);
 		}
@@ -923,13 +940,13 @@ const containsCompiledIdentifier = (text: string): boolean => {
 			found =
 				(node.initializer !== undefined && unsafeIdentifier(node.name.text, node.initializer)) ||
 				unsafeIdentifierType(node.name.text, node.type);
-		} else if (ts.isBindingElement(node) && node.initializer !== undefined) {
+		} else if (ts.isBindingElement(node)) {
 			const names = [
 				node.propertyName === undefined ? undefined : compiledPropertyName(node.propertyName),
 				ts.isIdentifier(node.name) ? node.name.text : undefined,
 			];
 
-			found = names.some((name) => unsafeIdentifier(name, node.initializer));
+			found = compiledBindingValues(node).some((value) => names.some((name) => unsafeIdentifier(name, value)));
 		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
 			found = unsafeIdentifier(compiledAssignedPropertyName(node.left), node.right);
 		}
@@ -994,13 +1011,13 @@ const containsCompiledEndpoint = (text: string): boolean => {
 			found =
 				(node.initializer !== undefined && unsafeEndpoint(node.name.text, node.initializer)) ||
 				unsafeEndpointType(node.name.text, node.type);
-		} else if (ts.isBindingElement(node) && node.initializer !== undefined) {
+		} else if (ts.isBindingElement(node)) {
 			const names = [
 				node.propertyName === undefined ? undefined : compiledPropertyName(node.propertyName),
 				ts.isIdentifier(node.name) ? node.name.text : undefined,
 			];
 
-			found = names.some((name) => unsafeEndpoint(name, node.initializer));
+			found = compiledBindingValues(node).some((value) => names.some((name) => unsafeEndpoint(name, value)));
 		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
 			found = unsafeEndpoint(compiledAssignedPropertyName(node.left), node.right);
 		}
@@ -1079,13 +1096,13 @@ const containsCompiledPersonalValue = (text: string): boolean => {
 			found =
 				(node.initializer !== undefined && unsafePersonalValue(node.name.text, node.initializer)) ||
 				unsafePersonalType(node.name.text, node.type);
-		} else if (ts.isBindingElement(node) && node.initializer !== undefined) {
+		} else if (ts.isBindingElement(node)) {
 			const names = [
 				node.propertyName === undefined ? undefined : compiledPropertyName(node.propertyName),
 				ts.isIdentifier(node.name) ? node.name.text : undefined,
 			];
 
-			found = names.some((name) => unsafePersonalValue(name, node.initializer));
+			found = compiledBindingValues(node).some((value) => names.some((name) => unsafePersonalValue(name, value)));
 		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
 			found = unsafePersonalValue(compiledAssignedPropertyName(node.left), node.right);
 		}
@@ -1151,13 +1168,13 @@ const containsCompiledIcon = (text: string): boolean => {
 			found =
 				(node.initializer !== undefined && unsafeIcon(node.name.text, node.initializer)) ||
 				unsafeIconType(node.name.text, node.type);
-		} else if (ts.isBindingElement(node) && node.initializer !== undefined) {
+		} else if (ts.isBindingElement(node)) {
 			const names = [
 				node.propertyName === undefined ? undefined : compiledPropertyName(node.propertyName),
 				ts.isIdentifier(node.name) ? node.name.text : undefined,
 			];
 
-			found = names.some((name) => unsafeIcon(name, node.initializer));
+			found = compiledBindingValues(node).some((value) => names.some((name) => unsafeIcon(name, value)));
 		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
 			found = unsafeIcon(compiledAssignedPropertyName(node.left), node.right);
 		}
@@ -2229,6 +2246,48 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled personal value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const { value: icon = 'custom-household-icon' } = config;", true),
+		).toThrow('unsafe compiled module contains a compiled icon value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { value: 'opaque-secret' }; const { value: apiKey } = source;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { value: 'family-homey.local' }; const { value: hostname } = source;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled address value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { value: 'opaque-household-id' }; const { value: deviceId } = source;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled identifier value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { value: 'private-homey.local:4859' }; const { value: endpoint } = source;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled endpoint value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { value: 'Alice Bedroom' }; const { value: deviceName } = source;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled personal value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { value: 'custom-household-icon' }; const { value: icon } = source;",
+				true,
+			),
 		).toThrow('unsafe compiled module contains a compiled icon value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "class Config { get apiKey() { return 'opaque-secret'; } }", true),
