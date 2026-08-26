@@ -507,7 +507,7 @@ const containsUnsafeCompiledLiteral = (
 
 interface CompiledBinding {
 	readonly callable?: ts.FunctionDeclaration;
-	readonly declaration: ts.Declaration;
+	readonly declaration: ts.Node;
 	readonly fallbackInitializer?: ts.Expression;
 	readonly initializer?: ts.Expression;
 	readonly scope: ts.Node;
@@ -681,16 +681,9 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 	};
 	const visit = (node: ts.Node): void => {
 		if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
-			const constantInitializer =
-				node.initializer !== undefined &&
-				ts.isVariableDeclarationList(node.parent) &&
-				(node.parent.flags & ts.NodeFlags.Const) !== 0
-					? node.initializer
-					: undefined;
-
 			addBinding(node.name.text, {
 				declaration: node,
-				initializer: constantInitializer,
+				initializer: node.initializer,
 				scope: compiledBindingScope(node),
 			});
 		} else if (
@@ -705,6 +698,20 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 			addBinding(node.name.text, { declaration: node, scope: compiledBindingScope(node) });
 		} else if (ts.isFunctionDeclaration(node) && node.name !== undefined) {
 			addBinding(node.name.text, { callable: node, declaration: node, scope: compiledBindingScope(node) });
+		} else if (
+			ts.isBinaryExpression(node) &&
+			ts.isIdentifier(node.left) &&
+			isAssignmentOperatorKind(node.operatorToken.kind)
+		) {
+			const target = resolveCompiledBinding(node.left);
+
+			if (target !== undefined) {
+				addBinding(node.left.text, {
+					declaration: node,
+					initializer: node.right,
+					scope: target.scope,
+				});
+			}
 		}
 
 		ts.forEachChild(node, visit);
@@ -742,10 +749,11 @@ const compiledScopeDepth = (scope: ts.Node): number => {
 	return depth;
 };
 
-const resolveCompiledBinding = (identifier: ts.Identifier): CompiledBinding | undefined => {
+const resolveCompiledBindings = (identifier: ts.Identifier): readonly CompiledBinding[] => {
 	const sourceFile = identifier.getSourceFile();
 	const usePosition = identifier.getStart(sourceFile);
-	const visibleBindings = (compiledBindings(sourceFile).get(identifier.text) ?? [])
+
+	return (compiledBindings(sourceFile).get(identifier.text) ?? [])
 		.filter(
 			(binding) =>
 				isNodeWithin(identifier, binding.scope) &&
@@ -760,9 +768,10 @@ const resolveCompiledBinding = (identifier: ts.Identifier): CompiledBinding | un
 				? depthDifference
 				: right.declaration.getStart(sourceFile) - left.declaration.getStart(sourceFile);
 		});
-
-	return visibleBindings[0];
 };
+
+const resolveCompiledBinding = (identifier: ts.Identifier): CompiledBinding | undefined =>
+	resolveCompiledBindings(identifier)[0];
 
 const resolveCompiledAlias = (identifier: ts.Identifier): ts.Expression | undefined =>
 	resolveCompiledBinding(identifier)?.initializer;
@@ -820,18 +829,20 @@ const containsUnsafeCompiledAlias = (
 	};
 	const inspect = (expression: ts.Expression, resolving: Set<string>): boolean => {
 		if (ts.isIdentifier(expression)) {
-			const binding = resolveCompiledBinding(expression);
+			const bindings = resolveCompiledBindings(expression);
 
-			if (binding === undefined || resolving.has(expression.text)) {
+			if (bindings.length === 0 || resolving.has(expression.text)) {
 				return false;
 			}
 
 			const nestedResolving = new Set(resolving).add(expression.text);
 
-			return [binding.initializer, binding.fallbackInitializer].some(
-				(initializer) =>
-					initializer !== undefined &&
-					(containsUnsafeCompiledLiteral(initializer, safeStrings) || inspect(initializer, nestedResolving)),
+			return bindings.some((binding) =>
+				[binding.initializer, binding.fallbackInitializer].some(
+					(initializer) =>
+						initializer !== undefined &&
+						(containsUnsafeCompiledLiteral(initializer, safeStrings) || inspect(initializer, nestedResolving)),
+				),
 			);
 		}
 
@@ -1037,19 +1048,20 @@ const containsUnsafeCompiledAlias = (
 	};
 	const inspectCallable = (callee: ts.Expression, resolving: Set<string>): boolean => {
 		if (ts.isIdentifier(callee)) {
-			const binding = resolveCompiledBinding(callee);
+			const bindings = resolveCompiledBindings(callee);
 
-			if (binding === undefined || resolving.has(callee.text)) {
+			if (bindings.length === 0 || resolving.has(callee.text)) {
 				return false;
 			}
 
 			const nestedResolving = new Set(resolving).add(callee.text);
 
-			return (
-				[binding.initializer, binding.fallbackInitializer].some(
-					(initializer) => initializer !== undefined && inspectCallable(initializer, nestedResolving),
-				) ||
-				(binding.callable?.body !== undefined && inspectCallableBody(binding.callable.body, nestedResolving))
+			return bindings.some(
+				(binding) =>
+					[binding.initializer, binding.fallbackInitializer].some(
+						(initializer) => initializer !== undefined && inspectCallable(initializer, nestedResolving),
+					) ||
+					(binding.callable?.body !== undefined && inspectCallableBody(binding.callable.body, nestedResolving)),
 			);
 		}
 
@@ -2657,6 +2669,16 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const fallback = 'opaque-secret'; const apiKey = fallback;", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "let fallback = 'opaque-secret'; const apiKey = fallback;", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"let fallback = ''; fallback = 'opaque-secret'; const apiKey = fallback;",
+				true,
+			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe(
