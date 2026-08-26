@@ -36,7 +36,7 @@ FastyBird Smart Panel is an open-source smart home control platform designed for
 ### Key Highlights
 
 - **Wall-mounted touch control** - Purpose-built for embedded touch displays
-- **Multi-ecosystem support** - Integrates Home Assistant, Shelly, Zigbee2MQTT, WLED, and more
+- **Multi-ecosystem support** - Integrates Home Assistant, Homey, Shelly, Zigbee2MQTT, WLED, and more
 - **Offline-first architecture** - Works without cloud dependency; local processing and control
 - **AI-powered assistant** - Built-in Buddy AI with support for Claude, OpenAI, and local Ollama models
 - **Modular & extensible** - Plugin-based architecture with an Extension SDK for custom integrations
@@ -100,6 +100,23 @@ Smart Panel connects to multiple smart home ecosystems through dedicated integra
   - YAML-based configuration mappings
 
 **Supported HA domains**: climate, cover, light, switch, lock, media_player, camera, sensor, humidifier, thermostat, valve, vacuum, water_heater, fan, binary_sensor, and 24+ more.
+
+### Homey
+
+- **Protocol**: Local HTTP(S) API and Socket.IO events
+- **Targets**: Homey Pro and Homey Self-Hosted Server reachable on the local network
+- **Features**:
+  - Manual server configuration with a write-only, least-privilege API key
+  - Authenticated logical-device inventory and reviewed batch adoption
+  - Mapping preview with unsupported-capability warnings
+  - Real-time state updates with bounded reconnect and periodic reconciliation
+  - Supported controls for lights, outlets/switches, covers, and locks
+  - Sensors for temperature, humidity, pressure, illuminance, CO₂, motion, contact, smoke, carbon monoxide, power,
+    energy, and battery state
+  - Missing upstream devices are marked unavailable and are never automatically deleted
+
+Homey Cloud/OAuth, automatic Homey server discovery, upstream pairing/device management, and thermostat target/mode
+control are not part of the current local integration.
 
 ### Shelly (Generation 2+ / Next Generation)
 
@@ -863,20 +880,20 @@ The Vue.js admin interface provides comprehensive management for the entire syst
 
 ## Integration Coverage Matrix
 
-| Device Type | Home Assistant | Shelly NG | Shelly V1 | Zigbee2MQTT | WLED | Simulator |
-|------------|:-:|:-:|:-:|:-:|:-:|:-:|
-| Lighting | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Switches/Outlets | ✅ | ✅ | ✅ | ✅ | - | ✅ |
-| Covers/Blinds | ✅ | ✅ | - | ✅ | - | ✅ |
-| Climate/HVAC | ✅ | - | - | ✅ | - | ✅ |
-| Sensors | ✅ | ✅ | ✅ | ✅ | - | ✅ |
-| Locks | ✅ | - | - | ✅ | - | ✅ |
-| Cameras | ✅ | - | - | - | - | ✅ |
-| Media Players | ✅ | - | - | - | - | ✅ |
-| Fans | ✅ | - | - | ✅ | - | ✅ |
-| Vacuums | ✅ | - | - | - | - | ✅ |
-| Valves | ✅ | - | - | ✅ | - | - |
-| Auto-Discovery | ✅ | ✅ | ✅ | ✅ | ✅ | - |
+| Device Type | Home Assistant | Homey | Shelly NG | Shelly V1 | Zigbee2MQTT | WLED | Simulator |
+|------------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Lighting | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Switches/Outlets | ✅ | ✅ | ✅ | ✅ | ✅ | - | ✅ |
+| Covers/Blinds | ✅ | ✅ | ✅ | - | ✅ | - | ✅ |
+| Climate/HVAC | ✅ | Current temperature | - | - | ✅ | - | ✅ |
+| Sensors | ✅ | ✅ | ✅ | ✅ | ✅ | - | ✅ |
+| Locks | ✅ | ✅ | - | - | ✅ | - | ✅ |
+| Cameras | ✅ | - | - | - | - | - | ✅ |
+| Media Players | ✅ | - | - | - | - | - | ✅ |
+| Fans | ✅ | - | - | - | ✅ | - | ✅ |
+| Vacuums | ✅ | - | - | - | - | - | ✅ |
+| Valves | ✅ | - | - | - | ✅ | - | - |
+| Auto-Discovery | ✅ | Manual server | ✅ | ✅ | ✅ | ✅ | - |
 
 ---
 
@@ -886,7 +903,7 @@ The Vue.js admin interface provides comprehensive management for the entire syst
 
 | Metric | Count |
 |--------|-------|
-| Device integration plugins | 7 |
+| Device integration plugins | 8 |
 | Supported device categories | 31 |
 | Channel types | 45+ |
 | Property types | 120+ |
