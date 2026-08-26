@@ -1286,10 +1286,15 @@ const containsUnsafeCompiledAlias = (
 		};
 
 		parameters.forEach((parameter, index) => {
-			const argument = arguments_[index] ?? parameter.initializer;
+			const argumentValues =
+				parameter.dotDotDotToken === undefined
+					? [arguments_[index] ?? parameter.initializer].filter(
+							(argument): argument is ts.Expression => argument !== undefined,
+						)
+					: arguments_.slice(index);
 
-			if (argument !== undefined) {
-				bindArgument(parameter.name, parameter, [argument]);
+			if (argumentValues.length > 0) {
+				bindArgument(parameter.name, parameter, argumentValues);
 			}
 		});
 
@@ -1602,6 +1607,35 @@ const containsUnsafeCompiledAlias = (
 					const nestedReceiverResolving =
 						receiverBinding === undefined ? nestedResolving : new Set(nestedResolving).add(receiverBinding.declaration);
 					const classDeclaration = receiverBinding?.classDeclaration;
+					const parameterArguments =
+						receiverBinding === undefined ? undefined : activeParameterArguments.get(receiverBinding.declaration);
+
+					if (
+						parameterArguments !== undefined &&
+						receiverBinding !== undefined &&
+						!nestedResolving.has(receiverBinding.declaration)
+					) {
+						if (
+							ts.isParameter(receiverBinding.declaration) &&
+							receiverBinding.declaration.dotDotDotToken !== undefined &&
+							/^\d+$/.test(selectedPropertyName)
+						) {
+							const argument = parameterArguments[Number(selectedPropertyName)];
+
+							return (
+								argument !== undefined &&
+								(containsUnsafeCompiledLiteral(argument, safeStrings) || inspect(argument, nestedReceiverResolving))
+							);
+						}
+
+						if (
+							parameterArguments.some((argument) =>
+								inspectProperty(argument, nestedReceiverResolving, selectedPropertyName, resolvingProperties),
+							)
+						) {
+							return true;
+						}
+					}
 
 					if (
 						receiverBinding !== undefined &&
@@ -2029,6 +2063,29 @@ const containsUnsafeCompiledAlias = (
 					const nestedReceiverResolving =
 						receiverBinding === undefined ? nestedResolving : new Set(nestedResolving).add(receiverBinding.declaration);
 					const classDeclaration = receiverBinding?.classDeclaration;
+					const parameterArguments =
+						receiverBinding === undefined ? undefined : activeParameterArguments.get(receiverBinding.declaration);
+
+					if (
+						parameterArguments !== undefined &&
+						receiverBinding !== undefined &&
+						!nestedResolving.has(receiverBinding.declaration)
+					) {
+						if (
+							ts.isParameter(receiverBinding.declaration) &&
+							receiverBinding.declaration.dotDotDotToken !== undefined &&
+							/^\d+$/.test(propertyName)
+						) {
+							const argument = parameterArguments[Number(propertyName)];
+
+							return argument !== undefined && inspectCallable(argument, nestedReceiverResolving);
+						}
+
+						if (parameterArguments.some((argument) => inspectCallableProperty(argument, nestedReceiverResolving))) {
+							return true;
+						}
+					}
+
 					const inspectStaticClassCallable = (
 						declaration: ts.ClassDeclaration,
 						resolvingClasses = new Set<ts.ClassDeclaration>(),
@@ -4609,6 +4666,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"function make([value]) { return { value }; } const apiKey = make(['opaque-secret']).value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"function make(...values) { return { value: values[1] }; } const apiKey = make('', 'opaque-secret').value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
