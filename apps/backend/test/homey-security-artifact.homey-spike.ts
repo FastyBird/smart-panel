@@ -2007,6 +2007,91 @@ const containsUnsafeCompiledAlias = (
 			? values.slice(Number(selectedPropertyName), Number(selectedPropertyName) + 1)
 			: values;
 	};
+	const objectKeysResultValues = (call: ts.CallExpression, selectedPropertyName: string): readonly ts.Expression[] => {
+		if (compiledMutationHelperName(call.expression) !== 'Object.keys' || call.arguments.length === 0) {
+			return [];
+		}
+
+		const resolveObjectKeys = (
+			expression: ts.Expression,
+			resolving = new Set<ts.Node>(),
+		): readonly ts.Expression[] | undefined => {
+			if (ts.isIdentifier(expression)) {
+				const binding = resolveCompiledBinding(expression);
+
+				return binding?.initializer === undefined || resolving.has(binding.declaration)
+					? undefined
+					: resolveObjectKeys(binding.initializer, new Set(resolving).add(binding.declaration));
+			}
+
+			if (
+				ts.isParenthesizedExpression(expression) ||
+				ts.isAsExpression(expression) ||
+				ts.isTypeAssertionExpression(expression) ||
+				ts.isNonNullExpression(expression) ||
+				ts.isSatisfiesExpression(expression)
+			) {
+				return resolveObjectKeys(expression.expression, resolving);
+			}
+
+			if (!ts.isObjectLiteralExpression(expression)) {
+				return undefined;
+			}
+
+			return expression.properties.flatMap((property): readonly ts.Expression[] => {
+				if (ts.isSpreadAssignment(property)) {
+					return resolveObjectKeys(property.expression, resolving) ?? [property.expression];
+				}
+
+				if (!('name' in property)) {
+					return [];
+				}
+
+				if (ts.isComputedPropertyName(property.name)) {
+					return [property.name.expression];
+				}
+
+				return ts.isStringLiteral(property.name) || ts.isNumericLiteral(property.name) ? [property.name] : [];
+			});
+		};
+		const keys = resolveObjectKeys(call.arguments[0]);
+
+		if (keys === undefined) {
+			return [call.arguments[0]];
+		}
+
+		return /^\d+$/.test(selectedPropertyName)
+			? keys.slice(Number(selectedPropertyName), Number(selectedPropertyName) + 1)
+			: keys;
+	};
+	const concatenatedResultValues = (
+		call: ts.CallExpression,
+		selectedPropertyName: string,
+	): readonly ts.Expression[] => {
+		if (
+			(!ts.isPropertyAccessExpression(call.expression) && !ts.isElementAccessExpression(call.expression)) ||
+			!/^\d+$/.test(selectedPropertyName)
+		) {
+			return [];
+		}
+
+		const methodName = ts.isPropertyAccessExpression(call.expression)
+			? call.expression.name.text
+			: call.expression.argumentExpression === undefined
+				? undefined
+				: compiledStaticPropertyExpressionName(call.expression.argumentExpression);
+
+		if (methodName !== 'concat') {
+			return [];
+		}
+
+		const values = [call.expression.expression, ...call.arguments].flatMap(
+			(expression): readonly ts.Expression[] => resolveArrayElements(expression, new Set()) ?? [expression],
+		);
+		const index = Number(selectedPropertyName);
+
+		return values.slice(index, index + 1);
+	};
 	const objectEntriesResultValues = (
 		call: ts.CallExpression,
 		entryPropertyName: string,
@@ -2637,6 +2722,16 @@ const containsUnsafeCompiledAlias = (
 					if (
 						receiverPropertyName !== undefined &&
 						ts.isCallExpression(receiver.expression) &&
+						concatenatedResultValues(receiver.expression, receiverPropertyName).some((value) =>
+							inspectProperty(value, nestedResolving, selectedPropertyName, resolvingProperties),
+						)
+					) {
+						return true;
+					}
+
+					if (
+						receiverPropertyName !== undefined &&
+						ts.isCallExpression(receiver.expression) &&
 						[
 							...objectEntriesResultValues(receiver.expression, receiverPropertyName, selectedPropertyName),
 							...pluralDescriptorQueryValues(receiver.expression, receiverPropertyName, selectedPropertyName),
@@ -2687,6 +2782,7 @@ const containsUnsafeCompiledAlias = (
 						[
 							...collectionTransformResultValues(receiver),
 							...descriptorQueryValues(receiver, selectedPropertyName),
+							...objectKeysResultValues(receiver, selectedPropertyName),
 							...objectValuesResultValues(receiver, selectedPropertyName),
 						].some((value) => containsUnsafeCompiledLiteral(value, safeStrings) || inspect(value, nestedResolving))
 					) {
@@ -6424,6 +6520,9 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe('unsafe compiled module', "const apiKey = Object.values({ value: 'opaque-secret' })[0];", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
+			assertTextSafe('unsafe compiled module', "const apiKey = Object.keys({ 'opaque-secret': 0 })[0];", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
 				"const stored = 'opaque-secret'; const apiKey = Object.entries({ value: stored })[0][1];",
@@ -6488,6 +6587,13 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const values = ['opaque-secret']; const apiKey = values[index];", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const apiKey = [].concat([{ value: 'opaque-secret' }])[0].value;",
+				true,
+			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe(
