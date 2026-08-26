@@ -89,8 +89,8 @@ crosses into normalized device services. The package license permits use with Ho
 the dependency. Its Node 24 engine is now reflected in root, backend, and packaged-server manifests. The legacy Socket.IO
 chain's unpatched moderate `parseuri` advisory is accepted only with the documented HTTP(S), credential, 2,048-character,
 administrator-only endpoint boundary and bounded operations. A direct documented HTTP/Socket.IO adapter is the recorded
-replacement and must pass the existing connector contract. Live restart recovery passed on SHS `13.4.1`; network
-interruption evidence remains open above and in Task 6.2.
+replacement and must pass the existing connector contract. Live restart and network-interruption session recovery
+passed on SHS `13.4.1`; capability and availability event-flow continuity remains open above and in Task 6.2.
 
 ### Task 0.4: Build the sanitized fixture corpus
 
@@ -619,7 +619,7 @@ representative lifecycle failure paths.
 - [ ] Fresh startup with SHS online.
 - [ ] Startup with SHS offline, then recovery.
 - [ ] SHS restart during event flow.
-- [ ] Network interruption/restoration.
+- [x] Network interruption/restoration.
 - [ ] API key revoked, replaced, and insufficiently scoped.
 - [ ] Separately gated add/rename/zone-move/unavailable/removal lifecycle tests on the allowlisted disposable device only, followed by cleanup.
 - [ ] Physical/Homey/flow-originated state changes.
@@ -630,6 +630,12 @@ representative lifecycle failure paths.
 The 2026-08-26 SHS `13.4.1` restart probe closed the transport/session recovery slice: it observed disconnect,
 reconnect, manager resubscription, a fresh inventory read, and complete cleanup. This does not close the event-flow
 criterion above because no capability or availability event was observed before and after that restart.
+
+The 2026-08-26 SHS `13.4.1` network probe closed the network interruption/restoration session-recovery slice. A precise
+firewall rule blocked only the test host's path to SHS ports `4859` and `4860` for 60 seconds; the sanitized 36-event
+report proved disconnect, nine reconnect attempts during that finite interruption, reconnect, manager resubscription,
+a fresh inventory read, and complete cleanup. It does not close the event-flow criterion because no capability or
+availability event was observed across the interruption.
 
 ### Task 6.3: Validate performance and security
 

@@ -9,10 +9,10 @@ and adopt them, keeps their state synchronized, and sends supported controls bac
 <Callout type="warning">
   **The Homey release gate is not complete.** Current live evidence covers Homey
   SHS 13.4.0 and 13.4.1 over HTTP port 4859 for sanitized inventory capture and
-  limited SDK connection/session behavior and SHS restart recovery. Homey Pro,
-  HTTPS, capability writes/events, network recovery, and credential rotation
-  have not completed the required live matrix. Use this integration for
-  evaluation, not as a production-ready support claim.
+  limited SDK connection/session behavior plus SHS restart and network recovery.
+  Homey Pro, HTTPS, capability writes/events, and credential rotation have not
+  completed the required live matrix. Use this integration for evaluation, not
+  as a production-ready support claim.
 </Callout>
 
 Only a **local Homey connection** is implemented. Homey Cloud/OAuth is not available yet. Smart Panel does not pair,
@@ -201,6 +201,10 @@ administrator access.
 The event connection is unavailable or was interrupted. Smart Panel continues bounded reconciliation where possible and
 reconnects with bounded backoff. Check Homey and proxy support for long-lived Socket.IO/WebSocket connections. If the
 state does not recover, test the saved connection and inspect the sanitized backend logs.
+
+A controlled 60-second interruption of only the Smart Panel-to-SHS API ports recovered the SDK session and subscription,
+then completed a fresh inventory read on SHS `13.4.1`. Capability-event continuity across an interruption remains part
+of the unfinished live release matrix.
 
 ### A device is missing or unsupported
 

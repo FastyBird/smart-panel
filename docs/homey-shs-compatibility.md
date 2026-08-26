@@ -1,8 +1,8 @@
 # Homey SHS Compatibility Record
 
-**Status:** In progress; safe inventory, SDK session/cleanup, SHS restart recovery, and stable restart-spanning mDNS
-evidence captured; automatic mDNS discovery remains deferred, and live capability-event, write, error-matrix, network
-recovery, lifecycle, and credential-rotation evidence is pending
+**Status:** In progress; safe inventory, SDK session/cleanup, SHS restart and network recovery, and stable
+restart-spanning mDNS evidence captured; automatic mDNS discovery remains deferred, and live capability-event, write,
+error-matrix, lifecycle, and credential-rotation evidence is pending
 
 **Started:** 2026-08-12
 
@@ -24,7 +24,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Credential-safe read probe                            | Passed on SHS `13.4.0` and `13.4.1` over HTTP `4859`     | Repeat over HTTPS `4860` if enabled                                  |
 | System, zone, device inventory, and individual device | Captured and sanitized                                   | Add lifecycle delta evidence on the disposable test device           |
 | Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read             | Add allowlisted write and read-back evidence                         |
-| Socket.IO events and reconnect                        | SHS restart recovery passed                              | Capture capability/availability events and network recovery ordering |
+| Socket.IO events and reconnect                        | SHS restart and network recovery passed                  | Capture capability/availability event-flow continuity                |
 | Allowlisted capability write                          | Hard-gated probe implemented, disabled                   | Use only the designated harmless test capability                     |
 | Error classification                                  | SDK invalid key returned `401`; matrix pending           | Verify missing-scope, bad-URL, unavailable, and timeout behavior     |
 | API-key revocation and replacement                    | Operator-controlled probe ready                          | Revoke only a dedicated test key during the gated observation window |
@@ -321,6 +321,13 @@ disconnect observed` before restoring it. Do not interrupt the broader household
 ordinary Homey installation. The restart acknowledgement is rejected in network mode and the network acknowledgement
 is rejected in restart mode, preventing one operator authorization from being reused for a different action.
 
+The operator-controlled run on 2026-08-26 against SHS `13.4.1` temporarily blocked only the Smart Panel test host's
+path to SHS ports `4859` and `4860` for 60 seconds. The reviewed 36-event report proved disconnect, nine reconnect
+attempts during that finite interruption, transport reconnection, manager resubscription, a fresh inventory read, and
+complete cleanup. No capability, device, or credential was changed. The report is committed as
+`__fixtures__/evidence/2026-08-26-shs-13.4.1-network-recovery.json`; it contains neither the firewall rule nor any
+address, endpoint, inventory, credential, or payload.
+
 After the run, restore the default restart mode explicitly or clear the scenario and acknowledgement:
 
 ```bash
@@ -489,8 +496,9 @@ Artifact snapshot inspected on 2026-08-12 and rechecked on 2026-08-25:
 HTTP remains the independent read-only compatibility/capture path, not the production realtime transport. The decision
 is based on the live SHS session and cleanup evidence, the SDK-native manager/capability contract, and the production
 adapter suites covering bounded creation and operations, subscription cleanup, reconnect coalescing, duplicate-listener
-prevention, late-client disposal, and normalized error handling. Live SHS restart recovery now passes; the outstanding
-network-interruption matrix remains a release-evidence gap, not an SDK abstraction gap.
+prevention, late-client disposal, and normalized error handling. Live SHS restart and network-interruption session
+recovery now pass; capability and availability event-flow continuity remains a release-evidence gap, not an SDK
+abstraction gap.
 
 The package license permits use with Homey products. Smart Panel loads it only for a user-configured Homey integration,
 does not copy or modify its proprietary source, and preserves the package's own `LICENSE` in installed production
@@ -529,8 +537,8 @@ Fill this matrix using synthetic aliases only.
 | Socket.IO connect and subscribe           | Pass                                | SDK creation, socket connect, manager subscribe/unsubscribe, socket disconnect, disconnect resolution, and SDK destruction completed in strict order |
 | Capability and availability events        | Pending                             |                                                                                                                                                      |
 | Allowlisted write, event, and read-back   | Pending                             |                                                                                                                                                      |
-| Network interruption and restoration      | Pending                             |                                                                                                                                                      |
-| SHS restart and reconnect                 | Pass                                | 15 ordered events proved disconnect, bounded reconnect attempts, resubscription, fresh inventory read, and complete cleanup                          |
+| Network interruption and restoration      | Pass                                | 36 ordered events proved disconnect, nine retries during the 60-second interruption, resubscription, fresh inventory read, and complete cleanup      |
+| SHS restart and reconnect                 | Pass                                | 15 ordered events proved disconnect, two observed retries, resubscription, fresh inventory read, and complete cleanup                                |
 | API-key revocation and replacement        | Pending                             |                                                                                                                                                      |
 | Disposable-device lifecycle sequence      | Pending                             |                                                                                                                                                      |
 | Stable mDNS service before/after restart  | Pass                                | Ten-second pre/post observations were exact matches: `_homey._tcp` on `4859` plus two co-hosted `_hap._tcp` services                                 |
