@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readdirSync, readlinkSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import ts from 'typescript';
 import { parse as parseYaml } from 'yaml';
@@ -46,6 +46,7 @@ const OPENAPI_PATH = resolve(REPOSITORY_ROOT, 'spec/api/v1/openapi.json');
 const SNAPSHOT_ROOT = resolve(REPOSITORY_ROOT, 'apps');
 const BUILD_EXTENSIONS = new Set(['.js', '.json', '.map', '.yaml', '.yml']);
 const FIXTURE_EXTENSIONS = new Set(['.json', '.md', '.txt', '.yaml', '.yml']);
+const HOMEY_API_TAG = 'Devices Homey plugin';
 const IP_ADDRESS_CANDIDATE_PATTERN = /[A-Za-z0-9:.%_-]{2,}/g;
 const HOMEY_TOKEN_PATTERN = /(?:homey|hpat|pat)[_-][A-Za-z0-9_-]{16,}/gi;
 const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
@@ -194,7 +195,31 @@ const trackedFixtureFiles = (): readonly string[] => {
 		.split('\0')
 		.filter((path) => path.length > 0)
 		.map((path) => resolve(REPOSITORY_ROOT, path))
-		.filter((path) => lstatSync(path).isFile());
+		.filter((path) => {
+			const stats = lstatSync(path);
+
+			return stats.isFile() || stats.isSymbolicLink();
+		});
+};
+
+const isHomeyOpenApiPath = (path: string, pathItem: unknown): boolean => {
+	if (path.startsWith('/plugins/devices-homey')) {
+		return true;
+	}
+
+	return (
+		pathItem !== null &&
+		typeof pathItem === 'object' &&
+		Object.values(pathItem).some((operation: unknown) => {
+			if (operation === null || typeof operation !== 'object') {
+				return false;
+			}
+
+			const tags = (operation as Record<string, unknown>).tags;
+
+			return Array.isArray(tags) && (tags as unknown[]).includes(HOMEY_API_TAG);
+		})
+	);
 };
 
 const containsIpv6Address = (text: string): boolean =>
@@ -5611,9 +5636,11 @@ describe('Homey security artifact gate', () => {
 			Object.entries(document.components?.schemas ?? {}).filter(([name]) => name.startsWith('DevicesHomey')),
 		);
 		const homeyPaths = Object.fromEntries(
-			Object.entries(document.paths ?? {}).filter(([, path]) => JSON.stringify(path).includes('DevicesHomey')),
+			Object.entries(document.paths ?? {}).filter(([path, pathItem]) => isHomeyOpenApiPath(path, pathItem)),
 		);
 
+		expect(isHomeyOpenApiPath('/plugins/devices-homey/no-content', { post: { tags: ['Common'] } })).toBe(true);
+		expect(isHomeyOpenApiPath('/shared/homey-status', { get: { tags: [HOMEY_API_TAG] } })).toBe(true);
 		expect(Object.keys(homeySchemas).length).toBeGreaterThan(0);
 		expect(Object.keys(homeyPaths).length).toBeGreaterThan(0);
 		Object.entries(homeySchemas).forEach(([name, schema]) => visitSchema(name, schema));
@@ -5625,16 +5652,26 @@ describe('Homey security artifact gate', () => {
 
 	it('keeps committed Homey fixtures and snapshots free of private values', () => {
 		const fixtureFiles = trackedFixtureFiles();
-		const unsupportedFiles = fixtureFiles.filter((path) => !FIXTURE_EXTENSIONS.has(extname(path)));
+		const unsupportedFiles = fixtureFiles.filter(
+			(path) => !lstatSync(path).isSymbolicLink() && !FIXTURE_EXTENSIONS.has(extname(path)),
+		);
+		const symlinkFiles = fixtureFiles.filter((path) => lstatSync(path).isSymbolicLink());
 		const snapshotFiles = collectFiles(SNAPSHOT_ROOT, (path) => path.endsWith('.snap')).filter(
 			(path) => path.toLocaleLowerCase().includes('homey') || readFileSync(path, 'utf8').includes('devices-homey'),
 		);
 
 		expect(fixtureFiles.length).toBeGreaterThan(0);
+		expect(symlinkFiles.length).toBeGreaterThan(0);
 		expect(unsupportedFiles).toEqual([]);
 
 		for (const path of [...fixtureFiles, ...snapshotFiles]) {
-			assertFixtureTextSafe(path.slice(REPOSITORY_ROOT.length + 1), readFileSync(path, 'utf8'), extname(path));
+			const symlink = lstatSync(path).isSymbolicLink();
+
+			assertFixtureTextSafe(
+				path.slice(REPOSITORY_ROOT.length + 1),
+				symlink ? readlinkSync(path) : readFileSync(path, 'utf8'),
+				symlink ? '.txt' : extname(path),
+			);
 		}
 	});
 
