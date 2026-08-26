@@ -2,7 +2,7 @@
 
 **Status:** In progress; safe inventory, SDK session/cleanup, SHS restart and network recovery, and stable
 restart-spanning mDNS evidence captured; automatic mDNS discovery remains deferred, and live capability-event, write,
-lifecycle, and credential-rotation evidence is pending
+remaining permission-scope, lifecycle, and credential-rotation evidence is pending
 
 **Started:** 2026-08-12
 
@@ -26,7 +26,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read             | Add allowlisted write and read-back evidence                         |
 | Socket.IO events and reconnect                        | SHS restart and network recovery passed                  | Capture capability/availability event-flow continuity                |
 | Allowlisted capability write                          | Hard-gated probe implemented, disabled                   | Use only the designated harmless test capability                     |
-| Error classification                                  | Live auth plus local failure simulations passed          | Repeat after an SHS or connector transport upgrade                   |
+| Error classification                                  | Five-scenario slice passed                               | Test keys missing zone and device permissions                        |
 | API-key revocation and replacement                    | Operator-controlled probe ready                          | Revoke only a dedicated test key during the gated observation window |
 | Disposable-device lifecycle                           | Guarded operator probe ready                             | Use only the separately gated virtual/test device                    |
 | mDNS discovery                                        | Stable across one controlled restart; manual URL remains | Design safe identity verification before reconsidering discovery     |
@@ -536,6 +536,7 @@ Fill this matrix using synthetic aliases only.
 | HTTPS `4860` ping and authenticated reads | Pending                             |                                                                                                                                                      |
 | Invalid key                               | Pass                                | Both the SDK session probe and error-matrix probe rejected independently generated invalid keys with HTTP `401`                                      |
 | Missing system scope on device-only key   | Pass                                | The restricted key completed the allowed device inventory read with `200`, then the system-information read returned `403`                           |
+| Missing zone and device scopes            | Pending                             | Exercise independently valid keys that omit each permission before closing the broad missing-scope matrix                                            |
 | Bad URL and unavailable host              | Pass                                | Shared validation rejected a non-HTTP URL; a probe-owned closed loopback port produced the unavailable category                                      |
 | Request timeout                           | Pass                                | A probe-owned loopback server that withheld its response produced the timeout category within the local simulation cap                               |
 | Complete inventory and individual read    | Pass                                | Complete inventory captured: 118 devices and 16 zones; the selected individual-device response matched its pseudonymized inventory identity          |
