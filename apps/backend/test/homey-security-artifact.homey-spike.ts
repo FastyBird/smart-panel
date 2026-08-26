@@ -1442,7 +1442,7 @@ const compiledPropertyWriteValues = (
 				? undefined
 				: compiledStaticPropertyExpressionName(call.expression.argumentExpression);
 
-		if (methodName === 'add' || methodName === 'push' || methodName === 'unshift') {
+		if (['add', 'push', 'set', 'unshift'].includes(methodName ?? '')) {
 			return expandMutationSources(call.arguments);
 		}
 
@@ -1954,6 +1954,11 @@ const containsUnsafeCompiledAlias = (
 			: call.expression.argumentExpression === undefined
 				? undefined
 				: compiledStaticPropertyExpressionName(call.expression.argumentExpression);
+
+		if (methodName === 'find' || methodName === 'findLast') {
+			return resolveArrayElements(call.expression.expression, new Set()) ?? [call.expression.expression];
+		}
+
 		const callbackIndex =
 			methodName === 'map' || methodName === 'flatMap'
 				? 0
@@ -2183,7 +2188,9 @@ const containsUnsafeCompiledAlias = (
 
 		if (
 			methodName !== 'concat' &&
-			!['filter', 'flat', 'reverse', 'slice', 'sort', 'toReversed', 'toSorted', 'with'].includes(methodName ?? '')
+			!['filter', 'flat', 'reverse', 'slice', 'sort', 'splice', 'toReversed', 'toSorted', 'with'].includes(
+				methodName ?? '',
+			)
 		) {
 			return [];
 		}
@@ -2196,7 +2203,9 @@ const containsUnsafeCompiledAlias = (
 				: (resolveArrayElements(call.expression.expression, new Set()) ?? [call.expression.expression]);
 		const index = Number(selectedPropertyName);
 
-		return methodName === 'filter' || methodName === 'flat' ? values : values.slice(index, index + 1);
+		return methodName === 'filter' || methodName === 'flat' || methodName === 'splice'
+			? values
+			: values.slice(index, index + 1);
 	};
 	const arrayElementCallValues = (call: ts.CallExpression): readonly ts.Expression[] => {
 		if (!ts.isPropertyAccessExpression(call.expression) && !ts.isElementAccessExpression(call.expression)) {
@@ -2944,7 +2953,13 @@ const containsUnsafeCompiledAlias = (
 							...collectionTransformResultValues(receiver.expression),
 							...concatenatedResultValues(receiver.expression, receiverPropertyName),
 							...objectValuesResultValues(receiver.expression, receiverPropertyName),
-						].some((value) => inspectProperty(value, nestedResolving, selectedPropertyName, resolvingProperties))
+							...transparentCallResultValues(receiver.expression),
+						].some(
+							(value) =>
+								containsUnsafeCompiledLiteral(value, safeStrings) ||
+								inspect(value, nestedResolving) ||
+								inspectProperty(value, nestedResolving, selectedPropertyName, resolvingProperties),
+						)
 					) {
 						return true;
 					}
@@ -6942,6 +6957,20 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const apiKey = [{ value: 'opaque-secret' }].find(() => true).value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const apiKey = [{ value: 'opaque-secret' }].findLast(() => true).value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const apiKey = Array.from({ length: 1 }, () => ({ value: 'opaque-secret' }))[0].value;",
 				true,
 			),
@@ -6950,6 +6979,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const source = new Set(); source.add('opaque-secret'); const apiKey = Array.from(source)[0];",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = new Map(); source.set('x', 'opaque-secret'); const apiKey = Array.from(source)[0][1];",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
@@ -6979,6 +7015,13 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = ['opaque-secret'].slice()[0];", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = ['opaque-secret']; const apiKey = source.splice(0, 1)[0];",
+				true,
+			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = [['opaque-secret']].flat()[0];", true),
