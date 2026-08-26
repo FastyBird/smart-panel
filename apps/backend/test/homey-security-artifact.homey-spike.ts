@@ -2009,6 +2009,21 @@ const containsUnsafeCompiledAlias = (
 		}
 
 		if (
+			(ts.isPropertyAccessExpression(call.expression) || ts.isElementAccessExpression(call.expression)) &&
+			call.arguments.length === 0
+		) {
+			const methodName = ts.isPropertyAccessExpression(call.expression)
+				? call.expression.name.text
+				: call.expression.argumentExpression === undefined
+					? undefined
+					: compiledStaticPropertyExpressionName(call.expression.argumentExpression);
+
+			if (methodName === 'valueOf') {
+				return [call.expression.expression];
+			}
+		}
+
+		if (
 			ts.isPropertyAccessExpression(call.expression) &&
 			ts.isIdentifier(call.expression.expression) &&
 			call.expression.expression.text === 'Array'
@@ -2319,6 +2334,7 @@ const containsUnsafeCompiledAlias = (
 				'sort',
 				'splice',
 				'toReversed',
+				'toSpliced',
 				'toSorted',
 				'with',
 			].includes(methodName ?? '')
@@ -2334,7 +2350,7 @@ const containsUnsafeCompiledAlias = (
 				: (resolveArrayElements(call.expression.expression, new Set()) ?? [call.expression.expression]);
 		const index = Number(selectedPropertyName);
 
-		return methodName === 'filter' || methodName === 'flat' || methodName === 'splice'
+		return methodName === 'filter' || methodName === 'flat' || methodName === 'splice' || methodName === 'toSpliced'
 			? values
 			: values.slice(index, index + 1);
 	};
@@ -3521,7 +3537,10 @@ const containsUnsafeCompiledAlias = (
 					return (
 						inspectReturnedProperty(receiver.expression, nestedResolving, receiver.arguments) ||
 						transparentCallResultValues(receiver).some(
-							(argument) => containsUnsafeCompiledLiteral(argument, safeStrings) || inspect(argument, nestedResolving),
+							(argument) =>
+								containsUnsafeCompiledLiteral(argument, safeStrings) ||
+								inspect(argument, nestedResolving) ||
+								inspectProperty(argument, nestedResolving, selectedPropertyName, resolvingProperties),
 						)
 					);
 				}
@@ -7530,6 +7549,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const source = {}; source.value = 'opaque-secret'; const apiKey = source.valueOf().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const apiKey = structuredClone({ value: 'opaque-secret' }).value;",
 				true,
 			),
@@ -7770,6 +7796,9 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = ['opaque-secret'].copyWithin(0, 0)[0];", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const apiKey = ['opaque-secret'].toSpliced(0, 0)[0];", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe(
