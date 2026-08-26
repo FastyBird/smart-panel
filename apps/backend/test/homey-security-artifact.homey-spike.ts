@@ -2245,6 +2245,51 @@ const containsUnsafeCompiledAlias = (
 			...compiledPropertyWriteValues(receiver, String(selectedIndex), call.getStart(call.getSourceFile())),
 		];
 	};
+	const iteratorResultValues = (call: ts.CallExpression, selectedPropertyName: string): readonly ts.Expression[] => {
+		if (
+			selectedPropertyName !== 'value' ||
+			(!ts.isPropertyAccessExpression(call.expression) && !ts.isElementAccessExpression(call.expression))
+		) {
+			return [];
+		}
+
+		const terminalMethodName = ts.isPropertyAccessExpression(call.expression)
+			? call.expression.name.text
+			: call.expression.argumentExpression === undefined
+				? undefined
+				: compiledStaticPropertyExpressionName(call.expression.argumentExpression);
+
+		if (terminalMethodName !== 'next' || !ts.isCallExpression(call.expression.expression)) {
+			return [];
+		}
+
+		const iteratorCall = call.expression.expression;
+
+		if (
+			!ts.isPropertyAccessExpression(iteratorCall.expression) &&
+			!ts.isElementAccessExpression(iteratorCall.expression)
+		) {
+			return [];
+		}
+
+		const iteratorMethodName = ts.isPropertyAccessExpression(iteratorCall.expression)
+			? iteratorCall.expression.name.text
+			: iteratorCall.expression.argumentExpression === undefined
+				? undefined
+				: compiledStaticPropertyExpressionName(iteratorCall.expression.argumentExpression);
+		const iteratorExpressionText = iteratorCall.expression.getText(iteratorCall.getSourceFile());
+
+		if (
+			!['entries', 'keys', 'values'].includes(iteratorMethodName ?? '') &&
+			!iteratorExpressionText.endsWith('[Symbol.iterator]')
+		) {
+			return [];
+		}
+
+		const source = iteratorCall.expression.expression;
+
+		return [source, ...compiledPropertyWriteValues(source, '0', call.getStart(call.getSourceFile()))];
+	};
 	const objectEntriesResultValues = (
 		call: ts.CallExpression,
 		entryPropertyName: string,
@@ -2954,6 +2999,7 @@ const containsUnsafeCompiledAlias = (
 							...concatenatedResultValues(receiver.expression, receiverPropertyName),
 							...objectValuesResultValues(receiver.expression, receiverPropertyName),
 							...transparentCallResultValues(receiver.expression),
+							...iteratorResultValues(receiver.expression, receiverPropertyName),
 						].some(
 							(value) =>
 								containsUnsafeCompiledLiteral(value, safeStrings) ||
@@ -3037,6 +3083,7 @@ const containsUnsafeCompiledAlias = (
 							...descriptorQueryValues(receiver, selectedPropertyName),
 							...objectKeysResultValues(receiver, selectedPropertyName),
 							...objectValuesResultValues(receiver, selectedPropertyName),
+							...iteratorResultValues(receiver, selectedPropertyName),
 						].some((value) => containsUnsafeCompiledLiteral(value, safeStrings) || inspect(value, nestedResolving))
 					) {
 						return true;
@@ -6986,6 +7033,34 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const source = new Map(); source.set('x', 'opaque-secret'); const apiKey = Array.from(source)[0][1];",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = new Map(); source.set('x', 'opaque-secret'); const apiKey = source.values().next().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = new Set(); source.add('opaque-secret'); const apiKey = source.values().next().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = ['opaque-secret']; const apiKey = source[Symbol.iterator]().next().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = new Map(); source.set('x', 'opaque-secret'); const apiKey = source.entries().next().value[1];",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
