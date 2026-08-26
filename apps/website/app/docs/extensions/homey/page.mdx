@@ -202,9 +202,9 @@ The event connection is unavailable or was interrupted. Smart Panel continues bo
 reconnects with bounded backoff. Check Homey and proxy support for long-lived Socket.IO/WebSocket connections. If the
 state does not recover, test the saved connection and inspect the sanitized backend logs.
 
-A controlled 60-second interruption of only the Smart Panel-to-SHS API ports recovered the SDK session, subscription,
-and inventory reconciliation on SHS `13.4.1`. Capability-event continuity across an interruption remains part of the
-unfinished live release matrix.
+A controlled 60-second interruption of only the Smart Panel-to-SHS API ports recovered the SDK session and subscription,
+then completed a fresh inventory read on SHS `13.4.1`. Capability-event continuity across an interruption remains part
+of the unfinished live release matrix.
 
 ### A device is missing or unsupported
 
