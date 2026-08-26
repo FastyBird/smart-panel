@@ -1178,6 +1178,10 @@ const compiledPropertyWriteValues = (
 					if (selectedName === propertyName || selectedName === undefined) {
 						values.push(...mutationPropertyValues(node.arguments[2], 'value'));
 					}
+				} else if (helperName === 'Object.defineProperties' && node.arguments.length >= 2) {
+					for (const descriptor of mutationPropertyValues(node.arguments[1], propertyName)) {
+						values.push(...mutationPropertyValues(descriptor, 'value'));
+					}
 				} else if (helperName === 'Reflect.set' && node.arguments.length >= 3) {
 					const selectedName = compiledStaticPropertyExpressionName(node.arguments[1]);
 
@@ -4782,6 +4786,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const source = { value: '' }; Object.assign(source, { value: 'opaque-secret' }); const apiKey = source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { value: '' }; Object.defineProperties(source, { value: { value: 'opaque-secret' } }); const apiKey = source.value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
