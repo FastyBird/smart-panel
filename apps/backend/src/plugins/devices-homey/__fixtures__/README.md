@@ -83,7 +83,8 @@ labels, booleans, ordering numbers, public dependency versions, and non-sensitiv
 test that re-applies the report safety assertions. The 2026-08-14 SDK session evidence records connection,
 subscription, cleanup, and invalid-key behavior only; it does not claim capability-event, write, or reconnect coverage.
 The 2026-08-26 mDNS evidence records the Homey and co-hosted HAP service types, ports, and TXT key names observed on SHS
-`13.4.1`; it contains no service instance names, hosts, addresses, or TXT values and does not by itself establish
-restart stability or authorize automatic discovery.
+`13.4.1`; the pre-restart and post-restart reports are exact matches. The restart-recovery report records the ordered
+SDK disconnect, reconnect, manager resubscription, fresh inventory read, and cleanup evidence. These reports contain no
+service instance names, hosts, addresses, TXT values, endpoint, credential, inventory content, or event payload.
 
 Before committing regenerated fixtures, inspect every value and key and confirm that no private source value survives.

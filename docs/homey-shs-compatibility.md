@@ -1,8 +1,8 @@
 # Homey SHS Compatibility Record
 
-**Status:** In progress; safe inventory and SDK session/cleanup evidence captured, automatic mDNS discovery explicitly
-deferred for the local MVP, and live capability-event, write, error-matrix, reconnect, recovery, and
-credential-rotation evidence pending
+**Status:** In progress; safe inventory, SDK session/cleanup, SHS restart recovery, and stable restart-spanning mDNS
+evidence captured; automatic mDNS discovery remains deferred, and live capability-event, write, error-matrix, network
+recovery, lifecycle, and credential-rotation evidence is pending
 
 **Started:** 2026-08-12
 
@@ -19,19 +19,19 @@ file. Live results use synthetic aliases and sanitized captures only.
 
 ## Current gate status
 
-| Area                                                  | Status                                               | Evidence still required                                              |
-| ----------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------- |
-| Credential-safe read probe                            | Passed on SHS `13.4.0` and `13.4.1` over HTTP `4859` | Repeat over HTTPS `4860` if enabled                                  |
-| System, zone, device inventory, and individual device | Captured and sanitized                               | Add lifecycle delta evidence on the disposable test device           |
-| Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read         | Add allowlisted write and read-back evidence                         |
-| Socket.IO events and reconnect                        | Passive sessions passed; recovery runs pending       | Capture capability/availability events and both recovery orderings   |
-| Allowlisted capability write                          | Hard-gated probe implemented, disabled               | Use only the designated harmless test capability                     |
-| Error classification                                  | SDK invalid key returned `401`; matrix pending       | Verify missing-scope, bad-URL, unavailable, and timeout behavior     |
-| API-key revocation and replacement                    | Operator-controlled probe ready                      | Revoke only a dedicated test key during the gated observation window |
-| Disposable-device lifecycle                           | Guarded operator probe ready                         | Use only the separately gated virtual/test device                    |
-| mDNS discovery                                        | Homey-specific service observed; manual URL remains  | Verify stability before and after restart                            |
-| SDK decision                                          | SDK selected behind connector boundary               | Re-evaluate the pinned package and audit result on every upgrade     |
-| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture          | Add event/reconnect fixtures from the remaining live lifecycle runs  |
+| Area                                                  | Status                                                   | Evidence still required                                              |
+| ----------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------- |
+| Credential-safe read probe                            | Passed on SHS `13.4.0` and `13.4.1` over HTTP `4859`     | Repeat over HTTPS `4860` if enabled                                  |
+| System, zone, device inventory, and individual device | Captured and sanitized                                   | Add lifecycle delta evidence on the disposable test device           |
+| Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read             | Add allowlisted write and read-back evidence                         |
+| Socket.IO events and reconnect                        | SHS restart recovery passed                              | Capture capability/availability events and network recovery ordering |
+| Allowlisted capability write                          | Hard-gated probe implemented, disabled                   | Use only the designated harmless test capability                     |
+| Error classification                                  | SDK invalid key returned `401`; matrix pending           | Verify missing-scope, bad-URL, unavailable, and timeout behavior     |
+| API-key revocation and replacement                    | Operator-controlled probe ready                          | Revoke only a dedicated test key during the gated observation window |
+| Disposable-device lifecycle                           | Guarded operator probe ready                             | Use only the separately gated virtual/test device                    |
+| mDNS discovery                                        | Stable across one controlled restart; manual URL remains | Design safe identity verification before reconsidering discovery     |
+| SDK decision                                          | SDK selected behind connector boundary                   | Re-evaluate the pinned package and audit result on every upgrade     |
+| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture              | Add event/reconnect fixtures from the remaining live lifecycle runs  |
 
 ## Installation evidence
 
@@ -288,8 +288,13 @@ operator window from `10000` through `300000` milliseconds and defaults to `9000
 post-reconnect verification, and cleanup remain independently bounded by `FB_HOMEY_SHS_TIMEOUT_MS`. A timeout or cleanup
 failure writes no report and exposes only a fixed sanitized error.
 
-This runbook does not authorize Smart Panel tooling or an automated agent to restart SHS. Live evidence remains pending
-until an operator intentionally performs the restart while the gated probe is open.
+This runbook does not authorize Smart Panel tooling or an automated agent to restart SHS. Only an operator may perform
+the restart while the gated probe is open.
+
+The operator-controlled run on 2026-08-26 against SHS `13.4.1` recorded the required disconnect, reconnect, manager
+resubscription, and fresh inventory read, followed by successful manager unsubscription, socket disconnect, and SDK
+destruction. The reviewed 15-event report is committed as
+`__fixtures__/evidence/2026-08-26-shs-13.4.1-restart-recovery.json`. Capability values were not changed during the run.
 
 ### Operator-controlled network interruption and restoration
 
@@ -397,17 +402,18 @@ discovery discriminator.
 
 A ten-second observation on 2026-08-26 after SHS `13.4.1` started on TrueNAS matched `_homey._tcp` on port `4859`, with
 the TXT key names `id`, `model`, `name`, and `version`. It also matched two co-hosted `_hap._tcp` services. The reviewed
-report is committed as `__fixtures__/evidence/2026-08-26-shs-13.4.1-mdns-homey-advertisement.json`. The service names,
-hosts, addresses, and all TXT values remain excluded. This establishes one attributable Homey-specific observation,
-but it does not yet prove stability across an SHS restart.
+pre-restart report is committed as `__fixtures__/evidence/2026-08-26-shs-13.4.1-mdns-homey-advertisement.json`. A second
+ten-second observation after the controlled restart produced an exact canonical match and is committed as
+`__fixtures__/evidence/2026-08-26-shs-13.4.1-mdns-post-restart.json`. The service names, hosts, addresses, and all TXT
+values remain excluded.
 
 ### Server-discovery decision
 
 Automatic Homey server discovery remains explicitly deferred for the local MVP. Smart Panel does not register a Homey
 mDNS discoverer and does not expose Homey server-discovery or rescan endpoints. The `_homey._tcp` observation is
-attributable, but it has not completed the required before/after-restart stability check. TXT values are intentionally
-excluded from evidence, so identity deduplication and endpoint verification also require a reviewed design before the
-advertisement can become a safe discovery input.
+attributable and stable across the controlled restart, but TXT values are intentionally excluded from evidence. Safe
+identity deduplication, spoof-resistant endpoint verification, expiry, and duplicate-record behavior still require a
+reviewed design before the advertisement can become a discovery input.
 
 Administrators configure the local Homey URL manually through the plugin configuration and can verify either the
 fully saved configuration or a complete candidate URL/new-key pair through the connection-test endpoint. Manual setup
@@ -483,8 +489,8 @@ Artifact snapshot inspected on 2026-08-12 and rechecked on 2026-08-25:
 HTTP remains the independent read-only compatibility/capture path, not the production realtime transport. The decision
 is based on the live SHS session and cleanup evidence, the SDK-native manager/capability contract, and the production
 adapter suites covering bounded creation and operations, subscription cleanup, reconnect coalescing, duplicate-listener
-prevention, late-client disposal, and normalized error handling. The outstanding live restart/network matrix remains a
-release-evidence gap, not an SDK abstraction gap.
+prevention, late-client disposal, and normalized error handling. Live SHS restart recovery now passes; the outstanding
+network-interruption matrix remains a release-evidence gap, not an SDK abstraction gap.
 
 The package license permits use with Homey products. Smart Panel loads it only for a user-configured Homey integration,
 does not copy or modify its proprietary source, and preserves the package's own `LICENSE` in installed production
@@ -524,10 +530,10 @@ Fill this matrix using synthetic aliases only.
 | Capability and availability events        | Pending                             |                                                                                                                                                      |
 | Allowlisted write, event, and read-back   | Pending                             |                                                                                                                                                      |
 | Network interruption and restoration      | Pending                             |                                                                                                                                                      |
-| SHS restart and reconnect                 | Pending                             |                                                                                                                                                      |
+| SHS restart and reconnect                 | Pass                                | 15 ordered events proved disconnect, bounded reconnect attempts, resubscription, fresh inventory read, and complete cleanup                          |
 | API-key revocation and replacement        | Pending                             |                                                                                                                                                      |
 | Disposable-device lifecycle sequence      | Pending                             |                                                                                                                                                      |
-| Stable mDNS service before/after restart  | Partial                             | SHS `13.4.1` advertised `_homey._tcp` on `4859` once after startup; repeat before and after a controlled restart                                     |
+| Stable mDNS service before/after restart  | Pass                                | Ten-second pre/post observations were exact matches: `_homey._tcp` on `4859` plus two co-hosted `_hap._tcp` services                                 |
 
 ## Verification
 

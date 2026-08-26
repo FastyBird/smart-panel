@@ -73,13 +73,13 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - [ ] Test invalid key, missing scopes, bad URL, unavailable host, and request timeout behavior.
 - [ ] Test SHS restart, network interruption/restoration, and API-key revocation.
 - [ ] On the separately gated disposable device only, test add, rename, zone move, unavailable, and removal events or inventory deltas; clean up the disposable device after capture.
-- [ ] Inspect mDNS advertisements before and after restart. Record exact service type/TXT fields only if stable.
+- [x] Inspect mDNS advertisements before and after restart. Record exact service type/TXT fields only if stable.
 - [ ] If Homey Pro hardware is available, repeat the minimum inventory/event/write suite against its local API.
 
 ### Task 0.3: Decide SDK vs. direct protocol
 
 - [x] Review the exact `homey-api` package version, license text, transitive dependencies, Node 24 support, release activity, and bundle/runtime implications.
-- [ ] Exercise connect/disconnect, timeouts, subscription cleanup, and reconnect behavior in a disposable spike.
+- [x] Exercise connect/disconnect, timeouts, subscription cleanup, and reconnect behavior in a disposable spike.
 - [x] Record one decision: `use SDK behind connector` or `use documented HTTP/Socket.IO directly`.
 - [x] Record replacement considerations so the rest of the plugin does not depend on SDK-specific objects.
 - [x] Do not add the dependency to production packages until this decision is reviewed.
@@ -89,8 +89,8 @@ crosses into normalized device services. The package license permits use with Ho
 the dependency. Its Node 24 engine is now reflected in root, backend, and packaged-server manifests. The legacy Socket.IO
 chain's unpatched moderate `parseuri` advisory is accepted only with the documented HTTP(S), credential, 2,048-character,
 administrator-only endpoint boundary and bounded operations. A direct documented HTTP/Socket.IO adapter is the recorded
-replacement and must pass the existing connector contract. Live restart/network evidence remains open above and in
-Task 6.2.
+replacement and must pass the existing connector contract. Live restart recovery passed on SHS `13.4.1`; network
+interruption evidence remains open above and in Task 6.2.
 
 ### Task 0.4: Build the sanitized fixture corpus
 
@@ -618,7 +618,7 @@ representative lifecycle failure paths.
 
 - [ ] Fresh startup with SHS online.
 - [ ] Startup with SHS offline, then recovery.
-- [ ] SHS restart during event flow.
+- [x] SHS restart during event flow.
 - [ ] Network interruption/restoration.
 - [ ] API key revoked, replaced, and insufficiently scoped.
 - [ ] Separately gated add/rename/zone-move/unavailable/removal lifecycle tests on the allowlisted disposable device only, followed by cleanup.
