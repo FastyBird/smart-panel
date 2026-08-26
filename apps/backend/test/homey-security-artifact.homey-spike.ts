@@ -1964,11 +1964,43 @@ const containsUnsafeCompiledAlias = (
 
 								if (ts.isReturnStatement(child) && child.expression !== undefined) {
 									const returned = child.expression;
-									const receiverPropertyName = compiledThisPropertyName(returned);
+									const receiverPropertyNames = new Set<string>();
+									let dynamicReceiverProperty = false;
+									const collectReceiverProperties = (returnedChild: ts.Node): void => {
+										if (ts.isExpression(returnedChild)) {
+											const receiverPropertyName = compiledThisPropertyName(returnedChild);
+
+											if (receiverPropertyName !== undefined) {
+												receiverPropertyNames.add(receiverPropertyName);
+											} else if (
+												ts.isElementAccessExpression(returnedChild) &&
+												returnedChild.expression.kind === ts.SyntaxKind.ThisKeyword
+											) {
+												dynamicReceiverProperty = true;
+											}
+										}
+
+										ts.forEachChild(returnedChild, collectReceiverProperties);
+									};
+
+									collectReceiverProperties(returned);
+
+									if (dynamicReceiverProperty) {
+										for (const candidate of receiver.properties) {
+											if ('name' in candidate) {
+												const candidateName = compiledPropertyName(candidate.name);
+
+												if (candidateName !== undefined) {
+													receiverPropertyNames.add(candidateName);
+												}
+											}
+										}
+									}
 
 									found =
-										(receiverPropertyName !== undefined &&
-											inspectProperty(receiver, nestedResolving, receiverPropertyName, nestedResolvingProperties)) ||
+										[...receiverPropertyNames].some((receiverPropertyName) =>
+											inspectProperty(receiver, nestedResolving, receiverPropertyName, nestedResolvingProperties),
+										) ||
 										containsUnsafeCompiledLiteral(returned, safeStrings) ||
 										inspect(returned, nestedResolving);
 								}
@@ -4804,6 +4836,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const source = { stored: 'opaque-secret', get value() { return this.stored; } }; const apiKey = source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { safe: '', stored: 'opaque-secret', get value() { return flag ? this.safe : this.stored; } }; const apiKey = source.value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
