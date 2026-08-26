@@ -1558,6 +1558,26 @@ const containsUnsafeCompiledAlias = (
 			return selectedValue === undefined ? [call.arguments[0]] : [selectedValue];
 		}
 
+		if (helperName === 'Object.fromEntries' && call.arguments.length >= 1) {
+			const entries = resolveArrayElements(call.arguments[0], new Set());
+
+			if (entries === undefined) {
+				return [call.arguments[0]];
+			}
+
+			return entries.flatMap((entry): readonly ts.Expression[] => {
+				const pair = resolveArrayElements(entry, new Set());
+
+				if (pair === undefined || pair.length < 2) {
+					return [entry];
+				}
+
+				const selectedName = compiledStaticPropertyExpressionName(pair[0]);
+
+				return selectedName === propertyName || selectedName === undefined ? [pair[1]] : [];
+			});
+		}
+
 		return [];
 	};
 	const inspect = (expression: ts.Expression, resolving: Set<ts.Node>): boolean => {
@@ -5381,6 +5401,13 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = Object.freeze({ value: 'opaque-secret' }).value;", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const stored = 'opaque-secret'; const entries = [['value', stored]]; const apiKey = Object.fromEntries(entries).value;",
+				true,
+			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = (choose && { value: 'opaque-secret' }).value;", true),
