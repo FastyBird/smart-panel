@@ -493,7 +493,10 @@ const containsUnsafeCompiledAlias = (
 		}
 
 		if (ts.isCallExpression(expression)) {
-			return expression.arguments.some((argument) => inspect(argument, resolving));
+			return (
+				(expression.arguments.length === 0 && inspect(expression.expression, resolving)) ||
+				expression.arguments.some((argument) => inspect(argument, resolving))
+			);
 		}
 
 		if (ts.isNewExpression(expression)) {
@@ -1014,6 +1017,80 @@ const containsCompiledPersonalValue = (text: string): boolean => {
 	return found;
 };
 
+const containsCompiledIcon = (text: string): boolean => {
+	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	let found = false;
+	const isSafeCompiledIconValue = (value: string): boolean => value === '[~2~]';
+	const unsafeIcon = (name: string | undefined, expression: ts.Expression): boolean =>
+		name !== undefined && isHomeyIconKey(name) && containsUnsafeCompiledValue(expression, isSafeCompiledIconValue);
+	const unsafeIconType = (name: string | undefined, type: ts.TypeNode | undefined): boolean =>
+		name !== undefined &&
+		isHomeyIconKey(name) &&
+		type !== undefined &&
+		containsUnsafeCompiledType(type, isSafeCompiledIconValue);
+	const visit = (node: ts.Node): void => {
+		if (found) {
+			return;
+		}
+
+		if (ts.isPropertyAssignment(node)) {
+			found = unsafeIcon(compiledPropertyName(node.name), node.initializer);
+		} else if (ts.isPropertyDeclaration(node)) {
+			const name = compiledPropertyName(node.name);
+
+			found = (node.initializer !== undefined && unsafeIcon(name, node.initializer)) || unsafeIconType(name, node.type);
+		} else if (ts.isPropertySignature(node)) {
+			found = unsafeIconType(compiledPropertyName(node.name), node.type);
+		} else if (ts.isSetAccessorDeclaration(node)) {
+			const name = compiledPropertyName(node.name);
+
+			found =
+				name !== undefined &&
+				isHomeyIconKey(name) &&
+				(node.parameters.some(
+					(parameter) =>
+						(parameter.initializer !== undefined &&
+							containsUnsafeCompiledValue(parameter.initializer, isSafeCompiledIconValue)) ||
+						(parameter.type !== undefined && containsUnsafeCompiledType(parameter.type, isSafeCompiledIconValue)),
+				) ||
+					(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledIconValue)));
+		} else if (ts.isGetAccessorDeclaration(node) || ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) {
+			const name = compiledPropertyName(node.name);
+			const iconName = name !== undefined && isHomeyIconKey(name);
+
+			found =
+				('body' in node &&
+					node.body !== undefined &&
+					iconName &&
+					containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledIconValue)) ||
+				(iconName && unsafeIconType(name, node.type));
+		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
+			found = unsafeIcon(node.name.text, node.initializer);
+		} else if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
+			found =
+				(node.initializer !== undefined && unsafeIcon(node.name.text, node.initializer)) ||
+				unsafeIconType(node.name.text, node.type);
+		} else if (ts.isBindingElement(node) && node.initializer !== undefined) {
+			const name =
+				node.propertyName !== undefined
+					? compiledPropertyName(node.propertyName)
+					: ts.isIdentifier(node.name)
+						? node.name.text
+						: undefined;
+
+			found = unsafeIcon(name, node.initializer);
+		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
+			found = unsafeIcon(compiledAssignedPropertyName(node.left), node.right);
+		}
+
+		ts.forEachChild(node, visit);
+	};
+
+	visit(sourceFile);
+
+	return found;
+};
+
 const compiledStaticString = (node: ts.Expression): string | undefined => {
 	if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
 		return node.text;
@@ -1070,6 +1147,34 @@ const containsCompiledPrivateUrl = (text: string): boolean => {
 			const staticString = compiledStaticString(node);
 
 			found = staticString !== undefined && containsStructuredUrl(staticString);
+		}
+
+		ts.forEachChild(node, visit);
+	};
+
+	visit(sourceFile);
+
+	return found;
+};
+
+const containsCompiledTimestamp = (text: string): boolean => {
+	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	let found = false;
+	const visit = (node: ts.Node): void => {
+		if (found) {
+			return;
+		}
+
+		if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+			found = isHomeyIsoTimestamp(node.text) && !isSafeTimestampValue(node.text);
+		} else if (ts.isTemplateExpression(node)) {
+			const staticString = compiledStaticString(node);
+
+			found = staticString !== undefined && isHomeyIsoTimestamp(staticString) && !isSafeTimestampValue(staticString);
+		} else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+			const staticString = compiledStaticString(node);
+
+			found = staticString !== undefined && isHomeyIsoTimestamp(staticString) && !isSafeTimestampValue(staticString);
 		}
 
 		ts.forEachChild(node, visit);
@@ -1412,6 +1517,14 @@ const assertTextSafe = (label: string, text: string, compiledSource = false): vo
 
 	if (compiledSource && containsCompiledPersonalValue(text)) {
 		throw new Error(`${label} contains a compiled personal value`);
+	}
+
+	if (compiledSource && containsCompiledIcon(text)) {
+		throw new Error(`${label} contains a compiled icon value`);
+	}
+
+	if (compiledSource && containsCompiledTimestamp(text)) {
+		throw new Error(`${label} contains a compiled timestamp value`);
 	}
 
 	for (const privateValue of configuredPrivateValues()) {
@@ -1899,6 +2012,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe('unsafe compiled module', "const fallback = 'opaque-secret'; const apiKey = fallback;", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const fallback = () => 'opaque-secret'; const apiKey = fallback();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
 			assertTextSafe('unsafe declaration', "declare function connect(apiKey: 'opaque-secret'): void", true),
 		).toThrow('unsafe declaration contains a compiled secret value');
 		expect(() =>
@@ -1950,6 +2070,12 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertTextSafe('unsafe compiled module', "const deviceName = 'Alice Bedroom';", true)).toThrow(
 			'unsafe compiled module contains a compiled personal value',
 		);
+		expect(() => assertTextSafe('unsafe compiled module', "const icon = 'custom-household-icon';", true)).toThrow(
+			'unsafe compiled module contains a compiled icon value',
+		);
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const updatedAt = '2026-08-25T12:34:56.000Z';", true),
+		).toThrow('unsafe compiled module contains a compiled timestamp value');
 		expect(() =>
 			assertTextSafe('unsafe declaration', "interface Config { hostname: 'family-homey.local' }", true),
 		).toThrow('unsafe declaration contains a compiled address value');
