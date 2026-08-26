@@ -1830,6 +1830,114 @@ const containsUnsafeCompiledAlias = (
 
 		return [];
 	};
+	const collectionTransformResultValues = (
+		call: ts.CallExpression,
+		resolving = new Set<ts.Node>(),
+	): readonly ts.Expression[] => {
+		if (!ts.isPropertyAccessExpression(call.expression) && !ts.isElementAccessExpression(call.expression)) {
+			return [];
+		}
+
+		const methodName = ts.isPropertyAccessExpression(call.expression)
+			? call.expression.name.text
+			: call.expression.argumentExpression === undefined
+				? undefined
+				: compiledStaticPropertyExpressionName(call.expression.argumentExpression);
+		const callbackIndex =
+			methodName === 'map' || methodName === 'flatMap'
+				? 0
+				: methodName === 'from' &&
+					  ts.isIdentifier(call.expression.expression) &&
+					  call.expression.expression.text === 'Array'
+					? 1
+					: undefined;
+		const callback = callbackIndex === undefined ? undefined : call.arguments[callbackIndex];
+
+		if (callback === undefined) {
+			return [];
+		}
+
+		const returnExpressions = (body: ts.Block): readonly ts.Expression[] => {
+			const values: ts.Expression[] = [];
+			const visitReturn = (node: ts.Node): void => {
+				if (ts.isReturnStatement(node) && node.expression !== undefined) {
+					values.push(node.expression);
+				}
+
+				ts.forEachChild(node, visitReturn);
+			};
+
+			visitReturn(body);
+
+			return values;
+		};
+		const resolveCallbackValues = (
+			expression: ts.Expression,
+			nestedResolving: Set<ts.Node>,
+		): readonly ts.Expression[] => {
+			if (ts.isIdentifier(expression)) {
+				return resolveCompiledBindings(expression, visibleThroughPosition).flatMap((binding) => {
+					if (nestedResolving.has(binding.declaration)) {
+						return [];
+					}
+
+					const nextResolving = new Set(nestedResolving).add(binding.declaration);
+					const values = [binding.initializer, binding.fallbackInitializer].flatMap((initializer) =>
+						initializer === undefined ? [] : resolveCallbackValues(initializer, nextResolving),
+					);
+
+					if (binding.callable?.body === undefined) {
+						return values;
+					}
+
+					return [...values, ...returnExpressions(binding.callable.body)];
+				});
+			}
+
+			if (
+				ts.isParenthesizedExpression(expression) ||
+				ts.isAsExpression(expression) ||
+				ts.isTypeAssertionExpression(expression) ||
+				ts.isNonNullExpression(expression) ||
+				ts.isSatisfiesExpression(expression)
+			) {
+				return resolveCallbackValues(expression.expression, nestedResolving);
+			}
+
+			if (ts.isArrowFunction(expression)) {
+				return ts.isBlock(expression.body) ? returnExpressions(expression.body) : [expression.body];
+			}
+
+			return ts.isFunctionExpression(expression) ? returnExpressions(expression.body) : [];
+		};
+
+		return resolveCallbackValues(callback, resolving);
+	};
+	const descriptorQueryValues = (call: ts.CallExpression, selectedPropertyName: string): readonly ts.Expression[] => {
+		if (
+			selectedPropertyName !== 'value' ||
+			call.arguments.length < 2 ||
+			!ts.isPropertyAccessExpression(call.expression) ||
+			!ts.isIdentifier(call.expression.expression) ||
+			!['Object', 'Reflect'].includes(call.expression.expression.text) ||
+			call.expression.name.text !== 'getOwnPropertyDescriptor'
+		) {
+			return [];
+		}
+
+		const propertyName = compiledStaticPropertyExpressionName(call.arguments[1]);
+
+		if (propertyName === undefined) {
+			return [call.arguments[0]];
+		}
+
+		const selectedValue = resolvePropertyValue(call.arguments[0], propertyName, new Set());
+
+		return [
+			...(selectedValue === undefined ? [] : [selectedValue]),
+			...compiledPropertyWriteValues(call.arguments[0], propertyName, call.getStart(call.getSourceFile())),
+		];
+	};
 	const isJsonParseCall = (callee: ts.Expression, resolving = new Set<ts.Node>()): boolean => {
 		if (
 			ts.isPropertyAccessExpression(callee) &&
@@ -2363,6 +2471,10 @@ const containsUnsafeCompiledAlias = (
 					return inspectProperty(receiver.expression, nestedResolving, selectedPropertyName, resolvingProperties);
 				}
 
+				if (ts.isClassExpression(receiver)) {
+					return inspectClassProperty(receiver, true, selectedPropertyName);
+				}
+
 				if (ts.isPropertyAccessExpression(receiver) || ts.isElementAccessExpression(receiver)) {
 					const receiverPropertyName = ts.isPropertyAccessExpression(receiver)
 						? receiver.name.text
@@ -2404,6 +2516,15 @@ const containsUnsafeCompiledAlias = (
 
 				if (ts.isCallExpression(receiver)) {
 					if (jsonParsedPropertyIsUnsafe(receiver, selectedPropertyName)) {
+						return true;
+					}
+
+					if (
+						[
+							...collectionTransformResultValues(receiver),
+							...descriptorQueryValues(receiver, selectedPropertyName),
+						].some((value) => containsUnsafeCompiledLiteral(value, safeStrings) || inspect(value, nestedResolving))
+					) {
 						return true;
 					}
 
@@ -5819,6 +5940,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const apiKey = (class { static get value() { return 'opaque-secret'; } }).value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"class Source { get value() { return 'opaque-secret'; } } const source = new Source(); const apiKey = source.value;",
 				true,
 			),
@@ -6057,6 +6185,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe('unsafe compiled module', "const apiKey = Object.create({ value: 'opaque-secret' }).value;", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const apiKey = Object.getOwnPropertyDescriptor({ value: 'opaque-secret' }, 'value').value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = Object.freeze({ value: 'opaque-secret' }).value;", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
@@ -6108,6 +6243,9 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const values = ['opaque-secret']; const apiKey = values.at(0);", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const apiKey = ['safe'].map(() => 'opaque-secret')[0];", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const values = ['opaque-secret']; const apiKey = values[index];", true),
