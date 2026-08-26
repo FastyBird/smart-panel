@@ -1178,6 +1178,106 @@ const containsUnsafeCompiledAlias = (
 					return inspectProperty(receiver.expression, nestedResolving, selectedPropertyName, resolvingProperties);
 				}
 
+				if (ts.isCallExpression(receiver)) {
+					const inspectReturnedProperty = (callee: ts.Expression, resolvingCalls: Set<string>): boolean => {
+						const inspectReturnBody = (body: ts.Block, nestedCalls: Set<string>): boolean => {
+							let found = false;
+							const visitReturn = (child: ts.Node): void => {
+								if (found) {
+									return;
+								}
+
+								if (ts.isReturnStatement(child) && child.expression !== undefined) {
+									found = inspectProperty(child.expression, nestedCalls, selectedPropertyName, resolvingProperties);
+								}
+
+								if (!found) {
+									ts.forEachChild(child, visitReturn);
+								}
+							};
+
+							visitReturn(body);
+
+							return found;
+						};
+
+						if (ts.isIdentifier(callee)) {
+							if (resolvingCalls.has(callee.text)) {
+								return false;
+							}
+
+							const nestedCalls = new Set(resolvingCalls).add(callee.text);
+
+							return resolveCompiledBindings(callee).some(
+								(binding) =>
+									[binding.initializer, binding.fallbackInitializer].some(
+										(initializer) => initializer !== undefined && inspectReturnedProperty(initializer, nestedCalls),
+									) ||
+									(binding.callable?.body !== undefined && inspectReturnBody(binding.callable.body, nestedCalls)),
+							);
+						}
+
+						if (
+							ts.isParenthesizedExpression(callee) ||
+							ts.isAsExpression(callee) ||
+							ts.isTypeAssertionExpression(callee) ||
+							ts.isNonNullExpression(callee) ||
+							ts.isSatisfiesExpression(callee)
+						) {
+							return inspectReturnedProperty(callee.expression, resolvingCalls);
+						}
+
+						if (ts.isArrowFunction(callee)) {
+							return ts.isBlock(callee.body)
+								? inspectReturnBody(callee.body, resolvingCalls)
+								: inspectProperty(callee.body, resolvingCalls, selectedPropertyName, resolvingProperties);
+						}
+
+						if (ts.isFunctionExpression(callee)) {
+							return inspectReturnBody(callee.body, resolvingCalls);
+						}
+
+						return ts.isCallExpression(callee) && inspectReturnedProperty(callee.expression, resolvingCalls);
+					};
+
+					return inspectReturnedProperty(receiver.expression, nestedResolving);
+				}
+
+				if (ts.isNewExpression(receiver) && ts.isIdentifier(receiver.expression)) {
+					const classDeclaration = resolveCompiledBinding(receiver.expression)?.classDeclaration;
+
+					return (
+						classDeclaration?.members.some((member) => {
+							if (!('name' in member)) {
+								return false;
+							}
+
+							const staticMember =
+								ts.canHaveModifiers(member) &&
+								ts.getModifiers(member)?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword);
+
+							if (staticMember || compiledPropertyName(member.name) !== selectedPropertyName) {
+								return false;
+							}
+
+							if (ts.isPropertyDeclaration(member)) {
+								return (
+									(member.initializer !== undefined &&
+										(containsUnsafeCompiledLiteral(member.initializer, safeStrings) ||
+											inspect(member.initializer, nestedResolving))) ||
+									(member.type !== undefined && containsUnsafeCompiledType(member.type, safeStrings))
+								);
+							}
+
+							return (
+								(ts.isGetAccessorDeclaration(member) || ts.isMethodDeclaration(member)) &&
+								member.body !== undefined &&
+								inspectCallableBody(member.body, nestedResolving)
+							);
+						}) ?? false
+					);
+				}
+
 				if (ts.isObjectLiteralExpression(receiver)) {
 					const propertyReference = `${receiver.pos}:${selectedPropertyName}`;
 
@@ -1439,7 +1539,32 @@ const containsUnsafeCompiledAlias = (
 						}
 
 						if (ts.isMethodDeclaration(property) && compiledPropertyName(property.name) === propertyName) {
-							return property.body !== undefined && inspectCallableBody(property.body, nestedResolving);
+							if (property.body === undefined) {
+								return false;
+							}
+
+							let returnsReceiverProperty = false;
+							const visitReturn = (child: ts.Node): void => {
+								if (
+									ts.isReturnStatement(child) &&
+									child.expression !== undefined &&
+									compiledThisPropertyName(child.expression) !== undefined
+								) {
+									returnsReceiverProperty = true;
+								}
+
+								if (!returnsReceiverProperty) {
+									ts.forEachChild(child, visitReturn);
+								}
+							};
+
+							visitReturn(property.body);
+
+							return (
+								(returnsReceiverProperty &&
+									(containsUnsafeCompiledLiteral(receiver, safeStrings) || inspect(receiver, nestedResolving))) ||
+								inspectCallableBody(property.body, nestedResolving)
+							);
 						}
 
 						return ts.isSpreadAssignment(property) && inspectCallableProperty(property.expression, nestedResolving);
@@ -3064,6 +3189,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const source = { stored: 'opaque-secret', fallback() { return this.stored; } }; const apiKey = source.fallback();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const source = { fallback: () => 'opaque-secret' }; const apiKey = source['fallback']();",
 				true,
 			),
@@ -3413,6 +3545,20 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"class Source { static get value() { return 'opaque-secret'; } } const apiKey = Source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Source { get value() { return 'opaque-secret'; } } const source = new Source(); const apiKey = source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const fallback = () => ({ value: 'opaque-secret' }); const apiKey = fallback().value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
