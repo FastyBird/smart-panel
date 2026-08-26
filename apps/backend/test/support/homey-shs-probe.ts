@@ -406,7 +406,7 @@ const isCapabilityEnumOptionIdentifier = (
 	path[3] === 'values' &&
 	/^\d+$/.test(path[4]);
 
-const isPublicHomeyEnumState = (capabilityId: string, value: string): boolean => {
+export const isPublicHomeyEnumState = (capabilityId: string, value: string): boolean => {
 	const separator = capabilityId.indexOf('.');
 	const capabilityBase = separator < 0 ? capabilityId : capabilityId.slice(0, separator);
 

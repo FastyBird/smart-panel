@@ -21,6 +21,7 @@ import {
 	isHomeyTimestampKey,
 	isHomeyUuid,
 	isPublicHomeyCapabilityBase,
+	isPublicHomeyEnumState,
 } from './support/homey-shs-probe';
 
 type JsonRecord = Record<string, unknown>;
@@ -136,6 +137,15 @@ const configuredWriteStringValue = (): string | undefined => {
 	}
 };
 
+const configuredPrivateWriteStringValue = (): string | undefined => {
+	const value = configuredWriteStringValue();
+	const capabilityId = process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID?.trim();
+
+	return value !== undefined && capabilityId !== undefined && isPublicHomeyEnumState(capabilityId, value)
+		? undefined
+		: value;
+};
+
 const configuredExpectedHost = (): string | undefined => {
 	const value = process.env.FB_HOMEY_SHS_EXPECTED_HOST?.trim();
 	const normalizedValue = value?.toLowerCase().replace(/\.$/, '');
@@ -164,7 +174,7 @@ const configuredPrivateValues = (): readonly string[] =>
 		process.env.FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID,
 		process.env.FB_HOMEY_SHS_WRITE_DEVICE_ID,
 		configuredWriteCapabilityId(),
-		configuredWriteStringValue(),
+		configuredPrivateWriteStringValue(),
 		...(process.env.FB_HOMEY_SHS_PRIVATE_TERMS?.split(',') ?? []),
 	]
 		.map((value) => value?.trim())
@@ -480,6 +490,30 @@ const containsUnsafeReturnedLiteral = (
 	return found;
 };
 
+const containsUnsafeCompiledBodyLiteral = (
+	body: ts.Block,
+	safeStrings: SafeCompiledString = SAFE_COMPILED_SECRET_STRINGS,
+): boolean => {
+	let found = false;
+	const visit = (node: ts.Node): void => {
+		if (found) {
+			return;
+		}
+
+		if (ts.isExpression(node) && containsUnsafeCompiledLiteral(node, safeStrings)) {
+			found = true;
+
+			return;
+		}
+
+		ts.forEachChild(node, visit);
+	};
+
+	visit(body);
+
+	return found;
+};
+
 const containsCompiledSecret = (text: string): boolean => {
 	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 	let found = false;
@@ -506,6 +540,14 @@ const containsCompiledSecret = (text: string): boolean => {
 			const name = compiledPropertyName(node.name);
 
 			found = isCompiledSecretName(name) && node.type !== undefined && containsUnsafeCompiledType(node.type);
+		} else if (ts.isSetAccessorDeclaration(node) && isCompiledSecretName(compiledPropertyName(node.name))) {
+			found =
+				node.parameters.some(
+					(parameter) =>
+						(parameter.initializer !== undefined && containsUnsafeCompiledLiteral(parameter.initializer)) ||
+						(parameter.type !== undefined && containsUnsafeCompiledType(parameter.type)),
+				) ||
+				(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body));
 		} else if (
 			(ts.isGetAccessorDeclaration(node) || ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) &&
 			isCompiledSecretName(compiledPropertyName(node.name))
@@ -1596,6 +1638,13 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertTextSafe('unsafe compiled module', "const apiKey = [...['opaque-secret']];", true)).toThrow(
 			'unsafe compiled module contains a compiled secret value',
 		);
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Config { set apiKey(value) { this.value = value || 'opaque-secret'; } }",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() => assertTextSafe('unsafe compiled module', "config.api_key = 'opaque-secret';", true)).toThrow(
 			'unsafe compiled module contains a compiled secret value',
 		);
@@ -1712,7 +1761,11 @@ describe('Homey security artifact gate', () => {
 
 			process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID = 'onoff';
 			expect(() => assertTextSafe('safe fixture', '{"capability":"onoff"}')).not.toThrow();
+			process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID = 'power_on_behavior';
+			process.env.FB_HOMEY_SHS_WRITE_VALUE = '"off"';
+			expect(() => assertTextSafe('safe fixture', '{"value":"off"}')).not.toThrow();
 			process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID = 'onoff.private-device';
+			process.env.FB_HOMEY_SHS_WRITE_VALUE = '"private-write-value"';
 			expect(() => assertTextSafe('unsafe fixture', '{"capability":"onoff.private-device"}')).toThrow(
 				'unsafe fixture contains a configured private Homey value',
 			);
