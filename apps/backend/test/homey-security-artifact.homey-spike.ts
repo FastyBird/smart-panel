@@ -776,7 +776,7 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 	};
 	const addPatternBindings = (
 		pattern: ts.ObjectBindingPattern | ts.ArrayBindingPattern,
-		source: ts.Expression,
+		source: ts.Expression | undefined,
 		scope: ts.Node,
 	): void => {
 		pattern.elements.forEach((element, index) => {
@@ -784,7 +784,7 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 				return;
 			}
 
-			const selectedValue = selectBindingValue(pattern, element, index, source);
+			const selectedValue = source === undefined ? undefined : selectBindingValue(pattern, element, index, source);
 
 			if (ts.isIdentifier(element.name)) {
 				addBinding(element.name.text, {
@@ -793,7 +793,7 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 					initializer: selectedValue ?? element.initializer,
 					scope,
 				});
-			} else if (selectedValue !== undefined) {
+			} else {
 				addPatternBindings(element.name, selectedValue, scope);
 			}
 		});
@@ -908,6 +908,8 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 				initializer: node.initializer,
 				scope: compiledBindingScope(node),
 			});
+		} else if (ts.isParameter(node) && (ts.isObjectBindingPattern(node.name) || ts.isArrayBindingPattern(node.name))) {
+			addPatternBindings(node.name, node.initializer, compiledBindingScope(node));
 		} else if (ts.isFunctionDeclaration(node) && node.name !== undefined) {
 			addBinding(node.name.text, { callable: node, declaration: node, scope: compiledBindingScope(node) });
 		} else if (ts.isClassDeclaration(node) && node.name !== undefined) {
@@ -1105,7 +1107,7 @@ const containsUnsafeCompiledAlias = (
 	resolvingAliases = new Set<ts.Node>(),
 ): boolean => {
 	const visibleThroughPosition = node.getStart(node.getSourceFile());
-	const activeParameterArguments = new Map<ts.ParameterDeclaration, ts.Expression>();
+	const activeParameterArguments = new Map<ts.Node, readonly ts.Expression[]>();
 	const resolveArrayElements = (
 		expression: ts.Expression,
 		resolving: Set<ts.Node>,
@@ -1222,29 +1224,83 @@ const containsUnsafeCompiledAlias = (
 		arguments_: readonly ts.Expression[],
 		callback: () => boolean,
 	): boolean => {
-		const previousArguments = new Map<ts.ParameterDeclaration, ts.Expression | undefined>();
+		const previousArguments = new Map<ts.Node, readonly ts.Expression[] | undefined>();
+		const bindArgument = (
+			bindingName: ts.BindingName,
+			declaration: ts.Node,
+			values: readonly ts.Expression[],
+		): void => {
+			if (ts.isIdentifier(bindingName)) {
+				previousArguments.set(declaration, activeParameterArguments.get(declaration));
+				activeParameterArguments.set(declaration, values);
 
-		parameters.forEach((parameter, index) => {
-			if (!ts.isIdentifier(parameter.name)) {
 				return;
 			}
 
+			bindingName.elements.forEach((element, index) => {
+				if (ts.isOmittedExpression(element)) {
+					return;
+				}
+
+				const selectedValues: ts.Expression[] = [];
+
+				for (const value of values) {
+					if (ts.isObjectBindingPattern(bindingName)) {
+						if (element.dotDotDotToken !== undefined) {
+							selectedValues.push(value);
+
+							continue;
+						}
+
+						const propertyName =
+							element.propertyName === undefined
+								? ts.isIdentifier(element.name)
+									? element.name.text
+									: undefined
+								: compiledPropertyName(element.propertyName);
+						const selectedValue =
+							propertyName === undefined ? undefined : resolvePropertyValue(value, propertyName, new Set());
+
+						if (selectedValue !== undefined) {
+							selectedValues.push(selectedValue);
+						}
+
+						continue;
+					}
+
+					const elements = resolveArrayElements(value, new Set());
+
+					if (elements !== undefined) {
+						selectedValues.push(
+							...(element.dotDotDotToken === undefined ? elements.slice(index, index + 1) : elements.slice(index)),
+						);
+					}
+				}
+
+				if (selectedValues.length === 0 && element.initializer !== undefined) {
+					selectedValues.push(element.initializer);
+				}
+
+				bindArgument(element.name, element, selectedValues);
+			});
+		};
+
+		parameters.forEach((parameter, index) => {
 			const argument = arguments_[index] ?? parameter.initializer;
 
 			if (argument !== undefined) {
-				previousArguments.set(parameter, activeParameterArguments.get(parameter));
-				activeParameterArguments.set(parameter, argument);
+				bindArgument(parameter.name, parameter, [argument]);
 			}
 		});
 
 		try {
 			return callback();
 		} finally {
-			for (const [parameter, previousArgument] of previousArguments) {
+			for (const [declaration, previousArgument] of previousArguments) {
 				if (previousArgument === undefined) {
-					activeParameterArguments.delete(parameter);
+					activeParameterArguments.delete(declaration);
 				} else {
-					activeParameterArguments.set(parameter, previousArgument);
+					activeParameterArguments.set(declaration, previousArgument);
 				}
 			}
 		}
@@ -1263,14 +1319,15 @@ const containsUnsafeCompiledAlias = (
 				}
 
 				const nestedResolving = new Set(resolving).add(binding.declaration);
-				const parameterArgument = ts.isParameter(binding.declaration)
-					? activeParameterArguments.get(binding.declaration)
-					: undefined;
+				const parameterArguments = activeParameterArguments.get(binding.declaration);
 
 				return (
-					(parameterArgument !== undefined &&
-						(containsUnsafeCompiledLiteral(parameterArgument, safeStrings) ||
-							inspect(parameterArgument, nestedResolving))) ||
+					(parameterArguments !== undefined &&
+						parameterArguments.some(
+							(parameterArgument) =>
+								containsUnsafeCompiledLiteral(parameterArgument, safeStrings) ||
+								inspect(parameterArgument, nestedResolving),
+						)) ||
 					[binding.initializer, binding.fallbackInitializer].some(
 						(initializer) =>
 							initializer !== undefined &&
@@ -1286,6 +1343,13 @@ const containsUnsafeCompiledAlias = (
 				: expression.argumentExpression === undefined
 					? undefined
 					: compiledStaticPropertyExpressionName(expression.argumentExpression);
+
+			if (propertyName === undefined) {
+				return (
+					containsUnsafeCompiledLiteral(expression.expression, safeStrings) || inspect(expression.expression, resolving)
+				);
+			}
+
 			const inspectProperty = (
 				receiver: ts.Expression,
 				nestedResolving: Set<ts.Node>,
@@ -1946,11 +2010,12 @@ const containsUnsafeCompiledAlias = (
 				: callee.argumentExpression === undefined
 					? undefined
 					: compiledStaticPropertyExpressionName(callee.argumentExpression);
-			const inspectCallableProperty = (receiver: ts.Expression, nestedResolving: Set<ts.Node>): boolean => {
-				if (propertyName === undefined) {
-					return false;
-				}
 
+			if (propertyName === undefined) {
+				return containsUnsafeCompiledLiteral(callee.expression, safeStrings) || inspect(callee.expression, resolving);
+			}
+
+			const inspectCallableProperty = (receiver: ts.Expression, nestedResolving: Set<ts.Node>): boolean => {
 				if (
 					compiledPropertyWriteValues(receiver, propertyName, visibleThroughPosition).some((value) =>
 						inspectCallable(value, nestedResolving),
@@ -4536,6 +4601,20 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"function make({ value }) { return { value }; } const apiKey = make({ value: 'opaque-secret' }).value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"function make([value]) { return { value }; } const apiKey = make(['opaque-secret']).value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const factory = () => ({ fallback: () => 'opaque-secret' }); const apiKey = factory().fallback();",
 				true,
 			),
@@ -4577,6 +4656,9 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const source = ['opaque-secret']; const apiKey = source[0];", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const values = ['opaque-secret']; const apiKey = values[index];", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe(
