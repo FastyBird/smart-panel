@@ -1198,7 +1198,10 @@ const compiledPropertyWriteValues = (
 					for (const source of node.arguments.slice(1)) {
 						values.push(...mutationPropertyValues(source, propertyName));
 					}
-				} else if (helperName === 'Object.defineProperty' && node.arguments.length >= 3) {
+				} else if (
+					['Object.defineProperty', 'Reflect.defineProperty'].includes(helperName ?? '') &&
+					node.arguments.length >= 3
+				) {
 					const selectedName = compiledStaticPropertyExpressionName(node.arguments[1]);
 
 					if (selectedName === propertyName || selectedName === undefined) {
@@ -1461,7 +1464,7 @@ const containsUnsafeCompiledAlias = (
 			});
 		}
 
-		if (helperName === 'Object.defineProperty' && node.arguments.length >= 3) {
+		if (['Object.defineProperty', 'Reflect.defineProperty'].includes(helperName ?? '') && node.arguments.length >= 3) {
 			const selectedName = compiledStaticPropertyExpressionName(node.arguments[1]);
 
 			if (selectedName !== propertyName && selectedName !== undefined) {
@@ -1515,7 +1518,7 @@ const containsUnsafeCompiledAlias = (
 			});
 		}
 
-		if (helperName === 'Object.defineProperty' && call.arguments.length >= 3) {
+		if (['Object.defineProperty', 'Reflect.defineProperty'].includes(helperName ?? '') && call.arguments.length >= 3) {
 			const selectedName = compiledStaticPropertyExpressionName(call.arguments[1]);
 
 			if (selectedName !== propertyName && selectedName !== undefined) {
@@ -1600,6 +1603,59 @@ const containsUnsafeCompiledAlias = (
 
 		return [];
 	};
+	const transparentCallResultValues = (call: ts.CallExpression): readonly ts.Expression[] => {
+		if (ts.isIdentifier(call.expression)) {
+			if (call.expression.text === 'structuredClone' || call.expression.text === 'Object') {
+				return call.arguments.slice(0, 1);
+			}
+
+			return [];
+		}
+
+		if (
+			ts.isPropertyAccessExpression(call.expression) &&
+			ts.isIdentifier(call.expression.expression) &&
+			call.expression.expression.text === 'Promise' &&
+			call.expression.name.text === 'resolve'
+		) {
+			return call.arguments.slice(0, 1);
+		}
+
+		if (
+			ts.isPropertyAccessExpression(call.expression) &&
+			ts.isIdentifier(call.expression.expression) &&
+			call.expression.expression.text === 'Array'
+		) {
+			return call.expression.name.text === 'from'
+				? call.arguments.slice(0, 1)
+				: call.expression.name.text === 'of'
+					? call.arguments
+					: [];
+		}
+
+		return [];
+	};
+	const resolveClassReceiver = (expression: ts.Expression): ts.ClassLikeDeclaration | undefined => {
+		if (ts.isIdentifier(expression)) {
+			return resolveCompiledBinding(expression)?.classDeclaration;
+		}
+
+		if (ts.isClassExpression(expression)) {
+			return expression;
+		}
+
+		if (
+			ts.isParenthesizedExpression(expression) ||
+			ts.isAsExpression(expression) ||
+			ts.isTypeAssertionExpression(expression) ||
+			ts.isNonNullExpression(expression) ||
+			ts.isSatisfiesExpression(expression)
+		) {
+			return resolveClassReceiver(expression.expression);
+		}
+
+		return undefined;
+	};
 	const inspect = (expression: ts.Expression, resolving: Set<ts.Node>): boolean => {
 		if (ts.isIdentifier(expression)) {
 			const bindings = resolveCompiledBindings(expression, visibleThroughPosition);
@@ -1664,7 +1720,7 @@ const containsUnsafeCompiledAlias = (
 				}
 
 				const inspectClassProperty = (
-					classDeclaration: ts.ClassDeclaration,
+					classDeclaration: ts.ClassLikeDeclaration,
 					expectStatic: boolean,
 					memberName: string,
 					classResolvingProperties = new Set<string>(),
@@ -1852,8 +1908,8 @@ const containsUnsafeCompiledAlias = (
 						if ((ts.isGetAccessorDeclaration(member) || ts.isMethodDeclaration(member)) && member.body !== undefined) {
 							let found = false;
 							const inspectDynamicClassProperties = (
-								declaration: ts.ClassDeclaration,
-								resolvingClasses = new Set<ts.ClassDeclaration>(),
+								declaration: ts.ClassLikeDeclaration,
+								resolvingClasses = new Set<ts.ClassLikeDeclaration>(),
 							): boolean => {
 								if (resolvingClasses.has(declaration)) {
 									return false;
@@ -2170,9 +2226,9 @@ const containsUnsafeCompiledAlias = (
 								}
 
 								const inspectClassMethod = (
-									declaration: ts.ClassDeclaration,
+									declaration: ts.ClassLikeDeclaration,
 									expectStatic: boolean,
-									resolvingClasses = new Set<ts.ClassDeclaration>(),
+									resolvingClasses = new Set<ts.ClassLikeDeclaration>(),
 								): boolean => {
 									if (resolvingClasses.has(declaration)) {
 										return false;
@@ -2255,8 +2311,8 @@ const containsUnsafeCompiledAlias = (
 									return inspectMethodProperty(methodReceiver.expression, resolvingMethods);
 								}
 
-								if (ts.isNewExpression(methodReceiver) && ts.isIdentifier(methodReceiver.expression)) {
-									const classDeclaration = resolveCompiledBinding(methodReceiver.expression)?.classDeclaration;
+								if (ts.isNewExpression(methodReceiver)) {
+									const classDeclaration = resolveClassReceiver(methodReceiver.expression);
 
 									return classDeclaration !== undefined && inspectClassMethod(classDeclaration, false);
 								}
@@ -2305,13 +2361,16 @@ const containsUnsafeCompiledAlias = (
 						);
 					};
 
-					return inspectReturnedProperty(receiver.expression, nestedResolving, receiver.arguments);
+					return (
+						inspectReturnedProperty(receiver.expression, nestedResolving, receiver.arguments) ||
+						transparentCallResultValues(receiver).some(
+							(argument) => containsUnsafeCompiledLiteral(argument, safeStrings) || inspect(argument, nestedResolving),
+						)
+					);
 				}
 
 				if (ts.isNewExpression(receiver)) {
-					const classDeclaration = ts.isIdentifier(receiver.expression)
-						? resolveCompiledBinding(receiver.expression)?.classDeclaration
-						: undefined;
+					const classDeclaration = resolveClassReceiver(receiver.expression);
 
 					if (
 						classDeclaration !== undefined &&
@@ -2626,8 +2685,8 @@ const containsUnsafeCompiledAlias = (
 					}
 
 					const inspectStaticClassCallable = (
-						declaration: ts.ClassDeclaration,
-						resolvingClasses = new Set<ts.ClassDeclaration>(),
+						declaration: ts.ClassLikeDeclaration,
+						resolvingClasses = new Set<ts.ClassLikeDeclaration>(),
 					): boolean => {
 						if (resolvingClasses.has(declaration)) {
 							return false;
@@ -2858,13 +2917,21 @@ const containsUnsafeCompiledAlias = (
 						);
 					};
 
-					return inspectReturnedReceiver(receiver.expression, nestedResolving, receiver.arguments);
+					return (
+						inspectReturnedReceiver(receiver.expression, nestedResolving, receiver.arguments) ||
+						transparentCallResultValues(receiver).some(
+							(argument) =>
+								inspectCallable(argument, nestedResolving) ||
+								containsUnsafeCompiledLiteral(argument, safeStrings) ||
+								inspect(argument, nestedResolving),
+						)
+					);
 				}
 
-				if (ts.isNewExpression(receiver) && ts.isIdentifier(receiver.expression)) {
-					const classDeclaration = resolveCompiledBinding(receiver.expression)?.classDeclaration;
+				if (ts.isNewExpression(receiver)) {
+					const classDeclaration = resolveClassReceiver(receiver.expression);
 					const inspectClassValue = (
-						declaration: ts.ClassDeclaration,
+						declaration: ts.ClassLikeDeclaration,
 						memberName: string,
 						resolvingValues = new Set<string>(),
 					): boolean => {
@@ -2968,8 +3035,8 @@ const containsUnsafeCompiledAlias = (
 						);
 					};
 					const inspectClassCallable = (
-						declaration: ts.ClassDeclaration,
-						resolvingClasses = new Set<ts.ClassDeclaration>(),
+						declaration: ts.ClassLikeDeclaration,
+						resolvingClasses = new Set<ts.ClassLikeDeclaration>(),
 					): boolean => {
 						if (resolvingClasses.has(declaration)) {
 							return false;
@@ -5168,6 +5235,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const source = {}; Reflect.defineProperty(source, 'value', { value: 'opaque-secret' }); const apiKey = source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const stored = 'opaque-secret'; const source = {}; Object.defineProperty(source, 'apiKey', { get: () => stored }); const apiKey = source.apiKey;",
 				true,
 			),
@@ -5272,6 +5346,9 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = new Proxy({ value: 'opaque-secret' }, {}).value;", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const apiKey = new (class { value = 'opaque-secret' })().value;", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe(
@@ -5460,6 +5537,13 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = Object.freeze({ value: 'opaque-secret' }).value;", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const apiKey = structuredClone({ value: 'opaque-secret' }).value;",
+				true,
+			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe(
