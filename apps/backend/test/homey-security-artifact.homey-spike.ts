@@ -1290,18 +1290,32 @@ const containsUnsafeCompiledAlias = (
 										(ts.isPropertyAccessExpression(child.left) || ts.isElementAccessExpression(child.left)) &&
 										child.left.expression.kind === ts.SyntaxKind.ThisKeyword
 									) {
-										const rightName = ts.isIdentifier(child.right) ? child.right.text : undefined;
-										const parameterIndex =
-											rightName !== undefined
-												? member.parameters.findIndex(
-														(parameter) => ts.isIdentifier(parameter.name) && parameter.name.text === rightName,
-													)
-												: -1;
-										const argument = parameterIndex < 0 ? undefined : constructorArguments[parameterIndex];
+										const referencedParameterIndexes = new Set<number>();
+										const visitParameterReference = (rightChild: ts.Node): void => {
+											if (ts.isIdentifier(rightChild)) {
+												const parameterIndex = member.parameters.findIndex(
+													(parameter) => ts.isIdentifier(parameter.name) && parameter.name.text === rightChild.text,
+												);
+
+												if (parameterIndex >= 0) {
+													referencedParameterIndexes.add(parameterIndex);
+												}
+											}
+
+											ts.forEachChild(rightChild, visitParameterReference);
+										};
+
+										visitParameterReference(child.right);
 
 										constructorWriteFound =
-											(argument !== undefined &&
-												(containsUnsafeCompiledLiteral(argument, safeStrings) || inspect(argument, nestedResolving))) ||
+											[...referencedParameterIndexes].some((parameterIndex) => {
+												const argument = constructorArguments[parameterIndex];
+
+												return (
+													argument !== undefined &&
+													(containsUnsafeCompiledLiteral(argument, safeStrings) || inspect(argument, nestedResolving))
+												);
+											}) ||
 											containsUnsafeCompiledLiteral(child.right, safeStrings) ||
 											inspect(child.right, nestedResolving);
 									}
@@ -4163,6 +4177,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"class Source { constructor(value) { this.value = value; } } const apiKey = new Source('opaque-secret').value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Source { constructor(value) { this.value = String(value); } } const apiKey = new Source('opaque-secret').value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
