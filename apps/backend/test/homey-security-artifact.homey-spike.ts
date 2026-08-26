@@ -1740,19 +1740,24 @@ const containsUnsafeCompiledAlias = (
 					const nestedReceiverResolving =
 						receiverBinding === undefined ? nestedResolving : new Set(nestedResolving).add(receiverBinding.declaration);
 					const classDeclaration = receiverBinding?.classDeclaration;
+					const inspectStaticClassCallable = (
+						declaration: ts.ClassDeclaration,
+						resolvingClasses = new Set<ts.ClassDeclaration>(),
+					): boolean => {
+						if (resolvingClasses.has(declaration)) {
+							return false;
+						}
 
-					if (
-						receiverBinding !== undefined &&
-						classDeclaration !== undefined &&
-						!nestedResolving.has(receiverBinding.declaration) &&
-						classDeclaration.members.some((member) => {
+						const nestedClasses = new Set(resolvingClasses).add(declaration);
+						const ownMemberFound = declaration.members.some((member) => {
 							if (!('name' in member)) {
 								return false;
 							}
 
-							const staticMember =
+							const staticMember = Boolean(
 								ts.canHaveModifiers(member) &&
-								ts.getModifiers(member)?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword);
+								ts.getModifiers(member)?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword),
+							);
 
 							if (!staticMember || compiledPropertyName(member.name) !== propertyName) {
 								return false;
@@ -1767,7 +1772,30 @@ const containsUnsafeCompiledAlias = (
 								member.body !== undefined &&
 								inspectCallableBody(member.body, nestedReceiverResolving)
 							);
-						})
+						});
+
+						return (
+							ownMemberFound ||
+							(declaration.heritageClauses
+								?.filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
+								.some((clause) =>
+									clause.types.some((type) => {
+										const baseClass = ts.isIdentifier(type.expression)
+											? resolveCompiledBinding(type.expression)?.classDeclaration
+											: undefined;
+
+										return baseClass !== undefined && inspectStaticClassCallable(baseClass, nestedClasses);
+									}),
+								) ??
+								false)
+						);
+					};
+
+					if (
+						receiverBinding !== undefined &&
+						classDeclaration !== undefined &&
+						!nestedResolving.has(receiverBinding.declaration) &&
+						inspectStaticClassCallable(classDeclaration)
 					) {
 						return true;
 					}
@@ -1793,6 +1821,72 @@ const containsUnsafeCompiledAlias = (
 					ts.isSatisfiesExpression(receiver)
 				) {
 					return inspectCallableProperty(receiver.expression, nestedResolving);
+				}
+
+				if (ts.isCallExpression(receiver)) {
+					const inspectReturnedReceiver = (factory: ts.Expression, resolvingFactories: Set<ts.Node>): boolean => {
+						const inspectReturnBody = (body: ts.Block, nestedFactories: Set<ts.Node>): boolean => {
+							let found = false;
+							const visitReturn = (child: ts.Node): void => {
+								if (found) {
+									return;
+								}
+
+								if (ts.isReturnStatement(child) && child.expression !== undefined) {
+									found = inspectCallableProperty(child.expression, nestedFactories);
+								}
+
+								if (!found) {
+									ts.forEachChild(child, visitReturn);
+								}
+							};
+
+							visitReturn(body);
+
+							return found;
+						};
+
+						if (ts.isIdentifier(factory)) {
+							return resolveCompiledBindings(factory, visibleThroughPosition).some((binding) => {
+								if (resolvingFactories.has(binding.declaration)) {
+									return false;
+								}
+
+								const nestedFactories = new Set(resolvingFactories).add(binding.declaration);
+
+								return (
+									[binding.initializer, binding.fallbackInitializer].some(
+										(initializer) => initializer !== undefined && inspectReturnedReceiver(initializer, nestedFactories),
+									) ||
+									(binding.callable?.body !== undefined && inspectReturnBody(binding.callable.body, nestedFactories))
+								);
+							});
+						}
+
+						if (
+							ts.isParenthesizedExpression(factory) ||
+							ts.isAsExpression(factory) ||
+							ts.isTypeAssertionExpression(factory) ||
+							ts.isNonNullExpression(factory) ||
+							ts.isSatisfiesExpression(factory)
+						) {
+							return inspectReturnedReceiver(factory.expression, resolvingFactories);
+						}
+
+						if (ts.isArrowFunction(factory)) {
+							return ts.isBlock(factory.body)
+								? inspectReturnBody(factory.body, resolvingFactories)
+								: inspectCallableProperty(factory.body, resolvingFactories);
+						}
+
+						if (ts.isFunctionExpression(factory)) {
+							return inspectReturnBody(factory.body, resolvingFactories);
+						}
+
+						return ts.isCallExpression(factory) && inspectReturnedReceiver(factory.expression, resolvingFactories);
+					};
+
+					return inspectReturnedReceiver(receiver.expression, nestedResolving);
 				}
 
 				if (ts.isNewExpression(receiver) && ts.isIdentifier(receiver.expression)) {
@@ -1885,17 +1979,22 @@ const containsUnsafeCompiledAlias = (
 								(ts.isGetAccessorDeclaration(member) || ts.isMethodDeclaration(member)) &&
 								member.body !== undefined
 							) {
-								let receiverPropertyName: string | undefined;
+								const receiverPropertyNames = new Set<string>();
+								const collectReceiverProperties = (child: ts.Node): void => {
+									if (ts.isExpression(child)) {
+										const receiverPropertyName = compiledThisPropertyName(child);
+
+										if (receiverPropertyName !== undefined) {
+											receiverPropertyNames.add(receiverPropertyName);
+										}
+									}
+
+									ts.forEachChild(child, collectReceiverProperties);
+								};
 								const visitReturn = (child: ts.Node): void => {
-									if (receiverPropertyName !== undefined) {
-										return;
-									}
-
 									if (ts.isReturnStatement(child) && child.expression !== undefined) {
-										receiverPropertyName = compiledThisPropertyName(child.expression);
-									}
-
-									if (receiverPropertyName === undefined) {
+										collectReceiverProperties(child.expression);
+									} else {
 										ts.forEachChild(child, visitReturn);
 									}
 								};
@@ -1903,8 +2002,9 @@ const containsUnsafeCompiledAlias = (
 								visitReturn(member.body);
 
 								return (
-									(receiverPropertyName !== undefined && inspectClassValue(declaration, receiverPropertyName)) ||
-									inspectCallableBody(member.body, nestedResolving)
+									[...receiverPropertyNames].some((receiverPropertyName) =>
+										inspectClassValue(declaration, receiverPropertyName),
+									) || inspectCallableBody(member.body, nestedResolving)
 								);
 							}
 
@@ -4053,6 +4153,20 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"class Source { safe = ''; stored = 'opaque-secret'; fallback(flag) { return flag ? this.safe : this.stored; } } const apiKey = new Source().fallback(false);",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Base { static fallback() { return 'opaque-secret'; } } class Source extends Base {} const apiKey = Source.fallback();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const fallback = () => ({ value: 'opaque-secret' }); const apiKey = fallback().value;",
 				true,
 			),
@@ -4061,6 +4175,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const factory = { make: () => ({ value: 'opaque-secret' }) }; const apiKey = factory.make().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const factory = () => ({ fallback: () => 'opaque-secret' }); const apiKey = factory().fallback();",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
