@@ -1058,10 +1058,14 @@ const resolveCompiledReceiverPath = (
 		: { binding, properties: [] };
 };
 
-const compiledPropertyWriteValues = (receiver: ts.Expression, propertyName: string): readonly ts.Expression[] => {
+const compiledPropertyWriteValues = (
+	receiver: ts.Expression,
+	propertyName: string,
+	visibleThroughPosition = receiver.getStart(receiver.getSourceFile()),
+): readonly ts.Expression[] => {
 	const sourceFile = receiver.getSourceFile();
 	const targetPath = resolveCompiledReceiverPath(receiver);
-	const usePosition = receiver.getStart(sourceFile);
+	const usePosition = Math.max(receiver.getStart(sourceFile), visibleThroughPosition);
 	const values: ts.Expression[] = [];
 
 	if (targetPath === undefined) {
@@ -1252,7 +1256,7 @@ const containsUnsafeCompiledAlias = (
 				}
 
 				if (
-					compiledPropertyWriteValues(receiver, selectedPropertyName).some(
+					compiledPropertyWriteValues(receiver, selectedPropertyName, visibleThroughPosition).some(
 						(value) => containsUnsafeCompiledLiteral(value, safeStrings) || inspect(value, nestedResolving),
 					)
 				) {
@@ -1278,6 +1282,75 @@ const containsUnsafeCompiledAlias = (
 					if (!expectStatic) {
 						for (const member of classDeclaration.members) {
 							if (ts.isConstructorDeclaration(member) && member.body !== undefined) {
+								const selectParameterValues = (
+									bindingName: ts.BindingName,
+									referencedName: string,
+									argument: ts.Expression,
+								): readonly ts.Expression[] => {
+									if (ts.isIdentifier(bindingName)) {
+										return bindingName.text === referencedName ? [argument] : [];
+									}
+
+									if (ts.isObjectBindingPattern(bindingName)) {
+										const values: ts.Expression[] = [];
+
+										for (const element of bindingName.elements) {
+											if (element.dotDotDotToken !== undefined) {
+												values.push(...selectParameterValues(element.name, referencedName, argument));
+
+												continue;
+											}
+
+											const propertyName =
+												element.propertyName === undefined
+													? ts.isIdentifier(element.name)
+														? element.name.text
+														: undefined
+													: compiledPropertyName(element.propertyName);
+											const selectedValue =
+												propertyName === undefined
+													? undefined
+													: resolvePropertyValue(argument, propertyName, new Set());
+											const parameterValue = selectedValue ?? element.initializer;
+
+											if (parameterValue !== undefined) {
+												values.push(...selectParameterValues(element.name, referencedName, parameterValue));
+											}
+										}
+
+										return values;
+									}
+
+									const argumentElements = resolveArrayElements(argument, new Set());
+
+									if (argumentElements === undefined) {
+										return [];
+									}
+
+									const values: ts.Expression[] = [];
+
+									bindingName.elements.forEach((element, index) => {
+										if (ts.isOmittedExpression(element)) {
+											return;
+										}
+
+										if (element.dotDotDotToken !== undefined) {
+											for (const argumentElement of argumentElements.slice(index)) {
+												values.push(...selectParameterValues(element.name, referencedName, argumentElement));
+											}
+
+											return;
+										}
+
+										const parameterValue = argumentElements[index] ?? element.initializer;
+
+										if (parameterValue !== undefined) {
+											values.push(...selectParameterValues(element.name, referencedName, parameterValue));
+										}
+									});
+
+									return values;
+								};
 								const visitConstructorWrite = (child: ts.Node): void => {
 									if (constructorWriteFound) {
 										return;
@@ -1290,16 +1363,18 @@ const containsUnsafeCompiledAlias = (
 										(ts.isPropertyAccessExpression(child.left) || ts.isElementAccessExpression(child.left)) &&
 										child.left.expression.kind === ts.SyntaxKind.ThisKeyword
 									) {
-										const referencedParameterIndexes = new Set<number>();
+										const referencedArguments: ts.Expression[] = [];
 										const visitParameterReference = (rightChild: ts.Node): void => {
 											if (ts.isIdentifier(rightChild)) {
-												const parameterIndex = member.parameters.findIndex(
-													(parameter) => ts.isIdentifier(parameter.name) && parameter.name.text === rightChild.text,
-												);
+												member.parameters.forEach((parameter, parameterIndex) => {
+													const argument = constructorArguments[parameterIndex] ?? parameter.initializer;
 
-												if (parameterIndex >= 0) {
-													referencedParameterIndexes.add(parameterIndex);
-												}
+													if (argument !== undefined) {
+														referencedArguments.push(
+															...selectParameterValues(parameter.name, rightChild.text, argument),
+														);
+													}
+												});
 											}
 
 											ts.forEachChild(rightChild, visitParameterReference);
@@ -1308,14 +1383,10 @@ const containsUnsafeCompiledAlias = (
 										visitParameterReference(child.right);
 
 										constructorWriteFound =
-											[...referencedParameterIndexes].some((parameterIndex) => {
-												const argument = constructorArguments[parameterIndex];
-
-												return (
-													argument !== undefined &&
-													(containsUnsafeCompiledLiteral(argument, safeStrings) || inspect(argument, nestedResolving))
-												);
-											}) ||
+											referencedArguments.some(
+												(argument) =>
+													containsUnsafeCompiledLiteral(argument, safeStrings) || inspect(argument, nestedResolving),
+											) ||
 											containsUnsafeCompiledLiteral(child.right, safeStrings) ||
 											inspect(child.right, nestedResolving);
 									}
@@ -1767,7 +1838,9 @@ const containsUnsafeCompiledAlias = (
 				}
 
 				if (
-					compiledPropertyWriteValues(receiver, propertyName).some((value) => inspectCallable(value, nestedResolving))
+					compiledPropertyWriteValues(receiver, propertyName, visibleThroughPosition).some((value) =>
+						inspectCallable(value, nestedResolving),
+					)
 				) {
 					return true;
 				}
@@ -4113,6 +4186,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const source = { value: '' }; const read = () => source.value; source.value = 'opaque-secret'; const apiKey = read();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const source = { value: '' }; source['value'] = 'opaque-secret'; const apiKey = source.value;",
 				true,
 			),
@@ -4177,6 +4257,20 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"class Source { constructor(value) { this.value = value; } } const apiKey = new Source('opaque-secret').value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Source { constructor({ value }) { this.value = value; } } const apiKey = new Source({ value: 'opaque-secret' }).value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Source { constructor([value]) { this.value = value; } } const apiKey = new Source(['opaque-secret']).value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
