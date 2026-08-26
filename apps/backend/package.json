@@ -74,7 +74,7 @@
     "test:buddy-context-soak": "jest --config ./test/jest-buddy-context-soak.json --runInBand",
     "homey:performance-gate": "jest --config ./test/jest-homey-spike.json --runInBand test/homey-inventory-performance.homey-spike.ts",
     "homey:latency-gate": "jest --config ./test/jest-homey-spike.json --runInBand test/homey-event-command-performance.homey-spike.ts",
-    "homey:security-gate": "pnpm run generate:openapi && pnpm run build && HOMEY_SECURITY_REQUIRE_BUILD=1 jest --config ./test/jest-homey-spike.json --runInBand && jest --runInBand src/modules/config/services/config.service.spec.ts src/plugins/devices-homey",
+    "homey:security-gate": "pnpm run generate:openapi && pnpm run build && HOMEY_SECURITY_REQUIRE_BUILD=1 jest --config ./test/jest-homey-spike.json --runInBand && jest --runInBand src/modules/config/controllers/config.controller.spec.ts src/modules/config/services/config.service.spec.ts src/plugins/devices-homey",
     "homey:probe": "ts-node --project tsconfig.json test/support/homey-shs-probe.ts",
     "homey:probe-credential-rotation": "ts-node --project tsconfig.json test/support/homey-shs-credential-rotation-probe.ts",
     "homey:probe-errors": "ts-node --project tsconfig.json test/support/homey-shs-error-probe.ts",
