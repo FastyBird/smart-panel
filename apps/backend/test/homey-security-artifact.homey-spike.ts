@@ -346,6 +346,16 @@ const containsUnsafeCompiledLiteral = (
 		return containsUnsafeCompiledLiteral(node.operand, safeStrings);
 	}
 
+	if (ts.isArrowFunction(node)) {
+		return ts.isBlock(node.body)
+			? containsUnsafeReturnedLiteral(node.body, safeStrings)
+			: containsUnsafeCompiledLiteral(node.body, safeStrings);
+	}
+
+	if (ts.isFunctionExpression(node)) {
+		return containsUnsafeReturnedLiteral(node.body, safeStrings);
+	}
+
 	return false;
 };
 
@@ -393,7 +403,10 @@ const isPublicSecretFieldsDescriptor = (node: ts.Expression): boolean => {
 	);
 };
 
-const containsUnsafeCompiledType = (type: ts.TypeNode): boolean => {
+const containsUnsafeCompiledType = (
+	type: ts.TypeNode,
+	safeStrings: ReadonlySet<string> = SAFE_COMPILED_SECRET_STRINGS,
+): boolean => {
 	let found = false;
 	const visit = (node: ts.Node): void => {
 		if (found) {
@@ -401,7 +414,7 @@ const containsUnsafeCompiledType = (type: ts.TypeNode): boolean => {
 		}
 
 		if (ts.isLiteralTypeNode(node) && ts.isExpression(node.literal)) {
-			found = containsUnsafeCompiledLiteral(node.literal);
+			found = containsUnsafeCompiledLiteral(node.literal, safeStrings);
 		}
 
 		ts.forEachChild(node, visit);
@@ -507,20 +520,35 @@ const containsCompiledAddress = (text: string): boolean => {
 		name !== undefined &&
 		isHomeyAddressKey(name) &&
 		containsUnsafeCompiledLiteral(expression, SAFE_COMPILED_ADDRESS_STRINGS);
+	const unsafeAddressType = (name: string | undefined, type: ts.TypeNode | undefined): boolean =>
+		name !== undefined &&
+		isHomeyAddressKey(name) &&
+		type !== undefined &&
+		containsUnsafeCompiledType(type, SAFE_COMPILED_ADDRESS_STRINGS);
 	const visit = (node: ts.Node): void => {
 		if (found) {
 			return;
 		}
 
-		if (ts.isPropertyAssignment(node) || (ts.isPropertyDeclaration(node) && node.initializer !== undefined)) {
+		if (ts.isPropertyAssignment(node)) {
 			found = unsafeAddress(compiledPropertyName(node.name), node.initializer);
-		} else if ((ts.isGetAccessorDeclaration(node) || ts.isMethodDeclaration(node)) && node.body !== undefined) {
+		} else if (ts.isPropertyDeclaration(node)) {
 			const name = compiledPropertyName(node.name);
 
 			found =
-				name !== undefined &&
-				isHomeyAddressKey(name) &&
-				containsUnsafeReturnedLiteral(node.body, SAFE_COMPILED_ADDRESS_STRINGS);
+				(node.initializer !== undefined && unsafeAddress(name, node.initializer)) || unsafeAddressType(name, node.type);
+		} else if (ts.isPropertySignature(node)) {
+			found = unsafeAddressType(compiledPropertyName(node.name), node.type);
+		} else if (ts.isGetAccessorDeclaration(node) || ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) {
+			const name = compiledPropertyName(node.name);
+
+			found =
+				('body' in node &&
+					node.body !== undefined &&
+					name !== undefined &&
+					isHomeyAddressKey(name) &&
+					containsUnsafeReturnedLiteral(node.body, SAFE_COMPILED_ADDRESS_STRINGS)) ||
+				unsafeAddressType(name, node.type);
 		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found = unsafeAddress(node.name.text, node.initializer);
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
@@ -1085,9 +1113,18 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertTextSafe('unsafe declaration', "interface Config { apiKey: 'opaque-secret' }", true)).toThrow(
 			'unsafe declaration contains a compiled secret value',
 		);
+		expect(() => assertTextSafe('unsafe compiled module', "const apiKey = () => 'opaque-secret';", true)).toThrow(
+			'unsafe compiled module contains a compiled secret value',
+		);
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const apiKey = function () { return 'opaque-secret'; };", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() => assertTextSafe('unsafe compiled module', "const hostname = 'family-homey.local';", true)).toThrow(
 			'unsafe compiled module contains a compiled address value',
 		);
+		expect(() =>
+			assertTextSafe('unsafe declaration', "interface Config { hostname: 'family-homey.local' }", true),
+		).toThrow('unsafe declaration contains a compiled address value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const config = { api_key: 'opaque-secret' };", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
