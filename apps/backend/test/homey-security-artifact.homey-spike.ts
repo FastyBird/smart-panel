@@ -1956,7 +1956,12 @@ const containsUnsafeCompiledAlias = (
 				: compiledStaticPropertyExpressionName(call.expression.argumentExpression);
 
 		if (methodName === 'find' || methodName === 'findLast') {
-			return resolveArrayElements(call.expression.expression, new Set()) ?? [call.expression.expression];
+			const receiver = call.expression.expression;
+
+			return [
+				...(resolveArrayElements(receiver, new Set()) ?? [receiver]),
+				...compiledPropertyWriteValues(receiver, '0', call.getStart(call.getSourceFile())),
+			];
 		}
 
 		const callbackIndex = ['flatMap', 'map', 'reduce', 'reduceRight'].includes(methodName ?? '')
@@ -4587,6 +4592,60 @@ const containsCompiledSecret = (text: string): boolean => {
 			});
 		});
 	};
+	const callableReturnValues = (
+		expression: ts.Expression,
+		resolving = new Set<ts.Node>(),
+	): readonly ts.Expression[] => {
+		const bodyReturnValues = (body: ts.Block): readonly ts.Expression[] => {
+			const values: ts.Expression[] = [];
+			const visitReturn = (node: ts.Node): void => {
+				if (node !== body && ts.isFunctionLike(node)) {
+					return;
+				}
+
+				if (ts.isReturnStatement(node) && node.expression !== undefined) {
+					values.push(node.expression);
+				}
+
+				ts.forEachChild(node, visitReturn);
+			};
+
+			visitReturn(body);
+
+			return values;
+		};
+
+		if (ts.isIdentifier(expression)) {
+			return resolveCompiledBindings(expression, expression.getStart(sourceFile)).flatMap((binding) => {
+				if (resolving.has(binding.declaration)) {
+					return [];
+				}
+
+				const nestedResolving = new Set(resolving).add(binding.declaration);
+				const initializerValues =
+					binding.initializer === undefined ? [] : callableReturnValues(binding.initializer, nestedResolving);
+				const declaredValues = binding.callable?.body === undefined ? [] : bodyReturnValues(binding.callable.body);
+
+				return [...initializerValues, ...declaredValues];
+			});
+		}
+
+		if (
+			ts.isParenthesizedExpression(expression) ||
+			ts.isAsExpression(expression) ||
+			ts.isTypeAssertionExpression(expression) ||
+			ts.isNonNullExpression(expression) ||
+			ts.isSatisfiesExpression(expression)
+		) {
+			return callableReturnValues(expression.expression, resolving);
+		}
+
+		if (ts.isArrowFunction(expression)) {
+			return ts.isBlock(expression.body) ? bodyReturnValues(expression.body) : [expression.body];
+		}
+
+		return ts.isFunctionExpression(expression) ? bodyReturnValues(expression.body) : [];
+	};
 	const promiseSettlementValues = (
 		expression: ts.Expression,
 		resolving = new Set<ts.Node>(),
@@ -4637,7 +4696,14 @@ const containsCompiledSecret = (text: string): boolean => {
 			}
 		}
 
-		return ['catch', 'finally', 'then'].includes(methodName ?? '') ? promiseSettlementValues(receiver, resolving) : [];
+		if (methodName === 'then' || methodName === 'catch') {
+			return [
+				...promiseSettlementValues(receiver, resolving),
+				...expression.arguments.flatMap((callback) => callableReturnValues(callback)),
+			];
+		}
+
+		return methodName === 'finally' ? promiseSettlementValues(receiver, resolving) : [];
 	};
 	const visit = (node: ts.Node): void => {
 		if (found) {
@@ -6581,6 +6647,20 @@ describe('Homey security artifact gate', () => {
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const stored = 'opaque-secret'; Promise.resolve().then(() => stored).then(apiKey => {});",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const stored = 'opaque-secret'; function load() { return stored; } Promise.resolve().then(load).then(apiKey => {});",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() => assertTextSafe('unsafe compiled module', "['opaque-secret'].forEach(apiKey => {});", true)).toThrow(
 			'unsafe compiled module contains a compiled secret value',
 		);
@@ -7256,6 +7336,20 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const apiKey = [{ value: 'opaque-secret' }].findLast(() => true).value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = []; source.push({ value: 'opaque-secret' }); const apiKey = source.find(Boolean).value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = []; source.unshift({ value: 'opaque-secret' }); const apiKey = source.findLast(Boolean).value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
