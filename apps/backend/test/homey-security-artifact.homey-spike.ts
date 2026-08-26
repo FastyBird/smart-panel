@@ -702,6 +702,64 @@ const containsUnsafeCompiledAlias = (
 			return inspectCallable(initializer, new Set(resolving).add(callee.text));
 		}
 
+		if (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) {
+			const propertyName = ts.isPropertyAccessExpression(callee)
+				? callee.name.text
+				: callee.argumentExpression !== undefined &&
+					  (ts.isStringLiteral(callee.argumentExpression) || ts.isNumericLiteral(callee.argumentExpression))
+					? callee.argumentExpression.text
+					: undefined;
+			const inspectCallableProperty = (receiver: ts.Expression, nestedResolving: Set<string>): boolean => {
+				if (propertyName === undefined) {
+					return false;
+				}
+
+				if (ts.isIdentifier(receiver)) {
+					const initializer = resolveCompiledAlias(receiver);
+
+					if (initializer === undefined || nestedResolving.has(receiver.text)) {
+						return false;
+					}
+
+					return inspectCallableProperty(initializer, new Set(nestedResolving).add(receiver.text));
+				}
+
+				if (
+					ts.isParenthesizedExpression(receiver) ||
+					ts.isAsExpression(receiver) ||
+					ts.isTypeAssertionExpression(receiver) ||
+					ts.isNonNullExpression(receiver) ||
+					ts.isSatisfiesExpression(receiver)
+				) {
+					return inspectCallableProperty(receiver.expression, nestedResolving);
+				}
+
+				if (ts.isObjectLiteralExpression(receiver)) {
+					return receiver.properties.some((property) => {
+						if (ts.isPropertyAssignment(property) && compiledPropertyName(property.name) === propertyName) {
+							return inspectCallable(property.initializer, nestedResolving);
+						}
+
+						if (ts.isShorthandPropertyAssignment(property) && property.name.text === propertyName) {
+							return inspectCallable(property.name, nestedResolving);
+						}
+
+						return ts.isSpreadAssignment(property) && inspectCallableProperty(property.expression, nestedResolving);
+					});
+				}
+
+				if (ts.isArrayLiteralExpression(receiver) && /^\d+$/.test(propertyName)) {
+					const element = receiver.elements[Number(propertyName)];
+
+					return element !== undefined && ts.isExpression(element) && inspectCallable(element, nestedResolving);
+				}
+
+				return false;
+			};
+
+			return inspectCallableProperty(callee.expression, resolving);
+		}
+
 		if (
 			ts.isParenthesizedExpression(callee) ||
 			ts.isAsExpression(callee) ||
@@ -2293,6 +2351,20 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const fallback = value => 'opaque-secret'; const apiKey = fallback('');",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { fallback: () => 'opaque-secret' }; const apiKey = source.fallback();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { fallback: () => 'opaque-secret' }; const apiKey = source['fallback']();",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
