@@ -474,6 +474,15 @@ const isDriverMetadata = (path: string[]): boolean => path.includes('data') || p
 const isIdentifierMap = (key: string): boolean =>
 	CAMEL_CASE_IDENTIFIER_MAP_KEY_PATTERN.test(key) || BOUNDED_IDENTIFIER_MAP_KEY_PATTERN.test(key);
 
+export const isHomeyIdentifierKey = (key: string): boolean => IDENTIFIER_KEY_PATTERN.test(key);
+
+export const isHomeyReferenceKey = (key: string): boolean => REFERENCE_KEY_PATTERN.test(key);
+
+export const isHomeyReferenceArrayKey = (key: string): boolean =>
+	CAMEL_CASE_REFERENCE_ARRAY_KEY_PATTERN.test(key) || BOUNDED_REFERENCE_ARRAY_KEY_PATTERN.test(key);
+
+export const isHomeyUuid = (value: string): boolean => UUID_PATTERN.test(value);
+
 const isTimestampKey = (key: string): boolean =>
 	CAMEL_CASE_TIMESTAMP_KEY_PATTERN.test(key) ||
 	BOUNDED_TIMESTAMP_KEY_PATTERN.test(key) ||
@@ -490,8 +499,7 @@ export const isHomeyPersonalKey = (key: string): boolean =>
 export const isHomeyGeneratedPseudonym = (value: unknown): value is string =>
 	typeof value === 'string' && GENERATED_PSEUDONYM_PATTERN.test(value);
 
-const isReferenceArrayKey = (key: string): boolean =>
-	CAMEL_CASE_REFERENCE_ARRAY_KEY_PATTERN.test(key) || BOUNDED_REFERENCE_ARRAY_KEY_PATTERN.test(key);
+const isReferenceArrayKey = (key: string): boolean => isHomeyReferenceArrayKey(key);
 
 const referenceArrayKind = (key: string): 'device' | 'reference' | 'zone' => {
 	const normalizedKey = key.replaceAll(/[_-]/g, '').toLowerCase();

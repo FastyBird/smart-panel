@@ -8,8 +8,12 @@ import {
 	findHomeyIpv6Range,
 	isHomeyAddressKey,
 	isHomeyGeneratedPseudonym,
+	isHomeyIdentifierKey,
 	isHomeyPersonalKey,
+	isHomeyReferenceArrayKey,
+	isHomeyReferenceKey,
 	isHomeySecretKey,
+	isHomeyUuid,
 	isPublicHomeyCapabilityBase,
 } from './support/homey-shs-probe';
 
@@ -54,6 +58,8 @@ const PUBLIC_SYNTHETIC_PERSONAL_VALUES = new Set([
 	'Synthetic mode B',
 	'Synthetic mode C',
 ]);
+const PUBLIC_SYNTHETIC_IDENTIFIER_VALUES = new Set(['synthetic-lock-device', 'synthetic_mode']);
+const REDACTION_SENTINEL_PATTERN = /^\[~[0-7]~\]$/;
 const COMPILED_SYMBOL_NAME_PATTERN = /^[A-Z][A-Z0-9_]+$/;
 const COMMENT_PATTERN = /\/\/[^\r\n]*|\/\*[\s\S]*?\*\//g;
 const URL_PATTERN = /(?:[A-Z][A-Z0-9+.-]*:)?\/\/[^\s"']+/i;
@@ -709,6 +715,43 @@ const containsStructuredPersonalValue = (value: unknown): boolean => {
 	});
 };
 
+const isSafeIdentifierValue = (value: unknown): boolean =>
+	value === null ||
+	value === 0 ||
+	value === false ||
+	isHomeyGeneratedPseudonym(value) ||
+	(typeof value === 'string' &&
+		(REDACTION_SENTINEL_PATTERN.test(value) || PUBLIC_SYNTHETIC_IDENTIFIER_VALUES.has(value)));
+
+const isCapabilityIdentifierPath = (key: string, path: readonly string[]): boolean =>
+	(key === 'id' || key === 'baseId') &&
+	path.some((segment) =>
+		['capabilities', 'capabilitiesObj', 'capabilityOptions', 'enumValues', 'values'].includes(segment),
+	);
+
+const containsStructuredIdentifier = (value: unknown, path: readonly string[] = []): boolean => {
+	if (Array.isArray(value)) {
+		return value.some((entry, index) => containsStructuredIdentifier(entry, [...path, index.toString()]));
+	}
+
+	if (value === null || typeof value !== 'object') {
+		return typeof value === 'string' && isHomeyUuid(value);
+	}
+
+	return Object.entries(value as JsonRecord).some(([key, child]) => {
+		const childPath = [...path, key];
+		const identifierValue =
+			!isHomeyReferenceArrayKey(key) &&
+			(isHomeyReferenceKey(key) || isHomeyIdentifierKey(key)) &&
+			!isCapabilityIdentifierPath(key, path) &&
+			!isSafeIdentifierValue(child);
+		const referenceArrayValue =
+			isHomeyReferenceArrayKey(key) && Array.isArray(child) && child.some((entry) => !isSafeIdentifierValue(entry));
+
+		return identifierValue || referenceArrayValue || containsStructuredIdentifier(child, childPath);
+	});
+};
+
 const loosePropertyAssignments = (text: string): ReadonlyArray<readonly [string, string]> =>
 	[...text.matchAll(LOOSE_PROPERTY_PATTERN)].flatMap((match) => {
 		const key = match[1]?.trim();
@@ -795,7 +838,13 @@ const assertTextSafe = (label: string, text: string, compiledSource = false): vo
 	}
 };
 
-const assertFixtureTextSafe = (label: string, text: string, extension: string, checkPersonalValues = true): void => {
+const assertFixtureTextSafe = (
+	label: string,
+	text: string,
+	extension: string,
+	checkPersonalValues = true,
+	checkIdentifiers = true,
+): void => {
 	assertTextSafe(label, text);
 
 	const structuredValue =
@@ -830,6 +879,10 @@ const assertFixtureTextSafe = (label: string, text: string, extension: string, c
 
 	if (checkPersonalValues && containsPersonalValue) {
 		throw new Error(`${label} contains a structured personal value`);
+	}
+
+	if (checkIdentifiers && structuredValue !== undefined && containsStructuredIdentifier(structuredValue)) {
+		throw new Error(`${label} contains a structured identifier value`);
 	}
 };
 
@@ -984,7 +1037,7 @@ describe('Homey security artifact gate', () => {
 			const label = path.slice(BACKEND_ROOT.length + 1);
 
 			if (extension === '.json' || extension === '.yaml' || extension === '.yml') {
-				assertFixtureTextSafe(label, text, extension, false);
+				assertFixtureTextSafe(label, text, extension, false, false);
 			} else {
 				assertTextSafe(label, text, path.endsWith('.js') || path.endsWith('.d.ts'));
 			}
@@ -1055,6 +1108,19 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertFixtureTextSafe('unsafe fixture', '{"name":"Alice Bedroom"}', '.json')).toThrow(
 			'unsafe fixture contains a structured personal value',
 		);
+		expect(() =>
+			assertFixtureTextSafe('unsafe fixture', '{"deviceId":"8d4d7584-1111-4111-8111-0123456789ab"}', '.json'),
+		).toThrow('unsafe fixture contains a structured identifier value');
+		expect(() => assertFixtureTextSafe('unsafe fixture', '{"driverId":"opaque-driver"}', '.json')).toThrow(
+			'unsafe fixture contains a structured identifier value',
+		);
+		expect(() =>
+			assertFixtureTextSafe(
+				'safe fixture',
+				'{"deviceId":"device-000001","ownerUri":"[~5~]","capabilities":[{"id":"onoff","baseId":"onoff"}]}',
+				'.json',
+			),
+		).not.toThrow();
 		expect(() => assertFixtureTextSafe('unsafe fixture', 'api_key: opaque-secret-value', '.yaml')).toThrow(
 			'unsafe fixture contains a structured secret value',
 		);
