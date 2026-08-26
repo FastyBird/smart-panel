@@ -429,6 +429,7 @@ const containsUnsafeCompiledLiteral = (
 };
 
 interface CompiledBinding {
+	readonly callable?: ts.FunctionDeclaration;
 	readonly declaration: ts.Declaration;
 	readonly initializer?: ts.Expression;
 	readonly scope: ts.Node;
@@ -487,7 +488,7 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
 			addBinding(node.name.text, { declaration: node, scope: compiledBindingScope(node) });
 		} else if (ts.isFunctionDeclaration(node) && node.name !== undefined) {
-			addBinding(node.name.text, { declaration: node, scope: compiledBindingScope(node) });
+			addBinding(node.name.text, { callable: node, declaration: node, scope: compiledBindingScope(node) });
 		}
 
 		ts.forEachChild(node, visit);
@@ -525,7 +526,7 @@ const compiledScopeDepth = (scope: ts.Node): number => {
 	return depth;
 };
 
-const resolveCompiledAlias = (identifier: ts.Identifier): ts.Expression | undefined => {
+const resolveCompiledBinding = (identifier: ts.Identifier): CompiledBinding | undefined => {
 	const sourceFile = identifier.getSourceFile();
 	const usePosition = identifier.getStart(sourceFile);
 	const visibleBindings = (compiledBindings(sourceFile).get(identifier.text) ?? [])
@@ -542,14 +543,63 @@ const resolveCompiledAlias = (identifier: ts.Identifier): ts.Expression | undefi
 				: right.declaration.getStart(sourceFile) - left.declaration.getStart(sourceFile);
 		});
 
-	return visibleBindings[0]?.initializer;
+	return visibleBindings[0];
 };
+
+const resolveCompiledAlias = (identifier: ts.Identifier): ts.Expression | undefined =>
+	resolveCompiledBinding(identifier)?.initializer;
 
 const containsUnsafeCompiledAlias = (
 	node: ts.Expression,
 	safeStrings: SafeCompiledString,
 	resolvingAliases = new Set<string>(),
 ): boolean => {
+	const resolveArrayElements = (
+		expression: ts.Expression,
+		resolving: Set<string>,
+	): readonly ts.Expression[] | undefined => {
+		if (ts.isIdentifier(expression)) {
+			const initializer = resolveCompiledAlias(expression);
+
+			return initializer === undefined || resolving.has(expression.text)
+				? undefined
+				: resolveArrayElements(initializer, new Set(resolving).add(expression.text));
+		}
+
+		if (
+			ts.isParenthesizedExpression(expression) ||
+			ts.isAsExpression(expression) ||
+			ts.isTypeAssertionExpression(expression) ||
+			ts.isNonNullExpression(expression) ||
+			ts.isSatisfiesExpression(expression)
+		) {
+			return resolveArrayElements(expression.expression, resolving);
+		}
+
+		if (!ts.isArrayLiteralExpression(expression)) {
+			return undefined;
+		}
+
+		const elements: ts.Expression[] = [];
+
+		for (const element of expression.elements) {
+			if (ts.isSpreadElement(element)) {
+				const spreadElements = resolveArrayElements(element.expression, resolving);
+
+				if (spreadElements === undefined) {
+					return undefined;
+				}
+
+				elements.push(...spreadElements);
+			} else if (ts.isExpression(element)) {
+				elements.push(element);
+			} else {
+				return undefined;
+			}
+		}
+
+		return elements;
+	};
 	const inspect = (expression: ts.Expression, resolving: Set<string>): boolean => {
 		if (ts.isIdentifier(expression)) {
 			const initializer = resolveCompiledAlias(expression);
@@ -612,8 +662,8 @@ const containsUnsafeCompiledAlias = (
 					});
 				}
 
-				if (ts.isArrayLiteralExpression(receiver) && /^\d+$/.test(propertyName)) {
-					const element = receiver.elements[Number(propertyName)];
+				if (/^\d+$/.test(propertyName)) {
+					const element = resolveArrayElements(receiver, nestedResolving)?.[Number(propertyName)];
 
 					if (element === undefined) {
 						return false;
@@ -691,15 +741,39 @@ const containsUnsafeCompiledAlias = (
 
 		return false;
 	};
+	const inspectCallableBody = (body: ts.Block, resolving: Set<string>): boolean => {
+		let found = false;
+		const visitReturn = (child: ts.Node): void => {
+			if (found) {
+				return;
+			}
+
+			if (ts.isReturnStatement(child) && child.expression !== undefined) {
+				found = containsUnsafeCompiledLiteral(child.expression, safeStrings) || inspect(child.expression, resolving);
+			}
+
+			if (!found) {
+				ts.forEachChild(child, visitReturn);
+			}
+		};
+
+		visitReturn(body);
+
+		return found;
+	};
 	const inspectCallable = (callee: ts.Expression, resolving: Set<string>): boolean => {
 		if (ts.isIdentifier(callee)) {
-			const initializer = resolveCompiledAlias(callee);
+			const binding = resolveCompiledBinding(callee);
 
-			if (initializer === undefined || resolving.has(callee.text)) {
+			if (binding === undefined || resolving.has(callee.text)) {
 				return false;
 			}
 
-			return inspectCallable(initializer, new Set(resolving).add(callee.text));
+			const nestedResolving = new Set(resolving).add(callee.text);
+
+			return binding.initializer !== undefined
+				? inspectCallable(binding.initializer, nestedResolving)
+				: binding.callable?.body !== undefined && inspectCallableBody(binding.callable.body, nestedResolving);
 		}
 
 		if (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) {
@@ -748,8 +822,8 @@ const containsUnsafeCompiledAlias = (
 					});
 				}
 
-				if (ts.isArrayLiteralExpression(receiver) && /^\d+$/.test(propertyName)) {
-					const element = receiver.elements[Number(propertyName)];
+				if (/^\d+$/.test(propertyName)) {
+					const element = resolveArrayElements(receiver, nestedResolving)?.[Number(propertyName)];
 
 					return element !== undefined && ts.isExpression(element) && inspectCallable(element, nestedResolving);
 				}
@@ -774,25 +848,12 @@ const containsUnsafeCompiledAlias = (
 			return containsUnsafeCompiledLiteral(callee.body, safeStrings) || inspect(callee.body, resolving);
 		}
 
-		if (ts.isArrowFunction(callee) || ts.isFunctionExpression(callee)) {
-			let found = false;
-			const visitReturn = (child: ts.Node): void => {
-				if (found) {
-					return;
-				}
+		if (ts.isArrowFunction(callee)) {
+			return ts.isBlock(callee.body) && inspectCallableBody(callee.body, resolving);
+		}
 
-				if (ts.isReturnStatement(child) && child.expression !== undefined) {
-					found = containsUnsafeCompiledLiteral(child.expression, safeStrings) || inspect(child.expression, resolving);
-				}
-
-				if (!found) {
-					ts.forEachChild(child, visitReturn);
-				}
-			};
-
-			visitReturn(callee.body);
-
-			return found;
+		if (ts.isFunctionExpression(callee)) {
+			return inspectCallableBody(callee.body, resolving);
 		}
 
 		return false;
@@ -2371,6 +2432,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"function fallback() { return 'opaque-secret'; } const apiKey = fallback();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"function first() { const fallback = 'opaque-secret'; const apiKey = fallback; } function second() { const fallback = ''; return fallback; }",
 				true,
 			),
@@ -2559,6 +2627,13 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const source = ['opaque-secret']; const apiKey = source[0];", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = [...['safe', 'opaque-secret']]; const apiKey = source[1];",
+				true,
+			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "function apiKey() { return 'opaque-secret'; }", true),
