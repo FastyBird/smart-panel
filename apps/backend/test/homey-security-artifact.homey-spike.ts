@@ -539,6 +539,24 @@ const compiledBindingScope = (node: ts.Node): ts.Node => {
 	return node.getSourceFile();
 };
 
+const compiledVariableBindingScope = (declaration: ts.VariableDeclaration): ts.Node => {
+	if (ts.isVariableDeclarationList(declaration.parent) && (declaration.parent.flags & ts.NodeFlags.BlockScoped) !== 0) {
+		return compiledBindingScope(declaration);
+	}
+
+	let current: ts.Node | undefined = declaration.parent;
+
+	while (current !== undefined) {
+		if (ts.isSourceFile(current) || ts.isFunctionLike(current)) {
+			return current;
+		}
+
+		current = current.parent;
+	}
+
+	return declaration.getSourceFile();
+};
+
 const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readonly CompiledBinding[]> => {
 	const cached = COMPILED_BINDING_CACHE.get(sourceFile);
 
@@ -854,14 +872,14 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 			addBinding(node.name.text, {
 				declaration: node,
 				initializer: node.initializer,
-				scope: compiledBindingScope(node),
+				scope: compiledVariableBindingScope(node),
 			});
 		} else if (
 			ts.isVariableDeclaration(node) &&
 			(ts.isObjectBindingPattern(node.name) || ts.isArrayBindingPattern(node.name)) &&
 			node.initializer !== undefined
 		) {
-			addPatternBindings(node.name, node.initializer, compiledBindingScope(node));
+			addPatternBindings(node.name, node.initializer, compiledVariableBindingScope(node));
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
 			addBinding(node.name.text, {
 				declaration: node,
@@ -958,60 +976,87 @@ const resolveCompiledBinding = (identifier: ts.Identifier): CompiledBinding | un
 const resolveCompiledAlias = (identifier: ts.Identifier): ts.Expression | undefined =>
 	resolveCompiledBinding(identifier)?.initializer;
 
-const resolveCompiledReceiverBinding = (
-	identifier: ts.Identifier,
-	resolvingBindings = new Set<ts.Node>(),
-): CompiledBinding | undefined => {
-	const binding = resolveCompiledBinding(identifier);
+interface CompiledReceiverPath {
+	readonly binding: CompiledBinding;
+	readonly properties: readonly string[];
+}
 
-	if (binding === undefined || resolvingBindings.has(binding.declaration)) {
-		return binding;
+const resolveCompiledReceiverPath = (
+	expression: ts.Expression,
+	resolvingBindings = new Set<ts.Node>(),
+): CompiledReceiverPath | undefined => {
+	if (
+		ts.isParenthesizedExpression(expression) ||
+		ts.isAsExpression(expression) ||
+		ts.isTypeAssertionExpression(expression) ||
+		ts.isNonNullExpression(expression) ||
+		ts.isSatisfiesExpression(expression)
+	) {
+		return resolveCompiledReceiverPath(expression.expression, resolvingBindings);
 	}
 
-	let initializer = binding.initializer;
+	if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
+		const propertyName = ts.isPropertyAccessExpression(expression)
+			? expression.name.text
+			: expression.argumentExpression === undefined
+				? undefined
+				: compiledStaticPropertyExpressionName(expression.argumentExpression);
+		const receiverPath = resolveCompiledReceiverPath(expression.expression, resolvingBindings);
 
-	while (
-		initializer !== undefined &&
-		(ts.isParenthesizedExpression(initializer) ||
+		return propertyName === undefined || receiverPath === undefined
+			? undefined
+			: { binding: receiverPath.binding, properties: [...receiverPath.properties, propertyName] };
+	}
+
+	if (!ts.isIdentifier(expression)) {
+		return undefined;
+	}
+
+	const binding = resolveCompiledBinding(expression);
+
+	if (binding === undefined || resolvingBindings.has(binding.declaration)) {
+		return binding === undefined ? undefined : { binding, properties: [] };
+	}
+
+	const initializer = binding.initializer;
+
+	return initializer !== undefined &&
+		(ts.isIdentifier(initializer) ||
+			ts.isPropertyAccessExpression(initializer) ||
+			ts.isElementAccessExpression(initializer) ||
+			ts.isParenthesizedExpression(initializer) ||
 			ts.isAsExpression(initializer) ||
 			ts.isTypeAssertionExpression(initializer) ||
 			ts.isNonNullExpression(initializer) ||
 			ts.isSatisfiesExpression(initializer))
-	) {
-		initializer = initializer.expression;
-	}
-
-	return initializer !== undefined && ts.isIdentifier(initializer)
-		? resolveCompiledReceiverBinding(initializer, new Set(resolvingBindings).add(binding.declaration))
-		: binding;
+		? resolveCompiledReceiverPath(initializer, new Set(resolvingBindings).add(binding.declaration))
+		: { binding, properties: [] };
 };
 
-const compiledPropertyWriteValues = (identifier: ts.Identifier, propertyName: string): readonly ts.Expression[] => {
-	const sourceFile = identifier.getSourceFile();
-	const targetBinding = resolveCompiledReceiverBinding(identifier);
-	const usePosition = identifier.getStart(sourceFile);
+const compiledPropertyWriteValues = (receiver: ts.Expression, propertyName: string): readonly ts.Expression[] => {
+	const sourceFile = receiver.getSourceFile();
+	const targetPath = resolveCompiledReceiverPath(receiver);
+	const usePosition = receiver.getStart(sourceFile);
 	const values: ts.Expression[] = [];
 
-	if (targetBinding === undefined) {
+	if (targetPath === undefined) {
 		return values;
 	}
+
+	const expectedProperties = [...targetPath.properties, propertyName];
 
 	const visit = (node: ts.Node): void => {
 		if (
 			ts.isBinaryExpression(node) &&
 			node.getStart(sourceFile) < usePosition &&
-			isAssignmentOperatorKind(node.operatorToken.kind) &&
-			compiledAssignedPropertyName(node.left) === propertyName
+			isAssignmentOperatorKind(node.operatorToken.kind)
 		) {
-			const receiver =
-				ts.isPropertyAccessExpression(node.left) || ts.isElementAccessExpression(node.left)
-					? node.left.expression
-					: undefined;
+			const writePath = resolveCompiledReceiverPath(node.left);
 
 			if (
-				receiver !== undefined &&
-				ts.isIdentifier(receiver) &&
-				resolveCompiledReceiverBinding(receiver)?.declaration === targetBinding.declaration
+				writePath?.binding.declaration === targetPath.binding.declaration &&
+				writePath.properties.length === expectedProperties.length &&
+				writePath.properties.every((property, index) => property === expectedProperties[index])
 			) {
 				values.push(node.right);
 			}
@@ -1076,6 +1121,69 @@ const containsUnsafeCompiledAlias = (
 
 		return elements;
 	};
+	const resolvePropertyValue = (
+		receiver: ts.Expression,
+		propertyName: string,
+		resolving: Set<string>,
+	): ts.Expression | undefined => {
+		if (ts.isIdentifier(receiver)) {
+			const initializer = resolveCompiledAlias(receiver);
+
+			return initializer === undefined || resolving.has(receiver.text)
+				? undefined
+				: resolvePropertyValue(initializer, propertyName, new Set(resolving).add(receiver.text));
+		}
+
+		if (
+			ts.isParenthesizedExpression(receiver) ||
+			ts.isAsExpression(receiver) ||
+			ts.isTypeAssertionExpression(receiver) ||
+			ts.isNonNullExpression(receiver) ||
+			ts.isSatisfiesExpression(receiver)
+		) {
+			return resolvePropertyValue(receiver.expression, propertyName, resolving);
+		}
+
+		if (ts.isPropertyAccessExpression(receiver) || ts.isElementAccessExpression(receiver)) {
+			const receiverPropertyName = ts.isPropertyAccessExpression(receiver)
+				? receiver.name.text
+				: receiver.argumentExpression === undefined
+					? undefined
+					: compiledStaticPropertyExpressionName(receiver.argumentExpression);
+			const resolvedReceiver =
+				receiverPropertyName === undefined
+					? undefined
+					: resolvePropertyValue(receiver.expression, receiverPropertyName, resolving);
+
+			return resolvedReceiver === undefined
+				? undefined
+				: resolvePropertyValue(resolvedReceiver, propertyName, resolving);
+		}
+
+		if (!ts.isObjectLiteralExpression(receiver)) {
+			return undefined;
+		}
+
+		for (const property of [...receiver.properties].reverse()) {
+			if (ts.isPropertyAssignment(property) && compiledPropertyName(property.name) === propertyName) {
+				return property.initializer;
+			}
+
+			if (ts.isShorthandPropertyAssignment(property) && property.name.text === propertyName) {
+				return property.name;
+			}
+
+			if (ts.isSpreadAssignment(property)) {
+				const spreadValue = resolvePropertyValue(property.expression, propertyName, resolving);
+
+				if (spreadValue !== undefined) {
+					return spreadValue;
+				}
+			}
+		}
+
+		return undefined;
+	};
 	const inspect = (expression: ts.Expression, resolving: Set<string>): boolean => {
 		if (ts.isIdentifier(expression)) {
 			const bindings = resolveCompiledBindings(expression);
@@ -1111,50 +1219,95 @@ const containsUnsafeCompiledAlias = (
 					return false;
 				}
 
+				if (
+					compiledPropertyWriteValues(receiver, selectedPropertyName).some(
+						(value) => containsUnsafeCompiledLiteral(value, safeStrings) || inspect(value, nestedResolving),
+					)
+				) {
+					return true;
+				}
+
+				const inspectClassProperty = (
+					classDeclaration: ts.ClassDeclaration,
+					expectStatic: boolean,
+					memberName: string,
+					classResolvingProperties = new Set<string>(),
+				): boolean => {
+					const propertyReference = `${classDeclaration.pos}:${expectStatic ? 'static' : 'instance'}:${memberName}`;
+
+					if (classResolvingProperties.has(propertyReference)) {
+						return false;
+					}
+
+					const nestedClassProperties = new Set(classResolvingProperties).add(propertyReference);
+
+					return classDeclaration.members.some((member) => {
+						if (!('name' in member)) {
+							return false;
+						}
+
+						const staticMember = Boolean(
+							ts.canHaveModifiers(member) &&
+							ts.getModifiers(member)?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword),
+						);
+
+						if (staticMember !== expectStatic || compiledPropertyName(member.name) !== memberName) {
+							return false;
+						}
+
+						if (ts.isPropertyDeclaration(member)) {
+							return (
+								(member.initializer !== undefined &&
+									(containsUnsafeCompiledLiteral(member.initializer, safeStrings) ||
+										inspect(member.initializer, nestedResolving))) ||
+								(member.type !== undefined && containsUnsafeCompiledType(member.type, safeStrings))
+							);
+						}
+
+						if ((ts.isGetAccessorDeclaration(member) || ts.isMethodDeclaration(member)) && member.body !== undefined) {
+							let found = false;
+							const visitReturn = (child: ts.Node): void => {
+								if (found) {
+									return;
+								}
+
+								if (ts.isReturnStatement(child) && child.expression !== undefined) {
+									const receiverPropertyName = compiledThisPropertyName(child.expression);
+
+									found =
+										(receiverPropertyName !== undefined &&
+											inspectClassProperty(
+												classDeclaration,
+												expectStatic,
+												receiverPropertyName,
+												nestedClassProperties,
+											)) ||
+										containsUnsafeCompiledLiteral(child.expression, safeStrings) ||
+										inspect(child.expression, nestedResolving);
+								}
+
+								if (!found) {
+									ts.forEachChild(child, visitReturn);
+								}
+							};
+
+							visitReturn(member.body);
+
+							return found;
+						}
+
+						return false;
+					});
+				};
+
 				if (ts.isIdentifier(receiver)) {
 					const nestedReceiverResolving = new Set(nestedResolving).add(receiver.text);
 					const classDeclaration = resolveCompiledBinding(receiver)?.classDeclaration;
 
 					if (
-						compiledPropertyWriteValues(receiver, selectedPropertyName).some(
-							(value) => containsUnsafeCompiledLiteral(value, safeStrings) || inspect(value, nestedReceiverResolving),
-						)
-					) {
-						return true;
-					}
-
-					if (
 						classDeclaration !== undefined &&
 						!nestedResolving.has(receiver.text) &&
-						classDeclaration.members.some((member) => {
-							if (!('name' in member)) {
-								return false;
-							}
-
-							const staticMember =
-								ts.canHaveModifiers(member) &&
-								ts.getModifiers(member)?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword);
-							const memberName = compiledPropertyName(member.name);
-
-							if (!staticMember || memberName !== selectedPropertyName) {
-								return false;
-							}
-
-							if (ts.isPropertyDeclaration(member)) {
-								return (
-									(member.initializer !== undefined &&
-										(containsUnsafeCompiledLiteral(member.initializer, safeStrings) ||
-											inspect(member.initializer, nestedReceiverResolving))) ||
-									(member.type !== undefined && containsUnsafeCompiledType(member.type, safeStrings))
-								);
-							}
-
-							return (
-								(ts.isGetAccessorDeclaration(member) || ts.isMethodDeclaration(member)) &&
-								member.body !== undefined &&
-								inspectCallableBody(member.body, nestedReceiverResolving)
-							);
-						})
+						inspectClassProperty(classDeclaration, true, selectedPropertyName)
 					) {
 						return true;
 					}
@@ -1176,6 +1329,23 @@ const containsUnsafeCompiledAlias = (
 					ts.isSatisfiesExpression(receiver)
 				) {
 					return inspectProperty(receiver.expression, nestedResolving, selectedPropertyName, resolvingProperties);
+				}
+
+				if (ts.isPropertyAccessExpression(receiver) || ts.isElementAccessExpression(receiver)) {
+					const receiverPropertyName = ts.isPropertyAccessExpression(receiver)
+						? receiver.name.text
+						: receiver.argumentExpression === undefined
+							? undefined
+							: compiledStaticPropertyExpressionName(receiver.argumentExpression);
+					const resolvedReceiver =
+						receiverPropertyName === undefined
+							? undefined
+							: resolvePropertyValue(receiver.expression, receiverPropertyName, nestedResolving);
+
+					return (
+						resolvedReceiver !== undefined &&
+						inspectProperty(resolvedReceiver, nestedResolving, selectedPropertyName, resolvingProperties)
+					);
 				}
 
 				if (ts.isCallExpression(receiver)) {
@@ -1227,6 +1397,20 @@ const containsUnsafeCompiledAlias = (
 							return inspectReturnedProperty(callee.expression, resolvingCalls);
 						}
 
+						if (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) {
+							const calleePropertyName = ts.isPropertyAccessExpression(callee)
+								? callee.name.text
+								: callee.argumentExpression === undefined
+									? undefined
+									: compiledStaticPropertyExpressionName(callee.argumentExpression);
+							const callable =
+								calleePropertyName === undefined
+									? undefined
+									: resolvePropertyValue(callee.expression, calleePropertyName, resolvingCalls);
+
+							return callable !== undefined && inspectReturnedProperty(callable, resolvingCalls);
+						}
+
 						if (ts.isArrowFunction(callee)) {
 							return ts.isBlock(callee.body)
 								? inspectReturnBody(callee.body, resolvingCalls)
@@ -1246,36 +1430,7 @@ const containsUnsafeCompiledAlias = (
 				if (ts.isNewExpression(receiver) && ts.isIdentifier(receiver.expression)) {
 					const classDeclaration = resolveCompiledBinding(receiver.expression)?.classDeclaration;
 
-					return (
-						classDeclaration?.members.some((member) => {
-							if (!('name' in member)) {
-								return false;
-							}
-
-							const staticMember =
-								ts.canHaveModifiers(member) &&
-								ts.getModifiers(member)?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword);
-
-							if (staticMember || compiledPropertyName(member.name) !== selectedPropertyName) {
-								return false;
-							}
-
-							if (ts.isPropertyDeclaration(member)) {
-								return (
-									(member.initializer !== undefined &&
-										(containsUnsafeCompiledLiteral(member.initializer, safeStrings) ||
-											inspect(member.initializer, nestedResolving))) ||
-									(member.type !== undefined && containsUnsafeCompiledType(member.type, safeStrings))
-								);
-							}
-
-							return (
-								(ts.isGetAccessorDeclaration(member) || ts.isMethodDeclaration(member)) &&
-								member.body !== undefined &&
-								inspectCallableBody(member.body, nestedResolving)
-							);
-						}) ?? false
-					);
+					return classDeclaration !== undefined && inspectClassProperty(classDeclaration, false, selectedPropertyName);
 				}
 
 				if (ts.isObjectLiteralExpression(receiver)) {
@@ -1467,17 +1622,15 @@ const containsUnsafeCompiledAlias = (
 					return false;
 				}
 
+				if (
+					compiledPropertyWriteValues(receiver, propertyName).some((value) => inspectCallable(value, nestedResolving))
+				) {
+					return true;
+				}
+
 				if (ts.isIdentifier(receiver)) {
 					const nestedReceiverResolving = new Set(nestedResolving).add(receiver.text);
 					const classDeclaration = resolveCompiledBinding(receiver)?.classDeclaration;
-
-					if (
-						compiledPropertyWriteValues(receiver, propertyName).some((value) =>
-							inspectCallable(value, nestedReceiverResolving),
-						)
-					) {
-						return true;
-					}
 
 					if (
 						classDeclaration !== undefined &&
@@ -3147,6 +3300,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"if (ready) { var fallback = 'opaque-secret'; } const apiKey = fallback;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const fallback = () => 'opaque-secret'; const apiKey = fallback();",
 				true,
 			),
@@ -3537,6 +3697,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const source = { inner: { value: '' } }; source.inner.value = 'opaque-secret'; const apiKey = source.inner.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const source = { get value() { return 'opaque-secret'; } }; const apiKey = source.value;",
 				true,
 			),
@@ -3558,7 +3725,21 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"class Source { stored = 'opaque-secret'; get value() { return this.stored; } } const apiKey = new Source().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const fallback = () => ({ value: 'opaque-secret' }); const apiKey = fallback().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const factory = { make: () => ({ value: 'opaque-secret' }) }; const apiKey = factory.make().value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
