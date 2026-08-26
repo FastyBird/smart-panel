@@ -3356,6 +3356,74 @@ const containsUnsafeCompiledBodyLiteral = (
 const containsCompiledSecret = (text: string): boolean => {
 	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 	let found = false;
+	const bindingNameContainsSecret = (name: ts.BindingName): boolean => {
+		if (ts.isIdentifier(name)) {
+			return isCompiledSecretName(name.text);
+		}
+
+		return name.elements.some(
+			(element) =>
+				!ts.isOmittedExpression(element) &&
+				((element.propertyName !== undefined && isCompiledSecretName(compiledPropertyName(element.propertyName))) ||
+					bindingNameContainsSecret(element.name)),
+		);
+	};
+	const resolveCallParameterSets = (
+		callee: ts.Expression,
+		resolving = new Set<ts.Node>(),
+	): readonly (readonly ts.ParameterDeclaration[])[] => {
+		if (ts.isIdentifier(callee)) {
+			return resolveCompiledBindings(callee, callee.getStart(sourceFile)).flatMap((binding) => {
+				if (resolving.has(binding.declaration)) {
+					return [];
+				}
+
+				if (binding.callable !== undefined) {
+					return [binding.callable.parameters];
+				}
+
+				const initializer = binding.initializer;
+
+				if (initializer === undefined) {
+					return [];
+				}
+
+				return resolveCallParameterSets(initializer, new Set(resolving).add(binding.declaration));
+			});
+		}
+
+		if (ts.isArrowFunction(callee) || ts.isFunctionExpression(callee)) {
+			return [callee.parameters];
+		}
+
+		if (
+			ts.isParenthesizedExpression(callee) ||
+			ts.isAsExpression(callee) ||
+			ts.isTypeAssertionExpression(callee) ||
+			ts.isNonNullExpression(callee) ||
+			ts.isSatisfiesExpression(callee)
+		) {
+			return resolveCallParameterSets(callee.expression, resolving);
+		}
+
+		return [];
+	};
+	const secretCallArguments = (
+		parameterSets: readonly (readonly ts.ParameterDeclaration[])[],
+		arguments_: readonly ts.Expression[],
+	): boolean =>
+		parameterSets.some((parameters) =>
+			parameters.some((parameter, index) => {
+				if (!bindingNameContainsSecret(parameter.name)) {
+					return false;
+				}
+
+				const parameterArguments =
+					parameter.dotDotDotToken === undefined ? arguments_.slice(index, index + 1) : arguments_.slice(index);
+
+				return parameterArguments.some((argument) => containsUnsafeCompiledValue(argument));
+			}),
+		);
 	const visit = (node: ts.Node): void => {
 		if (found) {
 			return;
@@ -3424,6 +3492,17 @@ const containsCompiledSecret = (text: string): boolean => {
 			found =
 				names.some((name) => isCompiledSecretName(name)) &&
 				compiledBindingValues(node).some((value) => containsUnsafeCompiledValue(value));
+		} else if (ts.isCallExpression(node)) {
+			found = secretCallArguments(resolveCallParameterSets(node.expression), node.arguments);
+		} else if (ts.isNewExpression(node)) {
+			const classDeclaration = ts.isIdentifier(node.expression)
+				? resolveCompiledBinding(node.expression)?.classDeclaration
+				: ts.isClassExpression(node.expression)
+					? node.expression
+					: undefined;
+			const constructor = classDeclaration?.members.find(ts.isConstructorDeclaration);
+
+			found = constructor !== undefined && secretCallArguments([constructor.parameters], node.arguments ?? []);
 		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
 			const name = compiledAssignedPropertyName(node.left);
 
@@ -5103,6 +5182,16 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "function connect(apiKey = 'opaque-secret') {}", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "function connect(apiKey) {} connect('opaque-secret');", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const connect = ({ apiKey }) => {}; connect({ apiKey: 'opaque-secret' });",
+				true,
+			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const { apiKey: key = 'opaque-secret' } = config;", true),
