@@ -633,9 +633,9 @@ criterion above because no capability or availability event was observed before 
 
 The 2026-08-26 SHS `13.4.1` network probe closed the network interruption/restoration session-recovery slice. A precise
 firewall rule blocked only the test host's path to SHS ports `4859` and `4860` for 60 seconds; the sanitized 36-event
-report proved disconnect, bounded reconnect attempts, reconnect, manager resubscription, a fresh inventory read, and
-complete cleanup. It does not close the event-flow criterion because no capability or availability event was observed
-across the interruption.
+report proved disconnect, nine reconnect attempts during that finite interruption, reconnect, manager resubscription,
+a fresh inventory read, and complete cleanup. It does not close the event-flow criterion because no capability or
+availability event was observed across the interruption.
 
 ### Task 6.3: Validate performance and security
 

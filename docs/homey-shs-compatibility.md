@@ -322,9 +322,9 @@ ordinary Homey installation. The restart acknowledgement is rejected in network 
 is rejected in restart mode, preventing one operator authorization from being reused for a different action.
 
 The operator-controlled run on 2026-08-26 against SHS `13.4.1` temporarily blocked only the Smart Panel test host's
-path to SHS ports `4859` and `4860` for 60 seconds. The reviewed 36-event report proved disconnect, bounded reconnect
-attempts, transport reconnection, manager resubscription, a fresh inventory read, and complete cleanup. No capability,
-device, or credential was changed. The report is committed as
+path to SHS ports `4859` and `4860` for 60 seconds. The reviewed 36-event report proved disconnect, nine reconnect
+attempts during that finite interruption, transport reconnection, manager resubscription, a fresh inventory read, and
+complete cleanup. No capability, device, or credential was changed. The report is committed as
 `__fixtures__/evidence/2026-08-26-shs-13.4.1-network-recovery.json`; it contains neither the firewall rule nor any
 address, endpoint, inventory, credential, or payload.
 
@@ -537,8 +537,8 @@ Fill this matrix using synthetic aliases only.
 | Socket.IO connect and subscribe           | Pass                                | SDK creation, socket connect, manager subscribe/unsubscribe, socket disconnect, disconnect resolution, and SDK destruction completed in strict order |
 | Capability and availability events        | Pending                             |                                                                                                                                                      |
 | Allowlisted write, event, and read-back   | Pending                             |                                                                                                                                                      |
-| Network interruption and restoration      | Pass                                | 36 ordered events proved disconnect, bounded reconnect attempts, resubscription, fresh inventory read, and complete cleanup                          |
-| SHS restart and reconnect                 | Pass                                | 15 ordered events proved disconnect, bounded reconnect attempts, resubscription, fresh inventory read, and complete cleanup                          |
+| Network interruption and restoration      | Pass                                | 36 ordered events proved disconnect, nine retries during the 60-second interruption, resubscription, fresh inventory read, and complete cleanup      |
+| SHS restart and reconnect                 | Pass                                | 15 ordered events proved disconnect, two observed retries, resubscription, fresh inventory read, and complete cleanup                                |
 | API-key revocation and replacement        | Pending                             |                                                                                                                                                      |
 | Disposable-device lifecycle sequence      | Pending                             |                                                                                                                                                      |
 | Stable mDNS service before/after restart  | Pass                                | Ten-second pre/post observations were exact matches: `_homey._tcp` on `4859` plus two co-hosted `_hap._tcp` services                                 |
