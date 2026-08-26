@@ -563,6 +563,61 @@ const containsUnsafeCompiledAlias = (
 			return containsUnsafeCompiledLiteral(initializer, safeStrings) || inspect(initializer, nestedResolving);
 		}
 
+		if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
+			const propertyName = ts.isPropertyAccessExpression(expression)
+				? expression.name.text
+				: expression.argumentExpression !== undefined &&
+					  (ts.isStringLiteral(expression.argumentExpression) || ts.isNumericLiteral(expression.argumentExpression))
+					? expression.argumentExpression.text
+					: undefined;
+			const inspectProperty = (receiver: ts.Expression, nestedResolving: Set<string>): boolean => {
+				if (propertyName === undefined) {
+					return false;
+				}
+
+				if (ts.isIdentifier(receiver)) {
+					const initializer = resolveCompiledAlias(receiver);
+
+					if (initializer === undefined || nestedResolving.has(receiver.text)) {
+						return false;
+					}
+
+					return inspectProperty(initializer, new Set(nestedResolving).add(receiver.text));
+				}
+
+				if (
+					ts.isParenthesizedExpression(receiver) ||
+					ts.isAsExpression(receiver) ||
+					ts.isTypeAssertionExpression(receiver) ||
+					ts.isNonNullExpression(receiver) ||
+					ts.isSatisfiesExpression(receiver)
+				) {
+					return inspectProperty(receiver.expression, nestedResolving);
+				}
+
+				if (ts.isObjectLiteralExpression(receiver)) {
+					return receiver.properties.some((property) => {
+						if (ts.isPropertyAssignment(property) && compiledPropertyName(property.name) === propertyName) {
+							return (
+								containsUnsafeCompiledLiteral(property.initializer, safeStrings) ||
+								inspect(property.initializer, nestedResolving)
+							);
+						}
+
+						if (ts.isShorthandPropertyAssignment(property) && property.name.text === propertyName) {
+							return inspect(property.name, nestedResolving);
+						}
+
+						return ts.isSpreadAssignment(property) && inspectProperty(property.expression, nestedResolving);
+					});
+				}
+
+				return false;
+			};
+
+			return inspectProperty(expression.expression, resolving);
+		}
+
 		if (ts.isArrayLiteralExpression(expression)) {
 			return expression.elements.some((element) =>
 				ts.isSpreadElement(element)
@@ -766,6 +821,15 @@ const containsCompiledSecret = (text: string): boolean => {
 			found =
 				('body' in node && node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body)) ||
 				(node.type !== undefined && containsUnsafeCompiledType(node.type));
+		} else if (ts.isFunctionDeclaration(node) && node.name !== undefined && isCompiledSecretName(node.name.text)) {
+			found =
+				node.parameters.some(
+					(parameter) =>
+						(parameter.initializer !== undefined && containsUnsafeCompiledValue(parameter.initializer)) ||
+						(parameter.type !== undefined && containsUnsafeCompiledType(parameter.type)),
+				) ||
+				(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body)) ||
+				(node.type !== undefined && containsUnsafeCompiledType(node.type));
 		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found =
 				isCompiledSecretName(node.name.text) &&
@@ -848,6 +912,16 @@ const containsCompiledAddress = (text: string): boolean => {
 					isHomeyAddressKey(name) &&
 					containsUnsafeCompiledBodyLiteral(node.body, SAFE_COMPILED_ADDRESS_STRINGS)) ||
 				unsafeAddressType(name, node.type);
+		} else if (ts.isFunctionDeclaration(node) && node.name !== undefined && isHomeyAddressKey(node.name.text)) {
+			found =
+				node.parameters.some(
+					(parameter) =>
+						(parameter.initializer !== undefined &&
+							containsUnsafeCompiledValue(parameter.initializer, SAFE_COMPILED_ADDRESS_STRINGS)) ||
+						(parameter.type !== undefined && containsUnsafeCompiledType(parameter.type, SAFE_COMPILED_ADDRESS_STRINGS)),
+				) ||
+				(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, SAFE_COMPILED_ADDRESS_STRINGS)) ||
+				unsafeAddressType(node.name.text, node.type);
 		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found = unsafeAddress(node.name.text, node.initializer);
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
@@ -934,6 +1008,16 @@ const containsCompiledIdentifier = (text: string): boolean => {
 					privateReferenceMethod &&
 					containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledIdentifierValue)) ||
 				(privateReferenceMethod && unsafeIdentifierType(name, node.type));
+		} else if (ts.isFunctionDeclaration(node) && node.name !== undefined && isHomeyReferenceKey(node.name.text)) {
+			found =
+				node.parameters.some(
+					(parameter) =>
+						(parameter.initializer !== undefined &&
+							containsUnsafeCompiledValue(parameter.initializer, isSafeCompiledIdentifierValue)) ||
+						(parameter.type !== undefined && containsUnsafeCompiledType(parameter.type, isSafeCompiledIdentifierValue)),
+				) ||
+				(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledIdentifierValue)) ||
+				unsafeIdentifierType(node.name.text, node.type);
 		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found = unsafeIdentifier(node.name.text, node.initializer);
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
@@ -1005,6 +1089,16 @@ const containsCompiledEndpoint = (text: string): boolean => {
 					endpointName &&
 					containsUnsafeCompiledBodyLiteral(node.body, isSafeEndpointValue)) ||
 				(endpointName && unsafeEndpointType(name, node.type));
+		} else if (ts.isFunctionDeclaration(node) && node.name !== undefined && isEndpointValueName(node.name.text)) {
+			found =
+				node.parameters.some(
+					(parameter) =>
+						(parameter.initializer !== undefined &&
+							containsUnsafeCompiledValue(parameter.initializer, isSafeEndpointValue)) ||
+						(parameter.type !== undefined && containsUnsafeCompiledType(parameter.type, isSafeEndpointValue)),
+				) ||
+				(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, isSafeEndpointValue)) ||
+				unsafeEndpointType(node.name.text, node.type);
 		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found = unsafeEndpoint(node.name.text, node.initializer);
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
@@ -1090,6 +1184,16 @@ const containsCompiledPersonalValue = (text: string): boolean => {
 					personalName &&
 					containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledPersonalValue)) ||
 				(personalName && unsafePersonalType(name, node.type));
+		} else if (ts.isFunctionDeclaration(node) && node.name !== undefined && isCompiledPersonalName(node.name.text)) {
+			found =
+				node.parameters.some(
+					(parameter) =>
+						(parameter.initializer !== undefined &&
+							containsUnsafeCompiledValue(parameter.initializer, isSafeCompiledPersonalValue)) ||
+						(parameter.type !== undefined && containsUnsafeCompiledType(parameter.type, isSafeCompiledPersonalValue)),
+				) ||
+				(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledPersonalValue)) ||
+				unsafePersonalType(node.name.text, node.type);
 		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found = unsafePersonalValue(node.name.text, node.initializer);
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
@@ -1162,6 +1266,16 @@ const containsCompiledIcon = (text: string): boolean => {
 					iconName &&
 					containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledIconValue)) ||
 				(iconName && unsafeIconType(name, node.type));
+		} else if (ts.isFunctionDeclaration(node) && node.name !== undefined && isHomeyIconKey(node.name.text)) {
+			found =
+				node.parameters.some(
+					(parameter) =>
+						(parameter.initializer !== undefined &&
+							containsUnsafeCompiledValue(parameter.initializer, isSafeCompiledIconValue)) ||
+						(parameter.type !== undefined && containsUnsafeCompiledType(parameter.type, isSafeCompiledIconValue)),
+				) ||
+				(node.body !== undefined && containsUnsafeCompiledBodyLiteral(node.body, isSafeCompiledIconValue)) ||
+				unsafeIconType(node.name.text, node.type);
 		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found = unsafeIcon(node.name.text, node.initializer);
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
@@ -2288,6 +2402,38 @@ describe('Homey security artifact gate', () => {
 				"const source = { value: 'custom-household-icon' }; const { value: icon } = source;",
 				true,
 			),
+		).toThrow('unsafe compiled module contains a compiled icon value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { value: 'opaque-secret' }; const apiKey = source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { value: 'opaque-secret' }; const apiKey = source['value'];",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "function apiKey() { return 'opaque-secret'; }", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "function hostname() { return 'family-homey.local'; }", true),
+		).toThrow('unsafe compiled module contains a compiled address value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "function deviceId() { return 'opaque-household-id'; }", true),
+		).toThrow('unsafe compiled module contains a compiled identifier value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "function endpoint() { return 'private-homey.local:4859'; }", true),
+		).toThrow('unsafe compiled module contains a compiled endpoint value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "function deviceName() { return 'Alice Bedroom'; }", true),
+		).toThrow('unsafe compiled module contains a compiled personal value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "function icon() { return 'custom-household-icon'; }", true),
 		).toThrow('unsafe compiled module contains a compiled icon value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "class Config { get apiKey() { return 'opaque-secret'; } }", true),
