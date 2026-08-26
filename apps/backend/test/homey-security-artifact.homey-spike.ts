@@ -4500,6 +4500,53 @@ const containsCompiledSecret = (text: string): boolean => {
 			});
 		});
 	};
+	const promiseSettlementValues = (
+		expression: ts.Expression,
+		resolving = new Set<ts.Node>(),
+	): readonly ts.Expression[] => {
+		if (ts.isIdentifier(expression)) {
+			const binding = resolveCompiledBinding(expression);
+
+			return binding?.initializer === undefined || resolving.has(binding.declaration)
+				? []
+				: promiseSettlementValues(binding.initializer, new Set(resolving).add(binding.declaration));
+		}
+
+		if (
+			ts.isParenthesizedExpression(expression) ||
+			ts.isAsExpression(expression) ||
+			ts.isTypeAssertionExpression(expression) ||
+			ts.isNonNullExpression(expression) ||
+			ts.isSatisfiesExpression(expression) ||
+			ts.isAwaitExpression(expression)
+		) {
+			return promiseSettlementValues(expression.expression, resolving);
+		}
+
+		if (
+			!ts.isCallExpression(expression) ||
+			(!ts.isPropertyAccessExpression(expression.expression) && !ts.isElementAccessExpression(expression.expression))
+		) {
+			return [];
+		}
+
+		const methodName = ts.isPropertyAccessExpression(expression.expression)
+			? expression.expression.name.text
+			: expression.expression.argumentExpression === undefined
+				? undefined
+				: compiledStaticPropertyExpressionName(expression.expression.argumentExpression);
+		const receiver = expression.expression.expression;
+
+		if (
+			(methodName === 'resolve' || methodName === 'reject') &&
+			ts.isIdentifier(receiver) &&
+			receiver.text === 'Promise'
+		) {
+			return expression.arguments.slice(0, 1);
+		}
+
+		return ['catch', 'finally', 'then'].includes(methodName ?? '') ? promiseSettlementValues(receiver, resolving) : [];
+	};
 	const visit = (node: ts.Node): void => {
 		if (found) {
 			return;
@@ -4618,6 +4665,17 @@ const containsCompiledSecret = (text: string): boolean => {
 							: node.arguments;
 
 			found = secretCallArguments(resolveCallParameterSets(invokedCallee), invokedArguments);
+
+			if (
+				!found &&
+				invocationReceiver !== undefined &&
+				(invocationPropertyName === 'then' || invocationPropertyName === 'catch')
+			) {
+				const settledValues = promiseSettlementValues(invocationReceiver);
+				const callbacks = invocationPropertyName === 'then' ? node.arguments.slice(0, 2) : node.arguments.slice(0, 1);
+
+				found = callbacks.some((callback) => secretCallArguments(resolveCallParameterSets(callback), settledValues));
+			}
 		} else if (ts.isNewExpression(node)) {
 			const classDeclaration = ts.isIdentifier(node.expression)
 				? resolveCompiledBinding(node.expression)?.classDeclaration
@@ -6356,6 +6414,27 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"function connect(apiKey) {} const bound = connect.bind(null, 'opaque-secret'); bound();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const stored = 'opaque-secret'; Promise.resolve(stored).then(apiKey => {});",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const stored = 'opaque-secret'; const pending = Promise.resolve(stored); function connect(apiKey) {} pending.then(connect);",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const stored = 'opaque-secret'; Promise.reject(stored).catch(apiKey => {});",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
