@@ -47,7 +47,6 @@ const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 	'homey-plugin-device-mapping',
 	'homey-reconnect-backoff',
 ]);
-const PUBLIC_COMPILED_SECRET_NAMES = new Set(['secretFields']);
 const PUBLIC_SYNTHETIC_PERSONAL_VALUES = new Set([
 	'Locked',
 	'Synthetic lock contract',
@@ -247,9 +246,15 @@ const compiledAssignedPropertyName = (expression: ts.Expression): string | undef
 	return undefined;
 };
 
-const containsUnsafeCompiledLiteral = (node: ts.Expression): boolean => {
+const SAFE_COMPILED_SECRET_STRINGS = new Set(['', '[~3~]']);
+const SAFE_COMPILED_ADDRESS_STRINGS = new Set(['[~0~]']);
+
+const containsUnsafeCompiledLiteral = (
+	node: ts.Expression,
+	safeStrings: ReadonlySet<string> = SAFE_COMPILED_SECRET_STRINGS,
+): boolean => {
 	if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-		return node.text.length > 0 && node.text !== '[~3~]';
+		return !safeStrings.has(node.text);
 	}
 
 	if (ts.isNumericLiteral(node)) {
@@ -269,17 +274,22 @@ const containsUnsafeCompiledLiteral = (node: ts.Expression): boolean => {
 	}
 
 	if (ts.isArrayLiteralExpression(node)) {
-		return node.elements.some((element) => ts.isExpression(element) && containsUnsafeCompiledLiteral(element));
+		return node.elements.some(
+			(element) => ts.isExpression(element) && containsUnsafeCompiledLiteral(element, safeStrings),
+		);
 	}
 
 	if (ts.isObjectLiteralExpression(node)) {
 		return node.properties.some(
-			(property) => ts.isPropertyAssignment(property) && containsUnsafeCompiledLiteral(property.initializer),
+			(property) =>
+				ts.isPropertyAssignment(property) && containsUnsafeCompiledLiteral(property.initializer, safeStrings),
 		);
 	}
 
 	if (ts.isBinaryExpression(node)) {
-		return containsUnsafeCompiledLiteral(node.left) || containsUnsafeCompiledLiteral(node.right);
+		return (
+			containsUnsafeCompiledLiteral(node.left, safeStrings) || containsUnsafeCompiledLiteral(node.right, safeStrings)
+		);
 	}
 
 	if (
@@ -289,11 +299,14 @@ const containsUnsafeCompiledLiteral = (node: ts.Expression): boolean => {
 		ts.isNonNullExpression(node) ||
 		ts.isSatisfiesExpression(node)
 	) {
-		return containsUnsafeCompiledLiteral(node.expression);
+		return containsUnsafeCompiledLiteral(node.expression, safeStrings);
 	}
 
 	if (ts.isConditionalExpression(node)) {
-		return containsUnsafeCompiledLiteral(node.whenTrue) || containsUnsafeCompiledLiteral(node.whenFalse);
+		return (
+			containsUnsafeCompiledLiteral(node.whenTrue, safeStrings) ||
+			containsUnsafeCompiledLiteral(node.whenFalse, safeStrings)
+		);
 	}
 
 	if (ts.isCallExpression(node)) {
@@ -303,44 +316,109 @@ const containsUnsafeCompiledLiteral = (node: ts.Expression): boolean => {
 				: undefined;
 
 		return (
-			(receiver !== undefined && containsUnsafeCompiledLiteral(receiver)) ||
-			node.arguments.some((argument) => containsUnsafeCompiledLiteral(argument))
+			(receiver !== undefined && containsUnsafeCompiledLiteral(receiver, safeStrings)) ||
+			node.arguments.some((argument) => containsUnsafeCompiledLiteral(argument, safeStrings))
 		);
 	}
 
 	if (ts.isNewExpression(node)) {
-		return node.arguments?.some((argument) => containsUnsafeCompiledLiteral(argument)) ?? false;
+		return node.arguments?.some((argument) => containsUnsafeCompiledLiteral(argument, safeStrings)) ?? false;
 	}
 
 	if (ts.isTemplateExpression(node)) {
 		return (
 			node.head.text.length > 0 ||
-			node.templateSpans.some((span) => span.literal.text.length > 0 || containsUnsafeCompiledLiteral(span.expression))
+			node.templateSpans.some(
+				(span) => span.literal.text.length > 0 || containsUnsafeCompiledLiteral(span.expression, safeStrings),
+			)
 		);
 	}
 
 	if (ts.isTaggedTemplateExpression(node)) {
-		return containsUnsafeCompiledLiteral(node.template);
+		return containsUnsafeCompiledLiteral(node.template, safeStrings);
 	}
 
 	if (ts.isAwaitExpression(node)) {
-		return containsUnsafeCompiledLiteral(node.expression);
+		return containsUnsafeCompiledLiteral(node.expression, safeStrings);
 	}
 
 	if (ts.isPrefixUnaryExpression(node)) {
-		return containsUnsafeCompiledLiteral(node.operand);
+		return containsUnsafeCompiledLiteral(node.operand, safeStrings);
 	}
 
 	return false;
 };
 
-const isCompiledSecretName = (name: string | undefined): name is string =>
-	name !== undefined && !PUBLIC_COMPILED_SECRET_NAMES.has(name) && isHomeySecretKey(name);
+const isCompiledSecretName = (name: string | undefined): name is string => name !== undefined && isHomeySecretKey(name);
+
+const isPublicSecretFieldsDescriptor = (node: ts.Expression): boolean => {
+	if (!ts.isArrayLiteralExpression(node) || node.elements.length !== 1) {
+		return false;
+	}
+
+	const [descriptor] = node.elements;
+
+	if (!ts.isObjectLiteralExpression(descriptor) || descriptor.properties.length !== 3) {
+		return false;
+	}
+
+	const properties = new Map(
+		descriptor.properties.flatMap((property) => {
+			if (!ts.isPropertyAssignment(property)) {
+				return [];
+			}
+
+			const name = compiledPropertyName(property.name);
+
+			return name === undefined ? [] : [[name, property.initializer] as const];
+		}),
+	);
+	const path = properties.get('path');
+	const configuredPath = properties.get('configuredPath');
+	const inputPaths = properties.get('inputPaths');
+
+	return (
+		properties.size === 3 &&
+		path !== undefined &&
+		ts.isStringLiteral(path) &&
+		path.text === 'api_key' &&
+		configuredPath !== undefined &&
+		ts.isStringLiteral(configuredPath) &&
+		configuredPath.text === 'api_key_configured' &&
+		inputPaths !== undefined &&
+		ts.isArrayLiteralExpression(inputPaths) &&
+		inputPaths.elements.length === 1 &&
+		ts.isStringLiteral(inputPaths.elements[0]) &&
+		inputPaths.elements[0].text === 'apiKey'
+	);
+};
+
+const containsUnsafeCompiledType = (type: ts.TypeNode): boolean => {
+	let found = false;
+	const visit = (node: ts.Node): void => {
+		if (found) {
+			return;
+		}
+
+		if (ts.isLiteralTypeNode(node) && ts.isExpression(node.literal)) {
+			found = containsUnsafeCompiledLiteral(node.literal);
+		}
+
+		ts.forEachChild(node, visit);
+	};
+
+	visit(type);
+
+	return found;
+};
 
 const isAssignmentOperatorKind = (kind: ts.SyntaxKind): boolean =>
 	kind >= ts.SyntaxKind.FirstAssignment && kind <= ts.SyntaxKind.LastAssignment;
 
-const containsUnsafeReturnedLiteral = (body: ts.Block): boolean => {
+const containsUnsafeReturnedLiteral = (
+	body: ts.Block,
+	safeStrings: ReadonlySet<string> = SAFE_COMPILED_SECRET_STRINGS,
+): boolean => {
 	let found = false;
 	const visit = (node: ts.Node): void => {
 		if (found) {
@@ -348,7 +426,7 @@ const containsUnsafeReturnedLiteral = (body: ts.Block): boolean => {
 		}
 
 		if (ts.isReturnStatement(node) && node.expression !== undefined) {
-			found = containsUnsafeCompiledLiteral(node.expression);
+			found = containsUnsafeCompiledLiteral(node.expression, safeStrings);
 		}
 
 		ts.forEachChild(node, visit);
@@ -370,17 +448,33 @@ const containsCompiledSecret = (text: string): boolean => {
 		if (ts.isPropertyAssignment(node)) {
 			const name = compiledPropertyName(node.name);
 
-			found = isCompiledSecretName(name) && containsUnsafeCompiledLiteral(node.initializer);
-		} else if (ts.isPropertyDeclaration(node) && node.initializer !== undefined) {
+			found =
+				isCompiledSecretName(name) &&
+				!(name === 'secretFields' && isPublicSecretFieldsDescriptor(node.initializer)) &&
+				containsUnsafeCompiledLiteral(node.initializer);
+		} else if (ts.isPropertyDeclaration(node)) {
 			const name = compiledPropertyName(node.name);
 
-			found = isCompiledSecretName(name) && containsUnsafeCompiledLiteral(node.initializer);
-		} else if ((ts.isGetAccessorDeclaration(node) || ts.isMethodDeclaration(node)) && node.body !== undefined) {
+			found =
+				isCompiledSecretName(name) &&
+				((node.initializer !== undefined && containsUnsafeCompiledLiteral(node.initializer)) ||
+					(node.type !== undefined && containsUnsafeCompiledType(node.type)));
+		} else if (ts.isPropertySignature(node)) {
 			const name = compiledPropertyName(node.name);
 
-			found = isCompiledSecretName(name) && containsUnsafeReturnedLiteral(node.body);
+			found = isCompiledSecretName(name) && node.type !== undefined && containsUnsafeCompiledType(node.type);
+		} else if (
+			(ts.isGetAccessorDeclaration(node) || ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) &&
+			isCompiledSecretName(compiledPropertyName(node.name))
+		) {
+			found =
+				('body' in node && node.body !== undefined && containsUnsafeReturnedLiteral(node.body)) ||
+				(node.type !== undefined && containsUnsafeCompiledType(node.type));
 		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
-			found = isCompiledSecretName(node.name.text) && containsUnsafeCompiledLiteral(node.initializer);
+			found =
+				isCompiledSecretName(node.name.text) &&
+				!(node.name.text === 'secretFields' && isPublicSecretFieldsDescriptor(node.initializer)) &&
+				containsUnsafeCompiledLiteral(node.initializer);
 		} else if (ts.isParameter(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
 			found = isCompiledSecretName(node.name.text) && containsUnsafeCompiledLiteral(node.initializer);
 		} else if (ts.isBindingElement(node) && node.initializer !== undefined) {
@@ -396,6 +490,52 @@ const containsCompiledSecret = (text: string): boolean => {
 			const name = compiledAssignedPropertyName(node.left);
 
 			found = isCompiledSecretName(name) && containsUnsafeCompiledLiteral(node.right);
+		}
+
+		ts.forEachChild(node, visit);
+	};
+
+	visit(sourceFile);
+
+	return found;
+};
+
+const containsCompiledAddress = (text: string): boolean => {
+	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	let found = false;
+	const unsafeAddress = (name: string | undefined, expression: ts.Expression): boolean =>
+		name !== undefined &&
+		isHomeyAddressKey(name) &&
+		containsUnsafeCompiledLiteral(expression, SAFE_COMPILED_ADDRESS_STRINGS);
+	const visit = (node: ts.Node): void => {
+		if (found) {
+			return;
+		}
+
+		if (ts.isPropertyAssignment(node) || (ts.isPropertyDeclaration(node) && node.initializer !== undefined)) {
+			found = unsafeAddress(compiledPropertyName(node.name), node.initializer);
+		} else if ((ts.isGetAccessorDeclaration(node) || ts.isMethodDeclaration(node)) && node.body !== undefined) {
+			const name = compiledPropertyName(node.name);
+
+			found =
+				name !== undefined &&
+				isHomeyAddressKey(name) &&
+				containsUnsafeReturnedLiteral(node.body, SAFE_COMPILED_ADDRESS_STRINGS);
+		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
+			found = unsafeAddress(node.name.text, node.initializer);
+		} else if (ts.isParameter(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
+			found = unsafeAddress(node.name.text, node.initializer);
+		} else if (ts.isBindingElement(node) && node.initializer !== undefined) {
+			const name =
+				node.propertyName !== undefined
+					? compiledPropertyName(node.propertyName)
+					: ts.isIdentifier(node.name)
+						? node.name.text
+						: undefined;
+
+			found = unsafeAddress(name, node.initializer);
+		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
+			found = unsafeAddress(compiledAssignedPropertyName(node.left), node.right);
 		}
 
 		ts.forEachChild(node, visit);
@@ -614,6 +754,10 @@ const assertTextSafe = (label: string, text: string, compiledSource = false): vo
 
 	if (compiledSource && containsCompiledPrivateUrl(text)) {
 		throw new Error(`${label} contains a private URL`);
+	}
+
+	if (compiledSource && containsCompiledAddress(text)) {
+		throw new Error(`${label} contains a compiled address value`);
 	}
 
 	for (const privateValue of configuredPrivateValues()) {
@@ -928,6 +1072,22 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe('safe compiled module', 'const homey_local_connector_factory_1 = {};', true),
 		).not.toThrow();
+		expect(() =>
+			assertTextSafe(
+				'safe compiled module',
+				"const secretFields = [{ path: 'api_key', configuredPath: 'api_key_configured', inputPaths: ['apiKey'] }];",
+				true,
+			),
+		).not.toThrow();
+		expect(() => assertTextSafe('unsafe compiled module', "const secretFields = ['opaque-secret'];", true)).toThrow(
+			'unsafe compiled module contains a compiled secret value',
+		);
+		expect(() => assertTextSafe('unsafe declaration', "interface Config { apiKey: 'opaque-secret' }", true)).toThrow(
+			'unsafe declaration contains a compiled secret value',
+		);
+		expect(() => assertTextSafe('unsafe compiled module', "const hostname = 'family-homey.local';", true)).toThrow(
+			'unsafe compiled module contains a compiled address value',
+		);
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const config = { api_key: 'opaque-secret' };", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
