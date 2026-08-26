@@ -8,11 +8,11 @@ and adopt them, keeps their state synchronized, and sends supported controls bac
 
 <Callout type="warning">
   **The Homey release gate is not complete.** Current live evidence covers Homey
-  SHS 13.4.0 over HTTP port 4859 for sanitized inventory capture and limited SDK
-  connection/session behavior. Homey Pro, HTTPS, capability writes/events,
-  restart and network recovery, and credential rotation have not completed the
-  required live matrix. Use this integration for evaluation, not as a
-  production-ready support claim.
+  SHS 13.4.0 and 13.4.1 over HTTP port 4859 for sanitized inventory capture and
+  limited SDK connection/session behavior. Homey Pro, HTTPS, capability
+  writes/events, restart and network recovery, and credential rotation have not
+  completed the required live matrix. Use this integration for evaluation, not
+  as a production-ready support claim.
 </Callout>
 
 Only a **local Homey connection** is implemented. Homey Cloud/OAuth is not available yet. Smart Panel does not pair,
@@ -47,6 +47,15 @@ For SHS installation and network settings, follow Homey's platform-specific inst
 [port-forwarding guide](https://support.homey.app/hc/en-us/articles/24722267664156-Set-up-port-forwarding-for-Homey-Self-Hosted-Server)
 documents the default HTTPS port, but port forwarding is not required when Smart Panel and Homey can communicate on
 the same private network.
+
+<Callout type="warning">
+  **TrueNAS requires specific host settings.** Follow Homey's [TrueNAS
+  installation
+  guide](https://support.homey.app/hc/en-us/articles/23981543357596-How-to-install-Homey-Self-Hosted-Server-on-TrueNAS):
+  disable TrueNAS's mDNS option, enable **Host Network** and **Privileged** for
+  the trusted SHS app, and restart the app. If TrueNAS mDNS remains enabled, SHS
+  can exit before ports `4859` and `4860` start listening.
+</Callout>
 
 ## Create a Least-Privilege API Key
 
@@ -90,9 +99,9 @@ Panel requires a new key for the unsaved connection test; it never sends a store
 
 ### Manual Server Selection
 
-Enter the Homey URL manually. Smart Panel does not currently offer automatic Homey server discovery because the local
-network advertisements observed during compatibility testing did not provide a stable, Homey-specific identity that
-could be selected safely. Device discovery begins only after a Homey connection has been configured.
+Enter the Homey URL manually. Smart Panel does not currently offer automatic Homey server discovery. A Homey-specific
+advertisement has been observed, but its restart stability, safe identity deduplication, and endpoint verification have
+not completed the release gate. Device discovery begins only after a Homey connection has been configured.
 
 ## Discover and Adopt Devices
 

@@ -321,6 +321,14 @@ describe('Homey SHS compatibility probe', () => {
 
 		expect(() => assertHomeyCaptureSafe(capture, [])).toThrow('unredacted metadata, icons, or host fingerprint');
 
+		capture.systemInfo = sanitizeHomeyPublishedMetadata({
+			dateHuman: 'Private capture date',
+			country: 'Private country',
+			timezone: 'Private/timezone',
+		});
+
+		expect(() => assertHomeyCaptureSafe(capture, [])).not.toThrow();
+
 		capture.systemInfo = {};
 		capture.devices = { 'device-000001': { country: 'Private country' } };
 
@@ -335,6 +343,9 @@ describe('Homey SHS compatibility probe', () => {
 
 		expect(zones['zone-000001']).toMatchObject({ icon: '[~2~]' });
 		expect(() => assertHomeyCaptureSafe(sanitizedCapture, [])).not.toThrow();
+		expect(() =>
+			assertHomeyCaptureSafe({ ...sanitizedCapture, zones: { 'zone-000001': { icon: null } } }, []),
+		).not.toThrow();
 		expect(() =>
 			assertHomeyCaptureSafe({ ...sanitizedCapture, zones: { 'zone-000001': { icon: 'private-room-kind' } } }, []),
 		).toThrow('unredacted metadata, icons, or host fingerprint');
@@ -373,6 +384,9 @@ describe('Homey SHS compatibility probe', () => {
 			loadavg: [0, 0, 0],
 		});
 		expect(() => assertHomeyCaptureSafe(capture, [])).not.toThrow();
+		expect(() =>
+			assertHomeyCaptureSafe({ ...capture, devices: { 'device-000001': { icon: null, iconOverride: null } } }, []),
+		).not.toThrow();
 
 		capture.devices = { 'device-000001': { icon: 'private-device-icon' } };
 

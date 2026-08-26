@@ -19,39 +19,44 @@ file. Live results use synthetic aliases and sanitized captures only.
 
 ## Current gate status
 
-| Area                                                  | Status                                          | Evidence still required                                              |
-| ----------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------- |
-| Credential-safe read probe                            | Passed on SHS `13.4.0` over HTTP `4859`         | Repeat over HTTPS `4860` if enabled                                  |
-| System, zone, device inventory, and individual device | Captured and sanitized                          | Add lifecycle delta evidence on the disposable test device           |
-| Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read    | Add allowlisted write and read-back evidence                         |
-| Socket.IO events and reconnect                        | Restart/network probes ready; live runs pending | Capture capability/availability events and both recovery orderings   |
-| Allowlisted capability write                          | Hard-gated probe implemented, disabled          | Use only the designated harmless test capability                     |
-| Error classification                                  | SDK invalid key returned `401`; matrix pending  | Verify missing-scope, bad-URL, unavailable, and timeout behavior     |
-| API-key revocation and replacement                    | Operator-controlled probe ready                 | Revoke only a dedicated test key during the gated observation window |
-| Disposable-device lifecycle                           | Guarded operator probe ready                    | Use only the separately gated virtual/test device                    |
-| mDNS discovery                                        | Deferred; manual URL only for local MVP         | Revisit only after an attributable stable service is verified        |
-| SDK decision                                          | SDK selected behind connector boundary          | Re-evaluate the pinned package and audit result on every upgrade     |
-| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture     | Add event/reconnect fixtures from the remaining live lifecycle runs  |
+| Area                                                  | Status                                               | Evidence still required                                              |
+| ----------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------- |
+| Credential-safe read probe                            | Passed on SHS `13.4.0` and `13.4.1` over HTTP `4859` | Repeat over HTTPS `4860` if enabled                                  |
+| System, zone, device inventory, and individual device | Captured and sanitized                               | Add lifecycle delta evidence on the disposable test device           |
+| Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read         | Add allowlisted write and read-back evidence                         |
+| Socket.IO events and reconnect                        | Passive sessions passed; recovery runs pending       | Capture capability/availability events and both recovery orderings   |
+| Allowlisted capability write                          | Hard-gated probe implemented, disabled               | Use only the designated harmless test capability                     |
+| Error classification                                  | SDK invalid key returned `401`; matrix pending       | Verify missing-scope, bad-URL, unavailable, and timeout behavior     |
+| API-key revocation and replacement                    | Operator-controlled probe ready                      | Revoke only a dedicated test key during the gated observation window |
+| Disposable-device lifecycle                           | Guarded operator probe ready                         | Use only the separately gated virtual/test device                    |
+| mDNS discovery                                        | Homey-specific service observed; manual URL remains  | Verify stability before and after restart                            |
+| SDK decision                                          | SDK selected behind connector boundary               | Re-evaluate the pinned package and audit result on every upgrade     |
+| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture          | Add event/reconnect fixtures from the remaining live lifecycle runs  |
 
 ## Installation evidence
 
 Complete this table after the live run. Values committed here must remain non-sensitive.
 
-| Field                                    | Recorded value                                                       |
-| ---------------------------------------- | -------------------------------------------------------------------- |
-| Capture date                             | `2026-08-13`                                                         |
-| Realtime SDK probe date                  | `2026-08-14`                                                         |
-| mDNS observation date                    | `2026-08-14`                                                         |
-| SHS version                              | `13.4.0`                                                             |
-| Container image tag and immutable digest | Pending                                                              |
-| Host operating system/architecture       | Pending                                                              |
-| Topology                                 | Pending; describe generically, for example `same LAN, separate host` |
-| Smart Panel to SHS network path          | Pending; do not record addresses                                     |
-| HTTP port `4859`                         | Confirmed for reads and the SDK Socket.IO session                    |
-| HTTPS port `4860`                        | Pending                                                              |
-| TLS certificate behavior                 | Pending                                                              |
-| Disposable capability alias              | Pending synthetic alias                                              |
-| Disposable lifecycle-device alias        | Pending synthetic alias                                              |
+| Field                                    | Recorded value                                    |
+| ---------------------------------------- | ------------------------------------------------- |
+| Capture date                             | `2026-08-13`, `2026-08-26`                        |
+| Realtime SDK probe date                  | `2026-08-14`, `2026-08-26`                        |
+| mDNS observation date                    | `2026-08-14`, `2026-08-26`                        |
+| SHS version                              | `13.4.0`, `13.4.1`                                |
+| Container image tag and immutable digest | Pending                                           |
+| Host operating system/architecture       | TrueNAS; version and architecture pending         |
+| Topology                                 | Same LAN, separate host                           |
+| Smart Panel to SHS network path          | Direct private-LAN connection                     |
+| HTTP port `4859`                         | Confirmed for reads and the SDK Socket.IO session |
+| HTTPS port `4860`                        | Pending                                           |
+| TLS certificate behavior                 | Pending                                           |
+| Disposable capability alias              | Pending synthetic alias                           |
+| Disposable lifecycle-device alias        | Pending synthetic alias                           |
+
+On 2026-08-26, the TrueNAS host was reachable but SHS stopped before opening its API ports because its required Avahi
+daemon could not start. The deployment recovered after applying Homey's documented TrueNAS settings: disable the host
+mDNS option, run the trusted SHS image with host networking and privileged mode, and restart the app. See the official
+[Homey TrueNAS installation guide](https://support.homey.app/hc/en-us/articles/23981543357596-How-to-install-Homey-Self-Hosted-Server-on-TrueNAS).
 
 ## Published protocol baseline
 
@@ -365,9 +370,9 @@ not create, revoke, rotate, or otherwise administer Homey credentials.
 
 ## Privacy-safe mDNS observation probe
 
-The mDNS probe performs a bounded wildcard DNS-SD observation because SHS's service type has not been established. It
-does not read or send `FB_HOMEY_SHS_API_KEY`. Although the browser necessarily receives other LAN advertisements in
-memory, the probe immediately discards every service whose hostname or address does not exactly match
+The mDNS probe performs a bounded wildcard DNS-SD observation so it can compare Homey with other services advertised by
+the same host. It does not read or send `FB_HOMEY_SHS_API_KEY`. Although the browser necessarily receives other LAN
+advertisements in memory, the probe immediately discards every service whose hostname or address does not exactly match
 `FB_HOMEY_SHS_EXPECTED_HOST`. The persisted exact-schema report contains only the matched service type, protocol, port,
 and sorted TXT key names. Service names, hostnames, addresses, TXT values, referer data, FQDNs, URLs, credentials, and
 raw errors have no report fields.
@@ -390,12 +395,19 @@ Two consecutive five-second observations on 2026-08-14 produced the same sanitiz
 is not either documented SHS API port, this does not establish that SHS owns the advertisement or provide a safe
 discovery discriminator.
 
+A ten-second observation on 2026-08-26 after SHS `13.4.1` started on TrueNAS matched `_homey._tcp` on port `4859`, with
+the TXT key names `id`, `model`, `name`, and `version`. It also matched two co-hosted `_hap._tcp` services. The reviewed
+report is committed as `__fixtures__/evidence/2026-08-26-shs-13.4.1-mdns-homey-advertisement.json`. The service names,
+hosts, addresses, and all TXT values remain excluded. This establishes one attributable Homey-specific observation,
+but it does not yet prove stability across an SHS restart.
+
 ### Server-discovery decision
 
-Automatic Homey server discovery is explicitly deferred for the local MVP. Smart Panel does not register a Homey
-mDNS discoverer and does not expose Homey server-discovery or rescan endpoints. Shipping `_http._tcp` port `80` as a
-Homey discriminator could present unrelated LAN services as Homey instances, so the observed record is insufficient
-even if a later observation finds it again after an SHS restart.
+Automatic Homey server discovery remains explicitly deferred for the local MVP. Smart Panel does not register a Homey
+mDNS discoverer and does not expose Homey server-discovery or rescan endpoints. The `_homey._tcp` observation is
+attributable, but it has not completed the required before/after-restart stability check. TXT values are intentionally
+excluded from evidence, so identity deduplication and endpoint verification also require a reviewed design before the
+advertisement can become a safe discovery input.
 
 Administrators configure the local Homey URL manually through the plugin configuration and can verify either the
 fully saved configuration or a complete candidate URL/new-key pair through the connection-test endpoint. Manual setup
@@ -515,7 +527,7 @@ Fill this matrix using synthetic aliases only.
 | SHS restart and reconnect                 | Pending                             |                                                                                                                                                      |
 | API-key revocation and replacement        | Pending                             |                                                                                                                                                      |
 | Disposable-device lifecycle sequence      | Pending                             |                                                                                                                                                      |
-| Stable mDNS service before/after restart  | Deferred for local MVP              | Two identical windows matched only generic `_http._tcp` port `80` with no TXT keys; the record cannot be safely attributed to SHS                    |
+| Stable mDNS service before/after restart  | Partial                             | SHS `13.4.1` advertised `_homey._tcp` on `4859` once after startup; repeat before and after a controlled restart                                     |
 
 ## Verification
 
