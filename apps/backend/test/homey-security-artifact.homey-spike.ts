@@ -2451,6 +2451,10 @@ const containsUnsafeCompiledAlias = (
 			return inspect(expression.whenTrue, resolving) || inspect(expression.whenFalse, resolving);
 		}
 
+		if (ts.isArrowFunction(expression) || ts.isFunctionExpression(expression)) {
+			return inspectCallable(expression, resolving);
+		}
+
 		if (ts.isCallExpression(expression)) {
 			return (
 				inspectCallable(expression.expression, resolving) ||
@@ -5089,6 +5093,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const source = {}; Object.defineProperty(source, 'value', { get() { return 'opaque-secret'; } }); const apiKey = source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const stored = 'opaque-secret'; const source = {}; Object.defineProperty(source, 'apiKey', { get: () => stored }); const apiKey = source.apiKey;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
