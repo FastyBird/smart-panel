@@ -593,6 +593,53 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 
 		return elements;
 	};
+	const selectObjectValue = (
+		propertyName: string,
+		source: ts.Expression,
+		resolvingSources: Set<string>,
+	): ts.Expression | undefined => {
+		if (ts.isIdentifier(source)) {
+			const initializer = resolveCompiledAlias(source);
+
+			return initializer === undefined || resolvingSources.has(source.text)
+				? undefined
+				: selectObjectValue(propertyName, initializer, new Set(resolvingSources).add(source.text));
+		}
+
+		if (
+			ts.isParenthesizedExpression(source) ||
+			ts.isAsExpression(source) ||
+			ts.isTypeAssertionExpression(source) ||
+			ts.isNonNullExpression(source) ||
+			ts.isSatisfiesExpression(source)
+		) {
+			return selectObjectValue(propertyName, source.expression, resolvingSources);
+		}
+
+		if (!ts.isObjectLiteralExpression(source)) {
+			return undefined;
+		}
+
+		for (const property of [...source.properties].reverse()) {
+			if (ts.isPropertyAssignment(property) && compiledPropertyName(property.name) === propertyName) {
+				return property.initializer;
+			}
+
+			if (ts.isShorthandPropertyAssignment(property) && property.name.text === propertyName) {
+				return property.name;
+			}
+
+			if (ts.isSpreadAssignment(property)) {
+				const spreadValue = selectObjectValue(propertyName, property.expression, resolvingSources);
+
+				if (spreadValue !== undefined) {
+					return spreadValue;
+				}
+			}
+		}
+
+		return undefined;
+	};
 	const selectBindingValue = (
 		pattern: ts.ObjectBindingPattern | ts.ArrayBindingPattern,
 		binding: ts.BindingElement,
@@ -618,7 +665,7 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 			return selectBindingValue(pattern, binding, index, source.expression, resolvingSources);
 		}
 
-		if (ts.isObjectBindingPattern(pattern) && ts.isObjectLiteralExpression(source)) {
+		if (ts.isObjectBindingPattern(pattern)) {
 			const propertyName =
 				binding.propertyName === undefined
 					? ts.isIdentifier(binding.name)
@@ -630,23 +677,7 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 				return undefined;
 			}
 
-			for (const property of [...source.properties].reverse()) {
-				if (ts.isPropertyAssignment(property) && compiledPropertyName(property.name) === propertyName) {
-					return property.initializer;
-				}
-
-				if (ts.isShorthandPropertyAssignment(property) && property.name.text === propertyName) {
-					return property.name;
-				}
-
-				if (ts.isSpreadAssignment(property)) {
-					const spreadValue = selectBindingValue(pattern, binding, index, property.expression, resolvingSources);
-
-					if (spreadValue !== undefined) {
-						return spreadValue;
-					}
-				}
-			}
+			return selectObjectValue(propertyName, source, resolvingSources);
 		}
 
 		if (ts.isArrayBindingPattern(pattern)) {
@@ -678,6 +709,68 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 				addPatternBindings(element.name, selectedValue, scope);
 			}
 		});
+	};
+	const addAssignmentPatternBindings = (
+		target: ts.Expression,
+		source: ts.Expression | undefined,
+		declaration: ts.BinaryExpression,
+	): void => {
+		if (ts.isParenthesizedExpression(target)) {
+			addAssignmentPatternBindings(target.expression, source, declaration);
+
+			return;
+		}
+
+		if (ts.isIdentifier(target)) {
+			const binding = resolveCompiledBinding(target);
+
+			if (binding !== undefined && source !== undefined) {
+				addBinding(target.text, { declaration, initializer: source, scope: binding.scope });
+			}
+
+			return;
+		}
+
+		if (ts.isBinaryExpression(target) && target.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+			addAssignmentPatternBindings(target.left, source, declaration);
+			addAssignmentPatternBindings(target.left, target.right, declaration);
+
+			return;
+		}
+
+		if (ts.isObjectLiteralExpression(target)) {
+			for (const property of target.properties) {
+				if (ts.isPropertyAssignment(property)) {
+					const propertyName = compiledPropertyName(property.name);
+
+					addAssignmentPatternBindings(
+						property.initializer,
+						propertyName === undefined || source === undefined
+							? undefined
+							: selectObjectValue(propertyName, source, new Set()),
+						declaration,
+					);
+				} else if (ts.isShorthandPropertyAssignment(property)) {
+					addAssignmentPatternBindings(
+						property.name,
+						source === undefined ? undefined : selectObjectValue(property.name.text, source, new Set()),
+						declaration,
+					);
+				}
+			}
+
+			return;
+		}
+
+		if (ts.isArrayLiteralExpression(target) && source !== undefined) {
+			const sourceElements = resolveBindingArrayElements(source, new Set());
+
+			target.elements.forEach((element, index) => {
+				if (ts.isExpression(element) && !ts.isOmittedExpression(element)) {
+					addAssignmentPatternBindings(element, sourceElements?.[index], declaration);
+				}
+			});
+		}
 	};
 	const visit = (node: ts.Node): void => {
 		if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) {
@@ -714,6 +807,14 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 					scope: target.scope,
 				});
 			}
+		} else if (
+			ts.isBinaryExpression(node) &&
+			node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+			(ts.isObjectLiteralExpression(node.left) ||
+				ts.isArrayLiteralExpression(node.left) ||
+				ts.isParenthesizedExpression(node.left))
+		) {
+			addAssignmentPatternBindings(node.left, node.right, node);
 		}
 
 		ts.forEachChild(node, visit);
@@ -778,9 +879,37 @@ const resolveCompiledBinding = (identifier: ts.Identifier): CompiledBinding | un
 const resolveCompiledAlias = (identifier: ts.Identifier): ts.Expression | undefined =>
 	resolveCompiledBinding(identifier)?.initializer;
 
+const resolveCompiledReceiverBinding = (
+	identifier: ts.Identifier,
+	resolvingBindings = new Set<ts.Node>(),
+): CompiledBinding | undefined => {
+	const binding = resolveCompiledBinding(identifier);
+
+	if (binding === undefined || resolvingBindings.has(binding.declaration)) {
+		return binding;
+	}
+
+	let initializer = binding.initializer;
+
+	while (
+		initializer !== undefined &&
+		(ts.isParenthesizedExpression(initializer) ||
+			ts.isAsExpression(initializer) ||
+			ts.isTypeAssertionExpression(initializer) ||
+			ts.isNonNullExpression(initializer) ||
+			ts.isSatisfiesExpression(initializer))
+	) {
+		initializer = initializer.expression;
+	}
+
+	return initializer !== undefined && ts.isIdentifier(initializer)
+		? resolveCompiledReceiverBinding(initializer, new Set(resolvingBindings).add(binding.declaration))
+		: binding;
+};
+
 const compiledPropertyWriteValues = (identifier: ts.Identifier, propertyName: string): readonly ts.Expression[] => {
 	const sourceFile = identifier.getSourceFile();
-	const targetBinding = resolveCompiledBinding(identifier);
+	const targetBinding = resolveCompiledReceiverBinding(identifier);
 	const usePosition = identifier.getStart(sourceFile);
 	const values: ts.Expression[] = [];
 
@@ -803,7 +932,7 @@ const compiledPropertyWriteValues = (identifier: ts.Identifier, propertyName: st
 			if (
 				receiver !== undefined &&
 				ts.isIdentifier(receiver) &&
-				resolveCompiledBinding(receiver)?.declaration === targetBinding.declaration
+				resolveCompiledReceiverBinding(receiver)?.declaration === targetBinding.declaration
 			) {
 				values.push(node.right);
 			}
@@ -2816,6 +2945,20 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"let fallback = ''; ({ value: fallback } = { value: 'opaque-secret' }); const apiKey = fallback;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"let fallback = ''; [, fallback] = ['safe', 'opaque-secret']; const apiKey = fallback;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const { fallback = 'opaque-secret' } = {}; const apiKey = fallback;",
 				true,
 			),
@@ -3081,6 +3224,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const source = { value: '' }; source['value'] = 'opaque-secret'; const apiKey = source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { value: '' }; const alias = source; alias.value = 'opaque-secret'; const apiKey = source.value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
