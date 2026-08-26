@@ -612,6 +612,19 @@ const containsUnsafeCompiledAlias = (
 					});
 				}
 
+				if (ts.isArrayLiteralExpression(receiver) && /^\d+$/.test(propertyName)) {
+					const element = receiver.elements[Number(propertyName)];
+
+					if (element === undefined) {
+						return false;
+					}
+
+					return ts.isSpreadElement(element)
+						? inspect(element.expression, nestedResolving)
+						: ts.isExpression(element) &&
+								(containsUnsafeCompiledLiteral(element, safeStrings) || inspect(element, nestedResolving));
+				}
+
 				return false;
 			};
 
@@ -655,7 +668,7 @@ const containsUnsafeCompiledAlias = (
 
 		if (ts.isCallExpression(expression)) {
 			return (
-				(expression.arguments.length === 0 && inspect(expression.expression, resolving)) ||
+				inspectCallable(expression.expression, resolving) ||
 				expression.arguments.some((argument) => inspect(argument, resolving))
 			);
 		}
@@ -674,6 +687,54 @@ const containsUnsafeCompiledAlias = (
 
 		if (ts.isPrefixUnaryExpression(expression)) {
 			return inspect(expression.operand, resolving);
+		}
+
+		return false;
+	};
+	const inspectCallable = (callee: ts.Expression, resolving: Set<string>): boolean => {
+		if (ts.isIdentifier(callee)) {
+			const initializer = resolveCompiledAlias(callee);
+
+			if (initializer === undefined || resolving.has(callee.text)) {
+				return false;
+			}
+
+			return inspectCallable(initializer, new Set(resolving).add(callee.text));
+		}
+
+		if (
+			ts.isParenthesizedExpression(callee) ||
+			ts.isAsExpression(callee) ||
+			ts.isTypeAssertionExpression(callee) ||
+			ts.isNonNullExpression(callee) ||
+			ts.isSatisfiesExpression(callee)
+		) {
+			return inspectCallable(callee.expression, resolving);
+		}
+
+		if (ts.isArrowFunction(callee) && !ts.isBlock(callee.body)) {
+			return containsUnsafeCompiledLiteral(callee.body, safeStrings) || inspect(callee.body, resolving);
+		}
+
+		if (ts.isArrowFunction(callee) || ts.isFunctionExpression(callee)) {
+			let found = false;
+			const visitReturn = (child: ts.Node): void => {
+				if (found) {
+					return;
+				}
+
+				if (ts.isReturnStatement(child) && child.expression !== undefined) {
+					found = containsUnsafeCompiledLiteral(child.expression, safeStrings) || inspect(child.expression, resolving);
+				}
+
+				if (!found) {
+					ts.forEachChild(child, visitReturn);
+				}
+			};
+
+			visitReturn(callee.body);
+
+			return found;
 		}
 
 		return false;
@@ -2231,6 +2292,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const fallback = value => 'opaque-secret'; const apiKey = fallback('');",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"function first() { const fallback = 'opaque-secret'; const apiKey = fallback; } function second() { const fallback = ''; return fallback; }",
 				true,
 			),
@@ -2416,6 +2484,9 @@ describe('Homey security artifact gate', () => {
 				"const source = { value: 'opaque-secret' }; const apiKey = source['value'];",
 				true,
 			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const source = ['opaque-secret']; const apiKey = source[0];", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "function apiKey() { return 'opaque-secret'; }", true),
