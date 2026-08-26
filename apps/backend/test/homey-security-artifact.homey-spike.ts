@@ -6027,6 +6027,51 @@ const visitSchema = (schemaName: string, value: unknown, path: readonly string[]
 	}
 };
 
+const visitRouteSchemas = (
+	label: string,
+	value: unknown,
+	componentSchemas: Readonly<Record<string, unknown>>,
+): void => {
+	const visitedReferences = new Set<string>();
+	const visitReferences = (candidate: unknown, path: readonly string[] = []): void => {
+		if (Array.isArray(candidate)) {
+			candidate.forEach((entry, index) => visitReferences(entry, [...path, index.toString()]));
+
+			return;
+		}
+
+		if (candidate === null || typeof candidate !== 'object') {
+			return;
+		}
+
+		const record = candidate as JsonRecord;
+		const reference = typeof record.$ref === 'string' ? record.$ref : undefined;
+
+		if (reference?.startsWith('#/components/schemas/') === true) {
+			const schemaName = reference.slice('#/components/schemas/'.length).replaceAll('~1', '/').replaceAll('~0', '~');
+			const schema = componentSchemas[schemaName];
+
+			if (schema !== undefined && !visitedReferences.has(schemaName)) {
+				visitedReferences.add(schemaName);
+				visitSchema(schemaName, schema);
+				visitReferences(schema, ['components', 'schemas', schemaName]);
+			}
+		}
+
+		for (const [key, child] of Object.entries(record)) {
+			const childPath = [...path, key];
+
+			if (key === 'schema' && child !== null && typeof child === 'object') {
+				visitSchema(label, child, childPath);
+			}
+
+			visitReferences(child, childPath);
+		}
+	};
+
+	visitReferences(value);
+};
+
 const visitPublishedValues = (
 	label: string,
 	value: unknown,
@@ -6144,6 +6189,7 @@ describe('Homey security artifact gate', () => {
 		expect(Object.keys(homeySchemas).length).toBeGreaterThan(0);
 		expect(Object.keys(homeyPaths).length).toBeGreaterThan(0);
 		Object.entries(homeySchemas).forEach(([name, schema]) => visitSchema(name, schema));
+		visitRouteSchemas('generated Homey OpenAPI routes', homeyPaths, document.components?.schemas ?? {});
 		visitPublishedValues('generated Homey OpenAPI schemas', homeySchemas);
 		visitPublishedValues('generated Homey OpenAPI routes', homeyPaths);
 		assertTextSafe('generated Homey OpenAPI schemas', JSON.stringify(homeySchemas));
@@ -6200,6 +6246,22 @@ describe('Homey security artifact gate', () => {
 	});
 
 	it('rejects unsafe secret schemas and private artifact values without echoing them', () => {
+		expect(() =>
+			visitRouteSchemas(
+				'UnsafeHomeyOperation',
+				{
+					requestBody: { content: { 'application/json': { schema: { properties: { apiKey: { type: 'string' } } } } } },
+				},
+				{},
+			),
+		).toThrow('UnsafeHomeyOperation.requestBody.content.application/json.schema.properties.apiKey is not write-only');
+		expect(() =>
+			visitRouteSchemas(
+				'UnsafeHomeyOperation',
+				{ requestBody: { content: { 'application/json': { schema: { $ref: '#/components/schemas/SharedConfig' } } } } },
+				{ SharedConfig: { properties: { apiKey: { type: 'string' } } } },
+			),
+		).toThrow('SharedConfig.properties.apiKey is not write-only');
 		expect(() =>
 			visitSchema('UnsafeHomeySchema', {
 				properties: { api_key: { type: 'string', example: 'must-not-be-reported' } },
