@@ -971,9 +971,12 @@ const compiledScopeDepth = (scope: ts.Node): number => {
 	return depth;
 };
 
-const resolveCompiledBindings = (identifier: ts.Identifier): readonly CompiledBinding[] => {
+const resolveCompiledBindings = (
+	identifier: ts.Identifier,
+	visibleThroughPosition = identifier.getStart(identifier.getSourceFile()),
+): readonly CompiledBinding[] => {
 	const sourceFile = identifier.getSourceFile();
-	const usePosition = identifier.getStart(sourceFile);
+	const usePosition = Math.max(identifier.getStart(sourceFile), visibleThroughPosition);
 
 	return (compiledBindings(sourceFile).get(identifier.text) ?? [])
 		.filter(
@@ -1097,6 +1100,7 @@ const containsUnsafeCompiledAlias = (
 	safeStrings: SafeCompiledString,
 	resolvingAliases = new Set<ts.Node>(),
 ): boolean => {
+	const visibleThroughPosition = node.getStart(node.getSourceFile());
 	const resolveArrayElements = (
 		expression: ts.Expression,
 		resolving: Set<ts.Node>,
@@ -1210,7 +1214,7 @@ const containsUnsafeCompiledAlias = (
 	};
 	const inspect = (expression: ts.Expression, resolving: Set<ts.Node>): boolean => {
 		if (ts.isIdentifier(expression)) {
-			const bindings = resolveCompiledBindings(expression);
+			const bindings = resolveCompiledBindings(expression, visibleThroughPosition);
 
 			if (bindings.length === 0) {
 				return false;
@@ -1469,7 +1473,7 @@ const containsUnsafeCompiledAlias = (
 						};
 
 						if (ts.isIdentifier(callee)) {
-							return resolveCompiledBindings(callee).some((binding) => {
+							return resolveCompiledBindings(callee, visibleThroughPosition).some((binding) => {
 								if (resolvingCalls.has(binding.declaration)) {
 									return false;
 								}
@@ -1692,7 +1696,7 @@ const containsUnsafeCompiledAlias = (
 	};
 	const inspectCallable = (callee: ts.Expression, resolving: Set<ts.Node>): boolean => {
 		if (ts.isIdentifier(callee)) {
-			const bindings = resolveCompiledBindings(callee);
+			const bindings = resolveCompiledBindings(callee, visibleThroughPosition);
 
 			if (bindings.length === 0) {
 				return false;
@@ -1793,6 +1797,63 @@ const containsUnsafeCompiledAlias = (
 
 				if (ts.isNewExpression(receiver) && ts.isIdentifier(receiver.expression)) {
 					const classDeclaration = resolveCompiledBinding(receiver.expression)?.classDeclaration;
+					const inspectClassValue = (
+						declaration: ts.ClassDeclaration,
+						memberName: string,
+						resolvingValues = new Set<string>(),
+					): boolean => {
+						const reference = `${declaration.pos}:${memberName}`;
+
+						if (resolvingValues.has(reference)) {
+							return false;
+						}
+
+						const nestedValues = new Set(resolvingValues).add(reference);
+						const ownValueFound = declaration.members.some((member) => {
+							if (!('name' in member)) {
+								return false;
+							}
+
+							const staticMember = Boolean(
+								ts.canHaveModifiers(member) &&
+								ts.getModifiers(member)?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword),
+							);
+
+							if (staticMember || compiledPropertyName(member.name) !== memberName) {
+								return false;
+							}
+
+							if (ts.isPropertyDeclaration(member)) {
+								return (
+									member.initializer !== undefined &&
+									(containsUnsafeCompiledLiteral(member.initializer, safeStrings) ||
+										inspect(member.initializer, nestedResolving))
+								);
+							}
+
+							return (
+								ts.isGetAccessorDeclaration(member) &&
+								member.body !== undefined &&
+								inspectCallableBody(member.body, nestedResolving)
+							);
+						});
+
+						return (
+							ownValueFound ||
+							(declaration.heritageClauses
+								?.filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
+								.some((clause) =>
+									clause.types.some((type) => {
+										const baseClass = ts.isIdentifier(type.expression)
+											? resolveCompiledBinding(type.expression)?.classDeclaration
+											: undefined;
+
+										return baseClass !== undefined && inspectClassValue(baseClass, memberName, nestedValues);
+									}),
+								) ??
+								false)
+						);
+					};
 					const inspectClassCallable = (
 						declaration: ts.ClassDeclaration,
 						resolvingClasses = new Set<ts.ClassDeclaration>(),
@@ -1820,11 +1881,34 @@ const containsUnsafeCompiledAlias = (
 								return member.initializer !== undefined && inspectCallable(member.initializer, nestedResolving);
 							}
 
-							return (
+							if (
 								(ts.isGetAccessorDeclaration(member) || ts.isMethodDeclaration(member)) &&
-								member.body !== undefined &&
-								inspectCallableBody(member.body, nestedResolving)
-							);
+								member.body !== undefined
+							) {
+								let receiverPropertyName: string | undefined;
+								const visitReturn = (child: ts.Node): void => {
+									if (receiverPropertyName !== undefined) {
+										return;
+									}
+
+									if (ts.isReturnStatement(child) && child.expression !== undefined) {
+										receiverPropertyName = compiledThisPropertyName(child.expression);
+									}
+
+									if (receiverPropertyName === undefined) {
+										ts.forEachChild(child, visitReturn);
+									}
+								};
+
+								visitReturn(member.body);
+
+								return (
+									(receiverPropertyName !== undefined && inspectClassValue(declaration, receiverPropertyName)) ||
+									inspectCallableBody(member.body, nestedResolving)
+								);
+							}
+
+							return false;
 						});
 
 						return (
@@ -1862,6 +1946,14 @@ const containsUnsafeCompiledAlias = (
 
 						if (ts.isShorthandPropertyAssignment(property) && property.name.text === propertyName) {
 							return inspectCallable(property.name, nestedResolving);
+						}
+
+						if (
+							ts.isGetAccessorDeclaration(property) &&
+							compiledPropertyName(property.name) === propertyName &&
+							property.body !== undefined
+						) {
+							return inspectCallableBody(property.body, nestedResolving);
 						}
 
 						if (ts.isMethodDeclaration(property) && compiledPropertyName(property.name) === propertyName) {
@@ -3465,6 +3557,13 @@ describe('Homey security artifact gate', () => {
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"let fallback = ''; const read = () => fallback; fallback = 'opaque-secret'; const apiKey = read();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
 			assertTextSafe('unsafe compiled module', "const fallback = 'opaque-secret'; const apiKey = fallback;", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
@@ -3523,6 +3622,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const source = { fallback() { return 'opaque-secret'; } }; const apiKey = source.fallback();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = { get fallback() { return () => 'opaque-secret'; } }; const apiKey = source.fallback();",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
@@ -3934,6 +4040,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"class Source { fallback() { return 'opaque-secret'; } } const apiKey = new Source().fallback();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Source { stored = 'opaque-secret'; fallback() { return this.stored; } } const apiKey = new Source().fallback();",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
