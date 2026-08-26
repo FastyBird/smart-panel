@@ -669,6 +669,65 @@ const containsCompiledIdentifier = (text: string): boolean => {
 	return found;
 };
 
+const containsCompiledEndpoint = (text: string): boolean => {
+	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+	let found = false;
+	const isEndpointValueName = (name: string | undefined): name is string =>
+		name !== undefined && isHomeyEndpointKey(name) && !/^(?:assert|is|validate)/i.test(name);
+	const unsafeEndpoint = (name: string | undefined, expression: ts.Expression): boolean =>
+		isEndpointValueName(name) && containsUnsafeCompiledLiteral(expression, isSafeEndpointValue);
+	const unsafeEndpointType = (name: string | undefined, type: ts.TypeNode | undefined): boolean =>
+		isEndpointValueName(name) && type !== undefined && containsUnsafeCompiledType(type, isSafeEndpointValue);
+	const visit = (node: ts.Node): void => {
+		if (found) {
+			return;
+		}
+
+		if (ts.isPropertyAssignment(node)) {
+			found = unsafeEndpoint(compiledPropertyName(node.name), node.initializer);
+		} else if (ts.isPropertyDeclaration(node)) {
+			const name = compiledPropertyName(node.name);
+
+			found =
+				(node.initializer !== undefined && unsafeEndpoint(name, node.initializer)) ||
+				unsafeEndpointType(name, node.type);
+		} else if (ts.isPropertySignature(node)) {
+			found = unsafeEndpointType(compiledPropertyName(node.name), node.type);
+		} else if (ts.isGetAccessorDeclaration(node) || ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) {
+			const name = compiledPropertyName(node.name);
+			const endpointName = isEndpointValueName(name);
+
+			found =
+				('body' in node &&
+					node.body !== undefined &&
+					endpointName &&
+					containsUnsafeReturnedLiteral(node.body, isSafeEndpointValue)) ||
+				(endpointName && unsafeEndpointType(name, node.type));
+		} else if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
+			found = unsafeEndpoint(node.name.text, node.initializer);
+		} else if (ts.isParameter(node) && ts.isIdentifier(node.name) && node.initializer !== undefined) {
+			found = unsafeEndpoint(node.name.text, node.initializer);
+		} else if (ts.isBindingElement(node) && node.initializer !== undefined) {
+			const name =
+				node.propertyName !== undefined
+					? compiledPropertyName(node.propertyName)
+					: ts.isIdentifier(node.name)
+						? node.name.text
+						: undefined;
+
+			found = unsafeEndpoint(name, node.initializer);
+		} else if (ts.isBinaryExpression(node) && isAssignmentOperatorKind(node.operatorToken.kind)) {
+			found = unsafeEndpoint(compiledAssignedPropertyName(node.left), node.right);
+		}
+
+		ts.forEachChild(node, visit);
+	};
+
+	visit(sourceFile);
+
+	return found;
+};
+
 const compiledStaticString = (node: ts.Expression): string | undefined => {
 	if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
 		return node.text;
@@ -990,6 +1049,10 @@ const assertTextSafe = (label: string, text: string, compiledSource = false): vo
 
 	if (compiledSource && containsCompiledIdentifier(text)) {
 		throw new Error(`${label} contains a compiled identifier value`);
+	}
+
+	if (compiledSource && containsCompiledEndpoint(text)) {
+		throw new Error(`${label} contains a compiled endpoint value`);
 	}
 
 	for (const privateValue of configuredPrivateValues()) {
@@ -1411,6 +1474,9 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertTextSafe('unsafe compiled module', "const deviceId = 'opaque-household-id';", true)).toThrow(
 			'unsafe compiled module contains a compiled identifier value',
 		);
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const endpoint = 'private-homey.local:4859';", true),
+		).toThrow('unsafe compiled module contains a compiled endpoint value');
 		expect(() =>
 			assertTextSafe('unsafe declaration', "interface Config { hostname: 'family-homey.local' }", true),
 		).toThrow('unsafe declaration contains a compiled address value');
