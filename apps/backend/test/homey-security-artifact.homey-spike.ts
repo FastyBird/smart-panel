@@ -1060,6 +1060,38 @@ const resolveCompiledReceiverPath = (
 		: { binding, properties: [] };
 };
 
+const compiledMutationHelperName = (expression: ts.Expression, resolving = new Set<ts.Node>()): string | undefined => {
+	if (
+		ts.isPropertyAccessExpression(expression) &&
+		ts.isIdentifier(expression.expression) &&
+		['Object', 'Reflect'].includes(expression.expression.text)
+	) {
+		return `${expression.expression.text}.${expression.name.text}`;
+	}
+
+	if (ts.isIdentifier(expression)) {
+		const binding = resolveCompiledBinding(expression);
+
+		if (binding?.initializer === undefined || resolving.has(binding.declaration)) {
+			return undefined;
+		}
+
+		return compiledMutationHelperName(binding.initializer, new Set(resolving).add(binding.declaration));
+	}
+
+	if (
+		ts.isParenthesizedExpression(expression) ||
+		ts.isAsExpression(expression) ||
+		ts.isTypeAssertionExpression(expression) ||
+		ts.isNonNullExpression(expression) ||
+		ts.isSatisfiesExpression(expression)
+	) {
+		return compiledMutationHelperName(expression.expression, resolving);
+	}
+
+	return undefined;
+};
+
 const compiledPropertyWriteValues = (
 	receiver: ts.Expression,
 	propertyName: string,
@@ -1157,14 +1189,8 @@ const compiledPropertyWriteValues = (
 			) {
 				values.push(node.right);
 			}
-		} else if (
-			ts.isCallExpression(node) &&
-			node.getStart(sourceFile) < usePosition &&
-			ts.isPropertyAccessExpression(node.expression) &&
-			ts.isIdentifier(node.expression.expression) &&
-			node.arguments.length > 0
-		) {
-			const helperName = `${node.expression.expression.text}.${node.expression.name.text}`;
+		} else if (ts.isCallExpression(node) && node.getStart(sourceFile) < usePosition && node.arguments.length > 0) {
+			const helperName = compiledMutationHelperName(node.expression);
 			const mutationTarget = resolveCompiledReceiverPath(node.arguments[0]);
 
 			if (sameReceiverPath(mutationTarget, targetPath)) {
@@ -1419,15 +1445,13 @@ const containsUnsafeCompiledAlias = (
 	const constructorMutationValues = (node: ts.Node, propertyName: string): readonly ts.Expression[] => {
 		if (
 			!ts.isCallExpression(node) ||
-			!ts.isPropertyAccessExpression(node.expression) ||
-			!ts.isIdentifier(node.expression.expression) ||
 			node.arguments.length === 0 ||
 			node.arguments[0].kind !== ts.SyntaxKind.ThisKeyword
 		) {
 			return [];
 		}
 
-		const helperName = `${node.expression.expression.text}.${node.expression.name.text}`;
+		const helperName = compiledMutationHelperName(node.expression);
 
 		if (helperName === 'Object.assign') {
 			return node.arguments.slice(1).flatMap((source): readonly ts.Expression[] => {
@@ -1477,15 +1501,11 @@ const containsUnsafeCompiledAlias = (
 		return [];
 	};
 	const mutationResultValues = (call: ts.CallExpression, propertyName: string): readonly ts.Expression[] => {
-		if (
-			!ts.isPropertyAccessExpression(call.expression) ||
-			!ts.isIdentifier(call.expression.expression) ||
-			call.arguments.length === 0
-		) {
+		if (call.arguments.length === 0) {
 			return [];
 		}
 
-		const helperName = `${call.expression.expression.text}.${call.expression.name.text}`;
+		const helperName = compiledMutationHelperName(call.expression);
 
 		if (helperName === 'Object.assign') {
 			return call.arguments.slice(1).flatMap((source): readonly ts.Expression[] => {
@@ -1739,9 +1759,12 @@ const containsUnsafeCompiledAlias = (
 									if (
 										ts.isBinaryExpression(child) &&
 										isAssignmentOperatorKind(child.operatorToken.kind) &&
-										compiledAssignedPropertyName(child.left) === memberName &&
 										(ts.isPropertyAccessExpression(child.left) || ts.isElementAccessExpression(child.left)) &&
-										child.left.expression.kind === ts.SyntaxKind.ThisKeyword
+										child.left.expression.kind === ts.SyntaxKind.ThisKeyword &&
+										(compiledAssignedPropertyName(child.left) === memberName ||
+											(ts.isElementAccessExpression(child.left) &&
+												child.left.argumentExpression !== undefined &&
+												compiledStaticPropertyExpressionName(child.left.argumentExpression) === undefined))
 									) {
 										const referencedArguments: ts.Expression[] = [];
 										const visitParameterReference = (rightChild: ts.Node): void => {
@@ -2285,12 +2308,22 @@ const containsUnsafeCompiledAlias = (
 					return inspectReturnedProperty(receiver.expression, nestedResolving, receiver.arguments);
 				}
 
-				if (ts.isNewExpression(receiver) && ts.isIdentifier(receiver.expression)) {
-					const classDeclaration = resolveCompiledBinding(receiver.expression)?.classDeclaration;
+				if (ts.isNewExpression(receiver)) {
+					const classDeclaration = ts.isIdentifier(receiver.expression)
+						? resolveCompiledBinding(receiver.expression)?.classDeclaration
+						: undefined;
 
-					return (
+					if (
 						classDeclaration !== undefined &&
 						inspectClassProperty(classDeclaration, false, selectedPropertyName, new Set(), receiver.arguments ?? [])
+					) {
+						return true;
+					}
+
+					return (
+						receiver.arguments?.some(
+							(argument) => containsUnsafeCompiledLiteral(argument, safeStrings) || inspect(argument, nestedResolving),
+						) ?? false
 					);
 				}
 
@@ -2852,9 +2885,12 @@ const containsUnsafeCompiledAlias = (
 								if (
 									ts.isBinaryExpression(child) &&
 									isAssignmentOperatorKind(child.operatorToken.kind) &&
-									compiledAssignedPropertyName(child.left) === memberName &&
 									(ts.isPropertyAccessExpression(child.left) || ts.isElementAccessExpression(child.left)) &&
-									child.left.expression.kind === ts.SyntaxKind.ThisKeyword
+									child.left.expression.kind === ts.SyntaxKind.ThisKeyword &&
+									(compiledAssignedPropertyName(child.left) === memberName ||
+										(ts.isElementAccessExpression(child.left) &&
+											child.left.argumentExpression !== undefined &&
+											compiledStaticPropertyExpressionName(child.left.argumentExpression) === undefined))
 								) {
 									found = withCallArguments(
 										member.parameters,
@@ -3011,7 +3047,13 @@ const containsUnsafeCompiledAlias = (
 						);
 					};
 
-					return classDeclaration !== undefined && inspectClassCallable(classDeclaration);
+					return (
+						(classDeclaration !== undefined && inspectClassCallable(classDeclaration)) ||
+						(receiver.arguments?.some(
+							(argument) => containsUnsafeCompiledLiteral(argument, safeStrings) || inspect(argument, nestedResolving),
+						) ??
+							false)
+					);
 				}
 
 				if (ts.isConditionalExpression(receiver)) {
@@ -5105,6 +5147,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const assign = Object.assign; const source = {}; assign(source, { value: 'opaque-secret' }); const apiKey = source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const source = { value: '' }; Object.defineProperties(source, { value: { value: 'opaque-secret' } }); const apiKey = source.value;",
 				true,
 			),
@@ -5213,6 +5262,16 @@ describe('Homey security artifact gate', () => {
 				"class Source { constructor(value) { this.value = value; } } const apiKey = new Source('opaque-secret').value;",
 				true,
 			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Source { constructor(value) { this[key] = value; } } const apiKey = new Source('opaque-secret').value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe('unsafe compiled module', "const apiKey = new Proxy({ value: 'opaque-secret' }, {}).value;", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe(
