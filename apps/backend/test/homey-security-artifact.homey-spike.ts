@@ -2327,6 +2327,7 @@ const containsUnsafeCompiledAlias = (
 			methodName !== 'concat' &&
 			![
 				'copyWithin',
+				'fill',
 				'filter',
 				'flat',
 				'reverse',
@@ -2342,21 +2343,27 @@ const containsUnsafeCompiledAlias = (
 			return [];
 		}
 
-		const values =
-			methodName === 'concat'
-				? [call.expression.expression, ...call.arguments].flatMap(
-						(expression): readonly ts.Expression[] => resolveArrayElements(expression, new Set()) ?? [expression],
-					)
-				: (resolveArrayElements(call.expression.expression, new Set()) ?? [call.expression.expression]);
+		const sourceExpressions =
+			methodName === 'concat' ? [call.expression.expression, ...call.arguments] : [call.expression.expression];
+		const values = sourceExpressions.flatMap(
+			(expression): readonly ts.Expression[] => resolveArrayElements(expression, new Set()) ?? [expression],
+		);
+		const writeValues = sourceExpressions.flatMap((expression) =>
+			compiledReceiverWriteValues(expression, call.getStart(call.getSourceFile())),
+		);
 		const index = Number(selectedPropertyName);
 
+		if (methodName === 'fill') {
+			return [...values.slice(index, index + 1), ...call.arguments.slice(0, 1), ...writeValues];
+		}
+
 		if (methodName === 'with') {
-			return [...values.slice(index, index + 1), ...call.arguments.slice(1, 2)];
+			return [...values.slice(index, index + 1), ...call.arguments.slice(1, 2), ...writeValues];
 		}
 
 		return methodName === 'filter' || methodName === 'flat' || methodName === 'splice' || methodName === 'toSpliced'
-			? values
-			: values.slice(index, index + 1);
+			? [...values, ...writeValues]
+			: [...values.slice(index, index + 1), ...writeValues];
 	};
 	const arrayElementCallValues = (call: ts.CallExpression): readonly ts.Expression[] => {
 		if (!ts.isPropertyAccessExpression(call.expression) && !ts.isElementAccessExpression(call.expression)) {
@@ -4797,25 +4804,74 @@ const containsCompiledSecret = (text: string): boolean => {
 			parameters: readonly ts.ParameterDeclaration[],
 			body: ts.ConciseBody,
 		): readonly ts.Expression[] => {
-			const settlementNames = new Set(
-				parameters
-					.slice(0, 2)
-					.map((parameter) => (ts.isIdentifier(parameter.name) ? parameter.name.text : undefined))
-					.filter((name): name is string => name !== undefined),
-			);
+			const settlementParameters = new Set<ts.Node>(parameters.slice(0, 2));
+			const isSettlementReference = (expression: ts.Expression, resolvingReferences = new Set<ts.Node>()): boolean => {
+				if (
+					ts.isParenthesizedExpression(expression) ||
+					ts.isAsExpression(expression) ||
+					ts.isTypeAssertionExpression(expression) ||
+					ts.isNonNullExpression(expression) ||
+					ts.isSatisfiesExpression(expression)
+				) {
+					return isSettlementReference(expression.expression, resolvingReferences);
+				}
+
+				if (!ts.isIdentifier(expression)) {
+					return false;
+				}
+
+				const binding = resolveCompiledBinding(expression);
+
+				if (binding === undefined || resolvingReferences.has(binding.declaration)) {
+					return false;
+				}
+
+				if (settlementParameters.has(binding.declaration)) {
+					return true;
+				}
+
+				return (
+					binding.initializer !== undefined &&
+					isSettlementReference(binding.initializer, new Set(resolvingReferences).add(binding.declaration))
+				);
+			};
+			const settlementCallValues = (call: ts.CallExpression): readonly ts.Expression[] => {
+				if (isSettlementReference(call.expression)) {
+					return call.arguments.slice(0, 1);
+				}
+
+				if (!ts.isPropertyAccessExpression(call.expression) && !ts.isElementAccessExpression(call.expression)) {
+					return [];
+				}
+
+				const methodName = ts.isPropertyAccessExpression(call.expression)
+					? call.expression.name.text
+					: call.expression.argumentExpression === undefined
+						? undefined
+						: compiledStaticPropertyExpressionName(call.expression.argumentExpression);
+
+				if (!isSettlementReference(call.expression.expression)) {
+					return [];
+				}
+
+				if (methodName === 'call') {
+					return call.arguments.slice(1, 2);
+				}
+
+				if (methodName !== 'apply' || call.arguments[1] === undefined) {
+					return [];
+				}
+
+				return [call.arguments[1]];
+			};
 			const values: ts.Expression[] = [];
 			const visitSettlement = (node: ts.Node): void => {
 				if (node !== body && ts.isFunctionLike(node)) {
 					return;
 				}
 
-				if (
-					ts.isCallExpression(node) &&
-					ts.isIdentifier(node.expression) &&
-					settlementNames.has(node.expression.text) &&
-					node.arguments[0] !== undefined
-				) {
-					values.push(node.arguments[0]);
+				if (ts.isCallExpression(node)) {
+					values.push(...settlementCallValues(node));
 				}
 
 				ts.forEachChild(node, visitSettlement);
@@ -7018,6 +7074,27 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"new Promise((resolve) => { const settle = resolve; settle('opaque-secret'); }).then(apiKey => {});",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"new Promise((resolve) => resolve.call(null, 'opaque-secret')).then(apiKey => {});",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"new Promise((resolve) => resolve.apply(null, ['opaque-secret'])).then(apiKey => {});",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const values = []; values.push('opaque-secret'); Promise.all(values).then(([apiKey]) => {});",
 				true,
 			),
@@ -7910,6 +7987,27 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe('unsafe compiled module', "const apiKey = ['opaque-secret'].slice()[0];", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = []; source.push('opaque-secret'); const apiKey = source.slice()[0];",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = []; source.push('opaque-secret'); const apiKey = source.reverse()[0];",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const source = []; source.push('opaque-secret'); const apiKey = source.concat([])[0];",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = ['opaque-secret'].copyWithin(0, 0)[0];", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
@@ -7917,6 +8015,13 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = [''].with(0, 'opaque-secret')[0];", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const stored = 'opaque-secret'; const apiKey = [''].fill(stored)[0];",
+				true,
+			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe(
