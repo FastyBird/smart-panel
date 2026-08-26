@@ -1264,6 +1264,7 @@ const containsUnsafeCompiledAlias = (
 					expectStatic: boolean,
 					memberName: string,
 					classResolvingProperties = new Set<string>(),
+					constructorArguments: readonly ts.Expression[] = [],
 				): boolean => {
 					const propertyReference = `${classDeclaration.pos}:${expectStatic ? 'static' : 'instance'}:${memberName}`;
 
@@ -1275,29 +1276,41 @@ const containsUnsafeCompiledAlias = (
 					let constructorWriteFound = false;
 
 					if (!expectStatic) {
-						const visitConstructorWrite = (child: ts.Node): void => {
-							if (constructorWriteFound) {
-								return;
-							}
-
-							if (
-								ts.isBinaryExpression(child) &&
-								isAssignmentOperatorKind(child.operatorToken.kind) &&
-								compiledAssignedPropertyName(child.left) === memberName &&
-								(ts.isPropertyAccessExpression(child.left) || ts.isElementAccessExpression(child.left)) &&
-								child.left.expression.kind === ts.SyntaxKind.ThisKeyword
-							) {
-								constructorWriteFound =
-									containsUnsafeCompiledLiteral(child.right, safeStrings) || inspect(child.right, nestedResolving);
-							}
-
-							if (!constructorWriteFound) {
-								ts.forEachChild(child, visitConstructorWrite);
-							}
-						};
-
 						for (const member of classDeclaration.members) {
 							if (ts.isConstructorDeclaration(member) && member.body !== undefined) {
+								const visitConstructorWrite = (child: ts.Node): void => {
+									if (constructorWriteFound) {
+										return;
+									}
+
+									if (
+										ts.isBinaryExpression(child) &&
+										isAssignmentOperatorKind(child.operatorToken.kind) &&
+										compiledAssignedPropertyName(child.left) === memberName &&
+										(ts.isPropertyAccessExpression(child.left) || ts.isElementAccessExpression(child.left)) &&
+										child.left.expression.kind === ts.SyntaxKind.ThisKeyword
+									) {
+										const rightName = ts.isIdentifier(child.right) ? child.right.text : undefined;
+										const parameterIndex =
+											rightName !== undefined
+												? member.parameters.findIndex(
+														(parameter) => ts.isIdentifier(parameter.name) && parameter.name.text === rightName,
+													)
+												: -1;
+										const argument = parameterIndex < 0 ? undefined : constructorArguments[parameterIndex];
+
+										constructorWriteFound =
+											(argument !== undefined &&
+												(containsUnsafeCompiledLiteral(argument, safeStrings) || inspect(argument, nestedResolving))) ||
+											containsUnsafeCompiledLiteral(child.right, safeStrings) ||
+											inspect(child.right, nestedResolving);
+									}
+
+									if (!constructorWriteFound) {
+										ts.forEachChild(child, visitConstructorWrite);
+									}
+								};
+
 								visitConstructorWrite(member.body);
 							}
 						}
@@ -1347,6 +1360,7 @@ const containsUnsafeCompiledAlias = (
 												expectStatic,
 												receiverPropertyName,
 												nestedClassProperties,
+												constructorArguments,
 											)) ||
 										containsUnsafeCompiledLiteral(child.expression, safeStrings) ||
 										inspect(child.expression, nestedResolving);
@@ -1380,7 +1394,13 @@ const containsUnsafeCompiledAlias = (
 
 									return (
 										baseClass !== undefined &&
-										inspectClassProperty(baseClass, expectStatic, memberName, nestedClassProperties)
+										inspectClassProperty(
+											baseClass,
+											expectStatic,
+											memberName,
+											nestedClassProperties,
+											constructorArguments,
+										)
 									);
 								}),
 							) ?? false
@@ -1532,7 +1552,10 @@ const containsUnsafeCompiledAlias = (
 				if (ts.isNewExpression(receiver) && ts.isIdentifier(receiver.expression)) {
 					const classDeclaration = resolveCompiledBinding(receiver.expression)?.classDeclaration;
 
-					return classDeclaration !== undefined && inspectClassProperty(classDeclaration, false, selectedPropertyName);
+					return (
+						classDeclaration !== undefined &&
+						inspectClassProperty(classDeclaration, false, selectedPropertyName, new Set(), receiver.arguments ?? [])
+					);
 				}
 
 				if (ts.isObjectLiteralExpression(receiver)) {
@@ -4133,6 +4156,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"class Source { constructor() { this.value = 'opaque-secret'; } } const apiKey = new Source().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Source { constructor(value) { this.value = value; } } const apiKey = new Source('opaque-secret').value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
