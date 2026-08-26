@@ -1240,6 +1240,40 @@ const containsUnsafeCompiledAlias = (
 					}
 
 					const nestedClassProperties = new Set(classResolvingProperties).add(propertyReference);
+					let constructorWriteFound = false;
+
+					if (!expectStatic) {
+						const visitConstructorWrite = (child: ts.Node): void => {
+							if (constructorWriteFound) {
+								return;
+							}
+
+							if (
+								ts.isBinaryExpression(child) &&
+								isAssignmentOperatorKind(child.operatorToken.kind) &&
+								compiledAssignedPropertyName(child.left) === memberName &&
+								(ts.isPropertyAccessExpression(child.left) || ts.isElementAccessExpression(child.left)) &&
+								child.left.expression.kind === ts.SyntaxKind.ThisKeyword
+							) {
+								constructorWriteFound =
+									containsUnsafeCompiledLiteral(child.right, safeStrings) || inspect(child.right, nestedResolving);
+							}
+
+							if (!constructorWriteFound) {
+								ts.forEachChild(child, visitConstructorWrite);
+							}
+						};
+
+						for (const member of classDeclaration.members) {
+							if (ts.isConstructorDeclaration(member) && member.body !== undefined) {
+								visitConstructorWrite(member.body);
+							}
+						}
+					}
+
+					if (constructorWriteFound) {
+						return true;
+					}
 
 					return classDeclaration.members.some((member) => {
 						if (!('name' in member)) {
@@ -1345,6 +1379,13 @@ const containsUnsafeCompiledAlias = (
 					return (
 						resolvedReceiver !== undefined &&
 						inspectProperty(resolvedReceiver, nestedResolving, selectedPropertyName, resolvingProperties)
+					);
+				}
+
+				if (ts.isConditionalExpression(receiver)) {
+					return (
+						inspectProperty(receiver.whenTrue, nestedResolving, selectedPropertyName, resolvingProperties) ||
+						inspectProperty(receiver.whenFalse, nestedResolving, selectedPropertyName, resolvingProperties)
 					);
 				}
 
@@ -1679,6 +1720,44 @@ const containsUnsafeCompiledAlias = (
 					ts.isSatisfiesExpression(receiver)
 				) {
 					return inspectCallableProperty(receiver.expression, nestedResolving);
+				}
+
+				if (ts.isNewExpression(receiver) && ts.isIdentifier(receiver.expression)) {
+					const classDeclaration = resolveCompiledBinding(receiver.expression)?.classDeclaration;
+
+					return (
+						classDeclaration?.members.some((member) => {
+							if (!('name' in member)) {
+								return false;
+							}
+
+							const staticMember = Boolean(
+								ts.canHaveModifiers(member) &&
+								ts.getModifiers(member)?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword),
+							);
+
+							if (staticMember || compiledPropertyName(member.name) !== propertyName) {
+								return false;
+							}
+
+							if (ts.isPropertyDeclaration(member)) {
+								return member.initializer !== undefined && inspectCallable(member.initializer, nestedResolving);
+							}
+
+							return (
+								(ts.isGetAccessorDeclaration(member) || ts.isMethodDeclaration(member)) &&
+								member.body !== undefined &&
+								inspectCallableBody(member.body, nestedResolving)
+							);
+						}) ?? false
+					);
+				}
+
+				if (ts.isConditionalExpression(receiver)) {
+					return (
+						inspectCallableProperty(receiver.whenTrue, nestedResolving) ||
+						inspectCallableProperty(receiver.whenFalse, nestedResolving)
+					);
 				}
 
 				if (ts.isObjectLiteralExpression(receiver)) {
@@ -3732,6 +3811,20 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"class Source { constructor() { this.value = 'opaque-secret'; } } const apiKey = new Source().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Source { fallback() { return 'opaque-secret'; } } const apiKey = new Source().fallback();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const fallback = () => ({ value: 'opaque-secret' }); const apiKey = fallback().value;",
 				true,
 			),
@@ -3740,6 +3833,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const factory = { make: () => ({ value: 'opaque-secret' }) }; const apiKey = factory.make().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const apiKey = (choose ? safe : { value: 'opaque-secret' }).value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
