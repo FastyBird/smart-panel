@@ -2722,9 +2722,10 @@ const containsUnsafeCompiledAlias = (
 					if (
 						receiverPropertyName !== undefined &&
 						ts.isCallExpression(receiver.expression) &&
-						concatenatedResultValues(receiver.expression, receiverPropertyName).some((value) =>
-							inspectProperty(value, nestedResolving, selectedPropertyName, resolvingProperties),
-						)
+						[
+							...concatenatedResultValues(receiver.expression, receiverPropertyName),
+							...objectValuesResultValues(receiver.expression, receiverPropertyName),
+						].some((value) => inspectProperty(value, nestedResolving, selectedPropertyName, resolvingProperties))
 					) {
 						return true;
 					}
@@ -4269,19 +4270,32 @@ const containsCompiledSecret = (text: string): boolean => {
 							? undefined
 							: compiledStaticPropertyExpressionName(node.expression.argumentExpression)
 					: undefined;
-			const invokedCallee =
-				(invocationPropertyName === 'call' ||
-					invocationPropertyName === 'apply' ||
-					invocationPropertyName === 'bind') &&
-				(ts.isPropertyAccessExpression(node.expression) || ts.isElementAccessExpression(node.expression))
+			const invocationReceiver =
+				ts.isPropertyAccessExpression(node.expression) || ts.isElementAccessExpression(node.expression)
 					? node.expression.expression
-					: node.expression;
+					: undefined;
+			const isReflectApply =
+				invocationPropertyName === 'apply' &&
+				invocationReceiver !== undefined &&
+				ts.isIdentifier(invocationReceiver) &&
+				invocationReceiver.text === 'Reflect';
+			const invokedCallee =
+				isReflectApply && node.arguments[0] !== undefined
+					? node.arguments[0]
+					: (invocationPropertyName === 'call' ||
+								invocationPropertyName === 'apply' ||
+								invocationPropertyName === 'bind') &&
+						  invocationReceiver !== undefined
+						? invocationReceiver
+						: node.expression;
 			const invokedArguments: readonly ts.Expression[] =
-				invocationPropertyName === 'call' || invocationPropertyName === 'bind'
-					? node.arguments.slice(1)
-					: invocationPropertyName === 'apply' && node.arguments[1] !== undefined
-						? [ts.factory.createSpreadElement(node.arguments[1])]
-						: node.arguments;
+				isReflectApply && node.arguments[2] !== undefined
+					? [ts.factory.createSpreadElement(node.arguments[2])]
+					: invocationPropertyName === 'call' || invocationPropertyName === 'bind'
+						? node.arguments.slice(1)
+						: invocationPropertyName === 'apply' && node.arguments[1] !== undefined
+							? [ts.factory.createSpreadElement(node.arguments[1])]
+							: node.arguments;
 
 			found = secretCallArguments(resolveCallParameterSets(invokedCallee), invokedArguments);
 		} else if (ts.isNewExpression(node)) {
@@ -6002,6 +6016,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"function connect(apiKey) {} Reflect.apply(connect, null, ['opaque-secret']);",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"function connect(apiKey) {} const bound = connect.bind(null, 'opaque-secret'); bound();",
 				true,
 			),
@@ -6518,6 +6539,13 @@ describe('Homey security artifact gate', () => {
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = Object.values({ value: 'opaque-secret' })[0];", true),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const apiKey = Object.values({ x: { value: 'opaque-secret' } })[0].value;",
+				true,
+			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
 			assertTextSafe('unsafe compiled module', "const apiKey = Object.keys({ 'opaque-secret': 0 })[0];", true),
