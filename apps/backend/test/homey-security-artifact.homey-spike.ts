@@ -1083,11 +1083,22 @@ const compiledPropertyWriteValues = (
 			isAssignmentOperatorKind(node.operatorToken.kind)
 		) {
 			const writePath = resolveCompiledReceiverPath(node.left);
+			const dynamicWriteReceiverPath =
+				ts.isElementAccessExpression(node.left) &&
+				node.left.argumentExpression !== undefined &&
+				compiledStaticPropertyExpressionName(node.left.argumentExpression) === undefined
+					? resolveCompiledReceiverPath(node.left.expression)
+					: undefined;
+			const sameDynamicReceiver =
+				dynamicWriteReceiverPath?.binding.declaration === targetPath.binding.declaration &&
+				dynamicWriteReceiverPath.properties.length === targetPath.properties.length &&
+				dynamicWriteReceiverPath.properties.every((property, index) => property === targetPath.properties[index]);
 
 			if (
-				writePath?.binding.declaration === targetPath.binding.declaration &&
-				writePath.properties.length === expectedProperties.length &&
-				writePath.properties.every((property, index) => property === expectedProperties[index])
+				sameDynamicReceiver ||
+				(writePath?.binding.declaration === targetPath.binding.declaration &&
+					writePath.properties.length === expectedProperties.length &&
+					writePath.properties.every((property, index) => property === expectedProperties[index]))
 			) {
 				values.push(node.right);
 			}
@@ -1477,9 +1488,14 @@ const containsUnsafeCompiledAlias = (
 										const visitParameterReference = (rightChild: ts.Node): void => {
 											if (ts.isIdentifier(rightChild)) {
 												member.parameters.forEach((parameter, parameterIndex) => {
-													const argument = constructorArguments[parameterIndex] ?? parameter.initializer;
+													const parameterArguments =
+														parameter.dotDotDotToken === undefined
+															? [constructorArguments[parameterIndex] ?? parameter.initializer].filter(
+																	(argument): argument is ts.Expression => argument !== undefined,
+																)
+															: constructorArguments.slice(parameterIndex);
 
-													if (argument !== undefined) {
+													for (const argument of parameterArguments) {
 														referencedArguments.push(
 															...selectParameterValues(parameter.name, rightChild.text, argument),
 														);
@@ -1540,6 +1556,59 @@ const containsUnsafeCompiledAlias = (
 
 						if ((ts.isGetAccessorDeclaration(member) || ts.isMethodDeclaration(member)) && member.body !== undefined) {
 							let found = false;
+							const inspectDynamicClassProperties = (
+								declaration: ts.ClassDeclaration,
+								resolvingClasses = new Set<ts.ClassDeclaration>(),
+							): boolean => {
+								if (resolvingClasses.has(declaration)) {
+									return false;
+								}
+
+								const nestedClasses = new Set(resolvingClasses).add(declaration);
+								const propertyNames = new Set<string>();
+
+								for (const candidate of declaration.members) {
+									if ('name' in candidate) {
+										const staticMember = Boolean(
+											ts.canHaveModifiers(candidate) &&
+											ts.getModifiers(candidate)?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword),
+										);
+										const candidateName = compiledPropertyName(candidate.name);
+
+										if (staticMember === expectStatic && candidateName !== undefined) {
+											propertyNames.add(candidateName);
+										}
+									}
+								}
+
+								if (
+									[...propertyNames].some((candidateName) =>
+										inspectClassProperty(
+											classDeclaration,
+											expectStatic,
+											candidateName,
+											nestedClassProperties,
+											constructorArguments,
+										),
+									)
+								) {
+									return true;
+								}
+
+								return (
+									declaration.heritageClauses
+										?.filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
+										.some((clause) =>
+											clause.types.some((type) => {
+												const baseClass = ts.isIdentifier(type.expression)
+													? resolveCompiledBinding(type.expression)?.classDeclaration
+													: undefined;
+
+												return baseClass !== undefined && inspectDynamicClassProperties(baseClass, nestedClasses);
+											}),
+										) ?? false
+								);
+							};
 							const visitReturn = (child: ts.Node): void => {
 								if (found) {
 									return;
@@ -1547,6 +1616,11 @@ const containsUnsafeCompiledAlias = (
 
 								if (ts.isReturnStatement(child) && child.expression !== undefined) {
 									const receiverPropertyName = compiledThisPropertyName(child.expression);
+									const dynamicThisProperty =
+										ts.isElementAccessExpression(child.expression) &&
+										child.expression.expression.kind === ts.SyntaxKind.ThisKeyword &&
+										child.expression.argumentExpression !== undefined &&
+										compiledStaticPropertyExpressionName(child.expression.argumentExpression) === undefined;
 
 									found =
 										(receiverPropertyName !== undefined &&
@@ -1557,6 +1631,7 @@ const containsUnsafeCompiledAlias = (
 												nestedClassProperties,
 												constructorArguments,
 											)) ||
+										(dynamicThisProperty && inspectDynamicClassProperties(classDeclaration)) ||
 										containsUnsafeCompiledLiteral(child.expression, safeStrings) ||
 										inspect(child.expression, nestedResolving);
 								}
@@ -4504,6 +4579,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"const source = { value: '' }; source[key] = 'opaque-secret'; const apiKey = source.value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"const source = { value: '' }; const read = () => source.value; source.value = 'opaque-secret'; const apiKey = read();",
 				true,
 			),
@@ -4560,6 +4642,13 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled module',
+				"class Source { stored = 'opaque-secret'; get value() { return this[key]; } } const apiKey = new Source().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
 				"class Base { value = 'opaque-secret'; } class Source extends Base {} const apiKey = new Source().value;",
 				true,
 			),
@@ -4589,6 +4678,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"class Source { constructor([value]) { this.value = value; } } const apiKey = new Source(['opaque-secret']).value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Source { constructor(...values) { this.value = values[1]; } } const apiKey = new Source('', 'opaque-secret').value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
