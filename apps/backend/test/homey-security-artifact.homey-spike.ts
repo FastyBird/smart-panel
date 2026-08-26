@@ -759,7 +759,17 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 		}
 
 		if (ts.isArrayBindingPattern(pattern)) {
-			return resolveBindingArrayElements(source, resolvingSources)?.[index];
+			const elements = resolveBindingArrayElements(source, resolvingSources);
+
+			if (binding.dotDotDotToken !== undefined) {
+				return elements === undefined
+					? undefined
+					: ts.factory.createArrayLiteralExpression(
+							elements.slice(index).map((element) => element ?? ts.factory.createIdentifier('undefined')),
+						);
+			}
+
+			return elements?.[index];
 		}
 
 		return undefined;
@@ -861,7 +871,19 @@ const compiledBindings = (sourceFile: ts.SourceFile): ReadonlyMap<string, readon
 			const sourceElements = resolveBindingArrayElements(source, new Set());
 
 			target.elements.forEach((element, index) => {
-				if (ts.isExpression(element) && !ts.isOmittedExpression(element)) {
+				if (ts.isSpreadElement(element)) {
+					addAssignmentPatternBindings(
+						element.expression,
+						sourceElements === undefined
+							? undefined
+							: ts.factory.createArrayLiteralExpression(
+									sourceElements
+										.slice(index)
+										.map((sourceElement) => sourceElement ?? ts.factory.createIdentifier('undefined')),
+								),
+						declaration,
+					);
+				} else if (ts.isExpression(element) && !ts.isOmittedExpression(element)) {
 					addAssignmentPatternBindings(element, sourceElements?.[index], declaration);
 				}
 			});
@@ -1073,18 +1095,19 @@ const compiledPropertyWriteValues = (receiver: ts.Expression, propertyName: stri
 const containsUnsafeCompiledAlias = (
 	node: ts.Expression,
 	safeStrings: SafeCompiledString,
-	resolvingAliases = new Set<string>(),
+	resolvingAliases = new Set<ts.Node>(),
 ): boolean => {
 	const resolveArrayElements = (
 		expression: ts.Expression,
-		resolving: Set<string>,
+		resolving: Set<ts.Node>,
 	): readonly ts.Expression[] | undefined => {
 		if (ts.isIdentifier(expression)) {
-			const initializer = resolveCompiledAlias(expression);
+			const binding = resolveCompiledBinding(expression);
+			const initializer = binding?.initializer;
 
-			return initializer === undefined || resolving.has(expression.text)
+			return initializer === undefined || binding === undefined || resolving.has(binding.declaration)
 				? undefined
-				: resolveArrayElements(initializer, new Set(resolving).add(expression.text));
+				: resolveArrayElements(initializer, new Set(resolving).add(binding.declaration));
 		}
 
 		if (
@@ -1124,14 +1147,15 @@ const containsUnsafeCompiledAlias = (
 	const resolvePropertyValue = (
 		receiver: ts.Expression,
 		propertyName: string,
-		resolving: Set<string>,
+		resolving: Set<ts.Node>,
 	): ts.Expression | undefined => {
 		if (ts.isIdentifier(receiver)) {
-			const initializer = resolveCompiledAlias(receiver);
+			const binding = resolveCompiledBinding(receiver);
+			const initializer = binding?.initializer;
 
-			return initializer === undefined || resolving.has(receiver.text)
+			return initializer === undefined || binding === undefined || resolving.has(binding.declaration)
 				? undefined
-				: resolvePropertyValue(initializer, propertyName, new Set(resolving).add(receiver.text));
+				: resolvePropertyValue(initializer, propertyName, new Set(resolving).add(binding.declaration));
 		}
 
 		if (
@@ -1184,23 +1208,27 @@ const containsUnsafeCompiledAlias = (
 
 		return undefined;
 	};
-	const inspect = (expression: ts.Expression, resolving: Set<string>): boolean => {
+	const inspect = (expression: ts.Expression, resolving: Set<ts.Node>): boolean => {
 		if (ts.isIdentifier(expression)) {
 			const bindings = resolveCompiledBindings(expression);
 
-			if (bindings.length === 0 || resolving.has(expression.text)) {
+			if (bindings.length === 0) {
 				return false;
 			}
 
-			const nestedResolving = new Set(resolving).add(expression.text);
+			return bindings.some((binding) => {
+				if (resolving.has(binding.declaration)) {
+					return false;
+				}
 
-			return bindings.some((binding) =>
-				[binding.initializer, binding.fallbackInitializer].some(
+				const nestedResolving = new Set(resolving).add(binding.declaration);
+
+				return [binding.initializer, binding.fallbackInitializer].some(
 					(initializer) =>
 						initializer !== undefined &&
 						(containsUnsafeCompiledLiteral(initializer, safeStrings) || inspect(initializer, nestedResolving)),
-				),
-			);
+				);
+			});
 		}
 
 		if (ts.isPropertyAccessExpression(expression) || ts.isElementAccessExpression(expression)) {
@@ -1211,7 +1239,7 @@ const containsUnsafeCompiledAlias = (
 					: compiledStaticPropertyExpressionName(expression.argumentExpression);
 			const inspectProperty = (
 				receiver: ts.Expression,
-				nestedResolving: Set<string>,
+				nestedResolving: Set<ts.Node>,
 				selectedPropertyName = propertyName,
 				resolvingProperties = new Set<string>(),
 			): boolean => {
@@ -1275,7 +1303,7 @@ const containsUnsafeCompiledAlias = (
 						return true;
 					}
 
-					return classDeclaration.members.some((member) => {
+					const ownMemberFound = classDeclaration.members.some((member) => {
 						if (!('name' in member)) {
 							return false;
 						}
@@ -1332,23 +1360,51 @@ const containsUnsafeCompiledAlias = (
 
 						return false;
 					});
+
+					if (ownMemberFound) {
+						return true;
+					}
+
+					return (
+						classDeclaration.heritageClauses
+							?.filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
+							.some((clause) =>
+								clause.types.some((type) => {
+									const baseClass = ts.isIdentifier(type.expression)
+										? resolveCompiledBinding(type.expression)?.classDeclaration
+										: undefined;
+
+									return (
+										baseClass !== undefined &&
+										inspectClassProperty(baseClass, expectStatic, memberName, nestedClassProperties)
+									);
+								}),
+							) ?? false
+					);
 				};
 
 				if (ts.isIdentifier(receiver)) {
-					const nestedReceiverResolving = new Set(nestedResolving).add(receiver.text);
-					const classDeclaration = resolveCompiledBinding(receiver)?.classDeclaration;
+					const receiverBinding = resolveCompiledBinding(receiver);
+					const nestedReceiverResolving =
+						receiverBinding === undefined ? nestedResolving : new Set(nestedResolving).add(receiverBinding.declaration);
+					const classDeclaration = receiverBinding?.classDeclaration;
 
 					if (
+						receiverBinding !== undefined &&
 						classDeclaration !== undefined &&
-						!nestedResolving.has(receiver.text) &&
+						!nestedResolving.has(receiverBinding.declaration) &&
 						inspectClassProperty(classDeclaration, true, selectedPropertyName)
 					) {
 						return true;
 					}
 
-					const initializer = resolveCompiledAlias(receiver);
+					const initializer = receiverBinding?.initializer;
 
-					if (initializer === undefined || nestedResolving.has(receiver.text)) {
+					if (
+						initializer === undefined ||
+						receiverBinding === undefined ||
+						nestedResolving.has(receiverBinding.declaration)
+					) {
 						return false;
 					}
 
@@ -1390,8 +1446,8 @@ const containsUnsafeCompiledAlias = (
 				}
 
 				if (ts.isCallExpression(receiver)) {
-					const inspectReturnedProperty = (callee: ts.Expression, resolvingCalls: Set<string>): boolean => {
-						const inspectReturnBody = (body: ts.Block, nestedCalls: Set<string>): boolean => {
+					const inspectReturnedProperty = (callee: ts.Expression, resolvingCalls: Set<ts.Node>): boolean => {
+						const inspectReturnBody = (body: ts.Block, nestedCalls: Set<ts.Node>): boolean => {
 							let found = false;
 							const visitReturn = (child: ts.Node): void => {
 								if (found) {
@@ -1413,19 +1469,20 @@ const containsUnsafeCompiledAlias = (
 						};
 
 						if (ts.isIdentifier(callee)) {
-							if (resolvingCalls.has(callee.text)) {
-								return false;
-							}
+							return resolveCompiledBindings(callee).some((binding) => {
+								if (resolvingCalls.has(binding.declaration)) {
+									return false;
+								}
 
-							const nestedCalls = new Set(resolvingCalls).add(callee.text);
+								const nestedCalls = new Set(resolvingCalls).add(binding.declaration);
 
-							return resolveCompiledBindings(callee).some(
-								(binding) =>
+								return (
 									[binding.initializer, binding.fallbackInitializer].some(
 										(initializer) => initializer !== undefined && inspectReturnedProperty(initializer, nestedCalls),
 									) ||
-									(binding.callable?.body !== undefined && inspectReturnBody(binding.callable.body, nestedCalls)),
-							);
+									(binding.callable?.body !== undefined && inspectReturnBody(binding.callable.body, nestedCalls))
+								);
+							});
 						}
 
 						if (
@@ -1613,7 +1670,7 @@ const containsUnsafeCompiledAlias = (
 
 		return false;
 	};
-	const inspectCallableBody = (body: ts.Block, resolving: Set<string>): boolean => {
+	const inspectCallableBody = (body: ts.Block, resolving: Set<ts.Node>): boolean => {
 		let found = false;
 		const visitReturn = (child: ts.Node): void => {
 			if (found) {
@@ -1633,23 +1690,28 @@ const containsUnsafeCompiledAlias = (
 
 		return found;
 	};
-	const inspectCallable = (callee: ts.Expression, resolving: Set<string>): boolean => {
+	const inspectCallable = (callee: ts.Expression, resolving: Set<ts.Node>): boolean => {
 		if (ts.isIdentifier(callee)) {
 			const bindings = resolveCompiledBindings(callee);
 
-			if (bindings.length === 0 || resolving.has(callee.text)) {
+			if (bindings.length === 0) {
 				return false;
 			}
 
-			const nestedResolving = new Set(resolving).add(callee.text);
+			return bindings.some((binding) => {
+				if (resolving.has(binding.declaration)) {
+					return false;
+				}
 
-			return bindings.some(
-				(binding) =>
+				const nestedResolving = new Set(resolving).add(binding.declaration);
+
+				return (
 					[binding.initializer, binding.fallbackInitializer].some(
 						(initializer) => initializer !== undefined && inspectCallable(initializer, nestedResolving),
 					) ||
-					(binding.callable?.body !== undefined && inspectCallableBody(binding.callable.body, nestedResolving)),
-			);
+					(binding.callable?.body !== undefined && inspectCallableBody(binding.callable.body, nestedResolving))
+				);
+			});
 		}
 
 		if (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) {
@@ -1658,7 +1720,7 @@ const containsUnsafeCompiledAlias = (
 				: callee.argumentExpression === undefined
 					? undefined
 					: compiledStaticPropertyExpressionName(callee.argumentExpression);
-			const inspectCallableProperty = (receiver: ts.Expression, nestedResolving: Set<string>): boolean => {
+			const inspectCallableProperty = (receiver: ts.Expression, nestedResolving: Set<ts.Node>): boolean => {
 				if (propertyName === undefined) {
 					return false;
 				}
@@ -1670,12 +1732,15 @@ const containsUnsafeCompiledAlias = (
 				}
 
 				if (ts.isIdentifier(receiver)) {
-					const nestedReceiverResolving = new Set(nestedResolving).add(receiver.text);
-					const classDeclaration = resolveCompiledBinding(receiver)?.classDeclaration;
+					const receiverBinding = resolveCompiledBinding(receiver);
+					const nestedReceiverResolving =
+						receiverBinding === undefined ? nestedResolving : new Set(nestedResolving).add(receiverBinding.declaration);
+					const classDeclaration = receiverBinding?.classDeclaration;
 
 					if (
+						receiverBinding !== undefined &&
 						classDeclaration !== undefined &&
-						!nestedResolving.has(receiver.text) &&
+						!nestedResolving.has(receiverBinding.declaration) &&
 						classDeclaration.members.some((member) => {
 							if (!('name' in member)) {
 								return false;
@@ -1703,9 +1768,13 @@ const containsUnsafeCompiledAlias = (
 						return true;
 					}
 
-					const initializer = resolveCompiledAlias(receiver);
+					const initializer = receiverBinding?.initializer;
 
-					if (initializer === undefined || nestedResolving.has(receiver.text)) {
+					if (
+						initializer === undefined ||
+						receiverBinding === undefined ||
+						nestedResolving.has(receiverBinding.declaration)
+					) {
 						return false;
 					}
 
@@ -1724,9 +1793,16 @@ const containsUnsafeCompiledAlias = (
 
 				if (ts.isNewExpression(receiver) && ts.isIdentifier(receiver.expression)) {
 					const classDeclaration = resolveCompiledBinding(receiver.expression)?.classDeclaration;
+					const inspectClassCallable = (
+						declaration: ts.ClassDeclaration,
+						resolvingClasses = new Set<ts.ClassDeclaration>(),
+					): boolean => {
+						if (resolvingClasses.has(declaration)) {
+							return false;
+						}
 
-					return (
-						classDeclaration?.members.some((member) => {
+						const nestedClasses = new Set(resolvingClasses).add(declaration);
+						const ownMemberFound = declaration.members.some((member) => {
 							if (!('name' in member)) {
 								return false;
 							}
@@ -1749,8 +1825,26 @@ const containsUnsafeCompiledAlias = (
 								member.body !== undefined &&
 								inspectCallableBody(member.body, nestedResolving)
 							);
-						}) ?? false
-					);
+						});
+
+						return (
+							ownMemberFound ||
+							(declaration.heritageClauses
+								?.filter((clause) => clause.token === ts.SyntaxKind.ExtendsKeyword)
+								.some((clause) =>
+									clause.types.some((type) => {
+										const baseClass = ts.isIdentifier(type.expression)
+											? resolveCompiledBinding(type.expression)?.classDeclaration
+											: undefined;
+
+										return baseClass !== undefined && inspectClassCallable(baseClass, nestedClasses);
+									}),
+								) ??
+								false)
+						);
+					};
+
+					return classDeclaration !== undefined && inspectClassCallable(classDeclaration);
 				}
 
 				if (ts.isConditionalExpression(receiver)) {
@@ -3364,6 +3458,13 @@ describe('Homey security artifact gate', () => {
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const fallback = () => { const fallback = 'opaque-secret'; return fallback; }; const apiKey = fallback();",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
 			assertTextSafe('unsafe compiled module', "const fallback = 'opaque-secret'; const apiKey = fallback;", true),
 		).toThrow('unsafe compiled module contains a compiled secret value');
 		expect(() =>
@@ -3478,6 +3579,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"const { safe, ...fallback } = { safe: '', value: 'opaque-secret' }; const apiKey = fallback;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"const [safe, ...fallback] = ['', '', 'opaque-secret']; const apiKey = fallback;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
@@ -3805,6 +3913,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'unsafe compiled module',
 				"class Source { stored = 'opaque-secret'; get value() { return this.stored; } } const apiKey = new Source().value;",
+				true,
+			),
+		).toThrow('unsafe compiled module contains a compiled secret value');
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled module',
+				"class Base { value = 'opaque-secret'; } class Source extends Base {} const apiKey = new Source().value;",
 				true,
 			),
 		).toThrow('unsafe compiled module contains a compiled secret value');
