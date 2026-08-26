@@ -601,8 +601,8 @@ suite completes with 1,032 passing tests and five existing locator-dependent ski
 - [x] OpenAPI/spec generation is clean and generated diffs are intentional.
 - [x] Default CI requires no live Homey/SHS access.
 
-The 2026-08-25 automated local gate passed 36 Homey backend suites with 449 tests, nine credential-free compatibility
-and performance suites with 125 tests, the complete 300-file/2,253-test admin suite, and all 23 representative Homey panel
+The 2026-08-25 automated local gate passed 37 Homey/security backend suites with 469 tests, ten credential-free
+compatibility, performance, and security suites with 129 tests, the complete 300-file/2,253-test admin suite, and all 23 representative Homey panel
 pipeline tests. OpenAPI plus device/channel spec regeneration produced no diff. PR #828 also passed the default backend
 unit/E2E, admin, panel, testing-app, web-build, schema, and analysis jobs; its Homey spike job received no live SHS
 credentials, while every live or mutating probe remains protected by its explicit environment gate and allowlist.
@@ -632,7 +632,7 @@ representative lifecycle failure paths.
 - [x] Measure inventory/normalization with up to 250 fixture-generated devices and on supported panel/backend hardware where available.
 - [x] Measure capability event handoff and command-start latency against design targets.
 - [x] Confirm no full inventory call occurs per event.
-- [ ] Scan config responses, logs, fixtures, snapshots, build artifacts, and generated OpenAPI examples for secrets/private data.
+- [x] Scan config responses, logs, fixtures, snapshots, build artifacts, and generated OpenAPI examples for secrets/private data.
 - [ ] Verify all external calls have timeouts and reconnect loops have upper bounds.
 - [ ] Verify no route or service can delete/pair/rename an upstream Homey device.
 
@@ -654,6 +654,14 @@ The gate also asserts that capability updates leave the startup inventory call c
 device reads. Run it from the repository root with
 `pnpm --filter ./apps/backend run homey:latency-gate`; the measurements cover backend scheduling and synchronization-queue
 overhead and deliberately exclude Homey network response time and subsequent command confirmation.
+
+The 2026-08-25 credential-free security gate regenerated OpenAPI without a diff, compiled the backend, structurally
+verified that every Homey secret property remains write-only and publishes no example/default value, and scanned the
+Homey routes, fixture/evidence corpus, snapshots, and compiled artifacts for private addresses, email addresses, token
+shapes, serialized secrets, and any configured live-test private values. It then passed all ten compatibility,
+performance, and security suites (129 tests) plus 37 Homey/config security suites (469 tests), including the response,
+logging, redaction, and error-sanitization coverage. Run the complete gate from `apps/backend` with
+`pnpm run homey:security-gate`; the scan reports only the artifact and violation category, never the matched value.
 
 ### Task 6.4: Documentation and release checklist
 

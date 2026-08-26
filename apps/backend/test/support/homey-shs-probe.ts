@@ -174,6 +174,9 @@ const PUBLIC_HOMEY_CAPABILITY_BASES = new Set([
 	'windowcoverings_state',
 	'windowcoverings_tilt_set',
 ]);
+
+export const isPublicHomeyCapabilityBase = (value: string): boolean => PUBLIC_HOMEY_CAPABILITY_BASES.has(value);
+
 const PUBLIC_HOMEY_ENUM_STATES = new Map<string, ReadonlySet<string>>([
 	['battery_charging_state', new Set(['charging', 'discharging', 'full'])],
 	['light_mode', new Set(['color', 'temperature'])],
@@ -236,7 +239,7 @@ export interface SanitizationAliases {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const isSecretKey = (key: string): boolean =>
+export const isHomeySecretKey = (key: string): boolean =>
 	SECRET_KEY_PATTERN.test(key) ||
 	CAMEL_CASE_SECRET_CODE_KEY_PATTERN.test(key) ||
 	BOUNDED_SECRET_CODE_KEY_PATTERN.test(key);
@@ -314,7 +317,7 @@ const escapeRegularExpression = (value: string): string => value.replace(/[.*+?^
 
 const ipv6Address = (candidate: string): string => candidate.split('%', 1)[0];
 
-const findIpv6Range = (candidate: string): { end: number; start: number } | null => {
+export const findHomeyIpv6Range = (candidate: string): { end: number; start: number } | null => {
 	const addressCandidate = ipv6Address(candidate);
 	let bestRange: { end: number; start: number } | null = null;
 
@@ -348,12 +351,12 @@ const findIpv6Range = (candidate: string): { end: number; start: number } | null
 const replaceIpv6Candidate = (candidate: string, replacement: string): string => {
 	let remainder = candidate;
 	let sanitized = '';
-	let range = findIpv6Range(remainder);
+	let range = findHomeyIpv6Range(remainder);
 
 	while (range !== null) {
 		sanitized += `${remainder.slice(0, range.start)}${replacement}`;
 		remainder = remainder.slice(range.end);
-		range = findIpv6Range(remainder);
+		range = findHomeyIpv6Range(remainder);
 	}
 
 	return sanitized + remainder;
@@ -403,7 +406,7 @@ const isCapabilityEnumOptionIdentifier = (
 	path[3] === 'values' &&
 	/^\d+$/.test(path[4]);
 
-const isPublicHomeyEnumState = (capabilityId: string, value: string): boolean => {
+export const isPublicHomeyEnumState = (capabilityId: string, value: string): boolean => {
 	const separator = capabilityId.indexOf('.');
 	const capabilityBase = separator < 0 ? capabilityId : capabilityId.slice(0, separator);
 
@@ -454,14 +457,18 @@ const sanitizeCapabilityIdentifier = (value: string, aliases: SanitizationAliase
 	return `${safeBase}.${pseudonym('capability-suffix', value.slice(separator + 1), aliases)}`;
 };
 
-const assertSanitizedCapabilityIdentifier = (value: unknown): void => {
+export const isHomeySanitizedCapabilityIdentifier = (value: unknown): value is string => {
 	if (typeof value !== 'string') {
-		throw new Error('Sanitized Homey capture contains an unredacted sensitive field');
+		return false;
 	}
 
 	const separator = value.indexOf('.');
 
-	if (separator >= 0 && !GENERATED_PSEUDONYM_PATTERN.test(value.slice(separator + 1))) {
+	return separator < 0 || GENERATED_PSEUDONYM_PATTERN.test(value.slice(separator + 1));
+};
+
+const assertSanitizedCapabilityIdentifier = (value: unknown): void => {
+	if (!isHomeySanitizedCapabilityIdentifier(value)) {
 		throw new Error('Sanitized Homey capture contains an unredacted sensitive field');
 	}
 };
@@ -471,21 +478,42 @@ const isDriverMetadata = (path: string[]): boolean => path.includes('data') || p
 const isIdentifierMap = (key: string): boolean =>
 	CAMEL_CASE_IDENTIFIER_MAP_KEY_PATTERN.test(key) || BOUNDED_IDENTIFIER_MAP_KEY_PATTERN.test(key);
 
+export const isHomeyIdentifierMapKey = (key: string): boolean => isIdentifierMap(key);
+
+export const isHomeyEndpointKey = (key: string): boolean => ENDPOINT_KEY_PATTERN.test(key);
+
+export const isHomeyIconKey = (key: string): boolean => DEVICE_ICON_KEY_PATTERN.test(key);
+
+export const isHomeyIsoTimestamp = (value: string): boolean => ISO_TIMESTAMP_PATTERN.test(value);
+
+export const isHomeyIdentifierKey = (key: string): boolean => IDENTIFIER_KEY_PATTERN.test(key);
+
+export const isHomeyReferenceKey = (key: string): boolean => REFERENCE_KEY_PATTERN.test(key);
+
+export const isHomeyReferenceArrayKey = (key: string): boolean =>
+	CAMEL_CASE_REFERENCE_ARRAY_KEY_PATTERN.test(key) || BOUNDED_REFERENCE_ARRAY_KEY_PATTERN.test(key);
+
+export const isHomeyUuid = (value: string): boolean => UUID_PATTERN.test(value);
+
 const isTimestampKey = (key: string): boolean =>
 	CAMEL_CASE_TIMESTAMP_KEY_PATTERN.test(key) ||
 	BOUNDED_TIMESTAMP_KEY_PATTERN.test(key) ||
 	HUMAN_TIMESTAMP_KEY_PATTERN.test(key);
 
-const isAddressKey = (key: string): boolean =>
+export const isHomeyTimestampKey = (key: string): boolean => isTimestampKey(key);
+
+export const isHomeyAddressKey = (key: string): boolean =>
 	CAMEL_CASE_ADDRESS_KEY_PATTERN.test(key) || BOUNDED_ADDRESS_KEY_PATTERN.test(key);
 
-const isPersonalKey = (key: string): boolean =>
+export const isHomeyPersonalKey = (key: string): boolean =>
 	CAMEL_CASE_PERSONAL_KEY_PATTERN.test(key) ||
 	BOUNDED_PERSONAL_KEY_PATTERN.test(key) ||
 	LOCATION_METADATA_KEY_PATTERN.test(key);
 
-const isReferenceArrayKey = (key: string): boolean =>
-	CAMEL_CASE_REFERENCE_ARRAY_KEY_PATTERN.test(key) || BOUNDED_REFERENCE_ARRAY_KEY_PATTERN.test(key);
+export const isHomeyGeneratedPseudonym = (value: unknown): value is string =>
+	typeof value === 'string' && GENERATED_PSEUDONYM_PATTERN.test(value);
+
+const isReferenceArrayKey = (key: string): boolean => isHomeyReferenceArrayKey(key);
 
 const referenceArrayKind = (key: string): 'device' | 'reference' | 'zone' => {
 	const normalizedKey = key.replaceAll(/[_-]/g, '').toLowerCase();
@@ -536,11 +564,11 @@ const redactScalar = (value: unknown, marker: string): unknown => {
 const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): unknown => {
 	const capabilityMapEntry = isCapabilityMap(context.path, context.rootKind);
 
-	if (!capabilityMapEntry && isSecretKey(key)) {
+	if (!capabilityMapEntry && isHomeySecretKey(key)) {
 		return redactScalar(value, REDACTION.secret);
 	}
 
-	if (isPersonalKey(key)) {
+	if (isHomeyPersonalKey(key)) {
 		return redactScalar(value, REDACTION.privateTerm);
 	}
 
@@ -548,7 +576,7 @@ const sanitizeValue = (value: unknown, key: string, context: SanitizerContext): 
 		return redactScalar(value, FIXTURE_TIMESTAMP);
 	}
 
-	if (value !== null && !capabilityMapEntry && isAddressKey(key)) {
+	if (value !== null && !capabilityMapEntry && isHomeyAddressKey(key)) {
 		return redactScalar(value, REDACTION.address);
 	}
 
@@ -1102,12 +1130,12 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 			return;
 		}
 
-		if (!capabilityMapEntry && isSecretKey(key)) {
+		if (!capabilityMapEntry && isHomeySecretKey(key)) {
 			assertRedactedScalar(nestedValue, REDACTION.secret);
 			return;
 		}
 
-		if (isPersonalKey(key)) {
+		if (isHomeyPersonalKey(key)) {
 			if (key !== 'name' || typeof nestedValue !== 'string' || !GENERATED_PSEUDONYM_PATTERN.test(nestedValue)) {
 				assertRedactedScalar(nestedValue, REDACTION.privateTerm);
 			}
@@ -1119,7 +1147,7 @@ const assertHomeyPayloadRedacted = (value: unknown, rootKind: SanitizerContext['
 			return;
 		}
 
-		if (nestedValue !== null && !capabilityMapEntry && isAddressKey(key)) {
+		if (nestedValue !== null && !capabilityMapEntry && isHomeyAddressKey(key)) {
 			assertRedactedScalar(nestedValue, REDACTION.address);
 			return;
 		}
@@ -1474,7 +1502,7 @@ export const assertHomeyCaptureSafe = (
 			if (typeof value === 'string') {
 				const endpointShaped =
 					globallyIdentifiableHost ||
-					isAddressKey(key) ||
+					isHomeyAddressKey(key) ||
 					ENDPOINT_KEY_PATTERN.test(key) ||
 					value.includes('://') ||
 					new RegExp(`${escapedHost}:\\d+`, 'i').test(value);
@@ -1491,7 +1519,7 @@ export const assertHomeyCaptureSafe = (
 
 				Object.entries(value).forEach(([nestedKey, nestedValue]) => {
 					const endpointShapedKey =
-						isAddressKey(nestedKey) ||
+						isHomeyAddressKey(nestedKey) ||
 						ENDPOINT_KEY_PATTERN.test(nestedKey) ||
 						nestedKey.includes('://') ||
 						new RegExp(`${escapedHost}:\\d+`, 'i').test(nestedKey);
