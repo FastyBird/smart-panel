@@ -16,6 +16,7 @@ const TEST_APP_PROFILE = {
 	initialName: 'FBSP Lifecycle Initial',
 	renamedName: 'FBSP Lifecycle Renamed',
 } as const;
+const DEFAULT_ADD_WINDOW_MS = 90_000;
 const DEFAULT_OBSERVE_MS = 90_000;
 const MIN_OBSERVE_MS = 10_000;
 const MAX_OBSERVE_MS = 300_000;
@@ -139,6 +140,7 @@ export interface HomeyLifecycleSdkFactory {
 }
 
 export interface HomeyShsLifecycleProbeConfig extends HomeyShsProbeConfig {
+	addWindowMs: number;
 	availabilityControl: 'operator' | 'test-app-setting';
 	destinationZoneId: string;
 	deviceMarker: string;
@@ -227,6 +229,22 @@ const parseObserveMs = (value: string | undefined): number => {
 	return parsed;
 };
 
+const parseAddWindowMs = (value: string | undefined): number => {
+	if (value === undefined) {
+		return DEFAULT_ADD_WINDOW_MS;
+	}
+
+	const parsed = Number(value);
+
+	if (!Number.isInteger(parsed) || parsed < MIN_OBSERVE_MS || parsed > MAX_OBSERVE_MS) {
+		throw new Error(
+			`FB_HOMEY_SHS_LIFECYCLE_ADD_WINDOW_MS must be an integer between ${MIN_OBSERVE_MS} and ${MAX_OBSERVE_MS}`,
+		);
+	}
+
+	return parsed;
+};
+
 const requireEnvironmentValue = (environment: NodeJS.ProcessEnv, name: string): string => {
 	const value = environment[name]?.trim();
 
@@ -296,6 +314,7 @@ export const loadHomeyShsLifecycleProbeConfig = (
 
 	return {
 		...loadHomeyShsProbeConfig(environment, workingDirectory),
+		addWindowMs: parseAddWindowMs(environment.FB_HOMEY_SHS_LIFECYCLE_ADD_WINDOW_MS),
 		availabilityControl:
 			deviceMarker === TEST_APP_PROFILE.deviceMarker &&
 			expectedDriverId === TEST_APP_PROFILE.expectedDriverId &&
@@ -502,11 +521,12 @@ const observeDeviceCreation = async (
 	let observationError: unknown;
 	let result: { device: HomeyLifecycleDevice; eventObserved: boolean } | undefined;
 	let inventoryDevice: HomeyLifecycleDevice | undefined;
+	let eventDeadline: number | undefined;
 	let listenerRemovalFailed = false;
 
 	try {
 		await runObservationTrigger('operator add observation', trigger);
-		const deadline = Date.now() + config.observeMs;
+		const addDeadline = Date.now() + config.addWindowMs;
 
 		while (result === undefined) {
 			if (eventDevice !== undefined) {
@@ -514,6 +534,7 @@ const observeDeviceCreation = async (
 				break;
 			}
 
+			const deadline = eventDeadline ?? addDeadline;
 			const remainingMs = deadline - Date.now();
 
 			if (remainingMs <= 0) {
@@ -522,7 +543,7 @@ const observeDeviceCreation = async (
 					break;
 				}
 
-				throw new HomeyShsLifecycleTimeoutError('operator add observation', config.observeMs);
+				throw new HomeyShsLifecycleTimeoutError('operator add observation', config.addWindowMs);
 			}
 
 			if (inventoryDevice !== undefined) {
@@ -540,10 +561,11 @@ const observeDeviceCreation = async (
 			if (matches.length === 1) {
 				inventoryDevice = matches[0];
 				bindDevice(inventoryDevice);
+				eventDeadline = Date.now() + config.observeMs;
 				continue;
 			}
 
-			const pollMs = Math.min(INVENTORY_POLL_MS, Math.max(0, deadline - Date.now()));
+			const pollMs = Math.min(INVENTORY_POLL_MS, Math.max(0, addDeadline - Date.now()));
 
 			if (pollMs > 0) {
 				await waitForSignal(eventSignal, pollMs);
@@ -609,10 +631,12 @@ const observeDeviceDeletion = async (
 
 	try {
 		await runObservationTrigger('delete event observation', trigger);
-		const deadline = Date.now() + config.observeMs;
+		const readbackDeadline = Date.now() + config.observeMs;
 		let absenceVerified = false;
+		let eventDeadline: number | undefined;
 
 		while (!eventObserved) {
+			const deadline = eventDeadline ?? readbackDeadline;
 			const remainingMs = deadline - Date.now();
 
 			if (remainingMs <= 0) {
@@ -632,6 +656,7 @@ const observeDeviceDeletion = async (
 
 			if (!hasLifecycleResidue(inventory, config, boundDeviceId)) {
 				absenceVerified = true;
+				eventDeadline = Date.now() + config.observeMs;
 				continue;
 			}
 
@@ -696,10 +721,12 @@ const observeDeviceUpdate = async (
 
 	try {
 		await runObservationTrigger(label, trigger);
-		const deadline = Date.now() + config.observeMs;
+		const readbackDeadline = Date.now() + config.observeMs;
 		let readbackVerified = false;
+		let eventDeadline: number | undefined;
 
 		while (!eventObserved) {
+			const deadline = eventDeadline ?? readbackDeadline;
 			const remainingMs = deadline - Date.now();
 
 			if (remainingMs <= 0) {
@@ -720,6 +747,7 @@ const observeDeviceUpdate = async (
 
 			if (readbackPredicate(currentDevice)) {
 				readbackVerified = true;
+				eventDeadline = Date.now() + config.observeMs;
 				continue;
 			}
 

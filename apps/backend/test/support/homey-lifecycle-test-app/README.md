@@ -31,8 +31,13 @@ values in Git.
 
    ```bash
    cd apps/backend
+   export FB_HOMEY_SHS_LIFECYCLE_ADD_WINDOW_MS=90000
+   export FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS=10000
    pnpm run homey:probe-lifecycle
    ```
+
+   The add window gives the operator 90 seconds to pair, while each post-read-back event check remains bounded to 10
+   seconds.
 
 3. Wait until the probe prints that the add window is open. In Homey, add `Lifecycle Test Device`, keep its generated
    name unchanged, and place it in the configured source zone. Do not pair it before the add window opens.

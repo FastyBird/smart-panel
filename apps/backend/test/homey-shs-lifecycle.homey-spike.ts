@@ -505,6 +505,7 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		const config = loadHomeyShsLifecycleProbeConfig(BASE_ENVIRONMENT, '/tmp/homey-lifecycle-spike');
 
 		expect(config).toMatchObject({
+			addWindowMs: 90_000,
 			apiKey: BASE_ENVIRONMENT.FB_HOMEY_SHS_API_KEY,
 			availabilityControl: 'operator',
 			expectedHost: '127.0.0.1',
@@ -519,6 +520,15 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		expect(() =>
 			loadHomeyShsLifecycleProbeConfig({ ...BASE_ENVIRONMENT, FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS: '300001' }),
 		).toThrow('between 10000 and 300000');
+		expect(() =>
+			loadHomeyShsLifecycleProbeConfig({ ...BASE_ENVIRONMENT, FB_HOMEY_SHS_LIFECYCLE_ADD_WINDOW_MS: '9999' }),
+		).toThrow('between 10000 and 300000');
+		expect(
+			loadHomeyShsLifecycleProbeConfig({
+				...BASE_ENVIRONMENT,
+				FB_HOMEY_SHS_LIFECYCLE_ADD_WINDOW_MS: '120000',
+			}).addWindowMs,
+		).toBe(120_000);
 	});
 
 	it('enables setting-based availability only for the complete bundled test-app identity', () => {
@@ -732,6 +742,31 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		expect(harness.client.devices.inventory).toStrictEqual({});
 	});
 
+	it('keeps the operator add window independent from the event observation window', async () => {
+		const config = fastConfig({ addWindowMs: 350, observeMs: 25 });
+		const harness = createHarness(config);
+		const deviceId = 'runtime-bound-slow-operator-add-id';
+		const device = makeOwnedDevice(config, deviceId);
+		const reportPromise = probeHomeyShsLifecycle(config, harness.factory, {
+			onAddWindowOpen: () => {
+				setTimeout(() => {
+					harness.client.devices.inventory[deviceId] = device;
+					harness.client.devices.emit('device.create', device);
+				}, 275);
+			},
+			onAvailabilityRestoreRequested: () => {
+				device.available = true;
+				device.emit('update', { available: true });
+			},
+			onUnavailableRequested: () => {
+				device.available = false;
+				device.emit('update', { available: false });
+			},
+		});
+
+		await expect(reportPromise).resolves.toStrictEqual(completeReport());
+	});
+
 	it('observes a create event that arrives after the former 250 ms grace period', async () => {
 		const config = fastConfig({ observeMs: 350 });
 		const harness = createHarness(config);
@@ -819,6 +854,38 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		expect(report).toStrictEqual(completeReport());
 	});
 
+	it('starts the delete event window after a delayed absence read-back', async () => {
+		const config = fastConfig({ observeMs: 1_100 });
+		const harness = createHarness(config);
+		const deviceId = 'runtime-bound-slow-delete-readback-id';
+		const device = makeOwnedDevice(config, deviceId);
+
+		jest.spyOn(harness.client.devices, 'deleteDevice').mockImplementation((options) => {
+			harness.client.devices.deleteRequests.push(options);
+			setTimeout(() => delete harness.client.devices.inventory[options.id], 50);
+			setTimeout(() => harness.client.devices.emit('device.delete', { id: options.id }), 1_250);
+
+			return Promise.resolve();
+		});
+
+		const report = await probeHomeyShsLifecycle(config, harness.factory, {
+			onAddWindowOpen: () => {
+				harness.client.devices.inventory[deviceId] = device;
+				harness.client.devices.emit('device.create', device);
+			},
+			onAvailabilityRestoreRequested: () => {
+				device.available = true;
+				device.emit('update', { available: true });
+			},
+			onUnavailableRequested: () => {
+				device.available = false;
+				device.emit('update', { available: false });
+			},
+		});
+
+		expect(report).toStrictEqual(completeReport());
+	});
+
 	it('uses exact read-back when SHS omits every bound-device update event', async () => {
 		const config = {
 			...loadHomeyShsLifecycleProbeConfig(TEST_APP_ENVIRONMENT, '/tmp/homey-lifecycle-spike'),
@@ -875,6 +942,46 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 			if (updateCount === 1) {
 				setTimeout(() => device.emit('update', { ...options.device }), 275);
 			} else {
+				device.emit('update', { ...options.device });
+			}
+
+			return Promise.resolve(device);
+		});
+
+		const report = await probeHomeyShsLifecycle(config, harness.factory, {
+			onAddWindowOpen: () => {
+				harness.client.devices.inventory[deviceId] = device;
+				harness.client.devices.emit('device.create', device);
+			},
+			onAvailabilityRestoreRequested: () => {
+				device.available = true;
+				device.emit('update', { available: true });
+			},
+			onUnavailableRequested: () => {
+				device.available = false;
+				device.emit('update', { available: false });
+			},
+		});
+
+		expect(report).toStrictEqual(completeReport());
+	});
+
+	it('starts the update event window after a delayed state read-back', async () => {
+		const config = fastConfig({ observeMs: 1_100 });
+		const harness = createHarness(config);
+		const deviceId = 'runtime-bound-slow-update-readback-id';
+		const device = makeOwnedDevice(config, deviceId);
+		let updateCount = 0;
+
+		jest.spyOn(harness.client.devices, 'updateDevice').mockImplementation((options) => {
+			harness.client.devices.updateRequests.push(options);
+			updateCount += 1;
+
+			if (updateCount === 1) {
+				setTimeout(() => Object.assign(device, options.device), 50);
+				setTimeout(() => device.emit('update', { ...options.device }), 1_250);
+			} else {
+				Object.assign(device, options.device);
 				device.emit('update', { ...options.device });
 			}
 
@@ -1035,7 +1142,7 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 	});
 
 	it('does not let wrong create events satisfy the add stage and never deletes an unbound device', async () => {
-		const config = fastConfig({ observeMs: 5 });
+		const config = fastConfig({ addWindowMs: 5, observeMs: 5 });
 		const harness = createHarness(config);
 		const unrelatedId = 'ordinary-device-id';
 		const unrelated = makeOwnedDevice(config, unrelatedId, {
@@ -1059,7 +1166,7 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 	});
 
 	it('attempts every transport cleanup step and returns only a fixed cleanup error', async () => {
-		const config = fastConfig({ observeMs: 5 });
+		const config = fastConfig({ addWindowMs: 5, observeMs: 5 });
 		const harness = createHarness(config);
 
 		harness.client.devices.failDisconnect = true;
