@@ -11,7 +11,7 @@ const LIFECYCLE_OPERATIONS = 'add,rename,zone-move,availability,remove';
 const TEST_APP_AVAILABILITY_SETTING_ID = 'fbsp_lifecycle_availability';
 const TEST_APP_PROFILE = {
 	deviceMarker: 'fbsp-lifecycle-disposable-device',
-	expectedDriverId: 'homey:app:com.fastybird.smartpanel.lifecycletest:driver:lifecycle-test-device',
+	expectedDriverId: 'homey:app:com.fastybird.smartpanel.lifecycletest:lifecycle-test-device',
 	expectedOwnerUri: 'homey:app:com.fastybird.smartpanel.lifecycletest',
 	initialName: 'FBSP Lifecycle Initial',
 	renamedName: 'FBSP Lifecycle Renamed',
@@ -19,6 +19,7 @@ const TEST_APP_PROFILE = {
 const DEFAULT_OBSERVE_MS = 90_000;
 const MIN_OBSERVE_MS = 10_000;
 const MAX_OBSERVE_MS = 300_000;
+const INVENTORY_POLL_MS = 1_000;
 const PUBLIC_HOMEY_TERMS = new Set(['home', 'homey']);
 const CONFLICTING_GATE_PREFIXES = [
 	'FB_HOMEY_SHS_CREDENTIAL_ROTATION_',
@@ -32,6 +33,7 @@ const EXPECTED_EVENTS = [
 	'add.window.open',
 	'device.create.observed',
 	'add.readback.resolved',
+	'device.subscribe.resolved',
 	'flows.absence.verified',
 	'device.rename.requested',
 	'device.update.rename.observed',
@@ -48,13 +50,21 @@ const EXPECTED_EVENTS = [
 	'device.remove.requested',
 	'device.delete.observed',
 	'final.absence.verified',
+	'device.unsubscribe.resolved',
 	'manager.unsubscribe.resolved',
 	'socket.disconnect.resolved',
 	'sdk.destroyed',
 ] as const;
 
 type EventListener = (...arguments_: unknown[]) => void;
-type LifecycleEvent = (typeof EXPECTED_EVENTS)[number];
+type LifecycleEvent =
+	| (typeof EXPECTED_EVENTS)[number]
+	| 'device.create.not-observed'
+	| 'device.delete.not-observed'
+	| 'device.update.available.not-observed'
+	| 'device.update.rename.not-observed'
+	| 'device.update.unavailable.not-observed'
+	| 'device.update.zone-move.not-observed';
 
 class HomeyShsLifecycleTimeoutError extends Error {
 	constructor(label: string, timeoutMs: number) {
@@ -70,7 +80,9 @@ interface EventSource {
 
 interface HomeyLifecycleDevice extends EventSource, Record<string, unknown> {
 	available?: unknown;
+	connect(): Promise<void>;
 	data?: unknown;
+	disconnect(): Promise<void>;
 	driverId?: unknown;
 	id: string;
 	name?: unknown;
@@ -151,13 +163,19 @@ export interface HomeyShsLifecycleReport {
 	};
 	metadata: {
 		probe: 'homey-shs-lifecycle';
-		schemaVersion: 1;
+		schemaVersion: 3;
 		sdkVersion: string;
 	};
 	session: {
+		availabilityRestoreEventObserved: boolean;
 		cleanupCompleted: boolean;
+		createEventObserved: boolean;
+		deleteEventObserved: boolean;
 		events: Array<{ event: LifecycleEvent; order: number }>;
 		managerSubscribed: boolean;
+		renameEventObserved: boolean;
+		unavailableEventObserved: boolean;
+		zoneMoveEventObserved: boolean;
 	};
 }
 
@@ -265,7 +283,7 @@ export const loadHomeyShsLifecycleProbeConfig = (
 		throw new Error('FB_HOMEY_SHS_LIFECYCLE_OWNER_URI must identify the dedicated Homey test app');
 	}
 
-	const driverPrefix = `${expectedOwnerUri}:driver:`;
+	const driverPrefix = `${expectedOwnerUri}:`;
 	const driverId = expectedDriverId.slice(driverPrefix.length);
 
 	if (!expectedDriverId.startsWith(driverPrefix) || !/^[A-Za-z0-9][A-Za-z0-9._-]{2,127}$/.test(driverId)) {
@@ -369,9 +387,10 @@ const isInitialDevice = (device: HomeyLifecycleDevice, config: HomeyShsLifecycle
 const freshDevices = async (
 	client: HomeyLifecycleClient,
 	config: HomeyShsLifecycleProbeConfig,
+	timeoutMs = config.timeoutMs,
 ): Promise<Record<string, HomeyLifecycleDevice>> =>
-	runOperation('fresh inventory read', config.timeoutMs, () =>
-		client.devices.getDevices({ $cache: false, $timeout: config.timeoutMs, $updateCache: false }),
+	runOperation('fresh inventory read', timeoutMs, () =>
+		client.devices.getDevices({ $cache: false, $timeout: timeoutMs, $updateCache: false }),
 	);
 
 const requireSingleOwnedDevice = (
@@ -413,67 +432,276 @@ const hasLifecycleResidue = (
 		(device) => deviceMarkerOf(device) === config.deviceMarker || device.ownerUri === config.expectedOwnerUri,
 	);
 
-const observeManagerEvent = async (
-	source: EventSource,
-	event: string,
-	label: string,
-	timeoutMs: number,
-	predicate: (payload: unknown) => boolean,
+const pause = async (milliseconds: number): Promise<void> =>
+	new Promise((resolvePromise) => {
+		setTimeout(resolvePromise, milliseconds);
+	});
+
+const runObservationTrigger = async (label: string, trigger: () => Promise<void> | void): Promise<void> => {
+	try {
+		await trigger();
+	} catch (error: unknown) {
+		if (
+			error instanceof HomeyShsLifecycleTimeoutError ||
+			(error instanceof Error && error.message.startsWith('Homey lifecycle '))
+		) {
+			throw error;
+		}
+
+		// eslint-disable-next-line preserve-caught-error -- Operator/SDK hook errors may contain private detail.
+		throw new Error(`Homey lifecycle ${label} trigger failed`);
+	}
+};
+
+const observeDeviceCreation = async (
+	client: HomeyLifecycleClient,
+	config: HomeyShsLifecycleProbeConfig,
 	trigger: () => Promise<void> | void,
-): Promise<unknown> => {
-	let timeout: ReturnType<typeof setTimeout> | undefined;
-	let resolveEvent: (payload: unknown) => void = () => undefined;
-	const eventPromise = new Promise<unknown>((resolvePromise) => {
-		resolveEvent = resolvePromise;
+	onBound: (device: HomeyLifecycleDevice) => void,
+): Promise<{ device: HomeyLifecycleDevice; eventObserved: boolean }> => {
+	let eventDevice: HomeyLifecycleDevice | undefined;
+	let deviceBound = false;
+	const bindDevice = (device: HomeyLifecycleDevice): void => {
+		if (!deviceBound) {
+			deviceBound = true;
+			onBound(device);
+		}
+	};
+	let signalEvent: () => void = () => undefined;
+	const eventSignal = new Promise<void>((resolvePromise) => {
+		signalEvent = resolvePromise;
 	});
 	const listener: EventListener = (payload: unknown): void => {
-		if (predicate(payload)) {
-			resolveEvent(payload);
+		if (isRecord(payload) && isInitialDevice(payload as HomeyLifecycleDevice, config)) {
+			eventDevice = payload as HomeyLifecycleDevice;
+			bindDevice(eventDevice);
+			signalEvent();
 		}
 	};
 
 	try {
-		source.on(event, listener);
+		client.devices.on('device.create', listener);
+	} catch {
+		throw new Error('Homey lifecycle operator add observation listener registration failed');
+	}
+
+	let observationError: unknown;
+	let result: { device: HomeyLifecycleDevice; eventObserved: boolean } | undefined;
+	let listenerRemovalFailed = false;
+
+	try {
+		await runObservationTrigger('operator add observation', trigger);
+		const deadline = Date.now() + config.observeMs;
+
+		while (result === undefined) {
+			if (eventDevice !== undefined) {
+				result = { device: eventDevice, eventObserved: true };
+				break;
+			}
+
+			const remainingMs = deadline - Date.now();
+
+			if (remainingMs <= 0) {
+				throw new HomeyShsLifecycleTimeoutError('operator add observation', config.observeMs);
+			}
+
+			const inventory = await freshDevices(client, config, Math.min(config.timeoutMs, remainingMs));
+			const matches = Object.values(inventory).filter((device) => isInitialDevice(device, config));
+
+			if (matches.length > 1) {
+				throw new Error('Homey lifecycle ownership verification failed');
+			}
+
+			if (matches.length === 1) {
+				const eventGraceMs = Math.min(250, Math.max(0, deadline - Date.now()));
+
+				if (eventDevice === undefined && eventGraceMs > 0) {
+					await Promise.race([eventSignal, pause(eventGraceMs)]);
+				}
+
+				result = {
+					device: eventDevice ?? matches[0],
+					eventObserved: eventDevice !== undefined,
+				};
+				bindDevice(result.device);
+				break;
+			}
+
+			const pollMs = Math.min(INVENTORY_POLL_MS, Math.max(0, deadline - Date.now()));
+
+			if (pollMs > 0) {
+				await Promise.race([eventSignal, pause(pollMs)]);
+			}
+		}
+	} catch (error: unknown) {
+		observationError = error;
+	} finally {
+		try {
+			client.devices.off?.('device.create', listener);
+		} catch {
+			listenerRemovalFailed = true;
+		}
+	}
+
+	if (listenerRemovalFailed) {
+		throw new Error('Homey lifecycle operator add observation listener removal failed');
+	}
+
+	if (observationError !== undefined) {
+		throw observationError;
+	}
+
+	if (result === undefined) {
+		throw new Error('Homey lifecycle operator add observation failed');
+	}
+
+	return result;
+};
+
+const observeDeviceDeletion = async (
+	client: HomeyLifecycleClient,
+	device: HomeyLifecycleDevice,
+	config: HomeyShsLifecycleProbeConfig,
+	boundDeviceId: string,
+	trigger: () => Promise<void> | void,
+): Promise<boolean> => {
+	let eventObserved = false;
+	let signalEvent: () => void = () => undefined;
+	const eventSignal = new Promise<void>((resolvePromise) => {
+		signalEvent = resolvePromise;
+	});
+	const managerListener: EventListener = (payload: unknown): void => {
+		if (deviceIdOf(payload) === boundDeviceId) {
+			eventObserved = true;
+			signalEvent();
+		}
+	};
+	const deviceListener: EventListener = (): void => {
+		eventObserved = true;
+		signalEvent();
+	};
+
+	try {
+		client.devices.on('device.delete', managerListener);
+		device.on('delete', deviceListener);
+	} catch {
+		throw new Error('Homey lifecycle delete event observation listener registration failed');
+	}
+
+	let observationError: unknown;
+	let listenerRemovalFailed = false;
+
+	try {
+		await runObservationTrigger('delete event observation', trigger);
+		const deadline = Date.now() + config.observeMs;
+
+		while (true) {
+			const remainingMs = deadline - Date.now();
+
+			if (remainingMs <= 0) {
+				throw new HomeyShsLifecycleTimeoutError('delete event observation', config.observeMs);
+			}
+
+			const inventory = await freshDevices(client, config, Math.min(config.timeoutMs, remainingMs));
+
+			if (!hasLifecycleResidue(inventory, config, boundDeviceId)) {
+				break;
+			}
+
+			const pollMs = Math.min(INVENTORY_POLL_MS, Math.max(0, deadline - Date.now()));
+
+			if (pollMs > 0) {
+				await Promise.race([eventSignal, pause(pollMs)]);
+			}
+		}
+	} catch (error: unknown) {
+		observationError = error;
+	} finally {
+		try {
+			client.devices.off?.('device.delete', managerListener);
+			device.off?.('delete', deviceListener);
+		} catch {
+			listenerRemovalFailed = true;
+		}
+	}
+
+	if (listenerRemovalFailed) {
+		throw new Error('Homey lifecycle delete event observation listener removal failed');
+	}
+
+	if (observationError !== undefined) {
+		throw observationError;
+	}
+
+	return eventObserved;
+};
+
+const observeDeviceUpdate = async (
+	client: HomeyLifecycleClient,
+	device: HomeyLifecycleDevice,
+	config: HomeyShsLifecycleProbeConfig,
+	boundDeviceId: string,
+	label: string,
+	eventPredicate: (payload: unknown) => boolean,
+	readbackPredicate: (device: HomeyLifecycleDevice) => boolean,
+	trigger: () => Promise<void> | void,
+): Promise<boolean> => {
+	let eventObserved = false;
+	let signalEvent: () => void = () => undefined;
+	const eventSignal = new Promise<void>((resolvePromise) => {
+		signalEvent = resolvePromise;
+	});
+	const listener: EventListener = (payload: unknown): void => {
+		if (eventPredicate(payload)) {
+			eventObserved = true;
+			signalEvent();
+		}
+	};
+
+	try {
+		device.on('update', listener);
 	} catch {
 		throw new Error(`Homey lifecycle ${label} listener registration failed`);
 	}
 
-	const timeoutPromise = new Promise<never>((_resolvePromise, rejectPromise) => {
-		timeout = setTimeout(() => rejectPromise(new HomeyShsLifecycleTimeoutError(label, timeoutMs)), timeoutMs);
-	});
-
-	const triggerPromise = Promise.resolve().then(async () => {
-		try {
-			await trigger();
-		} catch (error: unknown) {
-			if (
-				error instanceof HomeyShsLifecycleTimeoutError ||
-				(error instanceof Error && error.message.startsWith('Homey lifecycle '))
-			) {
-				throw error;
-			}
-
-			// eslint-disable-next-line preserve-caught-error -- Operator/SDK hook errors may contain private detail.
-			throw new Error(`Homey lifecycle ${label} trigger failed`);
-		}
-	});
 	let observationError: unknown;
-	let observationFailed = false;
 	let listenerRemovalFailed = false;
-	let result: unknown;
 
 	try {
-		await Promise.race([triggerPromise, timeoutPromise]);
-		result = await Promise.race([eventPromise, timeoutPromise]);
+		await runObservationTrigger(label, trigger);
+		const deadline = Date.now() + config.observeMs;
+
+		while (!eventObserved) {
+			const remainingMs = deadline - Date.now();
+
+			if (remainingMs <= 0) {
+				throw new HomeyShsLifecycleTimeoutError(label, config.observeMs);
+			}
+
+			const inventory = await freshDevices(client, config, Math.min(config.timeoutMs, remainingMs));
+			const currentDevice = requireSingleOwnedDevice(inventory, config, boundDeviceId);
+
+			if (readbackPredicate(currentDevice)) {
+				const eventGraceMs = Math.min(250, Math.max(0, deadline - Date.now()));
+
+				if (eventGraceMs > 0) {
+					await Promise.race([eventSignal, pause(eventGraceMs)]);
+				}
+
+				break;
+			}
+
+			const pollMs = Math.min(INVENTORY_POLL_MS, Math.max(0, deadline - Date.now()));
+
+			if (pollMs > 0) {
+				await Promise.race([eventSignal, pause(pollMs)]);
+			}
+		}
 	} catch (error: unknown) {
 		observationError = error;
-		observationFailed = true;
 	} finally {
-		if (timeout !== undefined) {
-			clearTimeout(timeout);
-		}
 		try {
-			source.off?.(event, listener);
+			device.off?.('update', listener);
 		} catch {
 			listenerRemovalFailed = true;
 		}
@@ -483,11 +711,11 @@ const observeManagerEvent = async (
 		throw new Error(`Homey lifecycle ${label} listener removal failed`);
 	}
 
-	if (observationFailed) {
+	if (observationError !== undefined) {
 		throw observationError;
 	}
 
-	return result;
+	return eventObserved;
 };
 
 const flowCardReferencesDevice = (card: unknown, deviceUri: string): boolean => {
@@ -643,12 +871,23 @@ export const probeHomeyShsLifecycle = async (
 			unavailableVerified: true,
 			zoneMoveVerified: true,
 		},
-		metadata: { probe: 'homey-shs-lifecycle', schemaVersion: 1, sdkVersion: SDK_VERSION },
-		session: { cleanupCompleted: true, events: [], managerSubscribed: true },
+		metadata: { probe: 'homey-shs-lifecycle', schemaVersion: 3, sdkVersion: SDK_VERSION },
+		session: {
+			availabilityRestoreEventObserved: false,
+			cleanupCompleted: true,
+			createEventObserved: false,
+			deleteEventObserved: false,
+			events: [],
+			managerSubscribed: true,
+			renameEventObserved: false,
+			unavailableEventObserved: false,
+			zoneMoveEventObserved: false,
+		},
 	} as HomeyShsLifecycleReport;
 	const client = await createClient(config, factory);
 	appendEvent(report, 'sdk.create.resolved');
 	let boundDeviceId: string | undefined;
+	let connectedDevice: HomeyLifecycleDevice | undefined;
 	let createdDuringRun = false;
 	let deletionAuthorized = false;
 	let deleteAttempted = false;
@@ -672,23 +911,17 @@ export const probeHomeyShsLifecycle = async (
 
 		appendEvent(report, 'baseline.absence.verified');
 		appendEvent(report, 'add.window.open');
-		const createdPayload = await observeManagerEvent(
-			client.devices,
-			'device.create',
-			'operator add observation',
-			config.observeMs,
-			(payload) => {
-				const matches = isRecord(payload) && isInitialDevice(payload as HomeyLifecycleDevice, config);
-
-				if (matches) {
-					boundDeviceId = deviceIdOf(payload) ?? undefined;
-					manualCleanupRequired = boundDeviceId !== undefined;
-				}
-
-				return matches;
-			},
+		const creation = await observeDeviceCreation(
+			client,
+			config,
 			() => hooks.onAddWindowOpen?.(),
+			(device) => {
+				boundDeviceId = deviceIdOf(device) ?? undefined;
+				manualCleanupRequired = boundDeviceId !== undefined;
+			},
 		);
+		const createdPayload = creation.device;
+		report.session.createEventObserved = creation.eventObserved;
 		boundDeviceId = deviceIdOf(createdPayload) ?? undefined;
 		manualCleanupRequired = boundDeviceId !== undefined;
 
@@ -696,10 +929,10 @@ export const probeHomeyShsLifecycle = async (
 			throw new Error('Homey lifecycle create event did not contain a device identifier');
 		}
 
-		appendEvent(report, 'device.create.observed');
+		appendEvent(report, creation.eventObserved ? 'device.create.observed' : 'device.create.not-observed');
 		const createdInventory = await freshDevices(client, config);
 		const createdDevice = requireSingleOwnedDevice(createdInventory, config, boundDeviceId);
-		const boundEventDevice = createdPayload as HomeyLifecycleDevice;
+		const boundEventDevice = createdPayload;
 
 		if (!isInitialDevice(createdDevice, config)) {
 			throw new Error('The created Homey lifecycle device failed its fresh identity read-back');
@@ -717,16 +950,21 @@ export const probeHomeyShsLifecycle = async (
 		manualCleanupRequired = false;
 		assertDedicatedOwnerIsolation(createdInventory, config, boundDeviceId);
 		appendEvent(report, 'add.readback.resolved');
+		await runOperation('device subscription', config.timeoutMs, () => boundEventDevice.connect());
+		connectedDevice = boundEventDevice;
+		appendEvent(report, 'device.subscribe.resolved');
 		await assertNoAttachedFlows(client, boundDeviceId, config);
 		deletionAuthorized = true;
 		appendEvent(report, 'flows.absence.verified');
 
-		await observeManagerEvent(
+		report.session.renameEventObserved = await observeDeviceUpdate(
+			client,
 			boundEventDevice,
-			'update',
+			config,
+			boundDeviceId,
 			'rename event observation',
-			config.observeMs,
 			(payload) => isRecord(payload) && payload.name === config.renamedName,
+			(device) => device.name === config.renamedName,
 			async () => {
 				appendEvent(report, 'device.rename.requested');
 				await runOperation('device rename', config.timeoutMs, () =>
@@ -738,7 +976,10 @@ export const probeHomeyShsLifecycle = async (
 				);
 			},
 		);
-		appendEvent(report, 'device.update.rename.observed');
+		appendEvent(
+			report,
+			report.session.renameEventObserved ? 'device.update.rename.observed' : 'device.update.rename.not-observed',
+		);
 		const renamedDevice = requireSingleOwnedDevice(await freshDevices(client, config), config, boundDeviceId);
 
 		if (renamedDevice.name !== config.renamedName) {
@@ -747,12 +988,14 @@ export const probeHomeyShsLifecycle = async (
 
 		appendEvent(report, 'rename.readback.resolved');
 
-		await observeManagerEvent(
+		report.session.zoneMoveEventObserved = await observeDeviceUpdate(
+			client,
 			boundEventDevice,
-			'update',
+			config,
+			boundDeviceId,
 			'zone-move event observation',
-			config.observeMs,
 			(payload) => isRecord(payload) && payload.zone === config.destinationZoneId,
+			(device) => device.zone === config.destinationZoneId,
 			async () => {
 				appendEvent(report, 'device.zone-move.requested');
 				await runOperation('device zone move', config.timeoutMs, () =>
@@ -764,7 +1007,12 @@ export const probeHomeyShsLifecycle = async (
 				);
 			},
 		);
-		appendEvent(report, 'device.update.zone-move.observed');
+		appendEvent(
+			report,
+			report.session.zoneMoveEventObserved
+				? 'device.update.zone-move.observed'
+				: 'device.update.zone-move.not-observed',
+		);
 		const movedDevice = requireSingleOwnedDevice(await freshDevices(client, config), config, boundDeviceId);
 
 		if (movedDevice.zone !== config.destinationZoneId) {
@@ -781,12 +1029,14 @@ export const probeHomeyShsLifecycle = async (
 		}
 
 		appendEvent(report, 'availability.unavailable.requested');
-		await observeManagerEvent(
+		report.session.unavailableEventObserved = await observeDeviceUpdate(
+			client,
 			boundEventDevice,
-			'update',
+			config,
+			boundDeviceId,
 			'unavailable event observation',
-			config.observeMs,
 			(payload) => isRecord(payload) && payload.available === false,
+			(device) => device.available === false,
 			async () => {
 				hooks.onUnavailableRequested?.();
 
@@ -801,7 +1051,12 @@ export const probeHomeyShsLifecycle = async (
 				}
 			},
 		);
-		appendEvent(report, 'device.update.unavailable.observed');
+		appendEvent(
+			report,
+			report.session.unavailableEventObserved
+				? 'device.update.unavailable.observed'
+				: 'device.update.unavailable.not-observed',
+		);
 		const unavailableInventory = await freshDevices(client, config);
 		const unavailableDevice = requireSingleOwnedDevice(unavailableInventory, config, boundDeviceId);
 		assertDedicatedOwnerIsolation(unavailableInventory, config, boundDeviceId);
@@ -812,12 +1067,14 @@ export const probeHomeyShsLifecycle = async (
 
 		appendEvent(report, 'unavailable.readback.resolved');
 		appendEvent(report, 'availability.restore.requested');
-		await observeManagerEvent(
+		report.session.availabilityRestoreEventObserved = await observeDeviceUpdate(
+			client,
 			boundEventDevice,
-			'update',
+			config,
+			boundDeviceId,
 			'availability restoration event observation',
-			config.observeMs,
 			(payload) => isRecord(payload) && payload.available === true,
+			(device) => device.available === true,
 			async () => {
 				hooks.onAvailabilityRestoreRequested?.();
 
@@ -832,7 +1089,12 @@ export const probeHomeyShsLifecycle = async (
 				}
 			},
 		);
-		appendEvent(report, 'device.update.available.observed');
+		appendEvent(
+			report,
+			report.session.availabilityRestoreEventObserved
+				? 'device.update.available.observed'
+				: 'device.update.available.not-observed',
+		);
 		const availableInventory = await freshDevices(client, config);
 		const availableDevice = requireSingleOwnedDevice(availableInventory, config, boundDeviceId);
 		assertDedicatedOwnerIsolation(availableInventory, config, boundDeviceId);
@@ -847,19 +1109,18 @@ export const probeHomeyShsLifecycle = async (
 		deletionAuthorized = true;
 		appendEvent(report, 'device.remove.requested');
 		deleteAttempted = true;
-		await observeManagerEvent(
-			client.devices,
-			'device.delete',
-			'delete event observation',
-			config.observeMs,
-			(payload) => deviceIdOf(payload) === boundDeviceId,
+		report.session.deleteEventObserved = await observeDeviceDeletion(
+			client,
+			boundEventDevice,
+			config,
+			boundDeviceId,
 			async () => {
 				await runOperation('device removal', config.timeoutMs, () =>
 					client.devices.deleteDevice({ $timeout: config.timeoutMs, id: boundDeviceId }),
 				);
 			},
 		);
-		appendEvent(report, 'device.delete.observed');
+		appendEvent(report, report.session.deleteEventObserved ? 'device.delete.observed' : 'device.delete.not-observed');
 
 		if (hasLifecycleResidue(await freshDevices(client, config), config, boundDeviceId)) {
 			throw new Error('The disposable Homey lifecycle device still exists after removal');
@@ -894,6 +1155,15 @@ export const probeHomeyShsLifecycle = async (
 			}
 
 			manualCleanupRequired ||= !finalAbsenceVerified;
+		}
+
+		if (connectedDevice !== undefined) {
+			try {
+				await runOperation('device unsubscribe', config.timeoutMs, () => connectedDevice.disconnect());
+				if (operationError === undefined) appendEvent(report, 'device.unsubscribe.resolved');
+			} catch {
+				transportCleanupFailures.push('device unsubscribe');
+			}
 		}
 
 		try {
@@ -951,9 +1221,23 @@ export function assertHomeyShsLifecycleReportSchema(value: unknown): asserts val
 		],
 		'lifecycle',
 	);
-	const session = requireExactKeys(report.session, ['cleanupCompleted', 'events', 'managerSubscribed'], 'session');
+	const session = requireExactKeys(
+		report.session,
+		[
+			'availabilityRestoreEventObserved',
+			'cleanupCompleted',
+			'createEventObserved',
+			'deleteEventObserved',
+			'events',
+			'managerSubscribed',
+			'renameEventObserved',
+			'unavailableEventObserved',
+			'zoneMoveEventObserved',
+		],
+		'session',
+	);
 
-	if (metadata.probe !== 'homey-shs-lifecycle' || metadata.schemaVersion !== 1 || metadata.sdkVersion !== SDK_VERSION) {
+	if (metadata.probe !== 'homey-shs-lifecycle' || metadata.schemaVersion !== 3 || metadata.sdkVersion !== SDK_VERSION) {
 		throw new Error('Homey lifecycle report metadata schema is invalid');
 	}
 
@@ -961,7 +1245,17 @@ export function assertHomeyShsLifecycleReportSchema(value: unknown): asserts val
 		throw new Error('Homey lifecycle report result schema is invalid');
 	}
 
-	if (session.cleanupCompleted !== true || session.managerSubscribed !== true || !Array.isArray(session.events)) {
+	if (
+		session.cleanupCompleted !== true ||
+		typeof session.availabilityRestoreEventObserved !== 'boolean' ||
+		typeof session.createEventObserved !== 'boolean' ||
+		typeof session.deleteEventObserved !== 'boolean' ||
+		session.managerSubscribed !== true ||
+		typeof session.renameEventObserved !== 'boolean' ||
+		typeof session.unavailableEventObserved !== 'boolean' ||
+		typeof session.zoneMoveEventObserved !== 'boolean' ||
+		!Array.isArray(session.events)
+	) {
 		throw new Error('Homey lifecycle report session schema is invalid');
 	}
 
@@ -969,10 +1263,38 @@ export function assertHomeyShsLifecycleReportSchema(value: unknown): asserts val
 		throw new Error('Homey lifecycle report event schema is invalid');
 	}
 
+	const expectedEvents: readonly LifecycleEvent[] = EXPECTED_EVENTS.map((event) => {
+		if (event === 'device.create.observed' && session.createEventObserved === false) {
+			return 'device.create.not-observed';
+		}
+
+		if (event === 'device.delete.observed' && session.deleteEventObserved === false) {
+			return 'device.delete.not-observed';
+		}
+
+		if (event === 'device.update.rename.observed' && session.renameEventObserved === false) {
+			return 'device.update.rename.not-observed';
+		}
+
+		if (event === 'device.update.zone-move.observed' && session.zoneMoveEventObserved === false) {
+			return 'device.update.zone-move.not-observed';
+		}
+
+		if (event === 'device.update.unavailable.observed' && session.unavailableEventObserved === false) {
+			return 'device.update.unavailable.not-observed';
+		}
+
+		if (event === 'device.update.available.observed' && session.availabilityRestoreEventObserved === false) {
+			return 'device.update.available.not-observed';
+		}
+
+		return event;
+	});
+
 	for (const [index, eventValue] of session.events.entries()) {
 		const event = requireExactKeys(eventValue, ['event', 'order'], 'event');
 
-		if (event.event !== EXPECTED_EVENTS[index] || event.order !== index + 1) {
+		if (event.event !== expectedEvents[index] || event.order !== index + 1) {
 			throw new Error('Homey lifecycle report event schema is invalid');
 		}
 	}
@@ -1052,6 +1374,25 @@ const run = async (): Promise<void> => {
 			);
 		},
 	});
+
+	if (!report.session.createEventObserved) {
+		process.stdout.write('Homey lifecycle create event was absent; exact inventory read-back verified the add.\n');
+	}
+
+	if (!report.session.deleteEventObserved) {
+		process.stdout.write('Homey lifecycle delete event was absent; exact inventory read-back verified removal.\n');
+	}
+
+	if (
+		!report.session.renameEventObserved ||
+		!report.session.zoneMoveEventObserved ||
+		!report.session.unavailableEventObserved ||
+		!report.session.availabilityRestoreEventObserved
+	) {
+		process.stdout.write(
+			'One or more Homey lifecycle update events were absent; exact read-back verified each state.\n',
+		);
+	}
 
 	assertHomeyShsLifecycleReportSafe(report, config);
 	const outputDirectory = await writeHomeyShsLifecycleReport(report, config.outputRoot);

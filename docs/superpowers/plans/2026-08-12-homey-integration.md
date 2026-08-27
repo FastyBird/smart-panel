@@ -49,13 +49,13 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - [ ] Give SHS a stable LAN address; prefer host networking or a dedicated address consistent with Homey guidance.
 - [ ] Create a least-privilege API key with only device read/control, zone read, and system read permissions required by the design.
 - [ ] Designate one harmless writable test capability; record only a synthetic alias in repository documents.
-- [ ] Designate one disposable virtual/test device for lifecycle mutations. It must not represent household equipment, and repository documents record only its synthetic alias.
+- [x] Designate one disposable virtual/test device for lifecycle mutations. It must not represent household equipment, and repository documents record only its synthetic alias.
 - [x] Define environment variables for live tests. Do not store secret values in shell history, fixtures, `.env` files, or repository config.
 - [x] Add an explicit live-write allowlist contract requiring both device ID and capability ID.
 - [x] Add a separately enabled lifecycle-mutation allowlist with an immutable synthetic marker, exact test
       driver/owner/names/zones, and the canonical operations: add, rename, zone move, availability change, and remove.
-      Bind the runtime device ID only after a matching create event and fresh ownership read-back because Homey assigns
-      the top-level ID during creation.
+      Bind the runtime device ID only after a matching create event or exact cache-bypassing inventory read-back, then
+      require fresh ownership verification because Homey assigns the top-level ID during creation.
 
 **Verification:** Review the compatibility document for secret/private data before committing it.
 
@@ -72,7 +72,7 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - [x] Write the allowlisted test capability and confirm the resulting event plus subsequent read.
 - [x] Test invalid key, missing scopes, bad URL, unavailable host, and request timeout behavior.
 - [x] Test SHS restart, network interruption/restoration, and API-key revocation.
-- [ ] On the separately gated disposable device only, test add, rename, zone move, unavailable, and removal events or inventory deltas; clean up the disposable device after capture.
+- [x] On the separately gated disposable device only, test add, rename, zone move, unavailable, and removal events or inventory deltas; clean up the disposable device after capture.
 - [x] Inspect mDNS advertisements before and after restart. Record exact service type/TXT fields only if stable.
 - [ ] If Homey Pro hardware is available, repeat the minimum inventory/event/write suite against its local API.
 
@@ -623,7 +623,7 @@ representative lifecycle failure paths.
 - [ ] SHS restart during event flow.
 - [x] Network interruption/restoration.
 - [x] API key revoked, replaced, and insufficiently scoped.
-- [ ] Separately gated add/rename/zone-move/unavailable/removal lifecycle tests on the allowlisted disposable device only, followed by cleanup.
+- [x] Separately gated add/rename/zone-move/unavailable/removal lifecycle tests on the allowlisted disposable device only, followed by cleanup.
 - [ ] Physical/Homey/flow-originated state changes.
 - [ ] Allowlisted Smart Panel control for every writable MVP mapping family available.
 - [ ] Burst updates and concurrent commands.
@@ -643,6 +643,12 @@ The 2026-08-27 SHS `13.4.1` guarded write probe closed the single allowlisted ca
 produced a matching event and read-back, and the original value was restored with a second matching read-back before
 cleanup. This does not close availability-event coverage, physical/Homey/flow-originated updates, or Smart Panel
 control for every writable MVP mapping family.
+
+The 2026-08-27 SHS `13.4.1` guarded lifecycle probe closed the disposable inventory-delta slice. Exact read-backs
+verified add, rename, zone move, unavailable state, availability restoration, removal, final absence, and complete
+cleanup. SHS omitted the manager create event and every bound-device update event during this run, while the delete
+event was observed; the sanitized report records each omission explicitly. This does not close availability-event
+continuity or physical/Homey/flow-originated state changes.
 
 The 2026-08-26 SHS `13.4.1` error probe recorded a non-mutating five-scenario slice: generated invalid-key
 authentication, a device-read-only key's missing system scope, shared bad-URL validation, and probe-owned loopback

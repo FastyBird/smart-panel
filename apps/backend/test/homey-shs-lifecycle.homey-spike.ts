@@ -19,7 +19,7 @@ const BASE_ENVIRONMENT: NodeJS.ProcessEnv = {
 	FB_HOMEY_SHS_EXPECTED_HOST: '127.0.0.1',
 	FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID: 'destination-zone-that-must-not-leak',
 	FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER: 'fbsp-lifecycle-test-marker-that-must-not-leak',
-	FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID: 'homey:app:test-owner-that-must-not-leak:driver:test-driver-that-must-not-leak',
+	FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID: 'homey:app:test-owner-that-must-not-leak:test-driver-that-must-not-leak',
 	FB_HOMEY_SHS_LIFECYCLE_ENABLE: 'I_ACKNOWLEDGE_THIS_MUTATES_A_DISPOSABLE_DEVICE',
 	FB_HOMEY_SHS_LIFECYCLE_INITIAL_NAME: 'FBSP Lifecycle Initial Private Name',
 	FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS: '10000',
@@ -35,7 +35,7 @@ const BASE_ENVIRONMENT: NodeJS.ProcessEnv = {
 const TEST_APP_ENVIRONMENT: NodeJS.ProcessEnv = {
 	...BASE_ENVIRONMENT,
 	FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER: 'fbsp-lifecycle-disposable-device',
-	FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID: 'homey:app:com.fastybird.smartpanel.lifecycletest:driver:lifecycle-test-device',
+	FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID: 'homey:app:com.fastybird.smartpanel.lifecycletest:lifecycle-test-device',
 	FB_HOMEY_SHS_LIFECYCLE_INITIAL_NAME: 'FBSP Lifecycle Initial',
 	FB_HOMEY_SHS_LIFECYCLE_OWNER_URI: 'homey:app:com.fastybird.smartpanel.lifecycletest',
 	FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME: 'FBSP Lifecycle Renamed',
@@ -48,6 +48,7 @@ const COMPLETE_EVENTS = [
 	'add.window.open',
 	'device.create.observed',
 	'add.readback.resolved',
+	'device.subscribe.resolved',
 	'flows.absence.verified',
 	'device.rename.requested',
 	'device.update.rename.observed',
@@ -64,34 +65,79 @@ const COMPLETE_EVENTS = [
 	'device.remove.requested',
 	'device.delete.observed',
 	'final.absence.verified',
+	'device.unsubscribe.resolved',
 	'manager.unsubscribe.resolved',
 	'socket.disconnect.resolved',
 	'sdk.destroyed',
 ] as const;
 
-const completeReport = (): HomeyShsLifecycleReport => ({
-	lifecycle: {
-		addVerified: true,
-		availabilityRestored: true,
-		finalAbsenceVerified: true,
-		flowAbsenceVerified: true,
-		removeVerified: true,
-		renameVerified: true,
-		unavailableVerified: true,
-		zoneMoveVerified: true,
-	},
-	metadata: { probe: 'homey-shs-lifecycle', schemaVersion: 1, sdkVersion: '3.19.2' },
-	session: {
-		cleanupCompleted: true,
-		events: COMPLETE_EVENTS.map((event, index) => ({ event, order: index + 1 })),
-		managerSubscribed: true,
-	},
-});
+const completeReport = ({
+	availabilityRestoreEventObserved = true,
+	createEventObserved = true,
+	deleteEventObserved = true,
+	renameEventObserved = true,
+	unavailableEventObserved = true,
+	zoneMoveEventObserved = true,
+}: {
+	availabilityRestoreEventObserved?: boolean;
+	createEventObserved?: boolean;
+	deleteEventObserved?: boolean;
+	renameEventObserved?: boolean;
+	unavailableEventObserved?: boolean;
+	zoneMoveEventObserved?: boolean;
+} = {}): HomeyShsLifecycleReport => {
+	const eventObserved = new Map<string, boolean>([
+		['device.create.observed', createEventObserved],
+		['device.delete.observed', deleteEventObserved],
+		['device.update.available.observed', availabilityRestoreEventObserved],
+		['device.update.rename.observed', renameEventObserved],
+		['device.update.unavailable.observed', unavailableEventObserved],
+		['device.update.zone-move.observed', zoneMoveEventObserved],
+	]);
+	const missingEvents = new Map<string, HomeyShsLifecycleReport['session']['events'][number]['event']>([
+		['device.create.observed', 'device.create.not-observed'],
+		['device.delete.observed', 'device.delete.not-observed'],
+		['device.update.available.observed', 'device.update.available.not-observed'],
+		['device.update.rename.observed', 'device.update.rename.not-observed'],
+		['device.update.unavailable.observed', 'device.update.unavailable.not-observed'],
+		['device.update.zone-move.observed', 'device.update.zone-move.not-observed'],
+	]);
+
+	return {
+		lifecycle: {
+			addVerified: true,
+			availabilityRestored: true,
+			finalAbsenceVerified: true,
+			flowAbsenceVerified: true,
+			removeVerified: true,
+			renameVerified: true,
+			unavailableVerified: true,
+			zoneMoveVerified: true,
+		},
+		metadata: { probe: 'homey-shs-lifecycle', schemaVersion: 3, sdkVersion: '3.19.2' },
+		session: {
+			availabilityRestoreEventObserved,
+			cleanupCompleted: true,
+			createEventObserved,
+			deleteEventObserved,
+			events: COMPLETE_EVENTS.map((event, index) => ({
+				event: eventObserved.get(event) === false ? (missingEvents.get(event) ?? event) : event,
+				order: index + 1,
+			})),
+			managerSubscribed: true,
+			renameEventObserved,
+			unavailableEventObserved,
+			zoneMoveEventObserved,
+		},
+	};
+};
 
 type FakeDevice = EventEmitter &
 	Record<string, unknown> & {
 		available: boolean;
+		connect(): Promise<void>;
 		data: { id: string };
+		disconnect(): Promise<void>;
 		driverId: string;
 		id: string;
 		name: string;
@@ -293,7 +339,9 @@ const makeOwnedDevice = (
 ): FakeDevice =>
 	Object.assign(new EventEmitter(), {
 		available: true,
+		connect: () => Promise.resolve(),
 		data: { id: config.deviceMarker },
+		disconnect: () => Promise.resolve(),
 		driverId: config.expectedDriverId,
 		id,
 		name: config.initialName,
@@ -323,6 +371,46 @@ const createHarness = (
 };
 
 describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
+	it('preserves the sanitized live SHS device-lifecycle evidence', async () => {
+		const evidencePath = join(
+			__dirname,
+			'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-27-shs-13.4.1-device-lifecycle.json',
+		);
+		const evidence: unknown = JSON.parse(await readFile(evidencePath, 'utf8'));
+		const config = loadHomeyShsLifecycleProbeConfig(TEST_APP_ENVIRONMENT, '/tmp/homey-lifecycle-spike');
+
+		expect(() => assertHomeyShsLifecycleReportSafe(evidence, config)).not.toThrow();
+		assertHomeyShsLifecycleReportSchema(evidence);
+
+		expect(evidence).toMatchObject({
+			lifecycle: {
+				addVerified: true,
+				availabilityRestored: true,
+				finalAbsenceVerified: true,
+				flowAbsenceVerified: true,
+				removeVerified: true,
+				renameVerified: true,
+				unavailableVerified: true,
+				zoneMoveVerified: true,
+			},
+			metadata: {
+				probe: 'homey-shs-lifecycle',
+				schemaVersion: 3,
+				sdkVersion: '3.19.2',
+			},
+			session: {
+				availabilityRestoreEventObserved: false,
+				cleanupCompleted: true,
+				createEventObserved: false,
+				deleteEventObserved: true,
+				managerSubscribed: true,
+				renameEventObserved: false,
+				unavailableEventObserved: false,
+				zoneMoveEventObserved: false,
+			},
+		});
+	});
+
 	it('requires the exact lifecycle acknowledgement and canonical operation list', () => {
 		for (const enable of [undefined, '', 'yes', 'I_ACKNOWLEDGE_THIS_MUTATES_A_DISPOSABLE_DEVICE ']) {
 			expect(() =>
@@ -390,7 +478,7 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		expect(() =>
 			loadHomeyShsLifecycleProbeConfig({
 				...BASE_ENVIRONMENT,
-				FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID: 'homey:app:another-owner:driver:test-driver',
+				FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID: 'homey:app:another-owner:test-driver',
 			}),
 		).toThrow('must belong to the dedicated Homey test app');
 		expect(() =>
@@ -402,7 +490,7 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		expect(() =>
 			loadHomeyShsLifecycleProbeConfig({
 				...BASE_ENVIRONMENT,
-				FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID: `${BASE_ENVIRONMENT.FB_HOMEY_SHS_LIFECYCLE_OWNER_URI}:driver:`,
+				FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID: `${BASE_ENVIRONMENT.FB_HOMEY_SHS_LIFECYCLE_OWNER_URI}:`,
 			}),
 		).toThrow('must belong to the dedicated Homey test app');
 		expect(() =>
@@ -621,6 +709,102 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		expect(harness.client.devices.inventory).toStrictEqual({});
 	});
 
+	it('uses exact inventory read-back when SHS omits the manager create event', async () => {
+		const config = fastConfig();
+		const harness = createHarness(config);
+		const deviceId = 'runtime-bound-inventory-device-id';
+		const device = makeOwnedDevice(config, deviceId);
+		const report = await probeHomeyShsLifecycle(config, harness.factory, {
+			onAddWindowOpen: () => {
+				harness.client.devices.inventory[deviceId] = device;
+			},
+			onAvailabilityRestoreRequested: () => {
+				device.available = true;
+				device.emit('update', { available: true });
+			},
+			onUnavailableRequested: () => {
+				device.available = false;
+				device.emit('update', { available: false });
+			},
+		});
+
+		expect(report).toStrictEqual(completeReport({ createEventObserved: false }));
+		expect(harness.client.devices.inventory).toStrictEqual({});
+	});
+
+	it('records final absence when SHS omits every delete event', async () => {
+		const config = fastConfig();
+		const harness = createHarness(config);
+		const deviceId = 'runtime-bound-delete-fallback-id';
+		const device = makeOwnedDevice(config, deviceId);
+
+		jest.spyOn(harness.client.devices, 'deleteDevice').mockImplementation((options) => {
+			harness.client.devices.deleteRequests.push(options);
+			delete harness.client.devices.inventory[options.id];
+
+			return Promise.resolve();
+		});
+
+		const report = await probeHomeyShsLifecycle(config, harness.factory, {
+			onAddWindowOpen: () => {
+				harness.client.devices.inventory[deviceId] = device;
+				harness.client.devices.emit('device.create', device);
+			},
+			onAvailabilityRestoreRequested: () => {
+				device.available = true;
+				device.emit('update', { available: true });
+			},
+			onUnavailableRequested: () => {
+				device.available = false;
+				device.emit('update', { available: false });
+			},
+		});
+
+		expect(report).toStrictEqual(completeReport({ deleteEventObserved: false }));
+		expect(harness.client.devices.inventory).toStrictEqual({});
+	});
+
+	it('uses exact read-back when SHS omits every bound-device update event', async () => {
+		const config = {
+			...loadHomeyShsLifecycleProbeConfig(TEST_APP_ENVIRONMENT, '/tmp/homey-lifecycle-spike'),
+			observeMs: 25,
+			timeoutMs: 25,
+		};
+		const harness = createHarness(config);
+		const deviceId = 'runtime-bound-update-fallback-id';
+		const device = makeOwnedDevice(config, deviceId);
+
+		jest.spyOn(harness.client.devices, 'updateDevice').mockImplementation((options) => {
+			harness.client.devices.updateRequests.push(options);
+			Object.assign(device, options.device);
+
+			return Promise.resolve(device);
+		});
+		jest.spyOn(harness.client.devices, 'setDeviceSettings').mockImplementation((options) => {
+			harness.client.devices.settingsRequests.push(options);
+			device.available = options.settings.fbsp_lifecycle_availability === 'available';
+
+			return Promise.resolve(device);
+		});
+
+		const report = await probeHomeyShsLifecycle(config, harness.factory, {
+			onAddWindowOpen: () => {
+				harness.client.devices.inventory[deviceId] = device;
+				harness.client.devices.emit('device.create', device);
+			},
+		});
+
+		expect(report).toStrictEqual(
+			completeReport({
+				availabilityRestoreEventObserved: false,
+				renameEventObserved: false,
+				unavailableEventObserved: false,
+				zoneMoveEventObserved: false,
+			}),
+		);
+		expect(harness.client.devices.inventory).toStrictEqual({});
+	});
+
 	it('requires a newly bound device to start available and leaves it for manual cleanup otherwise', async () => {
 		const config = fastConfig();
 		const harness = createHarness(config);
@@ -669,8 +853,8 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		expect(harness.client.devices.inventory[ownedId]).toBe(owned);
 	});
 
-	it('does not mistake an aggregate manager update for the rename delta', async () => {
-		const config = fastConfig({ observeMs: 5 });
+	it('does not count aggregate manager updates as bound-device update events', async () => {
+		const config = fastConfig();
 		const harness = createHarness(config);
 		const ownedId = 'freshly-owned-device-id';
 		const owned = makeOwnedDevice(config, ownedId);
@@ -683,14 +867,22 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 			return Promise.resolve(owned);
 		});
 
-		await expect(
-			probeHomeyShsLifecycle(config, harness.factory, {
-				onAddWindowOpen: () => {
-					harness.client.devices.inventory[ownedId] = owned;
-					harness.client.devices.emit('device.create', owned);
-				},
-			}),
-		).rejects.toThrow('rename event observation timed out after 5 ms');
+		const report = await probeHomeyShsLifecycle(config, harness.factory, {
+			onAddWindowOpen: () => {
+				harness.client.devices.inventory[ownedId] = owned;
+				harness.client.devices.emit('device.create', owned);
+			},
+			onAvailabilityRestoreRequested: () => {
+				owned.available = true;
+				owned.emit('update', { available: true });
+			},
+			onUnavailableRequested: () => {
+				owned.available = false;
+				owned.emit('update', { available: false });
+			},
+		});
+
+		expect(report).toStrictEqual(completeReport({ renameEventObserved: false, zoneMoveEventObserved: false }));
 		expect(harness.client.devices.deleteRequests).toStrictEqual([{ $timeout: 25, id: ownedId }]);
 	});
 
@@ -754,7 +946,7 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		const unrelatedId = 'ordinary-device-id';
 		const unrelated = makeOwnedDevice(config, unrelatedId, {
 			data: { id: 'fbsp-lifecycle-unrelated-marker' },
-			driverId: 'homey:app:ordinary-owner:driver:ordinary-driver',
+			driverId: 'homey:app:ordinary-owner:ordinary-driver',
 			name: 'Ordinary Device',
 			ownerUri: 'homey:app:ordinary-owner',
 		});
@@ -864,7 +1056,7 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		const owned = makeOwnedDevice(config, ownedId);
 		const unrelated = makeOwnedDevice(config, unrelatedId, {
 			data: { id: 'fbsp-lifecycle-unrelated-marker' },
-			driverId: 'homey:app:ordinary-owner:driver:ordinary-driver',
+			driverId: 'homey:app:ordinary-owner:ordinary-driver',
 			name: 'Ordinary Device',
 			ownerUri: 'homey:app:ordinary-owner',
 		});
@@ -976,7 +1168,7 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		const owned = makeOwnedDevice(config, ownedId);
 		const unrelated = makeOwnedDevice(config, unrelatedId, {
 			data: { id: 'fbsp-lifecycle-unrelated-marker' },
-			driverId: 'homey:app:ordinary-owner:driver:ordinary-driver',
+			driverId: 'homey:app:ordinary-owner:ordinary-driver',
 			name: 'Ordinary Device',
 			ownerUri: 'homey:app:ordinary-owner',
 		});
@@ -1009,7 +1201,7 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		{
 			label: 'ownership drift',
 			mutate: (device: FakeDevice, _client: FakeLifecycleClient): void => {
-				device.driverId = 'homey:app:unexpected-owner:driver:unexpected-driver';
+				device.driverId = 'homey:app:unexpected-owner:unexpected-driver';
 			},
 		},
 	])('does not use stale cleanup authorization after $label', async ({ mutate }) => {
