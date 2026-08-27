@@ -19,11 +19,8 @@ const BASE_ENVIRONMENT: NodeJS.ProcessEnv = {
 	FB_HOMEY_SHS_URL: 'http://127.0.0.1:4859',
 };
 
-const loadLiveEvidence = (): unknown => {
-	const evidencePath = resolve(
-		__dirname,
-		'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-14-shs-13.4.0-sdk-session.json',
-	);
+const loadLiveEvidence = (filename = '2026-08-14-shs-13.4.0-sdk-session.json'): unknown => {
+	const evidencePath = resolve(__dirname, '../src/plugins/devices-homey/__fixtures__/evidence', filename);
 
 	return JSON.parse(readFileSync(evidencePath, 'utf8')) as unknown;
 };
@@ -200,6 +197,34 @@ describe('Homey SHS realtime compatibility probe', () => {
 			readBackMatched: false,
 			restoreReadBackMatched: false,
 			restored: false,
+		});
+		expect(() => assertHomeyShsRealtimeReportSafe(report, config)).not.toThrow();
+	});
+
+	it('preserves the sanitized live SHS write-confirmation evidence', () => {
+		const report = loadLiveEvidence('2026-08-27-shs-13.4.1-write-confirmation.json');
+		const config = loadHomeyShsRealtimeProbeConfig(BASE_ENVIRONMENT, '/tmp/homey-realtime-spike');
+
+		assertHomeyShsRealtimeReportSchema(report);
+		expect(report.session.events.map(({ event, order }) => ({ event, order }))).toStrictEqual([
+			{ event: 'sdk.create.resolved', order: 1 },
+			{ event: 'socket.connect', order: 2 },
+			{ event: 'manager.subscribe.resolved', order: 3 },
+			{ event: 'capability.update', order: 4 },
+			{ event: 'device.unsubscribe.resolved', order: 5 },
+			{ event: 'manager.unsubscribe.resolved', order: 6 },
+			{ event: 'socket.disconnect', order: 7 },
+			{ event: 'socket.disconnect.resolved', order: 8 },
+			{ event: 'sdk.destroyed', order: 9 },
+		]);
+		expect(report.session).toMatchObject({ cleanupCompleted: true, managerSubscribed: true });
+		expect(report.invalidKey).toStrictEqual({ category: 'authentication', rejected: true, statusCode: 401 });
+		expect(report.write).toStrictEqual({
+			attempted: true,
+			eventObserved: true,
+			readBackMatched: true,
+			restoreReadBackMatched: true,
+			restored: true,
 		});
 		expect(() => assertHomeyShsRealtimeReportSafe(report, config)).not.toThrow();
 	});
