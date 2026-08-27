@@ -208,6 +208,12 @@ operator or that same test driver makes only that device unavailable and availab
 that could change every device owned by the app. The probe rejects a lifecycle owner that has any device at baseline
 and requires the run-bound device to remain its only device during availability checks.
 
+The repository includes a private, test-only app at
+`apps/backend/test/support/homey-lifecycle-test-app`. Its single driver exposes the fixed synthetic marker and names
+listed in that directory's README. Pair it only after the lifecycle probe opens the add window. When the probe renames
+the bound device, the driver waits 30 seconds, makes it unavailable, then restores availability 15 seconds later. This
+keeps lifecycle evidence isolated from household apps and removes manual timing from the two availability stages.
+
 After the `device.create` event exactly matches the marker, driver, owner, initial name, and source zone allowlist, the
 probe binds the new runtime device ID in memory. Only after that binding may it use the bounded local API operations
 to rename the device, move it to the destination zone, and remove it. The probe observes `device.update` for rename,

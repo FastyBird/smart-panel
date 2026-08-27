@@ -654,6 +654,12 @@ importers:
         specifier: ^8.57.0
         version: 8.57.0(eslint@10.0.3(jiti@2.6.1))(typescript@5.9.3)
 
+  apps/backend/test/support/homey-lifecycle-test-app:
+    devDependencies:
+      prettier:
+        specifier: ^3.8.1
+        version: 3.8.1
+
   apps/testing:
     dependencies:
       js-yaml:

@@ -1,0 +1,19 @@
+{
+	"name": "@fastybird/homey-lifecycle-test-app",
+	"version": "1.0.0",
+	"private": true,
+	"description": "Disposable Homey app used only for Smart Panel lifecycle evidence",
+	"main": "app.js",
+	"scripts": {
+		"pretty:check": "prettier . --check",
+		"pretty:write": "prettier . --write",
+		"test:unit": "node --test"
+	},
+	"engines": {
+		"node": ">=24"
+	},
+	"license": "Apache-2.0",
+	"devDependencies": {
+		"prettier": "^3.8.1"
+	}
+}
