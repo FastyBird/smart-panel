@@ -1,10 +1,11 @@
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import {
 	type HomeyCredentialRotationFetch,
 	type HomeyShsCredentialRotationProbeConfig,
+	type HomeyShsCredentialRotationReport,
 	assertHomeyShsCredentialRotationReportSafe,
 	assertHomeyShsCredentialRotationReportSchema,
 	loadHomeyShsCredentialRotationProbeConfig,
@@ -21,6 +22,27 @@ const BASE_ENVIRONMENT: NodeJS.ProcessEnv = {
 	FB_HOMEY_SHS_REPLACEMENT_API_KEY: 'replacement-test-key-that-must-not-leak',
 	FB_HOMEY_SHS_TIMEOUT_MS: '1000',
 	FB_HOMEY_SHS_URL: 'http://127.0.0.1:4859',
+};
+
+const EXPECTED_REPORT: HomeyShsCredentialRotationReport = {
+	metadata: { probe: 'homey-shs-credential-rotation', schemaVersion: 1 },
+	rotation: {
+		primaryKeyInitiallyValid: true,
+		replacementKeyInitiallyValid: true,
+		replacementKeyValidAfterRevocation: true,
+		revocationObserved: true,
+		revocationStatusCode: 401,
+	},
+	session: {
+		events: [
+			{ event: 'endpoint.identity.resolved', order: 1 },
+			{ event: 'primary.validation.resolved', order: 2 },
+			{ event: 'replacement.preflight.resolved', order: 3 },
+			{ event: 'rotation.window.open', order: 4 },
+			{ event: 'primary.revocation.observed', order: 5 },
+			{ event: 'replacement.validation.resolved', order: 6 },
+		],
+	},
 };
 
 const createConfig = (
@@ -47,6 +69,18 @@ const homeyPingResponse = (): Response =>
 	});
 
 describe('Homey SHS credential rotation compatibility probe', () => {
+	it('preserves the sanitized live SHS credential-rotation evidence', async () => {
+		const evidencePath = resolve(
+			__dirname,
+			'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-27-shs-13.4.1-credential-rotation.json',
+		);
+		const evidence: unknown = JSON.parse(await readFile(evidencePath, 'utf8'));
+		const config = createConfig();
+
+		expect(evidence).toStrictEqual(EXPECTED_REPORT);
+		expect(() => assertHomeyShsCredentialRotationReportSafe(evidence, config)).not.toThrow();
+	});
+
 	it('requires the exact acknowledgement, distinct replacement key, and isolated gates', () => {
 		expect(() =>
 			loadHomeyShsCredentialRotationProbeConfig({
@@ -136,26 +170,7 @@ describe('Homey SHS credential rotation compatibility probe', () => {
 			() => nowMs,
 		);
 
-		expect(report).toStrictEqual({
-			metadata: { probe: 'homey-shs-credential-rotation', schemaVersion: 1 },
-			rotation: {
-				primaryKeyInitiallyValid: true,
-				replacementKeyInitiallyValid: true,
-				replacementKeyValidAfterRevocation: true,
-				revocationObserved: true,
-				revocationStatusCode: 401,
-			},
-			session: {
-				events: [
-					{ event: 'endpoint.identity.resolved', order: 1 },
-					{ event: 'primary.validation.resolved', order: 2 },
-					{ event: 'replacement.preflight.resolved', order: 3 },
-					{ event: 'rotation.window.open', order: 4 },
-					{ event: 'primary.revocation.observed', order: 5 },
-					{ event: 'replacement.validation.resolved', order: 6 },
-				],
-			},
-		});
+		expect(report).toStrictEqual(EXPECTED_REPORT);
 		expect(fetchImplementation).toHaveBeenCalledTimes(6);
 		expect(isPingRequest(fetchImplementation.mock.calls[0][0])).toBe(true);
 		expect(new Headers(fetchImplementation.mock.calls[0][1].headers).has('authorization')).toBe(false);

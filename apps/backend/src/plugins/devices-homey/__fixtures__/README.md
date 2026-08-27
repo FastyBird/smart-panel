@@ -92,5 +92,8 @@ categories plus non-sensitive HTTP status codes. It contains no URL, address, ke
 transport error. The permission-scope report records three independently valid restricted credentials completing an
 allowed read with `200` and receiving `403` for the omitted system, zone, or device permission. It contains no endpoint,
 Homey identity, credential, inventory data, response body, or raw error.
+The credential-rotation report records the fixed identity, preflight, operator-window, revocation, and replacement
+validation sequence plus the expected `401`. It contains no endpoint, Homey identity, credential, inventory data,
+response body, raw error, or identifier.
 
 Before committing regenerated fixtures, inspect every value and key and confirm that no private source value survives.
