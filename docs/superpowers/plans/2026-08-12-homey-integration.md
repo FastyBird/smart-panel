@@ -641,6 +641,12 @@ the offline run first verified `RECONNECTING`, then recovered through the schedu
 restored the firewall, published a fresh authoritative inventory snapshot, incremented the reconnect counter, and
 stopped cleanly. The two reviewed exact-schema reports contain only fixed event labels and completion booleans.
 
+A separately gated restart-event-flow probe is prepared for the next unchecked item. It uses the same exact disposable
+device/capability/value allowlist as the proven write probe, requires a matching capability event and read-back before
+opening the operator restart window, verifies transport and manager recovery, then restores the original value and
+requires a second matching event and read-back after restart. Failure cleanup still attempts the exact in-memory
+original-value restoration before disconnecting, and no report is written without complete restoration and teardown.
+
 The 2026-08-26 SHS `13.4.1` restart probe closed the transport/session recovery slice: it observed disconnect,
 reconnect, manager resubscription, a fresh inventory read, and complete cleanup. This does not close the event-flow
 criterion above because no capability or availability event was observed before and after that restart.

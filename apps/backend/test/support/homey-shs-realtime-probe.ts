@@ -31,7 +31,7 @@ const SAFE_EVENT_LABELS = new Set([
 	'socket.reconnect_error',
 ]);
 
-type HomeyScalar = boolean | number | string;
+export type HomeyScalar = boolean | number | string;
 type EventListener = (...arguments_: unknown[]) => void;
 
 class HomeyShsSdkTimeoutError extends Error {
@@ -46,7 +46,7 @@ interface EventSource {
 	off?(event: string, listener: EventListener): unknown;
 }
 
-interface HomeyCapabilityMetadata {
+export interface HomeyCapabilityMetadata {
 	max?: unknown;
 	min?: unknown;
 	setable?: unknown;
@@ -55,13 +55,13 @@ interface HomeyCapabilityMetadata {
 	values?: unknown;
 }
 
-interface HomeyDevice extends EventSource {
+export interface HomeyDevice extends EventSource {
 	capabilitiesObj?: Record<string, HomeyCapabilityMetadata>;
 	connect(): Promise<void>;
 	disconnect(): Promise<void>;
 }
 
-interface HomeyDevicesManager extends EventSource {
+export interface HomeyDevicesManager extends EventSource {
 	connect(): Promise<void>;
 	disconnect(): Promise<void>;
 	getCapabilityValue(options: { $timeout?: number; capabilityId: string; deviceId: string }): Promise<unknown>;
@@ -74,7 +74,7 @@ interface HomeyDevicesManager extends EventSource {
 	}): Promise<unknown>;
 }
 
-interface HomeySdkClient extends EventSource {
+export interface HomeySdkClient extends EventSource {
 	destroy(): void;
 	disconnect(): Promise<void>;
 	devices: HomeyDevicesManager;
@@ -84,7 +84,7 @@ export interface HomeySdkFactory {
 	createLocalApi(options: { address: string; token: string }): Promise<HomeySdkClient>;
 }
 
-interface HomeyShsWriteConfig {
+export interface HomeyShsWriteConfig {
 	capabilityId: string;
 	deviceId: string;
 	value: HomeyScalar;
@@ -120,7 +120,7 @@ export interface HomeyShsRealtimeReport {
 	};
 }
 
-const sdkFactory: HomeySdkFactory = {
+export const homeyRealtimeSdkFactory: HomeySdkFactory = {
 	createLocalApi: async ({ address, token }) =>
 		(await HomeyAPI.createLocalAPI({ address, token, debug: null })) as HomeySdkClient,
 };
@@ -236,7 +236,7 @@ const parseWriteValue = (value: string): HomeyScalar => {
 	return parsed as HomeyScalar;
 };
 
-const parseWriteConfig = (environment: NodeJS.ProcessEnv): HomeyShsWriteConfig | null => {
+export const parseHomeyShsWriteConfig = (environment: NodeJS.ProcessEnv): HomeyShsWriteConfig | null => {
 	const names = [
 		'FB_HOMEY_SHS_WRITE_ENABLE',
 		'FB_HOMEY_SHS_WRITE_DEVICE_ID',
@@ -274,7 +274,7 @@ export const loadHomeyShsRealtimeProbeConfig = (
 ): HomeyShsRealtimeProbeConfig => ({
 	...loadHomeyShsProbeConfig(environment, workingDirectory),
 	observeMs: parseObserveMs(environment.FB_HOMEY_SHS_REALTIME_OBSERVE_MS),
-	write: parseWriteConfig(environment),
+	write: parseHomeyShsWriteConfig(environment),
 });
 
 const sleep = async (milliseconds: number): Promise<void> => {
@@ -330,7 +330,11 @@ const settleSdkClientCreation = async (
 	}
 };
 
-const runSdkOperation = async <T>(label: string, timeoutMs: number, operation: () => Promise<T>): Promise<T> => {
+export const runHomeyShsSdkOperation = async <T>(
+	label: string,
+	timeoutMs: number,
+	operation: () => Promise<T>,
+): Promise<T> => {
 	try {
 		return await settleSdkOperation(label, timeoutMs, operation);
 	} catch (error: unknown) {
@@ -347,7 +351,7 @@ const runSdkOperation = async <T>(label: string, timeoutMs: number, operation: (
 	}
 };
 
-const runSdkClientCreation = async (
+export const runHomeyShsSdkClientCreation = async (
 	label: string,
 	timeoutMs: number,
 	operation: () => Promise<HomeySdkClient>,
@@ -376,10 +380,13 @@ const statusCodeOf = (error: unknown): number | null => {
 	return typeof error.statusCode === 'number' ? error.statusCode : null;
 };
 
-const scalarCapabilityValue = (response: unknown): unknown =>
+export const homeyScalarCapabilityValue = (response: unknown): unknown =>
 	isRecord(response) && Object.hasOwn(response, 'value') ? response.value : response;
 
-const assertSafeWriteTarget = (devices: Record<string, HomeyDevice>, write: HomeyShsWriteConfig): HomeyDevice => {
+export const assertSafeHomeyWriteTarget = (
+	devices: Record<string, HomeyDevice>,
+	write: HomeyShsWriteConfig,
+): HomeyDevice => {
 	const device = devices[write.deviceId];
 	const capability = device?.capabilitiesObj?.[write.capabilityId];
 
@@ -414,7 +421,7 @@ const assertSafeWriteTarget = (devices: Record<string, HomeyDevice>, write: Home
 	return device;
 };
 
-const assertRestorableOriginalValue = (value: unknown, writeValue: HomeyScalar): HomeyScalar => {
+export const assertRestorableHomeyValue = (value: unknown, writeValue: HomeyScalar): HomeyScalar => {
 	if (!['boolean', 'number', 'string'].includes(typeof value)) {
 		throw new Error('The allowlisted Homey capability has no safely restorable scalar value');
 	}
@@ -489,7 +496,9 @@ const assertInvalidKeyRejected = async (
 		let cleanupFailed = false;
 
 		try {
-			await runSdkOperation('invalid-key client disconnect', config.timeoutMs, () => invalidClient.disconnect());
+			await runHomeyShsSdkOperation('invalid-key client disconnect', config.timeoutMs, () =>
+				invalidClient.disconnect(),
+			);
 		} catch {
 			cleanupFailed = true;
 		}
@@ -518,7 +527,7 @@ const assertInvalidKeyRejected = async (
 
 export const probeHomeyShsRealtime = async (
 	config: HomeyShsRealtimeProbeConfig,
-	factory: HomeySdkFactory = sdkFactory,
+	factory: HomeySdkFactory = homeyRealtimeSdkFactory,
 	wait: (milliseconds: number) => Promise<void> = sleep,
 ): Promise<HomeyShsRealtimeReport> => {
 	const report: HomeyShsRealtimeReport = {
@@ -533,7 +542,7 @@ export const probeHomeyShsRealtime = async (
 			restored: false,
 		},
 	};
-	const client = await runSdkClientCreation('client creation', config.timeoutMs, () =>
+	const client = await runHomeyShsSdkClientCreation('client creation', config.timeoutMs, () =>
 		factory.createLocalApi({ address: config.origin.origin, token: config.apiKey }),
 	);
 	report.session.events.push({ event: 'sdk.create.resolved', order: 1 });
@@ -553,7 +562,7 @@ export const probeHomeyShsRealtime = async (
 	const cleanupFailures: string[] = [];
 
 	try {
-		await runSdkOperation('manager subscription', config.timeoutMs, () => client.devices.connect());
+		await runHomeyShsSdkOperation('manager subscription', config.timeoutMs, () => client.devices.connect());
 		report.session.managerSubscribed = true;
 		report.session.events.push({ event: 'manager.subscribe.resolved', order: report.session.events.length + 1 });
 
@@ -561,10 +570,10 @@ export const probeHomeyShsRealtime = async (
 			await wait(config.observeMs);
 		} else {
 			const write = config.write;
-			const devices = await runSdkOperation('device inventory read', config.timeoutMs, () =>
+			const devices = await runHomeyShsSdkOperation('device inventory read', config.timeoutMs, () =>
 				client.devices.getDevices({ $timeout: config.timeoutMs }),
 			);
-			const device = assertSafeWriteTarget(devices, write);
+			const device = assertSafeHomeyWriteTarget(devices, write);
 			connectedDevice = device;
 			let acceptCapabilityEvents = false;
 			const capabilityListener = (payload: unknown): void => {
@@ -585,10 +594,10 @@ export const probeHomeyShsRealtime = async (
 			device.on('capability', capabilityListener);
 
 			try {
-				await runSdkOperation('device subscription', config.timeoutMs, () => device.connect());
-				const originalValue = assertRestorableOriginalValue(
-					scalarCapabilityValue(
-						await runSdkOperation('pre-write capability read', config.timeoutMs, () =>
+				await runHomeyShsSdkOperation('device subscription', config.timeoutMs, () => device.connect());
+				const originalValue = assertRestorableHomeyValue(
+					homeyScalarCapabilityValue(
+						await runHomeyShsSdkOperation('pre-write capability read', config.timeoutMs, () =>
 							client.devices.getCapabilityValue({
 								$timeout: config.timeoutMs,
 								capabilityId: write.capabilityId,
@@ -604,7 +613,7 @@ export const probeHomeyShsRealtime = async (
 					acceptCapabilityEvents = true;
 
 					try {
-						await runSdkOperation('capability write', config.timeoutMs, () =>
+						await runHomeyShsSdkOperation('capability write', config.timeoutMs, () =>
 							client.devices.setCapabilityValue({
 								$timeout: config.timeoutMs,
 								capabilityId: write.capabilityId,
@@ -617,8 +626,8 @@ export const probeHomeyShsRealtime = async (
 						acceptCapabilityEvents = false;
 					}
 
-					const readBack = scalarCapabilityValue(
-						await runSdkOperation('post-write capability read', config.timeoutMs, () =>
+					const readBack = homeyScalarCapabilityValue(
+						await runHomeyShsSdkOperation('post-write capability read', config.timeoutMs, () =>
 							client.devices.getCapabilityValue({
 								$timeout: config.timeoutMs,
 								capabilityId: write.capabilityId,
@@ -630,7 +639,7 @@ export const probeHomeyShsRealtime = async (
 					report.write.readBackMatched = Object.is(readBack, write.value);
 				} finally {
 					if (report.write.attempted) {
-						await runSdkOperation('capability restoration', config.timeoutMs, () =>
+						await runHomeyShsSdkOperation('capability restoration', config.timeoutMs, () =>
 							client.devices.setCapabilityValue({
 								$timeout: config.timeoutMs,
 								capabilityId: write.capabilityId,
@@ -639,8 +648,8 @@ export const probeHomeyShsRealtime = async (
 							}),
 						);
 						report.write.restored = true;
-						const restored = scalarCapabilityValue(
-							await runSdkOperation('restoration capability read', config.timeoutMs, () =>
+						const restored = homeyScalarCapabilityValue(
+							await runHomeyShsSdkOperation('restoration capability read', config.timeoutMs, () =>
 								client.devices.getCapabilityValue({
 									$timeout: config.timeoutMs,
 									capabilityId: write.capabilityId,
@@ -667,7 +676,7 @@ export const probeHomeyShsRealtime = async (
 			operation: () => Promise<unknown>,
 		): Promise<void> => {
 			try {
-				await runSdkOperation(label, config.timeoutMs, operation);
+				await runHomeyShsSdkOperation(label, config.timeoutMs, operation);
 				report.session.events.push({ event: resolvedEvent, order: report.session.events.length + 1 });
 			} catch {
 				cleanupFailures.push(label);
