@@ -79,6 +79,15 @@ class FakeStartupRuntime implements HomeyStartupRuntime {
 	}
 }
 
+const deferred = <T>(): { promise: Promise<T>; resolve: (value: T | PromiseLike<T>) => void } => {
+	let resolvePromise: (value: T | PromiseLike<T>) => void = () => undefined;
+	const promise = new Promise<T>((resolve) => {
+		resolvePromise = resolve;
+	});
+
+	return { promise, resolve: resolvePromise };
+};
+
 const fastConfig = (
 	environment: NodeJS.ProcessEnv = BASE_ENVIRONMENT,
 	overrides: Partial<HomeyShsStartupProbeConfig> = {},
@@ -222,6 +231,46 @@ describe('Homey SHS startup compatibility probe', () => {
 		await expect(probeHomeyShsStartup(fastConfig(), () => runtime)).rejects.toThrow(
 			'Homey startup service cleanup failed',
 		);
+	});
+
+	it('waits for a timed-out startup to settle before stopping and returning failure', async () => {
+		jest.useFakeTimers();
+		const start = deferred<void>();
+		const runtime = new FakeStartupRuntime('connected');
+		runtime.start = jest.fn().mockReturnValue(start.promise);
+		const result = probeHomeyShsStartup(fastConfig(BASE_ENVIRONMENT, { observeMs: 10 }), () => runtime);
+		const expectation = expect(result).rejects.toThrow('Homey startup service start timed out after 10 ms');
+
+		try {
+			await jest.advanceTimersByTimeAsync(10);
+			expect(runtime.stopCount).toBe(0);
+
+			start.resolve();
+			await expectation;
+			expect(runtime.stopCount).toBe(1);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('waits for timed-out cleanup to settle before returning its fixed failure', async () => {
+		jest.useFakeTimers();
+		const stop = deferred<void>();
+		const runtime = new FakeStartupRuntime('connected');
+		const stopOperation = jest.fn().mockReturnValue(stop.promise);
+		runtime.stop = stopOperation;
+		const result = probeHomeyShsStartup(fastConfig(BASE_ENVIRONMENT, { observeMs: 10 }), () => runtime);
+		const expectation = expect(result).rejects.toThrow('Homey startup service cleanup failed');
+
+		try {
+			await jest.advanceTimersByTimeAsync(10);
+			expect(stopOperation).toHaveBeenCalledTimes(1);
+
+			stop.resolve();
+			await expectation;
+		} finally {
+			jest.useRealTimers();
+		}
 	});
 
 	it('does not expose a runtime factory failure', async () => {

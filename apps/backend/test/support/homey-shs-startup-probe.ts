@@ -230,17 +230,32 @@ export const loadHomeyShsStartupProbeConfig = (
 const settleOperation = async <T>(label: string, timeoutMs: number, operation: () => Promise<T>): Promise<T> => {
 	let timeout: ReturnType<typeof setTimeout> | undefined;
 	const operationPromise = operation();
-	const timeoutPromise = new Promise<never>((_resolvePromise, rejectPromise) => {
-		timeout = setTimeout(() => rejectPromise(new HomeyShsStartupTimeoutError(label, timeoutMs)), timeoutMs);
+	const observedOperation = operationPromise.then(
+		(value) => ({ status: 'fulfilled' as const, value }),
+		(error: unknown) => ({ error, status: 'rejected' as const }),
+	);
+	const timeoutPromise = new Promise<{ status: 'timed_out' }>((resolvePromise) => {
+		timeout = setTimeout(() => resolvePromise({ status: 'timed_out' }), timeoutMs);
 	});
+	const result = await Promise.race([observedOperation, timeoutPromise]);
 
-	try {
-		return await Promise.race([operationPromise, timeoutPromise]);
-	} finally {
-		if (timeout !== undefined) {
-			clearTimeout(timeout);
-		}
+	if (timeout !== undefined) {
+		clearTimeout(timeout);
 	}
+
+	if (result.status === 'timed_out') {
+		// HomeyService has no external cancellation signal. Its connector operations are internally bounded, so wait for
+		// the active lock holder to settle before cleanup rather than returning while sockets or timers may still exist.
+		await observedOperation;
+
+		throw new HomeyShsStartupTimeoutError(label, timeoutMs);
+	}
+
+	if (result.status === 'rejected') {
+		throw result.error;
+	}
+
+	return result.value;
 };
 
 const appendEvent = (report: HomeyShsStartupReport, event: StartupEvent): void => {

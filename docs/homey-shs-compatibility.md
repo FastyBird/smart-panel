@@ -341,8 +341,10 @@ changes firewall or network state itself.
 `FB_HOMEY_SHS_STARTUP_OBSERVE_MS` bounds initial service startup, the operator recovery window, and cleanup from
 `10000` through `300000` milliseconds and defaults to `90000`. It must be greater than `FB_HOMEY_SHS_TIMEOUT_MS`, so
 the intentionally blocked initial connection can fail and open the restoration prompt with time remaining. All
-failure messages and the exact-schema report use fixed labels only; endpoint, host, key, Homey identity, inventory,
-device and zone identifiers, event payloads, and raw errors are excluded.
+production connector operations remain internally bounded by `FB_HOMEY_SHS_TIMEOUT_MS`. If a startup or cleanup
+deadline is exceeded, the run is marked failed but waits for that internally bounded operation and definitive service
+teardown before returning. All failure messages and the exact-schema report use fixed labels only; endpoint, host, key,
+Homey identity, inventory, device and zone identifiers, event payloads, and raw errors are excluded.
 
 After both runs, restore the firewall and clear the startup gate:
 
