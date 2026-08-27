@@ -1,0 +1,24 @@
+[
+	{
+		"id": "fbsp_lifecycle_availability",
+		"type": "dropdown",
+		"value": "available",
+		"label": {
+			"en": "Lifecycle availability"
+		},
+		"values": [
+			{
+				"id": "available",
+				"label": {
+					"en": "Available"
+				}
+			},
+			{
+				"id": "unavailable",
+				"label": {
+					"en": "Unavailable"
+				}
+			}
+		]
+	}
+]

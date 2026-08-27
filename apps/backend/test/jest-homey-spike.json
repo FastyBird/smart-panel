@@ -1,5 +1,6 @@
 {
 	"moduleFileExtensions": ["js", "json", "ts"],
+	"modulePathIgnorePatterns": ["<rootDir>/support/homey-lifecycle-test-app/.homeybuild/"],
 	"rootDir": ".",
 	"testEnvironment": "node",
 	"testEnvironmentOptions": {

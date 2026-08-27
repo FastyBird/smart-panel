@@ -8,6 +8,14 @@ import { type HomeyShsProbeConfig, loadHomeyShsProbeConfig } from './homey-shs-p
 const SDK_VERSION = '3.19.2';
 const LIFECYCLE_ACKNOWLEDGEMENT = 'I_ACKNOWLEDGE_THIS_MUTATES_A_DISPOSABLE_DEVICE';
 const LIFECYCLE_OPERATIONS = 'add,rename,zone-move,availability,remove';
+const TEST_APP_AVAILABILITY_SETTING_ID = 'fbsp_lifecycle_availability';
+const TEST_APP_PROFILE = {
+	deviceMarker: 'fbsp-lifecycle-disposable-device',
+	expectedDriverId: 'homey:app:com.fastybird.smartpanel.lifecycletest:driver:lifecycle-test-device',
+	expectedOwnerUri: 'homey:app:com.fastybird.smartpanel.lifecycletest',
+	initialName: 'FBSP Lifecycle Initial',
+	renamedName: 'FBSP Lifecycle Renamed',
+} as const;
 const DEFAULT_OBSERVE_MS = 90_000;
 const MIN_OBSERVE_MS = 10_000;
 const MAX_OBSERVE_MS = 300_000;
@@ -92,6 +100,7 @@ interface HomeyLifecycleDevicesManager extends EventSource {
 		$timeout?: number;
 		$updateCache?: boolean;
 	}): Promise<Record<string, HomeyLifecycleDevice>>;
+	setDeviceSettings(options: { $timeout?: number; id: string; settings: Record<string, unknown> }): Promise<unknown>;
 	updateDevice(options: { $timeout?: number; device: { name?: string; zone?: string }; id: string }): Promise<unknown>;
 }
 
@@ -118,6 +127,7 @@ export interface HomeyLifecycleSdkFactory {
 }
 
 export interface HomeyShsLifecycleProbeConfig extends HomeyShsProbeConfig {
+	availabilityControl: 'operator' | 'test-app-setting';
 	destinationZoneId: string;
 	deviceMarker: string;
 	expectedDriverId: string;
@@ -268,6 +278,14 @@ export const loadHomeyShsLifecycleProbeConfig = (
 
 	return {
 		...loadHomeyShsProbeConfig(environment, workingDirectory),
+		availabilityControl:
+			deviceMarker === TEST_APP_PROFILE.deviceMarker &&
+			expectedDriverId === TEST_APP_PROFILE.expectedDriverId &&
+			expectedOwnerUri === TEST_APP_PROFILE.expectedOwnerUri &&
+			initialName === TEST_APP_PROFILE.initialName &&
+			renamedName === TEST_APP_PROFILE.renamedName
+				? 'test-app-setting'
+				: 'operator',
 		destinationZoneId,
 		deviceMarker,
 		expectedDriverId,
@@ -769,7 +787,19 @@ export const probeHomeyShsLifecycle = async (
 			'unavailable event observation',
 			config.observeMs,
 			(payload) => isRecord(payload) && payload.available === false,
-			() => hooks.onUnavailableRequested?.(),
+			async () => {
+				hooks.onUnavailableRequested?.();
+
+				if (config.availabilityControl === 'test-app-setting') {
+					await runOperation('test-app unavailable request', config.timeoutMs, () =>
+						client.devices.setDeviceSettings({
+							$timeout: config.timeoutMs,
+							id: boundDeviceId,
+							settings: { [TEST_APP_AVAILABILITY_SETTING_ID]: 'unavailable' },
+						}),
+					);
+				}
+			},
 		);
 		appendEvent(report, 'device.update.unavailable.observed');
 		const unavailableInventory = await freshDevices(client, config);
@@ -788,7 +818,19 @@ export const probeHomeyShsLifecycle = async (
 			'availability restoration event observation',
 			config.observeMs,
 			(payload) => isRecord(payload) && payload.available === true,
-			() => hooks.onAvailabilityRestoreRequested?.(),
+			async () => {
+				hooks.onAvailabilityRestoreRequested?.();
+
+				if (config.availabilityControl === 'test-app-setting') {
+					await runOperation('test-app availability restoration', config.timeoutMs, () =>
+						client.devices.setDeviceSettings({
+							$timeout: config.timeoutMs,
+							id: boundDeviceId,
+							settings: { [TEST_APP_AVAILABILITY_SETTING_ID]: 'available' },
+						}),
+					);
+				}
+			},
 		);
 		appendEvent(report, 'device.update.available.observed');
 		const availableInventory = await freshDevices(client, config);
