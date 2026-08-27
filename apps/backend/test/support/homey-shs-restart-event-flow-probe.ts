@@ -207,9 +207,9 @@ const restoreCapabilityValue = async (
 	wait: HomeyRestartEventFlowWait,
 ): Promise<boolean> => {
 	const deadline = Date.now() + config.recoveryObserveMs;
+	let writeAttempts = 0;
 
-	for (let attempt = 0; attempt < MAX_RESTORE_ATTEMPTS; attempt += 1) {
-		if (attempt > 0 && Date.now() >= deadline) break;
+	while (Date.now() <= deadline) {
 		let currentValue: unknown;
 
 		try {
@@ -220,25 +220,29 @@ const restoreCapabilityValue = async (
 
 		if (currentValue !== undefined) {
 			if (Object.is(currentValue, originalValue)) return true;
+			if (writeAttempts >= MAX_RESTORE_ATTEMPTS) return false;
+			writeAttempts += 1;
 
 			try {
 				await capabilityWrite(client, config, originalValue);
 			} catch {
 				// Read back before retrying because an idempotent write may apply despite a timed-out response.
 			}
+
+			try {
+				if (Object.is(await scalarRead(client, config), originalValue)) return true;
+			} catch {
+				// A failed confirmation consumes no additional write attempt; readiness is checked again below.
+			}
 		}
 
 		const remaining = deadline - Date.now();
 
-		if (remaining <= 0) break;
+		if (remaining <= 0) return false;
 		await wait(Math.min(RESTORE_RETRY_MS, remaining));
 	}
 
-	try {
-		return Object.is(await scalarRead(client, config), originalValue);
-	} catch {
-		return false;
-	}
+	return false;
 };
 
 export const probeHomeyShsRestartEventFlow = async (

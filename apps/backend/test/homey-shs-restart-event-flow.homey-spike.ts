@@ -180,7 +180,7 @@ describe('Homey SHS restart event-flow probe', () => {
 		expect(() => assertHomeyShsRestartEventFlowReportSafe(report, config())).not.toThrow();
 	});
 
-	it('uses authoritative read-back before a bounded restoration retry after restart', async () => {
+	it('counts only writes against the restoration budget while SHS readiness reads fail', async () => {
 		const { client, factory } = createFactory();
 		client.devices.restoreFailuresRemaining = 1;
 		const report = await probeHomeyShsRestartEventFlow(
@@ -189,7 +189,7 @@ describe('Homey SHS restart event-flow probe', () => {
 			() => Promise.resolve(),
 			() => {
 				client.restart();
-				client.devices.readFailuresRemaining = 1;
+				client.devices.readFailuresRemaining = 3;
 			},
 		);
 
