@@ -2,7 +2,7 @@
 
 **Status:** In progress; safe inventory, SDK session/cleanup, SHS restart and network recovery, and stable
 restart-spanning mDNS evidence captured; automatic mDNS discovery remains deferred, and live capability-event, write,
-remaining permission-scope, lifecycle, and credential-rotation evidence is pending
+lifecycle, and credential-rotation evidence is pending
 
 **Started:** 2026-08-12
 
@@ -26,7 +26,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read             | Add allowlisted write and read-back evidence                         |
 | Socket.IO events and reconnect                        | SHS restart and network recovery passed                  | Capture capability/availability event-flow continuity                |
 | Allowlisted capability write                          | Hard-gated probe implemented, disabled                   | Use only the designated harmless test capability                     |
-| Error classification                                  | Five-scenario slice passed                               | Test keys missing zone and device permissions                        |
+| Error and permission-scope classification             | Five failure scenarios and three omitted scopes passed   | None                                                                 |
 | API-key revocation and replacement                    | Operator-controlled probe ready                          | Revoke only a dedicated test key during the gated observation window |
 | Disposable-device lifecycle                           | Guarded operator probe ready                             | Use only the separately gated virtual/test device                    |
 | mDNS discovery                                        | Stable across one controlled restart; manual URL remains | Design safe identity verification before reconsidering discovery     |
@@ -39,7 +39,7 @@ Complete this table after the live run. Values committed here must remain non-se
 
 | Field                                    | Recorded value                                    |
 | ---------------------------------------- | ------------------------------------------------- |
-| Capture date                             | `2026-08-13`, `2026-08-26`                        |
+| Capture date                             | `2026-08-13`, `2026-08-26`, `2026-08-27`          |
 | Realtime SDK probe date                  | `2026-08-14`, `2026-08-26`                        |
 | mDNS observation date                    | `2026-08-14`, `2026-08-26`                        |
 | SHS version                              | `13.4.0`, `13.4.1`                                |
@@ -488,11 +488,11 @@ does not claim. It first performs an unauthenticated Homey ping and requires the
 after that identity check does it send three distinct restricted credentials to the pinned SHS origin. Each credential
 must complete one allowed read with `200` before the probe accepts `403` for the independently omitted permission:
 
-| Credential | Required permissions | Allowed proof | Required denial |
-| ---------- | -------------------- | ------------- | --------------- |
-| Device only | `homey.device.readonly` | Device inventory | System information |
-| Without zone | `homey.system.readonly`, `homey.device.readonly` | Device inventory | Zone inventory |
-| Without device | `homey.system.readonly`, `homey.zone.readonly` | Zone inventory | Device inventory |
+| Credential     | Required permissions                             | Allowed proof    | Required denial    |
+| -------------- | ------------------------------------------------ | ---------------- | ------------------ |
+| Device only    | `homey.device.readonly`                          | Device inventory | System information |
+| Without zone   | `homey.system.readonly`, `homey.device.readonly` | Device inventory | Zone inventory     |
+| Without device | `homey.system.readonly`, `homey.zone.readonly`   | Zone inventory   | Device inventory   |
 
 Create the two additional disposable restricted keys, enter them without adding their values to shell history, and run
 the probe from the same interactive shell. The previously configured device-only key is reused for the missing-system
@@ -521,8 +521,12 @@ bounded by `FB_HOMEY_SHS_TIMEOUT_MS`.
 
 The exact-schema report contains only the three fixed permission labels, `200`/`403` status codes, the authorization
 category, and rejection booleans. It has no fields for endpoints, Homey identities, credentials, inventory data,
-response bodies, or raw errors. A report is written only after all three allowed/denied pairs pass. Until that operator
-report is reviewed and promoted, the broad missing-scope matrix remains pending.
+response bodies, or raw errors. A report is written only after all three allowed/denied pairs pass.
+
+The operator-controlled run on 2026-08-27 against SHS `13.4.1` passed all three pairs. Each independently valid
+restricted credential completed its allowed inventory request with `200`, then received `403` for the omitted system,
+zone, or device permission. The exact generated report is committed as
+`__fixtures__/evidence/2026-08-27-shs-13.4.1-permission-scopes.json`; it contains no private value or response payload.
 
 ## SDK artifact review
 
@@ -580,7 +584,7 @@ Fill this matrix using synthetic aliases only.
 | HTTPS `4860` ping and authenticated reads | Pending                             |                                                                                                                                                      |
 | Invalid key                               | Pass                                | Both the SDK session probe and error-matrix probe rejected independently generated invalid keys with HTTP `401`                                      |
 | Missing system scope on device-only key   | Pass                                | The restricted key completed the allowed device inventory read with `200`, then the system-information read returned `403`                           |
-| Missing zone and device scopes            | Pending                             | Exercise independently valid keys that omit each permission before closing the broad missing-scope matrix                                            |
+| Missing zone and device scopes            | Pass                                | Independently valid restricted keys completed allowed inventory reads with `200`, then each omitted permission returned `403`                        |
 | Bad URL and unavailable host              | Pass                                | Shared validation rejected a non-HTTP URL; a probe-owned closed loopback port produced the unavailable category                                      |
 | Request timeout                           | Pass                                | A probe-owned loopback server that withheld its response produced the timeout category within the local simulation cap                               |
 | Complete inventory and individual read    | Pass                                | Complete inventory captured: 118 devices and 16 zones; the selected individual-device response matched its pseudonymized inventory identity          |
