@@ -1,0 +1,26 @@
+{
+	"metadata": {
+		"probe": "homey-shs-permission-scopes",
+		"schemaVersion": 1
+	},
+	"scenarios": {
+		"missingDevicePermission": {
+			"allowedRequestStatusCode": 200,
+			"category": "authorization",
+			"rejected": true,
+			"statusCode": 403
+		},
+		"missingSystemPermission": {
+			"allowedRequestStatusCode": 200,
+			"category": "authorization",
+			"rejected": true,
+			"statusCode": 403
+		},
+		"missingZonePermission": {
+			"allowedRequestStatusCode": 200,
+			"category": "authorization",
+			"rejected": true,
+			"statusCode": 403
+		}
+	}
+}

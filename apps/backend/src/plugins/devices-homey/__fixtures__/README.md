@@ -89,6 +89,8 @@ SHS restart and a temporary Smart Panel-to-SHS port block, respectively. These r
 names, hosts, addresses, TXT values, endpoint, credential, firewall rule, inventory content, or event payload.
 The error-matrix report records only the five fixed validation, authentication, authorization, timeout, and unavailable
 categories plus non-sensitive HTTP status codes. It contains no URL, address, key, identifier, response body, or raw
-transport error.
+transport error. The permission-scope report records three independently valid restricted credentials completing an
+allowed read with `200` and receiving `403` for the omitted system, zone, or device permission. It contains no endpoint,
+Homey identity, credential, inventory data, response body, or raw error.
 
 Before committing regenerated fixtures, inspect every value and key and confirm that no private source value survives.

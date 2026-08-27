@@ -70,7 +70,7 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - [x] Capture capabilities with values, types, units, ranges, enums, readable/writable flags, and repeated/suffixed IDs.
 - [ ] Verify Socket.IO connection and record subscription/event ordering for capability changes and availability changes.
 - [ ] Write the allowlisted test capability and confirm the resulting event plus subsequent read.
-- [ ] Test invalid key, missing scopes, bad URL, unavailable host, and request timeout behavior.
+- [x] Test invalid key, missing scopes, bad URL, unavailable host, and request timeout behavior.
 - [ ] Test SHS restart, network interruption/restoration, and API-key revocation.
 - [ ] On the separately gated disposable device only, test add, rename, zone move, unavailable, and removal events or inventory deltas; clean up the disposable device after capture.
 - [x] Inspect mDNS advertisements before and after restart. Record exact service type/TXT fields only if stable.

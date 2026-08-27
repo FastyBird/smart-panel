@@ -58,6 +58,7 @@ const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 	'homey-plugin-connection',
 	'homey-plugin-device-mapping',
 	'homey-reconnect-backoff',
+	'homey-shs-permission-scopes',
 ]);
 const PUBLIC_SYNTHETIC_PERSONAL_VALUES = new Set([
 	'Locked',
@@ -169,6 +170,8 @@ const configuredPrivateValues = (): readonly string[] =>
 		process.env.FB_HOMEY_SHS_API_KEY,
 		process.env.FB_HOMEY_SHS_REPLACEMENT_API_KEY,
 		process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY,
+		process.env.FB_HOMEY_SHS_WITHOUT_DEVICE_API_KEY,
+		process.env.FB_HOMEY_SHS_WITHOUT_ZONE_API_KEY,
 		configuredExpectedHost(),
 		process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER,
 		process.env.FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID,
@@ -6646,6 +6649,10 @@ describe('Homey security artifact gate', () => {
 			'unsafe fixture contains a Homey personal access token',
 		);
 		expect(() => assertTextSafe('unsafe fixture', '{"value":"prefix_homey_abcdefghijklmnop"}')).toThrow(
+			'unsafe fixture contains a Homey personal access token',
+		);
+		expect(() => assertTextSafe('safe fixture', '{"probe":"homey-shs-permission-scopes"}')).not.toThrow();
+		expect(() => assertTextSafe('unsafe fixture', '{"probe":"homey-shs-permission-scopes-private"}')).toThrow(
 			'unsafe fixture contains a Homey personal access token',
 		);
 		expect(() =>

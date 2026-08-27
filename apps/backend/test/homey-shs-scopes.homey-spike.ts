@@ -1,6 +1,6 @@
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import {
 	type HomeyScopeProbeFetch,
@@ -89,6 +89,18 @@ const createFetch = (config: HomeyShsScopeProbeConfig): jest.MockedFunction<Home
 	});
 
 describe('Homey SHS permission-scope compatibility probe', () => {
+	it('preserves the sanitized live SHS permission-scope evidence', async () => {
+		const evidencePath = resolve(
+			__dirname,
+			'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-27-shs-13.4.1-permission-scopes.json',
+		);
+		const evidence: unknown = JSON.parse(await readFile(evidencePath, 'utf8'));
+		const config = createConfig();
+
+		expect(evidence).toStrictEqual(EXPECTED_REPORT);
+		expect(() => assertHomeyShsScopeReportSafe(evidence, config)).not.toThrow();
+	});
+
 	it('requires three distinct restricted credentials and isolated read-only gates', () => {
 		for (const name of [
 			'FB_HOMEY_SHS_DEVICE_ONLY_API_KEY',
