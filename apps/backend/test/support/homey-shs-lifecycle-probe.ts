@@ -432,9 +432,23 @@ const hasLifecycleResidue = (
 		(device) => deviceMarkerOf(device) === config.deviceMarker || device.ownerUri === config.expectedOwnerUri,
 	);
 
-const pause = async (milliseconds: number): Promise<void> =>
+const waitForSignal = async (signal: Promise<void>, timeoutMs: number): Promise<boolean> =>
 	new Promise((resolvePromise) => {
-		setTimeout(resolvePromise, milliseconds);
+		let settled = false;
+		const timeout = setTimeout(() => {
+			settled = true;
+			resolvePromise(false);
+		}, timeoutMs);
+
+		void signal.then(() => {
+			if (settled) {
+				return;
+			}
+
+			settled = true;
+			clearTimeout(timeout);
+			resolvePromise(true);
+		});
 	});
 
 const runObservationTrigger = async (label: string, trigger: () => Promise<void> | void): Promise<void> => {
@@ -487,6 +501,7 @@ const observeDeviceCreation = async (
 
 	let observationError: unknown;
 	let result: { device: HomeyLifecycleDevice; eventObserved: boolean } | undefined;
+	let inventoryDevice: HomeyLifecycleDevice | undefined;
 	let listenerRemovalFailed = false;
 
 	try {
@@ -502,7 +517,17 @@ const observeDeviceCreation = async (
 			const remainingMs = deadline - Date.now();
 
 			if (remainingMs <= 0) {
+				if (inventoryDevice !== undefined) {
+					result = { device: inventoryDevice, eventObserved: false };
+					break;
+				}
+
 				throw new HomeyShsLifecycleTimeoutError('operator add observation', config.observeMs);
+			}
+
+			if (inventoryDevice !== undefined) {
+				await waitForSignal(eventSignal, remainingMs);
+				continue;
 			}
 
 			const inventory = await freshDevices(client, config, Math.min(config.timeoutMs, remainingMs));
@@ -513,24 +538,15 @@ const observeDeviceCreation = async (
 			}
 
 			if (matches.length === 1) {
-				const eventGraceMs = Math.min(250, Math.max(0, deadline - Date.now()));
-
-				if (eventDevice === undefined && eventGraceMs > 0) {
-					await Promise.race([eventSignal, pause(eventGraceMs)]);
-				}
-
-				result = {
-					device: eventDevice ?? matches[0],
-					eventObserved: eventDevice !== undefined,
-				};
-				bindDevice(result.device);
-				break;
+				inventoryDevice = matches[0];
+				bindDevice(inventoryDevice);
+				continue;
 			}
 
 			const pollMs = Math.min(INVENTORY_POLL_MS, Math.max(0, deadline - Date.now()));
 
 			if (pollMs > 0) {
-				await Promise.race([eventSignal, pause(pollMs)]);
+				await waitForSignal(eventSignal, pollMs);
 			}
 		}
 	} catch (error: unknown) {
@@ -594,24 +610,35 @@ const observeDeviceDeletion = async (
 	try {
 		await runObservationTrigger('delete event observation', trigger);
 		const deadline = Date.now() + config.observeMs;
+		let absenceVerified = false;
 
-		while (true) {
+		while (!eventObserved) {
 			const remainingMs = deadline - Date.now();
 
 			if (remainingMs <= 0) {
+				if (absenceVerified) {
+					break;
+				}
+
 				throw new HomeyShsLifecycleTimeoutError('delete event observation', config.observeMs);
+			}
+
+			if (absenceVerified) {
+				await waitForSignal(eventSignal, remainingMs);
+				break;
 			}
 
 			const inventory = await freshDevices(client, config, Math.min(config.timeoutMs, remainingMs));
 
 			if (!hasLifecycleResidue(inventory, config, boundDeviceId)) {
-				break;
+				absenceVerified = true;
+				continue;
 			}
 
 			const pollMs = Math.min(INVENTORY_POLL_MS, Math.max(0, deadline - Date.now()));
 
 			if (pollMs > 0) {
-				await Promise.race([eventSignal, pause(pollMs)]);
+				await waitForSignal(eventSignal, pollMs);
 			}
 		}
 	} catch (error: unknown) {
@@ -684,7 +711,7 @@ const observeDeviceUpdate = async (
 			}
 
 			if (readbackVerified) {
-				await Promise.race([eventSignal, pause(remainingMs)]);
+				await waitForSignal(eventSignal, remainingMs);
 				break;
 			}
 
@@ -699,7 +726,7 @@ const observeDeviceUpdate = async (
 			const pollMs = Math.min(INVENTORY_POLL_MS, Math.max(0, deadline - Date.now()));
 
 			if (pollMs > 0) {
-				await Promise.race([eventSignal, pause(pollMs)]);
+				await waitForSignal(eventSignal, pollMs);
 			}
 		}
 	} catch (error: unknown) {
