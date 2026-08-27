@@ -145,6 +145,7 @@ describe('Homey SHS startup compatibility probe', () => {
 			'FB_HOMEY_SHS_CREDENTIAL_ROTATION_ENABLE',
 			'FB_HOMEY_SHS_LIFECYCLE_ENABLE',
 			'FB_HOMEY_SHS_RECOVERY_ENABLE',
+			'FB_HOMEY_SHS_REPLACEMENT_API_KEY',
 			'FB_HOMEY_SHS_WRITE_ENABLE',
 		]) {
 			expect(() => loadHomeyShsStartupProbeConfig({ ...BASE_ENVIRONMENT, [name]: '' })).toThrow(
