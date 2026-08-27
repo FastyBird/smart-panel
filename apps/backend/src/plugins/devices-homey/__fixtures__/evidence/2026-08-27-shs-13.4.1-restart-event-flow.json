@@ -1,0 +1,115 @@
+{
+	"metadata": {
+		"probe": "homey-shs-restart-event-flow",
+		"schemaVersion": 1,
+		"sdkVersion": "3.19.2"
+	},
+	"flow": {
+		"disconnectObserved": true,
+		"managerResubscribed": true,
+		"postRestartEventObserved": true,
+		"preRestartEventObserved": true,
+		"preRestartReadBackMatched": true,
+		"restorationReadBackMatched": true,
+		"restored": true,
+		"transportReconnected": true
+	},
+	"session": {
+		"cleanupCompleted": true,
+		"events": [
+			{
+				"event": "sdk.create.resolved",
+				"order": 1
+			},
+			{
+				"event": "manager.subscribe.resolved",
+				"order": 2
+			},
+			{
+				"event": "device.subscribe.resolved",
+				"order": 3
+			},
+			{
+				"event": "pre.write.requested",
+				"order": 4
+			},
+			{
+				"event": "pre.write.event.observed",
+				"order": 5
+			},
+			{
+				"event": "pre.write.readback.verified",
+				"order": 6
+			},
+			{
+				"event": "restart.window.open",
+				"order": 7
+			},
+			{
+				"event": "socket.disconnect",
+				"order": 8
+			},
+			{
+				"event": "socket.reconnect_attempt",
+				"order": 9
+			},
+			{
+				"event": "socket.reconnecting",
+				"order": 10
+			},
+			{
+				"event": "socket.reconnect_error",
+				"order": 11
+			},
+			{
+				"event": "socket.reconnect_attempt",
+				"order": 12
+			},
+			{
+				"event": "socket.reconnecting",
+				"order": 13
+			},
+			{
+				"event": "socket.reconnect",
+				"order": 14
+			},
+			{
+				"event": "manager.resubscribe.observed",
+				"order": 15
+			},
+			{
+				"event": "inventory.read.resolved",
+				"order": 16
+			},
+			{
+				"event": "restore.write.requested",
+				"order": 17
+			},
+			{
+				"event": "restore.write.event.observed",
+				"order": 18
+			},
+			{
+				"event": "restore.readback.verified",
+				"order": 19
+			},
+			{
+				"event": "device.unsubscribe.resolved",
+				"order": 20
+			},
+			{
+				"event": "manager.unsubscribe.resolved",
+				"order": 21
+			},
+			{
+				"event": "socket.disconnect.resolved",
+				"order": 22
+			},
+			{
+				"event": "sdk.destroyed",
+				"order": 23
+			}
+		],
+		"managerSubscribed": true
+	}
+}
