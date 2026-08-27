@@ -131,6 +131,27 @@ const completeReport = (scenario: 'offline-recovery' | 'online' = 'online'): Hom
 };
 
 describe('Homey SHS startup compatibility probe', () => {
+	it.each([
+		{
+			environment: BASE_ENVIRONMENT,
+			filename: '2026-08-27-shs-13.4.1-startup-online.json',
+			scenario: 'online',
+		},
+		{
+			environment: OFFLINE_ENVIRONMENT,
+			filename: '2026-08-27-shs-13.4.1-startup-offline-recovery.json',
+			scenario: 'offline-recovery',
+		},
+	] as const)('preserves the sanitized live $scenario startup evidence', async ({ environment, filename }) => {
+		const evidencePath = join(__dirname, '../src/plugins/devices-homey/__fixtures__/evidence', filename);
+		const evidence = JSON.parse(await readFile(evidencePath, 'utf8')) as unknown;
+		const config = loadHomeyShsStartupProbeConfig(environment);
+
+		assertHomeyShsStartupReportSchema(evidence);
+		expect(evidence).toStrictEqual(completeReport(config.scenario));
+		expect(() => assertHomeyShsStartupReportSafe(evidence, config)).not.toThrow();
+	});
+
 	it('requires a scenario-specific acknowledgement and rejects every conflicting gate', () => {
 		expect(loadHomeyShsStartupProbeConfig(BASE_ENVIRONMENT).scenario).toBe('online');
 		expect(loadHomeyShsStartupProbeConfig(OFFLINE_ENVIRONMENT).scenario).toBe('offline-recovery');

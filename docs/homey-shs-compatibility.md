@@ -1,8 +1,8 @@
 # Homey SHS Compatibility Record
 
-**Status:** In progress; safe inventory, SDK session/cleanup, SHS restart and network recovery, disposable-device
-lifecycle, and stable restart-spanning mDNS evidence captured; automatic mDNS discovery remains deferred, and
-physical/Homey-originated availability-event continuity is pending
+**Status:** In progress; safe inventory, production-service startup/recovery, SDK session/cleanup, SHS restart and
+network recovery, disposable-device lifecycle, and stable restart-spanning mDNS evidence captured; automatic mDNS
+discovery remains deferred, and physical/Homey-originated availability-event continuity is pending
 
 **Started:** 2026-08-12
 
@@ -29,7 +29,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Error and permission-scope classification             | Five failure scenarios and three omitted scopes passed   | None                                                             |
 | API-key revocation and replacement                    | Passed on SHS `13.4.1`                                   | None                                                             |
 | Disposable-device lifecycle                           | Passed on SHS `13.4.1`                                   | None                                                             |
-| Production-service startup                            | Guarded online/offline-recovery probe ready              | Run both scenarios against SHS `13.4.1`                          |
+| Production-service startup                            | Online and offline-recovery passed on SHS `13.4.1`       | None                                                             |
 | mDNS discovery                                        | Stable across one controlled restart; manual URL remains | Design safe identity verification before reconsidering discovery |
 | SDK decision                                          | SDK selected behind connector boundary                   | Re-evaluate the pinned package and audit result on every upgrade |
 | Sanitized fixture corpus                              | Nine live plus one synthetic device fixture              | Add physical/Homey-originated availability-event evidence        |
@@ -351,6 +351,16 @@ After both runs, restore the firewall and clear the startup gate:
 ```bash
 unset FB_HOMEY_SHS_STARTUP_SCENARIO FB_HOMEY_SHS_STARTUP_ENABLE FB_HOMEY_SHS_STARTUP_OBSERVE_MS
 ```
+
+Both guarded runs passed on 2026-08-27 against SHS `13.4.1`. The fresh-online run constructed the production service,
+reached healthy `CONNECTED` state after authoritative inventory synchronization, exposed the inventory snapshot, and
+stopped cleanly. The offline-recovery run began with only the test host's SHS path blocked, verified unhealthy
+`RECONNECTING` state after the initial unavailable attempt, then used the production retry path after the operator
+restored the firewall. It reached healthy `CONNECTED` state with an incremented reconnect counter, exposed a fresh
+authoritative inventory snapshot, and stopped cleanly. The reviewed reports are committed as
+`__fixtures__/evidence/2026-08-27-shs-13.4.1-startup-online.json` and
+`__fixtures__/evidence/2026-08-27-shs-13.4.1-startup-offline-recovery.json`. They contain no endpoint, host, credential,
+Homey identity, inventory content or count, device or zone identifier, event payload, firewall rule, or raw error.
 
 ## Operator-controlled restart recovery probe
 

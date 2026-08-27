@@ -1,0 +1,39 @@
+{
+	"metadata": {
+		"probe": "homey-shs-startup",
+		"scenario": "online",
+		"schemaVersion": 1,
+		"sdkVersion": "3.19.2"
+	},
+	"startup": {
+		"cleanupCompleted": true,
+		"initialUnavailableVerified": false,
+		"inventoryVerified": true,
+		"recoveryObserved": false,
+		"serviceConnected": true
+	},
+	"session": {
+		"events": [
+			{
+				"event": "service.start.requested",
+				"order": 1
+			},
+			{
+				"event": "service.start.resolved",
+				"order": 2
+			},
+			{
+				"event": "service.connected.observed",
+				"order": 3
+			},
+			{
+				"event": "inventory.verified",
+				"order": 4
+			},
+			{
+				"event": "service.stop.resolved",
+				"order": 5
+			}
+		]
+	}
+}
