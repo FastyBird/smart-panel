@@ -43,7 +43,31 @@
         "large": "/drivers/lifecycle-test-device/assets/images/large.png",
         "xlarge": "/drivers/lifecycle-test-device/assets/images/xlarge.png"
       },
-      "id": "lifecycle-test-device"
+      "id": "lifecycle-test-device",
+      "settings": [
+        {
+          "id": "fbsp_lifecycle_availability",
+          "type": "dropdown",
+          "value": "available",
+          "label": {
+            "en": "Lifecycle availability"
+          },
+          "values": [
+            {
+              "id": "available",
+              "label": {
+                "en": "Available"
+              }
+            },
+            {
+              "id": "unavailable",
+              "label": {
+                "en": "Unavailable"
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -36,13 +36,15 @@ values in Git.
 
 3. Wait until the probe prints that the add window is open. In Homey, add `Lifecycle Test Device`, keep its generated
    name unchanged, and place it in the configured source zone. Do not pair it before the add window opens.
-4. The probe renames and moves the bound device. Thirty seconds after that rename, this driver makes it unavailable;
-   fifteen seconds later it restores availability. Do not perform either transition manually.
+4. The probe renames and moves the bound device. Only after each corresponding event listener is active, it changes the
+   test driver's fixed lifecycle setting to make the device unavailable and then available again. Do not perform either
+   transition manually.
 5. The probe removes the device and verifies its final absence. After the sanitized report is written, stop `homey app
 run`; development mode then uninstalls the test app. Unset the lifecycle variables and revoke the lifecycle key.
 
-If the probe fails after pairing, remove only the device whose marker, driver, owner, name, and source zone match the
-guarded values. Never broaden cleanup to another app or device.
+The setting-based coordination is enabled only when every fixed marker, driver, owner, initial-name, and renamed-name
+value above matches. Other dedicated drivers remain operator-controlled. If the probe fails after pairing, remove only
+the device whose complete identity matches the guarded values. Never broaden cleanup to another app or device.
 
 ## Local verification
 

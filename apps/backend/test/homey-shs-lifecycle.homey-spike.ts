@@ -32,6 +32,15 @@ const BASE_ENVIRONMENT: NodeJS.ProcessEnv = {
 	FB_HOMEY_SHS_URL: 'http://127.0.0.1:4859',
 };
 
+const TEST_APP_ENVIRONMENT: NodeJS.ProcessEnv = {
+	...BASE_ENVIRONMENT,
+	FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER: 'fbsp-lifecycle-disposable-device',
+	FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID: 'homey:app:com.fastybird.smartpanel.lifecycletest:driver:lifecycle-test-device',
+	FB_HOMEY_SHS_LIFECYCLE_INITIAL_NAME: 'FBSP Lifecycle Initial',
+	FB_HOMEY_SHS_LIFECYCLE_OWNER_URI: 'homey:app:com.fastybird.smartpanel.lifecycletest',
+	FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME: 'FBSP Lifecycle Renamed',
+};
+
 const COMPLETE_EVENTS = [
 	'sdk.create.resolved',
 	'manager.subscribe.resolved',
@@ -144,6 +153,7 @@ class FakeLifecycleDevicesManager extends EventEmitter {
 	inventory: Record<string, FakeDevice> = {};
 	inventoryReadHook?: (readCount: number) => void;
 	readonly inventoryReadOptions: Array<{ $cache?: boolean; $timeout?: number; $updateCache?: boolean }> = [];
+	settingsRequests: Array<{ $timeout?: number; id: string; settings: Record<string, unknown> }> = [];
 	updateRequests: Array<{ $timeout?: number; device: { name?: string; zone?: string }; id: string }> = [];
 
 	connect(): Promise<void> {
@@ -169,6 +179,21 @@ class FakeLifecycleDevicesManager extends EventEmitter {
 		}
 
 		return Promise.resolve({ ...this.inventory });
+	}
+
+	setDeviceSettings(options: { $timeout?: number; id: string; settings: Record<string, unknown> }): Promise<unknown> {
+		this.settingsRequests.push(options);
+		const device = this.inventory[options.id];
+		const availability = options.settings.fbsp_lifecycle_availability;
+
+		if (device === undefined || (availability !== 'available' && availability !== 'unavailable')) {
+			return Promise.reject(new Error('raw invalid test-app setting detail'));
+		}
+
+		device.available = availability === 'available';
+		device.emit('update', { available: device.available });
+
+		return Promise.resolve(device);
 	}
 
 	updateDevice(options: { $timeout?: number; device: { name?: string; zone?: string }; id: string }): Promise<unknown> {
@@ -393,6 +418,7 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 
 		expect(config).toMatchObject({
 			apiKey: BASE_ENVIRONMENT.FB_HOMEY_SHS_API_KEY,
+			availabilityControl: 'operator',
 			expectedHost: '127.0.0.1',
 			observeMs: 10_000,
 			outputRoot: '/tmp/homey-lifecycle-spike/test/.homey-shs-captures',
@@ -405,6 +431,16 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		expect(() =>
 			loadHomeyShsLifecycleProbeConfig({ ...BASE_ENVIRONMENT, FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS: '300001' }),
 		).toThrow('between 10000 and 300000');
+	});
+
+	it('enables setting-based availability only for the complete bundled test-app identity', () => {
+		expect(loadHomeyShsLifecycleProbeConfig(TEST_APP_ENVIRONMENT).availabilityControl).toBe('test-app-setting');
+		expect(
+			loadHomeyShsLifecycleProbeConfig({
+				...TEST_APP_ENVIRONMENT,
+				FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME: 'FBSP Lifecycle Different',
+			}).availabilityControl,
+		).toBe('operator');
 	});
 
 	it.each([
@@ -546,6 +582,43 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		expect(harness.client.destroyCount).toBe(1);
 		expect(() => assertHomeyShsLifecycleReportSafe(report, config)).not.toThrow();
 		expect(JSON.stringify(report)).not.toContain(deviceId);
+	});
+
+	it('coordinates the bundled test app through settings only after availability listeners are active', async () => {
+		const config = {
+			...loadHomeyShsLifecycleProbeConfig(TEST_APP_ENVIRONMENT, '/tmp/homey-lifecycle-spike'),
+			observeMs: 25,
+			timeoutMs: 25,
+		};
+		const harness = createHarness(config);
+		const deviceId = 'runtime-bound-test-app-device-id';
+		const device = makeOwnedDevice(config, deviceId);
+		const hooksCalled: string[] = [];
+		const report = await probeHomeyShsLifecycle(config, harness.factory, {
+			onAddWindowOpen: () => {
+				hooksCalled.push('add');
+				harness.client.devices.inventory[deviceId] = device;
+				harness.client.devices.emit('device.create', device);
+			},
+			onAvailabilityRestoreRequested: () => hooksCalled.push('available'),
+			onUnavailableRequested: () => hooksCalled.push('unavailable'),
+		});
+
+		expect(report).toStrictEqual(completeReport());
+		expect(hooksCalled).toStrictEqual(['add', 'unavailable', 'available']);
+		expect(harness.client.devices.settingsRequests).toStrictEqual([
+			{
+				$timeout: 25,
+				id: deviceId,
+				settings: { fbsp_lifecycle_availability: 'unavailable' },
+			},
+			{
+				$timeout: 25,
+				id: deviceId,
+				settings: { fbsp_lifecycle_availability: 'available' },
+			},
+		]);
+		expect(harness.client.devices.inventory).toStrictEqual({});
 	});
 
 	it('requires a newly bound device to start available and leaves it for manual cleanup otherwise', async () => {

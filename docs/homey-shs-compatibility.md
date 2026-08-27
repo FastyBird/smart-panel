@@ -211,8 +211,9 @@ and requires the run-bound device to remain its only device during availability 
 The repository includes a private, test-only app at
 `apps/backend/test/support/homey-lifecycle-test-app`. Its single driver exposes the fixed synthetic marker and names
 listed in that directory's README. Pair it only after the lifecycle probe opens the add window. When the probe renames
-the bound device, the driver waits 30 seconds, makes it unavailable, then restores availability 15 seconds later. This
-keeps lifecycle evidence isolated from household apps and removes manual timing from the two availability stages.
+and moves the bound device, it changes the driver's fixed lifecycle setting only after each availability listener is
+active. The driver applies the requested unavailable or available state from that setting. This keeps lifecycle evidence
+isolated from household apps and removes manual timing and slow-operation races from both availability stages.
 
 After the `device.create` event exactly matches the marker, driver, owner, initial name, and source zone allowlist, the
 probe binds the new runtime device ID in memory. Only after that binding may it use the bounded local API operations
