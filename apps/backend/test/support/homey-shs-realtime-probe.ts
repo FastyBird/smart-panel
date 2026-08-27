@@ -65,7 +65,11 @@ export interface HomeyDevicesManager extends EventSource {
 	connect(): Promise<void>;
 	disconnect(): Promise<void>;
 	getCapabilityValue(options: { $timeout?: number; capabilityId: string; deviceId: string }): Promise<unknown>;
-	getDevices(options?: { $timeout?: number }): Promise<Record<string, HomeyDevice>>;
+	getDevices(options?: {
+		$cache?: boolean;
+		$timeout?: number;
+		$updateCache?: boolean;
+	}): Promise<Record<string, HomeyDevice>>;
 	setCapabilityValue(options: {
 		$timeout?: number;
 		capabilityId: string;

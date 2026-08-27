@@ -46,6 +46,7 @@ class FakeDevice extends EventEmitter implements HomeyDevice {
 class FakeManager extends EventEmitter {
 	connected = false;
 	readonly device = new FakeDevice();
+	readonly inventoryOptions: Array<{ $cache?: boolean; $timeout?: number; $updateCache?: boolean }> = [];
 	value = false;
 	writes: unknown[] = [];
 
@@ -63,7 +64,11 @@ class FakeManager extends EventEmitter {
 		return Promise.resolve(this.value);
 	}
 
-	getDevices(): Promise<Record<string, HomeyDevice>> {
+	getDevices(
+		options: { $cache?: boolean; $timeout?: number; $updateCache?: boolean } = {},
+	): Promise<Record<string, HomeyDevice>> {
+		this.inventoryOptions.push(options);
+
 		return Promise.resolve({ 'test-device-that-must-not-leak': this.device });
 	}
 
@@ -145,6 +150,10 @@ describe('Homey SHS restart event-flow probe', () => {
 			transportReconnected: true,
 		});
 		expect(client.devices.writes).toStrictEqual([true, false]);
+		expect(client.devices.inventoryOptions).toStrictEqual([
+			{ $timeout: 1000 },
+			{ $cache: false, $timeout: 1000, $updateCache: true },
+		]);
 		expect(client.devices.value).toBe(false);
 		expect(client.devices.device.disconnectCount).toBe(1);
 		expect(client.disconnectCount).toBe(1);

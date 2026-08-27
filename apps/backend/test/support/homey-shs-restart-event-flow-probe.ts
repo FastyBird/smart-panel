@@ -318,7 +318,7 @@ export const probeHomeyShsRestartEventFlow = async (
 		report.flow.managerResubscribed = true;
 		appendEvent(report, 'manager.resubscribe.observed');
 		await runHomeyShsSdkOperation('post-restart inventory read', config.timeoutMs, () =>
-			client.devices.getDevices({ $timeout: config.timeoutMs }),
+			client.devices.getDevices({ $cache: false, $timeout: config.timeoutMs, $updateCache: true }),
 		);
 		appendEvent(report, 'inventory.read.resolved');
 
