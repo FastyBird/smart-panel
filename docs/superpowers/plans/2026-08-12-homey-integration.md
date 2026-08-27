@@ -71,7 +71,7 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - [ ] Verify Socket.IO connection and record subscription/event ordering for capability changes and availability changes.
 - [ ] Write the allowlisted test capability and confirm the resulting event plus subsequent read.
 - [x] Test invalid key, missing scopes, bad URL, unavailable host, and request timeout behavior.
-- [ ] Test SHS restart, network interruption/restoration, and API-key revocation.
+- [x] Test SHS restart, network interruption/restoration, and API-key revocation.
 - [ ] On the separately gated disposable device only, test add, rename, zone move, unavailable, and removal events or inventory deltas; clean up the disposable device after capture.
 - [x] Inspect mDNS advertisements before and after restart. Record exact service type/TXT fields only if stable.
 - [ ] If Homey Pro hardware is available, repeat the minimum inventory/event/write suite against its local API.
@@ -620,7 +620,7 @@ representative lifecycle failure paths.
 - [ ] Startup with SHS offline, then recovery.
 - [ ] SHS restart during event flow.
 - [x] Network interruption/restoration.
-- [ ] API key revoked, replaced, and insufficiently scoped.
+- [x] API key revoked, replaced, and insufficiently scoped.
 - [ ] Separately gated add/rename/zone-move/unavailable/removal lifecycle tests on the allowlisted disposable device only, followed by cleanup.
 - [ ] Physical/Homey/flow-originated state changes.
 - [ ] Allowlisted Smart Panel control for every writable MVP mapping family available.
@@ -639,9 +639,10 @@ availability event was observed across the interruption.
 
 The 2026-08-26 SHS `13.4.1` error probe recorded a non-mutating five-scenario slice: generated invalid-key
 authentication, a device-read-only key's missing system scope, shared bad-URL validation, and probe-owned loopback
-unavailable/timeout simulations all produced their expected sanitized categories. The broad task remains open until
-independently valid keys missing zone and device permissions are exercised. This also closes only the insufficiently
-scoped sub-slice of the API-key lifecycle item above; revocation and replacement remain open.
+unavailable/timeout simulations all produced their expected sanitized categories. The 2026-08-27 permission-scope
+report independently proved missing system, zone, and device permissions after an allowed `200` read. The same day's
+credential-rotation report proved the primary key returned `401` after operator revocation and the replacement key
+remained valid, closing the API-key lifecycle item above.
 
 ### Task 6.3: Validate performance and security
 

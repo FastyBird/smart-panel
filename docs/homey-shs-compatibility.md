@@ -2,7 +2,7 @@
 
 **Status:** In progress; safe inventory, SDK session/cleanup, SHS restart and network recovery, and stable
 restart-spanning mDNS evidence captured; automatic mDNS discovery remains deferred, and live capability-event, write,
-lifecycle, and credential-rotation evidence is pending
+lifecycle evidence is pending
 
 **Started:** 2026-08-12
 
@@ -19,19 +19,19 @@ file. Live results use synthetic aliases and sanitized captures only.
 
 ## Current gate status
 
-| Area                                                  | Status                                                   | Evidence still required                                              |
-| ----------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------- |
-| Credential-safe read probe                            | Passed on SHS `13.4.0` and `13.4.1` over HTTP `4859`     | Repeat over HTTPS `4860` if enabled                                  |
-| System, zone, device inventory, and individual device | Captured and sanitized                                   | Add lifecycle delta evidence on the disposable test device           |
-| Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read             | Add allowlisted write and read-back evidence                         |
-| Socket.IO events and reconnect                        | SHS restart and network recovery passed                  | Capture capability/availability event-flow continuity                |
-| Allowlisted capability write                          | Hard-gated probe implemented, disabled                   | Use only the designated harmless test capability                     |
-| Error and permission-scope classification             | Five failure scenarios and three omitted scopes passed   | None                                                                 |
-| API-key revocation and replacement                    | Operator-controlled probe ready                          | Revoke only a dedicated test key during the gated observation window |
-| Disposable-device lifecycle                           | Guarded operator probe ready                             | Use only the separately gated virtual/test device                    |
-| mDNS discovery                                        | Stable across one controlled restart; manual URL remains | Design safe identity verification before reconsidering discovery     |
-| SDK decision                                          | SDK selected behind connector boundary                   | Re-evaluate the pinned package and audit result on every upgrade     |
-| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture              | Add event/reconnect fixtures from the remaining live lifecycle runs  |
+| Area                                                  | Status                                                   | Evidence still required                                             |
+| ----------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------- |
+| Credential-safe read probe                            | Passed on SHS `13.4.0` and `13.4.1` over HTTP `4859`     | Repeat over HTTPS `4860` if enabled                                 |
+| System, zone, device inventory, and individual device | Captured and sanitized                                   | Add lifecycle delta evidence on the disposable test device          |
+| Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read             | Add allowlisted write and read-back evidence                        |
+| Socket.IO events and reconnect                        | SHS restart and network recovery passed                  | Capture capability/availability event-flow continuity               |
+| Allowlisted capability write                          | Hard-gated probe implemented, disabled                   | Use only the designated harmless test capability                    |
+| Error and permission-scope classification             | Five failure scenarios and three omitted scopes passed   | None                                                                |
+| API-key revocation and replacement                    | Passed on SHS `13.4.1`                                   | None                                                                |
+| Disposable-device lifecycle                           | Guarded operator probe ready                             | Use only the separately gated virtual/test device                   |
+| mDNS discovery                                        | Stable across one controlled restart; manual URL remains | Design safe identity verification before reconsidering discovery    |
+| SDK decision                                          | SDK selected behind connector boundary                   | Re-evaluate the pinned package and audit result on every upgrade    |
+| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture              | Add event/reconnect fixtures from the remaining live lifecycle runs |
 
 ## Installation evidence
 
@@ -380,6 +380,12 @@ unset FB_HOMEY_SHS_CREDENTIAL_ROTATION_OBSERVE_MS
 This runbook authorizes only the operator to revoke the dedicated primary test key. The probe and automated agents do
 not create, revoke, rotate, or otherwise administer Homey credentials.
 
+The operator-controlled run on 2026-08-27 against SHS `13.4.1` recorded the exact six-event sequence. Both disposable
+keys completed the initial inventory read, the operator revoked only the primary key after the observation window
+opened, the probe observed `401`, and the replacement key completed the final inventory read. The reviewed report is
+committed as `__fixtures__/evidence/2026-08-27-shs-13.4.1-credential-rotation.json`; it contains no endpoint, Homey
+identity, credential, inventory data, response body, raw error, or identifier.
+
 ## Privacy-safe mDNS observation probe
 
 The mDNS probe performs a bounded wildcard DNS-SD observation so it can compare Homey with other services advertised by
@@ -594,7 +600,7 @@ Fill this matrix using synthetic aliases only.
 | Allowlisted write, event, and read-back   | Pending                             |                                                                                                                                                      |
 | Network interruption and restoration      | Pass                                | 36 ordered events proved disconnect, nine retries during the 60-second interruption, resubscription, fresh inventory read, and complete cleanup      |
 | SHS restart and reconnect                 | Pass                                | 15 ordered events proved disconnect, two observed retries, resubscription, fresh inventory read, and complete cleanup                                |
-| API-key revocation and replacement        | Pending                             |                                                                                                                                                      |
+| API-key revocation and replacement        | Pass                                | Primary and replacement keys passed preflight; revocation returned `401`, and the replacement key remained valid                                     |
 | Disposable-device lifecycle sequence      | Pending                             |                                                                                                                                                      |
 | Stable mDNS service before/after restart  | Pass                                | Ten-second pre/post observations were exact matches: `_homey._tcp` on `4859` plus two co-hosted `_hap._tcp` services                                 |
 
