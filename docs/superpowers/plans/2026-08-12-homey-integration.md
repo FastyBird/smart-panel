@@ -650,6 +650,11 @@ cleanup. SHS omitted the manager create event and every bound-device update even
 event was observed; the sanitized report records each omission explicitly. This does not close availability-event
 continuity or physical/Homey/flow-originated state changes.
 
+A repeat lifecycle run separated the 90-second operator pairing window from the full ten-second event window retained
+after each exact read-back. It produced the same result: create and all bound-device update events remained absent,
+delete was observed, and cleanup passed. This characterizes the synthetic test driver's availability behavior without
+closing physical/Homey/flow-originated event continuity.
+
 The 2026-08-26 SHS `13.4.1` error probe recorded a non-mutating five-scenario slice: generated invalid-key
 authentication, a device-read-only key's missing system scope, shared bad-URL validation, and probe-owned loopback
 unavailable/timeout simulations all produced their expected sanitized categories. The 2026-08-27 permission-scope

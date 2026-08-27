@@ -102,7 +102,9 @@ response body, raw error, or identifier.
 The device-lifecycle report records the complete guarded disposable-device lifecycle on SHS `13.4.1`: exact add,
 rename, zone move, unavailable state, restoration, removal, final absence, and cleanup. SHS omitted the manager create
 event and all bound-device update events during the run, while the delete event was observed; bounded, cache-bypassing
-inventory read-backs verified every omitted-event transition. The report contains no endpoint, Homey identity,
-credential, device or zone identifier, name, inventory content, event payload, response body, or raw error.
+inventory read-backs verified every omitted-event transition. A repeat run retained each listener through the full
+ten-second post-read-back event window and produced the same sanitized result, confirming absence for the synthetic
+test driver without making a claim about physical/Homey-originated events. The report contains no endpoint, Homey
+identity, credential, device or zone identifier, name, inventory content, event payload, response body, or raw error.
 
 Before committing regenerated fixtures, inspect every value and key and confirm that no private source value survives.

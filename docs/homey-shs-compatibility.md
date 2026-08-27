@@ -1,8 +1,8 @@
 # Homey SHS Compatibility Record
 
 **Status:** In progress; safe inventory, SDK session/cleanup, SHS restart and network recovery, disposable-device
-lifecycle, and stable restart-spanning mDNS evidence captured; automatic mDNS discovery remains deferred, and live
-availability-event continuity is pending
+lifecycle, and stable restart-spanning mDNS evidence captured; automatic mDNS discovery remains deferred, and
+physical/Homey-originated availability-event continuity is pending
 
 **Started:** 2026-08-12
 
@@ -24,14 +24,14 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Credential-safe read probe                            | Passed on SHS `13.4.0` and `13.4.1` over HTTP `4859`     | Repeat over HTTPS `4860` if enabled                              |
 | System, zone, device inventory, and individual device | Captured and sanitized                                   | None                                                             |
 | Capability metadata and suffixed IDs                  | Inventory, explicit read, and write read-back passed     | None                                                             |
-| Socket.IO events and reconnect                        | Capability event, restart, and network recovery passed   | Capture availability event-flow continuity                       |
+| Socket.IO events and reconnect                        | Capability event, restart, and network recovery passed   | Capture physical/Homey-originated availability-event continuity  |
 | Allowlisted capability write                          | Passed on SHS `13.4.1`                                   | None                                                             |
 | Error and permission-scope classification             | Five failure scenarios and three omitted scopes passed   | None                                                             |
 | API-key revocation and replacement                    | Passed on SHS `13.4.1`                                   | None                                                             |
 | Disposable-device lifecycle                           | Passed on SHS `13.4.1`                                   | None                                                             |
 | mDNS discovery                                        | Stable across one controlled restart; manual URL remains | Design safe identity verification before reconsidering discovery |
 | SDK decision                                          | SDK selected behind connector boundary                   | Re-evaluate the pinned package and audit result on every upgrade |
-| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture              | Add live availability-event evidence                             |
+| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture              | Add physical/Homey-originated availability-event evidence        |
 
 ## Installation evidence
 
@@ -249,8 +249,11 @@ pnpm run homey:probe-lifecycle
 The probe fails closed unless the acknowledgement and ordered operation list match those exact values. The device
 marker must start with `fbsp-lifecycle-`, and both names must start with `FBSP Lifecycle`. The driver ID must belong to
 the exact owner URI using Homey's `<owner-uri>:<driver>` form. Driver ID, owner URI, initial and renamed names,
-and both distinct zone IDs are exact allowlist values. `FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS` optionally sets the bounded
-time available for each requested operator action from `10000` through `300000` milliseconds and defaults to `90000`.
+and both distinct zone IDs are exact allowlist values. `FB_HOMEY_SHS_LIFECYCLE_ADD_WINDOW_MS` optionally sets the
+bounded operator pairing window from `10000` through `300000` milliseconds and defaults to `90000`.
+`FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS` independently sets the post-read-back event window for each lifecycle transition
+over the same range and default. Keeping the add window long and the event window short gives the operator time to pair
+without extending every absent-event check.
 
 Never add, rename, move, make unavailable, or remove an ordinary household device. Use a dedicated test driver where
 possible, and do not pair or discover physical equipment as part of this run. Successful completion requires the
@@ -267,7 +270,8 @@ unset FB_HOMEY_SHS_LIFECYCLE_ENABLE FB_HOMEY_SHS_LIFECYCLE_OPERATIONS
 unset FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID
 unset FB_HOMEY_SHS_LIFECYCLE_OWNER_URI FB_HOMEY_SHS_LIFECYCLE_INITIAL_NAME
 unset FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID
-unset FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS
+unset FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID FB_HOMEY_SHS_LIFECYCLE_ADD_WINDOW_MS
+unset FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS
 unset FB_HOMEY_SHS_API_KEY
 ```
 
@@ -277,7 +281,14 @@ cleanup. SHS did not emit the manager create event or any of the bound-device up
 probe recorded those omissions and verified every resulting state with bounded, cache-bypassing inventory read-back;
 the delete event was observed. The sanitized report is committed as
 `__fixtures__/evidence/2026-08-27-shs-13.4.1-device-lifecycle.json`. This closes the lifecycle inventory-delta slice but
-does not close live availability-event continuity.
+does not close physical/Homey-originated availability-event continuity.
+
+The lifecycle run was repeated after the probe began retaining each listener through the full configured event
+deadline. A separate 90-second operator add window allowed pairing without lengthening the transition checks; each
+post-read-back event window remained open for 10 seconds. The result was semantically identical: no create, rename,
+zone-move, unavailable, or availability-restoration event arrived, while delete was observed and every state read-back
+and cleanup check passed. This confirms event absence for the synthetic lifecycle driver rather than extrapolating it
+to physical devices or Homey/flow-originated changes.
 
 ## Operator-controlled restart recovery probe
 
@@ -539,7 +550,8 @@ unset FB_HOMEY_SHS_LIFECYCLE_DEVICE_ID FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER
 unset FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID FB_HOMEY_SHS_LIFECYCLE_OWNER_URI
 unset FB_HOMEY_SHS_LIFECYCLE_INITIAL_NAME FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME
 unset FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID
-unset FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS FB_HOMEY_SHS_RECOVERY_ENABLE FB_HOMEY_SHS_RECOVERY_SCENARIO
+unset FB_HOMEY_SHS_LIFECYCLE_ADD_WINDOW_MS FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS
+unset FB_HOMEY_SHS_RECOVERY_ENABLE FB_HOMEY_SHS_RECOVERY_SCENARIO
 unset FB_HOMEY_SHS_RECOVERY_OBSERVE_MS FB_HOMEY_SHS_CREDENTIAL_ROTATION_ENABLE
 unset FB_HOMEY_SHS_CREDENTIAL_ROTATION_OBSERVE_MS FB_HOMEY_SHS_REPLACEMENT_API_KEY
 pnpm run homey:probe-scopes
@@ -621,7 +633,7 @@ Fill this matrix using synthetic aliases only.
 | Suffixed capability IDs                   | Pass in inventory and explicit read | 1,142 capability entries, including 170 suffixed entries; 55 devices repeat a base ID; an explicit suffixed capability GET returned a numeric scalar |
 | Socket.IO connect and subscribe           | Pass                                | SDK creation, socket connect, manager subscribe/unsubscribe, socket disconnect, disconnect resolution, and SDK destruction completed in strict order |
 | Capability events                         | Pass                                | The allowlisted write produced its matching capability update inside the guarded observation window                                                  |
-| Availability events                       | Pending                             |                                                                                                                                                      |
+| Availability events                       | Absent for synthetic test driver    | Unavailable/restored read-backs passed after full ten-second event windows; physical/Homey-originated evidence remains pending                       |
 | Allowlisted write, event, and read-back   | Pass                                | Requested-value event and read-back passed; restoration of the original value and its second read-back also passed                                   |
 | Network interruption and restoration      | Pass                                | 36 ordered events proved disconnect, nine retries during the 60-second interruption, resubscription, fresh inventory read, and complete cleanup      |
 | SHS restart and reconnect                 | Pass                                | 15 ordered events proved disconnect, two observed retries, resubscription, fresh inventory read, and complete cleanup                                |
