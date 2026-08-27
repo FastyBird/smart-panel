@@ -629,6 +629,13 @@ representative lifecycle failure paths.
 - [ ] Burst updates and concurrent commands.
 - [ ] Plugin disable/enable and backend shutdown with no leaked connections/timers.
 
+A guarded startup probe now exercises a newly constructed production `HomeyService`, the local connector factory, and
+the pinned SDK transport while replacing persistence with a no-op synchronizer. Its online scenario requires healthy
+connection, authoritative inventory availability, and clean shutdown. Its offline-recovery scenario additionally
+requires the initial unavailable attempt to leave the service in `RECONNECTING`, followed by a scheduled production
+reconnect and incremented reconnect counter after the operator restores only the test SHS network path. Both Task 6.2
+startup boxes remain open until the reviewed live reports are recorded.
+
 The 2026-08-26 SHS `13.4.1` restart probe closed the transport/session recovery slice: it observed disconnect,
 reconnect, manager resubscription, a fresh inventory read, and complete cleanup. This does not close the event-flow
 criterion above because no capability or availability event was observed before and after that restart.
