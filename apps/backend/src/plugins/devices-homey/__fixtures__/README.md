@@ -82,6 +82,10 @@ corpus. The filename records the observation date and SHS version. Each report m
 labels, booleans, ordering numbers, public dependency versions, and non-sensitive status codes, and must have a focused
 test that re-applies the report safety assertions. The 2026-08-14 SDK session evidence records connection,
 subscription, cleanup, and invalid-key behavior only; it does not claim capability-event, write, or reconnect coverage.
+The 2026-08-27 write-confirmation evidence records one allowlisted capability write, its matching event and read-back,
+restoration of the original value with a second matching read-back, complete cleanup, and invalid-key rejection on SHS
+`13.4.1`. It contains no endpoint, Homey identity, credential, device or capability identifier, value, inventory data,
+event payload, response body, or raw error.
 The 2026-08-26 mDNS evidence records the Homey and co-hosted HAP service types, ports, and TXT key names observed on SHS
 `13.4.1`; the pre-restart and post-restart reports are exact matches. The restart-recovery and network-recovery reports
 record ordered SDK disconnect, reconnect, manager resubscription, fresh inventory read, and cleanup evidence across an

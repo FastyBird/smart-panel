@@ -1,7 +1,7 @@
 # Homey SHS Compatibility Record
 
 **Status:** In progress; safe inventory, SDK session/cleanup, SHS restart and network recovery, and stable
-restart-spanning mDNS evidence captured; automatic mDNS discovery remains deferred, and live capability-event, write,
+restart-spanning mDNS evidence captured; automatic mDNS discovery remains deferred, and live availability-event and
 lifecycle evidence is pending
 
 **Started:** 2026-08-12
@@ -23,9 +23,9 @@ file. Live results use synthetic aliases and sanitized captures only.
 | ----------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------- |
 | Credential-safe read probe                            | Passed on SHS `13.4.0` and `13.4.1` over HTTP `4859`     | Repeat over HTTPS `4860` if enabled                                 |
 | System, zone, device inventory, and individual device | Captured and sanitized                                   | Add lifecycle delta evidence on the disposable test device          |
-| Capability metadata and suffixed IDs                  | Captured from inventory and an explicit read             | Add allowlisted write and read-back evidence                        |
-| Socket.IO events and reconnect                        | SHS restart and network recovery passed                  | Capture capability/availability event-flow continuity               |
-| Allowlisted capability write                          | Hard-gated probe implemented, disabled                   | Use only the designated harmless test capability                    |
+| Capability metadata and suffixed IDs                  | Inventory, explicit read, and write read-back passed     | None                                                                |
+| Socket.IO events and reconnect                        | Capability event, restart, and network recovery passed   | Capture availability event-flow continuity                          |
+| Allowlisted capability write                          | Passed on SHS `13.4.1`                                   | None                                                                |
 | Error and permission-scope classification             | Five failure scenarios and three omitted scopes passed   | None                                                                |
 | API-key revocation and replacement                    | Passed on SHS `13.4.1`                                   | None                                                                |
 | Disposable-device lifecycle                           | Guarded operator probe ready                             | Use only the separately gated virtual/test device                   |
@@ -183,6 +183,12 @@ capability is settable, validates type/range/enum constraints, and performs a fr
 original value. The requested value must differ from that original. It then requires the requested-value event and
 read-back, restores the original value in `finally`, and requires a second read-back confirming restoration before the
 sanitized report can be written.
+
+On 2026-08-27, the guarded probe passed against SHS `13.4.1`: the requested write produced a matching capability event
+and read-back, the original value was restored with a second matching read-back, all subscriptions and SDK resources
+were cleaned up, and the independent invalid key was rejected with `401`. The sanitized nine-event report is committed
+as `__fixtures__/evidence/2026-08-27-shs-13.4.1-write-confirmation.json`; it retains no device or capability identifier,
+requested or original value, endpoint, credential, inventory content, or event payload.
 
 ## Operator-controlled disposable-device lifecycle probe
 
@@ -557,8 +563,7 @@ HTTP remains the independent read-only compatibility/capture path, not the produ
 is based on the live SHS session and cleanup evidence, the SDK-native manager/capability contract, and the production
 adapter suites covering bounded creation and operations, subscription cleanup, reconnect coalescing, duplicate-listener
 prevention, late-client disposal, and normalized error handling. Live SHS restart and network-interruption session
-recovery now pass; capability and availability event-flow continuity remains a release-evidence gap, not an SDK
-abstraction gap.
+recovery now pass; availability event-flow continuity remains a release-evidence gap, not an SDK abstraction gap.
 
 The package license permits use with Homey products. Smart Panel loads it only for a user-configured Homey integration,
 does not copy or modify its proprietary source, and preserves the package's own `LICENSE` in installed production
@@ -596,8 +601,9 @@ Fill this matrix using synthetic aliases only.
 | Complete inventory and individual read    | Pass                                | Complete inventory captured: 118 devices and 16 zones; the selected individual-device response matched its pseudonymized inventory identity          |
 | Suffixed capability IDs                   | Pass in inventory and explicit read | 1,142 capability entries, including 170 suffixed entries; 55 devices repeat a base ID; an explicit suffixed capability GET returned a numeric scalar |
 | Socket.IO connect and subscribe           | Pass                                | SDK creation, socket connect, manager subscribe/unsubscribe, socket disconnect, disconnect resolution, and SDK destruction completed in strict order |
-| Capability and availability events        | Pending                             |                                                                                                                                                      |
-| Allowlisted write, event, and read-back   | Pending                             |                                                                                                                                                      |
+| Capability events                         | Pass                                | The allowlisted write produced its matching capability update inside the guarded observation window                                                  |
+| Availability events                       | Pending                             |                                                                                                                                                      |
+| Allowlisted write, event, and read-back   | Pass                                | Requested-value event and read-back passed; restoration of the original value and its second read-back also passed                                   |
 | Network interruption and restoration      | Pass                                | 36 ordered events proved disconnect, nine retries during the 60-second interruption, resubscription, fresh inventory read, and complete cleanup      |
 | SHS restart and reconnect                 | Pass                                | 15 ordered events proved disconnect, two observed retries, resubscription, fresh inventory read, and complete cleanup                                |
 | API-key revocation and replacement        | Pass                                | Primary and replacement keys passed preflight; revocation returned `401`, and the replacement key remained valid                                     |

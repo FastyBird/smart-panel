@@ -69,7 +69,7 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - [x] Capture the complete device inventory and individual device objects.
 - [x] Capture capabilities with values, types, units, ranges, enums, readable/writable flags, and repeated/suffixed IDs.
 - [ ] Verify Socket.IO connection and record subscription/event ordering for capability changes and availability changes.
-- [ ] Write the allowlisted test capability and confirm the resulting event plus subsequent read.
+- [x] Write the allowlisted test capability and confirm the resulting event plus subsequent read.
 - [x] Test invalid key, missing scopes, bad URL, unavailable host, and request timeout behavior.
 - [x] Test SHS restart, network interruption/restoration, and API-key revocation.
 - [ ] On the separately gated disposable device only, test add, rename, zone move, unavailable, and removal events or inventory deltas; clean up the disposable device after capture.
@@ -90,7 +90,9 @@ the dependency. Its Node 24 engine is now reflected in root, backend, and packag
 chain's unpatched moderate `parseuri` advisory is accepted only with the documented HTTP(S), credential, 2,048-character,
 administrator-only endpoint boundary and bounded operations. A direct documented HTTP/Socket.IO adapter is the recorded
 replacement and must pass the existing connector contract. Live restart and network-interruption session recovery
-passed on SHS `13.4.1`; capability and availability event-flow continuity remains open above and in Task 6.2.
+passed on SHS `13.4.1`. The 2026-08-27 guarded write run also proved one requested capability update, matching event and
+read-back, restoration, and restoration read-back. Availability event-flow continuity remains open above and in Task
+6.2.
 
 ### Task 0.4: Build the sanitized fixture corpus
 
@@ -636,6 +638,11 @@ firewall rule blocked only the test host's path to SHS ports `4859` and `4860` f
 report proved disconnect, nine reconnect attempts during that finite interruption, reconnect, manager resubscription,
 a fresh inventory read, and complete cleanup. It does not close the event-flow criterion because no capability or
 availability event was observed across the interruption.
+
+The 2026-08-27 SHS `13.4.1` guarded write probe closed the single allowlisted capability slice: the requested value
+produced a matching event and read-back, and the original value was restored with a second matching read-back before
+cleanup. This does not close availability-event coverage, physical/Homey/flow-originated updates, or Smart Panel
+control for every writable MVP mapping family.
 
 The 2026-08-26 SHS `13.4.1` error probe recorded a non-mutating five-scenario slice: generated invalid-key
 authentication, a device-read-only key's missing system scope, shared bad-URL validation, and probe-owned loopback
