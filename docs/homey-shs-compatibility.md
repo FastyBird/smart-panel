@@ -29,6 +29,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Error and permission-scope classification             | Five failure scenarios and three omitted scopes passed   | None                                                             |
 | API-key revocation and replacement                    | Passed on SHS `13.4.1`                                   | None                                                             |
 | Disposable-device lifecycle                           | Passed on SHS `13.4.1`                                   | None                                                             |
+| Production-service startup                            | Guarded online/offline-recovery probe ready              | Run both scenarios against SHS `13.4.1`                          |
 | mDNS discovery                                        | Stable across one controlled restart; manual URL remains | Design safe identity verification before reconsidering discovery |
 | SDK decision                                          | SDK selected behind connector boundary                   | Re-evaluate the pinned package and audit result on every upgrade |
 | Sanitized fixture corpus                              | Nine live plus one synthetic device fixture              | Add physical/Homey-originated availability-event evidence        |
@@ -289,6 +290,67 @@ post-read-back event window remained open for 10 seconds. The result was semanti
 zone-move, unavailable, or availability-restoration event arrived, while delete was observed and every state read-back
 and cleanup check passed. This confirms event absence for the synthetic lifecycle driver rather than extrapolating it
 to physical devices or Homey/flow-originated changes.
+
+## Operator-controlled production-service startup probe
+
+The startup probe exercises the production `HomeyService`, `HomeyLocalConnectorFactory`, and pinned SDK transport in a
+fresh backend process. It substitutes only a no-op synchronizer, so it can validate connection state, authoritative
+inventory availability, reconnect accounting, and service cleanup without adopting devices or writing to the Smart
+Panel database. It performs no Homey mutation and records no inventory content or count.
+
+Run the online scenario first while SHS is reachable. Start from the same base URL, expected-host, API-key, and
+private-term environment as the safe read probe. Completely unset every mutation, lifecycle, recovery, and
+credential-rotation variable; even an empty value is rejected:
+
+```bash
+unset FB_HOMEY_SHS_WRITE_ENABLE FB_HOMEY_SHS_WRITE_DEVICE_ID FB_HOMEY_SHS_WRITE_CAPABILITY_ID
+unset FB_HOMEY_SHS_WRITE_VALUE FB_HOMEY_SHS_LIFECYCLE_ENABLE FB_HOMEY_SHS_LIFECYCLE_OPERATIONS
+unset FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID
+unset FB_HOMEY_SHS_LIFECYCLE_OWNER_URI FB_HOMEY_SHS_LIFECYCLE_INITIAL_NAME
+unset FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID
+unset FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID FB_HOMEY_SHS_LIFECYCLE_ADD_WINDOW_MS
+unset FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS FB_HOMEY_SHS_RECOVERY_ENABLE
+unset FB_HOMEY_SHS_RECOVERY_SCENARIO FB_HOMEY_SHS_RECOVERY_OBSERVE_MS
+unset FB_HOMEY_SHS_CREDENTIAL_ROTATION_ENABLE FB_HOMEY_SHS_CREDENTIAL_ROTATION_OBSERVE_MS
+unset FB_HOMEY_SHS_REPLACEMENT_API_KEY
+export FB_HOMEY_SHS_STARTUP_SCENARIO=online
+export FB_HOMEY_SHS_STARTUP_ENABLE=I_WILL_VERIFY_A_FRESH_ONLINE_HOMEY_STARTUP
+pnpm run homey:probe-startup
+```
+
+The online report is written only if the newly constructed production service reaches healthy `CONNECTED` state,
+publishes a non-null authoritative inventory snapshot, and stops cleanly.
+
+For offline-at-boot recovery, block only this Mac's path to the dedicated test SHS ports `4859` and `4860` before
+starting the command. Do not stop SHS, block the broader LAN, or alter the container. Then select the distinct scenario
+and acknowledgement:
+
+```bash
+export FB_HOMEY_SHS_STARTUP_SCENARIO=offline-recovery
+export FB_HOMEY_SHS_STARTUP_ENABLE=I_WILL_START_WITH_TEST_SHS_BLOCKED_AND_RESTORE_ONLY_WHEN_PROMPTED
+export FB_HOMEY_SHS_STARTUP_OBSERVE_MS=90000
+pnpm run homey:probe-startup
+```
+
+The probe first requires the production service to finish its initial attempt in unhealthy `RECONNECTING` state. Only
+after it prints `Homey offline-startup recovery window is open` should the operator remove the narrow firewall rule.
+The report is written only after a scheduled production reconnect reaches healthy `CONNECTED` state, increments the
+service reconnect counter, makes an authoritative inventory snapshot available, and stops cleanly. The probe never
+changes firewall or network state itself.
+
+`FB_HOMEY_SHS_STARTUP_OBSERVE_MS` bounds initial service startup, the operator recovery window, and cleanup from
+`10000` through `300000` milliseconds and defaults to `90000`. It must be greater than `FB_HOMEY_SHS_TIMEOUT_MS`, so
+the intentionally blocked initial connection can fail and open the restoration prompt with time remaining. All
+production connector operations remain internally bounded by `FB_HOMEY_SHS_TIMEOUT_MS`. If a startup or cleanup
+deadline is exceeded, the run is marked failed but waits for that internally bounded operation and definitive service
+teardown before returning. All failure messages and the exact-schema report use fixed labels only; endpoint, host, key,
+Homey identity, inventory, device and zone identifiers, event payloads, and raw errors are excluded.
+
+After both runs, restore the firewall and clear the startup gate:
+
+```bash
+unset FB_HOMEY_SHS_STARTUP_SCENARIO FB_HOMEY_SHS_STARTUP_ENABLE FB_HOMEY_SHS_STARTUP_OBSERVE_MS
+```
 
 ## Operator-controlled restart recovery probe
 
