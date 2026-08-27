@@ -46,8 +46,12 @@ class FakeDevice extends EventEmitter implements HomeyDevice {
 class FakeManager extends EventEmitter {
 	connected = false;
 	readonly device = new FakeDevice();
+	emitCapabilityEvents = true;
 	readonly inventoryOptions: Array<{ $cache?: boolean; $timeout?: number; $updateCache?: boolean }> = [];
+	readFailuresRemaining = 0;
+	restoreFailuresRemaining = 0;
 	value = false;
+	writeAttempts: unknown[] = [];
 	writes: unknown[] = [];
 
 	connect(): Promise<void> {
@@ -61,6 +65,12 @@ class FakeManager extends EventEmitter {
 	}
 
 	getCapabilityValue(): Promise<unknown> {
+		if (this.readFailuresRemaining > 0) {
+			this.readFailuresRemaining -= 1;
+
+			return Promise.reject(new Error('raw restart read readiness detail'));
+		}
+
 		return Promise.resolve(this.value);
 	}
 
@@ -77,9 +87,18 @@ class FakeManager extends EventEmitter {
 	}
 
 	setCapabilityValue(options: { capabilityId: string; value: unknown }): Promise<void> {
+		this.writeAttempts.push(options.value);
+
+		if (options.value === false && this.restoreFailuresRemaining > 0) {
+			this.restoreFailuresRemaining -= 1;
+
+			return Promise.reject(new Error('raw restart readiness detail'));
+		}
+
 		this.value = options.value as boolean;
 		this.writes.push(options.value);
-		this.device.emit('capability', { capabilityId: options.capabilityId, value: options.value });
+		if (this.emitCapabilityEvents)
+			this.device.emit('capability', { capabilityId: options.capabilityId, value: options.value });
 		return Promise.resolve();
 	}
 }
@@ -161,6 +180,50 @@ describe('Homey SHS restart event-flow probe', () => {
 		expect(() => assertHomeyShsRestartEventFlowReportSafe(report, config())).not.toThrow();
 	});
 
+	it('uses authoritative read-back before a bounded restoration retry after restart', async () => {
+		const { client, factory } = createFactory();
+		client.devices.restoreFailuresRemaining = 1;
+		const report = await probeHomeyShsRestartEventFlow(
+			config(),
+			factory,
+			() => Promise.resolve(),
+			() => {
+				client.restart();
+				client.devices.readFailuresRemaining = 1;
+			},
+		);
+
+		expect(report.flow.restored).toBe(true);
+		expect(client.devices.writeAttempts).toStrictEqual([true, false, false]);
+		expect(client.devices.writes).toStrictEqual([true, false]);
+		expect(client.devices.restoreFailuresRemaining).toBe(0);
+	});
+
+	it('rejects the run when restoration succeeds without a post-restart capability event', async () => {
+		const { client, factory } = createFactory();
+		let now = 0;
+		const dateNow = jest.spyOn(Date, 'now').mockImplementation(() => now);
+		const advance = (milliseconds: number): Promise<void> => {
+			now += milliseconds;
+
+			return Promise.resolve();
+		};
+
+		try {
+			await expect(
+				probeHomeyShsRestartEventFlow(config(), factory, advance, () => {
+					client.restart();
+					client.devices.emitCapabilityEvents = false;
+				}),
+			).rejects.toThrow('post-restart restoration event timed out');
+			expect(client.devices.writes).toStrictEqual([true, false]);
+			expect(client.devices.value).toBe(false);
+			expect(client.destroyCount).toBe(1);
+		} finally {
+			dateNow.mockRestore();
+		}
+	});
+
 	it('restores the original value and cleans up when restart observation fails', async () => {
 		const { client, factory } = createFactory();
 		let now = 0;
@@ -207,6 +270,29 @@ describe('Homey SHS restart event-flow probe', () => {
 				config(),
 			),
 		).toThrow();
+	});
+
+	it('preserves the sanitized live SHS restart event-flow evidence', async () => {
+		const evidencePath = join(
+			__dirname,
+			'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-27-shs-13.4.1-restart-event-flow.json',
+		);
+		const evidence = JSON.parse(await readFile(evidencePath, 'utf8')) as unknown;
+
+		assertHomeyShsRestartEventFlowReportSafe(evidence, config());
+		expect(evidence).toMatchObject({
+			flow: {
+				disconnectObserved: true,
+				managerResubscribed: true,
+				postRestartEventObserved: true,
+				preRestartEventObserved: true,
+				restorationReadBackMatched: true,
+				restored: true,
+				transportReconnected: true,
+			},
+			session: { cleanupCompleted: true, managerSubscribed: true },
+		});
+		expect(evidence.session.events).toHaveLength(23);
 	});
 
 	it('writes the report beneath a private non-overwriting directory', async () => {

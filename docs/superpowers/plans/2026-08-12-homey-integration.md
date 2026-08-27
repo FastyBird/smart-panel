@@ -620,7 +620,7 @@ representative lifecycle failure paths.
 
 - [x] Fresh startup with SHS online.
 - [x] Startup with SHS offline, then recovery.
-- [ ] SHS restart during event flow.
+- [x] SHS restart during event flow.
 - [x] Network interruption/restoration.
 - [x] API key revoked, replaced, and insufficiently scoped.
 - [x] Separately gated add/rename/zone-move/unavailable/removal lifecycle tests on the allowlisted disposable device only, followed by cleanup.
@@ -641,11 +641,12 @@ the offline run first verified `RECONNECTING`, then recovered through the schedu
 restored the firewall, published a fresh authoritative inventory snapshot, incremented the reconnect counter, and
 stopped cleanly. The two reviewed exact-schema reports contain only fixed event labels and completion booleans.
 
-A separately gated restart-event-flow probe is prepared for the next unchecked item. It uses the same exact disposable
-device/capability/value allowlist as the proven write probe, requires a matching capability event and read-back before
-opening the operator restart window, verifies transport and manager recovery, then restores the original value and
-requires a second matching event and read-back after restart. Failure cleanup still attempts the exact in-memory
-original-value restoration before disconnecting, and no report is written without complete restoration and teardown.
+The separately gated restart-event-flow probe passed on 2026-08-27 against SHS `13.4.1`. Its 23 ordered events prove a
+matching capability event and read-back before restart, socket disconnect and reconnect, manager resubscription, a
+fresh uncached inventory read, then original-value restoration with a second matching event and read-back after
+restart. Complete device, manager, socket, and SDK cleanup followed. The reviewed exact-schema report contains only
+fixed event labels and completion booleans; failure cleanup uses state-aware, bounded restoration and never writes a
+success report without complete restoration and teardown.
 
 The 2026-08-26 SHS `13.4.1` restart probe closed the transport/session recovery slice: it observed disconnect,
 reconnect, manager resubscription, a fresh inventory read, and complete cleanup. This does not close the event-flow

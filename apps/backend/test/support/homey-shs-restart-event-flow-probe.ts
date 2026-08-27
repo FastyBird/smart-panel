@@ -25,6 +25,8 @@ const DEFAULT_EVENT_OBSERVE_MS = 10_000;
 const MIN_OBSERVE_MS = 1_000;
 const MAX_OBSERVE_MS = 300_000;
 const POLL_MS = 100;
+const RESTORE_RETRY_MS = 5_000;
+const MAX_RESTORE_ATTEMPTS = 3;
 const CONFLICTING_PREFIXES = [
 	'FB_HOMEY_SHS_CREDENTIAL_ROTATION_',
 	'FB_HOMEY_SHS_LIFECYCLE_',
@@ -198,6 +200,47 @@ const capabilityWrite = async (
 	);
 };
 
+const restoreCapabilityValue = async (
+	client: HomeySdkClient,
+	config: HomeyShsRestartEventFlowConfig,
+	originalValue: HomeyScalar,
+	wait: HomeyRestartEventFlowWait,
+): Promise<boolean> => {
+	const deadline = Date.now() + config.recoveryObserveMs;
+
+	for (let attempt = 0; attempt < MAX_RESTORE_ATTEMPTS; attempt += 1) {
+		if (attempt > 0 && Date.now() >= deadline) break;
+		let currentValue: unknown;
+
+		try {
+			currentValue = await scalarRead(client, config);
+		} catch {
+			// SHS can accept its socket namespace before the device API is ready after a container restart.
+		}
+
+		if (currentValue !== undefined) {
+			if (Object.is(currentValue, originalValue)) return true;
+
+			try {
+				await capabilityWrite(client, config, originalValue);
+			} catch {
+				// Read back before retrying because an idempotent write may apply despite a timed-out response.
+			}
+		}
+
+		const remaining = deadline - Date.now();
+
+		if (remaining <= 0) break;
+		await wait(Math.min(RESTORE_RETRY_MS, remaining));
+	}
+
+	try {
+		return Object.is(await scalarRead(client, config), originalValue);
+	} catch {
+		return false;
+	}
+};
+
 export const probeHomeyShsRestartEventFlow = async (
 	config: HomeyShsRestartEventFlowConfig,
 	factory: HomeySdkFactory = homeyRealtimeSdkFactory,
@@ -317,15 +360,16 @@ export const probeHomeyShsRestartEventFlow = async (
 		await waitUntil('manager resubscription', config.timeoutMs, () => managerConnected(client), wait);
 		report.flow.managerResubscribed = true;
 		appendEvent(report, 'manager.resubscribe.observed');
-		await runHomeyShsSdkOperation('post-restart inventory read', config.timeoutMs, () =>
+		const recoveredDevices = await runHomeyShsSdkOperation('post-restart inventory read', config.timeoutMs, () =>
 			client.devices.getDevices({ $cache: false, $timeout: config.timeoutMs, $updateCache: true }),
 		);
 		appendEvent(report, 'inventory.read.resolved');
+		assertSafeHomeyWriteTarget(recoveredDevices, config.write);
 
 		phase = 'restore';
 		appendEvent(report, 'restore.write.requested');
-		await capabilityWrite(client, config, originalValue);
-		report.flow.restored = true;
+		report.flow.restored = await restoreCapabilityValue(client, config, originalValue, wait);
+		if (!report.flow.restored) throw new Error('Homey capability restoration timed out after SHS restart');
 		await waitUntil(
 			'post-restart restoration event',
 			config.eventObserveMs,
@@ -342,17 +386,12 @@ export const probeHomeyShsRestartEventFlow = async (
 				: new Error('Homey restart event-flow verification failed');
 	} finally {
 		restartWindowOpen = false;
-		phase = null;
 		if (writeAttempted && originalValue !== undefined && !report.flow.restorationReadBackMatched) {
-			try {
-				await capabilityWrite(client, config, originalValue);
-				report.flow.restored = true;
-				report.flow.restorationReadBackMatched = Object.is(await scalarRead(client, config), originalValue);
-				if (!report.flow.restorationReadBackMatched) cleanupFailures.push('capability restoration');
-			} catch {
-				cleanupFailures.push('capability restoration');
-			}
+			report.flow.restored = await restoreCapabilityValue(client, config, originalValue, wait);
+			report.flow.restorationReadBackMatched = report.flow.restored;
+			if (!report.flow.restorationReadBackMatched) cleanupFailures.push('capability restoration');
 		}
+		phase = null;
 		const cleanup = async (
 			label: string,
 			resolved: string,

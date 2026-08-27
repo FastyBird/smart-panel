@@ -1,8 +1,8 @@
 # Homey SHS Compatibility Record
 
-**Status:** In progress; safe inventory, production-service startup/recovery, SDK session/cleanup, SHS restart and
-network recovery, disposable-device lifecycle, and stable restart-spanning mDNS evidence captured; automatic mDNS
-discovery remains deferred, and physical/Homey-originated availability-event continuity is pending
+**Status:** In progress; safe inventory, production-service startup/recovery, SDK session/cleanup, restart-spanning
+capability events, network recovery, disposable-device lifecycle, and stable restart-spanning mDNS evidence captured;
+automatic mDNS discovery remains deferred, and physical/Homey-originated availability-event continuity is pending
 
 **Started:** 2026-08-12
 
@@ -400,6 +400,13 @@ post-restart event fails, the probe still attempts exact original-value restorat
 test device manually after any failed run. No report can claim success unless both events, both read-backs, restoration,
 manager recovery, and complete cleanup pass.
 
+On 2026-08-27, the guarded probe passed against SHS `13.4.1`. Its 23 ordered events prove the allowlisted request,
+matching event, and read-back before restart; socket disconnect, two reconnect attempts, manager resubscription, and a
+fresh uncached inventory read during recovery; then original-value restoration, its matching post-restart event and
+read-back, and complete teardown. The exact-schema report is committed as
+`__fixtures__/evidence/2026-08-27-shs-13.4.1-restart-event-flow.json` and contains no endpoint, credential, Homey or
+device identity, capability identifier/value, inventory content, or raw error.
+
 ## Operator-controlled restart recovery probe
 
 The recovery probe measures the SDK's behavior across a real SHS restart without performing the restart itself. It
@@ -746,7 +753,7 @@ Fill this matrix using synthetic aliases only.
 | Availability events                       | Absent for synthetic test driver    | Unavailable/restored read-backs passed after full ten-second event windows; physical/Homey-originated evidence remains pending                       |
 | Allowlisted write, event, and read-back   | Pass                                | Requested-value event and read-back passed; restoration of the original value and its second read-back also passed                                   |
 | Network interruption and restoration      | Pass                                | 36 ordered events proved disconnect, nine retries during the 60-second interruption, resubscription, fresh inventory read, and complete cleanup      |
-| SHS restart and reconnect                 | Pass                                | 15 ordered events proved disconnect, two observed retries, resubscription, fresh inventory read, and complete cleanup                                |
+| SHS restart and reconnect                 | Pass                                | A 23-event write/restart/restore run proved events and read-backs across recovery; the earlier 15-event run independently proved transport recovery  |
 | API-key revocation and replacement        | Pass                                | Primary and replacement keys passed preflight; revocation returned `401`, and the replacement key remained valid                                     |
 | Disposable-device lifecycle sequence      | Pass                                | Exact add, rename, zone move, unavailable, restore, removal, and final absence passed; omitted create/update events were recorded and read back      |
 | Stable mDNS service before/after restart  | Pass                                | Ten-second pre/post observations were exact matches: `_homey._tcp` on `4859` plus two co-hosted `_hap._tcp` services                                 |
