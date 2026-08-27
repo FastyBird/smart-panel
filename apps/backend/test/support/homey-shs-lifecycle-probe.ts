@@ -631,10 +631,12 @@ const observeDeviceDeletion = async (
 
 	try {
 		await runObservationTrigger('delete event observation', trigger);
-		const deadline = Date.now() + config.observeMs;
+		const readbackDeadline = Date.now() + config.observeMs;
 		let absenceVerified = false;
+		let eventDeadline: number | undefined;
 
 		while (!eventObserved) {
+			const deadline = eventDeadline ?? readbackDeadline;
 			const remainingMs = deadline - Date.now();
 
 			if (remainingMs <= 0) {
@@ -654,6 +656,7 @@ const observeDeviceDeletion = async (
 
 			if (!hasLifecycleResidue(inventory, config, boundDeviceId)) {
 				absenceVerified = true;
+				eventDeadline = Date.now() + config.observeMs;
 				continue;
 			}
 
@@ -718,10 +721,12 @@ const observeDeviceUpdate = async (
 
 	try {
 		await runObservationTrigger(label, trigger);
-		const deadline = Date.now() + config.observeMs;
+		const readbackDeadline = Date.now() + config.observeMs;
 		let readbackVerified = false;
+		let eventDeadline: number | undefined;
 
 		while (!eventObserved) {
+			const deadline = eventDeadline ?? readbackDeadline;
 			const remainingMs = deadline - Date.now();
 
 			if (remainingMs <= 0) {
@@ -742,6 +747,7 @@ const observeDeviceUpdate = async (
 
 			if (readbackPredicate(currentDevice)) {
 				readbackVerified = true;
+				eventDeadline = Date.now() + config.observeMs;
 				continue;
 			}
 

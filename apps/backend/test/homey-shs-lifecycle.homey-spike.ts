@@ -854,6 +854,38 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		expect(report).toStrictEqual(completeReport());
 	});
 
+	it('starts the delete event window after a delayed absence read-back', async () => {
+		const config = fastConfig({ observeMs: 1_100 });
+		const harness = createHarness(config);
+		const deviceId = 'runtime-bound-slow-delete-readback-id';
+		const device = makeOwnedDevice(config, deviceId);
+
+		jest.spyOn(harness.client.devices, 'deleteDevice').mockImplementation((options) => {
+			harness.client.devices.deleteRequests.push(options);
+			setTimeout(() => delete harness.client.devices.inventory[options.id], 50);
+			setTimeout(() => harness.client.devices.emit('device.delete', { id: options.id }), 1_250);
+
+			return Promise.resolve();
+		});
+
+		const report = await probeHomeyShsLifecycle(config, harness.factory, {
+			onAddWindowOpen: () => {
+				harness.client.devices.inventory[deviceId] = device;
+				harness.client.devices.emit('device.create', device);
+			},
+			onAvailabilityRestoreRequested: () => {
+				device.available = true;
+				device.emit('update', { available: true });
+			},
+			onUnavailableRequested: () => {
+				device.available = false;
+				device.emit('update', { available: false });
+			},
+		});
+
+		expect(report).toStrictEqual(completeReport());
+	});
+
 	it('uses exact read-back when SHS omits every bound-device update event', async () => {
 		const config = {
 			...loadHomeyShsLifecycleProbeConfig(TEST_APP_ENVIRONMENT, '/tmp/homey-lifecycle-spike'),
@@ -910,6 +942,46 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 			if (updateCount === 1) {
 				setTimeout(() => device.emit('update', { ...options.device }), 275);
 			} else {
+				device.emit('update', { ...options.device });
+			}
+
+			return Promise.resolve(device);
+		});
+
+		const report = await probeHomeyShsLifecycle(config, harness.factory, {
+			onAddWindowOpen: () => {
+				harness.client.devices.inventory[deviceId] = device;
+				harness.client.devices.emit('device.create', device);
+			},
+			onAvailabilityRestoreRequested: () => {
+				device.available = true;
+				device.emit('update', { available: true });
+			},
+			onUnavailableRequested: () => {
+				device.available = false;
+				device.emit('update', { available: false });
+			},
+		});
+
+		expect(report).toStrictEqual(completeReport());
+	});
+
+	it('starts the update event window after a delayed state read-back', async () => {
+		const config = fastConfig({ observeMs: 1_100 });
+		const harness = createHarness(config);
+		const deviceId = 'runtime-bound-slow-update-readback-id';
+		const device = makeOwnedDevice(config, deviceId);
+		let updateCount = 0;
+
+		jest.spyOn(harness.client.devices, 'updateDevice').mockImplementation((options) => {
+			harness.client.devices.updateRequests.push(options);
+			updateCount += 1;
+
+			if (updateCount === 1) {
+				setTimeout(() => Object.assign(device, options.device), 50);
+				setTimeout(() => device.emit('update', { ...options.device }), 1_250);
+			} else {
+				Object.assign(device, options.device);
 				device.emit('update', { ...options.device });
 			}
 
