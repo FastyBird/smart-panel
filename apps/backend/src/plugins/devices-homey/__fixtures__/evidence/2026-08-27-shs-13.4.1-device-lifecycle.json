@@ -1,0 +1,137 @@
+{
+	"lifecycle": {
+		"addVerified": true,
+		"availabilityRestored": true,
+		"finalAbsenceVerified": true,
+		"flowAbsenceVerified": true,
+		"removeVerified": true,
+		"renameVerified": true,
+		"unavailableVerified": true,
+		"zoneMoveVerified": true
+	},
+	"metadata": {
+		"probe": "homey-shs-lifecycle",
+		"schemaVersion": 3,
+		"sdkVersion": "3.19.2"
+	},
+	"session": {
+		"availabilityRestoreEventObserved": false,
+		"cleanupCompleted": true,
+		"createEventObserved": false,
+		"deleteEventObserved": true,
+		"events": [
+			{
+				"event": "sdk.create.resolved",
+				"order": 1
+			},
+			{
+				"event": "manager.subscribe.resolved",
+				"order": 2
+			},
+			{
+				"event": "baseline.absence.verified",
+				"order": 3
+			},
+			{
+				"event": "add.window.open",
+				"order": 4
+			},
+			{
+				"event": "device.create.not-observed",
+				"order": 5
+			},
+			{
+				"event": "add.readback.resolved",
+				"order": 6
+			},
+			{
+				"event": "device.subscribe.resolved",
+				"order": 7
+			},
+			{
+				"event": "flows.absence.verified",
+				"order": 8
+			},
+			{
+				"event": "device.rename.requested",
+				"order": 9
+			},
+			{
+				"event": "device.update.rename.not-observed",
+				"order": 10
+			},
+			{
+				"event": "rename.readback.resolved",
+				"order": 11
+			},
+			{
+				"event": "device.zone-move.requested",
+				"order": 12
+			},
+			{
+				"event": "device.update.zone-move.not-observed",
+				"order": 13
+			},
+			{
+				"event": "zone-move.readback.resolved",
+				"order": 14
+			},
+			{
+				"event": "availability.unavailable.requested",
+				"order": 15
+			},
+			{
+				"event": "device.update.unavailable.not-observed",
+				"order": 16
+			},
+			{
+				"event": "unavailable.readback.resolved",
+				"order": 17
+			},
+			{
+				"event": "availability.restore.requested",
+				"order": 18
+			},
+			{
+				"event": "device.update.available.not-observed",
+				"order": 19
+			},
+			{
+				"event": "availability.readback.resolved",
+				"order": 20
+			},
+			{
+				"event": "device.remove.requested",
+				"order": 21
+			},
+			{
+				"event": "device.delete.observed",
+				"order": 22
+			},
+			{
+				"event": "final.absence.verified",
+				"order": 23
+			},
+			{
+				"event": "device.unsubscribe.resolved",
+				"order": 24
+			},
+			{
+				"event": "manager.unsubscribe.resolved",
+				"order": 25
+			},
+			{
+				"event": "socket.disconnect.resolved",
+				"order": 26
+			},
+			{
+				"event": "sdk.destroyed",
+				"order": 27
+			}
+		],
+		"managerSubscribed": true,
+		"renameEventObserved": false,
+		"unavailableEventObserved": false,
+		"zoneMoveEventObserved": false
+	}
+}

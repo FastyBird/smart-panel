@@ -1,8 +1,8 @@
 # Homey SHS Compatibility Record
 
-**Status:** In progress; safe inventory, SDK session/cleanup, SHS restart and network recovery, and stable
-restart-spanning mDNS evidence captured; automatic mDNS discovery remains deferred, and live availability-event and
-lifecycle evidence is pending
+**Status:** In progress; safe inventory, SDK session/cleanup, SHS restart and network recovery, disposable-device
+lifecycle, and stable restart-spanning mDNS evidence captured; automatic mDNS discovery remains deferred, and live
+availability-event continuity is pending
 
 **Started:** 2026-08-12
 
@@ -19,19 +19,19 @@ file. Live results use synthetic aliases and sanitized captures only.
 
 ## Current gate status
 
-| Area                                                  | Status                                                   | Evidence still required                                             |
-| ----------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------- |
-| Credential-safe read probe                            | Passed on SHS `13.4.0` and `13.4.1` over HTTP `4859`     | Repeat over HTTPS `4860` if enabled                                 |
-| System, zone, device inventory, and individual device | Captured and sanitized                                   | Add lifecycle delta evidence on the disposable test device          |
-| Capability metadata and suffixed IDs                  | Inventory, explicit read, and write read-back passed     | None                                                                |
-| Socket.IO events and reconnect                        | Capability event, restart, and network recovery passed   | Capture availability event-flow continuity                          |
-| Allowlisted capability write                          | Passed on SHS `13.4.1`                                   | None                                                                |
-| Error and permission-scope classification             | Five failure scenarios and three omitted scopes passed   | None                                                                |
-| API-key revocation and replacement                    | Passed on SHS `13.4.1`                                   | None                                                                |
-| Disposable-device lifecycle                           | Guarded operator probe ready                             | Use only the separately gated virtual/test device                   |
-| mDNS discovery                                        | Stable across one controlled restart; manual URL remains | Design safe identity verification before reconsidering discovery    |
-| SDK decision                                          | SDK selected behind connector boundary                   | Re-evaluate the pinned package and audit result on every upgrade    |
-| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture              | Add event/reconnect fixtures from the remaining live lifecycle runs |
+| Area                                                  | Status                                                   | Evidence still required                                          |
+| ----------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------- |
+| Credential-safe read probe                            | Passed on SHS `13.4.0` and `13.4.1` over HTTP `4859`     | Repeat over HTTPS `4860` if enabled                              |
+| System, zone, device inventory, and individual device | Captured and sanitized                                   | None                                                             |
+| Capability metadata and suffixed IDs                  | Inventory, explicit read, and write read-back passed     | None                                                             |
+| Socket.IO events and reconnect                        | Capability event, restart, and network recovery passed   | Capture availability event-flow continuity                       |
+| Allowlisted capability write                          | Passed on SHS `13.4.1`                                   | None                                                             |
+| Error and permission-scope classification             | Five failure scenarios and three omitted scopes passed   | None                                                             |
+| API-key revocation and replacement                    | Passed on SHS `13.4.1`                                   | None                                                             |
+| Disposable-device lifecycle                           | Passed on SHS `13.4.1`                                   | None                                                             |
+| mDNS discovery                                        | Stable across one controlled restart; manual URL remains | Design safe identity verification before reconsidering discovery |
+| SDK decision                                          | SDK selected behind connector boundary                   | Re-evaluate the pinned package and audit result on every upgrade |
+| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture              | Add live availability-event evidence                             |
 
 ## Installation evidence
 
@@ -51,7 +51,7 @@ Complete this table after the live run. Values committed here must remain non-se
 | HTTPS port `4860`                        | Pending                                           |
 | TLS certificate behavior                 | Pending                                           |
 | Disposable capability alias              | Pending synthetic alias                           |
-| Disposable lifecycle-device alias        | Pending synthetic alias                           |
+| Disposable lifecycle-device alias        | `fbsp-lifecycle-disposable-device`                |
 
 On 2026-08-26, the TrueNAS host was reachable but SHS stopped before opening its API ports because its required Avahi
 daemon could not start. The deployment recovered after applying Homey's documented TrueNAS settings: disable the host
@@ -215,11 +215,15 @@ and moves the bound device, it changes the driver's fixed lifecycle setting only
 active. The driver applies the requested unavailable or available state from that setting. This keeps lifecycle evidence
 isolated from household apps and removes manual timing and slow-operation races from both availability stages.
 
-After the `device.create` event exactly matches the marker, driver, owner, initial name, and source zone allowlist, the
-probe binds the new runtime device ID in memory. Only after that binding may it use the bounded local API operations
-to rename the device, move it to the destination zone, and remove it. The probe observes `device.update` for rename,
-zone, and availability changes and `device.delete` for removal, with fresh reads after mutations. It never accepts the
-first unrelated lifecycle event and never writes an identifier, name, event payload, or raw error to the report.
+After a `device.create` event or fresh inventory item exactly matches the marker, driver, owner, initial name, and source
+zone allowlist, the probe binds the new runtime device ID in memory. If SHS omits the manager-level create/delete event
+or a bound-device update event, the probe uses bounded, cache-bypassing inventory reads to verify the same complete
+identity, requested state, or final absence and records each omitted event explicitly in the sanitized report. It never
+treats an event-free inventory match as proof that an event was observed. Only after that binding may it use the bounded
+local API operations to rename the device, move it to the destination zone, and remove it. The probe attempts to observe
+`device.update` for rename, zone, and availability changes and `device.delete` for removal, with exact fresh reads after
+mutations. It never accepts the first unrelated lifecycle event and never writes an identifier, name, event payload, or
+raw error to the report.
 
 Start from the base URL, expected-host, and private-term environment used by the safe read probe, but replace
 `FB_HOMEY_SHS_API_KEY` with the dedicated lifecycle key. Enter all private values interactively:
@@ -244,7 +248,7 @@ pnpm run homey:probe-lifecycle
 
 The probe fails closed unless the acknowledgement and ordered operation list match those exact values. The device
 marker must start with `fbsp-lifecycle-`, and both names must start with `FBSP Lifecycle`. The driver ID must belong to
-the exact owner URI using Homey's `<owner-uri>:driver:<driver>` form. Driver ID, owner URI, initial and renamed names,
+the exact owner URI using Homey's `<owner-uri>:<driver>` form. Driver ID, owner URI, initial and renamed names,
 and both distinct zone IDs are exact allowlist values. `FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS` optionally sets the bounded
 time available for each requested operator action from `10000` through `300000` milliseconds and defaults to `90000`.
 
@@ -266,6 +270,14 @@ unset FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID
 unset FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS
 unset FB_HOMEY_SHS_API_KEY
 ```
+
+On 2026-08-27, the guarded lifecycle probe passed against SHS `13.4.1`. It verified the exact disposable device add,
+rename, zone move, unavailable state, availability restoration, removal, and final absence, with flow checks and full
+cleanup. SHS did not emit the manager create event or any of the bound-device update events during this run, so the
+probe recorded those omissions and verified every resulting state with bounded, cache-bypassing inventory read-back;
+the delete event was observed. The sanitized report is committed as
+`__fixtures__/evidence/2026-08-27-shs-13.4.1-device-lifecycle.json`. This closes the lifecycle inventory-delta slice but
+does not close live availability-event continuity.
 
 ## Operator-controlled restart recovery probe
 
@@ -614,7 +626,7 @@ Fill this matrix using synthetic aliases only.
 | Network interruption and restoration      | Pass                                | 36 ordered events proved disconnect, nine retries during the 60-second interruption, resubscription, fresh inventory read, and complete cleanup      |
 | SHS restart and reconnect                 | Pass                                | 15 ordered events proved disconnect, two observed retries, resubscription, fresh inventory read, and complete cleanup                                |
 | API-key revocation and replacement        | Pass                                | Primary and replacement keys passed preflight; revocation returned `401`, and the replacement key remained valid                                     |
-| Disposable-device lifecycle sequence      | Pending                             |                                                                                                                                                      |
+| Disposable-device lifecycle sequence      | Pass                                | Exact add, rename, zone move, unavailable, restore, removal, and final absence passed; omitted create/update events were recorded and read back      |
 | Stable mDNS service before/after restart  | Pass                                | Ten-second pre/post observations were exact matches: `_homey._tcp` on `4859` plus two co-hosted `_hap._tcp` services                                 |
 
 ## Verification

@@ -99,5 +99,10 @@ Homey identity, credential, inventory data, response body, or raw error.
 The credential-rotation report records the fixed identity, preflight, operator-window, revocation, and replacement
 validation sequence plus the expected `401`. It contains no endpoint, Homey identity, credential, inventory data,
 response body, raw error, or identifier.
+The device-lifecycle report records the complete guarded disposable-device lifecycle on SHS `13.4.1`: exact add,
+rename, zone move, unavailable state, restoration, removal, final absence, and cleanup. SHS omitted the manager create
+event and all bound-device update events during the run, while the delete event was observed; bounded, cache-bypassing
+inventory read-backs verified every omitted-event transition. The report contains no endpoint, Homey identity,
+credential, device or zone identifier, name, inventory content, event payload, response body, or raw error.
 
 Before committing regenerated fixtures, inspect every value and key and confirm that no private source value survives.

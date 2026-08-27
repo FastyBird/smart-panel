@@ -8,7 +8,7 @@ Smart Panel runtime dependency, must not be published, and must never be used fo
 ```text
 FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER=fbsp-lifecycle-disposable-device
 FB_HOMEY_SHS_LIFECYCLE_OWNER_URI=homey:app:com.fastybird.smartpanel.lifecycletest
-FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID=homey:app:com.fastybird.smartpanel.lifecycletest:driver:lifecycle-test-device
+FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID=homey:app:com.fastybird.smartpanel.lifecycletest:lifecycle-test-device
 FB_HOMEY_SHS_LIFECYCLE_INITIAL_NAME=FBSP Lifecycle Initial
 FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME=FBSP Lifecycle Renamed
 ```
