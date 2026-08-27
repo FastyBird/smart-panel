@@ -362,6 +362,44 @@ authoritative inventory snapshot, and stopped cleanly. The reviewed reports are 
 `__fixtures__/evidence/2026-08-27-shs-13.4.1-startup-offline-recovery.json`. They contain no endpoint, host, credential,
 Homey identity, inventory content or count, device or zone identifier, event payload, firewall rule, or raw error.
 
+## Operator-controlled restart during capability event flow
+
+This mutating probe combines the previously proven allowlisted capability write with a real SHS restart in one
+subscribed SDK session. It writes the validated disposable value and requires its matching event and read-back before
+opening the restart window. After the operator restarts only the test SHS, it requires socket disconnect/reconnect,
+manager resubscription, and a fresh inventory read. It then restores the in-memory original value and requires the
+matching post-restart event and final read-back before cleanup and report creation.
+
+Use the same disposable device, capability, and harmless alternative value as the successful realtime write probe.
+Unset all other probe families, then enable the dedicated restart-event-flow acknowledgement:
+
+```bash
+unset FB_HOMEY_SHS_LIFECYCLE_ENABLE FB_HOMEY_SHS_LIFECYCLE_OPERATIONS
+unset FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID
+unset FB_HOMEY_SHS_LIFECYCLE_OWNER_URI FB_HOMEY_SHS_LIFECYCLE_INITIAL_NAME
+unset FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID
+unset FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID FB_HOMEY_SHS_LIFECYCLE_ADD_WINDOW_MS
+unset FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS
+unset FB_HOMEY_SHS_RECOVERY_ENABLE FB_HOMEY_SHS_RECOVERY_SCENARIO FB_HOMEY_SHS_RECOVERY_OBSERVE_MS
+unset FB_HOMEY_SHS_STARTUP_ENABLE FB_HOMEY_SHS_STARTUP_SCENARIO FB_HOMEY_SHS_STARTUP_OBSERVE_MS
+unset FB_HOMEY_SHS_CREDENTIAL_ROTATION_ENABLE FB_HOMEY_SHS_CREDENTIAL_ROTATION_OBSERVE_MS
+unset FB_HOMEY_SHS_REPLACEMENT_API_KEY
+unset FB_HOMEY_SHS_REALTIME_OBSERVE_MS
+export FB_HOMEY_SHS_WRITE_ENABLE=I_ACKNOWLEDGE_THIS_CHANGES_A_TEST_DEVICE
+export FB_HOMEY_SHS_RESTART_EVENT_FLOW_ENABLE=I_WILL_RESTART_THE_TEST_SHS_WHILE_A_DISPOSABLE_CAPABILITY_IS_CHANGED
+export FB_HOMEY_SHS_RESTART_EVENT_FLOW_RECOVERY_OBSERVE_MS=90000
+export FB_HOMEY_SHS_RESTART_EVENT_FLOW_EVENT_OBSERVE_MS=10000
+pnpm run homey:probe-restart-event-flow
+```
+
+Keep the test SHS online until the probe prints `Homey restart event-flow window is open`, then restart only that SHS
+instance. Do not change the capability manually. `FB_HOMEY_SHS_RESTART_EVENT_FLOW_RECOVERY_OBSERVE_MS` accepts `1000`
+through `300000` milliseconds and defaults to `90000`; the event window uses the same range and defaults to `10000`.
+Every SDK operation remains independently bounded by `FB_HOMEY_SHS_TIMEOUT_MS`. If restart recovery or the
+post-restart event fails, the probe still attempts exact original-value restoration before disconnecting. Check the
+test device manually after any failed run. No report can claim success unless both events, both read-backs, restoration,
+manager recovery, and complete cleanup pass.
+
 ## Operator-controlled restart recovery probe
 
 The recovery probe measures the SDK's behavior across a real SHS restart without performing the restart itself. It

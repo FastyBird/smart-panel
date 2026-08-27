@@ -85,6 +85,7 @@
     "homey:probe-recovery": "ts-node --project tsconfig.json test/support/homey-shs-recovery-probe.ts",
     "homey:probe-lifecycle": "ts-node --project tsconfig.json test/support/homey-shs-lifecycle-probe.ts",
     "homey:probe-startup": "ts-node --project tsconfig.json test/support/homey-shs-startup-probe.ts",
+    "homey:probe-restart-event-flow": "ts-node --project tsconfig.json test/support/homey-shs-restart-event-flow-probe.ts",
     "homey:promote-fixtures": "ts-node --project tsconfig.json test/support/promote-homey-shs-fixtures.ts",
     "type-check": "tsc --noEmit",
     "typeorm:migration:generate": "ts-node-esm --project tsconfig.json --transpile-only ./node_modules/typeorm/cli.js migration:generate -d ./src/dataSource.ts",
