@@ -618,8 +618,8 @@ representative lifecycle failure paths.
 
 ### Task 6.2: Run the live lifecycle matrix
 
-- [ ] Fresh startup with SHS online.
-- [ ] Startup with SHS offline, then recovery.
+- [x] Fresh startup with SHS online.
+- [x] Startup with SHS offline, then recovery.
 - [ ] SHS restart during event flow.
 - [x] Network interruption/restoration.
 - [x] API key revoked, replaced, and insufficiently scoped.
@@ -633,8 +633,13 @@ A guarded startup probe now exercises a newly constructed production `HomeyServi
 the pinned SDK transport while replacing persistence with a no-op synchronizer. Its online scenario requires healthy
 connection, authoritative inventory availability, and clean shutdown. Its offline-recovery scenario additionally
 requires the initial unavailable attempt to leave the service in `RECONNECTING`, followed by a scheduled production
-reconnect and incremented reconnect counter after the operator restores only the test SHS network path. Both Task 6.2
-startup boxes remain open until the reviewed live reports are recorded.
+reconnect and incremented reconnect counter after the operator restores only the test SHS network path.
+
+Both guarded startup scenarios passed on 2026-08-27 against SHS `13.4.1`. The online run reached healthy connected
+state after authoritative inventory synchronization and stopped cleanly. With only the test host's SHS path blocked,
+the offline run first verified `RECONNECTING`, then recovered through the scheduled production retry after the operator
+restored the firewall, published a fresh authoritative inventory snapshot, incremented the reconnect counter, and
+stopped cleanly. The two reviewed exact-schema reports contain only fixed event labels and completion booleans.
 
 The 2026-08-26 SHS `13.4.1` restart probe closed the transport/session recovery slice: it observed disconnect,
 reconnect, manager resubscription, a fresh inventory read, and complete cleanup. This does not close the event-flow

@@ -106,5 +106,10 @@ inventory read-backs verified every omitted-event transition. A repeat run retai
 ten-second post-read-back event window and produced the same sanitized result, confirming absence for the synthetic
 test driver without making a claim about physical/Homey-originated events. The report contains no endpoint, Homey
 identity, credential, device or zone identifier, name, inventory content, event payload, response body, or raw error.
+The two startup reports exercise a newly constructed production `HomeyService` against SHS `13.4.1`. The online report
+records healthy connection, authoritative inventory availability, and cleanup. The offline-recovery report additionally
+records the initial `RECONNECTING` state and successful scheduled retry after operator-controlled restoration of only
+the test SHS network path. Neither report contains an endpoint, host, credential, Homey identity, inventory content or
+count, device or zone identifier, event payload, firewall rule, response body, or raw error.
 
 Before committing regenerated fixtures, inspect every value and key and confirm that no private source value survives.
