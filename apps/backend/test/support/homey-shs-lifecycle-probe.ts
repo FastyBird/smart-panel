@@ -670,25 +670,30 @@ const observeDeviceUpdate = async (
 	try {
 		await runObservationTrigger(label, trigger);
 		const deadline = Date.now() + config.observeMs;
+		let readbackVerified = false;
 
 		while (!eventObserved) {
 			const remainingMs = deadline - Date.now();
 
 			if (remainingMs <= 0) {
+				if (readbackVerified) {
+					break;
+				}
+
 				throw new HomeyShsLifecycleTimeoutError(label, config.observeMs);
+			}
+
+			if (readbackVerified) {
+				await Promise.race([eventSignal, pause(remainingMs)]);
+				break;
 			}
 
 			const inventory = await freshDevices(client, config, Math.min(config.timeoutMs, remainingMs));
 			const currentDevice = requireSingleOwnedDevice(inventory, config, boundDeviceId);
 
 			if (readbackPredicate(currentDevice)) {
-				const eventGraceMs = Math.min(250, Math.max(0, deadline - Date.now()));
-
-				if (eventGraceMs > 0) {
-					await Promise.race([eventSignal, pause(eventGraceMs)]);
-				}
-
-				break;
+				readbackVerified = true;
+				continue;
 			}
 
 			const pollMs = Math.min(INVENTORY_POLL_MS, Math.max(0, deadline - Date.now()));

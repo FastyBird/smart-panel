@@ -805,6 +805,45 @@ describe('Homey SHS disposable-device lifecycle compatibility probe', () => {
 		expect(harness.client.devices.inventory).toStrictEqual({});
 	});
 
+	it('observes a bound-device event that arrives after the former 250 ms grace period', async () => {
+		const config = fastConfig({ observeMs: 350 });
+		const harness = createHarness(config);
+		const deviceId = 'runtime-bound-delayed-update-id';
+		const device = makeOwnedDevice(config, deviceId);
+		let updateCount = 0;
+
+		jest.spyOn(harness.client.devices, 'updateDevice').mockImplementation((options) => {
+			harness.client.devices.updateRequests.push(options);
+			Object.assign(device, options.device);
+			updateCount += 1;
+
+			if (updateCount === 1) {
+				setTimeout(() => device.emit('update', { ...options.device }), 275);
+			} else {
+				device.emit('update', { ...options.device });
+			}
+
+			return Promise.resolve(device);
+		});
+
+		const report = await probeHomeyShsLifecycle(config, harness.factory, {
+			onAddWindowOpen: () => {
+				harness.client.devices.inventory[deviceId] = device;
+				harness.client.devices.emit('device.create', device);
+			},
+			onAvailabilityRestoreRequested: () => {
+				device.available = true;
+				device.emit('update', { available: true });
+			},
+			onUnavailableRequested: () => {
+				device.available = false;
+				device.emit('update', { available: false });
+			},
+		});
+
+		expect(report).toStrictEqual(completeReport());
+	});
+
 	it('requires a newly bound device to start available and leaves it for manual cleanup otherwise', async () => {
 		const config = fastConfig();
 		const harness = createHarness(config);
