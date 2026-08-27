@@ -464,6 +464,7 @@ After the last probe you intend to run, clear every credential and private value
 
 ```bash
 unset FB_HOMEY_SHS_DEVICE_ONLY_API_KEY FB_HOMEY_SHS_URL FB_HOMEY_SHS_EXPECTED_HOST FB_HOMEY_SHS_API_KEY
+unset FB_HOMEY_SHS_WITHOUT_DEVICE_API_KEY FB_HOMEY_SHS_WITHOUT_ZONE_API_KEY
 unset FB_HOMEY_SHS_PRIVATE_TERMS
 ```
 
@@ -479,6 +480,49 @@ returned `401`; a device-read-only key first completed an allowed inventory requ
 for the forbidden system-information request. The shared validator rejected the non-HTTP candidate, while probe-owned
 loopback servers produced the unavailable and timeout categories. The reviewed report is committed as
 `__fixtures__/evidence/2026-08-26-shs-13.4.1-error-matrix.json`. It does not prove API-key revocation or replacement.
+
+## Complete permission-scope matrix probe
+
+The separate permission-scope probe closes the two permission cases that the error-classification report intentionally
+does not claim. It first performs an unauthenticated Homey ping and requires the identity and version headers. Only
+after that identity check does it send three distinct restricted credentials to the pinned SHS origin. Each credential
+must complete one allowed read with `200` before the probe accepts `403` for the independently omitted permission:
+
+| Credential | Required permissions | Allowed proof | Required denial |
+| ---------- | -------------------- | ------------- | --------------- |
+| Device only | `homey.device.readonly` | Device inventory | System information |
+| Without zone | `homey.system.readonly`, `homey.device.readonly` | Device inventory | Zone inventory |
+| Without device | `homey.system.readonly`, `homey.zone.readonly` | Zone inventory | Device inventory |
+
+Create the two additional disposable restricted keys, enter them without adding their values to shell history, and run
+the probe from the same interactive shell. The previously configured device-only key is reused for the missing-system
+case:
+
+```bash
+read -r -s FB_HOMEY_SHS_WITHOUT_ZONE_API_KEY
+read -r -s FB_HOMEY_SHS_WITHOUT_DEVICE_API_KEY
+export FB_HOMEY_SHS_WITHOUT_ZONE_API_KEY FB_HOMEY_SHS_WITHOUT_DEVICE_API_KEY
+unset FB_HOMEY_SHS_WRITE_ENABLE FB_HOMEY_SHS_WRITE_DEVICE_ID FB_HOMEY_SHS_WRITE_CAPABILITY_ID
+unset FB_HOMEY_SHS_WRITE_VALUE FB_HOMEY_SHS_LIFECYCLE_ENABLE FB_HOMEY_SHS_LIFECYCLE_OPERATIONS
+unset FB_HOMEY_SHS_LIFECYCLE_DEVICE_ID FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER
+unset FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID FB_HOMEY_SHS_LIFECYCLE_OWNER_URI
+unset FB_HOMEY_SHS_LIFECYCLE_INITIAL_NAME FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME
+unset FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID
+unset FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS FB_HOMEY_SHS_RECOVERY_ENABLE FB_HOMEY_SHS_RECOVERY_SCENARIO
+unset FB_HOMEY_SHS_RECOVERY_OBSERVE_MS FB_HOMEY_SHS_CREDENTIAL_ROTATION_ENABLE
+unset FB_HOMEY_SHS_CREDENTIAL_ROTATION_OBSERVE_MS FB_HOMEY_SHS_REPLACEMENT_API_KEY
+pnpm run homey:probe-scopes
+```
+
+All four configured credentials must be distinct. The full-read key is validated by the shared configuration loader but
+is not sent by this probe. Mutation, recovery, and credential-rotation gate variables must be completely unset; even an
+empty or disabled-looking value is rejected. The seven requests are GET-only, redirect-blocked, and independently
+bounded by `FB_HOMEY_SHS_TIMEOUT_MS`.
+
+The exact-schema report contains only the three fixed permission labels, `200`/`403` status codes, the authorization
+category, and rejection booleans. It has no fields for endpoints, Homey identities, credentials, inventory data,
+response bodies, or raw errors. A report is written only after all three allowed/denied pairs pass. Until that operator
+report is reviewed and promoted, the broad missing-scope matrix remains pending.
 
 ## SDK artifact review
 

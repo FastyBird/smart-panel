@@ -78,6 +78,7 @@
     "homey:probe": "ts-node --project tsconfig.json test/support/homey-shs-probe.ts",
     "homey:probe-credential-rotation": "ts-node --project tsconfig.json test/support/homey-shs-credential-rotation-probe.ts",
     "homey:probe-errors": "ts-node --project tsconfig.json test/support/homey-shs-error-probe.ts",
+    "homey:probe-scopes": "ts-node --project tsconfig.json test/support/homey-shs-scope-probe.ts",
     "homey:generate-normalized-fixtures": "ts-node --project tsconfig.json test/support/generate-homey-normalized-fixtures.ts",
     "homey:probe-realtime": "ts-node --project tsconfig.json test/support/homey-shs-realtime-probe.ts",
     "homey:probe-mdns": "ts-node --project tsconfig.json test/support/homey-shs-mdns-probe.ts",
