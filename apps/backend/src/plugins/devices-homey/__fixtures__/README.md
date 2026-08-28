@@ -122,5 +122,10 @@ acceptance, fresh read-back, exact baseline restoration through the same path, f
 shutdown. The inventory exposed no eligible lock family. The reports contain no endpoint, credential, Homey identity,
 device or capability identifier, capability value, inventory content or count, event payload, response body, or raw
 error.
+The 2026-08-28 plugin-lifecycle report records production manager bootstrap, disable, re-enable with a fresh connector,
+and backend shutdown against live SHS `13.4.1`. Both disable and shutdown remained fully disconnected and quiescent for
+35 seconds, longer than the minimum reconciliation interval. The report contains no endpoint, credential, Homey
+identity, device or zone identifier, inventory data or count, connector count, event payload, response body, or raw
+error.
 
 Before committing regenerated fixtures, inspect every value and key and confirm that no private source value survives.

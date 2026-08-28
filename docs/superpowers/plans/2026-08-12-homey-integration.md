@@ -627,7 +627,7 @@ representative lifecycle failure paths.
 - [x] Physical/Homey/flow-originated state changes.
 - [x] Allowlisted Smart Panel control for every writable MVP mapping family available.
 - [ ] Burst updates and concurrent commands.
-- [ ] Plugin disable/enable and backend shutdown with no leaked connections/timers.
+- [x] Plugin disable/enable and backend shutdown with no leaked connections/timers.
 
 A separately gated burst-command probe now prepares the remaining concurrency run. It binds one exact reversible
 writable mapping through the production service and platform path, submits `target → baseline → target` concurrently,
@@ -635,11 +635,13 @@ requires all three matching realtime capability events in order plus an authorit
 exact baseline before shutdown. Its exact-schema report contains only fixed event labels and completion booleans. The
 matrix item remains open until this guarded probe passes against live SHS and the sanitized report is reviewed.
 
-A separately gated, read-only plugin-lifecycle probe now prepares the final managed-shutdown run. It uses the production
-`PluginServiceManagerService` to bootstrap Homey, disable it through the configuration event path, enable it with a fresh
-connector, and invoke the manager's Nest module-destroy hook. Instrumented connector activity must remain unchanged for
-longer than the minimum reconciliation interval after both disable and shutdown, with no active connection or
-subscription. The matrix item remains open until live SHS evidence is reviewed.
+The separately gated, read-only plugin-lifecycle probe passed on 2026-08-28 against live SHS `13.4.1`. The production
+`PluginServiceManagerService` bootstrapped Homey, disabled it through the configuration event path, re-enabled it with a
+fresh connector, and invoked the manager's Nest module-destroy hook. After both disable and shutdown, the complete
+runtime snapshot remained stopped with no active connector, subscription, service timer, SDK socket/listener,
+reconnect, refresh, or manager work and no SDK activity revision change for 35 seconds, longer than the minimum
+reconciliation interval. The reviewed exact-schema report contains only fixed event labels, ordering numbers, public
+SDK version, and completion booleans.
 
 A guarded startup probe now exercises a newly constructed production `HomeyService`, the local connector factory, and
 the pinned SDK transport while replacing persistence with a no-op synchronizer. Its online scenario requires healthy

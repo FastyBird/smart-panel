@@ -402,6 +402,29 @@ describe('Homey SHS plugin-lifecycle probe', () => {
 		).toThrow();
 	});
 
+	it('preserves the sanitized live SHS plugin-lifecycle evidence', async () => {
+		const evidencePath = join(
+			__dirname,
+			'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-28-shs-13.4.1-plugin-lifecycle.json',
+		);
+		const evidence = JSON.parse(await readFile(evidencePath, 'utf8')) as unknown;
+
+		assertHomeyShsPluginLifecycleReportSafe(evidence, config());
+		expect(evidence).toMatchObject({
+			observation: {
+				backendShutdownDisconnected: true,
+				backendShutdownQuiescent: true,
+				disableDisconnected: true,
+				disableQuiescent: true,
+				freshConnectorAfterEnable: true,
+				initialStartupConnected: true,
+				reenableConnected: true,
+			},
+			session: { cleanupCompleted: true },
+		});
+		expect(evidence.session.events).toHaveLength(12);
+	});
+
 	it('writes the report beneath a private non-overwriting directory', async () => {
 		const { report } = await successfulProbe();
 		const parent = await mkdtemp(join(tmpdir(), 'homey-plugin-lifecycle-'));

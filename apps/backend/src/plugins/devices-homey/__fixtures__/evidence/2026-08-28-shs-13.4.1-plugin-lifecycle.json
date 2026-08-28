@@ -1,0 +1,69 @@
+{
+	"metadata": {
+		"probe": "homey-shs-plugin-lifecycle",
+		"schemaVersion": 1,
+		"sdkVersion": "3.19.2"
+	},
+	"observation": {
+		"backendShutdownDisconnected": true,
+		"backendShutdownQuiescent": true,
+		"disableDisconnected": true,
+		"disableQuiescent": true,
+		"freshConnectorAfterEnable": true,
+		"initialStartupConnected": true,
+		"reenableConnected": true
+	},
+	"session": {
+		"cleanupCompleted": true,
+		"events": [
+			{
+				"event": "manager.bootstrap.requested",
+				"order": 1
+			},
+			{
+				"event": "manager.bootstrap.resolved",
+				"order": 2
+			},
+			{
+				"event": "plugin.initial.connected.verified",
+				"order": 3
+			},
+			{
+				"event": "plugin.disable.requested",
+				"order": 4
+			},
+			{
+				"event": "plugin.disable.resolved",
+				"order": 5
+			},
+			{
+				"event": "plugin.disable.quiescence.verified",
+				"order": 6
+			},
+			{
+				"event": "plugin.enable.requested",
+				"order": 7
+			},
+			{
+				"event": "plugin.enable.resolved",
+				"order": 8
+			},
+			{
+				"event": "plugin.reenabled.connected.verified",
+				"order": 9
+			},
+			{
+				"event": "backend.shutdown.requested",
+				"order": 10
+			},
+			{
+				"event": "backend.shutdown.resolved",
+				"order": 11
+			},
+			{
+				"event": "backend.shutdown.quiescence.verified",
+				"order": 12
+			}
+		]
+	}
+}
