@@ -7,12 +7,17 @@ Server (SHS) on the local network. It imports logical devices already managed by
 and adopt them, keeps their state synchronized, and sends supported controls back to Homey.
 
 <Callout type="warning">
-  **The Homey release gate is not complete.** Current live evidence covers Homey
-  SHS 13.4.0 and 13.4.1 over HTTP port 4859 for sanitized inventory capture and
-  limited SDK connection/session behavior plus SHS restart and network recovery.
-  Homey Pro, HTTPS, capability writes/events, and credential rotation have not
-  completed the required live matrix. Use this integration for evaluation, not
-  as a production-ready support claim.
+  **The local SHS evidence is complete and ready for release review, with
+  documented deferrals.** Live SHS 13.4.0/13.4.1 validation over HTTP port 4859
+  covers sanitized inventory, capability writes and ordered events, credential
+  rotation and permission failures, startup/restart/network recovery,
+  physical/Homey/Flow changes, concurrent commands, disposable-device lifecycle,
+  and clean plugin/backend shutdown. The integration remains experimental
+  because Homey Pro hardware and HTTPS were not validated, physical availability
+  manager events were not emitted by the disposable test driver, and the
+  original container digest/complete TrueNAS version were not captured. These
+  are explicit support/provenance limits, not incomplete SHS write, event,
+  credential, or recovery tests.
 </Callout>
 
 Only a **local Homey connection** is implemented. Homey Cloud/OAuth is not available yet. Smart Panel does not pair,
@@ -101,8 +106,8 @@ Panel requires a new key for the unsaved connection test; it never sends a store
 
 Enter the Homey URL manually. Smart Panel does not currently offer automatic Homey server discovery. A Homey-specific
 advertisement remained stable across a controlled restart, but safe identity deduplication and spoof-resistant endpoint
-verification have not completed the release gate. Device discovery begins only after a Homey connection has been
-configured.
+verification remain explicitly deferred from the local MVP. Manual configuration is the supported setup path, and
+device discovery begins only after a Homey connection has been configured.
 
 ## Discover and Adopt Devices
 
@@ -203,8 +208,10 @@ reconnects with bounded backoff. Check Homey and proxy support for long-lived So
 state does not recover, test the saved connection and inspect the sanitized backend logs.
 
 A controlled 60-second interruption of only the Smart Panel-to-SHS API ports recovered the SDK session and subscription,
-then completed a fresh inventory read on SHS `13.4.1`. Capability-event continuity across an interruption remains part
-of the unfinished live release matrix.
+then completed a fresh inventory read on SHS `13.4.1`. A separate restart-spanning write flow proved matching capability
+events and authoritative read-backs before and after recovery. Periodic reconciliation remains the repair path for an
+event missed during an interruption. The disposable lifecycle driver did not emit create/update/availability manager
+events in repeated observation windows, so physical availability-event continuity is not claimed.
 
 ### A device is missing or unsupported
 
@@ -214,8 +221,9 @@ future mapping. A previously adopted device that disappeared upstream remains in
 
 ## Current Limitations
 
-- Experimental status while the required live compatibility matrix remains incomplete.
-- Local Homey Pro/SHS connections only; Homey Cloud/OAuth is a later phase.
+- Experimental status while the documented local release deferrals are reviewed and broader hardware evidence grows.
+- Local API connections only; live validation currently covers SHS over HTTP `4859`, not Homey Pro hardware or HTTPS
+  `4860`. Homey Cloud/OAuth is a later phase.
 - Manual Homey URL configuration; no automatic server discovery.
 - No pairing, commissioning, renaming, zone moves, removal, app, Flow, firmware, backup, or user administration in
   Homey.
