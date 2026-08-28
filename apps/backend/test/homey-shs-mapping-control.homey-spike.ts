@@ -176,11 +176,11 @@ describe('Homey SHS mapping-control probe', () => {
 		).toThrow('must be unset');
 	});
 
-	it('accepts authoritative read-back only while the device and capability remain available', () => {
+	it('rejects authoritative read-back from unavailable devices or explicitly unavailable capabilities', () => {
 		expect(homeyMappingControlReadBackMatches(readBackDevice(), 'onoff', true)).toBe(true);
 		expect(homeyMappingControlReadBackMatches(readBackDevice(false), 'onoff', true)).toBe(false);
 		expect(homeyMappingControlReadBackMatches(readBackDevice(true, false), 'onoff', true)).toBe(false);
-		expect(homeyMappingControlReadBackMatches(readBackDevice(true, null), 'onoff', true)).toBe(false);
+		expect(homeyMappingControlReadBackMatches(readBackDevice(true, null), 'onoff', true)).toBe(true);
 		expect(homeyMappingControlReadBackMatches(readBackDevice(), 'onoff', false)).toBe(false);
 	});
 
@@ -316,6 +316,48 @@ describe('Homey SHS mapping-control probe', () => {
 			),
 		).toThrow();
 	});
+
+	it.each([
+		{
+			family: 'cover',
+			filename: '2026-08-28-shs-13.4.1-mapping-control-cover.json',
+			mappingName: 'window-covering-position',
+		},
+		{
+			family: 'lighting',
+			filename: '2026-08-28-shs-13.4.1-mapping-control-lighting.json',
+			mappingName: 'light-power',
+		},
+		{
+			family: 'switch',
+			filename: '2026-08-28-shs-13.4.1-mapping-control-switch.json',
+			mappingName: 'outlet-power',
+		},
+	] as const)(
+		'preserves the sanitized live SHS $family mapping-control evidence',
+		async ({ family, filename, mappingName }) => {
+			const evidencePath = join(__dirname, '../src/plugins/devices-homey/__fixtures__/evidence', filename);
+			const evidence = JSON.parse(await readFile(evidencePath, 'utf8')) as unknown;
+			const evidenceConfig = config({ family, mappingName });
+
+			assertHomeyShsMappingControlReportSafe(evidence, evidenceConfig);
+			expect(evidence).toMatchObject({
+				observation: {
+					availableFamilies: ['cover', 'lighting', 'switch'],
+					baselineRead: true,
+					commandReadBackMatched: true,
+					family,
+					mappingName,
+					panelCommandAccepted: true,
+					restorationAccepted: true,
+					restorationReadBackMatched: true,
+					restored: true,
+				},
+				session: { cleanupCompleted: true, serviceStarted: true },
+			});
+			expect(evidence.session.events).toHaveLength(12);
+		},
+	);
 
 	it('writes the report beneath a private non-overwriting directory', async () => {
 		const { report } = await successfulProbe();

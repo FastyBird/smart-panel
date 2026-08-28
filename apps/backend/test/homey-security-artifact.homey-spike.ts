@@ -71,6 +71,7 @@ const PUBLIC_SYNTHETIC_PERSONAL_VALUES = new Set([
 	'Synthetic mode B',
 	'Synthetic mode C',
 ]);
+const PUBLIC_EVIDENCE_PERSONAL_VALUES = new Set(['light-power', 'outlet-power', 'window-covering-position']);
 const PUBLIC_SYNTHETIC_IDENTIFIER_VALUES = new Set([
 	'123e4567-e89b-12d3-a456-426614174000',
 	'550e8400-e29b-41d4-a716-446655440000',
@@ -5876,9 +5877,9 @@ const containsStructuredAddress = (value: unknown): boolean => {
 	});
 };
 
-const containsStructuredPersonalValue = (value: unknown): boolean => {
+const containsStructuredPersonalValue = (value: unknown, path: readonly string[] = []): boolean => {
 	if (Array.isArray(value)) {
-		return value.some((entry) => containsStructuredPersonalValue(entry));
+		return value.some((entry, index) => containsStructuredPersonalValue(entry, [...path, index.toString()]));
 	}
 
 	if (value === null || typeof value !== 'object') {
@@ -5886,7 +5887,17 @@ const containsStructuredPersonalValue = (value: unknown): boolean => {
 	}
 
 	return Object.entries(value as JsonRecord).some(([key, child]) => {
-		return (isHomeyPersonalKey(key) && !isSafePersonalValue(child)) || containsStructuredPersonalValue(child);
+		const publicEvidenceMappingName =
+			path.length === 1 &&
+			path[0] === 'observation' &&
+			key === 'mappingName' &&
+			typeof child === 'string' &&
+			PUBLIC_EVIDENCE_PERSONAL_VALUES.has(child);
+
+		return (
+			(isHomeyPersonalKey(key) && !isSafePersonalValue(child) && !publicEvidenceMappingName) ||
+			containsStructuredPersonalValue(child, [...path, key])
+		);
 	});
 };
 
@@ -6598,6 +6609,15 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertFixtureTextSafe('unsafe fixture', '{"name":"Alice Bedroom"}', '.json')).toThrow(
 			'unsafe fixture contains a structured personal value',
 		);
+		expect(() =>
+			assertFixtureTextSafe('safe fixture', '{"observation":{"mappingName":"window-covering-position"}}', '.json'),
+		).not.toThrow();
+		expect(() => assertFixtureTextSafe('unsafe fixture', '{"name":"light-power"}', '.json')).toThrow(
+			'unsafe fixture contains a structured personal value',
+		);
+		expect(() =>
+			assertFixtureTextSafe('unsafe fixture', '{"observation":{"mappingName":"private-cover"}}', '.json'),
+		).toThrow('unsafe fixture contains a structured personal value');
 		expect(() =>
 			assertFixtureTextSafe('unsafe fixture', '{"deviceId":"8d4d7584-1111-4111-8111-0123456789ab"}', '.json'),
 		).toThrow('unsafe fixture contains a structured identifier value');

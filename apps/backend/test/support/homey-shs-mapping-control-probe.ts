@@ -181,7 +181,7 @@ export const homeyMappingControlReadBackMatches = (
 	const capability = device.capabilities.find((candidate) => candidate.id === capabilityId);
 
 	return (
-		capability !== undefined && capability.available === true && homeyCapabilityValuesEqual(capability.value, expected)
+		capability !== undefined && capability.available !== false && homeyCapabilityValuesEqual(capability.value, expected)
 	);
 };
 
