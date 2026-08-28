@@ -820,7 +820,19 @@ This milestone starts only after the local MVP is stable. It should be a separat
 
 - [ ] Register the OAuth client and production/development redirect URIs.
 - [ ] Confirm current user limits, approval requirements, scopes, and branding/legal requirements with Athom.
-- [ ] Record client configuration as deployment secrets, not repository values.
+- [x] Record client configuration as deployment secrets, not repository values.
+
+The 2026-08-28 published-contract audit is recorded in `docs/homey-cloud-oauth.md`. Homey's current Web API guide limits
+a new client to 100 Homey Pro users and requires a limit-increase request for a higher limit and optional Homey Cloud
+access. The pinned SDK requires a confidential client secret for authorization-code exchange and refresh, supports a
+registered redirect URL and OAuth `state`, and does not document PKCE. Because Smart Panel is distributed self-hosted
+software with installation-specific origins, no shared client secret may be embedded in repository or release
+artifacts. The first cloud profile uses deployment-owned client credentials and an exact deployment callback; a hosted
+FastyBird authorization broker would require a separate design and trust boundary.
+
+The registration and external-approval items remain unchecked until a dedicated client is created in Homey Developer
+Tools, the four minimum system/zone/device-read/device-control scopes and exact callbacks are accepted, and Athom's
+Homey Cloud access, user limit, branding/legal, and rate-limit conditions are recorded without private account data.
 
 ### Task 7.2: Implement cloud authorization
 
