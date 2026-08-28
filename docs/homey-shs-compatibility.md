@@ -616,6 +616,13 @@ The two observation windows make the run take at least 70 seconds. A success rep
 and completion booleans; it excludes the endpoint, credential, Homey identity, inventory data/count, connector counts,
 event payload, response body, and raw error.
 
+On 2026-08-28, the read-only probe passed against live SHS `13.4.1`. The production manager bootstrapped an enabled
+plugin, disabled it through the configuration-update path, re-enabled it with a fresh connector, and completed its Nest
+module-destroy hook. Both post-disable and post-shutdown snapshots remained stopped, disconnected, unsubscribed, free
+of scheduled SDK/service work, and unchanged for 35 seconds. The reviewed report is committed as
+`__fixtures__/evidence/2026-08-28-shs-13.4.1-plugin-lifecycle.json`; it contains only fixed event labels, ordering
+numbers, public SDK version, and completion booleans.
+
 ## Operator-controlled restart recovery probe
 
 The recovery probe measures the SDK's behavior across a real SHS restart without performing the restart itself. It
@@ -963,7 +970,7 @@ Fill this matrix using synthetic aliases only.
 | Allowlisted write, event, and read-back    | Pass                                | Requested-value event and read-back passed; restoration of the original value and its second read-back also passed                                   |
 | Smart Panel mapped-family control          | Pass                                | Cover, lighting, and switch passed through production mappings and control; no eligible live lock family was present                                 |
 | Burst updates and concurrent commands      | Pending                             |                                                                                                                                                      |
-| Plugin disable/enable and backend shutdown | Pending                             |                                                                                                                                                      |
+| Plugin disable/enable and backend shutdown | Pass                                | Managed disable, fresh-connector re-enable, and backend shutdown each completed; both 35-second post-stop windows remained fully quiescent           |
 | Network interruption and restoration       | Pass                                | 36 ordered events proved disconnect, nine retries during the 60-second interruption, resubscription, fresh inventory read, and complete cleanup      |
 | SHS restart and reconnect                  | Pass                                | A 23-event write/restart/restore run proved events and read-backs across recovery; the earlier 15-event run independently proved transport recovery  |
 | API-key revocation and replacement         | Pass                                | Primary and replacement keys passed preflight; revocation returned `401`, and the replacement key remained valid                                     |

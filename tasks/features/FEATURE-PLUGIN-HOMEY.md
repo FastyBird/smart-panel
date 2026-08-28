@@ -97,7 +97,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [ ] Connection testing reuses the stored key only for an explicit fully saved configuration request; every candidate/overridden URL requires a newly supplied key and can never fall back to the stored secret.
 - [ ] Secrets are absent from logs, exceptions, telemetry, OpenAPI examples, tests, and fixtures.
 - [ ] URLs, schemes, timeouts, intervals, and permission errors are validated and sanitized.
-- [ ] Disabling the plugin closes subscriptions, stops timers, and disconnects the connector cleanly.
+- [x] Disabling the plugin closes subscriptions, stops timers, and disconnects the connector cleanly.
 
 ### Backend local provider
 
