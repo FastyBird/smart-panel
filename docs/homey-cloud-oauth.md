@@ -95,7 +95,8 @@ write-only secret boundary or an established encrypted credential store and rema
 active access token, refresh token, and selected Homey together. Reauthorization stages a separate candidate grant and
 must preserve the active grant until the candidate token set is exchanged, its Homey is selected and authenticated,
 and the tokens plus selected Homey are activated together successfully. A failed reauthorization clears only its
-candidate state. The client secret and tokens must never share a browser-facing DTO.
+candidate state. Every candidate is isolated by authorization transaction and initiating user; there is no shared
+pending slot. The client secret and tokens must never share a browser-facing DTO.
 
 ## Authorization boundary for Task 7.2
 
@@ -103,21 +104,27 @@ The implementation that follows this record must:
 
 1. Allow only a signed-in Smart Panel owner or administrator to start authorization.
 2. Generate a cryptographically random, single-use, short-lived `state` bound to the initiating Smart Panel user,
-   installation, exact redirect URL, and current Homey configuration generation.
+   installation, exact redirect URL, one authorization transaction, and the current active-grant/configuration
+   generation.
 3. Return an authorization URL; never proxy or collect the user's Homey credentials.
 4. Keep the callback public at the HTTP-authentication layer because the browser reaches it after Homey authorization,
    then authorize it solely by consuming the exact one-time `state`. Reject missing, expired, replayed, or mismatched
    state before token exchange.
 5. Redact the code, state, token response, client secret, raw account response, and raw Homey inventory from errors and
    logs.
-6. Exchange the code immediately with a bounded timeout. Stage and persist candidate tokens in a pending slot without
-   activating them; after any exchange, validation, or persistence failure, clear only candidate state and leave an
+6. Exchange the code immediately with a bounded timeout. Stage and persist candidate tokens in a transaction-scoped,
+   initiating-user-bound pending record without activating them. Never address candidate credentials through a global
+   pending slot. After any exchange, validation, or persistence failure, clear only that transaction and leave an
    existing active grant and connector untouched.
-7. List sanitized Homey choices after authorization. Auto-select only when exactly one eligible Homey exists; otherwise
-   require an explicit stable-ID selection without exposing account details that the admin UI does not need.
+7. List sanitized Homey choices from that exact candidate transaction. Auto-select only when exactly one eligible Homey
+   exists; otherwise require an explicit stable-ID selection bound to the same opaque transaction and initiating user,
+   without exposing account details that the admin UI does not need.
 8. Authenticate the selected Homey with the candidate grant, then atomically activate its access token, refresh token,
-   selected Homey ID, and connector. Until that transaction succeeds, retain the previous active grant, selected Homey,
-   and connector; never apply a previous Homey ID to a new candidate account.
+   selected Homey ID, and connector through a serialized compare-and-swap against the active-grant/configuration
+   generation captured when that authorization started. Activation advances the generation. If another flow or
+   configuration mutation won first, reject and clear the stale candidate instead of overwriting it. Until activation
+   succeeds, retain the previous active grant, selected Homey, and connector; never apply a previous Homey ID or another
+   transaction's selection to a candidate account.
 9. Serialize refresh and token replacement, persist a rotated refresh token atomically, and move to reauthorization
    rather than retrying aggressively after revocation or permanent refresh failure. Reauthorization must not take the
    active connector offline unless the active grant independently becomes invalid or the candidate is activated.
