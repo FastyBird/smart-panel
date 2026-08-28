@@ -120,8 +120,10 @@ The implementation that follows this record must:
    initiating-user-bound pending record without activating them. Give the record a short absolute expiry that cannot
    be extended by reads or selection attempts. Never address candidate credentials through a global pending slot.
    Delete its tokens and transaction on expiry, explicit cancellation, terminal failure, or successful activation, and
-   sweep expired abandoned records independently of user traffic. Leave an existing active grant and connector
-   untouched when a candidate is cleared.
+   sweep expired abandoned records independently of user traffic. Cancellation and expiry cleanup must serialize with
+   activation and change or delete the authoritative pending row, so credentials retained by an in-flight request
+   cannot activate after cleanup wins. Leave an existing active grant and connector untouched when a candidate is
+   cleared.
 7. List sanitized Homey choices from that exact candidate transaction. Auto-select only when exactly one eligible Homey
    exists. When none exist, return a sanitized terminal failure and delete the candidate tokens and transaction. When
    multiple exist, require an explicit stable-ID selection bound to the same opaque transaction and initiating user,
@@ -129,12 +131,16 @@ The implementation that follows this record must:
    transactions.
 8. Authenticate the selected Homey with the candidate grant, then atomically activate its access token, refresh token,
    selected Homey ID, and connector through a serialized compare-and-swap against the active-grant/configuration
-   generation captured when that authorization started. Inside the same serialized activation boundary, re-read the
+   generation captured when that authorization started. Use one database transaction and locking boundary shared by
+   activation, candidate cancellation or expiry, and initiating-user demotion or deletion. In that transaction,
+   conditionally consume an existing non-cancelled candidate whose absolute expiry is still in the future; re-read the
    initiating user and require that the user still exists, still has owner or administrator authority, and still
-   matches the captured authority generation. Activation advances the grant/configuration generation. If authority was
-   revoked, the user changed, or another flow or configuration mutation won first, reject and clear the stale candidate
-   instead of overwriting the active grant. Until activation succeeds, retain the previous active grant, selected Homey,
-   and connector; never apply a previous Homey ID or another transaction's selection to a candidate account.
+   matches the captured authority generation. Store the activating user and authority generation on the active grant.
+   Authority mutations under the same boundary must invalidate and disconnect a grant activated by that authority if
+   activation committed first; if the authority mutation, cancellation, expiry, or another configuration mutation won
+   first, the activation's conditional commit must fail and clear any remaining candidate state. Activation advances
+   the grant/configuration generation. Until activation succeeds, retain the previous active grant, selected Homey, and
+   connector; never apply a previous Homey ID or another transaction's selection to a candidate account.
 9. Serialize refresh and token replacement, persist a rotated refresh token atomically, and move to reauthorization
    rather than retrying aggressively after revocation or permanent refresh failure. Reauthorization must not take the
    active connector offline unless the active grant independently becomes invalid or the candidate is activated.
