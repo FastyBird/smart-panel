@@ -6,6 +6,7 @@ import {
 	type HomeyPluginLifecycleSnapshot,
 	type HomeyShsPluginLifecycleConfig,
 	assertHomeyShsPluginLifecycleReportSafe,
+	isSocketResourceActive,
 	loadHomeyShsPluginLifecycleConfig,
 	probeHomeyShsPluginLifecycle,
 	writeHomeyShsPluginLifecycleReport,
@@ -155,6 +156,17 @@ const successfulProbe = async () => {
 };
 
 describe('Homey SHS plugin-lifecycle probe', () => {
+	it('recognizes the pinned Socket.IO 2.x reconnect loop as an active transport resource', () => {
+		expect(
+			isSocketResourceActive({
+				_callbacks: {},
+				active: false,
+				connected: false,
+				io: { engine: { readyState: 'closed' }, reconnecting: true },
+			}),
+		).toBe(true);
+	});
+
 	it('requires the exact gate and a quiescence interval beyond the production reconciliation interval', () => {
 		expect(() =>
 			loadHomeyShsPluginLifecycleConfig({ ...BASE_ENVIRONMENT, FB_HOMEY_SHS_PLUGIN_LIFECYCLE_ENABLE: 'yes' }),
@@ -300,6 +312,34 @@ describe('Homey SHS plugin-lifecycle probe', () => {
 			expect(listeners.size).toBe(0);
 		},
 	);
+
+	it('interrupts the quiescence wait before performing signal-driven cleanup', async () => {
+		const runtime = new FakeRuntime();
+		const listeners = new Map<string, () => void>();
+		const signalSource = {
+			on: (name: string, listener: () => void): void => {
+				listeners.set(name, listener);
+			},
+			off: (name: string, listener: () => void): void => {
+				if (listeners.get(name) === listener) listeners.delete(name);
+			},
+		};
+
+		await expect(
+			probeHomeyShsPluginLifecycle(
+				config(),
+				() => runtime,
+				(_milliseconds, signal) =>
+					new Promise((resolvePromise) => {
+						signal?.addEventListener('abort', () => resolvePromise(), { once: true });
+						listeners.get('SIGTERM')?.();
+					}),
+				signalSource,
+			),
+		).rejects.toThrow('received SIGTERM; managed shutdown completed before termination');
+		expect(runtime.shutdownCount).toBe(1);
+		expect(listeners.size).toBe(0);
+	});
 
 	it('preserves managed cleanup failure when a termination signal arrives', async () => {
 		const runtime = new FakeRuntime();

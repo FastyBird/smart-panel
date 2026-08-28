@@ -107,7 +107,7 @@ export interface HomeyPluginLifecycleRuntime {
 }
 
 export type HomeyPluginLifecycleRuntimeFactory = (config: HomeyShsPluginLifecycleConfig) => HomeyPluginLifecycleRuntime;
-export type HomeyPluginLifecycleWait = (milliseconds: number) => Promise<void>;
+export type HomeyPluginLifecycleWait = (milliseconds: number, signal?: AbortSignal) => Promise<void>;
 
 export interface HomeyShsPluginLifecycleReport {
 	metadata: {
@@ -172,9 +172,22 @@ const EMPTY_DIAGNOSTICS: HomeyOperationalDiagnostics = {
 	unavailable: 0,
 };
 
-const sleep: HomeyPluginLifecycleWait = (milliseconds) =>
+const sleep: HomeyPluginLifecycleWait = (milliseconds, signal) =>
 	new Promise((resolvePromise) => {
-		setTimeout(resolvePromise, milliseconds);
+		if (signal?.aborted === true) {
+			resolvePromise();
+			return;
+		}
+
+		const handleAbort = (): void => {
+			clearTimeout(timeout);
+			resolvePromise();
+		};
+		const timeout = setTimeout(() => {
+			signal?.removeEventListener('abort', handleAbort);
+			resolvePromise();
+		}, milliseconds);
+		signal?.addEventListener('abort', handleAbort, { once: true });
 	});
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -274,7 +287,7 @@ const activeSdkTimers = (client: HomeySdkClient): number => {
 	return active;
 };
 
-const isSocketResourceActive = (value: unknown): boolean => {
+export const isSocketResourceActive = (value: unknown): boolean => {
 	if (!isRecord(value)) return false;
 
 	const manager = isRecord(value.io) ? value.io : undefined;
@@ -284,6 +297,7 @@ const isSocketResourceActive = (value: unknown): boolean => {
 	return (
 		value.connected === true ||
 		value.active === true ||
+		manager?.reconnecting === true ||
 		manager?._reconnecting === true ||
 		readyStates.some((state) => state === 'open' || state === 'opening') ||
 		eventListenerCount(value) > 0
@@ -599,11 +613,14 @@ export const probeHomeyShsPluginLifecycle = async (
 	let shutdownCompleted = false;
 	let operationError: unknown;
 	let terminationSignal: HomeyPluginLifecycleSignal | undefined;
+	const terminationController = new AbortController();
 	const handleSigint = (): void => {
 		terminationSignal ??= 'SIGINT';
+		terminationController.abort();
 	};
 	const handleSigterm = (): void => {
 		terminationSignal ??= 'SIGTERM';
+		terminationController.abort();
 	};
 	const throwIfTerminated = (): void => {
 		if (terminationSignal !== undefined) throw new HomeyPluginLifecycleTerminationError(terminationSignal);
@@ -631,7 +648,7 @@ export const probeHomeyShsPluginLifecycle = async (
 		if (!isStoppedExactly(disabled, 1)) {
 			throw new Error('Homey plugin-lifecycle disable did not release its runtime');
 		}
-		await wait(config.observeMs);
+		await wait(config.observeMs, terminationController.signal);
 		throwIfTerminated();
 		const disabledAfterObservation = runtime.snapshot();
 
@@ -661,7 +678,7 @@ export const probeHomeyShsPluginLifecycle = async (
 		if (!isStoppedExactly(shutdown, 2)) {
 			throw new Error('Homey plugin-lifecycle backend shutdown did not release its runtime');
 		}
-		await wait(config.observeMs);
+		await wait(config.observeMs, terminationController.signal);
 		throwIfTerminated();
 		const shutdownAfterObservation = runtime.snapshot();
 
