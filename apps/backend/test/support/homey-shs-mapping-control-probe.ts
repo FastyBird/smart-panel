@@ -131,6 +131,7 @@ export interface HomeyMappingControlBinding {
 	readonly targetPanelValue: PropertyCommandValue;
 	command(value: PropertyCommandValue): Promise<boolean>;
 	readBackMatches(value: PropertyCommandValue): Promise<boolean>;
+	waitForCommandIdle(): Promise<void>;
 }
 
 export interface HomeyMappingControlRuntime {
@@ -140,6 +141,19 @@ export interface HomeyMappingControlRuntime {
 }
 
 export type HomeyMappingControlRuntimeFactory = (config: HomeyShsMappingControlConfig) => HomeyMappingControlRuntime;
+
+type HomeyMappingControlTerminationSignal = 'SIGINT' | 'SIGTERM';
+
+export interface HomeyMappingControlSignalSource {
+	on(signal: HomeyMappingControlTerminationSignal, listener: () => void): unknown;
+	off(signal: HomeyMappingControlTerminationSignal, listener: () => void): unknown;
+}
+
+class HomeyMappingControlTerminationError extends Error {
+	constructor(readonly signal: HomeyMappingControlTerminationSignal) {
+		super(`Homey mapping-control probe received ${signal}; restoration completed before termination`);
+	}
+}
 
 const EMPTY_DIAGNOSTICS: HomeyOperationalDiagnostics = {
 	adopted: 0,
@@ -360,6 +374,7 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 				command,
 				readBackMatches,
 				targetPanelValue: targetValidation.value,
+				waitForCommandIdle: () => service.waitForCapabilityCommandIdle(device.id, capability.id),
 			};
 		},
 	};
@@ -405,6 +420,7 @@ export const loadHomeyShsMappingControlConfig = (
 export const probeHomeyShsMappingControl = async (
 	config: HomeyShsMappingControlConfig,
 	runtimeFactory: HomeyMappingControlRuntimeFactory = createHomeyMappingControlRuntime,
+	signalSource: HomeyMappingControlSignalSource = process,
 ): Promise<HomeyShsMappingControlReport> => {
 	const runtime = runtimeFactory(config);
 	const events: Array<{ event: MappingControlEvent; order: number }> = [];
@@ -416,33 +432,69 @@ export const probeHomeyShsMappingControl = async (
 	let restored = false;
 	let operationError: unknown;
 	const cleanupFailures: string[] = [];
+	let terminationSignal: HomeyMappingControlTerminationSignal | undefined;
+	const handleSigint = (): void => {
+		terminationSignal ??= 'SIGINT';
+	};
+	const handleSigterm = (): void => {
+		terminationSignal ??= 'SIGTERM';
+	};
+	const throwIfTerminated = (): void => {
+		if (terminationSignal !== undefined) {
+			throw new HomeyMappingControlTerminationError(terminationSignal);
+		}
+	};
+	const restoreBaseline = async (): Promise<boolean> => {
+		if (binding === undefined) {
+			return false;
+		}
+
+		await binding.waitForCommandIdle();
+		await binding.command(binding.baselinePanelValue);
+		await binding.waitForCommandIdle();
+
+		return binding.readBackMatches(binding.baselinePanelValue);
+	};
+
+	signalSource.on('SIGINT', handleSigint);
+	signalSource.on('SIGTERM', handleSigterm);
 
 	try {
 		record('service.start.requested');
 		await runtime.start();
+		throwIfTerminated();
 		record('service.start.resolved');
 		binding = await runtime.bind(config);
+		throwIfTerminated();
 		record('inventory.verified');
 		record('target.bound');
 		record('baseline.read.verified');
 		record('panel.command.requested');
 		commandAttempted = true;
-		if (!(await binding.command(binding.targetPanelValue))) {
+		const commandAccepted = await binding.command(binding.targetPanelValue);
+		throwIfTerminated();
+		if (!commandAccepted) {
 			throw new Error('Homey mapping-control Smart Panel command was rejected or unconfirmed');
 		}
 		record('panel.command.resolved');
 		if (!(await binding.readBackMatches(binding.targetPanelValue))) {
 			throw new Error('Homey mapping-control command read-back did not match');
 		}
+		throwIfTerminated();
 		record('command.readback.verified');
 		record('restoration.requested');
-		if (!(await binding.command(binding.baselinePanelValue))) {
+		await binding.waitForCommandIdle();
+		const restorationAccepted = await binding.command(binding.baselinePanelValue);
+		throwIfTerminated();
+		if (!restorationAccepted) {
 			throw new Error('Homey mapping-control restoration was rejected or unconfirmed');
 		}
 		record('restoration.resolved');
+		await binding.waitForCommandIdle();
 		if (!(await binding.readBackMatches(binding.baselinePanelValue))) {
 			throw new Error('Homey mapping-control restoration read-back did not match');
 		}
+		throwIfTerminated();
 		record('restoration.readback.verified');
 		restored = true;
 	} catch (error) {
@@ -450,10 +502,7 @@ export const probeHomeyShsMappingControl = async (
 	} finally {
 		if (commandAttempted && binding !== undefined && !restored) {
 			try {
-				const accepted = await binding.command(binding.baselinePanelValue);
-				const matched = accepted && (await binding.readBackMatches(binding.baselinePanelValue));
-
-				if (!matched) cleanupFailures.push('capability restoration');
+				if (!(await restoreBaseline())) cleanupFailures.push('capability restoration');
 				else restored = true;
 			} catch {
 				cleanupFailures.push('capability restoration');
@@ -466,10 +515,16 @@ export const probeHomeyShsMappingControl = async (
 		} catch {
 			cleanupFailures.push('service stop');
 		}
+
+		signalSource.off('SIGINT', handleSigint);
+		signalSource.off('SIGTERM', handleSigterm);
 	}
 
 	if (cleanupFailures.length > 0) {
 		throw new Error(`Homey mapping-control cleanup failed: ${cleanupFailures.join(', ')}`);
+	}
+	if (terminationSignal !== undefined && !(operationError instanceof HomeyMappingControlTerminationError)) {
+		throw new HomeyMappingControlTerminationError(terminationSignal);
 	}
 	if (operationError !== undefined) throw operationError;
 	if (binding === undefined || !restored) throw new Error('Homey mapping-control verification failed');

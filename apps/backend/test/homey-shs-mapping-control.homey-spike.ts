@@ -38,6 +38,7 @@ class FakeBinding implements HomeyMappingControlBinding {
 	readonly baselinePanelValue = false;
 	readonly targetPanelValue = true;
 	readonly commands: Array<string | number | boolean> = [];
+	afterCommand: ((value: string | number | boolean) => void) | undefined;
 	current: string | number | boolean = false;
 	failCommandAt = new Set<number>();
 	failReadBackAt = new Set<number>();
@@ -46,6 +47,7 @@ class FakeBinding implements HomeyMappingControlBinding {
 	command(value: string | number | boolean): Promise<boolean> {
 		this.commands.push(value);
 		this.current = value;
+		this.afterCommand?.(value);
 
 		return Promise.resolve(!this.failCommandAt.has(this.commands.length));
 	}
@@ -54,6 +56,10 @@ class FakeBinding implements HomeyMappingControlBinding {
 		this.readBackCount += 1;
 
 		return Promise.resolve(this.current === value && !this.failReadBackAt.has(this.readBackCount));
+	}
+
+	waitForCommandIdle(): Promise<void> {
+		return Promise.resolve();
 	}
 }
 
@@ -169,10 +175,60 @@ describe('Homey SHS mapping-control probe', () => {
 		expect(runtime.stopCount).toBe(1);
 	});
 
+	it('waits for a timed-out command tail before restoring the baseline', async () => {
+		const runtime = new FakeRuntime();
+		let releaseCommandTail = (): void => undefined;
+		const commandTail = new Promise<void>((resolve) => {
+			releaseCommandTail = resolve;
+		});
+		let idleWaits = 0;
+
+		runtime.binding.failCommandAt.add(1);
+		runtime.binding.waitForCommandIdle = async (): Promise<void> => {
+			idleWaits += 1;
+
+			if (idleWaits === 1) await commandTail;
+		};
+		const probe = probeHomeyShsMappingControl(config(), () => runtime);
+
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		expect(runtime.binding.commands).toStrictEqual([true]);
+		releaseCommandTail();
+		await expect(probe).rejects.toThrow('rejected or unconfirmed');
+		expect(runtime.binding.commands).toStrictEqual([true, false]);
+		expect(runtime.binding.current).toBe(false);
+		expect(runtime.stopCount).toBe(1);
+	});
+
+	it.each(['SIGINT', 'SIGTERM'] as const)('restores and stops before completing %s termination', async (signal) => {
+		const runtime = new FakeRuntime();
+		const listeners = new Map<string, () => void>();
+		const signalSource = {
+			on: (name: string, listener: () => void): void => {
+				listeners.set(name, listener);
+			},
+			off: (name: string, listener: () => void): void => {
+				if (listeners.get(name) === listener) listeners.delete(name);
+			},
+		};
+		runtime.binding.afterCommand = (value): void => {
+			if (value === runtime.binding.targetPanelValue) listeners.get(signal)?.();
+		};
+
+		await expect(probeHomeyShsMappingControl(config(), () => runtime, signalSource)).rejects.toThrow(
+			`received ${signal}; restoration completed before termination`,
+		);
+		expect(runtime.binding.commands).toStrictEqual([true, false]);
+		expect(runtime.binding.current).toBe(false);
+		expect(runtime.stopCount).toBe(1);
+		expect(listeners.size).toBe(0);
+	});
+
 	it('fails closed when restoration cannot be confirmed and always stops the service', async () => {
 		const runtime = new FakeRuntime();
 		runtime.binding.failCommandAt.add(2);
 		runtime.binding.failCommandAt.add(3);
+		runtime.binding.failReadBackAt.add(2);
 
 		await expect(probeHomeyShsMappingControl(config(), () => runtime)).rejects.toThrow(
 			'cleanup failed: capability restoration',

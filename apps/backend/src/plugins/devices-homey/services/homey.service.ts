@@ -348,6 +348,24 @@ export class HomeyService extends BaseManagedPluginService {
 		return successful;
 	}
 
+	async waitForCapabilityCommandIdle(deviceId: string, capabilityId: string): Promise<void> {
+		const key = this.commandKey(deviceId, capabilityId);
+
+		while (true) {
+			const tail = this.commandTails.get(key);
+
+			if (tail === undefined) {
+				return;
+			}
+
+			await tail;
+
+			if (this.commandTails.get(key) === tail) {
+				return;
+			}
+		}
+	}
+
 	async getFreshDevice(deviceId: string): Promise<HomeyDevice | null> {
 		const connector = this.connector;
 
