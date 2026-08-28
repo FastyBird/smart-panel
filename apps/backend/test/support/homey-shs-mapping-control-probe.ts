@@ -23,6 +23,7 @@ import { ResolvedHomeyPropertyMapping } from '../../src/plugins/devices-homey/ma
 import { HomeyConfigModel } from '../../src/plugins/devices-homey/models/config.model';
 import { HomeyCapability, HomeyCapabilityValue } from '../../src/plugins/devices-homey/models/homey-capability.model';
 import { HomeyDevice } from '../../src/plugins/devices-homey/models/homey-device.model';
+import { HomeyEvent, HomeyEventType } from '../../src/plugins/devices-homey/models/homey-event.model';
 import { homeyCapabilityValuesEqual } from '../../src/plugins/devices-homey/platforms/homey-command-value';
 import {
 	HomeyDevicePlatform,
@@ -41,6 +42,7 @@ const ENABLE_ACKNOWLEDGEMENT =
 	'I_WILL_USE_SMART_PANEL_TO_CONTROL_AND_RESTORE_ONLY_THE_ALLOWLISTED_HOMEY_MAPPING_TARGET';
 const PUBLIC_HOMEY_TERMS = new Set(['home', 'homey']);
 const CONFLICTING_PREFIXES = [
+	'FB_HOMEY_SHS_BURST_COMMAND_',
 	'FB_HOMEY_SHS_CREDENTIAL_ROTATION_',
 	'FB_HOMEY_SHS_LIFECYCLE_',
 	'FB_HOMEY_SHS_ORIGIN_EVENT_',
@@ -130,7 +132,9 @@ export interface HomeyMappingControlBinding {
 	readonly baselinePanelValue: PropertyCommandValue;
 	readonly targetPanelValue: PropertyCommandValue;
 	command(value: PropertyCommandValue): Promise<boolean>;
+	observedPanelSequenceMatches(values: readonly PropertyCommandValue[]): boolean;
 	readBackMatches(value: PropertyCommandValue): Promise<boolean>;
+	resetObservedPanelSequence(): void;
 	waitForCommandIdle(): Promise<void>;
 }
 
@@ -267,7 +271,7 @@ const createProbeProperty = (
 	return { channel, device, property, value: false };
 };
 
-const createSynchronizer = (): HomeySynchronizerService =>
+const createSynchronizer = (observeEvents: (events: readonly HomeyEvent[]) => void): HomeySynchronizerService =>
 	({
 		filterEvents: (events: readonly unknown[]): readonly unknown[] => [...events],
 		getOperationalDiagnostics: (): Promise<HomeyOperationalDiagnostics> => Promise.resolve(EMPTY_DIAGNOSTICS),
@@ -276,13 +280,17 @@ const createSynchronizer = (): HomeySynchronizerService =>
 		reset: (): void => undefined,
 		synchronizeDevices: (_devices: readonly unknown[], _missing: readonly string[], events: readonly unknown[]) =>
 			Promise.resolve({ acceptedCapabilityValues: [], acceptedEvents: [...events], failed: 0, ignored: 0, updated: 0 }),
-		synchronizeEvents: (events: readonly unknown[]) =>
-			Promise.resolve({ acceptedEvents: [...events], failed: 0, ignored: 0, updated: 0 }),
+		synchronizeEvents: (events: readonly HomeyEvent[]) => {
+			observeEvents(events);
+
+			return Promise.resolve({ acceptedEvents: [...events], failed: 0, ignored: 0, updated: 0 });
+		},
 		synchronizeSnapshot: (_devices: readonly unknown[], events: readonly unknown[] = []) =>
 			Promise.resolve({ acceptedCapabilityValues: [], acceptedEvents: [...events], failed: 0, ignored: 0, updated: 0 }),
 	}) as unknown as HomeySynchronizerService;
 
 export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory = (config) => {
+	const observedEvents: HomeyEvent[] = [];
 	const pluginConfig = Object.assign(new HomeyConfigModel(), {
 		apiKey: config.apiKey,
 		connectionTimeout: config.timeoutMs,
@@ -304,7 +312,7 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 	const transformer = new HomeyMappingTransformerService();
 	const service = new HomeyService(
 		configService as unknown as ConfigService,
-		createSynchronizer(),
+		createSynchronizer((events) => observedEvents.push(...events)),
 		new HomeyLocalConnectorFactory(new HomeySdkClientFactoryService()),
 	);
 	const platform = new HomeyDevicePlatform(service, mappingLoader, transformer);
@@ -313,6 +321,7 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 		start: () => service.start(),
 		stop: () => service.stop(),
 		bind: async (runtimeConfig): Promise<HomeyMappingControlBinding> => {
+			let observedEventOffset = observedEvents.length;
 			const inventory = service.getInventorySnapshot();
 
 			if (inventory === null) throw new Error('Homey mapping-control inventory is unavailable');
@@ -376,6 +385,25 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 			}
 
 			const command = (value: PropertyCommandValue): Promise<boolean> => platform.process({ ...commandTarget, value });
+			const observedPanelSequenceMatches = (values: readonly PropertyCommandValue[]): boolean => {
+				const expected = values.map((value) => transformer.write(binding.mapping, value));
+				let expectedIndex = 0;
+
+				for (const event of observedEvents.slice(observedEventOffset)) {
+					if (
+						event.type === HomeyEventType.CAPABILITY_VALUE_CHANGED &&
+						event.deviceId === device.id &&
+						event.capabilityId === capability.id &&
+						homeyCapabilityValuesEqual(event.value, expected[expectedIndex] ?? null)
+					) {
+						expectedIndex += 1;
+
+						if (expectedIndex === expected.length) return true;
+					}
+				}
+
+				return expected.length === 0;
+			};
 			const readBackMatches = async (value: PropertyCommandValue): Promise<boolean> => {
 				const expected = transformer.write(binding.mapping, value);
 				const readBack = await service.getFreshDevice(device.id);
@@ -387,7 +415,11 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 				availableFamilies,
 				baselinePanelValue: baselineValidation.value,
 				command,
+				observedPanelSequenceMatches,
 				readBackMatches,
+				resetObservedPanelSequence: () => {
+					observedEventOffset = observedEvents.length;
+				},
 				targetPanelValue: targetValidation.value,
 				waitForCommandIdle: () => service.waitForCapabilityCommandIdle(device.id, capability.id),
 			};

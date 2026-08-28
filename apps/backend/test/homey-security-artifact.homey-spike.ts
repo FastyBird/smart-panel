@@ -58,6 +58,7 @@ const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 	'homey-plugin-connection',
 	'homey-plugin-device-mapping',
 	'homey-reconnect-backoff',
+	'homey-shs-burst-command',
 	'homey-shs-credential-rotation',
 	'homey-shs-mapping-control',
 	'homey-shs-origin-event',
@@ -182,8 +183,22 @@ const configuredMappingControlCapabilityId = (): string | undefined => {
 	return value === undefined || isPublicHomeyCapabilityBase(value) ? undefined : value;
 };
 
+const configuredBurstCommandCapabilityId = (): string | undefined => {
+	const value = process.env.FB_HOMEY_SHS_BURST_COMMAND_CAPABILITY_ID?.trim();
+
+	return value === undefined || isPublicHomeyCapabilityBase(value) ? undefined : value;
+};
+
 const configuredPrivateMappingControlPanelValue = (): string | undefined => {
 	const value = process.env.FB_HOMEY_SHS_MAPPING_CONTROL_PANEL_VALUE?.trim();
+
+	return value === undefined || ['true', 'false'].includes(value.toLowerCase()) || Number.isFinite(Number(value))
+		? undefined
+		: value;
+};
+
+const configuredPrivateBurstCommandPanelValue = (): string | undefined => {
+	const value = process.env.FB_HOMEY_SHS_BURST_COMMAND_PANEL_VALUE?.trim();
 
 	return value === undefined || ['true', 'false'].includes(value.toLowerCase()) || Number.isFinite(Number(value))
 		? undefined
@@ -205,6 +220,9 @@ const configuredPrivateValues = (): readonly string[] =>
 		process.env.FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME,
 		process.env.FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID,
 		process.env.FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID,
+		process.env.FB_HOMEY_SHS_BURST_COMMAND_DEVICE_ID,
+		configuredBurstCommandCapabilityId(),
+		configuredPrivateBurstCommandPanelValue(),
 		process.env.FB_HOMEY_SHS_MAPPING_CONTROL_DEVICE_ID,
 		configuredMappingControlCapabilityId(),
 		configuredPrivateMappingControlPanelValue(),

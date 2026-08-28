@@ -629,6 +629,12 @@ representative lifecycle failure paths.
 - [ ] Burst updates and concurrent commands.
 - [ ] Plugin disable/enable and backend shutdown with no leaked connections/timers.
 
+A separately gated burst-command probe now prepares the remaining concurrency run. It binds one exact reversible
+writable mapping through the production service and platform path, submits `target → baseline → target` concurrently,
+requires all three matching realtime capability events in order plus an authoritative final read-back, and restores the
+exact baseline before shutdown. Its exact-schema report contains only fixed event labels and completion booleans. The
+matrix item remains open until this guarded probe passes against live SHS and the sanitized report is reviewed.
+
 A guarded startup probe now exercises a newly constructed production `HomeyService`, the local connector factory, and
 the pinned SDK transport while replacing persistence with a no-op synchronizer. Its online scenario requires healthy
 connection, authoritative inventory availability, and clean shutdown. Its offline-recovery scenario additionally

@@ -89,10 +89,18 @@ class FakeBinding implements HomeyMappingControlBinding {
 		return Promise.resolve(!this.failCommandAt.has(this.commands.length));
 	}
 
+	observedPanelSequenceMatches(values: readonly (string | number | boolean)[]): boolean {
+		return values.every((value, index) => this.commands[index] === value);
+	}
+
 	readBackMatches(value: string | number | boolean): Promise<boolean> {
 		this.readBackCount += 1;
 
 		return Promise.resolve(this.current === value && !this.failReadBackAt.has(this.readBackCount));
+	}
+
+	resetObservedPanelSequence(): void {
+		this.commands.length = 0;
 	}
 
 	waitForCommandIdle(): Promise<void> {
