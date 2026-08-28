@@ -558,7 +558,7 @@ variables, clear every unrelated mutation/recovery family, and enter identifiers
 
 ```bash
 for variable in $(env | awk -F= '
-  /^FB_HOMEY_SHS_(CREDENTIAL_ROTATION|LIFECYCLE|MAPPING_CONTROL|ORIGIN_EVENT|REALTIME|RECOVERY|REPLACEMENT|RESTART_EVENT_FLOW|STARTUP|WRITE)_/ {
+  /^FB_HOMEY_SHS_(CREDENTIAL_ROTATION|LIFECYCLE|MAPPING_CONTROL|ORIGIN_EVENT|PLUGIN_LIFECYCLE|REALTIME|RECOVERY|REPLACEMENT|RESTART_EVENT_FLOW|STARTUP|WRITE)_/ {
     print $1
   }
 '); do
@@ -582,6 +582,13 @@ pnpm run homey:probe-burst-command
 The panel value must differ from the current value and use Smart Panel units. The report contains only fixed event
 labels and completion booleans; it excludes the endpoint, credential, Homey identity, mapping target, capability value,
 inventory data, event payload, response body, and raw error. Inspect the controlled equipment after any failed run.
+
+On 2026-08-28, the guarded cover-position run passed against live SHS `13.4.1`. The production service and platform
+path accepted and confirmed all three concurrent target-baseline-target requests, delivered their matching realtime
+capability events in order, and returned the requested final authoritative value. The probe then restored the exact
+baseline, verified restoration with a fresh read, and stopped cleanly. The reviewed report is committed as
+`__fixtures__/evidence/2026-08-28-shs-13.4.1-burst-command.json`; it contains only fixed event labels, ordering numbers,
+public SDK version, and completion booleans.
 
 ## Managed plugin lifecycle and backend shutdown
 
@@ -969,7 +976,7 @@ Fill this matrix using synthetic aliases only.
 | Availability events                        | Absent for synthetic test driver    | Unavailable/restored read-backs passed after full ten-second event windows; physical/Homey-originated evidence remains pending                       |
 | Allowlisted write, event, and read-back    | Pass                                | Requested-value event and read-back passed; restoration of the original value and its second read-back also passed                                   |
 | Smart Panel mapped-family control          | Pass                                | Cover, lighting, and switch passed through production mappings and control; no eligible live lock family was present                                 |
-| Burst updates and concurrent commands      | Pending                             |                                                                                                                                                      |
+| Burst updates and concurrent commands      | Pass                                | Three concurrent mapped cover commands were serialized, confirmed by ordered realtime events and final read-back, then restored exactly              |
 | Plugin disable/enable and backend shutdown | Pass                                | Managed disable, fresh-connector re-enable, and backend shutdown each completed; both 35-second post-stop windows remained fully quiescent           |
 | Network interruption and restoration       | Pass                                | 36 ordered events proved disconnect, nine retries during the 60-second interruption, resubscription, fresh inventory read, and complete cleanup      |
 | SHS restart and reconnect                  | Pass                                | A 23-event write/restart/restore run proved events and read-backs across recovery; the earlier 15-event run independently proved transport recovery  |

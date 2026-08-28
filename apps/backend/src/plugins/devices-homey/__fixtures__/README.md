@@ -127,5 +127,10 @@ and backend shutdown against live SHS `13.4.1`. Both disable and shutdown remain
 35 seconds, longer than the minimum reconciliation interval. The report contains no endpoint, credential, Homey
 identity, device or zone identifier, inventory data or count, connector count, event payload, response body, or raw
 error.
+The 2026-08-28 burst-command report records three concurrent same-capability Smart Panel requests against live SHS
+`13.4.1`. The production command queue accepted and confirmed the complete target-baseline-target sequence, observed
+the three matching realtime events in order, verified the final authoritative value, restored the baseline, verified
+restoration, and stopped cleanly. The report contains no endpoint, credential, Homey identity, mapping family, device
+or capability identifier, capability value, inventory data, event payload, response body, or raw error.
 
 Before committing regenerated fixtures, inspect every value and key and confirm that no private source value survives.

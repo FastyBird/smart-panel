@@ -626,14 +626,15 @@ representative lifecycle failure paths.
 - [x] Separately gated add/rename/zone-move/unavailable/removal lifecycle tests on the allowlisted disposable device only, followed by cleanup.
 - [x] Physical/Homey/flow-originated state changes.
 - [x] Allowlisted Smart Panel control for every writable MVP mapping family available.
-- [ ] Burst updates and concurrent commands.
+- [x] Burst updates and concurrent commands.
 - [x] Plugin disable/enable and backend shutdown with no leaked connections/timers.
 
-A separately gated burst-command probe now prepares the remaining concurrency run. It binds one exact reversible
-writable mapping through the production service and platform path, submits `target → baseline → target` concurrently,
-requires all three matching realtime capability events in order plus an authoritative final read-back, and restores the
-exact baseline before shutdown. Its exact-schema report contains only fixed event labels and completion booleans. The
-matrix item remains open until this guarded probe passes against live SHS and the sanitized report is reviewed.
+The separately gated burst-command probe passed on 2026-08-28 against live SHS `13.4.1`. It bound a reversible cover
+position mapping through the production service and platform path, submitted `target → baseline → target` concurrently,
+accepted and confirmed all three commands, observed their matching realtime capability events in order, and verified
+the final authoritative value. It then restored the exact baseline, verified restoration with a fresh read, and stopped
+cleanly. The reviewed exact-schema report contains only fixed event labels, ordering numbers, public SDK version, and
+completion booleans.
 
 The separately gated, read-only plugin-lifecycle probe passed on 2026-08-28 against live SHS `13.4.1`. The production
 `PluginServiceManagerService` bootstrapped Homey, disabled it through the configuration event path, re-enabled it with a

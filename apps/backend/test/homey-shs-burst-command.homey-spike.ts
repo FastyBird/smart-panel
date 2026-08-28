@@ -272,6 +272,29 @@ describe('Homey SHS burst-command probe', () => {
 		).toThrow();
 	});
 
+	it('preserves the sanitized live SHS burst-command evidence', async () => {
+		const evidencePath = join(
+			__dirname,
+			'../src/plugins/devices-homey/__fixtures__/evidence/2026-08-28-shs-13.4.1-burst-command.json',
+		);
+		const evidence = JSON.parse(await readFile(evidencePath, 'utf8')) as unknown;
+
+		assertHomeyShsBurstCommandReportSafe(evidence, config());
+		expect(evidence).toMatchObject({
+			observation: {
+				baselineRead: true,
+				concurrentCommandsAccepted: true,
+				finalReadBackMatched: true,
+				orderedCapabilityEventsObserved: true,
+				restorationAccepted: true,
+				restorationReadBackMatched: true,
+				restored: true,
+			},
+			session: { cleanupCompleted: true, serviceStarted: true },
+		});
+		expect(evidence.session.events).toHaveLength(13);
+	});
+
 	it('writes the report beneath a private non-overwriting directory', async () => {
 		const { report } = await successfulProbe();
 		const parent = await mkdtemp(join(tmpdir(), 'homey-burst-command-'));

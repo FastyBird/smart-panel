@@ -1,0 +1,74 @@
+{
+	"metadata": {
+		"probe": "homey-shs-burst-command",
+		"schemaVersion": 1,
+		"sdkVersion": "3.19.2"
+	},
+	"observation": {
+		"baselineRead": true,
+		"concurrentCommandsAccepted": true,
+		"finalReadBackMatched": true,
+		"orderedCapabilityEventsObserved": true,
+		"restorationAccepted": true,
+		"restorationReadBackMatched": true,
+		"restored": true
+	},
+	"session": {
+		"cleanupCompleted": true,
+		"events": [
+			{
+				"event": "service.start.requested",
+				"order": 1
+			},
+			{
+				"event": "service.start.resolved",
+				"order": 2
+			},
+			{
+				"event": "inventory.verified",
+				"order": 3
+			},
+			{
+				"event": "target.bound",
+				"order": 4
+			},
+			{
+				"event": "baseline.read.verified",
+				"order": 5
+			},
+			{
+				"event": "commands.concurrent.requested",
+				"order": 6
+			},
+			{
+				"event": "commands.concurrent.resolved",
+				"order": 7
+			},
+			{
+				"event": "events.ordered.verified",
+				"order": 8
+			},
+			{
+				"event": "final.readback.verified",
+				"order": 9
+			},
+			{
+				"event": "restoration.requested",
+				"order": 10
+			},
+			{
+				"event": "restoration.resolved",
+				"order": 11
+			},
+			{
+				"event": "restoration.readback.verified",
+				"order": 12
+			},
+			{
+				"event": "service.stop.resolved",
+				"order": 13
+			}
+		],
+		"serviceStarted": true
+	}
+}
