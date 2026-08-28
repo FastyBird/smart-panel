@@ -59,6 +59,7 @@ const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 	'homey-plugin-device-mapping',
 	'homey-reconnect-backoff',
 	'homey-shs-credential-rotation',
+	'homey-shs-origin-event',
 	'homey-shs-permission-scopes',
 	'homey-shs-restart-event-flow',
 ]);
@@ -167,6 +168,12 @@ const configuredWriteCapabilityId = (): string | undefined => {
 	return value === undefined || isPublicHomeyCapabilityBase(value) ? undefined : value;
 };
 
+const configuredOriginEventCapabilityId = (): string | undefined => {
+	const value = process.env.FB_HOMEY_SHS_ORIGIN_EVENT_CAPABILITY_ID?.trim();
+
+	return value === undefined || isPublicHomeyCapabilityBase(value) ? undefined : value;
+};
+
 const configuredPrivateValues = (): readonly string[] =>
 	[
 		process.env.FB_HOMEY_SHS_API_KEY,
@@ -182,6 +189,8 @@ const configuredPrivateValues = (): readonly string[] =>
 		process.env.FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME,
 		process.env.FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID,
 		process.env.FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID,
+		process.env.FB_HOMEY_SHS_ORIGIN_EVENT_DEVICE_ID,
+		configuredOriginEventCapabilityId(),
 		process.env.FB_HOMEY_SHS_WRITE_DEVICE_ID,
 		configuredWriteCapabilityId(),
 		configuredPrivateWriteStringValue(),
@@ -6665,6 +6674,10 @@ describe('Homey security artifact gate', () => {
 		expect(() => assertTextSafe('unsafe fixture', '{"probe":"homey-shs-restart-event-flow-private"}')).toThrow(
 			'unsafe fixture contains a Homey personal access token',
 		);
+		expect(() => assertTextSafe('safe fixture', '{"probe":"homey-shs-origin-event"}')).not.toThrow();
+		expect(() => assertTextSafe('unsafe fixture', '{"probe":"homey-shs-origin-event-private"}')).toThrow(
+			'unsafe fixture contains a Homey personal access token',
+		);
 		expect(() =>
 			assertTextSafe('unsafe compiled module', 'throw new Error("request failed for homey_abcdefghijklmnop")', true),
 		).toThrow('unsafe compiled module contains a Homey personal access token');
@@ -8224,6 +8237,8 @@ describe('Homey security artifact gate', () => {
 		const previousDeviceOnlyApiKey = process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY;
 		const previousExpectedHost = process.env.FB_HOMEY_SHS_EXPECTED_HOST;
 		const previousLifecycleDeviceMarker = process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER;
+		const previousOriginEventDeviceId = process.env.FB_HOMEY_SHS_ORIGIN_EVENT_DEVICE_ID;
+		const previousOriginEventCapabilityId = process.env.FB_HOMEY_SHS_ORIGIN_EVENT_CAPABILITY_ID;
 		const previousWriteDeviceId = process.env.FB_HOMEY_SHS_WRITE_DEVICE_ID;
 		const previousWriteCapabilityId = process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID;
 		const previousWriteValue = process.env.FB_HOMEY_SHS_WRITE_VALUE;
@@ -8233,6 +8248,8 @@ describe('Homey security artifact gate', () => {
 		process.env.FB_HOMEY_SHS_DEVICE_ONLY_API_KEY = 'opaque-device-value';
 		process.env.FB_HOMEY_SHS_EXPECTED_HOST = 'homey.local';
 		process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER = 'private-lifecycle-marker';
+		process.env.FB_HOMEY_SHS_ORIGIN_EVENT_DEVICE_ID = 'private-origin-device';
+		process.env.FB_HOMEY_SHS_ORIGIN_EVENT_CAPABILITY_ID = 'private-origin-capability';
 		process.env.FB_HOMEY_SHS_WRITE_DEVICE_ID = 'private-write-device';
 		process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID = 'private-write-capability';
 		process.env.FB_HOMEY_SHS_WRITE_VALUE = '"private-write-value"';
@@ -8255,6 +8272,11 @@ describe('Homey security artifact gate', () => {
 			expect(() => assertTextSafe('unsafe fixture', '{"value":"private-lifecycle-marker"}')).toThrow(
 				'unsafe fixture contains a configured private Homey value',
 			);
+			for (const privateOriginValue of ['private-origin-device', 'private-origin-capability']) {
+				expect(() => assertTextSafe('unsafe fixture', `{"value":"${privateOriginValue}"}`)).toThrow(
+					'unsafe fixture contains a configured private Homey value',
+				);
+			}
 			for (const privateWriteValue of ['private-write-device', 'private-write-capability', 'private-write-value']) {
 				expect(() => assertTextSafe('unsafe fixture', `{"value":"${privateWriteValue}"}`)).toThrow(
 					'unsafe fixture contains a configured private Homey value',
@@ -8262,6 +8284,7 @@ describe('Homey security artifact gate', () => {
 			}
 
 			process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID = 'onoff';
+			process.env.FB_HOMEY_SHS_ORIGIN_EVENT_CAPABILITY_ID = 'onoff';
 			expect(() => assertTextSafe('safe fixture', '{"capability":"onoff"}')).not.toThrow();
 			process.env.FB_HOMEY_SHS_WRITE_CAPABILITY_ID = 'power_on_behavior';
 			process.env.FB_HOMEY_SHS_WRITE_VALUE = '"off"';
@@ -8300,6 +8323,18 @@ describe('Homey security artifact gate', () => {
 				delete process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER;
 			} else {
 				process.env.FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER = previousLifecycleDeviceMarker;
+			}
+
+			if (previousOriginEventDeviceId === undefined) {
+				delete process.env.FB_HOMEY_SHS_ORIGIN_EVENT_DEVICE_ID;
+			} else {
+				process.env.FB_HOMEY_SHS_ORIGIN_EVENT_DEVICE_ID = previousOriginEventDeviceId;
+			}
+
+			if (previousOriginEventCapabilityId === undefined) {
+				delete process.env.FB_HOMEY_SHS_ORIGIN_EVENT_CAPABILITY_ID;
+			} else {
+				process.env.FB_HOMEY_SHS_ORIGIN_EVENT_CAPABILITY_ID = previousOriginEventCapabilityId;
 			}
 
 			if (previousWriteDeviceId === undefined) {

@@ -648,6 +648,13 @@ restart. Complete device, manager, socket, and SDK cleanup followed. The reviewe
 fixed event labels and completion booleans; failure cleanup uses state-aware, bounded restoration and never writes a
 success report without complete restoration and teardown.
 
+A separately gated, non-writing origin-event probe is prepared for the next unchecked item. It binds one exact
+device/capability and accepts `physical`, `homey`, or `flow` as fixed scenario labels. For each run it requires an
+operator-originated scalar change event plus authoritative read-back, then a same-origin restoration event and final
+baseline read-back before complete teardown. Baseline and changed values remain in memory only, all Smart Panel write
+gates are prohibited, and the matrix item remains unchecked until reviewed live evidence exists for the required
+origins.
+
 The 2026-08-26 SHS `13.4.1` restart probe closed the transport/session recovery slice: it observed disconnect,
 reconnect, manager resubscription, a fresh inventory read, and complete cleanup. This does not close the event-flow
 criterion above because no capability or availability event was observed before and after that restart.
