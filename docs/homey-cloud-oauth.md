@@ -91,8 +91,11 @@ The backend implementation will read these deployment values; values shown here 
 | `FB_HOMEY_CLOUD_REDIRECT_URL`  | No     | Exact absolute registered callback URL; HTTPS outside loopback development; no credentials, fragment, or unexpected query.         |
 
 Access tokens and refresh tokens are per authorization, not deployment client configuration. They must use the generic
-write-only secret boundary or an established encrypted credential store, remain backend-only, and be cleared together
-on disconnect or failed reauthorization. The client secret and tokens must never share a browser-facing DTO.
+write-only secret boundary or an established encrypted credential store and remain backend-only. Disconnect clears the
+active access token, refresh token, and selected Homey together. Reauthorization stages a separate candidate grant and
+must preserve the active grant until the candidate token set is exchanged, persisted, and activated successfully. A
+failed reauthorization clears only its candidate state. The client secret and tokens must never share a browser-facing
+DTO.
 
 ## Authorization boundary for Task 7.2
 
@@ -107,12 +110,14 @@ The implementation that follows this record must:
    state before token exchange.
 5. Redact the code, state, token response, client secret, raw account response, and raw Homey inventory from errors and
    logs.
-6. Exchange the code immediately with a bounded timeout, persist tokens before declaring authorization complete, and
-   clear partial state after any failure.
+6. Exchange the code immediately with a bounded timeout. Stage and persist candidate tokens before atomically activating
+   them; after any exchange, validation, or persistence failure, clear only candidate state and leave an existing active
+   grant and connector untouched.
 7. List sanitized Homey choices after authorization. Auto-select only when exactly one eligible Homey exists; otherwise
    require an explicit stable-ID selection without exposing account details that the admin UI does not need.
 8. Serialize refresh and token replacement, persist a rotated refresh token atomically, and move to reauthorization
-   rather than retrying aggressively after revocation or permanent refresh failure.
+   rather than retrying aggressively after revocation or permanent refresh failure. Reauthorization must not take the
+   active connector offline unless the active grant independently becomes invalid or the candidate is activated.
 9. Disconnect the Homey connector and clear tokens plus the selected Homey before reporting OAuth disconnect success.
 
 The current official client and HTTP references do not document a standards-style token-revocation endpoint. Task 7.2
