@@ -625,7 +625,7 @@ representative lifecycle failure paths.
 - [x] API key revoked, replaced, and insufficiently scoped.
 - [x] Separately gated add/rename/zone-move/unavailable/removal lifecycle tests on the allowlisted disposable device only, followed by cleanup.
 - [x] Physical/Homey/flow-originated state changes.
-- [ ] Allowlisted Smart Panel control for every writable MVP mapping family available.
+- [x] Allowlisted Smart Panel control for every writable MVP mapping family available.
 - [ ] Burst updates and concurrent commands.
 - [ ] Plugin disable/enable and backend shutdown with no leaked connections/timers.
 
@@ -655,13 +655,14 @@ The three reviewed exact-schema reports retain only fixed scenario/event labels,
 and completion booleans; they contain no endpoint, credential, Homey identity, device or capability identifier,
 capability value, inventory content, event payload, Flow identity, response body, or raw error.
 
-A separately gated mapping-control probe is prepared for the next unchecked live-matrix item. It starts the production
-`HomeyService`, loads the current mapping catalog, and routes one exact allowlisted target through
-`HomeyDevicePlatform`. Only reversible bidirectional lighting, switch, cover, and lock mappings are eligible. Each run
-requires the transformed Smart Panel command and fresh authoritative read-back, followed by restoration through the
-same platform path, a final read-back, and complete service shutdown. It records the fixed set of eligible families
-detected in live inventory but no counts, identities, capability values, inventory content, payloads, or raw errors.
-The matrix item remains unchecked until reviewed live evidence covers every family reported as available.
+The separately gated mapping-control probe passed on 2026-08-28 against SHS `13.4.1` for every reversible writable
+family reported by live inventory: lighting through `light-power`, switch through `outlet-power`, and cover through
+`window-covering-position`. Each run started the production `HomeyService`, loaded the current mapping catalog, routed
+the exact allowlisted target through `HomeyDevicePlatform`, verified the transformed command with a fresh authoritative
+read, restored the exact baseline through the same path, verified restoration, and stopped cleanly. No eligible lock
+family was present, so the synthetic published-protocol lock fixture remains contract coverage rather than live control
+evidence. The three reviewed reports contain only fixed family/mapping/event labels, booleans, ordering numbers, and the
+public SDK version.
 
 The 2026-08-26 SHS `13.4.1` restart probe closed the transport/session recovery slice: it observed disconnect,
 reconnect, manager resubscription, a fresh inventory read, and complete cleanup. This does not close the event-flow

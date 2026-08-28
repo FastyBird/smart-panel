@@ -116,5 +116,11 @@ The three 2026-08-28 origin-event reports record physical-control, Homey-app, an
 same-origin restoration event, final baseline read-back, and complete teardown. They contain no endpoint, credential,
 Homey identity, device or capability identifier, capability value, inventory content, event payload, Flow identity,
 response body, or raw error.
+The three 2026-08-28 mapping-control reports cover every reversible writable family reported by live SHS `13.4.1`
+inventory: lighting, switch, and cover. Each report proves production Smart Panel mapping and platform command
+acceptance, fresh read-back, exact baseline restoration through the same path, final read-back, and clean service
+shutdown. The inventory exposed no eligible lock family. The reports contain no endpoint, credential, Homey identity,
+device or capability identifier, capability value, inventory content or count, event payload, response body, or raw
+error.
 
 Before committing regenerated fixtures, inspect every value and key and confirm that no private source value survives.

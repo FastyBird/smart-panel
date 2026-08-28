@@ -71,6 +71,7 @@ const PUBLIC_SYNTHETIC_PERSONAL_VALUES = new Set([
 	'Synthetic mode B',
 	'Synthetic mode C',
 ]);
+const PUBLIC_EVIDENCE_PERSONAL_VALUES = new Set(['light-power', 'outlet-power', 'window-covering-position']);
 const PUBLIC_SYNTHETIC_IDENTIFIER_VALUES = new Set([
 	'123e4567-e89b-12d3-a456-426614174000',
 	'550e8400-e29b-41d4-a716-446655440000',
@@ -5860,7 +5861,8 @@ const isSafePersonalValue = (value: unknown): boolean =>
 	value === false ||
 	value === '[~2~]' ||
 	isHomeyGeneratedPseudonym(value) ||
-	(typeof value === 'string' && PUBLIC_SYNTHETIC_PERSONAL_VALUES.has(value));
+	(typeof value === 'string' &&
+		(PUBLIC_SYNTHETIC_PERSONAL_VALUES.has(value) || PUBLIC_EVIDENCE_PERSONAL_VALUES.has(value)));
 
 const containsStructuredAddress = (value: unknown): boolean => {
 	if (Array.isArray(value)) {
@@ -6596,6 +6598,12 @@ describe('Homey security artifact gate', () => {
 			'unsafe fixture contains a structured address value',
 		);
 		expect(() => assertFixtureTextSafe('unsafe fixture', '{"name":"Alice Bedroom"}', '.json')).toThrow(
+			'unsafe fixture contains a structured personal value',
+		);
+		expect(() =>
+			assertFixtureTextSafe('safe fixture', '{"mappingName":"window-covering-position"}', '.json'),
+		).not.toThrow();
+		expect(() => assertFixtureTextSafe('unsafe fixture', '{"mappingName":"private-cover"}', '.json')).toThrow(
 			'unsafe fixture contains a structured personal value',
 		);
 		expect(() =>

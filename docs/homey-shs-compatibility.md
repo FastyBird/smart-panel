@@ -26,6 +26,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Capability metadata and suffixed IDs                  | Inventory, explicit read, and write read-back passed     | None                                                             |
 | Socket.IO events and reconnect                        | Capability event, restart, and network recovery passed   | Capture physical/Homey-originated availability-event continuity  |
 | Allowlisted capability write                          | Passed on SHS `13.4.1`                                   | None                                                             |
+| Smart Panel mapped-family control                     | Cover, lighting, and switch passed on SHS `13.4.1`       | None; no writable lock family was present in live inventory      |
 | Error and permission-scope classification             | Five failure scenarios and three omitted scopes passed   | None                                                             |
 | API-key revocation and replacement                    | Passed on SHS `13.4.1`                                   | None                                                             |
 | Disposable-device lifecycle                           | Passed on SHS `13.4.1`                                   | None                                                             |
@@ -38,21 +39,21 @@ file. Live results use synthetic aliases and sanitized captures only.
 
 Complete this table after the live run. Values committed here must remain non-sensitive.
 
-| Field                                    | Recorded value                                    |
-| ---------------------------------------- | ------------------------------------------------- |
-| Capture date                             | `2026-08-13`, `2026-08-26`, `2026-08-27`          |
-| Realtime SDK probe date                  | `2026-08-14`, `2026-08-26`                        |
-| mDNS observation date                    | `2026-08-14`, `2026-08-26`                        |
-| SHS version                              | `13.4.0`, `13.4.1`                                |
-| Container image tag and immutable digest | Pending                                           |
-| Host operating system/architecture       | TrueNAS; version and architecture pending         |
-| Topology                                 | Same LAN, separate host                           |
-| Smart Panel to SHS network path          | Direct private-LAN connection                     |
-| HTTP port `4859`                         | Confirmed for reads and the SDK Socket.IO session |
-| HTTPS port `4860`                        | Pending                                           |
-| TLS certificate behavior                 | Pending                                           |
-| Disposable capability alias              | Pending synthetic alias                           |
-| Disposable lifecycle-device alias        | `fbsp-lifecycle-disposable-device`                |
+| Field                                    | Recorded value                                         |
+| ---------------------------------------- | ------------------------------------------------------ |
+| Capture date                             | `2026-08-13`, `2026-08-26`, `2026-08-27`, `2026-08-28` |
+| Realtime SDK probe date                  | `2026-08-14`, `2026-08-26`                             |
+| mDNS observation date                    | `2026-08-14`, `2026-08-26`                             |
+| SHS version                              | `13.4.0`, `13.4.1`                                     |
+| Container image tag and immutable digest | Pending                                                |
+| Host operating system/architecture       | TrueNAS; version and architecture pending              |
+| Topology                                 | Same LAN, separate host                                |
+| Smart Panel to SHS network path          | Direct private-LAN connection                          |
+| HTTP port `4859`                         | Confirmed for reads and the SDK Socket.IO session      |
+| HTTPS port `4860`                        | Pending                                                |
+| TLS certificate behavior                 | Pending                                                |
+| Disposable capability alias              | Pending synthetic alias                                |
+| Disposable lifecycle-device alias        | `fbsp-lifecycle-disposable-device`                     |
 
 On 2026-08-26, the TrueNAS host was reachable but SHS stopped before opening its API ports because its required Avahi
 daemon could not start. The deployment recovered after applying Homey's documented TrueNAS settings: disable the host
@@ -529,6 +530,20 @@ unless the requested command, fresh read-back, exact restoration, restoration re
 The report contains no endpoint, credential, Homey identity, device or capability identifier, capability value,
 inventory content/count, event payload, response body, or raw error.
 
+When a device exposes repeated instances of the requested capability base, choose the exact unsuffixed capability when
+present; otherwise choose the lexicographically first full suffixed ID. This mirrors the production mapping loader's
+deterministic primary-instance rule. SHS may omit independent capability availability while still reporting the whole
+device as available. The normalized `null` means that no independent signal was exposed: the probe requires the fresh
+device to remain available, rejects an explicitly unavailable capability, and accepts an omitted capability-level flag.
+
+On 2026-08-28, the guarded probe passed once for every reversible writable family reported by the live SHS `13.4.1`
+inventory: lighting through `light-power`, switch through `outlet-power`, and cover through
+`window-covering-position`. Every run used the production mapping, platform, service, and connector path; verified the
+requested value with a fresh authoritative read; restored the exact baseline through the same path; verified the
+restoration; and stopped cleanly. The live inventory reported no eligible lock family, so synthetic lock contract tests
+remain the available lock coverage and are not presented as live control evidence. The three exact-schema reports are
+committed as `__fixtures__/evidence/2026-08-28-shs-13.4.1-mapping-control-{lighting,switch,cover}.json`.
+
 ## Operator-controlled restart recovery probe
 
 The recovery probe measures the SDK's behavior across a real SHS restart without performing the restart itself. It
@@ -874,6 +889,7 @@ Fill this matrix using synthetic aliases only.
 | Capability events                         | Pass                                | The allowlisted write produced its matching capability update inside the guarded observation window                                                  |
 | Availability events                       | Absent for synthetic test driver    | Unavailable/restored read-backs passed after full ten-second event windows; physical/Homey-originated evidence remains pending                       |
 | Allowlisted write, event, and read-back   | Pass                                | Requested-value event and read-back passed; restoration of the original value and its second read-back also passed                                   |
+| Smart Panel mapped-family control         | Pass                                | Cover, lighting, and switch passed through production mappings and control; no eligible live lock family was present                                 |
 | Network interruption and restoration      | Pass                                | 36 ordered events proved disconnect, nine retries during the 60-second interruption, resubscription, fresh inventory read, and complete cleanup      |
 | SHS restart and reconnect                 | Pass                                | A 23-event write/restart/restore run proved events and read-backs across recovery; the earlier 15-event run independently proved transport recovery  |
 | API-key revocation and replacement        | Pass                                | Primary and replacement keys passed preflight; revocation returned `401`, and the replacement key remained valid                                     |
