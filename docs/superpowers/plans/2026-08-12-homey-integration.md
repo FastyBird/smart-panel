@@ -624,7 +624,7 @@ representative lifecycle failure paths.
 - [x] Network interruption/restoration.
 - [x] API key revoked, replaced, and insufficiently scoped.
 - [x] Separately gated add/rename/zone-move/unavailable/removal lifecycle tests on the allowlisted disposable device only, followed by cleanup.
-- [ ] Physical/Homey/flow-originated state changes.
+- [x] Physical/Homey/flow-originated state changes.
 - [ ] Allowlisted Smart Panel control for every writable MVP mapping family available.
 - [ ] Burst updates and concurrent commands.
 - [ ] Plugin disable/enable and backend shutdown with no leaked connections/timers.
@@ -648,12 +648,12 @@ restart. Complete device, manager, socket, and SDK cleanup followed. The reviewe
 fixed event labels and completion booleans; failure cleanup uses state-aware, bounded restoration and never writes a
 success report without complete restoration and teardown.
 
-A separately gated, non-writing origin-event probe is prepared for the next unchecked item. It binds one exact
-device/capability and accepts `physical`, `homey`, or `flow` as fixed scenario labels. For each run it requires an
-operator-originated scalar change event plus authoritative read-back, then a same-origin restoration event and final
-baseline read-back before complete teardown. Baseline and changed values remain in memory only, all Smart Panel write
-gates are prohibited, and the matrix item remains unchecked until reviewed live evidence exists for the required
-origins.
+The separately gated, non-writing origin-event probe passed all three scenarios on 2026-08-28 against SHS `13.4.1`.
+Physical control, the Homey app, and a designated Homey Flow each produced a matching subscribed capability event and
+authoritative read-back, followed by a same-origin restoration event, final baseline read-back, and complete teardown.
+The three reviewed exact-schema reports retain only fixed scenario/event labels, ordering numbers, public SDK version,
+and completion booleans; they contain no endpoint, credential, Homey identity, device or capability identifier,
+capability value, inventory content, event payload, Flow identity, response body, or raw error.
 
 The 2026-08-26 SHS `13.4.1` restart probe closed the transport/session recovery slice: it observed disconnect,
 reconnect, manager resubscription, a fresh inventory read, and complete cleanup. This does not close the event-flow

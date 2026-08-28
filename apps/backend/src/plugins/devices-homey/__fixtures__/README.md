@@ -111,5 +111,10 @@ records healthy connection, authoritative inventory availability, and cleanup. T
 records the initial `RECONNECTING` state and successful scheduled retry after operator-controlled restoration of only
 the test SHS network path. Neither report contains an endpoint, host, credential, Homey identity, inventory content or
 count, device or zone identifier, event payload, firewall rule, response body, or raw error.
+The three 2026-08-28 origin-event reports record physical-control, Homey-app, and Homey-Flow changes against SHS
+`13.4.1`. Each report proves a matching subscribed capability event and authoritative read-back, followed by a
+same-origin restoration event, final baseline read-back, and complete teardown. They contain no endpoint, credential,
+Homey identity, device or capability identifier, capability value, inventory content, event payload, Flow identity,
+response body, or raw error.
 
 Before committing regenerated fixtures, inspect every value and key and confirm that no private source value survives.

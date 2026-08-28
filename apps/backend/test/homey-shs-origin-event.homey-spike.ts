@@ -250,6 +250,39 @@ describe('Homey SHS origin-event probe', () => {
 		).toThrow();
 	});
 
+	it.each([
+		{
+			filename: '2026-08-28-shs-13.4.1-origin-physical.json',
+			scenario: 'physical',
+		},
+		{
+			filename: '2026-08-28-shs-13.4.1-origin-homey.json',
+			scenario: 'homey',
+		},
+		{
+			filename: '2026-08-28-shs-13.4.1-origin-flow.json',
+			scenario: 'flow',
+		},
+	] as const)('preserves the sanitized live SHS $scenario-origin evidence', async ({ filename, scenario }) => {
+		const evidencePath = join(__dirname, '../src/plugins/devices-homey/__fixtures__/evidence', filename);
+		const evidence = JSON.parse(await readFile(evidencePath, 'utf8')) as unknown;
+
+		assertHomeyShsOriginEventReportSafe(evidence, config({ scenario }));
+		expect(evidence).toMatchObject({
+			observation: {
+				baselineRead: true,
+				changeEventObserved: true,
+				changeReadBackMatched: true,
+				restorationEventObserved: true,
+				restorationReadBackMatched: true,
+				restored: true,
+				scenario,
+			},
+			session: { cleanupCompleted: true, managerSubscribed: true },
+		});
+		expect(evidence.session.events).toHaveLength(15);
+	});
+
 	it('writes the report beneath a private non-overwriting directory', async () => {
 		const { report } = await successfulProbe();
 		const root = await mkdtemp(join(tmpdir(), 'homey-origin-event-'));

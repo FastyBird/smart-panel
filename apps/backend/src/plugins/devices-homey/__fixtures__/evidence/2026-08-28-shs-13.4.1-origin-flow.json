@@ -1,0 +1,82 @@
+{
+	"metadata": {
+		"probe": "homey-shs-origin-event",
+		"schemaVersion": 1,
+		"sdkVersion": "3.19.2"
+	},
+	"observation": {
+		"baselineRead": true,
+		"changeEventObserved": true,
+		"changeReadBackMatched": true,
+		"restorationEventObserved": true,
+		"restorationReadBackMatched": true,
+		"restored": true,
+		"scenario": "flow"
+	},
+	"session": {
+		"cleanupCompleted": true,
+		"events": [
+			{
+				"event": "sdk.create.resolved",
+				"order": 1
+			},
+			{
+				"event": "manager.subscribe.resolved",
+				"order": 2
+			},
+			{
+				"event": "inventory.read.resolved",
+				"order": 3
+			},
+			{
+				"event": "device.subscribe.resolved",
+				"order": 4
+			},
+			{
+				"event": "baseline.read.verified",
+				"order": 5
+			},
+			{
+				"event": "change.window.open",
+				"order": 6
+			},
+			{
+				"event": "change.event.observed",
+				"order": 7
+			},
+			{
+				"event": "change.readback.verified",
+				"order": 8
+			},
+			{
+				"event": "restore.window.open",
+				"order": 9
+			},
+			{
+				"event": "restore.event.observed",
+				"order": 10
+			},
+			{
+				"event": "restore.readback.verified",
+				"order": 11
+			},
+			{
+				"event": "device.unsubscribe.resolved",
+				"order": 12
+			},
+			{
+				"event": "manager.unsubscribe.resolved",
+				"order": 13
+			},
+			{
+				"event": "socket.disconnect.resolved",
+				"order": 14
+			},
+			{
+				"event": "sdk.destroyed",
+				"order": 15
+			}
+		],
+		"managerSubscribed": true
+	}
+}

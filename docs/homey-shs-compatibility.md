@@ -458,6 +458,16 @@ run cannot restore the target itself because all Smart Panel write gates are pro
 second operator action did not complete. `FB_HOMEY_SHS_ORIGIN_EVENT_OBSERVE_MS` accepts `1000` through `300000`
 milliseconds and independently bounds both operator windows and each read-back convergence window.
 
+On 2026-08-28, all three scenarios passed against SHS `13.4.1`. Physical control, the Homey app, and a designated
+Homey Flow each produced the subscribed capability-change event and matching authoritative read-back; the same origin
+then restored the baseline with a second event and final read-back. Every run completed device, manager, socket, and
+SDK teardown. The reviewed reports are committed as
+`__fixtures__/evidence/2026-08-28-shs-13.4.1-origin-physical.json`,
+`__fixtures__/evidence/2026-08-28-shs-13.4.1-origin-homey.json`, and
+`__fixtures__/evidence/2026-08-28-shs-13.4.1-origin-flow.json`. They contain no endpoint, credential, Homey identity,
+device or capability identifier, capability value, inventory content, event payload, Flow identity, response body, or
+raw error.
+
 ## Operator-controlled restart recovery probe
 
 The recovery probe measures the SDK's behavior across a real SHS restart without performing the restart itself. It
