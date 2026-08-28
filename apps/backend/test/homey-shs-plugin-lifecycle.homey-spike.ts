@@ -28,6 +28,7 @@ const config = (overrides: Partial<HomeyShsPluginLifecycleConfig> = {}): HomeySh
 
 class FakeRuntime {
 	bootstrapCount = 0;
+	leakSdkSocketAfterDisable = false;
 	reuseGenerationAfterEnable = false;
 	shutdownCount = 0;
 	snapshotValue: HomeyPluginLifecycleSnapshot = {
@@ -36,6 +37,12 @@ class FakeRuntime {
 		activeSubscriptions: 0,
 		connected: false,
 		connectorGeneration: 0,
+		sdkActivityRevision: 0,
+		sdkActiveClients: 0,
+		sdkActiveListeners: 0,
+		sdkActiveSockets: 0,
+		sdkActiveSubscriptions: 0,
+		sdkActiveTimers: 0,
 		serviceStopped: true,
 	};
 
@@ -47,6 +54,12 @@ class FakeRuntime {
 			activeSubscriptions: 1,
 			connected: true,
 			connectorGeneration: 1,
+			sdkActivityRevision: this.snapshotValue.sdkActivityRevision + 1,
+			sdkActiveClients: 1,
+			sdkActiveListeners: 8,
+			sdkActiveSockets: 2,
+			sdkActiveSubscriptions: 2,
+			sdkActiveTimers: 0,
 			serviceStopped: false,
 		};
 
@@ -61,6 +74,12 @@ class FakeRuntime {
 					activeSubscriptions: 1,
 					connected: true,
 					connectorGeneration: this.reuseGenerationAfterEnable ? 1 : 2,
+					sdkActivityRevision: this.snapshotValue.sdkActivityRevision + 1,
+					sdkActiveClients: 1,
+					sdkActiveListeners: 8,
+					sdkActiveSockets: 2,
+					sdkActiveSubscriptions: 2,
+					sdkActiveTimers: 0,
 					serviceStopped: false,
 				}
 			: {
@@ -69,8 +88,15 @@ class FakeRuntime {
 					activeSubscriptions: 0,
 					connected: false,
 					connectorGeneration: 1,
+					sdkActivityRevision: this.snapshotValue.sdkActivityRevision + 1,
+					sdkActiveClients: 0,
+					sdkActiveListeners: 0,
+					sdkActiveSockets: 0,
+					sdkActiveSubscriptions: 0,
+					sdkActiveTimers: 0,
 					serviceStopped: true,
 				};
+		if (!enabled && this.leakSdkSocketAfterDisable) this.snapshotValue.sdkActiveSockets = 1;
 
 		return Promise.resolve();
 	}
@@ -83,6 +109,12 @@ class FakeRuntime {
 			activeConnections: 0,
 			activeSubscriptions: 0,
 			connected: false,
+			sdkActivityRevision: this.snapshotValue.sdkActivityRevision + 1,
+			sdkActiveClients: 0,
+			sdkActiveListeners: 0,
+			sdkActiveSockets: 0,
+			sdkActiveSubscriptions: 0,
+			sdkActiveTimers: 0,
 			serviceStopped: true,
 		};
 
@@ -167,6 +199,20 @@ describe('Homey SHS plugin-lifecycle probe', () => {
 		expect(waitCount).toBe(1);
 		expect(runtime.shutdownCount).toBe(1);
 		expect(runtime.snapshot().serviceStopped).toBe(true);
+	});
+
+	it('rejects cleanup that resolves while an underlying SDK socket remains active', async () => {
+		const runtime = new FakeRuntime();
+		runtime.leakSdkSocketAfterDisable = true;
+
+		await expect(
+			probeHomeyShsPluginLifecycle(
+				config(),
+				() => runtime,
+				() => Promise.resolve(),
+			),
+		).rejects.toThrow('disable did not release its runtime');
+		expect(runtime.shutdownCount).toBe(1);
 	});
 
 	it('rejects a reused connector generation after re-enable and shuts down', async () => {

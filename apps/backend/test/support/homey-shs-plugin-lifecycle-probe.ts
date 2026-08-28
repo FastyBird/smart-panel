@@ -10,7 +10,11 @@ import { PluginServiceManagerService } from '../../src/modules/extensions/servic
 import { HomeyConnectorFactory } from '../../src/plugins/devices-homey/connectors/homey-connector.factory';
 import { HomeyConnector } from '../../src/plugins/devices-homey/connectors/homey-connector.interface';
 import { HomeyLocalConnectorFactory } from '../../src/plugins/devices-homey/connectors/homey-local-connector.factory';
-import { HomeySdkClientFactoryService } from '../../src/plugins/devices-homey/connectors/homey-sdk.client';
+import {
+	type HomeySdkClient,
+	type HomeySdkClientFactory,
+	HomeySdkClientFactoryService,
+} from '../../src/plugins/devices-homey/connectors/homey-sdk.client';
 import {
 	DEVICES_HOMEY_PLUGIN_NAME,
 	HomeyConnectionState,
@@ -85,6 +89,12 @@ export interface HomeyPluginLifecycleSnapshot {
 	activeSubscriptions: number;
 	connectorGeneration: number;
 	connected: boolean;
+	sdkActivityRevision: number;
+	sdkActiveClients: number;
+	sdkActiveListeners: number;
+	sdkActiveSockets: number;
+	sdkActiveSubscriptions: number;
+	sdkActiveTimers: number;
 	serviceStopped: boolean;
 }
 
@@ -139,6 +149,20 @@ interface HomeyConnectorTracker {
 	connectorGeneration: number;
 }
 
+interface HomeySdkResourceSnapshot {
+	activityRevision: number;
+	activeClients: number;
+	activeListeners: number;
+	activeSockets: number;
+	activeSubscriptions: number;
+	activeTimers: number;
+}
+
+interface HomeySdkResourceTracker {
+	factory: HomeySdkClientFactory;
+	snapshot(): HomeySdkResourceSnapshot;
+}
+
 const EMPTY_DIAGNOSTICS: HomeyOperationalDiagnostics = {
 	adopted: 0,
 	adoptedDevices: [],
@@ -154,6 +178,177 @@ const sleep: HomeyPluginLifecycleWait = (milliseconds) =>
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const callBooleanMethod = (value: unknown, method: string): boolean => {
+	if (!isRecord(value) || typeof value[method] !== 'function') return false;
+
+	try {
+		return (value[method] as () => unknown).call(value) === true;
+	} catch {
+		return true;
+	}
+};
+
+const eventListenerCount = (value: unknown): number => {
+	if (!isRecord(value)) return 0;
+	let storedListeners = 0;
+
+	for (const field of ['__listeners', '_callbacks']) {
+		const listenerMap = isRecord(value[field]) ? value[field] : undefined;
+
+		if (listenerMap === undefined) continue;
+		storedListeners += Object.values(listenerMap).reduce<number>((count, listeners) => {
+			if (Array.isArray(listeners)) return count + listeners.length;
+
+			return count + (typeof listeners === 'function' ? 1 : 0);
+		}, 0);
+	}
+
+	if (storedListeners > 0) return storedListeners;
+	if (typeof value.eventNames !== 'function' || typeof value.listenerCount !== 'function') return 0;
+	const eventSource = value as unknown as {
+		eventNames(): unknown;
+		listenerCount(event: unknown): unknown;
+	};
+
+	try {
+		const eventNames = eventSource.eventNames();
+
+		if (!Array.isArray(eventNames)) return 0;
+		let count = 0;
+
+		for (const eventName of eventNames as unknown[]) {
+			const listeners = eventSource.listenerCount(eventName);
+
+			if (typeof listeners === 'number' && Number.isInteger(listeners)) count += listeners;
+		}
+
+		return count;
+	} catch {
+		return 1;
+	}
+};
+
+const activeRegistrySubscriptions = (client: HomeySdkClient): number => {
+	const registry = (client as unknown as Record<string, unknown>).__subscriptionRegistry;
+	const entries = isRecord(registry) ? registry.__entries : undefined;
+
+	if (!(entries instanceof Map)) return 0;
+
+	let active = 0;
+
+	for (const entry of entries.values()) {
+		if (!isRecord(entry)) {
+			active += 1;
+			continue;
+		}
+
+		const consumers = entry.consumers;
+		active += consumers instanceof Set ? consumers.size : 0;
+		if (entry.subscribePromise !== null && entry.subscribePromise !== undefined) active += 1;
+		if (entry.reconnectPromise !== null && entry.reconnectPromise !== undefined) active += 1;
+	}
+
+	return active;
+};
+
+const activeSdkListeners = (client: HomeySdkClient): number => {
+	const concrete = client as unknown as Record<string, unknown>;
+
+	return eventListenerCount(client) + eventListenerCount(concrete.__socketSession);
+};
+
+const activeSdkTimers = (client: HomeySdkClient): number => {
+	const concrete = client as unknown as Record<string, unknown>;
+	const session = isRecord(concrete.__socketSession) ? concrete.__socketSession : undefined;
+	const refreshMap = isRecord(concrete.__refreshMap) ? concrete.__refreshMap : undefined;
+	let active = session?.__readyPromise === null || session?.__readyPromise === undefined ? 0 : 1;
+
+	if (refreshMap !== undefined) {
+		active += Object.entries(refreshMap).filter(
+			([key, value]) => key.endsWith('timeout') && value !== null && value !== undefined,
+		).length;
+	}
+
+	return active;
+};
+
+const isSocketResourceActive = (value: unknown): boolean => {
+	if (!isRecord(value)) return false;
+
+	const manager = isRecord(value.io) ? value.io : undefined;
+	const engine = manager !== undefined && isRecord(manager.engine) ? manager.engine : undefined;
+	const readyStates = [value.readyState, value._readyState, engine?.readyState];
+
+	return (
+		value.connected === true ||
+		value.active === true ||
+		manager?._reconnecting === true ||
+		readyStates.some((state) => state === 'open' || state === 'opening') ||
+		eventListenerCount(value) > 0
+	);
+};
+
+const createHomeySdkResourceTracker = (delegate: HomeySdkClientFactory): HomeySdkResourceTracker => {
+	const clients = new Set<HomeySdkClient>();
+	const sockets = new Set<unknown>();
+	let activityRevision = 0;
+	const markActivity = (): void => {
+		activityRevision += 1;
+	};
+	const trackClient = (client: HomeySdkClient): void => {
+		clients.add(client);
+		const eventSource = client as unknown as Record<string, unknown>;
+
+		if (typeof eventSource.on !== 'function') return;
+		for (const event of [
+			'connect',
+			'connect_error',
+			'disconnect',
+			'error',
+			'reconnect',
+			'reconnect_attempt',
+			'reconnect_error',
+			'reconnecting',
+		]) {
+			(eventSource.on as (event: string, listener: () => void) => unknown).call(client, event, markActivity);
+		}
+	};
+	const captureSockets = (client: HomeySdkClient): void => {
+		const concrete = client as unknown as Record<string, unknown>;
+
+		if (concrete.__socket !== null && concrete.__socket !== undefined) sockets.add(concrete.__socket);
+		if (concrete.__homeySocket !== null && concrete.__homeySocket !== undefined) sockets.add(concrete.__homeySocket);
+	};
+
+	return {
+		factory: {
+			createLocalApi: async (options) => {
+				const client = await delegate.createLocalApi(options);
+				trackClient(client);
+
+				return client;
+			},
+		},
+		snapshot: () => {
+			for (const client of clients) captureSockets(client);
+
+			return {
+				activityRevision,
+				activeClients: [...clients].filter(
+					(client) =>
+						!callBooleanMethod(client, 'isDestroyed') ||
+						callBooleanMethod(client, 'isConnected') ||
+						callBooleanMethod(client, 'isConnecting'),
+				).length,
+				activeListeners: [...clients].reduce((count, client) => count + activeSdkListeners(client), 0),
+				activeSockets: [...sockets].filter(isSocketResourceActive).length,
+				activeSubscriptions: [...clients].reduce((count, client) => count + activeRegistrySubscriptions(client), 0),
+				activeTimers: [...clients].reduce((count, client) => count + activeSdkTimers(client), 0),
+			};
+		},
+	};
+};
 
 const createSynchronizer = (): HomeySynchronizerService =>
 	({
@@ -273,7 +468,8 @@ export const createHomeyPluginLifecycleRuntime: HomeyPluginLifecycleRuntimeFacto
 		activityRevision: 0,
 		connectorGeneration: 0,
 	};
-	const localConnectorFactory = new HomeyLocalConnectorFactory(new HomeySdkClientFactoryService());
+	const sdkResources = createHomeySdkResourceTracker(new HomeySdkClientFactoryService());
+	const localConnectorFactory = new HomeyLocalConnectorFactory(sdkResources.factory);
 	const connectorFactory: HomeyConnectorFactory = {
 		create: (connectorConfig) => {
 			tracker.connectorGeneration += 1;
@@ -308,10 +504,17 @@ export const createHomeyPluginLifecycleRuntime: HomeyPluginLifecycleRuntimeFacto
 		shutdown: () => manager.onModuleDestroy(),
 		snapshot: () => {
 			const status = homeyService.getStatus();
+			const sdkSnapshot = sdkResources.snapshot();
 
 			return {
 				...tracker,
 				connected: status.connectionState === HomeyConnectionState.CONNECTED && status.healthy,
+				sdkActivityRevision: sdkSnapshot.activityRevision,
+				sdkActiveClients: sdkSnapshot.activeClients,
+				sdkActiveListeners: sdkSnapshot.activeListeners,
+				sdkActiveSockets: sdkSnapshot.activeSockets,
+				sdkActiveSubscriptions: sdkSnapshot.activeSubscriptions,
+				sdkActiveTimers: sdkSnapshot.activeTimers,
 				serviceStopped: status.connectionState === HomeyConnectionState.STOPPED && status.serviceState === 'stopped',
 			};
 		},
@@ -353,6 +556,10 @@ const isConnectedExactly = (snapshot: HomeyPluginLifecycleSnapshot, generation: 
 	!snapshot.serviceStopped &&
 	snapshot.activeConnections === 1 &&
 	snapshot.activeSubscriptions === 1 &&
+	snapshot.sdkActiveClients === 1 &&
+	snapshot.sdkActiveListeners > 0 &&
+	snapshot.sdkActiveSockets > 0 &&
+	snapshot.sdkActiveSubscriptions > 0 &&
 	snapshot.connectorGeneration === generation;
 
 const isStoppedExactly = (snapshot: HomeyPluginLifecycleSnapshot, generation: number): boolean =>
@@ -360,6 +567,11 @@ const isStoppedExactly = (snapshot: HomeyPluginLifecycleSnapshot, generation: nu
 	snapshot.serviceStopped &&
 	snapshot.activeConnections === 0 &&
 	snapshot.activeSubscriptions === 0 &&
+	snapshot.sdkActiveClients === 0 &&
+	snapshot.sdkActiveListeners === 0 &&
+	snapshot.sdkActiveSockets === 0 &&
+	snapshot.sdkActiveSubscriptions === 0 &&
+	snapshot.sdkActiveTimers === 0 &&
 	snapshot.connectorGeneration === generation;
 
 export const probeHomeyShsPluginLifecycle = async (
@@ -414,7 +626,8 @@ export const probeHomeyShsPluginLifecycle = async (
 
 		if (
 			!isStoppedExactly(disabledAfterObservation, 1) ||
-			disabledAfterObservation.activityRevision !== disabled.activityRevision
+			disabledAfterObservation.activityRevision !== disabled.activityRevision ||
+			disabledAfterObservation.sdkActivityRevision !== disabled.sdkActivityRevision
 		) {
 			throw new Error('Homey plugin-lifecycle activity survived disable');
 		}
@@ -443,7 +656,8 @@ export const probeHomeyShsPluginLifecycle = async (
 
 		if (
 			!isStoppedExactly(shutdownAfterObservation, 2) ||
-			shutdownAfterObservation.activityRevision !== shutdown.activityRevision
+			shutdownAfterObservation.activityRevision !== shutdown.activityRevision ||
+			shutdownAfterObservation.sdkActivityRevision !== shutdown.sdkActivityRevision
 		) {
 			throw new Error('Homey plugin-lifecycle activity survived backend shutdown');
 		}
