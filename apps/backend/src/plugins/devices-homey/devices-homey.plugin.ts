@@ -53,6 +53,8 @@ import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-
 import { HomeyConfigModel } from './models/config.model';
 import { HomeyDevicePlatform } from './platforms/homey-device.platform';
 import { HomeyAdoptionLockService } from './services/homey-adoption-lock.service';
+import { HomeyCloudAuthorizationStateService } from './services/homey-cloud-authorization-state.service';
+import { HomeyCloudClientConfigService } from './services/homey-cloud-client-config.service';
 import { HomeyConfigValidatorService } from './services/homey-config-validator.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
@@ -81,6 +83,8 @@ import { HomeyService } from './services/homey.service';
 	],
 	providers: [
 		HomeyConfigValidatorService,
+		HomeyCloudClientConfigService,
+		HomeyCloudAuthorizationStateService,
 		HomeySdkClientFactoryService,
 		HomeyLocalConnectorFactory,
 		{

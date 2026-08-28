@@ -24,6 +24,8 @@ import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-
 import { HomeyConfigModel } from './models/config.model';
 import { HomeyDevicePlatform } from './platforms/homey-device.platform';
 import { HomeyAdoptionLockService } from './services/homey-adoption-lock.service';
+import { HomeyCloudAuthorizationStateService } from './services/homey-cloud-authorization-state.service';
+import { HomeyCloudClientConfigService } from './services/homey-cloud-client-config.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
 import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
@@ -97,6 +99,8 @@ describe('DevicesHomeyPlugin', () => {
 		expect(providers).toEqual(
 			expect.arrayContaining([
 				HomeySdkClientFactoryService,
+				HomeyCloudClientConfigService,
+				HomeyCloudAuthorizationStateService,
 				HomeyLocalConnectorFactory,
 				HomeyConnectionTestService,
 				HomeyMappingLoaderService,
