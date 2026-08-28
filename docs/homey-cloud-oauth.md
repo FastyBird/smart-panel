@@ -132,12 +132,16 @@ The implementation that follows this record must:
    multiple exist, require an explicit stable-ID selection bound to the same opaque transaction and initiating user,
    without exposing account details that the admin UI does not need. Reject selection for expired or cleared
    transactions.
-8. Authenticate the selected Homey with the candidate grant, then atomically activate its access token, refresh token,
-   selected Homey ID, and connector through a serialized compare-and-swap against the active-grant/configuration
-   generation captured when that authorization started. Use one database transaction and locking boundary shared by
-   activation, candidate cancellation or expiry, and initiating-user demotion or deletion. In that transaction,
-   conditionally consume an existing non-cancelled candidate whose absolute expiry is still in the future; re-read the
-   initiating user and require that the user still exists, still has owner or administrator authority, and still
+8. Disable SDK automatic token refresh for pending candidate clients. If a candidate access token expires or receives
+   `invalid_token` during inventory listing or selected-Homey authentication, treat it as a terminal failure, delete the
+   exact pending transaction and its credentials through the candidate mutation boundary, and require a new
+   authorization. After authenticating the selected Homey with a still-valid candidate grant, atomically activate its
+   access token, refresh token, selected Homey ID, and connector through a serialized compare-and-swap against the
+   active-grant/configuration generation captured when that authorization started. Use one database transaction and
+   locking boundary shared by activation, candidate cancellation or expiry, and initiating-user demotion or deletion.
+   In that transaction, conditionally consume an existing non-cancelled candidate whose absolute expiry is still in the
+   future; re-read the initiating user and require that the user still exists, still has owner or administrator
+   authority, and still
    matches the captured authority generation. Store the activating user and authority generation on the active grant.
    Authority mutations under the same boundary must invalidate and disconnect a grant activated by that authority if
    activation committed first; if the authority mutation, cancellation, expiry, or another configuration mutation won
