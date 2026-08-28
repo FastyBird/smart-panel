@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: review
+Status: in-progress
 Created: 2026-08-12
 
 ## 1. Business goal
@@ -165,6 +165,19 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [ ] The cloud connector passes the same connector contract suite as the local connector.
 - [ ] Mapping, adoption, state sync, and control services contain no cloud-specific forks outside connector/authorization boundaries.
 - [ ] User limits, approval requirements, redirect URIs, and deployment steps are documented.
+
+### Cloud client registration audit
+
+Starting the separately scoped Phase 2 work returns the overall epic to `in-progress`; the local MVP remains
+review-ready under its release audit below.
+
+The 2026-08-28 published-contract audit in `docs/homey-cloud-oauth.md` records the deployment-owned confidential-client
+model, exact callback shape, intended minimum scopes, secret names, OAuth state boundary, multi-Homey selection gate,
+and the external registration/approval checklist. Homey's current guide limits new clients to 100 Homey Pro users and
+requires a limit-increase request to raise that limit and optionally connect to Homey Cloud. Live cloud mode therefore
+remains unavailable until a dedicated client is registered, the callbacks and scopes are accepted, and Athom's Homey
+Cloud approval plus current branding/legal and rate-limit conditions are recorded. No shared client identity or secret
+will be embedded in Smart Panel artifacts.
 
 ### Local MVP release audit
 
