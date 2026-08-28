@@ -635,6 +635,12 @@ requires all three matching realtime capability events in order plus an authorit
 exact baseline before shutdown. Its exact-schema report contains only fixed event labels and completion booleans. The
 matrix item remains open until this guarded probe passes against live SHS and the sanitized report is reviewed.
 
+A separately gated, read-only plugin-lifecycle probe now prepares the final managed-shutdown run. It uses the production
+`PluginServiceManagerService` to bootstrap Homey, disable it through the configuration event path, enable it with a fresh
+connector, and invoke the manager's Nest module-destroy hook. Instrumented connector activity must remain unchanged for
+longer than the minimum reconciliation interval after both disable and shutdown, with no active connection or
+subscription. The matrix item remains open until live SHS evidence is reviewed.
+
 A guarded startup probe now exercises a newly constructed production `HomeyService`, the local connector factory, and
 the pinned SDK transport while replacing persistence with a no-op synchronizer. Its online scenario requires healthy
 connection, authoritative inventory availability, and clean shutdown. Its offline-recovery scenario additionally
