@@ -502,7 +502,7 @@ other live-probe family, then set one target at a time without putting its ident
 
 ```bash
 for variable in $(env | awk -F= '
-  /^FB_HOMEY_SHS_(CREDENTIAL_ROTATION|LIFECYCLE|ORIGIN_EVENT|REALTIME|RECOVERY|REPLACEMENT|RESTART_EVENT_FLOW|STARTUP|WRITE)_/ {
+  /^FB_HOMEY_SHS_(BURST_COMMAND|CREDENTIAL_ROTATION|LIFECYCLE|ORIGIN_EVENT|REALTIME|RECOVERY|REPLACEMENT|RESTART_EVENT_FLOW|STARTUP|WRITE)_/ {
     print $1
   }
 '); do
@@ -543,6 +543,45 @@ requested value with a fresh authoritative read; restored the exact baseline thr
 restoration; and stopped cleanly. The live inventory reported no eligible lock family, so synthetic lock contract tests
 remain the available lock coverage and are not presented as live control evidence. The three exact-schema reports are
 committed as `__fixtures__/evidence/2026-08-28-shs-13.4.1-mapping-control-{lighting,switch,cover}.json`.
+
+## Burst updates and concurrent Smart Panel commands
+
+This separately gated probe reuses the same exact reversible mapping target and production `HomeyDevicePlatform` path.
+It submits `target → baseline → target` without awaiting between submissions. `HomeyService` must serialize the three
+same-capability commands, accept and confirm all of them, deliver matching realtime capability events in order, and
+leave the authoritative value at the final target. The probe then restores the exact baseline, verifies it with a fresh
+read, and shuts down the service. Any rejected command, missing or reordered event, mismatched read-back, failed
+restoration, or incomplete shutdown prevents a success report.
+
+Choose a harmless target whose value may safely move twice in quick succession. Start from the base live-probe
+variables, clear every unrelated mutation/recovery family, and enter identifiers interactively:
+
+```bash
+for variable in $(env | awk -F= '
+  /^FB_HOMEY_SHS_(CREDENTIAL_ROTATION|LIFECYCLE|MAPPING_CONTROL|ORIGIN_EVENT|REALTIME|RECOVERY|REPLACEMENT|RESTART_EVENT_FLOW|STARTUP|WRITE)_/ {
+    print $1
+  }
+'); do
+  unset "$variable"
+done
+
+export FB_HOMEY_SHS_BURST_COMMAND_ENABLE=I_WILL_RUN_AND_RESTORE_CONCURRENT_COMMANDS_ONLY_ON_THE_ALLOWLISTED_HOMEY_TARGET
+export FB_HOMEY_SHS_BURST_COMMAND_FAMILY=cover
+export FB_HOMEY_SHS_BURST_COMMAND_MAPPING_NAME=window-covering-position
+
+read -r FB_HOMEY_SHS_BURST_COMMAND_DEVICE_ID
+read -r FB_HOMEY_SHS_BURST_COMMAND_CAPABILITY_ID
+read -r FB_HOMEY_SHS_BURST_COMMAND_PANEL_VALUE
+export FB_HOMEY_SHS_BURST_COMMAND_DEVICE_ID
+export FB_HOMEY_SHS_BURST_COMMAND_CAPABILITY_ID
+export FB_HOMEY_SHS_BURST_COMMAND_PANEL_VALUE
+
+pnpm run homey:probe-burst-command
+```
+
+The panel value must differ from the current value and use Smart Panel units. The report contains only fixed event
+labels and completion booleans; it excludes the endpoint, credential, Homey identity, mapping target, capability value,
+inventory data, event payload, response body, and raw error. Inspect the controlled equipment after any failed run.
 
 ## Operator-controlled restart recovery probe
 
@@ -890,6 +929,7 @@ Fill this matrix using synthetic aliases only.
 | Availability events                       | Absent for synthetic test driver    | Unavailable/restored read-backs passed after full ten-second event windows; physical/Homey-originated evidence remains pending                       |
 | Allowlisted write, event, and read-back   | Pass                                | Requested-value event and read-back passed; restoration of the original value and its second read-back also passed                                   |
 | Smart Panel mapped-family control         | Pass                                | Cover, lighting, and switch passed through production mappings and control; no eligible live lock family was present                                 |
+| Burst updates and concurrent commands     | Pending                             |                                                                                                                                                      |
 | Network interruption and restoration      | Pass                                | 36 ordered events proved disconnect, nine retries during the 60-second interruption, resubscription, fresh inventory read, and complete cleanup      |
 | SHS restart and reconnect                 | Pass                                | A 23-event write/restart/restore run proved events and read-backs across recovery; the earlier 15-event run independently proved transport recovery  |
 | API-key revocation and replacement        | Pass                                | Primary and replacement keys passed preflight; revocation returned `401`, and the replacement key remained valid                                     |

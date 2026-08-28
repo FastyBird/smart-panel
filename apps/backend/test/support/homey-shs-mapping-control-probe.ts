@@ -6,6 +6,8 @@ import { ConfigService } from '../../src/modules/config/services/config.service'
 import { ChannelCategory, PermissionType } from '../../src/modules/devices/devices.constants';
 import { PropertyCommandValue } from '../../src/modules/devices/utils/property-command-value.utils';
 import { validatePropertyCommandValue } from '../../src/modules/devices/utils/property-command-value.utils';
+import { HomeyConnectorFactory } from '../../src/plugins/devices-homey/connectors/homey-connector.factory';
+import { HomeyConnector } from '../../src/plugins/devices-homey/connectors/homey-connector.interface';
 import { HomeyLocalConnectorFactory } from '../../src/plugins/devices-homey/connectors/homey-local-connector.factory';
 import { HomeySdkClientFactoryService } from '../../src/plugins/devices-homey/connectors/homey-sdk.client';
 import {
@@ -23,6 +25,7 @@ import { ResolvedHomeyPropertyMapping } from '../../src/plugins/devices-homey/ma
 import { HomeyConfigModel } from '../../src/plugins/devices-homey/models/config.model';
 import { HomeyCapability, HomeyCapabilityValue } from '../../src/plugins/devices-homey/models/homey-capability.model';
 import { HomeyDevice } from '../../src/plugins/devices-homey/models/homey-device.model';
+import { HomeyEvent, HomeyEventType } from '../../src/plugins/devices-homey/models/homey-event.model';
 import { homeyCapabilityValuesEqual } from '../../src/plugins/devices-homey/platforms/homey-command-value';
 import {
 	HomeyDevicePlatform,
@@ -41,6 +44,7 @@ const ENABLE_ACKNOWLEDGEMENT =
 	'I_WILL_USE_SMART_PANEL_TO_CONTROL_AND_RESTORE_ONLY_THE_ALLOWLISTED_HOMEY_MAPPING_TARGET';
 const PUBLIC_HOMEY_TERMS = new Set(['home', 'homey']);
 const CONFLICTING_PREFIXES = [
+	'FB_HOMEY_SHS_BURST_COMMAND_',
 	'FB_HOMEY_SHS_CREDENTIAL_ROTATION_',
 	'FB_HOMEY_SHS_LIFECYCLE_',
 	'FB_HOMEY_SHS_ORIGIN_EVENT_',
@@ -130,12 +134,17 @@ export interface HomeyMappingControlBinding {
 	readonly baselinePanelValue: PropertyCommandValue;
 	readonly targetPanelValue: PropertyCommandValue;
 	command(value: PropertyCommandValue): Promise<boolean>;
+	observedPanelSequenceMatches(values: readonly PropertyCommandValue[]): boolean;
 	readBackMatches(value: PropertyCommandValue): Promise<boolean>;
+	resetObservedPanelSequence(): void;
 	waitForCommandIdle(): Promise<void>;
 }
 
 export interface HomeyMappingControlRuntime {
-	bind(config: HomeyShsMappingControlConfig): Promise<HomeyMappingControlBinding>;
+	bind(
+		config: HomeyShsMappingControlConfig,
+		options?: { allowUnchangedTarget?: boolean },
+	): Promise<HomeyMappingControlBinding>;
 	start(): Promise<void>;
 	stop(): Promise<void>;
 }
@@ -276,13 +285,32 @@ const createSynchronizer = (): HomeySynchronizerService =>
 		reset: (): void => undefined,
 		synchronizeDevices: (_devices: readonly unknown[], _missing: readonly string[], events: readonly unknown[]) =>
 			Promise.resolve({ acceptedCapabilityValues: [], acceptedEvents: [...events], failed: 0, ignored: 0, updated: 0 }),
-		synchronizeEvents: (events: readonly unknown[]) =>
+		synchronizeEvents: (events: readonly HomeyEvent[]) =>
 			Promise.resolve({ acceptedEvents: [...events], failed: 0, ignored: 0, updated: 0 }),
 		synchronizeSnapshot: (_devices: readonly unknown[], events: readonly unknown[] = []) =>
 			Promise.resolve({ acceptedCapabilityValues: [], acceptedEvents: [...events], failed: 0, ignored: 0, updated: 0 }),
 	}) as unknown as HomeySynchronizerService;
 
+export const createHomeyEventObservingConnector = (
+	connector: HomeyConnector,
+	observeEvent: (event: HomeyEvent) => void,
+): HomeyConnector => ({
+	connect: () => connector.connect(),
+	disconnect: () => connector.disconnect(),
+	getDevice: (deviceId) => connector.getDevice(deviceId),
+	getDevices: () => connector.getDevices(),
+	getSystemInfo: () => connector.getSystemInfo(),
+	getZones: () => connector.getZones(),
+	setCapabilityValue: (deviceId, capabilityId, value) => connector.setCapabilityValue(deviceId, capabilityId, value),
+	subscribe: (listener) =>
+		connector.subscribe(async (event) => {
+			observeEvent(event);
+			await listener(event);
+		}),
+});
+
 export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory = (config) => {
+	const observedEvents: HomeyEvent[] = [];
 	const pluginConfig = Object.assign(new HomeyConfigModel(), {
 		apiKey: config.apiKey,
 		connectionTimeout: config.timeoutMs,
@@ -302,17 +330,21 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 	const mappingLoader = new HomeyMappingLoaderService();
 	mappingLoader.loadAllMappings();
 	const transformer = new HomeyMappingTransformerService();
-	const service = new HomeyService(
-		configService as unknown as ConfigService,
-		createSynchronizer(),
-		new HomeyLocalConnectorFactory(new HomeySdkClientFactoryService()),
-	);
+	const localConnectorFactory = new HomeyLocalConnectorFactory(new HomeySdkClientFactoryService());
+	const connectorFactory: HomeyConnectorFactory = {
+		create: (connectorConfig) =>
+			createHomeyEventObservingConnector(localConnectorFactory.create(connectorConfig), (event) => {
+				observedEvents.push(event);
+			}),
+	};
+	const service = new HomeyService(configService as unknown as ConfigService, createSynchronizer(), connectorFactory);
 	const platform = new HomeyDevicePlatform(service, mappingLoader, transformer);
 
 	return {
 		start: () => service.start(),
 		stop: () => service.stop(),
-		bind: async (runtimeConfig): Promise<HomeyMappingControlBinding> => {
+		bind: async (runtimeConfig, options): Promise<HomeyMappingControlBinding> => {
+			let observedEventOffset = observedEvents.length;
 			const inventory = service.getInventorySnapshot();
 
 			if (inventory === null) throw new Error('Homey mapping-control inventory is unavailable');
@@ -371,11 +403,33 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 			) {
 				throw new Error('The Homey mapping-control baseline is not exactly reversible through the selected mapping');
 			}
-			if (homeyCapabilityValuesEqual(transformer.write(binding.mapping, targetValidation.value), baselineHomeyValue)) {
+			if (
+				options?.allowUnchangedTarget !== true &&
+				homeyCapabilityValuesEqual(transformer.write(binding.mapping, targetValidation.value), baselineHomeyValue)
+			) {
 				throw new Error('The Homey mapping-control panel value must change the authoritative capability value');
 			}
 
 			const command = (value: PropertyCommandValue): Promise<boolean> => platform.process({ ...commandTarget, value });
+			const observedPanelSequenceMatches = (values: readonly PropertyCommandValue[]): boolean => {
+				const expected = values.map((value) => transformer.write(binding.mapping, value));
+				let expectedIndex = 0;
+
+				for (const event of observedEvents.slice(observedEventOffset)) {
+					if (
+						event.type === HomeyEventType.CAPABILITY_VALUE_CHANGED &&
+						event.deviceId === device.id &&
+						event.capabilityId === capability.id &&
+						homeyCapabilityValuesEqual(event.value, expected[expectedIndex] ?? null)
+					) {
+						expectedIndex += 1;
+
+						if (expectedIndex === expected.length) return true;
+					}
+				}
+
+				return expected.length === 0;
+			};
 			const readBackMatches = async (value: PropertyCommandValue): Promise<boolean> => {
 				const expected = transformer.write(binding.mapping, value);
 				const readBack = await service.getFreshDevice(device.id);
@@ -387,7 +441,11 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 				availableFamilies,
 				baselinePanelValue: baselineValidation.value,
 				command,
+				observedPanelSequenceMatches,
 				readBackMatches,
+				resetObservedPanelSequence: () => {
+					observedEventOffset = observedEvents.length;
+				},
 				targetPanelValue: targetValidation.value,
 				waitForCommandIdle: () => service.waitForCapabilityCommandIdle(device.id, capability.id),
 			};
