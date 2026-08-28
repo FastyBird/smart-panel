@@ -218,16 +218,18 @@ describe('Homey SHS mapping-control probe', () => {
 
 	it('writes the report beneath a private non-overwriting directory', async () => {
 		const { report } = await successfulProbe();
-		const root = await mkdtemp(join(tmpdir(), 'homey-mapping-control-'));
+		const parent = await mkdtemp(join(tmpdir(), 'homey-mapping-control-'));
+		const root = join(parent, 'new-capture-root');
 
 		try {
 			const directory = await writeHomeyShsMappingControlReport(report, root);
 			const path = join(directory, 'report.json');
+			expect((await stat(root)).mode & 0o777).toBe(0o700);
 			expect((await stat(directory)).mode & 0o777).toBe(0o700);
 			expect((await stat(path)).mode & 0o777).toBe(0o600);
 			expect(JSON.parse(await readFile(path, 'utf8'))).toStrictEqual(report);
 		} finally {
-			await rm(root, { force: true, recursive: true });
+			await rm(parent, { force: true, recursive: true });
 		}
 	});
 });

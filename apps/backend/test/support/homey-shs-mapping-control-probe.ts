@@ -631,6 +631,7 @@ export const writeHomeyShsMappingControlReport = async (
 	const suffix = `${new Date().toISOString().replaceAll(/[:.]/g, '-')}-${randomBytes(4).toString('hex')}`;
 	const outputDirectory = resolve(outputRoot, `mapping-control-${suffix}`);
 
+	await mkdir(outputRoot, { mode: 0o700, recursive: true });
 	await mkdir(outputDirectory, { mode: 0o700, recursive: false });
 	await writeFile(resolve(outputDirectory, 'report.json'), `${JSON.stringify(report, null, 2)}\n`, {
 		encoding: 'utf8',
