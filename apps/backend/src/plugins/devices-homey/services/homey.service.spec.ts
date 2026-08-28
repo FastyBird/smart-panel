@@ -1483,6 +1483,28 @@ describe('HomeyService', () => {
 		await expect(second).resolves.toBe(false);
 	});
 
+	it('waits for a retained timed-out capability write to become idle', async () => {
+		const pendingWrite = deferred();
+		let idle = false;
+
+		connector.setCapabilityValue.mockClear().mockImplementationOnce(() => pendingWrite.promise);
+		await service.start();
+		const command = service.executeCapabilityCommand(staleDevice.id, 'onoff', true);
+		await flushMicrotasks();
+		await jest.advanceTimersByTimeAsync(HOMEY_COMMAND_WRITE_TIMEOUT_MS);
+		await expect(command).resolves.toBe(false);
+		const waiting = service.waitForCapabilityCommandIdle(staleDevice.id, 'onoff').then(() => {
+			idle = true;
+		});
+
+		await flushMicrotasks();
+		expect(idle).toBe(false);
+		pendingWrite.resolve();
+		await waiting;
+		expect(idle).toBe(true);
+		await service.stop();
+	});
+
 	it('cancels an active write and its queued successor when the connector stops', async () => {
 		await service.start();
 		connector.setCapabilityValue.mockClear().mockImplementationOnce(() => new Promise(() => undefined));
