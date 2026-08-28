@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import {
 	type HomeyPluginLifecycleSnapshot,
 	type HomeyShsPluginLifecycleConfig,
+	activeSdkTimers,
 	assertHomeyShsPluginLifecycleReportSafe,
 	isSocketResourceActive,
 	loadHomeyShsPluginLifecycleConfig,
@@ -156,6 +157,17 @@ const successfulProbe = async () => {
 };
 
 describe('Homey SHS plugin-lifecycle probe', () => {
+	it('counts instantiated SDK manager refresh timers and pending work', () => {
+		expect(
+			activeSdkTimers({
+				__managers: {
+					devices: { __pendingRefreshDevicesCall: Promise.resolve(), __refreshTimeout: {} },
+				},
+			}),
+		).toBe(2);
+		expect(activeSdkTimers({ __managers: { devices: { __refreshTimeout: { _destroyed: true } } } })).toBe(0);
+	});
+
 	it('recognizes the pinned Socket.IO 2.x reconnect loop as an active transport resource', () => {
 		expect(
 			isSocketResourceActive({

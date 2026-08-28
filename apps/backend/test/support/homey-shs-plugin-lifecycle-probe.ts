@@ -272,16 +272,25 @@ const activeSdkListeners = (client: HomeySdkClient): number => {
 	return eventListenerCount(client) + eventListenerCount(concrete.__socketSession);
 };
 
-const activeSdkTimers = (client: HomeySdkClient): number => {
-	const concrete = client as unknown as Record<string, unknown>;
+const isScheduledHandleActive = (value: unknown): boolean =>
+	value !== null && value !== undefined && (!isRecord(value) || value._destroyed !== true);
+
+export const activeSdkTimers = (client: unknown): number => {
+	const concrete = isRecord(client) ? client : {};
 	const session = isRecord(concrete.__socketSession) ? concrete.__socketSession : undefined;
 	const refreshMap = isRecord(concrete.__refreshMap) ? concrete.__refreshMap : undefined;
+	const managers = isRecord(concrete.__managers) ? Object.values(concrete.__managers) : [];
 	let active = session?.__readyPromise === null || session?.__readyPromise === undefined ? 0 : 1;
 
 	if (refreshMap !== undefined) {
 		active += Object.entries(refreshMap).filter(
-			([key, value]) => key.endsWith('timeout') && value !== null && value !== undefined,
+			([key, value]) => key.endsWith('timeout') && isScheduledHandleActive(value),
 		).length;
+	}
+	for (const manager of managers) {
+		if (!isRecord(manager)) continue;
+		if (isScheduledHandleActive(manager.__refreshTimeout)) active += 1;
+		if (manager.__pendingRefreshDevicesCall !== null && manager.__pendingRefreshDevicesCall !== undefined) active += 1;
 	}
 
 	return active;
