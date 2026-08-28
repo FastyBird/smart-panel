@@ -28,6 +28,8 @@ const config = (overrides: Partial<HomeyShsPluginLifecycleConfig> = {}): HomeySh
 
 class FakeRuntime {
 	bootstrapCount = 0;
+	failShutdown = false;
+	leakServiceTimerAfterDisable = false;
 	leakSdkSocketAfterDisable = false;
 	reuseGenerationAfterEnable = false;
 	shutdownCount = 0;
@@ -43,6 +45,7 @@ class FakeRuntime {
 		sdkActiveSockets: 0,
 		sdkActiveSubscriptions: 0,
 		sdkActiveTimers: 0,
+		serviceActiveTimers: 0,
 		serviceStopped: true,
 	};
 
@@ -60,6 +63,7 @@ class FakeRuntime {
 			sdkActiveSockets: 2,
 			sdkActiveSubscriptions: 2,
 			sdkActiveTimers: 0,
+			serviceActiveTimers: 1,
 			serviceStopped: false,
 		};
 
@@ -80,6 +84,7 @@ class FakeRuntime {
 					sdkActiveSockets: 2,
 					sdkActiveSubscriptions: 2,
 					sdkActiveTimers: 0,
+					serviceActiveTimers: 1,
 					serviceStopped: false,
 				}
 			: {
@@ -94,15 +99,19 @@ class FakeRuntime {
 					sdkActiveSockets: 0,
 					sdkActiveSubscriptions: 0,
 					sdkActiveTimers: 0,
+					serviceActiveTimers: 0,
 					serviceStopped: true,
 				};
 		if (!enabled && this.leakSdkSocketAfterDisable) this.snapshotValue.sdkActiveSockets = 1;
+		if (!enabled && this.leakServiceTimerAfterDisable) this.snapshotValue.serviceActiveTimers = 1;
 
 		return Promise.resolve();
 	}
 
 	shutdown(): Promise<void> {
 		this.shutdownCount += 1;
+
+		if (this.failShutdown) return Promise.reject(new Error('simulated shutdown failure'));
 		this.snapshotValue = {
 			...this.snapshotValue,
 			activityRevision: this.snapshotValue.activityRevision + 1,
@@ -115,6 +124,7 @@ class FakeRuntime {
 			sdkActiveSockets: 0,
 			sdkActiveSubscriptions: 0,
 			sdkActiveTimers: 0,
+			serviceActiveTimers: 0,
 			serviceStopped: true,
 		};
 
@@ -215,6 +225,20 @@ describe('Homey SHS plugin-lifecycle probe', () => {
 		expect(runtime.shutdownCount).toBe(1);
 	});
 
+	it('rejects cleanup that leaves a Homey service timer scheduled', async () => {
+		const runtime = new FakeRuntime();
+		runtime.leakServiceTimerAfterDisable = true;
+
+		await expect(
+			probeHomeyShsPluginLifecycle(
+				config(),
+				() => runtime,
+				() => Promise.resolve(),
+			),
+		).rejects.toThrow('disable did not release its runtime');
+		expect(runtime.shutdownCount).toBe(1);
+	});
+
 	it('rejects a reused connector generation after re-enable and shuts down', async () => {
 		const runtime = new FakeRuntime();
 		runtime.reuseGenerationAfterEnable = true;
@@ -260,6 +284,35 @@ describe('Homey SHS plugin-lifecycle probe', () => {
 			expect(listeners.size).toBe(0);
 		},
 	);
+
+	it('preserves managed cleanup failure when a termination signal arrives', async () => {
+		const runtime = new FakeRuntime();
+		runtime.failShutdown = true;
+		const listeners = new Map<string, () => void>();
+		const signalSource = {
+			on: (name: string, listener: () => void): void => {
+				listeners.set(name, listener);
+			},
+			off: (name: string, listener: () => void): void => {
+				if (listeners.get(name) === listener) listeners.delete(name);
+			},
+		};
+
+		await expect(
+			probeHomeyShsPluginLifecycle(
+				config(),
+				() => runtime,
+				() => {
+					listeners.get('SIGTERM')?.();
+
+					return Promise.resolve();
+				},
+				signalSource,
+			),
+		).rejects.toThrow('managed cleanup failed');
+		expect(runtime.shutdownCount).toBe(1);
+		expect(listeners.size).toBe(0);
+	});
 
 	it('rejects malformed, reordered, and private report content', async () => {
 		const { report } = await successfulProbe();

@@ -95,6 +95,7 @@ export interface HomeyPluginLifecycleSnapshot {
 	sdkActiveSockets: number;
 	sdkActiveSubscriptions: number;
 	sdkActiveTimers: number;
+	serviceActiveTimers: number;
 	serviceStopped: boolean;
 }
 
@@ -350,6 +351,14 @@ const createHomeySdkResourceTracker = (delegate: HomeySdkClientFactory): HomeySd
 	};
 };
 
+const activeHomeyServiceTimers = (service: HomeyService): number => {
+	const concrete = service as unknown as Record<string, unknown>;
+
+	return ['reconciliationTimer', 'reconnectTimer'].filter(
+		(field) => concrete[field] !== null && concrete[field] !== undefined,
+	).length;
+};
+
 const createSynchronizer = (): HomeySynchronizerService =>
 	({
 		filterEvents: (events: readonly unknown[]): readonly unknown[] => [...events],
@@ -515,6 +524,7 @@ export const createHomeyPluginLifecycleRuntime: HomeyPluginLifecycleRuntimeFacto
 				sdkActiveSockets: sdkSnapshot.activeSockets,
 				sdkActiveSubscriptions: sdkSnapshot.activeSubscriptions,
 				sdkActiveTimers: sdkSnapshot.activeTimers,
+				serviceActiveTimers: activeHomeyServiceTimers(homeyService),
 				serviceStopped: status.connectionState === HomeyConnectionState.STOPPED && status.serviceState === 'stopped',
 			};
 		},
@@ -572,6 +582,7 @@ const isStoppedExactly = (snapshot: HomeyPluginLifecycleSnapshot, generation: nu
 	snapshot.sdkActiveSockets === 0 &&
 	snapshot.sdkActiveSubscriptions === 0 &&
 	snapshot.sdkActiveTimers === 0 &&
+	snapshot.serviceActiveTimers === 0 &&
 	snapshot.connectorGeneration === generation;
 
 export const probeHomeyShsPluginLifecycle = async (
@@ -678,7 +689,7 @@ export const probeHomeyShsPluginLifecycle = async (
 		signalSource.off('SIGTERM', handleSigterm);
 	}
 
-	if (terminationSignal !== undefined && !(operationError instanceof HomeyPluginLifecycleTerminationError)) {
+	if (terminationSignal !== undefined && shutdownCompleted && operationError === undefined) {
 		throw new HomeyPluginLifecycleTerminationError(terminationSignal);
 	}
 	if (operationError !== undefined) throw operationError;
