@@ -407,6 +407,55 @@ read-back, and complete teardown. The exact-schema report is committed as
 `__fixtures__/evidence/2026-08-27-shs-13.4.1-restart-event-flow.json` and contains no endpoint, credential, Homey or
 device identity, capability identifier/value, inventory content, or raw error.
 
+## Operator-controlled physical, Homey, and Flow-originated events
+
+This probe performs no Smart Panel capability write. It subscribes to one exact allowlisted device/capability, records
+its scalar baseline only in memory, and opens an operator window for a change originating from one declared source:
+the physical device, the Homey app, or a designated Homey Flow. It requires a matching subscribed event and
+authoritative read-back, then opens a second window in which the operator must restore the baseline through the same
+source. No report is written unless the restoration event, final read-back, and complete teardown all pass.
+
+Use a harmless capability whose state can be changed and restored from each source. Keep every Smart Panel mutation
+and unrelated live-probe gate unset, enter the private target values interactively, then run one scenario at a time:
+
+```bash
+unset FB_HOMEY_SHS_WRITE_ENABLE FB_HOMEY_SHS_WRITE_DEVICE_ID FB_HOMEY_SHS_WRITE_CAPABILITY_ID
+unset FB_HOMEY_SHS_WRITE_VALUE FB_HOMEY_SHS_LIFECYCLE_ENABLE FB_HOMEY_SHS_LIFECYCLE_OPERATIONS
+unset FB_HOMEY_SHS_LIFECYCLE_DEVICE_MARKER FB_HOMEY_SHS_LIFECYCLE_DRIVER_ID
+unset FB_HOMEY_SHS_LIFECYCLE_OWNER_URI FB_HOMEY_SHS_LIFECYCLE_INITIAL_NAME
+unset FB_HOMEY_SHS_LIFECYCLE_RENAMED_NAME FB_HOMEY_SHS_LIFECYCLE_SOURCE_ZONE_ID
+unset FB_HOMEY_SHS_LIFECYCLE_DESTINATION_ZONE_ID FB_HOMEY_SHS_LIFECYCLE_ADD_WINDOW_MS
+unset FB_HOMEY_SHS_LIFECYCLE_OBSERVE_MS
+unset FB_HOMEY_SHS_RECOVERY_ENABLE FB_HOMEY_SHS_RECOVERY_SCENARIO FB_HOMEY_SHS_RECOVERY_OBSERVE_MS
+unset FB_HOMEY_SHS_STARTUP_ENABLE FB_HOMEY_SHS_STARTUP_SCENARIO FB_HOMEY_SHS_STARTUP_OBSERVE_MS
+unset FB_HOMEY_SHS_CREDENTIAL_ROTATION_ENABLE FB_HOMEY_SHS_CREDENTIAL_ROTATION_OBSERVE_MS
+unset FB_HOMEY_SHS_REPLACEMENT_API_KEY FB_HOMEY_SHS_REALTIME_OBSERVE_MS
+unset FB_HOMEY_SHS_RESTART_EVENT_FLOW_ENABLE FB_HOMEY_SHS_RESTART_EVENT_FLOW_RECOVERY_OBSERVE_MS
+unset FB_HOMEY_SHS_RESTART_EVENT_FLOW_EVENT_OBSERVE_MS
+
+read -r FB_HOMEY_SHS_ORIGIN_EVENT_DEVICE_ID
+read -r FB_HOMEY_SHS_ORIGIN_EVENT_CAPABILITY_ID
+export FB_HOMEY_SHS_ORIGIN_EVENT_DEVICE_ID FB_HOMEY_SHS_ORIGIN_EVENT_CAPABILITY_ID
+export FB_HOMEY_SHS_ORIGIN_EVENT_ENABLE=I_WILL_CHANGE_AND_RESTORE_ONLY_THE_ALLOWLISTED_HOMEY_CAPABILITY_OUTSIDE_SMART_PANEL
+export FB_HOMEY_SHS_ORIGIN_EVENT_OBSERVE_MS=90000
+
+export FB_HOMEY_SHS_ORIGIN_EVENT_SCENARIO=physical
+pnpm run homey:probe-origin-event
+
+export FB_HOMEY_SHS_ORIGIN_EVENT_SCENARIO=homey
+pnpm run homey:probe-origin-event
+
+export FB_HOMEY_SHS_ORIGIN_EVENT_SCENARIO=flow
+pnpm run homey:probe-origin-event
+```
+
+For each command, wait for the change-window prompt before changing the capability. After its event and read-back pass,
+wait for the restoration-window prompt and restore the original state through the same declared source. The probe
+accepts only finite boolean, number, or string values and never persists either the baseline or changed value. A failed
+run cannot restore the target itself because all Smart Panel write gates are prohibited; restore it manually if the
+second operator action did not complete. `FB_HOMEY_SHS_ORIGIN_EVENT_OBSERVE_MS` accepts `1000` through `300000`
+milliseconds and independently bounds both operator windows and each read-back convergence window.
+
 ## Operator-controlled restart recovery probe
 
 The recovery probe measures the SDK's behavior across a real SHS restart without performing the restart itself. It
