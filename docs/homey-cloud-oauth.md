@@ -96,7 +96,10 @@ active access token, refresh token, and selected Homey together. Reauthorization
 must preserve the active grant until the candidate token set is exchanged, its Homey is selected and authenticated,
 and the tokens plus selected Homey are activated together successfully. A failed reauthorization clears only its
 candidate state. Every candidate is isolated by authorization transaction and initiating user; there is no shared
-pending slot. The client secret and tokens must never share a browser-facing DTO.
+pending slot. Pending candidates have a short, server-enforced expiry independent of the consumed OAuth `state`.
+Expiration, an explicit cancel action, or abandoning the selection flow deletes the candidate tokens and transaction;
+a periodic cleanup also removes expired records that receive no further request. The client secret and tokens must
+never share a browser-facing DTO.
 
 ## Authorization boundary for Task 7.2
 
@@ -113,12 +116,16 @@ The implementation that follows this record must:
 5. Redact the code, state, token response, client secret, raw account response, and raw Homey inventory from errors and
    logs.
 6. Exchange the code immediately with a bounded timeout. Stage and persist candidate tokens in a transaction-scoped,
-   initiating-user-bound pending record without activating them. Never address candidate credentials through a global
-   pending slot. After any exchange, validation, or persistence failure, clear only that transaction and leave an
-   existing active grant and connector untouched.
+   initiating-user-bound pending record without activating them. Give the record a short absolute expiry that cannot
+   be extended by reads or selection attempts. Never address candidate credentials through a global pending slot.
+   Delete its tokens and transaction on expiry, explicit cancellation, terminal failure, or successful activation, and
+   sweep expired abandoned records independently of user traffic. Leave an existing active grant and connector
+   untouched when a candidate is cleared.
 7. List sanitized Homey choices from that exact candidate transaction. Auto-select only when exactly one eligible Homey
-   exists; otherwise require an explicit stable-ID selection bound to the same opaque transaction and initiating user,
-   without exposing account details that the admin UI does not need.
+   exists. When none exist, return a sanitized terminal failure and delete the candidate tokens and transaction. When
+   multiple exist, require an explicit stable-ID selection bound to the same opaque transaction and initiating user,
+   without exposing account details that the admin UI does not need. Reject selection for expired or cleared
+   transactions.
 8. Authenticate the selected Homey with the candidate grant, then atomically activate its access token, refresh token,
    selected Homey ID, and connector through a serialized compare-and-swap against the active-grant/configuration
    generation captured when that authorization started. Activation advances the generation. If another flow or
