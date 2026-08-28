@@ -29,6 +29,7 @@ const config = (overrides: Partial<HomeyShsPluginLifecycleConfig> = {}): HomeySh
 class FakeRuntime {
 	bootstrapCount = 0;
 	failShutdown = false;
+	leakServiceFlushAfterDisable = false;
 	leakServiceTimerAfterDisable = false;
 	leakSdkSocketAfterDisable = false;
 	reuseGenerationAfterEnable = false;
@@ -45,7 +46,7 @@ class FakeRuntime {
 		sdkActiveSockets: 0,
 		sdkActiveSubscriptions: 0,
 		sdkActiveTimers: 0,
-		serviceActiveTimers: 0,
+		serviceActiveScheduledWork: 0,
 		serviceStopped: true,
 	};
 
@@ -63,7 +64,7 @@ class FakeRuntime {
 			sdkActiveSockets: 2,
 			sdkActiveSubscriptions: 2,
 			sdkActiveTimers: 0,
-			serviceActiveTimers: 1,
+			serviceActiveScheduledWork: 1,
 			serviceStopped: false,
 		};
 
@@ -84,7 +85,7 @@ class FakeRuntime {
 					sdkActiveSockets: 2,
 					sdkActiveSubscriptions: 2,
 					sdkActiveTimers: 0,
-					serviceActiveTimers: 1,
+					serviceActiveScheduledWork: 1,
 					serviceStopped: false,
 				}
 			: {
@@ -99,11 +100,12 @@ class FakeRuntime {
 					sdkActiveSockets: 0,
 					sdkActiveSubscriptions: 0,
 					sdkActiveTimers: 0,
-					serviceActiveTimers: 0,
+					serviceActiveScheduledWork: 0,
 					serviceStopped: true,
 				};
 		if (!enabled && this.leakSdkSocketAfterDisable) this.snapshotValue.sdkActiveSockets = 1;
-		if (!enabled && this.leakServiceTimerAfterDisable) this.snapshotValue.serviceActiveTimers = 1;
+		if (!enabled && this.leakServiceFlushAfterDisable) this.snapshotValue.serviceActiveScheduledWork = 1;
+		if (!enabled && this.leakServiceTimerAfterDisable) this.snapshotValue.serviceActiveScheduledWork = 1;
 
 		return Promise.resolve();
 	}
@@ -124,7 +126,7 @@ class FakeRuntime {
 			sdkActiveSockets: 0,
 			sdkActiveSubscriptions: 0,
 			sdkActiveTimers: 0,
-			serviceActiveTimers: 0,
+			serviceActiveScheduledWork: 0,
 			serviceStopped: true,
 		};
 
@@ -228,6 +230,20 @@ describe('Homey SHS plugin-lifecycle probe', () => {
 	it('rejects cleanup that leaves a Homey service timer scheduled', async () => {
 		const runtime = new FakeRuntime();
 		runtime.leakServiceTimerAfterDisable = true;
+
+		await expect(
+			probeHomeyShsPluginLifecycle(
+				config(),
+				() => runtime,
+				() => Promise.resolve(),
+			),
+		).rejects.toThrow('disable did not release its runtime');
+		expect(runtime.shutdownCount).toBe(1);
+	});
+
+	it('rejects cleanup that leaves the Homey live-event flush scheduled', async () => {
+		const runtime = new FakeRuntime();
+		runtime.leakServiceFlushAfterDisable = true;
 
 		await expect(
 			probeHomeyShsPluginLifecycle(

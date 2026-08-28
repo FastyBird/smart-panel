@@ -95,7 +95,7 @@ export interface HomeyPluginLifecycleSnapshot {
 	sdkActiveSockets: number;
 	sdkActiveSubscriptions: number;
 	sdkActiveTimers: number;
-	serviceActiveTimers: number;
+	serviceActiveScheduledWork: number;
 	serviceStopped: boolean;
 }
 
@@ -351,10 +351,10 @@ const createHomeySdkResourceTracker = (delegate: HomeySdkClientFactory): HomeySd
 	};
 };
 
-const activeHomeyServiceTimers = (service: HomeyService): number => {
+const activeHomeyServiceScheduledWork = (service: HomeyService): number => {
 	const concrete = service as unknown as Record<string, unknown>;
 
-	return ['reconciliationTimer', 'reconnectTimer'].filter(
+	return ['liveEventFlush', 'reconciliationTimer', 'reconnectTimer'].filter(
 		(field) => concrete[field] !== null && concrete[field] !== undefined,
 	).length;
 };
@@ -524,7 +524,7 @@ export const createHomeyPluginLifecycleRuntime: HomeyPluginLifecycleRuntimeFacto
 				sdkActiveSockets: sdkSnapshot.activeSockets,
 				sdkActiveSubscriptions: sdkSnapshot.activeSubscriptions,
 				sdkActiveTimers: sdkSnapshot.activeTimers,
-				serviceActiveTimers: activeHomeyServiceTimers(homeyService),
+				serviceActiveScheduledWork: activeHomeyServiceScheduledWork(homeyService),
 				serviceStopped: status.connectionState === HomeyConnectionState.STOPPED && status.serviceState === 'stopped',
 			};
 		},
@@ -582,7 +582,7 @@ const isStoppedExactly = (snapshot: HomeyPluginLifecycleSnapshot, generation: nu
 	snapshot.sdkActiveSockets === 0 &&
 	snapshot.sdkActiveSubscriptions === 0 &&
 	snapshot.sdkActiveTimers === 0 &&
-	snapshot.serviceActiveTimers === 0 &&
+	snapshot.serviceActiveScheduledWork === 0 &&
 	snapshot.connectorGeneration === generation;
 
 export const probeHomeyShsPluginLifecycle = async (
