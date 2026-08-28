@@ -6,6 +6,8 @@ import { ConfigService } from '../../src/modules/config/services/config.service'
 import { ChannelCategory, PermissionType } from '../../src/modules/devices/devices.constants';
 import { PropertyCommandValue } from '../../src/modules/devices/utils/property-command-value.utils';
 import { validatePropertyCommandValue } from '../../src/modules/devices/utils/property-command-value.utils';
+import { HomeyConnectorFactory } from '../../src/plugins/devices-homey/connectors/homey-connector.factory';
+import { HomeyConnector } from '../../src/plugins/devices-homey/connectors/homey-connector.interface';
 import { HomeyLocalConnectorFactory } from '../../src/plugins/devices-homey/connectors/homey-local-connector.factory';
 import { HomeySdkClientFactoryService } from '../../src/plugins/devices-homey/connectors/homey-sdk.client';
 import {
@@ -274,7 +276,7 @@ const createProbeProperty = (
 	return { channel, device, property, value: false };
 };
 
-const createSynchronizer = (observeEvents: (events: readonly HomeyEvent[]) => void): HomeySynchronizerService =>
+const createSynchronizer = (): HomeySynchronizerService =>
 	({
 		filterEvents: (events: readonly unknown[]): readonly unknown[] => [...events],
 		getOperationalDiagnostics: (): Promise<HomeyOperationalDiagnostics> => Promise.resolve(EMPTY_DIAGNOSTICS),
@@ -283,14 +285,29 @@ const createSynchronizer = (observeEvents: (events: readonly HomeyEvent[]) => vo
 		reset: (): void => undefined,
 		synchronizeDevices: (_devices: readonly unknown[], _missing: readonly string[], events: readonly unknown[]) =>
 			Promise.resolve({ acceptedCapabilityValues: [], acceptedEvents: [...events], failed: 0, ignored: 0, updated: 0 }),
-		synchronizeEvents: (events: readonly HomeyEvent[]) => {
-			observeEvents(events);
-
-			return Promise.resolve({ acceptedEvents: [...events], failed: 0, ignored: 0, updated: 0 });
-		},
+		synchronizeEvents: (events: readonly HomeyEvent[]) =>
+			Promise.resolve({ acceptedEvents: [...events], failed: 0, ignored: 0, updated: 0 }),
 		synchronizeSnapshot: (_devices: readonly unknown[], events: readonly unknown[] = []) =>
 			Promise.resolve({ acceptedCapabilityValues: [], acceptedEvents: [...events], failed: 0, ignored: 0, updated: 0 }),
 	}) as unknown as HomeySynchronizerService;
+
+export const createHomeyEventObservingConnector = (
+	connector: HomeyConnector,
+	observeEvent: (event: HomeyEvent) => void,
+): HomeyConnector => ({
+	connect: () => connector.connect(),
+	disconnect: () => connector.disconnect(),
+	getDevice: (deviceId) => connector.getDevice(deviceId),
+	getDevices: () => connector.getDevices(),
+	getSystemInfo: () => connector.getSystemInfo(),
+	getZones: () => connector.getZones(),
+	setCapabilityValue: (deviceId, capabilityId, value) => connector.setCapabilityValue(deviceId, capabilityId, value),
+	subscribe: (listener) =>
+		connector.subscribe(async (event) => {
+			observeEvent(event);
+			await listener(event);
+		}),
+});
 
 export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory = (config) => {
 	const observedEvents: HomeyEvent[] = [];
@@ -313,11 +330,14 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 	const mappingLoader = new HomeyMappingLoaderService();
 	mappingLoader.loadAllMappings();
 	const transformer = new HomeyMappingTransformerService();
-	const service = new HomeyService(
-		configService as unknown as ConfigService,
-		createSynchronizer((events) => observedEvents.push(...events)),
-		new HomeyLocalConnectorFactory(new HomeySdkClientFactoryService()),
-	);
+	const localConnectorFactory = new HomeyLocalConnectorFactory(new HomeySdkClientFactoryService());
+	const connectorFactory: HomeyConnectorFactory = {
+		create: (connectorConfig) =>
+			createHomeyEventObservingConnector(localConnectorFactory.create(connectorConfig), (event) => {
+				observedEvents.push(event);
+			}),
+	};
+	const service = new HomeyService(configService as unknown as ConfigService, createSynchronizer(), connectorFactory);
 	const platform = new HomeyDevicePlatform(service, mappingLoader, transformer);
 
 	return {

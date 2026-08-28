@@ -2,8 +2,11 @@ import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { HomeyConnector } from '../src/plugins/devices-homey/connectors/homey-connector.interface';
+import { HomeyEventListener } from '../src/plugins/devices-homey/connectors/homey-connector.types';
 import { HomeyCapabilityType } from '../src/plugins/devices-homey/models/homey-capability.model';
 import { type HomeyDevice } from '../src/plugins/devices-homey/models/homey-device.model';
+import { HomeyEvent, HomeyEventType } from '../src/plugins/devices-homey/models/homey-event.model';
 
 import {
 	HOMEY_MAPPING_CONTROL_MAPPINGS,
@@ -11,6 +14,7 @@ import {
 	type HomeyMappingControlRuntime,
 	type HomeyShsMappingControlConfig,
 	assertHomeyShsMappingControlReportSafe,
+	createHomeyEventObservingConnector,
 	homeyMappingControlReadBackMatches,
 	loadHomeyShsMappingControlConfig,
 	probeHomeyShsMappingControl,
@@ -141,6 +145,49 @@ const successfulProbe = async () => {
 };
 
 describe('Homey SHS mapping-control probe', () => {
+	it('records connector subscription events without treating polling reads as realtime evidence', async () => {
+		let upstreamListener: HomeyEventListener | undefined;
+		const observed: HomeyEvent[] = [];
+		const deliveryOrder: string[] = [];
+		const connector = {
+			connect: jest.fn(),
+			disconnect: jest.fn(),
+			getDevice: jest.fn().mockResolvedValue(readBackDevice()),
+			getDevices: jest.fn(),
+			getSystemInfo: jest.fn(),
+			getZones: jest.fn(),
+			setCapabilityValue: jest.fn(),
+			subscribe: jest.fn((listener: HomeyEventListener) => {
+				upstreamListener = listener;
+
+				return Promise.resolve(() => undefined);
+			}),
+		} as unknown as HomeyConnector;
+		const observingConnector = createHomeyEventObservingConnector(connector, (event) => {
+			observed.push(event);
+			deliveryOrder.push('observed');
+		});
+		const event: HomeyEvent = {
+			capabilityId: 'onoff',
+			deviceId: 'test-device',
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 1,
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			value: true,
+		};
+
+		await observingConnector.getDevice('test-device');
+		expect(observed).toStrictEqual([]);
+		await observingConnector.subscribe(() => {
+			deliveryOrder.push('downstream');
+		});
+		await upstreamListener?.(event);
+
+		expect(observed).toStrictEqual([event]);
+		expect(deliveryOrder).toStrictEqual(['observed', 'downstream']);
+	});
+
 	it.each([
 		['cover', 'window-covering-position'],
 		['cover', 'window-covering-tilt'],
