@@ -141,10 +141,15 @@ The implementation that follows this record must:
    first, the activation's conditional commit must fail and clear any remaining candidate state. Activation advances
    the grant/configuration generation. Until activation succeeds, retain the previous active grant, selected Homey, and
    connector; never apply a previous Homey ID or another transaction's selection to a candidate account.
-9. Serialize refresh and token replacement, persist a rotated refresh token atomically, and move to reauthorization
-   rather than retrying aggressively after revocation or permanent refresh failure. Reauthorization must not take the
-   active connector offline unless the active grant independently becomes invalid or the candidate is activated.
-10. Disconnect the Homey connector and clear tokens plus the selected Homey before reporting OAuth disconnect success.
+9. Before calling the refresh endpoint, capture the active grant/configuration generation. Persist a successful access
+   and rotated refresh token atomically through the same serialized active-grant mutation boundary used by activation,
+   disconnect, and authority invalidation, conditional on that generation and grant identity still being current.
+   Discard and redact a late refresh response if any competing mutation won first; it must never overwrite a replacement
+   grant or restore a disconnected grant. Move to reauthorization rather than retrying aggressively after revocation or
+   permanent refresh failure. Reauthorization must not take the active connector offline unless the active grant
+   independently becomes invalid or the candidate is activated.
+10. Through that same mutation boundary, invalidate and clear tokens plus the selected Homey, then disconnect the Homey
+    connector before reporting OAuth disconnect success.
 
 The current official client and HTTP references do not document a standards-style token-revocation endpoint. Task 7.2
 must verify the current live/API behavior before claiming remote revocation. Until then, disconnect means local token
