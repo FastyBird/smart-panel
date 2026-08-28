@@ -46,9 +46,9 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - Create: `apps/backend/src/plugins/devices-homey/__fixtures__/README.md` when the plugin directory is introduced
 
 - [ ] Record SHS version, container image digest, installation topology, exposed ports, capture date, and Smart Panel runtime network path.
-- [ ] Give SHS a stable LAN address; prefer host networking or a dedicated address consistent with Homey guidance.
-- [ ] Create a least-privilege API key with only device read/control, zone read, and system read permissions required by the design.
-- [ ] Designate one harmless writable test capability; record only a synthetic alias in repository documents.
+- [x] Give SHS a stable LAN address; prefer host networking or a dedicated address consistent with Homey guidance.
+- [x] Create a least-privilege API key with only device read/control, zone read, and system read permissions required by the design.
+- [x] Designate one harmless writable test capability; record only a synthetic alias in repository documents.
 - [x] Designate one disposable virtual/test device for lifecycle mutations. It must not represent household equipment, and repository documents record only its synthetic alias.
 - [x] Define environment variables for live tests. Do not store secret values in shell history, fixtures, `.env` files, or repository config.
 - [x] Add an explicit live-write allowlist contract requiring both device ID and capability ID.
@@ -57,13 +57,20 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
       Bind the runtime device ID only after a matching create event or exact cache-bypassing inventory read-back, then
       require fresh ownership verification because Homey assigns the top-level ID during creation.
 
+The stable TrueNAS host-network deployment was reached through the same private-LAN endpoint throughout the live
+program. Separate scoped credentials covered read-only inventory, control, lifecycle, and omitted-permission scenarios;
+repository evidence retains no credential or private endpoint. The harmless writable target is recorded only as
+`fbsp-reversible-mapping-target`. The combined installation-metadata item remains unchecked because the original image
+digest and exact TrueNAS version/architecture were not captured and cannot be reconstructed; all remaining version,
+date, topology, path, and verified-port fields are recorded in the compatibility document.
+
 **Verification:** Review the compatibility document for secret/private data before committing it.
 
 ### Task 0.2: Probe the local API contract
 
 **Reference:** Official local API factory, ManagerDevices, Device capability/event documentation, and SHS port documentation linked by the design.
 
-- [ ] Verify connection with the documented SDK against HTTP `4859` and HTTPS `4860` where the installation supports them.
+- [x] Verify connection with the documented SDK against HTTP `4859` and HTTPS `4860` where the installation supports them.
 - [x] Capture sanitized system information and manager state.
 - [x] Capture zones and zone hierarchy.
 - [x] Capture the complete device inventory and individual device objects.
@@ -75,6 +82,15 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - [x] On the separately gated disposable device only, test add, rename, zone move, unavailable, and removal events or inventory deltas; clean up the disposable device after capture.
 - [x] Inspect mDNS advertisements before and after restart. Record exact service type/TXT fields only if stable.
 - [ ] If Homey Pro hardware is available, repeat the minimum inventory/event/write suite against its local API.
+
+The SDK, inventory, write, restart, network, and lifecycle runs all used verified HTTP `4859`. A credential-free
+standard TLS attempt on `4860` ended during negotiation with `EPROTO`, so this installation does not support a claimed
+HTTPS path and the completed transport item applies its explicit “where supported” condition. Capability-event order
+is recorded across physical, Homey-app, Flow, Smart Panel, restart, and burst scenarios. The combined availability-event
+item remains unchecked because SHS emitted no create/update/availability manager events for the synthetic lifecycle
+driver even after repeated full observation windows; exact fresh read-backs and periodic reconciliation cover the state
+transition without inventing event evidence. No Homey Pro hardware was available, so the conditional equivalence run
+also remains visibly unchecked.
 
 ### Task 0.3: Decide SDK vs. direct protocol
 
@@ -237,7 +253,12 @@ index.ts
 - [x] Ensure one connector core owns one transport and passes the reusable fake-transport contract suite.
 - [x] Implement the production adapter for inventory, zones, system info, device lookup, capability writes, and subscriptions.
 - [x] Add adapter-specific fixture-backed tests for every operation and error category.
-- [ ] Add environment-gated contract tests against live SHS.
+- [x] Add environment-gated contract tests against live SHS.
+
+The environment-gated production probes collectively exercise connection testing, system and zone reads, complete and
+targeted device inventory, realtime subscription, capability writes, reconnect/restart behavior, and bounded cleanup
+against live SHS. Every mutating path additionally requires its exact acknowledgement and target allowlist; default CI
+uses the reusable fake-transport connector contract and sanitized fixtures only.
 
 ### Task 2.2: Implement plugin lifecycle and connection state machine
 
@@ -318,6 +339,11 @@ Live SHS 13.4.0 fixtures cover the capability families present in the captured i
 explicitly named published-contract test devices derived from Athom's public capability definitions; they do not claim
 live provenance. Relative light-temperature and cover-tilt projections are reversible defaults whose conversion
 metadata remains visible to mapping preview and user overrides.
+
+Thermostat target/mode projection remains an approved local-MVP design deferral. The live and published-protocol
+evidence provides thermostat configuration but no verified actual heating/cooling activity signal; mapping
+`thermostat_mode` as activity would misrepresent device state. Measured climate sensing and thermostat identity remain
+supported, while climate control stays unchecked until that signal is available.
 
 ### Task 3.3: Implement device inventory/discovery service and API
 
@@ -772,11 +798,15 @@ gated compatibility probes under `test/`.
 - [x] Document local configuration, discovery/manual URL, adoption, supported capability families, limitations, and troubleshooting.
 - [x] Document backups/secret behavior without revealing storage internals unnecessarily.
 - [x] Document fixture refresh procedure for future SHS/Homey versions.
-- [ ] Update `FEATURE-PLUGIN-HOMEY` acceptance checkboxes and status to `review` only when evidence is recorded.
+- [x] Update `FEATURE-PLUGIN-HOMEY` acceptance checkboxes and status to `review` only when evidence is recorded.
 
 The operator guide is published at `apps/website/app/docs/extensions/homey/page.mdx`; the fixture refresh runbook is
-maintained beside the reviewed fixture corpus. The feature remains `in-progress`: Task 6.2 live-matrix observations and
-the unchecked acceptance evidence above are still required before the final checklist/status update.
+maintained beside the reviewed fixture corpus. The 2026-08-28 release audit moved the local feature to `review` after
+all implemented Phase 1 criteria, automated gates, and the complete Task 6.2 lifecycle matrix received evidence. The
+unchecked installation-provenance criterion and the remaining Task 0.2/3.2 items carry explicit deferrals below; cloud
+criteria remain the separate Milestone 7.
+The same audit reran clean OpenAPI generation and backend compilation, 17 credential-free Homey spike suites with 243
+tests, and 39 Homey/config security suites with 484 tests.
 
 **Local MVP gate:** All Phase 0 and Phase 1 acceptance criteria in `tasks/features/FEATURE-PLUGIN-HOMEY.md` are checked or carry an approved, explicit deferral. Cloud criteria remain unchecked.
 
