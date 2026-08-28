@@ -1,4 +1,5 @@
 import { Module, OnModuleInit } from '@nestjs/common';
+import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
@@ -78,6 +79,7 @@ import { HomeyService } from './services/homey.service';
 		]),
 		DevicesModule,
 		ConfigModule,
+		NestConfigModule,
 		ExtensionsModule,
 		SwaggerModule,
 	],

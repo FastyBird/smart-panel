@@ -2,6 +2,9 @@ import { AthomCloudAPI, HomeyAPI } from 'homey-api';
 
 import { Injectable } from '@nestjs/common';
 
+import { HOMEY_CLOUD_AUTHORIZE_URL } from '../devices-homey.constants';
+import { HomeyCloudConfigurationError } from '../errors/homey-cloud-authorization.error';
+
 export type HomeySdkEventListener = (...arguments_: unknown[]) => Promise<void> | void;
 
 export interface HomeySdkEventSource {
@@ -94,7 +97,24 @@ export class HomeySdkClientFactoryService implements HomeySdkClientFactory, Home
 			redirectUrl: options.redirectUrl,
 			autoRefreshTokens: false,
 		});
+		const authorizeUrl = cloudApi.getLoginUrl({ state: options.state, scopes: options.scopes });
 
-		return cloudApi.getLoginUrl({ state: options.state, scopes: options.scopes });
+		this.assertCloudAuthorizationEndpoint(authorizeUrl);
+
+		return authorizeUrl;
+	}
+
+	private assertCloudAuthorizationEndpoint(value: string): void {
+		let url: URL;
+
+		try {
+			url = new URL(value);
+		} catch {
+			throw new HomeyCloudConfigurationError('Homey Cloud authorization endpoint is invalid');
+		}
+
+		if (url.username || url.password || url.origin + url.pathname !== HOMEY_CLOUD_AUTHORIZE_URL) {
+			throw new HomeyCloudConfigurationError('Homey Cloud authorization endpoint is invalid');
+		}
 	}
 }
