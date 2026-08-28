@@ -93,9 +93,9 @@ The backend implementation will read these deployment values; values shown here 
 Access tokens and refresh tokens are per authorization, not deployment client configuration. They must use the generic
 write-only secret boundary or an established encrypted credential store and remain backend-only. Disconnect clears the
 active access token, refresh token, and selected Homey together. Reauthorization stages a separate candidate grant and
-must preserve the active grant until the candidate token set is exchanged, persisted, and activated successfully. A
-failed reauthorization clears only its candidate state. The client secret and tokens must never share a browser-facing
-DTO.
+must preserve the active grant until the candidate token set is exchanged, its Homey is selected and authenticated,
+and the tokens plus selected Homey are activated together successfully. A failed reauthorization clears only its
+candidate state. The client secret and tokens must never share a browser-facing DTO.
 
 ## Authorization boundary for Task 7.2
 
@@ -110,15 +110,18 @@ The implementation that follows this record must:
    state before token exchange.
 5. Redact the code, state, token response, client secret, raw account response, and raw Homey inventory from errors and
    logs.
-6. Exchange the code immediately with a bounded timeout. Stage and persist candidate tokens before atomically activating
-   them; after any exchange, validation, or persistence failure, clear only candidate state and leave an existing active
-   grant and connector untouched.
+6. Exchange the code immediately with a bounded timeout. Stage and persist candidate tokens in a pending slot without
+   activating them; after any exchange, validation, or persistence failure, clear only candidate state and leave an
+   existing active grant and connector untouched.
 7. List sanitized Homey choices after authorization. Auto-select only when exactly one eligible Homey exists; otherwise
    require an explicit stable-ID selection without exposing account details that the admin UI does not need.
-8. Serialize refresh and token replacement, persist a rotated refresh token atomically, and move to reauthorization
+8. Authenticate the selected Homey with the candidate grant, then atomically activate its access token, refresh token,
+   selected Homey ID, and connector. Until that transaction succeeds, retain the previous active grant, selected Homey,
+   and connector; never apply a previous Homey ID to a new candidate account.
+9. Serialize refresh and token replacement, persist a rotated refresh token atomically, and move to reauthorization
    rather than retrying aggressively after revocation or permanent refresh failure. Reauthorization must not take the
    active connector offline unless the active grant independently becomes invalid or the candidate is activated.
-9. Disconnect the Homey connector and clear tokens plus the selected Homey before reporting OAuth disconnect success.
+10. Disconnect the Homey connector and clear tokens plus the selected Homey before reporting OAuth disconnect success.
 
 The current official client and HTTP references do not document a standards-style token-revocation endpoint. Task 7.2
 must verify the current live/API behavior before claiming remote revocation. Until then, disconnect means local token
