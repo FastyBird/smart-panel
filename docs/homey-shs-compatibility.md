@@ -468,6 +468,67 @@ SDK teardown. The reviewed reports are committed as
 device or capability identifier, capability value, inventory content, event payload, Flow identity, response body, or
 raw error.
 
+## Allowlisted Smart Panel mapping-family control
+
+This probe validates the production Smart Panel command path rather than calling the SDK directly. It starts a fresh
+production `HomeyService`, loads the current built-in and user mapping catalog, binds one exact device/capability/mapping,
+and invokes `HomeyDevicePlatform` with an operator-selected panel value. The platform revalidates the live inventory,
+property constraints, mapping binding, and inverse transformation before `HomeyService` performs the bounded write and
+authoritative confirmation. A fresh device read must match, after which the original value is restored through the same
+platform path and verified again before shutdown.
+
+Only reversible bidirectional mappings are allowed. The guarded family catalog is:
+
+| Family     | Allowed mapping names                                                                         |
+| ---------- | --------------------------------------------------------------------------------------------- |
+| `lighting` | `light-power`, `light-brightness`, `light-hue`, `light-saturation`, `light-color-temperature` |
+| `switch`   | `outlet-power`, `generic-switch-power`                                                        |
+| `cover`    | `window-covering-position`, `window-covering-tilt`                                            |
+| `lock`     | `lock-on`                                                                                     |
+
+Climate control is not part of this gate because the approved local mapping catalog intentionally defers target and
+mode projection until a verified actual-activity signal is available. Sensor, safety, battery, and energy families are
+read-only. The probe derives the full set of reversible writable families currently available in the live inventory
+and records only their fixed family labels, never counts or target details.
+
+Use the Homey inventory endpoint locally to select harmless targets. Keep the output private: it contains device names
+and identifiers. For every family reported as available, choose one exact capability and a safe panel value different
+from its current value. The probe rejects a baseline that cannot round-trip exactly and always attempts restoration if
+the command path was entered.
+
+Start from the base URL, expected-host, API-key, timeout, and private-term variables used by the read probe. Clear every
+other live-probe family, then set one target at a time without putting its identifiers in repository files:
+
+```bash
+for variable in $(env | awk -F= '
+  /^FB_HOMEY_SHS_(CREDENTIAL_ROTATION|LIFECYCLE|ORIGIN_EVENT|REALTIME|RECOVERY|REPLACEMENT|RESTART_EVENT_FLOW|STARTUP|WRITE)_/ {
+    print $1
+  }
+'); do
+  unset "$variable"
+done
+
+export FB_HOMEY_SHS_MAPPING_CONTROL_ENABLE=I_WILL_USE_SMART_PANEL_TO_CONTROL_AND_RESTORE_ONLY_THE_ALLOWLISTED_HOMEY_MAPPING_TARGET
+export FB_HOMEY_SHS_MAPPING_CONTROL_FAMILY=lighting
+export FB_HOMEY_SHS_MAPPING_CONTROL_MAPPING_NAME=light-brightness
+
+read -r FB_HOMEY_SHS_MAPPING_CONTROL_DEVICE_ID
+read -r FB_HOMEY_SHS_MAPPING_CONTROL_CAPABILITY_ID
+read -r FB_HOMEY_SHS_MAPPING_CONTROL_PANEL_VALUE
+export FB_HOMEY_SHS_MAPPING_CONTROL_DEVICE_ID
+export FB_HOMEY_SHS_MAPPING_CONTROL_CAPABILITY_ID
+export FB_HOMEY_SHS_MAPPING_CONTROL_PANEL_VALUE
+
+pnpm run homey:probe-mapping-control
+```
+
+Repeat with a representative mapping for each family that the first successful report lists in `availableFamilies`.
+Boolean panel values are entered as `true` or `false`; mapped percentages, angles, hue, and color temperature are
+entered in Smart Panel units. Inspect the controlled equipment after any failed run. No success report is written
+unless the requested command, fresh read-back, exact restoration, restoration read-back, and service shutdown all pass.
+The report contains no endpoint, credential, Homey identity, device or capability identifier, capability value,
+inventory content/count, event payload, response body, or raw error.
+
 ## Operator-controlled restart recovery probe
 
 The recovery probe measures the SDK's behavior across a real SHS restart without performing the restart itself. It

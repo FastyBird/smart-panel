@@ -655,6 +655,14 @@ The three reviewed exact-schema reports retain only fixed scenario/event labels,
 and completion booleans; they contain no endpoint, credential, Homey identity, device or capability identifier,
 capability value, inventory content, event payload, Flow identity, response body, or raw error.
 
+A separately gated mapping-control probe is prepared for the next unchecked live-matrix item. It starts the production
+`HomeyService`, loads the current mapping catalog, and routes one exact allowlisted target through
+`HomeyDevicePlatform`. Only reversible bidirectional lighting, switch, cover, and lock mappings are eligible. Each run
+requires the transformed Smart Panel command and fresh authoritative read-back, followed by restoration through the
+same platform path, a final read-back, and complete service shutdown. It records the fixed set of eligible families
+detected in live inventory but no counts, identities, capability values, inventory content, payloads, or raw errors.
+The matrix item remains unchecked until reviewed live evidence covers every family reported as available.
+
 The 2026-08-26 SHS `13.4.1` restart probe closed the transport/session recovery slice: it observed disconnect,
 reconnect, manager resubscription, a fresh inventory read, and complete cleanup. This does not close the event-flow
 criterion above because no capability or availability event was observed before and after that restart.
