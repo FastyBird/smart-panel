@@ -1,8 +1,7 @@
 # Homey SHS Compatibility Record
 
-**Status:** In progress; safe inventory, production-service startup/recovery, SDK session/cleanup, restart-spanning
-capability events, network recovery, disposable-device lifecycle, and stable restart-spanning mDNS evidence captured;
-automatic mDNS discovery remains deferred, and physical/Homey-originated availability-event continuity is pending
+**Status:** Local MVP evidence complete with explicit provenance/environment deferrals; automatic mDNS discovery and
+physical/Homey-originated availability-event continuity remain deferred
 
 **Started:** 2026-08-12
 
@@ -21,7 +20,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 
 | Area                                                  | Status                                                   | Evidence still required                                          |
 | ----------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------- |
-| Credential-safe read probe                            | Passed on SHS `13.4.0` and `13.4.1` over HTTP `4859`     | Repeat over HTTPS `4860` if enabled                              |
+| Credential-safe read probe                            | Passed on SHS `13.4.0` and `13.4.1` over HTTP `4859`     | HTTPS is not claimed for this installation                       |
 | System, zone, device inventory, and individual device | Captured and sanitized                                   | None                                                             |
 | Capability metadata and suffixed IDs                  | Inventory, explicit read, and write read-back passed     | None                                                             |
 | Socket.IO events and reconnect                        | Capability event, restart, and network recovery passed   | Capture physical/Homey-originated availability-event continuity  |
@@ -33,7 +32,7 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Production-service startup                            | Online and offline-recovery passed on SHS `13.4.1`       | None                                                             |
 | mDNS discovery                                        | Stable across one controlled restart; manual URL remains | Design safe identity verification before reconsidering discovery |
 | SDK decision                                          | SDK selected behind connector boundary                   | Re-evaluate the pinned package and audit result on every upgrade |
-| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture              | Add physical/Homey-originated availability-event evidence        |
+| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture              | No blocking corpus evidence                                      |
 
 ## Installation evidence
 
@@ -45,20 +44,27 @@ Complete this table after the live run. Values committed here must remain non-se
 | Realtime SDK probe date                  | `2026-08-14`, `2026-08-26`                             |
 | mDNS observation date                    | `2026-08-14`, `2026-08-26`                             |
 | SHS version                              | `13.4.0`, `13.4.1`                                     |
-| Container image tag and immutable digest | Pending                                                |
-| Host operating system/architecture       | TrueNAS; version and architecture pending              |
+| Container image tag and immutable digest | Not captured; explicit provenance deferral             |
+| Host operating system/architecture       | TrueNAS; exact version/architecture not captured       |
 | Topology                                 | Same LAN, separate host                                |
 | Smart Panel to SHS network path          | Direct private-LAN connection                          |
 | HTTP port `4859`                         | Confirmed for reads and the SDK Socket.IO session      |
-| HTTPS port `4860`                        | Pending                                                |
-| TLS certificate behavior                 | Pending                                                |
-| Disposable capability alias              | Pending synthetic alias                                |
+| HTTPS port `4860`                        | No valid standard TLS handshake; not claimed           |
+| TLS certificate behavior                 | Standard Node TLS probe returned `EPROTO`              |
+| Disposable capability alias              | `fbsp-reversible-mapping-target`                       |
 | Disposable lifecycle-device alias        | `fbsp-lifecycle-disposable-device`                     |
 
 On 2026-08-26, the TrueNAS host was reachable but SHS stopped before opening its API ports because its required Avahi
 daemon could not start. The deployment recovered after applying Homey's documented TrueNAS settings: disable the host
 mDNS option, run the trusted SHS image with host networking and privileged mode, and restart the app. See the official
 [Homey TrueNAS installation guide](https://support.homey.app/hc/en-us/articles/23981543357596-How-to-install-Homey-Self-Hosted-Server-on-TrueNAS).
+
+The live program consistently reached the same SHS endpoint through the TrueNAS host-network deployment from the
+separate Smart Panel development host, establishing the stable same-LAN path without recording its private address.
+On 2026-08-28, a credential-free standard Node TLS request to the documented `4860` ping path failed during protocol
+negotiation with `EPROTO`; no valid HTTPS response or certificate was observed. The local release therefore claims only
+the verified HTTP `4859` transport. The image digest and exact TrueNAS version/architecture were not captured while the
+environment was available and remain an explicit, non-reconstructed provenance deferral.
 
 ## Published protocol baseline
 

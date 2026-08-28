@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: in-progress
+Status: review
 Created: 2026-08-12
 
 ## 1. Business goal
@@ -80,35 +80,35 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 ### Phase 0 — compatibility gate
 
 - [ ] SHS version, image digest, network topology, ports, and test date are recorded.
-- [ ] A least-privilege API key can read devices, zones, system information, and current capability values.
+- [x] A least-privilege API key can read devices, zones, system information, and current capability values.
 - [x] A designated harmless writable capability can be controlled and its resulting event observed.
 - [x] Socket.IO connection, subscription, disconnect, restart, and reconnect behavior are recorded.
 - [x] Device add, rename, zone move, unavailable, and removal behavior is captured only with a separately gated, explicitly allowlisted disposable virtual/test device; suffixed-capability behavior may use read-only fixtures/devices.
 - [x] mDNS behavior is verified; automatic discovery remains deferred pending safe identity and endpoint verification.
 - [x] The SDK license/distribution decision and SDK-vs-direct-protocol choice are recorded.
-- [ ] Sanitized fixtures contain no API keys, household identifiers, private IP addresses, or personal names.
+- [x] Sanitized fixtures contain no API keys, household identifiers, private IP addresses, or personal names.
 - [x] Fixture-backed tests can run without live SHS access.
 
 ### Security and configuration
 
-- [ ] Homey API keys and OAuth tokens are write-only through every config endpoint.
-- [ ] Config responses expose only a configured/not-configured indicator for secrets.
-- [ ] Omitting a secret during update preserves it; explicit clear removes it.
-- [ ] Connection testing reuses the stored key only for an explicit fully saved configuration request; every candidate/overridden URL requires a newly supplied key and can never fall back to the stored secret.
-- [ ] Secrets are absent from logs, exceptions, telemetry, OpenAPI examples, tests, and fixtures.
-- [ ] URLs, schemes, timeouts, intervals, and permission errors are validated and sanitized.
+- [x] Homey API keys and OAuth tokens are write-only through every config endpoint.
+- [x] Config responses expose only a configured/not-configured indicator for secrets.
+- [x] Omitting a secret during update preserves it; explicit clear removes it.
+- [x] Connection testing reuses the stored key only for an explicit fully saved configuration request; every candidate/overridden URL requires a newly supplied key and can never fall back to the stored secret.
+- [x] Secrets are absent from logs, exceptions, telemetry, OpenAPI examples, tests, and fixtures.
+- [x] URLs, schemes, timeouts, intervals, and permission errors are validated and sanitized.
 - [x] Disabling the plugin closes subscriptions, stops timers, and disconnects the connector cleanly.
 
 ### Backend local provider
 
-- [ ] `devices-homey` is registered as a managed backend plugin.
-- [ ] A `HomeyConnector` abstraction prevents SDK/transport objects from leaking into domain services.
-- [ ] The local connector supports connection testing, inventory, zones, device reads, events, and capability writes.
+- [x] `devices-homey` is registered as a managed backend plugin.
+- [x] A `HomeyConnector` abstraction prevents SDK/transport objects from leaking into domain services.
+- [x] The local connector supports connection testing, inventory, zones, device reads, events, and capability writes.
 - [x] Health exposes connected, degraded polling, reconnecting, authentication failed, and stopped states.
 - [x] Manual URL setup works without mDNS.
-- [ ] Authenticated device discovery lists all logical Homey devices with adoption/support status.
-- [ ] Normalization preserves full device and capability IDs, including capability suffixes.
-- [ ] Mapping definitions cover the agreed MVP light, switch, sensor, climate, cover, lock, battery, and energy capabilities.
+- [x] Authenticated device discovery lists all logical Homey devices with adoption/support status.
+- [x] Normalization preserves full device and capability IDs, including capability suffixes.
+- [x] Mapping definitions cover the agreed MVP light, switch, sensor, climate, cover, lock, battery, and energy capabilities.
 - [x] Unknown capabilities create preview warnings without failing otherwise supported devices.
 - [x] Mapping preview returns category, channels, properties, identifiers, values, access, conversions, and warnings.
 - [x] Single and batch adoption are idempotent and return per-device outcomes.
@@ -123,9 +123,9 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 
 ### Backend API and OpenAPI
 
-- [ ] Status, test-connection, device inventory, mapping-preview, and adoption endpoints follow repository controller conventions.
+- [x] Status, test-connection, device inventory, mapping-preview, and adoption endpoints follow repository controller conventions.
 - [x] Server-discovery endpoints are required only when compatibility evidence establishes a stable Homey-specific advertisement; they are intentionally omitted from the manual-only local MVP.
-- [ ] Every controller action has the required Swagger tags, operation metadata, response envelope, validation, authorization, and error responses.
+- [x] Every controller action has the required Swagger tags, operation metadata, response envelope, validation, authorization, and error responses.
 - [x] `pnpm run generate:openapi` succeeds after backend Swagger changes.
 - [x] No generated OpenAPI, admin API type, panel API client, or generated spec file is edited manually.
 
@@ -165,6 +165,24 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [ ] The cloud connector passes the same connector contract suite as the local connector.
 - [ ] Mapping, adoption, state sync, and control services contain no cloud-specific forks outside connector/authorization boundaries.
 - [ ] User limits, approval requirements, redirect URIs, and deployment steps are documented.
+
+### Local MVP release audit
+
+The 2026-08-28 audit moves the local integration to `review`. The production plugin, connector boundary, authenticated
+inventory, normalization, mapping catalog, API conventions, secret semantics, admin/panel paths, offline fixtures,
+security gate, and complete live lifecycle matrix all have recorded automated or sanitized live evidence. The API-key
+criterion applies to every implemented Homey config endpoint; OAuth token fields do not exist until the separately
+unchecked Phase 2 cloud milestone and must register with the same write-only secret mechanism when introduced.
+The final audit reran OpenAPI generation, the backend build, 17 credential-free Homey spike suites with 243 tests, and
+39 Homey/config security suites with 484 tests without live SHS access.
+
+The combined Phase 0 installation-metadata criterion remains unchecked because the container image digest and exact
+TrueNAS version/architecture were not captured during the live program and cannot be reconstructed safely. SHS
+versions, dates, stable same-LAN topology, runtime network path, and verified HTTP port are recorded. This provenance
+gap does not change runtime behavior, but it remains visible rather than being marked complete. The detailed plan also
+retains explicit environment/design deferrals for Homey Pro hardware, physical availability-event continuity, and
+thermostat target/mode projection without a verified actual-activity signal. Local setup therefore claims SHS over
+HTTP `4859`; it does not claim HTTPS `4860`, Homey Pro equivalence, or climate control.
 
 ## 5. Example scenarios
 
