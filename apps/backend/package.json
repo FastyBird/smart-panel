@@ -88,6 +88,7 @@
     "homey:probe-startup": "ts-node --project tsconfig.json test/support/homey-shs-startup-probe.ts",
     "homey:probe-restart-event-flow": "ts-node --project tsconfig.json test/support/homey-shs-restart-event-flow-probe.ts",
     "homey:probe-origin-event": "ts-node --project tsconfig.json test/support/homey-shs-origin-event-probe.ts",
+    "homey:probe-plugin-lifecycle": "ts-node --project tsconfig.json test/support/homey-shs-plugin-lifecycle-probe.ts",
     "homey:probe-mapping-control": "ts-node --project tsconfig.json test/support/homey-shs-mapping-control-probe.ts",
     "homey:promote-fixtures": "ts-node --project tsconfig.json test/support/promote-homey-shs-fixtures.ts",
     "type-check": "tsc --noEmit",

@@ -583,6 +583,39 @@ The panel value must differ from the current value and use Smart Panel units. Th
 labels and completion booleans; it excludes the endpoint, credential, Homey identity, mapping target, capability value,
 inventory data, event payload, response body, and raw error. Inspect the controlled equipment after any failed run.
 
+## Managed plugin lifecycle and backend shutdown
+
+This read-only probe exercises `HomeyService` through the production `PluginServiceManagerService`. It bootstraps an
+enabled plugin, disables it through the real configuration-update path, enables it again with a fresh connector, and
+finally invokes the manager's Nest module-destroy hook to represent backend shutdown. Connector operations,
+connections, subscriptions, and generations are observed in memory only.
+
+After both disable and shutdown, the probe waits longer than the production minimum 30-second reconciliation interval.
+Each window must retain zero connections and subscriptions, a stopped service state, and an unchanged connector-activity
+revision. This catches subscriptions, reconnect work, or reconciliation timers that survive cleanup. The probe performs
+no device writes.
+
+Start with the base live-probe variables, clear every unrelated gate, and enable only this scenario:
+
+```bash
+for variable in $(env | awk -F= '
+  /^FB_HOMEY_SHS_(BURST_COMMAND|CREDENTIAL_ROTATION|LIFECYCLE|MAPPING_CONTROL|ORIGIN_EVENT|REALTIME|RECOVERY|REPLACEMENT|RESTART_EVENT_FLOW|STARTUP|WRITE)_/ {
+    print $1
+  }
+'); do
+  unset "$variable"
+done
+
+export FB_HOMEY_SHS_PLUGIN_LIFECYCLE_ENABLE=I_WILL_VERIFY_HOMEY_PLUGIN_DISABLE_ENABLE_AND_BACKEND_SHUTDOWN
+export FB_HOMEY_SHS_PLUGIN_LIFECYCLE_OBSERVE_MS=35000
+
+pnpm run homey:probe-plugin-lifecycle
+```
+
+The two observation windows make the run take at least 70 seconds. A success report contains only fixed event labels
+and completion booleans; it excludes the endpoint, credential, Homey identity, inventory data/count, connector counts,
+event payload, response body, and raw error.
+
 ## Operator-controlled restart recovery probe
 
 The recovery probe measures the SDK's behavior across a real SHS restart without performing the restart itself. It
@@ -913,28 +946,29 @@ device model.
 
 Fill this matrix using synthetic aliases only.
 
-| Scenario                                  | Result                              | Sanitized observation                                                                                                                                |
-| ----------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| HTTP `4859` ping and authenticated reads  | Pass                                | Read-only system, zone, and device requests completed without redirects                                                                              |
-| HTTPS `4860` ping and authenticated reads | Pending                             |                                                                                                                                                      |
-| Invalid key                               | Pass                                | Both the SDK session probe and error-matrix probe rejected independently generated invalid keys with HTTP `401`                                      |
-| Missing system scope on device-only key   | Pass                                | The restricted key completed the allowed device inventory read with `200`, then the system-information read returned `403`                           |
-| Missing zone and device scopes            | Pass                                | Independently valid restricted keys completed allowed inventory reads with `200`, then each omitted permission returned `403`                        |
-| Bad URL and unavailable host              | Pass                                | Shared validation rejected a non-HTTP URL; a probe-owned closed loopback port produced the unavailable category                                      |
-| Request timeout                           | Pass                                | A probe-owned loopback server that withheld its response produced the timeout category within the local simulation cap                               |
-| Complete inventory and individual read    | Pass                                | Complete inventory captured: 118 devices and 16 zones; the selected individual-device response matched its pseudonymized inventory identity          |
-| Suffixed capability IDs                   | Pass in inventory and explicit read | 1,142 capability entries, including 170 suffixed entries; 55 devices repeat a base ID; an explicit suffixed capability GET returned a numeric scalar |
-| Socket.IO connect and subscribe           | Pass                                | SDK creation, socket connect, manager subscribe/unsubscribe, socket disconnect, disconnect resolution, and SDK destruction completed in strict order |
-| Capability events                         | Pass                                | The allowlisted write produced its matching capability update inside the guarded observation window                                                  |
-| Availability events                       | Absent for synthetic test driver    | Unavailable/restored read-backs passed after full ten-second event windows; physical/Homey-originated evidence remains pending                       |
-| Allowlisted write, event, and read-back   | Pass                                | Requested-value event and read-back passed; restoration of the original value and its second read-back also passed                                   |
-| Smart Panel mapped-family control         | Pass                                | Cover, lighting, and switch passed through production mappings and control; no eligible live lock family was present                                 |
-| Burst updates and concurrent commands     | Pending                             |                                                                                                                                                      |
-| Network interruption and restoration      | Pass                                | 36 ordered events proved disconnect, nine retries during the 60-second interruption, resubscription, fresh inventory read, and complete cleanup      |
-| SHS restart and reconnect                 | Pass                                | A 23-event write/restart/restore run proved events and read-backs across recovery; the earlier 15-event run independently proved transport recovery  |
-| API-key revocation and replacement        | Pass                                | Primary and replacement keys passed preflight; revocation returned `401`, and the replacement key remained valid                                     |
-| Disposable-device lifecycle sequence      | Pass                                | Exact add, rename, zone move, unavailable, restore, removal, and final absence passed; omitted create/update events were recorded and read back      |
-| Stable mDNS service before/after restart  | Pass                                | Ten-second pre/post observations were exact matches: `_homey._tcp` on `4859` plus two co-hosted `_hap._tcp` services                                 |
+| Scenario                                   | Result                              | Sanitized observation                                                                                                                                |
+| ------------------------------------------ | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HTTP `4859` ping and authenticated reads   | Pass                                | Read-only system, zone, and device requests completed without redirects                                                                              |
+| HTTPS `4860` ping and authenticated reads  | Pending                             |                                                                                                                                                      |
+| Invalid key                                | Pass                                | Both the SDK session probe and error-matrix probe rejected independently generated invalid keys with HTTP `401`                                      |
+| Missing system scope on device-only key    | Pass                                | The restricted key completed the allowed device inventory read with `200`, then the system-information read returned `403`                           |
+| Missing zone and device scopes             | Pass                                | Independently valid restricted keys completed allowed inventory reads with `200`, then each omitted permission returned `403`                        |
+| Bad URL and unavailable host               | Pass                                | Shared validation rejected a non-HTTP URL; a probe-owned closed loopback port produced the unavailable category                                      |
+| Request timeout                            | Pass                                | A probe-owned loopback server that withheld its response produced the timeout category within the local simulation cap                               |
+| Complete inventory and individual read     | Pass                                | Complete inventory captured: 118 devices and 16 zones; the selected individual-device response matched its pseudonymized inventory identity          |
+| Suffixed capability IDs                    | Pass in inventory and explicit read | 1,142 capability entries, including 170 suffixed entries; 55 devices repeat a base ID; an explicit suffixed capability GET returned a numeric scalar |
+| Socket.IO connect and subscribe            | Pass                                | SDK creation, socket connect, manager subscribe/unsubscribe, socket disconnect, disconnect resolution, and SDK destruction completed in strict order |
+| Capability events                          | Pass                                | The allowlisted write produced its matching capability update inside the guarded observation window                                                  |
+| Availability events                        | Absent for synthetic test driver    | Unavailable/restored read-backs passed after full ten-second event windows; physical/Homey-originated evidence remains pending                       |
+| Allowlisted write, event, and read-back    | Pass                                | Requested-value event and read-back passed; restoration of the original value and its second read-back also passed                                   |
+| Smart Panel mapped-family control          | Pass                                | Cover, lighting, and switch passed through production mappings and control; no eligible live lock family was present                                 |
+| Burst updates and concurrent commands      | Pending                             |                                                                                                                                                      |
+| Plugin disable/enable and backend shutdown | Pending                             |                                                                                                                                                      |
+| Network interruption and restoration       | Pass                                | 36 ordered events proved disconnect, nine retries during the 60-second interruption, resubscription, fresh inventory read, and complete cleanup      |
+| SHS restart and reconnect                  | Pass                                | A 23-event write/restart/restore run proved events and read-backs across recovery; the earlier 15-event run independently proved transport recovery  |
+| API-key revocation and replacement         | Pass                                | Primary and replacement keys passed preflight; revocation returned `401`, and the replacement key remained valid                                     |
+| Disposable-device lifecycle sequence       | Pass                                | Exact add, rename, zone move, unavailable, restore, removal, and final absence passed; omitted create/update events were recorded and read back      |
+| Stable mDNS service before/after restart   | Pass                                | Ten-second pre/post observations were exact matches: `_homey._tcp` on `4859` plus two co-hosted `_hap._tcp` services                                 |
 
 ## Verification
 

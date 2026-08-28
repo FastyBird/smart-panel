@@ -63,6 +63,7 @@ const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 	'homey-shs-mapping-control',
 	'homey-shs-origin-event',
 	'homey-shs-permission-scopes',
+	'homey-shs-plugin-lifecycle',
 	'homey-shs-restart-event-flow',
 ]);
 const PUBLIC_SYNTHETIC_PERSONAL_VALUES = new Set([
