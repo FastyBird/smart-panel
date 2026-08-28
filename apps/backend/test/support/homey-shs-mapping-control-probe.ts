@@ -21,7 +21,7 @@ import { HomeyMappingLoaderService } from '../../src/plugins/devices-homey/mappi
 import { HomeyMappingTransformerService } from '../../src/plugins/devices-homey/mappings/mapping-transformer.service';
 import { ResolvedHomeyPropertyMapping } from '../../src/plugins/devices-homey/mappings/mapping.types';
 import { HomeyConfigModel } from '../../src/plugins/devices-homey/models/config.model';
-import { HomeyCapability } from '../../src/plugins/devices-homey/models/homey-capability.model';
+import { HomeyCapability, HomeyCapabilityValue } from '../../src/plugins/devices-homey/models/homey-capability.model';
 import { HomeyDevice } from '../../src/plugins/devices-homey/models/homey-device.model';
 import { homeyCapabilityValuesEqual } from '../../src/plugins/devices-homey/platforms/homey-command-value';
 import {
@@ -168,6 +168,22 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isPropertyCommandValue = (value: unknown): value is PropertyCommandValue =>
 	typeof value === 'boolean' || typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value));
+
+export const homeyMappingControlReadBackMatches = (
+	device: HomeyDevice | null,
+	capabilityId: string,
+	expected: HomeyCapabilityValue,
+): boolean => {
+	if (device === null || !device.available) {
+		return false;
+	}
+
+	const capability = device.capabilities.find((candidate) => candidate.id === capabilityId);
+
+	return (
+		capability !== undefined && capability.available === true && homeyCapabilityValuesEqual(capability.value, expected)
+	);
+};
 
 const familyForMapping = (mappingName: string): HomeyMappingControlFamily | null =>
 	HOMEY_MAPPING_CONTROL_FAMILIES.find((family) => HOMEY_MAPPING_CONTROL_MAPPINGS[family].includes(mappingName)) ?? null;
@@ -363,9 +379,8 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 			const readBackMatches = async (value: PropertyCommandValue): Promise<boolean> => {
 				const expected = transformer.write(binding.mapping, value);
 				const readBack = await service.getFreshDevice(device.id);
-				const readBackCapability = readBack?.capabilities.find((candidate) => candidate.id === capability.id);
 
-				return readBackCapability !== undefined && homeyCapabilityValuesEqual(readBackCapability.value, expected);
+				return homeyMappingControlReadBackMatches(readBack, capability.id, expected);
 			};
 
 			return {

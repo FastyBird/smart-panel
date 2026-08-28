@@ -2,12 +2,16 @@ import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { HomeyCapabilityType } from '../src/plugins/devices-homey/models/homey-capability.model';
+import { type HomeyDevice } from '../src/plugins/devices-homey/models/homey-device.model';
+
 import {
 	HOMEY_MAPPING_CONTROL_MAPPINGS,
 	type HomeyMappingControlBinding,
 	type HomeyMappingControlRuntime,
 	type HomeyShsMappingControlConfig,
 	assertHomeyShsMappingControlReportSafe,
+	homeyMappingControlReadBackMatches,
 	loadHomeyShsMappingControlConfig,
 	probeHomeyShsMappingControl,
 	writeHomeyShsMappingControlReport,
@@ -31,6 +35,39 @@ const BASE_ENVIRONMENT: NodeJS.ProcessEnv = {
 const config = (overrides: Partial<HomeyShsMappingControlConfig> = {}): HomeyShsMappingControlConfig => ({
 	...loadHomeyShsMappingControlConfig(BASE_ENVIRONMENT, '/tmp/homey-mapping-control'),
 	...overrides,
+});
+
+const readBackDevice = (deviceAvailable = true, capabilityAvailable: boolean | null = true): HomeyDevice => ({
+	availabilityMessage: null,
+	available: deviceAvailable,
+	capabilities: [
+		{
+			available: capabilityAvailable,
+			baseId: 'onoff',
+			enumValues: [],
+			id: 'onoff',
+			lastUpdatedAt: null,
+			maximum: null,
+			minimum: null,
+			readable: true,
+			step: null,
+			title: 'On/off',
+			type: HomeyCapabilityType.BOOLEAN,
+			unit: null,
+			value: true,
+			writable: true,
+		},
+	],
+	class: 'light',
+	driverId: null,
+	energy: null,
+	id: 'test-device',
+	manufacturer: null,
+	model: null,
+	name: 'Test device',
+	zoneId: null,
+	zoneName: null,
+	zonePath: [],
 });
 
 class FakeBinding implements HomeyMappingControlBinding {
@@ -137,6 +174,14 @@ describe('Homey SHS mapping-control probe', () => {
 		expect(() =>
 			loadHomeyShsMappingControlConfig({ ...BASE_ENVIRONMENT, FB_HOMEY_SHS_ORIGIN_EVENT_ENABLE: '' }),
 		).toThrow('must be unset');
+	});
+
+	it('accepts authoritative read-back only while the device and capability remain available', () => {
+		expect(homeyMappingControlReadBackMatches(readBackDevice(), 'onoff', true)).toBe(true);
+		expect(homeyMappingControlReadBackMatches(readBackDevice(false), 'onoff', true)).toBe(false);
+		expect(homeyMappingControlReadBackMatches(readBackDevice(true, false), 'onoff', true)).toBe(false);
+		expect(homeyMappingControlReadBackMatches(readBackDevice(true, null), 'onoff', true)).toBe(false);
+		expect(homeyMappingControlReadBackMatches(readBackDevice(), 'onoff', false)).toBe(false);
 	});
 
 	it('uses the Smart Panel command path once and restores the exact baseline before stopping', async () => {
