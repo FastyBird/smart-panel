@@ -139,7 +139,10 @@ export interface HomeyMappingControlBinding {
 }
 
 export interface HomeyMappingControlRuntime {
-	bind(config: HomeyShsMappingControlConfig): Promise<HomeyMappingControlBinding>;
+	bind(
+		config: HomeyShsMappingControlConfig,
+		options?: { allowUnchangedTarget?: boolean },
+	): Promise<HomeyMappingControlBinding>;
 	start(): Promise<void>;
 	stop(): Promise<void>;
 }
@@ -320,7 +323,7 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 	return {
 		start: () => service.start(),
 		stop: () => service.stop(),
-		bind: async (runtimeConfig): Promise<HomeyMappingControlBinding> => {
+		bind: async (runtimeConfig, options): Promise<HomeyMappingControlBinding> => {
 			let observedEventOffset = observedEvents.length;
 			const inventory = service.getInventorySnapshot();
 
@@ -380,7 +383,10 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 			) {
 				throw new Error('The Homey mapping-control baseline is not exactly reversible through the selected mapping');
 			}
-			if (homeyCapabilityValuesEqual(transformer.write(binding.mapping, targetValidation.value), baselineHomeyValue)) {
+			if (
+				options?.allowUnchangedTarget !== true &&
+				homeyCapabilityValuesEqual(transformer.write(binding.mapping, targetValidation.value), baselineHomeyValue)
+			) {
 				throw new Error('The Homey mapping-control panel value must change the authoritative capability value');
 			}
 

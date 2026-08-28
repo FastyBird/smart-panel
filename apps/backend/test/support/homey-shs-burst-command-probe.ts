@@ -145,7 +145,8 @@ export const probeHomeyShsBurstCommand = async (
 	runtimeFactory: HomeyMappingControlRuntimeFactory = createHomeyMappingControlRuntime,
 	signalSource: HomeyBurstCommandSignalSource = process,
 ): Promise<HomeyShsBurstCommandReport> => {
-	const runtime: HomeyMappingControlRuntime = runtimeFactory(config);
+	let runtime: HomeyMappingControlRuntime = runtimeFactory(config);
+	let runtimeStarted = false;
 	const events: Array<{ event: BurstCommandEvent; order: number }> = [];
 	const record = (event: BurstCommandEvent): void => {
 		events.push({ event, order: events.length + 1 });
@@ -165,14 +166,53 @@ export const probeHomeyShsBurstCommand = async (
 	const throwIfTerminated = (): void => {
 		if (terminationSignal !== undefined) throw new HomeyBurstCommandTerminationError(terminationSignal);
 	};
+	const settleWithin = <T>(operation: Promise<T>): Promise<{ settled: boolean; value?: T }> =>
+		new Promise((resolve) => {
+			let settled = false;
+			const finish = (result: { settled: boolean; value?: T }): void => {
+				if (settled) return;
+
+				settled = true;
+				clearTimeout(timer);
+				resolve(result);
+			};
+			const timer = setTimeout(() => finish({ settled: false }), config.timeoutMs);
+
+			void operation.then(
+				(value) => finish({ settled: true, value }),
+				() => finish({ settled: false }),
+			);
+		});
+	const stopRuntime = async (): Promise<boolean> => {
+		if (!runtimeStarted) return true;
+
+		const stopped = await settleWithin(runtime.stop());
+
+		if (stopped.settled) runtimeStarted = false;
+
+		return stopped.settled;
+	};
+	const waitForIdle = async (activeBinding: HomeyMappingControlBinding): Promise<boolean> =>
+		(await settleWithin(activeBinding.waitForCommandIdle())).settled;
 	const restoreBaseline = async (): Promise<boolean> => {
 		if (binding === undefined) return false;
+		const baselinePanelValue = binding.baselinePanelValue;
+		let restorationBinding = binding;
 
-		await binding.waitForCommandIdle();
-		await binding.command(binding.baselinePanelValue);
-		await binding.waitForCommandIdle();
+		if (!(await waitForIdle(restorationBinding))) {
+			if (!(await stopRuntime())) return false;
 
-		return binding.readBackMatches(binding.baselinePanelValue);
+			runtime = runtimeFactory(config);
+			runtimeStarted = true;
+			await runtime.start();
+			restorationBinding = await runtime.bind(config, { allowUnchangedTarget: true });
+		}
+
+		const restorationAccepted = await restorationBinding.command(baselinePanelValue);
+
+		if (!restorationAccepted || !(await waitForIdle(restorationBinding))) return false;
+
+		return restorationBinding.readBackMatches(baselinePanelValue);
 	};
 
 	signalSource.on('SIGINT', handleSigint);
@@ -180,6 +220,7 @@ export const probeHomeyShsBurstCommand = async (
 
 	try {
 		record('service.start.requested');
+		runtimeStarted = true;
 		await runtime.start();
 		throwIfTerminated();
 		record('service.start.resolved');
@@ -203,7 +244,7 @@ export const probeHomeyShsBurstCommand = async (
 			throw new Error('One or more Homey burst-command requests were rejected or unconfirmed');
 		}
 		record('commands.concurrent.resolved');
-		await binding.waitForCommandIdle();
+		if (!(await waitForIdle(binding))) throw new Error('Homey burst-command queue did not become idle');
 
 		if (!binding.observedPanelSequenceMatches(commandSequence)) {
 			throw new Error('Homey burst-command ordered capability events were not observed');
@@ -221,7 +262,7 @@ export const probeHomeyShsBurstCommand = async (
 
 		if (!restorationAccepted) throw new Error('Homey burst-command restoration was rejected or unconfirmed');
 		record('restoration.resolved');
-		await binding.waitForCommandIdle();
+		if (!(await waitForIdle(binding))) throw new Error('Homey burst-command restoration queue did not become idle');
 
 		if (!(await binding.readBackMatches(binding.baselinePanelValue))) {
 			throw new Error('Homey burst-command restoration read-back did not match');
@@ -240,10 +281,9 @@ export const probeHomeyShsBurstCommand = async (
 			}
 		}
 
-		try {
-			await runtime.stop();
+		if (await stopRuntime()) {
 			record('service.stop.resolved');
-		} catch {
+		} else {
 			cleanupFailures.push('service stop');
 		}
 

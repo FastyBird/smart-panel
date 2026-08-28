@@ -75,12 +75,17 @@ class FakeBinding implements HomeyMappingControlBinding {
 
 class FakeRuntime implements HomeyMappingControlRuntime {
 	readonly binding = new FakeBinding();
+	readonly bindOptions: Array<{ allowUnchangedTarget?: boolean } | undefined> = [];
 	bindCount = 0;
 	startCount = 0;
 	stopCount = 0;
 
-	bind(): Promise<HomeyMappingControlBinding> {
+	bind(
+		_config?: HomeyShsBurstCommandConfig,
+		options?: { allowUnchangedTarget?: boolean },
+	): Promise<HomeyMappingControlBinding> {
 		this.bindCount += 1;
+		this.bindOptions.push(options);
 
 		return Promise.resolve(this.binding);
 	}
@@ -171,6 +176,44 @@ describe('Homey SHS burst-command probe', () => {
 		expect(runtime.binding.commands).toStrictEqual([50, 0, 50, 0]);
 		expect(runtime.binding.current).toBe(0);
 		expect(runtime.stopCount).toBe(1);
+	});
+
+	it('bounds a retained write tail, stops its runtime, and restores through a fresh runtime', async () => {
+		const primary = new FakeRuntime();
+		const recovery = new FakeRuntime();
+		const neverSettles = new Promise<void>(() => undefined);
+		const runtimes = [primary, recovery];
+
+		primary.binding.failCommandAt.add(1);
+		primary.binding.waitForCommandIdle = () => neverSettles;
+
+		await expect(
+			probeHomeyShsBurstCommand(config({ timeoutMs: 1 }), () => runtimes.shift() ?? recovery),
+		).rejects.toThrow('rejected or unconfirmed');
+		expect(primary.stopCount).toBe(1);
+		expect(recovery.startCount).toBe(1);
+		expect(recovery.bindOptions).toStrictEqual([{ allowUnchangedTarget: true }]);
+		expect(recovery.binding.commands).toStrictEqual([0]);
+		expect(recovery.binding.current).toBe(0);
+		expect(recovery.stopCount).toBe(1);
+	});
+
+	it('bounds a failed cancellation stop instead of hanging cleanup indefinitely', async () => {
+		const runtime = new FakeRuntime();
+		const neverSettles = new Promise<void>(() => undefined);
+
+		runtime.binding.failCommandAt.add(1);
+		runtime.binding.waitForCommandIdle = () => neverSettles;
+		runtime.stop = () => {
+			runtime.stopCount += 1;
+
+			return neverSettles;
+		};
+
+		await expect(probeHomeyShsBurstCommand(config({ timeoutMs: 1 }), () => runtime)).rejects.toThrow(
+			'cleanup failed: capability restoration, service stop',
+		);
+		expect(runtime.stopCount).toBe(2);
 	});
 
 	it.each(['SIGINT', 'SIGTERM'] as const)('restores and stops before completing %s termination', async (signal) => {
