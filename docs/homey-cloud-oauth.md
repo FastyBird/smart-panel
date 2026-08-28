@@ -113,7 +113,10 @@ The implementation that follows this record must:
 3. Return an authorization URL; never proxy or collect the user's Homey credentials.
 4. Keep the callback public at the HTTP-authentication layer because the browser reaches it after Homey authorization,
    then authorize it solely by consuming the exact one-time `state`. Reject missing, expired, replayed, or mismatched
-   state before token exchange.
+   state before token exchange. Configure every HTTP server, reverse proxy, and observability layer in front of the
+   callback to omit its query string from access logs or scrub `code`, `state`, and OAuth error parameters before any
+   request-target recording. After consuming the callback, redirect the browser to a clean same-origin result URL with
+   no OAuth query parameters, including on failure.
 5. Redact the code, state, token response, client secret, raw account response, and raw Homey inventory from errors and
    logs.
 6. Exchange the code immediately with a bounded timeout. Stage and persist candidate tokens in a transaction-scoped,
@@ -148,8 +151,9 @@ The implementation that follows this record must:
    grant or restore a disconnected grant. Move to reauthorization rather than retrying aggressively after revocation or
    permanent refresh failure. Reauthorization must not take the active connector offline unless the active grant
    independently becomes invalid or the candidate is activated.
-10. Through that same mutation boundary, invalidate and clear tokens plus the selected Homey, then disconnect the Homey
-    connector before reporting OAuth disconnect success.
+10. Allow only a current Smart Panel owner or administrator to disconnect. Re-read and require that authority inside the
+    same serialized mutation boundary, then invalidate and clear tokens plus the selected Homey and disconnect the
+    Homey connector before reporting OAuth disconnect success.
 
 The current official client and HTTP references do not document a standards-style token-revocation endpoint. Task 7.2
 must verify the current live/API behavior before claiming remote revocation. Until then, disconnect means local token
