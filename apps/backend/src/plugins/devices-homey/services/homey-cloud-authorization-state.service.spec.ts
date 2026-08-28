@@ -8,6 +8,7 @@ import {
 import {
 	HomeyCloudAuthorizationCapacityError,
 	HomeyCloudAuthorizationStateError,
+	HomeyCloudConfigurationError,
 } from '../errors/homey-cloud-authorization.error';
 
 import { HomeyCloudAuthorizationStateService } from './homey-cloud-authorization-state.service';
@@ -120,5 +121,26 @@ describe('HomeyCloudAuthorizationStateService', () => {
 		}
 
 		expect(() => service.create(start)).toThrow(HomeyCloudAuthorizationCapacityError);
+	});
+
+	it('does not reserve state capacity when authorization URL creation fails', () => {
+		const failingService = new HomeyCloudAuthorizationStateService(
+			{
+				getConfiguration: jest.fn(() => configuration),
+			} as unknown as HomeyCloudClientConfigService,
+			{
+				createCloudAuthorizationUrl: jest.fn(() => {
+					throw new HomeyCloudConfigurationError('Homey Cloud authorization endpoint is invalid');
+				}),
+			} as unknown as HomeySdkClientFactoryService,
+		);
+
+		try {
+			for (let index = 0; index <= HOMEY_CLOUD_MAX_PENDING_AUTHORIZATIONS; index += 1) {
+				expect(() => failingService.create(start)).toThrow(HomeyCloudConfigurationError);
+			}
+		} finally {
+			failingService.onModuleDestroy();
+		}
 	});
 });

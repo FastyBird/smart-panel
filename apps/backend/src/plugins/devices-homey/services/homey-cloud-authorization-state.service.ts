@@ -67,6 +67,13 @@ export class HomeyCloudAuthorizationStateService implements OnModuleDestroy {
 		const stateHash = this.hashState(state);
 		const transactionId = randomBytes(16).toString('base64url');
 		const expiresAt = Date.now() + HOMEY_CLOUD_AUTHORIZATION_STATE_TTL_MS;
+		const authorizeUrl = this.sdkClientFactory.createCloudAuthorizationUrl({
+			clientId: configuration.clientId,
+			clientSecret: configuration.clientSecret,
+			redirectUrl: configuration.redirectUrl,
+			scopes: [...HOMEY_CLOUD_SCOPES],
+			state,
+		});
 		const timer = setTimeout(() => this.expire(stateHash), HOMEY_CLOUD_AUTHORIZATION_STATE_TTL_MS);
 
 		timer.unref();
@@ -79,14 +86,6 @@ export class HomeyCloudAuthorizationStateService implements OnModuleDestroy {
 			redirectUrl: configuration.redirectUrl,
 			timer,
 			transactionId,
-		});
-
-		const authorizeUrl = this.sdkClientFactory.createCloudAuthorizationUrl({
-			clientId: configuration.clientId,
-			clientSecret: configuration.clientSecret,
-			redirectUrl: configuration.redirectUrl,
-			scopes: [...HOMEY_CLOUD_SCOPES],
-			state,
 		});
 
 		return {
