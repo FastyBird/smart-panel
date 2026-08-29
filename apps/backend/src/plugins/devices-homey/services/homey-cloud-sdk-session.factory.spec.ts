@@ -96,21 +96,56 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 		expect((client.destroy as jest.Mock).mock.calls).toHaveLength(1);
 	});
 
+	it('bounds stale-session disconnect and always destroys the client', async () => {
+		jest.useFakeTimers({ doNotFake: ['Date'] });
+		let resolveCleanupStarted = (): void => undefined;
+		const cleanupStarted = new Promise<void>((resolve) => {
+			resolveCleanupStarted = resolve;
+		});
+		(client.disconnect as jest.Mock).mockImplementation(() => {
+			resolveCleanupStarted();
+
+			return new Promise<void>(() => undefined);
+		});
+		grantMutations.loadActiveGrantCredentials.mockResolvedValueOnce(credentials).mockResolvedValue({
+			...credentials,
+			generation: 5,
+			grantIdentifier: 'grant-2',
+		});
+
+		const pending = service.createClient();
+		const rejection = expect(pending).rejects.toMatchObject({
+			category: HomeyConnectorErrorCategory.AUTHENTICATION,
+			operation: HomeyConnectorOperation.CONNECT,
+		});
+		await cleanupStarted;
+		expect((client.destroy as jest.Mock).mock.calls).toHaveLength(0);
+		await jest.advanceTimersByTimeAsync(HOMEY_CLOUD_PROVIDER_TIMEOUT_MS);
+		await rejection;
+		expect((client.disconnect as jest.Mock).mock.calls).toHaveLength(1);
+		expect((client.destroy as jest.Mock).mock.calls).toHaveLength(1);
+	});
+
 	it('disposes a cloud client that resolves after the provider deadline', async () => {
 		jest.useFakeTimers({ doNotFake: ['Date'] });
 		let resolveCreation = (_client: HomeySdkClient): void => undefined;
 		let resolveCleanup = (): void => undefined;
+		let resolveDestroy = (): void => undefined;
 		const creation = new Promise<HomeySdkClient>((resolve) => {
 			resolveCreation = resolve;
 		});
 		const cleanup = new Promise<void>((resolve) => {
 			resolveCleanup = resolve;
 		});
+		const destroyed = new Promise<void>((resolve) => {
+			resolveDestroy = resolve;
+		});
 		(client.disconnect as jest.Mock).mockImplementation(() => {
 			resolveCleanup();
 
 			return Promise.resolve();
 		});
+		(client.destroy as jest.Mock).mockImplementation(resolveDestroy);
 		provider.createHomeyClient.mockReturnValue(creation);
 
 		const pending = service.createClient();
@@ -125,7 +160,7 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 
 		resolveCreation(client);
 		await cleanup;
-		await Promise.resolve();
+		await destroyed;
 		expect((client.disconnect as jest.Mock).mock.calls).toHaveLength(1);
 		expect((client.destroy as jest.Mock).mock.calls).toHaveLength(1);
 	});
@@ -258,6 +293,59 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 		expect(provider.refreshAccessToken.mock.calls).toHaveLength(1);
 		expect(grantMutations.persistRefresh).toHaveBeenCalledTimes(1);
 		expect(refreshedProvider.createHomeyClient.mock.calls).toHaveLength(2);
+	});
+
+	it('applies expiry recovery to a replacement grant reloaded after invalid authentication', async () => {
+		const replacement: HomeyCloudActiveGrantCredentials = {
+			...credentials,
+			generation: 8,
+			grantIdentifier: 'grant-2',
+			selectedHomeyId: 'homey-2',
+			token: {
+				...credentials.token,
+				accessToken: 'replacement-access-token',
+				issuedAt: now - 3600 * 1000,
+				refreshToken: 'replacement-refresh-token',
+			},
+		};
+		let active = credentials;
+		const replacementClient = sdkClient('homey-2');
+		const replacementProvider = providerClient();
+		provider.createHomeyClient.mockImplementation(() => {
+			active = replacement;
+
+			return Promise.reject(
+				new HomeyCloudProviderError(
+					HomeyCloudProviderErrorCategory.INVALID_TOKEN,
+					HomeyCloudProviderOperation.AUTHENTICATE_HOMEY,
+				),
+			);
+		});
+		replacementProvider.refreshAccessToken.mockResolvedValue({
+			access_token: 'replacement-access-token-2',
+			expires_in: 3600,
+			refresh_token: 'replacement-refresh-token-2',
+			token_type: 'bearer',
+		});
+		replacementProvider.createHomeyClient.mockResolvedValue(replacementClient);
+		grantMutations.loadActiveGrantCredentials.mockImplementation(() => Promise.resolve(active));
+		grantMutations.persistRefresh.mockImplementation(({ token }) => {
+			active = { ...replacement, generation: 9, token };
+
+			return Promise.resolve(active);
+		});
+		sdkClientFactory.createCloudProviderClient.mockImplementation(({ token }) =>
+			token?.accessToken === credentials.token.accessToken ? provider : replacementProvider,
+		);
+
+		await expect(service.createClient()).resolves.toBe(replacementClient);
+		expect(provider.refreshAccessToken.mock.calls).toHaveLength(0);
+		expect(replacementProvider.refreshAccessToken.mock.calls[0]).toEqual([
+			'replacement-refresh-token',
+			expect.any(AbortSignal),
+		]);
+		expect(grantMutations.persistRefresh).toHaveBeenCalledTimes(1);
+		expect(replacementProvider.createHomeyClient.mock.calls[0]).toEqual(['homey-2', expect.any(AbortSignal), false]);
 	});
 
 	it('uses the current active grant when refresh persistence loses its compare-and-swap', async () => {

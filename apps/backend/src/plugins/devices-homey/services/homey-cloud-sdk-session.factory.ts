@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { HomeyCloudProviderClient, HomeySdkClient, HomeySdkClientFactoryService } from '../connectors/homey-sdk.client';
-import { HOMEY_CLOUD_TOKEN_REFRESH_SKEW_MS } from '../devices-homey.constants';
+import { HOMEY_CLOUD_PROVIDER_TIMEOUT_MS, HOMEY_CLOUD_TOKEN_REFRESH_SKEW_MS } from '../devices-homey.constants';
 import {
 	HomeyCloudConfigurationError,
 	HomeyCloudProviderError,
@@ -47,28 +47,39 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 
 	async createClient(): Promise<HomeySdkClient> {
 		try {
-			let credentials = await this.loadActiveCredentials();
-			let refreshed = false;
-
-			if (homeyCloudTokenRequiresRefresh(credentials.token, Date.now(), HOMEY_CLOUD_TOKEN_REFRESH_SKEW_MS)) {
-				credentials = await this.refresh(credentials);
-				refreshed = true;
-			}
-
-			try {
-				return await this.authenticate(credentials);
-			} catch (error) {
-				if (!this.isInvalidToken(error)) throw error;
-
-				const active = await this.loadActiveCredentials();
-
-				if (!this.isSameGrant(credentials, active)) return await this.authenticate(active);
-				if (refreshed || credentials.token.refreshToken === null) throw error;
-
-				return await this.authenticate(await this.refresh(credentials));
-			}
+			return await this.createClientForGrant(await this.loadActiveCredentials(), true);
 		} catch (error) {
 			throw this.toConnectorError(error);
+		}
+	}
+
+	private async createClientForGrant(
+		credentials: HomeyCloudActiveGrantCredentials,
+		allowGrantReload: boolean,
+	): Promise<HomeySdkClient> {
+		let prepared = credentials;
+		let refreshed = false;
+
+		if (homeyCloudTokenRequiresRefresh(prepared.token, Date.now(), HOMEY_CLOUD_TOKEN_REFRESH_SKEW_MS)) {
+			prepared = await this.refresh(prepared);
+			refreshed = true;
+		}
+
+		try {
+			return await this.authenticate(prepared);
+		} catch (error) {
+			if (!this.isInvalidToken(error)) throw error;
+
+			const active = await this.loadActiveCredentials();
+
+			if (!this.isSameGrant(prepared, active)) {
+				if (!allowGrantReload) throw error;
+
+				return await this.createClientForGrant(active, false);
+			}
+			if (refreshed || prepared.token.refreshToken === null) throw error;
+
+			return await this.authenticate(await this.refresh(prepared));
 		}
 	}
 
@@ -224,11 +235,22 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 		if (!this.isRecord(value)) return;
 		const disconnect = value.disconnect;
 		const destroy = value.destroy;
+		let timeout: NodeJS.Timeout | null = null;
 
 		try {
-			if (this.isFunction(disconnect)) await Promise.resolve(disconnect.call(value));
+			if (this.isFunction(disconnect)) {
+				await Promise.race([
+					Promise.resolve(disconnect.call(value)),
+					new Promise<void>((resolve) => {
+						timeout = setTimeout(resolve, HOMEY_CLOUD_PROVIDER_TIMEOUT_MS);
+						timeout.unref();
+					}),
+				]);
+			}
 		} catch {
 			// The sanitized protocol error remains authoritative.
+		} finally {
+			if (timeout) clearTimeout(timeout);
 		}
 
 		try {
