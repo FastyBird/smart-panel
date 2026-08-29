@@ -4,6 +4,7 @@ import {
 	HomeyCloudProviderClient,
 	HomeyCloudProviderTokenResponse,
 	HomeySdkClientFactoryService,
+	isEligibleHomeyCloudProviderHomey,
 } from '../connectors/homey-sdk.client';
 import {
 	HOMEY_CLOUD_MAX_AUTHORIZATION_CODE_LENGTH,
@@ -30,8 +31,6 @@ import {
 	HomeyCloudTokenMaterial,
 } from './homey-cloud-grant-mutation.service';
 
-const SUPPORTED_API_VERSIONS = new Set([1, 2, 3]);
-const SUPPORTED_PLATFORMS = new Set(['cloud', 'local']);
 const UNICODE_CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
 
 class ProviderTimeoutError extends Error {}
@@ -241,17 +240,7 @@ export class HomeyCloudAuthorizationService {
 
 		const record = homey as Record<string, unknown>;
 
-		if (
-			!SUPPORTED_API_VERSIONS.has(record.apiVersion as number) ||
-			!SUPPORTED_PLATFORMS.has(record.platform as string) ||
-			typeof record.id !== 'string' ||
-			record.id !== record.id.trim() ||
-			record.id.length === 0 ||
-			record.id.length > HOMEY_CLOUD_MAX_HOMEY_ID_LENGTH ||
-			this.containsControlCharacter(record.id)
-		) {
-			return null;
-		}
+		if (!isEligibleHomeyCloudProviderHomey(record)) return null;
 
 		const rawName = typeof record.name === 'string' ? record.name : '';
 		const normalizedName = [...rawName]

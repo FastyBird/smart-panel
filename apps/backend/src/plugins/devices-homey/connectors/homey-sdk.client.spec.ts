@@ -319,6 +319,78 @@ describe('HomeySdkClientFactoryService', () => {
 		expect(homey.authenticate.mock.calls).toHaveLength(0);
 	});
 
+	it('counts only eligible Homeys when revalidating automatic authentication', async () => {
+		const homeyApi = {
+			disconnect: jest.fn().mockResolvedValue(undefined),
+			destroy: jest.fn(),
+		};
+		const homey = {
+			id: 'homey-one',
+			name: 'Home',
+			apiVersion: 3,
+			platform: 'local',
+			remoteUrl: 'https://homey-one.connect.athom.com',
+			authenticate: jest.fn().mockResolvedValue(homeyApi),
+		};
+
+		jest.spyOn(AthomCloudAPI.prototype, 'getAuthenticatedUser').mockResolvedValue({
+			getHomeys: () => [homey, { ...homey, id: 'future-homey', apiVersion: 4 }],
+			getHomeyById: () => homey,
+		} as unknown as AthomCloudAPI.User);
+		const provider = new HomeySdkClientFactoryService().createCloudProviderClient({
+			clientId: 'deployment-client-id',
+			clientSecret: 'deployment-client-secret',
+			redirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
+			token: {
+				tokenType: 'bearer',
+				accessToken: 'candidate-access-token',
+				refreshToken: 'candidate-refresh-token',
+				expiresIn: 3600,
+				grantType: 'authorization_code',
+			},
+		});
+
+		await expect(provider.authenticateHomey('homey-one', new AbortController().signal, true)).resolves.toBeUndefined();
+		expect(homey.authenticate).toHaveBeenCalledWith({ strategy: 'cloud', reconnect: false });
+	});
+
+	it('rejects a selection that disappears from the final inventory without querying it by id', async () => {
+		const remainingHomey = {
+			id: 'homey-two',
+			name: 'Other Homey',
+			apiVersion: 3,
+			platform: 'local',
+			remoteUrl: 'https://homey-two.connect.athom.com',
+			authenticate: jest.fn(),
+		};
+		const getHomeyById = jest.fn(() => {
+			throw Object.assign(new Error('not found'), { statusCode: 404 });
+		});
+
+		jest.spyOn(AthomCloudAPI.prototype, 'getAuthenticatedUser').mockResolvedValue({
+			getHomeys: () => [remainingHomey],
+			getHomeyById,
+		} as unknown as AthomCloudAPI.User);
+		const provider = new HomeySdkClientFactoryService().createCloudProviderClient({
+			clientId: 'deployment-client-id',
+			clientSecret: 'deployment-client-secret',
+			redirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
+			token: {
+				tokenType: 'bearer',
+				accessToken: 'candidate-access-token',
+				refreshToken: 'candidate-refresh-token',
+				expiresIn: 3600,
+				grantType: 'authorization_code',
+			},
+		});
+
+		await expect(provider.authenticateHomey('homey-one', new AbortController().signal, false)).rejects.toThrow(
+			HomeyCloudSelectionError,
+		);
+		expect(getHomeyById).not.toHaveBeenCalled();
+		expect(remainingHomey.authenticate).not.toHaveBeenCalled();
+	});
+
 	it('preserves retryable HTTP status from child Homey SDK requests', async () => {
 		const server = createServer((_request, response) => {
 			response.writeHead(429, { 'Content-Type': 'text/plain' });

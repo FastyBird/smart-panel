@@ -8,12 +8,16 @@ import {
 	HOMEY_CLOUD_API_URL,
 	HOMEY_CLOUD_AUTHORIZE_URL,
 	HOMEY_CLOUD_HOMEY_HOST_SUFFIX,
+	HOMEY_CLOUD_MAX_HOMEY_ID_LENGTH,
 	HOMEY_CLOUD_PROVIDER_TIMEOUT_MS,
 	HOMEY_CLOUD_TOKEN_URL,
 } from '../devices-homey.constants';
 import { HomeyCloudConfigurationError, HomeyCloudSelectionError } from '../errors/homey-cloud-authorization.error';
 
 const homeySdkAbortContext = installHomeySdkAbortBridge();
+const SUPPORTED_HOMEY_CLOUD_API_VERSIONS = new Set([1, 2, 3]);
+const SUPPORTED_HOMEY_CLOUD_PLATFORMS = new Set(['cloud', 'local']);
+const UNICODE_CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
 
 export type HomeySdkEventListener = (...arguments_: unknown[]) => Promise<void> | void;
 
@@ -112,6 +116,24 @@ export interface HomeyCloudProviderHomey {
 	readonly name: unknown;
 	readonly platform: unknown;
 }
+
+export const isEligibleHomeyCloudProviderHomey = (
+	homey: unknown,
+): homey is HomeyCloudProviderHomey & { readonly id: string } => {
+	if (typeof homey !== 'object' || homey === null || Array.isArray(homey)) return false;
+
+	const record = homey as Record<string, unknown>;
+
+	return (
+		SUPPORTED_HOMEY_CLOUD_API_VERSIONS.has(record.apiVersion as number) &&
+		SUPPORTED_HOMEY_CLOUD_PLATFORMS.has(record.platform as string) &&
+		typeof record.id === 'string' &&
+		record.id === record.id.trim() &&
+		record.id.length > 0 &&
+		record.id.length <= HOMEY_CLOUD_MAX_HOMEY_ID_LENGTH &&
+		![...record.id].some((character) => UNICODE_CONTROL_PATTERN.test(character))
+	);
+};
 
 export interface HomeyCloudProviderClient {
 	authenticateHomey(homeyId: string, signal: AbortSignal, requireSingleton: boolean): Promise<void>;
@@ -293,21 +315,22 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 	async authenticateHomey(homeyId: string, signal: AbortSignal, requireSingleton: boolean): Promise<void> {
 		return this.withSignal(signal, async () => {
 			const user = await this.getAuthenticatedUserFresh();
-			const homeys = user.getHomeys();
+			const homeys = user.getHomeys().filter(isEligibleHomeyCloudProviderHomey);
+			const homey = homeys.find((candidate) => candidate.id === homeyId);
 
-			if (requireSingleton && (homeys.length !== 1 || homeys[0]?.id !== homeyId)) {
+			if (!homey || (requireSingleton && homeys.length !== 1)) {
 				throw new HomeyCloudSelectionError();
 			}
 
-			const homey = user.getHomeyById(homeyId) as unknown as {
+			const authenticatableHomey = homey as unknown as {
 				apiVersion?: unknown;
 				authenticate(options: { reconnect: boolean; strategy: string }): Promise<HomeyCloudAuthenticatedSdkClient>;
 				remoteUrl?: unknown;
 			};
 
-			if (homey.apiVersion !== 1) this.assertHomeyCloudEndpoint(homey.remoteUrl);
+			if (authenticatableHomey.apiVersion !== 1) this.assertHomeyCloudEndpoint(authenticatableHomey.remoteUrl);
 
-			const homeyApi = await homey.authenticate({ strategy: 'cloud', reconnect: false });
+			const homeyApi = await authenticatableHomey.authenticate({ strategy: 'cloud', reconnect: false });
 
 			try {
 				if (typeof homeyApi.disconnect === 'function') await homeyApi.disconnect();
