@@ -10,6 +10,9 @@ export class HomeyCloudAuthorizationStateEntity {
 
 	@Column({ type: 'integer', default: 0 })
 	configurationGeneration!: number;
+
+	@Column({ type: 'varchar', nullable: true })
+	configurationFingerprint!: string | null;
 }
 
 @Entity('devices_homey_cloud_user_authorities')

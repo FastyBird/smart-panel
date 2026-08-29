@@ -22,7 +22,12 @@ describe('AddHomeyCloudGrants1000000000025', () => {
 		await migration.up(queryRunner);
 
 		await expect(queryRunner.query(`SELECT * FROM "devices_homey_cloud_authorization_state"`)).resolves.toEqual([
-			{ key: 'primary', activeGrantGeneration: 0, configurationGeneration: 0 },
+			{
+				key: 'primary',
+				activeGrantGeneration: 0,
+				configurationGeneration: 0,
+				configurationFingerprint: null,
+			},
 		]);
 		await expect(tableColumns('devices_homey_cloud_user_authorities')).resolves.toEqual(['userId', 'generation']);
 		await expect(tableColumns('devices_homey_cloud_pending_grants')).resolves.toEqual([

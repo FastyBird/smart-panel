@@ -167,6 +167,11 @@ only explicit backend credential-loading methods select them, and no controller 
 The pending table is transaction- and initiating-user-scoped, has a server-capped absolute lifetime and capacity, and is
 swept independently of requests.
 
+The state table also stores a SHA-256 identity derived from the deployment client ID, client secret, exact redirect URL,
+and requested scopes. Startup and every backend credential load compare the current non-secret fingerprint with the
+persisted value. A change clears pending and active grants and advances both generations before stale credentials can be
+used; the client secret itself is never persisted in the state table.
+
 One serialized mutation service owns candidate staging, cancellation, expiry and activation plus active-grant refresh,
 disconnect and configuration invalidation. Activation and refresh use generation and grant-identity compare-and-swap
 checks so a late provider result cannot revive cleared credentials or overwrite a replacement. Administrator demotion

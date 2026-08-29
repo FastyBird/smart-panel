@@ -10,11 +10,13 @@ export class AddHomeyCloudGrants1000000000025 implements MigrationInterface {
 			`CREATE TABLE "devices_homey_cloud_authorization_state" (` +
 				`"key" varchar PRIMARY KEY NOT NULL, ` +
 				`"activeGrantGeneration" integer NOT NULL DEFAULT (0), ` +
-				`"configurationGeneration" integer NOT NULL DEFAULT (0))`,
+				`"configurationGeneration" integer NOT NULL DEFAULT (0), ` +
+				`"configurationFingerprint" varchar)`,
 		);
 		await queryRunner.query(
 			`INSERT INTO "devices_homey_cloud_authorization_state" ` +
-				`("key", "activeGrantGeneration", "configurationGeneration") VALUES (?, 0, 0)`,
+				`("key", "activeGrantGeneration", "configurationGeneration", "configurationFingerprint") ` +
+				`VALUES (?, 0, 0, NULL)`,
 			[AUTHORIZATION_STATE_KEY],
 		);
 

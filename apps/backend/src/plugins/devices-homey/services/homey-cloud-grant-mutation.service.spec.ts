@@ -16,6 +16,7 @@ import {
 import { HomeyCloudAuthorizationCapacityError } from '../errors/homey-cloud-authorization.error';
 import { HomeyCloudGrantAuthorityError, HomeyCloudGrantConflictError } from '../errors/homey-cloud-grant.error';
 
+import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
 import { HomeyCloudGrantMutationService, HomeyCloudTokenMaterial } from './homey-cloud-grant-mutation.service';
 
 describe('HomeyCloudGrantMutationService', () => {
@@ -23,8 +24,10 @@ describe('HomeyCloudGrantMutationService', () => {
 	const otherAdministratorId = '22222222-2222-4222-8222-222222222222';
 	let dataSource: DataSource;
 	let service: HomeyCloudGrantMutationService;
+	let configurationFingerprint: string | null;
 
 	beforeEach(async () => {
+		configurationFingerprint = 'configuration-one';
 		dataSource = new DataSource({
 			type: 'sqlite',
 			database: ':memory:',
@@ -40,7 +43,9 @@ describe('HomeyCloudGrantMutationService', () => {
 		await dataSource.initialize();
 		await createUser(administratorId, 'administrator');
 		await createUser(otherAdministratorId, 'other-administrator');
-		service = new HomeyCloudGrantMutationService(dataSource);
+		service = new HomeyCloudGrantMutationService(dataSource, {
+			getConfigurationFingerprint: jest.fn(() => configurationFingerprint),
+		} as unknown as HomeyCloudClientConfigService);
 	});
 
 	afterEach(async () => {
@@ -202,7 +207,44 @@ describe('HomeyCloudGrantMutationService', () => {
 			dataSource.getRepository(HomeyCloudAuthorizationStateEntity).findOneByOrFail({
 				key: HOMEY_CLOUD_AUTHORIZATION_STATE_KEY,
 			}),
-		).resolves.toMatchObject({ activeGrantGeneration: 2, configurationGeneration: 1 });
+		).resolves.toMatchObject({ activeGrantGeneration: 3, configurationGeneration: 2 });
+	});
+
+	it('invalidates persisted credentials before loading them under changed deployment configuration', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		await service.stageCandidate(candidateInput(context, 'stale-configuration', token('stale')));
+		const active = await service.activateCandidate('stale-configuration', administratorId, 'homey-one');
+
+		configurationFingerprint = 'configuration-two';
+
+		await expect(service.loadActiveGrantCredentials()).resolves.toBeNull();
+		await expect(
+			dataSource.getRepository(HomeyCloudAuthorizationStateEntity).findOneByOrFail({
+				key: HOMEY_CLOUD_AUTHORIZATION_STATE_KEY,
+			}),
+		).resolves.toMatchObject({
+			activeGrantGeneration: active.generation + 1,
+			configurationGeneration: active.configurationGeneration + 1,
+			configurationFingerprint: 'configuration-two',
+		});
+	});
+
+	it('reconciles a changed deployment configuration during application bootstrap', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		await service.stageCandidate(candidateInput(context, 'startup-configuration', token('stale')));
+		await service.activateCandidate('startup-configuration', administratorId, 'homey-one');
+		configurationFingerprint = 'configuration-after-restart';
+
+		await service.onApplicationBootstrap();
+
+		await expect(
+			dataSource.getRepository(HomeyCloudActiveGrantEntity).findOneBy({ key: HOMEY_CLOUD_ACTIVE_GRANT_KEY }),
+		).resolves.toBeNull();
+		await expect(
+			dataSource.getRepository(HomeyCloudAuthorizationStateEntity).findOneByOrFail({
+				key: HOMEY_CLOUD_AUTHORIZATION_STATE_KEY,
+			}),
+		).resolves.toMatchObject({ configurationFingerprint: 'configuration-after-restart' });
 	});
 
 	it('invalidates the active grant in the same transaction as its activating user removal', async () => {

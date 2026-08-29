@@ -26,6 +26,8 @@ import {
 	HomeyCloudGrantStateError,
 } from '../errors/homey-cloud-grant.error';
 
+import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
+
 const AUTHORIZED_ROLES = [UserRole.OWNER, UserRole.ADMIN];
 
 export interface HomeyCloudTokenMaterial {
@@ -89,9 +91,13 @@ export class HomeyCloudGrantMutationService
 	private mutationTail: Promise<void> = Promise.resolve();
 	private cleanupTimer: NodeJS.Timeout | null = null;
 
-	constructor(private readonly dataSource: DataSource) {}
+	constructor(
+		private readonly dataSource: DataSource,
+		private readonly clientConfig: HomeyCloudClientConfigService,
+	) {}
 
-	onApplicationBootstrap(): void {
+	async onApplicationBootstrap(): Promise<void> {
+		await this.reconcileConfiguration();
 		this.cleanupTimer = setInterval(() => {
 			void this.expireCandidates().catch(() => {
 				this.logger.warn('Homey Cloud pending grant cleanup is temporarily unavailable');
@@ -111,7 +117,7 @@ export class HomeyCloudGrantMutationService
 		return this.runMutation(() =>
 			this.dataSource.transaction(async (manager) => {
 				await this.requireAuthorizedUser(manager, initiatingUserId);
-				const state = await this.getState(manager);
+				const state = await this.reconcileConfigurationInternal(manager);
 				const authorityGeneration = await this.getOrCreateAuthorityGeneration(manager, initiatingUserId);
 
 				return {
@@ -138,7 +144,7 @@ export class HomeyCloudGrantMutationService
 			this.dataSource.transaction(async (manager) => {
 				await this.deleteExpiredCandidates(manager, now);
 				await this.requireCurrentAuthority(manager, input.initiatingUserId, input.authorityGeneration);
-				const state = await this.getState(manager);
+				const state = await this.reconcileConfigurationInternal(manager);
 
 				if (
 					state.activeGrantGeneration !== input.activeGrantGeneration ||
@@ -187,6 +193,7 @@ export class HomeyCloudGrantMutationService
 		return this.runMutation(() =>
 			this.dataSource.transaction(async (manager) => {
 				const now = Date.now();
+				await this.reconcileConfigurationInternal(manager);
 				await this.deleteExpiredCandidates(manager, now);
 				const candidate = await this.findCandidateWithCredentials(manager, transactionId, initiatingUserId);
 
@@ -241,11 +248,14 @@ export class HomeyCloudGrantMutationService
 	}
 
 	async loadActiveGrantCredentials(): Promise<HomeyCloudActiveGrantCredentials | null> {
-		return this.runMutation(async () => {
-			const active = await this.findActiveGrantWithCredentials(this.dataSource.manager);
+		return this.runMutation(() =>
+			this.dataSource.transaction(async (manager) => {
+				await this.reconcileConfigurationInternal(manager);
+				const active = await this.findActiveGrantWithCredentials(manager);
 
-			return active ? this.toActiveCredentials(active) : null;
-		});
+				return active ? this.toActiveCredentials(active) : null;
+			}),
+		);
 	}
 
 	async persistRefresh(input: HomeyCloudRefreshInput): Promise<HomeyCloudActiveGrantReference | null> {
@@ -256,7 +266,7 @@ export class HomeyCloudGrantMutationService
 
 		return this.runMutation(() =>
 			this.dataSource.transaction(async (manager) => {
-				const state = await this.getState(manager);
+				const state = await this.reconcileConfigurationInternal(manager);
 
 				if (
 					state.activeGrantGeneration !== input.generation ||
@@ -318,7 +328,7 @@ export class HomeyCloudGrantMutationService
 		return this.runMutation(() =>
 			this.dataSource.transaction(async (manager) => {
 				await this.requireAuthorizedUser(manager, actingUserId);
-				const state = await this.getState(manager);
+				const state = await this.reconcileConfigurationInternal(manager);
 				const result = await manager
 					.getRepository(HomeyCloudActiveGrantEntity)
 					.delete({ key: HOMEY_CLOUD_ACTIVE_GRANT_KEY });
@@ -391,7 +401,7 @@ export class HomeyCloudGrantMutationService
 			userId: initiatingUserId,
 		});
 		const authorityGeneration = authority?.generation ?? 0;
-		const state = await this.getState(manager);
+		const state = await this.reconcileConfigurationInternal(manager);
 		const authorized = user !== null && AUTHORIZED_ROLES.includes(user.role);
 		const authorityCurrent = authorityGeneration === candidate.authorityGeneration;
 		const generationsCurrent =
@@ -446,6 +456,7 @@ export class HomeyCloudGrantMutationService
 				key: HOMEY_CLOUD_AUTHORIZATION_STATE_KEY,
 				activeGrantGeneration: 0,
 				configurationGeneration: 0,
+				configurationFingerprint: null,
 			});
 			state = await states.findOneBy({ key: HOMEY_CLOUD_AUTHORIZATION_STATE_KEY });
 		}
@@ -458,7 +469,12 @@ export class HomeyCloudGrantMutationService
 	private async advanceState(
 		manager: EntityManager,
 		state: HomeyCloudAuthorizationStateEntity,
-		update: Partial<Pick<HomeyCloudAuthorizationStateEntity, 'activeGrantGeneration' | 'configurationGeneration'>>,
+		update: Partial<
+			Pick<
+				HomeyCloudAuthorizationStateEntity,
+				'activeGrantGeneration' | 'configurationFingerprint' | 'configurationGeneration'
+			>
+		>,
 	): Promise<void> {
 		const result = await manager.getRepository(HomeyCloudAuthorizationStateEntity).update(
 			{
@@ -470,6 +486,32 @@ export class HomeyCloudGrantMutationService
 		);
 
 		if (result.affected !== 1) throw new HomeyCloudGrantStateError();
+	}
+
+	private async reconcileConfiguration(): Promise<void> {
+		await this.runMutation(() =>
+			this.dataSource.transaction(async (manager) => {
+				await this.reconcileConfigurationInternal(manager);
+			}),
+		);
+	}
+
+	private async reconcileConfigurationInternal(manager: EntityManager): Promise<HomeyCloudAuthorizationStateEntity> {
+		const state = await this.getState(manager);
+		const configurationFingerprint = this.clientConfig.getConfigurationFingerprint();
+
+		if (state.configurationFingerprint === configurationFingerprint) return state;
+
+		await manager.getRepository(HomeyCloudPendingGrantEntity).clear();
+		await manager.getRepository(HomeyCloudActiveGrantEntity).clear();
+		const update = {
+			activeGrantGeneration: state.activeGrantGeneration + 1,
+			configurationGeneration: state.configurationGeneration + 1,
+			configurationFingerprint,
+		};
+		await this.advanceState(manager, state, update);
+
+		return { ...state, ...update };
 	}
 
 	private async requireCurrentAuthority(

@@ -32,6 +32,17 @@ describe('HomeyCloudClientConfigService', () => {
 		expect(create().isConfigured()).toBe(true);
 	});
 
+	it('creates a stable non-secret identity for the complete OAuth client configuration', () => {
+		const fingerprint = create().getConfigurationFingerprint();
+
+		expect(fingerprint).toMatch(/^[a-f0-9]{64}$/);
+		expect(create().getConfigurationFingerprint()).toBe(fingerprint);
+		expect(
+			create({ ...valid, [HOMEY_CLOUD_CLIENT_SECRET_ENV]: 'rotated-secret' }).getConfigurationFingerprint(),
+		).not.toBe(fingerprint);
+		expect(fingerprint).not.toContain('client-secret');
+	});
+
 	it.each([HOMEY_CLOUD_CLIENT_ID_ENV, HOMEY_CLOUD_CLIENT_SECRET_ENV, HOMEY_CLOUD_REDIRECT_URL_ENV])(
 		'fails closed when %s is missing',
 		(key) => {
@@ -39,6 +50,7 @@ describe('HomeyCloudClientConfigService', () => {
 
 			expect(() => service.getConfiguration()).toThrow(HomeyCloudConfigurationError);
 			expect(service.isConfigured()).toBe(false);
+			expect(service.getConfigurationFingerprint()).toBeNull();
 		},
 	);
 
