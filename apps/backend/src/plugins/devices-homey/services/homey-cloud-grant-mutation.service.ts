@@ -370,6 +370,22 @@ export class HomeyCloudGrantMutationService
 		);
 	}
 
+	async resetForFactory(): Promise<void> {
+		await this.runMutation(() =>
+			this.dataSource.transaction(async (manager) => {
+				const state = await this.getState(manager);
+
+				await manager.getRepository(HomeyCloudPendingGrantEntity).clear();
+				await manager.getRepository(HomeyCloudActiveGrantEntity).clear();
+				await manager.getRepository(HomeyCloudUserAuthorityEntity).clear();
+				await this.advanceState(manager, state, {
+					activeGrantGeneration: state.activeGrantGeneration + 1,
+					configurationGeneration: state.configurationGeneration + 1,
+				});
+			}),
+		);
+	}
+
 	async prepareUpdate(previous: UserEntity, next: UserEntity, manager: EntityManager): Promise<void> {
 		const wasAuthorized = AUTHORIZED_ROLES.includes(previous.role);
 		const remainsAuthorized = AUTHORIZED_ROLES.includes(next.role);

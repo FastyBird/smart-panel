@@ -276,6 +276,29 @@ describe('HomeyCloudGrantMutationService', () => {
 		await expect(service.loadActiveGrantCredentials()).resolves.toBeNull();
 	});
 
+	it('clears every persisted credential and authority record during factory reset', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		await service.stageCandidate(candidateInput(context, 'factory-active', token('active')));
+		const active = await service.activateCandidate('factory-active', administratorId, 'homey-one');
+		const pendingContext = await service.getAuthorizationContext(otherAdministratorId);
+		await service.stageCandidate(candidateInput(pendingContext, 'factory-pending', token('pending')));
+
+		await service.resetForFactory();
+
+		await expect(dataSource.getRepository(HomeyCloudPendingGrantEntity).count()).resolves.toBe(0);
+		await expect(dataSource.getRepository(HomeyCloudActiveGrantEntity).count()).resolves.toBe(0);
+		await expect(dataSource.getRepository(HomeyCloudUserAuthorityEntity).count()).resolves.toBe(0);
+		await expect(
+			dataSource.getRepository(HomeyCloudAuthorizationStateEntity).findOneByOrFail({
+				key: HOMEY_CLOUD_AUTHORIZATION_STATE_KEY,
+			}),
+		).resolves.toMatchObject({
+			activeGrantGeneration: active.generation + 1,
+			configurationGeneration: active.configurationGeneration + 1,
+			configurationFingerprint,
+		});
+	});
+
 	function candidateInput(
 		context: Awaited<ReturnType<HomeyCloudGrantMutationService['getAuthorizationContext']>>,
 		transactionId: string,

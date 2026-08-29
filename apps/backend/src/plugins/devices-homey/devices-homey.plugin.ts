@@ -23,6 +23,7 @@ import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
+import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 import { UserLifecycleMutationRegistryService } from '../../modules/users/services/user-lifecycle-mutation-registry.service';
 import { UsersModule } from '../../modules/users/users.module';
 
@@ -153,10 +154,25 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 		private readonly homeyDevicePlatform: HomeyDevicePlatform,
 		private readonly userLifecycleMutations: UserLifecycleMutationRegistryService,
 		private readonly homeyCloudGrantMutations: HomeyCloudGrantMutationService,
+		private readonly factoryResetRegistry: FactoryResetRegistryService,
 	) {}
 
 	onModuleInit(): void {
 		this.userLifecycleMutations.registerParticipant(this.homeyCloudGrantMutations);
+		this.factoryResetRegistry.register(
+			DEVICES_HOMEY_PLUGIN_NAME,
+			async (): Promise<{ success: boolean; reason?: string }> => {
+				try {
+					await this.homeyCloudGrantMutations.resetForFactory();
+
+					return { success: true };
+				} catch (error) {
+					return { success: false, reason: error instanceof Error ? error.message : 'Unknown error' };
+				}
+			},
+			// Clear provider credentials before the core Devices and Users reset handlers.
+			190,
+		);
 
 		this.configMapper.registerMapping<HomeyConfigModel, HomeyUpdatePluginConfigDto>({
 			type: DEVICES_HOMEY_PLUGIN_NAME,

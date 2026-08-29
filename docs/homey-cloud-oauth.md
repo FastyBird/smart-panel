@@ -177,7 +177,9 @@ disconnect and configuration invalidation. Activation and refresh use generation
 checks so a late provider result cannot revive cleared credentials or overwrite a replacement. Administrator demotion
 and removal participate in the same user database transaction through the additive user-lifecycle mutation boundary;
 this advances the user's authority generation and clears credentials authorized by that user before the account change
-commits. Provider exchange, Homey selection and HTTP routes remain intentionally absent until Tasks 7.2c and 7.2d.
+commits. The provider factory-reset handler clears pending grants, active credentials and user-authority metadata before
+the core device and user reset handlers run, while advancing both persisted generations. Provider exchange, Homey
+selection and HTTP routes remain intentionally absent until Tasks 7.2c and 7.2d.
 
 The current official client and HTTP references do not document a standards-style token-revocation endpoint. Task 7.2
 must verify the current live/API behavior before claiming remote revocation. Until then, disconnect means local token
