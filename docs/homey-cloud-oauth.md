@@ -168,9 +168,9 @@ The pending table is transaction- and initiating-user-scoped, has a server-cappe
 swept independently of requests.
 
 The state table also stores a SHA-256 identity derived from the deployment client ID, client secret, exact redirect URL,
-and requested scopes. Startup and every backend credential load compare the current non-secret fingerprint with the
-persisted value. A change clears pending and active grants and advances both generations before stale credentials can be
-used; the client secret itself is never persisted in the state table.
+and requested scopes. Every authorization-context, credential-loading, activation, refresh and disconnect path compares
+the current non-secret fingerprint with the persisted value. A change clears pending and active grants and advances both
+generations before stale credentials can be used; the client secret itself is never persisted in the state table.
 
 One serialized mutation service owns candidate staging, cancellation, expiry and activation plus active-grant refresh,
 disconnect and configuration invalidation. Activation and refresh use generation and grant-identity compare-and-swap

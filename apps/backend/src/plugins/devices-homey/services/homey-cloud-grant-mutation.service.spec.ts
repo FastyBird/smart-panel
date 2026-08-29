@@ -229,24 +229,6 @@ describe('HomeyCloudGrantMutationService', () => {
 		});
 	});
 
-	it('reconciles a changed deployment configuration during application bootstrap', async () => {
-		const context = await service.getAuthorizationContext(administratorId);
-		await service.stageCandidate(candidateInput(context, 'startup-configuration', token('stale')));
-		await service.activateCandidate('startup-configuration', administratorId, 'homey-one');
-		configurationFingerprint = 'configuration-after-restart';
-
-		await service.onApplicationBootstrap();
-
-		await expect(
-			dataSource.getRepository(HomeyCloudActiveGrantEntity).findOneBy({ key: HOMEY_CLOUD_ACTIVE_GRANT_KEY }),
-		).resolves.toBeNull();
-		await expect(
-			dataSource.getRepository(HomeyCloudAuthorizationStateEntity).findOneByOrFail({
-				key: HOMEY_CLOUD_AUTHORIZATION_STATE_KEY,
-			}),
-		).resolves.toMatchObject({ configurationFingerprint: 'configuration-after-restart' });
-	});
-
 	it('invalidates the active grant in the same transaction as its activating user removal', async () => {
 		const context = await service.getAuthorizationContext(administratorId);
 		await service.stageCandidate(candidateInput(context, 'removal-transaction', token('active')));

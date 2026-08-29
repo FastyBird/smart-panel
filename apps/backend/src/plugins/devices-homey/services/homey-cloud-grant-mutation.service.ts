@@ -96,8 +96,7 @@ export class HomeyCloudGrantMutationService
 		private readonly clientConfig: HomeyCloudClientConfigService,
 	) {}
 
-	async onApplicationBootstrap(): Promise<void> {
-		await this.reconcileConfiguration();
+	onApplicationBootstrap(): void {
 		this.cleanupTimer = setInterval(() => {
 			void this.expireCandidates().catch(() => {
 				this.logger.warn('Homey Cloud pending grant cleanup is temporarily unavailable');
@@ -486,14 +485,6 @@ export class HomeyCloudGrantMutationService
 		);
 
 		if (result.affected !== 1) throw new HomeyCloudGrantStateError();
-	}
-
-	private async reconcileConfiguration(): Promise<void> {
-		await this.runMutation(() =>
-			this.dataSource.transaction(async (manager) => {
-				await this.reconcileConfigurationInternal(manager);
-			}),
-		);
 	}
 
 	private async reconcileConfigurationInternal(manager: EntityManager): Promise<HomeyCloudAuthorizationStateEntity> {
