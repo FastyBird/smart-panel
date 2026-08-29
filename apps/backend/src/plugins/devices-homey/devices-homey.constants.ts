@@ -49,6 +49,10 @@ export const HOMEY_CLOUD_HOMEY_HOST_SUFFIX = '.connect.athom.com';
 
 export const HOMEY_CLOUD_CALLBACK_PATH = '/api/v1/plugins/devices-homey/oauth/callback';
 
+export const HOMEY_CLOUD_RESULT_PATH = `/config/plugins/${DEVICES_HOMEY_PLUGIN_NAME}`;
+
+export const HOMEY_CLOUD_MAX_TRANSACTION_ID_LENGTH = 128;
+
 export const HOMEY_CLOUD_CLIENT_ID_ENV = 'FB_HOMEY_CLOUD_CLIENT_ID';
 
 export const HOMEY_CLOUD_CLIENT_SECRET_ENV = 'FB_HOMEY_CLOUD_CLIENT_SECRET';

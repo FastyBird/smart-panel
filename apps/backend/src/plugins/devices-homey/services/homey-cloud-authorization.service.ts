@@ -266,15 +266,15 @@ export class HomeyCloudAuthorizationService {
 
 		if (!isEligibleHomeyCloudProviderHomey(record)) return null;
 
-		const rawName = typeof record.name === 'string' ? record.name : '';
-		const normalizedName = [...rawName]
+		const providerText = typeof record.name === 'string' ? record.name : '';
+		const normalizedText = [...providerText]
 			.map((character) => (this.isControlCharacter(character) ? ' ' : character))
 			.join('')
 			.replace(/\s+/gu, ' ')
 			.trim();
-		const name = [...normalizedName].slice(0, HOMEY_CLOUD_MAX_HOMEY_NAME_LENGTH).join('');
+		const displayText = [...normalizedText].slice(0, HOMEY_CLOUD_MAX_HOMEY_NAME_LENGTH).join('');
 
-		return { id: record.id, name: name || 'Homey' };
+		return { id: record.id, name: displayText || 'Homey' };
 	}
 
 	private normalizeToken(response: HomeyCloudProviderTokenResponse, issuedAt: number): HomeyCloudTokenMaterial {

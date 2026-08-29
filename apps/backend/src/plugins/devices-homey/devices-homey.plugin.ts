@@ -30,6 +30,7 @@ import { UsersModule } from '../../modules/users/users.module';
 import { HomeyLocalConnectorFactory } from './connectors/homey-local-connector.factory';
 import { HomeySdkClientFactoryService } from './connectors/homey-sdk.client';
 import { HomeyAdoptionController } from './controllers/homey-adoption.controller';
+import { HomeyCloudAuthorizationController } from './controllers/homey-cloud-authorization.controller';
 import { HomeyDevicesController } from './controllers/homey-devices.controller';
 import { HomeyMappingPreviewController } from './controllers/homey-mapping-preview.controller';
 import { HomeyStatusController } from './controllers/homey-status.controller';
@@ -63,6 +64,7 @@ import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-
 import { HomeyConfigModel } from './models/config.model';
 import { HomeyDevicePlatform } from './platforms/homey-device.platform';
 import { HomeyAdoptionLockService } from './services/homey-adoption-lock.service';
+import { HomeyCloudAuthorizationHttpService } from './services/homey-cloud-authorization-http.service';
 import { HomeyCloudAuthorizationStateService } from './services/homey-cloud-authorization-state.service';
 import { HomeyCloudAuthorizationService } from './services/homey-cloud-authorization.service';
 import { HomeyCloudClientConfigService } from './services/homey-cloud-client-config.service';
@@ -105,6 +107,7 @@ import { HomeyService } from './services/homey.service';
 		HomeyCloudAuthorizationStateService,
 		HomeyCloudGrantMutationService,
 		HomeyCloudAuthorizationService,
+		HomeyCloudAuthorizationHttpService,
 		HomeySdkClientFactoryService,
 		HomeyLocalConnectorFactory,
 		{
@@ -124,6 +127,7 @@ import { HomeyService } from './services/homey.service';
 		HomeyDevicePlatform,
 	],
 	controllers: [
+		HomeyCloudAuthorizationController,
 		HomeyStatusController,
 		HomeyTestConnectionController,
 		HomeyDevicesController,
