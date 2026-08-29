@@ -18,3 +18,47 @@ export class HomeyCloudAuthorizationCapacityError extends Error {
 		this.name = 'HomeyCloudAuthorizationCapacityError';
 	}
 }
+
+export enum HomeyCloudProviderErrorCategory {
+	INVALID_GRANT = 'invalid_grant',
+	INVALID_TOKEN = 'invalid_token',
+	NO_ELIGIBLE_HOMEYS = 'no_eligible_homeys',
+	PROTOCOL = 'protocol',
+	TIMEOUT = 'timeout',
+	UNAVAILABLE = 'unavailable',
+}
+
+export enum HomeyCloudProviderOperation {
+	EXCHANGE_CODE = 'exchange_code',
+	LIST_HOMEYS = 'list_homeys',
+	AUTHENTICATE_HOMEY = 'authenticate_homey',
+}
+
+const RETRYABLE_PROVIDER_CATEGORIES = new Set<HomeyCloudProviderErrorCategory>([
+	HomeyCloudProviderErrorCategory.TIMEOUT,
+	HomeyCloudProviderErrorCategory.UNAVAILABLE,
+]);
+
+/** Sanitized provider failure that never retains a raw SDK error, response, code, or token. */
+export class HomeyCloudProviderError extends Error {
+	readonly category: HomeyCloudProviderErrorCategory;
+	readonly operation: HomeyCloudProviderOperation;
+	readonly retryable: boolean;
+
+	constructor(category: HomeyCloudProviderErrorCategory, operation: HomeyCloudProviderOperation) {
+		super(`Homey Cloud provider operation '${operation}' failed (${category})`);
+
+		this.name = 'HomeyCloudProviderError';
+		this.category = category;
+		this.operation = operation;
+		this.retryable = RETRYABLE_PROVIDER_CATEGORIES.has(category);
+	}
+}
+
+export class HomeyCloudSelectionError extends Error {
+	constructor() {
+		super('The selected Homey is not available in this authorization transaction');
+
+		this.name = 'HomeyCloudSelectionError';
+	}
+}

@@ -851,7 +851,7 @@ Task 7.2 is delivered behind disabled cloud mode in reviewable slices:
 - [x] **7.2b — Grant persistence and mutation gate:** add incremental storage for pending/active grant metadata and
       write-only token material, then serialize activation, cancellation, expiry, refresh, disconnect, configuration,
       and user-authority invalidation.
-- [ ] **7.2c — Provider exchange and Homey selection:** exchange the code with a bounded timeout, stage candidate tokens,
+- [x] **7.2c — Provider exchange and Homey selection:** exchange the code with a bounded timeout, stage candidate tokens,
       sanitize eligible Homey choices, support exact transaction-bound selection, authenticate the selected Homey, and
       activate only through the mutation gate.
 - [ ] **7.2d — HTTP authorization surface:** add privileged start/select/cancel/disconnect/reconnect routes plus the

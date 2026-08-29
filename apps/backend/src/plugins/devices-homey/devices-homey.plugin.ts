@@ -64,6 +64,7 @@ import { HomeyConfigModel } from './models/config.model';
 import { HomeyDevicePlatform } from './platforms/homey-device.platform';
 import { HomeyAdoptionLockService } from './services/homey-adoption-lock.service';
 import { HomeyCloudAuthorizationStateService } from './services/homey-cloud-authorization-state.service';
+import { HomeyCloudAuthorizationService } from './services/homey-cloud-authorization.service';
 import { HomeyCloudClientConfigService } from './services/homey-cloud-client-config.service';
 import { HomeyCloudGrantMutationService } from './services/homey-cloud-grant-mutation.service';
 import { HomeyConfigValidatorService } from './services/homey-config-validator.service';
@@ -103,6 +104,7 @@ import { HomeyService } from './services/homey.service';
 		HomeyCloudClientConfigService,
 		HomeyCloudAuthorizationStateService,
 		HomeyCloudGrantMutationService,
+		HomeyCloudAuthorizationService,
 		HomeySdkClientFactoryService,
 		HomeyLocalConnectorFactory,
 		{
@@ -137,6 +139,7 @@ import { HomeyService } from './services/homey.service';
 		HomeyDeviceAdoptionService,
 		HomeySynchronizerService,
 		HomeyService,
+		HomeyCloudAuthorizationService,
 	],
 })
 export class DevicesHomeyPlugin implements OnModuleInit {

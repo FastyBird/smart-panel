@@ -45,6 +45,7 @@ describe('HomeyCloudAuthorizationStateService', () => {
 
 				return url.toString();
 			}),
+			createCloudProviderClient: jest.fn(),
 		};
 
 		service = new HomeyCloudAuthorizationStateService(

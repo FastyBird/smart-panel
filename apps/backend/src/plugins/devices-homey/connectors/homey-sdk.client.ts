@@ -72,6 +72,41 @@ export interface HomeyCloudSdkClientFactory {
 		scopes: string[];
 		state: string;
 	}): string;
+	createCloudProviderClient(options: {
+		clientId: string;
+		clientSecret: string;
+		redirectUrl: string;
+		token?: HomeyCloudProviderToken;
+	}): HomeyCloudProviderClient;
+}
+
+export interface HomeyCloudProviderToken {
+	readonly accessToken: string;
+	readonly expiresIn: number | null;
+	readonly grantType: string | null;
+	readonly refreshToken: string | null;
+	readonly tokenType: string;
+}
+
+export interface HomeyCloudProviderTokenResponse {
+	readonly access_token?: unknown;
+	readonly expires_in?: unknown;
+	readonly grant_type?: unknown;
+	readonly refresh_token?: unknown;
+	readonly token_type?: unknown;
+}
+
+export interface HomeyCloudProviderHomey {
+	readonly apiVersion: unknown;
+	readonly id: unknown;
+	readonly name: unknown;
+	readonly platform: unknown;
+}
+
+export interface HomeyCloudProviderClient {
+	authenticateHomey(homeyId: string): Promise<void>;
+	exchangeAuthorizationCode(code: string): Promise<HomeyCloudProviderTokenResponse>;
+	getHomeys(): Promise<readonly HomeyCloudProviderHomey[]>;
 }
 
 @Injectable()
@@ -104,6 +139,39 @@ export class HomeySdkClientFactoryService implements HomeySdkClientFactory, Home
 		return authorizeUrl;
 	}
 
+	createCloudProviderClient(options: {
+		clientId: string;
+		clientSecret: string;
+		redirectUrl: string;
+		token?: HomeyCloudProviderToken;
+	}): HomeyCloudProviderClient {
+		const TokenConstructor = AthomCloudAPI.Token as unknown as new (properties: {
+			access_token: string;
+			expires_in?: number;
+			grant_type?: string;
+			refresh_token?: string;
+			token_type: string;
+		}) => AthomCloudAPI.Token;
+		const token = options.token
+			? new TokenConstructor({
+					token_type: options.token.tokenType,
+					access_token: options.token.accessToken,
+					refresh_token: options.token.refreshToken ?? undefined,
+					expires_in: options.token.expiresIn ?? undefined,
+					grant_type: options.token.grantType ?? undefined,
+				})
+			: undefined;
+		const cloudApi = new AthomCloudAPI({
+			clientId: options.clientId,
+			clientSecret: options.clientSecret,
+			redirectUrl: options.redirectUrl,
+			autoRefreshTokens: false,
+			token,
+		});
+
+		return new HomeyCloudProviderSdkClient(cloudApi);
+	}
+
 	private assertCloudAuthorizationEndpoint(value: string): void {
 		let url: URL;
 
@@ -116,5 +184,50 @@ export class HomeySdkClientFactoryService implements HomeySdkClientFactory, Home
 		if (url.username || url.password || url.origin + url.pathname !== HOMEY_CLOUD_AUTHORIZE_URL) {
 			throw new HomeyCloudConfigurationError('Homey Cloud authorization endpoint is invalid');
 		}
+	}
+}
+
+class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
+	constructor(private readonly cloudApi: AthomCloudAPI) {}
+
+	async exchangeAuthorizationCode(code: string): Promise<HomeyCloudProviderTokenResponse> {
+		return this.cloudApi.authenticateWithAuthorizationCode({ code, removeCodeFromHistory: false });
+	}
+
+	async getHomeys(): Promise<readonly HomeyCloudProviderHomey[]> {
+		const user = await this.getAuthenticatedUserFresh();
+
+		return user.getHomeys().map((homey) => {
+			const properties = homey as unknown as Record<string, unknown>;
+
+			return {
+				id: homey.id,
+				name: properties.name,
+				apiVersion: properties.apiVersion,
+				platform: properties.platform,
+			};
+		});
+	}
+
+	async authenticateHomey(homeyId: string): Promise<void> {
+		const user = await this.getAuthenticatedUserFresh();
+		const homey = user.getHomeyById(homeyId) as unknown as {
+			authenticate(options: { reconnect: boolean; strategy: string }): Promise<HomeySdkClient>;
+		};
+		const homeyApi = await homey.authenticate({ strategy: 'cloud', reconnect: false });
+
+		try {
+			await homeyApi.disconnect();
+		} finally {
+			homeyApi.destroy();
+		}
+	}
+
+	private getAuthenticatedUserFresh(): Promise<AthomCloudAPI.User> {
+		const cloudApi = this.cloudApi as unknown as {
+			getAuthenticatedUser(options: { $cache: boolean }): Promise<AthomCloudAPI.User>;
+		};
+
+		return cloudApi.getAuthenticatedUser({ $cache: false });
 	}
 }

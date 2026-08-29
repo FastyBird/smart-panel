@@ -178,8 +178,17 @@ checks so a late provider result cannot revive cleared credentials or overwrite 
 and removal participate in the same user database transaction through the additive user-lifecycle mutation boundary;
 this advances the user's authority generation and clears credentials authorized by that user before the account change
 commits. The provider factory-reset handler clears pending grants, active credentials and user-authority metadata before
-the core device and user reset handlers run, while advancing both persisted generations. Provider exchange, Homey
-selection and HTTP routes remain intentionally absent until Tasks 7.2c and 7.2d.
+the core device and user reset handlers run, while advancing both persisted generations.
+
+Task 7.2c adds the provider boundary behind disabled cloud mode. It revalidates the initiating authority and deployment
+generations before sending the authorization code, exchanges through an automatic-refresh-disabled SDK client with a
+bounded deadline, validates and stages only the normalized token fields, and recreates an isolated candidate client
+from the exact transaction for Homey listing and selection. Browser-facing choices contain only a bounded stable ID and
+sanitized name. Unsupported or duplicate entries fail closed; one eligible Homey is auto-selected, while multiple
+choices require an exact transaction-bound selection. The selected Homey must authenticate over the cloud strategy
+before the existing mutation gate can atomically activate it. Invalid-token, malformed-response, empty-inventory and
+unsupported-inventory failures clear only that candidate; transient timeout/unavailable failures retain it until its
+original absolute expiry. HTTP routes and connector activation remain intentionally absent until Tasks 7.2d and 7.3.
 
 The current official client and HTTP references do not document a standards-style token-revocation endpoint. Task 7.2
 must verify the current live/API behavior before claiming remote revocation. Until then, disconnect means local token
