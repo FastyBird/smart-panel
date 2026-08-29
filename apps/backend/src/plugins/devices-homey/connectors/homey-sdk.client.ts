@@ -291,18 +291,19 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 		return this.withSignal(signal, async () => {
 			const user = await this.getAuthenticatedUserFresh();
 			const homey = user.getHomeyById(homeyId) as unknown as {
-				authenticate(options: { reconnect: boolean; strategy: string }): Promise<HomeySdkClient>;
+				apiVersion?: unknown;
+				authenticate(options: { reconnect: boolean; strategy: string }): Promise<HomeyCloudAuthenticatedSdkClient>;
 				remoteUrl?: unknown;
 			};
 
-			this.assertHomeyCloudEndpoint(homey.remoteUrl);
+			if (homey.apiVersion !== 1) this.assertHomeyCloudEndpoint(homey.remoteUrl);
 
 			const homeyApi = await homey.authenticate({ strategy: 'cloud', reconnect: false });
 
 			try {
-				await homeyApi.disconnect();
+				if (typeof homeyApi.disconnect === 'function') await homeyApi.disconnect();
 			} finally {
-				homeyApi.destroy();
+				if (typeof homeyApi.destroy === 'function') homeyApi.destroy();
 			}
 		});
 	}
@@ -431,6 +432,11 @@ interface HomeyCloudApiExecutor {
 interface HomeyCloudFetchResult {
 	readonly response: Response;
 	readonly timeoutSignal: AbortSignal;
+}
+
+interface HomeyCloudAuthenticatedSdkClient {
+	destroy?: () => void;
+	disconnect?: () => Promise<void>;
 }
 
 interface HomeySdkUtility {

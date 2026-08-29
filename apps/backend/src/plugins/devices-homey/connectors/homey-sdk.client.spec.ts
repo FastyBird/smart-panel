@@ -250,6 +250,36 @@ describe('HomeySdkClientFactoryService', () => {
 		expect(homey.authenticate.mock.calls).toHaveLength(0);
 	});
 
+	it('authenticates an API-v1 Homey without newer client lifecycle methods', async () => {
+		const homey = {
+			id: 'legacy-homey',
+			name: 'Legacy Homey',
+			apiVersion: 1,
+			platform: 'local',
+			authenticate: jest.fn().mockResolvedValue({}),
+		};
+
+		jest.spyOn(AthomCloudAPI.prototype, 'getAuthenticatedUser').mockResolvedValue({
+			getHomeys: () => [homey],
+			getHomeyById: () => homey,
+		} as unknown as AthomCloudAPI.User);
+		const provider = new HomeySdkClientFactoryService().createCloudProviderClient({
+			clientId: 'deployment-client-id',
+			clientSecret: 'deployment-client-secret',
+			redirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
+			token: {
+				tokenType: 'bearer',
+				accessToken: 'candidate-access-token',
+				refreshToken: 'candidate-refresh-token',
+				expiresIn: 3600,
+				grantType: 'authorization_code',
+			},
+		});
+
+		await expect(provider.authenticateHomey('legacy-homey', new AbortController().signal)).resolves.toBeUndefined();
+		expect(homey.authenticate).toHaveBeenCalledWith({ strategy: 'cloud', reconnect: false });
+	});
+
 	it('preserves retryable HTTP status from child Homey SDK requests', async () => {
 		const server = createServer((_request, response) => {
 			response.writeHead(429, { 'Content-Type': 'text/plain' });
