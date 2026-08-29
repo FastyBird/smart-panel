@@ -100,7 +100,24 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 				return await this.createClientForGrant(result.credentials, false);
 			}
 
-			return await this.authenticate(result.credentials);
+			return await this.authenticateRefreshed(result.credentials, allowGrantReload);
+		}
+	}
+
+	private async authenticateRefreshed(
+		credentials: HomeyCloudActiveGrantCredentials,
+		allowGrantReload: boolean,
+	): Promise<HomeySdkClient> {
+		try {
+			return await this.authenticate(credentials);
+		} catch (error) {
+			if (!this.isInvalidToken(error) && !(error instanceof HomeyCloudGrantConflictError)) throw error;
+
+			const active = await this.loadActiveCredentials();
+
+			if (this.isSameGrant(credentials, active) || !allowGrantReload) throw error;
+
+			return await this.createClientForGrant(active, false);
 		}
 	}
 

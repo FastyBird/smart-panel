@@ -241,6 +241,58 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 		expect(refreshedProvider.createHomeyClient.mock.calls).toHaveLength(1);
 	});
 
+	it('uses a replacement grant when refreshed authentication becomes stale', async () => {
+		let active = credentials;
+		const refreshedClient = sdkClient('homey-1-refreshed');
+		const replacementClient = sdkClient('homey-2');
+		const refreshedProvider = providerClient();
+		const replacementProvider = providerClient();
+		const replacement: HomeyCloudActiveGrantCredentials = {
+			...credentials,
+			generation: 8,
+			grantIdentifier: 'grant-2',
+			selectedHomeyId: 'homey-2',
+			token: { ...credentials.token, accessToken: 'replacement-access-token' },
+		};
+		provider.createHomeyClient.mockRejectedValue(
+			new HomeyCloudProviderError(
+				HomeyCloudProviderErrorCategory.INVALID_TOKEN,
+				HomeyCloudProviderOperation.AUTHENTICATE_HOMEY,
+			),
+		);
+		provider.refreshAccessToken.mockResolvedValue({
+			access_token: 'access-token-2',
+			expires_in: 3600,
+			refresh_token: 'refresh-token-2',
+			token_type: 'bearer',
+		});
+		grantMutations.loadActiveGrantCredentials.mockImplementation(() => Promise.resolve(active));
+		grantMutations.persistRefresh.mockImplementation(({ token }) => {
+			active = { ...credentials, generation: 5, token };
+
+			return Promise.resolve(active);
+		});
+		refreshedProvider.createHomeyClient.mockImplementation(() => {
+			active = replacement;
+
+			return Promise.resolve(refreshedClient);
+		});
+		replacementProvider.createHomeyClient.mockResolvedValue(replacementClient);
+		sdkClientFactory.createCloudProviderClient.mockImplementation(({ token }) => {
+			if (token?.accessToken === 'access-token-2') return refreshedProvider;
+			if (token?.accessToken === 'replacement-access-token') return replacementProvider;
+
+			return provider;
+		});
+
+		await expect(service.createClient()).resolves.toBe(replacementClient);
+		expect(provider.refreshAccessToken.mock.calls).toHaveLength(1);
+		expect(refreshedProvider.createHomeyClient.mock.calls).toHaveLength(1);
+		expect((refreshedClient.disconnect as jest.Mock).mock.calls).toHaveLength(1);
+		expect((refreshedClient.destroy as jest.Mock).mock.calls).toHaveLength(1);
+		expect(replacementProvider.createHomeyClient.mock.calls[0]).toEqual(['homey-2', expect.any(AbortSignal), false]);
+	});
+
 	it('uses a refresh persisted by a faster caller instead of retrying the stale refresh token', async () => {
 		let rejectFirst = (_error: unknown): void => undefined;
 		let rejectSecond = (_error: unknown): void => undefined;
