@@ -66,7 +66,7 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 		let refreshed = false;
 
 		if (homeyCloudTokenRequiresRefresh(prepared.token, Date.now(), HOMEY_CLOUD_TOKEN_REFRESH_SKEW_MS)) {
-			const result = await this.refresh(prepared);
+			const result = await this.refreshOrReload(prepared);
 
 			if (!result.persisted) {
 				if (!allowGrantReload) throw new HomeyCloudGrantConflictError();
@@ -92,7 +92,7 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 			}
 			if (refreshed || prepared.token.refreshToken === null) throw error;
 
-			const result = await this.refresh(prepared);
+			const result = await this.refreshOrReload(prepared);
 
 			if (!result.persisted) {
 				if (!allowGrantReload) throw error;
@@ -188,6 +188,18 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 		);
 
 		return operation.promise;
+	}
+
+	private async refreshOrReload(credentials: HomeyCloudActiveGrantCredentials): Promise<HomeyCloudRefreshResult> {
+		try {
+			return await this.refresh(credentials);
+		} catch (error) {
+			const active = await this.loadActiveCredentials();
+
+			if (this.isSameGrant(credentials, active)) throw error;
+
+			return { credentials: active, persisted: false };
+		}
 	}
 
 	private async performRefresh(credentials: HomeyCloudActiveGrantCredentials): Promise<HomeyCloudRefreshResult> {
