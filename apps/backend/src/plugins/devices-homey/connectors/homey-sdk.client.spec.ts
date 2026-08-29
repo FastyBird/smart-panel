@@ -43,6 +43,7 @@ describe('HomeySdkClientFactoryService', () => {
 			name: 'Home',
 			apiVersion: 3,
 			platform: 'local',
+			remoteUrl: 'https://homey-one.connect.athom.com',
 			authenticate: jest.fn().mockResolvedValue(homeyApi),
 		};
 		jest.spyOn(AthomCloudAPI.prototype, 'getAuthenticatedUser').mockResolvedValue({
@@ -189,6 +190,39 @@ describe('HomeySdkClientFactoryService', () => {
 		expect(bodyAborted).toBe(true);
 	});
 
+	it('rejects an untrusted child Homey cloud endpoint before authentication', async () => {
+		const homey = {
+			id: 'homey-one',
+			name: 'Home',
+			apiVersion: 3,
+			platform: 'local',
+			remoteUrl: 'http://127.0.0.1:8080',
+			authenticate: jest.fn(),
+		};
+
+		jest.spyOn(AthomCloudAPI.prototype, 'getAuthenticatedUser').mockResolvedValue({
+			getHomeys: () => [homey],
+			getHomeyById: () => homey,
+		} as unknown as AthomCloudAPI.User);
+		const provider = new HomeySdkClientFactoryService().createCloudProviderClient({
+			clientId: 'deployment-client-id',
+			clientSecret: 'deployment-client-secret',
+			redirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
+			token: {
+				tokenType: 'bearer',
+				accessToken: 'candidate-access-token',
+				refreshToken: 'candidate-refresh-token',
+				expiresIn: 3600,
+				grantType: 'authorization_code',
+			},
+		});
+
+		await expect(provider.authenticateHomey('homey-one', new AbortController().signal)).rejects.toMatchObject({
+			name: 'HomeyCloudSdkProtocolError',
+		});
+		expect(homey.authenticate.mock.calls).toHaveLength(0);
+	});
+
 	it('propagates cancellation into the child Homey login requests', async () => {
 		let requestStartedResolve: (() => void) | null = null;
 		const requestStarted = new Promise<void>((resolve) => {
@@ -216,6 +250,7 @@ describe('HomeySdkClientFactoryService', () => {
 				name: 'Home',
 				apiVersion: 3,
 				platform: 'local',
+				remoteUrl: 'https://homey-one.connect.athom.com',
 				authenticate: jest.fn(async () => {
 					await sdkUtility.fetch(`http://127.0.0.1:${address.port}/login`, {}, 60_000);
 

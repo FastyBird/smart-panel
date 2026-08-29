@@ -45,6 +45,8 @@ export const HOMEY_CLOUD_API_URL = 'https://api.athom.com';
 
 export const HOMEY_CLOUD_TOKEN_URL = `${HOMEY_CLOUD_API_URL}/oauth2/token`;
 
+export const HOMEY_CLOUD_HOMEY_HOST_SUFFIX = '.connect.athom.com';
+
 export const HOMEY_CLOUD_CALLBACK_PATH = '/api/v1/plugins/devices-homey/oauth/callback';
 
 export const HOMEY_CLOUD_CLIENT_ID_ENV = 'FB_HOMEY_CLOUD_CLIENT_ID';

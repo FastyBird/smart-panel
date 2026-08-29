@@ -7,6 +7,7 @@ import { Injectable } from '@nestjs/common';
 import {
 	HOMEY_CLOUD_API_URL,
 	HOMEY_CLOUD_AUTHORIZE_URL,
+	HOMEY_CLOUD_HOMEY_HOST_SUFFIX,
 	HOMEY_CLOUD_PROVIDER_TIMEOUT_MS,
 	HOMEY_CLOUD_TOKEN_URL,
 } from '../devices-homey.constants';
@@ -290,7 +291,11 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 			const user = await this.getAuthenticatedUserFresh();
 			const homey = user.getHomeyById(homeyId) as unknown as {
 				authenticate(options: { reconnect: boolean; strategy: string }): Promise<HomeySdkClient>;
+				remoteUrl?: unknown;
 			};
+
+			this.assertHomeyCloudEndpoint(homey.remoteUrl);
+
 			const homeyApi = await homey.authenticate({ strategy: 'cloud', reconnect: false });
 
 			try {
@@ -372,6 +377,39 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 
 		if (url.username || url.password || url.origin !== HOMEY_CLOUD_API_URL) throw new HomeyCloudSdkProtocolError();
 	}
+
+	private assertHomeyCloudEndpoint(value: unknown): void {
+		if (typeof value !== 'string') throw new HomeyCloudSdkProtocolError();
+
+		let url: URL;
+
+		try {
+			url = new URL(value);
+		} catch {
+			throw new HomeyCloudSdkProtocolError();
+		}
+
+		const homeyHost = url.hostname.endsWith(HOMEY_CLOUD_HOMEY_HOST_SUFFIX)
+			? url.hostname.slice(0, -HOMEY_CLOUD_HOMEY_HOST_SUFFIX.length)
+			: '';
+
+		if (
+			url.protocol !== 'https:' ||
+			url.username ||
+			url.password ||
+			url.port ||
+			url.pathname !== '/' ||
+			url.search ||
+			url.hash ||
+			!this.isDnsLabel(homeyHost)
+		) {
+			throw new HomeyCloudSdkProtocolError();
+		}
+	}
+
+	private isDnsLabel(value: string): boolean {
+		return /^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?$/iu.test(value);
+	}
 }
 
 interface HomeyCloudSdkRequest {
@@ -418,7 +456,7 @@ function installHomeySdkAbortBridge(): AsyncLocalStorage<AbortSignal> {
 
 		// The provider service owns the complete-operation deadline. Do not let the SDK replace the operation signal with a
 		// headers-only timeout controller that is detached before its response body has been consumed.
-		return originalFetch(url, { ...options, signal }, undefined, undefined, patchOptions);
+		return originalFetch(url, { ...options, redirect: 'error', signal }, undefined, undefined, patchOptions);
 	};
 	Object.defineProperty(utility, 'fastyBirdAbortContext', {
 		configurable: false,
