@@ -190,6 +190,33 @@ describe('HomeySdkClientFactoryService', () => {
 		expect(bodyAborted).toBe(true);
 	});
 
+	it('preserves timeout classification while consuming a token response body', async () => {
+		const timeoutController = new AbortController();
+
+		jest.spyOn(AbortSignal, 'timeout').mockReturnValue(timeoutController.signal);
+		jest.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => {
+			const body = new ReadableStream({
+				start(controller) {
+					init?.signal?.addEventListener('abort', () => controller.error(new DOMException('Aborted', 'AbortError')), {
+						once: true,
+					});
+				},
+			});
+
+			return Promise.resolve(new Response(body, { headers: { 'Content-Type': 'application/json' } }));
+		});
+		const provider = new HomeySdkClientFactoryService().createCloudProviderClient({
+			clientId: 'deployment-client-id',
+			clientSecret: 'deployment-client-secret',
+			redirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
+		});
+		const exchange = provider.exchangeAuthorizationCode('authorization-code', new AbortController().signal);
+
+		timeoutController.abort();
+
+		await expect(exchange).rejects.toMatchObject({ statusCode: 408 });
+	});
+
 	it('rejects an untrusted child Homey cloud endpoint before authentication', async () => {
 		const homey = {
 			id: 'homey-one',

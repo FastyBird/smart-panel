@@ -238,7 +238,7 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 	}
 
 	async exchangeAuthorizationCode(code: string, signal: AbortSignal): Promise<HomeyCloudProviderTokenResponse> {
-		const response = await this.executeFetch(
+		const { response, timeoutSignal } = await this.executeFetch(
 			HOMEY_CLOUD_TOKEN_URL,
 			{
 				method: 'POST',
@@ -259,6 +259,7 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 		try {
 			body = await response.json();
 		} catch {
+			if (timeoutSignal.aborted) throw new HomeyCloudSdkTimeoutError();
 			if (signal.aborted) throw new HomeyCloudSdkAbortError();
 
 			throw new HomeyCloudSdkProtocolError();
@@ -344,7 +345,7 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 			},
 			this.activeSignal,
 			request.timeout ?? HOMEY_CLOUD_PROVIDER_TIMEOUT_MS,
-		);
+		).then(({ response }) => response);
 	}
 
 	private async executeFetch(
@@ -352,12 +353,14 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 		options: RequestInit,
 		externalSignal: AbortSignal | null,
 		timeoutMs: number,
-	): Promise<Response> {
+	): Promise<HomeyCloudFetchResult> {
 		const timeoutSignal = AbortSignal.timeout(timeoutMs);
 		const signal = externalSignal ? AbortSignal.any([externalSignal, timeoutSignal]) : timeoutSignal;
 
 		try {
-			return await fetch(url, { ...options, signal });
+			const response = await fetch(url, { ...options, signal });
+
+			return { response, timeoutSignal };
 		} catch (error) {
 			if (timeoutSignal.aborted) throw new HomeyCloudSdkTimeoutError();
 			if (externalSignal?.aborted) throw new HomeyCloudSdkAbortError();
@@ -423,6 +426,11 @@ interface HomeyCloudSdkRequest {
 interface HomeyCloudApiExecutor {
 	baseUrl: string;
 	onCallRequestExecute(input: { request: HomeyCloudSdkRequest }): Promise<Response>;
+}
+
+interface HomeyCloudFetchResult {
+	readonly response: Response;
+	readonly timeoutSignal: AbortSignal;
 }
 
 interface HomeySdkUtility {
