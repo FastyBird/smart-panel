@@ -187,8 +187,9 @@ from the exact transaction for Homey listing and selection. Browser-facing choic
 sanitized name. Unsupported or duplicate entries fail closed; one eligible Homey is auto-selected, while multiple
 choices require an exact transaction-bound selection. The selected Homey must authenticate over the cloud strategy
 before the existing mutation gate can atomically activate it. Invalid-token, malformed-response, empty-inventory and
-unsupported-inventory failures clear only that candidate; transient timeout/unavailable failures retain it until its
-original absolute expiry. HTTP routes and connector activation remain intentionally absent until Tasks 7.2d and 7.3.
+unsupported-inventory failures clear only that candidate; transient timeout, rate-limit, and unavailable failures retain
+it until its original absolute expiry. HTTP routes and connector activation remain intentionally absent until Tasks
+7.2d and 7.3.
 
 The current official client and HTTP references do not document a standards-style token-revocation endpoint. Task 7.2
 must verify the current live/API behavior before claiming remote revocation. Until then, disconnect means local token

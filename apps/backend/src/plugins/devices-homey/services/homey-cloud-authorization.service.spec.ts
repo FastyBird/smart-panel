@@ -193,6 +193,30 @@ describe('HomeyCloudAuthorizationService', () => {
 		expect(grantMutations.cancelCandidate).not.toHaveBeenCalled();
 	});
 
+	it('retains the candidate when Homey rate-limits listing or selection', async () => {
+		candidateClient.getHomeys.mockRejectedValue(
+			Object.assign(new Error('private rate-limit response'), { statusCode: 429 }),
+		);
+
+		await expect(service.listCandidateHomeys(exchange.transactionId, exchange.initiatingUserId)).rejects.toMatchObject({
+			category: HomeyCloudProviderErrorCategory.RATE_LIMITED,
+			retryable: true,
+		});
+
+		candidateClient.getHomeys.mockResolvedValue([homey('homey-one', 'Home')]);
+		candidateClient.authenticateHomey.mockRejectedValue(
+			Object.assign(new Error('private rate-limit response'), { statusCode: 429 }),
+		);
+
+		await expect(
+			service.selectHomey(exchange.transactionId, exchange.initiatingUserId, 'homey-one'),
+		).rejects.toMatchObject({
+			category: HomeyCloudProviderErrorCategory.RATE_LIMITED,
+			retryable: true,
+		});
+		expect(grantMutations.cancelCandidate).not.toHaveBeenCalled();
+	});
+
 	it('maps raw exchange failures without retaining their private response', async () => {
 		const privateValue = 'private-code-or-token';
 		exchangeClient.exchangeAuthorizationCode.mockRejectedValue(

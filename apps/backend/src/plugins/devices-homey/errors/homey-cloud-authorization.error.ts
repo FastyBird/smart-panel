@@ -24,6 +24,7 @@ export enum HomeyCloudProviderErrorCategory {
 	INVALID_TOKEN = 'invalid_token',
 	NO_ELIGIBLE_HOMEYS = 'no_eligible_homeys',
 	PROTOCOL = 'protocol',
+	RATE_LIMITED = 'rate_limited',
 	TIMEOUT = 'timeout',
 	UNAVAILABLE = 'unavailable',
 }
@@ -37,6 +38,7 @@ export enum HomeyCloudProviderOperation {
 const RETRYABLE_PROVIDER_CATEGORIES = new Set<HomeyCloudProviderErrorCategory>([
 	HomeyCloudProviderErrorCategory.TIMEOUT,
 	HomeyCloudProviderErrorCategory.UNAVAILABLE,
+	HomeyCloudProviderErrorCategory.RATE_LIMITED,
 ]);
 
 /** Sanitized provider failure that never retains a raw SDK error, response, code, or token. */

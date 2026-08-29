@@ -351,6 +351,9 @@ export class HomeyCloudAuthorizationService {
 		if (statusCode === 408 || statusCode === 504) {
 			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.TIMEOUT, operation);
 		}
+		if (statusCode === 429) {
+			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.RATE_LIMITED, operation);
+		}
 		if (statusCode !== undefined && statusCode >= 500) {
 			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.UNAVAILABLE, operation);
 		}
