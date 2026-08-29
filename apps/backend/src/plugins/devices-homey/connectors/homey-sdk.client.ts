@@ -1,6 +1,9 @@
-import { HomeyAPI } from 'homey-api';
+import { AthomCloudAPI, HomeyAPI } from 'homey-api';
 
 import { Injectable } from '@nestjs/common';
+
+import { HOMEY_CLOUD_AUTHORIZE_URL } from '../devices-homey.constants';
+import { HomeyCloudConfigurationError } from '../errors/homey-cloud-authorization.error';
 
 export type HomeySdkEventListener = (...arguments_: unknown[]) => Promise<void> | void;
 
@@ -61,13 +64,57 @@ export interface HomeySdkClientFactory {
 	createLocalApi(options: { address: string; token: string }): Promise<HomeySdkClient>;
 }
 
+export interface HomeyCloudSdkClientFactory {
+	createCloudAuthorizationUrl(options: {
+		clientId: string;
+		clientSecret: string;
+		redirectUrl: string;
+		scopes: string[];
+		state: string;
+	}): string;
+}
+
 @Injectable()
-export class HomeySdkClientFactoryService implements HomeySdkClientFactory {
+export class HomeySdkClientFactoryService implements HomeySdkClientFactory, HomeyCloudSdkClientFactory {
 	async createLocalApi(options: { address: string; token: string }): Promise<HomeySdkClient> {
 		return (await HomeyAPI.createLocalAPI({
 			address: options.address,
 			token: options.token,
 			debug: null,
 		})) as HomeySdkClient;
+	}
+
+	createCloudAuthorizationUrl(options: {
+		clientId: string;
+		clientSecret: string;
+		redirectUrl: string;
+		scopes: string[];
+		state: string;
+	}): string {
+		const cloudApi = new AthomCloudAPI({
+			clientId: options.clientId,
+			clientSecret: options.clientSecret,
+			redirectUrl: options.redirectUrl,
+			autoRefreshTokens: false,
+		});
+		const authorizeUrl = cloudApi.getLoginUrl({ state: options.state, scopes: options.scopes });
+
+		this.assertCloudAuthorizationEndpoint(authorizeUrl);
+
+		return authorizeUrl;
+	}
+
+	private assertCloudAuthorizationEndpoint(value: string): void {
+		let url: URL;
+
+		try {
+			url = new URL(value);
+		} catch {
+			throw new HomeyCloudConfigurationError('Homey Cloud authorization endpoint is invalid');
+		}
+
+		if (url.username || url.password || url.origin + url.pathname !== HOMEY_CLOUD_AUTHORIZE_URL) {
+			throw new HomeyCloudConfigurationError('Homey Cloud authorization endpoint is invalid');
+		}
 	}
 }

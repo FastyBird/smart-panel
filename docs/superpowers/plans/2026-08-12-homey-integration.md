@@ -842,6 +842,22 @@ Homey Cloud access, user limit, branding/legal, and rate-limit conditions are re
 - [ ] List/select a Homey when an account has more than one.
 - [ ] Add security-focused controller/service tests.
 
+Task 7.2 is delivered behind disabled cloud mode in reviewable slices:
+
+- [x] **7.2a — Deployment and state foundation:** validate the deployment-owned client ID, secret, and exact callback;
+      generate the SDK authorization URL with candidate auto-refresh disabled; keep only a hash of bounded, single-use
+      state; bind it to the initiating user plus authority/active-grant generations; and expire it independently of
+      follow-up traffic. No cloud route is exposed by this slice.
+- [ ] **7.2b — Grant persistence and mutation gate:** add incremental storage for pending/active grant metadata and
+      write-only token material, then serialize activation, cancellation, expiry, refresh, disconnect, configuration,
+      and user-authority invalidation.
+- [ ] **7.2c — Provider exchange and Homey selection:** exchange the code with a bounded timeout, stage candidate tokens,
+      sanitize eligible Homey choices, support exact transaction-bound selection, authenticate the selected Homey, and
+      activate only through the mutation gate.
+- [ ] **7.2d — HTTP authorization surface:** add privileged start/select/cancel/disconnect/reconnect routes plus the
+      state-authorized public callback, clean callback redirect, ingress query-redaction requirements, and the complete
+      security/race test matrix.
+
 ### Task 7.3: Implement `HomeyCloudConnector`
 
 - [ ] Implement the same connector contract and normalized error categories.

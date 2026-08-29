@@ -1,3 +1,5 @@
+import { ConfigModule as NestConfigModule } from '@nestjs/config';
+
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
@@ -24,6 +26,8 @@ import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-
 import { HomeyConfigModel } from './models/config.model';
 import { HomeyDevicePlatform } from './platforms/homey-device.platform';
 import { HomeyAdoptionLockService } from './services/homey-adoption-lock.service';
+import { HomeyCloudAuthorizationStateService } from './services/homey-cloud-authorization-state.service';
+import { HomeyCloudClientConfigService } from './services/homey-cloud-client-config.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
 import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
@@ -91,12 +95,15 @@ describe('DevicesHomeyPlugin', () => {
 	});
 
 	it('provides a production SDK-backed connector factory through the transport-neutral token', () => {
+		const imports = Reflect.getMetadata('imports', DevicesHomeyPlugin) as unknown[];
 		const providers = Reflect.getMetadata('providers', DevicesHomeyPlugin) as unknown[];
 		const controllers = Reflect.getMetadata('controllers', DevicesHomeyPlugin) as unknown[];
 
 		expect(providers).toEqual(
 			expect.arrayContaining([
 				HomeySdkClientFactoryService,
+				HomeyCloudClientConfigService,
+				HomeyCloudAuthorizationStateService,
 				HomeyLocalConnectorFactory,
 				HomeyConnectionTestService,
 				HomeyMappingLoaderService,
@@ -114,6 +121,7 @@ describe('DevicesHomeyPlugin', () => {
 			provide: HOMEY_CONNECTOR_FACTORY,
 			useExisting: HomeyLocalConnectorFactory,
 		});
+		expect(imports).toContain(NestConfigModule);
 		expect(controllers).toContain(HomeyTestConnectionController);
 		expect(controllers).toContain(HomeyDevicesController);
 		expect(controllers).toContain(HomeyMappingPreviewController);
