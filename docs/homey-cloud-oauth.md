@@ -159,6 +159,28 @@ The implementation that follows this record must:
     same serialized mutation boundary, then invalidate and clear tokens plus the selected Homey and disconnect the
     Homey connector before reporting OAuth disconnect success.
 
+### Grant persistence boundary
+
+Task 7.2b adds provider-scoped pending-candidate, active-grant, user-authority, and generation-state tables through the
+incremental `1000000000025-AddHomeyCloudGrants` migration. OAuth token fields are excluded from ordinary TypeORM reads;
+only explicit backend credential-loading methods select them, and no controller or browser DTO exposes those methods.
+The pending table is transaction- and initiating-user-scoped, has a server-capped absolute lifetime and capacity, and is
+swept independently of requests.
+
+The state table also stores a SHA-256 identity derived from the deployment client ID, client secret, exact redirect URL,
+and requested scopes. Every authorization-context, credential-loading, activation, refresh and disconnect path compares
+the current non-secret fingerprint with the persisted value. A change clears pending and active grants and advances both
+generations before stale credentials can be used; the client secret itself is never persisted in the state table.
+
+One serialized mutation service owns candidate staging, cancellation, expiry and activation plus active-grant refresh,
+disconnect and configuration invalidation. Activation and refresh use generation and grant-identity compare-and-swap
+checks so a late provider result cannot revive cleared credentials or overwrite a replacement. Administrator demotion
+and removal participate in the same user database transaction through the additive user-lifecycle mutation boundary;
+this advances the user's authority generation and clears credentials authorized by that user before the account change
+commits. The provider factory-reset handler clears pending grants, active credentials and user-authority metadata before
+the core device and user reset handlers run, while advancing both persisted generations. Provider exchange, Homey
+selection and HTTP routes remain intentionally absent until Tasks 7.2c and 7.2d.
+
 The current official client and HTTP references do not document a standards-style token-revocation endpoint. Task 7.2
 must verify the current live/API behavior before claiming remote revocation. Until then, disconnect means local token
 deletion and connector teardown, while the operator can revoke the grant from Homey account controls.

@@ -848,7 +848,7 @@ Task 7.2 is delivered behind disabled cloud mode in reviewable slices:
       generate the SDK authorization URL with candidate auto-refresh disabled; keep only a hash of bounded, single-use
       state; bind it to the initiating user plus authority/active-grant generations; and expire it independently of
       follow-up traffic. No cloud route is exposed by this slice.
-- [ ] **7.2b — Grant persistence and mutation gate:** add incremental storage for pending/active grant metadata and
+- [x] **7.2b — Grant persistence and mutation gate:** add incremental storage for pending/active grant metadata and
       write-only token material, then serialize activation, cancellation, expiry, refresh, disconnect, configuration,
       and user-authority invalidation.
 - [ ] **7.2c — Provider exchange and Homey selection:** exchange the code with a bounded timeout, stage candidate tokens,

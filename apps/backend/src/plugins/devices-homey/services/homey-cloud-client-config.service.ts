@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
@@ -6,6 +8,7 @@ import {
 	HOMEY_CLOUD_CLIENT_ID_ENV,
 	HOMEY_CLOUD_CLIENT_SECRET_ENV,
 	HOMEY_CLOUD_REDIRECT_URL_ENV,
+	HOMEY_CLOUD_SCOPES,
 } from '../devices-homey.constants';
 import { HomeyCloudConfigurationError } from '../errors/homey-cloud-authorization.error';
 
@@ -39,6 +42,19 @@ export class HomeyCloudClientConfigService {
 		this.assertRedirectUrl(redirectUrl);
 
 		return { clientId, clientSecret, redirectUrl };
+	}
+
+	getConfigurationFingerprint(): string | null {
+		try {
+			const configuration = this.getConfiguration();
+			const identity = JSON.stringify({ ...configuration, scopes: HOMEY_CLOUD_SCOPES });
+
+			return createHash('sha256').update(identity).digest('hex');
+		} catch (error) {
+			if (error instanceof HomeyCloudConfigurationError) return null;
+
+			throw error;
+		}
 	}
 
 	private readRequired(key: string): string {

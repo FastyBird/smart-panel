@@ -9,6 +9,8 @@ import { ExtensionsService } from '../../modules/extensions/services/extensions.
 import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
+import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
+import { UserLifecycleMutationRegistryService } from '../../modules/users/services/user-lifecycle-mutation-registry.service';
 
 import { HomeyLocalConnectorFactory } from './connectors/homey-local-connector.factory';
 import { HomeySdkClientFactoryService } from './connectors/homey-sdk.client';
@@ -28,6 +30,7 @@ import { HomeyDevicePlatform } from './platforms/homey-device.platform';
 import { HomeyAdoptionLockService } from './services/homey-adoption-lock.service';
 import { HomeyCloudAuthorizationStateService } from './services/homey-cloud-authorization-state.service';
 import { HomeyCloudClientConfigService } from './services/homey-cloud-client-config.service';
+import { HomeyCloudGrantMutationService } from './services/homey-cloud-grant-mutation.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
 import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
@@ -36,7 +39,7 @@ import { HomeySynchronizerService } from './services/homey-synchronizer.service'
 import { HomeyService } from './services/homey.service';
 
 describe('DevicesHomeyPlugin', () => {
-	it('registers config, entities, discriminators, metadata, Swagger models, and managed lifecycle', () => {
+	it('registers config, entities, discriminators, metadata, Swagger models, and managed lifecycle', async () => {
 		const configMapper = { registerMapping: jest.fn() };
 		const devicesMapper = { registerMapping: jest.fn() };
 		const channelsMapper = { registerMapping: jest.fn() };
@@ -48,6 +51,16 @@ describe('DevicesHomeyPlugin', () => {
 		const platformRegistry = { register: jest.fn() };
 		const homeyService = { pluginName: DEVICES_HOMEY_PLUGIN_NAME, serviceId: 'connector' };
 		const homeyDevicePlatform = { getType: () => DEVICES_HOMEY_TYPE };
+		const userLifecycleMutations = { registerParticipant: jest.fn() };
+		const homeyCloudGrantMutations = { resetForFactory: jest.fn().mockResolvedValue(undefined) };
+		let resetHandler: (() => Promise<{ success: boolean; reason?: string } | null>) | undefined;
+		const factoryResetRegistry = {
+			register: jest.fn(
+				(_name: string, handler: () => Promise<{ success: boolean; reason?: string } | null>, _priority: number) => {
+					resetHandler = handler;
+				},
+			),
+		};
 
 		const plugin = new DevicesHomeyPlugin(
 			configMapper as unknown as PluginsTypeMapperService,
@@ -61,6 +74,9 @@ describe('DevicesHomeyPlugin', () => {
 			homeyService as unknown as HomeyService,
 			platformRegistry as unknown as PlatformRegistryService,
 			homeyDevicePlatform as unknown as HomeyDevicePlatform,
+			userLifecycleMutations as unknown as UserLifecycleMutationRegistryService,
+			homeyCloudGrantMutations as unknown as HomeyCloudGrantMutationService,
+			factoryResetRegistry as unknown as FactoryResetRegistryService,
 		);
 
 		plugin.onModuleInit();
@@ -92,6 +108,11 @@ describe('DevicesHomeyPlugin', () => {
 		);
 		expect(pluginServiceManager.register).toHaveBeenCalledWith(homeyService);
 		expect(platformRegistry.register).toHaveBeenCalledWith(homeyDevicePlatform);
+		expect(userLifecycleMutations.registerParticipant).toHaveBeenCalledWith(homeyCloudGrantMutations);
+		expect(factoryResetRegistry.register).toHaveBeenCalledWith(DEVICES_HOMEY_PLUGIN_NAME, expect.any(Function), 190);
+		if (!resetHandler) throw new Error('Homey factory reset handler was not registered');
+		await expect(resetHandler()).resolves.toEqual({ success: true });
+		expect(homeyCloudGrantMutations.resetForFactory).toHaveBeenCalledTimes(1);
 	});
 
 	it('provides a production SDK-backed connector factory through the transport-neutral token', () => {
@@ -104,6 +125,7 @@ describe('DevicesHomeyPlugin', () => {
 				HomeySdkClientFactoryService,
 				HomeyCloudClientConfigService,
 				HomeyCloudAuthorizationStateService,
+				HomeyCloudGrantMutationService,
 				HomeyLocalConnectorFactory,
 				HomeyConnectionTestService,
 				HomeyMappingLoaderService,
