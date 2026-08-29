@@ -91,6 +91,32 @@ export const ApiCreatedSuccessResponse = <TModel extends Type<any> | (abstract n
 };
 
 /**
+ * Creates a Swagger decorator for a 303 redirect response.
+ * @param description Response description
+ * @param locationExample Clean redirect destination example
+ */
+export const ApiSeeOtherResponse = (description: string, locationExample?: string) => {
+	const locationSchema: Record<string, unknown> = { type: 'string', format: 'uri' };
+
+	if (locationExample) locationSchema.example = locationExample;
+
+	return applyDecorators(
+		ApiResponse({
+			status: 303,
+			description,
+			headers: {
+				Location: {
+					description: 'Clean redirect destination',
+					schema: locationSchema,
+				},
+				'Cache-Control': { schema: { type: 'string', example: 'no-store' } },
+				'Referrer-Policy': { schema: { type: 'string', example: 'no-referrer' } },
+			},
+		}),
+	);
+};
+
+/**
  * Creates a Swagger decorator for successful accepted responses with typed data
  * @param dataModel The model class for the response data
  * @param description Optional description for the response

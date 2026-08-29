@@ -71,6 +71,20 @@ export class HomeyCloudPendingGrantEntity {
 	createdAt!: Date | string;
 }
 
+@Entity('devices_homey_cloud_cancelled_authorizations')
+export class HomeyCloudCancelledAuthorizationEntity {
+	@PrimaryColumn({ type: 'varchar' })
+	transactionId!: string;
+
+	@Index()
+	@Column({ type: 'varchar' })
+	initiatingUserId!: string;
+
+	@Index()
+	@Column({ type: 'integer' })
+	expiresAt!: number;
+}
+
 @Entity('devices_homey_cloud_active_grants')
 export class HomeyCloudActiveGrantEntity {
 	@PrimaryColumn({ type: 'varchar' })
@@ -92,6 +106,10 @@ export class HomeyCloudActiveGrantEntity {
 
 	@Column({ type: 'integer' })
 	configurationGeneration!: number;
+
+	@Index()
+	@Column({ type: 'varchar', nullable: true })
+	sourceTransactionId!: string | null;
 
 	@Column({ type: 'varchar' })
 	selectedHomeyId!: string;

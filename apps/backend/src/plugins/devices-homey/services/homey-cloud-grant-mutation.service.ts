@@ -9,6 +9,7 @@ import { UserRole } from '../../../modules/users/users.constants';
 import {
 	HOMEY_CLOUD_ACTIVE_GRANT_KEY,
 	HOMEY_CLOUD_AUTHORIZATION_STATE_KEY,
+	HOMEY_CLOUD_CANCELLED_AUTHORIZATION_TTL_MS,
 	HOMEY_CLOUD_MAX_PENDING_AUTHORIZATIONS,
 	HOMEY_CLOUD_PENDING_GRANT_CLEANUP_INTERVAL_MS,
 	HOMEY_CLOUD_PENDING_GRANT_TTL_MS,
@@ -16,6 +17,7 @@ import {
 import {
 	HomeyCloudActiveGrantEntity,
 	HomeyCloudAuthorizationStateEntity,
+	HomeyCloudCancelledAuthorizationEntity,
 	HomeyCloudPendingGrantEntity,
 	HomeyCloudUserAuthorityEntity,
 } from '../entities/homey-cloud-grant.entity';
@@ -164,6 +166,7 @@ export class HomeyCloudGrantMutationService
 		return this.runMutation(() =>
 			this.dataSource.transaction(async (manager) => {
 				await this.deleteExpiredCandidates(manager, now);
+				await this.deleteExpiredCancellations(manager, now);
 				await this.requireCurrentAuthority(manager, input.initiatingUserId, input.authorityGeneration);
 				const state = await this.reconcileConfigurationInternal(manager);
 
@@ -175,8 +178,12 @@ export class HomeyCloudGrantMutationService
 				}
 
 				const candidates = manager.getRepository(HomeyCloudPendingGrantEntity);
+				const cancelled = await manager.getRepository(HomeyCloudCancelledAuthorizationEntity).existsBy({
+					transactionId: input.transactionId,
+					initiatingUserId: input.initiatingUserId,
+				});
 
-				if (await candidates.existsBy({ transactionId: input.transactionId })) {
+				if (cancelled || (await candidates.existsBy({ transactionId: input.transactionId }))) {
 					throw new HomeyCloudGrantConflictError();
 				}
 				if ((await candidates.count()) >= HOMEY_CLOUD_MAX_PENDING_AUTHORIZATIONS) {
@@ -262,10 +269,66 @@ export class HomeyCloudGrantMutationService
 		});
 	}
 
+	async cancelAuthorization(
+		transactionId: string,
+		initiatingUserId: string,
+		recordCancellation: boolean,
+	): Promise<boolean> {
+		this.assertIdentifier(transactionId);
+		this.assertIdentifier(initiatingUserId);
+		if (typeof recordCancellation !== 'boolean') {
+			throw new TypeError('Homey Cloud authorization cancellation marker is invalid');
+		}
+
+		return this.runMutation(() =>
+			this.dataSource.transaction(async (manager) => {
+				const now = Date.now();
+				await this.deleteExpiredCancellations(manager, now);
+				const cancellations = manager.getRepository(HomeyCloudCancelledAuthorizationEntity);
+				const cancellationExists = await cancellations.existsBy({ transactionId, initiatingUserId });
+
+				if (recordCancellation && !cancellationExists) {
+					await cancellations.insert({
+						transactionId,
+						initiatingUserId,
+						expiresAt: now + HOMEY_CLOUD_CANCELLED_AUTHORIZATION_TTL_MS,
+					});
+				}
+
+				const pending = await manager
+					.getRepository(HomeyCloudPendingGrantEntity)
+					.delete({ transactionId, initiatingUserId });
+				const activeGrants = manager.getRepository(HomeyCloudActiveGrantEntity);
+				const active = await activeGrants.findOneBy({
+					key: HOMEY_CLOUD_ACTIVE_GRANT_KEY,
+					activatedById: initiatingUserId,
+					sourceTransactionId: transactionId,
+				});
+
+				if (active) {
+					const state = await this.getState(manager);
+					await activeGrants.delete({ key: HOMEY_CLOUD_ACTIVE_GRANT_KEY, grantIdentifier: active.grantIdentifier });
+					await this.advanceState(manager, state, {
+						activeGrantGeneration: state.activeGrantGeneration + 1,
+					});
+				}
+
+				return (recordCancellation && !cancellationExists) || pending.affected === 1 || active !== null;
+			}),
+		);
+	}
+
 	async expireCandidates(now = Date.now()): Promise<number> {
 		if (!Number.isSafeInteger(now) || now < 0) throw new TypeError('Homey Cloud cleanup time is invalid');
 
-		return this.runMutation(() => this.dataSource.transaction((manager) => this.deleteExpiredCandidates(manager, now)));
+		return this.runMutation(() =>
+			this.dataSource.transaction(async (manager) => {
+				const candidates = await this.deleteExpiredCandidates(manager, now);
+				const cancellations = await this.deleteExpiredCancellations(manager, now);
+
+				return candidates + cancellations;
+			}),
+		);
 	}
 
 	async activateCandidate(
@@ -373,16 +436,21 @@ export class HomeyCloudGrantMutationService
 			this.dataSource.transaction(async (manager) => {
 				await this.requireAuthorizedUser(manager, actingUserId);
 				const state = await this.reconcileConfigurationInternal(manager);
+				const pendingGrants = manager.getRepository(HomeyCloudPendingGrantEntity);
+				const cancellations = manager.getRepository(HomeyCloudCancelledAuthorizationEntity);
+				const pendingCount = await pendingGrants.count();
+				const cancellationCount = await cancellations.count();
 				const result = await manager
 					.getRepository(HomeyCloudActiveGrantEntity)
 					.delete({ key: HOMEY_CLOUD_ACTIVE_GRANT_KEY });
 
-				await manager.getRepository(HomeyCloudPendingGrantEntity).clear();
+				await pendingGrants.clear();
+				await cancellations.clear();
 				await this.advanceState(manager, state, {
 					activeGrantGeneration: state.activeGrantGeneration + 1,
 				});
 
-				return result.affected === 1;
+				return result.affected === 1 || pendingCount > 0 || cancellationCount > 0;
 			}),
 		);
 	}
@@ -393,6 +461,7 @@ export class HomeyCloudGrantMutationService
 				const state = await this.getState(manager);
 
 				await manager.getRepository(HomeyCloudPendingGrantEntity).clear();
+				await manager.getRepository(HomeyCloudCancelledAuthorizationEntity).clear();
 				await manager.getRepository(HomeyCloudActiveGrantEntity).clear();
 				await this.advanceState(manager, state, {
 					activeGrantGeneration: state.activeGrantGeneration + 1,
@@ -421,6 +490,7 @@ export class HomeyCloudGrantMutationService
 				const state = await this.getState(manager);
 
 				await manager.getRepository(HomeyCloudPendingGrantEntity).clear();
+				await manager.getRepository(HomeyCloudCancelledAuthorizationEntity).clear();
 				await manager.getRepository(HomeyCloudActiveGrantEntity).clear();
 				await manager.getRepository(HomeyCloudUserAuthorityEntity).clear();
 				await this.advanceState(manager, state, {
@@ -452,9 +522,14 @@ export class HomeyCloudGrantMutationService
 	): Promise<ActivationOutcome> {
 		const now = Date.now();
 		await this.deleteExpiredCandidates(manager, now);
+		await this.deleteExpiredCancellations(manager, now);
+		const cancelled = await manager.getRepository(HomeyCloudCancelledAuthorizationEntity).existsBy({
+			transactionId,
+			initiatingUserId,
+		});
 		const candidate = await this.findCandidateWithCredentials(manager, transactionId, initiatingUserId);
 
-		if (!candidate) return { status: 'conflict' };
+		if (cancelled || !candidate) return { status: 'conflict' };
 
 		const user = await manager.getRepository(UserEntity).findOneBy({ id: initiatingUserId });
 		const authority = await manager.getRepository(HomeyCloudUserAuthorityEntity).findOneBy({
@@ -483,6 +558,7 @@ export class HomeyCloudGrantMutationService
 			authorityGeneration,
 			generation: nextGeneration,
 			configurationGeneration: state.configurationGeneration,
+			sourceTransactionId: transactionId,
 			selectedHomeyId,
 			tokenType: candidate.tokenType,
 			accessToken: candidate.accessToken,
@@ -555,6 +631,7 @@ export class HomeyCloudGrantMutationService
 		if (state.configurationFingerprint === configurationFingerprint) return state;
 
 		await manager.getRepository(HomeyCloudPendingGrantEntity).clear();
+		await manager.getRepository(HomeyCloudCancelledAuthorizationEntity).clear();
 		await manager.getRepository(HomeyCloudActiveGrantEntity).clear();
 		const update = {
 			activeGrantGeneration: state.activeGrantGeneration + 1,
@@ -619,6 +696,7 @@ export class HomeyCloudGrantMutationService
 	private async invalidateUserAuthorityInternal(manager: EntityManager, userId: string): Promise<void> {
 		await this.advanceAuthority(manager, userId);
 		await manager.getRepository(HomeyCloudPendingGrantEntity).delete({ initiatingUserId: userId });
+		await manager.getRepository(HomeyCloudCancelledAuthorizationEntity).delete({ initiatingUserId: userId });
 
 		const activeGrants = manager.getRepository(HomeyCloudActiveGrantEntity);
 		const active = await activeGrants.findOneBy({
@@ -637,6 +715,14 @@ export class HomeyCloudGrantMutationService
 
 	private async deleteExpiredCandidates(manager: EntityManager, now: number): Promise<number> {
 		const result = await manager.getRepository(HomeyCloudPendingGrantEntity).delete({
+			expiresAt: LessThanOrEqual(now),
+		});
+
+		return result.affected ?? 0;
+	}
+
+	private async deleteExpiredCancellations(manager: EntityManager, now: number): Promise<number> {
+		const result = await manager.getRepository(HomeyCloudCancelledAuthorizationEntity).delete({
 			expiresAt: LessThanOrEqual(now),
 		});
 

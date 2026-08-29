@@ -854,9 +854,19 @@ Task 7.2 is delivered behind disabled cloud mode in reviewable slices:
 - [x] **7.2c — Provider exchange and Homey selection:** exchange the code with a bounded timeout, stage candidate tokens,
       sanitize eligible Homey choices, support exact transaction-bound selection, authenticate the selected Homey, and
       activate only through the mutation gate.
-- [ ] **7.2d — HTTP authorization surface:** add privileged start/select/cancel/disconnect/reconnect routes plus the
+- [x] **7.2d — HTTP authorization surface:** add privileged start/select/cancel/disconnect/reconnect routes plus the
       state-authorized public callback, clean callback redirect, ingress query-redaction requirements, and the complete
       security/race test matrix.
+
+Task 7.2d exposes the authorization lifecycle without enabling cloud connector mode. Management routes require an owner
+or administrator and preserve initiating-user binding through selection and cancellation. The public callback consumes
+single-use state before exchange, never forwards raw provider errors, and redirects every outcome to the fixed
+same-origin Homey configuration page with no query. An early Fastify hook strips the callback query from downstream
+request-target logging, while `docs/homey-cloud-oauth.md` records the mandatory equivalent redaction at every upstream
+proxy and observability layer. Unit tests lock public-versus-privileged route metadata, exact actor binding, replay and
+provider-error behavior, fixed error mapping, clean redirect headers, and request-target redaction. Explicit
+cancellation retains consumed state until callback completion and persists a bounded transaction tombstone, so it wins
+against provider exchanges and activation commits already in flight.
 
 ### Task 7.3: Implement `HomeyCloudConnector`
 

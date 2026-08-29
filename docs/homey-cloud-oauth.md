@@ -2,15 +2,16 @@
 
 **Status:** Client registration and Homey Cloud access approval pending; deployment contract recorded
 
-**Evidence date:** 2026-08-28
+**Evidence date:** 2026-08-29
 
 **Related task:** `FEATURE-PLUGIN-HOMEY`, Milestone 7
 
 ## Purpose
 
-This record defines the external client-registration and deployment boundary for the Homey Cloud connector before its
-authorization endpoints are implemented. It deliberately contains no client ID, client secret, authorization code,
-token, account identifier, Homey identifier, callback state, or installation address.
+This record defines the external client-registration, authorization, and deployment boundary for the Homey Cloud
+connector. The authorization surface is implemented behind disabled cloud mode while client registration and Homey
+Cloud access approval remain pending. This record deliberately contains no client ID, client secret, authorization
+code, token, account identifier, Homey identifier, callback state, or installation address.
 
 The relevant official references are:
 
@@ -167,6 +168,12 @@ only explicit backend credential-loading methods select them, and no controller 
 The pending table is transaction- and initiating-user-scoped, has a server-capped absolute lifetime and capacity, and is
 swept independently of requests.
 
+Task 7.2d adds short-lived cancellation tombstones and active-grant source-transaction lineage through the incremental
+`1000000000026-AddHomeyCloudAuthorizationCancellations` migration. This makes explicit cancellation authoritative even
+when the callback has consumed its one-time state and a provider request or activation commit is still in flight. A
+cancelled transaction cannot stage or activate credentials, while an activation that serialized first is removed by
+its exact transaction identity without disturbing an older or newer grant.
+
 The state table also stores a SHA-256 identity derived from the deployment client ID, client secret, exact redirect URL,
 and requested scopes. Every authorization-context, credential-loading, activation, refresh and disconnect path compares
 the current non-secret fingerprint with the persisted value. A change clears pending and active grants and advances both
@@ -195,7 +202,54 @@ auto-selected, after a fresh singleton-inventory check, while multiple choices r
 selection. The selected Homey must authenticate over the cloud strategy before the existing mutation gate can atomically
 activate it. Invalid-token, malformed-response, empty-inventory and all-unsupported-inventory failures clear only that
 candidate; transient timeout, rate-limit, and unavailable failures retain it until its original absolute expiry. HTTP
-routes and connector activation remain intentionally absent until Tasks 7.2d and 7.3.
+routes are provided by Task 7.2d; connector activation remains intentionally absent until Task 7.3.
+
+### HTTP authorization surface
+
+All management endpoints require a current Smart Panel owner or administrator. A long-lived credential is accepted only
+when it is associated with such a user; the mutation gate re-reads that user's authority before activation or
+disconnect. The callback is the sole public endpoint and is authorized only by consuming its exact single-use state.
+
+| Method | Path                                                                                  | Purpose                                                                                 |
+| ------ | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `POST` | `/api/v1/plugins/devices-homey/oauth/authorize`                                        | Start authorization and return the provider URL, opaque transaction ID, and expiry.     |
+| `GET`  | `/api/v1/plugins/devices-homey/oauth/callback`                                         | Consume state, exchange the code, then issue a query-free `303` redirect.                |
+| `GET`  | `/api/v1/plugins/devices-homey/oauth/transactions/{transactionId}/homeys`             | List sanitized eligible Homeys for the initiating user's pending transaction.           |
+| `POST` | `/api/v1/plugins/devices-homey/oauth/select`                                           | Select and activate one exact eligible Homey.                                            |
+| `POST` | `/api/v1/plugins/devices-homey/oauth/cancel`                                           | Clear one pending transaction owned by the initiating user.                              |
+| `POST` | `/api/v1/plugins/devices-homey/oauth/disconnect`                                       | Clear the active local grant reference and all pending authorization transactions.       |
+| `POST` | `/api/v1/plugins/devices-homey/oauth/reconnect`                                        | Start replacement authorization while preserving the current grant until activation.    |
+
+The authorization-start response is the only browser-facing source of the opaque transaction ID. The admin client must
+retain it in page-scoped storage before navigating to Homey. The callback redirects to the fixed same-origin
+`/config/plugins/devices-homey-plugin` page on success, cancellation, invalid/replayed state, or provider failure. It
+does not place the code, state, provider error, transaction ID, Homey ID, or outcome in the redirect URL. Responses use
+`Cache-Control: no-store`, `Pragma: no-cache`, and `Referrer-Policy: no-referrer`.
+
+### Callback request-target redaction
+
+Smart Panel's earliest Fastify request hook removes the callback query from the current and original request-target
+fields after Fastify has parsed the query but before guards, exception filters, or application loggers can inspect it.
+This protects application-owned logging. It cannot retroactively protect a reverse proxy, load balancer, ingress,
+firewall, APM agent, or hosting platform that records the request before forwarding it.
+
+Every upstream layer must therefore log the callback pathname only. For nginx, define a dedicated access-log format in
+the `http` context that uses `$uri` instead of `$request_uri` or `$request`, then apply it to the exact callback location:
+
+```nginx
+log_format homey_oauth_no_query '$remote_addr - $request_method $uri $server_protocol $status';
+
+location = /api/v1/plugins/devices-homey/oauth/callback {
+    access_log /var/log/nginx/homey-oauth-access.log homey_oauth_no_query;
+    proxy_pass http://smart_panel_backend;
+}
+```
+
+Equivalent proxy or observability rules must drop or redact the entire query before access logging, tracing, error-page
+capture, analytics, and request replay. Redacting only `code` is insufficient: `state`, `error`, `error_description`,
+`error_uri`, and future provider parameters are also excluded. Do not enable request-target debug logging while testing
+the callback. Verify the effective upstream log after deployment with disposable authorization data before enabling
+cloud mode.
 
 The current official client and HTTP references do not document a standards-style token-revocation endpoint. Task 7.2
 must verify the current live/API behavior before claiming remote revocation. Until then, disconnect means local token

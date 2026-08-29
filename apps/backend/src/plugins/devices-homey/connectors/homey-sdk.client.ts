@@ -431,7 +431,7 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 			throw new HomeyCloudSdkProtocolError();
 		}
 
-		const homeyHost = url.hostname.endsWith(HOMEY_CLOUD_HOMEY_HOST_SUFFIX)
+		const providerSubdomain = url.hostname.endsWith(HOMEY_CLOUD_HOMEY_HOST_SUFFIX)
 			? url.hostname.slice(0, -HOMEY_CLOUD_HOMEY_HOST_SUFFIX.length)
 			: '';
 
@@ -443,7 +443,7 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 			url.pathname !== '/' ||
 			url.search ||
 			url.hash ||
-			!this.isDnsLabel(homeyHost)
+			!this.isDnsLabel(providerSubdomain)
 		) {
 			throw new HomeyCloudSdkProtocolError();
 		}

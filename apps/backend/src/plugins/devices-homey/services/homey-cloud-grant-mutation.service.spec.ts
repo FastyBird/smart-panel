@@ -10,6 +10,7 @@ import {
 import {
 	HomeyCloudActiveGrantEntity,
 	HomeyCloudAuthorizationStateEntity,
+	HomeyCloudCancelledAuthorizationEntity,
 	HomeyCloudPendingGrantEntity,
 	HomeyCloudUserAuthorityEntity,
 } from '../entities/homey-cloud-grant.entity';
@@ -36,6 +37,7 @@ describe('HomeyCloudGrantMutationService', () => {
 				HomeyCloudAuthorizationStateEntity,
 				HomeyCloudUserAuthorityEntity,
 				HomeyCloudPendingGrantEntity,
+				HomeyCloudCancelledAuthorizationEntity,
 				HomeyCloudActiveGrantEntity,
 			],
 			synchronize: true,
@@ -174,6 +176,26 @@ describe('HomeyCloudGrantMutationService', () => {
 		await expect(service.loadActiveGrantCredentials()).resolves.toBeNull();
 	});
 
+	it('records cancellation before a callback can stage credentials', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		const candidate = candidateInput(context, 'in-flight-transaction', token('in-flight'));
+
+		await expect(service.cancelAuthorization(candidate.transactionId, administratorId, true)).resolves.toBe(true);
+		await expect(service.cancelAuthorization(candidate.transactionId, administratorId, false)).resolves.toBe(false);
+		await expect(service.stageCandidate(candidate)).rejects.toThrow(HomeyCloudGrantConflictError);
+		await expect(dataSource.getRepository(HomeyCloudPendingGrantEntity).count()).resolves.toBe(0);
+	});
+
+	it('removes a grant activated by an in-flight callback before cancellation commits', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		const transactionId = 'late-cancelled-transaction';
+		await service.stageCandidate(candidateInput(context, transactionId, token('late-cancelled')));
+		await service.activateCandidate(transactionId, administratorId, 'homey-one');
+
+		await expect(service.cancelAuthorization(transactionId, administratorId, true)).resolves.toBe(true);
+		await expect(service.loadActiveGrantCredentials()).resolves.toBeNull();
+	});
+
 	it('expires abandoned candidates at their original absolute deadline', async () => {
 		const context = await service.getAuthorizationContext(administratorId);
 		const expiresAt = Date.now() + 100;
@@ -221,6 +243,16 @@ describe('HomeyCloudGrantMutationService', () => {
 		await expect(service.loadActiveGrantCredentials()).resolves.not.toBeNull();
 		await expect(service.disconnect(administratorId)).resolves.toBe(true);
 		await expect(service.loadActiveGrantCredentials()).resolves.toBeNull();
+	});
+
+	it('reports and clears staged authorization state when disconnecting without an active grant', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		await service.stageCandidate(candidateInput(context, 'pending-disconnect', token('pending-disconnect')));
+		await service.cancelAuthorization('cancelled-disconnect', administratorId, true);
+
+		await expect(service.disconnect(administratorId)).resolves.toBe(true);
+		await expect(dataSource.getRepository(HomeyCloudPendingGrantEntity).count()).resolves.toBe(0);
+		await expect(dataSource.getRepository(HomeyCloudCancelledAuthorizationEntity).count()).resolves.toBe(0);
 	});
 
 	it('rolls back configuration invalidation when its configuration commit fails', async () => {

@@ -95,6 +95,54 @@ describe('HomeyCloudAuthorizationStateService', () => {
 		expect(first.transactionId).not.toBe(second.transactionId);
 	});
 
+	it('cancels only the pending state matching both transaction and initiating user', () => {
+		const flow = service.create(start);
+		const state = new URL(flow.authorizeUrl).searchParams.get('state');
+
+		expect(service.cancel(flow.transactionId, 'other-user')).toEqual({ changed: false, matched: false });
+		expect(service.cancel('other-transaction', start.initiatingUserId)).toEqual({ changed: false, matched: false });
+		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toEqual({ changed: true, matched: true });
+		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toEqual({ changed: false, matched: false });
+		expect(() => service.consume(state)).toThrow(HomeyCloudAuthorizationStateError);
+	});
+
+	it('keeps consumed state cancellable until its callback operation completes', () => {
+		const flow = service.create(start);
+		const state = new URL(flow.authorizeUrl).searchParams.get('state');
+
+		service.consume(state);
+
+		expect(() => service.consume(state)).toThrow(HomeyCloudAuthorizationStateError);
+		expect(service.cancel(flow.transactionId, 'other-user')).toEqual({ changed: false, matched: false });
+		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toEqual({ changed: true, matched: true });
+		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toEqual({ changed: false, matched: true });
+
+		service.complete(flow.transactionId, start.initiatingUserId);
+
+		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toEqual({ changed: false, matched: false });
+	});
+
+	it('clears pending and consumed states immediately', () => {
+		const pending = service.create(start);
+		const consumed = service.create({ ...start, initiatingUserId: 'other-admin' });
+		const pendingState = new URL(pending.authorizeUrl).searchParams.get('state');
+		const consumedState = new URL(consumed.authorizeUrl).searchParams.get('state');
+
+		service.consume(consumedState);
+
+		expect(service.clear()).toBe(2);
+		expect(service.clear()).toBe(0);
+		expect(() => service.consume(pendingState)).toThrow(HomeyCloudAuthorizationStateError);
+		expect(() => service.consume(consumedState)).toThrow(HomeyCloudAuthorizationStateError);
+	});
+
+	it.each([
+		['', start.initiatingUserId],
+		['transaction-id', ''],
+	])('rejects an invalid cancellation context', (transactionId, initiatingUserId) => {
+		expect(() => service.cancel(transactionId, initiatingUserId)).toThrow(TypeError);
+	});
+
 	it('expires state independently of another request', () => {
 		const state = new URL(service.create(start).authorizeUrl).searchParams.get('state');
 
