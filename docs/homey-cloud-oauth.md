@@ -189,7 +189,7 @@ delegation token, its SDK-provided remote URL must be a credential-free, path-fr
 `*.connect.athom.com` host label; redirects are disabled. Retryable HTTP status is captured before the child SDK can
 normalize its discovery response into a status-free error. The service validates and stages only the normalized token
 fields, then recreates an isolated candidate client from the exact transaction for Homey listing and selection.
-Browser-facing choices contain only a bounded stable ID and sanitized name. Unsupported entries are filtered, while
+Browser-facing choices contain only a bounded, Unicode-control-free stable ID and sanitized name. Unsupported entries are filtered, while
 duplicate eligible entries fail closed; an inventory with no eligible Homeys is terminal. One eligible Homey is
 auto-selected, after a fresh singleton-inventory check, while multiple choices require an exact transaction-bound
 selection. The selected Homey must authenticate over the cloud strategy before the existing mutation gate can atomically

@@ -32,6 +32,7 @@ import {
 
 const SUPPORTED_API_VERSIONS = new Set([1, 2, 3]);
 const SUPPORTED_PLATFORMS = new Set(['cloud', 'local']);
+const UNICODE_CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
 
 class ProviderTimeoutError extends Error {}
 
@@ -424,11 +425,7 @@ export class HomeyCloudAuthorizationService {
 			typeof input.code !== 'string' ||
 			input.code.length === 0 ||
 			input.code.length > HOMEY_CLOUD_MAX_AUTHORIZATION_CODE_LENGTH ||
-			[...input.code].some((character) => {
-				const codePoint = character.codePointAt(0) ?? 0;
-
-				return codePoint <= 32 || codePoint === 127;
-			})
+			[...input.code].some((character) => /\s/u.test(character) || this.isControlCharacter(character))
 		) {
 			throw new TypeError('Homey Cloud authorization code is invalid');
 		}
@@ -447,7 +444,7 @@ export class HomeyCloudAuthorizationService {
 	}
 
 	private assertIdentifier(value: string): void {
-		if (typeof value !== 'string' || value.trim().length === 0) {
+		if (typeof value !== 'string' || value.trim().length === 0 || this.containsControlCharacter(value)) {
 			throw new TypeError('Homey Cloud authorization identifier is invalid');
 		}
 	}
@@ -464,8 +461,6 @@ export class HomeyCloudAuthorizationService {
 	}
 
 	private isControlCharacter(character: string): boolean {
-		const codePoint = character.codePointAt(0) ?? 0;
-
-		return codePoint <= 31 || codePoint === 127;
+		return UNICODE_CONTROL_PATTERN.test(character);
 	}
 }

@@ -135,6 +135,17 @@ describe('HomeyCloudAuthorizationService', () => {
 		expect(grantMutations.activateCandidate).not.toHaveBeenCalled();
 	});
 
+	it('removes Unicode controls from names and rejects identifiers containing them', async () => {
+		candidateClient.getHomeys.mockResolvedValue([
+			homey('homey-one', 'Office\u0085\u009bName'),
+			homey('homey\u0085two', 'Unsafe identifier'),
+		]);
+
+		await expect(service.listCandidateHomeys(exchange.transactionId, exchange.initiatingUserId)).resolves.toEqual([
+			{ id: 'homey-one', name: 'Office Name' },
+		]);
+	});
+
 	it('auto-selects the only eligible Homey after authenticating it', async () => {
 		await expect(service.exchangeAuthorizationCode(exchange)).resolves.toEqual({
 			status: 'activated',
