@@ -79,25 +79,40 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 		expect(grantMutations.persistRefresh).not.toHaveBeenCalled();
 	});
 
-	it('disposes a session when the active grant changes during cloud authentication', async () => {
+	it('disposes a stale session and opens the replacement grant after cloud authentication', async () => {
 		const replacement = {
 			...credentials,
 			generation: 5,
 			grantIdentifier: 'grant-2',
 			selectedHomeyId: 'homey-2',
+			token: { ...credentials.token, accessToken: 'replacement-access-token' },
 		};
+		const replacementClient = sdkClient('homey-2');
+		const replacementProvider = providerClient();
+		replacementProvider.createHomeyClient.mockResolvedValue(replacementClient);
 		grantMutations.loadActiveGrantCredentials.mockResolvedValueOnce(credentials).mockResolvedValue(replacement);
+		sdkClientFactory.createCloudProviderClient.mockImplementation(({ token }) =>
+			token?.accessToken === 'replacement-access-token' ? replacementProvider : provider,
+		);
 
-		await expect(service.createClient()).rejects.toMatchObject({
-			category: HomeyConnectorErrorCategory.AUTHENTICATION,
-			operation: HomeyConnectorOperation.CONNECT,
-		});
+		await expect(service.createClient()).resolves.toBe(replacementClient);
 		expect((client.disconnect as jest.Mock).mock.calls).toHaveLength(1);
 		expect((client.destroy as jest.Mock).mock.calls).toHaveLength(1);
+		expect(replacementProvider.createHomeyClient.mock.calls[0]).toEqual(['homey-2', expect.any(AbortSignal), false]);
 	});
 
 	it('bounds stale-session disconnect and always destroys the client', async () => {
 		jest.useFakeTimers({ doNotFake: ['Date'] });
+		const replacement = {
+			...credentials,
+			generation: 5,
+			grantIdentifier: 'grant-2',
+			selectedHomeyId: 'homey-2',
+			token: { ...credentials.token, accessToken: 'replacement-access-token' },
+		};
+		const replacementClient = sdkClient('homey-2');
+		const replacementProvider = providerClient();
+		replacementProvider.createHomeyClient.mockResolvedValue(replacementClient);
 		let resolveCleanupStarted = (): void => undefined;
 		const cleanupStarted = new Promise<void>((resolve) => {
 			resolveCleanupStarted = resolve;
@@ -107,21 +122,16 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 
 			return new Promise<void>(() => undefined);
 		});
-		grantMutations.loadActiveGrantCredentials.mockResolvedValueOnce(credentials).mockResolvedValue({
-			...credentials,
-			generation: 5,
-			grantIdentifier: 'grant-2',
-		});
+		grantMutations.loadActiveGrantCredentials.mockResolvedValueOnce(credentials).mockResolvedValue(replacement);
+		sdkClientFactory.createCloudProviderClient.mockImplementation(({ token }) =>
+			token?.accessToken === 'replacement-access-token' ? replacementProvider : provider,
+		);
 
 		const pending = service.createClient();
-		const rejection = expect(pending).rejects.toMatchObject({
-			category: HomeyConnectorErrorCategory.AUTHENTICATION,
-			operation: HomeyConnectorOperation.CONNECT,
-		});
 		await cleanupStarted;
 		expect((client.destroy as jest.Mock).mock.calls).toHaveLength(0);
 		await jest.advanceTimersByTimeAsync(HOMEY_CLOUD_PROVIDER_TIMEOUT_MS);
-		await rejection;
+		await expect(pending).resolves.toBe(replacementClient);
 		expect((client.disconnect as jest.Mock).mock.calls).toHaveLength(1);
 		expect((client.destroy as jest.Mock).mock.calls).toHaveLength(1);
 	});

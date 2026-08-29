@@ -81,7 +81,7 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 		try {
 			return await this.authenticate(prepared);
 		} catch (error) {
-			if (!this.isInvalidToken(error)) throw error;
+			if (!this.isRecoverableAuthenticationError(error)) throw error;
 
 			const active = await this.loadActiveCredentials();
 
@@ -90,6 +90,7 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 
 				return await this.createClientForGrant(active, false);
 			}
+			if (!this.isInvalidToken(error)) throw error;
 			if (refreshed || prepared.token.refreshToken === null) throw error;
 
 			const result = await this.refreshOrReload(prepared);
@@ -111,7 +112,7 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 		try {
 			return await this.authenticate(credentials);
 		} catch (error) {
-			if (!this.isInvalidToken(error) && !(error instanceof HomeyCloudGrantConflictError)) throw error;
+			if (!this.isRecoverableAuthenticationError(error)) throw error;
 
 			const active = await this.loadActiveCredentials();
 
@@ -259,6 +260,10 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 
 	private isInvalidToken(error: unknown): boolean {
 		return error instanceof HomeyCloudProviderError && error.category === HomeyCloudProviderErrorCategory.INVALID_TOKEN;
+	}
+
+	private isRecoverableAuthenticationError(error: unknown): boolean {
+		return this.isInvalidToken(error) || error instanceof HomeyCloudGrantConflictError;
 	}
 
 	private isSdkClient(value: unknown): value is HomeySdkClient {
