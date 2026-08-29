@@ -229,7 +229,7 @@ describe('HomeyCloudAuthorizationService', () => {
 		expect(grantMutations.cancelCandidate).not.toHaveBeenCalled();
 	});
 
-	it.each(['EAI_AGAIN', 'ENOTFOUND'])(
+	it.each(['EAI_AGAIN', 'ENOTFOUND', 'UND_ERR_SOCKET'])(
 		'retains the candidate when native fetch wraps network error %s',
 		async (code) => {
 			candidateClient.getHomeys.mockRejectedValue(

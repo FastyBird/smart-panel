@@ -389,7 +389,15 @@ export class HomeyCloudAuthorizationService {
 		}
 		if (
 			codes.some((code) =>
-				['EAI_AGAIN', 'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'ENOTFOUND'].includes(code),
+				[
+					'EAI_AGAIN',
+					'ECONNREFUSED',
+					'ECONNRESET',
+					'EHOSTUNREACH',
+					'ENETUNREACH',
+					'ENOTFOUND',
+					'UND_ERR_SOCKET',
+				].includes(code),
 			)
 		) {
 			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.UNAVAILABLE, operation);
