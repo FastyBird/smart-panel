@@ -41,6 +41,12 @@ export const HOMEY_RECONNECT_JITTER_RATIO = 0.2;
 
 export const HOMEY_CLOUD_AUTHORIZE_URL = 'https://api.athom.com/oauth2/authorise';
 
+export const HOMEY_CLOUD_API_URL = 'https://api.athom.com';
+
+export const HOMEY_CLOUD_TOKEN_URL = `${HOMEY_CLOUD_API_URL}/oauth2/token`;
+
+export const HOMEY_CLOUD_HOMEY_HOST_SUFFIX = '.connect.athom.com';
+
 export const HOMEY_CLOUD_CALLBACK_PATH = '/api/v1/plugins/devices-homey/oauth/callback';
 
 export const HOMEY_CLOUD_CLIENT_ID_ENV = 'FB_HOMEY_CLOUD_CLIENT_ID';
@@ -67,6 +73,16 @@ export const HOMEY_CLOUD_ACTIVE_GRANT_KEY = 'primary';
 export const HOMEY_CLOUD_PENDING_GRANT_TTL_MS = 10 * 60 * 1000;
 
 export const HOMEY_CLOUD_PENDING_GRANT_CLEANUP_INTERVAL_MS = 60 * 1000;
+
+export const HOMEY_CLOUD_PROVIDER_TIMEOUT_MS = 10 * 1000;
+
+export const HOMEY_CLOUD_MAX_AUTHORIZATION_CODE_LENGTH = 4096;
+
+export const HOMEY_CLOUD_MAX_TOKEN_LENGTH = 16 * 1024;
+
+export const HOMEY_CLOUD_MAX_HOMEY_ID_LENGTH = 255;
+
+export const HOMEY_CLOUD_MAX_HOMEY_NAME_LENGTH = 120;
 
 export enum HomeyConnectionState {
 	STOPPED = 'stopped',

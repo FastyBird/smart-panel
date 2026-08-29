@@ -70,6 +70,25 @@ describe('HomeyCloudGrantMutationService', () => {
 		});
 	});
 
+	it('revalidates authority and deployment generations before provider exchange', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+
+		await expect(service.validateAuthorizationContext(context)).resolves.toBeUndefined();
+
+		configurationFingerprint = 'configuration-two';
+
+		await expect(service.validateAuthorizationContext(context)).rejects.toThrow(HomeyCloudGrantConflictError);
+	});
+
+	it('rejects provider exchange after the initiating administrator loses authority', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		await service.invalidateUserAuthority(administratorId, async (manager) => {
+			await manager.getRepository(UserEntity).update({ id: administratorId }, { role: UserRole.USER });
+		});
+
+		await expect(service.validateAuthorizationContext(context)).rejects.toThrow(HomeyCloudGrantAuthorityError);
+	});
+
 	it('keeps the active grant until a generation-matched candidate activates atomically', async () => {
 		const firstContext = await service.getAuthorizationContext(administratorId);
 		await service.stageCandidate(candidateInput(firstContext, 'first-transaction', token('first')));
@@ -86,6 +105,19 @@ describe('HomeyCloudGrantMutationService', () => {
 			...replacement,
 			token: token('replacement'),
 		});
+		await expect(dataSource.getRepository(HomeyCloudPendingGrantEntity).count()).resolves.toBe(0);
+	});
+
+	it('clears a pending candidate before provider access when another activation advances the grant generation', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		await service.stageCandidate(candidateInput(context, 'winning-transaction', token('winning')));
+		await service.stageCandidate(candidateInput(context, 'stale-transaction', token('stale')));
+
+		await service.activateCandidate('winning-transaction', administratorId, 'homey-one');
+
+		await expect(service.loadCandidateCredentials('stale-transaction', administratorId)).rejects.toThrow(
+			HomeyCloudGrantConflictError,
+		);
 		await expect(dataSource.getRepository(HomeyCloudPendingGrantEntity).count()).resolves.toBe(0);
 	});
 

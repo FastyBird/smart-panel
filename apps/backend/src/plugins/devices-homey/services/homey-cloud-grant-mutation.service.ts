@@ -83,6 +83,10 @@ type ActivationOutcome =
 	| { readonly status: 'activated'; readonly grant: HomeyCloudActiveGrantReference }
 	| { readonly status: 'authority' | 'conflict' };
 
+type CandidateCredentialsOutcome =
+	| { readonly status: 'loaded'; readonly candidate: HomeyCloudCandidateCredentials }
+	| { readonly status: 'authority' | 'conflict' };
+
 @Injectable()
 export class HomeyCloudGrantMutationService
 	implements OnApplicationBootstrap, OnModuleDestroy, UserLifecycleMutationParticipant
@@ -125,6 +129,24 @@ export class HomeyCloudGrantMutationService
 					configurationGeneration: state.configurationGeneration,
 					initiatingUserId,
 				};
+			}),
+		);
+	}
+
+	async validateAuthorizationContext(context: HomeyCloudAuthorizationContext): Promise<void> {
+		this.assertAuthorizationContext(context);
+
+		await this.runMutation(() =>
+			this.dataSource.transaction(async (manager) => {
+				await this.requireCurrentAuthority(manager, context.initiatingUserId, context.authorityGeneration);
+				const state = await this.reconcileConfigurationInternal(manager);
+
+				if (
+					state.activeGrantGeneration !== context.activeGrantGeneration ||
+					state.configurationGeneration !== context.configurationGeneration
+				) {
+					throw new HomeyCloudGrantConflictError();
+				}
 			}),
 		);
 	}
@@ -189,18 +211,41 @@ export class HomeyCloudGrantMutationService
 		this.assertIdentifier(transactionId);
 		this.assertIdentifier(initiatingUserId);
 
-		return this.runMutation(() =>
+		const outcome: CandidateCredentialsOutcome = await this.runMutation(() =>
 			this.dataSource.transaction(async (manager) => {
 				const now = Date.now();
-				await this.reconcileConfigurationInternal(manager);
+				const state = await this.reconcileConfigurationInternal(manager);
 				await this.deleteExpiredCandidates(manager, now);
 				const candidate = await this.findCandidateWithCredentials(manager, transactionId, initiatingUserId);
 
-				if (!candidate || candidate.expiresAt <= now) throw new HomeyCloudGrantConflictError();
+				if (!candidate || candidate.expiresAt <= now) return { status: 'conflict' } as const;
 
-				return this.toCandidateCredentials(candidate);
+				const user = await manager.getRepository(UserEntity).findOneBy({ id: initiatingUserId });
+				const authority = await manager.getRepository(HomeyCloudUserAuthorityEntity).findOneBy({
+					userId: initiatingUserId,
+				});
+				const authorized = user !== null && AUTHORIZED_ROLES.includes(user.role);
+				const authorityCurrent = (authority?.generation ?? 0) === candidate.authorityGeneration;
+				const generationsCurrent =
+					state.activeGrantGeneration === candidate.activeGrantGeneration &&
+					state.configurationGeneration === candidate.configurationGeneration;
+
+				if (!authorized || !authorityCurrent || !generationsCurrent) {
+					await manager.getRepository(HomeyCloudPendingGrantEntity).delete({ transactionId, initiatingUserId });
+
+					return { status: !authorized || !authorityCurrent ? 'authority' : 'conflict' } as const;
+				}
+
+				return { status: 'loaded', candidate: this.toCandidateCredentials(candidate) } as const;
 			}),
 		);
+
+		if (outcome.status !== 'loaded') {
+			if (outcome.status === 'authority') throw new HomeyCloudGrantAuthorityError();
+			throw new HomeyCloudGrantConflictError();
+		}
+
+		return outcome.candidate;
 	}
 
 	async cancelCandidate(transactionId: string, initiatingUserId: string): Promise<boolean> {
@@ -676,12 +721,16 @@ export class HomeyCloudGrantMutationService
 
 	private assertCandidate(input: HomeyCloudCandidateInput): void {
 		this.assertIdentifier(input.transactionId);
-		this.assertIdentifier(input.initiatingUserId);
 		this.assertIdentifier(input.redirectUrl);
-		this.assertGeneration(input.authorityGeneration);
-		this.assertGeneration(input.activeGrantGeneration);
-		this.assertGeneration(input.configurationGeneration);
+		this.assertAuthorizationContext(input);
 		this.assertToken(input.token);
+	}
+
+	private assertAuthorizationContext(context: HomeyCloudAuthorizationContext): void {
+		this.assertIdentifier(context.initiatingUserId);
+		this.assertGeneration(context.authorityGeneration);
+		this.assertGeneration(context.activeGrantGeneration);
+		this.assertGeneration(context.configurationGeneration);
 	}
 
 	private assertToken(token: HomeyCloudTokenMaterial): void {

@@ -178,8 +178,24 @@ checks so a late provider result cannot revive cleared credentials or overwrite 
 and removal participate in the same user database transaction through the additive user-lifecycle mutation boundary;
 this advances the user's authority generation and clears credentials authorized by that user before the account change
 commits. The provider factory-reset handler clears pending grants, active credentials and user-authority metadata before
-the core device and user reset handlers run, while advancing both persisted generations. Provider exchange, Homey
-selection and HTTP routes remain intentionally absent until Tasks 7.2c and 7.2d.
+the core device and user reset handlers run, while advancing both persisted generations.
+
+Task 7.2c adds the provider boundary behind disabled cloud mode. It revalidates the initiating authority and deployment
+generations before sending the authorization code. The factory rejects SDK API-base overrides unless they resolve to the
+exact Athom API origin. Authorization-code exchange uses the pinned Athom token endpoint, while account requests validate
+their final prepared origin before dispatch; all provider operations consume the authorization service's abort signal and
+have a bounded deadline through complete response-body consumption. Before child authentication can mint and send a
+delegation token, its SDK-provided remote URL must be a credential-free, path-free HTTPS endpoint on one exact
+`*.connect.athom.com` host label; redirects are disabled. Retryable HTTP status is captured before the child SDK can
+normalize its discovery response into a status-free error. The service validates and stages only the normalized token
+fields, then recreates an isolated candidate client from the exact transaction for Homey listing and selection.
+Browser-facing choices contain only a bounded, Unicode-control-free stable ID and sanitized name. Unsupported entries are filtered, while
+duplicate eligible entries fail closed; an inventory with no eligible Homeys is terminal. One eligible Homey is
+auto-selected, after a fresh singleton-inventory check, while multiple choices require an exact transaction-bound
+selection. The selected Homey must authenticate over the cloud strategy before the existing mutation gate can atomically
+activate it. Invalid-token, malformed-response, empty-inventory and all-unsupported-inventory failures clear only that
+candidate; transient timeout, rate-limit, and unavailable failures retain it until its original absolute expiry. HTTP
+routes and connector activation remain intentionally absent until Tasks 7.2d and 7.3.
 
 The current official client and HTTP references do not document a standards-style token-revocation endpoint. Task 7.2
 must verify the current live/API behavior before claiming remote revocation. Until then, disconnect means local token
