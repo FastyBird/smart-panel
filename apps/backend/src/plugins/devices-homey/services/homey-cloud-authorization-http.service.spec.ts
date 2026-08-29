@@ -20,7 +20,7 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 		transactionId: 'transaction-1',
 	};
 	let authorizationState: jest.Mocked<
-		Pick<HomeyCloudAuthorizationStateService, 'cancel' | 'complete' | 'consume' | 'create'>
+		Pick<HomeyCloudAuthorizationStateService, 'cancel' | 'clear' | 'complete' | 'consume' | 'create'>
 	>;
 	let authorization: jest.Mocked<
 		Pick<HomeyCloudAuthorizationService, 'exchangeAuthorizationCode' | 'listCandidateHomeys' | 'selectHomey'>
@@ -32,7 +32,13 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 	let service: HomeyCloudAuthorizationHttpService;
 
 	beforeEach(() => {
-		authorizationState = { cancel: jest.fn(), complete: jest.fn(), consume: jest.fn(), create: jest.fn() };
+		authorizationState = {
+			cancel: jest.fn(),
+			clear: jest.fn().mockReturnValue(0),
+			complete: jest.fn(),
+			consume: jest.fn(),
+			create: jest.fn(),
+		};
 		authorization = {
 			exchangeAuthorizationCode: jest.fn(),
 			listCandidateHomeys: jest.fn(),
@@ -161,6 +167,25 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 		expect(grantMutations.cancelAuthorization).toHaveBeenNthCalledWith(1, 'transaction-1', 'admin-user', true);
 		expect(grantMutations.cancelAuthorization).toHaveBeenNthCalledWith(2, 'transaction-1', 'admin-user', true);
 	});
+
+	it.each([
+		{ grantChanged: true, stateCount: 0, expected: true },
+		{ grantChanged: false, stateCount: 2, expected: true },
+		{ grantChanged: false, stateCount: 0, expected: false },
+	])(
+		'reports disconnect changes across persisted and in-memory state',
+		async ({ grantChanged, stateCount, expected }) => {
+			grantMutations.disconnect.mockResolvedValue(grantChanged);
+			authorizationState.clear.mockReturnValue(stateCount);
+
+			await expect(service.disconnect('admin-user')).resolves.toBe(expected);
+			expect(grantMutations.disconnect).toHaveBeenCalledWith('admin-user');
+			expect(authorizationState.clear).toHaveBeenCalledTimes(1);
+			expect(grantMutations.disconnect.mock.invocationCallOrder[0]).toBeLessThan(
+				authorizationState.clear.mock.invocationCallOrder[0],
+			);
+		},
+	);
 
 	it('uses a fixed same-origin result URL and falls back to a relative URL when configuration is absent', () => {
 		clientConfig.getConfiguration.mockReturnValue({

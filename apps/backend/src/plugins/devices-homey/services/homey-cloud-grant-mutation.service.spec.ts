@@ -245,6 +245,16 @@ describe('HomeyCloudGrantMutationService', () => {
 		await expect(service.loadActiveGrantCredentials()).resolves.toBeNull();
 	});
 
+	it('reports and clears staged authorization state when disconnecting without an active grant', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		await service.stageCandidate(candidateInput(context, 'pending-disconnect', token('pending-disconnect')));
+		await service.cancelAuthorization('cancelled-disconnect', administratorId, true);
+
+		await expect(service.disconnect(administratorId)).resolves.toBe(true);
+		await expect(dataSource.getRepository(HomeyCloudPendingGrantEntity).count()).resolves.toBe(0);
+		await expect(dataSource.getRepository(HomeyCloudCancelledAuthorizationEntity).count()).resolves.toBe(0);
+	});
+
 	it('rolls back configuration invalidation when its configuration commit fails', async () => {
 		const context = await service.getAuthorizationContext(administratorId);
 		await service.stageCandidate(candidateInput(context, 'config-transaction', token('active')));

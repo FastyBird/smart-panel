@@ -436,16 +436,21 @@ export class HomeyCloudGrantMutationService
 			this.dataSource.transaction(async (manager) => {
 				await this.requireAuthorizedUser(manager, actingUserId);
 				const state = await this.reconcileConfigurationInternal(manager);
+				const pendingGrants = manager.getRepository(HomeyCloudPendingGrantEntity);
+				const cancellations = manager.getRepository(HomeyCloudCancelledAuthorizationEntity);
+				const pendingCount = await pendingGrants.count();
+				const cancellationCount = await cancellations.count();
 				const result = await manager
 					.getRepository(HomeyCloudActiveGrantEntity)
 					.delete({ key: HOMEY_CLOUD_ACTIVE_GRANT_KEY });
 
-				await manager.getRepository(HomeyCloudPendingGrantEntity).clear();
+				await pendingGrants.clear();
+				await cancellations.clear();
 				await this.advanceState(manager, state, {
 					activeGrantGeneration: state.activeGrantGeneration + 1,
 				});
 
-				return result.affected === 1;
+				return result.affected === 1 || pendingCount > 0 || cancellationCount > 0;
 			}),
 		);
 	}

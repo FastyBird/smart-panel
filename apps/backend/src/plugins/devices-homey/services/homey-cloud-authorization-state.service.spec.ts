@@ -122,6 +122,20 @@ describe('HomeyCloudAuthorizationStateService', () => {
 		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toEqual({ changed: false, matched: false });
 	});
 
+	it('clears pending and consumed states immediately', () => {
+		const pending = service.create(start);
+		const consumed = service.create({ ...start, initiatingUserId: 'other-admin' });
+		const pendingState = new URL(pending.authorizeUrl).searchParams.get('state');
+		const consumedState = new URL(consumed.authorizeUrl).searchParams.get('state');
+
+		service.consume(consumedState);
+
+		expect(service.clear()).toBe(2);
+		expect(service.clear()).toBe(0);
+		expect(() => service.consume(pendingState)).toThrow(HomeyCloudAuthorizationStateError);
+		expect(() => service.consume(consumedState)).toThrow(HomeyCloudAuthorizationStateError);
+	});
+
 	it.each([
 		['', start.initiatingUserId],
 		['transaction-id', ''],

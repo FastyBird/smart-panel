@@ -84,7 +84,10 @@ export class HomeyCloudAuthorizationHttpService {
 	}
 
 	async disconnect(initiatingUserId: string): Promise<boolean> {
-		return this.grantMutations.disconnect(initiatingUserId);
+		const grantChanged = await this.grantMutations.disconnect(initiatingUserId);
+		const stateChanged = this.authorizationState.clear() > 0;
+
+		return grantChanged || stateChanged;
 	}
 
 	getResultUrl(): string {

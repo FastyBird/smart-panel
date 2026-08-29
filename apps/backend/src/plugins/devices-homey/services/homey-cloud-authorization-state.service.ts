@@ -167,10 +167,17 @@ export class HomeyCloudAuthorizationStateService implements OnModuleDestroy {
 		}
 	}
 
-	onModuleDestroy(): void {
-		for (const pending of this.pending.values()) clearTimeout(pending.timer);
+	clear(): number {
+		const count = this.pending.size;
 
+		for (const pending of this.pending.values()) clearTimeout(pending.timer);
 		this.pending.clear();
+
+		return count;
+	}
+
+	onModuleDestroy(): void {
+		this.clear();
 	}
 
 	private assertStart(start: HomeyCloudAuthorizationStart): void {
