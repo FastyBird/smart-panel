@@ -26,9 +26,11 @@ describe('HomeySdkClientFactoryService', () => {
 			expires_in: 3600,
 			grant_type: 'authorization_code',
 		};
-		const authenticateWithAuthorizationCode = jest
-			.spyOn(AthomCloudAPI.prototype, 'authenticateWithAuthorizationCode')
-			.mockResolvedValue(token as unknown as AthomCloudAPI.Token);
+		const fetchMock = jest
+			.spyOn(globalThis, 'fetch')
+			.mockResolvedValue(
+				new Response(JSON.stringify(token), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+			);
 		const homeyApi = {
 			disconnect: jest.fn().mockResolvedValue(undefined),
 			destroy: jest.fn(),
@@ -63,18 +65,51 @@ describe('HomeySdkClientFactoryService', () => {
 			},
 		});
 
-		await expect(provider.exchangeAuthorizationCode('authorization-code')).resolves.toBe(token);
-		await expect(candidateProvider.getHomeys()).resolves.toEqual([
+		const controller = new AbortController();
+
+		await expect(provider.exchangeAuthorizationCode('authorization-code', controller.signal)).resolves.toEqual(token);
+		await expect(candidateProvider.getHomeys(controller.signal)).resolves.toEqual([
 			{ id: 'homey-one', name: 'Home', apiVersion: 3, platform: 'local' },
 		]);
-		await expect(candidateProvider.authenticateHomey('homey-one')).resolves.toBeUndefined();
-		expect(authenticateWithAuthorizationCode).toHaveBeenCalledWith({
-			code: 'authorization-code',
-			removeCodeFromHistory: false,
-		});
+		await expect(candidateProvider.authenticateHomey('homey-one', controller.signal)).resolves.toBeUndefined();
+		const [tokenUrl, tokenRequest] = fetchMock.mock.calls[0];
+
+		expect(tokenUrl).toBe('https://api.athom.com/oauth2/token');
+		expect(tokenRequest?.redirect).toBe('error');
+		expect(tokenRequest?.signal).toBeInstanceOf(AbortSignal);
+		expect(tokenRequest?.body).toBeInstanceOf(URLSearchParams);
+		expect((tokenRequest?.body as URLSearchParams).toString()).toBe(
+			'grant_type=authorization_code&code=authorization-code',
+		);
 		expect(homey.authenticate).toHaveBeenCalledWith({ strategy: 'cloud', reconnect: false });
 		expect(homeyApi.disconnect).toHaveBeenCalledTimes(1);
 		expect(homeyApi.destroy).toHaveBeenCalledTimes(1);
+	});
+
+	it('aborts the underlying authorization-code exchange when its caller cancels', async () => {
+		let requestSignal: AbortSignal | null = null;
+		jest.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => {
+			requestSignal = init?.signal ?? null;
+
+			return new Promise((_resolve, reject) => {
+				requestSignal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), {
+					once: true,
+				});
+			});
+		});
+		const factory = new HomeySdkClientFactoryService();
+		const provider = factory.createCloudProviderClient({
+			clientId: 'deployment-client-id',
+			clientSecret: 'deployment-client-secret',
+			redirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
+		});
+		const controller = new AbortController();
+		const exchange = provider.exchangeAuthorizationCode('authorization-code', controller.signal);
+
+		controller.abort();
+
+		await expect(exchange).rejects.toMatchObject({ code: 'ABORTERROR' });
+		expect(requestSignal?.aborted).toBe(true);
 	});
 
 	it('creates a Homey Cloud authorization URL without exposing the client secret', () => {
@@ -100,7 +135,7 @@ describe('HomeySdkClientFactoryService', () => {
 		expect(result).not.toContain(clientSecret);
 	});
 
-	it('rejects an authorization URL redirected by the SDK base URL environment override', () => {
+	it('rejects authorization and provider clients redirected by the SDK base URL environment override', () => {
 		process.env.ATHOM_CLOUD_API_BASEURL = 'https://untrusted.example.com';
 		const factory = new HomeySdkClientFactoryService();
 
@@ -111,6 +146,13 @@ describe('HomeySdkClientFactoryService', () => {
 				redirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
 				scopes: [...HOMEY_CLOUD_SCOPES],
 				state: 'single-use-random-state',
+			}),
+		).toThrow(HomeyCloudConfigurationError);
+		expect(() =>
+			factory.createCloudProviderClient({
+				clientId: 'deployment-client-id',
+				clientSecret: 'deployment-client-secret',
+				redirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
 			}),
 		).toThrow(HomeyCloudConfigurationError);
 	});

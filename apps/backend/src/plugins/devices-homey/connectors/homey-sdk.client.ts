@@ -2,7 +2,12 @@ import { AthomCloudAPI, HomeyAPI } from 'homey-api';
 
 import { Injectable } from '@nestjs/common';
 
-import { HOMEY_CLOUD_AUTHORIZE_URL } from '../devices-homey.constants';
+import {
+	HOMEY_CLOUD_API_URL,
+	HOMEY_CLOUD_AUTHORIZE_URL,
+	HOMEY_CLOUD_PROVIDER_TIMEOUT_MS,
+	HOMEY_CLOUD_TOKEN_URL,
+} from '../devices-homey.constants';
 import { HomeyCloudConfigurationError } from '../errors/homey-cloud-authorization.error';
 
 export type HomeySdkEventListener = (...arguments_: unknown[]) => Promise<void> | void;
@@ -104,9 +109,9 @@ export interface HomeyCloudProviderHomey {
 }
 
 export interface HomeyCloudProviderClient {
-	authenticateHomey(homeyId: string): Promise<void>;
-	exchangeAuthorizationCode(code: string): Promise<HomeyCloudProviderTokenResponse>;
-	getHomeys(): Promise<readonly HomeyCloudProviderHomey[]>;
+	authenticateHomey(homeyId: string, signal: AbortSignal): Promise<void>;
+	exchangeAuthorizationCode(code: string, signal: AbortSignal): Promise<HomeyCloudProviderTokenResponse>;
+	getHomeys(signal: AbortSignal): Promise<readonly HomeyCloudProviderHomey[]>;
 }
 
 @Injectable()
@@ -168,8 +173,11 @@ export class HomeySdkClientFactoryService implements HomeySdkClientFactory, Home
 			autoRefreshTokens: false,
 			token,
 		});
+		const cloudApiBaseUrl = (cloudApi as unknown as { baseUrl: unknown }).baseUrl;
 
-		return new HomeyCloudProviderSdkClient(cloudApi);
+		this.assertCloudApiEndpoint(cloudApiBaseUrl);
+
+		return new HomeyCloudProviderSdkClient(cloudApi, options.clientId, options.clientSecret);
 	}
 
 	private assertCloudAuthorizationEndpoint(value: string): void {
@@ -185,42 +193,105 @@ export class HomeySdkClientFactoryService implements HomeySdkClientFactory, Home
 			throw new HomeyCloudConfigurationError('Homey Cloud authorization endpoint is invalid');
 		}
 	}
+
+	private assertCloudApiEndpoint(value: unknown): void {
+		if (typeof value !== 'string') {
+			throw new HomeyCloudConfigurationError('Homey Cloud provider endpoint is invalid');
+		}
+
+		let url: URL;
+
+		try {
+			url = new URL(value);
+		} catch {
+			throw new HomeyCloudConfigurationError('Homey Cloud provider endpoint is invalid');
+		}
+
+		if (
+			url.username ||
+			url.password ||
+			url.search ||
+			url.hash ||
+			url.origin + url.pathname !== HOMEY_CLOUD_API_URL + '/'
+		) {
+			throw new HomeyCloudConfigurationError('Homey Cloud provider endpoint is invalid');
+		}
+	}
 }
 
 class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
-	constructor(private readonly cloudApi: AthomCloudAPI) {}
+	private activeSignal: AbortSignal | null = null;
 
-	async exchangeAuthorizationCode(code: string): Promise<HomeyCloudProviderTokenResponse> {
-		return this.cloudApi.authenticateWithAuthorizationCode({ code, removeCodeFromHistory: false });
+	constructor(
+		private readonly cloudApi: AthomCloudAPI,
+		private readonly clientId: string,
+		private readonly clientSecret: string,
+	) {
+		const cloudApiExecutor = this.cloudApi as unknown as HomeyCloudApiExecutor;
+
+		cloudApiExecutor.onCallRequestExecute = ({ request }) => this.executeSdkRequest(request);
 	}
 
-	async getHomeys(): Promise<readonly HomeyCloudProviderHomey[]> {
-		const user = await this.getAuthenticatedUserFresh();
+	async exchangeAuthorizationCode(code: string, signal: AbortSignal): Promise<HomeyCloudProviderTokenResponse> {
+		const response = await this.executeFetch(
+			HOMEY_CLOUD_TOKEN_URL,
+			{
+				method: 'POST',
+				headers: {
+					Authorization: `Basic ${Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64')}`,
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				body: new URLSearchParams({ grant_type: 'authorization_code', code }),
+				redirect: 'error',
+			},
+			signal,
+			HOMEY_CLOUD_PROVIDER_TIMEOUT_MS,
+		);
+		let body: unknown;
 
-		return user.getHomeys().map((homey) => {
-			const properties = homey as unknown as Record<string, unknown>;
+		try {
+			body = await response.json();
+		} catch {
+			throw new HomeyCloudSdkProtocolError();
+		}
 
-			return {
-				id: homey.id,
-				name: properties.name,
-				apiVersion: properties.apiVersion,
-				platform: properties.platform,
-			};
+		if (!response.ok) throw new HomeyCloudSdkHttpError(response.status);
+		if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new HomeyCloudSdkProtocolError();
+
+		return body as HomeyCloudProviderTokenResponse;
+	}
+
+	async getHomeys(signal: AbortSignal): Promise<readonly HomeyCloudProviderHomey[]> {
+		return this.withSignal(signal, async () => {
+			const user = await this.getAuthenticatedUserFresh();
+
+			return user.getHomeys().map((homey) => {
+				const properties = homey as unknown as Record<string, unknown>;
+
+				return {
+					id: homey.id,
+					name: properties.name,
+					apiVersion: properties.apiVersion,
+					platform: properties.platform,
+				};
+			});
 		});
 	}
 
-	async authenticateHomey(homeyId: string): Promise<void> {
-		const user = await this.getAuthenticatedUserFresh();
-		const homey = user.getHomeyById(homeyId) as unknown as {
-			authenticate(options: { reconnect: boolean; strategy: string }): Promise<HomeySdkClient>;
-		};
-		const homeyApi = await homey.authenticate({ strategy: 'cloud', reconnect: false });
+	async authenticateHomey(homeyId: string, signal: AbortSignal): Promise<void> {
+		return this.withSignal(signal, async () => {
+			const user = await this.getAuthenticatedUserFresh();
+			const homey = user.getHomeyById(homeyId) as unknown as {
+				authenticate(options: { reconnect: boolean; strategy: string }): Promise<HomeySdkClient>;
+			};
+			const homeyApi = await homey.authenticate({ strategy: 'cloud', reconnect: false });
 
-		try {
-			await homeyApi.disconnect();
-		} finally {
-			homeyApi.destroy();
-		}
+			try {
+				await homeyApi.disconnect();
+			} finally {
+				homeyApi.destroy();
+			}
+		});
 	}
 
 	private getAuthenticatedUserFresh(): Promise<AthomCloudAPI.User> {
@@ -229,5 +300,125 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 		};
 
 		return cloudApi.getAuthenticatedUser({ $cache: false });
+	}
+
+	private async withSignal<T>(signal: AbortSignal, operation: () => Promise<T>): Promise<T> {
+		if (signal.aborted) throw new HomeyCloudSdkAbortError();
+		if (this.activeSignal) throw new HomeyCloudSdkProtocolError();
+
+		this.activeSignal = signal;
+
+		try {
+			return await operation();
+		} finally {
+			this.activeSignal = null;
+		}
+	}
+
+	private executeSdkRequest(request: HomeyCloudSdkRequest): Promise<Response> {
+		this.assertProviderRequestUrl(request.url);
+
+		return this.executeFetch(
+			request.url,
+			{
+				method: request.method,
+				headers: request.headers,
+				body: request.body,
+				redirect: 'error',
+			},
+			this.activeSignal,
+			request.timeout ?? HOMEY_CLOUD_PROVIDER_TIMEOUT_MS,
+		);
+	}
+
+	private async executeFetch(
+		url: string,
+		options: RequestInit,
+		externalSignal: AbortSignal | null,
+		timeoutMs: number,
+	): Promise<Response> {
+		const controller = new AbortController();
+		let timedOut = false;
+		const abort = (): void => controller.abort(externalSignal?.reason);
+		const timeout = setTimeout(() => {
+			timedOut = true;
+			controller.abort();
+		}, timeoutMs);
+
+		timeout.unref();
+		if (externalSignal?.aborted) abort();
+		else externalSignal?.addEventListener('abort', abort, { once: true });
+
+		try {
+			return await fetch(url, { ...options, signal: controller.signal });
+		} catch (error) {
+			if (timedOut) throw new HomeyCloudSdkTimeoutError();
+			if (controller.signal.aborted) throw new HomeyCloudSdkAbortError();
+
+			throw error;
+		} finally {
+			clearTimeout(timeout);
+			externalSignal?.removeEventListener('abort', abort);
+		}
+	}
+
+	private assertProviderRequestUrl(value: string): void {
+		let url: URL;
+
+		try {
+			url = new URL(value);
+		} catch {
+			throw new HomeyCloudSdkProtocolError();
+		}
+
+		if (url.username || url.password || url.origin !== HOMEY_CLOUD_API_URL) throw new HomeyCloudSdkProtocolError();
+	}
+}
+
+interface HomeyCloudSdkRequest {
+	readonly body?: BodyInit;
+	readonly headers: HeadersInit;
+	readonly method: string;
+	readonly timeout?: number;
+	readonly url: string;
+}
+
+interface HomeyCloudApiExecutor {
+	baseUrl: string;
+	onCallRequestExecute(input: { request: HomeyCloudSdkRequest }): Promise<Response>;
+}
+
+class HomeyCloudSdkHttpError extends Error {
+	readonly statusCode: number;
+
+	constructor(statusCode: number) {
+		super('Homey Cloud provider request failed');
+		this.name = 'HomeyCloudSdkHttpError';
+		this.statusCode = statusCode;
+	}
+}
+
+class HomeyCloudSdkProtocolError extends Error {
+	constructor() {
+		super('Homey Cloud provider response is invalid');
+		this.name = 'HomeyCloudSdkProtocolError';
+	}
+}
+
+class HomeyCloudSdkAbortError extends Error {
+	readonly code = 'ABORTERROR';
+
+	constructor() {
+		super('Homey Cloud provider request was aborted');
+		this.name = 'HomeyCloudSdkAbortError';
+	}
+}
+
+class HomeyCloudSdkTimeoutError extends Error {
+	readonly statusCode = 408;
+
+	constructor() {
+		super('Homey Cloud provider request timed out');
+		this.name = 'HomeyCloudSdkTimeoutError';
 	}
 }

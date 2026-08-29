@@ -79,9 +79,8 @@ export class HomeyCloudAuthorizationService {
 
 		const provider = this.sdkClientFactory.createCloudProviderClient(configuration);
 		const issuedAt = Date.now();
-		const response = await this.runProviderOperation(
-			HomeyCloudProviderOperation.EXCHANGE_CODE,
-			provider.exchangeAuthorizationCode(input.code),
+		const response = await this.runProviderOperation(HomeyCloudProviderOperation.EXCHANGE_CODE, (signal) =>
+			provider.exchangeAuthorizationCode(input.code, signal),
 		);
 		const token = this.normalizeToken(response, issuedAt);
 		const tokenExpiresAt = this.tokenExpiresAt(token);
@@ -161,9 +160,8 @@ export class HomeyCloudAuthorizationService {
 
 			if (!selectedHomey) throw new HomeyCloudSelectionError();
 
-			await this.runProviderOperation(
-				HomeyCloudProviderOperation.AUTHENTICATE_HOMEY,
-				provider.authenticateHomey(selectedHomey.id),
+			await this.runProviderOperation(HomeyCloudProviderOperation.AUTHENTICATE_HOMEY, (signal) =>
+				provider.authenticateHomey(selectedHomey.id, signal),
 			);
 			const grant = await this.grantMutations.activateCandidate(transactionId, initiatingUserId, selectedHomey.id);
 
@@ -195,7 +193,9 @@ export class HomeyCloudAuthorizationService {
 	}
 
 	private async getEligibleHomeys(provider: HomeyCloudProviderClient): Promise<readonly HomeyCloudChoice[]> {
-		const response = await this.runProviderOperation(HomeyCloudProviderOperation.LIST_HOMEYS, provider.getHomeys());
+		const response = await this.runProviderOperation(HomeyCloudProviderOperation.LIST_HOMEYS, (signal) =>
+			provider.getHomeys(signal),
+		);
 		const choices: HomeyCloudChoice[] = [];
 		const identifiers = new Set<string>();
 
@@ -311,14 +311,22 @@ export class HomeyCloudAuthorizationService {
 		return typeof value === 'string' && value.length > 0 && value.length <= HOMEY_CLOUD_MAX_TOKEN_LENGTH ? value : null;
 	}
 
-	private async runProviderOperation<T>(operation: HomeyCloudProviderOperation, promise: Promise<T>): Promise<T> {
+	private async runProviderOperation<T>(
+		operation: HomeyCloudProviderOperation,
+		execute: (signal: AbortSignal) => Promise<T>,
+	): Promise<T> {
 		let timeout: NodeJS.Timeout | null = null;
+		const controller = new AbortController();
+		const timeoutError = new ProviderTimeoutError();
 
 		try {
 			return await Promise.race([
-				promise,
+				execute(controller.signal),
 				new Promise<never>((_resolve, reject) => {
-					timeout = setTimeout(() => reject(new ProviderTimeoutError()), HOMEY_CLOUD_PROVIDER_TIMEOUT_MS);
+					timeout = setTimeout(() => {
+						controller.abort(timeoutError);
+						reject(timeoutError);
+					}, HOMEY_CLOUD_PROVIDER_TIMEOUT_MS);
 					timeout.unref();
 				}),
 			]);

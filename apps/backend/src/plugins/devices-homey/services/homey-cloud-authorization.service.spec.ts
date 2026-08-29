@@ -141,7 +141,8 @@ describe('HomeyCloudAuthorizationService', () => {
 			homey: { id: 'homey-one', name: 'Home' },
 			grant: activeGrant,
 		});
-		expect(candidateClient.authenticateHomey.mock.calls).toEqual([['homey-one']]);
+		expect(candidateClient.authenticateHomey.mock.calls[0]?.[0]).toBe('homey-one');
+		expect(candidateClient.authenticateHomey.mock.calls[0]?.[1]).toBeInstanceOf(AbortSignal);
 		expect(grantMutations.activateCandidate).toHaveBeenCalledWith(
 			exchange.transactionId,
 			exchange.initiatingUserId,
@@ -180,7 +181,17 @@ describe('HomeyCloudAuthorizationService', () => {
 	});
 
 	it('retains the candidate after a bounded retryable provider timeout', async () => {
-		candidateClient.getHomeys.mockReturnValue(new Promise(() => undefined));
+		let providerSignal: AbortSignal | null = null;
+
+		candidateClient.getHomeys.mockImplementation((signal) => {
+			providerSignal = signal;
+
+			return new Promise((_resolve, reject) => {
+				signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { code: 'ABORTERROR' })), {
+					once: true,
+				});
+			});
+		});
 		const result = service.listCandidateHomeys(exchange.transactionId, exchange.initiatingUserId);
 		const expectation = expect(result).rejects.toMatchObject({
 			category: HomeyCloudProviderErrorCategory.TIMEOUT,
@@ -190,6 +201,8 @@ describe('HomeyCloudAuthorizationService', () => {
 		await jest.advanceTimersByTimeAsync(HOMEY_CLOUD_PROVIDER_TIMEOUT_MS);
 
 		await expectation;
+		expect(providerSignal).not.toBeNull();
+		expect((providerSignal as unknown as AbortSignal).aborted).toBe(true);
 		expect(grantMutations.cancelCandidate).not.toHaveBeenCalled();
 	});
 
@@ -246,7 +259,8 @@ describe('HomeyCloudAuthorizationService', () => {
 		await expect(service.selectHomey(exchange.transactionId, exchange.initiatingUserId, 'homey-one')).rejects.toThrow(
 			HomeyCloudGrantConflictError,
 		);
-		expect(candidateClient.authenticateHomey.mock.calls).toEqual([['homey-one']]);
+		expect(candidateClient.authenticateHomey.mock.calls[0]?.[0]).toBe('homey-one');
+		expect(candidateClient.authenticateHomey.mock.calls[0]?.[1]).toBeInstanceOf(AbortSignal);
 		expect(grantMutations.cancelCandidate).not.toHaveBeenCalled();
 	});
 

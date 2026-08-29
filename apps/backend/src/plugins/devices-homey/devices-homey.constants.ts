@@ -41,6 +41,10 @@ export const HOMEY_RECONNECT_JITTER_RATIO = 0.2;
 
 export const HOMEY_CLOUD_AUTHORIZE_URL = 'https://api.athom.com/oauth2/authorise';
 
+export const HOMEY_CLOUD_API_URL = 'https://api.athom.com';
+
+export const HOMEY_CLOUD_TOKEN_URL = `${HOMEY_CLOUD_API_URL}/oauth2/token`;
+
 export const HOMEY_CLOUD_CALLBACK_PATH = '/api/v1/plugins/devices-homey/oauth/callback';
 
 export const HOMEY_CLOUD_CLIENT_ID_ENV = 'FB_HOMEY_CLOUD_CLIENT_ID';
