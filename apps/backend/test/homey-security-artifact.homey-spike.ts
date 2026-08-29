@@ -58,6 +58,7 @@ const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 	'homey-cloud-callback-redaction',
 	'homey-cloud-grant-mutation',
 	'homey-cloud-provider-operation',
+	'homey-cloud-runtime-registry',
 	'homey-cloud-sdk-session',
 	'homey_cloud_active_grants',
 	'homey_cloud_authorization_state',
@@ -76,6 +77,7 @@ const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 	'homey-plugin-connection',
 	'homey-plugin-device-mapping',
 	'homey-reconnect-backoff',
+	'homey-runtime-connector',
 	'homey-shs-burst-command',
 	'homey-shs-credential-rotation',
 	'homey-shs-mapping-control',
@@ -6952,6 +6954,12 @@ describe('Homey security artifact gate', () => {
 		);
 		expect(() =>
 			assertTextSafe('safe compiled module', 'const homey_local_connector_factory_1 = {};', true),
+		).not.toThrow();
+		expect(() =>
+			assertTextSafe('safe compiled module', 'require("./homey-runtime-connector.factory")', true),
+		).not.toThrow();
+		expect(() =>
+			assertTextSafe('safe compiled module', 'require("./homey-cloud-runtime-registry.service")', true),
 		).not.toThrow();
 		expect(() =>
 			assertTextSafe(

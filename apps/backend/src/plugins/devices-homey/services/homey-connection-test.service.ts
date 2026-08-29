@@ -7,6 +7,7 @@ import {
 	DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,
 	DEVICES_HOMEY_PLUGIN_NAME,
 	HOMEY_CONNECTOR_FACTORY,
+	HomeyConnectionMode,
 } from '../devices-homey.constants';
 import {
 	HomeyTestCandidateConnectionDto,
@@ -86,14 +87,19 @@ export class HomeyConnectionTestService {
 				throw this.validationError();
 			}
 
-			if (savedConfig.url === null || savedConfig.apiKey === null) {
-				throw this.validationError();
+			const connectionTimeout = Math.min(savedConfig.connectionTimeout, DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS);
+
+			if (savedConfig.mode === HomeyConnectionMode.CLOUD) {
+				return { mode: HomeyConnectionMode.CLOUD, connectionTimeout };
 			}
 
+			if (savedConfig.url === null || savedConfig.apiKey === null) throw this.validationError();
+
 			return {
+				mode: HomeyConnectionMode.LOCAL,
 				url: savedConfig.url,
 				apiKey: savedConfig.apiKey,
-				connectionTimeout: Math.min(savedConfig.connectionTimeout, DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS),
+				connectionTimeout,
 			};
 		}
 
@@ -112,6 +118,7 @@ export class HomeyConnectionTestService {
 		}
 
 		return {
+			mode: HomeyConnectionMode.LOCAL,
 			url: candidate.url,
 			apiKey: candidate.apiKey,
 			connectionTimeout: DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,

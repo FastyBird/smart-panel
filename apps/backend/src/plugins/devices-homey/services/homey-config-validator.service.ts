@@ -9,6 +9,7 @@ import {
 	DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,
 	DEFAULT_HOMEY_RECONCILIATION_INTERVAL_MS,
 	DEVICES_HOMEY_PLUGIN_NAME,
+	HomeyConnectionMode,
 	MAX_HOMEY_CONNECTION_TIMEOUT_MS,
 	MAX_HOMEY_RECONCILIATION_INTERVAL_MS,
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
@@ -27,29 +28,40 @@ export class HomeyConfigValidatorService implements IPluginConfigValidator, OnMo
 	}
 
 	validate(config: Record<string, unknown>): Promise<IConfigValidationResult> {
+		const mode = config['mode'] ?? HomeyConnectionMode.LOCAL;
+
+		if (!Object.values(HomeyConnectionMode).includes(mode as HomeyConnectionMode)) {
+			return Promise.resolve({
+				valid: false,
+				errors: [{ message: 'Homey connection mode must be local or cloud', field: 'mode' }],
+			});
+		}
+
 		if (config['enabled'] !== true) {
 			return Promise.resolve({ valid: true });
 		}
 
-		const url = config['url'];
-		const apiKey = config['apiKey'] ?? config['api_key'];
+		if (mode === HomeyConnectionMode.LOCAL) {
+			const url = config['url'];
+			const apiKey = config['apiKey'] ?? config['api_key'];
 
-		if (typeof url !== 'string' || url.trim().length === 0) {
-			return Promise.resolve({ valid: false, errors: [{ message: 'Homey URL is required', field: 'url' }] });
-		}
+			if (typeof url !== 'string' || url.trim().length === 0) {
+				return Promise.resolve({ valid: false, errors: [{ message: 'Homey URL is required', field: 'url' }] });
+			}
 
-		if (!isSafeHomeyUrl(url)) {
-			return Promise.resolve({
-				valid: false,
-				errors: [{ message: 'Homey URL must use HTTP or HTTPS without embedded credentials', field: 'url' }],
-			});
-		}
+			if (!isSafeHomeyUrl(url)) {
+				return Promise.resolve({
+					valid: false,
+					errors: [{ message: 'Homey URL must use HTTP or HTTPS without embedded credentials', field: 'url' }],
+				});
+			}
 
-		if (typeof apiKey !== 'string' || apiKey.trim().length === 0) {
-			return Promise.resolve({
-				valid: false,
-				errors: [{ message: 'Homey API key is required', field: 'api_key' }],
-			});
+			if (typeof apiKey !== 'string' || apiKey.trim().length === 0) {
+				return Promise.resolve({
+					valid: false,
+					errors: [{ message: 'Homey API key is required', field: 'api_key' }],
+				});
+			}
 		}
 
 		const connectionTimeout =

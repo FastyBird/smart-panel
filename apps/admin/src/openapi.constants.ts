@@ -191,6 +191,7 @@ export type DevicesHomeyPluginChannelPropertySchema = components['schemas']['Dev
 export {
 	DevicesHomeyPluginDataAdoptionResultFailure_code as DevicesHomeyPluginAdoptionFailureCode,
 	DevicesHomeyPluginDataAdoptionResultStatus as DevicesHomeyPluginAdoptionStatus,
+	DevicesHomeyPluginDataConfigMode as DevicesHomeyPluginConnectionMode,
 	DevicesHomeyPluginDataInventoryDeviceSupport_reasons as DevicesHomeyPluginSupportReason,
 	DevicesHomeyPluginDataInventoryDeviceSupport_state as DevicesHomeyPluginSupportState,
 	DevicesHomeyPluginDataStatusConnection_state as DevicesHomeyPluginConnectionState,

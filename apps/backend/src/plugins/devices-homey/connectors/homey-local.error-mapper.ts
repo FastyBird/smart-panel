@@ -48,6 +48,10 @@ export const classifyHomeyLocalTransportError = (error: unknown): HomeyConnector
 		return HomeyConnectorErrorCategory.TIMEOUT;
 	}
 
+	if (statusCode === 429) {
+		return HomeyConnectorErrorCategory.UNAVAILABLE;
+	}
+
 	if (statusCode === 400 || statusCode === 409 || statusCode === 422) {
 		return HomeyConnectorErrorCategory.VALIDATION;
 	}

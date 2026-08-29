@@ -9,7 +9,6 @@ import { HomeyZone } from '../models/homey-zone.model';
 import { HomeyLocalConnector } from './homey-local.connector';
 import {
 	HomeySdkClient,
-	HomeySdkClientFactory,
 	HomeySdkDevice,
 	HomeySdkDevicesManager,
 	HomeySdkEventListener,
@@ -18,7 +17,7 @@ import {
 	HomeySdkSystemManager,
 	HomeySdkZonesManager,
 } from './homey-sdk.client';
-import { HomeySdkTransport } from './homey-sdk.transport';
+import { HomeySdkTransport, HomeySdkTransportClientFactory } from './homey-sdk.transport';
 
 const fixtureRoot = resolve(__dirname, '../__fixtures__');
 const sourceRoot = resolve(fixtureRoot, 'versions/2026-08-13-shs-13.4.0');
@@ -170,11 +169,11 @@ class FakeSdkClient implements HomeySdkClient {
 	}
 }
 
-class FakeSdkFactory implements HomeySdkClientFactory {
-	readonly createLocalApi = jest.fn<Promise<HomeySdkClient>, [{ address: string; token: string }]>();
+class FakeSdkFactory implements HomeySdkTransportClientFactory {
+	readonly createClient = jest.fn<Promise<HomeySdkClient>, []>();
 
 	constructor(client: HomeySdkClient) {
-		this.createLocalApi.mockResolvedValue(client);
+		this.createClient.mockResolvedValue(client);
 	}
 }
 
@@ -222,7 +221,7 @@ describe('HomeySdkTransport', () => {
 
 		await connector.connect();
 
-		expect(factory.createLocalApi).toHaveBeenCalledWith({ address: config.url, token: config.apiKey });
+		expect(factory.createClient).toHaveBeenCalledTimes(1);
 		expect(client.system.getInfo).toHaveBeenCalledWith({ $timeout: config.connectionTimeout });
 		await expect(connector.getSystemInfo()).resolves.toStrictEqual({
 			id: client.id,
@@ -481,11 +480,16 @@ describe('HomeySdkTransport', () => {
 	it('bounds SDK client creation and destroys a client that resolves after the timeout', async () => {
 		jest.useFakeTimers();
 		const client = new FakeSdkClient();
+		let resolveDestroyed = (): void => undefined;
+		const destroyed = new Promise<void>((resolvePromise) => {
+			resolveDestroyed = resolvePromise;
+		});
+		client.destroy.mockImplementation(resolveDestroyed);
 		let resolveCreation = (_client: HomeySdkClient): void => undefined;
 		const creation = new Promise<HomeySdkClient>((resolvePromise) => {
 			resolveCreation = resolvePromise;
 		});
-		const factory: HomeySdkClientFactory = { createLocalApi: jest.fn().mockReturnValue(creation) };
+		const factory: HomeySdkTransportClientFactory = { createClient: jest.fn().mockReturnValue(creation) };
 		const connector = new HomeyLocalConnector(new HomeySdkTransport(config, factory));
 		const connecting = connector.connect();
 
@@ -496,7 +500,8 @@ describe('HomeySdkTransport', () => {
 		});
 
 		resolveCreation(client);
-		await Promise.resolve();
+		await destroyed;
+		expect(client.disconnect).toHaveBeenCalledTimes(1);
 		expect(client.destroy).toHaveBeenCalledTimes(1);
 	});
 

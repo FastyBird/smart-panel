@@ -13,6 +13,7 @@ import { HomeySdkClientFactoryService } from '../../src/plugins/devices-homey/co
 import {
 	DEFAULT_HOMEY_RECONCILIATION_INTERVAL_MS,
 	DEVICES_HOMEY_PLUGIN_NAME,
+	HomeyConnectionMode,
 } from '../../src/plugins/devices-homey/devices-homey.constants';
 import {
 	HomeyChannelEntity,
@@ -333,10 +334,15 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 	const transformer = new HomeyMappingTransformerService();
 	const localConnectorFactory = new HomeyLocalConnectorFactory(new HomeySdkClientFactoryService());
 	const connectorFactory: HomeyConnectorFactory = {
-		create: (connectorConfig) =>
-			createHomeyEventObservingConnector(localConnectorFactory.create(connectorConfig), (event) => {
+		create: (connectorConfig) => {
+			if (connectorConfig.mode !== HomeyConnectionMode.LOCAL) {
+				throw new Error('Homey mapping-control probe requires local connector mode');
+			}
+
+			return createHomeyEventObservingConnector(localConnectorFactory.create(connectorConfig), (event) => {
 				observedEvents.push(event);
-			}),
+			});
+		},
 	};
 	const service = new HomeyService(configService as unknown as ConfigService, createSynchronizer(), connectorFactory);
 	const platform = new HomeyDevicePlatform(service, mappingLoader, transformer);

@@ -13,6 +13,8 @@ import {
 	HOMEY_CLOUD_MAX_PENDING_AUTHORIZATIONS,
 	HOMEY_CLOUD_PENDING_GRANT_CLEANUP_INTERVAL_MS,
 	HOMEY_CLOUD_PENDING_GRANT_TTL_MS,
+	HOMEY_CLOUD_RUNTIME_TEARDOWN_RETRY_INITIAL_MS,
+	HOMEY_CLOUD_RUNTIME_TEARDOWN_RETRY_MAX_MS,
 } from '../devices-homey.constants';
 import {
 	HomeyCloudActiveGrantEntity,
@@ -29,6 +31,7 @@ import {
 } from '../errors/homey-cloud-grant.error';
 
 import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
+import { HomeyCloudRuntimeRegistryService } from './homey-cloud-runtime-registry.service';
 
 const AUTHORIZED_ROLES = [UserRole.OWNER, UserRole.ADMIN];
 
@@ -96,10 +99,13 @@ export class HomeyCloudGrantMutationService
 	private readonly logger = new Logger(HomeyCloudGrantMutationService.name);
 	private mutationTail: Promise<void> = Promise.resolve();
 	private cleanupTimer: NodeJS.Timeout | null = null;
+	private runtimeTeardownRetryTimer: NodeJS.Timeout | null = null;
+	private runtimeTeardownRetryAttempt = 0;
 
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly clientConfig: HomeyCloudClientConfigService,
+		private readonly runtimeRegistry: HomeyCloudRuntimeRegistryService,
 	) {}
 
 	onApplicationBootstrap(): void {
@@ -109,11 +115,14 @@ export class HomeyCloudGrantMutationService
 			});
 		}, HOMEY_CLOUD_PENDING_GRANT_CLEANUP_INTERVAL_MS);
 		this.cleanupTimer.unref();
+
+		void this.disconnectRuntimeWithoutGrant();
 	}
 
 	onModuleDestroy(): void {
 		if (this.cleanupTimer) clearInterval(this.cleanupTimer);
 		this.cleanupTimer = null;
+		this.clearRuntimeTeardownRetry();
 	}
 
 	async getAuthorizationContext(initiatingUserId: string): Promise<HomeyCloudAuthorizationContext> {
@@ -365,6 +374,16 @@ export class HomeyCloudGrantMutationService
 		);
 	}
 
+	async hasActiveGrant(): Promise<boolean> {
+		return this.runMutation(() =>
+			this.dataSource.transaction(async (manager) => {
+				await this.reconcileConfigurationInternal(manager);
+
+				return manager.getRepository(HomeyCloudActiveGrantEntity).existsBy({ key: HOMEY_CLOUD_ACTIVE_GRANT_KEY });
+			}),
+		);
+	}
+
 	async persistRefresh(input: HomeyCloudRefreshInput): Promise<HomeyCloudActiveGrantReference | null> {
 		this.assertIdentifier(input.grantIdentifier);
 		this.assertGeneration(input.generation);
@@ -512,6 +531,17 @@ export class HomeyCloudGrantMutationService
 
 	async prepareRemove(user: UserEntity, manager: EntityManager): Promise<void> {
 		await this.runMutation(() => this.invalidateUserAuthorityInternal(manager, user.id));
+	}
+
+	async afterUpdate(previous: UserEntity, next: UserEntity): Promise<void> {
+		const wasAuthorized = AUTHORIZED_ROLES.includes(previous.role);
+		const remainsAuthorized = AUTHORIZED_ROLES.includes(next.role);
+
+		if (wasAuthorized && !remainsAuthorized) await this.disconnectRuntimeWithoutGrant();
+	}
+
+	async afterRemove(): Promise<void> {
+		await this.disconnectRuntimeWithoutGrant();
 	}
 
 	private async activateCandidateInternal(
@@ -711,6 +741,37 @@ export class HomeyCloudGrantMutationService
 		await this.advanceState(manager, state, {
 			activeGrantGeneration: state.activeGrantGeneration + 1,
 		});
+	}
+
+	async disconnectRuntimeWithoutGrant(): Promise<void> {
+		try {
+			await this.runtimeRegistry.disconnectGrant(() => this.hasActiveGrant().then((hasActiveGrant) => !hasActiveGrant));
+			this.clearRuntimeTeardownRetry();
+		} catch {
+			this.scheduleRuntimeTeardownRetry();
+			this.logger.warn('Homey Cloud runtime teardown is temporarily unavailable; retry scheduled');
+		}
+	}
+
+	private scheduleRuntimeTeardownRetry(): void {
+		if (this.runtimeTeardownRetryTimer !== null) return;
+
+		const delay = Math.min(
+			HOMEY_CLOUD_RUNTIME_TEARDOWN_RETRY_INITIAL_MS * 2 ** this.runtimeTeardownRetryAttempt,
+			HOMEY_CLOUD_RUNTIME_TEARDOWN_RETRY_MAX_MS,
+		);
+		this.runtimeTeardownRetryAttempt += 1;
+		this.runtimeTeardownRetryTimer = setTimeout(() => {
+			this.runtimeTeardownRetryTimer = null;
+			void this.disconnectRuntimeWithoutGrant();
+		}, delay);
+		this.runtimeTeardownRetryTimer.unref();
+	}
+
+	private clearRuntimeTeardownRetry(): void {
+		if (this.runtimeTeardownRetryTimer !== null) clearTimeout(this.runtimeTeardownRetryTimer);
+		this.runtimeTeardownRetryTimer = null;
+		this.runtimeTeardownRetryAttempt = 0;
 	}
 
 	private async deleteExpiredCandidates(manager: EntityManager, now: number): Promise<number> {

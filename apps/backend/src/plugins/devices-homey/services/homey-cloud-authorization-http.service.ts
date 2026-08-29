@@ -15,6 +15,7 @@ import {
 } from './homey-cloud-authorization.service';
 import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
 import { HomeyCloudGrantMutationService } from './homey-cloud-grant-mutation.service';
+import { HomeyCloudRuntimeService } from './homey-cloud-runtime.service';
 
 export interface HomeyCloudCallbackInput {
 	readonly code?: string;
@@ -31,6 +32,7 @@ export class HomeyCloudAuthorizationHttpService {
 		private readonly authorization: HomeyCloudAuthorizationService,
 		private readonly clientConfig: HomeyCloudClientConfigService,
 		private readonly grantMutations: HomeyCloudGrantMutationService,
+		private readonly runtime: HomeyCloudRuntimeService,
 	) {}
 
 	async start(initiatingUserId: string): Promise<HomeyCloudAuthorizationFlow> {
@@ -52,6 +54,8 @@ export class HomeyCloudAuthorizationHttpService {
 				code: input.code,
 			});
 
+			if (result.status === 'activated') this.runtime.activateGrant(() => this.grantMutations.hasActiveGrant());
+
 			return result.status;
 		} catch {
 			return 'failed';
@@ -69,7 +73,10 @@ export class HomeyCloudAuthorizationHttpService {
 		initiatingUserId: string,
 		homeyId: string,
 	): Promise<HomeyCloudActivatedResult> {
-		return this.authorization.selectHomey(transactionId, initiatingUserId, homeyId);
+		const result = await this.authorization.selectHomey(transactionId, initiatingUserId, homeyId);
+		this.runtime.activateGrant(() => this.grantMutations.hasActiveGrant());
+
+		return result;
 	}
 
 	async cancel(transactionId: string, initiatingUserId: string): Promise<boolean> {
@@ -79,6 +86,7 @@ export class HomeyCloudAuthorizationHttpService {
 			initiatingUserId,
 			stateCancellation.matched,
 		);
+		if (grantCancelled) await this.grantMutations.disconnectRuntimeWithoutGrant();
 
 		return stateCancellation.changed || grantCancelled;
 	}
@@ -86,6 +94,7 @@ export class HomeyCloudAuthorizationHttpService {
 	async disconnect(initiatingUserId: string): Promise<boolean> {
 		const grantChanged = await this.grantMutations.disconnect(initiatingUserId);
 		const stateChanged = this.authorizationState.clear() > 0;
+		await this.grantMutations.disconnectRuntimeWithoutGrant();
 
 		return grantChanged || stateChanged;
 	}

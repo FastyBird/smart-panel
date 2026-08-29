@@ -17,6 +17,7 @@ import {
 	HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS,
 	HOMEY_COMMAND_WRITE_TIMEOUT_MS,
 	HOMEY_CONNECTOR_FACTORY,
+	HomeyConnectionMode,
 	HomeyConnectionState,
 } from '../devices-homey.constants';
 import {
@@ -228,6 +229,7 @@ export class HomeyService extends BaseManagedPluginService {
 			const previous = this.pluginConfig;
 			const next = this.configService.getPluginConfig<HomeyConfigModel>(DEVICES_HOMEY_PLUGIN_NAME);
 			const restartRequired =
+				previous.mode !== next.mode ||
 				previous.url !== next.url ||
 				previous.apiKey !== next.apiKey ||
 				previous.connectionTimeout !== next.connectionTimeout ||
@@ -401,8 +403,13 @@ export class HomeyService extends BaseManagedPluginService {
 		}
 
 		return this.connectorFactory.create({
-			url: config.url,
-			apiKey: config.apiKey,
+			...(config.mode === HomeyConnectionMode.LOCAL
+				? {
+						mode: HomeyConnectionMode.LOCAL,
+						url: config.url,
+						apiKey: config.apiKey,
+					}
+				: { mode: HomeyConnectionMode.CLOUD }),
 			connectionTimeout: config.connectionTimeout,
 		});
 	}
@@ -1519,6 +1526,10 @@ export class HomeyService extends BaseManagedPluginService {
 	}
 
 	private isConfigured(config: HomeyConfigModel): boolean {
+		if (config.mode === HomeyConnectionMode.CLOUD) {
+			return true;
+		}
+
 		return (
 			typeof config.url === 'string' &&
 			config.url.trim().length > 0 &&

@@ -27,7 +27,9 @@ import { FactoryResetRegistryService } from '../../modules/system/services/facto
 import { UserLifecycleMutationRegistryService } from '../../modules/users/services/user-lifecycle-mutation-registry.service';
 import { UsersModule } from '../../modules/users/users.module';
 
+import { HomeyCloudConnectorFactory } from './connectors/homey-cloud-connector.factory';
 import { HomeyLocalConnectorFactory } from './connectors/homey-local-connector.factory';
+import { HomeyRuntimeConnectorFactory } from './connectors/homey-runtime-connector.factory';
 import { HomeySdkClientFactoryService } from './connectors/homey-sdk.client';
 import { HomeyAdoptionController } from './controllers/homey-adoption.controller';
 import { HomeyCloudAuthorizationController } from './controllers/homey-cloud-authorization.controller';
@@ -70,6 +72,8 @@ import { HomeyCloudAuthorizationStateService } from './services/homey-cloud-auth
 import { HomeyCloudAuthorizationService } from './services/homey-cloud-authorization.service';
 import { HomeyCloudClientConfigService } from './services/homey-cloud-client-config.service';
 import { HomeyCloudGrantMutationService } from './services/homey-cloud-grant-mutation.service';
+import { HomeyCloudRuntimeRegistryService } from './services/homey-cloud-runtime-registry.service';
+import { HomeyCloudRuntimeService } from './services/homey-cloud-runtime.service';
 import { HomeyCloudSdkSessionFactoryService } from './services/homey-cloud-sdk-session.factory';
 import { HomeyConfigValidatorService } from './services/homey-config-validator.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
@@ -110,13 +114,17 @@ import { HomeyService } from './services/homey.service';
 		HomeyCloudAuthorizationStateService,
 		HomeyCloudGrantMutationService,
 		HomeyCloudSdkSessionFactoryService,
+		HomeyCloudRuntimeRegistryService,
+		HomeyCloudRuntimeService,
 		HomeyCloudAuthorizationService,
 		HomeyCloudAuthorizationHttpService,
 		HomeySdkClientFactoryService,
 		HomeyLocalConnectorFactory,
+		HomeyCloudConnectorFactory,
+		HomeyRuntimeConnectorFactory,
 		{
 			provide: HOMEY_CONNECTOR_FACTORY,
-			useExisting: HomeyLocalConnectorFactory,
+			useExisting: HomeyRuntimeConnectorFactory,
 		},
 		HomeyConnectionTestService,
 		HomeyMappingLoaderService,
@@ -175,6 +183,7 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 			DEVICES_HOMEY_PLUGIN_NAME,
 			async (): Promise<{ success: boolean; reason?: string }> => {
 				try {
+					await this.homeyService.stop();
 					await this.homeyCloudGrantMutations.resetForFactory();
 
 					return { success: true };

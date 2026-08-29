@@ -1,5 +1,16 @@
 import { Expose } from 'class-transformer';
-import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Max, Min, ValidateIf } from 'class-validator';
+import {
+	IsBoolean,
+	IsEnum,
+	IsInt,
+	IsNotEmpty,
+	IsOptional,
+	IsString,
+	Matches,
+	Max,
+	Min,
+	ValidateIf,
+} from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -8,6 +19,7 @@ import {
 	DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,
 	DEFAULT_HOMEY_RECONCILIATION_INTERVAL_MS,
 	DEVICES_HOMEY_PLUGIN_NAME,
+	HomeyConnectionMode,
 	MAX_HOMEY_CONNECTION_TIMEOUT_MS,
 	MAX_HOMEY_RECONCILIATION_INTERVAL_MS,
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
@@ -25,6 +37,15 @@ export class HomeyConfigModel extends PluginConfigModel {
 	@IsString()
 	type: string = DEVICES_HOMEY_PLUGIN_NAME;
 
+	@ApiProperty({
+		description: 'Saved Homey connector mode',
+		enum: HomeyConnectionMode,
+		example: HomeyConnectionMode.LOCAL,
+	})
+	@Expose()
+	@IsEnum(HomeyConnectionMode)
+	mode: HomeyConnectionMode = HomeyConnectionMode.LOCAL;
+
 	@ApiPropertyOptional({
 		description: 'Homey local API base URL',
 		example: 'http://homey.local:4859',
@@ -32,7 +53,9 @@ export class HomeyConfigModel extends PluginConfigModel {
 		nullable: true,
 	})
 	@Expose()
-	@ValidateIf((config: HomeyConfigModel) => config.enabled || config.url !== null)
+	@ValidateIf(
+		(config: HomeyConfigModel) => config.url !== null || (config.enabled && config.mode === HomeyConnectionMode.LOCAL),
+	)
 	@IsNotEmpty()
 	@IsSafeHomeyUrl()
 	url: string | null = null;
@@ -44,7 +67,10 @@ export class HomeyConfigModel extends PluginConfigModel {
 		name: 'api_key',
 	})
 	@Expose({ name: 'api_key' })
-	@ValidateIf((config: HomeyConfigModel) => config.enabled || config.apiKey !== null)
+	@ValidateIf(
+		(config: HomeyConfigModel) =>
+			config.apiKey !== null || (config.enabled && config.mode === HomeyConnectionMode.LOCAL),
+	)
 	@IsNotEmpty()
 	@IsString()
 	@Matches(/\S/)

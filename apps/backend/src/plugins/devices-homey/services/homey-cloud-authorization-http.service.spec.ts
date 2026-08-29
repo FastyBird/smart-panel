@@ -5,6 +5,7 @@ import { HomeyCloudAuthorizationStateService } from './homey-cloud-authorization
 import { HomeyCloudAuthorizationService } from './homey-cloud-authorization.service';
 import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
 import { HomeyCloudGrantMutationService } from './homey-cloud-grant-mutation.service';
+import { HomeyCloudRuntimeService } from './homey-cloud-runtime.service';
 
 describe('HomeyCloudAuthorizationHttpService', () => {
 	const context = {
@@ -27,8 +28,16 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 	>;
 	let clientConfig: jest.Mocked<Pick<HomeyCloudClientConfigService, 'getConfiguration'>>;
 	let grantMutations: jest.Mocked<
-		Pick<HomeyCloudGrantMutationService, 'cancelAuthorization' | 'disconnect' | 'getAuthorizationContext'>
+		Pick<
+			HomeyCloudGrantMutationService,
+			| 'cancelAuthorization'
+			| 'disconnect'
+			| 'disconnectRuntimeWithoutGrant'
+			| 'getAuthorizationContext'
+			| 'hasActiveGrant'
+		>
 	>;
+	let runtime: jest.Mocked<Pick<HomeyCloudRuntimeService, 'activateGrant'>>;
 	let service: HomeyCloudAuthorizationHttpService;
 
 	beforeEach(() => {
@@ -48,13 +57,19 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 		grantMutations = {
 			cancelAuthorization: jest.fn(),
 			disconnect: jest.fn(),
+			disconnectRuntimeWithoutGrant: jest.fn().mockResolvedValue(undefined),
 			getAuthorizationContext: jest.fn(),
+			hasActiveGrant: jest.fn().mockResolvedValue(true),
+		};
+		runtime = {
+			activateGrant: jest.fn(),
 		};
 		service = new HomeyCloudAuthorizationHttpService(
 			authorizationState as unknown as HomeyCloudAuthorizationStateService,
 			authorization as unknown as HomeyCloudAuthorizationService,
 			clientConfig as unknown as HomeyCloudClientConfigService,
 			grantMutations as unknown as HomeyCloudGrantMutationService,
+			runtime as unknown as HomeyCloudRuntimeService,
 		);
 	});
 
@@ -107,6 +122,12 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 			expect(authorizationState.consume).toHaveBeenCalledWith('single-use-state');
 			expect(authorizationState.complete).toHaveBeenCalledWith(consumed.transactionId, consumed.initiatingUserId);
 			expect(authorization.exchangeAuthorizationCode).toHaveBeenCalledWith({ ...consumed, code: 'provider-code' });
+			expect(runtime.activateGrant).toHaveBeenCalledTimes(status === 'activated' ? 1 : 0);
+			if (status === 'activated') {
+				const shouldActivate = runtime.activateGrant.mock.calls[0]?.[0];
+				if (!shouldActivate) throw new Error('Homey Cloud runtime activation guard was not registered');
+				await expect(shouldActivate()).resolves.toBe(true);
+			}
 		},
 	);
 
@@ -119,6 +140,28 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 		expect(authorizationState.consume).toHaveBeenCalledWith('single-use-state');
 		expect(authorizationState.complete).toHaveBeenCalledWith(consumed.transactionId, consumed.initiatingUserId);
 		expect(authorization.exchangeAuthorizationCode).not.toHaveBeenCalled();
+	});
+
+	it('rotates cloud runtime after an explicit Homey selection activates', async () => {
+		const result = {
+			status: 'activated' as const,
+			homey: { id: 'homey-2', name: 'Second' },
+			grant: {
+				activatedById: 'admin-user',
+				authorityGeneration: 4,
+				configurationGeneration: 5,
+				generation: 6,
+				grantIdentifier: 'grant-2',
+				selectedHomeyId: 'homey-2',
+			},
+		};
+		authorization.selectHomey.mockResolvedValue(result);
+
+		await expect(service.selectHomey('transaction-1', 'admin-user', 'homey-2')).resolves.toBe(result);
+		expect(runtime.activateGrant).toHaveBeenCalledTimes(1);
+		const shouldActivate = runtime.activateGrant.mock.calls[0]?.[0];
+		if (!shouldActivate) throw new Error('Homey Cloud runtime activation guard was not registered');
+		await expect(shouldActivate()).resolves.toBe(true);
 	});
 
 	it('rejects missing, invalid, and replayed state before provider exchange without exposing an error', async () => {
@@ -151,8 +194,17 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 				'admin-user',
 				stateCancellation.matched,
 			);
+			expect(grantMutations.disconnectRuntimeWithoutGrant).toHaveBeenCalledTimes(grantCancelled ? 1 : 0);
 		},
 	);
+
+	it('stops cloud runtime when cancellation removed the last active grant', async () => {
+		authorizationState.cancel.mockReturnValue({ changed: false, matched: true });
+		grantMutations.cancelAuthorization.mockResolvedValue(true);
+
+		await expect(service.cancel('transaction-1', 'admin-user')).resolves.toBe(true);
+		expect(grantMutations.disconnectRuntimeWithoutGrant).toHaveBeenCalledTimes(1);
+	});
 
 	it('preserves cancellation-marker intent when persistence is retried', async () => {
 		authorizationState.cancel
@@ -181,6 +233,7 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 			await expect(service.disconnect('admin-user')).resolves.toBe(expected);
 			expect(grantMutations.disconnect).toHaveBeenCalledWith('admin-user');
 			expect(authorizationState.clear).toHaveBeenCalledTimes(1);
+			expect(grantMutations.disconnectRuntimeWithoutGrant).toHaveBeenCalledTimes(1);
 			expect(grantMutations.disconnect.mock.invocationCallOrder[0]).toBeLessThan(
 				authorizationState.clear.mock.invocationCallOrder[0],
 			);
