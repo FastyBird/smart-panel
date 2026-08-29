@@ -79,19 +79,51 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 
 	private async authenticate(credentials: HomeyCloudActiveGrantCredentials): Promise<HomeySdkClient> {
 		const provider = this.createProvider(credentials.token);
-		const client = await runHomeyCloudProviderOperation(HomeyCloudProviderOperation.AUTHENTICATE_HOMEY, (signal) =>
-			provider.createHomeyClient(credentials.selectedHomeyId, signal, false),
+		const client = await runHomeyCloudProviderOperation(
+			HomeyCloudProviderOperation.AUTHENTICATE_HOMEY,
+			async (signal) => {
+				const created = await provider.createHomeyClient(credentials.selectedHomeyId, signal, false);
+
+				if (signal.aborted) {
+					await this.disposeClient(created);
+					throw signal.reason;
+				}
+
+				return created;
+			},
 		);
 
 		if (!this.isSdkClient(client)) {
-			await this.disposeInvalidClient(client);
+			await this.disposeClient(client);
 			throw new HomeyCloudProviderError(
 				HomeyCloudProviderErrorCategory.PROTOCOL,
 				HomeyCloudProviderOperation.AUTHENTICATE_HOMEY,
 			);
 		}
 
+		try {
+			const active = await this.grantMutations.loadActiveGrantCredentials();
+
+			if (!this.isSameGrant(credentials, active)) throw new HomeyCloudGrantConflictError();
+		} catch (error) {
+			await this.disposeClient(client);
+			throw error;
+		}
+
 		return client;
+	}
+
+	private isSameGrant(
+		expected: HomeyCloudActiveGrantCredentials,
+		active: HomeyCloudActiveGrantCredentials | null,
+	): boolean {
+		return (
+			active !== null &&
+			active.grantIdentifier === expected.grantIdentifier &&
+			active.generation === expected.generation &&
+			active.configurationGeneration === expected.configurationGeneration &&
+			active.selectedHomeyId === expected.selectedHomeyId
+		);
 	}
 
 	private refresh(credentials: HomeyCloudActiveGrantCredentials): Promise<HomeyCloudActiveGrantCredentials> {
@@ -183,7 +215,7 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 		);
 	}
 
-	private async disposeInvalidClient(value: unknown): Promise<void> {
+	private async disposeClient(value: unknown): Promise<void> {
 		if (!this.isRecord(value)) return;
 		const disconnect = value.disconnect;
 		const destroy = value.destroy;

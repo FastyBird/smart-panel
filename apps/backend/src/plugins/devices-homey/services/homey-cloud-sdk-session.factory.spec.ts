@@ -1,5 +1,5 @@
 import { HomeyCloudProviderClient, HomeySdkClient, HomeySdkClientFactoryService } from '../connectors/homey-sdk.client';
-import { HOMEY_CLOUD_TOKEN_REFRESH_SKEW_MS } from '../devices-homey.constants';
+import { HOMEY_CLOUD_PROVIDER_TIMEOUT_MS, HOMEY_CLOUD_TOKEN_REFRESH_SKEW_MS } from '../devices-homey.constants';
 import {
 	HomeyCloudConfigurationError,
 	HomeyCloudProviderError,
@@ -64,6 +64,7 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 	});
 
 	afterEach(() => {
+		jest.useRealTimers();
 		jest.restoreAllMocks();
 	});
 
@@ -78,6 +79,57 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 		expect(grantMutations.persistRefresh).not.toHaveBeenCalled();
 	});
 
+	it('disposes a session when the active grant changes during cloud authentication', async () => {
+		const replacement = {
+			...credentials,
+			generation: 5,
+			grantIdentifier: 'grant-2',
+			selectedHomeyId: 'homey-2',
+		};
+		grantMutations.loadActiveGrantCredentials.mockResolvedValueOnce(credentials).mockResolvedValue(replacement);
+
+		await expect(service.createClient()).rejects.toMatchObject({
+			category: HomeyConnectorErrorCategory.AUTHENTICATION,
+			operation: HomeyConnectorOperation.CONNECT,
+		});
+		expect((client.disconnect as jest.Mock).mock.calls).toHaveLength(1);
+		expect((client.destroy as jest.Mock).mock.calls).toHaveLength(1);
+	});
+
+	it('disposes a cloud client that resolves after the provider deadline', async () => {
+		jest.useFakeTimers({ doNotFake: ['Date'] });
+		let resolveCreation = (_client: HomeySdkClient): void => undefined;
+		let resolveCleanup = (): void => undefined;
+		const creation = new Promise<HomeySdkClient>((resolve) => {
+			resolveCreation = resolve;
+		});
+		const cleanup = new Promise<void>((resolve) => {
+			resolveCleanup = resolve;
+		});
+		(client.disconnect as jest.Mock).mockImplementation(() => {
+			resolveCleanup();
+
+			return Promise.resolve();
+		});
+		provider.createHomeyClient.mockReturnValue(creation);
+
+		const pending = service.createClient();
+		const rejection = expect(pending).rejects.toMatchObject({
+			category: HomeyConnectorErrorCategory.TIMEOUT,
+			operation: HomeyConnectorOperation.CONNECT,
+		});
+		await Promise.resolve();
+		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(HOMEY_CLOUD_PROVIDER_TIMEOUT_MS);
+		await rejection;
+
+		resolveCreation(client);
+		await cleanup;
+		await Promise.resolve();
+		expect((client.disconnect as jest.Mock).mock.calls).toHaveLength(1);
+		expect((client.destroy as jest.Mock).mock.calls).toHaveLength(1);
+	});
+
 	it('refreshes an expiring token, preserves omitted rotation fields, and persists before opening a session', async () => {
 		const expiring = {
 			...credentials,
@@ -89,7 +141,9 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 		const refreshedClient = sdkClient('homey-1-refreshed');
 		const refreshedProvider = providerClient();
 		refreshedProvider.createHomeyClient.mockResolvedValue(refreshedClient);
-		grantMutations.loadActiveGrantCredentials.mockResolvedValue(expiring);
+		grantMutations.loadActiveGrantCredentials
+			.mockResolvedValueOnce(expiring)
+			.mockResolvedValue({ ...credentials, generation: 5 });
 		provider.refreshAccessToken.mockResolvedValue({
 			access_token: 'access-token-2',
 			expires_in: 7200,
@@ -137,6 +191,9 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 			token_type: 'bearer',
 		});
 		grantMutations.persistRefresh.mockResolvedValue({ ...credentials, generation: 5 });
+		grantMutations.loadActiveGrantCredentials
+			.mockResolvedValueOnce(credentials)
+			.mockResolvedValue({ ...credentials, generation: 5 });
 		refreshedProvider.createHomeyClient.mockResolvedValue(refreshedClient);
 		sdkClientFactory.createCloudProviderClient.mockImplementation(({ token }) =>
 			token?.accessToken === 'access-token-2' ? refreshedProvider : provider,
@@ -167,7 +224,7 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 			expires_in: 3600,
 			token_type: 'bearer',
 		});
-		grantMutations.loadActiveGrantCredentials.mockResolvedValueOnce(expiring).mockResolvedValueOnce(replacement);
+		grantMutations.loadActiveGrantCredentials.mockResolvedValueOnce(expiring).mockResolvedValue(replacement);
 		grantMutations.persistRefresh.mockResolvedValue(null);
 		replacementProvider.createHomeyClient.mockResolvedValue(replacementClient);
 		sdkClientFactory.createCloudProviderClient.mockImplementation(({ token }) =>
@@ -187,7 +244,10 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 			...credentials,
 			token: { ...credentials.token, issuedAt: now - 3600 * 1000 },
 		};
-		grantMutations.loadActiveGrantCredentials.mockResolvedValue(expiring);
+		grantMutations.loadActiveGrantCredentials
+			.mockResolvedValueOnce(expiring)
+			.mockResolvedValueOnce(expiring)
+			.mockResolvedValue({ ...credentials, generation: 5 });
 		provider.refreshAccessToken.mockReturnValue(refresh);
 		grantMutations.persistRefresh.mockResolvedValue({ ...credentials, generation: 5 });
 
