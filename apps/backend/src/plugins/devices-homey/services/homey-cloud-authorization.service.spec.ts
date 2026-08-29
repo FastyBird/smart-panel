@@ -163,6 +163,19 @@ describe('HomeyCloudAuthorizationService', () => {
 		);
 	});
 
+	it('clears the candidate when automatic authentication fails terminally', async () => {
+		candidateClient.authenticateHomey.mockRejectedValue(
+			Object.assign(new Error('private invalid-token response'), { statusCode: 401 }),
+		);
+
+		await expect(service.exchangeAuthorizationCode(exchange)).rejects.toMatchObject({
+			category: HomeyCloudProviderErrorCategory.INVALID_TOKEN,
+			retryable: false,
+		});
+		expect(grantMutations.cancelCandidate).toHaveBeenCalledWith(exchange.transactionId, exchange.initiatingUserId);
+		expect(grantMutations.activateCandidate).not.toHaveBeenCalled();
+	});
+
 	it('does not auto-select when the refreshed inventory is no longer a singleton', async () => {
 		candidateClient.getHomeys
 			.mockResolvedValueOnce([homey('homey-one', 'Home')])

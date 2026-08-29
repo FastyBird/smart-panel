@@ -107,7 +107,7 @@ export class HomeyCloudAuthorizationService {
 			}
 
 			if (homeys.length === 1) {
-				return this.activateSelectedHomey(input.transactionId, input.initiatingUserId, homeys[0].id, true);
+				return await this.activateSelectedHomey(input.transactionId, input.initiatingUserId, homeys[0].id, true);
 			}
 
 			return {
