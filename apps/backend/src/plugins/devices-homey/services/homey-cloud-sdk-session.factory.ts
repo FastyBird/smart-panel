@@ -58,7 +58,12 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 			try {
 				return await this.authenticate(credentials);
 			} catch (error) {
-				if (refreshed || !this.isInvalidToken(error) || credentials.token.refreshToken === null) throw error;
+				if (!this.isInvalidToken(error)) throw error;
+
+				const active = await this.loadActiveCredentials();
+
+				if (!this.isSameGrant(credentials, active)) return await this.authenticate(active);
+				if (refreshed || credentials.token.refreshToken === null) throw error;
 
 				return await this.authenticate(await this.refresh(credentials));
 			}

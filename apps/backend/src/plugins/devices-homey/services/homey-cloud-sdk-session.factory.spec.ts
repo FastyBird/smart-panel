@@ -193,6 +193,7 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 		grantMutations.persistRefresh.mockResolvedValue({ ...credentials, generation: 5 });
 		grantMutations.loadActiveGrantCredentials
 			.mockResolvedValueOnce(credentials)
+			.mockResolvedValueOnce(credentials)
 			.mockResolvedValue({ ...credentials, generation: 5 });
 		refreshedProvider.createHomeyClient.mockResolvedValue(refreshedClient);
 		sdkClientFactory.createCloudProviderClient.mockImplementation(({ token }) =>
@@ -203,6 +204,60 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 		expect(provider.createHomeyClient.mock.calls).toHaveLength(1);
 		expect(provider.refreshAccessToken.mock.calls).toHaveLength(1);
 		expect(refreshedProvider.createHomeyClient.mock.calls).toHaveLength(1);
+	});
+
+	it('uses a refresh persisted by a faster caller instead of retrying the stale refresh token', async () => {
+		let rejectFirst = (_error: unknown): void => undefined;
+		let rejectSecond = (_error: unknown): void => undefined;
+		let active = credentials;
+		const firstAuthentication = new Promise<HomeySdkClient>((_resolve, reject) => {
+			rejectFirst = reject;
+		});
+		const secondAuthentication = new Promise<HomeySdkClient>((_resolve, reject) => {
+			rejectSecond = reject;
+		});
+		const refreshedClient = sdkClient('homey-1-refreshed');
+		const refreshedProvider = providerClient();
+		provider.createHomeyClient.mockReturnValueOnce(firstAuthentication).mockReturnValueOnce(secondAuthentication);
+		provider.refreshAccessToken.mockResolvedValue({
+			access_token: 'access-token-2',
+			expires_in: 3600,
+			refresh_token: 'refresh-token-2',
+			token_type: 'bearer',
+		});
+		grantMutations.loadActiveGrantCredentials.mockImplementation(() => Promise.resolve(active));
+		grantMutations.persistRefresh.mockImplementation(({ token }) => {
+			active = { ...credentials, generation: 5, token };
+
+			return Promise.resolve(active);
+		});
+		refreshedProvider.createHomeyClient.mockResolvedValue(refreshedClient);
+		sdkClientFactory.createCloudProviderClient.mockImplementation(({ token }) =>
+			token?.accessToken === 'access-token-2' ? refreshedProvider : provider,
+		);
+
+		const first = service.createClient();
+		const second = service.createClient();
+		await Promise.resolve();
+		await Promise.resolve();
+		rejectFirst(
+			new HomeyCloudProviderError(
+				HomeyCloudProviderErrorCategory.INVALID_TOKEN,
+				HomeyCloudProviderOperation.AUTHENTICATE_HOMEY,
+			),
+		);
+		await expect(first).resolves.toBe(refreshedClient);
+
+		rejectSecond(
+			new HomeyCloudProviderError(
+				HomeyCloudProviderErrorCategory.INVALID_TOKEN,
+				HomeyCloudProviderOperation.AUTHENTICATE_HOMEY,
+			),
+		);
+		await expect(second).resolves.toBe(refreshedClient);
+		expect(provider.refreshAccessToken.mock.calls).toHaveLength(1);
+		expect(grantMutations.persistRefresh).toHaveBeenCalledTimes(1);
+		expect(refreshedProvider.createHomeyClient.mock.calls).toHaveLength(2);
 	});
 
 	it('uses the current active grant when refresh persistence loses its compare-and-swap', async () => {
