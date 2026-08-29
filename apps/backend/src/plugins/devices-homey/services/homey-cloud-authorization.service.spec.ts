@@ -344,6 +344,8 @@ describe('HomeyCloudAuthorizationService', () => {
 			exchangeAuthorizationCode: jest.fn(),
 			getHomeys: jest.fn(),
 			authenticateHomey: jest.fn().mockResolvedValue(undefined),
+			createHomeyClient: jest.fn(),
+			refreshAccessToken: jest.fn(),
 		};
 	}
 

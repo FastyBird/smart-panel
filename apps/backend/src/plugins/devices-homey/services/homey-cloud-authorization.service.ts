@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 
 import {
 	HomeyCloudProviderClient,
-	HomeyCloudProviderTokenResponse,
 	HomeySdkClientFactoryService,
 	isEligibleHomeyCloudProviderHomey,
 	isSafeHomeyCloudProviderHomeyId,
@@ -10,9 +9,7 @@ import {
 import {
 	HOMEY_CLOUD_MAX_AUTHORIZATION_CODE_LENGTH,
 	HOMEY_CLOUD_MAX_HOMEY_NAME_LENGTH,
-	HOMEY_CLOUD_MAX_TOKEN_LENGTH,
 	HOMEY_CLOUD_PENDING_GRANT_TTL_MS,
-	HOMEY_CLOUD_PROVIDER_TIMEOUT_MS,
 } from '../devices-homey.constants';
 import {
 	HomeyCloudProviderError,
@@ -28,36 +25,11 @@ import {
 	HomeyCloudAuthorizationContext,
 	HomeyCloudCandidateCredentials,
 	HomeyCloudGrantMutationService,
-	HomeyCloudTokenMaterial,
 } from './homey-cloud-grant-mutation.service';
+import { runHomeyCloudProviderOperation } from './homey-cloud-provider-operation';
+import { homeyCloudTokenExpiresAt, normalizeHomeyCloudToken } from './homey-cloud-token';
 
 const UNICODE_CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
-const PROVIDER_TIMEOUT_CODES = new Set([
-	'ABORTERROR',
-	'ABORT_ERR',
-	'ECONNABORTED',
-	'ETIMEDOUT',
-	'TIMEOUTERROR',
-	'UND_ERR_BODY_TIMEOUT',
-	'UND_ERR_CONNECT_TIMEOUT',
-	'UND_ERR_HEADERS_TIMEOUT',
-]);
-const PROVIDER_UNAVAILABLE_CODES = new Set([
-	'EAI_AGAIN',
-	'ECONNREFUSED',
-	'ECONNRESET',
-	'EHOSTDOWN',
-	'EHOSTUNREACH',
-	'ENETDOWN',
-	'ENETRESET',
-	'ENETUNREACH',
-	'ENOTFOUND',
-	'EPIPE',
-	'ERR_STREAM_PREMATURE_CLOSE',
-	'UND_ERR_SOCKET',
-]);
-
-class ProviderTimeoutError extends Error {}
 
 export interface HomeyCloudAuthorizationExchange extends HomeyCloudAuthorizationContext {
 	readonly code: string;
@@ -103,11 +75,11 @@ export class HomeyCloudAuthorizationService {
 
 		const provider = this.sdkClientFactory.createCloudProviderClient(configuration);
 		const issuedAt = Date.now();
-		const response = await this.runProviderOperation(HomeyCloudProviderOperation.EXCHANGE_CODE, (signal) =>
+		const response = await runHomeyCloudProviderOperation(HomeyCloudProviderOperation.EXCHANGE_CODE, (signal) =>
 			provider.exchangeAuthorizationCode(input.code, signal),
 		);
-		const token = this.normalizeToken(response, issuedAt);
-		const tokenExpiresAt = this.tokenExpiresAt(token);
+		const token = normalizeHomeyCloudToken(response, issuedAt, HomeyCloudProviderOperation.EXCHANGE_CODE);
+		const tokenExpiresAt = homeyCloudTokenExpiresAt(token, HomeyCloudProviderOperation.EXCHANGE_CODE);
 		const { expiresAt } = await this.grantMutations.stageCandidate({
 			activeGrantGeneration: input.activeGrantGeneration,
 			authorityGeneration: input.authorityGeneration,
@@ -197,7 +169,7 @@ export class HomeyCloudAuthorizationService {
 
 		if (!selectedHomey || (requireSingleton && homeys.length !== 1)) throw new HomeyCloudSelectionError();
 
-		await this.runProviderOperation(HomeyCloudProviderOperation.AUTHENTICATE_HOMEY, (signal) =>
+		await runHomeyCloudProviderOperation(HomeyCloudProviderOperation.AUTHENTICATE_HOMEY, (signal) =>
 			provider.authenticateHomey(selectedHomey.id, signal, requireSingleton),
 		);
 		const grant = await this.grantMutations.activateCandidate(transactionId, initiatingUserId, selectedHomey.id);
@@ -226,7 +198,7 @@ export class HomeyCloudAuthorizationService {
 	}
 
 	private async getEligibleHomeys(provider: HomeyCloudProviderClient): Promise<readonly HomeyCloudChoice[]> {
-		const response = await this.runProviderOperation(HomeyCloudProviderOperation.LIST_HOMEYS, (signal) =>
+		const response = await runHomeyCloudProviderOperation(HomeyCloudProviderOperation.LIST_HOMEYS, (signal) =>
 			provider.getHomeys(signal),
 		);
 		const choices: HomeyCloudChoice[] = [];
@@ -275,152 +247,6 @@ export class HomeyCloudAuthorizationService {
 		const displayText = [...normalizedText].slice(0, HOMEY_CLOUD_MAX_HOMEY_NAME_LENGTH).join('');
 
 		return { id: record.id, name: displayText || 'Homey' };
-	}
-
-	private normalizeToken(response: HomeyCloudProviderTokenResponse, issuedAt: number): HomeyCloudTokenMaterial {
-		if (!response || typeof response !== 'object') {
-			throw new HomeyCloudProviderError(
-				HomeyCloudProviderErrorCategory.PROTOCOL,
-				HomeyCloudProviderOperation.EXCHANGE_CODE,
-			);
-		}
-
-		const tokenType = this.boundedString(response.token_type)?.toLowerCase();
-		const accessToken = this.boundedString(response.access_token);
-		const refreshToken = response.refresh_token == null ? null : this.boundedString(response.refresh_token);
-		const grantType = response.grant_type == null ? null : this.boundedString(response.grant_type);
-		const expiresIn = response.expires_in == null ? null : response.expires_in;
-
-		if (
-			tokenType !== 'bearer' ||
-			!accessToken ||
-			(response.refresh_token != null && !refreshToken) ||
-			(response.grant_type != null && !grantType) ||
-			(expiresIn !== null && (!Number.isSafeInteger(expiresIn) || (expiresIn as number) <= 0))
-		) {
-			throw new HomeyCloudProviderError(
-				HomeyCloudProviderErrorCategory.PROTOCOL,
-				HomeyCloudProviderOperation.EXCHANGE_CODE,
-			);
-		}
-
-		return {
-			tokenType,
-			accessToken,
-			refreshToken,
-			expiresIn: expiresIn as number | null,
-			grantType,
-			issuedAt,
-		};
-	}
-
-	private tokenExpiresAt(token: HomeyCloudTokenMaterial): number | null {
-		if (token.expiresIn === null) return null;
-
-		const lifetimeMs = token.expiresIn * 1000;
-		const expiresAt = token.issuedAt + lifetimeMs;
-
-		if (!Number.isSafeInteger(lifetimeMs) || !Number.isSafeInteger(expiresAt) || expiresAt <= Date.now()) {
-			throw new HomeyCloudProviderError(
-				HomeyCloudProviderErrorCategory.INVALID_TOKEN,
-				HomeyCloudProviderOperation.EXCHANGE_CODE,
-			);
-		}
-
-		return expiresAt;
-	}
-
-	private boundedString(value: unknown): string | null {
-		return typeof value === 'string' && value.length > 0 && value.length <= HOMEY_CLOUD_MAX_TOKEN_LENGTH ? value : null;
-	}
-
-	private async runProviderOperation<T>(
-		operation: HomeyCloudProviderOperation,
-		execute: (signal: AbortSignal) => Promise<T>,
-	): Promise<T> {
-		let timeout: NodeJS.Timeout | null = null;
-		const controller = new AbortController();
-		const timeoutError = new ProviderTimeoutError();
-
-		try {
-			return await Promise.race([
-				execute(controller.signal),
-				new Promise<never>((_resolve, reject) => {
-					timeout = setTimeout(() => {
-						controller.abort(timeoutError);
-						reject(timeoutError);
-					}, HOMEY_CLOUD_PROVIDER_TIMEOUT_MS);
-					timeout.unref();
-				}),
-			]);
-		} catch (error) {
-			if (error instanceof HomeyCloudSelectionError) throw error;
-
-			throw this.mapProviderError(error, operation);
-		} finally {
-			if (timeout) clearTimeout(timeout);
-		}
-	}
-
-	private mapProviderError(error: unknown, operation: HomeyCloudProviderOperation): HomeyCloudProviderError {
-		if (error instanceof HomeyCloudProviderError) return error;
-		if (error instanceof ProviderTimeoutError) {
-			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.TIMEOUT, operation);
-		}
-
-		const records = this.providerErrorChain(error);
-		const statusCode = records
-			.flatMap((record) => [record.statusCode, record.status, record.code])
-			.find((value): value is number => typeof value === 'number' && Number.isInteger(value));
-
-		if (statusCode === 401 || (operation === HomeyCloudProviderOperation.EXCHANGE_CODE && statusCode === 400)) {
-			return new HomeyCloudProviderError(
-				operation === HomeyCloudProviderOperation.EXCHANGE_CODE
-					? HomeyCloudProviderErrorCategory.INVALID_GRANT
-					: HomeyCloudProviderErrorCategory.INVALID_TOKEN,
-				operation,
-			);
-		}
-		if (statusCode === 408 || statusCode === 504) {
-			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.TIMEOUT, operation);
-		}
-		if (statusCode === 429) {
-			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.RATE_LIMITED, operation);
-		}
-		if (statusCode !== undefined && statusCode >= 500) {
-			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.UNAVAILABLE, operation);
-		}
-
-		const codes = records.flatMap((record) =>
-			[record.code, record.name, record.type]
-				.filter((value): value is string => typeof value === 'string')
-				.map((value) => value.toUpperCase()),
-		);
-
-		if (codes.some((code) => PROVIDER_TIMEOUT_CODES.has(code))) {
-			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.TIMEOUT, operation);
-		}
-		if (codes.some((code) => PROVIDER_UNAVAILABLE_CODES.has(code))) {
-			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.UNAVAILABLE, operation);
-		}
-
-		return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.PROTOCOL, operation);
-	}
-
-	private providerErrorChain(error: unknown): readonly Record<string, unknown>[] {
-		const records: Record<string, unknown>[] = [];
-		const seen = new Set<object>();
-		let current = error;
-
-		while (typeof current === 'object' && current !== null && records.length < 5 && !seen.has(current)) {
-			seen.add(current);
-			const record = current as Record<string, unknown>;
-
-			records.push(record);
-			current = record.cause;
-		}
-
-		return records;
 	}
 
 	private async clearTerminalCandidate(transactionId: string, initiatingUserId: string, error: unknown): Promise<void> {

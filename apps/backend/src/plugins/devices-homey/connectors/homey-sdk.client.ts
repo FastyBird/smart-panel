@@ -139,8 +139,10 @@ export const isEligibleHomeyCloudProviderHomey = (
 
 export interface HomeyCloudProviderClient {
 	authenticateHomey(homeyId: string, signal: AbortSignal, requireSingleton: boolean): Promise<void>;
+	createHomeyClient(homeyId: string, signal: AbortSignal, requireSingleton: boolean): Promise<HomeySdkClient>;
 	exchangeAuthorizationCode(code: string, signal: AbortSignal): Promise<HomeyCloudProviderTokenResponse>;
 	getHomeys(signal: AbortSignal): Promise<readonly HomeyCloudProviderHomey[]>;
+	refreshAccessToken(refreshToken: string, signal: AbortSignal): Promise<HomeyCloudProviderTokenResponse>;
 }
 
 @Injectable()
@@ -262,6 +264,17 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 	}
 
 	async exchangeAuthorizationCode(code: string, signal: AbortSignal): Promise<HomeyCloudProviderTokenResponse> {
+		return this.requestToken(new URLSearchParams({ grant_type: 'authorization_code', code }), signal);
+	}
+
+	async refreshAccessToken(refreshToken: string, signal: AbortSignal): Promise<HomeyCloudProviderTokenResponse> {
+		return this.requestToken(new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken }), signal);
+	}
+
+	private async requestToken(
+		bodyParameters: URLSearchParams,
+		signal: AbortSignal,
+	): Promise<HomeyCloudProviderTokenResponse> {
 		const { response, timeoutSignal } = await this.executeFetch(
 			HOMEY_CLOUD_TOKEN_URL,
 			{
@@ -270,7 +283,7 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 					Authorization: `Basic ${Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64')}`,
 					'Content-Type': 'application/x-www-form-urlencoded',
 				},
-				body: new URLSearchParams({ grant_type: 'authorization_code', code }),
+				body: bodyParameters,
 				redirect: 'error',
 			},
 			signal,
@@ -315,6 +328,17 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 	}
 
 	async authenticateHomey(homeyId: string, signal: AbortSignal, requireSingleton: boolean): Promise<void> {
+		const homeyApi = await this.createHomeyClient(homeyId, signal, requireSingleton);
+		const disposable = homeyApi as unknown as HomeyCloudAuthenticatedSdkClient;
+
+		try {
+			if (typeof disposable.disconnect === 'function') await disposable.disconnect();
+		} finally {
+			if (typeof disposable.destroy === 'function') disposable.destroy();
+		}
+	}
+
+	createHomeyClient(homeyId: string, signal: AbortSignal, requireSingleton: boolean): Promise<HomeySdkClient> {
 		return this.withSignal(signal, async () => {
 			const user = await this.getAuthenticatedUserFresh();
 			const homeys = user.getHomeys().filter(isEligibleHomeyCloudProviderHomey);
@@ -336,13 +360,7 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 
 			if (authenticatableHomey.apiVersion !== 1) this.assertHomeyCloudEndpoint(authenticatableHomey.remoteUrl);
 
-			const homeyApi = await authenticatableHomey.authenticate({ strategy: 'cloud', reconnect: false });
-
-			try {
-				if (typeof homeyApi.disconnect === 'function') await homeyApi.disconnect();
-			} finally {
-				if (typeof homeyApi.destroy === 'function') homeyApi.destroy();
-			}
+			return (await authenticatableHomey.authenticate({ strategy: 'cloud', reconnect: false })) as HomeySdkClient;
 		});
 	}
 

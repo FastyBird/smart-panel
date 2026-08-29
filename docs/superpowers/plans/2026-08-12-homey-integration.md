@@ -880,12 +880,21 @@ Task 7.3 is delivered in reviewable slices while live Homey Cloud access remains
 - [x] **7.3a — Shared connector core:** extract the normalized lifecycle core behind a transport-neutral boundary, add
       an explicit `HomeyCloudConnector`, and run the complete local connector contract suite against both connector
       identities without changing mapping, preview, adoption, synchronization, or control services.
-- [ ] **7.3b — Cloud SDK session and refresh:** create the selected Homey cloud SDK session from the active grant,
+- [x] **7.3b — Cloud SDK session and refresh:** create the selected Homey cloud SDK session from the active grant,
       persist refresh-token rotation through the grant mutation gate, and normalize cloud authentication, rate-limit,
       timeout, unavailable, and protocol failures.
 - [ ] **7.3c — Runtime selection and evidence:** select the connector from saved mode, prove inventory, subscriptions,
       writes, reconnect, cleanup, and bounded cloud latency with credential-free tests, then record sanitized live
       evidence when Athom access is available.
+
+The cloud session factory loads token material only through the active-grant credential boundary, proactively refreshes
+tokens within a bounded expiry skew, retries selected-Homey authentication once after an invalid access token, and
+persists every rotated token through the grant generation compare-and-swap. An omitted refresh token or grant type in a
+valid refresh response retains the current value; a lost compare-and-swap reloads the winning active grant instead of
+using stale credentials. Concurrent refresh requests share one provider operation. Provider deadlines cover complete
+response consumption, token and child endpoints remain pinned, and raw SDK/provider failures are reduced to fixed
+connector authentication, validation, timeout, unavailable/rate-limit, or protocol categories. The created SDK client
+is not yet selected by `HomeyService`; Task 7.3c owns the transport and runtime-mode wiring.
 
 ### Task 7.4: Extend admin configuration and release docs
 

@@ -31,6 +31,7 @@ import { HomeyAdoptionLockService } from './services/homey-adoption-lock.service
 import { HomeyCloudAuthorizationStateService } from './services/homey-cloud-authorization-state.service';
 import { HomeyCloudClientConfigService } from './services/homey-cloud-client-config.service';
 import { HomeyCloudGrantMutationService } from './services/homey-cloud-grant-mutation.service';
+import { HomeyCloudSdkSessionFactoryService } from './services/homey-cloud-sdk-session.factory';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
 import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
@@ -126,6 +127,7 @@ describe('DevicesHomeyPlugin', () => {
 				HomeyCloudClientConfigService,
 				HomeyCloudAuthorizationStateService,
 				HomeyCloudGrantMutationService,
+				HomeyCloudSdkSessionFactoryService,
 				HomeyLocalConnectorFactory,
 				HomeyConnectionTestService,
 				HomeyMappingLoaderService,

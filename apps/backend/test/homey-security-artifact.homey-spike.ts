@@ -57,6 +57,8 @@ const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 	'homey-cloud-client-config',
 	'homey-cloud-callback-redaction',
 	'homey-cloud-grant-mutation',
+	'homey-cloud-provider-operation',
+	'homey-cloud-sdk-session',
 	'homey_cloud_active_grants',
 	'homey_cloud_authorization_state',
 	'homey_cloud_cancelled_authorizations',
@@ -4645,6 +4647,7 @@ const PUBLIC_COMPILED_SECRET_OPERATION_NAMES = new Set([
 	'HOMEY_CLOUD_MAX_AUTHORIZATION_CODE_LENGTH',
 	'HOMEY_CLOUD_MAX_PENDING_AUTHORIZATIONS',
 	'HOMEY_CLOUD_MAX_TOKEN_LENGTH',
+	'HOMEY_CLOUD_TOKEN_REFRESH_SKEW_MS',
 	'HOMEY_CLOUD_TOKEN_URL',
 	'assertAuthorizationContext',
 	'assertCloudAuthorizationEndpoint',
@@ -4656,9 +4659,16 @@ const PUBLIC_COMPILED_SECRET_OPERATION_NAMES = new Set([
 	'findCandidateWithCredentials',
 	'getAuthorizationContext',
 	'getResultUrl',
+	'homeyCloudTokenExpiresAt',
+	'homeyCloudTokenRequiresRefresh',
+	'isInvalidToken',
+	'loadActiveCredentials',
 	'loadActiveGrantCredentials',
 	'loadCandidateCredentials',
+	'normalizeHomeyCloudToken',
 	'normalizeToken',
+	'refreshAccessToken',
+	'requestToken',
 	'toActiveCredentials',
 	'toCandidateCredentials',
 	'toTokenMaterial',
@@ -6954,6 +6964,13 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe(
 				'safe compiled cloud authorization',
 				"class Client { create() { return { Authorization: `Basic ${Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64')}` }; } }",
+				true,
+			),
+		).not.toThrow();
+		expect(() =>
+			assertTextSafe(
+				'safe compiled cloud token refresh',
+				"class Client { refreshAccessToken(value) { return this.requestToken({ grant_type: 'refresh_token', refresh_token: value }); } requestToken(body) { return fetch('https://api.athom.com/oauth2/token', { body }); } }",
 				true,
 			),
 		).not.toThrow();
