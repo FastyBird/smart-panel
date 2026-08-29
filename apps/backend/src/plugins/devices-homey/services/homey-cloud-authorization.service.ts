@@ -32,6 +32,30 @@ import {
 } from './homey-cloud-grant-mutation.service';
 
 const UNICODE_CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
+const PROVIDER_TIMEOUT_CODES = new Set([
+	'ABORTERROR',
+	'ABORT_ERR',
+	'ECONNABORTED',
+	'ETIMEDOUT',
+	'TIMEOUTERROR',
+	'UND_ERR_BODY_TIMEOUT',
+	'UND_ERR_CONNECT_TIMEOUT',
+	'UND_ERR_HEADERS_TIMEOUT',
+]);
+const PROVIDER_UNAVAILABLE_CODES = new Set([
+	'EAI_AGAIN',
+	'ECONNREFUSED',
+	'ECONNRESET',
+	'EHOSTDOWN',
+	'EHOSTUNREACH',
+	'ENETDOWN',
+	'ENETRESET',
+	'ENETUNREACH',
+	'ENOTFOUND',
+	'EPIPE',
+	'ERR_STREAM_PREMATURE_CLOSE',
+	'UND_ERR_SOCKET',
+]);
 
 class ProviderTimeoutError extends Error {}
 
@@ -373,22 +397,10 @@ export class HomeyCloudAuthorizationService {
 				.map((value) => value.toUpperCase()),
 		);
 
-		if (codes.some((code) => ['ABORTERROR', 'ABORT_ERR', 'ECONNABORTED', 'ETIMEDOUT', 'TIMEOUTERROR'].includes(code))) {
+		if (codes.some((code) => PROVIDER_TIMEOUT_CODES.has(code))) {
 			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.TIMEOUT, operation);
 		}
-		if (
-			codes.some((code) =>
-				[
-					'EAI_AGAIN',
-					'ECONNREFUSED',
-					'ECONNRESET',
-					'EHOSTUNREACH',
-					'ENETUNREACH',
-					'ENOTFOUND',
-					'UND_ERR_SOCKET',
-				].includes(code),
-			)
-		) {
+		if (codes.some((code) => PROVIDER_UNAVAILABLE_CODES.has(code))) {
 			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.UNAVAILABLE, operation);
 		}
 
