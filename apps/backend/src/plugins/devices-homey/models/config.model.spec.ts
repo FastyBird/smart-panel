@@ -2,6 +2,7 @@ import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 
 import { ConfigSecretsService } from '../../../modules/config/services/config-secrets.service';
+import { HomeyConnectionMode } from '../devices-homey.constants';
 import { HomeyUpdatePluginConfigDto } from '../dto/update-config.dto';
 import { MAX_HOMEY_URL_LENGTH, isSafeHomeyUrl } from '../validators/homey-url.validator';
 
@@ -21,6 +22,15 @@ describe('Homey configuration', () => {
 				expect.objectContaining({ property: 'apiKey' }),
 			]),
 		);
+	});
+
+	it('accepts an enabled cloud configuration without local credentials', () => {
+		const config = Object.assign(new HomeyConfigModel(), {
+			enabled: true,
+			mode: HomeyConnectionMode.CLOUD,
+		});
+
+		expect(validateSync(config)).toEqual([]);
 	});
 
 	it('projects the API key as a configured indicator', () => {
@@ -43,12 +53,14 @@ describe('Homey configuration', () => {
 	it('accepts snake-case update fields while keeping the API key optional', () => {
 		const update = plainToInstance(HomeyUpdatePluginConfigDto, {
 			type: 'devices-homey-plugin',
+			mode: HomeyConnectionMode.CLOUD,
 			api_key: 'replacement-secret',
 			connection_timeout: 5000,
 			reconciliation_interval: 60000,
 		});
 
 		expect(update.apiKey).toBe('replacement-secret');
+		expect(update.mode).toBe(HomeyConnectionMode.CLOUD);
 		expect(update.connectionTimeout).toBe(5000);
 		expect(update.reconciliationInterval).toBe(60000);
 		expect(validateSync(update)).toEqual([]);

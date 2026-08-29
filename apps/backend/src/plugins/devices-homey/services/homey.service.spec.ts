@@ -10,6 +10,7 @@ import {
 	DEVICES_HOMEY_PLUGIN_NAME,
 	HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS,
 	HOMEY_COMMAND_WRITE_TIMEOUT_MS,
+	HomeyConnectionMode,
 	HomeyConnectionState,
 } from '../devices-homey.constants';
 import { HomeyDeviceEntity } from '../entities/devices-homey.entity';
@@ -231,6 +232,7 @@ describe('HomeyService', () => {
 
 		expect(order).toEqual(['connect', 'system', 'zones', 'subscribe', 'devices']);
 		expect(connectorFactory.create.mock.calls[0]?.[0]).toEqual({
+			mode: HomeyConnectionMode.LOCAL,
 			url: config.url,
 			apiKey: config.apiKey,
 			connectionTimeout: config.connectionTimeout,
@@ -311,6 +313,23 @@ describe('HomeyService', () => {
 		service.onAdoptedDeviceUpserted(existingDevice);
 		expect(service.getStatus()).toMatchObject({ adoptedDeviceCount: 1, missingDeviceCount: 0 });
 		expect(synchronizer.invalidateIndex).toHaveBeenCalledTimes(6);
+	});
+
+	it('selects cloud runtime mode without forwarding local credentials', async () => {
+		config.mode = HomeyConnectionMode.CLOUD;
+		config.url = null;
+		config.apiKey = null;
+
+		await service.start();
+
+		expect(connectorFactory.create.mock.calls[0]?.[0]).toEqual({
+			mode: HomeyConnectionMode.CLOUD,
+			connectionTimeout: config.connectionTimeout,
+		});
+		expect(JSON.stringify(connectorFactory.create.mock.calls)).not.toContain('configured-secret');
+		expect(service.getStatus()).toMatchObject({ configured: true, connectionState: HomeyConnectionState.CONNECTED });
+
+		await service.stop();
 	});
 
 	it('merges a concurrent local adoption into the complete authoritative startup set', async () => {

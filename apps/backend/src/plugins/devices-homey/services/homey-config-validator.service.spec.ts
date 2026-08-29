@@ -3,6 +3,7 @@ import {
 	DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,
 	DEFAULT_HOMEY_RECONCILIATION_INTERVAL_MS,
 	DEVICES_HOMEY_PLUGIN_NAME,
+	HomeyConnectionMode,
 } from '../devices-homey.constants';
 
 import { HomeyConfigValidatorService } from './homey-config-validator.service';
@@ -25,6 +26,19 @@ describe('HomeyConfigValidatorService', () => {
 
 	it('accepts an incomplete disabled configuration without a network request', async () => {
 		await expect(service.validate({ enabled: false })).resolves.toEqual({ valid: true });
+	});
+
+	it('accepts an enabled cloud configuration without local credentials', async () => {
+		await expect(service.validate({ enabled: true, mode: HomeyConnectionMode.CLOUD })).resolves.toEqual({
+			valid: true,
+		});
+	});
+
+	it('rejects an unknown connection mode even while disabled', async () => {
+		await expect(service.validate({ enabled: false, mode: 'other' })).resolves.toEqual({
+			valid: false,
+			errors: [{ message: 'Homey connection mode must be local or cloud', field: 'mode' }],
+		});
 	});
 
 	it('requires a URL when enabled', async () => {

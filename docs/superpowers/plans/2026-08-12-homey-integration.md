@@ -870,10 +870,10 @@ against provider exchanges and activation commits already in flight.
 
 ### Task 7.3: Implement `HomeyCloudConnector`
 
-- [ ] Implement the same connector contract and normalized error categories.
-- [ ] Run the shared connector contract suite.
+- [x] Implement the same connector contract and normalized error categories.
+- [x] Run the shared connector contract suite.
 - [ ] Verify inventory, subscriptions, writes, reconnect, rate limits, and cloud-specific latency behavior.
-- [ ] Keep mapping, preview, adoption, synchronizer, and control code unchanged.
+- [x] Keep mapping, preview, adoption, synchronizer, and control code unchanged.
 
 Task 7.3 is delivered in reviewable slices while live Homey Cloud access remains dependent on external approval:
 
@@ -883,7 +883,7 @@ Task 7.3 is delivered in reviewable slices while live Homey Cloud access remains
 - [x] **7.3b — Cloud SDK session and refresh:** create the selected Homey cloud SDK session from the active grant,
       persist refresh-token rotation through the grant mutation gate, and normalize cloud authentication, rate-limit,
       timeout, unavailable, and protocol failures.
-- [ ] **7.3c — Runtime selection and evidence:** select the connector from saved mode, prove inventory, subscriptions,
+- [x] **7.3c — Runtime selection and evidence:** select the connector from saved mode, prove inventory, subscriptions,
       writes, reconnect, cleanup, and bounded cloud latency with credential-free tests, then record sanitized live
       evidence when Athom access is available.
 
@@ -893,8 +893,20 @@ persists every rotated token through the grant generation compare-and-swap. An o
 valid refresh response retains the current value; a lost compare-and-swap reloads the winning active grant instead of
 using stale credentials. Concurrent refresh requests share one provider operation. Provider deadlines cover complete
 response consumption, token and child endpoints remain pinned, and raw SDK/provider failures are reduced to fixed
-connector authentication, validation, timeout, unavailable/rate-limit, or protocol categories. The created SDK client
-is not yet selected by `HomeyService`; Task 7.3c owns the transport and runtime-mode wiring.
+connector authentication, validation, timeout, unavailable/rate-limit, or protocol categories.
+
+The created SDK client is selected by a saved `local` or `cloud` backend mode through one runtime factory. Both modes
+use the same SDK transport, normalized connector core, `HomeyService`, mapping, adoption, synchronization, and control
+paths. Cloud activation asynchronously rotates an enabled cloud runtime after the grant commit; explicit disconnect and
+an activation-cancellation race await connector teardown before the HTTP operation completes. User demotion or removal
+invalidates its active grant transactionally and disconnects the cloud runtime only after that transaction commits.
+Transient post-commit teardown failures retry with bounded backoff, while startup reconciles the durable grant state to
+cover process restarts. Teardown rechecks grant state inside the serialized runtime queue so a concurrent successful
+activation always wins. The credential-free runtime matrix covers mode isolation, inventory and event subscriptions,
+retryable activation recovery with a current-grant guard, permanent-failure suppression, capability writes,
+reconnect/backoff, rate-limit categorization, teardown, late-client cleanup, and bounded operation deadlines. Live cloud inventory,
+subscription, write, reconnect, rate-limit, and latency evidence remains the unchecked parent item until Athom grants
+the separately recorded access approval. The admin continues to keep cloud mode unavailable until Task 7.4.
 
 ### Task 7.4: Extend admin configuration and release docs
 

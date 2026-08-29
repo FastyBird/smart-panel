@@ -62,6 +62,36 @@ describe('UserLifecycleMutationRegistryService', () => {
 		expect(commit).toHaveBeenCalledWith(transactionManager);
 	});
 
+	it('runs participant completion hooks only after a successful user commit', async () => {
+		const previous = new UserEntity();
+		const next = new UserEntity();
+		const order: string[] = [];
+		const participant = {
+			prepareUpdate: jest.fn().mockImplementation(() => {
+				order.push('prepare');
+			}),
+			prepareRemove: jest.fn().mockResolvedValue(undefined),
+			afterUpdate: jest.fn().mockImplementation(() => {
+				order.push('after');
+			}),
+		} as UserLifecycleMutationParticipant;
+		service.registerParticipant(participant);
+
+		await expect(
+			service.update(previous, next, () => {
+				order.push('commit');
+				return Promise.resolve('committed');
+			}),
+		).resolves.toBe('committed');
+		expect(order).toEqual(['prepare', 'commit', 'after']);
+
+		participant.afterUpdate = jest.fn();
+		await expect(service.update(previous, next, () => Promise.reject(new Error('rolled back')))).rejects.toThrow(
+			'rolled back',
+		);
+		expect(participant.afterUpdate).not.toHaveBeenCalled();
+	});
+
 	it('joins the transaction supplied by the primary security orchestrator', async () => {
 		const previous = new UserEntity();
 		const next = new UserEntity();

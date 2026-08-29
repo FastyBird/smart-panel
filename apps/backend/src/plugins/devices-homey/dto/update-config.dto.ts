@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -8,6 +8,7 @@ import {
 	DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,
 	DEFAULT_HOMEY_RECONCILIATION_INTERVAL_MS,
 	DEVICES_HOMEY_PLUGIN_NAME,
+	HomeyConnectionMode,
 	MAX_HOMEY_CONNECTION_TIMEOUT_MS,
 	MAX_HOMEY_RECONCILIATION_INTERVAL_MS,
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
@@ -24,6 +25,16 @@ export class HomeyUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@Expose()
 	@IsString({ message: '[{"field":"type","reason":"Type must be a valid string."}]' })
 	type: typeof DEVICES_HOMEY_PLUGIN_NAME;
+
+	@ApiPropertyOptional({
+		description: 'Saved Homey connector mode',
+		enum: HomeyConnectionMode,
+		example: HomeyConnectionMode.LOCAL,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(HomeyConnectionMode, { message: '[{"field":"mode","reason":"Connection mode must be local or cloud."}]' })
+	mode?: HomeyConnectionMode;
 
 	@ApiPropertyOptional({
 		description: 'Homey local API base URL',

@@ -214,21 +214,43 @@ clients must satisfy the read/subscription/capability-write-only production surf
 All raw provider failures are reduced to fixed connector categories; rate limits remain retryable unavailable results
 until Task 7.3c adds runtime backoff and evidence.
 
+Task 7.3c adds the saved backend connector mode and selects either the local credential factory or active cloud-session
+factory before entering the same SDK transport and normalized connector core. Local URL/API-key material is never
+included in the cloud factory input. The existing transport-neutral service continues to own startup reconciliation,
+subscriptions, commands, bounded reconnect backoff, polling degradation, and cleanup for both modes. OAuth activation
+queues a serialized restart only when an enabled cloud configuration is saved; disconnect and cancellation that removes
+the final active grant await cloud connector teardown. The admin selector remains disabled until Task 7.4 and the live
+approval gate below is satisfied. Demoting or removing the user who authorized the active grant clears that grant inside
+the user mutation transaction, then invokes cloud runtime teardown through a post-commit lifecycle hook; a rolled-back
+user mutation leaves both the grant and runtime untouched. A transient post-commit read or shutdown failure schedules
+bounded-backoff retries, and application startup rechecks the durable active-grant state so process restarts cannot leave
+an orphaned authenticated runtime connected. Each retry rechecks grant state inside the serialized runtime queue, so a
+concurrent successful activation either prevents an older teardown or restarts the connector after it.
+Committed cloud activation also retries serialized teardown failures and explicitly retryable startup failures with
+bounded backoff. Authentication, authorization, validation, protocol, and unexpected startup failures stop immediately
+for operator action. Every retry rechecks that an active grant still exists, so a later disconnect cancels stale work.
+
+Credential-free automated evidence covers the complete shared connector contract for both identities, the common SDK
+transport operation/timeout/late-cleanup suite, saved-mode runtime dispatch, cloud-session factory integration,
+`HomeyService` startup/reconnect/command lifecycle, and OAuth activation/disconnect coordination. This proves the code
+paths without a provider credential. It is not live-cloud evidence: the production inventory, subscription, write,
+reconnect, rate-limit, and latency row remains open until Athom approval and a dedicated test grant are available.
+
 ### HTTP authorization surface
 
 All management endpoints require a current Smart Panel owner or administrator. A long-lived credential is accepted only
 when it is associated with such a user; the mutation gate re-reads that user's authority before activation or
 disconnect. The callback is the sole public endpoint and is authorized only by consuming its exact single-use state.
 
-| Method | Path                                                                                  | Purpose                                                                                 |
-| ------ | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `POST` | `/api/v1/plugins/devices-homey/oauth/authorize`                                        | Start authorization and return the provider URL, opaque transaction ID, and expiry.     |
-| `GET`  | `/api/v1/plugins/devices-homey/oauth/callback`                                         | Consume state, exchange the code, then issue a query-free `303` redirect.                |
-| `GET`  | `/api/v1/plugins/devices-homey/oauth/transactions/{transactionId}/homeys`             | List sanitized eligible Homeys for the initiating user's pending transaction.           |
-| `POST` | `/api/v1/plugins/devices-homey/oauth/select`                                           | Select and activate one exact eligible Homey.                                            |
-| `POST` | `/api/v1/plugins/devices-homey/oauth/cancel`                                           | Clear one pending transaction owned by the initiating user.                              |
-| `POST` | `/api/v1/plugins/devices-homey/oauth/disconnect`                                       | Clear the active local grant reference and all pending authorization transactions.       |
-| `POST` | `/api/v1/plugins/devices-homey/oauth/reconnect`                                        | Start replacement authorization while preserving the current grant until activation.    |
+| Method | Path                                                                      | Purpose                                                                              |
+| ------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `POST` | `/api/v1/plugins/devices-homey/oauth/authorize`                           | Start authorization and return the provider URL, opaque transaction ID, and expiry.  |
+| `GET`  | `/api/v1/plugins/devices-homey/oauth/callback`                            | Consume state, exchange the code, then issue a query-free `303` redirect.            |
+| `GET`  | `/api/v1/plugins/devices-homey/oauth/transactions/{transactionId}/homeys` | List sanitized eligible Homeys for the initiating user's pending transaction.        |
+| `POST` | `/api/v1/plugins/devices-homey/oauth/select`                              | Select and activate one exact eligible Homey.                                        |
+| `POST` | `/api/v1/plugins/devices-homey/oauth/cancel`                              | Clear one pending transaction owned by the initiating user.                          |
+| `POST` | `/api/v1/plugins/devices-homey/oauth/disconnect`                          | Clear the active local grant reference and all pending authorization transactions.   |
+| `POST` | `/api/v1/plugins/devices-homey/oauth/reconnect`                           | Start replacement authorization while preserving the current grant until activation. |
 
 The authorization-start response is the only browser-facing source of the opaque transaction ID. The admin client must
 retain it in page-scoped storage before navigating to Homey. The callback redirects to the fixed same-origin

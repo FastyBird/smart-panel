@@ -14,6 +14,8 @@ export interface UserLifecycleMutationHandler {
 export interface UserLifecycleMutationParticipant {
 	prepareUpdate: (previous: UserEntity, next: UserEntity, manager: EntityManager) => Promise<void>;
 	prepareRemove: (user: UserEntity, manager: EntityManager) => Promise<void>;
+	afterUpdate?: (previous: UserEntity, next: UserEntity) => Promise<void>;
+	afterRemove?: (user: UserEntity) => Promise<void>;
 }
 
 @Injectable()
@@ -46,7 +48,10 @@ export class UserLifecycleMutationRegistryService {
 				commit,
 			);
 
-		return this.handler ? this.handler.update(previous, next, guardedCommit) : guardedCommit();
+		const result = await (this.handler ? this.handler.update(previous, next, guardedCommit) : guardedCommit());
+		await this.afterUpdate(previous, next);
+
+		return result;
 	}
 
 	async remove<T>(user: UserEntity, commit: UserLifecycleCommit<T>): Promise<T> {
@@ -55,7 +60,10 @@ export class UserLifecycleMutationRegistryService {
 		const guardedCommit: UserLifecycleCommit<T> = (manager) =>
 			this.runParticipants(manager, (transactionManager) => this.prepareRemove(user, transactionManager), commit);
 
-		return this.handler ? this.handler.remove(user, guardedCommit) : guardedCommit();
+		const result = await (this.handler ? this.handler.remove(user, guardedCommit) : guardedCommit());
+		await this.afterRemove(user);
+
+		return result;
 	}
 
 	private async runParticipants<T>(
@@ -80,5 +88,13 @@ export class UserLifecycleMutationRegistryService {
 
 	private async prepareRemove(user: UserEntity, manager: EntityManager): Promise<void> {
 		for (const participant of this.participants) await participant.prepareRemove(user, manager);
+	}
+
+	private async afterUpdate(previous: UserEntity, next: UserEntity): Promise<void> {
+		for (const participant of this.participants) await participant.afterUpdate?.(previous, next);
+	}
+
+	private async afterRemove(user: UserEntity): Promise<void> {
+		for (const participant of this.participants) await participant.afterRemove?.(user);
 	}
 }

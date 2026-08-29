@@ -1,17 +1,18 @@
-import { HomeyConnectorFactoryConfig } from './homey-connector.factory';
 import {
 	HomeyLocalTransport,
 	HomeyLocalTransportEvent,
 	HomeyLocalTransportEventListener,
 	HomeyLocalTransportUnsubscribe,
 } from './homey-local.transport';
-import {
-	HomeySdkClient,
-	HomeySdkClientFactory,
-	HomeySdkDevice,
-	HomeySdkEventListener,
-	HomeySdkEventSource,
-} from './homey-sdk.client';
+import { HomeySdkClient, HomeySdkDevice, HomeySdkEventListener, HomeySdkEventSource } from './homey-sdk.client';
+
+export interface HomeySdkTransportConfig {
+	readonly connectionTimeout: number;
+}
+
+export interface HomeySdkTransportClientFactory {
+	createClient(): Promise<HomeySdkClient>;
+}
 
 interface HomeySdkEventBinding {
 	source: HomeySdkEventSource;
@@ -70,8 +71,8 @@ export class HomeySdkTransport implements HomeyLocalTransport {
 	private deliveryTail: Promise<void> = Promise.resolve();
 
 	constructor(
-		private readonly config: HomeyConnectorFactoryConfig,
-		private readonly sdkFactory: HomeySdkClientFactory,
+		private readonly config: HomeySdkTransportConfig,
+		private readonly clientFactory: HomeySdkTransportClientFactory,
 	) {}
 
 	connect(): Promise<void> {
@@ -240,23 +241,14 @@ export class HomeySdkTransport implements HomeyLocalTransport {
 	}
 
 	private async createClient(): Promise<HomeySdkClient> {
-		const creation = this.sdkFactory.createLocalApi({
-			address: this.config.url,
-			token: this.config.apiKey,
-		});
+		const creation = this.clientFactory.createClient();
 
 		try {
 			return await this.runSdkOperation(() => creation);
 		} catch (error) {
 			if (error instanceof HomeySdkTimeoutError) {
 				void creation.then(
-					(lateClient) => {
-						try {
-							lateClient.destroy();
-						} catch {
-							// The sanitized timeout has already been returned to the connector.
-						}
-					},
+					(lateClient) => void this.disposeClient(lateClient),
 					() => undefined,
 				);
 			}

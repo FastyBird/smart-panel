@@ -15,6 +15,7 @@ describe('Homey local transport error mapper', () => {
 		[{ statusCode: 400 }, HomeyConnectorErrorCategory.VALIDATION],
 		[{ statusCode: 409 }, HomeyConnectorErrorCategory.VALIDATION],
 		[{ statusCode: 422 }, HomeyConnectorErrorCategory.VALIDATION],
+		[{ statusCode: 429 }, HomeyConnectorErrorCategory.UNAVAILABLE],
 		[{ statusCode: 500 }, HomeyConnectorErrorCategory.UNAVAILABLE],
 		[{ name: 'AbortError' }, HomeyConnectorErrorCategory.TIMEOUT],
 		[{ code: 'ECONNABORTED' }, HomeyConnectorErrorCategory.TIMEOUT],

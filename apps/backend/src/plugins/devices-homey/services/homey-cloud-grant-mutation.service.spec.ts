@@ -6,6 +6,7 @@ import {
 	HOMEY_CLOUD_ACTIVE_GRANT_KEY,
 	HOMEY_CLOUD_AUTHORIZATION_STATE_KEY,
 	HOMEY_CLOUD_MAX_PENDING_AUTHORIZATIONS,
+	HOMEY_CLOUD_RUNTIME_TEARDOWN_RETRY_INITIAL_MS,
 } from '../devices-homey.constants';
 import {
 	HomeyCloudActiveGrantEntity,
@@ -19,6 +20,7 @@ import { HomeyCloudGrantAuthorityError, HomeyCloudGrantConflictError } from '../
 
 import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
 import { HomeyCloudGrantMutationService, HomeyCloudTokenMaterial } from './homey-cloud-grant-mutation.service';
+import { HomeyCloudRuntimeRegistryService } from './homey-cloud-runtime-registry.service';
 
 describe('HomeyCloudGrantMutationService', () => {
 	const administratorId = '11111111-1111-4111-8111-111111111111';
@@ -26,6 +28,7 @@ describe('HomeyCloudGrantMutationService', () => {
 	let dataSource: DataSource;
 	let service: HomeyCloudGrantMutationService;
 	let configurationFingerprint: string | null;
+	let runtimeRegistry: jest.Mocked<Pick<HomeyCloudRuntimeRegistryService, 'disconnectGrant'>>;
 
 	beforeEach(async () => {
 		configurationFingerprint = 'configuration-one';
@@ -45,9 +48,14 @@ describe('HomeyCloudGrantMutationService', () => {
 		await dataSource.initialize();
 		await createUser(administratorId, 'administrator');
 		await createUser(otherAdministratorId, 'other-administrator');
-		service = new HomeyCloudGrantMutationService(dataSource, {
-			getConfigurationFingerprint: jest.fn(() => configurationFingerprint),
-		} as unknown as HomeyCloudClientConfigService);
+		runtimeRegistry = { disconnectGrant: jest.fn().mockResolvedValue(undefined) };
+		service = new HomeyCloudGrantMutationService(
+			dataSource,
+			{
+				getConfigurationFingerprint: jest.fn(() => configurationFingerprint),
+			} as unknown as HomeyCloudClientConfigService,
+			runtimeRegistry as unknown as HomeyCloudRuntimeRegistryService,
+		);
 	});
 
 	afterEach(async () => {
@@ -92,9 +100,11 @@ describe('HomeyCloudGrantMutationService', () => {
 	});
 
 	it('keeps the active grant until a generation-matched candidate activates atomically', async () => {
+		await expect(service.hasActiveGrant()).resolves.toBe(false);
 		const firstContext = await service.getAuthorizationContext(administratorId);
 		await service.stageCandidate(candidateInput(firstContext, 'first-transaction', token('first')));
 		const first = await service.activateCandidate('first-transaction', administratorId, 'homey-one');
+		await expect(service.hasActiveGrant()).resolves.toBe(true);
 		const replacementContext = await service.getAuthorizationContext(otherAdministratorId);
 		await service.stageCandidate(candidateInput(replacementContext, 'replacement-transaction', token('replacement')));
 
@@ -336,8 +346,79 @@ describe('HomeyCloudGrantMutationService', () => {
 		const next = Object.assign(new UserEntity(), previous, { role: UserRole.USER });
 
 		await dataSource.transaction((manager) => service.prepareUpdate(previous, next, manager));
+		await service.afterUpdate(previous, next);
 
 		await expect(service.loadActiveGrantCredentials()).resolves.toBeNull();
+		expect(runtimeRegistry.disconnectGrant).toHaveBeenCalledTimes(1);
+		const shouldDisconnect = runtimeRegistry.disconnectGrant.mock.calls[0]?.[0];
+		if (!shouldDisconnect) throw new Error('Homey Cloud runtime teardown guard was not registered');
+		await expect(shouldDisconnect()).resolves.toBe(true);
+	});
+
+	it('keeps the runtime connected when demoting a user who did not activate the grant', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		await service.stageCandidate(candidateInput(context, 'other-user-demotion', token('active')));
+		await service.activateCandidate('other-user-demotion', administratorId, 'homey-one');
+		const previous = await dataSource.getRepository(UserEntity).findOneByOrFail({ id: otherAdministratorId });
+		const next = Object.assign(new UserEntity(), previous, { role: UserRole.USER });
+
+		await dataSource.transaction((manager) => service.prepareUpdate(previous, next, manager));
+		await service.afterUpdate(previous, next);
+
+		await expect(service.loadActiveGrantCredentials()).resolves.not.toBeNull();
+		expect(runtimeRegistry.disconnectGrant).toHaveBeenCalledTimes(1);
+		const shouldDisconnect = runtimeRegistry.disconnectGrant.mock.calls[0]?.[0];
+		if (!shouldDisconnect) throw new Error('Homey Cloud runtime teardown guard was not registered');
+		await expect(shouldDisconnect()).resolves.toBe(false);
+	});
+
+	it('retries transient post-commit runtime teardown failures', async () => {
+		jest.useFakeTimers();
+		let observeRetry = (): void => undefined;
+		const retryObserved = new Promise<void>((resolve) => {
+			observeRetry = resolve;
+		});
+		runtimeRegistry.disconnectGrant
+			.mockRejectedValueOnce(new Error('temporary stop failure'))
+			.mockImplementationOnce(() => {
+				observeRetry();
+				return Promise.resolve();
+			});
+		const context = await service.getAuthorizationContext(administratorId);
+		await service.stageCandidate(candidateInput(context, 'retry-demotion', token('active')));
+		await service.activateCandidate('retry-demotion', administratorId, 'homey-one');
+		const previous = await dataSource.getRepository(UserEntity).findOneByOrFail({ id: administratorId });
+		const next = Object.assign(new UserEntity(), previous, { role: UserRole.USER });
+
+		try {
+			await dataSource.transaction((manager) => service.prepareUpdate(previous, next, manager));
+			await service.afterUpdate(previous, next);
+			expect(runtimeRegistry.disconnectGrant).toHaveBeenCalledTimes(1);
+
+			await jest.advanceTimersByTimeAsync(HOMEY_CLOUD_RUNTIME_TEARDOWN_RETRY_INITIAL_MS);
+			await retryObserved;
+
+			expect(runtimeRegistry.disconnectGrant).toHaveBeenCalledTimes(2);
+		} finally {
+			service.onModuleDestroy();
+			jest.useRealTimers();
+		}
+	});
+
+	it('reconciles a missing grant with runtime teardown at application bootstrap', async () => {
+		let observeTeardown = (): void => undefined;
+		const teardownObserved = new Promise<void>((resolve) => {
+			observeTeardown = resolve;
+		});
+		runtimeRegistry.disconnectGrant.mockImplementation(() => {
+			observeTeardown();
+			return Promise.resolve();
+		});
+
+		service.onApplicationBootstrap();
+		await teardownObserved;
+
+		expect(runtimeRegistry.disconnectGrant).toHaveBeenCalledTimes(1);
 	});
 
 	it('clears every persisted credential and authority record during factory reset', async () => {

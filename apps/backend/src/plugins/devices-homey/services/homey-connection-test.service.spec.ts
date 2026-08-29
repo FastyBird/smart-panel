@@ -3,7 +3,7 @@ import { instanceToPlain } from 'class-transformer';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { HomeyConnectorFactory } from '../connectors/homey-connector.factory';
 import { HomeyConnector } from '../connectors/homey-connector.interface';
-import { DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS } from '../devices-homey.constants';
+import { DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS, HomeyConnectionMode } from '../devices-homey.constants';
 import {
 	HomeyTestCandidateConnectionDto,
 	HomeyTestConnectionDto,
@@ -84,6 +84,7 @@ describe('HomeyConnectionTestService', () => {
 
 		expect(getPluginConfig).toHaveBeenCalledTimes(1);
 		expect(create).toHaveBeenCalledWith({
+			mode: HomeyConnectionMode.LOCAL,
 			url: savedConfig.url,
 			apiKey: 'stored-secret',
 			connectionTimeout: DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,
@@ -111,6 +112,7 @@ describe('HomeyConnectionTestService', () => {
 
 		expect(getPluginConfig).not.toHaveBeenCalled();
 		expect(create).toHaveBeenCalledWith({
+			mode: HomeyConnectionMode.LOCAL,
 			url: request.url,
 			apiKey: 'candidate-secret',
 			connectionTimeout: DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,
@@ -118,6 +120,25 @@ describe('HomeyConnectionTestService', () => {
 		expect(disconnect).toHaveBeenCalledTimes(1);
 		expect(result).toMatchObject({ mode: HomeyTestConnectionMode.CANDIDATE, success: true });
 		expect(JSON.stringify(instanceToPlain(result))).not.toContain('candidate-secret');
+	});
+
+	it('tests the saved cloud connector without requiring or forwarding local credentials', async () => {
+		const { create, getPluginConfig, service } = createHarness();
+		getPluginConfig.mockReturnValue(
+			Object.assign(new HomeyConfigModel(), {
+				mode: HomeyConnectionMode.CLOUD,
+				url: null,
+				apiKey: null,
+				connectionTimeout: 60000,
+			}),
+		);
+
+		await expect(service.testConnection(savedRequest())).resolves.toMatchObject({ success: true });
+		expect(create).toHaveBeenCalledWith({
+			mode: HomeyConnectionMode.CLOUD,
+			connectionTimeout: DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,
+		});
+		expect(JSON.stringify(create.mock.calls)).not.toContain('stored-secret');
 	});
 
 	it('keeps a canonical-equivalent candidate isolated from the persisted secret', async () => {
