@@ -115,6 +115,80 @@ describe('HomeySdkClientFactoryService', () => {
 		expect(requestSignal?.aborted).toBe(true);
 	});
 
+	it('classifies token HTTP failures before attempting to parse their body', async () => {
+		jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('not-json', { status: 429 }));
+		const provider = new HomeySdkClientFactoryService().createCloudProviderClient({
+			clientId: 'deployment-client-id',
+			clientSecret: 'deployment-client-secret',
+			redirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
+		});
+
+		await expect(
+			provider.exchangeAuthorizationCode('authorization-code', new AbortController().signal),
+		).rejects.toMatchObject({
+			statusCode: 429,
+		});
+	});
+
+	it('keeps cancellation attached while the SDK consumes an account response body', async () => {
+		let bodyAborted = false;
+
+		jest.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => {
+			const body = new ReadableStream({
+				start(controller) {
+					init?.signal?.addEventListener(
+						'abort',
+						() => {
+							bodyAborted = true;
+							controller.error(new DOMException('Aborted', 'AbortError'));
+						},
+						{ once: true },
+					);
+				},
+			});
+
+			return Promise.resolve(new Response(body, { headers: { 'Content-Type': 'application/json' } }));
+		});
+		jest.spyOn(AthomCloudAPI.prototype, 'getAuthenticatedUser').mockImplementation(async function () {
+			const executor = this as unknown as {
+				onCallRequestExecute(input: {
+					request: { body?: BodyInit; headers: HeadersInit; method: string; timeout?: number; url: string };
+				}): Promise<Response>;
+			};
+			const response = await executor.onCallRequestExecute({
+				request: {
+					headers: {},
+					method: 'GET',
+					timeout: 60_000,
+					url: 'https://api.athom.com/user/me',
+				},
+			});
+
+			await response.json();
+
+			throw new Error('The stalled SDK response body unexpectedly completed');
+		});
+		const provider = new HomeySdkClientFactoryService().createCloudProviderClient({
+			clientId: 'deployment-client-id',
+			clientSecret: 'deployment-client-secret',
+			redirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
+			token: {
+				tokenType: 'bearer',
+				accessToken: 'candidate-access-token',
+				refreshToken: 'candidate-refresh-token',
+				expiresIn: 3600,
+				grantType: 'authorization_code',
+			},
+		});
+		const controller = new AbortController();
+		const listing = provider.getHomeys(controller.signal);
+
+		controller.abort();
+
+		await expect(listing).rejects.toMatchObject({ code: 'ABORTERROR' });
+		expect(bodyAborted).toBe(true);
+	});
+
 	it('propagates cancellation into the child Homey login requests', async () => {
 		let requestStartedResolve: (() => void) | null = null;
 		const requestStarted = new Promise<void>((resolve) => {

@@ -253,13 +253,16 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 		);
 		let body: unknown;
 
+		if (!response.ok) throw new HomeyCloudSdkHttpError(response.status);
+
 		try {
 			body = await response.json();
 		} catch {
+			if (signal.aborted) throw new HomeyCloudSdkAbortError();
+
 			throw new HomeyCloudSdkProtocolError();
 		}
 
-		if (!response.ok) throw new HomeyCloudSdkHttpError(response.status);
 		if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new HomeyCloudSdkProtocolError();
 
 		return body as HomeyCloudProviderTokenResponse;
@@ -345,28 +348,16 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 		externalSignal: AbortSignal | null,
 		timeoutMs: number,
 	): Promise<Response> {
-		const controller = new AbortController();
-		let timedOut = false;
-		const abort = (): void => controller.abort(externalSignal?.reason);
-		const timeout = setTimeout(() => {
-			timedOut = true;
-			controller.abort();
-		}, timeoutMs);
-
-		timeout.unref();
-		if (externalSignal?.aborted) abort();
-		else externalSignal?.addEventListener('abort', abort, { once: true });
+		const timeoutSignal = AbortSignal.timeout(timeoutMs);
+		const signal = externalSignal ? AbortSignal.any([externalSignal, timeoutSignal]) : timeoutSignal;
 
 		try {
-			return await fetch(url, { ...options, signal: controller.signal });
+			return await fetch(url, { ...options, signal });
 		} catch (error) {
-			if (timedOut) throw new HomeyCloudSdkTimeoutError();
-			if (controller.signal.aborted) throw new HomeyCloudSdkAbortError();
+			if (timeoutSignal.aborted) throw new HomeyCloudSdkTimeoutError();
+			if (externalSignal?.aborted) throw new HomeyCloudSdkAbortError();
 
 			throw error;
-		} finally {
-			clearTimeout(timeout);
-			externalSignal?.removeEventListener('abort', abort);
 		}
 	}
 
@@ -417,15 +408,17 @@ function installHomeySdkAbortBridge(): AsyncLocalStorage<AbortSignal> {
 	const context = new AsyncLocalStorage<AbortSignal>();
 	const originalFetch = utility.fetch.bind(utility) as HomeySdkUtility['fetch'];
 
-	utility.fetch = (url, options = {}, timeoutDuration, timeoutMessage, patchOptions) => {
+	utility.fetch = (url, options = {}, _timeoutDuration, _timeoutMessage, patchOptions) => {
 		const operationSignal = context.getStore();
 
-		if (!operationSignal) return originalFetch(url, options, timeoutDuration, timeoutMessage, patchOptions);
+		if (!operationSignal) return originalFetch(url, options, _timeoutDuration, _timeoutMessage, patchOptions);
 
 		const existingSignal = options.signal;
 		const signal = existingSignal ? AbortSignal.any([existingSignal, operationSignal]) : operationSignal;
 
-		return originalFetch(url, { ...options, signal }, timeoutDuration, timeoutMessage, patchOptions);
+		// The provider service owns the complete-operation deadline. Do not let the SDK replace the operation signal with a
+		// headers-only timeout controller that is detached before its response body has been consumed.
+		return originalFetch(url, { ...options, signal }, undefined, undefined, patchOptions);
 	};
 	Object.defineProperty(utility, 'fastyBirdAbortContext', {
 		configurable: false,
