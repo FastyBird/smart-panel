@@ -32,7 +32,12 @@ export interface HomeyCloudSdkSessionFactory {
 interface HomeyCloudRefreshOperation {
 	readonly generation: number;
 	readonly grantIdentifier: string;
-	readonly promise: Promise<HomeyCloudActiveGrantCredentials>;
+	readonly promise: Promise<HomeyCloudRefreshResult>;
+}
+
+interface HomeyCloudRefreshResult {
+	readonly credentials: HomeyCloudActiveGrantCredentials;
+	readonly persisted: boolean;
 }
 
 @Injectable()
@@ -61,7 +66,15 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 		let refreshed = false;
 
 		if (homeyCloudTokenRequiresRefresh(prepared.token, Date.now(), HOMEY_CLOUD_TOKEN_REFRESH_SKEW_MS)) {
-			prepared = await this.refresh(prepared);
+			const result = await this.refresh(prepared);
+
+			if (!result.persisted) {
+				if (!allowGrantReload) throw new HomeyCloudGrantConflictError();
+
+				return await this.createClientForGrant(result.credentials, false);
+			}
+
+			prepared = result.credentials;
 			refreshed = true;
 		}
 
@@ -79,7 +92,15 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 			}
 			if (refreshed || prepared.token.refreshToken === null) throw error;
 
-			return await this.authenticate(await this.refresh(prepared));
+			const result = await this.refresh(prepared);
+
+			if (!result.persisted) {
+				if (!allowGrantReload) throw error;
+
+				return await this.createClientForGrant(result.credentials, false);
+			}
+
+			return await this.authenticate(result.credentials);
 		}
 	}
 
@@ -142,7 +163,7 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 		);
 	}
 
-	private refresh(credentials: HomeyCloudActiveGrantCredentials): Promise<HomeyCloudActiveGrantCredentials> {
+	private refresh(credentials: HomeyCloudActiveGrantCredentials): Promise<HomeyCloudRefreshResult> {
 		if (
 			this.refreshOperation?.grantIdentifier === credentials.grantIdentifier &&
 			this.refreshOperation.generation === credentials.generation
@@ -169,9 +190,7 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 		return operation.promise;
 	}
 
-	private async performRefresh(
-		credentials: HomeyCloudActiveGrantCredentials,
-	): Promise<HomeyCloudActiveGrantCredentials> {
+	private async performRefresh(credentials: HomeyCloudActiveGrantCredentials): Promise<HomeyCloudRefreshResult> {
 		const refreshToken = credentials.token.refreshToken;
 
 		if (refreshToken === null) {
@@ -197,9 +216,9 @@ export class HomeyCloudSdkSessionFactoryService implements HomeyCloudSdkSessionF
 			token,
 		});
 
-		if (persisted !== null) return { ...persisted, token };
+		if (persisted !== null) return { credentials: { ...persisted, token }, persisted: true };
 
-		return this.loadActiveCredentials();
+		return { credentials: await this.loadActiveCredentials(), persisted: false };
 	}
 
 	private createProvider(token: HomeyCloudTokenMaterial): HomeyCloudProviderClient {

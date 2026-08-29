@@ -378,6 +378,67 @@ describe('HomeyCloudSdkSessionFactoryService', () => {
 		expect(replacementProvider.createHomeyClient.mock.calls[0]).toEqual(['homey-2', expect.any(AbortSignal), false]);
 	});
 
+	it('recovers an expired replacement grant returned after a lost refresh compare-and-swap', async () => {
+		const expiring = {
+			...credentials,
+			token: { ...credentials.token, issuedAt: now - 3600 * 1000 },
+		};
+		const replacement: HomeyCloudActiveGrantCredentials = {
+			...credentials,
+			generation: 8,
+			grantIdentifier: 'grant-2',
+			selectedHomeyId: 'homey-2',
+			token: {
+				...credentials.token,
+				accessToken: 'replacement-access-token',
+				issuedAt: now - 3600 * 1000,
+				refreshToken: 'replacement-refresh-token',
+			},
+		};
+		let active = expiring;
+		let persistenceAttempt = 0;
+		const replacementClient = sdkClient('homey-2');
+		const replacementProvider = providerClient();
+		provider.refreshAccessToken.mockResolvedValue({
+			access_token: 'lost-refresh-access-token',
+			expires_in: 3600,
+			token_type: 'bearer',
+		});
+		replacementProvider.refreshAccessToken.mockResolvedValue({
+			access_token: 'replacement-access-token-2',
+			expires_in: 3600,
+			refresh_token: 'replacement-refresh-token-2',
+			token_type: 'bearer',
+		});
+		replacementProvider.createHomeyClient.mockResolvedValue(replacementClient);
+		grantMutations.loadActiveGrantCredentials.mockImplementation(() => Promise.resolve(active));
+		grantMutations.persistRefresh.mockImplementation(({ token }) => {
+			persistenceAttempt += 1;
+
+			if (persistenceAttempt === 1) {
+				active = replacement;
+
+				return Promise.resolve(null);
+			}
+
+			active = { ...replacement, generation: 9, token };
+
+			return Promise.resolve(active);
+		});
+		sdkClientFactory.createCloudProviderClient.mockImplementation(({ token }) =>
+			token?.accessToken === credentials.token.accessToken ? provider : replacementProvider,
+		);
+
+		await expect(service.createClient()).resolves.toBe(replacementClient);
+		expect(provider.refreshAccessToken.mock.calls).toHaveLength(1);
+		expect(replacementProvider.refreshAccessToken.mock.calls[0]).toEqual([
+			'replacement-refresh-token',
+			expect.any(AbortSignal),
+		]);
+		expect(grantMutations.persistRefresh).toHaveBeenCalledTimes(2);
+		expect(replacementProvider.createHomeyClient.mock.calls[0]).toEqual(['homey-2', expect.any(AbortSignal), false]);
+	});
+
 	it('coalesces concurrent refreshes through one provider request and persistence mutation', async () => {
 		let resolveRefresh = (_value: unknown): void => undefined;
 		const refresh = new Promise<Record<string, unknown>>((resolve) => {
