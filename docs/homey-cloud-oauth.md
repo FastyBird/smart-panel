@@ -186,7 +186,8 @@ exact Athom API origin. Authorization-code exchange uses the pinned Athom token 
 their final prepared origin before dispatch; all provider operations consume the authorization service's abort signal and
 have a bounded deadline through complete response-body consumption. Before child authentication can mint and send a
 delegation token, its SDK-provided remote URL must be a credential-free, path-free HTTPS endpoint on one exact
-`*.connect.athom.com` host label; redirects are disabled. The service validates and stages only the normalized token
+`*.connect.athom.com` host label; redirects are disabled. Retryable HTTP status is captured before the child SDK can
+normalize its discovery response into a status-free error. The service validates and stages only the normalized token
 fields, then recreates an isolated candidate client from the exact transaction for Homey listing and selection.
 Browser-facing choices contain only a bounded stable ID and sanitized name. Unsupported or duplicate entries fail closed;
 one eligible Homey is auto-selected, after a fresh singleton-inventory check, while multiple choices require an exact

@@ -223,6 +223,64 @@ describe('HomeySdkClientFactoryService', () => {
 		expect(homey.authenticate.mock.calls).toHaveLength(0);
 	});
 
+	it('preserves retryable HTTP status from child Homey SDK requests', async () => {
+		const server = createServer((_request, response) => {
+			response.writeHead(429, { 'Content-Type': 'text/plain' });
+			response.end('private rate-limit response');
+		});
+
+		server.listen(0, '127.0.0.1');
+		await once(server, 'listening');
+
+		try {
+			const address = server.address();
+
+			if (address === null || typeof address === 'string') throw new Error('Test server address is unavailable');
+
+			const sdkUtility = (
+				createRequire(__filename)('homey-api') as {
+					Util: {
+						fetch(url: string, options: RequestInit, timeoutDuration: number): Promise<Response>;
+					};
+				}
+			).Util;
+			const homey = {
+				id: 'homey-one',
+				name: 'Home',
+				apiVersion: 3,
+				platform: 'local',
+				remoteUrl: 'https://homey-one.connect.athom.com',
+				authenticate: jest.fn(() => sdkUtility.fetch(`http://127.0.0.1:${address.port}/discovery`, {}, 60_000)),
+			};
+
+			jest.spyOn(AthomCloudAPI.prototype, 'getAuthenticatedUser').mockResolvedValue({
+				getHomeys: () => [homey],
+				getHomeyById: () => homey,
+			} as unknown as AthomCloudAPI.User);
+			const provider = new HomeySdkClientFactoryService().createCloudProviderClient({
+				clientId: 'deployment-client-id',
+				clientSecret: 'deployment-client-secret',
+				redirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
+				token: {
+					tokenType: 'bearer',
+					accessToken: 'candidate-access-token',
+					refreshToken: 'candidate-refresh-token',
+					expiresIn: 3600,
+					grantType: 'authorization_code',
+				},
+			});
+
+			await expect(provider.authenticateHomey('homey-one', new AbortController().signal)).rejects.toMatchObject({
+				statusCode: 429,
+			});
+		} finally {
+			server.closeAllConnections();
+			await new Promise<void>((resolve, reject) => {
+				server.close((error) => (error ? reject(error) : resolve()));
+			});
+		}
+	});
+
 	it('propagates cancellation into the child Homey login requests', async () => {
 		let requestStartedResolve: (() => void) | null = null;
 		const requestStarted = new Promise<void>((resolve) => {

@@ -446,7 +446,7 @@ function installHomeySdkAbortBridge(): AsyncLocalStorage<AbortSignal> {
 	const context = new AsyncLocalStorage<AbortSignal>();
 	const originalFetch = utility.fetch.bind(utility) as HomeySdkUtility['fetch'];
 
-	utility.fetch = (url, options = {}, _timeoutDuration, _timeoutMessage, patchOptions) => {
+	utility.fetch = async (url, options = {}, _timeoutDuration, _timeoutMessage, patchOptions) => {
 		const operationSignal = context.getStore();
 
 		if (!operationSignal) return originalFetch(url, options, _timeoutDuration, _timeoutMessage, patchOptions);
@@ -456,7 +456,20 @@ function installHomeySdkAbortBridge(): AsyncLocalStorage<AbortSignal> {
 
 		// The provider service owns the complete-operation deadline. Do not let the SDK replace the operation signal with a
 		// headers-only timeout controller that is detached before its response body has been consumed.
-		return originalFetch(url, { ...options, redirect: 'error', signal }, undefined, undefined, patchOptions);
+		const response = await originalFetch(
+			url,
+			{ ...options, redirect: 'error', signal },
+			undefined,
+			undefined,
+			patchOptions,
+		);
+
+		if (isRetryableHttpStatus(response.status)) {
+			discardResponseBody(response);
+			throw new HomeyCloudSdkHttpError(response.status);
+		}
+
+		return response;
 	};
 	Object.defineProperty(utility, 'fastyBirdAbortContext', {
 		configurable: false,
@@ -466,6 +479,20 @@ function installHomeySdkAbortBridge(): AsyncLocalStorage<AbortSignal> {
 	});
 
 	return context;
+}
+
+function isRetryableHttpStatus(statusCode: number): boolean {
+	return statusCode === 408 || statusCode === 429 || statusCode >= 500;
+}
+
+function discardResponseBody(response: Response): void {
+	const body = response.body as unknown as { cancel?: () => Promise<void>; destroy?: (error?: Error) => void } | null;
+
+	if (typeof body?.destroy === 'function') {
+		body.destroy();
+	} else if (typeof body?.cancel === 'function') {
+		void body.cancel().catch(() => undefined);
+	}
 }
 
 class HomeyCloudSdkHttpError extends Error {
