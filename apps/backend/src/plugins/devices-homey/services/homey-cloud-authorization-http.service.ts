@@ -73,14 +73,14 @@ export class HomeyCloudAuthorizationHttpService {
 	}
 
 	async cancel(transactionId: string, initiatingUserId: string): Promise<boolean> {
-		const stateCancelled = this.authorizationState.cancel(transactionId, initiatingUserId);
+		const stateCancellation = this.authorizationState.cancel(transactionId, initiatingUserId);
 		const grantCancelled = await this.grantMutations.cancelAuthorization(
 			transactionId,
 			initiatingUserId,
-			stateCancelled,
+			stateCancellation.matched,
 		);
 
-		return stateCancelled || grantCancelled;
+		return stateCancellation.changed || grantCancelled;
 	}
 
 	async disconnect(initiatingUserId: string): Promise<boolean> {

@@ -41,6 +41,11 @@ export interface HomeyCloudAuthorizationFlow {
 	readonly transactionId: string;
 }
 
+export interface HomeyCloudAuthorizationCancellation {
+	readonly changed: boolean;
+	readonly matched: boolean;
+}
+
 export interface HomeyCloudConsumedAuthorization {
 	readonly activeGrantGeneration: number;
 	readonly authorityGeneration: number;
@@ -130,21 +135,21 @@ export class HomeyCloudAuthorizationStateService implements OnModuleDestroy {
 		};
 	}
 
-	cancel(transactionId: string, initiatingUserId: string): boolean {
+	cancel(transactionId: string, initiatingUserId: string): HomeyCloudAuthorizationCancellation {
 		this.assertCancellationContext(transactionId, initiatingUserId);
 
 		for (const [stateHash, pending] of this.pending) {
 			if (pending.transactionId !== transactionId || pending.initiatingUserId !== initiatingUserId) continue;
 
 			if (pending.consumed) {
-				if (pending.cancelled) return false;
+				if (pending.cancelled) return { changed: false, matched: true };
 				pending.cancelled = true;
 			} else this.remove(stateHash, pending);
 
-			return true;
+			return { changed: true, matched: true };
 		}
 
-		return false;
+		return { changed: false, matched: false };
 	}
 
 	complete(transactionId: string, initiatingUserId: string): void {

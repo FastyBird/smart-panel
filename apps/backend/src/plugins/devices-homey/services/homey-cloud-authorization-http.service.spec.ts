@@ -128,20 +128,39 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 	});
 
 	it.each([
-		{ stateCancelled: true, candidateCancelled: false, expected: true },
-		{ stateCancelled: false, candidateCancelled: true, expected: true },
-		{ stateCancelled: false, candidateCancelled: false, expected: false },
+		{ stateCancellation: { changed: true, matched: true }, grantCancelled: false, expected: true },
+		{ stateCancellation: { changed: false, matched: true }, grantCancelled: true, expected: true },
+		{ stateCancellation: { changed: false, matched: true }, grantCancelled: false, expected: false },
+		{ stateCancellation: { changed: false, matched: false }, grantCancelled: false, expected: false },
 	])(
 		'invalidates both pre-callback state and staged credentials when cancelling',
-		async ({ stateCancelled, candidateCancelled, expected }) => {
-			authorizationState.cancel.mockReturnValue(stateCancelled);
-			grantMutations.cancelAuthorization.mockResolvedValue(candidateCancelled);
+		async ({ stateCancellation, grantCancelled, expected }) => {
+			authorizationState.cancel.mockReturnValue(stateCancellation);
+			grantMutations.cancelAuthorization.mockResolvedValue(grantCancelled);
 
 			await expect(service.cancel('transaction-1', 'admin-user')).resolves.toBe(expected);
 			expect(authorizationState.cancel).toHaveBeenCalledWith('transaction-1', 'admin-user');
-			expect(grantMutations.cancelAuthorization).toHaveBeenCalledWith('transaction-1', 'admin-user', stateCancelled);
+			expect(grantMutations.cancelAuthorization).toHaveBeenCalledWith(
+				'transaction-1',
+				'admin-user',
+				stateCancellation.matched,
+			);
 		},
 	);
+
+	it('preserves cancellation-marker intent when persistence is retried', async () => {
+		authorizationState.cancel
+			.mockReturnValueOnce({ changed: true, matched: true })
+			.mockReturnValueOnce({ changed: false, matched: true });
+		grantMutations.cancelAuthorization
+			.mockRejectedValueOnce(new Error('temporary database failure'))
+			.mockResolvedValueOnce(true);
+
+		await expect(service.cancel('transaction-1', 'admin-user')).rejects.toThrow('temporary database failure');
+		await expect(service.cancel('transaction-1', 'admin-user')).resolves.toBe(true);
+		expect(grantMutations.cancelAuthorization).toHaveBeenNthCalledWith(1, 'transaction-1', 'admin-user', true);
+		expect(grantMutations.cancelAuthorization).toHaveBeenNthCalledWith(2, 'transaction-1', 'admin-user', true);
+	});
 
 	it('uses a fixed same-origin result URL and falls back to a relative URL when configuration is absent', () => {
 		clientConfig.getConfiguration.mockReturnValue({

@@ -99,10 +99,10 @@ describe('HomeyCloudAuthorizationStateService', () => {
 		const flow = service.create(start);
 		const state = new URL(flow.authorizeUrl).searchParams.get('state');
 
-		expect(service.cancel(flow.transactionId, 'other-user')).toBe(false);
-		expect(service.cancel('other-transaction', start.initiatingUserId)).toBe(false);
-		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toBe(true);
-		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toBe(false);
+		expect(service.cancel(flow.transactionId, 'other-user')).toEqual({ changed: false, matched: false });
+		expect(service.cancel('other-transaction', start.initiatingUserId)).toEqual({ changed: false, matched: false });
+		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toEqual({ changed: true, matched: true });
+		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toEqual({ changed: false, matched: false });
 		expect(() => service.consume(state)).toThrow(HomeyCloudAuthorizationStateError);
 	});
 
@@ -113,13 +113,13 @@ describe('HomeyCloudAuthorizationStateService', () => {
 		service.consume(state);
 
 		expect(() => service.consume(state)).toThrow(HomeyCloudAuthorizationStateError);
-		expect(service.cancel(flow.transactionId, 'other-user')).toBe(false);
-		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toBe(true);
-		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toBe(false);
+		expect(service.cancel(flow.transactionId, 'other-user')).toEqual({ changed: false, matched: false });
+		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toEqual({ changed: true, matched: true });
+		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toEqual({ changed: false, matched: true });
 
 		service.complete(flow.transactionId, start.initiatingUserId);
 
-		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toBe(false);
+		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toEqual({ changed: false, matched: false });
 	});
 
 	it.each([
