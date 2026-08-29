@@ -123,6 +123,28 @@ export class HomeyCloudAuthorizationStateService implements OnModuleDestroy {
 		};
 	}
 
+	cancel(transactionId: string, initiatingUserId: string): boolean {
+		if (
+			typeof transactionId !== 'string' ||
+			transactionId.trim().length === 0 ||
+			typeof initiatingUserId !== 'string' ||
+			initiatingUserId.trim().length === 0
+		) {
+			throw new TypeError('Homey Cloud authorization cancellation context is invalid');
+		}
+
+		for (const [stateHash, pending] of this.pending) {
+			if (pending.transactionId !== transactionId || pending.initiatingUserId !== initiatingUserId) continue;
+
+			this.pending.delete(stateHash);
+			clearTimeout(pending.timer);
+
+			return true;
+		}
+
+		return false;
+	}
+
 	onModuleDestroy(): void {
 		for (const pending of this.pending.values()) clearTimeout(pending.timer);
 

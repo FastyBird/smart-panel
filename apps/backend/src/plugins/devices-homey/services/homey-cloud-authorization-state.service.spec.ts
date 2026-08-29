@@ -95,6 +95,24 @@ describe('HomeyCloudAuthorizationStateService', () => {
 		expect(first.transactionId).not.toBe(second.transactionId);
 	});
 
+	it('cancels only the pending state matching both transaction and initiating user', () => {
+		const flow = service.create(start);
+		const state = new URL(flow.authorizeUrl).searchParams.get('state');
+
+		expect(service.cancel(flow.transactionId, 'other-user')).toBe(false);
+		expect(service.cancel('other-transaction', start.initiatingUserId)).toBe(false);
+		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toBe(true);
+		expect(service.cancel(flow.transactionId, start.initiatingUserId)).toBe(false);
+		expect(() => service.consume(state)).toThrow(HomeyCloudAuthorizationStateError);
+	});
+
+	it.each([
+		['', start.initiatingUserId],
+		['transaction-id', ''],
+	])('rejects an invalid cancellation context', (transactionId, initiatingUserId) => {
+		expect(() => service.cancel(transactionId, initiatingUserId)).toThrow(TypeError);
+	});
+
 	it('expires state independently of another request', () => {
 		const state = new URL(service.create(start).authorizeUrl).searchParams.get('state');
 

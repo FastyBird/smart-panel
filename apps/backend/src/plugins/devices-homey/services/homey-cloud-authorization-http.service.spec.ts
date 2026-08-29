@@ -19,7 +19,7 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 		redirectUrl: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback',
 		transactionId: 'transaction-1',
 	};
-	let authorizationState: jest.Mocked<Pick<HomeyCloudAuthorizationStateService, 'consume' | 'create'>>;
+	let authorizationState: jest.Mocked<Pick<HomeyCloudAuthorizationStateService, 'cancel' | 'consume' | 'create'>>;
 	let authorization: jest.Mocked<
 		Pick<HomeyCloudAuthorizationService, 'exchangeAuthorizationCode' | 'listCandidateHomeys' | 'selectHomey'>
 	>;
@@ -30,7 +30,7 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 	let service: HomeyCloudAuthorizationHttpService;
 
 	beforeEach(() => {
-		authorizationState = { consume: jest.fn(), create: jest.fn() };
+		authorizationState = { cancel: jest.fn(), consume: jest.fn(), create: jest.fn() };
 		authorization = {
 			exchangeAuthorizationCode: jest.fn(),
 			listCandidateHomeys: jest.fn(),
@@ -121,6 +121,22 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 		).resolves.toBe('failed');
 		expect(authorization.exchangeAuthorizationCode).not.toHaveBeenCalled();
 	});
+
+	it.each([
+		{ stateCancelled: true, candidateCancelled: false, expected: true },
+		{ stateCancelled: false, candidateCancelled: true, expected: true },
+		{ stateCancelled: false, candidateCancelled: false, expected: false },
+	])(
+		'invalidates both pre-callback state and staged credentials when cancelling',
+		async ({ stateCancelled, candidateCancelled, expected }) => {
+			authorizationState.cancel.mockReturnValue(stateCancelled);
+			grantMutations.cancelCandidate.mockResolvedValue(candidateCancelled);
+
+			await expect(service.cancel('transaction-1', 'admin-user')).resolves.toBe(expected);
+			expect(authorizationState.cancel).toHaveBeenCalledWith('transaction-1', 'admin-user');
+			expect(grantMutations.cancelCandidate).toHaveBeenCalledWith('transaction-1', 'admin-user');
+		},
+	);
 
 	it('uses a fixed same-origin result URL and falls back to a relative URL when configuration is absent', () => {
 		clientConfig.getConfiguration.mockReturnValue({
