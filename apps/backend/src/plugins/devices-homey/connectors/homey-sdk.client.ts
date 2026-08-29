@@ -254,7 +254,10 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 		);
 		let body: unknown;
 
-		if (!response.ok) throw new HomeyCloudSdkHttpError(response.status);
+		if (!response.ok) {
+			discardResponseBody(response);
+			throw new HomeyCloudSdkHttpError(response.status);
+		}
 
 		try {
 			body = await response.json();

@@ -117,7 +117,10 @@ describe('HomeySdkClientFactoryService', () => {
 	});
 
 	it('classifies token HTTP failures before attempting to parse their body', async () => {
-		jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('not-json', { status: 429 }));
+		const response = new Response('not-json', { status: 429 });
+		const cancelBody = jest.spyOn(response.body as ReadableStream, 'cancel');
+
+		jest.spyOn(globalThis, 'fetch').mockResolvedValue(response);
 		const provider = new HomeySdkClientFactoryService().createCloudProviderClient({
 			clientId: 'deployment-client-id',
 			clientSecret: 'deployment-client-secret',
@@ -129,6 +132,7 @@ describe('HomeySdkClientFactoryService', () => {
 		).rejects.toMatchObject({
 			statusCode: 429,
 		});
+		expect(cancelBody).toHaveBeenCalledTimes(1);
 	});
 
 	it('keeps cancellation attached while the SDK consumes an account response body', async () => {
