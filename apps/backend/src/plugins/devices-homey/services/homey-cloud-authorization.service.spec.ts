@@ -104,6 +104,7 @@ describe('HomeyCloudAuthorizationService', () => {
 	it('stages exchanged tokens and returns only bounded eligible choices for multi-Homey accounts', async () => {
 		candidateClient.getHomeys.mockResolvedValue([
 			homey('homey-two', '  Upstairs\nHomey  '),
+			homey('legacy', 'Legacy', { apiVersion: 1 }),
 			homey('unsupported', 'Unsupported', { apiVersion: 4 }),
 			homey('homey-one', 'Downstairs'),
 		]);
@@ -344,6 +345,8 @@ describe('HomeyCloudAuthorizationService', () => {
 			exchangeAuthorizationCode: jest.fn(),
 			getHomeys: jest.fn(),
 			authenticateHomey: jest.fn().mockResolvedValue(undefined),
+			createHomeyClient: jest.fn(),
+			refreshAccessToken: jest.fn(),
 		};
 	}
 

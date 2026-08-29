@@ -33,6 +33,7 @@ export enum HomeyCloudProviderOperation {
 	EXCHANGE_CODE = 'exchange_code',
 	LIST_HOMEYS = 'list_homeys',
 	AUTHENTICATE_HOMEY = 'authenticate_homey',
+	REFRESH_TOKEN = 'refresh_token',
 }
 
 const RETRYABLE_PROVIDER_CATEGORIES = new Set<HomeyCloudProviderErrorCategory>([

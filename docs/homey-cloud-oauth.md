@@ -202,7 +202,17 @@ auto-selected, after a fresh singleton-inventory check, while multiple choices r
 selection. The selected Homey must authenticate over the cloud strategy before the existing mutation gate can atomically
 activate it. Invalid-token, malformed-response, empty-inventory and all-unsupported-inventory failures clear only that
 candidate; transient timeout, rate-limit, and unavailable failures retain it until its original absolute expiry. HTTP
-routes are provided by Task 7.2d; connector activation remains intentionally absent until Task 7.3.
+routes are provided by Task 7.2d; runtime connector activation remains intentionally absent until Task 7.3c.
+
+Task 7.3b adds the runtime cloud-session boundary without enabling cloud mode. It loads only the active grant, refreshes
+within a bounded expiry skew or once after an invalid access token, and persists access-token plus refresh-token
+rotation through the same grant-identity and generation compare-and-swap. Concurrent callers share one refresh. If a
+refresh loses to disconnect, reauthorization, configuration replacement, or another refresh, the session reloads the
+winning active grant and never uses the stale result. Valid refresh responses that omit a replacement refresh token or
+grant type retain the current values. The exact selected Homey is authenticated with the cloud strategy, returned SDK
+clients must satisfy the read/subscription/capability-write-only production surface, and malformed clients are disposed.
+All raw provider failures are reduced to fixed connector categories; rate limits remain retryable unavailable results
+until Task 7.3c adds runtime backoff and evidence.
 
 ### HTTP authorization surface
 

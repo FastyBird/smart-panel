@@ -31,8 +31,10 @@ describe('HomeySdkClientFactoryService', () => {
 		};
 		const fetchMock = jest
 			.spyOn(globalThis, 'fetch')
-			.mockResolvedValue(
-				new Response(JSON.stringify(token), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+			.mockImplementation(() =>
+				Promise.resolve(
+					new Response(JSON.stringify(token), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+				),
 			);
 		const homeyApi = {
 			disconnect: jest.fn().mockResolvedValue(undefined),
@@ -76,7 +78,12 @@ describe('HomeySdkClientFactoryService', () => {
 			{ id: 'homey-one', name: 'Home', apiVersion: 3, platform: 'local' },
 		]);
 		await expect(candidateProvider.authenticateHomey('homey-one', controller.signal, false)).resolves.toBeUndefined();
+		await expect(candidateProvider.refreshAccessToken('provider-refresh-token', controller.signal)).resolves.toEqual(
+			token,
+		);
+		const runtimeClient = await candidateProvider.createHomeyClient('homey-one', controller.signal, false);
 		const [tokenUrl, tokenRequest] = fetchMock.mock.calls[0];
+		const [refreshUrl, refreshRequest] = fetchMock.mock.calls[1];
 
 		expect(tokenUrl).toBe('https://api.athom.com/oauth2/token');
 		expect(tokenRequest?.redirect).toBe('error');
@@ -85,9 +92,19 @@ describe('HomeySdkClientFactoryService', () => {
 		expect((tokenRequest?.body as URLSearchParams).toString()).toBe(
 			'grant_type=authorization_code&code=authorization-code',
 		);
-		expect(homey.authenticate).toHaveBeenCalledWith({ strategy: 'cloud', reconnect: false });
+		expect(refreshUrl).toBe('https://api.athom.com/oauth2/token');
+		expect(refreshRequest?.redirect).toBe('error');
+		expect((refreshRequest?.body as URLSearchParams).toString()).toBe(
+			'grant_type=refresh_token&refresh_token=provider-refresh-token',
+		);
+		expect(homey.authenticate).toHaveBeenCalledTimes(2);
+		expect(homey.authenticate).toHaveBeenLastCalledWith({ strategy: 'cloud', reconnect: false });
 		expect(homeyApi.disconnect).toHaveBeenCalledTimes(1);
 		expect(homeyApi.destroy).toHaveBeenCalledTimes(1);
+		await runtimeClient.disconnect();
+		runtimeClient.destroy();
+		expect(homeyApi.disconnect).toHaveBeenCalledTimes(2);
+		expect(homeyApi.destroy).toHaveBeenCalledTimes(2);
 	});
 
 	it('aborts the underlying authorization-code exchange when its caller cancels', async () => {
@@ -254,7 +271,7 @@ describe('HomeySdkClientFactoryService', () => {
 		expect(homey.authenticate.mock.calls).toHaveLength(0);
 	});
 
-	it('authenticates an API-v1 Homey without newer client lifecycle methods', async () => {
+	it('rejects an API-v1 Homey before runtime authentication', async () => {
 		const homey = {
 			id: 'legacy-homey',
 			name: 'Legacy Homey',
@@ -280,10 +297,10 @@ describe('HomeySdkClientFactoryService', () => {
 			},
 		});
 
-		await expect(
-			provider.authenticateHomey('legacy-homey', new AbortController().signal, false),
-		).resolves.toBeUndefined();
-		expect(homey.authenticate).toHaveBeenCalledWith({ strategy: 'cloud', reconnect: false });
+		await expect(provider.authenticateHomey('legacy-homey', new AbortController().signal, false)).rejects.toThrow(
+			HomeyCloudSelectionError,
+		);
+		expect(homey.authenticate.mock.calls).toHaveLength(0);
 	});
 
 	it('rejects automatic authentication when the final inventory is no longer a singleton', async () => {
