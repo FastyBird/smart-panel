@@ -175,7 +175,7 @@ export class HomeyCloudAuthorizationService {
 		if (!selectedHomey || (requireSingleton && homeys.length !== 1)) throw new HomeyCloudSelectionError();
 
 		await this.runProviderOperation(HomeyCloudProviderOperation.AUTHENTICATE_HOMEY, (signal) =>
-			provider.authenticateHomey(selectedHomey.id, signal),
+			provider.authenticateHomey(selectedHomey.id, signal, requireSingleton),
 		);
 		const grant = await this.grantMutations.activateCandidate(transactionId, initiatingUserId, selectedHomey.id);
 
@@ -341,6 +341,8 @@ export class HomeyCloudAuthorizationService {
 				}),
 			]);
 		} catch (error) {
+			if (error instanceof HomeyCloudSelectionError) throw error;
+
 			throw this.mapProviderError(error, operation);
 		} finally {
 			if (timeout) clearTimeout(timeout);
@@ -386,7 +388,9 @@ export class HomeyCloudAuthorizationService {
 			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.TIMEOUT, operation);
 		}
 		if (
-			codes.some((code) => ['ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'ENOTFOUND'].includes(code))
+			codes.some((code) =>
+				['EAI_AGAIN', 'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'ENOTFOUND'].includes(code),
+			)
 		) {
 			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.UNAVAILABLE, operation);
 		}

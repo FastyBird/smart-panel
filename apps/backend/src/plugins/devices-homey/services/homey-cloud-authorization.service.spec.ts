@@ -154,6 +154,7 @@ describe('HomeyCloudAuthorizationService', () => {
 		});
 		expect(candidateClient.authenticateHomey.mock.calls[0]?.[0]).toBe('homey-one');
 		expect(candidateClient.authenticateHomey.mock.calls[0]?.[1]).toBeInstanceOf(AbortSignal);
+		expect(candidateClient.authenticateHomey.mock.calls[0]?.[2]).toBe(true);
 		expect(grantMutations.activateCandidate).toHaveBeenCalledWith(
 			exchange.transactionId,
 			exchange.initiatingUserId,
@@ -228,19 +229,24 @@ describe('HomeyCloudAuthorizationService', () => {
 		expect(grantMutations.cancelCandidate).not.toHaveBeenCalled();
 	});
 
-	it('retains the candidate when native fetch wraps a transient network error', async () => {
-		candidateClient.getHomeys.mockRejectedValue(
-			new TypeError('fetch failed', {
-				cause: Object.assign(new Error('private network failure'), { code: 'ENOTFOUND' }),
-			}),
-		);
+	it.each(['EAI_AGAIN', 'ENOTFOUND'])(
+		'retains the candidate when native fetch wraps network error %s',
+		async (code) => {
+			candidateClient.getHomeys.mockRejectedValue(
+				new TypeError('fetch failed', {
+					cause: Object.assign(new Error('private network failure'), { code }),
+				}),
+			);
 
-		await expect(service.listCandidateHomeys(exchange.transactionId, exchange.initiatingUserId)).rejects.toMatchObject({
-			category: HomeyCloudProviderErrorCategory.UNAVAILABLE,
-			retryable: true,
-		});
-		expect(grantMutations.cancelCandidate).not.toHaveBeenCalled();
-	});
+			await expect(
+				service.listCandidateHomeys(exchange.transactionId, exchange.initiatingUserId),
+			).rejects.toMatchObject({
+				category: HomeyCloudProviderErrorCategory.UNAVAILABLE,
+				retryable: true,
+			});
+			expect(grantMutations.cancelCandidate).not.toHaveBeenCalled();
+		},
+	);
 
 	it('retains the candidate when Homey rate-limits listing or selection', async () => {
 		candidateClient.getHomeys.mockRejectedValue(
@@ -297,6 +303,7 @@ describe('HomeyCloudAuthorizationService', () => {
 		);
 		expect(candidateClient.authenticateHomey.mock.calls[0]?.[0]).toBe('homey-one');
 		expect(candidateClient.authenticateHomey.mock.calls[0]?.[1]).toBeInstanceOf(AbortSignal);
+		expect(candidateClient.authenticateHomey.mock.calls[0]?.[2]).toBe(false);
 		expect(grantMutations.cancelCandidate).not.toHaveBeenCalled();
 	});
 

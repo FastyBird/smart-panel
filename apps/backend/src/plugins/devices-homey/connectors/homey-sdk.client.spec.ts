@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 
 import { HOMEY_CLOUD_CALLBACK_PATH, HOMEY_CLOUD_SCOPES } from '../devices-homey.constants';
-import { HomeyCloudConfigurationError } from '../errors/homey-cloud-authorization.error';
+import { HomeyCloudConfigurationError, HomeyCloudSelectionError } from '../errors/homey-cloud-authorization.error';
 
 import { HomeySdkClientFactoryService } from './homey-sdk.client';
 
@@ -75,7 +75,7 @@ describe('HomeySdkClientFactoryService', () => {
 		await expect(candidateProvider.getHomeys(controller.signal)).resolves.toEqual([
 			{ id: 'homey-one', name: 'Home', apiVersion: 3, platform: 'local' },
 		]);
-		await expect(candidateProvider.authenticateHomey('homey-one', controller.signal)).resolves.toBeUndefined();
+		await expect(candidateProvider.authenticateHomey('homey-one', controller.signal, false)).resolves.toBeUndefined();
 		const [tokenUrl, tokenRequest] = fetchMock.mock.calls[0];
 
 		expect(tokenUrl).toBe('https://api.athom.com/oauth2/token');
@@ -248,7 +248,7 @@ describe('HomeySdkClientFactoryService', () => {
 			},
 		});
 
-		await expect(provider.authenticateHomey('homey-one', new AbortController().signal)).rejects.toMatchObject({
+		await expect(provider.authenticateHomey('homey-one', new AbortController().signal, false)).rejects.toMatchObject({
 			name: 'HomeyCloudSdkProtocolError',
 		});
 		expect(homey.authenticate.mock.calls).toHaveLength(0);
@@ -280,8 +280,43 @@ describe('HomeySdkClientFactoryService', () => {
 			},
 		});
 
-		await expect(provider.authenticateHomey('legacy-homey', new AbortController().signal)).resolves.toBeUndefined();
+		await expect(
+			provider.authenticateHomey('legacy-homey', new AbortController().signal, false),
+		).resolves.toBeUndefined();
 		expect(homey.authenticate).toHaveBeenCalledWith({ strategy: 'cloud', reconnect: false });
+	});
+
+	it('rejects automatic authentication when the final inventory is no longer a singleton', async () => {
+		const homey = {
+			id: 'homey-one',
+			name: 'Home',
+			apiVersion: 3,
+			platform: 'local',
+			remoteUrl: 'https://homey-one.connect.athom.com',
+			authenticate: jest.fn(),
+		};
+
+		jest.spyOn(AthomCloudAPI.prototype, 'getAuthenticatedUser').mockResolvedValue({
+			getHomeys: () => [homey, { ...homey, id: 'homey-two', name: 'Other Homey' }],
+			getHomeyById: () => homey,
+		} as unknown as AthomCloudAPI.User);
+		const provider = new HomeySdkClientFactoryService().createCloudProviderClient({
+			clientId: 'deployment-client-id',
+			clientSecret: 'deployment-client-secret',
+			redirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
+			token: {
+				tokenType: 'bearer',
+				accessToken: 'candidate-access-token',
+				refreshToken: 'candidate-refresh-token',
+				expiresIn: 3600,
+				grantType: 'authorization_code',
+			},
+		});
+
+		await expect(provider.authenticateHomey('homey-one', new AbortController().signal, true)).rejects.toThrow(
+			HomeyCloudSelectionError,
+		);
+		expect(homey.authenticate.mock.calls).toHaveLength(0);
 	});
 
 	it('preserves retryable HTTP status from child Homey SDK requests', async () => {
@@ -331,7 +366,7 @@ describe('HomeySdkClientFactoryService', () => {
 				},
 			});
 
-			await expect(provider.authenticateHomey('homey-one', new AbortController().signal)).rejects.toMatchObject({
+			await expect(provider.authenticateHomey('homey-one', new AbortController().signal, false)).rejects.toMatchObject({
 				statusCode: 429,
 			});
 		} finally {
@@ -394,7 +429,7 @@ describe('HomeySdkClientFactoryService', () => {
 				},
 			});
 			const controller = new AbortController();
-			const authentication = provider.authenticateHomey('homey-one', controller.signal);
+			const authentication = provider.authenticateHomey('homey-one', controller.signal, false);
 
 			await requestStarted;
 			controller.abort();

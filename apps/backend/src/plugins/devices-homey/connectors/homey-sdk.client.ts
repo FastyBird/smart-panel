@@ -11,7 +11,7 @@ import {
 	HOMEY_CLOUD_PROVIDER_TIMEOUT_MS,
 	HOMEY_CLOUD_TOKEN_URL,
 } from '../devices-homey.constants';
-import { HomeyCloudConfigurationError } from '../errors/homey-cloud-authorization.error';
+import { HomeyCloudConfigurationError, HomeyCloudSelectionError } from '../errors/homey-cloud-authorization.error';
 
 const homeySdkAbortContext = installHomeySdkAbortBridge();
 
@@ -114,7 +114,7 @@ export interface HomeyCloudProviderHomey {
 }
 
 export interface HomeyCloudProviderClient {
-	authenticateHomey(homeyId: string, signal: AbortSignal): Promise<void>;
+	authenticateHomey(homeyId: string, signal: AbortSignal, requireSingleton: boolean): Promise<void>;
 	exchangeAuthorizationCode(code: string, signal: AbortSignal): Promise<HomeyCloudProviderTokenResponse>;
 	getHomeys(signal: AbortSignal): Promise<readonly HomeyCloudProviderHomey[]>;
 }
@@ -290,9 +290,15 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 		});
 	}
 
-	async authenticateHomey(homeyId: string, signal: AbortSignal): Promise<void> {
+	async authenticateHomey(homeyId: string, signal: AbortSignal, requireSingleton: boolean): Promise<void> {
 		return this.withSignal(signal, async () => {
 			const user = await this.getAuthenticatedUserFresh();
+			const homeys = user.getHomeys();
+
+			if (requireSingleton && (homeys.length !== 1 || homeys[0]?.id !== homeyId)) {
+				throw new HomeyCloudSelectionError();
+			}
+
 			const homey = user.getHomeyById(homeyId) as unknown as {
 				apiVersion?: unknown;
 				authenticate(options: { reconnect: boolean; strategy: string }): Promise<HomeyCloudAuthenticatedSdkClient>;
