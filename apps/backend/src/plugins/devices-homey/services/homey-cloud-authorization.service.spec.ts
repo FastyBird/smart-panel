@@ -139,6 +139,7 @@ describe('HomeyCloudAuthorizationService', () => {
 		candidateClient.getHomeys.mockResolvedValue([
 			homey('homey-one', 'Office\u0085\u009bName'),
 			homey('homey\u0085two', 'Unsafe identifier'),
+			homey('homey\u2028three', 'Separator identifier'),
 		]);
 
 		await expect(service.listCandidateHomeys(exchange.transactionId, exchange.initiatingUserId)).resolves.toEqual([

@@ -17,7 +17,7 @@ import { HomeyCloudConfigurationError, HomeyCloudSelectionError } from '../error
 const homeySdkAbortContext = installHomeySdkAbortBridge();
 const SUPPORTED_HOMEY_CLOUD_API_VERSIONS = new Set([1, 2, 3]);
 const SUPPORTED_HOMEY_CLOUD_PLATFORMS = new Set(['cloud', 'local']);
-const UNICODE_CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
+const HOMEY_CLOUD_ID_UNSAFE_PATTERN = /[\s\p{Cc}\p{Cf}\p{Z}]/u;
 
 export type HomeySdkEventListener = (...arguments_: unknown[]) => Promise<void> | void;
 
@@ -117,6 +117,12 @@ export interface HomeyCloudProviderHomey {
 	readonly platform: unknown;
 }
 
+export const isSafeHomeyCloudProviderHomeyId = (id: unknown): id is string =>
+	typeof id === 'string' &&
+	id.length > 0 &&
+	id.length <= HOMEY_CLOUD_MAX_HOMEY_ID_LENGTH &&
+	![...id].some((character) => HOMEY_CLOUD_ID_UNSAFE_PATTERN.test(character));
+
 export const isEligibleHomeyCloudProviderHomey = (
 	homey: unknown,
 ): homey is HomeyCloudProviderHomey & { readonly id: string } => {
@@ -127,11 +133,7 @@ export const isEligibleHomeyCloudProviderHomey = (
 	return (
 		SUPPORTED_HOMEY_CLOUD_API_VERSIONS.has(record.apiVersion as number) &&
 		SUPPORTED_HOMEY_CLOUD_PLATFORMS.has(record.platform as string) &&
-		typeof record.id === 'string' &&
-		record.id === record.id.trim() &&
-		record.id.length > 0 &&
-		record.id.length <= HOMEY_CLOUD_MAX_HOMEY_ID_LENGTH &&
-		![...record.id].some((character) => UNICODE_CONTROL_PATTERN.test(character))
+		isSafeHomeyCloudProviderHomeyId(record.id)
 	);
 };
 
@@ -316,6 +318,10 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 		return this.withSignal(signal, async () => {
 			const user = await this.getAuthenticatedUserFresh();
 			const homeys = user.getHomeys().filter(isEligibleHomeyCloudProviderHomey);
+			const identifiers = new Set(homeys.map((homey) => homey.id));
+
+			if (identifiers.size !== homeys.length) throw new HomeyCloudSdkProtocolError();
+
 			const homey = homeys.find((candidate) => candidate.id === homeyId);
 
 			if (!homey || (requireSingleton && homeys.length !== 1)) {

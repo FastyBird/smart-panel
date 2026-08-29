@@ -391,6 +391,40 @@ describe('HomeySdkClientFactoryService', () => {
 		expect(remainingHomey.authenticate).not.toHaveBeenCalled();
 	});
 
+	it('rejects duplicate eligible identifiers in the final inventory', async () => {
+		const firstHomey = {
+			id: 'homey-one',
+			name: 'Home',
+			apiVersion: 3,
+			platform: 'local',
+			remoteUrl: 'https://homey-one.connect.athom.com',
+			authenticate: jest.fn(),
+		};
+		const secondHomey = { ...firstHomey, name: 'Duplicate Home' };
+
+		jest.spyOn(AthomCloudAPI.prototype, 'getAuthenticatedUser').mockResolvedValue({
+			getHomeys: () => [firstHomey, secondHomey],
+			getHomeyById: () => firstHomey,
+		} as unknown as AthomCloudAPI.User);
+		const provider = new HomeySdkClientFactoryService().createCloudProviderClient({
+			clientId: 'deployment-client-id',
+			clientSecret: 'deployment-client-secret',
+			redirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
+			token: {
+				tokenType: 'bearer',
+				accessToken: 'candidate-access-token',
+				refreshToken: 'candidate-refresh-token',
+				expiresIn: 3600,
+				grantType: 'authorization_code',
+			},
+		});
+
+		await expect(provider.authenticateHomey('homey-one', new AbortController().signal, false)).rejects.toMatchObject({
+			name: 'HomeyCloudSdkProtocolError',
+		});
+		expect(firstHomey.authenticate).not.toHaveBeenCalled();
+	});
+
 	it('preserves retryable HTTP status from child Homey SDK requests', async () => {
 		const server = createServer((_request, response) => {
 			response.writeHead(429, { 'Content-Type': 'text/plain' });

@@ -5,10 +5,10 @@ import {
 	HomeyCloudProviderTokenResponse,
 	HomeySdkClientFactoryService,
 	isEligibleHomeyCloudProviderHomey,
+	isSafeHomeyCloudProviderHomeyId,
 } from '../connectors/homey-sdk.client';
 import {
 	HOMEY_CLOUD_MAX_AUTHORIZATION_CODE_LENGTH,
-	HOMEY_CLOUD_MAX_HOMEY_ID_LENGTH,
 	HOMEY_CLOUD_MAX_HOMEY_NAME_LENGTH,
 	HOMEY_CLOUD_MAX_TOKEN_LENGTH,
 	HOMEY_CLOUD_PENDING_GRANT_TTL_MS,
@@ -435,11 +435,7 @@ export class HomeyCloudAuthorizationService {
 	private assertHomeyId(value: string): void {
 		this.assertIdentifier(value);
 
-		if (
-			value !== value.trim() ||
-			value.length > HOMEY_CLOUD_MAX_HOMEY_ID_LENGTH ||
-			this.containsControlCharacter(value)
-		) {
+		if (!isSafeHomeyCloudProviderHomeyId(value)) {
 			throw new TypeError('Homey Cloud Homey identifier is invalid');
 		}
 	}
