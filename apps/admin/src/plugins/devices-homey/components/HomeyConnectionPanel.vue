@@ -83,6 +83,7 @@
 				{{ t('devicesHomeyPlugin.connectionTest.saved') }}
 			</el-button>
 			<el-button
+				v-if="props.mode === DevicesHomeyPluginConnectionMode.local"
 				type="primary"
 				plain
 				:loading="statusStore.testing"
@@ -101,7 +102,7 @@
 			{{ t('devicesHomeyPlugin.connectionTest.savedUnavailable') }}
 		</p>
 		<p
-			v-if="candidateRequest === null"
+			v-if="props.mode === DevicesHomeyPluginConnectionMode.local && candidateRequest === null"
 			class="text-xs text-gray-500 mt-1"
 		>
 			{{ t('devicesHomeyPlugin.connectionTest.candidateUnavailable') }}
@@ -139,6 +140,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElCard, ElDescriptions, ElDescriptionsItem, ElTag } from 'element-plus';
 
+import { DevicesHomeyPluginConnectionMode } from '../../../openapi.constants';
 import { useHomeyStatus } from '../store/homey-status.store';
 import type { IHomeyStatus } from '../store/homey.types';
 
@@ -148,10 +150,12 @@ defineOptions({ name: 'HomeyConnectionPanel' });
 
 const props = withDefaults(
 	defineProps<{
+		mode?: DevicesHomeyPluginConnectionMode;
 		candidateUrl?: string | null;
 		candidateApiKey?: string | null;
 	}>(),
 	{
+		mode: DevicesHomeyPluginConnectionMode.local,
 		candidateUrl: null,
 		candidateApiKey: undefined,
 	}

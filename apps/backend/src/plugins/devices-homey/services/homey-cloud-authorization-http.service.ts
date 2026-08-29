@@ -25,6 +25,11 @@ export interface HomeyCloudCallbackInput {
 
 export type HomeyCloudCallbackOutcome = 'activated' | 'failed' | 'selection_required';
 
+export interface HomeyCloudAuthorizationStatus {
+	readonly connected: boolean;
+	readonly selectedHomeyId: string | null;
+}
+
 @Injectable()
 export class HomeyCloudAuthorizationHttpService {
 	constructor(
@@ -39,6 +44,15 @@ export class HomeyCloudAuthorizationHttpService {
 		const context = await this.grantMutations.getAuthorizationContext(initiatingUserId);
 
 		return this.authorizationState.create(context);
+	}
+
+	async getStatus(): Promise<HomeyCloudAuthorizationStatus> {
+		const grant = await this.grantMutations.getActiveGrantReference();
+
+		return {
+			connected: grant !== null,
+			selectedHomeyId: grant?.selectedHomeyId ?? null,
+		};
 	}
 
 	async completeCallback(input: HomeyCloudCallbackInput): Promise<HomeyCloudCallbackOutcome> {

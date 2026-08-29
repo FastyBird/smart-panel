@@ -2,9 +2,9 @@ import { Callout } from "nextra/components";
 
 # Homey (Experimental)
 
-The experimental Homey integration is designed to connect Smart Panel directly to a Homey Pro or Homey Self-Hosted
-Server (SHS) on the local network. It imports logical devices already managed by Homey, lets an administrator review
-and adopt them, keeps their state synchronized, and sends supported controls back to Homey.
+The experimental Homey integration connects Smart Panel to a Homey Pro, Homey Self-Hosted Server (SHS), or a selected
+Homey through Homey Cloud. It imports logical devices already managed by Homey, lets an administrator review and adopt
+them, keeps their state synchronized, and sends supported controls back to Homey.
 
 <Callout type="warning">
   **The local SHS evidence is complete and ready for release review, with
@@ -20,17 +20,25 @@ and adopt them, keeps their state synchronized, and sends supported controls bac
   credential, or recovery tests.
 </Callout>
 
-Only a **local Homey connection** is implemented. Homey Cloud/OAuth is not available yet. Smart Panel does not pair,
-rename, move, or remove devices in Homey.
+Local and Homey Cloud connections use the same discovery, adoption, synchronization, and control paths. Smart Panel
+does not pair, rename, move, or remove devices in Homey. Cloud mode additionally requires a deployment-owned Homey Web
+API client and Homey approval; Smart Panel never asks a user to paste Homey account credentials.
 
 ## Before You Start
 
-You need:
+For a local connection, you need:
 
 - a configured Homey Pro or [Homey Self-Hosted Server](https://support.homey.app/hc/en-us/articles/23975096785948-How-to-install-Homey-Self-Hosted-Server-on-Linux);
 - network access from the **Smart Panel backend** to Homey's local API;
 - the complete local API URL, including `http://` or `https://` and any non-standard port; and
 - a dedicated Homey API key with only the permissions Smart Panel needs.
+
+For a cloud connection, you instead need:
+
+- an exact browser-reachable HTTPS Smart Panel origin;
+- a deployment-owned confidential Homey Web API client with the exact Smart Panel callback registered;
+- Homey Cloud access and an adequate user limit approved for that client; and
+- the client ID, client secret, and callback URL provisioned only to the Smart Panel backend.
 
 SHS uses port `4859` for HTTP and `4860` for HTTPS by default. Those ports can be overridden in the SHS deployment.
 Use the address and port reachable from the machine or container running Smart Panel, which may differ from an address
@@ -84,7 +92,7 @@ once. You can revoke it later from the same **API Keys** page. See Homey's
 [API key guide](https://support.homey.app/hc/en-us/articles/8178797067292-Create-and-use-API-Keys-on-Homey-Pro) for the current
 Homey UI.
 
-## Configure the Connection
+## Configure a Local Connection
 
 1. In the Smart Panel Admin UI, open **Config → Plugins → Homey**.
 2. Keep **Connection mode** set to **Local**.
@@ -101,6 +109,39 @@ entering a new value replaces it, and the field's explicit clear action removes 
 
 Use **Test saved configuration** to test the URL and key already stored by the backend. If you change the URL, Smart
 Panel requires a new key for the unsaved connection test; it never sends a stored key to an overridden address.
+
+## Configure a Homey Cloud Connection
+
+Homey Cloud avoids a direct network route between Smart Panel and Homey, but it requires working internet access and
+can have higher latency than a local connection. The deployment stores OAuth credentials encrypted on the backend;
+neither the browser nor the panel display can read them.
+
+1. In Homey Developer Tools, register a confidential Web API client. Register this exact callback, replacing the
+   placeholder with the final Smart Panel origin:
+
+   ```text
+   https://<exact-smart-panel-origin>/api/v1/plugins/devices-homey/oauth/callback
+   ```
+
+2. Request the required Homey Cloud access and user-limit increase. New clients are limited to 100 Homey Pro users;
+   Homey Cloud access is not automatic.
+3. Provision `FB_HOMEY_CLOUD_CLIENT_ID`, `FB_HOMEY_CLOUD_CLIENT_SECRET`, and `FB_HOMEY_CLOUD_REDIRECT_URL` to the
+   backend. The redirect value must exactly match the registered callback. Never put the secret in browser-visible
+   configuration, an image, or the repository.
+4. Configure every proxy, ingress, and observability layer to omit the callback query string from access logs. The
+   backend removes it before application logging, but cannot redact logs made upstream. See the
+   [Homey Cloud OAuth deployment record](https://github.com/FastyBird/smart-panel/blob/main/docs/homey-cloud-oauth.md)
+   for the nginx example and complete registration checklist.
+5. Restart the backend, open **Config → Plugins → Homey**, choose **Cloud**, and save the form before selecting
+   **Connect Homey Cloud**.
+6. Complete Homey's consent page. Smart Panel returns to a clean configuration URL. If the account contains multiple
+   eligible Homeys, select the exact Homey to use and confirm the selection.
+7. Enable and save the plugin, test the saved configuration, and confirm that **Connection status** becomes
+   **Connected**.
+
+**Reconnect** stages a replacement grant and keeps the active connection until the new grant succeeds. **Disconnect**
+deletes the local token set and tears down the cloud connector. Because Homey's published API does not document a
+general token-revocation endpoint, also revoke the grant in Homey account controls if credentials may be compromised.
 
 ### Manual Server Selection
 
@@ -161,17 +202,19 @@ to reconcile. If an adopted device disappears from Homey, Smart Panel marks it u
 the Smart Panel device and never sends an unpair or delete request to Homey. An operator can later decide what to do
 with the local Smart Panel device.
 
-## API Keys and Backups
+## Credentials and Backups
 
-Treat a Smart Panel system backup as a credential. Configuration APIs and the Admin UI expose only whether the Homey
-key is configured, but system backups include the resolved configuration needed to restore the integration. Smart
-Panel backups are not encrypted by the application.
+Treat a Smart Panel system backup as a credential. Configuration APIs and the Admin UI expose neither the local Homey
+key nor cloud OAuth tokens, but system backups include the resolved credentials needed to restore the integration.
+Smart Panel backups are not encrypted by the application.
 
 - Store and transfer backups only through trusted, access-controlled locations.
 - Do not attach a backup to an issue or support request.
 - After restoring onto a replacement host, retire or isolate the old host before enabling both copies.
 - If a backup or either host may have been exposed, revoke the Homey key, create a new least-privilege key, save it in
   Smart Panel, and test the connection again.
+- For cloud mode, disconnect and revoke the Homey grant, then complete a fresh authorization after the replacement
+  host is trusted.
 
 Write-only configuration prevents accidental disclosure through normal API reads; it is not a substitute for backup,
 host, and filesystem security.
@@ -185,8 +228,10 @@ write-only key, save the URL first and use **Test saved configuration**.
 
 ### Authentication failed
 
-The key is missing, revoked, or invalid. Create or copy a new key, replace the saved value, and run the saved connection
-test. The integration avoids rapid reconnect attempts after an authentication failure.
+In local mode, the key is missing, revoked, or invalid. Create or copy a new key, replace the saved value, and run the
+saved connection test. In cloud mode, choose **Reconnect** and repeat Homey consent; if that fails, verify the backend
+client configuration and Homey approval. The integration avoids rapid reconnect attempts after an authentication
+failure.
 
 ### Authorization failed
 
@@ -222,8 +267,9 @@ future mapping. A previously adopted device that disappeared upstream remains in
 ## Current Limitations
 
 - Experimental status while the documented local release deferrals are reviewed and broader hardware evidence grows.
-- Local API connections only; live validation currently covers SHS over HTTP `4859`, not Homey Pro hardware or HTTPS
-  `4860`. Homey Cloud/OAuth is a later phase.
+- Live local validation currently covers SHS over HTTP `4859`, not Homey Pro hardware or HTTPS `4860`.
+- Cloud mode has complete credential-free connector and authorization tests, but live cloud inventory, event, command,
+  reconnect, rate-limit, and latency evidence remains pending a dedicated approved client and test grant.
 - Manual Homey URL configuration; no automatic server discovery.
 - No pairing, commissioning, renaming, zone moves, removal, app, Flow, firmware, backup, or user administration in
   Homey.

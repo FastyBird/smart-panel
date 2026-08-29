@@ -384,6 +384,19 @@ export class HomeyCloudGrantMutationService
 		);
 	}
 
+	async getActiveGrantReference(): Promise<HomeyCloudActiveGrantReference | null> {
+		return this.runMutation(() =>
+			this.dataSource.transaction(async (manager) => {
+				await this.reconcileConfigurationInternal(manager);
+				const active = await manager
+					.getRepository(HomeyCloudActiveGrantEntity)
+					.findOneBy({ key: HOMEY_CLOUD_ACTIVE_GRANT_KEY });
+
+				return active ? this.toActiveReference(active) : null;
+			}),
+		);
+	}
+
 	async persistRefresh(input: HomeyCloudRefreshInput): Promise<HomeyCloudActiveGrantReference | null> {
 		this.assertIdentifier(input.grantIdentifier);
 		this.assertGeneration(input.generation);

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { DevicesHomeyPluginConnectionMode } from '../../../openapi.constants';
 import {
 	MAX_HOMEY_CONNECTION_TIMEOUT_MS,
 	MAX_HOMEY_RECONCILIATION_INTERVAL_MS,
@@ -20,6 +21,7 @@ vi.mock('../../../modules/config', async () => {
 const createConfig = (overrides: Record<string, unknown> = {}) => ({
 	type: 'devices-homey',
 	enabled: true,
+	mode: DevicesHomeyPluginConnectionMode.local,
 	url: 'http://homey.local:4859',
 	apiKey: 'new-api-key',
 	apiKeyConfigured: false,
@@ -56,6 +58,19 @@ describe('HomeyConfigEditFormSchema', () => {
 
 		expect(result.success).toBe(false);
 		if (!result.success) expect(result.error.issues).toEqual(expect.arrayContaining([expect.objectContaining({ path: ['apiKey'] })]));
+	});
+
+	it('accepts cloud mode without local credentials', () => {
+		expect(
+			HomeyConfigEditFormSchema.safeParse(
+				createConfig({
+					mode: DevicesHomeyPluginConnectionMode.cloud,
+					url: null,
+					apiKey: null,
+					apiKeyConfigured: false,
+				})
+			).success
+		).toBe(true);
 	});
 
 	it.each([

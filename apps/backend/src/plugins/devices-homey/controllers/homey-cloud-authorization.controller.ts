@@ -18,7 +18,7 @@ import {
 	ServiceUnavailableException,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiConflictResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { AuthenticatedRequest, Public } from '../../../modules/auth/guards/auth.guard';
 import {
@@ -60,6 +60,8 @@ import {
 	HomeyCloudAuthorizationCompletionStatus,
 	HomeyCloudAuthorizationStartModel,
 	HomeyCloudAuthorizationStartResponseModel,
+	HomeyCloudAuthorizationStatusModel,
+	HomeyCloudAuthorizationStatusResponseModel,
 	HomeyCloudChoiceModel,
 	HomeyCloudChoicesModel,
 	HomeyCloudChoicesResponseModel,
@@ -72,6 +74,32 @@ type CallbackQuery = Record<string, unknown>;
 @Controller('oauth')
 export class HomeyCloudAuthorizationController {
 	constructor(private readonly cloudAuthorization: HomeyCloudAuthorizationHttpService) {}
+
+	@ApiOperation({
+		tags: [DEVICES_HOMEY_PLUGIN_API_TAG_NAME],
+		summary: 'Get Homey Cloud authorization status',
+		description: 'Returns credential-free active-grant status for Homey Cloud administration.',
+		operationId: 'get-devices-homey-plugin-cloud-authorization-status',
+	})
+	@ApiSuccessResponse(
+		HomeyCloudAuthorizationStatusResponseModel,
+		'Homey Cloud authorization status retrieved successfully',
+	)
+	@ApiForbiddenResponse('The authenticated credential is not associated with an authorized user')
+	@ApiServiceUnavailableResponse('Homey Cloud authorization state is temporarily unavailable')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get('status')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
+	async status(): Promise<HomeyCloudAuthorizationStatusResponseModel> {
+		return this.run(async () => {
+			const status = await this.cloudAuthorization.getStatus();
+			const response = new HomeyCloudAuthorizationStatusResponseModel();
+
+			response.data = Object.assign(new HomeyCloudAuthorizationStatusModel(), status);
+
+			return response;
+		});
+	}
 
 	@ApiOperation({
 		tags: [DEVICES_HOMEY_PLUGIN_API_TAG_NAME],
@@ -149,6 +177,7 @@ export class HomeyCloudAuthorizationController {
 	@ApiParam({ name: 'transactionId', schema: { type: 'string', maxLength: HOMEY_CLOUD_MAX_TRANSACTION_ID_LENGTH } })
 	@ApiSuccessResponse(HomeyCloudChoicesResponseModel, 'Eligible Homeys retrieved successfully')
 	@ApiBadRequestResponse('Invalid authorization transaction identifier')
+	@ApiConflictResponse({ description: 'Authorization transaction is expired, consumed, or no longer current' })
 	@ApiForbiddenResponse('The transaction is no longer authorized for this user')
 	@ApiServiceUnavailableResponse('The Homey Cloud provider is temporarily unavailable')
 	@ApiUnprocessableEntityResponse('No eligible Homey is available')
@@ -179,6 +208,7 @@ export class HomeyCloudAuthorizationController {
 	@ApiBody({ type: HomeyCloudAuthorizationSelectionRequestDto })
 	@ApiSuccessResponse(HomeyCloudAuthorizationCompletionResponseModel, 'Selected Homey activated successfully')
 	@ApiBadRequestResponse('Invalid Homey authorization selection')
+	@ApiConflictResponse({ description: 'Authorization transaction is expired, consumed, or no longer current' })
 	@ApiForbiddenResponse('The transaction is no longer authorized for this user')
 	@ApiServiceUnavailableResponse('The Homey Cloud provider is temporarily unavailable')
 	@Post('select')

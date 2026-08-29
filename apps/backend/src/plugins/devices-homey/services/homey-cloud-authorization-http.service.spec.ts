@@ -33,6 +33,7 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 			| 'cancelAuthorization'
 			| 'disconnect'
 			| 'disconnectRuntimeWithoutGrant'
+			| 'getActiveGrantReference'
 			| 'getAuthorizationContext'
 			| 'hasActiveGrant'
 		>
@@ -59,6 +60,7 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 			disconnect: jest.fn(),
 			disconnectRuntimeWithoutGrant: jest.fn().mockResolvedValue(undefined),
 			getAuthorizationContext: jest.fn(),
+			getActiveGrantReference: jest.fn().mockResolvedValue(null),
 			hasActiveGrant: jest.fn().mockResolvedValue(true),
 		};
 		runtime = {
@@ -85,6 +87,21 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 
 		await expect(service.start('admin-user')).resolves.toBe(flow);
 		expect(authorizationState.create).toHaveBeenCalledWith(context);
+	});
+
+	it('returns credential-free active grant status', async () => {
+		grantMutations.getActiveGrantReference.mockResolvedValue({
+			activatedById: 'admin-user',
+			authorityGeneration: 4,
+			configurationGeneration: 5,
+			generation: 6,
+			grantIdentifier: 'grant-1',
+			selectedHomeyId: 'homey-1',
+		});
+
+		await expect(service.getStatus()).resolves.toEqual({ connected: true, selectedHomeyId: 'homey-1' });
+		grantMutations.getActiveGrantReference.mockResolvedValue(null);
+		await expect(service.getStatus()).resolves.toEqual({ connected: false, selectedHomeyId: null });
 	});
 
 	it.each(['activated', 'selection_required'] as const)(

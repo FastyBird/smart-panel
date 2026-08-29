@@ -2,7 +2,11 @@
 	"config": {
 		"local": {
 			"title": "Conexión local de Homey",
-			"description": "Conéctate directamente a un Homey Pro en la red local. Homey Cloud aún no está disponible."
+			"description": "Conéctate directamente a un Homey Pro en la red local para obtener la menor latencia. Smart Panel debe poder acceder a Homey y la clave API local permanece cifrada en este servidor."
+		},
+		"cloud": {
+			"title": "Conexión con Homey Cloud",
+			"description": "Conéctate mediante Homey Cloud cuando no haya acceso directo de red. La nube puede tener más latencia y requiere internet; las credenciales OAuth permanecen cifradas en este servidor."
 		},
 		"mode": { "label": "Modo de conexión", "local": "Local", "cloud": "Cloud", "cloudUnavailable": "Próximamente" },
 		"enabled": "Activado",
@@ -26,6 +30,23 @@
 			"reconciliationIntervalRequired": "El intervalo de conciliación del inventario es obligatorio",
 			"reconciliationIntervalRange": "El intervalo de conciliación del inventario debe estar entre {min} y {max} ms"
 		}
+	},
+	"cloudAuthorization": {
+		"title": "Autorización de Homey Cloud",
+		"description": "Autoriza Smart Panel con Homey y, si tienes varios, selecciona el Homey que deseas mostrar y controlar.",
+		"status": "Autorización",
+		"connected": "Conectado",
+		"disconnected": "Sin conexión",
+		"connect": "Conectar Homey Cloud",
+		"reconnect": "Volver a conectar",
+		"disconnect": "Desconectar",
+		"disconnectConfirm": "¿Desconectar Homey Cloud y eliminar sus credenciales OAuth guardadas?",
+		"saveCloudModeFirst": "Guarda el modo cloud antes de iniciar la autorización de Homey.",
+		"selectDescription": "Elige el Homey que debe usar Smart Panel.",
+		"selectPlaceholder": "Selecciona un Homey",
+		"select": "Usar el Homey seleccionado",
+		"cancel": "Cancelar autorización",
+		"requestFailed": "No se pudo completar la autorización de Homey Cloud."
 	},
 	"status": {
 		"title": "Estado de conexión",
@@ -51,8 +72,8 @@
 			"error": "Error"
 		},
 		"guidance": {
-			"authentication": "Sustituye la clave de API guardada y vuelve a probar la conexión.",
-			"authorization": "Concede a la clave de API los permisos de lectura y control necesarios de Homey.",
+			"authentication": "Vuelve a conectar Homey Cloud o sustituye la clave API local guardada y prueba de nuevo.",
+			"authorization": "Confirma que la autorización cloud o la clave API local tenga los permisos de lectura y control necesarios de Homey.",
 			"timeout": "Comprueba la dirección de Homey, la ruta de red y el tiempo de espera de conexión.",
 			"unavailable": "Comprueba que Homey esté en ejecución y sea accesible desde Smart Panel.",
 			"protocol": "Confirma que el endpoint configurado sea una API local de Homey compatible.",
@@ -62,10 +83,10 @@
 	},
 	"connectionTest": {
 		"title": "Probar conexión",
-		"description": "Prueba la configuración ya guardada en el servidor o la URL completa y la clave nueva introducidas arriba.",
+		"description": "Prueba la conexión seleccionada guardada en el servidor. El modo local también permite probar la URL completa y la clave nueva.",
 		"saved": "Probar configuración guardada",
 		"candidate": "Probar URL y clave introducidas",
-		"savedUnavailable": "Guarda una URL completa y una clave de API antes de probar la configuración guardada.",
+		"savedUnavailable": "Guarda y completa el modo de conexión seleccionado antes de probarlo.",
 		"candidateUnavailable": "Introduce una URL válida y una clave de API nueva para probar ajustes sin guardar.",
 		"success": "Conexión con Homey correcta",
 		"successDescription": "Conectado a {identity}.",

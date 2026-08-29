@@ -54,6 +54,7 @@ const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 	'homey-cloud-authorization',
 	'homey-cloud-authorization-http',
 	'homey-cloud-authorization-state',
+	'homey-plugin-cloud-authorization-status',
 	'homey-cloud-client-config',
 	'homey-cloud-callback-redaction',
 	'homey-cloud-grant-mutation',

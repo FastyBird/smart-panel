@@ -18,7 +18,14 @@ describe('HomeyCloudAuthorizationController', () => {
 	let cloudAuthorization: jest.Mocked<
 		Pick<
 			HomeyCloudAuthorizationHttpService,
-			'cancel' | 'completeCallback' | 'disconnect' | 'getResultUrl' | 'listHomeys' | 'selectHomey' | 'start'
+			| 'cancel'
+			| 'completeCallback'
+			| 'disconnect'
+			| 'getResultUrl'
+			| 'getStatus'
+			| 'listHomeys'
+			| 'selectHomey'
+			| 'start'
 		>
 	>;
 	let controller: HomeyCloudAuthorizationController;
@@ -29,6 +36,7 @@ describe('HomeyCloudAuthorizationController', () => {
 			completeCallback: jest.fn(),
 			disconnect: jest.fn(),
 			getResultUrl: jest.fn().mockReturnValue('https://panel.example.com/config/plugins/devices-homey-plugin'),
+			getStatus: jest.fn(),
 			listHomeys: jest.fn(),
 			selectHomey: jest.fn(),
 			start: jest.fn(),
@@ -45,10 +53,18 @@ describe('HomeyCloudAuthorizationController', () => {
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		expect(Reflect.getMetadata(IS_PUBLIC_KEY, prototype.callback)).toBe(true);
 
-		for (const route of ['start', 'reconnect', 'listHomeys', 'select', 'cancel', 'disconnect'] as const) {
+		for (const route of ['status', 'start', 'reconnect', 'listHomeys', 'select', 'cancel', 'disconnect'] as const) {
 			expect(Reflect.getMetadata(IS_PUBLIC_KEY, prototype[route])).not.toBe(true);
 			expect(Reflect.getMetadata(ROLES_KEY, prototype[route])).toEqual([UserRole.OWNER, UserRole.ADMIN]);
 		}
+	});
+
+	it('returns credential-free cloud authorization status', async () => {
+		cloudAuthorization.getStatus.mockResolvedValue({ connected: true, selectedHomeyId: 'homey-1' });
+
+		await expect(controller.status()).resolves.toMatchObject({
+			data: { connected: true, selectedHomeyId: 'homey-1' },
+		});
 	});
 
 	it('starts an authorization transaction for the exact authenticated user', async () => {

@@ -1,0 +1,131 @@
+import { createPinia, setActivePinia } from 'pinia';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY } from '../devices-homey.constants';
+import { DevicesHomeyApiException } from '../devices-homey.exceptions';
+
+import { useHomeyCloudAuthorization } from './homey-cloud-authorization.store';
+
+const get = vi.fn();
+const post = vi.fn();
+
+vi.mock('../../../common', async () => {
+	const actual = await vi.importActual('../../../common');
+
+	return {
+		...actual,
+		useBackend: () => ({ client: { GET: get, POST: post } }),
+		getErrorReason: () => 'Sanitized Homey Cloud request failure',
+	};
+});
+
+const success = (data: Record<string, unknown>) => ({ data: { data }, response: { status: 200 } });
+const pending = {
+	transactionId: 'transaction-id',
+	expiresAt: '2099-08-30T12:00:00.000Z',
+};
+
+describe('Homey Cloud authorization store', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+		window.sessionStorage.clear();
+	});
+
+	it('loads credential-free authorization status', async () => {
+		get.mockResolvedValue(success({ connected: true, selected_homey_id: 'homey-id' }));
+		const store = useHomeyCloudAuthorization();
+
+		await expect(store.fetchStatus()).resolves.toEqual({ connected: true, selectedHomeyId: 'homey-id' });
+		expect(get).toHaveBeenCalledWith('/plugins/devices-homey/oauth/status');
+	});
+
+	it('persists only the opaque transaction reference before navigation', async () => {
+		post.mockResolvedValue(
+			success({
+				authorize_url: 'https://api.athom.com/oauth2/authorise?state=provider-state',
+				transaction_id: pending.transactionId,
+				expires_at: pending.expiresAt,
+			})
+		);
+		const store = useHomeyCloudAuthorization();
+
+		await expect(store.start()).resolves.toEqual(
+			expect.objectContaining({ transactionId: pending.transactionId, authorizeUrl: expect.stringContaining('api.athom.com') })
+		);
+		expect(JSON.parse(window.sessionStorage.getItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY) ?? '{}')).toEqual(pending);
+		expect(post).toHaveBeenCalledWith('/plugins/devices-homey/oauth/authorize', {});
+	});
+
+	it('resumes a multiple-Homey callback from page-scoped storage', async () => {
+		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
+		get.mockResolvedValue(
+			success({
+				homeys: [
+					{ id: 'homey-a', name: 'Home' },
+					{ id: 'homey-b', name: 'Cabin' },
+				],
+			})
+		);
+		const store = useHomeyCloudAuthorization();
+
+		await expect(store.resume()).resolves.toEqual({
+			homeys: [
+				{ id: 'homey-a', name: 'Home' },
+				{ id: 'homey-b', name: 'Cabin' },
+			],
+		});
+		expect(get).toHaveBeenCalledWith('/plugins/devices-homey/oauth/transactions/{transactionId}/homeys', {
+			params: { path: { transactionId: pending.transactionId } },
+		});
+	});
+
+	it('treats a consumed single-Homey transaction as completed and refreshes status', async () => {
+		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
+		get.mockResolvedValueOnce({ error: {}, response: { status: 409 } }).mockResolvedValueOnce(success({ connected: true }));
+		const store = useHomeyCloudAuthorization();
+
+		await expect(store.resume()).resolves.toBeNull();
+		expect(store.pendingTransaction).toBeNull();
+		expect(store.status).toEqual({ connected: true });
+		expect(window.sessionStorage.getItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY)).toBeNull();
+	});
+
+	it('selects one eligible Homey and clears the transaction', async () => {
+		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
+		post.mockResolvedValue(success({ status: 'connected', changed: true, homey_id: 'homey-b' }));
+		get.mockResolvedValue(success({ connected: true, selected_homey_id: 'homey-b' }));
+		const store = useHomeyCloudAuthorization();
+
+		await store.select('homey-b');
+
+		expect(post).toHaveBeenCalledWith('/plugins/devices-homey/oauth/select', {
+			body: { data: { transaction_id: pending.transactionId, homey_id: 'homey-b' } },
+		});
+		expect(store.pendingTransaction).toBeNull();
+		expect(store.status?.selectedHomeyId).toBe('homey-b');
+	});
+
+	it('retains a transaction for a retryable provider failure', async () => {
+		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
+		get.mockResolvedValue({ error: new Error('private provider detail'), response: { status: 503 } });
+		const store = useHomeyCloudAuthorization();
+
+		await expect(store.resume()).rejects.toEqual(
+			expect.objectContaining<Partial<DevicesHomeyApiException>>({ message: 'Sanitized Homey Cloud request failure', code: 503 })
+		);
+		expect(store.pendingTransaction).toEqual(pending);
+	});
+
+	it('disconnects without exposing or sending stored credentials', async () => {
+		post.mockResolvedValue(success({ status: 'disconnected', changed: true, homey_id: null }));
+		const store = useHomeyCloudAuthorization();
+		store.status = { connected: true, selectedHomeyId: 'homey-id' };
+
+		await store.disconnect();
+
+		expect(post).toHaveBeenCalledWith('/plugins/devices-homey/oauth/disconnect');
+		expect(store.status).toEqual({ connected: false, selectedHomeyId: null });
+	});
+});

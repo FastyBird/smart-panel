@@ -17,3 +17,5 @@ export const MAX_HOMEY_ADOPTION_BATCH_SIZE = 100;
 export const MAX_HOMEY_CONCURRENT_PREVIEWS = 4;
 
 export const MAX_HOMEY_DEVICE_NAME_LENGTH = 255;
+
+export const HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY = 'fastybird.homey.cloud.authorization';

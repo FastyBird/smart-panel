@@ -103,13 +103,15 @@ Smart Panel connects to multiple smart home ecosystems through dedicated integra
 
 ### Homey (Experimental)
 
-The implementation is not yet a production support claim. Live evidence currently covers Homey SHS 13.4.0 over HTTP
-for sanitized inventory and selected connection/session behavior; the remaining live release matrix is still pending.
+The implementation is not yet a production support claim. Live local evidence covers the documented Homey SHS
+inventory, event, command, lifecycle, credential, recovery, and shutdown matrix over HTTP. Homey Pro hardware, local
+HTTPS, and live Homey Cloud acceptance remain pending.
 
-- **Protocol**: Local HTTP(S) API and Socket.IO events
-- **Targets**: Homey Pro and Homey Self-Hosted Server reachable on the local network
+- **Protocol**: Local HTTP(S) or Homey Cloud API with Socket.IO events
+- **Targets**: Homey Pro and Homey Self-Hosted Server, directly reachable or selected through Homey Cloud
 - **Features**:
   - Manual server configuration with a write-only, least-privilege API key
+  - Deployment-owned Homey Cloud OAuth authorization, reauthorization, disconnect, and explicit multi-Homey selection
   - Authenticated logical-device inventory and reviewed batch adoption
   - Mapping preview with unsupported-capability warnings
   - Real-time state updates with bounded reconnect and periodic reconciliation
@@ -118,8 +120,9 @@ for sanitized inventory and selected connection/session behavior; the remaining 
     energy, and battery state
   - Missing upstream devices are marked unavailable and are never automatically deleted
 
-Homey Cloud/OAuth, automatic Homey server discovery, upstream pairing/device management, and thermostat target/mode
-control are not part of the current local integration.
+Automatic Homey server discovery, upstream pairing/device management, and thermostat target/mode control remain out of
+scope. Homey Cloud requires deployment-specific client registration and approval; it does not ship with shared OAuth
+credentials.
 
 ### Shelly (Generation 2+ / Next Generation)
 

@@ -2,7 +2,11 @@
 	"config": {
 		"local": {
 			"title": "Místní připojení Homey",
-			"description": "Připojte se přímo k Homey Pro v místní síti. Homey Cloud zatím není podporován."
+			"description": "Připojte se přímo k Homey Pro v místní síti s nejnižší latencí. Smart Panel musí mít k Homey přístup a místní API klíč zůstává šifrovaný na tomto serveru."
+		},
+		"cloud": {
+			"title": "Připojení Homey Cloud",
+			"description": "Připojte se přes Homey Cloud, když není dostupná přímá síťová cesta. Cloud může mít vyšší latenci a vyžaduje internet; OAuth údaje zůstávají šifrované na tomto serveru."
 		},
 		"mode": { "label": "Režim připojení", "local": "Místní", "cloud": "Cloud", "cloudUnavailable": "Připravujeme" },
 		"enabled": "Povoleno",
@@ -26,6 +30,23 @@
 			"reconciliationIntervalRequired": "Interval synchronizace inventáře je povinný",
 			"reconciliationIntervalRange": "Interval synchronizace inventáře musí být mezi {min} a {max} ms"
 		}
+	},
+	"cloudAuthorization": {
+		"title": "Autorizace Homey Cloud",
+		"description": "Autorizujte Smart Panel u Homey a pokud máte více jednotek, vyberte tu, kterou má zobrazovat a ovládat.",
+		"status": "Autorizace",
+		"connected": "Připojeno",
+		"disconnected": "Nepřipojeno",
+		"connect": "Připojit Homey Cloud",
+		"reconnect": "Připojit znovu",
+		"disconnect": "Odpojit",
+		"disconnectConfirm": "Odpojit Homey Cloud a odstranit uložené OAuth údaje?",
+		"saveCloudModeFirst": "Před zahájením autorizace Homey uložte režim cloud.",
+		"selectDescription": "Vyberte Homey, které má Smart Panel používat.",
+		"selectPlaceholder": "Vyberte Homey",
+		"select": "Použít vybrané Homey",
+		"cancel": "Zrušit autorizaci",
+		"requestFailed": "Požadavek autorizace Homey Cloud se nepodařilo dokončit."
 	},
 	"status": {
 		"title": "Stav připojení",
@@ -51,8 +72,8 @@
 			"error": "Chyba"
 		},
 		"guidance": {
-			"authentication": "Nahraďte uložený klíč API a připojení znovu otestujte.",
-			"authorization": "Udělte klíči API potřebná oprávnění Homey pro čtení a ovládání.",
+			"authentication": "Obnovte autorizaci Homey Cloud nebo nahraďte uložený místní API klíč a připojení znovu otestujte.",
+			"authorization": "Ověřte, že cloudová autorizace nebo místní API klíč mají potřebná oprávnění Homey pro čtení a ovládání.",
 			"timeout": "Zkontrolujte adresu Homey, síťovou cestu a časový limit připojení.",
 			"unavailable": "Zkontrolujte, zda je Homey spuštěno a dostupné ze Smart Panelu.",
 			"protocol": "Ověřte, že nakonfigurovaný koncový bod je kompatibilní místní API Homey.",
@@ -62,10 +83,10 @@
 	},
 	"connectionTest": {
 		"title": "Test připojení",
-		"description": "Otestujte nastavení uložené na serveru nebo úplnou URL a nový klíč zadané výše.",
+		"description": "Otestujte vybrané připojení uložené na serveru. V místním režimu lze také otestovat úplnou URL a nový klíč zadané výše.",
 		"saved": "Otestovat uložené nastavení",
 		"candidate": "Otestovat zadanou URL a klíč",
-		"savedUnavailable": "Před testem uloženého nastavení uložte úplnou URL a klíč API.",
+		"savedUnavailable": "Před testem uložte a dokončete nastavení vybraného režimu připojení.",
 		"candidateUnavailable": "Pro test neuloženého nastavení zadejte platnou URL i nový klíč API.",
 		"success": "Připojení k Homey bylo úspěšné",
 		"successDescription": "Připojeno k {identity}.",

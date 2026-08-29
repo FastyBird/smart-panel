@@ -5,6 +5,34 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 
+@ApiSchema({ name: 'DevicesHomeyPluginDataCloudAuthorizationStatus' })
+export class HomeyCloudAuthorizationStatusModel {
+	@ApiProperty({ description: 'Whether an active Homey Cloud grant is stored' })
+	@Expose()
+	@IsBoolean()
+	connected: boolean;
+
+	@ApiProperty({
+		name: 'selected_homey_id',
+		description: 'Selected Homey identifier for the active grant',
+		required: false,
+		nullable: true,
+	})
+	@Expose({ name: 'selected_homey_id' })
+	@IsOptional()
+	@IsString()
+	selectedHomeyId: string | null;
+}
+
+@ApiSchema({ name: 'DevicesHomeyPluginResCloudAuthorizationStatus' })
+export class HomeyCloudAuthorizationStatusResponseModel extends BaseSuccessResponseModel<HomeyCloudAuthorizationStatusModel> {
+	@ApiProperty({ type: HomeyCloudAuthorizationStatusModel })
+	@Expose()
+	@ValidateNested()
+	@Type(() => HomeyCloudAuthorizationStatusModel)
+	declare data: HomeyCloudAuthorizationStatusModel;
+}
+
 @ApiSchema({ name: 'DevicesHomeyPluginDataCloudAuthorizationStart' })
 export class HomeyCloudAuthorizationStartModel {
 	@ApiProperty({ name: 'authorize_url', description: 'Homey authorization URL', format: 'uri' })

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mount } from '@vue/test-utils';
 
+import { DevicesHomeyPluginConnectionMode } from '../../../openapi.constants';
 import type { IHomeyConfig } from '../store/config.store.types';
 
 import HomeyConfigForm from './homey-config-form.vue';
@@ -14,6 +15,7 @@ const useConfigPluginEditForm = vi.hoisted(() => vi.fn());
 const model = reactive({
 	type: 'devices-homey-plugin',
 	enabled: true,
+	mode: DevicesHomeyPluginConnectionMode.local,
 	url: 'http://homey.local:4859',
 	apiKey: undefined as string | null | undefined,
 	apiKeyConfigured: true,
@@ -54,8 +56,13 @@ const mountForm = () =>
 				ConfigSecretInput: true,
 				HomeyConnectionPanel: {
 					name: 'HomeyConnectionPanel',
-					props: ['candidateUrl', 'candidateApiKey'],
+					props: ['mode', 'candidateUrl', 'candidateApiKey'],
 					template: '<div data-test-id="homey-connection-panel-stub" />',
+				},
+				HomeyCloudAuthorizationPanel: {
+					name: 'HomeyCloudAuthorizationPanel',
+					props: ['savedMode'],
+					template: '<div data-test-id="homey-cloud-authorization-panel-stub" />',
 				},
 			},
 		},
@@ -64,6 +71,7 @@ const mountForm = () =>
 describe('HomeyConfigForm', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		model.mode = DevicesHomeyPluginConnectionMode.local;
 		model.apiKey = undefined;
 		useConfigPluginEditForm.mockReturnValue({
 			formEl: ref(),
@@ -74,7 +82,7 @@ describe('HomeyConfigForm', () => {
 		});
 	});
 
-	it('shows local mode as active and keeps cloud mode unavailable', () => {
+	it('offers both local and cloud connection modes', () => {
 		const wrapper = mountForm();
 		const modes = wrapper.findAllComponents(ElRadioButton);
 
@@ -82,7 +90,7 @@ describe('HomeyConfigForm', () => {
 		expect(modes[0]?.props('value')).toBe('local');
 		expect(modes[0]?.props('disabled')).not.toBe(true);
 		expect(modes[1]?.props('value')).toBe('cloud');
-		expect(modes[1]?.props('disabled')).toBe(true);
+		expect(modes[1]?.props('disabled')).not.toBe(true);
 	});
 
 	it('passes only newly entered candidate credentials into the connection panel', async () => {
@@ -95,5 +103,16 @@ describe('HomeyConfigForm', () => {
 		await wrapper.vm.$nextTick();
 
 		expect(panel.props('candidateApiKey')).toBe('new-candidate-key');
+	});
+
+	it('shows cloud authorization and hides local credential inputs in cloud mode', async () => {
+		const wrapper = mountForm();
+		model.mode = DevicesHomeyPluginConnectionMode.cloud;
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.find('[name="url"]').exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'ConfigSecretInput' }).exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="homey-cloud-authorization-panel-stub"]').exists()).toBe(true);
+		expect(wrapper.getComponent({ name: 'HomeyConnectionPanel' }).props('mode')).toBe('cloud');
 	});
 });

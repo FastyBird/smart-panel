@@ -1,6 +1,6 @@
 # Homey Cloud OAuth Compatibility Record
 
-**Status:** Client registration and Homey Cloud access approval pending; deployment contract recorded
+**Status:** Admin and connector implementation complete; live client registration and Homey Cloud access approval pending
 
 **Evidence date:** 2026-08-29
 
@@ -9,9 +9,9 @@
 ## Purpose
 
 This record defines the external client-registration, authorization, and deployment boundary for the Homey Cloud
-connector. The authorization surface is implemented behind disabled cloud mode while client registration and Homey
-Cloud access approval remain pending. This record deliberately contains no client ID, client secret, authorization
-code, token, account identifier, Homey identifier, callback state, or installation address.
+connector. The authorization surface and admin controls are implemented while deployment-specific client registration
+and Homey Cloud access approval remain pending. This record deliberately contains no client ID, client secret,
+authorization code, token, account identifier, Homey identifier, callback state, or installation address.
 
 The relevant official references are:
 
@@ -219,9 +219,10 @@ factory before entering the same SDK transport and normalized connector core. Lo
 included in the cloud factory input. The existing transport-neutral service continues to own startup reconciliation,
 subscriptions, commands, bounded reconnect backoff, polling degradation, and cleanup for both modes. OAuth activation
 queues a serialized restart only when an enabled cloud configuration is saved; disconnect and cancellation that removes
-the final active grant await cloud connector teardown. The admin selector remains disabled until Task 7.4 and the live
-approval gate below is satisfied. Demoting or removing the user who authorized the active grant clears that grant inside
-the user mutation transaction, then invokes cloud runtime teardown through a post-commit lifecycle hook; a rolled-back
+the final active grant await cloud connector teardown. The admin enables cloud mode only when a deployment provisions
+a valid client and callback; live use remains subject to the approval gate below. Demoting or removing the user who
+authorized the active grant clears that grant inside the user mutation transaction, then invokes cloud runtime teardown
+through a post-commit lifecycle hook; a rolled-back
 user mutation leaves both the grant and runtime untouched. A transient post-commit read or shutdown failure schedules
 bounded-backoff retries, and application startup rechecks the durable active-grant state so process restarts cannot leave
 an orphaned authenticated runtime connected. Each retry rechecks grant state inside the serialized runtime queue, so a
@@ -244,6 +245,7 @@ disconnect. The callback is the sole public endpoint and is authorized only by c
 
 | Method | Path                                                                      | Purpose                                                                              |
 | ------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `GET`  | `/api/v1/plugins/devices-homey/oauth/status`                              | Return credential-free active-grant status and the selected Homey identifier.        |
 | `POST` | `/api/v1/plugins/devices-homey/oauth/authorize`                           | Start authorization and return the provider URL, opaque transaction ID, and expiry.  |
 | `GET`  | `/api/v1/plugins/devices-homey/oauth/callback`                            | Consume state, exchange the code, then issue a query-free `303` redirect.            |
 | `GET`  | `/api/v1/plugins/devices-homey/oauth/transactions/{transactionId}/homeys` | List sanitized eligible Homeys for the initiating user's pending transaction.        |
@@ -252,9 +254,9 @@ disconnect. The callback is the sole public endpoint and is authorized only by c
 | `POST` | `/api/v1/plugins/devices-homey/oauth/disconnect`                          | Clear the active local grant reference and all pending authorization transactions.   |
 | `POST` | `/api/v1/plugins/devices-homey/oauth/reconnect`                           | Start replacement authorization while preserving the current grant until activation. |
 
-The authorization-start response is the only browser-facing source of the opaque transaction ID. The admin client must
-retain it in page-scoped storage before navigating to Homey. The callback redirects to the fixed same-origin
-`/config/plugins/devices-homey-plugin` page on success, cancellation, invalid/replayed state, or provider failure. It
+The authorization-start response is the only browser-facing source of the opaque transaction ID. The admin client
+retains only that ID and its expiry in `sessionStorage` before navigating to Homey. The callback redirects to the fixed
+same-origin `/config/plugins/devices-homey-plugin` page on success, cancellation, invalid/replayed state, or provider failure. It
 does not place the code, state, provider error, transaction ID, Homey ID, or outcome in the redirect URL. Responses use
 `Cache-Control: no-store`, `Pragma: no-cache`, and `Referrer-Policy: no-referrer`.
 
@@ -300,8 +302,9 @@ deletion and connector teardown, while the operator can revoke the grant from Ho
       without including correspondence that contains private account data.
 - [ ] Register the exact production callback only after the production public origin is final.
 
-## Gate for implementation
+## Gate for live deployment
 
-Task 7.2 may build the authorization state machine and tests behind a disabled cloud mode using fakes. Live cloud mode
-must remain unavailable until the dedicated client exists, the exact callback and scopes are verified, and Athom has
-approved Homey Cloud access. No code may reuse a Homey CLI/mobile client identity or another product's client secret.
+The admin implementation may expose cloud configuration without shipping credentials. A deployment must not authorize
+or enable its cloud runtime until the dedicated client exists, the exact callback and scopes are verified, and Athom
+has approved the necessary Homey Cloud access and user limit. No code or deployment may reuse a Homey CLI/mobile client
+identity or another product's client secret.

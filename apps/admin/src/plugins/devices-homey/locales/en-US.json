@@ -2,7 +2,11 @@
 	"config": {
 		"local": {
 			"title": "Local Homey connection",
-			"description": "Connect directly to a Homey Pro on the local network. Homey Cloud support is not available yet."
+			"description": "Connect directly to a Homey Pro on the local network for the lowest latency. Smart Panel must be able to reach Homey, and the local API key stays encrypted on this server."
+		},
+		"cloud": {
+			"title": "Homey Cloud connection",
+			"description": "Connect through Homey Cloud when direct network access is unavailable. Cloud requests may have higher latency and require internet access; OAuth credentials stay encrypted on this server."
 		},
 		"mode": {
 			"label": "Connection mode",
@@ -32,6 +36,23 @@
 			"reconciliationIntervalRange": "Inventory reconciliation interval must be between {min} and {max} ms"
 		}
 	},
+	"cloudAuthorization": {
+		"title": "Homey Cloud authorization",
+		"description": "Authorize Smart Panel with Homey, then select the Homey to display and control when your account has more than one.",
+		"status": "Authorization",
+		"connected": "Connected",
+		"disconnected": "Not connected",
+		"connect": "Connect Homey Cloud",
+		"reconnect": "Reconnect",
+		"disconnect": "Disconnect",
+		"disconnectConfirm": "Disconnect Homey Cloud and remove its stored OAuth credentials?",
+		"saveCloudModeFirst": "Save cloud mode before starting Homey authorization.",
+		"selectDescription": "Choose which Homey Smart Panel should use.",
+		"selectPlaceholder": "Select a Homey",
+		"select": "Use selected Homey",
+		"cancel": "Cancel authorization",
+		"requestFailed": "The Homey Cloud authorization request could not be completed."
+	},
 	"status": {
 		"title": "Connection status",
 		"description": "Operational state reported by the saved Homey integration.",
@@ -56,8 +77,8 @@
 			"error": "Error"
 		},
 		"guidance": {
-			"authentication": "Replace the saved API key and test the connection again.",
-			"authorization": "Grant the API key the required Homey read and control permissions.",
+			"authentication": "Reconnect Homey Cloud or replace the saved local API key, then test the connection again.",
+			"authorization": "Confirm that the cloud grant or local API key has the required Homey read and control permissions.",
 			"timeout": "Check the Homey address, network path, and connection timeout.",
 			"unavailable": "Check that Homey is running and reachable from Smart Panel.",
 			"protocol": "Confirm that the configured endpoint is a compatible Homey local API.",
@@ -67,10 +88,10 @@
 	},
 	"connectionTest": {
 		"title": "Test connection",
-		"description": "Test either the configuration already saved on the server or the complete URL and new key entered above.",
+		"description": "Test the selected connection already saved on the server. Local mode can also test the complete URL and new key entered above.",
 		"saved": "Test saved configuration",
 		"candidate": "Test entered URL and key",
-		"savedUnavailable": "Save a complete URL and API key before testing the saved configuration.",
+		"savedUnavailable": "Save and complete the selected connection mode before testing its configuration.",
 		"candidateUnavailable": "Enter both a valid URL and a new API key to test unsaved settings.",
 		"success": "Homey connection succeeded",
 		"successDescription": "Connected to {identity}.",

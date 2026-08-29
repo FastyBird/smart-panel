@@ -26,9 +26,10 @@ import {
 import { HomeyChannelCreateReqSchema, HomeyChannelSchema, HomeyChannelUpdateReqSchema } from './store/channels.store.schemas';
 import { HomeyConfigSchema, HomeyConfigUpdateReqSchema } from './store/config.store.schemas';
 import { HomeyDeviceCreateReqSchema, HomeyDeviceSchema, HomeyDeviceUpdateReqSchema } from './store/devices.store.schemas';
+import { registerHomeyCloudAuthorizationStore } from './store/homey-cloud-authorization.store';
 import { registerHomeyInventoryStore } from './store/homey-inventory.store';
 import { registerHomeyStatusStore } from './store/homey-status.store';
-import { homeyInventoryStoreKey, homeyStatusStoreKey } from './store/keys';
+import { homeyCloudAuthorizationStoreKey, homeyInventoryStoreKey, homeyStatusStoreKey } from './store/keys';
 
 export const devicesHomeyPluginKey: PluginInjectionKey<
 	IPlugin<
@@ -47,10 +48,13 @@ export default {
 			options.i18n.global.setLocaleMessage(locale, defaultsDeep(currentMessages, { devicesHomeyPlugin: translations }));
 		}
 
+		const cloudAuthorizationStore = registerHomeyCloudAuthorizationStore(options.store);
 		const inventoryStore = registerHomeyInventoryStore(options.store);
 		const statusStore = registerHomeyStatusStore(options.store);
+		app.provide(homeyCloudAuthorizationStoreKey, cloudAuthorizationStore);
 		app.provide(homeyInventoryStoreKey, inventoryStore);
 		app.provide(homeyStatusStoreKey, statusStore);
+		storesManager.addStore(homeyCloudAuthorizationStoreKey, cloudAuthorizationStore);
 		storesManager.addStore(homeyInventoryStoreKey, inventoryStore);
 		storesManager.addStore(homeyStatusStoreKey, statusStore);
 
