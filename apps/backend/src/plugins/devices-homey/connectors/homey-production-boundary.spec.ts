@@ -3,7 +3,6 @@ import { extname, relative, resolve } from 'node:path';
 import ts from 'typescript';
 
 import { HomeyConnector } from './homey-connector.interface';
-import { HomeyLocalTransport } from './homey-local.transport';
 import {
 	HomeySdkClient,
 	HomeySdkDevice,
@@ -11,6 +10,7 @@ import {
 	HomeySdkSystemManager,
 	HomeySdkZonesManager,
 } from './homey-sdk.client';
+import { HomeyTransport } from './homey-transport.interface';
 
 const CONNECTOR_SURFACE = {
 	connect: true,
@@ -23,7 +23,7 @@ const CONNECTOR_SURFACE = {
 	subscribe: true,
 } satisfies Record<keyof HomeyConnector, true>;
 
-const LOCAL_TRANSPORT_SURFACE = {
+const TRANSPORT_SURFACE = {
 	connect: true,
 	disconnect: true,
 	getDevice: true,
@@ -32,7 +32,7 @@ const LOCAL_TRANSPORT_SURFACE = {
 	getZones: true,
 	setCapabilityValue: true,
 	subscribe: true,
-} satisfies Record<keyof HomeyLocalTransport, true>;
+} satisfies Record<keyof HomeyTransport, true>;
 
 const SDK_CLIENT_SURFACE = {
 	destroy: true,
@@ -137,7 +137,7 @@ describe('Homey production boundary', () => {
 		];
 
 		expect(Object.keys(CONNECTOR_SURFACE).sort()).toStrictEqual(allowedOperations);
-		expect(Object.keys(LOCAL_TRANSPORT_SURFACE).sort()).toStrictEqual(allowedOperations);
+		expect(Object.keys(TRANSPORT_SURFACE).sort()).toStrictEqual(allowedOperations);
 	});
 
 	it('keeps the reviewed SDK surface free of upstream lifecycle mutations', () => {

@@ -17,11 +17,11 @@ import {
 	transformHomeyLocalSystemInfo,
 	transformHomeyLocalZones,
 } from './homey-local.transformer';
-import { HomeyLocalTransport, HomeyLocalTransportUnsubscribe } from './homey-local.transport';
+import { HomeyTransport, HomeyTransportUnsubscribe } from './homey-transport.interface';
 
-interface HomeyLocalSubscription {
+interface HomeyTransportSubscription {
 	active: boolean;
-	cleanup: HomeyLocalTransportUnsubscribe;
+	cleanup: HomeyTransportUnsubscribe;
 	cleanupNeeded: boolean;
 	cleanupPromise: Promise<void> | null;
 	deliveryTail: Promise<void>;
@@ -33,18 +33,19 @@ interface HomeyPendingSubscription {
 }
 
 /**
- * Transport-neutral local connector orchestration. A separate adapter owns the
- * eventual SDK or direct HTTP/realtime implementation selected by live proof.
+ * Shared normalized connector orchestration. Local and cloud wrappers supply
+ * separate transports while mapping, lifecycle, and error semantics stay
+ * identical.
  */
-export class HomeyLocalConnector implements HomeyConnector {
+export class HomeyTransportConnector implements HomeyConnector {
 	private connected = false;
 	private transportCleanupNeeded = false;
 	private connectionGeneration = 0;
 	private lifecycleTail: Promise<void> = Promise.resolve();
-	private readonly subscriptions = new Set<HomeyLocalSubscription>();
+	private readonly subscriptions = new Set<HomeyTransportSubscription>();
 	private readonly pendingSubscriptions = new Set<HomeyPendingSubscription>();
 
-	constructor(private readonly transport: HomeyLocalTransport) {}
+	constructor(private readonly transport: HomeyTransport) {}
 
 	connect(): Promise<void> {
 		return this.enqueueLifecycle(async () => {
@@ -126,7 +127,7 @@ export class HomeyLocalConnector implements HomeyConnector {
 	private async subscribeTransport(listener: HomeyEventListener): Promise<HomeyUnsubscribe> {
 		const connectionGeneration = this.connectionGeneration;
 
-		const subscription: HomeyLocalSubscription = {
+		const subscription: HomeyTransportSubscription = {
 			active: true,
 			cleanup: () => undefined,
 			cleanupNeeded: false,
@@ -278,7 +279,7 @@ export class HomeyLocalConnector implements HomeyConnector {
 		}
 	}
 
-	private async cleanupSubscription(subscription: HomeyLocalSubscription): Promise<void> {
+	private async cleanupSubscription(subscription: HomeyTransportSubscription): Promise<void> {
 		if (!subscription.cleanupNeeded) {
 			return;
 		}
@@ -296,7 +297,7 @@ export class HomeyLocalConnector implements HomeyConnector {
 		}
 	}
 
-	private async performSubscriptionCleanup(subscription: HomeyLocalSubscription): Promise<void> {
+	private async performSubscriptionCleanup(subscription: HomeyTransportSubscription): Promise<void> {
 		await subscription.cleanup();
 		subscription.cleanupNeeded = false;
 		this.subscriptions.delete(subscription);
@@ -332,3 +333,6 @@ export class HomeyLocalConnector implements HomeyConnector {
 		}
 	}
 }
+
+/** Local connector identity over the shared transport-neutral core. */
+export class HomeyLocalConnector extends HomeyTransportConnector {}

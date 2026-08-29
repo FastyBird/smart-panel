@@ -875,6 +875,18 @@ against provider exchanges and activation commits already in flight.
 - [ ] Verify inventory, subscriptions, writes, reconnect, rate limits, and cloud-specific latency behavior.
 - [ ] Keep mapping, preview, adoption, synchronizer, and control code unchanged.
 
+Task 7.3 is delivered in reviewable slices while live Homey Cloud access remains dependent on external approval:
+
+- [x] **7.3a — Shared connector core:** extract the normalized lifecycle core behind a transport-neutral boundary, add
+      an explicit `HomeyCloudConnector`, and run the complete local connector contract suite against both connector
+      identities without changing mapping, preview, adoption, synchronization, or control services.
+- [ ] **7.3b — Cloud SDK session and refresh:** create the selected Homey cloud SDK session from the active grant,
+      persist refresh-token rotation through the grant mutation gate, and normalize cloud authentication, rate-limit,
+      timeout, unavailable, and protocol failures.
+- [ ] **7.3c — Runtime selection and evidence:** select the connector from saved mode, prove inventory, subscriptions,
+      writes, reconnect, cleanup, and bounded cloud latency with credential-free tests, then record sanitized live
+      evidence when Athom access is available.
+
 ### Task 7.4: Extend admin configuration and release docs
 
 - [ ] Enable cloud mode and OAuth connect/disconnect/status UI.
