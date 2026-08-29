@@ -271,7 +271,7 @@ describe('HomeySdkClientFactoryService', () => {
 		expect(homey.authenticate.mock.calls).toHaveLength(0);
 	});
 
-	it('authenticates an API-v1 Homey without newer client lifecycle methods', async () => {
+	it('rejects an API-v1 Homey before runtime authentication', async () => {
 		const homey = {
 			id: 'legacy-homey',
 			name: 'Legacy Homey',
@@ -297,10 +297,10 @@ describe('HomeySdkClientFactoryService', () => {
 			},
 		});
 
-		await expect(
-			provider.authenticateHomey('legacy-homey', new AbortController().signal, false),
-		).resolves.toBeUndefined();
-		expect(homey.authenticate).toHaveBeenCalledWith({ strategy: 'cloud', reconnect: false });
+		await expect(provider.authenticateHomey('legacy-homey', new AbortController().signal, false)).rejects.toThrow(
+			HomeyCloudSelectionError,
+		);
+		expect(homey.authenticate.mock.calls).toHaveLength(0);
 	});
 
 	it('rejects automatic authentication when the final inventory is no longer a singleton', async () => {

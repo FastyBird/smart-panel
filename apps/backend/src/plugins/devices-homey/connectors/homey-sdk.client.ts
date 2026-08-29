@@ -15,7 +15,7 @@ import {
 import { HomeyCloudConfigurationError, HomeyCloudSelectionError } from '../errors/homey-cloud-authorization.error';
 
 const homeySdkAbortContext = installHomeySdkAbortBridge();
-const SUPPORTED_HOMEY_CLOUD_API_VERSIONS = new Set([1, 2, 3]);
+const SUPPORTED_HOMEY_CLOUD_API_VERSIONS = new Set([2, 3]);
 const SUPPORTED_HOMEY_CLOUD_PLATFORMS = new Set(['cloud', 'local']);
 const HOMEY_CLOUD_ID_UNSAFE_PATTERN = /[\s\p{Cc}\p{Cf}\p{Z}]/u;
 
@@ -353,12 +353,11 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 			}
 
 			const authenticatableHomey = homey as unknown as {
-				apiVersion?: unknown;
 				authenticate(options: { reconnect: boolean; strategy: string }): Promise<HomeyCloudAuthenticatedSdkClient>;
 				remoteUrl?: unknown;
 			};
 
-			if (authenticatableHomey.apiVersion !== 1) this.assertHomeyCloudEndpoint(authenticatableHomey.remoteUrl);
+			this.assertHomeyCloudEndpoint(authenticatableHomey.remoteUrl);
 
 			return (await authenticatableHomey.authenticate({ strategy: 'cloud', reconnect: false })) as HomeySdkClient;
 		});
