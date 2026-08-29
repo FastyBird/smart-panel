@@ -168,6 +168,12 @@ only explicit backend credential-loading methods select them, and no controller 
 The pending table is transaction- and initiating-user-scoped, has a server-capped absolute lifetime and capacity, and is
 swept independently of requests.
 
+Task 7.2d adds short-lived cancellation tombstones and active-grant source-transaction lineage through the incremental
+`1000000000026-AddHomeyCloudAuthorizationCancellations` migration. This makes explicit cancellation authoritative even
+when the callback has consumed its one-time state and a provider request or activation commit is still in flight. A
+cancelled transaction cannot stage or activate credentials, while an activation that serialized first is removed by
+its exact transaction identity without disturbing an older or newer grant.
+
 The state table also stores a SHA-256 identity derived from the deployment client ID, client secret, exact redirect URL,
 and requested scopes. Every authorization-context, credential-loading, activation, refresh and disconnect path compares
 the current non-secret fingerprint with the persisted value. A change clears pending and active grants and advances both

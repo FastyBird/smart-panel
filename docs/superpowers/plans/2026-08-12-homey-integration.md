@@ -864,7 +864,9 @@ single-use state before exchange, never forwards raw provider errors, and redire
 same-origin Homey configuration page with no query. An early Fastify hook strips the callback query from downstream
 request-target logging, while `docs/homey-cloud-oauth.md` records the mandatory equivalent redaction at every upstream
 proxy and observability layer. Unit tests lock public-versus-privileged route metadata, exact actor binding, replay and
-provider-error behavior, fixed error mapping, clean redirect headers, and request-target redaction.
+provider-error behavior, fixed error mapping, clean redirect headers, and request-target redaction. Explicit
+cancellation retains consumed state until callback completion and persists a bounded transaction tombstone, so it wins
+against provider exchanges and activation commits already in flight.
 
 ### Task 7.3: Implement `HomeyCloudConnector`
 

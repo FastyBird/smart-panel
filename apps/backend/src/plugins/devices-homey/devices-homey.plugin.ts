@@ -55,6 +55,7 @@ import { HomeyAdoptionLockEntity } from './entities/homey-adoption-lock.entity';
 import {
 	HomeyCloudActiveGrantEntity,
 	HomeyCloudAuthorizationStateEntity,
+	HomeyCloudCancelledAuthorizationEntity,
 	HomeyCloudPendingGrantEntity,
 	HomeyCloudUserAuthorityEntity,
 } from './entities/homey-cloud-grant.entity';
@@ -92,6 +93,7 @@ import { HomeyService } from './services/homey.service';
 			HomeyCloudAuthorizationStateEntity,
 			HomeyCloudUserAuthorityEntity,
 			HomeyCloudPendingGrantEntity,
+			HomeyCloudCancelledAuthorizationEntity,
 			HomeyCloudActiveGrantEntity,
 		]),
 		DevicesModule,

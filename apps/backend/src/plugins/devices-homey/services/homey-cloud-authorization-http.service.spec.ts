@@ -19,18 +19,20 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 		redirectUrl: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback',
 		transactionId: 'transaction-1',
 	};
-	let authorizationState: jest.Mocked<Pick<HomeyCloudAuthorizationStateService, 'cancel' | 'consume' | 'create'>>;
+	let authorizationState: jest.Mocked<
+		Pick<HomeyCloudAuthorizationStateService, 'cancel' | 'complete' | 'consume' | 'create'>
+	>;
 	let authorization: jest.Mocked<
 		Pick<HomeyCloudAuthorizationService, 'exchangeAuthorizationCode' | 'listCandidateHomeys' | 'selectHomey'>
 	>;
 	let clientConfig: jest.Mocked<Pick<HomeyCloudClientConfigService, 'getConfiguration'>>;
 	let grantMutations: jest.Mocked<
-		Pick<HomeyCloudGrantMutationService, 'cancelCandidate' | 'disconnect' | 'getAuthorizationContext'>
+		Pick<HomeyCloudGrantMutationService, 'cancelAuthorization' | 'disconnect' | 'getAuthorizationContext'>
 	>;
 	let service: HomeyCloudAuthorizationHttpService;
 
 	beforeEach(() => {
-		authorizationState = { cancel: jest.fn(), consume: jest.fn(), create: jest.fn() };
+		authorizationState = { cancel: jest.fn(), complete: jest.fn(), consume: jest.fn(), create: jest.fn() };
 		authorization = {
 			exchangeAuthorizationCode: jest.fn(),
 			listCandidateHomeys: jest.fn(),
@@ -38,7 +40,7 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 		};
 		clientConfig = { getConfiguration: jest.fn() };
 		grantMutations = {
-			cancelCandidate: jest.fn(),
+			cancelAuthorization: jest.fn(),
 			disconnect: jest.fn(),
 			getAuthorizationContext: jest.fn(),
 		};
@@ -97,6 +99,7 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 				service.completeCallback({ code: 'provider-code', providerError: false, state: 'single-use-state' }),
 			).resolves.toBe(status);
 			expect(authorizationState.consume).toHaveBeenCalledWith('single-use-state');
+			expect(authorizationState.complete).toHaveBeenCalledWith(consumed.transactionId, consumed.initiatingUserId);
 			expect(authorization.exchangeAuthorizationCode).toHaveBeenCalledWith({ ...consumed, code: 'provider-code' });
 		},
 	);
@@ -108,6 +111,7 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 			service.completeCallback({ code: 'ignored-code', providerError: true, state: 'single-use-state' }),
 		).resolves.toBe('failed');
 		expect(authorizationState.consume).toHaveBeenCalledWith('single-use-state');
+		expect(authorizationState.complete).toHaveBeenCalledWith(consumed.transactionId, consumed.initiatingUserId);
 		expect(authorization.exchangeAuthorizationCode).not.toHaveBeenCalled();
 	});
 
@@ -120,6 +124,7 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 			service.completeCallback({ code: 'provider-code', providerError: false, state: 'replayed-state' }),
 		).resolves.toBe('failed');
 		expect(authorization.exchangeAuthorizationCode).not.toHaveBeenCalled();
+		expect(authorizationState.complete).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -130,11 +135,11 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 		'invalidates both pre-callback state and staged credentials when cancelling',
 		async ({ stateCancelled, candidateCancelled, expected }) => {
 			authorizationState.cancel.mockReturnValue(stateCancelled);
-			grantMutations.cancelCandidate.mockResolvedValue(candidateCancelled);
+			grantMutations.cancelAuthorization.mockResolvedValue(candidateCancelled);
 
 			await expect(service.cancel('transaction-1', 'admin-user')).resolves.toBe(expected);
 			expect(authorizationState.cancel).toHaveBeenCalledWith('transaction-1', 'admin-user');
-			expect(grantMutations.cancelCandidate).toHaveBeenCalledWith('transaction-1', 'admin-user');
+			expect(grantMutations.cancelAuthorization).toHaveBeenCalledWith('transaction-1', 'admin-user', stateCancelled);
 		},
 	);
 

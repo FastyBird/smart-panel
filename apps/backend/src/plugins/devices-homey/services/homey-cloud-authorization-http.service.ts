@@ -5,6 +5,7 @@ import { HOMEY_CLOUD_RESULT_PATH } from '../devices-homey.constants';
 import {
 	HomeyCloudAuthorizationFlow,
 	HomeyCloudAuthorizationStateService,
+	HomeyCloudConsumedAuthorization,
 } from './homey-cloud-authorization-state.service';
 import {
 	HomeyCloudActivatedResult,
@@ -39,8 +40,10 @@ export class HomeyCloudAuthorizationHttpService {
 	}
 
 	async completeCallback(input: HomeyCloudCallbackInput): Promise<HomeyCloudCallbackOutcome> {
+		let consumed: HomeyCloudConsumedAuthorization | null = null;
+
 		try {
-			const consumed = this.authorizationState.consume(input.state ?? '');
+			consumed = this.authorizationState.consume(input.state ?? '');
 
 			if (input.providerError || !input.code) return 'failed';
 
@@ -52,6 +55,8 @@ export class HomeyCloudAuthorizationHttpService {
 			return result.status;
 		} catch {
 			return 'failed';
+		} finally {
+			if (consumed) this.authorizationState.complete(consumed.transactionId, consumed.initiatingUserId);
 		}
 	}
 
@@ -69,9 +74,13 @@ export class HomeyCloudAuthorizationHttpService {
 
 	async cancel(transactionId: string, initiatingUserId: string): Promise<boolean> {
 		const stateCancelled = this.authorizationState.cancel(transactionId, initiatingUserId);
-		const candidateCancelled = await this.grantMutations.cancelCandidate(transactionId, initiatingUserId);
+		const grantCancelled = await this.grantMutations.cancelAuthorization(
+			transactionId,
+			initiatingUserId,
+			stateCancelled,
+		);
 
-		return stateCancelled || candidateCancelled;
+		return stateCancelled || grantCancelled;
 	}
 
 	async disconnect(initiatingUserId: string): Promise<boolean> {

@@ -10,6 +10,7 @@ import {
 import {
 	HomeyCloudActiveGrantEntity,
 	HomeyCloudAuthorizationStateEntity,
+	HomeyCloudCancelledAuthorizationEntity,
 	HomeyCloudPendingGrantEntity,
 	HomeyCloudUserAuthorityEntity,
 } from '../entities/homey-cloud-grant.entity';
@@ -36,6 +37,7 @@ describe('HomeyCloudGrantMutationService', () => {
 				HomeyCloudAuthorizationStateEntity,
 				HomeyCloudUserAuthorityEntity,
 				HomeyCloudPendingGrantEntity,
+				HomeyCloudCancelledAuthorizationEntity,
 				HomeyCloudActiveGrantEntity,
 			],
 			synchronize: true,
@@ -171,6 +173,26 @@ describe('HomeyCloudGrantMutationService', () => {
 
 		await expect(cancellation).resolves.toBe(true);
 		await expect(activation).rejects.toThrow(HomeyCloudGrantConflictError);
+		await expect(service.loadActiveGrantCredentials()).resolves.toBeNull();
+	});
+
+	it('records cancellation before a callback can stage credentials', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		const candidate = candidateInput(context, 'in-flight-transaction', token('in-flight'));
+
+		await expect(service.cancelAuthorization(candidate.transactionId, administratorId, true)).resolves.toBe(true);
+		await expect(service.cancelAuthorization(candidate.transactionId, administratorId, false)).resolves.toBe(false);
+		await expect(service.stageCandidate(candidate)).rejects.toThrow(HomeyCloudGrantConflictError);
+		await expect(dataSource.getRepository(HomeyCloudPendingGrantEntity).count()).resolves.toBe(0);
+	});
+
+	it('removes a grant activated by an in-flight callback before cancellation commits', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		const transactionId = 'late-cancelled-transaction';
+		await service.stageCandidate(candidateInput(context, transactionId, token('late-cancelled')));
+		await service.activateCandidate(transactionId, administratorId, 'homey-one');
+
+		await expect(service.cancelAuthorization(transactionId, administratorId, true)).resolves.toBe(true);
 		await expect(service.loadActiveGrantCredentials()).resolves.toBeNull();
 	});
 

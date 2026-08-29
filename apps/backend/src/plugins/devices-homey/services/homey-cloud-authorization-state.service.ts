@@ -19,6 +19,8 @@ interface PendingAuthorizationState {
 	readonly activeGrantGeneration: number;
 	readonly authorityGeneration: number;
 	readonly configurationGeneration: number;
+	cancelled: boolean;
+	consumed: boolean;
 	readonly expiresAt: number;
 	readonly initiatingUserId: string;
 	readonly redirectUrl: string;
@@ -85,6 +87,8 @@ export class HomeyCloudAuthorizationStateService implements OnModuleDestroy {
 			activeGrantGeneration: start.activeGrantGeneration,
 			authorityGeneration: start.authorityGeneration,
 			configurationGeneration: start.configurationGeneration,
+			cancelled: false,
+			consumed: false,
 			expiresAt,
 			initiatingUserId: start.initiatingUserId,
 			redirectUrl: configuration.redirectUrl,
@@ -105,12 +109,15 @@ export class HomeyCloudAuthorizationStateService implements OnModuleDestroy {
 		const stateHash = this.hashState(state);
 		const pending = this.pending.get(stateHash);
 
-		if (!pending) throw new HomeyCloudAuthorizationStateError();
+		if (!pending || pending.consumed) throw new HomeyCloudAuthorizationStateError();
 
-		this.pending.delete(stateHash);
+		if (pending.expiresAt <= Date.now()) {
+			this.remove(stateHash, pending);
+			throw new HomeyCloudAuthorizationStateError();
+		}
+
+		pending.consumed = true;
 		clearTimeout(pending.timer);
-
-		if (pending.expiresAt <= Date.now()) throw new HomeyCloudAuthorizationStateError();
 
 		return {
 			activeGrantGeneration: pending.activeGrantGeneration,
@@ -124,25 +131,35 @@ export class HomeyCloudAuthorizationStateService implements OnModuleDestroy {
 	}
 
 	cancel(transactionId: string, initiatingUserId: string): boolean {
-		if (
-			typeof transactionId !== 'string' ||
-			transactionId.trim().length === 0 ||
-			typeof initiatingUserId !== 'string' ||
-			initiatingUserId.trim().length === 0
-		) {
-			throw new TypeError('Homey Cloud authorization cancellation context is invalid');
-		}
+		this.assertCancellationContext(transactionId, initiatingUserId);
 
 		for (const [stateHash, pending] of this.pending) {
 			if (pending.transactionId !== transactionId || pending.initiatingUserId !== initiatingUserId) continue;
 
-			this.pending.delete(stateHash);
-			clearTimeout(pending.timer);
+			if (pending.consumed) {
+				if (pending.cancelled) return false;
+				pending.cancelled = true;
+			} else this.remove(stateHash, pending);
 
 			return true;
 		}
 
 		return false;
+	}
+
+	complete(transactionId: string, initiatingUserId: string): void {
+		this.assertCancellationContext(transactionId, initiatingUserId);
+
+		for (const [stateHash, pending] of this.pending) {
+			if (
+				pending.consumed &&
+				pending.transactionId === transactionId &&
+				pending.initiatingUserId === initiatingUserId
+			) {
+				this.remove(stateHash, pending);
+				return;
+			}
+		}
 	}
 
 	onModuleDestroy(): void {
@@ -166,11 +183,26 @@ export class HomeyCloudAuthorizationStateService implements OnModuleDestroy {
 		}
 	}
 
+	private assertCancellationContext(transactionId: string, initiatingUserId: string): void {
+		if (
+			typeof transactionId !== 'string' ||
+			transactionId.trim().length === 0 ||
+			typeof initiatingUserId !== 'string' ||
+			initiatingUserId.trim().length === 0
+		) {
+			throw new TypeError('Homey Cloud authorization cancellation context is invalid');
+		}
+	}
+
 	private expire(stateHash: string): void {
 		const pending = this.pending.get(stateHash);
 
 		if (!pending) return;
 
+		this.remove(stateHash, pending);
+	}
+
+	private remove(stateHash: string, pending: PendingAuthorizationState): void {
 		this.pending.delete(stateHash);
 		clearTimeout(pending.timer);
 	}
