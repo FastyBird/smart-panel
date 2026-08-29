@@ -24,6 +24,7 @@ describe('HomeyCloudAuthorizationStateService', () => {
 	const start = {
 		activeGrantGeneration: 7,
 		authorityGeneration: 3,
+		configurationGeneration: 2,
 		initiatingUserId: 'user-id',
 	};
 
@@ -105,6 +106,7 @@ describe('HomeyCloudAuthorizationStateService', () => {
 		{ ...start, initiatingUserId: '' },
 		{ ...start, authorityGeneration: -1 },
 		{ ...start, activeGrantGeneration: Number.NaN },
+		{ ...start, configurationGeneration: -1 },
 	])('rejects an invalid authorization context', (context) => {
 		expect(() => service.create(context)).toThrow(TypeError);
 	});

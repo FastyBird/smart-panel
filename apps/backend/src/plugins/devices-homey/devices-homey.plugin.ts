@@ -23,6 +23,8 @@ import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
+import { UserLifecycleMutationRegistryService } from '../../modules/users/services/user-lifecycle-mutation-registry.service';
+import { UsersModule } from '../../modules/users/users.module';
 
 import { HomeyLocalConnectorFactory } from './connectors/homey-local-connector.factory';
 import { HomeySdkClientFactoryService } from './connectors/homey-sdk.client';
@@ -48,6 +50,12 @@ import { HomeyUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateHomeyDeviceDto } from './dto/update-device.dto';
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from './entities/devices-homey.entity';
 import { HomeyAdoptionLockEntity } from './entities/homey-adoption-lock.entity';
+import {
+	HomeyCloudActiveGrantEntity,
+	HomeyCloudAuthorizationStateEntity,
+	HomeyCloudPendingGrantEntity,
+	HomeyCloudUserAuthorityEntity,
+} from './entities/homey-cloud-grant.entity';
 import { HomeyMappingLoaderService } from './mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from './mappings/mapping-transformer.service';
 import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-storage.service';
@@ -56,6 +64,7 @@ import { HomeyDevicePlatform } from './platforms/homey-device.platform';
 import { HomeyAdoptionLockService } from './services/homey-adoption-lock.service';
 import { HomeyCloudAuthorizationStateService } from './services/homey-cloud-authorization-state.service';
 import { HomeyCloudClientConfigService } from './services/homey-cloud-client-config.service';
+import { HomeyCloudGrantMutationService } from './services/homey-cloud-grant-mutation.service';
 import { HomeyConfigValidatorService } from './services/homey-config-validator.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
@@ -76,17 +85,23 @@ import { HomeyService } from './services/homey.service';
 			HomeyChannelEntity,
 			HomeyChannelPropertyEntity,
 			HomeyAdoptionLockEntity,
+			HomeyCloudAuthorizationStateEntity,
+			HomeyCloudUserAuthorityEntity,
+			HomeyCloudPendingGrantEntity,
+			HomeyCloudActiveGrantEntity,
 		]),
 		DevicesModule,
 		ConfigModule,
 		NestConfigModule,
 		ExtensionsModule,
 		SwaggerModule,
+		UsersModule,
 	],
 	providers: [
 		HomeyConfigValidatorService,
 		HomeyCloudClientConfigService,
 		HomeyCloudAuthorizationStateService,
+		HomeyCloudGrantMutationService,
 		HomeySdkClientFactoryService,
 		HomeyLocalConnectorFactory,
 		{
@@ -136,9 +151,13 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 		private readonly homeyService: HomeyService,
 		private readonly platformRegistry: PlatformRegistryService,
 		private readonly homeyDevicePlatform: HomeyDevicePlatform,
+		private readonly userLifecycleMutations: UserLifecycleMutationRegistryService,
+		private readonly homeyCloudGrantMutations: HomeyCloudGrantMutationService,
 	) {}
 
 	onModuleInit(): void {
+		this.userLifecycleMutations.registerParticipant(this.homeyCloudGrantMutations);
+
 		this.configMapper.registerMapping<HomeyConfigModel, HomeyUpdatePluginConfigDto>({
 			type: DEVICES_HOMEY_PLUGIN_NAME,
 			class: HomeyConfigModel,

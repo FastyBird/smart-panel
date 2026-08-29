@@ -18,6 +18,7 @@ import { HomeyCloudClientConfigService } from './homey-cloud-client-config.servi
 interface PendingAuthorizationState {
 	readonly activeGrantGeneration: number;
 	readonly authorityGeneration: number;
+	readonly configurationGeneration: number;
 	readonly expiresAt: number;
 	readonly initiatingUserId: string;
 	readonly redirectUrl: string;
@@ -28,6 +29,7 @@ interface PendingAuthorizationState {
 export interface HomeyCloudAuthorizationStart {
 	readonly activeGrantGeneration: number;
 	readonly authorityGeneration: number;
+	readonly configurationGeneration: number;
 	readonly initiatingUserId: string;
 }
 
@@ -40,6 +42,7 @@ export interface HomeyCloudAuthorizationFlow {
 export interface HomeyCloudConsumedAuthorization {
 	readonly activeGrantGeneration: number;
 	readonly authorityGeneration: number;
+	readonly configurationGeneration: number;
 	readonly expiresAt: Date;
 	readonly initiatingUserId: string;
 	readonly redirectUrl: string;
@@ -81,6 +84,7 @@ export class HomeyCloudAuthorizationStateService implements OnModuleDestroy {
 		this.pending.set(stateHash, {
 			activeGrantGeneration: start.activeGrantGeneration,
 			authorityGeneration: start.authorityGeneration,
+			configurationGeneration: start.configurationGeneration,
 			expiresAt,
 			initiatingUserId: start.initiatingUserId,
 			redirectUrl: configuration.redirectUrl,
@@ -111,6 +115,7 @@ export class HomeyCloudAuthorizationStateService implements OnModuleDestroy {
 		return {
 			activeGrantGeneration: pending.activeGrantGeneration,
 			authorityGeneration: pending.authorityGeneration,
+			configurationGeneration: pending.configurationGeneration,
 			expiresAt: new Date(pending.expiresAt),
 			initiatingUserId: pending.initiatingUserId,
 			redirectUrl: pending.redirectUrl,
@@ -131,7 +136,9 @@ export class HomeyCloudAuthorizationStateService implements OnModuleDestroy {
 			!Number.isSafeInteger(start.authorityGeneration) ||
 			start.authorityGeneration < 0 ||
 			!Number.isSafeInteger(start.activeGrantGeneration) ||
-			start.activeGrantGeneration < 0
+			start.activeGrantGeneration < 0 ||
+			!Number.isSafeInteger(start.configurationGeneration) ||
+			start.configurationGeneration < 0
 		) {
 			throw new TypeError('Homey Cloud authorization start context is invalid');
 		}

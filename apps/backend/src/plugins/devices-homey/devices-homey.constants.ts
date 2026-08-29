@@ -60,6 +60,14 @@ export const HOMEY_CLOUD_AUTHORIZATION_STATE_TTL_MS = 5 * 60 * 1000;
 
 export const HOMEY_CLOUD_MAX_PENDING_AUTHORIZATIONS = 32;
 
+export const HOMEY_CLOUD_AUTHORIZATION_STATE_KEY = 'primary';
+
+export const HOMEY_CLOUD_ACTIVE_GRANT_KEY = 'primary';
+
+export const HOMEY_CLOUD_PENDING_GRANT_TTL_MS = 10 * 60 * 1000;
+
+export const HOMEY_CLOUD_PENDING_GRANT_CLEANUP_INTERVAL_MS = 60 * 1000;
+
 export enum HomeyConnectionState {
 	STOPPED = 'stopped',
 	CONNECTING = 'connecting',
