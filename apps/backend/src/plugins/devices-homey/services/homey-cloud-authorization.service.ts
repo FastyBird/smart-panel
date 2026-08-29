@@ -107,7 +107,7 @@ export class HomeyCloudAuthorizationService {
 			}
 
 			if (homeys.length === 1) {
-				return this.selectHomey(input.transactionId, input.initiatingUserId, homeys[0].id);
+				return this.activateSelectedHomey(input.transactionId, input.initiatingUserId, homeys[0].id, true);
 			}
 
 			return {
@@ -153,23 +153,32 @@ export class HomeyCloudAuthorizationService {
 		this.assertHomeyId(selectedHomeyId);
 
 		try {
-			const candidate = await this.grantMutations.loadCandidateCredentials(transactionId, initiatingUserId);
-			const provider = this.createCandidateProvider(candidate);
-			const homeys = await this.getEligibleHomeys(provider);
-			const selectedHomey = homeys.find((homey) => homey.id === selectedHomeyId);
-
-			if (!selectedHomey) throw new HomeyCloudSelectionError();
-
-			await this.runProviderOperation(HomeyCloudProviderOperation.AUTHENTICATE_HOMEY, (signal) =>
-				provider.authenticateHomey(selectedHomey.id, signal),
-			);
-			const grant = await this.grantMutations.activateCandidate(transactionId, initiatingUserId, selectedHomey.id);
-
-			return { status: 'activated', homey: selectedHomey, grant };
+			return await this.activateSelectedHomey(transactionId, initiatingUserId, selectedHomeyId, false);
 		} catch (error) {
 			await this.clearTerminalCandidate(transactionId, initiatingUserId, error);
 			throw error;
 		}
+	}
+
+	private async activateSelectedHomey(
+		transactionId: string,
+		initiatingUserId: string,
+		selectedHomeyId: string,
+		requireSingleton: boolean,
+	): Promise<HomeyCloudActivatedResult> {
+		const candidate = await this.grantMutations.loadCandidateCredentials(transactionId, initiatingUserId);
+		const provider = this.createCandidateProvider(candidate);
+		const homeys = await this.getEligibleHomeys(provider);
+		const selectedHomey = homeys.find((homey) => homey.id === selectedHomeyId);
+
+		if (!selectedHomey || (requireSingleton && homeys.length !== 1)) throw new HomeyCloudSelectionError();
+
+		await this.runProviderOperation(HomeyCloudProviderOperation.AUTHENTICATE_HOMEY, (signal) =>
+			provider.authenticateHomey(selectedHomey.id, signal),
+		);
+		const grant = await this.grantMutations.activateCandidate(transactionId, initiatingUserId, selectedHomey.id);
+
+		return { status: 'activated', homey: selectedHomey, grant };
 	}
 
 	private async loadEligibleHomeys(
@@ -343,10 +352,10 @@ export class HomeyCloudAuthorizationService {
 			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.TIMEOUT, operation);
 		}
 
-		const record = typeof error === 'object' && error !== null ? (error as Record<string, unknown>) : {};
-		const statusCode = [record.statusCode, record.status, record.code].find(
-			(value): value is number => typeof value === 'number' && Number.isInteger(value),
-		);
+		const records = this.providerErrorChain(error);
+		const statusCode = records
+			.flatMap((record) => [record.statusCode, record.status, record.code])
+			.find((value): value is number => typeof value === 'number' && Number.isInteger(value));
 
 		if (statusCode === 401 || (operation === HomeyCloudProviderOperation.EXCHANGE_CODE && statusCode === 400)) {
 			return new HomeyCloudProviderError(
@@ -366,16 +375,38 @@ export class HomeyCloudAuthorizationService {
 			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.UNAVAILABLE, operation);
 		}
 
-		const code = typeof record.code === 'string' ? record.code.toUpperCase() : '';
+		const codes = records.flatMap((record) =>
+			[record.code, record.name, record.type]
+				.filter((value): value is string => typeof value === 'string')
+				.map((value) => value.toUpperCase()),
+		);
 
-		if (['ABORTERROR', 'ECONNABORTED', 'ETIMEDOUT', 'TIMEOUTERROR'].includes(code)) {
+		if (codes.some((code) => ['ABORTERROR', 'ABORT_ERR', 'ECONNABORTED', 'ETIMEDOUT', 'TIMEOUTERROR'].includes(code))) {
 			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.TIMEOUT, operation);
 		}
-		if (['ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'ENOTFOUND'].includes(code)) {
+		if (
+			codes.some((code) => ['ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'ENOTFOUND'].includes(code))
+		) {
 			return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.UNAVAILABLE, operation);
 		}
 
 		return new HomeyCloudProviderError(HomeyCloudProviderErrorCategory.PROTOCOL, operation);
+	}
+
+	private providerErrorChain(error: unknown): readonly Record<string, unknown>[] {
+		const records: Record<string, unknown>[] = [];
+		const seen = new Set<object>();
+		let current = error;
+
+		while (typeof current === 'object' && current !== null && records.length < 5 && !seen.has(current)) {
+			seen.add(current);
+			const record = current as Record<string, unknown>;
+
+			records.push(record);
+			current = record.cause;
+		}
+
+		return records;
 	}
 
 	private async clearTerminalCandidate(transactionId: string, initiatingUserId: string, error: unknown): Promise<void> {

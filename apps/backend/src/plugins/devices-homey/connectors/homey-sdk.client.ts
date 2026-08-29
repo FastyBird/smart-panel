@@ -1,4 +1,6 @@
 import { AthomCloudAPI, HomeyAPI } from 'homey-api';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { createRequire } from 'node:module';
 
 import { Injectable } from '@nestjs/common';
 
@@ -9,6 +11,8 @@ import {
 	HOMEY_CLOUD_TOKEN_URL,
 } from '../devices-homey.constants';
 import { HomeyCloudConfigurationError } from '../errors/homey-cloud-authorization.error';
+
+const homeySdkAbortContext = installHomeySdkAbortBridge();
 
 export type HomeySdkEventListener = (...arguments_: unknown[]) => Promise<void> | void;
 
@@ -309,7 +313,11 @@ class HomeyCloudProviderSdkClient implements HomeyCloudProviderClient {
 		this.activeSignal = signal;
 
 		try {
-			return await operation();
+			return await homeySdkAbortContext.run(signal, operation);
+		} catch (error) {
+			if (signal.aborted) throw new HomeyCloudSdkAbortError();
+
+			throw error;
 		} finally {
 			this.activeSignal = null;
 		}
@@ -386,6 +394,47 @@ interface HomeyCloudSdkRequest {
 interface HomeyCloudApiExecutor {
 	baseUrl: string;
 	onCallRequestExecute(input: { request: HomeyCloudSdkRequest }): Promise<Response>;
+}
+
+interface HomeySdkUtility {
+	readonly fastyBirdAbortContext?: AsyncLocalStorage<AbortSignal>;
+	fetch: (
+		url: string,
+		options?: RequestInit,
+		timeoutDuration?: number,
+		timeoutMessage?: string,
+		patchOptions?: (options: RequestInit, url: string) => RequestInit | void,
+	) => Promise<Response>;
+}
+
+function installHomeySdkAbortBridge(): AsyncLocalStorage<AbortSignal> {
+	const loadModule = createRequire(__filename) as (moduleId: string) => unknown;
+	const homeyApiModule = loadModule('homey-api') as { Util: HomeySdkUtility };
+	const utility = homeyApiModule.Util;
+
+	if (utility.fastyBirdAbortContext) return utility.fastyBirdAbortContext;
+
+	const context = new AsyncLocalStorage<AbortSignal>();
+	const originalFetch = utility.fetch.bind(utility) as HomeySdkUtility['fetch'];
+
+	utility.fetch = (url, options = {}, timeoutDuration, timeoutMessage, patchOptions) => {
+		const operationSignal = context.getStore();
+
+		if (!operationSignal) return originalFetch(url, options, timeoutDuration, timeoutMessage, patchOptions);
+
+		const existingSignal = options.signal;
+		const signal = existingSignal ? AbortSignal.any([existingSignal, operationSignal]) : operationSignal;
+
+		return originalFetch(url, { ...options, signal }, timeoutDuration, timeoutMessage, patchOptions);
+	};
+	Object.defineProperty(utility, 'fastyBirdAbortContext', {
+		configurable: false,
+		enumerable: false,
+		value: context,
+		writable: false,
+	});
+
+	return context;
 }
 
 class HomeyCloudSdkHttpError extends Error {

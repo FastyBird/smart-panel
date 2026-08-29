@@ -187,8 +187,9 @@ their final prepared origin before dispatch; all provider operations consume the
 have a bounded deadline. The service validates and stages only the normalized token fields, then recreates an isolated
 candidate client from the exact transaction for Homey listing and selection. Browser-facing choices contain only a
 bounded stable ID and sanitized name. Unsupported or duplicate entries fail closed; one eligible Homey is auto-selected,
-while multiple choices require an exact transaction-bound selection. The selected Homey must authenticate over the cloud
-strategy before the existing mutation gate can atomically activate it. Invalid-token, malformed-response,
+after a fresh singleton-inventory check, while multiple choices require an exact transaction-bound selection. The
+selected Homey must authenticate over the cloud strategy before the existing mutation gate can atomically activate it.
+Invalid-token, malformed-response,
 empty-inventory and unsupported-inventory failures clear only that candidate; transient timeout, rate-limit, and
 unavailable failures retain it until its original absolute expiry. HTTP routes and connector activation remain
 intentionally absent until Tasks 7.2d and 7.3.

@@ -1,4 +1,7 @@
 import { AthomCloudAPI } from 'homey-api';
+import { once } from 'node:events';
+import { createServer } from 'node:http';
+import { createRequire } from 'node:module';
 
 import { HOMEY_CLOUD_CALLBACK_PATH, HOMEY_CLOUD_SCOPES } from '../devices-homey.constants';
 import { HomeyCloudConfigurationError } from '../errors/homey-cloud-authorization.error';
@@ -110,6 +113,71 @@ describe('HomeySdkClientFactoryService', () => {
 
 		await expect(exchange).rejects.toMatchObject({ code: 'ABORTERROR' });
 		expect(requestSignal?.aborted).toBe(true);
+	});
+
+	it('propagates cancellation into the child Homey login requests', async () => {
+		let requestStartedResolve: (() => void) | null = null;
+		const requestStarted = new Promise<void>((resolve) => {
+			requestStartedResolve = resolve;
+		});
+		const server = createServer(() => requestStartedResolve?.());
+
+		server.listen(0, '127.0.0.1');
+		await once(server, 'listening');
+
+		try {
+			const address = server.address();
+
+			if (address === null || typeof address === 'string') throw new Error('Test server address is unavailable');
+
+			const sdkUtility = (
+				createRequire(__filename)('homey-api') as {
+					Util: {
+						fetch(url: string, options: RequestInit, timeoutDuration: number): Promise<Response>;
+					};
+				}
+			).Util;
+			const homey = {
+				id: 'homey-one',
+				name: 'Home',
+				apiVersion: 3,
+				platform: 'local',
+				authenticate: jest.fn(async () => {
+					await sdkUtility.fetch(`http://127.0.0.1:${address.port}/login`, {}, 60_000);
+
+					throw new Error('The stalled test request unexpectedly completed');
+				}),
+			};
+
+			jest.spyOn(AthomCloudAPI.prototype, 'getAuthenticatedUser').mockResolvedValue({
+				getHomeys: () => [homey],
+				getHomeyById: () => homey,
+			} as unknown as AthomCloudAPI.User);
+			const provider = new HomeySdkClientFactoryService().createCloudProviderClient({
+				clientId: 'deployment-client-id',
+				clientSecret: 'deployment-client-secret',
+				redirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
+				token: {
+					tokenType: 'bearer',
+					accessToken: 'candidate-access-token',
+					refreshToken: 'candidate-refresh-token',
+					expiresIn: 3600,
+					grantType: 'authorization_code',
+				},
+			});
+			const controller = new AbortController();
+			const authentication = provider.authenticateHomey('homey-one', controller.signal);
+
+			await requestStarted;
+			controller.abort();
+
+			await expect(authentication).rejects.toMatchObject({ code: 'ABORTERROR' });
+		} finally {
+			server.closeAllConnections();
+			await new Promise<void>((resolve, reject) => {
+				server.close((error) => (error ? reject(error) : resolve()));
+			});
+		}
 	});
 
 	it('creates a Homey Cloud authorization URL without exposing the client secret', () => {

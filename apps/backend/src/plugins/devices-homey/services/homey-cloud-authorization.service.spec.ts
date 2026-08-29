@@ -150,6 +150,17 @@ describe('HomeyCloudAuthorizationService', () => {
 		);
 	});
 
+	it('does not auto-select when the refreshed inventory is no longer a singleton', async () => {
+		candidateClient.getHomeys
+			.mockResolvedValueOnce([homey('homey-one', 'Home')])
+			.mockResolvedValueOnce([homey('homey-one', 'Home'), homey('homey-two', 'Other Homey')]);
+
+		await expect(service.exchangeAuthorizationCode(exchange)).rejects.toThrow(HomeyCloudSelectionError);
+		expect(candidateClient.authenticateHomey.mock.calls).toHaveLength(0);
+		expect(grantMutations.activateCandidate).not.toHaveBeenCalled();
+		expect(grantMutations.cancelCandidate).not.toHaveBeenCalled();
+	});
+
 	it('clears a candidate when no eligible Homey is available', async () => {
 		candidateClient.getHomeys.mockResolvedValue([homey('unsupported', 'Unsupported', { platform: 'unknown' })]);
 
@@ -203,6 +214,20 @@ describe('HomeyCloudAuthorizationService', () => {
 		await expectation;
 		expect(providerSignal).not.toBeNull();
 		expect((providerSignal as unknown as AbortSignal).aborted).toBe(true);
+		expect(grantMutations.cancelCandidate).not.toHaveBeenCalled();
+	});
+
+	it('retains the candidate when native fetch wraps a transient network error', async () => {
+		candidateClient.getHomeys.mockRejectedValue(
+			new TypeError('fetch failed', {
+				cause: Object.assign(new Error('private network failure'), { code: 'ENOTFOUND' }),
+			}),
+		);
+
+		await expect(service.listCandidateHomeys(exchange.transactionId, exchange.initiatingUserId)).rejects.toMatchObject({
+			category: HomeyCloudProviderErrorCategory.UNAVAILABLE,
+			retryable: true,
+		});
 		expect(grantMutations.cancelCandidate).not.toHaveBeenCalled();
 	});
 
