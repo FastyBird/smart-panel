@@ -190,9 +190,10 @@ const disconnect = async (): Promise<void> => {
 
 const load = async (): Promise<void> => {
 	requestFailed.value = false;
-	const results = await Promise.allSettled([authorizationStore.fetchStatus(), authorizationStore.resume()]);
+	const [statusResult, resumeResult] = await Promise.allSettled([authorizationStore.fetchStatus(), authorizationStore.resume()]);
+	const resumed = resumeResult.status === 'fulfilled' && resumeResult.value !== null;
 
-	requestFailed.value = results.some((result) => result.status === 'rejected');
+	requestFailed.value = resumeResult.status === 'rejected' || (statusResult.status === 'rejected' && !resumed);
 };
 
 onMounted(() => {

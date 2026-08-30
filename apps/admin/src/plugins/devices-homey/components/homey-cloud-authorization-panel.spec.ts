@@ -66,6 +66,20 @@ describe('HomeyCloudAuthorizationPanel', () => {
 		expect(authorizationStore.resume).toHaveBeenCalledOnce();
 	});
 
+	it('does not report a status-read failure after a successful callback resume', async () => {
+		authorizationStore.fetchStatus.mockRejectedValueOnce(new Error('temporary status failure'));
+		authorizationStore.resume.mockImplementationOnce(async () => {
+			authorizationStore.homeys = [{ id: 'homey-a', name: 'Home' }];
+
+			return { status: 'selection_required', homeyId: null, homeys: authorizationStore.homeys };
+		});
+		const wrapper = mountPanel({ savedMode: DevicesHomeyPluginConnectionMode.cloud });
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="homey-cloud-selection"]').exists()).toBe(true);
+		expect(wrapper.text()).not.toContain('devicesHomeyPlugin.cloudAuthorization.requestFailed');
+	});
+
 	it('requires cloud mode to be saved before authorization starts', async () => {
 		const wrapper = mountPanel({ savedMode: DevicesHomeyPluginConnectionMode.local });
 		await flushPromises();
