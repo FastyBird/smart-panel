@@ -3,7 +3,7 @@ import { reactive, ref } from 'vue';
 import { ElRadioButton } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 
 import { DevicesHomeyPluginConnectionMode } from '../../../openapi.constants';
 import type { IHomeyConfig } from '../store/config.store.types';
@@ -114,5 +114,20 @@ describe('HomeyConfigForm', () => {
 		expect(wrapper.findComponent({ name: 'ConfigSecretInput' }).exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="homey-cloud-authorization-panel-stub"]').exists()).toBe(true);
 		expect(wrapper.getComponent({ name: 'HomeyConnectionPanel' }).props('mode')).toBe('cloud');
+		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('local');
+	});
+
+	it('updates the authorization guard only after cloud mode is saved', async () => {
+		const wrapper = mountForm();
+		model.mode = DevicesHomeyPluginConnectionMode.cloud;
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('local');
+
+		submit.mockResolvedValueOnce('saved');
+		await wrapper.setProps({ remoteFormSubmit: true });
+		await flushPromises();
+
+		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('cloud');
 	});
 });

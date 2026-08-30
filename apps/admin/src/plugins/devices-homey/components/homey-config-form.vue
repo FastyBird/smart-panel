@@ -110,7 +110,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, ElRadioButton, ElRadioGroup, ElSwitch, type FormRules } from 'element-plus';
@@ -151,7 +151,13 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditForm<IHomeyConfigEditForm>({
+const {
+	formEl,
+	model,
+	formChanged,
+	submit: submitConfig,
+	formResult,
+} = useConfigPluginEditForm<IHomeyConfigEditForm>({
 	config: props.config,
 	messages: {
 		success: t('devicesHomeyPlugin.messages.config.updated'),
@@ -162,7 +168,14 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 const fieldErrors = computed<Record<string, string | undefined>>(() =>
 	Object.fromEntries(props.remoteFormErrors.map((error) => [error.field, error.message]))
 );
-const savedMode = computed<DevicesHomeyPluginConnectionMode>(() => (props.config as IHomeyConfig).mode);
+const savedMode = ref<DevicesHomeyPluginConnectionMode>((props.config as IHomeyConfig).mode);
+
+const submit = async (): Promise<'saved'> => {
+	const result = await submitConfig();
+	savedMode.value = model.mode;
+
+	return result;
+};
 
 const url = computed<string>({
 	get: () => model.url ?? '',
