@@ -53,6 +53,24 @@ describe('HomeyConfigValidatorService', () => {
 		expect(cloudGrantMutations.hasActiveGrant).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		['client ID', { cloud_client_id: undefined }],
+		['client secret', { cloud_client_secret: undefined }],
+		['redirect URL', { cloud_redirect_url: undefined }],
+	])('reconciles an existing grant before reporting a missing Cloud %s', async (_label, missingField) => {
+		const result = await service.validate({
+			enabled: true,
+			mode: HomeyConnectionMode.CLOUD,
+			cloud_client_id: 'client-id',
+			cloud_client_secret: 'client-secret',
+			cloud_redirect_url: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback',
+			...missingField,
+		});
+
+		expect(result.valid).toBe(false);
+		expect(cloudGrantMutations.hasActiveGrant).toHaveBeenCalledTimes(1);
+	});
+
 	it('keeps an enabled cloud connector stopped until Homey authorization is complete', async () => {
 		cloudGrantMutations.hasActiveGrant.mockResolvedValue(false);
 

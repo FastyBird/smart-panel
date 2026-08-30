@@ -182,6 +182,16 @@ describe('StepIntegrations.vue', () => {
 		await flushPromises();
 
 		expect(wrapper.text()).toContain('onboardingModule.integrations.configRequired');
+
+		const setupButton = wrapper.findAllComponents({ name: 'ElButton' }).find((button) => button.text() === 'onboardingModule.integrations.setupNow');
+
+		expect(setupButton).toBeDefined();
+		await setupButton?.trigger('click');
+		wrapper.getComponent({ name: 'IntegrationConfigDialog' }).vm.$emit('saved');
+		await flushPromises();
+
+		expect(mockConfigPluginsStore.get).toHaveBeenCalledTimes(2);
+		expect(wrapper.text()).toContain('onboardingModule.integrations.configRequired');
 	});
 
 	it('recognizes a complete local Homey profile during onboarding', async () => {

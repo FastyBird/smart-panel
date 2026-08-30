@@ -358,11 +358,12 @@ const openConfigDialog = (type: string, name: string): void => {
 	configDialogVisible.value = true;
 };
 
-const onConfigSaved = (): void => {
-	configuredPlugins.add(configDialogPluginType.value);
+const onConfigSaved = async (): Promise<void> => {
+	const type = configDialogPluginType.value;
 
 	// Re-trigger discovery after config is saved
-	startDiscovery(configDialogPluginType.value);
+	startDiscovery(type);
+	await checkPluginConfig(type);
 };
 
 // Discovery timing constants
@@ -561,6 +562,7 @@ const checkPluginConfig = async (type: string): Promise<void> => {
 						: typeof values['url'] === 'string' && values['url'].trim().length > 0 && values['apiKeyConfigured'] === true;
 
 				if (complete) configuredPlugins.add(type);
+				else configuredPlugins.delete(type);
 
 				return;
 			}
@@ -570,7 +572,11 @@ const checkPluginConfig = async (type: string): Promise<void> => {
 
 			if (configEntries.length > 0) {
 				configuredPlugins.add(type);
+			} else {
+				configuredPlugins.delete(type);
 			}
+		} else {
+			configuredPlugins.delete(type);
 		}
 	} catch {
 		// Config fetch may fail - that's ok
