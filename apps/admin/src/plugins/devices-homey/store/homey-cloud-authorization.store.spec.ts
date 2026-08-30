@@ -62,6 +62,8 @@ describe('Homey Cloud authorization store', () => {
 		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
 		get.mockResolvedValue(
 			success({
+				status: 'selection_required',
+				homey_id: null,
 				homeys: [
 					{ id: 'homey-a', name: 'Home' },
 					{ id: 'homey-b', name: 'Cabin' },
@@ -71,6 +73,8 @@ describe('Homey Cloud authorization store', () => {
 		const store = useHomeyCloudAuthorization();
 
 		await expect(store.resume()).resolves.toEqual({
+			status: 'selection_required',
+			homeyId: null,
 			homeys: [
 				{ id: 'homey-a', name: 'Home' },
 				{ id: 'homey-b', name: 'Cabin' },
@@ -81,15 +85,26 @@ describe('Homey Cloud authorization store', () => {
 		});
 	});
 
-	it('treats a consumed single-Homey transaction as completed and refreshes status', async () => {
+	it('accepts completion only when the exact transaction activated', async () => {
 		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
-		get.mockResolvedValueOnce({ error: {}, response: { status: 409 } }).mockResolvedValueOnce(success({ connected: true }));
+		get.mockResolvedValue(success({ status: 'connected', homey_id: 'homey-id', homeys: [] }));
 		const store = useHomeyCloudAuthorization();
 
-		await expect(store.resume()).resolves.toBeNull();
+		await expect(store.resume()).resolves.toEqual({ status: 'connected', homeyId: 'homey-id', homeys: [] });
 		expect(store.pendingTransaction).toBeNull();
-		expect(store.status).toEqual({ connected: true });
+		expect(store.status).toEqual({ connected: true, selectedHomeyId: 'homey-id' });
 		expect(window.sessionStorage.getItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY)).toBeNull();
+	});
+
+	it('reports a consumed callback as failed unless that exact transaction activated', async () => {
+		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
+		get.mockResolvedValue({ error: {}, response: { status: 409 } });
+		const store = useHomeyCloudAuthorization();
+
+		await expect(store.resume()).rejects.toEqual(
+			expect.objectContaining<Partial<DevicesHomeyApiException>>({ message: 'Sanitized Homey Cloud request failure', code: 409 })
+		);
+		expect(store.pendingTransaction).toBeNull();
 	});
 
 	it('selects one eligible Homey and clears the transaction', async () => {

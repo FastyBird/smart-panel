@@ -73,6 +73,13 @@ describe('HomeyConfigEditFormSchema', () => {
 		).toBe(true);
 	});
 
+	it('omits a hidden local key replacement from cloud-mode submissions', () => {
+		const result = HomeyConfigEditFormSchema.safeParse(createConfig({ mode: DevicesHomeyPluginConnectionMode.cloud, apiKey: '   ' }));
+
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data.apiKey).toBeUndefined();
+	});
+
 	it.each([
 		['connection timeout minimum', { connectionTimeout: MIN_HOMEY_CONNECTION_TIMEOUT_MS }],
 		['connection timeout maximum', { connectionTimeout: MAX_HOMEY_CONNECTION_TIMEOUT_MS }],

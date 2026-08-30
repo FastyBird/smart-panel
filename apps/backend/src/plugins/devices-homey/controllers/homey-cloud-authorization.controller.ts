@@ -65,6 +65,7 @@ import {
 	HomeyCloudChoiceModel,
 	HomeyCloudChoicesModel,
 	HomeyCloudChoicesResponseModel,
+	HomeyCloudChoicesStatus,
 } from '../models/cloud-authorization.model';
 import { HomeyCloudAuthorizationHttpService } from '../services/homey-cloud-authorization-http.service';
 
@@ -188,11 +189,19 @@ export class HomeyCloudAuthorizationController {
 		@Req() request: AuthenticatedRequest,
 	): Promise<HomeyCloudChoicesResponseModel> {
 		return this.run(async () => {
-			const choices = await this.cloudAuthorization.listHomeys(transactionId, this.getActorId(request));
+			const result = await this.cloudAuthorization.listHomeys(transactionId, this.getActorId(request));
 			const response = new HomeyCloudChoicesResponseModel();
 
 			response.data = Object.assign(new HomeyCloudChoicesModel(), {
-				homeys: choices.map((choice) => Object.assign(new HomeyCloudChoiceModel(), choice)),
+				status:
+					result.status === 'connected'
+						? HomeyCloudChoicesStatus.CONNECTED
+						: HomeyCloudChoicesStatus.SELECTION_REQUIRED,
+				homeyId: result.homeyId,
+				homeys:
+					result.status === 'selection_required'
+						? result.homeys.map((choice) => Object.assign(new HomeyCloudChoiceModel(), choice))
+						: [],
 			});
 
 			return response;

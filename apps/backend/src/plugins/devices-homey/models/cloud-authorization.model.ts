@@ -73,14 +73,35 @@ export class HomeyCloudChoiceModel {
 	name: string;
 }
 
+export enum HomeyCloudChoicesStatus {
+	CONNECTED = 'connected',
+	SELECTION_REQUIRED = 'selection_required',
+}
+
 @ApiSchema({ name: 'DevicesHomeyPluginDataCloudHomeyChoices' })
 export class HomeyCloudChoicesModel {
+	@ApiProperty({ enum: HomeyCloudChoicesStatus })
+	@Expose()
+	@IsIn(Object.values(HomeyCloudChoicesStatus))
+	status: HomeyCloudChoicesStatus;
+
 	@ApiProperty({ type: [HomeyCloudChoiceModel] })
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => HomeyCloudChoiceModel)
 	homeys: HomeyCloudChoiceModel[];
+
+	@ApiProperty({
+		name: 'homey_id',
+		description: 'Selected Homey identifier when this exact authorization transaction activated',
+		required: false,
+		nullable: true,
+	})
+	@Expose({ name: 'homey_id' })
+	@IsOptional()
+	@IsString()
+	homeyId: string | null;
 }
 
 @ApiSchema({ name: 'DevicesHomeyPluginResCloudHomeyChoices' })

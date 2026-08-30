@@ -65,12 +65,14 @@ export const HomeyCloudAuthorizationStatusSchema = z.object({
 });
 
 export const HomeyCloudHomeyChoicesSchema = z.object({
+	status: z.enum(['connected', 'selection_required']),
 	homeys: z.array(
 		z.object({
 			id: z.string().min(1),
 			name: z.string().min(1),
 		})
 	),
+	homeyId: z.string().nullable().optional(),
 });
 
 export const HomeyCloudAuthorizationCompletionSchema = z.object({

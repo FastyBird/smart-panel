@@ -23,10 +23,16 @@ export const HomeyConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
 	apiKeyConfigured: z.boolean().optional(),
 	connectionTimeout: z.coerce.number().int().min(MIN_HOMEY_CONNECTION_TIMEOUT_MS).max(MAX_HOMEY_CONNECTION_TIMEOUT_MS),
 	reconciliationInterval: z.coerce.number().int().min(MIN_HOMEY_RECONCILIATION_INTERVAL_MS).max(MAX_HOMEY_RECONCILIATION_INTERVAL_MS),
-}).superRefine((value, context) => {
-	if (value.mode === DevicesHomeyPluginConnectionMode.local && isBlankHomeyApiKeyReplacement(value.apiKey)) {
-		context.addIssue({ code: 'custom', path: ['apiKey'], message: 'A Homey API key replacement must not be blank' });
-	} else if (value.mode === DevicesHomeyPluginConnectionMode.local && value.enabled && !hasUsableHomeyApiKey(value.apiKey, value.apiKeyConfigured)) {
-		context.addIssue({ code: 'custom', path: ['apiKey'], message: 'A Homey API key is required when the plugin is enabled' });
-	}
-});
+})
+	.superRefine((value, context) => {
+		if (value.mode === DevicesHomeyPluginConnectionMode.local && isBlankHomeyApiKeyReplacement(value.apiKey)) {
+			context.addIssue({ code: 'custom', path: ['apiKey'], message: 'A Homey API key replacement must not be blank' });
+		} else if (
+			value.mode === DevicesHomeyPluginConnectionMode.local &&
+			value.enabled &&
+			!hasUsableHomeyApiKey(value.apiKey, value.apiKeyConfigured)
+		) {
+			context.addIssue({ code: 'custom', path: ['apiKey'], message: 'A Homey API key is required when the plugin is enabled' });
+		}
+	})
+	.overwrite((value) => (value.mode === DevicesHomeyPluginConnectionMode.cloud ? { ...value, apiKey: undefined } : value));

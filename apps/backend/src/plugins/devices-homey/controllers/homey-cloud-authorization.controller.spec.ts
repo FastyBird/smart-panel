@@ -165,7 +165,11 @@ describe('HomeyCloudAuthorizationController', () => {
 	it('binds list, selection, and cancellation to the authenticated initiating user', async () => {
 		const request = { auth: { type: 'user', id: 'admin-user', role: UserRole.ADMIN } } as AuthenticatedRequest;
 
-		cloudAuthorization.listHomeys.mockResolvedValue([{ id: 'homey-1', name: 'Homey One' }]);
+		cloudAuthorization.listHomeys.mockResolvedValue({
+			status: 'selection_required',
+			homeyId: null,
+			homeys: [{ id: 'homey-1', name: 'Homey One' }],
+		});
 		cloudAuthorization.selectHomey.mockResolvedValue({
 			status: 'activated',
 			homey: { id: 'homey-1', name: 'Homey One' },
@@ -193,6 +197,8 @@ describe('HomeyCloudAuthorizationController', () => {
 		expect(cloudAuthorization.listHomeys).toHaveBeenCalledWith('transaction-1', 'admin-user');
 		expect(cloudAuthorization.selectHomey).toHaveBeenCalledWith('transaction-1', 'admin-user', 'homey-1');
 		expect(cloudAuthorization.cancel).toHaveBeenCalledWith('transaction-1', 'admin-user');
+		expect(list.data.status).toBe('selection_required');
+		expect(list.data.homeyId).toBeNull();
 		expect(list.data.homeys).toEqual([{ id: 'homey-1', name: 'Homey One' }]);
 		expect(select.data).toMatchObject({ status: 'connected', changed: true, homeyId: 'homey-1' });
 		expect(cancel.data).toMatchObject({ status: 'cancelled', changed: true, homeyId: null });
@@ -206,6 +212,21 @@ describe('HomeyCloudAuthorizationController', () => {
 				auth: { type: 'user', id: 'admin-user', role: UserRole.ADMIN },
 			} as AuthenticatedRequest),
 		).rejects.toEqual(new InternalServerErrorException('Homey Cloud authorization could not be completed'));
+	});
+
+	it('returns exact-transaction callback completion without exposing grant metadata', async () => {
+		cloudAuthorization.listHomeys.mockResolvedValue({
+			status: 'connected',
+			homeyId: 'homey-1',
+			homeys: [],
+		});
+
+		const response = await controller.listHomeys('transaction-1', {
+			auth: { type: 'user', id: 'admin-user', role: UserRole.ADMIN },
+		} as AuthenticatedRequest);
+
+		expect(response.data).toMatchObject({ status: 'connected', homeyId: 'homey-1', homeys: [] });
+		expect(JSON.stringify(response)).not.toContain('grantIdentifier');
 	});
 });
 

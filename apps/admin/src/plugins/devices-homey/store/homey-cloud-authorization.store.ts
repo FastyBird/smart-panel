@@ -133,17 +133,17 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 
 			if (data) {
 				const result = transformHomeyCloudHomeyChoices(data.data);
+				if (result.status === 'connected') {
+					clearPendingTransaction();
+					status.value = { connected: true, selectedHomeyId: result.homeyId ?? null };
+					return result;
+				}
+
 				homeys.value = result.homeys;
 				return result;
 			}
 
-			if (response.status === 409) {
-				clearPendingTransaction();
-				await fetchStatus();
-				return null;
-			}
-
-			if ([400, 403, 422].includes(response.status)) clearPendingTransaction();
+			if ([400, 403, 409, 422].includes(response.status)) clearPendingTransaction();
 			throw new DevicesHomeyApiException(
 				getErrorReason<DevicesHomeyPluginListCloudAuthorizationHomeysOperation>(error, 'Failed to continue Homey Cloud authorization.'),
 				response.status

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { HOMEY_CLOUD_RESULT_PATH } from '../devices-homey.constants';
+import { HomeyCloudGrantConflictError } from '../errors/homey-cloud-grant.error';
 
 import {
 	HomeyCloudAuthorizationFlow,
@@ -29,6 +30,10 @@ export interface HomeyCloudAuthorizationStatus {
 	readonly connected: boolean;
 	readonly selectedHomeyId: string | null;
 }
+
+export type HomeyCloudAuthorizationHomeys =
+	| { readonly status: 'connected'; readonly homeyId: string; readonly homeys: readonly [] }
+	| { readonly status: 'selection_required'; readonly homeyId: null; readonly homeys: readonly HomeyCloudChoice[] };
 
 @Injectable()
 export class HomeyCloudAuthorizationHttpService {
@@ -78,8 +83,21 @@ export class HomeyCloudAuthorizationHttpService {
 		}
 	}
 
-	async listHomeys(transactionId: string, initiatingUserId: string): Promise<readonly HomeyCloudChoice[]> {
-		return this.authorization.listCandidateHomeys(transactionId, initiatingUserId);
+	async listHomeys(transactionId: string, initiatingUserId: string): Promise<HomeyCloudAuthorizationHomeys> {
+		try {
+			return {
+				status: 'selection_required',
+				homeyId: null,
+				homeys: await this.authorization.listCandidateHomeys(transactionId, initiatingUserId),
+			};
+		} catch (error) {
+			if (!(error instanceof HomeyCloudGrantConflictError)) throw error;
+
+			const active = await this.grantMutations.getActiveGrantForTransaction(transactionId, initiatingUserId);
+			if (!active) throw error;
+
+			return { status: 'connected', homeyId: active.selectedHomeyId, homeys: [] };
+		}
 	}
 
 	async selectHomey(
