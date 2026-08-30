@@ -28,14 +28,32 @@ describe('HomeyCloudClientConfigService', () => {
 	});
 
 	it('creates a stable non-secret identity for the complete OAuth client configuration', () => {
-		const fingerprint = create().getConfigurationFingerprint();
+		const service = create();
+		const fingerprint = service.getConfigurationFingerprint();
 
 		expect(fingerprint).toMatch(/^[a-f0-9]{64}$/);
+		expect(
+			service.getConfigurationFingerprintFor({
+				clientId: valid.cloudClientId,
+				clientSecret: valid.cloudClientSecret,
+				redirectUrl: valid.cloudRedirectUrl,
+			}),
+		).toBe(fingerprint);
 		expect(create().getConfigurationFingerprint()).toBe(fingerprint);
 		expect(create({ ...valid, cloudClientSecret: 'rotated-secret' }).getConfigurationFingerprint()).not.toBe(
 			fingerprint,
 		);
 		expect(fingerprint).not.toContain('client-secret');
+	});
+
+	it('rejects incomplete candidate configuration fingerprints', () => {
+		expect(
+			create().getConfigurationFingerprintFor({
+				clientId: 'client-id',
+				clientSecret: null,
+				redirectUrl: valid.cloudRedirectUrl,
+			}),
+		).toBeNull();
 	});
 
 	it.each(['cloudClientId', 'cloudClientSecret', 'cloudRedirectUrl'])('fails closed when %s is missing', (key) => {

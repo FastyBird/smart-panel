@@ -6,20 +6,29 @@ import {
 	HomeyConnectionMode,
 } from '../devices-homey.constants';
 
+import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
 import { HomeyCloudGrantMutationService } from './homey-cloud-grant-mutation.service';
 import { HomeyConfigValidatorService } from './homey-config-validator.service';
 
 describe('HomeyConfigValidatorService', () => {
 	let registry: jest.Mocked<Pick<PluginConfigValidatorService, 'register'>>;
 	let cloudGrantMutations: jest.Mocked<Pick<HomeyCloudGrantMutationService, 'hasActiveGrant'>>;
+	let cloudClientConfig: jest.Mocked<
+		Pick<HomeyCloudClientConfigService, 'getConfigurationFingerprint' | 'getConfigurationFingerprintFor'>
+	>;
 	let service: HomeyConfigValidatorService;
 
 	beforeEach(() => {
 		registry = { register: jest.fn() };
 		cloudGrantMutations = { hasActiveGrant: jest.fn().mockResolvedValue(true) };
+		cloudClientConfig = {
+			getConfigurationFingerprint: jest.fn().mockReturnValue('matching-fingerprint'),
+			getConfigurationFingerprintFor: jest.fn().mockReturnValue('matching-fingerprint'),
+		};
 		service = new HomeyConfigValidatorService(
 			registry as unknown as PluginConfigValidatorService,
 			cloudGrantMutations as unknown as HomeyCloudGrantMutationService,
+			cloudClientConfig as unknown as HomeyCloudClientConfigService,
 		);
 	});
 
@@ -81,6 +90,23 @@ describe('HomeyConfigValidatorService', () => {
 				cloud_client_id: 'client-id',
 				cloud_client_secret: 'client-secret',
 				cloud_redirect_url: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback',
+			}),
+		).resolves.toEqual({
+			valid: false,
+			errors: [{ message: 'Homey Cloud authorization is required', field: 'mode' }],
+		});
+	});
+
+	it('does not apply a persisted grant to different candidate cloud client settings', async () => {
+		cloudClientConfig.getConfigurationFingerprintFor.mockReturnValue('candidate-fingerprint');
+
+		await expect(
+			service.validate({
+				enabled: true,
+				mode: HomeyConnectionMode.CLOUD,
+				cloud_client_id: 'different-client-id',
+				cloud_client_secret: 'different-client-secret',
+				cloud_redirect_url: 'https://other.example.com/api/v1/plugins/devices-homey/oauth/callback',
 			}),
 		).resolves.toEqual({
 			valid: false,

@@ -12,6 +12,10 @@ import HomeyConfigForm from './homey-config-form.vue';
 
 const submit = vi.fn();
 const useConfigPluginEditForm = vi.hoisted(() => vi.fn());
+const authorizationStore = vi.hoisted(() => ({
+	invalidateStatus: vi.fn(),
+	fetchStatus: vi.fn().mockResolvedValue({ connected: false, selectedHomeyId: null }),
+}));
 const model = reactive({
 	type: 'devices-homey-plugin',
 	enabled: true,
@@ -49,6 +53,8 @@ vi.mock('../../../modules/config', async () => {
 		useConfigPluginEditForm,
 	};
 });
+
+vi.mock('../store/homey-cloud-authorization.store', () => ({ useHomeyCloudAuthorization: () => authorizationStore }));
 
 const mountForm = () =>
 	mount(HomeyConfigForm, {
@@ -135,6 +141,21 @@ describe('HomeyConfigForm', () => {
 		await wrapper.setProps({ remoteFormSubmit: true });
 		await flushPromises();
 
+		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('cloud');
+		expect(authorizationStore.invalidateStatus).toHaveBeenCalledOnce();
+		expect(authorizationStore.fetchStatus).toHaveBeenCalledOnce();
+	});
+
+	it('keeps a successful cloud save when authorization status refresh temporarily fails', async () => {
+		const wrapper = mountForm();
+		model.mode = DevicesHomeyPluginConnectionMode.cloud;
+		submit.mockResolvedValueOnce('saved');
+		authorizationStore.fetchStatus.mockRejectedValueOnce(new Error('temporary failure'));
+
+		await wrapper.setProps({ remoteFormSubmit: true });
+		await flushPromises();
+
+		expect(authorizationStore.invalidateStatus).toHaveBeenCalledOnce();
 		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('cloud');
 	});
 

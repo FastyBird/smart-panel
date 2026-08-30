@@ -18,6 +18,7 @@ import {
 import { isSafeHomeyCloudRedirectUrl } from '../validators/homey-cloud-redirect-url.validator';
 import { isSafeHomeyUrl } from '../validators/homey-url.validator';
 
+import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
 import { HomeyCloudGrantMutationService } from './homey-cloud-grant-mutation.service';
 
 @Injectable()
@@ -27,6 +28,7 @@ export class HomeyConfigValidatorService implements IPluginConfigValidator, OnMo
 	constructor(
 		private readonly pluginConfigValidator: PluginConfigValidatorService,
 		private readonly cloudGrantMutations: HomeyCloudGrantMutationService,
+		private readonly cloudClientConfig: HomeyCloudClientConfigService,
 	) {}
 
 	onModuleInit(): void {
@@ -101,7 +103,14 @@ export class HomeyConfigValidatorService implements IPluginConfigValidator, OnMo
 				});
 			}
 
-			if (!hasActiveCloudGrant) {
+			const candidateFingerprint = this.cloudClientConfig.getConfigurationFingerprintFor({
+				clientId,
+				clientSecret,
+				redirectUrl,
+			});
+			const persistedFingerprint = this.cloudClientConfig.getConfigurationFingerprint();
+
+			if (!hasActiveCloudGrant || candidateFingerprint !== persistedFingerprint) {
 				return {
 					valid: false,
 					errors: [{ message: 'Homey Cloud authorization is required', field: 'mode' }],

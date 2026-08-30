@@ -99,6 +99,11 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 		status.value = { connected: true, selectedHomeyId: homeyId ?? null };
 	};
 
+	const invalidateStatus = (): void => {
+		statusGeneration += 1;
+		status.value = null;
+	};
+
 	const recoverCompletedSelection = async (transactionId: string): Promise<IHomeyCloudAuthorizationCompletion | null> => {
 		const { data, error, response } = await backend.client.GET(`${endpoint}/transactions/{transactionId}/homeys`, {
 			params: { path: { transactionId } },
@@ -324,6 +329,7 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 		fetching,
 		authorizing,
 		mutating,
+		invalidateStatus,
 		fetchStatus,
 		start,
 		resume,

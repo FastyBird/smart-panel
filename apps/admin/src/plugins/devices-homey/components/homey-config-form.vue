@@ -170,6 +170,7 @@ import type { IHomeyConfigEditForm } from '../schemas/config.types';
 import { isSafeHomeyCloudRedirectUrl } from '../schemas/homey-cloud-redirect-url.schemas';
 import { isSafeHomeyUrl } from '../schemas/homey-url.schemas';
 import type { IHomeyConfig } from '../store/config.store.types';
+import { useHomeyCloudAuthorization } from '../store/homey-cloud-authorization.store';
 
 import HomeyCloudAuthorizationPanel from './HomeyCloudAuthorizationPanel.vue';
 import HomeyConnectionPanel from './HomeyConnectionPanel.vue';
@@ -194,6 +195,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const authorizationStore = useHomeyCloudAuthorization();
 const {
 	formEl,
 	model,
@@ -216,6 +218,16 @@ const savedMode = ref<DevicesHomeyPluginConnectionMode>((props.config as IHomeyC
 const submit = async (): Promise<'saved'> => {
 	const result = await submitConfig();
 	savedMode.value = model.mode;
+
+	if (savedMode.value === DevicesHomeyPluginConnectionMode.cloud) {
+		authorizationStore.invalidateStatus();
+
+		try {
+			await authorizationStore.fetchStatus();
+		} catch {
+			// Configuration was saved successfully; keep the status unknown until the next refresh succeeds.
+		}
+	}
 
 	return result;
 };

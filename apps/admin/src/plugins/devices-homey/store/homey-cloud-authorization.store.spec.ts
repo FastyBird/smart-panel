@@ -54,6 +54,17 @@ describe('Homey Cloud authorization store', () => {
 		expect(get).toHaveBeenCalledWith('/plugins/devices-homey/oauth/status');
 	});
 
+	it('invalidates a cached status without changing the pending authorization', () => {
+		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
+		const store = useHomeyCloudAuthorization();
+		store.status = { connected: true, selectedHomeyId: 'homey-id' };
+
+		store.invalidateStatus();
+
+		expect(store.status).toBeNull();
+		expect(store.pendingTransaction).toEqual(pending);
+	});
+
 	it('persists only the opaque transaction reference before navigation', async () => {
 		post.mockResolvedValue(
 			success({

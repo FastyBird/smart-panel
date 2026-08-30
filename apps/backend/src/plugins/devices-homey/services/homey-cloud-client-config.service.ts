@@ -14,6 +14,12 @@ export interface HomeyCloudClientConfiguration {
 	readonly redirectUrl: string;
 }
 
+export interface HomeyCloudClientConfigurationInput {
+	readonly clientId: unknown;
+	readonly clientSecret: unknown;
+	readonly redirectUrl: unknown;
+}
+
 @Injectable()
 export class HomeyCloudClientConfigService {
 	constructor(private readonly config: ConfigService) {}
@@ -43,15 +49,35 @@ export class HomeyCloudClientConfigService {
 
 	getConfigurationFingerprint(): string | null {
 		try {
-			const configuration = this.getConfiguration();
-			const identity = JSON.stringify({ ...configuration, scopes: HOMEY_CLOUD_SCOPES });
-
-			return createHash('sha256').update(identity).digest('hex');
+			return this.createFingerprint(this.getConfiguration());
 		} catch (error) {
 			if (error instanceof HomeyCloudConfigurationError) return null;
 
 			throw error;
 		}
+	}
+
+	getConfigurationFingerprintFor(configuration: HomeyCloudClientConfigurationInput): string | null {
+		try {
+			const normalized = {
+				clientId: this.readRequired(configuration.clientId),
+				clientSecret: this.readRequired(configuration.clientSecret),
+				redirectUrl: this.readRequired(configuration.redirectUrl),
+			};
+			this.assertRedirectUrl(normalized.redirectUrl);
+
+			return this.createFingerprint(normalized);
+		} catch (error) {
+			if (error instanceof HomeyCloudConfigurationError) return null;
+
+			throw error;
+		}
+	}
+
+	private createFingerprint(configuration: HomeyCloudClientConfiguration): string {
+		const identity = JSON.stringify({ ...configuration, scopes: HOMEY_CLOUD_SCOPES });
+
+		return createHash('sha256').update(identity).digest('hex');
 	}
 
 	private readRequired(value: unknown): string {
