@@ -91,9 +91,12 @@ The backend implementation will read these deployment values; values shown here 
 | `FB_HOMEY_CLOUD_CLIENT_SECRET` | Yes    | Required for cloud mode; backend-only; never returned, logged, placed in OpenAPI examples, or sent to the admin/panel clients.     |
 | `FB_HOMEY_CLOUD_REDIRECT_URL`  | No     | Exact absolute registered callback URL; HTTPS outside loopback development; no credentials, fragment, or unexpected query.         |
 
-Access tokens and refresh tokens are per authorization, not deployment client configuration. They must use the generic
-write-only secret boundary or an established encrypted credential store and remain backend-only. Disconnect clears the
-active access token, refresh token, and selected Homey together. Reauthorization stages a separate candidate grant and
+Access tokens and refresh tokens are per authorization, not deployment client configuration. They use a backend-only,
+authenticated encrypted envelope whose key is derived from the deployment-owned client secret with domain-separated
+HKDF-SHA-256. A unique AES-256-GCM nonce protects every stored value, and authenticated context binds ciphertext to its
+pending or active record, record identifier, and token field. Existing plaintext rows from an earlier build are
+rewritten transactionally on their first authorized credential read. Disconnect clears the active access token,
+refresh token, and selected Homey together. Reauthorization stages a separate candidate grant and
 must preserve the active grant until the candidate token set is exchanged, its Homey is selected and authenticated,
 and the tokens plus selected Homey are activated together successfully. A failed reauthorization clears only its
 candidate state. Every candidate is isolated by authorization transaction and initiating user; there is no shared
@@ -173,6 +176,15 @@ Task 7.2d adds short-lived cancellation tombstones and active-grant source-trans
 when the callback has consumed its one-time state and a provider request or activation commit is still in flight. A
 cancelled transaction cannot stage or activate credentials, while an activation that serialized first is removed by
 its exact transaction identity without disturbing an older or newer grant.
+
+The incremental `1000000000027-EncryptHomeyCloudCredentials` migration adds an explicit credential-format version to
+the pending and active grant tables while retaining the existing text token columns. Existing rows receive legacy
+version zero; new candidate, active, and refreshed token values use encrypted version one. Legacy plaintext is accepted
+only for a version-zero row inside the explicit credential-loading boundary and is replaced with a fresh encrypted
+envelope plus version one in the same transaction before the plaintext leaves that boundary. Malformed, downgraded,
+tampered, context-swapped, wrong-key, or unknown-version ciphertext fails closed as an unavailable persistence
+boundary. Rotating the deployment client secret changes the configuration fingerprint, so serialized reconciliation
+clears grants before any token decryption and requires a new authorization.
 
 The state table also stores a SHA-256 identity derived from the deployment client ID, client secret, exact redirect URL,
 and requested scopes. Every authorization-context, credential-loading, activation, refresh and disconnect path compares

@@ -71,6 +71,7 @@ import { HomeyCloudAuthorizationHttpService } from './services/homey-cloud-autho
 import { HomeyCloudAuthorizationStateService } from './services/homey-cloud-authorization-state.service';
 import { HomeyCloudAuthorizationService } from './services/homey-cloud-authorization.service';
 import { HomeyCloudClientConfigService } from './services/homey-cloud-client-config.service';
+import { HomeyCloudCredentialCipherService } from './services/homey-cloud-credential-cipher.service';
 import { HomeyCloudGrantMutationService } from './services/homey-cloud-grant-mutation.service';
 import { HomeyCloudRuntimeRegistryService } from './services/homey-cloud-runtime-registry.service';
 import { HomeyCloudRuntimeService } from './services/homey-cloud-runtime.service';
@@ -111,6 +112,7 @@ import { HomeyService } from './services/homey.service';
 	providers: [
 		HomeyConfigValidatorService,
 		HomeyCloudClientConfigService,
+		HomeyCloudCredentialCipherService,
 		HomeyCloudAuthorizationStateService,
 		HomeyCloudGrantMutationService,
 		HomeyCloudSdkSessionFactoryService,
