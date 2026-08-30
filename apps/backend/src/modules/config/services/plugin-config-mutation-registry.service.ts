@@ -13,6 +13,7 @@ export type PluginConfigMutationHandler<TUpdateDto extends UpdatePluginConfigDto
 @Injectable()
 export class PluginConfigMutationRegistryService {
 	private readonly handlers = new Map<string, PluginConfigMutationHandler>();
+	private readonly mutationTails = new Map<string, Promise<void>>();
 
 	register<TUpdateDto extends UpdatePluginConfigDto>(
 		plugin: string,
@@ -30,13 +31,27 @@ export class PluginConfigMutationRegistryService {
 		update: TUpdateDto,
 		commit: PluginConfigCommit,
 	): Promise<void> {
-		const handler = this.handlers.get(plugin);
+		const previous = this.mutationTails.get(plugin) ?? Promise.resolve();
+		let release = (): void => undefined;
+		const current = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		this.mutationTails.set(plugin, current);
+		await previous;
 
-		if (!handler) {
-			await commit();
-			return;
+		try {
+			const handler = this.handlers.get(plugin);
+
+			if (!handler) {
+				await commit();
+				return;
+			}
+
+			await handler(update, commit);
+		} finally {
+			release();
+
+			if (this.mutationTails.get(plugin) === current) this.mutationTails.delete(plugin);
 		}
-
-		await handler(update, commit);
 	}
 }

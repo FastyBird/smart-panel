@@ -486,11 +486,11 @@ export class ConfigService {
 		value: TUpdateDto,
 		submittedValue: Record<string, unknown> = value as unknown as Record<string, unknown>,
 	): Promise<void> {
-		const resolvedInstance = this.resolvePluginConfigUpdate(plugin, value, submittedValue);
+		await this.pluginConfigMutations.execute(plugin, value, () => {
+			const resolvedInstance = this.resolvePluginConfigUpdate(plugin, value, submittedValue);
 
-		await this.pluginConfigMutations.execute(plugin, resolvedInstance, () =>
-			this.setPluginConfig(plugin, resolvedInstance, instanceToPlain(resolvedInstance)),
-		);
+			this.setPluginConfig(plugin, resolvedInstance, instanceToPlain(resolvedInstance));
+		});
 	}
 
 	getModulesConfig<TConfig extends ModuleConfigModel>(): TConfig[] {

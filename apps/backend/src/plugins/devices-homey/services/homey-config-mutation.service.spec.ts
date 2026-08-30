@@ -73,7 +73,6 @@ describe('HomeyConfigMutationService', () => {
 				type: DEVICES_HOMEY_PLUGIN_NAME,
 				enabled: false,
 				connectionTimeout: 10_000,
-				cloudClientSecret: 'secret-a',
 			}),
 			commit,
 		);

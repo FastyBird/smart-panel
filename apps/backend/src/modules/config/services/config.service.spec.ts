@@ -465,12 +465,14 @@ describe('ConfigService', () => {
 			service['config'] = loadedConfig;
 
 			const commit = jest.spyOn(service, 'setPluginConfig').mockImplementation(() => {});
+			const resolve = jest.spyOn(service, 'resolvePluginConfigUpdate');
 			pluginConfigMutations.register('mock', async (update, persist) => {
 				expect(update).toMatchObject({
 					type: 'mock',
 					enabled: false,
-					secretValue: 'stored-plugin-secret',
 				});
+				expect(update).not.toHaveProperty('secretValue');
+				expect(resolve).not.toHaveBeenCalled();
 				await persist();
 			});
 
@@ -480,6 +482,48 @@ describe('ConfigService', () => {
 				'mock',
 				expect.objectContaining({ secretValue: 'stored-plugin-secret' }),
 				expect.objectContaining({ secret_value: 'stored-plugin-secret' }),
+			);
+		});
+
+		it('resolves omitted secrets after an overlapping plugin update has committed', async () => {
+			let storedSecret = 'stored-plugin-secret';
+			let releaseFirst: (() => void) | undefined;
+			const firstBlocked = new Promise<void>((resolve) => {
+				releaseFirst = resolve;
+			});
+			pluginConfigMutations.register<PluginConfigDto>('mock', async (update, persist) => {
+				if (update.mock_value === 'first') await firstBlocked;
+
+				await persist();
+			});
+			jest.spyOn(service, 'resolvePluginConfigUpdate').mockImplementation((_plugin, value) => {
+				const typedValue = value as PluginConfigDto;
+
+				return Object.assign(new PluginConfigDto(), typedValue, {
+					secretValue: typedValue.secretValue === undefined ? storedSecret : typedValue.secretValue,
+				});
+			});
+			const commit = jest.spyOn(service, 'setPluginConfig').mockImplementation((_plugin, value) => {
+				storedSecret = (value as PluginConfigDto).secretValue ?? '';
+			});
+
+			const first = service.updatePluginConfig('mock', {
+				type: 'mock',
+				mock_value: 'first',
+				secretValue: 'rotated-secret',
+			});
+			const second = service.updatePluginConfig('mock', { type: 'mock', mock_value: 'second' });
+			await Promise.resolve();
+			await Promise.resolve();
+			releaseFirst?.();
+			await Promise.all([first, second]);
+
+			expect(storedSecret).toBe('rotated-secret');
+			expect(commit).toHaveBeenNthCalledWith(
+				2,
+				'mock',
+				expect.objectContaining({ secretValue: 'rotated-secret' }),
+				expect.objectContaining({ secret_value: 'rotated-secret' }),
 			);
 		});
 	});
