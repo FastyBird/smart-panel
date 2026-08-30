@@ -61,7 +61,7 @@ describe('ExtensionsService', () => {
 						getModuleConfig: jest.fn().mockReturnValue({ enabled: true }),
 						getPluginConfig: jest.fn().mockReturnValue({ enabled: true }),
 						updateModuleConfig: jest.fn(),
-						setPluginConfig: jest.fn(),
+						updatePluginConfig: jest.fn(),
 					},
 				},
 				{
@@ -229,16 +229,16 @@ describe('ExtensionsService', () => {
 		it('should update plugin enabled status', async () => {
 			await service.updateEnabled('pages-tiles-plugin', false);
 
-			expect(configService.setPluginConfig).toHaveBeenCalledWith('pages-tiles-plugin', {
+			expect(configService.updatePluginConfig).toHaveBeenCalledWith('pages-tiles-plugin', {
 				type: 'pages-tiles-plugin',
 				enabled: false,
 			});
 		});
 
 		it('maps invalid resolved plugin configuration to a client error', async () => {
-			jest.spyOn(configService, 'setPluginConfig').mockImplementation(() => {
-				throw new ConfigValidationException('sensitive provider detail');
-			});
+			jest
+				.spyOn(configService, 'updatePluginConfig')
+				.mockRejectedValue(new ConfigValidationException('sensitive provider detail'));
 
 			await expect(service.updateEnabled('pages-tiles-plugin', true)).rejects.toThrow(
 				ExtensionConfigValidationException,

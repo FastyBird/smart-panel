@@ -485,7 +485,7 @@ describe('ConfigService', () => {
 			);
 		});
 
-		it('resolves omitted secrets after an overlapping plugin update has committed', async () => {
+		it('resolves omitted secrets after an overlapping plugin toggle has committed', async () => {
 			let storedSecret = 'stored-plugin-secret';
 			let releaseFirst: (() => void) | undefined;
 			const firstBlocked = new Promise<void>((resolve) => {
@@ -512,7 +512,7 @@ describe('ConfigService', () => {
 				mock_value: 'first',
 				secretValue: 'rotated-secret',
 			});
-			const second = service.updatePluginConfig('mock', { type: 'mock', mock_value: 'second' });
+			const second = service.updatePluginConfig('mock', { type: 'mock', enabled: false });
 			await Promise.resolve();
 			await Promise.resolve();
 			releaseFirst?.();

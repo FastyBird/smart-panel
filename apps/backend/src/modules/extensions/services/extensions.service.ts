@@ -160,7 +160,7 @@ export class ExtensionsService {
 			if (extension.kind === ExtensionKind.MODULE) {
 				await this.configService.updateModuleConfig(type, { type, enabled } as UpdateModuleConfigDto);
 			} else {
-				this.configService.setPluginConfig(type, { type, enabled } as UpdatePluginConfigDto);
+				await this.configService.updatePluginConfig(type, { type, enabled } as UpdatePluginConfigDto);
 			}
 		} catch (error) {
 			if (error instanceof ConfigValidationException) {
