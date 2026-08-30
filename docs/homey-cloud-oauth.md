@@ -66,13 +66,13 @@ installation-owned client model.
 Register only exact callback URLs. Do not register wildcards, derive a callback from request `Host`/forwarded headers,
 or accept a callback override from an authorization request.
 
-| Field                | Required value                                                                                                                          |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Client name          | `FastyBird Smart Panel` plus a deployment qualifier when Developer Tools requires unique names                                          |
-| Development callback | `http://localhost:3003/api/v1/plugins/devices-homey/oauth/callback` when the default admin dev server proxies the backend on the same host     |
-| Installed callback   | `https://<exact-smart-panel-origin>/api/v1/plugins/devices-homey/oauth/callback`                                                        |
-| Client type          | Confidential backend client                                                                                                             |
-| Intended scopes      | `homey.system.readonly`, `homey.zone.readonly`, `homey.device.readonly`, `homey.device.control`                                         |
+| Field                | Required value                                                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Client name          | `FastyBird Smart Panel` plus a deployment qualifier when Developer Tools requires unique names                                             |
+| Development callback | `http://localhost:3003/api/v1/plugins/devices-homey/oauth/callback` when the default admin dev server proxies the backend on the same host |
+| Installed callback   | `https://<exact-smart-panel-origin>/api/v1/plugins/devices-homey/oauth/callback`                                                           |
+| Client type          | Confidential backend client                                                                                                                |
+| Intended scopes      | `homey.system.readonly`, `homey.zone.readonly`, `homey.device.readonly`, `homey.device.control`                                            |
 
 The scope names above are the minimum manager scopes used by the existing connector contract. Their availability and
 consent presentation must be confirmed in the current Developer Tools registration form before the live client item is
@@ -87,11 +87,11 @@ development-only and works only when the browser follows the callback to the sam
 Homey provider settings follow the normal Smart Panel plugin configuration flow and do not require process environment
 variables. The owner selects Cloud mode and enters these values in the admin application:
 
-| Admin field          | Secret | Validation and exposure                                                                                                      |
-| -------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| Cloud client ID      | No     | Required for cloud mode; trimmed non-empty value returned only to authenticated Smart Panel configuration administrators.   |
-| Cloud client secret  | Yes    | Required for cloud mode; write-only and replaced only when an administrator deliberately enters or clears it.               |
-| Cloud redirect URL   | No     | Exact absolute registered callback URL; HTTPS outside loopback development; no credentials, fragment, or unexpected query.   |
+| Admin field         | Secret | Validation and exposure                                                                                                                                                                                                 |
+| ------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cloud client ID     | No     | Required for cloud mode; trimmed non-empty value returned only to authenticated Smart Panel configuration administrators.                                                                                               |
+| Cloud client secret | Yes    | Required for cloud mode; write-only and replaced only when an administrator deliberately enters or clears it.                                                                                                           |
+| Cloud redirect URL  | No     | Admin proposes its current origin plus the fixed callback path; register and save that exact absolute URL. HTTPS is required outside loopback development; credentials, fragments, and unexpected queries are rejected. |
 
 The same admin form owns local mode's URL and write-only API key. Missing runtime-required settings do not prevent a
 plugin from remaining enabled: the managed connector stays stopped and records an actionable configuration warning for
@@ -280,9 +280,11 @@ disconnect. The callback is the sole public endpoint and is authorized only by c
 
 The authorization-start response is the only browser-facing source of the opaque transaction ID. The admin client
 retains only that ID and its expiry in `sessionStorage` before navigating to Homey. The callback redirects to the fixed
-same-origin `/config/plugins/devices-homey-plugin` page on success, cancellation, invalid/replayed state, or provider failure. It
-does not place the code, state, provider error, transaction ID, Homey ID, or outcome in the redirect URL. Responses use
-`Cache-Control: no-store`, `Pragma: no-cache`, and `Referrer-Policy: no-referrer`.
+relative `/config/plugins/devices-homey-plugin` path on success, cancellation, invalid/replayed state, or provider
+failure. Because the registered callback uses the Admin origin and its `/api` route is forwarded to the backend, the
+browser resolves that relative redirect against the same public origin. The backend does not need to know the Admin
+host or port. The redirect does not place the code, state, provider error, transaction ID, Homey ID, or outcome in the
+URL. Responses use `Cache-Control: no-store`, `Pragma: no-cache`, and `Referrer-Policy: no-referrer`.
 
 ### Callback request-target redaction
 

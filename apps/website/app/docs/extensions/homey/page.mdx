@@ -127,8 +127,11 @@ grant and requires authorization again. Neither the browser nor the panel displa
 
 2. Request the required Homey Cloud access and user-limit increase. New clients are limited to 100 Homey Pro users;
    Homey Cloud access is not automatic.
-3. Open **Config → Plugins → Homey**, choose **Cloud**, and enter the client ID, client secret, and exact registered
-   redirect URL. The client secret field is write-only: leaving it blank later preserves the stored value.
+3. Open **Config → Plugins → Homey** and choose **Cloud**. Smart Panel proposes a redirect URL from the Admin origin in
+   your browser; register that exact URL in Homey Developer Tools, then enter the client ID and client secret. The
+   Admin server must forward its `/api` route to the Smart Panel backend. The redirect remains editable for installations
+   with a different public origin. The client secret field is write-only: leaving it blank later preserves the stored
+   value.
 4. Configure every proxy, ingress, and observability layer to omit the callback query string from access logs. The
    backend removes it before application logging, but cannot redact logs made upstream. See the
    [Homey Cloud OAuth deployment record](https://github.com/FastyBird/smart-panel/blob/main/docs/homey-cloud-oauth.md)

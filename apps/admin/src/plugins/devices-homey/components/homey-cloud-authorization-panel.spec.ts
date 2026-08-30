@@ -187,5 +187,6 @@ describe('HomeyCloudAuthorizationPanel', () => {
 
 		expect(wrapper.text()).toContain('devicesHomeyPlugin.cloudAuthorization.requestFailed');
 		expect(wrapper.text()).not.toContain('private OAuth detail');
+		expect(wrapper.get('[data-test-id="homey-cloud-request-error"]').classes()).toContain('mb-4');
 	});
 });

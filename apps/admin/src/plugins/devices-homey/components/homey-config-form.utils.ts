@@ -3,9 +3,23 @@ import {
 	type DevicesHomeyPluginTestConnectionRequestSchema,
 	DevicesHomeyPluginTestSavedConnectionMode,
 } from '../../../openapi.constants';
+import { HOMEY_CLOUD_CALLBACK_PATH } from '../devices-homey.constants';
+import { isSafeHomeyCloudRedirectUrl } from '../schemas/homey-cloud-redirect-url.schemas';
 import { isSafeHomeyUrl } from '../schemas/homey-url.schemas';
 
 export const normalizeHomeyUrlInput = (value: string): string | null => (value.trim() === '' ? null : value);
+
+export const buildDefaultHomeyCloudRedirectUrl = (adminOrigin: string): string | null => {
+	try {
+		const origin = new URL(adminOrigin);
+
+		const callbackUrl = new URL(HOMEY_CLOUD_CALLBACK_PATH, origin).toString();
+
+		return isSafeHomeyCloudRedirectUrl(callbackUrl) ? callbackUrl : null;
+	} catch {
+		return null;
+	}
+};
 
 export const createSavedHomeyConnectionTestRequest = (): DevicesHomeyPluginTestConnectionRequestSchema => ({
 	data: { mode: DevicesHomeyPluginTestSavedConnectionMode.saved },

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	buildDefaultHomeyCloudRedirectUrl,
 	createCandidateHomeyConnectionTestRequest,
 	createSavedHomeyConnectionTestRequest,
 	formatHomeyTimestamp,
@@ -15,6 +16,18 @@ describe('normalizeHomeyUrlInput', () => {
 
 	it('preserves a configured local URL', () => {
 		expect(normalizeHomeyUrlInput('http://homey.local:4859')).toBe('http://homey.local:4859');
+	});
+
+	it('builds the Homey Cloud callback from the Admin origin', () => {
+		expect(buildDefaultHomeyCloudRedirectUrl('http://localhost:3003')).toBe('http://localhost:3003/api/v1/plugins/devices-homey/oauth/callback');
+		expect(buildDefaultHomeyCloudRedirectUrl('https://panel.example.com:8443')).toBe(
+			'https://panel.example.com:8443/api/v1/plugins/devices-homey/oauth/callback'
+		);
+	});
+
+	it('does not build an invalid or insecure callback', () => {
+		expect(buildDefaultHomeyCloudRedirectUrl('not a URL')).toBeNull();
+		expect(buildDefaultHomeyCloudRedirectUrl('http://panel.local')).toBeNull();
 	});
 
 	it('builds a saved test without connector overrides', () => {

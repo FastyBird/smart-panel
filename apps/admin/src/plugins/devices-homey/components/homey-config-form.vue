@@ -6,6 +6,21 @@
 		label-position="top"
 		status-icon
 	>
+		<el-form-item
+			:label="t('devicesHomeyPlugin.config.enabled')"
+			prop="enabled"
+			label-position="left"
+			class="mt-3"
+			data-test-id="homey-enabled-field"
+		>
+			<el-switch
+				v-model="model.enabled"
+				name="enabled"
+			/>
+		</el-form-item>
+
+		<hr />
+
 		<el-alert
 			type="info"
 			:title="t(`devicesHomeyPlugin.config.${model.mode}.title`)"
@@ -17,8 +32,12 @@
 			:label="t('devicesHomeyPlugin.config.mode.label')"
 			prop="mode"
 			class="mt-3"
+			data-test-id="homey-mode-field"
 		>
-			<el-radio-group v-model="model.mode">
+			<el-radio-group
+				v-model="model.mode"
+				name="mode"
+			>
 				<el-radio-button :value="DevicesHomeyPluginConnectionMode.local">
 					{{ t('devicesHomeyPlugin.config.mode.local') }}
 				</el-radio-button>
@@ -28,17 +47,7 @@
 			</el-radio-group>
 		</el-form-item>
 
-		<el-form-item
-			:label="t('devicesHomeyPlugin.config.enabled')"
-			prop="enabled"
-			label-position="left"
-			class="mt-3"
-		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
+		<hr />
 
 		<template v-if="model.mode === DevicesHomeyPluginConnectionMode.local">
 			<el-form-item
@@ -105,6 +114,24 @@
 				<div class="text-xs text-gray-500 mt-1">
 					{{ t('devicesHomeyPlugin.config.cloudRedirectUrl.description') }}
 				</div>
+				<div
+					v-if="cloudRedirectUrlNeedsUpdate"
+					class="w-full mt-2"
+					data-test-id="homey-cloud-redirect-recommendation"
+				>
+					<el-alert
+						type="warning"
+						:closable="false"
+						:title="t('devicesHomeyPlugin.config.cloudRedirectUrl.recommendation', { url: defaultCloudRedirectUrl })"
+					/>
+					<el-button
+						class="mt-2"
+						data-test-id="homey-cloud-use-admin-redirect"
+						@click="useCurrentAdminRedirectUrl"
+					>
+						{{ t('devicesHomeyPlugin.config.cloudRedirectUrl.useCurrentAdmin') }}
+					</el-button>
+				</div>
 			</el-form-item>
 		</template>
 
@@ -156,7 +183,7 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, ElRadioButton, ElRadioGroup, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElInputNumber, ElRadioButton, ElRadioGroup, ElSwitch, type FormRules } from 'element-plus';
 
 import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { DevicesHomeyPluginConnectionMode } from '../../../openapi.constants';
@@ -176,7 +203,7 @@ import { useHomeyCloudAuthorization } from '../store/homey-cloud-authorization.s
 import HomeyCloudAuthorizationPanel from './HomeyCloudAuthorizationPanel.vue';
 import HomeyConnectionPanel from './HomeyConnectionPanel.vue';
 import type { IHomeyConfigFormProps } from './homey-config-form.types';
-import { normalizeHomeyUrlInput } from './homey-config-form.utils';
+import { buildDefaultHomeyCloudRedirectUrl, normalizeHomeyUrlInput } from './homey-config-form.utils';
 
 defineOptions({ name: 'HomeyConfigForm' });
 
@@ -215,6 +242,12 @@ const fieldErrors = computed<Record<string, string | undefined>>(() =>
 	Object.fromEntries(props.remoteFormErrors.map((error) => [error.field, error.message]))
 );
 const savedMode = ref<DevicesHomeyPluginConnectionMode>((props.config as IHomeyConfig).mode);
+const defaultCloudRedirectUrl = buildDefaultHomeyCloudRedirectUrl(window.location.origin);
+const cloudRedirectUrlNeedsUpdate = computed(() => defaultCloudRedirectUrl !== null && model.cloudRedirectUrl?.trim() !== defaultCloudRedirectUrl);
+
+const useCurrentAdminRedirectUrl = (): void => {
+	if (defaultCloudRedirectUrl !== null) model.cloudRedirectUrl = defaultCloudRedirectUrl;
+};
 
 const submit = async (): Promise<'saved'> => {
 	const result = await submitConfig();
@@ -337,6 +370,20 @@ const rules = computed<FormRules<IHomeyConfigEditForm>>(() => ({
 		},
 	],
 }));
+
+watch(
+	() => model.mode,
+	(mode) => {
+		if (
+			mode === DevicesHomeyPluginConnectionMode.cloud &&
+			(typeof model.cloudRedirectUrl !== 'string' || model.cloudRedirectUrl.trim() === '') &&
+			defaultCloudRedirectUrl !== null
+		) {
+			model.cloudRedirectUrl = defaultCloudRedirectUrl;
+		}
+	},
+	{ immediate: true }
+);
 
 watch(formResult, (value) => emit('update:remote-form-result', value));
 watch(formChanged, (value) => emit('update:remote-form-changed', value));

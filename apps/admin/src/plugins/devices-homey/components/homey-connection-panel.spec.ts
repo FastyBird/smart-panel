@@ -319,5 +319,6 @@ describe('HomeyConnectionPanel', () => {
 
 		expect(wrapper.text()).toContain('devicesHomeyPlugin.connectionTest.requestFailed');
 		expect(wrapper.text()).not.toContain('private transport detail');
+		expect(wrapper.get('[data-test-id="homey-test-feedback"]').classes()).toContain('mt-4');
 	});
 });

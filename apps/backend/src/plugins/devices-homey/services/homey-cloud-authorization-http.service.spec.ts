@@ -4,7 +4,6 @@ import { HomeyCloudGrantConflictError } from '../errors/homey-cloud-grant.error'
 import { HomeyCloudAuthorizationHttpService } from './homey-cloud-authorization-http.service';
 import { HomeyCloudAuthorizationStateService } from './homey-cloud-authorization-state.service';
 import { HomeyCloudAuthorizationService } from './homey-cloud-authorization.service';
-import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
 import { HomeyCloudGrantMutationService } from './homey-cloud-grant-mutation.service';
 import { HomeyCloudRuntimeService } from './homey-cloud-runtime.service';
 
@@ -27,7 +26,6 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 	let authorization: jest.Mocked<
 		Pick<HomeyCloudAuthorizationService, 'exchangeAuthorizationCode' | 'listCandidateHomeys' | 'selectHomey'>
 	>;
-	let clientConfig: jest.Mocked<Pick<HomeyCloudClientConfigService, 'getConfiguration'>>;
 	let grantMutations: jest.Mocked<
 		Pick<
 			HomeyCloudGrantMutationService,
@@ -56,7 +54,6 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 			listCandidateHomeys: jest.fn(),
 			selectHomey: jest.fn(),
 		};
-		clientConfig = { getConfiguration: jest.fn() };
 		grantMutations = {
 			cancelAuthorization: jest.fn(),
 			disconnect: jest.fn(),
@@ -72,7 +69,6 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 		service = new HomeyCloudAuthorizationHttpService(
 			authorizationState as unknown as HomeyCloudAuthorizationStateService,
 			authorization as unknown as HomeyCloudAuthorizationService,
-			clientConfig as unknown as HomeyCloudClientConfigService,
 			grantMutations as unknown as HomeyCloudGrantMutationService,
 			runtime as unknown as HomeyCloudRuntimeService,
 		);
@@ -302,19 +298,7 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 		},
 	);
 
-	it('uses a fixed same-origin result URL and falls back to a relative URL when configuration is absent', () => {
-		clientConfig.getConfiguration.mockReturnValue({
-			clientId: 'client-id',
-			clientSecret: 'client-secret',
-			redirectUrl: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback',
-		});
-
-		expect(service.getResultUrl()).toBe('https://panel.example.com/config/plugins/devices-homey-plugin');
-
-		clientConfig.getConfiguration.mockImplementation(() => {
-			throw new Error('not configured');
-		});
-
+	it('returns a relative result URL so the browser preserves the public callback origin', () => {
 		expect(service.getResultUrl()).toBe('/config/plugins/devices-homey-plugin');
 	});
 });
