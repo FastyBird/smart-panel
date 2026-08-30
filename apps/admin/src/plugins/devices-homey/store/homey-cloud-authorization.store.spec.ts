@@ -152,6 +152,30 @@ describe('Homey Cloud authorization store', () => {
 		expect(window.sessionStorage.getItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY)).toBeNull();
 	});
 
+	it.each([
+		{ status: 'connected', homey_id: 'homey-id', homeys: [] },
+		{ status: 'selection_required', homey_id: null, homeys: [{ id: 'homey-a', name: 'Home' }] },
+	])('discards a stale $status resume result after the pending transaction changes', async (result) => {
+		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
+		let completeRequest: ((value: ReturnType<typeof success>) => void) | undefined;
+		get.mockReturnValueOnce(
+			new Promise((resolve) => {
+				completeRequest = resolve;
+			})
+		);
+		const store = useHomeyCloudAuthorization();
+		const resume = store.resume();
+		const replacement = { transactionId: 'replacement-transaction-id', expiresAt: pending.expiresAt };
+		store.pendingTransaction = replacement;
+
+		completeRequest?.(success(result));
+
+		await expect(resume).resolves.toBeNull();
+		expect(store.pendingTransaction).toEqual(replacement);
+		expect(store.homeys).toEqual([]);
+		expect(store.status).toBeNull();
+	});
+
 	it('reports a consumed callback as failed unless that exact transaction activated', async () => {
 		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
 		get.mockResolvedValue({ error: {}, response: { status: 409 } });

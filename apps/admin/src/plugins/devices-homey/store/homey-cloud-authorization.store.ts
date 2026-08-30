@@ -190,6 +190,7 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 			const { data, error, response } = await backend.client.GET(`${endpoint}/transactions/{transactionId}/homeys`, {
 				params: { path: { transactionId: transaction.transactionId } },
 			});
+			if (pendingTransaction.value?.transactionId !== transaction.transactionId) return null;
 
 			if (data) {
 				const result = transformHomeyCloudHomeyChoices(data.data);
