@@ -37,6 +37,7 @@
 		"status": "Autorizácia",
 		"connected": "Pripojené",
 		"disconnected": "Nepripojené",
+		"unknown": "Stav nie je známy",
 		"connect": "Pripojiť Homey Cloud",
 		"reconnect": "Pripojiť znova",
 		"disconnect": "Odpojiť",

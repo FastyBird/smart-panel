@@ -88,6 +88,16 @@ describe('HomeyCloudAuthorizationPanel', () => {
 		expect(wrapper.get('[data-test-id="homey-cloud-connect"]').attributes('disabled')).toBeDefined();
 	});
 
+	it('does not present an unknown grant status as disconnected', async () => {
+		authorizationStore.status = null;
+		const wrapper = mountPanel({ savedMode: DevicesHomeyPluginConnectionMode.cloud });
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('devicesHomeyPlugin.cloudAuthorization.unknown');
+		expect(wrapper.text()).not.toContain('devicesHomeyPlugin.cloudAuthorization.disconnected');
+		expect(wrapper.find('[data-test-id="homey-cloud-connect"]').exists()).toBe(false);
+	});
+
 	it('persists through the store and navigates to Homey authorization', async () => {
 		const navigate = vi.fn();
 		const wrapper = mountPanel({ savedMode: DevicesHomeyPluginConnectionMode.cloud, navigateToAuthorization: navigate });

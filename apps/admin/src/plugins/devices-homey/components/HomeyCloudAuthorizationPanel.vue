@@ -64,11 +64,13 @@
 		<div v-else>
 			<div class="flex items-center gap-2 mb-4">
 				<span>{{ t('devicesHomeyPlugin.cloudAuthorization.status') }}</span>
-				<el-tag :type="authorizationStore.status?.connected ? 'success' : 'info'">
+				<el-tag :type="authorizationStore.status === null ? 'warning' : authorizationStore.status.connected ? 'success' : 'info'">
 					{{
-						authorizationStore.status?.connected
-							? t('devicesHomeyPlugin.cloudAuthorization.connected')
-							: t('devicesHomeyPlugin.cloudAuthorization.disconnected')
+						authorizationStore.status === null
+							? t('devicesHomeyPlugin.cloudAuthorization.unknown')
+							: authorizationStore.status.connected
+								? t('devicesHomeyPlugin.cloudAuthorization.connected')
+								: t('devicesHomeyPlugin.cloudAuthorization.disconnected')
 					}}
 				</el-tag>
 				<span
@@ -81,7 +83,7 @@
 
 			<div class="flex flex-wrap gap-2">
 				<el-button
-					v-if="!authorizationStore.status?.connected"
+					v-if="authorizationStore.status !== null && !authorizationStore.status.connected"
 					type="primary"
 					:loading="authorizationStore.authorizing"
 					:disabled="!cloudModeSaved || authorizationStore.fetching"
@@ -90,7 +92,7 @@
 				>
 					{{ t('devicesHomeyPlugin.cloudAuthorization.connect') }}
 				</el-button>
-				<template v-else>
+				<template v-else-if="authorizationStore.status?.connected">
 					<el-button
 						:loading="authorizationStore.authorizing"
 						:disabled="!cloudModeSaved || authorizationStore.mutating"

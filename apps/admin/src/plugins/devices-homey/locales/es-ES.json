@@ -37,6 +37,7 @@
 		"status": "Autorización",
 		"connected": "Conectado",
 		"disconnected": "Sin conexión",
+		"unknown": "Estado desconocido",
 		"connect": "Conectar Homey Cloud",
 		"reconnect": "Volver a conectar",
 		"disconnect": "Desconectar",
