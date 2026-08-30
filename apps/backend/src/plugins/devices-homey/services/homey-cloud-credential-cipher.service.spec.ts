@@ -38,7 +38,7 @@ describe('HomeyCloudCredentialCipherService', () => {
 		expect(service.decrypt(second, context)).toBe('provider-access-token');
 	});
 
-	it('binds ciphertext to its record, field, and deployment client secret', () => {
+	it('binds ciphertext to its record, field, and admin-managed client secret', () => {
 		const encrypted = service.encrypt('provider-access-token', context);
 
 		expect(() => service.decrypt(encrypted, { ...context, recordId: 'grant-two' })).toThrow(HomeyCloudGrantStateError);

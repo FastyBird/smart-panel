@@ -319,6 +319,9 @@ describe('HomeyService', () => {
 		config.mode = HomeyConnectionMode.CLOUD;
 		config.url = null;
 		config.apiKey = null;
+		config.cloudClientId = 'client-id';
+		config.cloudClientSecret = 'client-secret';
+		config.cloudRedirectUrl = 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback';
 
 		await service.start();
 

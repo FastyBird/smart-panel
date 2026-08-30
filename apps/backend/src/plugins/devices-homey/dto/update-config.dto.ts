@@ -1,7 +1,7 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import {
@@ -9,11 +9,13 @@ import {
 	DEFAULT_HOMEY_RECONCILIATION_INTERVAL_MS,
 	DEVICES_HOMEY_PLUGIN_NAME,
 	HomeyConnectionMode,
+	MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH,
 	MAX_HOMEY_CONNECTION_TIMEOUT_MS,
 	MAX_HOMEY_RECONCILIATION_INTERVAL_MS,
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
 	MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
 } from '../devices-homey.constants';
+import { IsSafeHomeyCloudRedirectUrl } from '../validators/homey-cloud-redirect-url.validator';
 import { IsSafeHomeyUrl, MAX_HOMEY_URL_LENGTH } from '../validators/homey-url.validator';
 
 @ApiSchema({ name: 'DevicesHomeyPluginUpdateConfig' })
@@ -60,6 +62,63 @@ export class HomeyUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@IsString({ message: '[{"field":"api_key","reason":"API key must be a valid string."}]' })
 	@Matches(/\S/, { message: '[{"field":"api_key","reason":"API key must contain a non-whitespace character."}]' })
 	apiKey?: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Homey Cloud OAuth client ID',
+		maxLength: MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH,
+		name: 'cloud_client_id',
+		nullable: true,
+	})
+	@Expose({ name: 'cloud_client_id' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"cloud_client_id","reason":"Cloud client ID must be a valid string."}]' })
+	@Matches(/\S/, {
+		message: '[{"field":"cloud_client_id","reason":"Cloud client ID must contain a non-whitespace character."}]',
+	})
+	@MaxLength(MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH, {
+		message: `[{"field":"cloud_client_id","reason":"Cloud client ID must be at most ${MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH} characters."}]`,
+	})
+	cloudClientId?: string | null;
+
+	@ApiPropertyOptional({
+		description:
+			'Replacement Homey Cloud OAuth client secret. Omit to preserve the stored secret or send null to clear it.',
+		maxLength: MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH,
+		name: 'cloud_client_secret',
+		nullable: true,
+		writeOnly: true,
+	})
+	@Expose({ name: 'cloud_client_secret' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"cloud_client_secret","reason":"Cloud client secret must be a valid string."}]' })
+	@Matches(/\S/, {
+		message:
+			'[{"field":"cloud_client_secret","reason":"Cloud client secret must contain a non-whitespace character."}]',
+	})
+	@MaxLength(MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH, {
+		message: `[{"field":"cloud_client_secret","reason":"Cloud client secret must be at most ${MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH} characters."}]`,
+	})
+	cloudClientSecret?: string | null;
+
+	@ApiPropertyOptional({
+		description: 'Exact Homey Cloud OAuth callback URL registered for this Smart Panel installation',
+		maxLength: MAX_HOMEY_URL_LENGTH,
+		name: 'cloud_redirect_url',
+		nullable: true,
+	})
+	@Expose({ name: 'cloud_redirect_url' })
+	@IsOptional()
+	@IsSafeHomeyCloudRedirectUrl({
+		message:
+			'[{"field":"cloud_redirect_url","reason":"Cloud redirect URL must be the exact HTTPS callback URL, or use HTTP on a loopback host."}]',
+	})
+	cloudRedirectUrl?: string | null;
+
+	@ApiHideProperty()
+	@Expose({ name: 'cloud_legacy_environment_migrated' })
+	@IsOptional()
+	@IsBoolean()
+	cloudLegacyEnvironmentMigrated?: boolean;
 
 	@ApiPropertyOptional({
 		description: 'Connection timeout in milliseconds',

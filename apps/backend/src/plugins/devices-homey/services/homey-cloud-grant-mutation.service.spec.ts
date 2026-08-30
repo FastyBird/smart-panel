@@ -398,6 +398,25 @@ describe('HomeyCloudGrantMutationService', () => {
 		});
 	});
 
+	it('invalidates persisted credentials when the client configuration becomes incomplete', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		await service.stageCandidate(candidateInput(context, 'incomplete-configuration', token('stale')));
+		const active = await service.activateCandidate('incomplete-configuration', administratorId, 'homey-one');
+
+		configurationFingerprint = null;
+
+		await expect(service.hasActiveGrant()).resolves.toBe(false);
+		await expect(
+			dataSource.getRepository(HomeyCloudAuthorizationStateEntity).findOneByOrFail({
+				key: HOMEY_CLOUD_AUTHORIZATION_STATE_KEY,
+			}),
+		).resolves.toMatchObject({
+			activeGrantGeneration: active.generation + 1,
+			configurationGeneration: active.configurationGeneration + 1,
+			configurationFingerprint: null,
+		});
+	});
+
 	it('invalidates the active grant in the same transaction as its activating user removal', async () => {
 		const context = await service.getAuthorizationContext(administratorId);
 		await service.stageCandidate(candidateInput(context, 'removal-transaction', token('active')));
@@ -510,7 +529,7 @@ describe('HomeyCloudGrantMutationService', () => {
 			return Promise.resolve();
 		});
 
-		service.onApplicationBootstrap();
+		await service.onApplicationBootstrap();
 		await teardownObserved;
 
 		expect(runtimeRegistry.disconnectGrant).toHaveBeenCalledTimes(1);

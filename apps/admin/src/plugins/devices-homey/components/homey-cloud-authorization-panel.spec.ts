@@ -30,7 +30,13 @@ let authorizationStore: ICloudAuthorizationStoreMock;
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 vi.mock('../store/homey-cloud-authorization.store', () => ({ useHomeyCloudAuthorization: () => authorizationStore }));
 
-const mountPanel = (props: { savedMode?: DevicesHomeyPluginConnectionMode; navigateToAuthorization?: (url: string) => void } = {}) =>
+const mountPanel = (
+	props: {
+		savedMode?: DevicesHomeyPluginConnectionMode;
+		configurationSaved?: boolean;
+		navigateToAuthorization?: (url: string) => void;
+	} = {}
+) =>
 	mount(HomeyCloudAuthorizationPanel, {
 		props,
 		global: { stubs: { transition: false, Transition: false } },
@@ -84,8 +90,18 @@ describe('HomeyCloudAuthorizationPanel', () => {
 		const wrapper = mountPanel({ savedMode: DevicesHomeyPluginConnectionMode.local });
 		await flushPromises();
 
-		expect(wrapper.text()).toContain('devicesHomeyPlugin.cloudAuthorization.saveCloudModeFirst');
+		expect(wrapper.text()).toContain('devicesHomeyPlugin.cloudAuthorization.saveConfigurationFirst');
 		expect(wrapper.get('[data-test-id="homey-cloud-connect"]').attributes('disabled')).toBeDefined();
+	});
+
+	it('blocks authorization while edited cloud settings are unsaved', async () => {
+		const wrapper = mountPanel({ savedMode: DevicesHomeyPluginConnectionMode.cloud, configurationSaved: false });
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('devicesHomeyPlugin.cloudAuthorization.saveConfigurationFirst');
+		expect(wrapper.get('[data-test-id="homey-cloud-connect"]').attributes('disabled')).toBeDefined();
+		await wrapper.get('[data-test-id="homey-cloud-connect"]').trigger('click');
+		expect(authorizationStore.start).not.toHaveBeenCalled();
 	});
 
 	it('does not present an unknown grant status as disconnected', async () => {

@@ -11,6 +11,7 @@ export interface IConfigValidationError {
 export interface IConfigValidationResult {
 	valid: boolean;
 	errors?: IConfigValidationError[];
+	transient?: boolean;
 }
 
 export interface IPluginConfigValidator {
@@ -49,6 +50,7 @@ export class PluginConfigValidatorService {
 			return {
 				valid: false,
 				errors: [{ message: 'Configuration validation failed unexpectedly' }],
+				transient: true,
 			};
 		}
 	}

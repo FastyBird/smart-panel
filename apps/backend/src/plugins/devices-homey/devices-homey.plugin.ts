@@ -76,10 +76,12 @@ import { HomeyCloudGrantMutationService } from './services/homey-cloud-grant-mut
 import { HomeyCloudRuntimeRegistryService } from './services/homey-cloud-runtime-registry.service';
 import { HomeyCloudRuntimeService } from './services/homey-cloud-runtime.service';
 import { HomeyCloudSdkSessionFactoryService } from './services/homey-cloud-sdk-session.factory';
+import { HomeyConfigMutationService } from './services/homey-config-mutation.service';
 import { HomeyConfigValidatorService } from './services/homey-config-validator.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
 import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
+import { HomeyLegacyCloudConfigMigrationService } from './services/homey-legacy-cloud-config-migration.service';
 import { HomeyMappingPreviewService } from './services/homey-mapping-preview.service';
 import { HomeySynchronizerService } from './services/homey-synchronizer.service';
 import { HomeyService } from './services/homey.service';
@@ -91,6 +93,7 @@ import { HomeyService } from './services/homey.service';
 })
 @Module({
 	imports: [
+		NestConfigModule,
 		TypeOrmModule.forFeature([
 			HomeyDeviceEntity,
 			HomeyChannelEntity,
@@ -104,16 +107,17 @@ import { HomeyService } from './services/homey.service';
 		]),
 		DevicesModule,
 		ConfigModule,
-		NestConfigModule,
 		ExtensionsModule,
 		SwaggerModule,
 		UsersModule,
 	],
 	providers: [
 		HomeyConfigValidatorService,
+		HomeyConfigMutationService,
 		HomeyCloudClientConfigService,
 		HomeyCloudCredentialCipherService,
 		HomeyCloudAuthorizationStateService,
+		HomeyLegacyCloudConfigMigrationService,
 		HomeyCloudGrantMutationService,
 		HomeyCloudSdkSessionFactoryService,
 		HomeyCloudRuntimeRegistryService,
@@ -176,6 +180,7 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 		private readonly homeyDevicePlatform: HomeyDevicePlatform,
 		private readonly userLifecycleMutations: UserLifecycleMutationRegistryService,
 		private readonly homeyCloudGrantMutations: HomeyCloudGrantMutationService,
+		private readonly legacyCloudConfigMigration: HomeyLegacyCloudConfigMigrationService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 	) {}
 
@@ -207,8 +212,17 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 					configuredPath: 'api_key_configured',
 					inputPaths: ['apiKey'],
 				},
+				{
+					path: 'cloud_client_secret',
+					configuredPath: 'cloud_client_secret_configured',
+					inputPaths: ['cloudClientSecret'],
+				},
 			],
 		});
+		// Module initialization completes before imported managed services enter
+		// application bootstrap, so legacy credentials are available when Homey
+		// grant reconciliation and service enablement first inspect configuration.
+		this.legacyCloudConfigMigration.migrate();
 
 		this.devicesMapper.registerMapping<HomeyDeviceEntity, CreateHomeyDeviceDto, UpdateHomeyDeviceDto>({
 			type: DEVICES_HOMEY_TYPE,
@@ -259,9 +273,9 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 
 > Plugin · by FastyBird · platform: devices
 
-Connects Smart Panel to Homey Self-Hosted Server and compatible Homey Pro local APIs. Homey remains responsible for pairing, radio networks, drivers and apps; Smart Panel adopts selected logical devices for display and control.
+Connects Smart Panel to Homey Self-Hosted Server, compatible Homey Pro local APIs, or Homey Cloud. Homey remains responsible for pairing, radio networks, drivers and apps; Smart Panel adopts selected logical devices for display and control.
 
-The local connector is under development. Configuration credentials are write-only and are never returned by the API.`,
+Local and Cloud provider settings are managed in the Smart Panel admin application. Secret fields are write-only and are never returned by the API.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

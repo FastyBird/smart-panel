@@ -138,6 +138,7 @@ export class ConfigController {
 	@ApiBadRequestResponse('Invalid plugin configuration data or unsupported plugin type')
 	@ApiNotFoundResponse('Plugin configuration not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	async updatePluginConfig(
 		@Param('plugin') plugin: string,
 		@Body() pluginConfig: { data: object },
@@ -191,7 +192,7 @@ export class ConfigController {
 		// be able to pre-configure credentials before the service is online.
 		// Use POST plugin/:plugin/validate for explicit validation.
 		try {
-			this.service.setPluginConfig(plugin, dtoInstance, pluginConfig.data as Record<string, unknown>);
+			await this.service.updatePluginConfig(plugin, dtoInstance, pluginConfig.data as Record<string, unknown>);
 		} catch (error) {
 			if (error instanceof ConfigValidationException) {
 				throw new BadRequestException([

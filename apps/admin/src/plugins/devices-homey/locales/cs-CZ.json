@@ -2,11 +2,11 @@
 	"config": {
 		"local": {
 			"title": "Místní připojení Homey",
-			"description": "Připojte se přímo k Homey Pro v místní síti s nejnižší latencí. Smart Panel musí mít k Homey přístup a místní API klíč zůstává šifrovaný na tomto serveru."
+			"description": "Připojte se přímo k Homey Pro v místní síti s nejnižší latencí. Zde nastavte URL a API klíč pouze pro zápis; Smart Panel musí mít k Homey přístup."
 		},
 		"cloud": {
 			"title": "Připojení Homey Cloud",
-			"description": "Připojte se přes Homey Cloud, když není dostupná přímá síťová cesta. Cloud může mít vyšší latenci a vyžaduje internet; OAuth údaje zůstávají šifrované na tomto serveru."
+			"description": "Připojte se přes Homey Cloud, když není dostupná přímá síťová cesta. Zaregistrujte OAuth klienta u Homey a jeho údaje uložte zde; tajemství je pouze pro zápis."
 		},
 		"mode": { "label": "Režim připojení", "local": "Místní", "cloud": "Cloud", "cloudUnavailable": "Připravujeme" },
 		"enabled": "Povoleno",
@@ -21,6 +21,23 @@
 			"placeholder": "Zadejte nový klíč pro nahrazení uloženého klíče",
 			"required": "Před povolením integrace zadejte nebo ponechte klíč API Homey",
 			"invalid": "Zadejte neprázdný klíč API nebo náhradní klíč odeberte"
+		},
+		"cloudClientId": {
+			"label": "ID klienta Homey Cloud",
+			"placeholder": "Zadejte ID klienta OAuth",
+			"required": "Zadejte ID klienta Homey Cloud"
+		},
+		"cloudClientSecret": {
+			"label": "Tajemství klienta Homey Cloud",
+			"placeholder": "Zadejte nové tajemství pro nahrazení uloženého",
+			"required": "Zadejte nebo ponechte tajemství klienta Homey Cloud",
+			"invalid": "Zadejte neprázdné tajemství klienta nebo náhradu odstraňte"
+		},
+		"cloudRedirectUrl": {
+			"label": "Adresa přesměrování Homey Cloud",
+			"placeholder": "https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback",
+			"description": "Zaregistrujte tuto přesnou adresu jako OAuth callback v portálu Homey Developer.",
+			"invalid": "Zadejte přesnou registrovanou HTTPS adresu; HTTP je povoleno pouze na localhostu"
 		},
 		"connectionTimeout": "Časový limit připojení (ms)",
 		"reconciliationInterval": "Interval synchronizace inventáře (ms)",
@@ -43,6 +60,7 @@
 		"disconnect": "Odpojit",
 		"disconnectConfirm": "Odpojit Homey Cloud a odstranit uložené OAuth údaje?",
 		"saveCloudModeFirst": "Před zahájením autorizace Homey uložte režim cloud.",
+		"saveConfigurationFirst": "Před zahájením autorizace uložte konfiguraci Homey Cloud.",
 		"selectDescription": "Vyberte Homey, které má Smart Panel používat.",
 		"selectPlaceholder": "Vyberte Homey",
 		"select": "Použít vybrané Homey",

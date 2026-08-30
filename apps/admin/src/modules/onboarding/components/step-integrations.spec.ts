@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 
 import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
+import { DEVICES_HOMEY_PLUGIN_NAME } from '../../../plugins/devices-homey/devices-homey.constants';
 import { configPluginsStoreKey } from '../../config/store/keys';
 import { devicesStoreKey } from '../../devices/store/keys';
 import { ExtensionKind } from '../../extensions/extensions.constants';
@@ -42,6 +43,10 @@ const mockDevicesStore = {
 
 const mockConfigPluginsStore = {
 	get: vi.fn().mockResolvedValue(null),
+};
+
+const mockHomeyCloudAuthorization = {
+	fetchStatus: vi.fn().mockResolvedValue({ connected: false, selectedHomeyId: null }),
 };
 
 vi.mock('../../../common', async () => {
@@ -91,6 +96,10 @@ vi.mock('../../../modules/devices/composables/useDevicesPlugins', () => ({
 	}),
 }));
 
+vi.mock('../../../plugins/devices-homey/store/homey-cloud-authorization.store', () => ({
+	useHomeyCloudAuthorization: () => mockHomeyCloudAuthorization,
+}));
+
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
@@ -119,6 +128,7 @@ describe('StepIntegrations.vue', () => {
 		mockExtensionsStore.fetch.mockResolvedValue(undefined);
 		mockExtensionsStore.update.mockResolvedValue(undefined);
 		mockConfigPluginsStore.get.mockResolvedValue(null);
+		mockHomeyCloudAuthorization.fetchStatus.mockResolvedValue({ connected: false, selectedHomeyId: null });
 		mockRemove.mockResolvedValue(true);
 	});
 
@@ -159,6 +169,89 @@ describe('StepIntegrations.vue', () => {
 		await flushPromises();
 
 		expect(wrapper.text()).toContain('onboardingModule.integrations.totalDevices({"count":2})');
+	});
+
+	it('prompts for Homey setup when an enabled profile is incomplete', async () => {
+		mockExtensionsStore.data = {
+			[DEVICES_HOMEY_PLUGIN_NAME]: buildExtension({ type: DEVICES_HOMEY_PLUGIN_NAME, name: 'Homey' }),
+		};
+		mockConfigPluginsStore.get.mockResolvedValue({
+			type: DEVICES_HOMEY_PLUGIN_NAME,
+			enabled: true,
+			mode: 'cloud',
+			cloudClientId: null,
+			cloudClientSecretConfigured: false,
+			cloudRedirectUrl: null,
+		});
+
+		const wrapper = mount(StepIntegrations, {
+			global: { stubs: { IntegrationConfigDialog: true } },
+		});
+
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('onboardingModule.integrations.configRequired');
+
+		const setupButton = wrapper.findAllComponents({ name: 'ElButton' }).find((button) => button.text() === 'onboardingModule.integrations.setupNow');
+
+		expect(setupButton).toBeDefined();
+		await setupButton?.trigger('click');
+		wrapper.getComponent({ name: 'IntegrationConfigDialog' }).vm.$emit('saved');
+		await flushPromises();
+
+		expect(mockConfigPluginsStore.get).toHaveBeenCalledTimes(2);
+		expect(wrapper.text()).toContain('onboardingModule.integrations.configRequired');
+	});
+
+	it('recognizes a complete local Homey profile during onboarding', async () => {
+		mockExtensionsStore.data = {
+			[DEVICES_HOMEY_PLUGIN_NAME]: buildExtension({ type: DEVICES_HOMEY_PLUGIN_NAME, name: 'Homey' }),
+		};
+		mockConfigPluginsStore.get.mockResolvedValue({
+			type: DEVICES_HOMEY_PLUGIN_NAME,
+			enabled: true,
+			mode: 'local',
+			url: 'http://homey.local:4859',
+			apiKeyConfigured: true,
+		});
+
+		const wrapper = mount(StepIntegrations, {
+			global: { stubs: { IntegrationConfigDialog: true } },
+		});
+
+		await flushPromises();
+
+		expect(wrapper.text()).not.toContain('onboardingModule.integrations.configRequired');
+	});
+
+	it('keeps a complete Homey Cloud client profile incomplete until authorization succeeds', async () => {
+		mockExtensionsStore.data = {
+			[DEVICES_HOMEY_PLUGIN_NAME]: buildExtension({ type: DEVICES_HOMEY_PLUGIN_NAME, name: 'Homey' }),
+		};
+		mockConfigPluginsStore.get.mockResolvedValue({
+			type: DEVICES_HOMEY_PLUGIN_NAME,
+			enabled: true,
+			mode: 'cloud',
+			cloudClientId: 'client-id',
+			cloudClientSecretConfigured: true,
+			cloudRedirectUrl: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback',
+		});
+
+		const wrapper = mount(StepIntegrations, {
+			global: { stubs: { IntegrationConfigDialog: true } },
+		});
+		await flushPromises();
+
+		expect(mockHomeyCloudAuthorization.fetchStatus).toHaveBeenCalledOnce();
+		expect(wrapper.text()).toContain('onboardingModule.integrations.configRequired');
+
+		const setupButton = wrapper.findAllComponents({ name: 'ElButton' }).find((button) => button.text() === 'onboardingModule.integrations.setupNow');
+		await setupButton?.trigger('click');
+		mockHomeyCloudAuthorization.fetchStatus.mockResolvedValue({ connected: true, selectedHomeyId: 'homey-id' });
+		wrapper.getComponent({ name: 'IntegrationConfigDialog' }).vm.$emit('saved');
+		await flushPromises();
+
+		expect(wrapper.text()).not.toContain('onboardingModule.integrations.configRequired');
 	});
 
 	// Toggling an integration off deletes the devices it owns, which is a cache-clear for anything

@@ -1,5 +1,3 @@
-import { ConfigModule as NestConfigModule } from '@nestjs/config';
-
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { ChannelsTypeMapperService } from '../../modules/devices/services/channels-type-mapper.service';
 import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/services/channels.properties-type-mapper.service';
@@ -36,9 +34,11 @@ import { HomeyCloudGrantMutationService } from './services/homey-cloud-grant-mut
 import { HomeyCloudRuntimeRegistryService } from './services/homey-cloud-runtime-registry.service';
 import { HomeyCloudRuntimeService } from './services/homey-cloud-runtime.service';
 import { HomeyCloudSdkSessionFactoryService } from './services/homey-cloud-sdk-session.factory';
+import { HomeyConfigMutationService } from './services/homey-config-mutation.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
 import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
+import { HomeyLegacyCloudConfigMigrationService } from './services/homey-legacy-cloud-config-migration.service';
 import { HomeyMappingPreviewService } from './services/homey-mapping-preview.service';
 import { HomeySynchronizerService } from './services/homey-synchronizer.service';
 import { HomeyService } from './services/homey.service';
@@ -62,6 +62,7 @@ describe('DevicesHomeyPlugin', () => {
 		const homeyDevicePlatform = { getType: () => DEVICES_HOMEY_TYPE };
 		const userLifecycleMutations = { registerParticipant: jest.fn() };
 		const homeyCloudGrantMutations = { resetForFactory: jest.fn().mockResolvedValue(undefined) };
+		const legacyCloudConfigMigration = { migrate: jest.fn() };
 		let resetHandler: (() => Promise<{ success: boolean; reason?: string } | null>) | undefined;
 		const factoryResetRegistry = {
 			register: jest.fn(
@@ -85,6 +86,7 @@ describe('DevicesHomeyPlugin', () => {
 			homeyDevicePlatform as unknown as HomeyDevicePlatform,
 			userLifecycleMutations as unknown as UserLifecycleMutationRegistryService,
 			homeyCloudGrantMutations as unknown as HomeyCloudGrantMutationService,
+			legacyCloudConfigMigration as unknown as HomeyLegacyCloudConfigMigrationService,
 			factoryResetRegistry as unknown as FactoryResetRegistryService,
 		);
 
@@ -100,8 +102,17 @@ describe('DevicesHomeyPlugin', () => {
 					configuredPath: 'api_key_configured',
 					inputPaths: ['apiKey'],
 				},
+				{
+					path: 'cloud_client_secret',
+					configuredPath: 'cloud_client_secret_configured',
+					inputPaths: ['cloudClientSecret'],
+				},
 			],
 		});
+		expect(legacyCloudConfigMigration.migrate).toHaveBeenCalledTimes(1);
+		expect(legacyCloudConfigMigration.migrate.mock.invocationCallOrder[0]).toBeLessThan(
+			pluginServiceManager.register.mock.invocationCallOrder[0],
+		);
 		expect(devicesMapper.registerMapping).toHaveBeenCalledWith(expect.objectContaining({ type: DEVICES_HOMEY_TYPE }));
 		expect(channelsMapper.registerMapping).toHaveBeenCalledWith(expect.objectContaining({ type: DEVICES_HOMEY_TYPE }));
 		expect(propertiesMapper.registerMapping).toHaveBeenCalledWith(
@@ -126,7 +137,6 @@ describe('DevicesHomeyPlugin', () => {
 	});
 
 	it('provides a production SDK-backed connector factory through the transport-neutral token', () => {
-		const imports = Reflect.getMetadata('imports', DevicesHomeyPlugin) as unknown[];
 		const providers = Reflect.getMetadata('providers', DevicesHomeyPlugin) as unknown[];
 		const controllers = Reflect.getMetadata('controllers', DevicesHomeyPlugin) as unknown[];
 
@@ -139,6 +149,7 @@ describe('DevicesHomeyPlugin', () => {
 				HomeyCloudSdkSessionFactoryService,
 				HomeyCloudRuntimeRegistryService,
 				HomeyCloudRuntimeService,
+				HomeyConfigMutationService,
 				HomeyLocalConnectorFactory,
 				HomeyCloudConnectorFactory,
 				HomeyRuntimeConnectorFactory,
@@ -148,6 +159,7 @@ describe('DevicesHomeyPlugin', () => {
 				HomeyPropertyMappingStorageService,
 				HomeyDeviceInventoryService,
 				HomeyMappingPreviewService,
+				HomeyLegacyCloudConfigMigrationService,
 				HomeyAdoptionLockService,
 				HomeyDeviceAdoptionService,
 				HomeySynchronizerService,
@@ -158,7 +170,6 @@ describe('DevicesHomeyPlugin', () => {
 			provide: HOMEY_CONNECTOR_FACTORY,
 			useExisting: HomeyRuntimeConnectorFactory,
 		});
-		expect(imports).toContain(NestConfigModule);
 		expect(controllers).toContain(HomeyTestConnectionController);
 		expect(controllers).toContain(HomeyDevicesController);
 		expect(controllers).toContain(HomeyMappingPreviewController);

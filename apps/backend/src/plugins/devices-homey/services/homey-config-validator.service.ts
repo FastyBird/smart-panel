@@ -15,19 +15,27 @@ import {
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
 	MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
 } from '../devices-homey.constants';
+import { isSafeHomeyCloudRedirectUrl } from '../validators/homey-cloud-redirect-url.validator';
 import { isSafeHomeyUrl } from '../validators/homey-url.validator';
+
+import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
+import { HomeyCloudGrantMutationService } from './homey-cloud-grant-mutation.service';
 
 @Injectable()
 export class HomeyConfigValidatorService implements IPluginConfigValidator, OnModuleInit {
 	readonly pluginType = DEVICES_HOMEY_PLUGIN_NAME;
 
-	constructor(private readonly pluginConfigValidator: PluginConfigValidatorService) {}
+	constructor(
+		private readonly pluginConfigValidator: PluginConfigValidatorService,
+		private readonly cloudGrantMutations: HomeyCloudGrantMutationService,
+		private readonly cloudClientConfig: HomeyCloudClientConfigService,
+	) {}
 
 	onModuleInit(): void {
 		this.pluginConfigValidator.register(this);
 	}
 
-	validate(config: Record<string, unknown>): Promise<IConfigValidationResult> {
+	async validate(config: Record<string, unknown>): Promise<IConfigValidationResult> {
 		const mode = config['mode'] ?? HomeyConnectionMode.LOCAL;
 
 		if (!Object.values(HomeyConnectionMode).includes(mode as HomeyConnectionMode)) {
@@ -36,6 +44,9 @@ export class HomeyConfigValidatorService implements IPluginConfigValidator, OnMo
 				errors: [{ message: 'Homey connection mode must be local or cloud', field: 'mode' }],
 			});
 		}
+
+		const hasActiveCloudGrant =
+			mode === HomeyConnectionMode.CLOUD ? await this.cloudGrantMutations.hasActiveGrant() : undefined;
 
 		if (config['enabled'] !== true) {
 			return Promise.resolve({ valid: true });
@@ -61,6 +72,49 @@ export class HomeyConfigValidatorService implements IPluginConfigValidator, OnMo
 					valid: false,
 					errors: [{ message: 'Homey API key is required', field: 'api_key' }],
 				});
+			}
+		} else {
+			const clientId = config['cloudClientId'] ?? config['cloud_client_id'];
+			const clientSecret = config['cloudClientSecret'] ?? config['cloud_client_secret'];
+			const redirectUrl = config['cloudRedirectUrl'] ?? config['cloud_redirect_url'];
+			if (typeof clientId !== 'string' || clientId.trim().length === 0) {
+				return Promise.resolve({
+					valid: false,
+					errors: [{ message: 'Homey Cloud client ID is required', field: 'cloud_client_id' }],
+				});
+			}
+
+			if (typeof clientSecret !== 'string' || clientSecret.trim().length === 0) {
+				return Promise.resolve({
+					valid: false,
+					errors: [{ message: 'Homey Cloud client secret is required', field: 'cloud_client_secret' }],
+				});
+			}
+
+			if (!isSafeHomeyCloudRedirectUrl(redirectUrl)) {
+				return Promise.resolve({
+					valid: false,
+					errors: [
+						{
+							message: 'Homey Cloud redirect URL must match the registered callback URL',
+							field: 'cloud_redirect_url',
+						},
+					],
+				});
+			}
+
+			const candidateFingerprint = this.cloudClientConfig.getConfigurationFingerprintFor({
+				clientId,
+				clientSecret,
+				redirectUrl,
+			});
+			const persistedFingerprint = this.cloudClientConfig.getConfigurationFingerprint();
+
+			if (!hasActiveCloudGrant || candidateFingerprint !== persistedFingerprint) {
+				return {
+					valid: false,
+					errors: [{ message: 'Homey Cloud authorization is required', field: 'mode' }],
+				};
 			}
 		}
 

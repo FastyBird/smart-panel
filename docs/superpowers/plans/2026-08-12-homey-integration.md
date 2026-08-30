@@ -829,7 +829,7 @@ a new client to 100 Homey Pro users and requires a limit-increase request for a 
 access. The pinned SDK requires a confidential client secret for authorization-code exchange and refresh, supports a
 registered redirect URL and OAuth `state`, and does not document PKCE. Because Smart Panel is distributed self-hosted
 software with installation-specific origins, no shared client secret may be embedded in repository or release
-artifacts. The first cloud profile uses deployment-owned client credentials and an exact deployment callback; a hosted
+artifacts. The first cloud profile uses installation-owned, admin-managed client credentials and an exact callback; a hosted
 FastyBird authorization broker would require a separate design and trust boundary.
 
 The registration and external-approval items remain unchecked until a dedicated client is created in Homey Developer
@@ -846,7 +846,7 @@ Homey Cloud access, user limit, branding/legal, and rate-limit conditions are re
 
 Task 7.2 is delivered behind disabled cloud mode in reviewable slices:
 
-- [x] **7.2a — Deployment and state foundation:** validate the deployment-owned client ID, secret, and exact callback;
+- [x] **7.2a — Configuration and state foundation:** validate the admin-managed client ID, write-only secret, and exact callback;
       generate the SDK authorization URL with candidate auto-refresh disabled; keep only a hash of bounded, single-use
       state; bind it to the initiating user plus authority/active-grant generations; and expire it independently of
       follow-up traffic. No cloud route is exposed by this slice.
@@ -860,7 +860,7 @@ Task 7.2 is delivered behind disabled cloud mode in reviewable slices:
       state-authorized public callback, clean callback redirect, ingress query-redaction requirements, and the complete
       security/race test matrix.
 - [x] **7.2e — Encrypted token persistence:** encrypt every pending, active, and refreshed access/refresh token with a
-      unique authenticated envelope derived from the deployment-owned client secret; bind ciphertext to its record and
+      unique authenticated envelope derived from the installation-owned client secret; bind ciphertext to its record and
       field; fail closed on tampering; and upgrade legacy plaintext rows transactionally on first credential use.
 
 Task 7.2d exposes the authorization lifecycle without enabling cloud connector mode. Management routes require an owner

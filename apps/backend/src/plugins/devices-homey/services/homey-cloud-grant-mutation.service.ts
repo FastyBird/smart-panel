@@ -110,7 +110,7 @@ export class HomeyCloudGrantMutationService
 		private readonly runtimeRegistry: HomeyCloudRuntimeRegistryService,
 	) {}
 
-	onApplicationBootstrap(): void {
+	async onApplicationBootstrap(): Promise<void> {
 		this.cleanupTimer = setInterval(() => {
 			void this.expireCandidates().catch(() => {
 				this.logger.warn('Homey Cloud pending grant cleanup is temporarily unavailable');
@@ -118,7 +118,7 @@ export class HomeyCloudGrantMutationService
 		}, HOMEY_CLOUD_PENDING_GRANT_CLEANUP_INTERVAL_MS);
 		this.cleanupTimer.unref();
 
-		void this.disconnectRuntimeWithoutGrant();
+		await this.disconnectRuntimeWithoutGrant();
 	}
 
 	onModuleDestroy(): void {

@@ -12,6 +12,11 @@ import HomeyConfigForm from './homey-config-form.vue';
 
 const submit = vi.fn();
 const useConfigPluginEditForm = vi.hoisted(() => vi.fn());
+const formChanged = ref(false);
+const authorizationStore = vi.hoisted(() => ({
+	invalidateStatus: vi.fn(),
+	fetchStatus: vi.fn().mockResolvedValue({ connected: false, selectedHomeyId: null }),
+}));
 const model = reactive({
 	type: 'devices-homey-plugin',
 	enabled: true,
@@ -19,6 +24,10 @@ const model = reactive({
 	url: 'http://homey.local:4859',
 	apiKey: undefined as string | null | undefined,
 	apiKeyConfigured: true,
+	cloudClientId: 'client-id' as string | null | undefined,
+	cloudClientSecret: undefined as string | null | undefined,
+	cloudClientSecretConfigured: true,
+	cloudRedirectUrl: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback' as string | null | undefined,
 	connectionTimeout: 10_000,
 	reconciliationInterval: 300_000,
 });
@@ -46,6 +55,8 @@ vi.mock('../../../modules/config', async () => {
 	};
 });
 
+vi.mock('../store/homey-cloud-authorization.store', () => ({ useHomeyCloudAuthorization: () => authorizationStore }));
+
 const mountForm = () =>
 	mount(HomeyConfigForm, {
 		props: {
@@ -61,7 +72,7 @@ const mountForm = () =>
 				},
 				HomeyCloudAuthorizationPanel: {
 					name: 'HomeyCloudAuthorizationPanel',
-					props: ['savedMode'],
+					props: ['savedMode', 'configurationSaved'],
 					template: '<div data-test-id="homey-cloud-authorization-panel-stub" />',
 				},
 			},
@@ -73,10 +84,12 @@ describe('HomeyConfigForm', () => {
 		vi.clearAllMocks();
 		model.mode = DevicesHomeyPluginConnectionMode.local;
 		model.apiKey = undefined;
+		model.cloudClientSecret = undefined;
+		formChanged.value = false;
 		useConfigPluginEditForm.mockReturnValue({
 			formEl: ref(),
 			model,
-			formChanged: ref(false),
+			formChanged,
 			submit,
 			formResult: ref('none'),
 		});
@@ -105,13 +118,15 @@ describe('HomeyConfigForm', () => {
 		expect(panel.props('candidateApiKey')).toBe('new-candidate-key');
 	});
 
-	it('shows cloud authorization and hides local credential inputs in cloud mode', async () => {
+	it('shows admin-managed cloud credentials and authorization while hiding local inputs in cloud mode', async () => {
 		const wrapper = mountForm();
 		model.mode = DevicesHomeyPluginConnectionMode.cloud;
 		await wrapper.vm.$nextTick();
 
 		expect(wrapper.find('[name="url"]').exists()).toBe(false);
-		expect(wrapper.findComponent({ name: 'ConfigSecretInput' }).exists()).toBe(false);
+		expect(wrapper.find('[name="cloudClientId"]').exists()).toBe(true);
+		expect(wrapper.find('[name="cloudRedirectUrl"]').exists()).toBe(true);
+		expect(wrapper.find('[name="cloudClientSecret"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="homey-cloud-authorization-panel-stub"]').exists()).toBe(true);
 		expect(wrapper.getComponent({ name: 'HomeyConnectionPanel' }).props('mode')).toBe('cloud');
 		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('local');
@@ -128,6 +143,32 @@ describe('HomeyConfigForm', () => {
 		await wrapper.setProps({ remoteFormSubmit: true });
 		await flushPromises();
 
+		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('cloud');
+		expect(authorizationStore.invalidateStatus).toHaveBeenCalledOnce();
+		expect(authorizationStore.fetchStatus).toHaveBeenCalledOnce();
+	});
+
+	it('marks authorization unavailable while configuration changes are unsaved', async () => {
+		model.mode = DevicesHomeyPluginConnectionMode.cloud;
+		const wrapper = mountForm();
+		await wrapper.vm.$nextTick();
+
+		formChanged.value = true;
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('configurationSaved')).toBe(false);
+	});
+
+	it('keeps a successful cloud save when authorization status refresh temporarily fails', async () => {
+		const wrapper = mountForm();
+		model.mode = DevicesHomeyPluginConnectionMode.cloud;
+		submit.mockResolvedValueOnce('saved');
+		authorizationStore.fetchStatus.mockRejectedValueOnce(new Error('temporary failure'));
+
+		await wrapper.setProps({ remoteFormSubmit: true });
+		await flushPromises();
+
+		expect(authorizationStore.invalidateStatus).toHaveBeenCalledOnce();
 		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('cloud');
 	});
 

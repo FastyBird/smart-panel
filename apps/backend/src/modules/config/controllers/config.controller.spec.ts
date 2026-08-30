@@ -70,7 +70,7 @@ describe('ConfigController', () => {
 						getPublicPluginsConfig: jest.fn().mockReturnValue(mockConfig.plugins),
 						getPublicPluginConfig: jest.fn(),
 						resolvePluginConfigUpdate: jest.fn((_plugin: string, value: MockPluginConfigDto) => value),
-						setPluginConfig: jest.fn(),
+						updatePluginConfig: jest.fn(),
 						getPublicModulesConfig: jest.fn().mockReturnValue(mockConfig.modules),
 						getPublicModuleConfig: jest.fn((_module: string) => mockConfig.modules[0]),
 						updateModuleConfig: jest.fn(),
@@ -176,10 +176,14 @@ describe('ConfigController', () => {
 	});
 
 	describe('updatePluginConfig', () => {
+		it('requires an owner or administrator role', () => {
+			expect(Reflect.getMetadata(ROLES_KEY, controller.updatePluginConfig)).toEqual([UserRole.OWNER, UserRole.ADMIN]);
+		});
+
 		it('returns a bad request when the resolved stored configuration is invalid', async () => {
-			jest.spyOn(configService, 'setPluginConfig').mockImplementation(() => {
-				throw new ConfigValidationException('invalid resolved configuration');
-			});
+			jest
+				.spyOn(configService, 'updatePluginConfig')
+				.mockRejectedValue(new ConfigValidationException('invalid resolved configuration'));
 
 			await expect(
 				controller.updatePluginConfig('mock-plugin', { data: { type: 'mock-plugin', enabled: true } }),

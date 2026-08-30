@@ -2,11 +2,11 @@
 	"config": {
 		"local": {
 			"title": "Conexión local de Homey",
-			"description": "Conéctate directamente a un Homey Pro en la red local para obtener la menor latencia. Smart Panel debe poder acceder a Homey y la clave API local permanece cifrada en este servidor."
+			"description": "Conéctate directamente a un Homey Pro en la red local para obtener la menor latencia. Configura aquí la URL y la clave API de solo escritura; Smart Panel debe poder acceder a Homey."
 		},
 		"cloud": {
 			"title": "Conexión con Homey Cloud",
-			"description": "Conéctate mediante Homey Cloud cuando no haya acceso directo de red. La nube puede tener más latencia y requiere internet; las credenciales OAuth permanecen cifradas en este servidor."
+			"description": "Conéctate mediante Homey Cloud cuando no haya acceso directo de red. Registra un cliente OAuth con Homey y guarda aquí sus datos; el secreto es de solo escritura."
 		},
 		"mode": { "label": "Modo de conexión", "local": "Local", "cloud": "Cloud", "cloudUnavailable": "Próximamente" },
 		"enabled": "Activado",
@@ -21,6 +21,23 @@
 			"placeholder": "Introduce una clave nueva para sustituir la configurada",
 			"required": "Introduce o conserva una clave de API de Homey antes de activar la integración",
 			"invalid": "Introduce una clave de API no vacía o elimina el reemplazo"
+		},
+		"cloudClientId": {
+			"label": "ID de cliente de Homey Cloud",
+			"placeholder": "Introduce el ID de cliente OAuth",
+			"required": "Introduce el ID de cliente de Homey Cloud"
+		},
+		"cloudClientSecret": {
+			"label": "Secreto de cliente de Homey Cloud",
+			"placeholder": "Introduce un nuevo secreto para reemplazar el guardado",
+			"required": "Introduce o conserva el secreto de cliente de Homey Cloud",
+			"invalid": "Introduce un secreto no vacío o elimina el reemplazo"
+		},
+		"cloudRedirectUrl": {
+			"label": "URL de redirección de Homey Cloud",
+			"placeholder": "https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback",
+			"description": "Registra esta URL exacta como callback OAuth en el portal Homey Developer.",
+			"invalid": "Introduce la URL HTTPS registrada exacta; HTTP solo se permite en localhost"
 		},
 		"connectionTimeout": "Tiempo de espera de conexión (ms)",
 		"reconciliationInterval": "Intervalo de conciliación del inventario (ms)",
@@ -43,6 +60,7 @@
 		"disconnect": "Desconectar",
 		"disconnectConfirm": "¿Desconectar Homey Cloud y eliminar sus credenciales OAuth guardadas?",
 		"saveCloudModeFirst": "Guarda el modo cloud antes de iniciar la autorización de Homey.",
+		"saveConfigurationFirst": "Guarda la configuración de Homey Cloud antes de iniciar la autorización.",
 		"selectDescription": "Elige el Homey que debe usar Smart Panel.",
 		"selectPlaceholder": "Selecciona un Homey",
 		"select": "Usar el Homey seleccionado",

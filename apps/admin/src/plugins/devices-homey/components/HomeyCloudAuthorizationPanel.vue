@@ -10,10 +10,10 @@
 		</template>
 
 		<el-alert
-			v-if="!cloudModeSaved"
+			v-if="!cloudConfigurationSaved"
 			type="info"
 			:closable="false"
-			:title="t('devicesHomeyPlugin.cloudAuthorization.saveCloudModeFirst')"
+			:title="t('devicesHomeyPlugin.cloudAuthorization.saveConfigurationFirst')"
 			class="mb-4"
 		/>
 		<el-alert
@@ -86,7 +86,7 @@
 					v-if="authorizationStore.status !== null && !authorizationStore.status.connected"
 					type="primary"
 					:loading="authorizationStore.authorizing"
-					:disabled="!cloudModeSaved || authorizationStore.fetching"
+					:disabled="!cloudConfigurationSaved || authorizationStore.fetching"
 					data-test-id="homey-cloud-connect"
 					@click="startAuthorization(false)"
 				>
@@ -95,7 +95,7 @@
 				<template v-else-if="authorizationStore.status?.connected">
 					<el-button
 						:loading="authorizationStore.authorizing"
-						:disabled="!cloudModeSaved || authorizationStore.mutating"
+						:disabled="!cloudConfigurationSaved || authorizationStore.mutating"
 						data-test-id="homey-cloud-reconnect"
 						@click="startAuthorization(true)"
 					>
@@ -131,10 +131,12 @@ defineOptions({ name: 'HomeyCloudAuthorizationPanel' });
 const props = withDefaults(
 	defineProps<{
 		savedMode?: DevicesHomeyPluginConnectionMode;
+		configurationSaved?: boolean;
 		navigateToAuthorization?: (url: string) => void;
 	}>(),
 	{
 		savedMode: DevicesHomeyPluginConnectionMode.local,
+		configurationSaved: true,
 		navigateToAuthorization: (url: string) => window.location.assign(url),
 	}
 );
@@ -144,6 +146,7 @@ const authorizationStore = useHomeyCloudAuthorization();
 const requestFailed = ref(false);
 const selectedHomeyId = ref<string | null>(null);
 const cloudModeSaved = computed<boolean>(() => props.savedMode === DevicesHomeyPluginConnectionMode.cloud);
+const cloudConfigurationSaved = computed<boolean>(() => cloudModeSaved.value && props.configurationSaved);
 
 const run = async (action: () => Promise<unknown>): Promise<void> => {
 	requestFailed.value = false;
@@ -155,7 +158,7 @@ const run = async (action: () => Promise<unknown>): Promise<void> => {
 };
 
 const startAuthorization = async (reconnect: boolean): Promise<void> => {
-	if (!cloudModeSaved.value) return;
+	if (!cloudConfigurationSaved.value) return;
 
 	await run(async () => {
 		const result = await authorizationStore.start(reconnect);

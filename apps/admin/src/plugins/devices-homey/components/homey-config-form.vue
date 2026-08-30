@@ -66,6 +66,47 @@
 				/>
 			</el-form-item>
 		</template>
+		<template v-else>
+			<el-form-item
+				:label="t('devicesHomeyPlugin.config.cloudClientId.label')"
+				prop="cloudClientId"
+				:error="fieldErrors['cloudClientId']"
+			>
+				<el-input
+					v-model="model.cloudClientId"
+					name="cloudClientId"
+					:placeholder="t('devicesHomeyPlugin.config.cloudClientId.placeholder')"
+				/>
+			</el-form-item>
+
+			<el-form-item
+				:label="t('devicesHomeyPlugin.config.cloudClientSecret.label')"
+				prop="cloudClientSecret"
+				:error="fieldErrors['cloudClientSecret']"
+			>
+				<config-secret-input
+					v-model="model.cloudClientSecret"
+					:configured="model.cloudClientSecretConfigured"
+					name="cloudClientSecret"
+					:placeholder="t('devicesHomeyPlugin.config.cloudClientSecret.placeholder')"
+				/>
+			</el-form-item>
+
+			<el-form-item
+				:label="t('devicesHomeyPlugin.config.cloudRedirectUrl.label')"
+				prop="cloudRedirectUrl"
+				:error="fieldErrors['cloudRedirectUrl']"
+			>
+				<el-input
+					v-model="model.cloudRedirectUrl"
+					name="cloudRedirectUrl"
+					:placeholder="t('devicesHomeyPlugin.config.cloudRedirectUrl.placeholder')"
+				/>
+				<div class="text-xs text-gray-500 mt-1">
+					{{ t('devicesHomeyPlugin.config.cloudRedirectUrl.description') }}
+				</div>
+			</el-form-item>
+		</template>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 			<el-form-item
@@ -106,6 +147,7 @@
 		<homey-cloud-authorization-panel
 			v-if="model.mode === DevicesHomeyPluginConnectionMode.cloud"
 			:saved-mode="savedMode"
+			:configuration-saved="!formChanged"
 		/>
 	</el-form>
 </template>
@@ -124,10 +166,12 @@ import {
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
 	MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
 } from '../devices-homey.constants';
-import { hasUsableHomeyApiKey, isBlankHomeyApiKeyReplacement } from '../schemas/config.schemas';
+import { isBlankHomeyApiKeyReplacement, isBlankHomeyCloudClientSecretReplacement } from '../schemas/config.schemas';
 import type { IHomeyConfigEditForm } from '../schemas/config.types';
+import { isSafeHomeyCloudRedirectUrl } from '../schemas/homey-cloud-redirect-url.schemas';
 import { isSafeHomeyUrl } from '../schemas/homey-url.schemas';
 import type { IHomeyConfig } from '../store/config.store.types';
+import { useHomeyCloudAuthorization } from '../store/homey-cloud-authorization.store';
 
 import HomeyCloudAuthorizationPanel from './HomeyCloudAuthorizationPanel.vue';
 import HomeyConnectionPanel from './HomeyConnectionPanel.vue';
@@ -152,6 +196,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const authorizationStore = useHomeyCloudAuthorization();
 const {
 	formEl,
 	model,
@@ -175,6 +220,16 @@ const submit = async (): Promise<'saved'> => {
 	const result = await submitConfig();
 	savedMode.value = model.mode;
 
+	if (savedMode.value === DevicesHomeyPluginConnectionMode.cloud) {
+		authorizationStore.invalidateStatus();
+
+		try {
+			await authorizationStore.fetchStatus();
+		} catch {
+			// Configuration was saved successfully; keep the status unknown until the next refresh succeeds.
+		}
+	}
+
 	return result;
 };
 
@@ -189,9 +244,7 @@ const rules = computed<FormRules<IHomeyConfigEditForm>>(() => ({
 	url: [
 		{
 			validator: (_rule, value, callback) => {
-				if (model.mode === DevicesHomeyPluginConnectionMode.local && model.enabled && (value === null || value === undefined || value === '')) {
-					callback(new Error(t('devicesHomeyPlugin.config.url.required')));
-				} else if (typeof value === 'string' && value !== '' && !isSafeHomeyUrl(value)) {
+				if (typeof value === 'string' && value !== '' && !isSafeHomeyUrl(value)) {
 					callback(new Error(t('devicesHomeyPlugin.config.url.invalid')));
 				} else {
 					callback();
@@ -205,8 +258,43 @@ const rules = computed<FormRules<IHomeyConfigEditForm>>(() => ({
 			validator: (_rule, value, callback) => {
 				if (model.mode === DevicesHomeyPluginConnectionMode.local && isBlankHomeyApiKeyReplacement(value)) {
 					callback(new Error(t('devicesHomeyPlugin.config.apiKey.invalid')));
-				} else if (model.mode === DevicesHomeyPluginConnectionMode.local && model.enabled && !hasUsableHomeyApiKey(value, model.apiKeyConfigured)) {
-					callback(new Error(t('devicesHomeyPlugin.config.apiKey.required')));
+				} else {
+					callback();
+				}
+			},
+			trigger: ['change', 'blur'],
+		},
+	],
+	cloudClientId: [
+		{
+			validator: (_rule, value, callback) => {
+				callback();
+			},
+			trigger: ['change', 'blur'],
+		},
+	],
+	cloudClientSecret: [
+		{
+			validator: (_rule, value, callback) => {
+				if (model.mode === DevicesHomeyPluginConnectionMode.cloud && isBlankHomeyCloudClientSecretReplacement(value)) {
+					callback(new Error(t('devicesHomeyPlugin.config.cloudClientSecret.invalid')));
+				} else {
+					callback();
+				}
+			},
+			trigger: ['change', 'blur'],
+		},
+	],
+	cloudRedirectUrl: [
+		{
+			validator: (_rule, value, callback) => {
+				if (
+					model.mode === DevicesHomeyPluginConnectionMode.cloud &&
+					typeof value === 'string' &&
+					value.trim() !== '' &&
+					!isSafeHomeyCloudRedirectUrl(value)
+				) {
+					callback(new Error(t('devicesHomeyPlugin.config.cloudRedirectUrl.invalid')));
 				} else {
 					callback();
 				}
