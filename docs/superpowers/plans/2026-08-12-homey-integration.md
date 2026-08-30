@@ -838,11 +838,11 @@ Homey Cloud access, user limit, branding/legal, and rate-limit conditions are re
 
 ### Task 7.2: Implement cloud authorization
 
-- [ ] Add authorization start/callback/disconnect/reconnect endpoints using repository OAuth/state/PKCE patterns where applicable.
+- [x] Add authorization start/callback/disconnect/reconnect endpoints using repository OAuth/state/PKCE patterns where applicable.
 - [x] Store access/refresh tokens through the generic secret mechanism or established encrypted credential store.
-- [ ] Handle expiry, refresh rotation, revocation, invalid state, callback errors, and account reauthorization.
-- [ ] List/select a Homey when an account has more than one.
-- [ ] Add security-focused controller/service tests.
+- [x] Handle expiry, refresh rotation, revocation, invalid state, callback errors, and account reauthorization.
+- [x] List/select a Homey when an account has more than one.
+- [x] Add security-focused controller/service tests.
 
 Task 7.2 is delivered behind disabled cloud mode in reviewable slices:
 
