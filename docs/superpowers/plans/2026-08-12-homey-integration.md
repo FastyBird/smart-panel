@@ -906,14 +906,24 @@ activation always wins. The credential-free runtime matrix covers mode isolation
 retryable activation recovery with a current-grant guard, permanent-failure suppression, capability writes,
 reconnect/backoff, rate-limit categorization, teardown, late-client cleanup, and bounded operation deadlines. Live cloud inventory,
 subscription, write, reconnect, rate-limit, and latency evidence remains the unchecked parent item until Athom grants
-the separately recorded access approval. The admin continues to keep cloud mode unavailable until Task 7.4.
+the separately recorded access approval. Task 7.4 enables the admin mode and authorization controls without shipping
+shared client credentials; each live deployment remains responsible for its client registration and approval gate.
 
 ### Task 7.4: Extend admin configuration and release docs
 
-- [ ] Enable cloud mode and OAuth connect/disconnect/status UI.
-- [ ] Add Homey selection when required.
-- [ ] Explain local vs. cloud latency, reachability, and credential tradeoffs.
+- [x] Enable cloud mode and OAuth connect/disconnect/status UI.
+- [x] Add Homey selection when required.
+- [x] Explain local vs. cloud latency, reachability, and credential tradeoffs.
 - [ ] Run the full common acceptance suite against cloud mode.
+
+The admin persists only the opaque authorization transaction ID and expiry in page-scoped storage before leaving for
+Homey, then resumes the clean callback on the fixed plugin page. A consumed single-Homey transaction becomes connected
+without a selector; multiple eligible Homeys require explicit selection. Reconnect preserves the active grant until
+replacement activation succeeds, while disconnect requires confirmation and removes the local grant. A credential-free
+status endpoint exposes only connection state and the selected Homey identifier. The release guide and
+`docs/homey-cloud-oauth.md` document exact callback deployment, approval and user-limit gates, proxy query redaction,
+and local-versus-cloud reachability, latency, and credential tradeoffs. Live cloud acceptance remains open until a
+dedicated approved client and test grant are available.
 
 ---
 

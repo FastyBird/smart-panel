@@ -18,7 +18,14 @@ describe('HomeyCloudAuthorizationController', () => {
 	let cloudAuthorization: jest.Mocked<
 		Pick<
 			HomeyCloudAuthorizationHttpService,
-			'cancel' | 'completeCallback' | 'disconnect' | 'getResultUrl' | 'listHomeys' | 'selectHomey' | 'start'
+			| 'cancel'
+			| 'completeCallback'
+			| 'disconnect'
+			| 'getResultUrl'
+			| 'getStatus'
+			| 'listHomeys'
+			| 'selectHomey'
+			| 'start'
 		>
 	>;
 	let controller: HomeyCloudAuthorizationController;
@@ -29,6 +36,7 @@ describe('HomeyCloudAuthorizationController', () => {
 			completeCallback: jest.fn(),
 			disconnect: jest.fn(),
 			getResultUrl: jest.fn().mockReturnValue('https://panel.example.com/config/plugins/devices-homey-plugin'),
+			getStatus: jest.fn(),
 			listHomeys: jest.fn(),
 			selectHomey: jest.fn(),
 			start: jest.fn(),
@@ -45,10 +53,18 @@ describe('HomeyCloudAuthorizationController', () => {
 		// eslint-disable-next-line @typescript-eslint/unbound-method
 		expect(Reflect.getMetadata(IS_PUBLIC_KEY, prototype.callback)).toBe(true);
 
-		for (const route of ['start', 'reconnect', 'listHomeys', 'select', 'cancel', 'disconnect'] as const) {
+		for (const route of ['status', 'start', 'reconnect', 'listHomeys', 'select', 'cancel', 'disconnect'] as const) {
 			expect(Reflect.getMetadata(IS_PUBLIC_KEY, prototype[route])).not.toBe(true);
 			expect(Reflect.getMetadata(ROLES_KEY, prototype[route])).toEqual([UserRole.OWNER, UserRole.ADMIN]);
 		}
+	});
+
+	it('returns credential-free cloud authorization status', async () => {
+		cloudAuthorization.getStatus.mockResolvedValue({ connected: true, selectedHomeyId: 'homey-1' });
+
+		await expect(controller.status()).resolves.toMatchObject({
+			data: { connected: true, selectedHomeyId: 'homey-1' },
+		});
 	});
 
 	it('starts an authorization transaction for the exact authenticated user', async () => {
@@ -149,7 +165,11 @@ describe('HomeyCloudAuthorizationController', () => {
 	it('binds list, selection, and cancellation to the authenticated initiating user', async () => {
 		const request = { auth: { type: 'user', id: 'admin-user', role: UserRole.ADMIN } } as AuthenticatedRequest;
 
-		cloudAuthorization.listHomeys.mockResolvedValue([{ id: 'homey-1', name: 'Homey One' }]);
+		cloudAuthorization.listHomeys.mockResolvedValue({
+			status: 'selection_required',
+			homeyId: null,
+			homeys: [{ id: 'homey-1', name: 'Homey One' }],
+		});
 		cloudAuthorization.selectHomey.mockResolvedValue({
 			status: 'activated',
 			homey: { id: 'homey-1', name: 'Homey One' },
@@ -177,6 +197,8 @@ describe('HomeyCloudAuthorizationController', () => {
 		expect(cloudAuthorization.listHomeys).toHaveBeenCalledWith('transaction-1', 'admin-user');
 		expect(cloudAuthorization.selectHomey).toHaveBeenCalledWith('transaction-1', 'admin-user', 'homey-1');
 		expect(cloudAuthorization.cancel).toHaveBeenCalledWith('transaction-1', 'admin-user');
+		expect(list.data.status).toBe('selection_required');
+		expect(list.data.homeyId).toBeNull();
 		expect(list.data.homeys).toEqual([{ id: 'homey-1', name: 'Homey One' }]);
 		expect(select.data).toMatchObject({ status: 'connected', changed: true, homeyId: 'homey-1' });
 		expect(cancel.data).toMatchObject({ status: 'cancelled', changed: true, homeyId: null });
@@ -190,6 +212,21 @@ describe('HomeyCloudAuthorizationController', () => {
 				auth: { type: 'user', id: 'admin-user', role: UserRole.ADMIN },
 			} as AuthenticatedRequest),
 		).rejects.toEqual(new InternalServerErrorException('Homey Cloud authorization could not be completed'));
+	});
+
+	it('returns exact-transaction callback completion without exposing grant metadata', async () => {
+		cloudAuthorization.listHomeys.mockResolvedValue({
+			status: 'connected',
+			homeyId: 'homey-1',
+			homeys: [],
+		});
+
+		const response = await controller.listHomeys('transaction-1', {
+			auth: { type: 'user', id: 'admin-user', role: UserRole.ADMIN },
+		} as AuthenticatedRequest);
+
+		expect(response.data).toMatchObject({ status: 'connected', homeyId: 'homey-1', homeys: [] });
+		expect(JSON.stringify(response)).not.toContain('grantIdentifier');
 	});
 });
 

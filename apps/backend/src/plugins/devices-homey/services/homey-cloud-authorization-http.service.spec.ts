@@ -1,4 +1,5 @@
 import { HomeyCloudAuthorizationStateError } from '../errors/homey-cloud-authorization.error';
+import { HomeyCloudGrantConflictError } from '../errors/homey-cloud-grant.error';
 
 import { HomeyCloudAuthorizationHttpService } from './homey-cloud-authorization-http.service';
 import { HomeyCloudAuthorizationStateService } from './homey-cloud-authorization-state.service';
@@ -33,6 +34,8 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 			| 'cancelAuthorization'
 			| 'disconnect'
 			| 'disconnectRuntimeWithoutGrant'
+			| 'getActiveGrantReference'
+			| 'getActiveGrantForTransaction'
 			| 'getAuthorizationContext'
 			| 'hasActiveGrant'
 		>
@@ -59,6 +62,8 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 			disconnect: jest.fn(),
 			disconnectRuntimeWithoutGrant: jest.fn().mockResolvedValue(undefined),
 			getAuthorizationContext: jest.fn(),
+			getActiveGrantReference: jest.fn().mockResolvedValue(null),
+			getActiveGrantForTransaction: jest.fn().mockResolvedValue(null),
 			hasActiveGrant: jest.fn().mockResolvedValue(true),
 		};
 		runtime = {
@@ -85,6 +90,63 @@ describe('HomeyCloudAuthorizationHttpService', () => {
 
 		await expect(service.start('admin-user')).resolves.toBe(flow);
 		expect(authorizationState.create).toHaveBeenCalledWith(context);
+	});
+
+	it('returns credential-free active grant status', async () => {
+		grantMutations.getActiveGrantReference.mockResolvedValue({
+			activatedById: 'admin-user',
+			authorityGeneration: 4,
+			configurationGeneration: 5,
+			generation: 6,
+			grantIdentifier: 'grant-1',
+			selectedHomeyId: 'homey-1',
+		});
+
+		await expect(service.getStatus()).resolves.toEqual({ connected: true, selectedHomeyId: 'homey-1' });
+		grantMutations.getActiveGrantReference.mockResolvedValue(null);
+		await expect(service.getStatus()).resolves.toEqual({ connected: false, selectedHomeyId: null });
+	});
+
+	it('returns pending choices while an exact transaction requires selection', async () => {
+		authorization.listCandidateHomeys.mockResolvedValue([
+			{ id: 'homey-1', name: 'First' },
+			{ id: 'homey-2', name: 'Second' },
+		]);
+
+		await expect(service.listHomeys('transaction-1', 'admin-user')).resolves.toEqual({
+			status: 'selection_required',
+			homeyId: null,
+			homeys: [
+				{ id: 'homey-1', name: 'First' },
+				{ id: 'homey-2', name: 'Second' },
+			],
+		});
+	});
+
+	it('reports completion only when the exact transaction activated', async () => {
+		authorization.listCandidateHomeys.mockRejectedValue(new HomeyCloudGrantConflictError());
+		grantMutations.getActiveGrantForTransaction.mockResolvedValue({
+			activatedById: 'admin-user',
+			authorityGeneration: 4,
+			configurationGeneration: 5,
+			generation: 6,
+			grantIdentifier: 'grant-1',
+			selectedHomeyId: 'homey-1',
+		});
+
+		await expect(service.listHomeys('transaction-1', 'admin-user')).resolves.toEqual({
+			status: 'connected',
+			homeyId: 'homey-1',
+			homeys: [],
+		});
+		expect(grantMutations.getActiveGrantForTransaction).toHaveBeenCalledWith('transaction-1', 'admin-user');
+	});
+
+	it('preserves conflict when a failed callback did not activate the exact transaction', async () => {
+		const conflict = new HomeyCloudGrantConflictError();
+		authorization.listCandidateHomeys.mockRejectedValue(conflict);
+
+		await expect(service.listHomeys('transaction-1', 'admin-user')).rejects.toBe(conflict);
 	});
 
 	it.each(['activated', 'selection_required'] as const)(

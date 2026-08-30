@@ -46,6 +46,46 @@ export const HomeyTestConnectionSchema = z.object({
 	error: z.string().nullable().optional(),
 });
 
+export const HomeyCloudAuthorizationStartSchema = z.object({
+	authorizeUrl: z
+		.string()
+		.url()
+		.refine((value) => {
+			const url = new URL(value);
+
+			return url.protocol === 'https:' && url.hostname === 'api.athom.com' && url.username === '' && url.password === '';
+		}),
+	transactionId: z.string().min(1),
+	expiresAt: z.string().datetime(),
+});
+
+export const HomeyCloudAuthorizationStatusSchema = z.object({
+	connected: z.boolean(),
+	selectedHomeyId: z.string().nullable().optional(),
+});
+
+export const HomeyCloudHomeyChoicesSchema = z.object({
+	status: z.enum(['connected', 'selection_required']),
+	homeys: z.array(
+		z.object({
+			id: z.string().min(1),
+			name: z.string().min(1),
+		})
+	),
+	homeyId: z.string().nullable().optional(),
+});
+
+export const HomeyCloudAuthorizationCompletionSchema = z.object({
+	status: z.enum(['connected', 'cancelled', 'disconnected']),
+	changed: z.boolean(),
+	homeyId: z.string().nullable().optional(),
+});
+
+export const HomeyCloudPendingTransactionSchema = z.object({
+	transactionId: z.string().min(1),
+	expiresAt: z.string().datetime(),
+});
+
 export const HomeyCapabilitySchema = z.object({
 	id: z.string(),
 	baseId: z.string(),

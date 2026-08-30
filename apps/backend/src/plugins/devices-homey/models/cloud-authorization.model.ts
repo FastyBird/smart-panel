@@ -5,6 +5,34 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
 
+@ApiSchema({ name: 'DevicesHomeyPluginDataCloudAuthorizationStatus' })
+export class HomeyCloudAuthorizationStatusModel {
+	@ApiProperty({ description: 'Whether an active Homey Cloud grant is stored' })
+	@Expose()
+	@IsBoolean()
+	connected: boolean;
+
+	@ApiProperty({
+		name: 'selected_homey_id',
+		description: 'Selected Homey identifier for the active grant',
+		required: false,
+		nullable: true,
+	})
+	@Expose({ name: 'selected_homey_id' })
+	@IsOptional()
+	@IsString()
+	selectedHomeyId: string | null;
+}
+
+@ApiSchema({ name: 'DevicesHomeyPluginResCloudAuthorizationStatus' })
+export class HomeyCloudAuthorizationStatusResponseModel extends BaseSuccessResponseModel<HomeyCloudAuthorizationStatusModel> {
+	@ApiProperty({ type: HomeyCloudAuthorizationStatusModel })
+	@Expose()
+	@ValidateNested()
+	@Type(() => HomeyCloudAuthorizationStatusModel)
+	declare data: HomeyCloudAuthorizationStatusModel;
+}
+
 @ApiSchema({ name: 'DevicesHomeyPluginDataCloudAuthorizationStart' })
 export class HomeyCloudAuthorizationStartModel {
 	@ApiProperty({ name: 'authorize_url', description: 'Homey authorization URL', format: 'uri' })
@@ -45,14 +73,35 @@ export class HomeyCloudChoiceModel {
 	name: string;
 }
 
+export enum HomeyCloudChoicesStatus {
+	CONNECTED = 'connected',
+	SELECTION_REQUIRED = 'selection_required',
+}
+
 @ApiSchema({ name: 'DevicesHomeyPluginDataCloudHomeyChoices' })
 export class HomeyCloudChoicesModel {
+	@ApiProperty({ enum: HomeyCloudChoicesStatus })
+	@Expose()
+	@IsIn(Object.values(HomeyCloudChoicesStatus))
+	status: HomeyCloudChoicesStatus;
+
 	@ApiProperty({ type: [HomeyCloudChoiceModel] })
 	@Expose()
 	@IsArray()
 	@ValidateNested({ each: true })
 	@Type(() => HomeyCloudChoiceModel)
 	homeys: HomeyCloudChoiceModel[];
+
+	@ApiProperty({
+		name: 'homey_id',
+		description: 'Selected Homey identifier when this exact authorization transaction activated',
+		required: false,
+		nullable: true,
+	})
+	@Expose({ name: 'homey_id' })
+	@IsOptional()
+	@IsString()
+	homeyId: string | null;
 }
 
 @ApiSchema({ name: 'DevicesHomeyPluginResCloudHomeyChoices' })

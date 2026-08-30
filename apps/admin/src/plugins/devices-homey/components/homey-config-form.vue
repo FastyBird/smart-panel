@@ -8,24 +8,22 @@
 	>
 		<el-alert
 			type="info"
-			:title="t('devicesHomeyPlugin.config.local.title')"
-			:description="t('devicesHomeyPlugin.config.local.description')"
+			:title="t(`devicesHomeyPlugin.config.${model.mode}.title`)"
+			:description="t(`devicesHomeyPlugin.config.${model.mode}.description`)"
 			:closable="false"
 		/>
 
 		<el-form-item
 			:label="t('devicesHomeyPlugin.config.mode.label')"
+			prop="mode"
 			class="mt-3"
 		>
-			<el-radio-group model-value="local">
-				<el-radio-button value="local">
+			<el-radio-group v-model="model.mode">
+				<el-radio-button :value="DevicesHomeyPluginConnectionMode.local">
 					{{ t('devicesHomeyPlugin.config.mode.local') }}
 				</el-radio-button>
-				<el-radio-button
-					value="cloud"
-					disabled
-				>
-					{{ t('devicesHomeyPlugin.config.mode.cloud') }} — {{ t('devicesHomeyPlugin.config.mode.cloudUnavailable') }}
+				<el-radio-button :value="DevicesHomeyPluginConnectionMode.cloud">
+					{{ t('devicesHomeyPlugin.config.mode.cloud') }}
 				</el-radio-button>
 			</el-radio-group>
 		</el-form-item>
@@ -42,30 +40,32 @@
 			/>
 		</el-form-item>
 
-		<el-form-item
-			:label="t('devicesHomeyPlugin.config.url.label')"
-			prop="url"
-			:error="fieldErrors['url']"
-		>
-			<el-input
-				v-model="url"
-				name="url"
-				:placeholder="t('devicesHomeyPlugin.config.url.placeholder')"
-			/>
-		</el-form-item>
+		<template v-if="model.mode === DevicesHomeyPluginConnectionMode.local">
+			<el-form-item
+				:label="t('devicesHomeyPlugin.config.url.label')"
+				prop="url"
+				:error="fieldErrors['url']"
+			>
+				<el-input
+					v-model="url"
+					name="url"
+					:placeholder="t('devicesHomeyPlugin.config.url.placeholder')"
+				/>
+			</el-form-item>
 
-		<el-form-item
-			:label="t('devicesHomeyPlugin.config.apiKey.label')"
-			prop="apiKey"
-			:error="fieldErrors['apiKey']"
-		>
-			<config-secret-input
-				v-model="model.apiKey"
-				:configured="model.apiKeyConfigured"
-				name="apiKey"
-				:placeholder="t('devicesHomeyPlugin.config.apiKey.placeholder')"
-			/>
-		</el-form-item>
+			<el-form-item
+				:label="t('devicesHomeyPlugin.config.apiKey.label')"
+				prop="apiKey"
+				:error="fieldErrors['apiKey']"
+			>
+				<config-secret-input
+					v-model="model.apiKey"
+					:configured="model.apiKeyConfigured"
+					name="apiKey"
+					:placeholder="t('devicesHomeyPlugin.config.apiKey.placeholder')"
+				/>
+			</el-form-item>
+		</template>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 			<el-form-item
@@ -98,19 +98,26 @@
 		</div>
 
 		<homey-connection-panel
+			:mode="model.mode"
 			:candidate-url="model.url"
 			:candidate-api-key="model.apiKey"
+		/>
+
+		<homey-cloud-authorization-panel
+			v-if="model.mode === DevicesHomeyPluginConnectionMode.cloud"
+			:saved-mode="savedMode"
 		/>
 	</el-form>
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, ElRadioButton, ElRadioGroup, ElSwitch, type FormRules } from 'element-plus';
 
 import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { DevicesHomeyPluginConnectionMode } from '../../../openapi.constants';
 import {
 	MAX_HOMEY_CONNECTION_TIMEOUT_MS,
 	MAX_HOMEY_RECONCILIATION_INTERVAL_MS,
@@ -120,7 +127,9 @@ import {
 import { hasUsableHomeyApiKey, isBlankHomeyApiKeyReplacement } from '../schemas/config.schemas';
 import type { IHomeyConfigEditForm } from '../schemas/config.types';
 import { isSafeHomeyUrl } from '../schemas/homey-url.schemas';
+import type { IHomeyConfig } from '../store/config.store.types';
 
+import HomeyCloudAuthorizationPanel from './HomeyCloudAuthorizationPanel.vue';
 import HomeyConnectionPanel from './HomeyConnectionPanel.vue';
 import type { IHomeyConfigFormProps } from './homey-config-form.types';
 import { normalizeHomeyUrlInput } from './homey-config-form.utils';
@@ -143,7 +152,13 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditForm<IHomeyConfigEditForm>({
+const {
+	formEl,
+	model,
+	formChanged,
+	submit: submitConfig,
+	formResult,
+} = useConfigPluginEditForm<IHomeyConfigEditForm>({
 	config: props.config,
 	messages: {
 		success: t('devicesHomeyPlugin.messages.config.updated'),
@@ -154,6 +169,14 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 const fieldErrors = computed<Record<string, string | undefined>>(() =>
 	Object.fromEntries(props.remoteFormErrors.map((error) => [error.field, error.message]))
 );
+const savedMode = ref<DevicesHomeyPluginConnectionMode>((props.config as IHomeyConfig).mode);
+
+const submit = async (): Promise<'saved'> => {
+	const result = await submitConfig();
+	savedMode.value = model.mode;
+
+	return result;
+};
 
 const url = computed<string>({
 	get: () => model.url ?? '',
@@ -166,7 +189,7 @@ const rules = computed<FormRules<IHomeyConfigEditForm>>(() => ({
 	url: [
 		{
 			validator: (_rule, value, callback) => {
-				if (model.enabled && (value === null || value === undefined || value === '')) {
+				if (model.mode === DevicesHomeyPluginConnectionMode.local && model.enabled && (value === null || value === undefined || value === '')) {
 					callback(new Error(t('devicesHomeyPlugin.config.url.required')));
 				} else if (typeof value === 'string' && value !== '' && !isSafeHomeyUrl(value)) {
 					callback(new Error(t('devicesHomeyPlugin.config.url.invalid')));
@@ -180,9 +203,9 @@ const rules = computed<FormRules<IHomeyConfigEditForm>>(() => ({
 	apiKey: [
 		{
 			validator: (_rule, value, callback) => {
-				if (isBlankHomeyApiKeyReplacement(value)) {
+				if (model.mode === DevicesHomeyPluginConnectionMode.local && isBlankHomeyApiKeyReplacement(value)) {
 					callback(new Error(t('devicesHomeyPlugin.config.apiKey.invalid')));
-				} else if (model.enabled && !hasUsableHomeyApiKey(value, model.apiKeyConfigured)) {
+				} else if (model.mode === DevicesHomeyPluginConnectionMode.local && model.enabled && !hasUsableHomeyApiKey(value, model.apiKeyConfigured)) {
 					callback(new Error(t('devicesHomeyPlugin.config.apiKey.required')));
 				} else {
 					callback();
@@ -241,7 +264,10 @@ watch(
 	() => props.remoteFormReset,
 	(value) => {
 		emit('update:remote-form-reset', false);
-		if (value) formEl.value?.resetFields();
+		if (value) {
+			formEl.value?.resetFields();
+			model.mode = savedMode.value;
+		}
 	}
 );
 </script>

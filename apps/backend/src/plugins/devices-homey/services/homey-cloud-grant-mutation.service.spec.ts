@@ -105,6 +105,9 @@ describe('HomeyCloudGrantMutationService', () => {
 		await service.stageCandidate(candidateInput(firstContext, 'first-transaction', token('first')));
 		const first = await service.activateCandidate('first-transaction', administratorId, 'homey-one');
 		await expect(service.hasActiveGrant()).resolves.toBe(true);
+		await expect(service.getActiveGrantReference()).resolves.toEqual(first);
+		await expect(service.getActiveGrantForTransaction('first-transaction', administratorId)).resolves.toEqual(first);
+		await expect(service.getActiveGrantForTransaction('other-transaction', administratorId)).resolves.toBeNull();
 		const replacementContext = await service.getAuthorizationContext(otherAdministratorId);
 		await service.stageCandidate(candidateInput(replacementContext, 'replacement-transaction', token('replacement')));
 

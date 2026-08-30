@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type {
 	DevicesHomeyPluginAdoptionResultSchema,
+	DevicesHomeyPluginCloudAuthorizationStartSchema,
 	DevicesHomeyPluginInventoryDeviceSchema,
 	DevicesHomeyPluginMappingPreviewSchema,
 	DevicesHomeyPluginStatusSchema,
@@ -10,6 +11,7 @@ import { DevicesHomeyValidationException } from '../devices-homey.exceptions';
 
 import {
 	transformHomeyAdoptionResult,
+	transformHomeyCloudAuthorizationStart,
 	transformHomeyInventoryDevice,
 	transformHomeyMappingPreview,
 	transformHomeyStatus,
@@ -72,6 +74,30 @@ describe('Homey transformers', () => {
 		expect(result.connectionState).toBe('connected');
 		expect(result.lastInventorySyncAt).toBe('2026-08-24T12:00:00.000Z');
 		expect(result.unavailableDeviceCount).toBe(2);
+	});
+
+	it('normalizes cloud authorization transaction fields', () => {
+		expect(
+			transformHomeyCloudAuthorizationStart({
+				authorize_url: 'https://api.athom.com/oauth2/authorise',
+				transaction_id: 'opaque-transaction',
+				expires_at: '2026-08-30T12:00:00.000Z',
+			} as DevicesHomeyPluginCloudAuthorizationStartSchema)
+		).toEqual({
+			authorizeUrl: 'https://api.athom.com/oauth2/authorise',
+			transactionId: 'opaque-transaction',
+			expiresAt: '2026-08-30T12:00:00.000Z',
+		});
+	});
+
+	it('rejects a cloud authorization redirect outside the fixed Homey provider', () => {
+		expect(() =>
+			transformHomeyCloudAuthorizationStart({
+				authorize_url: 'https://attacker.example/steal',
+				transaction_id: 'opaque-transaction',
+				expires_at: '2026-08-30T12:00:00.000Z',
+			} as DevicesHomeyPluginCloudAuthorizationStartSchema)
+		).toThrow(DevicesHomeyValidationException);
 	});
 
 	it('normalizes adoption results', () => {

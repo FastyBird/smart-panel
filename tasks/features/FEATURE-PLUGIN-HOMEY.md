@@ -164,7 +164,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [x] Refresh, expiry, revocation, reauthorization, and multi-Homey selection are handled.
 - [x] The cloud connector passes the same connector contract suite as the local connector.
 - [x] Mapping, adoption, state sync, and control services contain no cloud-specific forks outside connector/authorization boundaries.
-- [ ] User limits, approval requirements, redirect URIs, and deployment steps are documented.
+- [x] User limits, approval requirements, redirect URIs, and deployment steps are documented.
 
 ### Cloud client registration audit
 
