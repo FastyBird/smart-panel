@@ -60,6 +60,7 @@
 		"disconnect": "Rozłącz",
 		"disconnectConfirm": "Rozłączyć Homey Cloud i usunąć zapisane dane OAuth?",
 		"saveCloudModeFirst": "Zapisz tryb cloud przed rozpoczęciem autoryzacji Homey.",
+		"saveConfigurationFirst": "Zapisz konfigurację Homey Cloud przed rozpoczęciem autoryzacji.",
 		"selectDescription": "Wybierz Homey, którego ma używać Smart Panel.",
 		"selectPlaceholder": "Wybierz Homey",
 		"select": "Użyj wybranego Homey",

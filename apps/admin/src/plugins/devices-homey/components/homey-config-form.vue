@@ -147,6 +147,7 @@
 		<homey-cloud-authorization-panel
 			v-if="model.mode === DevicesHomeyPluginConnectionMode.cloud"
 			:saved-mode="savedMode"
+			:configuration-saved="!formChanged"
 		/>
 	</el-form>
 </template>

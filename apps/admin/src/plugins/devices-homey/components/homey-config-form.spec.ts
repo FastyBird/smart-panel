@@ -12,6 +12,7 @@ import HomeyConfigForm from './homey-config-form.vue';
 
 const submit = vi.fn();
 const useConfigPluginEditForm = vi.hoisted(() => vi.fn());
+const formChanged = ref(false);
 const authorizationStore = vi.hoisted(() => ({
 	invalidateStatus: vi.fn(),
 	fetchStatus: vi.fn().mockResolvedValue({ connected: false, selectedHomeyId: null }),
@@ -71,7 +72,7 @@ const mountForm = () =>
 				},
 				HomeyCloudAuthorizationPanel: {
 					name: 'HomeyCloudAuthorizationPanel',
-					props: ['savedMode'],
+					props: ['savedMode', 'configurationSaved'],
 					template: '<div data-test-id="homey-cloud-authorization-panel-stub" />',
 				},
 			},
@@ -84,10 +85,11 @@ describe('HomeyConfigForm', () => {
 		model.mode = DevicesHomeyPluginConnectionMode.local;
 		model.apiKey = undefined;
 		model.cloudClientSecret = undefined;
+		formChanged.value = false;
 		useConfigPluginEditForm.mockReturnValue({
 			formEl: ref(),
 			model,
-			formChanged: ref(false),
+			formChanged,
 			submit,
 			formResult: ref('none'),
 		});
@@ -144,6 +146,17 @@ describe('HomeyConfigForm', () => {
 		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('cloud');
 		expect(authorizationStore.invalidateStatus).toHaveBeenCalledOnce();
 		expect(authorizationStore.fetchStatus).toHaveBeenCalledOnce();
+	});
+
+	it('marks authorization unavailable while configuration changes are unsaved', async () => {
+		model.mode = DevicesHomeyPluginConnectionMode.cloud;
+		const wrapper = mountForm();
+		await wrapper.vm.$nextTick();
+
+		formChanged.value = true;
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('configurationSaved')).toBe(false);
 	});
 
 	it('keeps a successful cloud save when authorization status refresh temporarily fails', async () => {

@@ -178,6 +178,29 @@ describe('PluginServiceManagerService', () => {
 			expect(jest.getTimerCount()).toBe(0);
 		});
 
+		it('does not start when the plugin is disabled during an asynchronous readiness check', async () => {
+			const service = createMockService('devices-provider', 'connector');
+			let finishValidation = (_result: { valid: boolean }): void => undefined;
+			const validation = new Promise<{ valid: boolean }>((resolve) => {
+				finishValidation = resolve;
+			});
+
+			pluginConfigValidator.hasValidator.mockReturnValue(true);
+			pluginConfigValidator.validate.mockReturnValue(validation);
+			manager.register(service);
+
+			const start = manager.handleConfigUpdated();
+			await Promise.resolve();
+			configService.getPluginConfig.mockReturnValue({ enabled: false });
+			await manager.handleConfigUpdated();
+			finishValidation({ valid: true });
+			await start;
+
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(service.start).not.toHaveBeenCalled();
+			expect(service.getState()).toBe('stopped');
+		});
+
 		it('should force-stop a service stuck in starting state when plugin is disabled', async () => {
 			// Create a service that stays in 'starting' (simulates WhatsApp QR scan)
 			const service = createMockService('buddy-whatsapp', 'bot', 'starting');

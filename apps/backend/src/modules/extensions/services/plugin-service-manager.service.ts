@@ -415,7 +415,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			return false;
 		}
 
-		await this.startService(registration);
+		await this.startService(registration, false);
 
 		return registration.service.getState() === 'started';
 	}
@@ -481,7 +481,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		await this.startService(registration);
 	}
 
-	private async startService(registration: ServiceRegistration): Promise<void> {
+	private async startService(registration: ServiceRegistration, requireEnabled: boolean = true): Promise<void> {
 		const key = this.getServiceKey(registration.pluginName, registration.serviceId);
 		const pendingStart = this.serviceStartPromises.get(key);
 
@@ -492,7 +492,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 		this.clearReadinessRetryTimer(key);
 
-		const startPromise = this.startServiceOnce(registration, key).finally(() => {
+		const startPromise = this.startServiceOnce(registration, key, requireEnabled).finally(() => {
 			if (this.serviceStartPromises.get(key) === startPromise) this.serviceStartPromises.delete(key);
 		});
 		this.serviceStartPromises.set(key, startPromise);
@@ -500,7 +500,11 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		await startPromise;
 	}
 
-	private async startServiceOnce(registration: ServiceRegistration, key: string): Promise<void> {
+	private async startServiceOnce(
+		registration: ServiceRegistration,
+		key: string,
+		requireEnabled: boolean,
+	): Promise<void> {
 		const currentState = registration.service.getState();
 
 		if (currentState === 'started' || currentState === 'starting') {
@@ -567,6 +571,14 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 					return;
 				}
 			}
+		}
+
+		// Readiness validators may perform asynchronous provider or database work. A disable event can
+		// complete while that work is pending and observe this service as still stopped, so re-read the
+		// user's intent immediately before allocating runtime resources.
+		if (requireEnabled && (this.shutdownInProgress || !this.getPluginConfig(registration.pluginName)?.enabled)) {
+			this.clearReadinessRetry(key);
+			return;
 		}
 
 		try {

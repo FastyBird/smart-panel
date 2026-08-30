@@ -60,6 +60,7 @@
 		"disconnect": "Odpojiť",
 		"disconnectConfirm": "Odpojiť Homey Cloud a odstrániť uložené OAuth údaje?",
 		"saveCloudModeFirst": "Pred začatím autorizácie Homey uložte režim cloud.",
+		"saveConfigurationFirst": "Pred spustením autorizácie uložte konfiguráciu Homey Cloud.",
 		"selectDescription": "Vyberte Homey, ktoré má Smart Panel používať.",
 		"selectPlaceholder": "Vyberte Homey",
 		"select": "Použiť vybrané Homey",
