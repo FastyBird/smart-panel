@@ -239,12 +239,19 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 				return result;
 			}
 
+			if (response.status === 400) {
+				const refreshed = await resume();
+				if (refreshed?.status === 'connected') {
+					return { status: 'connected', changed: false, homeyId: refreshed.homeyId ?? null };
+				}
+			}
+
 			if (response.status === 409) {
 				const recovered = await recoverCompletedSelection(transaction.transactionId);
 				if (recovered !== null) return recovered;
 			}
 
-			if ([400, 403, 409].includes(response.status)) clearPendingTransaction();
+			if ([403, 409].includes(response.status)) clearPendingTransaction();
 			throw new DevicesHomeyApiException(
 				getErrorReason<DevicesHomeyPluginSelectCloudAuthorizationHomeyOperation>(error, 'Failed to select the Homey.'),
 				response.status

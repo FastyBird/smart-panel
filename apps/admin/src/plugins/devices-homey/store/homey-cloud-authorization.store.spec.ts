@@ -250,6 +250,21 @@ describe('Homey Cloud authorization store', () => {
 		expect(window.sessionStorage.getItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY)).not.toBeNull();
 	});
 
+	it('refreshes the remaining choices after a selected Homey is rejected', async () => {
+		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
+		post.mockResolvedValue({ error: {}, response: { status: 400 } });
+		get.mockResolvedValue(success({ status: 'selection_required', homey_id: null, homeys: [{ id: 'homey-c', name: 'Remaining Homey' }] }));
+		const store = useHomeyCloudAuthorization();
+
+		await expect(store.select('homey-b')).rejects.toEqual(
+			expect.objectContaining<Partial<DevicesHomeyApiException>>({ message: 'Sanitized Homey Cloud request failure', code: 400 })
+		);
+
+		expect(store.pendingTransaction).toEqual(pending);
+		expect(store.homeys).toEqual([{ id: 'homey-c', name: 'Remaining Homey' }]);
+		expect(window.sessionStorage.getItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY)).not.toBeNull();
+	});
+
 	it('retains a transaction for a retryable provider failure', async () => {
 		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
 		get.mockResolvedValue({ error: new Error('private provider detail'), response: { status: 503 } });
