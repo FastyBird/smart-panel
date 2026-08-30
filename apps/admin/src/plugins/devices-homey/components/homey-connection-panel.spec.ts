@@ -216,6 +216,28 @@ describe('HomeyConnectionPanel', () => {
 		expect(wrapper.text()).not.toContain('Verified Homey · verified-homey-id · 13.4.0');
 	});
 
+	it('clears a completed candidate result when the connection mode changes', async () => {
+		const wrapper = mountPanel({
+			mode: DevicesHomeyPluginConnectionMode.local,
+			candidateUrl: 'http://homey.local:4859',
+			candidateApiKey: 'candidate-key',
+		});
+		await flushPromises();
+
+		statusStore.lastTest = {
+			mode: 'candidate',
+			success: true,
+			homeyName: 'Local Homey',
+		};
+		await flushPromises();
+
+		await wrapper.setProps({ mode: DevicesHomeyPluginConnectionMode.cloud });
+		await flushPromises();
+
+		expect(statusStore.lastTest).toBeNull();
+		expect(wrapper.text()).not.toContain('Local Homey');
+	});
+
 	it('clears a retained result when the panel is reopened', async () => {
 		statusStore.lastTest = {
 			mode: 'saved',

@@ -243,7 +243,7 @@ const invalidateConnectionTestResult = (): void => {
 	statusStore.clearLastTest();
 };
 
-watch(() => [props.candidateUrl, props.candidateApiKey], invalidateConnectionTestResult);
+watch(() => [props.mode, props.candidateUrl, props.candidateApiKey], invalidateConnectionTestResult);
 
 onMounted(() => {
 	invalidateConnectionTestResult();

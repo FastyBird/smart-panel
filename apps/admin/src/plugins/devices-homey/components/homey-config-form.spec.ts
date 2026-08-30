@@ -141,4 +141,18 @@ describe('HomeyConfigForm', () => {
 
 		expect(model.mode).toBe(DevicesHomeyPluginConnectionMode.local);
 	});
+
+	it('resets against the latest mode after a successful save', async () => {
+		const wrapper = mountForm();
+		model.mode = DevicesHomeyPluginConnectionMode.cloud;
+		submit.mockResolvedValueOnce('saved');
+		await wrapper.setProps({ remoteFormSubmit: true });
+		await flushPromises();
+
+		model.mode = DevicesHomeyPluginConnectionMode.local;
+		await wrapper.setProps({ remoteFormReset: true });
+		await flushPromises();
+
+		expect(model.mode).toBe(DevicesHomeyPluginConnectionMode.cloud);
+	});
 });

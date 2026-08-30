@@ -264,7 +264,10 @@ watch(
 	() => props.remoteFormReset,
 	(value) => {
 		emit('update:remote-form-reset', false);
-		if (value) formEl.value?.resetFields();
+		if (value) {
+			formEl.value?.resetFields();
+			model.mode = savedMode.value;
+		}
 	}
 );
 </script>
