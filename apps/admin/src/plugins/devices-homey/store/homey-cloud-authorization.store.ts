@@ -92,6 +92,30 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 		persistPendingTransaction(null);
 	};
 
+	const applyConnectedHomey = (homeyId: string | null | undefined): void => {
+		clearPendingTransaction();
+		status.value = { connected: true, selectedHomeyId: homeyId ?? null };
+	};
+
+	const recoverCompletedSelection = async (transactionId: string): Promise<IHomeyCloudAuthorizationCompletion | null> => {
+		try {
+			const { data } = await backend.client.GET(`${endpoint}/transactions/{transactionId}/homeys`, {
+				params: { path: { transactionId } },
+			});
+
+			if (!data) return null;
+
+			const result = transformHomeyCloudHomeyChoices(data.data);
+			if (result.status !== 'connected') return null;
+
+			applyConnectedHomey(result.homeyId);
+
+			return { status: 'connected', changed: false, homeyId: result.homeyId ?? null };
+		} catch {
+			return null;
+		}
+	};
+
 	const cancelUnpersistedTransaction = async (transactionId: string): Promise<void> => {
 		const body: DevicesHomeyPluginCloudAuthorizationTransactionRequestSchema = {
 			data: { transaction_id: transactionId },
@@ -199,9 +223,13 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 			const { data, error, response } = await backend.client.POST(`${endpoint}/select`, { body });
 			if (data) {
 				const result = transformHomeyCloudAuthorizationCompletion(data.data);
-				clearPendingTransaction();
-				await fetchStatus();
+				applyConnectedHomey(result.homeyId);
 				return result;
+			}
+
+			if (response.status === 409) {
+				const recovered = await recoverCompletedSelection(transaction.transactionId);
+				if (recovered !== null) return recovered;
 			}
 
 			if ([400, 403, 409].includes(response.status)) clearPendingTransaction();

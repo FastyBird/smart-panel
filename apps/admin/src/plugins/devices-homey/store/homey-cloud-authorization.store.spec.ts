@@ -166,16 +166,31 @@ describe('Homey Cloud authorization store', () => {
 	it('selects one eligible Homey and clears the transaction', async () => {
 		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
 		post.mockResolvedValue(success({ status: 'connected', changed: true, homey_id: 'homey-b' }));
-		get.mockResolvedValue(success({ connected: true, selected_homey_id: 'homey-b' }));
 		const store = useHomeyCloudAuthorization();
 
-		await store.select('homey-b');
+		await expect(store.select('homey-b')).resolves.toEqual({ status: 'connected', changed: true, homeyId: 'homey-b' });
 
 		expect(post).toHaveBeenCalledWith('/plugins/devices-homey/oauth/select', {
 			body: { data: { transaction_id: pending.transactionId, homey_id: 'homey-b' } },
 		});
+		expect(get).not.toHaveBeenCalled();
 		expect(store.pendingTransaction).toBeNull();
-		expect(store.status?.selectedHomeyId).toBe('homey-b');
+		expect(store.status).toEqual({ connected: true, selectedHomeyId: 'homey-b' });
+	});
+
+	it('recovers a committed selection when its response was lost', async () => {
+		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
+		post.mockResolvedValue({ error: {}, response: { status: 409 } });
+		get.mockResolvedValue(success({ status: 'connected', homey_id: 'homey-b', homeys: [] }));
+		const store = useHomeyCloudAuthorization();
+
+		await expect(store.select('homey-b')).resolves.toEqual({ status: 'connected', changed: false, homeyId: 'homey-b' });
+
+		expect(get).toHaveBeenCalledWith('/plugins/devices-homey/oauth/transactions/{transactionId}/homeys', {
+			params: { path: { transactionId: pending.transactionId } },
+		});
+		expect(store.pendingTransaction).toBeNull();
+		expect(store.status).toEqual({ connected: true, selectedHomeyId: 'homey-b' });
 	});
 
 	it('retains a transaction for a retryable provider failure', async () => {
