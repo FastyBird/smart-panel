@@ -1,4 +1,5 @@
 import { Module, OnModuleInit } from '@nestjs/common';
+import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
@@ -80,6 +81,7 @@ import { HomeyConfigValidatorService } from './services/homey-config-validator.s
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
 import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
+import { HomeyLegacyCloudConfigMigrationService } from './services/homey-legacy-cloud-config-migration.service';
 import { HomeyMappingPreviewService } from './services/homey-mapping-preview.service';
 import { HomeySynchronizerService } from './services/homey-synchronizer.service';
 import { HomeyService } from './services/homey.service';
@@ -91,6 +93,7 @@ import { HomeyService } from './services/homey.service';
 })
 @Module({
 	imports: [
+		NestConfigModule,
 		TypeOrmModule.forFeature([
 			HomeyDeviceEntity,
 			HomeyChannelEntity,
@@ -114,6 +117,7 @@ import { HomeyService } from './services/homey.service';
 		HomeyCloudClientConfigService,
 		HomeyCloudCredentialCipherService,
 		HomeyCloudAuthorizationStateService,
+		HomeyLegacyCloudConfigMigrationService,
 		HomeyCloudGrantMutationService,
 		HomeyCloudSdkSessionFactoryService,
 		HomeyCloudRuntimeRegistryService,

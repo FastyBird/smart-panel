@@ -13,7 +13,7 @@ import {
 	ValidateIf,
 } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import {
@@ -132,6 +132,11 @@ export class HomeyConfigModel extends PluginConfigModel {
 	@IsNotEmpty()
 	@IsSafeHomeyCloudRedirectUrl()
 	cloudRedirectUrl: string | null = null;
+
+	@ApiHideProperty()
+	@Expose({ name: 'cloud_legacy_environment_migrated' })
+	@IsBoolean()
+	cloudLegacyEnvironmentMigrated: boolean = false;
 
 	@ApiProperty({
 		description: 'Connection timeout in milliseconds',

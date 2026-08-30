@@ -98,6 +98,11 @@ plugin from remaining enabled: the managed connector stays stopped and records a
 the plugin service until the setup is completed. The persisted `config.yaml` is created with owner-only file
 permissions; backups and host access must therefore be protected as credential-bearing server data.
 
+For upgrades only, a complete legacy `FB_HOMEY_CLOUD_CLIENT_ID`, `FB_HOMEY_CLOUD_CLIENT_SECRET`, and
+`FB_HOMEY_CLOUD_REDIRECT_URL` set is imported once into the plugin configuration before OAuth grant reconciliation. A
+persisted migration marker prevents those variables from becoming an ongoing fallback, and existing Admin values always
+win. Remove the deprecated variables from the installation environment after the first upgraded startup.
+
 Access tokens and refresh tokens are per authorization, not deployment client configuration. They use a backend-only,
 authenticated encrypted envelope whose key is derived from the admin-managed installation client secret with domain-separated
 HKDF-SHA-256. A unique AES-256-GCM nonce protects every stored value, and authenticated context binds ciphertext to its

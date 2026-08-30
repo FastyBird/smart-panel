@@ -26,6 +26,7 @@ import { HomeyCloudClientConfigService } from './homey-cloud-client-config.servi
 import { HomeyCloudCredentialCipherService } from './homey-cloud-credential-cipher.service';
 import { HomeyCloudGrantMutationService, HomeyCloudTokenMaterial } from './homey-cloud-grant-mutation.service';
 import { HomeyCloudRuntimeRegistryService } from './homey-cloud-runtime-registry.service';
+import { HomeyLegacyCloudConfigMigrationService } from './homey-legacy-cloud-config-migration.service';
 
 describe('HomeyCloudGrantMutationService', () => {
 	const administratorId = '11111111-1111-4111-8111-111111111111';
@@ -38,6 +39,7 @@ describe('HomeyCloudGrantMutationService', () => {
 	>;
 	let credentialCipher: HomeyCloudCredentialCipherService;
 	let runtimeRegistry: jest.Mocked<Pick<HomeyCloudRuntimeRegistryService, 'disconnectGrant'>>;
+	let legacyConfigMigration: jest.Mocked<Pick<HomeyLegacyCloudConfigMigrationService, 'migrate'>>;
 
 	beforeEach(async () => {
 		configurationFingerprint = 'configuration-one';
@@ -58,6 +60,7 @@ describe('HomeyCloudGrantMutationService', () => {
 		await createUser(administratorId, 'administrator');
 		await createUser(otherAdministratorId, 'other-administrator');
 		runtimeRegistry = { disconnectGrant: jest.fn().mockResolvedValue(undefined) };
+		legacyConfigMigration = { migrate: jest.fn() };
 		clientConfig = {
 			getConfiguration: jest.fn(() => ({
 				clientId: 'client-id',
@@ -72,6 +75,7 @@ describe('HomeyCloudGrantMutationService', () => {
 			clientConfig as unknown as HomeyCloudClientConfigService,
 			credentialCipher,
 			runtimeRegistry as unknown as HomeyCloudRuntimeRegistryService,
+			legacyConfigMigration as unknown as HomeyLegacyCloudConfigMigrationService,
 		);
 	});
 
@@ -529,9 +533,10 @@ describe('HomeyCloudGrantMutationService', () => {
 			return Promise.resolve();
 		});
 
-		service.onApplicationBootstrap();
+		await service.onApplicationBootstrap();
 		await teardownObserved;
 
+		expect(legacyConfigMigration.migrate).toHaveBeenCalledTimes(1);
 		expect(runtimeRegistry.disconnectGrant).toHaveBeenCalledTimes(1);
 	});
 

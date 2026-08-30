@@ -1,7 +1,7 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
 
-import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiHideProperty, ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import {
@@ -113,6 +113,12 @@ export class HomeyUpdatePluginConfigDto extends UpdatePluginConfigDto {
 			'[{"field":"cloud_redirect_url","reason":"Cloud redirect URL must be the exact HTTPS callback URL, or use HTTP on a loopback host."}]',
 	})
 	cloudRedirectUrl?: string | null;
+
+	@ApiHideProperty()
+	@Expose({ name: 'cloud_legacy_environment_migrated' })
+	@IsOptional()
+	@IsBoolean()
+	cloudLegacyEnvironmentMigrated?: boolean;
 
 	@ApiPropertyOptional({
 		description: 'Connection timeout in milliseconds',

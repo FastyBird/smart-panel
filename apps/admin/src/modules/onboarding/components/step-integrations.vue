@@ -225,6 +225,7 @@ import { ExtensionKind } from '../../../modules/extensions/extensions.constants'
 import { extensionsStoreKey } from '../../../modules/extensions/store/keys';
 import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
 import { DEVICES_HOMEY_PLUGIN_NAME } from '../../../plugins/devices-homey/devices-homey.constants';
+import { useHomeyCloudAuthorization } from '../../../plugins/devices-homey/store/homey-cloud-authorization.store';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../../../plugins/devices-virtual/devices-virtual.constants';
 
 import IntegrationConfigDialog from './integration-config-dialog.vue';
@@ -238,6 +239,7 @@ const storesManager = injectStoresManager();
 const extensionsStore = storesManager.getStore(extensionsStoreKey);
 const devicesStore = storesManager.getStore(devicesStoreKey);
 const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
+const homeyCloudAuthorization = useHomeyCloudAuthorization();
 const { getByName } = usePlugins();
 const { getByPluginType } = useDevicesPlugins();
 
@@ -361,9 +363,10 @@ const openConfigDialog = (type: string, name: string): void => {
 const onConfigSaved = async (): Promise<void> => {
 	const type = configDialogPluginType.value;
 
-	// Re-trigger discovery after config is saved
-	startDiscovery(type);
 	await checkPluginConfig(type);
+
+	if (!requiresConfiguration(type) || isConfigured(type)) startDiscovery(type);
+	else stopDiscoveryForPlugin(type);
 };
 
 // Discovery timing constants
@@ -515,10 +518,9 @@ const onToggle = async (type: string, enabled: boolean): Promise<void> => {
 		});
 
 		if (enabled) {
-			startDiscovery(type);
+			await checkPluginConfig(type);
 
-			// Check if plugin config exists
-			checkPluginConfig(type);
+			if (!requiresConfiguration(type) || isConfigured(type)) startDiscovery(type);
 		} else {
 			// Clean up state when disabled. Reset generation so any in-flight
 			// discovery from the previous enable cycle discards its results.
@@ -552,14 +554,29 @@ const checkPluginConfig = async (type: string): Promise<void> => {
 		if (config) {
 			if (type === DEVICES_HOMEY_PLUGIN_NAME) {
 				const values = config as unknown as Record<string, unknown>;
-				const complete =
-					values['mode'] === 'cloud'
-						? typeof values['cloudClientId'] === 'string' &&
-							values['cloudClientId'].trim().length > 0 &&
-							values['cloudClientSecretConfigured'] === true &&
-							typeof values['cloudRedirectUrl'] === 'string' &&
-							values['cloudRedirectUrl'].trim().length > 0
-						: typeof values['url'] === 'string' && values['url'].trim().length > 0 && values['apiKeyConfigured'] === true;
+				let complete: boolean;
+
+				if (values['mode'] === 'cloud') {
+					const clientConfigured =
+						typeof values['cloudClientId'] === 'string' &&
+						values['cloudClientId'].trim().length > 0 &&
+						values['cloudClientSecretConfigured'] === true &&
+						typeof values['cloudRedirectUrl'] === 'string' &&
+						values['cloudRedirectUrl'].trim().length > 0;
+					let authorized = false;
+
+					if (clientConfigured) {
+						try {
+							authorized = (await homeyCloudAuthorization.fetchStatus()).connected;
+						} catch {
+							authorized = false;
+						}
+					}
+
+					complete = clientConfigured && authorized;
+				} else {
+					complete = typeof values['url'] === 'string' && values['url'].trim().length > 0 && values['apiKeyConfigured'] === true;
+				}
 
 				if (complete) configuredPlugins.add(type);
 				else configuredPlugins.delete(type);
@@ -579,16 +596,17 @@ const checkPluginConfig = async (type: string): Promise<void> => {
 			configuredPlugins.delete(type);
 		}
 	} catch {
-		// Config fetch may fail - that's ok
+		configuredPlugins.delete(type);
 	}
 };
 
 // Initialize state for already-enabled plugins
-const initializeEnabledPlugins = (): void => {
+const initializeEnabledPlugins = async (): Promise<void> => {
 	for (const plugin of devicePlugins.value) {
 		if (plugin.enabled) {
-			startDiscovery(plugin.type);
-			checkPluginConfig(plugin.type);
+			await checkPluginConfig(plugin.type);
+
+			if (!requiresConfiguration(plugin.type) || isConfigured(plugin.type)) startDiscovery(plugin.type);
 		}
 	}
 };
@@ -604,7 +622,7 @@ onBeforeMount(async () => {
 		isFetching.value = false;
 	}
 
-	initializeEnabledPlugins();
+	await initializeEnabledPlugins();
 });
 
 onBeforeUnmount(() => {

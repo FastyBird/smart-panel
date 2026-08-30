@@ -38,6 +38,7 @@ import { HomeyConfigMutationService } from './services/homey-config-mutation.ser
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
 import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
+import { HomeyLegacyCloudConfigMigrationService } from './services/homey-legacy-cloud-config-migration.service';
 import { HomeyMappingPreviewService } from './services/homey-mapping-preview.service';
 import { HomeySynchronizerService } from './services/homey-synchronizer.service';
 import { HomeyService } from './services/homey.service';
@@ -152,6 +153,7 @@ describe('DevicesHomeyPlugin', () => {
 				HomeyPropertyMappingStorageService,
 				HomeyDeviceInventoryService,
 				HomeyMappingPreviewService,
+				HomeyLegacyCloudConfigMigrationService,
 				HomeyAdoptionLockService,
 				HomeyDeviceAdoptionService,
 				HomeySynchronizerService,

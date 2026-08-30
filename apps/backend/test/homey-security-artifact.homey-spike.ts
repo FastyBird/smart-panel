@@ -72,6 +72,7 @@ const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 	'homey_cloud_user_authorities',
 	'homey-config-validator',
 	'homey-device-inventory',
+	'homey-legacy-cloud-config-migration',
 	'homey-failure-log-limiter',
 	'homey-plugin-batch-adoption',
 	'homey-plugin-cloud-authorization',
@@ -105,7 +106,12 @@ const PUBLIC_SYNTHETIC_IDENTIFIER_VALUES = new Set([
 	'synthetic-lock-device',
 	'synthetic_mode',
 ]);
-const PUBLIC_COMPILED_IDENTIFIER_LABELS = new Set(['base64url', 'event device id', 'event zone id']);
+const PUBLIC_COMPILED_IDENTIFIER_LABELS = new Set([
+	'FB_HOMEY_CLOUD_CLIENT_ID',
+	'base64url',
+	'event device id',
+	'event zone id',
+]);
 const PUBLIC_COMPILED_PERSONAL_VALUES = new Set([
 	'Homey',
 	' ',
@@ -490,8 +496,8 @@ const compiledBindingValues = (binding: ts.BindingElement): readonly ts.Expressi
 	return values;
 };
 
-const SAFE_COMPILED_SECRET_STRINGS = new Set(['', '[~3~]']);
-const SAFE_COMPILED_ADDRESS_STRINGS = new Set(['[~0~]']);
+const SAFE_COMPILED_SECRET_STRINGS = new Set(['', '[~3~]', 'FB_HOMEY_CLOUD_CLIENT_SECRET']);
+const SAFE_COMPILED_ADDRESS_STRINGS = new Set(['FB_HOMEY_CLOUD_REDIRECT_URL', '[~0~]']);
 type SafeCompiledString = ReadonlySet<string> | ((value: string) => boolean);
 
 const isSafeCompiledString = (value: string, safeStrings: SafeCompiledString): boolean =>

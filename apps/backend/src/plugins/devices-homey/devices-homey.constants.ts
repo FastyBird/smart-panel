@@ -55,6 +55,11 @@ export const HOMEY_CLOUD_MAX_TRANSACTION_ID_LENGTH = 128;
 
 export const MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH = 2048;
 
+// Deprecated upgrade-only inputs. New installations configure these values in Admin.
+export const HOMEY_CLOUD_CLIENT_ID_ENV = 'FB_HOMEY_CLOUD_CLIENT_ID';
+export const HOMEY_CLOUD_CLIENT_SECRET_ENV = 'FB_HOMEY_CLOUD_CLIENT_SECRET';
+export const HOMEY_CLOUD_REDIRECT_URL_ENV = 'FB_HOMEY_CLOUD_REDIRECT_URL';
+
 export const HOMEY_CLOUD_SCOPES = [
 	'homey.system.readonly',
 	'homey.zone.readonly',
