@@ -202,6 +202,25 @@ describe('Homey Cloud authorization store', () => {
 		expect(store.status).toEqual({ connected: true, selectedHomeyId: 'homey-b' });
 	});
 
+	it('does not let a stale status response overwrite a completed selection', async () => {
+		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
+		let completeStatus: ((value: ReturnType<typeof success>) => void) | undefined;
+		get.mockReturnValueOnce(
+			new Promise((resolve) => {
+				completeStatus = resolve;
+			})
+		);
+		post.mockResolvedValue(success({ status: 'connected', changed: true, homey_id: 'homey-b' }));
+		const store = useHomeyCloudAuthorization();
+		const statusRequest = store.fetchStatus();
+
+		await store.select('homey-b');
+		completeStatus?.(success({ connected: false, selected_homey_id: null }));
+		await statusRequest;
+
+		expect(store.status).toEqual({ connected: true, selectedHomeyId: 'homey-b' });
+	});
+
 	it('recovers a committed selection when its response was lost', async () => {
 		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
 		post.mockResolvedValue({ error: {}, response: { status: 409 } });
@@ -250,6 +269,25 @@ describe('Homey Cloud authorization store', () => {
 		await store.disconnect();
 
 		expect(post).toHaveBeenCalledWith('/plugins/devices-homey/oauth/disconnect');
+		expect(store.status).toEqual({ connected: false, selectedHomeyId: null });
+	});
+
+	it('does not let a stale status response overwrite a completed disconnect', async () => {
+		let completeStatus: ((value: ReturnType<typeof success>) => void) | undefined;
+		get.mockReturnValueOnce(
+			new Promise((resolve) => {
+				completeStatus = resolve;
+			})
+		);
+		post.mockResolvedValue(success({ status: 'disconnected', changed: true, homey_id: null }));
+		const store = useHomeyCloudAuthorization();
+		store.status = { connected: true, selectedHomeyId: 'homey-id' };
+		const statusRequest = store.fetchStatus();
+
+		await store.disconnect();
+		completeStatus?.(success({ connected: true, selected_homey_id: 'homey-id' }));
+		await statusRequest;
+
 		expect(store.status).toEqual({ connected: false, selectedHomeyId: null });
 	});
 });

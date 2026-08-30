@@ -71,6 +71,7 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 	const fetching = ref(false);
 	const authorizing = ref(false);
 	const mutating = ref(false);
+	let statusGeneration = 0;
 
 	const persistPendingTransaction = (value: IHomeyCloudPendingTransaction | null): void => {
 		if (typeof window === 'undefined') {
@@ -93,6 +94,7 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 	};
 
 	const applyConnectedHomey = (homeyId: string | null | undefined): void => {
+		statusGeneration += 1;
 		clearPendingTransaction();
 		status.value = { connected: true, selectedHomeyId: homeyId ?? null };
 	};
@@ -134,11 +136,17 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 	};
 
 	const fetchStatus = async (): Promise<IHomeyCloudAuthorizationStatus> => {
+		const generation = ++statusGeneration;
 		fetching.value = true;
 
 		try {
 			const { data, error, response } = await backend.client.GET(`${endpoint}/status`);
-			if (data) return (status.value = transformHomeyCloudAuthorizationStatus(data.data));
+			if (data) {
+				const result = transformHomeyCloudAuthorizationStatus(data.data);
+				if (generation === statusGeneration) status.value = result;
+
+				return result;
+			}
 
 			throw new DevicesHomeyApiException(
 				getErrorReason<DevicesHomeyPluginGetCloudAuthorizationStatusOperation>(error, 'Failed to load Homey Cloud authorization status.'),
@@ -281,6 +289,7 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 			if (data) {
 				const result = transformHomeyCloudAuthorizationCompletion(data.data);
 				clearPendingTransaction();
+				statusGeneration += 1;
 				status.value = { connected: false, selectedHomeyId: null };
 				return result;
 			}
