@@ -86,6 +86,23 @@ describe('HomeyCloudAuthorizationPanel', () => {
 		expect(navigate).toHaveBeenCalledWith('https://api.athom.com/oauth2/authorise');
 	});
 
+	it('disables disconnect while reconnect authorization is starting', async () => {
+		authorizationStore.status = { connected: true, selectedHomeyId: 'homey-id' };
+		authorizationStore.start.mockImplementationOnce(
+			() =>
+				new Promise(() => {
+					authorizationStore.authorizing = true;
+				})
+		);
+		const wrapper = mountPanel({ savedMode: DevicesHomeyPluginConnectionMode.cloud });
+		await flushPromises();
+
+		await wrapper.get('[data-test-id="homey-cloud-reconnect"]').trigger('click');
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.get('[data-test-id="homey-cloud-disconnect"]').attributes('disabled')).toBeDefined();
+	});
+
 	it('renders eligible Homeys returned after the callback', async () => {
 		authorizationStore.homeys = [
 			{ id: 'homey-a', name: 'Home' },

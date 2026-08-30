@@ -103,6 +103,7 @@
 						type="danger"
 						plain
 						:loading="authorizationStore.mutating"
+						:disabled="authorizationStore.authorizing || authorizationStore.mutating"
 						data-test-id="homey-cloud-disconnect"
 						@click="disconnect"
 					>
