@@ -19,6 +19,14 @@ import {
 	ServiceStatusExtended,
 } from './managed-plugin-service.interface';
 
+const READINESS_RETRY_INITIAL_DELAY_MS = 15_000;
+const READINESS_RETRY_MAX_ATTEMPTS = 3;
+
+interface ReadinessRetryState {
+	attempt: number;
+	timer: NodeJS.Timeout | null;
+}
+
 /**
  * Centralized service manager for plugin lifecycle management.
  *
@@ -46,6 +54,8 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 	private readonly services: Map<string, ServiceRegistration> = new Map();
 	private readonly runtimeInfo: Map<string, ServiceRuntimeInfo> = new Map();
+	private readonly readinessRetries: Map<string, ReadinessRetryState> = new Map();
+	private readonly serviceStartPromises: Map<string, Promise<void>> = new Map();
 	private readonly isCliMode: boolean;
 
 	private startupComplete = false;
@@ -117,6 +127,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 		this.services.delete(key);
 		this.runtimeInfo.delete(key);
+		this.clearReadinessRetry(key);
 
 		this.logger.log(`Unregistered service: ${key}`);
 	}
@@ -162,6 +173,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	 */
 	async stopAllServices(): Promise<void> {
 		this.shutdownInProgress = true;
+		this.clearAllReadinessRetries();
 
 		this.logger.log('Stopping all managed services for factory reset');
 
@@ -200,6 +212,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	 */
 	async onModuleDestroy(): Promise<void> {
 		this.shutdownInProgress = true;
+		this.clearAllReadinessRetries();
 
 		this.logger.log('Stopping all managed services');
 
@@ -421,6 +434,8 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			return false;
 		}
 
+		this.clearReadinessRetry(key);
+
 		const currentState = registration.service.getState();
 
 		if (currentState === 'stopped' || currentState === 'stopping') {
@@ -468,6 +483,24 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 	private async startService(registration: ServiceRegistration): Promise<void> {
 		const key = this.getServiceKey(registration.pluginName, registration.serviceId);
+		const pendingStart = this.serviceStartPromises.get(key);
+
+		if (pendingStart !== undefined) {
+			await pendingStart;
+			return;
+		}
+
+		this.clearReadinessRetryTimer(key);
+
+		const startPromise = this.startServiceOnce(registration, key).finally(() => {
+			if (this.serviceStartPromises.get(key) === startPromise) this.serviceStartPromises.delete(key);
+		});
+		this.serviceStartPromises.set(key, startPromise);
+
+		await startPromise;
+	}
+
+	private async startServiceOnce(registration: ServiceRegistration, key: string): Promise<void> {
 		const currentState = registration.service.getState();
 
 		if (currentState === 'started' || currentState === 'starting') {
@@ -498,6 +531,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 					const runtime = this.runtimeInfo.get(key);
 
 					if (runtime) runtime.lastError = warning;
+					this.scheduleReadinessRetry(registration);
 
 					return;
 				}
@@ -514,6 +548,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 					if (runtime) {
 						runtime.lastError = `Config validation failed: ${errors}`;
 					}
+					this.clearReadinessRetry(key);
 
 					return;
 				}
@@ -531,6 +566,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 				runtime.startCount += 1;
 				runtime.lastError = undefined;
 			}
+			this.clearReadinessRetry(key);
 
 			this.logger.log(`Service started successfully: ${key}`);
 		} catch (error) {
@@ -587,6 +623,8 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const config = this.getPluginConfig(registration.pluginName);
 		let currentState = registration.service.getState();
 		const shouldBeRunning = config?.enabled ?? false;
+
+		if (!shouldBeRunning) this.clearReadinessRetry(key);
 
 		// Handle transitional states by waiting for them to complete
 		if (currentState === 'starting' || currentState === 'stopping') {
@@ -671,6 +709,71 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 				this.logger.error(`Config change handler failed for ${key}: ${err.message}`);
 			}
 		}
+	}
+
+	private scheduleReadinessRetry(registration: ServiceRegistration): void {
+		const key = this.getServiceKey(registration.pluginName, registration.serviceId);
+
+		if (this.shutdownInProgress || this.services.get(key) !== registration) return;
+
+		const current = this.readinessRetries.get(key);
+
+		if (current?.timer) return;
+
+		const attempt = (current?.attempt ?? 0) + 1;
+
+		if (attempt > READINESS_RETRY_MAX_ATTEMPTS) {
+			this.readinessRetries.delete(key);
+			this.logger.warn(`Readiness retries exhausted for service: ${key}`);
+			return;
+		}
+
+		const delayMs = READINESS_RETRY_INITIAL_DELAY_MS * 2 ** (attempt - 1);
+		const timer = setTimeout(() => {
+			const retry = this.readinessRetries.get(key);
+
+			if (!retry || retry.timer !== timer) return;
+
+			retry.timer = null;
+
+			if (
+				this.shutdownInProgress ||
+				this.services.get(key) !== registration ||
+				!this.getPluginConfig(registration.pluginName)?.enabled
+			) {
+				this.clearReadinessRetry(key);
+				return;
+			}
+
+			void this.startService(registration).catch((error: unknown) => {
+				const message = error instanceof Error ? error.message : 'Unknown error';
+				this.logger.error(`Readiness retry failed for service ${key}: ${message}`);
+			});
+		}, delayMs);
+		timer.unref();
+		this.readinessRetries.set(key, { attempt, timer });
+
+		this.logger.warn(
+			`Scheduled readiness retry ${attempt}/${READINESS_RETRY_MAX_ATTEMPTS} for service ${key} in ${delayMs}ms`,
+		);
+	}
+
+	private clearReadinessRetryTimer(key: string): void {
+		const retry = this.readinessRetries.get(key);
+
+		if (!retry?.timer) return;
+
+		clearTimeout(retry.timer);
+		retry.timer = null;
+	}
+
+	private clearReadinessRetry(key: string): void {
+		this.clearReadinessRetryTimer(key);
+		this.readinessRetries.delete(key);
+	}
+
+	private clearAllReadinessRetries(): void {
+		for (const key of this.readinessRetries.keys()) this.clearReadinessRetry(key);
 	}
 
 	private waitForState(
