@@ -180,6 +180,7 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 		private readonly homeyDevicePlatform: HomeyDevicePlatform,
 		private readonly userLifecycleMutations: UserLifecycleMutationRegistryService,
 		private readonly homeyCloudGrantMutations: HomeyCloudGrantMutationService,
+		private readonly legacyCloudConfigMigration: HomeyLegacyCloudConfigMigrationService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 	) {}
 
@@ -218,6 +219,10 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 				},
 			],
 		});
+		// Module initialization completes before imported managed services enter
+		// application bootstrap, so legacy credentials are available when Homey
+		// grant reconciliation and service enablement first inspect configuration.
+		this.legacyCloudConfigMigration.migrate();
 
 		this.devicesMapper.registerMapping<HomeyDeviceEntity, CreateHomeyDeviceDto, UpdateHomeyDeviceDto>({
 			type: DEVICES_HOMEY_TYPE,

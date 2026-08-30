@@ -33,7 +33,6 @@ import {
 import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
 import { HomeyCloudCredentialCipherService, HomeyCloudCredentialRecord } from './homey-cloud-credential-cipher.service';
 import { HomeyCloudRuntimeRegistryService } from './homey-cloud-runtime-registry.service';
-import { HomeyLegacyCloudConfigMigrationService } from './homey-legacy-cloud-config-migration.service';
 
 const AUTHORIZED_ROLES = [UserRole.OWNER, UserRole.ADMIN];
 
@@ -109,7 +108,6 @@ export class HomeyCloudGrantMutationService
 		private readonly clientConfig: HomeyCloudClientConfigService,
 		private readonly credentialCipher: HomeyCloudCredentialCipherService,
 		private readonly runtimeRegistry: HomeyCloudRuntimeRegistryService,
-		private readonly legacyConfigMigration: HomeyLegacyCloudConfigMigrationService,
 	) {}
 
 	async onApplicationBootstrap(): Promise<void> {
@@ -120,7 +118,6 @@ export class HomeyCloudGrantMutationService
 		}, HOMEY_CLOUD_PENDING_GRANT_CLEANUP_INTERVAL_MS);
 		this.cleanupTimer.unref();
 
-		this.legacyConfigMigration.migrate();
 		await this.disconnectRuntimeWithoutGrant();
 	}
 

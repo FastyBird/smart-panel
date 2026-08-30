@@ -62,6 +62,7 @@ describe('DevicesHomeyPlugin', () => {
 		const homeyDevicePlatform = { getType: () => DEVICES_HOMEY_TYPE };
 		const userLifecycleMutations = { registerParticipant: jest.fn() };
 		const homeyCloudGrantMutations = { resetForFactory: jest.fn().mockResolvedValue(undefined) };
+		const legacyCloudConfigMigration = { migrate: jest.fn() };
 		let resetHandler: (() => Promise<{ success: boolean; reason?: string } | null>) | undefined;
 		const factoryResetRegistry = {
 			register: jest.fn(
@@ -85,6 +86,7 @@ describe('DevicesHomeyPlugin', () => {
 			homeyDevicePlatform as unknown as HomeyDevicePlatform,
 			userLifecycleMutations as unknown as UserLifecycleMutationRegistryService,
 			homeyCloudGrantMutations as unknown as HomeyCloudGrantMutationService,
+			legacyCloudConfigMigration as unknown as HomeyLegacyCloudConfigMigrationService,
 			factoryResetRegistry as unknown as FactoryResetRegistryService,
 		);
 
@@ -107,6 +109,10 @@ describe('DevicesHomeyPlugin', () => {
 				},
 			],
 		});
+		expect(legacyCloudConfigMigration.migrate).toHaveBeenCalledTimes(1);
+		expect(legacyCloudConfigMigration.migrate.mock.invocationCallOrder[0]).toBeLessThan(
+			pluginServiceManager.register.mock.invocationCallOrder[0],
+		);
 		expect(devicesMapper.registerMapping).toHaveBeenCalledWith(expect.objectContaining({ type: DEVICES_HOMEY_TYPE }));
 		expect(channelsMapper.registerMapping).toHaveBeenCalledWith(expect.objectContaining({ type: DEVICES_HOMEY_TYPE }));
 		expect(propertiesMapper.registerMapping).toHaveBeenCalledWith(
