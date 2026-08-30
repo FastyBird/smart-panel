@@ -275,6 +275,7 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 			if (data) {
 				const result = transformHomeyCloudAuthorizationCompletion(data.data);
 				clearPendingTransaction();
+				if (status.value === null) await fetchStatus();
 				return result;
 			}
 

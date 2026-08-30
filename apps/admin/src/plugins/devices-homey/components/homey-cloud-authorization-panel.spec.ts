@@ -1,6 +1,6 @@
 import { reactive } from 'vue';
 
-import { ElOption } from 'element-plus';
+import { ElOption, ElSelect } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
@@ -127,6 +127,28 @@ describe('HomeyCloudAuthorizationPanel', () => {
 
 		expect(wrapper.find('[data-test-id="homey-cloud-selection"]').exists()).toBe(true);
 		expect(wrapper.findAllComponents(ElOption).map((option) => option.props('label'))).toEqual(['Home', 'Cabin']);
+	});
+
+	it('clears a selection that disappears when the store refreshes rejected choices', async () => {
+		authorizationStore.homeys = [
+			{ id: 'homey-a', name: 'Home' },
+			{ id: 'homey-b', name: 'Cabin' },
+		];
+		authorizationStore.select.mockImplementationOnce(async () => {
+			authorizationStore.homeys = [{ id: 'homey-a', name: 'Home' }];
+			throw new Error('selection rejected');
+		});
+		const wrapper = mountPanel({ savedMode: DevicesHomeyPluginConnectionMode.cloud });
+		await flushPromises();
+
+		wrapper.getComponent(ElSelect).vm.$emit('update:modelValue', 'homey-b');
+		await wrapper.vm.$nextTick();
+		await wrapper.get('[data-test-id="homey-cloud-select"]').trigger('click');
+		await flushPromises();
+
+		expect(authorizationStore.select).toHaveBeenCalledWith('homey-b');
+		expect(wrapper.getComponent(ElSelect).props('modelValue')).toBeNull();
+		expect(wrapper.get('[data-test-id="homey-cloud-select"]').attributes('disabled')).toBeDefined();
 	});
 
 	it('shows only a fixed error when authorization fails', async () => {

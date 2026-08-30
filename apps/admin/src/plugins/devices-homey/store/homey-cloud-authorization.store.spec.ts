@@ -276,6 +276,19 @@ describe('Homey Cloud authorization store', () => {
 		expect(store.pendingTransaction).toEqual(pending);
 	});
 
+	it('refreshes an unknown grant status after cancelling an authorization', async () => {
+		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
+		post.mockResolvedValue(success({ status: 'cancelled', changed: true, homey_id: null }));
+		get.mockResolvedValue(success({ connected: true, selected_homey_id: 'active-homey' }));
+		const store = useHomeyCloudAuthorization();
+
+		await expect(store.cancel()).resolves.toEqual({ status: 'cancelled', changed: true, homeyId: null });
+
+		expect(get).toHaveBeenCalledWith('/plugins/devices-homey/oauth/status');
+		expect(store.pendingTransaction).toBeNull();
+		expect(store.status).toEqual({ connected: true, selectedHomeyId: 'active-homey' });
+	});
+
 	it('disconnects without exposing or sending stored credentials', async () => {
 		post.mockResolvedValue(success({ status: 'disconnected', changed: true, homey_id: null }));
 		const store = useHomeyCloudAuthorization();

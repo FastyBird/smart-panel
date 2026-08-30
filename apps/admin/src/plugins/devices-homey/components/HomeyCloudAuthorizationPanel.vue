@@ -163,10 +163,11 @@ const startAuthorization = async (reconnect: boolean): Promise<void> => {
 
 const selectHomey = async (): Promise<void> => {
 	if (selectedHomeyId.value === null) return;
-	await run(async () => {
-		await authorizationStore.select(selectedHomeyId.value as string);
-		selectedHomeyId.value = null;
-	});
+	const homeyId = selectedHomeyId.value;
+
+	await run(() => authorizationStore.select(homeyId));
+
+	if (!authorizationStore.homeys.some((homey) => homey.id === homeyId)) selectedHomeyId.value = null;
 };
 
 const cancelAuthorization = async (): Promise<void> => {
