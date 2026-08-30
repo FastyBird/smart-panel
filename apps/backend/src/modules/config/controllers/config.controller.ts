@@ -138,6 +138,7 @@ export class ConfigController {
 	@ApiBadRequestResponse('Invalid plugin configuration data or unsupported plugin type')
 	@ApiNotFoundResponse('Plugin configuration not found')
 	@ApiInternalServerErrorResponse('Internal server error')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	async updatePluginConfig(
 		@Param('plugin') plugin: string,
 		@Body() pluginConfig: { data: object },

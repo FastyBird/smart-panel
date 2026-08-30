@@ -176,6 +176,10 @@ describe('ConfigController', () => {
 	});
 
 	describe('updatePluginConfig', () => {
+		it('requires an owner or administrator role', () => {
+			expect(Reflect.getMetadata(ROLES_KEY, controller.updatePluginConfig)).toEqual([UserRole.OWNER, UserRole.ADMIN]);
+		});
+
 		it('returns a bad request when the resolved stored configuration is invalid', async () => {
 			jest
 				.spyOn(configService, 'updatePluginConfig')
