@@ -199,6 +199,12 @@ describe('HomeyCloudGrantMutationService', () => {
 		await service.activateCandidate('downgrade-active', administratorId, 'homey-one');
 		await dataSource
 			.getRepository(HomeyCloudActiveGrantEntity)
+			.update({ key: HOMEY_CLOUD_ACTIVE_GRANT_KEY }, { credentialsVersion: 0 });
+
+		await expect(service.loadActiveGrantCredentials()).rejects.toThrow(HomeyCloudGrantStateError);
+
+		await dataSource
+			.getRepository(HomeyCloudActiveGrantEntity)
 			.update({ key: HOMEY_CLOUD_ACTIVE_GRANT_KEY }, { accessToken: 'stripped-envelope', credentialsVersion: 1 });
 
 		await expect(service.loadActiveGrantCredentials()).rejects.toThrow(HomeyCloudGrantStateError);

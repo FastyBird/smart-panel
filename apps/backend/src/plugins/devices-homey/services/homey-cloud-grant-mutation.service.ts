@@ -919,6 +919,11 @@ export class HomeyCloudGrantMutationService
 		recordId: string,
 	): HomeyCloudTokenMaterial {
 		if (grant.credentialsVersion === 0) {
+			const accessTokenEncrypted = this.credentialCipher.isEncrypted(grant.accessToken);
+			const refreshTokenEncrypted =
+				grant.refreshToken !== null && this.credentialCipher.isEncrypted(grant.refreshToken);
+			if (accessTokenEncrypted || refreshTokenEncrypted) throw new HomeyCloudGrantStateError();
+
 			return {
 				tokenType: grant.tokenType,
 				accessToken: grant.accessToken,
