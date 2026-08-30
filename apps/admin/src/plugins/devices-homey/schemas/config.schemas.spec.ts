@@ -80,6 +80,22 @@ describe('HomeyConfigEditFormSchema', () => {
 		if (result.success) expect(result.data.apiKey).toBeUndefined();
 	});
 
+	it('omits a hidden invalid local URL from cloud-mode submissions', () => {
+		const result = HomeyConfigEditFormSchema.safeParse(
+			createConfig({ mode: DevicesHomeyPluginConnectionMode.cloud, url: 'file:///hidden-local-path' })
+		);
+
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data.url).toBeUndefined();
+	});
+
+	it('rejects an invalid URL in local mode', () => {
+		const result = HomeyConfigEditFormSchema.safeParse(createConfig({ url: 'file:///local-path' }));
+
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.error.issues).toEqual(expect.arrayContaining([expect.objectContaining({ path: ['url'] })]));
+	});
+
 	it.each([
 		['connection timeout minimum', { connectionTimeout: MIN_HOMEY_CONNECTION_TIMEOUT_MS }],
 		['connection timeout maximum', { connectionTimeout: MAX_HOMEY_CONNECTION_TIMEOUT_MS }],

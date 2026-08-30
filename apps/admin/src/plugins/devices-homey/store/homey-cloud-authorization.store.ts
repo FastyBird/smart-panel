@@ -43,7 +43,7 @@ const readPendingTransaction = (): IHomeyCloudPendingTransaction | null => {
 		if (value === null) return null;
 
 		const result = HomeyCloudPendingTransactionSchema.safeParse(JSON.parse(value));
-		if (!result.success || Date.parse(result.data.expiresAt) <= Date.now()) {
+		if (!result.success) {
 			window.sessionStorage.removeItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY);
 			return null;
 		}

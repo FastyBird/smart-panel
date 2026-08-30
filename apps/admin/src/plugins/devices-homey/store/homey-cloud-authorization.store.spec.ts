@@ -85,6 +85,22 @@ describe('Homey Cloud authorization store', () => {
 		});
 	});
 
+	it('lets the backend decide whether a locally expired transaction remains resumable', async () => {
+		const callbackTransaction = { ...pending, expiresAt: '2000-08-30T12:00:00.000Z' };
+		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(callbackTransaction));
+		get.mockResolvedValue(success({ status: 'selection_required', homey_id: null, homeys: [{ id: 'homey-a', name: 'Home' }] }));
+		const store = useHomeyCloudAuthorization();
+
+		await expect(store.resume()).resolves.toEqual({
+			status: 'selection_required',
+			homeyId: null,
+			homeys: [{ id: 'homey-a', name: 'Home' }],
+		});
+		expect(get).toHaveBeenCalledWith('/plugins/devices-homey/oauth/transactions/{transactionId}/homeys', {
+			params: { path: { transactionId: pending.transactionId } },
+		});
+	});
+
 	it('accepts completion only when the exact transaction activated', async () => {
 		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
 		get.mockResolvedValue(success({ status: 'connected', homey_id: 'homey-id', homeys: [] }));

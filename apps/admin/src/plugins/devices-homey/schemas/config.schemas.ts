@@ -9,7 +9,7 @@ import {
 	MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
 } from '../devices-homey.constants';
 
-import { HomeyUrlSchema } from './homey-url.schemas';
+import { isSafeHomeyUrl } from './homey-url.schemas';
 
 export const hasUsableHomeyApiKey = (value: string | null | undefined, configured: boolean | undefined): boolean =>
 	(typeof value === 'string' && value.trim() !== '') || (value === undefined && configured === true);
@@ -18,14 +18,16 @@ export const isBlankHomeyApiKeyReplacement = (value: string | null | undefined):
 
 export const HomeyConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
 	mode: z.nativeEnum(DevicesHomeyPluginConnectionMode),
-	url: HomeyUrlSchema.nullable().optional(),
+	url: z.string().nullable().optional(),
 	apiKey: z.string().nullable().optional(),
 	apiKeyConfigured: z.boolean().optional(),
 	connectionTimeout: z.coerce.number().int().min(MIN_HOMEY_CONNECTION_TIMEOUT_MS).max(MAX_HOMEY_CONNECTION_TIMEOUT_MS),
 	reconciliationInterval: z.coerce.number().int().min(MIN_HOMEY_RECONCILIATION_INTERVAL_MS).max(MAX_HOMEY_RECONCILIATION_INTERVAL_MS),
 })
 	.superRefine((value, context) => {
-		if (value.mode === DevicesHomeyPluginConnectionMode.local && isBlankHomeyApiKeyReplacement(value.apiKey)) {
+		if (value.mode === DevicesHomeyPluginConnectionMode.local && typeof value.url === 'string' && !isSafeHomeyUrl(value.url)) {
+			context.addIssue({ code: 'custom', path: ['url'], message: 'Homey URL must use HTTP or HTTPS without embedded credentials' });
+		} else if (value.mode === DevicesHomeyPluginConnectionMode.local && isBlankHomeyApiKeyReplacement(value.apiKey)) {
 			context.addIssue({ code: 'custom', path: ['apiKey'], message: 'A Homey API key replacement must not be blank' });
 		} else if (
 			value.mode === DevicesHomeyPluginConnectionMode.local &&
@@ -35,4 +37,4 @@ export const HomeyConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
 			context.addIssue({ code: 'custom', path: ['apiKey'], message: 'A Homey API key is required when the plugin is enabled' });
 		}
 	})
-	.overwrite((value) => (value.mode === DevicesHomeyPluginConnectionMode.cloud ? { ...value, apiKey: undefined } : value));
+	.overwrite((value) => (value.mode === DevicesHomeyPluginConnectionMode.cloud ? { ...value, url: undefined, apiKey: undefined } : value));
