@@ -130,4 +130,15 @@ describe('HomeyConfigForm', () => {
 
 		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('cloud');
 	});
+
+	it('restores the saved connection mode when the parent resets the form', async () => {
+		const wrapper = mountForm();
+		model.mode = DevicesHomeyPluginConnectionMode.cloud;
+		await wrapper.vm.$nextTick();
+
+		await wrapper.setProps({ remoteFormReset: true });
+		await flushPromises();
+
+		expect(model.mode).toBe(DevicesHomeyPluginConnectionMode.local);
+	});
 });

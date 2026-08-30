@@ -15,6 +15,7 @@
 
 		<el-form-item
 			:label="t('devicesHomeyPlugin.config.mode.label')"
+			prop="mode"
 			class="mt-3"
 		>
 			<el-radio-group v-model="model.mode">

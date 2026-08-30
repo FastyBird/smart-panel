@@ -73,19 +73,37 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 	const mutating = ref(false);
 
 	const persistPendingTransaction = (value: IHomeyCloudPendingTransaction | null): void => {
-		pendingTransaction.value = value;
-		if (typeof window === 'undefined') return;
+		if (typeof window === 'undefined') {
+			pendingTransaction.value = value;
+			return;
+		}
 
 		if (value === null) {
+			pendingTransaction.value = null;
 			removePendingTransactionFromStorage();
 		} else {
 			window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(value));
+			pendingTransaction.value = value;
 		}
 	};
 
 	const clearPendingTransaction = (): void => {
 		homeys.value = [];
 		persistPendingTransaction(null);
+	};
+
+	const cancelUnpersistedTransaction = async (transactionId: string): Promise<void> => {
+		const body: DevicesHomeyPluginCloudAuthorizationTransactionRequestSchema = {
+			data: { transaction_id: transactionId },
+		};
+
+		try {
+			await backend.client.POST(`${endpoint}/cancel`, { body });
+		} catch {
+			// The backend still expires an unreachable transaction; preserve the storage failure as the actionable error.
+		}
+
+		clearPendingTransaction();
 	};
 
 	const fetchStatus = async (): Promise<IHomeyCloudAuthorizationStatus> => {
@@ -114,7 +132,14 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 
 			if (data) {
 				const result = transformHomeyCloudAuthorizationStart(data.data);
-				persistPendingTransaction({ transactionId: result.transactionId, expiresAt: result.expiresAt });
+
+				try {
+					persistPendingTransaction({ transactionId: result.transactionId, expiresAt: result.expiresAt });
+				} catch {
+					await cancelUnpersistedTransaction(result.transactionId);
+					throw new DevicesHomeyApiException('Browser session storage is required for Homey Cloud authorization.');
+				}
+
 				homeys.value = [];
 				return result;
 			}

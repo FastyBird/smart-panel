@@ -71,6 +71,33 @@ describe('Homey Cloud authorization store', () => {
 		expect(post).toHaveBeenCalledWith('/plugins/devices-homey/oauth/authorize', {});
 	});
 
+	it('cancels a newly started transaction when browser storage cannot persist it', async () => {
+		post
+			.mockResolvedValueOnce(
+				success({
+					authorize_url: 'https://api.athom.com/oauth2/authorise?state=provider-state',
+					transaction_id: pending.transactionId,
+					expires_at: pending.expiresAt,
+				})
+			)
+			.mockResolvedValueOnce(success({ status: 'cancelled', changed: true, homey_id: null }));
+		const store = useHomeyCloudAuthorization();
+		vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+			throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
+		});
+
+		await expect(store.start()).rejects.toEqual(
+			expect.objectContaining<Partial<DevicesHomeyApiException>>({
+				message: 'Browser session storage is required for Homey Cloud authorization.',
+			})
+		);
+		expect(post).toHaveBeenNthCalledWith(2, '/plugins/devices-homey/oauth/cancel', {
+			body: { data: { transaction_id: pending.transactionId } },
+		});
+		expect(store.pendingTransaction).toBeNull();
+		expect(store.authorizing).toBe(false);
+	});
+
 	it('resumes a multiple-Homey callback from page-scoped storage', async () => {
 		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
 		get.mockResolvedValue(
