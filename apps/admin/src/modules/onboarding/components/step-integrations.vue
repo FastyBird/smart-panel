@@ -224,6 +224,7 @@ import { devicesStoreKey } from '../../../modules/devices/store/keys';
 import { ExtensionKind } from '../../../modules/extensions/extensions.constants';
 import { extensionsStoreKey } from '../../../modules/extensions/store/keys';
 import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
+import { DEVICES_HOMEY_PLUGIN_NAME } from '../../../plugins/devices-homey/devices-homey.constants';
 import { DEVICES_VIRTUAL_PLUGIN_NAME } from '../../../plugins/devices-virtual/devices-virtual.constants';
 
 import IntegrationConfigDialog from './integration-config-dialog.vue';
@@ -261,10 +262,12 @@ const configDialogPluginName = ref('');
 const pluginsRequiringConfig: Record<string, boolean> = {
 	'devices-home-assistant-plugin': true,
 	'devices-zigbee2mqtt-plugin': true,
+	[DEVICES_HOMEY_PLUGIN_NAME]: true,
 };
 
 const pluginIcons: Record<string, string> = {
 	'devices-home-assistant-plugin': 'mdi:home-assistant',
+	[DEVICES_HOMEY_PLUGIN_NAME]: 'mdi:home-automation',
 	'devices-shelly-v1-plugin': 'mdi:chip',
 	'devices-shelly-ng-plugin': 'mdi:chip',
 	'devices-zigbee2mqtt-plugin': 'mdi:zigbee',
@@ -546,6 +549,22 @@ const checkPluginConfig = async (type: string): Promise<void> => {
 		const config = await configPluginsStore.get({ type });
 
 		if (config) {
+			if (type === DEVICES_HOMEY_PLUGIN_NAME) {
+				const values = config as unknown as Record<string, unknown>;
+				const complete =
+					values['mode'] === 'cloud'
+						? typeof values['cloudClientId'] === 'string' &&
+							values['cloudClientId'].trim().length > 0 &&
+							values['cloudClientSecretConfigured'] === true &&
+							typeof values['cloudRedirectUrl'] === 'string' &&
+							values['cloudRedirectUrl'].trim().length > 0
+						: typeof values['url'] === 'string' && values['url'].trim().length > 0 && values['apiKeyConfigured'] === true;
+
+				if (complete) configuredPlugins.add(type);
+
+				return;
+			}
+
 			// Check if meaningful config values are set (beyond just 'type' and 'enabled')
 			const configEntries = Object.entries(config).filter(([key, val]) => key !== 'type' && key !== 'enabled' && val !== null && val !== '');
 

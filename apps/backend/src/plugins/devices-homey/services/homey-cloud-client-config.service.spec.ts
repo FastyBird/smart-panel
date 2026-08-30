@@ -1,29 +1,24 @@
-import { ConfigService as NestConfigService } from '@nestjs/config';
-
-import {
-	HOMEY_CLOUD_CALLBACK_PATH,
-	HOMEY_CLOUD_CLIENT_ID_ENV,
-	HOMEY_CLOUD_CLIENT_SECRET_ENV,
-	HOMEY_CLOUD_REDIRECT_URL_ENV,
-} from '../devices-homey.constants';
+import { ConfigService } from '../../../modules/config/services/config.service';
+import { HOMEY_CLOUD_CALLBACK_PATH } from '../devices-homey.constants';
 import { HomeyCloudConfigurationError } from '../errors/homey-cloud-authorization.error';
+import { HomeyConfigModel } from '../models/config.model';
 
 import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
 
 describe('HomeyCloudClientConfigService', () => {
 	const valid = {
-		[HOMEY_CLOUD_CLIENT_ID_ENV]: ' client-id ',
-		[HOMEY_CLOUD_CLIENT_SECRET_ENV]: ' client-secret ',
-		[HOMEY_CLOUD_REDIRECT_URL_ENV]: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
+		cloudClientId: ' client-id ',
+		cloudClientSecret: ' client-secret ',
+		cloudRedirectUrl: `https://panel.example.com${HOMEY_CLOUD_CALLBACK_PATH}`,
 	};
 
 	function create(values: Record<string, unknown> = valid): HomeyCloudClientConfigService {
 		return new HomeyCloudClientConfigService({
-			get: jest.fn((key: string) => values[key]),
-		} as unknown as NestConfigService);
+			getPluginConfig: jest.fn(() => Object.assign(new HomeyConfigModel(), values)),
+		} as unknown as ConfigService);
 	}
 
-	it('returns trimmed deployment-owned client configuration', () => {
+	it('returns trimmed admin-managed client configuration', () => {
 		expect(create().getConfiguration()).toEqual({
 			clientId: 'client-id',
 			clientSecret: 'client-secret',
@@ -37,22 +32,19 @@ describe('HomeyCloudClientConfigService', () => {
 
 		expect(fingerprint).toMatch(/^[a-f0-9]{64}$/);
 		expect(create().getConfigurationFingerprint()).toBe(fingerprint);
-		expect(
-			create({ ...valid, [HOMEY_CLOUD_CLIENT_SECRET_ENV]: 'rotated-secret' }).getConfigurationFingerprint(),
-		).not.toBe(fingerprint);
+		expect(create({ ...valid, cloudClientSecret: 'rotated-secret' }).getConfigurationFingerprint()).not.toBe(
+			fingerprint,
+		);
 		expect(fingerprint).not.toContain('client-secret');
 	});
 
-	it.each([HOMEY_CLOUD_CLIENT_ID_ENV, HOMEY_CLOUD_CLIENT_SECRET_ENV, HOMEY_CLOUD_REDIRECT_URL_ENV])(
-		'fails closed when %s is missing',
-		(key) => {
-			const service = create({ ...valid, [key]: '   ' });
+	it.each(['cloudClientId', 'cloudClientSecret', 'cloudRedirectUrl'])('fails closed when %s is missing', (key) => {
+		const service = create({ ...valid, [key]: '   ' });
 
-			expect(() => service.getConfiguration()).toThrow(HomeyCloudConfigurationError);
-			expect(service.isConfigured()).toBe(false);
-			expect(service.getConfigurationFingerprint()).toBeNull();
-		},
-	);
+		expect(() => service.getConfiguration()).toThrow(HomeyCloudConfigurationError);
+		expect(service.isConfigured()).toBe(false);
+		expect(service.getConfigurationFingerprint()).toBeNull();
+	});
 
 	it.each([
 		'not-a-url',
@@ -62,7 +54,7 @@ describe('HomeyCloudClientConfigService', () => {
 		'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback#fragment',
 		'https://panel.example.com/api/v1/plugins/devices-homey/oauth/other',
 	])('rejects an unsafe or inexact redirect URL: %s', (redirectUrl) => {
-		const service = create({ ...valid, [HOMEY_CLOUD_REDIRECT_URL_ENV]: redirectUrl });
+		const service = create({ ...valid, cloudRedirectUrl: redirectUrl });
 
 		expect(() => service.getConfiguration()).toThrow(HomeyCloudConfigurationError);
 		expect(service.isConfigured()).toBe(false);
@@ -71,8 +63,6 @@ describe('HomeyCloudClientConfigService', () => {
 	it.each(['localhost', '127.0.0.1', '[::1]'])('allows HTTP only for the loopback host %s', (host) => {
 		const redirectUrl = `http://${host}:3000${HOMEY_CLOUD_CALLBACK_PATH}`;
 
-		expect(create({ ...valid, [HOMEY_CLOUD_REDIRECT_URL_ENV]: redirectUrl }).getConfiguration().redirectUrl).toBe(
-			redirectUrl,
-		);
+		expect(create({ ...valid, cloudRedirectUrl: redirectUrl }).getConfiguration().redirectUrl).toBe(redirectUrl);
 	});
 });

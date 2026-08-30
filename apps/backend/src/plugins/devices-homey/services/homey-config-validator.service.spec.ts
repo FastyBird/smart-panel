@@ -6,15 +6,21 @@ import {
 	HomeyConnectionMode,
 } from '../devices-homey.constants';
 
+import { HomeyCloudGrantMutationService } from './homey-cloud-grant-mutation.service';
 import { HomeyConfigValidatorService } from './homey-config-validator.service';
 
 describe('HomeyConfigValidatorService', () => {
 	let registry: jest.Mocked<Pick<PluginConfigValidatorService, 'register'>>;
+	let cloudGrantMutations: jest.Mocked<Pick<HomeyCloudGrantMutationService, 'hasActiveGrant'>>;
 	let service: HomeyConfigValidatorService;
 
 	beforeEach(() => {
 		registry = { register: jest.fn() };
-		service = new HomeyConfigValidatorService(registry as unknown as PluginConfigValidatorService);
+		cloudGrantMutations = { hasActiveGrant: jest.fn().mockResolvedValue(true) };
+		service = new HomeyConfigValidatorService(
+			registry as unknown as PluginConfigValidatorService,
+			cloudGrantMutations as unknown as HomeyCloudGrantMutationService,
+		);
 	});
 
 	it('registers itself for the Homey plugin', () => {
@@ -28,9 +34,39 @@ describe('HomeyConfigValidatorService', () => {
 		await expect(service.validate({ enabled: false })).resolves.toEqual({ valid: true });
 	});
 
-	it('accepts an enabled cloud configuration without local credentials', async () => {
-		await expect(service.validate({ enabled: true, mode: HomeyConnectionMode.CLOUD })).resolves.toEqual({
+	it('accepts complete admin-managed cloud configuration without local credentials', async () => {
+		await expect(
+			service.validate({
+				enabled: true,
+				mode: HomeyConnectionMode.CLOUD,
+				cloud_client_id: 'client-id',
+				cloud_client_secret: 'client-secret',
+				cloud_redirect_url: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback',
+			}),
+		).resolves.toEqual({ valid: true });
+	});
+
+	it('accepts incomplete cloud configuration while the connector is disabled', async () => {
+		await expect(service.validate({ enabled: false, mode: HomeyConnectionMode.CLOUD })).resolves.toEqual({
 			valid: true,
+		});
+		expect(cloudGrantMutations.hasActiveGrant).not.toHaveBeenCalled();
+	});
+
+	it('keeps an enabled cloud connector stopped until Homey authorization is complete', async () => {
+		cloudGrantMutations.hasActiveGrant.mockResolvedValue(false);
+
+		await expect(
+			service.validate({
+				enabled: true,
+				mode: HomeyConnectionMode.CLOUD,
+				cloud_client_id: 'client-id',
+				cloud_client_secret: 'client-secret',
+				cloud_redirect_url: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback',
+			}),
+		).resolves.toEqual({
+			valid: false,
+			errors: [{ message: 'Homey Cloud authorization is required', field: 'mode' }],
 		});
 	});
 

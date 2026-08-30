@@ -1,5 +1,4 @@
 import { Module, OnModuleInit } from '@nestjs/common';
-import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
@@ -104,7 +103,6 @@ import { HomeyService } from './services/homey.service';
 		]),
 		DevicesModule,
 		ConfigModule,
-		NestConfigModule,
 		ExtensionsModule,
 		SwaggerModule,
 		UsersModule,
@@ -207,6 +205,11 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 					configuredPath: 'api_key_configured',
 					inputPaths: ['apiKey'],
 				},
+				{
+					path: 'cloud_client_secret',
+					configuredPath: 'cloud_client_secret_configured',
+					inputPaths: ['cloudClientSecret'],
+				},
 			],
 		});
 
@@ -259,9 +262,9 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 
 > Plugin · by FastyBird · platform: devices
 
-Connects Smart Panel to Homey Self-Hosted Server and compatible Homey Pro local APIs. Homey remains responsible for pairing, radio networks, drivers and apps; Smart Panel adopts selected logical devices for display and control.
+Connects Smart Panel to Homey Self-Hosted Server, compatible Homey Pro local APIs, or Homey Cloud. Homey remains responsible for pairing, radio networks, drivers and apps; Smart Panel adopts selected logical devices for display and control.
 
-The local connector is under development. Configuration credentials are write-only and are never returned by the API.`,
+Local and Cloud provider settings are managed in the Smart Panel admin application. Secret fields are write-only and are never returned by the API.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

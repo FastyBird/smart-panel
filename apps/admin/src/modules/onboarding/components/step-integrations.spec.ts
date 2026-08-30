@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 
 import { DevicesModuleDevicesHiddenFilter } from '../../../openapi.constants';
+import { DEVICES_HOMEY_PLUGIN_NAME } from '../../../plugins/devices-homey/devices-homey.constants';
 import { configPluginsStoreKey } from '../../config/store/keys';
 import { devicesStoreKey } from '../../devices/store/keys';
 import { ExtensionKind } from '../../extensions/extensions.constants';
@@ -159,6 +160,49 @@ describe('StepIntegrations.vue', () => {
 		await flushPromises();
 
 		expect(wrapper.text()).toContain('onboardingModule.integrations.totalDevices({"count":2})');
+	});
+
+	it('prompts for Homey setup when an enabled profile is incomplete', async () => {
+		mockExtensionsStore.data = {
+			[DEVICES_HOMEY_PLUGIN_NAME]: buildExtension({ type: DEVICES_HOMEY_PLUGIN_NAME, name: 'Homey' }),
+		};
+		mockConfigPluginsStore.get.mockResolvedValue({
+			type: DEVICES_HOMEY_PLUGIN_NAME,
+			enabled: true,
+			mode: 'cloud',
+			cloudClientId: null,
+			cloudClientSecretConfigured: false,
+			cloudRedirectUrl: null,
+		});
+
+		const wrapper = mount(StepIntegrations, {
+			global: { stubs: { IntegrationConfigDialog: true } },
+		});
+
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('onboardingModule.integrations.configRequired');
+	});
+
+	it('recognizes a complete local Homey profile during onboarding', async () => {
+		mockExtensionsStore.data = {
+			[DEVICES_HOMEY_PLUGIN_NAME]: buildExtension({ type: DEVICES_HOMEY_PLUGIN_NAME, name: 'Homey' }),
+		};
+		mockConfigPluginsStore.get.mockResolvedValue({
+			type: DEVICES_HOMEY_PLUGIN_NAME,
+			enabled: true,
+			mode: 'local',
+			url: 'http://homey.local:4859',
+			apiKeyConfigured: true,
+		});
+
+		const wrapper = mount(StepIntegrations, {
+			global: { stubs: { IntegrationConfigDialog: true } },
+		});
+
+		await flushPromises();
+
+		expect(wrapper.text()).not.toContain('onboardingModule.integrations.configRequired');
 	});
 
 	// Toggling an integration off deletes the devices it owns, which is a cache-clear for anything

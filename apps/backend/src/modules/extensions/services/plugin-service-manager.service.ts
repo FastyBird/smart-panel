@@ -476,20 +476,38 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 		this.logger.log(`Starting service: ${key}`);
 
-		// Run config validation before starting (skip filling logs with errors from bad config)
+		// Runtime readiness is separate from the user's enabled intent. An incomplete plugin stays enabled
+		// but stopped until its configuration becomes valid, so users can finish setup from the admin UI.
 		if (this.pluginConfigValidator.hasValidator(registration.pluginName)) {
 			const config = this.getPluginConfig(registration.pluginName);
 
 			if (config) {
-				const validationResult = await this.pluginConfigValidator.validate(
-					registration.pluginName,
-					config as unknown as Record<string, unknown>,
-				);
+				let validationResult: Awaited<ReturnType<PluginConfigValidatorService['validate']>>;
+
+				try {
+					validationResult = await this.pluginConfigValidator.validate(
+						registration.pluginName,
+						config as unknown as Record<string, unknown>,
+					);
+				} catch {
+					const warning = 'Configuration readiness check is temporarily unavailable';
+					createExtensionLogger(registration.pluginName, 'PluginServiceManagerService').warn(
+						`Service ${registration.serviceId} is enabled but not started because its ${warning.toLowerCase()}.`,
+					);
+
+					const runtime = this.runtimeInfo.get(key);
+
+					if (runtime) runtime.lastError = warning;
+
+					return;
+				}
 
 				if (!validationResult.valid) {
 					const errors = (validationResult.errors ?? []).map((e) => e.message).join('; ');
 
-					this.logger.warn(`Skipping service ${key}: config validation failed — ${errors}`);
+					createExtensionLogger(registration.pluginName, 'PluginServiceManagerService').warn(
+						`Service ${registration.serviceId} is enabled but not started because configuration needs attention — ${errors}. Configure the plugin in the admin UI.`,
+					);
 
 					const runtime = this.runtimeInfo.get(key);
 

@@ -171,8 +171,8 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 Starting the separately scoped Phase 2 work returns the overall epic to `in-progress`; the local MVP remains
 review-ready under its release audit below.
 
-The 2026-08-28 published-contract audit in `docs/homey-cloud-oauth.md` records the deployment-owned confidential-client
-model, exact callback shape, intended minimum scopes, secret names, OAuth state boundary, multi-Homey selection gate,
+The published-contract audit in `docs/homey-cloud-oauth.md` records the installation-owned confidential-client
+model, admin-managed write-only client secret, exact callback shape, intended minimum scopes, OAuth state boundary, multi-Homey selection gate,
 and the external registration/approval checklist. Homey's current guide limits new clients to 100 Homey Pro users and
 requires a limit-increase request to raise that limit and optionally connect to Homey Cloud. Live cloud mode therefore
 remains unavailable until a dedicated client is registered, the callbacks and scopes are accepted, and Athom's Homey

@@ -11,6 +11,10 @@ export const HomeyConfigSchema = ConfigPluginSchema.extend({
 	url: HomeyUrlSchema.nullable().optional(),
 	apiKey: z.string().trim().min(1).nullable().optional(),
 	apiKeyConfigured: z.boolean().default(false),
+	cloudClientId: z.string().trim().min(1).nullable().optional(),
+	cloudClientSecret: z.string().trim().min(1).nullable().optional(),
+	cloudClientSecretConfigured: z.boolean().default(false),
+	cloudRedirectUrl: z.string().trim().min(1).nullable().optional(),
 	connectionTimeout: z.number().int().positive(),
 	reconciliationInterval: z.number().int().positive(),
 });
@@ -21,6 +25,9 @@ export const HomeyConfigUpdateReqSchema: ZodType<DevicesHomeyPluginUpdateConfigS
 		mode: z.nativeEnum(DevicesHomeyPluginConnectionMode).optional(),
 		url: HomeyUrlSchema.nullable().optional(),
 		api_key: z.string().trim().min(1).nullable().optional(),
+		cloud_client_id: z.string().trim().min(1).nullable().optional(),
+		cloud_client_secret: z.string().trim().min(1).nullable().optional(),
+		cloud_redirect_url: z.string().trim().min(1).nullable().optional(),
 		connection_timeout: z.number().int().positive().optional(),
 		reconciliation_interval: z.number().int().positive().optional(),
 	})
@@ -33,6 +40,10 @@ export const HomeyConfigResSchema: ZodType<DevicesHomeyPluginConfigSchema> = Con
 		url: HomeyUrlSchema.nullable().optional(),
 		api_key: z.string().trim().min(1).nullable().optional(),
 		api_key_configured: z.boolean(),
+		cloud_client_id: z.string().trim().min(1).nullable().optional(),
+		cloud_client_secret: z.string().trim().min(1).nullable().optional(),
+		cloud_client_secret_configured: z.boolean(),
+		cloud_redirect_url: z.string().trim().min(1).nullable().optional(),
 		connection_timeout: z.number().int().positive(),
 		reconciliation_interval: z.number().int().positive(),
 	})

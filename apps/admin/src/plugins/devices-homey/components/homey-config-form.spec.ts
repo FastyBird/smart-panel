@@ -19,6 +19,10 @@ const model = reactive({
 	url: 'http://homey.local:4859',
 	apiKey: undefined as string | null | undefined,
 	apiKeyConfigured: true,
+	cloudClientId: 'client-id' as string | null | undefined,
+	cloudClientSecret: undefined as string | null | undefined,
+	cloudClientSecretConfigured: true,
+	cloudRedirectUrl: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback' as string | null | undefined,
 	connectionTimeout: 10_000,
 	reconciliationInterval: 300_000,
 });
@@ -73,6 +77,7 @@ describe('HomeyConfigForm', () => {
 		vi.clearAllMocks();
 		model.mode = DevicesHomeyPluginConnectionMode.local;
 		model.apiKey = undefined;
+		model.cloudClientSecret = undefined;
 		useConfigPluginEditForm.mockReturnValue({
 			formEl: ref(),
 			model,
@@ -105,13 +110,15 @@ describe('HomeyConfigForm', () => {
 		expect(panel.props('candidateApiKey')).toBe('new-candidate-key');
 	});
 
-	it('shows cloud authorization and hides local credential inputs in cloud mode', async () => {
+	it('shows admin-managed cloud credentials and authorization while hiding local inputs in cloud mode', async () => {
 		const wrapper = mountForm();
 		model.mode = DevicesHomeyPluginConnectionMode.cloud;
 		await wrapper.vm.$nextTick();
 
 		expect(wrapper.find('[name="url"]').exists()).toBe(false);
-		expect(wrapper.findComponent({ name: 'ConfigSecretInput' }).exists()).toBe(false);
+		expect(wrapper.find('[name="cloudClientId"]').exists()).toBe(true);
+		expect(wrapper.find('[name="cloudRedirectUrl"]').exists()).toBe(true);
+		expect(wrapper.find('[name="cloudClientSecret"]').exists()).toBe(true);
 		expect(wrapper.find('[data-test-id="homey-cloud-authorization-panel-stub"]').exists()).toBe(true);
 		expect(wrapper.getComponent({ name: 'HomeyConnectionPanel' }).props('mode')).toBe('cloud');
 		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('local');

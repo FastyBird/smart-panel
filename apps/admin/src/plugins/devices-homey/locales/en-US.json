@@ -2,11 +2,11 @@
 	"config": {
 		"local": {
 			"title": "Local Homey connection",
-			"description": "Connect directly to a Homey Pro on the local network for the lowest latency. Smart Panel must be able to reach Homey, and the local API key stays encrypted on this server."
+			"description": "Connect directly to a Homey Pro on the local network for the lowest latency. Configure the URL and write-only API key here; Smart Panel must be able to reach Homey."
 		},
 		"cloud": {
 			"title": "Homey Cloud connection",
-			"description": "Connect through Homey Cloud when direct network access is unavailable. Cloud requests may have higher latency and require internet access; OAuth credentials stay encrypted on this server."
+			"description": "Connect through Homey Cloud when direct network access is unavailable. Register an OAuth client with Homey, then save its credentials here; the client secret is write-only."
 		},
 		"mode": {
 			"label": "Connection mode",
@@ -26,6 +26,23 @@
 			"placeholder": "Enter a new key to replace the configured key",
 			"required": "Enter or keep a Homey API key before enabling the integration",
 			"invalid": "Enter a non-blank API key or remove the replacement"
+		},
+		"cloudClientId": {
+			"label": "Homey Cloud client ID",
+			"placeholder": "Enter the OAuth client ID",
+			"required": "Enter the Homey Cloud client ID"
+		},
+		"cloudClientSecret": {
+			"label": "Homey Cloud client secret",
+			"placeholder": "Enter a new secret to replace the configured secret",
+			"required": "Enter or keep the Homey Cloud client secret",
+			"invalid": "Enter a non-blank client secret or remove the replacement"
+		},
+		"cloudRedirectUrl": {
+			"label": "Homey Cloud redirect URL",
+			"placeholder": "https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback",
+			"description": "Register this exact URL as the OAuth callback in the Homey Developer portal.",
+			"invalid": "Enter the exact registered HTTPS callback URL; HTTP is allowed only on localhost"
 		},
 		"connectionTimeout": "Connection timeout (ms)",
 		"reconciliationInterval": "Inventory reconciliation interval (ms)",

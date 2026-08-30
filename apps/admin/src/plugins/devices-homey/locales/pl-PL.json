@@ -2,11 +2,11 @@
 	"config": {
 		"local": {
 			"title": "Lokalne połączenie Homey",
-			"description": "Połącz się bezpośrednio z Homey Pro w sieci lokalnej, aby uzyskać najniższe opóźnienie. Smart Panel musi mieć dostęp do Homey, a lokalny klucz API pozostaje zaszyfrowany na tym serwerze."
+			"description": "Połącz się bezpośrednio z Homey Pro w sieci lokalnej, aby uzyskać najniższe opóźnienie. Ustaw tutaj adres i klucz API tylko do zapisu; Smart Panel musi mieć dostęp do Homey."
 		},
 		"cloud": {
 			"title": "Połączenie Homey Cloud",
-			"description": "Połącz się przez Homey Cloud, gdy bezpośredni dostęp sieciowy jest niemożliwy. Chmura może mieć większe opóźnienie i wymaga internetu; dane OAuth pozostają zaszyfrowane na tym serwerze."
+			"description": "Połącz się przez Homey Cloud, gdy bezpośredni dostęp sieciowy jest niemożliwy. Zarejestruj klienta OAuth w Homey i zapisz tutaj jego dane; sekret jest tylko do zapisu."
 		},
 		"mode": { "label": "Tryb połączenia", "local": "Lokalny", "cloud": "Cloud", "cloudUnavailable": "Wkrótce" },
 		"enabled": "Włączone",
@@ -21,6 +21,23 @@
 			"placeholder": "Wprowadź nowy klucz, aby zastąpić zapisany",
 			"required": "Wprowadź lub zachowaj klucz API Homey przed włączeniem integracji",
 			"invalid": "Wprowadź niepusty klucz API lub usuń jego zamiennik"
+		},
+		"cloudClientId": {
+			"label": "Identyfikator klienta Homey Cloud",
+			"placeholder": "Wprowadź identyfikator klienta OAuth",
+			"required": "Wprowadź identyfikator klienta Homey Cloud"
+		},
+		"cloudClientSecret": {
+			"label": "Sekret klienta Homey Cloud",
+			"placeholder": "Wprowadź nowy sekret, aby zastąpić zapisany",
+			"required": "Wprowadź lub zachowaj sekret klienta Homey Cloud",
+			"invalid": "Wprowadź niepusty sekret klienta albo usuń zamiennik"
+		},
+		"cloudRedirectUrl": {
+			"label": "Adres przekierowania Homey Cloud",
+			"placeholder": "https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback",
+			"description": "Zarejestruj ten dokładny adres jako callback OAuth w portalu Homey Developer.",
+			"invalid": "Wprowadź dokładny zarejestrowany adres HTTPS; HTTP jest dozwolone tylko na localhost"
 		},
 		"connectionTimeout": "Limit czasu połączenia (ms)",
 		"reconciliationInterval": "Interwał uzgadniania inwentarza (ms)",

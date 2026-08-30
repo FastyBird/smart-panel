@@ -8,6 +8,7 @@ import {
 	IsString,
 	Matches,
 	Max,
+	MaxLength,
 	Min,
 	ValidateIf,
 } from 'class-validator';
@@ -20,11 +21,13 @@ import {
 	DEFAULT_HOMEY_RECONCILIATION_INTERVAL_MS,
 	DEVICES_HOMEY_PLUGIN_NAME,
 	HomeyConnectionMode,
+	MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH,
 	MAX_HOMEY_CONNECTION_TIMEOUT_MS,
 	MAX_HOMEY_RECONCILIATION_INTERVAL_MS,
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
 	MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
 } from '../devices-homey.constants';
+import { IsSafeHomeyCloudRedirectUrl } from '../validators/homey-cloud-redirect-url.validator';
 import { IsSafeHomeyUrl, MAX_HOMEY_URL_LENGTH } from '../validators/homey-url.validator';
 
 @ApiSchema({ name: 'DevicesHomeyPluginDataConfig' })
@@ -53,9 +56,7 @@ export class HomeyConfigModel extends PluginConfigModel {
 		nullable: true,
 	})
 	@Expose()
-	@ValidateIf(
-		(config: HomeyConfigModel) => config.url !== null || (config.enabled && config.mode === HomeyConnectionMode.LOCAL),
-	)
+	@ValidateIf((config: HomeyConfigModel) => config.url !== null)
 	@IsNotEmpty()
 	@IsSafeHomeyUrl()
 	url: string | null = null;
@@ -67,10 +68,7 @@ export class HomeyConfigModel extends PluginConfigModel {
 		name: 'api_key',
 	})
 	@Expose({ name: 'api_key' })
-	@ValidateIf(
-		(config: HomeyConfigModel) =>
-			config.apiKey !== null || (config.enabled && config.mode === HomeyConnectionMode.LOCAL),
-	)
+	@ValidateIf((config: HomeyConfigModel) => config.apiKey !== null)
 	@IsNotEmpty()
 	@IsString()
 	@Matches(/\S/)
@@ -84,6 +82,56 @@ export class HomeyConfigModel extends PluginConfigModel {
 	@IsOptional()
 	@IsBoolean()
 	apiKeyConfigured?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Homey Cloud OAuth client ID',
+		maxLength: MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH,
+		name: 'cloud_client_id',
+		nullable: true,
+	})
+	@Expose({ name: 'cloud_client_id' })
+	@ValidateIf((config: HomeyConfigModel) => config.cloudClientId !== null)
+	@IsNotEmpty()
+	@IsString()
+	@Matches(/\S/)
+	@MaxLength(MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH)
+	cloudClientId: string | null = null;
+
+	@ApiPropertyOptional({
+		description: 'Homey Cloud OAuth client secret. This value is accepted on write and never returned.',
+		maxLength: MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH,
+		name: 'cloud_client_secret',
+		nullable: true,
+		writeOnly: true,
+	})
+	@Expose({ name: 'cloud_client_secret' })
+	@ValidateIf((config: HomeyConfigModel) => config.cloudClientSecret !== null)
+	@IsNotEmpty()
+	@IsString()
+	@Matches(/\S/)
+	@MaxLength(MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH)
+	cloudClientSecret: string | null = null;
+
+	@ApiProperty({
+		description: 'Whether a Homey Cloud OAuth client secret is configured',
+		name: 'cloud_client_secret_configured',
+	})
+	@Expose({ name: 'cloud_client_secret_configured' })
+	@IsOptional()
+	@IsBoolean()
+	cloudClientSecretConfigured?: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Exact Homey Cloud OAuth callback URL registered for this Smart Panel installation',
+		maxLength: MAX_HOMEY_URL_LENGTH,
+		name: 'cloud_redirect_url',
+		nullable: true,
+	})
+	@Expose({ name: 'cloud_redirect_url' })
+	@ValidateIf((config: HomeyConfigModel) => config.cloudRedirectUrl !== null)
+	@IsNotEmpty()
+	@IsSafeHomeyCloudRedirectUrl()
+	cloudRedirectUrl: string | null = null;
 
 	@ApiProperty({
 		description: 'Connection timeout in milliseconds',

@@ -71,6 +71,48 @@ describe('PluginServiceManagerService', () => {
 	});
 
 	describe('syncServiceState with timed-out transitional states', () => {
+		it('keeps an enabled service stopped when its runtime configuration needs attention', async () => {
+			const service = createMockService('devices-provider', 'connector');
+
+			pluginConfigValidator.hasValidator.mockReturnValue(true);
+			pluginConfigValidator.validate.mockResolvedValue({
+				valid: false,
+				errors: [{ message: 'API key is required', field: 'api_key' }],
+			});
+			manager.register(service);
+
+			await manager.handleConfigUpdated();
+
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(service.start).not.toHaveBeenCalled();
+			expect(service.getState()).toBe('stopped');
+			await expect(manager.getServiceStatus('devices-provider', 'connector')).resolves.toEqual(
+				expect.objectContaining({
+					state: 'stopped',
+					lastError: 'Config validation failed: API key is required',
+				}),
+			);
+		});
+
+		it('keeps an enabled service stopped when its readiness check is temporarily unavailable', async () => {
+			const service = createMockService('devices-provider', 'connector');
+
+			pluginConfigValidator.hasValidator.mockReturnValue(true);
+			pluginConfigValidator.validate.mockRejectedValue(new Error('private storage failure'));
+			manager.register(service);
+
+			await manager.handleConfigUpdated();
+
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(service.start).not.toHaveBeenCalled();
+			await expect(manager.getServiceStatus('devices-provider', 'connector')).resolves.toEqual(
+				expect.objectContaining({
+					state: 'stopped',
+					lastError: 'Configuration readiness check is temporarily unavailable',
+				}),
+			);
+		});
+
 		it('should force-stop a service stuck in starting state when plugin is disabled', async () => {
 			// Create a service that stays in 'starting' (simulates WhatsApp QR scan)
 			const service = createMockService('buddy-whatsapp', 'bot', 'starting');

@@ -21,7 +21,7 @@ them, keeps their state synchronized, and sends supported controls back to Homey
 </Callout>
 
 Local and Homey Cloud connections use the same discovery, adoption, synchronization, and control paths. Smart Panel
-does not pair, rename, move, or remove devices in Homey. Cloud mode additionally requires a deployment-owned Homey Web
+does not pair, rename, move, or remove devices in Homey. Cloud mode additionally requires an installation-owned Homey Web
 API client and Homey approval; Smart Panel never asks a user to paste Homey account credentials.
 
 ## Before You Start
@@ -36,9 +36,9 @@ For a local connection, you need:
 For a cloud connection, you instead need:
 
 - an exact browser-reachable HTTPS Smart Panel origin;
-- a deployment-owned confidential Homey Web API client with the exact Smart Panel callback registered;
+- an installation-owned confidential Homey Web API client with the exact Smart Panel callback registered;
 - Homey Cloud access and an adequate user limit approved for that client; and
-- the client ID, client secret, and callback URL provisioned only to the Smart Panel backend.
+- the client ID, client secret, and callback URL ready to enter in the Homey plugin's Admin UI configuration.
 
 SHS uses port `4859` for HTTP and `4860` for HTTPS by default. Those ports can be overridden in the SHS deployment.
 Use the address and port reachable from the machine or container running Smart Panel, which may differ from an address
@@ -115,8 +115,8 @@ Panel requires a new key for the unsaved connection test; it never sends a store
 Homey Cloud avoids a direct network route between Smart Panel and Homey, but it requires working internet access and
 can have higher latency than a local connection. OAuth access and refresh tokens remain backend-only, are excluded from
 ordinary database queries, and are encrypted at rest with authenticated encryption. The encryption key is derived from
-the deployment-owned `FB_HOMEY_CLOUD_CLIENT_SECRET`, which must be kept outside the database and stable while a grant is
-active. Neither the browser nor the panel display can read the credentials.
+the write-only client secret saved in the Homey plugin configuration. Replacing that secret invalidates an existing
+grant and requires authorization again. Neither the browser nor the panel display can read the secret or token values.
 
 1. In Homey Developer Tools, register a confidential Web API client. Register this exact callback, replacing the
    placeholder with the final Smart Panel origin:
@@ -127,15 +127,14 @@ active. Neither the browser nor the panel display can read the credentials.
 
 2. Request the required Homey Cloud access and user-limit increase. New clients are limited to 100 Homey Pro users;
    Homey Cloud access is not automatic.
-3. Provision `FB_HOMEY_CLOUD_CLIENT_ID`, `FB_HOMEY_CLOUD_CLIENT_SECRET`, and `FB_HOMEY_CLOUD_REDIRECT_URL` to the
-   backend. The redirect value must exactly match the registered callback. Never put the secret in browser-visible
-   configuration, an image, or the repository.
+3. Open **Config → Plugins → Homey**, choose **Cloud**, and enter the client ID, client secret, and exact registered
+   redirect URL. The client secret field is write-only: leaving it blank later preserves the stored value.
 4. Configure every proxy, ingress, and observability layer to omit the callback query string from access logs. The
    backend removes it before application logging, but cannot redact logs made upstream. See the
    [Homey Cloud OAuth deployment record](https://github.com/FastyBird/smart-panel/blob/main/docs/homey-cloud-oauth.md)
    for the nginx example and complete registration checklist.
-5. Restart the backend, open **Config → Plugins → Homey**, choose **Cloud**, and save the form before selecting
-   **Connect Homey Cloud**.
+5. Save the Homey plugin configuration before selecting **Connect Homey Cloud**. No backend restart or environment-file
+   change is required.
 6. Complete Homey's consent page. Smart Panel returns to a clean configuration URL. If the account contains multiple
    eligible Homeys, select the exact Homey to use and confirm the selection.
 7. Enable and save the plugin, test the saved configuration, and confirm that **Connection status** becomes
@@ -217,7 +216,7 @@ Homey key, encrypted grants, and other sensitive configuration. Smart Panel does
   Smart Panel, and test the connection again.
 - For cloud mode, disconnect and revoke the Homey grant, then complete a fresh authorization after the replacement
   host is trusted.
-- Restore the exact deployment-owned Homey Cloud client secret with a cloud grant. Changing it invalidates and clears
+- Restore the exact admin-managed Homey Cloud client secret with a cloud grant. Changing it invalidates and clears
   the stored grant, after which an administrator must authorize Homey Cloud again.
 
 Write-only configuration prevents accidental disclosure through normal API reads; it is not a substitute for backup,

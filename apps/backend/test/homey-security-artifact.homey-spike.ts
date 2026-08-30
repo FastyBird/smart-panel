@@ -60,6 +60,7 @@ const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 	'homey-cloud-callback-redaction',
 	'homey-cloud-grant-mutation',
 	'homey-cloud-provider-operation',
+	'homey-cloud-redirect-url',
 	'homey-cloud-runtime-registry',
 	'homey-cloud-sdk-session',
 	'homey_cloud_active_grants',
@@ -489,7 +490,7 @@ const compiledBindingValues = (binding: ts.BindingElement): readonly ts.Expressi
 	return values;
 };
 
-const SAFE_COMPILED_SECRET_STRINGS = new Set(['', '[~3~]', 'FB_HOMEY_CLOUD_CLIENT_SECRET']);
+const SAFE_COMPILED_SECRET_STRINGS = new Set(['', '[~3~]']);
 const SAFE_COMPILED_ADDRESS_STRINGS = new Set(['[~0~]']);
 type SafeCompiledString = ReadonlySet<string> | ((value: string) => boolean);
 
@@ -4806,45 +4807,51 @@ const isSanitizedCloudHomeyNameExpression = (node: ts.Expression): boolean =>
 	node.right.text === 'Homey';
 
 const isPublicSecretFieldsDescriptor = (node: ts.Expression): boolean => {
-	if (!ts.isArrayLiteralExpression(node) || node.elements.length !== 1) {
+	if (!ts.isArrayLiteralExpression(node) || node.elements.length !== 2) {
 		return false;
 	}
 
-	const [descriptor] = node.elements;
+	const expected = new Map([
+		['api_key', { configuredPath: 'api_key_configured', inputPath: 'apiKey' }],
+		['cloud_client_secret', { configuredPath: 'cloud_client_secret_configured', inputPath: 'cloudClientSecret' }],
+	]);
+	const matchedPaths = new Set<string>();
 
-	if (!ts.isObjectLiteralExpression(descriptor) || descriptor.properties.length !== 3) {
-		return false;
-	}
+	const valid = node.elements.every((descriptor) => {
+		if (!ts.isObjectLiteralExpression(descriptor) || descriptor.properties.length !== 3) return false;
 
-	const properties = new Map(
-		descriptor.properties.flatMap((property) => {
-			if (!ts.isPropertyAssignment(property)) {
-				return [];
-			}
+		const properties = new Map(
+			descriptor.properties.flatMap((property) => {
+				if (!ts.isPropertyAssignment(property)) return [];
 
-			const name = compiledPropertyName(property.name);
+				const name = compiledPropertyName(property.name);
 
-			return name === undefined ? [] : [[name, property.initializer] as const];
-		}),
-	);
-	const path = properties.get('path');
-	const configuredPath = properties.get('configuredPath');
-	const inputPaths = properties.get('inputPaths');
+				return name === undefined ? [] : [[name, property.initializer] as const];
+			}),
+		);
+		const path = properties.get('path');
+		const configuredPath = properties.get('configuredPath');
+		const inputPaths = properties.get('inputPaths');
 
-	return (
-		properties.size === 3 &&
-		path !== undefined &&
-		ts.isStringLiteral(path) &&
-		path.text === 'api_key' &&
-		configuredPath !== undefined &&
-		ts.isStringLiteral(configuredPath) &&
-		configuredPath.text === 'api_key_configured' &&
-		inputPaths !== undefined &&
-		ts.isArrayLiteralExpression(inputPaths) &&
-		inputPaths.elements.length === 1 &&
-		ts.isStringLiteral(inputPaths.elements[0]) &&
-		inputPaths.elements[0].text === 'apiKey'
-	);
+		if (properties.size !== 3 || path === undefined || !ts.isStringLiteral(path)) return false;
+
+		const expectedDescriptor = expected.get(path.text);
+		matchedPaths.add(path.text);
+
+		return (
+			expectedDescriptor !== undefined &&
+			configuredPath !== undefined &&
+			ts.isStringLiteral(configuredPath) &&
+			configuredPath.text === expectedDescriptor.configuredPath &&
+			inputPaths !== undefined &&
+			ts.isArrayLiteralExpression(inputPaths) &&
+			inputPaths.elements.length === 1 &&
+			ts.isStringLiteral(inputPaths.elements[0]) &&
+			inputPaths.elements[0].text === expectedDescriptor.inputPath
+		);
+	});
+
+	return valid && matchedPaths.size === expected.size;
 };
 
 const containsUnsafeCompiledType = (
@@ -7061,7 +7068,7 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe(
 				'safe compiled module',
-				"const secretFields = [{ path: 'api_key', configuredPath: 'api_key_configured', inputPaths: ['apiKey'] }];",
+				"const secretFields = [{ path: 'api_key', configuredPath: 'api_key_configured', inputPaths: ['apiKey'] }, { path: 'cloud_client_secret', configuredPath: 'cloud_client_secret_configured', inputPaths: ['cloudClientSecret'] }];",
 				true,
 			),
 		).not.toThrow();

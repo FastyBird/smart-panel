@@ -47,18 +47,19 @@ secret in source code, browser assets, the container image, an installer, or a d
 a distributed artifact is not confidential, and one fixed callback cannot represent arbitrary private installation
 origins.
 
-The first cloud profile therefore uses a **deployment-owned confidential Web API client**:
+The first cloud profile therefore uses an **installation-owned confidential Web API client**:
 
 1. The deployment owner registers a client in Homey Developer Tools.
 2. The owner registers the exact callback URL for that Smart Panel installation.
-3. The client ID, client secret, and callback URL are provisioned to the backend as deployment configuration.
+3. The owner enters the client ID, write-only client secret, and callback URL in the Homey plugin configuration in the
+   Smart Panel admin application.
 4. Smart Panel users see only the normal Homey consent flow; they never enter Homey account credentials into Smart
    Panel.
 
 A future FastyBird-hosted authorization broker could provide one centrally approved client for arbitrary installations,
 but it would add a new hosted trust boundary, token relay, availability requirement, privacy policy, and incident
 response surface. It is not implied by this milestone and must receive a separate design review before replacing the
-deployment-owned client model.
+installation-owned client model.
 
 ## Client registration template
 
@@ -68,7 +69,7 @@ or accept a callback override from an authorization request.
 | Field                | Required value                                                                                                                          |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Client name          | `FastyBird Smart Panel` plus a deployment qualifier when Developer Tools requires unique names                                          |
-| Development callback | `http://localhost:3000/api/v1/plugins/devices-homey/oauth/callback` only for a backend and browser running on the same development host |
+| Development callback | `http://localhost:3003/api/v1/plugins/devices-homey/oauth/callback` when the default admin dev server proxies the backend on the same host     |
 | Installed callback   | `https://<exact-smart-panel-origin>/api/v1/plugins/devices-homey/oauth/callback`                                                        |
 | Client type          | Confidential backend client                                                                                                             |
 | Intended scopes      | `homey.system.readonly`, `homey.zone.readonly`, `homey.device.readonly`, `homey.device.control`                                         |
@@ -81,18 +82,24 @@ For an installation without an exact browser-reachable HTTPS origin, cloud mode 
 development-only and works only when the browser follows the callback to the same machine as the backend. A LAN address,
 `.local` name, reverse-proxy hostname, or port is not interchangeable with a registered value.
 
-## Deployment configuration contract
+## Plugin configuration contract
 
-The backend implementation will read these deployment values; values shown here are names and placeholders only:
+Homey provider settings follow the normal Smart Panel plugin configuration flow and do not require process environment
+variables. The owner selects Cloud mode and enters these values in the admin application:
 
-| Variable                       | Secret | Validation and exposure                                                                                                            |
-| ------------------------------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `FB_HOMEY_CLOUD_CLIENT_ID`     | No     | Required for cloud mode; trimmed non-empty value; never returned unless a later UI has a concrete need for a configured indicator. |
-| `FB_HOMEY_CLOUD_CLIENT_SECRET` | Yes    | Required for cloud mode; backend-only; never returned, logged, placed in OpenAPI examples, or sent to the admin/panel clients.     |
-| `FB_HOMEY_CLOUD_REDIRECT_URL`  | No     | Exact absolute registered callback URL; HTTPS outside loopback development; no credentials, fragment, or unexpected query.         |
+| Admin field          | Secret | Validation and exposure                                                                                                      |
+| -------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Cloud client ID      | No     | Required for cloud mode; trimmed non-empty value returned only to authenticated Smart Panel configuration administrators.   |
+| Cloud client secret  | Yes    | Required for cloud mode; write-only and replaced only when an administrator deliberately enters or clears it.               |
+| Cloud redirect URL   | No     | Exact absolute registered callback URL; HTTPS outside loopback development; no credentials, fragment, or unexpected query.   |
+
+The same admin form owns local mode's URL and write-only API key. Missing runtime-required settings do not prevent a
+plugin from remaining enabled: the managed connector stays stopped and records an actionable configuration warning for
+the plugin service until the setup is completed. The persisted `config.yaml` is created with owner-only file
+permissions; backups and host access must therefore be protected as credential-bearing server data.
 
 Access tokens and refresh tokens are per authorization, not deployment client configuration. They use a backend-only,
-authenticated encrypted envelope whose key is derived from the deployment-owned client secret with domain-separated
+authenticated encrypted envelope whose key is derived from the admin-managed installation client secret with domain-separated
 HKDF-SHA-256. A unique AES-256-GCM nonce protects every stored value, and authenticated context binds ciphertext to its
 pending or active record, record identifier, and token field. Existing plaintext rows from an earlier build are
 rewritten transactionally on their first authorized credential read. Disconnect clears the active access token,
@@ -183,10 +190,10 @@ version zero; new candidate, active, and refreshed token values use encrypted ve
 only for a version-zero row inside the explicit credential-loading boundary and is replaced with a fresh encrypted
 envelope plus version one in the same transaction before the plaintext leaves that boundary. Malformed, downgraded,
 tampered, context-swapped, wrong-key, or unknown-version ciphertext fails closed as an unavailable persistence
-boundary. Rotating the deployment client secret changes the configuration fingerprint, so serialized reconciliation
+boundary. Replacing the admin-managed client secret changes the configuration fingerprint, so serialized reconciliation
 clears grants before any token decryption and requires a new authorization.
 
-The state table also stores a SHA-256 identity derived from the deployment client ID, client secret, exact redirect URL,
+The state table also stores a SHA-256 identity derived from the configured client ID, client secret, exact redirect URL,
 and requested scopes. Every authorization-context, credential-loading, activation, refresh and disconnect path compares
 the current non-secret fingerprint with the persisted value. A change clears pending and active grants and advances both
 generations before stale credentials can be used; the client secret itself is never persisted in the state table.
