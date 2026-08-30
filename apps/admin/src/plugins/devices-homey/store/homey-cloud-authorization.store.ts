@@ -98,22 +98,25 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 	};
 
 	const recoverCompletedSelection = async (transactionId: string): Promise<IHomeyCloudAuthorizationCompletion | null> => {
-		try {
-			const { data } = await backend.client.GET(`${endpoint}/transactions/{transactionId}/homeys`, {
-				params: { path: { transactionId } },
-			});
+		const { data, error, response } = await backend.client.GET(`${endpoint}/transactions/{transactionId}/homeys`, {
+			params: { path: { transactionId } },
+		});
 
-			if (!data) return null;
-
+		if (data) {
 			const result = transformHomeyCloudHomeyChoices(data.data);
 			if (result.status !== 'connected') return null;
 
 			applyConnectedHomey(result.homeyId);
 
 			return { status: 'connected', changed: false, homeyId: result.homeyId ?? null };
-		} catch {
-			return null;
 		}
+
+		if ([400, 403, 409, 422].includes(response.status)) return null;
+
+		throw new DevicesHomeyApiException(
+			getErrorReason<DevicesHomeyPluginListCloudAuthorizationHomeysOperation>(error, 'Failed to verify the Homey Cloud authorization selection.'),
+			response.status
+		);
 	};
 
 	const cancelUnpersistedTransaction = async (transactionId: string): Promise<void> => {

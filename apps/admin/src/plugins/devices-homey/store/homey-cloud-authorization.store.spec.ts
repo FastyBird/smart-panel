@@ -193,6 +193,20 @@ describe('Homey Cloud authorization store', () => {
 		expect(store.status).toEqual({ connected: true, selectedHomeyId: 'homey-b' });
 	});
 
+	it('retains a selection transaction when completion verification fails transiently', async () => {
+		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
+		post.mockResolvedValue({ error: {}, response: { status: 409 } });
+		get.mockResolvedValue({ error: new Error('private provider detail'), response: { status: 503 } });
+		const store = useHomeyCloudAuthorization();
+
+		await expect(store.select('homey-b')).rejects.toEqual(
+			expect.objectContaining<Partial<DevicesHomeyApiException>>({ message: 'Sanitized Homey Cloud request failure', code: 503 })
+		);
+
+		expect(store.pendingTransaction).toEqual(pending);
+		expect(window.sessionStorage.getItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY)).not.toBeNull();
+	});
+
 	it('retains a transaction for a retryable provider failure', async () => {
 		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
 		get.mockResolvedValue({ error: new Error('private provider detail'), response: { status: 503 } });
