@@ -19,14 +19,15 @@ describe('normalizeHomeyUrlInput', () => {
 	});
 
 	it('builds the Homey Cloud callback from the Admin origin', () => {
-		expect(buildDefaultHomeyCloudRedirectUrl('http://panel.local')).toBe('http://panel.local/api/v1/plugins/devices-homey/oauth/callback');
+		expect(buildDefaultHomeyCloudRedirectUrl('http://localhost:3003')).toBe('http://localhost:3003/api/v1/plugins/devices-homey/oauth/callback');
 		expect(buildDefaultHomeyCloudRedirectUrl('https://panel.example.com:8443')).toBe(
 			'https://panel.example.com:8443/api/v1/plugins/devices-homey/oauth/callback'
 		);
 	});
 
-	it('does not build a callback from an invalid Admin origin', () => {
+	it('does not build an invalid or insecure callback', () => {
 		expect(buildDefaultHomeyCloudRedirectUrl('not a URL')).toBeNull();
+		expect(buildDefaultHomeyCloudRedirectUrl('http://panel.local')).toBeNull();
 	});
 
 	it('builds a saved test without connector overrides', () => {

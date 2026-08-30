@@ -4,6 +4,7 @@ import {
 	DevicesHomeyPluginTestSavedConnectionMode,
 } from '../../../openapi.constants';
 import { HOMEY_CLOUD_CALLBACK_PATH } from '../devices-homey.constants';
+import { isSafeHomeyCloudRedirectUrl } from '../schemas/homey-cloud-redirect-url.schemas';
 import { isSafeHomeyUrl } from '../schemas/homey-url.schemas';
 
 export const normalizeHomeyUrlInput = (value: string): string | null => (value.trim() === '' ? null : value);
@@ -12,9 +13,9 @@ export const buildDefaultHomeyCloudRedirectUrl = (adminOrigin: string): string |
 	try {
 		const origin = new URL(adminOrigin);
 
-		if (!['http:', 'https:'].includes(origin.protocol) || origin.username !== '' || origin.password !== '') return null;
+		const callbackUrl = new URL(HOMEY_CLOUD_CALLBACK_PATH, origin).toString();
 
-		return new URL(HOMEY_CLOUD_CALLBACK_PATH, origin).toString();
+		return isSafeHomeyCloudRedirectUrl(callbackUrl) ? callbackUrl : null;
 	} catch {
 		return null;
 	}
