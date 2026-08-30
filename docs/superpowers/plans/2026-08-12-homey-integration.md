@@ -16,7 +16,9 @@
 - Follow existing TypeScript tab indentation, naming, imports, Swagger response envelopes, tests, and plugin registration conventions.
 - Keep external calls bounded by timeouts and classify authentication, authorization, timeout, unavailable, protocol, validation, and unsupported failures.
 - Never mutate ordinary upstream Homey devices. Capability writes require an explicit device/capability allowlist; add/rename/zone-move/unavailable/remove lifecycle tests require a separate environment gate and an operation allowlist restricted to a designated disposable virtual/test device.
-- No database schema change is expected. If implementation evidence requires one, add an incremental migration and update this plan before proceeding.
+- Local-provider work required only additive identity/lock migrations. Cloud grant persistence uses incremental migrations,
+  including `1000000000027-EncryptHomeyCloudCredentials` for the credential-format downgrade guard; never modify the
+  initial migration.
 - Do not push to `main`. Use a feature branch and PR when implementation begins.
 
 ## Delivery map
@@ -837,7 +839,7 @@ Homey Cloud access, user limit, branding/legal, and rate-limit conditions are re
 ### Task 7.2: Implement cloud authorization
 
 - [ ] Add authorization start/callback/disconnect/reconnect endpoints using repository OAuth/state/PKCE patterns where applicable.
-- [ ] Store access/refresh tokens through the generic secret mechanism or established encrypted credential store.
+- [x] Store access/refresh tokens through the generic secret mechanism or established encrypted credential store.
 - [ ] Handle expiry, refresh rotation, revocation, invalid state, callback errors, and account reauthorization.
 - [ ] List/select a Homey when an account has more than one.
 - [ ] Add security-focused controller/service tests.
@@ -857,6 +859,9 @@ Task 7.2 is delivered behind disabled cloud mode in reviewable slices:
 - [x] **7.2d — HTTP authorization surface:** add privileged start/select/cancel/disconnect/reconnect routes plus the
       state-authorized public callback, clean callback redirect, ingress query-redaction requirements, and the complete
       security/race test matrix.
+- [x] **7.2e — Encrypted token persistence:** encrypt every pending, active, and refreshed access/refresh token with a
+      unique authenticated envelope derived from the deployment-owned client secret; bind ciphertext to its record and
+      field; fail closed on tampering; and upgrade legacy plaintext rows transactionally on first credential use.
 
 Task 7.2d exposes the authorization lifecycle without enabling cloud connector mode. Management routes require an owner
 or administrator and preserve initiating-user binding through selection and cancellation. The public callback consumes

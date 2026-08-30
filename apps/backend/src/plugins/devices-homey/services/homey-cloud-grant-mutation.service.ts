@@ -31,6 +31,7 @@ import {
 } from '../errors/homey-cloud-grant.error';
 
 import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
+import { HomeyCloudCredentialCipherService, HomeyCloudCredentialRecord } from './homey-cloud-credential-cipher.service';
 import { HomeyCloudRuntimeRegistryService } from './homey-cloud-runtime-registry.service';
 
 const AUTHORIZED_ROLES = [UserRole.OWNER, UserRole.ADMIN];
@@ -105,6 +106,7 @@ export class HomeyCloudGrantMutationService
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly clientConfig: HomeyCloudClientConfigService,
+		private readonly credentialCipher: HomeyCloudCredentialCipherService,
 		private readonly runtimeRegistry: HomeyCloudRuntimeRegistryService,
 	) {}
 
@@ -199,6 +201,7 @@ export class HomeyCloudGrantMutationService
 					throw new HomeyCloudAuthorizationCapacityError();
 				}
 
+				const sealed = this.encryptToken(input.token, 'pending', input.transactionId);
 				await candidates.insert({
 					transactionId: input.transactionId,
 					initiatingUserId: input.initiatingUserId,
@@ -207,11 +210,12 @@ export class HomeyCloudGrantMutationService
 					configurationGeneration: input.configurationGeneration,
 					redirectUrl: input.redirectUrl,
 					tokenType: input.token.tokenType,
-					accessToken: input.token.accessToken,
-					refreshToken: input.token.refreshToken,
+					accessToken: sealed.accessToken,
+					refreshToken: sealed.refreshToken,
 					expiresIn: input.token.expiresIn,
 					grantType: input.token.grantType,
 					tokenIssuedAt: input.token.issuedAt,
+					credentialsVersion: 1,
 					expiresAt,
 				});
 
@@ -252,7 +256,10 @@ export class HomeyCloudGrantMutationService
 					return { status: !authorized || !authorityCurrent ? 'authority' : 'conflict' } as const;
 				}
 
-				return { status: 'loaded', candidate: this.toCandidateCredentials(candidate) } as const;
+				const material = this.decryptToken(candidate, 'pending', candidate.transactionId);
+				await this.upgradeLegacyToken(manager, candidate, 'pending', candidate.transactionId, material);
+
+				return { status: 'loaded', candidate: this.toCandidateCredentials(candidate, material) } as const;
 			}),
 		);
 
@@ -369,7 +376,12 @@ export class HomeyCloudGrantMutationService
 				await this.reconcileConfigurationInternal(manager);
 				const active = await this.findActiveGrantWithCredentials(manager);
 
-				return active ? this.toActiveCredentials(active) : null;
+				if (!active) return null;
+
+				const material = this.decryptToken(active, 'active', active.grantIdentifier);
+				await this.upgradeLegacyToken(manager, active, 'active', active.grantIdentifier, material);
+
+				return this.toActiveCredentials(active, material);
 			}),
 		);
 	}
@@ -458,6 +470,7 @@ export class HomeyCloudGrantMutationService
 
 				if (stateResult.affected !== 1) return null;
 
+				const sealed = this.encryptToken(input.token, 'active', input.grantIdentifier);
 				const grantResult = await activeGrants.update(
 					{
 						key: HOMEY_CLOUD_ACTIVE_GRANT_KEY,
@@ -467,11 +480,12 @@ export class HomeyCloudGrantMutationService
 					{
 						generation: nextGeneration,
 						tokenType: input.token.tokenType,
-						accessToken: input.token.accessToken,
-						refreshToken: input.token.refreshToken,
+						accessToken: sealed.accessToken,
+						refreshToken: sealed.refreshToken,
 						expiresIn: input.token.expiresIn,
 						grantType: input.token.grantType,
 						tokenIssuedAt: input.token.issuedAt,
+						credentialsVersion: 1,
 						updatedAt: new Date(),
 					},
 				);
@@ -616,6 +630,8 @@ export class HomeyCloudGrantMutationService
 
 		const nextGeneration = state.activeGrantGeneration + 1;
 		const grantIdentifier = randomUUID();
+		const material = this.decryptToken(candidate, 'pending', candidate.transactionId);
+		const sealed = this.encryptToken(material, 'active', grantIdentifier);
 		const activeGrant = manager.getRepository(HomeyCloudActiveGrantEntity).create({
 			key: HOMEY_CLOUD_ACTIVE_GRANT_KEY,
 			grantIdentifier,
@@ -626,11 +642,12 @@ export class HomeyCloudGrantMutationService
 			sourceTransactionId: transactionId,
 			selectedHomeyId,
 			tokenType: candidate.tokenType,
-			accessToken: candidate.accessToken,
-			refreshToken: candidate.refreshToken,
+			accessToken: sealed.accessToken,
+			refreshToken: sealed.refreshToken,
 			expiresIn: candidate.expiresIn,
 			grantType: candidate.grantType,
 			tokenIssuedAt: candidate.tokenIssuedAt,
+			credentialsVersion: 1,
 			activatedAt: new Date(),
 			updatedAt: null,
 		});
@@ -862,7 +879,10 @@ export class HomeyCloudGrantMutationService
 			.getOne();
 	}
 
-	private toCandidateCredentials(candidate: HomeyCloudPendingGrantEntity): HomeyCloudCandidateCredentials {
+	private toCandidateCredentials(
+		candidate: HomeyCloudPendingGrantEntity,
+		token: HomeyCloudTokenMaterial,
+	): HomeyCloudCandidateCredentials {
 		return {
 			transactionId: candidate.transactionId,
 			initiatingUserId: candidate.initiatingUserId,
@@ -871,12 +891,15 @@ export class HomeyCloudGrantMutationService
 			configurationGeneration: candidate.configurationGeneration,
 			redirectUrl: candidate.redirectUrl,
 			expiresAt: candidate.expiresAt,
-			token: this.toTokenMaterial(candidate),
+			token,
 		};
 	}
 
-	private toActiveCredentials(active: HomeyCloudActiveGrantEntity): HomeyCloudActiveGrantCredentials {
-		return { ...this.toActiveReference(active), token: this.toTokenMaterial(active) };
+	private toActiveCredentials(
+		active: HomeyCloudActiveGrantEntity,
+		token: HomeyCloudTokenMaterial,
+	): HomeyCloudActiveGrantCredentials {
+		return { ...this.toActiveReference(active), token };
 	}
 
 	private toActiveReference(active: HomeyCloudActiveGrantEntity): HomeyCloudActiveGrantReference {
@@ -890,15 +913,85 @@ export class HomeyCloudGrantMutationService
 		};
 	}
 
-	private toTokenMaterial(grant: HomeyCloudPendingGrantEntity | HomeyCloudActiveGrantEntity): HomeyCloudTokenMaterial {
+	private decryptToken(
+		grant: HomeyCloudPendingGrantEntity | HomeyCloudActiveGrantEntity,
+		recordType: HomeyCloudCredentialRecord,
+		recordId: string,
+	): HomeyCloudTokenMaterial {
+		if (grant.credentialsVersion === 0) {
+			return {
+				tokenType: grant.tokenType,
+				accessToken: grant.accessToken,
+				refreshToken: grant.refreshToken,
+				expiresIn: grant.expiresIn,
+				grantType: grant.grantType,
+				issuedAt: grant.tokenIssuedAt,
+			};
+		}
+		if (grant.credentialsVersion !== 1) throw new HomeyCloudGrantStateError();
+
 		return {
 			tokenType: grant.tokenType,
-			accessToken: grant.accessToken,
-			refreshToken: grant.refreshToken,
+			accessToken: this.credentialCipher.decrypt(grant.accessToken, {
+				field: 'access-token',
+				recordId,
+				recordType,
+			}),
+			refreshToken:
+				grant.refreshToken === null
+					? null
+					: this.credentialCipher.decrypt(grant.refreshToken, {
+							field: 'refresh-token',
+							recordId,
+							recordType,
+						}),
 			expiresIn: grant.expiresIn,
 			grantType: grant.grantType,
 			issuedAt: grant.tokenIssuedAt,
 		};
+	}
+
+	private encryptToken(
+		token: HomeyCloudTokenMaterial,
+		recordType: HomeyCloudCredentialRecord,
+		recordId: string,
+	): Pick<HomeyCloudTokenMaterial, 'accessToken' | 'refreshToken'> {
+		return {
+			accessToken: this.credentialCipher.encrypt(token.accessToken, {
+				field: 'access-token',
+				recordId,
+				recordType,
+			}),
+			refreshToken:
+				token.refreshToken === null
+					? null
+					: this.credentialCipher.encrypt(token.refreshToken, {
+							field: 'refresh-token',
+							recordId,
+							recordType,
+						}),
+		};
+	}
+
+	private async upgradeLegacyToken(
+		manager: EntityManager,
+		grant: HomeyCloudPendingGrantEntity | HomeyCloudActiveGrantEntity,
+		recordType: HomeyCloudCredentialRecord,
+		recordId: string,
+		token: HomeyCloudTokenMaterial,
+	): Promise<void> {
+		if (grant.credentialsVersion === 1) return;
+		if (grant.credentialsVersion !== 0) throw new HomeyCloudGrantStateError();
+
+		const update = { ...this.encryptToken(token, recordType, recordId), credentialsVersion: 1 };
+		if (recordType === 'pending') {
+			await manager.getRepository(HomeyCloudPendingGrantEntity).update({ transactionId: recordId }, update);
+			return;
+		}
+
+		await manager
+			.getRepository(HomeyCloudActiveGrantEntity)
+			.update({ key: HOMEY_CLOUD_ACTIVE_GRANT_KEY, grantIdentifier: recordId }, update);
 	}
 
 	private assertCandidate(input: HomeyCloudCandidateInput): void {

@@ -113,9 +113,10 @@ Panel requires a new key for the unsaved connection test; it never sends a store
 ## Configure a Homey Cloud Connection
 
 Homey Cloud avoids a direct network route between Smart Panel and Homey, but it requires working internet access and
-can have higher latency than a local connection. OAuth credentials remain backend-only and are excluded from ordinary
-database queries, but the current database columns are not encrypted. Treat the database and its backups as sensitive;
-neither the browser nor the panel display can read the credentials.
+can have higher latency than a local connection. OAuth access and refresh tokens remain backend-only, are excluded from
+ordinary database queries, and are encrypted at rest with authenticated encryption. The encryption key is derived from
+the deployment-owned `FB_HOMEY_CLOUD_CLIENT_SECRET`, which must be kept outside the database and stable while a grant is
+active. Neither the browser nor the panel display can read the credentials.
 
 1. In Homey Developer Tools, register a confidential Web API client. Register this exact callback, replacing the
    placeholder with the final Smart Panel origin:
@@ -206,8 +207,8 @@ with the local Smart Panel device.
 ## Credentials and Backups
 
 Treat a Smart Panel system backup as a credential. Configuration APIs and the Admin UI expose neither the local Homey
-key nor cloud OAuth tokens, but system backups include the resolved credentials needed to restore the integration.
-Smart Panel backups are not encrypted by the application.
+key nor cloud OAuth tokens. Cloud token fields are encrypted in the database, but backups can still contain the local
+Homey key, encrypted grants, and other sensitive configuration. Smart Panel does not encrypt the complete backup.
 
 - Store and transfer backups only through trusted, access-controlled locations.
 - Do not attach a backup to an issue or support request.
@@ -216,6 +217,8 @@ Smart Panel backups are not encrypted by the application.
   Smart Panel, and test the connection again.
 - For cloud mode, disconnect and revoke the Homey grant, then complete a fresh authorization after the replacement
   host is trusted.
+- Restore the exact deployment-owned Homey Cloud client secret with a cloud grant. Changing it invalidates and clears
+  the stored grant, after which an administrator must authorize Homey Cloud again.
 
 Write-only configuration prevents accidental disclosure through normal API reads; it is not a substitute for backup,
 host, and filesystem security.

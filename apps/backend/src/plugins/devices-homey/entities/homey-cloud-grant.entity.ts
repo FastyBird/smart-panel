@@ -63,6 +63,9 @@ export class HomeyCloudPendingGrantEntity {
 	@Column({ type: 'integer', select: false })
 	tokenIssuedAt!: number;
 
+	@Column({ type: 'integer', default: 0 })
+	credentialsVersion!: number;
+
 	@Index()
 	@Column({ type: 'integer' })
 	expiresAt!: number;
@@ -131,6 +134,9 @@ export class HomeyCloudActiveGrantEntity {
 
 	@Column({ type: 'integer', select: false })
 	tokenIssuedAt!: number;
+
+	@Column({ type: 'integer', default: 0 })
+	credentialsVersion!: number;
 
 	@Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
 	activatedAt!: Date | string;

@@ -56,6 +56,7 @@ const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 	'homey-cloud-authorization-state',
 	'homey-plugin-cloud-authorization-status',
 	'homey-cloud-client-config',
+	'homey-cloud-credential-cipher',
 	'homey-cloud-callback-redaction',
 	'homey-cloud-grant-mutation',
 	'homey-cloud-provider-operation',
@@ -4657,7 +4658,10 @@ const PUBLIC_COMPILED_SECRET_OPERATION_NAMES = new Set([
 	'assertToken',
 	'cancelAuthorization',
 	'createCloudAuthorizationUrl',
+	'credentialsVersion',
+	'decryptToken',
 	'exchangeAuthorizationCode',
+	'encryptToken',
 	'findActiveGrantWithCredentials',
 	'findCandidateWithCredentials',
 	'getAuthorizationContext',
@@ -4676,6 +4680,7 @@ const PUBLIC_COMPILED_SECRET_OPERATION_NAMES = new Set([
 	'toCandidateCredentials',
 	'toTokenMaterial',
 	'tokenExpiresAt',
+	'upgradeLegacyToken',
 	'validateAuthorizationContext',
 ]);
 
@@ -4894,6 +4899,96 @@ const containsUnsafeCompiledBodyLiteral = (
 const containsCompiledSecret = (text: string): boolean => {
 	const sourceFile = ts.createSourceFile('artifact.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 	let found = false;
+	const isDynamicReference = (expression: ts.Expression, resolving = new Set<ts.Node>()): boolean => {
+		if (ts.isIdentifier(expression)) {
+			const binding = resolveCompiledBinding(expression);
+			if (binding === undefined || binding.initializer === undefined) return true;
+			if (resolving.has(binding.declaration)) return false;
+
+			return isDynamicReference(binding.initializer, new Set(resolving).add(binding.declaration));
+		}
+
+		if (ts.isPropertyAccessExpression(expression)) return isDynamicReference(expression.expression, resolving);
+		if (expression.kind === ts.SyntaxKind.ThisKeyword) return true;
+		if (
+			ts.isParenthesizedExpression(expression) ||
+			ts.isAsExpression(expression) ||
+			ts.isTypeAssertionExpression(expression) ||
+			ts.isNonNullExpression(expression) ||
+			ts.isSatisfiesExpression(expression)
+		) {
+			return isDynamicReference(expression.expression, resolving);
+		}
+
+		return false;
+	};
+	const isEncryptedCredentialValue = (name: string | undefined, expression: ts.Expression): boolean => {
+		if (!['accessToken', 'refreshToken'].includes(name ?? '')) return false;
+		if (ts.isConditionalExpression(expression)) {
+			return (
+				expression.whenTrue.kind === ts.SyntaxKind.NullKeyword && isEncryptedCredentialValue(name, expression.whenFalse)
+			);
+		}
+
+		if (
+			ts.isCallExpression(expression) &&
+			ts.isPropertyAccessExpression(expression.expression) &&
+			['decrypt', 'encrypt'].includes(expression.expression.name.text) &&
+			ts.isPropertyAccessExpression(expression.expression.expression) &&
+			expression.expression.expression.expression.kind === ts.SyntaxKind.ThisKeyword &&
+			expression.expression.expression.name.text === 'credentialCipher' &&
+			expression.arguments.length === 2 &&
+			isDynamicReference(expression.arguments[0]) &&
+			ts.isObjectLiteralExpression(expression.arguments[1])
+		) {
+			const context = new Map(
+				expression.arguments[1].properties.flatMap((property) => {
+					if (ts.isShorthandPropertyAssignment(property)) {
+						return [[property.name.text, property.name] as const];
+					}
+					if (!ts.isPropertyAssignment(property)) return [];
+
+					const propertyName = compiledPropertyName(property.name);
+
+					return propertyName === undefined ? [] : [[propertyName, property.initializer] as const];
+				}),
+			);
+			const expectedField = name === 'accessToken' ? 'access-token' : 'refresh-token';
+			const field = context.get('field');
+			const recordId = context.get('recordId');
+			const recordType = context.get('recordType');
+
+			return (
+				context.size === 3 &&
+				field !== undefined &&
+				ts.isStringLiteral(field) &&
+				field.text === expectedField &&
+				recordId !== undefined &&
+				isDynamicReference(recordId) &&
+				recordType !== undefined &&
+				isDynamicReference(recordType)
+			);
+		}
+
+		if (!ts.isPropertyAccessExpression(expression) || !ts.isIdentifier(expression.expression)) return false;
+
+		const binding = resolveCompiledBinding(expression.expression);
+		const initializer = binding?.initializer;
+
+		return (
+			expression.name.text === name &&
+			initializer !== undefined &&
+			ts.isCallExpression(initializer) &&
+			ts.isPropertyAccessExpression(initializer.expression) &&
+			initializer.expression.expression.kind === ts.SyntaxKind.ThisKeyword &&
+			initializer.expression.name.text === 'encryptToken' &&
+			initializer.arguments.length === 3 &&
+			isDynamicReference(initializer.arguments[0]) &&
+			ts.isStringLiteral(initializer.arguments[1]) &&
+			['active', 'pending'].includes(initializer.arguments[1].text) &&
+			isDynamicReference(initializer.arguments[2])
+		);
+	};
 	const bindingNameContainsSecret = (name: ts.BindingName): boolean => {
 		if (ts.isIdentifier(name)) {
 			return isCompiledSecretName(name.text);
@@ -5286,6 +5381,7 @@ const containsCompiledSecret = (text: string): boolean => {
 			found =
 				isCompiledSecretName(name) &&
 				!approvedCloudAuthorization &&
+				!isEncryptedCredentialValue(name, node.initializer) &&
 				!(name === 'secretFields' && isPublicSecretFieldsDescriptor(node.initializer)) &&
 				containsUnsafeCompiledValue(node.initializer);
 		} else if (ts.isPropertyDeclaration(node)) {
@@ -6983,6 +7079,20 @@ describe('Homey security artifact gate', () => {
 				true,
 			),
 		).not.toThrow();
+		expect(() =>
+			assertTextSafe(
+				'safe compiled encrypted credentials',
+				"class Store { protect(token, recordId, recordType) { return { accessToken: this.credentialCipher.encrypt(token.accessToken, { field: 'access-token', recordId, recordType }), refreshToken: token.refreshToken === null ? null : this.credentialCipher.encrypt(token.refreshToken, { field: 'refresh-token', recordId, recordType }) }; } }",
+				true,
+			),
+		).not.toThrow();
+		expect(() =>
+			assertTextSafe(
+				'unsafe compiled encrypted credentials',
+				"class Store { protect(recordId, recordType) { return { accessToken: this.credentialCipher.encrypt('opaque-secret', { field: 'access-token', recordId, recordType }) }; } }",
+				true,
+			),
+		).toThrow('unsafe compiled encrypted credentials contains a compiled secret value');
 		expect(() =>
 			assertTextSafe(
 				'unsafe compiled cloud authorization',

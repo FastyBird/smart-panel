@@ -16,9 +16,14 @@ import {
 	HomeyCloudUserAuthorityEntity,
 } from '../entities/homey-cloud-grant.entity';
 import { HomeyCloudAuthorizationCapacityError } from '../errors/homey-cloud-authorization.error';
-import { HomeyCloudGrantAuthorityError, HomeyCloudGrantConflictError } from '../errors/homey-cloud-grant.error';
+import {
+	HomeyCloudGrantAuthorityError,
+	HomeyCloudGrantConflictError,
+	HomeyCloudGrantStateError,
+} from '../errors/homey-cloud-grant.error';
 
 import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
+import { HomeyCloudCredentialCipherService } from './homey-cloud-credential-cipher.service';
 import { HomeyCloudGrantMutationService, HomeyCloudTokenMaterial } from './homey-cloud-grant-mutation.service';
 import { HomeyCloudRuntimeRegistryService } from './homey-cloud-runtime-registry.service';
 
@@ -28,6 +33,10 @@ describe('HomeyCloudGrantMutationService', () => {
 	let dataSource: DataSource;
 	let service: HomeyCloudGrantMutationService;
 	let configurationFingerprint: string | null;
+	let clientConfig: jest.Mocked<
+		Pick<HomeyCloudClientConfigService, 'getConfiguration' | 'getConfigurationFingerprint'>
+	>;
+	let credentialCipher: HomeyCloudCredentialCipherService;
 	let runtimeRegistry: jest.Mocked<Pick<HomeyCloudRuntimeRegistryService, 'disconnectGrant'>>;
 
 	beforeEach(async () => {
@@ -49,11 +58,19 @@ describe('HomeyCloudGrantMutationService', () => {
 		await createUser(administratorId, 'administrator');
 		await createUser(otherAdministratorId, 'other-administrator');
 		runtimeRegistry = { disconnectGrant: jest.fn().mockResolvedValue(undefined) };
+		clientConfig = {
+			getConfiguration: jest.fn(() => ({
+				clientId: 'client-id',
+				clientSecret: 'deployment-owned-client-secret',
+				redirectUrl: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback',
+			})),
+			getConfigurationFingerprint: jest.fn(() => configurationFingerprint),
+		};
+		credentialCipher = new HomeyCloudCredentialCipherService(clientConfig as unknown as HomeyCloudClientConfigService);
 		service = new HomeyCloudGrantMutationService(
 			dataSource,
-			{
-				getConfigurationFingerprint: jest.fn(() => configurationFingerprint),
-			} as unknown as HomeyCloudClientConfigService,
+			clientConfig as unknown as HomeyCloudClientConfigService,
+			credentialCipher,
 			runtimeRegistry as unknown as HomeyCloudRuntimeRegistryService,
 		);
 	});
@@ -74,10 +91,38 @@ describe('HomeyCloudGrantMutationService', () => {
 		expect(ordinaryRead.accessToken).toBeUndefined();
 		expect(ordinaryRead.refreshToken).toBeUndefined();
 		expect(ordinaryRead.tokenType).toBeUndefined();
+		const stored = await findPendingWithCredentials(candidate.transactionId);
+		expect(stored.accessToken).not.toContain(candidate.token.accessToken);
+		expect(stored.refreshToken).not.toContain(candidate.token.refreshToken);
+		expect(credentialCipher.isEncrypted(stored.accessToken)).toBe(true);
+		expect(credentialCipher.isEncrypted(stored.refreshToken ?? '')).toBe(true);
 		await expect(service.loadCandidateCredentials(candidate.transactionId, administratorId)).resolves.toEqual({
 			...candidate,
 			expiresAt,
 		});
+	});
+
+	it('upgrades legacy plaintext candidate credentials during an authorized read', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		const candidate = candidateInput(context, 'legacy-candidate', token('legacy-candidate'));
+		await service.stageCandidate(candidate);
+		await dataSource.getRepository(HomeyCloudPendingGrantEntity).update(
+			{ transactionId: candidate.transactionId },
+			{
+				accessToken: candidate.token.accessToken,
+				refreshToken: candidate.token.refreshToken,
+				credentialsVersion: 0,
+			},
+		);
+
+		await expect(service.loadCandidateCredentials(candidate.transactionId, administratorId)).resolves.toMatchObject({
+			token: candidate.token,
+		});
+
+		const stored = await findPendingWithCredentials(candidate.transactionId);
+		expect(credentialCipher.isEncrypted(stored.accessToken)).toBe(true);
+		expect(credentialCipher.isEncrypted(stored.refreshToken ?? '')).toBe(true);
+		expect(stored.credentialsVersion).toBe(1);
 	});
 
 	it('revalidates authority and deployment generations before provider exchange', async () => {
@@ -120,7 +165,48 @@ describe('HomeyCloudGrantMutationService', () => {
 			...replacement,
 			token: token('replacement'),
 		});
+		const stored = await findActiveWithCredentials();
+		expect(stored.accessToken).not.toContain('access-replacement');
+		expect(stored.refreshToken).not.toContain('refresh-replacement');
+		expect(credentialCipher.isEncrypted(stored.accessToken)).toBe(true);
+		expect(credentialCipher.isEncrypted(stored.refreshToken ?? '')).toBe(true);
 		await expect(dataSource.getRepository(HomeyCloudPendingGrantEntity).count()).resolves.toBe(0);
+	});
+
+	it('upgrades legacy plaintext active-grant credentials during a runtime read', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		const material = token('legacy-active');
+		await service.stageCandidate(candidateInput(context, 'legacy-active', material));
+		const active = await service.activateCandidate('legacy-active', administratorId, 'homey-one');
+		await dataSource
+			.getRepository(HomeyCloudActiveGrantEntity)
+			.update(
+				{ key: HOMEY_CLOUD_ACTIVE_GRANT_KEY },
+				{ accessToken: material.accessToken, refreshToken: material.refreshToken, credentialsVersion: 0 },
+			);
+
+		await expect(service.loadActiveGrantCredentials()).resolves.toEqual({ ...active, token: material });
+
+		const stored = await findActiveWithCredentials();
+		expect(credentialCipher.isEncrypted(stored.accessToken)).toBe(true);
+		expect(credentialCipher.isEncrypted(stored.refreshToken ?? '')).toBe(true);
+		expect(stored.credentialsVersion).toBe(1);
+	});
+
+	it('fails closed when an encrypted grant is downgraded to plaintext or has an unknown version', async () => {
+		const context = await service.getAuthorizationContext(administratorId);
+		await service.stageCandidate(candidateInput(context, 'downgrade-active', token('downgrade-active')));
+		await service.activateCandidate('downgrade-active', administratorId, 'homey-one');
+		await dataSource
+			.getRepository(HomeyCloudActiveGrantEntity)
+			.update({ key: HOMEY_CLOUD_ACTIVE_GRANT_KEY }, { accessToken: 'stripped-envelope', credentialsVersion: 1 });
+
+		await expect(service.loadActiveGrantCredentials()).rejects.toThrow(HomeyCloudGrantStateError);
+
+		await dataSource
+			.getRepository(HomeyCloudActiveGrantEntity)
+			.update({ key: HOMEY_CLOUD_ACTIVE_GRANT_KEY }, { credentialsVersion: 2 });
+		await expect(service.loadActiveGrantCredentials()).rejects.toThrow(HomeyCloudGrantStateError);
 	});
 
 	it('clears a pending candidate before provider access when another activation advances the grant generation', async () => {
@@ -483,5 +569,23 @@ describe('HomeyCloudGrantMutationService', () => {
 			lastName: null,
 			language: null,
 		});
+	}
+
+	function findPendingWithCredentials(transactionId: string): Promise<HomeyCloudPendingGrantEntity> {
+		return dataSource
+			.getRepository(HomeyCloudPendingGrantEntity)
+			.createQueryBuilder('candidate')
+			.addSelect(['candidate.accessToken', 'candidate.refreshToken'])
+			.where('candidate.transactionId = :transactionId', { transactionId })
+			.getOneOrFail();
+	}
+
+	function findActiveWithCredentials(): Promise<HomeyCloudActiveGrantEntity> {
+		return dataSource
+			.getRepository(HomeyCloudActiveGrantEntity)
+			.createQueryBuilder('grant')
+			.addSelect(['grant.accessToken', 'grant.refreshToken'])
+			.where('grant.key = :key', { key: HOMEY_CLOUD_ACTIVE_GRANT_KEY })
+			.getOneOrFail();
 	}
 });
