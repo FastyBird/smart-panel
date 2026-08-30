@@ -31,7 +31,12 @@ export const HomeyConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
 	reconciliationInterval: z.coerce.number().int().min(MIN_HOMEY_RECONCILIATION_INTERVAL_MS).max(MAX_HOMEY_RECONCILIATION_INTERVAL_MS),
 })
 	.superRefine((value, context) => {
-		if (value.mode === DevicesHomeyPluginConnectionMode.local && typeof value.url === 'string' && !isSafeHomeyUrl(value.url)) {
+		if (
+			value.mode === DevicesHomeyPluginConnectionMode.local &&
+			typeof value.url === 'string' &&
+			value.url.trim() !== '' &&
+			!isSafeHomeyUrl(value.url)
+		) {
 			context.addIssue({ code: 'custom', path: ['url'], message: 'Homey URL must use HTTP or HTTPS without embedded credentials' });
 		}
 
@@ -74,6 +79,7 @@ export const HomeyConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
 				}
 			: {
 					...value,
+					url: typeof value.url === 'string' && value.url.trim() === '' ? null : value.url,
 					cloudClientId: undefined,
 					cloudClientSecret: undefined,
 					cloudRedirectUrl: undefined,

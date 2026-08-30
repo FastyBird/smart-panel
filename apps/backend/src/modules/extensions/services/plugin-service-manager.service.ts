@@ -536,6 +536,20 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 					return;
 				}
 
+				if (!validationResult.valid && validationResult.transient) {
+					const warning = 'Configuration readiness check is temporarily unavailable';
+					createExtensionLogger(registration.pluginName, 'PluginServiceManagerService').warn(
+						`Service ${registration.serviceId} is enabled but not started because its ${warning.toLowerCase()}.`,
+					);
+
+					const runtime = this.runtimeInfo.get(key);
+
+					if (runtime) runtime.lastError = warning;
+					this.scheduleReadinessRetry(registration);
+
+					return;
+				}
+
 				if (!validationResult.valid) {
 					const errors = (validationResult.errors ?? []).map((e) => e.message).join('; ');
 

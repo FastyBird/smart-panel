@@ -153,6 +153,13 @@ describe('HomeyConfigEditFormSchema', () => {
 		if (!result.success) expect(result.error.issues).toEqual(expect.arrayContaining([expect.objectContaining({ path: ['url'] })]));
 	});
 
+	it('normalizes a cleared local URL to null', () => {
+		const result = HomeyConfigEditFormSchema.safeParse(createConfig({ url: '   ' }));
+
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data.url).toBeNull();
+	});
+
 	it.each([
 		['connection timeout minimum', { connectionTimeout: MIN_HOMEY_CONNECTION_TIMEOUT_MS }],
 		['connection timeout maximum', { connectionTimeout: MAX_HOMEY_CONNECTION_TIMEOUT_MS }],

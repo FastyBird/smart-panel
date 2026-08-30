@@ -119,7 +119,11 @@ describe('PluginServiceManagerService', () => {
 
 			pluginConfigValidator.hasValidator.mockReturnValue(true);
 			pluginConfigValidator.validate
-				.mockRejectedValueOnce(new Error('private storage failure'))
+				.mockResolvedValueOnce({
+					valid: false,
+					errors: [{ message: 'Configuration validation failed unexpectedly' }],
+					transient: true,
+				})
 				.mockResolvedValue({ valid: true });
 			manager.register(service);
 
@@ -138,7 +142,11 @@ describe('PluginServiceManagerService', () => {
 			const service = createMockService('devices-provider', 'connector');
 
 			pluginConfigValidator.hasValidator.mockReturnValue(true);
-			pluginConfigValidator.validate.mockRejectedValue(new Error('private storage failure'));
+			pluginConfigValidator.validate.mockResolvedValue({
+				valid: false,
+				errors: [{ message: 'Configuration validation failed unexpectedly' }],
+				transient: true,
+			});
 			manager.register(service);
 
 			await manager.handleConfigUpdated();
@@ -154,7 +162,11 @@ describe('PluginServiceManagerService', () => {
 			const service = createMockService('devices-provider', 'connector');
 
 			pluginConfigValidator.hasValidator.mockReturnValue(true);
-			pluginConfigValidator.validate.mockRejectedValue(new Error('private storage failure'));
+			pluginConfigValidator.validate.mockResolvedValue({
+				valid: false,
+				errors: [{ message: 'Configuration validation failed unexpectedly' }],
+				transient: true,
+			});
 			manager.register(service);
 
 			await manager.handleConfigUpdated();

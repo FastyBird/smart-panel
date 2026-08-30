@@ -12,6 +12,7 @@ describe('PluginConfigValidatorService', () => {
 		await expect(service.validate('mock', { api_key: 'sentinel-secret' })).resolves.toEqual({
 			valid: false,
 			errors: [{ message: 'Configuration validation failed unexpectedly' }],
+			transient: true,
 		});
 	});
 });
