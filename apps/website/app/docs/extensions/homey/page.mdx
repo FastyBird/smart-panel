@@ -113,8 +113,9 @@ Panel requires a new key for the unsaved connection test; it never sends a store
 ## Configure a Homey Cloud Connection
 
 Homey Cloud avoids a direct network route between Smart Panel and Homey, but it requires working internet access and
-can have higher latency than a local connection. The deployment stores OAuth credentials encrypted on the backend;
-neither the browser nor the panel display can read them.
+can have higher latency than a local connection. OAuth credentials remain backend-only and are excluded from ordinary
+database queries, but the current database columns are not encrypted. Treat the database and its backups as sensitive;
+neither the browser nor the panel display can read the credentials.
 
 1. In Homey Developer Tools, register a confidential Web API client. Register this exact callback, replacing the
    placeholder with the final Smart Panel origin:

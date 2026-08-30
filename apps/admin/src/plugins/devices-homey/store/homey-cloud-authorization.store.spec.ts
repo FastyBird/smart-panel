@@ -289,6 +289,19 @@ describe('Homey Cloud authorization store', () => {
 		expect(store.status).toEqual({ connected: true, selectedHomeyId: 'active-homey' });
 	});
 
+	it('preserves a successful cancellation when its status refresh fails', async () => {
+		window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(pending));
+		post.mockResolvedValue(success({ status: 'cancelled', changed: true, homey_id: null }));
+		get.mockResolvedValue({ error: new Error('private provider detail'), response: { status: 503 } });
+		const store = useHomeyCloudAuthorization();
+
+		await expect(store.cancel()).resolves.toEqual({ status: 'cancelled', changed: true, homeyId: null });
+
+		expect(store.pendingTransaction).toBeNull();
+		expect(store.status).toBeNull();
+		expect(window.sessionStorage.getItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY)).toBeNull();
+	});
+
 	it('disconnects without exposing or sending stored credentials', async () => {
 		post.mockResolvedValue(success({ status: 'disconnected', changed: true, homey_id: null }));
 		const store = useHomeyCloudAuthorization();
