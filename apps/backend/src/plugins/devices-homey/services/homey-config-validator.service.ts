@@ -43,6 +43,9 @@ export class HomeyConfigValidatorService implements IPluginConfigValidator, OnMo
 			});
 		}
 
+		const hasActiveCloudGrant =
+			mode === HomeyConnectionMode.CLOUD ? await this.cloudGrantMutations.hasActiveGrant() : undefined;
+
 		if (config['enabled'] !== true) {
 			return Promise.resolve({ valid: true });
 		}
@@ -72,8 +75,6 @@ export class HomeyConfigValidatorService implements IPluginConfigValidator, OnMo
 			const clientId = config['cloudClientId'] ?? config['cloud_client_id'];
 			const clientSecret = config['cloudClientSecret'] ?? config['cloud_client_secret'];
 			const redirectUrl = config['cloudRedirectUrl'] ?? config['cloud_redirect_url'];
-			const hasActiveGrant = await this.cloudGrantMutations.hasActiveGrant();
-
 			if (typeof clientId !== 'string' || clientId.trim().length === 0) {
 				return Promise.resolve({
 					valid: false,
@@ -100,7 +101,7 @@ export class HomeyConfigValidatorService implements IPluginConfigValidator, OnMo
 				});
 			}
 
-			if (!hasActiveGrant) {
+			if (!hasActiveCloudGrant) {
 				return {
 					valid: false,
 					errors: [{ message: 'Homey Cloud authorization is required', field: 'mode' }],

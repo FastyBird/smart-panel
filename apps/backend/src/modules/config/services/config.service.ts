@@ -20,6 +20,7 @@ import { AppConfigModel, ModuleConfigModel, PluginConfigModel } from '../models/
 import { ConfigSecretsService } from './config-secrets.service';
 import { ModuleConfigMutationRegistryService } from './module-config-mutation-registry.service';
 import { ModulesTypeMapperService } from './modules-type-mapper.service';
+import { PluginConfigMutationRegistryService } from './plugin-config-mutation-registry.service';
 import { PluginsTypeMapperService } from './plugins-type-mapper.service';
 
 @Injectable()
@@ -41,6 +42,7 @@ export class ConfigService {
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly configSecrets: ConfigSecretsService,
 		private readonly moduleConfigMutations: ModuleConfigMutationRegistryService,
+		private readonly pluginConfigMutations: PluginConfigMutationRegistryService,
 		private readonly platform: PlatformService,
 		private readonly eventEmitter: EventEmitter2,
 	) {
@@ -477,6 +479,18 @@ export class ConfigService {
 		this.eventEmitter.emit(EventType.CONFIG_UPDATED, { source: plugin, type: 'plugin' as const });
 
 		this.logger.log(`Configuration update for plugin=${plugin} completed successfully`);
+	}
+
+	async updatePluginConfig<TUpdateDto extends UpdatePluginConfigDto>(
+		plugin: string,
+		value: TUpdateDto,
+		submittedValue: Record<string, unknown> = value as unknown as Record<string, unknown>,
+	): Promise<void> {
+		const resolvedInstance = this.resolvePluginConfigUpdate(plugin, value, submittedValue);
+
+		await this.pluginConfigMutations.execute(plugin, resolvedInstance, () =>
+			this.setPluginConfig(plugin, resolvedInstance, instanceToPlain(resolvedInstance)),
+		);
 	}
 
 	getModulesConfig<TConfig extends ModuleConfigModel>(): TConfig[] {

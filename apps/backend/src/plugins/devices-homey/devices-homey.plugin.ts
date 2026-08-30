@@ -75,6 +75,7 @@ import { HomeyCloudGrantMutationService } from './services/homey-cloud-grant-mut
 import { HomeyCloudRuntimeRegistryService } from './services/homey-cloud-runtime-registry.service';
 import { HomeyCloudRuntimeService } from './services/homey-cloud-runtime.service';
 import { HomeyCloudSdkSessionFactoryService } from './services/homey-cloud-sdk-session.factory';
+import { HomeyConfigMutationService } from './services/homey-config-mutation.service';
 import { HomeyConfigValidatorService } from './services/homey-config-validator.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
@@ -109,6 +110,7 @@ import { HomeyService } from './services/homey.service';
 	],
 	providers: [
 		HomeyConfigValidatorService,
+		HomeyConfigMutationService,
 		HomeyCloudClientConfigService,
 		HomeyCloudCredentialCipherService,
 		HomeyCloudAuthorizationStateService,

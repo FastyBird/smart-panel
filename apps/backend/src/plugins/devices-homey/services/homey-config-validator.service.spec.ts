@@ -50,7 +50,7 @@ describe('HomeyConfigValidatorService', () => {
 		await expect(service.validate({ enabled: false, mode: HomeyConnectionMode.CLOUD })).resolves.toEqual({
 			valid: true,
 		});
-		expect(cloudGrantMutations.hasActiveGrant).not.toHaveBeenCalled();
+		expect(cloudGrantMutations.hasActiveGrant).toHaveBeenCalledTimes(1);
 	});
 
 	it.each([

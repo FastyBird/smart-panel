@@ -23,6 +23,7 @@ import { ConfigSecretsService } from './services/config-secrets.service';
 import { ConfigService } from './services/config.service';
 import { ModuleConfigMutationRegistryService } from './services/module-config-mutation-registry.service';
 import { ModulesTypeMapperService } from './services/modules-type-mapper.service';
+import { PluginConfigMutationRegistryService } from './services/plugin-config-mutation-registry.service';
 import { PluginConfigValidatorService } from './services/plugin-config-validator.service';
 
 @ApiTag({
@@ -37,11 +38,18 @@ import { PluginConfigValidatorService } from './services/plugin-config-validator
 		ConfigService,
 		ConfigSecretsService,
 		ModuleConfigMutationRegistryService,
+		PluginConfigMutationRegistryService,
 		PluginConfigValidatorService,
 		GenerateAdminExtensionsCommand,
 	],
 	controllers: [ConfigController],
-	exports: [ConfigService, ConfigSecretsService, ModuleConfigMutationRegistryService, PluginConfigValidatorService],
+	exports: [
+		ConfigService,
+		ConfigSecretsService,
+		ModuleConfigMutationRegistryService,
+		PluginConfigMutationRegistryService,
+		PluginConfigValidatorService,
+	],
 })
 export class ConfigModule implements OnModuleInit {
 	constructor(

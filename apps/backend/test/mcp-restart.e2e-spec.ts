@@ -16,6 +16,7 @@ import { ConfigSecretsService } from '../src/modules/config/services/config-secr
 import { ConfigService } from '../src/modules/config/services/config.service';
 import { ModuleConfigMutationRegistryService } from '../src/modules/config/services/module-config-mutation-registry.service';
 import { ModulesTypeMapperService } from '../src/modules/config/services/modules-type-mapper.service';
+import { PluginConfigMutationRegistryService } from '../src/modules/config/services/plugin-config-mutation-registry.service';
 import { PluginsTypeMapperService } from '../src/modules/config/services/plugins-type-mapper.service';
 import { McpController } from '../src/modules/mcp/controllers/mcp.controller';
 import { UpdateMcpConfigDto } from '../src/modules/mcp/dto/update-config.dto';
@@ -133,6 +134,7 @@ describe('MCP disabled restart', () => {
 			modulesMapper,
 			new ConfigSecretsService(),
 			new ModuleConfigMutationRegistryService(),
+			new PluginConfigMutationRegistryService(),
 			{} as PlatformService,
 			{ emit: jest.fn() } as unknown as EventEmitter2,
 		);
