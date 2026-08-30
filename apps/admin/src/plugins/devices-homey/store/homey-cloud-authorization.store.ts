@@ -35,6 +35,14 @@ import type {
 
 const endpoint = `/${PLUGINS_PREFIX}/${DEVICES_HOMEY_PLUGIN_PREFIX}/oauth` as const;
 
+const removePendingTransactionFromStorage = (): void => {
+	try {
+		window.sessionStorage.removeItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY);
+	} catch {
+		// Browser policy may make session storage unavailable; authorization can safely start without a cached transaction.
+	}
+};
+
 const readPendingTransaction = (): IHomeyCloudPendingTransaction | null => {
 	if (typeof window === 'undefined') return null;
 
@@ -44,13 +52,13 @@ const readPendingTransaction = (): IHomeyCloudPendingTransaction | null => {
 
 		const result = HomeyCloudPendingTransactionSchema.safeParse(JSON.parse(value));
 		if (!result.success) {
-			window.sessionStorage.removeItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY);
+			removePendingTransactionFromStorage();
 			return null;
 		}
 
 		return result.data;
 	} catch {
-		window.sessionStorage.removeItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY);
+		removePendingTransactionFromStorage();
 		return null;
 	}
 };
@@ -69,7 +77,7 @@ export const useHomeyCloudAuthorization = defineStore('devices_homey_plugin-clou
 		if (typeof window === 'undefined') return;
 
 		if (value === null) {
-			window.sessionStorage.removeItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY);
+			removePendingTransactionFromStorage();
 		} else {
 			window.sessionStorage.setItem(HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY, JSON.stringify(value));
 		}

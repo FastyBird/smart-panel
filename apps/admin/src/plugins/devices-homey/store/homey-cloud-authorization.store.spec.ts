@@ -29,8 +29,21 @@ const pending = {
 describe('Homey Cloud authorization store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		vi.restoreAllMocks();
 		vi.clearAllMocks();
 		window.sessionStorage.clear();
+	});
+
+	it('starts without a cached transaction when browser policy blocks session storage', () => {
+		vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+			throw new DOMException('Blocked by browser policy', 'SecurityError');
+		});
+		vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+			throw new DOMException('Blocked by browser policy', 'SecurityError');
+		});
+
+		expect(() => useHomeyCloudAuthorization()).not.toThrow();
+		expect(useHomeyCloudAuthorization().pendingTransaction).toBeNull();
 	});
 
 	it('loads credential-free authorization status', async () => {
