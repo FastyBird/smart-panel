@@ -85,6 +85,7 @@ describe('HomeyConfigForm', () => {
 		model.mode = DevicesHomeyPluginConnectionMode.local;
 		model.apiKey = undefined;
 		model.cloudClientSecret = undefined;
+		model.cloudRedirectUrl = 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback';
 		formChanged.value = false;
 		useConfigPluginEditForm.mockReturnValue({
 			formEl: ref(),
@@ -98,12 +99,16 @@ describe('HomeyConfigForm', () => {
 	it('offers both local and cloud connection modes', () => {
 		const wrapper = mountForm();
 		const modes = wrapper.findAllComponents(ElRadioButton);
+		const enabledField = wrapper.get('[data-test-id="homey-enabled-field"]');
+		const modeField = wrapper.get('[data-test-id="homey-mode-field"]');
 
 		expect(modes).toHaveLength(2);
 		expect(modes[0]?.props('value')).toBe('local');
 		expect(modes[0]?.props('disabled')).not.toBe(true);
 		expect(modes[1]?.props('value')).toBe('cloud');
 		expect(modes[1]?.props('disabled')).not.toBe(true);
+		expect(enabledField.element.compareDocumentPosition(modeField.element) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+		expect(wrapper.find('input[name="mode"]').exists()).toBe(true);
 	});
 
 	it('passes only newly entered candidate credentials into the connection panel', async () => {
@@ -130,6 +135,39 @@ describe('HomeyConfigForm', () => {
 		expect(wrapper.find('[data-test-id="homey-cloud-authorization-panel-stub"]').exists()).toBe(true);
 		expect(wrapper.getComponent({ name: 'HomeyConnectionPanel' }).props('mode')).toBe('cloud');
 		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('local');
+	});
+
+	it('prefills an empty Cloud callback from the Admin origin', async () => {
+		model.cloudRedirectUrl = null;
+		const wrapper = mountForm();
+
+		model.mode = DevicesHomeyPluginConnectionMode.cloud;
+		await wrapper.vm.$nextTick();
+
+		expect(model.cloudRedirectUrl).toBe(`${window.location.origin}/api/v1/plugins/devices-homey/oauth/callback`);
+	});
+
+	it('preserves an explicitly configured Cloud callback', async () => {
+		const wrapper = mountForm();
+
+		model.mode = DevicesHomeyPluginConnectionMode.cloud;
+		await wrapper.vm.$nextTick();
+
+		expect(model.cloudRedirectUrl).toBe('https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback');
+	});
+
+	it('offers to replace a saved callback that differs from the current Admin origin', async () => {
+		const wrapper = mountForm();
+
+		model.mode = DevicesHomeyPluginConnectionMode.cloud;
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.find('[data-test-id="homey-cloud-redirect-recommendation"]').exists()).toBe(true);
+
+		await wrapper.get('[data-test-id="homey-cloud-use-admin-redirect"]').trigger('click');
+
+		expect(model.cloudRedirectUrl).toBe(`${window.location.origin}/api/v1/plugins/devices-homey/oauth/callback`);
+		expect(wrapper.find('[data-test-id="homey-cloud-redirect-recommendation"]').exists()).toBe(false);
 	});
 
 	it('updates the authorization guard only after cloud mode is saved', async () => {

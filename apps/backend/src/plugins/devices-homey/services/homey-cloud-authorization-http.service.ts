@@ -14,7 +14,6 @@ import {
 	HomeyCloudAuthorizationService,
 	HomeyCloudChoice,
 } from './homey-cloud-authorization.service';
-import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
 import { HomeyCloudGrantMutationService } from './homey-cloud-grant-mutation.service';
 import { HomeyCloudRuntimeService } from './homey-cloud-runtime.service';
 
@@ -40,7 +39,6 @@ export class HomeyCloudAuthorizationHttpService {
 	constructor(
 		private readonly authorizationState: HomeyCloudAuthorizationStateService,
 		private readonly authorization: HomeyCloudAuthorizationService,
-		private readonly clientConfig: HomeyCloudClientConfigService,
 		private readonly grantMutations: HomeyCloudGrantMutationService,
 		private readonly runtime: HomeyCloudRuntimeService,
 	) {}
@@ -132,10 +130,6 @@ export class HomeyCloudAuthorizationHttpService {
 	}
 
 	getResultUrl(): string {
-		try {
-			return new URL(HOMEY_CLOUD_RESULT_PATH, this.clientConfig.getConfiguration().redirectUrl).toString();
-		} catch {
-			return HOMEY_CLOUD_RESULT_PATH;
-		}
+		return HOMEY_CLOUD_RESULT_PATH;
 	}
 }

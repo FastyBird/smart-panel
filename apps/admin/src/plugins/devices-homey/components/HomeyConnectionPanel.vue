@@ -108,29 +108,41 @@
 			{{ t('devicesHomeyPlugin.connectionTest.candidateUnavailable') }}
 		</p>
 
-		<el-alert
+		<div
 			v-if="testRequestFailed"
-			type="error"
-			:closable="false"
-			:title="t('devicesHomeyPlugin.connectionTest.requestFailed')"
 			class="mt-4"
-		/>
-		<el-alert
+			data-test-id="homey-test-feedback"
+		>
+			<el-alert
+				type="error"
+				:closable="false"
+				:title="t('devicesHomeyPlugin.connectionTest.requestFailed')"
+			/>
+		</div>
+		<div
 			v-else-if="statusStore.lastTest?.success"
-			type="success"
-			:closable="false"
-			:title="t('devicesHomeyPlugin.connectionTest.success')"
-			:description="t('devicesHomeyPlugin.connectionTest.successDescription', { identity: testedHomeyIdentity })"
 			class="mt-4"
-		/>
-		<el-alert
+			data-test-id="homey-test-feedback"
+		>
+			<el-alert
+				type="success"
+				:closable="false"
+				:title="t('devicesHomeyPlugin.connectionTest.success')"
+				:description="t('devicesHomeyPlugin.connectionTest.successDescription', { identity: testedHomeyIdentity })"
+			/>
+		</div>
+		<div
 			v-else-if="statusStore.lastTest"
-			type="error"
-			:closable="false"
-			:title="t('devicesHomeyPlugin.connectionTest.failure')"
-			:description="testFailureDescription"
 			class="mt-4"
-		/>
+			data-test-id="homey-test-feedback"
+		>
+			<el-alert
+				type="error"
+				:closable="false"
+				:title="t('devicesHomeyPlugin.connectionTest.failure')"
+				:description="testFailureDescription"
+			/>
+		</div>
 	</el-card>
 </template>
 

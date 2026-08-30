@@ -37,6 +37,8 @@
 			"label": "Adresa přesměrování Homey Cloud",
 			"placeholder": "https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback",
 			"description": "Zaregistrujte tuto přesnou adresu jako OAuth callback v portálu Homey Developer.",
+			"recommendation": "Uložený callback používá jiný původ. Callback pro tuto adresu administrace je {url}",
+			"useCurrentAdmin": "Použít aktuální adresu administrace",
 			"invalid": "Zadejte přesnou registrovanou HTTPS adresu; HTTP je povoleno pouze na localhostu"
 		},
 		"connectionTimeout": "Časový limit připojení (ms)",

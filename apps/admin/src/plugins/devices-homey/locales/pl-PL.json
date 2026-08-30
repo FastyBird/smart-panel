@@ -37,6 +37,8 @@
 			"label": "Adres przekierowania Homey Cloud",
 			"placeholder": "https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback",
 			"description": "Zarejestruj ten dokładny adres jako callback OAuth w portalu Homey Developer.",
+			"recommendation": "Zapisany callback używa innego źródła. Callback dla tego adresu administracyjnego to {url}",
+			"useCurrentAdmin": "Użyj bieżącego adresu administracyjnego",
 			"invalid": "Wprowadź dokładny zarejestrowany adres HTTPS; HTTP jest dozwolone tylko na localhost"
 		},
 		"connectionTimeout": "Limit czasu połączenia (ms)",

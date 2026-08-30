@@ -35,7 +35,7 @@ describe('HomeyCloudAuthorizationController', () => {
 			cancel: jest.fn(),
 			completeCallback: jest.fn(),
 			disconnect: jest.fn(),
-			getResultUrl: jest.fn().mockReturnValue('https://panel.example.com/config/plugins/devices-homey-plugin'),
+			getResultUrl: jest.fn().mockReturnValue('/config/plugins/devices-homey-plugin'),
 			getStatus: jest.fn(),
 			listHomeys: jest.fn(),
 			selectHomey: jest.fn(),
@@ -143,7 +143,7 @@ describe('HomeyCloudAuthorizationController', () => {
 		expect(reply.header).toHaveBeenCalledWith('Cache-Control', 'no-store');
 		expect(reply.header).toHaveBeenCalledWith('Pragma', 'no-cache');
 		expect(reply.header).toHaveBeenCalledWith('Referrer-Policy', 'no-referrer');
-		expect(reply.redirect).toHaveBeenCalledWith('https://panel.example.com/config/plugins/devices-homey-plugin', 303);
+		expect(reply.redirect).toHaveBeenCalledWith('/config/plugins/devices-homey-plugin', 303);
 		expect(JSON.stringify(reply.redirect.mock.calls)).not.toContain('provider-secret');
 	});
 

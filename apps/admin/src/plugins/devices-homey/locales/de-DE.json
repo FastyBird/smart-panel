@@ -37,6 +37,8 @@
 			"label": "Homey-Cloud-Weiterleitungs-URL",
 			"placeholder": "https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback",
 			"description": "Diese exakte URL im Homey-Developer-Portal als OAuth-Callback registrieren.",
+			"recommendation": "Der gespeicherte Callback verwendet einen anderen Ursprung. Der Callback für diese Admin-Adresse ist {url}",
+			"useCurrentAdmin": "Aktuelle Admin-Adresse verwenden",
 			"invalid": "Die exakt registrierte HTTPS-Callback-URL eingeben; HTTP ist nur auf localhost erlaubt"
 		},
 		"connectionTimeout": "Verbindungszeitlimit (ms)",

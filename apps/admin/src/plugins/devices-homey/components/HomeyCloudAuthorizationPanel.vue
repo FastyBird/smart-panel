@@ -16,13 +16,17 @@
 			:title="t('devicesHomeyPlugin.cloudAuthorization.saveConfigurationFirst')"
 			class="mb-4"
 		/>
-		<el-alert
+		<div
 			v-if="requestFailed"
-			type="error"
-			:closable="false"
-			:title="t('devicesHomeyPlugin.cloudAuthorization.requestFailed')"
 			class="mb-4"
-		/>
+			data-test-id="homey-cloud-request-error"
+		>
+			<el-alert
+				type="error"
+				:closable="false"
+				:title="t('devicesHomeyPlugin.cloudAuthorization.requestFailed')"
+			/>
+		</div>
 
 		<div
 			v-if="authorizationStore.homeys.length > 0"

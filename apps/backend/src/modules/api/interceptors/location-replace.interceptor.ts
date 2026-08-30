@@ -38,15 +38,15 @@ export class LocationReplaceInterceptor implements NestInterceptor {
 		const fullBaseUrl = `${this.appHost}:${this.appPort}/${API_PREFIX}/${version}`;
 
 		return next.handle().pipe(
-			map((data: Record<string, any>) => {
+			map((data: Record<string, any> | null | undefined) => {
 				const locationHeader = response.getHeader('Location') as string | undefined;
 
 				if (locationHeader) {
 					let updatedLocation = locationHeader.replace(':baseUrl', fullBaseUrl);
 
-					const placeholders = updatedLocation.match(/:(\w+)/g); // Match all :placeholders
+					const placeholders = updatedLocation.match(/:([A-Za-z_]\w*)/g); // Match named :placeholders, not ports
 
-					if (placeholders) {
+					if (placeholders && data !== null && typeof data === 'object') {
 						placeholders.forEach((placeholder) => {
 							const key = placeholder.slice(1); // Remove the leading ':'
 							const value = data[key] as string | undefined; // Try to find the value in the response data
