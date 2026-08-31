@@ -7,9 +7,10 @@ devices already managed by Homey, lets an administrator review and adopt them, k
 sends supported controls back to Homey.
 
 <Callout type="info">
-  **Local Homey SHS support is validated for SHS 13.4.0 and 13.4.1 over HTTP
-  port 4859.** The validation matrix covers sanitized inventory, capability
-  writes and ordered events, credential rotation and permission failures,
+  **Local Homey SHS support is validated over HTTP port 4859.** Basic reads and
+  a passive SDK session were verified on SHS 13.4.0. The complete validation
+  matrix passed on SHS 13.4.1, covering sanitized inventory, capability writes
+  and ordered events, credential rotation and permission failures,
   startup/restart/network recovery, physical/Homey/Flow changes, concurrent
   commands, disposable-device lifecycle, thermostat setpoint and mode control,
   and clean plugin/backend shutdown. Homey Pro hardware and HTTPS were not

@@ -103,9 +103,10 @@ Smart Panel connects to multiple smart home ecosystems through dedicated integra
 
 ### Homey Self-Hosted Server
 
-Smart Panel supports directly reachable Homey Self-Hosted Server (SHS) instances over their local API. Live validation
-covers the documented SHS inventory, event, command, lifecycle, credential, recovery, shutdown, and thermostat-control
-matrix over HTTP. Homey Pro hardware and local HTTPS are not included in the validated support claim.
+Smart Panel supports directly reachable Homey Self-Hosted Server (SHS) instances over their local API. Basic reads and
+a passive SDK session were verified on SHS 13.4.0. The complete inventory, event, command, lifecycle, credential,
+recovery, shutdown, and thermostat-control matrix passed on SHS 13.4.1 over HTTP. Homey Pro hardware and local HTTPS
+are not included in the validated support claim.
 
 - **Protocol**: Local HTTP(S) with Socket.IO events
 - **Targets**: Directly reachable Homey Self-Hosted Server instances over HTTP
