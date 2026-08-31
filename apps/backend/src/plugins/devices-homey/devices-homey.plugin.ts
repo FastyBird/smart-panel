@@ -1,5 +1,4 @@
 import { Module, OnModuleInit } from '@nestjs/common';
-import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../../modules/config/config.module';
@@ -24,15 +23,10 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
-import { UserLifecycleMutationRegistryService } from '../../modules/users/services/user-lifecycle-mutation-registry.service';
-import { UsersModule } from '../../modules/users/users.module';
 
-import { HomeyCloudConnectorFactory } from './connectors/homey-cloud-connector.factory';
 import { HomeyLocalConnectorFactory } from './connectors/homey-local-connector.factory';
-import { HomeyRuntimeConnectorFactory } from './connectors/homey-runtime-connector.factory';
 import { HomeySdkClientFactoryService } from './connectors/homey-sdk.client';
 import { HomeyAdoptionController } from './controllers/homey-adoption.controller';
-import { HomeyCloudAuthorizationController } from './controllers/homey-cloud-authorization.controller';
 import { HomeyDevicesController } from './controllers/homey-devices.controller';
 import { HomeyMappingPreviewController } from './controllers/homey-mapping-preview.controller';
 import { HomeyStatusController } from './controllers/homey-status.controller';
@@ -54,34 +48,16 @@ import { HomeyUpdatePluginConfigDto } from './dto/update-config.dto';
 import { UpdateHomeyDeviceDto } from './dto/update-device.dto';
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from './entities/devices-homey.entity';
 import { HomeyAdoptionLockEntity } from './entities/homey-adoption-lock.entity';
-import {
-	HomeyCloudActiveGrantEntity,
-	HomeyCloudAuthorizationStateEntity,
-	HomeyCloudCancelledAuthorizationEntity,
-	HomeyCloudPendingGrantEntity,
-	HomeyCloudUserAuthorityEntity,
-} from './entities/homey-cloud-grant.entity';
 import { HomeyMappingLoaderService } from './mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from './mappings/mapping-transformer.service';
 import { HomeyPropertyMappingStorageService } from './mappings/property-mapping-storage.service';
 import { HomeyConfigModel } from './models/config.model';
 import { HomeyDevicePlatform } from './platforms/homey-device.platform';
 import { HomeyAdoptionLockService } from './services/homey-adoption-lock.service';
-import { HomeyCloudAuthorizationHttpService } from './services/homey-cloud-authorization-http.service';
-import { HomeyCloudAuthorizationStateService } from './services/homey-cloud-authorization-state.service';
-import { HomeyCloudAuthorizationService } from './services/homey-cloud-authorization.service';
-import { HomeyCloudClientConfigService } from './services/homey-cloud-client-config.service';
-import { HomeyCloudCredentialCipherService } from './services/homey-cloud-credential-cipher.service';
-import { HomeyCloudGrantMutationService } from './services/homey-cloud-grant-mutation.service';
-import { HomeyCloudRuntimeRegistryService } from './services/homey-cloud-runtime-registry.service';
-import { HomeyCloudRuntimeService } from './services/homey-cloud-runtime.service';
-import { HomeyCloudSdkSessionFactoryService } from './services/homey-cloud-sdk-session.factory';
-import { HomeyConfigMutationService } from './services/homey-config-mutation.service';
 import { HomeyConfigValidatorService } from './services/homey-config-validator.service';
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
 import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
-import { HomeyLegacyCloudConfigMigrationService } from './services/homey-legacy-cloud-config-migration.service';
 import { HomeyMappingPreviewService } from './services/homey-mapping-preview.service';
 import { HomeySynchronizerService } from './services/homey-synchronizer.service';
 import { HomeyService } from './services/homey.service';
@@ -93,44 +69,24 @@ import { HomeyService } from './services/homey.service';
 })
 @Module({
 	imports: [
-		NestConfigModule,
 		TypeOrmModule.forFeature([
 			HomeyDeviceEntity,
 			HomeyChannelEntity,
 			HomeyChannelPropertyEntity,
 			HomeyAdoptionLockEntity,
-			HomeyCloudAuthorizationStateEntity,
-			HomeyCloudUserAuthorityEntity,
-			HomeyCloudPendingGrantEntity,
-			HomeyCloudCancelledAuthorizationEntity,
-			HomeyCloudActiveGrantEntity,
 		]),
 		DevicesModule,
 		ConfigModule,
 		ExtensionsModule,
 		SwaggerModule,
-		UsersModule,
 	],
 	providers: [
 		HomeyConfigValidatorService,
-		HomeyConfigMutationService,
-		HomeyCloudClientConfigService,
-		HomeyCloudCredentialCipherService,
-		HomeyCloudAuthorizationStateService,
-		HomeyLegacyCloudConfigMigrationService,
-		HomeyCloudGrantMutationService,
-		HomeyCloudSdkSessionFactoryService,
-		HomeyCloudRuntimeRegistryService,
-		HomeyCloudRuntimeService,
-		HomeyCloudAuthorizationService,
-		HomeyCloudAuthorizationHttpService,
 		HomeySdkClientFactoryService,
 		HomeyLocalConnectorFactory,
-		HomeyCloudConnectorFactory,
-		HomeyRuntimeConnectorFactory,
 		{
 			provide: HOMEY_CONNECTOR_FACTORY,
-			useExisting: HomeyRuntimeConnectorFactory,
+			useExisting: HomeyLocalConnectorFactory,
 		},
 		HomeyConnectionTestService,
 		HomeyMappingLoaderService,
@@ -145,7 +101,6 @@ import { HomeyService } from './services/homey.service';
 		HomeyDevicePlatform,
 	],
 	controllers: [
-		HomeyCloudAuthorizationController,
 		HomeyStatusController,
 		HomeyTestConnectionController,
 		HomeyDevicesController,
@@ -161,8 +116,6 @@ import { HomeyService } from './services/homey.service';
 		HomeyDeviceAdoptionService,
 		HomeySynchronizerService,
 		HomeyService,
-		HomeyCloudAuthorizationService,
-		HomeyCloudSdkSessionFactoryService,
 	],
 })
 export class DevicesHomeyPlugin implements OnModuleInit {
@@ -178,28 +131,22 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 		private readonly homeyService: HomeyService,
 		private readonly platformRegistry: PlatformRegistryService,
 		private readonly homeyDevicePlatform: HomeyDevicePlatform,
-		private readonly userLifecycleMutations: UserLifecycleMutationRegistryService,
-		private readonly homeyCloudGrantMutations: HomeyCloudGrantMutationService,
-		private readonly legacyCloudConfigMigration: HomeyLegacyCloudConfigMigrationService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 	) {}
 
 	onModuleInit(): void {
-		this.userLifecycleMutations.registerParticipant(this.homeyCloudGrantMutations);
 		this.factoryResetRegistry.register(
 			DEVICES_HOMEY_PLUGIN_NAME,
 			async (): Promise<{ success: boolean; reason?: string }> => {
 				try {
 					await this.homeyService.stop();
-					await this.homeyCloudGrantMutations.resetForFactory();
 
 					return { success: true };
 				} catch (error) {
 					return { success: false, reason: error instanceof Error ? error.message : 'Unknown error' };
 				}
 			},
-			// Clear provider credentials before the core Devices and Users reset handlers.
-			190,
+			90,
 		);
 
 		this.configMapper.registerMapping<HomeyConfigModel, HomeyUpdatePluginConfigDto>({
@@ -212,18 +159,8 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 					configuredPath: 'api_key_configured',
 					inputPaths: ['apiKey'],
 				},
-				{
-					path: 'cloud_client_secret',
-					configuredPath: 'cloud_client_secret_configured',
-					inputPaths: ['cloudClientSecret'],
-				},
 			],
 		});
-		// Module initialization completes before imported managed services enter
-		// application bootstrap, so legacy credentials are available when Homey
-		// grant reconciliation and service enablement first inspect configuration.
-		this.legacyCloudConfigMigration.migrate();
-
 		this.devicesMapper.registerMapping<HomeyDeviceEntity, CreateHomeyDeviceDto, UpdateHomeyDeviceDto>({
 			type: DEVICES_HOMEY_TYPE,
 			class: HomeyDeviceEntity,
@@ -273,9 +210,61 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 
 > Plugin · by FastyBird · platform: devices
 
-Connects Smart Panel to Homey Self-Hosted Server, compatible Homey Pro local APIs, or Homey Cloud. Homey remains responsible for pairing, radio networks, drivers and apps; Smart Panel adopts selected logical devices for display and control.
+Connects Smart Panel to Homey Self-Hosted Server and compatible Homey Pro local APIs. Homey remains responsible for pairing, radio networks, drivers and apps; Smart Panel adopts selected logical devices for display and control.
 
-Local and Cloud provider settings are managed in the Smart Panel admin application. Secret fields are write-only and are never returned by the API.`,
+## What you get
+
+- Reuse devices already paired and configured in Homey without moving their radio networks or drivers to Smart Panel
+- Review Homey's inventory and mapping preview, then adopt only the logical devices you want on the panel
+- Keep dashboards, scenes and Buddy supplied with normalized Smart Panel device, channel and property data
+- Send supported controls back to Homey while state changes from Homey are synchronized in real time
+- Keep the integration entirely local, with no Homey Cloud account or hosted Smart Panel bridge
+
+## Features
+
+- **Reviewed device adoption** — load Homey's authenticated inventory, inspect mapping warnings and adopt selected devices in batches
+- **Capability mapping** — translate Homey classes and capabilities into Smart Panel categories, channels and properties through declarative mappings
+- **Real-time synchronization** — process Homey Socket.IO events with automatic resubscription after connection or server restarts
+- **Periodic reconciliation** — refresh the complete inventory at a configurable interval to recover missed events and availability changes
+- **Bidirectional control** — control supported switches, lights, locks and window coverings through Smart Panel's standard command path
+- **Resilient lifecycle** — reconnect with bounded back-off, preserve adopted devices during outages and mark missing upstream devices unavailable instead of deleting them
+
+## Supported device mappings
+
+Built-in mappings cover lights, outlets, switches, locks, window coverings, thermostats and common environmental, safety, presence, electrical and battery sensors. Unsupported capabilities remain visible in the mapping preview instead of being silently guessed.
+
+## Setup
+
+1. Create a dedicated least-privilege API key in Homey.
+2. Enter the locally reachable Homey API URL and key in this plugin's configuration.
+3. Test and save the connection, then enable the plugin.
+4. Open device discovery, review the Homey inventory and adopt the devices you want to display or control.
+
+## Required API key permissions
+
+| Permission | Purpose |
+|------------|---------|
+| \`homey.system.readonly\` | Test the connection and identify the Homey instance |
+| \`homey.zone.readonly\` | Read the zone hierarchy shown during device adoption |
+| \`homey.device.readonly\` | Discover devices, read capabilities and synchronize state |
+| \`homey.device.control\` | Send commands to supported writable capabilities |
+
+Grant all four permissions for full functionality. Do not grant device-management, pairing, app, Flow, user or administrator permissions; this plugin does not use them.
+
+## Configuration
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`url\` | Local Homey Pro or Homey SHS API URL, including protocol and port | — |
+| \`api_key\` | Write-only Homey API key used for inventory, events and controls | — |
+| \`connection_timeout\` | Timeout for Homey requests and connection operations | \`10000 ms\` |
+| \`reconciliation_interval\` | Interval for full inventory reconciliation | \`300000 ms\` |
+
+## Boundaries
+
+Homey remains responsible for pairing, commissioning, drivers, apps, zones, firmware and Flow administration. Smart Panel does not rename, move or remove devices in Homey. Homey Cloud is not supported because its Web API authorization requires a partner-hosted integration.
+
+Provider settings are managed in the Smart Panel admin application. The API key is write-only and is never returned by the API.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

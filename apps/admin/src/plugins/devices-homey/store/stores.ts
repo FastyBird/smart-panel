@@ -4,7 +4,6 @@ export * from './config.store.schemas';
 export * from './config.store.types';
 export * from './devices.store.schemas';
 export * from './homey-inventory.store';
-export * from './homey-cloud-authorization.store';
 export * from './homey-status.store';
 export * from './homey.schemas';
 export * from './homey.transformers';

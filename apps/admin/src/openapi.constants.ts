@@ -181,13 +181,6 @@ export type DevicesHomeyPluginAdoptionResultSchema = components['schemas']['Devi
 export type DevicesHomeyPluginStatusSchema = components['schemas']['DevicesHomeyPluginDataStatus'];
 export type DevicesHomeyPluginTestConnectionRequestSchema = components['schemas']['DevicesHomeyPluginReqTestConnection'];
 export type DevicesHomeyPluginTestConnectionSchema = components['schemas']['DevicesHomeyPluginDataTestConnection'];
-export type DevicesHomeyPluginCloudAuthorizationStartSchema = components['schemas']['DevicesHomeyPluginDataCloudAuthorizationStart'];
-export type DevicesHomeyPluginCloudAuthorizationStatusSchema = components['schemas']['DevicesHomeyPluginDataCloudAuthorizationStatus'];
-export type DevicesHomeyPluginCloudHomeyChoicesSchema = components['schemas']['DevicesHomeyPluginDataCloudHomeyChoices'];
-export type DevicesHomeyPluginCloudAuthorizationCompletionSchema = components['schemas']['DevicesHomeyPluginDataCloudAuthorizationCompletion'];
-export type DevicesHomeyPluginCloudAuthorizationSelectionRequestSchema = components['schemas']['DevicesHomeyPluginReqCloudAuthorizationSelection'];
-export type DevicesHomeyPluginCloudAuthorizationTransactionRequestSchema =
-	components['schemas']['DevicesHomeyPluginReqCloudAuthorizationTransaction'];
 export type DevicesHomeyPluginCreateDeviceSchema = components['schemas']['DevicesHomeyPluginCreateDevice'];
 export type DevicesHomeyPluginUpdateDeviceSchema = components['schemas']['DevicesHomeyPluginUpdateDevice'];
 export type DevicesHomeyPluginDeviceSchema = components['schemas']['DevicesHomeyPluginDataDevice'];
@@ -198,8 +191,6 @@ export type DevicesHomeyPluginChannelPropertySchema = components['schemas']['Dev
 export {
 	DevicesHomeyPluginDataAdoptionResultFailure_code as DevicesHomeyPluginAdoptionFailureCode,
 	DevicesHomeyPluginDataAdoptionResultStatus as DevicesHomeyPluginAdoptionStatus,
-	DevicesHomeyPluginDataConfigMode as DevicesHomeyPluginConnectionMode,
-	DevicesHomeyPluginDataCloudAuthorizationCompletionStatus as DevicesHomeyPluginCloudAuthorizationCompletionStatus,
 	DevicesHomeyPluginDataInventoryDeviceSupport_reasons as DevicesHomeyPluginSupportReason,
 	DevicesHomeyPluginDataInventoryDeviceSupport_state as DevicesHomeyPluginSupportState,
 	DevicesHomeyPluginDataStatusConnection_state as DevicesHomeyPluginConnectionState,
@@ -507,13 +498,6 @@ export type DevicesHomeAssistantPluginAdoptWizardOperation = operations['adopt-d
 // Devices Homey Plugin Operations
 export type DevicesHomeyPluginGetStatusOperation = operations['get-devices-homey-plugin-status'];
 export type DevicesHomeyPluginTestConnectionOperation = operations['test-devices-homey-plugin-connection'];
-export type DevicesHomeyPluginGetCloudAuthorizationStatusOperation = operations['get-devices-homey-plugin-cloud-authorization-status'];
-export type DevicesHomeyPluginStartCloudAuthorizationOperation = operations['start-devices-homey-plugin-cloud-authorization'];
-export type DevicesHomeyPluginReconnectCloudAuthorizationOperation = operations['reconnect-devices-homey-plugin-cloud-authorization'];
-export type DevicesHomeyPluginListCloudAuthorizationHomeysOperation = operations['list-devices-homey-plugin-cloud-authorization-homeys'];
-export type DevicesHomeyPluginSelectCloudAuthorizationHomeyOperation = operations['select-devices-homey-plugin-cloud-authorization-homey'];
-export type DevicesHomeyPluginCancelCloudAuthorizationOperation = operations['cancel-devices-homey-plugin-cloud-authorization'];
-export type DevicesHomeyPluginDisconnectCloudAuthorizationOperation = operations['disconnect-devices-homey-plugin-cloud-authorization'];
 export type DevicesHomeyPluginGetDevicesOperation = operations['get-devices-homey-plugin-devices'];
 export type DevicesHomeyPluginGetDeviceOperation = operations['get-devices-homey-plugin-device'];
 export type DevicesHomeyPluginPreviewMappingOperation = operations['preview-devices-homey-plugin-device-mapping'];

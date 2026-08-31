@@ -3,33 +3,17 @@ import {
 	DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,
 	DEFAULT_HOMEY_RECONCILIATION_INTERVAL_MS,
 	DEVICES_HOMEY_PLUGIN_NAME,
-	HomeyConnectionMode,
 } from '../devices-homey.constants';
 
-import { HomeyCloudClientConfigService } from './homey-cloud-client-config.service';
-import { HomeyCloudGrantMutationService } from './homey-cloud-grant-mutation.service';
 import { HomeyConfigValidatorService } from './homey-config-validator.service';
 
 describe('HomeyConfigValidatorService', () => {
 	let registry: jest.Mocked<Pick<PluginConfigValidatorService, 'register'>>;
-	let cloudGrantMutations: jest.Mocked<Pick<HomeyCloudGrantMutationService, 'hasActiveGrant'>>;
-	let cloudClientConfig: jest.Mocked<
-		Pick<HomeyCloudClientConfigService, 'getConfigurationFingerprint' | 'getConfigurationFingerprintFor'>
-	>;
 	let service: HomeyConfigValidatorService;
 
 	beforeEach(() => {
 		registry = { register: jest.fn() };
-		cloudGrantMutations = { hasActiveGrant: jest.fn().mockResolvedValue(true) };
-		cloudClientConfig = {
-			getConfigurationFingerprint: jest.fn().mockReturnValue('matching-fingerprint'),
-			getConfigurationFingerprintFor: jest.fn().mockReturnValue('matching-fingerprint'),
-		};
-		service = new HomeyConfigValidatorService(
-			registry as unknown as PluginConfigValidatorService,
-			cloudGrantMutations as unknown as HomeyCloudGrantMutationService,
-			cloudClientConfig as unknown as HomeyCloudClientConfigService,
-		);
+		service = new HomeyConfigValidatorService(registry as unknown as PluginConfigValidatorService);
 	});
 
 	it('registers itself for the Homey plugin', () => {
@@ -41,84 +25,6 @@ describe('HomeyConfigValidatorService', () => {
 
 	it('accepts an incomplete disabled configuration without a network request', async () => {
 		await expect(service.validate({ enabled: false })).resolves.toEqual({ valid: true });
-	});
-
-	it('accepts complete admin-managed cloud configuration without local credentials', async () => {
-		await expect(
-			service.validate({
-				enabled: true,
-				mode: HomeyConnectionMode.CLOUD,
-				cloud_client_id: 'client-id',
-				cloud_client_secret: 'client-secret',
-				cloud_redirect_url: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback',
-			}),
-		).resolves.toEqual({ valid: true });
-	});
-
-	it('accepts incomplete cloud configuration while the connector is disabled', async () => {
-		await expect(service.validate({ enabled: false, mode: HomeyConnectionMode.CLOUD })).resolves.toEqual({
-			valid: true,
-		});
-		expect(cloudGrantMutations.hasActiveGrant).toHaveBeenCalledTimes(1);
-	});
-
-	it.each([
-		['client ID', { cloud_client_id: undefined }],
-		['client secret', { cloud_client_secret: undefined }],
-		['redirect URL', { cloud_redirect_url: undefined }],
-	])('reconciles an existing grant before reporting a missing Cloud %s', async (_label, missingField) => {
-		const result = await service.validate({
-			enabled: true,
-			mode: HomeyConnectionMode.CLOUD,
-			cloud_client_id: 'client-id',
-			cloud_client_secret: 'client-secret',
-			cloud_redirect_url: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback',
-			...missingField,
-		});
-
-		expect(result.valid).toBe(false);
-		expect(cloudGrantMutations.hasActiveGrant).toHaveBeenCalledTimes(1);
-	});
-
-	it('keeps an enabled cloud connector stopped until Homey authorization is complete', async () => {
-		cloudGrantMutations.hasActiveGrant.mockResolvedValue(false);
-
-		await expect(
-			service.validate({
-				enabled: true,
-				mode: HomeyConnectionMode.CLOUD,
-				cloud_client_id: 'client-id',
-				cloud_client_secret: 'client-secret',
-				cloud_redirect_url: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback',
-			}),
-		).resolves.toEqual({
-			valid: false,
-			errors: [{ message: 'Homey Cloud authorization is required', field: 'mode' }],
-		});
-	});
-
-	it('does not apply a persisted grant to different candidate cloud client settings', async () => {
-		cloudClientConfig.getConfigurationFingerprintFor.mockReturnValue('candidate-fingerprint');
-
-		await expect(
-			service.validate({
-				enabled: true,
-				mode: HomeyConnectionMode.CLOUD,
-				cloud_client_id: 'different-client-id',
-				cloud_client_secret: 'different-client-secret',
-				cloud_redirect_url: 'https://other.example.com/api/v1/plugins/devices-homey/oauth/callback',
-			}),
-		).resolves.toEqual({
-			valid: false,
-			errors: [{ message: 'Homey Cloud authorization is required', field: 'mode' }],
-		});
-	});
-
-	it('rejects an unknown connection mode even while disabled', async () => {
-		await expect(service.validate({ enabled: false, mode: 'other' })).resolves.toEqual({
-			valid: false,
-			errors: [{ message: 'Homey connection mode must be local or cloud', field: 'mode' }],
-		});
 	});
 
 	it('requires a URL when enabled', async () => {
@@ -141,25 +47,13 @@ describe('HomeyConfigValidatorService', () => {
 	});
 
 	it('requires an API key when enabled', async () => {
-		const result = await service.validate({ enabled: true, url: 'http://homey.local:4859' });
-
-		expect(result).toEqual({
+		await expect(service.validate({ enabled: true, url: 'http://homey.local:4859' })).resolves.toEqual({
 			valid: false,
 			errors: [{ message: 'Homey API key is required', field: 'api_key' }],
 		});
 	});
 
-	it('applies interval defaults to a minimal enabled candidate', async () => {
-		await expect(
-			service.validate({
-				enabled: true,
-				url: 'http://homey.local:4859',
-				apiKey: 'configured-secret',
-			}),
-		).resolves.toEqual({ valid: true });
-	});
-
-	it('accepts a complete local configuration without connecting', async () => {
+	it('accepts a complete locally stored configuration without connecting', async () => {
 		await expect(
 			service.validate({
 				enabled: true,
@@ -181,8 +75,6 @@ describe('HomeyConfigValidatorService', () => {
 		};
 
 		await expect(service.validate({ ...base, connectionTimeout: 999 })).resolves.toMatchObject({ valid: false });
-		await expect(service.validate({ ...base, reconciliationInterval: 1000 })).resolves.toMatchObject({
-			valid: false,
-		});
+		await expect(service.validate({ ...base, reconciliationInterval: 1000 })).resolves.toMatchObject({ valid: false });
 	});
 });

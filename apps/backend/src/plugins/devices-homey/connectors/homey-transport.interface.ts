@@ -20,9 +20,9 @@ export type HomeyTransportEventListener = (event: HomeyTransportEvent) => Promis
 export type HomeyTransportUnsubscribe = () => Promise<void> | void;
 
 /**
- * Raw transport boundary shared by local and cloud connectors. SDK adapters
- * own wire-specific event attribution and are the only layers allowed to
- * expose unnormalized Homey values to this interface.
+ * Raw transport boundary used by the connector. SDK adapters own wire-specific
+ * event attribution and are the only layers allowed to expose unnormalized
+ * Homey values to this interface.
  */
 export interface HomeyTransport {
 	connect(): Promise<void>;

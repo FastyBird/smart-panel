@@ -1,6 +1,6 @@
 # Homey Device Integration — Implementation Plan
 
-**Goal:** Deliver a secure local Homey SHS/Homey Pro provider with discovery, mapping preview, adoption, real-time synchronization, and control, then add Homey Cloud as a second connector.
+**Goal:** Deliver a secure local Homey SHS/Homey Pro provider with discovery, mapping preview, adoption, real-time synchronization, and control.
 
 **Architecture:** One `devices-homey` plugin owns provider-domain behavior. A transport-independent `HomeyConnector` produces normalized devices/capabilities/events. Mapping, preview, adoption, synchronization, and control depend only on that contract. Admin uses the shared device wizard; Flutter uses the normal Devices API and state stream.
 
@@ -11,28 +11,25 @@
 ## Global constraints
 
 - Complete the live compatibility spike and fixture capture while the one-month SHS subscription is active.
-- Never commit or print a real API key, OAuth token, household device name, private address, or unsanitized payload.
+- Never commit or print a real API key, household device name, private address, or unsanitized payload.
 - Do not edit generated files manually. Generate OpenAPI/admin/panel clients from backend Swagger sources and device specs from their generators.
 - Follow existing TypeScript tab indentation, naming, imports, Swagger response envelopes, tests, and plugin registration conventions.
 - Keep external calls bounded by timeouts and classify authentication, authorization, timeout, unavailable, protocol, validation, and unsupported failures.
 - Never mutate ordinary upstream Homey devices. Capability writes require an explicit device/capability allowlist; add/rename/zone-move/unavailable/remove lifecycle tests require a separate environment gate and an operation allowlist restricted to a designated disposable virtual/test device.
-- Local-provider work required only additive identity/lock migrations. Cloud grant persistence uses incremental migrations,
-  including `1000000000027-EncryptHomeyCloudCredentials` for the credential-format downgrade guard; never modify the
-  initial migration.
+- Schema changes use incremental migrations; never modify the initial migration.
 - Do not push to `main`. Use a feature branch and PR when implementation begins.
 
 ## Delivery map
 
-| Milestone | Outcome                                                |             Estimate |
-| --------- | ------------------------------------------------------ | -------------------: |
-| 0         | Verified SHS contract and sanitized fixture corpus     |             2–3 days |
-| 1         | Secret-safe config foundation and backend plugin shell |             3–4 days |
-| 2         | Local connector, lifecycle, normalization, and health  |             4–6 days |
-| 3         | Mapping, preview, discovery, and adoption              |             6–8 days |
-| 4         | Real-time sync, reconciliation, and control            |             4–6 days |
-| 5         | Admin wizard/config and panel integration              |             4–6 days |
-| 6         | Hardening, live matrix, docs, and release gate         |             2–3 days |
-| 7         | Homey Cloud connector                                  | 7–12 additional days |
+| Milestone | Outcome                                                | Estimate |
+| --------- | ------------------------------------------------------ | -------: |
+| 0         | Verified SHS contract and sanitized fixture corpus     | 2–3 days |
+| 1         | Secret-safe config foundation and backend plugin shell | 3–4 days |
+| 2         | Local connector, lifecycle, normalization, and health  | 4–6 days |
+| 3         | Mapping, preview, discovery, and adoption              | 6–8 days |
+| 4         | Real-time sync, reconciliation, and control            | 4–6 days |
+| 5         | Admin wizard/config and panel integration              | 4–6 days |
+| 6         | Hardening, live matrix, docs, and release gate         | 2–3 days |
 
 Local MVP total: approximately 25–36 engineering days. Backend and admin tasks can overlap after Milestone 3 stabilizes the API contract.
 
@@ -229,7 +226,7 @@ index.ts
 - [x] Define system, zone, device, capability, and event plain-data models.
 - [x] Preserve full capability IDs; expose separately derived base IDs for matching.
 - [x] Define normalized error categories and retryability.
-- [x] Define connector contract tests reusable by local and cloud implementations.
+- [x] Define connector contract tests reusable by transport adapters.
 - [x] Add model/ID derivation unit tests, especially repeated capabilities such as `measure_temperature.inside`.
 
 ---
@@ -546,7 +543,7 @@ remains scoped to Task 5.3. All six supported admin locales carry the same non-e
 
 ### Task 5.2: Implement secret-safe configuration UI
 
-- [x] Add mode selection with local mode active and cloud mode marked unavailable until Phase 7.
+- [x] Add local URL, API-key replacement, timeout/interval, and enabled controls.
 - [x] Add URL, API-key replacement input, explicit clear action, bounded timeout/interval inputs, and enabled state.
 - [x] Show only whether an API key is configured; never populate the key field from GET data.
 - [x] Preserve the stored key when the field is untouched.
@@ -554,7 +551,7 @@ remains scoped to Task 5.3. All six supported admin locales carry the same non-e
 - [x] Display connector state, Homey identity/version, last sync/event, and sanitized error guidance.
 - [x] Unit-test initial state, preserve/replace/clear payloads, saved-vs-candidate test payloads, candidate URL without a new key, validation, working state, successful test, and categorized failures.
 
-The Homey configuration form presents local mode as active and cloud mode as unavailable until Phase 7. Its saved test
+The Homey configuration form presents the supported local connection. Its saved test
 sends no connector overrides, while candidate testing remains disabled until a safe URL and newly entered nonblank key
 are both present; the candidate payload never falls back to the stored secret. The operational panel shows connector
 state, Homey name/ID/version, latest inventory sync and event timestamps, adopted-device count, and sanitized
@@ -805,130 +802,11 @@ gated compatibility probes under `test/`.
 The operator guide is published at `apps/website/app/docs/extensions/homey/page.mdx`; the fixture refresh runbook is
 maintained beside the reviewed fixture corpus. The 2026-08-28 release audit moved the local feature to `review` after
 all implemented Phase 1 criteria, automated gates, and the complete Task 6.2 lifecycle matrix received evidence. The
-unchecked installation-provenance criterion and the remaining Task 0.2/3.2 items carry explicit deferrals below; cloud
-criteria remain the separate Milestone 7.
+unchecked installation-provenance criterion and the remaining Task 0.2/3.2 items carry explicit deferrals below.
 The same audit reran clean OpenAPI generation and backend compilation, 17 credential-free Homey spike suites with 243
 tests, and 39 Homey/config security suites with 484 tests.
 
-**Local MVP gate:** All Phase 0 and Phase 1 acceptance criteria in `tasks/features/FEATURE-PLUGIN-HOMEY.md` are checked or carry an approved, explicit deferral. Cloud criteria remain unchecked.
-
----
-
-## Milestone 7: Homey Cloud connector
-
-This milestone starts only after the local MVP is stable. It should be a separate PR series because OAuth/client registration and external approval can move independently.
-
-### Task 7.1: Register and document the Athom API client
-
-- [ ] Register the OAuth client and production/development redirect URIs.
-- [ ] Confirm current user limits, approval requirements, scopes, and branding/legal requirements with Athom.
-- [x] Record client configuration as deployment secrets, not repository values.
-
-The 2026-08-28 published-contract audit is recorded in `docs/homey-cloud-oauth.md`. Homey's current Web API guide limits
-a new client to 100 Homey Pro users and requires a limit-increase request for a higher limit and optional Homey Cloud
-access. The pinned SDK requires a confidential client secret for authorization-code exchange and refresh, supports a
-registered redirect URL and OAuth `state`, and does not document PKCE. Because Smart Panel is distributed self-hosted
-software with installation-specific origins, no shared client secret may be embedded in repository or release
-artifacts. The first cloud profile uses installation-owned, admin-managed client credentials and an exact callback; a hosted
-FastyBird authorization broker would require a separate design and trust boundary.
-
-The registration and external-approval items remain unchecked until a dedicated client is created in Homey Developer
-Tools, the four minimum system/zone/device-read/device-control scopes and exact callbacks are accepted, and Athom's
-Homey Cloud access, user limit, branding/legal, and rate-limit conditions are recorded without private account data.
-
-### Task 7.2: Implement cloud authorization
-
-- [x] Add authorization start/callback/disconnect/reconnect endpoints using repository OAuth/state/PKCE patterns where applicable.
-- [x] Store access/refresh tokens through the generic secret mechanism or established encrypted credential store.
-- [x] Handle expiry, refresh rotation, revocation, invalid state, callback errors, and account reauthorization.
-- [x] List/select a Homey when an account has more than one.
-- [x] Add security-focused controller/service tests.
-
-Task 7.2 is delivered behind disabled cloud mode in reviewable slices:
-
-- [x] **7.2a — Configuration and state foundation:** validate the admin-managed client ID, write-only secret, and exact callback;
-      generate the SDK authorization URL with candidate auto-refresh disabled; keep only a hash of bounded, single-use
-      state; bind it to the initiating user plus authority/active-grant generations; and expire it independently of
-      follow-up traffic. No cloud route is exposed by this slice.
-- [x] **7.2b — Grant persistence and mutation gate:** add incremental storage for pending/active grant metadata and
-      write-only token material, then serialize activation, cancellation, expiry, refresh, disconnect, configuration,
-      and user-authority invalidation.
-- [x] **7.2c — Provider exchange and Homey selection:** exchange the code with a bounded timeout, stage candidate tokens,
-      sanitize eligible Homey choices, support exact transaction-bound selection, authenticate the selected Homey, and
-      activate only through the mutation gate.
-- [x] **7.2d — HTTP authorization surface:** add privileged start/select/cancel/disconnect/reconnect routes plus the
-      state-authorized public callback, clean callback redirect, ingress query-redaction requirements, and the complete
-      security/race test matrix.
-- [x] **7.2e — Encrypted token persistence:** encrypt every pending, active, and refreshed access/refresh token with a
-      unique authenticated envelope derived from the installation-owned client secret; bind ciphertext to its record and
-      field; fail closed on tampering; and upgrade legacy plaintext rows transactionally on first credential use.
-
-Task 7.2d exposes the authorization lifecycle without enabling cloud connector mode. Management routes require an owner
-or administrator and preserve initiating-user binding through selection and cancellation. The public callback consumes
-single-use state before exchange, never forwards raw provider errors, and redirects every outcome to the fixed
-same-origin Homey configuration page with no query. An early Fastify hook strips the callback query from downstream
-request-target logging, while `docs/homey-cloud-oauth.md` records the mandatory equivalent redaction at every upstream
-proxy and observability layer. Unit tests lock public-versus-privileged route metadata, exact actor binding, replay and
-provider-error behavior, fixed error mapping, clean redirect headers, and request-target redaction. Explicit
-cancellation retains consumed state until callback completion and persists a bounded transaction tombstone, so it wins
-against provider exchanges and activation commits already in flight.
-
-### Task 7.3: Implement `HomeyCloudConnector`
-
-- [x] Implement the same connector contract and normalized error categories.
-- [x] Run the shared connector contract suite.
-- [ ] Verify inventory, subscriptions, writes, reconnect, rate limits, and cloud-specific latency behavior.
-- [x] Keep mapping, preview, adoption, synchronizer, and control code unchanged.
-
-Task 7.3 is delivered in reviewable slices while live Homey Cloud access remains dependent on external approval:
-
-- [x] **7.3a — Shared connector core:** extract the normalized lifecycle core behind a transport-neutral boundary, add
-      an explicit `HomeyCloudConnector`, and run the complete local connector contract suite against both connector
-      identities without changing mapping, preview, adoption, synchronization, or control services.
-- [x] **7.3b — Cloud SDK session and refresh:** create the selected Homey cloud SDK session from the active grant,
-      persist refresh-token rotation through the grant mutation gate, and normalize cloud authentication, rate-limit,
-      timeout, unavailable, and protocol failures.
-- [x] **7.3c — Runtime selection and evidence:** select the connector from saved mode, prove inventory, subscriptions,
-      writes, reconnect, cleanup, and bounded cloud latency with credential-free tests, then record sanitized live
-      evidence when Athom access is available.
-
-The cloud session factory loads token material only through the active-grant credential boundary, proactively refreshes
-tokens within a bounded expiry skew, retries selected-Homey authentication once after an invalid access token, and
-persists every rotated token through the grant generation compare-and-swap. An omitted refresh token or grant type in a
-valid refresh response retains the current value; a lost compare-and-swap reloads the winning active grant instead of
-using stale credentials. Concurrent refresh requests share one provider operation. Provider deadlines cover complete
-response consumption, token and child endpoints remain pinned, and raw SDK/provider failures are reduced to fixed
-connector authentication, validation, timeout, unavailable/rate-limit, or protocol categories.
-
-The created SDK client is selected by a saved `local` or `cloud` backend mode through one runtime factory. Both modes
-use the same SDK transport, normalized connector core, `HomeyService`, mapping, adoption, synchronization, and control
-paths. Cloud activation asynchronously rotates an enabled cloud runtime after the grant commit; explicit disconnect and
-an activation-cancellation race await connector teardown before the HTTP operation completes. User demotion or removal
-invalidates its active grant transactionally and disconnects the cloud runtime only after that transaction commits.
-Transient post-commit teardown failures retry with bounded backoff, while startup reconciles the durable grant state to
-cover process restarts. Teardown rechecks grant state inside the serialized runtime queue so a concurrent successful
-activation always wins. The credential-free runtime matrix covers mode isolation, inventory and event subscriptions,
-retryable activation recovery with a current-grant guard, permanent-failure suppression, capability writes,
-reconnect/backoff, rate-limit categorization, teardown, late-client cleanup, and bounded operation deadlines. Live cloud inventory,
-subscription, write, reconnect, rate-limit, and latency evidence remains the unchecked parent item until Athom grants
-the separately recorded access approval. Task 7.4 enables the admin mode and authorization controls without shipping
-shared client credentials; each live deployment remains responsible for its client registration and approval gate.
-
-### Task 7.4: Extend admin configuration and release docs
-
-- [x] Enable cloud mode and OAuth connect/disconnect/status UI.
-- [x] Add Homey selection when required.
-- [x] Explain local vs. cloud latency, reachability, and credential tradeoffs.
-- [ ] Run the full common acceptance suite against cloud mode.
-
-The admin persists only the opaque authorization transaction ID and expiry in page-scoped storage before leaving for
-Homey, then resumes the clean callback on the fixed plugin page. A consumed single-Homey transaction becomes connected
-without a selector; multiple eligible Homeys require explicit selection. Reconnect preserves the active grant until
-replacement activation succeeds, while disconnect requires confirmation and removes the local grant. A credential-free
-status endpoint exposes only connection state and the selected Homey identifier. The release guide and
-`docs/homey-cloud-oauth.md` document exact callback deployment, approval and user-limit gates, proxy query redaction,
-and local-versus-cloud reachability, latency, and credential tradeoffs. Live cloud acceptance remains open until a
-dedicated approved client and test grant are available.
+**Local MVP gate:** All Phase 0 and Phase 1 acceptance criteria in `tasks/features/FEATURE-PLUGIN-HOMEY.md` are checked or carry an approved, explicit deferral.
 
 ---
 

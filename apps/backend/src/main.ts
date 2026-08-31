@@ -30,7 +30,6 @@ import { MdnsService } from './modules/mdns/services/mdns.service';
 import { SystemLoggerService } from './modules/system/services/system-logger.service';
 import { SYSTEM_MODULE_PREFIX } from './modules/system/system.constants';
 import { WebsocketGateway } from './modules/websocket/gateway/websocket.gateway';
-import { redactHomeyCloudCallbackRequestTarget } from './plugins/devices-homey/homey-cloud-callback-redaction';
 
 async function bootstrap() {
 	const discovered = await getDiscoveredExtensions();
@@ -83,13 +82,6 @@ async function bootstrap() {
 			}
 		},
 	);
-
-	// OAuth providers send credentials in the callback query. Preserve Fastify's already-parsed query object while
-	// removing the query from every request-target surface observed by guards, filters, and application loggers.
-	fastifyInstance.addHook('onRequest', (request, _reply, done) => {
-		redactHomeyCloudCallbackRequestTarget(request);
-		done();
-	});
 
 	// Add security headers via Helmet. CSP is disabled because the admin SPA
 	// needs inline scripts/styles.

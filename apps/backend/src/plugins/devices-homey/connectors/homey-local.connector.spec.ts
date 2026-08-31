@@ -11,7 +11,6 @@ import { HomeyDevice } from '../models/homey-device.model';
 import { HomeyEvent, HomeyEventType } from '../models/homey-event.model';
 import { HomeyZone } from '../models/homey-zone.model';
 
-import { HomeyCloudConnector } from './homey-cloud.connector';
 import { HomeyLocalConnector } from './homey-local.connector';
 import {
 	HomeyLocalTransport,
@@ -329,7 +328,7 @@ class FakeHomeyLocalTransport implements HomeyLocalTransport {
 }
 
 const createContractHarness = (
-	createConnector: (transport: HomeyLocalTransport) => HomeyLocalConnector | HomeyCloudConnector,
+	createConnector: (transport: HomeyLocalTransport) => HomeyLocalConnector,
 ): HomeyConnectorContractHarness => {
 	const transport = new FakeHomeyLocalTransport();
 	const connector = createConnector(transport);
@@ -356,8 +355,6 @@ const createContractHarness = (
 };
 
 describeHomeyConnectorContract('Local', () => createContractHarness((transport) => new HomeyLocalConnector(transport)));
-
-describeHomeyConnectorContract('Cloud', () => createContractHarness((transport) => new HomeyCloudConnector(transport)));
 
 describe('Homey local connector lifecycle serialization', () => {
 	it('serializes asynchronous event delivery independently for each subscriber', async () => {

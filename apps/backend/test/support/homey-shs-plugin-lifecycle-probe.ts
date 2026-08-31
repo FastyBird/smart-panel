@@ -17,7 +17,6 @@ import {
 } from '../../src/plugins/devices-homey/connectors/homey-sdk.client';
 import {
 	DEVICES_HOMEY_PLUGIN_NAME,
-	HomeyConnectionMode,
 	HomeyConnectionState,
 } from '../../src/plugins/devices-homey/devices-homey.constants';
 import { HomeyConfigModel } from '../../src/plugins/devices-homey/models/config.model';
@@ -505,10 +504,6 @@ export const createHomeyPluginLifecycleRuntime: HomeyPluginLifecycleRuntimeFacto
 	const localConnectorFactory = new HomeyLocalConnectorFactory(sdkResources.factory);
 	const connectorFactory: HomeyConnectorFactory = {
 		create: (connectorConfig) => {
-			if (connectorConfig.mode !== HomeyConnectionMode.LOCAL) {
-				throw new Error('Homey plugin-lifecycle probe requires local connector mode');
-			}
-
 			tracker.connectorGeneration += 1;
 
 			return createTrackedConnector(localConnectorFactory.create(connectorConfig), tracker);

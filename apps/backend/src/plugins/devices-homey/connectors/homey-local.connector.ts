@@ -33,9 +33,8 @@ interface HomeyPendingSubscription {
 }
 
 /**
- * Shared normalized connector orchestration. Local and cloud wrappers supply
- * separate transports while mapping, lifecycle, and error semantics stay
- * identical.
+ * Normalized connector orchestration over the local SDK transport. Mapping,
+ * lifecycle, and error semantics remain independent of SDK wire details.
  */
 export class HomeyTransportConnector implements HomeyConnector {
 	private connected = false;

@@ -1,33 +1,20 @@
 import { reactive, ref } from 'vue';
 
-import { ElRadioButton } from 'element-plus';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { flushPromises, mount } from '@vue/test-utils';
+import { mount } from '@vue/test-utils';
 
-import { DevicesHomeyPluginConnectionMode } from '../../../openapi.constants';
 import type { IHomeyConfig } from '../store/config.store.types';
 
 import HomeyConfigForm from './homey-config-form.vue';
 
-const submit = vi.fn();
 const useConfigPluginEditForm = vi.hoisted(() => vi.fn());
-const formChanged = ref(false);
-const authorizationStore = vi.hoisted(() => ({
-	invalidateStatus: vi.fn(),
-	fetchStatus: vi.fn().mockResolvedValue({ connected: false, selectedHomeyId: null }),
-}));
 const model = reactive({
 	type: 'devices-homey-plugin',
 	enabled: true,
-	mode: DevicesHomeyPluginConnectionMode.local,
 	url: 'http://homey.local:4859',
 	apiKey: undefined as string | null | undefined,
 	apiKeyConfigured: true,
-	cloudClientId: 'client-id' as string | null | undefined,
-	cloudClientSecret: undefined as string | null | undefined,
-	cloudClientSecretConfigured: true,
-	cloudRedirectUrl: 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback' as string | null | undefined,
 	connectionTimeout: 10_000,
 	reconciliationInterval: 300_000,
 });
@@ -35,10 +22,7 @@ const model = reactive({
 vi.mock('vue-i18n', async () => {
 	const actual = await vi.importActual('vue-i18n');
 
-	return {
-		...actual,
-		useI18n: () => ({ t: (key: string) => key }),
-	};
+	return { ...actual, useI18n: () => ({ t: (key: string) => key }) };
 });
 
 vi.mock('../../../modules/config', async () => {
@@ -55,60 +39,48 @@ vi.mock('../../../modules/config', async () => {
 	};
 });
 
-vi.mock('../store/homey-cloud-authorization.store', () => ({ useHomeyCloudAuthorization: () => authorizationStore }));
+const mountForm = () => {
+	useConfigPluginEditForm.mockReturnValue({
+		formEl: ref(),
+		model,
+		formChanged: ref(false),
+		submit: vi.fn(),
+		formResult: ref('none'),
+	});
 
-const mountForm = () =>
-	mount(HomeyConfigForm, {
-		props: {
-			config: model as IHomeyConfig,
-		},
+	return mount(HomeyConfigForm, {
+		props: { config: model as IHomeyConfig },
 		global: {
 			stubs: {
 				ConfigSecretInput: true,
 				HomeyConnectionPanel: {
 					name: 'HomeyConnectionPanel',
-					props: ['mode', 'candidateUrl', 'candidateApiKey'],
+					props: ['candidateUrl', 'candidateApiKey'],
 					template: '<div data-test-id="homey-connection-panel-stub" />',
-				},
-				HomeyCloudAuthorizationPanel: {
-					name: 'HomeyCloudAuthorizationPanel',
-					props: ['savedMode', 'configurationSaved'],
-					template: '<div data-test-id="homey-cloud-authorization-panel-stub" />',
 				},
 			},
 		},
 	});
+};
 
 describe('HomeyConfigForm', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		model.mode = DevicesHomeyPluginConnectionMode.local;
-		model.apiKey = undefined;
-		model.cloudClientSecret = undefined;
-		model.cloudRedirectUrl = 'https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback';
-		formChanged.value = false;
-		useConfigPluginEditForm.mockReturnValue({
-			formEl: ref(),
-			model,
-			formChanged,
-			submit,
-			formResult: ref('none'),
-		});
-	});
-
-	it('offers both local and cloud connection modes', () => {
+	it('shows only the supported local connection settings', () => {
 		const wrapper = mountForm();
-		const modes = wrapper.findAllComponents(ElRadioButton);
-		const enabledField = wrapper.get('[data-test-id="homey-enabled-field"]');
-		const modeField = wrapper.get('[data-test-id="homey-mode-field"]');
 
-		expect(modes).toHaveLength(2);
-		expect(modes[0]?.props('value')).toBe('local');
-		expect(modes[0]?.props('disabled')).not.toBe(true);
-		expect(modes[1]?.props('value')).toBe('cloud');
-		expect(modes[1]?.props('disabled')).not.toBe(true);
-		expect(enabledField.element.compareDocumentPosition(modeField.element) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
-		expect(wrapper.find('input[name="mode"]').exists()).toBe(true);
+		expect(wrapper.find('[name="url"]').exists()).toBe(true);
+		expect(wrapper.find('[name="mode"]').exists()).toBe(false);
+		expect(wrapper.text()).toContain('devicesHomeyPlugin.config.local.title');
+		const permissions = wrapper.get('[data-test-id="homey-api-key-permissions"]');
+		expect(permissions.text()).toContain('homey.system.readonly');
+		expect(permissions.text()).toContain('homey.zone.readonly');
+		expect(permissions.text()).toContain('homey.device.readonly');
+		expect(permissions.text()).toContain('homey.device.control');
+		expect(wrapper.findAll('[data-test-id]').map((element) => element.attributes('data-test-id'))).toEqual([
+			'homey-local-connection-info',
+			'homey-enabled-field',
+			'homey-api-key-permissions',
+			'homey-connection-panel-stub',
+		]);
 	});
 
 	it('passes only newly entered candidate credentials into the connection panel', async () => {
@@ -121,117 +93,5 @@ describe('HomeyConfigForm', () => {
 		await wrapper.vm.$nextTick();
 
 		expect(panel.props('candidateApiKey')).toBe('new-candidate-key');
-	});
-
-	it('shows admin-managed cloud credentials and authorization while hiding local inputs in cloud mode', async () => {
-		const wrapper = mountForm();
-		model.mode = DevicesHomeyPluginConnectionMode.cloud;
-		await wrapper.vm.$nextTick();
-
-		expect(wrapper.find('[name="url"]').exists()).toBe(false);
-		expect(wrapper.find('[name="cloudClientId"]').exists()).toBe(true);
-		expect(wrapper.find('[name="cloudRedirectUrl"]').exists()).toBe(true);
-		expect(wrapper.find('[name="cloudClientSecret"]').exists()).toBe(true);
-		expect(wrapper.find('[data-test-id="homey-cloud-authorization-panel-stub"]').exists()).toBe(true);
-		expect(wrapper.getComponent({ name: 'HomeyConnectionPanel' }).props('mode')).toBe('cloud');
-		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('local');
-	});
-
-	it('prefills an empty Cloud callback from the Admin origin', async () => {
-		model.cloudRedirectUrl = null;
-		const wrapper = mountForm();
-
-		model.mode = DevicesHomeyPluginConnectionMode.cloud;
-		await wrapper.vm.$nextTick();
-
-		expect(model.cloudRedirectUrl).toBe(`${window.location.origin}/api/v1/plugins/devices-homey/oauth/callback`);
-	});
-
-	it('preserves an explicitly configured Cloud callback', async () => {
-		const wrapper = mountForm();
-
-		model.mode = DevicesHomeyPluginConnectionMode.cloud;
-		await wrapper.vm.$nextTick();
-
-		expect(model.cloudRedirectUrl).toBe('https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback');
-	});
-
-	it('offers to replace a saved callback that differs from the current Admin origin', async () => {
-		const wrapper = mountForm();
-
-		model.mode = DevicesHomeyPluginConnectionMode.cloud;
-		await wrapper.vm.$nextTick();
-
-		expect(wrapper.find('[data-test-id="homey-cloud-redirect-recommendation"]').exists()).toBe(true);
-
-		await wrapper.get('[data-test-id="homey-cloud-use-admin-redirect"]').trigger('click');
-
-		expect(model.cloudRedirectUrl).toBe(`${window.location.origin}/api/v1/plugins/devices-homey/oauth/callback`);
-		expect(wrapper.find('[data-test-id="homey-cloud-redirect-recommendation"]').exists()).toBe(false);
-	});
-
-	it('updates the authorization guard only after cloud mode is saved', async () => {
-		const wrapper = mountForm();
-		model.mode = DevicesHomeyPluginConnectionMode.cloud;
-		await wrapper.vm.$nextTick();
-
-		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('local');
-
-		submit.mockResolvedValueOnce('saved');
-		await wrapper.setProps({ remoteFormSubmit: true });
-		await flushPromises();
-
-		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('cloud');
-		expect(authorizationStore.invalidateStatus).toHaveBeenCalledOnce();
-		expect(authorizationStore.fetchStatus).toHaveBeenCalledOnce();
-	});
-
-	it('marks authorization unavailable while configuration changes are unsaved', async () => {
-		model.mode = DevicesHomeyPluginConnectionMode.cloud;
-		const wrapper = mountForm();
-		await wrapper.vm.$nextTick();
-
-		formChanged.value = true;
-		await wrapper.vm.$nextTick();
-
-		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('configurationSaved')).toBe(false);
-	});
-
-	it('keeps a successful cloud save when authorization status refresh temporarily fails', async () => {
-		const wrapper = mountForm();
-		model.mode = DevicesHomeyPluginConnectionMode.cloud;
-		submit.mockResolvedValueOnce('saved');
-		authorizationStore.fetchStatus.mockRejectedValueOnce(new Error('temporary failure'));
-
-		await wrapper.setProps({ remoteFormSubmit: true });
-		await flushPromises();
-
-		expect(authorizationStore.invalidateStatus).toHaveBeenCalledOnce();
-		expect(wrapper.getComponent({ name: 'HomeyCloudAuthorizationPanel' }).props('savedMode')).toBe('cloud');
-	});
-
-	it('restores the saved connection mode when the parent resets the form', async () => {
-		const wrapper = mountForm();
-		model.mode = DevicesHomeyPluginConnectionMode.cloud;
-		await wrapper.vm.$nextTick();
-
-		await wrapper.setProps({ remoteFormReset: true });
-		await flushPromises();
-
-		expect(model.mode).toBe(DevicesHomeyPluginConnectionMode.local);
-	});
-
-	it('resets against the latest mode after a successful save', async () => {
-		const wrapper = mountForm();
-		model.mode = DevicesHomeyPluginConnectionMode.cloud;
-		submit.mockResolvedValueOnce('saved');
-		await wrapper.setProps({ remoteFormSubmit: true });
-		await flushPromises();
-
-		model.mode = DevicesHomeyPluginConnectionMode.local;
-		await wrapper.setProps({ remoteFormReset: true });
-		await flushPromises();
-
-		expect(model.mode).toBe(DevicesHomeyPluginConnectionMode.cloud);
 	});
 });
