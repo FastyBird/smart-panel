@@ -32,28 +32,28 @@ file. Live results use synthetic aliases and sanitized captures only.
 | Production-service startup                            | Online and offline-recovery passed on SHS `13.4.1`          | None                                                             |
 | mDNS discovery                                        | Stable across one controlled restart; manual URL remains    | Design safe identity verification before reconsidering discovery |
 | SDK decision                                          | SDK selected behind connector boundary                      | Re-evaluate the pinned package and audit result on every upgrade |
-| Sanitized fixture corpus                              | Eleven live plus one synthetic device fixture               | No blocking corpus evidence                                      |
+| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture                 | No blocking corpus evidence                                      |
 
 ## Installation evidence
 
 Complete this table after the live run. Values committed here must remain non-sensitive.
 
-| Field                                    | Recorded value                                         |
-| ---------------------------------------- | ------------------------------------------------------ |
-| Capture date                             | `2026-08-13`, `2026-08-26`, `2026-08-27`, `2026-08-28` |
-| Realtime SDK probe date                  | `2026-08-14`, `2026-08-26`                             |
-| mDNS observation date                    | `2026-08-14`, `2026-08-26`                             |
-| SHS version                              | `13.4.0`, `13.4.1`                                     |
-| Container image tag and immutable digest | Not captured; explicit provenance deferral             |
-| Host operating system/architecture       | TrueNAS; exact version/architecture not captured       |
-| Topology                                 | Same LAN, separate host                                |
-| Smart Panel to SHS network path          | Direct private-LAN connection                          |
-| HTTP port `4859`                         | Confirmed for reads and the SDK Socket.IO session      |
-| HTTPS port `4860`                        | No valid standard TLS handshake; not claimed           |
-| TLS certificate behavior                 | Standard Node TLS probe returned `EPROTO`              |
-| Disposable capability alias              | `fbsp-reversible-mapping-target`                       |
-| Disposable lifecycle-device alias        | `fbsp-lifecycle-disposable-device`                     |
-| Disposable thermostat-device alias       | `fbsp-thermostat-disposable-device`                    |
+| Field                                    | Recorded value                                                       |
+| ---------------------------------------- | -------------------------------------------------------------------- |
+| Capture date                             | `2026-08-13`, `2026-08-26`, `2026-08-27`, `2026-08-28`, `2026-08-31` |
+| Realtime SDK probe date                  | `2026-08-14`, `2026-08-26`                                           |
+| mDNS observation date                    | `2026-08-14`, `2026-08-26`                                           |
+| SHS version                              | `13.4.0`, `13.4.1`                                                   |
+| Container image tag and immutable digest | Not captured; explicit provenance deferral                           |
+| Host operating system/architecture       | TrueNAS; exact version/architecture not captured                     |
+| Topology                                 | Same LAN, separate host                                              |
+| Smart Panel to SHS network path          | Direct private-LAN connection                                        |
+| HTTP port `4859`                         | Confirmed for reads and the SDK Socket.IO session                    |
+| HTTPS port `4860`                        | No valid standard TLS handshake; not claimed                         |
+| TLS certificate behavior                 | Standard Node TLS probe returned `EPROTO`                            |
+| Disposable capability alias              | `fbsp-reversible-mapping-target`                                     |
+| Disposable lifecycle-device alias        | `fbsp-lifecycle-disposable-device`                                   |
+| Disposable thermostat-device alias       | `fbsp-thermostat-disposable-device`                                  |
 
 On 2026-08-26, the TrueNAS host was reachable but SHS stopped before opening its API ports because its required Avahi
 daemon could not start. The deployment recovered after applying Homey's documented TrueNAS settings: disable the host
@@ -1006,7 +1006,7 @@ Fill this matrix using synthetic aliases only.
 | Capability events                          | Pass                                | The allowlisted write produced its matching capability update inside the guarded observation window                                                  |
 | Availability events                        | Absent for synthetic test driver    | Unavailable/restored read-backs passed after full ten-second event windows; physical/Homey-originated evidence remains pending                       |
 | Allowlisted write, event, and read-back    | Pass                                | Requested-value event and read-back passed; restoration of the original value and its second read-back also passed                                   |
-| Smart Panel mapped-family control          | Pass                                | Cover, lighting, and switch passed through production mappings and control; no eligible live lock family was present                                 |
+| Smart Panel mapped-family control          | Pass                                | Climate, cover, lighting, and switch passed through production mappings and control; no eligible live lock family was present                        |
 | Burst updates and concurrent commands      | Pass                                | Three concurrent mapped cover commands were serialized, confirmed by ordered realtime events and final read-back, then restored exactly              |
 | Plugin disable/enable and backend shutdown | Pass                                | Managed disable, fresh-connector re-enable, and backend shutdown each completed; both 35-second post-stop windows remained fully quiescent           |
 | Network interruption and restoration       | Pass                                | 36 ordered events proved disconnect, nine retries during the 60-second interruption, resubscription, fresh inventory read, and complete cleanup      |

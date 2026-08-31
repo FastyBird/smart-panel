@@ -74,7 +74,13 @@ const PUBLIC_SYNTHETIC_PERSONAL_VALUES = new Set([
 	'Synthetic mode B',
 	'Synthetic mode C',
 ]);
-const PUBLIC_EVIDENCE_PERSONAL_VALUES = new Set(['light-power', 'outlet-power', 'window-covering-position']);
+const PUBLIC_EVIDENCE_PERSONAL_VALUES = new Set([
+	'light-power',
+	'outlet-power',
+	'thermostat-heater-on',
+	'thermostat-heater-target-temperature',
+	'window-covering-position',
+]);
 const PUBLIC_SYNTHETIC_IDENTIFIER_VALUES = new Set([
 	'123e4567-e89b-12d3-a456-426614174000',
 	'550e8400-e29b-41d4-a716-446655440000',
@@ -6831,6 +6837,16 @@ describe('Homey security artifact gate', () => {
 		);
 		expect(() =>
 			assertFixtureTextSafe('safe fixture', '{"observation":{"mappingName":"window-covering-position"}}', '.json'),
+		).not.toThrow();
+		expect(() =>
+			assertFixtureTextSafe('safe fixture', '{"observation":{"mappingName":"thermostat-heater-on"}}', '.json'),
+		).not.toThrow();
+		expect(() =>
+			assertFixtureTextSafe(
+				'safe fixture',
+				'{"observation":{"mappingName":"thermostat-heater-target-temperature"}}',
+				'.json',
+			),
 		).not.toThrow();
 		expect(() => assertFixtureTextSafe('unsafe fixture', '{"name":"light-power"}', '.json')).toThrow(
 			'unsafe fixture contains a structured personal value',
