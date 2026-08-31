@@ -2,7 +2,7 @@
 	"config": {
 		"local": {
 			"title": "Místní připojení Homey",
-			"description": "Připojte se přímo k Homey Pro v místní síti s nejnižší latencí. Zde nastavte URL a API klíč pouze pro zápis; Smart Panel musí mít k Homey přístup."
+			"description": "Připojte se přímo k Homey Self-Hosted Server v místní síti. Zde nastavte URL a API klíč pouze pro zápis; Smart Panel musí mít k Homey přístup."
 		},
 		"enabled": "Povoleno",
 		"url": {

@@ -2,7 +2,7 @@ import { Callout } from "nextra/components";
 
 # Homey (Experimental)
 
-The experimental Homey integration connects Smart Panel to a Homey Pro or Homey Self-Hosted Server (SHS). It imports logical devices already managed by Homey, lets an administrator review and adopt
+The experimental Homey integration connects Smart Panel to a Homey Self-Hosted Server (SHS) over its local HTTP API. It imports logical devices already managed by Homey, lets an administrator review and adopt
 them, keeps their state synchronized, and sends supported controls back to Homey.
 
 <Callout type="warning">
@@ -26,7 +26,7 @@ asks a user to enter Homey account credentials.
 
 For a local connection, you need:
 
-- a configured Homey Pro or [Homey Self-Hosted Server](https://support.homey.app/hc/en-us/articles/23975096785948-How-to-install-Homey-Self-Hosted-Server-on-Linux);
+- a configured [Homey Self-Hosted Server](https://support.homey.app/hc/en-us/articles/23975096785948-How-to-install-Homey-Self-Hosted-Server-on-Linux);
 - network access from the **Smart Panel backend** to Homey's local API;
 - the complete local API URL, including `http://` or `https://` and any non-standard port; and
 - a dedicated Homey API key with only the permissions Smart Panel needs.

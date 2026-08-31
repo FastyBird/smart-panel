@@ -210,7 +210,7 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 
 > Plugin · by FastyBird · platform: devices
 
-Connects Smart Panel to Homey Self-Hosted Server and compatible Homey Pro local APIs. Homey remains responsible for pairing, radio networks, drivers and apps; Smart Panel adopts selected logical devices for display and control.
+Connects Smart Panel to Homey Self-Hosted Server over its local HTTP API. Homey remains responsible for pairing, radio networks, drivers and apps; Smart Panel adopts selected logical devices for display and control.
 
 ## What you get
 
@@ -255,7 +255,7 @@ Grant all four permissions for full functionality. Do not grant device-managemen
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| \`url\` | Local Homey Pro or Homey SHS API URL, including protocol and port | — |
+| \`url\` | Local Homey SHS API URL, including protocol and port | — |
 | \`api_key\` | Write-only Homey API key used for inventory, events and controls | — |
 | \`connection_timeout\` | Timeout for Homey requests and connection operations | \`10000 ms\` |
 | \`reconciliation_interval\` | Interval for full inventory reconciliation | \`300000 ms\` |

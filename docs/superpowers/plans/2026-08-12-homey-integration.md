@@ -44,7 +44,9 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - Create: `docs/homey-shs-compatibility.md`
 - Create: `apps/backend/src/plugins/devices-homey/__fixtures__/README.md` when the plugin directory is introduced
 
-- [ ] Record SHS version, container image digest, installation topology, exposed ports, capture date, and Smart Panel runtime network path.
+- [x] Record the available SHS version, installation topology, exposed HTTP port, capture date, and Smart Panel runtime
+  network path; explicitly record the unavailable image digest and exact TrueNAS version/architecture as an accepted
+  provenance gap.
 - [x] Give SHS a stable LAN address; prefer host networking or a dedicated address consistent with Homey guidance.
 - [x] Create a least-privilege API key with only device read/control, zone read, and system read permissions required by the design.
 - [x] Designate one harmless writable test capability; record only a synthetic alias in repository documents.
@@ -59,9 +61,9 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 The stable TrueNAS host-network deployment was reached through the same private-LAN endpoint throughout the live
 program. Separate scoped credentials covered read-only inventory, control, lifecycle, and omitted-permission scenarios;
 repository evidence retains no credential or private endpoint. The harmless writable target is recorded only as
-`fbsp-reversible-mapping-target`. The combined installation-metadata item remains unchecked because the original image
-digest and exact TrueNAS version/architecture were not captured and cannot be reconstructed; all remaining version,
-date, topology, path, and verified-port fields are recorded in the compatibility document.
+`fbsp-reversible-mapping-target`. The installation-metadata item is checked with an accepted provenance exception: the
+original image digest and exact TrueNAS version/architecture were not captured and cannot be reconstructed, while all
+remaining version, date, topology, path, and verified-port fields are recorded in the compatibility document.
 
 **Verification:** Review the compatibility document for secret/private data before committing it.
 
@@ -802,7 +804,7 @@ gated compatibility probes under `test/`.
 The operator guide is published at `apps/website/app/docs/extensions/homey/page.mdx`; the fixture refresh runbook is
 maintained beside the reviewed fixture corpus. The 2026-08-28 release audit moved the local feature to `review` after
 all implemented Phase 1 criteria, automated gates, and the complete Task 6.2 lifecycle matrix received evidence. The
-unchecked installation-provenance criterion and the remaining Task 0.2/3.2 items carry explicit deferrals below.
+accepted installation-provenance exception and the remaining Task 0.2/3.2 items carry explicit deferrals below.
 The same audit reran clean OpenAPI generation and backend compilation, 17 credential-free Homey spike suites with 243
 tests, and 39 Homey/config security suites with 484 tests.
 
