@@ -209,6 +209,7 @@ function entities(command: CommandCase, resolvedMapping: ResolvedHomeyPropertyMa
 
 function mappingLoader(resolvedMapping: ResolvedHomeyPropertyMapping) {
 	return {
+		getPropertyMappings: jest.fn().mockReturnValue([resolvedMapping]),
 		resolvePropertyMappings: jest.fn().mockReturnValue({
 			mappings: [
 				{
@@ -656,7 +657,7 @@ describe('HomeyDevicePlatform', () => {
 		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'target_temperature', 23);
 	});
 
-	it('projects transformed target mappings in the authoritative Homey domain', async () => {
+	it('projects custom transformed target mappings in the authoritative Homey domain', async () => {
 		const loader = new HomeyMappingLoaderService();
 		loader.loadAllMappings();
 		const target = thermostatEntities(loader);
@@ -667,10 +668,13 @@ describe('HomeyDevicePlatform', () => {
 		target.heaterTarget.step = 1;
 		target.coolerTarget.format = [0, 30];
 		target.coolerTarget.step = 1;
+		target.heaterTarget.homeyMappingName = 'operator-heater-target';
+		target.coolerTarget.homeyMappingName = 'operator-cooler-target';
 		const scaledMappings = loader.getPropertyMappings().map((mapping) =>
 			['thermostat-heater-target-temperature', 'thermostat-cooler-target-temperature'].includes(mapping.name)
 				? {
 						...mapping,
+						name: `operator-${mapping.property.channel}-target`,
 						property: {
 							...mapping.property,
 							transform: {
@@ -689,10 +693,19 @@ describe('HomeyDevicePlatform', () => {
 
 				return {
 					...resolution,
-					mappings: resolution.mappings.map((binding) => ({
-						...binding,
-						mapping: scaledMappings.find((mapping) => mapping.name === binding.mapping.name) ?? binding.mapping,
-					})),
+					mappings: resolution.mappings.map((binding) => {
+						const isTarget = ['thermostat-heater-target-temperature', 'thermostat-cooler-target-temperature'].includes(
+							binding.mapping.name,
+						);
+						const replacement = scaledMappings.find((mapping) =>
+							isTarget
+								? mapping.match.capabilityBaseIds.includes('target_temperature') &&
+									mapping.property.channel === binding.mapping.property.channel
+								: mapping.name === binding.mapping.name,
+						);
+
+						return { ...binding, mapping: replacement ?? binding.mapping };
+					}),
 				};
 			},
 		};

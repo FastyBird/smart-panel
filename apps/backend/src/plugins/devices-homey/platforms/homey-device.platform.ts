@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { PermissionType } from '../../../modules/devices/devices.constants';
+import { PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { validatePropertyCommandValue } from '../../../modules/devices/utils/property-command-value.utils';
@@ -45,11 +45,6 @@ interface PreparedThermostatModeCommand {
 	readonly capabilityId: string;
 	readonly updates: readonly PreparedThermostatModeUpdate[];
 }
-
-const THERMOSTAT_TARGET_MAPPINGS = new Set([
-	'thermostat-heater-target-temperature',
-	'thermostat-cooler-target-temperature',
-]);
 
 export interface HomeyThermostatModeStates {
 	readonly heaterOn: boolean;
@@ -142,6 +137,9 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 		}
 
 		const upstreamDevices = new Map(inventory.map((device) => [device.id, device]));
+		const propertyMappings = new Map(
+			this.mappingLoader.getPropertyMappings().map((mapping) => [mapping.name, mapping]),
+		);
 		const groupedTargetIndexes = new Map<string, number[]>();
 
 		for (const [index, update] of prepared.entries()) {
@@ -151,7 +149,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 				typeof update.device.identifier !== 'string' ||
 				typeof update.property.homeyCapabilityId !== 'string' ||
 				typeof update.property.homeyMappingName !== 'string' ||
-				!THERMOSTAT_TARGET_MAPPINGS.has(update.property.homeyMappingName)
+				!this.isThermostatTargetMapping(propertyMappings.get(update.property.homeyMappingName))
 			) {
 				continue;
 			}
@@ -175,9 +173,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 				}
 
 				const panelValue = this.validateThermostatTargetInput(update.property, update.value);
-				const mapping = this.mappingLoader
-					.getPropertyMappings()
-					.find((candidate) => candidate.name === update.property.homeyMappingName);
+				const mapping = propertyMappings.get(update.property.homeyMappingName);
 
 				if (panelValue === null || mapping === undefined) {
 					return null;
@@ -247,12 +243,10 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 						property instanceof HomeyChannelPropertyEntity &&
 						property.homeyCapabilityId === capabilityId &&
 						typeof property.homeyMappingName === 'string' &&
-						THERMOSTAT_TARGET_MAPPINGS.has(property.homeyMappingName) &&
+						this.isThermostatTargetMapping(propertyMappings.get(property.homeyMappingName)) &&
 						!preparedPropertyIds.has(property.id)
 					) {
-						const mapping = this.mappingLoader
-							.getPropertyMappings()
-							.find((candidate) => candidate.name === property.homeyMappingName);
+						const mapping = propertyMappings.get(property.homeyMappingName);
 
 						if (mapping === undefined) {
 							return null;
@@ -401,7 +395,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 				value: transformed,
 			};
 
-			if (THERMOSTAT_TARGET_MAPPINGS.has(mapping.name)) {
+			if (this.isThermostatTargetMapping(mapping)) {
 				thermostatTargetCommands.push(command);
 			} else {
 				commands.push(command);
@@ -555,6 +549,17 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 		const validation = validatePropertyCommandValue(propertyWithoutGrid, value);
 
 		return validation.valid && typeof validation.value === 'number' ? validation.value : null;
+	}
+
+	private isThermostatTargetMapping(mapping: ResolvedHomeyPropertyMapping | undefined): boolean {
+		return (
+			mapping !== undefined &&
+			mapping.match.classes.includes('thermostat') &&
+			mapping.match.capabilityBaseIds.includes('target_temperature') &&
+			['heater', 'cooler'].includes(mapping.property.channel) &&
+			mapping.property.category === PropertyCategory.TEMPERATURE &&
+			mapping.property.direction !== 'read_only'
+		);
 	}
 
 	private readProjectedThermostatTarget(

@@ -94,6 +94,8 @@ store the value Homey actually accepted for both setpoints. A one-sided HEAT or 
 shared-target write, but it is aligned to the capability step and its sibling panel projection is persisted to keep both
 channels consistent with Homey's authoritative target. Operator target transforms are applied before this upstream
 projection and inverted afterward so alignment and midpoint calculations always use the Homey capability domain.
+Shared-target coordination is selected from the resolved thermostat capability/channel semantics, so higher-priority
+operator descriptors do not need to reuse the built-in mapping names.
 
 Thermostat device eligibility requires `measure_temperature`, `target_temperature`, and `thermostat_mode` together.
 Partial target-only or mode-only devices stay unsupported.
