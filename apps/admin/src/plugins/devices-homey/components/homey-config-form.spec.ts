@@ -70,9 +70,15 @@ describe('HomeyConfigForm', () => {
 		expect(wrapper.find('[name="url"]').exists()).toBe(true);
 		expect(wrapper.find('[name="mode"]').exists()).toBe(false);
 		expect(wrapper.text()).toContain('devicesHomeyPlugin.config.local.title');
+		const permissions = wrapper.get('[data-test-id="homey-api-key-permissions"]');
+		expect(permissions.text()).toContain('homey.system.readonly');
+		expect(permissions.text()).toContain('homey.zone.readonly');
+		expect(permissions.text()).toContain('homey.device.readonly');
+		expect(permissions.text()).toContain('homey.device.control');
 		expect(wrapper.findAll('[data-test-id]').map((element) => element.attributes('data-test-id'))).toEqual([
 			'homey-local-connection-info',
 			'homey-enabled-field',
+			'homey-api-key-permissions',
 			'homey-connection-panel-stub',
 		]);
 	});

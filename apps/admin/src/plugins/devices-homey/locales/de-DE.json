@@ -15,7 +15,14 @@
 			"label": "Lokaler API-Schlüssel",
 			"placeholder": "Neuen Schlüssel eingeben, um den gespeicherten zu ersetzen",
 			"required": "Geben Sie einen Homey-API-Schlüssel ein oder behalten Sie ihn bei, bevor Sie die Integration aktivieren",
-			"invalid": "Geben Sie einen nicht leeren API-Schlüssel ein oder entfernen Sie den Ersatz"
+			"invalid": "Geben Sie einen nicht leeren API-Schlüssel ein oder entfernen Sie den Ersatz",
+			"permissionsTitle": "Erforderliche Zugriffsregeln",
+			"permissionsIntro": "Gewähren Sie dem dedizierten Homey-API-Schlüssel diese vier Berechtigungen:",
+			"permissionSystemReadonly": "Verbindung testen und die Homey-Instanz identifizieren",
+			"permissionZoneReadonly": "die bei der Übernahme angezeigte Zonenhierarchie lesen",
+			"permissionDeviceReadonly": "Geräte finden, Fähigkeiten lesen und Zustände synchronisieren",
+			"permissionDeviceControl": "Befehle an unterstützte schreibbare Fähigkeiten senden",
+			"permissionsNote": "Gewähren Sie keinen Zugriff auf Geräteverwaltung, Kopplung, Apps, Flows, Benutzer oder Administration."
 		},
 		"connectionTimeout": "Verbindungszeitlimit (ms)",
 		"reconciliationInterval": "Inventarabgleichsintervall (ms)",

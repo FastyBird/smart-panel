@@ -15,7 +15,14 @@
 			"label": "Local API key",
 			"placeholder": "Enter a new key to replace the configured key",
 			"required": "Enter or keep a Homey API key before enabling the integration",
-			"invalid": "Enter a non-blank API key or remove the replacement"
+			"invalid": "Enter a non-blank API key or remove the replacement",
+			"permissionsTitle": "Required access rules",
+			"permissionsIntro": "Grant these four permissions to the dedicated Homey API key:",
+			"permissionSystemReadonly": "test the connection and identify the Homey instance",
+			"permissionZoneReadonly": "read the zone hierarchy shown during adoption",
+			"permissionDeviceReadonly": "discover devices, read capabilities, and synchronize state",
+			"permissionDeviceControl": "send commands to supported writable capabilities",
+			"permissionsNote": "Do not grant device management, pairing, apps, Flows, users, or administrator access."
 		},
 		"connectionTimeout": "Connection timeout (ms)",
 		"reconciliationInterval": "Inventory reconciliation interval (ms)",

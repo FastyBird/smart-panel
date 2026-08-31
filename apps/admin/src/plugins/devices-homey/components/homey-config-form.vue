@@ -53,6 +53,38 @@
 				name="apiKey"
 				:placeholder="t('devicesHomeyPlugin.config.apiKey.placeholder')"
 			/>
+			<div
+				class="w-full mt-2 text-xs text-gray-500"
+				data-test-id="homey-api-key-permissions"
+			>
+				<p class="font-semibold text-gray-600">
+					{{ t('devicesHomeyPlugin.config.apiKey.permissionsTitle') }}
+				</p>
+				<p>{{ t('devicesHomeyPlugin.config.apiKey.permissionsIntro') }}</p>
+				<ul class="list-disc pl-5 mt-1 space-y-1">
+					<li>
+						<code>homey.system.readonly</code>
+						—
+						{{ t('devicesHomeyPlugin.config.apiKey.permissionSystemReadonly') }}
+					</li>
+					<li>
+						<code>homey.zone.readonly</code>
+						—
+						{{ t('devicesHomeyPlugin.config.apiKey.permissionZoneReadonly') }}
+					</li>
+					<li>
+						<code>homey.device.readonly</code>
+						—
+						{{ t('devicesHomeyPlugin.config.apiKey.permissionDeviceReadonly') }}
+					</li>
+					<li>
+						<code>homey.device.control</code>
+						—
+						{{ t('devicesHomeyPlugin.config.apiKey.permissionDeviceControl') }}
+					</li>
+				</ul>
+				<p class="mt-1">{{ t('devicesHomeyPlugin.config.apiKey.permissionsNote') }}</p>
+			</div>
 		</el-form-item>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">

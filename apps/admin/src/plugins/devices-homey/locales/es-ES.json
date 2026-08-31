@@ -15,7 +15,14 @@
 			"label": "Clave de API local",
 			"placeholder": "Introduce una clave nueva para sustituir la configurada",
 			"required": "Introduce o conserva una clave de API de Homey antes de activar la integración",
-			"invalid": "Introduce una clave de API no vacía o elimina el reemplazo"
+			"invalid": "Introduce una clave de API no vacía o elimina el reemplazo",
+			"permissionsTitle": "Reglas de acceso necesarias",
+			"permissionsIntro": "Concede estos cuatro permisos a la clave de API dedicada de Homey:",
+			"permissionSystemReadonly": "probar la conexión e identificar la instancia de Homey",
+			"permissionZoneReadonly": "leer la jerarquía de zonas mostrada durante la adopción",
+			"permissionDeviceReadonly": "descubrir dispositivos, leer capacidades y sincronizar el estado",
+			"permissionDeviceControl": "enviar comandos a las capacidades escribibles compatibles",
+			"permissionsNote": "No concedas acceso a la gestión de dispositivos, emparejamiento, aplicaciones, Flows, usuarios o administración."
 		},
 		"connectionTimeout": "Tiempo de espera de conexión (ms)",
 		"reconciliationInterval": "Intervalo de conciliación del inventario (ms)",

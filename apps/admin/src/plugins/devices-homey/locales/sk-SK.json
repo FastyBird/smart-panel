@@ -15,7 +15,14 @@
 			"label": "Kľúč lokálneho API",
 			"placeholder": "Zadajte nový kľúč na nahradenie uloženého kľúča",
 			"required": "Pred povolením integrácie zadajte alebo ponechajte kľúč API Homey",
-			"invalid": "Zadajte neprázdny kľúč API alebo náhradný kľúč odstráňte"
+			"invalid": "Zadajte neprázdny kľúč API alebo náhradný kľúč odstráňte",
+			"permissionsTitle": "Požadované prístupové pravidlá",
+			"permissionsIntro": "Vyhradenému kľúču API Homey udeľte tieto štyri oprávnenia:",
+			"permissionSystemReadonly": "otestovanie pripojenia a identifikácia inštancie Homey",
+			"permissionZoneReadonly": "čítanie hierarchie zón zobrazenej pri pridávaní zariadení",
+			"permissionDeviceReadonly": "vyhľadanie zariadení, čítanie funkcií a synchronizácia stavu",
+			"permissionDeviceControl": "odosielanie príkazov podporovaným zapisovateľným funkciám",
+			"permissionsNote": "Neudeľujte prístup k správe zariadení, párovaniu, aplikáciám, Flow, používateľom ani správe systému."
 		},
 		"connectionTimeout": "Časový limit pripojenia (ms)",
 		"reconciliationInterval": "Interval synchronizácie inventára (ms)",

@@ -245,6 +245,17 @@ Built-in mappings cover lights, outlets, switches, locks, window coverings, ther
 3. Test and save the connection, then enable the plugin.
 4. Open device discovery, review the Homey inventory and adopt the devices you want to display or control.
 
+## Required API key permissions
+
+| Permission | Purpose |
+|------------|---------|
+| \`homey.system.readonly\` | Test the connection and identify the Homey instance |
+| \`homey.zone.readonly\` | Read the zone hierarchy shown during device adoption |
+| \`homey.device.readonly\` | Discover devices, read capabilities and synchronize state |
+| \`homey.device.control\` | Send commands to supported writable capabilities |
+
+Grant all four permissions for full functionality. Do not grant device-management, pairing, app, Flow, user or administrator permissions; this plugin does not use them.
+
 ## Configuration
 
 | Option | Description | Default |
