@@ -91,7 +91,8 @@ and upper setpoints in one batch, the platform projects their midpoint onto Home
 capability step. The prepared midpoint is returned to the climate intent layer so history and subsequent state responses
 store the value Homey actually accepted for both setpoints. A one-sided HEAT or COOL setpoint remains a direct
 shared-target write, but it is aligned to the capability step and its sibling panel projection is persisted to keep both
-channels consistent with Homey's authoritative target.
+channels consistent with Homey's authoritative target. Operator target transforms are applied before this upstream
+projection and inverted afterward so alignment and midpoint calculations always use the Homey capability domain.
 
 Thermostat device eligibility requires `measure_temperature`, `target_temperature`, and `thermostat_mode` together.
 Partial target-only or mode-only devices stay unsupported.

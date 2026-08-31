@@ -13,7 +13,7 @@ import {
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from '../entities/devices-homey.entity';
 import { HomeyMappingLoaderService } from '../mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from '../mappings/mapping-transformer.service';
-import { type HomeyWriteStrategy } from '../mappings/mapping.types';
+import { type HomeyWriteStrategy, type ResolvedHomeyPropertyMapping } from '../mappings/mapping.types';
 import { HomeyCapability, HomeyCapabilityValue } from '../models/homey-capability.model';
 import { HomeyFailureLogLimiter } from '../services/homey-failure-log-limiter';
 import { HomeyService } from '../services/homey.service';
@@ -167,37 +167,66 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 			const deviceId = key.slice(0, separator);
 			const capabilityId = key.slice(separator + 1);
 			const capability = upstreamDevices.get(deviceId)?.capabilities.find((candidate) => candidate.id === capabilityId);
-			const values = indexes.map((index) => {
+			const inputs = indexes.map((index) => {
 				const update = prepared[index];
 
 				if (update === undefined) {
 					return null;
 				}
 
-				return this.validateThermostatTargetInput(update.property, update.value);
+				const panelValue = this.validateThermostatTargetInput(update.property, update.value);
+				const mapping = this.mappingLoader
+					.getPropertyMappings()
+					.find((candidate) => candidate.name === update.property.homeyMappingName);
+
+				if (panelValue === null || mapping === undefined) {
+					return null;
+				}
+
+				try {
+					const upstreamValue = this.transformer.write(mapping, panelValue);
+
+					return typeof upstreamValue === 'number' && Number.isFinite(upstreamValue)
+						? { mapping, upstreamValue }
+						: null;
+				} catch {
+					return null;
+				}
 			});
 
-			if (capability === undefined || values.some((value) => value === null)) {
+			if (capability === undefined || inputs.some((input) => input === null)) {
 				return null;
 			}
 
-			const numericValues = values.filter((value): value is number => value !== null);
+			const validInputs = inputs.filter(
+				(input): input is { mapping: ResolvedHomeyPropertyMapping; upstreamValue: number } => input !== null,
+			);
+			const upstreamValues = validInputs.map((input) => input.upstreamValue);
 			const requestedTarget =
-				numericValues.length === 1 ? numericValues[0] : (Math.min(...numericValues) + Math.max(...numericValues)) / 2;
+				upstreamValues.length === 1
+					? upstreamValues[0]
+					: (Math.min(...upstreamValues) + Math.max(...upstreamValues)) / 2;
 			const projected = this.alignThermostatTargetToCapability(capability, requestedTarget);
 
 			if (projected === null) {
 				return null;
 			}
 
-			for (const index of indexes) {
+			for (const [inputIndex, index] of indexes.entries()) {
 				const update = prepared[index];
+				const mapping = validInputs[inputIndex]?.mapping;
 
-				if (update === undefined || !validatePropertyCommandValue(update.property, projected).valid) {
+				if (update === undefined || mapping === undefined) {
 					return null;
 				}
 
-				prepared[index] = { ...prepared[index], value: projected };
+				const panelValue = this.readProjectedThermostatTarget(mapping, update.property, projected);
+
+				if (panelValue === null) {
+					return null;
+				}
+
+				prepared[index] = { ...prepared[index], value: panelValue };
 			}
 
 			const first = prepared[indexes[0]];
@@ -221,11 +250,21 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 						THERMOSTAT_TARGET_MAPPINGS.has(property.homeyMappingName) &&
 						!preparedPropertyIds.has(property.id)
 					) {
-						if (!validatePropertyCommandValue(property, projected).valid) {
+						const mapping = this.mappingLoader
+							.getPropertyMappings()
+							.find((candidate) => candidate.name === property.homeyMappingName);
+
+						if (mapping === undefined) {
 							return null;
 						}
 
-						prepared.push({ device: first.device, channel, property, value: projected });
+						const panelValue = this.readProjectedThermostatTarget(mapping, property, projected);
+
+						if (panelValue === null) {
+							return null;
+						}
+
+						prepared.push({ device: first.device, channel, property, value: panelValue });
 						preparedPropertyIds.add(property.id);
 					}
 				}
@@ -516,6 +555,22 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 		const validation = validatePropertyCommandValue(propertyWithoutGrid, value);
 
 		return validation.valid && typeof validation.value === 'number' ? validation.value : null;
+	}
+
+	private readProjectedThermostatTarget(
+		mapping: ResolvedHomeyPropertyMapping,
+		property: HomeyChannelPropertyEntity,
+		value: number,
+	): number | null {
+		try {
+			const panelValue = this.transformer.read(mapping, value);
+
+			return typeof panelValue === 'number' && validatePropertyCommandValue(property, panelValue).valid
+				? panelValue
+				: null;
+		} catch {
+			return null;
+		}
 	}
 
 	private alignThermostatTargetToCapability(capability: HomeyCapability, value: number): number | null {

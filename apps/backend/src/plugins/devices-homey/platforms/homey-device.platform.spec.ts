@@ -656,6 +656,66 @@ describe('HomeyDevicePlatform', () => {
 		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'target_temperature', 23);
 	});
 
+	it('projects transformed target mappings in the authoritative Homey domain', async () => {
+		const loader = new HomeyMappingLoaderService();
+		loader.loadAllMappings();
+		const target = thermostatEntities(loader);
+		const capability = target.upstream.capabilities.find((candidate) => candidate.id === 'target_temperature');
+		expect(capability).toBeDefined();
+		Object.assign(capability, { minimum: 40, maximum: 100, step: 2, value: 70 });
+		target.heaterTarget.format = [0, 30];
+		target.heaterTarget.step = 1;
+		target.coolerTarget.format = [0, 30];
+		target.coolerTarget.step = 1;
+		const scaledMappings = loader.getPropertyMappings().map((mapping) =>
+			['thermostat-heater-target-temperature', 'thermostat-cooler-target-temperature'].includes(mapping.name)
+				? {
+						...mapping,
+						property: {
+							...mapping.property,
+							transform: {
+								type: 'scale' as const,
+								input_range: [40, 100] as [number, number],
+								output_range: [0, 30] as [number, number],
+							},
+						},
+					}
+				: mapping,
+		);
+		const scaledLoader = {
+			getPropertyMappings: (): readonly ResolvedHomeyPropertyMapping[] => scaledMappings,
+			resolvePropertyMappings: (device: HomeyDevice) => {
+				const resolution = loader.resolvePropertyMappings(device);
+
+				return {
+					...resolution,
+					mappings: resolution.mappings.map((binding) => ({
+						...binding,
+						mapping: scaledMappings.find((mapping) => mapping.name === binding.mapping.name) ?? binding.mapping,
+					})),
+				};
+			},
+		};
+		const homeyService = {
+			getInventorySnapshot: jest.fn().mockReturnValue([target.upstream]),
+			executeCapabilityCommand: jest.fn().mockResolvedValue(true),
+		};
+		const platform = new HomeyDevicePlatform(
+			homeyService as unknown as HomeyService,
+			scaledLoader as unknown as HomeyMappingLoaderService,
+			new HomeyMappingTransformerService(),
+		);
+
+		const updates = [
+			{ device: target.device, channel: target.heater, property: target.heaterTarget, value: 10 },
+			{ device: target.device, channel: target.cooler, property: target.coolerTarget, value: 20 },
+		];
+		expect(platform.prepareBatch(updates)?.map((update) => update.value)).toStrictEqual([15, 15]);
+		await expect(platform.processBatch(updates)).resolves.toBe(true);
+		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledTimes(1);
+		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'target_temperature', 70);
+	});
+
 	it('rejects unavailable devices, read-only capabilities, and off-range values', async () => {
 		const command = commandCases[1];
 		const resolvedMapping = mapping(command);
