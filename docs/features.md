@@ -36,7 +36,7 @@ FastyBird Smart Panel is an open-source smart home control platform designed for
 ### Key Highlights
 
 - **Wall-mounted touch control** - Purpose-built for embedded touch displays
-- **Multi-ecosystem support** - Integrates Home Assistant, Shelly, Zigbee2MQTT, WLED, and more, with experimental Homey support under validation
+- **Multi-ecosystem support** - Integrates Home Assistant, Homey Self-Hosted Server, Shelly, Zigbee2MQTT, WLED, and more
 - **Offline-first architecture** - Works without cloud dependency; local processing and control
 - **AI-powered assistant** - Built-in Buddy AI with support for Claude, OpenAI, and local Ollama models
 - **Modular & extensible** - Plugin-based architecture with an Extension SDK for custom integrations
@@ -101,11 +101,11 @@ Smart Panel connects to multiple smart home ecosystems through dedicated integra
 
 **Supported HA domains**: climate, cover, light, switch, lock, media_player, camera, sensor, humidifier, thermostat, valve, vacuum, water_heater, fan, binary_sensor, and 24+ more.
 
-### Homey (Experimental)
+### Homey Self-Hosted Server
 
-The implementation is not yet a production support claim. Live local evidence covers the documented Homey SHS
-inventory, event, command, lifecycle, credential, recovery, and shutdown matrix over HTTP. Homey Pro hardware and local
-HTTPS remain pending.
+Smart Panel supports directly reachable Homey Self-Hosted Server (SHS) instances over their local API. Live validation
+covers the documented SHS inventory, event, command, lifecycle, credential, recovery, shutdown, and thermostat-control
+matrix over HTTP. Homey Pro hardware and local HTTPS are not included in the validated support claim.
 
 - **Protocol**: Local HTTP(S) with Socket.IO events
 - **Targets**: Directly reachable Homey Self-Hosted Server instances over HTTP
@@ -908,20 +908,20 @@ The Vue.js admin interface provides comprehensive management for the entire syst
 
 ## Integration Coverage Matrix
 
-| Device Type      | Home Assistant | Homey (experimental) | Shelly NG | Shelly V1 | Zigbee2MQTT | WLED | Simulator |
-| ---------------- | :------------: | :------------------: | :-------: | :-------: | :---------: | :--: | :-------: |
-| Lighting         |       ✅       |          ✅          |    ✅     |    ✅     |     ✅      |  ✅  |    ✅     |
-| Switches/Outlets |       ✅       |          ✅          |    ✅     |    ✅     |     ✅      |  -   |    ✅     |
-| Covers/Blinds    |       ✅       |          ✅          |    ✅     |     -     |     ✅      |  -   |    ✅     |
-| Climate/HVAC     |       ✅       | Current temperature  |     -     |     -     |     ✅      |  -   |    ✅     |
-| Sensors          |       ✅       |          ✅          |    ✅     |    ✅     |     ✅      |  -   |    ✅     |
-| Locks            |       ✅       |          ✅          |     -     |     -     |     ✅      |  -   |    ✅     |
-| Cameras          |       ✅       |          -           |     -     |     -     |      -      |  -   |    ✅     |
-| Media Players    |       ✅       |          -           |     -     |     -     |      -      |  -   |    ✅     |
-| Fans             |       ✅       |          -           |     -     |     -     |     ✅      |  -   |    ✅     |
-| Vacuums          |       ✅       |          -           |     -     |     -     |      -      |  -   |    ✅     |
-| Valves           |       ✅       |          -           |     -     |     -     |     ✅      |  -   |     -     |
-| Auto-Discovery   |       ✅       |    Manual server     |    ✅     |    ✅     |     ✅      |  ✅  |     -     |
+| Device Type      | Home Assistant |   Homey SHS   | Shelly NG | Shelly V1 | Zigbee2MQTT | WLED | Simulator |
+| ---------------- | :------------: | :-----------: | :-------: | :-------: | :---------: | :--: | :-------: |
+| Lighting         |       ✅       |      ✅       |    ✅     |    ✅     |     ✅      |  ✅  |    ✅     |
+| Switches/Outlets |       ✅       |      ✅       |    ✅     |    ✅     |     ✅      |  -   |    ✅     |
+| Covers/Blinds    |       ✅       |      ✅       |    ✅     |     -     |     ✅      |  -   |    ✅     |
+| Climate/HVAC     |       ✅       |      ✅       |     -     |     -     |     ✅      |  -   |    ✅     |
+| Sensors          |       ✅       |      ✅       |    ✅     |    ✅     |     ✅      |  -   |    ✅     |
+| Locks            |       ✅       |      ✅       |     -     |     -     |     ✅      |  -   |    ✅     |
+| Cameras          |       ✅       |       -       |     -     |     -     |      -      |  -   |    ✅     |
+| Media Players    |       ✅       |       -       |     -     |     -     |      -      |  -   |    ✅     |
+| Fans             |       ✅       |       -       |     -     |     -     |     ✅      |  -   |    ✅     |
+| Vacuums          |       ✅       |       -       |     -     |     -     |      -      |  -   |    ✅     |
+| Valves           |       ✅       |       -       |     -     |     -     |     ✅      |  -   |     -     |
+| Auto-Discovery   |       ✅       | Manual server |    ✅     |    ✅     |     ✅      |  ✅  |     -     |
 
 ---
 
