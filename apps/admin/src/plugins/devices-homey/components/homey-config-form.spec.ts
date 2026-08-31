@@ -70,6 +70,11 @@ describe('HomeyConfigForm', () => {
 		expect(wrapper.find('[name="url"]').exists()).toBe(true);
 		expect(wrapper.find('[name="mode"]').exists()).toBe(false);
 		expect(wrapper.text()).toContain('devicesHomeyPlugin.config.local.title');
+		expect(wrapper.findAll('[data-test-id]').map((element) => element.attributes('data-test-id'))).toEqual([
+			'homey-local-connection-info',
+			'homey-enabled-field',
+			'homey-connection-panel-stub',
+		]);
 	});
 
 	it('passes only newly entered candidate credentials into the connection panel', async () => {

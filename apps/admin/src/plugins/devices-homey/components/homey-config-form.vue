@@ -6,6 +6,14 @@
 		label-position="top"
 		status-icon
 	>
+		<el-alert
+			type="info"
+			:title="t('devicesHomeyPlugin.config.local.title')"
+			:description="t('devicesHomeyPlugin.config.local.description')"
+			:closable="false"
+			data-test-id="homey-local-connection-info"
+		/>
+
 		<el-form-item
 			:label="t('devicesHomeyPlugin.config.enabled')"
 			prop="enabled"
@@ -20,13 +28,6 @@
 		</el-form-item>
 
 		<hr />
-
-		<el-alert
-			type="info"
-			:title="t('devicesHomeyPlugin.config.local.title')"
-			:description="t('devicesHomeyPlugin.config.local.description')"
-			:closable="false"
-		/>
 
 		<el-form-item
 			:label="t('devicesHomeyPlugin.config.url.label')"
