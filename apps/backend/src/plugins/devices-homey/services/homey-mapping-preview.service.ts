@@ -1337,8 +1337,13 @@ export class HomeyMappingPreviewService {
 		}
 
 		const modes = new Set(capability.enumValues.map((value) => value.id));
+		const supportedModes = new Set(['off', 'heat', 'cool', 'auto', 'heat_cool']);
 
-		return modes.has('auto') !== modes.has('heat_cool');
+		return (
+			['off', 'heat', 'cool'].every((mode) => modes.has(mode)) &&
+			modes.has('auto') !== modes.has('heat_cool') &&
+			[...modes].every((mode) => supportedModes.has(mode))
+		);
 	}
 
 	private integerNormalizationCanLoseValues(

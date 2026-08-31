@@ -82,8 +82,9 @@ combine both changes into one upstream command. A standard four-mode thermostat 
 and `auto` to the two boolean properties without treating either boolean mapping as independently reversible. The
 mode read-modify-write derivation runs inside Homey's per-capability command queue so overlapping one-sided changes
 observe the latest accepted sibling state. The
-upstream mode domain must expose exactly one combined-mode value, either `auto` or `heat_cool`; devices with neither or
-both remain unsupported because the two boolean states would be incomplete or ambiguous. The
+upstream mode domain must contain `off`, `heat`, and `cool`, expose exactly one combined-mode value (`auto` or
+`heat_cool`), and contain no other modes; other domains remain unsupported because the two boolean projections would be
+incomplete or ambiguous. The
 shared `target_temperature` capability is projected to both channels using the authoritative Homey minimum, maximum,
 and step, so adoption does not advertise values the device cannot accept. These projections describe configured mode
 and target only; they do not fabricate actual heating or cooling activity. When Smart Panel sends distinct AUTO lower

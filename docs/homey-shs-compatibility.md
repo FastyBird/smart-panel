@@ -502,7 +502,9 @@ are coalesced. Different simultaneous heating/cooling targets are projected to t
 authoritative range and step, and reflected back into both Smart Panel setpoints because Homey exposes one target. The
 paired heater/cooler enable properties are combined into one `off`, `heat`, `cool`, `auto`, or
 `heat_cool` command supported by the device. They represent configured mode, not actual activity; no `status` property
-is synthesized. Sensor, safety, battery, and energy families are read-only. The probe derives the full set of
+is synthesized. Adoption requires `off`, `heat`, `cool`, exactly one of `auto`/`heat_cool`, and no extra modes so every
+accepted value has a defined two-boolean projection. Sensor, safety, battery, and energy families are read-only. The
+probe derives the full set of
 reversible writable families currently available in the live inventory and records only their fixed family labels,
 never counts or target details.
 

@@ -219,6 +219,8 @@ describe('HomeyMappingPreviewService', () => {
 		for (const modes of [
 			['off', 'heat', 'cool'],
 			['off', 'heat', 'cool', 'auto', 'heat_cool'],
+			['off', 'heat', 'auto'],
+			['off', 'heat', 'cool', 'auto', 'eco'],
 		]) {
 			const incompatibleDevice: HomeyDevice = {
 				...device,
