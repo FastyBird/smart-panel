@@ -1,22 +1,22 @@
 import { Callout } from "nextra/components";
 
-# Homey (Experimental)
+# Homey Self-Hosted Server
 
-The experimental Homey integration connects Smart Panel to a Homey Self-Hosted Server (SHS) over its local HTTP API. It imports logical devices already managed by Homey, lets an administrator review and adopt
-them, keeps their state synchronized, and sends supported controls back to Homey.
+The Homey integration connects Smart Panel to a Homey Self-Hosted Server (SHS) over its local API. It imports logical
+devices already managed by Homey, lets an administrator review and adopt them, keeps their state synchronized, and
+sends supported controls back to Homey.
 
-<Callout type="warning">
-  **The local SHS evidence is complete and ready for release review, with
-  documented deferrals.** Live SHS 13.4.0/13.4.1 validation over HTTP port 4859
-  covers sanitized inventory, capability writes and ordered events, credential
-  rotation and permission failures, startup/restart/network recovery,
-  physical/Homey/Flow changes, concurrent commands, disposable-device lifecycle,
-  and clean plugin/backend shutdown. The integration remains experimental
-  because Homey Pro hardware and HTTPS were not validated, physical availability
-  manager events were not emitted by the disposable test driver, and the
-  original container digest/complete TrueNAS version were not captured. These
-  are explicit support/provenance limits, not incomplete SHS write, event,
-  credential, or recovery tests.
+<Callout type="info">
+  **Local Homey SHS support is validated over HTTP port 4859.** Basic reads and
+  a passive SDK session were verified on SHS 13.4.0. The complete validation
+  matrix passed on SHS 13.4.1, covering sanitized inventory, capability writes
+  and ordered events, credential rotation and permission failures,
+  startup/restart/network recovery, physical/Homey/Flow changes, concurrent
+  commands, disposable-device lifecycle, thermostat setpoint and mode control,
+  and clean plugin/backend shutdown. Homey Pro hardware and HTTPS were not
+  validated, and physical availability manager events were not emitted by the
+  disposable test driver. Periodic reconciliation remains the fallback for
+  missed availability events.
 </Callout>
 
 Smart Panel does not pair, rename, move, or remove devices in Homey. The integration uses Homey's local API and never
@@ -126,26 +126,28 @@ panel display never receives the Homey URL or API key.
 
 ## Supported Capability Families
 
-Support depends on both Homey's device class and its standardized capability IDs. The local MVP includes:
+Support depends on both Homey's device class and its standardized capability IDs. The supported local integration includes:
 
-| Family                      | Supported state and controls                                                             |
-| --------------------------- | ---------------------------------------------------------------------------------------- |
-| Lights                      | Power, brightness, hue, saturation, and color temperature                                |
-| Outlets and switches        | Power; outlets can also expose instantaneous power and accumulated energy                |
-| Environmental sensors       | Temperature, humidity, pressure, illuminance, and carbon dioxide                         |
-| Safety and presence sensors | Motion, contact, smoke, and carbon monoxide alarms                                       |
-| Thermostats                 | Current temperature for devices exposing the complete standard thermostat capability set |
-| Window coverings            | Open, close, stop, position, and tilt when exposed by the device                         |
-| Locks                       | Locked/unlocked state and control                                                        |
-| Battery                     | Percentage and low/OK status                                                             |
+| Family                      | Supported state and controls                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------------- |
+| Lights                      | Power, brightness, hue, saturation, and color temperature                                   |
+| Outlets and switches        | Power; outlets can also expose instantaneous power and accumulated energy                   |
+| Environmental sensors       | Temperature, humidity, pressure, illuminance, and carbon dioxide                            |
+| Safety and presence sensors | Motion, contact, smoke, and carbon monoxide alarms                                          |
+| Thermostats                 | Current temperature, shared target setpoint, and configured heat, cool, auto, and off modes |
+| Window coverings            | Open, close, stop, position, and tilt when exposed by the device                            |
+| Locks                       | Locked/unlocked state and control                                                           |
+| Battery                     | Percentage and low/OK status                                                                |
 
 Smart Panel preserves full suffixed Homey capability IDs, so independent repeated capabilities are not collapsed into
 one value. Vendor-specific classes or capabilities may be reported as unsupported or omitted from the mapping preview.
 
 <Callout type="info">
-  Thermostat target temperature and operating-mode control are intentionally not
-  exposed in this release. Smart Panel does not infer heating/cooling activity
-  from a configured mode when Homey provides no authoritative activity signal.
+  Homey exposes one shared thermostat target, which Smart Panel projects into
+  its heating and cooling setpoints. Configured heat, cool, auto, and off modes
+  are controllable. Smart Panel does not infer actual heating or cooling
+  activity from the configured mode; activity is shown only when Homey provides
+  a dedicated authoritative status signal.
 </Callout>
 
 ## Synchronization and Availability
@@ -218,7 +220,6 @@ future mapping. A previously adopted device that disappeared upstream remains in
 
 ## Current Limitations
 
-- Experimental status while the documented local release deferrals are reviewed and broader hardware evidence grows.
 - Live local validation currently covers SHS over HTTP `4859`, not Homey Pro hardware or HTTPS `4860`.
 - Homey Cloud is not supported because Homey's Web API authorization is partner-only and Smart Panel does not depend on a hosted bridge.
 - Manual Homey URL configuration; no automatic server discovery.
@@ -226,4 +227,5 @@ future mapping. A previously adopted device that disappeared upstream remains in
   Homey.
 - No automatic deletion of Smart Panel devices that disappear from Homey.
 - No exhaustive mapping for vendor-specific capabilities.
-- Thermostat target, mode, and activity control remain deferred as described above.
+- Actual thermostat heating/cooling activity requires a dedicated authoritative Homey status capability; configured
+  mode alone is never presented as activity.
