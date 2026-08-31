@@ -18,21 +18,21 @@ file. Live results use synthetic aliases and sanitized captures only.
 
 ## Current gate status
 
-| Area                                                  | Status                                                   | Evidence still required                                          |
-| ----------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------- |
-| Credential-safe read probe                            | Passed on SHS `13.4.0` and `13.4.1` over HTTP `4859`     | HTTPS is not claimed for this installation                       |
-| System, zone, device inventory, and individual device | Captured and sanitized                                   | None                                                             |
-| Capability metadata and suffixed IDs                  | Inventory, explicit read, and write read-back passed     | None                                                             |
-| Socket.IO events and reconnect                        | Capability event, restart, and network recovery passed   | Capture physical/Homey-originated availability-event continuity  |
-| Allowlisted capability write                          | Passed on SHS `13.4.1`                                   | None                                                             |
-| Smart Panel mapped-family control                     | Cover, lighting, and switch passed on SHS `13.4.1`       | None; no writable lock family was present in live inventory      |
-| Error and permission-scope classification             | Five failure scenarios and three omitted scopes passed   | None                                                             |
-| API-key revocation and replacement                    | Passed on SHS `13.4.1`                                   | None                                                             |
-| Disposable-device lifecycle                           | Passed on SHS `13.4.1`                                   | None                                                             |
-| Production-service startup                            | Online and offline-recovery passed on SHS `13.4.1`       | None                                                             |
-| mDNS discovery                                        | Stable across one controlled restart; manual URL remains | Design safe identity verification before reconsidering discovery |
-| SDK decision                                          | SDK selected behind connector boundary                   | Re-evaluate the pinned package and audit result on every upgrade |
-| Sanitized fixture corpus                              | Nine live plus one synthetic device fixture              | No blocking corpus evidence                                      |
+| Area                                                  | Status                                                      | Evidence still required                                          |
+| ----------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------- |
+| Credential-safe read probe                            | Passed on SHS `13.4.0` and `13.4.1` over HTTP `4859`        | HTTPS is not claimed for this installation                       |
+| System, zone, device inventory, and individual device | Captured and sanitized                                      | None                                                             |
+| Capability metadata and suffixed IDs                  | Inventory, explicit read, and write read-back passed        | None                                                             |
+| Socket.IO events and reconnect                        | Capability event, restart, and network recovery passed      | Capture physical/Homey-originated availability-event continuity  |
+| Allowlisted capability write                          | Passed on SHS `13.4.1`                                      | None                                                             |
+| Smart Panel mapped-family control                     | Climate, cover, lighting, and switch passed on SHS `13.4.1` | None; no writable lock family was present in live inventory      |
+| Error and permission-scope classification             | Five failure scenarios and three omitted scopes passed      | None                                                             |
+| API-key revocation and replacement                    | Passed on SHS `13.4.1`                                      | None                                                             |
+| Disposable-device lifecycle                           | Passed on SHS `13.4.1`                                      | None                                                             |
+| Production-service startup                            | Online and offline-recovery passed on SHS `13.4.1`          | None                                                             |
+| mDNS discovery                                        | Stable across one controlled restart; manual URL remains    | Design safe identity verification before reconsidering discovery |
+| SDK decision                                          | SDK selected behind connector boundary                      | Re-evaluate the pinned package and audit result on every upgrade |
+| Sanitized fixture corpus                              | Eleven live plus one synthetic device fixture               | No blocking corpus evidence                                      |
 
 ## Installation evidence
 
@@ -566,9 +566,14 @@ restoration; and stopped cleanly. The live inventory reported no eligible lock f
 remain the available lock coverage and are not presented as live control evidence. The three exact-schema reports are
 committed as `__fixtures__/evidence/2026-08-28-shs-13.4.1-mapping-control-{lighting,switch,cover}.json`.
 
-Climate mappings were added later with fixture/unit coverage and a validated disposable SHS thermostat driver. A live
-climate report remains optional environment evidence and is not represented as having passed until such a sanitized
-report is captured.
+On 2026-08-31, the disposable thermostat passed both representative climate command paths against SHS `13.4.1`:
+`target_temperature` through `thermostat-heater-target-temperature`, and `thermostat_mode` through
+`thermostat-heater-on`. Each run used the production mapping, platform, service, and connector path; matched a fresh
+authoritative read after the command; restored the exact baseline through the same path; verified the restoration; and
+stopped cleanly. The reports are committed as
+`__fixtures__/evidence/2026-08-31-shs-13.4.1-mapping-control-climate-{target,mode}.json`. This establishes live SHS
+setpoint and configured-mode control without claiming an actual heating/cooling activity signal or Homey Pro
+equivalence.
 
 ## Burst updates and concurrent Smart Panel commands
 
