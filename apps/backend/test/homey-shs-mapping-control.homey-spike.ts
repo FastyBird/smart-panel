@@ -423,23 +423,38 @@ describe('Homey SHS mapping-control probe', () => {
 
 	it.each([
 		{
+			availableFamilies: ['climate', 'cover', 'lighting', 'switch'],
+			family: 'climate',
+			filename: '2026-08-31-shs-13.4.1-mapping-control-climate-target.json',
+			mappingName: 'thermostat-heater-target-temperature',
+		},
+		{
+			availableFamilies: ['climate', 'cover', 'lighting', 'switch'],
+			family: 'climate',
+			filename: '2026-08-31-shs-13.4.1-mapping-control-climate-mode.json',
+			mappingName: 'thermostat-heater-on',
+		},
+		{
+			availableFamilies: ['cover', 'lighting', 'switch'],
 			family: 'cover',
 			filename: '2026-08-28-shs-13.4.1-mapping-control-cover.json',
 			mappingName: 'window-covering-position',
 		},
 		{
+			availableFamilies: ['cover', 'lighting', 'switch'],
 			family: 'lighting',
 			filename: '2026-08-28-shs-13.4.1-mapping-control-lighting.json',
 			mappingName: 'light-power',
 		},
 		{
+			availableFamilies: ['cover', 'lighting', 'switch'],
 			family: 'switch',
 			filename: '2026-08-28-shs-13.4.1-mapping-control-switch.json',
 			mappingName: 'outlet-power',
 		},
 	] as const)(
-		'preserves the sanitized live SHS $family mapping-control evidence',
-		async ({ family, filename, mappingName }) => {
+		'preserves the sanitized live SHS $family $mappingName mapping-control evidence',
+		async ({ availableFamilies, family, filename, mappingName }) => {
 			const evidencePath = join(__dirname, '../src/plugins/devices-homey/__fixtures__/evidence', filename);
 			const evidence = JSON.parse(await readFile(evidencePath, 'utf8')) as unknown;
 			const evidenceConfig = config({ family, mappingName });
@@ -447,7 +462,7 @@ describe('Homey SHS mapping-control probe', () => {
 			assertHomeyShsMappingControlReportSafe(evidence, evidenceConfig);
 			expect(evidence).toMatchObject({
 				observation: {
-					availableFamilies: ['cover', 'lighting', 'switch'],
+					availableFamilies,
 					baselineRead: true,
 					commandReadBackMatched: true,
 					family,

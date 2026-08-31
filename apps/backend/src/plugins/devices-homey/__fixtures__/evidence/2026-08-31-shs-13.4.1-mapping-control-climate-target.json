@@ -1,0 +1,72 @@
+{
+	"metadata": {
+		"probe": "homey-shs-mapping-control",
+		"schemaVersion": 1,
+		"sdkVersion": "3.19.2"
+	},
+	"observation": {
+		"availableFamilies": ["climate", "cover", "lighting", "switch"],
+		"baselineRead": true,
+		"commandReadBackMatched": true,
+		"family": "climate",
+		"mappingName": "thermostat-heater-target-temperature",
+		"panelCommandAccepted": true,
+		"restorationAccepted": true,
+		"restorationReadBackMatched": true,
+		"restored": true
+	},
+	"session": {
+		"cleanupCompleted": true,
+		"events": [
+			{
+				"event": "service.start.requested",
+				"order": 1
+			},
+			{
+				"event": "service.start.resolved",
+				"order": 2
+			},
+			{
+				"event": "inventory.verified",
+				"order": 3
+			},
+			{
+				"event": "target.bound",
+				"order": 4
+			},
+			{
+				"event": "baseline.read.verified",
+				"order": 5
+			},
+			{
+				"event": "panel.command.requested",
+				"order": 6
+			},
+			{
+				"event": "panel.command.resolved",
+				"order": 7
+			},
+			{
+				"event": "command.readback.verified",
+				"order": 8
+			},
+			{
+				"event": "restoration.requested",
+				"order": 9
+			},
+			{
+				"event": "restoration.resolved",
+				"order": 10
+			},
+			{
+				"event": "restoration.readback.verified",
+				"order": 11
+			},
+			{
+				"event": "service.stop.resolved",
+				"order": 12
+			}
+		],
+		"serviceStarted": true
+	}
+}

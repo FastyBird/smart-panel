@@ -348,6 +348,9 @@ paired enable changes into one Homey mode write. Heater/cooler `status` is optio
 actual-activity capability, Smart Panel reports configured climate support but conservatively reports no active heating
 or cooling. Fixture, platform, climate-state, and panel tests cover this distinction. A bundled disposable thermostat
 driver and the guarded mapping-control probe provide a live SHS path without claiming Homey Pro equivalence.
+Both representative paths subsequently passed against the disposable SHS thermostat on 2026-08-31: shared target
+temperature and configured heat mode. The sanitized reports verify production-path command confirmation, exact
+restoration, and clean shutdown while preserving the explicit Homey Pro and actual-activity limitations.
 
 ### Task 3.3: Implement device inventory/discovery service and API
 
