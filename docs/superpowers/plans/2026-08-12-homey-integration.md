@@ -61,9 +61,9 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 The stable TrueNAS host-network deployment was reached through the same private-LAN endpoint throughout the live
 program. Separate scoped credentials covered read-only inventory, control, lifecycle, and omitted-permission scenarios;
 repository evidence retains no credential or private endpoint. The harmless writable target is recorded only as
-`fbsp-reversible-mapping-target`. The combined installation-metadata item remains unchecked because the original image
-digest and exact TrueNAS version/architecture were not captured and cannot be reconstructed; all remaining version,
-date, topology, path, and verified-port fields are recorded in the compatibility document.
+`fbsp-reversible-mapping-target`. The installation-metadata item is checked with an accepted provenance exception: the
+original image digest and exact TrueNAS version/architecture were not captured and cannot be reconstructed, while all
+remaining version, date, topology, path, and verified-port fields are recorded in the compatibility document.
 
 **Verification:** Review the compatibility document for secret/private data before committing it.
 
