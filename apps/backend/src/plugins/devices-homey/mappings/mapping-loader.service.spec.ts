@@ -471,6 +471,86 @@ describe('HomeyMappingLoaderService', () => {
 		]);
 	});
 
+	it('accepts an explicit thermostat mode write strategy on a bidirectional boolean map', () => {
+		writeBuiltin('properties', [
+			propertyDefinition({
+				match: {
+					classes: ['thermostat'],
+					capability_base_ids: ['thermostat_mode'],
+				},
+				property: {
+					channel: 'heater',
+					category: 'on',
+					data_type: 'bool',
+					direction: 'bidirectional',
+					write_strategy: 'thermostat_heater_mode',
+					transform: {
+						type: 'map',
+						read: { off: false, heat: true, cool: false, auto: true, heat_cool: true },
+						write: { false: 'off', true: 'heat' },
+					},
+				},
+			}),
+		]);
+
+		service.loadAllMappings();
+
+		expect(service.getPropertyMappings()[0]?.property.writeStrategy).toBe('thermostat_heater_mode');
+	});
+
+	it.each([
+		{
+			strategy: 'thermostat_heater_mode' as const,
+			channel: 'heater',
+			read: { off: false, heat: false, cool: false, auto: true, heat_cool: true },
+		},
+		{
+			strategy: 'thermostat_cooler_mode' as const,
+			channel: 'cooler',
+			read: { off: false, heat: false, cool: false, auto: true, heat_cool: true },
+		},
+	])('rejects a $strategy read map that contradicts its boolean mode projection', (testCase) => {
+		writeBuiltin('properties', [
+			propertyDefinition({
+				match: {
+					classes: ['thermostat'],
+					capability_base_ids: ['thermostat_mode'],
+				},
+				property: {
+					channel: testCase.channel,
+					category: 'on',
+					data_type: 'bool',
+					direction: 'bidirectional',
+					write_strategy: testCase.strategy,
+					transform: {
+						type: 'map',
+						read: testCase.read,
+						write: { false: 'off', true: testCase.channel === 'heater' ? 'heat' : 'cool' },
+					},
+				},
+			}),
+		]);
+
+		expect(() => service.loadAllMappings()).toThrow(HomeyMappingConfigurationError);
+	});
+
+	it('rejects a thermostat mode write strategy without a bidirectional boolean map', () => {
+		writeBuiltin('properties', [
+			propertyDefinition({
+				property: {
+					channel: 'heater',
+					category: 'on',
+					data_type: 'bool',
+					direction: 'read_only',
+					write_strategy: 'thermostat_heater_mode',
+					transform: { type: 'map', read: { off: false, heat: true } },
+				},
+			}),
+		]);
+
+		expect(() => service.loadAllMappings()).toThrow(HomeyMappingConfigurationError);
+	});
+
 	it.each([
 		{ type: 'constant', value: 'static' },
 		{ type: 'threshold', threshold: 20, less_than_or_equal: 'low', greater_than: 'ok' },

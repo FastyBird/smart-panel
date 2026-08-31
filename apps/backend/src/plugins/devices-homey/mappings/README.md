@@ -32,6 +32,8 @@ Every descriptor supports:
 - `exclusive`: the highest-priority exclusive match suppresses other matches of that kind;
 - `conflict`: `first`, `warn`, or `error` for equal-priority mappings targeting the same output;
 - property `direction`: `read_only`, `write_only`, or `bidirectional`;
+- property `write_strategy`: an explicit coordinated-write strategy for properties that jointly represent one Homey
+  capability;
 - property unit/range expectations and inline `scale`, `map`, `boolean`, `clamp`, `round`, `constant`, `threshold`, or
   `thresholds` transforms.
 
@@ -74,16 +76,29 @@ captured SHS evidence retains `down` after the covering has reached position `0`
 `closed` and `opened` from position endpoints and reports intermediate positions as `stopped`. A driver-specific mapping
 may add `opening` or `closing` only when it has a verified live motion signal.
 
-Smart Panel's heater contract requires `status` to mean actual heating activity. Homey's standard `thermostat_mode`
-reports only the configured mode and has no standard activity capability, so the built-in catalog deliberately does not
-fabricate a heater channel or project `target_temperature`. Those capabilities remain visible in Homey inventory and
-mapping preview. A user mapping may add one heater or cooler projection for a device with a verified driver-specific
-activity signal; it must not use `thermostat_mode` itself as `status`.
+Smart Panel's heater and cooler `on` properties jointly represent Homey's single configured `thermostat_mode` value.
+Their explicit `thermostat_heater_mode` and `thermostat_cooler_mode` write strategies preserve the sibling state and
+combine both changes into one upstream command. A standard four-mode thermostat therefore maps `off`, `heat`, `cool`,
+and `auto` to the two boolean properties without treating either boolean mapping as independently reversible. The
+mode read-modify-write derivation runs inside Homey's per-capability command queue so overlapping one-sided changes
+observe the latest accepted sibling state. The
+upstream mode domain must contain `off`, `heat`, and `cool`, expose exactly one combined-mode value (`auto` or
+`heat_cool`), and contain no other modes; other domains remain unsupported because the two boolean projections would be
+incomplete or ambiguous. The
+shared `target_temperature` capability is projected to both channels using the authoritative Homey minimum, maximum,
+and step, so adoption does not advertise values the device cannot accept. These projections describe configured mode
+and target only; they do not fabricate actual heating or cooling activity. When Smart Panel sends distinct AUTO lower
+and upper setpoints in one batch, the platform projects their midpoint onto Homey's single target and aligns it to the
+capability step. The prepared midpoint is returned to the climate intent layer so history and subsequent state responses
+store the value Homey actually accepted for both setpoints. A one-sided HEAT or COOL setpoint remains a direct
+shared-target write, but it is aligned to the capability step and its sibling panel projection is persisted to keep both
+channels consistent with Homey's authoritative target. Operator target transforms are applied before this upstream
+projection and inverted afterward so alignment and midpoint calculations always use the Homey capability domain.
+Shared-target coordination is selected from the resolved thermostat capability/channel semantics, so higher-priority
+operator descriptors do not need to reuse the built-in mapping names.
 
 Thermostat device eligibility requires `measure_temperature`, `target_temperature`, and `thermostat_mode` together.
-Partial target-only or mode-only devices stay unsupported, while complete standard devices receive read-only
-temperature and thermostat identity channels until an actual activity signal can support a structurally complete
-control channel.
+Partial target-only or mode-only devices stay unsupported.
 
 The battery channel is emitted only when `measure_battery` exists and the selected Smart Panel device contract permits
 that channel. Thermostats are excluded because their current contract does not accept battery channels. When Homey also

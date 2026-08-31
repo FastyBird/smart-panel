@@ -16,7 +16,7 @@ import {
 } from '../errors/homey-mapping-preview.error';
 import { HomeyMappingLoaderService } from '../mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from '../mappings/mapping-transformer.service';
-import { HomeyCapabilityType } from '../models/homey-capability.model';
+import { HomeyCapabilityType, createHomeyCapability } from '../models/homey-capability.model';
 import { HomeyDevice } from '../models/homey-device.model';
 import { HomeyMappingPreviewWarningCode, HomeyMappingPreviewWarningSeverity } from '../models/mapping-preview.model';
 
@@ -127,6 +127,127 @@ describe('HomeyMappingPreviewService', () => {
 			preview.warnings.filter((warning) => warning.severity === HomeyMappingPreviewWarningSeverity.ERROR),
 		).toStrictEqual([]);
 		expect(preview.readyToAdopt).toBe(true);
+	});
+
+	it('previews a standard thermostat with its authoritative range and coordinated mode controls', async () => {
+		const device: HomeyDevice = {
+			id: 'homey-thermostat',
+			name: 'Thermostat',
+			class: 'thermostat',
+			zoneId: 'living-room',
+			zoneName: 'Living room',
+			zonePath: ['Home', 'Living room'],
+			available: true,
+			availabilityMessage: null,
+			driverId: 'homey:app:test:driver:thermostat',
+			manufacturer: 'Test',
+			model: 'Thermostat',
+			energy: null,
+			capabilities: [
+				createHomeyCapability({
+					id: 'measure_temperature',
+					title: 'Temperature',
+					value: 21.5,
+					type: HomeyCapabilityType.NUMBER,
+					unit: '°C',
+					minimum: 0,
+					maximum: 100,
+					step: 0.1,
+					enumValues: [],
+					readable: true,
+					writable: false,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+				createHomeyCapability({
+					id: 'target_temperature',
+					title: 'Target temperature',
+					value: 22.5,
+					type: HomeyCapabilityType.NUMBER,
+					unit: '°C',
+					minimum: 4,
+					maximum: 35,
+					step: 0.5,
+					enumValues: [],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+				createHomeyCapability({
+					id: 'thermostat_mode',
+					title: 'Thermostat mode',
+					value: 'auto',
+					type: HomeyCapabilityType.ENUM,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: ['off', 'heat', 'cool', 'auto'].map((id) => ({ id, title: id })),
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		};
+		homeyService.getFreshDevice.mockResolvedValue(device);
+
+		const preview = await service.generatePreview({ deviceId: device.id });
+		const targetProperties = preview.channels
+			.flatMap((channel) => channel.properties)
+			.filter((property) => property.capabilityId === 'target_temperature');
+		const modeProperties = preview.channels
+			.flatMap((channel) => channel.properties)
+			.filter((property) => property.capabilityId === 'thermostat_mode');
+
+		expect(targetProperties).toHaveLength(2);
+		expect(targetProperties.map((property) => property.range)).toEqual([
+			expect.objectContaining({ minimum: 4, maximum: 35, step: 0.5 }),
+			expect.objectContaining({ minimum: 4, maximum: 35, step: 0.5 }),
+		]);
+		expect(modeProperties).toHaveLength(2);
+		expect(modeProperties.map((property) => property.conversion)).toEqual([
+			expect.objectContaining({ reversible: true, lossy: false, ambiguous: false }),
+			expect.objectContaining({ reversible: true, lossy: false, ambiguous: false }),
+		]);
+		expect(
+			preview.warnings.filter((warning) => warning.severity === HomeyMappingPreviewWarningSeverity.ERROR),
+		).toStrictEqual([]);
+		expect(preview.readyToAdopt).toBe(true);
+
+		for (const modes of [
+			['off', 'heat', 'cool'],
+			['off', 'heat', 'cool', 'auto', 'heat_cool'],
+			['off', 'heat', 'auto'],
+			['off', 'heat', 'cool', 'auto', 'eco'],
+		]) {
+			const incompatibleDevice: HomeyDevice = {
+				...device,
+				id: `homey-thermostat-${modes.length}`,
+				capabilities: device.capabilities.map((capability) =>
+					capability.id === 'thermostat_mode'
+						? {
+								...capability,
+								value: modes.includes('auto') ? 'auto' : 'heat',
+								enumValues: modes.map((id) => ({ id, title: id })),
+							}
+						: capability,
+				),
+			};
+			homeyService.getFreshDevice.mockResolvedValue(incompatibleDevice);
+
+			const incompatiblePreview = await service.generatePreview({ deviceId: incompatibleDevice.id });
+
+			expect(incompatiblePreview.warnings).toContainEqual(
+				expect.objectContaining({
+					code: HomeyMappingPreviewWarningCode.INVALID_CAPABILITY_VALUE_DOMAIN,
+					identifier: 'thermostat_mode',
+					severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				}),
+			);
+			expect(incompatiblePreview.readyToAdopt).toBe(false);
+		}
 	});
 
 	it.each(FIXTURE_NAMES)('is deterministic and side-effect free for the %s fixture', async (fixtureName) => {

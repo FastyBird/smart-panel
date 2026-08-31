@@ -114,14 +114,15 @@ HTTPS remain pending.
   - Authenticated logical-device inventory and reviewed batch adoption
   - Mapping preview with unsupported-capability warnings
   - Real-time state updates with bounded reconnect and periodic reconciliation
-  - Supported controls for lights, outlets/switches, covers, and locks
+  - Supported controls for lights, outlets/switches, covers, locks, and thermostat setpoints/modes
   - Sensors for temperature, humidity, pressure, illuminance, CO₂, motion, contact, smoke, carbon monoxide, power,
     energy, and battery state
   - Missing upstream devices are marked unavailable and are never automatically deleted
 
-Automatic Homey server discovery, upstream pairing/device management, and thermostat target/mode control remain out of
-scope. Homey Cloud is unsupported because its Web API authorization is limited to partners and Smart Panel does not
-depend on a hosted credential bridge.
+Automatic Homey server discovery and upstream pairing/device management remain out of scope. Homey thermostats expose
+measured temperature, the shared target setpoint, and configured heat/cool/auto/off control. Actual heating/cooling
+activity is shown only when Homey provides a dedicated status signal. Homey Cloud is unsupported because its Web API
+authorization is limited to partners and Smart Panel does not depend on a hosted credential bridge.
 
 ### Shelly (Generation 2+ / Next Generation)
 

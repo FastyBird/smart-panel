@@ -1337,9 +1337,9 @@ cooler:
       format: [0,100]
     status:
       category: status
-      required: true
+      required: false
       description:
-        en: Current operational status
+        en: Current operational status when the provider exposes actual cooling activity
       permissions:
         - ro
       data_type: bool
@@ -1677,9 +1677,9 @@ heater:
       format: [0,100]
     status:
       category: status
-      required: true
+      required: false
       description:
-        en: Current operational status
+        en: Current operational status when the provider exposes actual heating activity
       permissions:
         - ro
       data_type: bool
@@ -3537,4 +3537,3 @@ generic:
       required: false
       description:
         en: ""
-

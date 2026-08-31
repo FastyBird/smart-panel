@@ -13,6 +13,8 @@ export type HomeyMappingDirection = 'read_only' | 'write_only' | 'bidirectional'
 
 export type HomeyMappingConflictPolicy = 'first' | 'warn' | 'error';
 
+export type HomeyWriteStrategy = 'thermostat_heater_mode' | 'thermostat_cooler_mode';
+
 export type HomeyMappingScalar = boolean | number | string | null;
 
 export interface HomeyMappingLoaderOptions {
@@ -139,6 +141,7 @@ export interface HomeyPropertyMappingDefinition extends HomeyMappingDefinitionBa
 		category: string;
 		data_type: string;
 		direction: HomeyMappingDirection;
+		write_strategy?: HomeyWriteStrategy;
 		unit?: string;
 		range?: HomeyValueRangeDefinition;
 		transform?: HomeyTransformDefinition;
@@ -209,6 +212,7 @@ export interface ResolvedHomeyPropertyMapping extends ResolvedHomeyMappingBase {
 		readonly category: PropertyCategory;
 		readonly dataType: DataTypeType;
 		readonly direction: HomeyMappingDirection;
+		readonly writeStrategy?: HomeyWriteStrategy;
 		readonly unit?: string;
 		readonly range?: HomeyValueRangeDefinition;
 		readonly transform?: HomeyTransformDefinition;

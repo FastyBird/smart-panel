@@ -254,6 +254,7 @@
                   "enum": ["char", "uchar", "short", "ushort", "int", "uint", "float", "bool", "string", "enum", "unknown"]
                 },
                 "direction": { "enum": ["read_only", "write_only", "bidirectional"] },
+                "write_strategy": { "enum": ["thermostat_heater_mode", "thermostat_cooler_mode"] },
                 "unit": { "$ref": "#/definitions/nonEmptyString" },
                 "range": { "$ref": "#/definitions/range" },
                 "transform": { "$ref": "#/definitions/transform" }

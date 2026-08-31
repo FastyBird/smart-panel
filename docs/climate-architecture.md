@@ -52,6 +52,7 @@ Handles all climate intent operations:
 Each intent:
 - Creates an Intent record for tracking
 - Executes commands on all applicable devices
+- Persists the exact setpoints prepared by each device platform when an upstream contract requires projection
 - Stores results to InfluxDB for historical tracking
 - Emits WebSocket events for real-time UI updates
 

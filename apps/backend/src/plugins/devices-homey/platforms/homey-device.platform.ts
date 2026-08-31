@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { PermissionType } from '../../../modules/devices/devices.constants';
+import { PermissionType, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { validatePropertyCommandValue } from '../../../modules/devices/utils/property-command-value.utils';
@@ -13,7 +13,8 @@ import {
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from '../entities/devices-homey.entity';
 import { HomeyMappingLoaderService } from '../mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from '../mappings/mapping-transformer.service';
-import { HomeyCapabilityValue } from '../models/homey-capability.model';
+import { type HomeyWriteStrategy, type ResolvedHomeyPropertyMapping } from '../mappings/mapping.types';
+import { HomeyCapability, HomeyCapabilityValue } from '../models/homey-capability.model';
 import { HomeyFailureLogLimiter } from '../services/homey-failure-log-limiter';
 import { HomeyService } from '../services/homey.service';
 
@@ -27,9 +28,66 @@ export type HomeyDevicePropertyData = IDevicePropertyData & {
 
 interface PreparedHomeyCommand {
 	readonly deviceId: string;
+	readonly capability: HomeyCapability;
 	readonly capabilityId: string;
 	readonly value: HomeyCapabilityValue;
 }
+
+interface PreparedThermostatModeUpdate {
+	readonly deviceId: string;
+	readonly capabilityId: string;
+	readonly writeStrategy: HomeyWriteStrategy;
+	readonly value: boolean;
+}
+
+interface PreparedThermostatModeCommand {
+	readonly deviceId: string;
+	readonly capabilityId: string;
+	readonly updates: readonly PreparedThermostatModeUpdate[];
+}
+
+export interface HomeyThermostatModeStates {
+	readonly heaterOn: boolean;
+	readonly coolerOn: boolean;
+}
+
+export const homeyThermostatModeToStates = (value: HomeyCapabilityValue): HomeyThermostatModeStates | null => {
+	switch (value) {
+		case 'off':
+			return { heaterOn: false, coolerOn: false };
+		case 'heat':
+			return { heaterOn: true, coolerOn: false };
+		case 'cool':
+			return { heaterOn: false, coolerOn: true };
+		case 'auto':
+		case 'heat_cool':
+			return { heaterOn: true, coolerOn: true };
+		default:
+			return null;
+	}
+};
+
+export const homeyThermostatStatesToMode = (
+	capability: HomeyCapability,
+	heaterOn: boolean,
+	coolerOn: boolean,
+): HomeyCapabilityValue => {
+	if (heaterOn && coolerOn) {
+		const supportedModes = new Set(capability.enumValues.map((value) => value.id));
+
+		if (supportedModes.has('auto')) {
+			return 'auto';
+		}
+
+		return supportedModes.has('heat_cool') ? 'heat_cool' : null;
+	}
+
+	if (heaterOn) {
+		return 'heat';
+	}
+
+	return coolerOn ? 'cool' : 'off';
+};
 
 @Injectable()
 export class HomeyDevicePlatform implements IDevicePlatform {
@@ -70,9 +128,157 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 		return this.processBatch([update]);
 	}
 
+	prepareBatch(updates: HomeyDevicePropertyData[]): HomeyDevicePropertyData[] | null {
+		const prepared = updates.map((update) => ({ ...update }));
+		const inventory = this.homeyService.getInventorySnapshot();
+
+		if (inventory === null) {
+			return prepared;
+		}
+
+		const upstreamDevices = new Map(inventory.map((device) => [device.id, device]));
+		const propertyMappings = new Map(
+			this.mappingLoader.getPropertyMappings().map((mapping) => [mapping.name, mapping]),
+		);
+		const groupedTargetIndexes = new Map<string, number[]>();
+
+		for (const [index, update] of prepared.entries()) {
+			if (
+				!(update.device instanceof HomeyDeviceEntity) ||
+				!(update.property instanceof HomeyChannelPropertyEntity) ||
+				typeof update.device.identifier !== 'string' ||
+				typeof update.property.homeyCapabilityId !== 'string' ||
+				typeof update.property.homeyMappingName !== 'string' ||
+				!this.isThermostatTargetMapping(propertyMappings.get(update.property.homeyMappingName))
+			) {
+				continue;
+			}
+
+			const key = `${update.device.identifier}\u0000${update.property.homeyCapabilityId}`;
+			const group = groupedTargetIndexes.get(key) ?? [];
+			group.push(index);
+			groupedTargetIndexes.set(key, group);
+		}
+
+		for (const [key, indexes] of groupedTargetIndexes) {
+			const separator = key.indexOf('\u0000');
+			const deviceId = key.slice(0, separator);
+			const capabilityId = key.slice(separator + 1);
+			const capability = upstreamDevices.get(deviceId)?.capabilities.find((candidate) => candidate.id === capabilityId);
+			const inputs = indexes.map((index) => {
+				const update = prepared[index];
+
+				if (update === undefined) {
+					return null;
+				}
+
+				const panelValue = this.validateThermostatTargetInput(update.property, update.value);
+				const mapping = propertyMappings.get(update.property.homeyMappingName);
+
+				if (panelValue === null || mapping === undefined) {
+					return null;
+				}
+
+				try {
+					const upstreamValue = this.transformer.write(mapping, panelValue);
+
+					return typeof upstreamValue === 'number' && Number.isFinite(upstreamValue)
+						? { mapping, upstreamValue }
+						: null;
+				} catch {
+					return null;
+				}
+			});
+
+			if (capability === undefined || inputs.some((input) => input === null)) {
+				return null;
+			}
+
+			const validInputs = inputs.filter(
+				(input): input is { mapping: ResolvedHomeyPropertyMapping; upstreamValue: number } => input !== null,
+			);
+			const upstreamValues = validInputs.map((input) => input.upstreamValue);
+			const requestedTarget =
+				upstreamValues.length === 1
+					? upstreamValues[0]
+					: (Math.min(...upstreamValues) + Math.max(...upstreamValues)) / 2;
+			const projected = this.alignThermostatTargetToCapability(capability, requestedTarget);
+
+			if (projected === null) {
+				return null;
+			}
+
+			for (const [inputIndex, index] of indexes.entries()) {
+				const update = prepared[index];
+				const mapping = validInputs[inputIndex]?.mapping;
+
+				if (update === undefined || mapping === undefined) {
+					return null;
+				}
+
+				const panelValue = this.readProjectedThermostatTarget(mapping, update.property, projected);
+
+				if (panelValue === null) {
+					return null;
+				}
+
+				prepared[index] = { ...prepared[index], value: panelValue };
+			}
+
+			const first = prepared[indexes[0]];
+
+			if (!(first?.device instanceof HomeyDeviceEntity)) {
+				return null;
+			}
+
+			const preparedPropertyIds = new Set(prepared.map((update) => update.property.id));
+
+			for (const channel of first.device.channels ?? []) {
+				if (!(channel instanceof HomeyChannelEntity)) {
+					continue;
+				}
+
+				for (const property of channel.properties ?? []) {
+					if (
+						property instanceof HomeyChannelPropertyEntity &&
+						property.homeyCapabilityId === capabilityId &&
+						typeof property.homeyMappingName === 'string' &&
+						this.isThermostatTargetMapping(propertyMappings.get(property.homeyMappingName)) &&
+						!preparedPropertyIds.has(property.id)
+					) {
+						const mapping = propertyMappings.get(property.homeyMappingName);
+
+						if (mapping === undefined) {
+							return null;
+						}
+
+						const panelValue = this.readProjectedThermostatTarget(mapping, property, projected);
+
+						if (panelValue === null) {
+							return null;
+						}
+
+						prepared.push({ device: first.device, channel, property, value: panelValue });
+						preparedPropertyIds.add(property.id);
+					}
+				}
+			}
+		}
+
+		return prepared;
+	}
+
 	async processBatch(updates: HomeyDevicePropertyData[]): Promise<boolean> {
 		if (updates.length === 0) {
 			return true;
+		}
+
+		const preparedUpdates = this.prepareBatch(updates);
+
+		if (preparedUpdates === null) {
+			this.logCommandFailure('thermostat-target-invalid', 'Homey shared thermostat target projection failed');
+
+			return false;
 		}
 
 		const inventory = this.homeyService.getInventorySnapshot();
@@ -85,8 +291,10 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 
 		const upstreamDevices = new Map(inventory.map((device) => [device.id, device]));
 		const commands: PreparedHomeyCommand[] = [];
+		const thermostatModeUpdates: PreparedThermostatModeUpdate[] = [];
+		const thermostatTargetCommands: PreparedHomeyCommand[] = [];
 
-		for (const update of updates) {
+		for (const update of preparedUpdates) {
 			const { device, channel, property, value } = update;
 
 			if (
@@ -147,6 +355,23 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 				return false;
 			}
 
+			if (mapping.property.writeStrategy !== undefined) {
+				if (typeof panelValidation.value !== 'boolean') {
+					this.logCommandFailure('panel-value-invalid', 'Homey thermostat mode command value is invalid');
+
+					return false;
+				}
+
+				thermostatModeUpdates.push({
+					deviceId: upstreamDevice.id,
+					capabilityId: capability.id,
+					writeStrategy: mapping.property.writeStrategy,
+					value: panelValidation.value,
+				});
+
+				continue;
+			}
+
 			let transformed: HomeyCapabilityValue;
 
 			try {
@@ -163,11 +388,25 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 				return false;
 			}
 
-			commands.push({
+			const command = {
 				deviceId: upstreamDevice.id,
+				capability,
 				capabilityId: capability.id,
 				value: transformed,
-			});
+			};
+
+			if (this.isThermostatTargetMapping(mapping)) {
+				thermostatTargetCommands.push(command);
+			} else {
+				commands.push(command);
+			}
+		}
+
+		const thermostatModeCommands = this.groupThermostatModeCommands(thermostatModeUpdates);
+		const coalescedThermostatTargets = this.coalesceThermostatTargetCommands(thermostatTargetCommands);
+
+		if (coalescedThermostatTargets === null) {
+			return false;
 		}
 
 		for (const command of commands) {
@@ -176,7 +415,188 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 			}
 		}
 
+		for (const command of thermostatModeCommands) {
+			if (
+				!(await this.homeyService.executeDerivedCapabilityCommand(
+					command.deviceId,
+					command.capabilityId,
+					(capability) => this.deriveThermostatModeValue(capability, command.updates),
+				))
+			) {
+				return false;
+			}
+		}
+
+		for (const command of coalescedThermostatTargets) {
+			if (!(await this.homeyService.executeCapabilityCommand(command.deviceId, command.capabilityId, command.value))) {
+				return false;
+			}
+		}
+
 		return true;
+	}
+
+	private groupThermostatModeCommands(
+		updates: readonly PreparedThermostatModeUpdate[],
+	): PreparedThermostatModeCommand[] {
+		const groups = new Map<string, PreparedThermostatModeUpdate[]>();
+
+		for (const update of updates) {
+			const key = `${update.deviceId}\u0000${update.capabilityId}`;
+			const group = groups.get(key) ?? [];
+			group.push(update);
+			groups.set(key, group);
+		}
+
+		return [...groups.values()].map((group) => ({
+			deviceId: group[0].deviceId,
+			capabilityId: group[0].capabilityId,
+			updates: group,
+		}));
+	}
+
+	private deriveThermostatModeValue(
+		capability: HomeyCapability,
+		updates: readonly PreparedThermostatModeUpdate[],
+	): HomeyCapabilityValue | undefined {
+		const current = homeyThermostatModeToStates(capability.value);
+		let heaterOn = current?.heaterOn;
+		let coolerOn = current?.coolerOn;
+
+		for (const update of updates) {
+			if (update.writeStrategy === 'thermostat_heater_mode') {
+				heaterOn = update.value;
+			} else if (update.writeStrategy === 'thermostat_cooler_mode') {
+				coolerOn = update.value;
+			}
+		}
+
+		if (heaterOn === undefined || coolerOn === undefined) {
+			this.logCommandFailure(
+				'thermostat-mode-unavailable',
+				'Homey thermostat mode cannot be combined with an unknown current mode',
+			);
+
+			return undefined;
+		}
+
+		const mode = homeyThermostatStatesToMode(capability, heaterOn, coolerOn);
+
+		if (mode === null || !validateHomeyCapabilityCommandValue(capability, mode).valid) {
+			this.logCommandFailure(
+				'thermostat-mode-unsupported',
+				'Homey thermostat does not support the requested configured mode',
+			);
+
+			return undefined;
+		}
+
+		return mode;
+	}
+
+	private coalesceThermostatTargetCommands(commands: readonly PreparedHomeyCommand[]): PreparedHomeyCommand[] | null {
+		const grouped = new Map<string, PreparedHomeyCommand[]>();
+
+		for (const command of commands) {
+			const key = `${command.deviceId}\u0000${command.capabilityId}`;
+			const group = grouped.get(key) ?? [];
+			group.push(command);
+			grouped.set(key, group);
+		}
+
+		const selected: PreparedHomeyCommand[] = [];
+
+		for (const group of grouped.values()) {
+			const first = group[0];
+
+			if (group.length === 1) {
+				selected.push(first);
+				continue;
+			}
+
+			const values = group.map((command) => command.value);
+
+			if (values.some((value) => typeof value !== 'number')) {
+				this.logCommandFailure(
+					'thermostat-target-invalid',
+					'Homey shared thermostat target requires numeric setpoint values',
+				);
+
+				return null;
+			}
+
+			const numericValues = values as number[];
+			const midpoint = (Math.min(...numericValues) + Math.max(...numericValues)) / 2;
+			const projected = this.alignThermostatTargetToCapability(first.capability, midpoint);
+
+			if (projected === null) {
+				this.logCommandFailure(
+					'thermostat-target-invalid',
+					'Homey shared thermostat target cannot represent the requested setpoint midpoint',
+				);
+
+				return null;
+			}
+
+			selected.push({ ...first, value: projected });
+		}
+
+		return selected;
+	}
+
+	private validateThermostatTargetInput(property: HomeyChannelPropertyEntity, value: unknown): number | null {
+		const propertyWithoutGrid = Object.assign(new HomeyChannelPropertyEntity(), property, { step: null });
+		const validation = validatePropertyCommandValue(propertyWithoutGrid, value);
+
+		return validation.valid && typeof validation.value === 'number' ? validation.value : null;
+	}
+
+	private isThermostatTargetMapping(mapping: ResolvedHomeyPropertyMapping | undefined): boolean {
+		return (
+			mapping !== undefined &&
+			mapping.match.classes.includes('thermostat') &&
+			mapping.match.capabilityBaseIds.includes('target_temperature') &&
+			['heater', 'cooler'].includes(mapping.property.channel) &&
+			mapping.property.category === PropertyCategory.TEMPERATURE &&
+			mapping.property.direction !== 'read_only'
+		);
+	}
+
+	private readProjectedThermostatTarget(
+		mapping: ResolvedHomeyPropertyMapping,
+		property: HomeyChannelPropertyEntity,
+		value: number,
+	): number | null {
+		try {
+			const panelValue = this.transformer.read(mapping, value);
+
+			return typeof panelValue === 'number' && validatePropertyCommandValue(property, panelValue).valid
+				? panelValue
+				: null;
+		} catch {
+			return null;
+		}
+	}
+
+	private alignThermostatTargetToCapability(capability: HomeyCapability, value: number): number | null {
+		let aligned = value;
+
+		if (capability.step !== null) {
+			const base = capability.minimum ?? 0;
+			aligned = base + Math.round((value - base) / capability.step) * capability.step;
+		}
+
+		if (capability.minimum !== null) {
+			aligned = Math.max(capability.minimum, aligned);
+		}
+
+		if (capability.maximum !== null) {
+			aligned = Math.min(capability.maximum, aligned);
+		}
+
+		aligned = Number(aligned.toPrecision(15));
+
+		return validateHomeyCapabilityCommandValue(capability, aligned).valid ? aligned : null;
 	}
 
 	private referencesEntity(reference: { readonly id: string } | string, expectedId: string): boolean {

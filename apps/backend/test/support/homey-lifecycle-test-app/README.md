@@ -1,7 +1,7 @@
-# Smart Panel Homey lifecycle test app
+# Smart Panel Homey local test app
 
-This private development app creates one disposable synthetic device for the guarded SHS lifecycle probe. It is not a
-Smart Panel runtime dependency, must not be published, and must never be used for household equipment.
+This private development app creates disposable synthetic devices for the guarded SHS lifecycle and thermostat probes.
+It is not a Smart Panel runtime dependency, must not be published, and must never be used for household equipment.
 
 ## Fixed allowlist values
 
@@ -50,6 +50,17 @@ run`; development mode then uninstalls the test app. Unset the lifecycle variabl
 The setting-based coordination is enabled only when every fixed marker, driver, owner, initial-name, and renamed-name
 value above matches. Other dedicated drivers remain operator-controlled. If the probe fails after pairing, remove only
 the device whose complete identity matches the guarded values. Never broaden cleanup to another app or device.
+
+## Run the thermostat control observation
+
+The additional `Thermostat Test Device` driver exposes `measure_temperature`, `target_temperature`, and
+`thermostat_mode`. Pair it only for thermostat mapping-control evidence. It uses the fixed marker
+`fbsp-thermostat-disposable-device`, starts at 21 °C with a 22 °C target in `off` mode, accepts target/mode commands,
+and contains no actual heating/cooling activity capability.
+
+Do not keep this thermostat paired while running the lifecycle probe: that probe intentionally requires the dedicated
+test app to own exactly one device. Follow the climate mapping-control instructions in `docs/homey-shs-compatibility.md`
+and remove the thermostat after the sanitized evidence is captured.
 
 ## Local verification
 

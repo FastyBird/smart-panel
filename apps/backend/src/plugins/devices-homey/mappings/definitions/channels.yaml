@@ -51,6 +51,28 @@ mappings:
       category: thermostat
       name: Thermostat
 
+  - name: thermostat-heater
+    description: Configured heating mode and shared target setpoint without inferred activity
+    priority: 200
+    match:
+      classes: [thermostat]
+      all_capabilities: [target_temperature, thermostat_mode]
+    channel:
+      identifier: heater
+      category: heater
+      name: Heating
+
+  - name: thermostat-cooler
+    description: Configured cooling mode and shared target setpoint without inferred activity
+    priority: 200
+    match:
+      classes: [thermostat]
+      all_capabilities: [target_temperature, thermostat_mode]
+    channel:
+      identifier: cooler
+      category: cooler
+      name: Cooling
+
   - name: measured-temperature
     priority: 100
     match:
