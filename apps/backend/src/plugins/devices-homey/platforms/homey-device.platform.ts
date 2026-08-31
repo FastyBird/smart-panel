@@ -168,9 +168,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 					return null;
 				}
 
-				const validation = validatePropertyCommandValue(update.property, update.value);
-
-				return validation.valid && typeof validation.value === 'number' ? validation.value : null;
+				return this.validateThermostatTargetInput(update.property, update.value);
 			});
 
 			if (capability === undefined || values.some((value) => value === null)) {
@@ -187,6 +185,12 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 			}
 
 			for (const index of indexes) {
+				const update = prepared[index];
+
+				if (update === undefined || !validatePropertyCommandValue(update.property, projected).valid) {
+					return null;
+				}
+
 				prepared[index] = { ...prepared[index], value: projected };
 			}
 
@@ -211,6 +215,10 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 						THERMOSTAT_TARGET_MAPPINGS.has(property.homeyMappingName) &&
 						!preparedPropertyIds.has(property.id)
 					) {
+						if (!validatePropertyCommandValue(property, projected).valid) {
+							return null;
+						}
+
 						prepared.push({ device: first.device, channel, property, value: projected });
 						preparedPropertyIds.add(property.id);
 					}
@@ -480,6 +488,13 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 		}
 
 		return selected;
+	}
+
+	private validateThermostatTargetInput(property: HomeyChannelPropertyEntity, value: unknown): number | null {
+		const propertyWithoutGrid = Object.assign(new HomeyChannelPropertyEntity(), property, { step: null });
+		const validation = validatePropertyCommandValue(propertyWithoutGrid, value);
+
+		return validation.valid && typeof validation.value === 'number' ? validation.value : null;
 	}
 
 	private alignThermostatTargetToCapability(capability: HomeyCapability, value: number): number | null {

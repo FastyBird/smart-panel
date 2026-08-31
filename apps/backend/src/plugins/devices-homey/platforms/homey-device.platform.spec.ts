@@ -548,6 +548,8 @@ describe('HomeyDevicePlatform', () => {
 		const capability = target.upstream.capabilities.find((candidate) => candidate.id === 'target_temperature');
 		expect(capability).toBeDefined();
 		Object.assign(capability, { step: 1 });
+		target.heaterTarget.step = 1;
+		target.coolerTarget.step = 1;
 		const homeyService = {
 			getInventorySnapshot: jest.fn().mockReturnValue([target.upstream]),
 			executeCapabilityCommand: jest.fn().mockResolvedValue(true),
