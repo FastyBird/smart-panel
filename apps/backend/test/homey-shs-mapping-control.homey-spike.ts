@@ -4,7 +4,9 @@ import { join } from 'node:path';
 
 import { HomeyConnector } from '../src/plugins/devices-homey/connectors/homey-connector.interface';
 import { HomeyEventListener } from '../src/plugins/devices-homey/connectors/homey-connector.types';
-import { HomeyCapabilityType } from '../src/plugins/devices-homey/models/homey-capability.model';
+import { HomeyMappingLoaderService } from '../src/plugins/devices-homey/mappings/mapping-loader.service';
+import { HomeyMappingTransformerService } from '../src/plugins/devices-homey/mappings/mapping-transformer.service';
+import { HomeyCapabilityType, createHomeyCapability } from '../src/plugins/devices-homey/models/homey-capability.model';
 import { type HomeyDevice } from '../src/plugins/devices-homey/models/homey-device.model';
 import { HomeyEvent, HomeyEventType } from '../src/plugins/devices-homey/models/homey-event.model';
 
@@ -15,6 +17,7 @@ import {
 	type HomeyShsMappingControlConfig,
 	assertHomeyShsMappingControlReportSafe,
 	createHomeyEventObservingConnector,
+	homeyMappingControlExpectedHomeyValue,
 	homeyMappingControlReadBackMatches,
 	loadHomeyShsMappingControlConfig,
 	probeHomeyShsMappingControl,
@@ -145,6 +148,48 @@ const successfulProbe = async () => {
 };
 
 describe('Homey SHS mapping-control probe', () => {
+	it('derives coordinated climate expectations from the current Homey mode', () => {
+		const mappingLoader = new HomeyMappingLoaderService();
+		mappingLoader.loadAllMappings();
+		const transformer = new HomeyMappingTransformerService();
+		const heater = mappingLoader.getPropertyMappings().find((mapping) => mapping.name === 'thermostat-heater-on');
+		const cooler = mappingLoader.getPropertyMappings().find((mapping) => mapping.name === 'thermostat-cooler-on');
+		const capability = createHomeyCapability({
+			available: true,
+			enumValues: ['off', 'heat', 'cool', 'auto'].map((id) => ({ id, title: id })),
+			id: 'thermostat_mode',
+			lastUpdatedAt: null,
+			maximum: null,
+			minimum: null,
+			readable: true,
+			step: null,
+			title: 'Thermostat mode',
+			type: HomeyCapabilityType.ENUM,
+			unit: null,
+			value: 'auto',
+			writable: true,
+		});
+
+		expect(heater).toBeDefined();
+		expect(cooler).toBeDefined();
+		expect(homeyMappingControlExpectedHomeyValue(heater, capability, 'auto', false, transformer)).toStrictEqual({
+			valid: true,
+			value: 'cool',
+		});
+		expect(homeyMappingControlExpectedHomeyValue(heater, capability, 'cool', true, transformer)).toStrictEqual({
+			valid: true,
+			value: 'auto',
+		});
+		expect(homeyMappingControlExpectedHomeyValue(cooler, capability, 'auto', false, transformer)).toStrictEqual({
+			valid: true,
+			value: 'heat',
+		});
+		expect(homeyMappingControlExpectedHomeyValue(cooler, capability, 'heat', true, transformer)).toStrictEqual({
+			valid: true,
+			value: 'auto',
+		});
+	});
+
 	it('records connector subscription events without treating polling reads as realtime evidence', async () => {
 		let upstreamListener: HomeyEventListener | undefined;
 		const observed: HomeyEvent[] = [];

@@ -412,6 +412,19 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 			throw new Error('thermostat mode write strategies require a bidirectional boolean map transform');
 		}
 
+		if (writeStrategy !== undefined) {
+			const expectedChannel = writeStrategy === 'thermostat_heater_mode' ? 'heater' : 'cooler';
+
+			if (
+				definition.property.channel !== expectedChannel ||
+				definition.property.category !== 'on' ||
+				!definition.match.classes.includes('thermostat') ||
+				!definition.match.capability_base_ids.includes('thermostat_mode')
+			) {
+				throw new Error('thermostat mode write strategies require the matching thermostat on property');
+			}
+		}
+
 		if (transform?.type === 'constant' && direction !== 'read_only') {
 			throw new Error('constant transform requires read_only direction');
 		}

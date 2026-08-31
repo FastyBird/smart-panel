@@ -44,6 +44,49 @@ const THERMOSTAT_TARGET_MAPPINGS = new Set([
 	'thermostat-cooler-target-temperature',
 ]);
 
+export interface HomeyThermostatModeStates {
+	readonly heaterOn: boolean;
+	readonly coolerOn: boolean;
+}
+
+export const homeyThermostatModeToStates = (value: HomeyCapabilityValue): HomeyThermostatModeStates | null => {
+	switch (value) {
+		case 'off':
+			return { heaterOn: false, coolerOn: false };
+		case 'heat':
+			return { heaterOn: true, coolerOn: false };
+		case 'cool':
+			return { heaterOn: false, coolerOn: true };
+		case 'auto':
+		case 'heat_cool':
+			return { heaterOn: true, coolerOn: true };
+		default:
+			return null;
+	}
+};
+
+export const homeyThermostatStatesToMode = (
+	capability: HomeyCapability,
+	heaterOn: boolean,
+	coolerOn: boolean,
+): HomeyCapabilityValue => {
+	if (heaterOn && coolerOn) {
+		const supportedModes = new Set(capability.enumValues.map((value) => value.id));
+
+		if (supportedModes.has('auto')) {
+			return 'auto';
+		}
+
+		return supportedModes.has('heat_cool') ? 'heat_cool' : null;
+	}
+
+	if (heaterOn) {
+		return 'heat';
+	}
+
+	return coolerOn ? 'cool' : 'off';
+};
+
 @Injectable()
 export class HomeyDevicePlatform implements IDevicePlatform {
 	private readonly logger = createExtensionLogger(DEVICES_HOMEY_PLUGIN_NAME, 'DevicePlatform');
@@ -242,7 +285,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 
 		for (const group of groups.values()) {
 			const first = group[0];
-			const current = this.thermostatModeToStates(first.capability.value);
+			const current = homeyThermostatModeToStates(first.capability.value);
 			let heaterOn = current?.heaterOn;
 			let coolerOn = current?.coolerOn;
 
@@ -263,7 +306,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 				return null;
 			}
 
-			const mode = this.thermostatStatesToMode(first.capability, heaterOn, coolerOn);
+			const mode = homeyThermostatStatesToMode(first.capability, heaterOn, coolerOn);
 
 			if (mode === null || !validateHomeyCapabilityCommandValue(first.capability, mode).valid) {
 				this.logCommandFailure(
@@ -278,44 +321,6 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 		}
 
 		return commands;
-	}
-
-	private thermostatModeToStates(value: HomeyCapabilityValue): { heaterOn: boolean; coolerOn: boolean } | null {
-		switch (value) {
-			case 'off':
-				return { heaterOn: false, coolerOn: false };
-			case 'heat':
-				return { heaterOn: true, coolerOn: false };
-			case 'cool':
-				return { heaterOn: false, coolerOn: true };
-			case 'auto':
-			case 'heat_cool':
-				return { heaterOn: true, coolerOn: true };
-			default:
-				return null;
-		}
-	}
-
-	private thermostatStatesToMode(
-		capability: HomeyCapability,
-		heaterOn: boolean,
-		coolerOn: boolean,
-	): HomeyCapabilityValue {
-		if (heaterOn && coolerOn) {
-			const supportedModes = new Set(capability.enumValues.map((value) => value.id));
-
-			if (supportedModes.has('auto')) {
-				return 'auto';
-			}
-
-			return supportedModes.has('heat_cool') ? 'heat_cool' : null;
-		}
-
-		if (heaterOn) {
-			return 'heat';
-		}
-
-		return coolerOn ? 'cool' : 'off';
 	}
 
 	private coalesceThermostatTargetCommands(commands: readonly PreparedHomeyCommand[]): PreparedHomeyCommand[] | null {

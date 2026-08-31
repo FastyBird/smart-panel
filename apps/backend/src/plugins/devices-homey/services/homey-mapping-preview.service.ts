@@ -1338,7 +1338,7 @@ export class HomeyMappingPreviewService {
 
 		const modes = new Set(capability.enumValues.map((value) => value.id));
 
-		return !(modes.has('auto') && modes.has('heat_cool'));
+		return modes.has('auto') !== modes.has('heat_cool');
 	}
 
 	private integerNormalizationCanLoseValues(

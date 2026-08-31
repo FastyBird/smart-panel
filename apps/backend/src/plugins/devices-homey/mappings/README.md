@@ -80,6 +80,8 @@ Smart Panel's heater and cooler `on` properties jointly represent Homey's single
 Their explicit `thermostat_heater_mode` and `thermostat_cooler_mode` write strategies preserve the sibling state and
 combine both changes into one upstream command. A standard four-mode thermostat therefore maps `off`, `heat`, `cool`,
 and `auto` to the two boolean properties without treating either boolean mapping as independently reversible. The
+upstream mode domain must expose exactly one combined-mode value, either `auto` or `heat_cool`; devices with neither or
+both remain unsupported because the two boolean states would be incomplete or ambiguous. The
 shared `target_temperature` capability is projected to both channels using the authoritative Homey minimum, maximum,
 and step, so adoption does not advertise values the device cannot accept. These projections describe configured mode
 and target only; they do not fabricate actual heating or cooling activity.

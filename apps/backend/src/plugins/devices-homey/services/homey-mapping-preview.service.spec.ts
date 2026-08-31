@@ -215,6 +215,37 @@ describe('HomeyMappingPreviewService', () => {
 			preview.warnings.filter((warning) => warning.severity === HomeyMappingPreviewWarningSeverity.ERROR),
 		).toStrictEqual([]);
 		expect(preview.readyToAdopt).toBe(true);
+
+		for (const modes of [
+			['off', 'heat', 'cool'],
+			['off', 'heat', 'cool', 'auto', 'heat_cool'],
+		]) {
+			const incompatibleDevice: HomeyDevice = {
+				...device,
+				id: `homey-thermostat-${modes.length}`,
+				capabilities: device.capabilities.map((capability) =>
+					capability.id === 'thermostat_mode'
+						? {
+								...capability,
+								value: modes.includes('auto') ? 'auto' : 'heat',
+								enumValues: modes.map((id) => ({ id, title: id })),
+							}
+						: capability,
+				),
+			};
+			homeyService.getFreshDevice.mockResolvedValue(incompatibleDevice);
+
+			const incompatiblePreview = await service.generatePreview({ deviceId: incompatibleDevice.id });
+
+			expect(incompatiblePreview.warnings).toContainEqual(
+				expect.objectContaining({
+					code: HomeyMappingPreviewWarningCode.INVALID_CAPABILITY_VALUE_DOMAIN,
+					identifier: 'thermostat_mode',
+					severity: HomeyMappingPreviewWarningSeverity.ERROR,
+				}),
+			);
+			expect(incompatiblePreview.readyToAdopt).toBe(false);
+		}
 	});
 
 	it.each(FIXTURE_NAMES)('is deterministic and side-effect free for the %s fixture', async (fixtureName) => {

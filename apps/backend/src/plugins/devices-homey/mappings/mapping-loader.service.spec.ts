@@ -474,6 +474,10 @@ describe('HomeyMappingLoaderService', () => {
 	it('accepts an explicit thermostat mode write strategy on a bidirectional boolean map', () => {
 		writeBuiltin('properties', [
 			propertyDefinition({
+				match: {
+					classes: ['thermostat'],
+					capability_base_ids: ['thermostat_mode'],
+				},
 				property: {
 					channel: 'heater',
 					category: 'on',

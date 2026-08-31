@@ -21,15 +21,21 @@ import {
 } from '../../src/plugins/devices-homey/entities/devices-homey.entity';
 import { HomeyMappingLoaderService } from '../../src/plugins/devices-homey/mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from '../../src/plugins/devices-homey/mappings/mapping-transformer.service';
-import { ResolvedHomeyPropertyMapping } from '../../src/plugins/devices-homey/mappings/mapping.types';
+import { type ResolvedHomeyPropertyMapping } from '../../src/plugins/devices-homey/mappings/mapping.types';
 import { HomeyConfigModel } from '../../src/plugins/devices-homey/models/config.model';
-import { HomeyCapability, HomeyCapabilityValue } from '../../src/plugins/devices-homey/models/homey-capability.model';
+import {
+	HomeyCapability,
+	HomeyCapabilityType,
+	HomeyCapabilityValue,
+} from '../../src/plugins/devices-homey/models/homey-capability.model';
 import { HomeyDevice } from '../../src/plugins/devices-homey/models/homey-device.model';
 import { HomeyEvent, HomeyEventType } from '../../src/plugins/devices-homey/models/homey-event.model';
 import { homeyCapabilityValuesEqual } from '../../src/plugins/devices-homey/platforms/homey-command-value';
 import {
 	HomeyDevicePlatform,
-	HomeyDevicePropertyData,
+	type HomeyDevicePropertyData,
+	homeyThermostatModeToStates,
+	homeyThermostatStatesToMode,
 } from '../../src/plugins/devices-homey/platforms/homey-device.platform';
 import {
 	type HomeyOperationalDiagnostics,
@@ -185,6 +191,43 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isPropertyCommandValue = (value: unknown): value is PropertyCommandValue =>
 	typeof value === 'boolean' || typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value));
 
+export interface HomeyMappingControlExpectedValue {
+	readonly valid: boolean;
+	readonly value: HomeyCapabilityValue;
+}
+
+export const homeyMappingControlExpectedHomeyValue = (
+	mapping: ResolvedHomeyPropertyMapping,
+	capability: HomeyCapability,
+	currentHomeyValue: HomeyCapabilityValue,
+	panelValue: PropertyCommandValue,
+	transformer: HomeyMappingTransformerService,
+): HomeyMappingControlExpectedValue => {
+	if (mapping.property.writeStrategy === undefined) {
+		try {
+			return { valid: true, value: transformer.write(mapping, panelValue) };
+		} catch {
+			return { valid: false, value: null };
+		}
+	}
+
+	if (typeof panelValue !== 'boolean') {
+		return { valid: false, value: null };
+	}
+
+	const current = homeyThermostatModeToStates(currentHomeyValue);
+
+	if (current === null) {
+		return { valid: false, value: null };
+	}
+
+	const heaterOn = mapping.property.writeStrategy === 'thermostat_heater_mode' ? panelValue : current.heaterOn;
+	const coolerOn = mapping.property.writeStrategy === 'thermostat_cooler_mode' ? panelValue : current.coolerOn;
+	const value = homeyThermostatStatesToMode(capability, heaterOn, coolerOn);
+
+	return { valid: value !== null, value };
+};
+
 export const homeyMappingControlReadBackMatches = (
 	device: HomeyDevice | null,
 	capabilityId: string,
@@ -246,6 +289,7 @@ const availableFamiliesFor = (
 const createProbeProperty = (
 	config: HomeyShsMappingControlConfig,
 	mapping: ResolvedHomeyPropertyMapping,
+	capability: HomeyCapability,
 ): HomeyDevicePropertyData => {
 	const device = Object.assign(new HomeyDeviceEntity(), {
 		enabled: true,
@@ -254,17 +298,25 @@ const createProbeProperty = (
 		name: 'Homey mapping control probe device',
 	});
 	const channel = Object.assign(new HomeyChannelEntity(), {
-		category: ChannelCategory.GENERIC,
+		category:
+			mapping.property.channel === 'heater'
+				? ChannelCategory.HEATER
+				: mapping.property.channel === 'cooler'
+					? ChannelCategory.COOLER
+					: ChannelCategory.GENERIC,
 		device,
 		id: 'homey-mapping-control-probe-channel',
 		identifier: mapping.property.channel,
 		name: 'Homey mapping control probe channel',
 	});
-	const range = mapping.property.range;
-	const format =
-		range !== undefined && (range.minimum !== undefined || range.maximum !== undefined)
-			? ([range.minimum ?? null, range.maximum ?? null] as unknown as number[])
-			: null;
+	const usesAuthoritativeNumericRange =
+		mapping.property.range === undefined &&
+		mapping.property.transform === undefined &&
+		capability.type === HomeyCapabilityType.NUMBER;
+	const minimum = mapping.property.range?.minimum ?? (usesAuthoritativeNumericRange ? capability.minimum : null);
+	const maximum = mapping.property.range?.maximum ?? (usesAuthoritativeNumericRange ? capability.maximum : null);
+	const step = mapping.property.range?.step ?? (usesAuthoritativeNumericRange ? capability.step : null);
+	const format = minimum !== null || maximum !== null ? ([minimum, maximum] as unknown as number[]) : null;
 	const property = Object.assign(new HomeyChannelPropertyEntity(), {
 		category: mapping.property.category,
 		channel,
@@ -277,7 +329,7 @@ const createProbeProperty = (
 		invalid: null,
 		name: 'Homey mapping control probe property',
 		permissions: [PermissionType.READ_WRITE],
-		step: range?.step ?? null,
+		step,
 	});
 
 	return { channel, device, property, value: false };
@@ -353,6 +405,7 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 		stop: () => service.stop(),
 		bind: async (runtimeConfig, options): Promise<HomeyMappingControlBinding> => {
 			let observedEventOffset = observedEvents.length;
+			let observedCommandOffset = 0;
 			const inventory = service.getInventorySnapshot();
 
 			if (inventory === null) throw new Error('Homey mapping-control inventory is unavailable');
@@ -394,7 +447,7 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 			}
 			const baselineHomeyValue = freshCapability.value;
 			const baselinePanelValue = transformer.read(binding.mapping, baselineHomeyValue);
-			const commandTarget = createProbeProperty(runtimeConfig, binding.mapping);
+			const commandTarget = createProbeProperty(runtimeConfig, binding.mapping, freshCapability);
 			const baselineValidation = validatePropertyCommandValue(commandTarget.property, baselinePanelValue);
 			const targetValidation = validatePropertyCommandValue(commandTarget.property, runtimeConfig.panelValue);
 
@@ -406,21 +459,69 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 			) {
 				throw new Error('The Homey mapping-control baseline or requested panel value is invalid');
 			}
-			if (
-				!homeyCapabilityValuesEqual(transformer.write(binding.mapping, baselineValidation.value), baselineHomeyValue)
-			) {
+			const baselineExpectation = homeyMappingControlExpectedHomeyValue(
+				binding.mapping,
+				freshCapability,
+				baselineHomeyValue,
+				baselineValidation.value,
+				transformer,
+			);
+			const targetExpectation = homeyMappingControlExpectedHomeyValue(
+				binding.mapping,
+				freshCapability,
+				baselineHomeyValue,
+				targetValidation.value,
+				transformer,
+			);
+
+			if (!baselineExpectation.valid || !homeyCapabilityValuesEqual(baselineExpectation.value, baselineHomeyValue)) {
 				throw new Error('The Homey mapping-control baseline is not exactly reversible through the selected mapping');
 			}
 			if (
-				options?.allowUnchangedTarget !== true &&
-				homeyCapabilityValuesEqual(transformer.write(binding.mapping, targetValidation.value), baselineHomeyValue)
+				!targetExpectation.valid ||
+				(options?.allowUnchangedTarget !== true &&
+					homeyCapabilityValuesEqual(targetExpectation.value, baselineHomeyValue))
 			) {
 				throw new Error('The Homey mapping-control panel value must change the authoritative capability value');
 			}
 
-			const command = (value: PropertyCommandValue): Promise<boolean> => platform.process({ ...commandTarget, value });
+			let expectedCurrentHomeyValue = baselineHomeyValue;
+			const commandExpectations: Array<{
+				readonly homeyValue: HomeyCapabilityValue;
+				readonly panelValue: PropertyCommandValue;
+			}> = [];
+			const command = async (value: PropertyCommandValue): Promise<boolean> => {
+				const expectation = homeyMappingControlExpectedHomeyValue(
+					binding.mapping,
+					freshCapability,
+					expectedCurrentHomeyValue,
+					value,
+					transformer,
+				);
+
+				if (!expectation.valid) {
+					return false;
+				}
+
+				const accepted = await platform.process({ ...commandTarget, value });
+
+				if (accepted) {
+					expectedCurrentHomeyValue = expectation.value;
+					commandExpectations.push({ homeyValue: expectation.value, panelValue: value });
+				}
+
+				return accepted;
+			};
 			const observedPanelSequenceMatches = (values: readonly PropertyCommandValue[]): boolean => {
-				const expected = values.map((value) => transformer.write(binding.mapping, value));
+				const expected = commandExpectations.slice(observedCommandOffset);
+
+				if (
+					expected.length !== values.length ||
+					expected.some((entry, index) => !Object.is(entry.panelValue, values[index]))
+				) {
+					return false;
+				}
+
 				let expectedIndex = 0;
 
 				for (const event of observedEvents.slice(observedEventOffset)) {
@@ -428,7 +529,7 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 						event.type === HomeyEventType.CAPABILITY_VALUE_CHANGED &&
 						event.deviceId === device.id &&
 						event.capabilityId === capability.id &&
-						homeyCapabilityValuesEqual(event.value, expected[expectedIndex] ?? null)
+						homeyCapabilityValuesEqual(event.value, expected[expectedIndex]?.homeyValue ?? null)
 					) {
 						expectedIndex += 1;
 
@@ -439,10 +540,15 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 				return expected.length === 0;
 			};
 			const readBackMatches = async (value: PropertyCommandValue): Promise<boolean> => {
-				const expected = transformer.write(binding.mapping, value);
+				const expected = commandExpectations.at(-1);
+
+				if (expected === undefined || !Object.is(expected.panelValue, value)) {
+					return false;
+				}
+
 				const readBack = await service.getFreshDevice(device.id);
 
-				return homeyMappingControlReadBackMatches(readBack, capability.id, expected);
+				return homeyMappingControlReadBackMatches(readBack, capability.id, expected.homeyValue);
 			};
 
 			return {
@@ -453,6 +559,7 @@ export const createHomeyMappingControlRuntime: HomeyMappingControlRuntimeFactory
 				readBackMatches,
 				resetObservedPanelSequence: () => {
 					observedEventOffset = observedEvents.length;
+					observedCommandOffset = commandExpectations.length;
 				},
 				targetPanelValue: targetValidation.value,
 				waitForCommandIdle: () => service.waitForCapabilityCommandIdle(device.id, capability.id),
