@@ -488,7 +488,7 @@ describe('HomeyDevicePlatform', () => {
 		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'thermostat_mode', 'auto');
 	});
 
-	it('coalesces one shared Homey thermostat target and rejects conflicting setpoints', async () => {
+	it('coalesces equal targets and projects a dual-setpoint range onto the shared Homey target', async () => {
 		const loader = new HomeyMappingLoaderService();
 		loader.loadAllMappings();
 		const target = thermostatEntities(loader);
@@ -517,8 +517,18 @@ describe('HomeyDevicePlatform', () => {
 				{ device: target.device, channel: target.heater, property: target.heaterTarget, value: 21 },
 				{ device: target.device, channel: target.cooler, property: target.coolerTarget, value: 25 },
 			]),
-		).resolves.toBe(false);
-		expect(homeyService.executeCapabilityCommand).not.toHaveBeenCalled();
+		).resolves.toBe(true);
+		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledTimes(1);
+		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'target_temperature', 23);
+
+		homeyService.executeCapabilityCommand.mockClear();
+		await expect(
+			platform.processBatch([
+				{ device: target.device, channel: target.heater, property: target.heaterTarget, value: 21 },
+				{ device: target.device, channel: target.cooler, property: target.coolerTarget, value: 21.5 },
+			]),
+		).resolves.toBe(true);
+		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'target_temperature', 21.5);
 	});
 
 	it('rejects unavailable devices, read-only capabilities, and off-range values', async () => {

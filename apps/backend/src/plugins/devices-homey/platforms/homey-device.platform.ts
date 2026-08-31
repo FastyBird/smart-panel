@@ -28,6 +28,7 @@ export type HomeyDevicePropertyData = IDevicePropertyData & {
 
 interface PreparedHomeyCommand {
 	readonly deviceId: string;
+	readonly capability: HomeyCapability;
 	readonly capabilityId: string;
 	readonly value: HomeyCapabilityValue;
 }
@@ -240,6 +241,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 
 			const command = {
 				deviceId: upstreamDevice.id,
+				capability,
 				capabilityId: capability.id,
 				value: transformed,
 			};
@@ -317,32 +319,86 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 				return null;
 			}
 
-			commands.push({ deviceId: first.deviceId, capabilityId: first.capability.id, value: mode });
+			commands.push({
+				deviceId: first.deviceId,
+				capability: first.capability,
+				capabilityId: first.capability.id,
+				value: mode,
+			});
 		}
 
 		return commands;
 	}
 
 	private coalesceThermostatTargetCommands(commands: readonly PreparedHomeyCommand[]): PreparedHomeyCommand[] | null {
-		const selected = new Map<string, PreparedHomeyCommand>();
+		const grouped = new Map<string, PreparedHomeyCommand[]>();
 
 		for (const command of commands) {
 			const key = `${command.deviceId}\u0000${command.capabilityId}`;
-			const current = selected.get(key);
+			const group = grouped.get(key) ?? [];
+			group.push(command);
+			grouped.set(key, group);
+		}
 
-			if (current !== undefined && !Object.is(current.value, command.value)) {
+		const selected: PreparedHomeyCommand[] = [];
+
+		for (const group of grouped.values()) {
+			const first = group[0];
+
+			if (group.length === 1) {
+				selected.push(first);
+				continue;
+			}
+
+			const values = group.map((command) => command.value);
+
+			if (values.some((value) => typeof value !== 'number')) {
 				this.logCommandFailure(
-					'thermostat-target-conflict',
-					'Homey thermostat exposes one shared target and cannot accept different heating and cooling setpoints',
+					'thermostat-target-invalid',
+					'Homey shared thermostat target requires numeric setpoint values',
 				);
 
 				return null;
 			}
 
-			selected.set(key, command);
+			const numericValues = values as number[];
+			const midpoint = (Math.min(...numericValues) + Math.max(...numericValues)) / 2;
+			const projected = this.alignThermostatTargetToCapability(first.capability, midpoint);
+
+			if (projected === null) {
+				this.logCommandFailure(
+					'thermostat-target-invalid',
+					'Homey shared thermostat target cannot represent the requested setpoint midpoint',
+				);
+
+				return null;
+			}
+
+			selected.push({ ...first, value: projected });
 		}
 
-		return [...selected.values()];
+		return selected;
+	}
+
+	private alignThermostatTargetToCapability(capability: HomeyCapability, value: number): number | null {
+		let aligned = value;
+
+		if (capability.step !== null) {
+			const base = capability.minimum ?? 0;
+			aligned = base + Math.round((value - base) / capability.step) * capability.step;
+		}
+
+		if (capability.minimum !== null) {
+			aligned = Math.max(capability.minimum, aligned);
+		}
+
+		if (capability.maximum !== null) {
+			aligned = Math.min(capability.maximum, aligned);
+		}
+
+		aligned = Number(aligned.toPrecision(15));
+
+		return validateHomeyCapabilityCommandValue(capability, aligned).valid ? aligned : null;
 	}
 
 	private referencesEntity(reference: { readonly id: string } | string, expectedId: string): boolean {

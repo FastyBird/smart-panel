@@ -84,7 +84,9 @@ upstream mode domain must expose exactly one combined-mode value, either `auto` 
 both remain unsupported because the two boolean states would be incomplete or ambiguous. The
 shared `target_temperature` capability is projected to both channels using the authoritative Homey minimum, maximum,
 and step, so adoption does not advertise values the device cannot accept. These projections describe configured mode
-and target only; they do not fabricate actual heating or cooling activity.
+and target only; they do not fabricate actual heating or cooling activity. When Smart Panel sends distinct AUTO lower
+and upper setpoints in one batch, the platform projects their midpoint onto Homey's single target and aligns it to the
+capability step. A one-sided HEAT or COOL setpoint remains a direct shared-target write.
 
 Thermostat device eligibility requires `measure_temperature`, `target_temperature`, and `thermostat_mode` together.
 Partial target-only or mode-only devices stay unsupported.
