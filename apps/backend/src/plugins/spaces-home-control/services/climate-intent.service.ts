@@ -40,6 +40,12 @@ export interface ClimateIntentResult extends IntentExecutionResult {
 	coolingSetpoint: number | null;
 }
 
+interface DeviceSetpointCommandResult {
+	readonly success: boolean;
+	readonly heatingSetpoint: number | null;
+	readonly coolingSetpoint: number | null;
+}
+
 /**
  * Service handling all climate-related intent operations.
  * Manages multi-device climate control, mode switching, and setpoint adjustments.
@@ -507,6 +513,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 		let heatingSetpoint: number | null = null;
 		let coolingSetpoint: number | null = null;
+		const appliedHeatingSetpoints: number[] = [];
+		const appliedCoolingSetpoints: number[] = [];
 
 		if (intent.heatingSetpoint !== undefined && intent.coolingSetpoint !== undefined) {
 			heatingSetpoint = this.clampSetpoint(intent.heatingSetpoint, climateState.minSetpoint, climateState.maxSetpoint);
@@ -539,11 +547,12 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				continue;
 			}
 
-			const success = await this.setDeviceSetpoints(
+			const commandResult = await this.setDeviceSetpoints(
 				device,
 				shouldSetHeating ? heatingSetpoint : null,
 				shouldSetCooling ? coolingSetpoint : null,
 			);
+			const success = commandResult.success;
 
 			targetResults.push({
 				deviceId: device.device.id,
@@ -552,12 +561,26 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 			if (success) {
 				affectedDevices++;
+				if (commandResult.heatingSetpoint !== null) {
+					appliedHeatingSetpoints.push(commandResult.heatingSetpoint);
+				}
+				if (commandResult.coolingSetpoint !== null) {
+					appliedCoolingSetpoints.push(commandResult.coolingSetpoint);
+				}
 			} else {
 				failedDevices++;
 			}
 		}
 
 		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
+		const appliedHeatingSetpoint =
+			heatingSetpoint === null
+				? climateState.heatingSetpoint
+				: this.getAppliedSetpointConsensus(appliedHeatingSetpoints, climateState.heatingSetpoint);
+		const appliedCoolingSetpoint =
+			coolingSetpoint === null
+				? climateState.coolingSetpoint
+				: this.getAppliedSetpointConsensus(appliedCoolingSetpoints, climateState.coolingSetpoint);
 
 		// Store setpoint change to InfluxDB for historical tracking (fire and forget)
 		// Preserve the current mode and merge setpoints (only update what was provided)
@@ -565,8 +588,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			void this.intentTimeseriesService.storeClimateModeChange(
 				spaceId,
 				mode, // preserve current mode (lastAppliedMode ?? calculatedMode)
-				heatingSetpoint ?? climateState.heatingSetpoint, // preserve existing if not provided
-				coolingSetpoint ?? climateState.coolingSetpoint, // preserve existing if not provided
+				appliedHeatingSetpoint,
+				appliedCoolingSetpoint,
 				devices.length,
 				affectedDevices,
 				failedDevices,
@@ -578,8 +601,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			affectedDevices,
 			failedDevices,
 			mode,
-			heatingSetpoint,
-			coolingSetpoint,
+			heatingSetpoint: heatingSetpoint === null ? null : appliedHeatingSetpoint,
+			coolingSetpoint: coolingSetpoint === null ? null : appliedCoolingSetpoint,
 		};
 	}
 
@@ -658,12 +681,12 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		device: PrimaryClimateDevice,
 		heatingSetpoint: number | null,
 		coolingSetpoint: number | null,
-	): Promise<boolean> {
+	): Promise<DeviceSetpointCommandResult> {
 		const platform = this.platformRegistryService.get(device.device);
 
 		if (!platform) {
 			this.logger.warn(`No platform registered for device id=${device.device.id}`);
-			return false;
+			return { success: false, heatingSetpoint: null, coolingSetpoint: null };
 		}
 
 		const commands: IDevicePropertyData[] = [];
@@ -714,24 +737,61 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 
 		if (commands.length === 0) {
 			this.logger.debug(`No setpoint commands for device id=${device.device.id}`);
-			return true;
+			return { success: true, heatingSetpoint: null, coolingSetpoint: null };
 		}
 
 		try {
-			const success = await platform.processBatch(commands);
-			if (!success) {
-				this.logger.error(`Setpoint command execution failed for device id=${device.device.id}`);
-				return false;
+			const preparedCommands = platform.prepareBatch === undefined ? commands : platform.prepareBatch(commands);
+
+			if (preparedCommands === null) {
+				this.logger.error(`Setpoint command preparation failed for device id=${device.device.id}`);
+
+				return { success: false, heatingSetpoint: null, coolingSetpoint: null };
 			}
 
+			const success = await platform.processBatch(preparedCommands);
+			if (!success) {
+				this.logger.error(`Setpoint command execution failed for device id=${device.device.id}`);
+				return { success: false, heatingSetpoint: null, coolingSetpoint: null };
+			}
+
+			const appliedHeatingSetpoint = this.getPreparedSetpoint(preparedCommands, device.heaterSetpointProperty?.id);
+			const appliedCoolingSetpoint = this.getPreparedSetpoint(preparedCommands, device.coolerSetpointProperty?.id);
+
 			this.logger.debug(
-				`Set setpoints on device id=${device.device.id} heating=${heatingSetpoint} cooling=${coolingSetpoint}`,
+				`Set setpoints on device id=${device.device.id} ` +
+					`heating=${appliedHeatingSetpoint} cooling=${appliedCoolingSetpoint}`,
 			);
-			return true;
+			return {
+				success: true,
+				heatingSetpoint: appliedHeatingSetpoint,
+				coolingSetpoint: appliedCoolingSetpoint,
+			};
 		} catch (error) {
 			this.logger.error(`Error executing setpoint command for device id=${device.device.id}: ${error}`);
-			return false;
+			return { success: false, heatingSetpoint: null, coolingSetpoint: null };
 		}
+	}
+
+	private getPreparedSetpoint(commands: readonly IDevicePropertyData[], propertyId: string | undefined): number | null {
+		if (propertyId === undefined) {
+			return null;
+		}
+
+		const value = commands.find((command) => command.property.id === propertyId)?.value;
+
+		return typeof value === 'number' ? value : null;
+	}
+
+	private getAppliedSetpointConsensus(values: readonly number[], fallback: number | null): number | null {
+		if (values.length === 0) {
+			return fallback;
+		}
+
+		const minimum = Math.min(...values);
+		const maximum = Math.max(...values);
+
+		return maximum - minimum <= SETPOINT_PRECISION ? values[0] : null;
 	}
 
 	/**
@@ -761,6 +821,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		const mode = intent.mode ?? climateState.lastAppliedMode ?? climateState.mode;
 		let heatingSetpoint: number | null = null;
 		let coolingSetpoint: number | null = null;
+		const appliedHeatingSetpoints: number[] = [];
+		const appliedCoolingSetpoints: number[] = [];
 
 		// Track per-device results: true = all operations succeeded, false = at least one failed, null = skipped
 		const deviceResults = new Map<string, boolean | null>();
@@ -829,11 +891,21 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 					continue;
 				}
 
-				const success = await this.setDeviceSetpoints(
+				const commandResult = await this.setDeviceSetpoints(
 					device,
 					shouldSetHeating ? heatingSetpoint : null,
 					shouldSetCooling ? coolingSetpoint : null,
 				);
+				const success = commandResult.success;
+
+				if (success) {
+					if (commandResult.heatingSetpoint !== null) {
+						appliedHeatingSetpoints.push(commandResult.heatingSetpoint);
+					}
+					if (commandResult.coolingSetpoint !== null) {
+						appliedCoolingSetpoints.push(commandResult.coolingSetpoint);
+					}
+				}
 
 				// Combine with mode result: device succeeds only if both operations succeed
 				const previousResult = deviceResults.get(device.device.id);
@@ -865,6 +937,14 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		}
 
 		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
+		const appliedHeatingSetpoint =
+			heatingSetpoint === null
+				? climateState.heatingSetpoint
+				: this.getAppliedSetpointConsensus(appliedHeatingSetpoints, climateState.heatingSetpoint);
+		const appliedCoolingSetpoint =
+			coolingSetpoint === null
+				? climateState.coolingSetpoint
+				: this.getAppliedSetpointConsensus(appliedCoolingSetpoints, climateState.coolingSetpoint);
 
 		// Store climate state to InfluxDB at the end with all values (fire and forget)
 		// Use effective mode and preserve existing setpoints if not provided
@@ -872,8 +952,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			void this.intentTimeseriesService.storeClimateModeChange(
 				spaceId,
 				mode,
-				heatingSetpoint ?? climateState.heatingSetpoint, // preserve existing if not provided
-				coolingSetpoint ?? climateState.coolingSetpoint, // preserve existing if not provided
+				appliedHeatingSetpoint,
+				appliedCoolingSetpoint,
 				devices.length,
 				affectedDevices,
 				failedDevices,
@@ -885,8 +965,8 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 			affectedDevices,
 			failedDevices,
 			mode,
-			heatingSetpoint,
-			coolingSetpoint,
+			heatingSetpoint: heatingSetpoint === null ? null : appliedHeatingSetpoint,
+			coolingSetpoint: coolingSetpoint === null ? null : appliedCoolingSetpoint,
 		};
 	}
 

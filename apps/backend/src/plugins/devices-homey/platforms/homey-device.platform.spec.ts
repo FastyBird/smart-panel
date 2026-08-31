@@ -512,6 +512,11 @@ describe('HomeyDevicePlatform', () => {
 		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'target_temperature', 23);
 
 		homeyService.executeCapabilityCommand.mockClear();
+		const preparedRange = platform.prepareBatch([
+			{ device: target.device, channel: target.heater, property: target.heaterTarget, value: 21 },
+			{ device: target.device, channel: target.cooler, property: target.coolerTarget, value: 25 },
+		]);
+		expect(preparedRange?.map((update) => update.value)).toStrictEqual([23, 23]);
 		await expect(
 			platform.processBatch([
 				{ device: target.device, channel: target.heater, property: target.heaterTarget, value: 21 },
@@ -522,6 +527,11 @@ describe('HomeyDevicePlatform', () => {
 		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'target_temperature', 23);
 
 		homeyService.executeCapabilityCommand.mockClear();
+		const preparedOffGridMidpoint = platform.prepareBatch([
+			{ device: target.device, channel: target.heater, property: target.heaterTarget, value: 21 },
+			{ device: target.device, channel: target.cooler, property: target.coolerTarget, value: 21.5 },
+		]);
+		expect(preparedOffGridMidpoint?.map((update) => update.value)).toStrictEqual([21.5, 21.5]);
 		await expect(
 			platform.processBatch([
 				{ device: target.device, channel: target.heater, property: target.heaterTarget, value: 21 },

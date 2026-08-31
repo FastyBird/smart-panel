@@ -6,6 +6,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { type IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { DEFAULT_TTL_SPACE_COMMAND } from '../../../modules/intents/intents.constants';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
@@ -31,6 +32,7 @@ describe('ClimateIntentService', () => {
 	let spacesService: jest.Mocked<SpacesService>;
 	let climateStateService: jest.Mocked<SpaceClimateStateService>;
 	let platformRegistryService: jest.Mocked<PlatformRegistryService>;
+	let intentTimeseriesService: jest.Mocked<IntentTimeseriesService>;
 
 	const mockSpaceId = uuid();
 	const mockIntentId = uuid();
@@ -93,6 +95,7 @@ describe('ClimateIntentService', () => {
 	const mockPlatform = {
 		getType: jest.fn().mockReturnValue('test-device'),
 		setPropertyValue: jest.fn().mockResolvedValue(true),
+		prepareBatch: jest.fn(),
 		processBatch: jest.fn().mockResolvedValue(true),
 	};
 
@@ -165,10 +168,12 @@ describe('ClimateIntentService', () => {
 		spacesService = module.get(SpacesService);
 		climateStateService = module.get(SpaceClimateStateService);
 		platformRegistryService = module.get(PlatformRegistryService);
+		intentTimeseriesService = module.get(IntentTimeseriesService);
 
 		// Reset mock between tests
 		jest.clearAllMocks();
 		mockPlatform.setPropertyValue.mockResolvedValue(true);
+		mockPlatform.prepareBatch.mockImplementation((updates: IDevicePropertyData[]) => updates);
 		mockPlatform.processBatch.mockResolvedValue(true);
 	});
 
@@ -303,6 +308,58 @@ describe('ClimateIntentService', () => {
 		});
 
 		describe('SETPOINT_SET intent', () => {
+			it.each([ClimateIntentType.SETPOINT_SET, ClimateIntentType.CLIMATE_SET])(
+				'returns and persists the exact setpoints prepared by the device platform for %s',
+				async (type) => {
+					const heaterSetpointPropertyId = uuid();
+					const coolerSetpointPropertyId = uuid();
+					const heaterSetpointProperty = { id: heaterSetpointPropertyId } as any;
+					const coolerSetpointProperty = { id: coolerSetpointPropertyId } as any;
+					const device = createMockPrimaryClimateDevice({
+						deviceCategory: DeviceCategory.THERMOSTAT,
+						coolerChannel: { id: uuid() } as any,
+						coolerOnProperty: { id: uuid() } as any,
+						coolerSetpointProperty,
+						heaterSetpointProperty,
+						supportsCooling: true,
+					});
+					climateStateService.getClimateState.mockResolvedValue(
+						createMockClimateState({
+							mode: ClimateMode.AUTO,
+							heatingSetpoint: 21,
+							coolingSetpoint: 25,
+							supportsCooling: true,
+						}),
+					);
+					climateStateService.getPrimaryClimateDevicesInSpace.mockResolvedValue([device]);
+					mockPlatform.prepareBatch.mockImplementation((updates: IDevicePropertyData[]) =>
+						updates.map((update) =>
+							[heaterSetpointPropertyId, coolerSetpointPropertyId].includes(update.property.id)
+								? { ...update, value: 23 }
+								: update,
+						),
+					);
+
+					const result = await service.executeClimateIntent(mockSpaceId, {
+						type,
+						...(type === ClimateIntentType.CLIMATE_SET ? { mode: ClimateMode.AUTO } : {}),
+						heatingSetpoint: 21,
+						coolingSetpoint: 25,
+					});
+
+					expect(result).toMatchObject({ success: true, heatingSetpoint: 23, coolingSetpoint: 23 });
+					expect(intentTimeseriesService.storeClimateModeChange).toHaveBeenCalledWith(
+						mockSpaceId,
+						ClimateMode.AUTO,
+						23,
+						23,
+						1,
+						1,
+						0,
+					);
+				},
+			);
+
 			it('should return requested setpoint value', async () => {
 				const device = createMockPrimaryClimateDevice();
 				climateStateService.getPrimaryClimateDevicesInSpace.mockResolvedValue([device]);

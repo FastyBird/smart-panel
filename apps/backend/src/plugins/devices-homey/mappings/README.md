@@ -86,7 +86,9 @@ shared `target_temperature` capability is projected to both channels using the a
 and step, so adoption does not advertise values the device cannot accept. These projections describe configured mode
 and target only; they do not fabricate actual heating or cooling activity. When Smart Panel sends distinct AUTO lower
 and upper setpoints in one batch, the platform projects their midpoint onto Homey's single target and aligns it to the
-capability step. A one-sided HEAT or COOL setpoint remains a direct shared-target write.
+capability step. The prepared midpoint is returned to the climate intent layer so history and subsequent state responses
+store the value Homey actually accepted for both setpoints. A one-sided HEAT or COOL setpoint remains a direct
+shared-target write.
 
 Thermostat device eligibility requires `measure_temperature`, `target_temperature`, and `thermostat_mode` together.
 Partial target-only or mode-only devices stay unsupported.

@@ -127,9 +127,87 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 		return this.processBatch([update]);
 	}
 
+	prepareBatch(updates: HomeyDevicePropertyData[]): HomeyDevicePropertyData[] | null {
+		const prepared = updates.map((update) => ({ ...update }));
+		const inventory = this.homeyService.getInventorySnapshot();
+
+		if (inventory === null) {
+			return prepared;
+		}
+
+		const upstreamDevices = new Map(inventory.map((device) => [device.id, device]));
+		const groupedTargetIndexes = new Map<string, number[]>();
+
+		for (const [index, update] of prepared.entries()) {
+			if (
+				!(update.device instanceof HomeyDeviceEntity) ||
+				!(update.property instanceof HomeyChannelPropertyEntity) ||
+				typeof update.device.identifier !== 'string' ||
+				typeof update.property.homeyCapabilityId !== 'string' ||
+				typeof update.property.homeyMappingName !== 'string' ||
+				!THERMOSTAT_TARGET_MAPPINGS.has(update.property.homeyMappingName)
+			) {
+				continue;
+			}
+
+			const key = `${update.device.identifier}\u0000${update.property.homeyCapabilityId}`;
+			const group = groupedTargetIndexes.get(key) ?? [];
+			group.push(index);
+			groupedTargetIndexes.set(key, group);
+		}
+
+		for (const [key, indexes] of groupedTargetIndexes) {
+			if (indexes.length < 2) {
+				continue;
+			}
+
+			const separator = key.indexOf('\u0000');
+			const deviceId = key.slice(0, separator);
+			const capabilityId = key.slice(separator + 1);
+			const capability = upstreamDevices.get(deviceId)?.capabilities.find((candidate) => candidate.id === capabilityId);
+			const values = indexes.map((index) => {
+				const update = prepared[index];
+
+				if (update === undefined) {
+					return null;
+				}
+
+				const validation = validatePropertyCommandValue(update.property, update.value);
+
+				return validation.valid && typeof validation.value === 'number' ? validation.value : null;
+			});
+
+			if (capability === undefined || values.some((value) => value === null)) {
+				return null;
+			}
+
+			const numericValues = values.filter((value): value is number => value !== null);
+			const midpoint = (Math.min(...numericValues) + Math.max(...numericValues)) / 2;
+			const projected = this.alignThermostatTargetToCapability(capability, midpoint);
+
+			if (projected === null) {
+				return null;
+			}
+
+			for (const index of indexes) {
+				prepared[index] = { ...prepared[index], value: projected };
+			}
+		}
+
+		return prepared;
+	}
+
 	async processBatch(updates: HomeyDevicePropertyData[]): Promise<boolean> {
 		if (updates.length === 0) {
 			return true;
+		}
+
+		const preparedUpdates = this.prepareBatch(updates);
+
+		if (preparedUpdates === null) {
+			this.logCommandFailure('thermostat-target-invalid', 'Homey shared thermostat target projection failed');
+
+			return false;
 		}
 
 		const inventory = this.homeyService.getInventorySnapshot();
@@ -145,7 +223,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 		const thermostatModeUpdates: PreparedThermostatModeUpdate[] = [];
 		const thermostatTargetCommands: PreparedHomeyCommand[] = [];
 
-		for (const update of updates) {
+		for (const update of preparedUpdates) {
 			const { device, channel, property, value } = update;
 
 			if (
