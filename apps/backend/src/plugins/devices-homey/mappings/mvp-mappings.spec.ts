@@ -22,7 +22,7 @@ const readSyntheticDeviceFixture = (name: string): HomeyDevice =>
 const capability = (
 	id: string,
 	value: HomeyCapabilityValue,
-	options: { writable?: boolean; unit?: string; minimum?: number; maximum?: number } = {},
+	options: { writable?: boolean; unit?: string; minimum?: number; maximum?: number; enumValues?: string[] } = {},
 ) =>
 	createHomeyCapability({
 		id,
@@ -38,7 +38,7 @@ const capability = (
 		minimum: options.minimum ?? null,
 		maximum: options.maximum ?? null,
 		step: null,
-		enumValues: [],
+		enumValues: (options.enumValues ?? []).map((enumValue) => ({ id: enumValue, title: enumValue })),
 		readable: true,
 		writable: options.writable ?? false,
 		available: true,
@@ -105,8 +105,8 @@ describe('Homey MVP mapping catalog', () => {
 
 	it('loads the complete built-in catalog without ambiguity', () => {
 		expect(loader.getDeviceMappings()).toHaveLength(7);
-		expect(loader.getChannelMappings()).toHaveLength(19);
-		expect(loader.getPropertyMappings()).toHaveLength(34);
+		expect(loader.getChannelMappings()).toHaveLength(21);
+		expect(loader.getPropertyMappings()).toHaveLength(38);
 	});
 
 	it('maps the captured light fixture and applies inverse lighting transformations', () => {
@@ -189,11 +189,14 @@ describe('Homey MVP mapping catalog', () => {
 		expect(write(bindings, 'window-covering-position', 45)).toBe(0.45);
 	});
 
-	it('does not fabricate thermostat activity from the configured mode', () => {
+	it('maps thermostat configuration without fabricating actual activity', () => {
 		const device = publishedContractDevice('thermostat', [
 			capability('measure_temperature', 21.5, { unit: '°C' }),
 			capability('target_temperature', 22.5, { unit: '°C', writable: true, minimum: 4, maximum: 35 }),
-			capability('thermostat_mode', 'heat', { writable: true }),
+			capability('thermostat_mode', 'heat', {
+				writable: true,
+				enumValues: ['off', 'heat', 'cool', 'auto'],
+			}),
 			capability('measure_battery', 80),
 			capability('alarm_battery', false),
 		]);
@@ -203,12 +206,23 @@ describe('Homey MVP mapping catalog', () => {
 		expect(loader.resolveDeviceMappings(device).mappings[0]?.deviceCategory).toBe(DeviceCategory.THERMOSTAT);
 		expect(read(bindings, 'thermostat-current-temperature', 21.5)).toBe(21.5);
 		expect(loader.resolveChannelMappings(device).mappings.map((mapping) => mapping.channel.identifier)).toStrictEqual([
+			'cooler',
+			'heater',
 			'temperature',
 			'thermostat',
 		]);
-		expect(bindings.has('thermostat-heater-target-temperature')).toBe(false);
-		expect(bindings.has('thermostat-heater-on')).toBe(false);
+		expect(read(bindings, 'thermostat-heater-target-temperature', 22.5)).toBe(22.5);
+		expect(write(bindings, 'thermostat-heater-target-temperature', 23)).toBe(23);
+		expect(read(bindings, 'thermostat-cooler-target-temperature', 22.5)).toBe(22.5);
+		expect(write(bindings, 'thermostat-cooler-target-temperature', 23)).toBe(23);
+		expect(read(bindings, 'thermostat-heater-on', 'heat')).toBe(true);
+		expect(read(bindings, 'thermostat-cooler-on', 'heat')).toBe(false);
+		expect(read(bindings, 'thermostat-heater-on', 'auto')).toBe(true);
+		expect(read(bindings, 'thermostat-cooler-on', 'auto')).toBe(true);
+		expect(write(bindings, 'thermostat-heater-on', true)).toBe('heat');
+		expect(write(bindings, 'thermostat-cooler-on', true)).toBe('cool');
 		expect(bindings.has('thermostat-heater-status')).toBe(false);
+		expect(bindings.has('thermostat-cooler-status')).toBe(false);
 		expect(bindings.has('battery-level')).toBe(false);
 		expect(bindings.has('battery-alarm')).toBe(false);
 	});

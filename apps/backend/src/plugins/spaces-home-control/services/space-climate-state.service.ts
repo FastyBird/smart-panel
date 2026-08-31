@@ -415,7 +415,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 					// Check if heater is actively working (status = true)
 					const heaterStatus = device.heaterStatusProperty
 						? this.getPropertyBooleanValue(device.heaterStatusProperty)
-						: true; // If no status property, assume active when on
+						: false; // Configured mode is known, but actual activity is not
 					if (heaterStatus) {
 						isHeating = true;
 					}
@@ -430,7 +430,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 					// Check if cooler is actively working (status = true)
 					const coolerStatus = device.coolerStatusProperty
 						? this.getPropertyBooleanValue(device.coolerStatusProperty)
-						: true; // If no status property, assume active when on
+						: false; // Configured mode is known, but actual activity is not
 					if (coolerStatus) {
 						isCooling = true;
 					}

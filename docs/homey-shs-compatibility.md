@@ -53,6 +53,7 @@ Complete this table after the live run. Values committed here must remain non-se
 | TLS certificate behavior                 | Standard Node TLS probe returned `EPROTO`              |
 | Disposable capability alias              | `fbsp-reversible-mapping-target`                       |
 | Disposable lifecycle-device alias        | `fbsp-lifecycle-disposable-device`                     |
+| Disposable thermostat-device alias       | `fbsp-thermostat-disposable-device`                    |
 
 On 2026-08-26, the TrueNAS host was reachable but SHS stopped before opening its API ports because its required Avahi
 daemon could not start. The deployment recovered after applying Homey's documented TrueNAS settings: disable the host
@@ -217,11 +218,13 @@ that could change every device owned by the app. The probe rejects a lifecycle o
 and requires the run-bound device to remain its only device during availability checks.
 
 The repository includes a private, test-only app at
-`apps/backend/test/support/homey-lifecycle-test-app`. Its single driver exposes the fixed synthetic marker and names
+`apps/backend/test/support/homey-lifecycle-test-app`. Its lifecycle driver exposes the fixed synthetic marker and names
 listed in that directory's README. Pair it only after the lifecycle probe opens the add window. When the probe renames
 and moves the bound device, it changes the driver's fixed lifecycle setting only after each availability listener is
 active. The driver applies the requested unavailable or available state from that setting. This keeps lifecycle evidence
-isolated from household apps and removes manual timing and slow-operation races from both availability stages.
+isolated from household apps and removes manual timing and slow-operation races from both availability stages. The same
+app also includes a separate thermostat driver; leave that driver unpaired during lifecycle evidence because lifecycle
+isolation requires the app to own exactly one device.
 
 After a `device.create` event or fresh inventory item exactly matches the marker, driver, owner, initial name, and source
 zone allowlist, the probe binds the new runtime device ID in memory. If SHS omits the manager-level create/delete event
@@ -486,17 +489,21 @@ platform path and verified again before shutdown.
 
 Only reversible bidirectional mappings are allowed. The guarded family catalog is:
 
-| Family     | Allowed mapping names                                                                         |
-| ---------- | --------------------------------------------------------------------------------------------- |
-| `lighting` | `light-power`, `light-brightness`, `light-hue`, `light-saturation`, `light-color-temperature` |
-| `switch`   | `outlet-power`, `generic-switch-power`                                                        |
-| `cover`    | `window-covering-position`, `window-covering-tilt`                                            |
-| `lock`     | `lock-on`                                                                                     |
+| Family     | Allowed mapping names                                                                                                          |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `climate`  | `thermostat-heater-target-temperature`, `thermostat-cooler-target-temperature`, `thermostat-heater-on`, `thermostat-cooler-on` |
+| `lighting` | `light-power`, `light-brightness`, `light-hue`, `light-saturation`, `light-color-temperature`                                  |
+| `switch`   | `outlet-power`, `generic-switch-power`                                                                                         |
+| `cover`    | `window-covering-position`, `window-covering-tilt`                                                                             |
+| `lock`     | `lock-on`                                                                                                                      |
 
-Climate control is not part of this gate because the approved local mapping catalog intentionally defers target and
-mode projection until a verified actual-activity signal is available. Sensor, safety, battery, and energy families are
-read-only. The probe derives the full set of reversible writable families currently available in the live inventory
-and records only their fixed family labels, never counts or target details.
+For climate, Homey's shared target is projected into both Smart Panel heater/cooler channels and duplicate equal writes
+are coalesced. Different simultaneous heating/cooling targets are rejected because Homey exposes one authoritative
+setpoint. The paired heater/cooler enable properties are combined into one `off`, `heat`, `cool`, `auto`, or
+`heat_cool` command supported by the device. They represent configured mode, not actual activity; no `status` property
+is synthesized. Sensor, safety, battery, and energy families are read-only. The probe derives the full set of
+reversible writable families currently available in the live inventory and records only their fixed family labels,
+never counts or target details.
 
 Use the Homey inventory endpoint locally to select harmless targets. Keep the output private: it contains device names
 and identifiers. For every family reported as available, choose one exact capability and a safe panel value different
@@ -536,6 +543,12 @@ unless the requested command, fresh read-back, exact restoration, restoration re
 The report contains no endpoint, credential, Homey identity, device or capability identifier, capability value,
 inventory content/count, event payload, response body, or raw error.
 
+The bundled `Thermostat Test Device` may be paired for climate evidence when no physical thermostat is available. It
+starts in `off` mode with a 22 °C target. Use its exact runtime device ID with capability `target_temperature` and one
+of the two target mappings, or capability `thermostat_mode` with one of the two mode mappings. Choose a different safe
+panel value so the probe can prove the command and exact restoration. Remove the disposable thermostat after testing;
+do not leave it paired when running the lifecycle probe.
+
 When a device exposes repeated instances of the requested capability base, choose the exact unsuffixed capability when
 present; otherwise choose the lexicographically first full suffixed ID. This mirrors the production mapping loader's
 deterministic primary-instance rule. SHS may omit independent capability availability while still reporting the whole
@@ -549,6 +562,10 @@ requested value with a fresh authoritative read; restored the exact baseline thr
 restoration; and stopped cleanly. The live inventory reported no eligible lock family, so synthetic lock contract tests
 remain the available lock coverage and are not presented as live control evidence. The three exact-schema reports are
 committed as `__fixtures__/evidence/2026-08-28-shs-13.4.1-mapping-control-{lighting,switch,cover}.json`.
+
+Climate mappings were added later with fixture/unit coverage and a validated disposable SHS thermostat driver. A live
+climate report remains optional environment evidence and is not represented as having passed until such a sanitized
+report is captured.
 
 ## Burst updates and concurrent Smart Panel commands
 

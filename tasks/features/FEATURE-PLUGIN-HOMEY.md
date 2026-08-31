@@ -72,7 +72,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 ### Phase 0 — compatibility gate
 
 - [x] Available SHS version, network topology, HTTP port, runtime path, and test dates are recorded; the unavailable
-  image digest and exact TrueNAS version/architecture are documented as an accepted provenance gap.
+      image digest and exact TrueNAS version/architecture are documented as an accepted provenance gap.
 - [x] A least-privilege API key can read devices, zones, system information, and current capability values.
 - [x] A designated harmless writable capability can be controlled and its resulting event observed.
 - [x] Socket.IO connection, subscription, disconnect, restart, and reconnect behavior are recorded.
@@ -164,9 +164,10 @@ The container image digest and exact TrueNAS version/architecture were not captu
 be reconstructed safely. SHS versions, dates, stable same-LAN topology, runtime network path, and verified HTTP port
 are recorded. The missing provenance does not change runtime behavior and was accepted as a non-blocking release gap
 when the local MVP review completed on 2026-08-31. The detailed plan retains explicit environment/design deferrals for
-Homey Pro hardware, physical availability-event continuity, and thermostat target/mode projection without a verified
-actual-activity signal. Local setup therefore claims SHS over HTTP `4859`; it does not claim HTTPS `4860`, Homey Pro
-equivalence, or climate control.
+Homey Pro hardware and physical availability-event continuity. Thermostat target/mode control is implemented for SHS
+with configured mode kept separate from actual heating/cooling activity; activity remains inactive when Homey exposes
+no dedicated signal. Local setup therefore claims SHS over HTTP `4859`; it does not claim HTTPS `4860` or Homey Pro
+equivalence.
 
 ## 5. Example scenarios
 

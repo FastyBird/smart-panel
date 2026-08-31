@@ -9,7 +9,7 @@
 		"en": "Smart Panel Lifecycle Test"
 	},
 	"description": {
-		"en": "Creates one disposable virtual device for Smart Panel lifecycle evidence."
+		"en": "Creates disposable virtual devices for Smart Panel lifecycle and thermostat evidence."
 	},
 	"category": ["tools"],
 	"permissions": [],

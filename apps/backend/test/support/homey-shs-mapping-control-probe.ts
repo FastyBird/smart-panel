@@ -57,10 +57,16 @@ const CONFLICTING_PREFIXES = [
 	'FB_HOMEY_SHS_WRITE_',
 ] as const;
 
-export const HOMEY_MAPPING_CONTROL_FAMILIES = ['cover', 'lighting', 'lock', 'switch'] as const;
+export const HOMEY_MAPPING_CONTROL_FAMILIES = ['climate', 'cover', 'lighting', 'lock', 'switch'] as const;
 export type HomeyMappingControlFamily = (typeof HOMEY_MAPPING_CONTROL_FAMILIES)[number];
 
 export const HOMEY_MAPPING_CONTROL_MAPPINGS: Readonly<Record<HomeyMappingControlFamily, readonly string[]>> = {
+	climate: [
+		'thermostat-heater-target-temperature',
+		'thermostat-cooler-target-temperature',
+		'thermostat-heater-on',
+		'thermostat-cooler-on',
+	],
 	cover: ['window-covering-position', 'window-covering-tilt'],
 	lighting: ['light-power', 'light-brightness', 'light-hue', 'light-saturation', 'light-color-temperature'],
 	lock: ['lock-on'],
@@ -468,7 +474,7 @@ export const loadHomeyShsMappingControlConfig = (
 	const family = environment.FB_HOMEY_SHS_MAPPING_CONTROL_FAMILY?.trim() as HomeyMappingControlFamily | undefined;
 
 	if (family === undefined || !HOMEY_MAPPING_CONTROL_FAMILIES.includes(family)) {
-		throw new Error('FB_HOMEY_SHS_MAPPING_CONTROL_FAMILY must be exactly cover, lighting, lock, or switch');
+		throw new Error('FB_HOMEY_SHS_MAPPING_CONTROL_FAMILY must be exactly climate, cover, lighting, lock, or switch');
 	}
 	const mappingName = environment.FB_HOMEY_SHS_MAPPING_CONTROL_MAPPING_NAME?.trim() ?? '';
 

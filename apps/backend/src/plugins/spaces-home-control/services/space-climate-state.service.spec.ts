@@ -37,6 +37,8 @@ describe('SpaceClimateStateService', () => {
 		category: DeviceCategory;
 		hasHeater?: boolean;
 		hasCooler?: boolean;
+		hasHeaterStatus?: boolean;
+		hasCoolerStatus?: boolean;
 		heaterOn?: boolean;
 		coolerOn?: boolean;
 		heaterSetpoint?: number;
@@ -83,12 +85,14 @@ describe('SpaceClimateStateService', () => {
 					category: PropertyCategory.ON,
 					value: new PropertyValueState(options.heaterOn ?? false),
 				},
-				{
+			];
+			if (options.hasHeaterStatus !== false) {
+				heaterProps.push({
 					id: uuid(),
 					category: PropertyCategory.STATUS,
 					value: new PropertyValueState(options.heaterOn ?? false),
-				},
-			];
+				});
+			}
 			if (options.heaterSetpoint !== undefined) {
 				heaterProps.push({
 					id: uuid(),
@@ -112,12 +116,14 @@ describe('SpaceClimateStateService', () => {
 					category: PropertyCategory.ON,
 					value: new PropertyValueState(options.coolerOn ?? false),
 				},
-				{
+			];
+			if (options.hasCoolerStatus !== false) {
+				coolerProps.push({
 					id: uuid(),
 					category: PropertyCategory.STATUS,
 					value: new PropertyValueState(options.coolerOn ?? false),
-				},
-			];
+				});
+			}
 			if (options.coolerSetpoint !== undefined) {
 				coolerProps.push({
 					id: uuid(),
@@ -238,6 +244,25 @@ describe('SpaceClimateStateService', () => {
 			expect(result.mode).toBe(ClimateMode.HEAT);
 			expect(result.supportsHeating).toBe(true);
 			expect(result.isHeating).toBe(true);
+		});
+
+		it('should retain configured HEAT mode without claiming activity when status is unavailable', async () => {
+			const thermostat = createMockClimateDevice({
+				category: DeviceCategory.THERMOSTAT,
+				hasHeater: true,
+				hasHeaterStatus: false,
+				heaterOn: true,
+				heaterSetpoint: 22,
+				temperature: 20.5,
+			});
+			spacesService.findDevicesBySpace.mockResolvedValue([thermostat]);
+
+			const result = await service.getClimateState(mockSpaceId);
+
+			expect(result).not.toBeNull();
+			expect(result.mode).toBe(ClimateMode.HEAT);
+			expect(result.supportsHeating).toBe(true);
+			expect(result.isHeating).toBe(false);
 		});
 
 		it('should detect COOL mode when cooler is on', async () => {

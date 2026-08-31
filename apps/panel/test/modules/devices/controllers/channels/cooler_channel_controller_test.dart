@@ -115,6 +115,34 @@ void main() {
         expect(controller.isCooling, isTrue);
       });
 
+      test('isCooling is false when actual activity is not exposed', () {
+        final channelWithoutStatus = CoolerChannelView(
+          id: channelId,
+          type: 'cooler',
+          category: DevicesModuleChannelCategory.cooler,
+          device: deviceId,
+          properties: [
+            OnChannelPropertyView(
+              id: onPropId,
+              type: 'on',
+              channel: channelId,
+              category: DevicesModulePropertyCategory.valueOn,
+              valueState: PropertyValueState(value: BooleanValueType(true)),
+            ),
+            TemperatureChannelPropertyView(
+              id: temperaturePropId,
+              type: 'temperature',
+              channel: channelId,
+              category: DevicesModulePropertyCategory.temperature,
+              valueState: PropertyValueState(value: NumberValueType(18.5)),
+              format: NumberListFormatType([10, 30]),
+            ),
+          ],
+        );
+
+        expect(channelWithoutStatus.isCooling, isFalse);
+      });
+
       test('minTemperature returns channel value', () {
         expect(controller.minTemperature, 10.0);
       });

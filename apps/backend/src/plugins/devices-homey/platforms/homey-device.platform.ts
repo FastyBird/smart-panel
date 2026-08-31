@@ -13,7 +13,7 @@ import {
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from '../entities/devices-homey.entity';
 import { HomeyMappingLoaderService } from '../mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from '../mappings/mapping-transformer.service';
-import { HomeyCapabilityValue } from '../models/homey-capability.model';
+import { HomeyCapability, HomeyCapabilityValue } from '../models/homey-capability.model';
 import { HomeyFailureLogLimiter } from '../services/homey-failure-log-limiter';
 import { HomeyService } from '../services/homey.service';
 
@@ -30,6 +30,21 @@ interface PreparedHomeyCommand {
 	readonly capabilityId: string;
 	readonly value: HomeyCapabilityValue;
 }
+
+interface PreparedThermostatModeUpdate {
+	readonly deviceId: string;
+	readonly capability: HomeyCapability;
+	readonly mappingName: string;
+	readonly value: boolean;
+}
+
+const THERMOSTAT_HEATER_ON_MAPPING = 'thermostat-heater-on';
+const THERMOSTAT_COOLER_ON_MAPPING = 'thermostat-cooler-on';
+const THERMOSTAT_MODE_MAPPINGS = new Set([THERMOSTAT_HEATER_ON_MAPPING, THERMOSTAT_COOLER_ON_MAPPING]);
+const THERMOSTAT_TARGET_MAPPINGS = new Set([
+	'thermostat-heater-target-temperature',
+	'thermostat-cooler-target-temperature',
+]);
 
 @Injectable()
 export class HomeyDevicePlatform implements IDevicePlatform {
@@ -85,6 +100,8 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 
 		const upstreamDevices = new Map(inventory.map((device) => [device.id, device]));
 		const commands: PreparedHomeyCommand[] = [];
+		const thermostatModeUpdates: PreparedThermostatModeUpdate[] = [];
+		const thermostatTargetCommands: PreparedHomeyCommand[] = [];
 
 		for (const update of updates) {
 			const { device, channel, property, value } = update;
@@ -147,6 +164,23 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 				return false;
 			}
 
+			if (THERMOSTAT_MODE_MAPPINGS.has(mapping.name)) {
+				if (typeof panelValidation.value !== 'boolean') {
+					this.logCommandFailure('panel-value-invalid', 'Homey thermostat mode command value is invalid');
+
+					return false;
+				}
+
+				thermostatModeUpdates.push({
+					deviceId: upstreamDevice.id,
+					capability,
+					mappingName: mapping.name,
+					value: panelValidation.value,
+				});
+
+				continue;
+			}
+
 			let transformed: HomeyCapabilityValue;
 
 			try {
@@ -163,12 +197,27 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 				return false;
 			}
 
-			commands.push({
+			const command = {
 				deviceId: upstreamDevice.id,
 				capabilityId: capability.id,
 				value: transformed,
-			});
+			};
+
+			if (THERMOSTAT_TARGET_MAPPINGS.has(mapping.name)) {
+				thermostatTargetCommands.push(command);
+			} else {
+				commands.push(command);
+			}
 		}
+
+		const thermostatModeCommands = this.prepareThermostatModeCommands(thermostatModeUpdates);
+		const coalescedThermostatTargets = this.coalesceThermostatTargetCommands(thermostatTargetCommands);
+
+		if (thermostatModeCommands === null || coalescedThermostatTargets === null) {
+			return false;
+		}
+
+		commands.push(...thermostatModeCommands, ...coalescedThermostatTargets);
 
 		for (const command of commands) {
 			if (!(await this.homeyService.executeCapabilityCommand(command.deviceId, command.capabilityId, command.value))) {
@@ -177,6 +226,120 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 		}
 
 		return true;
+	}
+
+	private prepareThermostatModeCommands(
+		updates: readonly PreparedThermostatModeUpdate[],
+	): PreparedHomeyCommand[] | null {
+		const groups = new Map<string, PreparedThermostatModeUpdate[]>();
+
+		for (const update of updates) {
+			const key = `${update.deviceId}\u0000${update.capability.id}`;
+			const group = groups.get(key) ?? [];
+			group.push(update);
+			groups.set(key, group);
+		}
+
+		const commands: PreparedHomeyCommand[] = [];
+
+		for (const group of groups.values()) {
+			const first = group[0];
+			const current = this.thermostatModeToStates(first.capability.value);
+			let heaterOn = current?.heaterOn;
+			let coolerOn = current?.coolerOn;
+
+			for (const update of group) {
+				if (update.mappingName === THERMOSTAT_HEATER_ON_MAPPING) {
+					heaterOn = update.value;
+				} else if (update.mappingName === THERMOSTAT_COOLER_ON_MAPPING) {
+					coolerOn = update.value;
+				}
+			}
+
+			if (heaterOn === undefined || coolerOn === undefined) {
+				this.logCommandFailure(
+					'thermostat-mode-unavailable',
+					'Homey thermostat mode cannot be combined with an unknown current mode',
+				);
+
+				return null;
+			}
+
+			const mode = this.thermostatStatesToMode(first.capability, heaterOn, coolerOn);
+
+			if (mode === null || !validateHomeyCapabilityCommandValue(first.capability, mode).valid) {
+				this.logCommandFailure(
+					'thermostat-mode-unsupported',
+					'Homey thermostat does not support the requested configured mode',
+				);
+
+				return null;
+			}
+
+			commands.push({ deviceId: first.deviceId, capabilityId: first.capability.id, value: mode });
+		}
+
+		return commands;
+	}
+
+	private thermostatModeToStates(value: HomeyCapabilityValue): { heaterOn: boolean; coolerOn: boolean } | null {
+		switch (value) {
+			case 'off':
+				return { heaterOn: false, coolerOn: false };
+			case 'heat':
+				return { heaterOn: true, coolerOn: false };
+			case 'cool':
+				return { heaterOn: false, coolerOn: true };
+			case 'auto':
+			case 'heat_cool':
+				return { heaterOn: true, coolerOn: true };
+			default:
+				return null;
+		}
+	}
+
+	private thermostatStatesToMode(
+		capability: HomeyCapability,
+		heaterOn: boolean,
+		coolerOn: boolean,
+	): HomeyCapabilityValue {
+		if (heaterOn && coolerOn) {
+			const supportedModes = new Set(capability.enumValues.map((value) => value.id));
+
+			if (supportedModes.has('auto')) {
+				return 'auto';
+			}
+
+			return supportedModes.has('heat_cool') ? 'heat_cool' : null;
+		}
+
+		if (heaterOn) {
+			return 'heat';
+		}
+
+		return coolerOn ? 'cool' : 'off';
+	}
+
+	private coalesceThermostatTargetCommands(commands: readonly PreparedHomeyCommand[]): PreparedHomeyCommand[] | null {
+		const selected = new Map<string, PreparedHomeyCommand>();
+
+		for (const command of commands) {
+			const key = `${command.deviceId}\u0000${command.capabilityId}`;
+			const current = selected.get(key);
+
+			if (current !== undefined && !Object.is(current.value, command.value)) {
+				this.logCommandFailure(
+					'thermostat-target-conflict',
+					'Homey thermostat exposes one shared target and cannot accept different heating and cooling setpoints',
+				);
+
+				return null;
+			}
+
+			selected.set(key, command);
+		}
+
+		return [...selected.values()];
 	}
 
 	private referencesEntity(reference: { readonly id: string } | string, expectedId: string): boolean {

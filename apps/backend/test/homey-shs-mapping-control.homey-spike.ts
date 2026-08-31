@@ -189,6 +189,10 @@ describe('Homey SHS mapping-control probe', () => {
 	});
 
 	it.each([
+		['climate', 'thermostat-heater-target-temperature'],
+		['climate', 'thermostat-cooler-target-temperature'],
+		['climate', 'thermostat-heater-on'],
+		['climate', 'thermostat-cooler-on'],
 		['cover', 'window-covering-position'],
 		['cover', 'window-covering-tilt'],
 		['lighting', 'light-power'],
@@ -216,7 +220,7 @@ describe('Homey SHS mapping-control probe', () => {
 		).toThrow('required acknowledgement');
 		expect(() =>
 			loadHomeyShsMappingControlConfig({ ...BASE_ENVIRONMENT, FB_HOMEY_SHS_MAPPING_CONTROL_FAMILY: 'sensor' }),
-		).toThrow('must be exactly cover, lighting, lock, or switch');
+		).toThrow('must be exactly climate, cover, lighting, lock, or switch');
 		expect(() =>
 			loadHomeyShsMappingControlConfig({
 				...BASE_ENVIRONMENT,

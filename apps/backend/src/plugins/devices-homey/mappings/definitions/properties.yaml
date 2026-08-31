@@ -136,6 +136,70 @@ mappings:
       unit: °C
       range: { minimum: 0, maximum: 100, step: 0.1 }
 
+  - name: thermostat-heater-target-temperature
+    description: Homey's shared thermostat target projected as the heating setpoint
+    priority: 200
+    match:
+      classes: [thermostat]
+      capability_base_ids: [target_temperature]
+      all_capabilities: [thermostat_mode]
+    property:
+      channel: heater
+      category: temperature
+      data_type: float
+      direction: bidirectional
+      unit: °C
+      range: { minimum: 0, maximum: 100, step: 0.1 }
+
+  - name: thermostat-cooler-target-temperature
+    description: Homey's shared thermostat target projected as the cooling setpoint
+    priority: 200
+    match:
+      classes: [thermostat]
+      capability_base_ids: [target_temperature]
+      all_capabilities: [thermostat_mode]
+    property:
+      channel: cooler
+      category: temperature
+      data_type: float
+      direction: bidirectional
+      unit: °C
+      range: { minimum: 0, maximum: 100, step: 0.1 }
+
+  - name: thermostat-heater-on
+    description: Configured Homey thermostat mode projected as the heating enable state
+    priority: 200
+    match:
+      classes: [thermostat]
+      capability_base_ids: [thermostat_mode]
+      all_capabilities: [target_temperature]
+    property:
+      channel: heater
+      category: on
+      data_type: bool
+      direction: bidirectional
+      transform:
+        type: map
+        read: { off: false, heat: true, cool: false, auto: true, heat_cool: true }
+        write: { 'false': off, 'true': heat }
+
+  - name: thermostat-cooler-on
+    description: Configured Homey thermostat mode projected as the cooling enable state
+    priority: 200
+    match:
+      classes: [thermostat]
+      capability_base_ids: [thermostat_mode]
+      all_capabilities: [target_temperature]
+    property:
+      channel: cooler
+      category: on
+      data_type: bool
+      direction: bidirectional
+      transform:
+        type: map
+        read: { off: false, heat: false, cool: true, auto: true, heat_cool: true }
+        write: { 'false': off, 'true': cool }
+
   - name: humidity
     priority: 100
     match:

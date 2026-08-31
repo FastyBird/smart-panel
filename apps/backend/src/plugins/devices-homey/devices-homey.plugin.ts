@@ -226,7 +226,7 @@ Connects Smart Panel to Homey Self-Hosted Server over its local HTTP API. Homey 
 - **Capability mapping** — translate Homey classes and capabilities into Smart Panel categories, channels and properties through declarative mappings
 - **Real-time synchronization** — process Homey Socket.IO events with automatic resubscription after connection or server restarts
 - **Periodic reconciliation** — refresh the complete inventory at a configurable interval to recover missed events and availability changes
-- **Bidirectional control** — control supported switches, lights, locks and window coverings through Smart Panel's standard command path
+- **Bidirectional control** — control supported switches, lights, locks, window coverings and thermostat setpoints/modes through Smart Panel's standard command path
 - **Resilient lifecycle** — reconnect with bounded back-off, preserve adopted devices during outages and mark missing upstream devices unavailable instead of deleting them
 
 ## Supported device mappings

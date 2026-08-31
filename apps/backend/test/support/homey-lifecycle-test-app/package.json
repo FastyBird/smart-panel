@@ -2,7 +2,7 @@
 	"name": "@fastybird/homey-lifecycle-test-app",
 	"version": "1.0.0",
 	"private": true,
-	"description": "Disposable Homey app used only for Smart Panel lifecycle evidence",
+	"description": "Disposable Homey app used only for Smart Panel lifecycle and thermostat evidence",
 	"main": "app.js",
 	"scripts": {
 		"pretty:check": "prettier . --check",

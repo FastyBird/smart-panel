@@ -217,6 +217,143 @@ function mappingLoader(resolvedMapping: ResolvedHomeyPropertyMapping) {
 	};
 }
 
+function thermostatDevice(modes: readonly string[] = ['off', 'heat', 'cool', 'auto']): HomeyDevice {
+	return {
+		id: 'homey-thermostat',
+		name: 'Thermostat',
+		class: 'thermostat',
+		zoneId: null,
+		zoneName: null,
+		zonePath: [],
+		available: true,
+		availabilityMessage: null,
+		driverId: 'thermostat-driver',
+		manufacturer: null,
+		model: null,
+		energy: null,
+		capabilities: [
+			createHomeyCapability({
+				id: 'measure_temperature',
+				title: 'Current temperature',
+				value: 21,
+				type: HomeyCapabilityType.NUMBER,
+				unit: '°C',
+				minimum: -50,
+				maximum: 100,
+				step: 0.1,
+				enumValues: [],
+				readable: true,
+				writable: false,
+				available: true,
+				lastUpdatedAt: null,
+			}),
+			createHomeyCapability({
+				id: 'target_temperature',
+				title: 'Target temperature',
+				value: 22,
+				type: HomeyCapabilityType.NUMBER,
+				unit: '°C',
+				minimum: 4,
+				maximum: 35,
+				step: 0.5,
+				enumValues: [],
+				readable: true,
+				writable: true,
+				available: true,
+				lastUpdatedAt: null,
+			}),
+			createHomeyCapability({
+				id: 'thermostat_mode',
+				title: 'Thermostat mode',
+				value: 'heat',
+				type: HomeyCapabilityType.ENUM,
+				unit: null,
+				minimum: null,
+				maximum: null,
+				step: null,
+				enumValues: modes.map((id) => ({ id, title: id })),
+				readable: true,
+				writable: true,
+				available: true,
+				lastUpdatedAt: null,
+			}),
+		],
+	};
+}
+
+function thermostatEntities(loader: HomeyMappingLoaderService) {
+	const upstream = thermostatDevice();
+	const mappings = new Map(
+		loader.resolvePropertyMappings(upstream).mappings.map((binding) => [binding.mapping.name, binding]),
+	);
+	const device = Object.assign(new HomeyDeviceEntity(), {
+		id: 'panel-thermostat',
+		identifier: upstream.id,
+		name: 'Thermostat',
+		enabled: true,
+	});
+	const heater = Object.assign(new HomeyChannelEntity(), {
+		id: 'panel-heater',
+		identifier: 'heater',
+		category: ChannelCategory.HEATER,
+		device,
+	});
+	const cooler = Object.assign(new HomeyChannelEntity(), {
+		id: 'panel-cooler',
+		identifier: 'cooler',
+		category: ChannelCategory.COOLER,
+		device,
+	});
+	const property = (
+		id: string,
+		channel: HomeyChannelEntity,
+		mappingName: string,
+		category: PropertyCategory,
+		dataType: DataTypeType,
+		format: string[] | number[] | null,
+	) => {
+		const binding = mappings.get(mappingName);
+		expect(binding).toBeDefined();
+
+		return Object.assign(new HomeyChannelPropertyEntity(), {
+			id,
+			identifier: `${binding.capabilityId}::${mappingName}`,
+			category,
+			dataType,
+			permissions: [PermissionType.READ_WRITE],
+			format,
+			step: dataType === DataTypeType.FLOAT ? 0.1 : null,
+			invalid: null,
+			homeyCapabilityId: binding.capabilityId,
+			homeyMappingName: mappingName,
+			channel,
+		});
+	};
+	const heaterOn = property('heater-on', heater, 'thermostat-heater-on', PropertyCategory.ON, DataTypeType.BOOL, null);
+	const coolerOn = property('cooler-on', cooler, 'thermostat-cooler-on', PropertyCategory.ON, DataTypeType.BOOL, null);
+	const heaterTarget = property(
+		'heater-target',
+		heater,
+		'thermostat-heater-target-temperature',
+		PropertyCategory.TEMPERATURE,
+		DataTypeType.FLOAT,
+		[0, 100],
+	);
+	const coolerTarget = property(
+		'cooler-target',
+		cooler,
+		'thermostat-cooler-target-temperature',
+		PropertyCategory.TEMPERATURE,
+		DataTypeType.FLOAT,
+		[0, 100],
+	);
+	heater.properties = [heaterOn, heaterTarget];
+	cooler.properties = [coolerOn, coolerTarget];
+	device.channels = [heater, cooler];
+
+	return { upstream, device, heater, cooler, heaterOn, coolerOn, heaterTarget, coolerTarget };
+}
+
 describe('HomeyDevicePlatform', () => {
 	it('reports the bounded sequential command window for intent TTL selection', () => {
 		const platform = new HomeyDevicePlatform(
@@ -302,6 +439,83 @@ describe('HomeyDevicePlatform', () => {
 			platform.processBatch([
 				{ ...valid, value: true },
 				{ ...invalid, value: false },
+			]),
+		).resolves.toBe(false);
+		expect(homeyService.executeCapabilityCommand).not.toHaveBeenCalled();
+	});
+
+	it('combines Homey thermostat heating and cooling enables into one configured mode command', async () => {
+		const loader = new HomeyMappingLoaderService();
+		loader.loadAllMappings();
+		const target = thermostatEntities(loader);
+		const homeyService = {
+			getInventorySnapshot: jest.fn().mockReturnValue([target.upstream]),
+			executeCapabilityCommand: jest.fn().mockResolvedValue(true),
+		};
+		const platform = new HomeyDevicePlatform(
+			homeyService as unknown as HomeyService,
+			loader,
+			new HomeyMappingTransformerService(),
+		);
+
+		await expect(
+			platform.processBatch([
+				{ device: target.device, channel: target.heater, property: target.heaterOn, value: true },
+				{ device: target.device, channel: target.cooler, property: target.coolerOn, value: true },
+			]),
+		).resolves.toBe(true);
+		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledTimes(1);
+		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'thermostat_mode', 'auto');
+	});
+
+	it('combines a single thermostat mode update with the authoritative current mode', async () => {
+		const loader = new HomeyMappingLoaderService();
+		loader.loadAllMappings();
+		const target = thermostatEntities(loader);
+		const homeyService = {
+			getInventorySnapshot: jest.fn().mockReturnValue([target.upstream]),
+			executeCapabilityCommand: jest.fn().mockResolvedValue(true),
+		};
+		const platform = new HomeyDevicePlatform(
+			homeyService as unknown as HomeyService,
+			loader,
+			new HomeyMappingTransformerService(),
+		);
+
+		await expect(
+			platform.process({ device: target.device, channel: target.cooler, property: target.coolerOn, value: true }),
+		).resolves.toBe(true);
+		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'thermostat_mode', 'auto');
+	});
+
+	it('coalesces one shared Homey thermostat target and rejects conflicting setpoints', async () => {
+		const loader = new HomeyMappingLoaderService();
+		loader.loadAllMappings();
+		const target = thermostatEntities(loader);
+		const homeyService = {
+			getInventorySnapshot: jest.fn().mockReturnValue([target.upstream]),
+			executeCapabilityCommand: jest.fn().mockResolvedValue(true),
+		};
+		const platform = new HomeyDevicePlatform(
+			homeyService as unknown as HomeyService,
+			loader,
+			new HomeyMappingTransformerService(),
+		);
+
+		await expect(
+			platform.processBatch([
+				{ device: target.device, channel: target.heater, property: target.heaterTarget, value: 23 },
+				{ device: target.device, channel: target.cooler, property: target.coolerTarget, value: 23 },
+			]),
+		).resolves.toBe(true);
+		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledTimes(1);
+		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'target_temperature', 23);
+
+		homeyService.executeCapabilityCommand.mockClear();
+		await expect(
+			platform.processBatch([
+				{ device: target.device, channel: target.heater, property: target.heaterTarget, value: 21 },
+				{ device: target.device, channel: target.cooler, property: target.coolerTarget, value: 25 },
 			]),
 		).resolves.toBe(false);
 		expect(homeyService.executeCapabilityCommand).not.toHaveBeenCalled();

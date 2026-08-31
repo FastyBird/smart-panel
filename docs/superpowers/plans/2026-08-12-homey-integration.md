@@ -45,8 +45,8 @@ Local MVP total: approximately 25–36 engineering days. Backend and admin tasks
 - Create: `apps/backend/src/plugins/devices-homey/__fixtures__/README.md` when the plugin directory is introduced
 
 - [x] Record the available SHS version, installation topology, exposed HTTP port, capture date, and Smart Panel runtime
-  network path; explicitly record the unavailable image digest and exact TrueNAS version/architecture as an accepted
-  provenance gap.
+      network path; explicitly record the unavailable image digest and exact TrueNAS version/architecture as an accepted
+      provenance gap.
 - [x] Give SHS a stable LAN address; prefer host networking or a dedicated address consistent with Homey guidance.
 - [x] Create a least-privilege API key with only device read/control, zone read, and system read permissions required by the design.
 - [x] Designate one harmless writable test capability; record only a synthetic alias in repository documents.
@@ -326,8 +326,8 @@ remain supported. Revisit only after a Homey-specific identity and restart-stabl
 - [x] Power: `onoff`.
 - [x] Lighting: `dim`, hue, saturation, and temperature.
 - [x] Climate: measured temperature and complete thermostat identity.
-- [ ] Climate control: project target temperature and mode only with a verified actual-activity signal; Homey's standard
-      `thermostat_mode` is configuration, not heater/cooler activity.
+- [x] Climate control: project the shared target temperature and configured `thermostat_mode` without treating mode as
+      actual heater/cooler activity; actual activity remains false unless a provider exposes a dedicated status signal.
 - [x] Environment: humidity, pressure, luminance, and CO2.
 - [x] Safety/contact: motion, contact, smoke, carbon monoxide.
 - [x] Energy: instantaneous power and accumulated energy.
@@ -341,10 +341,13 @@ explicitly named published-contract test devices derived from Athom's public cap
 live provenance. Relative light-temperature and cover-tilt projections are reversible defaults whose conversion
 metadata remains visible to mapping preview and user overrides.
 
-Thermostat target/mode projection remains an approved local-MVP design deferral. The live and published-protocol
-evidence provides thermostat configuration but no verified actual heating/cooling activity signal; mapping
-`thermostat_mode` as activity would misrepresent device state. Measured climate sensing and thermostat identity remain
-supported, while climate control stays unchecked until that signal is available.
+Thermostat target/mode projection is implemented without inventing activity. Homey's shared `target_temperature` is
+projected to Smart Panel's heater and cooler setpoints, and `thermostat_mode` is combined into configured heat/cool/
+auto/off state. The command platform coalesces the shared target, rejects conflicting heat/cool setpoints, and combines
+paired enable changes into one Homey mode write. Heater/cooler `status` is optional; when Homey exposes no separate
+actual-activity capability, Smart Panel reports configured climate support but conservatively reports no active heating
+or cooling. Fixture, platform, climate-state, and panel tests cover this distinction. A bundled disposable thermostat
+driver and the guarded mapping-control probe provide a live SHS path without claiming Homey Pro equivalence.
 
 ### Task 3.3: Implement device inventory/discovery service and API
 
