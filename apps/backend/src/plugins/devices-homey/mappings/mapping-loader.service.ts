@@ -35,6 +35,7 @@ import {
 	HomeyMappingResolution,
 	HomeyMappingSource,
 	HomeyPropertyMappingDefinition,
+	HomeyWriteStrategy,
 	ResolvedHomeyChannelMapping,
 	ResolvedHomeyDeviceMapping,
 	ResolvedHomeyMapping,
@@ -42,6 +43,11 @@ import {
 	ResolvedHomeyPropertyBinding,
 	ResolvedHomeyPropertyMapping,
 } from './mapping.types';
+
+const THERMOSTAT_MODE_READ_PROJECTIONS: Record<HomeyWriteStrategy, Readonly<Record<string, boolean>>> = {
+	thermostat_heater_mode: { off: false, heat: true, cool: false, auto: true, heat_cool: true },
+	thermostat_cooler_mode: { off: false, heat: false, cool: true, auto: true, heat_cool: true },
+};
 
 const MAX_MAPPING_FILE_BYTES = 1024 * 1024;
 
@@ -414,6 +420,8 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 
 		if (writeStrategy !== undefined) {
 			const expectedChannel = writeStrategy === 'thermostat_heater_mode' ? 'heater' : 'cooler';
+			const expectedReadProjection = THERMOSTAT_MODE_READ_PROJECTIONS[writeStrategy];
+			const readProjection = transform?.type === 'map' ? transform.read : undefined;
 
 			if (
 				definition.property.channel !== expectedChannel ||
@@ -422,6 +430,13 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 				!definition.match.capability_base_ids.includes('thermostat_mode')
 			) {
 				throw new Error('thermostat mode write strategies require the matching thermostat on property');
+			}
+
+			if (
+				readProjection === undefined ||
+				Object.entries(expectedReadProjection).some(([mode, expected]) => readProjection[mode] !== expected)
+			) {
+				throw new Error('thermostat mode write strategy read map does not match its boolean mode projection');
 			}
 		}
 

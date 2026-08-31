@@ -498,8 +498,9 @@ Only reversible bidirectional mappings are allowed. The guarded family catalog i
 | `lock`     | `lock-on`                                                                                                                      |
 
 For climate, Homey's shared target is projected into both Smart Panel heater/cooler channels and duplicate equal writes
-are coalesced. Different simultaneous heating/cooling targets are rejected because Homey exposes one authoritative
-setpoint. The paired heater/cooler enable properties are combined into one `off`, `heat`, `cool`, `auto`, or
+are coalesced. Different simultaneous heating/cooling targets are projected to their midpoint, aligned to Homey's
+authoritative range and step, and reflected back into both Smart Panel setpoints because Homey exposes one target. The
+paired heater/cooler enable properties are combined into one `off`, `heat`, `cool`, `auto`, or
 `heat_cool` command supported by the device. They represent configured mode, not actual activity; no `status` property
 is synthesized. Sensor, safety, battery, and energy families are read-only. The probe derives the full set of
 reversible writable families currently available in the live inventory and records only their fixed family labels,
