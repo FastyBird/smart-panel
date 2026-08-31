@@ -755,8 +755,12 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				return { success: false, heatingSetpoint: null, coolingSetpoint: null };
 			}
 
-			const appliedHeatingSetpoint = this.getPreparedSetpoint(preparedCommands, device.heaterSetpointProperty?.id);
-			const appliedCoolingSetpoint = this.getPreparedSetpoint(preparedCommands, device.coolerSetpointProperty?.id);
+			const appliedHeatingSetpoint = device.supportsHeating
+				? this.getPreparedSetpoint(preparedCommands, device.heaterSetpointProperty?.id)
+				: null;
+			const appliedCoolingSetpoint = device.supportsCooling
+				? this.getPreparedSetpoint(preparedCommands, device.coolerSetpointProperty?.id)
+				: null;
 
 			this.logger.debug(
 				`Set setpoints on device id=${device.device.id} ` +
