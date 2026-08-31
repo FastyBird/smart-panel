@@ -26,7 +26,7 @@ import {
 } from '../errors/homey-connector.error';
 import { HomeyInventoryUnavailableError } from '../errors/homey-inventory.error';
 import { HomeyConfigModel } from '../models/config.model';
-import { HomeyCapabilityValue } from '../models/homey-capability.model';
+import { HomeyCapability, HomeyCapabilityValue } from '../models/homey-capability.model';
 import { HomeyDevice } from '../models/homey-device.model';
 import { HomeyEvent, HomeyEventType } from '../models/homey-event.model';
 import { HomeySystemInfo } from '../models/homey-system-info.model';
@@ -338,6 +338,39 @@ export class HomeyService extends BaseManagedPluginService {
 		const successful = await this.enqueueCapabilityCommand(key, (retainWrite) =>
 			this.executeSerializedCapabilityCommand(key, deviceId, capabilityId, value, generation, retainWrite),
 		);
+
+		if (!successful) {
+			this.logRateLimitedFailure('command', 'warn', 'Homey capability command failed or could not be confirmed', {
+				outcome: 'rejected_or_unconfirmed',
+			});
+		}
+
+		return successful;
+	}
+
+	async executeDerivedCapabilityCommand(
+		deviceId: string,
+		capabilityId: string,
+		deriveValue: (capability: HomeyCapability) => HomeyCapabilityValue | undefined,
+	): Promise<boolean> {
+		const key = this.commandKey(deviceId, capabilityId);
+		const generation = this.generation;
+		const successful = await this.enqueueCapabilityCommand(key, (retainWrite) => {
+			const device = this.devices.get(deviceId);
+			const capability = device?.capabilities.find((candidate) => candidate.id === capabilityId);
+
+			if (device === undefined || !device.available || capability === undefined || capability.available === false) {
+				return Promise.resolve(false);
+			}
+
+			const value = deriveValue(capability);
+
+			if (value === undefined) {
+				return Promise.resolve(false);
+			}
+
+			return this.executeSerializedCapabilityCommand(key, deviceId, capabilityId, value, generation, retainWrite);
+		});
 
 		if (!successful) {
 			this.logRateLimitedFailure('command', 'warn', 'Homey capability command failed or could not be confirmed', {

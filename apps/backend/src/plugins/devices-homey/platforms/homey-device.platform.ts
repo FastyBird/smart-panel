@@ -35,9 +35,15 @@ interface PreparedHomeyCommand {
 
 interface PreparedThermostatModeUpdate {
 	readonly deviceId: string;
-	readonly capability: HomeyCapability;
+	readonly capabilityId: string;
 	readonly writeStrategy: HomeyWriteStrategy;
 	readonly value: boolean;
+}
+
+interface PreparedThermostatModeCommand {
+	readonly deviceId: string;
+	readonly capabilityId: string;
+	readonly updates: readonly PreparedThermostatModeUpdate[];
 }
 
 const THERMOSTAT_TARGET_MAPPINGS = new Set([
@@ -325,7 +331,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 
 				thermostatModeUpdates.push({
 					deviceId: upstreamDevice.id,
-					capability,
+					capabilityId: capability.id,
 					writeStrategy: mapping.property.writeStrategy,
 					value: panelValidation.value,
 				});
@@ -363,16 +369,32 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 			}
 		}
 
-		const thermostatModeCommands = this.prepareThermostatModeCommands(thermostatModeUpdates);
+		const thermostatModeCommands = this.groupThermostatModeCommands(thermostatModeUpdates);
 		const coalescedThermostatTargets = this.coalesceThermostatTargetCommands(thermostatTargetCommands);
 
-		if (thermostatModeCommands === null || coalescedThermostatTargets === null) {
+		if (coalescedThermostatTargets === null) {
 			return false;
 		}
 
-		commands.push(...thermostatModeCommands, ...coalescedThermostatTargets);
-
 		for (const command of commands) {
+			if (!(await this.homeyService.executeCapabilityCommand(command.deviceId, command.capabilityId, command.value))) {
+				return false;
+			}
+		}
+
+		for (const command of thermostatModeCommands) {
+			if (
+				!(await this.homeyService.executeDerivedCapabilityCommand(
+					command.deviceId,
+					command.capabilityId,
+					(capability) => this.deriveThermostatModeValue(capability, command.updates),
+				))
+			) {
+				return false;
+			}
+		}
+
+		for (const command of coalescedThermostatTargets) {
 			if (!(await this.homeyService.executeCapabilityCommand(command.deviceId, command.capabilityId, command.value))) {
 				return false;
 			}
@@ -381,63 +403,62 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 		return true;
 	}
 
-	private prepareThermostatModeCommands(
+	private groupThermostatModeCommands(
 		updates: readonly PreparedThermostatModeUpdate[],
-	): PreparedHomeyCommand[] | null {
+	): PreparedThermostatModeCommand[] {
 		const groups = new Map<string, PreparedThermostatModeUpdate[]>();
 
 		for (const update of updates) {
-			const key = `${update.deviceId}\u0000${update.capability.id}`;
+			const key = `${update.deviceId}\u0000${update.capabilityId}`;
 			const group = groups.get(key) ?? [];
 			group.push(update);
 			groups.set(key, group);
 		}
 
-		const commands: PreparedHomeyCommand[] = [];
+		return [...groups.values()].map((group) => ({
+			deviceId: group[0].deviceId,
+			capabilityId: group[0].capabilityId,
+			updates: group,
+		}));
+	}
 
-		for (const group of groups.values()) {
-			const first = group[0];
-			const current = homeyThermostatModeToStates(first.capability.value);
-			let heaterOn = current?.heaterOn;
-			let coolerOn = current?.coolerOn;
+	private deriveThermostatModeValue(
+		capability: HomeyCapability,
+		updates: readonly PreparedThermostatModeUpdate[],
+	): HomeyCapabilityValue | undefined {
+		const current = homeyThermostatModeToStates(capability.value);
+		let heaterOn = current?.heaterOn;
+		let coolerOn = current?.coolerOn;
 
-			for (const update of group) {
-				if (update.writeStrategy === 'thermostat_heater_mode') {
-					heaterOn = update.value;
-				} else if (update.writeStrategy === 'thermostat_cooler_mode') {
-					coolerOn = update.value;
-				}
+		for (const update of updates) {
+			if (update.writeStrategy === 'thermostat_heater_mode') {
+				heaterOn = update.value;
+			} else if (update.writeStrategy === 'thermostat_cooler_mode') {
+				coolerOn = update.value;
 			}
-
-			if (heaterOn === undefined || coolerOn === undefined) {
-				this.logCommandFailure(
-					'thermostat-mode-unavailable',
-					'Homey thermostat mode cannot be combined with an unknown current mode',
-				);
-
-				return null;
-			}
-
-			const mode = homeyThermostatStatesToMode(first.capability, heaterOn, coolerOn);
-
-			if (mode === null || !validateHomeyCapabilityCommandValue(first.capability, mode).valid) {
-				this.logCommandFailure(
-					'thermostat-mode-unsupported',
-					'Homey thermostat does not support the requested configured mode',
-				);
-
-				return null;
-			}
-
-			commands.push({
-				deviceId: first.deviceId,
-				capability: first.capability,
-				capabilityId: first.capability.id,
-				value: mode,
-			});
 		}
 
-		return commands;
+		if (heaterOn === undefined || coolerOn === undefined) {
+			this.logCommandFailure(
+				'thermostat-mode-unavailable',
+				'Homey thermostat mode cannot be combined with an unknown current mode',
+			);
+
+			return undefined;
+		}
+
+		const mode = homeyThermostatStatesToMode(capability, heaterOn, coolerOn);
+
+		if (mode === null || !validateHomeyCapabilityCommandValue(capability, mode).valid) {
+			this.logCommandFailure(
+				'thermostat-mode-unsupported',
+				'Homey thermostat does not support the requested configured mode',
+			);
+
+			return undefined;
+		}
+
+		return mode;
 	}
 
 	private coalesceThermostatTargetCommands(commands: readonly PreparedHomeyCommand[]): PreparedHomeyCommand[] | null {

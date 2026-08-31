@@ -9,7 +9,12 @@ import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } fro
 import { HomeyMappingLoaderService } from '../mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from '../mappings/mapping-transformer.service';
 import { HomeyTransformDefinition, ResolvedHomeyPropertyMapping } from '../mappings/mapping.types';
-import { HomeyCapabilityType, HomeyCapabilityValue, createHomeyCapability } from '../models/homey-capability.model';
+import {
+	HomeyCapability,
+	HomeyCapabilityType,
+	HomeyCapabilityValue,
+	createHomeyCapability,
+} from '../models/homey-capability.model';
 import { HomeyDevice } from '../models/homey-device.model';
 import { HomeyService } from '../services/homey.service';
 
@@ -354,6 +359,52 @@ function thermostatEntities(loader: HomeyMappingLoaderService) {
 	return { upstream, device, heater, cooler, heaterOn, coolerOn, heaterTarget, coolerTarget };
 }
 
+function queuedHomeyService(upstream: HomeyDevice) {
+	const derivedWrites: HomeyCapabilityValue[] = [];
+	let tail: Promise<void> = Promise.resolve();
+	const executeDerivedCapabilityCommand = jest.fn(
+		(
+			_deviceId: string,
+			capabilityId: string,
+			deriveValue: (capability: HomeyCapability) => HomeyCapabilityValue | undefined,
+		): Promise<boolean> => {
+			const result: Promise<boolean> = tail.then((): boolean => {
+				const capability = upstream.capabilities.find((candidate) => candidate.id === capabilityId);
+
+				if (capability === undefined) {
+					return false;
+				}
+
+				const value = deriveValue(capability);
+
+				if (value === undefined) {
+					return false;
+				}
+
+				derivedWrites.push(value);
+				Object.assign(capability, { value });
+
+				return true;
+			});
+			tail = result.then(
+				(): void => undefined,
+				(): void => undefined,
+			);
+
+			return result;
+		},
+	);
+
+	return {
+		derivedWrites,
+		homeyService: {
+			getInventorySnapshot: jest.fn().mockReturnValue([upstream]),
+			executeCapabilityCommand: jest.fn().mockResolvedValue(true),
+			executeDerivedCapabilityCommand,
+		},
+	};
+}
+
 describe('HomeyDevicePlatform', () => {
 	it('reports the bounded sequential command window for intent TTL selection', () => {
 		const platform = new HomeyDevicePlatform(
@@ -448,10 +499,7 @@ describe('HomeyDevicePlatform', () => {
 		const loader = new HomeyMappingLoaderService();
 		loader.loadAllMappings();
 		const target = thermostatEntities(loader);
-		const homeyService = {
-			getInventorySnapshot: jest.fn().mockReturnValue([target.upstream]),
-			executeCapabilityCommand: jest.fn().mockResolvedValue(true),
-		};
+		const { homeyService, derivedWrites } = queuedHomeyService(target.upstream);
 		const platform = new HomeyDevicePlatform(
 			homeyService as unknown as HomeyService,
 			loader,
@@ -464,18 +512,15 @@ describe('HomeyDevicePlatform', () => {
 				{ device: target.device, channel: target.cooler, property: target.coolerOn, value: true },
 			]),
 		).resolves.toBe(true);
-		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledTimes(1);
-		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'thermostat_mode', 'auto');
+		expect(homeyService.executeDerivedCapabilityCommand).toHaveBeenCalledTimes(1);
+		expect(derivedWrites).toStrictEqual(['auto']);
 	});
 
 	it('combines a single thermostat mode update with the authoritative current mode', async () => {
 		const loader = new HomeyMappingLoaderService();
 		loader.loadAllMappings();
 		const target = thermostatEntities(loader);
-		const homeyService = {
-			getInventorySnapshot: jest.fn().mockReturnValue([target.upstream]),
-			executeCapabilityCommand: jest.fn().mockResolvedValue(true),
-		};
+		const { homeyService, derivedWrites } = queuedHomeyService(target.upstream);
 		const platform = new HomeyDevicePlatform(
 			homeyService as unknown as HomeyService,
 			loader,
@@ -485,7 +530,40 @@ describe('HomeyDevicePlatform', () => {
 		await expect(
 			platform.process({ device: target.device, channel: target.cooler, property: target.coolerOn, value: true }),
 		).resolves.toBe(true);
-		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'thermostat_mode', 'auto');
+		expect(derivedWrites).toStrictEqual(['auto']);
+	});
+
+	it('derives overlapping thermostat mode updates inside the serialized capability command', async () => {
+		const loader = new HomeyMappingLoaderService();
+		loader.loadAllMappings();
+		const target = thermostatEntities(loader);
+		const modeCapability = target.upstream.capabilities.find((candidate) => candidate.id === 'thermostat_mode');
+		expect(modeCapability).toBeDefined();
+		Object.assign(modeCapability, { value: 'off' });
+		const { homeyService, derivedWrites } = queuedHomeyService(target.upstream);
+		const platform = new HomeyDevicePlatform(
+			homeyService as unknown as HomeyService,
+			loader,
+			new HomeyMappingTransformerService(),
+		);
+
+		await expect(
+			Promise.all([
+				platform.process({
+					device: target.device,
+					channel: target.heater,
+					property: target.heaterOn,
+					value: true,
+				}),
+				platform.process({
+					device: target.device,
+					channel: target.cooler,
+					property: target.coolerOn,
+					value: true,
+				}),
+			]),
+		).resolves.toStrictEqual([true, true]);
+		expect(derivedWrites).toStrictEqual(['heat', 'auto']);
 	});
 
 	it('coalesces equal targets and projects a dual-setpoint range onto the shared Homey target', async () => {

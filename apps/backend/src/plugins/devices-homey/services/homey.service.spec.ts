@@ -20,7 +20,12 @@ import {
 } from '../errors/homey-connector.error';
 import { HomeyInventoryUnavailableError } from '../errors/homey-inventory.error';
 import { HomeyConfigModel } from '../models/config.model';
-import { HomeyCapabilityType, createHomeyCapability } from '../models/homey-capability.model';
+import {
+	HomeyCapability,
+	HomeyCapabilityType,
+	HomeyCapabilityValue,
+	createHomeyCapability,
+} from '../models/homey-capability.model';
 import { HomeyDevice } from '../models/homey-device.model';
 import { HomeyEvent, HomeyEventType } from '../models/homey-event.model';
 import { HomeySystemInfo } from '../models/homey-system-info.model';
@@ -1405,6 +1410,77 @@ describe('HomeyService', () => {
 		});
 		await jest.advanceTimersByTimeAsync(0);
 
+		await expect(second).resolves.toBe(true);
+		await service.stop();
+	});
+
+	it('derives queued capability writes from the latest accepted state', async () => {
+		const thermostat = {
+			...staleDevice,
+			capabilities: [
+				createHomeyCapability({
+					id: 'thermostat_mode',
+					title: 'Thermostat mode',
+					value: 'off',
+					type: HomeyCapabilityType.ENUM,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [
+						{ id: 'off', title: 'Off' },
+						{ id: 'heat', title: 'Heat' },
+						{ id: 'auto', title: 'Auto' },
+					],
+					readable: true,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		};
+		connector.getDevices.mockResolvedValue([thermostat]);
+		await service.start();
+		connector.setCapabilityValue.mockClear();
+		const observed: HomeyCapabilityValue[] = [];
+		const derive = (capability: HomeyCapability): HomeyCapabilityValue => {
+			observed.push(capability.value);
+
+			return capability.value === 'off' ? 'heat' : 'auto';
+		};
+		const first = service.executeDerivedCapabilityCommand(staleDevice.id, 'thermostat_mode', derive);
+		const second = service.executeDerivedCapabilityCommand(staleDevice.id, 'thermostat_mode', derive);
+		await flushMicrotasks();
+
+		expect(connector.setCapabilityValue.mock.calls).toEqual([[staleDevice.id, 'thermostat_mode', 'heat']]);
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'thermostat_mode',
+			value: 'heat',
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 1,
+		});
+		await jest.advanceTimersByTimeAsync(0);
+		await expect(first).resolves.toBe(true);
+		await flushMicrotasks();
+
+		expect(observed).toStrictEqual(['off', 'heat']);
+		expect(connector.setCapabilityValue.mock.calls).toEqual([
+			[staleDevice.id, 'thermostat_mode', 'heat'],
+			[staleDevice.id, 'thermostat_mode', 'auto'],
+		]);
+		void listener?.({
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: staleDevice.id,
+			capabilityId: 'thermostat_mode',
+			value: 'auto',
+			lastUpdatedAt: null,
+			occurredAt: null,
+			sequence: 2,
+		});
+		await jest.advanceTimersByTimeAsync(0);
 		await expect(second).resolves.toBe(true);
 		await service.stop();
 	});
