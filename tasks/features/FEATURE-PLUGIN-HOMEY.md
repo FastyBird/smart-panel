@@ -20,7 +20,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 
 - Approved design: `docs/superpowers/specs/2026-08-12-homey-integration-design.md`
 - Detailed execution plan: `docs/superpowers/plans/2026-08-12-homey-integration.md`
-- The first release targets Homey Self-Hosted Server (SHS) and compatible Homey Pro local APIs.
+- The completed first release targets Homey Self-Hosted Server (SHS) over its local HTTP API.
 - Homey Cloud is unsupported because its Web API authorization is partner-only and Smart Panel does not depend on a hosted bridge.
 - The current one-month SHS subscription must be used first for compatibility validation and sanitized fixture capture.
 - Home Assistant provides the closest backend reference for discovery, mapping preview, adoption, synchronization, and command routing:
@@ -43,7 +43,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 ### In scope — Phase 1 local MVP
 
 - One backend `devices-homey` plugin with a transport-independent connector contract.
-- Local SHS/Homey Pro connector using URL and API key.
+- Local Homey SHS connector using URL and API key.
 - Generic write-only config-secret handling so credentials cannot be returned by config endpoints.
 - Plugin lifecycle, health states, timeouts, reconnect backoff, event subscriptions, and reconciliation fallback.
 - Normalized Homey device, zone, capability, and event models.

@@ -2,7 +2,7 @@
 	"config": {
 		"local": {
 			"title": "Lokale Homey-Verbindung",
-			"description": "Direkte Verbindung mit einem Homey Pro im lokalen Netzwerk für minimale Latenz. URL und API-Schlüssel hier konfigurieren; der Schlüssel wird nach dem Speichern nicht mehr angezeigt."
+			"description": "Direkte Verbindung mit Homey Self-Hosted Server im lokalen Netzwerk. URL und API-Schlüssel hier konfigurieren; der Schlüssel wird nach dem Speichern nicht mehr angezeigt."
 		},
 		"enabled": "Aktiviert",
 		"url": {

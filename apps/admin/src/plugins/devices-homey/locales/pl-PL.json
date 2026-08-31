@@ -2,7 +2,7 @@
 	"config": {
 		"local": {
 			"title": "Lokalne połączenie Homey",
-			"description": "Połącz się bezpośrednio z Homey Pro w sieci lokalnej, aby uzyskać najniższe opóźnienie. Ustaw tutaj adres i klucz API tylko do zapisu; Smart Panel musi mieć dostęp do Homey."
+			"description": "Połącz się bezpośrednio z Homey Self-Hosted Server w sieci lokalnej. Ustaw tutaj adres i klucz API tylko do zapisu; Smart Panel musi mieć dostęp do Homey."
 		},
 		"enabled": "Włączone",
 		"url": {

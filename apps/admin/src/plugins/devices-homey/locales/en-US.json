@@ -2,7 +2,7 @@
 	"config": {
 		"local": {
 			"title": "Local Homey connection",
-			"description": "Connect directly to a Homey Pro on the local network for the lowest latency. Configure the URL and write-only API key here; Smart Panel must be able to reach Homey."
+			"description": "Connect directly to Homey Self-Hosted Server on the local network. Configure the URL and write-only API key here; Smart Panel must be able to reach Homey."
 		},
 		"enabled": "Enabled",
 		"url": {

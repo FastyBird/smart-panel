@@ -108,7 +108,7 @@ inventory, event, command, lifecycle, credential, recovery, and shutdown matrix 
 HTTPS remain pending.
 
 - **Protocol**: Local HTTP(S) with Socket.IO events
-- **Targets**: Directly reachable Homey Pro and Homey Self-Hosted Server instances
+- **Targets**: Directly reachable Homey Self-Hosted Server instances over HTTP
 - **Features**:
   - Manual server configuration with a write-only, least-privilege API key
   - Authenticated logical-device inventory and reviewed batch adoption
