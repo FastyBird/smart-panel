@@ -4,11 +4,6 @@
 			"title": "Lokálne pripojenie Homey",
 			"description": "Pripojte sa priamo k Homey Pro v lokálnej sieti s najnižšou latenciou. Tu nastavte URL a API kľúč iba na zápis; Smart Panel musí mať k Homey prístup."
 		},
-		"cloud": {
-			"title": "Pripojenie Homey Cloud",
-			"description": "Pripojte sa cez Homey Cloud, keď nie je dostupná priama sieťová cesta. Zaregistrujte OAuth klienta v Homey a jeho údaje uložte tu; tajomstvo je iba na zápis."
-		},
-		"mode": { "label": "Režim pripojenia", "local": "Lokálne", "cloud": "Cloud", "cloudUnavailable": "Pripravujeme" },
 		"enabled": "Povolené",
 		"url": {
 			"label": "URL lokálneho API",
@@ -22,25 +17,6 @@
 			"required": "Pred povolením integrácie zadajte alebo ponechajte kľúč API Homey",
 			"invalid": "Zadajte neprázdny kľúč API alebo náhradný kľúč odstráňte"
 		},
-		"cloudClientId": {
-			"label": "ID klienta Homey Cloud",
-			"placeholder": "Zadajte ID klienta OAuth",
-			"required": "Zadajte ID klienta Homey Cloud"
-		},
-		"cloudClientSecret": {
-			"label": "Tajomstvo klienta Homey Cloud",
-			"placeholder": "Zadajte nové tajomstvo na nahradenie uloženého",
-			"required": "Zadajte alebo ponechajte tajomstvo klienta Homey Cloud",
-			"invalid": "Zadajte neprázdne tajomstvo klienta alebo náhradu odstráňte"
-		},
-		"cloudRedirectUrl": {
-			"label": "Adresa presmerovania Homey Cloud",
-			"placeholder": "https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback",
-			"description": "Zaregistrujte túto presnú adresu ako OAuth callback v portáli Homey Developer.",
-			"recommendation": "Uložený callback používa iný pôvod. Callback pre túto adresu administrácie je {url}",
-			"useCurrentAdmin": "Použiť aktuálnu adresu administrácie",
-			"invalid": "Zadajte presnú registrovanú HTTPS adresu; HTTP je povolené iba na localhoste"
-		},
 		"connectionTimeout": "Časový limit pripojenia (ms)",
 		"reconciliationInterval": "Interval synchronizácie inventára (ms)",
 		"validation": {
@@ -49,25 +25,6 @@
 			"reconciliationIntervalRequired": "Interval synchronizácie inventára je povinný",
 			"reconciliationIntervalRange": "Interval synchronizácie inventára musí byť medzi {min} a {max} ms"
 		}
-	},
-	"cloudAuthorization": {
-		"title": "Autorizácia Homey Cloud",
-		"description": "Autorizujte Smart Panel v Homey a ak máte viac jednotiek, vyberte tú, ktorú má zobrazovať a ovládať.",
-		"status": "Autorizácia",
-		"connected": "Pripojené",
-		"disconnected": "Nepripojené",
-		"unknown": "Stav nie je známy",
-		"connect": "Pripojiť Homey Cloud",
-		"reconnect": "Pripojiť znova",
-		"disconnect": "Odpojiť",
-		"disconnectConfirm": "Odpojiť Homey Cloud a odstrániť uložené OAuth údaje?",
-		"saveCloudModeFirst": "Pred začatím autorizácie Homey uložte režim cloud.",
-		"saveConfigurationFirst": "Pred spustením autorizácie uložte konfiguráciu Homey Cloud.",
-		"selectDescription": "Vyberte Homey, ktoré má Smart Panel používať.",
-		"selectPlaceholder": "Vyberte Homey",
-		"select": "Použiť vybrané Homey",
-		"cancel": "Zrušiť autorizáciu",
-		"requestFailed": "Požiadavku autorizácie Homey Cloud sa nepodarilo dokončiť."
 	},
 	"status": {
 		"title": "Stav pripojenia",
@@ -93,8 +50,8 @@
 			"error": "Chyba"
 		},
 		"guidance": {
-			"authentication": "Obnovte autorizáciu Homey Cloud alebo nahraďte uložený lokálny API kľúč a pripojenie znova otestujte.",
-			"authorization": "Overte, že cloudová autorizácia alebo lokálny API kľúč majú potrebné oprávnenia Homey na čítanie a ovládanie.",
+			"authentication": "Nahraďte uložený lokálny API kľúč a pripojenie znova otestujte.",
+			"authorization": "Overte, že lokálny API kľúč má potrebné oprávnenia Homey na čítanie a ovládanie.",
 			"timeout": "Skontrolujte adresu Homey, sieťovú cestu a časový limit pripojenia.",
 			"unavailable": "Skontrolujte, či je Homey spustené a dostupné zo Smart Panelu.",
 			"protocol": "Overte, že nakonfigurovaný koncový bod je kompatibilné lokálne API Homey.",
@@ -104,10 +61,10 @@
 	},
 	"connectionTest": {
 		"title": "Test pripojenia",
-		"description": "Otestujte vybrané pripojenie uložené na serveri. V lokálnom režime možno tiež otestovať úplnú URL a nový kľúč zadané vyššie.",
+		"description": "Otestujte lokálne pripojenie uložené na serveri alebo úplnú URL a nový kľúč zadané vyššie.",
 		"saved": "Otestovať uložené nastavenie",
 		"candidate": "Otestovať zadanú URL a kľúč",
-		"savedUnavailable": "Pred testom uložte a dokončite nastavenie vybraného režimu pripojenia.",
+		"savedUnavailable": "Pred testom uložte a dokončite nastavenie lokálneho pripojenia.",
 		"candidateUnavailable": "Na test neuloženého nastavenia zadajte platnú URL aj nový kľúč API.",
 		"success": "Pripojenie k Homey bolo úspešné",
 		"successDescription": "Pripojené k {identity}.",
@@ -115,20 +72,37 @@
 		"failureFallback": "Homey test pripojenia odmietlo.",
 		"requestFailed": "Požiadavku na test pripojenia sa nepodarilo dokončiť."
 	},
-	"messages": { "config": { "updated": "Nastavenie Homey bolo aktualizované", "updateFailed": "Nastavenie Homey sa nepodarilo aktualizovať" } },
+	"messages": {
+		"config": {
+			"updated": "Nastavenie Homey bolo aktualizované",
+			"updateFailed": "Nastavenie Homey sa nepodarilo aktualizovať"
+		}
+	},
 	"wizard": {
 		"title": "Pridať zariadenia Homey",
 		"subtitle": "Vyberte podporované zariadenia z pripojeného Homey",
 		"breadcrumb": "Homey",
-		"columns": { "identifier": "ID zariadenia Homey", "class": "Trieda", "zone": "Zóna", "capabilities": "Funkcie", "mapping": "Mapovanie" },
+		"columns": {
+			"identifier": "ID zariadenia Homey",
+			"class": "Trieda",
+			"zone": "Zóna",
+			"capabilities": "Funkcie",
+			"mapping": "Mapovanie"
+		},
 		"values": {
 			"noZone": "Bez zóny",
 			"capabilities": "Počet funkcií: {count}",
 			"mappingSummary": "{channels} kanálov · {properties} vlastností",
 			"mappingWarnings": "Počet upozornení mapovania: {count}"
 		},
-		"statuses": { "unavailable": "V Homey nie je dostupné", "needsAttention": "Skontrolujte mapovanie zariadenia Homey" },
-		"actions": { "refresh": "Obnoviť inventár", "openConfig": "Otvoriť nastavenie Homey" },
+		"statuses": {
+			"unavailable": "V Homey nie je dostupné",
+			"needsAttention": "Skontrolujte mapovanie zariadenia Homey"
+		},
+		"actions": {
+			"refresh": "Obnoviť inventár",
+			"openConfig": "Otvoriť nastavenie Homey"
+		},
 		"errors": {
 			"inventory": "Inventár Homey sa nepodarilo načítať",
 			"adoption": "Vybrané zariadenia Homey sa nepodarilo pridať",

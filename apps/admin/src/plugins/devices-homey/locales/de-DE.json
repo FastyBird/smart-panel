@@ -4,11 +4,6 @@
 			"title": "Lokale Homey-Verbindung",
 			"description": "Direkte Verbindung mit einem Homey Pro im lokalen Netzwerk für minimale Latenz. URL und API-Schlüssel hier konfigurieren; der Schlüssel wird nach dem Speichern nicht mehr angezeigt."
 		},
-		"cloud": {
-			"title": "Homey-Cloud-Verbindung",
-			"description": "Verbindung über Homey Cloud, wenn kein direkter Netzwerkzugriff möglich ist. Einen OAuth-Client bei Homey registrieren und seine Daten hier speichern; das Secret wird nach dem Speichern nicht mehr angezeigt."
-		},
-		"mode": { "label": "Verbindungsmodus", "local": "Lokal", "cloud": "Cloud", "cloudUnavailable": "Demnächst" },
 		"enabled": "Aktiviert",
 		"url": {
 			"label": "Lokale API-URL",
@@ -22,25 +17,6 @@
 			"required": "Geben Sie einen Homey-API-Schlüssel ein oder behalten Sie ihn bei, bevor Sie die Integration aktivieren",
 			"invalid": "Geben Sie einen nicht leeren API-Schlüssel ein oder entfernen Sie den Ersatz"
 		},
-		"cloudClientId": {
-			"label": "Homey-Cloud-Client-ID",
-			"placeholder": "OAuth-Client-ID eingeben",
-			"required": "Homey-Cloud-Client-ID eingeben"
-		},
-		"cloudClientSecret": {
-			"label": "Homey-Cloud-Client-Secret",
-			"placeholder": "Neues Secret eingeben, um das gespeicherte zu ersetzen",
-			"required": "Homey-Cloud-Client-Secret eingeben oder beibehalten",
-			"invalid": "Ein nicht leeres Client-Secret eingeben oder den Ersatz entfernen"
-		},
-		"cloudRedirectUrl": {
-			"label": "Homey-Cloud-Weiterleitungs-URL",
-			"placeholder": "https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback",
-			"description": "Diese exakte URL im Homey-Developer-Portal als OAuth-Callback registrieren.",
-			"recommendation": "Der gespeicherte Callback verwendet einen anderen Ursprung. Der Callback für diese Admin-Adresse ist {url}",
-			"useCurrentAdmin": "Aktuelle Admin-Adresse verwenden",
-			"invalid": "Die exakt registrierte HTTPS-Callback-URL eingeben; HTTP ist nur auf localhost erlaubt"
-		},
 		"connectionTimeout": "Verbindungszeitlimit (ms)",
 		"reconciliationInterval": "Inventarabgleichsintervall (ms)",
 		"validation": {
@@ -49,25 +25,6 @@
 			"reconciliationIntervalRequired": "Das Inventarabgleichsintervall ist erforderlich",
 			"reconciliationIntervalRange": "Das Inventarabgleichsintervall muss zwischen {min} und {max} ms liegen"
 		}
-	},
-	"cloudAuthorization": {
-		"title": "Homey-Cloud-Autorisierung",
-		"description": "Autorisieren Sie Smart Panel bei Homey und wählen Sie bei mehreren Geräten das zu verwendende Homey aus.",
-		"status": "Autorisierung",
-		"connected": "Verbunden",
-		"disconnected": "Nicht verbunden",
-		"unknown": "Status unbekannt",
-		"connect": "Homey Cloud verbinden",
-		"reconnect": "Neu verbinden",
-		"disconnect": "Trennen",
-		"disconnectConfirm": "Homey Cloud trennen und gespeicherte OAuth-Zugangsdaten entfernen?",
-		"saveCloudModeFirst": "Speichern Sie zuerst den Cloud-Modus, bevor Sie Homey autorisieren.",
-		"saveConfigurationFirst": "Speichern Sie die Homey-Cloud-Konfiguration, bevor Sie die Autorisierung starten.",
-		"selectDescription": "Wählen Sie das Homey aus, das Smart Panel verwenden soll.",
-		"selectPlaceholder": "Homey auswählen",
-		"select": "Ausgewähltes Homey verwenden",
-		"cancel": "Autorisierung abbrechen",
-		"requestFailed": "Die Homey-Cloud-Autorisierung konnte nicht abgeschlossen werden."
 	},
 	"status": {
 		"title": "Verbindungsstatus",
@@ -93,8 +50,8 @@
 			"error": "Fehler"
 		},
 		"guidance": {
-			"authentication": "Verbinden Sie Homey Cloud erneut oder ersetzen Sie den lokalen API-Schlüssel und testen Sie die Verbindung erneut.",
-			"authorization": "Prüfen Sie, ob Cloud-Autorisierung oder lokaler API-Schlüssel die erforderlichen Homey-Lese- und Steuerberechtigungen haben.",
+			"authentication": "Ersetzen Sie den gespeicherten lokalen API-Schlüssel und testen Sie die Verbindung erneut.",
+			"authorization": "Prüfen Sie, ob der lokale API-Schlüssel die erforderlichen Homey-Lese- und Steuerberechtigungen hat.",
 			"timeout": "Prüfen Sie Homey-Adresse, Netzwerkpfad und Verbindungszeitlimit.",
 			"unavailable": "Prüfen Sie, ob Homey läuft und vom Smart Panel erreichbar ist.",
 			"protocol": "Stellen Sie sicher, dass der konfigurierte Endpunkt eine kompatible lokale Homey-API ist.",
@@ -104,10 +61,10 @@
 	},
 	"connectionTest": {
 		"title": "Verbindung testen",
-		"description": "Testen Sie die gespeicherte ausgewählte Verbindung. Im lokalen Modus können auch die vollständige URL und der neue Schlüssel getestet werden.",
+		"description": "Testen Sie die gespeicherte lokale Verbindung oder die vollständige URL und den oben eingegebenen neuen Schlüssel.",
 		"saved": "Gespeicherte Konfiguration testen",
 		"candidate": "Eingegebene URL und Schlüssel testen",
-		"savedUnavailable": "Speichern und vervollständigen Sie den ausgewählten Verbindungsmodus vor dem Test.",
+		"savedUnavailable": "Speichern und vervollständigen Sie die lokale Verbindung vor dem Test.",
 		"candidateUnavailable": "Geben Sie eine gültige URL und einen neuen API-Schlüssel ein, um ungespeicherte Einstellungen zu testen.",
 		"success": "Homey-Verbindung erfolgreich",
 		"successDescription": "Verbunden mit {identity}.",
@@ -116,21 +73,36 @@
 		"requestFailed": "Die Anfrage für den Verbindungstest konnte nicht abgeschlossen werden."
 	},
 	"messages": {
-		"config": { "updated": "Homey-Konfiguration wurde aktualisiert", "updateFailed": "Homey-Konfiguration konnte nicht aktualisiert werden" }
+		"config": {
+			"updated": "Homey-Konfiguration wurde aktualisiert",
+			"updateFailed": "Homey-Konfiguration konnte nicht aktualisiert werden"
+		}
 	},
 	"wizard": {
 		"title": "Homey-Geräte hinzufügen",
 		"subtitle": "Unterstützte Geräte aus dem verbundenen Homey-Inventar auswählen",
 		"breadcrumb": "Homey",
-		"columns": { "identifier": "Homey-Geräte-ID", "class": "Klasse", "zone": "Zone", "capabilities": "Funktionen", "mapping": "Zuordnung" },
+		"columns": {
+			"identifier": "Homey-Geräte-ID",
+			"class": "Klasse",
+			"zone": "Zone",
+			"capabilities": "Funktionen",
+			"mapping": "Zuordnung"
+		},
 		"values": {
 			"noZone": "Keine Zone",
 			"capabilities": "{count} Funktionen",
 			"mappingSummary": "{channels} Kanäle · {properties} Eigenschaften",
 			"mappingWarnings": "{count} Zuordnungswarnungen"
 		},
-		"statuses": { "unavailable": "In Homey nicht verfügbar", "needsAttention": "Homey-Gerätezuordnung prüfen" },
-		"actions": { "refresh": "Inventar aktualisieren", "openConfig": "Homey-Konfiguration öffnen" },
+		"statuses": {
+			"unavailable": "In Homey nicht verfügbar",
+			"needsAttention": "Homey-Gerätezuordnung prüfen"
+		},
+		"actions": {
+			"refresh": "Inventar aktualisieren",
+			"openConfig": "Homey-Konfiguration öffnen"
+		},
 		"errors": {
 			"inventory": "Das Homey-Inventar konnte nicht geladen werden",
 			"adoption": "Die ausgewählten Homey-Geräte konnten nicht hinzugefügt werden",

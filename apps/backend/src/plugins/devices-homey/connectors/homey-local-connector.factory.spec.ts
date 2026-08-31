@@ -1,5 +1,3 @@
-import { HomeyConnectionMode } from '../devices-homey.constants';
-
 import { HomeyLocalConnectorFactory } from './homey-local-connector.factory';
 import { HomeyLocalConnector } from './homey-local.connector';
 import { HomeySdkClientFactory } from './homey-sdk.client';
@@ -10,7 +8,6 @@ describe('HomeyLocalConnectorFactory', () => {
 		const sdkFactory: HomeySdkClientFactory = { createLocalApi };
 		const factory = new HomeyLocalConnectorFactory(sdkFactory);
 		const config = {
-			mode: HomeyConnectionMode.LOCAL,
 			url: 'http://homey.invalid:4859',
 			apiKey: 'sentinel-api-key',
 			connectionTimeout: 1000,

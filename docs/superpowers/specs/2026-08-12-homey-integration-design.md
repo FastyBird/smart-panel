@@ -14,7 +14,7 @@
 
 Add Homey as a native Smart Panel device provider. Users connect a Homey instance, inspect the logical devices that Homey already manages, adopt selected devices into Smart Panel, receive live capability updates, and control supported capabilities from the existing Smart Panel interfaces.
 
-The first release targets Homey Self-Hosted Server (SHS) and compatible Homey Pro local APIs. A later connector adds Homey Cloud without duplicating mapping, adoption, synchronization, or control logic.
+The integration targets Homey Self-Hosted Server (SHS) and compatible Homey Pro local APIs.
 
 ## Product Decision
 
@@ -27,11 +27,12 @@ Homey is a provider integration, comparable to Home Assistant, Shelly, and Zigbe
 - Smart Panel control requests are translated into Homey capability writes.
 - Deleting or disabling the Smart Panel integration never deletes or unpairs anything in Homey.
 
-Local and cloud access are transport variants of one plugin, not separate provider plugins.
+Homey Cloud is not supported. Homey's Web API authorization is partner-only, and requiring a hosted Smart Panel bridge
+would conflict with the project's independent, self-hosted architecture.
 
 ## Release Boundaries
 
-### Phase 1 — Local MVP
+### Local MVP
 
 - Homey Self-Hosted Server using its LAN address and an API key.
 - Homey Pro local API where the same authentication and API behavior is verified.
@@ -43,16 +44,6 @@ Local and cloud access are transport variants of one plugin, not separate provid
 - Control of mapped writable capabilities.
 - Admin configuration and health/status surfaces.
 - Fixture-backed tests that remain usable after the one-month SHS subscription ends.
-
-### Phase 2 — Homey Cloud
-
-- Athom OAuth client registration and authorization-code flow.
-- Home selection for accounts with more than one Homey.
-- Cloud connector using the same normalized models and downstream services.
-- Token refresh, revocation, and reconnect behavior.
-- Deployment documentation for redirect URIs and Athom approval or user-limit requirements.
-
-Cloud support must not delay the local MVP.
 
 ## Non-Goals
 
@@ -68,9 +59,7 @@ Cloud support must not delay the local MVP.
 
 ### Configure
 
-The admin plugin form lets an administrator choose `Local` or, after Phase 2, `Cloud`.
-
-Local configuration contains:
+The admin plugin form lets an administrator configure the local Homey connection:
 
 - Base URL, for example `http://192.168.1.20:4859`.
 - API key, accepted only on write and never returned in plaintext.
@@ -113,9 +102,7 @@ Once adopted, a Homey device behaves like any other Smart Panel device:
 ```mermaid
 flowchart LR
     HL["Homey Local / SHS"] --> CL["Local connector"]
-    HC["Homey Cloud"] --> CC["Cloud connector (Phase 2)"]
     CL --> NC["HomeyConnector contract"]
-    CC --> NC
     NC --> NM["Normalized device/capability model"]
     NM --> MP["YAML mapping registry"]
     MP --> PW["Preview + generic adoption wizard"]
@@ -142,14 +129,18 @@ All transport-specific behavior is hidden behind a narrow interface. The exact T
 
 ```typescript
 interface HomeyConnector {
-	connect(): Promise<void>;
-	disconnect(): Promise<void>;
-	getSystemInfo(): Promise<HomeySystemInfo>;
-	getZones(): Promise<HomeyZone[]>;
-	getDevices(): Promise<HomeyDevice[]>;
-	getDevice(deviceId: string): Promise<HomeyDevice | null>;
-	setCapabilityValue(deviceId: string, capabilityId: string, value: unknown): Promise<void>;
-	subscribe(listener: HomeyEventListener): Promise<() => Promise<void> | void>;
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
+  getSystemInfo(): Promise<HomeySystemInfo>;
+  getZones(): Promise<HomeyZone[]>;
+  getDevices(): Promise<HomeyDevice[]>;
+  getDevice(deviceId: string): Promise<HomeyDevice | null>;
+  setCapabilityValue(
+    deviceId: string,
+    capabilityId: string,
+    value: unknown,
+  ): Promise<void>;
+  subscribe(listener: HomeyEventListener): Promise<() => Promise<void> | void>;
 }
 ```
 
@@ -245,22 +236,22 @@ Descriptors match primarily on Homey class and capability base IDs. Vendor/drive
 
 The MVP mapping catalog targets:
 
-| Homey capabilities | Smart Panel behavior |
-|---|---|
-| `onoff` | switch/light/outlet power state and command |
-| `dim` | normalized brightness |
-| `light_hue`, `light_saturation` | color control |
-| `light_temperature` | color-temperature control with verified range conversion |
-| `measure_temperature`, `target_temperature` | temperature sensor/setpoint |
-| `measure_humidity` | humidity sensor |
-| `alarm_motion`, `alarm_contact` | motion/contact sensor |
-| `alarm_smoke`, `alarm_co`, `measure_co2` | safety/air-quality sensor |
-| `measure_power`, `meter_power` | instantaneous power and accumulated energy |
-| `measure_battery`, `alarm_battery` | battery level/low-battery state |
-| `locked` | lock state and command where writable |
-| `windowcoverings_state`, `windowcoverings_set`, `windowcoverings_tilt_set` | cover state, position, tilt, and commands |
-| thermostat mode capabilities | supported enum modes after fixture verification |
-| `measure_pressure`, `measure_luminance` | pressure and illuminance sensors |
+| Homey capabilities                                                         | Smart Panel behavior                                     |
+| -------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `onoff`                                                                    | switch/light/outlet power state and command              |
+| `dim`                                                                      | normalized brightness                                    |
+| `light_hue`, `light_saturation`                                            | color control                                            |
+| `light_temperature`                                                        | color-temperature control with verified range conversion |
+| `measure_temperature`, `target_temperature`                                | temperature sensor/setpoint                              |
+| `measure_humidity`                                                         | humidity sensor                                          |
+| `alarm_motion`, `alarm_contact`                                            | motion/contact sensor                                    |
+| `alarm_smoke`, `alarm_co`, `measure_co2`                                   | safety/air-quality sensor                                |
+| `measure_power`, `meter_power`                                             | instantaneous power and accumulated energy               |
+| `measure_battery`, `alarm_battery`                                         | battery level/low-battery state                          |
+| `locked`                                                                   | lock state and command where writable                    |
+| `windowcoverings_state`, `windowcoverings_set`, `windowcoverings_tilt_set` | cover state, position, tilt, and commands                |
+| thermostat mode capabilities                                               | supported enum modes after fixture verification          |
+| `measure_pressure`, `measure_luminance`                                    | pressure and illuminance sensors                         |
 
 Every mapping declares:
 
@@ -379,17 +370,17 @@ Concurrent commands to the same device/capability are serialized. A later comman
 
 The backend remains the OpenAPI source of truth. Proposed plugin routes, under the repository's actual API prefix, are:
 
-| Method | Path | Purpose |
-|---|---|---|
-| `GET` | `/plugins/devices-homey/status` | Connection and synchronization health |
-| `POST` | `/plugins/devices-homey/test-connection` | Validate either the fully saved configuration or a complete candidate URL/key pair without exposing the key |
-| `GET` | `/plugins/devices-homey/discovery` | Discover local Homey/SHS endpoints if supported |
-| `POST` | `/plugins/devices-homey/discovery` | Restart server discovery |
-| `GET` | `/plugins/devices-homey/devices` | List Homey devices with adoption status |
-| `GET` | `/plugins/devices-homey/devices/:deviceId` | Read one normalized device |
-| `POST` | `/plugins/devices-homey/mapping-preview` | Preview mapping for a device/category request |
-| `POST` | `/plugins/devices-homey/adopt` | Adopt one device |
-| `POST` | `/plugins/devices-homey/adopt/batch` | Adopt selected devices with per-device results |
+| Method | Path                                       | Purpose                                                                                                     |
+| ------ | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/plugins/devices-homey/status`            | Connection and synchronization health                                                                       |
+| `POST` | `/plugins/devices-homey/test-connection`   | Validate either the fully saved configuration or a complete candidate URL/key pair without exposing the key |
+| `GET`  | `/plugins/devices-homey/discovery`         | Discover local Homey/SHS endpoints if supported                                                             |
+| `POST` | `/plugins/devices-homey/discovery`         | Restart server discovery                                                                                    |
+| `GET`  | `/plugins/devices-homey/devices`           | List Homey devices with adoption status                                                                     |
+| `GET`  | `/plugins/devices-homey/devices/:deviceId` | Read one normalized device                                                                                  |
+| `POST` | `/plugins/devices-homey/mapping-preview`   | Preview mapping for a device/category request                                                               |
+| `POST` | `/plugins/devices-homey/adopt`             | Adopt one device                                                                                            |
+| `POST` | `/plugins/devices-homey/adopt/batch`       | Adopt selected devices with per-device results                                                              |
 
 Exact path naming should follow the closest current controller convention at implementation time. All actions require the standard tags, operations, response envelopes, validation, and authorization decorators.
 
@@ -551,16 +542,16 @@ These are engineering targets to validate, not contractual Homey latency guarant
 
 ## Risks and Mitigations
 
-| Risk | Mitigation |
-|---|---|
-| SHS API-key behavior differs from Homey Pro documentation | Compatibility spike before committing architecture; preserve sanitized fixtures |
-| SDK license or behavior is unsuitable | License review and strict connector boundary; documented HTTP/Socket.IO fallback |
-| Capability vocabulary is broad and vendor-extensible | Base-ID descriptors, full-ID persistence, warnings for unknown capabilities, iterative fixture catalog |
-| Socket events are missed during reconnect | Full reconciliation after reconnect and conservative periodic reconciliation |
-| API key leaks through generic config endpoints | Generic write-only secret handling is a Phase 1 release gate |
-| Cloud OAuth approval delays release | Ship local MVP independently; cloud is a second connector |
-| Upstream device removal causes destructive sync | Mark unavailable/orphaned; never automatically delete |
-| Expiring SHS subscription removes test access | Front-load lifecycle tests and sanitized fixture capture in the first three days |
+| Risk                                                      | Mitigation                                                                                             |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| SHS API-key behavior differs from Homey Pro documentation | Compatibility spike before committing architecture; preserve sanitized fixtures                        |
+| SDK license or behavior is unsuitable                     | License review and strict connector boundary; documented HTTP/Socket.IO fallback                       |
+| Capability vocabulary is broad and vendor-extensible      | Base-ID descriptors, full-ID persistence, warnings for unknown capabilities, iterative fixture catalog |
+| Socket events are missed during reconnect                 | Full reconciliation after reconnect and conservative periodic reconciliation                           |
+| API key leaks through generic config endpoints            | Generic write-only secret handling is a Phase 1 release gate                                           |
+| Cloud OAuth approval delays release                       | Ship local MVP independently; cloud is a second connector                                              |
+| Upstream device removal causes destructive sync           | Mark unavailable/orphaned; never automatically delete                                                  |
+| Expiring SHS subscription removes test access             | Front-load lifecycle tests and sanitized fixture capture in the first three days                       |
 
 ## Acceptance Summary
 

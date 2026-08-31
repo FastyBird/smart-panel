@@ -4,7 +4,6 @@ import ts from 'typescript';
 
 import { HomeyConnector } from './homey-connector.interface';
 import {
-	HomeyCloudProviderClient,
 	HomeySdkClient,
 	HomeySdkDevice,
 	HomeySdkDevicesManager,
@@ -34,14 +33,6 @@ const TRANSPORT_SURFACE = {
 	setCapabilityValue: true,
 	subscribe: true,
 } satisfies Record<keyof HomeyTransport, true>;
-
-const CLOUD_PROVIDER_SURFACE = {
-	authenticateHomey: true,
-	createHomeyClient: true,
-	exchangeAuthorizationCode: true,
-	getHomeys: true,
-	refreshAccessToken: true,
-} satisfies Record<keyof HomeyCloudProviderClient, true>;
 
 const SDK_CLIENT_SURFACE = {
 	destroy: true,
@@ -147,13 +138,6 @@ describe('Homey production boundary', () => {
 
 		expect(Object.keys(CONNECTOR_SURFACE).sort()).toStrictEqual(allowedOperations);
 		expect(Object.keys(TRANSPORT_SURFACE).sort()).toStrictEqual(allowedOperations);
-		expect(Object.keys(CLOUD_PROVIDER_SURFACE).sort()).toStrictEqual([
-			'authenticateHomey',
-			'createHomeyClient',
-			'exchangeAuthorizationCode',
-			'getHomeys',
-			'refreshAccessToken',
-		]);
 	});
 
 	it('keeps the reviewed SDK surface free of upstream lifecycle mutations', () => {

@@ -1,10 +1,4 @@
 import { HomeyAdoptDeviceDto, HomeyBatchAdoptDevicesDto } from './dto/adoption.dto';
-import {
-	HomeyCloudAuthorizationSelectionDto,
-	HomeyCloudAuthorizationSelectionRequestDto,
-	HomeyCloudAuthorizationTransactionDto,
-	HomeyCloudAuthorizationTransactionRequestDto,
-} from './dto/cloud-authorization.dto';
 import { CreateHomeyChannelPropertyDto } from './dto/create-channel-property.dto';
 import { CreateHomeyChannelDto } from './dto/create-channel.dto';
 import { CreateHomeyDeviceChannelPropertyDto } from './dto/create-device-channel-property.dto';
@@ -29,17 +23,6 @@ import {
 	HomeyBatchAdoptionModel,
 	HomeyBatchAdoptionResponseModel,
 } from './models/adoption.model';
-import {
-	HomeyCloudAuthorizationCompletionModel,
-	HomeyCloudAuthorizationCompletionResponseModel,
-	HomeyCloudAuthorizationStartModel,
-	HomeyCloudAuthorizationStartResponseModel,
-	HomeyCloudAuthorizationStatusModel,
-	HomeyCloudAuthorizationStatusResponseModel,
-	HomeyCloudChoiceModel,
-	HomeyCloudChoicesModel,
-	HomeyCloudChoicesResponseModel,
-} from './models/cloud-authorization.model';
 import { HomeyConfigModel } from './models/config.model';
 import {
 	HomeyCapabilitySummaryModel,
@@ -62,19 +45,6 @@ import { HomeyTestConnectionModel, HomeyTestConnectionResponseModel } from './mo
 
 export const DEVICES_HOMEY_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	HomeyConfigModel,
-	HomeyCloudAuthorizationTransactionDto,
-	HomeyCloudAuthorizationTransactionRequestDto,
-	HomeyCloudAuthorizationSelectionDto,
-	HomeyCloudAuthorizationSelectionRequestDto,
-	HomeyCloudAuthorizationStartModel,
-	HomeyCloudAuthorizationStartResponseModel,
-	HomeyCloudAuthorizationStatusModel,
-	HomeyCloudAuthorizationStatusResponseModel,
-	HomeyCloudChoiceModel,
-	HomeyCloudChoicesModel,
-	HomeyCloudChoicesResponseModel,
-	HomeyCloudAuthorizationCompletionModel,
-	HomeyCloudAuthorizationCompletionResponseModel,
 	HomeyUpdatePluginConfigDto,
 	ListHomeyDevicesQueryDto,
 	HomeyCapabilitySummaryModel,

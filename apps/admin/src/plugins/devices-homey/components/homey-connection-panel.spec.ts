@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
 
-import { DevicesHomeyPluginConnectionMode, DevicesHomeyPluginConnectionState, DevicesHomeyPluginErrorCategory } from '../../../openapi.constants';
+import { DevicesHomeyPluginConnectionState, DevicesHomeyPluginErrorCategory } from '../../../openapi.constants';
 import type { IHomeyStatus, IHomeyTestConnection } from '../store/homey.types';
 
 import HomeyConnectionPanel from './HomeyConnectionPanel.vue';
@@ -52,7 +52,7 @@ const connectedStatus = (): IHomeyStatus => ({
 	reconciliationFailureCount: 0,
 });
 
-const mountPanel = (props: { mode?: DevicesHomeyPluginConnectionMode; candidateUrl?: string | null; candidateApiKey?: string | null } = {}) =>
+const mountPanel = (props: { candidateUrl?: string | null; candidateApiKey?: string | null } = {}) =>
 	mount(HomeyConnectionPanel, {
 		props,
 		global: {
@@ -146,18 +146,6 @@ describe('HomeyConnectionPanel', () => {
 		expect(statusStore.testConnection).toHaveBeenCalledWith({ data: { mode: 'saved' } });
 	});
 
-	it('keeps the saved test and hides local candidate testing in cloud mode', async () => {
-		const wrapper = mountPanel({
-			mode: DevicesHomeyPluginConnectionMode.cloud,
-			candidateUrl: 'http://homey.local:4859',
-			candidateApiKey: 'local-key',
-		});
-		await flushPromises();
-
-		expect(wrapper.find('[data-test-id="homey-test-saved"]').exists()).toBe(true);
-		expect(wrapper.find('[data-test-id="homey-test-candidate"]').exists()).toBe(false);
-	});
-
 	it('disables both actions while a test is running', async () => {
 		statusStore.testing = true;
 		const wrapper = mountPanel({ candidateUrl: 'http://homey.local:4859', candidateApiKey: 'new-candidate-key' });
@@ -214,28 +202,6 @@ describe('HomeyConnectionPanel', () => {
 
 		expect(statusStore.lastTest).toBeNull();
 		expect(wrapper.text()).not.toContain('Verified Homey · verified-homey-id · 13.4.0');
-	});
-
-	it('clears a completed candidate result when the connection mode changes', async () => {
-		const wrapper = mountPanel({
-			mode: DevicesHomeyPluginConnectionMode.local,
-			candidateUrl: 'http://homey.local:4859',
-			candidateApiKey: 'candidate-key',
-		});
-		await flushPromises();
-
-		statusStore.lastTest = {
-			mode: 'candidate',
-			success: true,
-			homeyName: 'Local Homey',
-		};
-		await flushPromises();
-
-		await wrapper.setProps({ mode: DevicesHomeyPluginConnectionMode.cloud });
-		await flushPromises();
-
-		expect(statusStore.lastTest).toBeNull();
-		expect(wrapper.text()).not.toContain('Local Homey');
 	});
 
 	it('clears a retained result when the panel is reopened', async () => {

@@ -17,9 +17,3 @@ export const MAX_HOMEY_ADOPTION_BATCH_SIZE = 100;
 export const MAX_HOMEY_CONCURRENT_PREVIEWS = 4;
 
 export const MAX_HOMEY_DEVICE_NAME_LENGTH = 255;
-
-export const HOMEY_CLOUD_CALLBACK_PATH = '/api/v1/plugins/devices-homey/oauth/callback';
-
-export const MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH = 2048;
-
-export const HOMEY_CLOUD_AUTHORIZATION_STORAGE_KEY = 'fastybird.homey.cloud.authorization';

@@ -7,7 +7,6 @@ import {
 	DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,
 	DEVICES_HOMEY_PLUGIN_NAME,
 	HOMEY_CONNECTOR_FACTORY,
-	HomeyConnectionMode,
 } from '../devices-homey.constants';
 import {
 	HomeyTestCandidateConnectionDto,
@@ -30,7 +29,7 @@ const FIXED_ERROR_MESSAGES: Record<HomeyConnectorErrorCategory, string> = {
 	[HomeyConnectorErrorCategory.UNAVAILABLE]: 'The Homey endpoint is unavailable',
 	[HomeyConnectorErrorCategory.PROTOCOL]: 'The Homey endpoint returned an unsupported response',
 	[HomeyConnectorErrorCategory.VALIDATION]: 'The Homey connection configuration is incomplete or invalid',
-	[HomeyConnectorErrorCategory.UNSUPPORTED]: 'The configured Homey connection mode is not supported',
+	[HomeyConnectorErrorCategory.UNSUPPORTED]: 'The configured Homey connection is not supported',
 };
 
 @Injectable()
@@ -89,14 +88,9 @@ export class HomeyConnectionTestService {
 
 			const connectionTimeout = Math.min(savedConfig.connectionTimeout, DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS);
 
-			if (savedConfig.mode === HomeyConnectionMode.CLOUD) {
-				return { mode: HomeyConnectionMode.CLOUD, connectionTimeout };
-			}
-
 			if (savedConfig.url === null || savedConfig.apiKey === null) throw this.validationError();
 
 			return {
-				mode: HomeyConnectionMode.LOCAL,
 				url: savedConfig.url,
 				apiKey: savedConfig.apiKey,
 				connectionTimeout,
@@ -118,7 +112,6 @@ export class HomeyConnectionTestService {
 		}
 
 		return {
-			mode: HomeyConnectionMode.LOCAL,
 			url: candidate.url,
 			apiKey: candidate.apiKey,
 			connectionTimeout: DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,

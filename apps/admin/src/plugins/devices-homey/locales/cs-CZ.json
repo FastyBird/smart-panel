@@ -4,11 +4,6 @@
 			"title": "Místní připojení Homey",
 			"description": "Připojte se přímo k Homey Pro v místní síti s nejnižší latencí. Zde nastavte URL a API klíč pouze pro zápis; Smart Panel musí mít k Homey přístup."
 		},
-		"cloud": {
-			"title": "Připojení Homey Cloud",
-			"description": "Připojte se přes Homey Cloud, když není dostupná přímá síťová cesta. Zaregistrujte OAuth klienta u Homey a jeho údaje uložte zde; tajemství je pouze pro zápis."
-		},
-		"mode": { "label": "Režim připojení", "local": "Místní", "cloud": "Cloud", "cloudUnavailable": "Připravujeme" },
 		"enabled": "Povoleno",
 		"url": {
 			"label": "URL místního API",
@@ -22,25 +17,6 @@
 			"required": "Před povolením integrace zadejte nebo ponechte klíč API Homey",
 			"invalid": "Zadejte neprázdný klíč API nebo náhradní klíč odeberte"
 		},
-		"cloudClientId": {
-			"label": "ID klienta Homey Cloud",
-			"placeholder": "Zadejte ID klienta OAuth",
-			"required": "Zadejte ID klienta Homey Cloud"
-		},
-		"cloudClientSecret": {
-			"label": "Tajemství klienta Homey Cloud",
-			"placeholder": "Zadejte nové tajemství pro nahrazení uloženého",
-			"required": "Zadejte nebo ponechte tajemství klienta Homey Cloud",
-			"invalid": "Zadejte neprázdné tajemství klienta nebo náhradu odstraňte"
-		},
-		"cloudRedirectUrl": {
-			"label": "Adresa přesměrování Homey Cloud",
-			"placeholder": "https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback",
-			"description": "Zaregistrujte tuto přesnou adresu jako OAuth callback v portálu Homey Developer.",
-			"recommendation": "Uložený callback používá jiný původ. Callback pro tuto adresu administrace je {url}",
-			"useCurrentAdmin": "Použít aktuální adresu administrace",
-			"invalid": "Zadejte přesnou registrovanou HTTPS adresu; HTTP je povoleno pouze na localhostu"
-		},
 		"connectionTimeout": "Časový limit připojení (ms)",
 		"reconciliationInterval": "Interval synchronizace inventáře (ms)",
 		"validation": {
@@ -49,25 +25,6 @@
 			"reconciliationIntervalRequired": "Interval synchronizace inventáře je povinný",
 			"reconciliationIntervalRange": "Interval synchronizace inventáře musí být mezi {min} a {max} ms"
 		}
-	},
-	"cloudAuthorization": {
-		"title": "Autorizace Homey Cloud",
-		"description": "Autorizujte Smart Panel u Homey a pokud máte více jednotek, vyberte tu, kterou má zobrazovat a ovládat.",
-		"status": "Autorizace",
-		"connected": "Připojeno",
-		"disconnected": "Nepřipojeno",
-		"unknown": "Stav není známý",
-		"connect": "Připojit Homey Cloud",
-		"reconnect": "Připojit znovu",
-		"disconnect": "Odpojit",
-		"disconnectConfirm": "Odpojit Homey Cloud a odstranit uložené OAuth údaje?",
-		"saveCloudModeFirst": "Před zahájením autorizace Homey uložte režim cloud.",
-		"saveConfigurationFirst": "Před zahájením autorizace uložte konfiguraci Homey Cloud.",
-		"selectDescription": "Vyberte Homey, které má Smart Panel používat.",
-		"selectPlaceholder": "Vyberte Homey",
-		"select": "Použít vybrané Homey",
-		"cancel": "Zrušit autorizaci",
-		"requestFailed": "Požadavek autorizace Homey Cloud se nepodařilo dokončit."
 	},
 	"status": {
 		"title": "Stav připojení",
@@ -93,8 +50,8 @@
 			"error": "Chyba"
 		},
 		"guidance": {
-			"authentication": "Obnovte autorizaci Homey Cloud nebo nahraďte uložený místní API klíč a připojení znovu otestujte.",
-			"authorization": "Ověřte, že cloudová autorizace nebo místní API klíč mají potřebná oprávnění Homey pro čtení a ovládání.",
+			"authentication": "Nahraďte uložený místní API klíč a připojení znovu otestujte.",
+			"authorization": "Ověřte, že místní API klíč má potřebná oprávnění Homey pro čtení a ovládání.",
 			"timeout": "Zkontrolujte adresu Homey, síťovou cestu a časový limit připojení.",
 			"unavailable": "Zkontrolujte, zda je Homey spuštěno a dostupné ze Smart Panelu.",
 			"protocol": "Ověřte, že nakonfigurovaný koncový bod je kompatibilní místní API Homey.",
@@ -104,10 +61,10 @@
 	},
 	"connectionTest": {
 		"title": "Test připojení",
-		"description": "Otestujte vybrané připojení uložené na serveru. V místním režimu lze také otestovat úplnou URL a nový klíč zadané výše.",
+		"description": "Otestujte místní připojení uložené na serveru nebo úplnou URL a nový klíč zadané výše.",
 		"saved": "Otestovat uložené nastavení",
 		"candidate": "Otestovat zadanou URL a klíč",
-		"savedUnavailable": "Před testem uložte a dokončete nastavení vybraného režimu připojení.",
+		"savedUnavailable": "Před testem uložte a dokončete nastavení místního připojení.",
 		"candidateUnavailable": "Pro test neuloženého nastavení zadejte platnou URL i nový klíč API.",
 		"success": "Připojení k Homey bylo úspěšné",
 		"successDescription": "Připojeno k {identity}.",
@@ -115,20 +72,37 @@
 		"failureFallback": "Homey test připojení odmítlo.",
 		"requestFailed": "Požadavek na test připojení se nepodařilo dokončit."
 	},
-	"messages": { "config": { "updated": "Nastavení Homey bylo aktualizováno", "updateFailed": "Nastavení Homey se nepodařilo aktualizovat" } },
+	"messages": {
+		"config": {
+			"updated": "Nastavení Homey bylo aktualizováno",
+			"updateFailed": "Nastavení Homey se nepodařilo aktualizovat"
+		}
+	},
 	"wizard": {
 		"title": "Přidat zařízení Homey",
 		"subtitle": "Vyberte podporovaná zařízení z připojeného Homey",
 		"breadcrumb": "Homey",
-		"columns": { "identifier": "ID zařízení Homey", "class": "Třída", "zone": "Zóna", "capabilities": "Funkce", "mapping": "Mapování" },
+		"columns": {
+			"identifier": "ID zařízení Homey",
+			"class": "Třída",
+			"zone": "Zóna",
+			"capabilities": "Funkce",
+			"mapping": "Mapování"
+		},
 		"values": {
 			"noZone": "Bez zóny",
 			"capabilities": "Počet funkcí: {count}",
 			"mappingSummary": "{channels} kanálů · {properties} vlastností",
 			"mappingWarnings": "Počet upozornění mapování: {count}"
 		},
-		"statuses": { "unavailable": "V Homey není dostupné", "needsAttention": "Zkontrolujte mapování zařízení Homey" },
-		"actions": { "refresh": "Obnovit inventář", "openConfig": "Otevřít nastavení Homey" },
+		"statuses": {
+			"unavailable": "V Homey není dostupné",
+			"needsAttention": "Zkontrolujte mapování zařízení Homey"
+		},
+		"actions": {
+			"refresh": "Obnovit inventář",
+			"openConfig": "Otevřít nastavení Homey"
+		},
 		"errors": {
 			"inventory": "Inventář Homey se nepodařilo načíst",
 			"adoption": "Vybraná zařízení Homey se nepodařilo přidat",

@@ -1,5 +1,4 @@
 export { default as HomeyConfigForm } from './homey-config-form.vue';
-export { default as HomeyCloudAuthorizationPanel } from './HomeyCloudAuthorizationPanel.vue';
 export { default as HomeyConnectionPanel } from './HomeyConnectionPanel.vue';
 export type { IHomeyConfigFormProps } from './homey-config-form.types';
 export * from './homey-config-form.utils';

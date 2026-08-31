@@ -17,7 +17,6 @@ import {
 	HOMEY_COMMAND_CONFIRMATION_TIMEOUT_MS,
 	HOMEY_COMMAND_WRITE_TIMEOUT_MS,
 	HOMEY_CONNECTOR_FACTORY,
-	HomeyConnectionMode,
 	HomeyConnectionState,
 } from '../devices-homey.constants';
 import {
@@ -34,7 +33,6 @@ import { HomeySystemInfo } from '../models/homey-system-info.model';
 import { HomeyZone } from '../models/homey-zone.model';
 import { HomeyStatusModel } from '../models/status.model';
 import { homeyCapabilityValuesEqual } from '../platforms/homey-command-value';
-import { isSafeHomeyCloudRedirectUrl } from '../validators/homey-cloud-redirect-url.validator';
 
 import { HomeyFailureLogLimiter } from './homey-failure-log-limiter';
 import { calculateHomeyReconnectDelay } from './homey-reconnect-backoff';
@@ -230,12 +228,8 @@ export class HomeyService extends BaseManagedPluginService {
 			const previous = this.pluginConfig;
 			const next = this.configService.getPluginConfig<HomeyConfigModel>(DEVICES_HOMEY_PLUGIN_NAME);
 			const restartRequired =
-				previous.mode !== next.mode ||
 				previous.url !== next.url ||
 				previous.apiKey !== next.apiKey ||
-				previous.cloudClientId !== next.cloudClientId ||
-				previous.cloudClientSecret !== next.cloudClientSecret ||
-				previous.cloudRedirectUrl !== next.cloudRedirectUrl ||
 				previous.connectionTimeout !== next.connectionTimeout ||
 				previous.reconciliationInterval !== next.reconciliationInterval;
 
@@ -407,13 +401,8 @@ export class HomeyService extends BaseManagedPluginService {
 		}
 
 		return this.connectorFactory.create({
-			...(config.mode === HomeyConnectionMode.LOCAL
-				? {
-						mode: HomeyConnectionMode.LOCAL,
-						url: config.url,
-						apiKey: config.apiKey,
-					}
-				: { mode: HomeyConnectionMode.CLOUD }),
+			url: config.url,
+			apiKey: config.apiKey,
 			connectionTimeout: config.connectionTimeout,
 		});
 	}
@@ -1530,17 +1519,6 @@ export class HomeyService extends BaseManagedPluginService {
 	}
 
 	private isConfigured(config: HomeyConfigModel): boolean {
-		if (config.mode === HomeyConnectionMode.CLOUD) {
-			return (
-				typeof config.cloudClientId === 'string' &&
-				config.cloudClientId.trim().length > 0 &&
-				typeof config.cloudClientSecret === 'string' &&
-				config.cloudClientSecret.trim().length > 0 &&
-				typeof config.cloudRedirectUrl === 'string' &&
-				isSafeHomeyCloudRedirectUrl(config.cloudRedirectUrl)
-			);
-		}
-
 		return (
 			typeof config.url === 'string' &&
 			config.url.trim().length > 0 &&

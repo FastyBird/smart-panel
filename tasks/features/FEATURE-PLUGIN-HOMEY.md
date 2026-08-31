@@ -21,7 +21,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - Approved design: `docs/superpowers/specs/2026-08-12-homey-integration-design.md`
 - Detailed execution plan: `docs/superpowers/plans/2026-08-12-homey-integration.md`
 - The first release targets Homey Self-Hosted Server (SHS) and compatible Homey Pro local APIs.
-- Homey Cloud is a subsequent connector behind the same plugin contract.
+- Homey Cloud is unsupported because its Web API authorization is partner-only and Smart Panel does not depend on a hosted bridge.
 - The current one-month SHS subscription must be used first for compatibility validation and sanitized fixture capture.
 - Home Assistant provides the closest backend reference for discovery, mapping preview, adoption, synchronization, and command routing:
   - `apps/backend/src/plugins/devices-home-assistant/`
@@ -158,34 +158,12 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - [x] The plugin remains fully testable after the one-month SHS subscription expires.
 - [x] No new dependency is merged without its license, maintenance, runtime, and replacement implications being documented.
 
-### Phase 2 cloud
-
-- [x] Cloud authorization uses Athom OAuth and never asks users to paste account credentials.
-- [x] Refresh, expiry, revocation, reauthorization, and multi-Homey selection are handled.
-- [x] The cloud connector passes the same connector contract suite as the local connector.
-- [x] Mapping, adoption, state sync, and control services contain no cloud-specific forks outside connector/authorization boundaries.
-- [x] User limits, approval requirements, redirect URIs, and deployment steps are documented.
-
-### Cloud client registration audit
-
-Starting the separately scoped Phase 2 work returns the overall epic to `in-progress`; the local MVP remains
-review-ready under its release audit below.
-
-The published-contract audit in `docs/homey-cloud-oauth.md` records the installation-owned confidential-client
-model, admin-managed write-only client secret, exact callback shape, intended minimum scopes, OAuth state boundary, multi-Homey selection gate,
-and the external registration/approval checklist. Homey's current guide limits new clients to 100 Homey Pro users and
-requires a limit-increase request to raise that limit and optionally connect to Homey Cloud. Live cloud mode therefore
-remains unavailable until a dedicated client is registered, the callbacks and scopes are accepted, and Athom's Homey
-Cloud approval plus current branding/legal and rate-limit conditions are recorded. No shared client identity or secret
-will be embedded in Smart Panel artifacts.
-
 ### Local MVP release audit
 
 The 2026-08-28 audit moves the local integration to `review`. The production plugin, connector boundary, authenticated
 inventory, normalization, mapping catalog, API conventions, secret semantics, admin/panel paths, offline fixtures,
 security gate, and complete live lifecycle matrix all have recorded automated or sanitized live evidence. The API-key
-criterion applies to every implemented Homey config endpoint; OAuth token fields do not exist until the separately
-unchecked Phase 2 cloud milestone and must register with the same write-only secret mechanism when introduced.
+criterion applies to every implemented Homey config endpoint.
 The final audit reran OpenAPI generation, the backend build, 17 credential-free Homey spike suites with 243 tests, and
 39 Homey/config security suites with 484 tests without live SHS access.
 
@@ -251,7 +229,7 @@ it is not automatically deleted, and no deletion or unpairing request is sent to
 ## 7. Implementation hints
 
 - Complete Phase 0 while SHS access is available; fixture capture is on the critical path.
-- Make normalized models plain data and write contract tests that both local and cloud connectors must pass.
+- Make normalized models plain data and write contract tests that the local connector must pass.
 - Match descriptors using Homey class plus capability base IDs, but persist and command full capability IDs.
 - Revalidate a device immediately before adoption.
 - Treat Homey events as authoritative command confirmation; use targeted reads only as a fallback.
@@ -263,7 +241,6 @@ it is not automatically deleted, and no deletion or unpairing request is sent to
 - Local MVP: approximately 25–36 engineering days.
 - A four-week calendar target is plausible if backend and admin work overlap after the connector and API contracts stabilize.
 - A single implementation stream should budget approximately 5–7 weeks.
-- Homey Cloud: approximately 7–12 additional engineering days, excluding Athom approval/client-registration lead time.
 
 Implementation order:
 

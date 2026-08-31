@@ -1,37 +1,42 @@
-import { Expose } from 'class-transformer';
-import {
-	IsBoolean,
-	IsEnum,
-	IsInt,
-	IsNotEmpty,
-	IsOptional,
-	IsString,
-	Matches,
-	Max,
-	MaxLength,
-	Min,
-	ValidateIf,
-} from 'class-validator';
+import { Exclude, Expose } from 'class-transformer';
+import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Max, Min, ValidateIf } from 'class-validator';
 
-import { ApiHideProperty, ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import {
 	DEFAULT_HOMEY_CONNECTION_TIMEOUT_MS,
 	DEFAULT_HOMEY_RECONCILIATION_INTERVAL_MS,
 	DEVICES_HOMEY_PLUGIN_NAME,
-	HomeyConnectionMode,
-	MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH,
 	MAX_HOMEY_CONNECTION_TIMEOUT_MS,
 	MAX_HOMEY_RECONCILIATION_INTERVAL_MS,
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
 	MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
 } from '../devices-homey.constants';
-import { IsSafeHomeyCloudRedirectUrl } from '../validators/homey-cloud-redirect-url.validator';
 import { IsSafeHomeyUrl, MAX_HOMEY_URL_LENGTH } from '../validators/homey-url.validator';
 
 @ApiSchema({ name: 'DevicesHomeyPluginDataConfig' })
 export class HomeyConfigModel extends PluginConfigModel {
+	@Exclude({ toPlainOnly: true })
+	@Expose({ name: 'mode', toClassOnly: true })
+	legacyConnectionMode?: unknown;
+
+	@Exclude({ toPlainOnly: true })
+	@Expose({ name: 'cloud_client_id', toClassOnly: true })
+	legacyRemoteClientId?: unknown;
+
+	@Exclude({ toPlainOnly: true })
+	@Expose({ name: 'cloud_client_secret', toClassOnly: true })
+	legacyRemoteClientSecret?: unknown;
+
+	@Exclude({ toPlainOnly: true })
+	@Expose({ name: 'cloud_redirect_url', toClassOnly: true })
+	legacyRemoteRedirectUrl?: unknown;
+
+	@Exclude({ toPlainOnly: true })
+	@Expose({ name: 'cloud_legacy_environment_migrated', toClassOnly: true })
+	legacyEnvironmentMigrationMarker?: unknown;
+
 	@ApiProperty({
 		description: 'Plugin type identifier',
 		example: DEVICES_HOMEY_PLUGIN_NAME,
@@ -39,15 +44,6 @@ export class HomeyConfigModel extends PluginConfigModel {
 	@Expose()
 	@IsString()
 	type: string = DEVICES_HOMEY_PLUGIN_NAME;
-
-	@ApiProperty({
-		description: 'Saved Homey connector mode',
-		enum: HomeyConnectionMode,
-		example: HomeyConnectionMode.LOCAL,
-	})
-	@Expose()
-	@IsEnum(HomeyConnectionMode)
-	mode: HomeyConnectionMode = HomeyConnectionMode.LOCAL;
 
 	@ApiPropertyOptional({
 		description: 'Homey local API base URL',
@@ -82,61 +78,6 @@ export class HomeyConfigModel extends PluginConfigModel {
 	@IsOptional()
 	@IsBoolean()
 	apiKeyConfigured?: boolean;
-
-	@ApiPropertyOptional({
-		description: 'Homey Cloud OAuth client ID',
-		maxLength: MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH,
-		name: 'cloud_client_id',
-		nullable: true,
-	})
-	@Expose({ name: 'cloud_client_id' })
-	@ValidateIf((config: HomeyConfigModel) => config.cloudClientId !== null)
-	@IsNotEmpty()
-	@IsString()
-	@Matches(/\S/)
-	@MaxLength(MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH)
-	cloudClientId: string | null = null;
-
-	@ApiPropertyOptional({
-		description: 'Homey Cloud OAuth client secret. This value is accepted on write and never returned.',
-		maxLength: MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH,
-		name: 'cloud_client_secret',
-		nullable: true,
-		writeOnly: true,
-	})
-	@Expose({ name: 'cloud_client_secret' })
-	@ValidateIf((config: HomeyConfigModel) => config.cloudClientSecret !== null)
-	@IsNotEmpty()
-	@IsString()
-	@Matches(/\S/)
-	@MaxLength(MAX_HOMEY_CLOUD_CLIENT_VALUE_LENGTH)
-	cloudClientSecret: string | null = null;
-
-	@ApiProperty({
-		description: 'Whether a Homey Cloud OAuth client secret is configured',
-		name: 'cloud_client_secret_configured',
-	})
-	@Expose({ name: 'cloud_client_secret_configured' })
-	@IsOptional()
-	@IsBoolean()
-	cloudClientSecretConfigured?: boolean;
-
-	@ApiPropertyOptional({
-		description: 'Exact Homey Cloud OAuth callback URL registered for this Smart Panel installation',
-		maxLength: MAX_HOMEY_URL_LENGTH,
-		name: 'cloud_redirect_url',
-		nullable: true,
-	})
-	@Expose({ name: 'cloud_redirect_url' })
-	@ValidateIf((config: HomeyConfigModel) => config.cloudRedirectUrl !== null)
-	@IsNotEmpty()
-	@IsSafeHomeyCloudRedirectUrl()
-	cloudRedirectUrl: string | null = null;
-
-	@ApiHideProperty()
-	@Expose({ name: 'cloud_legacy_environment_migrated' })
-	@IsBoolean()
-	cloudLegacyEnvironmentMigrated: boolean = false;
 
 	@ApiProperty({
 		description: 'Connection timeout in milliseconds',

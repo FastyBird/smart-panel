@@ -51,33 +51,10 @@ const IP_ADDRESS_CANDIDATE_PATTERN = /[A-Za-z0-9:.%_-]{2,}/g;
 const HOMEY_TOKEN_PATTERN = /(?:homey|hpat|pat)[_-][A-Za-z0-9_-]{16,}/gi;
 const PUBLIC_HOMEY_TOKEN_COLLISIONS = new Set([
 	'homey_capability_mapping_channel',
-	'homey-cloud-authorization',
-	'homey-cloud-authorization-http',
-	'homey-cloud-authorization-state',
-	'homey-plugin-cloud-authorization-status',
-	'homey-cloud-client-config',
-	'homey-cloud-credential-cipher',
-	'homey-cloud-callback-redaction',
-	'homey-cloud-grant-mutation',
-	'homey-cloud-provider-operation',
-	'homey-cloud-redirect-url',
-	'homey-cloud-runtime-registry',
-	'homey-cloud-sdk-session',
-	'homey_cloud_active_grants',
-	'homey_cloud_authorization_state',
-	'homey_cloud_cancelled_authorizations',
-	'homey_cloud_client_secret',
-	'homey_cloud_pending_grants',
-	'homey_cloud_redirect_url',
-	'homey_cloud_user_authorities',
 	'homey-config-validator',
 	'homey-device-inventory',
-	'homey-legacy-cloud-config-migration',
 	'homey-failure-log-limiter',
 	'homey-plugin-batch-adoption',
-	'homey-plugin-cloud-authorization',
-	'homey-plugin-cloud-authorization-homey',
-	'homey-plugin-cloud-authorization-homeys',
 	'homey-plugin-connection',
 	'homey-plugin-device-mapping',
 	'homey-reconnect-backoff',
@@ -106,12 +83,7 @@ const PUBLIC_SYNTHETIC_IDENTIFIER_VALUES = new Set([
 	'synthetic-lock-device',
 	'synthetic_mode',
 ]);
-const PUBLIC_COMPILED_IDENTIFIER_LABELS = new Set([
-	'FB_HOMEY_CLOUD_CLIENT_ID',
-	'base64url',
-	'event device id',
-	'event zone id',
-]);
+const PUBLIC_COMPILED_IDENTIFIER_LABELS = new Set(['base64url', 'event device id', 'event zone id']);
 const PUBLIC_COMPILED_PERSONAL_VALUES = new Set([
 	'Homey',
 	' ',
@@ -496,8 +468,8 @@ const compiledBindingValues = (binding: ts.BindingElement): readonly ts.Expressi
 	return values;
 };
 
-const SAFE_COMPILED_SECRET_STRINGS = new Set(['', '[~3~]', 'FB_HOMEY_CLOUD_CLIENT_SECRET']);
-const SAFE_COMPILED_ADDRESS_STRINGS = new Set(['FB_HOMEY_CLOUD_REDIRECT_URL', '[~0~]']);
+const SAFE_COMPILED_SECRET_STRINGS = new Set(['', '[~3~]']);
+const SAFE_COMPILED_ADDRESS_STRINGS = new Set(['[~0~]']);
 type SafeCompiledString = ReadonlySet<string> | ((value: string) => boolean);
 
 const isSafeCompiledString = (value: string, safeStrings: SafeCompiledString): boolean =>
@@ -4653,18 +4625,9 @@ const containsUnsafeCompiledValue = (
 ): boolean => containsUnsafeCompiledLiteral(node, safeStrings) || containsUnsafeCompiledAlias(node, safeStrings);
 
 const PUBLIC_COMPILED_SECRET_OPERATION_NAMES = new Set([
-	'HOMEY_CLOUD_AUTHORIZATION_STATE_KEY',
-	'HOMEY_CLOUD_AUTHORIZATION_STATE_TTL_MS',
-	'HOMEY_CLOUD_MAX_AUTHORIZATION_CODE_LENGTH',
-	'HOMEY_CLOUD_MAX_PENDING_AUTHORIZATIONS',
-	'HOMEY_CLOUD_MAX_TOKEN_LENGTH',
-	'HOMEY_CLOUD_TOKEN_REFRESH_SKEW_MS',
-	'HOMEY_CLOUD_TOKEN_URL',
 	'assertAuthorizationContext',
-	'assertCloudAuthorizationEndpoint',
 	'assertToken',
 	'cancelAuthorization',
-	'createCloudAuthorizationUrl',
 	'credentialsVersion',
 	'decryptToken',
 	'exchangeAuthorizationCode',
@@ -4673,13 +4636,10 @@ const PUBLIC_COMPILED_SECRET_OPERATION_NAMES = new Set([
 	'findCandidateWithCredentials',
 	'getAuthorizationContext',
 	'getResultUrl',
-	'homeyCloudTokenExpiresAt',
-	'homeyCloudTokenRequiresRefresh',
 	'isInvalidToken',
 	'loadActiveCredentials',
 	'loadActiveGrantCredentials',
 	'loadCandidateCredentials',
-	'normalizeHomeyCloudToken',
 	'normalizeToken',
 	'refreshAccessToken',
 	'requestToken',
@@ -4702,58 +4662,6 @@ const isStaticRelativeModuleImport = (node: ts.VariableDeclaration): boolean =>
 	node.initializer.arguments.length === 1 &&
 	ts.isStringLiteral(node.initializer.arguments[0]) &&
 	/^\.\.?\//u.test(node.initializer.arguments[0].text);
-
-const isCloudBasicAuthorizationExpression = (node: ts.Expression): boolean => {
-	if (!ts.isTemplateExpression(node) || node.head.text !== 'Basic ' || node.templateSpans.length !== 1) return false;
-
-	const encoded = node.templateSpans[0];
-
-	if (encoded.literal.text !== '' || !ts.isCallExpression(encoded.expression)) return false;
-
-	const toString = encoded.expression.expression;
-
-	if (
-		!ts.isPropertyAccessExpression(toString) ||
-		toString.name.text !== 'toString' ||
-		encoded.expression.arguments.length !== 1 ||
-		!ts.isStringLiteral(encoded.expression.arguments[0]) ||
-		encoded.expression.arguments[0].text !== 'base64' ||
-		!ts.isCallExpression(toString.expression)
-	) {
-		return false;
-	}
-
-	const bufferFrom = toString.expression;
-
-	if (
-		!ts.isPropertyAccessExpression(bufferFrom.expression) ||
-		!ts.isIdentifier(bufferFrom.expression.expression) ||
-		bufferFrom.expression.expression.text !== 'Buffer' ||
-		bufferFrom.expression.name.text !== 'from' ||
-		bufferFrom.arguments.length !== 1 ||
-		!ts.isTemplateExpression(bufferFrom.arguments[0])
-	) {
-		return false;
-	}
-
-	const credentials = bufferFrom.arguments[0];
-
-	if (credentials.templateSpans.length !== 2) return false;
-
-	const [clientId, clientSecret] = credentials.templateSpans;
-	const isThisProperty = (value: ts.Expression, name: string): boolean =>
-		ts.isPropertyAccessExpression(value) &&
-		value.expression.kind === ts.SyntaxKind.ThisKeyword &&
-		value.name.text === name;
-
-	return (
-		credentials.head.text === '' &&
-		clientId.literal.text === ':' &&
-		clientSecret.literal.text === '' &&
-		isThisProperty(clientId.expression, 'clientId') &&
-		isThisProperty(clientSecret.expression, 'clientSecret')
-	);
-};
 
 const isCompiledDecoratorAssignment = (node: ts.Expression): boolean => {
 	if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
@@ -4799,28 +4707,12 @@ const isRandomOpaqueIdentifierExpression = (node: ts.Expression): boolean => {
 	);
 };
 
-const isCloudAuthorizationUrlExpression = (node: ts.Expression): boolean =>
-	ts.isCallExpression(node) &&
-	ts.isPropertyAccessExpression(node.expression) &&
-	node.expression.name.text === 'createCloudAuthorizationUrl';
-
-const isSanitizedCloudHomeyNameExpression = (node: ts.Expression): boolean =>
-	ts.isBinaryExpression(node) &&
-	node.operatorToken.kind === ts.SyntaxKind.BarBarToken &&
-	ts.isIdentifier(node.left) &&
-	node.left.text === 'displayText' &&
-	ts.isStringLiteral(node.right) &&
-	node.right.text === 'Homey';
-
 const isPublicSecretFieldsDescriptor = (node: ts.Expression): boolean => {
-	if (!ts.isArrayLiteralExpression(node) || node.elements.length !== 2) {
+	if (!ts.isArrayLiteralExpression(node) || node.elements.length !== 1) {
 		return false;
 	}
 
-	const expected = new Map([
-		['api_key', { configuredPath: 'api_key_configured', inputPath: 'apiKey' }],
-		['cloud_client_secret', { configuredPath: 'cloud_client_secret_configured', inputPath: 'cloudClientSecret' }],
-	]);
+	const expected = new Map([['api_key', { configuredPath: 'api_key_configured', inputPath: 'apiKey' }]]);
 	const matchedPaths = new Set<string>();
 
 	const valid = node.elements.every((descriptor) => {
@@ -5388,12 +5280,8 @@ const containsCompiledSecret = (text: string): boolean => {
 
 		if (ts.isPropertyAssignment(node)) {
 			const name = compiledPropertyName(node.name);
-			const approvedCloudAuthorization =
-				name?.toLowerCase() === 'authorization' && isCloudBasicAuthorizationExpression(node.initializer);
-
 			found =
 				isCompiledSecretName(name) &&
-				!approvedCloudAuthorization &&
 				!isEncryptedCredentialValue(name, node.initializer) &&
 				!(name === 'secretFields' && isPublicSecretFieldsDescriptor(node.initializer)) &&
 				containsUnsafeCompiledValue(node.initializer);
@@ -5837,9 +5725,7 @@ const containsCompiledEndpoint = (text: string): boolean => {
 		!/^(?:assert|is|validate)/i.test(name) &&
 		!PUBLIC_COMPILED_SECRET_OPERATION_NAMES.has(name);
 	const unsafeEndpoint = (name: string | undefined, expression: ts.Expression): boolean =>
-		isEndpointValueName(name) &&
-		!(name === 'authorizeUrl' && isCloudAuthorizationUrlExpression(expression)) &&
-		containsUnsafeCompiledValue(expression, isSafeEndpointValue);
+		isEndpointValueName(name) && containsUnsafeCompiledValue(expression, isSafeEndpointValue);
 	const unsafeEndpointType = (name: string | undefined, type: ts.TypeNode | undefined): boolean =>
 		isEndpointValueName(name) && type !== undefined && containsUnsafeCompiledType(type, isSafeEndpointValue);
 	const visit = (node: ts.Node): void => {
@@ -5936,9 +5822,7 @@ const containsCompiledPersonalValue = (text: string): boolean => {
 		isHomeySecretKey(value) ||
 		isHomeyTimestampKey(value);
 	const unsafePersonalValue = (name: string | undefined, expression: ts.Expression): boolean =>
-		isCompiledPersonalName(name) &&
-		!(name === 'name' && isSanitizedCloudHomeyNameExpression(expression)) &&
-		containsUnsafeCompiledValue(expression, isSafeCompiledPersonalValue);
+		isCompiledPersonalName(name) && containsUnsafeCompiledValue(expression, isSafeCompiledPersonalValue);
 	const unsafePersonalType = (name: string | undefined, type: ts.TypeNode | undefined): boolean =>
 		isCompiledPersonalName(name) && type !== undefined && containsUnsafeCompiledType(type, isSafeCompiledPersonalValue);
 	const visit = (node: ts.Node): void => {
@@ -7066,57 +6950,9 @@ describe('Homey security artifact gate', () => {
 			assertTextSafe('safe compiled module', 'const homey_local_connector_factory_1 = {};', true),
 		).not.toThrow();
 		expect(() =>
-			assertTextSafe('safe compiled module', 'require("./homey-runtime-connector.factory")', true),
-		).not.toThrow();
-		expect(() =>
-			assertTextSafe('safe compiled module', 'require("./homey-cloud-runtime-registry.service")', true),
-		).not.toThrow();
-		expect(() =>
 			assertTextSafe(
 				'safe compiled module',
-				"const secretFields = [{ path: 'api_key', configuredPath: 'api_key_configured', inputPaths: ['apiKey'] }, { path: 'cloud_client_secret', configuredPath: 'cloud_client_secret_configured', inputPaths: ['cloudClientSecret'] }];",
-				true,
-			),
-		).not.toThrow();
-		expect(() =>
-			assertTextSafe(
-				'safe compiled cloud authorization',
-				"class Client { create() { return { Authorization: `Basic ${Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64')}` }; } }",
-				true,
-			),
-		).not.toThrow();
-		expect(() =>
-			assertTextSafe(
-				'safe compiled cloud token refresh',
-				"class Client { refreshAccessToken(value) { return this.requestToken({ grant_type: 'refresh_token', refresh_token: value }); } requestToken(body) { return fetch('https://api.athom.com/oauth2/token', { body }); } }",
-				true,
-			),
-		).not.toThrow();
-		expect(() =>
-			assertTextSafe(
-				'safe compiled encrypted credentials',
-				"class Store { protect(token, recordId, recordType) { return { accessToken: this.credentialCipher.encrypt(token.accessToken, { field: 'access-token', recordId, recordType }), refreshToken: token.refreshToken === null ? null : this.credentialCipher.encrypt(token.refreshToken, { field: 'refresh-token', recordId, recordType }) }; } }",
-				true,
-			),
-		).not.toThrow();
-		expect(() =>
-			assertTextSafe(
-				'unsafe compiled encrypted credentials',
-				"class Store { protect(recordId, recordType) { return { accessToken: this.credentialCipher.encrypt('opaque-secret', { field: 'access-token', recordId, recordType }) }; } }",
-				true,
-			),
-		).toThrow('unsafe compiled encrypted credentials contains a compiled secret value');
-		expect(() =>
-			assertTextSafe(
-				'unsafe compiled cloud authorization',
-				"const headers = { Authorization: 'Basic opaque-secret' };",
-				true,
-			),
-		).toThrow('unsafe compiled cloud authorization contains a compiled secret value');
-		expect(() =>
-			assertTextSafe(
-				'safe compiled relative module import',
-				"const cloud_authorization_dto_1 = require('../dto/cloud-authorization.dto');",
+				"const secretFields = [{ path: 'api_key', configuredPath: 'api_key_configured', inputPaths: ['apiKey'] }];",
 				true,
 			),
 		).not.toThrow();
@@ -7130,13 +6966,6 @@ describe('Homey security artifact gate', () => {
 		expect(() =>
 			assertTextSafe('unsafe compiled transaction', "const transactionId = 'household-transaction';", true),
 		).toThrow('unsafe compiled transaction contains a compiled identifier value');
-		expect(() =>
-			assertTextSafe(
-				'safe compiled cloud authorization URL',
-				'const authorizeUrl = factory.createCloudAuthorizationUrl(options);',
-				true,
-			),
-		).not.toThrow();
 		expect(() => assertTextSafe('safe compiled loopback', "const hosts = ['127.0.0.1', '[::1]'];", true)).not.toThrow();
 		expect(() => assertTextSafe('unsafe compiled module', "const secretFields = ['opaque-secret'];", true)).toThrow(
 			'unsafe compiled module contains a compiled secret value',

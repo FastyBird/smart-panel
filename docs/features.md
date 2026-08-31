@@ -44,11 +44,11 @@ FastyBird Smart Panel is an open-source smart home control platform designed for
 
 ### Three-Application Ecosystem
 
-| Application | Technology | Purpose |
-|-------------|------------|---------|
-| **Panel App** | Flutter/Dart | Touch-optimized embedded UI for wall-mounted displays |
-| **Admin App** | Vue.js 3 | Web-based management interface for configuration and setup |
-| **Backend** | NestJS | API server handling device communication, data processing, and business logic |
+| Application   | Technology   | Purpose                                                                       |
+| ------------- | ------------ | ----------------------------------------------------------------------------- |
+| **Panel App** | Flutter/Dart | Touch-optimized embedded UI for wall-mounted displays                         |
+| **Admin App** | Vue.js 3     | Web-based management interface for configuration and setup                    |
+| **Backend**   | NestJS       | API server handling device communication, data processing, and business logic |
 
 ---
 
@@ -104,14 +104,13 @@ Smart Panel connects to multiple smart home ecosystems through dedicated integra
 ### Homey (Experimental)
 
 The implementation is not yet a production support claim. Live local evidence covers the documented Homey SHS
-inventory, event, command, lifecycle, credential, recovery, and shutdown matrix over HTTP. Homey Pro hardware, local
-HTTPS, and live Homey Cloud acceptance remain pending.
+inventory, event, command, lifecycle, credential, recovery, and shutdown matrix over HTTP. Homey Pro hardware and local
+HTTPS remain pending.
 
-- **Protocol**: Local HTTP(S) or Homey Cloud API with Socket.IO events
-- **Targets**: Homey Pro and Homey Self-Hosted Server, directly reachable or selected through Homey Cloud
+- **Protocol**: Local HTTP(S) with Socket.IO events
+- **Targets**: Directly reachable Homey Pro and Homey Self-Hosted Server instances
 - **Features**:
   - Manual server configuration with a write-only, least-privilege API key
-  - Deployment-owned Homey Cloud OAuth authorization, reauthorization, disconnect, and explicit multi-Homey selection
   - Authenticated logical-device inventory and reviewed batch adoption
   - Mapping preview with unsupported-capability warnings
   - Real-time state updates with bounded reconnect and periodic reconciliation
@@ -121,8 +120,8 @@ HTTPS, and live Homey Cloud acceptance remain pending.
   - Missing upstream devices are marked unavailable and are never automatically deleted
 
 Automatic Homey server discovery, upstream pairing/device management, and thermostat target/mode control remain out of
-scope. Homey Cloud requires deployment-specific client registration and approval; it does not ship with shared OAuth
-credentials.
+scope. Homey Cloud is unsupported because its Web API authorization is limited to partners and Smart Panel does not
+depend on a hosted credential bridge.
 
 ### Shelly (Generation 2+ / Next Generation)
 
@@ -190,38 +189,38 @@ Smart Panel supports 31 device categories and 45+ channel types with 120+ proper
 
 ### Device Categories (31)
 
-| Category | Description |
-|----------|-------------|
-| Air Conditioner | Cooling with temperature control |
-| Air Dehumidifier | Humidity reduction |
-| Air Humidifier | Humidity increase |
-| Air Purifier | Air filtration and quality management |
-| Alarm | Security alarm systems |
-| AV Receiver | Audio/video receiver systems |
-| Camera | Video monitoring and surveillance |
-| Door | Smart door control and monitoring |
-| Doorbell | Smart doorbells with video and audio |
-| Fan | Ventilation and cooling fans |
-| Game Console | Gaming device control |
-| Heating Unit | Dedicated heating systems |
-| Lighting | Lights, dimmers, LED strips, smart bulbs |
-| Lock | Smart locks and access control |
-| Media | Generic media devices |
-| Outlet | Smart power outlets and plugs |
-| Projector | Video projectors |
-| Pump | Water and fluid circulation pumps |
-| Robot Vacuum | Robotic vacuum cleaners |
-| Sensor | Generic sensors (temperature, humidity, motion, etc.) |
-| Set-Top Box | Cable/satellite receivers |
-| Speaker | Smart speakers and audio systems |
-| Sprinkler | Irrigation and sprinkler systems |
-| Streaming Service | Streaming media devices |
-| Switcher | Smart relay switches |
-| Television | Smart TVs |
-| Thermostat | Heating and cooling controllers |
-| Valve | Smart valves (water, gas) |
-| Water Heater | Water heating systems |
-| Window Covering | Blinds, curtains, shutters, and shades |
+| Category          | Description                                           |
+| ----------------- | ----------------------------------------------------- |
+| Air Conditioner   | Cooling with temperature control                      |
+| Air Dehumidifier  | Humidity reduction                                    |
+| Air Humidifier    | Humidity increase                                     |
+| Air Purifier      | Air filtration and quality management                 |
+| Alarm             | Security alarm systems                                |
+| AV Receiver       | Audio/video receiver systems                          |
+| Camera            | Video monitoring and surveillance                     |
+| Door              | Smart door control and monitoring                     |
+| Doorbell          | Smart doorbells with video and audio                  |
+| Fan               | Ventilation and cooling fans                          |
+| Game Console      | Gaming device control                                 |
+| Heating Unit      | Dedicated heating systems                             |
+| Lighting          | Lights, dimmers, LED strips, smart bulbs              |
+| Lock              | Smart locks and access control                        |
+| Media             | Generic media devices                                 |
+| Outlet            | Smart power outlets and plugs                         |
+| Projector         | Video projectors                                      |
+| Pump              | Water and fluid circulation pumps                     |
+| Robot Vacuum      | Robotic vacuum cleaners                               |
+| Sensor            | Generic sensors (temperature, humidity, motion, etc.) |
+| Set-Top Box       | Cable/satellite receivers                             |
+| Speaker           | Smart speakers and audio systems                      |
+| Sprinkler         | Irrigation and sprinkler systems                      |
+| Streaming Service | Streaming media devices                               |
+| Switcher          | Smart relay switches                                  |
+| Television        | Smart TVs                                             |
+| Thermostat        | Heating and cooling controllers                       |
+| Valve             | Smart valves (water, gas)                             |
+| Water Heater      | Water heating systems                                 |
+| Window Covering   | Blinds, curtains, shutters, and shades                |
 
 ### Channel Types (45+)
 
@@ -270,6 +269,7 @@ The dashboard system allows creating customizable home control interfaces with m
 ### Page Types
 
 #### Tiles Page
+
 - Grid-based tile layout for dashboard design
 - Configurable grid dimensions
 - Drag-and-drop tile placement
@@ -277,12 +277,14 @@ The dashboard system allows creating customizable home control interfaces with m
 - Tile nesting support
 
 #### Cards Page
+
 - Card-based layout for organized information display
 - Nested card grouping
 - Responsive card management
 - Per-card configuration
 
 #### Device Detail Page
+
 - Full device information and control display
 - Channel and property visualization
 - Device-specific control interface
@@ -291,6 +293,7 @@ The dashboard system allows creating customizable home control interfaces with m
 ### Tile Widgets
 
 #### Device Preview Tile
+
 - Real-time device status display
 - Quick toggle controls for on/off devices
 - Multi-property value visualization
@@ -298,16 +301,19 @@ The dashboard system allows creating customizable home control interfaces with m
 - Device icon and name display
 
 #### Scene Tile
+
 - Scene execution trigger button
 - Last triggered timestamp display
 - Scene status indicator
 - Quick-trigger controls
 
 #### Weather Tile
+
 - **Current weather**: temperature, feels-like, humidity, wind speed/direction, precipitation, UV index, cloud coverage, weather condition icons
 - **Forecast weather**: multi-day forecasts, high/low temperatures, precipitation probability, wind forecasts
 
 #### Time Tile
+
 - Digital clock display
 - 12-hour and 24-hour format options
 - Date display with configurable formatting
@@ -317,11 +323,13 @@ The dashboard system allows creating customizable home control interfaces with m
 ### Data Sources
 
 #### Device Channel Data Source
+
 - Binds dashboard widgets to device channel properties
 - Constraint validation (device, channel, property existence)
 - Real-time value updates via WebSocket
 
 #### Weather Data Source
+
 - Binds weather data to dashboard tiles
 - Current conditions and forecast data
 - Location-based weather information
@@ -351,35 +359,36 @@ The climate domain provides intelligent, multi-device climate management at the 
 
 ### Climate Modes
 
-| Mode | Description |
-|------|-------------|
-| HEAT | Heating only - activates heating devices |
-| COOL | Cooling only - activates cooling devices |
+| Mode | Description                                 |
+| ---- | ------------------------------------------- |
+| HEAT | Heating only - activates heating devices    |
+| COOL | Cooling only - activates cooling devices    |
 | AUTO | Both heating and cooling based on setpoints |
-| OFF | All climate devices disabled |
+| OFF  | All climate devices disabled                |
 
 ### Climate Intents
 
-| Intent | Description |
-|--------|-------------|
-| SET_MODE | Change the climate mode for a space |
-| SETPOINT_SET | Set an absolute temperature target |
+| Intent         | Description                                                               |
+| -------------- | ------------------------------------------------------------------------- |
+| SET_MODE       | Change the climate mode for a space                                       |
+| SETPOINT_SET   | Set an absolute temperature target                                        |
 | SETPOINT_DELTA | Adjust temperature relatively (±0.5°C small, ±1.0°C medium, ±2.0°C large) |
-| CLIMATE_SET | Atomic mode + setpoint change in one operation |
+| CLIMATE_SET    | Atomic mode + setpoint change in one operation                            |
 
 ### Device Roles
 
-| Role | Behavior |
-|------|----------|
-| AUTO | Responds to all climate modes (HEAT, COOL, AUTO, OFF) |
-| HEATING_ONLY | Only participates in HEAT mode |
-| COOLING_ONLY | Only participates in COOL mode |
-| SENSOR | Temperature reading only, no control commands |
-| HIDDEN | Excluded from climate state calculation |
+| Role         | Behavior                                              |
+| ------------ | ----------------------------------------------------- |
+| AUTO         | Responds to all climate modes (HEAT, COOL, AUTO, OFF) |
+| HEATING_ONLY | Only participates in HEAT mode                        |
+| COOLING_ONLY | Only participates in COOL mode                        |
+| SENSOR       | Temperature reading only, no control commands         |
+| HIDDEN       | Excluded from climate state calculation               |
 
 ### Climate State Calculation
 
 For each space, Smart Panel calculates an aggregated climate state:
+
 - Current temperature (averaged from all sensors in the space)
 - Current humidity (averaged from humidity sensors)
 - Heating and cooling setpoints (consensus from devices)
@@ -389,6 +398,7 @@ For each space, Smart Panel calculates an aggregated climate state:
 - Last applied mode and timestamp
 
 ### Performance Optimizations
+
 - Parallel data fetching for devices, roles, and historical state
 - Event debouncing (100ms) to prevent WebSocket flooding
 - Fire-and-forget InfluxDB writes for history tracking
@@ -408,12 +418,12 @@ The media domain manages audio/video devices with an activity-based control mode
 
 ### Endpoint Types
 
-| Type | Description | Examples |
-|------|-------------|---------|
-| Display | Video output devices | TVs, projectors |
-| Audio Output | Speaker systems | Receivers, soundbars, smart speakers |
-| Source | Content sources | Streaming apps, tuners, inputs |
-| Remote Target | Control-only endpoints | IR remotes, control systems |
+| Type          | Description            | Examples                             |
+| ------------- | ---------------------- | ------------------------------------ |
+| Display       | Video output devices   | TVs, projectors                      |
+| Audio Output  | Speaker systems        | Receivers, soundbars, smart speakers |
+| Source        | Content sources        | Streaming apps, tuners, inputs       |
+| Remote Target | Control-only endpoints | IR remotes, control systems          |
 
 ### Features
 
@@ -472,29 +482,29 @@ An AI-powered smart home assistant that understands your home and helps you cont
 
 ### LLM Providers
 
-| Provider | Type | Description |
-|----------|------|-------------|
+| Provider               | Type      | Description                                           |
+| ---------------------- | --------- | ----------------------------------------------------- |
 | **Claude** (Anthropic) | Cloud API | Advanced reasoning and natural language understanding |
-| **OpenAI GPT** | Cloud API | GPT model family with chat completions |
-| **OpenAI Codex** | Cloud API | Code generation for automation scripts |
-| **Ollama** | Local | Privacy-focused, offline-capable local LLM inference |
+| **OpenAI GPT**         | Cloud API | GPT model family with chat completions                |
+| **OpenAI Codex**       | Cloud API | Code generation for automation scripts                |
+| **Ollama**             | Local     | Privacy-focused, offline-capable local LLM inference  |
 
 ### Speech Capabilities
 
-| Feature | Provider | Type |
-|---------|----------|------|
+| Feature        | Provider        | Type                                     |
+| -------------- | --------------- | ---------------------------------------- |
 | Speech-to-Text | Whisper (Local) | Offline speech recognition, multilingual |
-| Text-to-Speech | ElevenLabs | High-quality cloud voice synthesis |
-| Text-to-Speech | System TTS | Native OS text-to-speech (offline) |
-| Voice AI | VoiceAI | Voice-specific routing and optimization |
+| Text-to-Speech | ElevenLabs      | High-quality cloud voice synthesis       |
+| Text-to-Speech | System TTS      | Native OS text-to-speech (offline)       |
+| Voice AI       | VoiceAI         | Voice-specific routing and optimization  |
 
 ### Messaging Channels
 
-| Channel | Protocol | Features |
-|---------|----------|----------|
-| **Telegram** | Bot API | Messages, commands, inline buttons |
-| **WhatsApp** | WAPI | Messages, media, status updates |
-| **Discord** | Bot API | Messages, embeds, reactions, slash commands |
+| Channel      | Protocol | Features                                    |
+| ------------ | -------- | ------------------------------------------- |
+| **Telegram** | Bot API  | Messages, commands, inline buttons          |
+| **WhatsApp** | WAPI     | Messages, media, status updates             |
+| **Discord**  | Bot API  | Messages, embeds, reactions, slash commands |
 
 ### Buddy Capabilities
 
@@ -515,9 +525,9 @@ Integrated weather data for dashboard display and environmental context.
 
 ### Weather Providers
 
-| Provider | Features |
-|----------|----------|
-| **OpenWeatherMap Standard** | Current conditions, 5-day forecast, city-based queries |
+| Provider                    | Features                                                                      |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| **OpenWeatherMap Standard** | Current conditions, 5-day forecast, city-based queries                        |
 | **OpenWeatherMap One Call** | Unified endpoint, current + forecast, minute-level precision, historical data |
 
 ### Weather Data
@@ -533,11 +543,11 @@ Integrated weather data for dashboard display and environmental context.
 
 ### User Roles
 
-| Role | Capabilities |
-|------|-------------|
+| Role      | Capabilities                                                          |
+| --------- | --------------------------------------------------------------------- |
 | **Owner** | Full system access, user management, factory reset, all configuration |
-| **Admin** | System configuration, device management, extension management |
-| **User** | Dashboard viewing, basic device control |
+| **Admin** | System configuration, device management, extension management         |
+| **User**  | Dashboard viewing, basic device control                               |
 
 ### Authentication
 
@@ -606,9 +616,9 @@ Smart Panel features a plugin-based extension system that allows third-party dev
 
 ### Extension Types
 
-| Kind | Mounting | Description |
-|------|----------|-------------|
-| Module | `/api/{prefix}` | Core system extensions |
+| Kind   | Mounting                | Description                     |
+| ------ | ----------------------- | ------------------------------- |
+| Module | `/api/{prefix}`         | Core system extensions          |
 | Plugin | `/api/plugins/{prefix}` | Integration and feature plugins |
 
 ### Extension Discovery
@@ -622,6 +632,7 @@ Smart Panel features a plugin-based extension system that allows third-party dev
 ### Example Extension
 
 An example extension (`@fastybird/smart-panel-extension-example`) demonstrates:
+
 - Minimal NestJS module setup with a single controller
 - Backend plugin with health/status endpoint
 - Admin UI plugin with Vue.js components
@@ -682,6 +693,7 @@ The Flutter-based panel app is designed for wall-mounted touch displays with an 
 ### Features
 
 #### Deck Navigation
+
 - Swipeable deck-based navigation between dashboard pages and domain control screens
 - Bottom navigation bar (portrait) or side dock (landscape) for quick access
 - "More" sheet for accessing all available deck items
@@ -689,6 +701,7 @@ The Flutter-based panel app is designed for wall-mounted touch displays with an 
 - Touch-optimized gestures with swipe blocking during active interaction
 
 #### Domain Control Pages
+
 Purpose-built control screens for each smart home domain within a space:
 
 - **Lights Domain** - Lighting control with role grouping (main, task, ambient, accent, night) and mode presets (off/work/relax/night)
@@ -699,6 +712,7 @@ Purpose-built control screens for each smart home domain within a space:
 - **Energy Domain** - Real-time power consumption with historical charts, time range selection, and top consumer breakdown
 
 #### Sky Visualization
+
 - Dynamic sky gradient backgrounds that reflect the actual time of day
 - Animated cloud layers based on real weather conditions
 - Celestial elements (sun/moon positioning based on astronomical data)
@@ -706,12 +720,14 @@ Purpose-built control screens for each smart home domain within a space:
 - Weather overlays (rain, snow, fog effects)
 
 #### Backend Discovery
+
 - Automatic discovery of Smart Panel backend servers via mDNS
 - Manual URL entry with IP address and hostname validation
 - Animated discovery interface with pulse rings
 - Connection error handling with retry UI
 
 #### Overlay System
+
 - Stacked overlay system for multiple simultaneous notifications
 - Connection status overlay (online/offline detection)
 - Security alert overlays (alarm triggered, armed state changes)
@@ -719,7 +735,9 @@ Purpose-built control screens for each smart home domain within a space:
 - Inactivity overlay with lock screen and PIN entry
 
 #### Device Detail Pages
+
 31 device-specific detail screens with contextual controls:
+
 - **Lighting**: RGB/brightness/color temperature control with preset buttons
 - **Climate**: Thermostat dial, heating unit, air conditioner, water heater controls
 - **Media**: Television, speaker, AV receiver, projector, streaming service, set-top box controls with playback, volume, source selection, and remote emulation
@@ -729,11 +747,13 @@ Purpose-built control screens for each smart home domain within a space:
 - **Automation**: Switcher, outlet, robot vacuum, pump, sprinkler, valve controls
 
 #### Screen Saver & Lock Screen
+
 - Customizable screen saver with time, weather, and status display
 - PIN-based lock screen with numeric keypad
 - Configurable inactivity timeout
 
 #### Settings
+
 - General settings (home page, theme mode)
 - Display settings (brightness, screen saver, lock timeout)
 - Audio settings (volume, audio device selection)
@@ -763,6 +783,7 @@ This ensures the UI feels instant and responsive even when controlling remote de
 ### Channel Controllers
 
 Specialized controllers for each device type with optimistic-aware getters and command methods:
+
 - FanChannelController
 - HumidifierChannelController
 - DehumidifierChannelController
@@ -779,22 +800,22 @@ The Vue.js admin interface provides comprehensive management for the entire syst
 
 ### Module Summary (20 modules, 34 plugins)
 
-| Module | Screens | Key Capabilities |
-|--------|---------|-----------------|
-| Authentication | 4 | Login, registration, profile, security settings |
-| Users | 3 | User CRUD, role management |
-| Devices | 10+ | Device/channel/property management, control, logs |
-| Dashboard | 8 | Page/tile/data source design and configuration |
-| Spaces | 5 | Space organization, device assignment, climate/lighting targets |
-| Scenes | 3 | Scene creation, action configuration, trigger management |
-| Displays | 3 | Display management, token generation |
-| Extensions | 2 | Extension browsing, service monitoring, log viewing |
-| Config | 4 | Module and plugin configuration |
-| System | 4 | System info, logs, reboot/power off/factory reset |
-| Weather | 4 | Location management, weather data display |
-| Buddy | 1 | AI assistant chat interface |
-| Stats | 1 | System statistics dashboard |
-| Energy | - | Energy monitoring (reserved for expansion) |
+| Module         | Screens | Key Capabilities                                                |
+| -------------- | ------- | --------------------------------------------------------------- |
+| Authentication | 4       | Login, registration, profile, security settings                 |
+| Users          | 3       | User CRUD, role management                                      |
+| Devices        | 10+     | Device/channel/property management, control, logs               |
+| Dashboard      | 8       | Page/tile/data source design and configuration                  |
+| Spaces         | 5       | Space organization, device assignment, climate/lighting targets |
+| Scenes         | 3       | Scene creation, action configuration, trigger management        |
+| Displays       | 3       | Display management, token generation                            |
+| Extensions     | 2       | Extension browsing, service monitoring, log viewing             |
+| Config         | 4       | Module and plugin configuration                                 |
+| System         | 4       | System info, logs, reboot/power off/factory reset               |
+| Weather        | 4       | Location management, weather data display                       |
+| Buddy          | 1       | AI assistant chat interface                                     |
+| Stats          | 1       | System statistics dashboard                                     |
+| Energy         | -       | Energy monitoring (reserved for expansion)                      |
 
 ### UI Capabilities
 
@@ -818,88 +839,88 @@ The Vue.js admin interface provides comprehensive management for the entire syst
 
 ### Backend
 
-| Technology | Purpose |
-|------------|---------|
-| NestJS | Application framework |
-| TypeScript | Type-safe development |
-| TypeORM | Database ORM |
-| SQLite | Primary database |
-| InfluxDB | Time-series data storage |
-| Socket.io | WebSocket real-time communication |
-| Passport / JWT | Authentication |
-| Swagger / OpenAPI | API documentation |
-| nest-commander | CLI commands |
-| Event2 | Internal event bus |
-| bcrypt | Password hashing |
-| axios | HTTP client for device communication |
-| mqtt | MQTT client for Zigbee2MQTT |
-| mdns | Device discovery |
+| Technology        | Purpose                              |
+| ----------------- | ------------------------------------ |
+| NestJS            | Application framework                |
+| TypeScript        | Type-safe development                |
+| TypeORM           | Database ORM                         |
+| SQLite            | Primary database                     |
+| InfluxDB          | Time-series data storage             |
+| Socket.io         | WebSocket real-time communication    |
+| Passport / JWT    | Authentication                       |
+| Swagger / OpenAPI | API documentation                    |
+| nest-commander    | CLI commands                         |
+| Event2            | Internal event bus                   |
+| bcrypt            | Password hashing                     |
+| axios             | HTTP client for device communication |
+| mqtt              | MQTT client for Zigbee2MQTT          |
+| mdns              | Device discovery                     |
 
 ### Admin App
 
-| Technology | Purpose |
-|------------|---------|
-| Vue.js 3 | UI framework (Composition API) |
-| TypeScript | Type-safe development |
-| Vite | Build tool and dev server |
-| Pinia | State management |
-| Vue Router 4 | Client-side routing |
-| Element Plus | UI component library |
-| Vue I18n | Internationalization |
-| OpenAPI Fetch | API client |
-| Socket.io Client | Real-time updates |
-| UNO CSS | Utility CSS framework |
-| Vitest | Unit testing |
+| Technology       | Purpose                        |
+| ---------------- | ------------------------------ |
+| Vue.js 3         | UI framework (Composition API) |
+| TypeScript       | Type-safe development          |
+| Vite             | Build tool and dev server      |
+| Pinia            | State management               |
+| Vue Router 4     | Client-side routing            |
+| Element Plus     | UI component library           |
+| Vue I18n         | Internationalization           |
+| OpenAPI Fetch    | API client                     |
+| Socket.io Client | Real-time updates              |
+| UNO CSS          | Utility CSS framework          |
+| Vitest           | Unit testing                   |
 
 ### Panel App
 
-| Technology | Purpose |
-|------------|---------|
-| Flutter | Cross-platform UI framework |
-| Dart | Programming language |
-| Provider | State management |
-| Dio | HTTP client |
-| Socket.io Client | Real-time updates |
-| go_router | Navigation and routing |
+| Technology       | Purpose                     |
+| ---------------- | --------------------------- |
+| Flutter          | Cross-platform UI framework |
+| Dart             | Programming language        |
+| Provider         | State management            |
+| Dio              | HTTP client                 |
+| Socket.io Client | Real-time updates           |
+| go_router        | Navigation and routing      |
 
 ### Website
 
-| Technology | Purpose |
-|------------|---------|
-| Next.js 15 | React framework |
-| Nextra 4 | Documentation engine |
+| Technology     | Purpose               |
+| -------------- | --------------------- |
+| Next.js 15     | React framework       |
+| Nextra 4       | Documentation engine  |
 | Tailwind CSS 4 | Utility-first styling |
-| React 19 | UI library |
-| Framer Motion | Animations |
-| Pagefind | Search functionality |
+| React 19       | UI library            |
+| Framer Motion  | Animations            |
+| Pagefind       | Search functionality  |
 
 ### Infrastructure
 
-| Technology | Purpose |
-|------------|---------|
-| pnpm | Package manager (monorepo workspaces) |
-| Turborepo | Monorepo build orchestration |
-| ESLint / Prettier | Code quality and formatting |
-| Node.js 24+ | Runtime environment |
+| Technology        | Purpose                               |
+| ----------------- | ------------------------------------- |
+| pnpm              | Package manager (monorepo workspaces) |
+| Turborepo         | Monorepo build orchestration          |
+| ESLint / Prettier | Code quality and formatting           |
+| Node.js 24+       | Runtime environment                   |
 
 ---
 
 ## Integration Coverage Matrix
 
-| Device Type | Home Assistant | Homey (experimental) | Shelly NG | Shelly V1 | Zigbee2MQTT | WLED | Simulator |
-|------------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| Lighting | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Switches/Outlets | ✅ | ✅ | ✅ | ✅ | ✅ | - | ✅ |
-| Covers/Blinds | ✅ | ✅ | ✅ | - | ✅ | - | ✅ |
-| Climate/HVAC | ✅ | Current temperature | - | - | ✅ | - | ✅ |
-| Sensors | ✅ | ✅ | ✅ | ✅ | ✅ | - | ✅ |
-| Locks | ✅ | ✅ | - | - | ✅ | - | ✅ |
-| Cameras | ✅ | - | - | - | - | - | ✅ |
-| Media Players | ✅ | - | - | - | - | - | ✅ |
-| Fans | ✅ | - | - | - | ✅ | - | ✅ |
-| Vacuums | ✅ | - | - | - | - | - | ✅ |
-| Valves | ✅ | - | - | - | ✅ | - | - |
-| Auto-Discovery | ✅ | Manual server | ✅ | ✅ | ✅ | ✅ | - |
+| Device Type      | Home Assistant | Homey (experimental) | Shelly NG | Shelly V1 | Zigbee2MQTT | WLED | Simulator |
+| ---------------- | :------------: | :------------------: | :-------: | :-------: | :---------: | :--: | :-------: |
+| Lighting         |       ✅       |          ✅          |    ✅     |    ✅     |     ✅      |  ✅  |    ✅     |
+| Switches/Outlets |       ✅       |          ✅          |    ✅     |    ✅     |     ✅      |  -   |    ✅     |
+| Covers/Blinds    |       ✅       |          ✅          |    ✅     |     -     |     ✅      |  -   |    ✅     |
+| Climate/HVAC     |       ✅       | Current temperature  |     -     |     -     |     ✅      |  -   |    ✅     |
+| Sensors          |       ✅       |          ✅          |    ✅     |    ✅     |     ✅      |  -   |    ✅     |
+| Locks            |       ✅       |          ✅          |     -     |     -     |     ✅      |  -   |    ✅     |
+| Cameras          |       ✅       |          -           |     -     |     -     |      -      |  -   |    ✅     |
+| Media Players    |       ✅       |          -           |     -     |     -     |      -      |  -   |    ✅     |
+| Fans             |       ✅       |          -           |     -     |     -     |     ✅      |  -   |    ✅     |
+| Vacuums          |       ✅       |          -           |     -     |     -     |      -      |  -   |    ✅     |
+| Valves           |       ✅       |          -           |     -     |     -     |     ✅      |  -   |     -     |
+| Auto-Discovery   |       ✅       |    Manual server     |    ✅     |    ✅     |     ✅      |  ✅  |     -     |
 
 ---
 
@@ -907,26 +928,26 @@ The Vue.js admin interface provides comprehensive management for the entire syst
 
 ### By the Numbers
 
-| Metric | Count |
-|--------|-------|
-| Device integration plugins | 8 |
-| Supported device categories | 31 |
-| Channel types | 45+ |
-| Property types | 120+ |
-| Dashboard page types | 3 |
-| Dashboard tile widgets | 4 |
-| AI/LLM providers | 4 |
-| Messaging channels | 3 |
-| Weather providers | 2 |
-| Backend modules | 24 |
-| Backend plugins | 32+ |
-| Admin modules | 20 |
-| Admin plugins | 34 |
-| Admin view pages | 58 |
-| Admin Vue components | 243 |
-| Panel modules | 14 |
-| Panel features | 4 |
-| Panel plugins | 17 |
+| Metric                      | Count |
+| --------------------------- | ----- |
+| Device integration plugins  | 8     |
+| Supported device categories | 31    |
+| Channel types               | 45+   |
+| Property types              | 120+  |
+| Dashboard page types        | 3     |
+| Dashboard tile widgets      | 4     |
+| AI/LLM providers            | 4     |
+| Messaging channels          | 3     |
+| Weather providers           | 2     |
+| Backend modules             | 24    |
+| Backend plugins             | 32+   |
+| Admin modules               | 20    |
+| Admin plugins               | 34    |
+| Admin view pages            | 58    |
+| Admin Vue components        | 243   |
+| Panel modules               | 14    |
+| Panel features              | 4     |
+| Panel plugins               | 17    |
 
 ### Core Value Propositions
 

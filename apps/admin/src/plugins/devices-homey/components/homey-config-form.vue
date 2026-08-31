@@ -23,117 +23,36 @@
 
 		<el-alert
 			type="info"
-			:title="t(`devicesHomeyPlugin.config.${model.mode}.title`)"
-			:description="t(`devicesHomeyPlugin.config.${model.mode}.description`)"
+			:title="t('devicesHomeyPlugin.config.local.title')"
+			:description="t('devicesHomeyPlugin.config.local.description')"
 			:closable="false"
 		/>
 
 		<el-form-item
-			:label="t('devicesHomeyPlugin.config.mode.label')"
-			prop="mode"
+			:label="t('devicesHomeyPlugin.config.url.label')"
+			prop="url"
+			:error="fieldErrors['url']"
 			class="mt-3"
-			data-test-id="homey-mode-field"
 		>
-			<el-radio-group
-				v-model="model.mode"
-				name="mode"
-			>
-				<el-radio-button :value="DevicesHomeyPluginConnectionMode.local">
-					{{ t('devicesHomeyPlugin.config.mode.local') }}
-				</el-radio-button>
-				<el-radio-button :value="DevicesHomeyPluginConnectionMode.cloud">
-					{{ t('devicesHomeyPlugin.config.mode.cloud') }}
-				</el-radio-button>
-			</el-radio-group>
+			<el-input
+				v-model="url"
+				name="url"
+				:placeholder="t('devicesHomeyPlugin.config.url.placeholder')"
+			/>
 		</el-form-item>
 
-		<hr />
-
-		<template v-if="model.mode === DevicesHomeyPluginConnectionMode.local">
-			<el-form-item
-				:label="t('devicesHomeyPlugin.config.url.label')"
-				prop="url"
-				:error="fieldErrors['url']"
-			>
-				<el-input
-					v-model="url"
-					name="url"
-					:placeholder="t('devicesHomeyPlugin.config.url.placeholder')"
-				/>
-			</el-form-item>
-
-			<el-form-item
-				:label="t('devicesHomeyPlugin.config.apiKey.label')"
-				prop="apiKey"
-				:error="fieldErrors['apiKey']"
-			>
-				<config-secret-input
-					v-model="model.apiKey"
-					:configured="model.apiKeyConfigured"
-					name="apiKey"
-					:placeholder="t('devicesHomeyPlugin.config.apiKey.placeholder')"
-				/>
-			</el-form-item>
-		</template>
-		<template v-else>
-			<el-form-item
-				:label="t('devicesHomeyPlugin.config.cloudClientId.label')"
-				prop="cloudClientId"
-				:error="fieldErrors['cloudClientId']"
-			>
-				<el-input
-					v-model="model.cloudClientId"
-					name="cloudClientId"
-					:placeholder="t('devicesHomeyPlugin.config.cloudClientId.placeholder')"
-				/>
-			</el-form-item>
-
-			<el-form-item
-				:label="t('devicesHomeyPlugin.config.cloudClientSecret.label')"
-				prop="cloudClientSecret"
-				:error="fieldErrors['cloudClientSecret']"
-			>
-				<config-secret-input
-					v-model="model.cloudClientSecret"
-					:configured="model.cloudClientSecretConfigured"
-					name="cloudClientSecret"
-					:placeholder="t('devicesHomeyPlugin.config.cloudClientSecret.placeholder')"
-				/>
-			</el-form-item>
-
-			<el-form-item
-				:label="t('devicesHomeyPlugin.config.cloudRedirectUrl.label')"
-				prop="cloudRedirectUrl"
-				:error="fieldErrors['cloudRedirectUrl']"
-			>
-				<el-input
-					v-model="model.cloudRedirectUrl"
-					name="cloudRedirectUrl"
-					:placeholder="t('devicesHomeyPlugin.config.cloudRedirectUrl.placeholder')"
-				/>
-				<div class="text-xs text-gray-500 mt-1">
-					{{ t('devicesHomeyPlugin.config.cloudRedirectUrl.description') }}
-				</div>
-				<div
-					v-if="cloudRedirectUrlNeedsUpdate"
-					class="w-full mt-2"
-					data-test-id="homey-cloud-redirect-recommendation"
-				>
-					<el-alert
-						type="warning"
-						:closable="false"
-						:title="t('devicesHomeyPlugin.config.cloudRedirectUrl.recommendation', { url: defaultCloudRedirectUrl })"
-					/>
-					<el-button
-						class="mt-2"
-						data-test-id="homey-cloud-use-admin-redirect"
-						@click="useCurrentAdminRedirectUrl"
-					>
-						{{ t('devicesHomeyPlugin.config.cloudRedirectUrl.useCurrentAdmin') }}
-					</el-button>
-				</div>
-			</el-form-item>
-		</template>
+		<el-form-item
+			:label="t('devicesHomeyPlugin.config.apiKey.label')"
+			prop="apiKey"
+			:error="fieldErrors['apiKey']"
+		>
+			<config-secret-input
+				v-model="model.apiKey"
+				:configured="model.apiKeyConfigured"
+				name="apiKey"
+				:placeholder="t('devicesHomeyPlugin.config.apiKey.placeholder')"
+			/>
+		</el-form-item>
 
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 			<el-form-item
@@ -166,44 +85,32 @@
 		</div>
 
 		<homey-connection-panel
-			:mode="model.mode"
 			:candidate-url="model.url"
 			:candidate-api-key="model.apiKey"
-		/>
-
-		<homey-cloud-authorization-panel
-			v-if="model.mode === DevicesHomeyPluginConnectionMode.cloud"
-			:saved-mode="savedMode"
-			:configuration-saved="!formChanged"
 		/>
 	</el-form>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElForm, ElFormItem, ElInput, ElInputNumber, ElRadioButton, ElRadioGroup, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, ElInputNumber, ElSwitch, type FormRules } from 'element-plus';
 
 import { ConfigSecretInput, FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
-import { DevicesHomeyPluginConnectionMode } from '../../../openapi.constants';
 import {
 	MAX_HOMEY_CONNECTION_TIMEOUT_MS,
 	MAX_HOMEY_RECONCILIATION_INTERVAL_MS,
 	MIN_HOMEY_CONNECTION_TIMEOUT_MS,
 	MIN_HOMEY_RECONCILIATION_INTERVAL_MS,
 } from '../devices-homey.constants';
-import { isBlankHomeyApiKeyReplacement, isBlankHomeyCloudClientSecretReplacement } from '../schemas/config.schemas';
+import { isBlankHomeyApiKeyReplacement } from '../schemas/config.schemas';
 import type { IHomeyConfigEditForm } from '../schemas/config.types';
-import { isSafeHomeyCloudRedirectUrl } from '../schemas/homey-cloud-redirect-url.schemas';
 import { isSafeHomeyUrl } from '../schemas/homey-url.schemas';
-import type { IHomeyConfig } from '../store/config.store.types';
-import { useHomeyCloudAuthorization } from '../store/homey-cloud-authorization.store';
 
-import HomeyCloudAuthorizationPanel from './HomeyCloudAuthorizationPanel.vue';
 import HomeyConnectionPanel from './HomeyConnectionPanel.vue';
 import type { IHomeyConfigFormProps } from './homey-config-form.types';
-import { buildDefaultHomeyCloudRedirectUrl, normalizeHomeyUrlInput } from './homey-config-form.utils';
+import { normalizeHomeyUrlInput } from './homey-config-form.utils';
 
 defineOptions({ name: 'HomeyConfigForm' });
 
@@ -223,14 +130,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const authorizationStore = useHomeyCloudAuthorization();
-const {
-	formEl,
-	model,
-	formChanged,
-	submit: submitConfig,
-	formResult,
-} = useConfigPluginEditForm<IHomeyConfigEditForm>({
+const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditForm<IHomeyConfigEditForm>({
 	config: props.config,
 	messages: {
 		success: t('devicesHomeyPlugin.messages.config.updated'),
@@ -241,30 +141,6 @@ const {
 const fieldErrors = computed<Record<string, string | undefined>>(() =>
 	Object.fromEntries(props.remoteFormErrors.map((error) => [error.field, error.message]))
 );
-const savedMode = ref<DevicesHomeyPluginConnectionMode>((props.config as IHomeyConfig).mode);
-const defaultCloudRedirectUrl = buildDefaultHomeyCloudRedirectUrl(window.location.origin);
-const cloudRedirectUrlNeedsUpdate = computed(() => defaultCloudRedirectUrl !== null && model.cloudRedirectUrl?.trim() !== defaultCloudRedirectUrl);
-
-const useCurrentAdminRedirectUrl = (): void => {
-	if (defaultCloudRedirectUrl !== null) model.cloudRedirectUrl = defaultCloudRedirectUrl;
-};
-
-const submit = async (): Promise<'saved'> => {
-	const result = await submitConfig();
-	savedMode.value = model.mode;
-
-	if (savedMode.value === DevicesHomeyPluginConnectionMode.cloud) {
-		authorizationStore.invalidateStatus();
-
-		try {
-			await authorizationStore.fetchStatus();
-		} catch {
-			// Configuration was saved successfully; keep the status unknown until the next refresh succeeds.
-		}
-	}
-
-	return result;
-};
 
 const url = computed<string>({
 	get: () => model.url ?? '',
@@ -289,45 +165,8 @@ const rules = computed<FormRules<IHomeyConfigEditForm>>(() => ({
 	apiKey: [
 		{
 			validator: (_rule, value, callback) => {
-				if (model.mode === DevicesHomeyPluginConnectionMode.local && isBlankHomeyApiKeyReplacement(value)) {
+				if (isBlankHomeyApiKeyReplacement(value)) {
 					callback(new Error(t('devicesHomeyPlugin.config.apiKey.invalid')));
-				} else {
-					callback();
-				}
-			},
-			trigger: ['change', 'blur'],
-		},
-	],
-	cloudClientId: [
-		{
-			validator: (_rule, value, callback) => {
-				callback();
-			},
-			trigger: ['change', 'blur'],
-		},
-	],
-	cloudClientSecret: [
-		{
-			validator: (_rule, value, callback) => {
-				if (model.mode === DevicesHomeyPluginConnectionMode.cloud && isBlankHomeyCloudClientSecretReplacement(value)) {
-					callback(new Error(t('devicesHomeyPlugin.config.cloudClientSecret.invalid')));
-				} else {
-					callback();
-				}
-			},
-			trigger: ['change', 'blur'],
-		},
-	],
-	cloudRedirectUrl: [
-		{
-			validator: (_rule, value, callback) => {
-				if (
-					model.mode === DevicesHomeyPluginConnectionMode.cloud &&
-					typeof value === 'string' &&
-					value.trim() !== '' &&
-					!isSafeHomeyCloudRedirectUrl(value)
-				) {
-					callback(new Error(t('devicesHomeyPlugin.config.cloudRedirectUrl.invalid')));
 				} else {
 					callback();
 				}
@@ -371,20 +210,6 @@ const rules = computed<FormRules<IHomeyConfigEditForm>>(() => ({
 	],
 }));
 
-watch(
-	() => model.mode,
-	(mode) => {
-		if (
-			mode === DevicesHomeyPluginConnectionMode.cloud &&
-			(typeof model.cloudRedirectUrl !== 'string' || model.cloudRedirectUrl.trim() === '') &&
-			defaultCloudRedirectUrl !== null
-		) {
-			model.cloudRedirectUrl = defaultCloudRedirectUrl;
-		}
-	},
-	{ immediate: true }
-);
-
 watch(formResult, (value) => emit('update:remote-form-result', value));
 watch(formChanged, (value) => emit('update:remote-form-changed', value));
 watch(
@@ -399,10 +224,7 @@ watch(
 	() => props.remoteFormReset,
 	(value) => {
 		emit('update:remote-form-reset', false);
-		if (value) {
-			formEl.value?.resetFields();
-			model.mode = savedMode.value;
-		}
+		if (value) formEl.value?.resetFields();
 	}
 );
 </script>

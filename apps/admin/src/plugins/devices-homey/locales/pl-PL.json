@@ -4,11 +4,6 @@
 			"title": "Lokalne połączenie Homey",
 			"description": "Połącz się bezpośrednio z Homey Pro w sieci lokalnej, aby uzyskać najniższe opóźnienie. Ustaw tutaj adres i klucz API tylko do zapisu; Smart Panel musi mieć dostęp do Homey."
 		},
-		"cloud": {
-			"title": "Połączenie Homey Cloud",
-			"description": "Połącz się przez Homey Cloud, gdy bezpośredni dostęp sieciowy jest niemożliwy. Zarejestruj klienta OAuth w Homey i zapisz tutaj jego dane; sekret jest tylko do zapisu."
-		},
-		"mode": { "label": "Tryb połączenia", "local": "Lokalny", "cloud": "Cloud", "cloudUnavailable": "Wkrótce" },
 		"enabled": "Włączone",
 		"url": {
 			"label": "Adres lokalnego API",
@@ -22,25 +17,6 @@
 			"required": "Wprowadź lub zachowaj klucz API Homey przed włączeniem integracji",
 			"invalid": "Wprowadź niepusty klucz API lub usuń jego zamiennik"
 		},
-		"cloudClientId": {
-			"label": "Identyfikator klienta Homey Cloud",
-			"placeholder": "Wprowadź identyfikator klienta OAuth",
-			"required": "Wprowadź identyfikator klienta Homey Cloud"
-		},
-		"cloudClientSecret": {
-			"label": "Sekret klienta Homey Cloud",
-			"placeholder": "Wprowadź nowy sekret, aby zastąpić zapisany",
-			"required": "Wprowadź lub zachowaj sekret klienta Homey Cloud",
-			"invalid": "Wprowadź niepusty sekret klienta albo usuń zamiennik"
-		},
-		"cloudRedirectUrl": {
-			"label": "Adres przekierowania Homey Cloud",
-			"placeholder": "https://panel.example.com/api/v1/plugins/devices-homey/oauth/callback",
-			"description": "Zarejestruj ten dokładny adres jako callback OAuth w portalu Homey Developer.",
-			"recommendation": "Zapisany callback używa innego źródła. Callback dla tego adresu administracyjnego to {url}",
-			"useCurrentAdmin": "Użyj bieżącego adresu administracyjnego",
-			"invalid": "Wprowadź dokładny zarejestrowany adres HTTPS; HTTP jest dozwolone tylko na localhost"
-		},
 		"connectionTimeout": "Limit czasu połączenia (ms)",
 		"reconciliationInterval": "Interwał uzgadniania inwentarza (ms)",
 		"validation": {
@@ -49,25 +25,6 @@
 			"reconciliationIntervalRequired": "Interwał uzgadniania inwentarza jest wymagany",
 			"reconciliationIntervalRange": "Interwał uzgadniania inwentarza musi wynosić od {min} do {max} ms"
 		}
-	},
-	"cloudAuthorization": {
-		"title": "Autoryzacja Homey Cloud",
-		"description": "Autoryzuj Smart Panel w Homey, a przy wielu centralach wybierz tę, którą chcesz wyświetlać i sterować.",
-		"status": "Autoryzacja",
-		"connected": "Połączono",
-		"disconnected": "Nie połączono",
-		"unknown": "Stan nieznany",
-		"connect": "Połącz Homey Cloud",
-		"reconnect": "Połącz ponownie",
-		"disconnect": "Rozłącz",
-		"disconnectConfirm": "Rozłączyć Homey Cloud i usunąć zapisane dane OAuth?",
-		"saveCloudModeFirst": "Zapisz tryb cloud przed rozpoczęciem autoryzacji Homey.",
-		"saveConfigurationFirst": "Zapisz konfigurację Homey Cloud przed rozpoczęciem autoryzacji.",
-		"selectDescription": "Wybierz Homey, którego ma używać Smart Panel.",
-		"selectPlaceholder": "Wybierz Homey",
-		"select": "Użyj wybranego Homey",
-		"cancel": "Anuluj autoryzację",
-		"requestFailed": "Nie udało się ukończyć autoryzacji Homey Cloud."
 	},
 	"status": {
 		"title": "Stan połączenia",
@@ -93,8 +50,8 @@
 			"error": "Błąd"
 		},
 		"guidance": {
-			"authentication": "Połącz ponownie Homey Cloud lub zastąp lokalny klucz API, a następnie ponownie przetestuj połączenie.",
-			"authorization": "Sprawdź, czy autoryzacja cloud lub lokalny klucz API ma wymagane uprawnienia Homey do odczytu i sterowania.",
+			"authentication": "Zastąp zapisany lokalny klucz API, a następnie ponownie przetestuj połączenie.",
+			"authorization": "Sprawdź, czy lokalny klucz API ma wymagane uprawnienia Homey do odczytu i sterowania.",
 			"timeout": "Sprawdź adres Homey, trasę sieciową i limit czasu połączenia.",
 			"unavailable": "Sprawdź, czy Homey działa i jest dostępne ze Smart Panelu.",
 			"protocol": "Potwierdź, że skonfigurowany endpoint jest zgodnym lokalnym API Homey.",
@@ -104,10 +61,10 @@
 	},
 	"connectionTest": {
 		"title": "Test połączenia",
-		"description": "Przetestuj wybrane połączenie zapisane na serwerze. W trybie lokalnym można też przetestować pełny adres URL i nowy klucz.",
+		"description": "Przetestuj lokalne połączenie zapisane na serwerze albo pełny adres URL i nowy klucz wpisane powyżej.",
 		"saved": "Testuj zapisaną konfigurację",
 		"candidate": "Testuj wprowadzony URL i klucz",
-		"savedUnavailable": "Zapisz i uzupełnij wybrany tryb połączenia przed testem.",
+		"savedUnavailable": "Zapisz i uzupełnij połączenie lokalne przed testem.",
 		"candidateUnavailable": "Wprowadź prawidłowy adres URL i nowy klucz API, aby przetestować niezapisane ustawienia.",
 		"success": "Połączenie z Homey powiodło się",
 		"successDescription": "Połączono z {identity}.",
@@ -116,21 +73,36 @@
 		"requestFailed": "Nie udało się ukończyć żądania testu połączenia."
 	},
 	"messages": {
-		"config": { "updated": "Konfiguracja Homey została zaktualizowana", "updateFailed": "Nie udało się zaktualizować konfiguracji Homey" }
+		"config": {
+			"updated": "Konfiguracja Homey została zaktualizowana",
+			"updateFailed": "Nie udało się zaktualizować konfiguracji Homey"
+		}
 	},
 	"wizard": {
 		"title": "Dodaj urządzenia Homey",
 		"subtitle": "Wybierz obsługiwane urządzenia z inwentarza połączonego Homey",
 		"breadcrumb": "Homey",
-		"columns": { "identifier": "ID urządzenia Homey", "class": "Klasa", "zone": "Strefa", "capabilities": "Możliwości", "mapping": "Mapowanie" },
+		"columns": {
+			"identifier": "ID urządzenia Homey",
+			"class": "Klasa",
+			"zone": "Strefa",
+			"capabilities": "Możliwości",
+			"mapping": "Mapowanie"
+		},
 		"values": {
 			"noZone": "Bez strefy",
 			"capabilities": "Możliwości: {count}",
 			"mappingSummary": "{channels} kanałów · {properties} właściwości",
 			"mappingWarnings": "Liczba ostrzeżeń mapowania: {count}"
 		},
-		"statuses": { "unavailable": "Niedostępne w Homey", "needsAttention": "Sprawdź mapowanie urządzenia Homey" },
-		"actions": { "refresh": "Odśwież inwentarz", "openConfig": "Otwórz konfigurację Homey" },
+		"statuses": {
+			"unavailable": "Niedostępne w Homey",
+			"needsAttention": "Sprawdź mapowanie urządzenia Homey"
+		},
+		"actions": {
+			"refresh": "Odśwież inwentarz",
+			"openConfig": "Otwórz konfigurację Homey"
+		},
 		"errors": {
 			"inventory": "Nie udało się załadować inwentarza Homey",
 			"adoption": "Nie udało się dodać wybranych urządzeń Homey",
