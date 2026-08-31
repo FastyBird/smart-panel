@@ -471,6 +471,46 @@ describe('HomeyMappingLoaderService', () => {
 		]);
 	});
 
+	it('accepts an explicit thermostat mode write strategy on a bidirectional boolean map', () => {
+		writeBuiltin('properties', [
+			propertyDefinition({
+				property: {
+					channel: 'heater',
+					category: 'on',
+					data_type: 'bool',
+					direction: 'bidirectional',
+					write_strategy: 'thermostat_heater_mode',
+					transform: {
+						type: 'map',
+						read: { off: false, heat: true, cool: false, auto: true },
+						write: { false: 'off', true: 'heat' },
+					},
+				},
+			}),
+		]);
+
+		service.loadAllMappings();
+
+		expect(service.getPropertyMappings()[0]?.property.writeStrategy).toBe('thermostat_heater_mode');
+	});
+
+	it('rejects a thermostat mode write strategy without a bidirectional boolean map', () => {
+		writeBuiltin('properties', [
+			propertyDefinition({
+				property: {
+					channel: 'heater',
+					category: 'on',
+					data_type: 'bool',
+					direction: 'read_only',
+					write_strategy: 'thermostat_heater_mode',
+					transform: { type: 'map', read: { off: false, heat: true } },
+				},
+			}),
+		]);
+
+		expect(() => service.loadAllMappings()).toThrow(HomeyMappingConfigurationError);
+	});
+
 	it.each([
 		{ type: 'constant', value: 'static' },
 		{ type: 'threshold', threshold: 20, less_than_or_equal: 'low', greater_than: 'ok' },

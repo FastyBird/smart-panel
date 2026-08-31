@@ -215,12 +215,16 @@ describe('Homey MVP mapping catalog', () => {
 		expect(write(bindings, 'thermostat-heater-target-temperature', 23)).toBe(23);
 		expect(read(bindings, 'thermostat-cooler-target-temperature', 22.5)).toBe(22.5);
 		expect(write(bindings, 'thermostat-cooler-target-temperature', 23)).toBe(23);
+		expect(bindings.get('thermostat-heater-target-temperature')?.mapping.property.range).toBeUndefined();
+		expect(bindings.get('thermostat-cooler-target-temperature')?.mapping.property.range).toBeUndefined();
 		expect(read(bindings, 'thermostat-heater-on', 'heat')).toBe(true);
 		expect(read(bindings, 'thermostat-cooler-on', 'heat')).toBe(false);
 		expect(read(bindings, 'thermostat-heater-on', 'auto')).toBe(true);
 		expect(read(bindings, 'thermostat-cooler-on', 'auto')).toBe(true);
 		expect(write(bindings, 'thermostat-heater-on', true)).toBe('heat');
 		expect(write(bindings, 'thermostat-cooler-on', true)).toBe('cool');
+		expect(bindings.get('thermostat-heater-on')?.mapping.property.writeStrategy).toBe('thermostat_heater_mode');
+		expect(bindings.get('thermostat-cooler-on')?.mapping.property.writeStrategy).toBe('thermostat_cooler_mode');
 		expect(bindings.has('thermostat-heater-status')).toBe(false);
 		expect(bindings.has('thermostat-cooler-status')).toBe(false);
 		expect(bindings.has('battery-level')).toBe(false);

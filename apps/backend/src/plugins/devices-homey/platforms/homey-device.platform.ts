@@ -13,6 +13,7 @@ import {
 import { HomeyChannelEntity, HomeyChannelPropertyEntity, HomeyDeviceEntity } from '../entities/devices-homey.entity';
 import { HomeyMappingLoaderService } from '../mappings/mapping-loader.service';
 import { HomeyMappingTransformerService } from '../mappings/mapping-transformer.service';
+import { type HomeyWriteStrategy } from '../mappings/mapping.types';
 import { HomeyCapability, HomeyCapabilityValue } from '../models/homey-capability.model';
 import { HomeyFailureLogLimiter } from '../services/homey-failure-log-limiter';
 import { HomeyService } from '../services/homey.service';
@@ -34,13 +35,10 @@ interface PreparedHomeyCommand {
 interface PreparedThermostatModeUpdate {
 	readonly deviceId: string;
 	readonly capability: HomeyCapability;
-	readonly mappingName: string;
+	readonly writeStrategy: HomeyWriteStrategy;
 	readonly value: boolean;
 }
 
-const THERMOSTAT_HEATER_ON_MAPPING = 'thermostat-heater-on';
-const THERMOSTAT_COOLER_ON_MAPPING = 'thermostat-cooler-on';
-const THERMOSTAT_MODE_MAPPINGS = new Set([THERMOSTAT_HEATER_ON_MAPPING, THERMOSTAT_COOLER_ON_MAPPING]);
 const THERMOSTAT_TARGET_MAPPINGS = new Set([
 	'thermostat-heater-target-temperature',
 	'thermostat-cooler-target-temperature',
@@ -164,7 +162,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 				return false;
 			}
 
-			if (THERMOSTAT_MODE_MAPPINGS.has(mapping.name)) {
+			if (mapping.property.writeStrategy !== undefined) {
 				if (typeof panelValidation.value !== 'boolean') {
 					this.logCommandFailure('panel-value-invalid', 'Homey thermostat mode command value is invalid');
 
@@ -174,7 +172,7 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 				thermostatModeUpdates.push({
 					deviceId: upstreamDevice.id,
 					capability,
-					mappingName: mapping.name,
+					writeStrategy: mapping.property.writeStrategy,
 					value: panelValidation.value,
 				});
 
@@ -249,9 +247,9 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 			let coolerOn = current?.coolerOn;
 
 			for (const update of group) {
-				if (update.mappingName === THERMOSTAT_HEATER_ON_MAPPING) {
+				if (update.writeStrategy === 'thermostat_heater_mode') {
 					heaterOn = update.value;
-				} else if (update.mappingName === THERMOSTAT_COOLER_ON_MAPPING) {
+				} else if (update.writeStrategy === 'thermostat_cooler_mode') {
 					coolerOn = update.value;
 				}
 			}

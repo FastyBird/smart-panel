@@ -354,6 +354,7 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 				category: this.resolveEnum(PropertyCategory, propertyDefinition.property.category, 'property category'),
 				dataType: this.resolveEnum(DataTypeType, propertyDefinition.property.data_type, 'data type'),
 				direction: propertyDefinition.property.direction,
+				writeStrategy: propertyDefinition.property.write_strategy,
 				unit: propertyDefinition.property.unit,
 				range: propertyDefinition.property.range ? { ...propertyDefinition.property.range } : undefined,
 				transform: propertyDefinition.property.transform
@@ -375,7 +376,7 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 	}
 
 	private validatePropertyDefinition(definition: HomeyPropertyMappingDefinition): void {
-		const { direction, range, transform } = definition.property;
+		const { data_type: dataType, direction, range, transform, write_strategy: writeStrategy } = definition.property;
 
 		if (range?.minimum !== undefined && range.maximum !== undefined && range.minimum > range.maximum) {
 			throw new Error('range minimum must not exceed maximum');
@@ -402,6 +403,13 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 			if (direction !== 'read_only' && transform.write === undefined) {
 				throw new Error(`map transform requires a write table for ${direction} direction`);
 			}
+		}
+
+		if (
+			writeStrategy !== undefined &&
+			(direction !== 'bidirectional' || dataType !== 'bool' || transform?.type !== 'map')
+		) {
+			throw new Error('thermostat mode write strategies require a bidirectional boolean map transform');
 		}
 
 		if (transform?.type === 'constant' && direction !== 'read_only') {

@@ -149,7 +149,6 @@ mappings:
       data_type: float
       direction: bidirectional
       unit: °C
-      range: { minimum: 0, maximum: 100, step: 0.1 }
 
   - name: thermostat-cooler-target-temperature
     description: Homey's shared thermostat target projected as the cooling setpoint
@@ -164,7 +163,6 @@ mappings:
       data_type: float
       direction: bidirectional
       unit: °C
-      range: { minimum: 0, maximum: 100, step: 0.1 }
 
   - name: thermostat-heater-on
     description: Configured Homey thermostat mode projected as the heating enable state
@@ -178,6 +176,7 @@ mappings:
       category: on
       data_type: bool
       direction: bidirectional
+      write_strategy: thermostat_heater_mode
       transform:
         type: map
         read: { off: false, heat: true, cool: false, auto: true, heat_cool: true }
@@ -195,6 +194,7 @@ mappings:
       category: on
       data_type: bool
       direction: bidirectional
+      write_strategy: thermostat_cooler_mode
       transform:
         type: map
         read: { off: false, heat: false, cool: true, auto: true, heat_cool: true }

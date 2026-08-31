@@ -292,12 +292,8 @@ export class HomeyMappingPreviewService {
 		const mappingCanWrite = this.mappingCanWrite(mapping.property.direction);
 		const readable = mappingCanRead && capability.readable;
 		const writable = mappingCanWrite && capability.writable;
-		const conversion = this.createConversion(
-			mapping.property.transform,
-			mapping.property.dataType,
-			capability,
-			mappingCanRead,
-		);
+		const effectiveRange = this.getEffectivePropertyRange(mapping, capability);
+		const conversion = this.createConversion(mapping, mapping.property.dataType, capability, mappingCanRead);
 		const property = new HomeyMappingPreviewPropertyModel();
 
 		property.capabilityId = binding.capabilityId;
@@ -312,9 +308,9 @@ export class HomeyMappingPreviewService {
 		property.writable = writable;
 		property.unit = mapping.property.unit ?? capability.unit;
 		property.range = this.createRange(
-			mapping.property.range?.minimum ?? null,
-			mapping.property.range?.maximum ?? null,
-			mapping.property.range?.step ?? null,
+			effectiveRange?.minimum ?? null,
+			effectiveRange?.maximum ?? null,
+			effectiveRange?.step ?? null,
 		);
 		property.sourceRange = this.createRange(capability.minimum, capability.maximum, capability.step);
 		property.enumValues = capability.enumValues.map((value) => value.id);
@@ -428,11 +424,11 @@ export class HomeyMappingPreviewService {
 
 		const potentialPanelDomain = this.getPotentialPanelValues(mapping, capability, mappingCanRead, mappingCanWrite);
 		const potentialPanelValues = potentialPanelDomain.values;
-		if (mapping.property.range?.minimum !== undefined) {
-			potentialPanelValues.push(mapping.property.range.minimum);
+		if (effectiveRange?.minimum !== undefined) {
+			potentialPanelValues.push(effectiveRange.minimum);
 		}
-		if (mapping.property.range?.maximum !== undefined) {
-			potentialPanelValues.push(mapping.property.range.maximum);
+		if (effectiveRange?.maximum !== undefined) {
+			potentialPanelValues.push(effectiveRange.maximum);
 		}
 		if (property.valueAvailable) {
 			potentialPanelValues.push(property.currentValue);
@@ -451,11 +447,11 @@ export class HomeyMappingPreviewService {
 				channelCategory,
 				property.category,
 				property.dataType,
-				mapping.property.range,
+				effectiveRange,
 			) ||
 			potentialPanelValues.some(
 				(value) =>
-					!this.isValidPanelValue(channelCategory, property.category, property.dataType, mapping.property.range, value),
+					!this.isValidPanelValue(channelCategory, property.category, property.dataType, effectiveRange, value),
 			) ||
 			this.hasIncompleteWritableEnumDomain(
 				channelCategory,
@@ -483,7 +479,7 @@ export class HomeyMappingPreviewService {
 			channelCategory,
 			property.category,
 			property.dataType,
-			mapping.property.range,
+			effectiveRange,
 		);
 		if (
 			!potentialHomeyWriteDomain.convertible ||
@@ -496,6 +492,7 @@ export class HomeyMappingPreviewService {
 				property.dataType,
 			) ||
 			potentialHomeyWriteDomain.values.some((value) => !this.isValidHomeyValue(capability, value)) ||
+			!this.isWriteStrategyDomainCompatible(mapping, capability) ||
 			!this.isNumericWriteGridCompatible(
 				mapping,
 				capability,
@@ -503,7 +500,7 @@ export class HomeyMappingPreviewService {
 				channelCategory,
 				property.category,
 				property.dataType,
-				mapping.property.range,
+				effectiveRange,
 			)
 		) {
 			warnings.push(
@@ -1222,11 +1219,12 @@ export class HomeyMappingPreviewService {
 	}
 
 	private createConversion(
-		transform: HomeyTransformDefinition | undefined,
+		mapping: ResolvedHomeyPropertyMapping,
 		dataType: DataTypeType,
 		capability: HomeyCapability,
 		mappingCanRead: boolean,
 	): HomeyMappingPreviewConversionModel {
+		const transform = mapping.property.transform;
 		const conversion = new HomeyMappingPreviewConversionModel();
 		conversion.type = (transform?.type ?? HomeyMappingConversionType.IDENTITY) as HomeyMappingConversionType;
 		conversion.reversible = true;
@@ -1297,7 +1295,50 @@ export class HomeyMappingPreviewService {
 			conversion.reversible = false;
 		}
 
+		if (mapping.property.writeStrategy !== undefined) {
+			conversion.reversible = true;
+			conversion.lossy = false;
+			conversion.ambiguous = false;
+		}
+
 		return conversion;
+	}
+
+	private getEffectivePropertyRange(
+		mapping: ResolvedHomeyPropertyMapping,
+		capability: HomeyCapability,
+	): HomeyValueRangeDefinition | undefined {
+		const configured = mapping.property.range;
+
+		if (mapping.property.transform !== undefined || capability.type !== HomeyCapabilityType.NUMBER) {
+			return configured;
+		}
+
+		const minimumCandidates = [configured?.minimum, capability.minimum].filter(
+			(value): value is number => value !== undefined && value !== null,
+		);
+		const maximumCandidates = [configured?.maximum, capability.maximum].filter(
+			(value): value is number => value !== undefined && value !== null,
+		);
+		const minimum = minimumCandidates.length > 0 ? Math.max(...minimumCandidates) : undefined;
+		const maximum = maximumCandidates.length > 0 ? Math.min(...maximumCandidates) : undefined;
+		const step = configured?.step ?? capability.step;
+
+		if (minimum === undefined && maximum === undefined && step === undefined) {
+			return undefined;
+		}
+
+		return { minimum, maximum, step };
+	}
+
+	private isWriteStrategyDomainCompatible(mapping: ResolvedHomeyPropertyMapping, capability: HomeyCapability): boolean {
+		if (mapping.property.writeStrategy === undefined) {
+			return true;
+		}
+
+		const modes = new Set(capability.enumValues.map((value) => value.id));
+
+		return !(modes.has('auto') && modes.has('heat_cool'));
 	}
 
 	private integerNormalizationCanLoseValues(
