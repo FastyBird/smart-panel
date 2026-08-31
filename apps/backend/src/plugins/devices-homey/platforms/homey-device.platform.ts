@@ -157,10 +157,6 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 		}
 
 		for (const [key, indexes] of groupedTargetIndexes) {
-			if (indexes.length < 2) {
-				continue;
-			}
-
 			const separator = key.indexOf('\u0000');
 			const deviceId = key.slice(0, separator);
 			const capabilityId = key.slice(separator + 1);
@@ -182,8 +178,9 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 			}
 
 			const numericValues = values.filter((value): value is number => value !== null);
-			const midpoint = (Math.min(...numericValues) + Math.max(...numericValues)) / 2;
-			const projected = this.alignThermostatTargetToCapability(capability, midpoint);
+			const requestedTarget =
+				numericValues.length === 1 ? numericValues[0] : (Math.min(...numericValues) + Math.max(...numericValues)) / 2;
+			const projected = this.alignThermostatTargetToCapability(capability, requestedTarget);
 
 			if (projected === null) {
 				return null;
@@ -191,6 +188,33 @@ export class HomeyDevicePlatform implements IDevicePlatform {
 
 			for (const index of indexes) {
 				prepared[index] = { ...prepared[index], value: projected };
+			}
+
+			const first = prepared[indexes[0]];
+
+			if (!(first?.device instanceof HomeyDeviceEntity)) {
+				return null;
+			}
+
+			const preparedPropertyIds = new Set(prepared.map((update) => update.property.id));
+
+			for (const channel of first.device.channels ?? []) {
+				if (!(channel instanceof HomeyChannelEntity)) {
+					continue;
+				}
+
+				for (const property of channel.properties ?? []) {
+					if (
+						property instanceof HomeyChannelPropertyEntity &&
+						property.homeyCapabilityId === capabilityId &&
+						typeof property.homeyMappingName === 'string' &&
+						THERMOSTAT_TARGET_MAPPINGS.has(property.homeyMappingName) &&
+						!preparedPropertyIds.has(property.id)
+					) {
+						prepared.push({ device: first.device, channel, property, value: projected });
+						preparedPropertyIds.add(property.id);
+					}
+				}
 			}
 		}
 

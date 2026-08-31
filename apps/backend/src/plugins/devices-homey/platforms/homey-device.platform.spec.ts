@@ -541,6 +541,41 @@ describe('HomeyDevicePlatform', () => {
 		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'target_temperature', 21.5);
 	});
 
+	it('aligns a one-sided target and exposes its sibling shared-target projection', async () => {
+		const loader = new HomeyMappingLoaderService();
+		loader.loadAllMappings();
+		const target = thermostatEntities(loader);
+		const capability = target.upstream.capabilities.find((candidate) => candidate.id === 'target_temperature');
+		expect(capability).toBeDefined();
+		Object.assign(capability, { step: 1 });
+		const homeyService = {
+			getInventorySnapshot: jest.fn().mockReturnValue([target.upstream]),
+			executeCapabilityCommand: jest.fn().mockResolvedValue(true),
+		};
+		const platform = new HomeyDevicePlatform(
+			homeyService as unknown as HomeyService,
+			loader,
+			new HomeyMappingTransformerService(),
+		);
+
+		const prepared = platform.prepareBatch([
+			{ device: target.device, channel: target.heater, property: target.heaterTarget, value: 22.5 },
+		]);
+
+		expect(prepared).toHaveLength(2);
+		expect(prepared?.map((update) => [update.property.id, update.value])).toStrictEqual([
+			[target.heaterTarget.id, 23],
+			[target.coolerTarget.id, 23],
+		]);
+		await expect(
+			platform.processBatch([
+				{ device: target.device, channel: target.heater, property: target.heaterTarget, value: 22.5 },
+			]),
+		).resolves.toBe(true);
+		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledTimes(1);
+		expect(homeyService.executeCapabilityCommand).toHaveBeenCalledWith(target.upstream.id, 'target_temperature', 23);
+	});
+
 	it('rejects unavailable devices, read-only capabilities, and off-range values', async () => {
 		const command = commandCases[1];
 		const resolvedMapping = mapping(command);

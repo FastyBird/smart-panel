@@ -573,14 +573,14 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		}
 
 		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
-		const appliedHeatingSetpoint =
-			heatingSetpoint === null
-				? climateState.heatingSetpoint
-				: this.getAppliedSetpointConsensus(appliedHeatingSetpoints, climateState.heatingSetpoint);
-		const appliedCoolingSetpoint =
-			coolingSetpoint === null
-				? climateState.coolingSetpoint
-				: this.getAppliedSetpointConsensus(appliedCoolingSetpoints, climateState.coolingSetpoint);
+		const appliedHeatingSetpoint = this.getAppliedSetpointConsensus(
+			appliedHeatingSetpoints,
+			climateState.heatingSetpoint,
+		);
+		const appliedCoolingSetpoint = this.getAppliedSetpointConsensus(
+			appliedCoolingSetpoints,
+			climateState.coolingSetpoint,
+		);
 
 		// Store setpoint change to InfluxDB for historical tracking (fire and forget)
 		// Preserve the current mode and merge setpoints (only update what was provided)
@@ -937,14 +937,14 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		}
 
 		const overallSuccess = failedDevices === 0 || affectedDevices > 0;
-		const appliedHeatingSetpoint =
-			heatingSetpoint === null
-				? climateState.heatingSetpoint
-				: this.getAppliedSetpointConsensus(appliedHeatingSetpoints, climateState.heatingSetpoint);
-		const appliedCoolingSetpoint =
-			coolingSetpoint === null
-				? climateState.coolingSetpoint
-				: this.getAppliedSetpointConsensus(appliedCoolingSetpoints, climateState.coolingSetpoint);
+		const appliedHeatingSetpoint = this.getAppliedSetpointConsensus(
+			appliedHeatingSetpoints,
+			climateState.heatingSetpoint,
+		);
+		const appliedCoolingSetpoint = this.getAppliedSetpointConsensus(
+			appliedCoolingSetpoints,
+			climateState.coolingSetpoint,
+		);
 
 		// Store climate state to InfluxDB at the end with all values (fire and forget)
 		// Use effective mode and preserve existing setpoints if not provided

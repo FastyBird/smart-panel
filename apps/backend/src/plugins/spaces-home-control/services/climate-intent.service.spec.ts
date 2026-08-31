@@ -5,7 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
-import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { type IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { DEFAULT_TTL_SPACE_COMMAND } from '../../../modules/intents/intents.constants';
@@ -359,6 +359,74 @@ describe('ClimateIntentService', () => {
 					);
 				},
 			);
+
+			it.each([
+				{
+					label: 'heating',
+					intent: { heatingSetpoint: 22.5 },
+					projected: 23,
+					expectedResult: { heatingSetpoint: 23, coolingSetpoint: null },
+				},
+				{
+					label: 'cooling',
+					intent: { coolingSetpoint: 24.5 },
+					projected: 25,
+					expectedResult: { heatingSetpoint: null, coolingSetpoint: 25 },
+				},
+			])('persists both shared-target projections after a one-sided $label update', async (testCase) => {
+				const heaterChannel = Object.assign(new ChannelEntity(), { id: uuid() });
+				const coolerChannel = Object.assign(new ChannelEntity(), { id: uuid() });
+				const heaterSetpointProperty = Object.assign(new ChannelPropertyEntity(), { id: uuid() });
+				const coolerSetpointProperty = Object.assign(new ChannelPropertyEntity(), { id: uuid() });
+				const device = createMockPrimaryClimateDevice({
+					deviceCategory: DeviceCategory.THERMOSTAT,
+					heaterChannel,
+					coolerChannel,
+					coolerOnProperty: { id: uuid() } as any,
+					coolerSetpointProperty,
+					heaterSetpointProperty,
+					supportsCooling: true,
+				});
+				climateStateService.getClimateState.mockResolvedValue(
+					createMockClimateState({
+						mode: ClimateMode.AUTO,
+						heatingSetpoint: 21,
+						coolingSetpoint: 25,
+						supportsCooling: true,
+					}),
+				);
+				climateStateService.getPrimaryClimateDevicesInSpace.mockResolvedValue([device]);
+				mockPlatform.prepareBatch.mockImplementation((updates: IDevicePropertyData[]) => {
+					const update = updates[0];
+
+					return [
+						{ ...update, value: testCase.projected },
+						{
+							device: update.device,
+							channel: update.property.id === heaterSetpointProperty.id ? coolerChannel : heaterChannel,
+							property:
+								update.property.id === heaterSetpointProperty.id ? coolerSetpointProperty : heaterSetpointProperty,
+							value: testCase.projected,
+						},
+					];
+				});
+
+				const result = await service.executeClimateIntent(mockSpaceId, {
+					type: ClimateIntentType.SETPOINT_SET,
+					...testCase.intent,
+				});
+
+				expect(result).toMatchObject({ success: true, ...testCase.expectedResult });
+				expect(intentTimeseriesService.storeClimateModeChange).toHaveBeenCalledWith(
+					mockSpaceId,
+					ClimateMode.AUTO,
+					testCase.projected,
+					testCase.projected,
+					1,
+					1,
+					0,
+				);
+			});
 
 			it('should return requested setpoint value', async () => {
 				const device = createMockPrimaryClimateDevice();
