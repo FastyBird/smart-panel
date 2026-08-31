@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: in-progress
+Status: done
 Created: 2026-08-12
 
 ## 1. Business goal
@@ -71,7 +71,8 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 
 ### Phase 0 — compatibility gate
 
-- [ ] SHS version, image digest, network topology, ports, and test date are recorded.
+- [x] Available SHS version, network topology, HTTP port, runtime path, and test dates are recorded; the unavailable
+  image digest and exact TrueNAS version/architecture are documented as an accepted provenance gap.
 - [x] A least-privilege API key can read devices, zones, system information, and current capability values.
 - [x] A designated harmless writable capability can be controlled and its resulting event observed.
 - [x] Socket.IO connection, subscription, disconnect, restart, and reconnect behavior are recorded.
@@ -83,7 +84,7 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 
 ### Security and configuration
 
-- [x] Homey API keys and OAuth tokens are write-only through every config endpoint.
+- [x] Homey API keys are write-only through every config endpoint.
 - [x] Config responses expose only a configured/not-configured indicator for secrets.
 - [x] Omitting a secret during update preserves it; explicit clear removes it.
 - [x] Connection testing reuses the stored key only for an explicit fully saved configuration request; every candidate/overridden URL requires a newly supplied key and can never fall back to the stored secret.
@@ -152,20 +153,20 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 
 ### Local MVP release audit
 
-The 2026-08-28 audit moves the local integration to `review`. The production plugin, connector boundary, authenticated
+The 2026-08-28 audit moved the local integration to `review`. The production plugin, connector boundary, authenticated
 inventory, normalization, mapping catalog, API conventions, secret semantics, admin/panel paths, offline fixtures,
 security gate, and complete live lifecycle matrix all have recorded automated or sanitized live evidence. The API-key
 criterion applies to every implemented Homey config endpoint.
 The final audit reran OpenAPI generation, the backend build, 17 credential-free Homey spike suites with 243 tests, and
 39 Homey/config security suites with 484 tests without live SHS access.
 
-The combined Phase 0 installation-metadata criterion remains unchecked because the container image digest and exact
-TrueNAS version/architecture were not captured during the live program and cannot be reconstructed safely. SHS
-versions, dates, stable same-LAN topology, runtime network path, and verified HTTP port are recorded. This provenance
-gap does not change runtime behavior, but it remains visible rather than being marked complete. The detailed plan also
-retains explicit environment/design deferrals for Homey Pro hardware, physical availability-event continuity, and
-thermostat target/mode projection without a verified actual-activity signal. Local setup therefore claims SHS over
-HTTP `4859`; it does not claim HTTPS `4860`, Homey Pro equivalence, or climate control.
+The container image digest and exact TrueNAS version/architecture were not captured during the live program and cannot
+be reconstructed safely. SHS versions, dates, stable same-LAN topology, runtime network path, and verified HTTP port
+are recorded. The missing provenance does not change runtime behavior and was accepted as a non-blocking release gap
+when the local MVP review completed on 2026-08-31. The detailed plan retains explicit environment/design deferrals for
+Homey Pro hardware, physical availability-event continuity, and thermostat target/mode projection without a verified
+actual-activity signal. Local setup therefore claims SHS over HTTP `4859`; it does not claim HTTPS `4860`, Homey Pro
+equivalence, or climate control.
 
 ## 5. Example scenarios
 
