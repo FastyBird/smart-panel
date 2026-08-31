@@ -5,7 +5,7 @@ import { HomeyZone } from '../models/homey-zone.model';
 import { HomeyEventListener, HomeyUnsubscribe } from './homey-connector.types';
 
 /**
- * Transport-neutral boundary implemented by both local and cloud connectors.
+ * Transport-neutral boundary for Homey connector implementations.
  * Connect/disconnect and returned cleanup callbacks must be idempotent.
  */
 export interface HomeyConnector {

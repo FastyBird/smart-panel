@@ -1,4 +1,4 @@
-import { Exclude, Expose } from 'class-transformer';
+import { Expose } from 'class-transformer';
 import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Max, Min, ValidateIf } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -17,26 +17,6 @@ import { IsSafeHomeyUrl, MAX_HOMEY_URL_LENGTH } from '../validators/homey-url.va
 
 @ApiSchema({ name: 'DevicesHomeyPluginDataConfig' })
 export class HomeyConfigModel extends PluginConfigModel {
-	@Exclude({ toPlainOnly: true })
-	@Expose({ name: 'mode', toClassOnly: true })
-	legacyConnectionMode?: unknown;
-
-	@Exclude({ toPlainOnly: true })
-	@Expose({ name: 'cloud_client_id', toClassOnly: true })
-	legacyRemoteClientId?: unknown;
-
-	@Exclude({ toPlainOnly: true })
-	@Expose({ name: 'cloud_client_secret', toClassOnly: true })
-	legacyRemoteClientSecret?: unknown;
-
-	@Exclude({ toPlainOnly: true })
-	@Expose({ name: 'cloud_redirect_url', toClassOnly: true })
-	legacyRemoteRedirectUrl?: unknown;
-
-	@Exclude({ toPlainOnly: true })
-	@Expose({ name: 'cloud_legacy_environment_migrated', toClassOnly: true })
-	legacyEnvironmentMigrationMarker?: unknown;
-
 	@ApiProperty({
 		description: 'Plugin type identifier',
 		example: DEVICES_HOMEY_PLUGIN_NAME,

@@ -1,4 +1,4 @@
-import { instanceToPlain, plainToInstance } from 'class-transformer';
+import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 
 import { ConfigSecretsService } from '../../../modules/config/services/config-secrets.service';
@@ -27,30 +27,6 @@ describe('Homey configuration', () => {
 		expect(projected).not.toHaveProperty('apiKey');
 		expect(projected).toHaveProperty('api_key_configured', true);
 		expect(JSON.stringify(projected)).not.toContain('configured-secret');
-	});
-
-	it('loads obsolete remote fields only long enough to remove them from storage', () => {
-		const config = plainToInstance(
-			HomeyConfigModel,
-			{
-				type: 'devices-homey-plugin',
-				mode: 'cloud',
-				cloud_client_id: 'obsolete-client',
-				cloud_client_secret: 'obsolete-secret',
-				cloud_redirect_url: 'https://obsolete.example/callback',
-				cloud_legacy_environment_migrated: true,
-			},
-			{ excludeExtraneousValues: false },
-		);
-
-		expect(config.legacyConnectionMode).toBe('cloud');
-		expect(config.legacyRemoteClientSecret).toBe('obsolete-secret');
-		const persisted = instanceToPlain(config);
-		expect(persisted).not.toHaveProperty('mode');
-		expect(persisted).not.toHaveProperty('cloud_client_id');
-		expect(persisted).not.toHaveProperty('cloud_client_secret');
-		expect(persisted).not.toHaveProperty('cloud_redirect_url');
-		expect(persisted).not.toHaveProperty('cloud_legacy_environment_migrated');
 	});
 
 	it('accepts snake-case update fields while keeping the API key optional', () => {

@@ -21,7 +21,6 @@ import { DevicesHomeyPlugin } from './devices-homey.plugin';
 import { HomeyUpdatePluginConfigDto } from './dto/update-config.dto';
 import { HomeyConfigModel } from './models/config.model';
 import { HomeyDevicePlatform } from './platforms/homey-device.platform';
-import { HomeyLegacyConfigCleanupService } from './services/homey-legacy-config-cleanup.service';
 import { HomeyService } from './services/homey.service';
 
 describe('DevicesHomeyPlugin', () => {
@@ -41,7 +40,6 @@ describe('DevicesHomeyPlugin', () => {
 			stop: jest.fn().mockResolvedValue(undefined),
 		};
 		const homeyDevicePlatform = { getType: () => DEVICES_HOMEY_TYPE };
-		const legacyConfigCleanup = { cleanup: jest.fn() };
 		let resetHandler: (() => Promise<{ success: boolean; reason?: string } | null>) | undefined;
 		const factoryResetRegistry = {
 			register: jest.fn((_name: string, handler: () => Promise<{ success: boolean; reason?: string } | null>) => {
@@ -60,7 +58,6 @@ describe('DevicesHomeyPlugin', () => {
 			homeyService as unknown as HomeyService,
 			platformRegistry as unknown as PlatformRegistryService,
 			homeyDevicePlatform as unknown as HomeyDevicePlatform,
-			legacyConfigCleanup as unknown as HomeyLegacyConfigCleanupService,
 			factoryResetRegistry as unknown as FactoryResetRegistryService,
 		);
 
@@ -72,7 +69,6 @@ describe('DevicesHomeyPlugin', () => {
 			configDto: HomeyUpdatePluginConfigDto,
 			secretFields: [{ path: 'api_key', configuredPath: 'api_key_configured', inputPaths: ['apiKey'] }],
 		});
-		expect(legacyConfigCleanup.cleanup).toHaveBeenCalledTimes(1);
 		expect(devicesMapper.registerMapping).toHaveBeenCalledWith(expect.objectContaining({ type: DEVICES_HOMEY_TYPE }));
 		expect(channelsMapper.registerMapping).toHaveBeenCalledWith(expect.objectContaining({ type: DEVICES_HOMEY_TYPE }));
 		expect(propertiesMapper.registerMapping).toHaveBeenCalledWith(

@@ -58,14 +58,6 @@ I want to connect Homey, adopt its devices, receive live state updates, and cont
 - Backend, admin, and representative panel tests.
 - Operator/developer documentation.
 
-### In scope — Phase 2 cloud connector
-
-- Athom OAuth/Web API client registration and authorization flow.
-- Homey selection for multi-Homey accounts.
-- Secure access/refresh-token persistence and revocation behavior.
-- Cloud connector implementing the same normalized connector contract.
-- Cloud-specific deployment and approval/limit documentation.
-
 ### Out of scope
 
 - Product support for pairing, commissioning, interviewing, renaming, or removing physical devices in Homey. Phase 0 may exercise lifecycle mutations only on a separately gated, explicitly allowlisted disposable virtual/test device.
@@ -254,7 +246,6 @@ Implementation order:
 8. Admin configuration and wizard adapter.
 9. Panel/OpenAPI/spec integration.
 10. Hardening, live verification, documentation, and release gate.
-11. Cloud OAuth and cloud connector.
 
 ## 9. AI instructions
 

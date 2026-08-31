@@ -58,7 +58,6 @@ import { HomeyConfigValidatorService } from './services/homey-config-validator.s
 import { HomeyConnectionTestService } from './services/homey-connection-test.service';
 import { HomeyDeviceAdoptionService } from './services/homey-device-adoption.service';
 import { HomeyDeviceInventoryService } from './services/homey-device-inventory.service';
-import { HomeyLegacyConfigCleanupService } from './services/homey-legacy-config-cleanup.service';
 import { HomeyMappingPreviewService } from './services/homey-mapping-preview.service';
 import { HomeySynchronizerService } from './services/homey-synchronizer.service';
 import { HomeyService } from './services/homey.service';
@@ -94,7 +93,6 @@ import { HomeyService } from './services/homey.service';
 		HomeyMappingTransformerService,
 		HomeyPropertyMappingStorageService,
 		HomeyDeviceInventoryService,
-		HomeyLegacyConfigCleanupService,
 		HomeyMappingPreviewService,
 		HomeyAdoptionLockService,
 		HomeyDeviceAdoptionService,
@@ -133,7 +131,6 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 		private readonly homeyService: HomeyService,
 		private readonly platformRegistry: PlatformRegistryService,
 		private readonly homeyDevicePlatform: HomeyDevicePlatform,
-		private readonly legacyConfigCleanup: HomeyLegacyConfigCleanupService,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 	) {}
 
@@ -164,8 +161,6 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 				},
 			],
 		});
-		this.legacyConfigCleanup.cleanup();
-
 		this.devicesMapper.registerMapping<HomeyDeviceEntity, CreateHomeyDeviceDto, UpdateHomeyDeviceDto>({
 			type: DEVICES_HOMEY_TYPE,
 			class: HomeyDeviceEntity,

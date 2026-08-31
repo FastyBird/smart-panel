@@ -164,12 +164,6 @@ The package currently declares a Node.js version compatible with this repository
 
 If the SDK is unsuitable, implement the same connector contract against the documented local HTTP and Socket.IO APIs. This fallback is a Phase 0 decision, not a mid-implementation rewrite.
 
-### Cloud connector
-
-The cloud connector uses Athom OAuth and Web API endpoints. It must be added after the local connector passes acceptance tests because it introduces external client registration, redirect URI deployment, token storage, token refresh, and possible Athom approval/user limits.
-
-Cloud OAuth tokens use the same secret-handling rules as the local API key.
-
 ## Normalized Domain Model
 
 The connector converts Homey data into plain internal models.
@@ -549,7 +543,6 @@ These are engineering targets to validate, not contractual Homey latency guarant
 | Capability vocabulary is broad and vendor-extensible      | Base-ID descriptors, full-ID persistence, warnings for unknown capabilities, iterative fixture catalog |
 | Socket events are missed during reconnect                 | Full reconciliation after reconnect and conservative periodic reconciliation                           |
 | API key leaks through generic config endpoints            | Generic write-only secret handling is a Phase 1 release gate                                           |
-| Cloud OAuth approval delays release                       | Ship local MVP independently; cloud is a second connector                                              |
 | Upstream device removal causes destructive sync           | Mark unavailable/orphaned; never automatically delete                                                  |
 | Expiring SHS subscription removes test access             | Front-load lifecycle tests and sanitized fixture capture in the first three days                       |
 

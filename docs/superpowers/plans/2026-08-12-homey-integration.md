@@ -226,7 +226,7 @@ index.ts
 - [x] Define system, zone, device, capability, and event plain-data models.
 - [x] Preserve full capability IDs; expose separately derived base IDs for matching.
 - [x] Define normalized error categories and retryability.
-- [x] Define connector contract tests reusable by local and cloud implementations.
+- [x] Define connector contract tests reusable by transport adapters.
 - [x] Add model/ID derivation unit tests, especially repeated capabilities such as `measure_temperature.inside`.
 
 ---
