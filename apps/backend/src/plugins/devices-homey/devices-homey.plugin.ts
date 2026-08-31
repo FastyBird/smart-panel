@@ -217,7 +217,48 @@ export class DevicesHomeyPlugin implements OnModuleInit {
 
 Connects Smart Panel to Homey Self-Hosted Server and compatible Homey Pro local APIs. Homey remains responsible for pairing, radio networks, drivers and apps; Smart Panel adopts selected logical devices for display and control.
 
-Provider settings are managed in the Smart Panel admin application. Secret fields are write-only and are never returned by the API.`,
+## What you get
+
+- Reuse devices already paired and configured in Homey without moving their radio networks or drivers to Smart Panel
+- Review Homey's inventory and mapping preview, then adopt only the logical devices you want on the panel
+- Keep dashboards, scenes and Buddy supplied with normalized Smart Panel device, channel and property data
+- Send supported controls back to Homey while state changes from Homey are synchronized in real time
+- Keep the integration entirely local, with no Homey Cloud account or hosted Smart Panel bridge
+
+## Features
+
+- **Reviewed device adoption** — load Homey's authenticated inventory, inspect mapping warnings and adopt selected devices in batches
+- **Capability mapping** — translate Homey classes and capabilities into Smart Panel categories, channels and properties through declarative mappings
+- **Real-time synchronization** — process Homey Socket.IO events with automatic resubscription after connection or server restarts
+- **Periodic reconciliation** — refresh the complete inventory at a configurable interval to recover missed events and availability changes
+- **Bidirectional control** — control supported switches, lights, locks and window coverings through Smart Panel's standard command path
+- **Resilient lifecycle** — reconnect with bounded back-off, preserve adopted devices during outages and mark missing upstream devices unavailable instead of deleting them
+
+## Supported device mappings
+
+Built-in mappings cover lights, outlets, switches, locks, window coverings, thermostats and common environmental, safety, presence, electrical and battery sensors. Unsupported capabilities remain visible in the mapping preview instead of being silently guessed.
+
+## Setup
+
+1. Create a dedicated least-privilege API key in Homey.
+2. Enter the locally reachable Homey API URL and key in this plugin's configuration.
+3. Test and save the connection, then enable the plugin.
+4. Open device discovery, review the Homey inventory and adopt the devices you want to display or control.
+
+## Configuration
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| \`url\` | Local Homey Pro or Homey SHS API URL, including protocol and port | — |
+| \`api_key\` | Write-only Homey API key used for inventory, events and controls | — |
+| \`connection_timeout\` | Timeout for Homey requests and connection operations | \`10000 ms\` |
+| \`reconciliation_interval\` | Interval for full inventory reconciliation | \`300000 ms\` |
+
+## Boundaries
+
+Homey remains responsible for pairing, commissioning, drivers, apps, zones, firmware and Flow administration. Smart Panel does not rename, move or remove devices in Homey. Homey Cloud is not supported because its Web API authorization requires a partner-hosted integration.
+
+Provider settings are managed in the Smart Panel admin application. The API key is write-only and is never returned by the API.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

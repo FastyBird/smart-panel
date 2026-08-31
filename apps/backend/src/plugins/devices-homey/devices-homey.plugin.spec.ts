@@ -83,6 +83,9 @@ describe('DevicesHomeyPlugin', () => {
 		expect(extensionsService.registerPluginMetadata).toHaveBeenCalledWith(
 			expect.objectContaining({ type: DEVICES_HOMEY_PLUGIN_NAME, name: 'Homey', defaultEnabled: false }),
 		);
+		const metadata = (extensionsService.registerPluginMetadata.mock.calls[0] as unknown as [{ readme: string }])[0];
+		expect(metadata.readme).toContain('## What you get');
+		expect(metadata.readme).toContain('## Features');
 		expect(pluginServiceManager.register).toHaveBeenCalledWith(homeyService);
 		expect(platformRegistry.register).toHaveBeenCalledWith(homeyDevicePlatform);
 		expect(factoryResetRegistry.register).toHaveBeenCalledWith(DEVICES_HOMEY_PLUGIN_NAME, expect.any(Function), 90);
