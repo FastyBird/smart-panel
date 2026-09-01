@@ -66,18 +66,28 @@ export class HomeAssistantDiscoveryController {
 		operationId: 'post-devices-home-assistant-plugin-discovery-refresh',
 	})
 	@ApiSuccessResponse(DiscoveredInstancesResponseModel, 'Discovery refreshed and current list returned.')
-	@ApiBadRequestResponse('Home Assistant discovery could not be restarted')
+	@ApiBadRequestResponse('Home Assistant discovery could not be refreshed')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post('refresh')
 	async refreshDiscovery(): Promise<DiscoveredInstancesResponseModel> {
-		const restarted = await this.managedServiceManager.restartService(
-			'plugin',
+		const extensionKind = 'plugin';
+		const serviceId = 'discovery';
+		const current = await this.managedServiceManager.getServiceStatus(
+			extensionKind,
 			DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
-			'discovery',
+			serviceId,
 		);
+		const refreshed =
+			current?.state === 'stopped'
+				? await this.managedServiceManager.startServiceManually(
+						extensionKind,
+						DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+						serviceId,
+					)
+				: await this.managedServiceManager.restartService(extensionKind, DEVICES_HOME_ASSISTANT_PLUGIN_NAME, serviceId);
 
-		if (!restarted) {
-			throw new BadRequestException('Home Assistant discovery could not be restarted');
+		if (!refreshed) {
+			throw new BadRequestException('Home Assistant discovery could not be refreshed');
 		}
 
 		// Return current list - existing instances are preserved while discovery restarts

@@ -12,7 +12,9 @@ describe('HomeAssistantDiscoveryController', () => {
 			getDiscoveredInstances: jest.fn().mockReturnValue([]),
 		};
 		const managedServiceManager = {
+			getServiceStatus: jest.fn().mockResolvedValue({ state: 'started' }),
 			restartService: jest.fn().mockResolvedValue(true),
+			startServiceManually: jest.fn(),
 		};
 		const controller = new HomeAssistantDiscoveryController(
 			discoverer as unknown as HaMdnsDiscovererService,
@@ -26,6 +28,31 @@ describe('HomeAssistantDiscoveryController', () => {
 			DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 			'discovery',
 		);
+		expect(managedServiceManager.startServiceManually).not.toHaveBeenCalled();
+	});
+
+	it('starts a stopped discovery runtime on refresh', async () => {
+		const discoverer = {
+			getDiscoveredInstances: jest.fn().mockReturnValue([]),
+		};
+		const managedServiceManager = {
+			getServiceStatus: jest.fn().mockResolvedValue({ state: 'stopped' }),
+			restartService: jest.fn(),
+			startServiceManually: jest.fn().mockResolvedValue(true),
+		};
+		const controller = new HomeAssistantDiscoveryController(
+			discoverer as unknown as HaMdnsDiscovererService,
+			managedServiceManager as unknown as ManagedServiceManagerService,
+		);
+
+		await controller.refreshDiscovery();
+
+		expect(managedServiceManager.startServiceManually).toHaveBeenCalledWith(
+			'plugin',
+			DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+			'discovery',
+		);
+		expect(managedServiceManager.restartService).not.toHaveBeenCalled();
 	});
 
 	it('rejects refresh when the managed discovery service cannot be restarted', async () => {
@@ -33,7 +60,9 @@ describe('HomeAssistantDiscoveryController', () => {
 			getDiscoveredInstances: jest.fn().mockReturnValue([]),
 		};
 		const managedServiceManager = {
+			getServiceStatus: jest.fn().mockResolvedValue({ state: 'started' }),
 			restartService: jest.fn().mockResolvedValue(false),
+			startServiceManually: jest.fn(),
 		};
 		const controller = new HomeAssistantDiscoveryController(
 			discoverer as unknown as HaMdnsDiscovererService,
