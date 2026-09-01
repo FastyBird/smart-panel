@@ -1,4 +1,4 @@
-import { ElTabPane, ElTabs } from 'element-plus';
+import { ElAlert, ElTabPane, ElTabs } from 'element-plus';
 import { describe, expect, it, vi } from 'vitest';
 
 import { mount } from '@vue/test-utils';
@@ -59,6 +59,7 @@ describe('ServicesList', () => {
 		});
 
 		expect(wrapper.findComponent(ElTabs).exists()).toBe(true);
+		expect(wrapper.findComponent(ElAlert).classes()).toContain('shrink-0');
 		expect(wrapper.findAllComponents(ElTabPane).map((pane) => pane.props('name'))).toEqual([
 			ExtensionsModuleServiceOwnerKind.module,
 			ExtensionsModuleServiceOwnerKind.plugin,

@@ -17,6 +17,7 @@
 		<!-- Services list -->
 		<template v-else>
 			<el-alert
+				class="shrink-0"
 				type="info"
 				:description="t('extensionsModule.services.texts.alwaysActiveDescription')"
 				show-icon
