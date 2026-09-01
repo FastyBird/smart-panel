@@ -1,14 +1,16 @@
 import { v4 as uuid } from 'uuid';
 
-import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SchedulerRegistry } from '@nestjs/schedule';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import {
 	EventType,
+	SPACES_HOME_CONTROL_PLUGIN_NAME,
 	SUGGESTION_COOLDOWN_MS,
 	SUGGESTION_EXPIRY_MS,
 	SUGGESTION_HEARTBEAT_INTERVAL_MS,
@@ -24,6 +26,10 @@ import {
 
 const HEARTBEAT_INTERVAL_NAME = 'spaceSuggestionHeartbeat';
 
+// Suggestion evaluation can touch multiple spaces sequentially, but it must not run near the next five-minute tick.
+// One minute gives legitimate evaluations room to finish while exposing a blocked provider or never-settling rule promptly.
+export const SUGGESTION_HEARTBEAT_MAX_CYCLE_MS = Math.min(SUGGESTION_HEARTBEAT_INTERVAL_MS / 2, 60_000);
+
 export interface SpaceSuggestionEvent {
 	id: string;
 	type: SuggestionType;
@@ -37,35 +43,89 @@ export interface SpaceSuggestionEvent {
 }
 
 @Injectable()
-export class SpaceSuggestionHeartbeatService implements OnApplicationBootstrap, OnModuleDestroy {
+export class SpaceSuggestionHeartbeatService extends BaseManagedExtensionService {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpaceSuggestionHeartbeatService');
 	private running = false;
+	private runningSince: number | null = null;
+
+	readonly owner = { kind: 'plugin', type: SPACES_HOME_CONTROL_PLUGIN_NAME } as const;
+	readonly serviceId = 'suggestion-heartbeat';
 
 	constructor(
 		private readonly schedulerRegistry: SchedulerRegistry,
 		private readonly spacesService: SpacesService,
 		private readonly suggestionService: SpaceSuggestionService,
 		private readonly eventEmitter: EventEmitter2,
-	) {}
-
-	onApplicationBootstrap(): void {
-		const intervalId = setInterval(() => void this.runCycle(), SUGGESTION_HEARTBEAT_INTERVAL_MS);
-
-		// Allow the Node.js process to exit even if the interval is still active
-		if (typeof intervalId === 'object' && 'unref' in intervalId) {
-			intervalId.unref();
-		}
-
-		this.schedulerRegistry.addInterval(HEARTBEAT_INTERVAL_NAME, intervalId);
-
-		this.logger.log(`Space suggestion heartbeat started with interval=${SUGGESTION_HEARTBEAT_INTERVAL_MS}ms`);
+	) {
+		super();
 	}
 
-	onModuleDestroy(): void {
+	async start(): Promise<void> {
+		await this.withLock(() => {
+			if (this.state === 'started') {
+				return Promise.resolve();
+			}
+
+			this.state = 'starting';
+
+			try {
+				this.deleteInterval();
+
+				const intervalId = setInterval(() => void this.runCycle(), SUGGESTION_HEARTBEAT_INTERVAL_MS);
+
+				// Allow the Node.js process to exit even if the interval is still active
+				if (typeof intervalId === 'object' && 'unref' in intervalId) {
+					intervalId.unref();
+				}
+
+				this.schedulerRegistry.addInterval(HEARTBEAT_INTERVAL_NAME, intervalId);
+				this.state = 'started';
+
+				this.logger.log(`Space suggestion heartbeat started with interval=${SUGGESTION_HEARTBEAT_INTERVAL_MS}ms`);
+			} catch (error) {
+				this.state = 'error';
+
+				throw error;
+			}
+
+			return Promise.resolve();
+		});
+	}
+
+	async stop(): Promise<void> {
+		await this.withLock(() => {
+			if (this.state === 'stopped') {
+				return Promise.resolve();
+			}
+
+			this.state = 'stopping';
+			this.runningSince = null;
+			this.deleteInterval();
+			this.state = 'stopped';
+			this.logger.log('Space suggestion heartbeat stopped');
+
+			return Promise.resolve();
+		});
+	}
+
+	isHealthy(): Promise<boolean> {
+		if (this.state !== 'started') {
+			return Promise.resolve(false);
+		}
+
+		const cycleIsWithinBound =
+			this.runningSince === null || Date.now() - this.runningSince <= SUGGESTION_HEARTBEAT_MAX_CYCLE_MS;
+
+		if (!cycleIsWithinBound) {
+			return Promise.resolve(false);
+		}
+
 		try {
-			this.schedulerRegistry.deleteInterval(HEARTBEAT_INTERVAL_NAME);
+			this.schedulerRegistry.getInterval(HEARTBEAT_INTERVAL_NAME);
+
+			return Promise.resolve(true);
 		} catch {
-			// Interval may not exist if bootstrap didn't complete
+			return Promise.resolve(false);
 		}
 	}
 
@@ -83,6 +143,7 @@ export class SpaceSuggestionHeartbeatService implements OnApplicationBootstrap, 
 		}
 
 		this.running = true;
+		this.runningSince = Date.now();
 
 		try {
 			const spaces = await this.spacesService.findAll();
@@ -181,6 +242,15 @@ export class SpaceSuggestionHeartbeatService implements OnApplicationBootstrap, 
 			this.logger.error(`Suggestion heartbeat cycle failed: ${err.message}`, { stack: err.stack });
 		} finally {
 			this.running = false;
+			this.runningSince = null;
+		}
+	}
+
+	private deleteInterval(): void {
+		try {
+			this.schedulerRegistry.deleteInterval(HEARTBEAT_INTERVAL_NAME);
+		} catch {
+			// The heartbeat may not have been started yet.
 		}
 	}
 }

@@ -1,11 +1,19 @@
 import { z } from 'zod';
 
-import { ExtensionsModuleServiceState } from '../../../openapi.constants';
+import {
+	ExtensionsModuleServiceActivationPolicy,
+	ExtensionsModuleServiceDesiredState,
+	ExtensionsModuleServiceOwnerKind,
+	ExtensionsModuleServiceState,
+} from '../../../openapi.constants';
 
 export const ServiceSchema = z.object({
-	pluginName: z.string(),
+	extensionKind: z.nativeEnum(ExtensionsModuleServiceOwnerKind),
+	extensionType: z.string(),
 	serviceId: z.string(),
+	activationPolicy: z.nativeEnum(ExtensionsModuleServiceActivationPolicy),
 	state: z.nativeEnum(ExtensionsModuleServiceState),
+	desiredState: z.nativeEnum(ExtensionsModuleServiceDesiredState),
 	enabled: z.boolean(),
 	healthy: z.boolean().optional(),
 	lastStartedAt: z.string().optional(),

@@ -4,7 +4,7 @@ import { ConfigSecretField } from '../../modules/config/interfaces/config-secret
 import { ConfigSecretsService } from '../../modules/config/services/config-secrets.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
-import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
+import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
 import { INFLUX_V2_PLUGIN_NAME } from './influx-v2.constants';
@@ -21,14 +21,14 @@ describe('InfluxV2Plugin', () => {
 				captured = mapping;
 			}),
 		};
-		const managedService = { pluginName: INFLUX_V2_PLUGIN_NAME, serviceId: 'storage' };
+		const managedService = { owner: { kind: 'plugin', type: INFLUX_V2_PLUGIN_NAME }, serviceId: 'storage' };
 
 		new InfluxV2Plugin(
 			pluginsMapperService as unknown as PluginsTypeMapperService,
 			{ register: jest.fn() } as unknown as SwaggerModelsRegistryService,
 			{ registerPluginMetadata: jest.fn() } as unknown as ExtensionsService,
 			managedService as unknown as InfluxV2ManagedService,
-			{ register: jest.fn() } as unknown as PluginServiceManagerService,
+			{ register: jest.fn() } as unknown as ManagedServiceManagerService,
 		).onModuleInit();
 
 		if (!captured) {

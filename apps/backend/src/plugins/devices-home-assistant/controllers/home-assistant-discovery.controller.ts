@@ -1,9 +1,11 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import {
+	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
 	ApiSuccessResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
@@ -22,7 +24,10 @@ export class HomeAssistantDiscoveryController {
 		'HomeAssistantDiscoveryController',
 	);
 
-	constructor(private readonly discovererService: HaMdnsDiscovererService) {}
+	constructor(
+		private readonly discovererService: HaMdnsDiscovererService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
+	) {}
 
 	@ApiOperation({
 		tags: [DEVICES_HOME_ASSISTANT_PLUGIN_API_TAG_NAME],
@@ -61,10 +66,29 @@ export class HomeAssistantDiscoveryController {
 		operationId: 'post-devices-home-assistant-plugin-discovery-refresh',
 	})
 	@ApiSuccessResponse(DiscoveredInstancesResponseModel, 'Discovery refreshed and current list returned.')
+	@ApiBadRequestResponse('Home Assistant discovery could not be refreshed')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Post('refresh')
-	refreshDiscovery(): DiscoveredInstancesResponseModel {
-		this.discovererService.refresh();
+	async refreshDiscovery(): Promise<DiscoveredInstancesResponseModel> {
+		const extensionKind = 'plugin';
+		const serviceId = 'discovery';
+		const current = await this.managedServiceManager.getServiceStatus(
+			extensionKind,
+			DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+			serviceId,
+		);
+		const refreshed =
+			current?.state === 'stopped'
+				? await this.managedServiceManager.startServiceManually(
+						extensionKind,
+						DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+						serviceId,
+					)
+				: await this.managedServiceManager.restartService(extensionKind, DEVICES_HOME_ASSISTANT_PLUGIN_NAME, serviceId);
+
+		if (!refreshed) {
+			throw new BadRequestException('Home Assistant discovery could not be refreshed');
+		}
 
 		// Return current list - existing instances are preserved while discovery restarts
 		return this.getDiscoveredInstances();

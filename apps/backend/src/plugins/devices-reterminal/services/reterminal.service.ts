@@ -3,9 +3,9 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
-	IManagedPluginService,
+	IManagedExtensionService,
 	ServiceState,
-} from '../../../modules/extensions/services/managed-plugin-service.interface';
+} from '../../../modules/extensions/services/managed-extension-service.interface';
 import {
 	DEFAULT_SENSOR_POLLING_INTERVAL_MS,
 	DEVICES_RETERMINAL_PLUGIN_NAME,
@@ -19,8 +19,8 @@ import { ReTerminalButtonService } from './reterminal-button.service';
 import { ReTerminalSysfsService } from './reterminal-sysfs.service';
 
 @Injectable()
-export class ReTerminalService implements IManagedPluginService {
-	readonly pluginName = DEVICES_RETERMINAL_PLUGIN_NAME;
+export class ReTerminalService implements IManagedExtensionService {
+	readonly owner = { kind: 'plugin', type: DEVICES_RETERMINAL_PLUGIN_NAME } as const;
 	readonly serviceId = 'connector';
 
 	private readonly logger = createExtensionLogger(DEVICES_RETERMINAL_PLUGIN_NAME, ReTerminalService.name);
@@ -38,6 +38,10 @@ export class ReTerminalService implements IManagedPluginService {
 
 	getState(): ServiceState {
 		return this.state;
+	}
+
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(this.state === 'started' && this.device !== null && this.pollingInterval !== null);
 	}
 
 	async start(): Promise<void> {

@@ -5,8 +5,8 @@ import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { EventType } from '../../../modules/devices/devices.constants';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
-import { ConfigChangeResult } from '../../../modules/extensions/services/managed-plugin-service.interface';
+import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
+import { ConfigChangeResult } from '../../../modules/extensions/services/managed-extension-service.interface';
 import { HomeyConnectorFactory } from '../connectors/homey-connector.factory';
 import { HomeyConnector } from '../connectors/homey-connector.interface';
 import { HomeyUnsubscribe } from '../connectors/homey-connector.types';
@@ -68,11 +68,11 @@ type HomeyBoundedResult<T> =
 	| { readonly status: 'rejected' | 'timed_out' | 'cancelled' };
 
 @Injectable()
-export class HomeyService extends BaseManagedPluginService {
+export class HomeyService extends BaseManagedExtensionService {
 	private readonly logger = createExtensionLogger(DEVICES_HOMEY_PLUGIN_NAME, 'HomeyService');
 	private readonly failureLogLimiter = new HomeyFailureLogLimiter();
 
-	readonly pluginName = DEVICES_HOMEY_PLUGIN_NAME;
+	readonly owner = { kind: 'plugin', type: DEVICES_HOMEY_PLUGIN_NAME } as const;
 	readonly serviceId = DEVICES_HOMEY_CONNECTOR_SERVICE_ID;
 
 	private pluginConfig: HomeyConfigModel | null = null;

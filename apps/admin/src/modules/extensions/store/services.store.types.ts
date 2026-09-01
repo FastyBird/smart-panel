@@ -1,11 +1,19 @@
 import type { Ref } from 'vue';
 
-import type { ExtensionsModuleServiceState } from '../../../openapi.constants';
+import type {
+	ExtensionsModuleServiceActivationPolicy,
+	ExtensionsModuleServiceDesiredState,
+	ExtensionsModuleServiceOwnerKind,
+	ExtensionsModuleServiceState,
+} from '../../../openapi.constants';
 
 export interface IService {
-	pluginName: string;
+	extensionKind: ExtensionsModuleServiceOwnerKind;
+	extensionType: string;
 	serviceId: string;
+	activationPolicy: ExtensionsModuleServiceActivationPolicy;
 	state: ExtensionsModuleServiceState;
+	desiredState: ExtensionsModuleServiceDesiredState;
 	enabled: boolean;
 	healthy?: boolean;
 	lastStartedAt?: string;
@@ -37,38 +45,43 @@ export interface IServicesFetchActionPayload {
 }
 
 export interface IServicesGetActionPayload {
-	pluginName: string;
+	extensionKind: ExtensionsModuleServiceOwnerKind;
+	extensionType: string;
 	serviceId: string;
 }
 
 export interface IServicesSetActionPayload {
-	pluginName: string;
+	extensionKind: ExtensionsModuleServiceOwnerKind;
+	extensionType: string;
 	serviceId: string;
 	data: IService;
 }
 
 export interface IServicesStartActionPayload {
-	pluginName: string;
+	extensionKind: ExtensionsModuleServiceOwnerKind;
+	extensionType: string;
 	serviceId: string;
 }
 
 export interface IServicesStopActionPayload {
-	pluginName: string;
+	extensionKind: ExtensionsModuleServiceOwnerKind;
+	extensionType: string;
 	serviceId: string;
 }
 
 export interface IServicesRestartActionPayload {
-	pluginName: string;
+	extensionKind: ExtensionsModuleServiceOwnerKind;
+	extensionType: string;
 	serviceId: string;
 }
 
 export interface IServicesStoreActions {
 	firstLoadFinished: () => boolean;
-	getting: (pluginName: string, serviceId: string) => boolean;
+	getting: (extensionKind: ExtensionsModuleServiceOwnerKind, extensionType: string, serviceId: string) => boolean;
 	fetching: () => boolean;
-	acting: (pluginName: string, serviceId: string) => boolean;
+	acting: (extensionKind: ExtensionsModuleServiceOwnerKind, extensionType: string, serviceId: string) => boolean;
 	findAll: () => IService[];
-	findByKey: (pluginName: string, serviceId: string) => IService | null;
+	findByKey: (extensionKind: ExtensionsModuleServiceOwnerKind, extensionType: string, serviceId: string) => IService | null;
 	set: (payload: IServicesSetActionPayload) => IService;
 	get: (payload: IServicesGetActionPayload) => Promise<IService>;
 	fetch: (payload?: IServicesFetchActionPayload) => Promise<IService[]>;
@@ -79,4 +92,8 @@ export interface IServicesStoreActions {
 
 export type ServicesStoreSetup = IServicesStoreState & IServicesStoreActions;
 
-export const getServiceKey = (pluginName: string, serviceId: string): string => `${pluginName}:${serviceId}`;
+export const getServiceKey = (
+	extensionKind: ExtensionsModuleServiceOwnerKind,
+	extensionType: string,
+	serviceId: string,
+): string => `${extensionKind}:${extensionType}:${serviceId}`;

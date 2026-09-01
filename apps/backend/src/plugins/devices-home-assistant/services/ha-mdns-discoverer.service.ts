@@ -1,9 +1,10 @@
 import Bonjour, { Browser, Service } from 'bonjour-service';
 
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 
 export enum HaMdnsEventType {
@@ -25,7 +26,7 @@ export interface HaMdnsDiscoveredInstance {
  * Home Assistant advertises itself via the _home-assistant._tcp service type.
  */
 @Injectable()
-export class HaMdnsDiscovererService implements OnModuleInit, OnModuleDestroy {
+export class HaMdnsDiscovererService extends BaseManagedExtensionService implements OnModuleDestroy {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 		'MdnsDiscoverer',
@@ -36,96 +37,77 @@ export class HaMdnsDiscovererService implements OnModuleInit, OnModuleDestroy {
 	private discoveredInstances = new Map<string, HaMdnsDiscoveredInstance>();
 	private isRunning = false;
 
-	constructor(private readonly eventEmitter: EventEmitter2) {}
+	readonly owner = { kind: 'plugin', type: DEVICES_HOME_ASSISTANT_PLUGIN_NAME } as const;
+	readonly serviceId = 'discovery';
+	readonly activationPolicy = 'always' as const;
 
-	/**
-	 * Start discovery automatically on module init
-	 */
-	onModuleInit(): void {
-		this.start();
+	constructor(private readonly eventEmitter: EventEmitter2) {
+		super();
 	}
 
 	/**
 	 * Start mDNS discovery for Home Assistant instances
 	 */
-	start(): void {
-		if (this.isRunning) {
-			return;
-		}
-
-		this.logger.log('Starting mDNS discovery for Home Assistant instances');
-
-		try {
-			this.bonjour = new Bonjour();
-
-			// Browse for _home-assistant._tcp services
-			this.browser = this.bonjour.find({ type: 'home-assistant' }, (service: Service) => {
-				this.handleServiceFound(service);
-			});
-
-			// bonjour-service's Browser only ever emits up/down/txt-update/srv-update - it has no
-			// 'error' event in 1.3 either, so the handler that used to sit here never ran. Typed
-			// events in 1.4 surfaced that rather than introducing it.
-
-			this.isRunning = true;
-			this.logger.log('mDNS discovery started');
-		} catch (error) {
-			this.logger.error('Failed to start mDNS discovery', {
-				message: error instanceof Error ? error.message : String(error),
-			});
-
-			// Clean up any partially created resources to prevent orphaned instances
-			if (this.browser) {
-				try {
-					this.browser.stop();
-				} catch {
-					// Ignore cleanup errors
-				}
-				this.browser = null;
+	async start(): Promise<void> {
+		await this.withLock(() => {
+			if (this.state === 'started') {
+				return Promise.resolve();
 			}
 
-			if (this.bonjour) {
-				try {
-					this.bonjour.destroy();
-				} catch {
-					// Ignore cleanup errors
-				}
-				this.bonjour = null;
+			this.state = 'starting';
+			this.logger.log('Starting mDNS discovery for Home Assistant instances');
+
+			try {
+				this.bonjour = new Bonjour();
+
+				// Browse for _home-assistant._tcp services
+				this.browser = this.bonjour.find({ type: 'home-assistant' }, (service: Service) => {
+					this.handleServiceFound(service);
+				});
+
+				this.isRunning = true;
+				this.state = 'started';
+				this.logger.log('mDNS discovery started');
+			} catch (error) {
+				this.logger.error('Failed to start mDNS discovery', {
+					message: error instanceof Error ? error.message : String(error),
+				});
+				this.cleanup();
+				this.state = 'error';
+
+				throw error;
 			}
-		}
+
+			return Promise.resolve();
+		});
 	}
 
 	/**
 	 * Stop mDNS discovery
 	 */
-	stop(): void {
-		if (!this.isRunning) {
-			return;
-		}
+	async stop(): Promise<void> {
+		await this.withLock(() => {
+			if (this.state === 'stopped') {
+				return Promise.resolve();
+			}
 
-		this.logger.log('Stopping mDNS discovery');
+			this.state = 'stopping';
+			this.logger.log('Stopping mDNS discovery');
+			this.cleanup();
+			this.state = 'stopped';
+			this.logger.log('mDNS discovery stopped');
 
-		if (this.browser) {
-			this.browser.stop();
-			this.browser = null;
-		}
-
-		if (this.bonjour) {
-			this.bonjour.destroy();
-			this.bonjour = null;
-		}
-
-		this.isRunning = false;
-		this.logger.log('mDNS discovery stopped');
+			return Promise.resolve();
+		});
 	}
 
 	/**
 	 * Restart discovery to find new instances
 	 * Keeps existing discovered instances - they will be updated if re-discovered
 	 */
-	refresh(): void {
-		this.stop();
-		this.start();
+	async refresh(): Promise<void> {
+		await this.stop();
+		await this.start();
 	}
 
 	/**
@@ -140,6 +122,12 @@ export class HaMdnsDiscovererService implements OnModuleInit, OnModuleDestroy {
 	 */
 	isDiscoveryRunning(): boolean {
 		return this.isRunning;
+	}
+
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(
+			this.state === 'started' && this.isRunning && this.bonjour !== null && this.browser !== null,
+		);
 	}
 
 	/**
@@ -217,7 +205,29 @@ export class HaMdnsDiscovererService implements OnModuleInit, OnModuleDestroy {
 	/**
 	 * Cleanup on module destroy
 	 */
-	onModuleDestroy(): void {
-		this.stop();
+	async onModuleDestroy(): Promise<void> {
+		await this.stop();
+	}
+
+	private cleanup(): void {
+		if (this.browser) {
+			try {
+				this.browser.stop();
+			} catch {
+				// Best-effort cleanup after a partially initialized browser.
+			}
+			this.browser = null;
+		}
+
+		if (this.bonjour) {
+			try {
+				this.bonjour.destroy();
+			} catch {
+				// Best-effort cleanup after a partially initialized Bonjour instance.
+			}
+			this.bonjour = null;
+		}
+
+		this.isRunning = false;
 	}
 }

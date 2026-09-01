@@ -125,7 +125,7 @@ describe('HomeAssistantWsService', () => {
 		await service['handleMessage'](JSON.stringify({ type: 'auth_required' }));
 		await service['handleMessage'](JSON.stringify({ type: 'auth_invalid', message: 'Invalid token' }));
 
-		// start() now throws on error to signal failure to PluginServiceManagerService
+		// start() now throws on error to signal failure to ManagedServiceManagerService
 		await expect(startPromise).rejects.toThrow('Invalid token');
 
 		expect(service.getState()).toBe('error');

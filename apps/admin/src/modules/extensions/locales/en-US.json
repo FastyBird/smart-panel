@@ -204,8 +204,10 @@
 	},
 	"services": {
 		"headings": {
-			"list": "Plugin Services",
-			"subHeading": "Monitor and control plugin services"
+			"list": "Managed Services",
+			"subHeading": "Monitor and control module and plugin services",
+			"modules": "Modules",
+			"plugins": "Plugins"
 		},
 		"labels": {
 			"pluginName": "Plugin",
@@ -219,7 +221,15 @@
 			"startCount": "Starts",
 			"lastStarted": "Last Started",
 			"lastStopped": "Last Stopped",
-			"lastError": "Last Error"
+			"lastError": "Last Error",
+			"desiredState": "Desired state"
+		},
+		"activationPolicies": {
+			"always": "Always active"
+		},
+		"desiredStates": {
+			"started": "Running",
+			"stopped": "Stopped"
 		},
 		"states": {
 			"stopped": "Stopped",
@@ -246,7 +256,7 @@
 			"noServices": "No services available"
 		},
 		"tooltips": {
-			"disabledPlugin": "Plugin is disabled",
+			"disabledExtension": "Extension is disabled",
 			"transitioning": "Service is transitioning",
 			"startService": "Start this service",
 			"stopService": "Stop this service",
@@ -255,7 +265,8 @@
 		"texts": {
 			"loadingServices": "Loading services...",
 			"noServices": "No managed services found",
-			"pluginDisabled": "Plugin disabled"
+			"extensionDisabled": "Extension disabled",
+			"alwaysActiveDescription": "Always-active services keep running even when their owning extension is disabled, so discovery and setup remain available."
 		}
 	}
 }

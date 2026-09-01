@@ -204,8 +204,10 @@
 	},
 	"services": {
 		"headings": {
-			"list": "Servicios de complementos",
-			"subHeading": "Monitorea y controla los servicios de complementos"
+			"list": "Servicios gestionados",
+			"subHeading": "Supervisa y controla los servicios de módulos y complementos",
+			"modules": "Módulos",
+			"plugins": "Complementos"
 		},
 		"labels": {
 			"pluginName": "Complemento",
@@ -219,7 +221,15 @@
 			"startCount": "Inicios",
 			"lastStarted": "Último inicio",
 			"lastStopped": "Última detención",
-			"lastError": "Último error"
+			"lastError": "Último error",
+			"desiredState": "Estado deseado"
+		},
+		"activationPolicies": {
+			"always": "Siempre activo"
+		},
+		"desiredStates": {
+			"started": "En ejecución",
+			"stopped": "Detenido"
 		},
 		"states": {
 			"stopped": "Detenido",
@@ -246,7 +256,7 @@
 			"noServices": "No hay servicios disponibles"
 		},
 		"tooltips": {
-			"disabledPlugin": "El complemento está desactivado",
+			"disabledExtension": "La extensión está desactivada",
 			"transitioning": "El servicio está en transición",
 			"startService": "Iniciar este servicio",
 			"stopService": "Detener este servicio",
@@ -255,7 +265,8 @@
 		"texts": {
 			"loadingServices": "Cargando servicios...",
 			"noServices": "No se encontraron servicios gestionados",
-			"pluginDisabled": "Complemento desactivado"
+			"extensionDisabled": "Extensión desactivada",
+			"alwaysActiveDescription": "Los servicios siempre activos siguen funcionando aunque su extensión esté desactivada, para mantener disponibles el descubrimiento y la configuración."
 		}
 	}
 }

@@ -6,7 +6,9 @@ import { DevicesModule } from '../../modules/devices/devices.module';
 import { ChannelEntity, DeviceEntity } from '../../modules/devices/entities/devices.entity';
 import { DisplaysModule } from '../../modules/displays/displays.module';
 import { SpaceHomePageResolverRegistryService } from '../../modules/displays/services/space-home-page-resolver-registry.service';
+import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
+import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
 import { IntentsModule } from '../../modules/intents/intents.module';
 import { SeedModule } from '../../modules/seed/seeding.module';
 import { SeedRegistryService } from '../../modules/seed/services/seed-registry.service';
@@ -121,6 +123,7 @@ import { IntentSpecLoaderService } from './spec';
 		SwaggerModule,
 		DevicesModule,
 		DisplaysModule,
+		ExtensionsModule,
 		IntentsModule,
 		SpacesModule,
 		SeedModule,
@@ -201,6 +204,7 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
 		private readonly spaceHomePageResolverRegistry: SpaceHomePageResolverRegistryService,
 		private readonly homeControlHomePageResolver: HomeControlHomePageResolver,
 		private readonly spacesTypeMapper: SpacesTypeMapperService,
@@ -209,6 +213,7 @@ export class SpacesHomeControlPlugin implements OnModuleInit {
 		private readonly moduleSeeder: SpacesSeederService,
 		private readonly toolProviderRegistry: ToolProviderRegistryService,
 		private readonly spaceLightingTool: SpaceLightingToolService,
+		private readonly spaceSuggestionHeartbeat: SpaceSuggestionHeartbeatService,
 	) {}
 
 	onModuleInit() {
@@ -391,5 +396,7 @@ Contributes the **Room** and **Zone** space types — the home-control surface t
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});
+
+		this.managedServiceManager.register(this.spaceSuggestionHeartbeat);
 	}
 }

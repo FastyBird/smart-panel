@@ -204,8 +204,10 @@
   },
   "services": {
     "headings": {
-      "list": "Usługi wtyczek",
-      "subHeading": "Monitoruj i kontroluj usługi wtyczek"
+      "list": "Zarządzane usługi",
+      "subHeading": "Monitoruj i kontroluj usługi modułów i wtyczek",
+      "modules": "Moduły",
+      "plugins": "Wtyczki"
     },
     "labels": {
       "pluginName": "Wtyczka",
@@ -219,7 +221,15 @@
       "startCount": "Uruchomienia",
       "lastStarted": "Ostatnio uruchomiony",
       "lastStopped": "Ostatnio zatrzymany",
-      "lastError": "Ostatni błąd"
+      "lastError": "Ostatni błąd",
+      "desiredState": "Stan docelowy"
+    },
+    "activationPolicies": {
+      "always": "Zawsze aktywna"
+    },
+    "desiredStates": {
+      "started": "Działa",
+      "stopped": "Zatrzymana"
     },
     "states": {
       "stopped": "Zatrzymany",
@@ -246,7 +256,7 @@
       "noServices": "Brak dostępnych usług"
     },
     "tooltips": {
-      "disabledPlugin": "Wtyczka jest wyłączona",
+      "disabledExtension": "Rozszerzenie jest wyłączone",
       "transitioning": "Usługa jest w trakcie przejścia",
       "startService": "Uruchom tę usługę",
       "stopService": "Zatrzymaj tę usługę",
@@ -255,7 +265,8 @@
     "texts": {
       "loadingServices": "Ładowanie usług...",
       "noServices": "Nie znaleziono zarządzanych usług",
-      "pluginDisabled": "Wtyczka wyłączona"
+      "extensionDisabled": "Rozszerzenie wyłączone",
+      "alwaysActiveDescription": "Usługi zawsze aktywne działają nadal, gdy ich rozszerzenie jest wyłączone, aby wykrywanie i konfiguracja pozostały dostępne."
     }
   }
 }

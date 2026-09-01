@@ -67,8 +67,8 @@ describe('InfluxV2ManagedService', () => {
 	});
 
 	describe('interface properties', () => {
-		it('has correct pluginName and serviceId', () => {
-			expect(svc.pluginName).toBe(INFLUX_V2_PLUGIN_NAME);
+		it('has correct owner and serviceId', () => {
+			expect(svc.owner).toEqual({ kind: 'plugin', type: INFLUX_V2_PLUGIN_NAME });
 			expect(svc.serviceId).toBe('storage');
 		});
 

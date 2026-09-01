@@ -2,7 +2,7 @@ import { Module, OnModuleInit } from '@nestjs/common';
 
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
-import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
+import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
 import { StorageModule } from '../../modules/storage/storage.module';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
@@ -22,7 +22,7 @@ export class MemoryStoragePlugin implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly memoryStorageManagedService: MemoryStorageManagedService,
-		private readonly pluginServiceManager: PluginServiceManagerService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
 	) {}
 
 	onModuleInit() {
@@ -76,6 +76,6 @@ Process-local ring-buffer time-series storage. Always available and used as the 
 
 		// Register service with the centralized plugin service manager
 		// The manager handles startup, shutdown, and config-based enable/disable
-		this.pluginServiceManager.register(this.memoryStorageManagedService);
+		this.managedServiceManager.register(this.memoryStorageManagedService);
 	}
 }

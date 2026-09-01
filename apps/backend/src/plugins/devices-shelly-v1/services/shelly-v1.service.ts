@@ -11,11 +11,11 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
+import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
 import {
 	ConfigChangeResult,
 	ServiceState,
-} from '../../../modules/extensions/services/managed-plugin-service.interface';
+} from '../../../modules/extensions/services/managed-extension-service.interface';
 import {
 	DEVICES_SHELLY_V1_PLUGIN_NAME,
 	DEVICES_SHELLY_V1_TYPE,
@@ -42,8 +42,7 @@ import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
 /**
  * Shelly V1 device discovery and synchronization service.
  *
- * This service is managed by PluginServiceManagerService and implements
- * the IManagedPluginService interface for centralized lifecycle management.
+ * This service implements the generic managed-extension contract for centralized lifecycle management.
  *
  * The service handles:
  * - Device discovery via mDNS/CoAP
@@ -52,13 +51,13 @@ import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
  * - Periodic device information updates
  */
 @Injectable()
-export class ShellyV1Service extends BaseManagedPluginService {
+export class ShellyV1Service extends BaseManagedExtensionService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_SHELLY_V1_PLUGIN_NAME,
 		'ShellyV1Service',
 	);
 
-	readonly pluginName = DEVICES_SHELLY_V1_PLUGIN_NAME;
+	readonly owner = { kind: 'plugin', type: DEVICES_SHELLY_V1_PLUGIN_NAME } as const;
 	readonly serviceId = 'connector';
 
 	private pluginConfig: ShellyV1ConfigModel | null = null;
@@ -87,7 +86,7 @@ export class ShellyV1Service extends BaseManagedPluginService {
 
 	/**
 	 * Start the service.
-	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 * Called by ManagedServiceManagerService when the plugin is enabled.
 	 */
 	async start(): Promise<void> {
 		await this.withLock(async () => {
@@ -138,7 +137,7 @@ export class ShellyV1Service extends BaseManagedPluginService {
 
 	/**
 	 * Stop the service gracefully.
-	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 * Called by ManagedServiceManagerService when the plugin is disabled or app shuts down.
 	 */
 	async stop(): Promise<void> {
 		await this.withLock(async () => {
@@ -186,9 +185,13 @@ export class ShellyV1Service extends BaseManagedPluginService {
 		});
 	}
 
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(this.state === 'started' && this.shelliesAdapter.isRunning());
+	}
+
 	/**
 	 * Handle configuration changes.
-	 * Called by PluginServiceManagerService when config updates occur.
+	 * Called by ManagedServiceManagerService when config updates occur.
 	 *
 	 * For Shelly V1 service, config changes (mDNS interface, polling settings)
 	 * require a full restart to apply. Returns restartRequired: true to signal

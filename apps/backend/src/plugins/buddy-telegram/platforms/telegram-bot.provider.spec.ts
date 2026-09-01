@@ -67,14 +67,18 @@ describe('TelegramBotProvider', () => {
 		await provider.stop();
 	});
 
-	describe('IManagedPluginService interface', () => {
-		it('should have correct pluginName and serviceId', () => {
-			expect(provider.pluginName).toBe(BUDDY_TELEGRAM_PLUGIN_NAME);
+	describe('IManagedExtensionService interface', () => {
+		it('should have correct owner and serviceId', () => {
+			expect(provider.owner).toEqual({ kind: 'plugin', type: BUDDY_TELEGRAM_PLUGIN_NAME });
 			expect(provider.serviceId).toBe('bot');
 		});
 
 		it('should return stopped state by default', () => {
 			expect(provider.getState()).toBe('stopped');
+		});
+
+		it('should report unhealthy until the Telegram bot is running', async () => {
+			expect(await provider.isHealthy()).toBe(false);
 		});
 	});
 

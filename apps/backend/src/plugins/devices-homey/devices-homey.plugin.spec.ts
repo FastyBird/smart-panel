@@ -4,7 +4,7 @@ import { ChannelsPropertiesTypeMapperService } from '../../modules/devices/servi
 import { DevicesTypeMapperService } from '../../modules/devices/services/devices-type-mapper.service';
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
-import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
+import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
@@ -35,7 +35,7 @@ describe('DevicesHomeyPlugin', () => {
 		const pluginServiceManager = { register: jest.fn() };
 		const platformRegistry = { register: jest.fn() };
 		const homeyService = {
-			pluginName: DEVICES_HOMEY_PLUGIN_NAME,
+			owner: { kind: 'plugin', type: DEVICES_HOMEY_PLUGIN_NAME },
 			serviceId: 'connector',
 			stop: jest.fn().mockResolvedValue(undefined),
 		};
@@ -54,7 +54,7 @@ describe('DevicesHomeyPlugin', () => {
 			swaggerRegistry as unknown as SwaggerModelsRegistryService,
 			discriminatorRegistry as unknown as ExtendedDiscriminatorService,
 			extensionsService as unknown as ExtensionsService,
-			pluginServiceManager as unknown as PluginServiceManagerService,
+			pluginServiceManager as unknown as ManagedServiceManagerService,
 			homeyService as unknown as HomeyService,
 			platformRegistry as unknown as PlatformRegistryService,
 			homeyDevicePlatform as unknown as HomeyDevicePlatform,

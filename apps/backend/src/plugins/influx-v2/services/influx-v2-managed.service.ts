@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
-import { ConfigChangeResult } from '../../../modules/extensions/services/managed-plugin-service.interface';
+import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
+import { ConfigChangeResult } from '../../../modules/extensions/services/managed-extension-service.interface';
 import { StorageService } from '../../../modules/storage/services/storage.service';
 import { INFLUX_V2_PLUGIN_NAME } from '../influx-v2.constants';
 import { InfluxV2ConfigModel } from '../models/config.model';
@@ -13,20 +13,19 @@ import { InfluxV2Storage } from './influx-v2.storage';
 /**
  * Managed service for the InfluxDB v2 storage plugin.
  *
- * Extends BaseManagedPluginService so the InfluxDB v2 plugin participates
- * in the centralized lifecycle management provided by PluginServiceManagerService.
+ * Extends BaseManagedExtensionService so the InfluxDB v2 plugin participates in centralized lifecycle management.
  *
  * Creates and manages the InfluxV2Storage instance, registering it with
  * StorageService on start and unregistering on stop.
  */
 @Injectable()
-export class InfluxV2ManagedService extends BaseManagedPluginService {
+export class InfluxV2ManagedService extends BaseManagedExtensionService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		INFLUX_V2_PLUGIN_NAME,
 		'InfluxV2ManagedService',
 	);
 
-	readonly pluginName = INFLUX_V2_PLUGIN_NAME;
+	readonly owner = { kind: 'plugin', type: INFLUX_V2_PLUGIN_NAME } as const;
 	readonly serviceId = 'storage';
 
 	private storage: InfluxV2Storage | null = null;

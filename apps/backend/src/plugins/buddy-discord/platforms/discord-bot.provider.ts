@@ -22,9 +22,9 @@ import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	ConfigChangeResult,
-	IManagedPluginService,
+	IManagedExtensionService,
 	ServiceState,
-} from '../../../modules/extensions/services/managed-plugin-service.interface';
+} from '../../../modules/extensions/services/managed-extension-service.interface';
 import { SuggestionFeedback } from '../../../modules/spaces/spaces.constants';
 import {
 	BUDDY_DISCORD_PLUGIN_NAME,
@@ -43,10 +43,10 @@ import { BuddyDiscordConfigModel } from '../models/config.model';
  * - Enforces role-based access control
  */
 @Injectable()
-export class DiscordBotProvider implements IManagedPluginService {
+export class DiscordBotProvider implements IManagedExtensionService {
 	private readonly logger = createExtensionLogger(BUDDY_DISCORD_PLUGIN_NAME, 'DiscordBotProvider');
 
-	readonly pluginName = BUDDY_DISCORD_PLUGIN_NAME;
+	readonly owner = { kind: 'plugin', type: BUDDY_DISCORD_PLUGIN_NAME } as const;
 	readonly serviceId = 'bot';
 
 	private client: Client | null = null;
@@ -72,7 +72,7 @@ export class DiscordBotProvider implements IManagedPluginService {
 
 	/**
 	 * Start the Discord bot service.
-	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 * Called by ManagedServiceManagerService when the plugin is enabled.
 	 */
 	async start(): Promise<void> {
 		if (this.state === 'started' || this.state === 'starting') {
@@ -100,7 +100,7 @@ export class DiscordBotProvider implements IManagedPluginService {
 
 	/**
 	 * Stop the Discord bot service gracefully.
-	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 * Called by ManagedServiceManagerService when the plugin is disabled or app shuts down.
 	 *
 	 * Preserve channelConversations across restarts so users don't lose
 	 * their active conversations after a config change. The map is in-memory
@@ -119,7 +119,7 @@ export class DiscordBotProvider implements IManagedPluginService {
 
 	/**
 	 * Handle configuration changes.
-	 * Called by PluginServiceManagerService when config updates occur.
+	 * Called by ManagedServiceManagerService when config updates occur.
 	 */
 	onConfigChanged(): Promise<ConfigChangeResult> {
 		if (this.state !== 'started' || !this.activeConfig) {
@@ -202,6 +202,10 @@ export class DiscordBotProvider implements IManagedPluginService {
 
 	isRunning(): boolean {
 		return this.state === 'started';
+	}
+
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(this.state === 'started' && this.client?.isReady() === true);
 	}
 
 	private async startBot(config: BuddyDiscordConfigModel & { botToken: string }): Promise<void> {

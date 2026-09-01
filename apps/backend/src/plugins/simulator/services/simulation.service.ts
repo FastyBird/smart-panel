@@ -9,9 +9,9 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { getAllProperties } from '../../../modules/devices/utils/schema.utils';
 import {
 	ConfigChangeResult,
-	IManagedPluginService,
+	IManagedExtensionService,
 	ServiceState,
-} from '../../../modules/extensions/services/managed-plugin-service.interface';
+} from '../../../modules/extensions/services/managed-extension-service.interface';
 import { SimulatorDeviceEntity } from '../entities/simulator.entity';
 import { SimulatorConfigModel } from '../models/config.model';
 import { SIMULATOR_PLUGIN_NAME, SIMULATOR_TYPE } from '../simulator.constants';
@@ -79,10 +79,10 @@ const DEFAULT_CONFIG: SimulationServiceConfig = {
  * across all simulator devices.
  */
 @Injectable()
-export class SimulationService implements OnModuleInit, OnModuleDestroy, IManagedPluginService {
+export class SimulationService implements OnModuleInit, OnModuleDestroy, IManagedExtensionService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(SIMULATOR_PLUGIN_NAME, 'SimulationService');
 
-	readonly pluginName = SIMULATOR_PLUGIN_NAME;
+	readonly owner = { kind: 'plugin', type: SIMULATOR_PLUGIN_NAME } as const;
 	readonly serviceId = 'simulation';
 
 	private config: SimulationServiceConfig = { ...DEFAULT_CONFIG };
@@ -128,7 +128,7 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 	}
 
 	onModuleInit(): void {
-		this.logger.log('Simulation service initialized (managed by PluginServiceManagerService)');
+		this.logger.log('Simulation service initialized (managed by ManagedServiceManagerService)');
 	}
 
 	/**
@@ -183,6 +183,12 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 
 	getState(): ServiceState {
 		return this.state;
+	}
+
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(
+			this.state === 'started' && (this.config.simulationInterval <= 0 || this.simulationTimer !== null),
+		);
 	}
 
 	async onConfigChanged(): Promise<ConfigChangeResult> {

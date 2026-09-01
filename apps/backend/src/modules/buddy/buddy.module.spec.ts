@@ -17,16 +17,19 @@ describe('BuddyModule home read tools', () => {
 
 	it('registers the Buddy home read provider during module initialization', () => {
 		const registerToolProvider = jest.fn();
+		const registerManagedService = jest.fn();
 		const homeContextTools = {} as HomeContextToolProviderService;
+		const heartbeatService = { registerEvaluator: jest.fn() };
 		const module = new BuddyModule(
 			{ register: jest.fn() } as never,
 			{ registerMapping: jest.fn() } as never,
 			{ registerModuleMetadata: jest.fn() } as never,
+			{ register: registerManagedService } as never,
 			{ reset: jest.fn() } as never,
 			{ resolvePersonalityPath: jest.fn() } as never,
 			{ register: jest.fn() } as never,
 			{ register: jest.fn() } as never,
-			{ registerEvaluator: jest.fn() } as never,
+			heartbeatService as never,
 			{} as never,
 			{} as never,
 			{} as never,
@@ -39,5 +42,6 @@ describe('BuddyModule home read tools', () => {
 		module.onModuleInit();
 
 		expect(registerToolProvider).toHaveBeenCalledWith(homeContextTools);
+		expect(registerManagedService).toHaveBeenCalledWith(heartbeatService);
 	});
 });

@@ -17,7 +17,7 @@ import { DevicesTypeMapperService } from '../../modules/devices/services/devices
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
-import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
+import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
 import { ScenesModule } from '../../modules/scenes/scenes.module';
 import { SpacesModule } from '../../modules/spaces/spaces.module';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
@@ -115,7 +115,7 @@ export class SimulatorPlugin {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
-		private readonly pluginServiceManager: PluginServiceManagerService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
 		private readonly simulationService: SimulationService,
 		private readonly behaviorManager: DeviceBehaviorManagerService,
 	) {}
@@ -329,6 +329,6 @@ pnpm run cli simulator:connection --device <id> --state lost
 		this.behaviorManager.registerBehavior(new WaterHeaterRealisticBehavior(), true);
 
 		// Register service with centralized plugin service manager
-		this.pluginServiceManager.register(this.simulationService);
+		this.managedServiceManager.register(this.simulationService);
 	}
 }

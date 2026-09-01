@@ -4,7 +4,7 @@ import { IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString, Min } fro
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
-import { ServiceState } from '../../../modules/extensions/services/managed-plugin-service.interface';
+import { ServiceState } from '../../../modules/extensions/services/managed-extension-service.interface';
 import { HomeyConnectionState } from '../devices-homey.constants';
 import { HomeyConnectorErrorCategory } from '../errors/homey-connector.error';
 

@@ -5,7 +5,6 @@ import { DEVICES_MODULE_NAME } from '../devices/devices.constants';
 import { DISPLAYS_MODULE_NAME } from '../displays/displays.constants';
 import { ENERGY_MODULE_NAME } from '../energy/energy.constants';
 import { INTENTS_MODULE_NAME } from '../intents/intents.constants';
-import { MDNS_MODULE_NAME } from '../mdns/mdns.constants';
 import { PLATFORM_MODULE_NAME } from '../platform/platform.constants';
 import { SCENES_MODULE_NAME } from '../scenes/scenes.constants';
 import { SECURITY_MODULE_NAME } from '../security/security.constants';
@@ -37,7 +36,6 @@ export const NON_TOGGLEABLE_MODULES: readonly string[] = [
 	DISPLAYS_MODULE_NAME,
 	STORAGE_MODULE_NAME,
 	EXTENSIONS_MODULE_NAME,
-	MDNS_MODULE_NAME,
 	SCENES_MODULE_NAME,
 	SPACES_MODULE_NAME,
 	SYSTEM_MODULE_NAME,

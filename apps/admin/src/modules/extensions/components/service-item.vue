@@ -5,7 +5,7 @@
 		body-class="p-3!"
 	>
 		<div class="flex flex-col gap-3">
-			<!-- Header: Plugin name, Service ID, and Status -->
+			<!-- Header: Extension, service ID, and status -->
 			<div class="flex items-center justify-between gap-4">
 				<div class="flex items-center gap-3 min-w-0 flex-1">
 					<!-- Service Icon -->
@@ -20,7 +20,7 @@
 					<!-- Service Info -->
 					<div class="min-w-0 flex-1">
 						<div class="flex items-center gap-2 flex-wrap">
-							<span class="font-medium text-base truncate">{{ service.pluginName }}</span>
+							<span class="font-medium text-base truncate">{{ extensionName ?? service.extensionType }}</span>
 							<el-tag
 								size="small"
 								type="info"
@@ -28,7 +28,10 @@
 								{{ service.serviceId }}
 							</el-tag>
 						</div>
-						<div class="flex items-center gap-2 mt-1">
+						<div class="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
+							{{ service.extensionType }}
+						</div>
+						<div class="flex items-center gap-2 mt-1 flex-wrap">
 							<el-tag
 								:type="stateTagType"
 								size="small"
@@ -51,7 +54,15 @@
 								size="small"
 								effect="light"
 							>
-								{{ t('extensionsModule.services.texts.pluginDisabled') }}
+								{{ t('extensionsModule.services.texts.extensionDisabled') }}
+							</el-tag>
+							<el-tag
+								v-if="isAlwaysActive"
+								type="primary"
+								size="small"
+								effect="light"
+							>
+								{{ t('extensionsModule.services.activationPolicies.always') }}
 							</el-tag>
 							<el-tag
 								v-if="service.healthy !== undefined"
@@ -163,6 +174,14 @@
 					/>
 					<span>{{ t('extensionsModule.services.labels.lastStarted') }}: {{ formattedLastStarted }}</span>
 				</div>
+
+				<div class="flex items-center gap-1">
+					<icon
+						icon="mdi:target"
+						class="w-4 h-4"
+					/>
+					<span>{{ t('extensionsModule.services.labels.desiredState') }}: {{ desiredStateLabel }}</span>
+				</div>
 			</div>
 
 			<!-- Error Display -->
@@ -186,7 +205,11 @@ import { ElAlert, ElButton, ElCard, ElTag, ElTooltip } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { ExtensionsModuleServiceState } from '../../../openapi.constants';
+import {
+	ExtensionsModuleServiceActivationPolicy,
+	ExtensionsModuleServiceDesiredState,
+	ExtensionsModuleServiceState,
+} from '../../../openapi.constants';
 import type { IService } from '../store/services.store.types';
 
 defineOptions({
@@ -195,6 +218,7 @@ defineOptions({
 
 interface IServiceItemProps {
 	service: IService;
+	extensionName?: string;
 	acting?: boolean;
 }
 
@@ -225,6 +249,10 @@ const isRunning = computed<boolean>(() => {
 		props.service.state === ExtensionsModuleServiceState.starting;
 });
 
+const isAlwaysActive = computed<boolean>(() => {
+	return props.service.activationPolicy === ExtensionsModuleServiceActivationPolicy.always;
+});
+
 // Visibility
 const canStart = computed<boolean>(() => isStopped.value);
 const canStop = computed<boolean>(() => isRunning.value);
@@ -232,7 +260,7 @@ const canRestart = computed<boolean>(() => props.service.state === ExtensionsMod
 
 // Action availability
 const canStartAction = computed<boolean>(() => {
-	return canStart.value && props.service.enabled && !isTransitioning.value && !props.acting;
+	return canStart.value && props.service.desiredState === ExtensionsModuleServiceDesiredState.started && !isTransitioning.value && !props.acting;
 });
 
 const canStopAction = computed<boolean>(() => {
@@ -240,13 +268,13 @@ const canStopAction = computed<boolean>(() => {
 });
 
 const canRestartAction = computed<boolean>(() => {
-	return canRestart.value && props.service.enabled && !isTransitioning.value && !props.acting;
+	return canRestart.value && props.service.desiredState === ExtensionsModuleServiceDesiredState.started && !isTransitioning.value && !props.acting;
 });
 
 // Tooltips
 const startTooltip = computed<string>(() => {
-	if (!props.service.enabled) {
-		return t('extensionsModule.services.tooltips.disabledPlugin');
+	if (props.service.desiredState === ExtensionsModuleServiceDesiredState.stopped) {
+		return t('extensionsModule.services.tooltips.disabledExtension');
 	}
 	if (isTransitioning.value) {
 		return t('extensionsModule.services.tooltips.transitioning');
@@ -262,8 +290,8 @@ const stopTooltip = computed<string>(() => {
 });
 
 const restartTooltip = computed<string>(() => {
-	if (!props.service.enabled) {
-		return t('extensionsModule.services.tooltips.disabledPlugin');
+	if (props.service.desiredState === ExtensionsModuleServiceDesiredState.stopped) {
+		return t('extensionsModule.services.tooltips.disabledExtension');
 	}
 	if (isTransitioning.value) {
 		return t('extensionsModule.services.tooltips.transitioning');
@@ -275,6 +303,10 @@ const restartTooltip = computed<string>(() => {
 const stateLabel = computed<string>(() => {
 	const stateKey = props.service.state as string;
 	return t(`extensionsModule.services.states.${stateKey}`);
+});
+
+const desiredStateLabel = computed<string>(() => {
+	return t(`extensionsModule.services.desiredStates.${props.service.desiredState}`);
 });
 
 const stateTagType = computed<'success' | 'info' | 'warning' | 'danger'>(() => {

@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
-import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
+import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SystemLoggerService } from '../../modules/system/services/system-logger.service';
 import { SystemModule } from '../../modules/system/system.module';
@@ -24,7 +24,7 @@ export class LoggerRotatingFilePlugin {
 		private readonly systemLoggerService: SystemLoggerService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
-		private readonly pluginServiceManager: PluginServiceManagerService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
 	) {}
 
 	onModuleInit() {
@@ -83,6 +83,6 @@ Persists application logs to disk in a configurable directory. Files are rotated
 
 		// Register service with the centralized plugin service manager
 		// The manager handles startup, shutdown, and config-based enable/disable
-		this.pluginServiceManager.register(this.fileLoggerService);
+		this.managedServiceManager.register(this.fileLoggerService);
 	}
 }

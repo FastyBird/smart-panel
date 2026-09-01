@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
-import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
+import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
 import { StorageService } from '../../../modules/storage/services/storage.service';
 import { MEMORY_PLUGIN_NAME } from '../memory-storage.constants';
 
@@ -10,20 +10,19 @@ import { MemoryStorage } from './memory-storage.storage';
 /**
  * Managed service for the in-memory storage plugin.
  *
- * Extends BaseManagedPluginService so the memory storage plugin participates
- * in the centralized lifecycle management provided by PluginServiceManagerService.
+ * Extends BaseManagedExtensionService so the memory storage plugin participates in centralized lifecycle management.
  *
  * Creates and manages the MemoryStorage instance, registering it with
  * StorageService on start and unregistering on stop.
  */
 @Injectable()
-export class MemoryStorageManagedService extends BaseManagedPluginService {
+export class MemoryStorageManagedService extends BaseManagedExtensionService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		MEMORY_PLUGIN_NAME,
 		'MemoryStorageManagedService',
 	);
 
-	readonly pluginName = MEMORY_PLUGIN_NAME;
+	readonly owner = { kind: 'plugin', type: MEMORY_PLUGIN_NAME } as const;
 	readonly serviceId = 'storage';
 
 	private storage: MemoryStorage | null = null;

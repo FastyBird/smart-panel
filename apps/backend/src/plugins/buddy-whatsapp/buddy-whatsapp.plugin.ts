@@ -6,7 +6,7 @@ import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
-import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
+import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
@@ -39,7 +39,7 @@ export class BuddyWhatsappPlugin implements OnModuleInit {
 		private readonly whatsAppBotProvider: WhatsAppBotProvider,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
-		private readonly pluginServiceManager: PluginServiceManagerService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
 	) {}
 
 	onModuleInit() {
@@ -101,6 +101,6 @@ WhatsApp adapter for the Buddy module that connects through the WhatsApp Web pro
 
 		// Register service with the centralized plugin service manager
 		// The manager handles startup, shutdown, and config-based enable/disable
-		this.pluginServiceManager.register(this.whatsAppBotProvider);
+		this.managedServiceManager.register(this.whatsAppBotProvider);
 	}
 }

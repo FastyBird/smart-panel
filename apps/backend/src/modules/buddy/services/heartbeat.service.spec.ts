@@ -49,7 +49,7 @@ function makeSuggestion(overrides: Partial<BuddySuggestion> = {}): BuddySuggesti
 
 describe('HeartbeatService', () => {
 	let service: HeartbeatService;
-	let schedulerRegistry: { addInterval: jest.Mock; deleteInterval: jest.Mock };
+	let schedulerRegistry: { addInterval: jest.Mock; deleteInterval: jest.Mock; doesExist: jest.Mock };
 	let configService: { getModuleConfig: jest.Mock };
 	let spacesService: { findAll: jest.Mock };
 	let contextService: { buildContext: jest.Mock };
@@ -68,6 +68,7 @@ describe('HeartbeatService', () => {
 					capturedIntervalId = null;
 				}
 			}),
+			doesExist: jest.fn(() => capturedIntervalId !== null),
 		};
 
 		configService = {
@@ -108,14 +109,14 @@ describe('HeartbeatService', () => {
 		}
 	});
 
-	describe('onApplicationBootstrap', () => {
-		it('should register an interval with the scheduler registry', () => {
-			service.onApplicationBootstrap();
+	describe('start', () => {
+		it('should register an interval with the scheduler registry', async () => {
+			await service.start();
 
 			expect(schedulerRegistry.addInterval).toHaveBeenCalledWith('buddyHeartbeat', expect.anything());
 		});
 
-		it('should use default interval when config is unavailable', () => {
+		it('should use default interval when config is unavailable', async () => {
 			configService.getModuleConfig.mockImplementation(() => {
 				throw new Error('Config not found');
 			});
@@ -128,7 +129,7 @@ describe('HeartbeatService', () => {
 				suggestionEngine as unknown as SuggestionEngineService,
 			);
 
-			service.onApplicationBootstrap();
+			await service.start();
 
 			expect(schedulerRegistry.addInterval).toHaveBeenCalled();
 		});
@@ -333,20 +334,61 @@ describe('HeartbeatService', () => {
 		});
 	});
 
-	describe('onModuleDestroy', () => {
-		it('should delete the interval from the scheduler registry', () => {
-			service.onApplicationBootstrap();
-			service.onModuleDestroy();
+	describe('stop and shutdown', () => {
+		it('should delete the interval from the scheduler registry', async () => {
+			await service.start();
+			await service.onModuleDestroy();
 
 			expect(schedulerRegistry.deleteInterval).toHaveBeenCalledWith('buddyHeartbeat');
 		});
 
-		it('should handle missing interval gracefully', () => {
+		it('should handle missing interval gracefully', async () => {
+			await service.start();
 			schedulerRegistry.deleteInterval.mockImplementation(() => {
 				throw new Error('No interval found');
 			});
 
-			expect(() => service.onModuleDestroy()).not.toThrow();
+			await expect(service.onModuleDestroy()).resolves.toBeUndefined();
+		});
+	});
+
+	describe('managed lifecycle state', () => {
+		it('starts and stops idempotently', async () => {
+			await service.start();
+			await service.start();
+
+			expect(schedulerRegistry.addInterval).toHaveBeenCalledTimes(1);
+			expect(service.getState()).toBe('started');
+
+			await service.stop();
+			await service.stop();
+
+			expect(schedulerRegistry.deleteInterval).toHaveBeenCalledTimes(1);
+			expect(service.getState()).toBe('stopped');
+		});
+
+		it('reports healthy only while its interval is registered and no cycle is wedged', async () => {
+			await expect(service.isHealthy()).resolves.toBe(false);
+			await service.start();
+			await expect(service.isHealthy()).resolves.toBe(true);
+			await service.stop();
+			await expect(service.isHealthy()).resolves.toBe(false);
+		});
+
+		it('requires a restart when the heartbeat interval changes', async () => {
+			await service.start();
+			configService.getModuleConfig.mockReturnValue({
+				enabled: true,
+				heartbeatIntervalMs: HEARTBEAT_DEFAULT_INTERVAL_MS * 2,
+			});
+
+			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: true });
+		});
+
+		it('does not require a restart for an unchanged heartbeat interval', async () => {
+			await service.start();
+
+			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: false });
 		});
 	});
 });

@@ -201,7 +201,7 @@ describe('HomeyService', () => {
 	}
 
 	it('exposes the managed connector identity and starts stopped', () => {
-		expect(service.pluginName).toBe(DEVICES_HOMEY_PLUGIN_NAME);
+		expect(service.owner).toEqual({ kind: 'plugin', type: DEVICES_HOMEY_PLUGIN_NAME });
 		expect(service.serviceId).toBe(DEVICES_HOMEY_CONNECTOR_SERVICE_ID);
 		expect(service.getState()).toBe('stopped');
 	});

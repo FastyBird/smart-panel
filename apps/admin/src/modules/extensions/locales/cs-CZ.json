@@ -204,8 +204,10 @@
   },
   "services": {
     "headings": {
-      "list": "Služby pluginů",
-      "subHeading": "Monitorujte a ovládejte služby pluginů"
+      "list": "Spravované služby",
+      "subHeading": "Monitorujte a ovládejte služby modulů a pluginů",
+      "modules": "Moduly",
+      "plugins": "Pluginy"
     },
     "labels": {
       "pluginName": "Plugin",
@@ -219,7 +221,15 @@
       "startCount": "Počet spuštění",
       "lastStarted": "Naposledy spuštěno",
       "lastStopped": "Naposledy zastaveno",
-      "lastError": "Poslední chyba"
+      "lastError": "Poslední chyba",
+      "desiredState": "Požadovaný stav"
+    },
+    "activationPolicies": {
+      "always": "Vždy aktivní"
+    },
+    "desiredStates": {
+      "started": "Spuštěno",
+      "stopped": "Zastaveno"
     },
     "states": {
       "stopped": "Zastaveno",
@@ -246,7 +256,7 @@
       "noServices": "Žádné služby nejsou k dispozici"
     },
     "tooltips": {
-      "disabledPlugin": "Plugin je zakázán",
+      "disabledExtension": "Rozšíření je zakázáno",
       "transitioning": "Služba přechází do jiného stavu",
       "startService": "Spustit tuto službu",
       "stopService": "Zastavit tuto službu",
@@ -255,7 +265,8 @@
     "texts": {
       "loadingServices": "Načítání služeb...",
       "noServices": "Nebyly nalezeny žádné spravované služby",
-      "pluginDisabled": "Plugin zakázán"
+      "extensionDisabled": "Rozšíření zakázáno",
+      "alwaysActiveDescription": "Vždy aktivní služby zůstávají spuštěné i při zakázaném rozšíření, aby zůstalo dostupné vyhledávání a nastavení."
     }
   }
 }

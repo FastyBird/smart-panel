@@ -6,11 +6,11 @@ import { Injectable } from '@nestjs/common';
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
+import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
 import {
 	ConfigChangeResult,
 	ServiceState,
-} from '../../../modules/extensions/services/managed-plugin-service.interface';
+} from '../../../modules/extensions/services/managed-extension-service.interface';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantException,
@@ -37,17 +37,16 @@ export interface WsEventService {
 /**
  * Home Assistant WebSocket service for real-time communication.
  *
- * This service is managed by PluginServiceManagerService and implements
- * the IManagedPluginService interface for centralized lifecycle management.
+ * This service implements the generic managed-extension contract for centralized lifecycle management.
  */
 @Injectable()
-export class HomeAssistantWsService extends BaseManagedPluginService {
+export class HomeAssistantWsService extends BaseManagedExtensionService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
 		'WsService',
 	);
 
-	readonly pluginName = DEVICES_HOME_ASSISTANT_PLUGIN_NAME;
+	readonly owner = { kind: 'plugin', type: DEVICES_HOME_ASSISTANT_PLUGIN_NAME } as const;
 	readonly serviceId = 'connector';
 
 	private readonly RESPONSE_TIMEOUT_MS = 10000; // 10 seconds
@@ -105,7 +104,7 @@ export class HomeAssistantWsService extends BaseManagedPluginService {
 
 	/**
 	 * Start the service.
-	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 * Called by ManagedServiceManagerService when the plugin is enabled.
 	 *
 	 * The service is considered 'started' only after the WebSocket connection
 	 * is established AND authentication succeeds (auth_ok received).
@@ -162,7 +161,7 @@ export class HomeAssistantWsService extends BaseManagedPluginService {
 
 	/**
 	 * Stop the service gracefully.
-	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 * Called by ManagedServiceManagerService when the plugin is disabled or app shuts down.
 	 */
 	async stop(): Promise<void> {
 		await this.withLock(async () => {
@@ -201,7 +200,7 @@ export class HomeAssistantWsService extends BaseManagedPluginService {
 
 	/**
 	 * Handle configuration changes.
-	 * Called by PluginServiceManagerService when config updates occur.
+	 * Called by ManagedServiceManagerService when config updates occur.
 	 *
 	 * For WebSocket service, config changes (URL, API key) require a full restart
 	 * to properly re-authenticate. Returns restartRequired: true to signal the
@@ -353,6 +352,10 @@ export class HomeAssistantWsService extends BaseManagedPluginService {
 
 	isConnected(): boolean {
 		return this.ws?.readyState === WebSocket.OPEN;
+	}
+
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(this.state === 'started' && this.isConnected());
 	}
 
 	async getDevicesRegistry(): Promise<HomeAssistantDeviceRegistryResultModel[]> {

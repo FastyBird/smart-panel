@@ -36,7 +36,7 @@ export const useExtensionActions = (): IUseExtensionActions => {
 					void servicesStore
 						.fetch()
 						.then(() => {
-							const services = servicesStore.findAll().filter((s) => s.pluginName === type);
+							const services = servicesStore.findAll().filter((service) => service.extensionType === type);
 
 							for (const service of services) {
 								if (service.lastError) {

@@ -5,22 +5,26 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { PATH_METADATA } from '@nestjs/common/constants';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { ServiceStatusExtended } from '../services/managed-plugin-service.interface';
-import { PluginServiceManagerService } from '../services/plugin-service-manager.service';
+import { ServiceStatusExtended } from '../services/managed-extension-service.interface';
+import { ManagedServiceManagerService } from '../services/managed-service-manager.service';
 
 import { ServicesController } from './services.controller';
 
 describe('ServicesController', () => {
 	let controller: ServicesController;
-	let pluginServiceManager: jest.Mocked<PluginServiceManagerService>;
+	let managedServiceManager: jest.Mocked<ManagedServiceManagerService>;
 
 	const createMockServiceStatus = (overrides: Partial<ServiceStatusExtended> = {}): ServiceStatusExtended => ({
-		pluginName: 'devices-shelly-v1',
+		extensionKind: 'plugin',
+		extensionType: 'devices-shelly-v1',
 		serviceId: 'main',
+		activationPolicy: 'owner-enabled',
 		state: 'started',
+		desiredState: 'started',
 		enabled: true,
 		healthy: true,
 		lastStartedAt: '2025-01-15T10:00:00.000Z',
@@ -36,7 +40,7 @@ describe('ServicesController', () => {
 			controllers: [ServicesController],
 			providers: [
 				{
-					provide: PluginServiceManagerService,
+					provide: ManagedServiceManagerService,
 					useValue: {
 						getStatus: jest.fn(),
 						getServiceStatus: jest.fn(),
@@ -49,34 +53,51 @@ describe('ServicesController', () => {
 		}).compile();
 
 		controller = module.get<ServicesController>(ServicesController);
-		pluginServiceManager = module.get(PluginServiceManagerService);
+		managedServiceManager = module.get(ManagedServiceManagerService);
 	});
 
 	afterEach(() => {
 		jest.clearAllMocks();
 	});
 
+	describe('routes', () => {
+		it('includes extension kind, extension type, and service ID in item and action routes', () => {
+			expect(Reflect.getMetadata(PATH_METADATA, ServicesController.prototype.findOne)).toBe(
+				':extensionKind/:extensionType/:serviceId',
+			);
+			expect(Reflect.getMetadata(PATH_METADATA, ServicesController.prototype.start)).toBe(
+				':extensionKind/:extensionType/:serviceId/start',
+			);
+			expect(Reflect.getMetadata(PATH_METADATA, ServicesController.prototype.stop)).toBe(
+				':extensionKind/:extensionType/:serviceId/stop',
+			);
+			expect(Reflect.getMetadata(PATH_METADATA, ServicesController.prototype.restart)).toBe(
+				':extensionKind/:extensionType/:serviceId/restart',
+			);
+		});
+	});
+
 	describe('findAll', () => {
 		it('should return all service statuses', async () => {
 			const mockStatuses = [
-				createMockServiceStatus({ pluginName: 'devices-shelly-v1', serviceId: 'main' }),
+				createMockServiceStatus({ extensionType: 'devices-shelly-v1', serviceId: 'main' }),
 				createMockServiceStatus({
-					pluginName: 'devices-shelly-ng',
+					extensionType: 'devices-shelly-ng',
 					serviceId: 'main',
 					state: 'stopped',
 					enabled: false,
 				}),
 			];
-			pluginServiceManager.getStatus.mockResolvedValue(mockStatuses);
+			managedServiceManager.getStatus.mockResolvedValue(mockStatuses);
 
 			const result = await controller.findAll();
 
 			expect(result.data).toHaveLength(2);
-			expect(pluginServiceManager.getStatus).toHaveBeenCalled();
+			expect(managedServiceManager.getStatus).toHaveBeenCalled();
 		});
 
 		it('should return empty array when no services', async () => {
-			pluginServiceManager.getStatus.mockResolvedValue([]);
+			managedServiceManager.getStatus.mockResolvedValue([]);
 
 			const result = await controller.findAll();
 
@@ -86,18 +107,21 @@ describe('ServicesController', () => {
 
 		it('should map status fields correctly', async () => {
 			const mockStatus = createMockServiceStatus({
-				pluginName: 'test-plugin',
+				extensionType: 'test-plugin',
 				serviceId: 'discovery',
 				state: 'error',
 				lastError: 'Connection refused',
 			});
-			pluginServiceManager.getStatus.mockResolvedValue([mockStatus]);
+			managedServiceManager.getStatus.mockResolvedValue([mockStatus]);
 
 			const result = await controller.findAll();
 
-			expect(result.data[0].pluginName).toBe('test-plugin');
+			expect(result.data[0].extensionKind).toBe('plugin');
+			expect(result.data[0].extensionType).toBe('test-plugin');
 			expect(result.data[0].serviceId).toBe('discovery');
+			expect(result.data[0].activationPolicy).toBe('owner-enabled');
 			expect(result.data[0].state).toBe('error');
+			expect(result.data[0].desiredState).toBe('started');
 			expect(result.data[0].lastError).toBe('Connection refused');
 		});
 	});
@@ -105,111 +129,104 @@ describe('ServicesController', () => {
 	describe('findOne', () => {
 		it('should return a single service status', async () => {
 			const mockStatus = createMockServiceStatus();
-			pluginServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
+			managedServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
 
-			const result = await controller.findOne('devices-shelly-v1', 'main');
+			const result = await controller.findOne('plugin', 'devices-shelly-v1', 'main');
 
 			expect(result.data).toBeDefined();
-			expect(result.data.pluginName).toBe('devices-shelly-v1');
+			expect(result.data.extensionType).toBe('devices-shelly-v1');
 			expect(result.data.serviceId).toBe('main');
-			expect(pluginServiceManager.getServiceStatus).toHaveBeenCalledWith('devices-shelly-v1', 'main');
+			expect(managedServiceManager.getServiceStatus).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
 		});
 
 		it('should throw NotFoundException when service not found', async () => {
-			pluginServiceManager.getServiceStatus.mockResolvedValue(null);
+			managedServiceManager.getServiceStatus.mockResolvedValue(null);
 
-			await expect(controller.findOne('unknown-plugin', 'unknown')).rejects.toThrow(NotFoundException);
+			await expect(controller.findOne('plugin', 'unknown-plugin', 'unknown')).rejects.toThrow(NotFoundException);
 		});
 	});
 
 	describe('start', () => {
 		it('should start a service and return status', async () => {
 			const mockStatus = createMockServiceStatus({ state: 'started' });
-			pluginServiceManager.startServiceManually.mockResolvedValue(true);
-			pluginServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
+			managedServiceManager.startServiceManually.mockResolvedValue(true);
+			managedServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
 
-			const result = await controller.start('devices-shelly-v1', 'main');
+			const result = await controller.start('plugin', 'devices-shelly-v1', 'main');
 
 			expect(result.data.state).toBe('started');
-			expect(pluginServiceManager.startServiceManually).toHaveBeenCalledWith('devices-shelly-v1', 'main');
+			expect(managedServiceManager.startServiceManually).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
 		});
 
-		it('should return status even if already started', async () => {
+		it('should throw BadRequestException when start does not achieve the requested state', async () => {
 			const mockStatus = createMockServiceStatus({ state: 'started' });
-			pluginServiceManager.startServiceManually.mockResolvedValue(false);
-			pluginServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
+			managedServiceManager.startServiceManually.mockResolvedValue(false);
+			managedServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
 
-			const result = await controller.start('devices-shelly-v1', 'main');
-
-			expect(result.data.state).toBe('started');
+			await expect(controller.start('plugin', 'devices-shelly-v1', 'main')).rejects.toThrow(BadRequestException);
 		});
 
 		it('should throw NotFoundException when service not found', async () => {
-			pluginServiceManager.startServiceManually.mockResolvedValue(false);
-			pluginServiceManager.getServiceStatus.mockResolvedValue(null);
+			managedServiceManager.startServiceManually.mockResolvedValue(false);
+			managedServiceManager.getServiceStatus.mockResolvedValue(null);
 
-			await expect(controller.start('unknown-plugin', 'unknown')).rejects.toThrow(NotFoundException);
+			await expect(controller.start('plugin', 'unknown-plugin', 'unknown')).rejects.toThrow(NotFoundException);
 		});
 	});
 
 	describe('stop', () => {
 		it('should stop a service and return status', async () => {
 			const mockStatus = createMockServiceStatus({ state: 'stopped' });
-			pluginServiceManager.stopServiceManually.mockResolvedValue(true);
-			pluginServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
+			managedServiceManager.stopServiceManually.mockResolvedValue(true);
+			managedServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
 
-			const result = await controller.stop('devices-shelly-v1', 'main');
+			const result = await controller.stop('plugin', 'devices-shelly-v1', 'main');
 
 			expect(result.data.state).toBe('stopped');
-			expect(pluginServiceManager.stopServiceManually).toHaveBeenCalledWith('devices-shelly-v1', 'main');
+			expect(managedServiceManager.stopServiceManually).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
 		});
 
-		it('should return status even if already stopped', async () => {
+		it('should throw BadRequestException when stop does not achieve the requested state', async () => {
 			const mockStatus = createMockServiceStatus({ state: 'stopped' });
-			pluginServiceManager.stopServiceManually.mockResolvedValue(false);
-			pluginServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
+			managedServiceManager.stopServiceManually.mockResolvedValue(false);
+			managedServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
 
-			const result = await controller.stop('devices-shelly-v1', 'main');
-
-			expect(result.data.state).toBe('stopped');
+			await expect(controller.stop('plugin', 'devices-shelly-v1', 'main')).rejects.toThrow(BadRequestException);
 		});
 
 		it('should throw NotFoundException when service not found', async () => {
-			pluginServiceManager.stopServiceManually.mockResolvedValue(false);
-			pluginServiceManager.getServiceStatus.mockResolvedValue(null);
+			managedServiceManager.stopServiceManually.mockResolvedValue(false);
+			managedServiceManager.getServiceStatus.mockResolvedValue(null);
 
-			await expect(controller.stop('unknown-plugin', 'unknown')).rejects.toThrow(NotFoundException);
+			await expect(controller.stop('plugin', 'unknown-plugin', 'unknown')).rejects.toThrow(NotFoundException);
 		});
 	});
 
 	describe('restart', () => {
 		it('should restart a service and return status', async () => {
 			const mockStatus = createMockServiceStatus({ state: 'started' });
-			pluginServiceManager.restartService.mockResolvedValue(true);
-			pluginServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
+			managedServiceManager.restartService.mockResolvedValue(true);
+			managedServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
 
-			const result = await controller.restart('devices-shelly-v1', 'main');
+			const result = await controller.restart('plugin', 'devices-shelly-v1', 'main');
 
 			expect(result.data.state).toBe('started');
-			expect(pluginServiceManager.restartService).toHaveBeenCalledWith('devices-shelly-v1', 'main');
+			expect(managedServiceManager.restartService).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
 		});
 
-		it('should return status even if restart fails', async () => {
+		it('should throw BadRequestException when restart fails', async () => {
 			const mockStatus = createMockServiceStatus({ state: 'stopped', enabled: false });
-			pluginServiceManager.restartService.mockResolvedValue(false);
-			pluginServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
+			managedServiceManager.restartService.mockResolvedValue(false);
+			managedServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
 
-			const result = await controller.restart('devices-shelly-v1', 'main');
-
-			expect(result.data.state).toBe('stopped');
-			expect(result.data.enabled).toBe(false);
+			await expect(controller.restart('plugin', 'devices-shelly-v1', 'main')).rejects.toThrow(BadRequestException);
 		});
 
 		it('should throw NotFoundException when service not found', async () => {
-			pluginServiceManager.restartService.mockResolvedValue(false);
-			pluginServiceManager.getServiceStatus.mockResolvedValue(null);
+			managedServiceManager.restartService.mockResolvedValue(false);
+			managedServiceManager.getServiceStatus.mockResolvedValue(null);
 
-			await expect(controller.restart('unknown-plugin', 'unknown')).rejects.toThrow(NotFoundException);
+			await expect(controller.restart('plugin', 'unknown-plugin', 'unknown')).rejects.toThrow(NotFoundException);
 		});
 	});
 });

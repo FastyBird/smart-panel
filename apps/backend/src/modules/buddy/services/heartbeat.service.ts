@@ -1,9 +1,11 @@
-import { Injectable, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { withTimeout } from '../../../common/utils/http.utils';
 import { ConfigService } from '../../config/services/config.service';
+import { BaseManagedExtensionService } from '../../extensions/services/base-managed-extension.service';
+import { ConfigChangeResult } from '../../extensions/services/managed-extension-service.interface';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { BUDDY_MODULE_NAME, HEARTBEAT_DEFAULT_INTERVAL_MS, HEARTBEAT_MAX_CYCLE_MS } from '../buddy.constants';
 import { BuddyConfigModel } from '../models/config.model';
@@ -16,10 +18,16 @@ const HEARTBEAT_INTERVAL_NAME = 'buddyHeartbeat';
 const EVALUATOR_TIMEOUT_MS = 10_000;
 
 @Injectable()
-export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy {
+export class HeartbeatService extends BaseManagedExtensionService implements OnModuleDestroy {
 	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'HeartbeatService');
 	private readonly evaluators: HeartbeatEvaluator[] = [];
 	private running = false;
+	private runningSince: number | null = null;
+	private intervalId: ReturnType<typeof setInterval> | null = null;
+	private scheduledIntervalMs: number | null = null;
+
+	readonly owner = { kind: 'module', type: BUDDY_MODULE_NAME } as const;
+	readonly serviceId = 'heartbeat';
 
 	constructor(
 		private readonly schedulerRegistry: SchedulerRegistry,
@@ -27,29 +35,90 @@ export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy
 		private readonly spacesService: SpacesService,
 		private readonly contextService: BuddyContextService,
 		private readonly suggestionEngine: SuggestionEngineService,
-	) {}
-
-	onApplicationBootstrap(): void {
-		const intervalMs = this.getIntervalMs();
-		const intervalId = setInterval(() => void this.runCycle(), intervalMs);
-
-		// Allow the Node.js process to exit even if the interval is still active
-		// (prevents "worker process has failed to exit gracefully" warnings in tests)
-		if (typeof intervalId === 'object' && 'unref' in intervalId) {
-			intervalId.unref();
-		}
-
-		this.schedulerRegistry.addInterval(HEARTBEAT_INTERVAL_NAME, intervalId);
-
-		this.logger.log(`Heartbeat started with interval=${intervalMs}ms`);
+	) {
+		super();
 	}
 
-	onModuleDestroy(): void {
-		try {
-			this.schedulerRegistry.deleteInterval(HEARTBEAT_INTERVAL_NAME);
-		} catch {
-			// Interval may not exist if bootstrap didn't complete
-		}
+	async start(): Promise<void> {
+		await this.withLock(async () => {
+			await Promise.resolve();
+
+			if (this.state === 'started') {
+				return;
+			}
+
+			this.state = 'starting';
+			const intervalMs = this.getIntervalMs();
+			let intervalId: ReturnType<typeof setInterval> | null = null;
+
+			try {
+				if (this.schedulerRegistry.doesExist('interval', HEARTBEAT_INTERVAL_NAME)) {
+					this.schedulerRegistry.deleteInterval(HEARTBEAT_INTERVAL_NAME);
+				}
+
+				intervalId = setInterval(() => void this.runCycle(), intervalMs);
+
+				// Allow the Node.js process to exit even if the interval is still active
+				// (prevents "worker process has failed to exit gracefully" warnings in tests)
+				if (typeof intervalId === 'object' && 'unref' in intervalId) {
+					intervalId.unref();
+				}
+
+				this.schedulerRegistry.addInterval(HEARTBEAT_INTERVAL_NAME, intervalId);
+				this.intervalId = intervalId;
+				this.scheduledIntervalMs = intervalMs;
+				this.state = 'started';
+
+				this.logger.log(`Heartbeat started with interval=${intervalMs}ms`);
+			} catch (error) {
+				if (intervalId) {
+					clearInterval(intervalId);
+				}
+
+				this.intervalId = null;
+				this.scheduledIntervalMs = null;
+				this.state = 'error';
+
+				throw error;
+			}
+		});
+	}
+
+	async stop(): Promise<void> {
+		await this.withLock(async () => {
+			await Promise.resolve();
+
+			if (this.state === 'stopped' && this.intervalId === null) {
+				return;
+			}
+
+			this.state = 'stopping';
+
+			try {
+				if (this.schedulerRegistry.doesExist('interval', HEARTBEAT_INTERVAL_NAME)) {
+					this.schedulerRegistry.deleteInterval(HEARTBEAT_INTERVAL_NAME);
+				} else if (this.intervalId) {
+					clearInterval(this.intervalId);
+				}
+			} catch (error) {
+				this.logger.warn(
+					`Failed to remove heartbeat interval: ${error instanceof Error ? error.message : String(error)}`,
+				);
+
+				if (this.intervalId) {
+					clearInterval(this.intervalId);
+				}
+			} finally {
+				this.intervalId = null;
+				this.scheduledIntervalMs = null;
+				this.state = 'stopped';
+				this.logger.log('Heartbeat stopped');
+			}
+		});
+	}
+
+	async onModuleDestroy(): Promise<void> {
+		await this.stop();
 	}
 
 	/**
@@ -86,6 +155,7 @@ export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy
 
 		this.running = true;
 		const startTime = Date.now();
+		this.runningSince = startTime;
 
 		try {
 			const spaces = await this.spacesService.findAll();
@@ -126,7 +196,23 @@ export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy
 			this.logger.error(`Heartbeat cycle failed: ${err.message}`, { stack: err.stack });
 		} finally {
 			this.running = false;
+			this.runningSince = null;
 		}
+	}
+
+	isHealthy(): Promise<boolean> {
+		const schedulerHasInterval = this.schedulerRegistry.doesExist('interval', HEARTBEAT_INTERVAL_NAME);
+		const cycleIsWithinBound = this.runningSince === null || Date.now() - this.runningSince <= HEARTBEAT_MAX_CYCLE_MS;
+
+		return Promise.resolve(this.state === 'started' && schedulerHasInterval && cycleIsWithinBound);
+	}
+
+	onConfigChanged(): Promise<ConfigChangeResult> {
+		const intervalMs = this.getIntervalMs();
+
+		return Promise.resolve({
+			restartRequired: this.state === 'started' && this.scheduledIntervalMs !== intervalMs,
+		});
 	}
 
 	/**

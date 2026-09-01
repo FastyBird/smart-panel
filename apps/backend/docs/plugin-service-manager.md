@@ -1,192 +1,101 @@
-# Plugin Service Manager Architecture
+# Managed Extension Service Manager
 
 ## Overview
 
-The Plugin Service Manager provides centralized lifecycle management for plugin services in the backend. It eliminates duplicate enabled/disabled checks across plugins and provides a single source of truth for service state management.
+`ManagedServiceManagerService` centralizes the lifecycle of independently restartable backend services owned by either a
+module or a plugin. It is the source of truth for startup ordering, configuration-driven desired state, manual controls,
+health status, graceful shutdown, and the Extensions → Services inventory.
 
-## Components
+The legacy filename is retained for existing documentation links. The implementation and public terminology are generic:
+managed *extension* services, not plugin-only services.
 
-### IManagedPluginService Interface
+## Contract
 
-Located at: `src/modules/extensions/services/managed-plugin-service.interface.ts`
-
-Services implementing this interface can be managed by the PluginServiceManagerService:
+The contract is defined in `src/modules/extensions/services/managed-extension-service.interface.ts`:
 
 ```typescript
-interface IManagedPluginService {
-  readonly pluginName: string;    // Plugin name (e.g., 'devices-shelly-v1')
-  readonly serviceId: string;     // Service identifier (e.g., 'discovery')
+interface ManagedServiceOwner {
+	kind: 'module' | 'plugin';
+	type: string;
+}
 
-  start(): Promise<void>;         // Called when plugin is enabled
-  stop(): Promise<void>;          // Called when plugin is disabled or app shuts down
-  getState(): ServiceState;       // Current state: 'stopped' | 'starting' | 'started' | 'stopping' | 'error'
+interface IManagedExtensionService {
+	readonly owner: ManagedServiceOwner;
+	readonly serviceId: string;
+	readonly activationPolicy?: 'owner-enabled' | 'always';
 
-  // Optional
-  getPriority?(): number;         // Startup ordering (lower = first)
-  getDependencies?(): string[];   // Dependencies on other services
-  isHealthy?(): Promise<boolean>; // Health check
-  onConfigChanged?(): Promise<void>; // Config change notification
+	start(): Promise<void>;
+	stop(): Promise<void>;
+	getState(): ServiceState;
+
+	getPriority?(): number;
+	getDependencies?(): string[];
+	isHealthy?(): Promise<boolean>;
+	onConfigChanged?(): Promise<void | ConfigChangeResult>;
 }
 ```
 
-### PluginServiceManagerService
+The authoritative service key is `<owner-kind>:<owner-type>:<service-id>`. Dependencies must use the same key.
 
-Located at: `src/modules/extensions/services/plugin-service-manager.service.ts`
+`owner-enabled` is the default activation policy. The manager starts and stops those services according to the owner
+configuration's `enabled` value. `always` services start even while their owner is disabled; use this only when a
+runtime must remain available for discovery or setup.
 
-The manager handles:
-- Service registration during `onModuleInit`
-- Automatic startup during `onApplicationBootstrap` (respects CLI mode)
-- Config-based enable/disable via `CONFIG_UPDATED` events
-- Graceful shutdown during `onModuleDestroy`
-- Service status reporting
+## Registration
 
-## Usage
-
-### Registering a Service
-
-In your plugin module's `onModuleInit`:
-
-```typescript
-@Module({
-  imports: [ExtensionsModule, ...],
-  providers: [MyService],
-})
-export class MyPlugin {
-  constructor(
-    private readonly myService: MyService,
-    private readonly extensionsService: ExtensionsService,
-    private readonly pluginServiceManager: PluginServiceManagerService,
-  ) {}
-
-  onModuleInit() {
-    // Other registrations...
-
-    // Register plugin metadata for extension discovery
-    this.extensionsService.registerPluginMetadata({
-      type: 'my-plugin',
-      name: 'My Plugin',
-      description: 'Description of my plugin',
-      author: 'Author',
-    });
-
-    // Register service with the manager
-    this.pluginServiceManager.register(this.myService);
-  }
-}
-```
-
-### Implementing a Managed Service
+Register a service from the owning module or plugin during `onModuleInit`:
 
 ```typescript
 @Injectable()
-export class MyService implements IManagedPluginService {
-  readonly pluginName = 'my-plugin';
-  readonly serviceId = 'main';
+export class MyService implements IManagedExtensionService {
+	readonly owner = { kind: 'plugin', type: 'my-plugin' } as const;
+	readonly serviceId = 'connector';
 
-  private state: ServiceState = 'stopped';
+	async start(): Promise<void> {
+		// idempotent start logic
+	}
 
-  async start(): Promise<void> {
-    if (this.state !== 'stopped') return;
+	async stop(): Promise<void> {
+		// idempotent stop logic
+	}
 
-    this.state = 'starting';
-    // Start logic here (NO enabled checks needed!)
-    this.state = 'started';
-  }
-
-  async stop(): Promise<void> {
-    if (this.state !== 'started') return;
-
-    this.state = 'stopping';
-    // Stop logic here
-    this.state = 'stopped';
-  }
-
-  getState(): ServiceState {
-    return this.state;
-  }
-
-  async onConfigChanged(): Promise<void> {
-    // Clear cached config
-    this.cachedConfig = null;
-  }
+	getState(): ServiceState {
+		return this.state;
+	}
 }
+
+// In the owner module/plugin
+this.managedServiceManager.register(this.myService);
 ```
 
-## Lifecycle Flow
+Services should have a persistent connection, server, external resource, hardware poller, discovery browser, or
+business heartbeat with a meaningful independent start/stop boundary. Caches, handlers, one-shot loaders, and child
+adapters controlled by a parent managed service do not belong in the inventory.
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         APPLICATION LIFECYCLE                            │
-└─────────────────────────────────────────────────────────────────────────┘
+## Lifecycle
 
-1. NestJS Module Initialization (onModuleInit)
-   ├─ Plugins register services with PluginServiceManagerService
-   └─ Manager stores registrations in Map<key, ServiceRegistration>
+1. Owners register services during Nest module initialization.
+2. On application bootstrap, the manager skips runtime startup in CLI mode and otherwise starts services whose desired
+   state is `started`, respecting priority and dependencies.
+3. On matching module or plugin configuration events, it re-evaluates desired state. Enabled running services receive
+   `onConfigChanged`; a result requiring restart is restarted safely.
+4. On shutdown and factory reset, started services stop in reverse priority order.
 
-2. Application Bootstrap (onApplicationBootstrap)
-   ├─ Manager checks CLI mode (FB_CLI env var)
-   ├─ If CLI mode: skip service startup
-   └─ Otherwise: for each registered service
-       ├─ Check if plugin is enabled via ConfigService
-       └─ If enabled: call service.start()
+The manager records state, desired state, health, timestamps, start count, uptime, and the last error. Health checks
+must use current runtime state or a bounded probe; services-list requests must not trigger unbounded network calls.
 
-3. Configuration Update (CONFIG_UPDATED event)
-   └─ For each registered service:
-       ├─ If plugin enabled AND service stopped → start service
-       ├─ If plugin disabled AND service started → stop service
-       └─ If plugin enabled AND service started → call onConfigChanged()
+## Administration API
 
-4. Application Shutdown (onModuleDestroy)
-   └─ Stop all running services in reverse priority order
-```
+The extensions API exposes module and plugin services using owner-specific routes:
 
-## Benefits
-
-| Benefit | Description |
-|---------|-------------|
-| **Single source of truth** | One place checks `enabled` state |
-| **Consistent patterns** | All plugins follow the same lifecycle |
-| **Centralized CLI handling** | Check once in manager |
-| **Observability** | `getStatus()` gives visibility into all services |
-| **Simplified plugin code** | Services focus on core logic only |
-| **Graceful shutdown** | Controlled shutdown order |
-
-## Migrated Plugins
-
-- `devices-shelly-v1` - ShellyV1Service
-- `devices-shelly-ng` - ShellyNgService
-- `devices-home-assistant` - HomeAssistantWsService
-- `logger-rotating-file` - FileLoggerService
-
-## API
-
-### Service Status
-
-Get status of all managed services:
-
-```typescript
-const statuses = await pluginServiceManager.getStatus();
-// Returns: ServiceStatus[]
-// {
-//   pluginName: string;
-//   serviceId: string;
-//   state: ServiceState;
-//   enabled: boolean;
-//   healthy?: boolean;
-// }
+```text
+GET  /modules/extensions/services
+GET  /modules/extensions/services/:extensionKind/:extensionType/:serviceId
+POST /modules/extensions/services/:extensionKind/:extensionType/:serviceId/start
+POST /modules/extensions/services/:extensionKind/:extensionType/:serviceId/stop
+POST /modules/extensions/services/:extensionKind/:extensionType/:serviceId/restart
 ```
 
-### Manual Restart
-
-Restart a specific service:
-
-```typescript
-await pluginServiceManager.restartService('devices-shelly-v1', 'discovery');
-```
-
-### Check Registration
-
-```typescript
-const isRegistered = pluginServiceManager.isRegistered('devices-shelly-v1', 'discovery');
-const allServices = pluginServiceManager.getRegisteredServices();
-```
+Each status includes `extension_kind`, `extension_type`, `service_id`, `activation_policy`, `state`, `desired_state`,
+and owner configuration/health/runtime fields. The admin UI groups these records by Modules and Plugins and identifies
+always-active services that can run while their owner is disabled.
