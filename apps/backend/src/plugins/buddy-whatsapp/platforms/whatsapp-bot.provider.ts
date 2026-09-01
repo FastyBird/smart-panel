@@ -210,8 +210,9 @@ export class WhatsAppBotProvider implements IManagedExtensionService {
 			rmSync(authDir, { recursive: true, force: true });
 		}
 
-		// Delegate restart to the manager so runtime tracking stays in sync
-		void this.managedServiceManager.restartService(this.owner.kind, this.owner.type, this.serviceId);
+		// The service is stopped at this point, so use the manager's manual-start
+		// path to keep runtime tracking in sync while opening a fresh QR socket.
+		await this.managedServiceManager.startServiceManually(this.owner.kind, this.owner.type, this.serviceId);
 	}
 
 	private async startBot(): Promise<void> {

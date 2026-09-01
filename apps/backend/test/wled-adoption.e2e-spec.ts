@@ -15,7 +15,7 @@ describe('WLED adoption endpoints (e2e)', () => {
 	let app: INestApplication;
 	let accessToken: string;
 	const wledService = {
-		pluginName: 'devices-wled-plugin',
+		owner: { kind: 'plugin', type: 'devices-wled-plugin' },
 		serviceId: 'connector',
 		getState: jest.fn().mockReturnValue('stopped'),
 		start: jest.fn().mockResolvedValue(undefined),

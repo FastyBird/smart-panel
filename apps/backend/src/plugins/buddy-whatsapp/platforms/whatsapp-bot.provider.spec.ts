@@ -52,7 +52,7 @@ describe('WhatsAppBotProvider', () => {
 		sendMessage: jest.Mock;
 	};
 	let suggestionEngine: { recordFeedback: jest.Mock };
-	let managedServiceManager: { restartService: jest.Mock };
+	let managedServiceManager: { startServiceManually: jest.Mock };
 
 	beforeEach(() => {
 		configService = {
@@ -70,7 +70,7 @@ describe('WhatsAppBotProvider', () => {
 		};
 
 		managedServiceManager = {
-			restartService: jest.fn().mockResolvedValue(true),
+			startServiceManually: jest.fn().mockResolvedValue(true),
 		};
 
 		provider = new WhatsAppBotProvider(
@@ -115,6 +115,18 @@ describe('WhatsAppBotProvider', () => {
 	describe('isConnected', () => {
 		it('should return false by default', () => {
 			expect(provider.isConnected()).toBe(false);
+		});
+	});
+
+	describe('logout', () => {
+		it('starts the stopped service through the manager to generate a fresh QR code', async () => {
+			await provider.logout();
+
+			expect(managedServiceManager.startServiceManually).toHaveBeenCalledWith(
+				'plugin',
+				BUDDY_WHATSAPP_PLUGIN_NAME,
+				'bot',
+			);
 		});
 	});
 
