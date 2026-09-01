@@ -230,7 +230,7 @@ describe('ManagedServiceManagerService', () => {
 	});
 
 	describe('manual action results', () => {
-		it('rejects actions from transitional or incompatible states', async () => {
+		it('rejects duplicate starts and stopped restarts but stops a starting service', async () => {
 			const starting = createMockService('plugin', 'action-plugin', 'starting', 'starting');
 			const stopped = createMockService('plugin', 'action-plugin', 'stopped');
 
@@ -240,11 +240,37 @@ describe('ManagedServiceManagerService', () => {
 			(manager as unknown as { startupComplete: boolean }).startupComplete = true;
 
 			await expect(manager.startServiceManually('plugin', 'action-plugin', 'starting')).resolves.toBe(false);
-			await expect(manager.stopServiceManually('plugin', 'action-plugin', 'starting')).resolves.toBe(false);
+			await expect(manager.stopServiceManually('plugin', 'action-plugin', 'starting')).resolves.toBe(true);
+			expect(starting.getState()).toBe('stopped');
 			await expect(manager.restartService('plugin', 'action-plugin', 'stopped')).resolves.toBe(false);
 		});
 
-		it('returns false when start does not reach the started state', async () => {
+		it('accepts starting as a successful asynchronous launch state', async () => {
+			const startedManually = createMockService('plugin', 'action-plugin', 'async-start');
+			startedManually.start = jest.fn(() => {
+				startedManually._state = 'starting';
+
+				return Promise.resolve();
+			});
+			const restarted = createMockService('plugin', 'action-plugin', 'async-restart', 'started');
+			restarted.start = jest.fn(() => {
+				restarted._state = 'starting';
+
+				return Promise.resolve();
+			});
+
+			(manager as unknown as { startupComplete: boolean }).startupComplete = false;
+			manager.register(startedManually);
+			manager.register(restarted);
+			(manager as unknown as { startupComplete: boolean }).startupComplete = true;
+
+			await expect(manager.startServiceManually('plugin', 'action-plugin', 'async-start')).resolves.toBe(true);
+			await expect(manager.restartService('plugin', 'action-plugin', 'async-restart')).resolves.toBe(true);
+			expect(startedManually.getState()).toBe('starting');
+			expect(restarted.getState()).toBe('starting');
+		});
+
+		it('returns false when start does not reach a valid launch state', async () => {
 			const service = createMockService('plugin', 'action-plugin', 'start-failure');
 			service.start = jest.fn().mockRejectedValue(new Error('start failed'));
 
@@ -277,7 +303,7 @@ describe('ManagedServiceManagerService', () => {
 			expect(service.start).not.toHaveBeenCalled();
 		});
 
-		it('returns false when restart cannot reach the started state', async () => {
+		it('returns false when restart cannot reach a valid launch state', async () => {
 			const service = createMockService('plugin', 'action-plugin', 'restart-start-failure', 'started');
 			service.start = jest.fn().mockRejectedValue(new Error('start failed'));
 

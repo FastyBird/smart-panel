@@ -417,7 +417,9 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		await this.startService(registration);
 
-		return registration.service.getState() === 'started';
+		const resultingState = registration.service.getState();
+
+		return resultingState === 'started' || resultingState === 'starting';
 	}
 
 	/**
@@ -454,7 +456,9 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		await this.startService(registration);
 
-		return registration.service.getState() === 'started';
+		const resultingState = registration.service.getState();
+
+		return resultingState === 'started' || resultingState === 'starting';
 	}
 
 	/**
@@ -479,7 +483,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		const currentState = registration.service.getState();
 
-		if (currentState !== 'started' && currentState !== 'error') {
+		if (currentState !== 'started' && currentState !== 'starting' && currentState !== 'error') {
 			this.logger.warn(`Cannot stop service ${key} from state ${currentState}`);
 
 			return false;

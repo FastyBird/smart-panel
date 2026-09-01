@@ -81,7 +81,7 @@ export class ServicesController {
 	@ApiParam({ name: 'serviceId', type: 'string', description: 'Service identifier within the extension' })
 	@ApiSuccessResponse(ServiceStatusResponseModel, 'Returns the updated service status')
 	@ApiNotFoundResponse('Service not found')
-	@ApiBadRequestResponse('Service cannot be started or failed to reach the started state')
+	@ApiBadRequestResponse('Service cannot be started or failed to reach a valid launch state')
 	@Post(':extensionKind/:extensionType/:serviceId/start')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	async start(
@@ -157,7 +157,7 @@ export class ServicesController {
 	@ApiParam({ name: 'serviceId', type: 'string', description: 'Service identifier within the extension' })
 	@ApiSuccessResponse(ServiceStatusResponseModel, 'Returns the updated service status')
 	@ApiNotFoundResponse('Service not found')
-	@ApiBadRequestResponse('Service desired state is stopped or service cannot be restarted')
+	@ApiBadRequestResponse('Service desired state is stopped or service cannot reach a valid launch state')
 	@Post(':extensionKind/:extensionType/:serviceId/restart')
 	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	async restart(
