@@ -218,6 +218,38 @@ describe('useListQuery (composable)', () => {
 		expect(routeQuery.value).toEqual({});
 	});
 
+	it('preserves unrelated query keys while hydrating stored list state', () => {
+		fakeStore.set({
+			key: 'k4',
+			data: {
+				filters: { ...defaultFilters, search: 'stored' },
+				pagination: defaultPagination,
+				sort: defaultSort,
+			},
+			version: 1,
+		});
+
+		routeQuery.value = {
+			tab: 'services',
+			serviceKind: 'plugin',
+		};
+
+		useListQuery({
+			key: 'k4',
+			filters: { schema: FilterSchema, defaults: defaultFilters },
+			pagination: { defaults: defaultPagination },
+			sort: { defaults: defaultSort },
+			syncQuery: true,
+			version: 1,
+		});
+
+		expect(routeQuery.value).toEqual({
+			tab: 'services',
+			serviceKind: 'plugin',
+			search: 'stored',
+		});
+	});
+
 	it('clears pending debounce timers when the wrapping scope is disposed', async () => {
 		const debounceMs = 150;
 

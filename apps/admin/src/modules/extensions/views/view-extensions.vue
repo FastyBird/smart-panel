@@ -90,6 +90,7 @@
 			</template>
 
 			<services-list
+				v-model:active-kind="activeServiceKind"
 				:services="services"
 				:loading="areServicesLoading"
 				:extension-names="serviceExtensionNames"
@@ -139,7 +140,7 @@
 import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
+import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
 import { ElDrawer, ElIcon, ElTabPane, ElTabs } from 'element-plus';
 
@@ -159,8 +160,11 @@ defineOptions({
 	name: 'ViewExtensions',
 });
 
+type ExtensionsPageTab = 'extensions' | 'services';
+
 defineProps<IViewExtensionsProps>();
 
+const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 
@@ -201,8 +205,39 @@ const serviceExtensionNames = computed<Record<string, string>>(() => {
 });
 
 const showDrawer = ref<boolean>(false);
-const activeTab = ref<string>('extensions');
 const servicesLoaded = ref<boolean>(false);
+
+const isServiceKind = (value: unknown): value is ExtensionsModuleServiceOwnerKind => {
+	return value === ExtensionsModuleServiceOwnerKind.module || value === ExtensionsModuleServiceOwnerKind.plugin;
+};
+
+const activeServiceKind = computed<ExtensionsModuleServiceOwnerKind>({
+	get: (): ExtensionsModuleServiceOwnerKind => {
+		return isServiceKind(route.query.serviceKind) ? route.query.serviceKind : ExtensionsModuleServiceOwnerKind.module;
+	},
+	set: (serviceKind: ExtensionsModuleServiceOwnerKind): void => {
+		router.replace({
+			query: {
+				...route.query,
+				tab: 'services',
+				serviceKind,
+			},
+		});
+	},
+});
+
+const activeTab = computed<ExtensionsPageTab>({
+	get: (): ExtensionsPageTab => (route.query.tab === 'services' ? 'services' : 'extensions'),
+	set: (tab: ExtensionsPageTab): void => {
+		router.replace({
+			query: {
+				...route.query,
+				tab,
+				serviceKind: activeServiceKind.value,
+			},
+		});
+	},
+});
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneric }[]>(
 	(): { label: string; route: RouteLocationResolvedGeneric }[] => {
@@ -215,9 +250,28 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 	}
 );
 
-// Lazy load services when tab is selected
-watch(activeTab, async (newTab) => {
-	if (newTab === 'services' && !servicesLoaded.value) {
+// Normalize linked tab state and lazy load services when selected
+watch(
+	[activeTab, () => route.query.serviceKind],
+	async ([newTab]) => {
+		if (newTab !== 'services') {
+			return;
+		}
+
+		if (!isServiceKind(route.query.serviceKind)) {
+			router.replace({
+				query: {
+					...route.query,
+					tab: 'services',
+					serviceKind: activeServiceKind.value,
+				},
+			});
+		}
+
+		if (servicesLoaded.value) {
+			return;
+		}
+
 		try {
 			await fetchServices();
 			servicesLoaded.value = true;
@@ -225,8 +279,9 @@ watch(activeTab, async (newTab) => {
 			const err = error as Error;
 			throw new ExtensionsException('Failed to load services', err);
 		}
-	}
-});
+	},
+	{ immediate: true }
+);
 
 const onToggleEnabled = async (type: IExtension['type'], enabled: boolean): Promise<void> => {
 	await toggleEnabled(type, enabled);
@@ -264,35 +319,19 @@ const onCloseDrawer = (done?: () => void): void => {
 };
 
 // Service actions
-const isActingOnService = (
-	extensionKind: ExtensionsModuleServiceOwnerKind,
-	extensionType: string,
-	serviceId: string,
-): boolean => {
+const isActingOnService = (extensionKind: ExtensionsModuleServiceOwnerKind, extensionType: string, serviceId: string): boolean => {
 	return isActing(extensionKind, extensionType, serviceId);
 };
 
-const onStartService = async (
-	extensionKind: ExtensionsModuleServiceOwnerKind,
-	extensionType: string,
-	serviceId: string,
-): Promise<void> => {
+const onStartService = async (extensionKind: ExtensionsModuleServiceOwnerKind, extensionType: string, serviceId: string): Promise<void> => {
 	await startService(extensionKind, extensionType, serviceId);
 };
 
-const onStopService = async (
-	extensionKind: ExtensionsModuleServiceOwnerKind,
-	extensionType: string,
-	serviceId: string,
-): Promise<void> => {
+const onStopService = async (extensionKind: ExtensionsModuleServiceOwnerKind, extensionType: string, serviceId: string): Promise<void> => {
 	await stopService(extensionKind, extensionType, serviceId);
 };
 
-const onRestartService = async (
-	extensionKind: ExtensionsModuleServiceOwnerKind,
-	extensionType: string,
-	serviceId: string,
-): Promise<void> => {
+const onRestartService = async (extensionKind: ExtensionsModuleServiceOwnerKind, extensionType: string, serviceId: string): Promise<void> => {
 	await restartService(extensionKind, extensionType, serviceId);
 };
 
