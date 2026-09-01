@@ -521,7 +521,8 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 			return;
 		}
 
-		const next: LocationQueryRaw = {};
+		const next: LocationQueryRaw = { ...route.query };
+		const preservedQueryKeyCount = Object.keys(next).length;
 
 		// filters
 		if (filters && stored.filters) {
@@ -574,7 +575,7 @@ export function useListQuery<F extends z.ZodObject<AnyShape> | undefined, V exte
 			next[VIEW_Q] = stored.viewMode;
 		}
 
-		if (Object.keys(next).length) {
+		if (Object.keys(next).length > preservedQueryKeyCount) {
 			replaceQuery(next);
 		}
 	});
