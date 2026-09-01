@@ -44,6 +44,10 @@ export class ShellyWsServerService implements OnModuleDestroy {
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 	) {}
 
+	isRunning(): boolean {
+		return this.wss !== null && !this.stopped;
+	}
+
 	/**
 	 * Start the inbound WebSocket server for sleeping Shelly devices.
 	 * Sleeping devices (H&T, Motion, Door/Window) connect to this endpoint

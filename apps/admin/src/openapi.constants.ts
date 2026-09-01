@@ -601,7 +601,16 @@ export type WeatherModuleUpdateLocationSchema = components['schemas']['WeatherMo
 // Extensions Module Enums
 // =======================
 export { ExtensionsModuleDataServiceStatusState as ExtensionsModuleServiceState } from './openapi';
-export { ExtensionsModuleDataExtensionKind as ExtensionKind } from './openapi';
+export {
+	PathsModulesExtensionsServicesExtensionKindExtensionTypeServiceIdGetParametersPathExtensionKind as ExtensionsModuleServiceOwnerKind,
+} from './openapi';
+export {
+	ExtensionsModuleDataServiceStatusActivation_policy as ExtensionsModuleServiceActivationPolicy,
+	ExtensionsModuleDataServiceStatusDesired_state as ExtensionsModuleServiceDesiredState,
+} from './openapi';
+export {
+	PathsModulesExtensionsServicesExtensionKindExtensionTypeServiceIdGetParametersPathExtensionKind as ExtensionKind,
+} from './openapi';
 export { ExtensionsModuleDataDiscoveredExtensionBaseSurface as ExtensionSurface } from './openapi';
 export { ExtensionsModuleDataDiscoveredExtensionBaseSource as ExtensionSource } from './openapi';
 export { PathsModulesExtensionsDiscoveredGetParametersQuerySurface as ExtensionsDiscoverySurface } from './openapi';

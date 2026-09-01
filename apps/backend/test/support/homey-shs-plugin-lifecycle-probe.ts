@@ -6,7 +6,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { ConfigService } from '../../src/modules/config/services/config.service';
 import { PluginConfigValidatorService } from '../../src/modules/config/services/plugin-config-validator.service';
-import { PluginServiceManagerService } from '../../src/modules/extensions/services/plugin-service-manager.service';
+import { ManagedServiceManagerService } from '../../src/modules/extensions/services/managed-service-manager.service';
 import { HomeyConnectorFactory } from '../../src/plugins/devices-homey/connectors/homey-connector.factory';
 import { HomeyConnector } from '../../src/plugins/devices-homey/connectors/homey-connector.interface';
 import { HomeyLocalConnectorFactory } from '../../src/plugins/devices-homey/connectors/homey-local-connector.factory';
@@ -519,7 +519,7 @@ export const createHomeyPluginLifecycleRuntime: HomeyPluginLifecycleRuntimeFacto
 		hasValidator: (): boolean => false,
 		validate: (): Promise<{ valid: true }> => Promise.resolve({ valid: true }),
 	};
-	const manager = new PluginServiceManagerService(
+	const manager = new ManagedServiceManagerService(
 		configService as unknown as ConfigService,
 		nestConfigService as unknown as NestConfigService,
 		pluginConfigValidator as unknown as PluginConfigValidatorService,

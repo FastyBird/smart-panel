@@ -25,6 +25,7 @@ import type {
 	IServicesStoreState,
 	ServicesStoreSetup,
 } from './services.store.types';
+import { getServiceKey } from './services.store.types';
 import { transformServiceResponse } from './services.transformers';
 
 const defaultSemaphore: IServicesStateSemaphore = {
@@ -34,8 +35,6 @@ const defaultSemaphore: IServicesStateSemaphore = {
 	},
 	acting: [],
 };
-
-const serviceKey = (pluginName: string, serviceId: string): string => `${pluginName}:${serviceId}`;
 
 export const useServices = defineStore<'extensions_module-services', ServicesStoreSetup>(
 	'extensions_module-services',
@@ -55,23 +54,23 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 
 		const firstLoadFinished = (): boolean => firstLoad.value;
 
-		const getting = (pluginName: string, serviceId: string): boolean =>
-			semaphore.value.fetching.item.includes(serviceKey(pluginName, serviceId));
+		const getting = (extensionKind: IService['extensionKind'], extensionType: string, serviceId: string): boolean =>
+			semaphore.value.fetching.item.includes(getServiceKey(extensionKind, extensionType, serviceId));
 
 		const fetching = (): boolean => semaphore.value.fetching.items;
 
-		const acting = (pluginName: string, serviceId: string): boolean =>
-			semaphore.value.acting.includes(serviceKey(pluginName, serviceId));
+		const acting = (extensionKind: IService['extensionKind'], extensionType: string, serviceId: string): boolean =>
+			semaphore.value.acting.includes(getServiceKey(extensionKind, extensionType, serviceId));
 
 		const findAll = (): IService[] => Object.values(data.value);
 
-		const findByKey = (pluginName: string, serviceId: string): IService | null => {
-			const key = serviceKey(pluginName, serviceId);
+		const findByKey = (extensionKind: IService['extensionKind'], extensionType: string, serviceId: string): IService | null => {
+			const key = getServiceKey(extensionKind, extensionType, serviceId);
 			return data.value[key] ?? null;
 		};
 
 		const set = (payload: IServicesSetActionPayload): IService => {
-			const key = serviceKey(payload.pluginName, payload.serviceId);
+			const key = getServiceKey(payload.extensionKind, payload.extensionType, payload.serviceId);
 
 			if (key in data.value) {
 				const parsed = ServiceSchema.safeParse({ ...data.value[key], ...payload.data });
@@ -99,7 +98,7 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 		};
 
 		const get = async (payload: IServicesGetActionPayload): Promise<IService> => {
-			const key = serviceKey(payload.pluginName, payload.serviceId);
+			const key = getServiceKey(payload.extensionKind, payload.extensionType, payload.serviceId);
 
 			const existingPromise = pendingGetPromises[key];
 			if (existingPromise) {
@@ -118,9 +117,13 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.GET('/modules/extensions/services/{pluginName}/{serviceId}', {
+					} = await backend.client.GET('/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}', {
 						params: {
-							path: { pluginName: payload.pluginName, serviceId: payload.serviceId },
+							path: {
+								extensionKind: payload.extensionKind,
+								extensionType: payload.extensionType,
+								serviceId: payload.serviceId,
+							},
 						},
 					});
 
@@ -175,7 +178,7 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 
 						// Update store data
 						for (const service of services) {
-							const key = serviceKey(service.pluginName, service.serviceId);
+							const key = getServiceKey(service.extensionKind, service.extensionType, service.serviceId);
 							data.value[key] = service;
 						}
 
@@ -206,7 +209,7 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 		};
 
 		const start = async (payload: IServicesStartActionPayload): Promise<IService> => {
-			const key = serviceKey(payload.pluginName, payload.serviceId);
+			const key = getServiceKey(payload.extensionKind, payload.extensionType, payload.serviceId);
 
 			if (semaphore.value.acting.includes(key)) {
 				throw new ExtensionsApiException('Action is already in progress for this service.');
@@ -219,9 +222,13 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST('/modules/extensions/services/{pluginName}/{serviceId}/start', {
+				} = await backend.client.POST('/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}/start', {
 					params: {
-						path: { pluginName: payload.pluginName, serviceId: payload.serviceId },
+						path: {
+							extensionKind: payload.extensionKind,
+							extensionType: payload.extensionType,
+							serviceId: payload.serviceId,
+						},
 					},
 				});
 
@@ -246,7 +253,7 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 		};
 
 		const stop = async (payload: IServicesStopActionPayload): Promise<IService> => {
-			const key = serviceKey(payload.pluginName, payload.serviceId);
+			const key = getServiceKey(payload.extensionKind, payload.extensionType, payload.serviceId);
 
 			if (semaphore.value.acting.includes(key)) {
 				throw new ExtensionsApiException('Action is already in progress for this service.');
@@ -259,9 +266,13 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST('/modules/extensions/services/{pluginName}/{serviceId}/stop', {
+				} = await backend.client.POST('/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}/stop', {
 					params: {
-						path: { pluginName: payload.pluginName, serviceId: payload.serviceId },
+						path: {
+							extensionKind: payload.extensionKind,
+							extensionType: payload.extensionType,
+							serviceId: payload.serviceId,
+						},
 					},
 				});
 
@@ -286,7 +297,7 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 		};
 
 		const restart = async (payload: IServicesRestartActionPayload): Promise<IService> => {
-			const key = serviceKey(payload.pluginName, payload.serviceId);
+			const key = getServiceKey(payload.extensionKind, payload.extensionType, payload.serviceId);
 
 			if (semaphore.value.acting.includes(key)) {
 				throw new ExtensionsApiException('Action is already in progress for this service.');
@@ -299,9 +310,13 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST('/modules/extensions/services/{pluginName}/{serviceId}/restart', {
+				} = await backend.client.POST('/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}/restart', {
 					params: {
-						path: { pluginName: payload.pluginName, serviceId: payload.serviceId },
+						path: {
+							extensionKind: payload.extensionKind,
+							extensionType: payload.extensionType,
+							serviceId: payload.serviceId,
+						},
 					},
 				});
 

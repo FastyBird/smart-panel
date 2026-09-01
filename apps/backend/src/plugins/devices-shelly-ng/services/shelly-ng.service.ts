@@ -8,12 +8,12 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
+import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
 import {
 	ConfigChangeResult,
 	ServiceState,
-} from '../../../modules/extensions/services/managed-plugin-service.interface';
-import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
+} from '../../../modules/extensions/services/managed-extension-service.interface';
+import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
@@ -26,17 +26,16 @@ import { ShellyWsServerService } from './shelly-ws-server.service';
 /**
  * Shelly NG device discovery and synchronization service.
  *
- * This service is managed by PluginServiceManagerService and implements
- * the IManagedPluginService interface for centralized lifecycle management.
+ * This service implements the generic managed-extension contract for centralized lifecycle management.
  */
 @Injectable()
-export class ShellyNgService extends BaseManagedPluginService {
+export class ShellyNgService extends BaseManagedExtensionService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_SHELLY_NG_PLUGIN_NAME,
 		'ShellyService',
 	);
 
-	readonly pluginName = DEVICES_SHELLY_NG_PLUGIN_NAME;
+	readonly owner = { kind: 'plugin', type: DEVICES_SHELLY_NG_PLUGIN_NAME } as const;
 	readonly serviceId = 'connector';
 
 	private shellies?: Shellies;
@@ -67,7 +66,7 @@ export class ShellyNgService extends BaseManagedPluginService {
 		private readonly deviceManagerService: DeviceManagerService,
 		private readonly devicesService: DevicesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
-		private readonly pluginServiceManager: PluginServiceManagerService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
 		private readonly wsServer: ShellyWsServerService,
 	) {
 		super();
@@ -75,7 +74,7 @@ export class ShellyNgService extends BaseManagedPluginService {
 
 	/**
 	 * Start the service.
-	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 * Called by ManagedServiceManagerService when the plugin is enabled.
 	 */
 	async start(): Promise<void> {
 		await this.withLock(async () => {
@@ -105,7 +104,7 @@ export class ShellyNgService extends BaseManagedPluginService {
 
 	/**
 	 * Stop the service gracefully.
-	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 * Called by ManagedServiceManagerService when the plugin is disabled or app shuts down.
 	 */
 	async stop(): Promise<void> {
 		await this.withLock(async () => {
@@ -132,9 +131,19 @@ export class ShellyNgService extends BaseManagedPluginService {
 		});
 	}
 
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(
+			this.state === 'started' &&
+				typeof this.shellies !== 'undefined' &&
+				this.healthCheckTimer !== null &&
+				this.statusPollTimer !== null &&
+				this.wsServer.isRunning(),
+		);
+	}
+
 	/**
 	 * Handle configuration changes.
-	 * Called by PluginServiceManagerService when config updates occur.
+	 * Called by ManagedServiceManagerService when config updates occur.
 	 *
 	 * For Shelly NG service, config changes (mDNS interface, WebSocket settings)
 	 * require a full restart to apply. Returns restartRequired: true to signal
@@ -178,14 +187,14 @@ export class ShellyNgService extends BaseManagedPluginService {
 	}
 
 	/**
-	 * Restart the service through the PluginServiceManagerService.
+	 * Restart the service through the ManagedServiceManagerService.
 	 * Used by entity subscribers when device configuration changes.
 	 *
 	 * Delegates to the manager to ensure runtime tracking (lastStartedAt,
 	 * startCount, etc.) is properly updated.
 	 */
 	async restart(): Promise<void> {
-		const success = await this.pluginServiceManager.restartService(this.pluginName, this.serviceId);
+		const success = await this.managedServiceManager.restartService(this.owner.kind, this.owner.type, this.serviceId);
 
 		if (!success) {
 			this.logger.debug('Restart skipped (plugin may be disabled)');

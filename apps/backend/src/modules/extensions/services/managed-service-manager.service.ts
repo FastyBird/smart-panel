@@ -5,19 +5,21 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { EventType as ConfigModuleEventType } from '../../config/config.constants';
-import { PluginConfigModel } from '../../config/models/config.model';
+import { ModuleConfigModel, PluginConfigModel } from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
 import { PluginConfigValidatorService } from '../../config/services/plugin-config-validator.service';
 import { EXTENSIONS_MODULE_NAME } from '../extensions.constants';
 
 import {
 	ConfigChangeResult,
-	IManagedPluginService,
+	IManagedExtensionService,
+	ManagedServiceOwner,
+	ManagedServiceOwnerKind,
 	ServiceRegistration,
 	ServiceRuntimeInfo,
 	ServiceState,
 	ServiceStatusExtended,
-} from './managed-plugin-service.interface';
+} from './managed-extension-service.interface';
 
 const READINESS_RETRY_INITIAL_DELAY_MS = 15_000;
 const READINESS_RETRY_MAX_ATTEMPTS = 3;
@@ -28,15 +30,15 @@ interface ReadinessRetryState {
 }
 
 /**
- * Centralized service manager for plugin lifecycle management.
+ * Centralized service manager for extension-owned runtime lifecycle management.
  *
- * This service provides a single source of truth for managing plugin services:
- * - Handles enabled/disabled state based on plugin configuration
+ * This service provides a single source of truth for managing extension-owned services:
+ * - Handles desired state based on extension configuration and activation policy
  * - Manages startup ordering and dependencies
  * - Responds to configuration changes
  * - Provides visibility into service states
  *
- * Plugins register their services during `onModuleInit`, and the manager
+ * Extensions register their services during `onModuleInit`, and the manager
  * handles all lifecycle operations during `onApplicationBootstrap` and
  * in response to configuration changes.
  *
@@ -44,13 +46,13 @@ interface ReadinessRetryState {
  * ```typescript
  * // In plugin module
  * onModuleInit() {
- *   this.pluginServiceManager.register(this.myService);
+ *   this.managedServiceManager.register(this.myService);
  * }
  * ```
  */
 @Injectable()
-export class PluginServiceManagerService implements OnApplicationBootstrap, OnModuleDestroy {
-	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'PluginServiceManagerService');
+export class ManagedServiceManagerService implements OnApplicationBootstrap, OnModuleDestroy {
+	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'ManagedServiceManagerService');
 
 	private readonly services: Map<string, ServiceRegistration> = new Map();
 	private readonly runtimeInfo: Map<string, ServiceRuntimeInfo> = new Map();
@@ -70,27 +72,26 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	}
 
 	/**
-	 * Register a managed plugin service.
-	 * Called by plugins during their `onModuleInit` lifecycle hook.
+	 * Register a managed extension service.
 	 *
-	 * @param service - The service implementing IManagedPluginService
-	 * @throws Error if a service with the same key is already registered
+	 * @param service - The managed service
 	 */
-	register(service: IManagedPluginService): void {
-		const key = this.getServiceKey(service.pluginName, service.serviceId);
+	register(service: IManagedExtensionService): void {
+		const key = this.getServiceKey(service.owner.kind, service.owner.type, service.serviceId);
 
 		if (this.services.has(key)) {
 			this.logger.warn(`Service already registered: ${key}`);
 
-			return;
+			throw new Error(`Service already registered: ${key}`);
 		}
 
 		const priority = service.getPriority?.() ?? 100;
 
 		this.services.set(key, {
 			service,
-			pluginName: service.pluginName,
+			owner: { ...service.owner },
 			serviceId: service.serviceId,
+			activationPolicy: service.activationPolicy ?? 'owner-enabled',
 			priority,
 		});
 
@@ -101,25 +102,25 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 		this.logger.log(`Registered service: ${key} (priority: ${priority})`);
 
-		// If startup already completed and this plugin is enabled, start the service immediately
+		// Late registrations follow the same desired-state rules as boot-time registrations.
 		if (this.startupComplete && !this.isCliMode) {
-			const config = this.getPluginConfig(service.pluginName);
+			const registration = this.services.get(key);
 
-			if (config?.enabled) {
-				void this.startService(this.services.get(key));
+			if (registration && this.shouldBeRunning(registration)) {
+				void this.startService(registration);
 			}
 		}
 	}
 
 	/**
-	 * Unregister a managed plugin service.
-	 * Called when a plugin is being destroyed or no longer needs management.
+	 * Unregister a managed extension service.
 	 *
-	 * @param pluginName - The plugin name
+	 * @param extensionKind - The extension owner kind
+	 * @param extensionType - The extension owner type
 	 * @param serviceId - The service identifier
 	 */
-	unregister(pluginName: string, serviceId: string): void {
-		const key = this.getServiceKey(pluginName, serviceId);
+	unregister(extensionKind: ManagedServiceOwnerKind, extensionType: string, serviceId: string): void {
+		const key = this.getServiceKey(extensionKind, extensionType, serviceId);
 
 		if (!this.services.has(key)) {
 			return;
@@ -134,7 +135,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 	/**
 	 * Called by NestJS when application bootstrap is complete.
-	 * Starts all services for enabled plugins in parallel where possible.
+	 * Starts all services whose activation policy says they should be running.
 	 * Services are grouped by dependency levels and each level starts in parallel.
 	 */
 	async onApplicationBootstrap(): Promise<void> {
@@ -159,7 +160,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			this.logger.log(`Starting level ${level} services (${levelServices.length} services)`);
 
 			// Start all services at this level in parallel
-			await Promise.all(levelServices.map((registration) => this.startServiceIfEnabled(registration)));
+			await Promise.all(levelServices.map((registration) => this.startServiceIfDesired(registration)));
 		}
 
 		this.startupComplete = true;
@@ -169,7 +170,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 	/**
 	 * Stop all running services. Used during factory reset to ensure
-	 * plugin services are cleaned up before data is wiped.
+	 * managed services are cleaned up before data is wiped.
 	 */
 	async stopAllServices(): Promise<void> {
 		this.shutdownInProgress = true;
@@ -248,9 +249,8 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	 * Handle configuration updates.
 	 * Starts/stops services based on new enabled state.
 	 *
-	 * When the event includes a source plugin name, only services belonging
-	 * to that plugin are synced. Module config changes are ignored because
-	 * they never affect plugin service lifecycle.
+	 * When the event identifies a module or plugin, only services belonging
+	 * to that extension owner are synchronized.
 	 */
 	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
 	async handleConfigUpdated(payload?: { source: string; type: 'plugin' | 'module' | 'section' }): Promise<void> {
@@ -258,14 +258,11 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			return;
 		}
 
-		// Module config changes do not affect plugin services — skip entirely.
-		if (payload?.type === 'module') {
-			return;
-		}
-
 		for (const registration of this.services.values()) {
-			// When we know which plugin changed, only sync that plugin's services.
-			if (payload?.type === 'plugin' && registration.pluginName !== payload.source) {
+			if (
+				(payload?.type === 'plugin' || payload?.type === 'module') &&
+				(registration.owner.kind !== payload.type || registration.owner.type !== payload.source)
+			) {
 				continue;
 			}
 
@@ -280,9 +277,11 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const statuses: ServiceStatusExtended[] = [];
 
 		for (const [key, registration] of this.services) {
-			const config = this.getPluginConfig(registration.pluginName);
+			const config = this.getOwnerConfig(registration.owner);
+			const enabled = config?.enabled ?? false;
 			const state = registration.service.getState();
 			const runtime = this.runtimeInfo.get(key);
+			const desiredState = registration.activationPolicy === 'always' || enabled ? 'started' : 'stopped';
 
 			let healthy: boolean | undefined;
 
@@ -302,10 +301,13 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			}
 
 			statuses.push({
-				pluginName: registration.pluginName,
+				extensionKind: registration.owner.kind,
+				extensionType: registration.owner.type,
 				serviceId: registration.serviceId,
+				activationPolicy: registration.activationPolicy,
 				state,
-				enabled: config?.enabled ?? false,
+				desiredState,
+				enabled,
 				healthy,
 				lastStartedAt: runtime?.lastStartedAt?.toISOString(),
 				lastStoppedAt: runtime?.lastStoppedAt?.toISOString(),
@@ -321,15 +323,20 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	/**
 	 * Get status of a specific service with runtime information.
 	 */
-	async getServiceStatus(pluginName: string, serviceId: string): Promise<ServiceStatusExtended | null> {
-		const key = this.getServiceKey(pluginName, serviceId);
+	async getServiceStatus(
+		extensionKind: ManagedServiceOwnerKind,
+		extensionType: string,
+		serviceId: string,
+	): Promise<ServiceStatusExtended | null> {
+		const key = this.getServiceKey(extensionKind, extensionType, serviceId);
 		const registration = this.services.get(key);
 
 		if (!registration) {
 			return null;
 		}
 
-		const config = this.getPluginConfig(pluginName);
+		const config = this.getOwnerConfig(registration.owner);
+		const enabled = config?.enabled ?? false;
 		const runtime = this.runtimeInfo.get(key);
 		const state = registration.service.getState();
 
@@ -352,10 +359,13 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		}
 
 		return {
-			pluginName,
+			extensionKind,
+			extensionType,
 			serviceId,
+			activationPolicy: registration.activationPolicy,
 			state,
-			enabled: config?.enabled ?? false,
+			desiredState: registration.activationPolicy === 'always' || enabled ? 'started' : 'stopped',
+			enabled,
 			healthy,
 			lastStartedAt: runtime?.lastStartedAt?.toISOString(),
 			lastStoppedAt: runtime?.lastStoppedAt?.toISOString(),
@@ -367,10 +377,14 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 	/**
 	 * Manually restart a specific service.
-	 * Requires the plugin to be enabled.
+	 * Requires the service's desired state to be started.
 	 */
-	async restartService(pluginName: string, serviceId: string): Promise<boolean> {
-		const key = this.getServiceKey(pluginName, serviceId);
+	async restartService(
+		extensionKind: ManagedServiceOwnerKind,
+		extensionType: string,
+		serviceId: string,
+	): Promise<boolean> {
+		const key = this.getServiceKey(extensionKind, extensionType, serviceId);
 		const registration = this.services.get(key);
 
 		if (!registration) {
@@ -379,53 +393,80 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 			return false;
 		}
 
-		const config = this.getPluginConfig(pluginName);
-
-		if (!config?.enabled) {
-			this.logger.warn(`Cannot restart disabled service: ${key}`);
-
-			return false;
-		}
-
-		await this.stopService(registration);
-		await this.startService(registration);
-
-		return true;
-	}
-
-	/**
-	 * Manually start a specific service.
-	 * This allows starting a service regardless of plugin enabled state.
-	 */
-	async startServiceManually(pluginName: string, serviceId: string): Promise<boolean> {
-		const key = this.getServiceKey(pluginName, serviceId);
-		const registration = this.services.get(key);
-
-		if (!registration) {
-			this.logger.warn(`Service not found: ${key}`);
+		if (!this.shouldBeRunning(registration)) {
+			this.logger.warn(`Cannot restart service whose desired state is stopped: ${key}`);
 
 			return false;
 		}
 
 		const currentState = registration.service.getState();
 
-		if (currentState === 'started' || currentState === 'starting') {
-			this.logger.warn(`Service ${key} is already ${currentState}`);
+		if (currentState !== 'started' && currentState !== 'error') {
+			this.logger.warn(`Cannot restart service ${key} from state ${currentState}`);
 
 			return false;
 		}
 
-		await this.startService(registration, false);
+		await this.stopService(registration);
+
+		if (registration.service.getState() !== 'stopped') {
+			this.logger.warn(`Cannot restart service ${key}: stop did not reach the stopped state`);
+
+			return false;
+		}
+
+		await this.startService(registration);
+
+		return registration.service.getState() === 'started';
+	}
+
+	/**
+	 * Manually start a specific service.
+	 * Owner-enabled services cannot be manually started while their owner is disabled.
+	 */
+	async startServiceManually(
+		extensionKind: ManagedServiceOwnerKind,
+		extensionType: string,
+		serviceId: string,
+	): Promise<boolean> {
+		const key = this.getServiceKey(extensionKind, extensionType, serviceId);
+		const registration = this.services.get(key);
+
+		if (!registration) {
+			this.logger.warn(`Service not found: ${key}`);
+
+			return false;
+		}
+
+		if (!this.shouldBeRunning(registration)) {
+			this.logger.warn(`Cannot start service whose desired state is stopped: ${key}`);
+
+			return false;
+		}
+
+		const currentState = registration.service.getState();
+
+		if (currentState !== 'stopped' && currentState !== 'error') {
+			this.logger.warn(`Cannot start service ${key} from state ${currentState}`);
+
+			return false;
+		}
+
+		await this.startService(registration);
 
 		return registration.service.getState() === 'started';
 	}
 
 	/**
 	 * Manually stop a specific service.
-	 * This allows stopping a service regardless of plugin enabled state.
+	 * This allows stopping a service regardless of its desired state.
 	 */
-	async stopServiceManually(pluginName: string, serviceId: string): Promise<boolean> {
-		const key = this.getServiceKey(pluginName, serviceId);
+	async stopServiceManually(
+		extensionKind: ManagedServiceOwnerKind,
+		extensionType: string,
+		serviceId: string,
+	): Promise<boolean> {
+		const key = this.getServiceKey(extensionKind, extensionType, serviceId);
 		const registration = this.services.get(key);
 
 		if (!registration) {
@@ -438,8 +479,8 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 		const currentState = registration.service.getState();
 
-		if (currentState === 'stopped' || currentState === 'stopping') {
-			this.logger.warn(`Service ${key} is already ${currentState}`);
+		if (currentState !== 'started' && currentState !== 'error') {
+			this.logger.warn(`Cannot stop service ${key} from state ${currentState}`);
 
 			return false;
 		}
@@ -452,8 +493,8 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	/**
 	 * Check if a service is registered.
 	 */
-	isRegistered(pluginName: string, serviceId: string): boolean {
-		return this.services.has(this.getServiceKey(pluginName, serviceId));
+	isRegistered(extensionKind: ManagedServiceOwnerKind, extensionType: string, serviceId: string): boolean {
+		return this.services.has(this.getServiceKey(extensionKind, extensionType, serviceId));
 	}
 
 	/**
@@ -467,22 +508,20 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	// Private helpers
 	// ─────────────────────────────────────────────────────────────────────────────
 
-	private getServiceKey(pluginName: string, serviceId: string): string {
-		return `${pluginName}:${serviceId}`;
+	private getServiceKey(extensionKind: ManagedServiceOwnerKind, extensionType: string, serviceId: string): string {
+		return `${extensionKind}:${extensionType}:${serviceId}`;
 	}
 
-	private async startServiceIfEnabled(registration: ServiceRegistration): Promise<void> {
-		const config = this.getPluginConfig(registration.pluginName);
-
-		if (!config?.enabled) {
+	private async startServiceIfDesired(registration: ServiceRegistration): Promise<void> {
+		if (!this.shouldBeRunning(registration)) {
 			return;
 		}
 
 		await this.startService(registration);
 	}
 
-	private async startService(registration: ServiceRegistration, requireEnabled: boolean = true): Promise<void> {
-		const key = this.getServiceKey(registration.pluginName, registration.serviceId);
+	private async startService(registration: ServiceRegistration, requireDesiredState: boolean = true): Promise<void> {
+		const key = this.getRegistrationKey(registration);
 		const pendingStart = this.serviceStartPromises.get(key);
 
 		if (pendingStart !== undefined) {
@@ -492,7 +531,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 		this.clearReadinessRetryTimer(key);
 
-		const startPromise = this.startServiceOnce(registration, key, requireEnabled).finally(() => {
+		const startPromise = this.startServiceOnce(registration, key, requireDesiredState).finally(() => {
 			if (this.serviceStartPromises.get(key) === startPromise) this.serviceStartPromises.delete(key);
 		});
 		this.serviceStartPromises.set(key, startPromise);
@@ -503,7 +542,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	private async startServiceOnce(
 		registration: ServiceRegistration,
 		key: string,
-		requireEnabled: boolean,
+		requireDesiredState: boolean,
 	): Promise<void> {
 		const currentState = registration.service.getState();
 
@@ -513,22 +552,26 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 		this.logger.log(`Starting service: ${key}`);
 
-		// Runtime readiness is separate from the user's enabled intent. An incomplete plugin stays enabled
-		// but stopped until its configuration becomes valid, so users can finish setup from the admin UI.
-		if (this.pluginConfigValidator.hasValidator(registration.pluginName)) {
-			const config = this.getPluginConfig(registration.pluginName);
+		// Plugin validators guard owner-enabled plugin runtimes. Always-active services intentionally
+		// remain available while their owner is disabled or still being configured.
+		if (
+			registration.owner.kind === 'plugin' &&
+			registration.activationPolicy === 'owner-enabled' &&
+			this.pluginConfigValidator.hasValidator(registration.owner.type)
+		) {
+			const config = this.getOwnerConfig(registration.owner);
 
 			if (config) {
 				let validationResult: Awaited<ReturnType<PluginConfigValidatorService['validate']>>;
 
 				try {
 					validationResult = await this.pluginConfigValidator.validate(
-						registration.pluginName,
+						registration.owner.type,
 						config as unknown as Record<string, unknown>,
 					);
 				} catch {
 					const warning = 'Configuration readiness check is temporarily unavailable';
-					createExtensionLogger(registration.pluginName, 'PluginServiceManagerService').warn(
+					createExtensionLogger(registration.owner.type, 'ManagedServiceManagerService').warn(
 						`Service ${registration.serviceId} is enabled but not started because its ${warning.toLowerCase()}.`,
 					);
 
@@ -542,7 +585,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 				if (!validationResult.valid && validationResult.transient) {
 					const warning = 'Configuration readiness check is temporarily unavailable';
-					createExtensionLogger(registration.pluginName, 'PluginServiceManagerService').warn(
+					createExtensionLogger(registration.owner.type, 'ManagedServiceManagerService').warn(
 						`Service ${registration.serviceId} is enabled but not started because its ${warning.toLowerCase()}.`,
 					);
 
@@ -557,7 +600,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 				if (!validationResult.valid) {
 					const errors = (validationResult.errors ?? []).map((e) => e.message).join('; ');
 
-					createExtensionLogger(registration.pluginName, 'PluginServiceManagerService').warn(
+					createExtensionLogger(registration.owner.type, 'ManagedServiceManagerService').warn(
 						`Service ${registration.serviceId} is enabled but not started because configuration needs attention — ${errors}. Configure the plugin in the admin UI.`,
 					);
 
@@ -576,7 +619,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		// Readiness validators may perform asynchronous provider or database work. A disable event can
 		// complete while that work is pending and observe this service as still stopped, so re-read the
 		// user's intent immediately before allocating runtime resources.
-		if (requireEnabled && (this.shutdownInProgress || !this.getPluginConfig(registration.pluginName)?.enabled)) {
+		if (requireDesiredState && (this.shutdownInProgress || !this.shouldBeRunning(registration))) {
 			this.clearReadinessRetry(key);
 			return;
 		}
@@ -610,7 +653,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	}
 
 	private async stopService(registration: ServiceRegistration): Promise<void> {
-		const key = this.getServiceKey(registration.pluginName, registration.serviceId);
+		const key = this.getRegistrationKey(registration);
 		const currentState = registration.service.getState();
 
 		if (currentState === 'stopped' || currentState === 'stopping') {
@@ -645,10 +688,9 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	}
 
 	private async syncServiceState(registration: ServiceRegistration): Promise<void> {
-		const key = this.getServiceKey(registration.pluginName, registration.serviceId);
-		const config = this.getPluginConfig(registration.pluginName);
+		const key = this.getRegistrationKey(registration);
 		let currentState = registration.service.getState();
-		const shouldBeRunning = config?.enabled ?? false;
+		const shouldBeRunning = this.shouldBeRunning(registration);
 
 		if (!shouldBeRunning) this.clearReadinessRetry(key);
 
@@ -665,9 +707,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		// should not be running (e.g., WhatsApp stuck in 'starting' during QR scan
 		// while the admin disables the plugin).
 		if (!shouldBeRunning && (currentState === 'starting' || currentState === 'stopping')) {
-			this.logger.log(
-				`Plugin ${registration.pluginName} disabled while ${registration.serviceId} still in '${currentState}', forcing stop`,
-			);
+			this.logger.log(`Service ${key} should be stopped while still in '${currentState}', forcing stop`);
 
 			// Call stop() directly instead of stopService() because stopService()
 			// has a guard that returns early when state is 'stopping'.
@@ -697,18 +737,16 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		}
 
 		if (shouldBeRunning && currentState === 'stopped') {
-			this.logger.log(`Plugin ${registration.pluginName} enabled, starting ${registration.serviceId}`);
+			this.logger.log(`Service ${key} should be running, starting it`);
 
 			await this.startService(registration);
 		} else if (shouldBeRunning && currentState === 'error') {
 			// Service is in error state but should be running - attempt restart
-			this.logger.log(
-				`Plugin ${registration.pluginName} enabled but service in error, restarting ${registration.serviceId}`,
-			);
+			this.logger.log(`Service ${key} should be running but is in error, restarting it`);
 
 			await this.startService(registration);
 		} else if (!shouldBeRunning && currentState === 'started') {
-			this.logger.log(`Plugin ${registration.pluginName} disabled, stopping ${registration.serviceId}`);
+			this.logger.log(`Service ${key} should be stopped, stopping it`);
 
 			await this.stopService(registration);
 		} else if (!shouldBeRunning && currentState === 'error') {
@@ -738,7 +776,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 	}
 
 	private scheduleReadinessRetry(registration: ServiceRegistration): void {
-		const key = this.getServiceKey(registration.pluginName, registration.serviceId);
+		const key = this.getRegistrationKey(registration);
 
 		if (this.shutdownInProgress || this.services.get(key) !== registration) return;
 
@@ -762,11 +800,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 			retry.timer = null;
 
-			if (
-				this.shutdownInProgress ||
-				this.services.get(key) !== registration ||
-				!this.getPluginConfig(registration.pluginName)?.enabled
-			) {
+			if (this.shutdownInProgress || this.services.get(key) !== registration || !this.shouldBeRunning(registration)) {
 				this.clearReadinessRetry(key);
 				return;
 			}
@@ -825,9 +859,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 				// Timeout: resolve anyway to avoid blocking forever
 				if (Date.now() - start > timeoutMs) {
-					this.logger.warn(
-						`Timeout waiting for ${registration.pluginName}:${registration.serviceId} to reach ${targetState}`,
-					);
+					this.logger.warn(`Timeout waiting for ${this.getRegistrationKey(registration)} to reach ${targetState}`);
 
 					return resolve();
 				}
@@ -851,7 +883,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		const visiting = new Set<string>();
 
 		const visit = (reg: ServiceRegistration): void => {
-			const key = this.getServiceKey(reg.pluginName, reg.serviceId);
+			const key = this.getRegistrationKey(reg);
 
 			if (visited.has(key)) {
 				return;
@@ -900,7 +932,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 		// Calculate level for each service based on dependencies
 		const calculateLevel = (reg: ServiceRegistration, visiting: Set<string>): number => {
-			const key = this.getServiceKey(reg.pluginName, reg.serviceId);
+			const key = this.getRegistrationKey(reg);
 
 			// Already calculated
 			if (serviceLevels.has(key)) {
@@ -945,7 +977,7 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 
 		// Group services by level
 		for (const reg of registrations) {
-			const key = this.getServiceKey(reg.pluginName, reg.serviceId);
+			const key = this.getRegistrationKey(reg);
 			const level = serviceLevels.get(key) ?? 0;
 
 			while (levels.length <= level) {
@@ -963,12 +995,22 @@ export class PluginServiceManagerService implements OnApplicationBootstrap, OnMo
 		return levels;
 	}
 
-	private getPluginConfig(pluginName: string): PluginConfigModel | null {
+	private getRegistrationKey(registration: ServiceRegistration): string {
+		return this.getServiceKey(registration.owner.kind, registration.owner.type, registration.serviceId);
+	}
+
+	private getOwnerConfig(owner: ManagedServiceOwner): ModuleConfigModel | PluginConfigModel | null {
 		try {
-			return this.configService.getPluginConfig(pluginName);
+			return owner.kind === 'module'
+				? this.configService.getModuleConfig(owner.type)
+				: this.configService.getPluginConfig(owner.type);
 		} catch {
 			return null;
 		}
+	}
+
+	private shouldBeRunning(registration: ServiceRegistration): boolean {
+		return registration.activationPolicy === 'always' || (this.getOwnerConfig(registration.owner)?.enabled ?? false);
 	}
 
 	private isConfigChangeResult(result: void | ConfigChangeResult): result is ConfigChangeResult {

@@ -204,8 +204,10 @@
 	},
 	"services": {
 		"headings": {
-			"list": "Plugin-Dienste",
-			"subHeading": "Plugin-Dienste überwachen und steuern"
+			"list": "Verwaltete Dienste",
+			"subHeading": "Modul- und Plugin-Dienste überwachen und steuern",
+			"modules": "Module",
+			"plugins": "Plugins"
 		},
 		"labels": {
 			"pluginName": "Plugin",
@@ -219,7 +221,15 @@
 			"startCount": "Beginnt",
 			"lastStarted": "Zuletzt gestartet",
 			"lastStopped": "Zuletzt gestoppt",
-			"lastError": "Letzter Fehler"
+			"lastError": "Letzter Fehler",
+			"desiredState": "Gewünschter Status"
+		},
+		"activationPolicies": {
+			"always": "Immer aktiv"
+		},
+		"desiredStates": {
+			"started": "Aktiv",
+			"stopped": "Gestoppt"
 		},
 		"states": {
 			"stopped": "Gestoppt",
@@ -246,7 +256,7 @@
 			"noServices": "Keine Dienste verfügbar"
 		},
 		"tooltips": {
-			"disabledPlugin": "Plugin ist deaktiviert",
+			"disabledExtension": "Erweiterung ist deaktiviert",
 			"transitioning": "Dienst wechselt den Zustand",
 			"startService": "Diesen Dienst starten",
 			"stopService": "Diesen Dienst stoppen",
@@ -255,7 +265,8 @@
 		"texts": {
 			"loadingServices": "Dienste werden geladen...",
 			"noServices": "Keine verwalteten Dienste gefunden",
-			"pluginDisabled": "Plugin deaktiviert"
+			"extensionDisabled": "Erweiterung deaktiviert",
+			"alwaysActiveDescription": "Immer aktive Dienste laufen weiter, auch wenn ihre Erweiterung deaktiviert ist, damit Erkennung und Einrichtung verfügbar bleiben."
 		}
 	}
 }

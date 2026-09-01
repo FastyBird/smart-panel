@@ -59,6 +59,10 @@ export class ShelliesAdapterService {
 		this.callbacks = callbacks;
 	}
 
+	isRunning(): boolean {
+		return this.isStarted && this.shellies !== null;
+	}
+
 	/**
 	 * Start the shellies library and begin device discovery
 	 */

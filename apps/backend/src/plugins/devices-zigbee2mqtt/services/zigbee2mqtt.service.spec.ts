@@ -11,7 +11,7 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
+import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mAdapterCallbacks, Z2mDevice, Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
@@ -30,7 +30,7 @@ describe('Zigbee2mqttService', () => {
 	let deviceMapper: jest.Mocked<Z2mDeviceMapperService>;
 	let devicesService: jest.Mocked<DevicesService>;
 	let deviceConnectivityService: jest.Mocked<DeviceConnectivityService>;
-	let pluginServiceManager: jest.Mocked<PluginServiceManagerService>;
+	let managedServiceManager: jest.Mocked<ManagedServiceManagerService>;
 	let capturedCallbacks: Z2mAdapterCallbacks;
 
 	// Quiet logger noise
@@ -160,7 +160,7 @@ describe('Zigbee2mqttService', () => {
 					},
 				},
 				{
-					provide: PluginServiceManagerService,
+					provide: ManagedServiceManagerService,
 					useValue: {
 						restartService: jest.fn().mockResolvedValue(true),
 					},
@@ -175,16 +175,16 @@ describe('Zigbee2mqttService', () => {
 		deviceMapper = module.get(Z2mDeviceMapperService);
 		devicesService = module.get(DevicesService);
 		deviceConnectivityService = module.get(DeviceConnectivityService);
-		pluginServiceManager = module.get(PluginServiceManagerService);
+		managedServiceManager = module.get(ManagedServiceManagerService);
 	});
 
 	afterEach(() => {
 		jest.useRealTimers();
 	});
 
-	describe('IManagedPluginService interface', () => {
-		it('should have correct pluginName', () => {
-			expect(service.pluginName).toBe(DEVICES_ZIGBEE2MQTT_PLUGIN_NAME);
+	describe('IManagedExtensionService interface', () => {
+		it('should have correct owner', () => {
+			expect(service.owner).toEqual({ kind: 'plugin', type: DEVICES_ZIGBEE2MQTT_PLUGIN_NAME });
 		});
 
 		it('should have correct serviceId', () => {
@@ -363,7 +363,11 @@ describe('Zigbee2mqttService', () => {
 		it('should call pluginServiceManager.restartService', async () => {
 			await service.restart();
 
-			expect(pluginServiceManager.restartService).toHaveBeenCalledWith(DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, 'connector');
+			expect(managedServiceManager.restartService).toHaveBeenCalledWith(
+				'plugin',
+				DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
+				'connector',
+			);
 		});
 	});
 

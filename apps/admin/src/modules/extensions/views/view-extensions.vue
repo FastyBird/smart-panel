@@ -92,6 +92,7 @@
 			<services-list
 				:services="services"
 				:loading="areServicesLoading"
+				:extension-names="serviceExtensionNames"
 				:is-acting="isActingOnService"
 				@start="onStartService"
 				@stop="onStopService"
@@ -145,6 +146,7 @@ import { ElDrawer, ElIcon, ElTabPane, ElTabs } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
+import { ExtensionKind, ExtensionsModuleServiceOwnerKind } from '../../../openapi.constants';
 import { ListExtensions, ListExtensionsAdjust, ServicesList } from '../components/components';
 import { useExtensionActions, useExtensionsDataSource, useServiceActions, useServices } from '../composables/composables';
 import { RouteNames } from '../extensions.constants';
@@ -188,6 +190,15 @@ const { toggleEnabled, bulkEnable, bulkDisable } = useExtensionActions();
 // Services
 const { services, areLoading: areServicesLoading, fetchServices } = useServices();
 const { startService, stopService, restartService, isActing } = useServiceActions();
+
+const serviceExtensionNames = computed<Record<string, string>>(() => {
+	return Object.fromEntries(
+		extensions.value.map((extension) => [
+			`${extension.kind === ExtensionKind.module ? ExtensionsModuleServiceOwnerKind.module : ExtensionsModuleServiceOwnerKind.plugin}:${extension.type}`,
+			extension.name,
+		])
+	);
+});
 
 const showDrawer = ref<boolean>(false);
 const activeTab = ref<string>('extensions');
@@ -253,20 +264,36 @@ const onCloseDrawer = (done?: () => void): void => {
 };
 
 // Service actions
-const isActingOnService = (pluginName: string, serviceId: string): boolean => {
-	return isActing(pluginName, serviceId);
+const isActingOnService = (
+	extensionKind: ExtensionsModuleServiceOwnerKind,
+	extensionType: string,
+	serviceId: string,
+): boolean => {
+	return isActing(extensionKind, extensionType, serviceId);
 };
 
-const onStartService = async (pluginName: string, serviceId: string): Promise<void> => {
-	await startService(pluginName, serviceId);
+const onStartService = async (
+	extensionKind: ExtensionsModuleServiceOwnerKind,
+	extensionType: string,
+	serviceId: string,
+): Promise<void> => {
+	await startService(extensionKind, extensionType, serviceId);
 };
 
-const onStopService = async (pluginName: string, serviceId: string): Promise<void> => {
-	await stopService(pluginName, serviceId);
+const onStopService = async (
+	extensionKind: ExtensionsModuleServiceOwnerKind,
+	extensionType: string,
+	serviceId: string,
+): Promise<void> => {
+	await stopService(extensionKind, extensionType, serviceId);
 };
 
-const onRestartService = async (pluginName: string, serviceId: string): Promise<void> => {
-	await restartService(pluginName, serviceId);
+const onRestartService = async (
+	extensionKind: ExtensionsModuleServiceOwnerKind,
+	extensionType: string,
+	serviceId: string,
+): Promise<void> => {
+	await restartService(extensionKind, extensionType, serviceId);
 };
 
 onBeforeMount((): void => {

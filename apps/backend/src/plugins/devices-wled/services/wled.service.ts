@@ -6,12 +6,12 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { BaseManagedPluginService } from '../../../modules/extensions/services/base-managed-plugin.service';
+import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
 import {
 	ConfigChangeResult,
 	ServiceState,
-} from '../../../modules/extensions/services/managed-plugin-service.interface';
-import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
+} from '../../../modules/extensions/services/managed-extension-service.interface';
+import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import {
 	DEVICES_WLED_PLUGIN_NAME,
 	DEVICES_WLED_TYPE,
@@ -45,14 +45,13 @@ import { WledMdnsDiscovererService } from './wled-mdns-discoverer.service';
  * Main WLED Service
  *
  * Manages the lifecycle of WLED device connections, state synchronization,
- * and event handling. Implements IManagedPluginService for centralized
- * lifecycle management by PluginServiceManagerService.
+ * and event handling. Implements the generic managed-extension contract for centralized lifecycle management.
  */
 @Injectable()
-export class WledService extends BaseManagedPluginService {
+export class WledService extends BaseManagedExtensionService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(DEVICES_WLED_PLUGIN_NAME, 'WledService');
 
-	readonly pluginName = DEVICES_WLED_PLUGIN_NAME;
+	readonly owner = { kind: 'plugin', type: DEVICES_WLED_PLUGIN_NAME } as const;
 	readonly serviceId = 'connector';
 
 	private pluginConfig: WledConfigModel | null = null;
@@ -68,7 +67,7 @@ export class WledService extends BaseManagedPluginService {
 		private readonly devicesService: DevicesService,
 		private readonly mdnsDiscoverer: WledMdnsDiscovererService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
-		private readonly pluginServiceManager: PluginServiceManagerService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
 	) {
 		super();
 
@@ -94,9 +93,17 @@ export class WledService extends BaseManagedPluginService {
 		});
 	}
 
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(
+			this.state === 'started' &&
+				this.pollingInterval !== null &&
+				(!this.config.mdns.enabled || this.mdnsDiscoverer.isDiscoveryRunning()),
+		);
+	}
+
 	/**
 	 * Start the service.
-	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 * Called by ManagedServiceManagerService when the plugin is enabled.
 	 */
 	async start(): Promise<void> {
 		await this.withLock(async () => {
@@ -125,7 +132,7 @@ export class WledService extends BaseManagedPluginService {
 
 	/**
 	 * Stop the service gracefully.
-	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 * Called by ManagedServiceManagerService when the plugin is disabled or app shuts down.
 	 */
 	async stop(): Promise<void> {
 		await this.withLock(async () => {
@@ -152,7 +159,7 @@ export class WledService extends BaseManagedPluginService {
 
 	/**
 	 * Handle configuration changes.
-	 * Called by PluginServiceManagerService when config updates occur.
+	 * Called by ManagedServiceManagerService when config updates occur.
 	 */
 	onConfigChanged(): Promise<ConfigChangeResult> {
 		// Check if config values actually changed for THIS plugin
@@ -188,10 +195,10 @@ export class WledService extends BaseManagedPluginService {
 	}
 
 	/**
-	 * Restart the service through the PluginServiceManagerService.
+	 * Restart the service through the ManagedServiceManagerService.
 	 */
 	async restart(): Promise<void> {
-		const success = await this.pluginServiceManager.restartService(this.pluginName, this.serviceId);
+		const success = await this.managedServiceManager.restartService(this.owner.kind, this.owner.type, this.serviceId);
 
 		if (!success) {
 			this.logger.debug('Restart skipped (plugin may be disabled)');

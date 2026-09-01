@@ -27,6 +27,8 @@ describe('WeatherService', () => {
 	let service: WeatherService;
 	let locationsService: LocationsService;
 	let configService: ConfigService;
+	let schedulerRegistry: { addCronJob: jest.Mock; deleteCronJob: jest.Mock; doesExist: jest.Mock };
+	let cronRegistered = false;
 
 	const mockLocation: WeatherLocationEntity = {
 		id: '550e8400-e29b-41d4-a716-446655440000',
@@ -42,15 +44,23 @@ describe('WeatherService', () => {
 	} as WeatherConfigModel;
 
 	beforeEach(async () => {
+		cronRegistered = false;
+		schedulerRegistry = {
+			addCronJob: jest.fn(() => {
+				cronRegistered = true;
+			}),
+			deleteCronJob: jest.fn(() => {
+				cronRegistered = false;
+			}),
+			doesExist: jest.fn(() => cronRegistered),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				WeatherService,
 				{
 					provide: SchedulerRegistry,
-					useValue: {
-						addCronJob: jest.fn(),
-						deleteCronJob: jest.fn(),
-					},
+					useValue: schedulerRegistry,
 				},
 				{
 					provide: LocationsService,
@@ -104,12 +114,46 @@ describe('WeatherService', () => {
 		jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
 	});
 
-	afterEach(() => {
+	afterEach(async () => {
+		await service.stop();
 		jest.resetAllMocks();
 	});
 
 	it('should be defined', () => {
 		expect(service).toBeDefined();
+	});
+
+	describe('managed refresh lifecycle', () => {
+		it('registers and starts the hourly refresh job idempotently', async () => {
+			await service.start();
+			await service.start();
+
+			expect(schedulerRegistry.addCronJob).toHaveBeenCalledTimes(1);
+			expect(schedulerRegistry.addCronJob).toHaveBeenCalledWith('refreshWeather', expect.anything());
+			expect(service.getState()).toBe('started');
+			expect(await service.isHealthy()).toBe(true);
+		});
+
+		it('stops and unregisters the hourly refresh job idempotently', async () => {
+			await service.start();
+			await service.stop();
+			await service.stop();
+
+			expect(schedulerRegistry.deleteCronJob).toHaveBeenCalledTimes(1);
+			expect(schedulerRegistry.deleteCronJob).toHaveBeenCalledWith('refreshWeather');
+			expect(service.getState()).toBe('stopped');
+			expect(await service.isHealthy()).toBe(false);
+		});
+
+		it('does not restart the fixed hourly schedule for primary-location changes', async () => {
+			await service.start();
+			jest.spyOn(configService, 'getModuleConfig').mockReturnValue({
+				type: WEATHER_MODULE_NAME,
+				primaryLocationId: 'another-location',
+			} as WeatherConfigModel);
+
+			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: false });
+		});
 	});
 
 	describe('getPrimaryLocationId', () => {

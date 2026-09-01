@@ -2,7 +2,7 @@ import { SuggestionType } from '../../../modules/buddy/buddy.constants';
 import { BuddyConversationService } from '../../../modules/buddy/services/buddy-conversation.service';
 import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy/services/suggestion-engine.service';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
+import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { BUDDY_WHATSAPP_PLUGIN_NAME, WhatsAppConnectionStatus } from '../buddy-whatsapp.constants';
 import { BuddyWhatsappConfigModel } from '../models/config.model';
 
@@ -52,7 +52,7 @@ describe('WhatsAppBotProvider', () => {
 		sendMessage: jest.Mock;
 	};
 	let suggestionEngine: { recordFeedback: jest.Mock };
-	let pluginServiceManager: { restartService: jest.Mock };
+	let managedServiceManager: { restartService: jest.Mock };
 
 	beforeEach(() => {
 		configService = {
@@ -69,7 +69,7 @@ describe('WhatsAppBotProvider', () => {
 			recordFeedback: jest.fn().mockReturnValue({ success: true }),
 		};
 
-		pluginServiceManager = {
+		managedServiceManager = {
 			restartService: jest.fn().mockResolvedValue(true),
 		};
 
@@ -77,7 +77,7 @@ describe('WhatsAppBotProvider', () => {
 			configService as unknown as ConfigService,
 			conversationService as unknown as BuddyConversationService,
 			suggestionEngine as unknown as SuggestionEngineService,
-			pluginServiceManager as unknown as PluginServiceManagerService,
+			managedServiceManager as unknown as ManagedServiceManagerService,
 		);
 	});
 
@@ -85,14 +85,18 @@ describe('WhatsAppBotProvider', () => {
 		await provider.stop();
 	});
 
-	describe('IManagedPluginService interface', () => {
-		it('should have correct pluginName and serviceId', () => {
-			expect(provider.pluginName).toBe(BUDDY_WHATSAPP_PLUGIN_NAME);
+	describe('IManagedExtensionService interface', () => {
+		it('should have correct owner and serviceId', () => {
+			expect(provider.owner).toEqual({ kind: 'plugin', type: BUDDY_WHATSAPP_PLUGIN_NAME });
 			expect(provider.serviceId).toBe('bot');
 		});
 
 		it('should return stopped state by default', () => {
 			expect(provider.getState()).toBe('stopped');
+		});
+
+		it('should report unhealthy until WhatsApp is connected', async () => {
+			expect(await provider.isHealthy()).toBe(false);
 		});
 	});
 

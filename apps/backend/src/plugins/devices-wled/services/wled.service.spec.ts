@@ -11,7 +11,7 @@ import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
+import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { DEVICES_WLED_PLUGIN_NAME, DEVICES_WLED_TYPE } from '../devices-wled.constants';
 import { WledDeviceEntity } from '../entities/devices-wled.entity';
 import {
@@ -45,7 +45,7 @@ describe('WledService', () => {
 	let devicesService: jest.Mocked<DevicesService>;
 	let mdnsDiscoverer: jest.Mocked<WledMdnsDiscovererService>;
 	let deviceConnectivityService: jest.Mocked<DeviceConnectivityService>;
-	let pluginServiceManager: jest.Mocked<PluginServiceManagerService>;
+	let managedServiceManager: jest.Mocked<ManagedServiceManagerService>;
 
 	// Captured callbacks
 	let adapterCallbacks: WledAdapterCallbacks;
@@ -193,7 +193,7 @@ describe('WledService', () => {
 					},
 				},
 				{
-					provide: PluginServiceManagerService,
+					provide: ManagedServiceManagerService,
 					useValue: {
 						restartService: jest.fn().mockResolvedValue(true),
 					},
@@ -210,16 +210,16 @@ describe('WledService', () => {
 		devicesService = module.get(DevicesService);
 		mdnsDiscoverer = module.get(WledMdnsDiscovererService);
 		deviceConnectivityService = module.get(DeviceConnectivityService);
-		pluginServiceManager = module.get(PluginServiceManagerService);
+		managedServiceManager = module.get(ManagedServiceManagerService);
 	});
 
 	afterEach(() => {
 		jest.useRealTimers();
 	});
 
-	describe('IManagedPluginService interface', () => {
-		it('should have correct pluginName', () => {
-			expect(service.pluginName).toBe(DEVICES_WLED_PLUGIN_NAME);
+	describe('IManagedExtensionService interface', () => {
+		it('should have correct owner', () => {
+			expect(service.owner).toEqual({ kind: 'plugin', type: DEVICES_WLED_PLUGIN_NAME });
 		});
 
 		it('should have correct serviceId', () => {
@@ -407,7 +407,11 @@ describe('WledService', () => {
 		it('should call pluginServiceManager.restartService', async () => {
 			await service.restart();
 
-			expect(pluginServiceManager.restartService).toHaveBeenCalledWith(DEVICES_WLED_PLUGIN_NAME, 'connector');
+			expect(managedServiceManager.restartService).toHaveBeenCalledWith(
+				'plugin',
+				DEVICES_WLED_PLUGIN_NAME,
+				'connector',
+			);
 		});
 	});
 

@@ -2,12 +2,12 @@ import { Injectable } from '@nestjs/common';
 
 import { ModuleStatsModel } from '../../stats/models/stats.model';
 import { StatsProvider } from '../../stats/stats.interfaces';
-import { PluginServiceManagerService } from '../services/plugin-service-manager.service';
+import { ManagedServiceManagerService } from '../services/managed-service-manager.service';
 
 /**
  * Stats provider for the extensions module.
  *
- * Exposes plugin service metrics for monitoring via Prometheus and REST API.
+ * Exposes managed extension service metrics for monitoring via Prometheus and REST API.
  *
  * Metrics exposed:
  * - services_total: Total number of registered services
@@ -17,19 +17,19 @@ import { PluginServiceManagerService } from '../services/plugin-service-manager.
  * - services_healthy: Number of healthy services
  * - services_unhealthy: Number of unhealthy services
  *
- * Per-service metrics (with plugin_name and service_id labels in Prometheus):
- * - service_{pluginName}_{serviceId}_state: Service state (1=started, 0=stopped, -1=error)
- * - service_{pluginName}_{serviceId}_enabled: Whether the service is enabled (1/0)
- * - service_{pluginName}_{serviceId}_healthy: Whether the service is healthy (1/0/-1 for unknown)
- * - service_{pluginName}_{serviceId}_uptime_ms: Service uptime in milliseconds
- * - service_{pluginName}_{serviceId}_start_count: Number of times the service has started
+ * Per-service metric keys include extension kind, extension type, and service ID:
+ * - service_{extensionKind}_{extensionType}_{serviceId}_state
+ * - service_{extensionKind}_{extensionType}_{serviceId}_enabled
+ * - service_{extensionKind}_{extensionType}_{serviceId}_healthy
+ * - service_{extensionKind}_{extensionType}_{serviceId}_uptime_ms
+ * - service_{extensionKind}_{extensionType}_{serviceId}_start_count
  */
 @Injectable()
 export class ExtensionsStatsProvider implements StatsProvider {
-	constructor(private readonly pluginServiceManager: PluginServiceManagerService) {}
+	constructor(private readonly managedServiceManager: ManagedServiceManagerService) {}
 
 	async getStats(): Promise<ModuleStatsModel> {
-		const statuses = await this.pluginServiceManager.getStatus();
+		const statuses = await this.managedServiceManager.getStatus();
 		const now = new Date();
 
 		// Aggregate counts
@@ -60,7 +60,7 @@ export class ExtensionsStatsProvider implements StatsProvider {
 			}
 
 			// Per-service metrics
-			const key = this.sanitizeKey(`${status.pluginName}_${status.serviceId}`);
+			const key = this.sanitizeKey(`${status.extensionKind}_${status.extensionType}_${status.serviceId}`);
 
 			// State as numeric: 1=started, 0=stopped, -1=error, 0.5=starting/stopping
 			let stateValue = 0;

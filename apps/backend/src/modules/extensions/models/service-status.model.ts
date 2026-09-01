@@ -3,25 +3,47 @@ import { Expose, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
-import { ServiceState } from '../services/managed-plugin-service.interface';
+import {
+	ManagedServiceActivationPolicy,
+	ManagedServiceOwnerKind,
+	ServiceState,
+} from '../services/managed-extension-service.interface';
 
 @ApiSchema({ name: 'ExtensionsModuleDataServiceStatus' })
 export class ServiceStatusModel {
 	@ApiProperty({
-		name: 'plugin_name',
-		description: 'Plugin name this service belongs to',
+		name: 'extension_kind',
+		description: 'Kind of extension that owns this service',
+		enum: ['module', 'plugin'],
+		example: 'plugin',
+	})
+	@Expose({ name: 'extension_kind' })
+	extensionKind: ManagedServiceOwnerKind;
+
+	@ApiProperty({
+		name: 'extension_type',
+		description: 'Type identifier of the extension that owns this service',
 		example: 'devices-shelly-v1',
 	})
-	@Expose({ name: 'plugin_name' })
-	pluginName: string;
+	@Expose({ name: 'extension_type' })
+	extensionType: string;
 
 	@ApiProperty({
 		name: 'service_id',
-		description: 'Unique service identifier within the plugin',
+		description: 'Unique service identifier within the extension',
 		example: 'main',
 	})
 	@Expose({ name: 'service_id' })
 	serviceId: string;
+
+	@ApiProperty({
+		name: 'activation_policy',
+		description: 'How the desired service state is determined',
+		enum: ['owner-enabled', 'always'],
+		example: 'owner-enabled',
+	})
+	@Expose({ name: 'activation_policy' })
+	activationPolicy: ManagedServiceActivationPolicy;
 
 	@ApiProperty({
 		description: 'Current service state',
@@ -32,7 +54,16 @@ export class ServiceStatusModel {
 	state: ServiceState;
 
 	@ApiProperty({
-		description: 'Whether the plugin is enabled in configuration',
+		name: 'desired_state',
+		description: 'Service state derived from its activation policy and owner configuration',
+		enum: ['started', 'stopped'],
+		example: 'started',
+	})
+	@Expose({ name: 'desired_state' })
+	desiredState: 'started' | 'stopped';
+
+	@ApiProperty({
+		description: 'Whether the owning extension is enabled in configuration',
 		example: true,
 	})
 	@Expose()

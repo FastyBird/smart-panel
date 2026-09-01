@@ -22,7 +22,7 @@ import { DevicesTypeMapperService } from '../../modules/devices/services/devices
 import { PlatformRegistryService } from '../../modules/devices/services/platform.registry.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
-import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
+import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { ExtendedDiscriminatorService } from '../../modules/swagger/services/extended-discriminator.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -113,7 +113,7 @@ export class DevicesShellyNgPlugin {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly discriminatorRegistry: ExtendedDiscriminatorService,
 		private readonly extensionsService: ExtensionsService,
-		private readonly pluginServiceManager: PluginServiceManagerService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
 		private readonly deviceAddressService: DeviceAddressService,
 		private readonly deviceManagerService: DeviceManagerService,
 		private readonly rpcClient: ShellyRpcClientService,
@@ -309,7 +309,7 @@ Shelly Plus (Plus 1, Plus 2PM, Plus Plug, …), Shelly Pro (Pro 1, Pro 2, Pro 4P
 
 		// Register service with the centralized plugin service manager
 		// The manager handles startup, shutdown, and config-based enable/disable
-		this.pluginServiceManager.register(this.shellyNgService);
+		this.managedServiceManager.register(this.shellyNgService);
 	}
 
 	/**

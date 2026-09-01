@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { ManagedServiceManagerService } from '../extensions/services/managed-service-manager.service';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { StorageModule } from '../storage/storage.module';
@@ -63,6 +64,8 @@ export class WeatherModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
+		private readonly weatherService: WeatherService,
 		private readonly moduleSeeder: WeatherSeederService,
 		private readonly moduleReset: WeatherModuleResetService,
 		private readonly seedRegistry: SeedRegistryService,
@@ -70,6 +73,8 @@ export class WeatherModule implements OnModuleInit {
 	) {}
 
 	onModuleInit() {
+		this.managedServiceManager.register(this.weatherService);
+
 		// Register factory reset handler
 		this.factoryResetRegistry.register(
 			WEATHER_MODULE_NAME,

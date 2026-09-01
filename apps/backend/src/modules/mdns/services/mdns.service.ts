@@ -8,6 +8,9 @@ import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { API_PREFIX } from '../../../app.constants';
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
+import { BaseManagedExtensionService } from '../../extensions/services/base-managed-extension.service';
+import { ConfigChangeResult } from '../../extensions/services/managed-extension-service.interface';
+import { ManagedServiceManagerService } from '../../extensions/services/managed-service-manager.service';
 import {
 	MDNS_DEFAULT_PROTOCOL,
 	MDNS_DEFAULT_SERVICE_NAME,
@@ -25,14 +28,25 @@ export interface MdnsServiceInfo {
 }
 
 @Injectable()
-export class MdnsService implements OnApplicationShutdown {
+export class MdnsService extends BaseManagedExtensionService implements OnApplicationShutdown {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(MDNS_MODULE_NAME, 'MdnsService');
 	private bonjour: Bonjour | null = null;
 	private service: Service | null = null;
 	private isAdvertising = false;
 	private advertisedPort: number = 0;
+	private httpServerPort: number | null = null;
+	private advertisedServiceName: string | null = null;
+	private advertisedServiceType: string | null = null;
 
-	constructor(private readonly configService: ConfigService) {}
+	readonly owner = { kind: 'module', type: MDNS_MODULE_NAME } as const;
+	readonly serviceId = 'advertisement';
+
+	constructor(
+		private readonly configService: ConfigService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
+	) {
+		super();
+	}
 
 	/**
 	 * Get mDNS configuration from app config
@@ -92,108 +106,145 @@ export class MdnsService implements OnApplicationShutdown {
 	}
 
 	/**
-	 * Start advertising the backend service via mDNS
+	 * Supplies the HTTP port after Fastify has started listening. The managed
+	 * service is deliberately registered only after this signal, so it never
+	 * advertises an endpoint that is not accepting connections yet.
 	 */
-	advertise(port: number): void {
-		if (this.isAdvertising) {
-			this.logger.warn('Service is already being advertised');
-
-			return;
-		}
-
-		try {
-			this.logger.log('Starting mDNS service advertisement');
-
-			// Create the Bonjour instance
-			this.bonjour = new Bonjour();
-
-			const baseServiceName = this.getServiceName();
-			const serviceType = this.getServiceType();
-			const version = this.getVersion();
-			const host = hostname();
-
-			// Include hostname in service name to ensure uniqueness on the network
-			// e.g., "FastyBird Smart Panel (smart-panel-aio)"
-			const serviceName = `${baseServiceName} (${host})`;
-
-			// Create TXT record data
-			const txtRecord: Record<string, string> = {
-				version,
-				api: `/${API_PREFIX}/v1`,
-				secure: 'false',
-				hostname: host,
-			};
-
-			// Publish the service
-			this.service = this.bonjour.publish({
-				name: serviceName,
-				type: serviceType,
-				protocol: MDNS_DEFAULT_PROTOCOL,
-				port,
-				txt: txtRecord,
-			});
-
-			this.advertisedPort = port;
-			this.isAdvertising = true;
-
-			this.logger.log(
-				`Service advertised successfully: ${serviceName} (_${serviceType}._${MDNS_DEFAULT_PROTOCOL}) on port ${port}`,
-			);
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Failed to advertise service: ${err.message}`, err.stack);
-
-			// Don't throw - mDNS failure should not prevent app from starting
-		}
+	setHttpServerReady(port: number): void {
+		this.httpServerPort = port;
 	}
 
 	/**
-	 * Stop advertising and clean up mDNS resources
+	 * Register only after Fastify is listening. The service manager starts a
+	 * late registration independently, so mDNS readiness cannot hold up the
+	 * initial connector startup sequence.
 	 */
-	async stopAdvertising(): Promise<void> {
-		if (!this.isAdvertising) {
-			return;
+	onHttpServerReady(port: number): void {
+		this.setHttpServerReady(port);
+
+		if (!this.managedServiceManager.isRegistered('module', MDNS_MODULE_NAME, this.serviceId)) {
+			this.managedServiceManager.register(this);
 		}
+	}
 
-		try {
-			this.logger.log('Stopping mDNS service advertisement');
+	async start(): Promise<void> {
+		await this.withLock(async () => {
+			await Promise.resolve();
 
-			if (this.bonjour) {
-				// Wait for unpublishAll to complete before destroying the bonjour instance
-				// This prevents race conditions where destroy() is called while unpublishing is in progress
-				const bonjourInstance = this.bonjour;
-
-				await new Promise<void>((resolve, reject) => {
-					try {
-						bonjourInstance.unpublishAll((error?: Error) => {
-							if (error) {
-								this.logger.warn(`Error during unpublishAll: ${error.message}`);
-								// Continue with cleanup even if unpublishAll had an error
-							}
-							resolve();
-						});
-					} catch (err) {
-						const error = err instanceof Error ? err : new Error(String(err));
-
-						reject(error);
-					}
-				});
-
-				this.bonjour.destroy();
-				this.bonjour = null;
+			if (this.state === 'started') {
+				return;
 			}
 
-			this.service = null;
-			this.isAdvertising = false;
-			this.advertisedPort = 0;
+			if (this.httpServerPort === null) {
+				throw new Error('Cannot start mDNS advertisement before the HTTP server is ready');
+			}
 
-			this.logger.log('Service advertisement stopped successfully');
-		} catch (error) {
-			const err = error as Error;
+			this.state = 'starting';
 
-			this.logger.error(`Failed to stop service advertisement: ${err.message}`, err.stack);
-		}
+			try {
+				this.logger.log('Starting mDNS service advertisement');
+
+				// Create the Bonjour instance
+				this.bonjour = new Bonjour();
+
+				const baseServiceName = this.getServiceName();
+				const serviceType = this.getServiceType();
+				const version = this.getVersion();
+				const host = hostname();
+
+				// Include hostname in service name to ensure uniqueness on the network
+				// e.g., "FastyBird Smart Panel (smart-panel-aio)"
+				const serviceName = `${baseServiceName} (${host})`;
+
+				// Create TXT record data
+				const txtRecord: Record<string, string> = {
+					version,
+					api: `/${API_PREFIX}/v1`,
+					secure: 'false',
+					hostname: host,
+				};
+
+				// Publish the service
+				this.service = this.bonjour.publish({
+					name: serviceName,
+					type: serviceType,
+					protocol: MDNS_DEFAULT_PROTOCOL,
+					port: this.httpServerPort,
+					txt: txtRecord,
+				});
+
+				this.advertisedPort = this.httpServerPort;
+				this.advertisedServiceName = baseServiceName;
+				this.advertisedServiceType = serviceType;
+				this.isAdvertising = true;
+				this.state = 'started';
+
+				this.logger.log(
+					`Service advertised successfully: ${serviceName} (_${serviceType}._${MDNS_DEFAULT_PROTOCOL}) on port ${this.httpServerPort}`,
+				);
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.error(`Failed to advertise service: ${err.message}`, err.stack);
+				await this.cleanupFailedStart();
+				this.state = 'error';
+				throw error;
+			}
+		});
+	}
+
+	async stop(): Promise<void> {
+		await this.withLock(async () => {
+			if (this.state === 'stopped' && !this.isAdvertising) {
+				return;
+			}
+
+			this.state = 'stopping';
+
+			try {
+				this.logger.log('Stopping mDNS service advertisement');
+
+				if (this.bonjour) {
+					// Wait for unpublishAll to complete before destroying the bonjour instance
+					// This prevents race conditions where destroy() is called while unpublishing is in progress
+					const bonjourInstance = this.bonjour;
+
+					await new Promise<void>((resolve, reject) => {
+						try {
+							bonjourInstance.unpublishAll((error?: Error) => {
+								if (error) {
+									this.logger.warn(`Error during unpublishAll: ${error.message}`);
+									// Continue with cleanup even if unpublishAll had an error
+								}
+								resolve();
+							});
+						} catch (err) {
+							const error = err instanceof Error ? err : new Error(String(err));
+
+							reject(error);
+						}
+					});
+
+					this.bonjour.destroy();
+					this.bonjour = null;
+				}
+
+				this.service = null;
+				this.isAdvertising = false;
+				this.advertisedPort = 0;
+				this.advertisedServiceName = null;
+				this.advertisedServiceType = null;
+				this.state = 'stopped';
+
+				this.logger.log('Service advertisement stopped successfully');
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.error(`Failed to stop service advertisement: ${err.message}`, err.stack);
+				this.state = 'error';
+				throw error;
+			}
+		});
 	}
 
 	/**
@@ -224,12 +275,69 @@ export class MdnsService implements OnApplicationShutdown {
 		return this.isAdvertising;
 	}
 
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(this.state === 'started' && this.isAdvertising && this.service !== null);
+	}
+
+	onConfigChanged(): Promise<ConfigChangeResult> {
+		const serviceName = this.getServiceName();
+		const serviceType = this.getServiceType();
+
+		return Promise.resolve({
+			restartRequired:
+				this.advertisedServiceName !== null &&
+				this.advertisedServiceType !== null &&
+				(this.advertisedServiceName !== serviceName || this.advertisedServiceType !== serviceType),
+		});
+	}
+
+	/**
+	 * Bonjour allocates its multicast socket during construction. A failed
+	 * publish can therefore still leave an instance behind; release it before a
+	 * managed-service retry replaces the reference with a new instance.
+	 */
+	private async cleanupFailedStart(): Promise<void> {
+		const bonjourInstance = this.bonjour;
+
+		this.bonjour = null;
+		this.service = null;
+		this.isAdvertising = false;
+		this.advertisedPort = 0;
+		this.advertisedServiceName = null;
+		this.advertisedServiceType = null;
+
+		if (!bonjourInstance) {
+			return;
+		}
+
+		try {
+			await new Promise<void>((resolve) => {
+				try {
+					bonjourInstance.unpublishAll(() => resolve());
+				} catch (error) {
+					this.logger.warn(
+						`Failed to unpublish incomplete mDNS advertisement: ${error instanceof Error ? error.message : String(error)}`,
+					);
+					resolve();
+				}
+			});
+		} finally {
+			try {
+				bonjourInstance.destroy();
+			} catch (error) {
+				this.logger.warn(
+					`Failed to destroy incomplete mDNS advertisement: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+	}
+
 	/**
 	 * NestJS lifecycle hook - called when application is shutting down
 	 */
 	async onApplicationShutdown(signal?: string): Promise<void> {
 		this.logger.log(`Application shutdown triggered (signal: ${signal ?? 'unknown'})`);
 
-		await this.stopAdvertising();
+		await this.stop();
 	}
 }

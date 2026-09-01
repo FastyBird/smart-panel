@@ -31,8 +31,8 @@ import { ActionAuditService } from './services/action-audit.service';
 import { ExtensionActionRegistryService } from './services/extension-action-registry.service';
 import { ExtensionsBulkService } from './services/extensions-bulk.service';
 import { ExtensionsService } from './services/extensions.service';
+import { ManagedServiceManagerService } from './services/managed-service-manager.service';
 import { ModuleResetService } from './services/module-reset.service';
-import { PluginServiceManagerService } from './services/plugin-service-manager.service';
 
 @ApiTag({
 	tagName: EXTENSIONS_MODULE_NAME,
@@ -46,7 +46,7 @@ import { PluginServiceManagerService } from './services/plugin-service-manager.s
 	providers: [
 		ExtensionsBulkService,
 		ModuleResetService,
-		PluginServiceManagerService,
+		ManagedServiceManagerService,
 		ExtensionActionRegistryService,
 		ActionAuditService,
 		ExtensionsStatsProvider,
@@ -56,7 +56,7 @@ import { PluginServiceManagerService } from './services/plugin-service-manager.s
 		StopServiceCommand,
 		RestartServiceCommand,
 	],
-	exports: [PluginServiceManagerService, ExtensionActionRegistryService, ActionAuditService],
+	exports: [ManagedServiceManagerService, ExtensionActionRegistryService, ActionAuditService],
 })
 export class ExtensionsModule implements OnModuleInit {
 	constructor(
@@ -104,7 +104,7 @@ Provides a unified interface for discovering, enabling, disabling and inspecting
 
 - One catalogue of everything plugged into the backend, with consistent metadata (name, description, author, version, README, links)
 - A safe enable / disable surface — toggling a plugin re-validates dependencies (e.g. don't disable the storage backend that's currently in use)
-- A service control plane for plugins that run long-lived workers, so the admin can start / stop / restart them without restarting the whole backend
+- A service control plane for extensions that run long-lived workers, so the admin can start / stop / restart them without restarting the whole backend
 - An action audit log so you can see *who* enabled / disabled / restarted what, and when
 
 ## Features
@@ -113,7 +113,7 @@ Provides a unified interface for discovering, enabling, disabling and inspecting
 - **Rich metadata** — exposes name, description, author, version, type, default-enabled flag, capabilities, links and the rendered README to the admin UI
 - **Enable / disable** — toggles plugins (and configurable modules) on or off via configuration; the relevant module is notified live so the change takes effect without a restart wherever possible
 - **Dependency awareness** — refuses to disable a plugin that another active component currently depends on (e.g. the selected storage backend) and reports why
-- **Service control** — start, stop and restart long-running plugin services; useful for plugins that connect to external systems where reconnect can fix transient issues
+- **Service control** — start, stop and restart long-running extension services; useful when reconnecting can fix transient issues
 - **Action audit** — every enable / disable / service action is recorded with the actor and timestamp; available through the API and CLI
 - **Capability registry** — plugins advertise capabilities (\`tts\`, \`stt\`, \`llm\`, \`messaging\`, …) so other modules can pick a provider by capability instead of hard-coded type
 
@@ -122,15 +122,15 @@ Provides a unified interface for discovering, enabling, disabling and inspecting
 - \`GET /api/v1/modules/extensions\` — list all extensions
 - \`GET /api/v1/modules/extensions/:type\` — get a single extension
 - \`PATCH /api/v1/modules/extensions/:type\` — enable or disable an extension
-- \`GET /api/v1/modules/extensions/services\` — list managed plugin services
-- \`POST /api/v1/modules/extensions/services/:type/{start|stop|restart}\` — control a plugin service
+- \`GET /api/v1/modules/extensions/services\` — list managed extension services
+- \`POST /api/v1/modules/extensions/services/:kind/:type/:serviceId/{start|stop|restart}\` — control an extension service
 
 ## CLI Commands
 
-- \`pnpm run cli services:list\` — list managed plugin services
-- \`pnpm run cli services:start <type>\` — start a service
-- \`pnpm run cli services:stop <type>\` — stop a service
-- \`pnpm run cli services:restart <type>\` — restart a service`,
+- \`pnpm run cli services:list\` — list managed extension services
+- \`pnpm run cli services:start <kind> <type> <serviceId>\` — start a service
+- \`pnpm run cli services:stop <kind> <type> <serviceId>\` — stop a service
+- \`pnpm run cli services:restart <kind> <type> <serviceId>\` — restart a service`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

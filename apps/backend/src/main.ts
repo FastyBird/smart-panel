@@ -192,9 +192,10 @@ async function bootstrap() {
 
 	await app.listen(port, '0.0.0.0');
 
-	// Start mDNS service advertisement after server is listening
-	const mdnsService = app.get(MdnsService);
-	mdnsService.advertise(port);
+	// Register the mDNS managed service only after Fastify is ready to accept
+	// connections. Late registration starts just this service; it does not block
+	// the manager's initial connector startup.
+	app.get(MdnsService).onHttpServerReady(port);
 }
 
 bootstrap().catch((error: Error) => {

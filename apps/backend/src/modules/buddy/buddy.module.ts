@@ -5,6 +5,7 @@ import { ModulesTypeMapperService } from '../config/services/modules-type-mapper
 import { DevicesModule } from '../devices/devices.module';
 import { EnergyModule } from '../energy/energy.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { ManagedServiceManagerService } from '../extensions/services/managed-service-manager.service';
 import { HomeContextModule } from '../home-context/home-context.module';
 import { IntentsModule } from '../intents/intents.module';
 import { ScenesModule } from '../scenes/scenes.module';
@@ -143,6 +144,7 @@ export class BuddyModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
 		private readonly moduleReset: BuddyModuleResetService,
 		private readonly personalityService: BuddyPersonalityService,
 		private readonly backupRegistry: BackupContributionRegistry,
@@ -184,6 +186,7 @@ export class BuddyModule implements OnModuleInit {
 		this.heartbeatService.registerEvaluator(this.energyEvaluator);
 		this.heartbeatService.registerEvaluator(this.conflictDetector);
 		this.heartbeatService.registerEvaluator(this.sceneSuggestion);
+		this.managedServiceManager.register(this.heartbeatService);
 		this.toolProviderRegistry.register(this.homeContextTools);
 		this.modulesMapperService.registerMapping<BuddyConfigModel, UpdateBuddyConfigDto>({
 			type: BUDDY_MODULE_NAME,

@@ -1,4 +1,4 @@
-import { Controller, Get, NotFoundException, Param, Post } from '@nestjs/common';
+import { BadRequestException, Controller, Get, NotFoundException, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -15,25 +15,26 @@ import {
 	ServiceStatusResponseModel,
 	ServicesStatusResponseModel,
 } from '../models/service-status.model';
-import { PluginServiceManagerService } from '../services/plugin-service-manager.service';
+import { ManagedServiceOwnerKind, ServiceStatusExtended } from '../services/managed-extension-service.interface';
+import { ManagedServiceManagerService } from '../services/managed-service-manager.service';
 
 @ApiTags(EXTENSIONS_MODULE_API_TAG_NAME)
 @Controller('services')
 export class ServicesController {
 	private readonly logger = createExtensionLogger(EXTENSIONS_MODULE_NAME, 'ServicesController');
 
-	constructor(private readonly pluginServiceManager: PluginServiceManagerService) {}
+	constructor(private readonly managedServiceManager: ManagedServiceManagerService) {}
 
-	@Get()
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-extensions-module-services',
 		summary: 'List all managed services',
-		description: 'Retrieves a list of all managed plugin services with their current status and runtime information.',
+		description: 'Retrieves all managed module and plugin services with their status and runtime information.',
 	})
 	@ApiSuccessResponse(ServicesStatusResponseModel, 'Returns a list of service statuses')
+	@Get()
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	async findAll(): Promise<ServicesStatusResponseModel> {
-		const statuses = await this.pluginServiceManager.getStatus();
+		const statuses = await this.managedServiceManager.getStatus();
 
 		const response = new ServicesStatusResponseModel();
 		response.data = statuses.map((status) => this.toModel(status));
@@ -41,25 +42,27 @@ export class ServicesController {
 		return response;
 	}
 
-	@Get(':pluginName/:serviceId')
-	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	@ApiOperation({
 		operationId: 'get-extensions-module-service',
 		summary: 'Get service status',
-		description: 'Retrieves the status of a specific managed plugin service.',
+		description: 'Retrieves the status of a specific managed extension service.',
 	})
-	@ApiParam({ name: 'pluginName', type: 'string', description: 'Plugin name identifier' })
-	@ApiParam({ name: 'serviceId', type: 'string', description: 'Service identifier within the plugin' })
+	@ApiParam({ name: 'extensionKind', enum: ['module', 'plugin'], description: 'Extension owner kind' })
+	@ApiParam({ name: 'extensionType', type: 'string', description: 'Extension owner type' })
+	@ApiParam({ name: 'serviceId', type: 'string', description: 'Service identifier within the extension' })
 	@ApiSuccessResponse(ServiceStatusResponseModel, 'Returns the service status')
 	@ApiNotFoundResponse('Service not found')
+	@Get(':extensionKind/:extensionType/:serviceId')
+	@Roles(UserRole.OWNER, UserRole.ADMIN, UserRole.USER)
 	async findOne(
-		@Param('pluginName') pluginName: string,
+		@Param('extensionKind') extensionKind: ManagedServiceOwnerKind,
+		@Param('extensionType') extensionType: string,
 		@Param('serviceId') serviceId: string,
 	): Promise<ServiceStatusResponseModel> {
-		const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+		const status = await this.managedServiceManager.getServiceStatus(extensionKind, extensionType, serviceId);
 
 		if (!status) {
-			throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
+			throw new NotFoundException(`Service ${extensionKind}:${extensionType}:${serviceId} not found`);
 		}
 
 		const response = new ServiceStatusResponseModel();
@@ -68,28 +71,36 @@ export class ServicesController {
 		return response;
 	}
 
-	@Post(':pluginName/:serviceId/start')
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'start-extensions-module-service',
 		summary: 'Start a service',
-		description: 'Manually starts a specific plugin service.',
+		description: 'Manually starts a specific extension service when its desired state permits it.',
 	})
-	@ApiParam({ name: 'pluginName', type: 'string', description: 'Plugin name identifier' })
-	@ApiParam({ name: 'serviceId', type: 'string', description: 'Service identifier within the plugin' })
+	@ApiParam({ name: 'extensionKind', enum: ['module', 'plugin'], description: 'Extension owner kind' })
+	@ApiParam({ name: 'extensionType', type: 'string', description: 'Extension owner type' })
+	@ApiParam({ name: 'serviceId', type: 'string', description: 'Service identifier within the extension' })
 	@ApiSuccessResponse(ServiceStatusResponseModel, 'Returns the updated service status')
 	@ApiNotFoundResponse('Service not found')
-	@ApiBadRequestResponse('Service is already started or starting')
+	@ApiBadRequestResponse('Service cannot be started or failed to reach the started state')
+	@Post(':extensionKind/:extensionType/:serviceId/start')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	async start(
-		@Param('pluginName') pluginName: string,
+		@Param('extensionKind') extensionKind: ManagedServiceOwnerKind,
+		@Param('extensionType') extensionType: string,
 		@Param('serviceId') serviceId: string,
 	): Promise<ServiceStatusResponseModel> {
-		await this.pluginServiceManager.startServiceManually(pluginName, serviceId);
+		const success = await this.managedServiceManager.startServiceManually(extensionKind, extensionType, serviceId);
 
-		const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+		const status = await this.managedServiceManager.getServiceStatus(extensionKind, extensionType, serviceId);
 
 		if (!status) {
-			throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
+			throw new NotFoundException(`Service ${extensionKind}:${extensionType}:${serviceId} not found`);
+		}
+
+		if (!success) {
+			throw new BadRequestException(
+				`Service ${extensionKind}:${extensionType}:${serviceId} could not be started from state ${status.state}`,
+			);
 		}
 
 		const response = new ServiceStatusResponseModel();
@@ -98,28 +109,36 @@ export class ServicesController {
 		return response;
 	}
 
-	@Post(':pluginName/:serviceId/stop')
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'stop-extensions-module-service',
 		summary: 'Stop a service',
-		description: 'Manually stops a specific plugin service.',
+		description: 'Manually stops a specific extension service.',
 	})
-	@ApiParam({ name: 'pluginName', type: 'string', description: 'Plugin name identifier' })
-	@ApiParam({ name: 'serviceId', type: 'string', description: 'Service identifier within the plugin' })
+	@ApiParam({ name: 'extensionKind', enum: ['module', 'plugin'], description: 'Extension owner kind' })
+	@ApiParam({ name: 'extensionType', type: 'string', description: 'Extension owner type' })
+	@ApiParam({ name: 'serviceId', type: 'string', description: 'Service identifier within the extension' })
 	@ApiSuccessResponse(ServiceStatusResponseModel, 'Returns the updated service status')
 	@ApiNotFoundResponse('Service not found')
-	@ApiBadRequestResponse('Service is already stopped or stopping')
+	@ApiBadRequestResponse('Service cannot be stopped or failed to reach the stopped state')
+	@Post(':extensionKind/:extensionType/:serviceId/stop')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	async stop(
-		@Param('pluginName') pluginName: string,
+		@Param('extensionKind') extensionKind: ManagedServiceOwnerKind,
+		@Param('extensionType') extensionType: string,
 		@Param('serviceId') serviceId: string,
 	): Promise<ServiceStatusResponseModel> {
-		await this.pluginServiceManager.stopServiceManually(pluginName, serviceId);
+		const success = await this.managedServiceManager.stopServiceManually(extensionKind, extensionType, serviceId);
 
-		const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+		const status = await this.managedServiceManager.getServiceStatus(extensionKind, extensionType, serviceId);
 
 		if (!status) {
-			throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
+			throw new NotFoundException(`Service ${extensionKind}:${extensionType}:${serviceId} not found`);
+		}
+
+		if (!success) {
+			throw new BadRequestException(
+				`Service ${extensionKind}:${extensionType}:${serviceId} could not be stopped from state ${status.state}`,
+			);
 		}
 
 		const response = new ServiceStatusResponseModel();
@@ -128,28 +147,36 @@ export class ServicesController {
 		return response;
 	}
 
-	@Post(':pluginName/:serviceId/restart')
-	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	@ApiOperation({
 		operationId: 'restart-extensions-module-service',
 		summary: 'Restart a service',
-		description: 'Restarts a specific plugin service. The plugin must be enabled for restart to work.',
+		description: 'Restarts a specific extension service when its desired state is started.',
 	})
-	@ApiParam({ name: 'pluginName', type: 'string', description: 'Plugin name identifier' })
-	@ApiParam({ name: 'serviceId', type: 'string', description: 'Service identifier within the plugin' })
+	@ApiParam({ name: 'extensionKind', enum: ['module', 'plugin'], description: 'Extension owner kind' })
+	@ApiParam({ name: 'extensionType', type: 'string', description: 'Extension owner type' })
+	@ApiParam({ name: 'serviceId', type: 'string', description: 'Service identifier within the extension' })
 	@ApiSuccessResponse(ServiceStatusResponseModel, 'Returns the updated service status')
 	@ApiNotFoundResponse('Service not found')
-	@ApiBadRequestResponse('Plugin is disabled or service cannot be restarted')
+	@ApiBadRequestResponse('Service desired state is stopped or service cannot be restarted')
+	@Post(':extensionKind/:extensionType/:serviceId/restart')
+	@Roles(UserRole.OWNER, UserRole.ADMIN)
 	async restart(
-		@Param('pluginName') pluginName: string,
+		@Param('extensionKind') extensionKind: ManagedServiceOwnerKind,
+		@Param('extensionType') extensionType: string,
 		@Param('serviceId') serviceId: string,
 	): Promise<ServiceStatusResponseModel> {
-		await this.pluginServiceManager.restartService(pluginName, serviceId);
+		const success = await this.managedServiceManager.restartService(extensionKind, extensionType, serviceId);
 
-		const status = await this.pluginServiceManager.getServiceStatus(pluginName, serviceId);
+		const status = await this.managedServiceManager.getServiceStatus(extensionKind, extensionType, serviceId);
 
 		if (!status) {
-			throw new NotFoundException(`Service ${pluginName}:${serviceId} not found`);
+			throw new NotFoundException(`Service ${extensionKind}:${extensionType}:${serviceId} not found`);
+		}
+
+		if (!success) {
+			throw new BadRequestException(
+				`Service ${extensionKind}:${extensionType}:${serviceId} could not be restarted from state ${status.state}`,
+			);
 		}
 
 		const response = new ServiceStatusResponseModel();
@@ -158,22 +185,14 @@ export class ServicesController {
 		return response;
 	}
 
-	private toModel(status: {
-		pluginName: string;
-		serviceId: string;
-		state: string;
-		enabled: boolean;
-		healthy?: boolean;
-		lastStartedAt?: string;
-		lastStoppedAt?: string;
-		lastError?: string;
-		startCount: number;
-		uptimeMs?: number;
-	}): ServiceStatusModel {
+	private toModel(status: ServiceStatusExtended): ServiceStatusModel {
 		const model = new ServiceStatusModel();
-		model.pluginName = status.pluginName;
+		model.extensionKind = status.extensionKind;
+		model.extensionType = status.extensionType;
 		model.serviceId = status.serviceId;
-		model.state = status.state as ServiceStatusModel['state'];
+		model.activationPolicy = status.activationPolicy;
+		model.state = status.state;
+		model.desiredState = status.desiredState;
 		model.enabled = status.enabled;
 		model.healthy = status.healthy;
 		model.lastStartedAt = status.lastStartedAt;

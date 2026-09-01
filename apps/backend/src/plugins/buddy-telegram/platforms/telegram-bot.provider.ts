@@ -11,9 +11,9 @@ import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	ConfigChangeResult,
-	IManagedPluginService,
+	IManagedExtensionService,
 	ServiceState,
-} from '../../../modules/extensions/services/managed-plugin-service.interface';
+} from '../../../modules/extensions/services/managed-extension-service.interface';
 import { SuggestionFeedback } from '../../../modules/spaces/spaces.constants';
 import {
 	BUDDY_TELEGRAM_PLUGIN_NAME,
@@ -32,10 +32,10 @@ import { BuddyTelegramConfigModel } from '../models/config.model';
  * - Enforces a user whitelist for security
  */
 @Injectable()
-export class TelegramBotProvider implements IManagedPluginService {
+export class TelegramBotProvider implements IManagedExtensionService {
 	private readonly logger = createExtensionLogger(BUDDY_TELEGRAM_PLUGIN_NAME, 'TelegramBotProvider');
 
-	readonly pluginName = BUDDY_TELEGRAM_PLUGIN_NAME;
+	readonly owner = { kind: 'plugin', type: BUDDY_TELEGRAM_PLUGIN_NAME } as const;
 	readonly serviceId = 'bot';
 
 	private bot: Telegraf | null = null;
@@ -58,7 +58,7 @@ export class TelegramBotProvider implements IManagedPluginService {
 
 	/**
 	 * Start the Telegram bot service.
-	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 * Called by ManagedServiceManagerService when the plugin is enabled.
 	 */
 	async start(): Promise<void> {
 		if (this.state === 'started' || this.state === 'starting') {
@@ -83,7 +83,7 @@ export class TelegramBotProvider implements IManagedPluginService {
 
 	/**
 	 * Stop the Telegram bot service gracefully.
-	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 * Called by ManagedServiceManagerService when the plugin is disabled or app shuts down.
 	 *
 	 * Preserve registeredChats and userConversations across restarts so users
 	 * don't need to re-message after a config change. The maps are in-memory
@@ -103,7 +103,7 @@ export class TelegramBotProvider implements IManagedPluginService {
 
 	/**
 	 * Handle configuration changes.
-	 * Called by PluginServiceManagerService when config updates occur.
+	 * Called by ManagedServiceManagerService when config updates occur.
 	 */
 	onConfigChanged(): Promise<ConfigChangeResult> {
 		if (this.state !== 'started' || !this.activeConfig) {
@@ -169,6 +169,10 @@ export class TelegramBotProvider implements IManagedPluginService {
 
 	isRunning(): boolean {
 		return this.state === 'started';
+	}
+
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(this.state === 'started' && this.bot !== null);
 	}
 
 	private async startBot(config: BuddyTelegramConfigModel & { botToken: string }): Promise<void> {

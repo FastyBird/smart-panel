@@ -11,10 +11,10 @@ import { BuddySuggestion, SuggestionEngineService } from '../../../modules/buddy
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	ConfigChangeResult,
-	IManagedPluginService,
+	IManagedExtensionService,
 	ServiceState,
-} from '../../../modules/extensions/services/managed-plugin-service.interface';
-import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
+} from '../../../modules/extensions/services/managed-extension-service.interface';
+import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import {
 	BUDDY_WHATSAPP_PLUGIN_NAME,
 	WHATSAPP_AUTH_DIR,
@@ -34,10 +34,10 @@ import { BuddyWhatsappConfigModel } from '../models/config.model';
  * - Enforces a phone number whitelist for security
  */
 @Injectable()
-export class WhatsAppBotProvider implements IManagedPluginService {
+export class WhatsAppBotProvider implements IManagedExtensionService {
 	private readonly logger = createExtensionLogger(BUDDY_WHATSAPP_PLUGIN_NAME, 'WhatsAppBotProvider');
 
-	readonly pluginName = BUDDY_WHATSAPP_PLUGIN_NAME;
+	readonly owner = { kind: 'plugin', type: BUDDY_WHATSAPP_PLUGIN_NAME } as const;
 	readonly serviceId = 'bot';
 
 	private socket: import('@whiskeysockets/baileys').WASocket | null = null;
@@ -65,12 +65,12 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 		private readonly configService: ConfigService,
 		private readonly conversationService: BuddyConversationService,
 		private readonly suggestionEngine: SuggestionEngineService,
-		private readonly pluginServiceManager: PluginServiceManagerService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
 	) {}
 
 	/**
 	 * Start the WhatsApp bot service.
-	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 * Called by ManagedServiceManagerService when the plugin is enabled.
 	 */
 	async start(): Promise<void> {
 		if (this.state === 'started' || this.state === 'starting') {
@@ -88,7 +88,7 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 
 	/**
 	 * Stop the WhatsApp bot service gracefully.
-	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 * Called by ManagedServiceManagerService when the plugin is disabled or app shuts down.
 	 *
 	 * Preserve jidConversations and registeredJids across restarts so users
 	 * don't need to re-message after a config change. The maps are in-memory
@@ -109,7 +109,7 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 
 	/**
 	 * Handle configuration changes.
-	 * Called by PluginServiceManagerService when config updates occur.
+	 * Called by ManagedServiceManagerService when config updates occur.
 	 *
 	 * Unlike Discord/Telegram, WhatsApp's start() returns while still in
 	 * 'starting' state (before the QR code is scanned and the connection
@@ -182,6 +182,10 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 		return this.status === WhatsAppConnectionStatus.CONNECTED;
 	}
 
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(this.state === 'started' && this.isConnected());
+	}
+
 	/**
 	 * Disconnect and clear authentication state so a new QR code can be generated.
 	 *
@@ -207,7 +211,7 @@ export class WhatsAppBotProvider implements IManagedPluginService {
 		}
 
 		// Delegate restart to the manager so runtime tracking stays in sync
-		void this.pluginServiceManager.restartService(this.pluginName, this.serviceId);
+		void this.managedServiceManager.restartService(this.owner.kind, this.owner.type, this.serviceId);
 	}
 
 	private async startBot(): Promise<void> {

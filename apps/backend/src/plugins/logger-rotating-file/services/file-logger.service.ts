@@ -8,9 +8,9 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
-	IManagedPluginService,
+	IManagedExtensionService,
 	ServiceState,
-} from '../../../modules/extensions/services/managed-plugin-service.interface';
+} from '../../../modules/extensions/services/managed-extension-service.interface';
 import { ILogger } from '../../../modules/system/logger/logger';
 import { LOGGER_ROTATING_FILE_PLUGIN_NAME } from '../logger-rotating-file.constants';
 import { LoggerRotatingFileException } from '../logger-rotating-file.exceptions';
@@ -19,17 +19,16 @@ import { RotatingFileConfigModel } from '../models/config.model';
 /**
  * Rotating file logger service.
  *
- * This service is managed by PluginServiceManagerService and implements
- * the IManagedPluginService interface for centralized lifecycle management.
+ * This service implements the generic managed-extension contract for centralized lifecycle management.
  */
 @Injectable()
-export class FileLoggerService implements ILogger, IManagedPluginService {
+export class FileLoggerService implements ILogger, IManagedExtensionService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		LOGGER_ROTATING_FILE_PLUGIN_NAME,
 		'FileLoggerService',
 	);
 
-	readonly pluginName = LOGGER_ROTATING_FILE_PLUGIN_NAME;
+	readonly owner = { kind: 'plugin', type: LOGGER_ROTATING_FILE_PLUGIN_NAME } as const;
 	readonly serviceId = 'file-logger';
 
 	private dir: string | undefined;
@@ -47,7 +46,7 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 
 	/**
 	 * Start the service.
-	 * Called by PluginServiceManagerService when the plugin is enabled.
+	 * Called by ManagedServiceManagerService when the plugin is enabled.
 	 */
 	async start(): Promise<void> {
 		await this.withLock(async () => {
@@ -89,7 +88,7 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 
 	/**
 	 * Stop the service gracefully.
-	 * Called by PluginServiceManagerService when the plugin is disabled or app shuts down.
+	 * Called by ManagedServiceManagerService when the plugin is disabled or app shuts down.
 	 */
 	async stop(): Promise<void> {
 		await this.withLock(async () => {
@@ -130,9 +129,20 @@ export class FileLoggerService implements ILogger, IManagedPluginService {
 		return this.state;
 	}
 
+	async isHealthy(): Promise<boolean> {
+		if (this.state !== 'started' || !this.dir) return false;
+
+		try {
+			await fs.access(this.dir, fs.constants.W_OK);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
 	/**
 	 * Handle configuration changes by re-applying settings.
-	 * Called by PluginServiceManagerService when config updates occur.
+	 * Called by ManagedServiceManagerService when config updates occur.
 	 *
 	 * Re-validates directory and re-registers cleanup job to apply
 	 * changes to dir and cleanupCron settings immediately.

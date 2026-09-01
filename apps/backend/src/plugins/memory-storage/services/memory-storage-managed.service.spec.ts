@@ -38,8 +38,8 @@ describe('MemoryStorageManagedService', () => {
 	});
 
 	describe('interface properties', () => {
-		it('has correct pluginName and serviceId', () => {
-			expect(svc.pluginName).toBe(MEMORY_PLUGIN_NAME);
+		it('has correct owner and serviceId', () => {
+			expect(svc.owner).toEqual({ kind: 'plugin', type: MEMORY_PLUGIN_NAME });
 			expect(svc.serviceId).toBe('storage');
 		});
 

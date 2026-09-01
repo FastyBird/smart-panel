@@ -1,12 +1,20 @@
-import { ExtensionsModuleServiceState } from '../../../openapi.constants';
+import {
+	ExtensionsModuleServiceActivationPolicy,
+	ExtensionsModuleServiceDesiredState,
+	ExtensionsModuleServiceOwnerKind,
+	ExtensionsModuleServiceState,
+} from '../../../openapi.constants';
 
 import type { IService, IServiceRes } from './services.store.types';
 
 export const transformServiceResponse = (service: IServiceRes): IService => {
 	return {
-		pluginName: service.plugin_name,
+		extensionKind: service.extension_kind as ExtensionsModuleServiceOwnerKind,
+		extensionType: service.extension_type,
 		serviceId: service.service_id,
+		activationPolicy: service.activation_policy as ExtensionsModuleServiceActivationPolicy,
 		state: service.state as ExtensionsModuleServiceState,
+		desiredState: service.desired_state as ExtensionsModuleServiceDesiredState,
 		enabled: service.enabled,
 		healthy: service.healthy,
 		lastStartedAt: service.last_started_at,

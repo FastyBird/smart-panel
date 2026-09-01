@@ -1,15 +1,15 @@
 import { useI18n } from 'vue-i18n';
 
 import { injectStoresManager, useFlashMessage } from '../../../common';
-import { ExtensionsModuleServiceState } from '../../../openapi.constants';
+import { ExtensionsModuleServiceOwnerKind, ExtensionsModuleServiceState } from '../../../openapi.constants';
 import { ExtensionsApiException } from '../extensions.exceptions';
 import { servicesStoreKey } from '../store/keys';
 
 interface IUseServiceActions {
-	startService: (pluginName: string, serviceId: string) => Promise<boolean>;
-	stopService: (pluginName: string, serviceId: string) => Promise<boolean>;
-	restartService: (pluginName: string, serviceId: string) => Promise<boolean>;
-	isActing: (pluginName: string, serviceId: string) => boolean;
+	startService: (extensionKind: ExtensionsModuleServiceOwnerKind, extensionType: string, serviceId: string) => Promise<boolean>;
+	stopService: (extensionKind: ExtensionsModuleServiceOwnerKind, extensionType: string, serviceId: string) => Promise<boolean>;
+	restartService: (extensionKind: ExtensionsModuleServiceOwnerKind, extensionType: string, serviceId: string) => Promise<boolean>;
+	isActing: (extensionKind: ExtensionsModuleServiceOwnerKind, extensionType: string, serviceId: string) => boolean;
 }
 
 export const useServiceActions = (): IUseServiceActions => {
@@ -20,9 +20,13 @@ export const useServiceActions = (): IUseServiceActions => {
 
 	const servicesStore = storesManager.getStore(servicesStoreKey);
 
-	const startService = async (pluginName: string, serviceId: string): Promise<boolean> => {
+	const startService = async (
+		extensionKind: ExtensionsModuleServiceOwnerKind,
+		extensionType: string,
+		serviceId: string,
+	): Promise<boolean> => {
 		try {
-			const service = await servicesStore.start({ pluginName, serviceId });
+			const service = await servicesStore.start({ extensionKind, extensionType, serviceId });
 
 			if (service.state === ExtensionsModuleServiceState.started) {
 				flashMessage.success(t('extensionsModule.services.messages.started'));
@@ -46,9 +50,13 @@ export const useServiceActions = (): IUseServiceActions => {
 		}
 	};
 
-	const stopService = async (pluginName: string, serviceId: string): Promise<boolean> => {
+	const stopService = async (
+		extensionKind: ExtensionsModuleServiceOwnerKind,
+		extensionType: string,
+		serviceId: string,
+	): Promise<boolean> => {
 		try {
-			await servicesStore.stop({ pluginName, serviceId });
+			await servicesStore.stop({ extensionKind, extensionType, serviceId });
 
 			flashMessage.success(t('extensionsModule.services.messages.stopped'));
 
@@ -64,9 +72,13 @@ export const useServiceActions = (): IUseServiceActions => {
 		}
 	};
 
-	const restartService = async (pluginName: string, serviceId: string): Promise<boolean> => {
+	const restartService = async (
+		extensionKind: ExtensionsModuleServiceOwnerKind,
+		extensionType: string,
+		serviceId: string,
+	): Promise<boolean> => {
 		try {
-			await servicesStore.restart({ pluginName, serviceId });
+			await servicesStore.restart({ extensionKind, extensionType, serviceId });
 
 			flashMessage.success(t('extensionsModule.services.messages.restarted'));
 
@@ -82,8 +94,12 @@ export const useServiceActions = (): IUseServiceActions => {
 		}
 	};
 
-	const isActing = (pluginName: string, serviceId: string): boolean => {
-		return servicesStore.acting(pluginName, serviceId);
+	const isActing = (
+		extensionKind: ExtensionsModuleServiceOwnerKind,
+		extensionType: string,
+		serviceId: string,
+	): boolean => {
+		return servicesStore.acting(extensionKind, extensionType, serviceId);
 	};
 
 	return {

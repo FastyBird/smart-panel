@@ -7,8 +7,8 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { ServiceStatusExtended } from '../services/managed-plugin-service.interface';
-import { PluginServiceManagerService } from '../services/plugin-service-manager.service';
+import { ServiceStatusExtended } from '../services/managed-extension-service.interface';
+import { ManagedServiceManagerService } from '../services/managed-service-manager.service';
 
 import {
 	ListServicesCommand,
@@ -18,12 +18,15 @@ import {
 } from './services.command';
 
 describe('Services Commands', () => {
-	let pluginServiceManager: jest.Mocked<PluginServiceManagerService>;
+	let managedServiceManager: jest.Mocked<ManagedServiceManagerService>;
 
 	const createMockServiceStatus = (overrides: Partial<ServiceStatusExtended> = {}): ServiceStatusExtended => ({
-		pluginName: 'devices-shelly-v1',
+		extensionKind: 'plugin',
+		extensionType: 'devices-shelly-v1',
 		serviceId: 'main',
+		activationPolicy: 'owner-enabled',
 		state: 'started',
+		desiredState: 'started',
 		enabled: true,
 		healthy: true,
 		lastStartedAt: '2025-01-15T10:00:00.000Z',
@@ -52,7 +55,7 @@ describe('Services Commands', () => {
 				providers: [
 					ListServicesCommand,
 					{
-						provide: PluginServiceManagerService,
+						provide: ManagedServiceManagerService,
 						useValue: {
 							getStatus: jest.fn(),
 						},
@@ -61,28 +64,28 @@ describe('Services Commands', () => {
 			}).compile();
 
 			command = module.get<ListServicesCommand>(ListServicesCommand);
-			pluginServiceManager = module.get(PluginServiceManagerService);
+			managedServiceManager = module.get(ManagedServiceManagerService);
 		});
 
 		it('should list all services', async () => {
 			const mockStatuses = [
-				createMockServiceStatus({ pluginName: 'plugin-1', serviceId: 'main' }),
-				createMockServiceStatus({ pluginName: 'plugin-2', serviceId: 'discovery', state: 'stopped' }),
+				createMockServiceStatus({ extensionType: 'plugin-1', serviceId: 'main' }),
+				createMockServiceStatus({ extensionType: 'plugin-2', serviceId: 'discovery', state: 'stopped' }),
 			];
-			pluginServiceManager.getStatus.mockResolvedValue(mockStatuses);
+			managedServiceManager.getStatus.mockResolvedValue(mockStatuses);
 
 			await command.run([], {});
 
-			expect(pluginServiceManager.getStatus).toHaveBeenCalled();
+			expect(managedServiceManager.getStatus).toHaveBeenCalled();
 			expect(console.log).toHaveBeenCalled();
 		});
 
 		it('should handle empty services list', async () => {
-			pluginServiceManager.getStatus.mockResolvedValue([]);
+			managedServiceManager.getStatus.mockResolvedValue([]);
 
 			await command.run([], {});
 
-			expect(pluginServiceManager.getStatus).toHaveBeenCalled();
+			expect(managedServiceManager.getStatus).toHaveBeenCalled();
 		});
 	});
 
@@ -94,7 +97,7 @@ describe('Services Commands', () => {
 				providers: [
 					StartServiceCommand,
 					{
-						provide: PluginServiceManagerService,
+						provide: ManagedServiceManagerService,
 						useValue: {
 							isRegistered: jest.fn(),
 							startServiceManually: jest.fn(),
@@ -105,35 +108,36 @@ describe('Services Commands', () => {
 			}).compile();
 
 			command = module.get<StartServiceCommand>(StartServiceCommand);
-			pluginServiceManager = module.get(PluginServiceManagerService);
+			managedServiceManager = module.get(ManagedServiceManagerService);
 		});
 
 		it('should start a registered service', async () => {
-			pluginServiceManager.isRegistered.mockReturnValue(true);
-			pluginServiceManager.startServiceManually.mockResolvedValue(true);
+			managedServiceManager.isRegistered.mockReturnValue(true);
+			managedServiceManager.startServiceManually.mockResolvedValue(true);
 
-			await command.run(['devices-shelly-v1', 'main'], {});
+			await command.run(['plugin', 'devices-shelly-v1', 'main'], {});
 
-			expect(pluginServiceManager.isRegistered).toHaveBeenCalledWith('devices-shelly-v1', 'main');
-			expect(pluginServiceManager.startServiceManually).toHaveBeenCalledWith('devices-shelly-v1', 'main');
+			expect(managedServiceManager.isRegistered).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
+			expect(managedServiceManager.startServiceManually).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
 		});
 
 		it('should handle service already started', async () => {
 			const mockStatus = createMockServiceStatus({ state: 'started' });
-			pluginServiceManager.isRegistered.mockReturnValue(true);
-			pluginServiceManager.startServiceManually.mockResolvedValue(false);
-			pluginServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
+			managedServiceManager.isRegistered.mockReturnValue(true);
+			managedServiceManager.startServiceManually.mockResolvedValue(false);
+			managedServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
 
-			await command.run(['devices-shelly-v1', 'main'], {});
+			await command.run(['plugin', 'devices-shelly-v1', 'main'], {});
 
-			expect(pluginServiceManager.getServiceStatus).toHaveBeenCalledWith('devices-shelly-v1', 'main');
+			expect(managedServiceManager.getServiceStatus).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
+			expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Failed to start service'));
 		});
 
 		it('should exit with error for unregistered service', async () => {
 			const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-			pluginServiceManager.isRegistered.mockReturnValue(false);
+			managedServiceManager.isRegistered.mockReturnValue(false);
 
-			await command.run(['unknown', 'service'], {});
+			await command.run(['plugin', 'unknown', 'service'], {});
 
 			expect(mockExit).toHaveBeenCalledWith(1);
 			mockExit.mockRestore();
@@ -157,7 +161,7 @@ describe('Services Commands', () => {
 				providers: [
 					StopServiceCommand,
 					{
-						provide: PluginServiceManagerService,
+						provide: ManagedServiceManagerService,
 						useValue: {
 							isRegistered: jest.fn(),
 							stopServiceManually: jest.fn(),
@@ -168,28 +172,29 @@ describe('Services Commands', () => {
 			}).compile();
 
 			command = module.get<StopServiceCommand>(StopServiceCommand);
-			pluginServiceManager = module.get(PluginServiceManagerService);
+			managedServiceManager = module.get(ManagedServiceManagerService);
 		});
 
 		it('should stop a registered service', async () => {
-			pluginServiceManager.isRegistered.mockReturnValue(true);
-			pluginServiceManager.stopServiceManually.mockResolvedValue(true);
+			managedServiceManager.isRegistered.mockReturnValue(true);
+			managedServiceManager.stopServiceManually.mockResolvedValue(true);
 
-			await command.run(['devices-shelly-v1', 'main'], {});
+			await command.run(['plugin', 'devices-shelly-v1', 'main'], {});
 
-			expect(pluginServiceManager.isRegistered).toHaveBeenCalledWith('devices-shelly-v1', 'main');
-			expect(pluginServiceManager.stopServiceManually).toHaveBeenCalledWith('devices-shelly-v1', 'main');
+			expect(managedServiceManager.isRegistered).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
+			expect(managedServiceManager.stopServiceManually).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
 		});
 
 		it('should handle service already stopped', async () => {
 			const mockStatus = createMockServiceStatus({ state: 'stopped' });
-			pluginServiceManager.isRegistered.mockReturnValue(true);
-			pluginServiceManager.stopServiceManually.mockResolvedValue(false);
-			pluginServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
+			managedServiceManager.isRegistered.mockReturnValue(true);
+			managedServiceManager.stopServiceManually.mockResolvedValue(false);
+			managedServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
 
-			await command.run(['devices-shelly-v1', 'main'], {});
+			await command.run(['plugin', 'devices-shelly-v1', 'main'], {});
 
-			expect(pluginServiceManager.getServiceStatus).toHaveBeenCalledWith('devices-shelly-v1', 'main');
+			expect(managedServiceManager.getServiceStatus).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
+			expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Failed to stop service'));
 		});
 	});
 
@@ -201,7 +206,7 @@ describe('Services Commands', () => {
 				providers: [
 					RestartServiceCommand,
 					{
-						provide: PluginServiceManagerService,
+						provide: ManagedServiceManagerService,
 						useValue: {
 							isRegistered: jest.fn(),
 							restartService: jest.fn(),
@@ -212,28 +217,29 @@ describe('Services Commands', () => {
 			}).compile();
 
 			command = module.get<RestartServiceCommand>(RestartServiceCommand);
-			pluginServiceManager = module.get(PluginServiceManagerService);
+			managedServiceManager = module.get(ManagedServiceManagerService);
 		});
 
 		it('should restart a registered service', async () => {
-			pluginServiceManager.isRegistered.mockReturnValue(true);
-			pluginServiceManager.restartService.mockResolvedValue(true);
+			managedServiceManager.isRegistered.mockReturnValue(true);
+			managedServiceManager.restartService.mockResolvedValue(true);
 
-			await command.run(['devices-shelly-v1', 'main'], {});
+			await command.run(['plugin', 'devices-shelly-v1', 'main'], {});
 
-			expect(pluginServiceManager.isRegistered).toHaveBeenCalledWith('devices-shelly-v1', 'main');
-			expect(pluginServiceManager.restartService).toHaveBeenCalledWith('devices-shelly-v1', 'main');
+			expect(managedServiceManager.isRegistered).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
+			expect(managedServiceManager.restartService).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
 		});
 
 		it('should handle restart failure due to disabled plugin', async () => {
-			const mockStatus = createMockServiceStatus({ state: 'stopped', enabled: false });
-			pluginServiceManager.isRegistered.mockReturnValue(true);
-			pluginServiceManager.restartService.mockResolvedValue(false);
-			pluginServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
+			const mockStatus = createMockServiceStatus({ state: 'stopped', desiredState: 'stopped', enabled: false });
+			managedServiceManager.isRegistered.mockReturnValue(true);
+			managedServiceManager.restartService.mockResolvedValue(false);
+			managedServiceManager.getServiceStatus.mockResolvedValue(mockStatus);
 
-			await command.run(['devices-shelly-v1', 'main'], {});
+			await command.run(['plugin', 'devices-shelly-v1', 'main'], {});
 
-			expect(pluginServiceManager.getServiceStatus).toHaveBeenCalledWith('devices-shelly-v1', 'main');
+			expect(managedServiceManager.getServiceStatus).toHaveBeenCalledWith('plugin', 'devices-shelly-v1', 'main');
+			expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Cannot restart'));
 		});
 	});
 });

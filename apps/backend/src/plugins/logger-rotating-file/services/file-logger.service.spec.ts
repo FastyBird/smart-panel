@@ -140,7 +140,7 @@ describe('FileLoggerService', () => {
 		it('handles invalid dir: logs error and still registers nothing', async () => {
 			(fsMock.stat as jest.Mock).mockResolvedValue({ isDirectory: () => false } as any);
 
-			// start() now throws on error to signal failure to PluginServiceManagerService
+			// start() now throws on error to signal failure to ManagedServiceManagerService
 			await expect(svc.start()).rejects.toThrow('Path is not a directory');
 
 			expect(Logger.prototype.error).toHaveBeenCalledWith(
@@ -271,7 +271,7 @@ describe('FileLoggerService', () => {
 			await svc.start();
 
 			// onConfigChanged just clears the cached config
-			// Re-initialization happens through PluginServiceManagerService
+			// Re-initialization happens through ManagedServiceManagerService
 			await svc.onConfigChanged();
 
 			// Service should still be in started state

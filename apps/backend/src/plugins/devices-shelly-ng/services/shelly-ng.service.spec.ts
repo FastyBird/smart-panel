@@ -13,7 +13,7 @@ import { Test } from '@nestjs/testing';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { PluginServiceManagerService } from '../../../modules/extensions/services/plugin-service-manager.service';
+import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 
@@ -172,7 +172,7 @@ describe('ShellyNgService', () => {
 				{ provide: DevicesService, useFactory: () => mockDevicesService() },
 				{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
 				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
-				{ provide: PluginServiceManagerService, useValue: mockPluginServiceManager },
+				{ provide: ManagedServiceManagerService, useValue: mockPluginServiceManager },
 				{ provide: ShellyWsServerService, useValue: mockWsServer },
 			],
 		}).compile();
@@ -202,7 +202,7 @@ describe('ShellyNgService', () => {
 				},
 				{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
 				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
-				{ provide: PluginServiceManagerService, useValue: mockPluginServiceManager },
+				{ provide: ManagedServiceManagerService, useValue: mockPluginServiceManager },
 				{ provide: ShellyWsServerService, useValue: mockWsServer },
 			],
 		}).compile();
@@ -235,7 +235,7 @@ describe('ShellyNgService', () => {
 				{ provide: DevicesService, useFactory: () => mockDevicesService() },
 				{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
 				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
-				{ provide: PluginServiceManagerService, useValue: mockPluginServiceManager },
+				{ provide: ManagedServiceManagerService, useValue: mockPluginServiceManager },
 				{ provide: ShellyWsServerService, useValue: mockWsServer },
 			],
 		}).compile();
@@ -259,7 +259,7 @@ describe('ShellyNgService', () => {
 				{ provide: DevicesService, useFactory: () => mockDevicesService() },
 				{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
 				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
-				{ provide: PluginServiceManagerService, useValue: mockPluginServiceManager },
+				{ provide: ManagedServiceManagerService, useValue: mockPluginServiceManager },
 				{ provide: ShellyWsServerService, useValue: mockWsServer },
 			],
 		}).compile();
@@ -299,7 +299,7 @@ describe('ShellyNgService', () => {
 				{ provide: DevicesService, useFactory: () => mockDevicesService() },
 				{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
 				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
-				{ provide: PluginServiceManagerService, useValue: mockPluginServiceManager },
+				{ provide: ManagedServiceManagerService, useValue: mockPluginServiceManager },
 				{ provide: ShellyWsServerService, useValue: mockWsServer },
 			],
 		}).compile();
@@ -325,7 +325,7 @@ describe('ShellyNgService', () => {
 				{ provide: DevicesService, useFactory: () => mockDevicesService() },
 				{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
 				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
-				{ provide: PluginServiceManagerService, useValue: mockPluginServiceManager },
+				{ provide: ManagedServiceManagerService, useValue: mockPluginServiceManager },
 				{ provide: ShellyWsServerService, useValue: mockWsServer },
 			],
 		}).compile();
@@ -352,7 +352,7 @@ describe('ShellyNgService', () => {
 				{ provide: DevicesService, useFactory: () => mockDevicesService() },
 				{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
 				{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
-				{ provide: PluginServiceManagerService, useValue: mockPluginServiceManager },
+				{ provide: ManagedServiceManagerService, useValue: mockPluginServiceManager },
 				{ provide: ShellyWsServerService, useValue: mockWsServer },
 			],
 		}).compile();
@@ -364,7 +364,7 @@ describe('ShellyNgService', () => {
 		await svc.onConfigChanged();
 
 		// Access the private config getter by triggering a method that uses it
-		// This would normally be done by PluginServiceManagerService
+		// This would normally be done by ManagedServiceManagerService
 		expect(svc.getState()).toBe('started');
 	});
 
@@ -379,7 +379,7 @@ describe('ShellyNgService', () => {
 					{ provide: DevicesService, useFactory: () => mockDevicesService() },
 					{ provide: DeviceManagerService, useValue: mockDeviceManagerService },
 					{ provide: DeviceConnectivityService, useValue: mockDeviceConnectivityService },
-					{ provide: PluginServiceManagerService, useValue: mockPluginServiceManager },
+					{ provide: ManagedServiceManagerService, useValue: mockPluginServiceManager },
 					{ provide: ShellyWsServerService, useValue: mockWsServer },
 				],
 			}).compile();

@@ -2,7 +2,7 @@ import { Cache } from 'cache-manager';
 import { CronJob } from 'cron';
 
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Inject, Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { CronExpression, SchedulerRegistry } from '@nestjs/schedule';
 
@@ -10,6 +10,8 @@ import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as ConfigModuleEventType } from '../../config/config.constants';
 import { ConfigService } from '../../config/services/config.service';
+import { BaseManagedExtensionService } from '../../extensions/services/base-managed-extension.service';
+import { ConfigChangeResult } from '../../extensions/services/managed-extension-service.interface';
 import { WeatherLocationEntity } from '../entities/locations.entity';
 import { WeatherAlertModel } from '../models/alert.model';
 import { WeatherConfigModel } from '../models/config.model';
@@ -27,8 +29,10 @@ import { LocationsService } from './locations.service';
 import { WeatherHistoryService } from './weather-history.service';
 import { WeatherProviderRegistryService } from './weather-provider-registry.service';
 
+const WEATHER_REFRESH_CRON_NAME = 'refreshWeather';
+
 @Injectable()
-export class WeatherService implements OnApplicationBootstrap {
+export class WeatherService extends BaseManagedExtensionService {
 	private readonly logger = createExtensionLogger(WEATHER_MODULE_NAME, 'WeatherService');
 	private readonly refreshJob: CronJob;
 
@@ -38,6 +42,9 @@ export class WeatherService implements OnApplicationBootstrap {
 	private readonly FORECAST_CACHE_PREFIX = 'weather-forecast:';
 	private readonly HOURLY_CACHE_PREFIX = 'weather-hourly:';
 	private readonly ALERTS_CACHE_PREFIX = 'weather-alerts:';
+
+	readonly owner = { kind: 'module', type: WEATHER_MODULE_NAME } as const;
+	readonly serviceId = 'refresh';
 
 	constructor(
 		private readonly schedulerRegistry: SchedulerRegistry,
@@ -49,16 +56,80 @@ export class WeatherService implements OnApplicationBootstrap {
 		@Inject(CACHE_MANAGER)
 		private readonly cacheManager: Cache,
 	) {
+		super();
+
 		this.refreshJob = new CronJob(CronExpression.EVERY_HOUR, async () => {
 			await this.refreshAllWeather();
 		});
-
-		this.schedulerRegistry.addCronJob('refreshWeather', this.refreshJob);
 	}
 
-	onApplicationBootstrap() {
-		// Start cron job after all weather providers are registered
-		this.refreshJob.start();
+	async start(): Promise<void> {
+		await this.withLock(async () => {
+			await Promise.resolve();
+
+			if (this.state === 'started') {
+				return;
+			}
+
+			this.state = 'starting';
+
+			try {
+				if (this.schedulerRegistry.doesExist('cron', WEATHER_REFRESH_CRON_NAME)) {
+					this.schedulerRegistry.deleteCronJob(WEATHER_REFRESH_CRON_NAME);
+				}
+
+				this.schedulerRegistry.addCronJob(WEATHER_REFRESH_CRON_NAME, this.refreshJob);
+				this.refreshJob.start();
+				this.state = 'started';
+			} catch (error) {
+				this.cleanupRefreshJob();
+				this.state = 'error';
+
+				throw error;
+			}
+		});
+	}
+
+	async stop(): Promise<void> {
+		await this.withLock(async () => {
+			await Promise.resolve();
+
+			if (this.state === 'stopped' && !this.schedulerRegistry.doesExist('cron', WEATHER_REFRESH_CRON_NAME)) {
+				return;
+			}
+
+			this.state = 'stopping';
+			this.cleanupRefreshJob();
+			this.state = 'stopped';
+		});
+	}
+
+	isHealthy(): Promise<boolean> {
+		return Promise.resolve(
+			this.state === 'started' &&
+				this.schedulerRegistry.doesExist('cron', WEATHER_REFRESH_CRON_NAME) &&
+				this.refreshJob.isActive,
+		);
+	}
+
+	onConfigChanged(): Promise<ConfigChangeResult> {
+		// The cadence is fixed. Changes such as the primary location are read by
+		// refreshAllWeather at run time and do not require rescheduling the job.
+		return Promise.resolve({ restartRequired: false });
+	}
+
+	private cleanupRefreshJob(): void {
+		try {
+			void this.refreshJob.stop();
+
+			if (this.schedulerRegistry.doesExist('cron', WEATHER_REFRESH_CRON_NAME)) {
+				this.schedulerRegistry.deleteCronJob(WEATHER_REFRESH_CRON_NAME);
+			}
+		} catch (error) {
+			this.logger.warn(
+				`Failed to remove weather refresh scheduler: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 	}
 
 	/**

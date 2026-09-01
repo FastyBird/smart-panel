@@ -2,7 +2,7 @@ import { Module, OnModuleInit } from '@nestjs/common';
 
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
-import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
+import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
 import { StorageModule } from '../../modules/storage/storage.module';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 
@@ -22,7 +22,7 @@ export class InfluxV2Plugin implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
 		private readonly influxV2ManagedService: InfluxV2ManagedService,
-		private readonly pluginServiceManager: PluginServiceManagerService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
 	) {}
 
 	onModuleInit() {
@@ -99,6 +99,6 @@ Time-series storage backend that writes property history, device statuses and en
 
 		// Register service with the centralized plugin service manager
 		// The manager handles startup, shutdown, and config-based enable/disable
-		this.pluginServiceManager.register(this.influxV2ManagedService);
+		this.managedServiceManager.register(this.influxV2ManagedService);
 	}
 }
