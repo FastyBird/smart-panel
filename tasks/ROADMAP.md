@@ -278,6 +278,52 @@ Extensions expose callable actions and interactive terminal sessions from the ad
 
 ---
 
+## 10a. System Notifications (Epic)
+
+> [EPIC-NOTIFICATIONS-MODULE](epics/EPIC-NOTIFICATIONS-MODULE.md) — Status: :clipboard: Planned
+
+One place for the admin to see what needs attention — integration failures, service failures, available updates, failed logins, security alerts — with severity, an optional call to action, and a read/dismiss lifecycle, optionally forwarded to Discord, Slack, Telegram or a generic webhook.
+
+### Phase 1: Backend Core
+
+| #   | Task                                                                                         | Scope   | Status              |
+| --- | -------------------------------------------------------------------------------------------- | ------- | -------------------- |
+| 1   | [FEATURE-NOTIFICATIONS-BACKEND-CORE](features/FEATURE-NOTIFICATIONS-BACKEND-CORE.md)         | backend | :clipboard: Planned |
+| 2   | [FEATURE-NOTIFICATIONS-BACKEND-API](features/FEATURE-NOTIFICATIONS-BACKEND-API.md)           | backend | :clipboard: Planned |
+| 3   | [FEATURE-NOTIFICATIONS-CHANNEL-DISPATCH](features/FEATURE-NOTIFICATIONS-CHANNEL-DISPATCH.md) | backend | :clipboard: Planned |
+
+### Phase 2: Admin
+
+| #   | Task                                                                                   | Scope | Status              |
+| --- | -------------------------------------------------------------------------------------- | ----- | -------------------- |
+| 4   | [FEATURE-NOTIFICATIONS-ADMIN-BELL](features/FEATURE-NOTIFICATIONS-ADMIN-BELL.md)       | admin | :clipboard: Planned |
+| 5   | [FEATURE-NOTIFICATIONS-ADMIN-PAGE](features/FEATURE-NOTIFICATIONS-ADMIN-PAGE.md)       | admin | :clipboard: Planned |
+| 6   | [FEATURE-NOTIFICATIONS-ADMIN-LOCALES](features/FEATURE-NOTIFICATIONS-ADMIN-LOCALES.md) | admin | :clipboard: Planned |
+
+### Phase 3: Emitters
+
+| #   | Task                                                                                                   | Scope   | Status              |
+| --- | ------------------------------------------------------------------------------------------------------ | ------- | -------------------- |
+| 7   | [FEATURE-NOTIFICATIONS-EMITTERS-CORE](features/FEATURE-NOTIFICATIONS-EMITTERS-CORE.md)                 | backend | :clipboard: Planned |
+| 8   | [FEATURE-NOTIFICATIONS-EMITTERS-INTEGRATIONS](features/FEATURE-NOTIFICATIONS-EMITTERS-INTEGRATIONS.md) | backend | :clipboard: Planned |
+
+### Phase 4: Channels
+
+| #   | Task                                                                                                       | Scope          | Status              |
+| --- | ---------------------------------------------------------------------------------------------------------- | -------------- | -------------------- |
+| 9   | [FEATURE-NOTIFICATIONS-CHANNEL-WEBHOOK-DISCORD](features/FEATURE-NOTIFICATIONS-CHANNEL-WEBHOOK-DISCORD.md) | backend, admin | :clipboard: Planned |
+| 10  | [FEATURE-NOTIFICATIONS-CHANNEL-SLACK-TELEGRAM](features/FEATURE-NOTIFICATIONS-CHANNEL-SLACK-TELEGRAM.md)   | backend, admin | :clipboard: Planned |
+
+### Phase 5: Docs & SDK
+
+| #   | Task                                                                         | Scope          | Status              |
+| --- | ---------------------------------------------------------------------------- | -------------- | -------------------- |
+| 11  | [FEATURE-NOTIFICATIONS-SDK-DOCS](features/FEATURE-NOTIFICATIONS-SDK-DOCS.md) | backend, admin | :clipboard: Planned |
+
+**Next up:** Backend core (Phase 1) — the notifications module domain, storage and `NotificationsService` that every other phase depends on.
+
+---
+
 ## 11. Companion Display (Epic)
 
 > [EPIC-COMPANION-DISPLAY](epics/EPIC-COMPANION-DISPLAY.md) — Status: :clipboard: Planned
@@ -405,9 +451,10 @@ Reach the installation from outside the LAN through a `remote-access` module and
 | Companion Display       | 0      | 0           | 9       | 9       |
 | Plugins                 | 1      | 1           | 3       | 5       |
 | Extension Actions       | 3      | 0           | 5       | 8       |
+| System Notifications    | 0      | 0           | 11      | 11      |
 | Device & Infrastructure | 5      | 0           | 1       | 6       |
 | Technical               | 6      | 0           | 0       | 6       |
 | Other Features          | 4      | 0           | 1       | 5       |
 | Plans                   | 2      | 0           | 1       | 3       |
 | Remote Access           | 0      | 0           | 1       | 1       |
-| **Total**               | **72** | **2**       | **32**  | **106** |
+| **Total**               | **72** | **2**       | **43**  | **117** |
