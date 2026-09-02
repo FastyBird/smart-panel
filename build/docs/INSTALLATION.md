@@ -55,6 +55,17 @@ This script will:
 - Install Smart Panel globally via npm
 - Configure and start the systemd service
 
+Add `--with-tailscale` to also install [Tailscale](https://tailscale.com/) for remote access:
+
+```bash
+curl -fsSL https://get.smart-panel.fastybird.com | sudo bash -s -- --with-tailscale
+```
+
+The daemon is installed but left disabled — enabling it is part of Smart Panel's remote-access
+setup, not this script. The Raspberry Pi image's `server` and `aio` variants already ship with
+Tailscale pre-installed (daemon disabled by default), so the flag above is only needed for
+manual or one-liner installs on other systems.
+
 ### Option 3: Manual Tarball Install
 
 For environments where npm is not available or you prefer a self-contained installation, download the

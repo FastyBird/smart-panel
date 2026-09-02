@@ -7,10 +7,11 @@
 #   curl -fsSL https://get.smart-panel.fastybird.com | sudo bash
 #
 # Options:
-#   --alpha   Install alpha (dev) version
-#   --beta    Install beta version
-#   --version Install specific version (e.g., --version 1.0.0)
-#   --port    Set HTTP port (default: 3000)
+#   --alpha           Install alpha (dev) version
+#   --beta            Install beta version
+#   --version         Install specific version (e.g., --version 1.0.0)
+#   --port            Set HTTP port (default: 3000)
+#   --with-tailscale  Install Tailscale for remote access (daemon left disabled)
 #
 
 set -e
@@ -33,6 +34,7 @@ VERSION=""
 ALPHA=false
 BETA=false
 PORT=$DEFAULT_PORT
+WITH_TAILSCALE=false
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
@@ -51,6 +53,10 @@ while [[ $# -gt 0 ]]; do
 		--port)
 			PORT="$2"
 			shift 2
+			;;
+		--with-tailscale)
+			WITH_TAILSCALE=true
+			shift
 			;;
 		*)
 			shift
@@ -308,6 +314,23 @@ configure_service() {
 	smart-panel-service install --port "$PORT"
 }
 
+install_tailscale() {
+	print_step "Installing Tailscale..."
+
+	curl -fsSL https://tailscale.com/install.sh | sh
+
+	if ! command -v tailscale &> /dev/null; then
+		print_error "Failed to install Tailscale"
+		exit 1
+	fi
+
+	# The official installer enables and starts tailscaled; leave it
+	# disabled until the operator opts in from the remote-access setup.
+	systemctl disable --now tailscaled
+
+	print_success "Tailscale installed (daemon disabled until enabled from the admin UI)"
+}
+
 print_completion() {
 	local ip_addr=$(hostname -I 2>/dev/null | awk '{print $1}')
 	[[ -z "$ip_addr" ]] && ip_addr="localhost"
@@ -322,6 +345,11 @@ print_completion() {
 	echo -e "  ${CYAN}Access the admin UI at:${NC}"
 	echo -e "    http://${ip_addr}:${PORT}"
 	echo ""
+	if [[ "$WITH_TAILSCALE" == true ]]; then
+		echo -e "  ${CYAN}Tailscale:${NC}"
+		echo -e "    Installed, daemon disabled — enable remote access from the admin UI"
+		echo ""
+	fi
 	echo -e "  ${CYAN}Useful commands:${NC}"
 	echo -e "    sudo smart-panel-service status   - Check service status"
 	echo -e "    sudo smart-panel-service logs -f  - View live logs"
@@ -355,6 +383,11 @@ main() {
 	# Install Smart Panel
 	install_smart_panel
 	configure_service
+
+	# Optional: Tailscale for remote access
+	if [[ "$WITH_TAILSCALE" == true ]]; then
+		install_tailscale
+	fi
 
 	# Done
 	print_completion
