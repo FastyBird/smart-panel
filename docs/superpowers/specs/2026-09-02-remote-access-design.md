@@ -76,13 +76,13 @@ Tailscale Serve both do the second.
   tailnet), Funnel (opt-in public URL), Tailscale SSH (opt-in), key-expiry advisory.
 - Admin: Remote access page, module settings form, Tailscale provider card and setup wizard.
 - Installer and Raspberry Pi image: Tailscale package pre-installed but inactive.
-- Website documentation.
-
-### Milestone 2 — Public exposure and integrations
-
-- `remote-access-cloudflare-tunnel` plugin (backend + admin).
 - MCP admin form suggests the remote-access primary external URL for `oauth_public_base_url`; MCP proxy
   policy consumes the shared trusted-proxy set.
+- Website documentation.
+
+### Milestone 2 — Public exposure
+
+- `remote-access-cloudflare-tunnel` plugin (backend + admin).
 
 ### Milestone 3 — Self-hosted VPN
 
@@ -217,9 +217,12 @@ getUrl(options: {
   `https` from its scheme).
 - **Ranking:** HTTPS before HTTP, public before private, then provider registration order. The top entry
   is the `primaryExternalUrl` shown on the page and offered to other modules.
-- Home Assistant forbids a path on either URL because a wrong prefix can change security behaviour; we
-  adopt the same validator shape as MCP's `IsMcpOAuthPublicBaseUrlConstraint` without the HTTPS-only rule
-  for the internal URL. The external URL may be HTTP; the posture layer warns about it.
+- Home Assistant forbids a path on either URL because a wrong prefix can change security behaviour.
+  Remote-access URLs are origin-only (scheme, host, optional port; no path, credentials, query or
+  fragment), validated by a dedicated `IsRemoteAccessUrlConstraint`. It is deliberately separate from
+  MCP's `IsMcpOAuthPublicBaseUrlConstraint`, which keeps accepting a reverse-proxy path prefix; the MCP
+  suggestion offers the origin and the administrator appends a prefix when their proxy needs one. The
+  external URL may be HTTP; the posture layer warns about it.
 - `RemoteAccessModule.Urls.Changed` fires when the ranked list changes.
 
 ### Proxy trust
@@ -266,7 +269,9 @@ will be swapped, so no plugin changes when it lands.
 
 ### Events
 
-- `RemoteAccessModule.Provider.Status` — `{ type, state, endpoints, message, updatedAt }`.
+- `RemoteAccessModule.Provider.Status` — the full `RemoteAccessProviderStatus` (`type`, `state`,
+  `endpoints`, `message`, `details`, `proxyAddresses`, `advisories`, `updatedAt`). It never carries an auth
+  URL, QR code or key material; the aggregator and the admin update from the payload without a refetch.
 - `RemoteAccessModule.Urls.Changed` — `{ internal, external, primaryExternalUrl }`.
 - `RemoteAccessModule.Setup.Progress` — `{ type, job, step, state, message }` from privileged jobs.
 
@@ -285,7 +290,9 @@ scopes `SystemModule.System.Update.*`, so displays never receive remote-access s
 | `trust_forwarded_headers` | boolean | `false` | Inclusive with `trusted_proxies` |
 | `trusted_proxies` | string[] | `[]` | IPv4/IPv6 addresses or CIDRs |
 
-No secrets. The module is toggleable and is not added to `NON_TOGGLEABLE_MODULES`.
+No secrets. The module is toggleable and is not added to `NON_TOGGLEABLE_MODULES`. `enabled` is not part
+of the settings form: like every module it is switched from the Extensions page, which patches the same
+config through the extensions endpoint; the form edits the other four fields.
 
 ## Tailscale Plugin
 
@@ -306,7 +313,9 @@ No secrets. The module is toggleable and is not added to `NON_TOGGLEABLE_MODULES
 | `funnel` | boolean | `false` | `tailscale funnel 443 on` |
 
 The auth key is never stored. It is accepted only in the body of the login request, used once, and
-redacted from logs. This avoids the config-secret machinery entirely and matches the Home Assistant add-on,
+redacted from logs. To keep it out of process arguments it is written to an ephemeral file with mode
+`0600` under `<FB_DATA_DIR>/remote-access/`, passed as `--auth-key=file:<path>`, and the file is deleted
+on every exit path of the login call, including errors and timeouts. This avoids the config-secret machinery entirely and matches the Home Assistant add-on,
 which offers only interactive sign-in.
 
 ### CLI wrapper
@@ -320,7 +329,7 @@ classifies failures: `not-installed` (ENOENT), `permission-denied` (operator not
 - `tailscale status --json` — `BackendState`, `AuthURL`, `TailscaleIPs`, `Self.DNSName`, `Self.Online`,
   `Self.KeyExpiry` (field name verified during implementation), `CurrentTailnet.Name`,
   `CurrentTailnet.MagicDNSSuffix`, `Self.CapMap` for `https` and `funnel`, `CertDomains`, `Health`
-- `tailscale up --json --timeout=<10m> <full managed flag set> [--auth-key=<key>]`, spawned; the first JSON
+- `tailscale up --json --timeout=<10m> <full managed flag set> [--auth-key=file:<ephemeral path>]`, spawned; the first JSON
   block yields `AuthURL` and a base64 PNG `QR`; the second yields the final `BackendState`
 - `tailscale set --hostname= --accept-dns= --accept-routes= --advertise-tags= --ssh= --operator=smart-panel`
   for preference changes without re-authentication
@@ -343,7 +352,9 @@ tolerates unknown fields, and pins the minimum supported Tailscale version in th
 
 1. If `tailscale` is missing: on Debian and Raspberry Pi OS add the official keyring and apt source for the
    detected `ID` and `VERSION_CODENAME` (`raspbian/bookworm` or `debian/bookworm`), then install the
-   `tailscale` package; on other distributions run the official install script.
+   signed `tailscale` package. On systems without apt the worker installs nothing and reports
+   `not-installed` with the vendor's manual instructions. The privileged worker never downloads and
+   executes scripts; it only installs signed packages from the vendor repository.
 2. `systemctl enable --now tailscaled`.
 3. `tailscale set --operator=<service user>` so the backend can operate the daemon without sudo from then
    on. The operator preference persists in `tailscaled.state`.
@@ -409,7 +420,7 @@ headers; the identity headers are ignored.
 | Manual tarball install running as `pi` | Full support; `pi` has passwordless sudo on Raspberry Pi OS |
 | `docker` | `unsupported`; docs describe the `tailscale/tailscale` sidecar and the external URL baseline |
 | `home-assistant` | `unsupported`; docs point to the official Tailscale add-on plus the external URL baseline |
-| `development` | `unsupported` unless `FB_REMOTE_ACCESS_ALLOW_DEV=true`, which skips the privileged step and expects a locally prepared `tailscale` |
+| `development` | `supportsPrivilegedWorkers()` stays false. The Tailscale plugin honours its own override `FB_REMOTE_ACCESS_ALLOW_DEV=true`, which skips the privileged setup step, marks `install` unavailable and expects a locally prepared `tailscale` with the operator already granted; without it the provider is `unsupported` |
 
 ## API Surface
 
@@ -435,6 +446,9 @@ Tailscale plugin, mounted at `/api/v1/plugins/remote-access-tailscale`, tag `Rem
 | `POST /login` | `create-remote-access-tailscale-plugin-login` | admin, owner | Body `{ auth_key?: string }`; returns auth URL and QR, or the connected status when a key was used |
 | `POST /logout` | `create-remote-access-tailscale-plugin-logout` | owner | Expires the node key |
 | `POST /reset-preferences` | `create-remote-access-tailscale-plugin-reset-preferences` | owner | Runs `up --reset` with the managed flag set |
+
+Responses that carry an auth URL or QR code (`GET /status` while `pending-auth`, `POST /login`) are sent
+with `Cache-Control: no-store`, verified by an API-boundary test.
 
 Connect, disconnect and reconnect are the generic Extensions service actions. Response schemas:
 `RemoteAccessTailscalePluginResStatus`, `RemoteAccessTailscalePluginResInstall`,
@@ -484,7 +498,9 @@ Connect, disconnect and reconnect are the generic Extensions service actions. Re
 
 - Raspberry Pi image, `server` and `aio` variants: add the Tailscale keyring and apt source, install the
   `tailscale` package, `systemctl disable tailscaled`. The plugin enables it during setup.
-- `install-server.sh --with-tailscale`: optional, uses the official install script.
+- `install-server.sh --with-tailscale`: optional. On Debian-family systems it adds the signed Tailscale apt
+  repository and installs the package exactly like the image; on other distributions it runs the vendor
+  install script, the same trust level as the NodeSource setup script the installer already pipes to root.
 - No sudoers change. `systemd-run` is already granted; the update executor precedent covers it.
 - Docker compose: no change; documentation describes the sidecar.
 

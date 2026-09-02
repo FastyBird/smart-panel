@@ -41,10 +41,11 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
   connect and disconnect as a managed service, Serve HTTPS, Funnel, SSH, key-expiry advisory.
 - Admin: Remote access page, module settings form, Tailscale provider card and setup wizard.
 - Raspberry Pi image pre-installs Tailscale (disabled); installer flag; website documentation.
+- MCP form suggests the primary external URL; MCP proxy policy consumes the shared trusted-proxy set.
 
 **In scope (later milestones)**
 
-- Cloudflare Tunnel plugin (backend and admin); MCP suggestion of the primary external URL.
+- Cloudflare Tunnel plugin (backend and admin).
 - WireGuard client plugin.
 
 **Out of scope**

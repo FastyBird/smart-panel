@@ -149,7 +149,8 @@ Services:
 - `RemoteAccessUrlService` — `getUrls()`, `getUrl(options)`, `NoUrlAvailableException`; ranking per spec;
   emits `URLS_CHANGED` on change.
 - `RemoteAccessStatusService` — aggregates provider statuses, caches the last status per provider, listens
-  to `PROVIDER_STATUS`, recomputes URLs and advisories.
+  to `PROVIDER_STATUS` and stores its full payload (state, endpoints, message, details, proxyAddresses,
+  advisories, updatedAt) so nothing needs a refetch, recomputes URLs and advisories.
 - `RemoteAccessPostureService` — module-level advisories: `external-url-insecure` (HTTP external URL),
   `forwarded-headers-without-proxies` (flag on, empty list), `public-exposure` (any public endpoint),
   plus pass-through of provider advisories.
@@ -157,8 +158,9 @@ Services:
   module config and connected providers' `proxyAddresses`.
 
 Config model `RemoteAccessConfigModel` (`ConfigModuleDataRemoteAccess`) and DTO
-(`ConfigModuleUpdateRemoteAccess`) with the five fields from the spec; URL validator shared with MCP's
-constraint style (absolute origin, no path, no credentials).
+(`ConfigModuleUpdateRemoteAccess`) with the five fields from the spec; a dedicated
+`IsRemoteAccessUrlConstraint` (absolute origin: scheme, host, optional port; no path, credentials, query or
+fragment), separate from MCP's validator, which keeps accepting a reverse-proxy path prefix.
 
 ### API
 
@@ -204,7 +206,9 @@ interface PrivilegedJobStatus { id: string; state: 'running' | 'complete' | 'fai
   `UpdateExecutorService`, which becomes a thin caller with identical observable behaviour.
 - One job per unit at a time; a second `run` for a busy unit throws.
 - `PlatformService.supportsPrivilegedWorkers()` — true when `sudo -n /usr/bin/true` succeeds and
-  `systemd-run` exists; cached; false on `docker`, `home-assistant`, `development`.
+  `systemd-run` exists; cached; false on `docker`, `home-assistant`, `development`. The development
+  override `FB_REMOTE_ACCESS_ALLOW_DEV` belongs to the Tailscale plugin (RA-4, RA-5) and never changes
+  this capability.
 
 ### Tests
 
@@ -240,7 +244,9 @@ Folder `apps/backend/src/plugins/remote-access-tailscale/` with constants
   `down` on stop, `set` on config change, factory-reset hook (`serve reset`, `logout`), inventory spec row.
 - Provider registration and `PROVIDER_STATUS` emission on change only.
 - Requirements list in the status response: `platform-supported`, `binary-installed`, `daemon-active`,
-  `operator-granted`, `version-supported`, each `{ code, satisfied, message }`.
+  `operator-granted`, `version-supported`, each `{ code, satisfied, message }`. On the `development`
+  platform, `FB_REMOTE_ACCESS_ALLOW_DEV=true` marks `platform-supported` satisfied and evaluates the other
+  requirements with unprivileged probes only; without it the provider is `unsupported`.
 
 ### API
 
@@ -263,13 +269,16 @@ Folder `apps/backend/src/plugins/remote-access-tailscale/` with constants
 
 ### Contract
 
-- `scripts/tailscale-setup.sh` (bundled asset; add the glob to `nest-cli.json`): idempotent install,
-  enable daemon, grant operator to `$SMART_PANEL_USER`, status-file JSON after each step, `trap` writes
-  `failed` on unexpected exit.
+- `scripts/tailscale-setup.sh` (bundled asset; add the glob to `nest-cli.json`): idempotent install from
+  the signed Tailscale apt repository on Debian-family systems (never a downloaded script; on systems
+  without apt write `failed` with a `not-installed` reason and manual instructions), enable daemon, grant
+  operator to `$SMART_PANEL_USER`, status-file JSON after each step, `trap` writes `failed` on unexpected
+  exit. `install` returns `unsupported` when `FB_REMOTE_ACCESS_ALLOW_DEV` is set.
 - `TailscaleSetupService.install(user)` → `PrivilegedWorkerService.run(...)`, forwards status to
   `SETUP_PROGRESS` events, refreshes requirements on completion.
-- `TailscaleLoginService.login(authKey?)`: with a key, `up --auth-key=<key> --timeout=120s` and return the
-  resulting status; without a key, spawn `up --json --timeout=10m`, parse the first JSON block, keep the
+- `TailscaleLoginService.login(authKey?)`: with a key, write it to an ephemeral `0600` file under
+  `<FB_DATA_DIR>/remote-access/`, run `up --auth-key=file:<path> --timeout=120s`, delete the file on every
+  exit path (success, error, timeout) and return the resulting status; without a key, spawn `up --json --timeout=10m`, parse the first JSON block, keep the
   process handle, return `{ authUrl, qr }`, resolve `pending-auth` in the poller, and clear the handle on
   the second block, on `stop()`, or on timeout. Only one pending login at a time.
 - `logout()` → `tailscale logout`; `resetPreferences()` → `up --reset <managed flags>`.
@@ -280,13 +289,16 @@ Folder `apps/backend/src/plugins/remote-access-tailscale/` with constants
 
 `POST /install` (owner, `202`), `POST /login` (admin, owner; `RemoteAccessTailscalePluginReqLogin` with
 optional `auth_key`), `POST /logout` (owner), `POST /reset-preferences` (owner). Responses per spec.
+`GET /status` while `pending-auth` and `POST /login` set `Cache-Control: no-store`.
 
 ### Tests
 
 - Setup: job spawn arguments, progress event forwarding, failure surfaces the failing step, unsupported
   platform returns `unsupported` without spawning.
-- Login: two-block parsing fixture, auth-key path redaction in logs and errors, second login while pending
-  rejected, timeout clears state, stop kills the child.
+- Login: two-block parsing fixture, auth-key path redaction in logs and errors, the key file is created
+  `0600` and removed on success, error and timeout, second login while pending rejected, timeout clears
+  state, stop kills the child, `Cache-Control: no-store` on responses carrying an auth URL (API-boundary
+  test).
 - Script: bash unit via `bats` is not available; add a shellcheck run to the task's verification and a
   dry-run mode (`--dry-run`) that prints the planned commands and is exercised from a spec.
 
@@ -325,8 +337,9 @@ optional `auth_key`), `POST /logout` (owner), `POST /reset-preferences` (owner).
   admin and owner, `menu: 3500`, between extensions (3000) and system (4000)), views `view-remote-access.vue`,
   components `remote-access-status-banner.vue`, `access-urls-list.vue` (copy, QR through `qrcode`),
   `provider-cards.vue` (resolves plugin elements with `modules` containing the module name and renders
-  `components.providerCard`), `advisories-list.vue`, `remote-access-config-form.vue` (five fields;
-  `trusted_proxies` as a tag input) registered as a `CONFIG_MODULE_MODULE_TYPE` element.
+  `components.providerCard`), `advisories-list.vue`, `remote-access-config-form.vue` (four fields: internal URL, external URL,
+  forwarded-header trust, `trusted_proxies` as a tag input; `enabled` stays on the Extensions page)
+  registered as a `CONFIG_MODULE_MODULE_TYPE` element.
 - Store `remote-access-status.store.ts` with `fetch`, `onEvent`, transformers; schemas bound to
   `RemoteAccessModuleDataStatus` and `ConfigModuleDataRemoteAccess` from `openapi.constants.ts`.
 - Locales: en-US written by the implementer; the other five files are a haiku sub-task that translates
@@ -371,8 +384,11 @@ files only.
 
 - `build/raspbian`: new `00-install-deps` step for `server` and `aio` variants adds the Tailscale keyring
   and apt source for `raspbian/bookworm`, installs `tailscale`, runs `systemctl disable tailscaled`.
-- `scripts/install-server.sh`: `--with-tailscale` flag runs the official install script after the server
-  install and leaves the daemon disabled; help text and summary updated.
+- `scripts/install-server.sh`: `--with-tailscale` flag; on Debian-family systems (`/etc/os-release` `ID`
+  `raspbian`, `debian` or `ubuntu`) it adds the signed Tailscale keyring and apt source for the detected
+  codename and installs the package, on other distributions it runs the vendor install script (same trust
+  level as the NodeSource setup the installer already uses); the daemon is left disabled; help text and
+  summary updated.
 - `build/docs/INSTALLATION.md`: note the flag and the image default.
 
 ### Tests

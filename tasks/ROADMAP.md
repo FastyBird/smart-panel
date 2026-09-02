@@ -343,8 +343,8 @@ Reach the installation from outside the LAN through a `remote-access` module and
 
 | #   | Milestone                                                                          | Scope                              | Status              |
 | --- | ---------------------------------------------------------------------------------- | ---------------------------------- | ------------------- |
-| 1   | Foundation + Tailscale MVP (RA-1 … RA-12): proxy trust, module, worker, plugin, admin, image, docs | backend, admin, installer, website | :clipboard: Planned |
-| 2   | Cloudflare Tunnel plugin + MCP URL suggestion (RA-13, RA-14)                       | backend, admin                     | :clipboard: Planned |
+| 1   | Foundation + Tailscale MVP (RA-1 … RA-12): proxy trust, module, worker, plugin, admin, image, MCP URL suggestion, docs | backend, admin, installer, website | :clipboard: Planned |
+| 2   | Cloudflare Tunnel plugin (RA-13, RA-14)                                            | backend, admin                     | :clipboard: Planned |
 | 3   | WireGuard client plugin (RA-15)                                                    | backend, admin                     | :clipboard: Planned |
 
 **Next up:** RA-1 (trusted-proxy client address resolution) and RA-3 (privileged worker runner) can start immediately; RA-2 follows RA-1, then the Tailscale, admin, installer and docs lanes run in parallel.
