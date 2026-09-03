@@ -136,12 +136,19 @@ describe('TailscaleSetupWizard', () => {
 		expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.waitingForLink');
 		expect(wrapper.text()).not.toContain('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink');
 
-		status.value = { state: 'pending-auth', endpoints: [], authUrl: 'https://login.tailscale.com/a/abc123', qr: 'data:image/png;base64,QR' };
+		// The link and the QR code come from separate CLI output blocks, so status can deliver them one at a time.
+		status.value = { state: 'pending-auth', endpoints: [], authUrl: 'https://login.tailscale.com/a/abc123' };
 		await nextTick();
 
 		expect(wrapper.text()).toContain('https://login.tailscale.com/a/abc123');
 		expect(wrapper.text()).not.toContain('remoteAccessTailscalePlugin.wizard.waitingForLink');
 		expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.waitingForApproval');
+		expect(wrapper.find('img').exists()).toBe(false);
+
+		status.value = { state: 'pending-auth', endpoints: [], authUrl: 'https://login.tailscale.com/a/abc123', qr: 'data:image/png;base64,QR' };
+		await nextTick();
+
+		expect(wrapper.find('img').attributes('src')).toBe('data:image/png;base64,QR');
 	});
 
 	it('fetches the plugin config and renders the options form when opened directly on options', async () => {
