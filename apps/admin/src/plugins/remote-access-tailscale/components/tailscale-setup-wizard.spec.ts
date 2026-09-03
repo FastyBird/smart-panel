@@ -125,6 +125,21 @@ describe('TailscaleSetupWizard', () => {
 		expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink');
 	});
 
+	it('fetches the plugin config and renders the options form when opened directly on options', async () => {
+		// Regression test: `currentStep` starts life already equal to `props.initialStep`, so
+		// reassigning it to the same value from the `visible` watcher is a no-op Vue never
+		// reports as a change - only a watcher declared `immediate: true` is guaranteed to fetch
+		// the config on this direct-open path (see the comment above that watch() call).
+		const wrapper = mountWizard('options');
+
+		expect(stepsProp(wrapper)).toBe(2);
+		expect(fns.fetchConfigPlugin).toHaveBeenCalled();
+
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'TailscaleConfigForm' }).exists()).toBe(true);
+	});
+
 	it('advances from setup to sign-in once the install job completes', async () => {
 		const wrapper = mountWizard('setup');
 

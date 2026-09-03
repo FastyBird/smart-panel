@@ -124,6 +124,7 @@
 							v-else
 							type="primary"
 							:loading="isLoggingIn"
+							:disabled="isLoggingIn"
 							@click="onInteractiveLogin"
 						>
 							{{ t('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink') }}
@@ -157,7 +158,7 @@
 						<el-button
 							type="primary"
 							:loading="isLoggingIn"
-							:disabled="!authKey"
+							:disabled="!authKey || isLoggingIn"
 							@click="onKeyedLogin"
 						>
 							{{ t('remoteAccessTailscalePlugin.wizard.buttons.signIn') }}
@@ -399,13 +400,19 @@ watch(
 	}
 );
 
+// `immediate: true` because `currentStep` starts life already set to `props.initialStep` (see
+// its `ref()` initializer below) - if the card opens the wizard directly on `options`, assigning
+// `currentStep.value = props.initialStep` in the `visible` watcher below is a same-value no-op
+// that Vue never reports as a change, so a non-immediate watcher here would never fire and the
+// config would never be fetched.
 watch(
 	(): TailscaleWizardStep => currentStep.value,
 	(step): void => {
 		if (step === 'options') {
 			void fetchConfigPlugin();
 		}
-	}
+	},
+	{ immediate: true }
 );
 
 watch(
