@@ -67,6 +67,15 @@
 				name="oauthPublicBaseUrl"
 				clearable
 			/>
+			<el-button
+				v-if="remoteAccessHttpsUrl"
+				plain
+				class="mt-2"
+				@click="applyRemoteAccessUrl"
+			>
+				<icon icon="mdi:cloud-lock-outline" />
+				{{ t('mcpModule.config.oauth.useRemoteAccessUrl') }}
+			</el-button>
 			<div class="text-sm text-gray-500 mt-1">
 				{{ t('mcpModule.config.oauth.publicBaseUrlDescription') }}
 			</div>
@@ -164,7 +173,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { computed, onMounted, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElCheckbox, ElCheckboxGroup, ElDivider, ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
@@ -173,6 +182,7 @@ import { Icon } from '@iconify/vue';
 
 import { useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
+import { useRemoteAccessUrls } from '../../remote-access';
 import { McpCapability } from '../mcp.constants';
 import { resolveMcpEndpoint } from '../mcp.utils';
 import { McpOAuthPublicBaseUrlSchema, McpOriginSchema } from '../schemas/config.schemas';
@@ -248,6 +258,37 @@ const copyEndpoint = async (): Promise<void> => {
 		flashMessage.error(t('mcpModule.messages.copyFailed'));
 	}
 };
+
+// Offers the remote-access module's primary external URL as a one-click suggestion for the OAuth
+// public base URL. The button only ever fills the field — it never saves or changes the value on its
+// own, because changing the public base URL immediately revokes outstanding OAuth tokens.
+const { primary: remoteAccessPrimaryUrl, fetchUrls: fetchRemoteAccessUrls } = useRemoteAccessUrls();
+
+const remoteAccessHttpsUrl = computed<string | null>((): string | null => {
+	const url = remoteAccessPrimaryUrl.value;
+
+	if (!url) {
+		return null;
+	}
+
+	try {
+		return new URL(url).protocol === 'https:' ? url : null;
+	} catch {
+		return null;
+	}
+});
+
+const applyRemoteAccessUrl = (): void => {
+	if (remoteAccessHttpsUrl.value === null) {
+		return;
+	}
+
+	model.oauthPublicBaseUrl = remoteAccessHttpsUrl.value;
+};
+
+onMounted((): void => {
+	fetchRemoteAccessUrls().catch(() => undefined);
+});
 
 watch(formResult, (value): void => emit('update:remote-form-result', value));
 watch(

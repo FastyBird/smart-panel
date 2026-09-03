@@ -3,6 +3,7 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ApiModule } from '../api/api.module';
 import { AuthModule } from '../auth/auth.module';
 import { ModuleConfigMutationRegistryService } from '../config/services/module-config-mutation-registry.service';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
@@ -96,6 +97,7 @@ import { McpTargetDiscoveryToolService } from './tools/mcp-target-discovery-tool
 })
 @Module({
 	imports: [
+		ApiModule,
 		AuthModule,
 		DevicesModule,
 		EnergyModule,
@@ -253,6 +255,9 @@ Connects trusted MCP-compatible agents to a curated set of Smart Panel tools and
 - Rechecks the installation capability ceiling and client grant for every operation
 - Targets trusted LAN or VPN deployments behind HTTPS for the initial static-bearer release
 - Requires users to verify the installation hostname and reported name before approving write or trigger tools
+- Honours forwarded identity headers for OAuth requests only from an immediate peer listed in the
+  \`FB_MCP_OAUTH_TRUSTED_PROXIES\` environment variable or trusted by the platform's shared remote-access
+  proxy registry (for example a connected Tailscale Serve); every other peer's forwarded headers are rejected
 
 ## Configuration
 

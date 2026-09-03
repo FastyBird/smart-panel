@@ -3,6 +3,7 @@ import { RequestListener } from 'node:http';
 
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
+import { TrustedProxyRegistryService } from '../src/modules/api/services/trusted-proxy-registry.service';
 import { ConfigService } from '../src/modules/config/services/config.service';
 import { MCP_OAUTH_PROTECTED_RESOURCE_METADATA_PATH, MCP_OAUTH_TOKEN_PATH } from '../src/modules/mcp/mcp.constants';
 import { McpConfigModel } from '../src/modules/mcp/models/config.model';
@@ -40,7 +41,10 @@ describe('MCP OAuth reverse-proxy boundary', () => {
 		const publicUrls = new McpOAuthPublicUrlService(configService as unknown as ConfigService);
 		let trustedProxies = '';
 		const env = { get: jest.fn(() => trustedProxies) };
-		const proxyPolicy = new McpOAuthProxyPolicyService(env as unknown as NestConfigService);
+		const proxyPolicy = new McpOAuthProxyPolicyService(
+			env as unknown as NestConfigService,
+			new TrustedProxyRegistryService(),
+		);
 		const readiness = new McpOAuthReadinessService();
 		readiness.register(
 			...MCP_OAUTH_REQUIRED_READINESS_CONTROLS.filter(
