@@ -17,10 +17,16 @@ const ALL_STATES: RemoteAccessModuleProviderState[] = [
 ] as RemoteAccessModuleProviderState[];
 
 describe('resolveTailscaleProviderActions', () => {
-	it.each(ALL_STATES)('offers setup only for not-installed/setup-required (state: %s)', (state) => {
-		const actions = resolveTailscaleProviderActions({ state, hasTailnet: false, isOwner: false });
+	it.each(ALL_STATES)('offers setup to an owner only for not-installed/setup-required (state: %s)', (state) => {
+		const actions = resolveTailscaleProviderActions({ state, hasTailnet: false, isOwner: true });
 
 		expect(actions.setup).toBe(state === 'not-installed' || state === 'setup-required');
+	});
+
+	it.each(ALL_STATES)('never offers setup to a non-owner because `POST /install` is owner-only (state: %s)', (state) => {
+		const actions = resolveTailscaleProviderActions({ state, hasTailnet: false, isOwner: false });
+
+		expect(actions.setup).toBe(false);
 	});
 
 	it('offers sign-in while pending-auth', () => {

@@ -281,8 +281,8 @@ will be swapped, so no plugin changes when it lands.
 - `RemoteAccessModule.Urls.Changed` — `{ internal, external, primaryExternalUrl }`.
 - `RemoteAccessModule.Setup.Progress` — `{ type, job, step, state, message }` from privileged jobs.
 
-The websocket gateway routes `RemoteAccessModule.*` to the exchange room only, the same way it already
-scopes `SystemModule.System.Update.*`, so displays never receive remote-access state.
+The websocket gateway routes `RemoteAccessModule.*` to the admin room only (owner and admin sockets), never
+to the wider exchange room, so user sockets and displays never receive remote-access state.
 
 ### Module configuration
 
@@ -540,7 +540,7 @@ Connect, disconnect and reconnect are the generic Extensions service actions. Re
   `BackendState`; managed service start, stop, config change and factory reset; setup job progress and
   timeout; secret redaction of the auth key in logs and errors.
 - **E2E (backend):** module endpoints with a fake provider registered in the test module; role gating;
-  events routed to the exchange room only; throttler keyed by the forwarded client address behind a trusted
+  events routed to the admin room only; throttler keyed by the forwarded client address behind a trusted
   peer. Poll unused routes to avoid the shared throttler.
 - **Registration inventories:** add the managed service to
   `managed-service-registration.inventory.spec.ts`; no new row in the secret-removal spec because no secret

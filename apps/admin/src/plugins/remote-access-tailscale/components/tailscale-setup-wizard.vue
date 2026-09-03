@@ -235,7 +235,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElDialog, ElForm, ElFormItem, ElIcon, ElInput, ElStep, ElSteps, ElTabPane, ElTabs } from 'element-plus';
@@ -441,4 +441,10 @@ watch(
 	},
 	{ immediate: true }
 );
+
+// The `visible` watcher stops the sign-in poll when the dialog closes; leaving the page with the dialog
+// still open would otherwise keep polling until the login timeout.
+onUnmounted(() => {
+	stopPolling();
+});
 </script>
