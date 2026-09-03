@@ -159,7 +159,11 @@ const rules = reactive<FormRules<IWebhookConfigEditForm>>({
 					return;
 				}
 
-				const headersProvided = typeof value === 'string' && value.trim() !== '';
+				// Absent means untouched, not empty: with headers already configured, the backend
+				// keeps the stored ones and merges them into whatever URL is being saved. Only an
+				// explicit `null` - the secret input's removal gesture - actually clears them.
+				const headersRetained = value === undefined && model.headersConfigured === true;
+				const headersProvided = (typeof value === 'string' && value.trim() !== '') || headersRetained;
 
 				if (showHttpWarning.value && headersProvided) {
 					callback(new Error(t('notificationsWebhookPlugin.fields.config.headers.requiresHttps')));
