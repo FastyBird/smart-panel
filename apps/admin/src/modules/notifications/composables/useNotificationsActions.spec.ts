@@ -14,7 +14,9 @@ const mockMarkRead = vi.fn();
 const mockDismiss = vi.fn();
 // Baseline "nothing failed" shape, kept across tests the same way `mockFindById` is - individual
 // tests override it with `mockResolvedValueOnce`/`mockRejectedValueOnce` for the cases they cover.
+const mockRemove = vi.fn();
 const mockBulkUpdate = vi.fn().mockResolvedValue({ succeeded: [], failed: [] });
+const mockBulkRemove = vi.fn();
 
 const mockSuccess = vi.fn();
 const mockError = vi.fn();
@@ -50,7 +52,9 @@ vi.mock('../../../common', async () => {
 				findById: mockFindById,
 				markRead: mockMarkRead,
 				dismiss: mockDismiss,
+				remove: mockRemove,
 				bulkUpdate: mockBulkUpdate,
+				bulkRemove: mockBulkRemove,
 			}),
 		}),
 		useFlashMessage: () => ({
@@ -185,6 +189,174 @@ describe('useNotificationsActions', () => {
 			expect(mockDismiss).toHaveBeenCalledWith({ id: '2', dismissed: true });
 			expect(mockError).toHaveBeenCalled();
 			expect(mockInfo).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('remove', () => {
+		it('does nothing when the notification cannot be found', async () => {
+			const { remove } = useNotificationsActions();
+
+			await remove('1');
+
+			expect(confirmMock).not.toHaveBeenCalled();
+			expect(mockRemove).not.toHaveBeenCalled();
+		});
+
+		it('confirms before removing, in a separate try block from the request', async () => {
+			confirmMock.mockResolvedValueOnce(undefined);
+			mockRemove.mockResolvedValueOnce(undefined);
+
+			const { remove } = useNotificationsActions();
+
+			await remove('2');
+
+			expect(confirmMock).toHaveBeenCalled();
+			expect(mockRemove).toHaveBeenCalledWith({ id: '2' });
+			expect(mockSuccess).toHaveBeenCalled();
+		});
+
+		it('never calls the store when the confirmation is cancelled', async () => {
+			confirmMock.mockRejectedValueOnce(new Error('cancel'));
+
+			const { remove } = useNotificationsActions();
+
+			await remove('2');
+
+			expect(confirmMock).toHaveBeenCalled();
+			expect(mockRemove).not.toHaveBeenCalled();
+			expect(mockInfo).toHaveBeenCalled();
+		});
+
+		it('flashes an error, not a cancellation, when the confirmed request fails', async () => {
+			confirmMock.mockResolvedValueOnce(undefined);
+			mockRemove.mockRejectedValueOnce(new Error('boom'));
+
+			const { remove } = useNotificationsActions();
+
+			await remove('2');
+
+			expect(mockError).toHaveBeenCalled();
+			expect(mockInfo).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('bulkMarkUnread', () => {
+		it('does nothing for an empty selection', async () => {
+			const { bulkMarkUnread } = useNotificationsActions();
+
+			await bulkMarkUnread([]);
+
+			expect(mockBulkUpdate).not.toHaveBeenCalled();
+		});
+
+		it('bulk-updates the given ids without confirming, quiet on success', async () => {
+			const { bulkMarkUnread } = useNotificationsActions();
+
+			await bulkMarkUnread(['2', '3']);
+
+			expect(confirmMock).not.toHaveBeenCalled();
+			expect(mockBulkUpdate).toHaveBeenCalledWith({ ids: ['2', '3'], read: false });
+			expect(mockSuccess).not.toHaveBeenCalled();
+		});
+
+		it('flashes an error when the request fails', async () => {
+			mockBulkUpdate.mockRejectedValueOnce(new Error('boom'));
+
+			const { bulkMarkUnread } = useNotificationsActions();
+
+			await bulkMarkUnread(['2']);
+
+			expect(mockError).toHaveBeenCalled();
+		});
+	});
+
+	describe('bulkDismiss', () => {
+		it('does nothing for an empty selection', async () => {
+			const { bulkDismiss } = useNotificationsActions();
+
+			await bulkDismiss([]);
+
+			expect(mockBulkUpdate).not.toHaveBeenCalled();
+		});
+
+		it('bulk-updates the given ids without confirming', async () => {
+			const { bulkDismiss } = useNotificationsActions();
+
+			await bulkDismiss(['2', '3']);
+
+			expect(confirmMock).not.toHaveBeenCalled();
+			expect(mockBulkUpdate).toHaveBeenCalledWith({ ids: ['2', '3'], dismissed: true });
+			expect(mockSuccess).toHaveBeenCalled();
+		});
+
+		it('flashes an error when the request fails', async () => {
+			mockBulkUpdate.mockRejectedValueOnce(new Error('boom'));
+
+			const { bulkDismiss } = useNotificationsActions();
+
+			await bulkDismiss(['2']);
+
+			expect(mockError).toHaveBeenCalled();
+		});
+	});
+
+	describe('bulkRemove', () => {
+		it('does nothing for an empty selection', async () => {
+			const { bulkRemove } = useNotificationsActions();
+
+			await bulkRemove([]);
+
+			expect(confirmMock).not.toHaveBeenCalled();
+			expect(mockBulkRemove).not.toHaveBeenCalled();
+		});
+
+		it('confirms before removing, in a separate try block from the request', async () => {
+			confirmMock.mockResolvedValueOnce(undefined);
+			mockBulkRemove.mockResolvedValueOnce({ succeeded: ['2', '3'], failed: [] });
+
+			const { bulkRemove } = useNotificationsActions();
+
+			await bulkRemove(['2', '3']);
+
+			expect(confirmMock).toHaveBeenCalled();
+			expect(mockBulkRemove).toHaveBeenCalledWith({ ids: ['2', '3'] });
+			expect(mockSuccess).toHaveBeenCalled();
+		});
+
+		it('never calls the store when the confirmation is cancelled', async () => {
+			confirmMock.mockRejectedValueOnce(new Error('cancel'));
+
+			const { bulkRemove } = useNotificationsActions();
+
+			await bulkRemove(['2']);
+
+			expect(confirmMock).toHaveBeenCalled();
+			expect(mockBulkRemove).not.toHaveBeenCalled();
+			expect(mockInfo).toHaveBeenCalled();
+		});
+
+		it('flashes an error, not a cancellation, when the confirmed request fails', async () => {
+			confirmMock.mockResolvedValueOnce(undefined);
+			mockBulkRemove.mockRejectedValueOnce(new Error('boom'));
+
+			const { bulkRemove } = useNotificationsActions();
+
+			await bulkRemove(['2']);
+
+			expect(mockError).toHaveBeenCalled();
+			expect(mockInfo).not.toHaveBeenCalled();
+		});
+
+		it('reports partial failures from a mixed bulk result', async () => {
+			confirmMock.mockResolvedValueOnce(undefined);
+			mockBulkRemove.mockResolvedValueOnce({ succeeded: ['2'], failed: [{ id: '3', reason: 'not found' }] });
+
+			const { bulkRemove } = useNotificationsActions();
+
+			await bulkRemove(['2', '3']);
+
+			expect(mockSuccess).toHaveBeenCalled();
+			expect(mockError).toHaveBeenCalled();
 		});
 	});
 });

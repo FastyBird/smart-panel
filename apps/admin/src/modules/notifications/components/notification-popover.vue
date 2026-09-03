@@ -17,7 +17,7 @@
 				<notification-item
 					:notification="item"
 					@click="onOpen(item)"
-					@action="onOpen(item)"
+					@action="onAction(item)"
 					@dismiss="onDismiss(item)"
 				/>
 			</li>
@@ -50,7 +50,7 @@ import { useRouter } from 'vue-router';
 
 import { ElButton, ElEmpty } from 'element-plus';
 
-import { useNotifications, useNotificationsActions } from '../composables/composables';
+import { useNotificationAction, useNotifications, useNotificationsActions } from '../composables/composables';
 import { NOTIFICATIONS_POPOVER_LIMIT, RouteNames, SEVERITY_RANK } from '../notifications.constants';
 import type { INotification } from '../store/notifications.store.schemas';
 
@@ -69,6 +69,7 @@ const router = useRouter();
 
 const { active } = useNotifications();
 const { markRead, markAllRead, dismiss } = useNotificationsActions();
+const { execute } = useNotificationAction();
 
 // Top N active rows by severity rank, then most recent first - the popover is a glance, the
 // full list (N-6) is where every active row lives.
@@ -96,6 +97,26 @@ const onOpen = (notification: INotification): void => {
 
 const onDismiss = (notification: INotification): void => {
 	void dismiss(notification.id, true);
+};
+
+// The primary action is a real CTA (link, extension action, or service control), not a second
+// way to open the drawer - `useNotificationAction` decides what actually happens.
+// `notification-item.vue` only emits the notification, so the primary action itself is
+// re-derived here rather than threaded through the emit.
+const onAction = (notification: INotification): void => {
+	const primaryAction = notification.actions.find((action) => action.primary);
+
+	if (!primaryAction) {
+		return;
+	}
+
+	if (notification.readAt === null) {
+		void markRead(notification.id, true);
+	}
+
+	emit('close');
+
+	void execute(notification, primaryAction);
 };
 
 const onMarkAllRead = (): void => {

@@ -13,6 +13,10 @@ export interface IUseNotificationsActions {
 	// that only fires-and-forgets this still gets the failure surfaced through the flash message.
 	markAllRead: (ids: INotification['id'][]) => Promise<boolean>;
 	dismiss: (id: INotification['id'], dismissed?: boolean) => Promise<void>;
+	remove: (id: INotification['id']) => Promise<void>;
+	bulkMarkUnread: (ids: INotification['id'][]) => Promise<void>;
+	bulkDismiss: (ids: INotification['id'][]) => Promise<void>;
+	bulkRemove: (ids: INotification['id'][]) => Promise<void>;
 }
 
 export const useNotificationsActions = (): IUseNotificationsActions => {
@@ -95,9 +99,113 @@ export const useNotificationsActions = (): IUseNotificationsActions => {
 		}
 	};
 
+	// Same confirm/request split as `dismiss`, for the single-notification delete in the detail
+	// drawer.
+	const remove = async (id: INotification['id']): Promise<void> => {
+		const notification = notificationsStore.findById(id);
+
+		if (notification === null) {
+			return;
+		}
+
+		try {
+			await ElMessageBox.confirm(
+				t('notificationsModule.texts.notifications.confirmRemove', { title: notification.title }),
+				t('notificationsModule.headings.notifications.remove'),
+				{
+					confirmButtonText: t('notificationsModule.buttons.yes.title'),
+					cancelButtonText: t('notificationsModule.buttons.no.title'),
+					type: 'warning',
+				}
+			);
+		} catch {
+			flashMessage.info(t('notificationsModule.messages.notifications.removeCanceled'));
+
+			return;
+		}
+
+		try {
+			await notificationsStore.remove({ id });
+
+			flashMessage.success(t('notificationsModule.messages.notifications.removed'));
+		} catch {
+			flashMessage.error(t('notificationsModule.messages.notifications.notRemoved'));
+		}
+	};
+
+	// Bulk toolbar actions. Only the destructive one (`bulkRemove`, below) confirms - a selection
+	// is already a deliberate act, and mark read/unread/dismiss are all easily reversible.
+	const bulkMarkUnread = async (ids: INotification['id'][]): Promise<void> => {
+		if (ids.length === 0) {
+			return;
+		}
+
+		try {
+			await notificationsStore.bulkUpdate({ ids, read: false });
+		} catch {
+			flashMessage.error(t('notificationsModule.messages.notifications.notMarkedRead'));
+		}
+	};
+
+	const bulkDismiss = async (ids: INotification['id'][]): Promise<void> => {
+		if (ids.length === 0) {
+			return;
+		}
+
+		try {
+			await notificationsStore.bulkUpdate({ ids, dismissed: true });
+
+			flashMessage.success(t('notificationsModule.messages.notifications.dismissed'));
+		} catch {
+			flashMessage.error(t('notificationsModule.messages.notifications.notDismissed'));
+		}
+	};
+
+	const bulkRemove = async (ids: INotification['id'][]): Promise<void> => {
+		if (ids.length === 0) {
+			return;
+		}
+
+		try {
+			await ElMessageBox.confirm(
+				t('notificationsModule.texts.notifications.confirmBulkRemove', { count: ids.length }),
+				t('notificationsModule.headings.notifications.bulkRemove'),
+				{
+					confirmButtonText: t('notificationsModule.buttons.yes.title'),
+					cancelButtonText: t('notificationsModule.buttons.no.title'),
+					type: 'warning',
+				}
+			);
+		} catch {
+			flashMessage.info(t('notificationsModule.messages.notifications.removeCanceled'));
+
+			return;
+		}
+
+		// One request for the whole selection - see `devices.store.ts`'s `bulkRemove` for why
+		// (the backend's shared rate limit refuses one request per row past a small selection).
+		try {
+			const result = await notificationsStore.bulkRemove({ ids });
+
+			if (result.succeeded.length > 0) {
+				flashMessage.success(t('notificationsModule.messages.notifications.bulkRemoved', { count: result.succeeded.length }));
+			}
+
+			if (result.failed.length > 0) {
+				flashMessage.error(t('notificationsModule.messages.notifications.bulkRemoveFailed', { count: result.failed.length }));
+			}
+		} catch {
+			flashMessage.error(t('notificationsModule.messages.notifications.bulkRemoveFailed', { count: ids.length }));
+		}
+	};
+
 	return {
 		markRead,
 		markAllRead,
 		dismiss,
+		remove,
+		bulkMarkUnread,
+		bulkDismiss,
+		bulkRemove,
 	};
 };
