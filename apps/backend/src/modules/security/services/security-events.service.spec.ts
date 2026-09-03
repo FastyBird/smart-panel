@@ -2,15 +2,29 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
 
+import {
+	NotificationActionType,
+	NotificationKind,
+	NotificationSeverity,
+} from '../../notifications/notifications.constants';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 import { StorageService } from '../../storage/services/storage.service';
 import { SecurityAlertModel } from '../models/security-status.model';
-import { AlarmState, ArmedState, SecurityAlertType, SecurityEventType, Severity } from '../security.constants';
+import {
+	AlarmState,
+	ArmedState,
+	SECURITY_MODULE_NAME,
+	SecurityAlertType,
+	SecurityEventType,
+	Severity,
+} from '../security.constants';
 
 import { SecurityEventsService } from './security-events.service';
 
 describe('SecurityEventsService', () => {
 	let service: SecurityEventsService;
 	let influxDb: jest.Mocked<StorageService>;
+	let notifications: { notify: jest.Mock; resolve: jest.Mock };
 
 	const makeAlert = (overrides: Partial<SecurityAlertModel> = {}): SecurityAlertModel => {
 		const alert = new SecurityAlertModel();
@@ -25,6 +39,11 @@ describe('SecurityEventsService', () => {
 	};
 
 	beforeEach(async () => {
+		notifications = {
+			notify: jest.fn().mockResolvedValue(null),
+			resolve: jest.fn().mockResolvedValue(true),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SecurityEventsService,
@@ -37,6 +56,7 @@ describe('SecurityEventsService', () => {
 						query: jest.fn().mockResolvedValue([]),
 					},
 				},
+				{ provide: NotificationsService, useValue: notifications },
 			],
 		}).compile();
 
@@ -177,6 +197,61 @@ describe('SecurityEventsService', () => {
 			await service.recordAlertTransitions([alert], ArmedState.DISARMED, AlarmState.IDLE);
 
 			expect(influxDb.writePoints).not.toHaveBeenCalled();
+		});
+
+		it('should raise a critical notification when a new alert appears', async () => {
+			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE);
+
+			const alert = makeAlert({ id: 'sensor:dev1:smoke', type: SecurityAlertType.SMOKE, sourceDeviceId: 'dev1' });
+			await service.recordAlertTransitions([alert], ArmedState.DISARMED, AlarmState.IDLE);
+
+			expect(notifications.notify).toHaveBeenCalledWith({
+				source: SECURITY_MODULE_NAME,
+				kind: NotificationKind.ISSUE,
+				key: 'alert:sensor:dev1:smoke',
+				severity: NotificationSeverity.CRITICAL,
+				title: 'Security alert: smoke',
+				actions: [{ type: NotificationActionType.LINK, label: 'Open security', url: '/security', primary: true }],
+				data: { alert_type: SecurityAlertType.SMOKE, source_device_id: 'dev1' },
+			});
+		});
+
+		it('should fall back to a null source_device_id when the alert carries none', async () => {
+			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE);
+
+			const alert = new SecurityAlertModel();
+			alert.id = 'sensor:dev2:tamper';
+			alert.type = SecurityAlertType.TAMPER;
+			alert.severity = Severity.WARNING;
+			alert.timestamp = '2025-01-18T12:00:00Z';
+			alert.acknowledged = false;
+			// sourceDeviceId intentionally left undefined - not every alert originates from a device.
+
+			await service.recordAlertTransitions([alert], ArmedState.DISARMED, AlarmState.IDLE);
+
+			expect(notifications.notify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					data: { alert_type: SecurityAlertType.TAMPER, source_device_id: null },
+				}),
+			);
+		});
+
+		it('should resolve the notification when an alert disappears', async () => {
+			const alert = makeAlert({ id: 'sensor:dev1:smoke' });
+			await service.recordAlertTransitions([alert], ArmedState.DISARMED, AlarmState.IDLE);
+
+			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE);
+
+			expect(notifications.resolve).toHaveBeenCalledWith(SECURITY_MODULE_NAME, 'alert:sensor:dev1:smoke');
+		});
+
+		it('should log and swallow a resolve failure without throwing', async () => {
+			notifications.resolve.mockRejectedValue(new Error('db is down'));
+
+			const alert = makeAlert({ id: 'sensor:dev1:smoke' });
+			await service.recordAlertTransitions([alert], ArmedState.DISARMED, AlarmState.IDLE);
+
+			await expect(service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE)).resolves.toBeUndefined();
 		});
 	});
 
