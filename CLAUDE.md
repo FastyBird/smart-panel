@@ -12,6 +12,7 @@ These files contain detailed domain architecture documentation:
 - `docs/climate-architecture.md` - Climate domain architecture
 - `docs/media-architecture.md` - Media domain architecture
 - `docs/optimistic-ui-architecture.md` - Panel optimistic UI patterns
+- `docs/notifications.md` - Notifications module: lifecycle, emitting, writing a channel
 
 Read them when working on the relevant domain.
 
@@ -136,9 +137,9 @@ Add tests for new business logic. If tests are skipped, explain why in the PR.
 apps/
 ├── backend/src/
 │   ├── modules/     # Core: api, auth, config, dashboard, devices, displays,
-│   │                #   energy, extensions, intents, mdns, platform,
-│   │                #   scenes, security, seed, spaces, stats, storage,
-│   │                #   swagger, system, users, weather, websocket
+│   │                #   energy, extensions, intents, mdns, notifications,
+│   │                #   platform, scenes, security, seed, spaces, stats,
+│   │                #   storage, swagger, system, users, weather, websocket
 │   └── plugins/     # Integrations: devices-home-assistant, devices-shelly-ng,
 │                    #   devices-shelly-v1, devices-third-party, influx-v1,
 │                    #   memory-storage, simulator, pages-*, tiles-*,
