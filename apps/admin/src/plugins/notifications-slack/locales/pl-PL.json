@@ -10,8 +10,8 @@
 			"webhookUrl": {
 				"title": "URL webhooka",
 				"placeholder": "https://hooks.slack.com/services/...",
-				"description": "Adres URL przychodzącego webhooka Slack, ze strony ustawień aplikacji danego kanału. Musi zaczynać się od https://.",
-				"invalid": "Podaj adres URL webhooka Slack, który zaczyna się od https:// i nie zawiera osadzonych danych uwierzytelniających"
+				"description": "Slack incoming webhook URL, from a channel's App settings page. Must be an https://hooks.slack.com/services/... URL.",
+				"invalid": "Enter a Slack webhook URL such as https://hooks.slack.com/services/<T.../B.../...>, without embedded credentials or a port"
 			},
 			"minSeverity": {
 				"title": "Minimalna ważność",
