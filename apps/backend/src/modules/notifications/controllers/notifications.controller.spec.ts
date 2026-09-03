@@ -113,6 +113,22 @@ describe('NotificationsController', () => {
 			expect(service.findAll).not.toHaveBeenCalled();
 		});
 
+		it('rejects an unknown status value instead of silently listing active rows', async () => {
+			const req = {} as Request;
+
+			await expect(controller.findAll(req, 'archived' as never)).rejects.toBeInstanceOf(BadRequestException);
+			expect(service.findAll).not.toHaveBeenCalled();
+		});
+
+		it('rejects an unknown kind value instead of filtering on it', async () => {
+			const req = {} as Request;
+
+			await expect(controller.findAll(req, undefined, undefined, undefined, 'alert' as never)).rejects.toBeInstanceOf(
+				BadRequestException,
+			);
+			expect(service.findAll).not.toHaveBeenCalled();
+		});
+
 		it('falls back to the default limit for a non-numeric value', async () => {
 			const req = {} as Request;
 

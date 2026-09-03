@@ -40,6 +40,14 @@ export interface CreateNotificationInput {
 
 export type NotificationsStatusFilter = 'active' | 'dismissed' | 'resolved' | 'all';
 
+/** Every value `NotificationsStatusFilter` admits, for boundary validation of raw query input. */
+export const NOTIFICATIONS_STATUS_FILTERS: readonly NotificationsStatusFilter[] = [
+	'active',
+	'dismissed',
+	'resolved',
+	'all',
+];
+
 export interface NotificationsFilter {
 	/** Defaults to `active`, meaning neither dismissed nor resolved. */
 	status?: NotificationsStatusFilter;

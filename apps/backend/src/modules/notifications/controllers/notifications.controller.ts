@@ -45,7 +45,11 @@ import {
 	NotificationSeverity,
 } from '../notifications.constants';
 import { NotificationsException } from '../notifications.exceptions';
-import { NotificationsService, NotificationsStatusFilter } from '../services/notifications.service';
+import {
+	NOTIFICATIONS_STATUS_FILTERS,
+	NotificationsService,
+	NotificationsStatusFilter,
+} from '../services/notifications.service';
 
 @ApiTags(NOTIFICATIONS_MODULE_API_TAG_NAME)
 @Controller('notifications')
@@ -124,6 +128,16 @@ export class NotificationsController {
 			}
 
 			throw error;
+		}
+
+		// `@ApiQuery` only documents the allowed values; an unknown status would silently fall back
+		// to `active` and an unknown kind would become an exact filter returning an empty page.
+		if (status !== undefined && !NOTIFICATIONS_STATUS_FILTERS.includes(status)) {
+			throw new BadRequestException(`Unknown status filter "${String(status)}"`);
+		}
+
+		if (kind !== undefined && !Object.values(NotificationKind).includes(kind)) {
+			throw new BadRequestException(`Unknown kind filter "${String(kind)}"`);
 		}
 
 		// Mirrors GET /logs: a non-numeric value falls back to the default page size, while
