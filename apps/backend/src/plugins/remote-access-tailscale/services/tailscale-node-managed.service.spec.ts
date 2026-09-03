@@ -869,6 +869,18 @@ describe('TailscaleNodeManagedService', () => {
 			expect(status.advisories).not.toContainEqual(expect.objectContaining({ code: 'key-expiring' }));
 		});
 
+		it('does not add key-expiring when Self.KeyExpiry is already in the past — an expired key surfaces through setup-required instead', async () => {
+			const alreadyExpired = new Date(Date.now() - 60_000).toISOString();
+			cli.getStatus.mockResolvedValue({
+				...RUNNING_CONNECTED_STATUS,
+				Self: { ...RUNNING_CONNECTED_STATUS.Self, KeyExpiry: alreadyExpired },
+			});
+
+			const status = await service.computeStatus();
+
+			expect(status.advisories).not.toContainEqual(expect.objectContaining({ code: 'key-expiring' }));
+		});
+
 		it('reports posture advisories even when the node is not connected (e.g. disconnected with a cached KeyExpiry)', async () => {
 			const soon = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
 			cli.getStatus.mockResolvedValue({ BackendState: 'Stopped', Self: { KeyExpiry: soon } });

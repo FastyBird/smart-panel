@@ -296,28 +296,15 @@ describe('TailscaleCliService', () => {
 		});
 	});
 
-	describe('funnel', () => {
-		it('sends `funnel 443 on`', async () => {
+	describe('funnelOn', () => {
+		it('sends `funnel --bg --https=443 --set-path=/ http://127.0.0.1:<port>` — the serve-v2 form, not the legacy `funnel 443 on`', async () => {
 			mockExecFileOnce(() => ({ exitCode: 0 }));
 
-			await service.funnel('on');
+			await service.funnelOn(3000);
 
 			expect(execFile).toHaveBeenCalledWith(
 				'tailscale',
-				['funnel', '443', 'on'],
-				expect.any(Object),
-				expect.any(Function),
-			);
-		});
-
-		it('sends `funnel 443 off`', async () => {
-			mockExecFileOnce(() => ({ exitCode: 0 }));
-
-			await service.funnel('off');
-
-			expect(execFile).toHaveBeenCalledWith(
-				'tailscale',
-				['funnel', '443', 'off'],
+				['funnel', '--bg', '--https=443', '--set-path=/', 'http://127.0.0.1:3000'],
 				expect.any(Object),
 				expect.any(Function),
 			);
@@ -326,46 +313,28 @@ describe('TailscaleCliService', () => {
 		it('classifies a non-zero exit as an error', async () => {
 			mockExecFileOnce(() => ({ stderr: 'boom', exitCode: 1 }));
 
-			await expect(service.funnel('on')).rejects.toBeInstanceOf(TailscaleCliError);
+			await expect(service.funnelOn(3000)).rejects.toBeInstanceOf(TailscaleCliError);
 		});
 	});
 
-	describe('funnelStatus', () => {
-		it('parses an empty funnel config (funnel off)', async () => {
-			mockExecFileOnce(() => ({ stdout: '{}' }));
+	describe('serveOff', () => {
+		it('sends `serve --https=443 --set-path=/ off` — the scoped removal, never `serve reset`', async () => {
+			mockExecFileOnce(() => ({ exitCode: 0 }));
 
-			const status = await service.funnelStatus();
-
-			expect(status).toEqual({});
-		});
-
-		it('parses a populated AllowFunnel map', async () => {
-			mockExecFileOnce(() => ({
-				stdout: JSON.stringify({ AllowFunnel: { 'panel.tailc0ffee.ts.net:443': true } }),
-			}));
-
-			const status = await service.funnelStatus();
-
-			expect(status.AllowFunnel).toEqual({ 'panel.tailc0ffee.ts.net:443': true });
-		});
-
-		it('raises unknown when the output is not valid JSON', async () => {
-			mockExecFileOnce(() => ({ stdout: 'not json' }));
-
-			await expect(service.funnelStatus()).rejects.toMatchObject({ kind: 'unknown' });
-		});
-
-		it('sends `funnel status --json`', async () => {
-			mockExecFileOnce(() => ({ stdout: '{}' }));
-
-			await service.funnelStatus();
+			await service.serveOff();
 
 			expect(execFile).toHaveBeenCalledWith(
 				'tailscale',
-				['funnel', 'status', '--json'],
+				['serve', '--https=443', '--set-path=/', 'off'],
 				expect.any(Object),
 				expect.any(Function),
 			);
+		});
+
+		it('classifies a non-zero exit as an error', async () => {
+			mockExecFileOnce(() => ({ stderr: 'boom', exitCode: 1 }));
+
+			await expect(service.serveOff()).rejects.toBeInstanceOf(TailscaleCliError);
 		});
 	});
 

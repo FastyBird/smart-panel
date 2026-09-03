@@ -654,8 +654,15 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 		const keyExpiry = status.Self?.KeyExpiry;
 		const expiresAt = keyExpiry ? Date.parse(keyExpiry) : NaN;
+		const now = Date.now();
 
-		if (!Number.isNaN(expiresAt) && expiresAt - Date.now() <= TAILSCALE_KEY_EXPIRY_ADVISORY_WINDOW_MS) {
+		// `expiresAt > now` excludes an already-expired key: by the time that
+		// happens the node has signed itself out and BackendState moves away
+		// from Running (see the state machine doc on the class above), so it
+		// surfaces through `setup-required`'s "sign in again" message
+		// instead — not this advisory, which is specifically an early
+		// warning ahead of that happening.
+		if (!Number.isNaN(expiresAt) && expiresAt > now && expiresAt - now <= TAILSCALE_KEY_EXPIRY_ADVISORY_WINDOW_MS) {
 			advisories.push({
 				code: 'key-expiring',
 				severity: 'warning',

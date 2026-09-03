@@ -61,10 +61,10 @@ function mockProcesses(): void {
 			} else if (file === 'tailscale' && args[0] === 'serve' && args[1] === 'status') {
 				// The fixture's plugin config disables serve_https (see
 				// `configService` below), so nothing ever actually gets served —
-				// this is read (and, since it reports nothing to reset, never
+				// this is read (and, since it reports nothing to remove, never
 				// mutated) on every connected status computation regardless.
-				callback(null, '{}', '');
-			} else if (file === 'tailscale' && args[0] === 'funnel' && args[1] === 'status') {
+				// `tailscale funnel status --json` is registered as the exact
+				// same command upstream, so there is no separate branch for it.
 				callback(null, '{}', '');
 			} else if (file === 'systemctl') {
 				callback(null, 'active\n', '');
