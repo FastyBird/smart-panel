@@ -8,6 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 import { execFile } from 'node:child_process';
 import si, { Systeminformation } from 'systeminformation';
 
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -240,7 +241,12 @@ describe('PlatformService', () => {
 			mockExecFile(() => true);
 
 			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(true);
-			expect(execFile).toHaveBeenCalledWith('sudo', ['-n', '/usr/bin/true'], { timeout: 2000 }, expect.any(Function));
+			expect(execFile).toHaveBeenCalledWith(
+				'sudo',
+				['-n', '-l', '/usr/bin/systemd-run'],
+				{ timeout: 2000 },
+				expect.any(Function),
+			);
 			expect(execFile).toHaveBeenCalledWith('which', ['systemd-run'], { timeout: 2000 }, expect.any(Function));
 		});
 
@@ -260,12 +266,44 @@ describe('PlatformService', () => {
 			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(false);
 		});
 
+		it('reports unsupported and logs which probe failed when `sudo -n -l /usr/bin/systemd-run` exits non-zero', async () => {
+			// A script-installed host's sudoers file grants systemd-run but never
+			// `/usr/bin/true` (build/src/installers/linux.ts) — probing the wrong
+			// command would report unsupported even though privileged jobs would
+			// actually work, which is exactly the bug this probe change fixes.
+			service['platformType'] = PlatformType.RASPBERRY;
+
+			const debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
+
+			mockExecFile((file) => file !== 'sudo');
+
+			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(false);
+			expect(execFile).toHaveBeenCalledWith(
+				'sudo',
+				['-n', '-l', '/usr/bin/systemd-run'],
+				{ timeout: 2000 },
+				expect.any(Function),
+			);
+			expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Passwordless sudo probe'), expect.anything());
+		});
+
 		it('returns false when systemd-run is not on PATH', async () => {
 			service['platformType'] = PlatformType.RASPBERRY;
 
 			mockExecFile((file) => file !== 'which');
 
 			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(false);
+		});
+
+		it('logs which probe failed when the systemd-run availability probe fails', async () => {
+			service['platformType'] = PlatformType.RASPBERRY;
+
+			const debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
+
+			mockExecFile((file) => file !== 'which');
+
+			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(false);
+			expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('systemd-run availability probe'), expect.anything());
 		});
 
 		it('probes only once and caches the result across repeated calls', async () => {
