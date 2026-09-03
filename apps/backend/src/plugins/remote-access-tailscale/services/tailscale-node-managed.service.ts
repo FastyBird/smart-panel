@@ -22,7 +22,6 @@ import { RemoteAccessTailscalePluginConfigModel } from '../models/config.model';
 import {
 	REMOTE_ACCESS_TAILSCALE_ALLOW_DEV_ENV,
 	REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
-	REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX,
 	TAILSCALE_MIN_VERSION,
 	TAILSCALE_POLL_INTERVAL_STABLE_MS,
 	TAILSCALE_POLL_INTERVAL_TRANSITIONING_MS,
@@ -545,7 +544,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		endpoints: RemoteAccessEndpoint[] = [],
 	): RemoteAccessProviderStatus {
 		return {
-			type: REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX,
+			type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 			state,
 			endpoints,
 			message,

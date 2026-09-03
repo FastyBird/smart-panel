@@ -98,7 +98,7 @@ export type RemoteAccessProviderKind = 'mesh' | 'tunnel' | 'vpn' | 'external';
  * request handling.
  */
 export interface IRemoteAccessProvider {
-	/** Plugin type identifier, e.g. `remote-access-tailscale`. */
+	/** Plugin type identifier, e.g. `remote-access-tailscale-plugin`. */
 	readonly type: string;
 	readonly kind: RemoteAccessProviderKind;
 	readonly capabilities: RemoteAccessProviderCapabilities;

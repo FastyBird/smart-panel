@@ -145,7 +145,7 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 			// controller return value — camelCase field names, not the
 			// `@Expose({ name: 'snake_case' })` wire format the real app applies.
 			expect(response.body.data).toMatchObject({
-				type: 'remote-access-tailscale',
+				type: 'remote-access-tailscale-plugin',
 				state: 'connected',
 				proxyAddresses: [],
 				advisories: [],

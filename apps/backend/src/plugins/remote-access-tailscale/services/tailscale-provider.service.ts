@@ -6,7 +6,7 @@ import {
 	RemoteAccessProviderKind,
 	RemoteAccessProviderStatus,
 } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
-import { REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX } from '../remote-access-tailscale.constants';
+import { REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME } from '../remote-access-tailscale.constants';
 
 import { TailscaleNodeManagedService } from './tailscale-node-managed.service';
 
@@ -20,7 +20,7 @@ import { TailscaleNodeManagedService } from './tailscale-node-managed.service';
  */
 @Injectable()
 export class TailscaleProviderService implements IRemoteAccessProvider {
-	readonly type = REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX;
+	readonly type = REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME;
 	readonly kind: RemoteAccessProviderKind = 'mesh';
 	readonly capabilities: RemoteAccessProviderCapabilities = {
 		https: true,

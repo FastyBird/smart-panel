@@ -80,7 +80,12 @@ export class RemoteAccessController {
 		description: 'Retrieve the live status of a single registered remote access provider',
 		operationId: 'get-remote-access-module-provider',
 	})
-	@ApiParam({ name: 'type', description: 'Provider plugin type', type: 'string', example: 'remote-access-tailscale' })
+	@ApiParam({
+		name: 'type',
+		description: 'Provider plugin type',
+		type: 'string',
+		example: 'remote-access-tailscale-plugin',
+	})
 	@ApiSuccessResponse(RemoteAccessProviderResponseModel, 'Remote access provider retrieved successfully')
 	@Get('providers/:type')
 	async getProvider(@Param('type') type: string): Promise<RemoteAccessProviderResponseModel> {
