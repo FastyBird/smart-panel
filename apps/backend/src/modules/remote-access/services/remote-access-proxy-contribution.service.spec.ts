@@ -12,7 +12,7 @@ import { Logger } from '@nestjs/common';
 import { TrustedProxyRegistryService, TrustedProxySource } from '../../api/services/trusted-proxy-registry.service';
 import { ConfigService } from '../../config/services/config.service';
 import { RemoteAccessProviderStatus } from '../platforms/remote-access-provider.platform';
-import { REMOTE_ACCESS_MODULE_NAME } from '../remote-access.constants';
+import { REMOTE_ACCESS_CONFIG_READ_RETRY_INTERVAL_MS, REMOTE_ACCESS_MODULE_NAME } from '../remote-access.constants';
 
 import { RemoteAccessProxyContributionService } from './remote-access-proxy-contribution.service';
 import { RemoteAccessStatusService } from './remote-access-status.service';
@@ -221,6 +221,53 @@ describe('RemoteAccessProxyContributionService', () => {
 
 			expect(addresses.addresses()).toEqual([]);
 			expect(Logger.prototype.warn).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not retry a failed config read before the retry interval has passed (CodeRabbit #952 F2 follow-up)', () => {
+			configService.getModuleConfig.mockImplementation(() => {
+				throw new Error('config store unavailable');
+			});
+			service.onModuleInit();
+			const addresses = registeredSource();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+
+			// Still well within the interval — a failed read must not be
+			// memoised the same way a valid empty result is, but it also must
+			// not retry on every single call, only once the interval passes.
+			service['configReadFailedAt'] = Date.now() - (REMOTE_ACCESS_CONFIG_READ_RETRY_INTERVAL_MS - 1000);
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+		});
+
+		it('retries a failed config read once the retry interval has passed, and memoises the real result on success', () => {
+			configService.getModuleConfig.mockImplementation(() => {
+				throw new Error('config store unavailable');
+			});
+			service.onModuleInit();
+			const addresses = registeredSource();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+
+			// Past the interval — the next addresses() call must retry the
+			// read on its own, with no CONFIG_UPDATED/PROVIDER_STATUS event.
+			service['configReadFailedAt'] = Date.now() - (REMOTE_ACCESS_CONFIG_READ_RETRY_INTERVAL_MS + 1000);
+			configService.getModuleConfig.mockReturnValue({
+				enabled: true,
+				trustForwardedHeaders: true,
+				trustedProxies: ['10.0.0.0/8'],
+			});
+
+			expect(addresses.addresses()).toEqual(['10.0.0.0/8']);
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(2);
+
+			// The retry succeeded: back to normal event-only memoisation, no
+			// further reads until an invalidating event.
+			expect(addresses.addresses()).toEqual(['10.0.0.0/8']);
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(2);
 		});
 	});
 
