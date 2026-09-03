@@ -21,7 +21,7 @@ import { ClientUserDto } from '../dto/client-user.dto';
 import { CommandMessageDto } from '../dto/command-message.dto';
 import { CommandEventRegistryService } from '../services/command-event-registry.service';
 import { WsAuthService } from '../services/ws-auth.service';
-import { DISPLAY_INTERNAL_ROOM, EXCHANGE_ROOM } from '../websocket.constants';
+import { ADMIN_ROOM, DISPLAY_INTERNAL_ROOM, EXCHANGE_ROOM } from '../websocket.constants';
 import { WebsocketNotAllowedException } from '../websocket.exceptions';
 
 import { WebsocketGateway } from './websocket.gateway';
@@ -305,13 +305,14 @@ describe('WebsocketGateway', () => {
 			onAnyCallback(event, payload);
 		};
 
-		it('routes RemoteAccessModule.* events to the exchange room only, next to SystemModule.System.Update.', () => {
+		it('routes RemoteAccessModule.* events to the admin room only, never to the wider exchange room', () => {
 			emitBusEvent('RemoteAccessModule.Provider.Status', {
 				type: 'remote-access-tailscale',
 				state: 'connected',
 			});
 
-			expect(mockServer.to).toHaveBeenCalledWith(EXCHANGE_ROOM);
+			expect(mockServer.to).toHaveBeenCalledWith(ADMIN_ROOM);
+			expect(mockServer.to).not.toHaveBeenCalledWith(EXCHANGE_ROOM);
 			expect(mockServer.to).not.toHaveBeenCalledWith(DISPLAY_INTERNAL_ROOM);
 		});
 

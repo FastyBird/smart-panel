@@ -1,3 +1,5 @@
+import { isUUID } from 'class-validator';
+
 import {
 	BadRequestException,
 	Body,
@@ -138,6 +140,12 @@ export class NotificationsController {
 
 		if (kind !== undefined && !Object.values(NotificationKind).includes(kind)) {
 			throw new BadRequestException(`Unknown kind filter "${String(kind)}"`);
+		}
+
+		// A cursor the service cannot locate would silently restart from the first page and
+		// repeat rows, so a malformed one is a client error rather than "no cursor".
+		if (afterId !== undefined && !isUUID(afterId, '4')) {
+			throw new BadRequestException('Invalid after_id cursor');
 		}
 
 		// Mirrors GET /logs: a non-numeric value falls back to the default page size, while

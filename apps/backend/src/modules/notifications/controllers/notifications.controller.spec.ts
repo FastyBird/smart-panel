@@ -81,7 +81,7 @@ describe('NotificationsController', () => {
 				'system-module',
 				NotificationKind.ISSUE,
 				'true',
-				'cursor-id',
+				'1d2c4d6e-0a1b-4c3d-8e9f-0000000000aa',
 				10,
 			);
 
@@ -91,7 +91,7 @@ describe('NotificationsController', () => {
 				source: 'system-module',
 				kind: NotificationKind.ISSUE,
 				unread: true,
-				afterId: 'cursor-id',
+				afterId: '1d2c4d6e-0a1b-4c3d-8e9f-0000000000aa',
 				limit: 11,
 			});
 		});
@@ -129,6 +129,15 @@ describe('NotificationsController', () => {
 			expect(service.findAll).not.toHaveBeenCalled();
 		});
 
+		it('rejects a malformed after_id cursor instead of restarting from the first page', async () => {
+			const req = {} as Request;
+
+			await expect(
+				controller.findAll(req, undefined, undefined, undefined, undefined, undefined, 'not-a-uuid'),
+			).rejects.toBeInstanceOf(BadRequestException);
+			expect(service.findAll).not.toHaveBeenCalled();
+		});
+
 		it('falls back to the default limit for a non-numeric value', async () => {
 			const req = {} as Request;
 
@@ -147,9 +156,9 @@ describe('NotificationsController', () => {
 		});
 
 		it('paginates 3 equally-timed rows across two pages of limit 2 without loss or repeat', async () => {
-			const c = fakeNotification({ id: 'row-c' });
-			const b = fakeNotification({ id: 'row-b' });
-			const a = fakeNotification({ id: 'row-a' });
+			const c = fakeNotification({ id: '1d2c4d6e-0a1b-4c3d-8e9f-000000000003' });
+			const b = fakeNotification({ id: '1d2c4d6e-0a1b-4c3d-8e9f-000000000002' });
+			const a = fakeNotification({ id: '1d2c4d6e-0a1b-4c3d-8e9f-000000000001' });
 
 			service.findAll.mockResolvedValueOnce([c, b, a]);
 
@@ -166,7 +175,10 @@ describe('NotificationsController', () => {
 			);
 
 			expect(firstPage.data).toEqual([c, b]);
-			expect(getResponseMeta(firstReq)).toEqual({ next_cursor: 'row-b', has_more: true });
+			expect(getResponseMeta(firstReq)).toEqual({
+				next_cursor: '1d2c4d6e-0a1b-4c3d-8e9f-000000000002',
+				has_more: true,
+			});
 
 			service.findAll.mockResolvedValueOnce([a]);
 
@@ -178,13 +190,15 @@ describe('NotificationsController', () => {
 				undefined,
 				undefined,
 				undefined,
-				'row-b',
+				'1d2c4d6e-0a1b-4c3d-8e9f-000000000002',
 				2,
 			);
 
 			expect(secondPage.data).toEqual([a]);
 			expect(getResponseMeta(secondReq)).toEqual({ next_cursor: undefined, has_more: false });
-			expect(service.findAll).toHaveBeenLastCalledWith(expect.objectContaining({ afterId: 'row-b', limit: 3 }));
+			expect(service.findAll).toHaveBeenLastCalledWith(
+				expect.objectContaining({ afterId: '1d2c4d6e-0a1b-4c3d-8e9f-000000000002', limit: 3 }),
+			);
 		});
 
 		it('reports has_more and a cursor at the maximum page size boundary (limit=200, 201 rows)', async () => {
