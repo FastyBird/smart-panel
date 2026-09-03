@@ -19,7 +19,7 @@
 		</div>
 
 		<div class="flex flex-row items-center gap-5">
-			<update-notification-badge />
+			<notification-bell />
 
 			<language-switcher />
 
@@ -105,7 +105,7 @@ import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElHeader, ElSwitc
 
 import { Icon } from '@iconify/vue';
 
-import { UpdateNotificationBadge } from '../../modules/system/components/components';
+import { NotificationBell } from '../../modules/notifications/components/components';
 import { useDarkMode } from '../composables/useDarkMode';
 import { injectAccountManager } from '../services/account-manager';
 

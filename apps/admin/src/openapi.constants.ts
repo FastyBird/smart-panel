@@ -103,6 +103,13 @@ export type SystemModuleLogEntrySchema = components['schemas']['SystemModuleData
 export type SystemModuleSystemInfoSchema = components['schemas']['SystemModuleDataSystemInfo'];
 export type SystemModuleThrottleStatusSchema = components['schemas']['SystemModuleDataThrottleStatus'];
 
+// Notifications Module Schemas
+export type NotificationsModuleNotificationSchema = components['schemas']['NotificationsModuleDataNotification'];
+export type NotificationsModuleNotificationActionSchema = components['schemas']['NotificationsModuleDataNotificationAction'];
+export type NotificationsModuleBulkUpdateNotificationsSchema = components['schemas']['NotificationsModuleBulkUpdateNotifications'];
+export type NotificationsModuleBulkRemoveNotificationsSchema = components['schemas']['NotificationsModuleBulkRemoveNotifications'];
+export type NotificationsModuleConfigSchema = components['schemas']['NotificationsModuleDataConfig'];
+
 // Weather Module Schemas
 export type WeatherModuleCurrentDaySchema = components['schemas']['WeatherModuleDataCurrentDay'];
 export type WeatherModuleForecastDaySchema = components['schemas']['WeatherModuleDataForecastDay'];
@@ -412,6 +419,14 @@ export type SystemModuleCreateLogsOperation = operations['create-system-module-l
 export type SystemModuleGetSystemInfoOperation = operations['get-system-module-system-info'];
 export type SystemModuleGetSystemThrottleOperation = operations['get-system-module-system-throttle'];
 
+// Notifications Module Operations
+export type NotificationsModuleGetNotificationsOperation = operations['get-notifications-module-notifications'];
+export type NotificationsModuleGetNotificationOperation = operations['get-notifications-module-notification'];
+export type NotificationsModuleUpdateNotificationOperation = operations['update-notifications-module-notification'];
+export type NotificationsModuleDeleteNotificationOperation = operations['delete-notifications-module-notification'];
+export type NotificationsModuleBulkUpdateNotificationsOperation = operations['bulk-update-notifications-module-notifications'];
+export type NotificationsModuleBulkRemoveNotificationsOperation = operations['bulk-remove-notifications-module-notifications'];
+
 // Extensions Module Operations
 export type ExtensionsModuleGetExtensionOperation = operations['get-extensions-module-extension'];
 export type ExtensionsModuleGetExtensionsOperation = operations['get-extensions-module-extensions'];
@@ -690,7 +705,7 @@ export { DevicesZigbee2mqttPluginUpdateConfigConnection_type as Zigbee2mqttConne
 export { SystemModuleDataSystemInfoPlatform as SystemModulePlatform } from './openapi';
 
 // Config Module Schemas (additional)
-// ===================================
+// ============================
 export type ConfigModuleRemoteAccessSchema = components['schemas']['ConfigModuleDataRemoteAccess'];
 export type ConfigModuleUpdateRemoteAccessSchema = components['schemas']['ConfigModuleUpdateRemoteAccess'];
 
@@ -716,3 +731,20 @@ export { RemoteAccessModuleDataProviderKind as RemoteAccessModuleProviderKind } 
 export { RemoteAccessModuleDataProviderState as RemoteAccessModuleProviderState } from './openapi';
 export { RemoteAccessModuleDataEndpointScope as RemoteAccessModuleEndpointScope } from './openapi';
 export { PathsModulesSecurityEventsGetParametersQuerySeverity as RemoteAccessModuleAdvisorySeverity } from './openapi';
+// Notifications Module Enums
+// ===========================
+export { PathsModulesNotificationsNotificationsGetParametersQuerySeverity as NotificationsModuleNotificationSeverity } from './openapi';
+
+export { PathsModulesNotificationsNotificationsGetParametersQueryKind as NotificationsModuleNotificationKind } from './openapi';
+
+// The store's `fetch()` takes `status` as a plain string literal union so callers do not need to
+// import an enum for it; this alias exists only to cast that literal onto the generated query
+// parameter's stricter enum type where the request actually goes out.
+export { PathsModulesNotificationsNotificationsGetParametersQueryStatus as NotificationsModuleNotificationStatus } from './openapi';
+
+export { NotificationsModuleDataNotificationActionType as NotificationsModuleNotificationActionType } from './openapi';
+
+// The action's `operation` field, needed to bind `NotificationsModuleNotificationActionSchema`'s
+// Zod schema to its exact generated shape (`ZodType<NotificationsModuleNotificationActionSchema>`);
+// `extension_kind` reuses the existing `ExtensionKind` alias above instead of a second one.
+export { NotificationsModuleDataNotificationActionOperation as NotificationsModuleNotificationActionOperation } from './openapi';

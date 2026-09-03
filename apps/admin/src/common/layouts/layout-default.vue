@@ -11,6 +11,24 @@
 					<logo class="fill-white h-[30px]" />
 				</router-link>
 			</template>
+
+			<template #button-right>
+				<div class="flex flex-row items-center gap-2">
+					<notification-bell />
+
+					<el-button
+						size="large"
+						type="primary"
+						circle
+						:aria-label="t('application.buttons.toggleMenu.title')"
+						@click.prevent="onToggleMenu"
+					>
+						<template #icon>
+							<icon icon="mdi:menu" />
+						</template>
+					</el-button>
+				</div>
+			</template>
 		</app-bar>
 
 		<el-main class="flex-1">
@@ -59,11 +77,15 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
-import { ElAside, ElContainer, ElDrawer, ElMain, useNamespace } from 'element-plus';
+import { ElAside, ElButton, ElContainer, ElDrawer, ElMain, useNamespace } from 'element-plus';
+
+import { Icon } from '@iconify/vue';
 
 import { RouteNames } from '../../app.constants';
 import Logo from '../../assets/images/fb_row.svg?component';
+import { NotificationBell } from '../../modules/notifications/components/components';
 import { AppBar, AppNavigation, AppSidebar, AppTopBar } from '../components/components';
 import { useBreakpoints } from '../composables/useBreakpoints';
 
@@ -72,6 +94,7 @@ defineOptions({
 });
 
 const ns = useNamespace('app-layout-default');
+const { t } = useI18n();
 const { isMDDevice, isXLDevice } = useBreakpoints();
 
 const menuState = ref<boolean>(false);

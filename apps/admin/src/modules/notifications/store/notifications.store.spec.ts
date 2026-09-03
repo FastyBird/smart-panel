@@ -1,0 +1,388 @@
+import { createPinia, setActivePinia } from 'pinia';
+
+import { v4 as uuid } from 'uuid';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { NotificationsModuleNotificationKind, NotificationsModuleNotificationSeverity } from '../../../openapi.constants';
+
+import { useNotifications } from './notifications.store';
+import type { INotificationRes } from './notifications.store.schemas';
+
+// `vi.mock` factories are hoisted above regular top-level declarations, so anything they
+// reference directly (not merely wrapped in a function that runs later) has to go through
+// `vi.hoisted` to avoid a temporal-dead-zone `ReferenceError` at import time.
+const { mockBackendClient, mockLogger } = vi.hoisted(() => ({
+	mockBackendClient: {
+		GET: vi.fn(),
+		POST: vi.fn(),
+		PATCH: vi.fn(),
+		DELETE: vi.fn(),
+	},
+	mockLogger: {
+		log: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+		fatal: vi.fn(),
+	},
+}));
+
+vi.mock('../../../common', async () => {
+	const utils = await vi.importActual('../../../common/utils/utils');
+	const composables = await vi.importActual('../../../common/composables/composables');
+	const services = await vi.importActual('../../../common/services/services');
+	const store = await vi.importActual('../../../common/store/stores');
+	const constants = await vi.importActual('../../../common/common.constants');
+
+	return {
+		...utils,
+		...composables,
+		...services,
+		...store,
+		...constants,
+		useBackend: vi.fn(() => ({
+			client: mockBackendClient,
+		})),
+		logger: mockLogger,
+	};
+});
+
+const notificationFixture = (overrides: Partial<INotificationRes> = {}): INotificationRes =>
+	({
+		id: uuid(),
+		source: 'system-module',
+		kind: NotificationsModuleNotificationKind.event,
+		key: null,
+		severity: NotificationsModuleNotificationSeverity.warning,
+		title: 'Something happened',
+		message: null,
+		actions: [],
+		data: null,
+		persistent: false,
+		occurrences: 1,
+		read_at: null,
+		dismissed_at: null,
+		resolved_at: null,
+		created_at: '2026-09-02T12:00:00.000Z',
+		updated_at: null,
+		...overrides,
+	}) as unknown as INotificationRes;
+
+describe('Notifications Store', () => {
+	let store: ReturnType<typeof useNotifications>;
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+
+		store = useNotifications();
+
+		vi.clearAllMocks();
+	});
+
+	describe('set / unset / onEvent', () => {
+		it('inserts a new row through set()', () => {
+			const id = uuid();
+
+			const notification = store.set({
+				id,
+				data: {
+					source: 'system-module',
+					kind: NotificationsModuleNotificationKind.event,
+					severity: NotificationsModuleNotificationSeverity.info,
+					title: 'Backup finished',
+					createdAt: new Date('2026-09-02T12:00:00.000Z'),
+				},
+			});
+
+			expect(notification.id).toBe(id);
+			expect(notification.title).toBe('Backup finished');
+			expect(store.findById(id)).not.toBeNull();
+		});
+
+		it('merges a partial update into an existing row through set()', () => {
+			const id = uuid();
+
+			store.set({
+				id,
+				data: {
+					source: 'system-module',
+					kind: NotificationsModuleNotificationKind.event,
+					severity: NotificationsModuleNotificationSeverity.info,
+					title: 'Backup finished',
+					createdAt: new Date('2026-09-02T12:00:00.000Z'),
+				},
+			});
+
+			const updated = store.set({
+				id,
+				data: { title: 'Backup finished (retry)' },
+			});
+
+			expect(updated.title).toBe('Backup finished (retry)');
+			expect(updated.source).toBe('system-module');
+		});
+
+		it('rejects a row that fails schema validation', () => {
+			expect(() =>
+				store.set({
+					id: uuid(),
+					// Missing every required field (source, kind, severity, title, createdAt).
+					data: {},
+				})
+			).toThrow();
+		});
+
+		it('removes a row through unset() and drops it from listIds', async () => {
+			const notification = notificationFixture();
+
+			mockBackendClient.GET.mockResolvedValueOnce({
+				data: { data: [notification], metadata: { has_more: false, next_cursor: undefined } },
+				error: undefined,
+				response: { status: 200, ok: true },
+			});
+
+			await store.fetch();
+
+			expect(store.findById(notification.id)).not.toBeNull();
+			expect(store.list().map((item) => item.id)).toContain(notification.id);
+
+			store.unset({ id: notification.id });
+
+			expect(store.findById(notification.id)).toBeNull();
+			expect(store.list().map((item) => item.id)).not.toContain(notification.id);
+		});
+
+		it('parses a wire-shaped payload through onEvent()', () => {
+			const notification = notificationFixture({ title: 'Home Assistant connection lost', severity: NotificationsModuleNotificationSeverity.error });
+
+			const parsed = store.onEvent({ id: notification.id, data: notification as unknown as Record<string, unknown> });
+
+			expect(parsed.title).toBe('Home Assistant connection lost');
+			expect(parsed.severity).toBe(NotificationsModuleNotificationSeverity.error);
+			expect(store.findById(notification.id)?.title).toBe('Home Assistant connection lost');
+		});
+
+		it('keeps data and action params untouched by case conversion', () => {
+			const notification = notificationFixture({
+				data: { failed_attempts: 3, remote_ip: '10.0.0.5' },
+				actions: [
+					{
+						type: 'extension_action',
+						label: 'Retry',
+						extension_type: 'devices-home-assistant-plugin',
+						action_id: 'reconnect',
+						params: { force_reload: true },
+					},
+				],
+			} as Partial<INotificationRes>);
+
+			const parsed = store.onEvent({ id: notification.id, data: notification as unknown as Record<string, unknown> });
+
+			expect(parsed.data).toEqual({ failed_attempts: 3, remote_ip: '10.0.0.5' });
+			expect(parsed.actions[0]?.params).toEqual({ force_reload: true });
+			expect(parsed.actions[0]?.extensionType).toBe('devices-home-assistant-plugin');
+			expect(parsed.actions[0]?.actionId).toBe('reconnect');
+		});
+	});
+
+	describe('fetch()', () => {
+		it('resets listIds on a plain fetch and keeps items merged by id', async () => {
+			const first = notificationFixture({ title: 'First page row' });
+
+			mockBackendClient.GET.mockResolvedValueOnce({
+				data: { data: [first], metadata: { has_more: true, next_cursor: first.id } },
+				error: undefined,
+				response: { status: 200, ok: true },
+			});
+
+			await store.fetch();
+
+			expect(store.list().map((item) => item.id)).toEqual([first.id]);
+			expect(store.hasMore).toBe(true);
+			expect(store.nextCursor).toBe(first.id);
+
+			const second = notificationFixture({ title: 'Replacement page row' });
+
+			mockBackendClient.GET.mockResolvedValueOnce({
+				data: { data: [second], metadata: { has_more: false, next_cursor: undefined } },
+				error: undefined,
+				response: { status: 200, ok: true },
+			});
+
+			await store.fetch();
+
+			// A plain fetch replaces listIds with the new page...
+			expect(store.list().map((item) => item.id)).toEqual([second.id]);
+			// ...but items keeps every row ever seen, so the first row is still reachable by id.
+			expect(store.findById(first.id)).not.toBeNull();
+		});
+
+		it('appends the page onto listIds when append is true, without duplicating an id', async () => {
+			const first = notificationFixture({ title: 'Page one row' });
+
+			mockBackendClient.GET.mockResolvedValueOnce({
+				data: { data: [first], metadata: { has_more: true, next_cursor: first.id } },
+				error: undefined,
+				response: { status: 200, ok: true },
+			});
+
+			await store.fetch();
+
+			const second = notificationFixture({ title: 'Page two row' });
+
+			mockBackendClient.GET.mockResolvedValueOnce({
+				data: { data: [second], metadata: { has_more: false, next_cursor: undefined } },
+				error: undefined,
+				response: { status: 200, ok: true },
+			});
+
+			await store.fetch({ afterId: first.id, append: true });
+
+			expect(store.list().map((item) => item.id)).toEqual([first.id, second.id]);
+
+			// Re-appending the same row (e.g. an overlapping page) must not duplicate its id.
+			mockBackendClient.GET.mockResolvedValueOnce({
+				data: { data: [second], metadata: { has_more: false, next_cursor: undefined } },
+				error: undefined,
+				response: { status: 200, ok: true },
+			});
+
+			await store.fetch({ afterId: first.id, append: true });
+
+			expect(store.list().map((item) => item.id)).toEqual([first.id, second.id]);
+		});
+
+		it('sends the filters as query parameters rather than filtering locally', async () => {
+			mockBackendClient.GET.mockResolvedValueOnce({
+				data: { data: [], metadata: { has_more: false, next_cursor: undefined } },
+				error: undefined,
+				response: { status: 200, ok: true },
+			});
+
+			await store.fetch({
+				status: 'active',
+				severity: [NotificationsModuleNotificationSeverity.error, NotificationsModuleNotificationSeverity.critical],
+				source: 'system-module',
+				kind: NotificationsModuleNotificationKind.issue,
+				unread: true,
+				afterId: 'b2222222-2222-2222-2222-222222222222',
+			});
+
+			expect(mockBackendClient.GET).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({
+					params: {
+						query: {
+							status: 'active',
+							severity: [NotificationsModuleNotificationSeverity.error, NotificationsModuleNotificationSeverity.critical],
+							source: 'system-module',
+							kind: NotificationsModuleNotificationKind.issue,
+							unread: true,
+							after_id: 'b2222222-2222-2222-2222-222222222222',
+						},
+					},
+				})
+			);
+		});
+	});
+
+	describe('ordering token', () => {
+		it('skips a stale get() that lands after the row was unset', async () => {
+			const notification = notificationFixture();
+
+			let resolveRequest!: (value: unknown) => void;
+
+			const request = new Promise((resolve) => {
+				resolveRequest = resolve;
+			});
+
+			(mockBackendClient.GET as Mock).mockReturnValueOnce(request);
+
+			const pending = store.get({ id: notification.id });
+
+			// The Deleted event races ahead of the still-in-flight get(), forgetting the row.
+			store.unset({ id: notification.id });
+
+			resolveRequest({ data: { data: notification }, error: undefined, response: { status: 200, ok: true } });
+
+			const result = await pending;
+
+			// The read is still a truthful answer to the caller...
+			expect(result.id).toBe(notification.id);
+			// ...but it must not resurrect the row the newer unset() removed.
+			expect(store.findById(notification.id)).toBeNull();
+		});
+
+		it('applies a get() that lands with nothing newer written since', async () => {
+			const notification = notificationFixture();
+
+			mockBackendClient.GET.mockResolvedValueOnce({
+				data: { data: notification },
+				error: undefined,
+				response: { status: 200, ok: true },
+			});
+
+			await store.get({ id: notification.id });
+
+			expect(store.findById(notification.id)).not.toBeNull();
+		});
+	});
+
+	describe('unreadCount / highestActiveSeverity', () => {
+		it('counts only active, unread rows', async () => {
+			const unreadActive = notificationFixture({ read_at: null, dismissed_at: null, resolved_at: null });
+			const readActive = notificationFixture({ read_at: '2026-09-02T12:00:00.000Z', dismissed_at: null, resolved_at: null });
+			const unreadDismissed = notificationFixture({ read_at: null, dismissed_at: '2026-09-02T12:00:00.000Z', resolved_at: null });
+			const unreadResolved = notificationFixture({ read_at: null, dismissed_at: null, resolved_at: '2026-09-02T12:00:00.000Z' });
+
+			mockBackendClient.GET.mockResolvedValueOnce({
+				data: { data: [unreadActive, readActive, unreadDismissed, unreadResolved], metadata: { has_more: false, next_cursor: undefined } },
+				error: undefined,
+				response: { status: 200, ok: true },
+			});
+
+			await store.fetch();
+
+			expect(store.unreadCount()).toBe(1);
+			expect(store.active().map((item) => item.id)).toEqual([unreadActive.id, readActive.id]);
+		});
+
+		it('returns null when there are no active rows', () => {
+			expect(store.highestActiveSeverity()).toBeNull();
+		});
+
+		it('picks the highest severity among the active rows', async () => {
+			const info = notificationFixture({ severity: NotificationsModuleNotificationSeverity.info });
+			const critical = notificationFixture({ severity: NotificationsModuleNotificationSeverity.critical });
+			const warning = notificationFixture({ severity: NotificationsModuleNotificationSeverity.warning });
+
+			mockBackendClient.GET.mockResolvedValueOnce({
+				data: { data: [info, critical, warning], metadata: { has_more: false, next_cursor: undefined } },
+				error: undefined,
+				response: { status: 200, ok: true },
+			});
+
+			await store.fetch();
+
+			expect(store.highestActiveSeverity()).toBe(NotificationsModuleNotificationSeverity.critical);
+		});
+
+		it('ignores a dismissed critical row in favour of an active warning row', async () => {
+			const dismissedCritical = notificationFixture({
+				severity: NotificationsModuleNotificationSeverity.critical,
+				dismissed_at: '2026-09-02T12:00:00.000Z',
+			});
+			const activeWarning = notificationFixture({ severity: NotificationsModuleNotificationSeverity.warning });
+
+			mockBackendClient.GET.mockResolvedValueOnce({
+				data: { data: [dismissedCritical, activeWarning], metadata: { has_more: false, next_cursor: undefined } },
+				error: undefined,
+				response: { status: 200, ok: true },
+			});
+
+			await store.fetch();
+
+			expect(store.highestActiveSeverity()).toBe(NotificationsModuleNotificationSeverity.warning);
+		});
+	});
+});

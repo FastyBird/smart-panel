@@ -31,6 +31,9 @@
 		"buttons": {
 			"home": {
 				"title": "Startseite"
+			},
+			"toggleMenu": {
+				"title": "Menü umschalten"
 			}
 		},
 		"bulkActions": {
