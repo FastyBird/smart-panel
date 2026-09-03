@@ -22,9 +22,10 @@ export interface PrivilegedJobSpec {
 	 * detection. Omit when the script already writes the canonical `{ state, step, message }`
 	 * shape directly. Only `state`, `step` and `message` are read from the return value — `id`
 	 * and `updatedAt` are always service-owned (see PrivilegedJobStatus) even if present here.
+	 * `state: 'timeout'` is rejected — that value is reserved for the service itself.
 	 * Return `null` to signal "not a valid status yet" (e.g. the file is mid-write) — the tick
-	 * is skipped and retried next cycle, exactly like a JSON parse failure or a missing/
-	 * unrecognized `state`.
+	 * is skipped and retried next cycle, exactly like a JSON parse failure, a missing/
+	 * unrecognized `state`, or the mapper itself throwing.
 	 */
 	mapStatus?: (raw: Record<string, unknown>) => Partial<PrivilegedJobStatus> | null;
 }
@@ -36,7 +37,8 @@ export interface PrivilegedJobStatus {
 	 * Validated against `'running' | 'complete' | 'failed' | 'timeout'`. A native script (or a
 	 * `mapStatus` result) with a missing or unrecognized `state` is treated as no status at all
 	 * — the tick is ignored and the previous status stands. `'timeout'` is reserved: only this
-	 * service ever produces it, after the job's hard timeout elapses.
+	 * service ever produces it, after the job's hard timeout elapses — a file/mapper tick
+	 * claiming `'timeout'` is rejected the same way as a missing/unrecognized state.
 	 */
 	state: 'running' | 'complete' | 'failed' | 'timeout';
 	/** Free-form, caller-defined. Non-string values from the file/mapper are dropped. */
@@ -67,10 +69,13 @@ interface JobRecord {
 const STATUS_POLL_INTERVAL_MS = 3_000; // Poll worker status every 3 seconds
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
-const VALID_STATES: ReadonlySet<string> = new Set(['running', 'complete', 'failed', 'timeout']);
+// 'timeout' is deliberately excluded — it is reserved for this service's own hard-timeout path
+// (see the top of startPolling's tick below). A file/mapper tick claiming it is invalid, same as
+// a missing or unrecognized state.
+const VALID_TICK_STATES: ReadonlySet<string> = new Set(['running', 'complete', 'failed']);
 
-function isValidState(value: unknown): value is PrivilegedJobStatus['state'] {
-	return typeof value === 'string' && VALID_STATES.has(value);
+function isValidTickState(value: unknown): value is Exclude<PrivilegedJobStatus['state'], 'timeout'> {
+	return typeof value === 'string' && VALID_TICK_STATES.has(value);
 }
 
 function toOptionalString(value: unknown): string | undefined {
@@ -149,7 +154,13 @@ export class PrivilegedWorkerService {
 
 			// Detached + unref'd, so a crash of this process's own error handling must not
 			// crash the process — sudo/systemd-run missing is a config error, not a fatal one.
+			// Guarded the same way as 'exit' below: a stale/late 'error' after the job already
+			// went terminal (via the status file, or the 'exit' handler) must not re-fire it.
 			child.on('error', (error) => {
+				if (record.lastStatus.state !== 'running') {
+					return;
+				}
+
 				this.logger.error(`Privileged worker unit "${spec.unit}" failed to spawn: ${error.message}`);
 
 				this.finishJob(record, {
@@ -254,25 +265,28 @@ export class PrivilegedWorkerService {
 				return;
 			}
 
-			let rawParsed: unknown;
+			let mapped: Partial<PrivilegedJobStatus> | null;
 
 			try {
 				const raw = readFileSync(record.statusFile, 'utf-8');
+				const rawParsed = JSON.parse(raw) as Record<string, unknown>;
 
-				rawParsed = JSON.parse(raw);
-			} catch {
-				// File may be mid-write (script writes to a temp file then renames it) — retry next cycle
+				// mapStatus is caller-supplied code — a throw here must be handled exactly like a
+				// torn/mid-write read, not propagate out of this interval callback.
+				mapped = record.mapStatus ? record.mapStatus(rawParsed) : (rawParsed as Partial<PrivilegedJobStatus>);
+			} catch (error) {
+				const err = error as Error;
+
+				this.logInvalidStatusOnce(record, `failed to read status: ${err.message}`);
+
 				return;
 			}
 
-			const mapped = record.mapStatus
-				? record.mapStatus(rawParsed as Record<string, unknown>)
-				: (rawParsed as Partial<PrivilegedJobStatus>);
-
-			if (!mapped || !isValidState(mapped.state)) {
+			if (!mapped || !isValidTickState(mapped.state)) {
 				// mapStatus returned null, or the (mapped/native) state is missing or not one of
-				// 'running' | 'complete' | 'failed' | 'timeout' — not a usable status. Ignored:
-				// the previous status stands, and this never advances or releases the unit.
+				// 'running' | 'complete' | 'failed' (never 'timeout' — reserved, see above) — not
+				// a usable status. Ignored: the previous status stands, and this never advances
+				// or releases the unit.
 				this.logInvalidStatusOnce(
 					record,
 					mapped ? `unrecognized state ${JSON.stringify(mapped.state)}` : 'mapStatus returned null',
@@ -316,7 +330,17 @@ export class PrivilegedWorkerService {
 		);
 	}
 
+	/**
+	 * A no-op once the job is already terminal — belt-and-suspenders alongside each call site's
+	 * own `state !== 'running'` pre-check, so a duplicate/racing call (e.g. a stale child event
+	 * arriving after the status file already reported completion) can never overwrite an
+	 * already-settled result or re-notify handlers a second time.
+	 */
 	private finishJob(record: JobRecord, status: PrivilegedJobStatus): void {
+		if (record.lastStatus.state !== 'running') {
+			return;
+		}
+
 		record.lastStatus = status;
 
 		for (const handler of record.handlers) {
@@ -332,6 +356,11 @@ export class PrivilegedWorkerService {
 			record.pollTimer = null;
 		}
 
-		this.busyUnits.delete(record.unit);
+		// A newer job may already have reserved this unit (this job's own reservation was freed
+		// earlier by its own terminal status) — only clear the entry if it still belongs to this
+		// job, so a stale/late event from an old record can never evict a newer job's lock.
+		if (this.busyUnits.get(record.unit) === record.id) {
+			this.busyUnits.delete(record.unit);
+		}
 	}
 }

@@ -431,6 +431,36 @@ describe('PrivilegedWorkerService', () => {
 			expect(handler).not.toHaveBeenCalled();
 			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'complete' }));
 		});
+
+		it('never lets a stale event from an old record evict a newer unit reservation', async () => {
+			const oldChild = fakeChild;
+
+			const { id: oldId } = await service.run(baseSpec);
+
+			// error finishes the old job and frees the unit ...
+			oldChild.emit('error', new Error('boom'));
+			expect(service.getStatus(oldId)).toEqual(expect.objectContaining({ state: 'failed' }));
+
+			// ... exit right after is a no-op (idempotent finish — already terminal).
+			oldChild.emit('exit', 0, null);
+			expect(service.getStatus(oldId)).toEqual(expect.objectContaining({ state: 'failed' }));
+
+			// A newer job now reserves the same unit, with its own child.
+			const newChild = Object.assign(new EventEmitter(), { unref: jest.fn(), pid: 5151 }) as FakeChild;
+			(spawn as jest.Mock).mockReturnValueOnce(newChild);
+
+			const { id: newId } = await service.run(baseSpec);
+			expect(newId).not.toBe(oldId);
+
+			// A stale event fires on the OLD child/record after the newer job has already started.
+			oldChild.emit('exit', 1, null);
+			oldChild.emit('error', new Error('late'));
+
+			// The newer job's own status is untouched, and its unit reservation survived: a third
+			// run for the same unit is still rejected.
+			expect(service.getStatus(newId)).toEqual(expect.objectContaining({ state: 'running' }));
+			await expect(service.run(baseSpec)).rejects.toThrow(PrivilegedWorkerUnavailableException);
+		});
 	});
 
 	describe('mapStatus', () => {
@@ -489,6 +519,46 @@ describe('PrivilegedWorkerService', () => {
 			expect(mapStatus).toHaveBeenCalled();
 			expect(handler).not.toHaveBeenCalled();
 		});
+
+		it('treats a throwing mapStatus as an invalid tick instead of crashing the poll loop', async () => {
+			const mapStatus = jest.fn(() => {
+				throw new Error('boom');
+			});
+
+			const { id } = await service.run({ ...baseSpec, mapStatus });
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ whatever: true }));
+
+			expect(() => jest.advanceTimersByTime(3_000)).not.toThrow();
+
+			expect(mapStatus).toHaveBeenCalled();
+			expect(handler).not.toHaveBeenCalled();
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'running' })); // unchanged
+
+			// A throwing mapper never counts as a terminal status — the unit stays reserved.
+			await expect(service.run(baseSpec)).rejects.toThrow(PrivilegedWorkerUnavailableException);
+		});
+
+		it('logs the throwing mapper at most once per job across repeated bad ticks', async () => {
+			const mapStatus = jest.fn(() => {
+				throw new Error('boom');
+			});
+			const { id } = await service.run({ ...baseSpec, mapStatus });
+			const debugSpy = jest.spyOn(service['logger'], 'debug');
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ whatever: true }));
+
+			jest.advanceTimersByTime(3_000);
+			jest.advanceTimersByTime(3_000);
+
+			expect(debugSpy).toHaveBeenCalledTimes(1);
+			expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining(id));
+		});
 	});
 
 	describe('status field ownership and validation', () => {
@@ -516,13 +586,31 @@ describe('PrivilegedWorkerService', () => {
 			service.onStatus(id, handler);
 
 			(existsSync as jest.Mock).mockReturnValue(true);
-			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ state: 'in-progress' })); // not one of the 4 valid values
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ state: 'in-progress' })); // not a recognized tick state
 
 			jest.advanceTimersByTime(3_000);
 
 			expect(handler).not.toHaveBeenCalled();
 			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'running' })); // unchanged
 
+			await expect(service.run(baseSpec)).rejects.toThrow(PrivilegedWorkerUnavailableException);
+		});
+
+		it('rejects state: "timeout" from a file/mapper — that value is reserved for the service itself', async () => {
+			const { id } = await service.run(baseSpec);
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ state: 'timeout' }));
+
+			jest.advanceTimersByTime(3_000);
+
+			expect(handler).not.toHaveBeenCalled();
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'running' })); // not hijacked
+
+			// Ignored, not accepted as terminal — the unit stays reserved.
 			await expect(service.run(baseSpec)).rejects.toThrow(PrivilegedWorkerUnavailableException);
 		});
 

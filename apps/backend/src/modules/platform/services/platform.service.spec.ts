@@ -289,6 +289,10 @@ describe('PlatformService', () => {
 		});
 
 		it('waits for platform detection to finish before deciding, even when called immediately after construction', async () => {
+			// No PLATFORM_TYPE_ENV override here: that path returns synchronously (before ever
+			// calling si.system()), which would make the si.system() gate below inert and this
+			// test would pass even without the fix. Leaving auto-detection to actually run means
+			// si.system() is genuinely what construction is waiting on.
 			let resolveSystemInfo!: (value: Systeminformation.SystemData) => void;
 
 			jest.spyOn(si, 'system').mockReturnValue(
@@ -297,25 +301,25 @@ describe('PlatformService', () => {
 				}),
 			);
 			jest.spyOn(si, 'osInfo').mockResolvedValue({ platform: 'linux', arch: 'x64' } as Systeminformation.OsData);
-			process.env[PLATFORM_TYPE_ENV] = 'docker';
 
 			const freshService = new PlatformService();
 
-			// If a real ENOENT-class failure would let sudo/systemd-run succeed, this would
-			// wrongly resolve `true` on the pre-fix code path, which reads platformType before
-			// detection has assigned it.
 			mockExecFile(() => true);
 
 			const resultPromise = freshService.supportsPrivilegedWorkers();
 
-			// Detection has not resolved yet — platformType is still undefined at this point.
+			// si.system() has not resolved yet, so autoDetectPlatform() is still awaiting it —
+			// platformType is still undefined, and the probe cannot have started. On the pre-fix
+			// code (reading platformType synchronously, before detection completes) this would
+			// already have called execFile by this point.
 			expect(freshService.getPlatformType()).toBeUndefined();
+			expect(execFile).not.toHaveBeenCalled();
 
 			resolveSystemInfo({ model: 'Generic Model', manufacturer: 'Generic' } as Systeminformation.SystemData);
 
-			await expect(resultPromise).resolves.toBe(false);
-			expect(execFile).not.toHaveBeenCalled();
-			expect(freshService.getPlatformType()).toBe(PlatformType.DOCKER);
+			await expect(resultPromise).resolves.toBe(true);
+			expect(execFile).toHaveBeenCalled();
+			expect(freshService.getPlatformType()).toBe(PlatformType.GENERIC);
 		});
 
 		it('shares a single in-flight probe between concurrent first callers', async () => {
