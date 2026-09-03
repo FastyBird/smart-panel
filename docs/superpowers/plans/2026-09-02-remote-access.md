@@ -83,10 +83,11 @@ Add to `apps/backend/src/modules/api`:
 
 ```typescript
 interface ResolvedClientAddress {
-	address: string;      // canonical IPv4 or IPv6 text
-	forwarded: boolean;   // true when taken from a forwarded header through a trusted peer
-	secure: boolean;      // X-Forwarded-Proto === 'https' from a trusted peer, else request protocol
-	peer: string;         // raw socket address
+	address: string;                  // canonical IPv4 or IPv6 text
+	forwarded: boolean;               // true when taken from a forwarded header through a trusted peer
+	ignoredForwardedHeaders: boolean; // true when an untrusted peer presented forwarding headers that were ignored
+	secure: boolean;                  // X-Forwarded-Proto === 'https' from a trusted peer, else request protocol
+	peer: string;                     // raw socket address
 }
 
 @Injectable() class TrustedProxyRegistryService {

@@ -234,7 +234,9 @@ every remote caller look local, and any LAN host can spoof a loopback address to
 
 The `api` module gains `ClientAddressService`:
 
-- `resolve(request)` returns `{ address, forwarded: boolean, secure: boolean }`.
+- `resolve(request)` returns `{ address, forwarded, ignoredForwardedHeaders, secure, peer }`;
+  `ignoredForwardedHeaders` is true when an untrusted peer presented forwarding headers, which is how the
+  registration guard tells a direct loopback connection from an unconfigured local proxy.
 - Forwarded headers are honoured only when the socket peer is inside the trusted set. The client address
   is the right-most `X-Forwarded-For` entry that is not itself trusted, as Home Assistant does. Untrusted
   peers that send forwarded headers are served using the socket address and logged once per peer.
