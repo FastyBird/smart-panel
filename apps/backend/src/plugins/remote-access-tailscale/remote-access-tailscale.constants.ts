@@ -22,6 +22,15 @@ export const TAILSCALE_BINARY = 'tailscale';
 /** Default timeout for a non-interactive `tailscale` CLI call. */
 export const TAILSCALE_CLI_DEFAULT_TIMEOUT_MS = 15_000;
 
+/**
+ * `execFile`'s stdout/stderr buffer ceiling for a non-interactive
+ * `tailscale` call — Node's own default (1 MB) is too small for a large
+ * `tailscale status --json` on a node with many peers, and exceeding it
+ * kills the child the same way a timeout does (`killed: true`), which
+ * `TailscaleCliService` must not misclassify as `'timeout'`.
+ */
+export const TAILSCALE_CLI_MAX_BUFFER_BYTES = 16 * 1024 * 1024;
+
 /** Timeout for the unprivileged `systemctl is-active` prerequisite probe. */
 export const TAILSCALE_SYSTEMCTL_PROBE_TIMEOUT_MS = 2_000;
 
