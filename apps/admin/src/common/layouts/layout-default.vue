@@ -85,7 +85,9 @@ import { Icon } from '@iconify/vue';
 
 import { RouteNames } from '../../app.constants';
 import Logo from '../../assets/images/fb_row.svg?component';
-import { NotificationBell } from '../../modules/notifications/components/components';
+// See the identical import in `app-top-bar.vue` for why this bypasses the module's
+// `components/components` barrel.
+import NotificationBell from '../../modules/notifications/components/notification-bell.vue';
 import { AppBar, AppNavigation, AppSidebar, AppTopBar } from '../components/components';
 import { useBreakpoints } from '../composables/useBreakpoints';
 
