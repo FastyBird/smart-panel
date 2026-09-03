@@ -1,45 +1,45 @@
 {
 	"headings": {
-		"aboutWebhookSettings": "Webhook settings"
+		"aboutWebhookSettings": "Webhook-Einstellungen"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Enabled"
+				"title": "Aktiviert"
 			},
 			"url": {
 				"title": "URL",
 				"placeholder": "https://example.com/hooks/panel",
-				"description": "Notifications are POSTed as JSON to this URL. HTTPS is recommended.",
-				"httpWarning": "This URL is not encrypted. The notification payload will travel in cleartext - use HTTPS whenever the target supports it, and only use HTTP for trusted-network targets on your own LAN.",
-				"invalid": "Enter an absolute HTTP or HTTPS URL without embedded credentials"
+				"description": "Benachrichtigungen werden als JSON per POST an diese URL gesendet. HTTPS wird empfohlen.",
+				"httpWarning": "Diese URL ist nicht verschlüsselt. Die Benachrichtigungsdaten werden im Klartext übertragen - verwenden Sie HTTPS, wann immer das Ziel dies unterstützt, und nutzen Sie HTTP nur für vertrauenswürdige Ziele in Ihrem eigenen LAN.",
+				"invalid": "Geben Sie eine absolute HTTP- oder HTTPS-URL ohne eingebettete Anmeldedaten ein"
 			},
 			"headers": {
-				"title": "Custom headers",
+				"title": "Benutzerdefinierte Header",
 				"placeholder": "{\"Authorization\": \"Bearer <token>\"}",
-				"description": "Optional JSON object of extra HTTP headers, e.g. an Authorization bearer token. Requires an HTTPS URL.",
-				"invalidJson": "Enter a flat JSON object of string values, e.g. {\"Authorization\": \"Bearer token\"}",
-				"requiresHttps": "Custom headers require an HTTPS webhook URL"
+				"description": "Optionales JSON-Objekt mit zusätzlichen HTTP-Headern, z. B. einem Authorization-Bearer-Token. Erfordert eine HTTPS-URL.",
+				"invalidJson": "Geben Sie ein flaches JSON-Objekt mit String-Werten ein, z. B. {\"Authorization\": \"Bearer token\"}",
+				"requiresHttps": "Benutzerdefinierte Header erfordern eine HTTPS-Webhook-URL"
 			},
 			"minSeverity": {
-				"title": "Minimum severity",
-				"description": "Only notifications at or above this severity are forwarded.",
+				"title": "Minimaler Schweregrad",
+				"description": "Es werden nur Benachrichtigungen mit diesem Schweregrad oder höher weitergeleitet.",
 				"options": {
 					"info": "Info",
-					"warning": "Warning",
-					"error": "Error",
-					"critical": "Critical"
+					"warning": "Warnung",
+					"error": "Fehler",
+					"critical": "Kritisch"
 				}
 			}
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Webhook settings have been updated",
-			"notEdited": "Failed to update webhook settings"
+			"edited": "Webhook-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der Webhook-Einstellungen fehlgeschlagen"
 		}
 	},
 	"texts": {
-		"aboutWebhookSettings": "Forward system notifications as a JSON POST request to any URL you configure - your own automation server, a chat platform's incoming webhook, or a self-hosted tool such as n8n, Node-RED or Home Assistant."
+		"aboutWebhookSettings": "Leiten Sie Systembenachrichtigungen als JSON-POST-Anfrage an eine beliebige von Ihnen konfigurierte URL weiter - an Ihren eigenen Automatisierungsserver, den eingehenden Webhook einer Chat-Plattform oder ein selbst gehostetes Tool wie n8n, Node-RED oder Home Assistant."
 	}
 }

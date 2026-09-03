@@ -1,42 +1,42 @@
 {
 	"headings": {
-		"aboutDiscordSettings": "Discord webhook settings"
+		"aboutDiscordSettings": "Ustawienia webhooka Discord"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Enabled"
+				"title": "Włączony"
 			},
 			"webhookUrl": {
-				"title": "Webhook URL",
+				"title": "URL webhooka",
 				"placeholder": "https://discord.com/api/webhooks/...",
-				"description": "Discord incoming webhook URL, from a channel's Integrations settings page. Must be an https://discord.com/api/webhooks/... URL (discordapp.com, ptb.discord.com and canary.discord.com are also accepted).",
-				"invalid": "Enter a Discord webhook URL such as https://discord.com/api/webhooks/<id>/<token> (discordapp.com, ptb.discord.com or canary.discord.com), without embedded credentials or a port"
+				"description": "Adres URL przychodzącego webhooka Discord ze strony ustawień Integracje danego kanału. Musi to być adres URL w postaci https://discord.com/api/webhooks/... (akceptowane są też discordapp.com, ptb.discord.com i canary.discord.com).",
+				"invalid": "Podaj adres URL webhooka Discord, np. https://discord.com/api/webhooks/<id>/<token> (discordapp.com, ptb.discord.com lub canary.discord.com), bez osadzonych danych uwierzytelniających ani portu"
 			},
 			"username": {
-				"title": "Username override",
+				"title": "Zastąpienie nazwy użytkownika",
 				"placeholder": "Smart Panel",
-				"description": "Overrides the default username the webhook posts as in Discord. Leave empty to use the webhook's default."
+				"description": "Zastępuje domyślną nazwę użytkownika, pod którą webhook publikuje wiadomości w Discordzie. Pozostaw puste, aby użyć domyślnej nazwy webhooka."
 			},
 			"minSeverity": {
-				"title": "Minimum severity",
-				"description": "Only notifications at or above this severity are forwarded.",
+				"title": "Minimalna ważność",
+				"description": "Przekazywane są tylko powiadomienia o tej ważności lub wyższej.",
 				"options": {
-					"info": "Info",
-					"warning": "Warning",
-					"error": "Error",
-					"critical": "Critical"
+					"info": "Informacje",
+					"warning": "Ostrzeżenie",
+					"error": "Błąd",
+					"critical": "Krytyczny"
 				}
 			}
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Discord webhook settings have been updated",
-			"notEdited": "Failed to update Discord webhook settings"
+			"edited": "Ustawienia webhooka Discord zostały zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować ustawień webhooka Discord"
 		}
 	},
 	"texts": {
-		"aboutDiscordSettings": "Forward system notifications to a Discord channel as a rich embed, using a Discord incoming webhook. In Discord, open the target channel's Integrations settings and create (or copy) a webhook URL."
+		"aboutDiscordSettings": "Przekazuj powiadomienia systemowe do kanału Discord jako rozbudowaną wiadomość (embed) za pomocą przychodzącego webhooka Discord. W Discordzie otwórz ustawienia Integracje docelowego kanału i utwórz (lub skopiuj) adres URL webhooka."
 	}
 }

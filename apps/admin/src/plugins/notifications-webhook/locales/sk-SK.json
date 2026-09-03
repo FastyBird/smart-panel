@@ -1,45 +1,45 @@
 {
 	"headings": {
-		"aboutWebhookSettings": "Webhook settings"
+		"aboutWebhookSettings": "Nastavenia webhooku"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Enabled"
+				"title": "Povolený"
 			},
 			"url": {
 				"title": "URL",
 				"placeholder": "https://example.com/hooks/panel",
-				"description": "Notifications are POSTed as JSON to this URL. HTTPS is recommended.",
-				"httpWarning": "This URL is not encrypted. The notification payload will travel in cleartext - use HTTPS whenever the target supports it, and only use HTTP for trusted-network targets on your own LAN.",
-				"invalid": "Enter an absolute HTTP or HTTPS URL without embedded credentials"
+				"description": "Upozornenia sa na túto URL odosielajú ako JSON metódou POST. Odporúča sa HTTPS.",
+				"httpWarning": "Táto URL nie je šifrovaná. Obsah upozornenia sa bude prenášať v nešifrovanej podobe - používajte HTTPS všade, kde to cieľ podporuje, a HTTP používajte iba pre ciele v dôveryhodnej sieti vo vašej vlastnej LAN.",
+				"invalid": "Zadajte absolútnu HTTP alebo HTTPS URL bez vložených prihlasovacích údajov"
 			},
 			"headers": {
-				"title": "Custom headers",
+				"title": "Vlastné hlavičky",
 				"placeholder": "{\"Authorization\": \"Bearer <token>\"}",
-				"description": "Optional JSON object of extra HTTP headers, e.g. an Authorization bearer token. Requires an HTTPS URL.",
-				"invalidJson": "Enter a flat JSON object of string values, e.g. {\"Authorization\": \"Bearer token\"}",
-				"requiresHttps": "Custom headers require an HTTPS webhook URL"
+				"description": "Voliteľný JSON objekt ďalších HTTP hlavičiek, napr. autorizačného tokenu typu Bearer. Vyžaduje HTTPS URL.",
+				"invalidJson": "Zadajte plochý JSON objekt textových hodnôt, napr. {\"Authorization\": \"Bearer token\"}",
+				"requiresHttps": "Vlastné hlavičky vyžadujú HTTPS URL webhooku"
 			},
 			"minSeverity": {
-				"title": "Minimum severity",
-				"description": "Only notifications at or above this severity are forwarded.",
+				"title": "Minimálna závažnosť",
+				"description": "Preposielané sú iba upozornenia s touto závažnosťou alebo vyššou.",
 				"options": {
 					"info": "Info",
-					"warning": "Warning",
-					"error": "Error",
-					"critical": "Critical"
+					"warning": "Varovanie",
+					"error": "Chyba",
+					"critical": "Kritická"
 				}
 			}
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Webhook settings have been updated",
-			"notEdited": "Failed to update webhook settings"
+			"edited": "Nastavenia webhooku boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia webhooku"
 		}
 	},
 	"texts": {
-		"aboutWebhookSettings": "Forward system notifications as a JSON POST request to any URL you configure - your own automation server, a chat platform's incoming webhook, or a self-hosted tool such as n8n, Node-RED or Home Assistant."
+		"aboutWebhookSettings": "Preposielajte systémové upozornenia ako JSON POST požiadavku na ľubovoľnú URL, ktorú nastavíte - na váš vlastný automatizačný server, prichádzajúci webhook chatovacej platformy alebo self-hosted nástroj, ako je n8n, Node-RED alebo Home Assistant."
 	}
 }

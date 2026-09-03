@@ -1,42 +1,42 @@
 {
 	"headings": {
-		"aboutDiscordSettings": "Discord webhook settings"
+		"aboutDiscordSettings": "Nastavení Discord webhooku"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Enabled"
+				"title": "Povoleno"
 			},
 			"webhookUrl": {
-				"title": "Webhook URL",
+				"title": "URL webhooku",
 				"placeholder": "https://discord.com/api/webhooks/...",
-				"description": "Discord incoming webhook URL, from a channel's Integrations settings page. Must be an https://discord.com/api/webhooks/... URL (discordapp.com, ptb.discord.com and canary.discord.com are also accepted).",
-				"invalid": "Enter a Discord webhook URL such as https://discord.com/api/webhooks/<id>/<token> (discordapp.com, ptb.discord.com or canary.discord.com), without embedded credentials or a port"
+				"description": "URL příchozího Discord webhooku ze stránky nastavení Integrations daného kanálu. Musí to být URL ve tvaru https://discord.com/api/webhooks/... (přijímány jsou i discordapp.com, ptb.discord.com a canary.discord.com).",
+				"invalid": "Zadejte URL Discord webhooku, např. https://discord.com/api/webhooks/<id>/<token> (discordapp.com, ptb.discord.com nebo canary.discord.com), bez vložených přihlašovacích údajů nebo portu"
 			},
 			"username": {
-				"title": "Username override",
+				"title": "Přepsání uživatelského jména",
 				"placeholder": "Smart Panel",
-				"description": "Overrides the default username the webhook posts as in Discord. Leave empty to use the webhook's default."
+				"description": "Přepíše výchozí uživatelské jméno, pod kterým webhook odesílá zprávy v Discordu. Ponechte prázdné pro použití výchozího jména webhooku."
 			},
 			"minSeverity": {
-				"title": "Minimum severity",
-				"description": "Only notifications at or above this severity are forwarded.",
+				"title": "Minimální závažnost",
+				"description": "Přeposílána jsou pouze oznámení s touto závažností nebo vyšší.",
 				"options": {
 					"info": "Info",
-					"warning": "Warning",
-					"error": "Error",
-					"critical": "Critical"
+					"warning": "Varování",
+					"error": "Chyba",
+					"critical": "Kritická"
 				}
 			}
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Discord webhook settings have been updated",
-			"notEdited": "Failed to update Discord webhook settings"
+			"edited": "Nastavení Discord webhooku bylo aktualizováno",
+			"notEdited": "Nepodařilo se aktualizovat nastavení Discord webhooku"
 		}
 	},
 	"texts": {
-		"aboutDiscordSettings": "Forward system notifications to a Discord channel as a rich embed, using a Discord incoming webhook. In Discord, open the target channel's Integrations settings and create (or copy) a webhook URL."
+		"aboutDiscordSettings": "Přeposílejte systémová oznámení do kanálu Discord jako rozšířenou zprávu (embed) pomocí příchozího Discord webhooku. V Discordu otevřete nastavení Integrations cílového kanálu a vytvořte (nebo zkopírujte) URL webhooku."
 	}
 }
