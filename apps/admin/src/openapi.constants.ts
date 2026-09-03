@@ -748,3 +748,25 @@ export { NotificationsModuleDataNotificationActionType as NotificationsModuleNot
 // Zod schema to its exact generated shape (`ZodType<NotificationsModuleNotificationActionSchema>`);
 // `extension_kind` reuses the existing `ExtensionKind` alias above instead of a second one.
 export { NotificationsModuleDataNotificationActionOperation as NotificationsModuleNotificationActionOperation } from './openapi';
+
+// Remote Access Tailscale Plugin Schemas
+// =========================================
+export type RemoteAccessTailscalePluginConfigSchema = components['schemas']['RemoteAccessTailscalePluginDataConfig'];
+export type RemoteAccessTailscalePluginUpdateConfigSchema = components['schemas']['RemoteAccessTailscalePluginUpdateConfig'];
+export type RemoteAccessTailscalePluginStatusSchema = components['schemas']['RemoteAccessTailscalePluginDataStatus'];
+export type RemoteAccessTailscalePluginInstallSchema = components['schemas']['RemoteAccessTailscalePluginDataInstall'];
+export type RemoteAccessTailscalePluginLoginSchema = components['schemas']['RemoteAccessTailscalePluginDataLogin'];
+export type RemoteAccessTailscalePluginRequirementSchema = components['schemas']['RemoteAccessTailscalePluginDataRequirement'];
+export type RemoteAccessTailscalePluginLoginRequestSchema = components['schemas']['RemoteAccessTailscalePluginReqLogin'];
+
+// Remote Access Tailscale Plugin Operations
+// ============================================
+export type RemoteAccessTailscalePluginGetStatusOperation = operations['get-remote-access-tailscale-plugin-status'];
+export type RemoteAccessTailscalePluginCreateInstallOperation = operations['create-remote-access-tailscale-plugin-install'];
+export type RemoteAccessTailscalePluginCreateLoginOperation = operations['create-remote-access-tailscale-plugin-login'];
+export type RemoteAccessTailscalePluginCreateLogoutOperation = operations['create-remote-access-tailscale-plugin-logout'];
+export type RemoteAccessTailscalePluginCreateResetPreferencesOperation = operations['create-remote-access-tailscale-plugin-reset-preferences'];
+
+// Remote Access Tailscale Plugin Enums
+// =======================================
+export { RemoteAccessTailscalePluginDataRequirementCode as RemoteAccessTailscalePluginRequirementCode } from './openapi';

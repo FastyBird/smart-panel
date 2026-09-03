@@ -1,0 +1,118 @@
+{
+	"headings": {
+		"tailscale": "Tailscale",
+		"serve": "Serve a Funnel"
+	},
+	"texts": {
+		"funnelWarning": "Funnel zverejní túto inštaláciu na verejnom internete. Jedinou ochranou je prihlásenie do Smart Panelu."
+	},
+	"buttons": {
+		"setup": "Nastaviť",
+		"signIn": "Prihlásiť sa",
+		"connect": "Pripojiť",
+		"disconnect": "Odpojiť",
+		"reconnect": "Znova pripojiť",
+		"signOut": "Odhlásiť sa",
+		"resetPreferences": "Obnoviť predvolené nastavenia"
+	},
+	"fields": {
+		"tailnet": "Tailnet",
+		"dnsName": "Názov MagicDNS",
+		"ipv4": "Adresa IPv4",
+		"ipv6": "Adresa IPv6",
+		"config": {
+			"hostname": {
+				"title": "Názov hostiteľa",
+				"placeholder": "napr. smart-panel",
+				"description": "Názov hostiteľa oznamovaný tailnetu.",
+				"validation": {
+					"required": "Názov hostiteľa je povinný"
+				}
+			},
+			"loginServer": {
+				"title": "Prihlasovací server",
+				"placeholder": "https://controlplane.tailscale.com",
+				"description": "URL riadiacej roviny. Zmeňte pre vlastný server Headscale.",
+				"validation": {
+					"required": "Prihlasovací server je povinný"
+				}
+			},
+			"acceptDns": {
+				"title": "Prijímať DNS",
+				"description": "Prijať konfiguráciu MagicDNS tailnetu."
+			},
+			"acceptRoutes": {
+				"title": "Prijímať trasy",
+				"description": "Prijímať trasy podsietí oznamované ostatnými uzlami tailnetu."
+			},
+			"advertiseTags": {
+				"title": "Oznamované značky",
+				"placeholder": "Pridajte značku ACL a stlačte Enter",
+				"description": "Značky ACL oznamované pre tento uzol, napr. tag:smart-panel."
+			},
+			"ssh": {
+				"title": "Tailscale SSH",
+				"description": "Povoliť Tailscale SSH na tomto uzle."
+			},
+			"serveHttps": {
+				"title": "Sprístupniť HTTPS na tailnete",
+				"description": "Sprístupniť administráciu cez HTTPS pomocou Tailscale Serve."
+			},
+			"funnel": {
+				"title": "Funnel",
+				"description": "Zverejniť sprístupnenú administráciu na verejnom internete pomocou Tailscale Funnel."
+			}
+		}
+	},
+	"messages": {
+		"requestError": "Pri načítaní stavu Tailscale došlo k chybe",
+		"setupFailed": "Nepodarilo sa spustiť úlohu nastavenia Tailscale",
+		"loginFailed": "Prihlásenie do Tailscale zlyhalo",
+		"signedOut": "Odhlásenie z Tailscale prebehlo úspešne",
+		"signOutFailed": "Odhlásenie z Tailscale zlyhalo",
+		"preferencesReset": "Nastavenia Tailscale boli obnovené",
+		"preferencesResetFailed": "Obnovenie nastavení Tailscale zlyhalo",
+		"urlCopied": "Adresa URL bola skopírovaná do schránky",
+		"copyFailed": "Kopírovanie adresy URL do schránky zlyhalo",
+		"config": {
+			"edited": "Konfigurácia Tailscale bola úspešne aktualizovaná",
+			"notEdited": "Aktualizácia konfigurácie Tailscale zlyhala"
+		}
+	},
+	"wizard": {
+		"title": "Nastaviť Tailscale",
+		"steps": {
+			"setup": "Nastavenie",
+			"signin": "Prihlásenie",
+			"options": "Možnosti",
+			"done": "Hotovo"
+		},
+		"setupDescription": "Nainštaluje balík Tailscale, ak chýba, povolí démona a udelí Smart Panelu práva operátora.",
+		"settingUp": "Prebieha nastavovanie Tailscale...",
+		"setupFailed": "Úloha nastavenia nebola dokončená. Môžete to skúsiť znova.",
+		"signInDescription": "Otvorte prihlasovací odkaz na ľubovoľnom zariadení a potvrďte ho, alebo naskenujte QR kód.",
+		"advancedDescription": "Pre bezobslužné inštalácie: vložte vopred autorizovaný prihlasovací kľúč a prihláste sa bez interaktívneho potvrdenia.",
+		"waitingForApproval": "Čaká sa na schválenie prihlásenia...",
+		"qrAlt": "QR kód obsahujúci prihlasovací odkaz Tailscale",
+		"doneDescription": "Tailscale je pripojený. Táto inštalácia je dostupná na nižšie uvedených adresách.",
+		"tabs": {
+			"interactive": "Prihlásiť sa",
+			"advanced": "Pokročilé"
+		},
+		"fields": {
+			"authKey": {
+				"title": "Prihlasovací kľúč",
+				"placeholder": "tskey-auth-..."
+			}
+		},
+		"buttons": {
+			"startSetup": "Spustiť nastavenie",
+			"getSignInLink": "Získať prihlasovací odkaz",
+			"signIn": "Prihlásiť sa",
+			"saveAndContinue": "Uložiť a pokračovať",
+			"skip": "Preskočiť",
+			"close": "Zavrieť",
+			"copy": "Kopírovať"
+		}
+	}
+}

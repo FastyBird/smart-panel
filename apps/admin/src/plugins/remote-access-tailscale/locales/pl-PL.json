@@ -1,0 +1,118 @@
+{
+	"headings": {
+		"tailscale": "Tailscale",
+		"serve": "Serve i Funnel"
+	},
+	"texts": {
+		"funnelWarning": "Funnel publikuje tę instalację w publicznym internecie. Jedyną ochroną jest logowanie do Smart Panel."
+	},
+	"buttons": {
+		"setup": "Skonfiguruj",
+		"signIn": "Zaloguj się",
+		"connect": "Połącz",
+		"disconnect": "Rozłącz",
+		"reconnect": "Połącz ponownie",
+		"signOut": "Wyloguj się",
+		"resetPreferences": "Zresetuj preferencje"
+	},
+	"fields": {
+		"tailnet": "Tailnet",
+		"dnsName": "Nazwa MagicDNS",
+		"ipv4": "Adres IPv4",
+		"ipv6": "Adres IPv6",
+		"config": {
+			"hostname": {
+				"title": "Nazwa hosta",
+				"placeholder": "np. smart-panel",
+				"description": "Nazwa hosta ogłaszana w tailnecie.",
+				"validation": {
+					"required": "Nazwa hosta jest wymagana"
+				}
+			},
+			"loginServer": {
+				"title": "Serwer logowania",
+				"placeholder": "https://controlplane.tailscale.com",
+				"description": "Adres URL płaszczyzny sterowania. Zmień dla samodzielnie hostowanego serwera Headscale.",
+				"validation": {
+					"required": "Serwer logowania jest wymagany"
+				}
+			},
+			"acceptDns": {
+				"title": "Akceptuj DNS",
+				"description": "Zaakceptuj konfigurację MagicDNS tailnetu."
+			},
+			"acceptRoutes": {
+				"title": "Akceptuj trasy",
+				"description": "Akceptuj trasy podsieci ogłaszane przez inne węzły tailnetu."
+			},
+			"advertiseTags": {
+				"title": "Ogłaszane tagi",
+				"placeholder": "Dodaj tag ACL i naciśnij Enter",
+				"description": "Tagi ACL ogłaszane dla tego węzła, np. tag:smart-panel."
+			},
+			"ssh": {
+				"title": "Tailscale SSH",
+				"description": "Włącz Tailscale SSH na tym węźle."
+			},
+			"serveHttps": {
+				"title": "Udostępniaj HTTPS w tailnecie",
+				"description": "Udostępniaj interfejs administracyjny przez HTTPS za pomocą Tailscale Serve."
+			},
+			"funnel": {
+				"title": "Funnel",
+				"description": "Opublikuj udostępniany interfejs administracyjny w publicznym internecie za pomocą Tailscale Funnel."
+			}
+		}
+	},
+	"messages": {
+		"requestError": "Wystąpił błąd podczas wczytywania stanu Tailscale",
+		"setupFailed": "Nie udało się uruchomić zadania konfiguracji Tailscale",
+		"loginFailed": "Nie udało się zalogować do Tailscale",
+		"signedOut": "Wylogowano z Tailscale",
+		"signOutFailed": "Nie udało się wylogować z Tailscale",
+		"preferencesReset": "Preferencje Tailscale zostały zresetowane",
+		"preferencesResetFailed": "Nie udało się zresetować preferencji Tailscale",
+		"urlCopied": "Adres URL został skopiowany do schowka",
+		"copyFailed": "Nie udało się skopiować adresu URL do schowka",
+		"config": {
+			"edited": "Konfiguracja Tailscale została pomyślnie zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować konfiguracji Tailscale"
+		}
+	},
+	"wizard": {
+		"title": "Skonfiguruj Tailscale",
+		"steps": {
+			"setup": "Konfiguracja",
+			"signin": "Logowanie",
+			"options": "Opcje",
+			"done": "Gotowe"
+		},
+		"setupDescription": "Instaluje pakiet Tailscale, jeśli go brakuje, włącza usługę demona i nadaje Smart Panel uprawnienia operatora.",
+		"settingUp": "Trwa konfigurowanie Tailscale...",
+		"setupFailed": "Zadanie konfiguracji nie zostało ukończone. Możesz spróbować ponownie.",
+		"signInDescription": "Otwórz link logowania na dowolnym urządzeniu i zatwierdź go albo zeskanuj kod QR.",
+		"advancedDescription": "Do instalacji bezobsługowych: wklej wstępnie autoryzowany klucz uwierzytelniający, aby zalogować się bez interaktywnego zatwierdzenia.",
+		"waitingForApproval": "Oczekiwanie na zatwierdzenie logowania...",
+		"qrAlt": "Kod QR zawierający link logowania Tailscale",
+		"doneDescription": "Tailscale jest połączony. Ta instalacja jest dostępna pod poniższymi adresami.",
+		"tabs": {
+			"interactive": "Zaloguj się",
+			"advanced": "Zaawansowane"
+		},
+		"fields": {
+			"authKey": {
+				"title": "Klucz uwierzytelniający",
+				"placeholder": "tskey-auth-..."
+			}
+		},
+		"buttons": {
+			"startSetup": "Rozpocznij konfigurację",
+			"getSignInLink": "Pobierz link logowania",
+			"signIn": "Zaloguj się",
+			"saveAndContinue": "Zapisz i kontynuuj",
+			"skip": "Pomiń",
+			"close": "Zamknij",
+			"copy": "Kopiuj"
+		}
+	}
+}

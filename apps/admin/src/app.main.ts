@@ -90,6 +90,7 @@ import { MemoryStoragePlugin } from './plugins/memory-storage';
 import { PagesCardsPlugin } from './plugins/pages-cards';
 import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail';
 import { PagesTilesPlugin } from './plugins/pages-tiles';
+import { RemoteAccessTailscalePlugin } from './plugins/remote-access-tailscale';
 import { ScenesLocalPlugin } from './plugins/scenes-local';
 import { SimulatorPlugin } from './plugins/simulator';
 import { SpacesHomeControlPlugin } from './plugins/spaces-home-control';
@@ -257,6 +258,7 @@ app.use(BuddySttWhisperLocalPlugin, pluginOptions);
 app.use(BuddyTelegramPlugin, pluginOptions);
 app.use(BuddyWhatsappPlugin, pluginOptions);
 app.use(BuddyDiscordPlugin, pluginOptions);
+app.use(RemoteAccessTailscalePlugin, pluginOptions);
 
 const installedNames = new Set<string>();
 
