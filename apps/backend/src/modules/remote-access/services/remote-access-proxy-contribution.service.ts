@@ -40,11 +40,15 @@ const REJECTED_ENTRY_WARNING_MAX_ENTRIES = 500;
 export class RemoteAccessProxyContributionService implements OnModuleInit {
 	private readonly logger = createExtensionLogger(REMOTE_ACCESS_MODULE_NAME, 'RemoteAccessProxyContributionService');
 
-	// Bounded `"type value" -> warned` set so a rejected provider entry
-	// is logged once instead of on every `computeAddresses()` call (read
-	// live on every `isTrusted()` call — see class doc).
-	// `REJECTED_ENTRY_WARNING_MAX_ENTRIES` is a hard backstop of last resort
-	// against a provider that keeps generating fresh malformed values.
+	// Bounded `JSON.stringify([type, value]) -> warned` set so a rejected
+	// provider entry is logged once instead of on every
+	// `computeAddresses()` call (read live on every `isTrusted()` call —
+	// see class doc). JSON-encoding the pair, rather than joining it with a
+	// plain separator, keeps ('a b', 'c') and ('a', 'b c') distinct so one
+	// provider's rejection can't suppress another's warning.
+	// `REJECTED_ENTRY_WARNING_MAX_ENTRIES` is a hard backstop of last
+	// resort against a provider that keeps generating fresh malformed
+	// values.
 	private readonly warnedRejectedEntries = new Set<string>();
 
 	constructor(
@@ -106,7 +110,9 @@ export class RemoteAccessProxyContributionService implements OnModuleInit {
 	}
 
 	private warnRejectedEntry(providerType: string, entry: string): void {
-		const key = `${providerType} ${entry}`;
+		// JSON-encode the pair instead of joining with a plain separator so
+		// two distinct pairs can never collide onto the same key.
+		const key = JSON.stringify([providerType, entry]);
 
 		if (this.warnedRejectedEntries.has(key)) {
 			return;

@@ -193,5 +193,17 @@ describe('RemoteAccessProxyContributionService', () => {
 			expect(registeredSource().addresses()).toEqual(['100.64.0.1', '2001:db8::1']);
 			expect(Logger.prototype.warn).toHaveBeenCalledTimes(2);
 		});
+
+		it('logs two rejected entries separately even when a naive "type + value" join would collide', () => {
+			// Under a plain-space-joined key, ('a b', 'c') and ('a', 'b c')
+			// would both produce the string "a b c" and collide, silently
+			// dropping the second warning. JSON.stringify([type, entry])
+			// keeps them distinct: '["a b","c"]' vs '["a","b c"]'.
+			statusService.getCachedStatuses.mockReturnValue([connectedStatus('a b', ['c']), connectedStatus('a', ['b c'])]);
+			service.onModuleInit();
+
+			expect(registeredSource().addresses()).toEqual([]);
+			expect(Logger.prototype.warn).toHaveBeenCalledTimes(2);
+		});
 	});
 });
