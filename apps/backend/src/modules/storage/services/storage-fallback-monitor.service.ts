@@ -76,9 +76,9 @@ export class StorageFallbackMonitorService {
 		}
 
 		if (!isUsingFallback && this.wasUsingFallback) {
-			this.wasUsingFallback = false;
-
-			await this.resolveIssue('fallback-active');
+			if (await this.resolveIssue('fallback-active')) {
+				this.wasUsingFallback = false;
+			}
 		}
 	}
 
@@ -102,23 +102,30 @@ export class StorageFallbackMonitorService {
 		}
 
 		if (isConnected && !this.wasConnected) {
-			this.wasConnected = true;
-
-			await this.resolveIssue('storage-unavailable');
+			if (await this.resolveIssue('storage-unavailable')) {
+				this.wasConnected = true;
+			}
 		}
 	}
 
 	/**
 	 * Unlike notify(), resolve() can throw - caught and logged here so a storage hiccup on
-	 * the resolve call never turns a successful recovery into a reported failure.
+	 * the resolve call never turns a successful recovery into a reported failure. Returns
+	 * whether it actually succeeded, so the caller can leave its "still open" state in place on
+	 * failure instead of marking the issue resolved before it - the next poll then retries
+	 * automatically, since the underlying condition still reads as "just cleared" until it does.
 	 */
-	private async resolveIssue(key: string): Promise<void> {
+	private async resolveIssue(key: string): Promise<boolean> {
 		try {
 			await this.notifications.resolve(STORAGE_MODULE_NAME, key);
+
+			return true;
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(`Failed to resolve the ${key} issue: ${err.message}`, err.stack);
+
+			return false;
 		}
 	}
 }

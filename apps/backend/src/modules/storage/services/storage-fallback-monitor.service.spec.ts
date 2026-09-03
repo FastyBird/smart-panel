@@ -91,6 +91,24 @@ describe('StorageFallbackMonitorService', () => {
 
 			expect(notifications.resolve).toHaveBeenCalledWith(STORAGE_MODULE_NAME, 'fallback-active');
 		});
+
+		it('retries the resolution on the next poll when resolve() rejects', async () => {
+			storageService.isUsingFallback.mockReturnValue(true);
+			await service.checkStorageStatus();
+
+			notifications.resolve.mockRejectedValueOnce(new Error('db is down'));
+			storageService.isUsingFallback.mockReturnValue(false);
+			await service.checkStorageStatus();
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+
+			// Still false, nothing changed - but the earlier resolve never actually landed.
+			notifications.resolve.mockResolvedValueOnce(true);
+			await service.checkStorageStatus();
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(2);
+			expect(notifications.resolve).toHaveBeenNthCalledWith(2, STORAGE_MODULE_NAME, 'fallback-active');
+		});
 	});
 
 	describe('storage-unavailable', () => {
@@ -137,6 +155,24 @@ describe('StorageFallbackMonitorService', () => {
 			await service.checkStorageStatus();
 
 			expect(notifications.resolve).toHaveBeenCalledWith(STORAGE_MODULE_NAME, 'storage-unavailable');
+		});
+
+		it('retries the resolution on the next poll when resolve() rejects', async () => {
+			storageService.isConnected.mockReturnValue(false);
+			await service.checkStorageStatus();
+
+			notifications.resolve.mockRejectedValueOnce(new Error('db is down'));
+			storageService.isConnected.mockReturnValue(true);
+			await service.checkStorageStatus();
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+
+			// Still connected, nothing changed - but the earlier resolve never actually landed.
+			notifications.resolve.mockResolvedValueOnce(true);
+			await service.checkStorageStatus();
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(2);
+			expect(notifications.resolve).toHaveBeenNthCalledWith(2, STORAGE_MODULE_NAME, 'storage-unavailable');
 		});
 	});
 
