@@ -155,12 +155,17 @@ export class NotificationsService {
 	}
 
 	/**
-	 * Resolves every active keyed row of one source, for when a plugin is disabled or its
+	 * Resolves every unresolved keyed row of one source, for when a plugin is disabled or its
 	 * service stops and nothing is left to re-raise its issues.
+	 *
+	 * Dismissed rows are resolved too, exactly as `resolve()` treats them: the source going
+	 * away means all of its conditions are over. Skipping them would leave a dismissed but
+	 * unresolved issue outliving the plugin that raised it - invisible in the active list, and
+	 * never pruned, because retention only counts an issue from its resolution.
 	 */
 	async resolveAll(source: string): Promise<number> {
 		const notifications = await this.repository.find({
-			where: { source, key: Not(IsNull()), dismissedAt: IsNull(), resolvedAt: IsNull() },
+			where: { source, key: Not(IsNull()), resolvedAt: IsNull() },
 		});
 
 		if (notifications.length === 0) {
