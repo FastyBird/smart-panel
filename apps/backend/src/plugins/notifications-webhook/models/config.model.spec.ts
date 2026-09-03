@@ -12,15 +12,24 @@ const SECRET_FIELDS: ConfigSecretField[] = [
 	{ path: 'headers', configuredPath: 'headers_configured', inputPaths: ['headers'] },
 ];
 
+// `excludeExtraneousValues: false` matches how `ConfigService.getPluginConfig()` actually
+// calls `toInstance()` in production - without it, `toInstance()`'s own default combination
+// of `enableImplicitConversion` and `excludeExtraneousValues` silently empties a plain
+// object property (like `headers`) that carries no `@Type()` decorator, which would make
+// every assertion below pass against `{}` regardless of what `headers` was actually set to.
 const build = (plain: Record<string, unknown>): NotificationsWebhookConfigModel =>
-	toInstance(NotificationsWebhookConfigModel, {
-		type: 'notifications-webhook-plugin',
-		enabled: true,
-		url: null,
-		headers: null,
-		min_severity: NotificationSeverity.WARNING,
-		...plain,
-	});
+	toInstance(
+		NotificationsWebhookConfigModel,
+		{
+			type: 'notifications-webhook-plugin',
+			enabled: true,
+			url: null,
+			headers: null,
+			min_severity: NotificationSeverity.WARNING,
+			...plain,
+		},
+		{ excludeExtraneousValues: false },
+	);
 
 describe('NotificationsWebhookConfigModel', () => {
 	describe('defaults', () => {
@@ -73,6 +82,30 @@ describe('NotificationsWebhookConfigModel', () => {
 
 		it('accepts null headers regardless of scheme', () => {
 			expect(validateSync(build({ url: 'http://n8n.local/webhook/panel', headers: null }))).toHaveLength(0);
+		});
+	});
+
+	describe('headers shape validation', () => {
+		it('rejects a non-string header value', () => {
+			const errors = validateSync(build({ url: 'https://example.com/hooks/panel', headers: { 'X-Retry': 1 } }));
+
+			expect(errors).not.toHaveLength(0);
+		});
+
+		it('rejects an invalid HTTP header name', () => {
+			const errors = validateSync(
+				build({ url: 'https://example.com/hooks/panel', headers: { 'bad header': 'value' } }),
+			);
+
+			expect(errors).not.toHaveLength(0);
+		});
+
+		it('accepts a well-formed header record', () => {
+			const errors = validateSync(
+				build({ url: 'https://example.com/hooks/panel', headers: { 'X-Custom-Header': '1' } }),
+			);
+
+			expect(errors).toHaveLength(0);
 		});
 	});
 

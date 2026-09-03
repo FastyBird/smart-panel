@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -7,6 +7,7 @@ import { readSubmittedValue } from '../../../common/utils/transform.utils';
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import { NotificationSeverity } from '../../../modules/notifications/notifications.constants';
 import { NOTIFICATIONS_WEBHOOK_PLUGIN_NAME } from '../notifications-webhook.constants';
+import { IsValidHeaderRecord } from '../validators/webhook-headers-shape.validator';
 import { IsValidWebhookUrl, MAX_WEBHOOK_URL_LENGTH } from '../validators/webhook-url.validator';
 
 @ApiSchema({ name: 'NotificationsWebhookPluginUpdateConfig' })
@@ -54,7 +55,10 @@ export class UpdateNotificationsWebhookConfigDto extends UpdatePluginConfigDto {
 	@Expose()
 	@Transform(({ obj }) => readSubmittedValue<Record<string, string>>(obj, 'headers', 'headers'), { toClassOnly: true })
 	@IsOptional()
-	@IsObject({ message: '[{"field":"headers","reason":"Headers must be an object of string values."}]' })
+	@IsValidHeaderRecord({
+		message:
+			'[{"field":"headers","reason":"Headers must be an object whose keys are valid HTTP header names and whose values are strings."}]',
+	})
 	headers?: Record<string, string> | null;
 
 	@ApiPropertyOptional({

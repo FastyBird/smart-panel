@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsBoolean, IsEnum, IsNotEmpty, IsObject, IsOptional, IsString, ValidateIf } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -7,6 +7,7 @@ import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import { NotificationSeverity } from '../../../modules/notifications/notifications.constants';
 import { NOTIFICATIONS_WEBHOOK_PLUGIN_NAME } from '../notifications-webhook.constants';
 import { WebhookHeadersRequireHttps } from '../validators/webhook-headers-require-https.validator';
+import { IsValidHeaderRecord } from '../validators/webhook-headers-shape.validator';
 import { IsValidWebhookUrl } from '../validators/webhook-url.validator';
 
 @ApiSchema({ name: 'NotificationsWebhookPluginDataConfig' })
@@ -61,7 +62,7 @@ export class NotificationsWebhookConfigModel extends PluginConfigModel {
 	})
 	@Expose()
 	@ValidateIf((config: NotificationsWebhookConfigModel) => config.headers !== null)
-	@IsObject()
+	@IsValidHeaderRecord()
 	@WebhookHeadersRequireHttps()
 	headers: Record<string, string> | null = null;
 

@@ -51,6 +51,14 @@ describe('UpdateNotificationsWebhookConfigDto', () => {
 		it('rejects a non-object value', () => {
 			expect(validateSync(build({ headers: 'not-an-object' }))).not.toHaveLength(0);
 		});
+
+		it('rejects a non-string header value', () => {
+			expect(validateSync(build({ headers: { 'X-Retry': 1 } }))).not.toHaveLength(0);
+		});
+
+		it('rejects an invalid HTTP header name', () => {
+			expect(validateSync(build({ headers: { 'bad header': 'value' } }))).not.toHaveLength(0);
+		});
 	});
 
 	describe('min_severity', () => {
