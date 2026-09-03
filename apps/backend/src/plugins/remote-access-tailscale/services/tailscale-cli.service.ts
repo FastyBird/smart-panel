@@ -121,11 +121,15 @@ export function redactTailscaleArgs(args: readonly string[]): string[] {
 		}
 
 		if (equalsIndex === -1) {
-			// Separate flag + value pair — the *next* argument is the key.
+			// Separate flag + value pair — the *next* argument is the key,
+			// unless it is a `file:...` path (RA-5's ephemeral-file form),
+			// which is left visible just like the `--flag=file:...` form.
 			redacted.push(arg);
 
 			if (i + 1 < args.length) {
-				redacted.push('***redacted***');
+				const nextValue = args[i + 1];
+
+				redacted.push(nextValue.startsWith('file:') ? nextValue : '***redacted***');
 				i++;
 			}
 

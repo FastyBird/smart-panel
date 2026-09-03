@@ -269,6 +269,18 @@ describe('TailscaleCliService', () => {
 			expect(redacted).toEqual(['up', '--auth-key=file:/tmp/secret-key']);
 		});
 
+		it('leaves a file:... path visible in the separate `--auth-key value` flag form too', () => {
+			const redacted = redactTailscaleArgs(['up', '--auth-key', 'file:/run/tailscale/key', '--ssh=true']);
+
+			expect(redacted).toEqual(['up', '--auth-key', 'file:/run/tailscale/key', '--ssh=true']);
+		});
+
+		it('leaves a file:... path visible in the separate `--authkey value` flag form too', () => {
+			const redacted = redactTailscaleArgs(['up', '--authkey', 'file:/run/tailscale/key']);
+
+			expect(redacted).toEqual(['up', '--authkey', 'file:/run/tailscale/key']);
+		});
+
 		it('does not crash when --auth-key is the last argument with no following value', () => {
 			const redacted = redactTailscaleArgs(['up', '--auth-key']);
 
