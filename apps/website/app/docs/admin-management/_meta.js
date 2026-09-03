@@ -22,6 +22,7 @@ export default {
     title: "System Management",
   },
   configuration: "Configuration",
+  "remote-access": "Remote Access",
   mcp: "Model Context Protocol",
   users: "Users & Roles",
 };

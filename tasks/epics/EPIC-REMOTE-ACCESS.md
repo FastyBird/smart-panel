@@ -5,7 +5,7 @@ Type: epic
 Scope: backend, admin, installer, website
 Size: large
 Parent: (none)
-Status: planned
+Status: in-progress
 Created: 2026-09-02
 
 ## 1. Business goal
@@ -133,17 +133,17 @@ Tracked as GitHub sub-issues of the epic issue under the "Remote access" milesto
 
 | Task | PR title | Status |
 | --- | --- | --- |
-| RA-1 | fix(backend): trust forwarded headers only from configured proxies | planned |
-| RA-2 | feat(backend): add remote access module foundation | planned |
-| RA-3 | refactor(backend): extract privileged worker runner from update executor | planned |
-| RA-4 | feat(backend): add Tailscale remote access provider plugin | planned |
+| RA-1 | fix(backend): trust forwarded headers only from configured proxies | done |
+| RA-2 | feat(backend): add remote access module foundation | done |
+| RA-3 | refactor(backend): extract privileged worker runner from update executor | done |
+| RA-4 | feat(backend): add Tailscale remote access provider plugin | done |
 | RA-5 | feat(backend): add Tailscale setup and sign-in flows | planned |
 | RA-6 | feat(backend): serve admin over HTTPS through Tailscale | planned |
-| RA-7 | feat(admin): add remote access overview and settings | planned |
+| RA-7 | feat(admin): add remote access overview and settings | done |
 | RA-8 | feat(admin): add Tailscale remote access setup wizard | planned |
-| RA-9 | feat(installer): preinstall Tailscale for remote access | planned |
+| RA-9 | feat(installer): preinstall Tailscale for remote access | done |
 | RA-10 | docs(cross): document remote access and Tailscale setup | planned |
-| RA-11 | feat(cross): suggest remote access URL for MCP OAuth | planned |
+| RA-11 | feat(cross): suggest remote access URL for MCP OAuth | done |
 | RA-12 | integrated verification and hardware acceptance | planned |
 | RA-13 | feat(backend): add Cloudflare Tunnel remote access plugin | milestone 2 |
 | RA-14 | feat(admin): add Cloudflare Tunnel remote access setup | milestone 2 |

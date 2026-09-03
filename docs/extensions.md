@@ -249,6 +249,96 @@ interface ExtensionMetadata {
 }
 ```
 
+## Remote Access Providers
+
+A plugin can offer a way to reach the installation from outside the LAN — Tailscale is the built-in example
+— by registering with the `remote-access` module instead of inventing its own URL/status surface. See
+[Remote Access Architecture](./remote-access-architecture.md) for the full contract.
+
+### Backend: Register an `IRemoteAccessProvider`
+
+Implement `IRemoteAccessProvider` and register it with `RemoteAccessProviderRegistryService` in your
+plugin's own `onModuleInit`, exactly like the config mapper and extension metadata above:
+
+```typescript
+// services/my-provider.service.ts
+import { Injectable } from '@nestjs/common';
+import {
+  IRemoteAccessProvider,
+  RemoteAccessProviderCapabilities,
+  RemoteAccessProviderKind,
+  RemoteAccessProviderStatus,
+} from '../../../modules/remote-access/platforms/remote-access-provider.platform';
+
+@Injectable()
+export class MyProviderService implements IRemoteAccessProvider {
+  readonly type = 'my-remote-access-plugin'; // matches this plugin's own IPlugin.type
+  readonly kind: RemoteAccessProviderKind = 'tunnel'; // 'mesh' | 'tunnel' | 'vpn' | 'external'
+  readonly capabilities: RemoteAccessProviderCapabilities = {
+    https: true,
+    publicUrl: true,
+    identityHeaders: false,
+    ssh: false,
+  };
+
+  async getStatus(): Promise<RemoteAccessProviderStatus> {
+    // state, endpoints, proxyAddresses, advisories, details, updatedAt — never an
+    // auth URL, QR code or key material; those stay in this plugin's own REST endpoints.
+    return { /* ... */ };
+  }
+}
+```
+
+```typescript
+// my-plugin.plugin.ts
+onModuleInit() {
+  // ... registerMapping(), registerPluginMetadata() as above ...
+
+  this.providerRegistry.register(this.providerService);
+}
+```
+
+The `remote-access` module never shells out and never knows a provider's binary; it only calls `getStatus()`
+on demand and folds a `connected` provider's endpoints into its URL registry. If the connection needs a
+loopback proxy trusted platform-wide while active (a local reverse tunnel, for example), report those
+addresses in `proxyAddresses` — the module contributes them to the shared trusted-proxy registry only while
+the provider is `connected`.
+
+### Admin: Register a Provider Element
+
+The Remote access overview finds a connected provider's card the same way `useChannelsPlugin.ts` finds
+device plugin elements: by the owning plugin's own `IPlugin.type` (matching `provider.type` from the status
+payload), then a `provider` element on that plugin scoped to the `remote-access-module`:
+
+```typescript
+// apps/admin/src/plugins/my-remote-access-plugin/my-remote-access-plugin.plugin.ts
+import { injectPluginsManager } from '../../common';
+import { REMOTE_ACCESS_MODULE_NAME, REMOTE_ACCESS_MODULE_PROVIDER_TYPE } from '../../modules/remote-access';
+
+export default {
+  install: (app, options) => {
+    const pluginsManager = injectPluginsManager(app);
+
+    pluginsManager.addPlugin(myRemoteAccessPluginKey, {
+      type: 'my-remote-access-plugin', // must equal the backend provider's own `type`
+      // ... source, name, description, links ...
+      elements: [
+        {
+          type: REMOTE_ACCESS_MODULE_PROVIDER_TYPE, // shared marker: 'provider'
+          modules: [REMOTE_ACCESS_MODULE_NAME],
+          components: {
+            providerCard: MyProviderCard, // rendered on the Remote access overview
+            providerSetup: MyProviderSetup, // rendered only by this plugin's own setup views
+          },
+        },
+        // ... a CONFIG_MODULE_PLUGIN_TYPE element for the plugin's own settings form, as usual ...
+      ],
+      modules: [REMOTE_ACCESS_MODULE_NAME],
+    });
+  },
+};
+```
+
 ## Third-Party Extensions
 
 ### Creating a Standalone Package

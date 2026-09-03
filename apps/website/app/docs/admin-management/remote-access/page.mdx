@@ -1,0 +1,268 @@
+import { Callout, Cards, Steps } from 'nextra/components'
+
+# Remote Access
+
+Remote access lets you reach a Smart Panel installation from outside your home network — a phone on
+cellular, a laptop at work — without port forwarding, a public IP address, dynamic DNS, or a hand-built
+reverse proxy. It ships as a core **Remote access** module that tracks how the installation is reachable,
+plus provider plugins that do the actual connecting. The first provider is **Tailscale**.
+
+<Callout type="info">
+	Remote access never opens a port on your router and never gives your installation a public IP address.
+	Tailscale connects it to a private mesh network instead; only [Funnel](#funnel-optional), which you opt
+	into explicitly, exposes anything to the public internet.
+</Callout>
+
+---
+
+## Internal, External, and Primary URLs
+
+Smart Panel tracks every way this installation can be reached and ranks them so other features — like the
+[MCP module](/docs/admin-management/mcp) — have one canonical answer to "what is my URL":
+
+- **Internal URL** — the LAN address, derived from the backend's host and port unless you override it. This
+  is what `http://smart-panel.local:3000` resolves to.
+- **External URLs** — every address that reaches this installation from outside the LAN: a connected
+  provider's endpoint (e.g. a Tailscale HTTPS address) and/or a manually configured external URL.
+- **Primary external URL** — Smart Panel ranks every external URL (HTTPS before HTTP, public before private)
+  and treats the top of that ranking as the one to offer other features, such as MCP's OAuth public base URL
+  suggestion.
+
+Both the internal and external URLs are absolute origins only — scheme, host, and optional port, no path,
+credentials, query, or fragment.
+
+---
+
+## Choose Your Path
+
+<Cards>
+	<Cards.Card title="Tailscale (recommended)" href="#set-up-tailscale">
+		Sign in from a browser link or QR code. No account on your router, no public exposure by default,
+		free tier is enough for a household.
+	</Cards.Card>
+	<Cards.Card title="External URL Baseline" href="#external-url-baseline">
+		Already run your own reverse proxy or dynamic DNS? Register the URL directly — no provider plugin
+		required.
+	</Cards.Card>
+	<Cards.Card title="Docker & Home Assistant" href="#docker-and-home-assistant-deployments">
+		The Tailscale plugin isn't supported inside those deployments. Use the vendor's own Tailscale
+		integration alongside the external URL baseline.
+	</Cards.Card>
+</Cards>
+
+---
+
+## The Remote Access Page
+
+Open **Remote access** in the Admin UI menu (admin or owner role required). The page has three sections
+that update live as things change, without a reload:
+
+- **Access URLs** — your internal URL with copy and QR buttons, plus any LAN candidate addresses (other
+  network interfaces, `<hostname>.local`) you can copy but that aren't part of the ranked list below. Below
+  that, every external URL: each entry shows its label, an HTTPS/HTTP tag, a Public/Private tag, and a
+  **Primary** tag on the top-ranked entry, each with its own copy and QR buttons. A manually configured
+  external URL is labeled **Manual external URL**.
+- **Providers** — one card per installed remote-access provider plugin, showing its connection state and
+  published endpoints. A plugin that hasn't registered its own card yet still gets a generic one.
+- **Advisories** — posture warnings such as an insecure external URL, forwarded-header trust configured
+  without any trusted proxies, or any endpoint that is reachable from the public internet.
+
+The module's own settings — `internal_url`, `external_url`, `trust_forwarded_headers`, and
+`trusted_proxies` — live under **Config → Modules → Remote access**. The Remote access module is a core
+module but, unlike some others, can be enabled or disabled from the **Extensions** page; disabling it stops
+every provider and leaves only the internal URL resolvable.
+
+---
+
+## Set Up Tailscale
+
+Tailscale connects this installation to a private, WireGuard-based mesh network (a *tailnet*). Once signed
+in, the admin UI is reachable from any device signed into the same tailnet — by its Tailscale IPv4 address,
+or by a MagicDNS name once your tailnet has MagicDNS enabled — with no port forwarding and no public
+exposure.
+
+### Before You Begin
+
+- A [Tailscale account](https://tailscale.com) — the free tier covers a household.
+- To get the HTTPS address later, enable **HTTPS Certificates** in your tailnet's DNS settings at
+  [login.tailscale.com/admin/dns](https://login.tailscale.com/admin/dns). Skip this and Smart Panel still
+  works over the tailnet's plain HTTP address; an advisory reminds you it's available.
+- If your tailnet has **device approval** turned on, be ready to approve the new node from the
+  [Tailscale admin console](https://login.tailscale.com/admin/machines) before it can finish signing in.
+- Smart Panel appliances are usually always-on, so consider disabling **key expiry** for this node in the
+  Tailscale admin console once it's signed in. If you leave it on, Smart Panel warns you fourteen days
+  before the node's key expires.
+
+<Steps>
+	### Set up
+
+	Open the Tailscale provider card and choose **Set up**. This runs a one-time, privileged job: it installs
+	the `tailscale` package if it isn't already present, enables the `tailscaled` daemon, and grants the
+	Smart Panel service user as the Tailscale operator so the backend can manage the connection without
+	further sudo prompts. Progress streams to the card live. The step is idempotent — safe to re-run if it
+	fails partway or if a reinstall ever drops the operator grant.
+
+	The Raspberry Pi image and `install-server.sh --with-tailscale` both pre-install the `tailscale` package
+	(left disabled), so **Set up** finishes in seconds on those installs. Everywhere else it downloads the
+	package from Tailscale's own signed repository during this step.
+
+	### Sign in
+
+	Choose **Sign in**. Smart Panel shows a Tailscale login link and a QR code — open it on your phone or any
+	device already signed into your tailnet and approve it there. The card polls and flips to **Connected**,
+	showing the tailnet name, the MagicDNS name (once assigned), and the node's Tailscale IPs.
+
+	For a headless or unattended install, an advanced option accepts a pre-authorised
+	[auth key](https://tailscale.com/kb/1085/auth-keys) from the Tailscale admin console instead of the
+	interactive link. The key is used once to sign in and is never stored or logged.
+
+	### Serve HTTPS
+
+	Once connected, if your tailnet has HTTPS certificates enabled, Smart Panel automatically serves the
+	admin UI over HTTPS at `https://<node>.<tailnet>.ts.net` through
+	[Tailscale Serve](https://tailscale.com/kb/1312/serve) — this is usually your primary external URL from
+	then on. If tailnet HTTPS isn't enabled, an advisory links to the tailnet DNS settings page instead.
+
+	### Funnel (optional)
+
+	<Callout type="warning">
+		[Funnel](https://tailscale.com/kb/1223/funnel) publishes the Serve HTTPS address to the **public
+		internet**, not just your tailnet. Your Smart Panel login becomes the only gate in front of it —
+		there is currently no multi-factor authentication. Turn this on only if you specifically need a
+		public URL (for example, a webhook callback), and treat it as public exposure.
+	</Callout>
+
+	Funnel is opt-in and off by default. Turning it on publishes the same Serve URL publicly and raises a
+	persistent advisory reminding you it's exposed. Your tailnet's ACL policy also needs to allow Funnel for
+	this node, or Smart Panel reports that as an advisory too.
+
+	### Tailscale SSH (optional)
+
+	Turning on Tailscale SSH lets an administrator open a shell on the installation over the tailnet, without
+	opening any port for it. It's off by default.
+</Steps>
+
+Hostname, the control-plane URL (for a self-hosted Headscale server), accepting the tailnet's DNS and
+subnet routes, and ACL tags all live in the Tailscale plugin's own settings, under **Config → Plugins →
+Tailscale**.
+
+### Connect, Disconnect, and Sign Out
+
+Day-to-day, the Tailscale node is managed like any other extension service:
+
+- **Extensions → Services** lists `remote-access-tailscale-plugin / node`. **Start**, **Stop**, and
+  **Restart** behave as connect, disconnect, and reconnect. Disabling the Tailscale plugin from the
+  Extensions page disconnects the node the same way.
+- **Sign out**, from the Remote access page, is a separate, explicit action: it expires the node's key and
+  removes the device from your tailnet entirely. It never happens as a side effect of disconnecting.
+- **Reset preferences** re-applies Smart Panel's complete set of managed settings, clearing anything changed
+  by hand outside Smart Panel (for example, at the command line on the host).
+- A **factory reset** of the installation signs the node out and clears its Serve configuration along with
+  everything else.
+
+---
+
+## External URL Baseline
+
+You don't need Tailscale, or any provider plugin, to use remote access. If you already run your own reverse
+proxy (nginx, Caddy, a managed ingress) or dynamic DNS, register that address directly under **Config →
+Modules → Remote access**:
+
+- **External URL** — the public origin your proxy or DDNS host answers on, e.g. `https://panel.example.com`.
+  It appears in the Remote access page's external URL list labeled **Manual external URL**, and becomes the
+  primary external URL when no connected provider offers a better-ranked one.
+- **Trust forwarded headers** and **Trusted proxies** — Smart Panel only honours `X-Forwarded-For`,
+  `X-Real-IP`, `CF-Connecting-IP`, and `X-Forwarded-Proto` from a peer address you explicitly list here. A
+  forwarded header from anywhere else is ignored, and the request falls back to being treated as coming
+  directly from the proxy's own socket address.
+
+Your proxy must forward the client's real address and terminate TLS itself (or pass along that it did):
+
+```nginx
+location / {
+    proxy_pass http://localhost:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Add the proxy's address — the one Smart Panel actually sees as the connection's socket peer, not a load
+balancer further upstream — to **Trusted proxies** and turn on **Trust forwarded headers**.
+
+<Callout type="warning">
+	A proxy on the **same host** as the backend (loopback) must still be listed explicitly. Smart Panel does
+	not automatically trust forwarded headers from `127.0.0.1`/`::1` just because they're local: without an
+	explicit trust entry, any other local process could otherwise spoof a client address and make itself
+	look like a trusted device, bypassing display registration and the login throttle. A **connected**
+	Tailscale node is the one exception — its Serve endpoint is trusted automatically while connected,
+	because the remote-access module itself controls that endpoint.
+</Callout>
+
+This trusted-proxy list is shared: it's the same set the [MCP module](/docs/admin-management/mcp) uses for
+its own reverse-proxy trust, and the same one the display-registration guard and login throttle resolve the
+real client address through — see the [Network Requirements](/docs/get-started/network-requirements) page
+for the general reverse-proxy setup.
+
+---
+
+## Docker and Home Assistant Deployments
+
+The Tailscale plugin needs privileged access to install and run `tailscaled` on the host — something the
+Smart Panel Docker image and the (future) Home Assistant add-on sandbox deliberately don't grant. Both
+deployments report the Tailscale provider as **unsupported** rather than erroring.
+
+Use the [external URL baseline](#external-url-baseline) together with the vendor's own Tailscale
+integration instead:
+
+- **Docker** — run the official [`tailscale/tailscale`](https://hub.docker.com/r/tailscale/tailscale) image
+  as a sidecar container on the same Docker network as Smart Panel, and point Smart Panel's external URL at
+  the address it publishes. See [Docker Installation](/docs/get-started/installation/docker) for the base
+  Smart Panel setup.
+- **Home Assistant** — install the official Tailscale add-on from the Home Assistant add-on store, and use
+  the same external URL baseline to register the address it gives you.
+
+---
+
+## Troubleshooting
+
+### Tailscale shows "Setup required"
+
+The daemon isn't active yet, the operator grant is missing, or the node needs to sign in again (for example
+after a key expired). Open the Tailscale provider card and choose **Set up** — it's safe to re-run — then
+**Sign in** if a login is still needed.
+
+### Sign-in fails with a permission error
+
+This means the `smart-panel` service user was never granted as the Tailscale operator, usually because
+**Set up** hasn't completed successfully yet, or `tailscaled` was reinstalled and lost the grant. Re-run
+**Set up**; it's idempotent and re-applies the operator grant.
+
+### The HTTPS URL never appears
+
+Your tailnet doesn't have **HTTPS Certificates** enabled. Turn it on at
+[login.tailscale.com/admin/dns](https://login.tailscale.com/admin/dns) — the advisory on the Remote access
+page links there directly. The plain HTTP tailnet address keeps working in the meantime.
+
+### A "key expiring" advisory appears
+
+The node's Tailscale key expires within fourteen days. Choose **Sign in again** on the advisory, or open the
+[Tailscale admin console](https://login.tailscale.com/admin/machines) and disable key expiry for this node,
+since it's an always-on appliance rather than a laptop that regularly re-authenticates.
+
+### Sign-in is stuck on "Waiting for approval"
+
+Your tailnet requires device approval for new nodes. Open the
+[Tailscale admin console](https://login.tailscale.com/admin/machines) and approve the new Smart Panel
+device; the card moves to **Connected** once it's approved.
+
+---
+
+## What's Next?
+
+- [Network Requirements](/docs/get-started/network-requirements) — general networking and reverse-proxy setup
+- [Model Context Protocol (MCP)](/docs/admin-management/mcp) — use your remote access URL for MCP OAuth
+- [Configuration](/docs/admin-management/configuration) — manage core module settings

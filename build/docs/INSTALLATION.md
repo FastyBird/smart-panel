@@ -94,12 +94,14 @@ VERSION="0.1.0"
 # Download
 curl --http1.1 -L -C - -o smart-panel-server.tar.gz \
     "https://github.com/FastyBird/smart-panel/releases/download/v${VERSION}/smart-panel-server-${VERSION}-arm64.tar.gz"
-tar -xzf smart-panel-server.tar.gz -C .
-rm smart-panel-server.tar.gz
 
-# Optional: verify download integrity
+# Verify download integrity (required before extracting)
 curl -LO "https://github.com/FastyBird/smart-panel/releases/download/v${VERSION}/smart-panel-server-${VERSION}-arm64.tar.gz.sha256"
 sha256sum -c smart-panel-server-${VERSION}-arm64.tar.gz.sha256
+
+# Extract
+tar -xzf smart-panel-server.tar.gz -C .
+rm smart-panel-server.tar.gz smart-panel-server-${VERSION}-arm64.tar.gz.sha256
 
 # Create data directory
 sudo mkdir -p /var/smart-panel

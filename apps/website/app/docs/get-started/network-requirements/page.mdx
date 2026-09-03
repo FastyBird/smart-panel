@@ -88,9 +88,18 @@ location / {
 	Without WebSocket forwarding, the panel display will not receive real-time updates from the backend.
 </Callout>
 
+Smart Panel only trusts the client address a reverse proxy reports — via `X-Forwarded-For`, `X-Real-IP`, or
+`CF-Connecting-IP` — from a peer address you've explicitly listed as trusted. Have your proxy send
+`X-Forwarded-For`, and list its address under **Trusted proxies** in **Config → Modules → Remote access**
+(with **Trust forwarded headers** turned on); otherwise every request behind it looks like it came from the
+proxy itself, which breaks the login throttle and the display-registration guard. See
+[Remote Access](/docs/admin-management/remote-access) for the full picture, including how a provider like
+Tailscale is trusted automatically while a hand-built proxy is not.
+
 ---
 
 ## What's Next?
 
 - Continue to [Installation](/docs/get-started/installation) to set up Smart Panel
+- See [Remote Access](/docs/admin-management/remote-access) to reach Smart Panel from outside your network
 - See the [Troubleshooting](/docs/troubleshooting) guide if you're having connectivity issues
