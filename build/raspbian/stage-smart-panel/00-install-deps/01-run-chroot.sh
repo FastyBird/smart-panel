@@ -1,10 +1,11 @@
 #!/bin/bash -e
 #
-# Install Node.js 24.x and InfluxDB 1.8
+# Install Node.js 24.x, InfluxDB 1.8, and Tailscale
 #
 # Node.js is installed from the official binary tarball instead of
 # NodeSource apt repo to avoid OOM issues during QEMU-emulated
-# apt-get update on CI runners.
+# apt-get update on CI runners. Tailscale is a small package, so
+# installing it via its official apt repo doesn't hit that issue.
 #
 
 NODE_MAJOR=24
@@ -68,3 +69,32 @@ curl -fsSL "https://dl.influxdata.com/influxdb/releases/influxdb_${INFLUX_VERSIO
 systemctl enable influxdb 2>/dev/null || true
 
 echo "InfluxDB version: $(influxd version 2>&1 || echo 'not installed')"
+
+# ──────────────────────────────────────────────────────────────
+# Install Tailscale (kept disabled — the remote-access plugin
+# enables tailscaled once the operator opts in during setup)
+# ──────────────────────────────────────────────────────────────
+# Chained with && / || instead of relying on set -e, like the InfluxDB
+# install above: a transient apt/network failure here shouldn't fail
+# the whole image build.
+echo "Installing Tailscale..."
+
+curl -fsSL https://pkgs.tailscale.com/stable/raspbian/bookworm.noarmor.gpg \
+	-o /usr/share/keyrings/tailscale-archive-keyring.gpg \
+	&& curl -fsSL https://pkgs.tailscale.com/stable/raspbian/bookworm.tailscale-keyring.list \
+		-o /etc/apt/sources.list.d/tailscale.list \
+	&& apt-get update \
+	&& apt-get install -y --no-install-recommends tailscale \
+	|| {
+		echo "WARNING: Tailscale installation failed — remote access will be unavailable"
+	}
+
+# Ship the image with the daemon inactive; the backend remote-access
+# plugin enables and starts it once the operator opts in. Skip only
+# when the package above failed to install (no such unit to disable);
+# warn instead of hiding a failure to disable an installed daemon.
+if command -v tailscaled >/dev/null 2>&1 && ! systemctl disable tailscaled; then
+	echo "WARNING: Tailscale installed but tailscaled could not be disabled"
+fi
+
+echo "Tailscale version: $(tailscale version 2>&1 | head -1 || echo 'not installed')"

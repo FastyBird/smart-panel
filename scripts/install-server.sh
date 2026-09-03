@@ -7,10 +7,11 @@
 #   curl -fsSL https://get.smart-panel.fastybird.com | sudo bash
 #
 # Options:
-#   --alpha   Install alpha (dev) version
-#   --beta    Install beta version
-#   --version Install specific version (e.g., --version 1.0.0)
-#   --port    Set HTTP port (default: 3000)
+#   --alpha           Install alpha (dev) version
+#   --beta            Install beta version
+#   --version         Install specific version (e.g., --version 1.0.0)
+#   --port            Set HTTP port (default: 3000)
+#   --with-tailscale  Install Tailscale for remote access (daemon left disabled)
 #
 
 set -e
@@ -33,6 +34,8 @@ VERSION=""
 ALPHA=false
 BETA=false
 PORT=$DEFAULT_PORT
+WITH_TAILSCALE=false
+TAILSCALE_INSTALLED=false
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
@@ -51,6 +54,10 @@ while [[ $# -gt 0 ]]; do
 		--port)
 			PORT="$2"
 			shift 2
+			;;
+		--with-tailscale)
+			WITH_TAILSCALE=true
+			shift
 			;;
 		*)
 			shift
@@ -107,6 +114,24 @@ get_distro() {
 	if [[ -f /etc/os-release ]]; then
 		. /etc/os-release
 		echo "$ID"
+	else
+		echo "unknown"
+	fi
+}
+
+get_codename() {
+	if [[ -f /etc/os-release ]]; then
+		. /etc/os-release
+		echo "${VERSION_CODENAME:-unknown}"
+	else
+		echo "unknown"
+	fi
+}
+
+get_version_id() {
+	if [[ -f /etc/os-release ]]; then
+		. /etc/os-release
+		echo "${VERSION_ID:-unknown}"
 	else
 		echo "unknown"
 	fi
@@ -308,6 +333,84 @@ configure_service() {
 	smart-panel-service install --port "$PORT"
 }
 
+install_tailscale() {
+	print_step "Installing Tailscale..."
+
+	local distro=$(get_distro)
+	local installed=false
+
+	# Every branch installs from a signed vendor package source for the
+	# distribution — never pipe a remote script into a shell here, even
+	# though install_nodejs() does that for NodeSource above.
+	case $distro in
+		debian|ubuntu|raspbian)
+			# Debian-family: add the signed keyring and apt source for the
+			# detected codename ourselves (same shape as install_influxdb()).
+			local codename=$(get_codename)
+
+			if [[ "$codename" == "unknown" ]]; then
+				print_warning "Could not determine the ${distro} codename for the Tailscale apt source"
+			elif curl -fsSL "https://pkgs.tailscale.com/stable/${distro}/${codename}.noarmor.gpg" \
+					-o /usr/share/keyrings/tailscale-archive-keyring.gpg \
+				&& curl -fsSL "https://pkgs.tailscale.com/stable/${distro}/${codename}.tailscale-keyring.list" \
+					-o /etc/apt/sources.list.d/tailscale.list \
+				&& apt-get update -qq \
+				&& apt-get install -y -qq tailscale; then
+				installed=true
+			fi
+			;;
+		fedora)
+			# Download the vendor repo file directly instead of using
+			# `dnf config-manager --add-repo`, whose subcommand differs
+			# between dnf4 and dnf5, and isn't available at all on a
+			# plain-yum host (mirrors how install_influxdb() writes its
+			# .repo file without any plugin). The repo file itself
+			# declares gpgcheck=1 and the vendor signing key, so packages
+			# stay signature-verified.
+			if curl -fsSL https://pkgs.tailscale.com/stable/fedora/tailscale.repo \
+					-o /etc/yum.repos.d/tailscale.repo \
+				&& { dnf install -y tailscale || yum install -y tailscale; }; then
+				installed=true
+			fi
+			;;
+		centos|rhel|rocky|almalinux)
+			local version_id=$(get_version_id)
+			local major="${version_id%%.*}"
+			[[ -z "$major" || "$major" == "unknown" ]] && major="9"
+
+			if curl -fsSL "https://pkgs.tailscale.com/stable/rhel/${major}/tailscale.repo" \
+					-o /etc/yum.repos.d/tailscale.repo \
+				&& { dnf install -y tailscale || yum install -y tailscale; }; then
+				installed=true
+			fi
+			;;
+		arch|manjaro)
+			if pacman -S --noconfirm --needed tailscale; then
+				installed=true
+			fi
+			;;
+		*)
+			print_warning "Tailscale is not supported on $distro by this installer"
+			print_warning "Install it manually: https://tailscale.com/download/linux"
+			;;
+	esac
+
+	if [[ "$installed" != true ]] || ! command -v tailscale &> /dev/null; then
+		print_warning "Failed to install Tailscale — continuing without it"
+		return 1
+	fi
+
+	# Every path above installs via the distribution's package manager,
+	# which enables and starts the daemon; leave it disabled until the
+	# operator opts in from the remote-access setup.
+	if ! systemctl disable --now tailscaled; then
+		print_warning "Tailscale installed but the daemon could not be disabled — disable it manually"
+		return 1
+	fi
+
+	print_success "Tailscale installed (daemon disabled until enabled from the admin UI)"
+}
+
 print_completion() {
 	local ip_addr=$(hostname -I 2>/dev/null | awk '{print $1}')
 	[[ -z "$ip_addr" ]] && ip_addr="localhost"
@@ -322,6 +425,15 @@ print_completion() {
 	echo -e "  ${CYAN}Access the admin UI at:${NC}"
 	echo -e "    http://${ip_addr}:${PORT}"
 	echo ""
+	if [[ "$WITH_TAILSCALE" == true ]]; then
+		echo -e "  ${CYAN}Tailscale:${NC}"
+		if [[ "$TAILSCALE_INSTALLED" == true ]]; then
+			echo -e "    Installed, daemon disabled — enable remote access from the admin UI"
+		else
+			echo -e "    ${YELLOW}Installation failed${NC} — see the errors above; install manually if needed"
+		fi
+		echo ""
+	fi
 	echo -e "  ${CYAN}Useful commands:${NC}"
 	echo -e "    sudo smart-panel-service status   - Check service status"
 	echo -e "    sudo smart-panel-service logs -f  - View live logs"
@@ -355,6 +467,14 @@ main() {
 	# Install Smart Panel
 	install_smart_panel
 	configure_service
+
+	# Optional: Tailscale for remote access. Failure here must not abort
+	# the script — Smart Panel itself is already installed and running.
+	if [[ "$WITH_TAILSCALE" == true ]]; then
+		if install_tailscale; then
+			TAILSCALE_INSTALLED=true
+		fi
+	fi
 
 	# Done
 	print_completion
