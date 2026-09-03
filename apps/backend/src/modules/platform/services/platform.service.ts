@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from 'fs';
+import { execFile } from 'node:child_process';
 import si from 'systeminformation';
+import { promisify } from 'util';
 
 import { Injectable } from '@nestjs/common';
 
@@ -12,14 +14,35 @@ import { GenericPlatform } from '../platforms/generic.platform';
 import { HomeAssistantPlatform } from '../platforms/home-assistant.platform';
 import { RaspberryPlatform } from '../platforms/raspberry.platform';
 
+const execFileAsync = promisify(execFile);
+
+// Platforms that never own the host's systemd/sudoers configuration — privileged
+// workers (OS update, Tailscale setup, ...) are never available there, so there is
+// nothing to probe.
+const PRIVILEGED_WORKERS_UNSUPPORTED_PLATFORMS: ReadonlySet<PlatformType> = new Set([
+	PlatformType.DOCKER,
+	PlatformType.HOME_ASSISTANT,
+	PlatformType.DEVELOPMENT,
+]);
+
 @Injectable()
 export class PlatformService {
 	private platform: Platform;
 	private platformType: PlatformType;
 	private readonly logger = createExtensionLogger(PLATFORM_MODULE_NAME, 'PlatformService');
 
+	// The constructor's own detection chain, stored so callers that run before it settles
+	// (supportsPrivilegedWorkers in particular) can await it instead of reading platformType
+	// while it is still undefined.
+	private readonly platformDetection: Promise<void>;
+
+	// Caches the in-flight/resolved probe promise itself (not just its resolved value) so
+	// concurrent callers before the first result share one probe instead of each starting
+	// their own sudo/systemd-run checks.
+	private privilegedWorkersSupportedPromise: Promise<boolean> | null = null;
+
 	constructor() {
-		this.detectPlatform()
+		this.platformDetection = this.detectPlatform()
 			.then(({ platform, type }) => {
 				this.platform = platform;
 				this.platformType = type;
@@ -40,6 +63,36 @@ export class PlatformService {
 
 	getPlatformType(): PlatformType {
 		return this.platformType;
+	}
+
+	/**
+	 * True when this platform can run privileged operations (OS update, Tailscale setup, ...)
+	 * through PrivilegedWorkerService — i.e. passwordless sudo and systemd-run are both
+	 * available. Always false for docker, home-assistant and development. Waits for platform
+	 * detection to finish before deciding, then probes at most once — the probe (in-flight or
+	 * resolved) is cached for the life of the process.
+	 */
+	async supportsPrivilegedWorkers(): Promise<boolean> {
+		if (this.privilegedWorkersSupportedPromise === null) {
+			this.privilegedWorkersSupportedPromise = this.probeSupportsPrivilegedWorkers();
+		}
+
+		return this.privilegedWorkersSupportedPromise;
+	}
+
+	private async probeSupportsPrivilegedWorkers(): Promise<boolean> {
+		await this.platformDetection;
+
+		if (PRIVILEGED_WORKERS_UNSUPPORTED_PLATFORMS.has(this.platformType)) {
+			return false;
+		}
+
+		const [sudoAvailable, systemdRunAvailable] = await Promise.all([
+			this.probeSudoNonInteractive(),
+			this.probeSystemdRunAvailable(),
+		]);
+
+		return sudoAvailable && systemdRunAvailable;
 	}
 
 	getSystemInfo() {
@@ -178,6 +231,28 @@ export class PlatformService {
 		}
 
 		return false;
+	}
+
+	/** Passwordless sudo probe — mirrors the check update-worker.sh itself runs before it relies on sudo -n. */
+	private async probeSudoNonInteractive(): Promise<boolean> {
+		try {
+			await execFileAsync('sudo', ['-n', '/usr/bin/true'], { timeout: 2000 });
+
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	/** systemd-run presence probe — privileged jobs run inside a systemd-run --scope. */
+	private async probeSystemdRunAvailable(): Promise<boolean> {
+		try {
+			await execFileAsync('which', ['systemd-run'], { timeout: 2000 });
+
+			return true;
+		} catch {
+			return false;
+		}
 	}
 
 	private createPlatform(type: PlatformType): Platform {

@@ -6,6 +6,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger';
 import { SYSTEM_MODULE_NAME, UpdatePhase, UpdateStatusType } from '../system.constants';
 
+import { PrivilegedJobStatus, PrivilegedWorkerService } from './privileged-worker.service';
 import { UpdateService } from './update.service';
 
 export interface UpdateProgressFile {
@@ -20,8 +21,12 @@ export interface UpdateProgressFile {
 const STATUS_FILE = '/var/lib/smart-panel/update-status.json';
 const UPDATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
-const STATUS_POLL_INTERVAL_MS = 3_000; // Poll worker status every 3 seconds
-const STATUS_POLL_MAX_MS = UPDATE_TIMEOUT_MS + 30_000; // Stop polling after timeout + grace
+// PrivilegedWorkerService's own hard timeout for this job. Kept slightly longer than
+// UPDATE_TIMEOUT_MS (used above for restart-recovery detection) so a completion signal
+// landing right at the boundary is still caught by the last poll tick.
+const STATUS_POLL_MAX_MS = UPDATE_TIMEOUT_MS + 30_000;
+
+const UPDATE_WORKER_UNIT = 'smart-panel-update';
 
 /**
  * Map worker phases to approximate progress percentages.
@@ -38,13 +43,43 @@ const PHASE_PROGRESS: Record<string, number> = {
 	complete: 100,
 };
 
+/**
+ * Maps update-worker.sh's own status-file shape (`status`/`phase`/`error`, from
+ * UpdateProgressFile) onto PrivilegedWorkerService's generic PrivilegedJobStatus shape, so the
+ * service's own terminal-state detection and one-job-per-unit release work for this legacy
+ * format the same way they do for a script that writes the canonical shape directly.
+ *
+ * `status` and `phase` are always the same string for every non-terminal write in
+ * update-worker.sh (e.g. `update_status "downloading" "downloading"`), and UpdateStatusType /
+ * UpdatePhase share the same string values, so `phase` alone is enough to recover both when
+ * building the in-memory UpdateStatusInfo below.
+ */
+function mapUpdateWorkerStatus(raw: Record<string, unknown>): Partial<PrivilegedJobStatus> | null {
+	const status = raw.status as UpdateStatusType | undefined;
+
+	if (!status) {
+		return null;
+	}
+
+	const state: PrivilegedJobStatus['state'] =
+		status === UpdateStatusType.COMPLETE ? 'complete' : status === UpdateStatusType.FAILED ? 'failed' : 'running';
+
+	return {
+		state,
+		step: raw.phase as string | undefined,
+		message: raw.error as string | undefined,
+	};
+}
+
 @Injectable()
 export class UpdateExecutorService implements OnModuleInit {
 	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'UpdateExecutorService');
-	private statusPollTimer: NodeJS.Timeout | null = null;
 	private progressHighWaterMark = 0;
 
-	constructor(private readonly updateService: UpdateService) {}
+	constructor(
+		private readonly updateService: UpdateService,
+		private readonly privilegedWorker: PrivilegedWorkerService,
+	) {}
 
 	onModuleInit(): void {
 		this.checkPendingUpdateStatus();
@@ -204,54 +239,41 @@ export class UpdateExecutorService implements OnModuleInit {
 			throw new Error(errorMsg);
 		}
 
+		const envVars: Record<string, string> = {
+			UPDATE_VERSION: targetVersion,
+			STATUS_FILE,
+			INSTALL_TYPE: installType,
+			IMAGE_BASE_DIR: installType === 'image' ? this.updateService.getImageBaseDir() : '',
+			DOWNLOAD_URL: downloadUrl ?? '',
+			HOME: process.env.HOME ?? '/root',
+			PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
+		};
+
+		if (process.env.FB_DATA_DIR) envVars.FB_DATA_DIR = process.env.FB_DATA_DIR;
+		if (process.env.FB_DB_PATH) envVars.FB_DB_PATH = process.env.FB_DB_PATH;
+		if (process.env.FB_CONFIG_PATH) envVars.FB_CONFIG_PATH = process.env.FB_CONFIG_PATH;
+
 		try {
-			const { spawn } = await import('child_process');
+			// Spawn the update worker in its own systemd scope so it survives when the
+			// smart-panel service is stopped during the update — otherwise systemd would
+			// kill every process in the service's cgroup, including this one.
+			const { id } = await this.privilegedWorker.run({
+				unit: UPDATE_WORKER_UNIT,
+				script: updateScript,
+				args: [targetVersion],
+				env: envVars,
+				statusFile: STATUS_FILE,
+				timeoutMs: STATUS_POLL_MAX_MS,
+				mapStatus: mapUpdateWorkerStatus,
+			});
 
-			// Spawn the update worker in its own systemd scope so it survives
-			// when the smart-panel service is stopped during the update.
-			// Without this, systemd kills all processes in the service cgroup.
-			const envVars: Record<string, string> = {
-				UPDATE_VERSION: targetVersion,
-				STATUS_FILE,
-				INSTALL_TYPE: installType,
-				IMAGE_BASE_DIR: installType === 'image' ? this.updateService.getImageBaseDir() : '',
-				DOWNLOAD_URL: downloadUrl ?? '',
-				HOME: process.env.HOME ?? '/root',
-				PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
-			};
+			this.logger.log(`Update worker spawned for version ${targetVersion} (job: ${id}, type: ${installType})`);
 
-			if (process.env.FB_DATA_DIR) envVars.FB_DATA_DIR = process.env.FB_DATA_DIR;
-			if (process.env.FB_DB_PATH) envVars.FB_DB_PATH = process.env.FB_DB_PATH;
-			if (process.env.FB_CONFIG_PATH) envVars.FB_CONFIG_PATH = process.env.FB_CONFIG_PATH;
-
-			const setenvArgs = Object.entries(envVars).flatMap(([k, v]) => ['--setenv', `${k}=${v}`]);
-
-			const child = spawn(
-				'sudo',
-				[
-					'-n',
-					'systemd-run',
-					'--scope',
-					'--unit=smart-panel-update',
-					...setenvArgs,
-					'bash',
-					updateScript,
-					targetVersion,
-				],
-				{
-					detached: true,
-					stdio: 'ignore',
-				},
-			);
-
-			child.unref();
-
-			this.logger.log(`Update worker spawned for version ${targetVersion} (PID: ${child.pid}, type: ${installType})`);
-
-			// Poll the status file to sync worker progress to in-memory status.
-			// This catches fast failures (e.g. sudo check) and provides real-time
-			// progress updates to the admin UI via WebSocket.
-			this.startStatusPolling();
+			// Sync worker progress to in-memory status as PrivilegedWorkerService polls the
+			// status file. This catches fast failures (e.g. sudo check) and provides
+			// real-time progress updates to the admin UI via WebSocket.
+			this.progressHighWaterMark = 10;
+			this.watchUpdateJob(id, targetVersion);
 		} catch (error) {
 			const err = error as Error;
 
@@ -277,15 +299,17 @@ export class UpdateExecutorService implements OnModuleInit {
 		}
 	}
 
-	private startStatusPolling(): void {
-		this.stopStatusPolling();
-		this.progressHighWaterMark = 10;
-
-		const startedAt = Date.now();
-
-		this.statusPollTimer = setInterval(() => {
-			// Stop polling after timeout
-			if (Date.now() - startedAt > STATUS_POLL_MAX_MS) {
+	/**
+	 * Subscribes to PrivilegedWorkerService's status-file polling for one update job and
+	 * translates the (already mapUpdateWorkerStatus-mapped) generic status into this module's
+	 * own update status — exactly what the polling interval callback used to do inline before
+	 * the spawn/poll/timeout machinery moved to PrivilegedWorkerService. Unsubscribing here is
+	 * just hygiene (stop notifications once we've handled a terminal tick); PrivilegedWorkerService
+	 * itself — via the mapped status's `state` — is what releases the unit.
+	 */
+	private watchUpdateJob(id: string, targetVersion: string): void {
+		const unsubscribe = this.privilegedWorker.onStatus(id, (status: PrivilegedJobStatus) => {
+			if (status.state === 'timeout') {
 				this.logger.error('Update status polling timed out');
 
 				this.updateService.setStatus({
@@ -297,71 +321,61 @@ export class UpdateExecutorService implements OnModuleInit {
 				});
 
 				this.updateService.releaseUpdateLock();
-				this.stopStatusPolling();
+				unsubscribe();
 
 				return;
 			}
 
-			if (!existsSync(STATUS_FILE)) {
+			if (status.state === 'failed') {
+				this.logger.error(`Update worker failed: ${status.message ?? 'unknown error'}`);
+
+				this.updateService.setStatus({
+					status: UpdateStatusType.FAILED,
+					phase: UpdatePhase.FAILED,
+					progressPercent: null,
+					message: null,
+					error: status.message ?? 'Update failed with unknown error',
+				});
+
+				this.updateService.releaseUpdateLock();
+				unsubscribe();
+
 				return;
 			}
 
-			try {
-				const raw = readFileSync(STATUS_FILE, 'utf-8');
-				const fileStatus = JSON.parse(raw) as UpdateProgressFile;
+			if (status.state === 'complete') {
+				this.updateService.setStatus({
+					status: UpdateStatusType.COMPLETE,
+					phase: UpdatePhase.COMPLETE,
+					progressPercent: 100,
+					message: `Successfully updated to ${targetVersion}`,
+					error: null,
+				});
 
-				if (fileStatus.status === UpdateStatusType.FAILED) {
-					this.logger.error(`Update worker failed: ${fileStatus.error ?? 'unknown error'}`);
+				this.updateService.releaseUpdateLock();
+				unsubscribe();
 
-					this.updateService.setStatus({
-						status: UpdateStatusType.FAILED,
-						phase: UpdatePhase.FAILED,
-						progressPercent: null,
-						message: null,
-						error: fileStatus.error ?? 'Update failed with unknown error',
-					});
-
-					this.updateService.releaseUpdateLock();
-					this.stopStatusPolling();
-				} else if (fileStatus.status === UpdateStatusType.COMPLETE) {
-					this.updateService.setStatus({
-						status: UpdateStatusType.COMPLETE,
-						phase: UpdatePhase.COMPLETE,
-						progressPercent: 100,
-						message: `Successfully updated to ${fileStatus.targetVersion}`,
-						error: null,
-					});
-
-					this.updateService.releaseUpdateLock();
-					this.stopStatusPolling();
-				} else {
-					// In-progress — sync worker phase to in-memory status.
-					// Use high-water mark so progress never goes backwards
-					// (image and npm paths have different phase ordering).
-					const rawProgress = PHASE_PROGRESS[fileStatus.phase] ?? 10;
-					const progress = Math.max(this.progressHighWaterMark, rawProgress);
-
-					this.progressHighWaterMark = progress;
-
-					this.updateService.setStatus({
-						status: fileStatus.status ?? UpdateStatusType.DOWNLOADING,
-						phase: fileStatus.phase ?? UpdatePhase.DOWNLOADING,
-						progressPercent: progress,
-						message: `Update in progress: ${fileStatus.phase}...`,
-						error: null,
-					});
-				}
-			} catch {
-				// File may be mid-write, retry next cycle
+				return;
 			}
-		}, STATUS_POLL_INTERVAL_MS);
-	}
 
-	private stopStatusPolling(): void {
-		if (this.statusPollTimer) {
-			clearInterval(this.statusPollTimer);
-			this.statusPollTimer = null;
-		}
+			// Running — sync worker phase to in-memory status. Use high-water mark so progress
+			// never goes backwards (image and npm paths have different phase ordering).
+			// status.step carries update-worker.sh's `phase` value directly (see
+			// mapUpdateWorkerStatus), which is always the same string as its `status` value for
+			// every non-terminal write, so it doubles as both UpdateStatusType and UpdatePhase here.
+			const rawProgress = PHASE_PROGRESS[status.step ?? ''] ?? 10;
+			const progress = Math.max(this.progressHighWaterMark, rawProgress);
+
+			this.progressHighWaterMark = progress;
+
+			this.updateService.setStatus({
+				status: (status.step as UpdateStatusType) ?? UpdateStatusType.DOWNLOADING,
+				phase: (status.step as UpdatePhase) ?? UpdatePhase.DOWNLOADING,
+				progressPercent: progress,
+				message: `Update in progress: ${status.step}...`,
+				error: null,
+			});
+		});
 	}
 
 	private writeStatusFile(status: UpdateProgressFile): void {
