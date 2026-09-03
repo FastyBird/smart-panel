@@ -35,6 +35,7 @@ ALPHA=false
 BETA=false
 PORT=$DEFAULT_PORT
 WITH_TAILSCALE=false
+TAILSCALE_INSTALLED=false
 
 while [[ $# -gt 0 ]]; do
 	case $1 in
@@ -113,6 +114,15 @@ get_distro() {
 	if [[ -f /etc/os-release ]]; then
 		. /etc/os-release
 		echo "$ID"
+	else
+		echo "unknown"
+	fi
+}
+
+get_codename() {
+	if [[ -f /etc/os-release ]]; then
+		. /etc/os-release
+		echo "${VERSION_CODENAME:-unknown}"
 	else
 		echo "unknown"
 	fi
@@ -317,16 +327,47 @@ configure_service() {
 install_tailscale() {
 	print_step "Installing Tailscale..."
 
-	curl -fsSL https://tailscale.com/install.sh | sh
+	local distro=$(get_distro)
+	local installed=false
 
-	if ! command -v tailscale &> /dev/null; then
-		print_error "Failed to install Tailscale"
-		exit 1
+	case $distro in
+		debian|ubuntu|raspbian)
+			# Debian-family: add the signed keyring and apt source for the
+			# detected codename ourselves (same shape as install_influxdb()).
+			local codename=$(get_codename)
+
+			if [[ "$codename" == "unknown" ]]; then
+				print_warning "Could not determine the ${distro} codename for the Tailscale apt source"
+			elif curl -fsSL "https://pkgs.tailscale.com/stable/${distro}/${codename}.noarmor.gpg" \
+					-o /usr/share/keyrings/tailscale-archive-keyring.gpg \
+				&& curl -fsSL "https://pkgs.tailscale.com/stable/${distro}/${codename}.tailscale-keyring.list" \
+					-o /etc/apt/sources.list.d/tailscale.list \
+				&& apt-get update -qq \
+				&& apt-get install -y -qq tailscale; then
+				installed=true
+			fi
+			;;
+		*)
+			# Other distributions: fall back to the vendor install script
+			# (same trust level as the NodeSource setup script above).
+			if curl -fsSL https://tailscale.com/install.sh | sh; then
+				installed=true
+			fi
+			;;
+	esac
+
+	if [[ "$installed" != true ]] || ! command -v tailscale &> /dev/null; then
+		print_warning "Failed to install Tailscale — continuing without it"
+		return 1
 	fi
 
-	# The official installer enables and starts tailscaled; leave it
-	# disabled until the operator opts in from the remote-access setup.
-	systemctl disable --now tailscaled
+	# The apt package and the vendor script both enable and start the
+	# daemon; leave it disabled until the operator opts in from the
+	# remote-access setup.
+	if ! systemctl disable --now tailscaled; then
+		print_warning "Tailscale installed but the daemon could not be disabled — disable it manually"
+		return 1
+	fi
 
 	print_success "Tailscale installed (daemon disabled until enabled from the admin UI)"
 }
@@ -347,7 +388,11 @@ print_completion() {
 	echo ""
 	if [[ "$WITH_TAILSCALE" == true ]]; then
 		echo -e "  ${CYAN}Tailscale:${NC}"
-		echo -e "    Installed, daemon disabled — enable remote access from the admin UI"
+		if [[ "$TAILSCALE_INSTALLED" == true ]]; then
+			echo -e "    Installed, daemon disabled — enable remote access from the admin UI"
+		else
+			echo -e "    ${YELLOW}Installation failed${NC} — see the errors above; install manually if needed"
+		fi
 		echo ""
 	fi
 	echo -e "  ${CYAN}Useful commands:${NC}"
@@ -384,9 +429,12 @@ main() {
 	install_smart_panel
 	configure_service
 
-	# Optional: Tailscale for remote access
+	# Optional: Tailscale for remote access. Failure here must not abort
+	# the script — Smart Panel itself is already installed and running.
 	if [[ "$WITH_TAILSCALE" == true ]]; then
-		install_tailscale
+		if install_tailscale; then
+			TAILSCALE_INSTALLED=true
+		fi
 	fi
 
 	# Done

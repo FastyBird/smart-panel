@@ -74,18 +74,24 @@ echo "InfluxDB version: $(influxd version 2>&1 || echo 'not installed')"
 # Install Tailscale (kept disabled — the remote-access plugin
 # enables tailscaled once the operator opts in during setup)
 # ──────────────────────────────────────────────────────────────
+# Chained with && / || instead of relying on set -e, like the InfluxDB
+# install above: a transient apt/network failure here shouldn't fail
+# the whole image build.
 echo "Installing Tailscale..."
 
 curl -fsSL https://pkgs.tailscale.com/stable/raspbian/bookworm.noarmor.gpg \
-	-o /usr/share/keyrings/tailscale-archive-keyring.gpg
-curl -fsSL https://pkgs.tailscale.com/stable/raspbian/bookworm.tailscale-keyring.list \
-	-o /etc/apt/sources.list.d/tailscale.list
-
-apt-get update
-apt-get install -y --no-install-recommends tailscale
+	-o /usr/share/keyrings/tailscale-archive-keyring.gpg \
+	&& curl -fsSL https://pkgs.tailscale.com/stable/raspbian/bookworm.tailscale-keyring.list \
+		-o /etc/apt/sources.list.d/tailscale.list \
+	&& apt-get update \
+	&& apt-get install -y --no-install-recommends tailscale \
+	|| {
+		echo "WARNING: Tailscale installation failed — remote access will be unavailable"
+	}
 
 # Ship the image with the daemon inactive; the backend remote-access
-# plugin enables and starts it once the operator opts in.
-systemctl disable tailscaled
+# plugin enables and starts it once the operator opts in. Guarded in
+# case the package above failed to install (no such unit to disable).
+systemctl disable tailscaled 2>/dev/null || true
 
-echo "Tailscale version: $(tailscale version | head -1)"
+echo "Tailscale version: $(tailscale version 2>&1 | head -1 || echo 'not installed')"
