@@ -13,6 +13,8 @@ import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ClientAddressService } from '../../api/services/client-address.service';
+import { TrustedProxyRegistryService } from '../../api/services/trusted-proxy-registry.service';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
@@ -100,6 +102,8 @@ describe('WebsocketGateway', () => {
 						validateClient: jest.fn(),
 					},
 				},
+				TrustedProxyRegistryService,
+				ClientAddressService,
 			],
 		}).compile();
 

@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ApiModule } from '../api/api.module';
 import { AuthModule } from '../auth/auth.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { PageEntity } from '../dashboard/entities/dashboard.entity';
@@ -50,6 +51,7 @@ import { DisplayExistsConstraint } from './validators/display-exists-constraint.
 		AuthModule,
 		StorageModule,
 		SpacesModule,
+		ApiModule,
 	],
 	controllers: [DisplaysController, RegistrationController],
 	providers: [

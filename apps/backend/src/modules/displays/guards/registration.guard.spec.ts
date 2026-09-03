@@ -1,0 +1,168 @@
+/*
+eslint-disable @typescript-eslint/unbound-method
+*/
+/*
+Reason: `expect(Logger.prototype.warn).toHaveBeenCalledWith(...)` reads the
+mocked method off the prototype directly (the established pattern for
+asserting on `createExtensionLogger` output in this codebase), which ESLint
+otherwise flags as an unsafe unbound reference.
+*/
+import { FastifyRequest } from 'fastify';
+
+import { ExecutionContext, ForbiddenException, Logger } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+
+import { ClientAddressService } from '../../api/services/client-address.service';
+import { TrustedProxyRegistryService } from '../../api/services/trusted-proxy-registry.service';
+import { TokensService } from '../../auth/services/tokens.service';
+import { ConfigService } from '../../config/services/config.service';
+import { DISPLAYS_MODULE_NAME, DeploymentMode } from '../displays.constants';
+import { DisplaysConfigModel } from '../models/config.model';
+import { DisplaysService } from '../services/displays.service';
+import { PermitJoinService } from '../services/permit-join.service';
+
+import { RegistrationGuard } from './registration.guard';
+
+function fastifyRequest(headers: Record<string, string>, remoteAddress: string): FastifyRequest {
+	return {
+		headers,
+		raw: { socket: { remoteAddress } },
+	} as unknown as FastifyRequest;
+}
+
+function contextFor(request: FastifyRequest): ExecutionContext {
+	return {
+		switchToHttp: () => ({
+			getRequest: () => request,
+			getResponse: () => ({}),
+			getNext: () => ({}),
+		}),
+	} as unknown as ExecutionContext;
+}
+
+function buildConfig(mode: DeploymentMode = DeploymentMode.COMBINED): DisplaysConfigModel {
+	const config = new DisplaysConfigModel();
+	config.type = DISPLAYS_MODULE_NAME;
+	config.deploymentMode = mode;
+	config.permitJoinDurationMs = 120000;
+
+	return config;
+}
+
+describe('RegistrationGuard', () => {
+	let guard: RegistrationGuard;
+	let trustedProxyRegistry: TrustedProxyRegistryService;
+	let permitJoinService: { isPermitJoinActive: jest.Mock };
+	let configService: { getModuleConfig: jest.Mock };
+
+	beforeEach(async () => {
+		permitJoinService = { isPermitJoinActive: jest.fn().mockReturnValue(false) };
+		configService = { getModuleConfig: jest.fn().mockReturnValue(buildConfig()) };
+
+		const module: TestingModule = await Test.createTestingModule({
+			providers: [
+				RegistrationGuard,
+				{ provide: ConfigService, useValue: configService },
+				{ provide: PermitJoinService, useValue: permitJoinService },
+				{ provide: DisplaysService, useValue: {} },
+				{ provide: TokensService, useValue: {} },
+				TrustedProxyRegistryService,
+				ClientAddressService,
+			],
+		}).compile();
+
+		guard = module.get<RegistrationGuard>(RegistrationGuard);
+		trustedProxyRegistry = module.get<TrustedProxyRegistryService>(TrustedProxyRegistryService);
+		// `jest.setup.ts` re-installs this spy every test but reuses the
+		// same mock instance, so call history otherwise leaks across `it`
+		// blocks within this file.
+		(Logger.prototype.warn as jest.Mock).mockClear();
+	});
+
+	it('rejects a spoofed loopback address from an untrusted LAN peer without permit-join', () => {
+		// The socket peer is a real LAN host — not localhost, not a trusted
+		// proxy — so its claimed `X-Forwarded-For: 127.0.0.1` must be ignored
+		// entirely rather than bypassing permit-join.
+		const request = fastifyRequest({ 'x-forwarded-for': '127.0.0.1' }, '192.168.1.50');
+
+		expect(() => guard.canActivate(contextFor(request))).toThrow(ForbiddenException);
+		expect(permitJoinService.isPermitJoinActive).toHaveBeenCalled();
+	});
+
+	// Critical regression case: an unrecognised reverse proxy bound to
+	// loopback (cloudflared, `tailscale serve`, a local nginx) with
+	// FB_TRUSTED_PROXIES unset. The peer socket address is genuinely
+	// 127.0.0.1, so isLocalhost() alone would say "local" — but the peer is
+	// untrusted and sent X-Forwarded-For, meaning a real remote client is
+	// behind it. Without the ignoredForwardedHeaders gate this bypasses
+	// permit-join entirely and hands out an unauthenticated display token to
+	// any internet client reaching the proxy.
+	it('rejects a loopback peer that is untrusted and presents X-Forwarded-For, without permit-join', () => {
+		const request = fastifyRequest({ 'x-forwarded-for': '203.0.113.9' }, '127.0.0.1');
+
+		expect(() => guard.canActivate(contextFor(request))).toThrow(ForbiddenException);
+		expect(permitJoinService.isPermitJoinActive).toHaveBeenCalled();
+
+		// Confirms this isn't merely being caught by all-in-one mode or some
+		// other unrelated path — it stays rejected until permit-join opens,
+		// exactly like any other non-local client.
+		permitJoinService.isPermitJoinActive.mockReturnValue(true);
+		expect(guard.canActivate(contextFor(request))).toBe(true);
+	});
+
+	it('accepts a genuine loopback peer with no forwarded headers, regardless of permit-join state', () => {
+		const request = fastifyRequest({}, '127.0.0.1');
+
+		expect(guard.canActivate(contextFor(request))).toBe(true);
+	});
+
+	it('treats a LAN client forwarded through a trusted loopback proxy as that client', () => {
+		trustedProxyRegistry.register({ id: 'remote-access', addresses: () => ['127.0.0.1'] });
+		const request = fastifyRequest({ 'x-forwarded-for': '192.168.1.77' }, '127.0.0.1');
+
+		// Not auto-accepted as localhost: the resolved client is a real LAN
+		// address behind a trusted proxy, so it is subject to the normal
+		// permit-join gate rather than the loopback bypass.
+		expect(() => guard.canActivate(contextFor(request))).toThrow(ForbiddenException);
+
+		permitJoinService.isPermitJoinActive.mockReturnValue(true);
+
+		expect(guard.canActivate(contextFor(request))).toBe(true);
+	});
+
+	it('rejects any non-localhost peer in all-in-one mode even with permit-join active', () => {
+		configService.getModuleConfig.mockReturnValue(buildConfig(DeploymentMode.ALL_IN_ONE));
+		permitJoinService.isPermitJoinActive.mockReturnValue(true);
+		const request = fastifyRequest({}, '192.168.1.50');
+
+		expect(() => guard.canActivate(contextFor(request))).toThrow(ForbiddenException);
+	});
+
+	// Closes the corner where a *trusted* proxy's right-most-untrusted
+	// X-Forwarded-For entry is itself 127.0.0.1 — that is the proxy relaying
+	// what its own client claimed, not this backend's own loopback
+	// interface, so it must not borrow the localhost bypass either.
+	it('does not treat a trusted proxy forwarding a loopback address as local', () => {
+		trustedProxyRegistry.register({ id: 'remote-access', addresses: () => ['198.51.100.1'] });
+		const request = fastifyRequest({ 'x-forwarded-for': '127.0.0.1' }, '198.51.100.1');
+
+		expect(() => guard.canActivate(contextFor(request))).toThrow(ForbiddenException);
+		expect(permitJoinService.isPermitJoinActive).toHaveBeenCalled();
+
+		permitJoinService.isPermitJoinActive.mockReturnValue(true);
+		expect(guard.canActivate(contextFor(request))).toBe(true);
+	});
+
+	it('names the real reason in the all-in-one rejection log for an untrusted, forwarded loopback peer', () => {
+		configService.getModuleConfig.mockReturnValue(buildConfig(DeploymentMode.ALL_IN_ONE));
+		const request = fastifyRequest({ 'x-forwarded-for': '203.0.113.9' }, '127.0.0.1');
+
+		expect(() => guard.canActivate(contextFor(request))).toThrow(ForbiddenException);
+		// Not "IP 127.0.0.1 is not localhost" — that would be a false claim,
+		// since the resolved address genuinely is 127.0.0.1 here.
+		expect(Logger.prototype.warn).toHaveBeenCalledWith(
+			expect.stringContaining('forwarding headers from an untrusted peer'),
+			expect.anything(),
+		);
+	});
+});

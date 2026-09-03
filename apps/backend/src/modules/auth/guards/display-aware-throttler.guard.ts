@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import { FastifyRequest } from 'fastify';
 
 import { ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -12,6 +13,7 @@ import {
 } from '@nestjs/throttler';
 import { THROTTLER_LIMIT, THROTTLER_SKIP } from '@nestjs/throttler/dist/throttler.constants';
 
+import { ClientAddressService } from '../../api/services/client-address.service';
 import { TokenOwnerType } from '../auth.constants';
 import { extractAccessTokenFromHeader, hashToken } from '../utils/token.utils';
 
@@ -147,8 +149,20 @@ export class DisplayAwareThrottlerGuard extends ThrottlerGuard {
 		@InjectThrottlerStorage() storageService: ThrottlerStorage,
 		reflector: Reflector,
 		private readonly jwtService: JwtService,
+		private readonly clientAddressService: ClientAddressService,
 	) {
 		super(options, storageService, reflector);
+	}
+
+	/**
+	 * Keys the throttler bucket on the trust-aware resolved client address
+	 * instead of the raw socket address, so a request behind a trusted proxy
+	 * (see `ClientAddressService`) is bucketed by the real client rather than
+	 * the proxy's own address — otherwise every client behind one trusted
+	 * proxy (a tunnel, Tailscale Serve, …) would share a single budget.
+	 */
+	protected getTracker(req: Record<string, any>): Promise<string> {
+		return Promise.resolve(this.clientAddressService.resolve(req as FastifyRequest).address);
 	}
 
 	protected async shouldSkip(context: ExecutionContext): Promise<boolean> {

@@ -8,6 +8,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { DEFAULT_TOKEN_EXPIRATION, DEFAULT_TOKEN_SECRET } from '../../app.constants';
 import { getEnvValue } from '../../common/utils/config.utils';
+import { ApiModule } from '../api/api.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
@@ -80,6 +81,7 @@ import { TokensService } from './services/tokens.service';
 		CacheModule.register(),
 		SwaggerModule,
 		UsersModule,
+		ApiModule,
 	],
 	providers: [
 		AuthService,

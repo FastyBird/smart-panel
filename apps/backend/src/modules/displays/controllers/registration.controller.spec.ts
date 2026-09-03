@@ -5,12 +5,14 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import type { Request } from 'express';
+import type { FastifyRequest } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ClientAddressService } from '../../api/services/client-address.service';
+import { TrustedProxyRegistryService } from '../../api/services/trusted-proxy-registry.service';
 import { ConnectionState, HomeMode } from '../displays.constants';
 import { DisplaysRegistrationException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
@@ -23,6 +25,8 @@ import { RegistrationController } from './registration.controller';
 describe('RegistrationController', () => {
 	let controller: RegistrationController;
 	let service: RegistrationService;
+	let permitJoinService: { isPermitJoinActive: jest.Mock; getRemainingTime: jest.Mock };
+	let trustedProxyRegistry: TrustedProxyRegistryService;
 
 	const mockDisplay: DisplayEntity = {
 		id: uuid().toString(),
@@ -70,6 +74,11 @@ describe('RegistrationController', () => {
 	const mockToken = 'mock-jwt-token-for-display';
 
 	beforeEach(async () => {
+		permitJoinService = {
+			isPermitJoinActive: jest.fn().mockReturnValue(true),
+			getRemainingTime: jest.fn().mockReturnValue(null),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [RegistrationController],
 			providers: [
@@ -81,12 +90,10 @@ describe('RegistrationController', () => {
 				},
 				{
 					provide: PermitJoinService,
-					useValue: {
-						isPermitJoinActive: jest.fn().mockReturnValue(true),
-						getRemainingTime: jest.fn().mockReturnValue(null),
-						getDeploymentMode: jest.fn().mockReturnValue('combined'),
-					},
+					useValue: permitJoinService,
 				},
+				TrustedProxyRegistryService,
+				ClientAddressService,
 			],
 		})
 			.overrideGuard(RegistrationGuard)
@@ -97,6 +104,7 @@ describe('RegistrationController', () => {
 
 		controller = module.get<RegistrationController>(RegistrationController);
 		service = module.get<RegistrationService>(RegistrationService);
+		trustedProxyRegistry = module.get<TrustedProxyRegistryService>(TrustedProxyRegistryService);
 	});
 
 	afterEach(() => {
@@ -125,8 +133,8 @@ describe('RegistrationController', () => {
 
 			const mockRequest = {
 				headers: {},
-				socket: { remoteAddress: '127.0.0.1' },
-			} as unknown as Request;
+				raw: { socket: { remoteAddress: '127.0.0.1' } },
+			} as unknown as FastifyRequest;
 			const result = await controller.register(mockRequest, 'FastyBird Smart Panel/1.0.0', { data: registerDto });
 
 			expect(result.data.display).toEqual(toInstance(DisplayEntity, mockDisplay));
@@ -147,8 +155,8 @@ describe('RegistrationController', () => {
 
 			const mockRequest = {
 				headers: {},
-				socket: { remoteAddress: '127.0.0.1' },
-			} as unknown as Request;
+				raw: { socket: { remoteAddress: '127.0.0.1' } },
+			} as unknown as FastifyRequest;
 			const result = await controller.register(mockRequest, 'FastyBird-Display/1.0', { data: registerDto });
 
 			expect(result.data).toBeDefined();
@@ -163,8 +171,8 @@ describe('RegistrationController', () => {
 
 			const mockRequest = {
 				headers: {},
-				socket: { remoteAddress: '127.0.0.1' },
-			} as unknown as Request;
+				raw: { socket: { remoteAddress: '127.0.0.1' } },
+			} as unknown as FastifyRequest;
 			await expect(controller.register(mockRequest, 'InvalidBrowser/1.0', { data: registerDto })).rejects.toThrow(
 				DisplaysRegistrationException,
 			);
@@ -180,8 +188,8 @@ describe('RegistrationController', () => {
 
 			const mockRequest = {
 				headers: {},
-				socket: { remoteAddress: '127.0.0.1' },
-			} as unknown as Request;
+				raw: { socket: { remoteAddress: '127.0.0.1' } },
+			} as unknown as FastifyRequest;
 			await expect(
 				controller.register(mockRequest, undefined as unknown as string, { data: registerDto }),
 			).rejects.toThrow(DisplaysRegistrationException);
@@ -197,13 +205,62 @@ describe('RegistrationController', () => {
 
 			const mockRequest = {
 				headers: {},
-				socket: { remoteAddress: '127.0.0.1' },
-			} as unknown as Request;
+				raw: { socket: { remoteAddress: '127.0.0.1' } },
+			} as unknown as FastifyRequest;
 			await expect(controller.register(mockRequest, '', { data: registerDto })).rejects.toThrow(
 				DisplaysRegistrationException,
 			);
 
 			expect(service.registerDisplay).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getRegistrationStatus', () => {
+		it('reports open for a genuine loopback peer with no forwarded headers, even with permit-join inactive', () => {
+			permitJoinService.isPermitJoinActive.mockReturnValue(false);
+			const request = {
+				headers: {},
+				raw: { socket: { remoteAddress: '127.0.0.1' } },
+			} as unknown as FastifyRequest;
+
+			expect(controller.getRegistrationStatus(request).data.open).toBe(true);
+		});
+
+		// Critical regression case: an unrecognised reverse proxy bound to
+		// loopback (cloudflared, `tailscale serve`, a local nginx) with
+		// FB_TRUSTED_PROXIES unset. The socket peer is genuinely 127.0.0.1,
+		// but it is untrusted and forwarded X-Forwarded-For, so a real remote
+		// client is behind it — `open: true` here would tell that client
+		// registration needs no permit-join.
+		it('does not report open for a loopback peer that is untrusted and presents X-Forwarded-For', () => {
+			permitJoinService.isPermitJoinActive.mockReturnValue(false);
+			const request = {
+				headers: { 'x-forwarded-for': '203.0.113.9' },
+				raw: { socket: { remoteAddress: '127.0.0.1' } },
+			} as unknown as FastifyRequest;
+
+			expect(controller.getRegistrationStatus(request).data.open).toBe(false);
+		});
+
+		it('reports open for that same untrusted-forwarded loopback peer once permit-join is active', () => {
+			permitJoinService.isPermitJoinActive.mockReturnValue(true);
+			const request = {
+				headers: { 'x-forwarded-for': '203.0.113.9' },
+				raw: { socket: { remoteAddress: '127.0.0.1' } },
+			} as unknown as FastifyRequest;
+
+			expect(controller.getRegistrationStatus(request).data.open).toBe(true);
+		});
+
+		it('treats a LAN client forwarded through a trusted loopback proxy as that client, not as local', () => {
+			trustedProxyRegistry.register({ id: 'remote-access', addresses: () => ['127.0.0.1'] });
+			permitJoinService.isPermitJoinActive.mockReturnValue(false);
+			const request = {
+				headers: { 'x-forwarded-for': '192.168.1.77' },
+				raw: { socket: { remoteAddress: '127.0.0.1' } },
+			} as unknown as FastifyRequest;
+
+			expect(controller.getRegistrationStatus(request).data.open).toBe(false);
 		});
 	});
 });

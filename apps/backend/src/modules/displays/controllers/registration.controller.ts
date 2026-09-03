@@ -1,9 +1,10 @@
-import { Request } from 'express';
+import { FastifyRequest } from 'fastify';
 
 import { Body, Controller, Get, Headers, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { ClientAddressService } from '../../api/services/client-address.service';
 import { Public } from '../../auth/guards/auth.guard';
 import {
 	ApiBadRequestResponse,
@@ -23,7 +24,7 @@ import {
 } from '../models/displays-response.model';
 import { PermitJoinService } from '../services/permit-join.service';
 import { RegistrationService } from '../services/registration.service';
-import { extractClientIp, isLocalhost } from '../utils/ip.utils';
+import { isLocalhost } from '../utils/ip.utils';
 
 @ApiTags(DISPLAYS_MODULE_API_TAG_NAME)
 @Controller('register')
@@ -33,6 +34,7 @@ export class RegistrationController {
 	constructor(
 		private readonly registrationService: RegistrationService,
 		private readonly permitJoinService: PermitJoinService,
+		private readonly clientAddressService: ClientAddressService,
 	) {}
 
 	@Post()
@@ -49,7 +51,7 @@ export class RegistrationController {
 	@ApiForbiddenResponse('Registration not permitted or localhost display already exists')
 	@ApiUnprocessableEntityResponse('Invalid registration data')
 	async register(
-		@Req() request: Request,
+		@Req() request: FastifyRequest,
 		@Headers('user-agent') userAgent: string,
 		@Body() body: ReqRegisterDisplayDto,
 	): Promise<DisplayRegistrationResponseModel> {
@@ -62,7 +64,7 @@ export class RegistrationController {
 			throw new DisplaysRegistrationException('Invalid request source');
 		}
 
-		const clientIp = extractClientIp(request);
+		const clientIp = this.clientAddressService.resolve(request).address;
 		const result = await this.registrationService.registerDisplay(body.data, userAgent, clientIp);
 
 		const response = new DisplayRegistrationResponseModel();
@@ -84,9 +86,15 @@ export class RegistrationController {
 			'Returns whether registration is currently open. Public endpoint for displays to check before attempting registration.',
 	})
 	@ApiSuccessResponse(RegistrationStatusResponseModel, 'Returns registration status')
-	getRegistrationStatus(@Req() request: Request): RegistrationStatusResponseModel {
-		const clientIp = extractClientIp(request);
-		const isLocalhostConnection = isLocalhost(clientIp);
+	getRegistrationStatus(@Req() request: FastifyRequest): RegistrationStatusResponseModel {
+		const resolved = this.clientAddressService.resolve(request);
+		// Same "genuinely direct" requirement as RegistrationGuard: neither an
+		// untrusted peer's ignored forwarding headers nor a trusted proxy's
+		// forwarded address (its right-most-untrusted X-Forwarded-For entry can
+		// itself be a loopback address) may be reported as an open,
+		// no-permit-join-needed local connection.
+		const isLocalhostConnection =
+			isLocalhost(resolved.address) && !resolved.forwarded && !resolved.ignoredForwardedHeaders;
 
 		// Localhost connections are always allowed, regardless of permit join status
 		const open = isLocalhostConnection || this.permitJoinService.isPermitJoinActive();
