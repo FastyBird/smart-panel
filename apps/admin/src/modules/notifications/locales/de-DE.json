@@ -56,7 +56,7 @@
 			"bulkRemoveFailed": "{count} Benachrichtigungen konnten nicht entfernt werden.",
 			"notAllMarkedRead": "Einige Benachrichtigungen konnten nicht als gelesen markiert werden.",
 			"notFetched": "Benachrichtigungen konnten nicht geladen werden.",
-			"notAllDismissed": "Einige Benachrichtigungen konnten nicht verworfen werden.",
+			"notAllDismissed": "Einige Benachrichtigungen konnten nicht geschlossen werden.",
 			"notAllMarkedUnread": "Einige Benachrichtigungen konnten nicht als ungelesen markiert werden."
 		},
 		"actions": {

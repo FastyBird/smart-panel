@@ -56,7 +56,7 @@
 			"bulkRemoveFailed": "{count} oznámení se nepodařilo odebrat.",
 			"notAllMarkedRead": "Některá oznámení se nepodařilo označit jako přečtená.",
 			"notFetched": "Některá oznámení se nepodařilo načíst.",
-			"notAllDismissed": "Některá oznámení se nepodařilo odmítnout.",
+			"notAllDismissed": "Některá oznámení se nepodařilo zavřít.",
 			"notAllMarkedUnread": "Některá oznámení se nepodařilo označit jako nepřečtená."
 		},
 		"actions": {

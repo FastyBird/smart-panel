@@ -56,7 +56,7 @@
 			"bulkRemoveFailed": "{count} upozornení sa nepodarilo odstrániť.",
 			"notAllMarkedRead": "Niektoré upozornenia sa nepodarilo označiť ako prečítané.",
 			"notFetched": "Oznámenia sa nepodarilo načítať.",
-			"notAllDismissed": "Niektoré oznámenia sa nepodarilo odmietnuť.",
+			"notAllDismissed": "Niektoré oznámenia sa nepodarilo zatvoriť.",
 			"notAllMarkedUnread": "Niektoré oznámenia sa nepodarilo označiť ako neprečítané."
 		},
 		"actions": {

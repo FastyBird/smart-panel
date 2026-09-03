@@ -56,7 +56,7 @@
 			"bulkRemoveFailed": "Nie udało się usunąć {count} powiadomień.",
 			"notAllMarkedRead": "Niektórych powiadomień nie udało się oznaczyć jako przeczytanych.",
 			"notFetched": "Nie udało się wczytać powiadomień.",
-			"notAllDismissed": "Niektórych powiadomień nie udało się odrzucić.",
+			"notAllDismissed": "Niektórych powiadomień nie udało się zamknąć.",
 			"notAllMarkedUnread": "Niektórych powiadomień nie udało się oznaczyć jako nieprzeczytane."
 		},
 		"actions": {
