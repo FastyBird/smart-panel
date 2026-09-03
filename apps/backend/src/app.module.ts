@@ -38,6 +38,8 @@ import { MCP_MODULE_PREFIX } from './modules/mcp/mcp.constants';
 import { McpModule } from './modules/mcp/mcp.module';
 import { MdnsModule } from './modules/mdns/mdns.module';
 import { ModuleRegistryModule } from './modules/module-registry/module-registry.module';
+import { NOTIFICATIONS_MODULE_PREFIX } from './modules/notifications/notifications.constants';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PlatformModule } from './modules/platform/platform.module';
 import { REMOTE_ACCESS_MODULE_PREFIX } from './modules/remote-access/remote-access.constants';
 import { RemoteAccessModule } from './modules/remote-access/remote-access.module';
@@ -285,6 +287,10 @@ export class AppModule {
 								module: McpModule,
 							},
 							{
+								path: NOTIFICATIONS_MODULE_PREFIX,
+								module: NotificationsModule,
+							},
+							{
 								path: AUTH_MODULE_PREFIX,
 								module: ApiModule,
 							},
@@ -438,6 +444,7 @@ export class AppModule {
 				SecurityModule,
 				BuddyModule,
 				McpModule,
+				NotificationsModule,
 				SpacesModule,
 				SeedModule,
 				StatsModule,

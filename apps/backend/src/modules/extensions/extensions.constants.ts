@@ -5,6 +5,7 @@ import { DEVICES_MODULE_NAME } from '../devices/devices.constants';
 import { DISPLAYS_MODULE_NAME } from '../displays/displays.constants';
 import { ENERGY_MODULE_NAME } from '../energy/energy.constants';
 import { INTENTS_MODULE_NAME } from '../intents/intents.constants';
+import { NOTIFICATIONS_MODULE_NAME } from '../notifications/notifications.constants';
 import { PLATFORM_MODULE_NAME } from '../platform/platform.constants';
 import { SCENES_MODULE_NAME } from '../scenes/scenes.constants';
 import { SECURITY_MODULE_NAME } from '../security/security.constants';
@@ -45,6 +46,7 @@ export const NON_TOGGLEABLE_MODULES: readonly string[] = [
 	SECURITY_MODULE_NAME,
 	ENERGY_MODULE_NAME,
 	PLATFORM_MODULE_NAME,
+	NOTIFICATIONS_MODULE_NAME,
 ] as const;
 
 export enum ExtensionKind {
