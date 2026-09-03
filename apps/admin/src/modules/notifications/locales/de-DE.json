@@ -19,6 +19,11 @@
 		},
 		"aboutConfig": "Über die Benachrichtigungseinstellungen"
 	},
+	"subHeadings": {
+		"notifications": {
+			"list": "Systemzustände und Ereignisse, die Ihre Aufmerksamkeit erfordern"
+		}
+	},
 	"texts": {
 		"bell": {
 			"title": "Benachrichtigungen",
@@ -44,12 +49,12 @@
 			"dismissCanceled": "Schließen abgebrochen.",
 			"notDismissed": "Benachrichtigung konnte nicht geschlossen werden.",
 			"notMarkedRead": "Benachrichtigung konnte nicht aktualisiert werden.",
-			"notAllMarkedRead": "Some notifications could not be marked as read.",
 			"removed": "Benachrichtigung wurde entfernt.",
 			"removeCanceled": "Entfernen abgebrochen.",
 			"notRemoved": "Benachrichtigung konnte nicht entfernt werden.",
 			"bulkRemoved": "{count} Benachrichtigungen wurden entfernt.",
 			"bulkRemoveFailed": "{count} Benachrichtigungen konnten nicht entfernt werden.",
+			"notAllMarkedRead": "Einige Benachrichtigungen konnten nicht als gelesen markiert werden.",
 			"notFetched": "Benachrichtigungen konnten nicht geladen werden.",
 			"notAllDismissed": "Einige Benachrichtigungen konnten nicht verworfen werden.",
 			"notAllMarkedUnread": "Einige Benachrichtigungen konnten nicht als ungelesen markiert werden."
@@ -62,37 +67,6 @@
 		"config": {
 			"edited": "Benachrichtigungseinstellungen wurden gespeichert.",
 			"notEdited": "Benachrichtigungseinstellungen konnten nicht gespeichert werden."
-		}
-	},
-	"buttons": {
-		"yes": {
-			"title": "Ja"
-		},
-		"no": {
-			"title": "Nein"
-		},
-		"dismiss": {
-			"title": "Schließen"
-		},
-		"markAllRead": {
-			"title": "Alle als gelesen markieren"
-		},
-		"viewAll": {
-			"title": "Alle anzeigen"
-		},
-		"markRead": {
-			"title": "Als gelesen markieren"
-		},
-		"markUnread": {
-			"title": "Als ungelesen markieren"
-		},
-		"loadMore": {
-			"title": "Mehr laden"
-		}
-	},
-	"subHeadings": {
-		"notifications": {
-			"list": "Systemzustände und Ereignisse, die Ihre Aufmerksamkeit erfordern"
 		}
 	},
 	"fields": {
@@ -179,6 +153,32 @@
 			"actions": {
 				"title": "Aktionen"
 			}
+		}
+	},
+	"buttons": {
+		"yes": {
+			"title": "Ja"
+		},
+		"no": {
+			"title": "Nein"
+		},
+		"dismiss": {
+			"title": "Schließen"
+		},
+		"markAllRead": {
+			"title": "Alle als gelesen markieren"
+		},
+		"markRead": {
+			"title": "Als gelesen markieren"
+		},
+		"markUnread": {
+			"title": "Als ungelesen markieren"
+		},
+		"viewAll": {
+			"title": "Alle anzeigen"
+		},
+		"loadMore": {
+			"title": "Mehr laden"
 		}
 	}
 }

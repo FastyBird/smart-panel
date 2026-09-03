@@ -19,6 +19,11 @@
 		},
 		"aboutConfig": "O nastavení oznámení"
 	},
+	"subHeadings": {
+		"notifications": {
+			"list": "Stavy systému a události, které vyžadují vaši pozornost"
+		}
+	},
 	"texts": {
 		"bell": {
 			"title": "Oznámení",
@@ -44,12 +49,12 @@
 			"dismissCanceled": "Zavření zrušeno.",
 			"notDismissed": "Oznámení se nepodařilo zavřít.",
 			"notMarkedRead": "Oznámení se nepodařilo aktualizovat.",
-			"notAllMarkedRead": "Some notifications could not be marked as read.",
 			"removed": "Oznámení bylo odebráno.",
 			"removeCanceled": "Odebrání zrušeno.",
 			"notRemoved": "Oznámení se nepodařilo odebrat.",
 			"bulkRemoved": "{count} oznámení bylo odebráno.",
 			"bulkRemoveFailed": "{count} oznámení se nepodařilo odebrat.",
+			"notAllMarkedRead": "Některá oznámení se nepodařilo označit jako přečtená.",
 			"notFetched": "Některá oznámení se nepodařilo načíst.",
 			"notAllDismissed": "Některá oznámení se nepodařilo odmítnout.",
 			"notAllMarkedUnread": "Některá oznámení se nepodařilo označit jako nepřečtená."
@@ -62,37 +67,6 @@
 		"config": {
 			"edited": "Nastavení oznámení bylo uloženo.",
 			"notEdited": "Nastavení oznámení se nepodařilo uložit."
-		}
-	},
-	"buttons": {
-		"yes": {
-			"title": "Ano"
-		},
-		"no": {
-			"title": "Ne"
-		},
-		"dismiss": {
-			"title": "Zavřít"
-		},
-		"markAllRead": {
-			"title": "Označit vše jako přečtené"
-		},
-		"viewAll": {
-			"title": "Zobrazit vše"
-		},
-		"markRead": {
-			"title": "Označit jako přečtené"
-		},
-		"markUnread": {
-			"title": "Označit jako nepřečtené"
-		},
-		"loadMore": {
-			"title": "Načíst další"
-		}
-	},
-	"subHeadings": {
-		"notifications": {
-			"list": "Stavy systému a události, které vyžadují vaši pozornost"
 		}
 	},
 	"fields": {
@@ -179,6 +153,32 @@
 			"actions": {
 				"title": "Akce"
 			}
+		}
+	},
+	"buttons": {
+		"yes": {
+			"title": "Ano"
+		},
+		"no": {
+			"title": "Ne"
+		},
+		"dismiss": {
+			"title": "Zavřít"
+		},
+		"markAllRead": {
+			"title": "Označit vše jako přečtené"
+		},
+		"markRead": {
+			"title": "Označit jako přečtené"
+		},
+		"markUnread": {
+			"title": "Označit jako nepřečtené"
+		},
+		"viewAll": {
+			"title": "Zobrazit vše"
+		},
+		"loadMore": {
+			"title": "Načíst další"
 		}
 	}
 }

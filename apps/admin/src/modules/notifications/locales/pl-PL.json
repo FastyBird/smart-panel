@@ -19,6 +19,11 @@
 		},
 		"aboutConfig": "O ustawieniach powiadomień"
 	},
+	"subHeadings": {
+		"notifications": {
+			"list": "Stany systemu i zdarzenia, które wymagają Twojej uwagi"
+		}
+	},
 	"texts": {
 		"bell": {
 			"title": "Powiadomienia",
@@ -44,12 +49,12 @@
 			"dismissCanceled": "Zamknięcie anulowane.",
 			"notDismissed": "Nie udało się zamknąć powiadomienia.",
 			"notMarkedRead": "Nie udało się zaktualizować powiadomienia.",
-			"notAllMarkedRead": "Some notifications could not be marked as read.",
 			"removed": "Powiadomienie zostało usunięte.",
 			"removeCanceled": "Usuwanie anulowane.",
 			"notRemoved": "Nie udało się usunąć powiadomienia.",
 			"bulkRemoved": "Usunięto {count} powiadomień.",
 			"bulkRemoveFailed": "Nie udało się usunąć {count} powiadomień.",
+			"notAllMarkedRead": "Niektórych powiadomień nie udało się oznaczyć jako przeczytanych.",
 			"notFetched": "Nie udało się wczytać powiadomień.",
 			"notAllDismissed": "Niektórych powiadomień nie udało się odrzucić.",
 			"notAllMarkedUnread": "Niektórych powiadomień nie udało się oznaczyć jako nieprzeczytane."
@@ -62,37 +67,6 @@
 		"config": {
 			"edited": "Ustawienia powiadomień zostały zapisane.",
 			"notEdited": "Nie udało się zapisać ustawień powiadomień."
-		}
-	},
-	"buttons": {
-		"yes": {
-			"title": "Tak"
-		},
-		"no": {
-			"title": "Nie"
-		},
-		"dismiss": {
-			"title": "Zamknij"
-		},
-		"markAllRead": {
-			"title": "Oznacz wszystkie jako przeczytane"
-		},
-		"viewAll": {
-			"title": "Wyświetl wszystkie"
-		},
-		"markRead": {
-			"title": "Oznacz jako przeczytane"
-		},
-		"markUnread": {
-			"title": "Oznacz jako nieprzeczytane"
-		},
-		"loadMore": {
-			"title": "Załaduj więcej"
-		}
-	},
-	"subHeadings": {
-		"notifications": {
-			"list": "Stany systemu i zdarzenia, które wymagają Twojej uwagi"
 		}
 	},
 	"fields": {
@@ -179,6 +153,32 @@
 			"actions": {
 				"title": "Akcje"
 			}
+		}
+	},
+	"buttons": {
+		"yes": {
+			"title": "Tak"
+		},
+		"no": {
+			"title": "Nie"
+		},
+		"dismiss": {
+			"title": "Zamknij"
+		},
+		"markAllRead": {
+			"title": "Oznacz wszystkie jako przeczytane"
+		},
+		"markRead": {
+			"title": "Oznacz jako przeczytane"
+		},
+		"markUnread": {
+			"title": "Oznacz jako nieprzeczytane"
+		},
+		"viewAll": {
+			"title": "Wyświetl wszystkie"
+		},
+		"loadMore": {
+			"title": "Załaduj więcej"
 		}
 	}
 }
