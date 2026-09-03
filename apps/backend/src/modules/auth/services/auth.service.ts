@@ -132,7 +132,7 @@ export class AuthService {
 		if (!account) {
 			this.logger.warn(`Failed login attempt for username=${username} (User not found)`);
 
-			this.reportFailedLogin(user, client, 'user_not_found');
+			await this.reportFailedLogin(user, client, 'user_not_found');
 
 			throw new AuthNotFoundException('Invalid email or password');
 		}
@@ -140,7 +140,7 @@ export class AuthService {
 		if (account.password === null) {
 			this.logger.warn(`Failed login attempt for username=${username} (User password not set)`);
 
-			this.reportFailedLogin(user, client, 'inactive');
+			await this.reportFailedLogin(user, client, 'inactive');
 
 			throw new AuthNotFoundException('User is not activated');
 		}
@@ -151,7 +151,7 @@ export class AuthService {
 		if (!match) {
 			this.logger.warn(`Failed login attempt for username=${username} (Invalid password)`);
 
-			this.reportFailedLogin(user, client, 'wrong_password');
+			await this.reportFailedLogin(user, client, 'wrong_password');
 
 			throw new AuthNotFoundException('Invalid email or password');
 		}
@@ -364,8 +364,15 @@ export class AuthService {
 	 * Reports one failed login attempt as a keyed `login-failed` event, aggregated per user, IP
 	 * and UTC hour so a repeated attack shows one growing row instead of flooding the bell with a
 	 * fresh one every time.
+	 *
+	 * Awaited by every caller (`notify()` never throws) so `login()` does not return - and race
+	 * ahead of its own notification - before the count it just computed is persisted. That
+	 * ordering matters here specifically because `count` is read from {@link failedLoginCounts}
+	 * and baked into the message text before the write: without it, two overlapping failures for
+	 * the same key could have their database writes reordered so the later, higher count is
+	 * overwritten by the earlier, lower one.
 	 */
-	private reportFailedLogin(user: string, client: string, reason: FailedLoginReason): void {
+	private async reportFailedLogin(user: string, client: string, reason: FailedLoginReason): Promise<void> {
 		const bucket = this.currentHourBucket();
 		const key = `login-failed:${user}:${client}:${bucket}`;
 
@@ -375,7 +382,7 @@ export class AuthService {
 
 		this.failedLoginCounts.set(key, count);
 
-		void this.notifications.notify({
+		await this.notifications.notify({
 			source: AUTH_MODULE_NAME,
 			kind: NotificationKind.EVENT,
 			key,

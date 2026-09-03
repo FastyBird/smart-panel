@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment */
 import { existsSync, readFileSync, unlinkSync } from 'fs';
 
+import { Logger } from '@nestjs/common';
+
 import {
 	NotificationActionType,
 	NotificationKind,
@@ -36,7 +38,7 @@ describe('UpdateExecutorService', () => {
 	};
 	let notifications: { notify: jest.Mock; resolve: jest.Mock; resolveAll: jest.Mock };
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		updateService = {
 			setStatus: jest.fn(),
 			releaseUpdateLock: jest.fn(),
@@ -57,21 +59,21 @@ describe('UpdateExecutorService', () => {
 		(existsSync as jest.Mock).mockReturnValue(false);
 
 		executor = new UpdateExecutorService(updateService as any, privilegedWorker as any, notifications as any);
-		executor.onModuleInit();
+		await executor.onModuleInit();
 
 		jest.clearAllMocks();
 	});
 
 	describe('checkPendingUpdateStatus (via onModuleInit)', () => {
-		it('should do nothing when no status file exists', () => {
+		it('should do nothing when no status file exists', async () => {
 			(existsSync as jest.Mock).mockReturnValue(false);
 
-			executor.onModuleInit();
+			await executor.onModuleInit();
 
 			expect(updateService.setStatus).not.toHaveBeenCalled();
 		});
 
-		it('should handle completed update', () => {
+		it('should handle completed update', async () => {
 			(existsSync as jest.Mock).mockReturnValue(true);
 			(readFileSync as jest.Mock).mockReturnValue(
 				JSON.stringify({
@@ -82,7 +84,7 @@ describe('UpdateExecutorService', () => {
 				}),
 			);
 
-			executor.onModuleInit();
+			await executor.onModuleInit();
 
 			expect(updateService.setStatus).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -94,7 +96,7 @@ describe('UpdateExecutorService', () => {
 			expect(updateService.releaseUpdateLock).toHaveBeenCalled();
 		});
 
-		it('should handle failed update', () => {
+		it('should handle failed update', async () => {
 			(existsSync as jest.Mock).mockReturnValue(true);
 			(readFileSync as jest.Mock).mockReturnValue(
 				JSON.stringify({
@@ -106,7 +108,7 @@ describe('UpdateExecutorService', () => {
 				}),
 			);
 
-			executor.onModuleInit();
+			await executor.onModuleInit();
 
 			expect(updateService.setStatus).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -117,7 +119,7 @@ describe('UpdateExecutorService', () => {
 			expect(unlinkSync).toHaveBeenCalled();
 		});
 
-		it('should detect timed-out updates', () => {
+		it('should detect timed-out updates', async () => {
 			const oldTime = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
 			(existsSync as jest.Mock).mockReturnValue(true);
@@ -130,7 +132,7 @@ describe('UpdateExecutorService', () => {
 				}),
 			);
 
-			executor.onModuleInit();
+			await executor.onModuleInit();
 
 			expect(updateService.setStatus).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -140,7 +142,7 @@ describe('UpdateExecutorService', () => {
 			);
 		});
 
-		it('should detect interrupted updates (recent but in-progress)', () => {
+		it('should detect interrupted updates (recent but in-progress)', async () => {
 			const recentTime = new Date(Date.now() - 30 * 1000).toISOString();
 
 			(existsSync as jest.Mock).mockReturnValue(true);
@@ -153,7 +155,7 @@ describe('UpdateExecutorService', () => {
 				}),
 			);
 
-			executor.onModuleInit();
+			await executor.onModuleInit();
 
 			expect(updateService.setStatus).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -163,17 +165,17 @@ describe('UpdateExecutorService', () => {
 			);
 		});
 
-		it('should handle corrupt status file', () => {
+		it('should handle corrupt status file', async () => {
 			(existsSync as jest.Mock).mockReturnValue(true);
 			(readFileSync as jest.Mock).mockReturnValue('not valid json');
 
-			executor.onModuleInit();
+			await executor.onModuleInit();
 
 			// Should attempt to clean up the corrupt file
 			expect(unlinkSync).toHaveBeenCalled();
 		});
 
-		it('raises the persistent update-failed issue when a run reaches FAILED', () => {
+		it('raises the persistent update-failed issue when a run reaches FAILED', async () => {
 			(existsSync as jest.Mock).mockReturnValue(true);
 			(readFileSync as jest.Mock).mockReturnValue(
 				JSON.stringify({
@@ -185,7 +187,7 @@ describe('UpdateExecutorService', () => {
 				}),
 			);
 
-			executor.onModuleInit();
+			await executor.onModuleInit();
 
 			expect(notifications.notify).toHaveBeenCalledWith({
 				source: SYSTEM_MODULE_NAME,
@@ -199,7 +201,7 @@ describe('UpdateExecutorService', () => {
 			});
 		});
 
-		it('resolves the update-failed and update-available issues when a run completes', () => {
+		it('resolves the update-failed and update-available issues when a run completes', async () => {
 			(existsSync as jest.Mock).mockReturnValue(true);
 			(readFileSync as jest.Mock).mockReturnValue(
 				JSON.stringify({
@@ -210,10 +212,78 @@ describe('UpdateExecutorService', () => {
 				}),
 			);
 
-			executor.onModuleInit();
+			await executor.onModuleInit();
 
 			expect(notifications.resolve).toHaveBeenCalledWith(SYSTEM_MODULE_NAME, 'update-failed');
 			expect(notifications.resolve).toHaveBeenCalledWith(SYSTEM_MODULE_NAME, 'update-available');
+		});
+
+		it('does not settle onModuleInit until the update-failed notification is persisted', async () => {
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({
+					status: UpdateStatusType.FAILED,
+					phase: 'installing',
+					targetVersion: '1.1.0',
+					startedAt: new Date().toISOString(),
+					error: 'npm install failed',
+				}),
+			);
+
+			let releaseNotify: () => void = () => undefined;
+			notifications.notify.mockImplementation(
+				() =>
+					new Promise((resolve) => {
+						releaseNotify = () => resolve(null);
+					}),
+			);
+
+			let settled = false;
+			const init = executor.onModuleInit().then(() => {
+				settled = true;
+			});
+
+			// Give every pending microtask a chance to run - onModuleInit must still be waiting
+			// on the deferred notify() call, not on anything else.
+			await Promise.resolve();
+			await Promise.resolve();
+			await Promise.resolve();
+			expect(settled).toBe(false);
+
+			releaseNotify();
+			await init;
+
+			expect(settled).toBe(true);
+		});
+
+		it('attempts both resolutions and logs when one rejects, without breaking onModuleInit', async () => {
+			const error = jest.spyOn(Logger.prototype, 'error');
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({
+					status: UpdateStatusType.COMPLETE,
+					phase: 'complete',
+					targetVersion: '1.1.0',
+					startedAt: new Date().toISOString(),
+				}),
+			);
+
+			notifications.resolve.mockImplementation((_source: string, key: string) => {
+				if (key === 'update-failed') {
+					return Promise.reject(new Error('database is locked'));
+				}
+
+				return Promise.resolve(true);
+			});
+
+			await expect(executor.onModuleInit()).resolves.toBeUndefined();
+
+			expect(notifications.resolve).toHaveBeenCalledWith(SYSTEM_MODULE_NAME, 'update-failed');
+			expect(notifications.resolve).toHaveBeenCalledWith(SYSTEM_MODULE_NAME, 'update-available');
+			expect(
+				error.mock.calls.some(([message]) => typeof message === 'string' && message.includes('database is locked')),
+			).toBe(true);
 		});
 	});
 });

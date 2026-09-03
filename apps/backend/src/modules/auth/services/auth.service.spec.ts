@@ -212,6 +212,43 @@ describe('AuthService', () => {
 			expect(notifications.notify).not.toHaveBeenCalled();
 		});
 
+		it('does not settle until the login-failed notification is persisted, so a later, lower count cannot land after it', async () => {
+			const loginDto: LoginDto = {
+				username: 'nonExistent',
+				password: 'password',
+			};
+
+			jest.spyOn(usersService, 'findByUsername').mockResolvedValue(null);
+			jest.spyOn(usersService, 'findByEmail').mockResolvedValue(null);
+
+			let releaseNotify: () => void = () => undefined;
+			notifications.notify.mockImplementation(
+				() =>
+					new Promise((resolve) => {
+						releaseNotify = () => resolve(null);
+					}),
+			);
+
+			let settled = false;
+			const attempt = authService.login(loginDto, { ip: '203.0.113.5' }).catch(() => {
+				settled = true;
+			});
+
+			// Flushes every pending microtask (unlike a fixed number of `await Promise.resolve()`
+			// hops), so login()'s own preceding awaits (validateDto, findByUsername, findByEmail)
+			// cannot be mistaken for the deferred notify() this test is actually gating.
+			const flush = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
+			await flush();
+			await flush();
+			expect(settled).toBe(false);
+
+			releaseNotify();
+			await attempt;
+
+			expect(settled).toBe(true);
+		});
+
 		it('should throw AuthNotFoundException and report a login-failed event if user does not exist', async () => {
 			const loginDto: LoginDto = {
 				username: 'nonExistent',

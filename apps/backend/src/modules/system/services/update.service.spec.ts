@@ -739,7 +739,7 @@ describe('UpdateService', () => {
 			expect(notifications.resolve).not.toHaveBeenCalled();
 		});
 
-		it('resolves the update-available issue when no update is offered', async () => {
+		it('does not call notify or resolve on a fresh check when no update was ever offered', async () => {
 			mockNpmInstall('1.1.0');
 			fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
 				ok: true,
@@ -749,8 +749,146 @@ describe('UpdateService', () => {
 
 			await service.checkServerUpdate('latest');
 
-			expect(notifications.resolve).toHaveBeenCalledWith(SYSTEM_MODULE_NAME, 'update-available');
+			// There was never an announced "available" state to transition away from, so a bare
+			// negative check - e.g. the very first check after boot - reports nothing.
 			expect(notifications.notify).not.toHaveBeenCalled();
+			expect(notifications.resolve).not.toHaveBeenCalled();
+		});
+
+		it('calls notify once for two fresh checks that report the same available version', async () => {
+			mockNpmInstall('1.0.0');
+			fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+				ok: true,
+				status: 200,
+				json: () => Promise.resolve({ 'dist-tags': { latest: '1.1.0' } }),
+			} as Response);
+
+			await service.checkServerUpdate('latest');
+			service.invalidateServerCache();
+			await service.checkServerUpdate('latest');
+
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+			expect(notifications.resolve).not.toHaveBeenCalled();
+		});
+
+		it('calls notify twice when a later fresh check offers a newer version', async () => {
+			mockNpmInstall('1.0.0');
+			fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: true,
+				status: 200,
+				json: () => Promise.resolve({ 'dist-tags': { latest: '1.1.0' } }),
+			} as Response);
+
+			await service.checkServerUpdate('latest');
+
+			service.invalidateServerCache();
+			fetchSpy.mockResolvedValueOnce({
+				ok: true,
+				status: 200,
+				json: () => Promise.resolve({ 'dist-tags': { latest: '1.2.0' } }),
+			} as Response);
+
+			await service.checkServerUpdate('latest');
+
+			expect(notifications.notify).toHaveBeenCalledTimes(2);
+			expect(notifications.notify).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ title: 'Update 1.2.0 is available' }),
+			);
+		});
+
+		it('resolves the update-available issue once when an offered update stops being available', async () => {
+			mockNpmInstall('1.0.0');
+			fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+				ok: true,
+				status: 200,
+				json: () => Promise.resolve({ 'dist-tags': { latest: '1.1.0' } }),
+			} as Response);
+
+			await service.checkServerUpdate('latest');
+
+			service.invalidateServerCache();
+			fetchSpy.mockResolvedValueOnce({
+				ok: true,
+				status: 200,
+				json: () => Promise.resolve({ 'dist-tags': { latest: '1.0.0' } }),
+			} as Response);
+
+			await service.checkServerUpdate('latest');
+
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+			expect(notifications.resolve).toHaveBeenCalledWith(SYSTEM_MODULE_NAME, 'update-available');
+		});
+	});
+
+	describe('checkServerUpdate generation guard', () => {
+		let fetchSpy: jest.SpyInstance;
+
+		const mockNpmInstall = (currentVersion: string): void => {
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ version: currentVersion }));
+			(readlinkSync as jest.Mock).mockImplementation(() => {
+				throw new Error('Not a symlink');
+			});
+			(existsSync as jest.Mock).mockReturnValue(false);
+		};
+
+		afterEach(() => {
+			fetchSpy?.mockRestore();
+		});
+
+		it('discards a stale check that finishes after a newer one, touching neither the cache nor the notifications', async () => {
+			mockNpmInstall('1.0.0');
+
+			let resolveFirst: (value: Response) => void = () => undefined;
+			let resolveSecond: (value: Response) => void = () => undefined;
+			const firstFetch = new Promise<Response>((resolve) => {
+				resolveFirst = resolve;
+			});
+			const secondFetch = new Promise<Response>((resolve) => {
+				resolveSecond = resolve;
+			});
+
+			fetchSpy = jest
+				.spyOn(global, 'fetch')
+				.mockImplementationOnce(() => firstFetch)
+				.mockImplementationOnce(() => secondFetch);
+
+			// The older check starts first...
+			const stale = service.checkServerUpdate('latest');
+			// ...and a newer one starts before the older one's own fetch has resolved.
+			const fresh = service.checkServerUpdate('latest');
+
+			// The newer check's fetch settles first, reporting 2.0.0.
+			resolveSecond({
+				ok: true,
+				status: 200,
+				json: () => Promise.resolve({ 'dist-tags': { latest: '2.0.0' } }),
+			} as Response);
+
+			const freshResult = await fresh;
+
+			expect(freshResult.latest).toBe('2.0.0');
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+			expect(notifications.notify).toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Update 2.0.0 is available' }),
+			);
+
+			// The older check's fetch settles last, reporting 1.5.0 - a version nobody is being
+			// offered any more. It must not overwrite the cache or fire a second notification.
+			resolveFirst({
+				ok: true,
+				status: 200,
+				json: () => Promise.resolve({ 'dist-tags': { latest: '1.5.0' } }),
+			} as Response);
+
+			const staleResult = await stale;
+
+			expect(staleResult.latest).toBe('1.5.0');
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+
+			const cached = (service as any).cachedServerInfo.get('latest');
+			expect(cached.latest).toBe('2.0.0');
 		});
 	});
 

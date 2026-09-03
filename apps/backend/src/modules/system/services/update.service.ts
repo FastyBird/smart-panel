@@ -70,6 +70,17 @@ export class UpdateService {
 	private cachedReleaseNotes: Map<string, ReleaseNotes> = new Map();
 	private readonly CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 
+	// Bumped before every fresh remote lookup in checkServerUpdate(). A lookup whose generation
+	// no longer matches when it finishes was superseded by a newer one while it was in flight -
+	// its result is still returned to its own caller, but it must not overwrite the cache or
+	// mutate the announced-availability notification with a now-stale answer.
+	private checkGeneration = 0;
+
+	// The availability last reported to notify()/resolve(), so reportUpdateAvailability() can
+	// tell a genuine transition from a repeat of the same fresh check - starts `null` (nothing
+	// announced yet), so a fresh negative check is not treated as "became unavailable".
+	private lastAnnouncedAvailability: { available: boolean; version: string | null } | null = null;
+
 	// A lookup that could not consult every accepted channel — the releases API was unavailable,
 	// or the scan ran out of budget — still produces a usable answer, but an incomplete one: the
 	// channel it failed to reach may hold something newer. Caching that for the full TTL would
@@ -310,6 +321,11 @@ export class UpdateService {
 		const installType = this.getInstallType();
 		const candidateChannels = this.resolveCandidateChannels(resolvedChannel);
 
+		// Captured before the lookup starts, not after it finishes, so two overlapping calls (a
+		// scheduled check and a manual one, say) are ordered by when they started, not by which one
+		// happens to answer first.
+		const generation = ++this.checkGeneration;
+
 		try {
 			let latestVersion: string | null = null;
 			let complete = true;
@@ -345,13 +361,18 @@ export class UpdateService {
 				updateType,
 			};
 
-			this.cachedServerInfo.set(resolvedChannel, result);
-			this.serverCacheExpiresAt.set(
-				resolvedChannel,
-				Date.now() + (complete ? this.CACHE_TTL_MS : UpdateService.PARTIAL_CACHE_TTL_MS),
-			);
+			// A newer check already finished and answered while this one was still in flight - its
+			// cache write and notification would only relitigate a question that is already settled,
+			// with a now-stale answer. This call's own caller still gets its own truthful result.
+			if (generation === this.checkGeneration) {
+				this.cachedServerInfo.set(resolvedChannel, result);
+				this.serverCacheExpiresAt.set(
+					resolvedChannel,
+					Date.now() + (complete ? this.CACHE_TTL_MS : UpdateService.PARTIAL_CACHE_TTL_MS),
+				);
 
-			this.reportUpdateAvailability(result, resolvedChannel);
+				this.reportUpdateAvailability(result, resolvedChannel);
+			}
 
 			return result;
 		} catch (error) {
@@ -370,13 +391,26 @@ export class UpdateService {
 
 	/**
 	 * Raises or resolves the `update-available` issue after a fresh check. Called only from the
-	 * non-cached branch of {@link checkServerUpdate}, so a cache hit never re-reports a condition
-	 * that has not actually been re-checked — the scheduled (12 h cron) and manual "check for
-	 * updates" paths both invalidate the cache before calling `checkServerUpdate`, so this covers
-	 * both without a second call site.
+	 * non-cached, non-superseded branch of {@link checkServerUpdate}, so a cache hit or a stale
+	 * generation never re-reports a condition that was not actually just (re-)checked — the
+	 * scheduled (12 h cron) and manual "check for updates" paths both invalidate the cache before
+	 * calling `checkServerUpdate`, so this covers both without a second call site.
+	 *
+	 * Compares against {@link lastAnnouncedAvailability} rather than reacting to `info` alone, so
+	 * a repeat of the same fresh answer — the common case, since most checks find nothing new —
+	 * calls neither notify() nor resolve(): only becoming available, the offered version
+	 * changing, or becoming unavailable again are transitions worth reporting.
 	 */
 	private reportUpdateAvailability(info: VersionInfo, channel: string): void {
-		if (info.updateAvailable) {
+		const previous = this.lastAnnouncedAvailability;
+		const next = { available: info.updateAvailable, version: info.updateAvailable ? info.latest : null };
+
+		this.lastAnnouncedAvailability = next;
+
+		const becameAvailable =
+			next.available && (previous === null || !previous.available || previous.version !== next.version);
+
+		if (becameAvailable) {
 			void this.notifications.notify({
 				source: SYSTEM_MODULE_NAME,
 				kind: NotificationKind.ISSUE,
@@ -391,7 +425,11 @@ export class UpdateService {
 			return;
 		}
 
-		void this.notifications.resolve(SYSTEM_MODULE_NAME, 'update-available');
+		const becameUnavailable = !next.available && previous !== null && previous.available;
+
+		if (becameUnavailable) {
+			void this.notifications.resolve(SYSTEM_MODULE_NAME, 'update-available');
+		}
 	}
 
 	/**
