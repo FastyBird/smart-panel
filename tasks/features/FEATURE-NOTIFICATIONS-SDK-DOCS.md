@@ -41,7 +41,7 @@ covering the emitter and channel contracts.
 - `packages/extension-sdk/src/notification.types.ts` exporting `NotificationKind`, `NotificationSeverity`,
   `NotificationAction`, `CreateNotificationInput`, a `NotificationChannel` interface mirroring
   `INotificationChannel` with a plain `Notification` payload type, and the shape of `ChannelDeliveryError`
-  (`retryable: boolean`, `status?: number`) alongside it.
+  (`message: string`, `retryable: boolean`, `status?: number`) alongside it.
 - Export from `packages/extension-sdk/src/index.ts`; update `packages/extension-sdk/README.md`.
 - A `notify` call added to the example service in `packages/example-extension/**`, behind the existing
   pattern.
@@ -67,7 +67,7 @@ covering the emitter and channel contracts.
       (`getType`, `isConfigured`, `getMinSeverity`, `send(notification, signal: AbortSignal)`) with a plain
       `Notification` payload type usable outside the backend's TypeORM entity.
 - [ ] `packages/extension-sdk/src/notification.types.ts` also exports the shape of `ChannelDeliveryError`
-      (`retryable: boolean`, `status?: number`) alongside the `NotificationChannel` interface, so a
+      (`message: string`, `retryable: boolean`, `status?: number`) alongside the `NotificationChannel` interface, so a
       third-party channel implementation can type the errors it throws.
 - [ ] `packages/extension-sdk/src/index.ts` exports everything from `notification.types.ts`.
 - [ ] `packages/extension-sdk/README.md` documents the new exports.
@@ -108,7 +108,7 @@ From the plan's Task N-11 Files list (verbatim):
 - Create: `packages/extension-sdk/src/notification.types.ts` (`NotificationKind`, `NotificationSeverity`,
   `NotificationAction`, `CreateNotificationInput`, `NotificationChannel` interface mirroring
   `INotificationChannel` with a plain `Notification` payload type, and the shape of `ChannelDeliveryError`
-  (`retryable`, `status?`) alongside it)
+  (`message: string`, `retryable: boolean`, `status?: number`) alongside it)
 - Modify: `packages/extension-sdk/src/index.ts` (export), `packages/extension-sdk/README.md`
 - Modify: `packages/example-extension/**` (a `notify` call in the example service, behind the existing
   pattern)

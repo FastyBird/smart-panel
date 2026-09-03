@@ -603,10 +603,10 @@ webhook_url (writeOnly), webhook_url_configured, min_severity, username: string 
 ```
 
 Webhook `send`: `POST` JSON `{ id, source, kind, severity, title, message, occurrences, created_at, actions }`
-plus configured headers; non-2xx throws `Error('HTTP <status>')`. The webhook accepts `http:` URLs for
+plus configured headers; every failure is thrown as `ChannelDeliveryError` through `classify()` (a non-2xx response carries its status and the retryable classification). The webhook accepts `http:` URLs for
 trusted-network targets; its admin form shows a warning under the URL field and the docs state the exception.
 Discord's `webhook_url` must start with `https://`; the config DTO rejects anything else. Discord `send`: `{ username?, embeds: [{ title, description: message, color, footer: { text: 'source · n occurrences' }, timestamp }] }`
-with colours `info 0x3498db`, `warning 0xf39c12`, `error 0xe74c3c`, `critical 0x8e44ad`; non-2xx throws.
+with colours `info 0x3498db`, `warning 0xf39c12`, `error 0xe74c3c`, `critical 0x8e44ad`; failures are thrown as `ChannelDeliveryError` through `classify()` exactly like the webhook.
 
 `send-test` action: `{ id: 'send-test', label: 'Send test notification', category: DIAGNOSTICS, mode: 'immediate', execute }`
 builds a fake `NotificationEntity` (`severity: INFO`, title `Test notification from Smart Panel`) and calls the
