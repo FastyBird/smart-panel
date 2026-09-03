@@ -48,6 +48,7 @@ import { ExtensionsModule, installRemoteExtensions, installStaticExtensions } fr
 import { IntentsModule } from './modules/intents';
 import { McpModule } from './modules/mcp';
 import { MdnsModule } from './modules/mdns';
+import { NotificationsModule } from './modules/notifications';
 import { OnboardingModule } from './modules/onboarding';
 import { RemoteAccessModule } from './modules/remote-access';
 import { ScenesModule } from './modules/scenes';
@@ -184,6 +185,7 @@ const moduleOptions: IModuleOptions = {
 };
 
 app.use(SystemModule, moduleOptions);
+app.use(NotificationsModule, moduleOptions);
 app.use(ConfigModule, moduleOptions);
 app.use(OnboardingModule, moduleOptions);
 app.use(AuthModule, moduleOptions);
