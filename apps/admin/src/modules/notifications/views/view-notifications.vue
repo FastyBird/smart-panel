@@ -7,45 +7,47 @@
 		<template #title>
 			{{ t('notificationsModule.headings.notifications.list') }}
 		</template>
+
+		<template #subtitle>
+			{{ t('notificationsModule.subHeadings.notifications.list') }}
+		</template>
 	</app-bar-heading>
 
-	<div class="view-notifications">
-		<el-empty
-			v-if="items.length === 0"
-			:description="t('notificationsModule.texts.bell.empty')"
-		/>
+	<view-header
+		:heading="t('notificationsModule.headings.notifications.list')"
+		:sub-heading="t('notificationsModule.subHeadings.notifications.list')"
+		icon="mdi:bell-outline"
+	/>
 
-		<ul
-			v-else
-			class="view-notifications__list"
-		>
-			<li
-				v-for="item in items"
-				:key="item.id"
-			>
-				<notification-item
-					:notification="item"
-					@click="onOpen(item)"
-					@action="onOpen(item)"
-					@dismiss="onDismiss(item)"
-				/>
-			</li>
-		</ul>
+	<div class="view-notifications">
+		<notifications-filter v-model:filters="filters" />
+
+		<list-notifications
+			:items="notifications"
+			:has-more="hasMore"
+			:loading="areLoading"
+			@detail="onDetail"
+			@load-more="onLoadMore"
+			@bulk-action="onBulkAction"
+		/>
 	</div>
+
+	<notification-detail-drawer
+		v-model="drawerVisible"
+		:notification="selectedNotification"
+	/>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-
-import { ElEmpty } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarHeading, useBreakpoints } from '../../../common';
-import { NotificationItem } from '../components/components';
-import { useNotifications, useNotificationsActions } from '../composables/composables';
-import { SEVERITY_RANK } from '../notifications.constants';
+import { AppBarHeading, ViewHeader, useBreakpoints } from '../../../common';
+import { ListNotifications, NotificationDetailDrawer, NotificationsFilter } from '../components/components';
+import { type NotificationsBulkActionOutcome, useNotificationsActions, useNotificationsDataSource } from '../composables/composables';
+import { NotificationsException } from '../notifications.exceptions';
 import type { INotification } from '../store/notifications.store.schemas';
 
 defineOptions({
@@ -55,39 +57,99 @@ defineOptions({
 const { t } = useI18n();
 const { isMDDevice } = useBreakpoints();
 
-// A minimal placeholder: every active row, no filters and no bulk bar. N-6 replaces this view
-// with the full page (query-synced filters, bulk actions, "load more", the detail drawer); this
-// exists so the bell popover's "View all" has a destination in the meantime.
-const { active, fetchNotifications } = useNotifications();
-const { markRead, dismiss } = useNotificationsActions();
+const { notifications, hasMore, areLoading, filters, fetchNotifications, loadMoreNotifications } = useNotificationsDataSource();
+const { markAllRead, bulkMarkUnread, bulkDismiss, bulkRemove } = useNotificationsActions();
 
-const items = computed<INotification[]>((): INotification[] =>
-	[...active.value].sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || b.createdAt.getTime() - a.createdAt.getTime())
+const selectedId = ref<INotification['id'] | null>(null);
+const drawerVisible = ref<boolean>(false);
+
+const selectedNotification = computed<INotification | null>(
+	(): INotification | null => notifications.value.find((notification) => notification.id === selectedId.value) ?? null
 );
 
-const onOpen = (notification: INotification): void => {
-	if (notification.readAt === null) {
-		void markRead(notification.id, true);
+const onDetail = (id: INotification['id']): void => {
+	selectedId.value = id;
+	drawerVisible.value = true;
+};
+
+const onLoadMore = (): void => {
+	loadMoreNotifications().catch((error: unknown): void => {
+		const err = error as Error;
+
+		throw new NotificationsException('Something went wrong', err);
+	});
+};
+
+// `markAllRead` keeps its boolean (true whenever at least one id mutated) rather than the wider
+// `NotificationsBulkActionOutcome` the other three bulk actions return - this narrows either shape
+// to the one thing the caller below actually needs: does the list need to refresh.
+const isMutatingOutcome = (outcome: boolean | NotificationsBulkActionOutcome): boolean =>
+	typeof outcome === 'boolean' ? outcome : outcome === 'mutated';
+
+// Refetching unconditionally after every bulk action would re-issue the request even when the
+// user cancelled the confirmation or the whole batch failed - refetch only when something in the
+// selection actually changed (a partial success still counts, since some rows may no longer match
+// the current filter).
+const runBulkAction = async (action: string, ids: INotification['id'][]): Promise<void> => {
+	let outcome: boolean | NotificationsBulkActionOutcome;
+
+	switch (action) {
+		case 'mark-read':
+			outcome = await markAllRead(ids);
+			break;
+		case 'mark-unread':
+			outcome = await bulkMarkUnread(ids);
+			break;
+		case 'dismiss':
+			outcome = await bulkDismiss(ids);
+			break;
+		case 'delete':
+			outcome = await bulkRemove(ids);
+			break;
+		default:
+			return;
+	}
+
+	if (isMutatingOutcome(outcome)) {
+		await fetchNotifications();
 	}
 };
 
-const onDismiss = (notification: INotification): void => {
-	void dismiss(notification.id, true);
+const onBulkAction = (action: string, ids: INotification['id'][]): void => {
+	runBulkAction(action, ids).catch((error: unknown): void => {
+		const err = error as Error;
+
+		throw new NotificationsException('Something went wrong', err);
+	});
 };
 
-onMounted((): void => {
-	void fetchNotifications({ status: 'active' });
+// A filter change or a bulk delete can remove the open row from `notifications` entirely - once
+// there is nothing left to show, the drawer has nothing left to be open over.
+watch(selectedNotification, (value: INotification | null): void => {
+	if (value === null) {
+		drawerVisible.value = false;
+	}
+});
+
+watch(drawerVisible, (visible: boolean): void => {
+	if (!visible) {
+		selectedId.value = null;
+	}
+});
+
+onBeforeMount((): void => {
+	fetchNotifications().catch((error: unknown): void => {
+		const err = error as Error;
+
+		throw new NotificationsException('Something went wrong', err);
+	});
 });
 </script>
 
 <style scoped>
-.view-notifications__list {
-	list-style: none;
-	margin: 0;
-	padding: 0;
-}
-
-.view-notifications__list > li + li {
-	border-top: 1px solid var(--el-border-color-lighter);
+.view-notifications {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
 }
 </style>

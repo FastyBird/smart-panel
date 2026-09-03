@@ -27,8 +27,8 @@ vi.mock('../composables/useDarkMode', () => ({
 	})),
 }));
 
-vi.mock('../../modules/notifications/components/components', () => ({
-	NotificationBell: { name: 'NotificationBell', template: '<div />' },
+vi.mock('../../modules/notifications/components/notification-bell.vue', () => ({
+	default: { name: 'NotificationBell', template: '<div />' },
 }));
 
 vi.mock('../services/account-manager', () => ({

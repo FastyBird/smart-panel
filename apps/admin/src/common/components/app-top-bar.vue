@@ -105,7 +105,11 @@ import { ElButton, ElDropdown, ElDropdownItem, ElDropdownMenu, ElHeader, ElSwitc
 
 import { Icon } from '@iconify/vue';
 
-import { NotificationBell } from '../../modules/notifications/components/components';
+// Imported from its own file, not the module's `components/components` barrel: that barrel also
+// re-exports `notifications-config-form.vue`, which needs the config module, which needs
+// `common` for `injectStoresManager` - going through the barrel here would close that loop back
+// on itself (`common` -> `notifications` -> `config` -> `common`).
+import NotificationBell from '../../modules/notifications/components/notification-bell.vue';
 import { useDarkMode } from '../composables/useDarkMode';
 import { injectAccountManager } from '../services/account-manager';
 

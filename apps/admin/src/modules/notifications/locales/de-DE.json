@@ -11,8 +11,13 @@
 	"headings": {
 		"notifications": {
 			"list": "Notifications",
-			"dismiss": "Dismiss notification"
-		}
+			"dismiss": "Dismiss notification",
+			"remove": "Remove notification",
+			"bulkRemove": "Remove notifications",
+			"data": "Data",
+			"lifecycle": "Lifecycle"
+		},
+		"aboutConfig": "About notification settings"
 	},
 	"texts": {
 		"bell": {
@@ -20,16 +25,43 @@
 			"empty": "No active notifications"
 		},
 		"notifications": {
-			"confirmDismiss": "Dismiss \"{title}\"?"
-		}
+			"confirmDismiss": "Dismiss \"{title}\"?",
+			"confirmRemove": "Remove \"{title}\"? This cannot be undone.",
+			"confirmBulkRemove": "Remove {count} notifications? This cannot be undone.",
+			"loading": "Loading notifications...",
+			"empty": "No notifications match the current filters."
+		},
+		"actions": {
+			"confirmDangerous": "\"{title}\" wants to run \"{label}\". This action is potentially dangerous - continue?",
+			"confirmStop": "Stop the service for \"{title}\"?",
+			"confirmRestart": "Restart the service for \"{title}\"?"
+		},
+		"aboutConfig": "Notifications are kept for a limited time and the active list is capped, so the admin never has to scroll through an unbounded history."
 	},
 	"messages": {
 		"notifications": {
+			"notFetched": "Benachrichtigungen konnten nicht geladen werden.",
 			"dismissed": "Notification dismissed.",
 			"dismissCanceled": "Dismiss canceled.",
 			"notDismissed": "Notification could not be dismissed.",
+			"notAllDismissed": "Einige Benachrichtigungen konnten nicht verworfen werden.",
 			"notMarkedRead": "Notification could not be updated.",
-			"notAllMarkedRead": "Some notifications could not be marked as read."
+			"notAllMarkedRead": "Some notifications could not be marked as read.",
+			"notAllMarkedUnread": "Einige Benachrichtigungen konnten nicht als ungelesen markiert werden.",
+			"removed": "Notification removed.",
+			"removeCanceled": "Remove canceled.",
+			"notRemoved": "Notification could not be removed.",
+			"bulkRemoved": "{count} notifications removed.",
+			"bulkRemoveFailed": "{count} notifications could not be removed."
+		},
+		"actions": {
+			"invalidLink": "This link could not be opened.",
+			"notFound": "This action is no longer available.",
+			"failed": "The action could not be completed."
+		},
+		"config": {
+			"edited": "Notification settings saved.",
+			"notEdited": "Notification settings could not be saved."
 		}
 	},
 	"buttons": {
@@ -47,6 +79,106 @@
 		},
 		"viewAll": {
 			"title": "View all"
+		},
+		"markRead": {
+			"title": "Mark read"
+		},
+		"markUnread": {
+			"title": "Mark unread"
+		},
+		"loadMore": {
+			"title": "Load more"
+		}
+	},
+	"subHeadings": {
+		"notifications": {
+			"list": "System conditions and events that need your attention"
+		}
+	},
+	"fields": {
+		"filters": {
+			"status": {
+				"title": "Status",
+				"options": {
+					"all": "All",
+					"active": "Active",
+					"dismissed": "Dismissed",
+					"resolved": "Resolved"
+				}
+			},
+			"severity": {
+				"title": "Severity",
+				"placeholder": "Any severity"
+			},
+			"source": {
+				"title": "Source",
+				"placeholder": "Any source"
+			},
+			"unread": {
+				"title": "Unread only"
+			}
+		},
+		"notifications": {
+			"createdAt": {
+				"title": "Created"
+			},
+			"updatedAt": {
+				"title": "Updated"
+			},
+			"readAt": {
+				"title": "Read",
+				"no": "Unread"
+			},
+			"dismissedAt": {
+				"title": "Dismissed",
+				"no": "Not dismissed"
+			},
+			"resolvedAt": {
+				"title": "Resolved",
+				"no": "Not resolved"
+			}
+		},
+		"config": {
+			"retentionDays": {
+				"title": "Retention period",
+				"placeholder": "30",
+				"unit": "days",
+				"validation": {
+					"required": "Retention period is required.",
+					"range": "Retention period must be between 1 and 365 days."
+				}
+			},
+			"maxNotifications": {
+				"title": "Maximum active notifications",
+				"placeholder": "500",
+				"unit": "Benachrichtigungen",
+				"validation": {
+					"required": "Maximum active notifications is required.",
+					"range": "Maximum active notifications must be between 50 and 5000."
+				}
+			}
+		}
+	},
+	"table": {
+		"columns": {
+			"severity": {
+				"title": "Severity"
+			},
+			"title": {
+				"title": "Title"
+			},
+			"source": {
+				"title": "Source"
+			},
+			"occurrences": {
+				"title": "Count"
+			},
+			"time": {
+				"title": "Time"
+			},
+			"actions": {
+				"title": "Actions"
+			}
 		}
 	}
 }

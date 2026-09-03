@@ -17,10 +17,13 @@ import {
 	useFlashMessage,
 } from '../../common';
 import { NotificationsModuleNotificationSeverity } from '../../openapi.constants';
+import { CONFIG_MODULE_MODULE_TYPE, CONFIG_MODULE_NAME } from '../config';
 
+import { NotificationsConfigForm } from './components/components';
 import { locales } from './locales';
 import { EventType, NOTIFICATIONS_MODULE_EVENT_PREFIX, NOTIFICATIONS_MODULE_NAME } from './notifications.constants';
 import { ModuleRoutes } from './router';
+import { NotificationsConfigEditFormSchema, NotificationsConfigSchema, NotificationsConfigUpdateReqSchema } from './schemas/config.schemas';
 import { notificationsStoreKey } from './store/keys';
 import { registerNotificationsStore } from './store/notifications.store';
 
@@ -50,9 +53,21 @@ export default {
 			type: NOTIFICATIONS_MODULE_NAME,
 			name: 'Notifications',
 			description: 'System notifications - conditions and events the system wants the administrator to see.',
-			// No config element yet: retention_days/max_notifications land with the settings form in a
-			// later task.
-			elements: [],
+			elements: [
+				{
+					type: CONFIG_MODULE_MODULE_TYPE,
+					components: {
+						moduleConfigEditForm: NotificationsConfigForm,
+					},
+					schemas: {
+						moduleConfigSchema: NotificationsConfigSchema,
+						moduleConfigEditFormSchema: NotificationsConfigEditFormSchema,
+						moduleConfigUpdateReqSchema: NotificationsConfigUpdateReqSchema,
+					},
+					modules: [CONFIG_MODULE_NAME],
+				},
+			],
+			modules: [CONFIG_MODULE_NAME],
 			isCore: true,
 		});
 

@@ -5,7 +5,7 @@ Type: feature
 Scope: admin
 Size: medium
 Parent: EPIC-NOTIFICATIONS-MODULE
-Status: planned
+Status: review
 
 ## 1. Business goal
 
