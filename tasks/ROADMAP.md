@@ -1,6 +1,6 @@
 # Smart Panel — Task Roadmap
 
-> Last updated: 2026-08-12. Reflects actual codebase state.
+> Last updated: 2026-09-02. Reflects actual codebase state.
 
 ---
 
@@ -335,7 +335,23 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 
 ---
 
-## 13. Technical Debt
+## 13. Remote Access (Epic)
+
+> [EPIC-REMOTE-ACCESS](epics/EPIC-REMOTE-ACCESS.md) — Status: :clipboard: Planned
+
+Reach the installation from outside the LAN through a `remote-access` module and provider plugins (Tailscale first, then Cloudflare Tunnel and a WireGuard client). Design: `docs/superpowers/specs/2026-09-02-remote-access-design.md`. Plan and delegation map: `docs/superpowers/plans/2026-09-02-remote-access.md`. Tasks are tracked as GitHub sub-issues under the "Remote access" milestone.
+
+| #   | Milestone                                                                          | Scope                              | Status              |
+| --- | ---------------------------------------------------------------------------------- | ---------------------------------- | ------------------- |
+| 1   | Foundation + Tailscale MVP (RA-1 … RA-12): proxy trust, module, worker, plugin, admin, image, MCP URL suggestion, docs | backend, admin, installer, website | :clipboard: Planned |
+| 2   | Cloudflare Tunnel plugin (RA-13, RA-14)                                            | backend, admin                     | :clipboard: Planned |
+| 3   | WireGuard client plugin (RA-15)                                                    | backend, admin                     | :clipboard: Planned |
+
+**Next up:** RA-1 (trusted-proxy client address resolution) and RA-3 (privileged worker runner) can start immediately; RA-2 follows RA-1, then the Tailscale, admin, installer and docs lanes run in parallel.
+
+---
+
+## 14. Technical Debt
 
 | #   | Task                                                                                  | Scope          | Status                  |
 | --- | ------------------------------------------------------------------------------------- | -------------- | ----------------------- |
@@ -348,7 +364,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 
 ---
 
-## 14. Other Planned Features
+## 15. Other Planned Features
 
 | #   | Task                                                                                 | Scope                 | Status                  |
 | --- | ------------------------------------------------------------------------------------ | --------------------- | ----------------------- |
@@ -360,7 +376,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 
 ---
 
-## 15. Plans
+## 16. Plans
 
 | #   | Plan                                                                                    | Status                  |
 | --- | --------------------------------------------------------------------------------------- | ----------------------- |
@@ -393,4 +409,5 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | Technical               | 6      | 0           | 0       | 6       |
 | Other Features          | 4      | 0           | 1       | 5       |
 | Plans                   | 2      | 0           | 1       | 3       |
-| **Total**               | **72** | **2**       | **31**  | **105** |
+| Remote Access           | 0      | 0           | 1       | 1       |
+| **Total**               | **72** | **2**       | **32**  | **106** |
