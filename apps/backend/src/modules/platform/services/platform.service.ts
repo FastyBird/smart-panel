@@ -66,6 +66,19 @@ export class PlatformService {
 	}
 
 	/**
+	 * Resolves once platform detection has finished, then returns the
+	 * detected type. Prefer this over the synchronous `getPlatformType()` in
+	 * any code path that might run before detection settles (e.g.
+	 * immediately after boot) — reading `platformType` that early returns
+	 * `undefined`, which is never a valid `PlatformType`.
+	 */
+	async getPlatformTypeAsync(): Promise<PlatformType> {
+		await this.platformDetection;
+
+		return this.platformType;
+	}
+
+	/**
 	 * True when this platform can run privileged operations (OS update, Tailscale setup, ...)
 	 * through PrivilegedWorkerService — i.e. passwordless sudo and systemd-run are both
 	 * available. Always false for docker, home-assistant and development. Waits for platform
@@ -233,13 +246,30 @@ export class PlatformService {
 		return false;
 	}
 
-	/** Passwordless sudo probe — mirrors the check update-worker.sh itself runs before it relies on sudo -n. */
+	/**
+	 * Passwordless sudo probe — checks the sudoers policy allows
+	 * `systemd-run` without prompting, since that is the command every
+	 * privileged job actually invokes (`PrivilegedWorkerService.run()`), not
+	 * `/usr/bin/true`: the sudoers file a script install grants
+	 * (`build/src/installers/linux.ts`'s `createSudoersRule()`) allows
+	 * `systemctl`, `npm` and `/usr/bin/systemd-run *`, but never
+	 * `/usr/bin/true`, which would otherwise make this probe fail on every
+	 * script-installed host. `sudo -n -l <command>` exits 0 when the policy
+	 * permits that command without a password — the same check
+	 * `update-worker.sh` runs before it relies on `sudo -n` itself.
+	 */
 	private async probeSudoNonInteractive(): Promise<boolean> {
 		try {
-			await execFileAsync('sudo', ['-n', '/usr/bin/true'], { timeout: 2000 });
+			await execFileAsync('sudo', ['-n', '-l', '/usr/bin/systemd-run'], { timeout: 2000 });
 
 			return true;
-		} catch {
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.debug(
+				`Passwordless sudo probe for systemd-run failed, treating privileged workers as unsupported: ${err.message}`,
+			);
+
 			return false;
 		}
 	}
@@ -250,7 +280,13 @@ export class PlatformService {
 			await execFileAsync('which', ['systemd-run'], { timeout: 2000 });
 
 			return true;
-		} catch {
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.debug(
+				`systemd-run availability probe failed, treating privileged workers as unsupported: ${err.message}`,
+			);
+
 			return false;
 		}
 	}

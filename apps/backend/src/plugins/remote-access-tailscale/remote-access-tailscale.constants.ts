@@ -22,6 +22,15 @@ export const TAILSCALE_BINARY = 'tailscale';
 /** Default timeout for a non-interactive `tailscale` CLI call. */
 export const TAILSCALE_CLI_DEFAULT_TIMEOUT_MS = 15_000;
 
+/**
+ * `execFile`'s stdout/stderr buffer ceiling for a non-interactive
+ * `tailscale` call — Node's own default (1 MB) is too small for a large
+ * `tailscale status --json` on a node with many peers, and exceeding it
+ * kills the child the same way a timeout does (`killed: true`), which
+ * `TailscaleCliService` must not misclassify as `'timeout'`.
+ */
+export const TAILSCALE_CLI_MAX_BUFFER_BYTES = 16 * 1024 * 1024;
+
 /** Timeout for the unprivileged `systemctl is-active` prerequisite probe. */
 export const TAILSCALE_SYSTEMCTL_PROBE_TIMEOUT_MS = 2_000;
 
@@ -59,6 +68,18 @@ export const TAILSCALE_LOGIN_AUTH_KEY_TIMEOUT_MS = 120_000;
 
 /** Matches the `--timeout=10m` flag on the interactive sign-in `up` call. */
 export const TAILSCALE_LOGIN_INTERACTIVE_TIMEOUT_MS = 10 * 60 * 1000;
+
+/**
+ * How long an interactive sign-in waits for `tailscale up --json` to print
+ * its first status block before freeing the HTTP request. A wedged daemon
+ * or a slow control-plane round-trip must not hold `POST /login` open for
+ * the full `TAILSCALE_LOGIN_INTERACTIVE_TIMEOUT_MS` above: past this
+ * deadline the request resolves with `{ state: 'pending-auth' }` and no
+ * auth URL/QR yet, while the child, the 10-minute timeout and the
+ * single-in-flight marker all keep running exactly as before — `GET
+ * /status` picks up the auth URL/QR once the first block actually arrives.
+ */
+export const TAILSCALE_LOGIN_FIRST_BLOCK_TIMEOUT_MS = 30_000;
 
 /** How far ahead of `Self.KeyExpiry` the `key-expiring` advisory starts firing (RA-6). */
 export const TAILSCALE_KEY_EXPIRY_ADVISORY_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;

@@ -7,6 +7,7 @@ import {
 	REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 	TAILSCALE_BINARY,
 	TAILSCALE_CLI_DEFAULT_TIMEOUT_MS,
+	TAILSCALE_CLI_MAX_BUFFER_BYTES,
 } from '../remote-access-tailscale.constants';
 
 /**
@@ -402,44 +403,73 @@ export class TailscaleCliService {
 		this.logger.debug(`Running: ${TAILSCALE_BINARY} ${redactTailscaleArgs(argv).join(' ')}`);
 
 		return new Promise((resolve, reject) => {
-			execFile(TAILSCALE_BINARY, argv, { timeout: timeoutMs }, (error, stdout, stderr) => {
-				const out = stdout ?? '';
-				const err = stderr ?? '';
+			execFile(
+				TAILSCALE_BINARY,
+				argv,
+				{ timeout: timeoutMs, maxBuffer: TAILSCALE_CLI_MAX_BUFFER_BYTES },
+				(error, stdout, stderr) => {
+					const out = stdout ?? '';
+					const err = stderr ?? '';
 
-				if (error) {
-					const nodeError = error as NodeJS.ErrnoException & { killed?: boolean };
+					if (error) {
+						const nodeError = error as NodeJS.ErrnoException & { killed?: boolean };
 
-					if (nodeError.code === 'ENOENT') {
-						this.logger.warn(`tailscale binary not found: ${TAILSCALE_BINARY} ${redactTailscaleArgs(argv).join(' ')}`);
+						if (nodeError.code === 'ENOENT') {
+							this.logger.warn(
+								`tailscale binary not found: ${TAILSCALE_BINARY} ${redactTailscaleArgs(argv).join(' ')}`,
+							);
 
-						reject(new TailscaleCliError('not-installed', 'The tailscale CLI is not installed or not on PATH.', error));
+							reject(
+								new TailscaleCliError('not-installed', 'The tailscale CLI is not installed or not on PATH.', error),
+							);
+
+							return;
+						}
+
+						// Exceeding maxBuffer also kills the child (`killed: true`,
+						// same as a real timeout) — checked first so it is never
+						// misclassified as 'timeout', which callers use to decide
+						// whether retrying makes sense.
+						if (nodeError.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
+							this.logger.warn(
+								`tailscale call output exceeded the ${TAILSCALE_CLI_MAX_BUFFER_BYTES}-byte buffer: ${TAILSCALE_BINARY} ${redactTailscaleArgs(argv).join(' ')}`,
+							);
+
+							reject(
+								new TailscaleCliError(
+									'unknown',
+									`tailscale ${argv[0] ?? ''} produced more than ${TAILSCALE_CLI_MAX_BUFFER_BYTES} bytes of output.`,
+									error,
+								),
+							);
+
+							return;
+						}
+
+						if (nodeError.killed) {
+							this.logger.warn(`tailscale call timed out: ${TAILSCALE_BINARY} ${redactTailscaleArgs(argv).join(' ')}`);
+
+							reject(
+								new TailscaleCliError(
+									'timeout',
+									`tailscale ${argv[0] ?? ''} did not complete within ${timeoutMs}ms.`,
+									error,
+								),
+							);
+
+							return;
+						}
+
+						const exitCode = typeof nodeError.code === 'number' ? nodeError.code : -1;
+
+						resolve({ stdout: out, stderr: err, exitCode });
 
 						return;
 					}
 
-					if (nodeError.killed) {
-						this.logger.warn(`tailscale call timed out: ${TAILSCALE_BINARY} ${redactTailscaleArgs(argv).join(' ')}`);
-
-						reject(
-							new TailscaleCliError(
-								'timeout',
-								`tailscale ${argv[0] ?? ''} did not complete within ${timeoutMs}ms.`,
-								error,
-							),
-						);
-
-						return;
-					}
-
-					const exitCode = typeof nodeError.code === 'number' ? nodeError.code : -1;
-
-					resolve({ stdout: out, stderr: err, exitCode });
-
-					return;
-				}
-
-				resolve({ stdout: out, stderr: err, exitCode: 0 });
-			});
+					resolve({ stdout: out, stderr: err, exitCode: 0 });
+				},
+			);
 		});
 	}
 }

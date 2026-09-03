@@ -281,7 +281,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 	/** Used by `start()`/`onConfigChanged()` gating and the plugin's `GET /status` requirements list. */
 	async evaluateRequirements(): Promise<TailscaleRequirement[]> {
-		const platform = this.evaluatePlatformSupported();
+		const platform = await this.evaluatePlatformSupported();
 
 		if (!platform.satisfied) {
 			return [
@@ -309,7 +309,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	 * `error` states instead.
 	 */
 	async computeStatus(): Promise<RemoteAccessProviderStatus> {
-		const platform = this.evaluatePlatformSupported();
+		const platform = await this.evaluatePlatformSupported();
 
 		if (!platform.satisfied) {
 			return this.buildStatus('unsupported', platform.message);
@@ -369,8 +369,17 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 	// ─── Requirements ─────────────────────────────────────────────────
 
-	private evaluatePlatformSupported(): TailscaleRequirement {
-		const platformType = this.platformService.getPlatformType();
+	/**
+	 * Awaits `PlatformService`'s own detection promise before reading the
+	 * platform type — called right after boot (the poller's first tick,
+	 * `start()`), `platformType` can still be `undefined` if this read
+	 * `PlatformService.getPlatformType()` synchronously, which would
+	 * misreport `unsupported` with a message naming the `'undefined'`
+	 * platform. `getPlatformTypeAsync()` resolves only once detection has
+	 * actually settled, so this never happens.
+	 */
+	private async evaluatePlatformSupported(): Promise<TailscaleRequirement> {
+		const platformType = await this.platformService.getPlatformTypeAsync();
 
 		if (platformType === PlatformType.RASPBERRY || platformType === PlatformType.GENERIC) {
 			return { code: 'platform-supported', satisfied: true, message: `Platform '${platformType}' is supported.` };

@@ -17,6 +17,17 @@ export const REMOTE_ACCESS_MODULE_API_TAG_DESCRIPTION =
  */
 export const REMOTE_ACCESS_PROVIDER_STATUS_TIMEOUT_MS = 5000;
 
+/**
+ * How long `RemoteAccessProxyContributionService` waits before retrying a
+ * `getModuleConfig()` call that previously threw. A failed read is
+ * fail-closed (contributes no trusted proxies) but must not memoise that
+ * `[]` the same way a valid empty result is memoised — otherwise recovery
+ * depends entirely on a `CONFIG_UPDATED`/`PROVIDER_STATUS` event happening
+ * to arrive, which is not guaranteed. This bounds how stale a "the config
+ * store is broken" state can get without one.
+ */
+export const REMOTE_ACCESS_CONFIG_READ_RETRY_INTERVAL_MS = 30_000;
+
 export enum EventType {
 	PROVIDER_STATUS = 'RemoteAccessModule.Provider.Status',
 	URLS_CHANGED = 'RemoteAccessModule.Urls.Changed',

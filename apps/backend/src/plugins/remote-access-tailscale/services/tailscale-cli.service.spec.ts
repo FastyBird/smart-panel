@@ -6,6 +6,8 @@ import { execFile } from 'node:child_process';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { TAILSCALE_CLI_MAX_BUFFER_BYTES } from '../remote-access-tailscale.constants';
+
 import { TailscaleCliError, TailscaleCliService, redactTailscaleArgs } from './tailscale-cli.service';
 
 // Only execFile is replaced — other exports stay real, matching
@@ -25,7 +27,14 @@ function mockExecFileOnce(
 	handler: (
 		file: string,
 		args: string[],
-	) => { stdout?: string; stderr?: string; exitCode?: number; enoent?: boolean; killed?: boolean },
+	) => {
+		stdout?: string;
+		stderr?: string;
+		exitCode?: number;
+		enoent?: boolean;
+		killed?: boolean;
+		maxBufferExceeded?: boolean;
+	},
 ): void {
 	(execFile as unknown as jest.Mock).mockImplementationOnce(
 		(file: string, args: string[], _options: unknown, ...rest: unknown[]) => {
@@ -36,6 +45,18 @@ function mockExecFileOnce(
 				const error: Error & { code?: string } = new Error('spawn tailscale ENOENT');
 				error.code = 'ENOENT';
 				callback(error, '', '');
+				return {};
+			}
+
+			if (result.maxBufferExceeded) {
+				// Real Node.js: `code: 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER'`, and the
+				// child is killed the same way a timeout kills it — `killed` is set
+				// here only when the test opts in, to prove the code, not
+				// `killed`, decides the classification.
+				const error: Error & { code?: string; killed?: boolean } = new Error('stdout maxBuffer length exceeded');
+				error.code = 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER';
+				error.killed = result.killed;
+				callback(error, result.stdout ?? '', result.stderr ?? '');
 				return {};
 			}
 
@@ -339,12 +360,33 @@ describe('TailscaleCliService', () => {
 	});
 
 	describe('timeout option', () => {
-		it('passes a default 15s timeout', async () => {
+		it('passes a default 15s timeout and a 16 MiB output buffer', async () => {
 			mockExecFileOnce(() => ({ exitCode: 0 }));
 
 			await service.down();
 
-			expect(execFile).toHaveBeenCalledWith('tailscale', ['down'], { timeout: 15000 }, expect.any(Function));
+			expect(execFile).toHaveBeenCalledWith(
+				'tailscale',
+				['down'],
+				{ timeout: 15000, maxBuffer: TAILSCALE_CLI_MAX_BUFFER_BYTES },
+				expect.any(Function),
+			);
+		});
+	});
+
+	describe('maxBuffer overflow (F5 — must not be misclassified as a timeout)', () => {
+		it('classifies an ERR_CHILD_PROCESS_STDIO_MAXBUFFER failure as unknown, not timeout', async () => {
+			mockExecFileOnce(() => ({ maxBufferExceeded: true }));
+
+			await expect(service.getStatus()).rejects.toMatchObject({ kind: 'unknown' });
+		});
+
+		it('takes the maxBuffer classification over timeout even when the error also reports killed: true', async () => {
+			// Node kills the child either way (a real timeout or an exceeded
+			// buffer) — the error code, not `killed`, must decide the kind.
+			mockExecFileOnce(() => ({ maxBufferExceeded: true, killed: true }));
+
+			await expect(service.getStatus()).rejects.toMatchObject({ kind: 'unknown' });
 		});
 	});
 

@@ -86,7 +86,7 @@ describe('TailscaleNodeManagedService', () => {
 	};
 	let configServiceMock: { getPluginConfig: jest.Mock };
 	let nestConfigServiceMock: { get: jest.Mock };
-	let platformServiceMock: { getPlatformType: jest.Mock };
+	let platformServiceMock: { getPlatformTypeAsync: jest.Mock };
 	let eventEmitterMock: { emit: jest.Mock };
 	let serveServiceMock: { apply: jest.Mock };
 
@@ -120,7 +120,7 @@ describe('TailscaleNodeManagedService', () => {
 
 		configServiceMock = { getPluginConfig: jest.fn().mockReturnValue(defaultConfig()) };
 		nestConfigServiceMock = { get: jest.fn().mockReturnValue(undefined) };
-		platformServiceMock = { getPlatformType: jest.fn().mockReturnValue(PlatformType.RASPBERRY) };
+		platformServiceMock = { getPlatformTypeAsync: jest.fn().mockResolvedValue(PlatformType.RASPBERRY) };
 		eventEmitterMock = { emit: jest.fn() };
 		// Serve/Funnel apply matrix and read-back parsing are covered in full
 		// by tailscale-serve.service.spec.ts; this mock defaults to "nothing
@@ -170,7 +170,7 @@ describe('TailscaleNodeManagedService', () => {
 
 	describe('evaluateRequirements — one missing at a time', () => {
 		it('platform-supported missing short-circuits the rest without touching the CLI', async () => {
-			platformServiceMock.getPlatformType.mockReturnValue(PlatformType.DOCKER);
+			platformServiceMock.getPlatformTypeAsync.mockResolvedValue(PlatformType.DOCKER);
 
 			const requirements = await service.evaluateRequirements();
 
@@ -186,8 +186,33 @@ describe('TailscaleNodeManagedService', () => {
 			expect(execFile).not.toHaveBeenCalled();
 		});
 
+		it('awaits platform detection instead of reading it while still undefined, and never prints "undefined" in the message', async () => {
+			// getPlatformTypeAsync() only resolves once PlatformService's own
+			// detection promise settles — right after boot it can still be
+			// in flight. Resolving it after evaluateRequirements() has already
+			// started proves the platform type is awaited, not read
+			// synchronously (which would have observed `undefined` and produced
+			// a message naming the "'undefined'" platform).
+			let resolvePlatformType!: (value: PlatformType) => void;
+
+			platformServiceMock.getPlatformTypeAsync.mockReturnValue(
+				new Promise((resolve) => {
+					resolvePlatformType = resolve;
+				}),
+			);
+
+			const requirementsPromise = service.evaluateRequirements();
+
+			resolvePlatformType(PlatformType.RASPBERRY);
+
+			const requirements = await requirementsPromise;
+
+			expect(requirements[0]).toMatchObject({ code: 'platform-supported', satisfied: true });
+			expect(requirements[0].message).not.toContain('undefined');
+		});
+
 		it('development platform is unsupported without the env override', async () => {
-			platformServiceMock.getPlatformType.mockReturnValue(PlatformType.DEVELOPMENT);
+			platformServiceMock.getPlatformTypeAsync.mockResolvedValue(PlatformType.DEVELOPMENT);
 			nestConfigServiceMock.get.mockReturnValue(undefined);
 
 			const requirements = await service.evaluateRequirements();
@@ -196,7 +221,7 @@ describe('TailscaleNodeManagedService', () => {
 		});
 
 		it('development platform is supported with FB_REMOTE_ACCESS_ALLOW_DEV=true', async () => {
-			platformServiceMock.getPlatformType.mockReturnValue(PlatformType.DEVELOPMENT);
+			platformServiceMock.getPlatformTypeAsync.mockResolvedValue(PlatformType.DEVELOPMENT);
 			nestConfigServiceMock.get.mockImplementation((key: string) =>
 				key === REMOTE_ACCESS_TAILSCALE_ALLOW_DEV_ENV ? 'true' : undefined,
 			);
@@ -307,7 +332,7 @@ describe('TailscaleNodeManagedService', () => {
 		});
 
 		it('does not call set/up when a requirement is missing, but still reaches started', async () => {
-			platformServiceMock.getPlatformType.mockReturnValue(PlatformType.DOCKER);
+			platformServiceMock.getPlatformTypeAsync.mockResolvedValue(PlatformType.DOCKER);
 
 			await service.start();
 
@@ -755,7 +780,7 @@ describe('TailscaleNodeManagedService', () => {
 		});
 
 		it('does not call apply when the platform is unsupported', async () => {
-			platformServiceMock.getPlatformType.mockReturnValue(PlatformType.DOCKER);
+			platformServiceMock.getPlatformTypeAsync.mockResolvedValue(PlatformType.DOCKER);
 
 			await service.computeStatus();
 

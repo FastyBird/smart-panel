@@ -12,7 +12,7 @@ import { Logger } from '@nestjs/common';
 import { TrustedProxyRegistryService, TrustedProxySource } from '../../api/services/trusted-proxy-registry.service';
 import { ConfigService } from '../../config/services/config.service';
 import { RemoteAccessProviderStatus } from '../platforms/remote-access-provider.platform';
-import { REMOTE_ACCESS_MODULE_NAME } from '../remote-access.constants';
+import { REMOTE_ACCESS_CONFIG_READ_RETRY_INTERVAL_MS, REMOTE_ACCESS_MODULE_NAME } from '../remote-access.constants';
 
 import { RemoteAccessProxyContributionService } from './remote-access-proxy-contribution.service';
 import { RemoteAccessStatusService } from './remote-access-status.service';
@@ -96,6 +96,10 @@ describe('RemoteAccessProxyContributionService', () => {
 			trustForwardedHeaders: true,
 			trustedProxies: ['10.0.0.0/8'],
 		});
+		// The result is memoised — a config edit alone does not change what
+		// addresses() returns until the module's own CONFIG_UPDATED event
+		// invalidates the cache (see the "memoisation" describe block below).
+		service.onConfigUpdated({ type: 'module', source: REMOTE_ACCESS_MODULE_NAME });
 
 		expect(registeredSource().addresses()).toEqual(['10.0.0.0/8']);
 	});
@@ -131,16 +135,140 @@ describe('RemoteAccessProxyContributionService', () => {
 		expect(registeredSource().addresses()).toEqual(['10.0.0.0/8', '100.64.0.1']);
 	});
 
-	it('reflects a later provider status change without re-registering, since addresses() is read live', () => {
+	it('recomputes after a Provider.Status event invalidates the cache, without re-registering', () => {
 		service.onModuleInit();
 		const addresses = registeredSource();
 
 		expect(addresses.addresses()).toEqual([]);
 
 		statusService.getCachedStatuses.mockReturnValue([connectedStatus('remote-access-tailscale', ['100.64.0.1'])]);
+		service.onProviderStatus();
 
 		expect(trustedProxyRegistry.register).toHaveBeenCalledTimes(1);
 		expect(addresses.addresses()).toEqual(['100.64.0.1']);
+	});
+
+	describe('memoisation (F2 — per-request config read is unguarded and re-validated on every request)', () => {
+		it('calls getModuleConfig only once across two addresses() calls with no invalidating event in between', () => {
+			service.onModuleInit();
+			const addresses = registeredSource();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(addresses.addresses()).toEqual([]);
+
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+		});
+
+		it('recomputes after a PROVIDER_STATUS event', () => {
+			service.onModuleInit();
+			const addresses = registeredSource();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+
+			service.onProviderStatus();
+			addresses.addresses();
+
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(2);
+		});
+
+		it('recomputes after a CONFIG_UPDATED event for this module, but ignores other modules and plugins', () => {
+			service.onModuleInit();
+			const addresses = registeredSource();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+
+			service.onConfigUpdated({ type: 'module', source: 'weather-module' });
+			addresses.addresses();
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+
+			service.onConfigUpdated({ type: 'plugin', source: REMOTE_ACCESS_MODULE_NAME });
+			addresses.addresses();
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+
+			service.onConfigUpdated({ type: 'module', source: REMOTE_ACCESS_MODULE_NAME });
+			addresses.addresses();
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(2);
+		});
+
+		it('fails closed (contributes []) when the config read throws, without crashing isTrusted()', () => {
+			configService.getModuleConfig.mockImplementation(() => {
+				throw new Error('config store unavailable');
+			});
+			service.onModuleInit();
+
+			expect(registeredSource().addresses()).toEqual([]);
+		});
+
+		it('logs the config-read failure once, not on every addresses() call, then recovers cleanly once the config reads again', () => {
+			configService.getModuleConfig.mockImplementation(() => {
+				throw new Error('config store unavailable');
+			});
+			service.onModuleInit();
+			const addresses = registeredSource();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(addresses.addresses()).toEqual([]);
+			expect(Logger.prototype.warn).toHaveBeenCalledTimes(1);
+
+			configService.getModuleConfig.mockReturnValue({
+				enabled: true,
+				trustForwardedHeaders: false,
+				trustedProxies: [],
+			});
+			service.onProviderStatus();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(Logger.prototype.warn).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not retry a failed config read before the retry interval has passed (CodeRabbit #952 F2 follow-up)', () => {
+			configService.getModuleConfig.mockImplementation(() => {
+				throw new Error('config store unavailable');
+			});
+			service.onModuleInit();
+			const addresses = registeredSource();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+
+			// Still well within the interval — a failed read must not be
+			// memoised the same way a valid empty result is, but it also must
+			// not retry on every single call, only once the interval passes.
+			service['configReadFailedAt'] = Date.now() - (REMOTE_ACCESS_CONFIG_READ_RETRY_INTERVAL_MS - 1000);
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+		});
+
+		it('retries a failed config read once the retry interval has passed, and memoises the real result on success', () => {
+			configService.getModuleConfig.mockImplementation(() => {
+				throw new Error('config store unavailable');
+			});
+			service.onModuleInit();
+			const addresses = registeredSource();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+
+			// Past the interval — the next addresses() call must retry the
+			// read on its own, with no CONFIG_UPDATED/PROVIDER_STATUS event.
+			service['configReadFailedAt'] = Date.now() - (REMOTE_ACCESS_CONFIG_READ_RETRY_INTERVAL_MS + 1000);
+			configService.getModuleConfig.mockReturnValue({
+				enabled: true,
+				trustForwardedHeaders: true,
+				trustedProxies: ['10.0.0.0/8'],
+			});
+
+			expect(addresses.addresses()).toEqual(['10.0.0.0/8']);
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(2);
+
+			// The retry succeeded: back to normal event-only memoisation, no
+			// further reads until an invalidating event.
+			expect(addresses.addresses()).toEqual(['10.0.0.0/8']);
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	describe('provider-declared proxy address validation', () => {
