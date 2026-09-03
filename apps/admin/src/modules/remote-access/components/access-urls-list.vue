@@ -180,7 +180,12 @@ const toggleQr = async (url: string): Promise<void> => {
 			qrDataUrls[url] = await QRCode.toDataURL(url, { width: 180, margin: 2 });
 		} catch {
 			flashMessage.error(t('remoteAccessModule.messages.qrFailed'));
-			openQrUrl.value = null;
+
+			// Only clear the selection if it is still this URL: a slower, now-stale request must not
+			// clobber a newer selection the user already switched to while this one was pending.
+			if (openQrUrl.value === url) {
+				openQrUrl.value = null;
+			}
 		}
 	}
 };

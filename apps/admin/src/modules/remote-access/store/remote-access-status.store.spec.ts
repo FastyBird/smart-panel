@@ -119,6 +119,45 @@ describe('RemoteAccessStatus Store', () => {
 			expect(result2.enabled).toBe(true);
 			expect(backendClient.GET).toHaveBeenCalledTimes(1);
 		});
+
+		// Regression: the request used to run outside the `try`/`finally`, so a rejection from
+		// `backend.client.GET` itself (as opposed to an HTTP error response, which openapi-fetch
+		// resolves into `{ error }`) left `semaphore.getting` stuck `true` forever.
+		it('clears getting when the request itself rejects, so a retry is possible', async () => {
+			(backendClient.GET as Mock).mockRejectedValueOnce(new Error('network down'));
+
+			await expect(store.get()).rejects.toThrow('network down');
+			expect(store.semaphore.getting).toBe(false);
+
+			(backendClient.GET as Mock).mockResolvedValueOnce({
+				data: { data: mockStatusRes },
+				error: undefined,
+				response: { status: 200 },
+			});
+
+			const result = await store.get();
+
+			expect(result.enabled).toBe(true);
+			expect(store.semaphore.getting).toBe(false);
+		});
+
+		// Regression: `ref()` reuses the same reactive proxy for repeated calls with an identical raw
+		// object, so a module-level `defaultSemaphore` object shared by every `useRemoteAccessStatus(pinia)`
+		// setup call made one store's in-flight `get()` flip `getting` to `true` for every other store too.
+		it('does not share semaphore state between different Pinia instances', () => {
+			const piniaA = createPinia();
+			const piniaB = createPinia();
+
+			const storeA = useRemoteAccessStatus(piniaA);
+			const storeB = useRemoteAccessStatus(piniaB);
+
+			(backendClient.GET as Mock).mockImplementation(() => new Promise(() => {}));
+
+			void storeA.get();
+
+			expect(storeA.semaphore.getting).toBe(true);
+			expect(storeB.semaphore.getting).toBe(false);
+		});
 	});
 
 	describe('set', () => {

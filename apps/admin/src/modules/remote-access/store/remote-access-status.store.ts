@@ -24,9 +24,14 @@ import {
 	transformRemoteAccessStatusResponse,
 } from './remote-access-status.transformers';
 
-const defaultSemaphore: IRemoteAccessStatusStateSemaphore = {
+// A factory, not a shared constant: `ref()` wraps an object argument in a reactive proxy keyed by
+// that object's identity, so every `useRemoteAccessStatus(pinia)` setup call must pass its own
+// fresh object - reusing one module-level instance would make every store share the same
+// reactive semaphore, and one store's in-flight `get()` would make every other store's `get()`
+// throw "Already getting remote access status.".
+const createDefaultSemaphore = (): IRemoteAccessStatusStateSemaphore => ({
 	getting: false,
-};
+});
 
 export const useRemoteAccessStatus = defineStore<'remote_access_module-status', RemoteAccessStatusStoreSetup>(
 	'remote_access_module-status',
@@ -34,7 +39,7 @@ export const useRemoteAccessStatus = defineStore<'remote_access_module-status', 
 		const backend = useBackend();
 		const logger = useLogger();
 
-		const semaphore = ref<IRemoteAccessStatusStateSemaphore>(defaultSemaphore);
+		const semaphore = ref<IRemoteAccessStatusStateSemaphore>(createDefaultSemaphore());
 
 		const firstLoad = ref<boolean>(false);
 
@@ -95,9 +100,13 @@ export const useRemoteAccessStatus = defineStore<'remote_access_module-status', 
 
 				semaphore.value.getting = true;
 
-				const apiResponse = await backend.client.GET(`/${MODULES_PREFIX}/${REMOTE_ACCESS_MODULE_PREFIX}/status`);
-
+				// The request itself lives inside the `try` too: a rejection from `backend.client.GET`
+				// (a network failure, not an HTTP error response - openapi-fetch resolves those into
+				// `{ error }` instead of rejecting) must still hit `finally` below, or `getting` is stuck
+				// `true` forever and every subsequent `get()` throws "Already getting ...".
 				try {
+					const apiResponse = await backend.client.GET(`/${MODULES_PREFIX}/${REMOTE_ACCESS_MODULE_PREFIX}/status`);
+
 					const { data: responseData, error, response } = apiResponse;
 
 					// Captured with an explicit type before any narrowing: `get-remote-access-module-status`

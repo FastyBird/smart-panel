@@ -37,6 +37,10 @@ vi.mock('../composables', () => ({
 
 describe('AccessUrlsList', () => {
 	beforeEach(() => {
+		// Reset to the shared default before every test - a test that installs its own
+		// `mockImplementation` (the race-condition regression below) must not leak it forward.
+		toDataURL.mockReset().mockResolvedValue('data:image/png;base64,mockqrcode');
+
 		Object.defineProperty(navigator, 'clipboard', {
 			value: { writeText: vi.fn().mockResolvedValue(undefined) },
 			configurable: true,
@@ -119,5 +123,40 @@ describe('AccessUrlsList', () => {
 		const wrapper = mount(AccessUrlsList);
 
 		expect(wrapper.text()).toContain('remoteAccessModule.texts.noExternalUrls');
+	});
+
+	it('keeps a newer QR selection when an earlier, now-stale request rejects (regression)', async () => {
+		const deferred = new Map<string, { resolve: (value: string) => void; reject: (reason: unknown) => void }>();
+
+		toDataURL.mockImplementation(
+			(url: string) =>
+				new Promise((resolve, reject) => {
+					deferred.set(url, { resolve, reject });
+				})
+		);
+
+		const wrapper = mount(AccessUrlsList);
+
+		const qrButtons = wrapper.findAll('button[aria-label="remoteAccessModule.buttons.showQr.title"]');
+
+		// Select the internal URL's QR first - its request stays pending.
+		await qrButtons[0]!.trigger('click');
+		// Switch to the first external endpoint's QR before the internal one settles.
+		await qrButtons[1]!.trigger('click');
+
+		// The stale, now-abandoned request for the internal URL fails...
+		deferred.get('http://localhost:3000')!.reject(new Error('network error'));
+		await flushPromises();
+
+		// ...but the newer selection must survive: neither QR has resolved yet, so nothing renders,
+		// which already proves the failure did not throw or otherwise break the component.
+		expect(wrapper.find('img').exists()).toBe(false);
+
+		// Once the (still selected) external endpoint's QR resolves, it renders - proving
+		// `openQrUrl` was never cleared by the earlier, unrelated failure.
+		deferred.get('https://node.tailnet.ts.net')!.resolve('data:image/png;base64,external-qr');
+		await flushPromises();
+
+		expect(wrapper.find('img').attributes('src')).toBe('data:image/png;base64,external-qr');
 	});
 });

@@ -105,6 +105,7 @@ defineOptions({
 });
 
 const props = withDefaults(defineProps<IRemoteAccessConfigFormProps>(), {
+	remoteFormSubmit: false,
 	remoteFormResult: FormResult.NONE,
 	remoteFormReset: false,
 	remoteFormChanged: false,
