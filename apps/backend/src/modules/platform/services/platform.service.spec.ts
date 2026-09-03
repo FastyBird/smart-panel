@@ -303,7 +303,10 @@ describe('PlatformService', () => {
 			mockExecFile((file) => file !== 'which');
 
 			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(false);
-			expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('systemd-run availability probe'), expect.anything());
+			expect(debugSpy).toHaveBeenCalledWith(
+				expect.stringContaining('systemd-run availability probe'),
+				expect.anything(),
+			);
 		});
 
 		it('probes only once and caches the result across repeated calls', async () => {

@@ -266,7 +266,9 @@ export class PlatformService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.debug(`Passwordless sudo probe for systemd-run failed, treating privileged workers as unsupported: ${err.message}`);
+			this.logger.debug(
+				`Passwordless sudo probe for systemd-run failed, treating privileged workers as unsupported: ${err.message}`,
+			);
 
 			return false;
 		}
@@ -281,7 +283,9 @@ export class PlatformService {
 		} catch (error) {
 			const err = error as Error;
 
-			this.logger.debug(`systemd-run availability probe failed, treating privileged workers as unsupported: ${err.message}`);
+			this.logger.debug(
+				`systemd-run availability probe failed, treating privileged workers as unsupported: ${err.message}`,
+			);
 
 			return false;
 		}

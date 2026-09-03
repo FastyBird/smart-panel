@@ -96,6 +96,10 @@ describe('RemoteAccessProxyContributionService', () => {
 			trustForwardedHeaders: true,
 			trustedProxies: ['10.0.0.0/8'],
 		});
+		// The result is memoised — a config edit alone does not change what
+		// addresses() returns until the module's own CONFIG_UPDATED event
+		// invalidates the cache (see the "memoisation" describe block below).
+		service.onConfigUpdated({ type: 'module', source: REMOTE_ACCESS_MODULE_NAME });
 
 		expect(registeredSource().addresses()).toEqual(['10.0.0.0/8']);
 	});
@@ -131,16 +135,93 @@ describe('RemoteAccessProxyContributionService', () => {
 		expect(registeredSource().addresses()).toEqual(['10.0.0.0/8', '100.64.0.1']);
 	});
 
-	it('reflects a later provider status change without re-registering, since addresses() is read live', () => {
+	it('recomputes after a Provider.Status event invalidates the cache, without re-registering', () => {
 		service.onModuleInit();
 		const addresses = registeredSource();
 
 		expect(addresses.addresses()).toEqual([]);
 
 		statusService.getCachedStatuses.mockReturnValue([connectedStatus('remote-access-tailscale', ['100.64.0.1'])]);
+		service.onProviderStatus();
 
 		expect(trustedProxyRegistry.register).toHaveBeenCalledTimes(1);
 		expect(addresses.addresses()).toEqual(['100.64.0.1']);
+	});
+
+	describe('memoisation (F2 — per-request config read is unguarded and re-validated on every request)', () => {
+		it('calls getModuleConfig only once across two addresses() calls with no invalidating event in between', () => {
+			service.onModuleInit();
+			const addresses = registeredSource();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(addresses.addresses()).toEqual([]);
+
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+		});
+
+		it('recomputes after a PROVIDER_STATUS event', () => {
+			service.onModuleInit();
+			const addresses = registeredSource();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+
+			service.onProviderStatus();
+			addresses.addresses();
+
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(2);
+		});
+
+		it('recomputes after a CONFIG_UPDATED event for this module, but ignores other modules and plugins', () => {
+			service.onModuleInit();
+			const addresses = registeredSource();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+
+			service.onConfigUpdated({ type: 'module', source: 'weather-module' });
+			addresses.addresses();
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+
+			service.onConfigUpdated({ type: 'plugin', source: REMOTE_ACCESS_MODULE_NAME });
+			addresses.addresses();
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(1);
+
+			service.onConfigUpdated({ type: 'module', source: REMOTE_ACCESS_MODULE_NAME });
+			addresses.addresses();
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(2);
+		});
+
+		it('fails closed (contributes []) when the config read throws, without crashing isTrusted()', () => {
+			configService.getModuleConfig.mockImplementation(() => {
+				throw new Error('config store unavailable');
+			});
+			service.onModuleInit();
+
+			expect(registeredSource().addresses()).toEqual([]);
+		});
+
+		it('logs the config-read failure once, not on every addresses() call, then recovers cleanly once the config reads again', () => {
+			configService.getModuleConfig.mockImplementation(() => {
+				throw new Error('config store unavailable');
+			});
+			service.onModuleInit();
+			const addresses = registeredSource();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(addresses.addresses()).toEqual([]);
+			expect(Logger.prototype.warn).toHaveBeenCalledTimes(1);
+
+			configService.getModuleConfig.mockReturnValue({
+				enabled: true,
+				trustForwardedHeaders: false,
+				trustedProxies: [],
+			});
+			service.onProviderStatus();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(Logger.prototype.warn).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('provider-declared proxy address validation', () => {
