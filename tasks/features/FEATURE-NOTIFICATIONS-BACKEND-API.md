@@ -22,15 +22,23 @@ existing API and gateway infrastructure.
   the `EventType` emissions.
 - Spec: `docs/superpowers/specs/2026-09-02-notifications-module-design.md`, "REST API" section.
 - Plan: `docs/superpowers/plans/2026-09-02-notifications-module.md`, Task N-2 section.
+- The controller is `@Controller('notifications')` inside the module mounted at `/api/modules/notifications`,
+  so the full paths are `/api/modules/notifications/notifications`,
+  `/api/modules/notifications/notifications/{id}`, `/api/modules/notifications/notifications/bulk-update` and
+  `/api/modules/notifications/notifications/bulk-remove`. The acceptance criteria and route table below use
+  the controller-relative shorthand.
 - Cursor pagination and response-meta pattern to mirror: `logs.controller.ts:99-103` (`GET /logs`'s
   `setResponseMeta` usage).
-- Bulk endpoint pattern to mirror: `runBulkOperation` and `CommonDataBulkResult`, reusing
-  `BulkResultResponseModel` from `modules/api/models/bulk.model.ts` - one request per bulk action, with
-  `safeErrors` declared.
+- Bulk endpoint pattern to mirror: `runBulkOperation` and `CommonDataBulkResult`, wrapped in a module-local
+  `BulkResultResponseModel` that wraps the shared `BulkResultModel` from `modules/api/models/bulk.model.ts`,
+  the per-module pattern of `devices-response.model.ts:195` - one request per bulk action, with `safeErrors`
+  declared.
 - Websocket gateway: `apps/backend/src/modules/websocket/gateway/websocket.gateway.ts`, in particular the
-  `EXCHANGE_ONLY_EVENT_PREFIXES` static list and `EXCHANGE_ROOM`, which keeps admin-only events away from
-  display clients (displays authenticate as `UserRole.USER`). Extend the existing
-  `SystemModule.System.Update.*` gateway spec pattern for the new prefix.
+  `EXCHANGE_ONLY_EVENT_PREFIXES` static list, which gains `'NotificationsModule.'`. Owner and admin user
+  sockets join a new `ADMIN_ROOM` at handshake, and admin-only prefixes are delivered to `ADMIN_ROOM` instead
+  of the whole `EXCHANGE_ROOM`, which keeps them away from `UserRole.USER` sockets (displays authenticate as
+  `UserRole.USER`). Extend the existing `SystemModule.System.Update.*` gateway spec pattern for the new
+  prefix.
 - After this task, `pnpm run generate:openapi` must be run and the regenerated `spec/api/v1/openapi.json`
   and `apps/panel/lib/api/**` committed - never hand-edit them (see `CLAUDE.md` "Generated Code").
 
@@ -44,9 +52,12 @@ existing API and gateway infrastructure.
   `POST /bulk-remove`, all `@Roles(UserRole.OWNER, UserRole.ADMIN)`.
 - `UpdateNotificationDto`, `BulkUpdateNotificationsDto`, `BulkRemoveNotificationsDto` and their `Req*`
   wrappers.
-- `NotificationResponseModel` / `NotificationsResponseModel` response models, reusing
-  `BulkResultResponseModel`.
-- Adding `'NotificationsModule.'` to `EXCHANGE_ONLY_EVENT_PREFIXES` in `websocket.gateway.ts`.
+- `NotificationResponseModel` / `NotificationsResponseModel` response models, plus a module-local
+  `BulkResultResponseModel` (`@ApiSchema({ name: 'NotificationsModuleResBulkResult' })`) wrapping the shared
+  `BulkResultModel` from `modules/api/models/bulk.model.ts`.
+- Adding `'NotificationsModule.'` to `EXCHANGE_ONLY_EVENT_PREFIXES` in `websocket.gateway.ts`, joining
+  owner/admin user sockets to a new `ADMIN_ROOM` at handshake, and delivering admin-only prefixes to
+  `ADMIN_ROOM`.
 - Registering the controller in `notifications.module.ts` and the new models in `notifications.openapi.ts`.
 - `apps/backend/test/notifications.e2e-spec.ts`.
 - Regenerating `spec/api/v1/openapi.json` and `apps/panel/lib/api/**`.
@@ -61,10 +72,11 @@ existing API and gateway infrastructure.
 ## 4. Acceptance criteria
 
 - [ ] `GET /notifications` (`operationId: get-notifications-module-notifications`) parses `status` (default
-      `active`), `severity` (repeatable), `source`, `kind`, `unread`, `after_id`, `limit` and calls
-      `findAll`, ordered by `created_at DESC`.
-- [ ] `GET /notifications` sets response meta `{ next_cursor, has_more }` through `setResponseMeta`, matching
-      the pattern in `logs.controller.ts:99-103`.
+      `active`), `severity` (repeatable), `source`, `kind`, `unread`, `after_id`, `limit` (default 50, max
+      200) and calls `findAll` with `limit + 1` rows in the total order `created_at DESC, id DESC`.
+- [ ] `GET /notifications` returns only the first `limit` rows and sets response meta
+      `{ next_cursor: last returned row id or undefined, has_more: rows.length > limit }` through
+      `setResponseMeta`, matching the pattern in `logs.controller.ts:99-103`.
 - [ ] `GET /notifications/:id` (`operationId: get-notifications-module-notification`) returns 404 through
       `NotificationsNotFoundException` when the id does not exist.
 - [ ] `PATCH /notifications/:id` (`operationId: update-notifications-module-notification`) accepts
@@ -82,13 +94,19 @@ existing API and gateway infrastructure.
       `NotificationsService.findAll`.
 - [ ] The controller spec proves the bulk hand-off collects a per-item failure without aborting the rest of
       the batch.
+- [ ] Controller spec: with 3 rows of equal `created_at`, two pages of `limit = 2` return all three rows
+      exactly once in `(created_at DESC, id DESC)` order - the first page with `has_more: true` and
+      `next_cursor` set, the second with `has_more: false`.
 - [ ] e2e: as an owner token, create rows through the service, then list active, patch read, bulk dismiss and
       bulk remove through the REST endpoints.
 - [ ] e2e: every notifications route returns 403 for a `USER`-role token and for a display token.
 - [ ] e2e: the migration applies cleanly on a fresh database.
-- [ ] `'NotificationsModule.'` is added to `EXCHANGE_ONLY_EVENT_PREFIXES` in `websocket.gateway.ts`, and a
-      gateway spec proves a `NotificationsModule.Notification.Created` event reaches `EXCHANGE_ROOM` only
-      (extending the existing `SystemModule.System.Update.*` test).
+- [ ] `'NotificationsModule.'` is added to `EXCHANGE_ONLY_EVENT_PREFIXES` in `websocket.gateway.ts`; owner and
+      admin user sockets join a new `ADMIN_ROOM` at handshake, and a gateway spec proves a
+      `NotificationsModule.Notification.Created` event reaches an owner socket and an admin socket in the
+      exchange room (extending the existing `SystemModule.System.Update.*` test).
+- [ ] Gateway spec: the same `NotificationsModule.Notification.Created` event reaches neither a `UserRole.USER`
+      socket that joined the exchange room nor a display socket.
 - [ ] Websocket payloads are thin pointers: `{ id, kind, severity, source }` for `Created`/`Updated`, `{ id }`
       for `Deleted`.
 - [ ] `pnpm run generate:openapi` regenerates `spec/api/v1/openapi.json` and `apps/panel/lib/api/**` with no
@@ -117,7 +135,7 @@ Route table from the plan (consumes N-1's `NotificationsService`, `Notifications
 
 | Route | operationId | Handler |
 | --- | --- | --- |
-| `GET /` | `get-notifications-module-notifications` | Parses `status`, `severity` (repeatable), `source`, `kind`, `unread`, `after_id`, `limit`; calls `findAll`; sets meta `{ next_cursor, has_more }` through `setResponseMeta` exactly like `logs.controller.ts:99-103`. |
+| `GET /` | `get-notifications-module-notifications` | Parses `status`, `severity` (repeatable), `source`, `kind`, `unread`, `after_id`, `limit` (default 50, max 200); calls `findAll` with `limit + 1`; returns the first `limit` rows and sets meta `{ next_cursor: last returned row id or undefined, has_more: rows.length > limit }` through `setResponseMeta` exactly like `logs.controller.ts:99-103`. |
 | `GET /:id` | `get-notifications-module-notification` | 404 through `NotificationsNotFoundException`. |
 | `PATCH /:id` | `update-notifications-module-notification` | `UpdateNotificationDto { read?: boolean; dismissed?: boolean }` wrapped in `ReqUpdateNotificationDto { data }`. |
 | `DELETE /:id` | `delete-notifications-module-notification` | 204. |
@@ -125,8 +143,10 @@ Route table from the plan (consumes N-1's `NotificationsService`, `Notifications
 | `POST /bulk-remove` | `bulk-remove-notifications-module-notifications` | `BulkRemoveNotificationsDto { ids: string[] }`. |
 
 Response models: `NotificationResponseModel` (`NotificationsModuleResNotification`),
-`NotificationsResponseModel` (`NotificationsModuleResNotifications`), and reuse `BulkResultResponseModel`
-from `modules/api/models/bulk.model.ts`.
+`NotificationsResponseModel` (`NotificationsModuleResNotifications`), and a module-local
+`BulkResultResponseModel` (`@ApiSchema({ name: 'NotificationsModuleResBulkResult' })`) wrapping the shared
+`BulkResultModel` from `modules/api/models/bulk.model.ts`, the per-module pattern of
+`devices-response.model.ts:195`.
 
 ## 8. AI instructions
 

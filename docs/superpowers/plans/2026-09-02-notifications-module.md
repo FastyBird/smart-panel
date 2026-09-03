@@ -21,7 +21,8 @@ Element Plus, Zod, openapi-fetch, Vitest; global `fetch` for channels. No new de
 ## Global Constraints
 
 - Never edit generated files: `spec/api/v1/openapi.json`, `apps/admin/src/openapi.ts`, `apps/panel/lib/api/`.
-  Change Swagger sources and run `pnpm run generate:openapi`; commit the regenerated spec and panel client.
+  Change Swagger sources and run `pnpm run generate:openapi` to validate; all three outputs are gitignored and
+  regenerated in CI, so nothing generated is committed.
 - Tabs, single quotes, semicolons, trailing commas; print width 120 (backend) and 150 (admin); external
   imports first, then `../`, then `./`, blank line between groups.
 - Swagger decorators before NestJS decorators; every action has `@ApiOperation` with `tags`, `summary`,
@@ -53,7 +54,7 @@ review from a fresh reviewer before its PR opens; the reviewer tier is listed ne
 | N-1 | #886 | Module skeleton, entity, migration, config, `NotificationsService`, retention, unit tests | none | **opus / high** | opus / medium | `apps/backend/src/modules/notifications/**` except `controllers/`, `platforms/`; `app.module.ts`; `extensions.constants.ts` (`NON_TOGGLEABLE_MODULES`); new migration | `feat(backend): add notifications module domain and storage` |
 | N-2 | #887 | REST controller, DTOs, response models, websocket pointer events, gateway prefix, regenerated spec and panel client, e2e | N-1 | sonnet / medium | sonnet / medium | `modules/notifications/controllers/**`, `dto/**`, `models/*response*`, `websocket.gateway.ts` prefix list, `spec/`, `apps/panel/lib/api/` (generated), `apps/backend/test/notifications.e2e-spec.ts` | `feat(backend): expose notifications over REST and websocket` |
 | N-3 | #888 | Channel platform interface, base class, registry, dispatcher with retry, timeout, loop guard and delivery-failed self-report | N-1 | sonnet / high | opus / medium | `modules/notifications/platforms/**`, `services/notification-channel-registry.service.ts`, `services/notification-dispatcher.service.ts` | `feat(backend): dispatch notifications to channel plugins` |
-| N-4 | #889 | Emitters batch 1: update available and failed, managed service error, failed login (backend only) | N-1 | sonnet / high | sonnet / medium | `modules/system/services/update.service.ts`, `update-executor.service.ts`, `modules/extensions/services/managed-service-manager.service.ts`, `modules/auth/services/auth.service.ts`, `modules/auth/controllers/auth.controller.ts` | `feat(backend): raise notifications for updates, service failures and failed logins` |
+| N-4 | #889 | Emitters batch 1: update available and failed, managed service error, failed login (backend only) | N-3 | sonnet / high | sonnet / medium | `modules/system/services/update.service.ts`, `update-executor.service.ts`, `modules/extensions/services/managed-service-manager.service.ts`, `modules/auth/services/auth.service.ts`, `modules/auth/controllers/auth.controller.ts` | `feat(backend): raise notifications for updates, service failures and failed logins` |
 | N-5 | #890 | Admin foundation: constants, schemas bound to generated types, store with ordering tokens, module install, sockets handler, bell and popover, toasts, en-US locale; remove the update badge | N-2 | sonnet / high | sonnet / medium | `apps/admin/src/modules/notifications/**` except `views/`, `components/list-*`, `components/notification-detail-drawer.vue`, `components/notifications-filter.vue`; `app-top-bar.vue`; `layout-default.vue`; `app.main.ts`; `openapi.constants.ts`; delete `update-notification-badge.vue` | `feat(admin): add the notifications bell and live store` |
 | N-6 | #891 | Admin page: filter, list, bulk bar, detail drawer, CTA execution, module config form, route and menu | N-5 | sonnet / high | sonnet / medium | `modules/notifications/views/**`, `components/list-notifications.vue`, `notifications-filter.vue`, `notification-detail-drawer.vue`, `notifications-config-form.vue`, `composables/useNotificationAction.ts`, `router/` | `feat(admin): add the notifications page with bulk actions and CTAs` |
 | N-7 | #892 | Five further locales (cs-CZ, de-DE, es-ES, pl-PL, sk-SK) and admin test hardening | N-6 | sonnet / low | sonnet / low | `modules/notifications/locales/*.json`, spec files in `modules/notifications/**` | `feat(admin): translate the notifications module` |
@@ -180,16 +181,16 @@ every model in `NOTIFICATIONS_SWAGGER_EXTRA_MODELS` and `extensionsService.regis
 - Issue upserts: same id, `occurrences + 1`, fields replaced, `read_at` and `dismissed_at` preserved.
 - Issue without key returns `null` and logs a warning; event `resolve` on an unkeyed row returns `false`.
 - `resolve` sets `resolved_at` and the next `notify` with the same key inserts a fresh row (the partial index permits it).
-- `resolveAll(source)` resolves every active keyed row of that source and returns the count.
+- `resolveAll(source)` resolves every unresolved keyed row of that source, dismissed rows included (a dismissed unresolved issue must not outlive its plugin), and returns the count.
 - Validation: title and message truncated to their limits; a fourth action dropped; `link` with `javascript:` scheme rejected (`null`); `data` above 4096 bytes rejected; nested `data` rejected; unknown severity rejected.
 - Rate guard: the 61st call from one source within a minute returns `null`; another source is unaffected; the window resets.
 - Database failure inside `notify` is caught, logged, and returns `null`.
 - `notify` emits `EventType.NOTIFICATION_CREATED` with `{ id, kind, severity, source }` on insert and `NOTIFICATION_UPDATED` on upsert; `markRead/dismiss` emit `UPDATED`; `remove` emits `DELETED` with `{ id }`; `resolve` emits `UPDATED`.
-- `findAll` default status `active`; `unread` filter; cursor `afterId` returns rows created before the cursor row; `limit` capped at 200.
+- `findAll` default status `active`; `unread` filter; total order `created_at DESC, id DESC`; cursor `afterId` returns the rows that follow the row with that id in the total order (two rows with equal `created_at` are disambiguated by id); `limit` capped at 200.
 
 **Retention service (`notifications-retention.service.ts`, tests in its spec):**
 - `bootStartedAt` captured in the constructor; `onApplicationBootstrap` resolves issues with `persistent = false` and `updated_at < bootStartedAt`, wrapped in `try/catch` that logs and continues.
-- `@Cron('15 3 * * *')` deletes rows with `dismissed_at` or `resolved_at` older than `retention_days`, then enforces `max_notifications` on active events (oldest read first, then oldest unread), reading both values through `ConfigService.getModuleConfig(NOTIFICATIONS_MODULE_NAME)`.
+- `@Cron('15 3 * * *')` prunes by kind: `event` rows once at least one of `dismissed_at` / `resolved_at` is set and the later of them is older than `retention_days`; `issue` rows only when `resolved_at` is set and the later of `resolved_at` and `dismissed_at` is older than `retention_days` (a dismissed but unresolved issue is kept). Then it enforces `max_notifications` on active events (oldest read first, then oldest unread), reading both values through `ConfigService.getModuleConfig(NOTIFICATIONS_MODULE_NAME)`. Tests: an old dismissed-unresolved issue survives; an old dismissed event is deleted; an old resolved issue is deleted; a resolved-then-dismissed issue counts from the later timestamp.
 - Issues are never evicted by the cap.
 
 **Migration:** creates the table with all columns, `IDX_notifications_source_key_active` (partial unique),
@@ -207,7 +208,12 @@ drops the table. Verify with a fresh database: `cd apps/backend && FB_DB_PATH=$(
 ### Task N-2: REST and websocket surface
 
 **Outcome:** The six endpoints from the spec, Swagger-described, with thin websocket pointers reaching only
-the admin exchange room, plus regenerated `spec/api/v1/openapi.json` and panel client.
+owner/admin sockets, plus regenerated `spec/api/v1/openapi.json` and panel client.
+
+The controller is `@Controller('notifications')` in the module mounted at `/api/modules/notifications`, so the
+full paths are `/api/modules/notifications/notifications`, `/api/modules/notifications/notifications/{id}`,
+`/api/modules/notifications/notifications/bulk-update` and `/api/modules/notifications/notifications/bulk-remove`.
+The table below lists controller-relative routes.
 
 **Files:**
 - Create: `apps/backend/src/modules/notifications/controllers/notifications.controller.ts`
@@ -219,14 +225,14 @@ the admin exchange room, plus regenerated `spec/api/v1/openapi.json` and panel c
 - Create: `apps/backend/test/notifications.e2e-spec.ts`
 - Modify: `apps/backend/src/modules/notifications/notifications.openapi.ts` (add the new models)
 - Modify: `apps/backend/src/modules/notifications/notifications.module.ts` (controller)
-- Modify: `apps/backend/src/modules/websocket/gateway/websocket.gateway.ts` (`EXCHANGE_ONLY_EVENT_PREFIXES` gains `'NotificationsModule.'`)
-- Regenerate: `spec/api/v1/openapi.json`, `apps/panel/lib/api/**` via `pnpm run generate:openapi`
+- Modify: `apps/backend/src/modules/websocket/gateway/websocket.gateway.ts` (`EXCHANGE_ONLY_EVENT_PREFIXES` gains `'NotificationsModule.'`; sockets whose principal is a user with `UserRole.OWNER` or `UserRole.ADMIN` also join an `ADMIN_ROOM` at handshake, and admin-only prefixes are delivered to `ADMIN_ROOM` instead of the whole `EXCHANGE_ROOM`)
+- Regenerate locally (gitignored, not committed): `spec/api/v1/openapi.json`, `apps/admin/src/openapi.ts`, `apps/panel/lib/api/**` via `pnpm run generate:openapi`
 
 **Interfaces (consumes N-1: `NotificationsService`, `NotificationsFilter`; produces the routes below):**
 
 | Route | operationId | Handler |
 | --- | --- | --- |
-| `GET /` | `get-notifications-module-notifications` | Parses `status`, `severity` (repeatable), `source`, `kind`, `unread`, `after_id`, `limit`; calls `findAll`; sets meta `{ next_cursor, has_more }` through `setResponseMeta` exactly like `logs.controller.ts:99-103`. |
+| `GET /` | `get-notifications-module-notifications` | Parses `status`, `severity` (repeatable), `source`, `kind`, `unread`, `after_id`, `limit` (default 50, max 200); calls `findAll` with `limit + 1`; returns the first `limit` rows and sets meta `{ next_cursor: last returned row id or undefined, has_more: rows.length > limit }` through `setResponseMeta` (`logs.controller.ts:99-103` shows the meta call). |
 | `GET /:id` | `get-notifications-module-notification` | 404 through `NotificationsNotFoundException`. |
 | `PATCH /:id` | `update-notifications-module-notification` | `UpdateNotificationDto { read?: boolean; dismissed?: boolean }` wrapped in `ReqUpdateNotificationDto { data }`. |
 | `DELETE /:id` | `delete-notifications-module-notification` | 204. |
@@ -241,13 +247,14 @@ Response models: `NotificationResponseModel` (`NotificationsModuleResNotificatio
 **Tests:**
 - Controller spec: every route carries `@Roles(UserRole.OWNER, UserRole.ADMIN)` (read metadata with `Reflect.getMetadata(ROLES_KEY, ...)`); list forwards parsed filters; bulk hand-off collects a failure without aborting the rest.
 - e2e: as owner, create rows through the service, list active, patch read, bulk dismiss, bulk remove; as a `USER` role token every route returns 403; a display token returns 403.
-- Gateway spec: a `NotificationsModule.Notification.Created` event reaches `EXCHANGE_ROOM` only (extend the existing `SystemModule.System.Update.*` test).
+- Controller spec: with 3 rows of equal `created_at`, two pages of `limit = 2` return all three exactly once in `(created_at DESC, id DESC)` order, the first with `has_more: true` and `next_cursor` set, the second with `has_more: false`.
+- Gateway spec: a `NotificationsModule.Notification.Created` event reaches an owner socket and an admin socket in the exchange room, and reaches neither a `UserRole.USER` socket that joined the exchange room nor a display socket (extend the existing `SystemModule.System.Update.*` test).
 
 **Verification:**
 - [ ] `cd apps/backend && npx jest src/modules/notifications src/modules/websocket`
 - [ ] `cd apps/backend && FB_DB_SYNC=true npx jest --config ./test/jest-e2e.json test/notifications.e2e-spec.ts > /tmp/e2e.log; tail -20 /tmp/e2e.log`
-- [ ] `pnpm run generate:openapi` then `pnpm --filter @fastybird/smart-panel-backend run lint:openapi`; commit the regenerated spec and panel client.
-- [ ] `git diff --stat` shows no hand edits under `apps/panel/lib/api/`.
+- [ ] `pnpm run generate:openapi` then `pnpm --filter @fastybird/smart-panel-backend run lint:openapi` (outputs are gitignored; nothing to commit).
+- [ ] `git status` shows no generated file staged.
 
 ---
 
@@ -262,6 +269,7 @@ filter matches, with timeout, retry, loop guard and a self-reported `delivery-fa
 - Create: `apps/backend/src/modules/notifications/services/notification-channel-registry.service.spec.ts`
 - Create: `apps/backend/src/modules/notifications/services/notification-dispatcher.service.ts`
 - Create: `apps/backend/src/modules/notifications/services/notification-dispatcher.service.spec.ts`
+- Create: `apps/backend/src/modules/notifications/notifications.utils.ts` (`sanitizeErrorMessage`) and `notifications.utils.spec.ts`
 - Modify: `apps/backend/src/modules/notifications/notifications.module.ts` (providers, exports)
 
 **Interfaces (produces):**
@@ -286,6 +294,11 @@ export abstract class BaseNotificationChannel implements INotificationChannel {
 	protected fetchWithTimeout(url: string, init: RequestInit): Promise<Response>; // AbortSignal.timeout(10_000)
 }
 
+// notifications.utils.ts
+export function sanitizeErrorMessage(message: string): string;
+// strips `scheme://user:pass@` credentials to `scheme://***@`, drops URL query strings, replaces `Bearer <token>`
+// and `token=`/`key=`/`password=`/`secret=` values with `***`, collapses whitespace, truncates to 300 chars
+
 // services/notification-channel-registry.service.ts
 export class NotificationChannelRegistryService {
 	register(channel: INotificationChannel): void;      // throws on duplicate type, like CommandEventRegistryService
@@ -300,16 +313,17 @@ export class NotificationChannelRegistryService {
 - For each channel in parallel (`Promise.allSettled`): skip when the extension is disabled
   (`configService.getPluginConfig(type).enabled === false`), when `isConfigured()` is false, or when
   `SEVERITY_RANK[entity.severity] < SEVERITY_RANK[await channel.getMinSeverity()]`.
-- Attempts: 3, delays 1 000, 5 000, 25 000 ms (injectable `sleep` for tests); each attempt awaits `send`.
-- After the final failure: `logger.error` with channel type and error message (never the URL), then
+- Attempts: 3, with delays of 1 000 ms and 5 000 ms between them (injectable `sleep` for tests); each attempt awaits `send`; the timeout is the fixed 10 s of `fetchWithTimeout`, there is no per-channel timeout setting.
+- After the final failure: `logger.error` with channel type and `sanitizeErrorMessage(error.message)` (never the URL), then
   `notificationsService.notify({ source: channel.getType(), kind: ISSUE, key: 'delivery-failed', severity: WARNING, title: 'Notification delivery failed', message, actions: [{ type: 'link', label: 'Open channel settings', url: '/config/plugins/<type>' }] })`.
 - After a success: `notificationsService.resolve(channel.getType(), 'delivery-failed')`.
 - Per-channel deliveries are serialised with a simple promise chain so a burst keeps message order.
 
 **Tests (dispatcher spec, with fake channels and a fake `sleep`):** filter by disabled, unconfigured, below
-min severity; loop guard; retry three times then self-report; success resolves the self-report; one failing
-channel does not block another; order preserved within one channel. Registry spec: duplicate throws,
-`isChannel`.
+min severity; loop guard; retry three times (sleeps of 1 000 then 5 000 ms) then self-report; success resolves
+the self-report; one failing channel does not block another; order preserved within one channel. Registry
+spec: duplicate throws, `isChannel`. Utils spec: credentials, query strings, bearer tokens and `token=` values
+are masked; whitespace collapsed; 300-character truncation.
 
 **Verification:**
 - [ ] `cd apps/backend && npx jest src/modules/notifications`
@@ -330,7 +344,7 @@ with the keys, severities and CTAs from the spec.
 - Modify: `apps/backend/src/modules/auth/controllers/auth.controller.ts` (pass `req.ip`)
 - Modify: the four matching `*.spec.ts` files
 
-**Interfaces (consumes N-1 `NotificationsService`):**
+**Interfaces (consumes N-1 `NotificationsService` and N-3 `sanitizeErrorMessage`):**
 
 ```ts
 // system: update available
@@ -343,15 +357,15 @@ await this.notifications.notify({
 // ... and `resolve(SYSTEM_MODULE_NAME, 'update-available')` when no update is available or install succeeded.
 
 // extensions: service error (key uses the manager's runtime key `<kind>:<type>:<serviceId>`)
-key: `service:${key}`, severity: ERROR, title: `Service ${serviceId} of ${type} failed`, message: lastError,
+key: `service:${key}`, severity: ERROR, title: `Service ${serviceId} of ${type} failed`, message: sanitizeErrorMessage(lastError),
 actions: [
 	{ type: SERVICE, label: 'Restart service', extension_kind, extension_type, service_id, operation: 'restart', primary: true },
 	{ type: LINK, label: 'Open services', url: `/extensions?tab=services&kind=${extension_kind}` },
 ]
 // resolve on transition to 'started'.
 
-// auth: failed login (hour bucket in UTC, username truncated to 64 chars)
-key: `login-failed:${username}:${bucket}`, kind: EVENT, severity: WARNING,
+// auth: failed login (hour bucket in UTC, username truncated to 64 chars, ip 'unknown' when absent)
+key: `login-failed:${username}:${ip ?? 'unknown'}:${bucket}`, kind: EVENT, severity: WARNING,
 title: `Failed login attempt for "${username}"`, message: `From ${ip ?? 'unknown'} · ${count} attempt(s) this hour`,
 data: { username, ip, reason },
 ```
@@ -408,13 +422,25 @@ unread badge and popover, toasts errors, and no longer shows the update badge.
 export const NOTIFICATIONS_MODULE_PREFIX = 'notifications';
 export const NOTIFICATIONS_MODULE_NAME = 'notifications-module';
 export const NOTIFICATIONS_MODULE_EVENT_PREFIX = 'NotificationsModule.';
-export enum EventType { NOTIFICATION_CREATED = 'NotificationsModule.Notification.Created', NOTIFICATION_UPDATED = '...Updated', NOTIFICATION_DELETED = '...Deleted' }
+export enum EventType {
+	NOTIFICATION_CREATED = 'NotificationsModule.Notification.Created',
+	NOTIFICATION_UPDATED = 'NotificationsModule.Notification.Updated',
+	NOTIFICATION_DELETED = 'NotificationsModule.Notification.Deleted',
+}
 export enum RouteNames { NOTIFICATIONS = 'notifications_module-notifications' }
 export const SEVERITY_RANK: Record<NotificationsModuleNotificationSeverity, number>;
 
 // store/notifications.store.ts (defineStore('notifications_module-notifications'))
 interface NotificationsStoreActions {
-	fetch(payload?: { status?: 'active' | 'dismissed' | 'resolved' | 'all'; afterId?: string; append?: boolean }): Promise<INotification[]>;
+	fetch(payload?: {
+		status?: 'active' | 'dismissed' | 'resolved' | 'all';
+		severity?: NotificationsModuleNotificationSeverity[];
+		source?: string;
+		kind?: NotificationsModuleNotificationKind;
+		unread?: boolean;
+		afterId?: string;
+		append?: boolean;   // false (default) resets listIds before applying the page; true appends the page
+	}): Promise<INotification[]>;   // filters are sent as query parameters, never applied locally
 	get(payload: { id: string }): Promise<INotification>;
 	set(payload: { id: string; data: Partial<INotification> }): INotification;
 	unset(payload: { id: string }): void;
@@ -426,7 +452,8 @@ interface NotificationsStoreActions {
 	bulkRemove(payload: { ids: string[] }): Promise<IBulkResult>;
 	isLoaded(): boolean; refresh(): Promise<void>;
 }
-// getters: findAll, findById, active (dismissedAt === null && resolvedAt === null), unreadCount, highestActiveSeverity, hasMore, nextCursor
+// state: items by id (every row ever fetched), listIds (ordered ids of the current query), hasMore, nextCursor
+// getters: findAll, findById, list (listIds mapped to items), active (dismissedAt === null && resolvedAt === null), unreadCount, highestActiveSeverity, hasMore, nextCursor
 ```
 
 Schemas bind the response schema to the generated interface (`ZodType<NotificationsModuleNotificationSchema>`)
@@ -452,7 +479,7 @@ skips a stale read; `unreadCount` and `highestActiveSeverity`; bell renders hidd
 the count; `useNotificationsActions.dismiss` keeps confirmation and the request in separate `try` blocks.
 
 **Verification:**
-- [ ] `pnpm run generate:openapi` (admin types) then `cd apps/admin && npx vitest run src/modules/notifications`
+- [ ] `pnpm run generate:openapi` (regenerates the gitignored admin types locally) then `cd apps/admin && npx vitest run src/modules/notifications`
 - [ ] `pnpm --filter ./apps/admin run type-check` (catches dangling references to the deleted badge)
 - [ ] `pnpm --filter ./apps/admin run lint:js` (baseline 0 errors, 6 known warnings)
 - [ ] `cd apps/admin && npx prettier --check <touched files>`
@@ -495,7 +522,9 @@ export function useNotificationAction(): {
 Route: `{ path: 'notifications', name: RouteNames.NOTIFICATIONS, meta: { guards: { authenticated: true, roles: [admin, owner] }, title, icon: 'mdi:bell-outline', menu: 500 } }`.
 
 **Page:** filter bar (status select, severity multi-select, source select built from loaded rows, unread
-switch) synced through `useListQuery` with `NotificationsFilterSchema`; table with selection column,
+switch) synced through `useListQuery` with `NotificationsFilterSchema`; `useNotificationsDataSource` forwards
+the filters to `store.fetch` (server-side filtering) and calls it with `append: false` whenever a filter
+changes, so `listIds` is rebuilt from the first page; table with selection column,
 severity tag, title, source, occurrences, relative time, actions column; bulk bar with mark read, mark
 unread, dismiss, delete (delete confirms first); "Load more" when `hasMore`; row click opens the drawer
 (message with preserved newlines, `data` key/value table, all actions via `notification-actions.vue`,
@@ -559,14 +588,16 @@ webhook_url (writeOnly), webhook_url_configured, min_severity, username: string 
 ```
 
 Webhook `send`: `POST` JSON `{ id, source, kind, severity, title, message, occurrences, created_at, actions }`
-plus configured headers; non-2xx throws `Error('HTTP <status>')`. Discord `send`: `{ username?, embeds: [{ title, description: message, color, footer: { text: 'source · n occurrences' }, timestamp }] }`
+plus configured headers; non-2xx throws `Error('HTTP <status>')`. The webhook accepts `http:` URLs for
+trusted-network targets; its admin form shows a warning under the URL field and the docs state the exception.
+Discord's `webhook_url` must start with `https://`; the config DTO rejects anything else. Discord `send`: `{ username?, embeds: [{ title, description: message, color, footer: { text: 'source · n occurrences' }, timestamp }] }`
 with colours `info 0x3498db`, `warning 0xf39c12`, `error 0xe74c3c`, `critical 0x8e44ad`; non-2xx throws.
 
 `send-test` action: `{ id: 'send-test', label: 'Send test notification', category: DIAGNOSTICS, mode: 'immediate', execute }`
 builds a fake `NotificationEntity` (`severity: INFO`, title `Test notification from Smart Panel`) and calls the
 channel's `send`, returning `{ success, message }`.
 
-**Tests:** channel spec with mocked `fetch` asserting URL, method, headers and body; timeout propagates;
+**Tests:** channel spec with mocked `fetch` asserting URL, method, headers and body; the fixed 10-second timeout signal is passed; a Discord `http:` URL is rejected by the DTO while the webhook accepts it;
 `hasRequiredConfig` false without the secret; `send-test` returns failure text on throw; redaction through
 `ConfigSecretsService.toPublic` strips the secret and adds `_configured`; the two regression tables gain a
 row per secret and stay green.
@@ -589,9 +620,12 @@ row per secret and stay green.
 **Payloads:** Slack `{ text: title, attachments: [{ color, title, text: message, footer }] }` with colours
 `#3498db / #f39c12 / #e74c3c / #8e44ad`; Telegram `POST https://api.telegram.org/bot<token>/sendMessage`
 with `{ chat_id, text, parse_mode: 'HTML', disable_web_page_preview: true }`, HTML-escaping `<`, `>`, `&` in
-title and message; the token never appears in logs (log `api.telegram.org` and the status only).
+title and message; `send` parses the JSON reply and throws unless `ok === true` (the Bot API answers HTTP 200
+with `ok: false` on some errors); the token never appears in logs (log `api.telegram.org` and the status only).
+Slack's `webhook_url` must start with `https://`, rejected by the DTO otherwise.
 
-**Tests, verification:** as N-8 for each plugin, plus a Telegram test proving the escaped text.
+**Tests, verification:** as N-8 for each plugin, plus a Telegram test proving the escaped text and one proving
+an `ok: false` reply throws, and a Slack test proving an `http:` URL is rejected.
 
 ---
 

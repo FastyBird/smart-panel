@@ -106,7 +106,7 @@ to discover them, and nothing tells them when a condition has cleared.
 | `resolve(source, key)` | Not applicable, logged and ignored. | Sets `resolved_at` (closes the aggregation window; the next `notify()` starts a new row). | Sets `resolved_at`. |
 | Boot | Untouched. | Untouched. | `resolved_at = now` for rows with `persistent = false` and `updated_at < bootStartedAt`. Sources re-raise during their own startup. |
 | User dismiss | `dismissed_at`. | `dismissed_at`; cleared by the next upsert. | `dismissed_at`; stays until resolved. |
-| Retention | Deleted `retention_days` after `dismissed_at`. | Same. | Deleted `retention_days` after `resolved_at` or `dismissed_at`, whichever is later. |
+| Retention | Deleted `retention_days` after `dismissed_at`. | Deleted `retention_days` after the later of `dismissed_at` and `resolved_at`, once at least one is set. | Deleted only once resolved: `resolved_at` set and the later of `resolved_at` and `dismissed_at` older than `retention_days`. A dismissed but unresolved issue is kept, because the dismissal must keep hiding the source's re-raises. |
 | Channel delivery | On insert. | On insert only (later upserts update in-app only, which keeps repeated failures from spamming Discord). | On insert only. |
 
 The boot rule compares `updated_at` with a `bootStartedAt` timestamp captured when `NotificationsService`
@@ -203,7 +203,10 @@ apps/backend/src/modules/notifications/
   `EventEmitter2`; the gateway bridges them. `'NotificationsModule.'` is added to
   `EXCHANGE_ONLY_EVENT_PREFIXES` in `websocket.gateway.ts` so displays never receive them. Payloads are thin
   pointers, following the config-change precedent: `{ id, kind, severity, source }` for Created and Updated,
-  `{ id }` for Deleted. Clients fetch the row through the guarded REST endpoint.
+  `{ id }` for Deleted. Clients fetch the row through the guarded REST endpoint. Because `subscribe-exchange`
+  admits any authenticated socket today, the gateway delivers admin-only prefixes only to the exchange sockets
+  whose principal is a user with the owner or admin role (an `ADMIN_ROOM` joined at handshake), with negative
+  tests for a `USER`-role socket and a display socket. Restricting `subscribe-exchange` itself is a follow-up.
 - Boot safety: the retention service runs the boot cleanup in `onApplicationBootstrap` inside `try/catch`
   and logs on failure, because CI and `generate:openapi` boot the app against an unmigrated database.
 - Extension metadata is registered with `ExtensionsService.registerModuleMetadata` so the module appears in
@@ -211,11 +214,14 @@ apps/backend/src/modules/notifications/
 
 ### REST API
 
-Mounted under `/api/modules/notifications`. All routes `@Roles(UserRole.OWNER, UserRole.ADMIN)`.
+The controller is `@Controller('notifications')` inside the module mounted at `/api/modules/notifications`, so
+the full paths are `/api/modules/notifications/notifications`, `/api/modules/notifications/notifications/{id}`
+and so on, the same shape as `/api/modules/extensions/extensions`. The table lists controller-relative routes.
+All routes `@Roles(UserRole.OWNER, UserRole.ADMIN)`.
 
 | Method and path | operationId | Notes |
 | --- | --- | --- |
-| `GET /notifications` | `get-notifications-module-notifications` | Query: `status` (`active` default, `dismissed`, `resolved`, `all`), `severity` (repeatable), `source`, `kind`, `unread` (boolean), `after_id`, `limit` (default 50, max 200). Ordered by `created_at DESC`. Meta `next_cursor`, `has_more`, mirroring `GET /logs`. |
+| `GET /notifications` | `get-notifications-module-notifications` | Query: `status` (`active` default, `dismissed`, `resolved`, `all`), `severity` (repeatable), `source`, `kind`, `unread` (boolean), `after_id`, `limit` (default 50, max 200). Total order `created_at DESC, id DESC`; `after_id` is the id of the last row the client holds and the page continues after that row in the total order, so equal timestamps are disambiguated by id. The controller fetches `limit + 1` rows to set meta `has_more` and `next_cursor` (the id of the last returned row), the response shape of `GET /logs`. |
 | `GET /notifications/:id` | `get-notifications-module-notification` | |
 | `PATCH /notifications/:id` | `update-notifications-module-notification` | Body `{ data: { read?: boolean, dismissed?: boolean } }`. |
 | `DELETE /notifications/:id` | `delete-notifications-module-notification` | Removes the row. Sources are not told; an issue whose condition persists is re-raised by the source. |
@@ -246,7 +252,7 @@ interface CreateNotificationInput {
 class NotificationsService {
 	notify(input: CreateNotificationInput): Promise<NotificationEntity | null>;
 	resolve(source: string, key: string): Promise<boolean>;   // true when a row was resolved
-	resolveAll(source: string): Promise<number>;              // e.g. when a plugin is disabled or stopped
+	resolveAll(source: string): Promise<number>;              // when a plugin is disabled or stopped; dismissed rows included
 }
 ```
 
@@ -257,7 +263,10 @@ Rules for emitters:
 - Prefer a `service` or `extension_action` CTA over a `link` when the administrator can actually fix it.
 - A managed service should call `resolveAll(source)` in `stop()` so disabling a plugin clears its issues.
 - Never include secrets or tokens in `title`, `message` or `data`; the payload reaches every configured
-  channel.
+  channel. Pass operational error text (a service's `lastError`, an HTTP error) through
+  `sanitizeErrorMessage()` from the notifications module before using it as `message`: it strips URL
+  credentials and query strings, bearer tokens and `token=` / `key=` / `password=` values, collapses whitespace
+  and truncates to 300 characters.
 
 ### First emitters
 
@@ -273,7 +282,7 @@ the rotating-file logger with an unwritable directory, and the mDNS advertisemen
 | Update available | `system/services/update.service.ts` after the scheduled (12 h cron) and manual checks | `issue`, `update-available`, `info` | `link` → `/system/info` | The check reports no update or the update is installed. Replaces `update-notification-badge.vue` in the top bar. |
 | Update install failed | `system/services/update-executor.service.ts` when the run reaches `FAILED` | `issue`, `update-failed`, `error`, `persistent: true` | `link` → `/system/info` | The next run succeeds, or the user dismisses. |
 | Managed service in `error` | `extensions/services/managed-service-manager.service.ts` where a service enters `error` (start failure, readiness retries exhausted at `:795`) and where it re-enters `started` | `issue`, `service:<kind>:<type>:<serviceId>`, `error`; `message` carries the service's `lastError` | `service` restart (primary), `link` → `/extensions?tab=services&kind=<kind>` | The service reports `started`. |
-| Failed login | `auth/services/auth.service.ts` failure paths at `:102`, `:108`, `:117`; client IP passed from the controller | `event`, `login-failed:<username>:<yyyy-mm-dd-hh>`, `warning` | none | Aggregates per user, IP and hour through the keyed-event upsert; the message carries the count. |
+| Failed login | `auth/services/auth.service.ts` failure paths at `:102`, `:108`, `:117`; client IP passed from the controller | `event`, `login-failed:<username>:<ip>:<yyyy-mm-dd-hh>`, `warning` | none | Aggregates per user, IP and hour through the keyed-event upsert; the message carries the count. |
 
 **Batch 2 (second emitter change, same release):**
 
@@ -310,11 +319,14 @@ interface INotificationChannel {
   `ConfigService.getPluginConfig(type)`, and offers `formatText(notification)` (title, severity, source,
   message, occurrences) so senders share one wording.
 - The dispatcher runs on `Created` for rows whose `source` is not a registered channel type (loop guard), in
-  parallel across channels, sequentially per channel. Each `send` gets `AbortSignal.timeout(10_000)` and up to
-  3 attempts with 1 s, 5 s and 25 s delays. After the last failure it logs and raises the `delivery-failed`
+  parallel across channels, sequentially per channel. Each `send` gets a fixed `AbortSignal.timeout(10_000)` (there is no
+  per-channel timeout setting) and up to 3 attempts, with 1 s and 5 s delays between them. After the last failure it logs and raises the `delivery-failed`
   issue for that channel; the next success resolves it.
 - Channels are skipped when the extension is disabled, when `isConfigured()` is false, or when the
   notification's severity ranks below `min_severity`.
+- Discord, Slack and Telegram reject a non-`https:` URL at config validation. The generic webhook accepts
+  `http:` for trusted-network targets (n8n, Node-RED, Home Assistant on the LAN); its config form and the
+  developer docs state that exception and that the payload then travels in cleartext.
 - Every channel plugin registers one extension action `send-test` (category `diagnostics`) that sends a
   sample `info` notification through its own `send()`. The existing Actions tab renders it, so no channel UI
   is needed beyond the config form.
@@ -328,7 +340,7 @@ First channels, all through `fetch`, no dependencies:
 | `notifications-webhook` | `url` (secret), `min_severity`, optional `headers` (JSON object of extra headers) | `POST` JSON: `{ id, source, kind, severity, title, message, occurrences, created_at, actions }` |
 | `notifications-discord` | `webhook_url` (secret), `min_severity`, optional `username` | Discord webhook embed with a colour per severity |
 | `notifications-slack` | `webhook_url` (secret), `min_severity` | Incoming-webhook `text` plus one attachment with a colour per severity |
-| `notifications-telegram` | `bot_token` (secret), `chat_id`, `min_severity` | `https://api.telegram.org/bot<token>/sendMessage`, HTML parse mode |
+| `notifications-telegram` | `bot_token` (secret), `chat_id`, `min_severity` | `https://api.telegram.org/bot<token>/sendMessage`, HTML parse mode; `send` parses the JSON reply and throws unless `ok === true`, because the Bot API can answer HTTP 200 with `ok: false` |
 
 ## Admin surface
 
@@ -354,7 +366,11 @@ apps/admin/src/modules/notifications/
   badge when above 1, the primary CTA button, and a dismiss control. Footer: "Mark all as read", "View all".
   Opening the popover does not mark anything read; clicking a row marks it read and opens the detail drawer.
 - **Page.** `/notifications` (menu entry, roles owner and admin). Filter bar with status, severity, source
-  and unread toggle synced to the query string through `useListQuery`; rows in the logs-table style with
+  and unread toggle synced to the query string through `useListQuery`. Filters are applied server-side: the
+  store's `fetch` forwards `status`, `severity`, `source`, `kind` and `unread` as query parameters, keeps every
+  row it has seen in `items` by id, and keeps the current query's ordered id list, `has_more` and
+  `next_cursor` separately; a filter change resets that list before the first page loads, while the bell reads
+  the store's active rows independently of the page's query; rows in the logs-table style with
   selection; bulk bar with mark read, mark unread, dismiss and delete through the bulk endpoints; "Load more"
   through `next_cursor`; row click opens `notification-detail-drawer.vue` with the message, the `data`
   key/value table, all actions and lifecycle timestamps.
@@ -403,6 +419,8 @@ apps/admin/src/modules/notifications/
 - Health-poll based "service unhealthy" issues, pending a polling loop in the service manager.
 - Interactive fix flows; the interactive-session epic covers that surface.
 - Turning error-level log lines into notifications automatically; too noisy without a dedupe model.
+- Restricting the websocket `subscribe-exchange` join to owner and admin principals; pre-existing behaviour,
+  tracked as a separate hardening task.
 
 ## Decisions to confirm during review
 

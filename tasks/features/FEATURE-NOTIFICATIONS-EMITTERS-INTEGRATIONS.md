@@ -23,11 +23,15 @@ security alerts to raise and resolve notifications.
   table.
 - Plan: `docs/superpowers/plans/2026-09-02-notifications-module.md`, Task N-10 section.
 - Files to modify/create: `apps/backend/src/plugins/devices-home-assistant/services/home-assistant.ws.service.ts`
-  (`:579` auth failure, `:312` reconnect scheduling), `apps/backend/src/modules/storage/services/storage.service.ts`
-  (`isUsingFallback()` at `:122`), new `apps/backend/src/modules/system/services/system-throttle-monitor.service.ts`
-  (reads `platform/platforms/raspberry.platform.ts:96-123` via `SystemService`, registered in
-  `system.module.ts`), new `apps/backend/src/modules/security/listeners/security-notifications.listener.ts`
-  (registered in `security.module.ts`).
+  (`:579` auth failure, `:312` reconnect scheduling); new
+  `apps/backend/src/modules/storage/services/storage-fallback-monitor.service.ts` (`@Cron('* * * * *')`,
+  compares the last observed `StorageService.isUsingFallback()` (`storage.service.ts:122`, a pure getter with
+  no transition hook) value with the current one, registered in `storage.module.ts`); new
+  `apps/backend/src/modules/system/services/system-throttle-monitor.service.ts` (reads
+  `SystemService.getThrottleStatus()` at `system.service.ts:29`, registered in `system.module.ts`); and
+  `apps/backend/src/modules/security/services/security-events.service.ts` (`doRecordAlertTransitions` at
+  `:159-181`; alerts are detected as transitions inside this service, not emitted on the event bus, so there
+  is no listener to subscribe to).
 - The channel-delivery-failed self-report is implemented by the dispatcher in
   `FEATURE-NOTIFICATIONS-CHANNEL-DISPATCH`, not by this task; this task's scope is the remaining four
   condition sources named in the spec's batch 2 table.
@@ -44,15 +48,19 @@ security alerts to raise and resolve notifications.
 - Home Assistant `issue`, key `connection`, severity `error`: raised when `auth_ok` is missing at `:579`, and
   when a reconnect is scheduled at `:312` but only after the first reconnect attempt fails (a single blip
   stays silent); resolved when `auth_ok` is received; `stop()` calls `resolveAll(source)`.
-- Storage fallback `issue`, key `fallback-active`, severity `warning`: raised when `isUsingFallback()` turns
-  `true`, resolved when primary storage becomes available again, with a `link` CTA to
-  `/extensions?tab=services`.
-- New `SystemThrottleMonitorService`, `@Cron('*/5 * * * *')`, raising `issue`, key `throttle:<flag>`,
-  severity `warning` (`critical` for an active under-voltage flag), resolving when the flag clears; no-op on
-  platforms without throttle data.
-- New `SecurityNotificationsListener`, `@OnEvent` on the security alert raised/resolved events, raising
-  `issue`, key `alert:<alertId>`, severity `critical`, with a `link` CTA to `/security`; resolving when the
-  alert resolves.
+- New `StorageFallbackMonitorService`, `@Cron('* * * * *')`, comparing the last observed
+  `StorageService.isUsingFallback()` value with the current one: raises `issue`, key `fallback-active`,
+  severity `warning`, on the false->true transition, with a `link` CTA to `/extensions?tab=services`,
+  resolved on the true->false transition; also raises `issue`, key `storage-unavailable`, severity `error`,
+  when `isConnected()` is `false`.
+- New `SystemThrottleMonitorService`, `@Cron('*/5 * * * *')`, reading `SystemService.getThrottleStatus()`
+  fields `undervoltage`, `throttling`, `frequencyCapping` and `softTempLimit`: raises `issue`, key
+  `throttle:undervoltage`, severity `critical`, and keys `throttle:throttling`, `throttle:frequency_capping`,
+  `throttle:soft_temp_limit`, severity `warning`, while each flag is set; resolving when the flag clears;
+  no-op on platforms without throttle data.
+- `SecurityEventsService.doRecordAlertTransitions` (`security-events.service.ts:159-181`), calling `notify`
+  alongside the `ALERT_RAISED` point (`issue`, key `alert:<alertId>`, severity `critical`, with a `link` CTA
+  to `/security`) and `resolve` alongside `ALERT_RESOLVED`.
 
 **Out of scope**
 
@@ -71,24 +79,29 @@ security alerts to raise and resolve notifications.
       issue.
 - [ ] The HA test proves a single reconnect blip stays silent and only a second consecutive failure raises
       the issue.
-- [ ] `storage.service.ts` raises `notify({ kind: ISSUE, key: 'fallback-active', severity: WARNING, ...,
-      actions: [{ type: LINK, url: '/extensions?tab=services' }] })` when `isUsingFallback()` becomes `true`,
-      evaluated where the primary storage's availability changes.
-- [ ] `storage.service.ts` calls `resolve(..., 'fallback-active')` when the primary storage becomes available
-      again.
-- [ ] `SystemThrottleMonitorService` runs on `@Cron('*/5 * * * *')`, reads the throttle flags through
-      `SystemService`, and raises `issue`, key `throttle:<flag>`, severity `warning` (or `critical` when the
-      currently-active flag is under-voltage) for each active flag.
+- [ ] `StorageFallbackMonitorService` (`@Cron('* * * * *')`) compares the last observed
+      `StorageService.isUsingFallback()` value with the current one and raises `notify({ kind: ISSUE, key:
+      'fallback-active', severity: WARNING, ..., actions: [{ type: LINK, url: '/extensions?tab=services' }]
+      })` on the false->true transition.
+- [ ] `StorageFallbackMonitorService` calls `resolve(..., 'fallback-active')` on the true->false transition.
+- [ ] `StorageFallbackMonitorService` raises `notify({ kind: ISSUE, key: 'storage-unavailable', severity:
+      ERROR, ... })` when `StorageService.isConnected()` is `false`.
+- [ ] `StorageFallbackMonitorService` is registered in `storage.module.ts`.
+- [ ] `SystemThrottleMonitorService` runs on `@Cron('*/5 * * * *')`, reads `SystemService.getThrottleStatus()`
+      fields `undervoltage`, `throttling`, `frequencyCapping` and `softTempLimit`, and raises `issue` for each
+      active flag: key `throttle:undervoltage` at severity `critical`; keys `throttle:throttling`,
+      `throttle:frequency_capping` and `throttle:soft_temp_limit` at severity `warning`.
 - [ ] `SystemThrottleMonitorService` resolves a `throttle:<flag>` issue once that flag clears, and is a no-op
       (raises nothing) on a platform that returns no throttle data.
 - [ ] The throttle test proves a flag that flaps (sets then clears) produces exactly one raise and one
       resolve, not one per cron tick.
-- [ ] `SecurityNotificationsListener` reacts to the security module's alert-raised event by raising `issue`,
-      key `alert:<alertId>`, severity `critical`, with a `link` CTA to `/security`.
-- [ ] `SecurityNotificationsListener` reacts to the alert-resolved event by calling `resolve(...,
-      'alert:<alertId>')`.
-- [ ] `SystemThrottleMonitorService` is registered in `system.module.ts`; `SecurityNotificationsListener` is
-      registered in `security.module.ts`.
+- [ ] `SecurityEventsService.doRecordAlertTransitions` (`:159-181`) calls `notify({ source:
+      SECURITY_MODULE_NAME, kind: ISSUE, key: 'alert:<alertId>', severity: CRITICAL, title: 'Security alert:
+      <type>', actions: [{ type: LINK, label: 'Open security', url: '/security', primary: true }], data: {
+      alert_type, source_device_id } })` alongside the `ALERT_RAISED` point.
+- [ ] `SecurityEventsService.doRecordAlertTransitions` calls `resolve(..., 'alert:<alertId>')` alongside the
+      `ALERT_RESOLVED` point.
+- [ ] `SystemThrottleMonitorService` is registered in `system.module.ts`.
 - [ ] `cd apps/backend && npx jest src/plugins/devices-home-assistant src/modules/storage src/modules/system src/modules/security`
       passes.
 - [ ] Backend `lint:js`, `lint:api`, `type-check` pass.
@@ -113,15 +126,24 @@ From the plan's Task N-10 Files list (verbatim):
 - Modify: `apps/backend/src/plugins/devices-home-assistant/services/home-assistant.ws.service.ts` (`:579`
   auth failure raises; `:312` raises after the first failed reconnect attempt; `auth_ok` resolves; `stop()`
   calls `resolveAll`)
-- Modify: `apps/backend/src/modules/storage/services/storage.service.ts` (raise `fallback-active` when
-  `isUsingFallback()` turns true, resolve when false; evaluated where the primary storage availability
-  changes)
+- Create: `apps/backend/src/modules/storage/services/storage-fallback-monitor.service.ts`
+  (`@Cron('* * * * *')`; compares the last observed value of `StorageService.isUsingFallback()`
+  (`storage.service.ts:122`, a pure getter with no transition hook) with the current one; raises
+  `fallback-active` (`warning`) on the false->true transition and resolves on true->false; raises
+  `storage-unavailable` (`error`) when `isConnected()` is false) and spec; register in `storage.module.ts`
 - Create: `apps/backend/src/modules/system/services/system-throttle-monitor.service.ts` (`@Cron('*/5 * * * *')`,
-  reads the throttle flags through `SystemService`, raises `throttle:<flag>` per active flag, resolves
-  cleared ones; no-op on platforms without throttle data) and spec; register in `system.module.ts`
-- Create: `apps/backend/src/modules/security/listeners/security-notifications.listener.ts` (`@OnEvent` on
-  the security alert raised/resolved events; `alert:<alertId>`, `critical`, link `/security`) and spec;
-  register in `security.module.ts`
+  reads `SystemService.getThrottleStatus()` (`system.service.ts:29`, fields `undervoltage`,
+  `frequencyCapping`, `throttling`, `softTempLimit`), raises `throttle:undervoltage` (`critical`),
+  `throttle:throttling`, `throttle:frequency_capping`, `throttle:soft_temp_limit` (`warning`) while the flag
+  is set and resolves cleared ones; no-op when the platform returns no throttle data) and spec; register in
+  `system.module.ts`
+- Modify: `apps/backend/src/modules/security/services/security-events.service.ts`
+  (`doRecordAlertTransitions`, `:159-181`: alongside the `ALERT_RAISED` point call `notify({ source:
+  SECURITY_MODULE_NAME, kind: ISSUE, key: `alert:${alert.id}`, severity: CRITICAL, title: `Security alert:
+  ${alert.type}`, actions: [{ type: LINK, label: 'Open security', url: '/security', primary: true }], data: {
+  alert_type, source_device_id } })`; alongside `ALERT_RESOLVED` call `resolve`) and its spec. Alerts are
+  detected as transitions inside this service, not emitted on the event bus, so there is no listener to
+  subscribe to.
 - Modify: matching spec files
 
 From the plan's Tests note: "each emitter's raise and resolve pair; the HA test proves a single reconnect

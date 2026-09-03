@@ -22,11 +22,12 @@ the three CTA types directly.
 - Spec: `docs/superpowers/specs/2026-09-02-notifications-module-design.md`, "Admin surface" section (Page
   bullet) and "Actions" section (the three CTA types).
 - Plan: `docs/superpowers/plans/2026-09-02-notifications-module.md`, Task N-6 section.
-- CTA execution reuses existing composables: the extensions module's action execution
-  (`apps/admin/src/modules/extensions/composables/useActions.ts`, which already shows the dangerous-action
-  confirmation dialog, from `FEATURE-EXTENSION-ACTIONS-MVP`) and the managed-services composable
-  (`restart`/`start`/`stop`, calling the same endpoints as
-  `apps/backend/src/modules/extensions/controllers/services.controller.ts`).
+- CTA execution reuses existing composables: `useActions().executeAction(extension_type, action_id, params)`
+  (`apps/admin/src/modules/extensions/composables/useActions.ts:136`, which already shows the
+  dangerous-action confirmation dialog, from `FEATURE-EXTENSION-ACTIONS-MVP`) and
+  `useServiceActions().restartService | startService | stopService(extension_kind, extension_type,
+  service_id)` (`apps/admin/src/modules/extensions/composables/useServiceActions.ts:9-11`, calling the same
+  endpoints as `apps/backend/src/modules/extensions/controllers/services.controller.ts`).
 - Filter persistence pattern: `useListQuery`, as used elsewhere in the admin for query-string-synced filters.
 - Config form pattern: the module config element registered with `CONFIG_MODULE_MODULE_TYPE`, as other
   modules' settings forms do.
@@ -59,17 +60,22 @@ the three CTA types directly.
 
 - [ ] `useNotificationAction().execute(notification, action)` routes a `link` action to `router.push(url)`
       when relative, or `window.open(url, '_blank', 'noopener')` when an absolute `http(s)` URL.
-- [ ] `useNotificationAction().execute` routes an `extension_action` to the extensions module's
-      `useActions().executeAction(extension_type, action_id, params)`, which already applies the
-      dangerous-action confirmation.
-- [ ] `useNotificationAction().execute` routes a `service` action to the extensions module's services
-      composable (`restart`/`start`/`stop`), confirming first via `ElMessageBox.confirm` for `stop` and
-      `restart`.
+- [ ] `useNotificationAction().execute` routes an `extension_action` to
+      `useActions().executeAction(extension_type, action_id, params)` from
+      `modules/extensions/composables/useActions.ts:136`, which already applies the dangerous-action
+      confirmation.
+- [ ] `useNotificationAction().execute` routes a `service` action to `useServiceActions().restartService |
+      startService | stopService(extension_kind, extension_type, service_id)` from
+      `modules/extensions/composables/useServiceActions.ts:9-11`, confirming first via `ElMessageBox.confirm`
+      for `stop` and `restart`.
 - [ ] `useNotificationAction` exposes `isExecuting` for a loading state.
 - [ ] The route is registered as `{ path: 'notifications', name: RouteNames.NOTIFICATIONS, meta: { guards: {
       authenticated: true, roles: [admin, owner] }, title, icon: 'mdi:bell-outline', menu: 500 } }`.
 - [ ] The filter bar offers status (select), severity (multi-select), source (built from loaded rows) and an
-      unread toggle, synced to the query string through `useListQuery` and `NotificationsFilterSchema`.
+      unread toggle, synced to the query string through `useListQuery` and `NotificationsFilterSchema`;
+      filters are applied server-side through `store.fetch`, never filtered locally.
+- [ ] `useNotificationsDataSource` forwards the active filters to `store.fetch` and calls it with
+      `append: false` whenever a filter changes, so the list is rebuilt from the first page.
 - [ ] The table has a selection column, severity tag, title, source, occurrences, relative time and an
       actions column, styled like the existing logs table.
 - [ ] The bulk bar offers mark read, mark unread, dismiss and delete; delete asks for confirmation before
@@ -111,18 +117,20 @@ export function useNotificationAction(): {
 	isExecuting: Ref<boolean>;
 }
 // link: relative -> router.push(url); absolute http(s) -> window.open(url, '_blank', 'noopener')
-// extension_action: extensions module `useActions().executeAction(extension_type, action_id, params)`; it already shows the dangerous confirmation
-// service: extensions module services composable `restart/start/stop(extension_kind, extension_type, service_id)` with ElMessageBox.confirm for stop and restart
+// extension_action: `useActions().executeAction(extension_type, action_id, params)` from `modules/extensions/composables/useActions.ts:136`; the action's `dangerous` confirmation lives there already
+// service: `useServiceActions().restartService | startService | stopService(extension_kind, extension_type, service_id)` from `modules/extensions/composables/useServiceActions.ts:9-11`, preceded by `ElMessageBox.confirm` for stop and restart
 ```
 
 Route: `{ path: 'notifications', name: RouteNames.NOTIFICATIONS, meta: { guards: { authenticated: true, roles: [admin, owner] }, title, icon: 'mdi:bell-outline', menu: 500 } }`.
 
 Page: filter bar (status select, severity multi-select, source select built from loaded rows, unread switch)
-synced through `useListQuery` with `NotificationsFilterSchema`; table with selection column, severity tag,
-title, source, occurrences, relative time, actions column; bulk bar with mark read, mark unread, dismiss,
-delete (delete confirms first); "Load more" through `next_cursor`; row click opens the drawer (message with
-preserved newlines, `data` key/value table, all actions via `notification-actions.vue`, lifecycle
-timestamps, delete and dismiss buttons).
+synced through `useListQuery` with `NotificationsFilterSchema`; `useNotificationsDataSource` forwards the
+filters to `store.fetch` (server-side filtering) and calls it with `append: false` whenever a filter changes,
+so `listIds` is rebuilt from the first page; table with selection column, severity tag, title, source,
+occurrences, relative time, actions column; bulk bar with mark read, mark unread, dismiss, delete (delete
+confirms first); "Load more" through `next_cursor`; row click opens the drawer (message with preserved
+newlines, `data` key/value table, all actions via `notification-actions.vue`, lifecycle timestamps, delete
+and dismiss buttons).
 
 ## 8. AI instructions
 

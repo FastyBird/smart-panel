@@ -18,7 +18,9 @@ notifications for these conditions.
 ## 2. Context
 
 - This is task N-4; see `tasks/epics/EPIC-NOTIFICATIONS-MODULE.md`.
-- Depends on `FEATURE-NOTIFICATIONS-BACKEND-CORE` (N-1) for `NotificationsService`.
+- Depends on `FEATURE-NOTIFICATIONS-BACKEND-CORE` (N-1) for `NotificationsService`, and on
+  `FEATURE-NOTIFICATIONS-CHANNEL-DISPATCH` (N-3) for `sanitizeErrorMessage`, used to scrub the managed
+  service's `lastError` before it becomes a notification `message`.
 - Spec: `docs/superpowers/specs/2026-09-02-notifications-module-design.md`, "First emitters" -> "Batch 1"
   table, and the "Emitter contract" section (raise on start, resolve on end, never raise on every retry
   tick).
@@ -41,12 +43,13 @@ notifications for these conditions.
 
 - `update-available` issue notification raised after the 12-hour scheduled check and the manual check;
   resolved when no update is available or the update installs.
-- `update-failed` persistent issue notification raised when the update run reaches `FAILED`.
+- `update-failed` persistent issue notification raised when the update run reaches `FAILED`; resolved when
+  the next update run succeeds, or left in place until the user dismisses it.
 - Managed service `error` issue notification, keyed `service:<kind>:<type>:<serviceId>`, with a restart
   `service` CTA and a `link` to the services tab; resolved when the service reports `started`.
-- Failed-login `event` notification, keyed `login-failed:<username>:<yyyy-mm-dd-hh>`, aggregated per
-  user/IP/hour with an in-memory counter; `AuthService.login` gains an optional `context: { ip?: string }`
-  argument.
+- Failed-login `event` notification, keyed `login-failed:<username>:<ip>:<yyyy-mm-dd-hh>` (`ip` is `unknown`
+  when absent), aggregated per user/IP/hour with an in-memory counter; `AuthService.login` gains an optional
+  `context: { ip?: string }` argument.
 
 **Out of scope**
 
@@ -67,10 +70,13 @@ notifications for these conditions.
 - [ ] When the update run reaches `FAILED` in `update-executor.service.ts`, `notify` is called with `kind:
       ISSUE`, `key: 'update-failed'`, `severity: ERROR`, `persistent: true`, and a `link` CTA to
       `/system/info`.
+- [ ] `update-failed` is `persistent: true`, so it is not auto-resolved at boot; it is resolved only when the
+      next update run succeeds (`resolve(SYSTEM_MODULE_NAME, 'update-failed')`), or left in place until the
+      user dismisses it.
 - [ ] A managed service entering `error` (start failure, or readiness retries exhausted at
       `managed-service-manager.service.ts:795`) calls `notify` with `kind: ISSUE`, `key:
-      'service:<kind>:<type>:<serviceId>'`, `severity: ERROR`, `message` carrying the service's `lastError`,
-      and two actions: a primary `service` restart action and a `link` to
+      'service:<kind>:<type>:<serviceId>'`, `severity: ERROR`, `message` carrying
+      `sanitizeErrorMessage(lastError)`, and two actions: a primary `service` restart action and a `link` to
       `/extensions?tab=services&kind=<kind>`.
 - [ ] A managed service transitioning back to `started` calls `resolve` for that same key.
 - [ ] The manager spec proves a service that fails then starts produces exactly one raise and one resolve.
@@ -78,9 +84,10 @@ notifications for these conditions.
       compile unchanged.
 - [ ] `AuthController` passes `req.ip` as the login context.
 - [ ] Each of the three failure paths in `auth.service.ts:102,108,117` calls `notify` with `kind: EVENT`,
-      `severity: WARNING`, `key: 'login-failed:<username>:<yyyy-mm-dd-hh>'` (UTC hour bucket, username
-      truncated to 64 characters), `title: 'Failed login attempt for "<username>"'`, `message: 'From
-      <ip|unknown> - <count> attempt(s) this hour'`, `data: { username, ip, reason }`.
+      `severity: WARNING`, `key: 'login-failed:<username>:<ip>:<yyyy-mm-dd-hh>'` (UTC hour bucket, username
+      truncated to 64 characters, `ip` is `unknown` when absent), `title: 'Failed login attempt for
+      "<username>"'`, `message: 'From <ip|unknown> - <count> attempt(s) this hour'`,
+      `data: { username, ip, reason }`.
 - [ ] An in-memory `Map<string, number>` counter tracks attempts per key and is pruned when the hour bucket
       changes, so the message's `count` increments correctly.
 - [ ] The auth spec proves three failures within one hour call `notify` three times with the same key and
@@ -92,7 +99,8 @@ notifications for these conditions.
 
 ## 6. Technical constraints
 
-- Depends on: N-1 / FEATURE-NOTIFICATIONS-BACKEND-CORE.
+- Depends on: N-1 / FEATURE-NOTIFICATIONS-BACKEND-CORE and N-3 / FEATURE-NOTIFICATIONS-CHANNEL-DISPATCH (for
+  `sanitizeErrorMessage`).
 - Never include secrets or tokens in `title`, `message` or `data`.
 - Raise an issue when a condition starts and resolve it when it ends; never raise on every retry tick (only
   after the readiness retries are exhausted, per the spec).
@@ -116,15 +124,15 @@ await this.notifications.notify({
 // ... and `resolve(SYSTEM_MODULE_NAME, 'update-available')` when no update is available or install succeeded.
 
 // extensions: service error (key uses the manager's runtime key `<kind>:<type>:<serviceId>`)
-key: `service:${key}`, severity: ERROR, title: `Service ${serviceId} of ${type} failed`, message: lastError,
+key: `service:${key}`, severity: ERROR, title: `Service ${serviceId} of ${type} failed`, message: sanitizeErrorMessage(lastError),
 actions: [
 	{ type: SERVICE, label: 'Restart service', extension_kind, extension_type, service_id, operation: 'restart', primary: true },
 	{ type: LINK, label: 'Open services', url: `/extensions?tab=services&kind=${extension_kind}` },
 ]
 // resolve on transition to 'started'.
 
-// auth: failed login (hour bucket in UTC, username truncated to 64 chars)
-key: `login-failed:${username}:${bucket}`, kind: EVENT, severity: WARNING,
+// auth: failed login (hour bucket in UTC, username truncated to 64 chars, ip 'unknown' when absent)
+key: `login-failed:${username}:${ip ?? 'unknown'}:${bucket}`, kind: EVENT, severity: WARNING,
 title: `Failed login attempt for "${username}"`, message: `From ${ip ?? 'unknown'} - ${count} attempt(s) this hour`,
 data: { username, ip, reason },
 ```

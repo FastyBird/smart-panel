@@ -64,9 +64,12 @@ secret, a minimum severity, and a "send test notification" action.
 
 - [ ] `notifications-webhook` config model exposes `url` (write-only secret), `url_configured` (boolean),
       `min_severity` (default `warning`), and optional `headers` (JSON object of extra headers), with
-      `secretFields: [{ path: 'url', configuredPath: 'url_configured', inputPaths: ['url'] }]`.
+      `secretFields: [{ path: 'url', configuredPath: 'url_configured', inputPaths: ['url'] }]`; the DTO
+      accepts an `http:` URL for trusted-network targets, and the config form shows a warning under the URL
+      field for that case.
 - [ ] `notifications-discord` config model exposes `webhook_url` (write-only secret),
-      `webhook_url_configured`, `min_severity`, and optional `username`.
+      `webhook_url_configured`, `min_severity`, and optional `username`; the DTO rejects a `webhook_url` that
+      does not start with `https://`.
 - [ ] The webhook channel's `send()` issues `POST` with JSON body `{ id, source, kind, severity, title,
       message, occurrences, created_at, actions }` plus any configured extra headers; a non-2xx response
       throws `Error('HTTP <status>')`.
@@ -85,7 +88,10 @@ secret, a minimum severity, and a "send test notification" action.
 - [ ] `apps/admin/src/plugins/config-secrets.spec.ts` and `apps/backend/src/plugins/plugin-secret-removal.spec.ts`
       gain one row per secret (`url` for webhook, `webhook_url` for Discord) and stay green.
 - [ ] Channel spec (mocked `fetch`) asserts the request URL, method, headers and body shape for both
-      channels, and that the configured timeout propagates to the fetch call.
+      channels, and that the fixed 10-second timeout signal from `fetchWithTimeout` is passed to the fetch
+      call.
+- [ ] A Discord config DTO test proves a `webhook_url` that does not start with `https://` is rejected, while
+      the same `http:` URL is accepted by the webhook config DTO.
 - [ ] `cd apps/backend && npx jest src/plugins/notifications-webhook src/plugins/notifications-discord src/plugins/plugin-secret-removal.spec.ts`
       passes.
 - [ ] `pnpm run generate:openapi`, then
@@ -122,9 +128,13 @@ webhook_url (writeOnly), webhook_url_configured, min_severity, username: string 
 ```
 
 Webhook `send`: `POST` JSON `{ id, source, kind, severity, title, message, occurrences, created_at, actions }`
-plus configured headers; non-2xx throws `Error('HTTP <status>')`. Discord `send`: `{ username?, embeds: [{
-title, description: message, color, footer: { text: 'source - n occurrences' }, timestamp }] }` with colours
-`info 0x3498db`, `warning 0xf39c12`, `error 0xe74c3c`, `critical 0x8e44ad`; non-2xx throws.
+plus configured headers; non-2xx throws `Error('HTTP <status>')`. The webhook accepts `http:` URLs for
+trusted-network targets; its admin form shows a warning under the URL field and the docs state the exception.
+Discord's `webhook_url` must start with `https://`; the config DTO rejects anything else. Discord `send`: `{
+username?, embeds: [{ title, description: message, color, footer: { text: 'source - n occurrences' },
+timestamp }] }` with colours `info 0x3498db`, `warning 0xf39c12`, `error 0xe74c3c`, `critical 0x8e44ad`;
+non-2xx throws. The timeout on every attempt is the fixed 10-second signal from `fetchWithTimeout`; there is
+no per-channel timeout setting.
 
 `send-test` action: `{ id: 'send-test', label: 'Send test notification', category: DIAGNOSTICS, mode:
 'immediate', execute }` builds a fake `NotificationEntity` (`severity: INFO`, title `Test notification from

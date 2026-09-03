@@ -43,14 +43,16 @@ secret handling and test action as the webhook and Discord channels.
 
 ## 4. Acceptance criteria
 
-- [ ] `notifications-slack` config model exposes `webhook_url` (write-only secret) and `min_severity`.
+- [ ] `notifications-slack` config model exposes `webhook_url` (write-only secret) and `min_severity`; the DTO
+      rejects a `webhook_url` that does not start with `https://`.
 - [ ] `notifications-telegram` config model exposes `bot_token` (write-only secret), `chat_id` (string) and
       `min_severity`.
 - [ ] The Slack channel's `send()` posts `{ text: title, attachments: [{ color, title, text: message, footer
       }] }` to the configured incoming webhook, with colours `#3498db` (info), `#f39c12` (warning),
       `#e74c3c` (error), `#8e44ad` (critical).
 - [ ] The Telegram channel's `send()` calls `POST https://api.telegram.org/bot<token>/sendMessage` with `{
-      chat_id, text, parse_mode: 'HTML', disable_web_page_preview: true }`.
+      chat_id, text, parse_mode: 'HTML', disable_web_page_preview: true }`, then parses the JSON reply and
+      throws unless `ok === true` (the Bot API can answer HTTP 200 with `ok: false`).
 - [ ] The Telegram channel HTML-escapes `<`, `>` and `&` in both `title` and `message` before building
       `text`.
 - [ ] The Telegram channel never logs the bot token; log output includes only `api.telegram.org` and the
@@ -61,6 +63,9 @@ secret handling and test action as the webhook and Discord channels.
       `secretFields` and gain rows in `apps/admin/src/plugins/config-secrets.spec.ts` and
       `apps/backend/src/plugins/plugin-secret-removal.spec.ts`.
 - [ ] A Telegram-specific test proves the HTML-escaping of `<`, `>` and `&` in the outgoing text.
+- [ ] A Telegram-specific test proves an `ok: false` JSON reply (with an HTTP 200 status) causes `send()` to
+      throw.
+- [ ] A Slack config DTO test proves a `webhook_url` that does not start with `https://` is rejected.
 - [ ] Channel specs (mocked `fetch`) assert request shape for both plugins, matching the coverage
       `FEATURE-NOTIFICATIONS-CHANNEL-WEBHOOK-DISCORD` established.
 - [ ] `cd apps/backend && npx jest src/plugins/notifications-slack src/plugins/notifications-telegram src/plugins/plugin-secret-removal.spec.ts`
@@ -87,12 +92,13 @@ secret handling and test action as the webhook and Discord channels.
 From the plan's Task N-9:
 
 **Config:** Slack `webhook_url` (secret), `min_severity`; Telegram `bot_token` (secret), `chat_id` (string),
-`min_severity`.
+`min_severity`. Slack's `webhook_url` must start with `https://`, rejected by the DTO otherwise.
 
 **Payloads:** Slack `{ text: title, attachments: [{ color, title, text: message, footer }] }` with colours
 `#3498db / #f39c12 / #e74c3c / #8e44ad`; Telegram `POST https://api.telegram.org/bot<token>/sendMessage` with
 `{ chat_id, text, parse_mode: 'HTML', disable_web_page_preview: true }`, HTML-escaping `<`, `>`, `&` in title
-and message; the token never appears in logs (log `api.telegram.org` and the status only).
+and message; `send` parses the JSON reply and throws unless `ok === true` (the Bot API can answer HTTP 200
+with `ok: false`); the token never appears in logs (log `api.telegram.org` and the status only).
 
 Copy the file-by-file layout from `FEATURE-NOTIFICATIONS-CHANNEL-WEBHOOK-DISCORD`'s merged implementation
 rather than the plan text alone, since that task is the concrete reference by the time this one starts.

@@ -42,6 +42,9 @@ filtering, timeout, retry and a self-reported delivery-failure issue uniformly.
 - `NotificationChannelRegistryService` (`register`, `unregister`, `getChannels`, `isChannel`).
 - `NotificationDispatcherService`, listening on `EventType.NOTIFICATION_CREATED`, applying
   filter/timeout/retry/loop-guard/self-report.
+- `sanitizeErrorMessage` in `notifications.utils.ts`: strips URL credentials to `scheme://***@`, drops query
+  strings, masks `Bearer <token>` and `token=`/`key=`/`password=`/`secret=` values, collapses whitespace, and
+  truncates to 300 characters.
 - Wiring the new providers into `notifications.module.ts` (providers, exports).
 
 **Out of scope**
@@ -75,20 +78,28 @@ filtering, timeout, retry and a self-reported delivery-failure issue uniformly.
 - [ ] Delivery is skipped when `SEVERITY_RANK[entity.severity] < SEVERITY_RANK[await channel.getMinSeverity()]`.
 - [ ] Channels are dispatched in parallel to each other (`Promise.allSettled`) but attempts within one
       channel are sequential.
-- [ ] Each channel gets up to 3 send attempts with delays of 1000 ms, 5000 ms and 25000 ms between attempts
-      (delay mechanism injectable for tests).
-- [ ] After the third failed attempt, the dispatcher logs the channel type and error message (never the URL)
-      and raises `notify({ source: channel.getType(), kind: ISSUE, key: 'delivery-failed', severity: WARNING,
-      title: 'Notification delivery failed', ..., actions: [{ type: LINK, label: 'Open channel settings',
-      url: '/config/plugins/<type>' }] })`.
+- [ ] Each channel gets up to 3 send attempts with delays of 1000 ms and 5000 ms between attempts (delay
+      mechanism injectable for tests); the timeout on each attempt is the fixed 10 s of `fetchWithTimeout`;
+      there is no per-channel timeout setting.
+- [ ] After the third failed attempt, the dispatcher logs the channel type and
+      `sanitizeErrorMessage(error.message)` (never the URL) and raises `notify({ source: channel.getType(),
+      kind: ISSUE, key: 'delivery-failed', severity: WARNING, title: 'Notification delivery failed', ...,
+      actions: [{ type: LINK, label: 'Open channel settings', url: '/config/plugins/<type>' }] })`.
 - [ ] After a successful delivery, the dispatcher calls `resolve(channel.getType(), 'delivery-failed')`.
 - [ ] One failing channel does not block delivery to another channel.
 - [ ] Deliveries to the same channel preserve message order even under a burst (serialised with a promise
       chain).
+- [ ] `sanitizeErrorMessage(message)` in `notifications.utils.ts` strips `scheme://user:pass@` credentials to
+      `scheme://***@`, drops URL query strings, masks `Bearer <token>` and
+      `token=`/`key=`/`password=`/`secret=` values with `***`, collapses whitespace, and truncates the result
+      to 300 characters.
+- [ ] `notifications.utils.spec.ts` covers: credentials in a URL are masked, query strings are dropped, bearer
+      tokens and `token=`/`key=`/`password=`/`secret=` values are masked, whitespace is collapsed, and a long
+      message is truncated to 300 characters.
 - [ ] Dispatcher spec covers: filter by disabled, filter by unconfigured, filter by below-minimum severity,
-      the loop guard, the three-attempt retry followed by self-report, a success resolving a prior
-      self-report, one channel's failure not blocking another, and order preservation within one channel -
-      using fake channels and a fake `sleep`.
+      the loop guard, the three-attempt retry (sleeps of 1000 ms then 5000 ms) followed by self-report, a
+      success resolving a prior self-report, one channel's failure not blocking another, and order
+      preservation within one channel - using fake channels and a fake `sleep`.
 - [ ] Registry spec covers: duplicate-type registration throws, and `isChannel` correctly identifies
       registered types.
 - [ ] `cd apps/backend && npx jest src/modules/notifications` passes.
@@ -98,7 +109,8 @@ filtering, timeout, retry and a self-reported delivery-failure issue uniformly.
 - Depends on: N-1 / FEATURE-NOTIFICATIONS-BACKEND-CORE.
 - Follow the existing registry pattern (`ExtensionActionRegistryService`) for register/duplicate-throw
   semantics.
-- Never log channel secrets or URLs; log channel type and status/error only.
+- Never log channel secrets or URLs; log channel type and status/error only, the error message passed through
+  `sanitizeErrorMessage`.
 - Tabs, single quotes, semicolons, trailing commas; print width 120; import ordering as elsewhere.
 - No new runtime dependencies; channel `send()` implementations (added later) must use the global `fetch`.
 - PR titles `<type>(<scope>): <subject>`, lowercase subject, <= 100 characters; never push to `main`.
@@ -129,6 +141,11 @@ export abstract class BaseNotificationChannel implements INotificationChannel {
 	protected fetchWithTimeout(url: string, init: RequestInit): Promise<Response>; // AbortSignal.timeout(10_000)
 }
 
+// notifications.utils.ts
+export function sanitizeErrorMessage(message: string): string;
+// strips `scheme://user:pass@` credentials to `scheme://***@`, drops URL query strings, replaces `Bearer <token>`
+// and `token=`/`key=`/`password=`/`secret=` values with `***`, collapses whitespace, truncates to 300 chars
+
 // services/notification-channel-registry.service.ts
 export class NotificationChannelRegistryService {
 	register(channel: INotificationChannel): void;      // throws on duplicate type, like CommandEventRegistryService
@@ -145,8 +162,10 @@ the plan:
 - For each channel in parallel (`Promise.allSettled`): skip when the extension is disabled
   (`configService.getPluginConfig(type).enabled === false`), when `isConfigured()` is false, or when
   `SEVERITY_RANK[entity.severity] < SEVERITY_RANK[await channel.getMinSeverity()]`.
-- Attempts: 3, delays 1 000, 5 000, 25 000 ms (injectable `sleep` for tests); each attempt awaits `send`.
-- After the last failure: `logger.error` with channel type and error message (never the URL), then
+- Attempts: 3, with delays of 1 000 ms and 5 000 ms between them (injectable `sleep` for tests); each attempt
+  awaits `send`; the timeout is the fixed 10 s of `fetchWithTimeout`, there is no per-channel timeout setting.
+- After the last failure: `logger.error` with channel type and `sanitizeErrorMessage(error.message)` (never
+  the URL), then
   `notificationsService.notify({ source: channel.getType(), kind: ISSUE, key: 'delivery-failed', severity: WARNING, title: 'Notification delivery failed', message, actions: [{ type: 'link', label: 'Open channel settings', url: '/config/plugins/<type>' }] })`.
 - After a success: `notificationsService.resolve(channel.getType(), 'delivery-failed')`.
 - Per-channel deliveries are serialised with a simple promise chain so a burst keeps message order.

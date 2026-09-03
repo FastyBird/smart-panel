@@ -62,17 +62,20 @@ for new errors and critical items.
 
 ## 4. Acceptance criteria
 
-- [ ] The store exposes `fetch({ status?, afterId?, append? })`, `get({ id })`, `set({ id, data })`,
-      `unset({ id })`, `onEvent({ id, data })`, `markRead`, `dismiss`, `remove`, `bulkUpdate`, `bulkRemove`,
-      `isLoaded()`, `refresh()`.
+- [ ] The store exposes `fetch({ status?, severity?, source?, kind?, unread?, afterId?, append? })`,
+      `get({ id })`, `set({ id, data })`, `unset({ id })`, `onEvent({ id, data })`, `markRead`, `dismiss`,
+      `remove`, `bulkUpdate`, `bulkRemove`, `isLoaded()`, `refresh()`; `fetch` forwards `status`, `severity`,
+      `source`, `kind` and `unread` as query parameters to the API and never filters `items` locally.
 - [ ] The store exposes getters `findAll`, `findById`, `active` (`dismissedAt === null && resolvedAt ===
       null`), `unreadCount`, `highestActiveSeverity`, `hasMore`, `nextCursor`.
+- [ ] The store keeps every fetched row in `items` by id, plus a separate `listIds` (the ordered ids of the
+      current query), `hasMore` and `nextCursor` for that query.
 - [ ] Schemas bind the response type to the generated `NotificationsModuleDataNotification` interface and use
       `z.nativeEnum` for the severity/kind enums, per the config-contract convention.
 - [ ] The store applies the same mutation-token ordering as `devices.store.ts` (`requestedAt` captured before
       the request; a stale response is discarded).
-- [ ] `fetch` with `append: true` merges the new page into existing items by id rather than replacing the
-      collection.
+- [ ] `fetch` with `append: true` merges the new page into `items` by id and appends the page's ids to
+      `listIds`; `append: false` (the default) resets `listIds` before applying the first page.
 - [ ] The sockets handler calls `store.get({ id })` on `Created` and `Updated`, and `store.unset({ id })` on
       `Deleted`.
 - [ ] On a `Created` pointer with severity `error` or `critical`, after the row is fetched,
@@ -82,8 +85,9 @@ for new errors and critical items.
       and switches its icon to the danger colour when `highestActiveSeverity` is `error` or `critical`.
 - [ ] Clicking the bell opens `notification-popover.vue` showing up to 8 active notifications sorted by
       severity rank then `createdAt` descending; opening the popover does not mark anything read.
-- [ ] Each popover item shows a severity tag, title, source, relative time, an occurrence badge when
-      `occurrences > 1`, a primary action button, and a dismiss control; clicking a row marks it read.
+- [ ] Each popover item shows a severity tag, title, source, relative time (via `formatTimeAgo` from
+      `@vueuse/core`, as in `system-logs-table.vue:155`), an occurrence badge when `occurrences > 1`, a
+      primary action button, and a dismiss control; clicking a row marks it read.
 - [ ] The popover footer offers "Mark all as read" (through `bulkUpdate`) and "View all" (routes to
       `RouteNames.NOTIFICATIONS`).
 - [ ] `update-notification-badge.vue` and its export in `components.ts` are deleted; `useUpdateStatus` is
@@ -124,13 +128,25 @@ Copy verbatim from the plan's Task N-5 "Interfaces" block:
 export const NOTIFICATIONS_MODULE_PREFIX = 'notifications';
 export const NOTIFICATIONS_MODULE_NAME = 'notifications-module';
 export const NOTIFICATIONS_MODULE_EVENT_PREFIX = 'NotificationsModule.';
-export enum EventType { NOTIFICATION_CREATED = 'NotificationsModule.Notification.Created', NOTIFICATION_UPDATED = '...Updated', NOTIFICATION_DELETED = '...Deleted' }
+export enum EventType {
+	NOTIFICATION_CREATED = 'NotificationsModule.Notification.Created',
+	NOTIFICATION_UPDATED = 'NotificationsModule.Notification.Updated',
+	NOTIFICATION_DELETED = 'NotificationsModule.Notification.Deleted',
+}
 export enum RouteNames { NOTIFICATIONS = 'notifications_module-notifications' }
 export const SEVERITY_RANK: Record<NotificationsModuleNotificationSeverity, number>;
 
 // store/notifications.store.ts (defineStore('notifications_module-notifications'))
 interface NotificationsStoreActions {
-	fetch(payload?: { status?: 'active' | 'dismissed' | 'resolved' | 'all'; afterId?: string; append?: boolean }): Promise<INotification[]>;
+	fetch(payload?: {
+		status?: 'active' | 'dismissed' | 'resolved' | 'all';
+		severity?: NotificationsModuleNotificationSeverity[];
+		source?: string;
+		kind?: NotificationsModuleNotificationKind;
+		unread?: boolean;
+		afterId?: string;
+		append?: boolean;   // false (default) resets listIds before applying the page; true appends the page
+	}): Promise<INotification[]>;   // filters are sent as query parameters, never applied locally
 	get(payload: { id: string }): Promise<INotification>;
 	set(payload: { id: string; data: Partial<INotification> }): INotification;
 	unset(payload: { id: string }): void;
@@ -142,6 +158,7 @@ interface NotificationsStoreActions {
 	bulkRemove(payload: { ids: string[] }): Promise<IBulkResult>;
 	isLoaded(): boolean; refresh(): Promise<void>;
 }
+// state: items by id (every row ever fetched), listIds (ordered ids of the current query), hasMore, nextCursor
 // getters: findAll, findById, active (dismissedAt === null && resolvedAt === null), unreadCount, highestActiveSeverity, hasMore, nextCursor
 ```
 
@@ -159,10 +176,10 @@ Bell: `notification-bell.vue` uses `el-badge` (`:value="unreadCount" :hidden="un
 `mdi:bell-outline` icon that switches to `mdi:bell-alert` in the danger colour when `highestActiveSeverity`
 is `error` or `critical`; `el-popover` shows `notification-popover.vue` (top 8 active by severity rank then
 `createdAt` desc, "Mark all as read" through `bulkUpdate`, "View all" routes to `RouteNames.NOTIFICATIONS`).
-Each item: severity tag, title, source, relative time via the existing date formatting composable,
-occurrences badge when above 1, primary action button (delegates to `useNotificationAction` from
-`FEATURE-NOTIFICATIONS-ADMIN-PAGE`; in this task it emits `action` and the popover routes to the page),
-dismiss icon.
+Each item: severity tag, title, source, relative time, occurrences badge when above 1 (relative time through
+`formatTimeAgo` from `@vueuse/core`, as in `system-logs-table.vue:155`), primary action button (delegates to
+`useNotificationAction` from `FEATURE-NOTIFICATIONS-ADMIN-PAGE`; in this task it emits `action` and the
+popover routes to the page), dismiss icon.
 
 ## 8. AI instructions
 

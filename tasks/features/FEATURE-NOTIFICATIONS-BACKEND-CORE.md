@@ -99,15 +99,24 @@ retention, rate guard) that every emitter and the later REST, websocket and disp
       `EventType.NOTIFICATION_UPDATED` on upsert.
 - [ ] `markRead`, `dismiss` and `resolve` emit `EventType.NOTIFICATION_UPDATED`; `remove` emits
       `EventType.NOTIFICATION_DELETED` with `{ id }`.
-- [ ] `findAll` defaults to `status: 'active'`, supports the `unread` filter, supports the `afterId` cursor
-      (returns rows created before the cursor row), and caps `limit` at 200.
+- [ ] `findAll` defaults to `status: 'active'`, supports the `unread` filter, orders rows by the total order
+      `created_at DESC, id DESC`, supports the `afterId` cursor (returns the rows that follow the row with
+      that id in the total order, so two rows with equal `created_at` are disambiguated by `id`), and caps
+      `limit` at 200.
 - [ ] `NotificationsRetentionService` captures `bootStartedAt` in its constructor and, in
       `onApplicationBootstrap` wrapped in `try/catch`, resolves every `issue` with `persistent = false` and
       `updated_at < bootStartedAt`, logging and continuing on failure.
-- [ ] The daily cron (`15 3 * * *`) deletes rows whose `dismissed_at` or `resolved_at` is older than the
-      configured `retention_days`.
+- [ ] The daily cron (`15 3 * * *`) prunes by kind: `event` rows once at least one of `dismissed_at` /
+      `resolved_at` is set and the later of them is older than the configured `retention_days`; `issue` rows
+      only when `resolved_at` is set and the later of `resolved_at` and `dismissed_at` is older than
+      `retention_days` (a dismissed but unresolved issue is kept, because the dismissal must keep hiding the
+      source's re-raises).
 - [ ] The daily cron enforces `max_notifications` on active `event` rows only, evicting the oldest read
       events first, then the oldest unread events; `issue` rows are never evicted by the cap.
+- [ ] Retention test: an old dismissed-but-unresolved issue survives the prune.
+- [ ] Retention test: an old dismissed `event` is deleted.
+- [ ] Retention test: an old resolved `issue` is deleted.
+- [ ] Retention test: a resolved-then-dismissed `issue` counts from the later of the two timestamps.
 - [ ] Migration `1000000000025-AddNotifications.ts` creates `notifications_module_notifications` with all
       spec columns, the partial unique index `IDX_notifications_source_key_active` on `(source, key)` where
       `key IS NOT NULL AND resolved_at IS NULL`, and indexes `IDX_notifications_created_at`,
@@ -216,9 +225,13 @@ every model in `NOTIFICATIONS_SWAGGER_EXTRA_MODELS` and `extensionsService.regis
 
 Retention service: `bootStartedAt` captured in the constructor; `onApplicationBootstrap` resolves issues with
 `persistent = false` and `updated_at < bootStartedAt`, wrapped in `try/catch` that logs and continues.
-`@Cron('15 3 * * *')` deletes rows with `dismissed_at` or `resolved_at` older than `retention_days`, then
-enforces `max_notifications` on active events (oldest read first, then oldest unread), reading both values
-through `ConfigService.getModuleConfig(NOTIFICATIONS_MODULE_NAME)`. Issues are never evicted by the cap.
+`@Cron('15 3 * * *')` prunes by kind: `event` rows once at least one of `dismissed_at` / `resolved_at` is set
+and the later of them is older than `retention_days`; `issue` rows only when `resolved_at` is set and the
+later of `resolved_at` and `dismissed_at` is older than `retention_days` (a dismissed but unresolved issue is
+kept). Then it enforces `max_notifications` on active events (oldest read first, then oldest unread), reading
+both values through `ConfigService.getModuleConfig(NOTIFICATIONS_MODULE_NAME)`. Issues are never evicted by
+the cap. Tests: an old dismissed-unresolved issue survives; an old dismissed event is deleted; an old resolved
+issue is deleted; a resolved-then-dismissed issue counts from the later timestamp.
 
 Verify the migration with a fresh database:
 `cd apps/backend && FB_DB_PATH=$(mktemp -d) pnpm run typeorm:migration:run`.

@@ -196,6 +196,9 @@ I want one place - an in-admin bell and notifications page, optionally forwarded
 - Bulk endpoints are one request through `runBulkOperation` with `safeErrors` declared; confirmation and the
   request itself live in separate `try` blocks in the admin.
 - No secrets in notification `title`, `message` or `data`; channel secrets go through `secretFields`.
+- `FEATURE-NOTIFICATIONS-EMITTERS-CORE` (N-4) depends directly on `FEATURE-NOTIFICATIONS-CHANNEL-DISPATCH`
+  (N-3), not only on Phase 1 completing in general: its managed-service emitter sanitizes `lastError` through
+  `sanitizeErrorMessage`, which N-3 provides.
 - PR titles are `<type>(<scope>): <subject>` with a lowercase subject, <= 100 characters; never push to
   `main`.
 
