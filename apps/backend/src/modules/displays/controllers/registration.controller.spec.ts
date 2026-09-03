@@ -5,12 +5,14 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import type { Request } from 'express';
+import type { FastifyRequest } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ClientAddressService } from '../../api/services/client-address.service';
+import { TrustedProxyRegistryService } from '../../api/services/trusted-proxy-registry.service';
 import { ConnectionState, HomeMode } from '../displays.constants';
 import { DisplaysRegistrationException } from '../displays.exceptions';
 import { DisplayEntity } from '../entities/displays.entity';
@@ -87,6 +89,8 @@ describe('RegistrationController', () => {
 						getDeploymentMode: jest.fn().mockReturnValue('combined'),
 					},
 				},
+				TrustedProxyRegistryService,
+				ClientAddressService,
 			],
 		})
 			.overrideGuard(RegistrationGuard)
@@ -125,8 +129,8 @@ describe('RegistrationController', () => {
 
 			const mockRequest = {
 				headers: {},
-				socket: { remoteAddress: '127.0.0.1' },
-			} as unknown as Request;
+				raw: { socket: { remoteAddress: '127.0.0.1' } },
+			} as unknown as FastifyRequest;
 			const result = await controller.register(mockRequest, 'FastyBird Smart Panel/1.0.0', { data: registerDto });
 
 			expect(result.data.display).toEqual(toInstance(DisplayEntity, mockDisplay));
@@ -147,8 +151,8 @@ describe('RegistrationController', () => {
 
 			const mockRequest = {
 				headers: {},
-				socket: { remoteAddress: '127.0.0.1' },
-			} as unknown as Request;
+				raw: { socket: { remoteAddress: '127.0.0.1' } },
+			} as unknown as FastifyRequest;
 			const result = await controller.register(mockRequest, 'FastyBird-Display/1.0', { data: registerDto });
 
 			expect(result.data).toBeDefined();
@@ -163,8 +167,8 @@ describe('RegistrationController', () => {
 
 			const mockRequest = {
 				headers: {},
-				socket: { remoteAddress: '127.0.0.1' },
-			} as unknown as Request;
+				raw: { socket: { remoteAddress: '127.0.0.1' } },
+			} as unknown as FastifyRequest;
 			await expect(controller.register(mockRequest, 'InvalidBrowser/1.0', { data: registerDto })).rejects.toThrow(
 				DisplaysRegistrationException,
 			);
@@ -180,8 +184,8 @@ describe('RegistrationController', () => {
 
 			const mockRequest = {
 				headers: {},
-				socket: { remoteAddress: '127.0.0.1' },
-			} as unknown as Request;
+				raw: { socket: { remoteAddress: '127.0.0.1' } },
+			} as unknown as FastifyRequest;
 			await expect(
 				controller.register(mockRequest, undefined as unknown as string, { data: registerDto }),
 			).rejects.toThrow(DisplaysRegistrationException);
@@ -197,8 +201,8 @@ describe('RegistrationController', () => {
 
 			const mockRequest = {
 				headers: {},
-				socket: { remoteAddress: '127.0.0.1' },
-			} as unknown as Request;
+				raw: { socket: { remoteAddress: '127.0.0.1' } },
+			} as unknown as FastifyRequest;
 			await expect(controller.register(mockRequest, '', { data: registerDto })).rejects.toThrow(
 				DisplaysRegistrationException,
 			);

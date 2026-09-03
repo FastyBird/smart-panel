@@ -8,6 +8,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerModuleOptions, ThrottlerStorage } from '@nestjs/throttler';
 import { THROTTLER_LIMIT, THROTTLER_SKIP } from '@nestjs/throttler/dist/throttler.constants';
 
+import { ClientAddressService } from '../../api/services/client-address.service';
+import { TrustedProxyRegistryService } from '../../api/services/trusted-proxy-registry.service';
 import { TokenOwnerType } from '../auth.constants';
 
 import { DisplayAwareThrottlerGuard } from './display-aware-throttler.guard';
@@ -17,7 +19,7 @@ type ContextOptions = {
 	type?: 'http' | 'ws' | 'rpc';
 };
 
-describe('DisplayAwareThrottlerGuard.shouldSkip', () => {
+describe('DisplayAwareThrottlerGuard', () => {
 	let guard: DisplayAwareThrottlerGuard;
 	let jwtService: { verifyAsync: jest.Mock; decode: jest.Mock };
 	let reflector: { getAllAndOverride: jest.Mock };
@@ -69,6 +71,8 @@ describe('DisplayAwareThrottlerGuard.shouldSkip', () => {
 					useValue: { increment: jest.fn(), getRecord: jest.fn() } as unknown as ThrottlerStorage,
 				},
 				{ provide: JwtService, useValue: jwtService },
+				TrustedProxyRegistryService,
+				ClientAddressService,
 			],
 		}).compile();
 
@@ -299,5 +303,61 @@ describe('DisplayAwareThrottlerGuard.shouldSkip', () => {
 		// run, so an attacker can't burn CPU by rotating tokens past the
 		// cache.
 		expect(jwtService.verifyAsync).not.toHaveBeenCalled();
+	});
+});
+
+describe('DisplayAwareThrottlerGuard.getTracker', () => {
+	// `getTracker` is what buckets the throttler counter, so this must key
+	// on `ClientAddressService`'s trust-aware resolution rather than the
+	// raw socket address — otherwise every client behind one trusted proxy
+	// (a tunnel, Tailscale Serve, …) would share a single 30/60s budget.
+	let guard: DisplayAwareThrottlerGuard;
+	let trustedProxyRegistry: TrustedProxyRegistryService;
+
+	const callGetTracker = (req: Record<string, unknown>) =>
+		(guard as unknown as { getTracker(r: Record<string, unknown>): Promise<string> }).getTracker(req);
+
+	const fastifyLikeRequest = (headers: Record<string, string>, remoteAddress: string) => ({
+		headers,
+		raw: { socket: { remoteAddress } },
+	});
+
+	beforeEach(async () => {
+		const module: TestingModule = await Test.createTestingModule({
+			providers: [
+				DisplayAwareThrottlerGuard,
+				{ provide: Reflector, useValue: { getAllAndOverride: jest.fn() } },
+				{
+					provide: 'THROTTLER:MODULE_OPTIONS',
+					useValue: { throttlers: [{ name: 'default', ttl: 60_000, limit: 30 }] } as ThrottlerModuleOptions,
+				},
+				{
+					provide: ThrottlerStorage,
+					useValue: { increment: jest.fn(), getRecord: jest.fn() } as unknown as ThrottlerStorage,
+				},
+				{ provide: JwtService, useValue: { decode: jest.fn(), verifyAsync: jest.fn() } },
+				TrustedProxyRegistryService,
+				ClientAddressService,
+			],
+		}).compile();
+
+		guard = module.get<DisplayAwareThrottlerGuard>(DisplayAwareThrottlerGuard);
+		trustedProxyRegistry = module.get<TrustedProxyRegistryService>(TrustedProxyRegistryService);
+	});
+
+	it('keys on the raw peer address when the peer is not a trusted proxy', async () => {
+		const req = fastifyLikeRequest({ 'x-forwarded-for': '203.0.113.5' }, '198.51.100.1');
+
+		await expect(callGetTracker(req)).resolves.toBe('198.51.100.1');
+	});
+
+	it('keys on the forwarded client address when the peer is a trusted proxy', async () => {
+		trustedProxyRegistry.register({ id: 'test', addresses: () => ['198.51.100.1'] });
+
+		const clientA = fastifyLikeRequest({ 'x-forwarded-for': '203.0.113.10' }, '198.51.100.1');
+		const clientB = fastifyLikeRequest({ 'x-forwarded-for': '203.0.113.20' }, '198.51.100.1');
+
+		await expect(callGetTracker(clientA)).resolves.toBe('203.0.113.10');
+		await expect(callGetTracker(clientB)).resolves.toBe('203.0.113.20');
 	});
 });

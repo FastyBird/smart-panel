@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 
 import { DEFAULT_TOKEN_EXPIRATION, DEFAULT_TOKEN_SECRET } from '../../app.constants';
 import { getEnvValue } from '../../common/utils/config.utils';
+import { ApiModule } from '../api/api.module';
 import { AuthModule } from '../auth/auth.module';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
@@ -36,6 +37,7 @@ import { WEBSOCKET_SWAGGER_EXTRA_MODELS } from './websocket.openapi';
 		UsersModule,
 		StorageModule,
 		StatsModule,
+		ApiModule,
 	],
 	providers: [WebsocketGateway, CommandEventRegistryService, WsAuthService, WsMetricsService, WsStatsProvider],
 	exports: [WebsocketGateway, CommandEventRegistryService],

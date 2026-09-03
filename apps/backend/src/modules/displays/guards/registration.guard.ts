@@ -1,15 +1,16 @@
-import { Request } from 'express';
+import { FastifyRequest } from 'fastify';
 
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { ClientAddressService } from '../../api/services/client-address.service';
 import { TokensService } from '../../auth/services/tokens.service';
 import { ConfigService } from '../../config/services/config.service';
 import { DISPLAYS_MODULE_NAME, DeploymentMode } from '../displays.constants';
 import { DisplaysConfigModel } from '../models/config.model';
 import { DisplaysService } from '../services/displays.service';
 import { PermitJoinService } from '../services/permit-join.service';
-import { extractClientIp, isLocalhost } from '../utils/ip.utils';
+import { isLocalhost } from '../utils/ip.utils';
 
 @Injectable()
 export class RegistrationGuard implements CanActivate {
@@ -20,6 +21,7 @@ export class RegistrationGuard implements CanActivate {
 		private readonly permitJoinService: PermitJoinService,
 		private readonly displaysService: DisplaysService,
 		private readonly tokensService: TokensService,
+		private readonly clientAddressService: ClientAddressService,
 	) {}
 
 	/**
@@ -45,8 +47,8 @@ export class RegistrationGuard implements CanActivate {
 	}
 
 	canActivate(context: ExecutionContext): boolean {
-		const request = context.switchToHttp().getRequest<Request>();
-		const clientIp = extractClientIp(request);
+		const request = context.switchToHttp().getRequest<FastifyRequest>();
+		const clientIp = this.clientAddressService.resolve(request).address;
 		const config = this.getConfig();
 		const mode = config.deploymentMode;
 

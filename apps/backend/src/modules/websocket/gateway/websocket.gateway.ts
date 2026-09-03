@@ -17,6 +17,7 @@ import {
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ClientAddressService } from '../../api/services/client-address.service';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
 import { CommandMessageDto } from '../dto/command-message.dto';
@@ -24,7 +25,6 @@ import { CommandResultDto } from '../dto/command-result.dto';
 import { WsClientDto, WsClientEventType } from '../dto/ws-client.dto';
 import { CommandEventRegistryService } from '../services/command-event-registry.service';
 import { WsAuthService } from '../services/ws-auth.service';
-import { extractClientIpFromSocket } from '../utils/ip.utils';
 import {
 	CLIENT_DEFAULT_ROOM,
 	DISPLAY_INTERNAL_ROOM,
@@ -55,6 +55,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		private readonly commandEventRegistry: CommandEventRegistryService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly wsAuthService: WsAuthService,
+		private readonly clientAddressService: ClientAddressService,
 	) {
 		this.eventEmitter.onAny((event: string, payload: Record<string, any>) => {
 			this.handleBusEvent(event, payload);
@@ -126,7 +127,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 			await client.join(CLIENT_DEFAULT_ROOM);
 
 			const clientData = client.data as ClientData;
-			const clientIp = extractClientIpFromSocket(client);
+			const clientIp = this.clientAddressService.resolve(client.handshake).address;
 
 			if (clientData.user && clientData.user.type === 'token' && clientData.user.ownerType === TokenOwnerType.DISPLAY) {
 				await client.join(DISPLAY_INTERNAL_ROOM);
@@ -140,7 +141,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 			// Emit client connected event to exchange bus
 			const wsClientDto = toInstance(WsClientDto, {
 				socket_id: client.id,
-				ip_address: clientIp !== 'unknown' ? clientIp : null,
+				ip_address: clientIp || null,
 				user: clientData.user || null,
 				event_type: WsClientEventType.CONNECTED,
 				timestamp: new Date().toISOString(),
@@ -162,12 +163,12 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		this.logger.log(`Client disconnected: ${client.id}`);
 
 		const clientData = client.data as ClientData;
-		const clientIp = extractClientIpFromSocket(client);
+		const clientIp = this.clientAddressService.resolve(client.handshake).address;
 
 		// Emit client disconnected event to exchange bus
 		const wsClientDto = toInstance(WsClientDto, {
 			socket_id: client.id,
-			ip_address: clientIp !== 'unknown' ? clientIp : null,
+			ip_address: clientIp || null,
 			user: clientData.user || null,
 			event_type: WsClientEventType.DISCONNECTED,
 			timestamp: new Date().toISOString(),
