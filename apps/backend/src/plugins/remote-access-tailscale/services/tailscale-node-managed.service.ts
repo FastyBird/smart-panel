@@ -13,6 +13,7 @@ import { ConfigChangeResult } from '../../../modules/extensions/services/managed
 import { PlatformType } from '../../../modules/platform/platform.constants';
 import { PlatformService } from '../../../modules/platform/services/platform.service';
 import {
+	RemoteAccessAdvisory,
 	RemoteAccessEndpoint,
 	RemoteAccessProviderState,
 	RemoteAccessProviderStatus,
@@ -22,6 +23,7 @@ import { RemoteAccessTailscalePluginConfigModel } from '../models/config.model';
 import {
 	REMOTE_ACCESS_TAILSCALE_ALLOW_DEV_ENV,
 	REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
+	TAILSCALE_KEY_EXPIRY_ADVISORY_WINDOW_MS,
 	TAILSCALE_MIN_VERSION,
 	TAILSCALE_POLL_INTERVAL_STABLE_MS,
 	TAILSCALE_POLL_INTERVAL_TRANSITIONING_MS,
@@ -29,6 +31,7 @@ import {
 } from '../remote-access-tailscale.constants';
 
 import { TailscaleCliError, TailscaleCliService, TailscaleStatus } from './tailscale-cli.service';
+import { TailscaleServeService } from './tailscale-serve.service';
 import { TailscaleStatusMapperService } from './tailscale-status-mapper.service';
 
 export type TailscaleRequirementCode =
@@ -99,6 +102,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		private readonly nestConfigService: NestConfigService,
 		private readonly platformService: PlatformService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly serveService: TailscaleServeService,
 	) {
 		super();
 	}
@@ -221,6 +225,15 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 				if (status && this.mapper.hasExistingKey(status)) {
 					await this.cli.set(this.buildPreferenceFlags(next));
+
+					const port = this.getBackendPort();
+
+					// Applied immediately here for a responsive config change,
+					// rather than waiting for the next poll tick to self-heal it
+					// (computeStatus() calls the same apply step every tick).
+					if (this.mapper.map(status, { port }).state === 'connected') {
+						await this.serveService.apply(next, port, status);
+					}
 				}
 			}
 		} catch (error) {
@@ -304,10 +317,38 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 		try {
 			const status = await this.cli.getStatus();
-			const port = getEnvValue<number>(this.nestConfigService, 'FB_BACKEND_PORT', 3000);
+			const port = this.getBackendPort();
 			const mapped = this.mapper.map(status, { port });
+			const postureAdvisories = this.buildPostureAdvisories(status);
 
-			return this.buildStatus(mapped.state, mapped.message, mapped.details, mapped.proxyAddresses, mapped.endpoints);
+			if (mapped.state !== 'connected') {
+				return this.buildStatus(
+					mapped.state,
+					mapped.message,
+					mapped.details,
+					mapped.proxyAddresses,
+					mapped.endpoints,
+					postureAdvisories,
+				);
+			}
+
+			// Serve/Funnel are only meaningful once connected — `Self.CapMap`
+			// (the ACL capabilities the apply step gates on) is only populated
+			// then. This call is what applies a config change and self-heals a
+			// drifted Serve/Funnel state; never more than once per computeStatus()
+			// call, called by every poll tick and (for immediate effect) by
+			// onConfigChanged() too.
+			const config = this.getPluginConfig();
+			const serveResult = await this.serveService.apply(config, port, status);
+
+			return this.buildStatus(
+				mapped.state,
+				mapped.message,
+				mapped.details,
+				[...mapped.proxyAddresses, ...serveResult.proxyAddresses],
+				[...mapped.endpoints, ...serveResult.endpoints],
+				[...postureAdvisories, ...serveResult.advisories],
+			);
 		} catch (error) {
 			if (error instanceof TailscaleCliError) {
 				switch (error.kind) {
@@ -572,6 +613,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		details: Record<string, string | number | boolean | null> = {},
 		proxyAddresses: string[] = [],
 		endpoints: RemoteAccessEndpoint[] = [],
+		advisories: RemoteAccessAdvisory[] = [],
 	): RemoteAccessProviderStatus {
 		return {
 			type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
@@ -580,9 +622,55 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 			message,
 			details,
 			proxyAddresses,
-			advisories: [],
+			advisories,
 			updatedAt: new Date().toISOString(),
 		};
+	}
+
+	/** `FB_BACKEND_PORT` — the port Serve proxies to and the port the mapper's plain-HTTP endpoints advertise. */
+	private getBackendPort(): number {
+		return getEnvValue<number>(this.nestConfigService, 'FB_BACKEND_PORT', 3000);
+	}
+
+	/**
+	 * `key-expiring`/`version-unsupported` — computed from the raw status
+	 * alone (no extra CLI call), regardless of connection state, since a
+	 * cached `KeyExpiry`/`Version` stays meaningful even while `disconnected`.
+	 * Serve/Funnel's own advisories (`tailnet-https-disabled`,
+	 * `funnel-not-allowed`, `public-exposure`) live in `TailscaleServeService`
+	 * instead — they need `Self.CapMap`, which is only meaningful once
+	 * connected.
+	 */
+	private buildPostureAdvisories(status: TailscaleStatus): RemoteAccessAdvisory[] {
+		const advisories: RemoteAccessAdvisory[] = [];
+
+		if (status.Version && compareTailscaleVersions(status.Version, TAILSCALE_MIN_VERSION) < 0) {
+			advisories.push({
+				code: 'version-unsupported',
+				severity: 'warning',
+				message: `Tailscale ${status.Version} is older than the minimum supported version ${TAILSCALE_MIN_VERSION}. Upgrade the tailscale package.`,
+			});
+		}
+
+		const keyExpiry = status.Self?.KeyExpiry;
+		const expiresAt = keyExpiry ? Date.parse(keyExpiry) : NaN;
+		const now = Date.now();
+
+		// `expiresAt > now` excludes an already-expired key: by the time that
+		// happens the node has signed itself out and BackendState moves away
+		// from Running (see the state machine doc on the class above), so it
+		// surfaces through `setup-required`'s "sign in again" message
+		// instead — not this advisory, which is specifically an early
+		// warning ahead of that happening.
+		if (!Number.isNaN(expiresAt) && expiresAt > now && expiresAt - now <= TAILSCALE_KEY_EXPIRY_ADVISORY_WINDOW_MS) {
+			advisories.push({
+				code: 'key-expiring',
+				severity: 'warning',
+				message: `The node key expires on ${keyExpiry}. Sign in again before it expires, or disable key expiry for this appliance node in the tailnet admin console.`,
+			});
+		}
+
+		return advisories;
 	}
 
 	/** Public so `TailscaleLoginService` (RA-5) can build the same `up`/`set` flags via `buildUpFlags`/`buildPreferenceFlags` without duplicating config loading and its fallback-to-defaults handling. */

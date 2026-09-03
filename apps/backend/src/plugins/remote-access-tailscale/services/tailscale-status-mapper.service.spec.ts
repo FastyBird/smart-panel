@@ -170,7 +170,7 @@ describe('TailscaleStatusMapperService', () => {
 	});
 
 	describe('map — details', () => {
-		it('exposes tailnet, dnsName, ipv4, ipv6, version, healthWarnings and keyExpiresAt', () => {
+		it('exposes tailnet, dnsName, ipv4, ipv6, version, healthWarnings, keyExpiresAt, httpsCapable, funnelCapable and certDomains', () => {
 			const status: TailscaleStatus = {
 				BackendState: 'Running',
 				Self: {
@@ -178,10 +178,12 @@ describe('TailscaleStatusMapperService', () => {
 					TailscaleIPs: ['100.64.0.5', 'fd7a:115c:a1e0::5'],
 					DNSName: 'panel.tailc0ffee.ts.net.',
 					KeyExpiry: '2026-10-01T00:00:00Z',
+					CapMap: { https: null, funnel: null },
 				},
 				CurrentTailnet: { Name: 'example.ts.net', MagicDNSEnabled: true },
 				Version: '1.78.1',
 				Health: ['unreachable via relay'],
+				CertDomains: ['panel.tailc0ffee.ts.net'],
 			};
 
 			const result = service.map(status, { port: PORT });
@@ -194,10 +196,13 @@ describe('TailscaleStatusMapperService', () => {
 				version: '1.78.1',
 				healthWarnings: 'unreachable via relay',
 				keyExpiresAt: '2026-10-01T00:00:00Z',
+				httpsCapable: true,
+				funnelCapable: true,
+				certDomains: 'panel.tailc0ffee.ts.net',
 			});
 		});
 
-		it('fills every detail with null when the status is nearly empty', () => {
+		it('fills every detail with null/false when the status is nearly empty', () => {
 			const result = service.map({ BackendState: 'NoState' }, { port: PORT });
 
 			expect(result.details).toEqual({
@@ -208,7 +213,29 @@ describe('TailscaleStatusMapperService', () => {
 				version: null,
 				healthWarnings: null,
 				keyExpiresAt: null,
+				httpsCapable: false,
+				funnelCapable: false,
+				certDomains: null,
 			});
+		});
+
+		it('reports httpsCapable/funnelCapable independently based on which CapMap keys are present', () => {
+			const result = service.map(
+				{ BackendState: 'Running', Self: { Online: true, CapMap: { https: null } } },
+				{ port: PORT },
+			);
+
+			expect(result.details.httpsCapable).toBe(true);
+			expect(result.details.funnelCapable).toBe(false);
+		});
+
+		it('joins multiple CertDomains into a single comma-separated string', () => {
+			const result = service.map(
+				{ BackendState: 'Running', Self: { Online: true }, CertDomains: ['a.ts.net', 'b.ts.net'] },
+				{ port: PORT },
+			);
+
+			expect(result.details.certDomains).toBe('a.ts.net, b.ts.net');
 		});
 	});
 

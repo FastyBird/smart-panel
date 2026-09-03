@@ -6,10 +6,9 @@ import { REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME } from '../remote-access-tailscale.
 import { UpdateRemoteAccessTailscalePluginConfigDto } from './update-config.dto';
 
 /**
- * `serve_https` and `funnel` are accepted fields (forward compatibility for
- * RA-6) but the managed service never applies them yet — submitting a
- * non-default value would silently create an unapplied, user-visible state.
- * Until RA-6 lifts this, only the current default is accepted.
+ * `serve_https` and `funnel` are applied by the managed service's Serve/
+ * Funnel apply step (RA-6) — both boolean values are accepted like any other
+ * plugin preference.
  */
 describe('UpdateRemoteAccessTailscalePluginConfigDto', () => {
 	it('accepts a partial update that omits serve_https and funnel entirely', async () => {
@@ -21,7 +20,7 @@ describe('UpdateRemoteAccessTailscalePluginConfigDto', () => {
 		expect(await validate(dto)).toHaveLength(0);
 	});
 
-	it('accepts serve_https: true (the only currently applied value)', async () => {
+	it('accepts serve_https: true', async () => {
 		const dto = plainToInstance(UpdateRemoteAccessTailscalePluginConfigDto, {
 			type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 			serve_https: true,
@@ -30,19 +29,36 @@ describe('UpdateRemoteAccessTailscalePluginConfigDto', () => {
 		expect(await validate(dto)).toHaveLength(0);
 	});
 
-	it('rejects serve_https: false until RA-6 applies it', async () => {
+	it('accepts serve_https: false', async () => {
 		const dto = plainToInstance(UpdateRemoteAccessTailscalePluginConfigDto, {
 			type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 			serve_https: false,
 		});
 
+		expect(await validate(dto)).toHaveLength(0);
+	});
+
+	it('rejects a non-boolean serve_https', async () => {
+		const dto = plainToInstance(UpdateRemoteAccessTailscalePluginConfigDto, {
+			type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
+			serve_https: 'yes',
+		});
+
 		const errors = await validate(dto);
 
-		expect(errors).not.toHaveLength(0);
 		expect(errors.some((error) => error.property === 'serve_https')).toBe(true);
 	});
 
-	it('accepts funnel: false (the only currently applied value)', async () => {
+	it('accepts funnel: true', async () => {
+		const dto = plainToInstance(UpdateRemoteAccessTailscalePluginConfigDto, {
+			type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
+			funnel: true,
+		});
+
+		expect(await validate(dto)).toHaveLength(0);
+	});
+
+	it('accepts funnel: false', async () => {
 		const dto = plainToInstance(UpdateRemoteAccessTailscalePluginConfigDto, {
 			type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 			funnel: false,
@@ -51,15 +67,24 @@ describe('UpdateRemoteAccessTailscalePluginConfigDto', () => {
 		expect(await validate(dto)).toHaveLength(0);
 	});
 
-	it('rejects funnel: true until RA-6 applies it', async () => {
+	it('rejects a non-boolean funnel', async () => {
 		const dto = plainToInstance(UpdateRemoteAccessTailscalePluginConfigDto, {
 			type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
-			funnel: true,
+			funnel: 'no',
 		});
 
 		const errors = await validate(dto);
 
-		expect(errors).not.toHaveLength(0);
 		expect(errors.some((error) => error.property === 'funnel')).toBe(true);
+	});
+
+	it('accepts both serve_https and funnel set together', async () => {
+		const dto = plainToInstance(UpdateRemoteAccessTailscalePluginConfigDto, {
+			type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
+			serve_https: true,
+			funnel: true,
+		});
+
+		expect(await validate(dto)).toHaveLength(0);
 	});
 });

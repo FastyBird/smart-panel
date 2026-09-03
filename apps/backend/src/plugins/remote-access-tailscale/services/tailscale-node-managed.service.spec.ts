@@ -19,7 +19,10 @@ import { REMOTE_ACCESS_TAILSCALE_ALLOW_DEV_ENV } from '../remote-access-tailscal
 
 import { TailscaleCliError, TailscaleCliService, TailscaleStatus } from './tailscale-cli.service';
 import { TailscaleNodeManagedService, compareTailscaleVersions } from './tailscale-node-managed.service';
+import { TailscaleServeApplyResult, TailscaleServeService } from './tailscale-serve.service';
 import { TailscaleStatusMapperService } from './tailscale-status-mapper.service';
+
+const EMPTY_SERVE_RESULT: TailscaleServeApplyResult = { endpoints: [], proxyAddresses: [], advisories: [] };
 
 jest.mock('node:child_process', () => ({
 	...jest.requireActual<typeof import('node:child_process')>('node:child_process'),
@@ -85,6 +88,7 @@ describe('TailscaleNodeManagedService', () => {
 	let nestConfigServiceMock: { get: jest.Mock };
 	let platformServiceMock: { getPlatformType: jest.Mock };
 	let eventEmitterMock: { emit: jest.Mock };
+	let serveServiceMock: { apply: jest.Mock };
 
 	const defaultConfig = (): RemoteAccessTailscalePluginConfigModel => {
 		const config = new RemoteAccessTailscalePluginConfigModel();
@@ -118,6 +122,12 @@ describe('TailscaleNodeManagedService', () => {
 		nestConfigServiceMock = { get: jest.fn().mockReturnValue(undefined) };
 		platformServiceMock = { getPlatformType: jest.fn().mockReturnValue(PlatformType.RASPBERRY) };
 		eventEmitterMock = { emit: jest.fn() };
+		// Serve/Funnel apply matrix and read-back parsing are covered in full
+		// by tailscale-serve.service.spec.ts; this mock defaults to "nothing
+		// to contribute" so every pre-existing test in this file (written
+		// before RA-6) keeps observing empty proxyAddresses/advisories and no
+		// extra endpoint unless a test below overrides it.
+		serveServiceMock = { apply: jest.fn().mockResolvedValue(EMPTY_SERVE_RESULT) };
 
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -128,6 +138,7 @@ describe('TailscaleNodeManagedService', () => {
 				{ provide: NestConfigService, useValue: nestConfigServiceMock },
 				{ provide: PlatformService, useValue: platformServiceMock },
 				{ provide: EventEmitter2, useValue: eventEmitterMock },
+				{ provide: TailscaleServeService, useValue: serveServiceMock },
 			],
 		}).compile();
 
@@ -692,6 +703,192 @@ describe('TailscaleNodeManagedService', () => {
 
 			expect(result.success).toBe(false);
 			expect(result.reason).toContain('something broke');
+		});
+	});
+
+	describe('Serve/Funnel apply (RA-6)', () => {
+		it('calls TailscaleServeService.apply with the plugin config, backend port and raw status once connected', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+			await service.computeStatus();
+
+			expect(serveServiceMock.apply).toHaveBeenCalledWith(
+				expect.objectContaining({ serveHttps: true, funnel: false }),
+				3000,
+				expect.objectContaining({ BackendState: 'Running' }),
+			);
+		});
+
+		it('reads the backend port from FB_BACKEND_PORT instead of the 3000 default when set', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			nestConfigServiceMock.get.mockImplementation((key: string) => (key === 'FB_BACKEND_PORT' ? 8080 : undefined));
+
+			await service.computeStatus();
+
+			expect(serveServiceMock.apply).toHaveBeenCalledWith(expect.anything(), 8080, expect.anything());
+		});
+
+		it('merges the Serve result endpoints, proxyAddresses and advisories into the computed status', async () => {
+			const serveResult: TailscaleServeApplyResult = {
+				endpoints: [
+					{ url: 'https://panel.tailc0ffee.ts.net', scope: 'private', https: true, label: 'Tailscale (HTTPS)' },
+				],
+				proxyAddresses: ['127.0.0.1', '::1'],
+				advisories: [{ code: 'tailnet-https-disabled', severity: 'warning', message: 'x' }],
+			};
+			serveServiceMock.apply.mockResolvedValue(serveResult);
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+			const status = await service.computeStatus();
+
+			expect(status.endpoints).toEqual(expect.arrayContaining(serveResult.endpoints));
+			expect(status.proxyAddresses).toEqual(['127.0.0.1', '::1']);
+			expect(status.advisories).toEqual(expect.arrayContaining(serveResult.advisories));
+		});
+
+		it('does not call apply when the node is not connected', async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+
+			await service.computeStatus();
+
+			expect(serveServiceMock.apply).not.toHaveBeenCalled();
+		});
+
+		it('does not call apply when the platform is unsupported', async () => {
+			platformServiceMock.getPlatformType.mockReturnValue(PlatformType.DOCKER);
+
+			await service.computeStatus();
+
+			expect(serveServiceMock.apply).not.toHaveBeenCalled();
+		});
+
+		it('never calls apply more than once per computeStatus() call', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+			await service.computeStatus();
+
+			expect(serveServiceMock.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('applies again immediately on a config change, without waiting for the next poll', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+			serveServiceMock.apply.mockClear();
+
+			const changed = defaultConfig();
+			changed.funnel = true;
+			configServiceMock.getPluginConfig.mockReturnValue(changed);
+
+			await service.onConfigChanged();
+
+			expect(serveServiceMock.apply).toHaveBeenCalledWith(
+				expect.objectContaining({ funnel: true }),
+				3000,
+				expect.objectContaining({ BackendState: 'Running' }),
+			);
+		});
+
+		it('does not apply on config change when the node has never held a key', async () => {
+			cli.getStatus.mockResolvedValue({ BackendState: 'NeedsLogin' });
+			await service.start();
+
+			await service.onConfigChanged();
+
+			expect(serveServiceMock.apply).not.toHaveBeenCalled();
+		});
+
+		it('does not apply on config change when the node holds a key but is not connected', async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			await service.start();
+
+			await service.onConfigChanged();
+
+			expect(serveServiceMock.apply).not.toHaveBeenCalled();
+		});
+
+		it('does not fail the config change when apply rejects', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+
+			serveServiceMock.apply.mockRejectedValueOnce(new Error('boom'));
+
+			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: false });
+		});
+	});
+
+	describe('posture advisories (RA-6)', () => {
+		it('adds version-unsupported when the installed version is older than the pinned minimum', async () => {
+			cli.getStatus.mockResolvedValue({ ...RUNNING_CONNECTED_STATUS, Version: '1.40.0' });
+
+			const status = await service.computeStatus();
+
+			expect(status.advisories).toContainEqual(
+				expect.objectContaining({ code: 'version-unsupported', severity: 'warning' }),
+			);
+		});
+
+		it('does not add version-unsupported when the installed version meets the minimum', async () => {
+			cli.getStatus.mockResolvedValue({ ...RUNNING_CONNECTED_STATUS, Version: '1.78.1' });
+
+			const status = await service.computeStatus();
+
+			expect(status.advisories).not.toContainEqual(expect.objectContaining({ code: 'version-unsupported' }));
+		});
+
+		it('adds key-expiring when Self.KeyExpiry is within 14 days', async () => {
+			const soon = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+			cli.getStatus.mockResolvedValue({
+				...RUNNING_CONNECTED_STATUS,
+				Self: { ...RUNNING_CONNECTED_STATUS.Self, KeyExpiry: soon },
+			});
+
+			const status = await service.computeStatus();
+
+			expect(status.advisories).toContainEqual(expect.objectContaining({ code: 'key-expiring', severity: 'warning' }));
+		});
+
+		it('does not add key-expiring when Self.KeyExpiry is more than 14 days away', async () => {
+			const later = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+			cli.getStatus.mockResolvedValue({
+				...RUNNING_CONNECTED_STATUS,
+				Self: { ...RUNNING_CONNECTED_STATUS.Self, KeyExpiry: later },
+			});
+
+			const status = await service.computeStatus();
+
+			expect(status.advisories).not.toContainEqual(expect.objectContaining({ code: 'key-expiring' }));
+		});
+
+		it('does not add key-expiring when Self.KeyExpiry is absent (expiry disabled)', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+			const status = await service.computeStatus();
+
+			expect(status.advisories).not.toContainEqual(expect.objectContaining({ code: 'key-expiring' }));
+		});
+
+		it('does not add key-expiring when Self.KeyExpiry is already in the past — an expired key surfaces through setup-required instead', async () => {
+			const alreadyExpired = new Date(Date.now() - 60_000).toISOString();
+			cli.getStatus.mockResolvedValue({
+				...RUNNING_CONNECTED_STATUS,
+				Self: { ...RUNNING_CONNECTED_STATUS.Self, KeyExpiry: alreadyExpired },
+			});
+
+			const status = await service.computeStatus();
+
+			expect(status.advisories).not.toContainEqual(expect.objectContaining({ code: 'key-expiring' }));
+		});
+
+		it('reports posture advisories even when the node is not connected (e.g. disconnected with a cached KeyExpiry)', async () => {
+			const soon = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+			cli.getStatus.mockResolvedValue({ BackendState: 'Stopped', Self: { KeyExpiry: soon } });
+
+			const status = await service.computeStatus();
+
+			expect(status.state).toBe('disconnected');
+			expect(status.advisories).toContainEqual(expect.objectContaining({ code: 'key-expiring' }));
 		});
 	});
 });

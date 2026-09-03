@@ -218,6 +218,126 @@ describe('TailscaleCliService', () => {
 		});
 	});
 
+	describe('serve', () => {
+		it('sends `serve --bg --https=443 --set-path=/ http://127.0.0.1:<port>`', async () => {
+			mockExecFileOnce(() => ({ exitCode: 0 }));
+
+			await service.serve(3000);
+
+			expect(execFile).toHaveBeenCalledWith(
+				'tailscale',
+				['serve', '--bg', '--https=443', '--set-path=/', 'http://127.0.0.1:3000'],
+				expect.any(Object),
+				expect.any(Function),
+			);
+		});
+
+		it('classifies a non-zero exit as an error', async () => {
+			mockExecFileOnce(() => ({ stderr: 'boom', exitCode: 1 }));
+
+			await expect(service.serve(3000)).rejects.toBeInstanceOf(TailscaleCliError);
+		});
+	});
+
+	describe('serveStatus', () => {
+		it('parses an empty serve config (nothing served)', async () => {
+			mockExecFileOnce(() => ({ stdout: '{}' }));
+
+			const status = await service.serveStatus();
+
+			expect(status).toEqual({});
+		});
+
+		it('parses a populated serve config', async () => {
+			mockExecFileOnce(() => ({
+				stdout: JSON.stringify({
+					TCP: { '443': { HTTPS: true } },
+					Web: { 'panel.tailc0ffee.ts.net:443': { Handlers: { '/': { Proxy: 'http://127.0.0.1:3000' } } } },
+					AllowFunnel: {},
+				}),
+			}));
+
+			const status = await service.serveStatus();
+
+			expect(status.TCP).toEqual({ '443': { HTTPS: true } });
+		});
+
+		it('treats empty stdout as an empty config', async () => {
+			mockExecFileOnce(() => ({ stdout: '' }));
+
+			const status = await service.serveStatus();
+
+			expect(status).toEqual({});
+		});
+
+		it('raises unknown when the output is not valid JSON', async () => {
+			mockExecFileOnce(() => ({ stdout: 'not json' }));
+
+			await expect(service.serveStatus()).rejects.toMatchObject({ kind: 'unknown' });
+		});
+
+		it('classifies a non-zero exit code as an error', async () => {
+			mockExecFileOnce(() => ({ stderr: 'daemon not running', exitCode: 1 }));
+
+			await expect(service.serveStatus()).rejects.toBeInstanceOf(TailscaleCliError);
+		});
+
+		it('sends `serve status --json`', async () => {
+			mockExecFileOnce(() => ({ stdout: '{}' }));
+
+			await service.serveStatus();
+
+			expect(execFile).toHaveBeenCalledWith(
+				'tailscale',
+				['serve', 'status', '--json'],
+				expect.any(Object),
+				expect.any(Function),
+			);
+		});
+	});
+
+	describe('funnelOn', () => {
+		it('sends `funnel --bg --https=443 --set-path=/ http://127.0.0.1:<port>` — the serve-v2 form, not the legacy `funnel 443 on`', async () => {
+			mockExecFileOnce(() => ({ exitCode: 0 }));
+
+			await service.funnelOn(3000);
+
+			expect(execFile).toHaveBeenCalledWith(
+				'tailscale',
+				['funnel', '--bg', '--https=443', '--set-path=/', 'http://127.0.0.1:3000'],
+				expect.any(Object),
+				expect.any(Function),
+			);
+		});
+
+		it('classifies a non-zero exit as an error', async () => {
+			mockExecFileOnce(() => ({ stderr: 'boom', exitCode: 1 }));
+
+			await expect(service.funnelOn(3000)).rejects.toBeInstanceOf(TailscaleCliError);
+		});
+	});
+
+	describe('serveOff', () => {
+		it('sends `serve --https=443 --set-path=/ off` — the scoped removal, never `serve reset`', async () => {
+			mockExecFileOnce(() => ({ exitCode: 0 }));
+
+			await service.serveOff();
+
+			expect(execFile).toHaveBeenCalledWith(
+				'tailscale',
+				['serve', '--https=443', '--set-path=/', 'off'],
+				expect.any(Object),
+				expect.any(Function),
+			);
+		});
+
+		it('classifies a non-zero exit as an error', async () => {
+			mockExecFileOnce(() => ({ stderr: 'boom', exitCode: 1 }));
+
+			await expect(service.serveOff()).rejects.toBeInstanceOf(TailscaleCliError);
+		});
+	});
+
 	describe('timeout option', () => {
 		it('passes a default 15s timeout', async () => {
 			mockExecFileOnce(() => ({ exitCode: 0 }));

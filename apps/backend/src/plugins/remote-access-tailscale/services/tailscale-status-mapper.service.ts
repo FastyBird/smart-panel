@@ -107,6 +107,7 @@ export class TailscaleStatusMapperService {
 		const ipv4 = this.findIp(status, (ip) => ip.includes('.'));
 		const ipv6 = this.findIp(status, (ip) => ip.includes(':'));
 		const healthWarnings = status.Health && status.Health.length > 0 ? status.Health.join('; ') : null;
+		const capMap = status.Self?.CapMap ?? {};
 
 		return {
 			tailnet: status.CurrentTailnet?.Name ?? null,
@@ -116,6 +117,13 @@ export class TailscaleStatusMapperService {
 			version: status.Version ?? null,
 			healthWarnings,
 			keyExpiresAt: status.Self?.KeyExpiry ?? null,
+			// Whether the tailnet grants this node the `https`/`funnel` ACL
+			// capability — read by RA-6's TailscaleServeService from the raw
+			// status directly; surfaced here too, display-only, so the admin
+			// can see why Serve/Funnel is unavailable before toggling it.
+			httpsCapable: Object.hasOwn(capMap, 'https'),
+			funnelCapable: Object.hasOwn(capMap, 'funnel'),
+			certDomains: status.CertDomains && status.CertDomains.length > 0 ? status.CertDomains.join(', ') : null,
 		};
 	}
 
