@@ -7,6 +7,7 @@ import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
 
+import { NotificationsController } from './controllers/notifications.controller';
 import { UpdateNotificationsConfigDto } from './dto/update-config.dto';
 import { NotificationEntity } from './entities/notifications.entity';
 import { NotificationsConfigModel } from './models/config.model';
@@ -30,6 +31,7 @@ import { NotificationsService } from './services/notifications.service';
 @Global()
 @Module({
 	imports: [TypeOrmModule.forFeature([NotificationEntity]), SwaggerModule],
+	controllers: [NotificationsController],
 	providers: [NotificationInputValidator, NotificationsService, NotificationsRetentionService],
 	exports: [NotificationsService],
 })
