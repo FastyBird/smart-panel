@@ -78,6 +78,9 @@ retention, rate guard) that every emitter and the later REST, websocket and disp
       cleared.
 - [ ] `notify()` on an `issue` upserts an existing active row: same `id`, `occurrences` incremented, fields
       replaced, `read_at` and `dismissed_at` preserved (not cleared).
+- [ ] `dismiss(id, true)` on an `issue` with `persistent = true` also sets `resolved_at` (nothing re-detects
+      such a condition, so the dismissal is how it ends); `dismiss(id, true)` on a non-persistent `issue` or
+      on an `event` sets only `dismissed_at`.
 - [ ] `notify()` on an `issue` without `key` returns `null` and logs one `warn`.
 - [ ] `resolve(source, key)` on an unkeyed `event` row returns `false` and is a no-op.
 - [ ] `resolve(source, key)` sets `resolved_at`, and the next `notify()` with the same `(source, key)` inserts
@@ -102,7 +105,9 @@ retention, rate guard) that every emitter and the later REST, websocket and disp
 - [ ] `findAll` defaults to `status: 'active'`, supports the `unread` filter, orders rows by the total order
       `created_at DESC, id DESC`, supports the `afterId` cursor (returns the rows that follow the row with
       that id in the total order, so two rows with equal `created_at` are disambiguated by `id`), and caps
-      `limit` at 200.
+      `limit` at 201: `FEATURE-NOTIFICATIONS-BACKEND-API`'s controller requests `limit + 1` rows so its
+      `has_more` flag survives the maximum page size; the client-facing maximum stays 200, enforced by that
+      controller.
 - [ ] `NotificationsRetentionService` captures `bootStartedAt` in its constructor and, in
       `onApplicationBootstrap` wrapped in `try/catch`, resolves every `issue` with `persistent = false` and
       `updated_at < bootStartedAt`, logging and continuing on failure.

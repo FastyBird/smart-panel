@@ -42,8 +42,9 @@ filtering, timeout, retry and a self-reported delivery-failure issue uniformly.
 - `NotificationChannelRegistryService` (`register`, `unregister`, `getChannels`, `isChannel`).
 - `NotificationDispatcherService`, listening on `EventType.NOTIFICATION_CREATED`, applying
   filter/timeout/retry/loop-guard/self-report.
-- `sanitizeErrorMessage` in `notifications.utils.ts`: strips URL credentials to `scheme://***@`, drops query
-  strings, masks `Bearer <token>` and `token=`/`key=`/`password=`/`secret=` values, collapses whitespace, and
+- `sanitizeErrorMessage` in `notifications.utils.ts`: reduces every URL to `scheme://host` (dropping
+  userinfo, path and query, which removes Telegram `bot<token>` segments and Slack/Discord webhook paths),
+  masks `Bearer <token>` and `token=`/`key=`/`password=`/`secret=` values, collapses whitespace, and
   truncates to 300 characters.
 - Wiring the new providers into `notifications.module.ts` (providers, exports).
 
@@ -58,14 +59,17 @@ filtering, timeout, retry and a self-reported delivery-failure issue uniformly.
 ## 4. Acceptance criteria
 
 - [ ] `INotificationChannel` declares `getType(): string`, `isConfigured(): Promise<boolean>`,
-      `getMinSeverity(): Promise<NotificationSeverity>`, `send(notification): Promise<void>`.
+      `getMinSeverity(): Promise<NotificationSeverity>`, `send(notification, signal: AbortSignal): Promise<void>`.
 - [ ] `BaseNotificationChannel` implements `isConfigured()` and `getMinSeverity()` from the plugin's config
       via `ConfigService.getPluginConfig(type)`, delegating the required-fields check to an abstract
       `hasRequiredConfig(config)`; `getMinSeverity()` defaults to `WARNING` when the config has no
       `min_severity`.
 - [ ] `BaseNotificationChannel` exposes `formatText(notification)` producing a shared wording (title,
-      severity, source, message, occurrences) and `fetchWithTimeout(url, init)` using
-      `AbortSignal.timeout(10_000)`.
+      severity, source, message, occurrences) and `fetchWithSignal(url, init, signal)`, which passes the
+      dispatcher's `AbortSignal` through to `fetch` in place of a channel-owned timeout.
+- [ ] `BaseNotificationChannel` exposes `isRetryable(error)`: a network error with no response, or an HTTP
+      429 or 5xx, is retryable; a timeout or any other 4xx is not. Channels throw a `ChannelDeliveryError`
+      (`{ status?: number; retryable: boolean }`) so `send` can report which case applies.
 - [ ] `NotificationChannelRegistryService.register(channel)` throws when a channel of the same `getType()` is
       already registered.
 - [ ] `NotificationChannelRegistryService.isChannel(source)` returns `true` for any registered channel's
@@ -78,28 +82,39 @@ filtering, timeout, retry and a self-reported delivery-failure issue uniformly.
 - [ ] Delivery is skipped when `SEVERITY_RANK[entity.severity] < SEVERITY_RANK[await channel.getMinSeverity()]`.
 - [ ] Channels are dispatched in parallel to each other (`Promise.allSettled`) but attempts within one
       channel are sequential.
-- [ ] Each channel gets up to 3 send attempts with delays of 1000 ms and 5000 ms between attempts (delay
-      mechanism injectable for tests); the timeout on each attempt is the fixed 10 s of `fetchWithTimeout`;
-      there is no per-channel timeout setting.
-- [ ] After the third failed attempt, the dispatcher logs the channel type and
-      `sanitizeErrorMessage(error.message)` (never the URL) and raises `notify({ source: channel.getType(),
-      kind: ISSUE, key: 'delivery-failed', severity: WARNING, title: 'Notification delivery failed', ...,
+- [ ] Each attempt creates a fresh `AbortSignal.timeout(10_000)`, passes it into `send(notification, signal)`,
+      and races the returned promise against the signal's abort so a channel that ignores the signal still
+      settles; there is no per-channel timeout setting.
+- [ ] Up to 3 send attempts with delays of 1000 ms and 5000 ms between them (delay mechanism injectable for
+      tests), but only when the failure is retryable per `isRetryable`: a network error with no response, or
+      an HTTP 429 or 5xx response. A timeout or any other 4xx ends the delivery as failed after the first
+      attempt, with no retry.
+- [ ] Rejections are normalised before use: `const message = error instanceof Error ? error.message :
+      String(error)`, guarded so a throwing `toString` still yields a usable string rather than crashing the
+      dispatcher.
+- [ ] After the final failed attempt, the dispatcher logs the channel type and `sanitizeErrorMessage(message)`
+      (never the URL) and raises `notify({ source: channel.getType(), kind: ISSUE, key: 'delivery-failed',
+      severity: WARNING, title: 'Notification delivery failed', message: sanitizeErrorMessage(message),
       actions: [{ type: LINK, label: 'Open channel settings', url: '/config/plugins/<type>' }] })`.
 - [ ] After a successful delivery, the dispatcher calls `resolve(channel.getType(), 'delivery-failed')`.
 - [ ] One failing channel does not block delivery to another channel.
 - [ ] Deliveries to the same channel preserve message order even under a burst (serialised with a promise
       chain).
-- [ ] `sanitizeErrorMessage(message)` in `notifications.utils.ts` strips `scheme://user:pass@` credentials to
-      `scheme://***@`, drops URL query strings, masks `Bearer <token>` and
-      `token=`/`key=`/`password=`/`secret=` values with `***`, collapses whitespace, and truncates the result
-      to 300 characters.
-- [ ] `notifications.utils.spec.ts` covers: credentials in a URL are masked, query strings are dropped, bearer
-      tokens and `token=`/`key=`/`password=`/`secret=` values are masked, whitespace is collapsed, and a long
-      message is truncated to 300 characters.
+- [ ] `sanitizeErrorMessage(message)` in `notifications.utils.ts` reduces every URL in the message to
+      `scheme://host`, dropping userinfo, path and query (which also removes Telegram `bot<token>` segments
+      and Slack/Discord webhook paths), masks `Bearer <token>` and `token=`/`key=`/`password=`/`secret=`
+      values with `***`, collapses whitespace, and truncates the result to 300 characters.
+- [ ] `notifications.utils.spec.ts` covers: a Telegram `https://api.telegram.org/bot123:ABC/sendMessage` URL
+      and a Slack `https://hooks.slack.com/services/T0/B0/XYZ` URL both reduce to `scheme://host`; userinfo,
+      query strings, bearer tokens and `token=`/`key=`/`password=`/`secret=` values are masked; whitespace is
+      collapsed; a long message is truncated to 300 characters.
 - [ ] Dispatcher spec covers: filter by disabled, filter by unconfigured, filter by below-minimum severity,
-      the loop guard, the three-attempt retry (sleeps of 1000 ms then 5000 ms) followed by self-report, a
-      success resolving a prior self-report, one channel's failure not blocking another, and order
-      preservation within one channel - using fake channels and a fake `sleep`.
+      the loop guard, a retryable failure retried three times (sleeps of 1000 ms then 5000 ms) followed by
+      self-report, a timeout and an HTTP 400 both ending delivery as failed without a retry, a channel that
+      never settles being aborted by the race against `AbortSignal.timeout(10_000)` and counted as failed, a
+      `null` rejection still producing a self-report with a sanitized message, a success resolving a prior
+      self-report, one channel's failure not blocking another, and order preservation within one channel -
+      using fake channels and a fake `sleep`.
 - [ ] Registry spec covers: duplicate-type registration throws, and `isChannel` correctly identifies
       registered types.
 - [ ] `cd apps/backend && npx jest src/modules/notifications` passes.
@@ -127,7 +142,7 @@ export interface INotificationChannel {
 	getType(): string;
 	isConfigured(): Promise<boolean>;
 	getMinSeverity(): Promise<NotificationSeverity>;
-	send(notification: NotificationEntity): Promise<void>;
+	send(notification: NotificationEntity, signal: AbortSignal): Promise<void>;   // honour the signal; the dispatcher races it anyway
 }
 
 export abstract class BaseNotificationChannel implements INotificationChannel {
@@ -136,15 +151,17 @@ export abstract class BaseNotificationChannel implements INotificationChannel {
 	async isConfigured(): Promise<boolean>;             // default: plugin enabled and required fields present, via abstract hasRequiredConfig(config)
 	async getMinSeverity(): Promise<NotificationSeverity>; // reads `min_severity` from the plugin config, default WARNING
 	protected abstract hasRequiredConfig(config: PluginConfigModel): boolean;
-	abstract send(notification: NotificationEntity): Promise<void>;
+	abstract send(notification: NotificationEntity, signal: AbortSignal): Promise<void>;
 	protected formatText(notification: NotificationEntity): string; // "[ERROR] Title\nmessage\nSource: x - 3 occurrences"
-	protected fetchWithTimeout(url: string, init: RequestInit): Promise<Response>; // AbortSignal.timeout(10_000)
+	protected fetchWithSignal(url: string, init: RequestInit, signal: AbortSignal): Promise<Response>; // passes the dispatcher's signal to fetch
+	protected isRetryable(error: unknown): boolean; // network error, HTTP 429 or 5xx -> true; timeout, other 4xx -> false (channels throw `ChannelDeliveryError { status?: number; retryable: boolean }`)
 }
 
 // notifications.utils.ts
 export function sanitizeErrorMessage(message: string): string;
-// strips `scheme://user:pass@` credentials to `scheme://***@`, drops URL query strings, replaces `Bearer <token>`
-// and `token=`/`key=`/`password=`/`secret=` values with `***`, collapses whitespace, truncates to 300 chars
+// reduces every URL to `scheme://host` (dropping userinfo, path and query - this also removes Telegram `bot<token>`
+// segments and Slack/Discord webhook paths), replaces `Bearer <token>` and `token=`/`key=`/`password=`/`secret=`
+// values with `***`, collapses whitespace, truncates to 300 chars
 
 // services/notification-channel-registry.service.ts
 export class NotificationChannelRegistryService {
@@ -162,11 +179,16 @@ the plan:
 - For each channel in parallel (`Promise.allSettled`): skip when the extension is disabled
   (`configService.getPluginConfig(type).enabled === false`), when `isConfigured()` is false, or when
   `SEVERITY_RANK[entity.severity] < SEVERITY_RANK[await channel.getMinSeverity()]`.
-- Attempts: 3, with delays of 1 000 ms and 5 000 ms between them (injectable `sleep` for tests); each attempt
-  awaits `send`; the timeout is the fixed 10 s of `fetchWithTimeout`, there is no per-channel timeout setting.
-- After the last failure: `logger.error` with channel type and `sanitizeErrorMessage(error.message)` (never
-  the URL), then
-  `notificationsService.notify({ source: channel.getType(), kind: ISSUE, key: 'delivery-failed', severity: WARNING, title: 'Notification delivery failed', message, actions: [{ type: 'link', label: 'Open channel settings', url: '/config/plugins/<type>' }] })`.
+- Attempts: up to 3, with delays of 1 000 ms and 5 000 ms between them (injectable `sleep` for tests). Each
+  attempt creates `AbortSignal.timeout(10_000)`, calls `send(notification, signal)` and races the promise
+  against the signal's abort so a channel that ignores the signal still settles. Only retryable failures get
+  another attempt: a network error (fetch rejected, no response) or an HTTP 429 / 5xx; a timeout (ambiguous
+  acceptance) and any other 4xx end the delivery immediately as failed. Rejections are normalised first:
+  `const message = error instanceof Error ? error.message : String(error)` (guarded so a throwing `toString`
+  yields a usable string instead of crashing the dispatcher).
+- After the final failure: `logger.error` with channel type and `sanitizeErrorMessage(message)` (never the
+  URL), then
+  `notificationsService.notify({ source: channel.getType(), kind: ISSUE, key: 'delivery-failed', severity: WARNING, title: 'Notification delivery failed', message: sanitizeErrorMessage(message), actions: [{ type: 'link', label: 'Open channel settings', url: '/config/plugins/<type>' }] })`.
 - After a success: `notificationsService.resolve(channel.getType(), 'delivery-failed')`.
 - Per-channel deliveries are serialised with a simple promise chain so a burst keeps message order.
 

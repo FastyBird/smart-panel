@@ -105,7 +105,7 @@ to discover them, and nothing tells them when a condition has cleared.
 | `notify()` | Inserts a row. | Upserts: `occurrences + 1`, replaces title/message/severity/actions/data, clears `read_at` and `dismissed_at` (re-opens the aggregation). | Upserts: `occurrences + 1`, replaces fields; keeps `read_at` and `dismissed_at` (a dismissed issue stays hidden while the condition persists). |
 | `resolve(source, key)` | Not applicable, logged and ignored. | Sets `resolved_at` (closes the aggregation window; the next `notify()` starts a new row). | Sets `resolved_at`. |
 | Boot | Untouched. | Untouched. | `resolved_at = now` for rows with `persistent = false` and `updated_at < bootStartedAt`. Sources re-raise during their own startup. |
-| User dismiss | `dismissed_at`. | `dismissed_at`; cleared by the next upsert. | `dismissed_at`; stays until resolved. |
+| User dismiss | `dismissed_at`. | `dismissed_at`; cleared by the next upsert. | `dismissed_at`; stays until resolved. For a `persistent` issue the dismissal also sets `resolved_at`, because the source declared that nothing re-detects the condition, so the dismissal is the only way it ends. |
 | Retention | Deleted `retention_days` after `dismissed_at`. | Deleted `retention_days` after the later of `dismissed_at` and `resolved_at`, once at least one is set. | Deleted only once resolved: `resolved_at` set and the later of `resolved_at` and `dismissed_at` older than `retention_days`. A dismissed but unresolved issue is kept, because the dismissal must keep hiding the source's re-raises. |
 | Channel delivery | On insert. | On insert only (later upserts update in-app only, which keeps repeated failures from spamming Discord). | On insert only. |
 
@@ -143,9 +143,10 @@ type NotificationAction =
 
 - `link.url` is either an admin-relative path (`/system/info`, resolved with `router.push`) or an absolute
   `http(s)` URL (opened in a new tab). Any other scheme is rejected at `notify()`.
-- `extension_action` is executed by the admin through the existing extensions composable. The backend applies
-  the action's `requiredRoles`, and the admin shows the existing confirmation dialog when the action is
-  `dangerous`.
+- `extension_action` is executed by the admin through the existing extensions composable
+  (`useActions().executeAction`), which posts directly. The backend applies the action's `requiredRoles`; the
+  notification composable itself fetches the action descriptor and shows the confirmation dialog when the action
+  is `dangerous`, and always confirms `service` stop and restart.
 - `service` is executed through the existing managed-services composable and endpoints.
 - Executing an action never changes the notification. The source resolves the issue when it observes the
   effect (the service reports `started`, the update is installed). A CTA that failed leaves the issue in
@@ -221,7 +222,7 @@ All routes `@Roles(UserRole.OWNER, UserRole.ADMIN)`.
 
 | Method and path | operationId | Notes |
 | --- | --- | --- |
-| `GET /notifications` | `get-notifications-module-notifications` | Query: `status` (`active` default, `dismissed`, `resolved`, `all`), `severity` (repeatable), `source`, `kind`, `unread` (boolean), `after_id`, `limit` (default 50, max 200). Total order `created_at DESC, id DESC`; `after_id` is the id of the last row the client holds and the page continues after that row in the total order, so equal timestamps are disambiguated by id. The controller fetches `limit + 1` rows to set meta `has_more` and `next_cursor` (the id of the last returned row), the response shape of `GET /logs`. |
+| `GET /notifications` | `get-notifications-module-notifications` | Query: `status` (`active` default, `dismissed`, `resolved`, `all`), `severity` (repeatable), `source`, `kind`, `unread` (boolean), `after_id`, `limit` (default 50, min 1, max 200; the service accepts `limit + 1` rows so the boundary survives the maximum page size). Total order `created_at DESC, id DESC`; `after_id` is the id of the last row the client holds and the page continues after that row in the total order, so equal timestamps are disambiguated by id. The controller fetches `limit + 1` rows to set meta `has_more` and `next_cursor` (the id of the last returned row), the response shape of `GET /logs`. |
 | `GET /notifications/:id` | `get-notifications-module-notification` | |
 | `PATCH /notifications/:id` | `update-notifications-module-notification` | Body `{ data: { read?: boolean, dismissed?: boolean } }`. |
 | `DELETE /notifications/:id` | `delete-notifications-module-notification` | Removes the row. Sources are not told; an issue whose condition persists is re-raised by the source. |
@@ -264,9 +265,9 @@ Rules for emitters:
 - A managed service should call `resolveAll(source)` in `stop()` so disabling a plugin clears its issues.
 - Never include secrets or tokens in `title`, `message` or `data`; the payload reaches every configured
   channel. Pass operational error text (a service's `lastError`, an HTTP error) through
-  `sanitizeErrorMessage()` from the notifications module before using it as `message`: it strips URL
-  credentials and query strings, bearer tokens and `token=` / `key=` / `password=` values, collapses whitespace
-  and truncates to 300 characters.
+  `sanitizeErrorMessage()` from the notifications module before using it as `message`: it reduces every URL to
+  `scheme://host` (which also removes Telegram bot tokens and Slack or Discord webhook paths), masks bearer tokens
+  and `token=` / `key=` / `password=` / `secret=` values, collapses whitespace and truncates to 300 characters.
 
 ### First emitters
 
@@ -309,7 +310,7 @@ interface INotificationChannel {
 	getType(): string;                                // plugin type, e.g. 'notifications-discord-plugin'
 	isConfigured(): Promise<boolean>;                 // false → skipped silently
 	getMinSeverity(): Promise<NotificationSeverity>;  // from the plugin config
-	send(notification: NotificationEntity): Promise<void>; // throw to report failure; the SDK mirrors this with a plain `Notification` type
+	send(notification: NotificationEntity, signal: AbortSignal): Promise<void>; // throw to report failure; honour the signal; the SDK mirrors this with a plain `Notification` type
 }
 ```
 
@@ -319,14 +320,21 @@ interface INotificationChannel {
   `ConfigService.getPluginConfig(type)`, and offers `formatText(notification)` (title, severity, source,
   message, occurrences) so senders share one wording.
 - The dispatcher runs on `Created` for rows whose `source` is not a registered channel type (loop guard), in
-  parallel across channels, sequentially per channel. Each `send` gets a fixed `AbortSignal.timeout(10_000)` (there is no
-  per-channel timeout setting) and up to 3 attempts, with 1 s and 5 s delays between them. After the last failure it logs and raises the `delivery-failed`
-  issue for that channel; the next success resolves it.
+  parallel across channels, sequentially per channel. Each attempt passes a fresh `AbortSignal.timeout(10_000)` into `send` and races the returned promise against that
+  signal, so a channel that ignores the signal still settles (there is no per-channel timeout setting). Up to 3
+  attempts with 1 s and 5 s delays between them, but only for failures that happen before the provider can have
+  accepted the message: a network error (the request never completed) or an HTTP 429 or 5xx response. A timeout is
+  ambiguous (the provider may have accepted the request) and any other 4xx is a configuration error, so neither is
+  retried; both count as a failed delivery. Rejections are normalised before use (`error instanceof Error ?
+  error.message : String(error)`), so a channel rejecting with a non-Error cannot break the self-report. After the last failure it logs and raises the `delivery-failed`
+  issue for that channel with `message = sanitizeErrorMessage(normalisedMessage)`; the next success resolves it.
 - Channels are skipped when the extension is disabled, when `isConfigured()` is false, or when the
   notification's severity ranks below `min_severity`.
 - Discord, Slack and Telegram reject a non-`https:` URL at config validation. The generic webhook accepts
   `http:` for trusted-network targets (n8n, Node-RED, Home Assistant on the LAN); its config form and the
-  developer docs state that exception and that the payload then travels in cleartext.
+  developer docs state that exception and that the payload then travels in cleartext. Its optional `headers`
+  map is a declared secret (redacted on read, `headers_configured` sibling) and is only ever sent over `https:`:
+  a configuration with an `http:` URL and any header is rejected at validation.
 - Every channel plugin registers one extension action `send-test` (category `diagnostics`) that sends a
   sample `info` notification through its own `send()`. The existing Actions tab renders it, so no channel UI
   is needed beyond the config form.
@@ -337,7 +345,7 @@ First channels, all through `fetch`, no dependencies:
 
 | Plugin | Config | Payload |
 | --- | --- | --- |
-| `notifications-webhook` | `url` (secret), `min_severity`, optional `headers` (JSON object of extra headers) | `POST` JSON: `{ id, source, kind, severity, title, message, occurrences, created_at, actions }` |
+| `notifications-webhook` | `url` (secret), `min_severity`, optional `headers` (secret; JSON object of extra headers, only allowed with an `https:` URL) | `POST` JSON: `{ id, source, kind, severity, title, message, occurrences, created_at, actions }` |
 | `notifications-discord` | `webhook_url` (secret), `min_severity`, optional `username` | Discord webhook embed with a colour per severity |
 | `notifications-slack` | `webhook_url` (secret), `min_severity` | Incoming-webhook `text` plus one attachment with a colour per severity |
 | `notifications-telegram` | `bot_token` (secret), `chat_id`, `min_severity` | `https://api.telegram.org/bot<token>/sendMessage`, HTML parse mode; `send` parses the JSON reply and throws unless `ok === true`, because the Bot API can answer HTTP 200 with `ok: false` |
@@ -366,7 +374,9 @@ apps/admin/src/modules/notifications/
   badge when above 1, the primary CTA button, and a dismiss control. Footer: "Mark all as read", "View all".
   Opening the popover does not mark anything read; clicking a row marks it read and opens the detail drawer.
 - **Page.** `/notifications` (menu entry, roles owner and admin). Filter bar with status, severity, source
-  and unread toggle synced to the query string through `useListQuery`. Filters are applied server-side: the
+  and unread toggle synced to the query string through `useListQuery`; the source options are the extension
+  types known to the extensions store (the closed set of possible sources), not only the sources present in
+  loaded rows. Filters are applied server-side: the
   store's `fetch` forwards `status`, `severity`, `source`, `kind` and `unread` as query parameters, keeps every
   row it has seen in `items` by id, and keeps the current query's ordered id list, `has_more` and
   `next_cursor` separately; a filter change resets that list before the first page loads, while the bell reads

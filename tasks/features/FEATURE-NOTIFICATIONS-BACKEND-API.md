@@ -72,8 +72,13 @@ existing API and gateway infrastructure.
 ## 4. Acceptance criteria
 
 - [ ] `GET /notifications` (`operationId: get-notifications-module-notifications`) parses `status` (default
-      `active`), `severity` (repeatable), `source`, `kind`, `unread`, `after_id`, `limit` (default 50, max
-      200) and calls `findAll` with `limit + 1` rows in the total order `created_at DESC, id DESC`.
+      `active`), `severity` (repeatable), `source`, `kind`, `unread`, `after_id`, `limit` (default 50,
+      clamped to `1 <= limit <= 200`) and calls `findAll` with `limit + 1` rows (the service's cap allows
+      201, so the boundary survives the maximum page size) in the total order `created_at DESC, id DESC`.
+- [ ] `limit=0` is clamped up to the minimum of 1, matching the `Math.min(Math.max(..., 1), 200)` pattern in
+      `logs.controller.ts`, not treated as unlimited or rejected.
+- [ ] A non-numeric `limit` (e.g. `limit=abc`) falls back to the default of 50, matching the `isNaN` fallback
+      in `logs.controller.ts`.
 - [ ] `GET /notifications` returns only the first `limit` rows and sets response meta
       `{ next_cursor: last returned row id or undefined, has_more: rows.length > limit }` through
       `setResponseMeta`, matching the pattern in `logs.controller.ts:99-103`.
@@ -99,6 +104,8 @@ existing API and gateway infrastructure.
       `next_cursor` set, the second with `has_more: false`.
 - [ ] e2e: as an owner token, create rows through the service, then list active, patch read, bulk dismiss and
       bulk remove through the REST endpoints.
+- [ ] e2e: `PATCH /notifications/:id` with `{ data: { dismissed: true } }` on a persistent issue also sets
+      `resolved_at`, inheriting the lifecycle rule from `FEATURE-NOTIFICATIONS-BACKEND-CORE`.
 - [ ] e2e: every notifications route returns 403 for a `USER`-role token and for a display token.
 - [ ] e2e: the migration applies cleanly on a fresh database.
 - [ ] `'NotificationsModule.'` is added to `EXCHANGE_ONLY_EVENT_PREFIXES` in `websocket.gateway.ts`; owner and
@@ -135,7 +142,7 @@ Route table from the plan (consumes N-1's `NotificationsService`, `Notifications
 
 | Route | operationId | Handler |
 | --- | --- | --- |
-| `GET /` | `get-notifications-module-notifications` | Parses `status`, `severity` (repeatable), `source`, `kind`, `unread`, `after_id`, `limit` (default 50, max 200); calls `findAll` with `limit + 1`; returns the first `limit` rows and sets meta `{ next_cursor: last returned row id or undefined, has_more: rows.length > limit }` through `setResponseMeta` exactly like `logs.controller.ts:99-103`. |
+| `GET /` | `get-notifications-module-notifications` | Parses `status`, `severity` (repeatable), `source`, `kind`, `unread`, `after_id`, `limit` (default 50, clamped to `1 <= limit <= 200`; the service cap allows 201 so the boundary survives the maximum page size); calls `findAll` with `limit + 1`; returns the first `limit` rows and sets meta `{ next_cursor: last returned row id or undefined, has_more: rows.length > limit }` through `setResponseMeta` exactly like `logs.controller.ts:99-103`. |
 | `GET /:id` | `get-notifications-module-notification` | 404 through `NotificationsNotFoundException`. |
 | `PATCH /:id` | `update-notifications-module-notification` | `UpdateNotificationDto { read?: boolean; dismissed?: boolean }` wrapped in `ReqUpdateNotificationDto { data }`. |
 | `DELETE /:id` | `delete-notifications-module-notification` | 204. |

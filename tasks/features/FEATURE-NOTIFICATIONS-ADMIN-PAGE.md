@@ -23,11 +23,14 @@ the three CTA types directly.
   bullet) and "Actions" section (the three CTA types).
 - Plan: `docs/superpowers/plans/2026-09-02-notifications-module.md`, Task N-6 section.
 - CTA execution reuses existing composables: `useActions().executeAction(extension_type, action_id, params)`
-  (`apps/admin/src/modules/extensions/composables/useActions.ts:136`, which already shows the
-  dangerous-action confirmation dialog, from `FEATURE-EXTENSION-ACTIONS-MVP`) and
+  (`apps/admin/src/modules/extensions/composables/useActions.ts:136`, from `FEATURE-EXTENSION-ACTIONS-MVP`)
+  posts directly and shows no confirmation of its own, so `useNotificationAction` itself fetches the action
+  descriptors for `extension_type` through the extensions composable and shows `ElMessageBox.confirm` (in a
+  separate `try` block) when the matching descriptor is `dangerous`. Service CTAs go through
   `useServiceActions().restartService | startService | stopService(extension_kind, extension_type,
   service_id)` (`apps/admin/src/modules/extensions/composables/useServiceActions.ts:9-11`, calling the same
-  endpoints as `apps/backend/src/modules/extensions/controllers/services.controller.ts`).
+  endpoints as `apps/backend/src/modules/extensions/controllers/services.controller.ts`), and
+  `useNotificationAction` always confirms `stop` and `restart` first via `ElMessageBox.confirm`.
 - Filter persistence pattern: `useListQuery`, as used elsewhere in the admin for query-string-synced filters.
 - Config form pattern: the module config element registered with `CONFIG_MODULE_MODULE_TYPE`, as other
   modules' settings forms do.
@@ -60,20 +63,24 @@ the three CTA types directly.
 
 - [ ] `useNotificationAction().execute(notification, action)` routes a `link` action to `router.push(url)`
       when relative, or `window.open(url, '_blank', 'noopener')` when an absolute `http(s)` URL.
-- [ ] `useNotificationAction().execute` routes an `extension_action` to
+- [ ] `useNotificationAction().execute` routes an `extension_action` by first fetching the action descriptors
+      for `extension_type` through the extensions composable; when the matching descriptor is `dangerous`, it
+      shows `ElMessageBox.confirm` first, in a `try` block separate from the request itself; it then calls
       `useActions().executeAction(extension_type, action_id, params)` from
-      `modules/extensions/composables/useActions.ts:136`, which already applies the dangerous-action
-      confirmation.
+      `modules/extensions/composables/useActions.ts:136`, which posts directly and shows no confirmation of
+      its own.
 - [ ] `useNotificationAction().execute` routes a `service` action to `useServiceActions().restartService |
       startService | stopService(extension_kind, extension_type, service_id)` from
-      `modules/extensions/composables/useServiceActions.ts:9-11`, confirming first via `ElMessageBox.confirm`
-      for `stop` and `restart`.
+      `modules/extensions/composables/useServiceActions.ts:9-11`, always confirming first via
+      `ElMessageBox.confirm` for `stop` and `restart`.
 - [ ] `useNotificationAction` exposes `isExecuting` for a loading state.
 - [ ] The route is registered as `{ path: 'notifications', name: RouteNames.NOTIFICATIONS, meta: { guards: {
       authenticated: true, roles: [admin, owner] }, title, icon: 'mdi:bell-outline', menu: 500 } }`.
-- [ ] The filter bar offers status (select), severity (multi-select), source (built from loaded rows) and an
-      unread toggle, synced to the query string through `useListQuery` and `NotificationsFilterSchema`;
-      filters are applied server-side through `store.fetch`, never filtered locally.
+- [ ] The filter bar offers status (select), severity (multi-select), source (select) and an unread toggle,
+      synced to the query string through `useListQuery` and `NotificationsFilterSchema`; filters are applied
+      server-side through `store.fetch`, never filtered locally.
+- [ ] The source filter's options are the extension types known to the extensions store - the closed set of
+      possible sources - not only the sources present in the currently loaded rows.
 - [ ] `useNotificationsDataSource` forwards the active filters to `store.fetch` and calls it with
       `append: false` whenever a filter changes, so the list is rebuilt from the first page.
 - [ ] The table has a selection column, severity tag, title, source, occurrences, relative time and an
@@ -86,7 +93,10 @@ the three CTA types directly.
       lifecycle timestamps, and delete/dismiss buttons.
 - [ ] `notifications-config-form.vue` exposes `retention_days` and `max_notifications` through the module
       config element, validating their ranges (1-365 and 50-5000 respectively).
-- [ ] `useNotificationAction.spec.ts` proves each action type is routed to the correct mocked collaborator.
+- [ ] `useNotificationAction.spec.ts` proves each action type is routed to the correct mocked collaborator,
+      that the confirmation dialog is shown before a `dangerous` extension action and before a `service`
+      `stop` or `restart`, and that cancelling the confirmation runs nothing - neither
+      `useActions().executeAction` nor the service composable is called.
 - [ ] A test proves the filter schema round-trips correctly through the query string.
 - [ ] A test proves the config form rejects out-of-range values.
 - [ ] `cd apps/admin && npx vitest run src/modules/notifications` passes.
@@ -117,16 +127,17 @@ export function useNotificationAction(): {
 	isExecuting: Ref<boolean>;
 }
 // link: relative -> router.push(url); absolute http(s) -> window.open(url, '_blank', 'noopener')
-// extension_action: `useActions().executeAction(extension_type, action_id, params)` from `modules/extensions/composables/useActions.ts:136`; the action's `dangerous` confirmation lives there already
+// extension_action: fetch the action descriptors for `extension_type` through the extensions composable, and when the matching descriptor is `dangerous` show `ElMessageBox.confirm` first (in a separate try block); then `useActions().executeAction(extension_type, action_id, params)` from `modules/extensions/composables/useActions.ts:136`, which posts directly and shows no confirmation itself
 // service: `useServiceActions().restartService | startService | stopService(extension_kind, extension_type, service_id)` from `modules/extensions/composables/useServiceActions.ts:9-11`, preceded by `ElMessageBox.confirm` for stop and restart
 ```
 
 Route: `{ path: 'notifications', name: RouteNames.NOTIFICATIONS, meta: { guards: { authenticated: true, roles: [admin, owner] }, title, icon: 'mdi:bell-outline', menu: 500 } }`.
 
-Page: filter bar (status select, severity multi-select, source select built from loaded rows, unread switch)
-synced through `useListQuery` with `NotificationsFilterSchema`; `useNotificationsDataSource` forwards the
-filters to `store.fetch` (server-side filtering) and calls it with `append: false` whenever a filter changes,
-so `listIds` is rebuilt from the first page; table with selection column, severity tag, title, source,
+Page: filter bar (status select, severity multi-select, source select whose options are the extension types
+from the extensions store so any valid source is selectable, unread switch) synced through `useListQuery`
+with `NotificationsFilterSchema`; `useNotificationsDataSource` forwards the filters to `store.fetch`
+(server-side filtering) and calls it with `append: false` whenever a filter changes, so `listIds` is rebuilt
+from the first page; table with selection column, severity tag, title, source,
 occurrences, relative time, actions column; bulk bar with mark read, mark unread, dismiss, delete (delete
 confirms first); "Load more" through `next_cursor`; row click opens the drawer (message with preserved
 newlines, `data` key/value table, all actions via `notification-actions.vue`, lifecycle timestamps, delete

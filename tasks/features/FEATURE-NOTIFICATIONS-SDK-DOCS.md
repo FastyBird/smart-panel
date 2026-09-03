@@ -63,8 +63,8 @@ covering the emitter and channel contracts.
 - [ ] `packages/extension-sdk/src/notification.types.ts` exports `NotificationKind`, `NotificationSeverity`,
       `NotificationAction` (the three-variant discriminated union: `link`, `extension_action`, `service`),
       `CreateNotificationInput`, and a `NotificationChannel` interface mirroring `INotificationChannel`
-      (`getType`, `isConfigured`, `getMinSeverity`, `send`) with a plain `Notification` payload type usable
-      outside the backend's TypeORM entity.
+      (`getType`, `isConfigured`, `getMinSeverity`, `send(notification, signal: AbortSignal)`) with a plain
+      `Notification` payload type usable outside the backend's TypeORM entity.
 - [ ] `packages/extension-sdk/src/index.ts` exports everything from `notification.types.ts`.
 - [ ] `packages/extension-sdk/README.md` documents the new exports.
 - [ ] `packages/example-extension/**` gains one `notify` call demonstrating the pattern, following the

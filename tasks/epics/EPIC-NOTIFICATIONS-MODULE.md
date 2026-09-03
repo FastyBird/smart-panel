@@ -174,8 +174,8 @@ I want one place - an in-admin bell and notifications page, optionally forwarded
 ## 6. Technical constraints
 
 - Never edit generated files: `spec/api/v1/openapi.json`, `apps/admin/src/openapi.ts`, `apps/panel/lib/api/`.
-  Change the Swagger sources and run `pnpm run generate:openapi`; commit the regenerated spec and panel
-  client.
+  All three outputs are gitignored and regenerated in CI. Change the Swagger sources and run
+  `pnpm run generate:openapi` to validate; commit nothing generated.
 - Tabs, single quotes, semicolons, trailing commas; print width 120 (backend) and 150 (admin); external
   imports first, then `../`, then `./`, with a blank line between groups.
 - Swagger decorators before NestJS decorators; every action has `@ApiOperation` with `tags`, `summary`,

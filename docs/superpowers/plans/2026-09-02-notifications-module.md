@@ -179,6 +179,7 @@ every model in `NOTIFICATIONS_SWAGGER_EXTRA_MODELS` and `extensionsService.regis
 - Event without key inserts a new row with `occurrences = 1`, `read_at/dismissed_at/resolved_at = null`.
 - Event with key upserts: second call returns the same id, `occurrences = 2`, title/message/severity/actions/data replaced, `read_at` and `dismissed_at` cleared.
 - Issue upserts: same id, `occurrences + 1`, fields replaced, `read_at` and `dismissed_at` preserved.
+- `dismiss(id, true)` on an issue with `persistent = true` also sets `resolved_at` (nothing re-detects such a condition, so the dismissal is how it ends); non-persistent issues and events set only `dismissed_at`.
 - Issue without key returns `null` and logs a warning; event `resolve` on an unkeyed row returns `false`.
 - `resolve` sets `resolved_at` and the next `notify` with the same key inserts a fresh row (the partial index permits it).
 - `resolveAll(source)` resolves every unresolved keyed row of that source, dismissed rows included (a dismissed unresolved issue must not outlive its plugin), and returns the count.
@@ -232,7 +233,7 @@ The table below lists controller-relative routes.
 
 | Route | operationId | Handler |
 | --- | --- | --- |
-| `GET /` | `get-notifications-module-notifications` | Parses `status`, `severity` (repeatable), `source`, `kind`, `unread`, `after_id`, `limit` (default 50, max 200); calls `findAll` with `limit + 1`; returns the first `limit` rows and sets meta `{ next_cursor: last returned row id or undefined, has_more: rows.length > limit }` through `setResponseMeta` (`logs.controller.ts:99-103` shows the meta call). |
+| `GET /` | `get-notifications-module-notifications` | Parses `status`, `severity` (repeatable), `source`, `kind`, `unread`, `after_id`, `limit` (default 50, clamped to `1 <= limit <= 200`; the service cap allows 201 so the boundary survives the maximum page size); calls `findAll` with `limit + 1`; returns the first `limit` rows and sets meta `{ next_cursor: last returned row id or undefined, has_more: rows.length > limit }` through `setResponseMeta` (`logs.controller.ts:99-103` shows the meta call). |
 | `GET /:id` | `get-notifications-module-notification` | 404 through `NotificationsNotFoundException`. |
 | `PATCH /:id` | `update-notifications-module-notification` | `UpdateNotificationDto { read?: boolean; dismissed?: boolean }` wrapped in `ReqUpdateNotificationDto { data }`. |
 | `DELETE /:id` | `delete-notifications-module-notification` | 204. |
@@ -280,7 +281,7 @@ export interface INotificationChannel {
 	getType(): string;
 	isConfigured(): Promise<boolean>;
 	getMinSeverity(): Promise<NotificationSeverity>;
-	send(notification: NotificationEntity): Promise<void>;
+	send(notification: NotificationEntity, signal: AbortSignal): Promise<void>;   // honour the signal; the dispatcher races it anyway
 }
 
 export abstract class BaseNotificationChannel implements INotificationChannel {
@@ -289,15 +290,17 @@ export abstract class BaseNotificationChannel implements INotificationChannel {
 	async isConfigured(): Promise<boolean>;             // default: plugin enabled and required fields present, via abstract hasRequiredConfig(config)
 	async getMinSeverity(): Promise<NotificationSeverity>; // reads `min_severity` from the plugin config, default WARNING
 	protected abstract hasRequiredConfig(config: PluginConfigModel): boolean;
-	abstract send(notification: NotificationEntity): Promise<void>;
+	abstract send(notification: NotificationEntity, signal: AbortSignal): Promise<void>;
 	protected formatText(notification: NotificationEntity): string; // "[ERROR] Title\nmessage\nSource: x · 3 occurrences"
-	protected fetchWithTimeout(url: string, init: RequestInit): Promise<Response>; // AbortSignal.timeout(10_000)
+	protected fetchWithSignal(url: string, init: RequestInit, signal: AbortSignal): Promise<Response>; // passes the dispatcher's signal to fetch
+	protected isRetryable(error: unknown): boolean; // network error, HTTP 429 or 5xx → true; timeout, other 4xx → false (channels throw `ChannelDeliveryError { status?: number; retryable: boolean }`)
 }
 
 // notifications.utils.ts
 export function sanitizeErrorMessage(message: string): string;
-// strips `scheme://user:pass@` credentials to `scheme://***@`, drops URL query strings, replaces `Bearer <token>`
-// and `token=`/`key=`/`password=`/`secret=` values with `***`, collapses whitespace, truncates to 300 chars
+// reduces every URL to `scheme://host` (dropping userinfo, path and query — this also removes Telegram `bot<token>`
+// segments and Slack/Discord webhook paths), replaces `Bearer <token>` and `token=`/`key=`/`password=`/`secret=`
+// values with `***`, collapses whitespace, truncates to 300 chars
 
 // services/notification-channel-registry.service.ts
 export class NotificationChannelRegistryService {
@@ -313,17 +316,20 @@ export class NotificationChannelRegistryService {
 - For each channel in parallel (`Promise.allSettled`): skip when the extension is disabled
   (`configService.getPluginConfig(type).enabled === false`), when `isConfigured()` is false, or when
   `SEVERITY_RANK[entity.severity] < SEVERITY_RANK[await channel.getMinSeverity()]`.
-- Attempts: 3, with delays of 1 000 ms and 5 000 ms between them (injectable `sleep` for tests); each attempt awaits `send`; the timeout is the fixed 10 s of `fetchWithTimeout`, there is no per-channel timeout setting.
-- After the final failure: `logger.error` with channel type and `sanitizeErrorMessage(error.message)` (never the URL), then
+- Attempts: up to 3, with delays of 1 000 ms and 5 000 ms between them (injectable `sleep` for tests). Each attempt creates `AbortSignal.timeout(10_000)`, calls `send(notification, signal)` and races the promise against the signal's abort so a channel that ignores the signal still settles. Only retryable failures get another attempt: a network error (fetch rejected, no response) or an HTTP 429 / 5xx; a timeout (ambiguous acceptance) and any other 4xx end the delivery immediately as failed. Rejections are normalised first: `const message = error instanceof Error ? error.message : String(error)` (guarded so a throwing `toString` yields `'unknown error'`).
+- After the final failure: `logger.error` with channel type and `sanitizeErrorMessage(message)` (never the URL), then, with `message: sanitizeErrorMessage(message)` in the payload,
   `notificationsService.notify({ source: channel.getType(), kind: ISSUE, key: 'delivery-failed', severity: WARNING, title: 'Notification delivery failed', message, actions: [{ type: 'link', label: 'Open channel settings', url: '/config/plugins/<type>' }] })`.
 - After a success: `notificationsService.resolve(channel.getType(), 'delivery-failed')`.
 - Per-channel deliveries are serialised with a simple promise chain so a burst keeps message order.
 
 **Tests (dispatcher spec, with fake channels and a fake `sleep`):** filter by disabled, unconfigured, below
-min severity; loop guard; retry three times (sleeps of 1 000 then 5 000 ms) then self-report; success resolves
+min severity; loop guard; a retryable failure is retried three times (sleeps of 1 000 then 5 000 ms) then
+self-reported; a timeout and a 400 are not retried; a channel that never settles is aborted by the race and
+counted as failed; a `null` rejection still produces a self-report with a sanitized message; success resolves
 the self-report; one failing channel does not block another; order preserved within one channel. Registry
-spec: duplicate throws, `isChannel`. Utils spec: credentials, query strings, bearer tokens and `token=` values
-are masked; whitespace collapsed; 300-character truncation.
+spec: duplicate throws, `isChannel`. Utils spec: a Telegram `https://api.telegram.org/bot123:ABC/sendMessage`
+URL and a Slack `https://hooks.slack.com/services/T0/B0/XYZ` URL both reduce to `scheme://host`; userinfo,
+query strings, bearer tokens and `token=` values are masked; whitespace collapsed; 300-character truncation.
 
 **Verification:**
 - [ ] `cd apps/backend && npx jest src/modules/notifications`
@@ -366,8 +372,9 @@ actions: [
 
 // auth: failed login (hour bucket in UTC, username truncated to 64 chars, ip 'unknown' when absent)
 key: `login-failed:${username}:${ip ?? 'unknown'}:${bucket}`, kind: EVENT, severity: WARNING,
-title: `Failed login attempt for "${username}"`, message: `From ${ip ?? 'unknown'} · ${count} attempt(s) this hour`,
-data: { username, ip, reason },
+// const client = ip ?? 'unknown'; used in the key, the message and the data
+title: `Failed login attempt for "${username}"`, message: `From ${client} · ${count} attempt(s) this hour`,
+data: { username, ip: client, reason },
 ```
 
 The auth emitter keeps an in-memory `Map<string, number>` counter per key (pruned when the bucket changes) so
@@ -515,14 +522,14 @@ export function useNotificationAction(): {
 	isExecuting: Ref<boolean>;
 }
 // link: relative → router.push(url); absolute http(s) → window.open(url, '_blank', 'noopener')
-// extension_action: `useActions().executeAction(extension_type, action_id, params)` from `modules/extensions/composables/useActions.ts:136`; the action's `dangerous` confirmation lives there already
+// extension_action: fetch the action descriptors for `extension_type` through the extensions composable, and when the matching descriptor is `dangerous` show `ElMessageBox.confirm` first (in a separate try block); then `useActions().executeAction(extension_type, action_id, params)` from `modules/extensions/composables/useActions.ts:136`, which posts directly and shows no confirmation itself
 // service: `useServiceActions().restartService | startService | stopService(extension_kind, extension_type, service_id)` from `modules/extensions/composables/useServiceActions.ts:9-11`, preceded by `ElMessageBox.confirm` for stop and restart
 ```
 
 Route: `{ path: 'notifications', name: RouteNames.NOTIFICATIONS, meta: { guards: { authenticated: true, roles: [admin, owner] }, title, icon: 'mdi:bell-outline', menu: 500 } }`.
 
-**Page:** filter bar (status select, severity multi-select, source select built from loaded rows, unread
-switch) synced through `useListQuery` with `NotificationsFilterSchema`; `useNotificationsDataSource` forwards
+**Page:** filter bar (status select, severity multi-select, source select whose options are the extension types
+from the extensions store so any valid source is selectable, unread switch) synced through `useListQuery` with `NotificationsFilterSchema`; `useNotificationsDataSource` forwards
 the filters to `store.fetch` (server-side filtering) and calls it with `append: false` whenever a filter
 changes, so `listIds` is rebuilt from the first page; table with selection column,
 severity tag, title, source, occurrences, relative time, actions column; bulk bar with mark read, mark
@@ -530,8 +537,10 @@ unread, dismiss, delete (delete confirms first); "Load more" when `hasMore`; row
 (message with preserved newlines, `data` key/value table, all actions via `notification-actions.vue`,
 lifecycle timestamps, delete and dismiss buttons).
 
-**Tests:** `useNotificationAction` routes each action type to the right collaborator (mocked); the page
-filter schema round-trips through the query string; the config form validates ranges.
+**Tests:** `useNotificationAction` routes each action type to the right collaborator (mocked), confirms before
+a `dangerous` extension action and before a service stop or restart, and does not run the action when the
+confirmation is cancelled; the page filter schema round-trips through the query string; the config form
+validates ranges.
 
 **Verification:**
 - [ ] `cd apps/admin && npx vitest run src/modules/notifications`
@@ -581,8 +590,9 @@ the tone of `modules/extensions/locales/*.json`.
 
 ```ts
 // backend webhook config model (NotificationsWebhookPluginDataConfig) — wire names
-url: string (writeOnly), url_configured: boolean, min_severity: NotificationSeverity (default 'warning'), headers: Record<string, string> | null
-// secretFields: [{ path: 'url', configuredPath: 'url_configured', inputPaths: ['url'] }]
+url: string (writeOnly), url_configured: boolean, min_severity: NotificationSeverity (default 'warning'), headers: Record<string, string> | null (writeOnly), headers_configured: boolean
+// secretFields: [{ path: 'url', configuredPath: 'url_configured', inputPaths: ['url'] }, { path: 'headers', configuredPath: 'headers_configured', inputPaths: ['headers'] }]
+// validation: headers are only allowed together with an https: url (an http: url with any header is rejected)
 // discord config model (NotificationsDiscordPluginDataConfig)
 webhook_url (writeOnly), webhook_url_configured, min_severity, username: string | null
 ```
@@ -597,7 +607,7 @@ with colours `info 0x3498db`, `warning 0xf39c12`, `error 0xe74c3c`, `critical 0x
 builds a fake `NotificationEntity` (`severity: INFO`, title `Test notification from Smart Panel`) and calls the
 channel's `send`, returning `{ success, message }`.
 
-**Tests:** channel spec with mocked `fetch` asserting URL, method, headers and body; the fixed 10-second timeout signal is passed; a Discord `http:` URL is rejected by the DTO while the webhook accepts it;
+**Tests:** channel spec with mocked `fetch` asserting URL, method, headers and body; the dispatcher's signal is passed to `fetch`; a Discord `http:` URL is rejected by the DTO while the webhook accepts it; an `http:` webhook URL combined with headers is rejected; `ConfigSecretsService.toPublic` strips `headers` and adds `headers_configured`;
 `hasRequiredConfig` false without the secret; `send-test` returns failure text on throw; redaction through
 `ConfigSecretsService.toPublic` strips the secret and adds `_configured`; the two regression tables gain a
 row per secret and stay green.

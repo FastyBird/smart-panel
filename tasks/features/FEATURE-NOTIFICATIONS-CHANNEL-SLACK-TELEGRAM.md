@@ -78,7 +78,9 @@ secret handling and test action as the webhook and Discord channels.
 ## 6. Technical constraints
 
 - Depends on: N-8 / FEATURE-NOTIFICATIONS-CHANNEL-WEBHOOK-DISCORD.
-- No new runtime dependencies; both channels use the global `fetch` with `AbortSignal.timeout`.
+- No new runtime dependencies; both channels call `fetchWithSignal(url, init, signal)` with the
+  `AbortSignal` the dispatcher passes into `send(notification, signal)`, not a channel-owned
+  `AbortSignal.timeout`.
 - The Telegram bot token must never appear in logs.
 - Mirror the exact file layout, naming and secret pattern
   `FEATURE-NOTIFICATIONS-CHANNEL-WEBHOOK-DISCORD` established rather than inventing a new shape.

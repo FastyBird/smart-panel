@@ -83,11 +83,12 @@ notifications for these conditions.
 - [ ] `AuthService.login` accepts an optional `context?: { ip?: string }` parameter and existing callers still
       compile unchanged.
 - [ ] `AuthController` passes `req.ip` as the login context.
-- [ ] Each of the three failure paths in `auth.service.ts:102,108,117` calls `notify` with `kind: EVENT`,
-      `severity: WARNING`, `key: 'login-failed:<username>:<ip>:<yyyy-mm-dd-hh>'` (UTC hour bucket, username
-      truncated to 64 characters, `ip` is `unknown` when absent), `title: 'Failed login attempt for
-      "<username>"'`, `message: 'From <ip|unknown> - <count> attempt(s) this hour'`,
-      `data: { username, ip, reason }`.
+- [ ] Each of the three failure paths in `auth.service.ts:102,108,117` normalises the IP once
+      (`const client = ip ?? 'unknown'`) and reuses that same value in the key, the message and `data.ip`,
+      calling `notify` with `kind: EVENT`, `severity: WARNING`,
+      `key: 'login-failed:<username>:<client>:<yyyy-mm-dd-hh>'` (UTC hour bucket, username truncated to 64
+      characters), `title: 'Failed login attempt for "<username>"'`,
+      `message: 'From <client> - <count> attempt(s) this hour'`, `data: { username, ip: client, reason }`.
 - [ ] An in-memory `Map<string, number>` counter tracks attempts per key and is pruned when the hour bucket
       changes, so the message's `count` increments correctly.
 - [ ] The auth spec proves three failures within one hour call `notify` three times with the same key and
@@ -133,8 +134,9 @@ actions: [
 
 // auth: failed login (hour bucket in UTC, username truncated to 64 chars, ip 'unknown' when absent)
 key: `login-failed:${username}:${ip ?? 'unknown'}:${bucket}`, kind: EVENT, severity: WARNING,
-title: `Failed login attempt for "${username}"`, message: `From ${ip ?? 'unknown'} - ${count} attempt(s) this hour`,
-data: { username, ip, reason },
+// const client = ip ?? 'unknown'; used in the key, the message and the data
+title: `Failed login attempt for "${username}"`, message: `From ${client} - ${count} attempt(s) this hour`,
+data: { username, ip: client, reason },
 ```
 
 The auth emitter keeps an in-memory `Map<string, number>` counter per key (pruned when the bucket changes) so
