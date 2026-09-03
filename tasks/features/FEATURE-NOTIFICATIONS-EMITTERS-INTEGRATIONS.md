@@ -51,8 +51,8 @@ security alerts to raise and resolve notifications.
 - New `StorageFallbackMonitorService`, `@Cron('* * * * *')`, comparing the last observed
   `StorageService.isUsingFallback()` value with the current one: raises `issue`, key `fallback-active`,
   severity `warning`, on the false->true transition, with a `link` CTA to `/extensions?tab=services`,
-  resolved on the true->false transition; also raises `issue`, key `storage-unavailable`, severity `error`,
-  when `isConnected()` is `false`.
+  resolved on the true->false transition; tracks `isConnected()` the same way and raises `issue`, key
+  `storage-unavailable`, severity `error`, on its true->false transition, resolving it on false->true.
 - New `SystemThrottleMonitorService`, `@Cron('*/5 * * * *')`, reading `SystemService.getThrottleStatus()`
   fields `undervoltage`, `throttling`, `frequencyCapping` and `softTempLimit`: raises `issue`, key
   `throttle:undervoltage`, severity `critical`, and keys `throttle:throttling`, `throttle:frequency_capping`,
@@ -85,7 +85,9 @@ security alerts to raise and resolve notifications.
       })` on the false->true transition.
 - [ ] `StorageFallbackMonitorService` calls `resolve(..., 'fallback-active')` on the true->false transition.
 - [ ] `StorageFallbackMonitorService` raises `notify({ kind: ISSUE, key: 'storage-unavailable', severity:
-      ERROR, ... })` when `StorageService.isConnected()` is `false`.
+      ERROR, ... })` on the `StorageService.isConnected()` true->false transition and calls
+      `resolve(..., 'storage-unavailable')` on the false->true transition; a disconnect/reconnect test covers
+      both, and a stable disconnected state produces one raise, not one per tick.
 - [ ] `StorageFallbackMonitorService` is registered in `storage.module.ts`.
 - [ ] `SystemThrottleMonitorService` runs on `@Cron('*/5 * * * *')`, reads `SystemService.getThrottleStatus()`
       fields `undervoltage`, `throttling`, `frequencyCapping` and `softTempLimit`, and raises `issue` for each
@@ -129,8 +131,9 @@ From the plan's Task N-10 Files list (verbatim):
 - Create: `apps/backend/src/modules/storage/services/storage-fallback-monitor.service.ts`
   (`@Cron('* * * * *')`; compares the last observed value of `StorageService.isUsingFallback()`
   (`storage.service.ts:122`, a pure getter with no transition hook) with the current one; raises
-  `fallback-active` (`warning`) on the false->true transition and resolves on true->false; raises
-  `storage-unavailable` (`error`) when `isConnected()` is false) and spec; register in `storage.module.ts`
+  `fallback-active` (`warning`) on the false->true transition and resolves on true->false; tracks
+  `isConnected()` the same way, raising `storage-unavailable` (`error`) on true->false and resolving it on
+  false->true; tests cover both transition pairs) and spec; register in `storage.module.ts`
 - Create: `apps/backend/src/modules/system/services/system-throttle-monitor.service.ts` (`@Cron('*/5 * * * *')`,
   reads `SystemService.getThrottleStatus()` (`system.service.ts:29`, fields `undervoltage`,
   `frequencyCapping`, `throttling`, `softTempLimit`), raises `throttle:undervoltage` (`critical`),
