@@ -18,3 +18,10 @@ export class SystemValidationException extends SystemException {
 		this.name = 'SystemValidationException';
 	}
 }
+
+export class PrivilegedWorkerUnavailableException extends SystemException {
+	constructor(message: string) {
+		super(message);
+		this.name = 'PrivilegedWorkerUnavailableException';
+	}
+}

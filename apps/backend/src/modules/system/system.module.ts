@@ -40,6 +40,7 @@ import { BackupService } from './services/backup.service';
 import { DisplayCommandService } from './services/display-command.service';
 import { HouseModeActionsService } from './services/house-mode-actions.service';
 import { OnboardingService } from './services/onboarding.service';
+import { PrivilegedWorkerService } from './services/privileged-worker.service';
 import { SystemCommandService } from './services/system-command.service';
 import { SystemLoggerService } from './services/system-logger.service';
 import { SystemService } from './services/system.service';
@@ -88,6 +89,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		UpdateServerCommand,
 		UpdatePanelCommand,
 		BackupService,
+		PrivilegedWorkerService,
 	],
 	controllers: [SystemController, LogsController, UpdateController, BackupController],
 	exports: [SystemService, SystemLoggerService],

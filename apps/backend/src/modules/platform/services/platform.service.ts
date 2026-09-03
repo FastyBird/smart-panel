@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from 'fs';
+import { execFile } from 'node:child_process';
 import si from 'systeminformation';
+import { promisify } from 'util';
 
 import { Injectable } from '@nestjs/common';
 
@@ -12,11 +14,23 @@ import { GenericPlatform } from '../platforms/generic.platform';
 import { HomeAssistantPlatform } from '../platforms/home-assistant.platform';
 import { RaspberryPlatform } from '../platforms/raspberry.platform';
 
+const execFileAsync = promisify(execFile);
+
+// Platforms that never own the host's systemd/sudoers configuration — privileged
+// workers (OS update, Tailscale setup, ...) are never available there, so there is
+// nothing to probe.
+const PRIVILEGED_WORKERS_UNSUPPORTED_PLATFORMS: ReadonlySet<PlatformType> = new Set([
+	PlatformType.DOCKER,
+	PlatformType.HOME_ASSISTANT,
+	PlatformType.DEVELOPMENT,
+]);
+
 @Injectable()
 export class PlatformService {
 	private platform: Platform;
 	private platformType: PlatformType;
 	private readonly logger = createExtensionLogger(PLATFORM_MODULE_NAME, 'PlatformService');
+	private privilegedWorkersSupportedCache: boolean | null = null;
 
 	constructor() {
 		this.detectPlatform()
@@ -40,6 +54,33 @@ export class PlatformService {
 
 	getPlatformType(): PlatformType {
 		return this.platformType;
+	}
+
+	/**
+	 * True when this platform can run privileged operations (OS update, Tailscale setup, ...)
+	 * through PrivilegedWorkerService — i.e. passwordless sudo and systemd-run are both
+	 * available. Always false for docker, home-assistant and development. Probed at most once
+	 * and cached for the life of the process.
+	 */
+	async supportsPrivilegedWorkers(): Promise<boolean> {
+		if (this.privilegedWorkersSupportedCache !== null) {
+			return this.privilegedWorkersSupportedCache;
+		}
+
+		if (PRIVILEGED_WORKERS_UNSUPPORTED_PLATFORMS.has(this.platformType)) {
+			this.privilegedWorkersSupportedCache = false;
+
+			return false;
+		}
+
+		const [sudoAvailable, systemdRunAvailable] = await Promise.all([
+			this.probeSudoNonInteractive(),
+			this.probeSystemdRunAvailable(),
+		]);
+
+		this.privilegedWorkersSupportedCache = sudoAvailable && systemdRunAvailable;
+
+		return this.privilegedWorkersSupportedCache;
 	}
 
 	getSystemInfo() {
@@ -178,6 +219,28 @@ export class PlatformService {
 		}
 
 		return false;
+	}
+
+	/** Passwordless sudo probe — mirrors the check update-worker.sh itself runs before it relies on sudo -n. */
+	private async probeSudoNonInteractive(): Promise<boolean> {
+		try {
+			await execFileAsync('sudo', ['-n', '/usr/bin/true'], { timeout: 2000 });
+
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	/** systemd-run presence probe — privileged jobs run inside a systemd-run --scope. */
+	private async probeSystemdRunAvailable(): Promise<boolean> {
+		try {
+			await execFileAsync('which', ['systemd-run'], { timeout: 2000 });
+
+			return true;
+		} catch {
+			return false;
+		}
 	}
 
 	private createPlatform(type: PlatformType): Platform {

@@ -5,6 +5,7 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { execFile } from 'node:child_process';
 import si, { Systeminformation } from 'systeminformation';
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -22,6 +23,25 @@ import { HomeAssistantPlatform } from '../platforms/home-assistant.platform';
 import { RaspberryPlatform } from '../platforms/raspberry.platform';
 
 import { PlatformService } from './platform.service';
+
+// Only execFile is replaced — other exports (execSync, spawn, ...) stay real so the
+// platform strategy classes imported above keep working outside the tests that need this.
+jest.mock('node:child_process', () => ({
+	...jest.requireActual<typeof import('node:child_process')>('node:child_process'),
+	execFile: jest.fn(),
+}));
+
+type ExecFileCallback = (error: Error | null) => void;
+
+function mockExecFile(resolve: (file: string) => boolean): void {
+	(execFile as unknown as jest.Mock).mockImplementation((file: string, ...rest: unknown[]) => {
+		const callback = rest[rest.length - 1] as ExecFileCallback;
+
+		callback(resolve(file) ? null : new Error(`${file} probe failed`));
+
+		return {};
+	});
+}
 
 describe('PlatformService', () => {
 	let service: PlatformService;
@@ -191,6 +211,72 @@ describe('PlatformService', () => {
 
 			expect(result).toEqual(toInstance(NetworkStatsDto, mockNetworkStats));
 			expect(service['platform'].getNetworkStats).toHaveBeenCalled();
+		});
+	});
+
+	describe('supportsPrivilegedWorkers', () => {
+		it.each([PlatformType.DOCKER, PlatformType.HOME_ASSISTANT, PlatformType.DEVELOPMENT])(
+			'returns false for %s without probing sudo/systemd-run',
+			async (platformType) => {
+				service['platformType'] = platformType;
+
+				await expect(service.supportsPrivilegedWorkers()).resolves.toBe(false);
+				expect(execFile).not.toHaveBeenCalled();
+			},
+		);
+
+		it('returns true for raspberry when passwordless sudo and systemd-run are both available', async () => {
+			service['platformType'] = PlatformType.RASPBERRY;
+
+			mockExecFile(() => true);
+
+			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(true);
+			expect(execFile).toHaveBeenCalledWith('sudo', ['-n', '/usr/bin/true'], { timeout: 2000 }, expect.any(Function));
+			expect(execFile).toHaveBeenCalledWith('which', ['systemd-run'], { timeout: 2000 }, expect.any(Function));
+		});
+
+		it('returns true for generic when passwordless sudo and systemd-run are both available', async () => {
+			service['platformType'] = PlatformType.GENERIC;
+
+			mockExecFile(() => true);
+
+			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(true);
+		});
+
+		it('returns false when passwordless sudo is unavailable', async () => {
+			service['platformType'] = PlatformType.RASPBERRY;
+
+			mockExecFile((file) => file !== 'sudo');
+
+			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(false);
+		});
+
+		it('returns false when systemd-run is not on PATH', async () => {
+			service['platformType'] = PlatformType.RASPBERRY;
+
+			mockExecFile((file) => file !== 'which');
+
+			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(false);
+		});
+
+		it('probes only once and caches the result across repeated calls', async () => {
+			service['platformType'] = PlatformType.RASPBERRY;
+
+			mockExecFile(() => true);
+
+			await service.supportsPrivilegedWorkers();
+			await service.supportsPrivilegedWorkers();
+
+			expect(execFile).toHaveBeenCalledTimes(2); // one sudo + one systemd-run probe, first call only
+		});
+
+		it('caches a false result for an unsupported platform without probing on repeated calls', async () => {
+			service['platformType'] = PlatformType.DOCKER;
+
+			await service.supportsPrivilegedWorkers();
+			await service.supportsPrivilegedWorkers();
+
+			expect(execFile).not.toHaveBeenCalled();
 		});
 	});
 });
