@@ -100,6 +100,18 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	 */
 	private unexpectedCloseStreak = 0;
 
+	// Bumped every time connect() creates a socket, and again by stop(). A close handler
+	// closes over the generation active when its own socket was created; a continuation that
+	// resumes (after an await) checks it against the current value to tell whether it is still
+	// talking about the socket that is actually active, or a stopped / superseded one.
+	private socketGeneration = 0;
+
+	// The close-handling continuation currently in flight for the current socket, if any.
+	// stop() awaits it before calling resolveAll(), so a notify() it starts is either fully
+	// written (and so visible for resolveAll() to clean up) or never started, never left to
+	// create an issue after resolveAll() already decided nothing was open.
+	private pendingUnexpectedClose: Promise<void> | null = null;
+
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,
@@ -209,6 +221,21 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 				this.reconnectTimeout = null;
 			}
 
+			// Invalidate the current socket generation before waiting for any close-handling
+			// continuation still in flight for it, so by the time that continuation next checks
+			// its generation - before raising, and again before scheduling a reconnect - it
+			// already sees itself as stale.
+			this.socketGeneration += 1;
+
+			if (this.pendingUnexpectedClose !== null) {
+				try {
+					await this.pendingUnexpectedClose;
+				} catch {
+					// handleUnexpectedClose is not expected to reject - notify() never throws -
+					// but stop() must still finish and resolve every open issue regardless.
+				}
+			}
+
 			this.disconnect();
 
 			this.state = 'stopped';
@@ -216,6 +243,10 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 			this.connectionIssueActive = false;
 			this.unexpectedCloseStreak = 0;
 
+			// Waiting for the continuation above (rather than only invalidating its generation)
+			// means any notify() it started is guaranteed to have finished - and so be visible
+			// here - before resolveAll() runs, so nothing it wrote can survive as an issue
+			// resolveAll() already decided the plugin has none of.
 			await this.notifications.resolveAll(DEVICES_HOME_ASSISTANT_PLUGIN_NAME);
 		});
 	}
@@ -292,6 +323,13 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 		// Clear the intentional disconnect flag when starting a new connection
 		this.intentionalDisconnect = false;
 
+		// This socket's generation, captured by its own event handlers below. A fresh connect()
+		// - a legitimate reconnect or a restart - always supersedes whatever generation came
+		// before it, so any continuation still closed over the old one can tell it is stale.
+		this.socketGeneration += 1;
+
+		const generation = this.socketGeneration;
+
 		// The Supervisor proxy exposes WS at /core/websocket, not /core/api/websocket
 		const wsPath = this.supervisorService.isInSupervisorMode() ? '/websocket' : '/api/websocket';
 		const url = new URL(`${this.baseUrl}${wsPath}`);
@@ -332,7 +370,10 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 			// Skip if this was an intentional disconnect (e.g., from onConfigChanged or stop)
 			if (this.state === 'started' && !this.intentionalDisconnect) {
 				this.logger.warn('WebSocket connection closed. Reconnecting...');
-				void this.handleUnexpectedClose();
+
+				this.pendingUnexpectedClose = this.handleUnexpectedClose(generation).finally(() => {
+					this.pendingUnexpectedClose = null;
+				});
 			}
 		});
 
@@ -533,12 +574,26 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	 * reconnect that succeeds - never reaches the notification module: `auth_ok` resets the
 	 * streak to 0 before a second close could ever be counted. Only when the reconnect
 	 * attempt itself also ends in a close does this raise, on the second consecutive count.
+	 *
+	 * `generation` is the socket this close belongs to, captured by connect() when it created
+	 * that socket. stop() bumps `socketGeneration` and awaits `pendingUnexpectedClose` before it
+	 * calls resolveAll(), so this checks it both before raising and again before scheduling a
+	 * reconnect - the two points separated by an await where stop() could have run in between -
+	 * rather than acting on behalf of a socket nothing wants any more.
 	 */
-	private async handleUnexpectedClose(): Promise<void> {
+	private async handleUnexpectedClose(generation: number): Promise<void> {
+		if (generation !== this.socketGeneration) {
+			return;
+		}
+
 		this.unexpectedCloseStreak += 1;
 
 		if (this.unexpectedCloseStreak > 1) {
 			await this.raiseConnectionIssue('WebSocket connection closed unexpectedly and the reconnect attempt also failed');
+		}
+
+		if (generation !== this.socketGeneration) {
+			return;
 		}
 
 		this.scheduleReconnect();
@@ -593,10 +648,13 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 			return;
 		}
 
-		this.connectionIssueActive = false;
-
+		// Cleared only on the success path: a rejected resolve leaves the flag active so the
+		// next auth_ok retries it, instead of the issue staying open forever with nothing left
+		// to revisit it.
 		try {
 			await this.notifications.resolve(DEVICES_HOME_ASSISTANT_PLUGIN_NAME, 'connection');
+
+			this.connectionIssueActive = false;
 		} catch (error) {
 			const err = error as Error;
 
@@ -606,6 +664,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 
 	private scheduleReconnect() {
 		const delay = Math.min(30000, 5000 * ++this.retryCount);
+		const generation = this.socketGeneration;
 
 		this.logger.warn(`Reconnecting in ${delay / 1000}s...`);
 
@@ -613,7 +672,11 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 			this.reconnectTimeout = setTimeout(() => {
 				this.reconnectTimeout = null;
 
-				if (this.state === 'started' && !this.intentionalDisconnect) {
+				// A superseded generation means a newer connect() (a fresh reconnect through
+				// another path, or a restart) already replaced the socket this timer was
+				// scheduled for - connecting again here would create a second, unwanted socket
+				// alongside it.
+				if (generation === this.socketGeneration && this.state === 'started' && !this.intentionalDisconnect) {
 					this.connect();
 				}
 			}, delay);

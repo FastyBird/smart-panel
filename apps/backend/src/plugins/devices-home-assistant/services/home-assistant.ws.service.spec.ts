@@ -274,6 +274,29 @@ describe('HomeAssistantWsService', () => {
 			expect(mockNotifications.resolve).toHaveBeenCalledWith(DEVICES_HOME_ASSISTANT_PLUGIN_NAME, 'connection');
 		});
 
+		it('retries resolving the connection issue on a later auth_ok when resolve() rejects', async () => {
+			const startPromise = service.start();
+
+			await new Promise((resolve) => setImmediate(resolve));
+
+			await service['handleMessage'](JSON.stringify({ type: 'auth_required' }));
+			await service['handleMessage'](JSON.stringify({ type: 'auth_invalid', message: 'Invalid token' }));
+			await expect(startPromise).rejects.toThrow('Invalid token');
+
+			expect(mockNotifications.notify).toHaveBeenCalledTimes(1);
+
+			mockNotifications.resolve.mockRejectedValueOnce(new Error('db is down'));
+			await service['handleMessage'](JSON.stringify({ type: 'auth_ok' }));
+
+			expect(mockNotifications.resolve).toHaveBeenCalledTimes(1);
+
+			// A later auth_ok - the earlier resolve never actually landed, so this retries it.
+			await service['handleMessage'](JSON.stringify({ type: 'auth_ok' }));
+
+			expect(mockNotifications.resolve).toHaveBeenCalledTimes(2);
+			expect(mockNotifications.resolve).toHaveBeenNthCalledWith(2, DEVICES_HOME_ASSISTANT_PLUGIN_NAME, 'connection');
+		});
+
 		it('stays silent on a single unexpected close, and raises once the reconnect attempt also fails', async () => {
 			service['state'] = 'started';
 			service['connect']();
@@ -329,6 +352,75 @@ describe('HomeAssistantWsService', () => {
 			await service.stop();
 
 			expect(mockNotifications.resolveAll).toHaveBeenCalledWith(DEVICES_HOME_ASSISTANT_PLUGIN_NAME);
+		});
+
+		it('does not raise or schedule a reconnect when the close continuation resumes after stop()', async () => {
+			service['state'] = 'started';
+			service['connect']();
+
+			const closeHandler = getRegisteredHandler('close');
+
+			let resolveNotify: (value: unknown) => void = () => {};
+			const pendingNotify = new Promise((resolve) => {
+				resolveNotify = resolve;
+			});
+
+			mockNotifications.notify.mockReturnValueOnce(pendingNotify);
+
+			// First close: a silent blip.
+			closeHandler();
+			await flush();
+
+			// Second, consecutive close: starts raising - notify() is now in flight and paused,
+			// simulating stop() racing a slow write.
+			closeHandler();
+			await flush();
+
+			expect(mockNotifications.notify).toHaveBeenCalledTimes(1);
+
+			const stopPromise = service.stop();
+
+			// Let the paused notify() complete now that stop() is waiting on the continuation.
+			resolveNotify(null);
+			await stopPromise;
+
+			expect(mockNotifications.resolveAll).toHaveBeenCalledWith(DEVICES_HOME_ASSISTANT_PLUGIN_NAME);
+			// The generation went stale while notify() was in flight, so the continuation must
+			// not have gone on to schedule a reconnect once it resumed.
+			expect(service['reconnectTimeout']).toBeNull();
+
+			// notify() settled strictly before resolveAll() ran, so whatever it created was
+			// already visible for resolveAll() to clean up - nothing is left dangling open.
+			const notifyOrder = mockNotifications.notify.mock.invocationCallOrder[0];
+			const resolveAllOrder = mockNotifications.resolveAll.mock.invocationCallOrder[0];
+
+			expect(notifyOrder).toBeLessThan(resolveAllOrder);
+		});
+
+		it('ignores a stale socket generation when a superseded reconnect timer fires', () => {
+			jest.useFakeTimers();
+
+			service['state'] = 'started';
+			service['connect']();
+
+			// Schedule a reconnect for the current generation directly, bypassing
+			// handleUnexpectedClose - isolating the timer's own generation guard.
+			service['scheduleReconnect']();
+
+			const websocketConstructor = WebSocket as unknown as jest.Mock;
+			const callsBeforeSupersede = websocketConstructor.mock.calls.length;
+
+			// A newer connection attempt supersedes the generation the pending timer was
+			// scheduled for (e.g. a reconnect succeeding through a different path first).
+			service['connect']();
+
+			expect(websocketConstructor.mock.calls.length).toBe(callsBeforeSupersede + 1);
+
+			// The stale timer fires. Its captured generation no longer matches, so it must not
+			// connect again and replace the active socket.
+			jest.advanceTimersByTime(30_000);
+
+			expect(websocketConstructor.mock.calls.length).toBe(callsBeforeSupersede + 1);
 		});
 	});
 });
