@@ -1,6 +1,7 @@
 import { DataSource, Repository } from 'typeorm';
 
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SCHEDULE_CRON_OPTIONS } from '@nestjs/schedule/dist/schedule.constants';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -11,6 +12,7 @@ import { NotificationsConfigModel } from '../models/config.model';
 import {
 	DEFAULT_MAX_NOTIFICATIONS,
 	DEFAULT_RETENTION_DAYS,
+	EventType,
 	NOTIFICATIONS_MODULE_NAME,
 	NotificationKind,
 	NotificationSeverity,
@@ -23,6 +25,7 @@ describe('NotificationsRetentionService', () => {
 	let repository: Repository<NotificationEntity>;
 	let service: NotificationsRetentionService;
 	let configService: { getModuleConfig: jest.Mock };
+	let eventEmitter: { emit: jest.Mock };
 
 	const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -67,11 +70,14 @@ describe('NotificationsRetentionService', () => {
 			}),
 		};
 
+		eventEmitter = { emit: jest.fn() };
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				NotificationsRetentionService,
 				{ provide: getRepositoryToken(NotificationEntity), useValue: repository },
 				{ provide: ConfigService, useValue: configService },
+				{ provide: EventEmitter2, useValue: eventEmitter },
 			],
 		}).compile();
 
@@ -133,6 +139,14 @@ describe('NotificationsRetentionService', () => {
 
 			const [row] = await repository.find();
 			expect(row.resolvedAt?.toISOString()).toBe(resolvedAt.toISOString());
+		});
+
+		it('says nothing about the issues it resolves, because no client is connected yet', async () => {
+			await seed({ title: 'stale issue', kind: NotificationKind.ISSUE, key: 'connection', updatedAt: ago(1) });
+
+			await service.onApplicationBootstrap();
+
+			expect(eventEmitter.emit).not.toHaveBeenCalled();
 		});
 
 		it('logs and continues when the table is not there yet', async () => {
@@ -254,6 +268,17 @@ describe('NotificationsRetentionService', () => {
 			]);
 		});
 
+		it('says nothing about pruned rows, which no client is showing', async () => {
+			await buildService({ retentionDays: 30 });
+
+			await seed({ title: 'old dismissed', dismissedAt: ago(31) });
+
+			await service.runRetention();
+
+			await expect(titles()).resolves.toEqual([]);
+			expect(eventEmitter.emit).not.toHaveBeenCalled();
+		});
+
 		it('falls back to the default retention when the module config cannot be read', async () => {
 			await buildService();
 			configService.getModuleConfig.mockImplementation(() => {
@@ -330,6 +355,29 @@ describe('NotificationsRetentionService', () => {
 			await service.runRetention();
 
 			await expect(titles()).resolves.toEqual(['active one', 'active two', 'dismissed']);
+		});
+
+		it('announces every evicted row so an open admin session stops showing it', async () => {
+			await buildService({ maxNotifications: 1 });
+
+			const evicted = await seed({ title: 'old read', createdAt: ago(10), readAt: ago(9) });
+			const kept = await seed({ title: 'newest unread', createdAt: ago(1) });
+
+			await service.runRetention();
+
+			expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.NOTIFICATION_DELETED, { id: evicted.id });
+			await expect(titles()).resolves.toEqual([kept.title]);
+		});
+
+		it('stays silent when nothing is evicted', async () => {
+			await buildService({ maxNotifications: 5 });
+
+			await seed({ title: 'one' });
+
+			await service.runRetention();
+
+			expect(eventEmitter.emit).not.toHaveBeenCalled();
 		});
 
 		it('does nothing while the active events stay within the cap', async () => {

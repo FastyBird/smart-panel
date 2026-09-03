@@ -341,7 +341,7 @@ describe('NotificationsService', () => {
 			await expect(service.notify(baseInput({ source: 'weather-module' }))).resolves.not.toBeNull();
 		});
 
-		it('starts a new budget once the window has passed', async () => {
+		it('lets the window slide once the oldest calls have aged out', async () => {
 			const startedAt = Date.now();
 			const clock = jest.spyOn(Date, 'now').mockReturnValue(startedAt);
 
@@ -354,6 +354,29 @@ describe('NotificationsService', () => {
 			clock.mockReturnValue(startedAt + 60_001);
 
 			await expect(service.notify(baseInput())).resolves.not.toBeNull();
+		});
+
+		it('refuses the 61st call inside any 60 second span, even when it straddles a minute boundary', async () => {
+			const startedAt = Date.now();
+			const clock = jest.spyOn(Date, 'now').mockReturnValue(startedAt);
+
+			// One call opens the source's history.
+			await expect(service.notify(baseInput())).resolves.not.toBeNull();
+
+			// 59 more just before the minute is up: 60 calls inside the span so far.
+			clock.mockReturnValue(startedAt + 59_000);
+
+			for (let attempt = 0; attempt < NOTIFICATION_RATE_LIMIT_PER_MINUTE - 1; attempt++) {
+				await expect(service.notify(baseInput())).resolves.not.toBeNull();
+			}
+
+			// Just past the minute only the opening call has aged out, so exactly one more fits.
+			clock.mockReturnValue(startedAt + 60_001);
+
+			await expect(service.notify(baseInput())).resolves.not.toBeNull();
+
+			// The next one is the 61st inside the last 60 seconds, whatever the wall clock says.
+			await expect(service.notify(baseInput())).resolves.toBeNull();
 		});
 	});
 
@@ -518,6 +541,21 @@ describe('NotificationsService', () => {
 			const next = await service.findAll({ afterId: first.id });
 
 			expect(next.map((row) => row.title)).toEqual(['middle active', 'oldest active']);
+		});
+
+		it('breaks a created_at tie by descending id and never repeats the cursor row', async () => {
+			const tie = at('2026-09-01T16:00:00.000Z');
+			const one = await seed({ title: 'tied one', createdAt: tie });
+			const other = await seed({ title: 'tied two', createdAt: tie });
+
+			// Same instant, so only the id decides; the list runs newest first in both keys.
+			const [expectedFirst, expectedSecond] = [one, other].sort((left, right) => (left.id > right.id ? -1 : 1));
+
+			const firstPage = await service.findAll({ limit: 1 });
+			expect(firstPage.map((row) => row.id)).toEqual([expectedFirst.id]);
+
+			const secondPage = await service.findAll({ afterId: expectedFirst.id, limit: 1 });
+			expect(secondPage.map((row) => row.id)).toEqual([expectedSecond.id]);
 		});
 
 		it('ignores a cursor that no longer exists', async () => {

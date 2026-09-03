@@ -1,4 +1,4 @@
-import { FindOptionsWhere, In, IsNull, LessThan, MoreThan, Not, Repository } from 'typeorm';
+import { FindOptionsWhere, In, IsNull, LessThan, Not, Repository } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -64,9 +64,10 @@ export interface NotificationEventPayload {
 }
 
 interface RateWindow {
-	startedAt: number;
-	count: number;
-	warned: boolean;
+	/** Timestamps of the calls this source got through, oldest first. */
+	acceptedAt: number[];
+	/** When this source was last warned, so a flood costs one log line a minute. */
+	warnedAt: number | null;
 }
 
 @Injectable()
@@ -198,19 +199,21 @@ export class NotificationsService {
 			this.logger.debug(`Ignoring cursor after_id=${filter.afterId}, the row no longer exists`);
 		}
 
-		// The list is ordered by creation time, newest first, with the id breaking ties, so
-		// the cursor is "older than the cursor row, or the same age and further down the page".
+		// The list is a total order - creation time descending, the id descending to break
+		// ties - so the cursor is "older than the cursor row, or the same age and lower down
+		// the page". The comparison and the ordering have to name the same direction, or a
+		// page would skip or repeat the rows sharing the cursor row's timestamp.
 		const where: FindOptionsWhere<NotificationEntity>[] =
 			cursor === null
 				? [base]
 				: [
 						{ ...base, createdAt: LessThan(cursor.createdAt) },
-						{ ...base, createdAt: cursor.createdAt, id: MoreThan(cursor.id) },
+						{ ...base, createdAt: cursor.createdAt, id: LessThan(cursor.id) },
 					];
 
 		return this.repository.find({
 			where,
-			order: { createdAt: 'DESC', id: 'ASC' },
+			order: { createdAt: 'DESC', id: 'DESC' },
 			take: this.resolveLimit(filter.limit),
 		});
 	}
@@ -380,31 +383,36 @@ export class NotificationsService {
 	}
 
 	/**
-	 * Fixed window per source. A source that floods loses the rest of its minute after one
-	 * warning, which keeps a spinning reconnect loop from filling the table and every
-	 * configured channel, without touching the sources that behave.
+	 * Sliding window per source: at most 60 accepted calls in any 60 seconds, not in each
+	 * wall-clock minute. A fixed window would let a source spend its whole budget just before
+	 * the boundary and the next one just after, which is 120 notifications inside one rolling
+	 * minute - exactly the reconnect-loop burst the guard exists to absorb.
+	 *
+	 * The history is the accepted timestamps, so it is bounded by the limit itself, and a
+	 * flooding source costs one log line a minute rather than one per dropped call.
 	 */
 	private consumeRateBudget(source: string): boolean {
 		const now = Date.now();
-		const window = this.rateWindows.get(source);
+		const window = this.rateWindows.get(source) ?? { acceptedAt: [], warnedAt: null };
+		const windowStartedAt = now - NOTIFICATION_RATE_LIMIT_WINDOW_MS;
 
-		if (window === undefined || now - window.startedAt >= NOTIFICATION_RATE_LIMIT_WINDOW_MS) {
-			this.rateWindows.set(source, { startedAt: now, count: 1, warned: false });
+		this.rateWindows.set(source, window);
+
+		while (window.acceptedAt.length > 0 && window.acceptedAt[0] <= windowStartedAt) {
+			window.acceptedAt.shift();
+		}
+
+		if (window.acceptedAt.length < NOTIFICATION_RATE_LIMIT_PER_MINUTE) {
+			window.acceptedAt.push(now);
 
 			return true;
 		}
 
-		window.count += 1;
-
-		if (window.count <= NOTIFICATION_RATE_LIMIT_PER_MINUTE) {
-			return true;
-		}
-
-		if (!window.warned) {
-			window.warned = true;
+		if (window.warnedAt === null || now - window.warnedAt >= NOTIFICATION_RATE_LIMIT_WINDOW_MS) {
+			window.warnedAt = now;
 
 			this.logger.warn(
-				`Source=${source} exceeded ${NOTIFICATION_RATE_LIMIT_PER_MINUTE} notifications per minute, dropping the rest of the window`,
+				`Source=${source} exceeded ${NOTIFICATION_RATE_LIMIT_PER_MINUTE} notifications per minute, dropping the rest until its oldest calls age out`,
 			);
 		}
 
