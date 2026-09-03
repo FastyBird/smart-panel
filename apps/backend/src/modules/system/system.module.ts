@@ -43,6 +43,7 @@ import { OnboardingService } from './services/onboarding.service';
 import { PrivilegedWorkerService } from './services/privileged-worker.service';
 import { SystemCommandService } from './services/system-command.service';
 import { SystemLoggerService } from './services/system-logger.service';
+import { SystemThrottleMonitorService } from './services/system-throttle-monitor.service';
 import { SystemService } from './services/system.service';
 import { UpdateExecutorService } from './services/update-executor.service';
 import { UpdateService } from './services/update.service';
@@ -81,6 +82,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		DisplayCommandService,
 		SystemLoggerService,
 		SystemStatsProvider,
+		SystemThrottleMonitorService,
 		HouseModeActionsService,
 		OnboardingService,
 		UpdateService,
