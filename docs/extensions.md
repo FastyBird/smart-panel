@@ -364,20 +364,23 @@ exports `ExtensionActionRegistryService`:
 // services/my-service.service.ts
 import { Injectable } from '@nestjs/common';
 import { NotificationsService } from '../../../modules/notifications/services/notifications.service';
+import { NotificationActionType, NotificationKind, NotificationSeverity } from '../../../modules/notifications/notifications.constants';
 
 @Injectable()
 export class MyService {
   constructor(private readonly notifications: NotificationsService) {}
 
   async onConnectionLost(reason: string): Promise<void> {
+    // kind/severity/action type are enums, not string literals - `'issue'` on its own is not
+    // assignable to `NotificationKind`, so use the real enum members here.
     await this.notifications.notify({
       source: MY_PLUGIN_NAME,
-      kind: 'issue',
+      kind: NotificationKind.ISSUE,
       key: 'connection',
-      severity: 'error',
+      severity: NotificationSeverity.ERROR,
       title: 'Connection lost',
       message: reason,
-      actions: [{ type: 'service', label: 'Restart', extension_kind: 'plugin', extension_type: MY_PLUGIN_NAME, service_id: 'my-service', operation: 'restart', primary: true }],
+      actions: [{ type: NotificationActionType.SERVICE, label: 'Restart', extension_kind: 'plugin', extension_type: MY_PLUGIN_NAME, service_id: 'my-service', operation: 'restart', primary: true }],
     });
   }
 
@@ -433,8 +436,10 @@ onModuleInit() {
 An extension package built against `@fastybird/smart-panel-extension-sdk`, outside the
 backend's own TypeScript program, types against the SDK's plain mirrors of these contracts
 (`CreateNotificationInput`, `NotificationChannel`, `ChannelDeliveryError`, ...) instead of the
-backend's own classes - see `packages/extension-sdk/src/notification.types.ts` and
-`packages/example-extension/src/example.service.ts`.
+backend's own classes - see `packages/extension-sdk/src/notification.types.ts`.
+`packages/example-extension/src/example.service.ts` shows the other path: it depends on
+`@fastybird/smart-panel-backend` directly and calls the real `NotificationsService`, the way
+a plugin compiled as part of the backend itself would.
 
 ## Third-Party Extensions
 

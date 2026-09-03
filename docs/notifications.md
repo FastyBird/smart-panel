@@ -161,9 +161,13 @@ class NotificationsService {
 The `@fastybird/smart-panel-extension-sdk` package exports plain mirrors of these types
 (`CreateNotificationInput`, `NotificationAction`, `NotificationKind`, `NotificationSeverity`)
 in `packages/extension-sdk/src/notification.types.ts`, for extension packages built outside
-the backend's own TypeScript program - see `packages/example-extension/src/example.service.ts`
-for a worked example, including the note on why that package cannot inject the real
-`NotificationsService` across its own package boundary today.
+the backend's own TypeScript program. Its `CreateNotificationInput` is a discriminated union
+on `kind`, stricter than the flat interface above: the `'issue'` branch requires `key` and
+allows `persistent`, the `'event'` branch has an optional `key` and no `persistent` - a
+compile-time version of the rule `NotificationInputValidator` enforces at runtime. See
+`packages/example-extension/src/example.service.ts` for a worked example: it imports
+`NotificationsService` itself from the backend's public barrel, `@fastybird/smart-panel-backend`
+(`apps/backend/src/index.ts`), the same way it already imports the rest of that surface.
 
 ### Rules
 
@@ -299,8 +303,14 @@ channel differ only in payload shape and endpoint, and this class shares the res
 every registered channel:
 
 - Channels run in parallel with each other. Deliveries to the *same* channel type run one
-  after another (a per-channel delivery chain), so a burst of notifications keeps its order
-  for that channel without a slow or retrying channel ever blocking a different one.
+  after another (a per-channel delivery chain), so a burst of notifications normally keeps
+  its order for that channel without a slow or retrying channel ever blocking a different
+  one - with one exception: a `send()` that ignores `signal` and keeps running past the
+  10-second timeout below. The dispatcher's own bookkeeping treats that attempt as failed
+  and moves on to the next queued delivery for that channel as soon as the timeout fires,
+  while the abandoned `send()` call keeps running in the background - so the old and the new
+  delivery can complete out of order at the channel's end. Honouring `signal` is what keeps
+  the ordering guarantee true.
 - Each attempt gets its own `AbortSignal.timeout(10_000)` (10 seconds), and the dispatcher
   races your returned promise against that signal - a channel that ignores `signal` still
   settles after 10 seconds, but one that reads it (passing it through to `fetch`) frees
