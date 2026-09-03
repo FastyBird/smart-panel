@@ -11,6 +11,13 @@ import {
 	ConfigChangeResult,
 	ServiceState,
 } from '../../../modules/extensions/services/managed-extension-service.interface';
+import {
+	NotificationActionType,
+	NotificationKind,
+	NotificationSeverity,
+} from '../../../modules/notifications/notifications.constants';
+import { sanitizeErrorMessage } from '../../../modules/notifications/notifications.utils';
+import { NotificationsService } from '../../../modules/notifications/services/notifications.service';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 import {
 	DevicesHomeAssistantException,
@@ -84,10 +91,20 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 	 */
 	private intentionalDisconnect = false;
 
+	/** Whether the `connection` notification issue is currently raised. */
+	private connectionIssueActive = false;
+
+	/**
+	 * Consecutive unexpected closes since the last successful `auth_ok`, so the first blip
+	 * stays silent and only a close of the reconnect attempt itself raises the issue.
+	 */
+	private unexpectedCloseStreak = 0;
+
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,
 		private readonly supervisorService: HaSupervisorService,
+		private readonly notifications: NotificationsService,
 	) {
 		super();
 	}
@@ -195,6 +212,11 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 			this.disconnect();
 
 			this.state = 'stopped';
+
+			this.connectionIssueActive = false;
+			this.unexpectedCloseStreak = 0;
+
+			await this.notifications.resolveAll(DEVICES_HOME_ASSISTANT_PLUGIN_NAME);
 		});
 	}
 
@@ -310,7 +332,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 			// Skip if this was an intentional disconnect (e.g., from onConfigChanged or stop)
 			if (this.state === 'started' && !this.intentionalDisconnect) {
 				this.logger.warn('WebSocket connection closed. Reconnecting...');
-				this.scheduleReconnect();
+				void this.handleUnexpectedClose();
 			}
 		});
 
@@ -506,6 +528,82 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 		return `ws://${this.hostname}`;
 	}
 
+	/**
+	 * Runs on every unexpected close while `started`. A single blip - one close, then a
+	 * reconnect that succeeds - never reaches the notification module: `auth_ok` resets the
+	 * streak to 0 before a second close could ever be counted. Only when the reconnect
+	 * attempt itself also ends in a close does this raise, on the second consecutive count.
+	 */
+	private async handleUnexpectedClose(): Promise<void> {
+		this.unexpectedCloseStreak += 1;
+
+		if (this.unexpectedCloseStreak > 1) {
+			await this.raiseConnectionIssue('WebSocket connection closed unexpectedly and the reconnect attempt also failed');
+		}
+
+		this.scheduleReconnect();
+	}
+
+	/**
+	 * Raises the `connection` issue. A no-op when it is already raised, so a run of
+	 * consecutive closes or a reconnect failure following an auth failure notifies once.
+	 * notify() never throws, so this needs no try/catch of its own.
+	 */
+	private async raiseConnectionIssue(message: string): Promise<void> {
+		if (this.connectionIssueActive) {
+			return;
+		}
+
+		this.connectionIssueActive = true;
+
+		await this.notifications.notify({
+			source: DEVICES_HOME_ASSISTANT_PLUGIN_NAME,
+			kind: NotificationKind.ISSUE,
+			key: 'connection',
+			severity: NotificationSeverity.ERROR,
+			title: 'Home Assistant connection lost',
+			message: sanitizeErrorMessage(message),
+			actions: [
+				{
+					type: NotificationActionType.SERVICE,
+					label: 'Restart service',
+					extension_kind: this.owner.kind,
+					extension_type: this.owner.type,
+					service_id: this.serviceId,
+					operation: 'restart',
+					primary: true,
+				},
+				{
+					type: NotificationActionType.LINK,
+					label: 'Open Home Assistant settings',
+					url: `/extensions/${DEVICES_HOME_ASSISTANT_PLUGIN_NAME}`,
+				},
+			],
+		});
+	}
+
+	/**
+	 * Resolves the issue {@link raiseConnectionIssue} raised, once `auth_ok` is received. A
+	 * no-op when nothing is open, so a plain successful (re)connect never issues a pointless
+	 * resolve() call. Unlike notify(), resolve() can throw - caught and logged here so a
+	 * storage hiccup on the resolve never turns a successful reconnect into a reported failure.
+	 */
+	private async resolveConnectionIssue(): Promise<void> {
+		if (!this.connectionIssueActive) {
+			return;
+		}
+
+		this.connectionIssueActive = false;
+
+		try {
+			await this.notifications.resolve(DEVICES_HOME_ASSISTANT_PLUGIN_NAME, 'connection');
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error('Failed to resolve the Home Assistant connection issue', { message: err.message });
+		}
+	}
+
 	private scheduleReconnect() {
 		const delay = Math.min(30000, 5000 * ++this.retryCount);
 
@@ -560,6 +658,9 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 				this.connectionResolver.resolve();
 			}
 
+			this.unexpectedCloseStreak = 0;
+			await this.resolveConnectionIssue();
+
 			this.subscribeToStates();
 			this.startPing();
 
@@ -577,6 +678,8 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 			const errorMessage = 'message' in msg && typeof msg.message === 'string' ? msg.message : 'Authentication failed';
 
 			this.logger.error(`Authentication failed: ${errorMessage}`);
+
+			await this.raiseConnectionIssue(errorMessage);
 
 			// Reject the connection promise - authentication failed
 			if (this.connectionResolver) {
