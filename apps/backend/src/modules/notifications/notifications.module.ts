@@ -17,6 +17,11 @@ import {
 	NOTIFICATIONS_MODULE_NAME,
 } from './notifications.constants';
 import { NOTIFICATIONS_SWAGGER_EXTRA_MODELS } from './notifications.openapi';
+import { NotificationChannelRegistryService } from './services/notification-channel-registry.service';
+import {
+	NOTIFICATION_DISPATCHER_SLEEP,
+	NotificationDispatcherService,
+} from './services/notification-dispatcher.service';
 import { NotificationInputValidator } from './services/notification-input.validator';
 import { NotificationsRetentionService } from './services/notifications-retention.service';
 import { NotificationsService } from './services/notifications.service';
@@ -32,8 +37,18 @@ import { NotificationsService } from './services/notifications.service';
 @Module({
 	imports: [TypeOrmModule.forFeature([NotificationEntity]), SwaggerModule],
 	controllers: [NotificationsController],
-	providers: [NotificationInputValidator, NotificationsService, NotificationsRetentionService],
-	exports: [NotificationsService],
+	providers: [
+		NotificationInputValidator,
+		NotificationsService,
+		NotificationsRetentionService,
+		NotificationChannelRegistryService,
+		NotificationDispatcherService,
+		{
+			provide: NOTIFICATION_DISPATCHER_SLEEP,
+			useValue: (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
+		},
+	],
+	exports: [NotificationsService, NotificationChannelRegistryService],
 })
 export class NotificationsModule implements OnModuleInit {
 	constructor(
