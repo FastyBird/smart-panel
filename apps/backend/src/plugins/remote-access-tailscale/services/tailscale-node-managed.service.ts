@@ -188,17 +188,26 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 			// Sign the node out so it comes back requiring a fresh login against
 			// the new control plane instead of silently keeping a key issued by
-			// the old one. Best-effort: a node with nothing to sign out of (never
-			// authenticated, daemon down) must not block the restart.
+			// the old one. Only the kinds that mean "there was nothing to sign
+			// out of" are tolerated (matching factoryReset() and
+			// TailscaleLoginService.logout(), which apply the same rule to
+			// their own logout calls) — a permission-denied, timeout or
+			// unknown failure means the node may still hold a key issued by
+			// the old control plane, so it must propagate instead of silently
+			// reporting a restart as ready to proceed.
 			try {
 				await this.cli.logout();
 			} catch (error) {
-				this.logger.debug(
-					'tailscale logout failed while applying a login_server change (safe to ignore if not signed in)',
-					{
-						message: error instanceof Error ? error.message : String(error),
-					},
-				);
+				if (
+					error instanceof TailscaleCliError &&
+					(error.kind === 'needs-login' || error.kind === 'not-installed' || error.kind === 'daemon-down')
+				) {
+					this.logger.debug('tailscale logout had nothing to sign out of while applying a login_server change', {
+						kind: error.kind,
+					});
+				} else {
+					throw error;
+				}
 			}
 
 			return { restartRequired: true };

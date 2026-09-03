@@ -452,6 +452,42 @@ describe('TailscaleNodeManagedService', () => {
 			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: true });
 		});
 
+		it('also tolerates daemon-down and not-installed — still nothing to sign out of', async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			await service.start();
+
+			const changed = defaultConfig();
+			changed.loginServer = 'https://headscale.example.com';
+			configServiceMock.getPluginConfig.mockReturnValue(changed);
+
+			cli.logout.mockRejectedValueOnce(new TailscaleCliError('daemon-down', 'connection refused'));
+			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: true });
+
+			// Second login_server change in a row exercises 'not-installed' too.
+			const changedAgain = defaultConfig();
+			changedAgain.loginServer = 'https://another-headscale.example.com';
+			configServiceMock.getPluginConfig.mockReturnValue(changedAgain);
+
+			cli.logout.mockRejectedValueOnce(new TailscaleCliError('not-installed', 'tailscale: command not found'));
+			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: true });
+		});
+
+		it('propagates a genuine logout failure instead of silently reporting a completed sign-out', async () => {
+			// The bug this closes: a permission-denied, timeout or unknown
+			// failure means the node may still hold a key issued by the old
+			// control plane, so onConfigChanged() must not swallow it and
+			// report restartRequired: true as if the sign-out actually happened.
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			await service.start();
+			cli.logout.mockRejectedValueOnce(new TailscaleCliError('permission-denied', 'access denied'));
+
+			const changed = defaultConfig();
+			changed.loginServer = 'https://headscale.example.com';
+			configServiceMock.getPluginConfig.mockReturnValue(changed);
+
+			await expect(service.onConfigChanged()).rejects.toMatchObject({ kind: 'permission-denied' });
+		});
+
 		it('applies other preference changes with set and reports no restart required', async () => {
 			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
 			await service.start();
