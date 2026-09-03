@@ -91,6 +91,54 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
 
 - [ ] Hardware acceptance matrix from the plan recorded here with dates and outcomes.
 
+#### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
+
+Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
+
+##### Preparation
+
+- [ ] Flash the alpha image (or install the alpha npm package) on the testing Raspberry Pi and complete onboarding.
+- [ ] Have a Tailscale account with **MagicDNS** and **HTTPS certificates** enabled (tailnet DNS settings) and, if device approval is on, access to the admin console.
+- [ ] Have a phone on cellular (not on the home Wi-Fi) with the Tailscale app signed into the same tailnet.
+
+##### Setup and sign-in
+
+- [ ] Admin → Remote access: the page shows the internal URL and the Tailscale card reads "Not set up" (image) or "Not installed" (npm install without the package).
+- [ ] Set up: on the image it completes in seconds (package pre-installed); on an npm install it installs from the apt repository and reports each step live.
+- [ ] Sign in: a login link and QR code appear; approving on the phone flips the card to Connected with tailnet name, MagicDNS name and Tailscale IPs.
+- [ ] Extensions → Services lists `remote-access-tailscale-plugin / node` as started and healthy.
+
+##### HTTPS and remote use
+
+- [ ] Serve HTTPS is on by default: the page lists `https://<node>.<tailnet>.ts.net` as the primary external URL with copy and QR.
+- [ ] From the phone on cellular, open that URL: admin loads, login works, and a live change (toggle a device) updates without reload (websocket through the proxy).
+- [ ] Backend log shows the tailnet client address (not 127.0.0.1) for a login attempt from the phone; the login throttle is per client.
+- [ ] Displays → registration status seen from the phone is "closed" (not treated as local).
+
+##### Lifecycle
+
+- [ ] Reboot the Pi: the node reconnects without interaction and the URL still works.
+- [ ] Disable the plugin (Extensions): the node disconnects, external URLs disappear; re-enable reconnects.
+- [ ] Sign in with an auth key (advanced tab) on a second fresh install or after Sign out: node connects without the browser step.
+- [ ] Sign out: the device disappears from the tailnet admin console; the card returns to setup-required.
+- [ ] Factory reset: after restore, no tailnet login remains (`tailscale status` shows NeedsLogin) and Serve is reset.
+
+##### Options and advisories
+
+- [ ] Funnel on: the URL becomes public (open it from a device without Tailscale); the public-exposure advisory shows; Funnel off returns it to tailnet-only without touching other Serve handlers.
+- [ ] Tailscale SSH on: `ssh smart-panel@<node>` from the phone/laptop works per the tailnet ACL; off again closes it.
+- [ ] With a short-expiry auth key (or a key expiry set in the console): the key-expiring advisory appears and "Sign in again" recovers.
+- [ ] Tailnet with HTTPS certificates disabled: the tailnet-https-disabled advisory appears with the console link; IPv4 and MagicDNS HTTP endpoints still work.
+
+##### MCP
+
+- [ ] MCP config form shows "Use remote access URL" when the HTTPS URL exists; clicking fills the OAuth public base URL and nothing saves until Save.
+
+##### Other deployments
+
+- [ ] Docker compose deployment: the Tailscale card reports unsupported with the documentation link; the manual external URL still works.
+
+
 ## 5. Example scenarios
 
 ### Scenario: sign in from a phone
@@ -137,14 +185,14 @@ Tracked as GitHub sub-issues of the epic issue under the "Remote access" milesto
 | RA-2 | feat(backend): add remote access module foundation | done |
 | RA-3 | refactor(backend): extract privileged worker runner from update executor | done |
 | RA-4 | feat(backend): add Tailscale remote access provider plugin | done |
-| RA-5 | feat(backend): add Tailscale setup and sign-in flows | planned |
-| RA-6 | feat(backend): serve admin over HTTPS through Tailscale | planned |
+| RA-5 | feat(backend): add Tailscale setup and sign-in flows | done |
+| RA-6 | feat(backend): serve admin over HTTPS through Tailscale | done |
 | RA-7 | feat(admin): add remote access overview and settings | done |
-| RA-8 | feat(admin): add Tailscale remote access setup wizard | planned |
+| RA-8 | feat(admin): add Tailscale remote access setup wizard | done |
 | RA-9 | feat(installer): preinstall Tailscale for remote access | done |
-| RA-10 | docs(cross): document remote access and Tailscale setup | planned |
+| RA-10 | docs(cross): document remote access and Tailscale setup | done |
 | RA-11 | feat(cross): suggest remote access URL for MCP OAuth | done |
-| RA-12 | integrated verification and hardware acceptance | planned |
+| RA-12 | integrated verification and hardware acceptance | in-progress |
 | RA-13 | feat(backend): add Cloudflare Tunnel remote access plugin | milestone 2 |
 | RA-14 | feat(admin): add Cloudflare Tunnel remote access setup | milestone 2 |
 | RA-15 | feat(cross): add WireGuard client remote access plugin | milestone 3 |
