@@ -1,0 +1,106 @@
+{
+	"menu": {
+		"title": "Vzdálený přístup"
+	},
+	"headings": {
+		"remoteAccess": "Vzdálený přístup",
+		"accessUrls": "Přístupové URL",
+		"internalUrl": "Interní přístup",
+		"externalUrls": "Externí přístup",
+		"providers": "Poskytovatelé",
+		"advisories": "Upozornění"
+	},
+	"subHeadings": {
+		"remoteAccess": "Přístup k této instalaci mimo lokální síť"
+	},
+	"breadcrumbs": {
+		"remoteAccess": "vzdálený přístup"
+	},
+	"meta": {
+		"remoteAccess": {
+			"title": "Vzdálený přístup"
+		}
+	},
+	"messages": {
+		"requestError": "Při načítání stavu vzdáleného přístupu došlo k chybě",
+		"urlCopied": "URL bylo zkopírováno do schránky",
+		"copyFailed": "Nepodařilo se zkopírovat URL do schránky",
+		"qrFailed": "Nepodařilo se vygenerovat QR kód",
+		"config": {
+			"edited": "Konfigurace vzdáleného přístupu byla úspěšně aktualizována",
+			"notEdited": "Nepodařilo se aktualizovat konfiguraci vzdáleného přístupu"
+		}
+	},
+	"buttons": {
+		"copy": {
+			"title": "Kopírovat"
+		},
+		"showQr": {
+			"title": "Zobrazit QR kód"
+		}
+	},
+	"texts": {
+		"loadingStatus": "Načítání stavu vzdáleného přístupu...",
+		"primary": "Primární",
+		"https": "HTTPS",
+		"http": "HTTP",
+		"public": "Veřejné",
+		"private": "Soukromé",
+		"noExternalUrls": "Zatím není nakonfigurován žádný externí přístup. Nastavte poskytovatele nebo přidejte ruční externí URL v nastavení.",
+		"noProviders": "Nejsou nainstalováni žádní poskytovatelé vzdáleného přístupu.",
+		"noEndpoints": "Tento poskytovatel zatím nezveřejňuje žádné koncové body.",
+		"noAdvisories": "Žádná upozornění. Stav vzdáleného přístupu vypadá dobře.",
+		"qrAlt": "QR kód kódující tuto URL"
+	},
+	"status": {
+		"unsupported": "Nepodporováno",
+		"not-installed": "Není nainstalováno",
+		"setup-required": "Vyžadováno nastavení",
+		"pending-auth": "Čeká se na přihlášení",
+		"pending-approval": "Čeká se na schválení",
+		"connecting": "Připojování",
+		"connected": "Připojeno",
+		"disconnected": "Odpojeno",
+		"error": "Chyba",
+		"banner": {
+			"disabledTitle": "Vzdálený přístup je vypnutý",
+			"disabledDescription": "Modul vzdáleného přístupu povolte na stránce Rozšíření, abyste mohli nastavit poskytovatele a externí URL.",
+			"okTitle": "Vzdálený přístup je v pořádku",
+			"okDescription": "Nebyla nahlášena žádná upozornění na stav zabezpečení.",
+			"advisoriesTitle": "Jedno upozornění | {count} upozornění",
+			"advisoriesDescription": "Zkontrolujte upozornění níže."
+		}
+	},
+	"config": {
+		"about": {
+			"title": "Nastavení vzdáleného přístupu",
+			"description": "Nastavte interní a externí URL, na kterých je tato instalace dostupná, a které reverzní proxy jsou důvěryhodné pro předávání adres klientů. Samotný modul povolíte nebo zakážete na stránce Rozšíření."
+		}
+	},
+	"fields": {
+		"config": {
+			"internalUrl": {
+				"title": "Interní URL",
+				"placeholder": "např. http://panel.local:3000",
+				"description": "Přepsání absolutního originu pro interní URL. Ponechte prázdné pro automatické odvození.",
+				"invalid": "Musí se jednat o normalizovaný absolutní HTTP(S) origin bez cesty, přihlašovacích údajů, dotazu nebo fragmentu."
+			},
+			"externalUrl": {
+				"title": "Externí URL",
+				"placeholder": "např. https://panel.example.com",
+				"description": "Ručně nastavený externí origin, například za vlastní reverzní proxy nebo DDNS hostitelem.",
+				"invalid": "Musí se jednat o normalizovaný absolutní HTTP(S) origin bez cesty, přihlašovacích údajů, dotazu nebo fragmentu."
+			},
+			"trustForwardedHeaders": {
+				"title": "Důvěřovat předaným hlavičkám",
+				"description": "Důvěřovat hlavičkám X-Forwarded-For, X-Real-IP a CF-Connecting-IP od důvěryhodných proxy uvedených níže."
+			},
+			"trustedProxies": {
+				"title": "Důvěryhodné proxy",
+				"placeholder": "Přidejte adresu IPv4/IPv6 nebo rozsah CIDR a stiskněte Enter",
+				"description": "Adresy IPv4/IPv6 nebo rozsahy CIDR, které smí předkládat hlavičky s identitou předanou dál.",
+				"invalid": "Každá položka musí být platná adresa IPv4/IPv6 nebo rozsah CIDR."
+			}
+		}
+	}
+}

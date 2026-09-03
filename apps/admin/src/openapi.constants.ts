@@ -601,16 +601,12 @@ export type WeatherModuleUpdateLocationSchema = components['schemas']['WeatherMo
 // Extensions Module Enums
 // =======================
 export { ExtensionsModuleDataServiceStatusState as ExtensionsModuleServiceState } from './openapi';
-export {
-	PathsModulesExtensionsServicesExtensionKindExtensionTypeServiceIdGetParametersPathExtensionKind as ExtensionsModuleServiceOwnerKind,
-} from './openapi';
+export { PathsModulesExtensionsServicesExtensionKindExtensionTypeServiceIdGetParametersPathExtensionKind as ExtensionsModuleServiceOwnerKind } from './openapi';
 export {
 	ExtensionsModuleDataServiceStatusActivation_policy as ExtensionsModuleServiceActivationPolicy,
 	ExtensionsModuleDataServiceStatusDesired_state as ExtensionsModuleServiceDesiredState,
 } from './openapi';
-export {
-	PathsModulesExtensionsServicesExtensionKindExtensionTypeServiceIdGetParametersPathExtensionKind as ExtensionKind,
-} from './openapi';
+export { PathsModulesExtensionsServicesExtensionKindExtensionTypeServiceIdGetParametersPathExtensionKind as ExtensionKind } from './openapi';
 export { ExtensionsModuleDataDiscoveredExtensionBaseSurface as ExtensionSurface } from './openapi';
 export { ExtensionsModuleDataDiscoveredExtensionBaseSource as ExtensionSource } from './openapi';
 export { PathsModulesExtensionsDiscoveredGetParametersQuerySurface as ExtensionsDiscoverySurface } from './openapi';
@@ -692,3 +688,31 @@ export { DevicesZigbee2mqttPluginUpdateConfigConnection_type as Zigbee2mqttConne
 // System Module Enums (additional)
 // ================================
 export { SystemModuleDataSystemInfoPlatform as SystemModulePlatform } from './openapi';
+
+// Config Module Schemas (additional)
+// ===================================
+export type ConfigModuleRemoteAccessSchema = components['schemas']['ConfigModuleDataRemoteAccess'];
+export type ConfigModuleUpdateRemoteAccessSchema = components['schemas']['ConfigModuleUpdateRemoteAccess'];
+
+// Remote Access Module Schemas
+// =============================
+export type RemoteAccessModuleStatusSchema = components['schemas']['RemoteAccessModuleDataStatus'];
+export type RemoteAccessModuleProviderCapabilitiesSchema = components['schemas']['RemoteAccessModuleDataProviderCapabilities'];
+export type RemoteAccessModuleProviderSchema = components['schemas']['RemoteAccessModuleDataProvider'];
+export type RemoteAccessModuleEndpointSchema = components['schemas']['RemoteAccessModuleDataEndpoint'];
+export type RemoteAccessModuleUrlsSchema = components['schemas']['RemoteAccessModuleDataUrls'];
+export type RemoteAccessModuleAdvisorySchema = components['schemas']['RemoteAccessModuleDataAdvisory'];
+
+// Remote Access Module Operations
+// =================================
+export type RemoteAccessModuleGetStatusOperation = operations['get-remote-access-module-status'];
+export type RemoteAccessModuleGetProvidersOperation = operations['get-remote-access-module-providers'];
+export type RemoteAccessModuleGetProviderOperation = operations['get-remote-access-module-provider'];
+export type RemoteAccessModuleGetUrlsOperation = operations['get-remote-access-module-urls'];
+
+// Remote Access Module Enums
+// ============================
+export { RemoteAccessModuleDataProviderKind as RemoteAccessModuleProviderKind } from './openapi';
+export { RemoteAccessModuleDataProviderState as RemoteAccessModuleProviderState } from './openapi';
+export { RemoteAccessModuleDataEndpointScope as RemoteAccessModuleEndpointScope } from './openapi';
+export { PathsModulesSecurityEventsGetParametersQuerySeverity as RemoteAccessModuleAdvisorySeverity } from './openapi';

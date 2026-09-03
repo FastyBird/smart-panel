@@ -1,0 +1,106 @@
+{
+	"menu": {
+		"title": "Vzdialený prístup"
+	},
+	"headings": {
+		"remoteAccess": "Vzdialený prístup",
+		"accessUrls": "Prístupové URL",
+		"internalUrl": "Interný prístup",
+		"externalUrls": "Externý prístup",
+		"providers": "Poskytovatelia",
+		"advisories": "Upozornenia"
+	},
+	"subHeadings": {
+		"remoteAccess": "Prístup k tejto inštalácii mimo lokálnej siete"
+	},
+	"breadcrumbs": {
+		"remoteAccess": "vzdialený prístup"
+	},
+	"meta": {
+		"remoteAccess": {
+			"title": "Vzdialený prístup"
+		}
+	},
+	"messages": {
+		"requestError": "Pri načítaní stavu vzdialeného prístupu došlo k chybe",
+		"urlCopied": "URL bola skopírovaná do schránky",
+		"copyFailed": "Nepodarilo sa skopírovať URL do schránky",
+		"qrFailed": "Nepodarilo sa vygenerovať QR kód",
+		"config": {
+			"edited": "Konfigurácia vzdialeného prístupu bola úspešne aktualizovaná",
+			"notEdited": "Nepodarilo sa aktualizovať konfiguráciu vzdialeného prístupu"
+		}
+	},
+	"buttons": {
+		"copy": {
+			"title": "Kopírovať"
+		},
+		"showQr": {
+			"title": "Zobraziť QR kód"
+		}
+	},
+	"texts": {
+		"loadingStatus": "Načítava sa stav vzdialeného prístupu...",
+		"primary": "Primárna",
+		"https": "HTTPS",
+		"http": "HTTP",
+		"public": "Verejné",
+		"private": "Súkromné",
+		"noExternalUrls": "Zatiaľ nie je nakonfigurovaný žiadny externý prístup. Nastavte poskytovateľa alebo pridajte manuálnu externú URL v nastaveniach.",
+		"noProviders": "Nie sú nainštalovaní žiadni poskytovatelia vzdialeného prístupu.",
+		"noEndpoints": "Tento poskytovateľ zatiaľ nezverejňuje žiadne koncové body.",
+		"noAdvisories": "Žiadne upozornenia. Stav vzdialeného prístupu vyzerá dobre.",
+		"qrAlt": "QR kód kódujúci túto URL"
+	},
+	"status": {
+		"unsupported": "Nepodporované",
+		"not-installed": "Nenainštalované",
+		"setup-required": "Vyžaduje sa nastavenie",
+		"pending-auth": "Čaká sa na prihlásenie",
+		"pending-approval": "Čaká sa na schválenie",
+		"connecting": "Pripája sa",
+		"connected": "Pripojené",
+		"disconnected": "Odpojené",
+		"error": "Chyba",
+		"banner": {
+			"disabledTitle": "Vzdialený prístup je vypnutý",
+			"disabledDescription": "Povoľte modul vzdialeného prístupu na stránke Rozšírenia, aby ste mohli nastaviť poskytovateľov a externé URL.",
+			"okTitle": "Vzdialený prístup je v poriadku",
+			"okDescription": "Neboli nahlásené žiadne upozornenia na stav zabezpečenia.",
+			"advisoriesTitle": "Jedno upozornenie | {count} upozornení",
+			"advisoriesDescription": "Skontrolujte upozornenia nižšie."
+		}
+	},
+	"config": {
+		"about": {
+			"title": "Nastavenia vzdialeného prístupu",
+			"description": "Nastavte internú a externú URL, na ktorých je táto inštalácia dostupná, a ktoré reverzné proxy sú dôveryhodné na predkladanie preposielaných adries klientov. Samotný modul povolíte alebo zakážete na stránke Rozšírenia."
+		}
+	},
+	"fields": {
+		"config": {
+			"internalUrl": {
+				"title": "Interná URL",
+				"placeholder": "napr. http://panel.local:3000",
+				"description": "Prepísanie absolútneho originu pre internú URL. Ponechajte prázdne pre automatické odvodenie.",
+				"invalid": "Musí ísť o normalizovaný absolútny HTTP(S) origin bez cesty, prihlasovacích údajov, dotazu alebo fragmentu."
+			},
+			"externalUrl": {
+				"title": "Externá URL",
+				"placeholder": "napr. https://panel.example.com",
+				"description": "Manuálne nastavený externý origin, napríklad za vlastným reverzným proxy alebo DDNS hostiteľom.",
+				"invalid": "Musí ísť o normalizovaný absolútny HTTP(S) origin bez cesty, prihlasovacích údajov, dotazu alebo fragmentu."
+			},
+			"trustForwardedHeaders": {
+				"title": "Dôverovať preposielaným hlavičkám",
+				"description": "Dôverovať hlavičkám X-Forwarded-For, X-Real-IP a CF-Connecting-IP od dôveryhodných proxy uvedených nižšie."
+			},
+			"trustedProxies": {
+				"title": "Dôveryhodné proxy",
+				"placeholder": "Pridajte adresu IPv4/IPv6 alebo rozsah CIDR a stlačte Enter",
+				"description": "Adresy IPv4/IPv6 alebo rozsahy CIDR, ktoré smú predkladať preposielané hlavičky identity.",
+				"invalid": "Každá položka musí byť platná adresa IPv4/IPv6 alebo rozsah CIDR."
+			}
+		}
+	}
+}

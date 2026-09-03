@@ -1,0 +1,106 @@
+{
+	"menu": {
+		"title": "Dostęp zdalny"
+	},
+	"headings": {
+		"remoteAccess": "Dostęp zdalny",
+		"accessUrls": "Adresy URL dostępu",
+		"internalUrl": "Dostęp wewnętrzny",
+		"externalUrls": "Dostęp zewnętrzny",
+		"providers": "Dostawcy",
+		"advisories": "Powiadomienia"
+	},
+	"subHeadings": {
+		"remoteAccess": "Uzyskaj dostęp do tej instalacji spoza sieci lokalnej"
+	},
+	"breadcrumbs": {
+		"remoteAccess": "dostęp zdalny"
+	},
+	"meta": {
+		"remoteAccess": {
+			"title": "Dostęp zdalny"
+		}
+	},
+	"messages": {
+		"requestError": "Wystąpił błąd podczas wczytywania stanu dostępu zdalnego",
+		"urlCopied": "Adres URL został skopiowany do schowka",
+		"copyFailed": "Nie udało się skopiować adresu URL do schowka",
+		"qrFailed": "Nie udało się wygenerować kodu QR",
+		"config": {
+			"edited": "Konfiguracja dostępu zdalnego została pomyślnie zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować konfiguracji dostępu zdalnego"
+		}
+	},
+	"buttons": {
+		"copy": {
+			"title": "Kopiuj"
+		},
+		"showQr": {
+			"title": "Pokaż kod QR"
+		}
+	},
+	"texts": {
+		"loadingStatus": "Wczytywanie stanu dostępu zdalnego...",
+		"primary": "Podstawowy",
+		"https": "HTTPS",
+		"http": "HTTP",
+		"public": "Publiczny",
+		"private": "Prywatny",
+		"noExternalUrls": "Nie skonfigurowano jeszcze żadnego dostępu zewnętrznego. Skonfiguruj dostawcę lub dodaj ręczny zewnętrzny adres URL w ustawieniach.",
+		"noProviders": "Nie zainstalowano żadnych dostawców dostępu zdalnego.",
+		"noEndpoints": "Ten dostawca nie publikuje jeszcze żadnych punktów końcowych.",
+		"noAdvisories": "Brak powiadomień. Stan dostępu zdalnego wygląda dobrze.",
+		"qrAlt": "Kod QR kodujący ten adres URL"
+	},
+	"status": {
+		"unsupported": "Nieobsługiwane",
+		"not-installed": "Niezainstalowane",
+		"setup-required": "Wymagana konfiguracja",
+		"pending-auth": "Oczekiwanie na logowanie",
+		"pending-approval": "Oczekiwanie na zatwierdzenie",
+		"connecting": "Łączenie",
+		"connected": "Połączono",
+		"disconnected": "Rozłączono",
+		"error": "Błąd",
+		"banner": {
+			"disabledTitle": "Dostęp zdalny jest wyłączony",
+			"disabledDescription": "Włącz moduł dostępu zdalnego na stronie Rozszerzenia, aby skonfigurować dostawców i zewnętrzne adresy URL.",
+			"okTitle": "Dostęp zdalny działa prawidłowo",
+			"okDescription": "Nie zgłoszono żadnych powiadomień dotyczących stanu zabezpieczeń.",
+			"advisoriesTitle": "Jedno powiadomienie | {count} powiadomień",
+			"advisoriesDescription": "Sprawdź poniższe powiadomienia."
+		}
+	},
+	"config": {
+		"about": {
+			"title": "Ustawienia dostępu zdalnego",
+			"description": "Skonfiguruj wewnętrzny i zewnętrzny adres URL, pod którym dostępna jest ta instalacja, oraz serwery proxy, którym ufa się w zakresie przekazywania adresów klientów. Sam moduł włącza się i wyłącza na stronie Rozszerzenia."
+		}
+	},
+	"fields": {
+		"config": {
+			"internalUrl": {
+				"title": "Wewnętrzny adres URL",
+				"placeholder": "np. http://panel.local:3000",
+				"description": "Zastąpienie bezwzględnego originu dla wewnętrznego adresu URL. Pozostaw puste, aby wyznaczyć go automatycznie.",
+				"invalid": "Musi to być znormalizowany, bezwzględny origin HTTP(S) bez ścieżki, danych uwierzytelniających, zapytania ani fragmentu."
+			},
+			"externalUrl": {
+				"title": "Zewnętrzny adres URL",
+				"placeholder": "np. https://panel.example.com",
+				"description": "Ręcznie skonfigurowany zewnętrzny origin, np. za własnym serwerem proxy typu reverse lub hostem DDNS.",
+				"invalid": "Musi to być znormalizowany, bezwzględny origin HTTP(S) bez ścieżki, danych uwierzytelniających, zapytania ani fragmentu."
+			},
+			"trustForwardedHeaders": {
+				"title": "Ufaj przekazywanym nagłówkom",
+				"description": "Ufaj nagłówkom X-Forwarded-For, X-Real-IP i CF-Connecting-IP od zaufanych serwerów proxy wymienionych poniżej."
+			},
+			"trustedProxies": {
+				"title": "Zaufane serwery proxy",
+				"placeholder": "Dodaj adres IPv4/IPv6 lub zakres CIDR i naciśnij Enter",
+				"description": "Adresy IPv4/IPv6 lub zakresy CIDR uprawnione do przedstawiania przekazanych nagłówków tożsamości.",
+				"invalid": "Każdy wpis musi być prawidłowym adresem IPv4/IPv6 lub zakresem CIDR."
+			}
+		}
+	}
+}

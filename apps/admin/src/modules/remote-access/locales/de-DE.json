@@ -1,0 +1,106 @@
+{
+	"menu": {
+		"title": "Fernzugriff"
+	},
+	"headings": {
+		"remoteAccess": "Fernzugriff",
+		"accessUrls": "Zugriffs-URLs",
+		"internalUrl": "Interner Zugriff",
+		"externalUrls": "Externer Zugriff",
+		"providers": "Anbieter",
+		"advisories": "Hinweise"
+	},
+	"subHeadings": {
+		"remoteAccess": "Auf diese Installation von außerhalb des lokalen Netzwerks zugreifen"
+	},
+	"breadcrumbs": {
+		"remoteAccess": "Fernzugriff"
+	},
+	"meta": {
+		"remoteAccess": {
+			"title": "Fernzugriff"
+		}
+	},
+	"messages": {
+		"requestError": "Beim Laden des Fernzugriffsstatus ist ein Fehler aufgetreten",
+		"urlCopied": "URL wurde in die Zwischenablage kopiert",
+		"copyFailed": "URL konnte nicht in die Zwischenablage kopiert werden",
+		"qrFailed": "QR-Code konnte nicht erzeugt werden",
+		"config": {
+			"edited": "Die Fernzugriffskonfiguration wurde erfolgreich aktualisiert",
+			"notEdited": "Die Fernzugriffskonfiguration konnte nicht aktualisiert werden"
+		}
+	},
+	"buttons": {
+		"copy": {
+			"title": "Kopieren"
+		},
+		"showQr": {
+			"title": "QR-Code anzeigen"
+		}
+	},
+	"texts": {
+		"loadingStatus": "Fernzugriffsstatus wird geladen...",
+		"primary": "Primär",
+		"https": "HTTPS",
+		"http": "HTTP",
+		"public": "Öffentlich",
+		"private": "Privat",
+		"noExternalUrls": "Es ist noch kein externer Zugriff konfiguriert. Richten Sie einen Anbieter ein oder fügen Sie in den Einstellungen eine manuelle externe URL hinzu.",
+		"noProviders": "Es sind keine Fernzugriffsanbieter installiert.",
+		"noEndpoints": "Dieser Anbieter veröffentlicht noch keine Endpunkte.",
+		"noAdvisories": "Keine Hinweise. Der Status des Fernzugriffs sieht gut aus.",
+		"qrAlt": "QR-Code, der diese URL codiert"
+	},
+	"status": {
+		"unsupported": "Nicht unterstützt",
+		"not-installed": "Nicht installiert",
+		"setup-required": "Einrichtung erforderlich",
+		"pending-auth": "Warten auf Anmeldung",
+		"pending-approval": "Warten auf Genehmigung",
+		"connecting": "Verbindung wird hergestellt",
+		"connected": "Verbunden",
+		"disconnected": "Getrennt",
+		"error": "Fehler",
+		"banner": {
+			"disabledTitle": "Fernzugriff ist deaktiviert",
+			"disabledDescription": "Aktivieren Sie das Fernzugriffsmodul auf der Seite Erweiterungen, um Anbieter und externe URLs zu konfigurieren.",
+			"okTitle": "Fernzugriff ist in Ordnung",
+			"okDescription": "Es wurden keine Sicherheitshinweise gemeldet.",
+			"advisoriesTitle": "Ein Hinweis | {count} Hinweise",
+			"advisoriesDescription": "Überprüfen Sie die unten stehenden Hinweise."
+		}
+	},
+	"config": {
+		"about": {
+			"title": "Fernzugriffseinstellungen",
+			"description": "Konfigurieren Sie die interne und externe URL, unter der diese Installation erreichbar ist, sowie die Reverse-Proxys, denen bei der Weitergabe von Client-Adressen vertraut wird. Das Modul selbst wird auf der Seite Erweiterungen aktiviert oder deaktiviert."
+		}
+	},
+	"fields": {
+		"config": {
+			"internalUrl": {
+				"title": "Interne URL",
+				"placeholder": "z. B. http://panel.local:3000",
+				"description": "Überschreibt den absoluten Origin für die interne URL. Leer lassen, um ihn automatisch abzuleiten.",
+				"invalid": "Muss ein normalisierter absoluter HTTP(S)-Origin ohne Pfad, Anmeldedaten, Abfrage oder Fragment sein."
+			},
+			"externalUrl": {
+				"title": "Externe URL",
+				"placeholder": "z. B. https://panel.example.com",
+				"description": "Manuell konfigurierter externer Origin, z. B. hinter einem selbst eingerichteten Reverse-Proxy oder DDNS-Host.",
+				"invalid": "Muss ein normalisierter absoluter HTTP(S)-Origin ohne Pfad, Anmeldedaten, Abfrage oder Fragment sein."
+			},
+			"trustForwardedHeaders": {
+				"title": "Weitergeleiteten Headern vertrauen",
+				"description": "X-Forwarded-For, X-Real-IP und CF-Connecting-IP von den unten aufgeführten vertrauenswürdigen Proxys vertrauen."
+			},
+			"trustedProxies": {
+				"title": "Vertrauenswürdige Proxys",
+				"placeholder": "IPv4-/IPv6-Adresse oder CIDR-Bereich hinzufügen und Eingabetaste drücken",
+				"description": "IPv4-/IPv6-Adressen oder CIDR-Bereiche, die weitergeleitete Identitäts-Header präsentieren dürfen.",
+				"invalid": "Jeder Eintrag muss eine gültige IPv4-/IPv6-Adresse oder ein gültiger CIDR-Bereich sein."
+			}
+		}
+	}
+}
