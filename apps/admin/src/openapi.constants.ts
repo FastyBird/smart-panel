@@ -770,3 +770,17 @@ export type RemoteAccessTailscalePluginCreateResetPreferencesOperation = operati
 // Remote Access Tailscale Plugin Enums
 // =======================================
 export { RemoteAccessTailscalePluginDataRequirementCode as RemoteAccessTailscalePluginRequirementCode } from './openapi';
+
+// Notifications Webhook Plugin Schemas
+// ======================================
+export type NotificationsWebhookPluginConfigSchema = components['schemas']['NotificationsWebhookPluginDataConfig'];
+export type NotificationsWebhookPluginUpdateConfigSchema = components['schemas']['NotificationsWebhookPluginUpdateConfig'];
+
+// Notifications Discord Plugin Schemas
+// ======================================
+export type NotificationsDiscordPluginConfigSchema = components['schemas']['NotificationsDiscordPluginDataConfig'];
+export type NotificationsDiscordPluginUpdateConfigSchema = components['schemas']['NotificationsDiscordPluginUpdateConfig'];
+
+// Notification channel plugin aliases
+// ===================================
+export { PathsModulesNotificationsNotificationsGetParametersQuerySeverity as NotificationSeverity } from './openapi';

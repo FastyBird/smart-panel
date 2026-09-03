@@ -1,0 +1,42 @@
+{
+	"headings": {
+		"aboutDiscordSettings": "Discord webhook settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"webhookUrl": {
+				"title": "Webhook URL",
+				"placeholder": "https://discord.com/api/webhooks/...",
+				"description": "Discord incoming webhook URL, from a channel's Integrations settings page. Must start with https://.",
+				"invalid": "Enter a Discord webhook URL that starts with https:// and does not embed credentials"
+			},
+			"username": {
+				"title": "Username override",
+				"placeholder": "Smart Panel",
+				"description": "Overrides the default username the webhook posts as in Discord. Leave empty to use the webhook's default."
+			},
+			"minSeverity": {
+				"title": "Minimum severity",
+				"description": "Only notifications at or above this severity are forwarded.",
+				"options": {
+					"info": "Info",
+					"warning": "Warning",
+					"error": "Error",
+					"critical": "Critical"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Discord webhook settings have been updated",
+			"notEdited": "Failed to update Discord webhook settings"
+		}
+	},
+	"texts": {
+		"aboutDiscordSettings": "Forward system notifications to a Discord channel as a rich embed, using a Discord incoming webhook. In Discord, open the target channel's Integrations settings and create (or copy) a webhook URL."
+	}
+}

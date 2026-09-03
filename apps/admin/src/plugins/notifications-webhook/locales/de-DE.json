@@ -1,0 +1,45 @@
+{
+	"headings": {
+		"aboutWebhookSettings": "Webhook settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"url": {
+				"title": "URL",
+				"placeholder": "https://example.com/hooks/panel",
+				"description": "Notifications are POSTed as JSON to this URL. HTTPS is recommended.",
+				"httpWarning": "This URL is not encrypted. The notification payload will travel in cleartext - use HTTPS whenever the target supports it, and only use HTTP for trusted-network targets on your own LAN.",
+				"invalid": "Enter an absolute HTTP or HTTPS URL without embedded credentials"
+			},
+			"headers": {
+				"title": "Custom headers",
+				"placeholder": "{\"Authorization\": \"Bearer <token>\"}",
+				"description": "Optional JSON object of extra HTTP headers, e.g. an Authorization bearer token. Requires an HTTPS URL.",
+				"invalidJson": "Enter a flat JSON object of string values, e.g. {\"Authorization\": \"Bearer token\"}",
+				"requiresHttps": "Custom headers require an HTTPS webhook URL"
+			},
+			"minSeverity": {
+				"title": "Minimum severity",
+				"description": "Only notifications at or above this severity are forwarded.",
+				"options": {
+					"info": "Info",
+					"warning": "Warning",
+					"error": "Error",
+					"critical": "Critical"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Webhook settings have been updated",
+			"notEdited": "Failed to update webhook settings"
+		}
+	},
+	"texts": {
+		"aboutWebhookSettings": "Forward system notifications as a JSON POST request to any URL you configure - your own automation server, a chat platform's incoming webhook, or a self-hosted tool such as n8n, Node-RED or Home Assistant."
+	}
+}
