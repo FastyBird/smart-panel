@@ -9,6 +9,7 @@ import { SwaggerModule } from '../swagger/swagger.module';
 
 import { UpdateStorageConfigDto } from './dto/update-config.dto';
 import { StorageConfigModel } from './models/config.model';
+import { StorageFallbackMonitorService } from './services/storage-fallback-monitor.service';
 import { StorageService } from './services/storage.service';
 import { STORAGE_MODULE_NAME } from './storage.constants';
 import { STORAGE_MODULE_SWAGGER_EXTRA_MODELS } from './storage.openapi';
@@ -20,7 +21,7 @@ import { STORAGE_MODULE_SWAGGER_EXTRA_MODELS } from './storage.openapi';
 })
 @Module({
 	imports: [NestConfigModule, SwaggerModule],
-	providers: [StorageService],
+	providers: [StorageService, StorageFallbackMonitorService],
 	exports: [StorageService],
 })
 export class StorageModule implements OnModuleInit {
