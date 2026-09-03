@@ -226,7 +226,7 @@ describe('NotificationsService', () => {
 	});
 
 	describe('resolveAll', () => {
-		it('resolves every active keyed row of the source and reports how many', async () => {
+		it('resolves every unresolved keyed row of the source and reports how many', async () => {
 			await service.notify(baseInput({ kind: NotificationKind.ISSUE, key: 'connection' }));
 			await service.notify(baseInput({ kind: NotificationKind.ISSUE, key: 'auth' }));
 			await service.notify(baseInput());
@@ -241,7 +241,37 @@ describe('NotificationsService', () => {
 			]);
 		});
 
-		it('reports zero when the source has nothing active', async () => {
+		it('resolves a dismissed issue too, so nothing of the source outlives it', async () => {
+			const dismissed = await service.notify(baseInput({ kind: NotificationKind.ISSUE, key: 'connection' }));
+			await service.dismiss(dismissed.id, true);
+
+			const alreadyResolved = await service.notify(baseInput({ kind: NotificationKind.ISSUE, key: 'auth' }));
+			await service.resolve('system-module', 'auth');
+			const resolvedAtBefore = (await repository.findOne({ where: { id: alreadyResolved.id } })).resolvedAt;
+
+			const otherSource = await service.notify(
+				baseInput({ source: 'weather-module', kind: NotificationKind.ISSUE, key: 'connection' }),
+			);
+			await service.dismiss(otherSource.id, true);
+
+			await expect(service.resolveAll('system-module')).resolves.toBe(1);
+
+			const reloaded = await repository.findOne({ where: { id: dismissed.id } });
+			expect(reloaded.resolvedAt).toBeInstanceOf(Date);
+			expect(reloaded.dismissedAt).toBeInstanceOf(Date);
+
+			// An already resolved row is neither counted again nor re-stamped.
+			await expect(
+				repository.findOne({ where: { id: alreadyResolved.id } }).then((row) => row.resolvedAt.toISOString()),
+			).resolves.toBe(resolvedAtBefore.toISOString());
+
+			// Another source keeps its own dismissed issue.
+			await expect(
+				repository.findOne({ where: { id: otherSource.id } }).then((row) => row.resolvedAt),
+			).resolves.toBeNull();
+		});
+
+		it('reports zero when the source has nothing unresolved', async () => {
 			await expect(service.resolveAll('system-module')).resolves.toBe(0);
 		});
 	});
