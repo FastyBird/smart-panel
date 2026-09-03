@@ -11,6 +11,29 @@ const flatten = (value: Record<string, unknown>, prefix = ''): string[] =>
 const readPath = (messages: Record<string, unknown>, path: string): unknown =>
 	path.split('.').reduce<unknown>((current, key) => (current as Record<string, unknown> | undefined)?.[key], messages);
 
+const assertNoStaleExceptions = (
+	allowedIdentical: Record<string, string[]>,
+	allLocales: Record<string, Record<string, unknown>>,
+	knownKeys: string[],
+	knownLocales: string[]
+): void => {
+	for (const [path, exemptLocales] of Object.entries(allowedIdentical)) {
+		// `readPath` resolves an unknown path to `undefined` on both sides of the comparison below,
+		// which would otherwise make a misspelled path compare as "equal" and pass silently.
+		expect(knownKeys, `ALLOWED_IDENTICAL references unknown key "${path}"`).toContain(path);
+
+		for (const locale of exemptLocales) {
+			// Same failure mode as above, but for a misspelled locale code.
+			expect(knownLocales, `ALLOWED_IDENTICAL["${path}"] references unknown locale "${locale}"`).toContain(locale);
+
+			const englishValue = readPath(allLocales['en-US'], path);
+			const localeValue = readPath(allLocales[locale], path);
+
+			expect(localeValue, `${locale}.${path} no longer matches en-US - remove it from ALLOWED_IDENTICAL`).toEqual(englishValue);
+		}
+	}
+};
+
 /**
  * Keys that are legitimately allowed to keep the exact same value as `en-US` in the listed
  * locales - a deliberate translation choice (a shared loanword, or simply the correct native
@@ -98,13 +121,20 @@ describe('Notifications module locales', () => {
 	it('does not declare an exception it no longer needs', () => {
 		// Guards the exception table itself: every listed (path, locale) pair must actually still be
 		// identical to en-US, or the "exception" is dead weight hiding a real translation gap.
-		for (const [path, exemptLocales] of Object.entries(ALLOWED_IDENTICAL)) {
-			for (const locale of exemptLocales) {
-				const englishValue = readPath(locales['en-US'], path);
-				const localeValue = readPath(locales[locale], path);
+		assertNoStaleExceptions(ALLOWED_IDENTICAL, locales, referenceKeys, localeNames);
+	});
 
-				expect(localeValue, `${locale}.${path} no longer matches en-US - remove it from ALLOWED_IDENTICAL`).toEqual(englishValue);
-			}
-		}
+	it('fails fast when an exception references a misspelled key or locale', () => {
+		// `readPath` resolves an unknown path/locale to `undefined` on both sides of the comparison,
+		// which would otherwise make a typo in ALLOWED_IDENTICAL compare as "equal" and pass silently.
+		const fixtureLocales = {
+			'en-US': { greeting: 'Hello' },
+			'xx-XX': { greeting: 'Bonjour' },
+		};
+		const knownKeys = ['greeting'];
+		const knownLocales = ['en-US', 'xx-XX'];
+
+		expect(() => assertNoStaleExceptions({ 'greeting.typo': ['xx-XX'] }, fixtureLocales, knownKeys, knownLocales)).toThrow();
+		expect(() => assertNoStaleExceptions({ greeting: ['xx-XX-typo'] }, fixtureLocales, knownKeys, knownLocales)).toThrow();
 	});
 });

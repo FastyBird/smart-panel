@@ -79,6 +79,19 @@ const mountDrawer = async (notification: INotification | null): Promise<VueWrapp
 	return wrapper;
 };
 
+// The "Lifecycle" descriptions block always renders - unlike "Data", which only appears when the
+// notification carries data - so it can be located by its translated (mocked) title.
+const lifecycleRows = (wrapper: VueWrapper<NotificationDetailDrawerInstance>): { label: string; value: string }[] => {
+	const table = wrapper
+		.findAll('.el-descriptions')
+		.find((descriptions) => descriptions.find('.el-descriptions__title').text() === 'notificationsModule.headings.notifications.lifecycle');
+
+	const labels = table!.findAll('.el-descriptions__label').map((cell) => cell.text());
+	const values = table!.findAll('.el-descriptions__content').map((cell) => cell.text());
+
+	return labels.map((label, index) => ({ label, value: values[index] }));
+};
+
 describe('NotificationDetailDrawer', () => {
 	let wrapper: VueWrapper<NotificationDetailDrawerInstance>;
 
@@ -143,6 +156,59 @@ describe('NotificationDetailDrawer', () => {
 			wrapper = await mountDrawer({ ...baseNotification, actions: [] });
 
 			expect(wrapper.find('.notification-actions').exists()).toBe(false);
+		});
+	});
+
+	describe('lifecycle', () => {
+		it('renders the formatted timestamp for every lifecycle field when set', async () => {
+			const createdAt = new Date('2026-01-01T08:00:00.000Z');
+			const updatedAt = new Date('2026-01-02T09:15:00.000Z');
+			const readAt = new Date('2026-01-03T10:30:00.000Z');
+			const dismissedAt = new Date('2026-01-04T11:45:00.000Z');
+			const resolvedAt = new Date('2026-01-05T12:00:00.000Z');
+
+			wrapper = await mountDrawer({
+				...baseNotification,
+				createdAt,
+				updatedAt,
+				readAt,
+				dismissedAt,
+				resolvedAt,
+			});
+
+			expect(lifecycleRows(wrapper)).toEqual([
+				{ label: 'notificationsModule.fields.notifications.createdAt.title', value: createdAt.toLocaleString() },
+				{ label: 'notificationsModule.fields.notifications.updatedAt.title', value: updatedAt.toLocaleString() },
+				{ label: 'notificationsModule.fields.notifications.readAt.title', value: readAt.toLocaleString() },
+				{ label: 'notificationsModule.fields.notifications.dismissedAt.title', value: dismissedAt.toLocaleString() },
+				{ label: 'notificationsModule.fields.notifications.resolvedAt.title', value: resolvedAt.toLocaleString() },
+			]);
+		});
+
+		it('renders the localized not-yet-set text when readAt, dismissedAt or resolvedAt are null, and omits the updatedAt row', async () => {
+			wrapper = await mountDrawer({
+				...baseNotification,
+				readAt: null,
+				dismissedAt: null,
+				resolvedAt: null,
+				updatedAt: null,
+			});
+
+			expect(lifecycleRows(wrapper)).toEqual([
+				{
+					label: 'notificationsModule.fields.notifications.createdAt.title',
+					value: baseNotification.createdAt.toLocaleString(),
+				},
+				{ label: 'notificationsModule.fields.notifications.readAt.title', value: 'notificationsModule.fields.notifications.readAt.no' },
+				{
+					label: 'notificationsModule.fields.notifications.dismissedAt.title',
+					value: 'notificationsModule.fields.notifications.dismissedAt.no',
+				},
+				{
+					label: 'notificationsModule.fields.notifications.resolvedAt.title',
+					value: 'notificationsModule.fields.notifications.resolvedAt.no',
+				},
+			]);
 		});
 	});
 
