@@ -7,6 +7,12 @@ import { Cron } from '@nestjs/schedule';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { compareSemver, getUpdateType } from '../../../common/utils/semver';
+import {
+	NotificationActionType,
+	NotificationKind,
+	NotificationSeverity,
+} from '../../notifications/notifications.constants';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 import { EventType, SYSTEM_MODULE_NAME, UpdatePhase, UpdateStatusType } from '../system.constants';
 
 export type InstallType = 'image' | 'npm';
@@ -99,7 +105,10 @@ export class UpdateService {
 	private static readonly IMAGE_CURRENT_LINK = '/opt/smart-panel/current';
 	private static readonly IMAGE_MARKER_FILE = '.image-install';
 
-	constructor(private readonly eventEmitter: EventEmitter2) {}
+	constructor(
+		private readonly eventEmitter: EventEmitter2,
+		private readonly notifications: NotificationsService,
+	) {}
 
 	getCurrentVersion(): string {
 		try {
@@ -342,6 +351,8 @@ export class UpdateService {
 				Date.now() + (complete ? this.CACHE_TTL_MS : UpdateService.PARTIAL_CACHE_TTL_MS),
 			);
 
+			this.reportUpdateAvailability(result, resolvedChannel);
+
 			return result;
 		} catch (error) {
 			const err = error as Error;
@@ -355,6 +366,32 @@ export class UpdateService {
 				updateType: null,
 			};
 		}
+	}
+
+	/**
+	 * Raises or resolves the `update-available` issue after a fresh check. Called only from the
+	 * non-cached branch of {@link checkServerUpdate}, so a cache hit never re-reports a condition
+	 * that has not actually been re-checked — the scheduled (12 h cron) and manual "check for
+	 * updates" paths both invalidate the cache before calling `checkServerUpdate`, so this covers
+	 * both without a second call site.
+	 */
+	private reportUpdateAvailability(info: VersionInfo, channel: string): void {
+		if (info.updateAvailable) {
+			void this.notifications.notify({
+				source: SYSTEM_MODULE_NAME,
+				kind: NotificationKind.ISSUE,
+				key: 'update-available',
+				severity: NotificationSeverity.INFO,
+				title: `Update ${info.latest} is available`,
+				message: `Installed ${info.current}. Channel: ${channel}.`,
+				actions: [{ type: NotificationActionType.LINK, label: 'View update', url: '/system/info', primary: true }],
+				data: { current_version: info.current, latest_version: info.latest },
+			});
+
+			return;
+		}
+
+		void this.notifications.resolve(SYSTEM_MODULE_NAME, 'update-available');
 	}
 
 	/**

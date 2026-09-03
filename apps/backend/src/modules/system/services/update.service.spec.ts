@@ -11,6 +11,14 @@ import { existsSync, readFileSync, readdirSync, readlinkSync } from 'fs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import {
+	NotificationActionType,
+	NotificationKind,
+	NotificationSeverity,
+} from '../../notifications/notifications.constants';
+import { NotificationsService } from '../../notifications/services/notifications.service';
+import { SYSTEM_MODULE_NAME } from '../system.constants';
+
 import { UpdateService } from './update.service';
 
 jest.mock('fs', () => ({
@@ -23,6 +31,7 @@ jest.mock('fs', () => ({
 
 describe('UpdateService', () => {
 	let service: UpdateService;
+	let notifications: { notify: jest.Mock; resolve: jest.Mock; resolveAll: jest.Mock };
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
@@ -34,10 +43,19 @@ describe('UpdateService', () => {
 						emit: jest.fn(() => {}),
 					},
 				},
+				{
+					provide: NotificationsService,
+					useValue: {
+						notify: jest.fn(),
+						resolve: jest.fn(),
+						resolveAll: jest.fn(),
+					},
+				},
 			],
 		}).compile();
 
 		service = module.get<UpdateService>(UpdateService);
+		notifications = module.get<NotificationsService>(NotificationsService) as unknown as typeof notifications;
 
 		jest.clearAllMocks();
 	});
@@ -680,6 +698,59 @@ describe('UpdateService', () => {
 			const result = await service.checkServerUpdate('latest');
 
 			expect(result).toEqual(cached);
+		});
+	});
+
+	describe('update availability notifications', () => {
+		let fetchSpy: jest.SpyInstance;
+
+		const mockNpmInstall = (currentVersion: string): void => {
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ version: currentVersion }));
+			(readlinkSync as jest.Mock).mockImplementation(() => {
+				throw new Error('Not a symlink');
+			});
+			(existsSync as jest.Mock).mockReturnValue(false);
+		};
+
+		afterEach(() => {
+			fetchSpy?.mockRestore();
+		});
+
+		it('raises the update-available issue when a newer version is offered', async () => {
+			mockNpmInstall('1.0.0');
+			fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+				ok: true,
+				status: 200,
+				json: () => Promise.resolve({ 'dist-tags': { latest: '1.1.0' } }),
+			} as Response);
+
+			await service.checkServerUpdate('latest');
+
+			expect(notifications.notify).toHaveBeenCalledWith({
+				source: SYSTEM_MODULE_NAME,
+				kind: NotificationKind.ISSUE,
+				key: 'update-available',
+				severity: NotificationSeverity.INFO,
+				title: 'Update 1.1.0 is available',
+				message: 'Installed 1.0.0. Channel: latest.',
+				actions: [{ type: NotificationActionType.LINK, label: 'View update', url: '/system/info', primary: true }],
+				data: { current_version: '1.0.0', latest_version: '1.1.0' },
+			});
+			expect(notifications.resolve).not.toHaveBeenCalled();
+		});
+
+		it('resolves the update-available issue when no update is offered', async () => {
+			mockNpmInstall('1.1.0');
+			fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+				ok: true,
+				status: 200,
+				json: () => Promise.resolve({ 'dist-tags': { latest: '1.1.0' } }),
+			} as Response);
+
+			await service.checkServerUpdate('latest');
+
+			expect(notifications.resolve).toHaveBeenCalledWith(SYSTEM_MODULE_NAME, 'update-available');
+			expect(notifications.notify).not.toHaveBeenCalled();
 		});
 	});
 

@@ -4,6 +4,13 @@ import { dirname, join } from 'path';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import {
+	NotificationActionType,
+	NotificationKind,
+	NotificationSeverity,
+} from '../../notifications/notifications.constants';
+import { sanitizeErrorMessage } from '../../notifications/notifications.utils';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 import { SYSTEM_MODULE_NAME, UpdatePhase, UpdateStatusType } from '../system.constants';
 
 import { PrivilegedJobStatus, PrivilegedWorkerService } from './privileged-worker.service';
@@ -79,6 +86,7 @@ export class UpdateExecutorService implements OnModuleInit {
 	constructor(
 		private readonly updateService: UpdateService,
 		private readonly privilegedWorker: PrivilegedWorkerService,
+		private readonly notifications: NotificationsService,
 	) {}
 
 	onModuleInit(): void {
@@ -104,16 +112,12 @@ export class UpdateExecutorService implements OnModuleInit {
 					message: `Successfully updated to ${status.targetVersion}`,
 					error: null,
 				});
+
+				this.reportUpdateSucceeded();
 			} else if (status.status === UpdateStatusType.FAILED) {
 				this.logger.error(`Update to ${status.targetVersion} failed: ${status.error ?? 'unknown error'}`);
 
-				this.updateService.setStatus({
-					status: UpdateStatusType.FAILED,
-					phase: UpdatePhase.FAILED,
-					progressPercent: null,
-					message: null,
-					error: status.error ?? 'Update failed with unknown error',
-				});
+				this.failUpdate(status.error ?? 'Update failed with unknown error');
 			} else {
 				// Update was in progress when the service restarted - check timeout
 				const startedAt = new Date(status.startedAt).getTime();
@@ -121,25 +125,13 @@ export class UpdateExecutorService implements OnModuleInit {
 				if (Date.now() - startedAt > UPDATE_TIMEOUT_MS) {
 					this.logger.error(`Update to ${status.targetVersion} timed out`);
 
-					this.updateService.setStatus({
-						status: UpdateStatusType.FAILED,
-						phase: UpdatePhase.FAILED,
-						progressPercent: null,
-						message: null,
-						error: 'Update timed out after 10 minutes',
-					});
+					this.failUpdate('Update timed out after 10 minutes');
 				} else {
 					this.logger.warn(
 						`Update to ${status.targetVersion} was in progress (phase: ${status.phase}), service restarted`,
 					);
 
-					this.updateService.setStatus({
-						status: UpdateStatusType.FAILED,
-						phase: UpdatePhase.FAILED,
-						progressPercent: null,
-						message: null,
-						error: `Update interrupted during ${status.phase} phase`,
-					});
+					this.failUpdate(`Update interrupted during ${status.phase} phase`);
 				}
 			}
 
@@ -179,13 +171,7 @@ export class UpdateExecutorService implements OnModuleInit {
 			if (!asset) {
 				this.updateService.releaseUpdateLock();
 
-				this.updateService.setStatus({
-					status: UpdateStatusType.FAILED,
-					phase: UpdatePhase.FAILED,
-					progressPercent: null,
-					message: null,
-					error: `No backend release artifact found for version ${targetVersion}`,
-				});
+				this.failUpdate(`No backend release artifact found for version ${targetVersion}`);
 
 				throw new Error(`No backend release artifact found for version ${targetVersion}`);
 			}
@@ -220,13 +206,7 @@ export class UpdateExecutorService implements OnModuleInit {
 
 			this.logger.error(errorMsg);
 
-			this.updateService.setStatus({
-				status: UpdateStatusType.FAILED,
-				phase: UpdatePhase.FAILED,
-				progressPercent: null,
-				message: null,
-				error: errorMsg,
-			});
+			this.failUpdate(errorMsg);
 
 			this.writeStatusFile({
 				status: UpdateStatusType.FAILED,
@@ -279,13 +259,7 @@ export class UpdateExecutorService implements OnModuleInit {
 
 			this.updateService.releaseUpdateLock();
 
-			this.updateService.setStatus({
-				status: UpdateStatusType.FAILED,
-				phase: UpdatePhase.FAILED,
-				progressPercent: null,
-				message: null,
-				error: `Failed to spawn update worker: ${err.message}`,
-			});
+			this.failUpdate(`Failed to spawn update worker: ${err.message}`);
 
 			this.writeStatusFile({
 				status: UpdateStatusType.FAILED,
@@ -312,13 +286,7 @@ export class UpdateExecutorService implements OnModuleInit {
 			if (status.state === 'timeout') {
 				this.logger.error('Update status polling timed out');
 
-				this.updateService.setStatus({
-					status: UpdateStatusType.FAILED,
-					phase: UpdatePhase.FAILED,
-					progressPercent: null,
-					message: null,
-					error: 'Update timed out — no completion signal received',
-				});
+				this.failUpdate('Update timed out — no completion signal received');
 
 				this.updateService.releaseUpdateLock();
 				unsubscribe();
@@ -329,13 +297,7 @@ export class UpdateExecutorService implements OnModuleInit {
 			if (status.state === 'failed') {
 				this.logger.error(`Update worker failed: ${status.message ?? 'unknown error'}`);
 
-				this.updateService.setStatus({
-					status: UpdateStatusType.FAILED,
-					phase: UpdatePhase.FAILED,
-					progressPercent: null,
-					message: null,
-					error: status.message ?? 'Update failed with unknown error',
-				});
+				this.failUpdate(status.message ?? 'Update failed with unknown error');
 
 				this.updateService.releaseUpdateLock();
 				unsubscribe();
@@ -351,6 +313,8 @@ export class UpdateExecutorService implements OnModuleInit {
 					message: `Successfully updated to ${targetVersion}`,
 					error: null,
 				});
+
+				this.reportUpdateSucceeded();
 
 				this.updateService.releaseUpdateLock();
 				unsubscribe();
@@ -397,5 +361,41 @@ export class UpdateExecutorService implements OnModuleInit {
 
 			this.logger.error(`Failed to write update status file: ${err.message}`);
 		}
+	}
+
+	/**
+	 * Every place a run reaches `FAILED` shares this shape (only `error` varies), so it also
+	 * raises the persistent `update-failed` issue - "persistent" because nothing re-detects a
+	 * failed install on its own, only the next run or the administrator dismissing it.
+	 */
+	private failUpdate(error: string): void {
+		this.updateService.setStatus({
+			status: UpdateStatusType.FAILED,
+			phase: UpdatePhase.FAILED,
+			progressPercent: null,
+			message: null,
+			error,
+		});
+
+		void this.notifications.notify({
+			source: SYSTEM_MODULE_NAME,
+			kind: NotificationKind.ISSUE,
+			key: 'update-failed',
+			severity: NotificationSeverity.ERROR,
+			title: 'Update installation failed',
+			message: sanitizeErrorMessage(error),
+			actions: [{ type: NotificationActionType.LINK, label: 'View update', url: '/system/info', primary: true }],
+			persistent: true,
+		});
+	}
+
+	/**
+	 * A successful run clears both the failure it may have left behind and the availability
+	 * issue that prompted the install in the first place - waiting for the next scheduled check
+	 * (up to 12 h away) to notice the update is gone would leave a stale notification.
+	 */
+	private reportUpdateSucceeded(): void {
+		void this.notifications.resolve(SYSTEM_MODULE_NAME, 'update-failed');
+		void this.notifications.resolve(SYSTEM_MODULE_NAME, 'update-available');
 	}
 }

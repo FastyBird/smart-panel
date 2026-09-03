@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment */
 import { existsSync, readFileSync, unlinkSync } from 'fs';
 
-import { UpdateStatusType } from '../system.constants';
+import {
+	NotificationActionType,
+	NotificationKind,
+	NotificationSeverity,
+} from '../../notifications/notifications.constants';
+import { SYSTEM_MODULE_NAME, UpdateStatusType } from '../system.constants';
 
 import { UpdateExecutorService } from './update-executor.service';
 
@@ -29,6 +34,7 @@ describe('UpdateExecutorService', () => {
 		getStatus: jest.Mock;
 		onStatus: jest.Mock;
 	};
+	let notifications: { notify: jest.Mock; resolve: jest.Mock; resolveAll: jest.Mock };
 
 	beforeEach(() => {
 		updateService = {
@@ -45,11 +51,12 @@ describe('UpdateExecutorService', () => {
 			getStatus: jest.fn(),
 			onStatus: jest.fn(),
 		};
+		notifications = { notify: jest.fn(), resolve: jest.fn(), resolveAll: jest.fn() };
 
 		// Suppress onModuleInit by not calling it — we test checkPendingUpdateStatus separately
 		(existsSync as jest.Mock).mockReturnValue(false);
 
-		executor = new UpdateExecutorService(updateService as any, privilegedWorker as any);
+		executor = new UpdateExecutorService(updateService as any, privilegedWorker as any, notifications as any);
 		executor.onModuleInit();
 
 		jest.clearAllMocks();
@@ -164,6 +171,49 @@ describe('UpdateExecutorService', () => {
 
 			// Should attempt to clean up the corrupt file
 			expect(unlinkSync).toHaveBeenCalled();
+		});
+
+		it('raises the persistent update-failed issue when a run reaches FAILED', () => {
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({
+					status: UpdateStatusType.FAILED,
+					phase: 'installing',
+					targetVersion: '1.1.0',
+					startedAt: new Date().toISOString(),
+					error: 'npm install failed',
+				}),
+			);
+
+			executor.onModuleInit();
+
+			expect(notifications.notify).toHaveBeenCalledWith({
+				source: SYSTEM_MODULE_NAME,
+				kind: NotificationKind.ISSUE,
+				key: 'update-failed',
+				severity: NotificationSeverity.ERROR,
+				title: 'Update installation failed',
+				message: 'npm install failed',
+				actions: [{ type: NotificationActionType.LINK, label: 'View update', url: '/system/info', primary: true }],
+				persistent: true,
+			});
+		});
+
+		it('resolves the update-failed and update-available issues when a run completes', () => {
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({
+					status: UpdateStatusType.COMPLETE,
+					phase: 'complete',
+					targetVersion: '1.1.0',
+					startedAt: new Date().toISOString(),
+				}),
+			);
+
+			executor.onModuleInit();
+
+			expect(notifications.resolve).toHaveBeenCalledWith(SYSTEM_MODULE_NAME, 'update-failed');
+			expect(notifications.resolve).toHaveBeenCalledWith(SYSTEM_MODULE_NAME, 'update-available');
 		});
 	});
 });
