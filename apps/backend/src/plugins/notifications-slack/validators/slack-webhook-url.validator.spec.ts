@@ -3,10 +3,7 @@ import { isValidSlackWebhookUrl } from './slack-webhook-url.validator';
 describe('isValidSlackWebhookUrl', () => {
 	describe('accepts', () => {
 		it.each([
-			[
-				'a canonical incoming-webhook URL',
-				'https://hooks.slack.com/services/T0/B0/XYZ',
-			],
+			['a canonical incoming-webhook URL', 'https://hooks.slack.com/services/T0/B0/XYZ'],
 			['a lowercase-hostname variant', 'https://HOOKS.SLACK.COM/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX'],
 			['a trailing slash', 'https://hooks.slack.com/services/T0/B0/XYZ/'],
 		])('%s', (_label, url) => {
