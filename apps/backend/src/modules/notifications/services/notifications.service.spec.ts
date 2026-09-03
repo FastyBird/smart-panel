@@ -194,6 +194,94 @@ describe('NotificationsService', () => {
 		});
 	});
 
+	describe('notify - concurrent keyed upsert', () => {
+		const issue = () =>
+			service.notify(
+				baseInput({
+					kind: NotificationKind.ISSUE,
+					key: 'connection',
+					severity: NotificationSeverity.ERROR,
+					title: 'Connection lost',
+				}),
+			);
+
+		const event = () => service.notify(baseInput({ key: 'update-available' }));
+
+		it('resolves 20 concurrent notify() calls for one issue key into a single row with occurrences 20', async () => {
+			const results = await Promise.all(Array.from({ length: 20 }, () => issue()));
+
+			expect(results.every((result) => result !== null)).toBe(true);
+			await expect(repository.count()).resolves.toBe(1);
+
+			const row = await repository.findOne({
+				where: { source: 'system-module', key: 'connection', resolvedAt: IsNull() },
+			});
+			expect(row?.occurrences).toBe(20);
+		});
+
+		it('resolves 20 concurrent notify() calls for one keyed event into a single row, clearing read and dismissed marks', async () => {
+			const first = await event();
+
+			await service.markRead(first.id, true);
+			await service.dismiss(first.id, true);
+
+			const results = await Promise.all(Array.from({ length: 20 }, () => event()));
+
+			expect(results.every((result) => result !== null)).toBe(true);
+			await expect(repository.count()).resolves.toBe(1);
+
+			const row = await repository.findOne({
+				where: { source: 'system-module', key: 'update-available', resolvedAt: IsNull() },
+			});
+			expect(row?.occurrences).toBe(21);
+			expect(row?.readAt).toBeNull();
+			expect(row?.dismissedAt).toBeNull();
+		});
+
+		it('keeps a dismissed issue dismissed through a concurrent burst', async () => {
+			const first = await issue();
+
+			await service.dismiss(first.id, true);
+
+			const results = await Promise.all(Array.from({ length: 20 }, () => issue()));
+
+			expect(results.every((result) => result !== null)).toBe(true);
+			await expect(repository.count()).resolves.toBe(1);
+
+			const row = await repository.findOne({
+				where: { source: 'system-module', key: 'connection', resolvedAt: IsNull() },
+			});
+			expect(row?.occurrences).toBe(21);
+			expect(row?.dismissedAt).toBeInstanceOf(Date);
+		});
+
+		it('returns the existing row with an incremented count when an insert loses the unique-index race', async () => {
+			const save = jest.spyOn(repository, 'save');
+
+			save.mockImplementationOnce(async () => {
+				// Simulates a concurrent notify() that already committed its insert between
+				// this call's UPDATE (nothing to match yet) and its own insert attempt.
+				await seed({
+					kind: NotificationKind.ISSUE,
+					key: 'connection',
+					severity: NotificationSeverity.ERROR,
+					title: 'Connection lost',
+					occurrences: 1,
+				});
+
+				throw new Error(
+					'SQLITE_CONSTRAINT: UNIQUE constraint failed: notifications_module_notifications.source, notifications_module_notifications.key',
+				);
+			});
+
+			const result = await issue();
+
+			expect(result).not.toBeNull();
+			expect(result?.occurrences).toBe(2);
+			await expect(repository.count()).resolves.toBe(1);
+		});
+	});
+
 	describe('resolve', () => {
 		it('closes the aggregation so the next notify starts a fresh row', async () => {
 			const first = await service.notify(
@@ -277,6 +365,16 @@ describe('NotificationsService', () => {
 	});
 
 	describe('notify - validation', () => {
+		it('refuses a non-object input, rather than throwing at the emitter', async () => {
+			const warn = jest.spyOn(Logger.prototype, 'warn');
+
+			await expect(service.notify(null as never)).resolves.toBeNull();
+
+			await expect(repository.count()).resolves.toBe(0);
+			expect(warn).toHaveBeenCalledTimes(1);
+			expect(eventEmitter.emit).not.toHaveBeenCalled();
+		});
+
 		it('truncates the title and the message', async () => {
 			const created = await service.notify(
 				baseInput({

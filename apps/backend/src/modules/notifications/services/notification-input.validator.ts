@@ -64,6 +64,13 @@ const truncate = (value: string, maxLength: number): string =>
 @Injectable()
 export class NotificationInputValidator {
 	validate(input: CreateNotificationInput): NotificationInputValidationResult {
+		// Guarded rather than assumed: `notify()` promises never to throw at its emitter, and
+		// `input` itself crosses that same untyped boundary, so a caller that hands over `null`
+		// or a bare string must be a refusal here rather than a TypeError on `input.source`.
+		if (!isPlainObject(input)) {
+			return reject('input must be an object');
+		}
+
 		if (!isNonEmptyString(input.source)) {
 			return reject('source is required');
 		}

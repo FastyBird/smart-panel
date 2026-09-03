@@ -79,7 +79,7 @@ One place where the system tells the administrator what needs attention: an inte
 - **Boot cleanup** — non-persistent issues are resolved when the backend starts, so a condition that cleared while the process was down does not linger
 - **Retention and caps** — dismissed and resolved rows are deleted after \`retention_days\`; active events are bounded by \`max_notifications\`, oldest read first. Issues are never evicted
 - **Rate guard** — at most 60 notifications per source per minute, so a spinning emitter cannot flood the table or the configured channels
-- **Real-time push** — creation, update and deletion are broadcast over WebSocket to the admin, which fetches the row through the guarded REST endpoint
+- **Real-time push** — creation, update and deletion are broadcast over WebSocket to the admin, which fetches the row through the notifications REST API
 
 ## Configuration
 

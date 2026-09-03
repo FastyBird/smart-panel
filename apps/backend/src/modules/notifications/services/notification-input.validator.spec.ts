@@ -121,6 +121,15 @@ describe('NotificationInputValidator', () => {
 	});
 
 	describe('rejections', () => {
+		it.each([
+			['null', null],
+			['a string', 'x'],
+		])('rejects %s as the root input, rather than throwing at the emitter', (_label, input) => {
+			const result = validator.validate(input as never);
+
+			expect(result).toEqual({ outcome: 'rejected', reason: 'input must be an object' });
+		});
+
 		it('rejects an issue without a key', () => {
 			const result = validator.validate(baseInput({ kind: NotificationKind.ISSUE }));
 

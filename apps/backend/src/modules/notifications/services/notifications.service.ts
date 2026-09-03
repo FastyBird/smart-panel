@@ -70,6 +70,24 @@ interface RateWindow {
 	warnedAt: number | null;
 }
 
+/**
+ * Whether a driver error is SQLite refusing a row for the `(source, key)` partial unique
+ * index - the sign that a concurrent `notify()` won the insert race this call just lost.
+ *
+ * Matched on the message because that is all the sqlite driver gives: TypeORM wraps it in
+ * a `QueryFailedError` whose `driverError` carries the text.
+ */
+const isUniqueConstraintViolation = (error: unknown): boolean => {
+	if (!(error instanceof Error)) {
+		return false;
+	}
+
+	const driverMessage = (error as { driverError?: { message?: string } }).driverError?.message ?? '';
+	const message = `${error.message} ${driverMessage}`;
+
+	return message.includes('UNIQUE constraint failed') || message.includes('SQLITE_CONSTRAINT');
+};
+
 @Injectable()
 export class NotificationsService {
 	private readonly logger = createExtensionLogger(NOTIFICATIONS_MODULE_NAME, 'NotificationsService');
@@ -106,15 +124,7 @@ export class NotificationsService {
 		}
 
 		try {
-			if (value.key === null) {
-				return await this.insert(value);
-			}
-
-			const existing = await this.repository.findOne({
-				where: { source: value.source, key: value.key, resolvedAt: IsNull() },
-			});
-
-			return existing === null ? await this.insert(value) : await this.upsert(existing, value);
+			return value.key === null ? await this.insert(value) : await this.upsertKeyed(value);
 		} catch (error) {
 			const err = error as Error;
 
@@ -280,6 +290,12 @@ export class NotificationsService {
 				createdAt: now,
 				updatedAt: now,
 			}),
+			// A single row with no relations to cascade needs no transaction of its own, and
+			// skipping it matters here: `save()` opens one by default, and SQLite's single
+			// connection cannot run concurrent transactions - two notify() calls racing to
+			// insert the same (source, key) would otherwise corrupt each other's writes
+			// instead of one cleanly losing the unique-index race for upsertKeyed() to retry.
+			{ transaction: false },
 		);
 
 		this.logger.debug(`Created notification id=${notification.id} source=${value.source} kind=${value.kind}`);
@@ -290,30 +306,87 @@ export class NotificationsService {
 	}
 
 	/**
-	 * Folds a repeat into the row that already holds the condition.
+	 * Folds a repeat into the row that already holds the condition, or opens a new one when
+	 * none exists yet.
 	 *
-	 * An event re-opens: the repeat is news, so read and dismissed marks are cleared. An
-	 * issue does not: the administrator dismissed a condition that has not changed, and
-	 * un-hiding it on every retry tick would make dismissing an issue meaningless.
+	 * The fold is a single atomic `UPDATE ... SET occurrences = occurrences + 1`, not a
+	 * load-increment-save cycle: two concurrent `notify()` calls for the same `(source, key)`
+	 * each run their own UPDATE against whatever row the database holds at that instant, so
+	 * neither can load a stale copy and overwrite the other's increment. When the UPDATE
+	 * matches nothing there is no active row yet, so this falls through to `insert()`; if that
+	 * insert then loses the partial-unique-index race to a concurrent `notify()` that inserted
+	 * first, the same UPDATE runs once more against the row the winner just created.
 	 */
-	private async upsert(existing: NotificationEntity, value: ValidatedNotificationInput): Promise<NotificationEntity> {
-		const now = new Date();
-
-		existing.severity = value.severity;
-		existing.title = value.title;
-		existing.message = value.message;
-		existing.actions = value.actions;
-		existing.data = value.data;
-		existing.persistent = value.persistent;
-		existing.occurrences += 1;
-		existing.updatedAt = now;
-
-		if (value.kind === NotificationKind.EVENT) {
-			existing.readAt = null;
-			existing.dismissedAt = null;
+	private async upsertKeyed(value: ValidatedNotificationInput): Promise<NotificationEntity> {
+		if (await this.applyKeyedUpdate(value)) {
+			return await this.completeKeyedUpdate(value);
 		}
 
-		const notification = await this.repository.save(existing);
+		try {
+			return await this.insert(value);
+		} catch (error) {
+			if (!isUniqueConstraintViolation(error) || !(await this.applyKeyedUpdate(value))) {
+				throw error;
+			}
+
+			return await this.completeKeyedUpdate(value);
+		}
+	}
+
+	/**
+	 * The atomic UPDATE shared by the first attempt and the post-insert-race retry, run
+	 * against the active row (`source`, `key`, `resolved_at IS NULL`). An event re-opens: the
+	 * repeat is news, so `read_at` and `dismissed_at` are cleared. An issue does not: the
+	 * administrator dismissed a condition that has not changed, and un-hiding it on every
+	 * retry tick would make dismissing an issue meaningless.
+	 */
+	private async applyKeyedUpdate(value: ValidatedNotificationInput): Promise<boolean> {
+		const set: Record<string, unknown> = {
+			title: value.title,
+			message: value.message,
+			severity: value.severity,
+			actions: value.actions,
+			data: value.data,
+			persistent: value.persistent,
+			occurrences: () => 'occurrences + 1',
+			updatedAt: new Date(),
+		};
+
+		if (value.kind === NotificationKind.EVENT) {
+			set.readAt = null;
+			set.dismissedAt = null;
+		}
+
+		const result = await this.repository
+			.createQueryBuilder()
+			.update(NotificationEntity)
+			.set(set)
+			.where('source = :source', { source: value.source })
+			.andWhere('key = :key', { key: value.key })
+			.andWhere('resolvedAt IS NULL')
+			.execute();
+
+		return Boolean(result.affected);
+	}
+
+	/**
+	 * SQLite through TypeORM does not reliably hand back the row an UPDATE just touched, so
+	 * the atomic path reloads by the same `(source, key)` that identifies it - the partial
+	 * unique index guarantees at most one active match.
+	 */
+	private async completeKeyedUpdate(value: ValidatedNotificationInput): Promise<NotificationEntity> {
+		const notification = await this.repository.findOne({
+			where: { source: value.source, key: value.key, resolvedAt: IsNull() },
+		});
+
+		if (notification === null) {
+			// Vanishingly unlikely: something resolved or removed the row between this call's
+			// own UPDATE and this reload. Surfaced as the same storage failure the outer catch
+			// in notify() already logs and returns null for.
+			throw new Error(
+				`Notification for source=${value.source} key=${String(value.key)} vanished between its atomic update and reload`,
+			);
+		}
 
 		this.logger.debug(
 			`Updated notification id=${notification.id} source=${value.source} occurrences=${notification.occurrences}`,
