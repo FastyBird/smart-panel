@@ -113,6 +113,15 @@ export class NotificationsService {
 
 	private readonly rateWindows = new Map<string, RateWindow>();
 
+	/**
+	 * Per-`${source}:${key}` write queues. `notify()` for a keyed input and `resolve()` enqueue
+	 * their database work here so a raise and a resolve for the same key are applied in the order
+	 * they were called in, never the order their own database work happens to finish in. Entries
+	 * are removed once nothing is queued behind the settled task, so this does not grow for the
+	 * lifetime of the process.
+	 */
+	private readonly chains = new Map<string, Promise<void>>();
+
 	constructor(
 		@InjectRepository(NotificationEntity)
 		private readonly repository: Repository<NotificationEntity>,
@@ -142,15 +151,25 @@ export class NotificationsService {
 			return null;
 		}
 
-		try {
-			return value.key === null ? await this.insert(value) : await this.upsertKeyed(value);
-		} catch (error) {
-			const err = error as Error;
+		const write = async (): Promise<NotificationEntity | null> => {
+			try {
+				return value.key === null ? await this.insert(value) : await this.upsertKeyed(value);
+			} catch (error) {
+				const err = error as Error;
 
-			this.logger.error(`Failed to store a notification from source=${value.source}: ${err.message}`);
+				this.logger.error(`Failed to store a notification from source=${value.source}: ${err.message}`);
 
-			return null;
+				return null;
+			}
+		};
+
+		// Only a keyed write can race a resolve() for the same (source, key); an unkeyed event
+		// always inserts a fresh row, so there is nothing for it to serialise against.
+		if (value.key === null) {
+			return write();
 		}
+
+		return this.enqueue(this.chainKey(value.source, value.key), write);
 	}
 
 	/**
@@ -164,6 +183,10 @@ export class NotificationsService {
 			return false;
 		}
 
+		return this.enqueue(this.chainKey(source, key), () => this.doResolve(source, key));
+	}
+
+	private async doResolve(source: string, key: string): Promise<boolean> {
 		const notification = await this.repository.findOne({ where: { source, key, resolvedAt: IsNull() } });
 
 		if (notification === null) {
@@ -194,6 +217,8 @@ export class NotificationsService {
 	 * never pruned, because retention only counts an issue from its resolution.
 	 */
 	async resolveAll(source: string): Promise<number> {
+		await this.awaitPendingChains(source);
+
 		const notifications = await this.repository.find({
 			where: { source, key: Not(IsNull()), resolvedAt: IsNull() },
 		});
@@ -531,5 +556,55 @@ export class NotificationsService {
 		};
 
 		this.eventEmitter.emit(event, payload);
+	}
+
+	private chainKey(source: string, key: string): string {
+		return `${source}:${key}`;
+	}
+
+	/**
+	 * Runs `task` only after every task already enqueued for `chainKey` has settled, so calls for
+	 * the same key are applied to the database in the order they were made, not the order their
+	 * own database work happens to finish in. A failure in one task never jams the chain for
+	 * whatever is queued behind it - the next task always runs, regardless of how the previous one
+	 * settled. The map entry is removed once nothing is queued behind the settled task, which is
+	 * what keeps {@link chains} from growing for the lifetime of the process.
+	 */
+	private enqueue<T>(chainKey: string, task: () => Promise<T>): Promise<T> {
+		const previous = this.chains.get(chainKey) ?? Promise.resolve();
+		const settledPrevious = previous.then(
+			() => undefined,
+			() => undefined,
+		);
+		const run: Promise<T> = settledPrevious.then(task);
+		const tail: Promise<void> = run.then<void, void>(
+			() => undefined,
+			() => undefined,
+		);
+
+		this.chains.set(chainKey, tail);
+
+		void tail.then(() => {
+			if (this.chains.get(chainKey) === tail) {
+				this.chains.delete(chainKey);
+			}
+		});
+
+		return run;
+	}
+
+	/**
+	 * Waits for every chain currently in flight for `source`, so a bulk resolution started right
+	 * after a raise observes the row that raise is still writing instead of racing it.
+	 */
+	private async awaitPendingChains(source: string): Promise<void> {
+		const prefix = `${source}:`;
+		const pending = [...this.chains.entries()]
+			.filter(([chainKey]) => chainKey.startsWith(prefix))
+			.map(([, tail]) => tail);
+
+		if (pending.length > 0) {
+			await Promise.all(pending);
+		}
 	}
 }
