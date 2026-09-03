@@ -30,8 +30,11 @@ vi.mock('../components/components', () => ({
 vi.mock('../composables/useBreakpoints', () => ({
 	useBreakpoints: vi.fn(),
 }));
-vi.mock('../../modules/notifications/components/components', () => ({
-	NotificationBell: { template: '<div data-test-id="notification-bell"></div>' },
+// Mocks the direct file, not the module's `components/components` barrel: `layout-default.vue`
+// imports `NotificationBell` straight from its own file (see the comment there), so mocking the
+// barrel never intercepts it - matching the pattern in `app-top-bar.spec.ts`.
+vi.mock('../../modules/notifications/components/notification-bell.vue', () => ({
+	default: { name: 'NotificationBell', template: '<div data-test-id="notification-bell"></div>' },
 }));
 // Keeps the rest of the real module (`src/locales/index.ts` calls the real `createI18n` as a
 // side effect of an unrelated barrel import below) and only swaps `useI18n` itself.

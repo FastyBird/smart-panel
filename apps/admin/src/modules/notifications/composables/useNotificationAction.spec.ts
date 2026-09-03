@@ -18,9 +18,11 @@ vi.mock('vue-router', async () => {
 	};
 });
 
+const { mockT } = vi.hoisted(() => ({ mockT: vi.fn((key: string) => key) }));
+
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
-	useI18n: () => ({ t: (key: string) => key }),
+	useI18n: () => ({ t: mockT }),
 }));
 
 const mockSuccess = vi.fn();
@@ -57,28 +59,40 @@ const mockFetchActions = vi.fn();
 const mockExecuteAction = vi.fn();
 const actionDescriptors = ref<{ id: string; label: string; dangerous?: boolean }[]>([]);
 
+// Spied on the factory itself (not just the functions it returns) so "created once, reused" can
+// be asserted directly - `useNotificationAction()` must call these exactly once, not once per
+// `execute()`.
+const { useActionsMock, useServiceActionsMock } = vi.hoisted(() => ({
+	useActionsMock: vi.fn(),
+	useServiceActionsMock: vi.fn(),
+}));
+
 vi.mock('../../extensions/composables/useActions', () => ({
-	useActions: () => ({
-		actions: actionDescriptors,
-		isLoading: ref(false),
-		executingActions: ref(new Map()),
-		fetchActions: mockFetchActions,
-		executeAction: mockExecuteAction,
-		fetchActionHistory: vi.fn(),
-	}),
+	useActions: useActionsMock,
+}));
+
+vi.mock('../../extensions/composables/useServiceActions', () => ({
+	useServiceActions: useServiceActionsMock,
+}));
+
+useActionsMock.mockImplementation(() => ({
+	actions: actionDescriptors,
+	isLoading: ref(false),
+	executingActions: ref(new Map()),
+	fetchActions: mockFetchActions,
+	executeAction: mockExecuteAction,
+	fetchActionHistory: vi.fn(),
 }));
 
 const mockStartService = vi.fn();
 const mockStopService = vi.fn();
 const mockRestartService = vi.fn();
 
-vi.mock('../../extensions/composables/useServiceActions', () => ({
-	useServiceActions: () => ({
-		startService: mockStartService,
-		stopService: mockStopService,
-		restartService: mockRestartService,
-		isActing: vi.fn(),
-	}),
+useServiceActionsMock.mockImplementation(() => ({
+	startService: mockStartService,
+	stopService: mockStopService,
+	restartService: mockRestartService,
+	isActing: vi.fn(),
 }));
 
 const baseNotification: INotification = {
@@ -195,6 +209,27 @@ describe('useNotificationAction', () => {
 
 			expect(confirmMock).toHaveBeenCalled();
 			expect(mockExecuteAction).toHaveBeenCalledWith('devices-home-assistant-plugin', 'reconnect', undefined);
+		});
+
+		// The confirmation copy interpolates both `{title}` (the notification) and `{label}` (the
+		// action) - passing only `title` leaves a literal, untranslated "{label}" in front of the
+		// user. `useNotificationAction.setup-context.spec.ts` covers the real, rendered string;
+		// this covers the call site's arguments directly.
+		it('passes both the notification title and the action label to the confirmation message', async () => {
+			mockFetchActions.mockImplementation(async () => {
+				actionDescriptors.value = [{ id: 'reconnect', label: 'Reconnect', dangerous: true }];
+			});
+			confirmMock.mockResolvedValueOnce(undefined);
+			mockExecuteAction.mockResolvedValue({ success: true });
+
+			const { execute } = useNotificationAction();
+
+			await execute(baseNotification, extensionAction());
+
+			expect(mockT).toHaveBeenCalledWith('notificationsModule.texts.actions.confirmDangerous', {
+				title: baseNotification.title,
+				label: 'Reconnect',
+			});
 		});
 
 		it('does not execute a dangerous action when the confirmation is cancelled', async () => {
@@ -317,6 +352,76 @@ describe('useNotificationAction', () => {
 			await pending;
 
 			expect(isExecuting.value).toBe(false);
+		});
+
+		// Two `action` events firing before the first settles - a double click, or the popover's
+		// shared button re-firing while its own row is still mid-request - must not repeat an
+		// extension action or a service start/stop/restart.
+		it('ignores a second execute() call while the first one is still in flight', async () => {
+			let resolveExecute!: (value: { success: boolean }) => void;
+			mockFetchActions.mockImplementation(async () => {
+				actionDescriptors.value = [{ id: 'reconnect', label: 'Reconnect' }];
+			});
+			mockExecuteAction.mockImplementation(
+				() =>
+					new Promise((resolve) => {
+						resolveExecute = resolve;
+					})
+			);
+
+			const { execute } = useNotificationAction();
+
+			const first = execute(baseNotification, extensionAction());
+			const second = execute(baseNotification, extensionAction());
+
+			// The second call must settle on its own rather than waiting behind the first - it is
+			// ignored outright, not queued. If the guard instead awaited the in-flight call, this
+			// would hang until `resolveExecute` below, and the test would time out.
+			await second;
+
+			resolveExecute({ success: true });
+
+			await first;
+
+			// Exactly one full pass through the flow, from either call combined - a second pass
+			// would mean the guard let the second call re-fetch descriptors and re-run the action.
+			expect(mockFetchActions).toHaveBeenCalledTimes(1);
+			expect(mockExecuteAction).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('composable creation', () => {
+		// `useServiceActions()`'s first operation is `useI18n()`, which must run during synchronous
+		// setup - creating it fresh inside `executeService` (called later, from a click handler)
+		// would crash outside a test double. Asserting it is created exactly once, at
+		// `useNotificationAction()` call time, is the unit-level half of that contract; the
+		// integration half (a real `useI18n()` succeeding when `execute()` runs after mount) lives
+		// in `useNotificationAction.setup-context.spec.ts`.
+		it('creates the service actions composable once, when useNotificationAction() itself is called - not on every execute()', async () => {
+			const { execute } = useNotificationAction();
+
+			expect(useServiceActionsMock).toHaveBeenCalledTimes(1);
+
+			await execute(baseNotification, serviceAction(NotificationsModuleNotificationActionOperation.start));
+			await execute(baseNotification, serviceAction(NotificationsModuleNotificationActionOperation.start));
+
+			expect(useServiceActionsMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('creates the extension actions composable once, when useNotificationAction() itself is called - not on every execute()', async () => {
+			mockFetchActions.mockImplementation(async () => {
+				actionDescriptors.value = [{ id: 'reconnect', label: 'Reconnect' }];
+			});
+			mockExecuteAction.mockResolvedValue({ success: true });
+
+			const { execute } = useNotificationAction();
+
+			expect(useActionsMock).toHaveBeenCalledTimes(1);
+
+			await execute(baseNotification, extensionAction());
+			await execute(baseNotification, extensionAction());
+
+			expect(useActionsMock).toHaveBeenCalledTimes(1);
 		});
 	});
 });

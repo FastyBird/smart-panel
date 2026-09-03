@@ -16,6 +16,7 @@
 			>
 				<notification-item
 					:notification="item"
+					:is-executing="isExecuting"
 					@click="onOpen(item)"
 					@action="onAction(item)"
 					@dismiss="onDismiss(item)"
@@ -69,7 +70,7 @@ const router = useRouter();
 
 const { active } = useNotifications();
 const { markRead, markAllRead, dismiss } = useNotificationsActions();
-const { execute } = useNotificationAction();
+const { execute, isExecuting } = useNotificationAction();
 
 // Top N active rows by severity rank, then most recent first - the popover is a glance, the
 // full list (N-6) is where every active row lives.

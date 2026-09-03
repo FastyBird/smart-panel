@@ -4,7 +4,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { VueWrapper, mount } from '@vue/test-utils';
 
-import { NotificationsModuleNotificationKind, NotificationsModuleNotificationSeverity } from '../../../openapi.constants';
+import {
+	NotificationsModuleNotificationActionType,
+	NotificationsModuleNotificationKind,
+	NotificationsModuleNotificationSeverity,
+} from '../../../openapi.constants';
 import type { INotification } from '../store/notifications.store.schemas';
 
 import NotificationItem from './notification-item.vue';
@@ -37,12 +41,16 @@ const notificationFixture = (overrides: Partial<INotification> = {}): INotificat
 	...overrides,
 });
 
-const mountItem = (overrides: Partial<INotification> = {}): { notification: INotification; wrapper: VueWrapper<NotificationItemInstance> } => {
+const mountItem = (
+	overrides: Partial<INotification> = {},
+	props: { isExecuting?: boolean } = {}
+): { notification: INotification; wrapper: VueWrapper<NotificationItemInstance> } => {
 	const notification = notificationFixture(overrides);
 
 	const wrapper = mount(NotificationItem, {
 		props: {
 			notification,
+			...props,
 		},
 	}) as VueWrapper<NotificationItemInstance>;
 
@@ -88,5 +96,40 @@ describe('NotificationItem', () => {
 		await wrapper.find('.notification-item').trigger('click');
 
 		expect(wrapper.emitted('click')).toHaveLength(1);
+	});
+
+	describe('primary action', () => {
+		const withPrimaryAction: Partial<INotification> = {
+			actions: [{ type: NotificationsModuleNotificationActionType.link, label: 'Reconnect', url: '/system/reconnect', primary: true }],
+		};
+
+		it('is enabled by default', () => {
+			const { wrapper } = mountItem(withPrimaryAction);
+
+			const button = wrapper.findAll('button').find((candidate) => candidate.text() === 'Reconnect');
+
+			expect(button?.attributes('disabled')).toBeUndefined();
+		});
+
+		// A shared `isExecuting` from the popover's single `useNotificationAction()` call - disabling
+		// it here backstops the composable-level guard (`useNotificationAction.spec.ts`) so a second
+		// click cannot even reach `execute()` in the first place while one is in flight.
+		it('disables the primary action button while isExecuting is true', () => {
+			const { wrapper } = mountItem(withPrimaryAction, { isExecuting: true });
+
+			const button = wrapper.findAll('button').find((candidate) => candidate.text() === 'Reconnect');
+
+			expect(button?.attributes('disabled')).toBeDefined();
+		});
+
+		it('emits action when the primary action button is clicked while not executing', async () => {
+			const { notification, wrapper } = mountItem(withPrimaryAction);
+
+			const button = wrapper.findAll('button').find((candidate) => candidate.text() === 'Reconnect');
+
+			await button!.trigger('click');
+
+			expect(wrapper.emitted('action')).toEqual([[notification]]);
+		});
 	});
 });

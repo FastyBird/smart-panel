@@ -66,6 +66,7 @@
 				type="primary"
 				text
 				bg
+				:disabled="isExecuting"
 				@click="emit('action', notification)"
 			>
 				{{ primaryAction.label }}
@@ -105,9 +106,18 @@ defineOptions({
 	name: 'NotificationItem',
 });
 
-const props = defineProps<{
-	notification: INotification;
-}>();
+const props = withDefaults(
+	defineProps<{
+		notification: INotification;
+		// Shared across every row in the popover (one `useNotificationAction()` call) - disables
+		// the primary action button while any row's action is in flight, backstopping the
+		// `isExecuting` guard inside `useNotificationAction.execute` itself.
+		isExecuting?: boolean;
+	}>(),
+	{
+		isExecuting: false,
+	}
+);
 
 const emit = defineEmits<{
 	(e: 'click', notification: INotification): void;

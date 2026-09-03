@@ -26,6 +26,15 @@ export const useNotificationAction = (): IUseNotificationAction => {
 	const router = useRouter();
 	const flashMessage = useFlashMessage();
 
+	// Created here rather than inside `executeExtensionAction`/`executeService` below, and reused
+	// by every `execute()` call. Both composables' first operation needs an active component
+	// instance (`useServiceActions`'s is `useI18n()`; `useActions`'s is an `inject()` by way of
+	// `useBackend()`) - that is only guaranteed while `useNotificationAction()` itself is being
+	// called (synchronously, during the caller's own `setup()`), not later when `execute()` runs
+	// from a click handler.
+	const { fetchActions, actions, executeAction } = useActions();
+	const { startService, stopService, restartService } = useServiceActions();
+
 	const isExecuting = ref<boolean>(false);
 
 	const confirm = async (message: string, title: string): Promise<boolean> => {
@@ -76,8 +85,6 @@ export const useNotificationAction = (): IUseNotificationAction => {
 			return;
 		}
 
-		const { fetchActions, actions, executeAction } = useActions();
-
 		let descriptor: IExtensionActionDescriptor | undefined;
 
 		try {
@@ -97,7 +104,10 @@ export const useNotificationAction = (): IUseNotificationAction => {
 		}
 
 		if (descriptor.dangerous) {
-			const confirmed = await confirm(t('notificationsModule.texts.actions.confirmDangerous', { title: notification.title }), descriptor.label);
+			const confirmed = await confirm(
+				t('notificationsModule.texts.actions.confirmDangerous', { title: notification.title, label: descriptor.label }),
+				descriptor.label
+			);
 
 			if (!confirmed) {
 				return;
@@ -117,8 +127,6 @@ export const useNotificationAction = (): IUseNotificationAction => {
 
 			return;
 		}
-
-		const { startService, stopService, restartService } = useServiceActions();
 
 		const operation = action.operation;
 
@@ -151,6 +159,13 @@ export const useNotificationAction = (): IUseNotificationAction => {
 	};
 
 	const execute = async (notification: INotification, action: INotificationAction): Promise<void> => {
+		// A second `action`/click firing before the first settles must not repeat an extension
+		// action or a service start/stop/restart - ignored outright rather than queued, since
+		// nothing about the notification has changed in between.
+		if (isExecuting.value) {
+			return;
+		}
+
 		isExecuting.value = true;
 
 		try {
