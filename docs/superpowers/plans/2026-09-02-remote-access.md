@@ -189,7 +189,7 @@ Websocket gateway: add `RemoteAccessModule.` to the exchange-room-only routing n
 ### Contract
 
 ```typescript
-interface PrivilegedJobSpec { unit: string; script: string; args: string[]; env?: Record<string, string>; statusFile: string; timeoutMs?: number; }
+interface PrivilegedJobSpec { unit: string; script: string; args: string[]; env?: Record<string, string>; statusFile: string; timeoutMs?: number; mapStatus?: (raw: Record<string, unknown>) => Partial<PrivilegedJobStatus> | null; }
 interface PrivilegedJobStatus { id: string; state: 'running' | 'complete' | 'failed' | 'timeout'; step?: string; message?: string; updatedAt: string; }
 
 @Injectable() class PrivilegedWorkerService {
@@ -204,7 +204,11 @@ interface PrivilegedJobStatus { id: string; state: 'running' | 'complete' | 'fai
 - Move the `spawn('sudo', ['-n', 'systemd-run', '--scope', '--unit=<unit>', ...])`, detached-and-unref,
   status-file polling (3 s), hard timeout (10 min default) and stale-lock logic out of
   `UpdateExecutorService`, which becomes a thin caller with identical observable behaviour.
-- One job per unit at a time; a second `run` for a busy unit throws.
+- One job per unit at a time; a second `run` for a busy unit throws. The service alone releases a unit: on a
+  terminal status (`complete`, `failed`, `timeout`) or on a non-zero child exit while the job is still
+  `running`; unsubscribing handlers never releases it. Callers with a legacy status-file format supply
+  `mapStatus` (the update executor maps `status`/`phase`/`error`); native scripts such as the Tailscale setup
+  write the generic shape directly.
 - `PlatformService.supportsPrivilegedWorkers()` — true when `sudo -n /usr/bin/true` succeeds and
   `systemd-run` exists; cached; false on `docker`, `home-assistant`, `development`. The development
   override `FB_REMOTE_ACCESS_ALLOW_DEV` belongs to the Tailscale plugin (RA-4, RA-5) and never changes
