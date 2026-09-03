@@ -58,7 +58,7 @@ describe('ApiModule FB_TRUSTED_PROXIES parsing', () => {
 		const { apiModule, trustedProxyRegistry } = buildApiModule('proxy.example.internal, [::1]');
 		apiModule.onModuleInit();
 
-		trustedProxyRegistry.isTrusted('203.0.113.1'); // triggers the lazy addresses() read
+		trustedProxyRegistry.isTrusted('203.0.113.1'); // the registered source's lazy addresses() read
 
 		expect(Logger.prototype.warn).toHaveBeenCalledWith(
 			expect.stringContaining('proxy.example.internal'),
@@ -70,7 +70,20 @@ describe('ApiModule FB_TRUSTED_PROXIES parsing', () => {
 		);
 	});
 
-	it('logs each malformed entry once, not once per isTrusted() call', () => {
+	// A malformed entry must surface at startup, not sit silent until
+	// whatever request happens to be first to consult the trust set.
+	it('warns about a malformed entry immediately at onModuleInit, before anything calls isTrusted()', () => {
+		const { apiModule } = buildApiModule('not-a-proxy');
+
+		apiModule.onModuleInit();
+
+		expect(Logger.prototype.warn).toHaveBeenCalledWith(
+			expect.stringContaining('not-a-proxy'),
+			expect.objectContaining({ tag: 'api-module' }),
+		);
+	});
+
+	it('logs each malformed entry once, not once per onModuleInit + isTrusted() call', () => {
 		const { apiModule, trustedProxyRegistry } = buildApiModule('not-a-proxy');
 		apiModule.onModuleInit();
 

@@ -75,6 +75,15 @@ export class ApiModule {
 			id: ENV_TRUSTED_PROXY_SOURCE_ID,
 			addresses: () => this.readEnvTrustedProxies(),
 		});
+
+		// Evaluate once, eagerly, right here: `readEnvTrustedProxies` neither
+		// throws nor touches the database, and doing this now means a
+		// malformed entry is warned about at startup instead of silently
+		// waiting for the first request to trigger the registered source's
+		// lazy `addresses()` getter above. `warnedInvalidTrustedProxies`
+		// still guards against a second warning when that getter is later
+		// called per-request.
+		this.readEnvTrustedProxies();
 	}
 
 	private readEnvTrustedProxies(): string[] {

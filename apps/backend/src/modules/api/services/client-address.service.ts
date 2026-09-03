@@ -45,6 +45,12 @@ const HEADER_X_FORWARDED_FOR = 'x-forwarded-for';
 const HEADER_X_REAL_IP = 'x-real-ip';
 const HEADER_CF_CONNECTING_IP = 'cf-connecting-ip';
 const HEADER_X_FORWARDED_PROTO = 'x-forwarded-proto';
+// RFC 7239 `Forwarded`. Never parsed for address resolution (the four
+// headers above cover every proxy this backend actually needs to trust),
+// but its presence still means a proxy is in front of the connection, so an
+// untrusted peer sending only this header must still lose the localhost
+// bypass — see `hasForwardingHeaders`.
+const HEADER_FORWARDED = 'forwarded';
 
 // Log "forwarded headers ignored" at most once per peer per hour.
 const UNTRUSTED_WARNING_INTERVAL_MS = 60 * 60 * 1000;
@@ -193,7 +199,8 @@ export class ClientAddressService {
 			headers[HEADER_X_FORWARDED_FOR] !== undefined ||
 			headers[HEADER_X_REAL_IP] !== undefined ||
 			headers[HEADER_CF_CONNECTING_IP] !== undefined ||
-			headers[HEADER_X_FORWARDED_PROTO] !== undefined
+			headers[HEADER_X_FORWARDED_PROTO] !== undefined ||
+			headers[HEADER_FORWARDED] !== undefined
 		);
 	}
 

@@ -28,6 +28,14 @@ describe('normalizeIpAddress', () => {
 	it('strips an IPv6 zone id', () => {
 		expect(normalizeIpAddress('fe80::1%eth0')).toBe('fe80::1');
 	});
+
+	it('does not strip a % suffix from an IPv4-shaped value', () => {
+		// IPv4 has no zone-id syntax. Stripping here would let a
+		// `10.0.0.0%8` typo (meant to be `10.0.0.0/8`) silently pass
+		// downstream validation as the bare, unintended address `10.0.0.0`
+		// instead of being rejected as malformed.
+		expect(normalizeIpAddress('10.0.0.0%8')).toBe('10.0.0.0%8');
+	});
 });
 
 describe('isIpInCidr', () => {
@@ -167,6 +175,13 @@ describe('isValidTrustedProxyEntry', () => {
 
 	it('rejects a trailing slash with no prefix', () => {
 		expect(isValidTrustedProxyEntry('10.0.0.0/')).toBe(false);
+	});
+
+	it('rejects an IPv4 address with a stray zone-id-shaped suffix instead of silently trimming it', () => {
+		// A `/` typed as `%` (`10.0.0.0%8` for `10.0.0.0/8`) must be flagged
+		// as malformed, not quietly reinterpreted as the single, unintended
+		// address `10.0.0.0`.
+		expect(isValidTrustedProxyEntry('10.0.0.0%8')).toBe(false);
 	});
 
 	it('rejects an out-of-range prefix', () => {

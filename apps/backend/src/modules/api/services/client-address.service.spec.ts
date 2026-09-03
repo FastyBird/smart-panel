@@ -104,6 +104,22 @@ describe('ClientAddressService', () => {
 			expect(resolved.ignoredForwardedHeaders).toBe(false);
 		});
 
+		// RFC 7239: this backend never parses `Forwarded` for address
+		// resolution (the four X-*/CF-* headers above cover every proxy it
+		// needs to trust), but a loopback proxy that only emits `Forwarded`
+		// must still lose the localhost bypass — otherwise a proxy that
+		// happens to speak RFC 7239 instead of the de-facto X-* headers would
+		// slip past ignoredForwardedHeaders entirely.
+		it('flags ignoredForwardedHeaders for an untrusted peer that only sends the RFC 7239 Forwarded header', () => {
+			const request = fastifyRequest({ forwarded: 'for=203.0.113.9' }, '127.0.0.1');
+
+			const resolved = service.resolve(request);
+
+			expect(resolved.address).toBe('127.0.0.1');
+			expect(resolved.forwarded).toBe(false);
+			expect(resolved.ignoredForwardedHeaders).toBe(true);
+		});
+
 		it('ignores X-Forwarded-Proto too, falling back to the raw connection state', () => {
 			const request = fastifyRequest(
 				{ 'x-forwarded-for': '203.0.113.5', 'x-forwarded-proto': 'https' },

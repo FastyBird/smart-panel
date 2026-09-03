@@ -8,11 +8,15 @@ const IPV4_MAPPED_PREFIX = '::ffff:';
  * whether the runtime reports the dual-stack or the plain form for the same
  * address. Also strips an IPv6 zone id (`fe80::1%eth0` → `fe80::1`), so a
  * link-local proxy address still matches a zone-less trusted entry such as
- * `fe80::/10`. Anything else (plain IPv4, plain IPv6, unparseable input)
- * passes through unchanged.
+ * `fe80::/10` — but only when `address` is IPv6-shaped (contains a `:`).
+ * IPv4 has no zone-id syntax, so an IPv4-shaped value keeps a stray `%`
+ * (e.g. a `10.0.0.0%8` typo for `10.0.0.0/8`) instead of silently losing it
+ * and passing downstream validation as the bare address `10.0.0.0`. Anything
+ * else (plain IPv4, plain IPv6, unparseable input) passes through unchanged.
  */
 export function normalizeIpAddress(address: string): string {
-	const withoutZone = address.trim().split('%')[0];
+	const trimmed = address.trim();
+	const withoutZone = trimmed.includes(':') ? trimmed.split('%')[0] : trimmed;
 
 	if (withoutZone.toLowerCase().startsWith(IPV4_MAPPED_PREFIX)) {
 		const embedded = withoutZone.slice(IPV4_MAPPED_PREFIX.length);
