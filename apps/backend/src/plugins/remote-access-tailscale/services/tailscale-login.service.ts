@@ -97,6 +97,19 @@ export function extractJsonObjects(buffer: string): { objects: string[]; rest: s
 }
 
 /**
+ * Raised when `login()` is called while another login is already in flight:
+ * a second keyed call while a keyed one is running, or an interactive call
+ * while a keyed one is running. Distinct from a plain `Error` so the
+ * controller can map it to `409 Conflict` instead of a generic 500.
+ */
+export class TailscaleLoginInProgressException extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'TailscaleLoginInProgressException';
+	}
+}
+
+/**
  * Owns Tailscale sign-in, sign-out and preference reset. Both `up` variants
  * go through `TailscaleCliService.spawnUp()` (never the promise-buffered
  * `up()`, which cannot expose a cancellable handle or stream stdout
@@ -111,6 +124,13 @@ export function extractJsonObjects(buffer: string): { objects: string[]; rest: s
  *   clears everything on the second block, `stopPendingLogin()`, timeout or
  *   error.
  *
+ * At most one `tailscale up` ever runs at a time: `keyedLoginInFlight` marks
+ * the keyed path's whole duration (file write through process exit). A
+ * keyed call always cancels a pending *interactive* login and proceeds; a
+ * keyed call while another keyed one is in flight, or an interactive call
+ * while a keyed one is in flight, both reject with
+ * `TailscaleLoginInProgressException` instead of spawning a concurrent `up`.
+ *
  * The auth key and the auth URL/QR never reach a log line, an event payload
  * or a thrown error message — only this service's in-memory state and the
  * owner/admin-gated REST responses built from it.
@@ -120,6 +140,8 @@ export class TailscaleLoginService {
 	private readonly logger = createExtensionLogger(REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'TailscaleLoginService');
 
 	private pending: PendingInteractiveLogin | null = null;
+	/** True for the whole duration of loginWithAuthKey() — see the class doc. */
+	private keyedLoginInFlight = false;
 
 	constructor(
 		private readonly cli: TailscaleCliService,
@@ -129,6 +151,12 @@ export class TailscaleLoginService {
 
 	async login(authKey?: string): Promise<TailscaleLoginResult> {
 		if (authKey) {
+			if (this.keyedLoginInFlight) {
+				throw new TailscaleLoginInProgressException(
+					'A Tailscale sign-in with an auth key is already in progress. Wait for it to finish before retrying.',
+				);
+			}
+
 			// A keyed sign-in always wins over an interactive one already in
 			// flight: cancel it first so at most one `tailscale up` ever runs
 			// at a time. An interactive call that arrives while another
@@ -138,6 +166,12 @@ export class TailscaleLoginService {
 			this.stopPendingLogin();
 
 			return this.loginWithAuthKey(authKey);
+		}
+
+		if (this.keyedLoginInFlight) {
+			throw new TailscaleLoginInProgressException(
+				'A Tailscale sign-in with an auth key is currently in progress. Wait for it to finish before starting an interactive sign-in.',
+			);
 		}
 
 		return this.loginInteractively();
@@ -201,27 +235,36 @@ export class TailscaleLoginService {
 	}
 
 	private async loginWithAuthKey(authKey: string): Promise<TailscaleLoginResult> {
-		const keyFilePath = await this.writeAuthKeyFile(authKey);
+		// Set for the whole method body (file write through the up call) so a
+		// second login() call — keyed or interactive — arriving before this one
+		// finishes rejects instead of racing a second `tailscale up`.
+		this.keyedLoginInFlight = true;
 
 		try {
-			await this.runUpToCompletion(
-				[`--auth-key=file:${keyFilePath}`, '--timeout=120s', ...this.buildManagedFlags()],
-				TAILSCALE_LOGIN_AUTH_KEY_TIMEOUT_MS,
-			);
-		} catch (error) {
-			// Never rethrown: an invalid/expired key or a timeout still leaves a
-			// real status to report (still NeedsLogin) — the caller always gets
-			// that back, per the brief's "return the resulting status" contract.
-			this.logger.warn('Tailscale auth-key sign-in did not complete successfully', {
-				message: error instanceof Error ? error.message : String(error),
-			});
-		} finally {
-			// Every exit path — success, error, timeout — deletes the ephemeral
-			// key file. force:true makes this a no-op if it is already gone.
-			await rm(keyFilePath, { force: true }).catch(() => undefined);
-		}
+			const keyFilePath = await this.writeAuthKeyFile(authKey);
 
-		return this.currentStatus();
+			try {
+				await this.runUpToCompletion(
+					[`--auth-key=file:${keyFilePath}`, '--timeout=120s', ...this.buildManagedFlags()],
+					TAILSCALE_LOGIN_AUTH_KEY_TIMEOUT_MS,
+				);
+			} catch (error) {
+				// Never rethrown: an invalid/expired key or a timeout still leaves a
+				// real status to report (still NeedsLogin) — the caller always gets
+				// that back, per the brief's "return the resulting status" contract.
+				this.logger.warn('Tailscale auth-key sign-in did not complete successfully', {
+					message: error instanceof Error ? error.message : String(error),
+				});
+			} finally {
+				// Every exit path — success, error, timeout — deletes the ephemeral
+				// key file. force:true makes this a no-op if it is already gone.
+				await rm(keyFilePath, { force: true }).catch(() => undefined);
+			}
+
+			return await this.currentStatus();
+		} finally {
+			this.keyedLoginInFlight = false;
+		}
 	}
 
 	private loginInteractively(): Promise<TailscaleLoginResult> {

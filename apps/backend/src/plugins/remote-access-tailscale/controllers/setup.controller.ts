@@ -42,7 +42,7 @@ import {
 	REMOTE_ACCESS_TAILSCALE_PLUGIN_API_TAG_NAME,
 	REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 } from '../remote-access-tailscale.constants';
-import { TailscaleLoginService } from '../services/tailscale-login.service';
+import { TailscaleLoginInProgressException, TailscaleLoginService } from '../services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../services/tailscale-provider.service';
 import { TailscaleSetupService, TailscaleSetupUnavailableException } from '../services/tailscale-setup.service';
@@ -146,6 +146,13 @@ export class SetupController {
 
 			return response;
 		} catch (error) {
+			// A login already in flight (keyed or interactive) is a transient,
+			// caller-fixable condition — 409 Conflict, matching how a busy setup
+			// job is reported.
+			if (error instanceof TailscaleLoginInProgressException) {
+				throw new ConflictException(error.message);
+			}
+
 			const err = error as Error;
 
 			this.logger.error(`Tailscale login failed: ${err.message}`);
@@ -187,7 +194,10 @@ export class SetupController {
 			'Runs `tailscale up --reset` with the full managed flag set, clearing any preference the administrator changed outside Smart Panel.',
 		operationId: 'create-remote-access-tailscale-plugin-reset-preferences',
 	})
-	@ApiSuccessResponse(RemoteAccessTailscalePluginStatusResponseModel, 'Tailscale node status after resetting preferences')
+	@ApiSuccessResponse(
+		RemoteAccessTailscalePluginStatusResponseModel,
+		'Tailscale node status after resetting preferences',
+	)
 	@Roles(UserRole.OWNER)
 	@HttpCode(HttpStatus.OK)
 	@Post('reset-preferences')

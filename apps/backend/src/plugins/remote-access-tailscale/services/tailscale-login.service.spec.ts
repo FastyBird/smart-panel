@@ -13,7 +13,11 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { TailscaleCliError, TailscaleCliService } from './tailscale-cli.service';
-import { TailscaleLoginService, extractJsonObjects } from './tailscale-login.service';
+import {
+	TailscaleLoginInProgressException,
+	TailscaleLoginService,
+	extractJsonObjects,
+} from './tailscale-login.service';
 import { TailscaleNodeManagedService } from './tailscale-node-managed.service';
 
 // Node's native ES module exports are non-configurable, so a plain
@@ -342,6 +346,68 @@ describe('TailscaleLoginService', () => {
 			keyedChild.emit('close', 0);
 
 			await keyedPromise;
+		});
+
+		it('rejects a second keyed login while one is already running, without spawning a second `up`', async () => {
+			const firstChild = new FakeChildProcess();
+
+			cli.spawnUp.mockReturnValueOnce(firstChild);
+
+			const firstPromise = service.login(SECRET_AUTH_KEY);
+
+			await waitUntil(() => cli.spawnUp.mock.calls.length > 0);
+
+			await expect(service.login(SECRET_AUTH_KEY)).rejects.toBeInstanceOf(TailscaleLoginInProgressException);
+			expect(cli.spawnUp).toHaveBeenCalledTimes(1);
+
+			firstChild.emit('close', 0);
+
+			await firstPromise;
+		});
+
+		it('rejects an interactive login while a keyed one is running, without spawning a concurrent `up --json`', async () => {
+			const keyedChild = new FakeChildProcess();
+
+			cli.spawnUp.mockReturnValueOnce(keyedChild);
+
+			const keyedPromise = service.login(SECRET_AUTH_KEY);
+
+			await waitUntil(() => cli.spawnUp.mock.calls.length > 0);
+
+			await expect(service.login()).rejects.toBeInstanceOf(TailscaleLoginInProgressException);
+			expect(cli.spawnUp).toHaveBeenCalledTimes(1);
+			expect(service.getPendingInteractiveAuth()).toBeNull();
+
+			keyedChild.emit('close', 0);
+
+			await keyedPromise;
+		});
+
+		it('allows a new login (either mode) once the in-flight keyed one has completed', async () => {
+			const firstChild = new FakeChildProcess();
+
+			cli.spawnUp.mockReturnValueOnce(firstChild);
+
+			const firstPromise = service.login(SECRET_AUTH_KEY);
+
+			await waitUntil(() => cli.spawnUp.mock.calls.length > 0);
+
+			firstChild.emit('close', 0);
+
+			await firstPromise;
+
+			const secondChild = new FakeChildProcess();
+
+			cli.spawnUp.mockReturnValueOnce(secondChild);
+
+			const secondPromise = service.login(SECRET_AUTH_KEY);
+
+			await waitUntil(() => cli.spawnUp.mock.calls.length > 1);
+			expect(cli.spawnUp).toHaveBeenCalledTimes(2);
+
+			secondChild.emit('close', 0);
+
+			await expect(secondPromise).resolves.toEqual({ state: 'setup-required' });
 		});
 	});
 

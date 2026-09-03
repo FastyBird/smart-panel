@@ -13,7 +13,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { RemoteAccessProviderStatus } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
 import { PrivilegedWorkerUnavailableException } from '../../../modules/system/system.exceptions';
-import { TailscaleLoginService } from '../services/tailscale-login.service';
+import { TailscaleLoginInProgressException, TailscaleLoginService } from '../services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../services/tailscale-provider.service';
 import { TailscaleSetupService, TailscaleSetupUnavailableException } from '../services/tailscale-setup.service';
@@ -190,6 +190,15 @@ describe('SetupController', () => {
 			} catch (error) {
 				expect((error as Error).message).not.toContain('tskey-auth-secret');
 			}
+		});
+
+		it('maps a login-already-in-flight refusal to 409 Conflict', async () => {
+			loginService.login.mockRejectedValue(
+				new TailscaleLoginInProgressException('A Tailscale sign-in with an auth key is already in progress.'),
+			);
+			const res = fakeResponse();
+
+			await expect(controller.login({ authKey: undefined }, res)).rejects.toBeInstanceOf(ConflictException);
 		});
 	});
 
