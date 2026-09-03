@@ -1,98 +1,98 @@
 {
 	"menu": {
-		"title": "Notifications"
+		"title": "Powiadomienia"
 	},
 	"severity": {
-		"info": "Info",
-		"warning": "Warning",
-		"error": "Error",
-		"critical": "Critical"
+		"info": "Informacje",
+		"warning": "Ostrzeżenie",
+		"error": "Błąd",
+		"critical": "Krytyczny"
 	},
 	"headings": {
 		"notifications": {
-			"list": "Notifications",
-			"dismiss": "Dismiss notification",
-			"remove": "Remove notification",
-			"bulkRemove": "Remove notifications",
-			"data": "Data",
-			"lifecycle": "Lifecycle"
+			"list": "Powiadomienia",
+			"dismiss": "Zamknij powiadomienie",
+			"remove": "Usuń powiadomienie",
+			"bulkRemove": "Usuń powiadomienia",
+			"data": "Dane",
+			"lifecycle": "Cykl życia"
 		},
-		"aboutConfig": "About notification settings"
+		"aboutConfig": "O ustawieniach powiadomień"
 	},
 	"texts": {
 		"bell": {
-			"title": "Notifications",
-			"empty": "No active notifications"
+			"title": "Powiadomienia",
+			"empty": "Brak aktywnych powiadomień"
 		},
 		"notifications": {
-			"confirmDismiss": "Dismiss \"{title}\"?",
-			"confirmRemove": "Remove \"{title}\"? This cannot be undone.",
-			"confirmBulkRemove": "Remove {count} notifications? This cannot be undone.",
-			"loading": "Loading notifications...",
-			"empty": "No notifications match the current filters."
+			"confirmDismiss": "Zamknąć \"{title}\"?",
+			"confirmRemove": "Usunąć \"{title}\"? Tej operacji nie można cofnąć.",
+			"confirmBulkRemove": "Usunąć {count} powiadomień? Tej operacji nie można cofnąć.",
+			"loading": "Ładowanie powiadomień...",
+			"empty": "Żadne powiadomienia nie pasują do bieżących filtrów."
 		},
 		"actions": {
-			"confirmDangerous": "\"{title}\" wants to run \"{label}\". This action is potentially dangerous - continue?",
-			"confirmStop": "Stop the service for \"{title}\"?",
-			"confirmRestart": "Restart the service for \"{title}\"?"
+			"confirmDangerous": "\"{title}\" chce uruchomić \"{label}\". Ta czynność może być niebezpieczna - kontynuować?",
+			"confirmStop": "Zatrzymać usługę dla \"{title}\"?",
+			"confirmRestart": "Uruchomić ponownie usługę dla \"{title}\"?"
 		},
-		"aboutConfig": "Notifications are kept for a limited time and the active list is capped, so the admin never has to scroll through an unbounded history."
+		"aboutConfig": "Powiadomienia są przechowywane przez ograniczony czas, a lista aktywnych powiadomień ma limit, dzięki czemu administrator nigdy nie musi przewijać nieograniczonej historii."
 	},
 	"messages": {
 		"notifications": {
-			"notFetched": "Nie udało się wczytać powiadomień.",
-			"dismissed": "Notification dismissed.",
-			"dismissCanceled": "Dismiss canceled.",
-			"notDismissed": "Notification could not be dismissed.",
-			"notAllDismissed": "Niektórych powiadomień nie udało się odrzucić.",
-			"notMarkedRead": "Notification could not be updated.",
+			"dismissed": "Powiadomienie zostało zamknięte.",
+			"dismissCanceled": "Zamknięcie anulowane.",
+			"notDismissed": "Nie udało się zamknąć powiadomienia.",
+			"notMarkedRead": "Nie udało się zaktualizować powiadomienia.",
 			"notAllMarkedRead": "Some notifications could not be marked as read.",
-			"notAllMarkedUnread": "Niektórych powiadomień nie udało się oznaczyć jako nieprzeczytane.",
-			"removed": "Notification removed.",
-			"removeCanceled": "Remove canceled.",
-			"notRemoved": "Notification could not be removed.",
-			"bulkRemoved": "{count} notifications removed.",
-			"bulkRemoveFailed": "{count} notifications could not be removed."
+			"removed": "Powiadomienie zostało usunięte.",
+			"removeCanceled": "Usuwanie anulowane.",
+			"notRemoved": "Nie udało się usunąć powiadomienia.",
+			"bulkRemoved": "Usunięto {count} powiadomień.",
+			"bulkRemoveFailed": "Nie udało się usunąć {count} powiadomień.",
+			"notFetched": "Nie udało się wczytać powiadomień.",
+			"notAllDismissed": "Niektórych powiadomień nie udało się odrzucić.",
+			"notAllMarkedUnread": "Niektórych powiadomień nie udało się oznaczyć jako nieprzeczytane."
 		},
 		"actions": {
-			"invalidLink": "This link could not be opened.",
-			"notFound": "This action is no longer available.",
-			"failed": "The action could not be completed."
+			"invalidLink": "Nie udało się otworzyć tego łącza.",
+			"notFound": "Ta akcja nie jest już dostępna.",
+			"failed": "Nie udało się ukończyć akcji."
 		},
 		"config": {
-			"edited": "Notification settings saved.",
-			"notEdited": "Notification settings could not be saved."
+			"edited": "Ustawienia powiadomień zostały zapisane.",
+			"notEdited": "Nie udało się zapisać ustawień powiadomień."
 		}
 	},
 	"buttons": {
 		"yes": {
-			"title": "Yes"
+			"title": "Tak"
 		},
 		"no": {
-			"title": "No"
+			"title": "Nie"
 		},
 		"dismiss": {
-			"title": "Dismiss"
+			"title": "Zamknij"
 		},
 		"markAllRead": {
-			"title": "Mark all as read"
+			"title": "Oznacz wszystkie jako przeczytane"
 		},
 		"viewAll": {
-			"title": "View all"
+			"title": "Wyświetl wszystkie"
 		},
 		"markRead": {
-			"title": "Mark read"
+			"title": "Oznacz jako przeczytane"
 		},
 		"markUnread": {
-			"title": "Mark unread"
+			"title": "Oznacz jako nieprzeczytane"
 		},
 		"loadMore": {
-			"title": "Load more"
+			"title": "Załaduj więcej"
 		}
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "System conditions and events that need your attention"
+			"list": "Stany systemu i zdarzenia, które wymagają Twojej uwagi"
 		}
 	},
 	"fields": {
@@ -100,84 +100,84 @@
 			"status": {
 				"title": "Status",
 				"options": {
-					"all": "All",
-					"active": "Active",
-					"dismissed": "Dismissed",
-					"resolved": "Resolved"
+					"all": "Wszystkie",
+					"active": "Aktywne",
+					"dismissed": "Zamknięte",
+					"resolved": "Rozwiązane"
 				}
 			},
 			"severity": {
-				"title": "Severity",
-				"placeholder": "Any severity"
+				"title": "Ważność",
+				"placeholder": "Dowolna ważność"
 			},
 			"source": {
-				"title": "Source",
-				"placeholder": "Any source"
+				"title": "Źródło",
+				"placeholder": "Dowolne źródło"
 			},
 			"unread": {
-				"title": "Unread only"
+				"title": "Tylko nieprzeczytane"
 			}
 		},
 		"notifications": {
 			"createdAt": {
-				"title": "Created"
+				"title": "Utworzono"
 			},
 			"updatedAt": {
-				"title": "Updated"
+				"title": "Zaktualizowano"
 			},
 			"readAt": {
-				"title": "Read",
-				"no": "Unread"
+				"title": "Przeczytano",
+				"no": "Nie przeczytano"
 			},
 			"dismissedAt": {
-				"title": "Dismissed",
-				"no": "Not dismissed"
+				"title": "Zamknięto",
+				"no": "Nie zamknięto"
 			},
 			"resolvedAt": {
-				"title": "Resolved",
-				"no": "Not resolved"
+				"title": "Rozwiązano",
+				"no": "Nie rozwiązano"
 			}
 		},
 		"config": {
 			"retentionDays": {
-				"title": "Retention period",
+				"title": "Okres przechowywania",
 				"placeholder": "30",
-				"unit": "days",
+				"unit": "dni",
 				"validation": {
-					"required": "Retention period is required.",
-					"range": "Retention period must be between 1 and 365 days."
+					"required": "Okres przechowywania jest wymagany.",
+					"range": "Okres przechowywania musi wynosić od 1 do 365 dni."
 				}
 			},
 			"maxNotifications": {
-				"title": "Maximum active notifications",
+				"title": "Maksymalna liczba aktywnych powiadomień",
 				"placeholder": "500",
-				"unit": "powiadomień",
 				"validation": {
-					"required": "Maximum active notifications is required.",
-					"range": "Maximum active notifications must be between 50 and 5000."
-				}
+					"required": "Maksymalna liczba aktywnych powiadomień jest wymagana.",
+					"range": "Maksymalna liczba aktywnych powiadomień musi wynosić od 50 do 5000."
+				},
+				"unit": "powiadomień"
 			}
 		}
 	},
 	"table": {
 		"columns": {
 			"severity": {
-				"title": "Severity"
+				"title": "Ważność"
 			},
 			"title": {
-				"title": "Title"
+				"title": "Tytuł"
 			},
 			"source": {
-				"title": "Source"
+				"title": "Źródło"
 			},
 			"occurrences": {
-				"title": "Count"
+				"title": "Liczba"
 			},
 			"time": {
-				"title": "Time"
+				"title": "Czas"
 			},
 			"actions": {
-				"title": "Actions"
+				"title": "Akcje"
 			}
 		}
 	}

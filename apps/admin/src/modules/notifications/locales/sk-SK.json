@@ -1,183 +1,183 @@
 {
 	"menu": {
-		"title": "Notifications"
+		"title": "Upozornenia"
 	},
 	"severity": {
 		"info": "Info",
-		"warning": "Warning",
-		"error": "Error",
-		"critical": "Critical"
+		"warning": "Varovanie",
+		"error": "Chyba",
+		"critical": "Kritická"
 	},
 	"headings": {
 		"notifications": {
-			"list": "Notifications",
-			"dismiss": "Dismiss notification",
-			"remove": "Remove notification",
-			"bulkRemove": "Remove notifications",
-			"data": "Data",
-			"lifecycle": "Lifecycle"
+			"list": "Upozornenia",
+			"dismiss": "Zatvoriť upozornenie",
+			"remove": "Odstrániť upozornenie",
+			"bulkRemove": "Odstrániť upozornenia",
+			"data": "Dáta",
+			"lifecycle": "Životný cyklus"
 		},
-		"aboutConfig": "About notification settings"
+		"aboutConfig": "O nastaveniach upozornení"
 	},
 	"texts": {
 		"bell": {
-			"title": "Notifications",
-			"empty": "No active notifications"
+			"title": "Upozornenia",
+			"empty": "Žiadne aktívne upozornenia"
 		},
 		"notifications": {
-			"confirmDismiss": "Dismiss \"{title}\"?",
-			"confirmRemove": "Remove \"{title}\"? This cannot be undone.",
-			"confirmBulkRemove": "Remove {count} notifications? This cannot be undone.",
-			"loading": "Loading notifications...",
-			"empty": "No notifications match the current filters."
+			"confirmDismiss": "Zatvoriť \"{title}\"?",
+			"confirmRemove": "Odstrániť \"{title}\"? Túto akciu nie je možné vrátiť.",
+			"confirmBulkRemove": "Odstrániť {count} upozornení? Túto akciu nie je možné vrátiť.",
+			"loading": "Načítavanie upozornení...",
+			"empty": "Žiadne upozornenia nezodpovedajú aktuálnym filtrom."
 		},
 		"actions": {
-			"confirmDangerous": "\"{title}\" wants to run \"{label}\". This action is potentially dangerous - continue?",
-			"confirmStop": "Stop the service for \"{title}\"?",
-			"confirmRestart": "Restart the service for \"{title}\"?"
+			"confirmDangerous": "\"{title}\" chce spustiť \"{label}\". Táto akcia môže byť nebezpečná - pokračovať?",
+			"confirmStop": "Zastaviť službu pre \"{title}\"?",
+			"confirmRestart": "Reštartovať službu pre \"{title}\"?"
 		},
-		"aboutConfig": "Notifications are kept for a limited time and the active list is capped, so the admin never has to scroll through an unbounded history."
+		"aboutConfig": "Upozornenia sú uchovávané po obmedzenú dobu a zoznam aktívnych upozornení má stanovený limit, takže administrátor nikdy neprechádza neobmedzenou históriou."
 	},
 	"messages": {
 		"notifications": {
-			"notFetched": "Oznámenia sa nepodarilo načítať.",
-			"dismissed": "Notification dismissed.",
-			"dismissCanceled": "Dismiss canceled.",
-			"notDismissed": "Notification could not be dismissed.",
-			"notAllDismissed": "Niektoré oznámenia sa nepodarilo odmietnuť.",
-			"notMarkedRead": "Notification could not be updated.",
+			"dismissed": "Upozornenie bolo zatvorené.",
+			"dismissCanceled": "Zatvorenie zrušené.",
+			"notDismissed": "Upozornenie sa nepodarilo zatvoriť.",
+			"notMarkedRead": "Upozornenie sa nepodarilo aktualizovať.",
 			"notAllMarkedRead": "Some notifications could not be marked as read.",
-			"notAllMarkedUnread": "Niektoré oznámenia sa nepodarilo označiť ako neprečítané.",
-			"removed": "Notification removed.",
-			"removeCanceled": "Remove canceled.",
-			"notRemoved": "Notification could not be removed.",
-			"bulkRemoved": "{count} notifications removed.",
-			"bulkRemoveFailed": "{count} notifications could not be removed."
+			"removed": "Upozornenie bolo odstránené.",
+			"removeCanceled": "Odstránenie zrušené.",
+			"notRemoved": "Upozornenie sa nepodarilo odstrániť.",
+			"bulkRemoved": "{count} upozornení bolo odstránených.",
+			"bulkRemoveFailed": "{count} upozornení sa nepodarilo odstrániť.",
+			"notFetched": "Oznámenia sa nepodarilo načítať.",
+			"notAllDismissed": "Niektoré oznámenia sa nepodarilo odmietnuť.",
+			"notAllMarkedUnread": "Niektoré oznámenia sa nepodarilo označiť ako neprečítané."
 		},
 		"actions": {
-			"invalidLink": "This link could not be opened.",
-			"notFound": "This action is no longer available.",
-			"failed": "The action could not be completed."
+			"invalidLink": "Tento odkaz sa nepodarilo otvoriť.",
+			"notFound": "Táto akcia už nie je k dispozícii.",
+			"failed": "Akciu sa nepodarilo dokončiť."
 		},
 		"config": {
-			"edited": "Notification settings saved.",
-			"notEdited": "Notification settings could not be saved."
+			"edited": "Nastavenia upozornení boli uložené.",
+			"notEdited": "Nastavenia upozornení sa nepodarilo uložiť."
 		}
 	},
 	"buttons": {
 		"yes": {
-			"title": "Yes"
+			"title": "Áno"
 		},
 		"no": {
-			"title": "No"
+			"title": "Nie"
 		},
 		"dismiss": {
-			"title": "Dismiss"
+			"title": "Zatvoriť"
 		},
 		"markAllRead": {
-			"title": "Mark all as read"
+			"title": "Označiť všetko ako prečítané"
 		},
 		"viewAll": {
-			"title": "View all"
+			"title": "Zobraziť všetky"
 		},
 		"markRead": {
-			"title": "Mark read"
+			"title": "Označiť ako prečítané"
 		},
 		"markUnread": {
-			"title": "Mark unread"
+			"title": "Označiť ako neprečítané"
 		},
 		"loadMore": {
-			"title": "Load more"
+			"title": "Načítať viac"
 		}
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "System conditions and events that need your attention"
+			"list": "Stavy systému a udalosti, ktoré si vyžadujú vašu pozornosť"
 		}
 	},
 	"fields": {
 		"filters": {
 			"status": {
-				"title": "Status",
+				"title": "Stav",
 				"options": {
-					"all": "All",
-					"active": "Active",
-					"dismissed": "Dismissed",
-					"resolved": "Resolved"
+					"all": "Všetky",
+					"active": "Aktívne",
+					"dismissed": "Zatvorené",
+					"resolved": "Vyriešené"
 				}
 			},
 			"severity": {
-				"title": "Severity",
-				"placeholder": "Any severity"
+				"title": "Závažnosť",
+				"placeholder": "Akákoľvek závažnosť"
 			},
 			"source": {
-				"title": "Source",
-				"placeholder": "Any source"
+				"title": "Zdroj",
+				"placeholder": "Akýkoľvek zdroj"
 			},
 			"unread": {
-				"title": "Unread only"
+				"title": "Len neprečítané"
 			}
 		},
 		"notifications": {
 			"createdAt": {
-				"title": "Created"
+				"title": "Vytvorené"
 			},
 			"updatedAt": {
-				"title": "Updated"
+				"title": "Aktualizované"
 			},
 			"readAt": {
-				"title": "Read",
-				"no": "Unread"
+				"title": "Prečítané",
+				"no": "Neprečítané"
 			},
 			"dismissedAt": {
-				"title": "Dismissed",
-				"no": "Not dismissed"
+				"title": "Zatvorené",
+				"no": "Nezatvorené"
 			},
 			"resolvedAt": {
-				"title": "Resolved",
-				"no": "Not resolved"
+				"title": "Vyriešené",
+				"no": "Nevyriešené"
 			}
 		},
 		"config": {
 			"retentionDays": {
-				"title": "Retention period",
+				"title": "Doba uchovávania",
 				"placeholder": "30",
-				"unit": "days",
+				"unit": "dní",
 				"validation": {
-					"required": "Retention period is required.",
-					"range": "Retention period must be between 1 and 365 days."
+					"required": "Doba uchovávania je povinná.",
+					"range": "Doba uchovávania musí byť medzi 1 a 365 dňami."
 				}
 			},
 			"maxNotifications": {
-				"title": "Maximum active notifications",
+				"title": "Maximálny počet aktívnych upozornení",
 				"placeholder": "500",
-				"unit": "oznámení",
 				"validation": {
-					"required": "Maximum active notifications is required.",
-					"range": "Maximum active notifications must be between 50 and 5000."
-				}
+					"required": "Maximálny počet aktívnych upozornení je povinný.",
+					"range": "Maximálny počet aktívnych upozornení musí byť medzi 50 a 5000."
+				},
+				"unit": "oznámení"
 			}
 		}
 	},
 	"table": {
 		"columns": {
 			"severity": {
-				"title": "Severity"
+				"title": "Závažnosť"
 			},
 			"title": {
-				"title": "Title"
+				"title": "Názov"
 			},
 			"source": {
-				"title": "Source"
+				"title": "Zdroj"
 			},
 			"occurrences": {
-				"title": "Count"
+				"title": "Počet"
 			},
 			"time": {
-				"title": "Time"
+				"title": "Čas"
 			},
 			"actions": {
-				"title": "Actions"
+				"title": "Akcie"
 			}
 		}
 	}
