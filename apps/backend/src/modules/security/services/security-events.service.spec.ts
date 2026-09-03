@@ -253,6 +253,42 @@ describe('SecurityEventsService', () => {
 
 			await expect(service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE)).resolves.toBeUndefined();
 		});
+
+		it('should retry a failed resolution on a later poll', async () => {
+			const alert = makeAlert({ id: 'sensor:dev1:smoke' });
+			await service.recordAlertTransitions([alert], ArmedState.DISARMED, AlarmState.IDLE);
+
+			notifications.resolve.mockRejectedValueOnce(new Error('db is down'));
+			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE);
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+
+			// Nothing changed since the last poll - the alert is still gone - but the earlier
+			// resolution never actually landed, so this poll must retry it.
+			notifications.resolve.mockResolvedValueOnce(true);
+			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE);
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(2);
+			expect(notifications.resolve).toHaveBeenNthCalledWith(2, SECURITY_MODULE_NAME, 'alert:sensor:dev1:smoke');
+		});
+
+		it('should not retry a pending resolution once the same alert is active again', async () => {
+			const alert = makeAlert({ id: 'sensor:dev1:smoke' });
+			await service.recordAlertTransitions([alert], ArmedState.DISARMED, AlarmState.IDLE);
+
+			notifications.resolve.mockRejectedValueOnce(new Error('db is down'));
+			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE);
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+
+			// The alert re-triggers before the earlier resolution was retried - it must be
+			// raised again, not silently resolved out from under itself.
+			notifications.notify.mockClear();
+			await service.recordAlertTransitions([alert], ArmedState.DISARMED, AlarmState.IDLE);
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+			expect(notifications.notify).toHaveBeenCalledWith(expect.objectContaining({ key: 'alert:sensor:dev1:smoke' }));
+		});
 	});
 
 	describe('recordAcknowledgement', () => {

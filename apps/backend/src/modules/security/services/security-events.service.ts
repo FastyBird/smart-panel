@@ -50,6 +50,11 @@ export class SecurityEventsService implements OnModuleInit {
 	private initialized = false;
 	private transitionLock: Promise<void> = Promise.resolve();
 
+	// Alert ids whose notification resolve() call rejected. `lastKnownAlertIds` already
+	// dropped them the moment they were detected resolved, so without this they would never
+	// be revisited - retried independently on every later poll until it succeeds.
+	private pendingAlertResolutions = new Set<string>();
+
 	constructor(
 		private readonly storageService: StorageService,
 		private readonly notifications: NotificationsService,
@@ -163,6 +168,11 @@ export class SecurityEventsService implements OnModuleInit {
 		// Detect raised alerts
 		const currentIds = new Set(activeAlerts.map((a) => a.id));
 
+		// Retry any resolution a previous poll failed to persist, but only while the alert is
+		// still gone - one that has come back since is handled by the raise loop below instead,
+		// which re-opens the same key rather than this retrying a resolve out from under it.
+		await this.retryPendingAlertResolutions(currentIds);
+
 		for (const alert of activeAlerts) {
 			if (!this.lastKnownAlertIds.has(alert.id)) {
 				points.push(
@@ -260,13 +270,33 @@ export class SecurityEventsService implements OnModuleInit {
 	/**
 	 * Closes the notification {@link notifyAlertRaised} opened. Unlike notify(), resolve() can
 	 * throw - caught and logged here so a storage hiccup on the resolve never breaks the
-	 * transition detection loop or leaves later alerts in this same batch unprocessed.
+	 * transition detection loop or leaves later alerts in this same batch unprocessed. The
+	 * pending marker is set only on the success path, so a rejected call leaves the alert in
+	 * {@link pendingAlertResolutions} for {@link retryPendingAlertResolutions} to retry on the
+	 * next poll, rather than the issue staying open forever.
 	 */
 	private async resolveAlertNotification(alertId: string): Promise<void> {
 		try {
 			await this.notifications.resolve(SECURITY_MODULE_NAME, `alert:${alertId}`);
+
+			this.pendingAlertResolutions.delete(alertId);
 		} catch (error) {
+			this.pendingAlertResolutions.add(alertId);
+
 			this.logger.error(`Failed to resolve the notification for alert=${alertId}: ${error}`);
+		}
+	}
+
+	/**
+	 * Retries every resolution a previous poll failed to persist. Skips an id that is active
+	 * again in this same poll: the raise loop above already re-opens that key, and resolving it
+	 * here as well would close the very issue that raise just (re-)opened.
+	 */
+	private async retryPendingAlertResolutions(currentIds: Set<string>): Promise<void> {
+		for (const alertId of this.pendingAlertResolutions) {
+			if (!currentIds.has(alertId)) {
+				await this.resolveAlertNotification(alertId);
+			}
 		}
 	}
 
