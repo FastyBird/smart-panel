@@ -112,10 +112,13 @@ export class SystemThrottleMonitorService {
 		}
 
 		if (!isSet && wasActive) {
-			this.activeFlags.delete(flag.key);
-
+			// Only leaves `activeFlags` on the success path: a rejected resolve leaves the flag
+			// marked active so the next poll - which will see the same cleared reading - retries
+			// it, instead of the issue staying open forever with nothing left to revisit it.
 			try {
 				await this.notifications.resolve(SYSTEM_MODULE_NAME, flag.key);
+
+				this.activeFlags.delete(flag.key);
 			} catch (error) {
 				const err = error as Error;
 

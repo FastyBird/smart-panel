@@ -108,6 +108,24 @@ describe('SystemThrottleMonitorService', () => {
 		expect(notifications.resolve).toHaveBeenCalledWith(SYSTEM_MODULE_NAME, 'throttle:throttling');
 	});
 
+	it('retries the resolution on the next poll when resolve() rejects', async () => {
+		systemService.getThrottleStatus.mockResolvedValue({ ...clearStatus, throttling: true });
+		await service.checkThrottleStatus();
+
+		notifications.resolve.mockRejectedValueOnce(new Error('db is down'));
+		systemService.getThrottleStatus.mockResolvedValue({ ...clearStatus });
+		await service.checkThrottleStatus();
+
+		expect(notifications.resolve).toHaveBeenCalledTimes(1);
+
+		// Still clear, nothing changed - but the earlier resolve never actually landed.
+		notifications.resolve.mockResolvedValueOnce(true);
+		await service.checkThrottleStatus();
+
+		expect(notifications.resolve).toHaveBeenCalledTimes(2);
+		expect(notifications.resolve).toHaveBeenNthCalledWith(2, SYSTEM_MODULE_NAME, 'throttle:throttling');
+	});
+
 	it('raises each still-set flag independently and resolves each on its own clear', async () => {
 		systemService.getThrottleStatus.mockResolvedValue({
 			undervoltage: true,
