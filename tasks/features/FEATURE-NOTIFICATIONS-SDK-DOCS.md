@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin
 Size: small
 Parent: EPIC-NOTIFICATIONS-MODULE
-Status: planned
+Status: review
 
 ## 1. Business goal
 

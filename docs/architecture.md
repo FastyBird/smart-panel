@@ -95,6 +95,7 @@ Displays are panel app instances that register with the backend:
 | `influxdb` | Time-series database integration |
 | `intents` | Intent and automation system |
 | `mdns` | mDNS device discovery |
+| `notifications` | System notifications: lifecycle, REST/websocket delivery, channel dispatch |
 | `platform` | Platform core utilities |
 | `scenes` | Scene management |
 | `security` | Security and alert system |
@@ -118,6 +119,7 @@ Displays are panel app instances that register with the backend:
 | Scene management | `scenes-local` |
 | Weather providers | `weather-openweathermap`, `weather-openweathermap-onecall` |
 | Logging | `logger-rotating-file` |
+| Notification channels | `notifications-webhook`, `notifications-discord` |
 
 ## Admin Architecture
 

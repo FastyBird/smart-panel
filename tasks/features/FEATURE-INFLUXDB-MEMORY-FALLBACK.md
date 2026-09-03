@@ -42,7 +42,7 @@ I want the backend to gracefully degrade to in-memory storage for device values 
 - [x] Device property values are readable and writable via in-memory store
 - [x] WebSocket real-time updates work without InfluxDB
 - [x] Energy module returns empty datasets instead of throwing errors
-- [x] Admin UI shows a warning banner: "InfluxDB not available — historical data disabled"
+- [x] Storage running on the memory fallback raises a notifications-module issue (`warning` severity, source `storage-module`) that the administrator sees in the notification bell, delivered by the storage fallback monitor; PR #938 - see docs/notifications.md
 - [x] When InfluxDB becomes available later, the backend switches to it without restart — deferred to TECH-STORAGE-MANAGED-SERVICES: register influx plugins as managed services with restart controls instead of automatic hot-switching
 
 ## 5. What was implemented

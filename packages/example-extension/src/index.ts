@@ -1,9 +1,11 @@
 import { Logger, Module, OnModuleInit } from '@nestjs/common';
 
 import { ExampleController } from './example.controller.js';
+import { ExampleService } from './example.service.js';
 import { EXAMPLE_EXTENSION_PLUGIN_NAME } from './example-extension.constants.js';
 
 export { EXAMPLE_EXTENSION_PLUGIN_NAME } from './example-extension.constants.js';
+export { ExampleService } from './example.service.js';
 
 /**
  * Example Extension Module
@@ -16,6 +18,7 @@ export { EXAMPLE_EXTENSION_PLUGIN_NAME } from './example-extension.constants.js'
  */
 @Module({
 	controllers: [ExampleController],
+	providers: [ExampleService],
 })
 export class ExampleExtensionModule implements OnModuleInit {
 	private readonly logger = new Logger(ExampleExtensionModule.name);

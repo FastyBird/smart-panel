@@ -346,6 +346,101 @@ export default {
 };
 ```
 
+## Notifications
+
+The `notifications` module gives the administrator one place to see what needs attention (a
+lost connection, a failed update, a security alert) and can forward those notifications to
+external channels such as Discord or a generic webhook. See [Notifications](./notifications.md)
+for the full guide: the lifecycle table, the emitter rules, the REST and websocket surface,
+and how to write a channel.
+
+### Backend: Emit a notification
+
+`NotificationsModule` is `@Global()` and exports `NotificationsService`, so any module or
+plugin injects it directly - no `imports` entry needed, exactly like `ExtensionsModule`
+exports `ExtensionActionRegistryService`:
+
+```typescript
+// services/my-service.service.ts
+import { Injectable } from '@nestjs/common';
+import { NotificationsService } from '../../../modules/notifications/services/notifications.service';
+import { NotificationActionType, NotificationKind, NotificationSeverity } from '../../../modules/notifications/notifications.constants';
+
+@Injectable()
+export class MyService {
+  constructor(private readonly notifications: NotificationsService) {}
+
+  async onConnectionLost(reason: string): Promise<void> {
+    // kind/severity/action type are enums, not string literals - `'issue'` on its own is not
+    // assignable to `NotificationKind`, so use the real enum members here.
+    await this.notifications.notify({
+      source: MY_PLUGIN_NAME,
+      kind: NotificationKind.ISSUE,
+      key: 'connection',
+      severity: NotificationSeverity.ERROR,
+      title: 'Connection lost',
+      message: reason,
+      actions: [{ type: NotificationActionType.SERVICE, label: 'Restart', extension_kind: 'plugin', extension_type: MY_PLUGIN_NAME, service_id: 'my-service', operation: 'restart', primary: true }],
+    });
+  }
+
+  async onConnectionRestored(): Promise<void> {
+    await this.notifications.resolve(MY_PLUGIN_NAME, 'connection');
+  }
+}
+```
+
+### Backend: Register a notification channel
+
+A channel plugin forwards notifications somewhere else. Extend `BaseNotificationChannel` and
+register with `NotificationChannelRegistryService` in your plugin's own `onModuleInit`, the
+same pattern as a remote access provider above:
+
+```typescript
+// services/my-channel.service.ts
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '../../../modules/config/services/config.service';
+import { PluginConfigModel } from '../../../modules/config/models/config.model';
+import { BaseNotificationChannel } from '../../../modules/notifications/platforms/notification-channel.platform';
+import { NotificationEntity } from '../../../modules/notifications/entities/notifications.entity';
+
+@Injectable()
+export class MyChannelService extends BaseNotificationChannel {
+  constructor(configService: ConfigService) {
+    super(configService, 'notifications-my-channel-plugin');
+  }
+
+  protected hasRequiredConfig(config: PluginConfigModel): boolean {
+    return Boolean((config as unknown as { webhook_url?: string }).webhook_url);
+  }
+
+  async send(notification: NotificationEntity, signal: AbortSignal): Promise<void> {
+    await this.fetchWithSignal('https://example.com/webhook', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: this.formatText(notification) }),
+    }, signal);
+  }
+}
+```
+
+```typescript
+// my-channel.plugin.ts
+onModuleInit() {
+  // ... registerMapping(), registerPluginMetadata() as above ...
+
+  this.channelRegistry.register(this.channelService); // NotificationChannelRegistryService
+}
+```
+
+An extension package built against `@fastybird/smart-panel-extension-sdk`, outside the
+backend's own TypeScript program, types against the SDK's plain mirrors of these contracts
+(`CreateNotificationInput`, `NotificationChannel`, `ChannelDeliveryError`, ...) instead of the
+backend's own classes - see `packages/extension-sdk/src/notification.types.ts`.
+`packages/example-extension/src/example.service.ts` shows the other path: it depends on
+`@fastybird/smart-panel-backend` directly and calls the real `NotificationsService`, the way
+a plugin compiled as part of the backend itself would.
+
 ## Third-Party Extensions
 
 ### Creating a Standalone Package
@@ -447,4 +542,5 @@ Extensions are accessible via:
 
 - [API Conventions](../.ai-rules/API_CONVENTIONS.md)
 - [Development Guidelines](../.ai-rules/GUIDELINES.md)
+- [Notifications](./notifications.md)
 - [Example Extension](../packages/example-extension/)
