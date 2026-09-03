@@ -1,0 +1,51 @@
+{
+	"menu": {
+		"title": "Notifications"
+	},
+	"severity": {
+		"info": "Info",
+		"warning": "Warning",
+		"error": "Error",
+		"critical": "Critical"
+	},
+	"headings": {
+		"notifications": {
+			"list": "Notifications",
+			"dismiss": "Dismiss notification"
+		}
+	},
+	"texts": {
+		"bell": {
+			"title": "Notifications",
+			"empty": "No active notifications"
+		},
+		"notifications": {
+			"confirmDismiss": "Dismiss \"{title}\"?"
+		}
+	},
+	"messages": {
+		"notifications": {
+			"dismissed": "Notification dismissed.",
+			"dismissCanceled": "Dismiss canceled.",
+			"notDismissed": "Notification could not be dismissed.",
+			"notMarkedRead": "Notification could not be updated."
+		}
+	},
+	"buttons": {
+		"yes": {
+			"title": "Yes"
+		},
+		"no": {
+			"title": "No"
+		},
+		"dismiss": {
+			"title": "Dismiss"
+		},
+		"markAllRead": {
+			"title": "Mark all as read"
+		},
+		"viewAll": {
+			"title": "View all"
+		}
+	}
+}
