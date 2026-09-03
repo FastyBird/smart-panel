@@ -1,6 +1,12 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import {
+	NotificationActionType,
+	NotificationKind,
+	NotificationSeverity,
+} from '../../notifications/notifications.constants';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 import { StorageService } from '../../storage/services/storage.service';
 import { StorageFieldType, StoragePoint } from '../../storage/storage.types';
 import { SecurityAlertModel } from '../models/security-status.model';
@@ -44,7 +50,15 @@ export class SecurityEventsService implements OnModuleInit {
 	private initialized = false;
 	private transitionLock: Promise<void> = Promise.resolve();
 
-	constructor(private readonly storageService: StorageService) {}
+	// Alert ids whose notification resolve() call rejected. `lastKnownAlertIds` already
+	// dropped them the moment they were detected resolved, so without this they would never
+	// be revisited - retried independently on every later poll until it succeeds.
+	private pendingAlertResolutions = new Set<string>();
+
+	constructor(
+		private readonly storageService: StorageService,
+		private readonly notifications: NotificationsService,
+	) {}
 
 	onModuleInit(): void {
 		this.storageService.registerSchema({
@@ -154,6 +168,11 @@ export class SecurityEventsService implements OnModuleInit {
 		// Detect raised alerts
 		const currentIds = new Set(activeAlerts.map((a) => a.id));
 
+		// Retry any resolution a previous poll failed to persist, but only while the alert is
+		// still gone - one that has come back since is handled by the raise loop below instead,
+		// which re-opens the same key rather than this retrying a resolve out from under it.
+		await this.retryPendingAlertResolutions(currentIds);
+
 		for (const alert of activeAlerts) {
 			if (!this.lastKnownAlertIds.has(alert.id)) {
 				points.push(
@@ -164,6 +183,8 @@ export class SecurityEventsService implements OnModuleInit {
 						sourceDeviceId: alert.sourceDeviceId ?? undefined,
 					}),
 				);
+
+				await this.notifyAlertRaised(alert);
 			}
 		}
 
@@ -178,6 +199,8 @@ export class SecurityEventsService implements OnModuleInit {
 						sourceDeviceId: prev.sourceDeviceId ?? undefined,
 					}),
 				);
+
+				await this.resolveAlertNotification(id);
 			}
 		}
 
@@ -223,6 +246,58 @@ export class SecurityEventsService implements OnModuleInit {
 		});
 
 		await this.writePoints([point]);
+	}
+
+	/**
+	 * Raises the notification a smoke, CO or other life-safety alert needs to reach the admin
+	 * outside the app - the bridge that carries it to Discord/Slack/webhook channels. Always
+	 * `critical` regardless of the alert's own `severity`: every security alert type here
+	 * (intrusion, smoke, CO, gas, water leak, tamper, fault, device offline) is something the
+	 * administrator must see. notify() never throws, so this needs no try/catch of its own.
+	 */
+	private async notifyAlertRaised(alert: SecurityAlertModel): Promise<void> {
+		await this.notifications.notify({
+			source: SECURITY_MODULE_NAME,
+			kind: NotificationKind.ISSUE,
+			key: `alert:${alert.id}`,
+			severity: NotificationSeverity.CRITICAL,
+			title: `Security alert: ${alert.type}`,
+			actions: [{ type: NotificationActionType.LINK, label: 'Open security', url: '/security', primary: true }],
+			data: { alert_type: alert.type, source_device_id: alert.sourceDeviceId ?? null },
+		});
+	}
+
+	/**
+	 * Closes the notification {@link notifyAlertRaised} opened. Unlike notify(), resolve() can
+	 * throw - caught and logged here so a storage hiccup on the resolve never breaks the
+	 * transition detection loop or leaves later alerts in this same batch unprocessed. The
+	 * pending marker is set only on the success path, so a rejected call leaves the alert in
+	 * {@link pendingAlertResolutions} for {@link retryPendingAlertResolutions} to retry on the
+	 * next poll, rather than the issue staying open forever.
+	 */
+	private async resolveAlertNotification(alertId: string): Promise<void> {
+		try {
+			await this.notifications.resolve(SECURITY_MODULE_NAME, `alert:${alertId}`);
+
+			this.pendingAlertResolutions.delete(alertId);
+		} catch (error) {
+			this.pendingAlertResolutions.add(alertId);
+
+			this.logger.error(`Failed to resolve the notification for alert=${alertId}: ${error}`);
+		}
+	}
+
+	/**
+	 * Retries every resolution a previous poll failed to persist. Skips an id that is active
+	 * again in this same poll: the raise loop above already re-opens that key, and resolving it
+	 * here as well would close the very issue that raise just (re-)opened.
+	 */
+	private async retryPendingAlertResolutions(currentIds: Set<string>): Promise<void> {
+		for (const alertId of this.pendingAlertResolutions) {
+			if (!currentIds.has(alertId)) {
+				await this.resolveAlertNotification(alertId);
+			}
+		}
 	}
 
 	private buildPoint(
