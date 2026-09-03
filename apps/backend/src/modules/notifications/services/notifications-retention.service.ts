@@ -1,6 +1,7 @@
 import { IsNull, LessThan, Not, Repository } from 'typeorm';
 
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -11,6 +12,7 @@ import { NotificationsConfigModel } from '../models/config.model';
 import {
 	DEFAULT_MAX_NOTIFICATIONS,
 	DEFAULT_RETENTION_DAYS,
+	EventType,
 	NOTIFICATIONS_MODULE_NAME,
 	NotificationKind,
 } from '../notifications.constants';
@@ -46,6 +48,7 @@ export class NotificationsRetentionService implements OnApplicationBootstrap {
 		@InjectRepository(NotificationEntity)
 		private readonly repository: Repository<NotificationEntity>,
 		private readonly configService: ConfigService,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	/**
@@ -92,6 +95,9 @@ export class NotificationsRetentionService implements OnApplicationBootstrap {
 	 * touched since. Persistent issues are exempt: nothing re-detects "the last update
 	 * failed", so clearing it at boot would lose it.
 	 */
+	// Deliberately silent, like the nightly prune below: this runs during bootstrap, before
+	// any websocket client has connected, so there is nobody to tell. The admin's first fetch
+	// sees the resolved state.
 	private async resolveStaleIssues(): Promise<number> {
 		const stale = await this.repository.find({
 			where: {
@@ -121,6 +127,10 @@ export class NotificationsRetentionService implements OnApplicationBootstrap {
 	/**
 	 * Deletes rows whose lifecycle ended more than `retentionDays` ago, counting from the
 	 * later of `dismissedAt` and `resolvedAt` when both are set.
+	 *
+	 * Silent by design: every row it deletes is already dismissed or resolved, so it is not on
+	 * an admin's active list, and a `Deleted` pointer would only make open sessions re-fetch a
+	 * list that has not visibly changed.
 	 *
 	 * The two kinds end differently. An event is over once the administrator dismisses it -
 	 * nothing will ever say more about it - so a dismissal alone starts its clock. An issue
@@ -159,6 +169,10 @@ export class NotificationsRetentionService implements OnApplicationBootstrap {
 	 * Brings the active events back under the cap, deleting the oldest read ones first and
 	 * only then the oldest unread ones. Issues are never evicted: they are bounded by their
 	 * sources resolving them, and dropping one would hide a condition that still holds.
+	 *
+	 * Unlike the prune, this announces every eviction: these rows are *active*, so an open
+	 * admin session may be showing them, and a row that vanishes from under the reader without
+	 * a `Deleted` pointer stays on screen until something else forces a refetch.
 	 */
 	private async enforceCap(maxNotifications: number): Promise<number> {
 		const active = { kind: NotificationKind.EVENT, dismissedAt: IsNull(), resolvedAt: IsNull() };
@@ -188,6 +202,10 @@ export class NotificationsRetentionService implements OnApplicationBootstrap {
 		const victims = [...read, ...unread].map((notification) => notification.id);
 
 		await this.repository.delete(victims);
+
+		for (const id of victims) {
+			this.eventEmitter.emit(EventType.NOTIFICATION_DELETED, { id });
+		}
 
 		return victims.length;
 	}
