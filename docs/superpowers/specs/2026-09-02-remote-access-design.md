@@ -498,9 +498,11 @@ Connect, disconnect and reconnect are the generic Extensions service actions. Re
 
 - Raspberry Pi image, `server` and `aio` variants: add the Tailscale keyring and apt source, install the
   `tailscale` package, `systemctl disable tailscaled`. The plugin enables it during setup.
-- `install-server.sh --with-tailscale`: optional. On Debian-family systems it adds the signed Tailscale apt
-  repository and installs the package exactly like the image; on other distributions it runs the vendor
-  install script, the same trust level as the NodeSource setup script the installer already pipes to root.
+- `install-server.sh --with-tailscale`: optional and non-fatal. Every supported distribution installs from a
+  signed vendor package source: the apt keyring and list on Debian-family systems (exactly like the image),
+  the vendor `.repo` file with `gpgcheck=1` on Fedora and RHEL-family systems, and the official repository
+  package on Arch. The installer never pipes a downloaded script into a shell; unsupported distributions
+  print manual instructions and the completion banner reports the outcome.
 - No sudoers change. `systemd-run` is already granted; the update executor precedent covers it.
 - Docker compose: no change; documentation describes the sidecar.
 

@@ -384,11 +384,13 @@ files only.
 
 - `build/raspbian`: new `00-install-deps` step for `server` and `aio` variants adds the Tailscale keyring
   and apt source for `raspbian/bookworm`, installs `tailscale`, runs `systemctl disable tailscaled`.
-- `scripts/install-server.sh`: `--with-tailscale` flag; on Debian-family systems (`/etc/os-release` `ID`
-  `raspbian`, `debian` or `ubuntu`) it adds the signed Tailscale keyring and apt source for the detected
-  codename and installs the package, on other distributions it runs the vendor install script (same trust
-  level as the NodeSource setup the installer already uses); the daemon is left disabled; help text and
-  summary updated.
+- `scripts/install-server.sh`: `--with-tailscale` flag, non-fatal; on Debian-family systems (`/etc/os-release`
+  `ID` `raspbian`, `debian` or `ubuntu`) it adds the signed Tailscale keyring and apt source for the detected
+  codename and installs the package; on Fedora and RHEL-family systems it adds the vendor `.repo` file
+  (`gpgcheck=1`) and installs with `dnf`; on Arch it installs the official repository package; anything
+  else prints manual instructions and returns non-zero. No downloaded script is ever executed. The daemon
+  is left disabled; help text, completion summary and `build/docs/INSTALLATION.md` (including a manual
+  tarball step) updated.
 - `build/docs/INSTALLATION.md`: note the flag and the image default.
 
 ### Tests
