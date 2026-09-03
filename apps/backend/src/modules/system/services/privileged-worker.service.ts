@@ -236,6 +236,21 @@ export class PrivilegedWorkerService {
 	 * Subscribes to status ticks for a job. Unsubscribing only stops notifications to this
 	 * handler — it never releases the job's unit; only a terminal state (via the status file or
 	 * the spawned process failing) does that. See the class doc comment.
+	 *
+	 * Also replays the job's current `lastStatus` to this handler on the next microtask (after
+	 * this call has already returned the unsubscribe function to the caller). Without this, a
+	 * caller that subscribes after `run()` resolves — the normal, and only, calling convention —
+	 * can race a job that reaches a terminal state (or any tick) before `onStatus` is called:
+	 * the poll timer and the spawned process's own `exit`/`error` handlers only notify handlers
+	 * that were already registered at that instant, so a handler added afterwards would otherwise
+	 * never learn the job even ran. The replay is scheduled, not synchronous, specifically so the
+	 * caller's own unsubscribe function is already in hand — calling it synchronously right after
+	 * `onStatus` returns (a one-shot "peek" pattern) correctly cancels the replay too, checked via
+	 * `record.handlers.has(handler)` immediately before invoking it. A terminal `lastStatus` can
+	 * never be delivered twice this way: once a job is terminal, its poll timer is stopped and its
+	 * process listeners are spent (see `finishJob`/`stopPolling`), so the replay is the only
+	 * delivery that will ever happen. A `running` snapshot is simply an extra, harmless copy of
+	 * what the poll interval already re-delivers on every tick regardless of whether it changed.
 	 */
 	onStatus(id: string, handler: StatusHandler): () => void {
 		const record = this.jobs.get(id);
@@ -245,6 +260,17 @@ export class PrivilegedWorkerService {
 		}
 
 		record.handlers.add(handler);
+
+		// A native Promise microtask, not queueMicrotask(): jest.useFakeTimers()
+		// (the modern implementation every spec in this file — and the update
+		// executor's and setup service's specs — relies on) fakes
+		// queueMicrotask itself, so it would never fire without an explicit
+		// timer advance. Promise scheduling is not on that fakeable list.
+		void Promise.resolve().then(() => {
+			if (record.handlers.has(handler)) {
+				handler(record.lastStatus);
+			}
+		});
 
 		return () => {
 			record.handlers.delete(handler);

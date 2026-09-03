@@ -357,6 +357,77 @@ describe('PrivilegedWorkerService', () => {
 		it('returns a no-op unsubscribe for an unknown job id', () => {
 			expect(() => service.onStatus('unknown-id', jest.fn())()).not.toThrow();
 		});
+
+		it('replays the current status to a handler that subscribes after the job already completed', async () => {
+			// The race this closes: run() resolves, then — before the caller gets
+			// around to calling onStatus() — the job reaches a terminal state via
+			// a poll tick or the child's own exit handler. Without a replay, a
+			// handler registered afterwards would never learn the job even ran.
+			const { id } = await service.run(baseSpec);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({ id, state: 'complete', updatedAt: new Date().toISOString() }),
+			);
+
+			jest.advanceTimersByTime(3_000);
+
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			await Promise.resolve();
+
+			expect(handler).toHaveBeenCalledTimes(1);
+			expect(handler).toHaveBeenCalledWith(expect.objectContaining({ id, state: 'complete' }));
+
+			// Terminal and already released — nothing can ever deliver to this
+			// handler again, so advancing time further must not call it twice.
+			jest.advanceTimersByTime(60_000);
+
+			expect(handler).toHaveBeenCalledTimes(1);
+		});
+
+		it('replays the current running status once, then still delivers a later real tick exactly once (no duplicate delivery)', async () => {
+			const { id } = await service.run(baseSpec);
+			const handler = jest.fn();
+
+			// Subscribes immediately after run() resolves, before any poll tick —
+			// the normal calling convention every consumer (UpdateExecutorService,
+			// TailscaleSetupService) uses.
+			service.onStatus(id, handler);
+
+			await Promise.resolve();
+
+			// The replay of run()'s own initial snapshot — no step/message yet,
+			// since no status file has been read.
+			expect(handler).toHaveBeenCalledTimes(1);
+			expect(handler).toHaveBeenCalledWith(expect.objectContaining({ id, state: 'running' }));
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({ id, state: 'running', step: 'downloading', updatedAt: new Date().toISOString() }),
+			);
+
+			jest.advanceTimersByTime(3_000);
+
+			// A distinct, later tick — delivered once, not duplicated by the replay.
+			expect(handler).toHaveBeenCalledTimes(2);
+			expect(handler).toHaveBeenLastCalledWith(expect.objectContaining({ id, state: 'running', step: 'downloading' }));
+		});
+
+		it('does not deliver the replay to a handler that unsubscribed synchronously, before the microtask ran', async () => {
+			const { id } = await service.run(baseSpec);
+			const handler = jest.fn();
+
+			const unsubscribe = service.onStatus(id, handler);
+
+			unsubscribe();
+
+			await Promise.resolve();
+
+			expect(handler).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('child process exit', () => {

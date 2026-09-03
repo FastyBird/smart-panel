@@ -216,6 +216,39 @@ describe('TailscaleSetupService', () => {
 			expect(unsubscribe).toHaveBeenCalledTimes(1);
 		});
 
+		it('still refreshes requirements when the job already completed before watchJob subscribed', async () => {
+			// Mirrors PrivilegedWorkerService.onStatus()'s real replay behaviour:
+			// a job that reaches a terminal state between run() resolving and
+			// watchJob() calling onStatus() must not be missed. The mock delivers
+			// the already-terminal status on the next microtask, exactly like the
+			// real onStatus() replays record.lastStatus.
+			privilegedWorker.onStatus.mockImplementationOnce((_id: string, handler: StatusHandler) => {
+				void Promise.resolve().then(() =>
+					handler({
+						id: 'job-1',
+						state: 'complete',
+						step: 'complete',
+						message: 'done',
+						updatedAt: '2026-09-02T00:00:00.000Z',
+					}),
+				);
+
+				return unsubscribe;
+			});
+
+			await service.install();
+
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(nodeManagedService.evaluateRequirements).toHaveBeenCalledTimes(1);
+			expect(unsubscribe).toHaveBeenCalledTimes(1);
+			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
+				RemoteAccessEventType.SETUP_PROGRESS,
+				expect.objectContaining({ job: 'job-1', state: 'complete' }),
+			);
+		});
+
 		it('surfaces the failing step and message on failure, without refreshing requirements', async () => {
 			await service.install();
 
