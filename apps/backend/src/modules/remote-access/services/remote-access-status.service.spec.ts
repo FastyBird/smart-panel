@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+
 import { IRemoteAccessProvider, RemoteAccessProviderStatus } from '../platforms/remote-access-provider.platform';
 import { REMOTE_ACCESS_PROVIDER_STATUS_TIMEOUT_MS } from '../remote-access.constants';
 import { RemoteAccessProviderNotFoundException } from '../remote-access.exceptions';
@@ -37,7 +39,8 @@ describe('RemoteAccessStatusService', () => {
 			expect(service.getCachedStatuses()).toEqual([]);
 		});
 
-		it('stores the full payload from a PROVIDER_STATUS event', () => {
+		it('stores the full payload from a PROVIDER_STATUS event whose type is registered', () => {
+			registry.register(buildProvider('remote-access-tailscale', () => Promise.resolve(buildStatus())));
 			const status = buildStatus();
 
 			service.onProviderStatus(status);
@@ -46,10 +49,43 @@ describe('RemoteAccessStatusService', () => {
 		});
 
 		it('replaces the cached entry for the same provider type on a later event', () => {
+			registry.register(buildProvider('remote-access-tailscale', () => Promise.resolve(buildStatus())));
+
 			service.onProviderStatus(buildStatus({ state: 'connecting' }));
 			service.onProviderStatus(buildStatus({ state: 'connected' }));
 
 			expect(service.getCachedStatuses()).toEqual([buildStatus({ state: 'connected' })]);
+		});
+
+		it('drops an event whose type does not resolve to a registered provider, without caching it (F6)', () => {
+			// Nothing registered under 'remote-access-tailscale' in this test —
+			// the event-fed cache must not trust a self-reported type it cannot
+			// attribute to a real provider, otherwise a phantom entry would leak
+			// into RemoteAccessUrlService/RemoteAccessPostureService/
+			// RemoteAccessProxyContributionService, all of which read
+			// getCachedStatuses() directly.
+			const status = buildStatus();
+			const debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
+
+			service.onProviderStatus(status);
+
+			expect(service.getCachedStatuses()).toEqual([]);
+			expect(debugSpy).toHaveBeenCalledWith(
+				expect.stringContaining("Ignoring a Provider.Status event for 'remote-access-tailscale'"),
+				expect.anything(),
+			);
+		});
+
+		it('caches a later event once its type becomes registered, without needing to resubscribe', () => {
+			const status = buildStatus();
+
+			service.onProviderStatus(status);
+			expect(service.getCachedStatuses()).toEqual([]);
+
+			registry.register(buildProvider('remote-access-tailscale', () => Promise.resolve(status)));
+			service.onProviderStatus(status);
+
+			expect(service.getCachedStatuses()).toEqual([status]);
 		});
 	});
 

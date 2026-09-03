@@ -40,9 +40,31 @@ export class RemoteAccessStatusService {
 
 	constructor(private readonly registry: RemoteAccessProviderRegistryService) {}
 
+	/**
+	 * Applies the same registered-type normalisation `pollProvider()` uses,
+	 * so a mismatched-type event can never plant a phantom cache entry under
+	 * an unregistered type — `getCachedStatuses()` feeds
+	 * `RemoteAccessUrlService`/`RemoteAccessPostureService`/
+	 * `RemoteAccessProxyContributionService` directly, so an unattributable
+	 * entry would otherwise leak a URL/proxy address/advisory nothing
+	 * actually vouches for. An event whose `type` does not resolve to a
+	 * registered provider (there is no sender identity to fall back on
+	 * here, unlike `pollProvider()`) is dropped and debug-logged instead of
+	 * cached.
+	 */
 	@OnEvent(EventType.PROVIDER_STATUS)
 	onProviderStatus(status: RemoteAccessProviderStatus): void {
-		this.cache.set(status.type, status);
+		const provider = this.registry.get(status.type);
+
+		if (!provider) {
+			this.logger.debug(
+				`Ignoring a Provider.Status event for '${status.type}', which is not a registered provider type.`,
+			);
+
+			return;
+		}
+
+		this.cache.set(provider.type, this.normalizeStatusType(provider, status));
 	}
 
 	/** Synchronous, cache-only read of the last known status per provider. */
