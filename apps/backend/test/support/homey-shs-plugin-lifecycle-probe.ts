@@ -7,6 +7,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { ConfigService } from '../../src/modules/config/services/config.service';
 import { PluginConfigValidatorService } from '../../src/modules/config/services/plugin-config-validator.service';
 import { ManagedServiceManagerService } from '../../src/modules/extensions/services/managed-service-manager.service';
+import { NotificationsService } from '../../src/modules/notifications/services/notifications.service';
 import { HomeyConnectorFactory } from '../../src/plugins/devices-homey/connectors/homey-connector.factory';
 import { HomeyConnector } from '../../src/plugins/devices-homey/connectors/homey-connector.interface';
 import { HomeyLocalConnectorFactory } from '../../src/plugins/devices-homey/connectors/homey-local-connector.factory';
@@ -519,10 +520,18 @@ export const createHomeyPluginLifecycleRuntime: HomeyPluginLifecycleRuntimeFacto
 		hasValidator: (): boolean => false,
 		validate: (): Promise<{ valid: true }> => Promise.resolve({ valid: true }),
 	};
+	// This probe exercises the Homey connector's lifecycle, not the notifications module, so
+	// every call is a no-op.
+	const notifications = {
+		notify: (): Promise<null> => Promise.resolve(null),
+		resolve: (): Promise<boolean> => Promise.resolve(false),
+		resolveAll: (): Promise<number> => Promise.resolve(0),
+	};
 	const manager = new ManagedServiceManagerService(
 		configService as unknown as ConfigService,
 		nestConfigService as unknown as NestConfigService,
 		pluginConfigValidator as unknown as PluginConfigValidatorService,
+		notifications as unknown as NotificationsService,
 	);
 
 	manager.register(homeyService);

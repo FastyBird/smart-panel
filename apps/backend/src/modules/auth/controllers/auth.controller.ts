@@ -1,8 +1,11 @@
+import { FastifyRequest } from 'fastify';
+
 import { Body, Controller, ForbiddenException, Get, HttpCode, NotFoundException, Post, Req } from '@nestjs/common';
 import { ApiBody, ApiNoContentResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { ClientAddressService } from '../../api/services/client-address.service';
 import {
 	ApiBadRequestResponse,
 	ApiCreatedSuccessResponse,
@@ -38,6 +41,7 @@ export class AuthController {
 	constructor(
 		private readonly authService: AuthService,
 		private readonly userService: UsersService,
+		private readonly clientAddressService: ClientAddressService,
 	) {}
 
 	@ApiOperation({
@@ -54,11 +58,12 @@ export class AuthController {
 	@Throttle({ default: { limit: 5, ttl: 60000 } })
 	@Public()
 	@Post('login')
-	async login(@Body() body: ReqLoginDto): Promise<LoginResponseModel> {
+	async login(@Body() body: ReqLoginDto, @Req() request: FastifyRequest): Promise<LoginResponseModel> {
 		try {
 			this.logger.debug(`Attempting login for username=${body.data.username}`);
 
-			const data = await this.authService.login(body.data);
+			const clientIp = this.clientAddressService.resolve(request).address;
+			const data = await this.authService.login(body.data, { ip: clientIp });
 
 			this.logger.debug(`Successful login for username=${body.data.username}`);
 

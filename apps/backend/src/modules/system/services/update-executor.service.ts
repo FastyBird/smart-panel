@@ -4,6 +4,13 @@ import { dirname, join } from 'path';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import {
+	NotificationActionType,
+	NotificationKind,
+	NotificationSeverity,
+} from '../../notifications/notifications.constants';
+import { sanitizeErrorMessage } from '../../notifications/notifications.utils';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 import { SYSTEM_MODULE_NAME, UpdatePhase, UpdateStatusType } from '../system.constants';
 
 import { PrivilegedJobStatus, PrivilegedWorkerService } from './privileged-worker.service';
@@ -79,13 +86,14 @@ export class UpdateExecutorService implements OnModuleInit {
 	constructor(
 		private readonly updateService: UpdateService,
 		private readonly privilegedWorker: PrivilegedWorkerService,
+		private readonly notifications: NotificationsService,
 	) {}
 
-	onModuleInit(): void {
-		this.checkPendingUpdateStatus();
+	async onModuleInit(): Promise<void> {
+		await this.checkPendingUpdateStatus();
 	}
 
-	private checkPendingUpdateStatus(): void {
+	private async checkPendingUpdateStatus(): Promise<void> {
 		if (!existsSync(STATUS_FILE)) {
 			return;
 		}
@@ -104,16 +112,12 @@ export class UpdateExecutorService implements OnModuleInit {
 					message: `Successfully updated to ${status.targetVersion}`,
 					error: null,
 				});
+
+				await this.reportUpdateSucceeded();
 			} else if (status.status === UpdateStatusType.FAILED) {
 				this.logger.error(`Update to ${status.targetVersion} failed: ${status.error ?? 'unknown error'}`);
 
-				this.updateService.setStatus({
-					status: UpdateStatusType.FAILED,
-					phase: UpdatePhase.FAILED,
-					progressPercent: null,
-					message: null,
-					error: status.error ?? 'Update failed with unknown error',
-				});
+				await this.failUpdate(status.error ?? 'Update failed with unknown error');
 			} else {
 				// Update was in progress when the service restarted - check timeout
 				const startedAt = new Date(status.startedAt).getTime();
@@ -121,25 +125,13 @@ export class UpdateExecutorService implements OnModuleInit {
 				if (Date.now() - startedAt > UPDATE_TIMEOUT_MS) {
 					this.logger.error(`Update to ${status.targetVersion} timed out`);
 
-					this.updateService.setStatus({
-						status: UpdateStatusType.FAILED,
-						phase: UpdatePhase.FAILED,
-						progressPercent: null,
-						message: null,
-						error: 'Update timed out after 10 minutes',
-					});
+					await this.failUpdate('Update timed out after 10 minutes');
 				} else {
 					this.logger.warn(
 						`Update to ${status.targetVersion} was in progress (phase: ${status.phase}), service restarted`,
 					);
 
-					this.updateService.setStatus({
-						status: UpdateStatusType.FAILED,
-						phase: UpdatePhase.FAILED,
-						progressPercent: null,
-						message: null,
-						error: `Update interrupted during ${status.phase} phase`,
-					});
+					await this.failUpdate(`Update interrupted during ${status.phase} phase`);
 				}
 			}
 
@@ -179,13 +171,7 @@ export class UpdateExecutorService implements OnModuleInit {
 			if (!asset) {
 				this.updateService.releaseUpdateLock();
 
-				this.updateService.setStatus({
-					status: UpdateStatusType.FAILED,
-					phase: UpdatePhase.FAILED,
-					progressPercent: null,
-					message: null,
-					error: `No backend release artifact found for version ${targetVersion}`,
-				});
+				await this.failUpdate(`No backend release artifact found for version ${targetVersion}`);
 
 				throw new Error(`No backend release artifact found for version ${targetVersion}`);
 			}
@@ -220,13 +206,7 @@ export class UpdateExecutorService implements OnModuleInit {
 
 			this.logger.error(errorMsg);
 
-			this.updateService.setStatus({
-				status: UpdateStatusType.FAILED,
-				phase: UpdatePhase.FAILED,
-				progressPercent: null,
-				message: null,
-				error: errorMsg,
-			});
+			await this.failUpdate(errorMsg);
 
 			this.writeStatusFile({
 				status: UpdateStatusType.FAILED,
@@ -279,13 +259,7 @@ export class UpdateExecutorService implements OnModuleInit {
 
 			this.updateService.releaseUpdateLock();
 
-			this.updateService.setStatus({
-				status: UpdateStatusType.FAILED,
-				phase: UpdatePhase.FAILED,
-				progressPercent: null,
-				message: null,
-				error: `Failed to spawn update worker: ${err.message}`,
-			});
+			await this.failUpdate(`Failed to spawn update worker: ${err.message}`);
 
 			this.writeStatusFile({
 				status: UpdateStatusType.FAILED,
@@ -312,12 +286,10 @@ export class UpdateExecutorService implements OnModuleInit {
 			if (status.state === 'timeout') {
 				this.logger.error('Update status polling timed out');
 
-				this.updateService.setStatus({
-					status: UpdateStatusType.FAILED,
-					phase: UpdatePhase.FAILED,
-					progressPercent: null,
-					message: null,
-					error: 'Update timed out — no completion signal received',
+				// PrivilegedWorkerService calls this handler directly - it is not awaited, so a
+				// rejection is chained and logged here rather than left unhandled.
+				this.failUpdate('Update timed out — no completion signal received').catch((error: unknown) => {
+					this.logHandlerFailure('Failed to record the update timeout', error);
 				});
 
 				this.updateService.releaseUpdateLock();
@@ -329,12 +301,8 @@ export class UpdateExecutorService implements OnModuleInit {
 			if (status.state === 'failed') {
 				this.logger.error(`Update worker failed: ${status.message ?? 'unknown error'}`);
 
-				this.updateService.setStatus({
-					status: UpdateStatusType.FAILED,
-					phase: UpdatePhase.FAILED,
-					progressPercent: null,
-					message: null,
-					error: status.message ?? 'Update failed with unknown error',
+				this.failUpdate(status.message ?? 'Update failed with unknown error').catch((error: unknown) => {
+					this.logHandlerFailure('Failed to record the update failure', error);
 				});
 
 				this.updateService.releaseUpdateLock();
@@ -350,6 +318,10 @@ export class UpdateExecutorService implements OnModuleInit {
 					progressPercent: 100,
 					message: `Successfully updated to ${targetVersion}`,
 					error: null,
+				});
+
+				this.reportUpdateSucceeded().catch((error: unknown) => {
+					this.logHandlerFailure('Failed to record update success', error);
 				});
 
 				this.updateService.releaseUpdateLock();
@@ -397,5 +369,69 @@ export class UpdateExecutorService implements OnModuleInit {
 
 			this.logger.error(`Failed to write update status file: ${err.message}`);
 		}
+	}
+
+	/**
+	 * Every place a run reaches `FAILED` shares this shape (only `error` varies), so it also
+	 * raises the persistent `update-failed` issue - "persistent" because nothing re-detects a
+	 * failed install on its own, only the next run or the administrator dismissing it.
+	 *
+	 * Awaited by every caller so the transition is persisted before the caller moves on -
+	 * `startUpdate()`'s failure paths throw immediately afterwards, and the boot-time recovery
+	 * path in `checkPendingUpdateStatus()` deletes the status file right after. notify() never
+	 * throws, so nothing here can turn a successful call into an unhandled rejection.
+	 */
+	private async failUpdate(error: string): Promise<void> {
+		this.updateService.setStatus({
+			status: UpdateStatusType.FAILED,
+			phase: UpdatePhase.FAILED,
+			progressPercent: null,
+			message: null,
+			error,
+		});
+
+		await this.notifications.notify({
+			source: SYSTEM_MODULE_NAME,
+			kind: NotificationKind.ISSUE,
+			key: 'update-failed',
+			severity: NotificationSeverity.ERROR,
+			title: 'Update installation failed',
+			message: sanitizeErrorMessage(error),
+			actions: [{ type: NotificationActionType.LINK, label: 'View update', url: '/system/info', primary: true }],
+			persistent: true,
+		});
+	}
+
+	/**
+	 * A successful run clears both the failure it may have left behind and the availability
+	 * issue that prompted the install in the first place - waiting for the next scheduled check
+	 * (up to 12 h away) to notice the update is gone would leave a stale notification.
+	 *
+	 * Unlike notify(), resolve() can throw, and the two keys are independent of each other, so
+	 * both are attempted even when one fails - each is caught individually rather than one
+	 * `Promise.all`, which would abandon the second resolve() the moment the first rejects.
+	 */
+	private async reportUpdateSucceeded(): Promise<void> {
+		const outcomes = await Promise.allSettled([
+			this.notifications.resolve(SYSTEM_MODULE_NAME, 'update-failed'),
+			this.notifications.resolve(SYSTEM_MODULE_NAME, 'update-available'),
+		]);
+
+		for (const outcome of outcomes) {
+			if (outcome.status === 'rejected') {
+				this.logHandlerFailure('Failed to resolve an update notification', outcome.reason);
+			}
+		}
+	}
+
+	/**
+	 * `watchUpdateJob`'s status callback is a synchronous event handler PrivilegedWorkerService
+	 * invokes directly - there is nothing there to await - so a rejection from the async helpers
+	 * above is chained into this instead of being left an unhandled rejection.
+	 */
+	private logHandlerFailure(context: string, error: unknown): void {
+		const message = error instanceof Error ? error.message : 'Unknown error';
+
+		this.logger.error(`${context}: ${message}`);
 	}
 }

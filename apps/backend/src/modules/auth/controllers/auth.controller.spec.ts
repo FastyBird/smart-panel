@@ -6,10 +6,13 @@ eslint-disable @typescript-eslint/unbound-method,
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
+import { FastifyRequest } from 'fastify';
+
 import { ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ClientAddressService } from '../../api/services/client-address.service';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
@@ -32,6 +35,7 @@ describe('AuthController', () => {
 	let controller: AuthController;
 	let authService: AuthService;
 	let usersService: UsersService;
+	let clientAddressService: ClientAddressService;
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
@@ -54,12 +58,25 @@ describe('AuthController', () => {
 						findOwner: jest.fn(),
 					},
 				},
+				{
+					provide: ClientAddressService,
+					useValue: {
+						resolve: jest.fn().mockReturnValue({
+							address: '203.0.113.5',
+							forwarded: false,
+							secure: false,
+							peer: '203.0.113.5',
+							ignoredForwardedHeaders: false,
+						}),
+					},
+				},
 			],
 		}).compile();
 
 		controller = module.get<AuthController>(AuthController);
 		authService = module.get<AuthService>(AuthService);
 		usersService = module.get<UsersService>(UsersService);
+		clientAddressService = module.get<ClientAddressService>(ClientAddressService);
 	});
 
 	afterEach(() => {
@@ -77,11 +94,13 @@ describe('AuthController', () => {
 			const loginDto: LoginDto = { username: 'testuser', password: 'password' };
 			const serviceResponse = toInstance(LoggedInModel, { accessToken: 'valid-token' });
 			const expectedResponse = toInstance(LoginResponseModel, { data: serviceResponse });
+			const request = {} as FastifyRequest;
 
 			jest.spyOn(authService, 'login').mockResolvedValue(serviceResponse);
 
-			await expect(controller.login({ data: loginDto })).resolves.toEqual(expectedResponse);
-			expect(authService.login).toHaveBeenCalledWith(loginDto);
+			await expect(controller.login({ data: loginDto }, request)).resolves.toEqual(expectedResponse);
+			expect(clientAddressService.resolve).toHaveBeenCalledWith(request);
+			expect(authService.login).toHaveBeenCalledWith(loginDto, { ip: '203.0.113.5' });
 		});
 	});
 

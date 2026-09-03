@@ -1,4 +1,4 @@
-import { DataSource, IsNull, Repository } from 'typeorm';
+import { DataSource, IsNull, Not, Repository } from 'typeorm';
 
 import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -361,6 +361,252 @@ describe('NotificationsService', () => {
 
 		it('reports zero when the source has nothing unresolved', async () => {
 			await expect(service.resolveAll('system-module')).resolves.toBe(0);
+		});
+	});
+
+	describe('per-key ordering', () => {
+		/** Flushes every pending microtask, unlike a fixed number of `await Promise.resolve()` hops. */
+		const flush = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
+		/** Delays the next `repository.save()` call until `release()` is invoked, then runs it for real. */
+		const gateNextSave = (): (() => void) => {
+			let release: () => void = () => undefined;
+			const gate = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			const originalSave = repository.save.bind(repository) as (
+				entity: NotificationEntity,
+				options?: { transaction?: boolean },
+			) => Promise<NotificationEntity>;
+
+			jest
+				.spyOn(repository, 'save')
+				.mockImplementationOnce((entity: NotificationEntity, options?: { transaction?: boolean }) => {
+					return gate.then(() => originalSave(entity, options));
+				});
+
+			return release;
+		};
+
+		it('waits for a slow notify to finish before resolving the same key', async () => {
+			const release = gateNextSave();
+
+			const notifyResult = service.notify(
+				baseInput({ kind: NotificationKind.ISSUE, key: 'connection', severity: NotificationSeverity.ERROR }),
+			);
+
+			// Let notify() actually start (and its gated save() begin waiting) before resolve() is issued.
+			await flush();
+
+			let resolveSettled = false;
+			const resolveResult = service.resolve('system-module', 'connection').then((outcome) => {
+				resolveSettled = true;
+
+				return outcome;
+			});
+
+			// resolve() must not race ahead of the still-pending notify() for the same key.
+			await flush();
+			expect(resolveSettled).toBe(false);
+
+			release();
+
+			const [created, resolved] = await Promise.all([notifyResult, resolveResult]);
+
+			expect(created).not.toBeNull();
+			expect(resolved).toBe(true);
+
+			await expect(repository.count()).resolves.toBe(1);
+
+			const row = await repository.findOne({ where: { source: 'system-module', key: 'connection' } });
+			expect(row?.resolvedAt).toBeInstanceOf(Date);
+		});
+
+		it('lets two different keys proceed without waiting on each other', async () => {
+			const release = gateNextSave();
+
+			const slowResult = service.notify(
+				baseInput({ kind: NotificationKind.ISSUE, key: 'connection-a', severity: NotificationSeverity.ERROR }),
+			);
+
+			await flush();
+
+			let fastSettled = false;
+			const fastResult = service
+				.notify(baseInput({ kind: NotificationKind.ISSUE, key: 'connection-b', severity: NotificationSeverity.ERROR }))
+				.then((outcome) => {
+					fastSettled = true;
+
+					return outcome;
+				});
+
+			await fastResult;
+			expect(fastSettled).toBe(true);
+
+			release();
+			await slowResult;
+
+			await expect(repository.count()).resolves.toBe(2);
+		});
+
+		it('resolveAll waits for a pending notify of the same source before counting resolutions', async () => {
+			const release = gateNextSave();
+
+			const pendingNotify = service.notify(
+				baseInput({ kind: NotificationKind.ISSUE, key: 'connection', severity: NotificationSeverity.ERROR }),
+			);
+
+			await flush();
+
+			let resolveAllSettled = false;
+			const resolveAllResult = service.resolveAll('system-module').then((count) => {
+				resolveAllSettled = true;
+
+				return count;
+			});
+
+			await flush();
+			expect(resolveAllSettled).toBe(false);
+
+			release();
+
+			const [, count] = await Promise.all([pendingNotify, resolveAllResult]);
+
+			expect(count).toBe(1);
+			await expect(repository.count({ where: { resolvedAt: Not(IsNull()) } })).resolves.toBe(1);
+		});
+
+		it('empties its internal chain map once every queued write has settled', async () => {
+			await Promise.all([
+				service.notify(
+					baseInput({ kind: NotificationKind.ISSUE, key: 'connection', severity: NotificationSeverity.ERROR }),
+				),
+				service.notify(
+					baseInput({ kind: NotificationKind.ISSUE, key: 'connection', severity: NotificationSeverity.ERROR }),
+				),
+				service.resolve('system-module', 'connection'),
+				service.notify(baseInput({ key: 'update-available' })),
+			]);
+
+			// The map's own cleanup runs off the settled chain, one microtask behind the awaited calls above.
+			await flush();
+			await flush();
+
+			const chains = (service as unknown as { chains: Map<string, unknown> }).chains;
+
+			expect(chains.size).toBe(0);
+		});
+
+		it('serialises a racing notify() behind an in-flight resolveAll for the same source', async () => {
+			const originalRow = await seed({
+				key: 'connection',
+				kind: NotificationKind.ISSUE,
+				severity: NotificationSeverity.ERROR,
+				title: 'Connection lost',
+				occurrences: 1,
+			});
+
+			const release = gateNextSave();
+
+			const resolveAllResult = service.resolveAll('system-module');
+
+			// Let resolveAll() find its target row and reach the gated save() before the racing
+			// notify() is issued.
+			await flush();
+
+			let notifySettled = false;
+			const notifyResult = service
+				.notify(
+					baseInput({
+						kind: NotificationKind.ISSUE,
+						key: 'connection',
+						severity: NotificationSeverity.ERROR,
+						title: 'Still disconnected',
+					}),
+				)
+				.then((result) => {
+					notifySettled = true;
+
+					return result;
+				});
+
+			// The racing notify() must not run ahead of the resolveAll() already in flight for
+			// this source - otherwise its atomic UPDATE and resolveAll's save() would race the
+			// same row, and the persisted result would depend on interleaving.
+			await flush();
+			expect(notifySettled).toBe(false);
+
+			release();
+
+			const [resolvedCount, created] = await Promise.all([resolveAllResult, notifyResult]);
+
+			expect(resolvedCount).toBe(1);
+			expect(created).not.toBeNull();
+
+			// The racing notify() only reaches the database after resolveAll's own resolution has
+			// committed, so it opens its own fresh occurrence instead of colliding with (and
+			// corrupting) the row resolveAll just resolved.
+			expect(created?.id).not.toBe(originalRow.id);
+			expect(created?.title).toBe('Still disconnected');
+			expect(created?.resolvedAt).toBeNull();
+
+			const reloadedOriginal = await repository.findOne({ where: { id: originalRow.id } });
+			expect(reloadedOriginal?.resolvedAt).toBeInstanceOf(Date);
+			// Untouched by the racing notify() - its own database write never got a chance to run
+			// until after this row was already resolved, so nothing overwrote or was overwritten.
+			expect(reloadedOriginal?.occurrences).toBe(1);
+
+			const reloadedCreated = await repository.findOne({ where: { id: created?.id } });
+			expect(reloadedCreated?.occurrences).toBe(created?.occurrences);
+			expect(reloadedCreated?.resolvedAt).toBeNull();
+
+			await expect(repository.count({ where: { source: 'system-module', key: 'connection' } })).resolves.toBe(2);
+		});
+
+		it('lets a different source proceed while resolveAll on one source is held', async () => {
+			await seed({ key: 'connection', kind: NotificationKind.ISSUE, severity: NotificationSeverity.ERROR });
+
+			const release = gateNextSave();
+
+			const resolveAllResult = service.resolveAll('system-module');
+
+			await flush();
+
+			let notifySettled = false;
+			const notifyResult = service
+				.notify(
+					baseInput({
+						source: 'weather-module',
+						kind: NotificationKind.ISSUE,
+						key: 'forecast',
+						severity: NotificationSeverity.ERROR,
+					}),
+				)
+				.then((result) => {
+					notifySettled = true;
+
+					return result;
+				});
+
+			await notifyResult;
+			expect(notifySettled).toBe(true);
+
+			release();
+
+			await expect(resolveAllResult).resolves.toBe(1);
+		});
+
+		it('empties its internal source-barrier map once resolveAll settles', async () => {
+			await seed({ key: 'connection', kind: NotificationKind.ISSUE, severity: NotificationSeverity.ERROR });
+
+			await service.resolveAll('system-module');
+
+			await flush();
+			await flush();
+
+			const sourceBarriers = (service as unknown as { sourceBarriers: Map<string, unknown> }).sourceBarriers;
+
+			expect(sourceBarriers.size).toBe(0);
 		});
 	});
 

@@ -1,7 +1,14 @@
+import { Logger } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { ConfigService } from '../../config/services/config.service';
 import { PluginConfigValidatorService } from '../../config/services/plugin-config-validator.service';
+import {
+	NotificationActionType,
+	NotificationKind,
+	NotificationSeverity,
+} from '../../notifications/notifications.constants';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 
 import {
 	IManagedExtensionService,
@@ -47,6 +54,7 @@ describe('ManagedServiceManagerService', () => {
 	let configService: { getModuleConfig: jest.Mock; getPluginConfig: jest.Mock };
 	let nestConfigService: { get: jest.Mock };
 	let pluginConfigValidator: { hasValidator: jest.Mock; validate: jest.Mock };
+	let notifications: { notify: jest.Mock; resolve: jest.Mock; resolveAll: jest.Mock };
 
 	beforeEach(() => {
 		jest.useFakeTimers();
@@ -65,10 +73,13 @@ describe('ManagedServiceManagerService', () => {
 			validate: jest.fn().mockResolvedValue({ valid: true }),
 		};
 
+		notifications = { notify: jest.fn(), resolve: jest.fn(), resolveAll: jest.fn() };
+
 		manager = new ManagedServiceManagerService(
 			configService as unknown as ConfigService,
 			nestConfigService as unknown as NestConfigService,
 			pluginConfigValidator as unknown as PluginConfigValidatorService,
+			notifications as unknown as NotificationsService,
 		);
 
 		// Mark startup as complete so handleConfigUpdated processes events
@@ -314,6 +325,171 @@ describe('ManagedServiceManagerService', () => {
 		});
 	});
 
+	describe('service error notifications', () => {
+		it('raises the service issue on start failure and resolves it once the service starts', async () => {
+			const service = createMockService('plugin', 'flaky-plugin', 'runtime');
+			service.start = jest
+				.fn()
+				.mockRejectedValueOnce(new Error('connection refused'))
+				.mockRejectedValueOnce(new Error('connection refused again'))
+				.mockImplementationOnce(() => {
+					service._state = 'started';
+
+					return Promise.resolve();
+				});
+
+			manager.register(service);
+
+			// First failure: a fresh transition into error - raises exactly once.
+			await expect(manager.startServiceManually('plugin', 'flaky-plugin', 'runtime')).resolves.toBe(false);
+			// Second failure: still in error - a retry tick, not a new transition, so no re-raise.
+			await expect(manager.startServiceManually('plugin', 'flaky-plugin', 'runtime')).resolves.toBe(false);
+			// Recovers: resolves the issue.
+			await expect(manager.startServiceManually('plugin', 'flaky-plugin', 'runtime')).resolves.toBe(true);
+
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+			expect(notifications.notify).toHaveBeenCalledWith({
+				source: 'flaky-plugin',
+				kind: NotificationKind.ISSUE,
+				key: 'service:plugin:flaky-plugin:runtime',
+				severity: NotificationSeverity.ERROR,
+				title: 'Service runtime of flaky-plugin failed',
+				message: 'connection refused',
+				actions: [
+					{
+						type: NotificationActionType.SERVICE,
+						label: 'Restart service',
+						extension_kind: 'plugin',
+						extension_type: 'flaky-plugin',
+						service_id: 'runtime',
+						operation: 'restart',
+						primary: true,
+					},
+					{
+						type: NotificationActionType.LINK,
+						label: 'Open services',
+						url: '/extensions?tab=services&kind=plugin',
+					},
+				],
+			});
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+			expect(notifications.resolve).toHaveBeenCalledWith('flaky-plugin', 'service:plugin:flaky-plugin:runtime');
+		});
+
+		it('raises the service issue once readiness retries are exhausted', async () => {
+			const service = createMockService('plugin', 'devices-provider', 'connector');
+
+			pluginConfigValidator.hasValidator.mockReturnValue(true);
+			pluginConfigValidator.validate.mockResolvedValue({
+				valid: false,
+				errors: [{ message: 'Configuration validation failed unexpectedly' }],
+				transient: true,
+			});
+			manager.register(service);
+
+			await manager.handleConfigUpdated();
+			await jest.advanceTimersByTimeAsync(120_000);
+
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+			expect(notifications.notify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					source: 'devices-provider',
+					kind: NotificationKind.ISSUE,
+					key: 'service:plugin:devices-provider:connector',
+					severity: NotificationSeverity.ERROR,
+					message: 'Configuration readiness check is temporarily unavailable',
+				}),
+			);
+		});
+
+		it('raises exactly once when a transient readiness failure is followed by a start failure', async () => {
+			const service = createMockService('plugin', 'devices-provider', 'connector');
+			service.start = jest.fn().mockRejectedValue(new Error('connection refused'));
+
+			pluginConfigValidator.hasValidator.mockReturnValue(true);
+			pluginConfigValidator.validate
+				.mockResolvedValueOnce({
+					valid: false,
+					errors: [{ message: 'Configuration validation failed unexpectedly' }],
+					transient: true,
+				})
+				.mockResolvedValue({ valid: true });
+
+			manager.register(service);
+
+			// First attempt: a transient readiness failure - not a transition into error, so no raise.
+			// A stale `lastError` from this must not suppress the genuine failure below.
+			await manager.handleConfigUpdated();
+			expect(notifications.notify).not.toHaveBeenCalled();
+
+			// The scheduled retry re-validates (now valid this time) and reaches the real start(),
+			// which fails - a fresh transition into error.
+			await jest.advanceTimersByTimeAsync(20_000);
+
+			expect(notifications.notify).toHaveBeenCalledTimes(1);
+			expect(notifications.notify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					source: 'devices-provider',
+					key: 'service:plugin:devices-provider:connector',
+					message: 'connection refused',
+				}),
+			);
+		});
+
+		it('raises again after a resolved issue re-enters error, with one resolve in between', async () => {
+			const service = createMockService('plugin', 'flaky-plugin', 'runtime');
+			service.start = jest
+				.fn()
+				.mockRejectedValueOnce(new Error('connection refused'))
+				.mockImplementationOnce(() => {
+					service._state = 'started';
+
+					return Promise.resolve();
+				})
+				.mockRejectedValueOnce(new Error('connection refused again'));
+
+			manager.register(service);
+
+			await expect(manager.startServiceManually('plugin', 'flaky-plugin', 'runtime')).resolves.toBe(false);
+			await expect(manager.startServiceManually('plugin', 'flaky-plugin', 'runtime')).resolves.toBe(true);
+
+			// Something external observes the service has failed again (a crash, a health probe) -
+			// the manager only decides whether to raise, it does not itself detect the transition.
+			service._state = 'error';
+
+			await expect(manager.startServiceManually('plugin', 'flaky-plugin', 'runtime')).resolves.toBe(false);
+
+			expect(notifications.notify).toHaveBeenCalledTimes(2);
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+		});
+
+		it('logs a resolve failure without breaking the start path', async () => {
+			const error = jest.spyOn(Logger.prototype, 'error');
+			const service = createMockService('plugin', 'flaky-plugin', 'runtime');
+			service.start = jest
+				.fn()
+				.mockRejectedValueOnce(new Error('connection refused'))
+				.mockImplementationOnce(() => {
+					service._state = 'started';
+
+					return Promise.resolve();
+				});
+
+			notifications.resolve.mockRejectedValueOnce(new Error('database is locked'));
+
+			manager.register(service);
+
+			await expect(manager.startServiceManually('plugin', 'flaky-plugin', 'runtime')).resolves.toBe(false);
+			await expect(manager.startServiceManually('plugin', 'flaky-plugin', 'runtime')).resolves.toBe(true);
+
+			expect(notifications.resolve).toHaveBeenCalledTimes(1);
+			expect(
+				error.mock.calls.some(([message]) => typeof message === 'string' && message.includes('database is locked')),
+			).toBe(true);
+		});
+	});
+
 	describe('ordering and lifecycle boundaries', () => {
 		it('starts dependencies first using generic service keys', async () => {
 			const order: string[] = [];
@@ -347,6 +523,7 @@ describe('ManagedServiceManagerService', () => {
 				configService as unknown as ConfigService,
 				cliConfig as unknown as NestConfigService,
 				pluginConfigValidator as unknown as PluginConfigValidatorService,
+				notifications as unknown as NotificationsService,
 			);
 			const service = createMockService('plugin', 'cli-plugin', 'runtime');
 

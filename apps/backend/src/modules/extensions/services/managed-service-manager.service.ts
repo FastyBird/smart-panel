@@ -8,6 +8,13 @@ import { EventType as ConfigModuleEventType } from '../../config/config.constant
 import { ModuleConfigModel, PluginConfigModel } from '../../config/models/config.model';
 import { ConfigService } from '../../config/services/config.service';
 import { PluginConfigValidatorService } from '../../config/services/plugin-config-validator.service';
+import {
+	NotificationActionType,
+	NotificationKind,
+	NotificationSeverity,
+} from '../../notifications/notifications.constants';
+import { sanitizeErrorMessage } from '../../notifications/notifications.utils';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 import { EXTENSIONS_MODULE_NAME } from '../extensions.constants';
 
 import {
@@ -58,6 +65,11 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 	private readonly runtimeInfo: Map<string, ServiceRuntimeInfo> = new Map();
 	private readonly readinessRetries: Map<string, ReadinessRetryState> = new Map();
 	private readonly serviceStartPromises: Map<string, Promise<void>> = new Map();
+	// Explicit "is there a raised issue for this service" flag, replacing detection derived from
+	// `lastError` (which stays set across unrelated conditions - e.g. a transient readiness
+	// warning - and so cannot tell "already raised" from "not raised yet"). Set by
+	// raiseServiceError, cleared by resolveServiceError.
+	private readonly openIssues = new Set<string>();
 	private readonly isCliMode: boolean;
 
 	private startupComplete = false;
@@ -67,6 +79,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		private readonly configService: ConfigService,
 		private readonly nestConfigService: NestConfigService,
 		private readonly pluginConfigValidator: PluginConfigValidatorService,
+		private readonly notifications: NotificationsService,
 	) {
 		this.isCliMode = getEnvValue<string>(this.nestConfigService, 'FB_CLI', null) === 'on';
 	}
@@ -128,6 +141,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 		this.services.delete(key);
 		this.runtimeInfo.delete(key);
+		this.openIssues.delete(key);
 		this.clearReadinessRetry(key);
 
 		this.logger.log(`Unregistered service: ${key}`);
@@ -582,7 +596,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 					const runtime = this.runtimeInfo.get(key);
 
 					if (runtime) runtime.lastError = warning;
-					this.scheduleReadinessRetry(registration);
+					await this.scheduleReadinessRetry(registration);
 
 					return;
 				}
@@ -596,7 +610,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 					const runtime = this.runtimeInfo.get(key);
 
 					if (runtime) runtime.lastError = warning;
-					this.scheduleReadinessRetry(registration);
+					await this.scheduleReadinessRetry(registration);
 
 					return;
 				}
@@ -642,17 +656,32 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 			this.clearReadinessRetry(key);
 
 			this.logger.log(`Service started successfully: ${key}`);
+
+			await this.resolveServiceError(registration);
 		} catch (error) {
 			const err = error as Error;
 
-			// Track the error
+			// Track the error. `openIssues` - not `lastError` - decides whether this is a fresh
+			// transition into error: the readiness-retry timer and config-change resyncs can call
+			// back in here repeatedly while a service stays broken, and the issue must raise once
+			// per transition, not once per tick. `lastError` alone cannot tell "already raised"
+			// from "not raised yet" - it is also set by an unrelated transient readiness warning
+			// that never raised anything, which must not suppress the raise for a later, genuine
+			// failure.
 			const runtime = this.runtimeInfo.get(key);
+			const enteringError = runtime !== undefined && !this.openIssues.has(key);
 
 			if (runtime) {
 				runtime.lastError = err.message;
 			}
 
 			this.logger.error(`Failed to start service ${key}: ${err.message}`, err.stack);
+
+			if (enteringError) {
+				this.openIssues.add(key);
+
+				await this.raiseServiceError(registration, err.message);
+			}
 		}
 	}
 
@@ -779,7 +808,7 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		}
 	}
 
-	private scheduleReadinessRetry(registration: ServiceRegistration): void {
+	private async scheduleReadinessRetry(registration: ServiceRegistration): Promise<void> {
 		const key = this.getRegistrationKey(registration);
 
 		if (this.shutdownInProgress || this.services.get(key) !== registration) return;
@@ -793,6 +822,15 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 		if (attempt > READINESS_RETRY_MAX_ATTEMPTS) {
 			this.readinessRetries.delete(key);
 			this.logger.warn(`Readiness retries exhausted for service: ${key}`);
+
+			if (!this.openIssues.has(key)) {
+				this.openIssues.add(key);
+
+				const runtime = this.runtimeInfo.get(key);
+
+				await this.raiseServiceError(registration, runtime?.lastError ?? 'Readiness retries exhausted');
+			}
+
 			return;
 		}
 
@@ -1019,5 +1057,67 @@ export class ManagedServiceManagerService implements OnApplicationBootstrap, OnM
 
 	private isConfigChangeResult(result: void | ConfigChangeResult): result is ConfigChangeResult {
 		return result !== undefined && typeof result === 'object' && 'restartRequired' in result;
+	}
+
+	/**
+	 * Raises the generic `service:<kind>:<type>:<serviceId>` issue for a service the manager has
+	 * given up trying to run - a start failure or exhausted readiness retries. `source` is the
+	 * owning extension, not this module, so `resolveAll(source)` from the owner's own shutdown
+	 * clears exactly its own services and nothing else.
+	 */
+	private async raiseServiceError(registration: ServiceRegistration, lastError: string): Promise<void> {
+		const key = this.getRegistrationKey(registration);
+
+		// notify() never throws (it swallows and logs its own failures), so nothing here needs a
+		// try/catch - awaiting it just makes sure the issue is persisted before this call returns.
+		await this.notifications.notify({
+			source: registration.owner.type,
+			kind: NotificationKind.ISSUE,
+			key: `service:${key}`,
+			severity: NotificationSeverity.ERROR,
+			title: `Service ${registration.serviceId} of ${registration.owner.type} failed`,
+			message: sanitizeErrorMessage(lastError),
+			actions: [
+				{
+					type: NotificationActionType.SERVICE,
+					label: 'Restart service',
+					extension_kind: registration.owner.kind,
+					extension_type: registration.owner.type,
+					service_id: registration.serviceId,
+					operation: 'restart',
+					primary: true,
+				},
+				{
+					type: NotificationActionType.LINK,
+					label: 'Open services',
+					url: `/extensions?tab=services&kind=${registration.owner.kind}`,
+				},
+			],
+		});
+	}
+
+	/**
+	 * Resolves the issue {@link raiseServiceError} raised, once the service reports `started`.
+	 * A no-op when nothing is open for this service, so a plain successful start never issues a
+	 * pointless resolve() call. Unlike notify(), resolve() can throw - caught and logged here, at
+	 * the manager boundary, so a storage hiccup on the resolve never turns a successful start into
+	 * a reported failure.
+	 */
+	private async resolveServiceError(registration: ServiceRegistration): Promise<void> {
+		const key = this.getRegistrationKey(registration);
+
+		if (!this.openIssues.has(key)) {
+			return;
+		}
+
+		this.openIssues.delete(key);
+
+		try {
+			await this.notifications.resolve(registration.owner.type, `service:${key}`);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`Failed to resolve the service issue for ${key}: ${err.message}`, err.stack);
+		}
 	}
 }
