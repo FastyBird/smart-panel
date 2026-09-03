@@ -1,37 +1,37 @@
 {
 	"headings": {
-		"aboutSlackSettings": "Slack webhook settings"
+		"aboutSlackSettings": "Nastavení Slack webhooku"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Enabled"
+				"title": "Povoleno"
 			},
 			"webhookUrl": {
-				"title": "Webhook URL",
+				"title": "URL webhooku",
 				"placeholder": "https://hooks.slack.com/services/...",
-				"description": "Slack incoming webhook URL, from a channel's App settings page. Must start with https://.",
-				"invalid": "Enter a Slack webhook URL that starts with https:// and does not embed credentials"
+				"description": "URL příchozího Slack webhooku ze stránky nastavení aplikace daného kanálu. Musí začínat na https://.",
+				"invalid": "Zadejte URL Slack webhooku, která začíná na https:// a neobsahuje vložené přihlašovací údaje"
 			},
 			"minSeverity": {
-				"title": "Minimum severity",
-				"description": "Only notifications at or above this severity are forwarded.",
+				"title": "Minimální závažnost",
+				"description": "Přeposílána jsou pouze oznámení s touto závažností nebo vyšší.",
 				"options": {
 					"info": "Info",
-					"warning": "Warning",
-					"error": "Error",
-					"critical": "Critical"
+					"warning": "Varování",
+					"error": "Chyba",
+					"critical": "Kritická"
 				}
 			}
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Slack webhook settings have been updated",
-			"notEdited": "Failed to update Slack webhook settings"
+			"edited": "Nastavení Slack webhooku bylo aktualizováno",
+			"notEdited": "Nepodařilo se aktualizovat nastavení Slack webhooku"
 		}
 	},
 	"texts": {
-		"aboutSlackSettings": "Forward system notifications to a Slack channel as a coloured attachment, using a Slack incoming webhook. In Slack, create (or reuse) an app with an Incoming Webhook enabled for the target channel and copy its webhook URL."
+		"aboutSlackSettings": "Přeposílejte systémová oznámení do kanálu Slack jako barevnou přílohu (attachment) pomocí příchozího Slack webhooku. Ve Slacku vytvořte (nebo použijte stávající) aplikaci s povoleným Incoming Webhook pro cílový kanál a zkopírujte její URL webhooku."
 	}
 }

@@ -1,41 +1,41 @@
 {
 	"headings": {
-		"aboutTelegramSettings": "Telegram bot settings"
+		"aboutTelegramSettings": "Telegram-Bot-Einstellungen"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Enabled"
+				"title": "Aktiviert"
 			},
 			"botToken": {
-				"title": "Bot token",
+				"title": "Bot-Token",
 				"placeholder": "123456789:AAExampleTelegramBotTokenValue",
-				"description": "Telegram Bot API token, from @BotFather."
+				"description": "Telegram-Bot-API-Token von @BotFather."
 			},
 			"chatId": {
-				"title": "Chat ID",
+				"title": "Chat-ID",
 				"placeholder": "123456789",
-				"description": "Telegram chat id (or @channel username) the bot sends messages to."
+				"description": "Telegram-Chat-ID (oder @Benutzername des Kanals), an die der Bot Nachrichten sendet."
 			},
 			"minSeverity": {
-				"title": "Minimum severity",
-				"description": "Only notifications at or above this severity are forwarded.",
+				"title": "Minimaler Schweregrad",
+				"description": "Es werden nur Benachrichtigungen mit diesem Schweregrad oder höher weitergeleitet.",
 				"options": {
 					"info": "Info",
-					"warning": "Warning",
-					"error": "Error",
-					"critical": "Critical"
+					"warning": "Warnung",
+					"error": "Fehler",
+					"critical": "Kritisch"
 				}
 			}
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Telegram bot settings have been updated",
-			"notEdited": "Failed to update Telegram bot settings"
+			"edited": "Telegram-Bot-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der Telegram-Bot-Einstellungen fehlgeschlagen"
 		}
 	},
 	"texts": {
-		"aboutTelegramSettings": "Forward system notifications to a Telegram chat through a bot. In Telegram, message @BotFather to create a bot, copy its token, and find the chat id the bot should post to."
+		"aboutTelegramSettings": "Leiten Sie Systembenachrichtigungen über einen Bot an einen Telegram-Chat weiter. Schreiben Sie in Telegram eine Nachricht an @BotFather, um einen Bot zu erstellen, kopieren Sie dessen Token und ermitteln Sie die Chat-ID, an die der Bot posten soll."
 	}
 }

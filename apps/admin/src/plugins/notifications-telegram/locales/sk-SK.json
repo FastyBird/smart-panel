@@ -1,41 +1,41 @@
 {
 	"headings": {
-		"aboutTelegramSettings": "Telegram bot settings"
+		"aboutTelegramSettings": "Nastavenia Telegram bota"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Enabled"
+				"title": "Povolený"
 			},
 			"botToken": {
-				"title": "Bot token",
+				"title": "Token bota",
 				"placeholder": "123456789:AAExampleTelegramBotTokenValue",
-				"description": "Telegram Bot API token, from @BotFather."
+				"description": "Token Telegram Bot API od @BotFather."
 			},
 			"chatId": {
-				"title": "Chat ID",
+				"title": "ID chatu",
 				"placeholder": "123456789",
-				"description": "Telegram chat id (or @channel username) the bot sends messages to."
+				"description": "ID chatu Telegramu (alebo @používateľské meno kanála), na ktorý bot posiela správy."
 			},
 			"minSeverity": {
-				"title": "Minimum severity",
-				"description": "Only notifications at or above this severity are forwarded.",
+				"title": "Minimálna závažnosť",
+				"description": "Preposielané sú iba upozornenia s touto závažnosťou alebo vyššou.",
 				"options": {
 					"info": "Info",
-					"warning": "Warning",
-					"error": "Error",
-					"critical": "Critical"
+					"warning": "Varovanie",
+					"error": "Chyba",
+					"critical": "Kritická"
 				}
 			}
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Telegram bot settings have been updated",
-			"notEdited": "Failed to update Telegram bot settings"
+			"edited": "Nastavenia Telegram bota boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia Telegram bota"
 		}
 	},
 	"texts": {
-		"aboutTelegramSettings": "Forward system notifications to a Telegram chat through a bot. In Telegram, message @BotFather to create a bot, copy its token, and find the chat id the bot should post to."
+		"aboutTelegramSettings": "Preposielajte systémové upozornenia do chatu Telegramu prostredníctvom bota. V Telegrame napíšte správu @BotFather na vytvorenie bota, skopírujte jeho token a zistite ID chatu, na ktorý má bot prispievať."
 	}
 }

@@ -1,41 +1,41 @@
 {
 	"headings": {
-		"aboutTelegramSettings": "Telegram bot settings"
+		"aboutTelegramSettings": "Configuración del bot de Telegram"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Enabled"
+				"title": "Habilitado"
 			},
 			"botToken": {
-				"title": "Bot token",
+				"title": "Token del bot",
 				"placeholder": "123456789:AAExampleTelegramBotTokenValue",
-				"description": "Telegram Bot API token, from @BotFather."
+				"description": "Token de Telegram Bot API, obtenido de @BotFather."
 			},
 			"chatId": {
-				"title": "Chat ID",
+				"title": "ID de chat",
 				"placeholder": "123456789",
-				"description": "Telegram chat id (or @channel username) the bot sends messages to."
+				"description": "ID de chat de Telegram (o @nombre de usuario del canal) al que el bot envía mensajes."
 			},
 			"minSeverity": {
-				"title": "Minimum severity",
-				"description": "Only notifications at or above this severity are forwarded.",
+				"title": "Gravedad mínima",
+				"description": "Solo se reenvían las notificaciones con esta gravedad o superior.",
 				"options": {
-					"info": "Info",
-					"warning": "Warning",
+					"info": "Información",
+					"warning": "Advertencia",
 					"error": "Error",
-					"critical": "Critical"
+					"critical": "Crítico"
 				}
 			}
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Telegram bot settings have been updated",
-			"notEdited": "Failed to update Telegram bot settings"
+			"edited": "La configuración del bot de Telegram ha sido actualizada",
+			"notEdited": "Error al actualizar la configuración del bot de Telegram"
 		}
 	},
 	"texts": {
-		"aboutTelegramSettings": "Forward system notifications to a Telegram chat through a bot. In Telegram, message @BotFather to create a bot, copy its token, and find the chat id the bot should post to."
+		"aboutTelegramSettings": "Reenvíe las notificaciones del sistema a un chat de Telegram mediante un bot. En Telegram, envíe un mensaje a @BotFather para crear un bot, copie su token y averigüe el id de chat al que el bot debe publicar."
 	}
 }
