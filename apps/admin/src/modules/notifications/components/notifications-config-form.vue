@@ -24,10 +24,11 @@
 				:max="365"
 				:placeholder="t('notificationsModule.fields.config.retentionDays.placeholder')"
 				name="retentionDays"
-			/>
-			<template #append>
-				<span>{{ t('notificationsModule.fields.config.retentionDays.unit') }}</span>
-			</template>
+			>
+				<template #suffix>
+					<span>{{ t('notificationsModule.fields.config.retentionDays.unit') }}</span>
+				</template>
+			</el-input-number>
 		</el-form-item>
 
 		<el-form-item
@@ -41,7 +42,11 @@
 				:step="50"
 				:placeholder="t('notificationsModule.fields.config.maxNotifications.placeholder')"
 				name="maxNotifications"
-			/>
+			>
+				<template #suffix>
+					<span>{{ t('notificationsModule.fields.config.maxNotifications.unit') }}</span>
+				</template>
+			</el-input-number>
 		</el-form-item>
 	</el-form>
 </template>

@@ -148,6 +148,7 @@
 			"maxNotifications": {
 				"title": "Maximum active notifications",
 				"placeholder": "500",
+				"unit": "notificaciones",
 				"validation": {
 					"required": "Maximum active notifications is required.",
 					"range": "Maximum active notifications must be between 50 and 5000."
