@@ -1,0 +1,45 @@
+{
+	"headings": {
+		"aboutWebhookSettings": "Configuración del webhook"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"url": {
+				"title": "URL",
+				"placeholder": "https://example.com/hooks/panel",
+				"description": "Las notificaciones se envían como JSON mediante POST a esta URL. Se recomienda HTTPS.",
+				"httpWarning": "Esta URL no está cifrada. El contenido de la notificación viajará en texto plano - use HTTPS siempre que el destino lo admita, y use HTTP solo para destinos de confianza dentro de su propia LAN.",
+				"invalid": "Introduzca una URL absoluta HTTP o HTTPS sin credenciales incluidas"
+			},
+			"headers": {
+				"title": "Cabeceras personalizadas",
+				"placeholder": "{\"Authorization\": \"Bearer <token>\"}",
+				"description": "Objeto JSON opcional con cabeceras HTTP adicionales, p. ej. un token Bearer de autorización. Requiere una URL HTTPS.",
+				"invalidJson": "Introduzca un objeto JSON plano de valores de texto, p. ej. {\"Authorization\": \"Bearer token\"}",
+				"requiresHttps": "Las cabeceras personalizadas requieren una URL de webhook HTTPS"
+			},
+			"minSeverity": {
+				"title": "Gravedad mínima",
+				"description": "Solo se reenvían las notificaciones con esta gravedad o superior.",
+				"options": {
+					"info": "Información",
+					"warning": "Advertencia",
+					"error": "Error",
+					"critical": "Crítico"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuración del webhook ha sido actualizada",
+			"notEdited": "Error al actualizar la configuración del webhook"
+		}
+	},
+	"texts": {
+		"aboutWebhookSettings": "Reenvíe las notificaciones del sistema como una solicitud POST en JSON a cualquier URL que configure - su propio servidor de automatización, el webhook entrante de una plataforma de chat o una herramienta autoalojada como n8n, Node-RED o Home Assistant."
+	}
+}

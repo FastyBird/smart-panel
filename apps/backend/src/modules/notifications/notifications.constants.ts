@@ -46,6 +46,15 @@ export enum NotificationActionType {
 	SERVICE = 'service',
 }
 
+/**
+ * Extension capabilities a plugin can advertise through `registerPluginMetadata`.
+ * `CHANNEL` marks a plugin that registers a notification channel with
+ * {@link import('./services/notification-channel-registry.service').NotificationChannelRegistryService}.
+ */
+export enum NotificationsCapability {
+	CHANNEL = 'channel',
+}
+
 export const NOTIFICATION_TITLE_MAX_LENGTH = 120;
 
 export const NOTIFICATION_MESSAGE_MAX_LENGTH = 1000;

@@ -27,6 +27,10 @@ import { InfluxV1ConfigEditFormSchema } from './influx-v1/schemas/config.schemas
 import { InfluxV1ConfigSchema } from './influx-v1/store/config.store.schemas';
 import { InfluxV2ConfigEditFormSchema } from './influx-v2/schemas/config.schemas';
 import { InfluxV2ConfigSchema } from './influx-v2/store/config.store.schemas';
+import { NotificationsDiscordConfigEditFormSchema } from './notifications-discord/schemas/config.schemas';
+import { NotificationsDiscordConfigSchema } from './notifications-discord/store/config.store.schemas';
+import { WebhookConfigEditFormSchema } from './notifications-webhook/schemas/config.schemas';
+import { WebhookConfigSchema } from './notifications-webhook/store/config.store.schemas';
 import { OpenWeatherMapOneCallConfigEditFormSchema } from './weather-openweathermap-onecall/schemas/config.schemas';
 import { OpenWeatherMapOneCallConfigSchema } from './weather-openweathermap-onecall/store/config.store.schemas';
 import { OpenWeatherMapConfigEditFormSchema } from './weather-openweathermap/schemas/config.schemas';
@@ -68,6 +72,14 @@ const REDACTED_SECRETS: { plugin: string; field: string; editForm: unknown; stor
 	{ plugin: 'devices-zigbee2mqtt', field: 'tls.key', editForm: Zigbee2mqttConfigEditFormSchema, store: Zigbee2mqttConfigSchema },
 	{ plugin: 'influx-v1', field: 'password', editForm: InfluxV1ConfigEditFormSchema, store: InfluxV1ConfigSchema },
 	{ plugin: 'influx-v2', field: 'token', editForm: InfluxV2ConfigEditFormSchema, store: InfluxV2ConfigSchema },
+	{
+		plugin: 'notifications-discord',
+		field: 'webhookUrl',
+		editForm: NotificationsDiscordConfigEditFormSchema,
+		store: NotificationsDiscordConfigSchema,
+	},
+	{ plugin: 'notifications-webhook', field: 'url', editForm: WebhookConfigEditFormSchema, store: WebhookConfigSchema },
+	{ plugin: 'notifications-webhook', field: 'headers', editForm: WebhookConfigEditFormSchema, store: WebhookConfigSchema },
 	{ plugin: 'weather-openweathermap', field: 'apiKey', editForm: OpenWeatherMapConfigEditFormSchema, store: OpenWeatherMapConfigSchema },
 	{
 		plugin: 'weather-openweathermap-onecall',

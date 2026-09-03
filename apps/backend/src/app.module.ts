@@ -110,6 +110,8 @@ import { InfluxV1Plugin } from './plugins/influx-v1/influx-v1.plugin';
 import { InfluxV2Plugin } from './plugins/influx-v2/influx-v2.plugin';
 import { LoggerRotatingFilePlugin } from './plugins/logger-rotating-file/logger-rotating-file.plugin';
 import { MemoryStoragePlugin } from './plugins/memory-storage/memory-storage.plugin';
+import { NotificationsDiscordPlugin } from './plugins/notifications-discord/notifications-discord.plugin';
+import { NotificationsWebhookPlugin } from './plugins/notifications-webhook/notifications-webhook.plugin';
 import { PAGES_CARDS_PLUGIN_PREFIX } from './plugins/pages-cards/pages-cards.constants';
 import { PagesCardsPlugin } from './plugins/pages-cards/pages-cards.plugin';
 import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail/pages-device-detail.plugin';
@@ -503,6 +505,8 @@ export class AppModule {
 				BuddyTelegramPlugin,
 				BuddyWhatsappPlugin,
 				BuddyDiscordPlugin,
+				NotificationsWebhookPlugin,
+				NotificationsDiscordPlugin,
 				ScenesLocalPlugin,
 				InfluxV1Plugin,
 				InfluxV2Plugin,

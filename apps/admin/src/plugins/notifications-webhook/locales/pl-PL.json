@@ -1,0 +1,45 @@
+{
+	"headings": {
+		"aboutWebhookSettings": "Ustawienia webhooka"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"url": {
+				"title": "URL",
+				"placeholder": "https://example.com/hooks/panel",
+				"description": "Powiadomienia są wysyłane jako JSON metodą POST na ten adres URL. Zalecane jest HTTPS.",
+				"httpWarning": "Ten adres URL nie jest szyfrowany. Treść powiadomienia będzie przesyłana zwykłym tekstem - używaj HTTPS wszędzie tam, gdzie cel to obsługuje, a HTTP stosuj wyłącznie dla zaufanych celów we własnej sieci LAN.",
+				"invalid": "Podaj bezwzględny adres URL HTTP lub HTTPS bez osadzonych danych uwierzytelniających"
+			},
+			"headers": {
+				"title": "Niestandardowe nagłówki",
+				"placeholder": "{\"Authorization\": \"Bearer <token>\"}",
+				"description": "Opcjonalny obiekt JSON z dodatkowymi nagłówkami HTTP, np. tokenem Bearer w nagłówku Authorization. Wymaga adresu URL HTTPS.",
+				"invalidJson": "Podaj płaski obiekt JSON z wartościami tekstowymi, np. {\"Authorization\": \"Bearer token\"}",
+				"requiresHttps": "Niestandardowe nagłówki wymagają adresu URL webhooka HTTPS"
+			},
+			"minSeverity": {
+				"title": "Minimalna ważność",
+				"description": "Przekazywane są tylko powiadomienia o tej ważności lub wyższej.",
+				"options": {
+					"info": "Informacje",
+					"warning": "Ostrzeżenie",
+					"error": "Błąd",
+					"critical": "Krytyczny"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia webhooka zostały zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować ustawień webhooka"
+		}
+	},
+	"texts": {
+		"aboutWebhookSettings": "Przekazuj powiadomienia systemowe jako żądanie POST JSON na dowolny skonfigurowany adres URL - własny serwer automatyzacji, webhook przychodzący platformy czatu lub samodzielnie hostowane narzędzie, takie jak n8n, Node-RED czy Home Assistant."
+	}
+}

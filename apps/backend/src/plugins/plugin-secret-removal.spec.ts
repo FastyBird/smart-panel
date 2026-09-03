@@ -15,6 +15,8 @@ import { HomeyUpdatePluginConfigDto } from './devices-homey/dto/update-config.dt
 import { Zigbee2mqttUpdatePluginConfigDto } from './devices-zigbee2mqtt/dto/update-config.dto';
 import { UpdateInfluxV1ConfigDto } from './influx-v1/dto/update-config.dto';
 import { UpdateInfluxV2ConfigDto } from './influx-v2/dto/update-config.dto';
+import { UpdateNotificationsDiscordConfigDto } from './notifications-discord/dto/update-config.dto';
+import { UpdateNotificationsWebhookConfigDto } from './notifications-webhook/dto/update-config.dto';
 import { UpdateOpenWeatherMapOneCallConfigDto } from './weather-openweathermap-onecall/dto/update-config.dto';
 import { UpdateOpenWeatherMapConfigDto } from './weather-openweathermap/dto/update-config.dto';
 
@@ -47,6 +49,9 @@ const SECRETS: { label: string; dto: object; submit: Record<string, unknown>; re
 		['devices-homey', HomeyUpdatePluginConfigDto, 'api_key', 'apiKey'],
 		['influx-v1', UpdateInfluxV1ConfigDto, 'password', 'password'],
 		['influx-v2', UpdateInfluxV2ConfigDto, 'token', 'token'],
+		['notifications-discord', UpdateNotificationsDiscordConfigDto, 'webhook_url', 'webhookUrl'],
+		['notifications-webhook headers', UpdateNotificationsWebhookConfigDto, 'headers', 'headers'],
+		['notifications-webhook url', UpdateNotificationsWebhookConfigDto, 'url', 'url'],
 		['weather-openweathermap', UpdateOpenWeatherMapConfigDto, 'api_key', 'apiKey'],
 		['weather-openweathermap-onecall', UpdateOpenWeatherMapOneCallConfigDto, 'api_key', 'apiKey'],
 	].map(([label, dto, wire, property]) => ({

@@ -87,6 +87,8 @@ import { InfluxV1Plugin } from './plugins/influx-v1';
 import { InfluxV2Plugin } from './plugins/influx-v2';
 import { LoggerRotatingFilePlugin } from './plugins/logger-rotating-file';
 import { MemoryStoragePlugin } from './plugins/memory-storage';
+import { NotificationsDiscordPlugin } from './plugins/notifications-discord';
+import { NotificationsWebhookPlugin } from './plugins/notifications-webhook';
 import { PagesCardsPlugin } from './plugins/pages-cards';
 import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail';
 import { PagesTilesPlugin } from './plugins/pages-tiles';
@@ -259,6 +261,8 @@ app.use(BuddyTelegramPlugin, pluginOptions);
 app.use(BuddyWhatsappPlugin, pluginOptions);
 app.use(BuddyDiscordPlugin, pluginOptions);
 app.use(RemoteAccessTailscalePlugin, pluginOptions);
+app.use(NotificationsWebhookPlugin, pluginOptions);
+app.use(NotificationsDiscordPlugin, pluginOptions);
 
 const installedNames = new Set<string>();
 

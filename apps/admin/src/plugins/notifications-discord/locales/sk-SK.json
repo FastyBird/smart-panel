@@ -1,0 +1,42 @@
+{
+	"headings": {
+		"aboutDiscordSettings": "Nastavenia Discord webhooku"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"webhookUrl": {
+				"title": "URL webhooku",
+				"placeholder": "https://discord.com/api/webhooks/...",
+				"description": "URL prichádzajúceho Discord webhooku zo stránky nastavení Integrations daného kanála. Musí to byť URL v tvare https://discord.com/api/webhooks/... (akceptované sú aj discordapp.com, ptb.discord.com a canary.discord.com).",
+				"invalid": "Zadajte URL Discord webhooku, napr. https://discord.com/api/webhooks/<id>/<token> (discordapp.com, ptb.discord.com alebo canary.discord.com), bez vložených prihlasovacích údajov alebo portu"
+			},
+			"username": {
+				"title": "Prepísanie používateľského mena",
+				"placeholder": "Smart Panel",
+				"description": "Prepíše predvolené používateľské meno, pod ktorým webhook odosiela správy v Discorde. Ponechajte prázdne na použitie predvoleného mena webhooku."
+			},
+			"minSeverity": {
+				"title": "Minimálna závažnosť",
+				"description": "Preposielané sú iba upozornenia s touto závažnosťou alebo vyššou.",
+				"options": {
+					"info": "Info",
+					"warning": "Varovanie",
+					"error": "Chyba",
+					"critical": "Kritická"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia Discord webhooku boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia Discord webhooku"
+		}
+	},
+	"texts": {
+		"aboutDiscordSettings": "Preposielajte systémové upozornenia do kanála Discord ako rozšírenú správu (embed) pomocou prichádzajúceho Discord webhooku. V Discorde otvorte nastavenia Integrations cieľového kanála a vytvorte (alebo skopírujte) URL webhooku."
+	}
+}

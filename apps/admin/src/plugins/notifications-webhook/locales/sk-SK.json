@@ -1,0 +1,45 @@
+{
+	"headings": {
+		"aboutWebhookSettings": "Nastavenia webhooku"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"url": {
+				"title": "URL",
+				"placeholder": "https://example.com/hooks/panel",
+				"description": "Upozornenia sa na túto URL odosielajú ako JSON metódou POST. Odporúča sa HTTPS.",
+				"httpWarning": "Táto URL nie je šifrovaná. Obsah upozornenia sa bude prenášať v nešifrovanej podobe - používajte HTTPS všade, kde to cieľ podporuje, a HTTP používajte iba pre ciele v dôveryhodnej sieti vo vašej vlastnej LAN.",
+				"invalid": "Zadajte absolútnu HTTP alebo HTTPS URL bez vložených prihlasovacích údajov"
+			},
+			"headers": {
+				"title": "Vlastné hlavičky",
+				"placeholder": "{\"Authorization\": \"Bearer <token>\"}",
+				"description": "Voliteľný JSON objekt ďalších HTTP hlavičiek, napr. autorizačného tokenu typu Bearer. Vyžaduje HTTPS URL.",
+				"invalidJson": "Zadajte plochý JSON objekt textových hodnôt, napr. {\"Authorization\": \"Bearer token\"}",
+				"requiresHttps": "Vlastné hlavičky vyžadujú HTTPS URL webhooku"
+			},
+			"minSeverity": {
+				"title": "Minimálna závažnosť",
+				"description": "Preposielané sú iba upozornenia s touto závažnosťou alebo vyššou.",
+				"options": {
+					"info": "Info",
+					"warning": "Varovanie",
+					"error": "Chyba",
+					"critical": "Kritická"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia webhooku boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia webhooku"
+		}
+	},
+	"texts": {
+		"aboutWebhookSettings": "Preposielajte systémové upozornenia ako JSON POST požiadavku na ľubovoľnú URL, ktorú nastavíte - na váš vlastný automatizačný server, prichádzajúci webhook chatovacej platformy alebo self-hosted nástroj, ako je n8n, Node-RED alebo Home Assistant."
+	}
+}

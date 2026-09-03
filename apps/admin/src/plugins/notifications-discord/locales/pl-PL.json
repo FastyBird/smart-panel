@@ -1,0 +1,42 @@
+{
+	"headings": {
+		"aboutDiscordSettings": "Ustawienia webhooka Discord"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"webhookUrl": {
+				"title": "URL webhooka",
+				"placeholder": "https://discord.com/api/webhooks/...",
+				"description": "Adres URL przychodzącego webhooka Discord ze strony ustawień Integracje danego kanału. Musi to być adres URL w postaci https://discord.com/api/webhooks/... (akceptowane są też discordapp.com, ptb.discord.com i canary.discord.com).",
+				"invalid": "Podaj adres URL webhooka Discord, np. https://discord.com/api/webhooks/<id>/<token> (discordapp.com, ptb.discord.com lub canary.discord.com), bez osadzonych danych uwierzytelniających ani portu"
+			},
+			"username": {
+				"title": "Zastąpienie nazwy użytkownika",
+				"placeholder": "Smart Panel",
+				"description": "Zastępuje domyślną nazwę użytkownika, pod którą webhook publikuje wiadomości w Discordzie. Pozostaw puste, aby użyć domyślnej nazwy webhooka."
+			},
+			"minSeverity": {
+				"title": "Minimalna ważność",
+				"description": "Przekazywane są tylko powiadomienia o tej ważności lub wyższej.",
+				"options": {
+					"info": "Informacje",
+					"warning": "Ostrzeżenie",
+					"error": "Błąd",
+					"critical": "Krytyczny"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia webhooka Discord zostały zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować ustawień webhooka Discord"
+		}
+	},
+	"texts": {
+		"aboutDiscordSettings": "Przekazuj powiadomienia systemowe do kanału Discord jako rozbudowaną wiadomość (embed) za pomocą przychodzącego webhooka Discord. W Discordzie otwórz ustawienia Integracje docelowego kanału i utwórz (lub skopiuj) adres URL webhooka."
+	}
+}
