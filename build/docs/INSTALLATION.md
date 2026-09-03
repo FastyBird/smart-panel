@@ -61,10 +61,13 @@ Add `--with-tailscale` to also install [Tailscale](https://tailscale.com/) for r
 curl -fsSL https://get.smart-panel.fastybird.com | sudo bash -s -- --with-tailscale
 ```
 
-The daemon is installed but left disabled — enabling it is part of Smart Panel's remote-access
-setup, not this script. The Raspberry Pi image's `server` and `aio` variants already ship with
-Tailscale pre-installed (daemon disabled by default), so the flag above is only needed for
-manual or one-liner installs on other systems.
+On success, the daemon is installed and left disabled — enabling it is part of Smart Panel's
+remote-access setup, not this script. If the Tailscale install or the final disable step fails, the
+script prints a warning and continues rather than aborting the rest of the installation, so the
+daemon isn't guaranteed to end up installed and disabled; check the summary at the end of the run
+and install Tailscale manually if needed. The Raspberry Pi image's `server` and `aio` variants
+already ship with Tailscale pre-installed (daemon disabled by default). This flag is specific to
+this one-liner script — it has no effect on Option 1 or Option 3 below.
 
 ### Option 3: Manual Tarball Install
 
@@ -129,6 +132,17 @@ Enable and start:
 ```bash
 sudo systemctl enable smart-panel-backend
 sudo systemctl start smart-panel-backend
+```
+
+#### Optional: Tailscale
+
+This tarball install doesn't run `scripts/install-server.sh`, so `--with-tailscale` (see Option 2)
+doesn't apply here. To add Tailscale to a manual install, follow the [vendor instructions for your
+distribution](https://tailscale.com/download/linux) to install the `tailscale` package, then leave
+the daemon disabled — the admin UI enables it later, from the Remote Access setup:
+
+```bash
+sudo systemctl disable --now tailscaled
 ```
 
 ## Installation Options

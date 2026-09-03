@@ -90,8 +90,11 @@ curl -fsSL https://pkgs.tailscale.com/stable/raspbian/bookworm.noarmor.gpg \
 	}
 
 # Ship the image with the daemon inactive; the backend remote-access
-# plugin enables and starts it once the operator opts in. Guarded in
-# case the package above failed to install (no such unit to disable).
-systemctl disable tailscaled 2>/dev/null || true
+# plugin enables and starts it once the operator opts in. Skip only
+# when the package above failed to install (no such unit to disable);
+# warn instead of hiding a failure to disable an installed daemon.
+if command -v tailscaled >/dev/null 2>&1 && ! systemctl disable tailscaled; then
+	echo "WARNING: Tailscale installed but tailscaled could not be disabled"
+fi
 
 echo "Tailscale version: $(tailscale version 2>&1 | head -1 || echo 'not installed')"

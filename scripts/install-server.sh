@@ -128,6 +128,15 @@ get_codename() {
 	fi
 }
 
+get_version_id() {
+	if [[ -f /etc/os-release ]]; then
+		. /etc/os-release
+		echo "${VERSION_ID:-unknown}"
+	else
+		echo "unknown"
+	fi
+}
+
 get_arch() {
 	local arch=$(uname -m)
 	case $arch in
@@ -330,6 +339,9 @@ install_tailscale() {
 	local distro=$(get_distro)
 	local installed=false
 
+	# Every branch installs from a signed vendor package source for the
+	# distribution — never pipe a remote script into a shell here, even
+	# though install_nodejs() does that for NodeSource above.
 	case $distro in
 		debian|ubuntu|raspbian)
 			# Debian-family: add the signed keyring and apt source for the
@@ -347,12 +359,33 @@ install_tailscale() {
 				installed=true
 			fi
 			;;
-		*)
-			# Other distributions: fall back to the vendor install script
-			# (same trust level as the NodeSource setup script above).
-			if curl -fsSL https://tailscale.com/install.sh | sh; then
+		fedora)
+			# The vendor .repo file pins gpgcheck=1 and the signing key, so
+			# the package itself is signature-verified; fetching a .repo
+			# config file is not executing code.
+			if dnf config-manager --add-repo https://pkgs.tailscale.com/stable/fedora/tailscale.repo \
+				&& dnf install -y tailscale; then
 				installed=true
 			fi
+			;;
+		centos|rhel|rocky|almalinux)
+			local version_id=$(get_version_id)
+			local major="${version_id%%.*}"
+			[[ -z "$major" || "$major" == "unknown" ]] && major="9"
+
+			if dnf config-manager --add-repo "https://pkgs.tailscale.com/stable/rhel/${major}/tailscale.repo" \
+				&& { dnf install -y tailscale || yum install -y tailscale; }; then
+				installed=true
+			fi
+			;;
+		arch|manjaro)
+			if pacman -S --noconfirm --needed tailscale; then
+				installed=true
+			fi
+			;;
+		*)
+			print_warning "Tailscale is not supported on $distro by this installer"
+			print_warning "Install it manually: https://tailscale.com/download/linux"
 			;;
 	esac
 
@@ -361,9 +394,9 @@ install_tailscale() {
 		return 1
 	fi
 
-	# The apt package and the vendor script both enable and start the
-	# daemon; leave it disabled until the operator opts in from the
-	# remote-access setup.
+	# Every path above installs via the distribution's package manager,
+	# which enables and starts the daemon; leave it disabled until the
+	# operator opts in from the remote-access setup.
 	if ! systemctl disable --now tailscaled; then
 		print_warning "Tailscale installed but the daemon could not be disabled — disable it manually"
 		return 1
