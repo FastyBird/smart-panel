@@ -113,6 +113,8 @@ import { PAGES_CARDS_PLUGIN_PREFIX } from './plugins/pages-cards/pages-cards.con
 import { PagesCardsPlugin } from './plugins/pages-cards/pages-cards.plugin';
 import { PagesDeviceDetailPlugin } from './plugins/pages-device-detail/pages-device-detail.plugin';
 import { PagesTilesPlugin } from './plugins/pages-tiles/pages-tiles.plugin';
+import { REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX } from './plugins/remote-access-tailscale/remote-access-tailscale.constants';
+import { RemoteAccessTailscalePlugin } from './plugins/remote-access-tailscale/remote-access-tailscale.plugin';
 import { ScenesLocalPlugin } from './plugins/scenes-local/scenes-local.plugin';
 import { SIMULATOR_PLUGIN_PREFIX } from './plugins/simulator/simulator.constants';
 import { SimulatorPlugin } from './plugins/simulator/simulator.plugin';
@@ -424,6 +426,10 @@ export class AppModule {
 								path: BUDDY_DISCORD_PLUGIN_PREFIX,
 								module: BuddyDiscordPlugin,
 							},
+							{
+								path: REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX,
+								module: RemoteAccessTailscalePlugin,
+							},
 							...pluginRoutes,
 						],
 					},
@@ -500,6 +506,7 @@ export class AppModule {
 				InfluxV2Plugin,
 				MemoryStoragePlugin,
 				RemoteAccessModule,
+				RemoteAccessTailscalePlugin,
 
 				// Static file serving is registered directly on the Fastify instance
 				// in main.ts via @fastify/static, bypassing @nestjs/serve-static
