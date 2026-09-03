@@ -137,6 +137,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 ##### Other deployments
 
 - [ ] Docker compose deployment: the Tailscale card reports unsupported with the documentation link; the manual external URL still works.
+- [ ] Host installed with `scripts/install-server.sh` (not the image): Remote access → Set up installs Tailscale from the apt repository and reports each step, and System → Update runs the in-app updater through the privileged worker (the sudo probe must pass with the script's sudoers file).
 
 
 ## 5. Example scenarios
