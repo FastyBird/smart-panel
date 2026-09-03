@@ -7,7 +7,7 @@ import { PlatformType } from '../../platform/platform.constants';
 import { PlatformService } from '../../platform/services/platform.service';
 import { PrivilegedWorkerUnavailableException } from '../system.exceptions';
 
-import { PrivilegedJobSpec, PrivilegedWorkerService } from './privileged-worker.service';
+import { PrivilegedJobSpec, PrivilegedJobStatus, PrivilegedWorkerService } from './privileged-worker.service';
 
 jest.mock('fs', () => ({
 	...jest.requireActual<typeof import('fs')>('fs'),
@@ -139,6 +139,33 @@ describe('PrivilegedWorkerService', () => {
 
 			await expect(service.run(baseSpec)).resolves.toEqual(expect.objectContaining({ id: expect.any(String) }));
 		});
+
+		it('releases the unit immediately when spawn() throws synchronously, without waiting for the timeout', async () => {
+			(spawn as jest.Mock).mockImplementationOnce(() => {
+				throw new Error('EAGAIN: resource temporarily unavailable');
+			});
+
+			await expect(service.run(baseSpec)).rejects.toThrow('EAGAIN');
+
+			// No timer advance — the unit must already be free.
+			await expect(service.run(baseSpec)).resolves.toEqual(expect.objectContaining({ id: expect.any(String) }));
+		});
+
+		it("releases the unit immediately when the child emits 'error', without waiting for the timeout", async () => {
+			const { id } = await service.run(baseSpec);
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			fakeChild.emit('error', new Error('spawn sudo ENOENT'));
+
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({ id, state: 'failed', message: expect.stringContaining('ENOENT') }),
+			);
+
+			// No timer advance — the unit must already be free.
+			await expect(service.run(baseSpec)).resolves.toEqual(expect.objectContaining({ id: expect.any(String) }));
+		});
 	});
 
 	describe('status polling', () => {
@@ -155,10 +182,10 @@ describe('PrivilegedWorkerService', () => {
 
 			jest.advanceTimersByTime(3_000);
 
+			// updatedAt is service-owned (see the 'field ownership' describe block below), so it
+			// is deliberately not asserted against the fixture's value here.
 			expect(handler).toHaveBeenCalledTimes(1);
-			expect(handler).toHaveBeenCalledWith(
-				expect.objectContaining({ id, state: 'running', step: 'downloading', updatedAt: '2026-01-01T00:00:00.000Z' }),
-			);
+			expect(handler).toHaveBeenCalledWith(expect.objectContaining({ id, state: 'running', step: 'downloading' }));
 			expect(service.getStatus(id)).toEqual(expect.objectContaining({ id, state: 'running', step: 'downloading' }));
 		});
 
@@ -214,10 +241,12 @@ describe('PrivilegedWorkerService', () => {
 			expect(readFileSync).not.toHaveBeenCalled();
 		});
 
-		it('supports a handler that unsubscribes itself when it observes a terminal state', async () => {
-			// This is exactly how UpdateExecutorService consumes onStatus: the handler decides
-			// a status is terminal (reading fields PrivilegedWorkerService does not interpret
-			// itself) and calls the unsubscribe it closed over, from inside its own invocation.
+		it('allows a handler to unsubscribe itself from within its own invocation without throwing', async () => {
+			// This is exactly how UpdateExecutorService consumes onStatus: the handler decides a
+			// status is terminal and calls the unsubscribe it closed over, from inside its own
+			// invocation. Unsubscribing no longer frees the unit itself (see the 'onStatus'
+			// describe block below) — this only asserts that self-unsubscription is safe and
+			// still delivers the tick it was triggered by.
 			const { id } = await service.run(baseSpec);
 			const seen: string[] = [];
 
@@ -234,12 +263,9 @@ describe('PrivilegedWorkerService', () => {
 				JSON.stringify({ id, state: 'complete', updatedAt: new Date().toISOString() }),
 			);
 
-			jest.advanceTimersByTime(3_000);
+			expect(() => jest.advanceTimersByTime(3_000)).not.toThrow();
 
 			expect(seen).toEqual(['complete']);
-
-			// The unit is free immediately — no need to wait for the timeout.
-			await expect(service.run(baseSpec)).resolves.toEqual(expect.objectContaining({ id: expect.any(String) }));
 		});
 	});
 
@@ -305,23 +331,266 @@ describe('PrivilegedWorkerService', () => {
 			expect(handler).not.toHaveBeenCalled();
 		});
 
-		it('frees the unit once the last subscriber unsubscribes, without waiting for a poll tick', async () => {
+		it('keeps the unit reserved after every handler unsubscribes while the job is still running', async () => {
 			const { id } = await service.run(baseSpec);
 			const handler = jest.fn();
 
 			const unsubscribe = service.onStatus(id, handler);
 
-			// Same unit is still busy while a subscriber is watching it
-			await expect(service.run(baseSpec)).rejects.toThrow(PrivilegedWorkerUnavailableException);
-
 			unsubscribe();
 
-			// Unsubscribing the last handler releases the unit immediately
+			// No terminal status has been observed — unsubscribing must not free the unit, so a
+			// second run for the same unit is still rejected.
+			await expect(service.run(baseSpec)).rejects.toThrow(PrivilegedWorkerUnavailableException);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({ id, state: 'complete', updatedAt: new Date().toISOString() }),
+			);
+
+			jest.advanceTimersByTime(3_000);
+
+			// Now free — the (mapped/native) status reached a terminal state on its own.
 			await expect(service.run(baseSpec)).resolves.toEqual(expect.objectContaining({ id: expect.any(String) }));
 		});
 
 		it('returns a no-op unsubscribe for an unknown job id', () => {
 			expect(() => service.onStatus('unknown-id', jest.fn())()).not.toThrow();
+		});
+	});
+
+	describe('child process exit', () => {
+		it('marks the job failed when the child exits with a non-zero code before any status file exists', async () => {
+			const { id } = await service.run(baseSpec);
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			fakeChild.emit('exit', 1, null);
+
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({ id, state: 'failed', message: expect.stringContaining('1') }),
+			);
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'failed' }));
+
+			// Unit is free again — no need to wait for the timeout.
+			await expect(service.run(baseSpec)).resolves.toEqual(expect.objectContaining({ id: expect.any(String) }));
+		});
+
+		it('marks the job failed when the child is terminated by a signal before any status file exists', async () => {
+			const { id } = await service.run(baseSpec);
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			fakeChild.emit('exit', null, 'SIGKILL');
+
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({ id, state: 'failed', message: expect.stringContaining('SIGKILL') }),
+			);
+		});
+
+		it('does nothing on a zero exit after the job already completed via its status file', async () => {
+			const { id } = await service.run(baseSpec);
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({ id, state: 'complete', updatedAt: new Date().toISOString() }),
+			);
+
+			jest.advanceTimersByTime(3_000);
+
+			handler.mockClear();
+
+			fakeChild.emit('exit', 0, null);
+
+			expect(handler).not.toHaveBeenCalled();
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'complete' }));
+		});
+
+		it('does not override an already-complete status when the child later exits with a non-zero code', async () => {
+			const { id } = await service.run(baseSpec);
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({ id, state: 'complete', updatedAt: new Date().toISOString() }),
+			);
+
+			jest.advanceTimersByTime(3_000);
+
+			handler.mockClear();
+
+			fakeChild.emit('exit', 1, null);
+
+			expect(handler).not.toHaveBeenCalled();
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'complete' }));
+		});
+	});
+
+	describe('mapStatus', () => {
+		it('applies the mapper to translate a caller-specific status shape before terminal detection', async () => {
+			const mapStatus = jest.fn((raw: Record<string, unknown>): Partial<PrivilegedJobStatus> | null => {
+				const legacyStatus = raw.legacyStatus as string | undefined;
+
+				if (!legacyStatus) {
+					return null;
+				}
+
+				const state: PrivilegedJobStatus['state'] =
+					legacyStatus === 'done' ? 'complete' : legacyStatus === 'error' ? 'failed' : 'running';
+
+				return { state, step: raw.legacyPhase as string | undefined };
+			});
+
+			const { id } = await service.run({ ...baseSpec, mapStatus });
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({ legacyStatus: 'in-progress', legacyPhase: 'downloading' }),
+			);
+
+			jest.advanceTimersByTime(3_000);
+
+			expect(mapStatus).toHaveBeenCalledWith({ legacyStatus: 'in-progress', legacyPhase: 'downloading' });
+			expect(handler).toHaveBeenCalledWith(expect.objectContaining({ id, state: 'running', step: 'downloading' }));
+
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ legacyStatus: 'done' }));
+
+			jest.advanceTimersByTime(3_000);
+
+			expect(handler).toHaveBeenLastCalledWith(expect.objectContaining({ id, state: 'complete' }));
+
+			// Terminal via the mapped state — the unit is free without needing unsubscribe/timeout.
+			await expect(service.run(baseSpec)).resolves.toEqual(expect.objectContaining({ id: expect.any(String) }));
+		});
+
+		it('skips a tick when the mapper returns null (not a valid status yet)', async () => {
+			const mapStatus = jest.fn().mockReturnValue(null);
+
+			const { id } = await service.run({ ...baseSpec, mapStatus });
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ whatever: true }));
+
+			jest.advanceTimersByTime(3_000);
+
+			expect(mapStatus).toHaveBeenCalled();
+			expect(handler).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('status field ownership and validation', () => {
+		it('ignores a tick with a missing state, leaving the previous status and the unit reservation in place', async () => {
+			const { id } = await service.run(baseSpec);
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ step: 'downloading' })); // no `state` at all
+
+			jest.advanceTimersByTime(3_000);
+
+			expect(handler).not.toHaveBeenCalled();
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'running' })); // unchanged
+
+			await expect(service.run(baseSpec)).rejects.toThrow(PrivilegedWorkerUnavailableException);
+		});
+
+		it('ignores a tick with a state outside the valid set, leaving the previous status and the unit reservation in place', async () => {
+			const { id } = await service.run(baseSpec);
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ state: 'in-progress' })); // not one of the 4 valid values
+
+			jest.advanceTimersByTime(3_000);
+
+			expect(handler).not.toHaveBeenCalled();
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'running' })); // unchanged
+
+			await expect(service.run(baseSpec)).rejects.toThrow(PrivilegedWorkerUnavailableException);
+		});
+
+		it('logs an unusable status at most once per job, even across several bad ticks in a row', async () => {
+			const { id } = await service.run(baseSpec);
+			const debugSpy = jest.spyOn(service['logger'], 'debug');
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ state: 'bogus' }));
+
+			jest.advanceTimersByTime(3_000);
+			jest.advanceTimersByTime(3_000);
+			jest.advanceTimersByTime(3_000);
+
+			expect(debugSpy).toHaveBeenCalledTimes(1);
+			expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining(id));
+		});
+
+		it('lets a native-shaped status file drive the job to complete and release the unit', async () => {
+			const { id } = await service.run(baseSpec); // no mapStatus — native { state, step?, message? } shape
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ state: 'complete' }));
+
+			jest.advanceTimersByTime(3_000);
+
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'complete' }));
+
+			await expect(service.run(baseSpec)).resolves.toEqual(expect.objectContaining({ id: expect.any(String) }));
+		});
+
+		it('owns id and updatedAt even when the status file disagrees', async () => {
+			const { id } = await service.run(baseSpec);
+			let delivered: PrivilegedJobStatus | undefined;
+
+			service.onStatus(id, (status) => {
+				delivered = status;
+			});
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({ id: 'a-completely-different-id', state: 'running', updatedAt: '1999-01-01T00:00:00.000Z' }),
+			);
+
+			jest.advanceTimersByTime(3_000);
+
+			expect(delivered?.id).toBe(id); // the job's own id, not the file's
+			expect(delivered?.updatedAt).not.toBe('1999-01-01T00:00:00.000Z');
+			expect(service.getStatus(id)?.id).toBe(id);
+			expect(service.getStatus(id)?.updatedAt).not.toBe('1999-01-01T00:00:00.000Z');
+		});
+
+		it('drops non-string step/message values from the file instead of forwarding them', async () => {
+			const { id } = await service.run(baseSpec);
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({ state: 'running', step: 42, message: { oops: true } }),
+			);
+
+			jest.advanceTimersByTime(3_000);
+
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({ id, state: 'running', step: undefined, message: undefined }),
+			);
 		});
 	});
 });

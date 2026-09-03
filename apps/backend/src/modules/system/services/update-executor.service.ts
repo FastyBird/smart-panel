@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { SYSTEM_MODULE_NAME, UpdatePhase, UpdateStatusType } from '../system.constants';
@@ -43,17 +43,43 @@ const PHASE_PROGRESS: Record<string, number> = {
 	complete: 100,
 };
 
+/**
+ * Maps update-worker.sh's own status-file shape (`status`/`phase`/`error`, from
+ * UpdateProgressFile) onto PrivilegedWorkerService's generic PrivilegedJobStatus shape, so the
+ * service's own terminal-state detection and one-job-per-unit release work for this legacy
+ * format the same way they do for a script that writes the canonical shape directly.
+ *
+ * `status` and `phase` are always the same string for every non-terminal write in
+ * update-worker.sh (e.g. `update_status "downloading" "downloading"`), and UpdateStatusType /
+ * UpdatePhase share the same string values, so `phase` alone is enough to recover both when
+ * building the in-memory UpdateStatusInfo below.
+ */
+function mapUpdateWorkerStatus(raw: Record<string, unknown>): Partial<PrivilegedJobStatus> | null {
+	const status = raw.status as UpdateStatusType | undefined;
+
+	if (!status) {
+		return null;
+	}
+
+	const state: PrivilegedJobStatus['state'] =
+		status === UpdateStatusType.COMPLETE ? 'complete' : status === UpdateStatusType.FAILED ? 'failed' : 'running';
+
+	return {
+		state,
+		step: raw.phase as string | undefined,
+		message: raw.error as string | undefined,
+	};
+}
+
 @Injectable()
 export class UpdateExecutorService implements OnModuleInit {
 	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'UpdateExecutorService');
 	private progressHighWaterMark = 0;
 
-	// Property injection keeps the constructor's signature — and every existing call site
-	// that builds this service directly, e.g. `new UpdateExecutorService(updateService)` — unchanged.
-	@Inject(PrivilegedWorkerService)
-	private readonly privilegedWorker!: PrivilegedWorkerService;
-
-	constructor(private readonly updateService: UpdateService) {}
+	constructor(
+		private readonly updateService: UpdateService,
+		private readonly privilegedWorker: PrivilegedWorkerService,
+	) {}
 
 	onModuleInit(): void {
 		this.checkPendingUpdateStatus();
@@ -238,6 +264,7 @@ export class UpdateExecutorService implements OnModuleInit {
 				env: envVars,
 				statusFile: STATUS_FILE,
 				timeoutMs: STATUS_POLL_MAX_MS,
+				mapStatus: mapUpdateWorkerStatus,
 			});
 
 			this.logger.log(`Update worker spawned for version ${targetVersion} (job: ${id}, type: ${installType})`);
@@ -274,14 +301,11 @@ export class UpdateExecutorService implements OnModuleInit {
 
 	/**
 	 * Subscribes to PrivilegedWorkerService's status-file polling for one update job and
-	 * translates whatever it forwards into this module's own update status — exactly what the
-	 * polling interval callback used to do inline before the spawn/poll/timeout machinery moved
-	 * to PrivilegedWorkerService.
-	 *
-	 * `status.state` only carries a real value (`'timeout'`) when PrivilegedWorkerService
-	 * synthesizes it itself, after the hard timeout — update-worker.sh's own status file uses
-	 * `status`/`phase`/`error`, not the generic `state`/`step`/`message` shape, so every other
-	 * tick is re-read as the UpdateProgressFile it actually is.
+	 * translates the (already mapUpdateWorkerStatus-mapped) generic status into this module's
+	 * own update status — exactly what the polling interval callback used to do inline before
+	 * the spawn/poll/timeout machinery moved to PrivilegedWorkerService. Unsubscribing here is
+	 * just hygiene (stop notifications once we've handled a terminal tick); PrivilegedWorkerService
+	 * itself — via the mapped status's `state` — is what releases the unit.
 	 */
 	private watchUpdateJob(id: string, targetVersion: string): void {
 		const unsubscribe = this.privilegedWorker.onStatus(id, (status: PrivilegedJobStatus) => {
@@ -302,22 +326,24 @@ export class UpdateExecutorService implements OnModuleInit {
 				return;
 			}
 
-			const fileStatus = status as unknown as UpdateProgressFile;
-
-			if (fileStatus.status === UpdateStatusType.FAILED) {
-				this.logger.error(`Update worker failed: ${fileStatus.error ?? 'unknown error'}`);
+			if (status.state === 'failed') {
+				this.logger.error(`Update worker failed: ${status.message ?? 'unknown error'}`);
 
 				this.updateService.setStatus({
 					status: UpdateStatusType.FAILED,
 					phase: UpdatePhase.FAILED,
 					progressPercent: null,
 					message: null,
-					error: fileStatus.error ?? 'Update failed with unknown error',
+					error: status.message ?? 'Update failed with unknown error',
 				});
 
 				this.updateService.releaseUpdateLock();
 				unsubscribe();
-			} else if (fileStatus.status === UpdateStatusType.COMPLETE) {
+
+				return;
+			}
+
+			if (status.state === 'complete') {
 				this.updateService.setStatus({
 					status: UpdateStatusType.COMPLETE,
 					phase: UpdatePhase.COMPLETE,
@@ -328,23 +354,27 @@ export class UpdateExecutorService implements OnModuleInit {
 
 				this.updateService.releaseUpdateLock();
 				unsubscribe();
-			} else {
-				// In-progress — sync worker phase to in-memory status.
-				// Use high-water mark so progress never goes backwards
-				// (image and npm paths have different phase ordering).
-				const rawProgress = PHASE_PROGRESS[fileStatus.phase] ?? 10;
-				const progress = Math.max(this.progressHighWaterMark, rawProgress);
 
-				this.progressHighWaterMark = progress;
-
-				this.updateService.setStatus({
-					status: fileStatus.status ?? UpdateStatusType.DOWNLOADING,
-					phase: fileStatus.phase ?? UpdatePhase.DOWNLOADING,
-					progressPercent: progress,
-					message: `Update in progress: ${fileStatus.phase}...`,
-					error: null,
-				});
+				return;
 			}
+
+			// Running — sync worker phase to in-memory status. Use high-water mark so progress
+			// never goes backwards (image and npm paths have different phase ordering).
+			// status.step carries update-worker.sh's `phase` value directly (see
+			// mapUpdateWorkerStatus), which is always the same string as its `status` value for
+			// every non-terminal write, so it doubles as both UpdateStatusType and UpdatePhase here.
+			const rawProgress = PHASE_PROGRESS[status.step ?? ''] ?? 10;
+			const progress = Math.max(this.progressHighWaterMark, rawProgress);
+
+			this.progressHighWaterMark = progress;
+
+			this.updateService.setStatus({
+				status: (status.step as UpdateStatusType) ?? UpdateStatusType.DOWNLOADING,
+				phase: (status.step as UpdatePhase) ?? UpdatePhase.DOWNLOADING,
+				progressPercent: progress,
+				message: `Update in progress: ${status.step}...`,
+				error: null,
+			});
 		});
 	}
 

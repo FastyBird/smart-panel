@@ -215,6 +215,15 @@ describe('PlatformService', () => {
 	});
 
 	describe('supportsPrivilegedWorkers', () => {
+		beforeEach(async () => {
+			// supportsPrivilegedWorkers() now awaits the constructor's own detection promise
+			// before deciding. Letting the (uncontrolled, auto-detected) constructor detection
+			// settle here first means each test's manual `service['platformType'] = ...`
+			// override below happens after it — and stays put, since that promise's `.then()`
+			// only ever runs once.
+			await service['platformDetection'];
+		});
+
 		it.each([PlatformType.DOCKER, PlatformType.HOME_ASSISTANT, PlatformType.DEVELOPMENT])(
 			'returns false for %s without probing sudo/systemd-run',
 			async (platformType) => {
@@ -277,6 +286,51 @@ describe('PlatformService', () => {
 			await service.supportsPrivilegedWorkers();
 
 			expect(execFile).not.toHaveBeenCalled();
+		});
+
+		it('waits for platform detection to finish before deciding, even when called immediately after construction', async () => {
+			let resolveSystemInfo!: (value: Systeminformation.SystemData) => void;
+
+			jest.spyOn(si, 'system').mockReturnValue(
+				new Promise((resolve) => {
+					resolveSystemInfo = resolve;
+				}),
+			);
+			jest.spyOn(si, 'osInfo').mockResolvedValue({ platform: 'linux', arch: 'x64' } as Systeminformation.OsData);
+			process.env[PLATFORM_TYPE_ENV] = 'docker';
+
+			const freshService = new PlatformService();
+
+			// If a real ENOENT-class failure would let sudo/systemd-run succeed, this would
+			// wrongly resolve `true` on the pre-fix code path, which reads platformType before
+			// detection has assigned it.
+			mockExecFile(() => true);
+
+			const resultPromise = freshService.supportsPrivilegedWorkers();
+
+			// Detection has not resolved yet — platformType is still undefined at this point.
+			expect(freshService.getPlatformType()).toBeUndefined();
+
+			resolveSystemInfo({ model: 'Generic Model', manufacturer: 'Generic' } as Systeminformation.SystemData);
+
+			await expect(resultPromise).resolves.toBe(false);
+			expect(execFile).not.toHaveBeenCalled();
+			expect(freshService.getPlatformType()).toBe(PlatformType.DOCKER);
+		});
+
+		it('shares a single in-flight probe between concurrent first callers', async () => {
+			service['platformType'] = PlatformType.RASPBERRY;
+
+			mockExecFile(() => true);
+
+			const [first, second] = await Promise.all([
+				service.supportsPrivilegedWorkers(),
+				service.supportsPrivilegedWorkers(),
+			]);
+
+			expect(first).toBe(true);
+			expect(second).toBe(true);
+			expect(execFile).toHaveBeenCalledTimes(2); // one sudo + one systemd-run probe, shared
 		});
 	});
 });

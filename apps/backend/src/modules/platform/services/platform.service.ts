@@ -30,10 +30,19 @@ export class PlatformService {
 	private platform: Platform;
 	private platformType: PlatformType;
 	private readonly logger = createExtensionLogger(PLATFORM_MODULE_NAME, 'PlatformService');
-	private privilegedWorkersSupportedCache: boolean | null = null;
+
+	// The constructor's own detection chain, stored so callers that run before it settles
+	// (supportsPrivilegedWorkers in particular) can await it instead of reading platformType
+	// while it is still undefined.
+	private readonly platformDetection: Promise<void>;
+
+	// Caches the in-flight/resolved probe promise itself (not just its resolved value) so
+	// concurrent callers before the first result share one probe instead of each starting
+	// their own sudo/systemd-run checks.
+	private privilegedWorkersSupportedPromise: Promise<boolean> | null = null;
 
 	constructor() {
-		this.detectPlatform()
+		this.platformDetection = this.detectPlatform()
 			.then(({ platform, type }) => {
 				this.platform = platform;
 				this.platformType = type;
@@ -59,17 +68,22 @@ export class PlatformService {
 	/**
 	 * True when this platform can run privileged operations (OS update, Tailscale setup, ...)
 	 * through PrivilegedWorkerService — i.e. passwordless sudo and systemd-run are both
-	 * available. Always false for docker, home-assistant and development. Probed at most once
-	 * and cached for the life of the process.
+	 * available. Always false for docker, home-assistant and development. Waits for platform
+	 * detection to finish before deciding, then probes at most once — the probe (in-flight or
+	 * resolved) is cached for the life of the process.
 	 */
 	async supportsPrivilegedWorkers(): Promise<boolean> {
-		if (this.privilegedWorkersSupportedCache !== null) {
-			return this.privilegedWorkersSupportedCache;
+		if (this.privilegedWorkersSupportedPromise === null) {
+			this.privilegedWorkersSupportedPromise = this.probeSupportsPrivilegedWorkers();
 		}
 
-		if (PRIVILEGED_WORKERS_UNSUPPORTED_PLATFORMS.has(this.platformType)) {
-			this.privilegedWorkersSupportedCache = false;
+		return this.privilegedWorkersSupportedPromise;
+	}
 
+	private async probeSupportsPrivilegedWorkers(): Promise<boolean> {
+		await this.platformDetection;
+
+		if (PRIVILEGED_WORKERS_UNSUPPORTED_PLATFORMS.has(this.platformType)) {
 			return false;
 		}
 
@@ -78,9 +92,7 @@ export class PlatformService {
 			this.probeSystemdRunAvailable(),
 		]);
 
-		this.privilegedWorkersSupportedCache = sudoAvailable && systemdRunAvailable;
-
-		return this.privilegedWorkersSupportedCache;
+		return sudoAvailable && systemdRunAvailable;
 	}
 
 	getSystemInfo() {

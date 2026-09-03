@@ -24,6 +24,11 @@ describe('UpdateExecutorService', () => {
 		getInstallType: jest.Mock;
 		getCurrentVersion: jest.Mock;
 	};
+	let privilegedWorker: {
+		run: jest.Mock;
+		getStatus: jest.Mock;
+		onStatus: jest.Mock;
+	};
 
 	beforeEach(() => {
 		updateService = {
@@ -33,11 +38,18 @@ describe('UpdateExecutorService', () => {
 			getInstallType: jest.fn().mockReturnValue('npm'),
 			getCurrentVersion: jest.fn().mockReturnValue('1.0.0'),
 		};
+		// UpdateExecutorService now takes PrivilegedWorkerService as a constructor
+		// dependency (not used by the checkPendingUpdateStatus path this file covers).
+		privilegedWorker = {
+			run: jest.fn(),
+			getStatus: jest.fn(),
+			onStatus: jest.fn(),
+		};
 
 		// Suppress onModuleInit by not calling it — we test checkPendingUpdateStatus separately
 		(existsSync as jest.Mock).mockReturnValue(false);
 
-		executor = new UpdateExecutorService(updateService as any);
+		executor = new UpdateExecutorService(updateService as any, privilegedWorker as any);
 		executor.onModuleInit();
 
 		jest.clearAllMocks();
