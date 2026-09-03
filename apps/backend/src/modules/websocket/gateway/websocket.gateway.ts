@@ -313,7 +313,6 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 	// Events that should only be sent to admin/exchange clients, not panel displays
 	private static readonly EXCHANGE_ONLY_EVENT_PREFIXES = [
 		'SystemModule.System.Update.', // Update progress is admin-only
-		'RemoteAccessModule.', // Provider/URL/setup state is admin-only, never sent to display panels
 	];
 
 	// Events that must reach only owner/admin sockets, not every exchange-subscribed
@@ -322,6 +321,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 	// principals - instead of the wider EXCHANGE_ROOM.
 	private static readonly ADMIN_ONLY_EVENT_PREFIXES = [
 		'NotificationsModule.', // Notifications are owner/admin-only
+		'RemoteAccessModule.', // Provider/URL/setup state is owner/admin-only, never for USER sockets or displays
 	];
 
 	private handleBusEvent(event: string, payload: Record<string, any>): void {
