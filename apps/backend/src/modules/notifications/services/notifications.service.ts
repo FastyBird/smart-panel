@@ -88,6 +88,17 @@ const isUniqueConstraintViolation = (error: unknown): boolean => {
 	return message.includes('UNIQUE constraint failed') || message.includes('SQLITE_CONSTRAINT');
 };
 
+/**
+ * One row above the client-facing page size cap (`NOTIFICATIONS_MAX_PAGE_SIZE`). The
+ * controller requests `limit + 1` rows so it can tell whether another page follows
+ * without a separate count query; if this service capped `take` at the same
+ * `NOTIFICATIONS_MAX_PAGE_SIZE` the controller exposes to clients, a request for exactly
+ * the maximum page size would never receive that extra row and `has_more` would be lost.
+ * The client-visible maximum is unchanged - it is still `NOTIFICATIONS_MAX_PAGE_SIZE`,
+ * enforced by the controller.
+ */
+const SERVICE_MAX_TAKE = NOTIFICATIONS_MAX_PAGE_SIZE + 1;
+
 @Injectable()
 export class NotificationsService {
 	private readonly logger = createExtensionLogger(NOTIFICATIONS_MODULE_NAME, 'NotificationsService');
@@ -247,9 +258,20 @@ export class NotificationsService {
 
 	async dismiss(id: string, dismissed: boolean): Promise<NotificationEntity> {
 		const notification = await this.getOneOrThrow(id);
+		const now = new Date();
 
-		notification.dismissedAt = dismissed ? new Date() : null;
-		notification.updatedAt = new Date();
+		notification.dismissedAt = dismissed ? now : null;
+		notification.updatedAt = now;
+
+		// A persistent issue is never re-detected by its source - that is what `persistent`
+		// means - so the administrator dismissing it is the only way it ever ends. Folding
+		// that dismissal into a resolution here is what lets the row leave the active list
+		// and become eligible for retention like any other resolved issue, on the same
+		// timestamp as the dismissal. Un-dismissing only reopens the dismissal: the
+		// condition was never re-detected, so the resolution this set is left in place.
+		if (dismissed && notification.kind === NotificationKind.ISSUE && notification.persistent) {
+			notification.resolvedAt = now;
+		}
 
 		const saved = await this.repository.save(notification);
 
@@ -452,7 +474,7 @@ export class NotificationsService {
 			return NOTIFICATIONS_DEFAULT_PAGE_SIZE;
 		}
 
-		return Math.min(Math.max(Math.trunc(limit), 1), NOTIFICATIONS_MAX_PAGE_SIZE);
+		return Math.min(Math.max(Math.trunc(limit), 1), SERVICE_MAX_TAKE);
 	}
 
 	/**

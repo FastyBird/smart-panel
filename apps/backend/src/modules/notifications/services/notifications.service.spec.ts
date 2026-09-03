@@ -557,6 +557,30 @@ describe('NotificationsService', () => {
 			await expect(service.dismiss(created.id, false)).resolves.toMatchObject({ dismissedAt: null });
 		});
 
+		it('resolves a persistent issue when it is dismissed, and leaves the resolution when un-dismissed', async () => {
+			// A persistent issue is never re-detected by its source (that is what `persistent`
+			// means), so the administrator dismissing it is the only way it ever ends. A
+			// non-persistent issue keeps the ordinary behaviour: dismissing it only hides it.
+			const persistentIssue = await service.notify(
+				baseInput({ kind: NotificationKind.ISSUE, key: 'update-failed', persistent: true }),
+			);
+			const ordinaryIssue = await service.notify(baseInput({ kind: NotificationKind.ISSUE, key: 'connection' }));
+
+			const dismissed = await service.dismiss(persistentIssue.id, true);
+
+			expect(dismissed.resolvedAt).toBeInstanceOf(Date);
+			expect(dismissed.resolvedAt).toEqual(dismissed.dismissedAt);
+
+			await expect(service.dismiss(ordinaryIssue.id, true)).resolves.toMatchObject({ resolvedAt: null });
+
+			// Un-dismissing only reopens the dismissal - the condition was never re-detected,
+			// so the resolution this set stands exactly as it was left.
+			const undismissed = await service.dismiss(persistentIssue.id, false);
+
+			expect(undismissed.dismissedAt).toBeNull();
+			expect(undismissed.resolvedAt).toEqual(dismissed.resolvedAt);
+		});
+
 		it('removes the row', async () => {
 			const created = await service.notify(baseInput());
 
@@ -666,12 +690,16 @@ describe('NotificationsService', () => {
 			await expect(service.findAll({ limit: 2 })).resolves.toHaveLength(2);
 		});
 
-		it('caps the limit', async () => {
+		it('caps the limit one row above the client-facing maximum', async () => {
+			// The controller requests `limit + 1` rows to learn whether another page
+			// follows without a separate count query, so the service's own ceiling has to
+			// admit that one extra row at the client-visible maximum (NOTIFICATIONS_MAX_PAGE_SIZE)
+			// or `has_more` would be silently lost for a request at exactly that maximum.
 			const find = jest.spyOn(repository, 'find');
 
 			await service.findAll({ limit: 5_000 });
 
-			expect(find.mock.calls[0][0]?.take).toBe(NOTIFICATIONS_MAX_PAGE_SIZE);
+			expect(find.mock.calls[0][0]?.take).toBe(NOTIFICATIONS_MAX_PAGE_SIZE + 1);
 		});
 	});
 });
