@@ -7,6 +7,8 @@ import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { NotificationKind, NotificationSeverity } from '../../notifications/notifications.constants';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
@@ -29,14 +31,36 @@ import { hashToken } from '../utils/token.utils';
 
 import { TokensService } from './tokens.service';
 
+/** Caller-supplied request context `login()` needs only to report a failed attempt. */
+export interface LoginContext {
+	ip?: string;
+}
+
+/** Short snake_case token for `data.reason` on a `login-failed` event - never user input. */
+type FailedLoginReason = 'user_not_found' | 'inactive' | 'wrong_password';
+
+/**
+ * Hard bound on {@link AuthService.failedLoginCounts} so a flood of distinct usernames or IPs
+ * cannot grow it without limit - see {@link AuthService.pruneFailedLoginCounts}.
+ */
+const FAILED_LOGIN_COUNTER_MAX_KEYS = 1000;
+
 @Injectable()
 export class AuthService {
 	private readonly logger = createExtensionLogger(AUTH_MODULE_NAME, 'AuthService');
+
+	/**
+	 * Per-`login-failed` key attempt count, so the notification message can carry "N attempts
+	 * this hour". Bounded by {@link pruneFailedLoginCounts}: keys are insertion-ordered, so the
+	 * oldest is evicted first once the map is full.
+	 */
+	private readonly failedLoginCounts = new Map<string, number>();
 
 	constructor(
 		private readonly usersService: UsersService,
 		private readonly tokensService: TokensService,
 		private readonly jwtService: JwtService,
+		private readonly notifications: NotificationsService,
 	) {}
 
 	generateToken(user: UserEntity, role?: UserRole, options?: JwtSignOptions): string {
@@ -88,40 +112,53 @@ export class AuthService {
 		return user;
 	}
 
-	async login(loginDto: LoginDto): Promise<LoggedInModel> {
+	async login(loginDto: LoginDto, context?: LoginContext): Promise<LoggedInModel> {
 		this.logger.debug(`Attempting login for username=${loginDto.username}`);
 
 		const dtoInstance = await this.validateDto<LoginDto>(LoginDto, loginDto);
 
 		const { username, password } = dtoInstance;
 
-		// Try to find user by username or email
-		const user = (await this.usersService.findByUsername(username)) ?? (await this.usersService.findByEmail(username));
+		// Normalised once and used by every failure branch below: `user` bounds the notification
+		// key and payload against a pathologically long username, `client` is the resolved
+		// caller address or 'unknown' when the controller could not resolve one.
+		const user = username.slice(0, 64);
+		const client = context?.ip ?? 'unknown';
 
-		if (!user) {
+		// Try to find user by username or email
+		const account =
+			(await this.usersService.findByUsername(username)) ?? (await this.usersService.findByEmail(username));
+
+		if (!account) {
 			this.logger.warn(`Failed login attempt for username=${username} (User not found)`);
+
+			this.reportFailedLogin(user, client, 'user_not_found');
 
 			throw new AuthNotFoundException('Invalid email or password');
 		}
 
-		if (user.password === null) {
+		if (account.password === null) {
 			this.logger.warn(`Failed login attempt for username=${username} (User password not set)`);
+
+			this.reportFailedLogin(user, client, 'inactive');
 
 			throw new AuthNotFoundException('User is not activated');
 		}
 
 		// Verify password
-		const match = await bcrypt.compare(password, user.password);
+		const match = await bcrypt.compare(password, account.password);
 
 		if (!match) {
 			this.logger.warn(`Failed login attempt for username=${username} (Invalid password)`);
 
+			this.reportFailedLogin(user, client, 'wrong_password');
+
 			throw new AuthNotFoundException('Invalid email or password');
 		}
 
-		const tokens = await this.createTokenPair(user);
+		const tokens = await this.createTokenPair(account);
 
-		this.logger.debug(`Successful login for user=${user.id}`);
+		this.logger.debug(`Successful login for user=${account.id}`);
 
 		const accessTokenExpiresAt = this.getExpiryDate(tokens.accessToken) || new Date();
 
@@ -321,5 +358,74 @@ export class AuthService {
 		const decodedToken = this.jwtService.decode<{ exp: number }>(token);
 
 		return decodedToken?.exp ? new Date(decodedToken.exp * 1000) : null;
+	}
+
+	/**
+	 * Reports one failed login attempt as a keyed `login-failed` event, aggregated per user, IP
+	 * and UTC hour so a repeated attack shows one growing row instead of flooding the bell with a
+	 * fresh one every time.
+	 */
+	private reportFailedLogin(user: string, client: string, reason: FailedLoginReason): void {
+		const bucket = this.currentHourBucket();
+		const key = `login-failed:${user}:${client}:${bucket}`;
+
+		this.pruneFailedLoginCounts(bucket, key);
+
+		const count = (this.failedLoginCounts.get(key) ?? 0) + 1;
+
+		this.failedLoginCounts.set(key, count);
+
+		void this.notifications.notify({
+			source: AUTH_MODULE_NAME,
+			kind: NotificationKind.EVENT,
+			key,
+			severity: NotificationSeverity.WARNING,
+			title: `Failed login attempt for "${user}"`,
+			message: `From ${client} · ${count} attempt(s) this hour`,
+			data: { username: user, ip: client, reason },
+		});
+	}
+
+	/**
+	 * Keeps {@link failedLoginCounts} bounded. A bucket keys on the hour it was raised in, so
+	 * once that hour has passed the entry carries no further meaning and is dropped outright -
+	 * the next failure for the same user and IP starts a fresh key (and a fresh notification
+	 * aggregation) anyway. That alone does not bound a flood of *distinct* users or IPs within a
+	 * single hour, so a hard cap evicts the oldest key (insertion order) whenever a genuinely new
+	 * key would put the map over it; updating an existing key's count never counts as "new".
+	 */
+	private pruneFailedLoginCounts(currentBucket: string, incomingKey: string): void {
+		for (const existingKey of this.failedLoginCounts.keys()) {
+			if (!existingKey.endsWith(`:${currentBucket}`)) {
+				this.failedLoginCounts.delete(existingKey);
+			}
+		}
+
+		if (this.failedLoginCounts.has(incomingKey)) {
+			return;
+		}
+
+		// A call adds at most one new key, so evicting one oldest entry (insertion order) is
+		// always enough to stay at the cap. Iterate-and-break instead of `.keys().next().value`:
+		// the latter's `IteratorResult` return type widens to `any` under our strict ESLint rules
+		// (see the same pattern in ClientAddressService.warnUntrustedForwardedHeaders).
+		if (this.failedLoginCounts.size >= FAILED_LOGIN_COUNTER_MAX_KEYS) {
+			for (const oldestKey of this.failedLoginCounts.keys()) {
+				this.failedLoginCounts.delete(oldestKey);
+
+				break;
+			}
+		}
+	}
+
+	/** Current UTC hour as `yyyy-mm-dd-hh`, the bucket a `login-failed` key aggregates into. */
+	private currentHourBucket(): string {
+		const now = new Date();
+		const year = now.getUTCFullYear();
+		const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+		const day = String(now.getUTCDate()).padStart(2, '0');
+		const hour = String(now.getUTCHours()).padStart(2, '0');
+
+		return `${year}-${month}-${day}-${hour}`;
 	}
 }
