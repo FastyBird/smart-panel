@@ -90,27 +90,49 @@ export type NotificationData = Record<string, string | number | boolean | null>;
  * What an emitter passes to the backend's `NotificationsService.notify()`.
  *
  * `notify()` never throws: an invalid input is refused with a warning log and a `null`
- * return, `title`/`message` are truncated to their limits, a fifth action onward is
+ * return, `title`/`message` are truncated to their limits, a fourth action onward is
  * dropped. A repeat `notify()` for the same `(source, key)` upserts the existing row
  * (incrementing `occurrences`) instead of inserting a new one.
+ *
+ * Discriminated on `kind`, stricter than the backend's own (flat) `CreateNotificationInput`
+ * interface: an issue's source has to be able to find and resolve the same row later, so
+ * `key` is required there; an event's `key` is optional (only needed to aggregate repeats
+ * into one row), and `persistent` has no meaning for an event - nothing re-raises one at
+ * boot, so there is nothing for the field to opt out of.
  */
-export interface CreateNotificationInput {
-	/** Extension type of the emitter, e.g. `system-module`, `devices-home-assistant-plugin`. */
-	source: string;
-	kind: NotificationKind;
-	/** Required for `issue`, optional for `event`. Aggregates repeats of the same condition. */
-	key?: string;
-	severity: NotificationSeverity;
-	/** Plain text, truncated to 120 characters. */
-	title: string;
-	/** Plain text, truncated to 1000 characters. Newlines allowed. */
-	message?: string;
-	/** At most three; a fourth onward is dropped. */
-	actions?: NotificationAction[];
-	data?: NotificationData;
-	/** Issues only. A persistent issue survives the boot cleanup untouched. Defaults to `false`. */
-	persistent?: boolean;
-}
+export type CreateNotificationInput =
+	| {
+			/** Extension type of the emitter, e.g. `system-module`, `devices-home-assistant-plugin`. */
+			source: string;
+			kind: 'issue';
+			/** Required: an issue's source has to be able to find and resolve the same row later. */
+			key: string;
+			severity: NotificationSeverity;
+			/** Plain text, truncated to 120 characters. */
+			title: string;
+			/** Plain text, truncated to 1000 characters. Newlines allowed. */
+			message?: string;
+			/** At most three; a fourth onward is dropped. */
+			actions?: NotificationAction[];
+			data?: NotificationData;
+			/** Survives the boot cleanup untouched. Defaults to `false`. */
+			persistent?: boolean;
+	  }
+	| {
+			/** Extension type of the emitter, e.g. `system-module`, `devices-home-assistant-plugin`. */
+			source: string;
+			kind: 'event';
+			/** Optional: aggregates repeats of the same condition into one row when given. */
+			key?: string;
+			severity: NotificationSeverity;
+			/** Plain text, truncated to 120 characters. */
+			title: string;
+			/** Plain text, truncated to 1000 characters. Newlines allowed. */
+			message?: string;
+			/** At most three; a fourth onward is dropped. */
+			actions?: NotificationAction[];
+			data?: NotificationData;
+	  };
 
 /**
  * The stored notification a channel's `send()` receives - a plain payload mirroring the

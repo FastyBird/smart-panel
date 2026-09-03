@@ -25,17 +25,26 @@ export type NotificationAction = {
     primary?: boolean;
 };
 export type NotificationData = Record<string, string | number | boolean | null>;
-export interface CreateNotificationInput {
+export type CreateNotificationInput = {
     source: string;
-    kind: NotificationKind;
-    key?: string;
+    kind: 'issue';
+    key: string;
     severity: NotificationSeverity;
     title: string;
     message?: string;
     actions?: NotificationAction[];
     data?: NotificationData;
     persistent?: boolean;
-}
+} | {
+    source: string;
+    kind: 'event';
+    key?: string;
+    severity: NotificationSeverity;
+    title: string;
+    message?: string;
+    actions?: NotificationAction[];
+    data?: NotificationData;
+};
 export interface Notification {
     id: string;
     source: string;

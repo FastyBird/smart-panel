@@ -193,8 +193,12 @@ compiled as part of the backend itself (`apps/backend/src/plugins/**`) keeps usi
 ### Emitting a notification
 
 `NotificationsModule` is global, so a backend-compiled plugin injects `NotificationsService`
-with no `imports` entry needed. The call shape - typed here against the SDK's plain
-`CreateNotificationInput` - is the same either way:
+with no `imports` entry needed and calls it directly, using the real `NotificationKind` /
+`NotificationSeverity` / `NotificationActionType` enums re-exported from
+`@fastybird/smart-panel-backend` (a string literal like `'issue'` is not assignable to those
+enum-typed fields) - see `packages/example-extension/src/example.service.ts` for that path.
+The snippet below is for the other case: an extension with no dependency on the backend,
+typed purely against the SDK's plain `CreateNotificationInput`:
 
 ```ts
 import type { CreateNotificationInput } from '@fastybird/smart-panel-extension-sdk';
@@ -222,8 +226,9 @@ const input: CreateNotificationInput = {
 await notificationsService.notify(input);
 ```
 
-Raise an issue when a condition starts and resolve it (`notify.resolve(source, key)`) when it
-clears - never on every retry tick. Call `resolveAll(source)` when your service stops, so
+Raise an issue when a condition starts and resolve it
+(`await notificationsService.resolve(source, key)`) when it clears - never on every retry
+tick. Call `await notificationsService.resolveAll(source)` when your service stops, so
 disabling the plugin clears its open issues. Never put secrets in `title`, `message` or
 `data`; pass operational error text through the notifications module's `sanitizeErrorMessage()`
 first.
