@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsBoolean, IsOptional, ValidateNested } from 'class-validator';
+import { IsBoolean, IsDefined, IsOptional, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -30,6 +30,7 @@ export class UpdateNotificationDto {
 export class ReqUpdateNotificationDto {
 	@ApiProperty({ description: 'Notification update data', type: () => UpdateNotificationDto })
 	@Expose()
+	@IsDefined({ message: '[{"field":"data","reason":"Notification update data is required."}]' })
 	@ValidateNested()
 	@Type(() => UpdateNotificationDto)
 	data: UpdateNotificationDto;

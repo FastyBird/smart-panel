@@ -166,6 +166,48 @@ describe('Notifications module (e2e)', () => {
 			expect(body.data.read_at).not.toBeNull();
 		});
 
+		it('rejects PATCH /:id with a missing data wrapper instead of throwing', async () => {
+			const notification = await createNotification({
+				source: 'system-module',
+				kind: NotificationKind.EVENT,
+				severity: NotificationSeverity.INFO,
+				title: 'e2e patch missing data',
+			});
+
+			// No `data` key at all - ReqUpdateNotificationDto.data must be required, or this
+			// reaches the handler as `undefined` and `body.data.read` throws a TypeError that
+			// surfaces as a 500 instead of a validation error.
+			await request(app.getHttpServer())
+				.patch(`/modules/notifications/notifications/${notification.id}`)
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.send({})
+				.expect(400);
+		});
+
+		it('accepts PATCH /:id with an empty data object as a no-op', async () => {
+			const notification = await createNotification({
+				source: 'system-module',
+				kind: NotificationKind.EVENT,
+				severity: NotificationSeverity.INFO,
+				title: 'e2e patch empty data',
+			});
+
+			// `data` present but with neither `read` nor `dismissed` set: both fields are
+			// optional by design, so this is a no-op rather than a rejection - the row comes
+			// back unchanged.
+			const response = await request(app.getHttpServer())
+				.patch(`/modules/notifications/notifications/${notification.id}`)
+				.set('Authorization', `Bearer ${ownerToken}`)
+				.send({ data: {} })
+				.expect(200);
+
+			const body = response.body as { data: { id: string; read_at: string | null; dismissed_at: string | null } };
+
+			expect(body.data.id).toBe(notification.id);
+			expect(body.data.read_at).toBeNull();
+			expect(body.data.dismissed_at).toBeNull();
+		});
+
 		it('resolves a persistent issue when it is dismissed, surfacing resolved_at over HTTP', async () => {
 			const persistentIssue = await createNotification({
 				source: 'system-module',
