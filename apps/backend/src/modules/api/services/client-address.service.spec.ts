@@ -64,7 +64,44 @@ describe('ClientAddressService', () => {
 				forwarded: false,
 				secure: false,
 				peer: '198.51.100.1',
+				ignoredForwardedHeaders: true,
 			});
+		});
+
+		it('reports ignoredForwardedHeaders: false when no forwarded headers were sent at all', () => {
+			const request = fastifyRequest({}, '198.51.100.1');
+
+			expect(service.resolve(request)).toEqual({
+				address: '198.51.100.1',
+				forwarded: false,
+				secure: false,
+				peer: '198.51.100.1',
+				ignoredForwardedHeaders: false,
+			});
+		});
+
+		// The building block behind the RA-1 loopback-bypass fix: an
+		// unrecognised reverse proxy bound to loopback (cloudflared,
+		// `tailscale serve`, a local nginx) is an untrusted peer whose
+		// X-Forwarded-For must be visibly flagged as ignored, so a caller
+		// like RegistrationGuard can refuse to treat the resolved (loopback)
+		// address as a genuinely direct, trusted connection.
+		it('flags ignoredForwardedHeaders even when the untrusted peer is loopback', () => {
+			const request = fastifyRequest({ 'x-forwarded-for': '203.0.113.5' }, '127.0.0.1');
+
+			const resolved = service.resolve(request);
+
+			expect(resolved.address).toBe('127.0.0.1');
+			expect(resolved.ignoredForwardedHeaders).toBe(true);
+		});
+
+		it('does not flag ignoredForwardedHeaders for a genuinely direct loopback peer', () => {
+			const request = fastifyRequest({}, '127.0.0.1');
+
+			const resolved = service.resolve(request);
+
+			expect(resolved.address).toBe('127.0.0.1');
+			expect(resolved.ignoredForwardedHeaders).toBe(false);
 		});
 
 		it('ignores X-Forwarded-Proto too, falling back to the raw connection state', () => {
@@ -120,6 +157,33 @@ describe('ClientAddressService', () => {
 			const warnings = (service as unknown as { untrustedWarnings: Map<string, number> }).untrustedWarnings;
 			expect(warnings.size).toBeLessThanOrEqual(1000);
 		});
+
+		it('reclaims entries that fell out of their one-hour window on the next insert, ahead of the hard cap', () => {
+			const nowSpy = jest.spyOn(Date, 'now');
+			nowSpy.mockReturnValue(1_000_000);
+
+			// Warns once, then goes quiet — an hour later this entry is
+			// stale and safe to reclaim.
+			service.resolve(fastifyRequest({ 'x-forwarded-for': '203.0.113.5' }, '198.60.0.1'));
+
+			nowSpy.mockReturnValue(1_000_000 + 61 * 60 * 1000);
+
+			// A second, still-active peer triggers the next insert.
+			service.resolve(fastifyRequest({ 'x-forwarded-for': '203.0.113.5' }, '198.60.0.2'));
+
+			const warnings = (service as unknown as { untrustedWarnings: Map<string, number> }).untrustedWarnings;
+
+			// The stale entry was reclaimed proactively, not just left to
+			// linger until the 1000-peer hard cap forces a FIFO eviction
+			// that could just as easily land on a still-active peer (`Map.set`
+			// on an *existing* key never moves its position, so a
+			// repeatedly-active peer can sit at the front of iteration
+			// order indefinitely).
+			expect(warnings.has('198.60.0.1')).toBe(false);
+			expect(warnings.has('198.60.0.2')).toBe(true);
+
+			nowSpy.mockRestore();
+		});
 	});
 
 	describe('trusted peer', () => {
@@ -132,6 +196,7 @@ describe('ClientAddressService', () => {
 				forwarded: true,
 				secure: false,
 				peer: '198.51.100.1',
+				ignoredForwardedHeaders: false,
 			});
 		});
 
@@ -144,6 +209,7 @@ describe('ClientAddressService', () => {
 				forwarded: true,
 				secure: false,
 				peer: '198.51.100.1',
+				ignoredForwardedHeaders: false,
 			});
 		});
 
@@ -156,6 +222,7 @@ describe('ClientAddressService', () => {
 				forwarded: true,
 				secure: false,
 				peer: '198.51.100.1',
+				ignoredForwardedHeaders: false,
 			});
 		});
 
@@ -176,6 +243,7 @@ describe('ClientAddressService', () => {
 				forwarded: true,
 				secure: false,
 				peer: 'fc00::1234',
+				ignoredForwardedHeaders: false,
 			});
 		});
 
@@ -188,6 +256,10 @@ describe('ClientAddressService', () => {
 				forwarded: false,
 				secure: false,
 				peer: '198.51.100.1',
+				// The peer itself is trusted here — the fallback is caused by
+				// malformed input, not by distrust, so nothing was "ignored"
+				// in the ignoredForwardedHeaders sense.
+				ignoredForwardedHeaders: false,
 			});
 		});
 
@@ -208,6 +280,7 @@ describe('ClientAddressService', () => {
 				forwarded: false,
 				secure: false,
 				peer: '198.51.100.1',
+				ignoredForwardedHeaders: false,
 			});
 		});
 
@@ -220,6 +293,7 @@ describe('ClientAddressService', () => {
 				forwarded: true,
 				secure: false,
 				peer: '198.51.100.1',
+				ignoredForwardedHeaders: false,
 			});
 		});
 
@@ -232,6 +306,7 @@ describe('ClientAddressService', () => {
 				forwarded: true,
 				secure: false,
 				peer: '198.51.100.1',
+				ignoredForwardedHeaders: false,
 			});
 		});
 
@@ -270,6 +345,7 @@ describe('ClientAddressService', () => {
 				forwarded: true,
 				secure: false,
 				peer: '198.51.100.1',
+				ignoredForwardedHeaders: false,
 			});
 		});
 
@@ -282,6 +358,7 @@ describe('ClientAddressService', () => {
 				forwarded: true,
 				secure: false,
 				peer: '198.51.100.1',
+				ignoredForwardedHeaders: false,
 			});
 		});
 
@@ -301,7 +378,15 @@ describe('ClientAddressService', () => {
 				forwarded: false,
 				secure: true,
 				peer: '198.51.100.1',
+				ignoredForwardedHeaders: false,
 			});
+		});
+
+		it('does not throw when a handshake-shaped request has no headers object', () => {
+			const client = { address: '198.51.100.1', secure: false } as unknown as Handshake;
+
+			expect(() => service.resolve(client)).not.toThrow();
+			expect(service.resolve(client).address).toBe('198.51.100.1');
 		});
 	});
 
@@ -315,6 +400,7 @@ describe('ClientAddressService', () => {
 				forwarded: true,
 				secure: false,
 				peer: '198.51.100.1',
+				ignoredForwardedHeaders: false,
 			});
 		});
 	});

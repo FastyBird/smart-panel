@@ -87,8 +87,12 @@ export class RegistrationController {
 	})
 	@ApiSuccessResponse(RegistrationStatusResponseModel, 'Returns registration status')
 	getRegistrationStatus(@Req() request: FastifyRequest): RegistrationStatusResponseModel {
-		const clientIp = this.clientAddressService.resolve(request).address;
-		const isLocalhostConnection = isLocalhost(clientIp);
+		const resolved = this.clientAddressService.resolve(request);
+		// Same "genuinely direct" requirement as RegistrationGuard: an
+		// untrusted peer that sent forwarding headers had them ignored, so its
+		// resolved (loopback) address must not be reported as an open,
+		// no-permit-join-needed local connection.
+		const isLocalhostConnection = isLocalhost(resolved.address) && !resolved.ignoredForwardedHeaders;
 
 		// Localhost connections are always allowed, regardless of permit join status
 		const open = isLocalhostConnection || this.permitJoinService.isPermitJoinActive();

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 
+import { createExtensionLogger } from '../../common/logger';
 import { getEnvValue } from '../../common/utils/config.utils';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
@@ -24,6 +25,7 @@ import { ApiStatsProvider } from './providers/api-stats.provider';
 import { ApiMetricsService } from './services/api-metrics.service';
 import { ClientAddressService } from './services/client-address.service';
 import { TrustedProxyRegistryService } from './services/trusted-proxy-registry.service';
+import { isValidTrustedProxyEntry } from './utils/ip-match.utils';
 
 @Module({
 	imports: [ConfigModule, StatsModule, StorageModule],
@@ -40,6 +42,14 @@ import { TrustedProxyRegistryService } from './services/trusted-proxy-registry.s
 	exports: [TrustedProxyRegistryService, ClientAddressService],
 })
 export class ApiModule {
+	private readonly logger = createExtensionLogger(API_MODULE_NAME, 'ApiModule');
+
+	// `readEnvTrustedProxies` runs on every `isTrusted()` check (the source
+	// is registered with a live `addresses()` getter, not a one-time
+	// snapshot), so track which malformed values have already been warned
+	// about to log each one once rather than once per request.
+	private readonly warnedInvalidTrustedProxies = new Set<string>();
+
 	constructor(
 		private readonly apiStatsProvider: ApiStatsProvider,
 		private readonly statsRegistryService: StatsRegistryService,
@@ -70,9 +80,26 @@ export class ApiModule {
 	private readEnvTrustedProxies(): string[] {
 		const configured = getEnvValue<string>(this.nestConfigService, TRUSTED_PROXIES_ENV_KEY, '');
 
-		return configured
+		const entries = configured
 			.split(',')
 			.map((value) => value.trim())
 			.filter((value) => value.length > 0);
+
+		const valid: string[] = [];
+
+		for (const entry of entries) {
+			if (isValidTrustedProxyEntry(entry)) {
+				valid.push(entry);
+
+				continue;
+			}
+
+			if (!this.warnedInvalidTrustedProxies.has(entry)) {
+				this.warnedInvalidTrustedProxies.add(entry);
+				this.logger.warn(`Ignoring malformed ${TRUSTED_PROXIES_ENV_KEY} entry (not a valid IP or CIDR): "${entry}"`);
+			}
+		}
+
+		return valid;
 	}
 }

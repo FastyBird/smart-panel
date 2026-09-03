@@ -48,14 +48,23 @@ export class RegistrationGuard implements CanActivate {
 
 	canActivate(context: ExecutionContext): boolean {
 		const request = context.switchToHttp().getRequest<FastifyRequest>();
-		const clientIp = this.clientAddressService.resolve(request).address;
+		const resolved = this.clientAddressService.resolve(request);
+		const clientIp = resolved.address;
 		const config = this.getConfig();
 		const mode = config.deploymentMode;
 
-		// Localhost registrations are always allowed without permit join in all modes
-		// This allows local development and all-in-one deployments
+		// Localhost registrations are always allowed without permit join in all modes.
+		// This allows local development and all-in-one deployments. Requires a
+		// genuinely direct connection: `ignoredForwardedHeaders` is true when the
+		// peer itself is untrusted but sent forwarding headers (e.g. an
+		// unrecognised reverse proxy bound to loopback — cloudflared,
+		// `tailscale serve`, a local nginx). In that case ClientAddressService
+		// already ignored those headers, so `clientIp` is just the proxy's own
+		// loopback address, not the real remote client — falling through to the
+		// permit-join gate below is what keeps that remote client from getting
+		// an unauthenticated display token.
 		// Multiple localhost displays are allowed (each has unique MAC address)
-		if (isLocalhost(clientIp)) {
+		if (isLocalhost(clientIp) && !resolved.ignoredForwardedHeaders) {
 			return true;
 		}
 

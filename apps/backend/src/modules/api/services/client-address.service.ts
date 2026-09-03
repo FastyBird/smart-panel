@@ -23,6 +23,16 @@ export interface ResolvedClientAddress {
 	secure: boolean;
 	/** Raw socket peer address, regardless of trust. */
 	peer: string;
+	/**
+	 * `true` when `peer` is untrusted but sent forwarding headers that were
+	 * ignored (in which case `address` is just `peer` again, not a real
+	 * client identity). Callers that special-case a "genuinely direct"
+	 * connection — e.g. bypassing permit-join for a loopback display — MUST
+	 * refuse that bypass when this is `true`: an unrecognised reverse proxy
+	 * bound to loopback (cloudflared, `tailscale serve`, a local nginx) would
+	 * otherwise turn every remote client reaching it into "localhost".
+	 */
+	ignoredForwardedHeaders: boolean;
 }
 
 interface NormalizedRequest {
@@ -38,8 +48,9 @@ const HEADER_X_FORWARDED_PROTO = 'x-forwarded-proto';
 
 // Log "forwarded headers ignored" at most once per peer per hour.
 const UNTRUSTED_WARNING_INTERVAL_MS = 60 * 60 * 1000;
-// Bounds the untrusted-peer warning map so a scan/flood from many distinct
-// peers can't grow it without limit; the oldest entry is evicted once full.
+// Hard backstop on the untrusted-peer warning map so a scan/flood from many
+// distinct peers can't grow it without limit once stale-entry pruning (see
+// `warnUntrustedForwardedHeaders`) has nothing left to reclaim.
 const UNTRUSTED_WARNING_MAX_PEERS = 1000;
 
 /**
@@ -48,20 +59,29 @@ const UNTRUSTED_WARNING_MAX_PEERS = 1000;
  * `X-Forwarded-Proto`) only when the immediate socket peer is in the
  * `TrustedProxyRegistryService` trust set. Untrusted peers get their own
  * socket address back, and any forwarded headers they sent are ignored (and
- * logged, rate-limited).
+ * logged, rate-limited) — see `ResolvedClientAddress.ignoredForwardedHeaders`.
  *
  * Accepts three request shapes so the same resolution logic serves HTTP
  * (Fastify) and websocket (socket.io handshake) call sites:
  * `FastifyRequest`, a plain `IncomingMessage`, or a socket.io `Handshake`.
+ *
+ * Deliberate asymmetry in how a trusted peer's headers are read: a
+ * malformed `X-Forwarded-For` entry aborts straight to the peer address
+ * without trying `X-Real-IP` or `CF-Connecting-IP` next (see
+ * `resolveRightmostUntrusted`) — `X-Forwarded-For` is a trust-sensitive
+ * ordered chain the right-most-untrusted walk depends on, so a corrupted
+ * entry invalidates the whole chain. `X-Real-IP` and `CF-Connecting-IP` are
+ * simple, independent single values; an invalid one falls through to the
+ * next header in the fallback order exactly like a missing one would.
  */
 @Injectable()
 export class ClientAddressService {
 	private readonly logger = createExtensionLogger(API_MODULE_NAME, 'ClientAddressService');
 
-	// Bounded `peer -> last-warned-at` map. Map iteration order is insertion
-	// order and re-`set`ting an existing key does not move it, so eviction
-	// (only triggered for a genuinely new key once the map is full) always
-	// drops the oldest peer rather than disturbing an active one.
+	// Bounded `peer -> last-warned-at` map, pruned of stale entries on every
+	// insert (see `warnUntrustedForwardedHeaders`) so it holds only peers
+	// warned within the last hour, with `UNTRUSTED_WARNING_MAX_PEERS` as a
+	// hard backstop beyond that.
 	private readonly untrustedWarnings = new Map<string, number>();
 
 	constructor(private readonly trustedProxyRegistry: TrustedProxyRegistryService) {}
@@ -71,23 +91,28 @@ export class ClientAddressService {
 		const peer = normalized.peerAddress;
 
 		if (!this.trustedProxyRegistry.isTrusted(peer)) {
-			if (this.hasForwardingHeaders(normalized.headers)) {
+			const ignoredForwardedHeaders = this.hasForwardingHeaders(normalized.headers);
+
+			if (ignoredForwardedHeaders) {
 				this.warnUntrustedForwardedHeaders(peer);
 			}
 
-			return { address: peer, forwarded: false, secure: normalized.secure, peer };
+			return { address: peer, forwarded: false, secure: normalized.secure, peer, ignoredForwardedHeaders };
 		}
 
 		const { address, forwarded } = this.resolveForwardedAddress(normalized.headers, peer);
 		const secure = this.resolveSecure(normalized.headers, normalized.secure);
 
-		return { address, forwarded, secure, peer };
+		return { address, forwarded, secure, peer, ignoredForwardedHeaders: false };
 	}
 
 	private normalizeRequest(request: FastifyRequest | IncomingMessage | ClientHandshake): NormalizedRequest {
 		if (this.isHandshake(request)) {
 			return {
-				headers: request.headers,
+				// Default to `{}` so an unexpected/partial request shape (a
+				// hand-built test double, a future caller) can't throw a
+				// `TypeError` out of `hasForwardingHeaders`'s header lookups.
+				headers: request.headers ?? {},
 				peerAddress: normalizeIpAddress(request.address ?? ''),
 				secure: request.secure,
 			};
@@ -97,7 +122,7 @@ export class ClientAddressService {
 		const socket = raw.socket;
 
 		return {
-			headers: request.headers,
+			headers: request.headers ?? {},
 			peerAddress: normalizeIpAddress(socket?.remoteAddress ?? ''),
 			secure: Boolean(socket && 'encrypted' in socket && (socket as unknown as { encrypted?: boolean }).encrypted),
 		};
@@ -202,10 +227,29 @@ export class ClientAddressService {
 			return;
 		}
 
+		// Reclaim entries that fell out of their one-hour window before
+		// falling back to the hard cap below. `Map.set` on an *existing* key
+		// never moves it, so a peer that keeps getting re-warned stays at
+		// its original (early) position in iteration order instead of
+		// moving to the back like a real LRU — evicting "the first key in
+		// iteration order" on the cap alone would then tend to evict the
+		// longest-running, still-active warner rather than a stale one, and
+		// a flood of distinct new peers could keep silently evicting active
+		// entries and defeating their once-per-hour limit.
+		for (const [key, warnedAt] of this.untrustedWarnings) {
+			if (now - warnedAt >= UNTRUSTED_WARNING_INTERVAL_MS) {
+				this.untrustedWarnings.delete(key);
+			}
+		}
+
 		if (this.untrustedWarnings.size >= UNTRUSTED_WARNING_MAX_PEERS && !this.untrustedWarnings.has(peer)) {
-			// Drop the oldest entry. Iterate-and-break instead of
-			// `.keys().next().value` because the latter's `IteratorResult`
-			// return type widens to `any` under our strict ESLint rules.
+			// Hard bound of last resort: the prune above already reclaimed
+			// everything outside its one-hour window, so every remaining
+			// entry is currently active and there is no better signal than
+			// insertion order left to pick a victim. Iterate-and-break
+			// instead of `.keys().next().value` because the latter's
+			// `IteratorResult` return type widens to `any` under our strict
+			// ESLint rules.
 			for (const oldestKey of this.untrustedWarnings.keys()) {
 				this.untrustedWarnings.delete(oldestKey);
 				break;

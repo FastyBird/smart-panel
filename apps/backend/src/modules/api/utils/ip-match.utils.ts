@@ -6,21 +6,23 @@ const IPV4_MAPPED_PREFIX = '::ffff:';
  * Canonicalises an IPv4-mapped IPv6 address (`::ffff:127.0.0.1`) down to its
  * plain IPv4 form, so a peer or CIDR entry compares equal regardless of
  * whether the runtime reports the dual-stack or the plain form for the same
- * address. Anything else (plain IPv4, plain IPv6, unparseable input) passes
- * through unchanged.
+ * address. Also strips an IPv6 zone id (`fe80::1%eth0` → `fe80::1`), so a
+ * link-local proxy address still matches a zone-less trusted entry such as
+ * `fe80::/10`. Anything else (plain IPv4, plain IPv6, unparseable input)
+ * passes through unchanged.
  */
 export function normalizeIpAddress(address: string): string {
-	const trimmed = address.trim();
+	const withoutZone = address.trim().split('%')[0];
 
-	if (trimmed.toLowerCase().startsWith(IPV4_MAPPED_PREFIX)) {
-		const embedded = trimmed.slice(IPV4_MAPPED_PREFIX.length);
+	if (withoutZone.toLowerCase().startsWith(IPV4_MAPPED_PREFIX)) {
+		const embedded = withoutZone.slice(IPV4_MAPPED_PREFIX.length);
 
 		if (isIP(embedded) === 4) {
 			return embedded;
 		}
 	}
 
-	return trimmed;
+	return withoutZone;
 }
 
 function ipv4ToInt(address: string): number | null {
@@ -94,6 +96,51 @@ function ipv6ToBigInt(address: string): bigint | null {
 	return result;
 }
 
+interface ParsedCidrEntry {
+	family: 4 | 6;
+	network: string;
+	prefix: number;
+}
+
+/**
+ * Parses a bare IP or CIDR entry (`10.0.0.0/8`, `fc00::/7`, `127.0.0.1`)
+ * into its network address, prefix length and address family, or `null` for
+ * anything malformed. Shared by `isIpInCidr` (matching) and
+ * `isValidTrustedProxyEntry` (validating operator-supplied config) so the
+ * two never drift on what counts as well-formed.
+ */
+function parseCidrEntry(entry: string): ParsedCidrEntry | null {
+	const slashIndex = entry.indexOf('/');
+	const rawNetwork = slashIndex === -1 ? entry : entry.slice(0, slashIndex);
+	const prefixRaw = slashIndex === -1 ? undefined : entry.slice(slashIndex + 1).trim();
+	const network = normalizeIpAddress(rawNetwork);
+
+	const family = isIP(network);
+
+	if (family === 0) {
+		return null;
+	}
+
+	// Reject anything but a plain non-negative integer prefix before
+	// coercion. `Number('')` is `0`, so without this an entry with a
+	// trailing slash and nothing after it (`10.0.0.0/`, a typo, not an
+	// explicit "match everything") would silently parse as `/0` and trust
+	// every address in the family. Also rejects `10.0.0.0/8.0` and
+	// `10.0.0.0/+8`; an explicit `/0` still passes.
+	if (prefixRaw !== undefined && !/^\d+$/.test(prefixRaw)) {
+		return null;
+	}
+
+	const maxPrefix = family === 4 ? 32 : 128;
+	const prefix = prefixRaw === undefined ? maxPrefix : Number(prefixRaw);
+
+	if (!Number.isInteger(prefix) || prefix < 0 || prefix > maxPrefix) {
+		return null;
+	}
+
+	return { family: family as 4 | 6, network, prefix };
+}
+
 /**
  * Whether `address` falls inside `entry`, where `entry` is either a bare IP
  * (matched exactly) or a CIDR range (`10.0.0.0/8`, `fc00::/7`). Both sides
@@ -107,23 +154,13 @@ function ipv6ToBigInt(address: string): bigint | null {
  */
 export function isIpInCidr(address: string, entry: string): boolean {
 	const normalizedAddress = normalizeIpAddress(address);
-	const slashIndex = entry.indexOf('/');
-	const rawNetwork = slashIndex === -1 ? entry : entry.slice(0, slashIndex);
-	const prefixRaw = slashIndex === -1 ? undefined : entry.slice(slashIndex + 1);
-	const network = normalizeIpAddress(rawNetwork);
+	const parsed = parseCidrEntry(entry);
 
-	const family = isIP(network);
-
-	if (family === 0 || isIP(normalizedAddress) !== family) {
+	if (parsed === null || isIP(normalizedAddress) !== parsed.family) {
 		return false;
 	}
 
-	const maxPrefix = family === 4 ? 32 : 128;
-	const prefix = prefixRaw === undefined ? maxPrefix : Number(prefixRaw);
-
-	if (!Number.isInteger(prefix) || prefix < 0 || prefix > maxPrefix) {
-		return false;
-	}
+	const { family, network, prefix } = parsed;
 
 	if (family === 4) {
 		const addressInt = ipv4ToInt(normalizedAddress);
@@ -149,4 +186,15 @@ export function isIpInCidr(address: string, entry: string): boolean {
 	const mask = prefix === 0 ? 0n : fullMask ^ (fullMask >> BigInt(prefix));
 
 	return (addressBig & mask) === (networkBig & mask);
+}
+
+/**
+ * Whether `entry` is a syntactically well-formed bare IP or CIDR range —
+ * the same check `isIpInCidr` applies to its `entry` argument, exposed on
+ * its own so callers that only *validate* operator-supplied trusted-proxy
+ * config (rather than matching a specific address against it) don't have to
+ * fake one up just to probe validity.
+ */
+export function isValidTrustedProxyEntry(entry: string): boolean {
+	return parseCidrEntry(entry) !== null;
 }

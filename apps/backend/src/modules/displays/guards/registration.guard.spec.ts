@@ -76,7 +76,28 @@ describe('RegistrationGuard', () => {
 		expect(permitJoinService.isPermitJoinActive).toHaveBeenCalled();
 	});
 
-	it('accepts a genuine loopback peer regardless of permit-join state', () => {
+	// Critical regression case: an unrecognised reverse proxy bound to
+	// loopback (cloudflared, `tailscale serve`, a local nginx) with
+	// FB_TRUSTED_PROXIES unset. The peer socket address is genuinely
+	// 127.0.0.1, so isLocalhost() alone would say "local" — but the peer is
+	// untrusted and sent X-Forwarded-For, meaning a real remote client is
+	// behind it. Without the ignoredForwardedHeaders gate this bypasses
+	// permit-join entirely and hands out an unauthenticated display token to
+	// any internet client reaching the proxy.
+	it('rejects a loopback peer that is untrusted and presents X-Forwarded-For, without permit-join', () => {
+		const request = fastifyRequest({ 'x-forwarded-for': '203.0.113.9' }, '127.0.0.1');
+
+		expect(() => guard.canActivate(contextFor(request))).toThrow(ForbiddenException);
+		expect(permitJoinService.isPermitJoinActive).toHaveBeenCalled();
+
+		// Confirms this isn't merely being caught by all-in-one mode or some
+		// other unrelated path — it stays rejected until permit-join opens,
+		// exactly like any other non-local client.
+		permitJoinService.isPermitJoinActive.mockReturnValue(true);
+		expect(guard.canActivate(contextFor(request))).toBe(true);
+	});
+
+	it('accepts a genuine loopback peer with no forwarded headers, regardless of permit-join state', () => {
 		const request = fastifyRequest({}, '127.0.0.1');
 
 		expect(guard.canActivate(contextFor(request))).toBe(true);
