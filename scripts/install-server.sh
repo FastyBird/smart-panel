@@ -360,11 +360,16 @@ install_tailscale() {
 			fi
 			;;
 		fedora)
-			# The vendor .repo file pins gpgcheck=1 and the signing key, so
-			# the package itself is signature-verified; fetching a .repo
-			# config file is not executing code.
-			if dnf config-manager --add-repo https://pkgs.tailscale.com/stable/fedora/tailscale.repo \
-				&& dnf install -y tailscale; then
+			# Download the vendor repo file directly instead of using
+			# `dnf config-manager --add-repo`, whose subcommand differs
+			# between dnf4 and dnf5, and isn't available at all on a
+			# plain-yum host (mirrors how install_influxdb() writes its
+			# .repo file without any plugin). The repo file itself
+			# declares gpgcheck=1 and the vendor signing key, so packages
+			# stay signature-verified.
+			if curl -fsSL https://pkgs.tailscale.com/stable/fedora/tailscale.repo \
+					-o /etc/yum.repos.d/tailscale.repo \
+				&& { dnf install -y tailscale || yum install -y tailscale; }; then
 				installed=true
 			fi
 			;;
@@ -373,7 +378,8 @@ install_tailscale() {
 			local major="${version_id%%.*}"
 			[[ -z "$major" || "$major" == "unknown" ]] && major="9"
 
-			if dnf config-manager --add-repo "https://pkgs.tailscale.com/stable/rhel/${major}/tailscale.repo" \
+			if curl -fsSL "https://pkgs.tailscale.com/stable/rhel/${major}/tailscale.repo" \
+					-o /etc/yum.repos.d/tailscale.repo \
 				&& { dnf install -y tailscale || yum install -y tailscale; }; then
 				installed=true
 			fi
