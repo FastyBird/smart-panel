@@ -5,6 +5,11 @@ import { UpdateNotificationsConfigDto } from './dto/update-config.dto';
 import { NotificationEntity } from './entities/notifications.entity';
 import { NotificationsConfigModel } from './models/config.model';
 import { NotificationActionModel } from './models/notification-action.model';
+import {
+	BulkResultResponseModel,
+	NotificationResponseModel,
+	NotificationsResponseModel,
+} from './models/notifications-response.model';
 
 export const NOTIFICATIONS_SWAGGER_EXTRA_MODELS = [
 	// Module configuration
@@ -13,4 +18,8 @@ export const NOTIFICATIONS_SWAGGER_EXTRA_MODELS = [
 	// Data models
 	NotificationActionModel,
 	NotificationEntity,
+	// Response models
+	NotificationResponseModel,
+	NotificationsResponseModel,
+	BulkResultResponseModel,
 ];

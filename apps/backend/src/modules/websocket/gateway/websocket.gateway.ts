@@ -19,6 +19,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ClientAddressService } from '../../api/services/client-address.service';
 import { TokenOwnerType } from '../../auth/auth.constants';
+import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
 import { CommandMessageDto } from '../dto/command-message.dto';
 import { CommandResultDto } from '../dto/command-result.dto';
@@ -26,6 +27,7 @@ import { WsClientDto, WsClientEventType } from '../dto/ws-client.dto';
 import { CommandEventRegistryService } from '../services/command-event-registry.service';
 import { WsAuthService } from '../services/ws-auth.service';
 import {
+	ADMIN_ROOM,
 	CLIENT_DEFAULT_ROOM,
 	DISPLAY_INTERNAL_ROOM,
 	EXCHANGE_ROOM,
@@ -136,6 +138,18 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 				if (clientData.user.id) {
 					await client.join(`display-${clientData.user.id}`);
 				}
+			}
+
+			// Owner/admin user principals join ADMIN_ROOM automatically, because
+			// subscribe-exchange admits any authenticated socket today and admin-only
+			// events (e.g. notifications) must not reach a plain user or a display, even
+			// one that later subscribes to the exchange room.
+			if (
+				clientData.user &&
+				clientData.user.type === 'user' &&
+				(clientData.user.role === UserRole.OWNER || clientData.user.role === UserRole.ADMIN)
+			) {
+				await client.join(ADMIN_ROOM);
 			}
 
 			// Emit client connected event to exchange bus
@@ -302,6 +316,14 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		'RemoteAccessModule.', // Provider/URL/setup state is admin-only, never sent to display panels
 	];
 
+	// Events that must reach only owner/admin sockets, not every exchange-subscribed
+	// client. `subscribe-exchange` admits any authenticated socket today, so these are
+	// routed to ADMIN_ROOM - joined automatically at connection time by owner/admin user
+	// principals - instead of the wider EXCHANGE_ROOM.
+	private static readonly ADMIN_ONLY_EVENT_PREFIXES = [
+		'NotificationsModule.', // Notifications are owner/admin-only
+	];
+
 	private handleBusEvent(event: string, payload: Record<string, any>): void {
 		if (!this.enabled) {
 			return;
@@ -339,6 +361,16 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 			// Send to the specific display and to the exchange room (admin)
 			this.server.to(displayRoom).emit('event', message);
 			this.server.to(EXCHANGE_ROOM).emit('event', message);
+
+			return;
+		}
+
+		// Admin-only events: narrower than exchange-only, delivered to ADMIN_ROOM alone so
+		// a USER-role socket that subscribed to the exchange room still does not receive them.
+		if (WebsocketGateway.ADMIN_ONLY_EVENT_PREFIXES.some((prefix) => event.startsWith(prefix))) {
+			this.logger.debug(`Emitting admin-only event: ${JSON.stringify(message)}`);
+
+			this.server.to(ADMIN_ROOM).emit('event', message);
 
 			return;
 		}

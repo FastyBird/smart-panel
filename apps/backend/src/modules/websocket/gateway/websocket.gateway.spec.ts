@@ -322,4 +322,134 @@ describe('WebsocketGateway', () => {
 			expect(mockServer.to).toHaveBeenCalledWith(DISPLAY_INTERNAL_ROOM);
 		});
 	});
+
+	describe('admin-only event routing (ADMIN_ROOM)', () => {
+		interface FakeSocket {
+			id: string;
+			data: { user: ClientUserDto };
+			join: jest.Mock;
+			emit: jest.Mock;
+			handshake: { headers: Record<string, string>; address: string };
+			request: { headers: Record<string, string>; socket: { remoteAddress: string } };
+		}
+
+		let roomMembers: Map<string, Set<FakeSocket>>;
+		let fakeServer: { to: jest.Mock; emit: jest.Mock };
+		let ownerSocket: FakeSocket;
+		let adminSocket: FakeSocket;
+		let userSocket: FakeSocket;
+		let displaySocket: FakeSocket;
+
+		const createFakeSocket = (id: string, user: ClientUserDto): FakeSocket => {
+			const socket: FakeSocket = {
+				id,
+				data: { user },
+				join: jest.fn(),
+				emit: jest.fn(),
+				handshake: { headers: {}, address: '127.0.0.1' },
+				request: { headers: {}, socket: { remoteAddress: '127.0.0.1' } },
+			};
+
+			socket.join.mockImplementation((room: string) => {
+				if (!roomMembers.has(room)) {
+					roomMembers.set(room, new Set());
+				}
+
+				roomMembers.get(room)?.add(socket);
+
+				return Promise.resolve();
+			});
+
+			return socket;
+		};
+
+		const emitBusEvent = (event: string, payload: Record<string, unknown>): void => {
+			const busHandler = (eventEmitter.onAny as jest.Mock).mock.calls[0][0] as (
+				event: string,
+				payload: Record<string, unknown>,
+			) => void;
+
+			busHandler(event, payload);
+		};
+
+		beforeEach(async () => {
+			roomMembers = new Map();
+
+			// A minimal room-aware fake: `to(room).emit(...)` reaches exactly the fake
+			// sockets whose `join` recorded that room, mirroring the socket.io adapter
+			// closely enough to prove delivery without a real transport.
+			fakeServer = {
+				emit: jest.fn(),
+				to: jest.fn((room: string) => ({
+					emit: (event: string, message: unknown) => {
+						for (const socket of roomMembers.get(room) ?? []) {
+							socket.emit(event, message);
+						}
+					},
+				})),
+			};
+
+			(gateway as any).server = fakeServer;
+
+			ownerSocket = createFakeSocket('owner-socket', { id: 'owner-1', role: UserRole.OWNER, type: 'user' });
+			adminSocket = createFakeSocket('admin-socket', { id: 'admin-1', role: UserRole.ADMIN, type: 'user' });
+			userSocket = createFakeSocket('user-socket', { id: 'user-1', role: UserRole.USER, type: 'user' });
+			displaySocket = createFakeSocket('display-socket', {
+				id: null,
+				role: UserRole.USER,
+				type: 'token',
+				ownerType: TokenOwnerType.DISPLAY,
+				tokenId: 'display-token',
+			});
+
+			for (const socket of [ownerSocket, adminSocket, userSocket, displaySocket]) {
+				await gateway.handleConnection(socket as unknown as Socket);
+			}
+
+			// Every non-display socket subscribes to the exchange room, same as any
+			// authenticated socket can today - proves EXCHANGE_ROOM membership alone
+			// is not what decides admin-only delivery.
+			for (const socket of [ownerSocket, adminSocket, userSocket]) {
+				await gateway.handleSubscribeExchange(
+					{ event: 'subscribe-exchange', payload: {} },
+					socket as unknown as Socket,
+				);
+			}
+		});
+
+		it('joins owner and admin user principals to ADMIN_ROOM, but not a plain user or a display', () => {
+			expect(ownerSocket.join).toHaveBeenCalledWith('admin-room');
+			expect(adminSocket.join).toHaveBeenCalledWith('admin-room');
+			expect(userSocket.join).not.toHaveBeenCalledWith('admin-room');
+			expect(displaySocket.join).not.toHaveBeenCalledWith('admin-room');
+		});
+
+		it('delivers a NotificationsModule event to an owner socket and an admin socket only', () => {
+			emitBusEvent('NotificationsModule.Notification.Created', {
+				id: 'n-1',
+				kind: 'issue',
+				severity: 'error',
+				source: 'system-module',
+			});
+
+			expect(ownerSocket.emit).toHaveBeenCalledTimes(1);
+			expect(adminSocket.emit).toHaveBeenCalledTimes(1);
+			// The USER-role socket joined the exchange room, and the display socket is
+			// connected, but neither ever joined ADMIN_ROOM, so neither receives it.
+			expect(userSocket.emit).not.toHaveBeenCalled();
+			expect(displaySocket.emit).not.toHaveBeenCalled();
+		});
+
+		it('still delivers a SystemModule.System.Update event to every exchange-subscribed socket', () => {
+			// Unchanged pre-existing behaviour: EXCHANGE_ONLY_EVENT_PREFIXES keeps
+			// reaching the whole exchange room, admin-only or not.
+			emitBusEvent('SystemModule.System.Update.Progress', { progress: 50 });
+
+			expect(ownerSocket.emit).toHaveBeenCalledTimes(1);
+			expect(adminSocket.emit).toHaveBeenCalledTimes(1);
+			expect(userSocket.emit).toHaveBeenCalledTimes(1);
+			// The display socket never subscribed to the exchange room.
+			expect(displaySocket.emit).not.toHaveBeenCalled();
+		});
+	});
 });

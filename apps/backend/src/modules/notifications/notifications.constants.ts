@@ -62,6 +62,12 @@ export const NOTIFICATIONS_DEFAULT_PAGE_SIZE = 50;
 
 export const NOTIFICATIONS_MAX_PAGE_SIZE = 200;
 
+/**
+ * A bulk request replaces one HTTP round trip per item, so this cap is what stops a
+ * single call from turning into unbounded work. Mirrors the devices module's bulk cap.
+ */
+export const BULK_NOTIFICATIONS_MAX_IDS = 500;
+
 export const DEFAULT_RETENTION_DAYS = 30;
 
 export const RETENTION_DAYS_MIN = 1;
