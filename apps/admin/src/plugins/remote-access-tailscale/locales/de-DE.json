@@ -1,0 +1,118 @@
+{
+	"headings": {
+		"tailscale": "Tailscale",
+		"serve": "Serve & Funnel"
+	},
+	"texts": {
+		"funnelWarning": "Funnel veröffentlicht diese Installation im öffentlichen Internet. Die Anmeldung bei Smart Panel ist der einzige Schutz."
+	},
+	"buttons": {
+		"setup": "Einrichten",
+		"signIn": "Anmelden",
+		"connect": "Verbinden",
+		"disconnect": "Trennen",
+		"reconnect": "Erneut verbinden",
+		"signOut": "Abmelden",
+		"resetPreferences": "Einstellungen zurücksetzen"
+	},
+	"fields": {
+		"tailnet": "Tailnet",
+		"dnsName": "MagicDNS-Name",
+		"ipv4": "IPv4-Adresse",
+		"ipv6": "IPv6-Adresse",
+		"config": {
+			"hostname": {
+				"title": "Hostname",
+				"placeholder": "z. B. smart-panel",
+				"description": "Hostname, der dem Tailnet gemeldet wird.",
+				"validation": {
+					"required": "Hostname ist erforderlich"
+				}
+			},
+			"loginServer": {
+				"title": "Anmeldeserver",
+				"placeholder": "https://controlplane.tailscale.com",
+				"description": "URL der Kontrollebene. Für einen selbst gehosteten Headscale-Server überschreiben.",
+				"validation": {
+					"required": "Anmeldeserver ist erforderlich"
+				}
+			},
+			"acceptDns": {
+				"title": "DNS akzeptieren",
+				"description": "Die MagicDNS-Konfiguration des Tailnets akzeptieren."
+			},
+			"acceptRoutes": {
+				"title": "Routen akzeptieren",
+				"description": "Von anderen Tailnet-Knoten angekündigte Subnetzrouten akzeptieren."
+			},
+			"advertiseTags": {
+				"title": "Angekündigte Tags",
+				"placeholder": "ACL-Tag hinzufügen und Enter drücken",
+				"description": "Für diesen Knoten angekündigte ACL-Tags, z. B. tag:smart-panel."
+			},
+			"ssh": {
+				"title": "Tailscale SSH",
+				"description": "Tailscale SSH auf diesem Knoten aktivieren."
+			},
+			"serveHttps": {
+				"title": "HTTPS im Tailnet bereitstellen",
+				"description": "Die Admin-Oberfläche über HTTPS mittels Tailscale Serve bereitstellen."
+			},
+			"funnel": {
+				"title": "Funnel",
+				"description": "Die bereitgestellte Admin-Oberfläche über Tailscale Funnel im öffentlichen Internet veröffentlichen."
+			}
+		}
+	},
+	"messages": {
+		"requestError": "Beim Laden des Tailscale-Status ist ein Fehler aufgetreten",
+		"setupFailed": "Der Tailscale-Einrichtungsjob konnte nicht gestartet werden",
+		"loginFailed": "Anmeldung bei Tailscale fehlgeschlagen",
+		"signedOut": "Von Tailscale abgemeldet",
+		"signOutFailed": "Abmeldung von Tailscale fehlgeschlagen",
+		"preferencesReset": "Die Tailscale-Einstellungen wurden zurückgesetzt",
+		"preferencesResetFailed": "Zurücksetzen der Tailscale-Einstellungen fehlgeschlagen",
+		"urlCopied": "URL wurde in die Zwischenablage kopiert",
+		"copyFailed": "Kopieren der URL in die Zwischenablage fehlgeschlagen",
+		"config": {
+			"edited": "Die Tailscale-Konfiguration wurde erfolgreich aktualisiert",
+			"notEdited": "Aktualisierung der Tailscale-Konfiguration fehlgeschlagen"
+		}
+	},
+	"wizard": {
+		"title": "Tailscale einrichten",
+		"steps": {
+			"setup": "Einrichten",
+			"signin": "Anmelden",
+			"options": "Optionen",
+			"done": "Fertig"
+		},
+		"setupDescription": "Installiert das Tailscale-Paket, falls es fehlt, aktiviert den Daemon und gewährt Smart Panel Operator-Rechte.",
+		"settingUp": "Tailscale wird eingerichtet ...",
+		"setupFailed": "Der Einrichtungsjob wurde nicht abgeschlossen. Sie können es erneut versuchen.",
+		"signInDescription": "Öffnen Sie den Anmeldelink auf einem beliebigen Gerät und bestätigen Sie ihn, oder scannen Sie den QR-Code.",
+		"advancedDescription": "Für unbeaufsichtigte Installationen: Fügen Sie einen vorautorisierten Anmeldeschlüssel ein, um sich ohne interaktive Bestätigung anzumelden.",
+		"waitingForApproval": "Warten auf Bestätigung der Anmeldung ...",
+		"qrAlt": "QR-Code mit dem Tailscale-Anmeldelink",
+		"doneDescription": "Tailscale ist verbunden. Diese Installation ist über die unten stehenden Adressen erreichbar.",
+		"tabs": {
+			"interactive": "Anmelden",
+			"advanced": "Erweitert"
+		},
+		"fields": {
+			"authKey": {
+				"title": "Anmeldeschlüssel",
+				"placeholder": "tskey-auth-..."
+			}
+		},
+		"buttons": {
+			"startSetup": "Einrichtung starten",
+			"getSignInLink": "Anmeldelink anfordern",
+			"signIn": "Anmelden",
+			"saveAndContinue": "Speichern und fortfahren",
+			"skip": "Überspringen",
+			"close": "Schließen",
+			"copy": "Kopieren"
+		}
+	}
+}

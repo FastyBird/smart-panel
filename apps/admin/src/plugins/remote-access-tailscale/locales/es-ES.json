@@ -1,0 +1,118 @@
+{
+	"headings": {
+		"tailscale": "Tailscale",
+		"serve": "Serve y Funnel"
+	},
+	"texts": {
+		"funnelWarning": "Funnel publica esta instalación en internet. El inicio de sesión de Smart Panel es la única protección."
+	},
+	"buttons": {
+		"setup": "Configurar",
+		"signIn": "Iniciar sesión",
+		"connect": "Conectar",
+		"disconnect": "Desconectar",
+		"reconnect": "Reconectar",
+		"signOut": "Cerrar sesión",
+		"resetPreferences": "Restablecer preferencias"
+	},
+	"fields": {
+		"tailnet": "Tailnet",
+		"dnsName": "Nombre MagicDNS",
+		"ipv4": "Dirección IPv4",
+		"ipv6": "Dirección IPv6",
+		"config": {
+			"hostname": {
+				"title": "Nombre de host",
+				"placeholder": "p. ej. smart-panel",
+				"description": "Nombre de host anunciado a la tailnet.",
+				"validation": {
+					"required": "El nombre de host es obligatorio"
+				}
+			},
+			"loginServer": {
+				"title": "Servidor de inicio de sesión",
+				"placeholder": "https://controlplane.tailscale.com",
+				"description": "URL del plano de control. Sobrescríbala para un servidor Headscale autoalojado.",
+				"validation": {
+					"required": "El servidor de inicio de sesión es obligatorio"
+				}
+			},
+			"acceptDns": {
+				"title": "Aceptar DNS",
+				"description": "Aceptar la configuración de MagicDNS de la tailnet."
+			},
+			"acceptRoutes": {
+				"title": "Aceptar rutas",
+				"description": "Aceptar rutas de subred anunciadas por otros nodos de la tailnet."
+			},
+			"advertiseTags": {
+				"title": "Etiquetas anunciadas",
+				"placeholder": "Añada una etiqueta ACL y pulse Intro",
+				"description": "Etiquetas ACL anunciadas para este nodo, p. ej. tag:smart-panel."
+			},
+			"ssh": {
+				"title": "Tailscale SSH",
+				"description": "Habilitar Tailscale SSH en este nodo."
+			},
+			"serveHttps": {
+				"title": "Servir HTTPS en la tailnet",
+				"description": "Servir la interfaz de administración por HTTPS mediante Tailscale Serve."
+			},
+			"funnel": {
+				"title": "Funnel",
+				"description": "Publicar la interfaz de administración servida en internet mediante Tailscale Funnel."
+			}
+		}
+	},
+	"messages": {
+		"requestError": "Se produjo un error al cargar el estado de Tailscale",
+		"setupFailed": "No se pudo iniciar el trabajo de configuración de Tailscale",
+		"loginFailed": "No se pudo iniciar sesión en Tailscale",
+		"signedOut": "Sesión de Tailscale cerrada",
+		"signOutFailed": "No se pudo cerrar la sesión de Tailscale",
+		"preferencesReset": "Las preferencias de Tailscale se han restablecido",
+		"preferencesResetFailed": "No se pudieron restablecer las preferencias de Tailscale",
+		"urlCopied": "La URL se ha copiado al portapapeles",
+		"copyFailed": "No se pudo copiar la URL al portapapeles",
+		"config": {
+			"edited": "La configuración de Tailscale se ha actualizado correctamente",
+			"notEdited": "No se pudo actualizar la configuración de Tailscale"
+		}
+	},
+	"wizard": {
+		"title": "Configurar Tailscale",
+		"steps": {
+			"setup": "Configurar",
+			"signin": "Iniciar sesión",
+			"options": "Opciones",
+			"done": "Hecho"
+		},
+		"setupDescription": "Instala el paquete de Tailscale si falta, habilita el demonio y concede a Smart Panel derechos de operador.",
+		"settingUp": "Configurando Tailscale...",
+		"setupFailed": "El trabajo de configuración no se completó. Puede intentarlo de nuevo.",
+		"signInDescription": "Abra el enlace de inicio de sesión en cualquier dispositivo y apruébelo, o escanee el código QR.",
+		"advancedDescription": "Para instalaciones sin supervisión: pegue una clave de autenticación preautorizada para iniciar sesión sin aprobación interactiva.",
+		"waitingForApproval": "Esperando la aprobación del inicio de sesión...",
+		"qrAlt": "Código QR con el enlace de inicio de sesión de Tailscale",
+		"doneDescription": "Tailscale está conectado. Esta instalación es accesible en las direcciones siguientes.",
+		"tabs": {
+			"interactive": "Iniciar sesión",
+			"advanced": "Avanzado"
+		},
+		"fields": {
+			"authKey": {
+				"title": "Clave de autenticación",
+				"placeholder": "tskey-auth-..."
+			}
+		},
+		"buttons": {
+			"startSetup": "Iniciar configuración",
+			"getSignInLink": "Obtener enlace de inicio de sesión",
+			"signIn": "Iniciar sesión",
+			"saveAndContinue": "Guardar y continuar",
+			"skip": "Omitir",
+			"close": "Cerrar",
+			"copy": "Copiar"
+		}
+	}
+}

@@ -1,0 +1,118 @@
+{
+	"headings": {
+		"tailscale": "Tailscale",
+		"serve": "Serve & Funnel"
+	},
+	"texts": {
+		"funnelWarning": "Funnel publishes this installation to the public internet. Smart Panel sign-in is the only gate protecting it."
+	},
+	"buttons": {
+		"setup": "Set up",
+		"signIn": "Sign in",
+		"connect": "Connect",
+		"disconnect": "Disconnect",
+		"reconnect": "Reconnect",
+		"signOut": "Sign out",
+		"resetPreferences": "Reset preferences"
+	},
+	"fields": {
+		"tailnet": "Tailnet",
+		"dnsName": "MagicDNS name",
+		"ipv4": "IPv4 address",
+		"ipv6": "IPv6 address",
+		"config": {
+			"hostname": {
+				"title": "Hostname",
+				"placeholder": "e.g. smart-panel",
+				"description": "Hostname advertised to the tailnet.",
+				"validation": {
+					"required": "Hostname is required"
+				}
+			},
+			"loginServer": {
+				"title": "Login server",
+				"placeholder": "https://controlplane.tailscale.com",
+				"description": "Control-plane URL. Override for a self-hosted Headscale server.",
+				"validation": {
+					"required": "Login server is required"
+				}
+			},
+			"acceptDns": {
+				"title": "Accept DNS",
+				"description": "Accept the tailnet MagicDNS configuration."
+			},
+			"acceptRoutes": {
+				"title": "Accept routes",
+				"description": "Accept subnet routes advertised by other tailnet nodes."
+			},
+			"advertiseTags": {
+				"title": "Advertise tags",
+				"placeholder": "Add an ACL tag and press enter",
+				"description": "ACL tags to advertise for this node, e.g. tag:smart-panel."
+			},
+			"ssh": {
+				"title": "Tailscale SSH",
+				"description": "Enable Tailscale SSH on this node."
+			},
+			"serveHttps": {
+				"title": "Serve HTTPS on the tailnet",
+				"description": "Serve the admin UI over HTTPS through Tailscale Serve."
+			},
+			"funnel": {
+				"title": "Funnel",
+				"description": "Publish the served admin UI to the public internet through Tailscale Funnel."
+			}
+		}
+	},
+	"messages": {
+		"requestError": "An error occurred while loading the Tailscale status",
+		"setupFailed": "Failed to start the Tailscale setup job",
+		"loginFailed": "Failed to sign in to Tailscale",
+		"signedOut": "Signed out of Tailscale",
+		"signOutFailed": "Failed to sign out of Tailscale",
+		"preferencesReset": "Tailscale preferences have been reset",
+		"preferencesResetFailed": "Failed to reset Tailscale preferences",
+		"urlCopied": "URL has been copied to the clipboard",
+		"copyFailed": "Failed to copy the URL to the clipboard",
+		"config": {
+			"edited": "Tailscale configuration has been successfully updated",
+			"notEdited": "Failed to update Tailscale configuration"
+		}
+	},
+	"wizard": {
+		"title": "Set up Tailscale",
+		"steps": {
+			"setup": "Set up",
+			"signin": "Sign in",
+			"options": "Options",
+			"done": "Done"
+		},
+		"setupDescription": "Installs the Tailscale package if missing, enables the daemon, and grants Smart Panel operator rights.",
+		"settingUp": "Setting up Tailscale...",
+		"setupFailed": "The setup job did not complete. You can try again.",
+		"signInDescription": "Open the sign-in link on any device and approve it, or scan the QR code.",
+		"advancedDescription": "For headless installs: paste a pre-authorised auth key to sign in without an interactive approval.",
+		"waitingForApproval": "Waiting for sign-in approval...",
+		"qrAlt": "QR code encoding the Tailscale sign-in link",
+		"doneDescription": "Tailscale is connected. This installation is reachable at the URLs below.",
+		"tabs": {
+			"interactive": "Sign in",
+			"advanced": "Advanced"
+		},
+		"fields": {
+			"authKey": {
+				"title": "Auth key",
+				"placeholder": "tskey-auth-..."
+			}
+		},
+		"buttons": {
+			"startSetup": "Start setup",
+			"getSignInLink": "Get sign-in link",
+			"signIn": "Sign in",
+			"saveAndContinue": "Save and continue",
+			"skip": "Skip",
+			"close": "Close",
+			"copy": "Copy"
+		}
+	}
+}
