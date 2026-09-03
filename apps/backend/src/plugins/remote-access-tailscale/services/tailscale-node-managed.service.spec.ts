@@ -367,6 +367,51 @@ describe('TailscaleNodeManagedService', () => {
 
 			expect(cli.getStatus.mock.calls.length).toBe(callsAtStop);
 		});
+
+		it('does not revive the poller or emit if a poll tick is still in flight when stop() finishes', async () => {
+			// pollTick() runs outside withLock (it is a bare setTimeout
+			// callback), so stop() can complete while a tick's own
+			// computeStatus() call is still pending. That tick must not
+			// reschedule itself or emit once it finally resolves.
+			let resolvePendingStatus: ((status: TailscaleStatus) => void) | null = null;
+			let callCount = 0;
+
+			cli.getStatus.mockImplementation(() => {
+				callCount += 1;
+
+				// The first two calls are start()'s own synchronous checks
+				// (the operator-granted probe, then the "does it hold a key"
+				// check) — resolve those immediately so start() completes and
+				// schedules the poller.
+				if (callCount <= 2) {
+					return Promise.resolve(STOPPED_STATUS);
+				}
+
+				// The third call is the poller's own first tick — hold it open.
+				return new Promise<TailscaleStatus>((resolve) => {
+					resolvePendingStatus = resolve;
+				});
+			});
+
+			await service.start();
+
+			// Fire the poller's initial (delay 0) timer so it enters
+			// pollTick() and calls computeStatus(), now hung on the promise above.
+			await jest.advanceTimersByTimeAsync(0);
+			expect(resolvePendingStatus).not.toBeNull();
+
+			// stop() runs to completion while that tick is still in flight.
+			await service.stop();
+			expect(service.getState()).toBe('stopped');
+
+			// Resolve the in-flight tick with a status that differs from the
+			// (still-null) lastStatus — this would normally emit and reschedule.
+			resolvePendingStatus(RUNNING_CONNECTED_STATUS);
+			await jest.advanceTimersByTimeAsync(0);
+
+			expect(eventEmitterMock.emit).not.toHaveBeenCalled();
+			expect(jest.getTimerCount()).toBe(0);
+		});
 	});
 
 	describe('onConfigChanged', () => {
@@ -401,6 +446,38 @@ describe('TailscaleNodeManagedService', () => {
 
 			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: false });
 			expect(cli.set).not.toHaveBeenCalled();
+		});
+
+		it('still detects a login_server change after start() when a requirement (daemon-active) was missing at start time', async () => {
+			// The config must be cached eagerly in start() — even though
+			// requirements fail here and set/up are never reached — otherwise
+			// onConfigChanged() would have no "previous" value to diff against
+			// once the daemon comes back and the config changes.
+			mockSystemctlActive(false);
+			cli.getStatus.mockRejectedValue(new TailscaleCliError('daemon-down', 'daemon down'));
+
+			await service.start();
+
+			expect(cli.set).not.toHaveBeenCalled();
+			expect(cli.up).not.toHaveBeenCalled();
+
+			// The daemon comes back and login_server changes.
+			mockSystemctlActive(true);
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+
+			const changed = defaultConfig();
+			changed.loginServer = 'https://headscale.example.com';
+			configServiceMock.getPluginConfig.mockReturnValue(changed);
+
+			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: true });
+		});
+
+		it('treats an unknown previous config as restart-required, defensively', async () => {
+			// onConfigChanged() called without start() ever having run — the
+			// config was never cached, so there is no known "previous" value
+			// to diff against. Fail safe: request a restart rather than
+			// silently assume nothing changed.
+			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: true });
 		});
 	});
 

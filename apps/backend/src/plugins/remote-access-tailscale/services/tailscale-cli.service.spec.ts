@@ -239,10 +239,40 @@ describe('TailscaleCliService', () => {
 	});
 
 	describe('redactTailscaleArgs', () => {
-		it('redacts an --auth-key= value but leaves other arguments untouched', () => {
-			const redacted = redactTailscaleArgs(['up', '--hostname=panel', '--auth-key=file:/tmp/secret-key', '--ssh=true']);
+		it('redacts an --auth-key=value form but leaves other arguments untouched', () => {
+			const redacted = redactTailscaleArgs(['up', '--hostname=panel', '--auth-key=tskey-abc123', '--ssh=true']);
 
 			expect(redacted).toEqual(['up', '--hostname=panel', '--auth-key=***redacted***', '--ssh=true']);
+		});
+
+		it('redacts an --authkey=value form the same way', () => {
+			const redacted = redactTailscaleArgs(['up', '--authkey=tskey-abc123']);
+
+			expect(redacted).toEqual(['up', '--authkey=***redacted***']);
+		});
+
+		it('redacts the value in the separate `--auth-key value` flag form', () => {
+			const redacted = redactTailscaleArgs(['up', '--auth-key', 'tskey-abc123', '--ssh=true']);
+
+			expect(redacted).toEqual(['up', '--auth-key', '***redacted***', '--ssh=true']);
+		});
+
+		it('redacts the value in the separate `--authkey value` flag form', () => {
+			const redacted = redactTailscaleArgs(['up', '--authkey', 'tskey-abc123']);
+
+			expect(redacted).toEqual(['up', '--authkey', '***redacted***']);
+		});
+
+		it('leaves an --auth-key=file:... path visible — it is a path, not the key itself', () => {
+			const redacted = redactTailscaleArgs(['up', '--auth-key=file:/tmp/secret-key']);
+
+			expect(redacted).toEqual(['up', '--auth-key=file:/tmp/secret-key']);
+		});
+
+		it('does not crash when --auth-key is the last argument with no following value', () => {
+			const redacted = redactTailscaleArgs(['up', '--auth-key']);
+
+			expect(redacted).toEqual(['up', '--auth-key']);
 		});
 
 		it('does not mutate the original array', () => {
@@ -254,16 +284,31 @@ describe('TailscaleCliService', () => {
 		});
 	});
 
-	it('never redacts the arguments actually sent to execFile — only the logged copy', async () => {
-		mockExecFileOnce(() => ({ exitCode: 0 }));
+	describe('real arguments sent to execFile are never redacted — only the logged copy', () => {
+		it('the equals form', async () => {
+			mockExecFileOnce(() => ({ exitCode: 0 }));
 
-		await service.up(['--auth-key=file:/tmp/secret-key']);
+			await service.up(['--auth-key=tskey-abc123']);
 
-		expect(execFile).toHaveBeenCalledWith(
-			'tailscale',
-			['up', '--auth-key=file:/tmp/secret-key'],
-			expect.any(Object),
-			expect.any(Function),
-		);
+			expect(execFile).toHaveBeenCalledWith(
+				'tailscale',
+				['up', '--auth-key=tskey-abc123'],
+				expect.any(Object),
+				expect.any(Function),
+			);
+		});
+
+		it('the separate flag + value form', async () => {
+			mockExecFileOnce(() => ({ exitCode: 0 }));
+
+			await service.up(['--auth-key', 'tskey-abc123']);
+
+			expect(execFile).toHaveBeenCalledWith(
+				'tailscale',
+				['up', '--auth-key', 'tskey-abc123'],
+				expect.any(Object),
+				expect.any(Function),
+			);
+		});
 	});
 });

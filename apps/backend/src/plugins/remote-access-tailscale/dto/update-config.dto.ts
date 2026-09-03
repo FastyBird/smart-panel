@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { ArrayUnique, IsArray, IsBoolean, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import { ArrayUnique, Equals, IsArray, IsBoolean, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -94,22 +94,32 @@ export class UpdateRemoteAccessTailscalePluginConfigDto extends UpdatePluginConf
 
 	@ApiPropertyOptional({
 		name: 'serve_https',
-		description: 'Serve the admin UI over HTTPS through Tailscale Serve. Applied by RA-6',
+		description:
+			'Serve the admin UI over HTTPS through Tailscale Serve. Not yet applied by the managed service — only the default (true) is accepted until a later release actually configures Serve',
 		type: 'boolean',
 		example: true,
 	})
 	@Expose({ name: 'serve_https' })
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"serve_https","reason":"Serve HTTPS must be a boolean value."}]' })
+	@Equals(true, {
+		message:
+			'[{"field":"serve_https","reason":"Serve HTTPS is not yet configurable; it is applied in a later release and must stay true."}]',
+	})
 	serve_https?: boolean;
 
 	@ApiPropertyOptional({
-		description: 'Publish the served admin UI to the public internet through Tailscale Funnel. Applied by RA-6',
+		description:
+			'Publish the served admin UI to the public internet through Tailscale Funnel. Not yet applied by the managed service — only the default (false) is accepted until a later release actually configures Funnel',
 		type: 'boolean',
 		example: false,
 	})
 	@Expose()
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"funnel","reason":"Funnel must be a boolean value."}]' })
+	@Equals(false, {
+		message:
+			'[{"field":"funnel","reason":"Funnel is not yet configurable; it is applied in a later release and must stay false."}]',
+	})
 	funnel?: boolean;
 }

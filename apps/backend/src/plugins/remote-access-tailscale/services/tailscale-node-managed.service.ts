@@ -112,6 +112,12 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 			this.state = 'starting';
 			this.pluginConfig = null;
+			// Cache the config unconditionally, even when a prerequisite is
+			// missing or the node holds no key and neither set nor up ever
+			// runs below — onConfigChanged()'s login_server diff needs a known
+			// "previous" value, otherwise a later login_server change (once the
+			// prerequisite clears) would go undetected.
+			const config = this.getPluginConfig();
 
 			this.logger.log('Starting Tailscale node service');
 
@@ -122,8 +128,6 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 					const status = await this.getStatusOrNull();
 
 					if (status && this.mapper.hasExistingKey(status)) {
-						const config = this.getPluginConfig();
-
 						await this.cli.set(this.buildPreferenceFlags(config));
 						await this.cli.up(this.buildUpFlags(config));
 					}
@@ -176,8 +180,12 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		this.pluginConfig = null;
 		const next = this.getPluginConfig();
 
-		if (previous && previous.loginServer !== next.loginServer) {
-			this.logger.log('Tailscale login_server changed, restart required');
+		// `start()` always caches the config, so `previous` should never be
+		// null here — but if it somehow is (config cleared or never cached),
+		// treat the prior login_server as unknown and restart defensively
+		// rather than risk silently missing a real change.
+		if (!previous || previous.loginServer !== next.loginServer) {
+			this.logger.log('Tailscale login_server changed (or its prior value was unknown), restart required');
 
 			return { restartRequired: true };
 		}
@@ -433,8 +441,25 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 	// ─── Poller ───────────────────────────────────────────────────────
 
+	/**
+	 * True while the service is starting up or fully started — the only
+	 * states in which the poller is allowed to hold a timer or emit.
+	 * `pollTick()` runs outside `withLock` (it is a `setTimeout` callback,
+	 * not part of `start()`/`stop()`'s own critical section) so a tick whose
+	 * `computeStatus()` was already in flight when `stop()` ran must not
+	 * revive the poller or emit once it resolves; checking this before both
+	 * the emit and the reschedule closes that race.
+	 */
+	private isPollable(): boolean {
+		return this.state === 'starting' || this.state === 'started';
+	}
+
 	private schedulePoll(delayMs: number): void {
 		this.clearPoll();
+
+		if (!this.isPollable()) {
+			return;
+		}
 
 		this.pollTimer = setTimeout(() => {
 			void this.pollTick();
@@ -454,6 +479,11 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		try {
 			const status = await this.computeStatus();
 
+			if (!this.isPollable()) {
+				// stop() ran while this tick's computeStatus() was in flight.
+				return;
+			}
+
 			if (this.hasStatusChanged(this.lastStatus, status)) {
 				this.lastStatus = status;
 				this.eventEmitter.emit(RemoteAccessEventType.PROVIDER_STATUS, status);
@@ -463,6 +493,10 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 				status.state === 'connecting' ? TAILSCALE_POLL_INTERVAL_TRANSITIONING_MS : TAILSCALE_POLL_INTERVAL_STABLE_MS,
 			);
 		} catch (error) {
+			if (!this.isPollable()) {
+				return;
+			}
+
 			this.logger.error('Tailscale status poll failed', {
 				message: error instanceof Error ? error.message : String(error),
 			});

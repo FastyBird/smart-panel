@@ -95,13 +95,49 @@ interface ExecTailscaleResult {
 	exitCode: number;
 }
 
+/** Flag names carrying an auth key, in either `--flag=value` or `--flag value` form. */
+const AUTH_KEY_FLAG_NAMES: ReadonlySet<string> = new Set(['--auth-key', '--authkey']);
+
 /**
- * Redacts an `--auth-key=...` argument value for logging. The real argument
- * array passed to `execFile` is never touched — only the copy handed to the
- * logger goes through this.
+ * Redacts an auth-key argument for logging, in both forms `tailscale up`
+ * accepts: `--auth-key=value` (or `--authkey=value`) and the flag and value
+ * as two separate arguments (`--auth-key value`). A `file:...` value (RA-5's
+ * ephemeral-file form) is left visible — it is a path, not the key itself.
+ * The real argument array passed to `execFile` is never touched — only the
+ * copy handed to the logger goes through this.
  */
 export function redactTailscaleArgs(args: readonly string[]): string[] {
-	return args.map((arg) => (arg.startsWith('--auth-key=') ? '--auth-key=***redacted***' : arg));
+	const redacted: string[] = [];
+
+	for (let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		const equalsIndex = arg.indexOf('=');
+		const flagName = equalsIndex === -1 ? arg : arg.slice(0, equalsIndex);
+
+		if (!AUTH_KEY_FLAG_NAMES.has(flagName)) {
+			redacted.push(arg);
+
+			continue;
+		}
+
+		if (equalsIndex === -1) {
+			// Separate flag + value pair — the *next* argument is the key.
+			redacted.push(arg);
+
+			if (i + 1 < args.length) {
+				redacted.push('***redacted***');
+				i++;
+			}
+
+			continue;
+		}
+
+		const value = arg.slice(equalsIndex + 1);
+
+		redacted.push(value.startsWith('file:') ? arg : `${flagName}=***redacted***`);
+	}
+
+	return redacted;
 }
 
 const SETTINGS_CONFLICT_PATTERN = /must specify all|--reset/i;
@@ -114,9 +150,10 @@ const NEEDS_LOGIN_PATTERN = /not logged in|needs to log in|logged out/i;
  * Thin wrapper around the `tailscale` binary. Every call goes through
  * `execFile` with an argument array (never a shell string), a bounded
  * timeout, and classifies failures instead of leaking raw stderr text to
- * callers. Argument logging always redacts `--auth-key=` values, even though
- * this plugin never passes one itself yet — the login flow (RA-5) will reuse
- * this wrapper and its keys must never reach a log line.
+ * callers. Argument logging always redacts `--auth-key`/`--authkey` values
+ * (see `redactTailscaleArgs`), even though this plugin never passes one
+ * itself yet — the login flow (RA-5) will reuse this wrapper and its keys
+ * must never reach a log line.
  */
 @Injectable()
 export class TailscaleCliService {
