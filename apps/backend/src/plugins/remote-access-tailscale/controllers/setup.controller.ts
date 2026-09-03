@@ -9,6 +9,7 @@ import {
 	InternalServerErrorException,
 	Post,
 	Res,
+	UnprocessableEntityException,
 } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
@@ -71,7 +72,7 @@ export class SetupController {
 			'Starts the privileged setup job: installs the tailscale package if missing, enables tailscaled, and grants the service user as operator. Progress is streamed as RemoteAccessModule.Setup.Progress events.',
 		operationId: 'create-remote-access-tailscale-plugin-install',
 	})
-	@ApiAcceptedSuccessResponse(RemoteAccessTailscalePluginInstallModel, 'Tailscale setup job started')
+	@ApiAcceptedSuccessResponse(RemoteAccessTailscalePluginInstallResponseModel, 'Tailscale setup job started')
 	@Roles(UserRole.OWNER)
 	@Post('install')
 	@HttpCode(HttpStatus.ACCEPTED)
@@ -89,11 +90,16 @@ export class SetupController {
 
 			return response;
 		} catch (error) {
-			if (
-				error instanceof TailscaleSetupUnavailableException ||
-				error instanceof PrivilegedWorkerUnavailableException
-			) {
+			// A busy unit is transient (retry once the running job finishes) —
+			// 409 Conflict. An unsupported platform or the dev override is
+			// permanent until the deployment itself changes — 422 Unprocessable
+			// Entity. Each carries its own distinct message from the service.
+			if (error instanceof PrivilegedWorkerUnavailableException) {
 				throw new ConflictException(error.message);
+			}
+
+			if (error instanceof TailscaleSetupUnavailableException) {
+				throw new UnprocessableEntityException(error.message);
 			}
 
 			const err = error as Error;
@@ -112,7 +118,7 @@ export class SetupController {
 		operationId: 'create-remote-access-tailscale-plugin-login',
 	})
 	@ApiBody({ type: RemoteAccessTailscalePluginLoginDto, description: 'Optional pre-authorised auth key' })
-	@ApiSuccessResponse(RemoteAccessTailscalePluginLoginModel, 'Tailscale sign-in result')
+	@ApiSuccessResponse(RemoteAccessTailscalePluginLoginResponseModel, 'Tailscale sign-in result')
 	@Roles(UserRole.ADMIN, UserRole.OWNER)
 	@HttpCode(HttpStatus.OK)
 	@Post('login')
@@ -154,7 +160,7 @@ export class SetupController {
 		description: 'Expires the node key and cancels any pending interactive sign-in.',
 		operationId: 'create-remote-access-tailscale-plugin-logout',
 	})
-	@ApiSuccessResponse(RemoteAccessTailscalePluginStatusModel, 'Tailscale node status after sign-out')
+	@ApiSuccessResponse(RemoteAccessTailscalePluginStatusResponseModel, 'Tailscale node status after sign-out')
 	@Roles(UserRole.OWNER)
 	@HttpCode(HttpStatus.OK)
 	@Post('logout')
@@ -181,7 +187,7 @@ export class SetupController {
 			'Runs `tailscale up --reset` with the full managed flag set, clearing any preference the administrator changed outside Smart Panel.',
 		operationId: 'create-remote-access-tailscale-plugin-reset-preferences',
 	})
-	@ApiSuccessResponse(RemoteAccessTailscalePluginStatusModel, 'Tailscale node status after resetting preferences')
+	@ApiSuccessResponse(RemoteAccessTailscalePluginStatusResponseModel, 'Tailscale node status after resetting preferences')
 	@Roles(UserRole.OWNER)
 	@HttpCode(HttpStatus.OK)
 	@Post('reset-preferences')

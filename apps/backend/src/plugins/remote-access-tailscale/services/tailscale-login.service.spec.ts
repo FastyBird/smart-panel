@@ -4,6 +4,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { EventEmitter } from 'events';
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'fs';
+import * as fsPromises from 'node:fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
@@ -11,9 +12,21 @@ import { Logger } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { TailscaleCliService } from './tailscale-cli.service';
+import { TailscaleCliError, TailscaleCliService } from './tailscale-cli.service';
 import { TailscaleLoginService, extractJsonObjects } from './tailscale-login.service';
 import { TailscaleNodeManagedService } from './tailscale-node-managed.service';
+
+// Node's native ES module exports are non-configurable, so a plain
+// jest.spyOn(fsPromises, 'writeFile') cannot redefine it directly (throws
+// "Cannot redefine property"). Wrapping it as a jest.fn() around the real
+// implementation, up front, keeps every other test's real file I/O working
+// while still letting one test below override its behaviour with
+// mockImplementationOnce.
+jest.mock('node:fs/promises', () => {
+	const actual = jest.requireActual<typeof import('node:fs/promises')>('node:fs/promises');
+
+	return { ...actual, writeFile: jest.fn(actual.writeFile) };
+});
 
 const SECRET_AUTH_KEY = 'tskey-auth-kABCDE1234-verysecretsuffixvalue123456';
 
@@ -218,6 +231,23 @@ describe('TailscaleLoginService', () => {
 			expect(allLogCalls.some((arg) => typeof arg === 'string' && arg.includes(SECRET_AUTH_KEY))).toBe(false);
 		});
 
+		it('deletes the key file if writeFile itself throws after creating it (a partial write)', async () => {
+			const realWriteFile = jest.requireActual<typeof import('node:fs/promises')>('node:fs/promises').writeFile;
+			const writeFileMock = fsPromises.writeFile as jest.Mock<Promise<void>, [string, string, unknown]>;
+
+			writeFileMock.mockImplementationOnce(async (path, data, options) => {
+				await realWriteFile(path, data, options);
+				throw new Error('simulated partial write failure');
+			});
+
+			await expect(service.login(SECRET_AUTH_KEY)).rejects.toThrow('simulated partial write failure');
+
+			const writtenPath = writeFileMock.mock.calls[0][0];
+
+			expect(existsSync(writtenPath)).toBe(false);
+			expect(cli.spawnUp).not.toHaveBeenCalled();
+		});
+
 		it('deletes the key file and still returns the resulting status when up exits non-zero', async () => {
 			const child = new FakeChildProcess();
 			cli.spawnUp.mockReturnValue(child);
@@ -275,6 +305,44 @@ describe('TailscaleLoginService', () => {
 			expect(child.kill).toHaveBeenCalledWith('SIGTERM');
 			expect(existsSync(keyFilePath)).toBe(false);
 		}, 10_000);
+
+		it('cancels a pending interactive login before spawning, so at most one `tailscale up` runs at a time', async () => {
+			const interactiveChild = new FakeChildProcess();
+
+			cli.spawnUp.mockReturnValueOnce(interactiveChild);
+
+			const interactivePromise = service.login();
+
+			await flushMicrotasks();
+			interactiveChild.stdout.emit(
+				'data',
+				Buffer.from(
+					'{"AuthURL":"https://login.tailscale.com/a/abc","QR":"data:image/png;base64,QQQ","BackendState":"NeedsLogin"}',
+				),
+			);
+			await interactivePromise;
+
+			expect(service.getPendingInteractiveAuth()).not.toBeNull();
+
+			const keyedChild = new FakeChildProcess();
+
+			cli.spawnUp.mockReturnValueOnce(keyedChild);
+
+			const keyedPromise = service.login(SECRET_AUTH_KEY);
+
+			// The interactive child must be killed synchronously, before the
+			// keyed spawn even starts writing the key file — not merely by the
+			// time the whole call settles.
+			expect(interactiveChild.kill).toHaveBeenCalledWith('SIGTERM');
+			expect(service.getPendingInteractiveAuth()).toBeNull();
+
+			await waitUntil(() => cli.spawnUp.mock.calls.length > 1);
+			expect(cli.spawnUp).toHaveBeenCalledTimes(2);
+
+			keyedChild.emit('close', 0);
+
+			await keyedPromise;
+		});
 	});
 
 	describe('interactive login (no key)', () => {
@@ -467,14 +535,53 @@ describe('TailscaleLoginService', () => {
 			expect(result).toEqual({ state: 'setup-required' });
 		});
 
-		it('still returns the resulting status when tailscale logout itself fails', async () => {
-			cli.logout.mockRejectedValue(new Error('not logged in'));
+		it('tolerates the needs-login kind (nothing to sign out of) and still returns the resulting status', async () => {
+			cli.logout.mockRejectedValue(new TailscaleCliError('needs-login', 'not logged in'));
 			nodeManagedService.computeStatus.mockResolvedValue({ state: 'not-installed' });
 
 			const result = await service.logout();
 
 			expect(result).toEqual({ state: 'not-installed' });
-			expect(warnSpy).toHaveBeenCalled();
+		});
+
+		it.each<['daemon-down' | 'permission-denied' | 'timeout' | 'unknown', string]>([
+			['daemon-down', 'connection refused'],
+			['permission-denied', 'access denied'],
+			['timeout', 'tailscale logout did not complete within 15000ms'],
+			['unknown', 'boom'],
+		])('propagates a genuine %s failure instead of swallowing it', async (kind, message) => {
+			cli.logout.mockRejectedValue(new TailscaleCliError(kind, message));
+
+			await expect(service.logout()).rejects.toMatchObject({ kind });
+		});
+
+		it('propagates a plain, unrecognised Error too (not just TailscaleCliError kinds)', async () => {
+			cli.logout.mockRejectedValue(new Error('completely unexpected'));
+
+			await expect(service.logout()).rejects.toThrow('completely unexpected');
+		});
+
+		it('still cancels a pending interactive login even when the CLI logout call itself fails', async () => {
+			const child = new FakeChildProcess();
+			cli.spawnUp.mockReturnValue(child);
+
+			const loginPromise = service.login();
+
+			await flushMicrotasks();
+			child.stdout.emit(
+				'data',
+				Buffer.from(
+					'{"AuthURL":"https://login.tailscale.com/a/abc","QR":"data:image/png;base64,QQQ","BackendState":"NeedsLogin"}',
+				),
+			);
+			await loginPromise;
+
+			cli.logout.mockRejectedValue(new TailscaleCliError('daemon-down', 'connection refused'));
+
+			await expect(service.logout()).rejects.toBeInstanceOf(TailscaleCliError);
+
+			expect(child.kill).toHaveBeenCalledWith('SIGTERM');
+			expect(service.getPendingInteractiveAuth()).toBeNull();
 		});
 	});
 
@@ -486,6 +593,18 @@ describe('TailscaleLoginService', () => {
 
 			expect(cli.up).toHaveBeenCalledWith(['--reset', '--hostname=panel', '--operator=smart-panel']);
 			expect(result).toEqual({ state: 'connected' });
+		});
+
+		it('propagates a genuine CLI failure instead of swallowing it', async () => {
+			cli.up.mockRejectedValue(new TailscaleCliError('daemon-down', 'connection refused'));
+
+			await expect(service.resetPreferences()).rejects.toMatchObject({ kind: 'daemon-down' });
+		});
+
+		it('propagates needs-login too — unlike logout(), there is no "nothing to reset" tolerance', async () => {
+			cli.up.mockRejectedValue(new TailscaleCliError('needs-login', 'not logged in'));
+
+			await expect(service.resetPreferences()).rejects.toMatchObject({ kind: 'needs-login' });
 		});
 	});
 });

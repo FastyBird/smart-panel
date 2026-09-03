@@ -16,7 +16,7 @@ import {
 	TAILSCALE_LOGIN_INTERACTIVE_TIMEOUT_MS,
 } from '../remote-access-tailscale.constants';
 
-import { TailscaleCliService } from './tailscale-cli.service';
+import { TailscaleCliError, TailscaleCliService } from './tailscale-cli.service';
 import { TailscaleNodeManagedService } from './tailscale-node-managed.service';
 
 export interface TailscaleLoginResult {
@@ -129,6 +129,14 @@ export class TailscaleLoginService {
 
 	async login(authKey?: string): Promise<TailscaleLoginResult> {
 		if (authKey) {
+			// A keyed sign-in always wins over an interactive one already in
+			// flight: cancel it first so at most one `tailscale up` ever runs
+			// at a time. An interactive call that arrives while another
+			// interactive one is pending takes the other branch below, which
+			// intentionally keeps reusing the same pending attempt instead of
+			// cancelling it.
+			this.stopPendingLogin();
+
 			return this.loginWithAuthKey(authKey);
 		}
 
@@ -141,15 +149,25 @@ export class TailscaleLoginService {
 		try {
 			await this.cli.logout();
 		} catch (error) {
-			this.logger.warn('tailscale logout failed (safe to ignore if the node was never signed in)', {
-				message: error instanceof Error ? error.message : String(error),
-			});
+			// Only "nothing to sign out of" is tolerated — the desired end state
+			// already holds. A genuine failure (daemon-down, permission-denied,
+			// timeout, unknown, ...) propagates so the controller can surface a
+			// clear error instead of silently reporting success.
+			if (error instanceof TailscaleCliError && error.kind === 'needs-login') {
+				this.logger.debug('tailscale logout had nothing to sign out of', { kind: error.kind });
+			} else {
+				throw error;
+			}
 		}
 
 		return this.currentStatus();
 	}
 
 	async resetPreferences(): Promise<TailscaleLoginResult> {
+		// Unlike logout(), there is no TailscaleCliError.kind worth tolerating
+		// here — "nothing to reset" is not a meaningful state, so every
+		// failure (needs-login included) propagates, consistent with how
+		// logout() treats every kind other than needs-login.
 		await this.cli.up(['--reset', ...this.buildManagedFlags()]);
 
 		return this.currentStatus();
@@ -343,9 +361,20 @@ export class TailscaleLoginService {
 
 		const filePath = join(dir, `auth-key-${randomUUID()}.key`);
 
-		// Mode set on creation, not chmod'd after — the key is never briefly
-		// world/group-readable on disk.
-		await writeFile(filePath, authKey, { mode: 0o600 });
+		try {
+			// Mode set on creation, not chmod'd after — the key is never briefly
+			// world/group-readable on disk.
+			await writeFile(filePath, authKey, { mode: 0o600 });
+		} catch (error) {
+			// writeFile can throw after the file already exists on disk (e.g. a
+			// write error partway through) — the caller's own finally only
+			// covers exit paths after this method has already returned a path,
+			// so a partial write is cleaned up right here instead of leaking a
+			// key-bearing file with no owner.
+			await rm(filePath, { force: true }).catch(() => undefined);
+
+			throw error;
+		}
 
 		return filePath;
 	}

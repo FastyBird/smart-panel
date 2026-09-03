@@ -8,7 +8,7 @@ unbound method access even though it is never invoked unbound.
 */
 import { FastifyReply } from 'fastify';
 
-import { ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { ConflictException, InternalServerErrorException, UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { RemoteAccessProviderStatus } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
@@ -79,30 +79,59 @@ describe('SetupController', () => {
 			expect(response.data.job).toBe('job-1');
 		});
 
-		it('maps a busy-unit refusal to 409 Conflict', async () => {
+		it('maps a busy-unit refusal (transient) to 409 Conflict', async () => {
 			setupService.install.mockRejectedValue(
 				new PrivilegedWorkerUnavailableException('Privileged worker unit "smart-panel-remote-access" is already busy.'),
 			);
 
-			await expect(controller.install()).rejects.toBeInstanceOf(ConflictException);
+			const error = await controller.install().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(ConflictException);
+			expect((error as ConflictException).message).toContain('already busy');
 		});
 
-		it('maps an unsupported-platform refusal to 409 Conflict', async () => {
+		it('maps an unsupported-platform refusal (permanent) to 422 Unprocessable Entity', async () => {
 			setupService.install.mockRejectedValue(
-				new PrivilegedWorkerUnavailableException('Privileged workers are not supported on this platform (docker).'),
+				new TailscaleSetupUnavailableException(
+					"Tailscale setup requires a platform with privileged-worker support; the 'docker' platform does not have it.",
+				),
 			);
 
-			await expect(controller.install()).rejects.toBeInstanceOf(ConflictException);
+			const error = await controller.install().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(UnprocessableEntityException);
+			expect((error as UnprocessableEntityException).message).toContain('privileged-worker support');
 		});
 
-		it('maps the dev-override refusal to 409 Conflict', async () => {
+		it('maps the dev-override refusal (permanent) to 422 Unprocessable Entity', async () => {
 			setupService.install.mockRejectedValue(
 				new TailscaleSetupUnavailableException(
 					'Tailscale setup is unavailable while FB_REMOTE_ACCESS_ALLOW_DEV is set.',
 				),
 			);
 
-			await expect(controller.install()).rejects.toBeInstanceOf(ConflictException);
+			const error = await controller.install().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(UnprocessableEntityException);
+			expect((error as UnprocessableEntityException).message).toContain('FB_REMOTE_ACCESS_ALLOW_DEV');
+		});
+
+		it('gives the two 422 cases distinct messages', async () => {
+			setupService.install.mockRejectedValueOnce(
+				new TailscaleSetupUnavailableException(
+					'Tailscale setup is unavailable while FB_REMOTE_ACCESS_ALLOW_DEV is set.',
+				),
+			);
+			const devOverrideError = (await controller.install().catch((e: unknown) => e)) as UnprocessableEntityException;
+
+			setupService.install.mockRejectedValueOnce(
+				new TailscaleSetupUnavailableException(
+					"Tailscale setup requires a platform with privileged-worker support; the 'docker' platform does not have it.",
+				),
+			);
+			const platformError = (await controller.install().catch((e: unknown) => e)) as UnprocessableEntityException;
+
+			expect(devOverrideError.message).not.toBe(platformError.message);
 		});
 
 		it('maps an unexpected failure to 500', async () => {

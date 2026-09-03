@@ -24,7 +24,10 @@ import { TailscaleCliService } from '../src/plugins/remote-access-tailscale/serv
 import { TailscaleLoginService } from '../src/plugins/remote-access-tailscale/services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../src/plugins/remote-access-tailscale/services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../src/plugins/remote-access-tailscale/services/tailscale-provider.service';
-import { TailscaleSetupService } from '../src/plugins/remote-access-tailscale/services/tailscale-setup.service';
+import {
+	TailscaleSetupService,
+	TailscaleSetupUnavailableException,
+} from '../src/plugins/remote-access-tailscale/services/tailscale-setup.service';
 import { TailscaleStatusMapperService } from '../src/plugins/remote-access-tailscale/services/tailscale-status-mapper.service';
 
 // The CLI wrapper and the managed service's own prerequisite probes both go
@@ -283,12 +286,22 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 			await request(app.getHttpServer()).post('/install').expect(401);
 		});
 
-		it('maps a refusal (already running / unsupported) to 409', async () => {
+		it('maps a busy-unit refusal (transient) to 409', async () => {
 			setupServiceMock.install.mockRejectedValue(
 				new PrivilegedWorkerUnavailableException('Privileged worker unit "smart-panel-remote-access" is already busy.'),
 			);
 
 			await request(app.getHttpServer()).post('/install').set('Authorization', 'Bearer owner-user').expect(409);
+		});
+
+		it('maps an unsupported-platform or dev-override refusal (permanent) to 422', async () => {
+			setupServiceMock.install.mockRejectedValue(
+				new TailscaleSetupUnavailableException(
+					"Tailscale setup requires a platform with privileged-worker support; the 'docker' platform does not have it.",
+				),
+			);
+
+			await request(app.getHttpServer()).post('/install').set('Authorization', 'Bearer owner-user').expect(422);
 		});
 	});
 

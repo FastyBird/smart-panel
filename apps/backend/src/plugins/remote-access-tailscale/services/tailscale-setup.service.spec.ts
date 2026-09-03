@@ -6,6 +6,8 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { PlatformType } from '../../../modules/platform/platform.constants';
+import { PlatformService } from '../../../modules/platform/services/platform.service';
 import { EventType as RemoteAccessEventType } from '../../../modules/remote-access/remote-access.constants';
 import {
 	PrivilegedJobStatus,
@@ -34,6 +36,7 @@ describe('TailscaleSetupService', () => {
 	let nestConfigServiceMock: { get: jest.Mock };
 	let nodeManagedService: { evaluateRequirements: jest.Mock };
 	let eventEmitterMock: { emit: jest.Mock };
+	let platformServiceMock: { supportsPrivilegedWorkers: jest.Mock; getPlatformType: jest.Mock };
 	let dataDir: string;
 	let unsubscribe: jest.Mock;
 	let capturedHandler: StatusHandler | null;
@@ -66,6 +69,10 @@ describe('TailscaleSetupService', () => {
 
 		nodeManagedService = { evaluateRequirements: jest.fn().mockResolvedValue([]) };
 		eventEmitterMock = { emit: jest.fn() };
+		platformServiceMock = {
+			supportsPrivilegedWorkers: jest.fn().mockResolvedValue(true),
+			getPlatformType: jest.fn().mockReturnValue(PlatformType.DOCKER),
+		};
 
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -74,6 +81,7 @@ describe('TailscaleSetupService', () => {
 				{ provide: NestConfigService, useValue: nestConfigServiceMock },
 				{ provide: TailscaleNodeManagedService, useValue: nodeManagedService },
 				{ provide: EventEmitter2, useValue: eventEmitterMock },
+				{ provide: PlatformService, useValue: platformServiceMock },
 			],
 		}).compile();
 
@@ -128,16 +136,34 @@ describe('TailscaleSetupService', () => {
 			expect(privilegedWorker.run).not.toHaveBeenCalled();
 		});
 
-		it('propagates PrivilegedWorkerUnavailableException for an unsupported platform without a local retry', async () => {
-			privilegedWorker.run.mockRejectedValue(
-				new PrivilegedWorkerUnavailableException('Privileged workers are not supported on this platform (docker).'),
-			);
+		it('refuses without spawning (TailscaleSetupUnavailableException, a permanent 422-mapped reason) when the platform has no privileged-worker support', async () => {
+			platformServiceMock.supportsPrivilegedWorkers.mockResolvedValue(false);
 
-			await expect(service.install()).rejects.toBeInstanceOf(PrivilegedWorkerUnavailableException);
-			expect(privilegedWorker.run).toHaveBeenCalledTimes(1);
+			await expect(service.install()).rejects.toBeInstanceOf(TailscaleSetupUnavailableException);
+			expect(privilegedWorker.run).not.toHaveBeenCalled();
 		});
 
-		it('propagates PrivilegedWorkerUnavailableException when the unit is already busy', async () => {
+		it('includes the detected platform type in the unsupported-platform message', async () => {
+			platformServiceMock.supportsPrivilegedWorkers.mockResolvedValue(false);
+			platformServiceMock.getPlatformType.mockReturnValue(PlatformType.HOME_ASSISTANT);
+
+			// expect.stringContaining(...) inside a plain object literal trips
+			// @typescript-eslint/no-unsafe-assignment (same pattern as
+			// expect.any(String) elsewhere in this plugin) — asserted directly
+			// on the caught error's message instead.
+			let caught: unknown;
+
+			try {
+				await service.install();
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(Error);
+			expect((caught as Error).message).toContain('home-assistant');
+		});
+
+		it('propagates PrivilegedWorkerUnavailableException (a transient, 409-mapped reason) when the unit is already busy', async () => {
 			privilegedWorker.run.mockRejectedValue(
 				new PrivilegedWorkerUnavailableException(
 					`Privileged worker unit "${TAILSCALE_SETUP_WORKER_UNIT}" is already busy.`,

@@ -8,6 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { PlatformService } from '../../../modules/platform/services/platform.service';
 import { EventType as RemoteAccessEventType } from '../../../modules/remote-access/remote-access.constants';
 import {
 	PrivilegedJobStatus,
@@ -33,11 +34,13 @@ export interface TailscaleSetupProgressEvent {
 }
 
 /**
- * Raised by `install()` before any privileged worker is spawned: a job is
- * already running, or this installation cannot run one at all (unsupported
- * platform, or the `FB_REMOTE_ACCESS_ALLOW_DEV` override). Distinct from a
- * plain `Error` so the controller can map it to a clear HTTP response
- * instead of a generic 500.
+ * Raised by `install()` before any privileged worker is spawned, for a
+ * *permanent* reason that will not resolve itself by retrying: the platform
+ * has no privileged-worker support, or the `FB_REMOTE_ACCESS_ALLOW_DEV`
+ * override is set. The controller maps this to `422 Unprocessable Entity`.
+ * A job already running is a *transient* condition instead — see
+ * `PrivilegedWorkerUnavailableException`, which `PrivilegedWorkerService.run()`
+ * itself throws for that case and which the controller maps to `409 Conflict`.
  */
 export class TailscaleSetupUnavailableException extends Error {
 	constructor(message: string) {
@@ -63,15 +66,17 @@ export class TailscaleSetupService {
 		private readonly nestConfigService: NestConfigService,
 		private readonly nodeManagedService: TailscaleNodeManagedService,
 		private readonly eventEmitter: EventEmitter2,
+		private readonly platformService: PlatformService,
 	) {}
 
 	/**
 	 * Starts the setup job and returns immediately with its id — progress is
 	 * streamed separately via `RemoteAccessModule.Setup.Progress`. Throws
-	 * `TailscaleSetupUnavailableException` when the dev override is set (never
-	 * spawns), or `PrivilegedWorkerUnavailableException` (thrown by
-	 * `PrivilegedWorkerService.run()` itself) when the platform does not
-	 * support privileged workers or a setup job is already running.
+	 * `TailscaleSetupUnavailableException` — a permanent refusal, mapped to
+	 * `422` — when the dev override is set or the platform has no
+	 * privileged-worker support; neither case ever reaches
+	 * `PrivilegedWorkerService.run()`, so a busy unit (`PrivilegedWorkerUnavailableException`,
+	 * mapped to `409`) is the only thing `run()` can still throw from here.
 	 */
 	async install(): Promise<{ id: string }> {
 		const allowDev = getEnvValue<boolean>(this.nestConfigService, REMOTE_ACCESS_TAILSCALE_ALLOW_DEV_ENV, false);
@@ -79,6 +84,14 @@ export class TailscaleSetupService {
 		if (allowDev) {
 			throw new TailscaleSetupUnavailableException(
 				`Tailscale setup is unavailable while ${REMOTE_ACCESS_TAILSCALE_ALLOW_DEV_ENV} is set. Prepare tailscale manually on the development platform: install it, run tailscaled, and grant the current user as operator.`,
+			);
+		}
+
+		const supportsPrivilegedWorkers = await this.platformService.supportsPrivilegedWorkers();
+
+		if (!supportsPrivilegedWorkers) {
+			throw new TailscaleSetupUnavailableException(
+				`Tailscale setup requires a platform with privileged-worker support; the '${this.platformService.getPlatformType()}' platform does not have it.`,
 			);
 		}
 

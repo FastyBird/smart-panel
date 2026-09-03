@@ -1,5 +1,5 @@
 import { execFileSync } from 'child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
@@ -78,5 +78,81 @@ describe('tailscale-setup.sh --dry-run', () => {
 		expect(typeof record.state).toBe('string');
 		expect(typeof record.step).toBe('string');
 		expect(typeof record.message).toBe('string');
+	});
+
+	it('sets pipefail, so a curl failure inside `curl | tee` is not masked by tee', () => {
+		const source = readFileSync(scriptPath, 'utf8');
+
+		expect(source).toMatch(/^set -o pipefail$/m);
+	});
+
+	it('reports the keyring download failure (not a later, misleading one) when curl fails — proves pipefail actually works', () => {
+		// Real bug this guards against: without `set -o pipefail`, `curl (fails)
+		// | tee (still exits 0)` reports success, so the `|| { write_status
+		// failed install ...; exit 1; }` guard never fires and the script keeps
+		// going — it would eventually fail somewhere else (e.g. "command not
+		// found" for apt-get, which isn't on PATH here either) with a
+		// different, misleading message. Asserting the *specific* keyring
+		// message is what makes this test able to catch a pipefail regression.
+		//
+		// Runs the real (non-dry-run) install branch without needing an actual
+		// Debian host or network access: a scratch copy of the script has
+		// `/etc/os-release` swapped for a fake one reporting `ID=debian`, and a
+		// fake `curl` that always fails sits ahead of the real one on PATH.
+		const workDir = mkdtempSync(join(tmpdir(), 'ra5-script-pipefail-'));
+
+		try {
+			const fakeOsRelease = join(workDir, 'os-release');
+
+			writeFileSync(fakeOsRelease, 'ID=debian\nVERSION_CODENAME=bookworm\n');
+
+			// Also redirect the keyring/list destinations tee writes to: the real
+			// paths are root-owned system locations, and without this a plain
+			// permission error there (independent of pipefail) would make this
+			// test pass for the wrong reason regardless of the fix.
+			const fakeKeyring = join(workDir, 'tailscale-archive-keyring.gpg');
+			const fakeList = join(workDir, 'tailscale.list');
+
+			const realSource = readFileSync(scriptPath, 'utf8');
+			const patchedSource = realSource
+				.replaceAll('/etc/os-release', fakeOsRelease)
+				.replaceAll('/usr/share/keyrings/tailscale-archive-keyring.gpg', fakeKeyring)
+				.replaceAll('/etc/apt/sources.list.d/tailscale.list', fakeList);
+
+			expect(patchedSource).not.toBe(realSource); // sanity: the replace actually matched
+
+			const scriptCopy = join(workDir, 'tailscale-setup.sh');
+
+			writeFileSync(scriptCopy, patchedSource);
+			chmodSync(scriptCopy, 0o755);
+
+			const fakeBinDir = join(workDir, 'bin');
+
+			mkdirSync(fakeBinDir);
+			writeFileSync(join(fakeBinDir, 'curl'), '#!/bin/bash\nexit 1\n');
+			chmodSync(join(fakeBinDir, 'curl'), 0o755);
+
+			expect(() =>
+				execFileSync('bash', [scriptCopy], {
+					env: {
+						...process.env,
+						STATUS_FILE: statusFile,
+						SMART_PANEL_USER: 'smart-panel',
+						PATH: `${fakeBinDir}:/usr/bin:/bin`,
+					},
+					stdio: 'pipe',
+				}),
+			).toThrow();
+
+			const status = JSON.parse(readFileSync(statusFile, 'utf8')) as Record<string, unknown>;
+
+			expect(status).toMatchObject({
+				state: 'failed',
+				step: 'install',
+				message: 'Failed to download the Tailscale apt keyring',
+			});
+		} finally {
+			rmSync(workDir, { recursive: true, force: true });
+		}
 	});
 });

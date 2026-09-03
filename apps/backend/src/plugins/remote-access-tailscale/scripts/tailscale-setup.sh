@@ -14,6 +14,10 @@
 # it previews the real branching logic without requiring root, apt, systemd
 # or a Debian-family host, so it can run from a Jest spec on any platform.
 set -e
+# Without this, `curl ... | tee ...` reports tee's exit status, not curl's —
+# a failed download would be silently treated as success by the `|| { ... }`
+# guards below.
+set -o pipefail
 
 STATUS_FILE="${STATUS_FILE:-/var/lib/smart-panel/remote-access/tailscale-setup-status.json}"
 SMART_PANEL_USER="${SMART_PANEL_USER:-$(id -un)}"
@@ -38,7 +42,12 @@ write_status() {
 	local safe_message=""
 
 	if [ -n "$message" ]; then
-		safe_message=$(printf '%s' "$message" | sed 's/\\/\\\\/g; s/"/\\"/g')
+		# Strip control characters first (defensive: every message here is a
+		# static literal today, but a future dynamic one — e.g. echoing part of
+		# a command's own output — must not be able to inject a raw newline or
+		# other control byte into the JSON structure), then escape backslashes
+		# and quotes.
+		safe_message=$(printf '%s' "$message" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g')
 	fi
 
 	mkdir -p "$(dirname "$STATUS_FILE")"
