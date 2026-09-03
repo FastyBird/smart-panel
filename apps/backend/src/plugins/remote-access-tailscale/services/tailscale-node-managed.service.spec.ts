@@ -426,6 +426,68 @@ describe('TailscaleNodeManagedService', () => {
 			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: true });
 		});
 
+		it('signs the node out when login_server changes, so it comes back requiring a fresh login (RA-5)', async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			await service.start();
+			cli.logout.mockClear();
+
+			const changed = defaultConfig();
+			changed.loginServer = 'https://headscale.example.com';
+			configServiceMock.getPluginConfig.mockReturnValue(changed);
+
+			await service.onConfigChanged();
+
+			expect(cli.logout).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not fail the config change when logout has nothing to sign out of', async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			await service.start();
+			cli.logout.mockRejectedValueOnce(new TailscaleCliError('needs-login', 'not logged in'));
+
+			const changed = defaultConfig();
+			changed.loginServer = 'https://headscale.example.com';
+			configServiceMock.getPluginConfig.mockReturnValue(changed);
+
+			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: true });
+		});
+
+		it('also tolerates daemon-down and not-installed — still nothing to sign out of', async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			await service.start();
+
+			const changed = defaultConfig();
+			changed.loginServer = 'https://headscale.example.com';
+			configServiceMock.getPluginConfig.mockReturnValue(changed);
+
+			cli.logout.mockRejectedValueOnce(new TailscaleCliError('daemon-down', 'connection refused'));
+			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: true });
+
+			// Second login_server change in a row exercises 'not-installed' too.
+			const changedAgain = defaultConfig();
+			changedAgain.loginServer = 'https://another-headscale.example.com';
+			configServiceMock.getPluginConfig.mockReturnValue(changedAgain);
+
+			cli.logout.mockRejectedValueOnce(new TailscaleCliError('not-installed', 'tailscale: command not found'));
+			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: true });
+		});
+
+		it('propagates a genuine logout failure instead of silently reporting a completed sign-out', async () => {
+			// The bug this closes: a permission-denied, timeout or unknown
+			// failure means the node may still hold a key issued by the old
+			// control plane, so onConfigChanged() must not swallow it and
+			// report restartRequired: true as if the sign-out actually happened.
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			await service.start();
+			cli.logout.mockRejectedValueOnce(new TailscaleCliError('permission-denied', 'access denied'));
+
+			const changed = defaultConfig();
+			changed.loginServer = 'https://headscale.example.com';
+			configServiceMock.getPluginConfig.mockReturnValue(changed);
+
+			await expect(service.onConfigChanged()).rejects.toMatchObject({ kind: 'permission-denied' });
+		});
+
 		it('applies other preference changes with set and reports no restart required', async () => {
 			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
 			await service.start();

@@ -21,6 +21,7 @@ import {
 	REMOTE_ACCESS_TAILSCALE_PLUGIN_API_TAG_NAME,
 	REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 } from '../remote-access-tailscale.constants';
+import { TailscaleLoginService } from '../services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../services/tailscale-provider.service';
 
@@ -33,6 +34,7 @@ export class StatusController {
 	constructor(
 		private readonly providerService: TailscaleProviderService,
 		private readonly nodeManagedService: TailscaleNodeManagedService,
+		private readonly loginService: TailscaleLoginService,
 	) {}
 
 	@ApiOperation({
@@ -64,9 +66,19 @@ export class StatusController {
 		data.requirements = toInstance(RemoteAccessTailscalePluginRequirementModel, requirements);
 
 		if (data.state === 'pending-auth') {
-			// The auth URL and QR code (RA-5) land on this same model, sent only
-			// while pending-auth. The no-store guarantee is put in place now so
-			// that field never gets a chance to be cached.
+			// authUrl/qr reflect this service's own tracked interactive sign-in,
+			// not `status --json`'s own AuthURL field: that field never carries a
+			// QR code, and login() is the source of truth for a URL it spawned.
+			// A pending-auth state with nothing tracked here (e.g. after a
+			// restart) still gets the no-store header below, just without those
+			// two fields.
+			const pending = this.loginService.getPendingInteractiveAuth();
+
+			if (pending) {
+				data.authUrl = pending.authUrl;
+				data.qr = pending.qr;
+			}
+
 			res.header('Cache-Control', 'no-store');
 		}
 

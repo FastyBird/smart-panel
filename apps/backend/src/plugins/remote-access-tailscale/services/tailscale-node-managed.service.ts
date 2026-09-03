@@ -186,6 +186,30 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		if (!previous || previous.loginServer !== next.loginServer) {
 			this.logger.log('Tailscale login_server changed (or its prior value was unknown), restart required');
 
+			// Sign the node out so it comes back requiring a fresh login against
+			// the new control plane instead of silently keeping a key issued by
+			// the old one. Only the kinds that mean "there was nothing to sign
+			// out of" are tolerated (matching factoryReset() and
+			// TailscaleLoginService.logout(), which apply the same rule to
+			// their own logout calls) — a permission-denied, timeout or
+			// unknown failure means the node may still hold a key issued by
+			// the old control plane, so it must propagate instead of silently
+			// reporting a restart as ready to proceed.
+			try {
+				await this.cli.logout();
+			} catch (error) {
+				if (
+					error instanceof TailscaleCliError &&
+					(error.kind === 'needs-login' || error.kind === 'not-installed' || error.kind === 'daemon-down')
+				) {
+					this.logger.debug('tailscale logout had nothing to sign out of while applying a login_server change', {
+						kind: error.kind,
+					});
+				} else {
+					throw error;
+				}
+			}
+
 			return { restartRequired: true };
 		}
 
@@ -521,7 +545,12 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 	// ─── Preferences ──────────────────────────────────────────────────
 
-	private buildPreferenceFlags(config: RemoteAccessTailscalePluginConfigModel): string[] {
+	/**
+	 * Public so the sign-in flows (RA-5: `TailscaleLoginService`) can build the
+	 * exact same `--operator=` + preference flags this service applies on
+	 * `start()`/`onConfigChanged()`, instead of re-deriving them.
+	 */
+	buildPreferenceFlags(config: RemoteAccessTailscalePluginConfigModel): string[] {
 		return [
 			`--hostname=${config.hostname}`,
 			`--accept-dns=${config.acceptDns}`,
@@ -532,7 +561,8 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		];
 	}
 
-	private buildUpFlags(config: RemoteAccessTailscalePluginConfigModel): string[] {
+	/** Public for the same reason as `buildPreferenceFlags` — the full flag set the sign-in flows' `up` calls reuse. */
+	buildUpFlags(config: RemoteAccessTailscalePluginConfigModel): string[] {
 		return [...this.buildPreferenceFlags(config), `--login-server=${config.loginServer}`];
 	}
 
@@ -555,7 +585,8 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		};
 	}
 
-	private getPluginConfig(): RemoteAccessTailscalePluginConfigModel {
+	/** Public so `TailscaleLoginService` (RA-5) can build the same `up`/`set` flags via `buildUpFlags`/`buildPreferenceFlags` without duplicating config loading and its fallback-to-defaults handling. */
+	getPluginConfig(): RemoteAccessTailscalePluginConfigModel {
 		if (!this.pluginConfig) {
 			try {
 				this.pluginConfig = this.configService.getPluginConfig<RemoteAccessTailscalePluginConfigModel>(

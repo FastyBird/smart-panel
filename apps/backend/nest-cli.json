@@ -56,6 +56,10 @@
       {
         "include": "modules/system/scripts/**/*.sh",
         "outDir": "dist"
+      },
+      {
+        "include": "plugins/remote-access-tailscale/scripts/**/*.sh",
+        "outDir": "dist"
       }
     ]
   }

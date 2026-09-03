@@ -40,3 +40,22 @@ export const TAILSCALE_POLL_INTERVAL_STABLE_MS = 30_000;
  * already-granted operator, skipping the privileged setup step entirely.
  */
 export const REMOTE_ACCESS_TAILSCALE_ALLOW_DEV_ENV = 'FB_REMOTE_ACCESS_ALLOW_DEV';
+
+/** `systemd-run --unit` for the privileged Tailscale setup job (RA-5). */
+export const TAILSCALE_SETUP_WORKER_UNIT = 'smart-panel-remote-access';
+
+/** Name of the setup job's status file, written under `TAILSCALE_DATA_SUBDIR`. */
+export const TAILSCALE_SETUP_STATUS_FILENAME = 'tailscale-setup-status.json';
+
+/**
+ * Subdirectory under `FB_DATA_DIR` holding this plugin's on-disk state: the
+ * setup job's status file and the sign-in flow's ephemeral auth-key file.
+ * Created with mode `0700` — the auth-key file it holds is a secret.
+ */
+export const TAILSCALE_DATA_SUBDIR = 'remote-access';
+
+/** Matches the `--timeout=120s` flag on the auth-key sign-in `up` call. */
+export const TAILSCALE_LOGIN_AUTH_KEY_TIMEOUT_MS = 120_000;
+
+/** Matches the `--timeout=10m` flag on the interactive sign-in `up` call. */
+export const TAILSCALE_LOGIN_INTERACTIVE_TIMEOUT_MS = 10 * 60 * 1000;

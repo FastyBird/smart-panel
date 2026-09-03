@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { type ChildProcessWithoutNullStreams, execFile, spawn } from 'node:child_process';
 
 import { Injectable } from '@nestjs/common';
 
@@ -233,6 +233,24 @@ export class TailscaleCliService {
 	/** Thin call for the factory-reset hook; RA-6 owns the full serve configuration. */
 	async serveReset(): Promise<void> {
 		await this.runManagementCommand(['serve', 'reset']);
+	}
+
+	/**
+	 * Spawns `tailscale up <args>` directly and returns the live child process
+	 * handle instead of buffering to completion. The sign-in flows (RA-5) need
+	 * this instead of `up()`: the interactive flow reads `--json` output
+	 * incrementally as two blocks arrive and keeps the handle to cancel a
+	 * pending sign-in, and the auth-key flow needs its own longer, cancellable
+	 * timeout instead of the default CLI timeout `up()` applies. Never a shell
+	 * string — same argument-array contract as every other call here. Argument
+	 * logging redacts `--auth-key=` values exactly like every other command.
+	 */
+	spawnUp(args: readonly string[]): ChildProcessWithoutNullStreams {
+		const argv = ['up', ...args];
+
+		this.logger.debug(`Spawning: ${TAILSCALE_BINARY} ${redactTailscaleArgs(argv).join(' ')}`);
+
+		return spawn(TAILSCALE_BINARY, argv);
 	}
 
 	private async runManagementCommand(args: readonly string[]): Promise<void> {
