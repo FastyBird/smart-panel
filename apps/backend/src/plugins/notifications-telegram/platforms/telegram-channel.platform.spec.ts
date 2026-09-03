@@ -126,6 +126,38 @@ describe('TelegramChannelPlatform', () => {
 			expect(body.text).toBe('<b>Home Assistant connection lost</b>\nThe websocket connection was refused');
 		});
 
+		it.each([
+			['a value containing an @ (userinfo-style injection)', 'abc@evil.example.com'],
+			['a value containing a scheme and host', 'https://evil.example.com/x'],
+			['a value containing path traversal', '../../evil.example.com'],
+			['a value containing backslashes', 'abc\\\\evil.example.com'],
+			['a value containing a port-like suffix', 'abc:8443@evil.example.com'],
+		])('never lets a configured bot token change the request host (%s)', async (_label, maliciousToken) => {
+			withConfig({ botToken: maliciousToken });
+			mockedFetch.mockResolvedValueOnce(createMockResponse(200, { ok: true }));
+
+			await platform.send(notification, new AbortController().signal);
+
+			const [calledUrl] = mockedFetch.mock.calls[0] as [string];
+
+			expect(new URL(calledUrl).hostname).toBe('api.telegram.org');
+			expect(new URL(calledUrl).protocol).toBe('https:');
+		});
+
+		it.each([
+			['a value containing an @ (userinfo-style injection)', 'abc@evil.example.com'],
+			['a value containing a scheme and host', 'https://evil.example.com/x'],
+		])('never lets a configured chat id change the request host (%s)', async (_label, maliciousChatId) => {
+			withConfig({ chatId: maliciousChatId });
+			mockedFetch.mockResolvedValueOnce(createMockResponse(200, { ok: true }));
+
+			await platform.send(notification, new AbortController().signal);
+
+			const [calledUrl] = mockedFetch.mock.calls[0] as [string];
+
+			expect(new URL(calledUrl).hostname).toBe('api.telegram.org');
+		});
+
 		it('HTML-escapes <, > and & in the title and message', async () => {
 			withConfig();
 			mockedFetch.mockResolvedValueOnce(createMockResponse(200, { ok: true }));
