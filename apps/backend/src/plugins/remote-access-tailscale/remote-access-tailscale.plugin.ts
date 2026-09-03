@@ -25,6 +25,7 @@ import { TailscaleCliService } from './services/tailscale-cli.service';
 import { TailscaleLoginService } from './services/tailscale-login.service';
 import { TailscaleNodeManagedService } from './services/tailscale-node-managed.service';
 import { TailscaleProviderService } from './services/tailscale-provider.service';
+import { TailscaleServeService } from './services/tailscale-serve.service';
 import { TailscaleSetupService } from './services/tailscale-setup.service';
 import { TailscaleStatusMapperService } from './services/tailscale-status-mapper.service';
 
@@ -39,6 +40,7 @@ import { TailscaleStatusMapperService } from './services/tailscale-status-mapper
 	providers: [
 		TailscaleCliService,
 		TailscaleStatusMapperService,
+		TailscaleServeService,
 		TailscaleNodeManagedService,
 		TailscaleProviderService,
 		TailscaleSetupService,
@@ -87,7 +89,8 @@ Connects this installation to a Tailscale tailnet, a private WireGuard-based mes
 
 - A private mesh address for this installation, reachable from every device you have signed into the same tailnet
 - A MagicDNS name once your tailnet has MagicDNS enabled, so you never have to remember an IP address
-- Setup, sign-in and sign-out that stay entirely within the Smart Panel admin UI (added in a follow-up release)
+- Setup, sign-in and sign-out that stay entirely within the Smart Panel admin UI
+- The admin UI served over HTTPS on the tailnet through Tailscale Serve, optionally published to the public internet through Tailscale Funnel
 
 ## Requirements
 
@@ -104,7 +107,8 @@ Connects this installation to a Tailscale tailnet, a private WireGuard-based mes
 | \`accept_routes\` | Accept subnet routes advertised by other tailnet nodes | \`false\` |
 | \`advertise_tags\` | ACL tags to advertise for this node | \`[]\` |
 | \`ssh\` | Enable Tailscale SSH on this node | \`false\` |
-| \`serve_https\` / \`funnel\` | Serve the admin UI over HTTPS / publish it publicly through Tailscale Serve and Funnel | applied by a follow-up release |`,
+| \`serve_https\` | Serve the admin UI over HTTPS through Tailscale Serve | \`true\` |
+| \`funnel\` | Publish the served admin UI to the public internet through Tailscale Funnel | \`false\` |`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

@@ -86,7 +86,7 @@ export class RemoteAccessTailscalePluginConfigModel extends PluginConfigModel {
 
 	@ApiProperty({
 		name: 'serve_https',
-		description: 'Serve the admin UI over HTTPS through Tailscale Serve. Applied by RA-6',
+		description: 'Serve the admin UI over HTTPS through Tailscale Serve',
 		type: 'boolean',
 		example: true,
 	})
@@ -95,7 +95,7 @@ export class RemoteAccessTailscalePluginConfigModel extends PluginConfigModel {
 	serveHttps: boolean = true;
 
 	@ApiProperty({
-		description: 'Publish the served admin UI to the public internet through Tailscale Funnel. Applied by RA-6',
+		description: 'Publish the served admin UI to the public internet through Tailscale Funnel',
 		type: 'boolean',
 		example: false,
 	})

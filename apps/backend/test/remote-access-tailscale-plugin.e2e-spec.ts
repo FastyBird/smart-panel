@@ -20,10 +20,12 @@ import { RolesGuard } from '../src/modules/users/guards/roles.guard';
 import { UserRole } from '../src/modules/users/users.constants';
 import { SetupController } from '../src/plugins/remote-access-tailscale/controllers/setup.controller';
 import { StatusController } from '../src/plugins/remote-access-tailscale/controllers/status.controller';
+import { RemoteAccessTailscalePluginConfigModel } from '../src/plugins/remote-access-tailscale/models/config.model';
 import { TailscaleCliService } from '../src/plugins/remote-access-tailscale/services/tailscale-cli.service';
 import { TailscaleLoginService } from '../src/plugins/remote-access-tailscale/services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../src/plugins/remote-access-tailscale/services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../src/plugins/remote-access-tailscale/services/tailscale-provider.service';
+import { TailscaleServeService } from '../src/plugins/remote-access-tailscale/services/tailscale-serve.service';
 import {
 	TailscaleSetupService,
 	TailscaleSetupUnavailableException,
@@ -56,6 +58,14 @@ function mockProcesses(): void {
 				callback(null, JSON.stringify({ majorMinorPatch: '1.78.1', short: '1.78.1' }), '');
 			} else if (file === 'tailscale' && args[0] === 'status') {
 				callback(null, CONNECTED_STATUS_JSON, '');
+			} else if (file === 'tailscale' && args[0] === 'serve' && args[1] === 'status') {
+				// The fixture's plugin config disables serve_https (see
+				// `configService` below), so nothing ever actually gets served —
+				// this is read (and, since it reports nothing to reset, never
+				// mutated) on every connected status computation regardless.
+				callback(null, '{}', '');
+			} else if (file === 'tailscale' && args[0] === 'funnel' && args[1] === 'status') {
+				callback(null, '{}', '');
 			} else if (file === 'systemctl') {
 				callback(null, 'active\n', '');
 			} else {
@@ -124,7 +134,25 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 	beforeAll(async () => {
 		mockProcesses();
 
-		const configService = { getPluginConfig: jest.fn() };
+		// `serveHttps`/`funnel` are left at `false` — CONNECTED_STATUS_JSON
+		// carries no `Self.CapMap`, so wanting Serve/Funnel against a tailnet
+		// with no reported capability would raise the `tailnet-https-disabled`
+		// advisory and break the plain "connected" fixture every test below
+		// shares. `TailscaleNodeManagedService` caches the plugin config on
+		// its first read for the lifetime of this single `app` instance, so
+		// this mock cannot be swapped per-test the way `setupServiceMock`/
+		// `loginServiceMock` are — the Serve/Funnel apply matrix itself is
+		// covered in full, independent of that caching, by
+		// tailscale-serve.service.spec.ts and tailscale-node-managed.service.spec.ts.
+		const configService = {
+			getPluginConfig: jest.fn().mockImplementation(() => {
+				const config = new RemoteAccessTailscalePluginConfigModel();
+				config.serveHttps = false;
+				config.funnel = false;
+
+				return config;
+			}),
+		};
 		const nestConfigService = { get: jest.fn((key: string) => ({ FB_BACKEND_PORT: 3000 })[key]) };
 		const platformService = { getPlatformType: jest.fn().mockReturnValue(PlatformType.RASPBERRY) };
 
@@ -147,6 +175,7 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				{ provide: EventEmitter2, useValue: { emit: jest.fn(), onAny: jest.fn() } },
 				TailscaleCliService,
 				TailscaleStatusMapperService,
+				TailscaleServeService,
 				TailscaleNodeManagedService,
 				TailscaleProviderService,
 				{ provide: TailscaleSetupService, useValue: setupServiceMock },

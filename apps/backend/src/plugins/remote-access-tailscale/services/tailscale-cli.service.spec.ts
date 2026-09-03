@@ -218,6 +218,157 @@ describe('TailscaleCliService', () => {
 		});
 	});
 
+	describe('serve', () => {
+		it('sends `serve --bg --https=443 --set-path=/ http://127.0.0.1:<port>`', async () => {
+			mockExecFileOnce(() => ({ exitCode: 0 }));
+
+			await service.serve(3000);
+
+			expect(execFile).toHaveBeenCalledWith(
+				'tailscale',
+				['serve', '--bg', '--https=443', '--set-path=/', 'http://127.0.0.1:3000'],
+				expect.any(Object),
+				expect.any(Function),
+			);
+		});
+
+		it('classifies a non-zero exit as an error', async () => {
+			mockExecFileOnce(() => ({ stderr: 'boom', exitCode: 1 }));
+
+			await expect(service.serve(3000)).rejects.toBeInstanceOf(TailscaleCliError);
+		});
+	});
+
+	describe('serveStatus', () => {
+		it('parses an empty serve config (nothing served)', async () => {
+			mockExecFileOnce(() => ({ stdout: '{}' }));
+
+			const status = await service.serveStatus();
+
+			expect(status).toEqual({});
+		});
+
+		it('parses a populated serve config', async () => {
+			mockExecFileOnce(() => ({
+				stdout: JSON.stringify({
+					TCP: { '443': { HTTPS: true } },
+					Web: { 'panel.tailc0ffee.ts.net:443': { Handlers: { '/': { Proxy: 'http://127.0.0.1:3000' } } } },
+					AllowFunnel: {},
+				}),
+			}));
+
+			const status = await service.serveStatus();
+
+			expect(status.TCP).toEqual({ '443': { HTTPS: true } });
+		});
+
+		it('treats empty stdout as an empty config', async () => {
+			mockExecFileOnce(() => ({ stdout: '' }));
+
+			const status = await service.serveStatus();
+
+			expect(status).toEqual({});
+		});
+
+		it('raises unknown when the output is not valid JSON', async () => {
+			mockExecFileOnce(() => ({ stdout: 'not json' }));
+
+			await expect(service.serveStatus()).rejects.toMatchObject({ kind: 'unknown' });
+		});
+
+		it('classifies a non-zero exit code as an error', async () => {
+			mockExecFileOnce(() => ({ stderr: 'daemon not running', exitCode: 1 }));
+
+			await expect(service.serveStatus()).rejects.toBeInstanceOf(TailscaleCliError);
+		});
+
+		it('sends `serve status --json`', async () => {
+			mockExecFileOnce(() => ({ stdout: '{}' }));
+
+			await service.serveStatus();
+
+			expect(execFile).toHaveBeenCalledWith(
+				'tailscale',
+				['serve', 'status', '--json'],
+				expect.any(Object),
+				expect.any(Function),
+			);
+		});
+	});
+
+	describe('funnel', () => {
+		it('sends `funnel 443 on`', async () => {
+			mockExecFileOnce(() => ({ exitCode: 0 }));
+
+			await service.funnel('on');
+
+			expect(execFile).toHaveBeenCalledWith(
+				'tailscale',
+				['funnel', '443', 'on'],
+				expect.any(Object),
+				expect.any(Function),
+			);
+		});
+
+		it('sends `funnel 443 off`', async () => {
+			mockExecFileOnce(() => ({ exitCode: 0 }));
+
+			await service.funnel('off');
+
+			expect(execFile).toHaveBeenCalledWith(
+				'tailscale',
+				['funnel', '443', 'off'],
+				expect.any(Object),
+				expect.any(Function),
+			);
+		});
+
+		it('classifies a non-zero exit as an error', async () => {
+			mockExecFileOnce(() => ({ stderr: 'boom', exitCode: 1 }));
+
+			await expect(service.funnel('on')).rejects.toBeInstanceOf(TailscaleCliError);
+		});
+	});
+
+	describe('funnelStatus', () => {
+		it('parses an empty funnel config (funnel off)', async () => {
+			mockExecFileOnce(() => ({ stdout: '{}' }));
+
+			const status = await service.funnelStatus();
+
+			expect(status).toEqual({});
+		});
+
+		it('parses a populated AllowFunnel map', async () => {
+			mockExecFileOnce(() => ({
+				stdout: JSON.stringify({ AllowFunnel: { 'panel.tailc0ffee.ts.net:443': true } }),
+			}));
+
+			const status = await service.funnelStatus();
+
+			expect(status.AllowFunnel).toEqual({ 'panel.tailc0ffee.ts.net:443': true });
+		});
+
+		it('raises unknown when the output is not valid JSON', async () => {
+			mockExecFileOnce(() => ({ stdout: 'not json' }));
+
+			await expect(service.funnelStatus()).rejects.toMatchObject({ kind: 'unknown' });
+		});
+
+		it('sends `funnel status --json`', async () => {
+			mockExecFileOnce(() => ({ stdout: '{}' }));
+
+			await service.funnelStatus();
+
+			expect(execFile).toHaveBeenCalledWith(
+				'tailscale',
+				['funnel', 'status', '--json'],
+				expect.any(Object),
+				expect.any(Function),
+			);
+		});
+	});
+
 	describe('timeout option', () => {
 		it('passes a default 15s timeout', async () => {
 			mockExecFileOnce(() => ({ exitCode: 0 }));

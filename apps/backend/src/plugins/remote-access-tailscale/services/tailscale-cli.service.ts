@@ -89,6 +89,24 @@ export interface TailscaleVersionInfo {
 	raw: Record<string, unknown>;
 }
 
+/**
+ * Parsed `tailscale serve status --json` / `tailscale funnel status --json`
+ * document (both read the same underlying `ipn.ServeConfig`). Nothing
+ * configured prints an empty object. Like `TailscaleStatus`, this is
+ * documented upstream as subject to change — only the fields
+ * `TailscaleServeService` actually reads are declared, everything else is
+ * tolerated and ignored.
+ */
+export interface TailscaleServeStatus {
+	/** Keyed by port (e.g. `"443"`); present when Serve has a TCP handler on that port. */
+	TCP?: Record<string, { HTTPS?: boolean; HTTP?: boolean; [key: string]: unknown }>;
+	/** Keyed by `host:port`; present when Serve has a web handler configured. */
+	Web?: Record<string, unknown>;
+	/** Keyed by `host:port`, value true when Funnel is allowed/on for that entry. */
+	AllowFunnel?: Record<string, boolean>;
+	[key: string]: unknown;
+}
+
 interface ExecTailscaleResult {
 	stdout: string;
 	stderr: string;
@@ -236,6 +254,36 @@ export class TailscaleCliService {
 	}
 
 	/**
+	 * Serves the admin UI over HTTPS on the tailnet, proxying to the backend
+	 * listening on `backendPort` at `127.0.0.1`. Always port 443 and the root
+	 * path — the plugin never serves any other port or a sub-path.
+	 */
+	async serve(backendPort: number): Promise<void> {
+		await this.runManagementCommand([
+			'serve',
+			'--bg',
+			'--https=443',
+			'--set-path=/',
+			`http://127.0.0.1:${backendPort}`,
+		]);
+	}
+
+	/** Read-back for the Serve config; `TailscaleServeService` derives whether Serve is active from the parsed result. */
+	async serveStatus(): Promise<TailscaleServeStatus> {
+		return this.execServeConfig(['serve', 'status', '--json']);
+	}
+
+	/** `tailscale funnel 443 on|off` — always port 443, matching `serve()`. */
+	async funnel(action: 'on' | 'off'): Promise<void> {
+		await this.runManagementCommand(['funnel', '443', action]);
+	}
+
+	/** Read-back for the Funnel config; `TailscaleServeService` derives whether Funnel is active from the parsed result. */
+	async funnelStatus(): Promise<TailscaleServeStatus> {
+		return this.execServeConfig(['funnel', 'status', '--json']);
+	}
+
+	/**
 	 * Spawns `tailscale up <args>` directly and returns the live child process
 	 * handle instead of buffering to completion. The sign-in flows (RA-5) need
 	 * this instead of `up()`: the interactive flow reads `--json` output
@@ -258,6 +306,21 @@ export class TailscaleCliService {
 
 		if (exitCode !== 0) {
 			throw this.classify(stdout, stderr, `tailscale ${args[0] ?? ''} exited with code ${exitCode}`);
+		}
+	}
+
+	/** Shared by `serveStatus()`/`funnelStatus()` — both read the same `ipn.ServeConfig` shape; empty stdout means nothing configured. */
+	private async execServeConfig(args: readonly string[]): Promise<TailscaleServeStatus> {
+		const { stdout, stderr, exitCode } = await this.exec(args);
+
+		if (exitCode !== 0) {
+			throw this.classify(stdout, stderr, `tailscale ${args.join(' ')} exited with code ${exitCode}`);
+		}
+
+		try {
+			return JSON.parse(stdout || '{}') as TailscaleServeStatus;
+		} catch (error) {
+			throw new TailscaleCliError('unknown', `Failed to parse \`tailscale ${args.join(' ')}\` output.`, error);
 		}
 	}
 
