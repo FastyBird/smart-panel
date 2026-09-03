@@ -12,7 +12,9 @@ const mockFindById = vi.fn((id: string) => {
 
 const mockMarkRead = vi.fn();
 const mockDismiss = vi.fn();
-const mockBulkUpdate = vi.fn();
+// Baseline "nothing failed" shape, kept across tests the same way `mockFindById` is - individual
+// tests override it with `mockResolvedValueOnce`/`mockRejectedValueOnce` for the cases they cover.
+const mockBulkUpdate = vi.fn().mockResolvedValue({ succeeded: [], failed: [] });
 
 const mockSuccess = vi.fn();
 const mockError = vi.fn();
@@ -93,17 +95,47 @@ describe('useNotificationsActions', () => {
 		it('does nothing for an empty selection', async () => {
 			const { markAllRead } = useNotificationsActions();
 
-			await markAllRead([]);
+			const result = await markAllRead([]);
 
 			expect(mockBulkUpdate).not.toHaveBeenCalled();
+			expect(result).toBe(true);
 		});
 
-		it('bulk-updates the given ids', async () => {
+		it('bulk-updates the given ids and reports success when every id succeeds', async () => {
+			mockBulkUpdate.mockResolvedValueOnce({ succeeded: ['2', '3'], failed: [] });
+
 			const { markAllRead } = useNotificationsActions();
 
-			await markAllRead(['2', '3']);
+			const result = await markAllRead(['2', '3']);
 
 			expect(mockBulkUpdate).toHaveBeenCalledWith({ ids: ['2', '3'], read: true });
+			expect(mockError).not.toHaveBeenCalled();
+			expect(result).toBe(true);
+		});
+
+		// The request itself can succeed (200 OK) while individual rows in the batch are refused -
+		// that must not be silently swallowed, or "Mark all as read" can leave rows unread with no
+		// sign anything went wrong.
+		it('flashes an error and reports failure when some ids fail', async () => {
+			mockBulkUpdate.mockResolvedValueOnce({ succeeded: ['2'], failed: [{ id: '3', reason: 'Notification not found.' }] });
+
+			const { markAllRead } = useNotificationsActions();
+
+			const result = await markAllRead(['2', '3']);
+
+			expect(mockError).toHaveBeenCalled();
+			expect(result).toBe(false);
+		});
+
+		it('flashes an error and reports failure when the bulk request itself fails', async () => {
+			mockBulkUpdate.mockRejectedValueOnce(new Error('boom'));
+
+			const { markAllRead } = useNotificationsActions();
+
+			const result = await markAllRead(['2', '3']);
+
+			expect(mockError).toHaveBeenCalled();
+			expect(result).toBe(false);
 		});
 	});
 

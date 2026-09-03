@@ -8,7 +8,10 @@ import type { INotification } from '../store/notifications.store.schemas';
 
 export interface IUseNotificationsActions {
 	markRead: (id: INotification['id'], read?: boolean) => Promise<void>;
-	markAllRead: (ids: INotification['id'][]) => Promise<void>;
+	// Reports whether every id in the selection actually succeeded - `bulkUpdate` can resolve
+	// (HTTP-level success) while still carrying per-row failures in `result.failed`, and a caller
+	// that only fires-and-forgets this still gets the failure surfaced through the flash message.
+	markAllRead: (ids: INotification['id'][]) => Promise<boolean>;
 	dismiss: (id: INotification['id'], dismissed?: boolean) => Promise<void>;
 }
 
@@ -32,15 +35,28 @@ export const useNotificationsActions = (): IUseNotificationsActions => {
 		}
 	};
 
-	const markAllRead = async (ids: INotification['id'][]): Promise<void> => {
+	const markAllRead = async (ids: INotification['id'][]): Promise<boolean> => {
 		if (ids.length === 0) {
-			return;
+			return true;
 		}
 
 		try {
-			await notificationsStore.bulkUpdate({ ids, read: true });
+			const result = await notificationsStore.bulkUpdate({ ids, read: true });
+
+			// The request can come back 200 OK while individual rows in the batch were refused -
+			// that partial failure must not be silently swallowed, or "Mark all as read" can leave
+			// rows unread with nothing telling the operator it did not fully apply.
+			if (result.failed.length > 0) {
+				flashMessage.error(t('notificationsModule.messages.notifications.notAllMarkedRead'));
+
+				return false;
+			}
+
+			return true;
 		} catch {
 			flashMessage.error(t('notificationsModule.messages.notifications.notMarkedRead'));
+
+			return false;
 		}
 	};
 
