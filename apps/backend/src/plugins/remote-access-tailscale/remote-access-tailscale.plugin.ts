@@ -11,6 +11,7 @@ import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
+import { SetupController } from './controllers/setup.controller';
 import { StatusController } from './controllers/status.controller';
 import { UpdateRemoteAccessTailscalePluginConfigDto } from './dto/update-config.dto';
 import { RemoteAccessTailscalePluginConfigModel } from './models/config.model';
@@ -21,8 +22,10 @@ import {
 } from './remote-access-tailscale.constants';
 import { REMOTE_ACCESS_TAILSCALE_PLUGIN_SWAGGER_EXTRA_MODELS } from './remote-access-tailscale.openapi';
 import { TailscaleCliService } from './services/tailscale-cli.service';
+import { TailscaleLoginService } from './services/tailscale-login.service';
 import { TailscaleNodeManagedService } from './services/tailscale-node-managed.service';
 import { TailscaleProviderService } from './services/tailscale-provider.service';
+import { TailscaleSetupService } from './services/tailscale-setup.service';
 import { TailscaleStatusMapperService } from './services/tailscale-status-mapper.service';
 
 @ApiTag({
@@ -32,8 +35,15 @@ import { TailscaleStatusMapperService } from './services/tailscale-status-mapper
 })
 @Module({
 	imports: [RemoteAccessModule, PlatformModule, NestConfigModule],
-	controllers: [StatusController],
-	providers: [TailscaleCliService, TailscaleStatusMapperService, TailscaleNodeManagedService, TailscaleProviderService],
+	controllers: [StatusController, SetupController],
+	providers: [
+		TailscaleCliService,
+		TailscaleStatusMapperService,
+		TailscaleNodeManagedService,
+		TailscaleProviderService,
+		TailscaleSetupService,
+		TailscaleLoginService,
+	],
 })
 export class RemoteAccessTailscalePlugin implements OnModuleInit {
 	constructor(

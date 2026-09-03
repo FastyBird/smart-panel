@@ -15,12 +15,16 @@ import { AuthenticatedEntity, AuthenticatedRequest } from '../src/modules/auth/g
 import { ConfigService } from '../src/modules/config/services/config.service';
 import { PlatformType } from '../src/modules/platform/platform.constants';
 import { PlatformService } from '../src/modules/platform/services/platform.service';
+import { PrivilegedWorkerUnavailableException } from '../src/modules/system/system.exceptions';
 import { RolesGuard } from '../src/modules/users/guards/roles.guard';
 import { UserRole } from '../src/modules/users/users.constants';
+import { SetupController } from '../src/plugins/remote-access-tailscale/controllers/setup.controller';
 import { StatusController } from '../src/plugins/remote-access-tailscale/controllers/status.controller';
 import { TailscaleCliService } from '../src/plugins/remote-access-tailscale/services/tailscale-cli.service';
+import { TailscaleLoginService } from '../src/plugins/remote-access-tailscale/services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../src/plugins/remote-access-tailscale/services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../src/plugins/remote-access-tailscale/services/tailscale-provider.service';
+import { TailscaleSetupService } from '../src/plugins/remote-access-tailscale/services/tailscale-setup.service';
 import { TailscaleStatusMapperService } from '../src/plugins/remote-access-tailscale/services/tailscale-status-mapper.service';
 
 // The CLI wrapper and the managed service's own prerequisite probes both go
@@ -100,6 +104,19 @@ class TestCredentialGuard implements CanActivate {
  */
 describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 	let app: INestApplication;
+	// `TailscaleSetupService`/`TailscaleLoginService` are mocked here rather
+	// than wired for real: their own detailed behaviour (spawn args, auth-key
+	// file lifecycle, two-block JSON parsing) is covered by their unit specs.
+	// This e2e's job for the four mutating endpoints is role gating and
+	// response shape/headers through the real HTTP + guard stack, exactly
+	// like the existing GET /status suite below covers that endpoint.
+	let setupServiceMock: { install: jest.Mock };
+	let loginServiceMock: {
+		login: jest.Mock;
+		logout: jest.Mock;
+		resetPreferences: jest.Mock;
+		getPendingInteractiveAuth: jest.Mock;
+	};
 
 	beforeAll(async () => {
 		mockProcesses();
@@ -108,8 +125,16 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 		const nestConfigService = { get: jest.fn((key: string) => ({ FB_BACKEND_PORT: 3000 })[key]) };
 		const platformService = { getPlatformType: jest.fn().mockReturnValue(PlatformType.RASPBERRY) };
 
+		setupServiceMock = { install: jest.fn() };
+		loginServiceMock = {
+			login: jest.fn(),
+			logout: jest.fn(),
+			resetPreferences: jest.fn(),
+			getPendingInteractiveAuth: jest.fn().mockReturnValue(null),
+		};
+
 		const moduleFixture = await Test.createTestingModule({
-			controllers: [StatusController],
+			controllers: [StatusController, SetupController],
 			providers: [
 				{ provide: APP_GUARD, useClass: TestCredentialGuard },
 				{ provide: APP_GUARD, useClass: RolesGuard },
@@ -121,6 +146,8 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				TailscaleStatusMapperService,
 				TailscaleNodeManagedService,
 				TailscaleProviderService,
+				{ provide: TailscaleSetupService, useValue: setupServiceMock },
+				{ provide: TailscaleLoginService, useValue: loginServiceMock },
 			],
 		}).compile();
 
@@ -130,6 +157,14 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 
 	afterAll(async () => {
 		await app.close();
+	});
+
+	afterEach(() => {
+		setupServiceMock.install.mockReset();
+		loginServiceMock.login.mockReset();
+		loginServiceMock.logout.mockReset();
+		loginServiceMock.resetPreferences.mockReset();
+		loginServiceMock.getPendingInteractiveAuth.mockReset().mockReturnValue(null);
 	});
 
 	describe('GET /status', () => {
@@ -225,6 +260,155 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 			expect(JSON.stringify(response.body)).not.toContain('login.tailscale.com');
 
 			mockProcesses();
+		});
+	});
+
+	describe('POST /install', () => {
+		it('owner: starts the setup job and returns 202 with the job id', async () => {
+			setupServiceMock.install.mockResolvedValue({ id: 'job-1' });
+
+			const response = await request(app.getHttpServer())
+				.post('/install')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(202);
+
+			expect(response.body.data.job).toBe('job-1');
+		});
+
+		it.each(['admin-user', 'regular-user', 'display-token'])('denies %s', async (credential) => {
+			await request(app.getHttpServer()).post('/install').set('Authorization', `Bearer ${credential}`).expect(403);
+		});
+
+		it('denies an unauthenticated request', async () => {
+			await request(app.getHttpServer()).post('/install').expect(401);
+		});
+
+		it('maps a refusal (already running / unsupported) to 409', async () => {
+			setupServiceMock.install.mockRejectedValue(
+				new PrivilegedWorkerUnavailableException('Privileged worker unit "smart-panel-remote-access" is already busy.'),
+			);
+
+			await request(app.getHttpServer()).post('/install').set('Authorization', 'Bearer owner-user').expect(409);
+		});
+	});
+
+	describe('POST /login', () => {
+		it.each(['owner-user', 'admin-user'])('allows %s and returns the sign-in result', async (credential) => {
+			loginServiceMock.login.mockResolvedValue({
+				state: 'pending-auth',
+				authUrl: 'https://login.tailscale.com/a/xyz',
+				qr: 'data:image/png;base64,AAA',
+			});
+
+			const response = await request(app.getHttpServer())
+				.post('/login')
+				.set('Authorization', `Bearer ${credential}`)
+				.send({})
+				.expect(200);
+
+			expect(response.body.data).toMatchObject({
+				state: 'pending-auth',
+				authUrl: 'https://login.tailscale.com/a/xyz',
+				qr: 'data:image/png;base64,AAA',
+			});
+		});
+
+		it.each(['regular-user', 'display-token'])('denies %s', async (credential) => {
+			await request(app.getHttpServer())
+				.post('/login')
+				.set('Authorization', `Bearer ${credential}`)
+				.send({})
+				.expect(403);
+		});
+
+		it('denies an unauthenticated request', async () => {
+			await request(app.getHttpServer()).post('/login').send({}).expect(401);
+		});
+
+		it('sets Cache-Control: no-store on every response, since it may carry a capability URL', async () => {
+			loginServiceMock.login.mockResolvedValue({ state: 'connected' });
+
+			const response = await request(app.getHttpServer())
+				.post('/login')
+				.set('Authorization', 'Bearer owner-user')
+				.send({})
+				.expect(200);
+
+			expect(response.headers['cache-control']).toBe('no-store');
+		});
+
+		it('accepts an optional auth key body and forwards it to the login service', async () => {
+			loginServiceMock.login.mockResolvedValue({ state: 'connected' });
+
+			// This minimal testing module does not register the app-wide
+			// ValidationPipe (see the GET /status doc comment above for the
+			// same convention on the response side), so the body reaches the
+			// controller untransformed — camelCase, not the `auth_key` wire
+			// name a real request would use.
+			await request(app.getHttpServer())
+				.post('/login')
+				.set('Authorization', 'Bearer owner-user')
+				.send({ authKey: 'tskey-auth-e2e-secret' })
+				.expect(200);
+
+			expect(loginServiceMock.login).toHaveBeenCalledWith('tskey-auth-e2e-secret');
+		});
+
+		it('never echoes a submitted auth key back in the response body', async () => {
+			loginServiceMock.login.mockResolvedValue({ state: 'connected' });
+
+			const response = await request(app.getHttpServer())
+				.post('/login')
+				.set('Authorization', 'Bearer owner-user')
+				.send({ authKey: 'tskey-auth-e2e-secret' })
+				.expect(200);
+
+			expect(JSON.stringify(response.body)).not.toContain('tskey-auth-e2e-secret');
+		});
+	});
+
+	describe('POST /logout', () => {
+		it('owner: signs out and returns the resulting node status', async () => {
+			loginServiceMock.logout.mockResolvedValue({ state: 'setup-required' });
+
+			const response = await request(app.getHttpServer())
+				.post('/logout')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(200);
+
+			expect(response.body.data.type).toBe('remote-access-tailscale');
+		});
+
+		it.each(['admin-user', 'regular-user', 'display-token'])('denies %s', async (credential) => {
+			await request(app.getHttpServer()).post('/logout').set('Authorization', `Bearer ${credential}`).expect(403);
+		});
+
+		it('denies an unauthenticated request', async () => {
+			await request(app.getHttpServer()).post('/logout').expect(401);
+		});
+	});
+
+	describe('POST /reset-preferences', () => {
+		it('owner: resets preferences and returns the resulting node status', async () => {
+			loginServiceMock.resetPreferences.mockResolvedValue({ state: 'connected' });
+
+			const response = await request(app.getHttpServer())
+				.post('/reset-preferences')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(200);
+
+			expect(response.body.data.type).toBe('remote-access-tailscale');
+		});
+
+		it.each(['admin-user', 'regular-user', 'display-token'])('denies %s', async (credential) => {
+			await request(app.getHttpServer())
+				.post('/reset-preferences')
+				.set('Authorization', `Bearer ${credential}`)
+				.expect(403);
+		});
+
+		it('denies an unauthenticated request', async () => {
+			await request(app.getHttpServer()).post('/reset-preferences').expect(401);
 		});
 	});
 });

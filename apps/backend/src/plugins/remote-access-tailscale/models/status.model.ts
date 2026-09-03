@@ -69,9 +69,10 @@ export class RemoteAccessTailscalePluginRequirementModel {
 
 /**
  * Full Tailscale node status: the generic provider status fields plus the
- * requirements list. The auth URL and QR code (RA-5) are added later as
- * additional fields on this same model, sent only while `state` is
- * `pending-auth` and only to admin/owner, with `Cache-Control: no-store`.
+ * requirements list, and the auth URL/QR code of a pending interactive
+ * sign-in. `authUrl`/`qr` are set only while `state` is `pending-auth` and
+ * only to admin/owner, with `Cache-Control: no-store` (see
+ * `StatusController`).
  */
 @ApiSchema({ name: 'RemoteAccessTailscalePluginDataStatus' })
 export class RemoteAccessTailscalePluginStatusModel {
@@ -168,6 +169,29 @@ export class RemoteAccessTailscalePluginStatusModel {
 	@ValidateNested({ each: true })
 	@Type(() => RemoteAccessTailscalePluginRequirementModel)
 	requirements: RemoteAccessTailscalePluginRequirementModel[];
+
+	@ApiPropertyOptional({
+		name: 'auth_url',
+		description:
+			'Interactive sign-in link for a pending login. Present only while state is pending-auth. A capability URL — never logged or persisted.',
+		type: 'string',
+		example: 'https://login.tailscale.com/a/0123456789abcdef',
+	})
+	@Expose({ name: 'auth_url' })
+	@IsOptional()
+	@IsString()
+	authUrl?: string;
+
+	@ApiPropertyOptional({
+		description:
+			'QR code encoding the pending sign-in link, as a base64 PNG data URL. Present only while state is pending-auth.',
+		type: 'string',
+		example: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...',
+	})
+	@Expose()
+	@IsOptional()
+	@IsString()
+	qr?: string;
 }
 
 /**

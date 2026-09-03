@@ -426,6 +426,32 @@ describe('TailscaleNodeManagedService', () => {
 			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: true });
 		});
 
+		it('signs the node out when login_server changes, so it comes back requiring a fresh login (RA-5)', async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			await service.start();
+			cli.logout.mockClear();
+
+			const changed = defaultConfig();
+			changed.loginServer = 'https://headscale.example.com';
+			configServiceMock.getPluginConfig.mockReturnValue(changed);
+
+			await service.onConfigChanged();
+
+			expect(cli.logout).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not fail the config change when logout has nothing to sign out of', async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			await service.start();
+			cli.logout.mockRejectedValueOnce(new TailscaleCliError('needs-login', 'not logged in'));
+
+			const changed = defaultConfig();
+			changed.loginServer = 'https://headscale.example.com';
+			configServiceMock.getPluginConfig.mockReturnValue(changed);
+
+			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: true });
+		});
+
 		it('applies other preference changes with set and reports no restart required', async () => {
 			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
 			await service.start();

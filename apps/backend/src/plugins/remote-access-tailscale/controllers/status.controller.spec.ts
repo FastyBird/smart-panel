@@ -11,6 +11,7 @@ import { FastifyReply } from 'fastify';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { RemoteAccessProviderStatus } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
+import { TailscaleLoginService } from '../services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../services/tailscale-provider.service';
 
@@ -20,6 +21,7 @@ describe('StatusController', () => {
 	let controller: StatusController;
 	let providerService: { getStatus: jest.Mock };
 	let nodeManagedService: { evaluateRequirements: jest.Mock };
+	let loginService: { getPendingInteractiveAuth: jest.Mock };
 
 	const baseStatus: RemoteAccessProviderStatus = {
 		type: 'remote-access-tailscale-plugin',
@@ -42,12 +44,14 @@ describe('StatusController', () => {
 	beforeEach(async () => {
 		providerService = { getStatus: jest.fn().mockResolvedValue(baseStatus) };
 		nodeManagedService = { evaluateRequirements: jest.fn().mockResolvedValue(baseRequirements) };
+		loginService = { getPendingInteractiveAuth: jest.fn().mockReturnValue(null) };
 
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [StatusController],
 			providers: [
 				{ provide: TailscaleProviderService, useValue: providerService },
 				{ provide: TailscaleNodeManagedService, useValue: nodeManagedService },
+				{ provide: TailscaleLoginService, useValue: loginService },
 			],
 		}).compile();
 
@@ -92,13 +96,44 @@ describe('StatusController', () => {
 		expect(res.header).toHaveBeenCalledWith('Cache-Control', 'no-store');
 	});
 
-	it('never includes an authUrl or qr field, even while pending-auth', async () => {
+	it('omits authUrl and qr while pending-auth when nothing is tracked as pending (e.g. after a restart)', async () => {
 		providerService.getStatus.mockResolvedValue({ ...baseStatus, state: 'pending-auth', endpoints: [] });
+		loginService.getPendingInteractiveAuth.mockReturnValue(null);
 		const res = fakeResponse();
 
 		const response = await controller.getStatus(res);
 
 		expect(response.data).not.toHaveProperty('authUrl');
 		expect(response.data).not.toHaveProperty('qr');
+		expect(res.header).toHaveBeenCalledWith('Cache-Control', 'no-store');
+	});
+
+	it('never includes an authUrl or qr field when connected, even if a login happens to be tracked', async () => {
+		providerService.getStatus.mockResolvedValue(baseStatus);
+		loginService.getPendingInteractiveAuth.mockReturnValue({
+			authUrl: 'https://login.tailscale.com/a/xyz',
+			qr: 'data:image/png;base64,AAA',
+		});
+		const res = fakeResponse();
+
+		const response = await controller.getStatus(res);
+
+		expect(response.data).not.toHaveProperty('authUrl');
+		expect(response.data).not.toHaveProperty('qr');
+	});
+
+	it('fills authUrl and qr from the login service while pending-auth', async () => {
+		providerService.getStatus.mockResolvedValue({ ...baseStatus, state: 'pending-auth', endpoints: [] });
+		loginService.getPendingInteractiveAuth.mockReturnValue({
+			authUrl: 'https://login.tailscale.com/a/xyz',
+			qr: 'data:image/png;base64,AAA',
+		});
+		const res = fakeResponse();
+
+		const response = await controller.getStatus(res);
+
+		expect(response.data.authUrl).toBe('https://login.tailscale.com/a/xyz');
+		expect(response.data.qr).toBe('data:image/png;base64,AAA');
+		expect(res.header).toHaveBeenCalledWith('Cache-Control', 'no-store');
 	});
 });
