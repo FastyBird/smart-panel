@@ -209,10 +209,16 @@ interface PrivilegedJobStatus { id: string; state: 'running' | 'complete' | 'fai
   status-file polling (3 s), hard timeout (10 min default) and stale-lock logic out of
   `UpdateExecutorService`, which becomes a thin caller with identical observable behaviour.
 - One job per unit at a time; a second `run` for a busy unit throws. The service alone releases a unit: on a
-  terminal status (`complete`, `failed`, `timeout`) or on a non-zero child exit while the job is still
-  `running`; unsubscribing handlers never releases it. Callers with a legacy status-file format supply
-  `mapStatus` (the update executor maps `status`/`phase`/`error`); native scripts such as the Tailscale setup
-  write the generic shape directly.
+  terminal status (`complete`, `failed`, `timeout`), on a non-zero child exit while the job is still
+  `running`, or when the job never gets a child (synchronous spawn failure or a child `error` event), which
+  finishes the job as `failed` immediately; unsubscribing handlers never releases it. Callers with a legacy
+  status-file format supply `mapStatus` (the update executor maps `status`/`phase`/`error`); native scripts
+  such as the Tailscale setup write the generic shape directly.
+- Field ownership: the service owns `id` (always the job record's id) and `updatedAt` (set when a tick is
+  accepted, never read from the file). `state` is validated against the allowed set; a tick with a missing
+  or invalid `state`, or a `mapStatus` result of `null`, is ignored with one debug log per job and never
+  advances or releases the unit. `timeout` is produced only by the service. Scripts write `state` and the
+  optional `step` and `message` strings; non-string values are dropped.
 - `PlatformService.supportsPrivilegedWorkers()` — true when `sudo -n /usr/bin/true` succeeds and
   `systemd-run` exists; cached; false on `docker`, `home-assistant`, `development`. The development
   override `FB_REMOTE_ACCESS_ALLOW_DEV` belongs to the Tailscale plugin (RA-4, RA-5) and never changes
@@ -396,7 +402,9 @@ files only.
   `ID` `raspbian`, `debian` or `ubuntu`) it adds the signed Tailscale keyring and apt source for the detected
   codename and installs the package; on Fedora and RHEL-family systems it adds the vendor `.repo` file
   (`gpgcheck=1`) and installs with `dnf`; on Arch it installs the official repository package; anything
-  else prints manual instructions and returns non-zero. No downloaded script is ever executed. The daemon
+  else prints manual instructions and the install function returns non-zero so the completion banner
+  reports it, while the installer's own exit status stays zero because the flag is optional. No downloaded
+  script is ever executed. The daemon
   is left disabled; help text, completion summary and `build/docs/INSTALLATION.md` (including a manual
   tarball step) updated.
 - `build/docs/INSTALLATION.md`: note the flag and the image default.
@@ -419,6 +427,8 @@ files only.
   `get-started/installation/raspberry-pi-image`, `admin-management/overview`, `admin-management/mcp`.
 - Repository: `docs/remote-access-architecture.md` in the style of `docs/climate-architecture.md`;
   `docs/extensions.md` gains a provider registration example.
+- `build/docs/INSTALLATION.md`: in the manual tarball procedure, move the checksum verification before
+  extraction and make it a required step (pre-existing gap noted during the design review).
 
 **Verification:** `pnpm --filter ./apps/website run build` succeeds; links checked by hand.
 

@@ -502,7 +502,9 @@ Connect, disconnect and reconnect are the generic Extensions service actions. Re
 
 - Raspberry Pi image, `server` and `aio` variants: add the Tailscale keyring and apt source, install the
   `tailscale` package, `systemctl disable tailscaled`. The plugin enables it during setup.
-- `install-server.sh --with-tailscale`: optional and non-fatal. Every supported distribution installs from a
+- `install-server.sh --with-tailscale`: optional and non-fatal: a Tailscale failure or an unsupported
+  distribution is reported in the completion banner and the installer still exits zero. Every supported
+  distribution installs from a
   signed vendor package source: the apt keyring and list on Debian-family systems (exactly like the image),
   the vendor `.repo` file with `gpgcheck=1` on Fedora and RHEL-family systems, and the official repository
   package on Arch. The installer never pipes a downloaded script into a shell; unsupported distributions
