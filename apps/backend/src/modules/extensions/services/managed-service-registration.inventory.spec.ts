@@ -56,10 +56,14 @@ describe('managed service registration inventory', () => {
 			'plugins/spaces-home-control/spaces-home-control.plugin.ts',
 			'this.managedServiceManager.register(this.spaceSuggestionHeartbeat)',
 		],
+		[
+			'plugins/remote-access-tailscale/remote-access-tailscale.plugin.ts',
+			'this.managedServiceManager.register(this.nodeManagedService)',
+		],
 	] as const;
 
 	it('keeps every expected owner registration wired to the manager', () => {
-		expect(registrations).toHaveLength(20);
+		expect(registrations).toHaveLength(21);
 
 		for (const [relativeFile, marker] of registrations) {
 			const source = readFileSync(resolve(__dirname, '../../../', relativeFile), 'utf8');
