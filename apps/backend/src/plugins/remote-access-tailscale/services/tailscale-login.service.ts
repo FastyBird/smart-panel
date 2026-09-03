@@ -13,6 +13,7 @@ import {
 	REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 	TAILSCALE_DATA_SUBDIR,
 	TAILSCALE_LOGIN_AUTH_KEY_TIMEOUT_MS,
+	TAILSCALE_LOGIN_FIRST_BLOCK_TIMEOUT_MS,
 	TAILSCALE_LOGIN_INTERACTIVE_TIMEOUT_MS,
 } from '../remote-access-tailscale.constants';
 
@@ -282,12 +283,18 @@ export class TailscaleLoginService {
 			let settled = false;
 			let firstBlockSeen = false;
 
+			// Declared as `const` further down (after the deadline it guards is
+			// computed) but referenced here: safe because `settleResolve`/
+			// `settleReject` are only ever invoked from callbacks that run after
+			// this whole synchronous setup — including that declaration — has
+			// completed, never during it.
 			const settleResolve = (result: TailscaleLoginResult): void => {
 				if (settled) {
 					return;
 				}
 
 				settled = true;
+				clearTimeout(firstBlockTimeoutHandle);
 				resolve(result);
 			};
 
@@ -297,6 +304,7 @@ export class TailscaleLoginService {
 				}
 
 				settled = true;
+				clearTimeout(firstBlockTimeoutHandle);
 				reject(error);
 			};
 
@@ -313,6 +321,25 @@ export class TailscaleLoginService {
 			// A pending sign-in must not, by itself, keep the process alive —
 			// same convention as the node managed service's own poll timer.
 			timeoutHandle.unref?.();
+
+			// A wedged daemon or a slow control-plane round-trip must not hold
+			// this HTTP request open for the full 10 minutes above: if the
+			// first `tailscale up --json` block has not printed by this
+			// deadline, resolve with a URL-less 'pending-auth' and free the
+			// request. The child, the 10-minute timeout and `this.pending`
+			// (the single-in-flight marker) all keep running exactly as
+			// before — once the first block does arrive, it is still stored
+			// on `this.pending` below (see `!firstBlockSeen` in the `data`
+			// handler) so GET /status picks up the auth URL/QR via
+			// getPendingInteractiveAuth().
+			const firstBlockTimeoutHandle = setTimeout(() => {
+				this.logger.debug(
+					'Tailscale interactive sign-in has not printed its first status block yet; resolving pending-auth without a URL, leaving the sign-in running',
+				);
+				settleResolve({ state: 'pending-auth' });
+			}, TAILSCALE_LOGIN_FIRST_BLOCK_TIMEOUT_MS);
+
+			firstBlockTimeoutHandle.unref?.();
 
 			this.pending = { child, buffer: '', timeoutHandle };
 
@@ -340,6 +367,10 @@ export class TailscaleLoginService {
 
 					if (!firstBlockSeen) {
 						firstBlockSeen = true;
+						// The request may already have settled via the first-block
+						// timeout above — clear it regardless so it can never fire
+						// after this point, whether or not it already has.
+						clearTimeout(firstBlockTimeoutHandle);
 
 						if (parsed.AuthURL) {
 							if (this.pending) {

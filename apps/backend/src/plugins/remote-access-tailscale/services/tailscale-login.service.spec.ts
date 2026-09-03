@@ -34,18 +34,23 @@ jest.mock('node:fs/promises', () => {
 
 const SECRET_AUTH_KEY = 'tskey-auth-kABCDE1234-verysecretsuffixvalue123456';
 
-// Both timeouts are shrunk to real, sub-second values for this whole file.
-// Everything here uses real (not fake) timers throughout: the auth-key flow
-// awaits real `fs/promises` calls before it ever reaches `cli.spawnUp()`,
-// and those go through libuv's thread pool — a scenario fake timers cannot
-// safely interleave with (they intercept setTimeout/setImmediate, but real
-// disk I/O completion is independent of the JS timer system, so `waitUntil`
-// below still needs a *real* setTimeout to yield the event loop). Shrinking
-// the constants keeps the two genuine timeout tests fast without fake time.
+// All three timeouts are shrunk to real, sub-second values for this whole
+// file. Everything here uses real (not fake) timers throughout: the
+// auth-key flow awaits real `fs/promises` calls before it ever reaches
+// `cli.spawnUp()`, and those go through libuv's thread pool — a scenario
+// fake timers cannot safely interleave with (they intercept
+// setTimeout/setImmediate, but real disk I/O completion is independent of
+// the JS timer system, so `waitUntil` below still needs a *real* setTimeout
+// to yield the event loop). Shrinking the constants keeps the genuine
+// timeout tests fast without fake time. TAILSCALE_LOGIN_FIRST_BLOCK_TIMEOUT_MS
+// is kept well below TAILSCALE_LOGIN_INTERACTIVE_TIMEOUT_MS, same as in
+// production, so the two never race in the "first block never arrives"
+// tests below.
 jest.mock('../remote-access-tailscale.constants', () => ({
 	...jest.requireActual<typeof import('../remote-access-tailscale.constants')>('../remote-access-tailscale.constants'),
 	TAILSCALE_LOGIN_AUTH_KEY_TIMEOUT_MS: 50,
 	TAILSCALE_LOGIN_INTERACTIVE_TIMEOUT_MS: 50,
+	TAILSCALE_LOGIN_FIRST_BLOCK_TIMEOUT_MS: 15,
 }));
 
 /** Minimal stand-in for ChildProcessWithoutNullStreams: an EventEmitter with stdout/stderr sub-emitters and a kill() spy. */
@@ -536,16 +541,110 @@ describe('TailscaleLoginService', () => {
 			expect(cli.spawnUp).toHaveBeenCalledTimes(1);
 		});
 
-		it('times out (mocked to 50ms), kills the child and clears pending state', async () => {
+		describe('first-block timeout (mocked to 15ms, well under the 50ms overall timeout)', () => {
+			it('resolves pending-auth with no URL when the child never prints, leaving the child and the marker in place', async () => {
+				const child = new FakeChildProcess();
+				cli.spawnUp.mockReturnValue(child);
+
+				const loginPromise = service.login();
+
+				// Never emits any data — the mocked 15ms first-block constant
+				// fires instead of the (larger, also mocked) 50ms overall
+				// interactive timeout.
+				const result = await loginPromise;
+
+				expect(result).toEqual({ state: 'pending-auth' });
+				expect(result.authUrl).toBeUndefined();
+				expect(result.qr).toBeUndefined();
+
+				// The sign-in is still running, not torn down: stopPendingLogin()
+				// was never called for this settlement path.
+				expect(child.kill).not.toHaveBeenCalled();
+				expect(service['pending']).not.toBeNull();
+				expect(service['pending']?.child).toBe(child);
+
+				// getPendingInteractiveAuth() only surfaces an auth URL once one
+				// is actually known — there isn't one yet.
+				expect(service.getPendingInteractiveAuth()).toBeNull();
+			});
+
+			it('stores the auth URL/QR when the first block arrives after the first-block timeout already resolved the request, without spawning again', async () => {
+				const child = new FakeChildProcess();
+				cli.spawnUp.mockReturnValue(child);
+
+				const loginPromise = service.login();
+
+				const result = await loginPromise; // settles via the first-block timeout
+
+				expect(result).toEqual({ state: 'pending-auth' });
+
+				child.stdout.emit(
+					'data',
+					Buffer.from(
+						'{"AuthURL":"https://login.tailscale.com/a/abc","QR":"data:image/png;base64,QQQ","BackendState":"NeedsLogin"}',
+					),
+				);
+				await flushMicrotasks();
+
+				expect(service.getPendingInteractiveAuth()).toEqual({
+					authUrl: 'https://login.tailscale.com/a/abc',
+					qr: 'data:image/png;base64,QQQ',
+				});
+				expect(cli.spawnUp).toHaveBeenCalledTimes(1);
+			});
+
+			it('releases the marker when the child exits after the first-block timeout already resolved the request', async () => {
+				const child = new FakeChildProcess();
+				cli.spawnUp.mockReturnValue(child);
+
+				const loginPromise = service.login();
+
+				await loginPromise;
+
+				child.emit('close', 0);
+				await flushMicrotasks();
+
+				expect(service.getPendingInteractiveAuth()).toBeNull();
+				expect(service['pending']).toBeNull();
+			});
+
+			it('a first block with no AuthURL arriving after the first-block timeout still falls back to the real status and releases the marker', async () => {
+				const child = new FakeChildProcess();
+				cli.spawnUp.mockReturnValue(child);
+				nodeManagedService.computeStatus.mockResolvedValue({ state: 'connected' });
+
+				const loginPromise = service.login();
+
+				await loginPromise; // settles pending-auth via the first-block timeout
+
+				child.stdout.emit('data', Buffer.from('{"BackendState":"Running"}'));
+				await flushMicrotasks();
+
+				expect(service.getPendingInteractiveAuth()).toBeNull();
+				expect(service['pending']).toBeNull();
+				expect(child.kill).toHaveBeenCalledWith('SIGTERM');
+			});
+		});
+
+		it('the 10-minute ceiling still kills the child and clears pending state in the background once it elapses, even though the request already settled via the first-block timeout', async () => {
 			const child = new FakeChildProcess();
 			cli.spawnUp.mockReturnValue(child);
 
 			const loginPromise = service.login();
 
-			// Never emits any data — the mocked 50ms constant fires instead.
-			await expect(loginPromise).rejects.toThrow(/timed out/i);
+			// Never emits any data. The mocked 15ms first-block timeout settles
+			// the request first (with no URL, asserted elsewhere) — the
+			// mocked 50ms overall ceiling that used to be observable as a
+			// rejection here can no longer reject an already-settled promise,
+			// but it must still fire in the background and finish tearing
+			// down the child/pending state exactly as before.
+			await expect(loginPromise).resolves.toEqual({ state: 'pending-auth' });
+
+			await waitUntil(() => child.kill.mock.calls.length > 0);
+
 			expect(child.kill).toHaveBeenCalledWith('SIGTERM');
 			expect(service.getPendingInteractiveAuth()).toBeNull();
+			expect(service['pending']).toBeNull();
 		}, 10_000);
 
 		it('stopPendingLogin() kills the child and clears state while a login is pending', async () => {
