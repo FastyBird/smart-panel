@@ -10,8 +10,8 @@
 			"webhookUrl": {
 				"title": "Webhook URL",
 				"placeholder": "https://discord.com/api/webhooks/...",
-				"description": "Discord incoming webhook URL, from a channel's Integrations settings page. Must start with https://.",
-				"invalid": "Enter a Discord webhook URL that starts with https:// and does not embed credentials"
+				"description": "Discord incoming webhook URL, from a channel's Integrations settings page. Must be an https://discord.com/api/webhooks/... URL (discordapp.com, ptb.discord.com and canary.discord.com are also accepted).",
+				"invalid": "Enter a Discord webhook URL such as https://discord.com/api/webhooks/<id>/<token> (discordapp.com, ptb.discord.com or canary.discord.com), without embedded credentials or a port"
 			},
 			"username": {
 				"title": "Username override",

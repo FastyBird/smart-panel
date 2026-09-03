@@ -10,6 +10,22 @@ describe('isValidHeadersJson', () => {
 	it.each(['not-json', '[]', '{"a":1}', '{"a":{"b":"c"}}', '"just a string"'])('rejects %s', (value) => {
 		expect(isValidHeadersJson(value)).toBe(false);
 	});
+
+	it('rejects a non-string header value', () => {
+		expect(isValidHeadersJson('{"X-Retry":1}')).toBe(false);
+	});
+
+	it('rejects a header name containing a space', () => {
+		expect(isValidHeadersJson('{"bad header":"value"}')).toBe(false);
+	});
+
+	it('rejects a header name containing a colon', () => {
+		expect(isValidHeadersJson('{"X-Bad:Name":"value"}')).toBe(false);
+	});
+
+	it('accepts a well-formed header name', () => {
+		expect(isValidHeadersJson('{"X-Custom-Header":"1"}')).toBe(true);
+	});
 });
 
 describe('parseHeadersJson', () => {
