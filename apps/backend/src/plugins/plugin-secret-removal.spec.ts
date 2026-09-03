@@ -16,6 +16,8 @@ import { Zigbee2mqttUpdatePluginConfigDto } from './devices-zigbee2mqtt/dto/upda
 import { UpdateInfluxV1ConfigDto } from './influx-v1/dto/update-config.dto';
 import { UpdateInfluxV2ConfigDto } from './influx-v2/dto/update-config.dto';
 import { UpdateNotificationsDiscordConfigDto } from './notifications-discord/dto/update-config.dto';
+import { UpdateNotificationsSlackConfigDto } from './notifications-slack/dto/update-config.dto';
+import { UpdateNotificationsTelegramConfigDto } from './notifications-telegram/dto/update-config.dto';
 import { UpdateNotificationsWebhookConfigDto } from './notifications-webhook/dto/update-config.dto';
 import { UpdateOpenWeatherMapOneCallConfigDto } from './weather-openweathermap-onecall/dto/update-config.dto';
 import { UpdateOpenWeatherMapConfigDto } from './weather-openweathermap/dto/update-config.dto';
@@ -50,6 +52,8 @@ const SECRETS: { label: string; dto: object; submit: Record<string, unknown>; re
 		['influx-v1', UpdateInfluxV1ConfigDto, 'password', 'password'],
 		['influx-v2', UpdateInfluxV2ConfigDto, 'token', 'token'],
 		['notifications-discord', UpdateNotificationsDiscordConfigDto, 'webhook_url', 'webhookUrl'],
+		['notifications-slack', UpdateNotificationsSlackConfigDto, 'webhook_url', 'webhookUrl'],
+		['notifications-telegram', UpdateNotificationsTelegramConfigDto, 'bot_token', 'botToken'],
 		['notifications-webhook headers', UpdateNotificationsWebhookConfigDto, 'headers', 'headers'],
 		['notifications-webhook url', UpdateNotificationsWebhookConfigDto, 'url', 'url'],
 		['weather-openweathermap', UpdateOpenWeatherMapConfigDto, 'api_key', 'apiKey'],

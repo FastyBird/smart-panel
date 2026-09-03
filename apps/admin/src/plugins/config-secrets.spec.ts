@@ -29,6 +29,10 @@ import { InfluxV2ConfigEditFormSchema } from './influx-v2/schemas/config.schemas
 import { InfluxV2ConfigSchema } from './influx-v2/store/config.store.schemas';
 import { NotificationsDiscordConfigEditFormSchema } from './notifications-discord/schemas/config.schemas';
 import { NotificationsDiscordConfigSchema } from './notifications-discord/store/config.store.schemas';
+import { SlackConfigEditFormSchema } from './notifications-slack/schemas/config.schemas';
+import { SlackConfigSchema } from './notifications-slack/store/config.store.schemas';
+import { NotificationsTelegramConfigEditFormSchema } from './notifications-telegram/schemas/config.schemas';
+import { NotificationsTelegramConfigSchema } from './notifications-telegram/store/config.store.schemas';
 import { WebhookConfigEditFormSchema } from './notifications-webhook/schemas/config.schemas';
 import { WebhookConfigSchema } from './notifications-webhook/store/config.store.schemas';
 import { OpenWeatherMapOneCallConfigEditFormSchema } from './weather-openweathermap-onecall/schemas/config.schemas';
@@ -77,6 +81,13 @@ const REDACTED_SECRETS: { plugin: string; field: string; editForm: unknown; stor
 		field: 'webhookUrl',
 		editForm: NotificationsDiscordConfigEditFormSchema,
 		store: NotificationsDiscordConfigSchema,
+	},
+	{ plugin: 'notifications-slack', field: 'webhookUrl', editForm: SlackConfigEditFormSchema, store: SlackConfigSchema },
+	{
+		plugin: 'notifications-telegram',
+		field: 'botToken',
+		editForm: NotificationsTelegramConfigEditFormSchema,
+		store: NotificationsTelegramConfigSchema,
 	},
 	{ plugin: 'notifications-webhook', field: 'url', editForm: WebhookConfigEditFormSchema, store: WebhookConfigSchema },
 	{ plugin: 'notifications-webhook', field: 'headers', editForm: WebhookConfigEditFormSchema, store: WebhookConfigSchema },
