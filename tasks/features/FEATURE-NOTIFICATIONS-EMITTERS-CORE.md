@@ -47,9 +47,10 @@ notifications for these conditions.
   the next update run succeeds, or left in place until the user dismisses it.
 - Managed service `error` issue notification, keyed `service:<kind>:<type>:<serviceId>`, with a restart
   `service` CTA and a `link` to the services tab; resolved when the service reports `started`.
-- Failed-login `event` notification, keyed `login-failed:<username>:<ip>:<yyyy-mm-dd-hh>` (`ip` is `unknown`
-  when absent), aggregated per user/IP/hour with an in-memory counter; `AuthService.login` gains an optional
-  `context: { ip?: string }` argument.
+- Failed-login `event` notification, keyed `login-failed:<user>:<client>:<yyyy-mm-dd-hh>` (`user` is
+  `username` truncated to 64 characters, `client` is `ip` or `unknown` when absent), aggregated per
+  user/IP/hour with a bounded in-memory counter; `AuthService.login` gains an optional `context: { ip?:
+  string }` argument.
 
 **Out of scope**
 
@@ -83,16 +84,20 @@ notifications for these conditions.
 - [ ] `AuthService.login` accepts an optional `context?: { ip?: string }` parameter and existing callers still
       compile unchanged.
 - [ ] `AuthController` passes `req.ip` as the login context.
-- [ ] Each of the three failure paths in `auth.service.ts:102,108,117` normalises the IP once
-      (`const client = ip ?? 'unknown'`) and reuses that same value in the key, the message and `data.ip`,
-      calling `notify` with `kind: EVENT`, `severity: WARNING`,
-      `key: 'login-failed:<username>:<client>:<yyyy-mm-dd-hh>'` (UTC hour bucket, username truncated to 64
-      characters), `title: 'Failed login attempt for "<username>"'`,
-      `message: 'From <client> - <count> attempt(s) this hour'`, `data: { username, ip: client, reason }`.
-- [ ] An in-memory `Map<string, number>` counter tracks attempts per key and is pruned when the hour bucket
-      changes, so the message's `count` increments correctly.
+- [ ] Each of the three failure paths in `auth.service.ts:102,108,117` normalises `const user =
+      username.slice(0, 64)` and `const client = ip ?? 'unknown'` once and reuses those same values
+      everywhere: the key, the title, the message and `data`. `notify` is called with `kind: EVENT`,
+      `severity: WARNING`, `key: 'login-failed:<user>:<client>:<yyyy-mm-dd-hh>'` (UTC hour bucket),
+      `title: 'Failed login attempt for "<user>"'`, `message: 'From <client> - <count> attempt(s) this hour'`,
+      `data: { username: user, ip: client, reason }`.
+- [ ] An in-memory `Map<string, number>` counter tracks attempts per key; entries whose hour bucket is in the
+      past are pruned on every call, so the message's `count` increments correctly.
+- [ ] The counter map never exceeds 1000 keys: when a new key would exceed the limit, the oldest key is
+      evicted first.
 - [ ] The auth spec proves three failures within one hour call `notify` three times with the same key and
       `count` 1, 2, 3.
+- [ ] A test proves the counter map stays bounded at 1000 keys: once at the limit, adding a new key evicts the
+      oldest one rather than growing the map further.
 - [ ] For each of the four emitters, a test proves the raising condition calls `notify` with the exact
       `source`, `kind`, `key`, `severity` and primary action, and a second test proves the clearing condition
       calls `resolve`.
@@ -132,16 +137,16 @@ actions: [
 ]
 // resolve on transition to 'started'.
 
-// auth: failed login (hour bucket in UTC, username truncated to 64 chars, ip 'unknown' when absent)
-key: `login-failed:${username}:${ip ?? 'unknown'}:${bucket}`, kind: EVENT, severity: WARNING,
-// const client = ip ?? 'unknown'; used in the key, the message and the data
-title: `Failed login attempt for "${username}"`, message: `From ${client} - ${count} attempt(s) this hour`,
-data: { username, ip: client, reason },
+// auth: failed login (hour bucket in UTC; `const user = username.slice(0, 64)` and `const client = ip ?? 'unknown'` are used everywhere below)
+key: `login-failed:${user}:${client}:${bucket}`, kind: EVENT, severity: WARNING,
+title: `Failed login attempt for "${user}"`, message: `From ${client} - ${count} attempt(s) this hour`,
+data: { username: user, ip: client, reason },
 ```
 
-The auth emitter keeps an in-memory `Map<string, number>` counter per key (pruned when the bucket changes) so
-the message carries the count. `AuthService.login` gains an optional `context` argument so existing callers
-compile unchanged.
+The auth emitter keeps an in-memory `Map<string, number>` counter per key so the message carries the count; it
+is bounded: entries of past hour buckets are pruned on every call, and the map never exceeds 1000 keys (the
+oldest key is evicted when a new one would exceed it), so a flood of distinct usernames or IPs cannot grow it.
+`AuthService.login` gains an optional `context` argument so existing callers compile unchanged.
 
 ## 8. AI instructions
 

@@ -81,6 +81,8 @@ retention, rate guard) that every emitter and the later REST, websocket and disp
 - [ ] `dismiss(id, true)` on an `issue` with `persistent = true` also sets `resolved_at` (nothing re-detects
       such a condition, so the dismissal is how it ends); `dismiss(id, true)` on a non-persistent `issue` or
       on an `event` sets only `dismissed_at`.
+- [ ] `dismiss(id, false)` on a persistent `issue` that was resolved by its own dismissal clears
+      `dismissed_at` but leaves `resolved_at` in place, so the row stays in history.
 - [ ] `notify()` on an `issue` without `key` returns `null` and logs one `warn`.
 - [ ] `resolve(source, key)` on an unkeyed `event` row returns `false` and is a no-op.
 - [ ] `resolve(source, key)` sets `resolved_at`, and the next `notify()` with the same `(source, key)` inserts

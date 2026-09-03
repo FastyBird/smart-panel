@@ -106,6 +106,9 @@ existing API and gateway infrastructure.
       bulk remove through the REST endpoints.
 - [ ] e2e: `PATCH /notifications/:id` with `{ data: { dismissed: true } }` on a persistent issue also sets
       `resolved_at`, inheriting the lifecycle rule from `FEATURE-NOTIFICATIONS-BACKEND-CORE`.
+- [ ] e2e: `PATCH /notifications/:id` with `{ data: { dismissed: false } }` on a persistent issue that was
+      resolved by its own dismissal clears `dismissed_at` but leaves `resolved_at` in place, inheriting the
+      inverse lifecycle rule from `FEATURE-NOTIFICATIONS-BACKEND-CORE`.
 - [ ] e2e: every notifications route returns 403 for a `USER`-role token and for a display token.
 - [ ] e2e: the migration applies cleanly on a fresh database.
 - [ ] `'NotificationsModule.'` is added to `EXCHANGE_ONLY_EVENT_PREFIXES` in `websocket.gateway.ts`; owner and

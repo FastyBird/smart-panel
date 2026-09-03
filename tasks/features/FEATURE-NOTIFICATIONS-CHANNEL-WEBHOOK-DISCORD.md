@@ -74,25 +74,32 @@ secret, a minimum severity, and a "send test notification" action.
       `webhook_url_configured`, `min_severity`, and optional `username`; the DTO rejects a `webhook_url` that
       does not start with `https://`.
 - [ ] The webhook channel's `send()` issues `POST` with JSON body `{ id, source, kind, severity, title,
-      message, occurrences, created_at, actions }` plus any configured extra headers; a non-2xx response
-      throws `Error('HTTP <status>')`.
+      message, occurrences, created_at, actions }` plus any configured extra headers, using
+      `fetchWithSignal` with the dispatcher's signal and `redirect: 'error'`; every failure outcome
+      (connection failure, HTTP 429, HTTP 5xx, timeout, redirect, any other 4xx) throws a
+      `ChannelDeliveryError` with `status` and the classification from `classify()`.
 - [ ] The Discord channel's `send()` issues a webhook embed payload `{ username?, embeds: [{ title,
       description: message, color, footer: { text: '<source> - <n> occurrences' }, timestamp }] }` with
-      colours `info 0x3498db`, `warning 0xf39c12`, `error 0xe74c3c`, `critical 0x8e44ad`; a non-2xx response
-      throws.
+      colours `info 0x3498db`, `warning 0xf39c12`, `error 0xe74c3c`, `critical 0x8e44ad`, using
+      `fetchWithSignal` with the dispatcher's signal and `redirect: 'error'`; every failure outcome
+      (connection failure, HTTP 429, HTTP 5xx, timeout, redirect, any other 4xx) throws a
+      `ChannelDeliveryError` with `status` and the classification from `classify()`.
 - [ ] Both channels' `hasRequiredConfig` returns `false` when the secret is absent, so `isConfigured()`
       resolves `false` and the dispatcher skips them.
 - [ ] Each plugin registers exactly one extension action `send-test` (`id: 'send-test'`, `label: 'Send test
       notification'`, `category: DIAGNOSTICS`, `mode: 'immediate'`) that builds a fake notification
-      (`severity: INFO`, title `Test notification from Smart Panel`) and calls the channel's own `send()`,
-      returning `{ success, message }`; the action reports the failure text when `send` throws.
+      (`severity: INFO`, title `Test notification from Smart Panel`) and calls the channel's own
+      `send(sample, AbortSignal.timeout(10_000))`, returning `{ success, message }`; the action reports the
+      sanitized error text when `send` throws.
 - [ ] `ConfigSecretsService.toPublic` strips each secret from the public config and adds its `_configured`
       sibling.
 - [ ] `apps/admin/src/plugins/config-secrets.spec.ts` and `apps/backend/src/plugins/plugin-secret-removal.spec.ts`
       gain one row per secret (`url` and `headers` for webhook, `webhook_url` for Discord) and stay green.
 - [ ] Channel spec (mocked `fetch`) asserts the request URL, method, headers and body shape for both
-      channels, and that the dispatcher's `AbortSignal` is passed through to the `fetch` call via
-      `fetchWithSignal`, not a channel-owned timeout signal.
+      channels, that the dispatcher's `AbortSignal` is passed through to the `fetch` call via
+      `fetchWithSignal`, not a channel-owned timeout signal, and that the call uses `redirect: 'error'`.
+- [ ] Channel spec: a redirect outcome and an HTTP 400 both become a non-retryable `ChannelDeliveryError`, and
+      an HTTP 503 becomes a retryable one.
 - [ ] A Discord config DTO test proves a `webhook_url` that does not start with `https://` is rejected, while
       the same `http:` URL is accepted by the webhook config DTO.
 - [ ] `cd apps/backend && npx jest src/plugins/notifications-webhook src/plugins/notifications-discord src/plugins/plugin-secret-removal.spec.ts`
@@ -132,20 +139,22 @@ webhook_url (writeOnly), webhook_url_configured, min_severity, username: string 
 ```
 
 Webhook `send`: `POST` JSON `{ id, source, kind, severity, title, message, occurrences, created_at, actions }`
-plus configured headers; non-2xx throws `Error('HTTP <status>')`. The webhook accepts `http:` URLs for
-trusted-network targets; its admin form shows a warning under the URL field and the docs state the exception.
-The optional `headers` map is a declared secret (`headers_configured` sibling, write-only, redacted by
-`ConfigSecretsService.toPublic` with a regression-table row) and is only ever sent over `https:`: a
-configuration with an `http:` URL and any header is rejected at validation. Discord's `webhook_url` must
-start with `https://`; the config DTO rejects anything else. Discord `send`: `{
-username?, embeds: [{ title, description: message, color, footer: { text: 'source - n occurrences' },
-timestamp }] }` with colours `info 0x3498db`, `warning 0xf39c12`, `error 0xe74c3c`, `critical 0x8e44ad`;
-non-2xx throws. Both channels call `fetchWithSignal(url, init, signal)` with the `AbortSignal` the dispatcher
-passes into `send`; there is no channel-owned timeout.
+plus configured headers. The webhook accepts `http:` URLs for trusted-network targets; its admin form shows a
+warning under the URL field and the docs state the exception. The optional `headers` map is a declared secret
+(`headers_configured` sibling, write-only, redacted by `ConfigSecretsService.toPublic` with a regression-table
+row) and is only ever sent over `https:`: a configuration with an `http:` URL and any header is rejected at
+validation. Discord's `webhook_url` must start with `https://`; the config DTO rejects anything else. Discord
+`send`: `{ username?, embeds: [{ title, description: message, color, footer: { text: 'source - n occurrences'
+}, timestamp }] }` with colours `info 0x3498db`, `warning 0xf39c12`, `error 0xe74c3c`, `critical 0x8e44ad`.
+Both channels call `fetchWithSignal(url, init, signal)` with the `AbortSignal` the dispatcher passes into
+`send` and `redirect: 'error'`; there is no channel-owned timeout, and every failure outcome (connection
+failure, 429, 5xx, timeout, redirect, other 4xx) throws a `ChannelDeliveryError` with the status and the
+classification from `classify()`.
 
 `send-test` action: `{ id: 'send-test', label: 'Send test notification', category: DIAGNOSTICS, mode:
 'immediate', execute }` builds a fake `NotificationEntity` (`severity: INFO`, title `Test notification from
-Smart Panel`) and calls the channel's `send`, returning `{ success, message }`.
+Smart Panel`) and calls the channel's `send(sample, AbortSignal.timeout(10_000))`, returning `{ success,
+message }` with the sanitized error text on failure.
 
 ## 8. AI instructions
 

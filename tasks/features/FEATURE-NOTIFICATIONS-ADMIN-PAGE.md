@@ -25,8 +25,10 @@ the three CTA types directly.
 - CTA execution reuses existing composables: `useActions().executeAction(extension_type, action_id, params)`
   (`apps/admin/src/modules/extensions/composables/useActions.ts:136`, from `FEATURE-EXTENSION-ACTIONS-MVP`)
   posts directly and shows no confirmation of its own, so `useNotificationAction` itself fetches the action
-  descriptors for `extension_type` through the extensions composable and shows `ElMessageBox.confirm` (in a
-  separate `try` block) when the matching descriptor is `dangerous`. Service CTAs go through
+  descriptors for `extension_type` through the extensions composable. It fails closed: when the fetch fails or
+  no descriptor matches `action_id`, it shows an error and executes nothing. Otherwise it shows
+  `ElMessageBox.confirm` (in a separate `try` block) when the matching descriptor is `dangerous`. Service CTAs
+  go through
   `useServiceActions().restartService | startService | stopService(extension_kind, extension_type,
   service_id)` (`apps/admin/src/modules/extensions/composables/useServiceActions.ts:9-11`, calling the same
   endpoints as `apps/backend/src/modules/extensions/controllers/services.controller.ts`), and
@@ -64,9 +66,10 @@ the three CTA types directly.
 - [ ] `useNotificationAction().execute(notification, action)` routes a `link` action to `router.push(url)`
       when relative, or `window.open(url, '_blank', 'noopener')` when an absolute `http(s)` URL.
 - [ ] `useNotificationAction().execute` routes an `extension_action` by first fetching the action descriptors
-      for `extension_type` through the extensions composable; when the matching descriptor is `dangerous`, it
-      shows `ElMessageBox.confirm` first, in a `try` block separate from the request itself; it then calls
-      `useActions().executeAction(extension_type, action_id, params)` from
+      for `extension_type` through the extensions composable. It fails closed: when the fetch fails or no
+      descriptor matches `action_id`, it shows an error and executes nothing. Otherwise, when the matching
+      descriptor is `dangerous`, it shows `ElMessageBox.confirm` first, in a `try` block separate from the
+      request itself; it then calls `useActions().executeAction(extension_type, action_id, params)` from
       `modules/extensions/composables/useActions.ts:136`, which posts directly and shows no confirmation of
       its own.
 - [ ] `useNotificationAction().execute` routes a `service` action to `useServiceActions().restartService |
@@ -97,6 +100,10 @@ the three CTA types directly.
       that the confirmation dialog is shown before a `dangerous` extension action and before a `service`
       `stop` or `restart`, and that cancelling the confirmation runs nothing - neither
       `useActions().executeAction` nor the service composable is called.
+- [ ] `useNotificationAction.spec.ts` proves that when fetching the action descriptors fails, `execute` shows
+      an error and calls neither `ElMessageBox.confirm` nor `useActions().executeAction`.
+- [ ] `useNotificationAction.spec.ts` proves that when no descriptor matches the action's `action_id`,
+      `execute` shows an error and calls neither `ElMessageBox.confirm` nor `useActions().executeAction`.
 - [ ] A test proves the filter schema round-trips correctly through the query string.
 - [ ] A test proves the config form rejects out-of-range values.
 - [ ] `cd apps/admin && npx vitest run src/modules/notifications` passes.
@@ -127,7 +134,7 @@ export function useNotificationAction(): {
 	isExecuting: Ref<boolean>;
 }
 // link: relative -> router.push(url); absolute http(s) -> window.open(url, '_blank', 'noopener')
-// extension_action: fetch the action descriptors for `extension_type` through the extensions composable, and when the matching descriptor is `dangerous` show `ElMessageBox.confirm` first (in a separate try block); then `useActions().executeAction(extension_type, action_id, params)` from `modules/extensions/composables/useActions.ts:136`, which posts directly and shows no confirmation itself
+// extension_action: fetch the action descriptors for `extension_type` through the extensions composable; if the fetch fails or no descriptor matches `action_id`, show an error and execute nothing (fail closed); when the matching descriptor is `dangerous` show `ElMessageBox.confirm` first (in a separate try block); then `useActions().executeAction(extension_type, action_id, params)` from `modules/extensions/composables/useActions.ts:136`, which posts directly and shows no confirmation itself
 // service: `useServiceActions().restartService | startService | stopService(extension_kind, extension_type, service_id)` from `modules/extensions/composables/useServiceActions.ts:9-11`, preceded by `ElMessageBox.confirm` for stop and restart
 ```
 

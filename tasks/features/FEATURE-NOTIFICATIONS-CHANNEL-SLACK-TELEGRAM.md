@@ -49,22 +49,28 @@ secret handling and test action as the webhook and Discord channels.
       `min_severity`.
 - [ ] The Slack channel's `send()` posts `{ text: title, attachments: [{ color, title, text: message, footer
       }] }` to the configured incoming webhook, with colours `#3498db` (info), `#f39c12` (warning),
-      `#e74c3c` (error), `#8e44ad` (critical).
+      `#e74c3c` (error), `#8e44ad` (critical), using `fetchWithSignal` with the dispatcher's signal and
+      `redirect: 'error'`; every failure outcome (connection failure, 429, 5xx, timeout, redirect, other 4xx)
+      throws a `ChannelDeliveryError` with the status and the classification from `classify()`.
 - [ ] The Telegram channel's `send()` calls `POST https://api.telegram.org/bot<token>/sendMessage` with `{
-      chat_id, text, parse_mode: 'HTML', disable_web_page_preview: true }`, then parses the JSON reply and
-      throws unless `ok === true` (the Bot API can answer HTTP 200 with `ok: false`).
+      chat_id, text, parse_mode: 'HTML', disable_web_page_preview: true }` via `fetchWithSignal` with the
+      dispatcher's signal and `redirect: 'error'`, then parses the JSON reply and throws a non-retryable
+      `ChannelDeliveryError` unless `ok === true` (the Bot API can answer HTTP 200 with `ok: false`); every
+      other failure outcome (connection failure, 429, 5xx, timeout, redirect, other 4xx) throws a
+      `ChannelDeliveryError` with the status and the classification from `classify()`.
 - [ ] The Telegram channel HTML-escapes `<`, `>` and `&` in both `title` and `message` before building
       `text`.
 - [ ] The Telegram channel never logs the bot token; log output includes only `api.telegram.org` and the
       response status.
 - [ ] Each plugin registers its own `send-test` extension action identical in shape to
-      `FEATURE-NOTIFICATIONS-CHANNEL-WEBHOOK-DISCORD`'s.
+      `FEATURE-NOTIFICATIONS-CHANNEL-WEBHOOK-DISCORD`'s: it calls the channel's own
+      `send(sample, AbortSignal.timeout(10_000))` and returns the sanitized error text on failure.
 - [ ] Both plugins' secrets (`webhook_url` for Slack, `bot_token` for Telegram) are redacted through
       `secretFields` and gain rows in `apps/admin/src/plugins/config-secrets.spec.ts` and
       `apps/backend/src/plugins/plugin-secret-removal.spec.ts`.
 - [ ] A Telegram-specific test proves the HTML-escaping of `<`, `>` and `&` in the outgoing text.
 - [ ] A Telegram-specific test proves an `ok: false` JSON reply (with an HTTP 200 status) causes `send()` to
-      throw.
+      throw a non-retryable `ChannelDeliveryError`.
 - [ ] A Slack config DTO test proves a `webhook_url` that does not start with `https://` is rejected.
 - [ ] Channel specs (mocked `fetch`) assert request shape for both plugins, matching the coverage
       `FEATURE-NOTIFICATIONS-CHANNEL-WEBHOOK-DISCORD` established.
@@ -99,8 +105,12 @@ From the plan's Task N-9:
 **Payloads:** Slack `{ text: title, attachments: [{ color, title, text: message, footer }] }` with colours
 `#3498db / #f39c12 / #e74c3c / #8e44ad`; Telegram `POST https://api.telegram.org/bot<token>/sendMessage` with
 `{ chat_id, text, parse_mode: 'HTML', disable_web_page_preview: true }`, HTML-escaping `<`, `>`, `&` in title
-and message; `send` parses the JSON reply and throws unless `ok === true` (the Bot API can answer HTTP 200
-with `ok: false`); the token never appears in logs (log `api.telegram.org` and the status only).
+and message; `send` parses the JSON reply and throws a non-retryable `ChannelDeliveryError` unless `ok ===
+true` (the Bot API can answer HTTP 200 with `ok: false`); the token never appears in logs (log
+`api.telegram.org` and the status only). Both channels call `fetchWithSignal` with the dispatcher's signal and
+`redirect: 'error'`, and throw `ChannelDeliveryError` for every other failure outcome (connection failure,
+429, 5xx, timeout, redirect, other 4xx) with the status and the classification from `classify()`; `send-test`
+calls `send(sample, AbortSignal.timeout(10_000))` and returns the sanitized error text on failure.
 
 Copy the file-by-file layout from `FEATURE-NOTIFICATIONS-CHANNEL-WEBHOOK-DISCORD`'s merged implementation
 rather than the plan text alone, since that task is the concrete reference by the time this one starts.

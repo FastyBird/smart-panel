@@ -105,7 +105,7 @@ to discover them, and nothing tells them when a condition has cleared.
 | `notify()` | Inserts a row. | Upserts: `occurrences + 1`, replaces title/message/severity/actions/data, clears `read_at` and `dismissed_at` (re-opens the aggregation). | Upserts: `occurrences + 1`, replaces fields; keeps `read_at` and `dismissed_at` (a dismissed issue stays hidden while the condition persists). |
 | `resolve(source, key)` | Not applicable, logged and ignored. | Sets `resolved_at` (closes the aggregation window; the next `notify()` starts a new row). | Sets `resolved_at`. |
 | Boot | Untouched. | Untouched. | `resolved_at = now` for rows with `persistent = false` and `updated_at < bootStartedAt`. Sources re-raise during their own startup. |
-| User dismiss | `dismissed_at`. | `dismissed_at`; cleared by the next upsert. | `dismissed_at`; stays until resolved. For a `persistent` issue the dismissal also sets `resolved_at`, because the source declared that nothing re-detects the condition, so the dismissal is the only way it ends. |
+| User dismiss | `dismissed_at`. | `dismissed_at`; cleared by the next upsert. | `dismissed_at`; stays until resolved. For a `persistent` issue the dismissal also sets `resolved_at`, because the source declared that nothing re-detects the condition, so the dismissal is the only way it ends; un-dismissing it (`dismissed: false`) clears `dismissed_at` but leaves `resolved_at` in place, so it stays in history. |
 | Retention | Deleted `retention_days` after `dismissed_at`. | Deleted `retention_days` after the later of `dismissed_at` and `resolved_at`, once at least one is set. | Deleted only once resolved: `resolved_at` set and the later of `resolved_at` and `dismissed_at` older than `retention_days`. A dismissed but unresolved issue is kept, because the dismissal must keep hiding the source's re-raises. |
 | Channel delivery | On insert. | On insert only (later upserts update in-app only, which keeps repeated failures from spamming Discord). | On insert only. |
 
@@ -145,8 +145,9 @@ type NotificationAction =
   `http(s)` URL (opened in a new tab). Any other scheme is rejected at `notify()`.
 - `extension_action` is executed by the admin through the existing extensions composable
   (`useActions().executeAction`), which posts directly. The backend applies the action's `requiredRoles`; the
-  notification composable itself fetches the action descriptor and shows the confirmation dialog when the action
-  is `dangerous`, and always confirms `service` stop and restart.
+  notification composable itself fetches the action descriptors and shows the confirmation dialog when the action
+  is `dangerous`, and always confirms `service` stop and restart. It fails closed: when the descriptors cannot
+  be fetched or none matches `action_id`, it reports an error and executes nothing.
 - `service` is executed through the existing managed-services composable and endpoints.
 - Executing an action never changes the notification. The source resolves the issue when it observes the
   effect (the service reports `started`, the update is installed). A CTA that failed leaves the issue in
@@ -201,8 +202,8 @@ apps/backend/src/modules/notifications/
   `(source, key) WHERE key IS NOT NULL AND resolved_at IS NULL` and indexes on `created_at`, `dismissed_at`,
   `resolved_at`.
 - Websocket: the module emits `NotificationsModule.Notification.Created`, `.Updated` and `.Deleted` through
-  `EventEmitter2`; the gateway bridges them. `'NotificationsModule.'` is added to
-  `EXCHANGE_ONLY_EVENT_PREFIXES` in `websocket.gateway.ts` so displays never receive them. Payloads are thin
+  `EventEmitter2`; the gateway bridges them. `'NotificationsModule.'` is listed in a new
+  `ADMIN_ONLY_EVENT_PREFIXES` in `websocket.gateway.ts`, so displays never receive them. Payloads are thin
   pointers, following the config-change precedent: `{ id, kind, severity, source }` for Created and Updated,
   `{ id }` for Deleted. Clients fetch the row through the guarded REST endpoint. Because `subscribe-exchange`
   admits any authenticated socket today, the gateway delivers admin-only prefixes only to the exchange sockets
@@ -322,10 +323,14 @@ interface INotificationChannel {
 - The dispatcher runs on `Created` for rows whose `source` is not a registered channel type (loop guard), in
   parallel across channels, sequentially per channel. Each attempt passes a fresh `AbortSignal.timeout(10_000)` into `send` and races the returned promise against that
   signal, so a channel that ignores the signal still settles (there is no per-channel timeout setting). Up to 3
-  attempts with 1 s and 5 s delays between them, but only for failures that happen before the provider can have
-  accepted the message: a network error (the request never completed) or an HTTP 429 or 5xx response. A timeout is
-  ambiguous (the provider may have accepted the request) and any other 4xx is a configuration error, so neither is
-  retried; both count as a failed delivery. Rejections are normalised before use (`error instanceof Error ?
+  attempts with 1 s and 5 s delays between them, but only for failures proven to precede acceptance: a
+  connection-establishment failure (DNS, connection refused, host or network unreachable, TLS handshake) or an
+  HTTP 429 or 5xx response, which the providers document as "not processed". Anything after the request was
+  written is ambiguous (the provider may have accepted it): a reset or broken pipe, a timeout, and any other 4xx
+  end the delivery immediately as failed, never retried. Channels signal the classification by throwing
+  `ChannelDeliveryError { status?: number; retryable: boolean }`; the dispatcher never guesses from raw errors.
+  Every channel `fetch` uses `redirect: 'error'`, so a redirect (which could carry the webhook secret or a
+  bearer header to another origin or to plain HTTP) is a non-retryable failure. Rejections are normalised before use (`error instanceof Error ?
   error.message : String(error)`), so a channel rejecting with a non-Error cannot break the self-report. After the last failure it logs and raises the `delivery-failed`
   issue for that channel with `message = sanitizeErrorMessage(normalisedMessage)`; the next success resolves it.
 - Channels are skipped when the extension is disabled, when `isConfigured()` is false, or when the
@@ -336,7 +341,8 @@ interface INotificationChannel {
   map is a declared secret (redacted on read, `headers_configured` sibling) and is only ever sent over `https:`:
   a configuration with an `http:` URL and any header is rejected at validation.
 - Every channel plugin registers one extension action `send-test` (category `diagnostics`) that sends a
-  sample `info` notification through its own `send()`. The existing Actions tab renders it, so no channel UI
+  sample `info` notification through its own `send()`, passing a fresh `AbortSignal.timeout(10_000)` exactly
+  as the dispatcher does, and reports the sanitized failure text on error. The existing Actions tab renders it, so no channel UI
   is needed beyond the config form.
 - Plugin config models carry the secret under `secretFields` (`webhook_url` or `bot_token`), so the existing
   redaction, `_configured` sibling, `ConfigSecretInput` and the two secret regression spec tables apply.

@@ -39,8 +39,9 @@ covering the emitter and channel contracts.
 **In scope**
 
 - `packages/extension-sdk/src/notification.types.ts` exporting `NotificationKind`, `NotificationSeverity`,
-  `NotificationAction`, `CreateNotificationInput`, and a `NotificationChannel` interface mirroring
-  `INotificationChannel` with a plain `Notification` payload type.
+  `NotificationAction`, `CreateNotificationInput`, a `NotificationChannel` interface mirroring
+  `INotificationChannel` with a plain `Notification` payload type, and the shape of `ChannelDeliveryError`
+  (`retryable: boolean`, `status?: number`) alongside it.
 - Export from `packages/extension-sdk/src/index.ts`; update `packages/extension-sdk/README.md`.
 - A `notify` call added to the example service in `packages/example-extension/**`, behind the existing
   pattern.
@@ -65,6 +66,9 @@ covering the emitter and channel contracts.
       `CreateNotificationInput`, and a `NotificationChannel` interface mirroring `INotificationChannel`
       (`getType`, `isConfigured`, `getMinSeverity`, `send(notification, signal: AbortSignal)`) with a plain
       `Notification` payload type usable outside the backend's TypeORM entity.
+- [ ] `packages/extension-sdk/src/notification.types.ts` also exports the shape of `ChannelDeliveryError`
+      (`retryable: boolean`, `status?: number`) alongside the `NotificationChannel` interface, so a
+      third-party channel implementation can type the errors it throws.
 - [ ] `packages/extension-sdk/src/index.ts` exports everything from `notification.types.ts`.
 - [ ] `packages/extension-sdk/README.md` documents the new exports.
 - [ ] `packages/example-extension/**` gains one `notify` call demonstrating the pattern, following the
@@ -103,7 +107,8 @@ From the plan's Task N-11 Files list (verbatim):
 
 - Create: `packages/extension-sdk/src/notification.types.ts` (`NotificationKind`, `NotificationSeverity`,
   `NotificationAction`, `CreateNotificationInput`, `NotificationChannel` interface mirroring
-  `INotificationChannel` with a plain `Notification` payload type)
+  `INotificationChannel` with a plain `Notification` payload type, and the shape of `ChannelDeliveryError`
+  (`retryable`, `status?`) alongside it)
 - Modify: `packages/extension-sdk/src/index.ts` (export), `packages/extension-sdk/README.md`
 - Modify: `packages/example-extension/**` (a `notify` call in the example service, behind the existing
   pattern)
@@ -120,7 +125,7 @@ N-1/N-3 did not define."
 No TypeScript code block is given in the plan for this task beyond what N-1 and N-3 already define; derive
 `notification.types.ts` directly from the spec's `NotificationAction` union (Concepts -> Actions) and from
 `FEATURE-NOTIFICATIONS-BACKEND-CORE`'s `CreateNotificationInput`/`NotificationsService` interfaces and
-`FEATURE-NOTIFICATIONS-CHANNEL-DISPATCH`'s `INotificationChannel`.
+`FEATURE-NOTIFICATIONS-CHANNEL-DISPATCH`'s `INotificationChannel` and `ChannelDeliveryError`.
 
 ## 8. AI instructions
 

@@ -226,7 +226,7 @@ The table below lists controller-relative routes.
 - Create: `apps/backend/test/notifications.e2e-spec.ts`
 - Modify: `apps/backend/src/modules/notifications/notifications.openapi.ts` (add the new models)
 - Modify: `apps/backend/src/modules/notifications/notifications.module.ts` (controller)
-- Modify: `apps/backend/src/modules/websocket/gateway/websocket.gateway.ts` (`EXCHANGE_ONLY_EVENT_PREFIXES` gains `'NotificationsModule.'`; sockets whose principal is a user with `UserRole.OWNER` or `UserRole.ADMIN` also join an `ADMIN_ROOM` at handshake, and admin-only prefixes are delivered to `ADMIN_ROOM` instead of the whole `EXCHANGE_ROOM`)
+- Modify: `apps/backend/src/modules/websocket/gateway/websocket.gateway.ts` (`EXCHANGE_ONLY_EVENT_PREFIXES` and the `SystemModule.System.Update.*` routing stay unchanged; a new `ADMIN_ONLY_EVENT_PREFIXES = ['NotificationsModule.']` is delivered to a new `ADMIN_ROOM` that sockets join at handshake when their principal is a user with `UserRole.OWNER` or `UserRole.ADMIN`)
 - Regenerate locally (gitignored, not committed): `spec/api/v1/openapi.json`, `apps/admin/src/openapi.ts`, `apps/panel/lib/api/**` via `pnpm run generate:openapi`
 
 **Interfaces (consumes N-1: `NotificationsService`, `NotificationsFilter`; produces the routes below):**
@@ -292,8 +292,12 @@ export abstract class BaseNotificationChannel implements INotificationChannel {
 	protected abstract hasRequiredConfig(config: PluginConfigModel): boolean;
 	abstract send(notification: NotificationEntity, signal: AbortSignal): Promise<void>;
 	protected formatText(notification: NotificationEntity): string; // "[ERROR] Title\nmessage\nSource: x · 3 occurrences"
-	protected fetchWithSignal(url: string, init: RequestInit, signal: AbortSignal): Promise<Response>; // passes the dispatcher's signal to fetch
-	protected isRetryable(error: unknown): boolean; // network error, HTTP 429 or 5xx → true; timeout, other 4xx → false (channels throw `ChannelDeliveryError { status?: number; retryable: boolean }`)
+	protected fetchWithSignal(url: string, init: RequestInit, signal: AbortSignal): Promise<Response>; // fetch with the dispatcher's signal and `redirect: 'error'`; wraps outcomes into ChannelDeliveryError
+	protected classify(error: unknown, response?: Response): ChannelDeliveryError; // channel-side helper: DNS/refused/unreachable/TLS-handshake causes and HTTP 429/5xx → retryable: true; reset, broken pipe, abort/timeout, redirect, other 4xx → retryable: false
+}
+
+export class ChannelDeliveryError extends Error { // the dispatcher-facing contract: every channel failure is one of these
+	constructor(message: string, readonly retryable: boolean, readonly status?: number);
 }
 
 // notifications.utils.ts
@@ -316,9 +320,9 @@ export class NotificationChannelRegistryService {
 - For each channel in parallel (`Promise.allSettled`): skip when the extension is disabled
   (`configService.getPluginConfig(type).enabled === false`), when `isConfigured()` is false, or when
   `SEVERITY_RANK[entity.severity] < SEVERITY_RANK[await channel.getMinSeverity()]`.
-- Attempts: up to 3, with delays of 1 000 ms and 5 000 ms between them (injectable `sleep` for tests). Each attempt creates `AbortSignal.timeout(10_000)`, calls `send(notification, signal)` and races the promise against the signal's abort so a channel that ignores the signal still settles. Only retryable failures get another attempt: a network error (fetch rejected, no response) or an HTTP 429 / 5xx; a timeout (ambiguous acceptance) and any other 4xx end the delivery immediately as failed. Rejections are normalised first: `const message = error instanceof Error ? error.message : String(error)` (guarded so a throwing `toString` yields `'unknown error'`).
-- After the final failure: `logger.error` with channel type and `sanitizeErrorMessage(message)` (never the URL), then, with `message: sanitizeErrorMessage(message)` in the payload,
-  `notificationsService.notify({ source: channel.getType(), kind: ISSUE, key: 'delivery-failed', severity: WARNING, title: 'Notification delivery failed', message, actions: [{ type: 'link', label: 'Open channel settings', url: '/config/plugins/<type>' }] })`.
+- Attempts: up to 3, with delays of 1 000 ms and 5 000 ms between them (injectable `sleep` for tests). Each attempt creates `AbortSignal.timeout(10_000)`, calls `send(notification, signal)` and races the promise against the signal's abort so a channel that ignores the signal still settles. Only a `ChannelDeliveryError` with `retryable: true` gets another attempt (connection-establishment failures — DNS, refused, unreachable, TLS handshake — and HTTP 429 / 5xx); a reset after the request was written, an abort/timeout, a redirect, any other 4xx, and any non-`ChannelDeliveryError` rejection end the delivery immediately as failed. Rejections are normalised first: `const message = error instanceof Error ? error.message : String(error)` (guarded so a throwing `toString` yields `'unknown error'`).
+- After the final failure: `logger.error` with channel type and `sanitizeErrorMessage(message)` (never the URL), then
+  `notificationsService.notify({ source: channel.getType(), kind: ISSUE, key: 'delivery-failed', severity: WARNING, title: 'Notification delivery failed', message: sanitizeErrorMessage(message), actions: [{ type: 'link', label: 'Open channel settings', url: '/config/plugins/<type>' }] })`.
 - After a success: `notificationsService.resolve(channel.getType(), 'delivery-failed')`.
 - Per-channel deliveries are serialised with a simple promise chain so a burst keeps message order.
 
@@ -370,15 +374,16 @@ actions: [
 ]
 // resolve on transition to 'started'.
 
-// auth: failed login (hour bucket in UTC, username truncated to 64 chars, ip 'unknown' when absent)
-key: `login-failed:${username}:${ip ?? 'unknown'}:${bucket}`, kind: EVENT, severity: WARNING,
+// auth: failed login (hour bucket in UTC; `const user = username.slice(0, 64)` and `const client = ip ?? 'unknown'` are used everywhere below)
+key: `login-failed:${user}:${client}:${bucket}`, kind: EVENT, severity: WARNING,
 // const client = ip ?? 'unknown'; used in the key, the message and the data
-title: `Failed login attempt for "${username}"`, message: `From ${client} · ${count} attempt(s) this hour`,
-data: { username, ip: client, reason },
+title: `Failed login attempt for "${user}"`, message: `From ${client} · ${count} attempt(s) this hour`,
+data: { username: user, ip: client, reason },
 ```
 
-The auth emitter keeps an in-memory `Map<string, number>` counter per key (pruned when the bucket changes) so
-the message carries the count. `AuthService.login` gains an optional `context` argument so existing callers
+The auth emitter keeps an in-memory `Map<string, number>` counter per key so the message carries the count; it
+is bounded: entries of past hour buckets are pruned on every call, and the map never exceeds 1 000 keys (the
+oldest key is evicted when a new one would exceed it), so a flood of distinct usernames or IPs cannot grow it. `AuthService.login` gains an optional `context` argument so existing callers
 compile unchanged.
 
 **Tests:** for each emitter, one test that the condition calls `notify` with the exact `source`, `kind`,
@@ -522,7 +527,7 @@ export function useNotificationAction(): {
 	isExecuting: Ref<boolean>;
 }
 // link: relative → router.push(url); absolute http(s) → window.open(url, '_blank', 'noopener')
-// extension_action: fetch the action descriptors for `extension_type` through the extensions composable, and when the matching descriptor is `dangerous` show `ElMessageBox.confirm` first (in a separate try block); then `useActions().executeAction(extension_type, action_id, params)` from `modules/extensions/composables/useActions.ts:136`, which posts directly and shows no confirmation itself
+// extension_action: fetch the action descriptors for `extension_type` through the extensions composable; if the fetch fails or no descriptor matches `action_id`, show an error and execute nothing (fail closed); when the matching descriptor is `dangerous` show `ElMessageBox.confirm` first (in a separate try block); then `useActions().executeAction(extension_type, action_id, params)` from `modules/extensions/composables/useActions.ts:136`, which posts directly and shows no confirmation itself
 // service: `useServiceActions().restartService | startService | stopService(extension_kind, extension_type, service_id)` from `modules/extensions/composables/useServiceActions.ts:9-11`, preceded by `ElMessageBox.confirm` for stop and restart
 ```
 
@@ -538,8 +543,8 @@ unread, dismiss, delete (delete confirms first); "Load more" when `hasMore`; row
 lifecycle timestamps, delete and dismiss buttons).
 
 **Tests:** `useNotificationAction` routes each action type to the right collaborator (mocked), confirms before
-a `dangerous` extension action and before a service stop or restart, and does not run the action when the
-confirmation is cancelled; the page filter schema round-trips through the query string; the config form
+a `dangerous` extension action and before a service stop or restart, does not run the action when the
+confirmation is cancelled, and executes nothing when the descriptor fetch fails or no descriptor matches; the page filter schema round-trips through the query string; the config form
 validates ranges.
 
 **Verification:**
@@ -605,9 +610,11 @@ with colours `info 0x3498db`, `warning 0xf39c12`, `error 0xe74c3c`, `critical 0x
 
 `send-test` action: `{ id: 'send-test', label: 'Send test notification', category: DIAGNOSTICS, mode: 'immediate', execute }`
 builds a fake `NotificationEntity` (`severity: INFO`, title `Test notification from Smart Panel`) and calls the
-channel's `send`, returning `{ success, message }`.
+channel's `send(sample, AbortSignal.timeout(10_000))`, returning `{ success, message }` with the sanitized error
+text on failure. Both channels throw `ChannelDeliveryError` for every failure outcome (connection failure,
+429, 5xx, timeout, redirect, other 4xx) with the status and the retryable classification from `classify()`.
 
-**Tests:** channel spec with mocked `fetch` asserting URL, method, headers and body; the dispatcher's signal is passed to `fetch`; a Discord `http:` URL is rejected by the DTO while the webhook accepts it; an `http:` webhook URL combined with headers is rejected; `ConfigSecretsService.toPublic` strips `headers` and adds `headers_configured`;
+**Tests:** channel spec with mocked `fetch` asserting URL, method, headers, body, the dispatcher's signal and `redirect: 'error'`; a redirect outcome and a 400 become non-retryable `ChannelDeliveryError`s, a 503 a retryable one; a Discord `http:` URL is rejected by the DTO while the webhook accepts it; an `http:` webhook URL combined with headers is rejected; `ConfigSecretsService.toPublic` strips `headers` and adds `headers_configured`;
 `hasRequiredConfig` false without the secret; `send-test` returns failure text on throw; redaction through
 `ConfigSecretsService.toPublic` strips the secret and adds `_configured`; the two regression tables gain a
 row per secret and stay green.

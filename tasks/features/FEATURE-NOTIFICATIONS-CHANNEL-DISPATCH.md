@@ -66,10 +66,15 @@ filtering, timeout, retry and a self-reported delivery-failure issue uniformly.
       `min_severity`.
 - [ ] `BaseNotificationChannel` exposes `formatText(notification)` producing a shared wording (title,
       severity, source, message, occurrences) and `fetchWithSignal(url, init, signal)`, which passes the
-      dispatcher's `AbortSignal` through to `fetch` in place of a channel-owned timeout.
-- [ ] `BaseNotificationChannel` exposes `isRetryable(error)`: a network error with no response, or an HTTP
-      429 or 5xx, is retryable; a timeout or any other 4xx is not. Channels throw a `ChannelDeliveryError`
-      (`{ status?: number; retryable: boolean }`) so `send` can report which case applies.
+      dispatcher's `AbortSignal` through to `fetch` and sets `redirect: 'error'`, so a redirect is a
+      non-retryable failure rather than being followed silently.
+- [ ] `ChannelDeliveryError` (`{ message: string; retryable: boolean; status?: number }`) is the
+      dispatcher-facing contract: every channel failure is thrown as one, and the dispatcher retries only
+      when `retryable` is `true` and never classifies a raw error itself.
+- [ ] `BaseNotificationChannel.classify(error, response?)` replaces `isRetryable` as the channel-side helper
+      that builds a `ChannelDeliveryError`: a connection-establishment failure (DNS, connection refused, host
+      or network unreachable, TLS handshake) or an HTTP 429 or 5xx response is retryable; a reset or broken
+      pipe after the request was written, an abort or timeout, a redirect, or any other 4xx is not retryable.
 - [ ] `NotificationChannelRegistryService.register(channel)` throws when a channel of the same `getType()` is
       already registered.
 - [ ] `NotificationChannelRegistryService.isChannel(source)` returns `true` for any registered channel's
@@ -86,9 +91,11 @@ filtering, timeout, retry and a self-reported delivery-failure issue uniformly.
       and races the returned promise against the signal's abort so a channel that ignores the signal still
       settles; there is no per-channel timeout setting.
 - [ ] Up to 3 send attempts with delays of 1000 ms and 5000 ms between them (delay mechanism injectable for
-      tests), but only when the failure is retryable per `isRetryable`: a network error with no response, or
-      an HTTP 429 or 5xx response. A timeout or any other 4xx ends the delivery as failed after the first
-      attempt, with no retry.
+      tests), but only when the thrown `ChannelDeliveryError` has `retryable: true`: a connection-establishment
+      failure (DNS, connection refused, host or network unreachable, TLS handshake) or an HTTP 429 or 5xx
+      response. A reset or broken pipe after the request was written, an abort or timeout, a redirect, any
+      other 4xx, and any rejection that is not a `ChannelDeliveryError` end the delivery as failed after the
+      first attempt, with no retry.
 - [ ] Rejections are normalised before use: `const message = error instanceof Error ? error.message :
       String(error)`, guarded so a throwing `toString` still yields a usable string rather than crashing the
       dispatcher.
@@ -110,11 +117,12 @@ filtering, timeout, retry and a self-reported delivery-failure issue uniformly.
       collapsed; a long message is truncated to 300 characters.
 - [ ] Dispatcher spec covers: filter by disabled, filter by unconfigured, filter by below-minimum severity,
       the loop guard, a retryable failure retried three times (sleeps of 1000 ms then 5000 ms) followed by
-      self-report, a timeout and an HTTP 400 both ending delivery as failed without a retry, a channel that
-      never settles being aborted by the race against `AbortSignal.timeout(10_000)` and counted as failed, a
-      `null` rejection still producing a self-report with a sanitized message, a success resolving a prior
-      self-report, one channel's failure not blocking another, and order preservation within one channel -
-      using fake channels and a fake `sleep`.
+      self-report, a timeout, an HTTP 400 and a redirect outcome all ending delivery as failed without a
+      retry, a channel that never settles being aborted by the race against `AbortSignal.timeout(10_000)` and
+      counted as failed, a non-`ChannelDeliveryError` rejection (e.g. a plain `null` throw) treated as final
+      and still producing a self-report with a sanitized message, a success resolving a prior self-report, one
+      channel's failure not blocking another, and order preservation within one channel - using fake channels
+      and a fake `sleep`.
 - [ ] Registry spec covers: duplicate-type registration throws, and `isChannel` correctly identifies
       registered types.
 - [ ] `cd apps/backend && npx jest src/modules/notifications` passes.
@@ -153,8 +161,12 @@ export abstract class BaseNotificationChannel implements INotificationChannel {
 	protected abstract hasRequiredConfig(config: PluginConfigModel): boolean;
 	abstract send(notification: NotificationEntity, signal: AbortSignal): Promise<void>;
 	protected formatText(notification: NotificationEntity): string; // "[ERROR] Title\nmessage\nSource: x - 3 occurrences"
-	protected fetchWithSignal(url: string, init: RequestInit, signal: AbortSignal): Promise<Response>; // passes the dispatcher's signal to fetch
-	protected isRetryable(error: unknown): boolean; // network error, HTTP 429 or 5xx -> true; timeout, other 4xx -> false (channels throw `ChannelDeliveryError { status?: number; retryable: boolean }`)
+	protected fetchWithSignal(url: string, init: RequestInit, signal: AbortSignal): Promise<Response>; // fetch with the dispatcher's signal and `redirect: 'error'`; wraps outcomes into ChannelDeliveryError
+	protected classify(error: unknown, response?: Response): ChannelDeliveryError; // channel-side helper: DNS/refused/unreachable/TLS-handshake causes and HTTP 429/5xx -> retryable: true; reset, broken pipe, abort/timeout, redirect, other 4xx -> retryable: false
+}
+
+export class ChannelDeliveryError extends Error { // the dispatcher-facing contract: every channel failure is one of these
+	constructor(message: string, readonly retryable: boolean, readonly status?: number);
 }
 
 // notifications.utils.ts
@@ -179,13 +191,14 @@ the plan:
 - For each channel in parallel (`Promise.allSettled`): skip when the extension is disabled
   (`configService.getPluginConfig(type).enabled === false`), when `isConfigured()` is false, or when
   `SEVERITY_RANK[entity.severity] < SEVERITY_RANK[await channel.getMinSeverity()]`.
-- Attempts: up to 3, with delays of 1 000 ms and 5 000 ms between them (injectable `sleep` for tests). Each
+- Attempts: up to 3, with delays of 1000 ms and 5000 ms between them (injectable `sleep` for tests). Each
   attempt creates `AbortSignal.timeout(10_000)`, calls `send(notification, signal)` and races the promise
-  against the signal's abort so a channel that ignores the signal still settles. Only retryable failures get
-  another attempt: a network error (fetch rejected, no response) or an HTTP 429 / 5xx; a timeout (ambiguous
-  acceptance) and any other 4xx end the delivery immediately as failed. Rejections are normalised first:
-  `const message = error instanceof Error ? error.message : String(error)` (guarded so a throwing `toString`
-  yields a usable string instead of crashing the dispatcher).
+  against the signal's abort so a channel that ignores the signal still settles. Only a `ChannelDeliveryError`
+  with `retryable: true` gets another attempt (a connection-establishment failure - DNS, refused, unreachable,
+  TLS handshake - or an HTTP 429 / 5xx); a reset after the request was written, an abort/timeout, a redirect,
+  any other 4xx, and any non-`ChannelDeliveryError` rejection end the delivery immediately as failed.
+  Rejections are normalised first: `const message = error instanceof Error ? error.message : String(error)`
+  (guarded so a throwing `toString` yields a usable string instead of crashing the dispatcher).
 - After the final failure: `logger.error` with channel type and `sanitizeErrorMessage(message)` (never the
   URL), then
   `notificationsService.notify({ source: channel.getType(), kind: ISSUE, key: 'delivery-failed', severity: WARNING, title: 'Notification delivery failed', message: sanitizeErrorMessage(message), actions: [{ type: 'link', label: 'Open channel settings', url: '/config/plugins/<type>' }] })`.
