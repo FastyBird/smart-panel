@@ -333,7 +333,13 @@ export class PrivilegedWorkerService {
 
 			record.lastStatus = status;
 
-			for (const handler of record.handlers) {
+			// Snapshot before iterating: a handler can itself call onStatus()
+			// re-entrantly (e.g. subscribing another handler while reacting to
+			// this one's delivery). Set iteration is live, so without this a
+			// handler added mid-loop would be visited here too, on top of the
+			// replay onStatus() already schedules for it — delivering this same
+			// status to it twice.
+			for (const handler of [...record.handlers]) {
 				handler(status);
 			}
 
@@ -369,7 +375,11 @@ export class PrivilegedWorkerService {
 
 		record.lastStatus = status;
 
-		for (const handler of record.handlers) {
+		// Same re-entrancy guard as the poll tick above: snapshot before
+		// iterating so a handler added during delivery (via a re-entrant
+		// onStatus() call) is not also visited by this loop, on top of its own
+		// replay.
+		for (const handler of [...record.handlers]) {
 			handler(status);
 		}
 

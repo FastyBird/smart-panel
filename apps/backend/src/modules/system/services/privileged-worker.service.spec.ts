@@ -428,6 +428,47 @@ describe('PrivilegedWorkerService', () => {
 
 			expect(handler).not.toHaveBeenCalled();
 		});
+
+		it("does not double-deliver to a handler subscribed re-entrantly from within another handler's own delivery", async () => {
+			// Set iteration is live: without snapshotting record.handlers before
+			// the delivery loop, a handler added mid-loop (by another handler
+			// calling onStatus() re-entrantly, from inside its own invocation)
+			// would be visited by *this same* loop *and* separately receive its
+			// own scheduled replay — the same status delivered twice.
+			const { id } = await service.run(baseSpec);
+
+			const handlerB = jest.fn();
+
+			// Only subscribes handlerB from the 'downloading' tick — not from
+			// its own initial replay (state: 'running', no step) — so the
+			// re-entrant subscription happens from inside the live delivery
+			// loop this test is targeting, not from an unrelated microtask.
+			const handlerA = jest.fn((status: PrivilegedJobStatus) => {
+				if (status.step === 'downloading') {
+					service.onStatus(id, handlerB);
+				}
+			});
+
+			service.onStatus(id, handlerA);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({ id, state: 'running', step: 'downloading', updatedAt: new Date().toISOString() }),
+			);
+
+			jest.advanceTimersByTime(3_000);
+
+			// handlerA ran synchronously inside this tick's (snapshotted)
+			// delivery loop and subscribed handlerB from within it — handlerB
+			// must not also be visited by that same, already-snapshotted loop.
+			expect(handlerB).not.toHaveBeenCalled();
+
+			await Promise.resolve();
+
+			// handlerB's own replay delivers the current status — exactly once.
+			expect(handlerB).toHaveBeenCalledTimes(1);
+			expect(handlerB).toHaveBeenCalledWith(expect.objectContaining({ id, state: 'running', step: 'downloading' }));
+		});
 	});
 
 	describe('child process exit', () => {
