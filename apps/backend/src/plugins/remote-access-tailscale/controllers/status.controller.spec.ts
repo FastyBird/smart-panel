@@ -22,7 +22,7 @@ describe('StatusController', () => {
 	let nodeManagedService: { evaluateRequirements: jest.Mock };
 
 	const baseStatus: RemoteAccessProviderStatus = {
-		type: 'remote-access-tailscale',
+		type: 'remote-access-tailscale-plugin',
 		state: 'connected',
 		endpoints: [{ url: 'http://100.64.0.5:3000', scope: 'private', https: false, label: 'Tailscale IPv4' }],
 		details: { tailnet: 'example.ts.net' },
@@ -64,7 +64,7 @@ describe('StatusController', () => {
 		const response = await controller.getStatus(res);
 
 		expect(response.data).toMatchObject({
-			type: 'remote-access-tailscale',
+			type: 'remote-access-tailscale-plugin',
 			state: 'connected',
 			proxyAddresses: [],
 			details: { tailnet: 'example.ts.net' },

@@ -9,6 +9,7 @@ import {
 	RemoteAccessEndpointModel,
 } from '../../../modules/remote-access/models/provider.model';
 import { RemoteAccessProviderState } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
+import { REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME } from '../remote-access-tailscale.constants';
 import { TailscaleRequirementCode } from '../services/tailscale-node-managed.service';
 
 const REMOTE_ACCESS_PROVIDER_STATES: RemoteAccessProviderState[] = [
@@ -77,7 +78,7 @@ export class RemoteAccessTailscalePluginStatusModel {
 	@ApiProperty({
 		description: 'Provider plugin type identifier',
 		type: 'string',
-		example: 'remote-access-tailscale',
+		example: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 	})
 	@Expose()
 	@IsString()

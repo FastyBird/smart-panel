@@ -548,7 +548,7 @@ describe('TailscaleNodeManagedService', () => {
 
 			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
 				RemoteAccessEventType.PROVIDER_STATUS,
-				expect.objectContaining({ type: 'remote-access-tailscale', state: 'connected' }),
+				expect.objectContaining({ type: 'remote-access-tailscale-plugin', state: 'connected' }),
 			);
 		});
 

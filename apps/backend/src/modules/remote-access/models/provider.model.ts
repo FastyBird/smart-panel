@@ -108,7 +108,7 @@ export class RemoteAccessAdvisoryModel {
 		description: 'Provider type this advisory came from; absent for module-level advisories',
 		type: 'string',
 		nullable: true,
-		example: 'remote-access-tailscale',
+		example: 'remote-access-tailscale-plugin',
 	})
 	@Expose()
 	@IsOptional()
@@ -161,7 +161,7 @@ export class RemoteAccessProviderModel {
 	@ApiProperty({
 		description: 'Provider plugin type identifier',
 		type: 'string',
-		example: 'remote-access-tailscale',
+		example: 'remote-access-tailscale-plugin',
 	})
 	@Expose()
 	@IsString()

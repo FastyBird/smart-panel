@@ -20,14 +20,14 @@ describe('TailscaleProviderService', () => {
 	});
 
 	it('declares the expected static provider metadata', () => {
-		expect(service.type).toBe('remote-access-tailscale');
+		expect(service.type).toBe('remote-access-tailscale-plugin');
 		expect(service.kind).toBe('mesh');
 		expect(service.capabilities).toEqual({ https: true, publicUrl: true, identityHeaders: true, ssh: true });
 	});
 
 	it('delegates getStatus() to the node managed service instead of recomputing it', async () => {
 		const status: RemoteAccessProviderStatus = {
-			type: 'remote-access-tailscale',
+			type: 'remote-access-tailscale-plugin',
 			state: 'connected',
 			endpoints: [],
 			details: {},

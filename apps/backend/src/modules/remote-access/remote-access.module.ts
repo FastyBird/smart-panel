@@ -83,7 +83,7 @@ Owns the "how is this installation reachable" model for the Smart Panel. Tracks 
 
 ## Provider plugins
 
-This module never shells out and never knows a provider's binary. A remote-access provider plugin (e.g. \`remote-access-tailscale\`) registers itself against this module's provider registry in its own \`onModuleInit\` and reports its status (state, endpoints, proxy addresses, advisories) on demand and whenever it changes. The module aggregates every registered provider into a single status view and folds connected providers' endpoints into the URL registry.
+This module never shells out and never knows a provider's binary. A remote-access provider plugin (e.g. \`remote-access-tailscale-plugin\`) registers itself against this module's provider registry in its own \`onModuleInit\` and reports its status (state, endpoints, proxy addresses, advisories) on demand and whenever it changes. The module aggregates every registered provider into a single status view and folds connected providers' endpoints into the URL registry.
 
 ## API Endpoints
 
