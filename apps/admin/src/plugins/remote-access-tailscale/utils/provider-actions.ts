@@ -1,7 +1,7 @@
 import type { RemoteAccessModuleProviderState } from '../../../openapi.constants';
 
 export interface ITailscaleProviderActions {
-	/** Run the privileged setup job again (`POST /install`). */
+	/** Run the privileged setup job (`POST /install`) - owner-only. */
 	setup: boolean;
 	/** Open the sign-in step (interactive link/QR, or the advanced auth-key tab). */
 	signIn: boolean;
@@ -46,7 +46,7 @@ export const resolveTailscaleProviderActions = ({
 		state === 'connected' || state === 'connecting' || state === 'pending-approval' || state === 'error' || (state === 'disconnected' && hasTailnet);
 
 	return {
-		setup: state === 'not-installed' || state === 'setup-required',
+		setup: isOwner && (state === 'not-installed' || state === 'setup-required'),
 		signIn: state === 'pending-auth' || (state === 'disconnected' && !hasTailnet),
 		connect: state === 'disconnected' && hasTailnet,
 		disconnect: state === 'connected' || state === 'connecting' || state === 'pending-approval',

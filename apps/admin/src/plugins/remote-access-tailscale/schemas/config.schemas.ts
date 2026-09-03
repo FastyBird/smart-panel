@@ -9,9 +9,8 @@ export const TailscaleConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
 	acceptRoutes: z.boolean(),
 	advertiseTags: z.array(z.string().trim().min(1)),
 	ssh: z.boolean(),
-	// RA-6 (Serve/Funnel) accepts only its own defaults today - see
-	// `RemoteAccessTailscalePluginUpdateConfig.serve_https`/`funnel` on the backend - but the
-	// fields are still edited here so the form has somewhere to hold them once RA-6 lands.
+	// Mirror `RemoteAccessTailscalePluginUpdateConfig.serve_https`/`funnel`; the backend applies Serve and
+	// Funnel changes through the node's managed service after the config is saved.
 	serveHttps: z.boolean(),
 	funnel: z.boolean(),
 });
