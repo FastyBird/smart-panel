@@ -7,7 +7,9 @@ const URL_PATTERN = /[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s"'<>]+/g;
 
 const BEARER_TOKEN_PATTERN = /\b(Bearer)\s+\S+/gi;
 
-const JSON_SECRET_FIELD_PATTERN = /"(token|key|password|secret)"\s*:\s*"[^"]*"/gi;
+// The value alternation consumes escaped characters so an escaped quote inside the secret
+// cannot end the match early and leak the rest of the value.
+const JSON_SECRET_FIELD_PATTERN = /"(token|key|password|secret)"\s*:\s*"(?:\\.|[^"\\])*"/gi;
 
 const KEY_VALUE_SECRET_PATTERN = /\b(token|key|password|secret)=[^&\s"'}]+/gi;
 

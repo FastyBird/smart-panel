@@ -47,6 +47,15 @@ describe('sanitizeErrorMessage', () => {
 		expect(sanitizeErrorMessage('KEY=abc PASSWORD=def secret=ghi')).toBe('KEY=*** PASSWORD=*** secret=***');
 	});
 
+	it('masks a JSON token value completely even when it contains an escaped quote', () => {
+		const out = sanitizeErrorMessage('request failed: {"token":"abc\\"def","other":"kept"}');
+
+		expect(out).toMatch(/"token"\s*:\s*"\*\*\*"/);
+		expect(out).not.toContain('abc');
+		expect(out).not.toContain('def');
+		expect(out).toContain('kept');
+	});
+
 	it('masks a token value inside JSON-like text', () => {
 		expect(sanitizeErrorMessage('reply was {"ok":false,"token":"abc123"}')).toBe(
 			'reply was {"ok":false,"token":"***"}',
