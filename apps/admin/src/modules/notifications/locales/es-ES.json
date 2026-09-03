@@ -40,11 +40,14 @@
 	},
 	"messages": {
 		"notifications": {
+			"notFetched": "No se pudieron cargar las notificaciones.",
 			"dismissed": "Notification dismissed.",
 			"dismissCanceled": "Dismiss canceled.",
 			"notDismissed": "Notification could not be dismissed.",
+			"notAllDismissed": "Algunas notificaciones no se pudieron descartar.",
 			"notMarkedRead": "Notification could not be updated.",
 			"notAllMarkedRead": "Some notifications could not be marked as read.",
+			"notAllMarkedUnread": "Algunas notificaciones no se pudieron marcar como no leídas.",
 			"removed": "Notification removed.",
 			"removeCanceled": "Remove canceled.",
 			"notRemoved": "Notification could not be removed.",

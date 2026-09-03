@@ -46,7 +46,7 @@ import { Icon } from '@iconify/vue';
 
 import { AppBarHeading, ViewHeader, useBreakpoints } from '../../../common';
 import { ListNotifications, NotificationDetailDrawer, NotificationsFilter } from '../components/components';
-import { useNotificationsActions, useNotificationsDataSource } from '../composables/composables';
+import { type NotificationsBulkActionOutcome, useNotificationsActions, useNotificationsDataSource } from '../composables/composables';
 import { NotificationsException } from '../notifications.exceptions';
 import type { INotification } from '../store/notifications.store.schemas';
 
@@ -80,21 +80,47 @@ const onLoadMore = (): void => {
 	});
 };
 
-const onBulkAction = (action: string, ids: INotification['id'][]): void => {
+// `markAllRead` keeps its boolean (true whenever at least one id mutated) rather than the wider
+// `NotificationsBulkActionOutcome` the other three bulk actions return - this narrows either shape
+// to the one thing the caller below actually needs: does the list need to refresh.
+const isMutatingOutcome = (outcome: boolean | NotificationsBulkActionOutcome): boolean =>
+	typeof outcome === 'boolean' ? outcome : outcome === 'mutated';
+
+// Refetching unconditionally after every bulk action would re-issue the request even when the
+// user cancelled the confirmation or the whole batch failed - refetch only when something in the
+// selection actually changed (a partial success still counts, since some rows may no longer match
+// the current filter).
+const runBulkAction = async (action: string, ids: INotification['id'][]): Promise<void> => {
+	let outcome: boolean | NotificationsBulkActionOutcome;
+
 	switch (action) {
 		case 'mark-read':
-			void markAllRead(ids);
+			outcome = await markAllRead(ids);
 			break;
 		case 'mark-unread':
-			void bulkMarkUnread(ids);
+			outcome = await bulkMarkUnread(ids);
 			break;
 		case 'dismiss':
-			void bulkDismiss(ids);
+			outcome = await bulkDismiss(ids);
 			break;
 		case 'delete':
-			void bulkRemove(ids);
+			outcome = await bulkRemove(ids);
 			break;
+		default:
+			return;
 	}
+
+	if (isMutatingOutcome(outcome)) {
+		await fetchNotifications();
+	}
+};
+
+const onBulkAction = (action: string, ids: INotification['id'][]): void => {
+	runBulkAction(action, ids).catch((error: unknown): void => {
+		const err = error as Error;
+
+		throw new NotificationsException('Something went wrong', err);
+	});
 };
 
 // A filter change or a bulk delete can remove the open row from `notifications` entirely - once

@@ -4,15 +4,29 @@ import { createPinia, setActivePinia } from 'pinia';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { flushPromises } from '@vue/test-utils';
+
 import { injectStoresManager, useListQuery } from '../../../common';
 import { NotificationsModuleNotificationSeverity } from '../../../openapi.constants';
 import type { INotificationsFilter } from '../schemas/list.schemas';
 
 import { defaultNotificationsFilter, useNotificationsDataSource } from './useNotificationsDataSource';
 
+const { mockFlashError } = vi.hoisted(() => ({ mockFlashError: vi.fn() }));
+
 vi.mock('../../../common', () => ({
 	injectStoresManager: vi.fn(),
 	useListQuery: vi.fn(),
+	useFlashMessage: () => ({
+		success: vi.fn(),
+		info: vi.fn(),
+		warning: vi.fn(),
+		error: mockFlashError,
+	}),
+}));
+
+vi.mock('vue-i18n', () => ({
+	useI18n: () => ({ t: (key: string) => key }),
 }));
 
 const mockFetch = vi.fn();
@@ -143,5 +157,20 @@ describe('useNotificationsDataSource', () => {
 		const { notifications } = useNotificationsDataSource();
 
 		expect(notifications.value).toBe(rows);
+	});
+
+	// Previously `fetchNotifications().catch((): void => undefined)` inside the filters watcher -
+	// a failed request left the table showing the previous filter's rows with nothing telling the
+	// operator the new filter never actually applied.
+	it('flashes an error when a filter-triggered fetch fails, instead of leaving the table silently stale', async () => {
+		mockFetch.mockRejectedValueOnce(new Error('network down'));
+
+		useNotificationsDataSource();
+
+		filters.value = { ...filters.value, source: 'devices-home-assistant-plugin' };
+
+		await flushPromises();
+
+		expect(mockFlashError).toHaveBeenCalled();
 	});
 });

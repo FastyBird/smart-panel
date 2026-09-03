@@ -1,8 +1,9 @@
 import { type ComputedRef, type Ref, computed, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { storeToRefs } from 'pinia';
 
-import { injectStoresManager, useListQuery } from '../../../common';
+import { injectStoresManager, useFlashMessage, useListQuery } from '../../../common';
 import { NOTIFICATIONS_MODULE_NAME } from '../notifications.constants';
 import { NotificationsFilterSchema } from '../schemas/list.schemas';
 import type { INotificationsFilter } from '../schemas/list.schemas';
@@ -36,6 +37,9 @@ export interface IUseNotificationsDataSource {
  * is already in `listIds`.
  */
 export const useNotificationsDataSource = (): IUseNotificationsDataSource => {
+	const { t } = useI18n();
+	const flashMessage = useFlashMessage();
+
 	const storesManager = injectStoresManager();
 
 	const notificationsStore = storesManager.getStore(notificationsStoreKey);
@@ -85,7 +89,12 @@ export const useNotificationsDataSource = (): IUseNotificationsDataSource => {
 	watch(
 		filters,
 		(): void => {
-			fetchNotifications().catch((): void => undefined);
+			// A failed request here must not be swallowed - the table would otherwise keep showing
+			// the previous filter's rows with nothing telling the operator the new filter never
+			// actually applied.
+			fetchNotifications().catch((): void => {
+				flashMessage.error(t('notificationsModule.messages.notifications.notFetched'));
+			});
 		},
 		{ deep: true }
 	);

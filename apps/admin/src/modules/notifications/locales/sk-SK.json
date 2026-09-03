@@ -40,11 +40,14 @@
 	},
 	"messages": {
 		"notifications": {
+			"notFetched": "Oznámenia sa nepodarilo načítať.",
 			"dismissed": "Notification dismissed.",
 			"dismissCanceled": "Dismiss canceled.",
 			"notDismissed": "Notification could not be dismissed.",
+			"notAllDismissed": "Niektoré oznámenia sa nepodarilo odmietnuť.",
 			"notMarkedRead": "Notification could not be updated.",
 			"notAllMarkedRead": "Some notifications could not be marked as read.",
+			"notAllMarkedUnread": "Niektoré oznámenia sa nepodarilo označiť ako neprečítané.",
 			"removed": "Notification removed.",
 			"removeCanceled": "Remove canceled.",
 			"notRemoved": "Notification could not be removed.",

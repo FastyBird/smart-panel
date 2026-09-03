@@ -96,16 +96,19 @@ describe('useNotificationsActions', () => {
 	});
 
 	describe('markAllRead', () => {
-		it('does nothing for an empty selection', async () => {
+		// `result` reports whether anything actually mutated (so a caller can decide whether to
+		// refresh its list), not whether the whole batch was error-free - an empty selection never
+		// calls the store, so nothing mutated.
+		it('does nothing for an empty selection and reports no mutation', async () => {
 			const { markAllRead } = useNotificationsActions();
 
 			const result = await markAllRead([]);
 
 			expect(mockBulkUpdate).not.toHaveBeenCalled();
-			expect(result).toBe(true);
+			expect(result).toBe(false);
 		});
 
-		it('bulk-updates the given ids and reports success when every id succeeds', async () => {
+		it('bulk-updates the given ids and reports a mutation when every id succeeds', async () => {
 			mockBulkUpdate.mockResolvedValueOnce({ succeeded: ['2', '3'], failed: [] });
 
 			const { markAllRead } = useNotificationsActions();
@@ -119,8 +122,9 @@ describe('useNotificationsActions', () => {
 
 		// The request itself can succeed (200 OK) while individual rows in the batch are refused -
 		// that must not be silently swallowed, or "Mark all as read" can leave rows unread with no
-		// sign anything went wrong.
-		it('flashes an error and reports failure when some ids fail', async () => {
+		// sign anything went wrong. The rows that DID succeed still mutated the list, though, so a
+		// caller still needs to know to refresh it.
+		it('flashes an error yet still reports a mutation when some ids fail and others succeed', async () => {
 			mockBulkUpdate.mockResolvedValueOnce({ succeeded: ['2'], failed: [{ id: '3', reason: 'Notification not found.' }] });
 
 			const { markAllRead } = useNotificationsActions();
@@ -128,10 +132,21 @@ describe('useNotificationsActions', () => {
 			const result = await markAllRead(['2', '3']);
 
 			expect(mockError).toHaveBeenCalled();
+			expect(result).toBe(true);
+		});
+
+		it('flashes an error and reports no mutation when every id in the batch fails', async () => {
+			mockBulkUpdate.mockResolvedValueOnce({ succeeded: [], failed: [{ id: '2', reason: 'Notification not found.' }] });
+
+			const { markAllRead } = useNotificationsActions();
+
+			const result = await markAllRead(['2']);
+
+			expect(mockError).toHaveBeenCalled();
 			expect(result).toBe(false);
 		});
 
-		it('flashes an error and reports failure when the bulk request itself fails', async () => {
+		it('flashes an error and reports no mutation when the bulk request itself fails', async () => {
 			mockBulkUpdate.mockRejectedValueOnce(new Error('boom'));
 
 			const { markAllRead } = useNotificationsActions();
@@ -241,122 +256,200 @@ describe('useNotificationsActions', () => {
 	});
 
 	describe('bulkMarkUnread', () => {
-		it('does nothing for an empty selection', async () => {
+		it('does nothing for an empty selection and reports it as cancelled', async () => {
 			const { bulkMarkUnread } = useNotificationsActions();
 
-			await bulkMarkUnread([]);
+			const result = await bulkMarkUnread([]);
 
 			expect(mockBulkUpdate).not.toHaveBeenCalled();
+			expect(result).toBe('cancelled');
 		});
 
-		it('bulk-updates the given ids without confirming, quiet on success', async () => {
+		it('bulk-updates the given ids without confirming, quiet on success, and reports a mutation', async () => {
+			mockBulkUpdate.mockResolvedValueOnce({ succeeded: ['2', '3'], failed: [] });
+
 			const { bulkMarkUnread } = useNotificationsActions();
 
-			await bulkMarkUnread(['2', '3']);
+			const result = await bulkMarkUnread(['2', '3']);
 
 			expect(confirmMock).not.toHaveBeenCalled();
 			expect(mockBulkUpdate).toHaveBeenCalledWith({ ids: ['2', '3'], read: false });
 			expect(mockSuccess).not.toHaveBeenCalled();
+			expect(result).toBe('mutated');
 		});
 
-		it('flashes an error when the request fails', async () => {
+		// The request can resolve (200 OK) while carrying per-row failures in `result.failed` -
+		// previously ignored entirely. Rows that did succeed still mutated the list.
+		it('flashes an error yet still reports a mutation when some ids fail and others succeed', async () => {
+			mockBulkUpdate.mockResolvedValueOnce({ succeeded: ['2'], failed: [{ id: '3', reason: 'Notification not found.' }] });
+
+			const { bulkMarkUnread } = useNotificationsActions();
+
+			const result = await bulkMarkUnread(['2', '3']);
+
+			expect(mockError).toHaveBeenCalled();
+			expect(result).toBe('mutated');
+		});
+
+		it('flashes an error and reports failure when every id in the batch fails', async () => {
+			mockBulkUpdate.mockResolvedValueOnce({ succeeded: [], failed: [{ id: '2', reason: 'Notification not found.' }] });
+
+			const { bulkMarkUnread } = useNotificationsActions();
+
+			const result = await bulkMarkUnread(['2']);
+
+			expect(mockError).toHaveBeenCalled();
+			expect(result).toBe('failed');
+		});
+
+		it('flashes an error and reports failure when the request itself fails', async () => {
 			mockBulkUpdate.mockRejectedValueOnce(new Error('boom'));
 
 			const { bulkMarkUnread } = useNotificationsActions();
 
-			await bulkMarkUnread(['2']);
+			const result = await bulkMarkUnread(['2']);
 
 			expect(mockError).toHaveBeenCalled();
+			expect(result).toBe('failed');
 		});
 	});
 
 	describe('bulkDismiss', () => {
-		it('does nothing for an empty selection', async () => {
+		it('does nothing for an empty selection and reports it as cancelled', async () => {
 			const { bulkDismiss } = useNotificationsActions();
 
-			await bulkDismiss([]);
+			const result = await bulkDismiss([]);
 
 			expect(mockBulkUpdate).not.toHaveBeenCalled();
+			expect(result).toBe('cancelled');
 		});
 
-		it('bulk-updates the given ids without confirming', async () => {
+		it('bulk-updates the given ids without confirming and reports a mutation', async () => {
+			mockBulkUpdate.mockResolvedValueOnce({ succeeded: ['2', '3'], failed: [] });
+
 			const { bulkDismiss } = useNotificationsActions();
 
-			await bulkDismiss(['2', '3']);
+			const result = await bulkDismiss(['2', '3']);
 
 			expect(confirmMock).not.toHaveBeenCalled();
 			expect(mockBulkUpdate).toHaveBeenCalledWith({ ids: ['2', '3'], dismissed: true });
 			expect(mockSuccess).toHaveBeenCalled();
+			expect(result).toBe('mutated');
 		});
 
-		it('flashes an error when the request fails', async () => {
+		// Previously ignored `result.failed` entirely and always flashed success, even when every
+		// row in a 200-OK response had actually failed.
+		it('does not flash success and reports failure when every id in the batch fails', async () => {
+			mockBulkUpdate.mockResolvedValueOnce({ succeeded: [], failed: [{ id: '2', reason: 'Notification not found.' }] });
+
+			const { bulkDismiss } = useNotificationsActions();
+
+			const result = await bulkDismiss(['2']);
+
+			expect(mockSuccess).not.toHaveBeenCalled();
+			expect(mockError).toHaveBeenCalled();
+			expect(result).toBe('failed');
+		});
+
+		it('flashes both success and error for a partial batch, and still reports a mutation', async () => {
+			mockBulkUpdate.mockResolvedValueOnce({ succeeded: ['2'], failed: [{ id: '3', reason: 'Notification not found.' }] });
+
+			const { bulkDismiss } = useNotificationsActions();
+
+			const result = await bulkDismiss(['2', '3']);
+
+			expect(mockSuccess).toHaveBeenCalled();
+			expect(mockError).toHaveBeenCalled();
+			expect(result).toBe('mutated');
+		});
+
+		it('flashes an error and reports failure when the request itself fails', async () => {
 			mockBulkUpdate.mockRejectedValueOnce(new Error('boom'));
 
 			const { bulkDismiss } = useNotificationsActions();
 
-			await bulkDismiss(['2']);
+			const result = await bulkDismiss(['2']);
 
 			expect(mockError).toHaveBeenCalled();
+			expect(result).toBe('failed');
 		});
 	});
 
 	describe('bulkRemove', () => {
-		it('does nothing for an empty selection', async () => {
+		it('does nothing for an empty selection and reports it as cancelled', async () => {
 			const { bulkRemove } = useNotificationsActions();
 
-			await bulkRemove([]);
+			const result = await bulkRemove([]);
 
 			expect(confirmMock).not.toHaveBeenCalled();
 			expect(mockBulkRemove).not.toHaveBeenCalled();
+			expect(result).toBe('cancelled');
 		});
 
-		it('confirms before removing, in a separate try block from the request', async () => {
+		it('confirms before removing, in a separate try block from the request, and reports a mutation', async () => {
 			confirmMock.mockResolvedValueOnce(undefined);
 			mockBulkRemove.mockResolvedValueOnce({ succeeded: ['2', '3'], failed: [] });
 
 			const { bulkRemove } = useNotificationsActions();
 
-			await bulkRemove(['2', '3']);
+			const result = await bulkRemove(['2', '3']);
 
 			expect(confirmMock).toHaveBeenCalled();
 			expect(mockBulkRemove).toHaveBeenCalledWith({ ids: ['2', '3'] });
 			expect(mockSuccess).toHaveBeenCalled();
+			expect(result).toBe('mutated');
 		});
 
-		it('never calls the store when the confirmation is cancelled', async () => {
+		it('never calls the store when the confirmation is cancelled, and reports it as cancelled', async () => {
 			confirmMock.mockRejectedValueOnce(new Error('cancel'));
 
 			const { bulkRemove } = useNotificationsActions();
 
-			await bulkRemove(['2']);
+			const result = await bulkRemove(['2']);
 
 			expect(confirmMock).toHaveBeenCalled();
 			expect(mockBulkRemove).not.toHaveBeenCalled();
 			expect(mockInfo).toHaveBeenCalled();
+			expect(result).toBe('cancelled');
 		});
 
-		it('flashes an error, not a cancellation, when the confirmed request fails', async () => {
+		it('flashes an error, not a cancellation, and reports failure when the confirmed request fails', async () => {
 			confirmMock.mockResolvedValueOnce(undefined);
 			mockBulkRemove.mockRejectedValueOnce(new Error('boom'));
 
 			const { bulkRemove } = useNotificationsActions();
 
-			await bulkRemove(['2']);
+			const result = await bulkRemove(['2']);
 
 			expect(mockError).toHaveBeenCalled();
 			expect(mockInfo).not.toHaveBeenCalled();
+			expect(result).toBe('failed');
 		});
 
-		it('reports partial failures from a mixed bulk result', async () => {
+		it('reports partial failures from a mixed bulk result, and still reports a mutation', async () => {
 			confirmMock.mockResolvedValueOnce(undefined);
 			mockBulkRemove.mockResolvedValueOnce({ succeeded: ['2'], failed: [{ id: '3', reason: 'not found' }] });
 
 			const { bulkRemove } = useNotificationsActions();
 
-			await bulkRemove(['2', '3']);
+			const result = await bulkRemove(['2', '3']);
 
 			expect(mockSuccess).toHaveBeenCalled();
 			expect(mockError).toHaveBeenCalled();
+			expect(result).toBe('mutated');
+		});
+
+		it('does not flash success and reports failure when every id in the batch fails', async () => {
+			confirmMock.mockResolvedValueOnce(undefined);
+			mockBulkRemove.mockResolvedValueOnce({ succeeded: [], failed: [{ id: '2', reason: 'not found' }] });
+
+			const { bulkRemove } = useNotificationsActions();
+
+			const result = await bulkRemove(['2']);
+
+			expect(mockSuccess).not.toHaveBeenCalled();
+			expect(mockError).toHaveBeenCalled();
+			expect(result).toBe('failed');
 		});
 	});
 });
