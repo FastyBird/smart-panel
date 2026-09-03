@@ -175,6 +175,99 @@ const route = normalizeRoutePrefix(manifest.routePrefix); // "devices/acme"
 
 ---
 
+## Notifications
+
+The backend's notifications module gives the administrator one place to see what needs
+attention (a lost connection, a failed update, a security alert) and can forward those
+notifications to external channels such as Discord or a generic webhook. See
+`docs/notifications.md` in the repository root for the full developer guide: the lifecycle
+table, the emitter rules, the REST and websocket surface, and how to write a channel.
+
+This SDK exports plain mirrors of that contract, for extension packages built outside the
+backend's own TypeScript program: `NotificationKind`, `NotificationSeverity`,
+`NotificationActionType`, `NotificationAction`, `CreateNotificationInput`, `Notification`,
+`NotificationChannel` and `ChannelDeliveryError` (see `src/notification.types.ts`). A plugin
+compiled as part of the backend itself (`apps/backend/src/plugins/**`) keeps using the real
+`NotificationsService` and `INotificationChannel` from `apps/backend/src/modules/notifications/`.
+
+### Emitting a notification
+
+`NotificationsModule` is global, so a backend-compiled plugin injects `NotificationsService`
+with no `imports` entry needed. The call shape - typed here against the SDK's plain
+`CreateNotificationInput` - is the same either way:
+
+```ts
+import type { CreateNotificationInput } from '@fastybird/smart-panel-extension-sdk';
+
+const input: CreateNotificationInput = {
+  source: 'my-plugin', // this extension's own type
+  kind: 'issue',
+  key: 'connection', // required for an issue; aggregates repeats of the same condition
+  severity: 'error',
+  title: 'Connection lost',
+  message: 'The websocket connection was refused: 401 Unauthorized.',
+  actions: [
+    {
+      type: 'service',
+      label: 'Restart',
+      extension_kind: 'plugin',
+      extension_type: 'my-plugin',
+      service_id: 'my-service',
+      operation: 'restart',
+      primary: true,
+    },
+  ],
+};
+
+await notificationsService.notify(input);
+```
+
+Raise an issue when a condition starts and resolve it (`notify.resolve(source, key)`) when it
+clears - never on every retry tick. Call `resolveAll(source)` when your service stops, so
+disabling the plugin clears its open issues. Never put secrets in `title`, `message` or
+`data`; pass operational error text through the notifications module's `sanitizeErrorMessage()`
+first.
+
+### Writing a channel
+
+Implement `NotificationChannel` and register it with the backend's
+`NotificationChannelRegistryService` in your plugin's own `onModuleInit`:
+
+```ts
+import type {
+  ChannelDeliveryError,
+  Notification,
+  NotificationChannel,
+  NotificationSeverity,
+} from '@fastybird/smart-panel-extension-sdk';
+
+class MyChannel implements NotificationChannel {
+  getType(): string {
+    return 'notifications-my-channel-plugin';
+  }
+
+  async isConfigured(): Promise<boolean> {
+    // read this plugin's own config through ConfigService.getPluginConfig()
+    return true;
+  }
+
+  async getMinSeverity(): Promise<NotificationSeverity> {
+    return 'warning';
+  }
+
+  async send(notification: Notification, signal: AbortSignal): Promise<void> {
+    // fetch(url, { signal, redirect: 'error', ... }); throw a ChannelDeliveryError with
+    // retryable: true only for a connection failure or an HTTP 429/5xx response
+  }
+}
+```
+
+See `docs/notifications.md` for the dispatcher's per-attempt timeout and retry policy, the
+`send-test` action every channel should register, and the HTTPS rules (the generic webhook
+channel is the one documented exception, for trusted-network targets over plain `http:`).
+
+---
+
 ## ⚙️ Building & Publishing
 
 Extensions should be built to either **CJS** or **ESM** format — both are supported by the backend discovery system.
