@@ -31,6 +31,9 @@
 		"buttons": {
 			"home": {
 				"title": "Strona główna"
+			},
+			"toggleMenu": {
+				"title": "Przełącz menu"
 			}
 		},
 		"bulkActions": {

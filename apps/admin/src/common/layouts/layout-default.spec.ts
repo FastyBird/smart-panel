@@ -19,7 +19,10 @@ vi.mock('../assets/images/fb_row.svg?component', () => ({
 }));
 
 vi.mock('../components/components', () => ({
-	AppBar: { template: '<div data-test-id="app-bar"></div>' },
+	// Renders the `button-right` slot for real so the mobile menu toggle button (and its
+	// accessible name) can be asserted on - every other slot stays uninvoked, matching the
+	// other AppBar stand-ins below that never render anything AppBar would put around it.
+	AppBar: { template: '<div data-test-id="app-bar"><slot name="button-right" /></div>' },
 	AppNavigation: { template: '<div data-test-id="app-navigation"></div>' },
 	AppSidebar: { template: '<div data-test-id="app-sidebar"></div>' },
 	AppTopBar: { template: '<div data-test-id="app-top-bar"></div>' },
@@ -27,6 +30,21 @@ vi.mock('../components/components', () => ({
 vi.mock('../composables/useBreakpoints', () => ({
 	useBreakpoints: vi.fn(),
 }));
+vi.mock('../../modules/notifications/components/components', () => ({
+	NotificationBell: { template: '<div data-test-id="notification-bell"></div>' },
+}));
+// Keeps the rest of the real module (`src/locales/index.ts` calls the real `createI18n` as a
+// side effect of an unrelated barrel import below) and only swaps `useI18n` itself.
+vi.mock('vue-i18n', async () => {
+	const actual = await vi.importActual('vue-i18n');
+
+	return {
+		...actual,
+		useI18n: () => ({
+			t: (key: string) => key,
+		}),
+	};
+});
 
 describe('LayoutDefault', () => {
 	let wrapper: VueWrapper<LayoutDefaultInstance>;
@@ -132,5 +150,12 @@ describe('LayoutDefault', () => {
 		await wrapper.vm.$nextTick();
 
 		expect(wrapper.vm.mainMenuCollapsed).toBe(true);
+	});
+
+	it('gives the mobile menu toggle button an accessible name', () => {
+		const menuButton = wrapper.find('[data-test-id="app-bar"] button');
+
+		expect(menuButton.exists()).toBe(true);
+		expect(menuButton.attributes('aria-label')).toBe('application.buttons.toggleMenu.title');
 	});
 });

@@ -20,6 +20,7 @@
 						size="large"
 						type="primary"
 						circle
+						:aria-label="t('application.buttons.toggleMenu.title')"
 						@click.prevent="onToggleMenu"
 					>
 						<template #icon>
@@ -76,6 +77,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { ElAside, ElButton, ElContainer, ElDrawer, ElMain, useNamespace } from 'element-plus';
 
@@ -92,6 +94,7 @@ defineOptions({
 });
 
 const ns = useNamespace('app-layout-default');
+const { t } = useI18n();
 const { isMDDevice, isXLDevice } = useBreakpoints();
 
 const menuState = ref<boolean>(false);

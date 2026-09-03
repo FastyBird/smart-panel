@@ -1,4 +1,11 @@
 <template>
+	<!--
+		The row itself stays clickable for mouse users, but a `div` is never keyboard-focusable and
+		this row nests real `<button>`s (dismiss, the primary action) - giving the row `role="button"`
+		would put an interactive control inside another one. The title below carries its own
+		`role="button"` instead, as a sibling of those buttons rather than their ancestor, and stops
+		its click from bubbling so mouse activation is not double-counted against the row's handler.
+	-->
 	<div
 		class="notification-item"
 		@click="emit('click', notification)"
@@ -11,8 +18,14 @@
 		<div class="notification-item__body">
 			<div class="notification-item__title-row">
 				<el-text
+					role="button"
+					tabindex="0"
+					:aria-label="notification.title"
 					class="notification-item__title"
 					truncated
+					@click.stop="emit('click', notification)"
+					@keydown.enter.prevent="emit('click', notification)"
+					@keydown.space.prevent="emit('click', notification)"
 				>
 					{{ notification.title }}
 				</el-text>

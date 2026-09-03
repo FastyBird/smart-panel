@@ -31,6 +31,9 @@
 		"buttons": {
 			"home": {
 				"title": "Domov"
+			},
+			"toggleMenu": {
+				"title": "Prepnúť menu"
 			}
 		},
 		"bulkActions": {

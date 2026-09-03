@@ -31,6 +31,9 @@
 		"buttons": {
 			"home": {
 				"title": "Inicio"
+			},
+			"toggleMenu": {
+				"title": "Alternar menú"
 			}
 		},
 		"bulkActions": {
