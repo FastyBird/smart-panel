@@ -1,0 +1,41 @@
+{
+	"headings": {
+		"aboutTelegramSettings": "Telegram bot settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"botToken": {
+				"title": "Bot token",
+				"placeholder": "123456789:AAExampleTelegramBotTokenValue",
+				"description": "Telegram Bot API token, from @BotFather."
+			},
+			"chatId": {
+				"title": "Chat ID",
+				"placeholder": "123456789",
+				"description": "Telegram chat id (or @channel username) the bot sends messages to."
+			},
+			"minSeverity": {
+				"title": "Minimum severity",
+				"description": "Only notifications at or above this severity are forwarded.",
+				"options": {
+					"info": "Info",
+					"warning": "Warning",
+					"error": "Error",
+					"critical": "Critical"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Telegram bot settings have been updated",
+			"notEdited": "Failed to update Telegram bot settings"
+		}
+	},
+	"texts": {
+		"aboutTelegramSettings": "Forward system notifications to a Telegram chat through a bot. In Telegram, message @BotFather to create a bot, copy its token, and find the chat id the bot should post to."
+	}
+}
