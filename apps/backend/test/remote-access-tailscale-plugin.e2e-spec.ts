@@ -154,7 +154,13 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 			}),
 		};
 		const nestConfigService = { get: jest.fn((key: string) => ({ FB_BACKEND_PORT: 3000 })[key]) };
-		const platformService = { getPlatformType: jest.fn().mockReturnValue(PlatformType.RASPBERRY) };
+		const platformService = {
+			getPlatformType: jest.fn().mockReturnValue(PlatformType.RASPBERRY),
+			// evaluatePlatformSupported() awaits this instead of the synchronous
+			// getPlatformType() above, so it never observes platformType while
+			// still undefined right after boot (RA-12 F7).
+			getPlatformTypeAsync: jest.fn().mockResolvedValue(PlatformType.RASPBERRY),
+		};
 
 		setupServiceMock = { install: jest.fn() };
 		loginServiceMock = {
