@@ -93,6 +93,7 @@
 		"signInDescription": "Otwórz link logowania na dowolnym urządzeniu i zatwierdź go albo zeskanuj kod QR.",
 		"advancedDescription": "Do instalacji bezobsługowych: wklej wstępnie autoryzowany klucz uwierzytelniający, aby zalogować się bez interaktywnego zatwierdzenia.",
 		"waitingForApproval": "Oczekiwanie na zatwierdzenie logowania...",
+		"waitingForLink": "Pobieranie linku logowania...",
 		"qrAlt": "Kod QR zawierający link logowania Tailscale",
 		"doneDescription": "Tailscale jest połączony. Ta instalacja jest dostępna pod poniższymi adresami.",
 		"tabs": {

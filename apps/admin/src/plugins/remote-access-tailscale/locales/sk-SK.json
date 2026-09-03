@@ -93,6 +93,7 @@
 		"signInDescription": "Otvorte prihlasovací odkaz na ľubovoľnom zariadení a potvrďte ho, alebo naskenujte QR kód.",
 		"advancedDescription": "Pre bezobslužné inštalácie: vložte vopred autorizovaný prihlasovací kľúč a prihláste sa bez interaktívneho potvrdenia.",
 		"waitingForApproval": "Čaká sa na schválenie prihlásenia...",
+		"waitingForLink": "Získava sa prihlasovací odkaz...",
 		"qrAlt": "QR kód obsahujúci prihlasovací odkaz Tailscale",
 		"doneDescription": "Tailscale je pripojený. Táto inštalácia je dostupná na nižšie uvedených adresách.",
 		"tabs": {

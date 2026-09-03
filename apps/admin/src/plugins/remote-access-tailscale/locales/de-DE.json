@@ -93,6 +93,7 @@
 		"signInDescription": "Öffnen Sie den Anmeldelink auf einem beliebigen Gerät und bestätigen Sie ihn, oder scannen Sie den QR-Code.",
 		"advancedDescription": "Für unbeaufsichtigte Installationen: Fügen Sie einen vorautorisierten Anmeldeschlüssel ein, um sich ohne interaktive Bestätigung anzumelden.",
 		"waitingForApproval": "Warten auf Bestätigung der Anmeldung ...",
+		"waitingForLink": "Anmeldelink wird angefordert ...",
 		"qrAlt": "QR-Code mit dem Tailscale-Anmeldelink",
 		"doneDescription": "Tailscale ist verbunden. Diese Installation ist über die unten stehenden Adressen erreichbar.",
 		"tabs": {

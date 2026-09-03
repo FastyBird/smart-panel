@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -25,7 +25,7 @@ const fns = vi.hoisted(() => ({
 	flashSuccess: vi.fn(),
 }));
 
-const status = ref<{ state: string; endpoints: { url: string; label: string }[] } | null>(null);
+const status = ref<{ state: string; endpoints: { url: string; label: string }[]; authUrl?: string; qr?: string } | null>(null);
 const requirements = ref<{ code: string; satisfied: boolean; message: string }[]>([]);
 const progress = ref<{ state: string; step?: string; message?: string } | null>(null);
 const isInstalling = ref(false);
@@ -123,6 +123,25 @@ describe('TailscaleSetupWizard', () => {
 
 		expect(stepsProp(wrapper)).toBe(1);
 		expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink');
+	});
+
+	it('shows a waiting state until the polled status delivers the sign-in link', async () => {
+		const wrapper = mountWizard('signin');
+
+		// The backend answered `pending-auth` without a link (slow daemon) and the composable is polling.
+		isPolling.value = true;
+		status.value = { state: 'pending-auth', endpoints: [] };
+		await nextTick();
+
+		expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.waitingForLink');
+		expect(wrapper.text()).not.toContain('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink');
+
+		status.value = { state: 'pending-auth', endpoints: [], authUrl: 'https://login.tailscale.com/a/abc123', qr: 'data:image/png;base64,QR' };
+		await nextTick();
+
+		expect(wrapper.text()).toContain('https://login.tailscale.com/a/abc123');
+		expect(wrapper.text()).not.toContain('remoteAccessTailscalePlugin.wizard.waitingForLink');
+		expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.waitingForApproval');
 	});
 
 	it('fetches the plugin config and renders the options form when opened directly on options', async () => {

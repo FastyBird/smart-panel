@@ -93,6 +93,7 @@
 		"signInDescription": "Open the sign-in link on any device and approve it, or scan the QR code.",
 		"advancedDescription": "For headless installs: paste a pre-authorised auth key to sign in without an interactive approval.",
 		"waitingForApproval": "Waiting for sign-in approval...",
+		"waitingForLink": "Requesting the sign-in link...",
 		"qrAlt": "QR code encoding the Tailscale sign-in link",
 		"doneDescription": "Tailscale is connected. This installation is reachable at the URLs below.",
 		"tabs": {
