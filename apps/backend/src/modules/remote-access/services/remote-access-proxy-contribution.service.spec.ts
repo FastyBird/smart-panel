@@ -1,3 +1,14 @@
+/*
+eslint-disable @typescript-eslint/unbound-method
+*/
+/*
+Reason: `expect(Logger.prototype.warn).toHaveBeenCalledWith(...)` reads the
+mocked method off the prototype directly (the established pattern for
+asserting on `createExtensionLogger` output in this codebase), which ESLint
+otherwise flags as an unsafe unbound reference.
+*/
+import { Logger } from '@nestjs/common';
+
 import { TrustedProxyRegistryService, TrustedProxySource } from '../../api/services/trusted-proxy-registry.service';
 import { ConfigService } from '../../config/services/config.service';
 import { RemoteAccessProviderStatus } from '../platforms/remote-access-provider.platform';
@@ -34,6 +45,11 @@ describe('RemoteAccessProxyContributionService', () => {
 			configService as unknown as ConfigService,
 			statusService as unknown as RemoteAccessStatusService,
 		);
+
+		// `jest.setup.ts` re-installs this spy every test but reuses the
+		// same mock instance, so call history otherwise leaks across `it`
+		// blocks within this file.
+		(Logger.prototype.warn as jest.Mock).mockClear();
 	});
 
 	const registeredSource = (): TrustedProxySource => {
@@ -125,5 +141,57 @@ describe('RemoteAccessProxyContributionService', () => {
 
 		expect(trustedProxyRegistry.register).toHaveBeenCalledTimes(1);
 		expect(addresses.addresses()).toEqual(['100.64.0.1']);
+	});
+
+	describe('provider-declared proxy address validation', () => {
+		it('accepts a valid loopback entry', () => {
+			statusService.getCachedStatuses.mockReturnValue([connectedStatus('remote-access-tailscale', ['127.0.0.1'])]);
+			service.onModuleInit();
+
+			expect(registeredSource().addresses()).toEqual(['127.0.0.1']);
+		});
+
+		it('accepts a valid single-host IPv6 entry', () => {
+			statusService.getCachedStatuses.mockReturnValue([connectedStatus('remote-access-tailscale', ['2001:db8::1'])]);
+			service.onModuleInit();
+
+			expect(registeredSource().addresses()).toEqual(['2001:db8::1']);
+		});
+
+		it('rejects a CIDR entry and logs one warning across repeated evaluations', () => {
+			statusService.getCachedStatuses.mockReturnValue([connectedStatus('remote-access-tailscale', ['100.64.0.0/10'])]);
+			service.onModuleInit();
+			const addresses = registeredSource();
+
+			expect(addresses.addresses()).toEqual([]);
+			expect(addresses.addresses()).toEqual([]);
+			expect(addresses.addresses()).toEqual([]);
+
+			expect(Logger.prototype.warn).toHaveBeenCalledTimes(1);
+			expect(Logger.prototype.warn).toHaveBeenCalledWith(
+				"[RemoteAccessProxyContributionService] Provider 'remote-access-tailscale' declared an invalid proxy " +
+					"address '100.64.0.0/10'; providers may declare only a loopback or single-host address, not a CIDR " +
+					'range. Dropping it from the trusted-proxy set.',
+				expect.objectContaining({ tag: REMOTE_ACCESS_MODULE_NAME }),
+			);
+		});
+
+		it('rejects a malformed entry', () => {
+			statusService.getCachedStatuses.mockReturnValue([connectedStatus('remote-access-tailscale', ['not-an-ip'])]);
+			service.onModuleInit();
+
+			expect(registeredSource().addresses()).toEqual([]);
+			expect(Logger.prototype.warn).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps only the valid entries from a mixed list', () => {
+			statusService.getCachedStatuses.mockReturnValue([
+				connectedStatus('remote-access-tailscale', ['100.64.0.1', '100.64.0.0/10', 'not-an-ip', '2001:db8::1']),
+			]);
+			service.onModuleInit();
+
+			expect(registeredSource().addresses()).toEqual(['100.64.0.1', '2001:db8::1']);
+			expect(Logger.prototype.warn).toHaveBeenCalledTimes(2);
+		});
 	});
 });
