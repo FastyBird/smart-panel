@@ -122,6 +122,18 @@ export class NotificationsService {
 	 */
 	private readonly chains = new Map<string, Promise<void>>();
 
+	/**
+	 * Per-`source` barrier, alongside {@link chains}. `resolveAll()` appends its bulk resolve onto
+	 * this instead of a per-key chain (it is not scoped to one key), and every keyed `enqueue()`
+	 * waits on its source's current barrier tail in addition to its own key chain. That is what
+	 * stops a `notify()` called after a `resolveAll()` has started from reaching the database
+	 * before that `resolveAll()` has - without it, `resolveAll()` only waited for whatever chains
+	 * already existed the moment it was called, so a `notify()` arriving after that snapshot could
+	 * still race its `find()`/`save()` against the very row it was resolving. Entries are removed
+	 * the same way as {@link chains}, so this does not grow either.
+	 */
+	private readonly sourceBarriers = new Map<string, Promise<void>>();
+
 	constructor(
 		@InjectRepository(NotificationEntity)
 		private readonly repository: Repository<NotificationEntity>,
@@ -169,7 +181,7 @@ export class NotificationsService {
 			return write();
 		}
 
-		return this.enqueue(this.chainKey(value.source, value.key), write);
+		return this.enqueue(value.source, value.key, write);
 	}
 
 	/**
@@ -183,7 +195,7 @@ export class NotificationsService {
 			return false;
 		}
 
-		return this.enqueue(this.chainKey(source, key), () => this.doResolve(source, key));
+		return this.enqueue(source, key, () => this.doResolve(source, key));
 	}
 
 	private async doResolve(source: string, key: string): Promise<boolean> {
@@ -215,9 +227,49 @@ export class NotificationsService {
 	 * away means all of its conditions are over. Skipping them would leave a dismissed but
 	 * unresolved issue outliving the plugin that raised it - invisible in the active list, and
 	 * never pruned, because retention only counts an issue from its resolution.
+	 *
+	 * Appends itself onto {@link sourceBarriers} instead of just awaiting a snapshot of
+	 * {@link chains}: `enqueue()` makes every keyed `notify()`/`resolve()` for this source wait on
+	 * that same barrier, so a call made *after* this one queues behind it and cannot reach the
+	 * database until this bulk resolve has committed. Without that, a `notify()` arriving after
+	 * the snapshot but before `save()` could still race this call's `find()`/`save()` against the
+	 * very row it is resolving.
 	 */
 	async resolveAll(source: string): Promise<number> {
-		await this.awaitPendingChains(source);
+		// Snapshotted synchronously, before the barrier below is updated, so it can only ever
+		// contain calls that were already enqueued when this resolveAll() was called - never one
+		// that arrives after and therefore reads (and queues behind) the barrier this call is
+		// about to install. Waiting here for such a call would deadlock: it would be waiting for
+		// this resolveAll() to finish before it can even start.
+		const pendingChains = this.pendingChainsFor(source);
+
+		const previousBarrier = this.sourceBarriers.get(source) ?? Promise.resolve();
+		const settledPreviousBarrier = previousBarrier.then(
+			() => undefined,
+			() => undefined,
+		);
+
+		const run: Promise<number> = settledPreviousBarrier.then(() => this.doResolveAll(source, pendingChains));
+		const tail: Promise<void> = run.then<void, void>(
+			() => undefined,
+			() => undefined,
+		);
+
+		this.sourceBarriers.set(source, tail);
+
+		void tail.then(() => {
+			if (this.sourceBarriers.get(source) === tail) {
+				this.sourceBarriers.delete(source);
+			}
+		});
+
+		return run;
+	}
+
+	private async doResolveAll(source: string, pendingChains: Promise<void>[]): Promise<number> {
+		if (pendingChains.length > 0) {
+			await Promise.all(pendingChains);
+		}
 
 		const notifications = await this.repository.find({
 			where: { source, key: Not(IsNull()), resolvedAt: IsNull() },
@@ -563,16 +615,28 @@ export class NotificationsService {
 	}
 
 	/**
-	 * Runs `task` only after every task already enqueued for `chainKey` has settled, so calls for
-	 * the same key are applied to the database in the order they were made, not the order their
-	 * own database work happens to finish in. A failure in one task never jams the chain for
-	 * whatever is queued behind it - the next task always runs, regardless of how the previous one
-	 * settled. The map entry is removed once nothing is queued behind the settled task, which is
-	 * what keeps {@link chains} from growing for the lifetime of the process.
+	 * Runs `task` only after every task already enqueued for this `(source, key)` has settled, and
+	 * after the source's current {@link sourceBarriers} tail (if any) has too, so calls for the
+	 * same key are applied to the database in the order they were made, not the order their own
+	 * database work happens to finish in, and a `resolveAll(source)` already in flight is never
+	 * raced by a `notify()`/`resolve()` called after it. A failure in one task never jams the
+	 * chain for whatever is queued behind it - the next task always runs, regardless of how the
+	 * previous one settled. The map entry is removed once nothing is queued behind the settled
+	 * task, which is what keeps {@link chains} from growing for the lifetime of the process.
 	 */
-	private enqueue<T>(chainKey: string, task: () => Promise<T>): Promise<T> {
-		const previous = this.chains.get(chainKey) ?? Promise.resolve();
-		const settledPrevious = previous.then(
+	private enqueue<T>(source: string, key: string, task: () => Promise<T>): Promise<T> {
+		const chainKey = this.chainKey(source, key);
+		const previousChain = this.chains.get(chainKey) ?? Promise.resolve();
+		const previousBarrier = this.sourceBarriers.get(source) ?? Promise.resolve();
+		const settledChain: Promise<void> = previousChain.then<void, void>(
+			() => undefined,
+			() => undefined,
+		);
+		const settledBarrier: Promise<void> = previousBarrier.then<void, void>(
+			() => undefined,
+			() => undefined,
+		);
+		const settledPrevious: Promise<void> = Promise.all([settledChain, settledBarrier]).then<void, void>(
 			() => undefined,
 			() => undefined,
 		);
@@ -594,17 +658,14 @@ export class NotificationsService {
 	}
 
 	/**
-	 * Waits for every chain currently in flight for `source`, so a bulk resolution started right
-	 * after a raise observes the row that raise is still writing instead of racing it.
+	 * Snapshots the chains currently in flight for `source`, for `resolveAll()` to wait on. A
+	 * snapshot, not a live filter re-read later, because it is taken before `resolveAll()` installs
+	 * its own barrier - anything enqueued after that point queues behind the barrier instead (see
+	 * {@link enqueue}) and must never be waited for here, or the two would deadlock on each other.
 	 */
-	private async awaitPendingChains(source: string): Promise<void> {
+	private pendingChainsFor(source: string): Promise<void>[] {
 		const prefix = `${source}:`;
-		const pending = [...this.chains.entries()]
-			.filter(([chainKey]) => chainKey.startsWith(prefix))
-			.map(([, tail]) => tail);
 
-		if (pending.length > 0) {
-			await Promise.all(pending);
-		}
+		return [...this.chains.entries()].filter(([chainKey]) => chainKey.startsWith(prefix)).map(([, tail]) => tail);
 	}
 }
