@@ -9,7 +9,9 @@ const BEARER_TOKEN_PATTERN = /\b(Bearer)\s+\S+/gi;
 
 // The value alternation consumes escaped characters so an escaped quote inside the secret
 // cannot end the match early and leak the rest of the value.
-const JSON_SECRET_FIELD_PATTERN = /"(token|key|password|secret)"\s*:\s*"(?:\\.|[^"\\])*"/gi;
+// Matches string values (consuming escapes) and bare scalars such as numbers, booleans or null,
+// so `{"token":123456}` is redacted like `{"token":"abc"}`.
+const JSON_SECRET_FIELD_PATTERN = /"(token|key|password|secret)"\s*:\s*(?:"(?:\\.|[^"\\])*"|[^,}\]\s]+)/gi;
 
 const KEY_VALUE_SECRET_PATTERN = /\b(token|key|password|secret)=[^&\s"'}]+/gi;
 

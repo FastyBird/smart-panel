@@ -56,6 +56,15 @@ describe('sanitizeErrorMessage', () => {
 		expect(out).toContain('kept');
 	});
 
+	it('masks non-string JSON secret values such as numbers and booleans', () => {
+		const out = sanitizeErrorMessage('reply {"token":123456,"secret":true,"ok":false}');
+
+		expect(out).toMatch(/"token"\s*:\s*"\*\*\*"/);
+		expect(out).toMatch(/"secret"\s*:\s*"\*\*\*"/);
+		expect(out).not.toContain('123456');
+		expect(out).toContain('"ok":false');
+	});
+
 	it('masks a token value inside JSON-like text', () => {
 		expect(sanitizeErrorMessage('reply was {"ok":false,"token":"abc123"}')).toBe(
 			'reply was {"ok":false,"token":"***"}',
