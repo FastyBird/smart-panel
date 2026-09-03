@@ -43,6 +43,7 @@ These modules ship with every Smart Panel installation and provide the system's 
 | **Intents** | Voice and AI intent handling |
 | **mDNS** | Network discovery for panels and devices |
 | **Platform** | Hardware platform detection and management |
+| [**Remote access**](/docs/admin-management/remote-access) | Internal/external URL registry, proxy trust, and remote-access provider status |
 | **Scenes** | Scene creation and execution |
 | **Security** | Access control and permissions |
 | **Spaces** | Room, zone, and device assignment |
@@ -74,6 +75,15 @@ Connect Smart Panel to external smart home platforms and protocols. See
 | **WLED** | Controls WLED-based LED strips and lights |
 | **Zigbee2MQTT** | Integrates Zigbee devices through Zigbee2MQTT bridge |
 | **reTerminal** | Native hardware integration for SeeedStudio reTerminal (sensors, LEDs, buttons) |
+
+### Remote Access Providers
+
+Connect the installation to a private network or tunnel so it's reachable from outside the LAN. See
+[Remote Access](/docs/admin-management/remote-access) for setup and concepts.
+
+| Plugin | Description |
+|--------|-------------|
+| **Tailscale** | Connects the installation to a Tailscale tailnet — sign in, optional HTTPS via Serve, optional public exposure via Funnel |
 
 ### Pages
 

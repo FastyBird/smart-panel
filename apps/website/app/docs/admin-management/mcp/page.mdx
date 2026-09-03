@@ -158,6 +158,12 @@ Restart the backend after changing its environment. A request containing forward
 peer is rejected. Do not add a load balancer's client-facing address when Smart Panel actually sees a sidecar or ingress
 address; trust only the address reported as the backend socket peer.
 
+MCP also accepts forwarded headers from any peer the [Remote access](/docs/admin-management/remote-access) module
+already trusts — every **Trusted proxies** entry (while **Trust forwarded headers** is on) and every connected
+provider's own proxy address, such as a Tailscale node while Serve is active. `FB_MCP_OAUTH_TRUSTED_PROXIES` stays
+useful for an operator who fronts Smart Panel with their own proxy but never enables the Remote access module; the
+two lists are additive, not exclusive.
+
 ### Enable OAuth
 
 <Steps>
@@ -169,7 +175,10 @@ address; trust only the address reported as the backend socket peer.
     ### Store the canonical identity
 
     Go to **Config → Modules → Model Context Protocol** and set **OAuth public base URL** to the dedicated external
-    origin, such as `https://panel.example.com`.
+    origin, such as `https://panel.example.com`. If the [Remote access](/docs/admin-management/remote-access) module
+    already has an HTTPS primary external URL — a connected Tailscale node, for example — **Use remote access URL**
+    fills the field with it in one click. It only fills the field; it never saves or changes the stored value on its
+    own, because changing it revokes every outstanding OAuth artifact.
 
     ### Enable the complete profile
 

@@ -490,8 +490,10 @@ Connect, disconnect and reconnect are the generic Extensions service actions. Re
   `CONFIG_MODULE_MODULE_TYPE` element like weather and system.
 - Store `remote-access-status.store.ts` with `onEvent()` for `RemoteAccessModule.*`; subscription in the
   module `install()` exactly like `system.module.ts`; data-refresh registration for socket recovery.
-- Provider plugins register an element with `type: <PLUGIN_TYPE>`, `modules: [REMOTE_ACCESS_MODULE_NAME]`
-  and `components: { providerCard, providerSetup }`. The overview finds them the way
+- Provider plugins register an element with the shared `REMOTE_ACCESS_MODULE_PROVIDER_TYPE` marker
+  (`type: 'provider'`), `modules: [REMOTE_ACCESS_MODULE_NAME]` and `components: { providerCard,
+  providerSetup }`. The overview finds the owning plugin by its own `IPlugin.type` (matching
+  `provider.type` from the status payload), then that plugin's `provider` element, the way
   `useChannelsPlugin.ts` finds device plugin elements.
 - `remote-access-tailscale` admin plugin: config form (`useConfigPluginEditForm`), provider card, setup
   wizard (Set up → Sign in → Options → Done), composables `useTailscaleSetup` and `useTailscaleLogin`,

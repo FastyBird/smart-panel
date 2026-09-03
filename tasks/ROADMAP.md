@@ -383,13 +383,13 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 
 ## 13. Remote Access (Epic)
 
-> [EPIC-REMOTE-ACCESS](epics/EPIC-REMOTE-ACCESS.md) — Status: :clipboard: Planned
+> [EPIC-REMOTE-ACCESS](epics/EPIC-REMOTE-ACCESS.md) — Status: :construction: In Progress
 
 Reach the installation from outside the LAN through a `remote-access` module and provider plugins (Tailscale first, then Cloudflare Tunnel and a WireGuard client). Design: `docs/superpowers/specs/2026-09-02-remote-access-design.md`. Plan and delegation map: `docs/superpowers/plans/2026-09-02-remote-access.md`. Tasks are tracked as GitHub sub-issues under the "Remote access" milestone.
 
 | #   | Milestone                                                                          | Scope                              | Status              |
 | --- | ---------------------------------------------------------------------------------- | ---------------------------------- | ------------------- |
-| 1   | Foundation + Tailscale MVP (RA-1 … RA-12): proxy trust, module, worker, plugin, admin, image, MCP URL suggestion, docs | backend, admin, installer, website | :clipboard: Planned |
+| 1   | Foundation + Tailscale MVP (RA-1 … RA-12): proxy trust, module, worker, plugin, admin, image, MCP URL suggestion, docs | backend, admin, installer, website | :construction: In Progress |
 | 2   | Cloudflare Tunnel plugin (RA-13, RA-14)                                            | backend, admin                     | :clipboard: Planned |
 | 3   | WireGuard client plugin (RA-15)                                                    | backend, admin                     | :clipboard: Planned |
 

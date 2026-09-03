@@ -213,12 +213,20 @@ variant.
 | `smart-panel-wifi-watchdog` | All | Re-activates the captive portal if WiFi drops for more than 5 minutes |
 | `smart-panel-auto-rotate` | Display, AIO | Accelerometer-based screen rotation (disabled by default, reTerminal CM4 only) |
 | `smart-panel-firstboot` | All | One-time initialization on first boot |
+| `tailscaled` | Server, AIO | Tailscale daemon — pre-installed but disabled until enabled from the admin UI |
 
 Check any service with:
 
 ```bash copy
 sudo systemctl status <service-name>
 ```
+
+### Remote Access (Tailscale)
+
+Server and AIO images pre-install the `tailscale` package with the `tailscaled` daemon left disabled — no
+network access happens until you opt in. Open **Remote access** in the Admin UI and run **Set up** to enable
+the daemon and sign in; setup finishes in seconds since the package is already there. See
+[Remote Access](/docs/admin-management/remote-access) for the full walkthrough.
 
 ### Auto-Rotate (Display & AIO)
 
