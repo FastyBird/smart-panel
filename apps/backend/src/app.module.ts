@@ -39,6 +39,8 @@ import { McpModule } from './modules/mcp/mcp.module';
 import { MdnsModule } from './modules/mdns/mdns.module';
 import { ModuleRegistryModule } from './modules/module-registry/module-registry.module';
 import { PlatformModule } from './modules/platform/platform.module';
+import { REMOTE_ACCESS_MODULE_PREFIX } from './modules/remote-access/remote-access.constants';
+import { RemoteAccessModule } from './modules/remote-access/remote-access.module';
 import { SCENES_MODULE_PREFIX } from './modules/scenes/scenes.constants';
 import { ScenesModule } from './modules/scenes/scenes.module';
 import { SECURITY_MODULE_PREFIX } from './modules/security/security.constants';
@@ -286,6 +288,10 @@ export class AppModule {
 								path: AUTH_MODULE_PREFIX,
 								module: ApiModule,
 							},
+							{
+								path: REMOTE_ACCESS_MODULE_PREFIX,
+								module: RemoteAccessModule,
+							},
 							...moduleRoutes,
 						],
 					},
@@ -486,6 +492,7 @@ export class AppModule {
 				InfluxV1Plugin,
 				InfluxV2Plugin,
 				MemoryStoragePlugin,
+				RemoteAccessModule,
 
 				// Static file serving is registered directly on the Fastify instance
 				// in main.ts via @fastify/static, bypassing @nestjs/serve-static

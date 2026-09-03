@@ -299,6 +299,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 	// Events that should only be sent to admin/exchange clients, not panel displays
 	private static readonly EXCHANGE_ONLY_EVENT_PREFIXES = [
 		'SystemModule.System.Update.', // Update progress is admin-only
+		'RemoteAccessModule.', // Provider/URL/setup state is admin-only, never sent to display panels
 	];
 
 	private handleBusEvent(event: string, payload: Record<string, any>): void {

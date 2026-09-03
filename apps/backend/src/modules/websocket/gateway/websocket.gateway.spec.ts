@@ -21,6 +21,7 @@ import { ClientUserDto } from '../dto/client-user.dto';
 import { CommandMessageDto } from '../dto/command-message.dto';
 import { CommandEventRegistryService } from '../services/command-event-registry.service';
 import { WsAuthService } from '../services/ws-auth.service';
+import { DISPLAY_INTERNAL_ROOM, EXCHANGE_ROOM } from '../websocket.constants';
 import { WebsocketNotAllowedException } from '../websocket.exceptions';
 
 import { WebsocketGateway } from './websocket.gateway';
@@ -34,6 +35,7 @@ describe('WebsocketGateway', () => {
 	const mockServer = {
 		emit: jest.fn(),
 		use: jest.fn(),
+		to: jest.fn().mockReturnValue({ emit: jest.fn() }),
 	} as unknown as Server;
 
 	/** Runs the handshake middleware the gateway registered and reports what it passed to next(). */
@@ -289,6 +291,35 @@ describe('WebsocketGateway', () => {
 				payload,
 				metadata: { timestamp: expect.any(String) },
 			});
+		});
+	});
+
+	describe('event bus routing', () => {
+		/** Invokes the callback the gateway registered with `eventEmitter.onAny()` in its constructor. */
+		const emitBusEvent = (event: string, payload: Record<string, any> = {}): void => {
+			const onAnyCallback = (eventEmitter.onAny as jest.Mock).mock.calls[0][0] as (
+				busEvent: string,
+				busPayload: Record<string, any>,
+			) => void;
+
+			onAnyCallback(event, payload);
+		};
+
+		it('routes RemoteAccessModule.* events to the exchange room only, next to SystemModule.System.Update.', () => {
+			emitBusEvent('RemoteAccessModule.Provider.Status', {
+				type: 'remote-access-tailscale',
+				state: 'connected',
+			});
+
+			expect(mockServer.to).toHaveBeenCalledWith(EXCHANGE_ROOM);
+			expect(mockServer.to).not.toHaveBeenCalledWith(DISPLAY_INTERNAL_ROOM);
+		});
+
+		it('still broadcasts an ordinary event to both the exchange room and display panels', () => {
+			emitBusEvent('DevicesModule.Property.Updated', { id: '1', value: 'test' });
+
+			expect(mockServer.to).toHaveBeenCalledWith(EXCHANGE_ROOM);
+			expect(mockServer.to).toHaveBeenCalledWith(DISPLAY_INTERNAL_ROOM);
 		});
 	});
 });
