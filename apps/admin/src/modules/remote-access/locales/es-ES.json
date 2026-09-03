@@ -1,0 +1,106 @@
+{
+	"menu": {
+		"title": "Acceso remoto"
+	},
+	"headings": {
+		"remoteAccess": "Acceso remoto",
+		"accessUrls": "URL de acceso",
+		"internalUrl": "Acceso interno",
+		"externalUrls": "Acceso externo",
+		"providers": "Proveedores",
+		"advisories": "Avisos"
+	},
+	"subHeadings": {
+		"remoteAccess": "Accede a esta instalación desde fuera de la red local"
+	},
+	"breadcrumbs": {
+		"remoteAccess": "acceso remoto"
+	},
+	"meta": {
+		"remoteAccess": {
+			"title": "Acceso remoto"
+		}
+	},
+	"messages": {
+		"requestError": "Se produjo un error al cargar el estado del acceso remoto",
+		"urlCopied": "La URL se ha copiado al portapapeles",
+		"copyFailed": "No se pudo copiar la URL al portapapeles",
+		"qrFailed": "No se pudo generar el código QR",
+		"config": {
+			"edited": "La configuración de acceso remoto se ha actualizado correctamente",
+			"notEdited": "No se pudo actualizar la configuración de acceso remoto"
+		}
+	},
+	"buttons": {
+		"copy": {
+			"title": "Copiar"
+		},
+		"showQr": {
+			"title": "Mostrar código QR"
+		}
+	},
+	"texts": {
+		"loadingStatus": "Cargando el estado del acceso remoto...",
+		"primary": "Principal",
+		"https": "HTTPS",
+		"http": "HTTP",
+		"public": "Público",
+		"private": "Privado",
+		"noExternalUrls": "Aún no hay acceso externo configurado. Configura un proveedor o añade una URL externa manual en los ajustes.",
+		"noProviders": "No hay proveedores de acceso remoto instalados.",
+		"noEndpoints": "Este proveedor todavía no publica ningún punto de conexión.",
+		"noAdvisories": "No hay avisos. El estado del acceso remoto parece correcto.",
+		"qrAlt": "Código QR que codifica esta URL"
+	},
+	"status": {
+		"unsupported": "No compatible",
+		"not-installed": "No instalado",
+		"setup-required": "Configuración necesaria",
+		"pending-auth": "Esperando inicio de sesión",
+		"pending-approval": "Esperando aprobación",
+		"connecting": "Conectando",
+		"connected": "Conectado",
+		"disconnected": "Desconectado",
+		"error": "Error",
+		"banner": {
+			"disabledTitle": "El acceso remoto está deshabilitado",
+			"disabledDescription": "Habilita el módulo de acceso remoto desde la página Extensiones para configurar proveedores y URL externas.",
+			"okTitle": "El acceso remoto está en buen estado",
+			"okDescription": "No se ha notificado ningún aviso de seguridad.",
+			"advisoriesTitle": "Un aviso | {count} avisos",
+			"advisoriesDescription": "Revisa los avisos a continuación."
+		}
+	},
+	"config": {
+		"about": {
+			"title": "Ajustes de acceso remoto",
+			"description": "Configura las URL interna y externa a través de las cuales se puede acceder a esta instalación, y qué proxies inversos son de confianza para presentar direcciones de cliente reenviadas. El módulo en sí se habilita o deshabilita desde la página Extensiones."
+		}
+	},
+	"fields": {
+		"config": {
+			"internalUrl": {
+				"title": "URL interna",
+				"placeholder": "p. ej. http://panel.local:3000",
+				"description": "Anula el origen absoluto de la URL interna. Déjalo vacío para deducirlo automáticamente.",
+				"invalid": "Debe ser un origen HTTP(S) absoluto normalizado, sin ruta, credenciales, consulta ni fragmento."
+			},
+			"externalUrl": {
+				"title": "URL externa",
+				"placeholder": "p. ej. https://panel.example.com",
+				"description": "Origen externo configurado manualmente, por ejemplo, detrás de un proxy inverso propio o un host DDNS.",
+				"invalid": "Debe ser un origen HTTP(S) absoluto normalizado, sin ruta, credenciales, consulta ni fragmento."
+			},
+			"trustForwardedHeaders": {
+				"title": "Confiar en las cabeceras reenviadas",
+				"description": "Confiar en X-Forwarded-For, X-Real-IP y CF-Connecting-IP de los proxies de confianza indicados a continuación."
+			},
+			"trustedProxies": {
+				"title": "Proxies de confianza",
+				"placeholder": "Añade una dirección IPv4/IPv6 o un rango CIDR y pulsa Intro",
+				"description": "Direcciones IPv4/IPv6 o rangos CIDR autorizados a presentar cabeceras de identidad reenviadas.",
+				"invalid": "Cada entrada debe ser una dirección IPv4/IPv6 o un rango CIDR válidos."
+			}
+		}
+	}
+}

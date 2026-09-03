@@ -1,0 +1,106 @@
+{
+	"menu": {
+		"title": "Remote access"
+	},
+	"headings": {
+		"remoteAccess": "Remote access",
+		"accessUrls": "Access URLs",
+		"internalUrl": "Internal access",
+		"externalUrls": "External access",
+		"providers": "Providers",
+		"advisories": "Advisories"
+	},
+	"subHeadings": {
+		"remoteAccess": "Reach this installation from outside the local network"
+	},
+	"breadcrumbs": {
+		"remoteAccess": "remote access"
+	},
+	"meta": {
+		"remoteAccess": {
+			"title": "Remote Access"
+		}
+	},
+	"messages": {
+		"requestError": "An error occurred while loading remote access status",
+		"urlCopied": "URL has been copied to the clipboard",
+		"copyFailed": "Failed to copy the URL to the clipboard",
+		"qrFailed": "Failed to generate the QR code",
+		"config": {
+			"edited": "Remote access configuration has been successfully updated",
+			"notEdited": "Failed to update remote access configuration"
+		}
+	},
+	"buttons": {
+		"copy": {
+			"title": "Copy"
+		},
+		"showQr": {
+			"title": "Show QR code"
+		}
+	},
+	"texts": {
+		"loadingStatus": "Loading remote access status...",
+		"primary": "Primary",
+		"https": "HTTPS",
+		"http": "HTTP",
+		"public": "Public",
+		"private": "Private",
+		"noExternalUrls": "No external access is configured yet. Set up a provider or add a manual external URL in the settings.",
+		"noProviders": "No remote access providers are installed.",
+		"noEndpoints": "This provider is not publishing any endpoints yet.",
+		"noAdvisories": "No advisories. Your remote access posture looks good.",
+		"qrAlt": "QR code encoding this URL"
+	},
+	"status": {
+		"unsupported": "Unsupported",
+		"not-installed": "Not installed",
+		"setup-required": "Setup required",
+		"pending-auth": "Waiting for sign-in",
+		"pending-approval": "Waiting for approval",
+		"connecting": "Connecting",
+		"connected": "Connected",
+		"disconnected": "Disconnected",
+		"error": "Error",
+		"banner": {
+			"disabledTitle": "Remote access is disabled",
+			"disabledDescription": "Enable the Remote access module from the Extensions page to configure providers and external URLs.",
+			"okTitle": "Remote access is healthy",
+			"okDescription": "No posture advisories were reported.",
+			"advisoriesTitle": "One advisory | {count} advisories",
+			"advisoriesDescription": "Review the advisories below."
+		}
+	},
+	"config": {
+		"about": {
+			"title": "Remote access settings",
+			"description": "Configure the internal and external URLs this installation is reachable at, and which reverse proxies are trusted to present forwarded client addresses. Enable or disable the module itself from the Extensions page."
+		}
+	},
+	"fields": {
+		"config": {
+			"internalUrl": {
+				"title": "Internal URL",
+				"placeholder": "e.g. http://panel.local:3000",
+				"description": "Absolute origin override for the internal URL. Leave empty to derive it automatically.",
+				"invalid": "Must be a normalized absolute HTTP(S) origin without a path, credentials, query, or fragment."
+			},
+			"externalUrl": {
+				"title": "External URL",
+				"placeholder": "e.g. https://panel.example.com",
+				"description": "Manually configured external origin, e.g. behind a hand-built reverse proxy or DDNS host.",
+				"invalid": "Must be a normalized absolute HTTP(S) origin without a path, credentials, query, or fragment."
+			},
+			"trustForwardedHeaders": {
+				"title": "Trust forwarded headers",
+				"description": "Trust X-Forwarded-For, X-Real-IP and CF-Connecting-IP from the trusted proxies listed below."
+			},
+			"trustedProxies": {
+				"title": "Trusted proxies",
+				"placeholder": "Add an IPv4/IPv6 address or CIDR range and press enter",
+				"description": "IPv4/IPv6 addresses or CIDR ranges allowed to present forwarded-identity headers.",
+				"invalid": "Each entry must be a valid IPv4/IPv6 address or CIDR range."
+			}
+		}
+	}
+}

@@ -49,6 +49,7 @@ import { IntentsModule } from './modules/intents';
 import { McpModule } from './modules/mcp';
 import { MdnsModule } from './modules/mdns';
 import { OnboardingModule } from './modules/onboarding';
+import { RemoteAccessModule } from './modules/remote-access';
 import { ScenesModule } from './modules/scenes';
 import { SecurityModule } from './modules/security';
 import { SpacesModule } from './modules/spaces';
@@ -202,6 +203,7 @@ app.use(IntentsModule, moduleOptions);
 app.use(SecurityModule, moduleOptions);
 app.use(EnergyModule, moduleOptions);
 app.use(BuddyModule, moduleOptions);
+app.use(RemoteAccessModule, moduleOptions);
 
 // Plugins
 const pluginOptions: IModuleOptions = {
