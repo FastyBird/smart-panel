@@ -389,7 +389,7 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				.set('Authorization', 'Bearer owner-user')
 				.expect(200);
 
-			expect(response.body.data.type).toBe('remote-access-tailscale');
+			expect(response.body.data.type).toBe('remote-access-tailscale-plugin');
 		});
 
 		it.each(['admin-user', 'regular-user', 'display-token'])('denies %s', async (credential) => {
@@ -410,7 +410,7 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				.set('Authorization', 'Bearer owner-user')
 				.expect(200);
 
-			expect(response.body.data.type).toBe('remote-access-tailscale');
+			expect(response.body.data.type).toBe('remote-access-tailscale-plugin');
 		});
 
 		it.each(['admin-user', 'regular-user', 'display-token'])('denies %s', async (credential) => {

@@ -33,7 +33,7 @@ describe('SetupController', () => {
 	let nodeManagedService: { evaluateRequirements: jest.Mock };
 
 	const baseStatus: RemoteAccessProviderStatus = {
-		type: 'remote-access-tailscale',
+		type: 'remote-access-tailscale-plugin',
 		state: 'connected',
 		endpoints: [],
 		details: {},
@@ -209,7 +209,7 @@ describe('SetupController', () => {
 			const response = await controller.logout(res);
 
 			expect(loginService.logout).toHaveBeenCalledTimes(1);
-			expect(response.data.type).toBe('remote-access-tailscale');
+			expect(response.data.type).toBe('remote-access-tailscale-plugin');
 		});
 
 		it('maps an unexpected failure to 500', async () => {
@@ -236,7 +236,7 @@ describe('SetupController', () => {
 			const response = await controller.resetPreferences(res);
 
 			expect(loginService.resetPreferences).toHaveBeenCalledTimes(1);
-			expect(response.data.type).toBe('remote-access-tailscale');
+			expect(response.data.type).toBe('remote-access-tailscale-plugin');
 		});
 
 		it('maps an unexpected failure to 500', async () => {
