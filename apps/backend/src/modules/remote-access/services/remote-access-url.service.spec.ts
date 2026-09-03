@@ -224,22 +224,39 @@ describe('RemoteAccessUrlService', () => {
 			jest.restoreAllMocks();
 		});
 
-		it('lists non-internal LAN IPv4 addresses and the hostname.local candidate', async () => {
+		it('lists non-internal LAN IPv4/IPv6 addresses and the hostname.local candidate', async () => {
 			jest
 				.spyOn(si, 'networkInterfaces')
 				.mockResolvedValue([
 					{ ip4: '127.0.0.1', ip6: '', internal: true } as never,
 					{ ip4: '192.168.1.50', ip6: '', internal: false } as never,
-					{ ip4: '', ip6: 'fe80::1', internal: false } as never,
+					{ ip4: '', ip6: '2001:db8::50', internal: false } as never,
 				]);
 
 			const candidates = await service.getCandidates();
 
 			expect(candidates).toEqual(
-				expect.arrayContaining([expect.stringContaining('192.168.1.50'), expect.stringContaining('[fe80::1]')]),
+				expect.arrayContaining([expect.stringContaining('192.168.1.50'), expect.stringContaining('[2001:db8::50]')]),
 			);
 			expect(candidates.some((candidate) => candidate.endsWith('.local:3000'))).toBe(true);
 			expect(candidates.some((candidate) => candidate.includes('127.0.0.1'))).toBe(false);
+		});
+
+		it('excludes an IPv6 link-local address anywhere in fe80::/10, not just literal fe80: addresses', async () => {
+			jest.spyOn(si, 'networkInterfaces').mockResolvedValue([
+				// fe80::/10 covers fe80:: through febf:ffff:...; febf::1 is in range but
+				// does not start with the literal string "fe80", the case a naive
+				// startsWith('fe80') prefix check would miss.
+				{ ip4: '', ip6: 'febf::1', internal: false } as never,
+				{ ip4: '', ip6: 'fe80::1', internal: false } as never,
+				{ ip4: '', ip6: '2001:db8::1', internal: false } as never,
+			]);
+
+			const candidates = await service.getCandidates();
+
+			expect(candidates.some((candidate) => candidate.includes('febf::1'))).toBe(false);
+			expect(candidates.some((candidate) => candidate.includes('fe80::1'))).toBe(false);
+			expect(candidates).toEqual(expect.arrayContaining([expect.stringContaining('[2001:db8::1]')]));
 		});
 
 		it('never throws when systeminformation rejects', async () => {

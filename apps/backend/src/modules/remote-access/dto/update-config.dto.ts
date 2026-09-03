@@ -10,8 +10,6 @@ import { IsTrustedProxyEntryConstraint } from '../validators/is-trusted-proxy-en
 
 @ApiSchema({ name: 'ConfigModuleUpdateRemoteAccess' })
 export class UpdateRemoteAccessConfigDto extends UpdateModuleConfigDto {
-	override enabled = true;
-
 	@ApiProperty({
 		description: 'Module identifier',
 		type: 'string',

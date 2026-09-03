@@ -7,6 +7,7 @@ import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { isIpInCidr } from '../../api/utils/ip-match.utils';
 import { EventType as ConfigEventType } from '../../config/config.constants';
 import { ConfigService } from '../../config/services/config.service';
 import { RemoteAccessConfigModel } from '../models/config.model';
@@ -156,7 +157,10 @@ export class RemoteAccessUrlService {
 					candidates.push(`http://${iface.ip4}:${port}`);
 				}
 
-				if (iface.ip6) {
+				// fe80::/10 (link-local) is scoped to a single interface and unreachable
+				// from anywhere it'd be dialled back from; a prefix check like
+				// startsWith('fe80') would miss most of that range (fe81:: .. febf::).
+				if (iface.ip6 && !isIpInCidr(iface.ip6, 'fe80::/10')) {
 					candidates.push(`http://[${iface.ip6}]:${port}`);
 				}
 			}

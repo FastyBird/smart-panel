@@ -1,4 +1,4 @@
-import { plainToInstance } from 'class-transformer';
+import { instanceToPlain, plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
 import { REMOTE_ACCESS_MODULE_NAME } from '../remote-access.constants';
@@ -10,6 +10,24 @@ describe('UpdateRemoteAccessConfigDto', () => {
 		const dto = plainToInstance(UpdateRemoteAccessConfigDto, { type: REMOTE_ACCESS_MODULE_NAME });
 
 		expect(await validate(dto)).toHaveLength(0);
+	});
+
+	it('leaves enabled unset when a partial update omits it, so a stored enabled: false survives the merge', () => {
+		const dto = plainToInstance(UpdateRemoteAccessConfigDto, {
+			type: REMOTE_ACCESS_MODULE_NAME,
+			trust_forwarded_headers: true,
+		});
+
+		expect(dto.enabled).toBeUndefined();
+
+		// Mirrors ConfigSecretsService's own toPlainConfig(), which is what
+		// ConfigService.setModuleConfig() merges against the stored config:
+		// exposeUnsetFields: false must drop the unset `enabled` key entirely
+		// rather than serializing it as `true`, or mergePlain() would clobber
+		// a previously persisted enabled: false.
+		const plain = instanceToPlain(dto, { exposeUnsetFields: false });
+
+		expect(plain).not.toHaveProperty('enabled');
 	});
 
 	it('accepts a normalized internal_url and external_url, and permits clearing them with null', async () => {
