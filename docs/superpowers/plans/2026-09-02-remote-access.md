@@ -111,7 +111,11 @@ interface ResolvedClientAddress {
   existing reverse proxy can opt in before RA-2 lands) plus whatever later registers (RA-2).
 - Replace both `extractClientIp` implementations (`modules/displays/utils/ip.utils.ts`,
   `modules/websocket/utils/ip.utils.ts`) with calls into the service; keep `isLocalhost()` semantics on
-  the resolved address.
+  the resolved address, but grant the localhost bypass only to direct connections: when an untrusted
+  peer presented forwarding headers (`ignoredForwardedHeaders` on the resolved address), the registration
+  guard and `getRegistrationStatus` treat the request as remote.
+- CIDR parsing fails closed: an empty or non-numeric prefix (`10.0.0.0/`, `10.0.0.0/8.0`) is rejected;
+  malformed `FB_TRUSTED_PROXIES` entries are logged once and ignored.
 - `DisplayAwareThrottlerGuard` overrides `getTracker()` to return the resolved address.
 - MCP is untouched in this task (RA-11 unifies it).
 

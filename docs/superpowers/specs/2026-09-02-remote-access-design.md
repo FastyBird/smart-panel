@@ -245,6 +245,10 @@ The `api` module gains `ClientAddressService`:
 - `DisplayAwareThrottlerGuard.getTracker()`, the displays registration guard, the websocket connection
   address and the MCP proxy policy all resolve through it. Loopback detection keeps its meaning: a request
   proxied by Tailscale Serve carries the tailnet client address, not `127.0.0.1`.
+- The localhost privilege applies only to direct connections. A loopback peer that presents forwarding
+  headers without being trusted is, by definition, a proxy: `resolve()` reports that the headers were
+  ignored, and the registration guard and registration status refuse the localhost bypass for that
+  request instead of treating every client behind an unconfigured local proxy as local.
 
 ### Privileged operations
 
