@@ -1,9 +1,9 @@
 import { type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -110,6 +110,9 @@ export class TailscaleLoginInProgressException extends Error {
 	}
 }
 
+/** Matches the ephemeral auth-key file name `writeAuthKeyFile()` generates — see `onModuleInit()`. */
+const STALE_AUTH_KEY_FILE_PATTERN = /^auth-key-.+\.key$/;
+
 /**
  * Owns Tailscale sign-in, sign-out and preference reset. Both `up` variants
  * go through `TailscaleCliService.spawnUp()` (never the promise-buffered
@@ -135,9 +138,14 @@ export class TailscaleLoginInProgressException extends Error {
  * The auth key and the auth URL/QR never reach a log line, an event payload
  * or a thrown error message — only this service's in-memory state and the
  * owner/admin-gated REST responses built from it.
+ *
+ * `onModuleInit()` also unlinks any ephemeral auth-key file left behind by
+ * an abnormal exit (SIGKILL, an OOM kill, a service restart) partway
+ * through a keyed sign-in — `loginWithAuthKey()`'s `finally` only runs on a
+ * normal exit path, so a hard kill can leave the key on disk.
  */
 @Injectable()
-export class TailscaleLoginService {
+export class TailscaleLoginService implements OnModuleInit {
 	private readonly logger = createExtensionLogger(REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'TailscaleLoginService');
 
 	private pending: PendingInteractiveLogin | null = null;
@@ -149,6 +157,10 @@ export class TailscaleLoginService {
 		private readonly nodeManagedService: TailscaleNodeManagedService,
 		private readonly nestConfigService: NestConfigService,
 	) {}
+
+	async onModuleInit(): Promise<void> {
+		await this.cleanupStaleAuthKeyFiles();
+	}
 
 	async login(authKey?: string): Promise<TailscaleLoginResult> {
 		if (authKey) {
@@ -427,9 +439,58 @@ export class TailscaleLoginService {
 		return this.nodeManagedService.buildUpFlags(config);
 	}
 
-	private async writeAuthKeyFile(authKey: string): Promise<string> {
+	/** Directory holding this plugin's on-disk state — see `TAILSCALE_DATA_SUBDIR`'s own doc. */
+	private authKeyDataDir(): string {
 		const dataDir = getEnvValue<string>(this.nestConfigService, 'FB_DATA_DIR', '/var/lib/smart-panel');
-		const dir = join(dataDir, TAILSCALE_DATA_SUBDIR);
+
+		return join(dataDir, TAILSCALE_DATA_SUBDIR);
+	}
+
+	/**
+	 * Unlinks any `auth-key-*.key` file already sitting in the data
+	 * directory at boot — left behind by a SIGKILL, an OOM kill or a service
+	 * restart that interrupted `loginWithAuthKey()` before its `finally`
+	 * could remove it (see the class doc). A missing directory (nothing has
+	 * ever attempted a keyed login) is not an error. Never throws — a
+	 * best-effort cleanup must not block startup. Only the file name is ever
+	 * logged, never its contents.
+	 */
+	private async cleanupStaleAuthKeyFiles(): Promise<void> {
+		const dir = this.authKeyDataDir();
+
+		let entries: string[];
+
+		try {
+			entries = await readdir(dir);
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+				this.logger.debug('Failed to scan the remote-access data directory for stale auth-key files', {
+					message: error instanceof Error ? error.message : String(error),
+				});
+			}
+
+			return;
+		}
+
+		for (const entry of entries) {
+			if (!STALE_AUTH_KEY_FILE_PATTERN.test(entry)) {
+				continue;
+			}
+
+			try {
+				await rm(join(dir, entry), { force: true });
+
+				this.logger.debug(`Removed a stale Tailscale auth-key file left behind by an abnormal exit: ${entry}`);
+			} catch (error) {
+				this.logger.debug(`Failed to remove a stale Tailscale auth-key file: ${entry}`, {
+					message: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+	}
+
+	private async writeAuthKeyFile(authKey: string): Promise<string> {
+		const dir = this.authKeyDataDir();
 
 		await mkdir(dir, { recursive: true, mode: 0o700 });
 

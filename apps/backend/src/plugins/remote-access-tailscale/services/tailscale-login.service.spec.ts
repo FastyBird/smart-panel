@@ -3,7 +3,7 @@ Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { EventEmitter } from 'events';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs';
 import * as fsPromises from 'node:fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -11,6 +11,8 @@ import { join } from 'path';
 import { Logger } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+
+import { TAILSCALE_DATA_SUBDIR } from '../remote-access-tailscale.constants';
 
 import { TailscaleCliError, TailscaleCliService } from './tailscale-cli.service';
 import {
@@ -770,6 +772,69 @@ describe('TailscaleLoginService', () => {
 			cli.up.mockRejectedValue(new TailscaleCliError('needs-login', 'not logged in'));
 
 			await expect(service.resetPreferences()).rejects.toMatchObject({ kind: 'needs-login' });
+		});
+	});
+
+	describe('onModuleInit — stale auth-key file cleanup (F4)', () => {
+		const authKeyDir = (): string => join(dataDir, TAILSCALE_DATA_SUBDIR);
+		let debugSpy: jest.SpyInstance;
+
+		beforeEach(() => {
+			debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
+		});
+
+		it('removes a stale auth-key file left behind by an abnormal exit', async () => {
+			mkdirSync(authKeyDir(), { recursive: true, mode: 0o700 });
+			const stalePath = join(authKeyDir(), 'auth-key-11111111-1111-1111-1111-111111111111.key');
+			writeFileSync(stalePath, SECRET_AUTH_KEY, { mode: 0o600 });
+
+			await service.onModuleInit();
+
+			expect(existsSync(stalePath)).toBe(false);
+		});
+
+		it('removes more than one stale auth-key file in the same directory', async () => {
+			mkdirSync(authKeyDir(), { recursive: true, mode: 0o700 });
+			const first = join(authKeyDir(), 'auth-key-11111111-1111-1111-1111-111111111111.key');
+			const second = join(authKeyDir(), 'auth-key-22222222-2222-2222-2222-222222222222.key');
+			writeFileSync(first, SECRET_AUTH_KEY, { mode: 0o600 });
+			writeFileSync(second, SECRET_AUTH_KEY, { mode: 0o600 });
+
+			await service.onModuleInit();
+
+			expect(existsSync(first)).toBe(false);
+			expect(existsSync(second)).toBe(false);
+		});
+
+		it('is a no-op, not a throw, when the data directory does not exist yet (no login has ever been attempted)', async () => {
+			await expect(service.onModuleInit()).resolves.toBeUndefined();
+		});
+
+		it('leaves an unrelated file in the same directory alone', async () => {
+			mkdirSync(authKeyDir(), { recursive: true, mode: 0o700 });
+			const unrelatedPath = join(authKeyDir(), 'tailscale-setup-status.json');
+			writeFileSync(unrelatedPath, '{"state":"complete"}');
+
+			await service.onModuleInit();
+
+			expect(existsSync(unrelatedPath)).toBe(true);
+		});
+
+		it('logs only the file name at debug level, never the key contents', async () => {
+			mkdirSync(authKeyDir(), { recursive: true, mode: 0o700 });
+			const stalePath = join(authKeyDir(), 'auth-key-11111111-1111-1111-1111-111111111111.key');
+			writeFileSync(stalePath, SECRET_AUTH_KEY, { mode: 0o600 });
+
+			await service.onModuleInit();
+
+			expect(debugSpy).toHaveBeenCalledWith(
+				expect.stringContaining('auth-key-11111111-1111-1111-1111-111111111111.key'),
+				expect.anything(),
+			);
+
+			const allDebugCalls = (debugSpy.mock.calls as unknown[][]).flat();
+
+			expect(allDebugCalls.some((arg) => typeof arg === 'string' && arg.includes(SECRET_AUTH_KEY))).toBe(false);
 		});
 	});
 });
