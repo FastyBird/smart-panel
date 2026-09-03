@@ -81,21 +81,13 @@ export const TailscaleStatusOnEventActionPayloadSchema = z.object({
 // BACKEND API
 // ===========
 //
-// `GET /status` documents and returns the full envelope correctly
-// (`RemoteAccessTailscalePluginResStatus`), so `TailscaleStatusResSchema` below both types and
-// validates its `data.data` payload.
-//
-// `POST /install`, `/login`, `/logout` and `/reset-preferences` do not: their controller
-// (`apps/backend/src/plugins/remote-access-tailscale/controllers/setup.controller.ts`) passes the
-// bare `*Model` class to `@ApiSuccessResponse`/`@ApiAcceptedSuccessResponse` instead of the
-// `*ResponseModel` envelope class it actually returns at runtime - unlike `StatusController`,
-// which does this correctly. `openapi-typescript` therefore documents and types these four
-// responses as the bare `Data*` shape, while the server actually sends the same standard
-// enveloped response as every other endpoint. The store transformers for those four unwrap the
-// real envelope by hand (see `tailscale-status.transformers.ts`) instead of trusting the
-// generated operation type, so the `Res*` schemas below are typed against the bare `Data*`
-// schema on purpose - that is genuinely what is validated once the real envelope has already
-// been unwrapped one level up.
+// All five endpoints (`GET /status`, `POST /install`, `/login`, `/logout`,
+// `/reset-preferences`) correctly document and return the full envelope
+// (`RemoteAccessTailscalePluginRes*`), so `apiResponse.data.data` in the store is already typed
+// as the shape below - no manual envelope unwrapping needed. The `Res*` schemas here are
+// `ZodType<GeneratedWireType>` compile-time anchors only, never `.safeParse()`d themselves (see
+// the note above STORE STATE); the store transformers parse the camelCase `TailscaleStatusSchema`
+// and friends instead, fed by `snakeToCamel()` on the real `.data` payload.
 
 export const TailscaleRequirementResSchema: ZodType<RemoteAccessTailscalePluginRequirementSchema> = z.object({
 	code: z.nativeEnum(RemoteAccessTailscalePluginRequirementCode),

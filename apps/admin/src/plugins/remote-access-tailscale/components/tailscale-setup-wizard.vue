@@ -245,6 +245,7 @@ import { useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, useConfigPlugin } from '../../../modules/config';
 import { useTailscaleLogin, useTailscaleSetup, useTailscaleStatus } from '../composables';
 import { REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME } from '../remote-access-tailscale.constants';
+import { RemoteAccessTailscaleApiException } from '../remote-access-tailscale.exceptions';
 
 import TailscaleConfigForm from './tailscale-config-form.vue';
 import type { ITailscaleSetupWizardProps, TailscaleWizardStep } from './tailscale-setup-wizard.types';
@@ -289,11 +290,26 @@ const optionsFormResult = ref<FormResultType>(FormResult.NONE);
 
 const endpoints = computed(() => status.value?.endpoints ?? []);
 
+// The backend gives a specific, actionable reason for these status codes (install: 409 a setup
+// job is already running - transient, retry shortly; 422 this platform/override can never run
+// one - permanent. login: 409 a sign-in is already in flight). Anything else (a plain 500, a
+// network failure) has no such structured reason, so it falls back to a translated generic
+// message instead of surfacing raw, unlocalized backend text.
+const flashApiError = (error: unknown, meaningfulCodes: number[], fallback: string): void => {
+	if (error instanceof RemoteAccessTailscaleApiException && error.code !== null && meaningfulCodes.includes(error.code)) {
+		flashMessage.error(error.message);
+
+		return;
+	}
+
+	flashMessage.error(fallback);
+};
+
 const onInstall = async (): Promise<void> => {
 	try {
 		await install();
-	} catch {
-		flashMessage.error(t('remoteAccessTailscalePlugin.messages.setupFailed'));
+	} catch (error) {
+		flashApiError(error, [409, 422], t('remoteAccessTailscalePlugin.messages.setupFailed'));
 	}
 };
 
@@ -303,8 +319,8 @@ const onInteractiveLogin = async (): Promise<void> => {
 
 		authUrl.value = result.authUrl;
 		qr.value = result.qr;
-	} catch {
-		flashMessage.error(t('remoteAccessTailscalePlugin.messages.loginFailed'));
+	} catch (error) {
+		flashApiError(error, [409], t('remoteAccessTailscalePlugin.messages.loginFailed'));
 	}
 };
 
@@ -324,10 +340,10 @@ const onKeyedLogin = async (): Promise<void> => {
 		}
 
 		goToStep('options');
-	} catch {
+	} catch (error) {
 		authKey.value = '';
 
-		flashMessage.error(t('remoteAccessTailscalePlugin.messages.loginFailed'));
+		flashApiError(error, [409], t('remoteAccessTailscalePlugin.messages.loginFailed'));
 	}
 };
 

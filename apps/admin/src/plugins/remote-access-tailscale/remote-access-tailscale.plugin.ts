@@ -24,40 +24,20 @@ import {
 
 import { TailscaleConfigForm, TailscaleProviderCard, TailscaleSetupWizard } from './components/components';
 import { locales } from './locales';
-import {
-	REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
-	REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX,
-	REMOTE_ACCESS_TAILSCALE_SETUP_EVENT_TYPE,
-} from './remote-access-tailscale.constants';
+import { REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME } from './remote-access-tailscale.constants';
 import { TailscaleConfigEditFormSchema } from './schemas/schemas';
 import { TailscaleConfigSchema, TailscaleConfigUpdateReqSchema } from './store/config.store.schemas';
 import { tailscaleStatusStoreKey } from './store/keys';
 import { registerTailscaleStatusStore } from './store/tailscale-status.store';
 
-// Two separate `IPlugin` registrations, both describing the same Tailscale plugin, under two
-// different identities `pluginsManager` is asked for by two unrelated lookups:
-//
-// - `remoteAccessTailscaleConfigPluginKey` (`type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME`,
-//   `'remote-access-tailscale-plugin'`) is found by `usePlugin`/`usePlugins`
-//   (`Config → Plugins`, `useConfigPluginEditForm`) matching `IPlugin.type === config.type`,
-//   exactly like every other plugin in this codebase (influx-v1, weather-openweathermap, ...).
-// - `remoteAccessTailscaleProviderPluginKey` (`type: REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX`,
-//   `'remote-access-tailscale'`) is found by the remote-access module's own
-//   `useRemoteAccessProviders.getElement()`, which matches `IPlugin.type === provider.type` -
-//   the provider identity the backend and `RemoteAccessModule.Provider.Status` events use, not
-//   the config identity. See the constants file for the full explanation.
-const remoteAccessTailscaleConfigPluginKey: PluginInjectionKey<IPlugin<IPluginsComponents, IPluginsSchemas>> = Symbol(
-	'FB-Plugin-RemoteAccessTailscale-Config'
-);
-const remoteAccessTailscaleProviderPluginKey: PluginInjectionKey<IPlugin<IRemoteAccessProviderPluginsComponents>> = Symbol(
-	'FB-Plugin-RemoteAccessTailscale-Provider'
-);
-
-const links = {
-	documentation: 'https://smart-panel.fastybird.com/docs',
-	devDocumentation: 'https://smart-panel.fastybird.com/docs',
-	bugsTracking: 'https://github.com/FastyBird/smart-panel/issues',
-};
+// One `IPlugin`, keyed by `REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME` - the single identity the backend
+// reports everywhere since fix #936 (config, extensions, the provider registry, and every
+// `RemoteAccessModule.*` event payload all agree on `'remote-access-tailscale-plugin'`; see the
+// constants file). Two elements: `CONFIG_MODULE_PLUGIN_TYPE`, found by
+// `Config → Plugins`/`useConfigPluginEditForm`, and `REMOTE_ACCESS_MODULE_PROVIDER_TYPE`, found
+// by the remote-access module's `useRemoteAccessProviders.getElement()`.
+const remoteAccessTailscalePluginKey: PluginInjectionKey<IPlugin<IPluginsComponents & IRemoteAccessProviderPluginsComponents, IPluginsSchemas>> =
+	Symbol('FB-Plugin-RemoteAccessTailscale');
 
 export default {
 	install: (app: App, options: IPluginOptions): void => {
@@ -78,12 +58,16 @@ export default {
 
 		storesManager.addStore(tailscaleStatusStoreKey, tailscaleStatusStore);
 
-		pluginsManager.addPlugin(remoteAccessTailscaleConfigPluginKey, {
+		pluginsManager.addPlugin(remoteAccessTailscalePluginKey, {
 			type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.remote-access-tailscale',
 			name: 'Tailscale',
 			description: 'Reach this installation over a Tailscale mesh network without opening a port.',
-			links,
+			links: {
+				documentation: 'https://smart-panel.fastybird.com/docs',
+				devDocumentation: 'https://smart-panel.fastybird.com/docs',
+				bugsTracking: 'https://github.com/FastyBird/smart-panel/issues',
+			},
 			elements: [
 				{
 					type: CONFIG_MODULE_PLUGIN_TYPE,
@@ -97,18 +81,6 @@ export default {
 					},
 					modules: [CONFIG_MODULE_NAME],
 				},
-			],
-			modules: [CONFIG_MODULE_NAME],
-			isCore: false,
-		});
-
-		pluginsManager.addPlugin(remoteAccessTailscaleProviderPluginKey, {
-			type: REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX,
-			source: 'com.fastybird.smart-panel.plugin.remote-access-tailscale',
-			name: 'Tailscale',
-			description: 'Reach this installation over a Tailscale mesh network without opening a port.',
-			links,
-			elements: [
 				{
 					type: REMOTE_ACCESS_MODULE_PROVIDER_TYPE,
 					components: {
@@ -124,13 +96,13 @@ export default {
 					modules: [REMOTE_ACCESS_MODULE_NAME],
 				},
 			],
-			modules: [REMOTE_ACCESS_MODULE_NAME],
+			modules: [CONFIG_MODULE_NAME, REMOTE_ACCESS_MODULE_NAME],
 			isCore: false,
 		});
 
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold,
 		// same as the remote-access module's own store.
-		dataRefreshRegistry.register(remoteAccessTailscaleProviderPluginKey, (): Promise<void> => refreshLoadedStores([tailscaleStatusStore]));
+		dataRefreshRegistry.register(remoteAccessTailscalePluginKey, (): Promise<void> => refreshLoadedStores([tailscaleStatusStore]));
 
 		// The remote-access module only forwards `Provider.Status` and `Urls.Changed` to its own
 		// store; `Setup.Progress` is explicitly left to "the owning provider plugin's own store"
@@ -146,18 +118,11 @@ export default {
 
 			switch (data.event) {
 				case EventType.PROVIDER_STATUS:
-					// Every provider's status ticks over this same event - ignore every provider but
-					// this plugin's own.
-					if (data.payload.type !== REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX) {
-						return;
-					}
-
-					tailscaleStatusStore.onEvent({ event: data.event, data: data.payload });
-
-					return;
-
 				case EventType.SETUP_PROGRESS:
-					if (data.payload.type !== REMOTE_ACCESS_TAILSCALE_SETUP_EVENT_TYPE) {
+					// Every provider's status tick, and every provider plugin's own setup progress,
+					// share these two events - both payloads carry `type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME`
+					// (see the constants file), so the same guard filters both to this plugin's own.
+					if (data.payload.type !== REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME) {
 						return;
 					}
 

@@ -1,5 +1,10 @@
 import { logger, snakeToCamel } from '../../../common';
 import { RemoteAccessProviderStatusEventSchema } from '../../../modules/remote-access';
+import type {
+	RemoteAccessTailscalePluginInstallSchema,
+	RemoteAccessTailscalePluginLoginSchema,
+	RemoteAccessTailscalePluginStatusSchema,
+} from '../../../openapi.constants';
 import { RemoteAccessTailscaleValidationException } from '../remote-access-tailscale.exceptions';
 
 import {
@@ -16,9 +21,9 @@ import type { ITailscaleInstallResult, ITailscaleLoginResult, ITailscaleSetupPro
 // never `.safeParse()`d themselves: `snakeToCamel()` below already converts the raw response to
 // the shape the camelCase schema expects.
 
-/** `GET /status`, and `POST /logout` / `/reset-preferences` once unwrapped - see the schema file's "BACKEND API" comment for why those two need `unwrapBuggyEnvelope` first. */
-export const transformTailscaleStatusResponse = (response: unknown): ITailscaleStatus => {
-	const parsed = TailscaleStatusSchema.safeParse(snakeToCamel(response as Record<string, unknown>));
+/** `GET /status`, `POST /logout` and `POST /reset-preferences` all share this response shape. */
+export const transformTailscaleStatusResponse = (response: RemoteAccessTailscalePluginStatusSchema): ITailscaleStatus => {
+	const parsed = TailscaleStatusSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
 		logger.error('Schema validation failed with:', parsed.error);
@@ -29,9 +34,9 @@ export const transformTailscaleStatusResponse = (response: unknown): ITailscaleS
 	return parsed.data;
 };
 
-/** `POST /login` once unwrapped. */
-export const transformTailscaleLoginResponse = (response: unknown): ITailscaleLoginResult => {
-	const parsed = TailscaleLoginResultSchema.safeParse(snakeToCamel(response as Record<string, unknown>));
+/** `POST /login`. */
+export const transformTailscaleLoginResponse = (response: RemoteAccessTailscalePluginLoginSchema): ITailscaleLoginResult => {
+	const parsed = TailscaleLoginResultSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
 		logger.error('Schema validation failed with:', parsed.error);
@@ -42,9 +47,9 @@ export const transformTailscaleLoginResponse = (response: unknown): ITailscaleLo
 	return parsed.data;
 };
 
-/** `POST /install` once unwrapped. */
-export const transformTailscaleInstallResponse = (response: unknown): ITailscaleInstallResult => {
-	const parsed = TailscaleInstallResultSchema.safeParse(snakeToCamel(response as Record<string, unknown>));
+/** `POST /install`. */
+export const transformTailscaleInstallResponse = (response: RemoteAccessTailscalePluginInstallSchema): ITailscaleInstallResult => {
+	const parsed = TailscaleInstallResultSchema.safeParse(snakeToCamel(response));
 
 	if (!parsed.success) {
 		logger.error('Schema validation failed with:', parsed.error);
@@ -53,26 +58,6 @@ export const transformTailscaleInstallResponse = (response: unknown): ITailscale
 	}
 
 	return parsed.data;
-};
-
-/**
- * `POST /install`, `/login`, `/logout` and `/reset-preferences` are typed by
- * `openapi-typescript` as the bare `Data*` shape (a backend Swagger-decorator bug - see the
- * schema file's "BACKEND API" comment), but the server actually sends the standard enveloped
- * response `{ data: Data*, ... }`, exactly like every other endpoint in this codebase including
- * this same plugin's own `GET /status`. `openapi-fetch` never validates a response against its
- * schema, so the value received at `apiResponse.data` at runtime is genuinely the full envelope
- * even though TypeScript believes it is already the bare payload - reading `.data` here recovers
- * the same thing the correctly-typed endpoints get for free from the generated type.
- */
-export const unwrapBuggyEnvelope = (response: unknown): unknown => {
-	if (response !== null && typeof response === 'object' && 'data' in response) {
-		return (response as { data: unknown }).data;
-	}
-
-	logger.warn('Expected an enveloped Tailscale plugin response but received something else; passing it through as-is.');
-
-	return response;
 };
 
 /**

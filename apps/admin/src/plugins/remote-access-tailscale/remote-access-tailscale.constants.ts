@@ -1,23 +1,19 @@
-// Config/extension identity - matches the backend's `RemoteAccessTailscalePluginDataConfig.type`
-// and `ExtensionsService.registerPluginMetadata({ type })`. Every admin plugin registers its
-// top-level `IPlugin.type` under this identity so it is found by `Config → Plugins` and by
-// `useConfigPluginEditForm`/`usePlugin({ name: config.type })`.
+// Single identity for this plugin, used for everything: matches the backend's
+// `RemoteAccessTailscalePluginDataConfig.type`, `ExtensionsService.registerPluginMetadata({ type
+// })`, `TailscaleProviderService.type`, and therefore the `type` field of every
+// `RemoteAccessModuleDataProvider` / `RemoteAccessModule.Provider.Status` /
+// `RemoteAccessModule.Setup.Progress` payload too (backend fix #936, "report the Tailscale
+// provider under its plugin name" - the provider identity used to be the shorter route prefix,
+// which briefly required two separate `IPlugin` registrations here; the backend now reports the
+// plugin name everywhere, so `remote-access-tailscale.plugin.ts` registers exactly one `IPlugin`
+// with two elements). Found by `Config → Plugins`/`useConfigPluginEditForm`/`usePlugin({ name:
+// config.type })` and by the remote-access module's `useRemoteAccessProviders.getElement()`
+// (`IPlugin.type === provider.type`) alike.
 export const REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME = 'remote-access-tailscale-plugin';
 
-// Route prefix AND remote-access provider identity - mirrors the backend's own
-// `REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX`, which is used for exactly the same two things there:
-// the `/plugins/remote-access-tailscale/*` route prefix, and `TailscaleProviderService.type`
-// (so it is also the `type` field of every `RemoteAccessModuleDataProvider` /
-// `RemoteAccessModule.Provider.Status` payload). A second, separate `IPlugin` entry is
-// registered under this identity because `useRemoteAccessProviders.getElement()` (remote-access
-// module, already merged) matches a provider's owning plugin by `IPlugin.type === provider.type`
-// directly - it does not look at an element's own `type`, unlike the devices module's plugin
-// lookups. See `remote-access-tailscale.plugin.ts` for both registrations.
+// HTTP route prefix only - `/plugins/remote-access-tailscale/*` - unrelated to any plugin/provider
+// identity now (see `REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME` above).
 export const REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX = 'remote-access-tailscale';
-
-// `RemoteAccessModule.Setup.Progress` events carry this as their `type` field (the plugin
-// identity, not the provider identity - see `TailscaleSetupProgressEvent` on the backend).
-export const REMOTE_ACCESS_TAILSCALE_SETUP_EVENT_TYPE = REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME;
 
 // `useTailscaleLogin`: poll `GET /status` at this interval while the node is `pending-auth`.
 export const TAILSCALE_LOGIN_POLL_INTERVAL_MS = 3_000;

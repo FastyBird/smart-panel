@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, shallowMount } from '@vue/test-utils';
 
 import { FormResult } from '../../../modules/config';
+import { RemoteAccessTailscaleApiException } from '../remote-access-tailscale.exceptions';
 
 import TailscaleSetupWizard from './tailscale-setup-wizard.vue';
 
@@ -20,6 +21,8 @@ const fns = vi.hoisted(() => ({
 	login: vi.fn(),
 	stopPolling: vi.fn(),
 	fetchConfigPlugin: vi.fn(),
+	flashError: vi.fn(),
+	flashSuccess: vi.fn(),
 }));
 
 const status = ref<{ state: string; endpoints: { url: string; label: string }[] } | null>(null);
@@ -37,7 +40,7 @@ vi.mock('vue-i18n', async () => {
 });
 
 vi.mock('../../../common', () => ({
-	useFlashMessage: () => ({ success: vi.fn(), error: vi.fn() }),
+	useFlashMessage: () => ({ success: fns.flashSuccess, error: fns.flashError }),
 }));
 
 vi.mock('../../../modules/config', async () => {
@@ -104,6 +107,8 @@ describe('TailscaleSetupWizard', () => {
 		fns.login.mockReset();
 		fns.stopPolling.mockReset();
 		fns.fetchConfigPlugin.mockReset().mockResolvedValue(undefined);
+		fns.flashError.mockReset();
+		fns.flashSuccess.mockReset();
 	});
 
 	it('opens on the step the card decided (setup)', () => {
@@ -154,6 +159,48 @@ describe('TailscaleSetupWizard', () => {
 		expect(errorAlert?.props('title')).toBe('apt-get failed');
 	});
 
+	describe('install error messages', () => {
+		it('surfaces the backend reason for a 409 (a setup job is already running)', async () => {
+			fns.install.mockRejectedValue(new RemoteAccessTailscaleApiException('A Tailscale setup job is already running.', 409));
+			const wrapper = mountWizard('setup');
+
+			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.flashError).toHaveBeenCalledWith('A Tailscale setup job is already running.');
+		});
+
+		it('surfaces the backend reason for a 422 (permanently unsupported platform)', async () => {
+			fns.install.mockRejectedValue(new RemoteAccessTailscaleApiException('Tailscale setup is unavailable on this platform.', 422));
+			const wrapper = mountWizard('setup');
+
+			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.flashError).toHaveBeenCalledWith('Tailscale setup is unavailable on this platform.');
+		});
+
+		it('falls back to a translated generic message for an unexpected install error', async () => {
+			fns.install.mockRejectedValue(new RemoteAccessTailscaleApiException('Internal error detail', 500));
+			const wrapper = mountWizard('setup');
+
+			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.flashError).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.setupFailed');
+		});
+
+		it('falls back to a translated generic message for a non-API error', async () => {
+			fns.install.mockRejectedValue(new Error('network blip'));
+			const wrapper = mountWizard('setup');
+
+			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.flashError).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.setupFailed');
+		});
+	});
+
 	it('advances from sign-in to options once the node reports connected', async () => {
 		const wrapper = mountWizard('signin');
 
@@ -163,6 +210,28 @@ describe('TailscaleSetupWizard', () => {
 		await flushPromises();
 
 		expect(stepsProp(wrapper)).toBe(2);
+	});
+
+	describe('login error messages', () => {
+		it('surfaces the backend reason for a 409 (a sign-in is already in flight)', async () => {
+			fns.login.mockRejectedValue(new RemoteAccessTailscaleApiException('A Tailscale sign-in is already in progress.', 409));
+			const wrapper = mountWizard('signin');
+
+			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.flashError).toHaveBeenCalledWith('A Tailscale sign-in is already in progress.');
+		});
+
+		it('falls back to a translated generic message for an unexpected login error', async () => {
+			fns.login.mockRejectedValue(new RemoteAccessTailscaleApiException('Internal error detail', 500));
+			const wrapper = mountWizard('signin');
+
+			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.flashError).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.loginFailed');
+		});
 	});
 
 	it('does not jump ahead from setup just because the status happens to already be connected', async () => {

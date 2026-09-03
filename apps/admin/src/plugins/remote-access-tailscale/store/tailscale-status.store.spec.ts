@@ -28,7 +28,7 @@ vi.mock('../../../common', async () => {
 });
 
 const statusFields = {
-	type: 'remote-access-tailscale',
+	type: 'remote-access-tailscale-plugin',
 	state: 'connected',
 	endpoints: [{ url: 'http://100.64.0.1:3000', scope: 'private', https: false, label: 'Tailscale IPv4' }],
 	message: null,
@@ -103,10 +103,7 @@ describe('Tailscale status store', () => {
 	});
 
 	describe('install()', () => {
-		it('unwraps the buggy envelope POST /install actually sends and returns the job id', async () => {
-			// The endpoint's generated type claims `data` is the bare `{ job }` payload, but the
-			// server really sends the standard envelope `{ data: { job } }` - see
-			// `tailscale-status.transformers.ts`. This mock reflects what the real server sends.
+		it('returns the job id from the enveloped POST /install response', async () => {
 			post.mockResolvedValue({ data: { data: { job: 'job-123' } }, response: { status: 202 } });
 			const store = useTailscaleStatusStore();
 
@@ -165,7 +162,7 @@ describe('Tailscale status store', () => {
 	});
 
 	describe('logout() and resetPreferences()', () => {
-		it('logout() unwraps the buggy envelope and replaces the loaded status', async () => {
+		it('logout() replaces the loaded status from the enveloped response', async () => {
 			post.mockResolvedValue({
 				data: { data: { ...statusFields, state: 'setup-required', message: 'Tailscale needs to sign in again.' } },
 				response: { status: 200 },
@@ -179,7 +176,7 @@ describe('Tailscale status store', () => {
 			expect(store.data).toEqual(status);
 		});
 
-		it('resetPreferences() unwraps the buggy envelope and replaces the loaded status', async () => {
+		it('resetPreferences() replaces the loaded status from the enveloped response', async () => {
 			post.mockResolvedValue({ data: { data: statusFields }, response: { status: 200 } });
 			const store = useTailscaleStatusStore();
 
@@ -194,7 +191,7 @@ describe('Tailscale status store', () => {
 		it('ignores a provider status event before the initial fetch', () => {
 			const store = useTailscaleStatusStore();
 
-			store.onEvent({ event: 'RemoteAccessModule.Provider.Status', data: { type: 'remote-access-tailscale', state: 'connected' } });
+			store.onEvent({ event: 'RemoteAccessModule.Provider.Status', data: { type: 'remote-access-tailscale-plugin', state: 'connected' } });
 
 			expect(store.data).toBeNull();
 		});
@@ -210,7 +207,7 @@ describe('Tailscale status store', () => {
 			store.onEvent({
 				event: 'RemoteAccessModule.Provider.Status',
 				data: {
-					type: 'remote-access-tailscale',
+					type: 'remote-access-tailscale-plugin',
 					state: 'connected',
 					endpoints: statusFields.endpoints,
 					message: null,

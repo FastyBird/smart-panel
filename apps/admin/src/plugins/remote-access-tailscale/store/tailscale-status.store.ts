@@ -33,7 +33,6 @@ import {
 	transformTailscaleLoginResponse,
 	transformTailscaleSetupProgressEvent,
 	transformTailscaleStatusResponse,
-	unwrapBuggyEnvelope,
 } from './tailscale-status.transformers';
 
 const TAILSCALE_STATUS_PATH = `/${PLUGINS_PREFIX}/${REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX}/status` as const;
@@ -122,9 +121,7 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 				const { data: responseData, error, response } = await backend.client.POST(TAILSCALE_INSTALL_PATH);
 
 				if (typeof responseData !== 'undefined') {
-					// See `unwrapBuggyEnvelope` - this endpoint's generated type omits the envelope
-					// `openapi-fetch` actually delivers at runtime.
-					return transformTailscaleInstallResponse(unwrapBuggyEnvelope(responseData));
+					return transformTailscaleInstallResponse(responseData.data);
 				}
 
 				// Same `never`-narrowing note as `get()` above.
@@ -150,7 +147,7 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 				const { data: responseData, error, response } = await backend.client.POST(TAILSCALE_LOGIN_PATH, { body });
 
 				if (typeof responseData !== 'undefined') {
-					const result = transformTailscaleLoginResponse(unwrapBuggyEnvelope(responseData));
+					const result = transformTailscaleLoginResponse(responseData.data);
 
 					// The login result never carries endpoints/details/requirements - merge only what it
 					// does carry into an already-loaded status; a caller that needs the rest calls `get()`.
@@ -185,7 +182,7 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 				const { data: responseData, error, response } = await backend.client.POST(TAILSCALE_LOGOUT_PATH);
 
 				if (typeof responseData !== 'undefined') {
-					data.value = transformTailscaleStatusResponse(unwrapBuggyEnvelope(responseData));
+					data.value = transformTailscaleStatusResponse(responseData.data);
 
 					return data.value;
 				}
@@ -209,7 +206,7 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 				const { data: responseData, error, response } = await backend.client.POST(TAILSCALE_RESET_PREFERENCES_PATH);
 
 				if (typeof responseData !== 'undefined') {
-					data.value = transformTailscaleStatusResponse(unwrapBuggyEnvelope(responseData));
+					data.value = transformTailscaleStatusResponse(responseData.data);
 
 					return data.value;
 				}
