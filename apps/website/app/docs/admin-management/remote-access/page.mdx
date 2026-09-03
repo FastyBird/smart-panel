@@ -9,8 +9,10 @@ plus provider plugins that do the actual connecting. The first provider is **Tai
 
 <Callout type="info">
 	Remote access never opens a port on your router and never gives your installation a public IP address.
-	Tailscale connects it to a private mesh network instead; only [Funnel](#funnel-optional), which you opt
-	into explicitly, exposes anything to the public internet.
+	Tailscale connects it to a private mesh network and stays private unless you explicitly turn on
+	[Funnel](#funnel-optional) — the only way the Tailscale provider exposes anything publicly. A manually
+	configured [external URL](#external-url-baseline) — your own reverse proxy or dynamic DNS — is the other
+	way an installation becomes publicly reachable.
 </Callout>
 
 ---

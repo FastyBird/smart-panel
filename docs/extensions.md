@@ -304,6 +304,13 @@ loopback proxy trusted platform-wide while active (a local reverse tunnel, for e
 addresses in `proxyAddresses` — the module contributes them to the shared trusted-proxy registry only while
 the provider is `connected`.
 
+`proxyAddresses` carries the same trust weight as an administrator-entered `trusted_proxies` entry, so it is
+held to the same contract: only a loopback or single-host address, never a CIDR range — a provider is
+reporting the exact addresses its own connection proxies from, not delegating trust to a network. Every
+entry is validated the same way `trusted_proxies` is; a malformed value or a range broader than a single
+host is dropped rather than trusted, with a warning logged so a misbehaving provider is visible instead of
+silently widening the trust boundary.
+
 ### Admin: Register a Provider Element
 
 The Remote access overview finds a connected provider's card the same way `useChannelsPlugin.ts` finds
