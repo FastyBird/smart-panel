@@ -13,6 +13,7 @@ These files contain detailed domain architecture documentation:
 - `docs/media-architecture.md` - Media domain architecture
 - `docs/optimistic-ui-architecture.md` - Panel optimistic UI patterns
 - `docs/notifications.md` - Notifications module: lifecycle, emitting, writing a channel
+- `docs/remote-access-architecture.md` - Remote access module, provider plugins, proxy trust, privileged worker
 
 Read them when working on the relevant domain.
 
