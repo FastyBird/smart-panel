@@ -56,6 +56,7 @@
       "publicBaseUrlDescription": "URL HTTPS externa canónica usada como identidad OAuth. Cambiarla revoca todo el acceso OAuth y conserva los clientes MCP estáticos.",
       "publicBaseUrlPlaceholder": "https://panel.example.com",
       "publicBaseUrlInvalid": "Utiliza una URL HTTPS absoluta sin credenciales, consulta, fragmento ni barra final.",
+      "useRemoteAccessUrl": "Usar URL de acceso remoto",
       "enabledTitle": "Habilitar MCP OAuth",
       "enabledDescription": "Comprueba la preparación de seguridad antes de abrir todas las rutas OAuth. Al deshabilitarlo se revocan todas las concesiones y tokens OAuth y solo se cierran las suscripciones OAuth."
     },

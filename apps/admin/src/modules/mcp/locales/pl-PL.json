@@ -56,6 +56,7 @@
       "publicBaseUrlDescription": "Kanoniczny zewnętrzny adres HTTPS używany jako tożsamość OAuth. Jego zmiana unieważnia cały dostęp OAuth, zachowując statycznych klientów MCP.",
       "publicBaseUrlPlaceholder": "https://panel.example.com",
       "publicBaseUrlInvalid": "Użyj bezwzględnego adresu HTTPS bez poświadczeń, zapytania, fragmentu ani końcowego ukośnika.",
+      "useRemoteAccessUrl": "Użyj adresu URL zdalnego dostępu",
       "enabledTitle": "Włącz MCP OAuth",
       "enabledDescription": "Przed otwarciem wszystkich tras OAuth sprawdza gotowość zabezpieczeń. Wyłączenie unieważnia wszystkie granty i tokeny OAuth oraz zamyka tylko subskrypcje OAuth."
     },

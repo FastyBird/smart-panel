@@ -56,6 +56,7 @@
       "publicBaseUrlDescription": "Kanonická externí HTTPS URL používaná jako identita OAuth. Její změna odvolá veškerý přístup OAuth a zachová statické klienty MCP.",
       "publicBaseUrlPlaceholder": "https://panel.example.com",
       "publicBaseUrlInvalid": "Použijte absolutní HTTPS URL bez přihlašovacích údajů, parametrů, fragmentu a koncového lomítka.",
+      "useRemoteAccessUrl": "Použít URL vzdáleného přístupu",
       "enabledTitle": "Povolit MCP OAuth",
       "enabledDescription": "Před otevřením všech tras OAuth ověří připravenost zabezpečení. Vypnutí odvolá všechna oprávnění a tokeny OAuth a uzavře pouze odběry OAuth."
     },
