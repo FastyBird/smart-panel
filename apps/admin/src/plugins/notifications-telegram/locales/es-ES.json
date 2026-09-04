@@ -10,12 +10,12 @@
 			"botToken": {
 				"title": "Token del bot",
 				"placeholder": "123456789:AAExampleTelegramBotTokenValue",
-				"description": "Token de Telegram Bot API, obtenido de @BotFather."
+				"description": "Token de Telegram Bot API, obtenido de {'@'}BotFather."
 			},
 			"chatId": {
 				"title": "ID de chat",
 				"placeholder": "123456789",
-				"description": "ID de chat de Telegram (o @nombre de usuario del canal) al que el bot envía mensajes."
+				"description": "ID de chat de Telegram (o {'@'}nombre de usuario del canal) al que el bot envía mensajes."
 			},
 			"minSeverity": {
 				"title": "Gravedad mínima",
@@ -36,6 +36,6 @@
 		}
 	},
 	"texts": {
-		"aboutTelegramSettings": "Reenvíe las notificaciones del sistema a un chat de Telegram mediante un bot. En Telegram, envíe un mensaje a @BotFather para crear un bot, copie su token y averigüe el id de chat al que el bot debe publicar."
+		"aboutTelegramSettings": "Reenvíe las notificaciones del sistema a un chat de Telegram mediante un bot. En Telegram, envíe un mensaje a {'@'}BotFather para crear un bot, copie su token y averigüe el id de chat al que el bot debe publicar."
 	}
 }

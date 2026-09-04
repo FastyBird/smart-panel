@@ -10,12 +10,12 @@
 			"botToken": {
 				"title": "Token bota",
 				"placeholder": "123456789:AAExampleTelegramBotTokenValue",
-				"description": "Token Telegram Bot API od @BotFather."
+				"description": "Token Telegram Bot API od {'@'}BotFather."
 			},
 			"chatId": {
 				"title": "ID czatu",
 				"placeholder": "123456789",
-				"description": "ID czatu Telegram (lub @nazwa użytkownika kanału), do którego bot wysyła wiadomości."
+				"description": "ID czatu Telegram (lub {'@'}nazwa użytkownika kanału), do którego bot wysyła wiadomości."
 			},
 			"minSeverity": {
 				"title": "Minimalna ważność",
@@ -36,6 +36,6 @@
 		}
 	},
 	"texts": {
-		"aboutTelegramSettings": "Przekazuj powiadomienia systemowe do czatu Telegram za pomocą bota. W Telegramie napisz do @BotFather, aby utworzyć bota, skopiuj jego token i znajdź ID czatu, na który bot ma publikować wiadomości."
+		"aboutTelegramSettings": "Przekazuj powiadomienia systemowe do czatu Telegram za pomocą bota. W Telegramie napisz do {'@'}BotFather, aby utworzyć bota, skopiuj jego token i znajdź ID czatu, na który bot ma publikować wiadomości."
 	}
 }
