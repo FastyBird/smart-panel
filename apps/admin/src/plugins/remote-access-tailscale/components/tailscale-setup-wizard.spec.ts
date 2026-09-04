@@ -151,6 +151,23 @@ describe('TailscaleSetupWizard', () => {
 		expect(wrapper.find('img').attributes('src')).toBe('data:image/png;base64,QR');
 	});
 
+	it('ignores a QR code that arrives before its sign-in link', async () => {
+		const wrapper = mountWizard('signin');
+
+		isPolling.value = true;
+		status.value = { state: 'pending-auth', endpoints: [], qr: 'data:image/png;base64,STALE' };
+		await nextTick();
+
+		expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.waitingForLink');
+		expect(wrapper.find('img').exists()).toBe(false);
+
+		status.value = { state: 'pending-auth', endpoints: [], authUrl: 'https://login.tailscale.com/a/def456', qr: 'data:image/png;base64,FRESH' };
+		await nextTick();
+
+		expect(wrapper.text()).toContain('https://login.tailscale.com/a/def456');
+		expect(wrapper.find('img').attributes('src')).toBe('data:image/png;base64,FRESH');
+	});
+
 	it('fetches the plugin config and renders the options form when opened directly on options', async () => {
 		// Regression test: `currentStep` starts life already equal to `props.initialStep`, so
 		// reassigning it to the same value from the `visible` watcher is a no-op Vue never

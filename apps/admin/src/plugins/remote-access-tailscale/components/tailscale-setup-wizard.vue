@@ -464,7 +464,7 @@ watch(
 			authUrl.value = nextAuthUrl;
 		}
 
-		if (nextQr && !qr.value && nextAuthUrl === authUrl.value) {
+		if (nextAuthUrl && nextQr && !qr.value && nextAuthUrl === authUrl.value) {
 			qr.value = nextQr;
 		}
 	}
