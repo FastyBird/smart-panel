@@ -116,6 +116,9 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			if (this.bridge) {
 				this.logger.warn('HomeKit Gateway is already running. Stopping the previous bridge first.');
 				await this.stop();
+				if (this.bridge) {
+					throw new Error('Could not stop the previous HomeKit Gateway bridge.');
+				}
 			}
 
 			this.initHapStorage();
