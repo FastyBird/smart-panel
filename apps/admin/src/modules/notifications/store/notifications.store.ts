@@ -48,6 +48,55 @@ export interface INotificationsGetActionPayload {
 	id: INotification['id'];
 }
 
+// The filters a list was read with - everything on the fetch payload except the paging fields.
+export type INotificationsListQuery = Pick<INotificationsFetchActionPayload, 'status' | 'severity' | 'source' | 'kind' | 'unread'>;
+
+/**
+ * Whether a row belongs in a list that was read with the given filters. Mirrors the backend's own
+ * `buildWhere` rules - including that a missing status means `active` - so a row that arrives over
+ * the websocket can be slotted into the open list without asking the backend again.
+ */
+export const matchesListQuery = (notification: INotification, query: INotificationsListQuery): boolean => {
+	switch (query.status ?? 'active') {
+		case 'dismissed':
+			if (notification.dismissedAt === null) {
+				return false;
+			}
+
+			break;
+		case 'resolved':
+			if (notification.resolvedAt === null) {
+				return false;
+			}
+
+			break;
+		case 'all':
+			break;
+		default:
+			if (notification.dismissedAt !== null || notification.resolvedAt !== null) {
+				return false;
+			}
+	}
+
+	if (query.severity && query.severity.length > 0 && !query.severity.includes(notification.severity)) {
+		return false;
+	}
+
+	if (query.source && notification.source !== query.source) {
+		return false;
+	}
+
+	if (query.kind && notification.kind !== query.kind) {
+		return false;
+	}
+
+	if (query.unread !== undefined && (notification.readAt === null) !== query.unread) {
+		return false;
+	}
+
+	return true;
+};
+
 export interface INotificationsSetActionPayload {
 	id: INotification['id'];
 	data: Partial<INotification>;
@@ -179,6 +228,17 @@ export const useNotifications = defineStore<'notifications_module-notifications'
 		// `fetch({ append: true })`. Independent of `items`, which keeps every row ever seen so the
 		// bell can read `active()` regardless of what the page last queried for.
 		const listIds = ref<INotification['id'][]>([]);
+
+		// The filters `listIds` were last read with - what `get()` checks a freshly arrived row
+		// against before slotting it into the open list.
+		let listQuery: INotificationsListQuery | null = null;
+
+		// Which read of the list is the current one. A plain `fetch()` starts a new generation; an
+		// appended page belongs to the generation it was requested under. List requests are allowed
+		// to overlap, so a response can land after a newer read has already replaced the list - its
+		// rows still go into `items`, but only the current generation may shape `listIds`, the
+		// remembered query and the paging state.
+		let listGeneration = 0;
 
 		const hasMore = ref<boolean>(false);
 		const nextCursor = ref<string | undefined>(undefined);
@@ -321,6 +381,14 @@ export const useNotifications = defineStore<'notifications_module-notifications'
 
 						commit(transformed, { read: true });
 
+						// `get()` is how the sockets handler applies a `Created` pointer: a brand-new row
+						// that the open page has never been told about. The list is newest-first, so a
+						// row that belongs under its filters goes to the top - otherwise the page only
+						// learns about it on its next full read.
+						if (listQuery !== null && !listIds.value.includes(transformed.id) && matchesListQuery(transformed, listQuery)) {
+							listIds.value = [transformed.id, ...listIds.value];
+						}
+
 						return transformed;
 					}
 
@@ -353,6 +421,8 @@ export const useNotifications = defineStore<'notifications_module-notifications'
 		let inFlightFetchCount = 0;
 
 		const fetch = async (payload?: INotificationsFetchActionPayload): Promise<INotification[]> => {
+			const generation = payload?.append ? listGeneration : ++listGeneration;
+
 			inFlightFetchCount += 1;
 			semaphore.value.fetching.items = true;
 
@@ -400,10 +470,22 @@ export const useNotifications = defineStore<'notifications_module-notifications'
 						pageIds.push(transformed.id);
 					}
 
-					listIds.value = payload?.append ? [...listIds.value, ...pageIds.filter((id) => !listIds.value.includes(id))] : pageIds;
+					if (generation === listGeneration) {
+						listIds.value = payload?.append ? [...listIds.value, ...pageIds.filter((id) => !listIds.value.includes(id))] : pageIds;
 
-					hasMore.value = responseData.metadata.has_more;
-					nextCursor.value = responseData.metadata.next_cursor;
+						if (!payload?.append) {
+							listQuery = {
+								status: payload?.status,
+								severity: payload?.severity,
+								source: payload?.source,
+								kind: payload?.kind,
+								unread: payload?.unread,
+							};
+						}
+
+						hasMore.value = responseData.metadata.has_more;
+						nextCursor.value = responseData.metadata.next_cursor;
+					}
 
 					firstLoad.value = true;
 

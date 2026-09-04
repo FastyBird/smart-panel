@@ -136,13 +136,15 @@ describe('useNotificationsDataSource', () => {
 		});
 	});
 
-	it('omits default filter values from the request instead of sending them literally', async () => {
+	// The status is the one filter that is always sent: the backend reads a missing status as
+	// `active`, so leaving `'all'` out would silently hide dismissed and resolved rows under "All".
+	it('omits the rest-state filters from the request but always sends the status', async () => {
 		const { fetchNotifications } = useNotificationsDataSource();
 
 		await fetchNotifications();
 
 		expect(mockFetch).toHaveBeenCalledWith({
-			status: undefined,
+			status: 'all',
 			severity: undefined,
 			source: undefined,
 			unread: undefined,

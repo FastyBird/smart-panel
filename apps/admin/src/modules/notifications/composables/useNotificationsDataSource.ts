@@ -75,10 +75,12 @@ export const useNotificationsDataSource = (): IUseNotificationsDataSource => {
 			filters.value.unread !== defaultNotificationsFilter.unread
 	);
 
-	// `'all'`/an empty selection/`false` are the filter bar's rest state, not a real constraint -
-	// sent as `undefined` so the request reads the same as visiting the page with no filters at all.
+	// An empty severity selection and an unset unread switch are the filter bar's rest state, not a
+	// real constraint - sent as `undefined` so the request reads the same as visiting the page with
+	// no filters at all. The status is always sent, `'all'` included: the backend reads a missing
+	// status as `active`, which would silently hide dismissed and resolved rows under "All".
 	const buildFilterPayload = (): Pick<INotificationsFetchActionPayload, 'status' | 'severity' | 'source' | 'unread'> => ({
-		status: filters.value.status === 'all' ? undefined : filters.value.status,
+		status: filters.value.status,
 		severity: filters.value.severity.length > 0 ? filters.value.severity : undefined,
 		source: filters.value.source || undefined,
 		unread: filters.value.unread ? true : undefined,
