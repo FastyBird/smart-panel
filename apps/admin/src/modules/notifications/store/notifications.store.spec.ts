@@ -5,8 +5,8 @@ import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { NotificationsModuleNotificationKind, NotificationsModuleNotificationSeverity } from '../../../openapi.constants';
 
-import { useNotifications } from './notifications.store';
-import type { INotificationRes } from './notifications.store.schemas';
+import { matchesListQuery, useNotifications } from './notifications.store';
+import type { INotification, INotificationRes } from './notifications.store.schemas';
 
 // `vi.mock` factories are hoisted above regular top-level declarations, so anything they
 // reference directly (not merely wrapped in a function that runs later) has to go through
@@ -182,6 +182,169 @@ describe('Notifications Store', () => {
 			expect(parsed.actions[0]?.params).toEqual({ force_reload: true });
 			expect(parsed.actions[0]?.extensionType).toBe('devices-home-assistant-plugin');
 			expect(parsed.actions[0]?.actionId).toBe('reconnect');
+		});
+	});
+
+	describe('live list', () => {
+		const listResponse = (rows: INotificationRes[]) => ({
+			data: { data: rows, metadata: { has_more: false, next_cursor: undefined } },
+			error: undefined,
+			response: { status: 200, ok: true },
+		});
+
+		const rowResponse = (row: INotificationRes) => ({
+			data: { data: row },
+			error: undefined,
+			response: { status: 200, ok: true },
+		});
+
+		it('slots a row read through get() at the top of the open list when it matches the list query', async () => {
+			const listed = notificationFixture({ id: uuid() });
+			const created = notificationFixture({ id: uuid() });
+
+			mockBackendClient.GET.mockResolvedValueOnce(listResponse([listed]));
+
+			await store.fetch({ status: 'active' });
+
+			mockBackendClient.GET.mockResolvedValueOnce(rowResponse(created));
+
+			await store.get({ id: created.id });
+
+			expect(store.list().map((item) => item.id)).toEqual([created.id, listed.id]);
+		});
+
+		it('keeps a row that falls outside the open list query out of the list, while still storing it', async () => {
+			const listed = notificationFixture({ id: uuid() });
+			const alreadyRead = notificationFixture({ id: uuid(), read_at: '2026-09-02T12:30:00.000Z' });
+
+			mockBackendClient.GET.mockResolvedValueOnce(listResponse([listed]));
+
+			await store.fetch({ unread: true });
+
+			mockBackendClient.GET.mockResolvedValueOnce(rowResponse(alreadyRead));
+
+			await store.get({ id: alreadyRead.id });
+
+			expect(store.list().map((item) => item.id)).toEqual([listed.id]);
+			expect(store.findById(alreadyRead.id)).not.toBeNull();
+		});
+
+		it('reads a list fetched without a status as the active list, exactly like the backend does', async () => {
+			const dismissed = notificationFixture({ id: uuid(), dismissed_at: '2026-09-02T12:30:00.000Z' });
+			const active = notificationFixture({ id: uuid() });
+
+			mockBackendClient.GET.mockResolvedValueOnce(listResponse([]));
+
+			await store.fetch();
+
+			mockBackendClient.GET.mockResolvedValueOnce(rowResponse(dismissed));
+
+			await store.get({ id: dismissed.id });
+
+			mockBackendClient.GET.mockResolvedValueOnce(rowResponse(active));
+
+			await store.get({ id: active.id });
+
+			expect(store.list().map((item) => item.id)).toEqual([active.id]);
+		});
+
+		it('leaves the list alone before it has been read for the first time', async () => {
+			const created = notificationFixture({ id: uuid() });
+
+			mockBackendClient.GET.mockResolvedValueOnce(rowResponse(created));
+
+			await store.get({ id: created.id });
+
+			expect(store.list()).toEqual([]);
+			expect(store.findById(created.id)).not.toBeNull();
+		});
+
+		it('does not list a row twice when get() re-reads one that is already listed', async () => {
+			const listed = notificationFixture({ id: uuid() });
+
+			mockBackendClient.GET.mockResolvedValueOnce(listResponse([listed]));
+
+			await store.fetch({ status: 'all' });
+
+			mockBackendClient.GET.mockResolvedValueOnce(rowResponse({ ...listed, title: 'Updated title' }));
+
+			await store.get({ id: listed.id });
+
+			expect(store.list().map((item) => item.id)).toEqual([listed.id]);
+			expect(store.findById(listed.id)?.title).toBe('Updated title');
+		});
+
+		it('keeps the query of the first page when later pages are appended', async () => {
+			const first = notificationFixture({ id: uuid() });
+			const second = notificationFixture({ id: uuid() });
+			const created = notificationFixture({ id: uuid() });
+
+			mockBackendClient.GET.mockResolvedValueOnce(listResponse([first]));
+
+			await store.fetch({ status: 'active', source: 'system-module' });
+
+			mockBackendClient.GET.mockResolvedValueOnce(listResponse([second]));
+
+			await store.fetch({ status: 'active', source: 'system-module', afterId: first.id, append: true });
+
+			mockBackendClient.GET.mockResolvedValueOnce(rowResponse(created));
+
+			await store.get({ id: created.id });
+
+			expect(store.list().map((item) => item.id)).toEqual([created.id, first.id, second.id]);
+		});
+	});
+
+	describe('matchesListQuery()', () => {
+		const row = (overrides: Partial<INotification> = {}): INotification => ({
+			id: uuid(),
+			source: 'system-module',
+			kind: NotificationsModuleNotificationKind.issue,
+			key: null,
+			severity: NotificationsModuleNotificationSeverity.warning,
+			title: 'Update available',
+			message: null,
+			actions: [],
+			data: null,
+			persistent: false,
+			occurrences: 1,
+			readAt: null,
+			dismissedAt: null,
+			resolvedAt: null,
+			createdAt: new Date('2026-09-02T12:00:00.000Z'),
+			updatedAt: null,
+			...overrides,
+		});
+
+		const dismissedAt = new Date('2026-09-02T13:00:00.000Z');
+		const resolvedAt = new Date('2026-09-02T14:00:00.000Z');
+		const readAt = new Date('2026-09-02T12:30:00.000Z');
+
+		it.each([
+			['no status', {}, row(), true],
+			['no status, dismissed row', {}, row({ dismissedAt }), false],
+			['no status, resolved row', {}, row({ resolvedAt }), false],
+			['active', { status: 'active' as const }, row(), true],
+			['active, dismissed row', { status: 'active' as const }, row({ dismissedAt }), false],
+			['dismissed', { status: 'dismissed' as const }, row({ dismissedAt }), true],
+			['dismissed, active row', { status: 'dismissed' as const }, row(), false],
+			['resolved', { status: 'resolved' as const }, row({ resolvedAt }), true],
+			['resolved, active row', { status: 'resolved' as const }, row(), false],
+			['all, dismissed row', { status: 'all' as const }, row({ dismissedAt }), true],
+			['all, resolved row', { status: 'all' as const }, row({ resolvedAt }), true],
+			['severity in selection', { severity: [NotificationsModuleNotificationSeverity.warning] }, row(), true],
+			['severity outside selection', { severity: [NotificationsModuleNotificationSeverity.error] }, row(), false],
+			['empty severity selection', { severity: [] }, row(), true],
+			['same source', { source: 'system-module' }, row(), true],
+			['other source', { source: 'security-module' }, row(), false],
+			['same kind', { kind: NotificationsModuleNotificationKind.issue }, row(), true],
+			['other kind', { kind: NotificationsModuleNotificationKind.event }, row(), false],
+			['unread only, unread row', { unread: true }, row(), true],
+			['unread only, read row', { unread: true }, row({ readAt }), false],
+			['read only, read row', { unread: false }, row({ readAt }), true],
+			['read only, unread row', { unread: false }, row(), false],
+		])('%s', (_name, query, notification, expected) => {
+			expect(matchesListQuery(notification, query)).toBe(expected);
 		});
 	});
 
