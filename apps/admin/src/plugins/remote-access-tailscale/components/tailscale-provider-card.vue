@@ -55,28 +55,28 @@
 					v-if="tailnet"
 					class="provider-card__meta-item"
 				>
-					<span>{{ t('remoteAccessTailscalePlugin.fields.tailnet') }}:</span>
+					<span class="provider-card__meta-label">{{ t('remoteAccessTailscalePlugin.fields.tailnet') }}:</span>
 					<span class="font-mono break-all">{{ tailnet }}</span>
 				</div>
 				<div
 					v-if="dnsName"
 					class="provider-card__meta-item"
 				>
-					<span>{{ t('remoteAccessTailscalePlugin.fields.dnsName') }}:</span>
+					<span class="provider-card__meta-label">{{ t('remoteAccessTailscalePlugin.fields.dnsName') }}:</span>
 					<span class="font-mono break-all">{{ dnsName }}</span>
 				</div>
 				<div
 					v-if="ipv4"
 					class="provider-card__meta-item"
 				>
-					<span>{{ t('remoteAccessTailscalePlugin.fields.ipv4') }}:</span>
+					<span class="provider-card__meta-label">{{ t('remoteAccessTailscalePlugin.fields.ipv4') }}:</span>
 					<span class="font-mono break-all">{{ ipv4 }}</span>
 				</div>
 				<div
 					v-if="ipv6"
 					class="provider-card__meta-item"
 				>
-					<span>{{ t('remoteAccessTailscalePlugin.fields.ipv6') }}:</span>
+					<span class="provider-card__meta-label">{{ t('remoteAccessTailscalePlugin.fields.ipv6') }}:</span>
 					<span class="font-mono break-all">{{ ipv6 }}</span>
 				</div>
 			</div>
@@ -463,10 +463,15 @@ const onCommand = (command: string): void => {
 
 .provider-card__meta-item {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	gap: 0.25rem;
 	font-size: 0.8125rem;
 	color: var(--el-text-color-secondary);
+}
+
+.provider-card__meta-label {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .provider-card__footer {
