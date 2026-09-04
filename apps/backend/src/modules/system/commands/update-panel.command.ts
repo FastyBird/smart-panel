@@ -11,7 +11,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { ReleaseAsset, UpdateService } from '../services/update.service';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
-import { printError, printStep, printSuccess, printWarning } from './command.utils';
+import { printError, printStep, printSuccess, printWarning, runPrivileged } from './command.utils';
 
 type PanelPlatform = 'flutter-pi-arm64' | 'linux' | 'android';
 
@@ -287,7 +287,7 @@ export class UpdatePanelCommand extends CommandRunner {
 		printStep('Stopping display service...');
 
 		try {
-			execFileSync('systemctl', ['stop', DISPLAY_SERVICE_NAME], { stdio: 'pipe' });
+			runPrivileged('systemctl', ['stop', DISPLAY_SERVICE_NAME], { stdio: 'pipe' });
 			printSuccess('Display service stopped');
 		} catch {
 			printWarning('Could not stop display service (may not be running)');
@@ -425,7 +425,7 @@ export class UpdatePanelCommand extends CommandRunner {
 		printStep('Starting display service...');
 
 		try {
-			execFileSync('systemctl', ['start', DISPLAY_SERVICE_NAME], { stdio: 'pipe' });
+			runPrivileged('systemctl', ['start', DISPLAY_SERVICE_NAME], { stdio: 'pipe' });
 			printSuccess('Display service started');
 		} catch {
 			printWarning(`Could not start display service. Start manually: sudo systemctl start ${DISPLAY_SERVICE_NAME}`);

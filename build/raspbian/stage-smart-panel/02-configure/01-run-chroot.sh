@@ -59,6 +59,10 @@ smart-panel ALL=(ALL) NOPASSWD: /usr/bin/ln -sfn /opt/smart-panel/v[0-9]* /opt/s
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop smart-panel
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl start smart-panel
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart smart-panel
+# The display app is updated by the same CLI, running as the same unprivileged user.
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop smart-panel-display
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl start smart-panel-display
+smart-panel ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart smart-panel-display
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/chown -R smart-panel\:smart-panel /opt/smart-panel/v[0-9]*
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/npm install *
 smart-panel ALL=(ALL) NOPASSWD: /usr/bin/npm update *

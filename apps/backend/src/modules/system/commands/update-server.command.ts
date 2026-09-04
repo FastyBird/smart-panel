@@ -12,7 +12,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { UpdateService } from '../services/update.service';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
-import { printError, printStep, printSuccess, printWarning } from './command.utils';
+import { printError, printStep, printSuccess, printWarning, runPrivileged } from './command.utils';
 
 interface UpdateServerOptions {
 	version?: string;
@@ -157,7 +157,7 @@ export class UpdateServerCommand extends CommandRunner {
 			printStep('Stopping service...');
 
 			try {
-				execFileSync('systemctl', ['stop', 'smart-panel'], { stdio: 'pipe' });
+				runPrivileged('systemctl', ['stop', 'smart-panel'], { stdio: 'pipe' });
 				printSuccess('Service stopped');
 			} catch {
 				printWarning('Could not stop service (may not be running as systemd service)');
@@ -335,7 +335,7 @@ export class UpdateServerCommand extends CommandRunner {
 
 		// Set ownership
 		try {
-			execFileSync('chown', ['-R', 'smart-panel:smart-panel', newVersionDir], { stdio: 'pipe' });
+			runPrivileged('chown', ['-R', 'smart-panel:smart-panel', newVersionDir], { stdio: 'pipe' });
 		} catch {
 			printWarning('Could not set ownership (may need root)');
 		}
@@ -345,7 +345,7 @@ export class UpdateServerCommand extends CommandRunner {
 			printStep('Stopping service...');
 
 			try {
-				execFileSync('systemctl', ['stop', 'smart-panel'], { stdio: 'pipe' });
+				runPrivileged('systemctl', ['stop', 'smart-panel'], { stdio: 'pipe' });
 				printSuccess('Service stopped');
 			} catch {
 				printWarning('Could not stop service (may not be running)');
@@ -365,7 +365,7 @@ export class UpdateServerCommand extends CommandRunner {
 		}
 
 		try {
-			execFileSync('ln', ['-sfn', newVersionDir, currentLink], { stdio: 'pipe' });
+			runPrivileged('ln', ['-sfn', newVersionDir, currentLink], { stdio: 'pipe' });
 			printSuccess(`Symlink updated: current -> v${cleanVersion}`);
 		} catch (error) {
 			const err = error as Error;
@@ -374,7 +374,7 @@ export class UpdateServerCommand extends CommandRunner {
 
 			if (previousTarget) {
 				try {
-					execFileSync('ln', ['-sfn', previousTarget, currentLink], { stdio: 'pipe' });
+					runPrivileged('ln', ['-sfn', previousTarget, currentLink], { stdio: 'pipe' });
 				} catch {
 					// Ignore
 				}
@@ -442,7 +442,7 @@ export class UpdateServerCommand extends CommandRunner {
 				let reverted = false;
 
 				try {
-					execFileSync('ln', ['-sfn', previousTarget, currentLink], { stdio: 'pipe' });
+					runPrivileged('ln', ['-sfn', previousTarget, currentLink], { stdio: 'pipe' });
 					printWarning('Reverted to previous version due to migration failure');
 					reverted = true;
 				} catch {
@@ -641,7 +641,7 @@ export class UpdateServerCommand extends CommandRunner {
 		printStep('Starting service...');
 
 		try {
-			execFileSync('systemctl', ['start', 'smart-panel'], { stdio: 'pipe' });
+			runPrivileged('systemctl', ['start', 'smart-panel'], { stdio: 'pipe' });
 			printSuccess('Service started');
 		} catch {
 			printWarning('Could not start service. Start manually: sudo systemctl start smart-panel');
