@@ -89,7 +89,7 @@
 				"options": {
 					"all": "Vše",
 					"active": "Aktivní",
-					"dismissed": "Zavřené",
+					"dismissed": "Skrytá",
 					"resolved": "Vyřešené"
 				}
 			},
@@ -120,8 +120,8 @@
 				"no": "Nepřečteno"
 			},
 			"dismissedAt": {
-				"title": "Zavřeno",
-				"no": "Nezavřeno"
+				"title": "Skryto",
+				"no": "Neskryto"
 			},
 			"resolvedAt": {
 				"title": "Vyřešeno",

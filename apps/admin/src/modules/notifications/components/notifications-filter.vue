@@ -103,6 +103,7 @@
 				v-if="props.filtersActive"
 				plain
 				class="px-2! mt-1 mr-1"
+				:aria-label="t('notificationsModule.buttons.resetFilters.title')"
 				data-test-id="reset-notifications-filters"
 				@click="emit('reset-filters')"
 			>

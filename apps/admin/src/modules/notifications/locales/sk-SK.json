@@ -89,7 +89,7 @@
 				"options": {
 					"all": "Všetky",
 					"active": "Aktívne",
-					"dismissed": "Zatvorené",
+					"dismissed": "Skryté",
 					"resolved": "Vyriešené"
 				}
 			},
@@ -120,8 +120,8 @@
 				"no": "Neprečítané"
 			},
 			"dismissedAt": {
-				"title": "Zatvorené",
-				"no": "Nezatvorené"
+				"title": "Skryté",
+				"no": "Neskryté"
 			},
 			"resolvedAt": {
 				"title": "Vyriešené",

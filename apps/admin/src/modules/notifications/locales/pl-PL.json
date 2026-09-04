@@ -89,7 +89,7 @@
 				"options": {
 					"all": "Wszystkie",
 					"active": "Aktywne",
-					"dismissed": "Zamknięte",
+					"dismissed": "Ukryte",
 					"resolved": "Rozwiązane"
 				}
 			},
@@ -120,8 +120,8 @@
 				"no": "Nie przeczytano"
 			},
 			"dismissedAt": {
-				"title": "Zamknięto",
-				"no": "Nie zamknięto"
+				"title": "Ukryto",
+				"no": "Nie ukryto"
 			},
 			"resolvedAt": {
 				"title": "Rozwiązano",
