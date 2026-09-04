@@ -2,6 +2,7 @@ import { execFileSync } from 'child_process';
 import { createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, unlinkSync } from 'fs';
 import inquirer from 'inquirer';
 import { Command, CommandRunner, Option } from 'nest-commander';
+import { dirname, join } from 'path';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 
@@ -319,7 +320,7 @@ export class UpdateServerCommand extends CommandRunner {
 
 		try {
 			if (existsSync(`${baseDir}/rebuild-native.sh`)) {
-				execFileSync('bash', [`${baseDir}/rebuild-native.sh`, newVersionDir], { stdio: 'inherit' });
+				await this.runNativeRebuild(baseDir, newVersionDir);
 				printSuccess('Native modules rebuilt');
 			} else {
 				printWarning('rebuild-native.sh not found, skipping native module rebuild');
@@ -472,6 +473,61 @@ export class UpdateServerCommand extends CommandRunner {
 
 		// Clean up old versions (keep max 2 previous)
 		this.cleanupOldVersions(baseDir, `v${cleanVersion}`);
+	}
+
+	/**
+	 * Run the image's native-module rebuild, retrying a few times before giving up.
+	 *
+	 * node-gyp fetches Node's headers from nodejs.org and, unlike pnpm, does not retry that
+	 * download. This step runs immediately after the dependency install has saturated the link,
+	 * so a timed-out header fetch here rolls back an otherwise complete update — which is exactly
+	 * what happened on a real device.
+	 *
+	 * Two mitigations. Where the running Node ships headers of its own (an image installs it from
+	 * a tarball under /usr/local), `npm_config_nodedir` points node-gyp at those and the download
+	 * does not happen at all. The retries then cover whatever still has to reach the network.
+	 *
+	 * The variable is passed through the environment rather than fixed in the script because
+	 * rebuild-native.sh lives in the image, outside the versioned directory, and a server update
+	 * never refreshes it: on a device flashed before that script learned this trick, the
+	 * environment is the only way in. node-gyp reads npm settings from `npm_config_*`.
+	 */
+	private async runNativeRebuild(baseDir: string, newVersionDir: string): Promise<void> {
+		const env = { ...process.env };
+
+		if (!env.npm_config_nodedir) {
+			// process.execPath is <prefix>/bin/node, so its grandparent is the install prefix
+			// whose include/node holds headers guaranteed to match the running binary.
+			const nodePrefix = dirname(dirname(process.execPath));
+
+			if (existsSync(join(nodePrefix, 'include', 'node', 'node.h'))) {
+				env.npm_config_nodedir = nodePrefix;
+
+				printStep(`Using local Node headers from ${join(nodePrefix, 'include', 'node')}`);
+			}
+		}
+
+		const attempts = 3;
+
+		for (let attempt = 1; attempt <= attempts; attempt++) {
+			try {
+				execFileSync('bash', [`${baseDir}/rebuild-native.sh`, newVersionDir], { stdio: 'inherit', env });
+
+				return;
+			} catch (error) {
+				if (attempt === attempts) {
+					throw error;
+				}
+
+				const backoffSeconds = attempt * 10;
+
+				printWarning(
+					`Native module rebuild failed (attempt ${attempt}/${attempts}), retrying in ${backoffSeconds}s...`,
+				);
+
+				await new Promise((resolve) => setTimeout(resolve, backoffSeconds * 1000));
+			}
+		}
 	}
 
 	private cleanupOldVersions(baseDir: string, currentVersion: string): void {
