@@ -79,12 +79,12 @@ describe('useNotificationsDataSource', () => {
 			expect(filtersActive.value).toBe(false);
 		});
 
-		it.each([
+		it.each<[string, Partial<INotificationsFilter>]>([
 			['status', { status: 'active' }],
 			['severity', { severity: [NotificationsModuleNotificationSeverity.error] }],
 			['source', { source: 'system-module' }],
 			['unread', { unread: true }],
-		] as const)('turns on once the %s filter constrains the request', (_name, change) => {
+		])('turns on once the %s filter constrains the request', (_name, change) => {
 			const { filtersActive } = useNotificationsDataSource();
 
 			filters.value = { ...defaultNotificationsFilter, ...change };

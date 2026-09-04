@@ -72,7 +72,8 @@ const mountTable = async (
 	return wrapper;
 };
 
-const renderedIcons = (wrapper: VueWrapper<ComponentPublicInstance>): string[] => wrapper.findAllComponents(Icon).map((icon) => icon.props('icon'));
+const renderedIcons = (wrapper: VueWrapper<ComponentPublicInstance>): string[] =>
+	wrapper.findAllComponents(Icon).map((icon) => String(icon.props('icon')));
 
 describe('NotificationsTable', () => {
 	beforeEach(() => {
