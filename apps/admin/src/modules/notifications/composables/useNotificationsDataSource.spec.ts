@@ -30,6 +30,7 @@ vi.mock('vue-i18n', () => ({
 }));
 
 const mockFetch = vi.fn();
+const mockReset = vi.fn();
 
 describe('useNotificationsDataSource', () => {
 	let mockStore: {
@@ -63,10 +64,49 @@ describe('useNotificationsDataSource', () => {
 
 		filters = ref<INotificationsFilter>({ ...defaultNotificationsFilter });
 
+		mockReset.mockReset();
+
 		(useListQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
 			filters,
-			reset: vi.fn(),
+			reset: mockReset,
 		});
+	});
+
+	describe('filtersActive', () => {
+		it('is off while every filter sits at its rest state', () => {
+			const { filtersActive } = useNotificationsDataSource();
+
+			expect(filtersActive.value).toBe(false);
+		});
+
+		it.each<[string, Partial<INotificationsFilter>]>([
+			['status', { status: 'active' }],
+			['severity', { severity: [NotificationsModuleNotificationSeverity.error] }],
+			['source', { source: 'system-module' }],
+			['unread', { unread: true }],
+		])('turns on once the %s filter constrains the request', (_name, change) => {
+			const { filtersActive } = useNotificationsDataSource();
+
+			filters.value = { ...defaultNotificationsFilter, ...change };
+
+			expect(filtersActive.value).toBe(true);
+		});
+
+		it('treats a cleared source select as no constraint', () => {
+			const { filtersActive } = useNotificationsDataSource();
+
+			filters.value = { ...defaultNotificationsFilter, source: '' };
+
+			expect(filtersActive.value).toBe(false);
+		});
+	});
+
+	it('resetFilters hands the reset to the list query, which owns the defaults', () => {
+		const { resetFilters } = useNotificationsDataSource();
+
+		resetFilters();
+
+		expect(mockReset).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not fetch on its own when created - the caller triggers the first load', () => {

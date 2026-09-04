@@ -2,6 +2,18 @@
 	"menu": {
 		"title": "Powiadomienia"
 	},
+	"breadcrumbs": {
+		"notifications": {
+			"list": "powiadomienia"
+		}
+	},
+	"meta": {
+		"notifications": {
+			"list": {
+				"title": "Powiadomienia"
+			}
+		}
+	},
 	"severity": {
 		"info": "Informacje",
 		"warning": "Ostrzeżenie",
@@ -11,7 +23,7 @@
 	"headings": {
 		"notifications": {
 			"list": "Powiadomienia",
-			"dismiss": "Zamknij powiadomienie",
+			"dismiss": "Ukryj powiadomienie",
 			"remove": "Usuń powiadomienie",
 			"bulkRemove": "Usuń powiadomienia",
 			"data": "Dane",
@@ -30,11 +42,12 @@
 			"empty": "Brak aktywnych powiadomień"
 		},
 		"notifications": {
-			"confirmDismiss": "Zamknąć \"{title}\"?",
+			"confirmDismiss": "Ukryć \"{title}\"?",
 			"confirmRemove": "Usunąć \"{title}\"? Tej operacji nie można cofnąć.",
 			"confirmBulkRemove": "Usunąć {count} powiadomień? Tej operacji nie można cofnąć.",
 			"loading": "Ładowanie powiadomień...",
-			"empty": "Żadne powiadomienia nie pasują do bieżących filtrów."
+			"noNotifications": "Nie ma jeszcze żadnych powiadomień",
+			"noFilteredNotifications": "Nie znaleziono powiadomień pasujących do aktywnych kryteriów filtra"
 		},
 		"actions": {
 			"confirmDangerous": "\"{title}\" chce uruchomić \"{label}\". Ta czynność może być niebezpieczna - kontynuować?",
@@ -45,9 +58,9 @@
 	},
 	"messages": {
 		"notifications": {
-			"dismissed": "Powiadomienie zostało zamknięte.",
-			"dismissCanceled": "Zamknięcie anulowane.",
-			"notDismissed": "Nie udało się zamknąć powiadomienia.",
+			"dismissed": "Powiadomienie zostało ukryte.",
+			"dismissCanceled": "Ukrywanie anulowane.",
+			"notDismissed": "Nie udało się ukryć powiadomienia.",
 			"notMarkedRead": "Nie udało się zaktualizować powiadomienia.",
 			"removed": "Powiadomienie zostało usunięte.",
 			"removeCanceled": "Usuwanie anulowane.",
@@ -56,7 +69,7 @@
 			"bulkRemoveFailed": "Nie udało się usunąć {count} powiadomień.",
 			"notAllMarkedRead": "Niektórych powiadomień nie udało się oznaczyć jako przeczytanych.",
 			"notFetched": "Nie udało się wczytać powiadomień.",
-			"notAllDismissed": "Niektórych powiadomień nie udało się zamknąć.",
+			"notAllDismissed": "Niektórych powiadomień nie udało się ukryć.",
 			"notAllMarkedUnread": "Niektórych powiadomień nie udało się oznaczyć jako nieprzeczytane."
 		},
 		"actions": {
@@ -76,7 +89,7 @@
 				"options": {
 					"all": "Wszystkie",
 					"active": "Aktywne",
-					"dismissed": "Zamknięte",
+					"dismissed": "Ukryte",
 					"resolved": "Rozwiązane"
 				}
 			},
@@ -93,6 +106,9 @@
 			}
 		},
 		"notifications": {
+			"occurrences": {
+				"title": "Wystąpienia"
+			},
 			"createdAt": {
 				"title": "Utworzono"
 			},
@@ -104,8 +120,8 @@
 				"no": "Nie przeczytano"
 			},
 			"dismissedAt": {
-				"title": "Zamknięto",
-				"no": "Nie zamknięto"
+				"title": "Ukryto",
+				"no": "Nie ukryto"
 			},
 			"resolvedAt": {
 				"title": "Rozwiązano",
@@ -163,7 +179,7 @@
 			"title": "Nie"
 		},
 		"dismiss": {
-			"title": "Zamknij"
+			"title": "Ukryj"
 		},
 		"markAllRead": {
 			"title": "Oznacz wszystkie jako przeczytane"
@@ -179,6 +195,15 @@
 		},
 		"loadMore": {
 			"title": "Załaduj więcej"
+		},
+		"close": {
+			"title": "Zamknij"
+		},
+		"detail": {
+			"title": "Szczegóły"
+		},
+		"resetFilters": {
+			"title": "Resetuj filtry"
 		}
 	}
 }

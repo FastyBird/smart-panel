@@ -1,124 +1,79 @@
 <template>
-	<div class="list-notifications">
-		<bulk-actions-toolbar
-			v-if="selectedIds.length > 0"
-			:selected-count="selectedIds.length"
-			:actions="bulkActions"
-			@action="onBulkAction"
+	<el-card
+		shadow="never"
+		class="px-1 py-2 shrink-0"
+		body-class="p-0!"
+	>
+		<notifications-filter
+			v-model:filters="innerFilters"
+			:filters-active="props.filtersActive"
+			:selected-count="selectedItems.length"
+			:bulk-actions="bulkActions"
+			@reset-filters="emit('reset-filters')"
+			@bulk-action="onBulkAction"
 		/>
+	</el-card>
 
-		<el-table
-			v-loading="props.loading"
-			:element-loading-text="t('notificationsModule.texts.notifications.loading')"
-			:data="props.items"
-			row-key="id"
-			table-layout="fixed"
-			class="list-notifications__table"
-			@selection-change="onSelectionChange"
-			@row-click="onRowClick"
+	<div
+		ref="wrapper"
+		class="flex-grow overflow-hidden"
+	>
+		<el-card
+			shadow="never"
+			class="max-h-full flex flex-col overflow-hidden box-border"
+			body-class="p-0! max-h-full overflow-hidden flex flex-col"
 		>
-			<template #empty>
-				<el-empty :description="t('notificationsModule.texts.notifications.empty')" />
-			</template>
-
-			<el-table-column
-				type="selection"
-				:width="42"
+			<notifications-table
+				v-model:filters="innerFilters"
+				:items="props.items"
+				:loading="props.loading"
+				:filters-active="props.filtersActive"
+				:table-height="tableHeight"
+				@detail="onDetail"
+				@dismiss="onDismiss"
+				@remove="onRemove"
+				@reset-filters="emit('reset-filters')"
+				@selected-changes="onSelectionChange"
 			/>
 
-			<el-table-column
-				:label="t('notificationsModule.table.columns.severity.title')"
-				:width="110"
+			<div
+				ref="paginator"
+				class="flex justify-center w-full"
+				:class="{ 'py-4': props.hasMore }"
 			>
-				<template #default="scope">
-					<notification-severity-tag :severity="(scope.row as INotification).severity" />
-				</template>
-			</el-table-column>
+				<el-button
+					v-if="props.hasMore"
+					plain
+					:loading="props.loading"
+					data-test-id="load-more-notifications"
+					@click="emit('load-more')"
+				>
+					<template #icon>
+						<icon icon="mdi:chevron-down" />
+					</template>
 
-			<el-table-column
-				:label="t('notificationsModule.table.columns.title.title')"
-				prop="title"
-				:min-width="220"
-			>
-				<template #default="scope">
-					<el-text truncated>{{ (scope.row as INotification).title }}</el-text>
-				</template>
-			</el-table-column>
-
-			<el-table-column
-				:label="t('notificationsModule.table.columns.source.title')"
-				prop="source"
-				:width="220"
-			>
-				<template #default="scope">
-					<el-text
-						truncated
-						size="small"
-						type="info"
-					>
-						{{ (scope.row as INotification).source }}
-					</el-text>
-				</template>
-			</el-table-column>
-
-			<el-table-column
-				:label="t('notificationsModule.table.columns.occurrences.title')"
-				:width="110"
-				align="center"
-			>
-				<template #default="scope">
-					{{ (scope.row as INotification).occurrences }}
-				</template>
-			</el-table-column>
-
-			<el-table-column
-				:label="t('notificationsModule.table.columns.time.title')"
-				:width="150"
-			>
-				<template #default="scope">
-					<el-tooltip :content="formatFull((scope.row as INotification).createdAt)">
-						<span>{{ formatTimeAgo((scope.row as INotification).createdAt) }}</span>
-					</el-tooltip>
-				</template>
-			</el-table-column>
-
-			<el-table-column
-				:label="t('notificationsModule.table.columns.actions.title')"
-				:min-width="180"
-			>
-				<template #default="scope">
-					<notification-actions :notification="scope.row as INotification" />
-				</template>
-			</el-table-column>
-		</el-table>
-
-		<div
-			v-if="props.hasMore"
-			class="list-notifications__load-more"
-		>
-			<el-button
-				:loading="props.loading"
-				@click="emit('load-more')"
-			>
-				{{ t('notificationsModule.buttons.loadMore.title') }}
-			</el-button>
-		</div>
+					{{ t('notificationsModule.buttons.loadMore.title') }}
+				</el-button>
+			</div>
+		</el-card>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElEmpty, ElTable, ElTableColumn, ElText, ElTooltip, vLoading } from 'element-plus';
+import { ElButton, ElCard } from 'element-plus';
 
-import { formatTimeAgo } from '@vueuse/core';
+import { Icon } from '@iconify/vue';
+import { useVModel } from '@vueuse/core';
 
-import { BulkActionsToolbar, type IBulkAction } from '../../../common';
+import { type IBulkAction, useBreakpoints } from '../../../common';
+import type { INotificationsFilter } from '../schemas/list.schemas';
 import type { INotification } from '../store/notifications.store.schemas';
 
-import NotificationActions from './notification-actions.vue';
-import NotificationSeverityTag from './notification-severity-tag.vue';
+import NotificationsFilter from './notifications-filter.vue';
+import NotificationsTable from './notifications-table.vue';
 
 defineOptions({
 	name: 'ListNotifications',
@@ -126,19 +81,35 @@ defineOptions({
 
 const props = defineProps<{
 	items: INotification[];
+	filters: INotificationsFilter;
+	filtersActive: boolean;
 	hasMore: boolean;
 	loading: boolean;
 }>();
 
 const emit = defineEmits<{
 	(e: 'detail', id: INotification['id']): void;
+	(e: 'dismiss', id: INotification['id']): void;
+	(e: 'remove', id: INotification['id']): void;
 	(e: 'load-more'): void;
+	(e: 'reset-filters'): void;
+	(e: 'update:filters', filters: INotificationsFilter): void;
 	(e: 'bulk-action', action: string, ids: INotification['id'][]): void;
 }>();
 
 const { t } = useI18n();
+const { isMDDevice } = useBreakpoints();
 
-const selectedIds = ref<INotification['id'][]>([]);
+let observer: ResizeObserver | null = null;
+
+const wrapper = ref<HTMLElement | null>(null);
+const paginator = ref<HTMLElement | null>(null);
+
+const innerFilters = useVModel(props, 'filters', emit);
+
+const tableHeight = ref<number>(250);
+
+const selectedItems = ref<INotification[]>([]);
 
 const bulkActions = computed<IBulkAction[]>((): IBulkAction[] => [
 	{ key: 'mark-read', label: t('notificationsModule.buttons.markRead.title'), icon: 'mdi:email-open-outline', type: 'info' },
@@ -147,35 +118,66 @@ const bulkActions = computed<IBulkAction[]>((): IBulkAction[] => [
 	{ key: 'delete', label: t('application.bulkActions.delete'), icon: 'mdi:trash-can-outline', type: 'danger' },
 ]);
 
-const formatFull = (date: Date): string => date.toISOString();
-
-const onSelectionChange = (selected: INotification[]): void => {
-	selectedIds.value = selected.map((notification) => notification.id);
+const onDetail = (id: INotification['id']): void => {
+	emit('detail', id);
 };
 
-const onRowClick = (row: INotification): void => {
-	emit('detail', row.id);
+const onDismiss = (id: INotification['id']): void => {
+	emit('dismiss', id);
+};
+
+const onRemove = (id: INotification['id']): void => {
+	emit('remove', id);
+};
+
+const onSelectionChange = (selected: INotification[]): void => {
+	selectedItems.value = selected;
 };
 
 const onBulkAction = (action: string): void => {
-	emit('bulk-action', action, selectedIds.value);
+	emit(
+		'bulk-action',
+		action,
+		selectedItems.value.map((notification) => notification.id)
+	);
 };
+
+onMounted((): void => {
+	if (!wrapper.value) {
+		return;
+	}
+
+	const updateHeight = (): void => {
+		tableHeight.value = wrapper.value!.clientHeight - (paginator.value?.clientHeight ?? 0);
+	};
+
+	if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
+		observer = new ResizeObserver(updateHeight);
+		observer.observe(wrapper.value);
+
+		// The "Load more" row comes and goes with `hasMore`, which changes the height left for the
+		// table without the wrapper itself ever resizing.
+		if (paginator.value) {
+			observer.observe(paginator.value);
+		}
+	}
+
+	updateHeight();
+});
+
+onBeforeUnmount((): void => {
+	observer?.disconnect();
+	observer = null;
+});
+
+watch(
+	(): boolean => isMDDevice.value,
+	(val: boolean): void => {
+		// The selection column is only rendered from `md` up - a selection made there must not
+		// linger, invisible, once the viewport shrinks below it.
+		if (!val) {
+			selectedItems.value = [];
+		}
+	}
+);
 </script>
-
-<style scoped>
-.list-notifications {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
-}
-
-.list-notifications__table :deep(.el-table__row) {
-	cursor: pointer;
-}
-
-.list-notifications__load-more {
-	display: flex;
-	justify-content: center;
-	padding: 0.75rem 0;
-}
-</style>

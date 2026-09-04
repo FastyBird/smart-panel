@@ -2,6 +2,18 @@
 	"menu": {
 		"title": "Notifications"
 	},
+	"breadcrumbs": {
+		"notifications": {
+			"list": "notifications"
+		}
+	},
+	"meta": {
+		"notifications": {
+			"list": {
+				"title": "Notifications"
+			}
+		}
+	},
 	"severity": {
 		"info": "Info",
 		"warning": "Warning",
@@ -29,7 +41,8 @@
 			"confirmRemove": "Remove \"{title}\"? This cannot be undone.",
 			"confirmBulkRemove": "Remove {count} notifications? This cannot be undone.",
 			"loading": "Loading notifications...",
-			"empty": "No notifications match the current filters."
+			"noNotifications": "There are no notifications yet",
+			"noFilteredNotifications": "No notifications found matching the active filter criteria"
 		},
 		"actions": {
 			"confirmDangerous": "\"{title}\" wants to run \"{label}\". This action is potentially dangerous - continue?",
@@ -88,6 +101,15 @@
 		},
 		"loadMore": {
 			"title": "Load more"
+		},
+		"close": {
+			"title": "Close"
+		},
+		"detail": {
+			"title": "Detail"
+		},
+		"resetFilters": {
+			"title": "Reset filters"
 		}
 	},
 	"subHeadings": {
@@ -119,6 +141,9 @@
 			}
 		},
 		"notifications": {
+			"occurrences": {
+				"title": "Occurrences"
+			},
 			"createdAt": {
 				"title": "Created"
 			},

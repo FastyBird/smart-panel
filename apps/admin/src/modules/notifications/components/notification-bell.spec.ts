@@ -73,6 +73,16 @@ describe('NotificationBell', () => {
 		expect(badge.props('value')).toBe(3);
 	});
 
+	it('keeps the count clear of the bell icon', () => {
+		mockUnreadCount.value = 3;
+
+		wrapper = mountBell();
+
+		// The badge's background-coloured rim reads as a stray ring wherever it crosses the icon -
+		// the count is pushed up and to the right so the rim only ever meets the bar's background.
+		expect(wrapper.findComponent(ElBadge).props('offset')).toEqual([8, -4]);
+	});
+
 	it('renders the outline bell with no alert styling when nothing active is severe', () => {
 		const icon = wrapper.findComponent(Icon);
 

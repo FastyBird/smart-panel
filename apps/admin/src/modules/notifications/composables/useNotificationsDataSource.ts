@@ -24,8 +24,10 @@ export interface IUseNotificationsDataSource {
 	areLoading: ComputedRef<boolean>;
 	loaded: ComputedRef<boolean>;
 	filters: Ref<INotificationsFilter>;
+	filtersActive: ComputedRef<boolean>;
 	fetchNotifications: () => Promise<void>;
 	loadMoreNotifications: () => Promise<void>;
+	resetFilters: () => void;
 }
 
 /**
@@ -46,7 +48,7 @@ export const useNotificationsDataSource = (): IUseNotificationsDataSource => {
 
 	const { hasMore, nextCursor, semaphore, firstLoad } = storeToRefs(notificationsStore);
 
-	const { filters } = useListQuery<typeof NotificationsFilterSchema>({
+	const { filters, reset: resetFilters } = useListQuery<typeof NotificationsFilterSchema>({
 		key: `${NOTIFICATIONS_MODULE_NAME}:notifications:list`,
 		filters: {
 			schema: NotificationsFilterSchema,
@@ -61,6 +63,17 @@ export const useNotificationsDataSource = (): IUseNotificationsDataSource => {
 	const areLoading = computed<boolean>((): boolean => semaphore.value.fetching.items || !firstLoad.value);
 
 	const loaded = computed<boolean>((): boolean => firstLoad.value);
+
+	// Mirrors `buildFilterPayload` below: a filter counts as active exactly when it would put a
+	// constraint on the request, so the reset button and the "no filtered rows" empty state agree
+	// with what the backend was actually asked for.
+	const filtersActive = computed<boolean>(
+		(): boolean =>
+			filters.value.status !== defaultNotificationsFilter.status ||
+			filters.value.severity.length > 0 ||
+			Boolean(filters.value.source) ||
+			filters.value.unread !== defaultNotificationsFilter.unread
+	);
 
 	// `'all'`/an empty selection/`false` are the filter bar's rest state, not a real constraint -
 	// sent as `undefined` so the request reads the same as visiting the page with no filters at all.
@@ -105,7 +118,9 @@ export const useNotificationsDataSource = (): IUseNotificationsDataSource => {
 		areLoading,
 		loaded,
 		filters,
+		filtersActive,
 		fetchNotifications,
 		loadMoreNotifications,
+		resetFilters,
 	};
 };

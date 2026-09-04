@@ -2,6 +2,18 @@
 	"menu": {
 		"title": "Upozornenia"
 	},
+	"breadcrumbs": {
+		"notifications": {
+			"list": "upozornenia"
+		}
+	},
+	"meta": {
+		"notifications": {
+			"list": {
+				"title": "Upozornenia"
+			}
+		}
+	},
 	"severity": {
 		"info": "Info",
 		"warning": "Varovanie",
@@ -11,7 +23,7 @@
 	"headings": {
 		"notifications": {
 			"list": "Upozornenia",
-			"dismiss": "Zatvoriť upozornenie",
+			"dismiss": "Skryť upozornenie",
 			"remove": "Odstrániť upozornenie",
 			"bulkRemove": "Odstrániť upozornenia",
 			"data": "Dáta",
@@ -30,11 +42,12 @@
 			"empty": "Žiadne aktívne upozornenia"
 		},
 		"notifications": {
-			"confirmDismiss": "Zatvoriť \"{title}\"?",
+			"confirmDismiss": "Skryť \"{title}\"?",
 			"confirmRemove": "Odstrániť \"{title}\"? Túto akciu nie je možné vrátiť.",
 			"confirmBulkRemove": "Odstrániť {count} upozornení? Túto akciu nie je možné vrátiť.",
 			"loading": "Načítavanie upozornení...",
-			"empty": "Žiadne upozornenia nezodpovedajú aktuálnym filtrom."
+			"noNotifications": "Zatiaľ nie sú žiadne upozornenia",
+			"noFilteredNotifications": "Neboli nájdené žiadne upozornenia zodpovedajúce aktívnym filtrom"
 		},
 		"actions": {
 			"confirmDangerous": "\"{title}\" chce spustiť \"{label}\". Táto akcia môže byť nebezpečná - pokračovať?",
@@ -45,9 +58,9 @@
 	},
 	"messages": {
 		"notifications": {
-			"dismissed": "Upozornenie bolo zatvorené.",
-			"dismissCanceled": "Zatvorenie zrušené.",
-			"notDismissed": "Upozornenie sa nepodarilo zatvoriť.",
+			"dismissed": "Upozornenie bolo skryté.",
+			"dismissCanceled": "Skrytie zrušené.",
+			"notDismissed": "Upozornenie sa nepodarilo skryť.",
 			"notMarkedRead": "Upozornenie sa nepodarilo aktualizovať.",
 			"removed": "Upozornenie bolo odstránené.",
 			"removeCanceled": "Odstránenie zrušené.",
@@ -56,7 +69,7 @@
 			"bulkRemoveFailed": "{count} upozornení sa nepodarilo odstrániť.",
 			"notAllMarkedRead": "Niektoré upozornenia sa nepodarilo označiť ako prečítané.",
 			"notFetched": "Oznámenia sa nepodarilo načítať.",
-			"notAllDismissed": "Niektoré oznámenia sa nepodarilo zatvoriť.",
+			"notAllDismissed": "Niektoré upozornenia sa nepodarilo skryť.",
 			"notAllMarkedUnread": "Niektoré oznámenia sa nepodarilo označiť ako neprečítané."
 		},
 		"actions": {
@@ -76,7 +89,7 @@
 				"options": {
 					"all": "Všetky",
 					"active": "Aktívne",
-					"dismissed": "Zatvorené",
+					"dismissed": "Skryté",
 					"resolved": "Vyriešené"
 				}
 			},
@@ -93,6 +106,9 @@
 			}
 		},
 		"notifications": {
+			"occurrences": {
+				"title": "Počet výskytov"
+			},
 			"createdAt": {
 				"title": "Vytvorené"
 			},
@@ -104,8 +120,8 @@
 				"no": "Neprečítané"
 			},
 			"dismissedAt": {
-				"title": "Zatvorené",
-				"no": "Nezatvorené"
+				"title": "Skryté",
+				"no": "Neskryté"
 			},
 			"resolvedAt": {
 				"title": "Vyriešené",
@@ -163,7 +179,7 @@
 			"title": "Nie"
 		},
 		"dismiss": {
-			"title": "Zatvoriť"
+			"title": "Skryť"
 		},
 		"markAllRead": {
 			"title": "Označiť všetko ako prečítané"
@@ -179,6 +195,15 @@
 		},
 		"loadMore": {
 			"title": "Načítať viac"
+		},
+		"close": {
+			"title": "Zavrieť"
+		},
+		"detail": {
+			"title": "Detail"
+		},
+		"resetFilters": {
+			"title": "Resetovať filtre"
 		}
 	}
 }
