@@ -5,7 +5,7 @@ Type: epic
 Scope: backend, admin
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -139,37 +139,37 @@ I want one place - an in-admin bell and notifications page, optionally forwarded
 
 | ID | Title | Scope | Size | Status | Issue |
 |----|-------|-------|------|--------|-------|
-| FEATURE-NOTIFICATIONS-BACKEND-CORE | Notifications module domain and storage | backend | medium | planned | #886 |
-| FEATURE-NOTIFICATIONS-BACKEND-API | Notifications REST and websocket surface | backend | small | planned | #887 |
-| FEATURE-NOTIFICATIONS-CHANNEL-DISPATCH | Notification channel registry and dispatcher | backend | medium | planned | #888 |
+| FEATURE-NOTIFICATIONS-BACKEND-CORE | Notifications module domain and storage | backend | medium | done | #886 |
+| FEATURE-NOTIFICATIONS-BACKEND-API | Notifications REST and websocket surface | backend | small | done | #887 |
+| FEATURE-NOTIFICATIONS-CHANNEL-DISPATCH | Notification channel registry and dispatcher | backend | medium | done | #888 |
 
 ### Phase 2: Admin
 
 | ID | Title | Scope | Size | Status | Issue |
 |----|-------|-------|------|--------|-------|
-| FEATURE-NOTIFICATIONS-ADMIN-BELL | Admin notifications store and bell | admin | medium | planned | #890 |
-| FEATURE-NOTIFICATIONS-ADMIN-PAGE | Admin notifications page and CTA execution | admin | medium | planned | #891 |
-| FEATURE-NOTIFICATIONS-ADMIN-LOCALES | Notifications module translations | admin | tiny | planned | #892 |
+| FEATURE-NOTIFICATIONS-ADMIN-BELL | Admin notifications store and bell | admin | medium | done | #890 |
+| FEATURE-NOTIFICATIONS-ADMIN-PAGE | Admin notifications page and CTA execution | admin | medium | done | #891 |
+| FEATURE-NOTIFICATIONS-ADMIN-LOCALES | Notifications module translations | admin | tiny | done | #892 |
 
 ### Phase 3: Emitters
 
 | ID | Title | Scope | Size | Status | Issue |
 |----|-------|-------|------|--------|-------|
-| FEATURE-NOTIFICATIONS-EMITTERS-CORE | Core emitters: updates, service failures, failed logins | backend | small | planned | #889 |
-| FEATURE-NOTIFICATIONS-EMITTERS-INTEGRATIONS | Integration, storage, throttling and security emitters | backend | medium | planned | #895 |
+| FEATURE-NOTIFICATIONS-EMITTERS-CORE | Core emitters: updates, service failures, failed logins | backend | small | done | #889 |
+| FEATURE-NOTIFICATIONS-EMITTERS-INTEGRATIONS | Integration, storage, throttling and security emitters | backend | medium | done | #895 |
 
 ### Phase 4: Channels
 
 | ID | Title | Scope | Size | Status | Issue |
 |----|-------|-------|------|--------|-------|
-| FEATURE-NOTIFICATIONS-CHANNEL-WEBHOOK-DISCORD | Webhook and Discord notification channels | backend, admin | medium | planned | #893 |
-| FEATURE-NOTIFICATIONS-CHANNEL-SLACK-TELEGRAM | Slack and Telegram notification channels | backend, admin | small | planned | #894 |
+| FEATURE-NOTIFICATIONS-CHANNEL-WEBHOOK-DISCORD | Webhook and Discord notification channels | backend, admin | medium | done | #893 |
+| FEATURE-NOTIFICATIONS-CHANNEL-SLACK-TELEGRAM | Slack and Telegram notification channels | backend, admin | small | done | #894 |
 
 ### Phase 5: Docs & SDK
 
 | ID | Title | Scope | Size | Status | Issue |
 |----|-------|-------|------|--------|-------|
-| FEATURE-NOTIFICATIONS-SDK-DOCS | Notifications SDK types and documentation | backend, admin | small | planned | #896 |
+| FEATURE-NOTIFICATIONS-SDK-DOCS | Notifications SDK types and documentation | backend, admin | small | done | #896 |
 
 ## 6. Technical constraints
 
