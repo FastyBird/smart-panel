@@ -155,6 +155,6 @@ useMeta({
 });
 </script>
 
-<style lang="scss">
+<style rel="stylesheet/scss" lang="scss" scoped>
 @use 'view-remote-access.scss';
 </style>
