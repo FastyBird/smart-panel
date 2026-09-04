@@ -23,14 +23,52 @@ vi.mock('vue-i18n', () => ({
 	useI18n: () => ({ t: (key: string) => key }),
 }));
 
-const mockDismiss = vi.fn();
-const mockRemove = vi.fn();
 const mockExecute = vi.fn();
 
 vi.mock('../composables/composables', () => ({
-	useNotificationsActions: () => ({ dismiss: mockDismiss, remove: mockRemove }),
 	useNotificationAction: () => ({ execute: mockExecute, isExecuting: ref(false) }),
 }));
+
+// The drawer chrome (`app-bar`, its heading and close button) comes from `common`; the stubs keep
+// the slot content and a clickable close button so the header can still be asserted against.
+vi.mock('../../../common', async () => {
+	const { defineComponent: defineVueComponent, h, ref: vueRef } = await import('vue');
+
+	const AppBar = defineVueComponent({
+		name: 'AppBar',
+		setup(_, { slots }) {
+			return () => h('div', { class: 'app-bar-stub' }, [slots.heading?.(), slots['button-right']?.(), slots.default?.()]);
+		},
+	});
+
+	const AppBarHeading = defineVueComponent({
+		name: 'AppBarHeading',
+		setup(_, { slots }) {
+			return () =>
+				h('div', { class: 'app-bar-heading-stub' }, [
+					slots.icon?.(),
+					h('span', { class: 'app-bar-heading-stub__title' }, slots.title?.()),
+					h('small', { class: 'app-bar-heading-stub__subtitle' }, slots.subtitle?.()),
+				]);
+		},
+	});
+
+	const AppBarButton = defineVueComponent({
+		name: 'AppBarButton',
+		emits: ['click'],
+		setup(_, { slots, emit }) {
+			return () => h('button', { class: 'app-bar-button-stub', onClick: () => emit('click') }, [slots.icon?.(), slots.default?.()]);
+		},
+	});
+
+	return {
+		AppBar,
+		AppBarHeading,
+		AppBarButton,
+		AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right', BACK: 'back', NONE: 'none' },
+		useBreakpoints: () => ({ isMDDevice: vueRef(true), isLGDevice: vueRef(true) }),
+	};
+});
 
 const linkAction = (label: string): INotificationAction => ({
 	type: NotificationsModuleNotificationActionType.link,
@@ -92,11 +130,31 @@ const lifecycleRows = (wrapper: VueWrapper<NotificationDetailDrawerInstance>): {
 	return labels.map((label, index) => ({ label, value: values[index] }));
 };
 
+const footerButton = (wrapper: VueWrapper<NotificationDetailDrawerInstance>, text: string): VueWrapper<ComponentPublicInstance> | undefined =>
+	wrapper.findAllComponents(ElButton).find((button) => button.text() === text);
+
 describe('NotificationDetailDrawer', () => {
 	let wrapper: VueWrapper<NotificationDetailDrawerInstance>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('header', () => {
+		it('shows the title and the source in the app bar heading', async () => {
+			wrapper = await mountDrawer(baseNotification);
+
+			expect(wrapper.find('.app-bar-heading-stub__title').text()).toBe('Update 2.4.0 is available');
+			expect(wrapper.find('.app-bar-heading-stub__subtitle').text()).toContain('system-module');
+		});
+
+		it('closes through the app bar close button', async () => {
+			wrapper = await mountDrawer(baseNotification);
+
+			await wrapper.find('.app-bar-button-stub').trigger('click');
+
+			expect(wrapper.emitted('update:modelValue')).toEqual([[false]]);
+		});
 	});
 
 	describe('message', () => {
@@ -160,7 +218,7 @@ describe('NotificationDetailDrawer', () => {
 	});
 
 	describe('lifecycle', () => {
-		it('renders the formatted timestamp for every lifecycle field when set', async () => {
+		it('renders the occurrence count and the formatted timestamp for every lifecycle field when set', async () => {
 			const createdAt = new Date('2026-01-01T08:00:00.000Z');
 			const updatedAt = new Date('2026-01-02T09:15:00.000Z');
 			const readAt = new Date('2026-01-03T10:30:00.000Z');
@@ -169,6 +227,7 @@ describe('NotificationDetailDrawer', () => {
 
 			wrapper = await mountDrawer({
 				...baseNotification,
+				occurrences: 4,
 				createdAt,
 				updatedAt,
 				readAt,
@@ -177,6 +236,7 @@ describe('NotificationDetailDrawer', () => {
 			});
 
 			expect(lifecycleRows(wrapper)).toEqual([
+				{ label: 'notificationsModule.fields.notifications.occurrences.title', value: '4' },
 				{ label: 'notificationsModule.fields.notifications.createdAt.title', value: createdAt.toLocaleString() },
 				{ label: 'notificationsModule.fields.notifications.updatedAt.title', value: updatedAt.toLocaleString() },
 				{ label: 'notificationsModule.fields.notifications.readAt.title', value: readAt.toLocaleString() },
@@ -195,6 +255,7 @@ describe('NotificationDetailDrawer', () => {
 			});
 
 			expect(lifecycleRows(wrapper)).toEqual([
+				{ label: 'notificationsModule.fields.notifications.occurrences.title', value: '1' },
 				{
 					label: 'notificationsModule.fields.notifications.createdAt.title',
 					value: baseNotification.createdAt.toLocaleString(),
@@ -213,34 +274,52 @@ describe('NotificationDetailDrawer', () => {
 	});
 
 	describe('footer', () => {
-		it('dismisses the notification', async () => {
+		it('closes the drawer', async () => {
+			wrapper = await mountDrawer(baseNotification);
+
+			await footerButton(wrapper, 'notificationsModule.buttons.close.title')?.trigger('click');
+
+			expect(wrapper.emitted('update:modelValue')).toEqual([[false]]);
+		});
+
+		it('asks to mark an unread notification read', async () => {
+			wrapper = await mountDrawer({ ...baseNotification, readAt: null });
+
+			await footerButton(wrapper, 'notificationsModule.buttons.markRead.title')?.trigger('click');
+
+			expect(wrapper.emitted('mark-read')).toEqual([[baseNotification.id, true]]);
+		});
+
+		it('asks to mark a read notification unread again', async () => {
+			wrapper = await mountDrawer({ ...baseNotification, readAt: new Date('2026-01-02T00:00:00.000Z') });
+
+			expect(footerButton(wrapper, 'notificationsModule.buttons.markRead.title')).toBeUndefined();
+
+			await footerButton(wrapper, 'notificationsModule.buttons.markUnread.title')?.trigger('click');
+
+			expect(wrapper.emitted('mark-read')).toEqual([[baseNotification.id, false]]);
+		});
+
+		it('asks to dismiss the notification', async () => {
 			wrapper = await mountDrawer({ ...baseNotification, dismissedAt: null });
 
-			const buttons = wrapper.findAllComponents(ElButton);
-			const dismissButton = buttons.find((button) => button.text() === 'notificationsModule.buttons.dismiss.title');
+			await footerButton(wrapper, 'notificationsModule.buttons.dismiss.title')?.trigger('click');
 
-			await dismissButton?.trigger('click');
-
-			expect(mockDismiss).toHaveBeenCalledWith(baseNotification.id, true);
+			expect(wrapper.emitted('dismiss')).toEqual([[baseNotification.id]]);
 		});
 
 		it('hides the dismiss button once the notification is already dismissed', async () => {
 			wrapper = await mountDrawer({ ...baseNotification, dismissedAt: new Date('2026-01-02T00:00:00.000Z') });
 
-			const buttons = wrapper.findAllComponents(ElButton);
-
-			expect(buttons.some((button) => button.text() === 'notificationsModule.buttons.dismiss.title')).toBe(false);
+			expect(footerButton(wrapper, 'notificationsModule.buttons.dismiss.title')).toBeUndefined();
 		});
 
-		it('removes the notification', async () => {
+		it('asks to remove the notification', async () => {
 			wrapper = await mountDrawer({ ...baseNotification, dismissedAt: null });
 
-			const buttons = wrapper.findAllComponents(ElButton);
-			const removeButton = buttons.find((button) => button.text() === 'application.bulkActions.delete');
+			await footerButton(wrapper, 'application.bulkActions.delete')?.trigger('click');
 
-			await removeButton?.trigger('click');
-
-			expect(mockRemove).toHaveBeenCalledWith(baseNotification.id);
+			expect(wrapper.emitted('remove')).toEqual([[baseNotification.id]]);
 		});
 	});
 });

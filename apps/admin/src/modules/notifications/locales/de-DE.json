@@ -2,6 +2,18 @@
 	"menu": {
 		"title": "Benachrichtigungen"
 	},
+	"breadcrumbs": {
+		"notifications": {
+			"list": "Benachrichtigungen"
+		}
+	},
+	"meta": {
+		"notifications": {
+			"list": {
+				"title": "Benachrichtigungen"
+			}
+		}
+	},
 	"severity": {
 		"info": "Info",
 		"warning": "Warnung",
@@ -11,7 +23,7 @@
 	"headings": {
 		"notifications": {
 			"list": "Benachrichtigungen",
-			"dismiss": "Benachrichtigung schließen",
+			"dismiss": "Benachrichtigung ausblenden",
 			"remove": "Benachrichtigung entfernen",
 			"bulkRemove": "Benachrichtigungen entfernen",
 			"data": "Daten",
@@ -30,11 +42,12 @@
 			"empty": "Keine aktiven Benachrichtigungen"
 		},
 		"notifications": {
-			"confirmDismiss": "\"{title}\" schließen?",
+			"confirmDismiss": "\"{title}\" ausblenden?",
 			"confirmRemove": "\"{title}\" entfernen? Diese Aktion kann nicht rückgängig gemacht werden.",
 			"confirmBulkRemove": "{count} Benachrichtigungen entfernen? Diese Aktion kann nicht rückgängig gemacht werden.",
 			"loading": "Benachrichtigungen werden geladen...",
-			"empty": "Keine Benachrichtigungen entsprechen den aktuellen Filtern."
+			"noNotifications": "Es gibt noch keine Benachrichtigungen",
+			"noFilteredNotifications": "Keine Benachrichtigungen gefunden, die den aktiven Filterkriterien entsprechen"
 		},
 		"actions": {
 			"confirmDangerous": "\"{title}\" möchte \"{label}\" ausführen. Diese Aktion ist möglicherweise gefährlich - fortfahren?",
@@ -45,9 +58,9 @@
 	},
 	"messages": {
 		"notifications": {
-			"dismissed": "Benachrichtigung wurde geschlossen.",
-			"dismissCanceled": "Schließen abgebrochen.",
-			"notDismissed": "Benachrichtigung konnte nicht geschlossen werden.",
+			"dismissed": "Benachrichtigung wurde ausgeblendet.",
+			"dismissCanceled": "Ausblenden abgebrochen.",
+			"notDismissed": "Benachrichtigung konnte nicht ausgeblendet werden.",
 			"notMarkedRead": "Benachrichtigung konnte nicht aktualisiert werden.",
 			"removed": "Benachrichtigung wurde entfernt.",
 			"removeCanceled": "Entfernen abgebrochen.",
@@ -56,7 +69,7 @@
 			"bulkRemoveFailed": "{count} Benachrichtigungen konnten nicht entfernt werden.",
 			"notAllMarkedRead": "Einige Benachrichtigungen konnten nicht als gelesen markiert werden.",
 			"notFetched": "Benachrichtigungen konnten nicht geladen werden.",
-			"notAllDismissed": "Einige Benachrichtigungen konnten nicht geschlossen werden.",
+			"notAllDismissed": "Einige Benachrichtigungen konnten nicht ausgeblendet werden.",
 			"notAllMarkedUnread": "Einige Benachrichtigungen konnten nicht als ungelesen markiert werden."
 		},
 		"actions": {
@@ -93,6 +106,9 @@
 			}
 		},
 		"notifications": {
+			"occurrences": {
+				"title": "Vorkommen"
+			},
 			"createdAt": {
 				"title": "Erstellt"
 			},
@@ -163,7 +179,7 @@
 			"title": "Nein"
 		},
 		"dismiss": {
-			"title": "Schließen"
+			"title": "Ausblenden"
 		},
 		"markAllRead": {
 			"title": "Alle als gelesen markieren"
@@ -179,6 +195,15 @@
 		},
 		"loadMore": {
 			"title": "Mehr laden"
+		},
+		"close": {
+			"title": "Schließen"
+		},
+		"detail": {
+			"title": "Details"
+		},
+		"resetFilters": {
+			"title": "Filter zurücksetzen"
 		}
 	}
 }

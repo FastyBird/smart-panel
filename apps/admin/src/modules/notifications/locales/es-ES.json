@@ -2,6 +2,18 @@
 	"menu": {
 		"title": "Notificaciones"
 	},
+	"breadcrumbs": {
+		"notifications": {
+			"list": "notificaciones"
+		}
+	},
+	"meta": {
+		"notifications": {
+			"list": {
+				"title": "Notificaciones"
+			}
+		}
+	},
 	"severity": {
 		"info": "Información",
 		"warning": "Advertencia",
@@ -34,7 +46,8 @@
 			"confirmRemove": "¿Eliminar \"{title}\"? Esta acción no se puede deshacer.",
 			"confirmBulkRemove": "¿Eliminar {count} notificaciones? Esta acción no se puede deshacer.",
 			"loading": "Cargando notificaciones...",
-			"empty": "Ninguna notificación coincide con los filtros actuales."
+			"noNotifications": "Todavía no hay notificaciones",
+			"noFilteredNotifications": "No se encontraron notificaciones que coincidan con los criterios de filtro activos"
 		},
 		"actions": {
 			"confirmDangerous": "\"{title}\" quiere ejecutar \"{label}\". Esta acción es potencialmente peligrosa. ¿Continuar?",
@@ -93,6 +106,9 @@
 			}
 		},
 		"notifications": {
+			"occurrences": {
+				"title": "Ocurrencias"
+			},
 			"createdAt": {
 				"title": "Creado"
 			},
@@ -179,6 +195,15 @@
 		},
 		"loadMore": {
 			"title": "Cargar más"
+		},
+		"close": {
+			"title": "Cerrar"
+		},
+		"detail": {
+			"title": "Detalle"
+		},
+		"resetFilters": {
+			"title": "Restablecer filtros"
 		}
 	}
 }

@@ -2,6 +2,18 @@
 	"menu": {
 		"title": "Oznámení"
 	},
+	"breadcrumbs": {
+		"notifications": {
+			"list": "oznámení"
+		}
+	},
+	"meta": {
+		"notifications": {
+			"list": {
+				"title": "Oznámení"
+			}
+		}
+	},
 	"severity": {
 		"info": "Info",
 		"warning": "Varování",
@@ -11,7 +23,7 @@
 	"headings": {
 		"notifications": {
 			"list": "Oznámení",
-			"dismiss": "Zavřít oznámení",
+			"dismiss": "Skrýt oznámení",
 			"remove": "Odebrat oznámení",
 			"bulkRemove": "Odebrat oznámení",
 			"data": "Data",
@@ -30,11 +42,12 @@
 			"empty": "Žádná aktivní oznámení"
 		},
 		"notifications": {
-			"confirmDismiss": "Zavřít \"{title}\"?",
+			"confirmDismiss": "Skrýt \"{title}\"?",
 			"confirmRemove": "Odebrat \"{title}\"? Tuto akci nelze vrátit zpět.",
 			"confirmBulkRemove": "Odebrat {count} oznámení? Tuto akci nelze vrátit zpět.",
 			"loading": "Načítání oznámení...",
-			"empty": "Žádná oznámení neodpovídají aktuálním filtrům."
+			"noNotifications": "Zatím nejsou žádná oznámení",
+			"noFilteredNotifications": "Nebyla nalezena žádná oznámení odpovídající aktivním kritériím filtru"
 		},
 		"actions": {
 			"confirmDangerous": "\"{title}\" chce spustit \"{label}\". Tato akce může být nebezpečná - pokračovat?",
@@ -45,9 +58,9 @@
 	},
 	"messages": {
 		"notifications": {
-			"dismissed": "Oznámení bylo zavřeno.",
-			"dismissCanceled": "Zavření zrušeno.",
-			"notDismissed": "Oznámení se nepodařilo zavřít.",
+			"dismissed": "Oznámení bylo skryto.",
+			"dismissCanceled": "Skrytí zrušeno.",
+			"notDismissed": "Oznámení se nepodařilo skrýt.",
 			"notMarkedRead": "Oznámení se nepodařilo aktualizovat.",
 			"removed": "Oznámení bylo odebráno.",
 			"removeCanceled": "Odebrání zrušeno.",
@@ -56,7 +69,7 @@
 			"bulkRemoveFailed": "{count} oznámení se nepodařilo odebrat.",
 			"notAllMarkedRead": "Některá oznámení se nepodařilo označit jako přečtená.",
 			"notFetched": "Některá oznámení se nepodařilo načíst.",
-			"notAllDismissed": "Některá oznámení se nepodařilo zavřít.",
+			"notAllDismissed": "Některá oznámení se nepodařilo skrýt.",
 			"notAllMarkedUnread": "Některá oznámení se nepodařilo označit jako nepřečtená."
 		},
 		"actions": {
@@ -93,6 +106,9 @@
 			}
 		},
 		"notifications": {
+			"occurrences": {
+				"title": "Počet výskytů"
+			},
 			"createdAt": {
 				"title": "Vytvořeno"
 			},
@@ -163,7 +179,7 @@
 			"title": "Ne"
 		},
 		"dismiss": {
-			"title": "Zavřít"
+			"title": "Skrýt"
 		},
 		"markAllRead": {
 			"title": "Označit vše jako přečtené"
@@ -179,6 +195,15 @@
 		},
 		"loadMore": {
 			"title": "Načíst další"
+		},
+		"close": {
+			"title": "Zavřít"
+		},
+		"detail": {
+			"title": "Detail"
+		},
+		"resetFilters": {
+			"title": "Resetovat filtry"
 		}
 	}
 }
