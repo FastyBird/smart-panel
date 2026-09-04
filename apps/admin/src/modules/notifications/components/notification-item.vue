@@ -10,7 +10,7 @@
 		class="notification-item"
 		@click="emit('click', notification)"
 	>
-		<notification-severity-tag
+		<notification-severity-dot
 			:severity="notification.severity"
 			class="notification-item__severity"
 		/>
@@ -54,24 +54,31 @@
 					{{ relativeTime }}
 				</el-text>
 			</div>
+
+			<div
+				v-if="primaryAction"
+				class="notification-item__action"
+				@click.stop
+			>
+				<el-button
+					size="small"
+					plain
+					:disabled="isExecuting"
+					@click="emit('action', notification)"
+				>
+					<template #icon>
+						<icon :icon="actionIcon" />
+					</template>
+
+					{{ primaryAction.label }}
+				</el-button>
+			</div>
 		</div>
 
 		<div
 			class="notification-item__actions"
 			@click.stop
 		>
-			<el-button
-				v-if="primaryAction"
-				size="small"
-				type="primary"
-				text
-				bg
-				:disabled="isExecuting"
-				@click="emit('action', notification)"
-			>
-				{{ primaryAction.label }}
-			</el-button>
-
 			<el-tooltip :content="t('notificationsModule.buttons.dismiss.title')">
 				<el-button
 					size="small"
@@ -98,9 +105,10 @@ import { ElBadge, ElButton, ElText, ElTooltip } from 'element-plus';
 import { Icon } from '@iconify/vue';
 import { formatTimeAgo } from '@vueuse/core';
 
+import { NotificationsModuleNotificationActionOperation, NotificationsModuleNotificationActionType } from '../../../openapi.constants';
 import type { INotification, INotificationAction } from '../store/notifications.store.schemas';
 
-import NotificationSeverityTag from './notification-severity-tag.vue';
+import NotificationSeverityDot from './notification-severity-dot.vue';
 
 defineOptions({
 	name: 'NotificationItem',
@@ -131,6 +139,29 @@ const primaryAction = computed<INotificationAction | undefined>((): INotificatio
 	props.notification.actions.find((action) => action.primary)
 );
 
+// One icon per kind of primary action, so the button reads as "opens somewhere" or "runs
+// something" before the label is even parsed.
+const actionIcon = computed<string>((): string => {
+	const action = primaryAction.value;
+
+	if (!action) {
+		return 'mdi:arrow-right';
+	}
+
+	switch (action.type) {
+		case NotificationsModuleNotificationActionType.link:
+			return 'mdi:open-in-new';
+		case NotificationsModuleNotificationActionType.service:
+			return action.operation === NotificationsModuleNotificationActionOperation.stop
+				? 'mdi:stop-circle-outline'
+				: action.operation === NotificationsModuleNotificationActionOperation.start
+					? 'mdi:play-circle-outline'
+					: 'mdi:restart';
+		default:
+			return 'mdi:play-circle-outline';
+	}
+});
+
 const relativeTime = computed<string>((): string => formatTimeAgo(props.notification.createdAt));
 </script>
 
@@ -144,8 +175,7 @@ const relativeTime = computed<string>((): string => formatTimeAgo(props.notifica
 }
 
 .notification-item__severity {
-	flex-shrink: 0;
-	margin-top: 0.125rem;
+	margin-top: 0.4rem;
 }
 
 .notification-item__body {
@@ -170,10 +200,13 @@ const relativeTime = computed<string>((): string => formatTimeAgo(props.notifica
 	margin-top: 0.125rem;
 }
 
+.notification-item__action {
+	margin-top: 0.375rem;
+}
+
 .notification-item__actions {
 	display: flex;
 	align-items: center;
-	gap: 0.25rem;
 	flex-shrink: 0;
 }
 </style>

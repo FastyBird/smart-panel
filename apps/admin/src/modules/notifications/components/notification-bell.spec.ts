@@ -73,6 +73,16 @@ describe('NotificationBell', () => {
 		expect(badge.props('value')).toBe(3);
 	});
 
+	it('keeps the badge inside the 44px top bar', () => {
+		mockUnreadCount.value = 3;
+
+		wrapper = mountBell();
+
+		// The bar's container clips overflow, and a badge sits half its height above the button -
+		// without the nudge its top third is cut off.
+		expect(wrapper.findComponent(ElBadge).props('offset')).toEqual([0, 4]);
+	});
+
 	it('renders the outline bell with no alert styling when nothing active is severe', () => {
 		const icon = wrapper.findComponent(Icon);
 
