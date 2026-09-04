@@ -1,74 +1,71 @@
 <template>
-	<div class="h-full w-full leading-normal flex flex-col">
-		<el-table
-			:data="rows"
-			table-layout="fixed"
-			row-key="rowKey"
-			class="flex-grow"
+	<el-table
+		:data="rows"
+		table-layout="fixed"
+		row-key="rowKey"
+	>
+		<el-table-column
+			:label="t('remoteAccessModule.fields.advisory.severity')"
+			prop="severity"
+			:width="130"
 		>
-			<el-table-column
-				:label="t('remoteAccessModule.fields.advisory.severity')"
-				prop="severity"
-				:width="130"
-			>
-				<template #default="scope">
-					<el-tag
-						size="small"
-						:type="severityTagType(scope.row.severity)"
-					>
-						{{ t(`remoteAccessModule.severity.${scope.row.severity}`) }}
-					</el-tag>
-				</template>
-			</el-table-column>
-
-			<el-table-column
-				:label="t('remoteAccessModule.fields.advisory.message')"
-				prop="message"
-				:min-width="320"
-			/>
-
-			<el-table-column
-				:label="t('remoteAccessModule.fields.advisory.provider')"
-				prop="provider"
-				:width="200"
-			>
-				<template #default="scope">
-					{{ scope.row.provider ?? t('remoteAccessModule.texts.moduleSource') }}
-				</template>
-			</el-table-column>
-
-			<el-table-column
-				:label="t('remoteAccessModule.fields.advisory.code')"
-				prop="code"
-				:width="240"
-			>
-				<template #default="scope">
-					<span class="font-mono">{{ scope.row.code }}</span>
-				</template>
-			</el-table-column>
-
-			<template #empty>
-				<div class="h-full w-full leading-normal">
-					<el-result class="h-full w-full">
-						<template #icon>
-							<icon-with-child :size="80">
-								<template #primary>
-									<icon icon="mdi:cloud-lock-outline" />
-								</template>
-								<template #secondary>
-									<icon icon="mdi:check-circle" />
-								</template>
-							</icon-with-child>
-						</template>
-
-						<template #title>
-							{{ t('remoteAccessModule.texts.noAdvisories') }}
-						</template>
-					</el-result>
-				</div>
+			<template #default="scope">
+				<el-tag
+					size="small"
+					:type="severityTagType(scope.row.severity)"
+				>
+					{{ t(`remoteAccessModule.severity.${scope.row.severity}`) }}
+				</el-tag>
 			</template>
-		</el-table>
-	</div>
+		</el-table-column>
+
+		<el-table-column
+			:label="t('remoteAccessModule.fields.advisory.message')"
+			prop="message"
+			:min-width="320"
+		/>
+
+		<el-table-column
+			:label="t('remoteAccessModule.fields.advisory.provider')"
+			prop="provider"
+			:width="200"
+		>
+			<template #default="scope">
+				{{ scope.row.provider ?? t('remoteAccessModule.texts.moduleSource') }}
+			</template>
+		</el-table-column>
+
+		<el-table-column
+			:label="t('remoteAccessModule.fields.advisory.code')"
+			prop="code"
+			:width="240"
+		>
+			<template #default="scope">
+				<span class="font-mono">{{ scope.row.code }}</span>
+			</template>
+		</el-table-column>
+
+		<template #empty>
+			<div class="h-full w-full leading-normal">
+				<el-result class="h-full w-full">
+					<template #icon>
+						<icon-with-child :size="80">
+							<template #primary>
+								<icon icon="mdi:cloud-lock-outline" />
+							</template>
+							<template #secondary>
+								<icon icon="mdi:check-circle" />
+							</template>
+						</icon-with-child>
+					</template>
+
+					<template #title>
+						{{ t('remoteAccessModule.texts.noAdvisories') }}
+					</template>
+				</el-result>
+			</div>
+		</template>
+	</el-table>
 </template>
 
 <script setup lang="ts">

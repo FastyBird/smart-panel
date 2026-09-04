@@ -28,20 +28,20 @@
 			>
 				<template #header>
 					<div class="provider-card__header">
-						<icon
-							icon="mdi:lan-connect"
-							class="provider-card__icon"
-						/>
-						<div class="provider-card__header-content">
+						<div class="provider-card__heading">
+							<icon
+								icon="mdi:lan-connect"
+								class="provider-card__icon"
+							/>
 							<h3 class="provider-card__title">{{ provider.type }}</h3>
-							<div class="provider-card__tags">
-								<el-tag
-									:type="stateTagType(provider.state)"
-									size="small"
-								>
-									{{ t(`remoteAccessModule.status.${provider.state}`) }}
-								</el-tag>
-							</div>
+						</div>
+						<div class="provider-card__tags">
+							<el-tag
+								:type="stateTagType(provider.state)"
+								size="small"
+							>
+								{{ t(`remoteAccessModule.status.${provider.state}`) }}
+							</el-tag>
 						</div>
 					</div>
 				</template>
@@ -120,23 +120,23 @@ const stateTagType = (state: IRemoteAccessProvider['state']): 'success' | 'warni
 
 .provider-card__header {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
+	justify-content: space-between;
 	gap: 0.75rem;
+}
+
+.provider-card__heading {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	min-width: 0;
+	flex: 1;
 }
 
 .provider-card__icon {
 	font-size: 1.5rem;
 	flex-shrink: 0;
 	color: var(--el-color-primary);
-	margin-top: 0.125rem;
-}
-
-.provider-card__header-content {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
-	min-width: 0;
-	flex: 1;
 }
 
 .provider-card__title {
@@ -152,6 +152,8 @@ const stateTagType = (state: IRemoteAccessProvider['state']): 'success' | 'warni
 .provider-card__tags {
 	display: flex;
 	flex-wrap: wrap;
+	justify-content: flex-end;
+	flex-shrink: 0;
 	gap: 0.375rem;
 }
 
