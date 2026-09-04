@@ -82,16 +82,57 @@ cd "${APP_DIR}"
 # npm install inside a pnpm-managed package corrupts the pnpm virtual store
 # by creating its own node_modules hierarchy.
 
+# node-gyp downloads Node's headers from nodejs.org unless told where they already
+# are, and unlike pnpm it does not retry that download. On an update this script runs
+# straight after pnpm has pulled the whole dependency tree, so the link is often still
+# saturated and a timed-out header fetch aborts and rolls back a complete update.
+# Node is installed from a tarball that ships headers matching the running binary, so
+# point node-gyp at those and skip the download entirely.
+if [ -z "${npm_config_nodedir:-}" ]; then
+	NODE_BIN="$(command -v node || true)"
+
+	if [ -n "${NODE_BIN}" ]; then
+		# <prefix>/bin/node, so the grandparent is the install prefix.
+		NODE_PREFIX="$(dirname "$(dirname "${NODE_BIN}")")"
+
+		if [ -f "${NODE_PREFIX}/include/node/node.h" ]; then
+			export npm_config_nodedir="${NODE_PREFIX}"
+			echo "Using local Node headers from ${NODE_PREFIX}/include/node"
+		fi
+	fi
+fi
+
+# Whatever still has to reach the network gets a few attempts rather than failing an
+# update on one blip.
+build_native() {
+	local dir="$1" name="$2" attempt
+
+	for attempt in 1 2 3; do
+		if (cd "${dir}" && node-gyp rebuild --release); then
+			return 0
+		fi
+
+		if [ "${attempt}" -lt 3 ]; then
+			echo "${name} build failed (attempt ${attempt}/3), retrying in $((attempt * 10))s..."
+			sleep $((attempt * 10))
+		fi
+	done
+
+	echo "${name} build failed after 3 attempts"
+
+	return 1
+}
+
 SQLITE_DIR=$(find "${APP_DIR}/node_modules/.pnpm" -path "*/sqlite3/package.json" -exec dirname {} \; | head -1)
 if [ -n "${SQLITE_DIR}" ] && [ ! -f "${SQLITE_DIR}/build/Release/node_sqlite3.node" ]; then
 	echo "Building sqlite3 native module..."
-	cd "${SQLITE_DIR}" && node-gyp rebuild --release
+	build_native "${SQLITE_DIR}" sqlite3
 fi
 
 BCRYPT_DIR=$(find "${APP_DIR}/node_modules/.pnpm" -path "*/bcrypt/package.json" -exec dirname {} \; | grep "bcrypt@" | head -1)
 if [ -n "${BCRYPT_DIR}" ] && [ ! -f "${BCRYPT_DIR}/build/Release/bcrypt_lib.node" ]; then
 	echo "Building bcrypt native module..."
-	cd "${BCRYPT_DIR}" && node-gyp rebuild --release
+	build_native "${BCRYPT_DIR}" bcrypt
 fi
 
 echo "Native modules ready"
