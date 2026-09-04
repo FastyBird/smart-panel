@@ -8,20 +8,20 @@
 	>
 		<template #reference>
 			<!--
-				`offset` nudges the count up and to the right so that its 1px background-coloured rim -
-				the badge's built-in separator - no longer cuts across the bell icon.
+				A filled circle button rather than a bare link: the badge anchors to the button box, so the
+				count sits on the circle's corner the way every other badge-on-a-button does, instead of
+				overlapping the icon itself.
 			-->
 			<el-badge
 				:value="unreadCount"
 				:hidden="unreadCount === 0"
 				:max="99"
-				:offset="[8, -4]"
 				class="notification-bell"
 			>
 				<el-button
-					type="primary"
 					circle
-					link
+					text
+					bg
 					:aria-label="t('notificationsModule.texts.bell.title')"
 				>
 					<template #icon>

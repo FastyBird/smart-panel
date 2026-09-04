@@ -1,10 +1,24 @@
 <template>
 	<div class="notification-popover">
-		<el-empty
+		<el-result
 			v-if="items.length === 0"
-			:description="t('notificationsModule.texts.bell.empty')"
-			:image-size="64"
-		/>
+			class="notification-popover__empty"
+		>
+			<template #icon>
+				<icon-with-child :size="64">
+					<template #primary>
+						<icon icon="mdi:bell-outline" />
+					</template>
+					<template #secondary>
+						<icon icon="mdi:information" />
+					</template>
+				</icon-with-child>
+			</template>
+
+			<template #title>
+				{{ t('notificationsModule.texts.bell.empty') }}
+			</template>
+		</el-result>
 
 		<ul
 			v-else
@@ -49,8 +63,13 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
-import { ElButton, ElEmpty } from 'element-plus';
+import { ElButton, ElResult } from 'element-plus';
 
+import { Icon } from '@iconify/vue';
+
+// Imported from its own file rather than `common`'s barrel: the popover sits in the top bar of every
+// page, and the barrel would pull the whole of `common` (router, services, stores) behind it.
+import IconWithChild from '../../../common/components/icon-with-child.vue';
 import { useNotificationAction, useNotifications, useNotificationsActions } from '../composables/composables';
 import { NOTIFICATIONS_POPOVER_LIMIT, RouteNames, SEVERITY_RANK } from '../notifications.constants';
 import type { INotification } from '../store/notifications.store.schemas';
@@ -132,6 +151,14 @@ const onViewAll = (): void => {
 </script>
 
 <style scoped>
+.notification-popover__empty {
+	padding: 1rem 0;
+}
+
+.notification-popover__empty :deep(.el-result__title p) {
+	font-size: var(--el-font-size-base);
+}
+
 .notification-popover__list {
 	list-style: none;
 	margin: 0;
