@@ -107,30 +107,30 @@ I want one place - an in-admin bell and notifications page, optionally forwarded
 
 ## 4. Acceptance criteria
 
-- [ ] Emitters can raise and resolve `event` and `issue` notifications through
+- [x] Emitters can raise and resolve `event` and `issue` notifications through
       `NotificationsService.notify/resolve/resolveAll` with the full lifecycle table from the spec (upsert,
       `occurrences`, read/dismissed clearing rules, boot cleanup for non-persistent issues).
-- [ ] `GET/PATCH/DELETE /notifications`, `POST /notifications/bulk-update` and `POST /notifications/bulk-remove`
+- [x] `GET/PATCH/DELETE /notifications`, `POST /notifications/bulk-update` and `POST /notifications/bulk-remove`
       are guarded to owner and admin and documented in the OpenAPI spec.
-- [ ] Websocket `NotificationsModule.Notification.Created/Updated/Deleted` events reach only the admin exchange
+- [x] Websocket `NotificationsModule.Notification.Created/Updated/Deleted` events reach only the admin exchange
       room, never displays.
-- [ ] A channel plugin registers with `NotificationChannelRegistryService` and receives dispatched
+- [x] A channel plugin registers with `NotificationChannelRegistryService` and receives dispatched
       notifications with per-channel severity filter, timeout, retry and a self-reported `delivery-failed`
       issue on repeated failure.
-- [ ] Update available, update install failed, managed service error and failed login raise and resolve
+- [x] Update available, update install failed, managed service error and failed login raise and resolve
       notifications as specified, and `update-notification-badge.vue` is removed in favour of the
       update-available notification.
-- [ ] Home Assistant connection loss, the storage memory fallback, Raspberry Pi throttling flags and security
+- [x] Home Assistant connection loss, the storage memory fallback, Raspberry Pi throttling flags and security
       alerts raise and resolve notifications as specified.
-- [ ] The admin bell shows an unread badge and a severity-coloured icon, and its popover lists active
+- [x] The admin bell shows an unread badge and a severity-coloured icon, and its popover lists active
       notifications sorted by severity then recency with a primary CTA.
-- [ ] The `/notifications` admin page supports filtering, bulk mark read/unread/dismiss/delete, and a detail
+- [x] The `/notifications` admin page supports filtering, bulk mark read/unread/dismiss/delete, and a detail
       drawer that executes all three CTA types (`link`, `extension_action`, `service`).
-- [ ] Webhook, Discord, Slack and Telegram channel plugins send correctly shaped payloads, redact their
+- [x] Webhook, Discord, Slack and Telegram channel plugins send correctly shaped payloads, redact their
       secrets through `secretFields`, and each ship a `send-test` extension action.
-- [ ] Retention (`retention_days`) and the active-event cap (`max_notifications`) are enforced by a daily job
+- [x] Retention (`retention_days`) and the active-event cap (`max_notifications`) are enforced by a daily job
       and configurable through `GET/PATCH /config/module/notifications-module`.
-- [ ] The extension SDK exports the notification types and `docs/notifications.md` documents the emitter and
+- [x] The extension SDK exports the notification types and `docs/notifications.md` documents the emitter and
       channel contracts.
 
 ## 5. Child tasks

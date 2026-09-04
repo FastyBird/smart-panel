@@ -71,68 +71,68 @@ retention, rate guard) that every emitter and the later REST, websocket and disp
 
 ## 4. Acceptance criteria
 
-- [ ] `notify()` on an `event` without `key` inserts a new row with `occurrences = 1` and `read_at`,
+- [x] `notify()` on an `event` without `key` inserts a new row with `occurrences = 1` and `read_at`,
       `dismissed_at`, `resolved_at` all `null`.
-- [ ] `notify()` on an `event` with `key` upserts an existing active row: same `id`, `occurrences`
+- [x] `notify()` on an `event` with `key` upserts an existing active row: same `id`, `occurrences`
       incremented, `title`/`message`/`severity`/`actions`/`data` replaced, `read_at` and `dismissed_at`
       cleared.
-- [ ] `notify()` on an `issue` upserts an existing active row: same `id`, `occurrences` incremented, fields
+- [x] `notify()` on an `issue` upserts an existing active row: same `id`, `occurrences` incremented, fields
       replaced, `read_at` and `dismissed_at` preserved (not cleared).
-- [ ] `dismiss(id, true)` on an `issue` with `persistent = true` also sets `resolved_at` (nothing re-detects
+- [x] `dismiss(id, true)` on an `issue` with `persistent = true` also sets `resolved_at` (nothing re-detects
       such a condition, so the dismissal is how it ends); `dismiss(id, true)` on a non-persistent `issue` or
       on an `event` sets only `dismissed_at`.
-- [ ] `dismiss(id, false)` on a persistent `issue` that was resolved by its own dismissal clears
+- [x] `dismiss(id, false)` on a persistent `issue` that was resolved by its own dismissal clears
       `dismissed_at` but leaves `resolved_at` in place, so the row stays in history.
-- [ ] `notify()` on an `issue` without `key` returns `null` and logs one `warn`.
-- [ ] `resolve(source, key)` on an unkeyed `event` row returns `false` and is a no-op.
-- [ ] `resolve(source, key)` sets `resolved_at`, and the next `notify()` with the same `(source, key)` inserts
+- [x] `notify()` on an `issue` without `key` returns `null` and logs one `warn`.
+- [x] `resolve(source, key)` on an unkeyed `event` row returns `false` and is a no-op.
+- [x] `resolve(source, key)` sets `resolved_at`, and the next `notify()` with the same `(source, key)` inserts
       a fresh row (permitted by the partial unique index).
-- [ ] `resolveAll(source)` resolves every active keyed row for that source and returns the count resolved.
-- [ ] `title` and `message` are truncated to 120 and 1000 characters respectively rather than rejected.
-- [ ] A fourth action beyond the first three is dropped, not rejected.
-- [ ] A `link` action with a disallowed URL scheme (e.g. `javascript:`) is rejected: `notify()` logs a `warn`
+- [x] `resolveAll(source)` resolves every active keyed row for that source and returns the count resolved.
+- [x] `title` and `message` are truncated to 120 and 1000 characters respectively rather than rejected.
+- [x] A fourth action beyond the first three is dropped, not rejected.
+- [x] A `link` action with a disallowed URL scheme (e.g. `javascript:`) is rejected: `notify()` logs a `warn`
       and returns `null`.
-- [ ] `data` above 4096 serialized bytes, or `data` that is not a flat
+- [x] `data` above 4096 serialized bytes, or `data` that is not a flat
       `Record<string, string | number | boolean | null>`, is rejected: `notify()` logs a `warn` and returns
       `null`.
-- [ ] An unknown `severity` value is rejected: `notify()` logs a `warn` and returns `null`.
-- [ ] The rate guard drops the 61st `notify()` call from one `source` within a rolling minute, logging one
+- [x] An unknown `severity` value is rejected: `notify()` logs a `warn` and returns `null`.
+- [x] The rate guard drops the 61st `notify()` call from one `source` within a rolling minute, logging one
       `warn` per source per minute; a different source is unaffected; the window resets after a minute.
-- [ ] A database failure inside `notify()` is caught, logged, and `notify()` returns `null` rather than
+- [x] A database failure inside `notify()` is caught, logged, and `notify()` returns `null` rather than
       throwing.
-- [ ] `notify()` emits `EventType.NOTIFICATION_CREATED` with `{ id, kind, severity, source }` on insert and
+- [x] `notify()` emits `EventType.NOTIFICATION_CREATED` with `{ id, kind, severity, source }` on insert and
       `EventType.NOTIFICATION_UPDATED` on upsert.
-- [ ] `markRead`, `dismiss` and `resolve` emit `EventType.NOTIFICATION_UPDATED`; `remove` emits
+- [x] `markRead`, `dismiss` and `resolve` emit `EventType.NOTIFICATION_UPDATED`; `remove` emits
       `EventType.NOTIFICATION_DELETED` with `{ id }`.
-- [ ] `findAll` defaults to `status: 'active'`, supports the `unread` filter, orders rows by the total order
+- [x] `findAll` defaults to `status: 'active'`, supports the `unread` filter, orders rows by the total order
       `created_at DESC, id DESC`, supports the `afterId` cursor (returns the rows that follow the row with
       that id in the total order, so two rows with equal `created_at` are disambiguated by `id`), and caps
       `limit` at 201: `FEATURE-NOTIFICATIONS-BACKEND-API`'s controller requests `limit + 1` rows so its
       `has_more` flag survives the maximum page size; the client-facing maximum stays 200, enforced by that
       controller.
-- [ ] `NotificationsRetentionService` captures `bootStartedAt` in its constructor and, in
+- [x] `NotificationsRetentionService` captures `bootStartedAt` in its constructor and, in
       `onApplicationBootstrap` wrapped in `try/catch`, resolves every `issue` with `persistent = false` and
       `updated_at < bootStartedAt`, logging and continuing on failure.
-- [ ] The daily cron (`15 3 * * *`) prunes by kind: `event` rows once at least one of `dismissed_at` /
+- [x] The daily cron (`15 3 * * *`) prunes by kind: `event` rows once at least one of `dismissed_at` /
       `resolved_at` is set and the later of them is older than the configured `retention_days`; `issue` rows
       only when `resolved_at` is set and the later of `resolved_at` and `dismissed_at` is older than
       `retention_days` (a dismissed but unresolved issue is kept, because the dismissal must keep hiding the
       source's re-raises).
-- [ ] The daily cron enforces `max_notifications` on active `event` rows only, evicting the oldest read
+- [x] The daily cron enforces `max_notifications` on active `event` rows only, evicting the oldest read
       events first, then the oldest unread events; `issue` rows are never evicted by the cap.
-- [ ] Retention test: an old dismissed-but-unresolved issue survives the prune.
-- [ ] Retention test: an old dismissed `event` is deleted.
-- [ ] Retention test: an old resolved `issue` is deleted.
-- [ ] Retention test: a resolved-then-dismissed `issue` counts from the later of the two timestamps.
-- [ ] Migration `1000000000025-AddNotifications.ts` creates `notifications_module_notifications` with all
+- [x] Retention test: an old dismissed-but-unresolved issue survives the prune.
+- [x] Retention test: an old dismissed `event` is deleted.
+- [x] Retention test: an old resolved `issue` is deleted.
+- [x] Retention test: a resolved-then-dismissed `issue` counts from the later of the two timestamps.
+- [x] Migration `1000000000025-AddNotifications.ts` creates `notifications_module_notifications` with all
       spec columns, the partial unique index `IDX_notifications_source_key_active` on `(source, key)` where
       `key IS NOT NULL AND resolved_at IS NULL`, and indexes `IDX_notifications_created_at`,
       `IDX_notifications_dismissed_at`, `IDX_notifications_resolved_at`; `down` drops the table.
-- [ ] `notifications-module` is added to `NON_TOGGLEABLE_MODULES` in
+- [x] `notifications-module` is added to `NON_TOGGLEABLE_MODULES` in
       `apps/backend/src/modules/extensions/extensions.constants.ts` and registered with
       `ExtensionsService.registerModuleMetadata`.
-- [ ] `cd apps/backend && npx jest src/modules/notifications` passes.
-- [ ] `FB_DB_PATH=$(mktemp -d) pnpm run generate:openapi` exits 0 against a fresh, unmigrated database.
+- [x] `cd apps/backend && npx jest src/modules/notifications` passes.
+- [x] `FB_DB_PATH=$(mktemp -d) pnpm run generate:openapi` exits 0 against a fresh, unmigrated database.
 
 ## 6. Technical constraints
 

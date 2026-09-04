@@ -58,64 +58,64 @@ filtering, timeout, retry and a self-reported delivery-failure issue uniformly.
 
 ## 4. Acceptance criteria
 
-- [ ] `INotificationChannel` declares `getType(): string`, `isConfigured(): Promise<boolean>`,
+- [x] `INotificationChannel` declares `getType(): string`, `isConfigured(): Promise<boolean>`,
       `getMinSeverity(): Promise<NotificationSeverity>`, `send(notification, signal: AbortSignal): Promise<void>`.
-- [ ] `BaseNotificationChannel` implements `isConfigured()` and `getMinSeverity()` from the plugin's config
+- [x] `BaseNotificationChannel` implements `isConfigured()` and `getMinSeverity()` from the plugin's config
       via `ConfigService.getPluginConfig(type)`, delegating the required-fields check to an abstract
       `hasRequiredConfig(config)`; `getMinSeverity()` defaults to `WARNING` when the config has no
       `min_severity`.
-- [ ] `BaseNotificationChannel` exposes `formatText(notification)` producing a shared wording (title,
+- [x] `BaseNotificationChannel` exposes `formatText(notification)` producing a shared wording (title,
       severity, source, message, occurrences) and `fetchWithSignal(url, init, signal)`, which passes the
       dispatcher's `AbortSignal` through to `fetch` and sets `redirect: 'error'`, so a redirect is a
       non-retryable failure rather than being followed silently.
-- [ ] `ChannelDeliveryError` (`{ message: string; retryable: boolean; status?: number }`) is the
+- [x] `ChannelDeliveryError` (`{ message: string; retryable: boolean; status?: number }`) is the
       dispatcher-facing contract: every channel failure is thrown as one, and the dispatcher retries only
       when `retryable` is `true` and never classifies a raw error itself.
-- [ ] `BaseNotificationChannel.classify(error, response?)` replaces `isRetryable` as the channel-side helper
+- [x] `BaseNotificationChannel.classify(error, response?)` replaces `isRetryable` as the channel-side helper
       that builds a `ChannelDeliveryError`: a connection-establishment failure (DNS, connection refused, host
       or network unreachable, TLS handshake) or an HTTP 429 or 5xx response is retryable; a reset or broken
       pipe after the request was written, an abort or timeout, a redirect, or any other 4xx is not retryable.
-- [ ] `NotificationChannelRegistryService.register(channel)` throws when a channel of the same `getType()` is
+- [x] `NotificationChannelRegistryService.register(channel)` throws when a channel of the same `getType()` is
       already registered.
-- [ ] `NotificationChannelRegistryService.isChannel(source)` returns `true` for any registered channel's
+- [x] `NotificationChannelRegistryService.isChannel(source)` returns `true` for any registered channel's
       type, used as the dispatcher's loop guard.
-- [ ] The dispatcher subscribes to `EventType.NOTIFICATION_CREATED`, loads the row with `findOne(id)`, and
+- [x] The dispatcher subscribes to `EventType.NOTIFICATION_CREATED`, loads the row with `findOne(id)`, and
       skips dispatch entirely when `registry.isChannel(entity.source)` is true.
-- [ ] For each registered channel, delivery is skipped when the owning extension is disabled
+- [x] For each registered channel, delivery is skipped when the owning extension is disabled
       (`configService.getPluginConfig(type).enabled === false`).
-- [ ] Delivery is skipped when `channel.isConfigured()` resolves `false`.
-- [ ] Delivery is skipped when `SEVERITY_RANK[entity.severity] < SEVERITY_RANK[await channel.getMinSeverity()]`.
-- [ ] Channels are dispatched in parallel to each other (`Promise.allSettled`) but attempts within one
+- [x] Delivery is skipped when `channel.isConfigured()` resolves `false`.
+- [x] Delivery is skipped when `SEVERITY_RANK[entity.severity] < SEVERITY_RANK[await channel.getMinSeverity()]`.
+- [x] Channels are dispatched in parallel to each other (`Promise.allSettled`) but attempts within one
       channel are sequential.
-- [ ] Each attempt creates a fresh `AbortSignal.timeout(10_000)`, passes it into `send(notification, signal)`,
+- [x] Each attempt creates a fresh `AbortSignal.timeout(10_000)`, passes it into `send(notification, signal)`,
       and races the returned promise against the signal's abort so a channel that ignores the signal still
       settles; there is no per-channel timeout setting.
-- [ ] Up to 3 send attempts with delays of 1000 ms and 5000 ms between them (delay mechanism injectable for
+- [x] Up to 3 send attempts with delays of 1000 ms and 5000 ms between them (delay mechanism injectable for
       tests), but only when the thrown `ChannelDeliveryError` has `retryable: true`: a connection-establishment
       failure (DNS, connection refused, host or network unreachable, TLS handshake) or an HTTP 429 or 5xx
       response. A reset or broken pipe after the request was written, an abort or timeout, a redirect, any
       other 4xx, and any rejection that is not a `ChannelDeliveryError` end the delivery as failed after the
       first attempt, with no retry.
-- [ ] Rejections are normalised before use: `const message = error instanceof Error ? error.message :
+- [x] Rejections are normalised before use: `const message = error instanceof Error ? error.message :
       String(error)`, guarded so a throwing `toString` still yields a usable string rather than crashing the
       dispatcher.
-- [ ] After the final failed attempt, the dispatcher logs the channel type and `sanitizeErrorMessage(message)`
+- [x] After the final failed attempt, the dispatcher logs the channel type and `sanitizeErrorMessage(message)`
       (never the URL) and raises `notify({ source: channel.getType(), kind: ISSUE, key: 'delivery-failed',
       severity: WARNING, title: 'Notification delivery failed', message: sanitizeErrorMessage(message),
       actions: [{ type: LINK, label: 'Open channel settings', url: '/config/plugins/<type>' }] })`.
-- [ ] After a successful delivery, the dispatcher calls `resolve(channel.getType(), 'delivery-failed')`.
-- [ ] One failing channel does not block delivery to another channel.
-- [ ] Deliveries to the same channel preserve message order even under a burst (serialised with a promise
+- [x] After a successful delivery, the dispatcher calls `resolve(channel.getType(), 'delivery-failed')`.
+- [x] One failing channel does not block delivery to another channel.
+- [x] Deliveries to the same channel preserve message order even under a burst (serialised with a promise
       chain).
-- [ ] `sanitizeErrorMessage(message)` in `notifications.utils.ts` reduces every URL in the message to
+- [x] `sanitizeErrorMessage(message)` in `notifications.utils.ts` reduces every URL in the message to
       `scheme://host`, dropping userinfo, path and query (which also removes Telegram `bot<token>` segments
       and Slack/Discord webhook paths), masks `Bearer <token>` and `token=`/`key=`/`password=`/`secret=`
       values with `***`, collapses whitespace, and truncates the result to 300 characters.
-- [ ] `notifications.utils.spec.ts` covers: a Telegram `https://api.telegram.org/bot123:ABC/sendMessage` URL
+- [x] `notifications.utils.spec.ts` covers: a Telegram `https://api.telegram.org/bot123:ABC/sendMessage` URL
       and a Slack `https://hooks.slack.com/services/T0/B0/XYZ` URL both reduce to `scheme://host`; userinfo,
       query strings, bearer tokens and `token=`/`key=`/`password=`/`secret=` values are masked; whitespace is
       collapsed; a long message is truncated to 300 characters.
-- [ ] Dispatcher spec covers: filter by disabled, filter by unconfigured, filter by below-minimum severity,
+- [x] Dispatcher spec covers: filter by disabled, filter by unconfigured, filter by below-minimum severity,
       the loop guard, a retryable failure retried three times (sleeps of 1000 ms then 5000 ms) followed by
       self-report, a timeout, an HTTP 400 and a redirect outcome all ending delivery as failed without a
       retry, a channel that never settles being aborted by the race against `AbortSignal.timeout(10_000)` and
@@ -123,9 +123,9 @@ filtering, timeout, retry and a self-reported delivery-failure issue uniformly.
       and still producing a self-report with a sanitized message, a success resolving a prior self-report, one
       channel's failure not blocking another, and order preservation within one channel - using fake channels
       and a fake `sleep`.
-- [ ] Registry spec covers: duplicate-type registration throws, and `isChannel` correctly identifies
+- [x] Registry spec covers: duplicate-type registration throws, and `isChannel` correctly identifies
       registered types.
-- [ ] `cd apps/backend && npx jest src/modules/notifications` passes.
+- [x] `cd apps/backend && npx jest src/modules/notifications` passes.
 
 ## 6. Technical constraints
 

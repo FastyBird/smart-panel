@@ -61,32 +61,32 @@ covering the emitter and channel contracts.
 
 ## 4. Acceptance criteria
 
-- [ ] `packages/extension-sdk/src/notification.types.ts` exports `NotificationKind`, `NotificationSeverity`,
+- [x] `packages/extension-sdk/src/notification.types.ts` exports `NotificationKind`, `NotificationSeverity`,
       `NotificationAction` (the three-variant discriminated union: `link`, `extension_action`, `service`),
       `CreateNotificationInput`, and a `NotificationChannel` interface mirroring `INotificationChannel`
       (`getType`, `isConfigured`, `getMinSeverity`, `send(notification, signal: AbortSignal)`) with a plain
       `Notification` payload type usable outside the backend's TypeORM entity.
-- [ ] `packages/extension-sdk/src/notification.types.ts` also exports the shape of `ChannelDeliveryError`
+- [x] `packages/extension-sdk/src/notification.types.ts` also exports the shape of `ChannelDeliveryError`
       (`message: string`, `retryable: boolean`, `status?: number`) alongside the `NotificationChannel` interface, so a
       third-party channel implementation can type the errors it throws.
-- [ ] `packages/extension-sdk/src/index.ts` exports everything from `notification.types.ts`.
-- [ ] `packages/extension-sdk/README.md` documents the new exports.
-- [ ] `packages/example-extension/**` gains one `notify` call demonstrating the pattern, following the
+- [x] `packages/extension-sdk/src/index.ts` exports everything from `notification.types.ts`.
+- [x] `packages/extension-sdk/README.md` documents the new exports.
+- [x] `packages/example-extension/**` gains one `notify` call demonstrating the pattern, following the
       existing example structure.
-- [ ] `docs/notifications.md` exists and covers: how to emit a notification, the full lifecycle table (event
+- [x] `docs/notifications.md` exists and covers: how to emit a notification, the full lifecycle table (event
       without key / event with key / issue, for `notify`, `resolve`, boot, user dismiss, retention, channel
       delivery), how to write a channel plugin, how to test an emitter or a channel, and the generic webhook
       channel's exact JSON payload shape.
-- [ ] `docs/extensions.md` gains a Notifications section describing how an extension raises notifications and
+- [x] `docs/extensions.md` gains a Notifications section describing how an extension raises notifications and
       registers a channel.
-- [ ] `docs/architecture.md` gains a row for the `notifications` module in its module table and a row for the
+- [x] `docs/architecture.md` gains a row for the `notifications` module in its module table and a row for the
       notification-channel plugin category.
-- [ ] `CLAUDE.md`'s module list and architecture-reference-file line mention the notifications module.
-- [ ] `tasks/features/FEATURE-INFLUXDB-MEMORY-FALLBACK.md` notes that its admin notification is now delivered
+- [x] `CLAUDE.md`'s module list and architecture-reference-file line mention the notifications module.
+- [x] `tasks/features/FEATURE-INFLUXDB-MEMORY-FALLBACK.md` notes that its admin notification is now delivered
       by the notifications module (the `fallback-active` issue).
-- [ ] No documentation references a type or field name that `FEATURE-NOTIFICATIONS-BACKEND-CORE` or
+- [x] No documentation references a type or field name that `FEATURE-NOTIFICATIONS-BACKEND-CORE` or
       `FEATURE-NOTIFICATIONS-CHANNEL-DISPATCH` did not actually define.
-- [ ] `pnpm --filter ./packages/extension-sdk run build` (or its lint) succeeds, and the example extension
+- [x] `pnpm --filter ./packages/extension-sdk run build` (or its lint) succeeds, and the example extension
       builds.
 
 ## 6. Technical constraints

@@ -70,43 +70,43 @@ security alerts to raise and resolve notifications.
 
 ## 4. Acceptance criteria
 
-- [ ] A Home Assistant auth failure (missing `auth_ok` at `home-assistant.ws.service.ts:579`) raises
+- [x] A Home Assistant auth failure (missing `auth_ok` at `home-assistant.ws.service.ts:579`) raises
       `notify({ source: <plugin type>, kind: ISSUE, key: 'connection', severity: ERROR, ... })`.
-- [ ] A reconnect scheduled at `:312` raises the same `connection` issue, but only after the first reconnect
+- [x] A reconnect scheduled at `:312` raises the same `connection` issue, but only after the first reconnect
       attempt has already failed, so a single connectivity blip produces no notification.
-- [ ] Receiving `auth_ok` calls `resolve(<plugin type>, 'connection')`.
-- [ ] The plugin's `stop()` calls `resolveAll(<plugin type>)` so disabling the plugin clears its connection
+- [x] Receiving `auth_ok` calls `resolve(<plugin type>, 'connection')`.
+- [x] The plugin's `stop()` calls `resolveAll(<plugin type>)` so disabling the plugin clears its connection
       issue.
-- [ ] The HA test proves a single reconnect blip stays silent and only a second consecutive failure raises
+- [x] The HA test proves a single reconnect blip stays silent and only a second consecutive failure raises
       the issue.
-- [ ] `StorageFallbackMonitorService` (`@Cron('* * * * *')`) compares the last observed
+- [x] `StorageFallbackMonitorService` (`@Cron('* * * * *')`) compares the last observed
       `StorageService.isUsingFallback()` value with the current one and raises `notify({ kind: ISSUE, key:
       'fallback-active', severity: WARNING, ..., actions: [{ type: LINK, url: '/extensions?tab=services' }]
       })` on the false->true transition.
-- [ ] `StorageFallbackMonitorService` calls `resolve(..., 'fallback-active')` on the true->false transition.
-- [ ] `StorageFallbackMonitorService` raises `notify({ kind: ISSUE, key: 'storage-unavailable', severity:
+- [x] `StorageFallbackMonitorService` calls `resolve(..., 'fallback-active')` on the true->false transition.
+- [x] `StorageFallbackMonitorService` raises `notify({ kind: ISSUE, key: 'storage-unavailable', severity:
       ERROR, ... })` on the `StorageService.isConnected()` true->false transition and calls
       `resolve(..., 'storage-unavailable')` on the false->true transition; a disconnect/reconnect test covers
       both, and a stable disconnected state produces one raise, not one per tick.
-- [ ] `StorageFallbackMonitorService` is registered in `storage.module.ts`.
-- [ ] `SystemThrottleMonitorService` runs on `@Cron('*/5 * * * *')`, reads `SystemService.getThrottleStatus()`
+- [x] `StorageFallbackMonitorService` is registered in `storage.module.ts`.
+- [x] `SystemThrottleMonitorService` runs on `@Cron('*/5 * * * *')`, reads `SystemService.getThrottleStatus()`
       fields `undervoltage`, `throttling`, `frequencyCapping` and `softTempLimit`, and raises `issue` for each
       active flag: key `throttle:undervoltage` at severity `critical`; keys `throttle:throttling`,
       `throttle:frequency_capping` and `throttle:soft_temp_limit` at severity `warning`.
-- [ ] `SystemThrottleMonitorService` resolves a `throttle:<flag>` issue once that flag clears, and is a no-op
+- [x] `SystemThrottleMonitorService` resolves a `throttle:<flag>` issue once that flag clears, and is a no-op
       (raises nothing) on a platform that returns no throttle data.
-- [ ] The throttle test proves a flag that flaps (sets then clears) produces exactly one raise and one
+- [x] The throttle test proves a flag that flaps (sets then clears) produces exactly one raise and one
       resolve, not one per cron tick.
-- [ ] `SecurityEventsService.doRecordAlertTransitions` (`:159-181`) calls `notify({ source:
+- [x] `SecurityEventsService.doRecordAlertTransitions` (`:159-181`) calls `notify({ source:
       SECURITY_MODULE_NAME, kind: ISSUE, key: 'alert:<alertId>', severity: CRITICAL, title: 'Security alert:
       <type>', actions: [{ type: LINK, label: 'Open security', url: '/security', primary: true }], data: {
       alert_type, source_device_id } })` alongside the `ALERT_RAISED` point.
-- [ ] `SecurityEventsService.doRecordAlertTransitions` calls `resolve(..., 'alert:<alertId>')` alongside the
+- [x] `SecurityEventsService.doRecordAlertTransitions` calls `resolve(..., 'alert:<alertId>')` alongside the
       `ALERT_RESOLVED` point.
-- [ ] `SystemThrottleMonitorService` is registered in `system.module.ts`.
-- [ ] `cd apps/backend && npx jest src/plugins/devices-home-assistant src/modules/storage src/modules/system src/modules/security`
+- [x] `SystemThrottleMonitorService` is registered in `system.module.ts`.
+- [x] `cd apps/backend && npx jest src/plugins/devices-home-assistant src/modules/storage src/modules/system src/modules/security`
       passes.
-- [ ] Backend `lint:js`, `lint:api`, `type-check` pass.
+- [x] Backend `lint:js`, `lint:api`, `type-check` pass.
 
 ## 6. Technical constraints
 
