@@ -5,7 +5,7 @@ Type: epic
 Scope: backend, admin
 Size: large
 Parent: (none)
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -107,30 +107,30 @@ I want one place - an in-admin bell and notifications page, optionally forwarded
 
 ## 4. Acceptance criteria
 
-- [ ] Emitters can raise and resolve `event` and `issue` notifications through
+- [x] Emitters can raise and resolve `event` and `issue` notifications through
       `NotificationsService.notify/resolve/resolveAll` with the full lifecycle table from the spec (upsert,
       `occurrences`, read/dismissed clearing rules, boot cleanup for non-persistent issues).
-- [ ] `GET/PATCH/DELETE /notifications`, `POST /notifications/bulk-update` and `POST /notifications/bulk-remove`
+- [x] `GET/PATCH/DELETE /notifications`, `POST /notifications/bulk-update` and `POST /notifications/bulk-remove`
       are guarded to owner and admin and documented in the OpenAPI spec.
-- [ ] Websocket `NotificationsModule.Notification.Created/Updated/Deleted` events reach only the admin exchange
+- [x] Websocket `NotificationsModule.Notification.Created/Updated/Deleted` events reach only the admin exchange
       room, never displays.
-- [ ] A channel plugin registers with `NotificationChannelRegistryService` and receives dispatched
+- [x] A channel plugin registers with `NotificationChannelRegistryService` and receives dispatched
       notifications with per-channel severity filter, timeout, retry and a self-reported `delivery-failed`
       issue on repeated failure.
-- [ ] Update available, update install failed, managed service error and failed login raise and resolve
+- [x] Update available, update install failed, managed service error and failed login raise and resolve
       notifications as specified, and `update-notification-badge.vue` is removed in favour of the
       update-available notification.
-- [ ] Home Assistant connection loss, the storage memory fallback, Raspberry Pi throttling flags and security
+- [x] Home Assistant connection loss, the storage memory fallback, Raspberry Pi throttling flags and security
       alerts raise and resolve notifications as specified.
-- [ ] The admin bell shows an unread badge and a severity-coloured icon, and its popover lists active
+- [x] The admin bell shows an unread badge and a severity-coloured icon, and its popover lists active
       notifications sorted by severity then recency with a primary CTA.
-- [ ] The `/notifications` admin page supports filtering, bulk mark read/unread/dismiss/delete, and a detail
+- [x] The `/notifications` admin page supports filtering, bulk mark read/unread/dismiss/delete, and a detail
       drawer that executes all three CTA types (`link`, `extension_action`, `service`).
-- [ ] Webhook, Discord, Slack and Telegram channel plugins send correctly shaped payloads, redact their
+- [x] Webhook, Discord, Slack and Telegram channel plugins send correctly shaped payloads, redact their
       secrets through `secretFields`, and each ship a `send-test` extension action.
-- [ ] Retention (`retention_days`) and the active-event cap (`max_notifications`) are enforced by a daily job
+- [x] Retention (`retention_days`) and the active-event cap (`max_notifications`) are enforced by a daily job
       and configurable through `GET/PATCH /config/module/notifications-module`.
-- [ ] The extension SDK exports the notification types and `docs/notifications.md` documents the emitter and
+- [x] The extension SDK exports the notification types and `docs/notifications.md` documents the emitter and
       channel contracts.
 
 ## 5. Child tasks
@@ -139,37 +139,37 @@ I want one place - an in-admin bell and notifications page, optionally forwarded
 
 | ID | Title | Scope | Size | Status | Issue |
 |----|-------|-------|------|--------|-------|
-| FEATURE-NOTIFICATIONS-BACKEND-CORE | Notifications module domain and storage | backend | medium | planned | #886 |
-| FEATURE-NOTIFICATIONS-BACKEND-API | Notifications REST and websocket surface | backend | small | planned | #887 |
-| FEATURE-NOTIFICATIONS-CHANNEL-DISPATCH | Notification channel registry and dispatcher | backend | medium | planned | #888 |
+| FEATURE-NOTIFICATIONS-BACKEND-CORE | Notifications module domain and storage | backend | medium | done | #886 |
+| FEATURE-NOTIFICATIONS-BACKEND-API | Notifications REST and websocket surface | backend | small | done | #887 |
+| FEATURE-NOTIFICATIONS-CHANNEL-DISPATCH | Notification channel registry and dispatcher | backend | medium | done | #888 |
 
 ### Phase 2: Admin
 
 | ID | Title | Scope | Size | Status | Issue |
 |----|-------|-------|------|--------|-------|
-| FEATURE-NOTIFICATIONS-ADMIN-BELL | Admin notifications store and bell | admin | medium | planned | #890 |
-| FEATURE-NOTIFICATIONS-ADMIN-PAGE | Admin notifications page and CTA execution | admin | medium | planned | #891 |
-| FEATURE-NOTIFICATIONS-ADMIN-LOCALES | Notifications module translations | admin | tiny | planned | #892 |
+| FEATURE-NOTIFICATIONS-ADMIN-BELL | Admin notifications store and bell | admin | medium | done | #890 |
+| FEATURE-NOTIFICATIONS-ADMIN-PAGE | Admin notifications page and CTA execution | admin | medium | done | #891 |
+| FEATURE-NOTIFICATIONS-ADMIN-LOCALES | Notifications module translations | admin | tiny | done | #892 |
 
 ### Phase 3: Emitters
 
 | ID | Title | Scope | Size | Status | Issue |
 |----|-------|-------|------|--------|-------|
-| FEATURE-NOTIFICATIONS-EMITTERS-CORE | Core emitters: updates, service failures, failed logins | backend | small | planned | #889 |
-| FEATURE-NOTIFICATIONS-EMITTERS-INTEGRATIONS | Integration, storage, throttling and security emitters | backend | medium | planned | #895 |
+| FEATURE-NOTIFICATIONS-EMITTERS-CORE | Core emitters: updates, service failures, failed logins | backend | small | done | #889 |
+| FEATURE-NOTIFICATIONS-EMITTERS-INTEGRATIONS | Integration, storage, throttling and security emitters | backend | medium | done | #895 |
 
 ### Phase 4: Channels
 
 | ID | Title | Scope | Size | Status | Issue |
 |----|-------|-------|------|--------|-------|
-| FEATURE-NOTIFICATIONS-CHANNEL-WEBHOOK-DISCORD | Webhook and Discord notification channels | backend, admin | medium | planned | #893 |
-| FEATURE-NOTIFICATIONS-CHANNEL-SLACK-TELEGRAM | Slack and Telegram notification channels | backend, admin | small | planned | #894 |
+| FEATURE-NOTIFICATIONS-CHANNEL-WEBHOOK-DISCORD | Webhook and Discord notification channels | backend, admin | medium | done | #893 |
+| FEATURE-NOTIFICATIONS-CHANNEL-SLACK-TELEGRAM | Slack and Telegram notification channels | backend, admin | small | done | #894 |
 
 ### Phase 5: Docs & SDK
 
 | ID | Title | Scope | Size | Status | Issue |
 |----|-------|-------|------|--------|-------|
-| FEATURE-NOTIFICATIONS-SDK-DOCS | Notifications SDK types and documentation | backend, admin | small | planned | #896 |
+| FEATURE-NOTIFICATIONS-SDK-DOCS | Notifications SDK types and documentation | backend, admin | small | done | #896 |
 
 ## 6. Technical constraints
 

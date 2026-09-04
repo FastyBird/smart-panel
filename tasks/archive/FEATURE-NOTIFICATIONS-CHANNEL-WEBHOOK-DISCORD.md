@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: EPIC-NOTIFICATIONS-MODULE
-Status: review
+Status: done
 
 ## 1. Business goal
 
@@ -62,53 +62,53 @@ secret, a minimum severity, and a "send test notification" action.
 
 ## 4. Acceptance criteria
 
-- [ ] `notifications-webhook` config model exposes `url` (write-only secret), `url_configured` (boolean),
+- [x] `notifications-webhook` config model exposes `url` (write-only secret), `url_configured` (boolean),
       `min_severity` (default `warning`), and optional `headers` (write-only secret, JSON object of extra
       headers) with its own `headers_configured` sibling, with `secretFields: [{ path: 'url', configuredPath:
       'url_configured', inputPaths: ['url'] }, { path: 'headers', configuredPath: 'headers_configured',
       inputPaths: ['headers'] }]`; the DTO accepts an `http:` URL for trusted-network targets, and the config
       form shows a warning under the URL field for that case.
-- [ ] `headers` is only accepted together with an `https:` URL: an `http:` URL combined with any header is
+- [x] `headers` is only accepted together with an `https:` URL: an `http:` URL combined with any header is
       rejected at DTO validation.
-- [ ] `notifications-discord` config model exposes `webhook_url` (write-only secret),
+- [x] `notifications-discord` config model exposes `webhook_url` (write-only secret),
       `webhook_url_configured`, `min_severity`, and optional `username`; the DTO rejects a `webhook_url` that
       does not start with `https://`.
-- [ ] The webhook channel's `send()` issues `POST` with JSON body `{ id, source, kind, severity, title,
+- [x] The webhook channel's `send()` issues `POST` with JSON body `{ id, source, kind, severity, title,
       message, occurrences, created_at, actions }` plus any configured extra headers, using
       `fetchWithSignal` with the dispatcher's signal and `redirect: 'error'`; every failure outcome
       (connection failure, HTTP 429, HTTP 5xx, timeout, redirect, any other 4xx) throws a
       `ChannelDeliveryError` with `status` and the classification from `classify()`.
-- [ ] The Discord channel's `send()` issues a webhook embed payload `{ username?, embeds: [{ title,
+- [x] The Discord channel's `send()` issues a webhook embed payload `{ username?, embeds: [{ title,
       description: message, color, footer: { text: '<source> - <n> occurrences' }, timestamp }] }` with
       colours `info 0x3498db`, `warning 0xf39c12`, `error 0xe74c3c`, `critical 0x8e44ad`, using
       `fetchWithSignal` with the dispatcher's signal and `redirect: 'error'`; every failure outcome
       (connection failure, HTTP 429, HTTP 5xx, timeout, redirect, any other 4xx) throws a
       `ChannelDeliveryError` with `status` and the classification from `classify()`.
-- [ ] Both channels' `hasRequiredConfig` returns `false` when the secret is absent, so `isConfigured()`
+- [x] Both channels' `hasRequiredConfig` returns `false` when the secret is absent, so `isConfigured()`
       resolves `false` and the dispatcher skips them.
-- [ ] Each plugin registers exactly one extension action `send-test` (`id: 'send-test'`, `label: 'Send test
+- [x] Each plugin registers exactly one extension action `send-test` (`id: 'send-test'`, `label: 'Send test
       notification'`, `category: DIAGNOSTICS`, `mode: 'immediate'`) that builds a fake notification
       (`severity: INFO`, title `Test notification from Smart Panel`) and calls the channel's own
       `send(sample, AbortSignal.timeout(10_000))`, returning `{ success, message }`; the action reports the
       sanitized error text when `send` throws.
-- [ ] `ConfigSecretsService.toPublic` strips each secret from the public config and adds its `_configured`
+- [x] `ConfigSecretsService.toPublic` strips each secret from the public config and adds its `_configured`
       sibling.
-- [ ] `apps/admin/src/plugins/config-secrets.spec.ts` and `apps/backend/src/plugins/plugin-secret-removal.spec.ts`
+- [x] `apps/admin/src/plugins/config-secrets.spec.ts` and `apps/backend/src/plugins/plugin-secret-removal.spec.ts`
       gain one row per secret (`url` and `headers` for webhook, `webhook_url` for Discord) and stay green.
-- [ ] Channel spec (mocked `fetch`) asserts the request URL, method, headers and body shape for both
+- [x] Channel spec (mocked `fetch`) asserts the request URL, method, headers and body shape for both
       channels, that the dispatcher's `AbortSignal` is passed through to the `fetch` call via
       `fetchWithSignal`, not a channel-owned timeout signal, and that the call uses `redirect: 'error'`.
-- [ ] Channel spec: a redirect outcome and an HTTP 400 both become a non-retryable `ChannelDeliveryError`, and
+- [x] Channel spec: a redirect outcome and an HTTP 400 both become a non-retryable `ChannelDeliveryError`, and
       an HTTP 503 becomes a retryable one.
-- [ ] A Discord config DTO test proves a `webhook_url` that does not start with `https://` is rejected, while
+- [x] A Discord config DTO test proves a `webhook_url` that does not start with `https://` is rejected, while
       the same `http:` URL is accepted by the webhook config DTO.
-- [ ] `cd apps/backend && npx jest src/plugins/notifications-webhook src/plugins/notifications-discord src/plugins/plugin-secret-removal.spec.ts`
+- [x] `cd apps/backend && npx jest src/plugins/notifications-webhook src/plugins/notifications-discord src/plugins/plugin-secret-removal.spec.ts`
       passes.
-- [ ] `pnpm run generate:openapi`, then
+- [x] `pnpm run generate:openapi`, then
       `cd apps/admin && npx vitest run src/plugins/notifications-webhook src/plugins/notifications-discord src/plugins/config-secrets.spec.ts`
       passes.
-- [ ] Backend `lint:js`, `lint:api`, `lint:openapi` and admin `type-check`, `lint:js` all pass.
-- [ ] Manual: configuring a real Discord webhook and running "Send test notification" from the Actions tab
+- [x] Backend `lint:js`, `lint:api`, `lint:openapi` and admin `type-check`, `lint:js` all pass.
+- [ ] Manual: configuring a real Discord webhook and running "Send test notification" from the Actions tab  <!-- not performed in this session: no live destination was available -->
       posts a visible embed.
 
 ## 6. Technical constraints

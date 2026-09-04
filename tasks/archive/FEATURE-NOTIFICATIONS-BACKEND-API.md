@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: small
 Parent: EPIC-NOTIFICATIONS-MODULE
-Status: review
+Status: done
 
 ## 1. Business goal
 
@@ -71,57 +71,57 @@ existing API and gateway infrastructure.
 
 ## 4. Acceptance criteria
 
-- [ ] `GET /notifications` (`operationId: get-notifications-module-notifications`) parses `status` (default
+- [x] `GET /notifications` (`operationId: get-notifications-module-notifications`) parses `status` (default
       `active`), `severity` (repeatable), `source`, `kind`, `unread`, `after_id`, `limit` (default 50,
       clamped to `1 <= limit <= 200`) and calls `findAll` with `limit + 1` rows (the service's cap allows
       201, so the boundary survives the maximum page size) in the total order `created_at DESC, id DESC`.
-- [ ] `limit=0` is clamped up to the minimum of 1, matching the `Math.min(Math.max(..., 1), 200)` pattern in
+- [x] `limit=0` is clamped up to the minimum of 1, matching the `Math.min(Math.max(..., 1), 200)` pattern in
       `logs.controller.ts`, not treated as unlimited or rejected.
-- [ ] A non-numeric `limit` (e.g. `limit=abc`) falls back to the default of 50, matching the `isNaN` fallback
+- [x] A non-numeric `limit` (e.g. `limit=abc`) falls back to the default of 50, matching the `isNaN` fallback
       in `logs.controller.ts`.
-- [ ] `GET /notifications` returns only the first `limit` rows and sets response meta
+- [x] `GET /notifications` returns only the first `limit` rows and sets response meta
       `{ next_cursor: last returned row id or undefined, has_more: rows.length > limit }` through
       `setResponseMeta`, matching the pattern in `logs.controller.ts:99-103`.
-- [ ] `GET /notifications/:id` (`operationId: get-notifications-module-notification`) returns 404 through
+- [x] `GET /notifications/:id` (`operationId: get-notifications-module-notification`) returns 404 through
       `NotificationsNotFoundException` when the id does not exist.
-- [ ] `PATCH /notifications/:id` (`operationId: update-notifications-module-notification`) accepts
+- [x] `PATCH /notifications/:id` (`operationId: update-notifications-module-notification`) accepts
       `{ data: { read?: boolean; dismissed?: boolean } }` and applies `markRead`/`dismiss`.
-- [ ] `DELETE /notifications/:id` (`operationId: delete-notifications-module-notification`) removes the row
+- [x] `DELETE /notifications/:id` (`operationId: delete-notifications-module-notification`) removes the row
       and returns 204.
-- [ ] `POST /notifications/bulk-update` (`operationId: bulk-update-notifications-module-notifications`)
+- [x] `POST /notifications/bulk-update` (`operationId: bulk-update-notifications-module-notifications`)
       accepts `{ data: { ids, read?, dismissed? } }` and returns a `CommonDataBulkResult` via
       `runBulkOperation` with `safeErrors` declared.
-- [ ] `POST /notifications/bulk-remove` (`operationId: bulk-remove-notifications-module-notifications`)
+- [x] `POST /notifications/bulk-remove` (`operationId: bulk-remove-notifications-module-notifications`)
       accepts `{ data: { ids } }` and returns a `CommonDataBulkResult`.
-- [ ] Every route carries `@Roles(UserRole.OWNER, UserRole.ADMIN)`, verified in the controller spec by
+- [x] Every route carries `@Roles(UserRole.OWNER, UserRole.ADMIN)`, verified in the controller spec by
       reading `Reflect.getMetadata(ROLES_KEY, ...)`.
-- [ ] The controller spec proves the list handler forwards parsed filters unchanged to
+- [x] The controller spec proves the list handler forwards parsed filters unchanged to
       `NotificationsService.findAll`.
-- [ ] The controller spec proves the bulk hand-off collects a per-item failure without aborting the rest of
+- [x] The controller spec proves the bulk hand-off collects a per-item failure without aborting the rest of
       the batch.
-- [ ] Controller spec: with 3 rows of equal `created_at`, two pages of `limit = 2` return all three rows
+- [x] Controller spec: with 3 rows of equal `created_at`, two pages of `limit = 2` return all three rows
       exactly once in `(created_at DESC, id DESC)` order - the first page with `has_more: true` and
       `next_cursor` set, the second with `has_more: false`.
-- [ ] e2e: as an owner token, create rows through the service, then list active, patch read, bulk dismiss and
+- [x] e2e: as an owner token, create rows through the service, then list active, patch read, bulk dismiss and
       bulk remove through the REST endpoints.
-- [ ] e2e: `PATCH /notifications/:id` with `{ data: { dismissed: true } }` on a persistent issue also sets
+- [x] e2e: `PATCH /notifications/:id` with `{ data: { dismissed: true } }` on a persistent issue also sets
       `resolved_at`, inheriting the lifecycle rule from `FEATURE-NOTIFICATIONS-BACKEND-CORE`.
-- [ ] e2e: `PATCH /notifications/:id` with `{ data: { dismissed: false } }` on a persistent issue that was
+- [x] e2e: `PATCH /notifications/:id` with `{ data: { dismissed: false } }` on a persistent issue that was
       resolved by its own dismissal clears `dismissed_at` but leaves `resolved_at` in place, inheriting the
       inverse lifecycle rule from `FEATURE-NOTIFICATIONS-BACKEND-CORE`.
-- [ ] e2e: every notifications route returns 403 for a `USER`-role token and for a display token.
-- [ ] e2e: the migration applies cleanly on a fresh database.
-- [ ] `'NotificationsModule.'` is added to `EXCHANGE_ONLY_EVENT_PREFIXES` in `websocket.gateway.ts`; owner and
+- [x] e2e: every notifications route returns 403 for a `USER`-role token and for a display token.
+- [x] e2e: the migration applies cleanly on a fresh database.
+- [x] `'NotificationsModule.'` is added to `EXCHANGE_ONLY_EVENT_PREFIXES` in `websocket.gateway.ts`; owner and
       admin user sockets join a new `ADMIN_ROOM` at handshake, and a gateway spec proves a
       `NotificationsModule.Notification.Created` event reaches an owner socket and an admin socket in the
       exchange room (extending the existing `SystemModule.System.Update.*` test).
-- [ ] Gateway spec: the same `NotificationsModule.Notification.Created` event reaches neither a `UserRole.USER`
+- [x] Gateway spec: the same `NotificationsModule.Notification.Created` event reaches neither a `UserRole.USER`
       socket that joined the exchange room nor a display socket.
-- [ ] Websocket payloads are thin pointers: `{ id, kind, severity, source }` for `Created`/`Updated`, `{ id }`
+- [x] Websocket payloads are thin pointers: `{ id, kind, severity, source }` for `Created`/`Updated`, `{ id }`
       for `Deleted`.
-- [ ] `pnpm run generate:openapi` regenerates `spec/api/v1/openapi.json` and `apps/panel/lib/api/**` with no
+- [x] `pnpm run generate:openapi` regenerates `spec/api/v1/openapi.json` and `apps/panel/lib/api/**` with no
       hand edits (`git diff --stat` shows no manual changes under `apps/panel/lib/api/`).
-- [ ] `pnpm --filter @fastybird/smart-panel-backend run lint:openapi` passes on the regenerated spec.
+- [x] `pnpm --filter @fastybird/smart-panel-backend run lint:openapi` passes on the regenerated spec.
 
 ## 6. Technical constraints
 

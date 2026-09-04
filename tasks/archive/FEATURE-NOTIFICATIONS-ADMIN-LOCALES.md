@@ -5,7 +5,7 @@ Type: feature
 Scope: admin
 Size: tiny
 Parent: EPIC-NOTIFICATIONS-MODULE
-Status: review
+Status: done
 
 ## 1. Business goal
 
@@ -40,16 +40,16 @@ I want the bell, page and config form translated into every locale the admin alr
 
 ## 4. Acceptance criteria
 
-- [ ] `cs-CZ.json`, `de-DE.json`, `es-ES.json`, `pl-PL.json` and `sk-SK.json` each translate every
+- [x] `cs-CZ.json`, `de-DE.json`, `es-ES.json`, `pl-PL.json` and `sk-SK.json` each translate every
       `notificationsModule.*` key present in `en-US.json`.
-- [ ] Wording tone matches `apps/admin/src/modules/extensions/locales/*.json`.
-- [ ] A spec diffs the key trees of all six locale files and fails if any key is missing or extra in any
+- [x] Wording tone matches `apps/admin/src/modules/extensions/locales/*.json`.
+- [x] A spec diffs the key trees of all six locale files and fails if any key is missing or extra in any
       file.
-- [ ] `notification-popover.spec.ts` covers rendering of the popover (items, footer actions, empty state).
-- [ ] `notification-detail-drawer.spec.ts` covers rendering of the drawer (message, data table, actions,
+- [x] `notification-popover.spec.ts` covers rendering of the popover (items, footer actions, empty state).
+- [x] `notification-detail-drawer.spec.ts` covers rendering of the drawer (message, data table, actions,
       timestamps).
-- [ ] `cd apps/admin && npx vitest run src/modules/notifications` passes.
-- [ ] `pnpm --filter ./apps/admin run type-check` passes.
+- [x] `cd apps/admin && npx vitest run src/modules/notifications` passes.
+- [x] `pnpm --filter ./apps/admin run type-check` passes.
 
 ## 6. Technical constraints
 

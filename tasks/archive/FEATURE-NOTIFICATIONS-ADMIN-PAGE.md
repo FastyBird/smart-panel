@@ -5,7 +5,7 @@ Type: feature
 Scope: admin
 Size: medium
 Parent: EPIC-NOTIFICATIONS-MODULE
-Status: review
+Status: done
 
 ## 1. Business goal
 
@@ -63,52 +63,52 @@ the three CTA types directly.
 
 ## 4. Acceptance criteria
 
-- [ ] `useNotificationAction().execute(notification, action)` routes a `link` action to `router.push(url)`
+- [x] `useNotificationAction().execute(notification, action)` routes a `link` action to `router.push(url)`
       when relative, or `window.open(url, '_blank', 'noopener')` when an absolute `http(s)` URL.
-- [ ] `useNotificationAction().execute` routes an `extension_action` by first fetching the action descriptors
+- [x] `useNotificationAction().execute` routes an `extension_action` by first fetching the action descriptors
       for `extension_type` through the extensions composable. It fails closed: when the fetch fails or no
       descriptor matches `action_id`, it shows an error and executes nothing. Otherwise, when the matching
       descriptor is `dangerous`, it shows `ElMessageBox.confirm` first, in a `try` block separate from the
       request itself; it then calls `useActions().executeAction(extension_type, action_id, params)` from
       `modules/extensions/composables/useActions.ts:136`, which posts directly and shows no confirmation of
       its own.
-- [ ] `useNotificationAction().execute` routes a `service` action to `useServiceActions().restartService |
+- [x] `useNotificationAction().execute` routes a `service` action to `useServiceActions().restartService |
       startService | stopService(extension_kind, extension_type, service_id)` from
       `modules/extensions/composables/useServiceActions.ts:9-11`, always confirming first via
       `ElMessageBox.confirm` for `stop` and `restart`.
-- [ ] `useNotificationAction` exposes `isExecuting` for a loading state.
-- [ ] The route is registered as `{ path: 'notifications', name: RouteNames.NOTIFICATIONS, meta: { guards: {
+- [x] `useNotificationAction` exposes `isExecuting` for a loading state.
+- [x] The route is registered as `{ path: 'notifications', name: RouteNames.NOTIFICATIONS, meta: { guards: {
       authenticated: true, roles: [admin, owner] }, title, icon: 'mdi:bell-outline', menu: 500 } }`.
-- [ ] The filter bar offers status (select), severity (multi-select), source (select) and an unread toggle,
+- [x] The filter bar offers status (select), severity (multi-select), source (select) and an unread toggle,
       synced to the query string through `useListQuery` and `NotificationsFilterSchema`; filters are applied
       server-side through `store.fetch`, never filtered locally.
-- [ ] The source filter's options are the extension types known to the extensions store - the closed set of
+- [x] The source filter's options are the extension types known to the extensions store - the closed set of
       possible sources - not only the sources present in the currently loaded rows.
-- [ ] `useNotificationsDataSource` forwards the active filters to `store.fetch` and calls it with
+- [x] `useNotificationsDataSource` forwards the active filters to `store.fetch` and calls it with
       `append: false` whenever a filter changes, so the list is rebuilt from the first page.
-- [ ] The table has a selection column, severity tag, title, source, occurrences, relative time and an
+- [x] The table has a selection column, severity tag, title, source, occurrences, relative time and an
       actions column, styled like the existing logs table.
-- [ ] The bulk bar offers mark read, mark unread, dismiss and delete; delete asks for confirmation before
+- [x] The bulk bar offers mark read, mark unread, dismiss and delete; delete asks for confirmation before
       calling the bulk-remove endpoint.
-- [ ] "Load more" appears and works when `hasMore` is true, using `next_cursor`.
-- [ ] Clicking a row opens `notification-detail-drawer.vue` showing the message with preserved newlines, the
+- [x] "Load more" appears and works when `hasMore` is true, using `next_cursor`.
+- [x] Clicking a row opens `notification-detail-drawer.vue` showing the message with preserved newlines, the
       `data` key/value table, all of the notification's actions rendered via `notification-actions.vue`, the
       lifecycle timestamps, and delete/dismiss buttons.
-- [ ] `notifications-config-form.vue` exposes `retention_days` and `max_notifications` through the module
+- [x] `notifications-config-form.vue` exposes `retention_days` and `max_notifications` through the module
       config element, validating their ranges (1-365 and 50-5000 respectively).
-- [ ] `useNotificationAction.spec.ts` proves each action type is routed to the correct mocked collaborator,
+- [x] `useNotificationAction.spec.ts` proves each action type is routed to the correct mocked collaborator,
       that the confirmation dialog is shown before a `dangerous` extension action and before a `service`
       `stop` or `restart`, and that cancelling the confirmation runs nothing - neither
       `useActions().executeAction` nor the service composable is called.
-- [ ] `useNotificationAction.spec.ts` proves that when fetching the action descriptors fails, `execute` shows
+- [x] `useNotificationAction.spec.ts` proves that when fetching the action descriptors fails, `execute` shows
       an error and calls neither `ElMessageBox.confirm` nor `useActions().executeAction`.
-- [ ] `useNotificationAction.spec.ts` proves that when no descriptor matches the action's `action_id`,
+- [x] `useNotificationAction.spec.ts` proves that when no descriptor matches the action's `action_id`,
       `execute` shows an error and calls neither `ElMessageBox.confirm` nor `useActions().executeAction`.
-- [ ] A test proves the filter schema round-trips correctly through the query string.
-- [ ] A test proves the config form rejects out-of-range values.
-- [ ] `cd apps/admin && npx vitest run src/modules/notifications` passes.
-- [ ] `pnpm --filter ./apps/admin run type-check && pnpm --filter ./apps/admin run lint:js` passes.
-- [ ] Manual: on the dev stack, triggering a failed login shows the bell count rising and the row appearing
+- [x] A test proves the filter schema round-trips correctly through the query string.
+- [x] A test proves the config form rejects out-of-range values.
+- [x] `cd apps/admin && npx vitest run src/modules/notifications` passes.
+- [x] `pnpm --filter ./apps/admin run type-check && pnpm --filter ./apps/admin run lint:js` passes.
+- [ ] Manual: on the dev stack, triggering a failed login shows the bell count rising and the row appearing  <!-- not performed in this session: no live destination was available -->
       on the page without a reload.
 
 ## 6. Technical constraints

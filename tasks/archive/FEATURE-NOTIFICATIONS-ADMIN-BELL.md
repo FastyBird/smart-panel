@@ -5,7 +5,7 @@ Type: feature
 Scope: admin
 Size: medium
 Parent: EPIC-NOTIFICATIONS-MODULE
-Status: review
+Status: done
 
 ## 1. Business goal
 
@@ -62,49 +62,49 @@ for new errors and critical items.
 
 ## 4. Acceptance criteria
 
-- [ ] The store exposes `fetch({ status?, severity?, source?, kind?, unread?, afterId?, append? })`,
+- [x] The store exposes `fetch({ status?, severity?, source?, kind?, unread?, afterId?, append? })`,
       `get({ id })`, `set({ id, data })`, `unset({ id })`, `onEvent({ id, data })`, `markRead`, `dismiss`,
       `remove`, `bulkUpdate`, `bulkRemove`, `isLoaded()`, `refresh()`; `fetch` forwards `status`, `severity`,
       `source`, `kind` and `unread` as query parameters to the API and never filters `items` locally.
-- [ ] The store exposes getters `findAll`, `findById`, `active` (`dismissedAt === null && resolvedAt ===
+- [x] The store exposes getters `findAll`, `findById`, `active` (`dismissedAt === null && resolvedAt ===
       null`), `unreadCount`, `highestActiveSeverity`, `hasMore`, `nextCursor`.
-- [ ] The store keeps every fetched row in `items` by id, plus a separate `listIds` (the ordered ids of the
+- [x] The store keeps every fetched row in `items` by id, plus a separate `listIds` (the ordered ids of the
       current query), `hasMore` and `nextCursor` for that query.
-- [ ] Schemas bind the response type to the generated `NotificationsModuleDataNotification` interface and use
+- [x] Schemas bind the response type to the generated `NotificationsModuleDataNotification` interface and use
       `z.nativeEnum` for the severity/kind enums, per the config-contract convention.
-- [ ] The store applies the same mutation-token ordering as `devices.store.ts` (`requestedAt` captured before
+- [x] The store applies the same mutation-token ordering as `devices.store.ts` (`requestedAt` captured before
       the request; a stale response is discarded).
-- [ ] `fetch` with `append: true` merges the new page into `items` by id and appends the page's ids to
+- [x] `fetch` with `append: true` merges the new page into `items` by id and appends the page's ids to
       `listIds`; `append: false` (the default) resets `listIds` before applying the first page.
-- [ ] The sockets handler calls `store.get({ id })` on `Created` and `Updated`, and `store.unset({ id })` on
+- [x] The sockets handler calls `store.get({ id })` on `Created` and `Updated`, and `store.unset({ id })` on
       `Deleted`.
-- [ ] On a `Created` pointer with severity `error` or `critical`, after the row is fetched,
+- [x] On a `Created` pointer with severity `error` or `critical`, after the row is fetched,
       `useFlashMessage().error(title)` is shown; `warning` and `info` only update the badge/store.
-- [ ] `dataRefreshRegistry` is registered so the active list is re-fetched on reconnect.
-- [ ] `notification-bell.vue` shows an `el-badge` with `:value="unreadCount"` hidden when `unreadCount === 0`,
+- [x] `dataRefreshRegistry` is registered so the active list is re-fetched on reconnect.
+- [x] `notification-bell.vue` shows an `el-badge` with `:value="unreadCount"` hidden when `unreadCount === 0`,
       and switches its icon to the danger colour when `highestActiveSeverity` is `error` or `critical`.
-- [ ] Clicking the bell opens `notification-popover.vue` showing up to 8 active notifications sorted by
+- [x] Clicking the bell opens `notification-popover.vue` showing up to 8 active notifications sorted by
       severity rank then `createdAt` descending; opening the popover does not mark anything read.
-- [ ] Each popover item shows a severity tag, title, source, relative time (via `formatTimeAgo` from
+- [x] Each popover item shows a severity tag, title, source, relative time (via `formatTimeAgo` from
       `@vueuse/core`, as in `system-logs-table.vue:155`), an occurrence badge when `occurrences > 1`, a
       primary action button, and a dismiss control; clicking a row marks it read.
-- [ ] The popover footer offers "Mark all as read" (through `bulkUpdate`) and "View all" (routes to
+- [x] The popover footer offers "Mark all as read" (through `bulkUpdate`) and "View all" (routes to
       `RouteNames.NOTIFICATIONS`).
-- [ ] `update-notification-badge.vue` and its export in `components.ts` are deleted; `useUpdateStatus` is
+- [x] `update-notification-badge.vue` and its export in `components.ts` are deleted; `useUpdateStatus` is
       kept because the update page still uses it; the bell is mounted in `app-top-bar.vue` in its place and
       in `layout-default.vue`'s mobile right slot.
-- [ ] `apps/admin/src/openapi.constants.ts` gains the notification, action, severity/kind enum, bulk request
+- [x] `apps/admin/src/openapi.constants.ts` gains the notification, action, severity/kind enum, bulk request
       and config schema aliases.
-- [ ] Store spec covers `set`/`unset`/`onEvent` parsing and validation, `fetch` append-merge by id, the
+- [x] Store spec covers `set`/`unset`/`onEvent` parsing and validation, `fetch` append-merge by id, the
       ordering token skipping a stale response, `unreadCount` and `highestActiveSeverity`.
-- [ ] `notification-bell.spec.ts` proves the badge is hidden at zero unread and shows the count otherwise.
-- [ ] `useNotificationsActions.spec.ts` proves `dismiss` keeps the confirmation and the request in separate
+- [x] `notification-bell.spec.ts` proves the badge is hidden at zero unread and shows the count otherwise.
+- [x] `useNotificationsActions.spec.ts` proves `dismiss` keeps the confirmation and the request in separate
       `try` blocks.
-- [ ] `pnpm run generate:openapi` is run first, then `cd apps/admin && npx vitest run src/modules/notifications`
+- [x] `pnpm run generate:openapi` is run first, then `cd apps/admin && npx vitest run src/modules/notifications`
       passes.
-- [ ] `pnpm --filter ./apps/admin run type-check` passes with no dangling references to the deleted badge
+- [x] `pnpm --filter ./apps/admin run type-check` passes with no dangling references to the deleted badge
       component.
-- [ ] `pnpm --filter ./apps/admin run lint:js` stays at the documented baseline (0 errors).
+- [x] `pnpm --filter ./apps/admin run lint:js` stays at the documented baseline (0 errors).
 
 ## 6. Technical constraints
 

@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: small
 Parent: EPIC-NOTIFICATIONS-MODULE
-Status: review
+Status: done
 
 ## 1. Business goal
 
@@ -61,47 +61,47 @@ notifications for these conditions.
 
 ## 4. Acceptance criteria
 
-- [ ] After the scheduled (12 h cron) or manual update check finds a newer version, `notify({ source:
+- [x] After the scheduled (12 h cron) or manual update check finds a newer version, `notify({ source:
       SYSTEM_MODULE_NAME, kind: ISSUE, key: 'update-available', severity: INFO, title: 'Update
       <latestVersion> is available', message: 'Installed <currentVersion>. Channel: <channel>.', actions:
       [{ type: LINK, label: 'View update', url: '/system/info', primary: true }], data: { current_version,
       latest_version } })` is called.
-- [ ] `resolve(SYSTEM_MODULE_NAME, 'update-available')` is called when a check reports no update available,
+- [x] `resolve(SYSTEM_MODULE_NAME, 'update-available')` is called when a check reports no update available,
       and when an update install succeeds.
-- [ ] When the update run reaches `FAILED` in `update-executor.service.ts`, `notify` is called with `kind:
+- [x] When the update run reaches `FAILED` in `update-executor.service.ts`, `notify` is called with `kind:
       ISSUE`, `key: 'update-failed'`, `severity: ERROR`, `persistent: true`, and a `link` CTA to
       `/system/info`.
-- [ ] `update-failed` is `persistent: true`, so it is not auto-resolved at boot; it is resolved only when the
+- [x] `update-failed` is `persistent: true`, so it is not auto-resolved at boot; it is resolved only when the
       next update run succeeds (`resolve(SYSTEM_MODULE_NAME, 'update-failed')`), or left in place until the
       user dismisses it.
-- [ ] A managed service entering `error` (start failure, or readiness retries exhausted at
+- [x] A managed service entering `error` (start failure, or readiness retries exhausted at
       `managed-service-manager.service.ts:795`) calls `notify` with `kind: ISSUE`, `key:
       'service:<kind>:<type>:<serviceId>'`, `severity: ERROR`, `message` carrying
       `sanitizeErrorMessage(lastError)`, and two actions: a primary `service` restart action and a `link` to
       `/extensions?tab=services&kind=<kind>`.
-- [ ] A managed service transitioning back to `started` calls `resolve` for that same key.
-- [ ] The manager spec proves a service that fails then starts produces exactly one raise and one resolve.
-- [ ] `AuthService.login` accepts an optional `context?: { ip?: string }` parameter and existing callers still
+- [x] A managed service transitioning back to `started` calls `resolve` for that same key.
+- [x] The manager spec proves a service that fails then starts produces exactly one raise and one resolve.
+- [x] `AuthService.login` accepts an optional `context?: { ip?: string }` parameter and existing callers still
       compile unchanged.
-- [ ] `AuthController` passes `req.ip` as the login context.
-- [ ] Each of the three failure paths in `auth.service.ts:102,108,117` normalises `const user =
+- [x] `AuthController` passes `req.ip` as the login context.
+- [x] Each of the three failure paths in `auth.service.ts:102,108,117` normalises `const user =
       username.slice(0, 64)` and `const client = ip ?? 'unknown'` once and reuses those same values
       everywhere: the key, the title, the message and `data`. `notify` is called with `kind: EVENT`,
       `severity: WARNING`, `key: 'login-failed:<user>:<client>:<yyyy-mm-dd-hh>'` (UTC hour bucket),
       `title: 'Failed login attempt for "<user>"'`, `message: 'From <client> - <count> attempt(s) this hour'`,
       `data: { username: user, ip: client, reason }`.
-- [ ] An in-memory `Map<string, number>` counter tracks attempts per key; entries whose hour bucket is in the
+- [x] An in-memory `Map<string, number>` counter tracks attempts per key; entries whose hour bucket is in the
       past are pruned on every call, so the message's `count` increments correctly.
-- [ ] The counter map never exceeds 1000 keys: when a new key would exceed the limit, the oldest key is
+- [x] The counter map never exceeds 1000 keys: when a new key would exceed the limit, the oldest key is
       evicted first.
-- [ ] The auth spec proves three failures within one hour call `notify` three times with the same key and
+- [x] The auth spec proves three failures within one hour call `notify` three times with the same key and
       `count` 1, 2, 3.
-- [ ] A test proves the counter map stays bounded at 1000 keys: once at the limit, adding a new key evicts the
+- [x] A test proves the counter map stays bounded at 1000 keys: once at the limit, adding a new key evicts the
       oldest one rather than growing the map further.
-- [ ] For each of the four emitters, a test proves the raising condition calls `notify` with the exact
+- [x] For each of the four emitters, a test proves the raising condition calls `notify` with the exact
       `source`, `kind`, `key`, `severity` and primary action, and a second test proves the clearing condition
       calls `resolve`.
-- [ ] `cd apps/backend && npx jest src/modules/system src/modules/extensions src/modules/auth` passes.
+- [x] `cd apps/backend && npx jest src/modules/system src/modules/extensions src/modules/auth` passes.
 
 ## 6. Technical constraints
 
