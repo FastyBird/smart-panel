@@ -44,14 +44,29 @@ describe('NotificationsConfigForm', () => {
 	});
 
 	// `el-form-item` silently drops an `#append` slot (it only ever renders its own label/default/
-	// error slots) - the unit text has to live inside `el-input-number`'s own `#suffix` slot to be
-	// visible at all.
+	// error slots), and `el-input-number` has no `#suffix` slot of its own - content handed to it
+	// lands inside the inner `el-input`, where it squeezes the editable area to nothing. The unit is
+	// therefore a plain sibling of the input: it has to be visible, and the input has to stay usable.
 	it('renders the retention period unit next to the input, not lost in an unsupported form-item slot', () => {
 		const wrapper = mount(NotificationsConfigForm, {
 			props: { config: { type: 'notifications-module', enabled: true } },
 		});
 
 		expect(wrapper.text()).toContain('notificationsModule.fields.config.retentionDays.unit');
+	});
+
+	it('keeps the number inputs free of injected suffix content', () => {
+		const wrapper = mount(NotificationsConfigForm, {
+			props: { config: { type: 'notifications-module', enabled: true } },
+		});
+
+		const inputs = wrapper.findAll('.el-input-number');
+
+		expect(inputs).toHaveLength(2);
+
+		for (const input of inputs) {
+			expect(input.find('.el-input__suffix').exists()).toBe(false);
+		}
 	});
 
 	it('renders a unit next to the max notifications input', () => {
