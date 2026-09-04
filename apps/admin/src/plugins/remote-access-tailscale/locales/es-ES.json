@@ -93,6 +93,7 @@
 		"signInDescription": "Abra el enlace de inicio de sesión en cualquier dispositivo y apruébelo, o escanee el código QR.",
 		"advancedDescription": "Para instalaciones sin supervisión: pegue una clave de autenticación preautorizada para iniciar sesión sin aprobación interactiva.",
 		"waitingForApproval": "Esperando la aprobación del inicio de sesión...",
+		"waitingForLink": "Solicitando el enlace de inicio de sesión...",
 		"qrAlt": "Código QR con el enlace de inicio de sesión de Tailscale",
 		"doneDescription": "Tailscale está conectado. Esta instalación es accesible en las direcciones siguientes.",
 		"tabs": {

@@ -120,6 +120,16 @@
 							</div>
 						</div>
 
+						<div
+							v-else-if="isPolling"
+							class="flex items-center gap-2 text-sm text-gray-500"
+						>
+							<el-icon class="is-loading">
+								<icon icon="mdi:loading" />
+							</el-icon>
+							<span>{{ t('remoteAccessTailscalePlugin.wizard.waitingForLink') }}</span>
+						</div>
+
 						<el-button
 							v-else
 							type="primary"
@@ -440,6 +450,24 @@ watch(
 		}
 	},
 	{ immediate: true }
+);
+
+// The sign-in request answers `pending-auth` without a link when the daemon is slow to produce it (the
+// backend gives the first CLI block 30 s, then hands over to status polling), so the link and QR code
+// are picked up from the polled status once they arrive. The link and the QR code come from separate CLI
+// output blocks, so they can also arrive in separate status responses and are mirrored independently; a QR
+// code is only accepted for the link currently shown.
+watch(
+	() => [status.value?.authUrl, status.value?.qr] as const,
+	([nextAuthUrl, nextQr]) => {
+		if (nextAuthUrl && !authUrl.value) {
+			authUrl.value = nextAuthUrl;
+		}
+
+		if (nextAuthUrl && nextQr && !qr.value && nextAuthUrl === authUrl.value) {
+			qr.value = nextQr;
+		}
+	}
 );
 
 // The `visible` watcher stops the sign-in poll when the dialog closes; leaving the page with the dialog
