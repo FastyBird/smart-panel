@@ -246,19 +246,24 @@ describe('RemoteAccessStatusService', () => {
 			expect(service.getCachedStatuses()).toEqual([]);
 		});
 
-		it('prunes the cache on the plugin CONFIG_UPDATED event that disabled it, and only then', () => {
-			registry.register(buildProvider('remote-access-tailscale', () => Promise.resolve(buildStatus())));
-			service.onProviderStatus(buildStatus());
+		it('neither lists nor caches a provider whose plugin was disabled while its poll was in flight', async () => {
+			let resolveStatus: (status: RemoteAccessProviderStatus) => void = () => undefined;
+			registry.register(
+				buildProvider(
+					'remote-access-tailscale',
+					() =>
+						new Promise<RemoteAccessProviderStatus>((resolve) => {
+							resolveStatus = resolve;
+						}),
+				),
+			);
 
-			service.onConfigUpdated({ type: 'plugin', source: 'remote-access-tailscale' });
-			expect(service.getCachedStatuses()).toHaveLength(1);
-
-			service.onConfigUpdated({ type: 'module', source: 'remote-access-tailscale' });
-			expect(service.getCachedStatuses()).toHaveLength(1);
+			const aggregate = service.getAggregatedStatuses();
 
 			disabledTypes.add('remote-access-tailscale');
-			service.onConfigUpdated({ type: 'plugin', source: 'remote-access-tailscale' });
+			resolveStatus(buildStatus());
 
+			await expect(aggregate).resolves.toEqual([]);
 			expect(service.getCachedStatuses()).toEqual([]);
 		});
 

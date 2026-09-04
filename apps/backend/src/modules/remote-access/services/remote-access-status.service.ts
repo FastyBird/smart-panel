@@ -3,7 +3,6 @@ import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType as ConfigEventType } from '../../config/config.constants';
 import { ConfigService } from '../../config/services/config.service';
 import { RemoteAccessProviderModel } from '../models/provider.model';
 import { IRemoteAccessProvider, RemoteAccessProviderStatus } from '../platforms/remote-access-provider.platform';
@@ -18,11 +17,6 @@ import { RemoteAccessProviderRegistryService } from './remote-access-provider-re
 
 /** Marks a rejection produced by the deadline race in `fetchStatus()`, not by the provider itself. */
 class ProviderStatusTimeoutError extends Error {}
-
-interface ConfigUpdatedEvent {
-	source: string;
-	type: 'module' | 'plugin';
-}
 
 /**
  * Aggregates provider statuses on demand (`getAggregatedStatuses`,
@@ -91,27 +85,11 @@ export class RemoteAccessStatusService {
 	}
 
 	/**
-	 * A plugin the owner disables must vanish from the module at once — its
-	 * endpoints, proxy addresses and advisories included — so its cached
-	 * status is dropped as soon as the config changes, without waiting for
-	 * the managed service to stop and report.
-	 */
-	@OnEvent(ConfigEventType.CONFIG_UPDATED)
-	onConfigUpdated(event: ConfigUpdatedEvent): void {
-		if (event.type !== 'plugin' || !this.hasProvider(event.source)) {
-			return;
-		}
-
-		if (!this.isProviderEnabled(event.source)) {
-			this.cache.delete(event.source);
-		}
-	}
-
-	/**
 	 * Synchronous, cache-only read of the last known status per provider.
-	 * Providers whose plugin has been disabled since they were cached are
-	 * pruned here as well, so a read that happens to run before
-	 * `onConfigUpdated()` still never hands out a disabled provider.
+	 * A plugin the owner disables must vanish from the module at once — its
+	 * endpoints, proxy addresses and advisories included — so providers whose
+	 * plugin has been disabled since they were cached are pruned here, at
+	 * read time, rather than through one more `CONFIG_UPDATED` listener.
 	 */
 	getCachedStatuses(): RemoteAccessProviderStatus[] {
 		for (const type of Array.from(this.cache.keys())) {
@@ -140,7 +118,11 @@ export class RemoteAccessStatusService {
 			return false;
 		});
 
-		return Promise.all(enabledProviders.map((provider) => this.pollProvider(provider)));
+		const statuses = await Promise.all(enabledProviders.map((provider) => this.pollProvider(provider)));
+
+		// A plugin can be disabled while its poll is still in flight; `pollProvider()` no longer caches
+		// such a status, and it must not be listed either.
+		return statuses.filter((status) => this.isProviderEnabled(status.type));
 	}
 
 	/** Live poll of a single provider by type; throws when the type is unknown. */
@@ -171,7 +153,10 @@ export class RemoteAccessStatusService {
 	private async pollProvider(provider: IRemoteAccessProvider): Promise<RemoteAccessProviderModel> {
 		const status = this.normalizeStatusType(provider, await this.fetchStatus(provider));
 
-		this.cache.set(provider.type, status);
+		// Re-checked after the await: a plugin disabled mid-poll must not be written into the cache.
+		if (this.isProviderEnabled(provider.type)) {
+			this.cache.set(provider.type, status);
+		}
 
 		return toInstance(RemoteAccessProviderModel, {
 			...status,
