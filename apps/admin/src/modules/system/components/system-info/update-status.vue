@@ -44,6 +44,22 @@
 				</span>
 				<span v-else>-</span>
 			</el-descriptions-item>
+			<el-descriptions-item :label="t('systemModule.labels.update.channel')">
+				<el-select
+					v-model="selectedChannel"
+					size="small"
+					class="w-60!"
+					:disabled="savingChannel || loading || isUpdating"
+					@change="onChannelChange"
+				>
+					<el-option
+						v-for="option in channelOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+					/>
+				</el-select>
+			</el-descriptions-item>
 			<el-descriptions-item :label="t('systemModule.labels.update.lastChecked')">
 				{{ lastCheckedFormatted || '-' }}
 			</el-descriptions-item>
@@ -73,6 +89,19 @@
 				</el-button>
 			</el-descriptions-item>
 		</el-descriptions>
+
+		<div
+			v-if="channelIsLessStable"
+			class="p-2"
+		>
+			<el-alert
+				type="warning"
+				:title="t('systemModule.texts.update.lessStableChannel', { channel: selectedChannelLabel })"
+				:description="t('systemModule.texts.update.lessStableChannelDescription')"
+				:closable="false"
+				show-icon
+			/>
+		</div>
 	</el-card>
 
 	<el-dialog
@@ -160,7 +189,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import {
@@ -172,14 +201,23 @@ import {
 	ElDialog,
 	ElIcon,
 	ElNotification,
+	ElOption,
 	ElProgress,
+	ElSelect,
 	ElTag,
 	ElText,
 } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { injectStoresManager } from '../../../../common';
+import { SystemModuleUpdateChannel } from '../../../../openapi.constants';
+import { configModulesStoreKey } from '../../../config/store/keys';
 import { useUpdateStatus } from '../../composables/composables';
+import { SYSTEM_MODULE_NAME } from '../../system.constants';
+
+// Derived from the generated enum so a channel added to the API cannot be missed here.
+type UpdateChannel = `${SystemModuleUpdateChannel}`;
 
 defineOptions({
 	name: 'UpdateStatus',
@@ -219,6 +257,107 @@ const updateTypeColor = computed<'danger' | 'warning' | 'success' | 'info'>((): 
 			return 'info';
 	}
 });
+
+const storesManager = injectStoresManager();
+const configModulesStore = storesManager.getStore(configModulesStoreKey);
+
+const savingChannel = ref<boolean>(false);
+
+const configuredChannel = computed<UpdateChannel>((): UpdateChannel => {
+	const config = configModulesStore.findByType(SYSTEM_MODULE_NAME) as { updateChannel?: UpdateChannel } | null;
+
+	return config?.updateChannel ?? 'auto';
+});
+
+const selectedChannel = ref<UpdateChannel>(configuredChannel.value);
+
+// The store is populated asynchronously, and a failed save reverts the stored value - either way
+// the control has to follow the store rather than keep whatever was last picked in the UI.
+watch(configuredChannel, (channel: UpdateChannel): void => {
+	selectedChannel.value = channel;
+});
+
+/**
+ * Mirror of the backend's channel detection: the pre-release identifier of the installed version,
+ * or null when it carries one this project does not publish.
+ */
+const detectChannel = (version: string): Exclude<UpdateChannel, 'auto'> | null => {
+	const core = version.replace(/^v/, '').split('+')[0];
+	const separator = core.indexOf('-');
+
+	if (separator === -1) {
+		return 'stable';
+	}
+
+	const [identifier] = core.slice(separator + 1).split('.');
+
+	if (identifier === 'alpha') return 'alpha';
+	if (identifier === 'beta') return 'beta';
+
+	return null;
+};
+
+const installedChannel = computed<Exclude<UpdateChannel, 'auto'> | null>((): Exclude<UpdateChannel, 'auto'> | null => {
+	return currentVersion.value ? detectChannel(currentVersion.value) : null;
+});
+
+const channelOptions = computed<{ value: UpdateChannel; label: string }[]>((): { value: UpdateChannel; label: string }[] => [
+	{
+		value: 'auto',
+		label: installedChannel.value
+			? t('systemModule.fields.update.channel.values.autoDetected', {
+					channel: t(`systemModule.fields.update.channel.values.${installedChannel.value}`),
+				})
+			: t('systemModule.fields.update.channel.values.auto'),
+	},
+	{ value: 'stable', label: t('systemModule.fields.update.channel.values.stable') },
+	{ value: 'beta', label: t('systemModule.fields.update.channel.values.beta') },
+	{ value: 'alpha', label: t('systemModule.fields.update.channel.values.alpha') },
+]);
+
+const selectedChannelLabel = computed<string>((): string => {
+	return selectedChannel.value === 'auto'
+		? t('systemModule.fields.update.channel.values.auto')
+		: t(`systemModule.fields.update.channel.values.${selectedChannel.value}`);
+});
+
+/** Least → most stable, matching the backend's channel precedence. */
+const CHANNEL_PRECEDENCE: Exclude<UpdateChannel, 'auto'>[] = ['alpha', 'beta', 'stable'];
+
+const channelIsLessStable = computed<boolean>((): boolean => {
+	if (selectedChannel.value === 'auto' || installedChannel.value === null) {
+		return false;
+	}
+
+	return CHANNEL_PRECEDENCE.indexOf(selectedChannel.value) < CHANNEL_PRECEDENCE.indexOf(installedChannel.value);
+});
+
+const onChannelChange = async (channel: UpdateChannel): Promise<void> => {
+	savingChannel.value = true;
+
+	try {
+		await configModulesStore.edit({
+			data: {
+				type: SYSTEM_MODULE_NAME,
+				updateChannel: channel,
+			} as never,
+		});
+	} catch {
+		selectedChannel.value = configuredChannel.value;
+
+		ElNotification.error(t('systemModule.messages.update.channelNotChanged'));
+
+		return;
+	} finally {
+		savingChannel.value = false;
+	}
+
+	// The backend drops its cached lookup when the config changes, so a re-check is what turns the
+	// new channel into a visible answer instead of leaving the card on the old one. It is reported
+	// separately: the channel is already saved, so a failing check is a failed check, not a failed
+	// save, and must not revert the control.
+	await onCheckForUpdates();
+};
 
 const lastCheckedFormatted = computed<string | null>((): string | null => {
 	if (!lastChecked.value) {
@@ -262,5 +401,8 @@ const onInstallUpdate = async (): Promise<void> => {
 
 onMounted((): void => {
 	void fetchStatus();
+	// The store rejects an edit for a module it has not loaded, and this card is reachable without
+	// ever opening the system config form - so the config is pulled in here rather than assumed.
+	void configModulesStore.get({ type: SYSTEM_MODULE_NAME });
 });
 </script>

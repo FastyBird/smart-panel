@@ -11,13 +11,14 @@ import { existsSync, readFileSync, readdirSync, readlinkSync } from 'fs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ConfigService } from '../../config/services/config.service';
 import {
 	NotificationActionType,
 	NotificationKind,
 	NotificationSeverity,
 } from '../../notifications/notifications.constants';
 import { NotificationsService } from '../../notifications/services/notifications.service';
-import { SYSTEM_MODULE_NAME } from '../system.constants';
+import { SYSTEM_MODULE_NAME, UpdateChannelType } from '../system.constants';
 
 import { UpdateService } from './update.service';
 
@@ -32,6 +33,7 @@ jest.mock('fs', () => ({
 describe('UpdateService', () => {
 	let service: UpdateService;
 	let notifications: { notify: jest.Mock; resolve: jest.Mock; resolveAll: jest.Mock };
+	let configService: { getModuleConfig: jest.Mock };
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
@@ -51,11 +53,20 @@ describe('UpdateService', () => {
 						resolveAll: jest.fn(),
 					},
 				},
+				{
+					provide: ConfigService,
+					useValue: {
+						// Devices that have never touched the setting are on `auto`, which is what
+						// every pre-existing test assumes.
+						getModuleConfig: jest.fn(() => ({ updateChannel: UpdateChannelType.AUTO })),
+					},
+				},
 			],
 		}).compile();
 
 		service = module.get<UpdateService>(UpdateService);
 		notifications = module.get<NotificationsService>(NotificationsService) as unknown as typeof notifications;
+		configService = module.get<ConfigService>(ConfigService) as unknown as typeof configService;
 
 		jest.clearAllMocks();
 	});
@@ -889,6 +900,433 @@ describe('UpdateService', () => {
 
 			const cached = (service as any).cachedServerInfo.get('latest');
 			expect(cached.latest).toBe('2.0.0');
+		});
+	});
+
+	describe('checkServerUpdate lookup completeness', () => {
+		const RELEASES_API = 'https://api.github.com/repos/FastyBird/smart-panel/releases?per_page=20';
+
+		let fetchSpy: jest.SpyInstance;
+
+		const PARTIAL_TTL_MS = 5 * 60 * 1000;
+
+		const mockFetchRoutes = (routes: Record<string, unknown>): void => {
+			fetchSpy = jest.spyOn(global, 'fetch').mockImplementation((input: RequestInfo | URL) => {
+				const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
+				if (!(url in routes)) {
+					return Promise.resolve({ ok: false, status: 404 } as Response);
+				}
+
+				return Promise.resolve({
+					ok: true,
+					status: 200,
+					json: () => Promise.resolve(routes[url]),
+				} as Response);
+			});
+		};
+
+		const mockImageInstall = (currentVersion: string): void => {
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ version: currentVersion }));
+			(readlinkSync as jest.Mock).mockReturnValue('v1.0.0-beta.3');
+			(existsSync as jest.Mock).mockImplementation(
+				(path: string) => path === '/opt/smart-panel/v1.0.0-beta.3/.image-install',
+			);
+		};
+
+		const release = (tag: string, assetUrl: string | null) => ({
+			tag_name: tag,
+			prerelease: true,
+			assets: assetUrl ? [{ name: 'version.json', browser_download_url: assetUrl }] : [],
+		});
+
+		const cacheTtlLeft = (channel: string): number =>
+			((service as any).serverCacheExpiresAt.get(channel) as number) - Date.now();
+
+		afterEach(() => {
+			fetchSpy?.mockRestore();
+		});
+
+		it('should cache a fully readable lookup for the full TTL', async () => {
+			mockImageInstall('1.0.0-beta.3');
+			mockFetchRoutes({
+				[RELEASES_API]: [release('v1.0.0-beta.3', 'https://example.test/beta/version.json')],
+				'https://example.test/beta/version.json': { version: '1.0.0-beta.3', channel: 'beta' },
+			});
+
+			await service.checkServerUpdate();
+
+			expect(cacheTtlLeft('beta')).toBeGreaterThan(PARTIAL_TTL_MS);
+		});
+
+		it('should keep the full TTL when the stable probe definitively 404s', async () => {
+			// A beta install also accepts stable, so the probe runs. This repository has no stable
+			// release, and GitHub says so with a 404 - a settled answer, not a failure. Treating it
+			// as incomplete would pin every install to the five-minute cache permanently.
+			mockImageInstall('1.0.0-beta.3');
+			mockFetchRoutes({
+				[RELEASES_API]: [release('v1.0.0-beta.3', 'https://example.test/beta/version.json')],
+				'https://example.test/beta/version.json': { version: '1.0.0-beta.3', channel: 'beta' },
+			});
+
+			await service.checkServerUpdate();
+
+			expect(cacheTtlLeft('beta')).toBeGreaterThan(PARTIAL_TTL_MS);
+		});
+
+		it('should cache only briefly when the stable probe fails for a reason other than absence', async () => {
+			mockImageInstall('1.0.0-beta.3');
+
+			fetchSpy = jest.spyOn(global, 'fetch').mockImplementation((input: RequestInfo | URL) => {
+				const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
+				if (url === RELEASES_API) {
+					return Promise.resolve({
+						ok: true,
+						status: 200,
+						json: () => Promise.resolve([release('v1.0.0-beta.3', 'https://example.test/beta/version.json')]),
+					} as Response);
+				}
+
+				if (url === 'https://example.test/beta/version.json') {
+					return Promise.resolve({
+						ok: true,
+						status: 200,
+						json: () => Promise.resolve({ version: '1.0.0-beta.3', channel: 'beta' }),
+					} as Response);
+				}
+
+				// The stable probe hits a server error rather than a 404, so whether a stable
+				// release exists is still unknown.
+				return Promise.resolve({ ok: false, status: 503 } as Response);
+			});
+
+			await service.checkServerUpdate();
+
+			expect(cacheTtlLeft('beta')).toBeLessThanOrEqual(PARTIAL_TTL_MS);
+		});
+
+		it('should cache only briefly when the stable probe throws', async () => {
+			mockImageInstall('1.0.0-beta.3');
+
+			fetchSpy = jest.spyOn(global, 'fetch').mockImplementation((input: RequestInfo | URL) => {
+				const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
+				if (url === RELEASES_API) {
+					return Promise.resolve({
+						ok: true,
+						status: 200,
+						json: () => Promise.resolve([release('v1.0.0-beta.3', 'https://example.test/beta/version.json')]),
+					} as Response);
+				}
+
+				if (url === 'https://example.test/beta/version.json') {
+					return Promise.resolve({
+						ok: true,
+						status: 200,
+						json: () => Promise.resolve({ version: '1.0.0-beta.3', channel: 'beta' }),
+					} as Response);
+				}
+
+				return Promise.reject(new Error('network unreachable'));
+			});
+
+			await service.checkServerUpdate();
+
+			expect(cacheTtlLeft('beta')).toBeLessThanOrEqual(PARTIAL_TTL_MS);
+		});
+
+		it('should cache only briefly when an eligible release asset could not be read', async () => {
+			mockImageInstall('1.0.0-beta.3');
+			mockFetchRoutes({
+				// The asset URL is deliberately unrouted, so reading it 404s. That release may have
+				// been the only one carrying a newer version, so the negative answer is provisional.
+				[RELEASES_API]: [release('v1.1.0-beta.0', 'https://example.test/missing/version.json')],
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.updateAvailable).toBe(false);
+			expect(cacheTtlLeft('beta')).toBeLessThanOrEqual(PARTIAL_TTL_MS);
+		});
+	});
+
+	describe('configured update channel', () => {
+		const NPM_REGISTRY = 'https://registry.npmjs.org/@fastybird/smart-panel';
+		const RELEASES_API = 'https://api.github.com/repos/FastyBird/smart-panel/releases?per_page=20';
+		const STABLE_VERSION_JSON = 'https://github.com/FastyBird/smart-panel/releases/latest/download/version.json';
+
+		let fetchSpy: jest.SpyInstance;
+
+		const requestedUrl = (input: RequestInfo | URL): string =>
+			typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
+		const mockFetchRoutes = (routes: Record<string, unknown>): void => {
+			fetchSpy = jest.spyOn(global, 'fetch').mockImplementation((input: RequestInfo | URL) => {
+				const url = requestedUrl(input);
+
+				if (!(url in routes)) {
+					return Promise.resolve({ ok: false, status: 404 } as Response);
+				}
+
+				return Promise.resolve({
+					ok: true,
+					status: 200,
+					json: () => Promise.resolve(routes[url]),
+				} as Response);
+			});
+		};
+
+		const requestedUrls = (): string[] =>
+			(fetchSpy.mock.calls as [RequestInfo | URL][]).map(([input]) => requestedUrl(input));
+
+		const mockNpmInstall = (currentVersion: string): void => {
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ version: currentVersion }));
+			(readlinkSync as jest.Mock).mockImplementation(() => {
+				throw new Error('Not a symlink');
+			});
+			(existsSync as jest.Mock).mockReturnValue(false);
+		};
+
+		const mockImageInstall = (currentVersion: string): void => {
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ version: currentVersion }));
+			(readlinkSync as jest.Mock).mockReturnValue('v1.0.0-beta.3');
+			(existsSync as jest.Mock).mockImplementation(
+				(path: string) => path === '/opt/smart-panel/v1.0.0-beta.3/.image-install',
+			);
+		};
+
+		const release = (tag: string, prerelease: boolean, assetUrl: string | null) => ({
+			tag_name: tag,
+			prerelease,
+			assets: assetUrl ? [{ name: 'version.json', browser_download_url: assetUrl }] : [],
+		});
+
+		const setChannel = (updateChannel: UpdateChannelType): void => {
+			configService.getModuleConfig.mockReturnValue({ updateChannel });
+		};
+
+		afterEach(() => {
+			fetchSpy?.mockRestore();
+		});
+
+		describe('resolveEffectiveChannel', () => {
+			it('should fall back to the installed version when the channel is left on auto', () => {
+				mockNpmInstall('1.0.0-beta.3');
+				setChannel(UpdateChannelType.AUTO);
+
+				expect(service.resolveEffectiveChannel()).toBe('beta');
+			});
+
+			it('should map the operator-facing "stable" onto the internal "latest"', () => {
+				mockNpmInstall('1.0.0-beta.3');
+				setChannel(UpdateChannelType.STABLE);
+
+				expect(service.resolveEffectiveChannel()).toBe('latest');
+			});
+
+			it('should prefer the configured channel over the installed version', () => {
+				mockNpmInstall('1.0.0-beta.3');
+				setChannel(UpdateChannelType.ALPHA);
+
+				expect(service.resolveEffectiveChannel()).toBe('alpha');
+			});
+
+			it('should prefer an explicit argument over the configured channel', () => {
+				mockNpmInstall('1.0.0-beta.3');
+				setChannel(UpdateChannelType.ALPHA);
+
+				expect(service.resolveEffectiveChannel('latest')).toBe('latest');
+			});
+
+			it('should fall back to auto when the config cannot be read', () => {
+				mockNpmInstall('1.0.0-beta.3');
+				configService.getModuleConfig.mockImplementation(() => {
+					throw new Error('config.yaml is unreadable');
+				});
+
+				expect(service.resolveEffectiveChannel()).toBe('beta');
+			});
+
+			it('should treat an install on an unrecognised pre-release line as stable-only', () => {
+				mockNpmInstall('2.0.0-rc.1');
+				setChannel(UpdateChannelType.AUTO);
+
+				expect(service.resolveEffectiveChannel()).toBe('latest');
+			});
+		});
+
+		it('should offer a newer alpha to a beta install once the operator opts into alpha', async () => {
+			mockNpmInstall('1.0.0-beta.3');
+			setChannel(UpdateChannelType.ALPHA);
+			mockFetchRoutes({
+				[NPM_REGISTRY]: {
+					'dist-tags': { latest: '0.5.0-alpha.2', alpha: '1.1.0-alpha.0', beta: '1.0.0-beta.3' },
+				},
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.1.0-alpha.0');
+			expect(result.updateAvailable).toBe(true);
+			expect(result.updateType).toBe('minor');
+		});
+
+		it('should keep hiding that alpha from the same install while the channel is on auto', async () => {
+			mockNpmInstall('1.0.0-beta.3');
+			setChannel(UpdateChannelType.AUTO);
+			mockFetchRoutes({
+				[NPM_REGISTRY]: {
+					'dist-tags': { latest: '0.5.0-alpha.2', alpha: '1.1.0-alpha.0', beta: '1.0.0-beta.3' },
+				},
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.0.0-beta.3');
+			expect(result.updateAvailable).toBe(false);
+		});
+
+		it('should never offer a pre-release to an install pinned to stable', async () => {
+			mockNpmInstall('1.0.0-beta.3');
+			setChannel(UpdateChannelType.STABLE);
+			mockFetchRoutes({
+				[NPM_REGISTRY]: {
+					'dist-tags': { latest: '0.5.0-alpha.2', alpha: '1.1.0-alpha.0', beta: '1.0.0-beta.3' },
+				},
+			});
+
+			const result = await service.checkServerUpdate();
+
+			// The `latest` dist-tag points at an alpha, so classifying by the version string leaves
+			// the stable channel with no candidate at all rather than trusting the tag.
+			expect(result.latest).toBeNull();
+			expect(result.updateAvailable).toBe(false);
+		});
+
+		it('should offer the alpha to an image install once the operator opts into alpha', async () => {
+			mockImageInstall('1.0.0-beta.3');
+			setChannel(UpdateChannelType.ALPHA);
+			mockFetchRoutes({
+				[RELEASES_API]: [
+					release('v1.1.0-alpha.0', true, 'https://example.test/alpha/version.json'),
+					release('v1.0.0-beta.3', true, 'https://example.test/beta/version.json'),
+				],
+				'https://example.test/alpha/version.json': { version: '1.1.0-alpha.0', channel: 'alpha' },
+				'https://example.test/beta/version.json': { version: '1.0.0-beta.3', channel: 'beta' },
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.1.0-alpha.0');
+			expect(result.updateAvailable).toBe(true);
+		});
+
+		it('should drop the cached answer when the system config changes', async () => {
+			mockImageInstall('1.0.0-beta.3');
+			setChannel(UpdateChannelType.AUTO);
+			mockFetchRoutes({
+				[RELEASES_API]: [
+					release('v1.1.0-alpha.0', true, 'https://example.test/alpha/version.json'),
+					release('v1.0.0-beta.3', true, 'https://example.test/beta/version.json'),
+				],
+				'https://example.test/alpha/version.json': { version: '1.1.0-alpha.0', channel: 'alpha' },
+				'https://example.test/beta/version.json': { version: '1.0.0-beta.3', channel: 'beta' },
+			});
+
+			await expect(service.checkServerUpdate()).resolves.toMatchObject({ updateAvailable: false });
+
+			setChannel(UpdateChannelType.ALPHA);
+			service.onConfigUpdated({ source: SYSTEM_MODULE_NAME, type: 'module' });
+
+			await expect(service.checkServerUpdate()).resolves.toMatchObject({
+				latest: '1.1.0-alpha.0',
+				updateAvailable: true,
+			});
+		});
+
+		it('should ignore a config change from another module', async () => {
+			mockImageInstall('1.0.0-beta.3');
+			setChannel(UpdateChannelType.AUTO);
+			mockFetchRoutes({
+				[RELEASES_API]: [release('v1.0.0-beta.3', true, 'https://example.test/beta/version.json')],
+				'https://example.test/beta/version.json': { version: '1.0.0-beta.3', channel: 'beta' },
+			});
+
+			await service.checkServerUpdate();
+
+			const callsAfterFirstCheck = fetchSpy.mock.calls.length;
+
+			service.onConfigUpdated({ source: 'devices-module', type: 'module' });
+
+			await service.checkServerUpdate();
+
+			expect(fetchSpy).toHaveBeenCalledTimes(callsAfterFirstCheck);
+		});
+
+		it('should not download version.json for releases whose tag is outside the wanted channels', async () => {
+			mockImageInstall('1.0.0-beta.3');
+			setChannel(UpdateChannelType.BETA);
+			mockFetchRoutes({
+				[RELEASES_API]: [
+					release('v1.1.0-alpha.0', true, 'https://example.test/alpha/version.json'),
+					release('v1.0.0-beta.3', true, 'https://example.test/beta/version.json'),
+					release('v0.7.0-alpha.1', true, 'https://example.test/old-alpha/version.json'),
+				],
+				'https://example.test/alpha/version.json': { version: '1.1.0-alpha.0', channel: 'alpha' },
+				'https://example.test/beta/version.json': { version: '1.0.0-beta.3', channel: 'beta' },
+				'https://example.test/old-alpha/version.json': { version: '0.7.0-alpha.1', channel: 'alpha' },
+			});
+
+			await service.checkServerUpdate();
+
+			const requested = requestedUrls();
+
+			expect(requested).toContain('https://example.test/beta/version.json');
+			expect(requested).not.toContain('https://example.test/alpha/version.json');
+			expect(requested).not.toContain('https://example.test/old-alpha/version.json');
+		});
+
+		it('should skip the stable probe when the releases listing already answered the stable channel', async () => {
+			mockImageInstall('1.0.0');
+			setChannel(UpdateChannelType.STABLE);
+			mockFetchRoutes({
+				[RELEASES_API]: [release('v1.2.0', false, 'https://example.test/stable/version.json')],
+				'https://example.test/stable/version.json': { version: '1.2.0', channel: 'latest' },
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.2.0');
+			expect(requestedUrls()).not.toContain(STABLE_VERSION_JSON);
+		});
+
+		it('should still probe for a stable release the listing could not reach', async () => {
+			mockImageInstall('1.0.0');
+			setChannel(UpdateChannelType.STABLE);
+			mockFetchRoutes({
+				[RELEASES_API]: [release('v1.1.0-alpha.0', true, 'https://example.test/alpha/version.json')],
+				'https://example.test/alpha/version.json': { version: '1.1.0-alpha.0', channel: 'alpha' },
+				[STABLE_VERSION_JSON]: { version: '1.3.0', channel: 'latest' },
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.3.0');
+			expect(result.updateAvailable).toBe(true);
+		});
+
+		it('should still answer from the probe when the releases API is unavailable', async () => {
+			mockImageInstall('1.0.0');
+			setChannel(UpdateChannelType.STABLE);
+			mockFetchRoutes({
+				[STABLE_VERSION_JSON]: { version: '1.3.0', channel: 'latest' },
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.latest).toBe('1.3.0');
+			expect(result.updateAvailable).toBe(true);
 		});
 	});
 

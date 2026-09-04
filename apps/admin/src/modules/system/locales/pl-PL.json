@@ -124,7 +124,8 @@
 			"updateComplete": "Aktualizacja zakończona pomyślnie!",
 			"updateFailed": "Aktualizacja nie powiodła się. Sprawdź logi systemowe, aby uzyskać szczegóły.",
 			"checkFailed": "Nie udało się sprawdzić aktualizacji. Spróbuj ponownie później.",
-			"installFailed": "Nie udało się rozpocząć aktualizacji. Spróbuj ponownie później."
+			"installFailed": "Nie udało się rozpocząć aktualizacji. Spróbuj ponownie później.",
+			"channelNotChanged": "Nie udało się zmienić kanału aktualizacji. Spróbuj ponownie później."
 		}
 	},
 	"texts": {
@@ -155,7 +156,9 @@
 			"checking": "Sprawdzanie aktualizacji...",
 			"installing": "Instalowanie aktualizacji...",
 			"waitingForRestart": "Usługa jest restartowana, proszę czekać...",
-			"noVersionInfo": "Nie udało się pobrać informacji o wersji."
+			"noVersionInfo": "Nie udało się pobrać informacji o wersji.",
+			"lessStableChannel": "Kanał {channel} jest mniej stabilny niż zainstalowana wersja",
+			"lessStableChannelDescription": "Aktualizacje z tego kanału mogą być mniej przetestowane niż używana wersja. W każdej chwili można wrócić; wybrany kanał jest tylko minimum, stabilniejsze wydania nadal są oferowane."
 		},
 		"systemLogs": {
 			"loadingLogs": "Ładowanie logów aplikacji...",
@@ -367,6 +370,17 @@
 			"rawJson": {
 				"title": "Surowy JSON"
 			}
+		},
+		"update": {
+			"channel": {
+				"values": {
+					"auto": "Automatycznie",
+					"autoDetected": "Automatycznie ({channel})",
+					"stable": "Stabilny",
+					"beta": "Beta",
+					"alpha": "Alfa"
+				}
+			}
 		}
 	},
 	"filters": {
@@ -441,7 +455,8 @@
 			"latestVersion": "Najnowsza wersja",
 			"lastChecked": "Ostatnio sprawdzono",
 			"updateStatus": "Status",
-			"actions": "Akcje"
+			"actions": "Akcje",
+			"channel": "Kanał aktualizacji"
 		}
 	},
 	"systemInfo": {

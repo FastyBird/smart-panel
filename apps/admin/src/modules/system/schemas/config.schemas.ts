@@ -14,4 +14,5 @@ export const SystemConfigEditFormSchema = ConfigModuleEditFormSchema.extend({
 	distanceUnit: z.enum(['km', 'miles', 'meters', 'feet']),
 	logLevels: z.array(z.enum(['silent', 'verbose', 'debug', 'trace', 'log', 'info', 'success', 'warn', 'error', 'fail', 'fatal'])).min(1),
 	houseMode: z.enum(['home', 'away', 'night']),
+	updateChannel: z.enum(['auto', 'stable', 'beta', 'alpha']),
 });

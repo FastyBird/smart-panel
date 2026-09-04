@@ -2,18 +2,26 @@ import { existsSync, readFileSync, readdirSync, readlinkSync } from 'fs';
 import { join } from 'path';
 
 import { Injectable } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { Cron } from '@nestjs/schedule';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { compareSemver, getUpdateType } from '../../../common/utils/semver';
+import { EventType as ConfigEventType } from '../../config/config.constants';
+import { ConfigService } from '../../config/services/config.service';
 import {
 	NotificationActionType,
 	NotificationKind,
 	NotificationSeverity,
 } from '../../notifications/notifications.constants';
 import { NotificationsService } from '../../notifications/services/notifications.service';
-import { EventType, SYSTEM_MODULE_NAME, UpdatePhase, UpdateStatusType } from '../system.constants';
+import { SystemConfigModel } from '../models/config.model';
+import { EventType, SYSTEM_MODULE_NAME, UpdateChannelType, UpdatePhase, UpdateStatusType } from '../system.constants';
+
+interface ConfigUpdatedEvent {
+	source: string;
+	type: 'module' | 'plugin';
+}
 
 export type InstallType = 'image' | 'npm';
 
@@ -119,6 +127,7 @@ export class UpdateService {
 	constructor(
 		private readonly eventEmitter: EventEmitter2,
 		private readonly notifications: NotificationsService,
+		private readonly configService: ConfigService,
 	) {}
 
 	getCurrentVersion(): string {
@@ -266,6 +275,70 @@ export class UpdateService {
 	}
 
 	/**
+	 * The channel a lookup will actually run against.
+	 *
+	 * Precedence: an explicit argument (the CLI's `--channel`) beats the operator's configured
+	 * channel, which beats the channel inferred from the installed version. Public because the
+	 * CLI needs the same answer the service uses — it prints the channel it checked and decides
+	 * whether to include pre-releases for the panel from it.
+	 */
+	resolveEffectiveChannel(explicit?: 'latest' | 'beta' | 'alpha'): 'latest' | 'beta' | 'alpha' {
+		return explicit ?? this.resolveConfiguredChannel() ?? this.detectChannel() ?? 'latest';
+	}
+
+	/**
+	 * The operator's configured channel, or null when they have left it on `auto`.
+	 *
+	 * `auto` deliberately resolves to null rather than to a channel of its own: the caller then
+	 * falls back to {@link detectChannel}, which is the behaviour every install had before this
+	 * setting existed. That keeps `auto` a true no-op for devices nobody has touched.
+	 *
+	 * A missing or unreadable config is also `auto` — an update check must never fail because a
+	 * preference could not be read.
+	 */
+	private resolveConfiguredChannel(): 'latest' | 'beta' | 'alpha' | null {
+		let configured: UpdateChannelType | undefined;
+
+		try {
+			configured = this.configService.getModuleConfig<SystemConfigModel>(SYSTEM_MODULE_NAME).updateChannel;
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.warn(`Could not read the configured update channel (${err.message}), falling back to auto`);
+
+			return null;
+		}
+
+		switch (configured) {
+			// `stable` is the operator-facing name for the channel this codebase calls `latest`.
+			case UpdateChannelType.STABLE:
+				return 'latest';
+			case UpdateChannelType.BETA:
+				return 'beta';
+			case UpdateChannelType.ALPHA:
+				return 'alpha';
+			default:
+				return null;
+		}
+	}
+
+	/**
+	 * Drop the cached lookups when the system config changes, so switching the channel is
+	 * reflected by the next check instead of up to 12 hours later. The caches are keyed by
+	 * channel, so a switch would otherwise answer from whichever entry the new channel happens
+	 * to hit — or from none at all, while the *old* channel's stale entry lives on.
+	 */
+	@OnEvent(ConfigEventType.CONFIG_UPDATED)
+	onConfigUpdated(event: ConfigUpdatedEvent): void {
+		if (event.type !== 'module' || event.source !== SYSTEM_MODULE_NAME) {
+			return;
+		}
+
+		this.cachedServerInfo.clear();
+		this.serverCacheExpiresAt.clear();
+	}
+
+	/**
 	 * Channels an install is willing to accept, ordered least → most stable.
 	 *
 	 * A channel is a *minimum stability*, not an exact match. Every pre-release line is
@@ -305,11 +378,13 @@ export class UpdateService {
 	}
 
 	async checkServerUpdate(channel?: 'latest' | 'beta' | 'alpha'): Promise<VersionInfo> {
-		// An install whose own version carries an identifier we do not recognise cannot be placed
-		// on a pre-release line, so it is treated as stable-only: the only thing we can safely
-		// offer it is a release with no pre-release component at all. Normalising here also keeps
-		// the cache keyed by a real channel.
-		const resolvedChannel = channel ?? this.detectChannel() ?? 'latest';
+		// Precedence: an explicit argument (the CLI's --channel) beats the operator's configured
+		// channel, which beats the channel inferred from the installed version. An install whose
+		// own version carries an identifier we do not recognise cannot be placed on a pre-release
+		// line, so it is treated as stable-only: the only thing we can safely offer it is a
+		// release with no pre-release component at all. Normalising here also keeps the cache
+		// keyed by a real channel.
+		const resolvedChannel = this.resolveEffectiveChannel(channel);
 		const cached = this.cachedServerInfo.get(resolvedChannel);
 		const expiresAt = this.serverCacheExpiresAt.get(resolvedChannel) ?? 0;
 
@@ -455,47 +530,65 @@ export class UpdateService {
 		// Keyed by the channel a version *actually* belongs to. Every source feeds this same map
 		// through the same classification, so no source can claim a channel it did not answer.
 		const answered = new Map<'latest' | 'beta' | 'alpha', string>();
-		let apiFailed = false;
+		let apiError: Error | null = null;
+		// A scan that could not read every eligible release's version.json has not ruled out a
+		// newer version, so its answer is provisional even when the listing itself succeeded.
+		let scanComplete = false;
+		// Starts true because the probe only detracts when it was actually needed and ran.
+		let probeConclusive = true;
 
 		// One deadline for the whole lookup. It starts here rather than inside the scan, because
-		// a fall-forward install runs the probe first and the caller waits for both.
+		// the caller may wait for both the listing and the probe.
 		const deadline = Date.now() + UpdateService.GITHUB_LOOKUP_TIMEOUT_MS;
 
-		if (wanted.has('latest')) {
+		// The listing goes first: a single request covers every requested channel at once, so
+		// running it before the stable probe means the probe is only paid for when the listing
+		// could not answer the stable channel itself.
+		try {
+			const scan = await this.fetchVersionsFromReleasesApi(channels, deadline);
+
+			scanComplete = scan.complete;
+
+			for (const version of scan.versions) {
+				this.recordCandidate(answered, wanted, version);
+			}
+		} catch (error) {
+			// A rate-limited or failing API is not fatal on its own — the probe below may still
+			// answer the stable channel — but the channels it would have covered are now unknown
+			// rather than absent.
+			apiError = error as Error;
+
+			this.logger.warn(`Releases API lookup failed (${apiError.message}), falling back to the direct probe`);
+		}
+
+		// `releases/latest` cannot be pushed out of view by a long run of pre-releases the way the
+		// first page of the listing can, so it remains the only way to see a stable release that
+		// sits further back than the listing reaches. It is worth a request only when the listing
+		// left the stable channel unanswered.
+		if (wanted.has('latest') && !answered.has('latest')) {
 			const probed = await this.fetchStableVersionFromDownloadUrl(deadline);
 
 			// The download URL is just another source of a version string. If what it returns is
-			// not in fact stable, the stable channel is still unanswered and the API must cover it.
-			this.recordCandidate(answered, wanted, probed);
+			// not in fact stable, the stable channel simply stays unanswered.
+			this.recordCandidate(answered, wanted, probed.version);
+
+			// The probe settled the channel only if it named a stable version that was then filed,
+			// or if GitHub said there is none to name. A version that came back but was not stable
+			// settles nothing, so the answer stays provisional.
+			probeConclusive = probed.conclusive && (probed.version === null || answered.has('latest'));
 		}
 
-		const remaining = channels.filter((channel) => !answered.has(channel));
-
-		if (remaining.length > 0) {
-			try {
-				for (const version of await this.fetchVersionsFromReleasesApi(remaining, deadline)) {
-					this.recordCandidate(answered, wanted, version);
-				}
-			} catch (error) {
-				const err = error as Error;
-
-				// A rate-limited or failing API must not discard a version we already hold, but the
-				// channels it would have covered are now unknown rather than absent.
-				if (answered.size === 0) {
-					throw error;
-				}
-
-				apiFailed = true;
-
-				this.logger.warn(`Releases API lookup failed (${err.message}), using directly probed version only`);
-			}
+		// Nothing answered and the API is why — the caller cannot be given a truthful "up to date",
+		// so the failure is surfaced rather than reported as an absence of updates.
+		if (answered.size === 0 && apiError !== null) {
+			throw apiError;
 		}
 
 		// Completeness is derived once, here, rather than tracked at each exit path. Since the scan
 		// now reads the whole page instead of stopping at the first hit per channel, having an
 		// answer for every channel no longer proves the search finished — only running out of
 		// neither time nor API does.
-		const complete = !apiFailed && this.requestBudget(deadline) > 0;
+		const complete = apiError === null && scanComplete && probeConclusive && this.requestBudget(deadline) > 0;
 
 		return { version: this.pickHighestVersion([...answered.values()], channels), complete };
 	}
@@ -529,8 +622,17 @@ export class UpdateService {
 	/**
 	 * Probe the stable channel via the direct asset download URL — no API rate limit,
 	 * follows the redirect to the asset of whichever release GitHub marks as latest.
+	 *
+	 * `conclusive` says whether the stable channel was *settled*, which is not the same as
+	 * finding something. A 404 settles it: GitHub is answering that there is no non-pre-release
+	 * release, or that the one there is ships no version.json. Both are persistent states of the
+	 * repository, so reporting them as an incomplete lookup would hold every install on the
+	 * five-minute cache forever — twelve times the polling, permanently, over a settled answer.
+	 * A transport error or any other status settles nothing and must not be cached as absence.
 	 */
-	private async fetchStableVersionFromDownloadUrl(deadline: number): Promise<string | null> {
+	private async fetchStableVersionFromDownloadUrl(
+		deadline: number,
+	): Promise<{ version: string | null; conclusive: boolean }> {
 		try {
 			const response = await fetch(this.GITHUB_VERSION_JSON_URL, {
 				headers: { 'User-Agent': 'FastyBird-SmartPanel' },
@@ -539,37 +641,55 @@ export class UpdateService {
 
 			if (response.ok) {
 				const data = (await response.json()) as { version?: string; channel?: string };
+				const version = data.version?.replace(/^v/, '') ?? null;
 
-				return data.version?.replace(/^v/, '') ?? null;
+				// A readable asset that names no version is malformed, not empty — we still do not
+				// know what the stable channel holds.
+				return { version, conclusive: version !== null };
 			}
 
-			this.logger.debug(`Direct version.json returned ${response.status}, falling back to releases API`);
-		} catch {
-			this.logger.debug('Direct version.json fetch failed, falling back to releases API');
+			if (response.status === 404) {
+				this.logger.debug('No stable release publishes a version.json; the stable channel is empty');
+
+				return { version: null, conclusive: true };
+			}
+
+			this.logger.warn(`Direct version.json returned ${response.status}; the stable channel is unresolved`);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.warn(`Direct version.json fetch failed (${err.message}); the stable channel is unresolved`);
 		}
 
-		return null;
+		return { version: null, conclusive: false };
 	}
 
 	/**
 	 * Query the GitHub releases API for the newest version.json of each requested channel.
 	 *
-	 * Releases come back newest-first, so the first hit for a channel is that channel's head.
-	 * Matching is done on the version.json `channel` field alone rather than on the release's
-	 * `prerelease` flag — the two encode the same thing, and trusting one avoids the case where
-	 * they disagree. The scan stops as soon as every requested channel has an answer, which
-	 * bounds the per-release asset fetches.
+	 * The whole page is read — releases come back newest-*created* first, which is not semver
+	 * order, so stopping at the first hit per channel can miss a higher version further down.
+	 *
+	 * Each release's tag is classified before anything is downloaded, so only releases on a
+	 * requested channel cost an asset fetch. Without that filter a device on a channel with no
+	 * recent releases pays one request per listed release on every lookup, which is the quickest
+	 * way to reach the unauthenticated API's hourly limit and leave every later check partial.
+	 *
+	 * Reports `complete: false` when an eligible release's version.json could not be read. Such a
+	 * read is skipped rather than retried, and the release it was skipped for may be the only one
+	 * carrying a newer version — caching that silence as a full "up to date" would hide an update
+	 * for the whole 12-hour TTL over what is usually a transient failure.
 	 */
 	private async fetchVersionsFromReleasesApi(
 		channels: Array<'latest' | 'beta' | 'alpha'>,
 		deadline: number,
-	): Promise<string[]> {
+	): Promise<{ versions: string[]; complete: boolean }> {
 		// The probe may already have consumed the lookup's budget. Bail out rather than issue a
 		// request with a non-positive timeout, which AbortSignal.timeout rejects outright.
 		if (this.requestBudget(deadline) <= 0) {
 			this.logger.warn('GitHub lookup budget spent before the releases listing; skipping the scan');
 
-			return [];
+			return { versions: [], complete: false };
 		}
 
 		const response = await fetch(`${this.GITHUB_PRERELEASE_API_URL}?per_page=20`, {
@@ -591,23 +711,33 @@ export class UpdateService {
 		}>;
 
 		const versions: string[] = [];
+		const wanted = new Set<'latest' | 'beta' | 'alpha'>(channels);
+		let complete = true;
 
-		// The whole page is read rather than stopping at the first hit per channel: releases are
-		// listed newest-created first, so stopping early can miss a higher version further down.
 		// The caller keeps the highest per channel and treats a budget-truncated read as partial.
 		for (const release of releases) {
+			// The tag already names the version, so a release on a channel nobody asked for can be
+			// dropped before it costs a request. Only a tag that classifies to a *known* channel is
+			// trusted to exclude — an unrecognised one falls through to version.json, which may
+			// still name an accepted version.
+			const taggedChannel = this.detectChannel(release.tag_name);
+
+			if (taggedChannel !== null && !wanted.has(taggedChannel)) continue;
+
+			const versionAsset = release.assets.find((a) => a.name === 'version.json');
+
+			if (!versionAsset) continue;
+
 			if (this.requestBudget(deadline) <= 0) {
 				this.logger.warn(
 					`GitHub lookup hit its ${UpdateService.GITHUB_LOOKUP_TIMEOUT_MS}ms budget after reading ` +
 						`${versions.length} release(s); continuing with partial results`,
 				);
 
+				complete = false;
+
 				break;
 			}
-
-			const versionAsset = release.assets.find((a) => a.name === 'version.json');
-
-			if (!versionAsset) continue;
 
 			try {
 				const assetResponse = await fetch(versionAsset.browser_download_url, {
@@ -615,7 +745,15 @@ export class UpdateService {
 					signal: AbortSignal.timeout(this.requestBudget(deadline)),
 				});
 
-				if (!assetResponse.ok) continue;
+				if (!assetResponse.ok) {
+					this.logger.warn(
+						`version.json for ${release.tag_name} returned ${assetResponse.status}; the scan is incomplete`,
+					);
+
+					complete = false;
+
+					continue;
+				}
 
 				const versionData = (await assetResponse.json()) as { version?: string; channel?: string };
 				const version = versionData.version?.replace(/^v/, '');
@@ -624,13 +762,23 @@ export class UpdateService {
 				// workflow and is never consulted — the caller classifies from the version itself.
 				if (version) {
 					versions.push(version);
+				} else {
+					// The asset was readable but names no version, so this release contributes
+					// nothing and we cannot tell whether it was newer.
+					complete = false;
 				}
-			} catch {
-				continue;
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.warn(
+					`Could not read version.json for ${release.tag_name} (${err.message}); the scan is incomplete`,
+				);
+
+				complete = false;
 			}
 		}
 
-		return versions;
+		return { versions, complete };
 	}
 
 	/**

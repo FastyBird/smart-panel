@@ -124,7 +124,8 @@
 			"updateComplete": "¡Actualización completada correctamente!",
 			"updateFailed": "La actualización falló. Por favor, revisa los registros del sistema para más detalles.",
 			"checkFailed": "No se pudo verificar si hay actualizaciones. Por favor, inténtalo de nuevo más tarde.",
-			"installFailed": "No se pudo iniciar la actualización. Por favor, inténtalo de nuevo más tarde."
+			"installFailed": "No se pudo iniciar la actualización. Por favor, inténtalo de nuevo más tarde.",
+			"channelNotChanged": "No se pudo cambiar el canal de actualizaciones. Por favor, inténtalo de nuevo más tarde."
 		}
 	},
 	"texts": {
@@ -155,7 +156,9 @@
 			"checking": "Verificando actualizaciones...",
 			"installing": "Instalando actualización...",
 			"waitingForRestart": "El servicio se está reiniciando, por favor espera...",
-			"noVersionInfo": "No se pudo obtener la información de la versión."
+			"noVersionInfo": "No se pudo obtener la información de la versión.",
+			"lessStableChannel": "El canal {channel} es menos estable que la versión instalada",
+			"lessStableChannelDescription": "Las actualizaciones de este canal pueden estar menos probadas que la versión que utiliza. Puede volver atrás en cualquier momento; el canal elegido es solo un mínimo, las versiones más estables se siguen ofreciendo."
 		},
 		"systemLogs": {
 			"loadingLogs": "Cargando registros de la aplicación...",
@@ -367,6 +370,17 @@
 			"rawJson": {
 				"title": "JSON sin procesar"
 			}
+		},
+		"update": {
+			"channel": {
+				"values": {
+					"auto": "Automático",
+					"autoDetected": "Automático ({channel})",
+					"stable": "Estable",
+					"beta": "Beta",
+					"alpha": "Alfa"
+				}
+			}
 		}
 	},
 	"filters": {
@@ -441,7 +455,8 @@
 			"latestVersion": "Última versión",
 			"lastChecked": "Última verificación",
 			"updateStatus": "Estado",
-			"actions": "Acciones"
+			"actions": "Acciones",
+			"channel": "Canal de actualizaciones"
 		}
 	},
 	"systemInfo": {
