@@ -68,6 +68,30 @@ const notificationFixture = (overrides: Partial<INotificationRes> = {}): INotifi
 		...overrides,
 	}) as unknown as INotificationRes;
 
+const listResponse = (rows: INotificationRes[]) => ({
+	data: { data: rows, metadata: { has_more: false, next_cursor: undefined } },
+	error: undefined,
+	response: { status: 200, ok: true },
+});
+
+const rowResponse = (row: INotificationRes) => ({
+	data: { data: row },
+	error: undefined,
+	response: { status: 200, ok: true },
+});
+
+// A list response whose completion the test controls, so two overlapping reads can be answered
+// in the order the test chooses.
+const deferredListResponse = (): { promise: Promise<ReturnType<typeof listResponse>>; resolve: (rows: INotificationRes[]) => void } => {
+	let resolve!: (rows: INotificationRes[]) => void;
+
+	const promise = new Promise<ReturnType<typeof listResponse>>((settle) => {
+		resolve = (rows: INotificationRes[]): void => settle(listResponse(rows));
+	});
+
+	return { promise, resolve };
+};
+
 describe('Notifications Store', () => {
 	let store: ReturnType<typeof useNotifications>;
 
@@ -186,18 +210,6 @@ describe('Notifications Store', () => {
 	});
 
 	describe('live list', () => {
-		const listResponse = (rows: INotificationRes[]) => ({
-			data: { data: rows, metadata: { has_more: false, next_cursor: undefined } },
-			error: undefined,
-			response: { status: 200, ok: true },
-		});
-
-		const rowResponse = (row: INotificationRes) => ({
-			data: { data: row },
-			error: undefined,
-			response: { status: 200, ok: true },
-		});
-
 		it('slots a row read through get() at the top of the open list when it matches the list query', async () => {
 			const listed = notificationFixture({ id: uuid() });
 			const created = notificationFixture({ id: uuid() });
@@ -292,6 +304,84 @@ describe('Notifications Store', () => {
 			await store.get({ id: created.id });
 
 			expect(store.list().map((item) => item.id)).toEqual([created.id, first.id, second.id]);
+		});
+	});
+
+	describe('overlapping list reads', () => {
+		it('lets the newest plain read own the list and its query, even when an older read answers last', async () => {
+			const activeRow = notificationFixture({ id: uuid() });
+			const dismissedRow = notificationFixture({ id: uuid(), dismissed_at: '2026-09-02T12:30:00.000Z' });
+
+			const older = deferredListResponse();
+			const newer = deferredListResponse();
+
+			mockBackendClient.GET.mockImplementationOnce(() => older.promise).mockImplementationOnce(() => newer.promise);
+
+			const olderFetch = store.fetch({ status: 'active' });
+			const newerFetch = store.fetch({ status: 'all' });
+
+			newer.resolve([activeRow, dismissedRow]);
+
+			await newerFetch;
+
+			older.resolve([activeRow]);
+
+			await olderFetch;
+
+			expect(store.list().map((item) => item.id)).toEqual([activeRow.id, dismissedRow.id]);
+
+			// The remembered query is the newer read's "all": a dismissed row arriving now is listed.
+			const laterDismissed = notificationFixture({ id: uuid(), dismissed_at: '2026-09-02T13:00:00.000Z' });
+
+			mockBackendClient.GET.mockResolvedValueOnce(rowResponse(laterDismissed));
+
+			await store.get({ id: laterDismissed.id });
+
+			expect(store.list()[0]?.id).toBe(laterDismissed.id);
+		});
+
+		it('drops an appended page that answers after the list was re-read under other filters, while still storing its rows', async () => {
+			const pageOne = notificationFixture({ id: uuid() });
+			const pageTwo = notificationFixture({ id: uuid() });
+			const fresh = notificationFixture({ id: uuid() });
+
+			mockBackendClient.GET.mockResolvedValueOnce(listResponse([pageOne]));
+
+			await store.fetch({ status: 'active' });
+
+			const appended = deferredListResponse();
+			const reread = deferredListResponse();
+
+			mockBackendClient.GET.mockImplementationOnce(() => appended.promise).mockImplementationOnce(() => reread.promise);
+
+			const appendFetch = store.fetch({ status: 'active', afterId: pageOne.id, append: true });
+			const rereadFetch = store.fetch({ status: 'all' });
+
+			reread.resolve([fresh]);
+
+			await rereadFetch;
+
+			appended.resolve([pageTwo]);
+
+			await appendFetch;
+
+			expect(store.list().map((item) => item.id)).toEqual([fresh.id]);
+			expect(store.findById(pageTwo.id)).not.toBeNull();
+		});
+
+		it('still appends a page that answers while its own read is the current one', async () => {
+			const pageOne = notificationFixture({ id: uuid() });
+			const pageTwo = notificationFixture({ id: uuid() });
+
+			mockBackendClient.GET.mockResolvedValueOnce(listResponse([pageOne]));
+
+			await store.fetch({ status: 'active' });
+
+			mockBackendClient.GET.mockResolvedValueOnce(listResponse([pageTwo]));
+
+			await store.fetch({ status: 'active', afterId: pageOne.id, append: true });
+
+			expect(store.list().map((item) => item.id)).toEqual([pageOne.id, pageTwo.id]);
 		});
 	});
 

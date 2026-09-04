@@ -233,6 +233,13 @@ export const useNotifications = defineStore<'notifications_module-notifications'
 		// against before slotting it into the open list.
 		let listQuery: INotificationsListQuery | null = null;
 
+		// Which read of the list is the current one. A plain `fetch()` starts a new generation; an
+		// appended page belongs to the generation it was requested under. List requests are allowed
+		// to overlap, so a response can land after a newer read has already replaced the list - its
+		// rows still go into `items`, but only the current generation may shape `listIds`, the
+		// remembered query and the paging state.
+		let listGeneration = 0;
+
 		const hasMore = ref<boolean>(false);
 		const nextCursor = ref<string | undefined>(undefined);
 
@@ -414,6 +421,8 @@ export const useNotifications = defineStore<'notifications_module-notifications'
 		let inFlightFetchCount = 0;
 
 		const fetch = async (payload?: INotificationsFetchActionPayload): Promise<INotification[]> => {
+			const generation = payload?.append ? listGeneration : ++listGeneration;
+
 			inFlightFetchCount += 1;
 			semaphore.value.fetching.items = true;
 
@@ -461,20 +470,22 @@ export const useNotifications = defineStore<'notifications_module-notifications'
 						pageIds.push(transformed.id);
 					}
 
-					listIds.value = payload?.append ? [...listIds.value, ...pageIds.filter((id) => !listIds.value.includes(id))] : pageIds;
+					if (generation === listGeneration) {
+						listIds.value = payload?.append ? [...listIds.value, ...pageIds.filter((id) => !listIds.value.includes(id))] : pageIds;
 
-					if (!payload?.append) {
-						listQuery = {
-							status: payload?.status,
-							severity: payload?.severity,
-							source: payload?.source,
-							kind: payload?.kind,
-							unread: payload?.unread,
-						};
+						if (!payload?.append) {
+							listQuery = {
+								status: payload?.status,
+								severity: payload?.severity,
+								source: payload?.source,
+								kind: payload?.kind,
+								unread: payload?.unread,
+							};
+						}
+
+						hasMore.value = responseData.metadata.has_more;
+						nextCursor.value = responseData.metadata.next_cursor;
 					}
-
-					hasMore.value = responseData.metadata.has_more;
-					nextCursor.value = responseData.metadata.next_cursor;
 
 					firstLoad.value = true;
 
