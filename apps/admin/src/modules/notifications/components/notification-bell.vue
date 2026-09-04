@@ -12,10 +12,15 @@
 				count sits on the circle's corner the way every other badge-on-a-button does, instead of
 				overlapping the icon itself.
 			-->
+			<!--
+				The top bar is 44px tall inside an overflow-hidden container, and a badge sits half its
+				height above the button it wraps - `offset` moves it down just enough to stay inside.
+			-->
 			<el-badge
 				:value="unreadCount"
 				:hidden="unreadCount === 0"
 				:max="99"
+				:offset="[0, 4]"
 				class="notification-bell"
 			>
 				<el-button

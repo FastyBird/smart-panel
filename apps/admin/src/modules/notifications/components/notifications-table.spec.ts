@@ -153,7 +153,7 @@ describe('NotificationsTable', () => {
 			expect(avatars[1].classes()).toContain('notifications-table__icon--info');
 		});
 
-		it('marks unread rows and drops the marker once read', async () => {
+		it('marks unread rows and drops the mark once read', async () => {
 			const wrapper = await mountTable({
 				items: [
 					notification({ id: 'a1111111-1111-4111-8111-111111111111' }),
@@ -163,8 +163,8 @@ describe('NotificationsTable', () => {
 
 			const rows = wrapper.findAll('.el-table__row');
 
-			expect(rows[0].find('.notifications-table__unread').exists()).toBe(true);
-			expect(rows[1].find('.notifications-table__unread').exists()).toBe(false);
+			expect(rows[0].classes()).toContain('is-unread');
+			expect(rows[1].classes()).not.toContain('is-unread');
 		});
 
 		it('toggles the source filter from the source column', async () => {

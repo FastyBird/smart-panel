@@ -5,9 +5,10 @@
 		:data="props.items"
 		table-layout="fixed"
 		row-key="id"
-		class="flex-grow"
+		class="notifications-table flex-grow"
 		:style="{ maxHeight: props.tableHeight + 'px' }"
 		:max-height="props.tableHeight"
+		:row-class-name="rowClassName"
 		@selection-change="onSelectionChange"
 		@row-click="onRowClick"
 	>
@@ -103,25 +104,23 @@
 			align="center"
 		>
 			<template #default="scope">
-				<el-avatar
-					:size="32"
-					:class="['notifications-table__icon', `notifications-table__icon--${(scope.row as INotification).severity}`]"
+				<el-tooltip
+					:content="t(`notificationsModule.severity.${(scope.row as INotification).severity}`)"
+					placement="top"
+					:show-after="500"
 				>
-					<icon
-						:icon="SEVERITY_ICONS[(scope.row as INotification).severity]"
-						class="w-[20px] h-[20px]"
-					/>
-				</el-avatar>
-			</template>
-		</el-table-column>
-
-		<el-table-column
-			:label="t('notificationsModule.table.columns.severity.title')"
-			prop="severity"
-			:width="110"
-		>
-			<template #default="scope">
-				<notification-severity-tag :severity="(scope.row as INotification).severity" />
+					<el-avatar
+						:size="32"
+						:class="['notifications-table__icon', `notifications-table__icon--${(scope.row as INotification).severity}`]"
+						role="img"
+						:aria-label="t(`notificationsModule.severity.${(scope.row as INotification).severity}`)"
+					>
+						<icon
+							:icon="SEVERITY_ICONS[(scope.row as INotification).severity]"
+							class="w-[20px] h-[20px]"
+						/>
+					</el-avatar>
+				</el-tooltip>
 			</template>
 		</el-table-column>
 
@@ -132,31 +131,15 @@
 			class-name="py-0!"
 		>
 			<template #default="scope">
-				<template v-if="(scope.row as INotification).message">
-					<strong class="block">
-						<span
-							v-if="(scope.row as INotification).readAt === null"
-							class="notifications-table__unread"
-							:title="t('notificationsModule.fields.notifications.readAt.no')"
-						/>
-						{{ (scope.row as INotification).title }}
-					</strong>
-					<el-text
-						size="small"
-						class="block leading-4"
-						truncated
-					>
-						{{ (scope.row as INotification).message }}
-					</el-text>
-				</template>
-				<template v-else>
-					<span
-						v-if="(scope.row as INotification).readAt === null"
-						class="notifications-table__unread"
-						:title="t('notificationsModule.fields.notifications.readAt.no')"
-					/>
-					{{ (scope.row as INotification).title }}
-				</template>
+				<span class="notifications-table__title block">{{ (scope.row as INotification).title }}</span>
+				<el-text
+					v-if="(scope.row as INotification).message"
+					size="small"
+					class="block leading-4"
+					truncated
+				>
+					{{ (scope.row as INotification).message }}
+				</el-text>
 			</template>
 		</el-table-column>
 
@@ -293,7 +276,6 @@ import type { INotificationsFilter } from '../schemas/list.schemas';
 import type { INotification } from '../store/notifications.store.schemas';
 
 import NotificationActions from './notification-actions.vue';
-import NotificationSeverityTag from './notification-severity-tag.vue';
 
 defineOptions({
 	name: 'NotificationsTable',
@@ -324,6 +306,9 @@ const innerFilters = useVModel(props, 'filters', emit);
 
 const formatFull = (date: Date): string => date.toLocaleString();
 
+// Unread rows read like unread mail: a heavier title, nothing else.
+const rowClassName = ({ row }: { row: INotification }): string => (row.readAt === null ? 'is-unread' : '');
+
 const onSelectionChange = (selected: INotification[]): void => {
 	emit('selected-changes', selected);
 };
@@ -349,13 +334,7 @@ const onFilterBySource = (source: INotification['source']): void => {
 	--el-avatar-bg-color: var(--el-color-danger);
 }
 
-.notifications-table__unread {
-	display: inline-block;
-	width: 0.5rem;
-	height: 0.5rem;
-	margin-right: 0.375rem;
-	border-radius: 50%;
-	background-color: var(--el-color-primary);
-	vertical-align: middle;
+.notifications-table :deep(.el-table__row.is-unread .notifications-table__title) {
+	font-weight: 600;
 }
 </style>
