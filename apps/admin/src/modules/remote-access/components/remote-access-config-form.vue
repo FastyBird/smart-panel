@@ -46,18 +46,23 @@
 
 		<el-divider />
 
+		<el-alert
+			type="info"
+			:title="t('remoteAccessModule.config.proxyTrust.title')"
+			:description="t('remoteAccessModule.config.proxyTrust.description')"
+			:closable="false"
+		/>
+
 		<el-form-item
 			:label="t('remoteAccessModule.fields.config.trustForwardedHeaders.title')"
 			prop="trustForwardedHeaders"
 			label-position="left"
+			class="mt-3"
 		>
 			<el-switch
 				v-model="model.trustForwardedHeaders"
 				name="trustForwardedHeaders"
 			/>
-			<div class="w-full text-sm text-gray-500 mt-1">
-				{{ t('remoteAccessModule.fields.config.trustForwardedHeaders.description') }}
-			</div>
 		</el-form-item>
 
 		<el-form-item

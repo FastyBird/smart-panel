@@ -6,18 +6,23 @@
 		label-position="top"
 		status-icon
 	>
+		<el-alert
+			type="info"
+			:title="t('remoteAccessTailscalePlugin.config.sections.node.title')"
+			:description="t('remoteAccessTailscalePlugin.config.sections.node.description')"
+			:closable="false"
+		/>
+
 		<el-form-item
 			:label="t('remoteAccessTailscalePlugin.fields.config.hostname.title')"
 			prop="hostname"
+			class="mt-3"
 		>
 			<el-input
 				v-model="model.hostname"
 				:placeholder="t('remoteAccessTailscalePlugin.fields.config.hostname.placeholder')"
 				name="hostname"
 			/>
-			<div class="text-sm text-gray-500 mt-1">
-				{{ t('remoteAccessTailscalePlugin.fields.config.hostname.description') }}
-			</div>
 		</el-form-item>
 
 		<el-form-item
@@ -36,18 +41,23 @@
 
 		<el-divider />
 
+		<el-alert
+			type="info"
+			:title="t('remoteAccessTailscalePlugin.config.sections.tailnet.title')"
+			:description="t('remoteAccessTailscalePlugin.config.sections.tailnet.description')"
+			:closable="false"
+		/>
+
 		<el-form-item
 			:label="t('remoteAccessTailscalePlugin.fields.config.acceptDns.title')"
 			prop="acceptDns"
 			label-position="left"
+			class="mt-3"
 		>
 			<el-switch
 				v-model="model.acceptDns"
 				name="acceptDns"
 			/>
-			<div class="w-full text-sm text-gray-500 mt-1">
-				{{ t('remoteAccessTailscalePlugin.fields.config.acceptDns.description') }}
-			</div>
 		</el-form-item>
 
 		<el-form-item
@@ -59,9 +69,6 @@
 				v-model="model.acceptRoutes"
 				name="acceptRoutes"
 			/>
-			<div class="w-full text-sm text-gray-500 mt-1">
-				{{ t('remoteAccessTailscalePlugin.fields.config.acceptRoutes.description') }}
-			</div>
 		</el-form-item>
 
 		<el-form-item
@@ -99,25 +106,27 @@
 				v-model="model.ssh"
 				name="ssh"
 			/>
-			<div class="w-full text-sm text-gray-500 mt-1">
-				{{ t('remoteAccessTailscalePlugin.fields.config.ssh.description') }}
-			</div>
 		</el-form-item>
 
-		<el-divider content-position="left">{{ t('remoteAccessTailscalePlugin.headings.serve') }}</el-divider>
+		<el-divider />
+
+		<el-alert
+			type="info"
+			:title="t('remoteAccessTailscalePlugin.config.sections.serve.title')"
+			:description="t('remoteAccessTailscalePlugin.config.sections.serve.description')"
+			:closable="false"
+		/>
 
 		<el-form-item
 			:label="t('remoteAccessTailscalePlugin.fields.config.serveHttps.title')"
 			prop="serveHttps"
 			label-position="left"
+			class="mt-3"
 		>
 			<el-switch
 				v-model="model.serveHttps"
 				name="serveHttps"
 			/>
-			<div class="w-full text-sm text-gray-500 mt-1">
-				{{ t('remoteAccessTailscalePlugin.fields.config.serveHttps.description') }}
-			</div>
 		</el-form-item>
 
 		<el-form-item
@@ -129,9 +138,6 @@
 				v-model="model.funnel"
 				name="funnel"
 			/>
-			<div class="w-full text-sm text-gray-500 mt-1">
-				{{ t('remoteAccessTailscalePlugin.fields.config.funnel.description') }}
-			</div>
 		</el-form-item>
 
 		<el-alert

@@ -1,9 +1,25 @@
 {
 	"headings": {
-		"tailscale": "Tailscale",
-		"serve": "Serve y Funnel"
+		"tailscale": "Tailscale"
+	},
+	"config": {
+		"sections": {
+			"node": {
+				"title": "Identidad del nodo",
+				"description": "Nombre de host anunciado a la tailnet y plano de control en el que inicia sesión este nodo. Cambia el servidor de inicio de sesión solo para un Headscale autoalojado."
+			},
+			"tailnet": {
+				"title": "Opciones de la tailnet",
+				"description": "Cómo participa este nodo en la tailnet: MagicDNS, rutas de subred anunciadas por otros nodos, etiquetas ACL y Tailscale SSH."
+			},
+			"serve": {
+				"title": "Serve y Funnel",
+				"description": "Serve publica la interfaz de administración en tu tailnet por HTTPS con el nombre MagicDNS del nodo. Funnel además la expone en internet."
+			}
+		}
 	},
 	"texts": {
+		"cardDescription": "Acceso privado a través de tu tailnet, con HTTPS mediante Tailscale Serve.",
 		"funnelWarning": "Funnel publica esta instalación en internet. El inicio de sesión de Smart Panel es la única protección."
 	},
 	"buttons": {

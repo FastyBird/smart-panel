@@ -1,9 +1,25 @@
 {
 	"headings": {
-		"tailscale": "Tailscale",
-		"serve": "Serve & Funnel"
+		"tailscale": "Tailscale"
+	},
+	"config": {
+		"sections": {
+			"node": {
+				"title": "Node identity",
+				"description": "Hostname advertised to the tailnet and the control plane this node signs in to. Change the login server only for a self-hosted Headscale."
+			},
+			"tailnet": {
+				"title": "Tailnet options",
+				"description": "How this node takes part in the tailnet: MagicDNS, subnet routes advertised by other nodes, ACL tags and Tailscale SSH."
+			},
+			"serve": {
+				"title": "Serve and Funnel",
+				"description": "Serve publishes the admin UI to your tailnet over HTTPS at the node's MagicDNS name. Funnel additionally exposes it to the public internet."
+			}
+		}
 	},
 	"texts": {
+		"cardDescription": "Private access over your tailnet, with HTTPS through Tailscale Serve.",
 		"funnelWarning": "Funnel publishes this installation to the public internet. Smart Panel sign-in is the only gate protecting it."
 	},
 	"buttons": {

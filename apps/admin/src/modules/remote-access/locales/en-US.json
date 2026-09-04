@@ -6,7 +6,9 @@
 		"remoteAccess": "Remote access",
 		"accessUrls": "Access URLs",
 		"internalUrl": "Internal access",
-		"externalUrls": "External access",
+		"externalUrls": "External access"
+	},
+	"tabs": {
 		"providers": "Providers",
 		"advisories": "Advisories"
 	},
@@ -50,7 +52,13 @@
 		"noProviders": "No remote access providers are installed.",
 		"noEndpoints": "This provider is not publishing any endpoints yet.",
 		"noAdvisories": "No advisories. Your remote access posture looks good.",
+		"moduleSource": "Module",
 		"qrAlt": "QR code encoding this URL"
+	},
+	"severity": {
+		"critical": "Critical",
+		"warning": "Warning",
+		"info": "Info"
 	},
 	"status": {
 		"unsupported": "Unsupported",
@@ -73,11 +81,21 @@
 	},
 	"config": {
 		"about": {
-			"title": "Remote access settings",
-			"description": "Configure the internal and external URLs this installation is reachable at, and which reverse proxies are trusted to present forwarded client addresses. Enable or disable the module itself from the Extensions page."
+			"title": "Access URLs",
+			"description": "Internal and external origins this installation is reachable at. Leave the internal URL empty to derive it from the network; set the external URL only for a hand-built reverse proxy or DDNS host. Enable or disable the module itself from the Extensions page."
+		},
+		"proxyTrust": {
+			"title": "Proxy trust",
+			"description": "Forwarded client addresses are honoured only when the request comes from one of the trusted proxies listed here. Providers such as Tailscale Serve add their own proxy automatically."
 		}
 	},
 	"fields": {
+		"advisory": {
+			"severity": "Severity",
+			"message": "Message",
+			"provider": "Provider",
+			"code": "Code"
+		},
 		"config": {
 			"internalUrl": {
 				"title": "Internal URL",

@@ -6,7 +6,9 @@
 		"remoteAccess": "Fernzugriff",
 		"accessUrls": "Zugriffs-URLs",
 		"internalUrl": "Interner Zugriff",
-		"externalUrls": "Externer Zugriff",
+		"externalUrls": "Externer Zugriff"
+	},
+	"tabs": {
 		"providers": "Anbieter",
 		"advisories": "Hinweise"
 	},
@@ -50,7 +52,13 @@
 		"noProviders": "Es sind keine Fernzugriffsanbieter installiert.",
 		"noEndpoints": "Dieser Anbieter veröffentlicht noch keine Endpunkte.",
 		"noAdvisories": "Keine Hinweise. Der Status des Fernzugriffs sieht gut aus.",
+		"moduleSource": "Modul",
 		"qrAlt": "QR-Code, der diese URL codiert"
+	},
+	"severity": {
+		"critical": "Kritisch",
+		"warning": "Warnung",
+		"info": "Info"
 	},
 	"status": {
 		"unsupported": "Nicht unterstützt",
@@ -73,11 +81,21 @@
 	},
 	"config": {
 		"about": {
-			"title": "Fernzugriffseinstellungen",
-			"description": "Konfigurieren Sie die interne und externe URL, unter der diese Installation erreichbar ist, sowie die Reverse-Proxys, denen bei der Weitergabe von Client-Adressen vertraut wird. Das Modul selbst wird auf der Seite Erweiterungen aktiviert oder deaktiviert."
+			"title": "Zugriffs-URLs",
+			"description": "Interner und externer Origin, unter dem diese Installation erreichbar ist. Lassen Sie die interne URL leer, damit sie aus dem Netzwerk abgeleitet wird; setzen Sie die externe URL nur für einen selbst eingerichteten Reverse-Proxy oder DDNS-Host. Das Modul selbst wird auf der Seite Erweiterungen aktiviert oder deaktiviert."
+		},
+		"proxyTrust": {
+			"title": "Proxy-Vertrauen",
+			"description": "Weitergeleitete Client-Adressen werden nur berücksichtigt, wenn die Anfrage von einem der hier aufgeführten vertrauenswürdigen Proxys stammt. Anbieter wie Tailscale Serve fügen ihren eigenen Proxy automatisch hinzu."
 		}
 	},
 	"fields": {
+		"advisory": {
+			"severity": "Schweregrad",
+			"message": "Nachricht",
+			"provider": "Anbieter",
+			"code": "Code"
+		},
 		"config": {
 			"internalUrl": {
 				"title": "Interne URL",

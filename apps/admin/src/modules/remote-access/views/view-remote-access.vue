@@ -30,11 +30,14 @@
 	<div
 		v-loading="isLoading"
 		:element-loading-text="t('remoteAccessModule.texts.loadingStatus')"
-		class="flex flex-col gap-4"
+		class="flex flex-col flex-1 min-h-0 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
 	>
-		<remote-access-status-banner />
+		<remote-access-status-banner class="mt-2 shrink-0" />
 
-		<el-card shadow="never">
+		<el-card
+			shadow="never"
+			class="mt-2 shrink-0"
+		>
 			<template #header>
 				{{ t('remoteAccessModule.headings.accessUrls') }}
 			</template>
@@ -42,36 +45,70 @@
 			<access-urls-list />
 		</el-card>
 
-		<el-card shadow="never">
-			<template #header>
-				{{ t('remoteAccessModule.headings.providers') }}
-			</template>
+		<el-card
+			shadow="never"
+			class="flex-1 min-h-0 flex flex-col mt-2"
+			body-class="p-0! flex-1 min-h-0 flex flex-col"
+		>
+			<el-tabs
+				v-model="activeTab"
+				:class="['flex-1 min-h-0 flex flex-col', ns.e('tabs')]"
+			>
+				<el-tab-pane
+					name="providers"
+					class="h-full overflow-hidden"
+				>
+					<template #label>
+						<div class="flex items-center gap-2 px-4">
+							<icon icon="mdi:lan-connect" />
+							{{ t('remoteAccessModule.tabs.providers') }}
+						</div>
+					</template>
 
-			<provider-cards />
-		</el-card>
+					<el-scrollbar class="h-full">
+						<div class="p-3">
+							<provider-cards />
+						</div>
+					</el-scrollbar>
+				</el-tab-pane>
 
-		<el-card shadow="never">
-			<template #header>
-				{{ t('remoteAccessModule.headings.advisories') }}
-			</template>
+				<el-tab-pane
+					name="advisories"
+					class="h-full overflow-hidden"
+				>
+					<template #label>
+						<div class="flex items-center gap-2 px-4">
+							<icon icon="mdi:shield-alert-outline" />
+							{{ t('remoteAccessModule.tabs.advisories') }}
+							<el-tag
+								v-if="advisories.length > 0"
+								size="small"
+								:type="advisoriesTagType"
+							>
+								{{ advisories.length }}
+							</el-tag>
+						</div>
+					</template>
 
-			<advisories-list />
+					<advisories-table />
+				</el-tab-pane>
+			</el-tabs>
 		</el-card>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount } from 'vue';
+import { computed, onBeforeMount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationRaw, useRouter } from 'vue-router';
 
-import { ElCard, vLoading } from 'element-plus';
+import { ElCard, ElScrollbar, ElTabPane, ElTabs, ElTag, useNamespace, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints, useFlashMessage } from '../../../common';
-import { AccessUrlsList, AdvisoriesList, ProviderCards, RemoteAccessStatusBanner } from '../components/components';
+import { AccessUrlsList, AdvisoriesTable, ProviderCards, RemoteAccessStatusBanner } from '../components/components';
 import { useRemoteAccessStatus } from '../composables';
 import { RouteNames } from '../remote-access.constants';
 
@@ -82,11 +119,19 @@ defineOptions({
 const router = useRouter();
 const { t } = useI18n();
 
+const ns = useNamespace('view-remote-access');
+
 const { isMDDevice } = useBreakpoints();
 
 const flashMessage = useFlashMessage();
 
-const { isLoading, fetchStatus } = useRemoteAccessStatus();
+const { isLoading, advisories, fetchStatus } = useRemoteAccessStatus();
+
+const activeTab = ref<string>('providers');
+
+const advisoriesTagType = computed<'warning' | 'danger'>((): 'warning' | 'danger' => {
+	return advisories.value.some((advisory) => advisory.severity === 'critical') ? 'danger' : 'warning';
+});
 
 const breadcrumbs = computed<{ label: string; route: RouteLocationRaw }[]>((): { label: string; route: RouteLocationRaw }[] => {
 	return [
@@ -109,3 +154,7 @@ useMeta({
 	title: t('remoteAccessModule.meta.remoteAccess.title'),
 });
 </script>
+
+<style lang="scss">
+@use 'view-remote-access.scss';
+</style>
