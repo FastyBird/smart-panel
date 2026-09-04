@@ -34,7 +34,12 @@ export class UpdateServerCommand extends CommandRunner {
 	}
 
 	async run(_passedParams: string[], options?: UpdateServerOptions): Promise<void> {
-		const channel = (options?.channel as 'latest' | 'beta' | 'alpha') || 'latest';
+		// No --channel means "whatever this install is set to", the same answer the HTTP API and the
+		// scheduled check give. Defaulting to 'latest' here made a bare run report a beta or alpha
+		// device against the stable channel only, and so under-report available updates.
+		const channel = this.updateService.resolveEffectiveChannel(
+			options?.channel as 'latest' | 'beta' | 'alpha' | undefined,
+		);
 		const skipConfirm = options?.yes ?? false;
 		const allowMajor = options?.allowMajor ?? false;
 		const skipRestart = options?.skipRestart ?? false;
@@ -536,8 +541,7 @@ export class UpdateServerCommand extends CommandRunner {
 
 	@Option({
 		flags: '-c, --channel <channel>',
-		description: 'Release channel (latest, beta, alpha)',
-		defaultValue: 'latest',
+		description: 'Release channel (latest, beta, alpha). Defaults to the configured channel.',
 	})
 	parseChannel(val: string): string {
 		const allowed = ['latest', 'beta', 'alpha'];

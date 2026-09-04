@@ -68,6 +68,24 @@ export enum UpdatePhase {
 	FAILED = 'failed',
 }
 
+/**
+ * Release channel the update check is willing to accept, as chosen by the operator.
+ *
+ * This is a *minimum stability*, not an exact match: a device set to `BETA` is offered betas and
+ * stable releases, never alphas. `AUTO` keeps the historical behaviour of inferring the channel
+ * from the installed version, which is right for a device that should simply follow the line it
+ * was installed from.
+ *
+ * `STABLE` is spelled out rather than reusing npm's `latest`, which reads as "newest" to an
+ * operator when it actually means "newest stable". The mapping lives in UpdateService.
+ */
+export enum UpdateChannelType {
+	AUTO = 'auto',
+	STABLE = 'stable',
+	BETA = 'beta',
+	ALPHA = 'alpha',
+}
+
 export enum LogEntryType {
 	SILENT = 'silent',
 	VERBOSE = 'verbose',

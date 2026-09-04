@@ -10,6 +10,7 @@ import {
 	SystemModulePrecipitationUnit,
 	SystemModulePressureUnit,
 	SystemModuleTimeFormat,
+	SystemModuleUpdateChannel,
 	SystemModuleWindSpeedUnit,
 	TemperatureUnit,
 } from '../../../openapi.constants';
@@ -36,6 +37,8 @@ export const SystemConfigSchema = ConfigModuleSchema.extend({
 	logLevels: z.array(z.nativeEnum(SystemModuleLogEntryType)),
 	houseMode: z.nativeEnum(SystemModuleHouseMode),
 	onboardingCompleted: z.boolean().default(false),
+	// Defaulted rather than required so a backend that predates the setting still parses.
+	updateChannel: z.nativeEnum(SystemModuleUpdateChannel).default(SystemModuleUpdateChannel.auto),
 });
 
 // BACKEND API
@@ -57,6 +60,7 @@ export const SystemConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = Confi
 		distance_unit: z.nativeEnum(SystemModuleDistanceUnit).optional(),
 		log_levels: z.array(z.nativeEnum(SystemModuleLogEntryType)).optional(),
 		house_mode: z.nativeEnum(SystemModuleHouseMode).optional(),
+		update_channel: z.nativeEnum(SystemModuleUpdateChannel).optional(),
 	})
 );
 
@@ -75,5 +79,6 @@ export const SystemConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSc
 		log_levels: z.array(z.nativeEnum(SystemModuleLogEntryType)),
 		house_mode: z.nativeEnum(SystemModuleHouseMode),
 		onboarding_completed: z.boolean(),
+		update_channel: z.nativeEnum(SystemModuleUpdateChannel),
 	})
 );

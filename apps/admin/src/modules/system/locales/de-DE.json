@@ -124,7 +124,8 @@
 			"updateComplete": "Aktualisierung erfolgreich abgeschlossen!",
 			"updateFailed": "Aktualisierung fehlgeschlagen. Bitte überprüfen Sie die Systemprotokolle für Details.",
 			"checkFailed": "Prüfung auf Updates fehlgeschlagen. Bitte versuchen Sie es später erneut.",
-			"installFailed": "Start der Aktualisierung fehlgeschlagen. Bitte versuchen Sie es später erneut."
+			"installFailed": "Start der Aktualisierung fehlgeschlagen. Bitte versuchen Sie es später erneut.",
+			"channelNotChanged": "Der Update-Kanal konnte nicht geändert werden. Bitte versuchen Sie es später erneut."
 		}
 	},
 	"texts": {
@@ -155,7 +156,9 @@
 			"checking": "Suche nach Updates...",
 			"installing": "Update wird installiert...",
 			"waitingForRestart": "Dienst wird neu gestartet, bitte warten...",
-			"noVersionInfo": "Versionsinformationen konnten nicht abgerufen werden."
+			"noVersionInfo": "Versionsinformationen konnten nicht abgerufen werden.",
+			"lessStableChannel": "Der Kanal {channel} ist weniger stabil als Ihre installierte Version",
+			"lessStableChannelDescription": "Updates aus diesem Kanal sind möglicherweise weniger getestet als die von Ihnen verwendete Version. Sie können jederzeit zurückwechseln; der gewählte Kanal ist nur ein Minimum, stabilere Versionen werden weiterhin angeboten."
 		},
 		"systemLogs": {
 			"loadingLogs": "Anwendungsprotokolle werden geladen...",
@@ -367,6 +370,17 @@
 			"rawJson": {
 				"title": "Roh-JSON"
 			}
+		},
+		"update": {
+			"channel": {
+				"values": {
+					"auto": "Automatisch",
+					"autoDetected": "Automatisch ({channel})",
+					"stable": "Stabil",
+					"beta": "Beta",
+					"alpha": "Alpha"
+				}
+			}
 		}
 	},
 	"filters": {
@@ -441,7 +455,8 @@
 			"latestVersion": "Neueste Version",
 			"lastChecked": "Zuletzt geprüft",
 			"updateStatus": "Status",
-			"actions": "Aktionen"
+			"actions": "Aktionen",
+			"channel": "Update-Kanal"
 		}
 	},
 	"systemInfo": {

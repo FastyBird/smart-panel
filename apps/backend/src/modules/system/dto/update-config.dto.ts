@@ -14,6 +14,7 @@ import {
 	PressureUnitType,
 	TemperatureUnitType,
 	TimeFormatType,
+	UpdateChannelType,
 	WindSpeedUnitType,
 } from '../system.constants';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
@@ -189,4 +190,20 @@ export class UpdateSystemConfigDto extends UpdateModuleConfigDto {
 		message: '[{"field":"onboarding_completed","reason":"Onboarding completed must be a boolean."}]',
 	})
 	onboarding_completed?: boolean;
+
+	@ApiPropertyOptional({
+		description:
+			'Sets the minimum release stability the update check will offer. "auto" follows the channel ' +
+			'of the installed version.',
+		enum: UpdateChannelType,
+		example: UpdateChannelType.AUTO,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsEnum(UpdateChannelType, {
+		message:
+			'[{"field":"update_channel","reason":"Update channel must be a valid value (auto, stable, beta, alpha)."}]',
+	})
+	update_channel?: UpdateChannelType;
 }

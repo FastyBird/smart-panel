@@ -335,6 +335,23 @@ jobs:
           npm install
           npm run build
 
+      # A publish with no --tag moves the `latest` dist-tag, which is what a plain
+      # `npm install @fastybird/smart-panel` resolves to and what the updater treats as the stable
+      # channel. Publishing a pre-release from this workflow would point `latest` at an unstable
+      # build; the alpha and beta workflows exist for those and pass their own --tag.
+      - name: "Guard The Stable Dist-Tag"
+        working-directory: "build"
+        run: |
+          version="$(jq -r .version package.json)"
+          case "$version" in
+            *-*)
+              echo "::error::Refusing to publish pre-release version '$version' to the 'latest' dist-tag. Use the alpha or beta release workflow."
+              exit 1
+              ;;
+          esac
+          echo "Version '$version' is stable; publishing to the 'latest' dist-tag."
+        shell: bash
+
       - name: "Publish To NPM"
         working-directory: "build"
         run: npm publish --access public

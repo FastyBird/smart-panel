@@ -14,6 +14,7 @@ import {
 	PressureUnitType,
 	TemperatureUnitType,
 	TimeFormatType,
+	UpdateChannelType,
 	WindSpeedUnitType,
 } from '../system.constants';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
@@ -165,4 +166,16 @@ export class SystemConfigModel extends ModuleConfigModel {
 	@IsOptional()
 	@IsBoolean()
 	onboardingCompleted: boolean = false;
+
+	@ApiProperty({
+		name: 'update_channel',
+		description:
+			'Minimum release stability the update check will offer. "auto" follows the channel of the ' +
+			'installed version; any explicit channel also accepts everything more stable than itself.',
+		enum: UpdateChannelType,
+		example: UpdateChannelType.AUTO,
+	})
+	@Expose({ name: 'update_channel' })
+	@IsEnum(UpdateChannelType)
+	updateChannel: UpdateChannelType = UpdateChannelType.AUTO;
 }

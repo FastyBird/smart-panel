@@ -578,6 +578,8 @@ export { ConfigModuleDataSystemTime_format as SystemModuleTimeFormat } from './o
 
 export { ConfigModuleDataSystemHouse_mode as SystemModuleHouseMode } from './openapi';
 
+export { ConfigModuleDataSystemUpdate_channel as SystemModuleUpdateChannel } from './openapi';
+
 // The unit and number-format enums are deduped by the generator onto the displays
 // update DTO, which declares the same members. Temperature already has an alias -
 // TemperatureUnit, used by the weather plugins - so only five are aliased here.

@@ -124,7 +124,8 @@
       "updateComplete": "Update completed successfully!",
       "updateFailed": "Update failed. Please check the system logs for details.",
       "checkFailed": "Failed to check for updates. Please try again later.",
-      "installFailed": "Failed to start the update. Please try again later."
+      "installFailed": "Failed to start the update. Please try again later.",
+      "channelNotChanged": "Failed to change the update channel. Please try again later."
     }
   },
   "texts": {
@@ -155,7 +156,9 @@
       "checking": "Checking for updates...",
       "installing": "Installing update...",
       "waitingForRestart": "Service is restarting, please wait...",
-      "noVersionInfo": "Unable to retrieve version information."
+      "noVersionInfo": "Unable to retrieve version information.",
+      "lessStableChannel": "The {channel} channel is less stable than your installed version",
+      "lessStableChannelDescription": "Updates from this channel may be less tested than the release you are running. Switch back at any time; the channel you pick is only a minimum, so more stable releases are always offered too."
     },
     "systemLogs": {
       "loadingLogs": "Loading application logs...",
@@ -367,6 +370,17 @@
       "rawJson": {
         "title": "Raw JSON"
       }
+    },
+    "update": {
+      "channel": {
+        "values": {
+          "auto": "Automatic",
+          "autoDetected": "Automatic ({channel})",
+          "stable": "Stable",
+          "beta": "Beta",
+          "alpha": "Alpha"
+        }
+      }
     }
   },
   "filters": {
@@ -441,7 +455,8 @@
       "latestVersion": "Latest version",
       "lastChecked": "Last checked",
       "updateStatus": "Status",
-      "actions": "Actions"
+      "actions": "Actions",
+      "channel": "Update channel"
     }
   },
   "systemInfo": {

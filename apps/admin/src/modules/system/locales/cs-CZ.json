@@ -124,7 +124,8 @@
 			"updateComplete": "Aktualizace byla úspěšně dokončena!",
 			"updateFailed": "Aktualizace selhala. Zkontrolujte prosím systémové protokoly pro podrobnosti.",
 			"checkFailed": "Nepodařilo se zkontrolovat aktualizace. Zkuste to prosím znovu později.",
-			"installFailed": "Nepodařilo se spustit aktualizaci. Zkuste to prosím znovu později."
+			"installFailed": "Nepodařilo se spustit aktualizaci. Zkuste to prosím znovu později.",
+			"channelNotChanged": "Kanál aktualizací se nepodařilo změnit. Zkuste to prosím později."
 		}
 	},
 	"texts": {
@@ -155,7 +156,9 @@
 			"checking": "Kontrola aktualizací...",
 			"installing": "Instalace aktualizace...",
 			"waitingForRestart": "Služba se restartuje, prosím čekejte...",
-			"noVersionInfo": "Nelze získat informace o verzi."
+			"noVersionInfo": "Nelze získat informace o verzi.",
+			"lessStableChannel": "Kanál {channel} je méně stabilní než nainstalovaná verze",
+			"lessStableChannelDescription": "Aktualizace z tohoto kanálu mohou být méně otestované než verze, kterou používáte. Kdykoli se můžete vrátit zpět; zvolený kanál je pouze minimum, stabilnější vydání jsou nabízena vždy."
 		},
 		"systemLogs": {
 			"loadingLogs": "Načítání aplikačních protokolů...",
@@ -367,6 +370,17 @@
 			"rawJson": {
 				"title": "Surový JSON"
 			}
+		},
+		"update": {
+			"channel": {
+				"values": {
+					"auto": "Automaticky",
+					"autoDetected": "Automaticky ({channel})",
+					"stable": "Stabilní",
+					"beta": "Beta",
+					"alpha": "Alfa"
+				}
+			}
 		}
 	},
 	"filters": {
@@ -441,7 +455,8 @@
 			"latestVersion": "Nejnovější verze",
 			"lastChecked": "Naposledy zkontrolováno",
 			"updateStatus": "Stav",
-			"actions": "Akce"
+			"actions": "Akce",
+			"channel": "Kanál aktualizací"
 		}
 	},
 	"systemInfo": {
