@@ -1,98 +1,72 @@
 {
 	"menu": {
-		"title": "Notifications"
+		"title": "Benachrichtigungen"
 	},
 	"severity": {
 		"info": "Info",
-		"warning": "Warning",
-		"error": "Error",
-		"critical": "Critical"
+		"warning": "Warnung",
+		"error": "Fehler",
+		"critical": "Kritisch"
 	},
 	"headings": {
 		"notifications": {
-			"list": "Notifications",
-			"dismiss": "Dismiss notification",
-			"remove": "Remove notification",
-			"bulkRemove": "Remove notifications",
-			"data": "Data",
-			"lifecycle": "Lifecycle"
+			"list": "Benachrichtigungen",
+			"dismiss": "Benachrichtigung schließen",
+			"remove": "Benachrichtigung entfernen",
+			"bulkRemove": "Benachrichtigungen entfernen",
+			"data": "Daten",
+			"lifecycle": "Lebenszyklus"
 		},
-		"aboutConfig": "About notification settings"
-	},
-	"texts": {
-		"bell": {
-			"title": "Notifications",
-			"empty": "No active notifications"
-		},
-		"notifications": {
-			"confirmDismiss": "Dismiss \"{title}\"?",
-			"confirmRemove": "Remove \"{title}\"? This cannot be undone.",
-			"confirmBulkRemove": "Remove {count} notifications? This cannot be undone.",
-			"loading": "Loading notifications...",
-			"empty": "No notifications match the current filters."
-		},
-		"actions": {
-			"confirmDangerous": "\"{title}\" wants to run \"{label}\". This action is potentially dangerous - continue?",
-			"confirmStop": "Stop the service for \"{title}\"?",
-			"confirmRestart": "Restart the service for \"{title}\"?"
-		},
-		"aboutConfig": "Notifications are kept for a limited time and the active list is capped, so the admin never has to scroll through an unbounded history."
-	},
-	"messages": {
-		"notifications": {
-			"notFetched": "Benachrichtigungen konnten nicht geladen werden.",
-			"dismissed": "Notification dismissed.",
-			"dismissCanceled": "Dismiss canceled.",
-			"notDismissed": "Notification could not be dismissed.",
-			"notAllDismissed": "Einige Benachrichtigungen konnten nicht verworfen werden.",
-			"notMarkedRead": "Notification could not be updated.",
-			"notAllMarkedRead": "Some notifications could not be marked as read.",
-			"notAllMarkedUnread": "Einige Benachrichtigungen konnten nicht als ungelesen markiert werden.",
-			"removed": "Notification removed.",
-			"removeCanceled": "Remove canceled.",
-			"notRemoved": "Notification could not be removed.",
-			"bulkRemoved": "{count} notifications removed.",
-			"bulkRemoveFailed": "{count} notifications could not be removed."
-		},
-		"actions": {
-			"invalidLink": "This link could not be opened.",
-			"notFound": "This action is no longer available.",
-			"failed": "The action could not be completed."
-		},
-		"config": {
-			"edited": "Notification settings saved.",
-			"notEdited": "Notification settings could not be saved."
-		}
-	},
-	"buttons": {
-		"yes": {
-			"title": "Yes"
-		},
-		"no": {
-			"title": "No"
-		},
-		"dismiss": {
-			"title": "Dismiss"
-		},
-		"markAllRead": {
-			"title": "Mark all as read"
-		},
-		"viewAll": {
-			"title": "View all"
-		},
-		"markRead": {
-			"title": "Mark read"
-		},
-		"markUnread": {
-			"title": "Mark unread"
-		},
-		"loadMore": {
-			"title": "Load more"
-		}
+		"aboutConfig": "Über die Benachrichtigungseinstellungen"
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "System conditions and events that need your attention"
+			"list": "Systemzustände und Ereignisse, die Ihre Aufmerksamkeit erfordern"
+		}
+	},
+	"texts": {
+		"bell": {
+			"title": "Benachrichtigungen",
+			"empty": "Keine aktiven Benachrichtigungen"
+		},
+		"notifications": {
+			"confirmDismiss": "\"{title}\" schließen?",
+			"confirmRemove": "\"{title}\" entfernen? Diese Aktion kann nicht rückgängig gemacht werden.",
+			"confirmBulkRemove": "{count} Benachrichtigungen entfernen? Diese Aktion kann nicht rückgängig gemacht werden.",
+			"loading": "Benachrichtigungen werden geladen...",
+			"empty": "Keine Benachrichtigungen entsprechen den aktuellen Filtern."
+		},
+		"actions": {
+			"confirmDangerous": "\"{title}\" möchte \"{label}\" ausführen. Diese Aktion ist möglicherweise gefährlich - fortfahren?",
+			"confirmStop": "Dienst für \"{title}\" stoppen?",
+			"confirmRestart": "Dienst für \"{title}\" neu starten?"
+		},
+		"aboutConfig": "Benachrichtigungen werden nur für begrenzte Zeit aufbewahrt und die Liste aktiver Benachrichtigungen ist begrenzt, sodass der Administrator nie einen unbegrenzten Verlauf durchsuchen muss."
+	},
+	"messages": {
+		"notifications": {
+			"dismissed": "Benachrichtigung wurde geschlossen.",
+			"dismissCanceled": "Schließen abgebrochen.",
+			"notDismissed": "Benachrichtigung konnte nicht geschlossen werden.",
+			"notMarkedRead": "Benachrichtigung konnte nicht aktualisiert werden.",
+			"removed": "Benachrichtigung wurde entfernt.",
+			"removeCanceled": "Entfernen abgebrochen.",
+			"notRemoved": "Benachrichtigung konnte nicht entfernt werden.",
+			"bulkRemoved": "{count} Benachrichtigungen wurden entfernt.",
+			"bulkRemoveFailed": "{count} Benachrichtigungen konnten nicht entfernt werden.",
+			"notAllMarkedRead": "Einige Benachrichtigungen konnten nicht als gelesen markiert werden.",
+			"notFetched": "Benachrichtigungen konnten nicht geladen werden.",
+			"notAllDismissed": "Einige Benachrichtigungen konnten nicht geschlossen werden.",
+			"notAllMarkedUnread": "Einige Benachrichtigungen konnten nicht als ungelesen markiert werden."
+		},
+		"actions": {
+			"invalidLink": "Dieser Link konnte nicht geöffnet werden.",
+			"notFound": "Diese Aktion ist nicht mehr verfügbar.",
+			"failed": "Die Aktion konnte nicht abgeschlossen werden."
+		},
+		"config": {
+			"edited": "Benachrichtigungseinstellungen wurden gespeichert.",
+			"notEdited": "Benachrichtigungseinstellungen konnten nicht gespeichert werden."
 		}
 	},
 	"fields": {
@@ -100,85 +74,111 @@
 			"status": {
 				"title": "Status",
 				"options": {
-					"all": "All",
-					"active": "Active",
-					"dismissed": "Dismissed",
-					"resolved": "Resolved"
+					"all": "Alle",
+					"active": "Aktiv",
+					"dismissed": "Geschlossen",
+					"resolved": "Gelöst"
 				}
 			},
 			"severity": {
-				"title": "Severity",
-				"placeholder": "Any severity"
+				"title": "Schweregrad",
+				"placeholder": "Beliebiger Schweregrad"
 			},
 			"source": {
-				"title": "Source",
-				"placeholder": "Any source"
+				"title": "Quelle",
+				"placeholder": "Beliebige Quelle"
 			},
 			"unread": {
-				"title": "Unread only"
+				"title": "Nur ungelesen"
 			}
 		},
 		"notifications": {
 			"createdAt": {
-				"title": "Created"
+				"title": "Erstellt"
 			},
 			"updatedAt": {
-				"title": "Updated"
+				"title": "Aktualisiert"
 			},
 			"readAt": {
-				"title": "Read",
-				"no": "Unread"
+				"title": "Gelesen",
+				"no": "Ungelesen"
 			},
 			"dismissedAt": {
-				"title": "Dismissed",
-				"no": "Not dismissed"
+				"title": "Geschlossen",
+				"no": "Nicht geschlossen"
 			},
 			"resolvedAt": {
-				"title": "Resolved",
-				"no": "Not resolved"
+				"title": "Gelöst",
+				"no": "Nicht gelöst"
 			}
 		},
 		"config": {
 			"retentionDays": {
-				"title": "Retention period",
+				"title": "Aufbewahrungsdauer",
 				"placeholder": "30",
-				"unit": "days",
+				"unit": "Tage",
 				"validation": {
-					"required": "Retention period is required.",
-					"range": "Retention period must be between 1 and 365 days."
+					"required": "Aufbewahrungsdauer ist erforderlich.",
+					"range": "Die Aufbewahrungsdauer muss zwischen 1 und 365 Tagen liegen."
 				}
 			},
 			"maxNotifications": {
-				"title": "Maximum active notifications",
+				"title": "Maximale aktive Benachrichtigungen",
 				"placeholder": "500",
-				"unit": "Benachrichtigungen",
 				"validation": {
-					"required": "Maximum active notifications is required.",
-					"range": "Maximum active notifications must be between 50 and 5000."
-				}
+					"required": "Maximale aktive Benachrichtigungen sind erforderlich.",
+					"range": "Maximale aktive Benachrichtigungen müssen zwischen 50 und 5000 liegen."
+				},
+				"unit": "Benachrichtigungen"
 			}
 		}
 	},
 	"table": {
 		"columns": {
 			"severity": {
-				"title": "Severity"
+				"title": "Schweregrad"
 			},
 			"title": {
-				"title": "Title"
+				"title": "Titel"
 			},
 			"source": {
-				"title": "Source"
+				"title": "Quelle"
 			},
 			"occurrences": {
-				"title": "Count"
+				"title": "Anzahl"
 			},
 			"time": {
-				"title": "Time"
+				"title": "Zeit"
 			},
 			"actions": {
-				"title": "Actions"
+				"title": "Aktionen"
 			}
+		}
+	},
+	"buttons": {
+		"yes": {
+			"title": "Ja"
+		},
+		"no": {
+			"title": "Nein"
+		},
+		"dismiss": {
+			"title": "Schließen"
+		},
+		"markAllRead": {
+			"title": "Alle als gelesen markieren"
+		},
+		"markRead": {
+			"title": "Als gelesen markieren"
+		},
+		"markUnread": {
+			"title": "Als ungelesen markieren"
+		},
+		"viewAll": {
+			"title": "Alle anzeigen"
+		},
+		"loadMore": {
+			"title": "Mehr laden"
 		}
 	}
 }

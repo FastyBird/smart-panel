@@ -1,184 +1,184 @@
 {
 	"menu": {
-		"title": "Notifications"
+		"title": "Oznámení"
 	},
 	"severity": {
 		"info": "Info",
-		"warning": "Warning",
-		"error": "Error",
-		"critical": "Critical"
+		"warning": "Varování",
+		"error": "Chyba",
+		"critical": "Kritická"
 	},
 	"headings": {
 		"notifications": {
-			"list": "Notifications",
-			"dismiss": "Dismiss notification",
-			"remove": "Remove notification",
-			"bulkRemove": "Remove notifications",
+			"list": "Oznámení",
+			"dismiss": "Zavřít oznámení",
+			"remove": "Odebrat oznámení",
+			"bulkRemove": "Odebrat oznámení",
 			"data": "Data",
-			"lifecycle": "Lifecycle"
+			"lifecycle": "Životní cyklus"
 		},
-		"aboutConfig": "About notification settings"
-	},
-	"texts": {
-		"bell": {
-			"title": "Notifications",
-			"empty": "No active notifications"
-		},
-		"notifications": {
-			"confirmDismiss": "Dismiss \"{title}\"?",
-			"confirmRemove": "Remove \"{title}\"? This cannot be undone.",
-			"confirmBulkRemove": "Remove {count} notifications? This cannot be undone.",
-			"loading": "Loading notifications...",
-			"empty": "No notifications match the current filters."
-		},
-		"actions": {
-			"confirmDangerous": "\"{title}\" wants to run \"{label}\". This action is potentially dangerous - continue?",
-			"confirmStop": "Stop the service for \"{title}\"?",
-			"confirmRestart": "Restart the service for \"{title}\"?"
-		},
-		"aboutConfig": "Notifications are kept for a limited time and the active list is capped, so the admin never has to scroll through an unbounded history."
-	},
-	"messages": {
-		"notifications": {
-			"notFetched": "Některá oznámení se nepodařilo načíst.",
-			"dismissed": "Notification dismissed.",
-			"dismissCanceled": "Dismiss canceled.",
-			"notDismissed": "Notification could not be dismissed.",
-			"notAllDismissed": "Některá oznámení se nepodařilo odmítnout.",
-			"notMarkedRead": "Notification could not be updated.",
-			"notAllMarkedRead": "Some notifications could not be marked as read.",
-			"notAllMarkedUnread": "Některá oznámení se nepodařilo označit jako nepřečtená.",
-			"removed": "Notification removed.",
-			"removeCanceled": "Remove canceled.",
-			"notRemoved": "Notification could not be removed.",
-			"bulkRemoved": "{count} notifications removed.",
-			"bulkRemoveFailed": "{count} notifications could not be removed."
-		},
-		"actions": {
-			"invalidLink": "This link could not be opened.",
-			"notFound": "This action is no longer available.",
-			"failed": "The action could not be completed."
-		},
-		"config": {
-			"edited": "Notification settings saved.",
-			"notEdited": "Notification settings could not be saved."
-		}
-	},
-	"buttons": {
-		"yes": {
-			"title": "Yes"
-		},
-		"no": {
-			"title": "No"
-		},
-		"dismiss": {
-			"title": "Dismiss"
-		},
-		"markAllRead": {
-			"title": "Mark all as read"
-		},
-		"viewAll": {
-			"title": "View all"
-		},
-		"markRead": {
-			"title": "Mark read"
-		},
-		"markUnread": {
-			"title": "Mark unread"
-		},
-		"loadMore": {
-			"title": "Load more"
-		}
+		"aboutConfig": "O nastavení oznámení"
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "System conditions and events that need your attention"
+			"list": "Stavy systému a události, které vyžadují vaši pozornost"
+		}
+	},
+	"texts": {
+		"bell": {
+			"title": "Oznámení",
+			"empty": "Žádná aktivní oznámení"
+		},
+		"notifications": {
+			"confirmDismiss": "Zavřít \"{title}\"?",
+			"confirmRemove": "Odebrat \"{title}\"? Tuto akci nelze vrátit zpět.",
+			"confirmBulkRemove": "Odebrat {count} oznámení? Tuto akci nelze vrátit zpět.",
+			"loading": "Načítání oznámení...",
+			"empty": "Žádná oznámení neodpovídají aktuálním filtrům."
+		},
+		"actions": {
+			"confirmDangerous": "\"{title}\" chce spustit \"{label}\". Tato akce může být nebezpečná - pokračovat?",
+			"confirmStop": "Zastavit službu pro \"{title}\"?",
+			"confirmRestart": "Restartovat službu pro \"{title}\"?"
+		},
+		"aboutConfig": "Oznámení jsou uchovávána po omezenou dobu a seznam aktivních je omezen limitem, takže administrátor nikdy neprochází neomezenou historií."
+	},
+	"messages": {
+		"notifications": {
+			"dismissed": "Oznámení bylo zavřeno.",
+			"dismissCanceled": "Zavření zrušeno.",
+			"notDismissed": "Oznámení se nepodařilo zavřít.",
+			"notMarkedRead": "Oznámení se nepodařilo aktualizovat.",
+			"removed": "Oznámení bylo odebráno.",
+			"removeCanceled": "Odebrání zrušeno.",
+			"notRemoved": "Oznámení se nepodařilo odebrat.",
+			"bulkRemoved": "{count} oznámení bylo odebráno.",
+			"bulkRemoveFailed": "{count} oznámení se nepodařilo odebrat.",
+			"notAllMarkedRead": "Některá oznámení se nepodařilo označit jako přečtená.",
+			"notFetched": "Některá oznámení se nepodařilo načíst.",
+			"notAllDismissed": "Některá oznámení se nepodařilo zavřít.",
+			"notAllMarkedUnread": "Některá oznámení se nepodařilo označit jako nepřečtená."
+		},
+		"actions": {
+			"invalidLink": "Tento odkaz se nepodařilo otevřít.",
+			"notFound": "Tato akce již není k dispozici.",
+			"failed": "Akci se nepodařilo dokončit."
+		},
+		"config": {
+			"edited": "Nastavení oznámení bylo uloženo.",
+			"notEdited": "Nastavení oznámení se nepodařilo uložit."
 		}
 	},
 	"fields": {
 		"filters": {
 			"status": {
-				"title": "Status",
+				"title": "Stav",
 				"options": {
-					"all": "All",
-					"active": "Active",
-					"dismissed": "Dismissed",
-					"resolved": "Resolved"
+					"all": "Vše",
+					"active": "Aktivní",
+					"dismissed": "Zavřené",
+					"resolved": "Vyřešené"
 				}
 			},
 			"severity": {
-				"title": "Severity",
-				"placeholder": "Any severity"
+				"title": "Závažnost",
+				"placeholder": "Libovolná závažnost"
 			},
 			"source": {
-				"title": "Source",
-				"placeholder": "Any source"
+				"title": "Zdroj",
+				"placeholder": "Libovolný zdroj"
 			},
 			"unread": {
-				"title": "Unread only"
+				"title": "Pouze nepřečtené"
 			}
 		},
 		"notifications": {
 			"createdAt": {
-				"title": "Created"
+				"title": "Vytvořeno"
 			},
 			"updatedAt": {
-				"title": "Updated"
+				"title": "Aktualizováno"
 			},
 			"readAt": {
-				"title": "Read",
-				"no": "Unread"
+				"title": "Přečteno",
+				"no": "Nepřečteno"
 			},
 			"dismissedAt": {
-				"title": "Dismissed",
-				"no": "Not dismissed"
+				"title": "Zavřeno",
+				"no": "Nezavřeno"
 			},
 			"resolvedAt": {
-				"title": "Resolved",
-				"no": "Not resolved"
+				"title": "Vyřešeno",
+				"no": "Nevyřešeno"
 			}
 		},
 		"config": {
 			"retentionDays": {
-				"title": "Retention period",
+				"title": "Doba uchovávání",
 				"placeholder": "30",
-				"unit": "days",
+				"unit": "dní",
 				"validation": {
-					"required": "Retention period is required.",
-					"range": "Retention period must be between 1 and 365 days."
+					"required": "Doba uchovávání je povinná.",
+					"range": "Doba uchovávání musí být mezi 1 a 365 dny."
 				}
 			},
 			"maxNotifications": {
-				"title": "Maximum active notifications",
+				"title": "Maximální počet aktivních oznámení",
 				"placeholder": "500",
-				"unit": "oznámení",
 				"validation": {
-					"required": "Maximum active notifications is required.",
-					"range": "Maximum active notifications must be between 50 and 5000."
-				}
+					"required": "Maximální počet aktivních oznámení je povinný.",
+					"range": "Maximální počet aktivních oznámení musí být mezi 50 a 5000."
+				},
+				"unit": "oznámení"
 			}
 		}
 	},
 	"table": {
 		"columns": {
 			"severity": {
-				"title": "Severity"
+				"title": "Závažnost"
 			},
 			"title": {
-				"title": "Title"
+				"title": "Název"
 			},
 			"source": {
-				"title": "Source"
+				"title": "Zdroj"
 			},
 			"occurrences": {
-				"title": "Count"
+				"title": "Počet"
 			},
 			"time": {
-				"title": "Time"
+				"title": "Čas"
 			},
 			"actions": {
-				"title": "Actions"
+				"title": "Akce"
 			}
+		}
+	},
+	"buttons": {
+		"yes": {
+			"title": "Ano"
+		},
+		"no": {
+			"title": "Ne"
+		},
+		"dismiss": {
+			"title": "Zavřít"
+		},
+		"markAllRead": {
+			"title": "Označit vše jako přečtené"
+		},
+		"markRead": {
+			"title": "Označit jako přečtené"
+		},
+		"markUnread": {
+			"title": "Označit jako nepřečtené"
+		},
+		"viewAll": {
+			"title": "Zobrazit vše"
+		},
+		"loadMore": {
+			"title": "Načíst další"
 		}
 	}
 }
