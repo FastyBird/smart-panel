@@ -46,9 +46,16 @@ export class OutletMapper extends BaseHomeKitMapper {
 			);
 		} else if (onProp) {
 			// If no explicit in_use property, reflect the on state
+			const toInUse = (val: unknown) => Boolean(val === true || val === 'true' || val === 1 || val === '1');
 			inUseChar.onGet(() => {
-				const v = onProp.value?.value;
-				return Boolean(v === true || v === 'true' || v === 1 || v === '1');
+				return toInUse(onProp.value?.value);
+			});
+			context.registerBinding({
+				deviceId: device.id,
+				channelId: outletChannel.id,
+				propertyId: onProp.id,
+				characteristic: inUseChar,
+				toHomeKit: toInUse,
 			});
 		}
 

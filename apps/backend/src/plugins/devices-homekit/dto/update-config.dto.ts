@@ -55,7 +55,10 @@ export class HomeKitUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@Expose()
 	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
-	@IsString({ message: '[{"field":"username","reason":"Username must be a valid MAC string."}]' })
+	@IsString({ message: '[{"field":"username","reason":"Username must be a valid string."}]' })
+	@Matches(/^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/, {
+		message: '[{"field":"username","reason":"Username must be a MAC address in AA:BB:CC:DD:EE:FF format."}]',
+	})
 	@ApiPropertyOptional({
 		description: 'HomeKit Bridge unique username / MAC address',
 		example: 'CC:22:3D:E3:CE:30',
@@ -66,6 +69,9 @@ export class HomeKitUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
 	@IsString({ message: '[{"field":"setup_id","reason":"Setup ID must be a valid string."}]' })
+	@Matches(/^[0-9A-Z]{4}$/, {
+		message: '[{"field":"setup_id","reason":"Setup ID must be exactly 4 uppercase alphanumeric characters."}]',
+	})
 	@ApiPropertyOptional({
 		description: 'HomeKit 4-character setup identifier',
 		example: 'SP01',

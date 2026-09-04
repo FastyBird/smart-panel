@@ -6,21 +6,22 @@ import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import {
 	DEFAULT_HOMEKIT_BRIDGE_NAME,
-	DEFAULT_HOMEKIT_PIN,
 	DEFAULT_HOMEKIT_PORT,
 	DEVICES_HOMEKIT_PLUGIN_NAME,
+	generateRandomHomeKitPin,
+	generateRandomMacAddress,
+	generateRandomSetupId,
 } from '../devices-homekit.constants';
 
 @ApiSchema({ name: 'DevicesHomeKitPluginDataConfig' })
 export class HomeKitConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'Plugin type identifier',
-		type: 'string',
 		example: DEVICES_HOMEKIT_PLUGIN_NAME,
 	})
 	@Expose()
 	@IsString()
-	type: string = DEVICES_HOMEKIT_PLUGIN_NAME;
+	type: typeof DEVICES_HOMEKIT_PLUGIN_NAME = DEVICES_HOMEKIT_PLUGIN_NAME;
 
 	@ApiProperty({
 		description: 'HomeKit Bridge display name visible in Apple Home app',
@@ -46,14 +47,14 @@ export class HomeKitConfigModel extends PluginConfigModel {
 	@ApiProperty({
 		description: 'HomeKit pairing PIN code in standard XXX-XX-XXX format',
 		type: 'string',
-		example: DEFAULT_HOMEKIT_PIN,
+		example: '031-45-154',
 	})
 	@Expose()
 	@IsString()
 	@Matches(/^\d{3}-\d{2}-\d{3}$/, {
 		message: 'PIN code must be in XXX-XX-XXX format (8 digits)',
 	})
-	pincode: string = DEFAULT_HOMEKIT_PIN;
+	pincode: string = generateRandomHomeKitPin();
 
 	@ApiProperty({
 		description: 'HomeKit Bridge unique username / MAC address',
@@ -62,7 +63,10 @@ export class HomeKitConfigModel extends PluginConfigModel {
 	})
 	@Expose()
 	@IsString()
-	username: string = 'CC:22:3D:E3:CE:30';
+	@Matches(/^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/, {
+		message: 'Username must be a MAC address in AA:BB:CC:DD:EE:FF format',
+	})
+	username: string = generateRandomMacAddress();
 
 	@ApiProperty({
 		description: 'HomeKit 4-character setup identifier',
@@ -72,7 +76,10 @@ export class HomeKitConfigModel extends PluginConfigModel {
 	})
 	@Expose({ name: 'setup_id' })
 	@IsString()
-	setupId: string = 'SP01';
+	@Matches(/^[0-9A-Z]{4}$/, {
+		message: 'Setup ID must be exactly 4 uppercase alphanumeric characters',
+	})
+	setupId: string = generateRandomSetupId();
 
 	@ApiProperty({
 		description: 'List of Smart Panel device IDs bridged into HomeKit',

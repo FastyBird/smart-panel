@@ -6,6 +6,8 @@ import {
 	ApiInternalServerErrorResponse,
 	ApiSuccessResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
+import { Roles } from '../../../modules/users/guards/roles.guard';
+import { UserRole } from '../../../modules/users/users.constants';
 import { DEVICES_HOMEKIT_PLUGIN_API_TAG_NAME } from '../devices-homekit.constants';
 import { ReqHomeKitMapDevicesDto } from '../dto/bridge-map.dto';
 import { HomeKitCandidatesResponseModel } from '../models/bridge-candidate.model';
@@ -15,6 +17,7 @@ import { HomeKitWizardService } from '../services/homekit-wizard.service';
 
 @ApiTags(DEVICES_HOMEKIT_PLUGIN_API_TAG_NAME)
 @Controller('bridge')
+@Roles(UserRole.OWNER, UserRole.ADMIN)
 export class HomeKitBridgeController {
 	constructor(
 		private readonly bridgeService: HomeKitBridgeService,

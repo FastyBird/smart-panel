@@ -3,7 +3,7 @@ import path from 'path';
 import QRCode from 'qrcode';
 
 import { Bridge, Categories, Characteristic, HAPStorage, MDNSAdvertiser, Service, uuid } from '@homebridge/hap-nodejs';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -14,12 +14,15 @@ import {
 	ManagedServiceOwner,
 	ServiceState,
 } from '../../../modules/extensions/services/managed-extension-service.interface';
+import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import {
 	DEFAULT_HOMEKIT_BRIDGE_NAME,
-	DEFAULT_HOMEKIT_PIN,
 	DEFAULT_HOMEKIT_PORT,
 	DEVICES_HOMEKIT_PLUGIN_NAME,
 	HOMEKIT_PAIRING_STORAGE_DIR,
+	generateRandomHomeKitPin,
+	generateRandomMacAddress,
+	generateRandomSetupId,
 } from '../devices-homekit.constants';
 import { HomeKitUpdatePluginConfigDto } from '../dto/update-config.dto';
 import { HomeKitBridgeStatusModel } from '../models/bridge-status.model';
@@ -47,6 +50,7 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 		private readonly devicesService: DevicesService,
 		private readonly mapperRegistry: HomeKitMapperRegistryService,
 		private readonly commandDispatcher: HomeKitCommandDispatcher,
+		@Optional() private readonly managedServiceManager?: ManagedServiceManagerService,
 	) {}
 
 	getConfig(): HomeKitConfigModel {
@@ -57,10 +61,17 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			fallback.enabled = false;
 			fallback.bridgeName = DEFAULT_HOMEKIT_BRIDGE_NAME;
 			fallback.port = DEFAULT_HOMEKIT_PORT;
-			fallback.pincode = DEFAULT_HOMEKIT_PIN;
-			fallback.username = 'CC:22:3D:E3:CE:30';
-			fallback.setupId = 'SP01';
+			fallback.pincode = generateRandomHomeKitPin();
+			fallback.username = generateRandomMacAddress();
+			fallback.setupId = generateRandomSetupId();
 			fallback.mappedDeviceIds = [];
+
+			try {
+				this.configService.setPluginConfig(DEVICES_HOMEKIT_PLUGIN_NAME, fallback);
+			} catch (err) {
+				this.logger.warn(`Could not persist initial HomeKit configuration: ${(err as Error).message}`);
+			}
+
 			return fallback;
 		}
 		return config;
@@ -102,6 +113,11 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 		this.logger.log(`Starting HomeKit Gateway bridge '${config.bridgeName}' on port ${config.port}...`);
 
 		try {
+			if (this.bridge) {
+				this.logger.warn('HomeKit Gateway is already running. Stopping the previous bridge first.');
+				await this.stop();
+			}
+
 			this.initHapStorage();
 
 			const bridgeUuid = uuid.generate(`fastybird.smart-panel.homekit.bridge.${config.username}`);
@@ -131,9 +147,7 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			});
 
 			this.state = 'started';
-			this.logger.log(
-				`HomeKit Gateway published successfully. Port: ${config.port}, Username: ${config.username}, Setup PIN: ${config.pincode}`,
-			);
+			this.logger.log(`HomeKit Gateway published successfully. Port: ${config.port}, Username: ${config.username}`);
 		} catch (error) {
 			this.state = 'error';
 			const err = error as Error;
@@ -218,14 +232,14 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 					this.bridge as unknown as {
 						_server?: {
 							accessoryInfo?: {
-								isPaired: () => boolean;
+								paired: () => boolean;
 								listPairings: () => unknown[];
 							};
 						};
 					}
 				)._server;
 				if (server?.accessoryInfo) {
-					isPaired = Boolean(server.accessoryInfo.isPaired());
+					isPaired = Boolean(server.accessoryInfo.paired());
 					const pairings = server.accessoryInfo.listPairings();
 					pairedClientsCount = Array.isArray(pairings) ? pairings.length : 0;
 				}
@@ -261,6 +275,7 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			this.bridge = null;
 		}
 		this.mapperRegistry.clearAllBindings();
+		this.state = 'stopped';
 
 		// Remove all stored pairing records from disk
 		const storagePath = this.getStoragePath();
@@ -268,7 +283,8 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			if (fs.existsSync(storagePath)) {
 				const files = fs.readdirSync(storagePath);
 				for (const file of files) {
-					fs.unlinkSync(path.join(storagePath, file));
+					const fullPath = path.join(storagePath, file);
+					fs.rmSync(fullPath, { recursive: true, force: true });
 				}
 				this.logger.log(`Cleared pairing storage files in: ${storagePath}`);
 			}
@@ -276,25 +292,26 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			this.logger.warn(`Failed to delete pairing storage files: ${(error as Error).message}`);
 		}
 
-		// Generate new username / setup ID to ensure Apple Home devices recognise it as a fresh accessory
-		const randomMac = () =>
-			'CC:22:3D:' +
-			Array.from({ length: 3 }, () =>
-				Math.floor(Math.random() * 256)
-					.toString(16)
-					.padStart(2, '0')
-					.toUpperCase(),
-			).join(':');
+		// Generate fresh credentials
+		const newConfig = new HomeKitConfigModel();
+		newConfig.type = DEVICES_HOMEKIT_PLUGIN_NAME;
+		newConfig.enabled = config.enabled;
+		newConfig.bridgeName = config.bridgeName;
+		newConfig.port = config.port;
+		newConfig.pincode = generateRandomHomeKitPin();
+		newConfig.username = generateRandomMacAddress();
+		newConfig.setupId = generateRandomSetupId();
+		newConfig.mappedDeviceIds = config.mappedDeviceIds;
 
-		const updateDto = toInstance(HomeKitUpdatePluginConfigDto, {
-			type: DEVICES_HOMEKIT_PLUGIN_NAME,
-			username: randomMac(),
-		});
-		this.configService.setPluginConfig(DEVICES_HOMEKIT_PLUGIN_NAME, updateDto);
+		this.configService.setPluginConfig(DEVICES_HOMEKIT_PLUGIN_NAME, newConfig);
 
-		// If plugin was enabled, restart
+		// If plugin was enabled, restart through managed service manager to ensure serialized lifecycle
 		if (config.enabled) {
-			await this.start();
+			if (this.managedServiceManager) {
+				await this.managedServiceManager.startServiceManually(this.owner.kind, this.owner.type, this.serviceId);
+			} else {
+				await this.start();
+			}
 		}
 	}
 

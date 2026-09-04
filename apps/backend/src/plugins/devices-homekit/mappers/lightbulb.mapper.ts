@@ -61,6 +61,7 @@ export class LightbulbMapper extends BaseHomeKitMapper {
 		const ctProp = this.findProperty(lightChannel, PropertyCategory.COLOR_TEMPERATURE);
 		if (ctProp) {
 			const ctChar = service.getCharacteristic(Characteristic.ColorTemperature);
+			const isKelvin = ctProp.unit === 'K';
 			this.bindCharacteristic(
 				context,
 				device,
@@ -71,14 +72,17 @@ export class LightbulbMapper extends BaseHomeKitMapper {
 					const num = Number(val);
 					if (isNaN(num) || num <= 0) return 300;
 					// If in Kelvin (e.g. 2000-6500), convert to Mireds (1000000 / K)
-					if (num > 1000) {
+					if (isKelvin || num > 1000) {
 						return Math.min(500, Math.max(140, Math.round(1000000 / num)));
 					}
 					return Math.min(500, Math.max(140, Math.round(num)));
 				},
 				(val) => {
 					const mireds = Number(val);
-					// If device property format indicates Kelvin or value was Kelvin, we could convert
+					if (isNaN(mireds) || mireds <= 0) return mireds;
+					if (isKelvin) {
+						return Math.round(1_000_000 / mireds);
+					}
 					return mireds;
 				},
 			);

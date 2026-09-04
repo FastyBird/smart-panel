@@ -26,13 +26,18 @@ export class BatteryMapper {
 		const chargingChar = batteryService.getCharacteristic(Characteristic.ChargingState);
 
 		const toLevel = (val: unknown): number => {
-			const num = Number(val);
+			const unwrapped =
+				val !== null && typeof val === 'object' && 'value' in (val as Record<string, unknown>)
+					? (val as Record<string, unknown>).value
+					: val;
+			if (unwrapped === null || unwrapped === undefined) return 100;
+			const num = Number(unwrapped);
 			return isNaN(num) ? 100 : Math.min(100, Math.max(0, Math.round(num)));
 		};
 
-		levelChar.onGet(() => toLevel(levelProp.value));
+		levelChar.onGet(() => toLevel(levelProp.value?.value));
 		lowBatChar.onGet(() =>
-			toLevel(levelProp.value) < 20
+			toLevel(levelProp.value?.value) < 20
 				? Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW
 				: Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL,
 		);
@@ -44,6 +49,17 @@ export class BatteryMapper {
 			propertyId: levelProp.id,
 			characteristic: levelChar,
 			toHomeKit: toLevel,
+		});
+
+		context.registerBinding({
+			deviceId: device.id,
+			channelId: batteryChannel.id,
+			propertyId: levelProp.id,
+			characteristic: lowBatChar,
+			toHomeKit: (val) =>
+				toLevel(val) < 20
+					? Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW
+					: Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL,
 		});
 	}
 }

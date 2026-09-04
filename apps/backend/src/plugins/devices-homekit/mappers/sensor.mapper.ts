@@ -15,8 +15,6 @@ const SENSOR_CHANNEL_CATEGORIES = [
 	ChannelCategory.ILLUMINANCE,
 	ChannelCategory.LEAK,
 	ChannelCategory.SMOKE,
-	ChannelCategory.CARBON_MONOXIDE,
-	ChannelCategory.AIR_QUALITY,
 ];
 
 export class SensorMapper extends BaseHomeKitMapper {
