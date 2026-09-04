@@ -59,6 +59,8 @@
 		"searchPlaceholder": "Hledat zařízení podle názvu nebo místnosti...",
 		"filterAll": "Všechna zařízení",
 		"filterCompatibleOnly": "Pouze kompatibilní",
+		"compatible": "Kompatibilní",
+		"noDevices": "Nenalezena žádná zařízení",
 		"incompatible": "Nekompatibilní",
 		"bridgeLimitWarning": "Apple Home doporučuje maximálně 150 příslušenství na jednu bránu. Překročení limitu může způsobit nestabilitu.",
 		"selectedCount": "Vybráno {count} z {total} kompatibilních zařízení",

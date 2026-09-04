@@ -1,40 +1,40 @@
 {
 	"headings": {
 		"aboutSettings": "Apple HomeKit Brána",
-		"bridgeStatus": "Stav běhu brány",
-		"resetPairing": "Resetovat párování Apple Home"
+		"bridgeStatus": "Stav behu brány",
+		"resetPairing": "Resetovať párovanie Apple Home"
 	},
 	"texts": {
-		"aboutSettings": "Přemostěte zařízení Smart Panelu do Apple Home prostřednictvím lokálního protokolu HomeKit Accessory Protocol (HAP). Pomocí průvodce vyberte, která zařízení mají být přemostěna."
+		"aboutSettings": "Premostite zariadenia Smart Panela do Apple Home prostredníctvom lokálneho protokolu HomeKit Accessory Protocol (HAP). Pomocou sprievodcu vyberte, ktoré zariadenia majú byť premostené."
 	},
 	"status": {
-		"running": "Spuštěno",
-		"stopped": "Zastaveno",
-		"notPaired": "Nespárováno",
-		"pairedWithCount": "Spárováno ({count} klientů)",
-		"exposedCount": "{count} zařízení aktuálně přemostěno"
+		"running": "Spustené",
+		"stopped": "Zastavené",
+		"notPaired": "Nespárované",
+		"pairedWithCount": "Spárované ({count} klientov)",
+		"exposedCount": "{count} zariadení aktuálne premostených"
 	},
 	"buttons": {
-		"configureDevices": "Nastavit přemostěná zařízení",
-		"showPairing": "Apple Home QR Kód",
-		"resetPairing": "Resetovat párování"
+		"configureDevices": "Nastaviť premostené zariadenia",
+		"showPairing": "Apple Home QR kód",
+		"resetPairing": "Resetovať párovanie"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Povolit HomeKit Bránu"
+				"title": "Povoliť HomeKit bránu"
 			},
 			"name": {
-				"title": "Zobrazovaný název brány",
+				"title": "Zobrazovaný názov brány",
 				"placeholder": "Smart Panel Bridge",
-				"description": "Název zobrazený pro bránu v aplikaci Apple Domácnost",
+				"description": "Názov zobrazený pre bránu v aplikácii Apple Domácnosť",
 				"validation": {
-					"required": "Název brány je povinný"
+					"required": "Názov brány je povinný"
 				}
 			},
 			"port": {
 				"title": "TCP Port",
-				"description": "Místní port pro HAP server (výchozí: 51826)",
+				"description": "Miestny port pre HAP server (predvolený: 51826)",
 				"validation": {
 					"required": "Port je povinný"
 				}
@@ -42,62 +42,64 @@
 			"pinCode": {
 				"title": "Párovací PIN kód",
 				"placeholder": "031-45-154",
-				"description": "8místný PIN ve formátu XXX-XX-XXX pro spárování s Apple Domácností",
+				"description": "8-miestny PIN v formáte XXX-XX-XXX používaný na spárovanie s Apple Home",
 				"validation": {
-					"format": "PIN kód musí mít formát XXX-XX-XXX"
+					"format": "PIN kód musí byť vo formáte XXX-XX-XXX"
 				}
 			}
 		}
 	},
 	"wizard": {
-		"title": "Nastavení Apple HomeKit Brány",
+		"title": "Nastavenie Apple HomeKit brány",
 		"steps": {
-			"devices": "Výběr zařízení",
-			"pairing": "Spárování s Apple Home"
+			"devices": "Výber zariadení",
+			"pairing": "Spárovanie s Apple Home"
 		},
-		"devicesDescription": "Vyberte zařízení Smart Panelu, která mají být přemostěna do Apple Domácnosti. V aplikaci se zobrazí pouze kompatibilní zařízení s namapovanými službami.",
-		"searchPlaceholder": "Hledat zařízení podle názvu nebo místnosti...",
-		"filterAll": "Všechna zařízení",
-		"filterCompatibleOnly": "Pouze kompatibilní",
-		"incompatible": "Nekompatibilní",
-		"bridgeLimitWarning": "Apple Home doporučuje maximálně 150 příslušenství na jednu bránu. Překročení limitu může způsobit nestabilitu.",
-		"selectedCount": "Vybráno {count} z {total} kompatibilních zařízení",
-		"scanWithCamera": "Naskenujte pomocí aplikace Domácnost nebo Fotoaparát na iPhone/iPadu",
+		"devicesDescription": "Vyberte zariadenia Smart Panela, ktoré majú byť premostené do Apple Domácnosti. V aplikácii sa zobrazia iba kompatibilné zariadenia s namapovanými službami.",
+		"searchPlaceholder": "Hľadať zariadenia podľa názvu alebo miestnosti...",
+		"filterAll": "Všetky zariadenia",
+		"filterCompatibleOnly": "Iba kompatibilné",
+		"compatible": "Kompatibilné",
+		"noDevices": "Nenašli sa žiadne zariadenia",
+		"incompatible": "Nekompatibilné",
+		"bridgeLimitWarning": "Apple Home odporúča maximálne 150 príslušenstiev na jednu bránu. Prekročenie limitu môže spôsobiť nestabilitu.",
+		"selectedCount": "Vybrané {count} z {total} kompatibilných zariadení",
+		"scanWithCamera": "Naskenujte pomocou aplikácie Domácnosť alebo Fotoaparát na iPhone/iPade",
 		"setupCode": "Nastavovací PIN kód",
-		"bridgeStatus": "Stav párování",
-		"pairedWithCount": "Spárováno s {count} ovladačem/i",
-		"waitingForPairing": "Čekání na spárování...",
-		"instruction1": "Otevřete aplikaci Domácnost na zařízení iOS nebo macOS.",
-		"instruction2": "Klepněte na \"+\" a zvolte \"Přidat příslušenství\".",
-		"instruction3": "Naskenujte QR kód nebo zadejte 8místný PIN kód ručně.",
+		"bridgeStatus": "Stav párovania",
+		"pairedWithCount": "Spárované s {count} ovládačom/i",
+		"waitingForPairing": "Čakanie na spárovanie...",
+		"instruction1": "Otvorte aplikáciu Domácnosť na zariadení iOS alebo macOS.",
+		"instruction2": "Klepnite na \"+\" a zvoľte \"Pridať príslušenstvo\".",
+		"instruction3": "Naskenujte QR kód alebo zadajte 8-miestny PIN kód ručne.",
 		"columns": {
-			"name": "Zařízení",
-			"category": "Kategorie",
+			"name": "Zariadenie",
+			"category": "Kategória",
 			"homeKitService": "HomeKit Služba"
 		},
 		"buttons": {
-			"selectAllCompatible": "Vybrat všechna kompatibilní",
-			"deselectAll": "Zrušit výběr",
-			"saveMappings": "Uložit mapování",
-			"saveAndPair": "Uložit a spárovat s Apple Home",
-			"backToDevices": "Zpět na výběr zařízení",
-			"resetPairing": "Resetovat párování",
+			"selectAllCompatible": "Vybrať všetky kompatibilné",
+			"deselectAll": "Zrušiť výber",
+			"saveMappings": "Uložiť priradenia",
+			"saveAndPair": "Uložiť a spárovať s Apple Home",
+			"backToDevices": "Späť na zariadenia",
+			"resetPairing": "Resetovať párovanie",
 			"done": "Hotovo",
-			"cancel": "Zrušit"
+			"cancel": "Zrušiť"
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "Nastavení HomeKit Brány bylo aktualizováno.",
-			"notEdited": "Nepodařilo se aktualizovat nastavení HomeKit Brány."
+			"edited": "Nastavenia HomeKit brány boli aktualizované.",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia HomeKit brány."
 		},
-		"mappingsSaved": "Mapování zařízení bylo úspěšně uloženo.",
-		"saveMappingsFailed": "Nepodařilo se uložit mapování zařízení.",
-		"statusFetchFailed": "Nepodařilo se načíst stav brány.",
-		"pinCopied": "Párovací PIN kód byl zkopírován do schránky.",
-		"copyFailed": "Kopírování do schránky se nezdařilo.",
-		"confirmResetPairing": "Opravdu chcete resetovat párování Apple Home? Stávající připojení budou odpojena a bránu bude nutné znovu spárovat.",
-		"pairingResetSuccess": "Párovací údaje byly resetovány. Nyní můžete bránu znovu spárovat.",
-		"pairingResetFailed": "Nepodařilo se resetovat párovací údaje."
+		"mappingsSaved": "Priradenia zariadení boli úspešne uložené.",
+		"saveMappingsFailed": "Nepodarilo sa uložiť priradenia zariadení.",
+		"statusFetchFailed": "Nepodarilo sa obnoviť stav brány.",
+		"pinCopied": "Párovací PIN kód bol skopírovaný do schránky.",
+		"copyFailed": "Kopírovanie do schránky zlyhalo.",
+		"confirmResetPairing": "Naozaj chcete resetovať párovanie Apple Home? Existujúce pripojenia Apple Home budú odpojené a budete musieť bránu znova spárovať.",
+		"pairingResetSuccess": "Párovacie údaje boli resetované. Teraz môžete spárovať s Apple Home.",
+		"pairingResetFailed": "Nepodarilo sa resetovať párovacie údaje."
 	}
 }

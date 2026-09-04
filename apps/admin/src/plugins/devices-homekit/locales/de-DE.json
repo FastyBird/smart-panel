@@ -1,103 +1,105 @@
 {
 	"headings": {
 		"aboutSettings": "Apple HomeKit Gateway",
-		"bridgeStatus": "Bridge Runtime Status",
-		"resetPairing": "Reset Apple Home Pairing"
+		"bridgeStatus": "Bridge-Laufzeitstatus",
+		"resetPairing": "Apple Home Kopplung zurücksetzen"
 	},
 	"texts": {
-		"aboutSettings": "Bridge Smart Panel devices to Apple Home via local HomeKit Accessory Protocol (HAP). Use the wizard to select which devices should be bridged."
+		"aboutSettings": "Verbinden Sie Smart Panel Geräte über das lokale HomeKit Accessory Protocol (HAP) mit Apple Home. Wählen Sie mit dem Assistenten aus, welche Geräte eingebunden werden sollen."
 	},
 	"status": {
-		"running": "Running",
-		"stopped": "Stopped",
-		"notPaired": "Not Paired",
-		"pairedWithCount": "Paired ({count} clients)",
-		"exposedCount": "{count} devices currently bridged"
+		"running": "Aktiv",
+		"stopped": "Gestoppt",
+		"notPaired": "Nicht gekoppelt",
+		"pairedWithCount": "Gekoppelt ({count} Clients)",
+		"exposedCount": "{count} Geräte derzeit eingebunden"
 	},
 	"buttons": {
-		"configureDevices": "Configure Bridged Devices",
-		"showPairing": "Apple Home QR Code",
-		"resetPairing": "Reset Pairing"
+		"configureDevices": "Eingebundene Geräte konfigurieren",
+		"showPairing": "Apple Home QR-Code",
+		"resetPairing": "Kopplung zurücksetzen"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Enable HomeKit Gateway"
+				"title": "HomeKit Gateway aktivieren"
 			},
 			"name": {
-				"title": "Bridge Display Name",
+				"title": "Bridge-Anzeigename",
 				"placeholder": "Smart Panel Bridge",
-				"description": "The name displayed for the bridge in Apple Home",
+				"description": "In der Apple Home App angezeigter Name",
 				"validation": {
-					"required": "Bridge name is required"
+					"required": "Bridge-Name ist erforderlich"
 				}
 			},
 			"port": {
-				"title": "TCP Port",
-				"description": "Local port for the HAP server (default: 51826)",
+				"title": "TCP-Port",
+				"description": "Lokaler Port für den HAP-Server (Standard: 51826)",
 				"validation": {
-					"required": "Port is required"
+					"required": "Port ist erforderlich"
 				}
 			},
 			"pinCode": {
-				"title": "Pairing PIN Code",
+				"title": "Kopplungs-PIN-Code",
 				"placeholder": "031-45-154",
-				"description": "8-digit PIN in XXX-XX-XXX format used to pair with Apple Home",
+				"description": "8-stelliger PIN im Format XXX-XX-XXX zur Kopplung mit Apple Home",
 				"validation": {
-					"format": "PIN code must be in XXX-XX-XXX format"
+					"format": "PIN-Code muss im Format XXX-XX-XXX angegeben werden"
 				}
 			}
 		}
 	},
 	"wizard": {
-		"title": "Apple HomeKit Gateway Setup",
+		"title": "Apple HomeKit Gateway Einrichtung",
 		"steps": {
-			"devices": "Select Devices",
-			"pairing": "Pair with Apple Home"
+			"devices": "Geräte auswählen",
+			"pairing": "Mit Apple Home koppeln"
 		},
-		"devicesDescription": "Choose which Smart Panel devices should be bridged into Apple Home. Only compatible devices with mapped services will appear in Apple Home.",
-		"searchPlaceholder": "Search devices by name or room...",
-		"filterAll": "All Devices",
-		"filterCompatibleOnly": "Compatible Only",
-		"incompatible": "Incompatible",
-		"bridgeLimitWarning": "Apple Home recommends a maximum of 150 accessories per bridge. Adding more may lead to instability or pairing issues.",
-		"selectedCount": "{count} of {total} compatible devices selected",
-		"scanWithCamera": "Scan with the Apple Home or Camera app on iPhone/iPad",
-		"setupCode": "Setup PIN Code",
-		"bridgeStatus": "Pairing Status",
-		"pairedWithCount": "Paired with {count} controller(s)",
-		"waitingForPairing": "Waiting for pairing...",
-		"instruction1": "Open the Apple Home app on your iOS or macOS device.",
-		"instruction2": "Tap \"+\" and select \"Add Accessory\".",
-		"instruction3": "Scan the QR code or enter the 8-digit PIN code manually.",
+		"devicesDescription": "Wählen Sie aus, welche Smart Panel Geräte in Apple Home eingebunden werden sollen. Nur kompatible Geräte mit zugeordneten Diensten werden in Apple Home angezeigt.",
+		"searchPlaceholder": "Geräte nach Name oder Raum suchen...",
+		"filterAll": "Alle Geräte",
+		"filterCompatibleOnly": "Nur kompatible",
+		"compatible": "Kompatibel",
+		"noDevices": "Keine Geräte gefunden",
+		"incompatible": "Inkompatibel",
+		"bridgeLimitWarning": "Apple Home empfiehlt maximal 150 Zubehörteile pro Bridge. Das Hinzufügen weiterer Geräte kann zu Instabilität oder Kopplungsproblemen führen.",
+		"selectedCount": "{count} von {total} kompatiblen Geräten ausgewählt",
+		"scanWithCamera": "Mit der Apple Home oder Kamera App auf dem iPhone/iPad scannen",
+		"setupCode": "Einrichtungs-PIN-Code",
+		"bridgeStatus": "Kopplungsstatus",
+		"pairedWithCount": "Gekoppelt mit {count} Controller(n)",
+		"waitingForPairing": "Warten auf Kopplung...",
+		"instruction1": "Öffnen Sie die Apple Home App auf Ihrem iOS- oder macOS-Gerät.",
+		"instruction2": "Tippen Sie auf \"+\" und wählen Sie \"Gerät hinzufügen\".",
+		"instruction3": "Scannen Sie den QR-Code oder geben Sie den 8-stelligen PIN-Code manuell ein.",
 		"columns": {
-			"name": "Device",
-			"category": "Category",
-			"homeKitService": "HomeKit Service"
+			"name": "Gerät",
+			"category": "Kategorie",
+			"homeKitService": "HomeKit-Dienst"
 		},
 		"buttons": {
-			"selectAllCompatible": "Select All Compatible",
-			"deselectAll": "Deselect All",
-			"saveMappings": "Save Mappings",
-			"saveAndPair": "Save & Pair with Apple Home",
-			"backToDevices": "Back to Devices",
-			"resetPairing": "Reset Pairing",
-			"done": "Done",
-			"cancel": "Cancel"
+			"selectAllCompatible": "Alle kompatiblen auswählen",
+			"deselectAll": "Auswahl aufheben",
+			"saveMappings": "Zuordnungen speichern",
+			"saveAndPair": "Speichern & mit Apple Home koppeln",
+			"backToDevices": "Zurück zu den Geräten",
+			"resetPairing": "Kopplung zurücksetzen",
+			"done": "Fertig",
+			"cancel": "Abbrechen"
 		}
 	},
 	"messages": {
 		"config": {
-			"edited": "HomeKit Gateway settings updated.",
-			"notEdited": "Failed to update HomeKit Gateway settings."
+			"edited": "HomeKit Gateway Einstellungen aktualisiert.",
+			"notEdited": "HomeKit Gateway Einstellungen konnten nicht aktualisiert werden."
 		},
-		"mappingsSaved": "Device mappings saved successfully.",
-		"saveMappingsFailed": "Failed to save device mappings.",
-		"statusFetchFailed": "Failed to refresh bridge status.",
-		"pinCopied": "Pairing PIN code copied to clipboard.",
-		"copyFailed": "Failed to copy to clipboard.",
-		"confirmResetPairing": "Are you sure you want to reset Apple Home pairing? Existing Apple Home connections will be disconnected and you will need to re-pair the bridge.",
-		"pairingResetSuccess": "Pairing credentials reset. You can now pair with Apple Home.",
-		"pairingResetFailed": "Failed to reset pairing credentials."
+		"mappingsSaved": "Gerätezuordnungen erfolgreich gespeichert.",
+		"saveMappingsFailed": "Gerätezuordnungen konnten nicht gespeichert werden.",
+		"statusFetchFailed": "Bridge-Status konnte nicht aktualisiert werden.",
+		"pinCopied": "Kopplungs-PIN-Code in die Zwischenablage kopiert.",
+		"copyFailed": "Kopieren in die Zwischenablage fehlgeschlagen.",
+		"confirmResetPairing": "Sind Sie sicher, dass Sie die Apple Home Kopplung zurücksetzen möchten? Bestehende Apple Home Verbindungen werden getrennt und Sie müssen die Bridge erneut koppeln.",
+		"pairingResetSuccess": "Kopplungsdaten zurückgesetzt. Sie können nun eine neue Kopplung mit Apple Home durchführen.",
+		"pairingResetFailed": "Kopplungsdaten konnten nicht zurückgesetzt werden."
 	}
 }

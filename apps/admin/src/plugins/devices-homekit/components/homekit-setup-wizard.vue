@@ -83,7 +83,7 @@
 						:data="filteredCandidates"
 						style="width: 100%"
 						size="small"
-						empty-text="No devices found"
+						:empty-text="t('devicesHomeKitPlugin.wizard.noDevices')"
 					>
 						<el-table-column
 							width="48"
@@ -140,7 +140,7 @@
 									type="success"
 									effect="plain"
 								>
-									{{ row.suggestedServiceType || 'Compatible' }}
+									{{ row.suggestedServiceType || t('devicesHomeKitPlugin.wizard.compatible') }}
 								</el-tag>
 								<el-tag
 									v-else
@@ -440,9 +440,15 @@ const onSaveAndProceed = async (): Promise<void> => {
 		await store.mapDevices(Array.from(selectedDeviceIds.value));
 		flashMessage.success(t('devicesHomeKitPlugin.messages.mappingsSaved'));
 		currentStep.value = 'pairing';
-		await store.fetchStatus();
 	} catch {
 		flashMessage.error(t('devicesHomeKitPlugin.messages.saveMappingsFailed'));
+		return;
+	}
+
+	try {
+		await store.fetchStatus();
+	} catch {
+		flashMessage.error(t('devicesHomeKitPlugin.messages.statusFetchFailed'));
 	}
 };
 

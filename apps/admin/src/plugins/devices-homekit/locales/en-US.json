@@ -59,6 +59,8 @@
 		"searchPlaceholder": "Search devices by name or room...",
 		"filterAll": "All Devices",
 		"filterCompatibleOnly": "Compatible Only",
+		"compatible": "Compatible",
+		"noDevices": "No devices found",
 		"incompatible": "Incompatible",
 		"bridgeLimitWarning": "Apple Home recommends a maximum of 150 accessories per bridge. Adding more may lead to instability or pairing issues.",
 		"selectedCount": "{count} of {total} compatible devices selected",
