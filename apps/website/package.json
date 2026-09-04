@@ -1,7 +1,7 @@
 {
   "name": "@fastybird/smart-panel-website",
   "private": true,
-  "version": "1.0.0-beta.3",
+  "version": "1.1.0-alpha.0",
   "homepage": "https://smart-panel.fastybird.com",
   "bugs": "https://github.com/FastyBird/smart-panel/issues",
   "license": "Apache-2.0",
