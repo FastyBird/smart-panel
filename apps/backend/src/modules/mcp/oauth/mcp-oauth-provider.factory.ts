@@ -245,8 +245,12 @@ export class McpOAuthProviderFactory {
 						typeof grantExpiresAt === 'number'
 							? Math.max(1, grantExpiresAt - Math.floor(Date.now() / 1_000))
 							: Number.POSITIVE_INFINITY;
-					// The provider stores the original family issue time at whole-second precision. Subtract one
-					// second so millisecond rounding in the adapter can never extend a successor past that boundary.
+					// The provider stores the original family issue time at whole-second precision, and
+					// totalLifetime() floors to seconds, so elapsed time is under-counted by up to a second.
+					// Subtracting one second absorbs that. It cannot absorb everything: the adapter timestamps
+					// the row from its own, later Date.now(), so a successor may still land a millisecond or
+					// two past the family boundary. A seconds-granular TTL combined with a later millisecond
+					// read admits no exact bound, and the residue is immaterial against a 30-day window.
 					const remainingFamilyLifetime = Math.max(
 						1,
 						toSeconds(MCP_OAUTH_REFRESH_FAMILY_LIFETIME_MS) - refreshToken.totalLifetime() - 1,
