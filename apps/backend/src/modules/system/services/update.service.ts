@@ -531,6 +531,9 @@ export class UpdateService {
 		// through the same classification, so no source can claim a channel it did not answer.
 		const answered = new Map<'latest' | 'beta' | 'alpha', string>();
 		let apiError: Error | null = null;
+		// A scan that could not read every eligible release's version.json has not ruled out a
+		// newer version, so its answer is provisional even when the listing itself succeeded.
+		let scanComplete = false;
 
 		// One deadline for the whole lookup. It starts here rather than inside the scan, because
 		// the caller may wait for both the listing and the probe.
@@ -540,7 +543,11 @@ export class UpdateService {
 		// running it before the stable probe means the probe is only paid for when the listing
 		// could not answer the stable channel itself.
 		try {
-			for (const version of await this.fetchVersionsFromReleasesApi(channels, deadline)) {
+			const scan = await this.fetchVersionsFromReleasesApi(channels, deadline);
+
+			scanComplete = scan.complete;
+
+			for (const version of scan.versions) {
 				this.recordCandidate(answered, wanted, version);
 			}
 		} catch (error) {
@@ -574,7 +581,7 @@ export class UpdateService {
 		// now reads the whole page instead of stopping at the first hit per channel, having an
 		// answer for every channel no longer proves the search finished — only running out of
 		// neither time nor API does.
-		const complete = apiError === null && this.requestBudget(deadline) > 0;
+		const complete = apiError === null && scanComplete && this.requestBudget(deadline) > 0;
 
 		return { version: this.pickHighestVersion([...answered.values()], channels), complete };
 	}
@@ -640,17 +647,22 @@ export class UpdateService {
 	 * requested channel cost an asset fetch. Without that filter a device on a channel with no
 	 * recent releases pays one request per listed release on every lookup, which is the quickest
 	 * way to reach the unauthenticated API's hourly limit and leave every later check partial.
+	 *
+	 * Reports `complete: false` when an eligible release's version.json could not be read. Such a
+	 * read is skipped rather than retried, and the release it was skipped for may be the only one
+	 * carrying a newer version — caching that silence as a full "up to date" would hide an update
+	 * for the whole 12-hour TTL over what is usually a transient failure.
 	 */
 	private async fetchVersionsFromReleasesApi(
 		channels: Array<'latest' | 'beta' | 'alpha'>,
 		deadline: number,
-	): Promise<string[]> {
+	): Promise<{ versions: string[]; complete: boolean }> {
 		// The probe may already have consumed the lookup's budget. Bail out rather than issue a
 		// request with a non-positive timeout, which AbortSignal.timeout rejects outright.
 		if (this.requestBudget(deadline) <= 0) {
 			this.logger.warn('GitHub lookup budget spent before the releases listing; skipping the scan');
 
-			return [];
+			return { versions: [], complete: false };
 		}
 
 		const response = await fetch(`${this.GITHUB_PRERELEASE_API_URL}?per_page=20`, {
@@ -673,6 +685,7 @@ export class UpdateService {
 
 		const versions: string[] = [];
 		const wanted = new Set<'latest' | 'beta' | 'alpha'>(channels);
+		let complete = true;
 
 		// The caller keeps the highest per channel and treats a budget-truncated read as partial.
 		for (const release of releases) {
@@ -694,6 +707,8 @@ export class UpdateService {
 						`${versions.length} release(s); continuing with partial results`,
 				);
 
+				complete = false;
+
 				break;
 			}
 
@@ -703,7 +718,15 @@ export class UpdateService {
 					signal: AbortSignal.timeout(this.requestBudget(deadline)),
 				});
 
-				if (!assetResponse.ok) continue;
+				if (!assetResponse.ok) {
+					this.logger.warn(
+						`version.json for ${release.tag_name} returned ${assetResponse.status}; the scan is incomplete`,
+					);
+
+					complete = false;
+
+					continue;
+				}
 
 				const versionData = (await assetResponse.json()) as { version?: string; channel?: string };
 				const version = versionData.version?.replace(/^v/, '');
@@ -712,13 +735,23 @@ export class UpdateService {
 				// workflow and is never consulted — the caller classifies from the version itself.
 				if (version) {
 					versions.push(version);
+				} else {
+					// The asset was readable but names no version, so this release contributes
+					// nothing and we cannot tell whether it was newer.
+					complete = false;
 				}
-			} catch {
-				continue;
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.warn(
+					`Could not read version.json for ${release.tag_name} (${err.message}); the scan is incomplete`,
+				);
+
+				complete = false;
 			}
 		}
 
-		return versions;
+		return { versions, complete };
 	}
 
 	/**

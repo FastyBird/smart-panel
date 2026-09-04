@@ -903,6 +903,77 @@ describe('UpdateService', () => {
 		});
 	});
 
+	describe('checkServerUpdate lookup completeness', () => {
+		const RELEASES_API = 'https://api.github.com/repos/FastyBird/smart-panel/releases?per_page=20';
+
+		let fetchSpy: jest.SpyInstance;
+
+		const PARTIAL_TTL_MS = 5 * 60 * 1000;
+
+		const mockFetchRoutes = (routes: Record<string, unknown>): void => {
+			fetchSpy = jest.spyOn(global, 'fetch').mockImplementation((input: RequestInfo | URL) => {
+				const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
+				if (!(url in routes)) {
+					return Promise.resolve({ ok: false, status: 404 } as Response);
+				}
+
+				return Promise.resolve({
+					ok: true,
+					status: 200,
+					json: () => Promise.resolve(routes[url]),
+				} as Response);
+			});
+		};
+
+		const mockImageInstall = (currentVersion: string): void => {
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ version: currentVersion }));
+			(readlinkSync as jest.Mock).mockReturnValue('v1.0.0-beta.3');
+			(existsSync as jest.Mock).mockImplementation(
+				(path: string) => path === '/opt/smart-panel/v1.0.0-beta.3/.image-install',
+			);
+		};
+
+		const release = (tag: string, assetUrl: string | null) => ({
+			tag_name: tag,
+			prerelease: true,
+			assets: assetUrl ? [{ name: 'version.json', browser_download_url: assetUrl }] : [],
+		});
+
+		const cacheTtlLeft = (channel: string): number =>
+			((service as any).serverCacheExpiresAt.get(channel) as number) - Date.now();
+
+		afterEach(() => {
+			fetchSpy?.mockRestore();
+		});
+
+		it('should cache a fully readable lookup for the full TTL', async () => {
+			mockImageInstall('1.0.0-beta.3');
+			mockFetchRoutes({
+				[RELEASES_API]: [release('v1.0.0-beta.3', 'https://example.test/beta/version.json')],
+				'https://example.test/beta/version.json': { version: '1.0.0-beta.3', channel: 'beta' },
+			});
+
+			await service.checkServerUpdate();
+
+			expect(cacheTtlLeft('beta')).toBeGreaterThan(PARTIAL_TTL_MS);
+		});
+
+		it('should cache only briefly when an eligible release asset could not be read', async () => {
+			mockImageInstall('1.0.0-beta.3');
+			mockFetchRoutes({
+				// The asset URL is deliberately unrouted, so reading it 404s. That release may have
+				// been the only one carrying a newer version, so the negative answer is provisional.
+				[RELEASES_API]: [release('v1.1.0-beta.0', 'https://example.test/missing/version.json')],
+			});
+
+			const result = await service.checkServerUpdate();
+
+			expect(result.updateAvailable).toBe(false);
+			expect(cacheTtlLeft('beta')).toBeLessThanOrEqual(PARTIAL_TTL_MS);
+		});
+	});
+
 	describe('configured update channel', () => {
 		const NPM_REGISTRY = 'https://registry.npmjs.org/@fastybird/smart-panel';
 		const RELEASES_API = 'https://api.github.com/repos/FastyBird/smart-panel/releases?per_page=20';

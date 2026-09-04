@@ -125,7 +125,7 @@
 			"updateFailed": "Aktualizácia zlyhala. Skontrolujte systémové logy pre detaily.",
 			"checkFailed": "Nepodarilo sa skontrolovať aktualizácie. Skúste to prosím neskôr.",
 			"installFailed": "Nepodarilo sa spustiť aktualizáciu. Skúste to prosím neskôr.",
-			"channelNotChanged": "Kanál aktualizácií sa nepodarilo zmeniť. Skúste to prosím neskôr."
+			"channelNotChanged": "Kanál aktualizácií sa nepodarilo zmeniť. Skúste to prosím znovu neskôr."
 		}
 	},
 	"texts": {

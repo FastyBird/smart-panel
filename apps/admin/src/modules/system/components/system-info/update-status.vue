@@ -49,7 +49,7 @@
 					v-model="selectedChannel"
 					size="small"
 					class="w-60!"
-					:disabled="savingChannel || isUpdating"
+					:disabled="savingChannel || loading || isUpdating"
 					@change="onChannelChange"
 				>
 					<el-option

@@ -125,7 +125,7 @@
 			"updateFailed": "Aktualizace selhala. Zkontrolujte prosím systémové protokoly pro podrobnosti.",
 			"checkFailed": "Nepodařilo se zkontrolovat aktualizace. Zkuste to prosím znovu později.",
 			"installFailed": "Nepodařilo se spustit aktualizaci. Zkuste to prosím znovu později.",
-			"channelNotChanged": "Kanál aktualizací se nepodařilo změnit. Zkuste to prosím později."
+			"channelNotChanged": "Kanál aktualizací se nepodařilo změnit. Zkuste to prosím znovu později."
 		}
 	},
 	"texts": {
