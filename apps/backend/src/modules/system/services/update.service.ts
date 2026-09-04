@@ -534,6 +534,8 @@ export class UpdateService {
 		// A scan that could not read every eligible release's version.json has not ruled out a
 		// newer version, so its answer is provisional even when the listing itself succeeded.
 		let scanComplete = false;
+		// Starts true because the probe only detracts when it was actually needed and ran.
+		let probeConclusive = true;
 
 		// One deadline for the whole lookup. It starts here rather than inside the scan, because
 		// the caller may wait for both the listing and the probe.
@@ -568,7 +570,12 @@ export class UpdateService {
 
 			// The download URL is just another source of a version string. If what it returns is
 			// not in fact stable, the stable channel simply stays unanswered.
-			this.recordCandidate(answered, wanted, probed);
+			this.recordCandidate(answered, wanted, probed.version);
+
+			// The probe settled the channel only if it named a stable version that was then filed,
+			// or if GitHub said there is none to name. A version that came back but was not stable
+			// settles nothing, so the answer stays provisional.
+			probeConclusive = probed.conclusive && (probed.version === null || answered.has('latest'));
 		}
 
 		// Nothing answered and the API is why — the caller cannot be given a truthful "up to date",
@@ -581,7 +588,7 @@ export class UpdateService {
 		// now reads the whole page instead of stopping at the first hit per channel, having an
 		// answer for every channel no longer proves the search finished — only running out of
 		// neither time nor API does.
-		const complete = apiError === null && scanComplete && this.requestBudget(deadline) > 0;
+		const complete = apiError === null && scanComplete && probeConclusive && this.requestBudget(deadline) > 0;
 
 		return { version: this.pickHighestVersion([...answered.values()], channels), complete };
 	}
@@ -615,8 +622,17 @@ export class UpdateService {
 	/**
 	 * Probe the stable channel via the direct asset download URL — no API rate limit,
 	 * follows the redirect to the asset of whichever release GitHub marks as latest.
+	 *
+	 * `conclusive` says whether the stable channel was *settled*, which is not the same as
+	 * finding something. A 404 settles it: GitHub is answering that there is no non-pre-release
+	 * release, or that the one there is ships no version.json. Both are persistent states of the
+	 * repository, so reporting them as an incomplete lookup would hold every install on the
+	 * five-minute cache forever — twelve times the polling, permanently, over a settled answer.
+	 * A transport error or any other status settles nothing and must not be cached as absence.
 	 */
-	private async fetchStableVersionFromDownloadUrl(deadline: number): Promise<string | null> {
+	private async fetchStableVersionFromDownloadUrl(
+		deadline: number,
+	): Promise<{ version: string | null; conclusive: boolean }> {
 		try {
 			const response = await fetch(this.GITHUB_VERSION_JSON_URL, {
 				headers: { 'User-Agent': 'FastyBird-SmartPanel' },
@@ -625,16 +641,27 @@ export class UpdateService {
 
 			if (response.ok) {
 				const data = (await response.json()) as { version?: string; channel?: string };
+				const version = data.version?.replace(/^v/, '') ?? null;
 
-				return data.version?.replace(/^v/, '') ?? null;
+				// A readable asset that names no version is malformed, not empty — we still do not
+				// know what the stable channel holds.
+				return { version, conclusive: version !== null };
 			}
 
-			this.logger.debug(`Direct version.json returned ${response.status}, falling back to releases API`);
-		} catch {
-			this.logger.debug('Direct version.json fetch failed, falling back to releases API');
+			if (response.status === 404) {
+				this.logger.debug('No stable release publishes a version.json; the stable channel is empty');
+
+				return { version: null, conclusive: true };
+			}
+
+			this.logger.warn(`Direct version.json returned ${response.status}; the stable channel is unresolved`);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.warn(`Direct version.json fetch failed (${err.message}); the stable channel is unresolved`);
 		}
 
-		return null;
+		return { version: null, conclusive: false };
 	}
 
 	/**

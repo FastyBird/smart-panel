@@ -959,6 +959,83 @@ describe('UpdateService', () => {
 			expect(cacheTtlLeft('beta')).toBeGreaterThan(PARTIAL_TTL_MS);
 		});
 
+		it('should keep the full TTL when the stable probe definitively 404s', async () => {
+			// A beta install also accepts stable, so the probe runs. This repository has no stable
+			// release, and GitHub says so with a 404 - a settled answer, not a failure. Treating it
+			// as incomplete would pin every install to the five-minute cache permanently.
+			mockImageInstall('1.0.0-beta.3');
+			mockFetchRoutes({
+				[RELEASES_API]: [release('v1.0.0-beta.3', 'https://example.test/beta/version.json')],
+				'https://example.test/beta/version.json': { version: '1.0.0-beta.3', channel: 'beta' },
+			});
+
+			await service.checkServerUpdate();
+
+			expect(cacheTtlLeft('beta')).toBeGreaterThan(PARTIAL_TTL_MS);
+		});
+
+		it('should cache only briefly when the stable probe fails for a reason other than absence', async () => {
+			mockImageInstall('1.0.0-beta.3');
+
+			fetchSpy = jest.spyOn(global, 'fetch').mockImplementation((input: RequestInfo | URL) => {
+				const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
+				if (url === RELEASES_API) {
+					return Promise.resolve({
+						ok: true,
+						status: 200,
+						json: () => Promise.resolve([release('v1.0.0-beta.3', 'https://example.test/beta/version.json')]),
+					} as Response);
+				}
+
+				if (url === 'https://example.test/beta/version.json') {
+					return Promise.resolve({
+						ok: true,
+						status: 200,
+						json: () => Promise.resolve({ version: '1.0.0-beta.3', channel: 'beta' }),
+					} as Response);
+				}
+
+				// The stable probe hits a server error rather than a 404, so whether a stable
+				// release exists is still unknown.
+				return Promise.resolve({ ok: false, status: 503 } as Response);
+			});
+
+			await service.checkServerUpdate();
+
+			expect(cacheTtlLeft('beta')).toBeLessThanOrEqual(PARTIAL_TTL_MS);
+		});
+
+		it('should cache only briefly when the stable probe throws', async () => {
+			mockImageInstall('1.0.0-beta.3');
+
+			fetchSpy = jest.spyOn(global, 'fetch').mockImplementation((input: RequestInfo | URL) => {
+				const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
+				if (url === RELEASES_API) {
+					return Promise.resolve({
+						ok: true,
+						status: 200,
+						json: () => Promise.resolve([release('v1.0.0-beta.3', 'https://example.test/beta/version.json')]),
+					} as Response);
+				}
+
+				if (url === 'https://example.test/beta/version.json') {
+					return Promise.resolve({
+						ok: true,
+						status: 200,
+						json: () => Promise.resolve({ version: '1.0.0-beta.3', channel: 'beta' }),
+					} as Response);
+				}
+
+				return Promise.reject(new Error('network unreachable'));
+			});
+
+			await service.checkServerUpdate();
+
+			expect(cacheTtlLeft('beta')).toBeLessThanOrEqual(PARTIAL_TTL_MS);
+		});
+
 		it('should cache only briefly when an eligible release asset could not be read', async () => {
 			mockImageInstall('1.0.0-beta.3');
 			mockFetchRoutes({
