@@ -8,7 +8,7 @@
 		<template #icon>
 			<icon
 				icon="mdi:bell-outline"
-				class="w[20px] h[20px]"
+				class="w-[20px] h-[20px]"
 			/>
 		</template>
 
@@ -60,8 +60,10 @@
 		/>
 	</div>
 
+	<!-- `title` is what names the dialog for assistive technology once `with-header` is off. -->
 	<el-drawer
 		v-model="adjustVisible"
+		:title="t('notificationsModule.headings.notifications.adjustFilters')"
 		:show-close="false"
 		:with-header="false"
 		:size="isLGDevice ? '300px' : '100%'"

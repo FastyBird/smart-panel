@@ -1,6 +1,8 @@
 <template>
+	<!-- `title` is what names the dialog for assistive technology once `with-header` is off. -->
 	<el-drawer
 		:model-value="props.modelValue"
+		:title="notification?.title"
 		:show-close="false"
 		:with-header="false"
 		:size="isLGDevice ? '40%' : '100%'"

@@ -109,7 +109,7 @@
 				>
 					<icon
 						:icon="SEVERITY_ICONS[(scope.row as INotification).severity]"
-						class="w[20px] h[20px]"
+						class="w-[20px] h-[20px]"
 					/>
 				</el-avatar>
 			</template>
