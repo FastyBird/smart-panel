@@ -6,7 +6,9 @@
 		"remoteAccess": "Acceso remoto",
 		"accessUrls": "URL de acceso",
 		"internalUrl": "Acceso interno",
-		"externalUrls": "Acceso externo",
+		"externalUrls": "Acceso externo"
+	},
+	"tabs": {
 		"providers": "Proveedores",
 		"advisories": "Avisos"
 	},
@@ -50,7 +52,13 @@
 		"noProviders": "No hay proveedores de acceso remoto instalados.",
 		"noEndpoints": "Este proveedor todavía no publica ningún punto de conexión.",
 		"noAdvisories": "No hay avisos. El estado del acceso remoto parece correcto.",
+		"moduleSource": "Módulo",
 		"qrAlt": "Código QR que codifica esta URL"
+	},
+	"severity": {
+		"critical": "Crítica",
+		"warning": "Advertencia",
+		"info": "Información"
 	},
 	"status": {
 		"unsupported": "No compatible",
@@ -73,11 +81,21 @@
 	},
 	"config": {
 		"about": {
-			"title": "Ajustes de acceso remoto",
-			"description": "Configura las URL interna y externa a través de las cuales se puede acceder a esta instalación, y qué proxies inversos son de confianza para presentar direcciones de cliente reenviadas. El módulo en sí se habilita o deshabilita desde la página Extensiones."
+			"title": "URL de acceso",
+			"description": "Orígenes interno y externo en los que esta instalación es accesible. Deja la URL interna vacía para deducirla de la red; configura la URL externa solo para un proxy inverso propio o un host DDNS. El módulo en sí se habilita o deshabilita desde la página Extensiones."
+		},
+		"proxyTrust": {
+			"title": "Confianza en proxies",
+			"description": "Las direcciones de cliente reenviadas solo se tienen en cuenta cuando la solicitud procede de uno de los proxies de confianza indicados aquí. Proveedores como Tailscale Serve añaden su propio proxy automáticamente."
 		}
 	},
 	"fields": {
+		"advisory": {
+			"severity": "Gravedad",
+			"message": "Mensaje",
+			"provider": "Proveedor",
+			"code": "Código"
+		},
 		"config": {
 			"internalUrl": {
 				"title": "URL interna",

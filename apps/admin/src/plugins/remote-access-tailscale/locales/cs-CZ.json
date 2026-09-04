@@ -1,9 +1,25 @@
 {
 	"headings": {
-		"tailscale": "Tailscale",
-		"serve": "Serve a Funnel"
+		"tailscale": "Tailscale"
+	},
+	"config": {
+		"sections": {
+			"node": {
+				"title": "Identita uzlu",
+				"description": "Název hostitele oznamovaný tailnetu a řídicí rovina, ke které se tento uzel přihlašuje. Přihlašovací server měňte pouze pro vlastní server Headscale."
+			},
+			"tailnet": {
+				"title": "Možnosti tailnetu",
+				"description": "Jak se tento uzel zapojuje do tailnetu: MagicDNS, trasy podsítí oznamované ostatními uzly, značky ACL a Tailscale SSH."
+			},
+			"serve": {
+				"title": "Serve a Funnel",
+				"description": "Serve zpřístupní administraci ve vašem tailnetu přes HTTPS pod MagicDNS názvem uzlu. Funnel ji navíc zveřejní na veřejném internetu."
+			}
+		}
 	},
 	"texts": {
+		"cardDescription": "Soukromý přístup přes váš tailnet, s HTTPS pomocí Tailscale Serve.",
 		"funnelWarning": "Funnel zveřejní tuto instalaci na veřejném internetu. Jedinou ochranou je přihlášení do Smart Panelu."
 	},
 	"buttons": {

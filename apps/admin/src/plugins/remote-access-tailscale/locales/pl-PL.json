@@ -1,9 +1,25 @@
 {
 	"headings": {
-		"tailscale": "Tailscale",
-		"serve": "Serve i Funnel"
+		"tailscale": "Tailscale"
+	},
+	"config": {
+		"sections": {
+			"node": {
+				"title": "Tożsamość węzła",
+				"description": "Nazwa hosta ogłaszana tailnetowi oraz płaszczyzna sterowania, w której loguje się ten węzeł. Zmieniaj serwer logowania tylko dla samodzielnie hostowanego serwera Headscale."
+			},
+			"tailnet": {
+				"title": "Opcje tailnetu",
+				"description": "Jak ten węzeł uczestniczy w tailnecie: MagicDNS, trasy podsieci ogłaszane przez inne węzły, tagi ACL i Tailscale SSH."
+			},
+			"serve": {
+				"title": "Serve i Funnel",
+				"description": "Serve udostępnia interfejs administracyjny w Twoim tailnecie przez HTTPS pod nazwą MagicDNS węzła. Funnel dodatkowo udostępnia go w publicznym internecie."
+			}
+		}
 	},
 	"texts": {
+		"cardDescription": "Prywatny dostęp przez Twój tailnet, z HTTPS za pomocą Tailscale Serve.",
 		"funnelWarning": "Funnel publikuje tę instalację w publicznym internecie. Jedyną ochroną jest logowanie do Smart Panel."
 	},
 	"buttons": {

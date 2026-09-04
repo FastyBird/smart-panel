@@ -1,9 +1,25 @@
 {
 	"headings": {
-		"tailscale": "Tailscale",
-		"serve": "Serve & Funnel"
+		"tailscale": "Tailscale"
+	},
+	"config": {
+		"sections": {
+			"node": {
+				"title": "Knotenidentität",
+				"description": "Hostname, der dem Tailnet gemeldet wird, und die Kontrollebene, bei der sich dieser Knoten anmeldet. Ändern Sie den Anmeldeserver nur für einen selbst gehosteten Headscale-Server."
+			},
+			"tailnet": {
+				"title": "Tailnet-Optionen",
+				"description": "Wie dieser Knoten am Tailnet teilnimmt: MagicDNS, von anderen Knoten angekündigte Subnetzrouten, ACL-Tags und Tailscale SSH."
+			},
+			"serve": {
+				"title": "Serve und Funnel",
+				"description": "Serve veröffentlicht die Admin-Oberfläche in Ihrem Tailnet über HTTPS unter dem MagicDNS-Namen des Knotens. Funnel macht sie zusätzlich im öffentlichen Internet verfügbar."
+			}
+		}
 	},
 	"texts": {
+		"cardDescription": "Privater Zugriff über Ihr Tailnet, mit HTTPS über Tailscale Serve.",
 		"funnelWarning": "Funnel veröffentlicht diese Installation im öffentlichen Internet. Die Anmeldung bei Smart Panel ist der einzige Schutz."
 	},
 	"buttons": {

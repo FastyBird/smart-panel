@@ -6,7 +6,9 @@
 		"remoteAccess": "Vzdálený přístup",
 		"accessUrls": "Přístupové URL",
 		"internalUrl": "Interní přístup",
-		"externalUrls": "Externí přístup",
+		"externalUrls": "Externí přístup"
+	},
+	"tabs": {
 		"providers": "Poskytovatelé",
 		"advisories": "Upozornění"
 	},
@@ -50,7 +52,13 @@
 		"noProviders": "Nejsou nainstalováni žádní poskytovatelé vzdáleného přístupu.",
 		"noEndpoints": "Tento poskytovatel zatím nezveřejňuje žádné koncové body.",
 		"noAdvisories": "Žádná upozornění. Stav vzdáleného přístupu vypadá dobře.",
+		"moduleSource": "Modul",
 		"qrAlt": "QR kód kódující tuto URL"
+	},
+	"severity": {
+		"critical": "Kritická",
+		"warning": "Varování",
+		"info": "Informace"
 	},
 	"status": {
 		"unsupported": "Nepodporováno",
@@ -73,11 +81,21 @@
 	},
 	"config": {
 		"about": {
-			"title": "Nastavení vzdáleného přístupu",
-			"description": "Nastavte interní a externí URL, na kterých je tato instalace dostupná, a které reverzní proxy jsou důvěryhodné pro předávání adres klientů. Samotný modul povolíte nebo zakážete na stránce Rozšíření."
+			"title": "Přístupové URL",
+			"description": "Interní a externí origin, na kterých je tato instalace dostupná. Ponechte interní URL prázdné, pokud se má odvodit ze sítě; externí URL nastavte pouze pro ručně sestavenou reverzní proxy nebo hostitele DDNS. Samotný modul povolíte nebo zakážete na stránce Rozšíření."
+		},
+		"proxyTrust": {
+			"title": "Důvěra k proxy",
+			"description": "Předané adresy klientů se berou v úvahu pouze tehdy, když požadavek přichází od některé z důvěryhodných proxy uvedených zde. Poskytovatelé jako Tailscale Serve přidávají svou proxy automaticky."
 		}
 	},
 	"fields": {
+		"advisory": {
+			"severity": "Závažnost",
+			"message": "Zpráva",
+			"provider": "Poskytovatel",
+			"code": "Kód"
+		},
 		"config": {
 			"internalUrl": {
 				"title": "Interní URL",

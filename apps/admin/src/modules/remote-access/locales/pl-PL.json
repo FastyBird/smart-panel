@@ -6,7 +6,9 @@
 		"remoteAccess": "Dostęp zdalny",
 		"accessUrls": "Adresy URL dostępu",
 		"internalUrl": "Dostęp wewnętrzny",
-		"externalUrls": "Dostęp zewnętrzny",
+		"externalUrls": "Dostęp zewnętrzny"
+	},
+	"tabs": {
 		"providers": "Dostawcy",
 		"advisories": "Powiadomienia"
 	},
@@ -50,7 +52,13 @@
 		"noProviders": "Nie zainstalowano żadnych dostawców dostępu zdalnego.",
 		"noEndpoints": "Ten dostawca nie publikuje jeszcze żadnych punktów końcowych.",
 		"noAdvisories": "Brak powiadomień. Stan dostępu zdalnego wygląda dobrze.",
+		"moduleSource": "Moduł",
 		"qrAlt": "Kod QR kodujący ten adres URL"
+	},
+	"severity": {
+		"critical": "Krytyczna",
+		"warning": "Ostrzeżenie",
+		"info": "Informacja"
 	},
 	"status": {
 		"unsupported": "Nieobsługiwane",
@@ -73,11 +81,21 @@
 	},
 	"config": {
 		"about": {
-			"title": "Ustawienia dostępu zdalnego",
-			"description": "Skonfiguruj wewnętrzny i zewnętrzny adres URL, pod którym dostępna jest ta instalacja, oraz serwery proxy, którym ufa się w zakresie przekazywania adresów klientów. Sam moduł włącza się i wyłącza na stronie Rozszerzenia."
+			"title": "Adresy URL dostępu",
+			"description": "Wewnętrzny i zewnętrzny origin, pod którym dostępna jest ta instalacja. Pozostaw wewnętrzny adres URL pusty, aby wyznaczyć go z sieci; zewnętrzny adres URL ustaw tylko dla ręcznie skonfigurowanego serwera proxy typu reverse lub hosta DDNS. Sam moduł włącza się i wyłącza na stronie Rozszerzenia."
+		},
+		"proxyTrust": {
+			"title": "Zaufanie do proxy",
+			"description": "Przekazywane adresy klientów są uwzględniane tylko wtedy, gdy żądanie pochodzi od jednego z zaufanych serwerów proxy wymienionych tutaj. Dostawcy tacy jak Tailscale Serve dodają własny serwer proxy automatycznie."
 		}
 	},
 	"fields": {
+		"advisory": {
+			"severity": "Ważność",
+			"message": "Wiadomość",
+			"provider": "Dostawca",
+			"code": "Kod"
+		},
 		"config": {
 			"internalUrl": {
 				"title": "Wewnętrzny adres URL",
