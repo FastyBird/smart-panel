@@ -1,0 +1,37 @@
+{
+	"headings": {
+		"aboutSlackSettings": "Slack-Webhook-Einstellungen"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"webhookUrl": {
+				"title": "Webhook-URL",
+				"placeholder": "https://hooks.slack.com/services/...",
+				"description": "URL des eingehenden Slack-Webhooks, von der App-Einstellungsseite des Kanals. Muss eine https://hooks.slack.com/services/...-URL sein.",
+				"invalid": "Geben Sie eine Slack-Webhook-URL ein, z. B. https://hooks.slack.com/services/<T.../B.../...>, ohne eingebettete Anmeldedaten oder Port"
+			},
+			"minSeverity": {
+				"title": "Minimaler Schweregrad",
+				"description": "Es werden nur Benachrichtigungen mit diesem Schweregrad oder höher weitergeleitet.",
+				"options": {
+					"info": "Info",
+					"warning": "Warnung",
+					"error": "Fehler",
+					"critical": "Kritisch"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Slack-Webhook-Einstellungen wurden aktualisiert",
+			"notEdited": "Aktualisierung der Slack-Webhook-Einstellungen fehlgeschlagen"
+		}
+	},
+	"texts": {
+		"aboutSlackSettings": "Leiten Sie Systembenachrichtigungen mithilfe eines eingehenden Slack-Webhooks als farbigen Anhang (Attachment) an einen Slack-Kanal weiter. Erstellen (oder verwenden) Sie in Slack eine App mit aktiviertem Incoming Webhook für den Zielkanal und kopieren Sie deren Webhook-URL."
+	}
+}

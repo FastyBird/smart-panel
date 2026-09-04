@@ -1,0 +1,41 @@
+{
+	"headings": {
+		"aboutTelegramSettings": "Nastavení Telegram bota"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"botToken": {
+				"title": "Token bota",
+				"placeholder": "123456789:AAExampleTelegramBotTokenValue",
+				"description": "Token Telegram Bot API od @BotFather."
+			},
+			"chatId": {
+				"title": "ID chatu",
+				"placeholder": "123456789",
+				"description": "ID chatu Telegramu (nebo @uživatelské jméno kanálu), na který bot posílá zprávy."
+			},
+			"minSeverity": {
+				"title": "Minimální závažnost",
+				"description": "Přeposílána jsou pouze oznámení s touto závažností nebo vyšší.",
+				"options": {
+					"info": "Info",
+					"warning": "Varování",
+					"error": "Chyba",
+					"critical": "Kritická"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavení Telegram bota bylo aktualizováno",
+			"notEdited": "Nepodařilo se aktualizovat nastavení Telegram bota"
+		}
+	},
+	"texts": {
+		"aboutTelegramSettings": "Přeposílejte systémová oznámení do chatu Telegramu prostřednictvím bota. V Telegramu napište zprávu @BotFather pro vytvoření bota, zkopírujte jeho token a zjistěte ID chatu, do kterého má bot přispívat."
+	}
+}

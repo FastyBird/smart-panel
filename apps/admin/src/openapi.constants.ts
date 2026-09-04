@@ -783,4 +783,16 @@ export type NotificationsDiscordPluginUpdateConfigSchema = components['schemas']
 
 // Notification channel plugin aliases
 // ===================================
+// Notifications Slack Plugin Schemas
+// ======================================
+export type NotificationsSlackPluginConfigSchema = components['schemas']['NotificationsSlackPluginDataConfig'];
+export type NotificationsSlackPluginUpdateConfigSchema = components['schemas']['NotificationsSlackPluginUpdateConfig'];
+
+// Notifications Telegram Plugin Schemas
+// ======================================
+export type NotificationsTelegramPluginConfigSchema = components['schemas']['NotificationsTelegramPluginDataConfig'];
+export type NotificationsTelegramPluginUpdateConfigSchema = components['schemas']['NotificationsTelegramPluginUpdateConfig'];
+
+// Notifications Module Enums
+// =============================
 export { PathsModulesNotificationsNotificationsGetParametersQuerySeverity as NotificationSeverity } from './openapi';

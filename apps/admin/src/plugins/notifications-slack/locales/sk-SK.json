@@ -1,0 +1,37 @@
+{
+	"headings": {
+		"aboutSlackSettings": "Nastavenia Slack webhooku"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povolený"
+			},
+			"webhookUrl": {
+				"title": "URL webhooku",
+				"placeholder": "https://hooks.slack.com/services/...",
+				"description": "URL prichádzajúceho Slack webhooku zo stránky nastavení aplikácie daného kanála. Musí to byť URL v tvare https://hooks.slack.com/services/...",
+				"invalid": "Zadajte URL Slack webhooku, napr. https://hooks.slack.com/services/<T.../B.../...>, bez vložených prihlasovacích údajov alebo portu"
+			},
+			"minSeverity": {
+				"title": "Minimálna závažnosť",
+				"description": "Preposielané sú iba upozornenia s touto závažnosťou alebo vyššou.",
+				"options": {
+					"info": "Info",
+					"warning": "Varovanie",
+					"error": "Chyba",
+					"critical": "Kritická"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavenia Slack webhooku boli aktualizované",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia Slack webhooku"
+		}
+	},
+	"texts": {
+		"aboutSlackSettings": "Preposielajte systémové upozornenia do kanála Slack ako farebnú prílohu (attachment) pomocou prichádzajúceho Slack webhooku. V Slacku vytvorte (alebo použite existujúcu) aplikáciu s povoleným Incoming Webhook pre cieľový kanál a skopírujte jej URL webhooku."
+	}
+}

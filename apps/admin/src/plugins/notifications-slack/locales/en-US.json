@@ -1,0 +1,37 @@
+{
+	"headings": {
+		"aboutSlackSettings": "Slack webhook settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"webhookUrl": {
+				"title": "Webhook URL",
+				"placeholder": "https://hooks.slack.com/services/...",
+				"description": "Slack incoming webhook URL, from a channel's App settings page. Must be an https://hooks.slack.com/services/... URL.",
+				"invalid": "Enter a Slack webhook URL such as https://hooks.slack.com/services/<T.../B.../...>, without embedded credentials or a port"
+			},
+			"minSeverity": {
+				"title": "Minimum severity",
+				"description": "Only notifications at or above this severity are forwarded.",
+				"options": {
+					"info": "Info",
+					"warning": "Warning",
+					"error": "Error",
+					"critical": "Critical"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Slack webhook settings have been updated",
+			"notEdited": "Failed to update Slack webhook settings"
+		}
+	},
+	"texts": {
+		"aboutSlackSettings": "Forward system notifications to a Slack channel as a coloured attachment, using a Slack incoming webhook. In Slack, create (or reuse) an app with an Incoming Webhook enabled for the target channel and copy its webhook URL."
+	}
+}

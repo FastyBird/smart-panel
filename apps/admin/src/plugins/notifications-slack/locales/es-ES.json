@@ -1,0 +1,37 @@
+{
+	"headings": {
+		"aboutSlackSettings": "Configuración del webhook de Slack"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"webhookUrl": {
+				"title": "URL del webhook",
+				"placeholder": "https://hooks.slack.com/services/...",
+				"description": "URL del webhook entrante de Slack, desde la página de configuración de la app del canal. Debe ser una URL https://hooks.slack.com/services/...",
+				"invalid": "Introduzca una URL de webhook de Slack, como https://hooks.slack.com/services/<T.../B.../...>, sin credenciales incluidas ni puerto"
+			},
+			"minSeverity": {
+				"title": "Gravedad mínima",
+				"description": "Solo se reenvían las notificaciones con esta gravedad o superior.",
+				"options": {
+					"info": "Información",
+					"warning": "Advertencia",
+					"error": "Error",
+					"critical": "Crítico"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "La configuración del webhook de Slack ha sido actualizada",
+			"notEdited": "Error al actualizar la configuración del webhook de Slack"
+		}
+	},
+	"texts": {
+		"aboutSlackSettings": "Reenvíe las notificaciones del sistema a un canal de Slack como un adjunto (attachment) de color, mediante un webhook entrante de Slack. En Slack, cree (o reutilice) una app con un Incoming Webhook habilitado para el canal de destino y copie su URL de webhook."
+	}
+}

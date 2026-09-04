@@ -1,0 +1,37 @@
+{
+	"headings": {
+		"aboutSlackSettings": "Ustawienia webhooka Slack"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączony"
+			},
+			"webhookUrl": {
+				"title": "URL webhooka",
+				"placeholder": "https://hooks.slack.com/services/...",
+				"description": "Adres URL przychodzącego webhooka Slack ze strony ustawień aplikacji danego kanału. Musi to być adres URL w postaci https://hooks.slack.com/services/...",
+				"invalid": "Podaj adres URL webhooka Slack, np. https://hooks.slack.com/services/<T.../B.../...>, bez osadzonych danych uwierzytelniających ani portu"
+			},
+			"minSeverity": {
+				"title": "Minimalna ważność",
+				"description": "Przekazywane są tylko powiadomienia o tej ważności lub wyższej.",
+				"options": {
+					"info": "Informacje",
+					"warning": "Ostrzeżenie",
+					"error": "Błąd",
+					"critical": "Krytyczny"
+				}
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia webhooka Slack zostały zaktualizowane",
+			"notEdited": "Nie udało się zaktualizować ustawień webhooka Slack"
+		}
+	},
+	"texts": {
+		"aboutSlackSettings": "Przekazuj powiadomienia systemowe do kanału Slack jako kolorowy załącznik (attachment) za pomocą przychodzącego webhooka Slack. W Slacku utwórz (lub użyj istniejącej) aplikację z włączonym Incoming Webhook dla docelowego kanału i skopiuj jej adres URL webhooka."
+	}
+}
