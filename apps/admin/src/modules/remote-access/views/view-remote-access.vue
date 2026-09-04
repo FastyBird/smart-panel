@@ -32,7 +32,9 @@
 		:element-loading-text="t('remoteAccessModule.texts.loadingStatus')"
 		class="flex flex-col flex-1 min-h-0 lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2"
 	>
-		<remote-access-status-banner class="mt-2 shrink-0" />
+		<div class="mt-2 shrink-0">
+			<remote-access-status-banner />
+		</div>
 
 		<el-card
 			shadow="never"
@@ -45,55 +47,54 @@
 			<access-urls-list />
 		</el-card>
 
-		<el-card
-			shadow="never"
-			class="flex-1 min-h-0 flex flex-col mt-2"
-			body-class="p-0! flex-1 min-h-0 flex flex-col"
+		<el-tabs
+			v-model="activeTab"
+			:class="['flex-1 min-h-0 flex flex-col mt-2', ns.e('tabs')]"
 		>
-			<el-tabs
-				v-model="activeTab"
-				:class="['flex-1 min-h-0 flex flex-col', ns.e('tabs')]"
+			<el-tab-pane
+				name="providers"
+				class="h-full overflow-hidden"
 			>
-				<el-tab-pane
-					name="providers"
-					class="h-full overflow-hidden"
-				>
-					<template #label>
-						<div class="flex items-center gap-2 px-4">
-							<icon icon="mdi:lan-connect" />
-							{{ t('remoteAccessModule.tabs.providers') }}
-						</div>
-					</template>
+				<template #label>
+					<div class="flex items-center gap-2 px-4">
+						<icon icon="mdi:lan-connect" />
+						{{ t('remoteAccessModule.tabs.providers') }}
+					</div>
+				</template>
 
-					<el-scrollbar class="h-full">
-						<div class="p-3">
-							<provider-cards />
-						</div>
-					</el-scrollbar>
-				</el-tab-pane>
+				<el-scrollbar class="h-full">
+					<provider-cards />
+				</el-scrollbar>
+			</el-tab-pane>
 
-				<el-tab-pane
-					name="advisories"
-					class="h-full overflow-hidden"
-				>
-					<template #label>
-						<div class="flex items-center gap-2 px-4">
-							<icon icon="mdi:shield-alert-outline" />
-							{{ t('remoteAccessModule.tabs.advisories') }}
-							<el-tag
-								v-if="advisories.length > 0"
-								size="small"
-								:type="advisoriesTagType"
-							>
-								{{ advisories.length }}
-							</el-tag>
-						</div>
-					</template>
+			<el-tab-pane
+				name="advisories"
+				class="h-full overflow-hidden"
+			>
+				<template #label>
+					<div class="flex items-center gap-2 px-4">
+						<icon icon="mdi:shield-alert-outline" />
+						{{ t('remoteAccessModule.tabs.advisories') }}
+						<el-tag
+							v-if="advisories.length > 0"
+							size="small"
+							:type="advisoriesTagType"
+						>
+							{{ advisories.length }}
+						</el-tag>
+					</div>
+				</template>
 
-					<advisories-table />
-				</el-tab-pane>
-			</el-tabs>
-		</el-card>
+				<el-scrollbar class="h-full">
+					<el-card
+						shadow="never"
+						body-class="p-0!"
+					>
+						<advisories-table />
+					</el-card>
+				</el-scrollbar>
+			</el-tab-pane>
+		</el-tabs>
 	</div>
 </template>
 

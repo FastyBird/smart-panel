@@ -8,27 +8,27 @@
 	>
 		<template #header>
 			<div class="provider-card__header">
-				<icon
-					icon="mdi:lan-connect"
-					class="provider-card__icon"
-				/>
-				<div class="provider-card__header-content">
+				<div class="provider-card__heading">
+					<icon
+						icon="mdi:lan-connect"
+						class="provider-card__icon"
+					/>
 					<h3 class="provider-card__title">{{ t('remoteAccessTailscalePlugin.headings.tailscale') }}</h3>
-					<div class="provider-card__tags">
-						<el-tag
-							:type="stateTagType"
-							size="small"
-						>
-							{{ t(`remoteAccessModule.status.${displayState}`) }}
-						</el-tag>
-						<el-tag
-							v-if="httpsEndpoint"
-							type="success"
-							size="small"
-						>
-							{{ t('remoteAccessModule.texts.https') }}
-						</el-tag>
-					</div>
+				</div>
+				<div class="provider-card__tags">
+					<el-tag
+						:type="stateTagType"
+						size="small"
+					>
+						{{ t(`remoteAccessModule.status.${displayState}`) }}
+					</el-tag>
+					<el-tag
+						v-if="httpsEndpoint"
+						type="success"
+						size="small"
+					>
+						{{ t('remoteAccessModule.texts.https') }}
+					</el-tag>
 				</div>
 			</div>
 		</template>
@@ -55,28 +55,28 @@
 					v-if="tailnet"
 					class="provider-card__meta-item"
 				>
-					<span>{{ t('remoteAccessTailscalePlugin.fields.tailnet') }}:</span>
+					<span class="provider-card__meta-label">{{ t('remoteAccessTailscalePlugin.fields.tailnet') }}:</span>
 					<span class="font-mono break-all">{{ tailnet }}</span>
 				</div>
 				<div
 					v-if="dnsName"
 					class="provider-card__meta-item"
 				>
-					<span>{{ t('remoteAccessTailscalePlugin.fields.dnsName') }}:</span>
+					<span class="provider-card__meta-label">{{ t('remoteAccessTailscalePlugin.fields.dnsName') }}:</span>
 					<span class="font-mono break-all">{{ dnsName }}</span>
 				</div>
 				<div
 					v-if="ipv4"
 					class="provider-card__meta-item"
 				>
-					<span>{{ t('remoteAccessTailscalePlugin.fields.ipv4') }}:</span>
+					<span class="provider-card__meta-label">{{ t('remoteAccessTailscalePlugin.fields.ipv4') }}:</span>
 					<span class="font-mono break-all">{{ ipv4 }}</span>
 				</div>
 				<div
 					v-if="ipv6"
 					class="provider-card__meta-item"
 				>
-					<span>{{ t('remoteAccessTailscalePlugin.fields.ipv6') }}:</span>
+					<span class="provider-card__meta-label">{{ t('remoteAccessTailscalePlugin.fields.ipv6') }}:</span>
 					<span class="font-mono break-all">{{ ipv6 }}</span>
 				</div>
 			</div>
@@ -406,23 +406,23 @@ const onCommand = (command: string): void => {
 
 .provider-card__header {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
+	justify-content: space-between;
 	gap: 0.75rem;
+}
+
+.provider-card__heading {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	min-width: 0;
+	flex: 1;
 }
 
 .provider-card__icon {
 	font-size: 1.5rem;
 	flex-shrink: 0;
 	color: var(--el-color-primary);
-	margin-top: 0.125rem;
-}
-
-.provider-card__header-content {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
-	min-width: 0;
-	flex: 1;
 }
 
 .provider-card__title {
@@ -438,6 +438,8 @@ const onCommand = (command: string): void => {
 .provider-card__tags {
 	display: flex;
 	flex-wrap: wrap;
+	justify-content: flex-end;
+	flex-shrink: 0;
 	gap: 0.375rem;
 }
 
@@ -461,10 +463,15 @@ const onCommand = (command: string): void => {
 
 .provider-card__meta-item {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	gap: 0.25rem;
 	font-size: 0.8125rem;
 	color: var(--el-text-color-secondary);
+}
+
+.provider-card__meta-label {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .provider-card__footer {
