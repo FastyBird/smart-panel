@@ -1,0 +1,118 @@
+import { reactive, ref } from 'vue';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { flushPromises, mount } from '@vue/test-utils';
+
+import HomeKitSetupWizard from './homekit-setup-wizard.vue';
+
+const mockCandidates = ref([
+	{
+		id: 'd290f1ee-6c54-4b01-90e6-d701748f0851',
+		name: 'Living Room Light',
+		category: 'lighting',
+		roomName: 'Living Room',
+		roomId: 'a123f1ee-6c54-4b01-90e6-d701748f0899',
+		isCompatible: true,
+		suggestedServiceType: 'lightbulb',
+		isMapped: true,
+		channelsCount: 1,
+	},
+	{
+		id: 'e390f1ee-6c54-4b01-90e6-d701748f0852',
+		name: 'Kitchen Thermostat',
+		category: 'thermostat',
+		roomName: 'Kitchen',
+		roomId: 'b123f1ee-6c54-4b01-90e6-d701748f0899',
+		isCompatible: true,
+		suggestedServiceType: 'thermostat',
+		isMapped: false,
+		channelsCount: 1,
+	},
+]);
+
+const mockStatus = ref({
+	running: true,
+	paired: false,
+	pairedClientsCount: 0,
+	bridgeName: 'Smart Panel Bridge',
+	port: 51826,
+	pincode: '031-45-154',
+	username: 'CC:22:3D:E3:CE:30',
+	setupUri: 'X-HM://0024R932WSP01',
+	qrCodeDataUri: 'data:image/svg+xml;utf8,<svg></svg>',
+	exposedDevicesCount: 1,
+});
+
+const fetchCandidates = vi.fn().mockImplementation(async () => mockCandidates.value);
+const fetchStatus = vi.fn().mockImplementation(async () => mockStatus.value);
+const mapDevices = vi.fn().mockImplementation(async () => mockCandidates.value);
+const resetPairing = vi.fn().mockImplementation(async () => mockStatus.value);
+
+vi.mock('vue-i18n', async () => {
+	const actual = await vi.importActual('vue-i18n');
+
+	return { ...actual, useI18n: () => ({ t: (key: string) => key }) };
+});
+
+vi.mock('../../../common', () => ({
+	useFlashMessage: () => ({ success: vi.fn(), error: vi.fn() }),
+}));
+
+vi.mock('../store/homekit-bridge.store', () => ({
+	useHomeKitBridge: () =>
+		reactive({
+			candidates: mockCandidates,
+			status: mockStatus,
+			fetchingCandidates: ref(false),
+			fetchingStatus: ref(false),
+			savingMapping: ref(false),
+			resettingPairing: ref(false),
+			fetchCandidates,
+			fetchStatus,
+			mapDevices,
+			resetPairing,
+		}),
+}));
+
+const mountWizard = (props: { visible?: boolean; initialStep?: 'devices' | 'pairing' } = {}) => {
+	return mount(HomeKitSetupWizard, {
+		props: {
+			visible: true,
+			initialStep: 'devices',
+			...props,
+		},
+		global: {
+			stubs: {
+				ElDialog: {
+					template: '<div><slot /></div>',
+				},
+				Icon: true,
+			},
+		},
+	});
+};
+
+describe('HomeKitSetupWizard', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('renders wizard with device candidate rows', async () => {
+		const wrapper = mountWizard();
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('Living Room Light');
+		expect(wrapper.text()).toContain('Kitchen Thermostat');
+		expect(wrapper.text()).toContain('lightbulb');
+		expect(wrapper.text()).toContain('thermostat');
+	});
+
+	it('renders pairing step when initialStep is pairing', async () => {
+		const wrapper = mountWizard({ initialStep: 'pairing' });
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('031-45-154');
+		expect(wrapper.find('img[alt="HomeKit QR Code"]').exists()).toBe(true);
+	});
+});

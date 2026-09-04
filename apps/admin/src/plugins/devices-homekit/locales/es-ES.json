@@ -1,0 +1,103 @@
+{
+	"headings": {
+		"aboutSettings": "Apple HomeKit Gateway",
+		"bridgeStatus": "Bridge Runtime Status",
+		"resetPairing": "Reset Apple Home Pairing"
+	},
+	"texts": {
+		"aboutSettings": "Bridge Smart Panel devices to Apple Home via local HomeKit Accessory Protocol (HAP). Use the wizard to select which devices should be bridged."
+	},
+	"status": {
+		"running": "Running",
+		"stopped": "Stopped",
+		"notPaired": "Not Paired",
+		"pairedWithCount": "Paired ({count} clients)",
+		"exposedCount": "{count} devices currently bridged"
+	},
+	"buttons": {
+		"configureDevices": "Configure Bridged Devices",
+		"showPairing": "Apple Home QR Code",
+		"resetPairing": "Reset Pairing"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enable HomeKit Gateway"
+			},
+			"name": {
+				"title": "Bridge Display Name",
+				"placeholder": "Smart Panel Bridge",
+				"description": "The name displayed for the bridge in Apple Home",
+				"validation": {
+					"required": "Bridge name is required"
+				}
+			},
+			"port": {
+				"title": "TCP Port",
+				"description": "Local port for the HAP server (default: 51826)",
+				"validation": {
+					"required": "Port is required"
+				}
+			},
+			"pinCode": {
+				"title": "Pairing PIN Code",
+				"placeholder": "031-45-154",
+				"description": "8-digit PIN in XXX-XX-XXX format used to pair with Apple Home",
+				"validation": {
+					"format": "PIN code must be in XXX-XX-XXX format"
+				}
+			}
+		}
+	},
+	"wizard": {
+		"title": "Apple HomeKit Gateway Setup",
+		"steps": {
+			"devices": "Select Devices",
+			"pairing": "Pair with Apple Home"
+		},
+		"devicesDescription": "Choose which Smart Panel devices should be bridged into Apple Home. Only compatible devices with mapped services will appear in Apple Home.",
+		"searchPlaceholder": "Search devices by name or room...",
+		"filterAll": "All Devices",
+		"filterCompatibleOnly": "Compatible Only",
+		"incompatible": "Incompatible",
+		"bridgeLimitWarning": "Apple Home recommends a maximum of 150 accessories per bridge. Adding more may lead to instability or pairing issues.",
+		"selectedCount": "{count} of {total} compatible devices selected",
+		"scanWithCamera": "Scan with the Apple Home or Camera app on iPhone/iPad",
+		"setupCode": "Setup PIN Code",
+		"bridgeStatus": "Pairing Status",
+		"pairedWithCount": "Paired with {count} controller(s)",
+		"waitingForPairing": "Waiting for pairing...",
+		"instruction1": "Open the Apple Home app on your iOS or macOS device.",
+		"instruction2": "Tap \"+\" and select \"Add Accessory\".",
+		"instruction3": "Scan the QR code or enter the 8-digit PIN code manually.",
+		"columns": {
+			"name": "Device",
+			"category": "Category",
+			"homeKitService": "HomeKit Service"
+		},
+		"buttons": {
+			"selectAllCompatible": "Select All Compatible",
+			"deselectAll": "Deselect All",
+			"saveMappings": "Save Mappings",
+			"saveAndPair": "Save & Pair with Apple Home",
+			"backToDevices": "Back to Devices",
+			"resetPairing": "Reset Pairing",
+			"done": "Done",
+			"cancel": "Cancel"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "HomeKit Gateway settings updated.",
+			"notEdited": "Failed to update HomeKit Gateway settings."
+		},
+		"mappingsSaved": "Device mappings saved successfully.",
+		"saveMappingsFailed": "Failed to save device mappings.",
+		"statusFetchFailed": "Failed to refresh bridge status.",
+		"pinCopied": "Pairing PIN code copied to clipboard.",
+		"copyFailed": "Failed to copy to clipboard.",
+		"confirmResetPairing": "Are you sure you want to reset Apple Home pairing? Existing Apple Home connections will be disconnected and you will need to re-pair the bridge.",
+		"pairingResetSuccess": "Pairing credentials reset. You can now pair with Apple Home.",
+		"pairingResetFailed": "Failed to reset pairing credentials."
+	}
+}
