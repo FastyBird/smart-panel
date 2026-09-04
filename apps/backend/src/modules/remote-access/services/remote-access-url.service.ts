@@ -211,6 +211,13 @@ export class RemoteAccessUrlService {
 
 	@OnEvent(ConfigEventType.CONFIG_UPDATED)
 	onConfigUpdated(event: ConfigUpdatedEvent): void {
+		// A provider plugin being enabled or disabled changes which endpoints exist.
+		if (event.type === 'plugin' && this.statusService.hasProvider(event.source)) {
+			this.refresh();
+
+			return;
+		}
+
 		if (event.type !== 'module' || event.source !== REMOTE_ACCESS_MODULE_NAME) {
 			return;
 		}

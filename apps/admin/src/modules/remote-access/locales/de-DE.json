@@ -49,7 +49,7 @@
 		"public": "Öffentlich",
 		"private": "Privat",
 		"noExternalUrls": "Es ist noch kein externer Zugriff konfiguriert. Richten Sie einen Anbieter ein oder fügen Sie in den Einstellungen eine manuelle externe URL hinzu.",
-		"noProviders": "Es sind keine Fernzugriffsanbieter installiert.",
+		"noProviders": "Es ist kein Fernzugriffsanbieter aktiviert. Aktivieren Sie einen auf der Seite Erweiterungen.",
 		"noEndpoints": "Dieser Anbieter veröffentlicht noch keine Endpunkte.",
 		"noAdvisories": "Keine Hinweise. Der Status des Fernzugriffs sieht gut aus.",
 		"moduleSource": "Modul",

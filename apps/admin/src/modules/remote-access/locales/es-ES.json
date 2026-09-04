@@ -49,7 +49,7 @@
 		"public": "Público",
 		"private": "Privado",
 		"noExternalUrls": "Aún no hay acceso externo configurado. Configura un proveedor o añade una URL externa manual en los ajustes.",
-		"noProviders": "No hay proveedores de acceso remoto instalados.",
+		"noProviders": "No hay ningún proveedor de acceso remoto habilitado. Habilite uno en la página Extensiones.",
 		"noEndpoints": "Este proveedor todavía no publica ningún punto de conexión.",
 		"noAdvisories": "No hay avisos. El estado del acceso remoto parece correcto.",
 		"moduleSource": "Módulo",

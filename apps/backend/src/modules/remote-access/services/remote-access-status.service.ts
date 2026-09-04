@@ -3,6 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ConfigService } from '../../config/services/config.service';
 import { RemoteAccessProviderModel } from '../models/provider.model';
 import { IRemoteAccessProvider, RemoteAccessProviderStatus } from '../platforms/remote-access-provider.platform';
 import {
@@ -38,7 +39,15 @@ export class RemoteAccessStatusService {
 	// the log once per request.
 	private readonly warnedTypeMismatches = new Set<string>();
 
-	constructor(private readonly registry: RemoteAccessProviderRegistryService) {}
+	constructor(
+		private readonly registry: RemoteAccessProviderRegistryService,
+		private readonly configService: ConfigService,
+	) {}
+
+	/** Whether a provider of this type is registered, whatever its plugin's enabled state. */
+	hasProvider(type: string): boolean {
+		return this.registry.get(type) !== null;
+	}
 
 	/**
 	 * Applies the same registered-type normalisation `pollProvider()` uses,
@@ -64,11 +73,31 @@ export class RemoteAccessStatusService {
 			return;
 		}
 
+		if (!this.isProviderEnabled(provider.type)) {
+			this.cache.delete(provider.type);
+
+			this.logger.debug(`Ignoring a Provider.Status event for '${provider.type}', whose plugin is disabled.`);
+
+			return;
+		}
+
 		this.cache.set(provider.type, this.normalizeStatusType(provider, status));
 	}
 
-	/** Synchronous, cache-only read of the last known status per provider. */
+	/**
+	 * Synchronous, cache-only read of the last known status per provider.
+	 * A plugin the owner disables must vanish from the module at once — its
+	 * endpoints, proxy addresses and advisories included — so providers whose
+	 * plugin has been disabled since they were cached are pruned here, at
+	 * read time, rather than through one more `CONFIG_UPDATED` listener.
+	 */
 	getCachedStatuses(): RemoteAccessProviderStatus[] {
+		for (const type of Array.from(this.cache.keys())) {
+			if (!this.isProviderEnabled(type)) {
+				this.cache.delete(type);
+			}
+		}
+
 		return Array.from(this.cache.values());
 	}
 
@@ -79,7 +108,21 @@ export class RemoteAccessStatusService {
 	 * synthesized `error` entry instead of failing the whole aggregate.
 	 */
 	async getAggregatedStatuses(): Promise<RemoteAccessProviderModel[]> {
-		return Promise.all(this.registry.getAll().map((provider) => this.pollProvider(provider)));
+		const enabledProviders = this.registry.getAll().filter((provider) => {
+			if (this.isProviderEnabled(provider.type)) {
+				return true;
+			}
+
+			this.cache.delete(provider.type);
+
+			return false;
+		});
+
+		const statuses = await Promise.all(enabledProviders.map((provider) => this.pollProvider(provider)));
+
+		// A plugin can be disabled while its poll is still in flight; `pollProvider()` no longer caches
+		// such a status, and it must not be listed either.
+		return statuses.filter((status) => this.isProviderEnabled(status.type));
 	}
 
 	/** Live poll of a single provider by type; throws when the type is unknown. */
@@ -93,10 +136,27 @@ export class RemoteAccessStatusService {
 		return this.pollProvider(provider);
 	}
 
+	/**
+	 * A provider takes part in the module only while its owning plugin is
+	 * enabled: disabled plugins are hidden from the app, so they are neither
+	 * polled nor listed, and contribute no URLs, proxy addresses or
+	 * advisories. A plugin whose config cannot be read counts as disabled.
+	 */
+	private isProviderEnabled(type: string): boolean {
+		try {
+			return this.configService.getPluginConfig(type).enabled === true;
+		} catch {
+			return false;
+		}
+	}
+
 	private async pollProvider(provider: IRemoteAccessProvider): Promise<RemoteAccessProviderModel> {
 		const status = this.normalizeStatusType(provider, await this.fetchStatus(provider));
 
-		this.cache.set(provider.type, status);
+		// Re-checked after the await: a plugin disabled mid-poll must not be written into the cache.
+		if (this.isProviderEnabled(provider.type)) {
+			this.cache.set(provider.type, status);
+		}
 
 		return toInstance(RemoteAccessProviderModel, {
 			...status,

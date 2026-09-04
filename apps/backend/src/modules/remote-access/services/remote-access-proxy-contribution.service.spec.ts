@@ -30,7 +30,7 @@ const connectedStatus = (type: string, proxyAddresses: string[]): RemoteAccessPr
 describe('RemoteAccessProxyContributionService', () => {
 	let trustedProxyRegistry: { register: jest.Mock; unregister: jest.Mock };
 	let configService: { getModuleConfig: jest.Mock };
-	let statusService: { getCachedStatuses: jest.Mock };
+	let statusService: { getCachedStatuses: jest.Mock; hasProvider: jest.Mock };
 	let service: RemoteAccessProxyContributionService;
 
 	beforeEach(() => {
@@ -38,7 +38,7 @@ describe('RemoteAccessProxyContributionService', () => {
 		configService = {
 			getModuleConfig: jest.fn().mockReturnValue({ enabled: true, trustForwardedHeaders: false, trustedProxies: [] }),
 		};
-		statusService = { getCachedStatuses: jest.fn().mockReturnValue([]) };
+		statusService = { getCachedStatuses: jest.fn().mockReturnValue([]), hasProvider: jest.fn().mockReturnValue(false) };
 
 		service = new RemoteAccessProxyContributionService(
 			trustedProxyRegistry as unknown as TrustedProxyRegistryService,
@@ -190,6 +190,11 @@ describe('RemoteAccessProxyContributionService', () => {
 			service.onConfigUpdated({ type: 'module', source: REMOTE_ACCESS_MODULE_NAME });
 			addresses.addresses();
 			expect(configService.getModuleConfig).toHaveBeenCalledTimes(2);
+
+			statusService.hasProvider.mockReturnValue(true);
+			service.onConfigUpdated({ type: 'plugin', source: 'remote-access-tailscale' });
+			addresses.addresses();
+			expect(configService.getModuleConfig).toHaveBeenCalledTimes(3);
 		});
 
 		it('fails closed (contributes []) when the config read throws, without crashing isTrusted()', () => {

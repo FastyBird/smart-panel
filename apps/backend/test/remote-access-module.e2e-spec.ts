@@ -86,9 +86,11 @@ class FakeRemoteAccessProvider implements IRemoteAccessProvider {
 describe('Remote access module endpoints (e2e)', () => {
 	let app: INestApplication;
 	let registry: RemoteAccessProviderRegistryService;
+	let fakeProviderEnabled = true;
 
 	beforeAll(async () => {
 		const configService = {
+			getPluginConfig: jest.fn((type: string) => ({ type, enabled: fakeProviderEnabled })),
 			getModuleConfig: jest.fn().mockReturnValue({
 				type: 'remote-access-module',
 				enabled: true,
@@ -213,6 +215,32 @@ describe('Remote access module endpoints (e2e)', () => {
 
 		it('denies a regular user', async () => {
 			await request(app.getHttpServer()).get('/urls').set('Authorization', 'Bearer regular-user').expect(403);
+		});
+	});
+
+	describe('disabled provider plugin', () => {
+		beforeEach(() => {
+			fakeProviderEnabled = false;
+		});
+
+		afterEach(() => {
+			fakeProviderEnabled = true;
+		});
+
+		it('hides the provider from the aggregated status and the providers list', async () => {
+			const status = await request(app.getHttpServer())
+				.get('/status')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(200);
+
+			expect(status.body.data.providers).toEqual([]);
+
+			const providers = await request(app.getHttpServer())
+				.get('/providers')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(200);
+
+			expect(providers.body.data).toEqual([]);
 		});
 	});
 });

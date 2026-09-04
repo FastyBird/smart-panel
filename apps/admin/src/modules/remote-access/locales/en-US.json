@@ -49,7 +49,7 @@
 		"public": "Public",
 		"private": "Private",
 		"noExternalUrls": "No external access is configured yet. Set up a provider or add a manual external URL in the settings.",
-		"noProviders": "No remote access providers are installed.",
+		"noProviders": "No remote access provider is enabled. Enable one on the Extensions page.",
 		"noEndpoints": "This provider is not publishing any endpoints yet.",
 		"noAdvisories": "No advisories. Your remote access posture looks good.",
 		"moduleSource": "Module",

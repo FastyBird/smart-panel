@@ -39,7 +39,7 @@ const httpPrivate: RemoteAccessEndpoint = {
 describe('RemoteAccessUrlService', () => {
 	let configService: { getModuleConfig: jest.Mock };
 	let nestConfigService: NestConfigService;
-	let statusService: { getCachedStatuses: jest.Mock };
+	let statusService: { getCachedStatuses: jest.Mock; hasProvider: jest.Mock };
 	let eventEmitter: { emit: jest.Mock };
 	let service: RemoteAccessUrlService;
 
@@ -68,7 +68,7 @@ describe('RemoteAccessUrlService', () => {
 		nestConfigService = {
 			get: jest.fn((key: string) => ({ FB_APP_HOST: 'http://localhost', FB_BACKEND_PORT: 3000 })[key]),
 		} as unknown as NestConfigService;
-		statusService = { getCachedStatuses: jest.fn().mockReturnValue([]) };
+		statusService = { getCachedStatuses: jest.fn().mockReturnValue([]), hasProvider: jest.fn().mockReturnValue(false) };
 		eventEmitter = { emit: jest.fn() };
 
 		service = new RemoteAccessUrlService(
@@ -308,6 +308,21 @@ describe('RemoteAccessUrlService', () => {
 			expect(eventEmitter.emit).not.toHaveBeenCalled();
 
 			service.onConfigUpdated({ source: 'remote-access-module', type: 'module' });
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
+				EventType.URLS_CHANGED,
+				expect.objectContaining({ internal: 'https://panel.local' }),
+			);
+		});
+
+		it('refreshes on a plugin CONFIG_UPDATED event only for a registered provider', () => {
+			eventEmitter.emit.mockClear();
+			configService.getModuleConfig.mockReturnValue({ ...baseConfig(), internalUrl: 'https://panel.local' });
+
+			service.onConfigUpdated({ source: 'weather-openweathermap', type: 'plugin' });
+			expect(eventEmitter.emit).not.toHaveBeenCalled();
+
+			statusService.hasProvider.mockReturnValue(true);
+			service.onConfigUpdated({ source: 'remote-access-tailscale', type: 'plugin' });
 			expect(eventEmitter.emit).toHaveBeenCalledWith(
 				EventType.URLS_CHANGED,
 				expect.objectContaining({ internal: 'https://panel.local' }),
