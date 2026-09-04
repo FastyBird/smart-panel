@@ -32,7 +32,7 @@ const NotificationsFilterStub = defineComponent({
 		selectedCount: { type: Number, default: 0 },
 		bulkActions: { type: Array, default: () => [] },
 	},
-	emits: ['update:filters', 'reset-filters', 'bulk-action'],
+	emits: ['update:filters', 'reset-filters', 'adjust-list', 'bulk-action'],
 	template: '<div class="filter-stub">{{ selectedCount }}</div>',
 });
 
@@ -136,10 +136,12 @@ describe('ListNotifications', () => {
 		table.vm.$emit('dismiss', '2');
 		table.vm.$emit('remove', '3');
 		table.vm.$emit('reset-filters');
+		wrapper.findComponent(NotificationsFilterStub).vm.$emit('adjust-list');
 
 		expect(wrapper.emitted('detail')).toEqual([['1']]);
 		expect(wrapper.emitted('dismiss')).toEqual([['2']]);
 		expect(wrapper.emitted('remove')).toEqual([['3']]);
 		expect(wrapper.emitted('reset-filters')).toHaveLength(1);
+		expect(wrapper.emitted('adjust-list')).toHaveLength(1);
 	});
 });

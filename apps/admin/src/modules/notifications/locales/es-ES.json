@@ -27,13 +27,15 @@
 			"remove": "Eliminar notificación",
 			"bulkRemove": "Eliminar notificaciones",
 			"data": "Datos",
-			"lifecycle": "Ciclo de vida"
+			"lifecycle": "Ciclo de vida",
+			"adjustFilters": "Filtrar notificaciones"
 		},
 		"aboutConfig": "Acerca de la configuración de notificaciones"
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "Estados del sistema y eventos que requieren tu atención"
+			"list": "Estados del sistema y eventos que requieren tu atención",
+			"adjustFilters": "Ajustar filtros de visualización"
 		}
 	},
 	"texts": {
@@ -94,8 +96,7 @@
 				}
 			},
 			"severity": {
-				"title": "Gravedad",
-				"placeholder": "Cualquier gravedad"
+				"title": "Gravedad"
 			},
 			"source": {
 				"title": "Origen",
@@ -146,6 +147,16 @@
 					"range": "El máximo de notificaciones activas debe estar entre 50 y 5000."
 				},
 				"unit": "notificaciones"
+			}
+		}
+	},
+	"filters": {
+		"notifications": {
+			"severity": {
+				"title": "Filtrar por gravedad"
+			},
+			"source": {
+				"title": "Filtrar por origen"
 			}
 		}
 	},
@@ -204,6 +215,9 @@
 		},
 		"resetFilters": {
 			"title": "Restablecer filtros"
+		},
+		"reset": {
+			"title": "Restablecer"
 		}
 	}
 }

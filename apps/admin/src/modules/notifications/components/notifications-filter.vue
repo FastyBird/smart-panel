@@ -35,53 +35,6 @@
 			<el-divider direction="vertical" />
 
 			<el-form-item
-				:label="t('notificationsModule.fields.filters.severity.title')"
-				class="p-1 m-0!"
-			>
-				<el-select
-					v-model="innerFilters.severity"
-					multiple
-					collapse-tags
-					collapse-tags-tooltip
-					clearable
-					:placeholder="t('notificationsModule.fields.filters.severity.placeholder')"
-					class="w-[200px]!"
-				>
-					<el-option
-						v-for="severity in severityOptions"
-						:key="severity"
-						:value="severity"
-						:label="t(`notificationsModule.severity.${severity}`)"
-					/>
-				</el-select>
-			</el-form-item>
-
-			<el-divider direction="vertical" />
-
-			<el-form-item
-				:label="t('notificationsModule.fields.filters.source.title')"
-				class="p-1 m-0!"
-			>
-				<el-select
-					v-model="innerFilters.source"
-					clearable
-					filterable
-					:loading="extensionsLoading"
-					:placeholder="t('notificationsModule.fields.filters.source.placeholder')"
-					class="w-[220px]!"
-				>
-					<el-option
-						v-for="source in sourceOptions"
-						:key="source.value"
-						:value="source.value"
-						:label="source.label"
-					/>
-				</el-select>
-			</el-form-item>
-
-			<el-divider direction="vertical" />
-
-			<el-form-item
 				:label="t('notificationsModule.fields.filters.unread.title')"
 				class="p-1 m-0!"
 			>
@@ -109,22 +62,30 @@
 			>
 				<icon icon="mdi:filter-off" />
 			</el-button>
+
+			<!-- Severity and source live in the adjust drawer, like the secondary device filters. -->
+			<el-button
+				plain
+				class="px-2! mt-1 mr-1"
+				:aria-label="t('notificationsModule.headings.notifications.adjustFilters')"
+				data-test-id="adjust-notifications-filters"
+				@click="emit('adjust-list')"
+			>
+				<icon icon="mdi:slider" />
+			</el-button>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElDivider, ElForm, ElFormItem, ElOption, ElRadioButton, ElRadioGroup, ElSelect, ElSwitch } from 'element-plus';
+import { ElButton, ElDivider, ElForm, ElFormItem, ElRadioButton, ElRadioGroup, ElSwitch } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { useVModel } from '@vueuse/core';
 
 import { BulkActionsToolbar, type IBulkAction } from '../../../common';
-import { NotificationsModuleNotificationSeverity } from '../../../openapi.constants';
-import { useExtensions } from '../../extensions/composables/useExtensions';
 import type { INotificationsFilter } from '../schemas/list.schemas';
 
 defineOptions({
@@ -147,26 +108,13 @@ const props = withDefaults(
 const emit = defineEmits<{
 	(e: 'update:filters', filters: INotificationsFilter): void;
 	(e: 'reset-filters'): void;
+	(e: 'adjust-list'): void;
 	(e: 'bulk-action', key: string): void;
 }>();
 
 const { t } = useI18n();
 
 const innerFilters = useVModel(props, 'filters', emit);
-
-const severityOptions = Object.values(NotificationsModuleNotificationSeverity);
-
-// The closed set of possible sources - every extension type the backend knows about, not merely
-// the sources present in whatever page of notifications happens to be loaded right now.
-const { extensions, areLoading: extensionsLoading, fetchExtensions } = useExtensions();
-
-const sourceOptions = computed<{ value: string; label: string }[]>((): { value: string; label: string }[] =>
-	extensions.value.map((extension) => ({ value: extension.type, label: extension.name }))
-);
-
-onBeforeMount((): void => {
-	void fetchExtensions();
-});
 </script>
 
 <style scoped>

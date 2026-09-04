@@ -55,9 +55,59 @@
 			@remove="onRemove"
 			@load-more="onLoadMore"
 			@reset-filters="onResetFilters"
+			@adjust-list="onAdjustList"
 			@bulk-action="onBulkAction"
 		/>
 	</div>
+
+	<el-drawer
+		v-model="adjustVisible"
+		:show-close="false"
+		:with-header="false"
+		:size="isLGDevice ? '300px' : '100%'"
+	>
+		<div class="flex flex-col h-full">
+			<app-bar menu-button-hidden>
+				<template #heading>
+					<app-bar-heading>
+						<template #icon>
+							<icon icon="mdi:filter" />
+						</template>
+
+						<template #title>
+							{{ t('notificationsModule.headings.notifications.adjustFilters') }}
+						</template>
+
+						<template #subtitle>
+							{{ t('notificationsModule.subHeadings.notifications.adjustFilters') }}
+						</template>
+					</app-bar-heading>
+				</template>
+
+				<template #button-right>
+					<app-bar-button
+						:align="AppBarButtonAlign.RIGHT"
+						class="mr-2"
+						:aria-label="t('notificationsModule.buttons.close.title')"
+						@click="adjustVisible = false"
+					>
+						<template #icon>
+							<el-icon>
+								<icon icon="mdi:close" />
+							</el-icon>
+						</template>
+					</app-bar-button>
+				</template>
+			</app-bar>
+
+			<list-notifications-adjust
+				v-if="adjustVisible"
+				v-model:filters="filters"
+				:filters-active="filtersActive"
+				@reset-filters="onResetFilters"
+			/>
+		</div>
+	</el-drawer>
 
 	<notification-detail-drawer
 		v-model="drawerVisible"
@@ -74,12 +124,12 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElIcon } from 'element-plus';
+import { ElDrawer, ElIcon } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
-import { ListNotifications, NotificationDetailDrawer } from '../components/components';
+import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, AppBreadcrumbs, ViewHeader, useBreakpoints } from '../../../common';
+import { ListNotifications, ListNotificationsAdjust, NotificationDetailDrawer } from '../components/components';
 import { type NotificationsBulkActionOutcome, useNotificationsActions, useNotificationsDataSource } from '../composables/composables';
 import { RouteNames } from '../notifications.constants';
 import { NotificationsException } from '../notifications.exceptions';
@@ -96,7 +146,7 @@ useMeta({
 	title: t('notificationsModule.meta.notifications.list.title'),
 });
 
-const { isMDDevice } = useBreakpoints();
+const { isMDDevice, isLGDevice } = useBreakpoints();
 
 const { notifications, hasMore, areLoading, filters, filtersActive, fetchNotifications, loadMoreNotifications, resetFilters } =
 	useNotificationsDataSource();
@@ -104,6 +154,7 @@ const { markRead, markAllRead, dismiss, remove, bulkMarkUnread, bulkDismiss, bul
 
 const selectedId = ref<INotification['id'] | null>(null);
 const drawerVisible = ref<boolean>(false);
+const adjustVisible = ref<boolean>(false);
 
 const selectedNotification = computed<INotification | null>(
 	(): INotification | null => notifications.value.find((notification) => notification.id === selectedId.value) ?? null
@@ -133,6 +184,10 @@ const onLoadMore = (): void => {
 
 const onResetFilters = (): void => {
 	resetFilters();
+};
+
+const onAdjustList = (): void => {
+	adjustVisible.value = true;
 };
 
 const onMarkRead = (id: INotification['id'], read: boolean): void => {

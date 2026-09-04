@@ -27,13 +27,15 @@
 			"remove": "Benachrichtigung entfernen",
 			"bulkRemove": "Benachrichtigungen entfernen",
 			"data": "Daten",
-			"lifecycle": "Lebenszyklus"
+			"lifecycle": "Lebenszyklus",
+			"adjustFilters": "Benachrichtigungen filtern"
 		},
 		"aboutConfig": "Über die Benachrichtigungseinstellungen"
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "Systemzustände und Ereignisse, die Ihre Aufmerksamkeit erfordern"
+			"list": "Systemzustände und Ereignisse, die Ihre Aufmerksamkeit erfordern",
+			"adjustFilters": "Anzeigefilter anpassen"
 		}
 	},
 	"texts": {
@@ -94,8 +96,7 @@
 				}
 			},
 			"severity": {
-				"title": "Schweregrad",
-				"placeholder": "Beliebiger Schweregrad"
+				"title": "Schweregrad"
 			},
 			"source": {
 				"title": "Quelle",
@@ -146,6 +147,16 @@
 					"range": "Maximale aktive Benachrichtigungen müssen zwischen 50 und 5000 liegen."
 				},
 				"unit": "Benachrichtigungen"
+			}
+		}
+	},
+	"filters": {
+		"notifications": {
+			"severity": {
+				"title": "Nach Schweregrad filtern"
+			},
+			"source": {
+				"title": "Nach Quelle filtern"
 			}
 		}
 	},
@@ -204,6 +215,9 @@
 		},
 		"resetFilters": {
 			"title": "Filter zurücksetzen"
+		},
+		"reset": {
+			"title": "Zurücksetzen"
 		}
 	}
 }

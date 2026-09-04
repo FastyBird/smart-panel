@@ -183,6 +183,7 @@ import { formatTimeAgo } from '@vueuse/core';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, AppBarHeading, useBreakpoints } from '../../../common';
 import { NotificationsModuleNotificationSeverity } from '../../../openapi.constants';
+import { SEVERITY_ICONS } from '../notifications.constants';
 import type { INotification } from '../store/notifications.store.schemas';
 
 import NotificationActions from './notification-actions.vue';
@@ -214,18 +215,9 @@ const dataEntries = computed<[string, string | number | boolean | null][]>((): [
 	Object.entries(props.notification?.data ?? {})
 );
 
-const severityIcon = computed<string>((): string => {
-	switch (props.notification?.severity) {
-		case NotificationsModuleNotificationSeverity.critical:
-			return 'mdi:alert-octagon-outline';
-		case NotificationsModuleNotificationSeverity.error:
-			return 'mdi:alert-circle-outline';
-		case NotificationsModuleNotificationSeverity.warning:
-			return 'mdi:alert-outline';
-		default:
-			return 'mdi:information-outline';
-	}
-});
+const severityIcon = computed<string>((): string =>
+	props.notification ? SEVERITY_ICONS[props.notification.severity] : SEVERITY_ICONS[NotificationsModuleNotificationSeverity.info]
+);
 
 const relativeTime = computed<string>((): string => (props.notification ? formatTimeAgo(props.notification.createdAt) : ''));
 

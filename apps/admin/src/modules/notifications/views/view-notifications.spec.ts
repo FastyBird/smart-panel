@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 
 import { NotificationsModuleNotificationKind, NotificationsModuleNotificationSeverity } from '../../../openapi.constants';
-import { ListNotifications, NotificationDetailDrawer } from '../components/components';
+import { ListNotifications, ListNotificationsAdjust, NotificationDetailDrawer } from '../components/components';
 import type { INotificationsFilter } from '../schemas/list.schemas';
 import type { INotification } from '../store/notifications.store.schemas';
 
@@ -48,11 +48,12 @@ vi.mock('../../../common', async () => {
 
 	const StubComponent = defineVueComponent({
 		setup(_, { slots }) {
-			return () => h('div', [slots.default?.(), slots.icon?.(), slots.title?.(), slots.subtitle?.()]);
+			return () => h('div', [slots.default?.(), slots.heading?.(), slots['button-right']?.(), slots.icon?.(), slots.title?.(), slots.subtitle?.()]);
 		},
 	});
 
 	return {
+		AppBar: StubComponent,
 		AppBarButton: StubComponent,
 		AppBarButtonAlign: { LEFT: 'left', RIGHT: 'right', BACK: 'back', NONE: 'none' },
 		AppBarHeading: StubComponent,
@@ -81,7 +82,16 @@ vi.mock('../components/components', async () => {
 				hasMore: { type: Boolean, default: false },
 				loading: { type: Boolean, default: false },
 			},
-			emits: ['detail', 'dismiss', 'remove', 'load-more', 'reset-filters', 'update:filters', 'bulk-action'],
+			emits: ['detail', 'dismiss', 'remove', 'load-more', 'reset-filters', 'adjust-list', 'update:filters', 'bulk-action'],
+			template: '<div />',
+		}),
+		ListNotificationsAdjust: defineVueComponent({
+			name: 'ListNotificationsAdjust',
+			props: {
+				filters: { type: Object, default: () => ({}) },
+				filtersActive: { type: Boolean, default: false },
+			},
+			emits: ['update:filters', 'reset-filters'],
 			template: '<div />',
 		}),
 		NotificationDetailDrawer: defineVueComponent({
@@ -351,6 +361,26 @@ describe('ViewNotifications', () => {
 
 			expect(mocks.remove).toHaveBeenCalledWith(row.id);
 			expect(mocks.fetchNotifications).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('adjust drawer', () => {
+		it('opens the secondary filters from the list and resets through the data source', async () => {
+			const wrapper = await mountAndClearInitialFetch();
+
+			expect(wrapper.findComponent(ListNotificationsAdjust).exists()).toBe(false);
+
+			emitFromList(wrapper, 'adjust-list');
+
+			await flushPromises();
+
+			const adjust = wrapper.findComponent(ListNotificationsAdjust);
+
+			expect(adjust.exists()).toBe(true);
+
+			adjust.vm.$emit('reset-filters');
+
+			expect(mocks.resetFilters).toHaveBeenCalledTimes(1);
 		});
 	});
 

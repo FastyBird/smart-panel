@@ -31,3 +31,13 @@ export const SEVERITY_RANK: Record<NotificationsModuleNotificationSeverity, numb
  * How many active rows the bell popover renders before pointing at the full page.
  */
 export const NOTIFICATIONS_POPOVER_LIMIT = 8;
+
+/**
+ * One icon per severity, shared by the table's icon column and the detail drawer heading.
+ */
+export const SEVERITY_ICONS: Record<NotificationsModuleNotificationSeverity, string> = {
+	[NotificationsModuleNotificationSeverity.info]: 'mdi:information-outline',
+	[NotificationsModuleNotificationSeverity.warning]: 'mdi:alert-outline',
+	[NotificationsModuleNotificationSeverity.error]: 'mdi:alert-circle-outline',
+	[NotificationsModuleNotificationSeverity.critical]: 'mdi:alert-octagon-outline',
+};

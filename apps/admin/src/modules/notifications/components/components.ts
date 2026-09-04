@@ -5,6 +5,7 @@ export { default as NotificationDetailDrawer } from './notification-detail-drawe
 export { default as NotificationPopover } from './notification-popover.vue';
 export { default as NotificationSeverityTag } from './notification-severity-tag.vue';
 export { default as ListNotifications } from './list-notifications.vue';
+export { default as ListNotificationsAdjust } from './list-notifications-adjust.vue';
 export { default as NotificationsFilter } from './notifications-filter.vue';
 export { default as NotificationsTable } from './notifications-table.vue';
 export { default as NotificationsConfigForm } from './notifications-config-form.vue';

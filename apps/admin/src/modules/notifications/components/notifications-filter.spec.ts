@@ -1,4 +1,4 @@
-import { type ComponentPublicInstance, reactive, ref } from 'vue';
+import { type ComponentPublicInstance, reactive } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -9,20 +9,10 @@ import type { INotificationsFilter } from '../schemas/list.schemas';
 
 import NotificationsFilter from './notifications-filter.vue';
 
-const mockFetchExtensions = vi.fn();
-
 vi.mock('vue-i18n', () => ({
 	// `common`'s index pulls in the app's locale setup, which builds a real i18n instance.
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({ t: (key: string) => key }),
-}));
-
-vi.mock('../../extensions/composables/useExtensions', () => ({
-	useExtensions: () => ({
-		extensions: ref([{ type: 'system-module', name: 'System' }]),
-		areLoading: ref(false),
-		fetchExtensions: mockFetchExtensions,
-	}),
 }));
 
 const bulkActions: IBulkAction[] = [{ key: 'dismiss', label: 'Dismiss', icon: 'mdi:eye-off-outline', type: 'warning' }];
@@ -49,10 +39,12 @@ describe('NotificationsFilter', () => {
 		vi.clearAllMocks();
 	});
 
-	it('loads the extension list the source options are built from', async () => {
-		await mountFilter();
+	it('asks to open the adjust drawer that holds the secondary filters', async () => {
+		const wrapper = await mountFilter();
 
-		expect(mockFetchExtensions).toHaveBeenCalledTimes(1);
+		await wrapper.find('[data-test-id="adjust-notifications-filters"]').trigger('click');
+
+		expect(wrapper.emitted('adjust-list')).toHaveLength(1);
 	});
 
 	it('shows the reset button only while a filter is active, and asks to reset from it', async () => {

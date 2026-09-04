@@ -27,13 +27,15 @@
 			"remove": "Odstrániť upozornenie",
 			"bulkRemove": "Odstrániť upozornenia",
 			"data": "Dáta",
-			"lifecycle": "Životný cyklus"
+			"lifecycle": "Životný cyklus",
+			"adjustFilters": "Filtrovať upozornenia"
 		},
 		"aboutConfig": "O nastaveniach upozornení"
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "Stavy systému a udalosti, ktoré si vyžadujú vašu pozornosť"
+			"list": "Stavy systému a udalosti, ktoré si vyžadujú vašu pozornosť",
+			"adjustFilters": "Upraviť filtre zobrazenia"
 		}
 	},
 	"texts": {
@@ -94,8 +96,7 @@
 				}
 			},
 			"severity": {
-				"title": "Závažnosť",
-				"placeholder": "Akákoľvek závažnosť"
+				"title": "Závažnosť"
 			},
 			"source": {
 				"title": "Zdroj",
@@ -146,6 +147,16 @@
 					"range": "Maximálny počet aktívnych upozornení musí byť medzi 50 a 5000."
 				},
 				"unit": "oznámení"
+			}
+		}
+	},
+	"filters": {
+		"notifications": {
+			"severity": {
+				"title": "Filtrovať podľa závažnosti"
+			},
+			"source": {
+				"title": "Filtrovať podľa zdroja"
 			}
 		}
 	},
@@ -204,6 +215,9 @@
 		},
 		"resetFilters": {
 			"title": "Resetovať filtre"
+		},
+		"reset": {
+			"title": "Resetovať"
 		}
 	}
 }
