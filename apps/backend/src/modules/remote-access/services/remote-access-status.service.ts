@@ -3,6 +3,8 @@ import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { EventType as ConfigEventType } from '../../config/config.constants';
+import { ConfigService } from '../../config/services/config.service';
 import { RemoteAccessProviderModel } from '../models/provider.model';
 import { IRemoteAccessProvider, RemoteAccessProviderStatus } from '../platforms/remote-access-provider.platform';
 import {
@@ -16,6 +18,11 @@ import { RemoteAccessProviderRegistryService } from './remote-access-provider-re
 
 /** Marks a rejection produced by the deadline race in `fetchStatus()`, not by the provider itself. */
 class ProviderStatusTimeoutError extends Error {}
+
+interface ConfigUpdatedEvent {
+	source: string;
+	type: 'module' | 'plugin';
+}
 
 /**
  * Aggregates provider statuses on demand (`getAggregatedStatuses`,
@@ -38,7 +45,15 @@ export class RemoteAccessStatusService {
 	// the log once per request.
 	private readonly warnedTypeMismatches = new Set<string>();
 
-	constructor(private readonly registry: RemoteAccessProviderRegistryService) {}
+	constructor(
+		private readonly registry: RemoteAccessProviderRegistryService,
+		private readonly configService: ConfigService,
+	) {}
+
+	/** Whether a provider of this type is registered, whatever its plugin's enabled state. */
+	hasProvider(type: string): boolean {
+		return this.registry.get(type) !== null;
+	}
 
 	/**
 	 * Applies the same registered-type normalisation `pollProvider()` uses,
@@ -64,11 +79,47 @@ export class RemoteAccessStatusService {
 			return;
 		}
 
+		if (!this.isProviderEnabled(provider.type)) {
+			this.cache.delete(provider.type);
+
+			this.logger.debug(`Ignoring a Provider.Status event for '${provider.type}', whose plugin is disabled.`);
+
+			return;
+		}
+
 		this.cache.set(provider.type, this.normalizeStatusType(provider, status));
 	}
 
-	/** Synchronous, cache-only read of the last known status per provider. */
+	/**
+	 * A plugin the owner disables must vanish from the module at once — its
+	 * endpoints, proxy addresses and advisories included — so its cached
+	 * status is dropped as soon as the config changes, without waiting for
+	 * the managed service to stop and report.
+	 */
+	@OnEvent(ConfigEventType.CONFIG_UPDATED)
+	onConfigUpdated(event: ConfigUpdatedEvent): void {
+		if (event.type !== 'plugin' || !this.hasProvider(event.source)) {
+			return;
+		}
+
+		if (!this.isProviderEnabled(event.source)) {
+			this.cache.delete(event.source);
+		}
+	}
+
+	/**
+	 * Synchronous, cache-only read of the last known status per provider.
+	 * Providers whose plugin has been disabled since they were cached are
+	 * pruned here as well, so a read that happens to run before
+	 * `onConfigUpdated()` still never hands out a disabled provider.
+	 */
 	getCachedStatuses(): RemoteAccessProviderStatus[] {
+		for (const type of Array.from(this.cache.keys())) {
+			if (!this.isProviderEnabled(type)) {
+				this.cache.delete(type);
+			}
+		}
+
 		return Array.from(this.cache.values());
 	}
 
@@ -79,7 +130,17 @@ export class RemoteAccessStatusService {
 	 * synthesized `error` entry instead of failing the whole aggregate.
 	 */
 	async getAggregatedStatuses(): Promise<RemoteAccessProviderModel[]> {
-		return Promise.all(this.registry.getAll().map((provider) => this.pollProvider(provider)));
+		const enabledProviders = this.registry.getAll().filter((provider) => {
+			if (this.isProviderEnabled(provider.type)) {
+				return true;
+			}
+
+			this.cache.delete(provider.type);
+
+			return false;
+		});
+
+		return Promise.all(enabledProviders.map((provider) => this.pollProvider(provider)));
 	}
 
 	/** Live poll of a single provider by type; throws when the type is unknown. */
@@ -91,6 +152,20 @@ export class RemoteAccessStatusService {
 		}
 
 		return this.pollProvider(provider);
+	}
+
+	/**
+	 * A provider takes part in the module only while its owning plugin is
+	 * enabled: disabled plugins are hidden from the app, so they are neither
+	 * polled nor listed, and contribute no URLs, proxy addresses or
+	 * advisories. A plugin whose config cannot be read counts as disabled.
+	 */
+	private isProviderEnabled(type: string): boolean {
+		try {
+			return this.configService.getPluginConfig(type).enabled === true;
+		} catch {
+			return false;
+		}
 	}
 
 	private async pollProvider(provider: IRemoteAccessProvider): Promise<RemoteAccessProviderModel> {

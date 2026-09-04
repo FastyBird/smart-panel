@@ -49,7 +49,7 @@
 		"public": "Verejné",
 		"private": "Súkromné",
 		"noExternalUrls": "Zatiaľ nie je nakonfigurovaný žiadny externý prístup. Nastavte poskytovateľa alebo pridajte manuálnu externú URL v nastaveniach.",
-		"noProviders": "Nie sú nainštalovaní žiadni poskytovatelia vzdialeného prístupu.",
+		"noProviders": "Nie je povolený žiadny poskytovateľ vzdialeného prístupu. Povoľte ho na stránke Rozšírenia.",
 		"noEndpoints": "Tento poskytovateľ zatiaľ nezverejňuje žiadne koncové body.",
 		"noAdvisories": "Žiadne upozornenia. Stav vzdialeného prístupu vyzerá dobre.",
 		"moduleSource": "Modul",

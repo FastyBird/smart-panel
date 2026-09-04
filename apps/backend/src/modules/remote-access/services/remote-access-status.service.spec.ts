@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 
+import { ConfigService } from '../../config/services/config.service';
 import { IRemoteAccessProvider, RemoteAccessProviderStatus } from '../platforms/remote-access-provider.platform';
 import { REMOTE_ACCESS_PROVIDER_STATUS_TIMEOUT_MS } from '../remote-access.constants';
 import { RemoteAccessProviderNotFoundException } from '../remote-access.exceptions';
@@ -27,11 +28,17 @@ const buildProvider = (type: string, getStatus: () => Promise<RemoteAccessProvid
 
 describe('RemoteAccessStatusService', () => {
 	let registry: RemoteAccessProviderRegistryService;
+	let disabledTypes: Set<string>;
+	let configService: { getPluginConfig: jest.Mock };
 	let service: RemoteAccessStatusService;
 
 	beforeEach(() => {
 		registry = new RemoteAccessProviderRegistryService();
-		service = new RemoteAccessStatusService(registry);
+		disabledTypes = new Set<string>();
+		configService = {
+			getPluginConfig: jest.fn((type: string) => ({ type, enabled: !disabledTypes.has(type) })),
+		};
+		service = new RemoteAccessStatusService(registry, configService as unknown as ConfigService);
 	});
 
 	describe('getCachedStatuses', () => {
@@ -206,6 +213,72 @@ describe('RemoteAccessStatusService', () => {
 				`Provider did not report a status within ${REMOTE_ACCESS_PROVIDER_STATUS_TIMEOUT_MS}ms.`,
 			);
 			expect(other?.state).toBe('connected');
+		});
+	});
+	describe('disabled provider plugins', () => {
+		it('neither polls nor lists a provider whose plugin is disabled', async () => {
+			const getStatus = jest.fn(() => Promise.resolve(buildStatus()));
+			registry.register(buildProvider('remote-access-tailscale', getStatus));
+			disabledTypes.add('remote-access-tailscale');
+
+			await expect(service.getAggregatedStatuses()).resolves.toEqual([]);
+			expect(getStatus).not.toHaveBeenCalled();
+			expect(service.getCachedStatuses()).toEqual([]);
+		});
+
+		it('drops a cached status once its plugin is disabled', async () => {
+			registry.register(buildProvider('remote-access-tailscale', () => Promise.resolve(buildStatus())));
+
+			await service.getAggregatedStatuses();
+			expect(service.getCachedStatuses()).toHaveLength(1);
+
+			disabledTypes.add('remote-access-tailscale');
+
+			expect(service.getCachedStatuses()).toEqual([]);
+		});
+
+		it('ignores a PROVIDER_STATUS event from a disabled plugin', () => {
+			registry.register(buildProvider('remote-access-tailscale', () => Promise.resolve(buildStatus())));
+			disabledTypes.add('remote-access-tailscale');
+
+			service.onProviderStatus(buildStatus());
+
+			expect(service.getCachedStatuses()).toEqual([]);
+		});
+
+		it('prunes the cache on the plugin CONFIG_UPDATED event that disabled it, and only then', () => {
+			registry.register(buildProvider('remote-access-tailscale', () => Promise.resolve(buildStatus())));
+			service.onProviderStatus(buildStatus());
+
+			service.onConfigUpdated({ type: 'plugin', source: 'remote-access-tailscale' });
+			expect(service.getCachedStatuses()).toHaveLength(1);
+
+			service.onConfigUpdated({ type: 'module', source: 'remote-access-tailscale' });
+			expect(service.getCachedStatuses()).toHaveLength(1);
+
+			disabledTypes.add('remote-access-tailscale');
+			service.onConfigUpdated({ type: 'plugin', source: 'remote-access-tailscale' });
+
+			expect(service.getCachedStatuses()).toEqual([]);
+		});
+
+		it('treats a provider whose plugin config cannot be read as disabled', async () => {
+			const getStatus = jest.fn(() => Promise.resolve(buildStatus()));
+			registry.register(buildProvider('remote-access-tailscale', getStatus));
+			configService.getPluginConfig.mockImplementation(() => {
+				throw new Error('missing');
+			});
+
+			await expect(service.getAggregatedStatuses()).resolves.toEqual([]);
+			expect(getStatus).not.toHaveBeenCalled();
+		});
+
+		it('reports whether a provider type is registered regardless of its enabled state', () => {
+			registry.register(buildProvider('remote-access-tailscale', () => Promise.resolve(buildStatus())));
+			disabledTypes.add('remote-access-tailscale');
+
+			expect(service.hasProvider('remote-access-tailscale')).toBe(true);
+			expect(service.hasProvider('remote-access-cloudflare-tunnel')).toBe(false);
 		});
 	});
 });

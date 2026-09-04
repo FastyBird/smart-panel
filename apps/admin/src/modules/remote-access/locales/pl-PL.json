@@ -49,7 +49,7 @@
 		"public": "Publiczny",
 		"private": "Prywatny",
 		"noExternalUrls": "Nie skonfigurowano jeszcze żadnego dostępu zewnętrznego. Skonfiguruj dostawcę lub dodaj ręczny zewnętrzny adres URL w ustawieniach.",
-		"noProviders": "Nie zainstalowano żadnych dostawców dostępu zdalnego.",
+		"noProviders": "Żaden dostawca dostępu zdalnego nie jest włączony. Włącz go na stronie Rozszerzenia.",
 		"noEndpoints": "Ten dostawca nie publikuje jeszcze żadnych punktów końcowych.",
 		"noAdvisories": "Brak powiadomień. Stan dostępu zdalnego wygląda dobrze.",
 		"moduleSource": "Moduł",
