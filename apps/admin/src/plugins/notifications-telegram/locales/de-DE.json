@@ -10,12 +10,12 @@
 			"botToken": {
 				"title": "Bot-Token",
 				"placeholder": "123456789:AAExampleTelegramBotTokenValue",
-				"description": "Telegram-Bot-API-Token von @BotFather."
+				"description": "Telegram-Bot-API-Token von {'@'}BotFather."
 			},
 			"chatId": {
 				"title": "Chat-ID",
 				"placeholder": "123456789",
-				"description": "Telegram-Chat-ID (oder @Benutzername des Kanals), an die der Bot Nachrichten sendet."
+				"description": "Telegram-Chat-ID (oder {'@'}Benutzername des Kanals), an die der Bot Nachrichten sendet."
 			},
 			"minSeverity": {
 				"title": "Minimaler Schweregrad",
@@ -36,6 +36,6 @@
 		}
 	},
 	"texts": {
-		"aboutTelegramSettings": "Leiten Sie Systembenachrichtigungen über einen Bot an einen Telegram-Chat weiter. Schreiben Sie in Telegram eine Nachricht an @BotFather, um einen Bot zu erstellen, kopieren Sie dessen Token und ermitteln Sie die Chat-ID, an die der Bot posten soll."
+		"aboutTelegramSettings": "Leiten Sie Systembenachrichtigungen über einen Bot an einen Telegram-Chat weiter. Schreiben Sie in Telegram eine Nachricht an {'@'}BotFather, um einen Bot zu erstellen, kopieren Sie dessen Token und ermitteln Sie die Chat-ID, an die der Bot posten soll."
 	}
 }
