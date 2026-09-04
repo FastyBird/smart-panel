@@ -13,6 +13,11 @@
 			:closable="false"
 		/>
 
+		<!--
+			The unit sits beside each number input, never inside it: `el-input-number` has no suffix
+			slot of its own, so slot content handed to it lands in the inner `el-input` and squeezes the
+			editable area to nothing.
+		-->
 		<el-form-item
 			:label="t('notificationsModule.fields.config.retentionDays.title')"
 			prop="retentionDays"
@@ -24,11 +29,8 @@
 				:max="365"
 				:placeholder="t('notificationsModule.fields.config.retentionDays.placeholder')"
 				name="retentionDays"
-			>
-				<template #suffix>
-					<span>{{ t('notificationsModule.fields.config.retentionDays.unit') }}</span>
-				</template>
-			</el-input-number>
+			/>
+			<el-text class="ml-2">{{ t('notificationsModule.fields.config.retentionDays.unit') }}</el-text>
 		</el-form-item>
 
 		<el-form-item
@@ -42,11 +44,8 @@
 				:step="50"
 				:placeholder="t('notificationsModule.fields.config.maxNotifications.placeholder')"
 				name="maxNotifications"
-			>
-				<template #suffix>
-					<span>{{ t('notificationsModule.fields.config.maxNotifications.unit') }}</span>
-				</template>
-			</el-input-number>
+			/>
+			<el-text class="ml-2">{{ t('notificationsModule.fields.config.maxNotifications.unit') }}</el-text>
 		</el-form-item>
 	</el-form>
 </template>
@@ -55,7 +54,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInputNumber, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInputNumber, ElText, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, type LayoutType, useConfigModuleEditForm } from '../../config';
 import type { IConfigModule } from '../../config/store/config-modules.store.types';
