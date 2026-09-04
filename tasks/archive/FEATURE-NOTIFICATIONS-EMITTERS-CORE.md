@@ -61,7 +61,7 @@ notifications for these conditions.
 
 ## 4. Acceptance criteria
 
-- [ ] After the scheduled (12 h cron) or manual update check finds a newer version, `notify({ source:  <!-- not performed in this session: no live destination was available -->
+- [x] After the scheduled (12 h cron) or manual update check finds a newer version, `notify({ source:
       SYSTEM_MODULE_NAME, kind: ISSUE, key: 'update-available', severity: INFO, title: 'Update
       <latestVersion> is available', message: 'Installed <currentVersion>. Channel: <channel>.', actions:
       [{ type: LINK, label: 'View update', url: '/system/info', primary: true }], data: { current_version,
