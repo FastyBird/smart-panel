@@ -99,6 +99,23 @@
 		/>
 
 		<el-table-column
+			:width="60"
+			align="center"
+		>
+			<template #default="scope">
+				<el-avatar
+					:size="32"
+					:class="['notifications-table__icon', `notifications-table__icon--${(scope.row as INotification).severity}`]"
+				>
+					<icon
+						:icon="SEVERITY_ICONS[(scope.row as INotification).severity]"
+						class="w-[20px] h-[20px]"
+					/>
+				</el-avatar>
+			</template>
+		</el-table-column>
+
+		<el-table-column
 			:label="t('notificationsModule.table.columns.severity.title')"
 			prop="severity"
 			:width="110"
@@ -213,7 +230,7 @@
 		</el-table-column>
 
 		<el-table-column
-			:width="170"
+			:width="190"
 			align="right"
 		>
 			<template #default="scope">
@@ -265,12 +282,13 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElIcon, ElLink, ElResult, ElTable, ElTableColumn, ElText, ElTooltip, vLoading } from 'element-plus';
+import { ElAvatar, ElButton, ElIcon, ElLink, ElResult, ElTable, ElTableColumn, ElText, ElTooltip, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 import { formatTimeAgo, useVModel } from '@vueuse/core';
 
 import { IconWithChild, useBreakpoints } from '../../../common';
+import { SEVERITY_ICONS } from '../notifications.constants';
 import type { INotificationsFilter } from '../schemas/list.schemas';
 import type { INotification } from '../store/notifications.store.schemas';
 
@@ -322,6 +340,15 @@ const onFilterBySource = (source: INotification['source']): void => {
 </script>
 
 <style scoped>
+.notifications-table__icon--warning {
+	--el-avatar-bg-color: var(--el-color-warning);
+}
+
+.notifications-table__icon--error,
+.notifications-table__icon--critical {
+	--el-avatar-bg-color: var(--el-color-danger);
+}
+
 .notifications-table__unread {
 	display: inline-block;
 	width: 0.5rem;

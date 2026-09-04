@@ -10,6 +10,7 @@
 			:selected-count="selectedItems.length"
 			:bulk-actions="bulkActions"
 			@reset-filters="emit('reset-filters')"
+			@adjust-list="emit('adjust-list')"
 			@bulk-action="onBulkAction"
 		/>
 	</el-card>
@@ -93,6 +94,7 @@ const emit = defineEmits<{
 	(e: 'remove', id: INotification['id']): void;
 	(e: 'load-more'): void;
 	(e: 'reset-filters'): void;
+	(e: 'adjust-list'): void;
 	(e: 'update:filters', filters: INotificationsFilter): void;
 	(e: 'bulk-action', action: string, ids: INotification['id'][]): void;
 }>();

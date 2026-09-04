@@ -138,6 +138,21 @@ describe('NotificationsTable', () => {
 			expect(wrapper.find('[data-test-id="remove-notification"]').exists()).toBe(true);
 		});
 
+		it('leads every row with a severity icon', async () => {
+			const wrapper = await mountTable({
+				items: [
+					notification({ id: 'a1111111-1111-4111-8111-111111111111', severity: NotificationsModuleNotificationSeverity.critical }),
+					notification({ id: 'b2222222-2222-4222-8222-222222222222', severity: NotificationsModuleNotificationSeverity.info }),
+				],
+			});
+
+			const avatars = wrapper.findAll('.el-table__row .el-avatar');
+
+			expect(avatars).toHaveLength(2);
+			expect(avatars[0].classes()).toContain('notifications-table__icon--critical');
+			expect(avatars[1].classes()).toContain('notifications-table__icon--info');
+		});
+
 		it('marks unread rows and drops the marker once read', async () => {
 			const wrapper = await mountTable({
 				items: [

@@ -27,13 +27,15 @@
 			"remove": "Usuń powiadomienie",
 			"bulkRemove": "Usuń powiadomienia",
 			"data": "Dane",
-			"lifecycle": "Cykl życia"
+			"lifecycle": "Cykl życia",
+			"adjustFilters": "Filtruj powiadomienia"
 		},
 		"aboutConfig": "O ustawieniach powiadomień"
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "Stany systemu i zdarzenia, które wymagają Twojej uwagi"
+			"list": "Stany systemu i zdarzenia, które wymagają Twojej uwagi",
+			"adjustFilters": "Dostosuj filtry wyświetlania"
 		}
 	},
 	"texts": {
@@ -94,8 +96,7 @@
 				}
 			},
 			"severity": {
-				"title": "Ważność",
-				"placeholder": "Dowolna ważność"
+				"title": "Ważność"
 			},
 			"source": {
 				"title": "Źródło",
@@ -146,6 +147,16 @@
 					"range": "Maksymalna liczba aktywnych powiadomień musi wynosić od 50 do 5000."
 				},
 				"unit": "powiadomień"
+			}
+		}
+	},
+	"filters": {
+		"notifications": {
+			"severity": {
+				"title": "Filtruj według ważności"
+			},
+			"source": {
+				"title": "Filtruj według źródła"
 			}
 		}
 	},
@@ -204,6 +215,9 @@
 		},
 		"resetFilters": {
 			"title": "Resetuj filtry"
+		},
+		"reset": {
+			"title": "Resetuj"
 		}
 	}
 }

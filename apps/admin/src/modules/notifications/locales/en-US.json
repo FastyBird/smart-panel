@@ -27,7 +27,8 @@
 			"remove": "Remove notification",
 			"bulkRemove": "Remove notifications",
 			"data": "Data",
-			"lifecycle": "Lifecycle"
+			"lifecycle": "Lifecycle",
+			"adjustFilters": "Filter notifications"
 		},
 		"aboutConfig": "About notification settings"
 	},
@@ -110,11 +111,15 @@
 		},
 		"resetFilters": {
 			"title": "Reset filters"
+		},
+		"reset": {
+			"title": "Reset"
 		}
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "System conditions and events that need your attention"
+			"list": "System conditions and events that need your attention",
+			"adjustFilters": "Adjust display filters"
 		}
 	},
 	"fields": {
@@ -129,8 +134,7 @@
 				}
 			},
 			"severity": {
-				"title": "Severity",
-				"placeholder": "Any severity"
+				"title": "Severity"
 			},
 			"source": {
 				"title": "Source",
@@ -181,6 +185,16 @@
 					"required": "Maximum active notifications is required.",
 					"range": "Maximum active notifications must be between 50 and 5000."
 				}
+			}
+		}
+	},
+	"filters": {
+		"notifications": {
+			"severity": {
+				"title": "Filter by severity"
+			},
+			"source": {
+				"title": "Filter by source"
 			}
 		}
 	},

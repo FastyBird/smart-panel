@@ -27,13 +27,15 @@
 			"remove": "Odebrat oznámení",
 			"bulkRemove": "Odebrat oznámení",
 			"data": "Data",
-			"lifecycle": "Životní cyklus"
+			"lifecycle": "Životní cyklus",
+			"adjustFilters": "Filtrovat oznámení"
 		},
 		"aboutConfig": "O nastavení oznámení"
 	},
 	"subHeadings": {
 		"notifications": {
-			"list": "Stavy systému a události, které vyžadují vaši pozornost"
+			"list": "Stavy systému a události, které vyžadují vaši pozornost",
+			"adjustFilters": "Upravit filtry zobrazení"
 		}
 	},
 	"texts": {
@@ -94,8 +96,7 @@
 				}
 			},
 			"severity": {
-				"title": "Závažnost",
-				"placeholder": "Libovolná závažnost"
+				"title": "Závažnost"
 			},
 			"source": {
 				"title": "Zdroj",
@@ -146,6 +147,16 @@
 					"range": "Maximální počet aktivních oznámení musí být mezi 50 a 5000."
 				},
 				"unit": "oznámení"
+			}
+		}
+	},
+	"filters": {
+		"notifications": {
+			"severity": {
+				"title": "Filtrovat podle závažnosti"
+			},
+			"source": {
+				"title": "Filtrovat podle zdroje"
 			}
 		}
 	},
@@ -204,6 +215,9 @@
 		},
 		"resetFilters": {
 			"title": "Resetovat filtry"
+		},
+		"reset": {
+			"title": "Resetovat"
 		}
 	}
 }
