@@ -30,7 +30,7 @@
 				:placeholder="t('notificationsModule.fields.config.retentionDays.placeholder')"
 				name="retentionDays"
 			/>
-			<el-text class="ml-2">{{ t('notificationsModule.fields.config.retentionDays.unit') }}</el-text>
+			<el-text class="ml-2!">{{ t('notificationsModule.fields.config.retentionDays.unit') }}</el-text>
 		</el-form-item>
 
 		<el-form-item
@@ -45,7 +45,7 @@
 				:placeholder="t('notificationsModule.fields.config.maxNotifications.placeholder')"
 				name="maxNotifications"
 			/>
-			<el-text class="ml-2">{{ t('notificationsModule.fields.config.maxNotifications.unit') }}</el-text>
+			<el-text class="ml-2!">{{ t('notificationsModule.fields.config.maxNotifications.unit') }}</el-text>
 		</el-form-item>
 	</el-form>
 </template>

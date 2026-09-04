@@ -77,7 +77,7 @@ const notificationFixture = (overrides: Partial<INotification> = {}): INotificat
 const mountPopover = (): VueWrapper<NotificationPopoverInstance> =>
 	mount(NotificationPopover, {
 		global: {
-			stubs: { ElButton: false, ElEmpty: true },
+			stubs: { ElButton: false, ElResult: true },
 		},
 	}) as VueWrapper<NotificationPopoverInstance>;
 
