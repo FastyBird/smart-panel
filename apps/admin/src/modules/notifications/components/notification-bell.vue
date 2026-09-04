@@ -7,10 +7,15 @@
 		popper-class="notification-bell__popover"
 	>
 		<template #reference>
+			<!--
+				`offset` nudges the count up and to the right so that its 1px background-coloured rim -
+				the badge's built-in separator - no longer cuts across the bell icon.
+			-->
 			<el-badge
 				:value="unreadCount"
 				:hidden="unreadCount === 0"
 				:max="99"
+				:offset="[8, -4]"
 				class="notification-bell"
 			>
 				<el-button
