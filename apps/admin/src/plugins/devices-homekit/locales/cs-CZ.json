@@ -67,7 +67,7 @@
 		"scanWithCamera": "Naskenujte pomocí aplikace Domácnost nebo Fotoaparát na iPhone/iPadu",
 		"setupCode": "Nastavovací PIN kód",
 		"bridgeStatus": "Stav párování",
-		"pairedWithCount": "Spárováno s {count} ovladačem/i",
+		"pairedWithCount": "Počet spárovaných ovladačů: {count}",
 		"waitingForPairing": "Čekání na spárování...",
 		"instruction1": "Otevřete aplikaci Domácnost na zařízení iOS nebo macOS.",
 		"instruction2": "Klepněte na \"+\" a zvolte \"Přidat příslušenství\".",
