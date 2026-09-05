@@ -9,6 +9,12 @@ export const DEVICES_HOMEKIT_PLUGIN_API_TAG_NAME = 'Devices HomeKit plugin';
 export const DEVICES_HOMEKIT_PLUGIN_API_TAG_DESCRIPTION =
 	'Endpoints for managing the HomeKit Gateway, bridging Smart Panel devices to Apple Home.';
 
+export const DEVICES_HOMEKIT_PLUGIN_EVENT_PREFIX = 'DevicesHomeKitPlugin';
+
+export enum EventType {
+	BRIDGE_STATUS_CHANGED = 'DevicesHomeKitPlugin.Bridge.StatusChanged',
+}
+
 export const DEFAULT_HOMEKIT_PORT = 51826;
 
 export const DEFAULT_HOMEKIT_BRIDGE_NAME = 'Smart Panel Bridge';

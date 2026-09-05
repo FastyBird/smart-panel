@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 
 import {
 	Accessory,
+	AccessoryEventTypes,
 	Bridge,
 	Categories,
 	Characteristic,
@@ -13,6 +14,7 @@ import {
 	uuid,
 } from '@homebridge/hap-nodejs';
 import { Injectable, Logger, Optional } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -28,6 +30,7 @@ import {
 	DEFAULT_HOMEKIT_BRIDGE_NAME,
 	DEFAULT_HOMEKIT_PORT,
 	DEVICES_HOMEKIT_PLUGIN_NAME,
+	EventType,
 	HOMEKIT_PAIRING_STORAGE_DIR,
 	generateRandomHomeKitPin,
 	generateRandomMacAddress,
@@ -61,8 +64,18 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 		private readonly devicesService: DevicesService,
 		private readonly mapperRegistry: HomeKitMapperRegistryService,
 		private readonly commandDispatcher: HomeKitCommandDispatcher,
+		private readonly eventEmitter: EventEmitter2,
 		@Optional() private readonly managedServiceManager?: ManagedServiceManagerService,
 	) {}
+
+	private async emitBridgeStatusChanged(): Promise<void> {
+		try {
+			const status = await this.getStatus();
+			this.eventEmitter.emit(EventType.BRIDGE_STATUS_CHANGED, status);
+		} catch (error) {
+			this.logger.warn(`Failed to emit bridge status event: ${(error as Error).message}`);
+		}
+	}
 
 	private enqueueLifecycleOperation<T>(operation: () => Promise<T>): Promise<T> {
 		const next = this.lifecycleQueue.then(operation, operation);
@@ -192,9 +205,18 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			infoService
 				.setCharacteristic(Characteristic.Name, config.bridgeName)
 				.setCharacteristic(Characteristic.Manufacturer, 'FastyBird')
-				.setCharacteristic(Characteristic.Model, 'Smart Panel HomeKit Gateway')
+				.setCharacteristic(Characteristic.Model, 'Smart Panel HomeKit Bridge')
 				.setCharacteristic(Characteristic.SerialNumber, config.username)
 				.setCharacteristic(Characteristic.FirmwareRevision, '1.0.0');
+
+			this.bridge.on(AccessoryEventTypes.PAIRED, () => {
+				this.logger.log('HomeKit client paired with bridge');
+				void this.emitBridgeStatusChanged();
+			});
+			this.bridge.on(AccessoryEventTypes.UNPAIRED, () => {
+				this.logger.log('HomeKit client unpaired from bridge');
+				void this.emitBridgeStatusChanged();
+			});
 
 			// Populate bridged accessories from mapped devices
 			await this.populateBridgedAccessories(config.mappedDeviceIds);
@@ -214,18 +236,20 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 				mappedDeviceIds: [...config.mappedDeviceIds],
 			};
 			this.state = 'started';
-			this.logger.log(`HomeKit Gateway published successfully. Port: ${config.port}, Username: ${config.username}`);
+			this.logger.log(`HomeKit Bridge published successfully. Port: ${config.port}, Username: ${config.username}`);
+			await this.emitBridgeStatusChanged();
 		} catch (error) {
 			this.state = 'error';
+			await this.emitBridgeStatusChanged();
 			const err = error as Error;
-			this.logger.error(`Failed to start HomeKit Gateway: ${err.message}`, err.stack);
+			this.logger.error(`Failed to start HomeKit Bridge: ${err.message}`, err.stack);
 			throw error;
 		}
 	}
 
 	private async stopUnlocked(): Promise<void> {
 		this.state = 'stopping';
-		this.logger.log('Stopping HomeKit Gateway...');
+		this.logger.log('Stopping HomeKit Bridge...');
 
 		try {
 			if (this.bridge) {
@@ -236,11 +260,13 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			this.mapperRegistry.clearAllBindings();
 			this.activeConfig = null;
 			this.state = 'stopped';
-			this.logger.log('HomeKit Gateway stopped cleanly.');
+			this.logger.log('HomeKit Bridge stopped cleanly.');
+			await this.emitBridgeStatusChanged();
 		} catch (error) {
 			this.state = 'error';
+			await this.emitBridgeStatusChanged();
 			const err = error as Error;
-			this.logger.error(`Error stopping HomeKit Gateway: ${err.message}`, err.stack);
+			this.logger.error(`Error stopping HomeKit Bridge: ${err.message}`, err.stack);
 		}
 	}
 
@@ -331,6 +357,7 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			}
 
 			this.logger.log(`Successfully reconciled accessories. Active count: ${this.bridge.bridgedAccessories.length}`);
+			await this.emitBridgeStatusChanged();
 		} catch (mutationError) {
 			this.logger.error(`Failed to mutate bridged accessories, rolling back: ${(mutationError as Error).message}`);
 			let rollbackSuccess = true;
@@ -374,7 +401,8 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 
 			if (!rollbackSuccess) {
 				this.state = 'error';
-				this.logger.error('HomeKit Gateway entered error state because bridge rollback could not be fully completed.');
+				this.logger.error('HomeKit Bridge entered error state because bridge rollback could not be fully completed.');
+				await this.emitBridgeStatusChanged();
 			}
 
 			throw mutationError;

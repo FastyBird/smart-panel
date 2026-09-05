@@ -1,4 +1,5 @@
 import { Accessory, Characteristic, Service } from '@homebridge/hap-nodejs';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
@@ -11,6 +12,7 @@ import { HomeKitCommandDispatcher } from './homekit-command.dispatcher';
 import { HomeKitMapperRegistryService } from './homekit-mapper-registry.service';
 
 interface MockHapBridge {
+	on: jest.Mock<void, [string, () => void]>;
 	publish: jest.Mock;
 	unpublish: jest.Mock;
 	destroy: jest.Mock;
@@ -37,6 +39,7 @@ jest.mock('@homebridge/hap-nodejs', () => {
 		addService = jest.fn().mockReturnValue({
 			setCharacteristic: jest.fn().mockReturnThis(),
 		});
+		on = jest.fn();
 		publish = jest.fn().mockResolvedValue(undefined);
 		unpublish = jest.fn().mockResolvedValue(undefined);
 		destroy = jest.fn().mockResolvedValue(undefined);
@@ -59,6 +62,10 @@ jest.mock('@homebridge/hap-nodejs', () => {
 	};
 });
 
+jest.mock('qrcode', () => ({
+	toDataURL: jest.fn().mockResolvedValue('data:image/png;base64,mock-qr-code'),
+}));
+
 jest.mock('fs', () => ({
 	...jest.requireActual<typeof import('fs')>('fs'),
 	existsSync: jest.fn().mockReturnValue(true),
@@ -73,6 +80,7 @@ describe('HomeKitBridgeService', () => {
 	let devicesService: jest.Mocked<Partial<DevicesService>>;
 	let mapperRegistry: jest.Mocked<Partial<HomeKitMapperRegistryService>>;
 	let commandDispatcher: jest.Mocked<Partial<HomeKitCommandDispatcher>>;
+	let eventEmitter: { emit: jest.Mock };
 
 	let baseConfig: HomeKitConfigModel;
 
@@ -123,11 +131,16 @@ describe('HomeKitBridgeService', () => {
 			dispatchBatch: jest.fn(),
 		};
 
+		eventEmitter = {
+			emit: jest.fn(),
+		};
+
 		service = new HomeKitBridgeService(
 			configService as unknown as ConfigService,
 			devicesService as unknown as DevicesService,
 			mapperRegistry as unknown as HomeKitMapperRegistryService,
 			commandDispatcher as unknown as HomeKitCommandDispatcher,
+			eventEmitter as unknown as EventEmitter2,
 		);
 	});
 
@@ -311,5 +324,45 @@ describe('HomeKitBridgeService', () => {
 		expect(service.getState()).toBe('error');
 		// Registry snapshot must still be restored
 		expect(mapperRegistry.restoreSnapshot).toHaveBeenCalled();
+	});
+
+	it('should emit BRIDGE_STATUS_CHANGED event when bridge starts and stops', async () => {
+		await service.start();
+		expect(eventEmitter.emit).toHaveBeenCalledWith(
+			'DevicesHomeKitPlugin.Bridge.StatusChanged',
+			expect.objectContaining({
+				running: true,
+				bridgeName: 'Smart Panel Bridge',
+			}),
+		);
+
+		eventEmitter.emit.mockClear();
+		await service.stop();
+		expect(eventEmitter.emit).toHaveBeenCalledWith(
+			'DevicesHomeKitPlugin.Bridge.StatusChanged',
+			expect.objectContaining({
+				running: false,
+			}),
+		);
+	});
+
+	it('should register listeners on HAP bridge for paired and unpaired events', async () => {
+		await service.start();
+		const bridge = getBridge();
+		expect(bridge.on).toHaveBeenCalledWith('paired', expect.any(Function));
+		expect(bridge.on).toHaveBeenCalledWith('unpaired', expect.any(Function));
+
+		// Find the paired listener and invoke it
+		const pairedCall = bridge.on.mock.calls.find((call) => call[0] === 'paired');
+		expect(pairedCall).toBeDefined();
+
+		eventEmitter.emit.mockClear();
+		if (pairedCall) {
+			pairedCall[1]();
+		}
+		// Let async getStatus resolve
+		await new Promise((r) => setImmediate(r));
+
+		expect(eventEmitter.emit).toHaveBeenCalledWith('DevicesHomeKitPlugin.Bridge.StatusChanged', expect.any(Object));
 	});
 });

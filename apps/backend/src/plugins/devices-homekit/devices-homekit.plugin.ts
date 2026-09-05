@@ -24,6 +24,7 @@ import { DEVICES_HOMEKIT_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-homekit.o
 import { HomeKitUpdatePluginConfigDto } from './dto/update-config.dto';
 import { HomeKitEventListener } from './listeners/homekit-event.listener';
 import { HomeKitConfigModel } from './models/config.model';
+import { HomeKitActionsService } from './services/homekit-actions.service';
 import { HomeKitBridgeService } from './services/homekit-bridge.service';
 import { HomeKitCommandDispatcher } from './services/homekit-command.dispatcher';
 import { HomeKitMapperRegistryService } from './services/homekit-mapper-registry.service';
@@ -38,6 +39,7 @@ import { HomeKitWizardService } from './services/homekit-wizard.service';
 	imports: [ConfigModule, DevicesModule, ExtensionsModule, SpacesModule, SwaggerModule],
 	controllers: [HomeKitBridgeController],
 	providers: [
+		HomeKitActionsService,
 		HomeKitBridgeService,
 		HomeKitCommandDispatcher,
 		HomeKitEventListener,
@@ -128,10 +130,10 @@ export class DevicesHomeKitPlugin implements OnModuleInit {
 		// Register plugin metadata for extension discovery
 		this.extensionsService.registerPluginMetadata({
 			type: DEVICES_HOMEKIT_PLUGIN_NAME,
-			name: 'HomeKit',
+			name: 'Apple HomeKit Bridge',
 			description: 'Bridge Smart Panel devices to Apple Home via HomeKit Accessory Protocol',
 			author: 'FastyBird',
-			readme: `# HomeKit Gateway
+			readme: `# Apple HomeKit Bridge
 > Plugin · by FastyBird · platform: devices
 
 Exposes Smart Panel registered devices to Apple Home as bridged accessories over the local network.
