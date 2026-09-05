@@ -441,6 +441,34 @@ describe('WebsocketGateway', () => {
 			expect(displaySocket.emit).not.toHaveBeenCalled();
 		});
 
+		it('delivers a DevicesHomeKitPlugin event to an owner socket and an admin socket only and redacts credentials from logs', () => {
+			const loggerDebugSpy = jest.spyOn((gateway as any).logger, 'debug');
+
+			emitBusEvent('DevicesHomeKitPlugin.Bridge.StatusChanged', {
+				running: true,
+				paired: false,
+				pincode: '031-45-154',
+				setupUri: 'X-HM://0024R932WSP01',
+				qrCodeDataUri: 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=',
+			});
+
+			expect(ownerSocket.emit).toHaveBeenCalledTimes(1);
+			expect(adminSocket.emit).toHaveBeenCalledTimes(1);
+			expect(userSocket.emit).not.toHaveBeenCalled();
+			expect(displaySocket.emit).not.toHaveBeenCalled();
+
+			expect(loggerDebugSpy).toHaveBeenCalled();
+			const loggedMessage = loggerDebugSpy.mock.calls.find(
+				(call) => typeof call[0] === 'string' && call[0].includes('Emitting admin-only event:'),
+			)?.[0] as string;
+
+			expect(loggedMessage).toBeDefined();
+			expect(loggedMessage).toContain('[REDACTED]');
+			expect(loggedMessage).not.toContain('031-45-154');
+			expect(loggedMessage).not.toContain('X-HM://0024R932WSP01');
+			expect(loggedMessage).not.toContain('PHN2Zz48L3N2Zz4=');
+		});
+
 		it('still delivers a SystemModule.System.Update event to every exchange-subscribed socket', () => {
 			// Unchanged pre-existing behaviour: EXCHANGE_ONLY_EVENT_PREFIXES keeps
 			// reaching the whole exchange room, admin-only or not.

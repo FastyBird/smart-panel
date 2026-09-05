@@ -14,7 +14,7 @@ import { WebsocketNotAllowedException } from '../../websocket/websocket.exceptio
 import { ConnectionState, DEVICES_MODULE_NAME, PermissionType } from '../devices.constants';
 import { PropertyCommandDto, PropertyCommandValueDto } from '../dto/property-command.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
-import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { IDevicePropertyData } from '../platforms/device.platform';
 import { PropertyCommandValue, validatePropertyCommandValue } from '../utils/property-command-value.utils';
 
@@ -39,6 +39,11 @@ export interface SinglePropertyCommandResult extends DevicePropertyCommandResult
 	channel?: string;
 	property?: string;
 	value?: PropertyCommandValue;
+}
+
+export interface PropertyBatchCommandResult {
+	success: boolean;
+	results: SinglePropertyCommandResult[];
 }
 
 @Injectable()
@@ -183,6 +188,152 @@ export class PropertyCommandService {
 			value: validation.value,
 			success: result?.success ?? false,
 			reason: result?.reason ?? (typeof execution.results === 'string' ? execution.results : undefined),
+		};
+	}
+
+	async executePropertyCommands(
+		commands: Array<{ propertyId: string; value: unknown }>,
+		options: PropertyCommandExecutionOptions = {},
+	): Promise<PropertyBatchCommandResult> {
+		if (commands.length === 0) {
+			return { success: true, results: [] };
+		}
+
+		interface ResolvedCommand {
+			propertyId: string;
+			property: ChannelPropertyEntity;
+			channel: ChannelEntity;
+			device: DeviceEntity;
+			value: PropertyCommandValue;
+		}
+
+		const resolved: ResolvedCommand[] = [];
+		let targetDeviceId: string | null = null;
+
+		for (const cmd of commands) {
+			const property = await this.channelsPropertiesService.findOne(cmd.propertyId);
+			if (!property) {
+				return {
+					success: false,
+					results: commands.map((c) => ({
+						device: '',
+						success: false,
+						property: c.propertyId,
+						reason: c.propertyId === cmd.propertyId ? 'Property not found' : 'Batch aborted due to invalid property',
+					})),
+				};
+			}
+
+			const propertyChannel = property.channel;
+			const channel =
+				typeof propertyChannel === 'string' ? await this.channelsService.findOne(propertyChannel) : propertyChannel;
+			if (!channel) {
+				return {
+					success: false,
+					results: commands.map((c) => ({
+						device: '',
+						success: false,
+						property: c.propertyId,
+						reason: c.propertyId === cmd.propertyId ? 'Channel not found' : 'Batch aborted due to invalid channel',
+					})),
+				};
+			}
+
+			const channelDevice = channel.device;
+			const device =
+				typeof channelDevice === 'string' ? await this.devicesService.findOne(channelDevice) : channelDevice;
+			if (!device) {
+				return {
+					success: false,
+					results: commands.map((c) => ({
+						device: '',
+						success: false,
+						property: c.propertyId,
+						reason: c.propertyId === cmd.propertyId ? 'Device not found' : 'Batch aborted due to invalid device',
+					})),
+				};
+			}
+
+			if (targetDeviceId === null) {
+				targetDeviceId = device.id;
+			} else if (targetDeviceId !== device.id) {
+				return {
+					success: false,
+					results: commands.map((c) => ({
+						device: device.id,
+						success: false,
+						property: c.propertyId,
+						reason: `Single-device batch execution violation: properties belong to multiple devices (${targetDeviceId} vs ${device.id})`,
+					})),
+				};
+			}
+
+			if (
+				!property.permissions.some((permission) =>
+					[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
+				)
+			) {
+				return {
+					success: false,
+					results: commands.map((c) => ({
+						device: device.id,
+						success: false,
+						property: c.propertyId,
+						reason:
+							c.propertyId === cmd.propertyId ? 'Property is not writable' : 'Batch aborted: property not writable',
+					})),
+				};
+			}
+
+			const validation = validatePropertyCommandValue(property, cmd.value);
+			if (!validation.valid || validation.value === undefined) {
+				return {
+					success: false,
+					results: commands.map((c) => ({
+						device: device.id,
+						success: false,
+						property: c.propertyId,
+						reason:
+							c.propertyId === cmd.propertyId
+								? (validation.reason ?? 'Invalid property value')
+								: 'Batch aborted: invalid value',
+					})),
+				};
+			}
+
+			resolved.push({
+				propertyId: cmd.propertyId,
+				property,
+				channel,
+				device,
+				value: validation.value,
+			});
+		}
+
+		const propertyCommandDtos: PropertyCommandValueDto[] = resolved.map((r) => ({
+			device: r.device.id,
+			channel: r.channel.id,
+			property: r.property.id,
+			value: r.value,
+		}));
+
+		const execution = await this.executeCommands(propertyCommandDtos, options);
+		const deviceResult = Array.isArray(execution.results) ? execution.results[0] : undefined;
+		const executionSuccess = execution.success && (deviceResult?.success ?? false);
+
+		const results: SinglePropertyCommandResult[] = resolved.map((r) => ({
+			device: r.device.id,
+			deviceName: r.device.name,
+			channel: r.channel.id,
+			property: r.property.id,
+			value: r.value,
+			success: executionSuccess,
+			reason: deviceResult?.reason ?? (typeof execution.results === 'string' ? execution.results : undefined),
+		}));
+
+		return {
+			success: executionSuccess,
+			results,
 		};
 	}
 

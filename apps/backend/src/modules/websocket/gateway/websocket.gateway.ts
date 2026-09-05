@@ -322,7 +322,46 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 	private static readonly ADMIN_ONLY_EVENT_PREFIXES = [
 		'NotificationsModule.', // Notifications are owner/admin-only
 		'RemoteAccessModule.', // Provider/URL/setup state is owner/admin-only, never for USER sockets or displays
+		'DevicesHomeKitPlugin.', // HomeKit pairing credentials/status are owner/admin-only
 	];
+
+	private static readonly SENSITIVE_PAYLOAD_KEYS = new Set([
+		'pincode',
+		'setupUri',
+		'setup_uri',
+		'qrCodeDataUri',
+		'qr_code_data_uri',
+		'password',
+		'token',
+		'secret',
+	]);
+
+	private sanitizeForLogging(obj: unknown): unknown {
+		if (obj === null || typeof obj !== 'object') {
+			return obj;
+		}
+
+		if (Array.isArray(obj)) {
+			return obj.map((item) => this.sanitizeForLogging(item));
+		}
+
+		const sanitized: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+			if (WebsocketGateway.SENSITIVE_PAYLOAD_KEYS.has(key)) {
+				sanitized[key] = '[REDACTED]';
+			} else if (typeof value === 'object' && value !== null) {
+				sanitized[key] = this.sanitizeForLogging(value);
+			} else {
+				sanitized[key] = value;
+			}
+		}
+
+		return sanitized;
+	}
+
+	private formatMessageForLogging(message: unknown): string {
+		return JSON.stringify(this.sanitizeForLogging(message));
+	}
 
 	private handleBusEvent(event: string, payload: Record<string, any>): void {
 		if (!this.enabled) {
@@ -356,7 +395,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		if (isDisplayTargeted) {
 			const displayRoom = `display-${displayId}`;
 
-			this.logger.debug(`Emitting targeted event to ${displayRoom}: ${JSON.stringify(message)}`);
+			this.logger.debug(`Emitting targeted event to ${displayRoom}: ${this.formatMessageForLogging(message)}`);
 
 			// Send to the specific display and to the exchange room (admin)
 			this.server.to(displayRoom).emit('event', message);
@@ -368,7 +407,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		// Admin-only events: narrower than exchange-only, delivered to ADMIN_ROOM alone so
 		// a USER-role socket that subscribed to the exchange room still does not receive them.
 		if (WebsocketGateway.ADMIN_ONLY_EVENT_PREFIXES.some((prefix) => event.startsWith(prefix))) {
-			this.logger.debug(`Emitting admin-only event: ${JSON.stringify(message)}`);
+			this.logger.debug(`Emitting admin-only event: ${this.formatMessageForLogging(message)}`);
 
 			this.server.to(ADMIN_ROOM).emit('event', message);
 
@@ -377,14 +416,14 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
 		// Exchange-only events (admin only, not for display panels)
 		if (WebsocketGateway.EXCHANGE_ONLY_EVENT_PREFIXES.some((prefix) => event.startsWith(prefix))) {
-			this.logger.debug(`Emitting exchange-only event: ${JSON.stringify(message)}`);
+			this.logger.debug(`Emitting exchange-only event: ${this.formatMessageForLogging(message)}`);
 
 			this.server.to(EXCHANGE_ROOM).emit('event', message);
 
 			return;
 		}
 
-		this.logger.debug(`Emitting event bus message: ${JSON.stringify(message)}`);
+		this.logger.debug(`Emitting event bus message: ${this.formatMessageForLogging(message)}`);
 
 		this.server.to(DISPLAY_INTERNAL_ROOM).emit('event', message);
 		this.server.to(EXCHANGE_ROOM).emit('event', message);

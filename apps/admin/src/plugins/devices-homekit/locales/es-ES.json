@@ -1,0 +1,117 @@
+{
+	"headings": {
+		"aboutSettings": "Apple HomeKit Bridge",
+		"bridgeStatus": "Estado del puente",
+		"resetPairing": "Restablecer enlace con Apple Home"
+	},
+	"texts": {
+		"aboutSettings": "Conecte los dispositivos de Smart Panel a Apple Home mediante el protocolo local HomeKit Accessory Protocol (HAP). Utilice el asistente para seleccionar qué dispositivos desea enlazar.",
+		"outOfSyncTitle": "Configuración desincronizada",
+		"outOfSyncDescription": "La configuración mostrada no se pudo sincronizar con el backend. Los cambios no se pueden guardar hasta que se vuelva a cargar la configuración."
+	},
+	"status": {
+		"running": "En ejecución",
+		"stopped": "Detenido",
+		"notPaired": "No enlazado",
+		"pairedWithCount": "Enlazado ({count} clientes)",
+		"exposedCount": "{count} dispositivos actualmente enlazados"
+	},
+	"buttons": {
+		"configureDevices": "Configurar dispositivos",
+		"showPairing": "Apple Home QR Code",
+		"resetPairing": "Restablecer enlace",
+		"retryRefresh": "Reintentar sincronización",
+		"generatePin": "Generar PIN aleatorio",
+		"refreshStatus": "Actualizar"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"name": {
+				"title": "Nombre del puente",
+				"placeholder": "Smart Panel Bridge",
+				"description": "Nombre visible para el puente en la app Apple Casa",
+				"validation": {
+					"required": "El nombre del puente es obligatorio"
+				}
+			},
+			"port": {
+				"title": "Puerto TCP",
+				"description": "Puerto local para el servidor HAP (predeterminado: 51826)",
+				"validation": {
+					"required": "El puerto es obligatorio"
+				}
+			},
+			"pinCode": {
+				"title": "Código PIN de enlace",
+				"placeholder": "031-45-154",
+				"description": "PIN de 8 dígitos en formato XXX-XX-XXX utilizado para enlazar con Apple Home",
+				"validation": {
+					"format": "El código PIN debe tener el formato XXX-XX-XXX",
+					"required": "El código PIN es obligatorio",
+					"forbidden": "Este código PIN no está permitido por Apple HomeKit"
+				}
+			}
+		}
+	},
+	"wizard": {
+		"title": "Configuración de Apple HomeKit Bridge",
+		"steps": {
+			"devices": "Seleccionar dispositivos",
+			"pairing": "Enlazar con Apple Home"
+		},
+		"pairingDescription": "Escanee el código QR a continuación usando la aplicación Apple Casa en su iPhone o iPad para emparejar este puente.",
+		"devicesDescription": "Elija qué dispositivos de Smart Panel deben enlazarse en Apple Home. Solo los dispositivos compatibles con servicios mapeados aparecerán en Apple Home.",
+		"searchPlaceholder": "Buscar dispositivos por nombre o habitación...",
+		"filterDevices": "Dispositivos",
+		"filterAll": "Todos los dispositivos",
+		"filterCompatibleOnly": "Solo compatibles",
+		"compatible": "Compatible",
+		"noDevices": "No se encontraron dispositivos",
+		"incompatible": "Incompatible",
+		"bridgeLimitWarning": "Apple Home recomienda un máximo de 150 accesorios por puente. Añadir más puede provocar inestabilidad o problemas de enlace.",
+		"selectedCount": "{count} de {total} dispositivos compatibles seleccionados",
+		"scanWithCamera": "Escanee con la app Casa o Cámara en su iPhone/iPad",
+		"setupCode": "Código PIN de configuración",
+		"bridgeStatus": "Estado del enlace",
+		"pairedWithCount": "Enlazado con {count} controlador(es)",
+		"waitingForPairing": "Esperando enlace...",
+		"instruction1": "Abra la aplicación Apple Casa en su dispositivo iOS o macOS.",
+		"instruction2": "Pulse \"+\" y seleccione \"Añadir accesorio\".",
+		"instruction3": "Escanee el código QR o introduzca el PIN de 8 dígitos manualmente.",
+		"columns": {
+			"name": "Dispositivo",
+			"category": "Categoría",
+			"homeKitService": "Servicio HomeKit"
+		},
+		"buttons": {
+			"saveMappings": "Guardar",
+			"saveAndPair": "Guardar y enlazar",
+			"backToDevices": "Atrás",
+			"resetPairing": "Restablecer enlace",
+			"done": "Listo",
+			"cancel": "Cancelar"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ajustes de HomeKit Bridge actualizados.",
+			"notEdited": "No se pudieron actualizar los ajustes de HomeKit Bridge."
+		},
+		"mappingsSaved": "Asignaciones de dispositivos guardadas correctamente.",
+		"saveMappingsFailed": "No se pudieron guardar las asignaciones de dispositivos.",
+		"candidatesFetchFailed": "No se pudieron cargar los dispositivos candidatos. Inténtelo de nuevo.",
+		"statusFetchFailed": "No se pudo actualizar el estado del puente.",
+		"pinCopied": "Código PIN de enlace copiado al portapapeles.",
+		"copyFailed": "No se pudo copiar al portapapeles.",
+		"confirmResetPairing": "¿Está seguro de que desea restablecer el enlace con Apple Home? Las conexiones existentes se desconectarán y deberá volver a enlazar el puente.",
+		"pairingResetSuccess": "Credenciales de enlace restablecidas. Ahora puede enlazar con Apple Home.",
+		"pairingResetFailed": "No se pudieron restablecer las credenciales de enlace.",
+		"saveBeforeAction": "Por favor guarde o descarte los cambios en la configuración antes de continuar.",
+		"refreshFailed": "Error al sincronizar la configuración con el backend.",
+		"refreshSuccess": "Configuración sincronizada con éxito.",
+		"outOfSyncBlock": "La configuración no está sincronizada. Vuelva a cargarla antes de guardar."
+	}
+}

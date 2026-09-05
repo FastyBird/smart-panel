@@ -1,0 +1,117 @@
+{
+	"headings": {
+		"aboutSettings": "Apple HomeKit Bridge",
+		"bridgeStatus": "Stan działania mostka",
+		"resetPairing": "Zresetuj parowanie Apple Home"
+	},
+	"texts": {
+		"aboutSettings": "Mostkuj urządzenia Smart Panelu do Apple Home za pomocą lokalnego protokołu HomeKit Accessory Protocol (HAP). Użyj kreatora, aby wybrać, które urządzenia mają zostać zmostkowane.",
+		"outOfSyncTitle": "Konfiguracja niezsynchronizowana",
+		"outOfSyncDescription": "Wyświetlona konfiguracja nie mogła zostać zsynchronizowana z serwerem. Zmiany nie mogą zostać zapisane do czasu ponownego załadowania konfiguracji."
+	},
+	"status": {
+		"running": "Uruchomiony",
+		"stopped": "Zatrzymany",
+		"notPaired": "Nie sparowano",
+		"pairedWithCount": "Sparowano ({count} klientów)",
+		"exposedCount": "{count} urządzeń aktualnie zmostkowanych"
+	},
+	"buttons": {
+		"configureDevices": "Konfiguruj urządzenia",
+		"showPairing": "Kod QR Apple Home",
+		"resetPairing": "Zresetuj parowanie",
+		"retryRefresh": "Ponów synchronizację",
+		"generatePin": "Wygeneruj losowy PIN",
+		"refreshStatus": "Odśwież"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Włączone"
+			},
+			"name": {
+				"title": "Nazwa wyświetlana mostka",
+				"placeholder": "Smart Panel Bridge",
+				"description": "Nazwa widoczna dla mostka w aplikacji Apple Dom",
+				"validation": {
+					"required": "Nazwa mostka jest wymagana"
+				}
+			},
+			"port": {
+				"title": "Port TCP",
+				"description": "Lokalny port dla serwera HAP (domyślnie: 51826)",
+				"validation": {
+					"required": "Port jest wymagany"
+				}
+			},
+			"pinCode": {
+				"title": "Kod PIN parowania",
+				"placeholder": "031-45-154",
+				"description": "8-cyfrowy kod PIN w formacie XXX-XX-XXX używany do parowania z Apple Home",
+				"validation": {
+					"format": "Kod PIN musi być w formacie XXX-XX-XXX",
+					"required": "Kod PIN jest wymagany",
+					"forbidden": "Ten kod PIN nie jest dozwolony przez Apple HomeKit"
+				}
+			}
+		}
+	},
+	"wizard": {
+		"title": "Konfiguracja Apple HomeKit Bridge",
+		"steps": {
+			"devices": "Wybór urządzeń",
+			"pairing": "Sparuj z Apple Home"
+		},
+		"pairingDescription": "Zeskanuj poniższy kod QR za pomocą aplikacji Apple Dom na telefonie iPhone lub iPadzie, aby sparować ten mostek.",
+		"devicesDescription": "Wybierz, które urządzenia Smart Panelu mają zostać zmostkowane do Apple Home. Tylko kompatybilne urządzenia z przypisanymi usługami pojawią się w Apple Home.",
+		"searchPlaceholder": "Szukaj urządzeń według nazwy lub pokoju...",
+		"filterDevices": "Urządzenia",
+		"filterAll": "Wszystkie urządzenia",
+		"filterCompatibleOnly": "Tylko kompatybilne",
+		"compatible": "Kompatybilne",
+		"noDevices": "Nie znaleziono urządzeń",
+		"incompatible": "Niekompatybilne",
+		"bridgeLimitWarning": "Apple Home zaleca maksymalnie 150 akcesoriów na mostek. Dodanie większej liczby może prowadzić do niestabilności lub problemów z parowaniem.",
+		"selectedCount": "Wybrano {count} z {total} kompatybilnych urządzeń",
+		"scanWithCamera": "Zeskanuj za pomocą aplikacji Dom lub Aparat na iPhonie/iPadzie",
+		"setupCode": "Kod PIN konfiguracji",
+		"bridgeStatus": "Stan parowania",
+		"pairedWithCount": "Sparowano z {count} kontrolerem(ami)",
+		"waitingForPairing": "Oczekiwanie na sparowanie...",
+		"instruction1": "Otwórz aplikację Apple Dom na swoim urządzeniu z systemem iOS lub macOS.",
+		"instruction2": "Dotknij \"+\" i wybierz \"Dodaj akcesorium\".",
+		"instruction3": "Zeskanuj kod QR lub wprowadź 8-cyfrowy kod PIN ręcznie.",
+		"columns": {
+			"name": "Urządzenie",
+			"category": "Kategoria",
+			"homeKitService": "Usługa HomeKit"
+		},
+		"buttons": {
+			"saveMappings": "Zapisz",
+			"saveAndPair": "Zapisz i sparuj",
+			"backToDevices": "Wstecz",
+			"resetPairing": "Zresetuj parowanie",
+			"done": "Gotowe",
+			"cancel": "Anuluj"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ustawienia HomeKit Bridge zostały zaktualizowane.",
+			"notEdited": "Nie udało się zaktualizować ustawień HomeKit Bridge."
+		},
+		"mappingsSaved": "Przypisania urządzeń zostały pomyślnie zapisane.",
+		"saveMappingsFailed": "Nie udało się zapisać przypisań urządzeń.",
+		"candidatesFetchFailed": "Nie udało się pobrać listy urządzeń. Spróbuj ponownie.",
+		"statusFetchFailed": "Nie udało się pobrać stanu mostka.",
+		"pinCopied": "Kod PIN parowania został skopiowany do schowka.",
+		"copyFailed": "Kopiowanie do schowka nie powiodło się.",
+		"confirmResetPairing": "Czy na pewno chcesz zresetować parowanie Apple Home? Istniejące połączenia Apple Home zostaną rozłączone i konieczne będzie ponowne sparowanie mostka.",
+		"pairingResetSuccess": "Dane parowania zostały zresetowane. Możesz teraz sparować z Apple Home.",
+		"pairingResetFailed": "Nie udało się zresetować danych parowania.",
+		"saveBeforeAction": "Przed kontynuowaniem zapisz lub odrzuć zmiany ustawień.",
+		"refreshFailed": "Nie udało się zsynchronizować konfiguracji z serwerem.",
+		"refreshSuccess": "Konfiguracja pomyślnie zsynchronizowana.",
+		"outOfSyncBlock": "Konfiguracja nie jest zsynchronizowana. Załaduj ponownie przed zapisaniem."
+	}
+}

@@ -798,3 +798,19 @@ export type NotificationsTelegramPluginUpdateConfigSchema = components['schemas'
 // Notifications Module Enums
 // =============================
 export { PathsModulesNotificationsNotificationsGetParametersQuerySeverity as NotificationSeverity } from './openapi';
+
+// Devices HomeKit Plugin Schemas
+// ===============================
+export type DevicesHomeKitPluginConfigSchema = components['schemas']['DevicesHomeKitPluginDataConfig'];
+export type DevicesHomeKitPluginUpdateConfigSchema = components['schemas']['DevicesHomeKitPluginUpdateConfig'];
+export type DevicesHomeKitPluginBridgeStatusSchema = components['schemas']['DevicesHomeKitPluginDataBridgeStatus'];
+export type DevicesHomeKitPluginDeviceCandidateSchema = components['schemas']['DevicesHomeKitPluginDataDeviceCandidate'];
+export type DevicesHomeKitPluginMapDevicesSchema = components['schemas']['DevicesHomeKitPluginMapDevices'];
+export type DevicesHomeKitPluginReqMapDevicesSchema = components['schemas']['DevicesHomeKitPluginReqMapDevices'];
+
+// Devices HomeKit Plugin Operations
+// =================================
+export type DevicesHomeKitPluginGetBridgeStatusOperation = operations['get-devices-homekit-plugin-bridge-status'];
+export type DevicesHomeKitPluginResetPairingOperation = operations['reset-devices-homekit-plugin-pairing'];
+export type DevicesHomeKitPluginGetCandidatesOperation = operations['get-devices-homekit-plugin-candidates'];
+export type DevicesHomeKitPluginMapCandidatesOperation = operations['map-devices-homekit-plugin-candidates'];

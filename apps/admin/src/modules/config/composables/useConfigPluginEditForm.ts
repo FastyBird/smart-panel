@@ -155,5 +155,6 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 		clear,
 		formResult,
 		markSaved,
+		reconcile,
 	};
 };
