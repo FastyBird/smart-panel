@@ -22,7 +22,9 @@ jest.mock('fs', () => {
 	};
 });
 
-describe('HomeKitBridgeService Storage Permissions', () => {
+const describePosix = process.platform === 'win32' ? describe.skip : describe;
+
+describePosix('HomeKitBridgeService Storage Permissions', () => {
 	let testDir: string;
 	let originalConfigPath: string | undefined;
 

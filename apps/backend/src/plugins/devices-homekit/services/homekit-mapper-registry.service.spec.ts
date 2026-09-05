@@ -79,22 +79,69 @@ describe('HomeKitMapperRegistryService', () => {
 		expect(bindings[0].deviceId).toBe(device.id);
 	});
 
-	it('should leave zero orphan bindings if accessory addition fails before commit', () => {
+	it('should leave zero orphan bindings if accessory addition throws before commit', () => {
 		const staged = registry.buildAccessory(device, commandDispatcher);
 		expect(staged).not.toBeNull();
 
-		// Simulate bridge addBridgedAccessory throwing an error before commitStaged is invoked
-		const simulateHapFailure = () => {
-			throw new Error('HAP accessory UUID collision');
+		const bridge = {
+			addBridgedAccessory: jest.fn().mockImplementation(() => {
+				throw new Error('HAP accessory UUID collision');
+			}),
 		};
 
-		expect(() => simulateHapFailure()).toThrow('HAP accessory UUID collision');
+		expect(() => {
+			if (staged) {
+				bridge.addBridgedAccessory(staged.accessory);
+				registry.commitStaged(staged);
+			}
+		}).toThrow('HAP accessory UUID collision');
 
-		// Because commitStaged was not called, no orphan bindings exist
+		// Verify that because commitStaged was skipped, registry maps remain empty
 		expect(registry.getBindingsForProperty(onProp.id)).toEqual([]);
 		expect(registry.getListenersForProperty(onProp.id)).toEqual([]);
 		const snapshot = registry.getSnapshot();
+		expect(snapshot.propertyBindings.size).toBe(0);
+		expect(snapshot.propertyListeners.size).toBe(0);
 		expect(snapshot.deviceProperties.size).toBe(0);
+	});
+
+	it('should restore live registry maps to pre-commit state after rollback when a failure occurs during accessory addition flow', () => {
+		// Pre-commit initial state: empty snapshot
+		const initialSnapshot = registry.getSnapshot();
+
+		const staged = registry.buildAccessory(device, commandDispatcher);
+		expect(staged).not.toBeNull();
+
+		const bridge = {
+			accessories: [] as unknown[],
+			addBridgedAccessory: jest.fn().mockImplementation((acc: unknown) => {
+				bridge.accessories.push(acc);
+			}),
+		};
+
+		// Simulate reconciliation flow: add accessory, commit to registry, but then subsequent bridge operation explodes
+		expect(() => {
+			if (staged) {
+				bridge.addBridgedAccessory(staged.accessory);
+				registry.commitStaged(staged);
+			}
+			// Simulated failure during subsequent bridge mutation/flow
+			throw new Error('HAP accessory addition or bridge mutation failed');
+		}).toThrow('HAP accessory addition or bridge mutation failed');
+
+		// At this point, bindings were staged & committed
+		expect(registry.getBindingsForProperty(onProp.id)).toHaveLength(1);
+
+		// Trigger rollback restoring the snapshot taken before the flow began
+		registry.restoreSnapshot(initialSnapshot);
+
+		// Assert that after rollback, binding, listener, and device maps are empty / unchanged from pre-commit state
+		expect(registry.getBindingsForProperty(onProp.id)).toEqual([]);
+		expect(registry.getListenersForProperty(onProp.id)).toEqual([]);
+		const restoredSnapshot = registry.getSnapshot();
+		expect(restoredSnapshot.propertyBindings.size).toBe(0);
+		expect(restoredSnapshot.propertyListeners.size).toBe(0);
+		expect(restoredSnapshot.deviceProperties.size).toBe(0);
 	});
 
 	it('should maintain uncontaminated snapshots when building staged accessories', () => {
