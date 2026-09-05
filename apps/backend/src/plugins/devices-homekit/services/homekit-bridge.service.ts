@@ -176,6 +176,9 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 		try {
 			if (this.bridge) {
 				await this.stopUnlocked();
+				if (this.bridge) {
+					throw new Error('Could not stop the previous HomeKit Gateway bridge.');
+				}
 			}
 
 			this.initHapStorage();

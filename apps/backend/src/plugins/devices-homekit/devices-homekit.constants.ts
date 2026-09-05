@@ -13,6 +13,8 @@ export const DEFAULT_HOMEKIT_PORT = 51826;
 
 export const DEFAULT_HOMEKIT_BRIDGE_NAME = 'Smart Panel Bridge';
 
+export const HOMEKIT_MAX_BRIDGED_ACCESSORIES = 149;
+
 export const HOMEKIT_PAIRING_STORAGE_DIR = 'homekit';
 
 export function generateRandomHomeKitPin(): string {

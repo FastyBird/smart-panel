@@ -2,6 +2,7 @@ import { Characteristic, Service } from '@homebridge/hap-nodejs';
 
 import {
 	ChannelCategory,
+	DataTypeType,
 	DeviceCategory,
 	PermissionType,
 	PropertyCategory,
@@ -92,5 +93,33 @@ describe('LockMapper', () => {
 		// Unlocking dispatches command
 		targetChar?.setValue(Characteristic.LockTargetState.UNSECURED);
 		expect(commandDispatcher.dispatch).toHaveBeenCalledWith('prop-lock-target', false);
+	});
+
+	it('should dispatch string "unlocked" when target property is an enum', () => {
+		const device = new DeviceEntity();
+		device.id = 'dev-lock-2';
+		device.name = 'Front Door Lock';
+		device.category = DeviceCategory.LOCK;
+
+		const channel = new ChannelEntity();
+		channel.id = 'chan-lock-2';
+		channel.category = ChannelCategory.LOCK;
+
+		const onProp = new ChannelPropertyEntity();
+		onProp.id = 'prop-lock-target-2';
+		onProp.category = PropertyCategory.LOCKED;
+		onProp.dataType = DataTypeType.ENUM;
+		onProp.permissions = [PermissionType.READ_WRITE];
+		onProp.value = new PropertyValueState('locked');
+
+		channel.properties = [onProp];
+		device.channels = [channel];
+
+		const accessory = mapper.buildAccessory(device, context);
+		const service = accessory?.getService(Service.LockMechanism);
+		const targetChar = service?.getCharacteristic(Characteristic.LockTargetState);
+
+		targetChar?.setValue(Characteristic.LockTargetState.UNSECURED);
+		expect(commandDispatcher.dispatch).toHaveBeenCalledWith('prop-lock-target-2', 'unlocked');
 	});
 });

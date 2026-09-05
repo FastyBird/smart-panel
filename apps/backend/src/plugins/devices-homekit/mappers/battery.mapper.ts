@@ -73,9 +73,11 @@ export class BatteryMapper {
 				}
 			}
 
-			const num = Number(unwrappedLevel);
-			if (!isNaN(num) && num <= 20) {
-				return Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW;
+			if (unwrappedLevel !== null && unwrappedLevel !== undefined) {
+				const num = Number(unwrappedLevel);
+				if (!isNaN(num) && num <= 20) {
+					return Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW;
+				}
 			}
 
 			return Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;

@@ -1,4 +1,4 @@
-import { Accessory, Service } from '@homebridge/hap-nodejs';
+import { Accessory, Characteristic, Service } from '@homebridge/hap-nodejs';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
@@ -91,13 +91,20 @@ describe('HomeKitBridgeService', () => {
 		};
 
 		devicesService = {
-			findOne: jest.fn().mockResolvedValue({ id: 'dev-1', name: 'Test Device' } as DeviceEntity),
+			findOne: jest.fn().mockImplementation((id: string) => {
+				return Promise.resolve({ id, name: `Device ${id}` } as DeviceEntity);
+			}),
 		};
 
 		mapperRegistry = {
 			clearAllBindings: jest.fn(),
 			clearDeviceBindings: jest.fn(),
-			buildAccessory: jest.fn().mockReturnValue(new Accessory('Test Device', '550e8400-e29b-41d4-a716-446655440001')),
+			buildAccessory: jest.fn().mockImplementation((dev: DeviceEntity) => {
+				const acc = new Accessory(dev.name, '550e8400-e29b-41d4-a716-44665544000' + dev.id.slice(-1));
+				const info = acc.getService(Service.AccessoryInformation) ?? acc.addService(Service.AccessoryInformation);
+				info.setCharacteristic(Characteristic.SerialNumber, dev.id);
+				return acc;
+			}),
 			getSnapshot: jest
 				.fn()
 				.mockReturnValue({ propertyBindings: new Map(), propertyListeners: new Map(), deviceProperties: new Map() }),
@@ -196,6 +203,23 @@ describe('HomeKitBridgeService', () => {
 
 		expect(result).toEqual({ restartRequired: false });
 		expect(mapperRegistry.buildAccessory).toHaveBeenCalled();
+	});
+
+	it('should remove bridged accessory and clear bindings when a device is unmapped', async () => {
+		await service.start();
+
+		const bridge = getBridge();
+		const removeSpy = jest.spyOn(bridge, 'removeBridgedAccessory');
+
+		// Unmap dev-1 (empty list)
+		const changedConfig = { ...baseConfig, mappedDeviceIds: [] };
+		configService.getPluginConfig = jest.fn().mockReturnValue(changedConfig);
+
+		const result = await service.onConfigChanged();
+
+		expect(result).toEqual({ restartRequired: false });
+		expect(removeSpy).toHaveBeenCalled();
+		expect(mapperRegistry.clearDeviceBindings).toHaveBeenCalledWith('dev-1');
 	});
 
 	it('should rollback to snapshot if dynamic reconciliation fails', async () => {

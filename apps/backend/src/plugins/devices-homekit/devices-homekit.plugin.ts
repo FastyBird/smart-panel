@@ -18,6 +18,7 @@ import {
 	DEVICES_HOMEKIT_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_HOMEKIT_PLUGIN_API_TAG_NAME,
 	DEVICES_HOMEKIT_PLUGIN_NAME,
+	HOMEKIT_MAX_BRIDGED_ACCESSORIES,
 } from './devices-homekit.constants';
 import { DEVICES_HOMEKIT_PLUGIN_SWAGGER_EXTRA_MODELS } from './devices-homekit.openapi';
 import { HomeKitUpdatePluginConfigDto } from './dto/update-config.dto';
@@ -74,7 +75,7 @@ export class DevicesHomeKitPlugin implements OnModuleInit {
 						throw new BadRequestException([{ field: 'mapped_device_ids', reason: 'Device IDs must be an array.' }]);
 					}
 
-					if (update.mapped_device_ids.length > 149) {
+					if (update.mapped_device_ids.length > HOMEKIT_MAX_BRIDGED_ACCESSORIES) {
 						throw new BadRequestException([
 							{
 								field: 'mapped_device_ids',
@@ -88,8 +89,14 @@ export class DevicesHomeKitPlugin implements OnModuleInit {
 						throw new BadRequestException([{ field: 'mapped_device_ids', reason: 'Device IDs must be unique.' }]);
 					}
 
-					for (const deviceId of update.mapped_device_ids) {
-						const device = await this.devicesService.findOne(deviceId);
+					const devices = await Promise.all(
+						update.mapped_device_ids.map(async (deviceId) => {
+							const device = await this.devicesService.findOne(deviceId);
+							return { deviceId, device };
+						}),
+					);
+
+					for (const { deviceId, device } of devices) {
 						if (!device) {
 							throw new BadRequestException([{ field: 'mapped_device_ids', reason: `Device ${deviceId} not found.` }]);
 						}

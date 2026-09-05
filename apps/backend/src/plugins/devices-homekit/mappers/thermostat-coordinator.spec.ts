@@ -309,6 +309,57 @@ describe('ThermostatCoordinator', () => {
 		expect(commandDispatcher.dispatch).toHaveBeenCalledWith('prop-cooler-temp', 25.0);
 	});
 
+	it('should dispatch appropriate property updates when TargetTemperature is set in HEAT, COOL, and AUTO modes', async () => {
+		heaterOnProp.value = new PropertyValueState(true);
+		coolerOnProp.value = new PropertyValueState(false);
+		heaterTempProp.value = new PropertyValueState(20.0);
+		coolerTempProp.value = new PropertyValueState(24.0);
+
+		new ThermostatCoordinator({
+			device,
+			service,
+			context,
+			ambientTempChannel: ambientChannel,
+			ambientTempProperty: ambientProp,
+			heaterChannel,
+			heaterOnProperty: heaterOnProp,
+			heaterTempProperty: heaterTempProp,
+			coolerChannel,
+			coolerOnProperty: coolerOnProp,
+			coolerTempProperty: coolerTempProp,
+		});
+
+		const targetTempChar = service.getCharacteristic(Characteristic.TargetTemperature);
+		const targetStateChar = service.getCharacteristic(Characteristic.TargetHeatingCoolingState);
+
+		// 1. HEAT mode (heaterOn is true)
+		targetTempChar.setValue(22.0);
+		expect(commandDispatcher.dispatchBatch).toHaveBeenCalledWith([{ propertyId: 'prop-heater-temp', value: 22.0 }]);
+		commandDispatcher.dispatchBatch.mockClear();
+
+		// 2. Switch to COOL mode
+		targetStateChar.setValue(Characteristic.TargetHeatingCoolingState.COOL);
+		await new Promise((resolve) => process.nextTick(resolve));
+		commandDispatcher.dispatchBatch.mockClear();
+
+		targetTempChar.setValue(23.0);
+		expect(commandDispatcher.dispatchBatch).toHaveBeenCalledWith([{ propertyId: 'prop-cooler-temp', value: 23.0 }]);
+		commandDispatcher.dispatchBatch.mockClear();
+
+		// 3. Switch to AUTO mode: currentHeat is 22.0 (from step 1), currentCool is 23.0 (from step 2)
+		// Deadband width is 23.0 - 22.0 = 1.0, so span is 0.5.
+		targetStateChar.setValue(Characteristic.TargetHeatingCoolingState.AUTO);
+		await new Promise((resolve) => process.nextTick(resolve));
+		commandDispatcher.dispatchBatch.mockClear();
+
+		// targetVal = 22 with span = 0.5 -> heater = 21.5, cooler = 22.5
+		targetTempChar.setValue(22.0);
+		expect(commandDispatcher.dispatchBatch).toHaveBeenCalledWith([
+			{ propertyId: 'prop-heater-temp', value: 21.5 },
+			{ propertyId: 'prop-cooler-temp', value: 22.5 },
+		]);
+	});
+
 	it('should bind child lock controls when lockedProperty is present', () => {
 		const lockedProp = new ChannelPropertyEntity();
 		lockedProp.id = 'prop-climate-locked';

@@ -99,23 +99,45 @@ describe('BatteryMapper', () => {
 
 		// 1. Status changes to 'low_battery'
 		for (const listener of registeredListeners) {
-			listener.onPropertyChanged(statusProp, 'low_battery');
+			if (listener.propertyId === statusProp.id) {
+				listener.onPropertyChanged(statusProp, 'low_battery');
+			}
 		}
 		expect(lowBatChar?.value).toBe(Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
 
 		// 2. Status resets to 'normal', but level drops to 15% (<= 20% threshold)
 		for (const listener of registeredListeners) {
-			listener.onPropertyChanged(statusProp, 'normal');
+			if (listener.propertyId === statusProp.id) {
+				listener.onPropertyChanged(statusProp, 'normal');
+			}
 		}
 		for (const listener of registeredListeners) {
-			listener.onPropertyChanged(levelProp, 15);
+			if (listener.propertyId === levelProp.id) {
+				listener.onPropertyChanged(levelProp, 15);
+			}
 		}
 		expect(lowBatChar?.value).toBe(Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW);
 
 		// 3. Level rises to 90% and status is normal -> resets to normal
 		for (const listener of registeredListeners) {
-			listener.onPropertyChanged(levelProp, 90);
+			if (listener.propertyId === levelProp.id) {
+				listener.onPropertyChanged(levelProp, 90);
+			}
 		}
+		expect(lowBatChar?.value).toBe(Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
+	});
+
+	it('should treat missing battery level as normal for status-only battery devices', () => {
+		statusProp.value = new PropertyValueState('ok');
+		batteryChannel.properties = [statusProp]; // No level property
+
+		BatteryMapper.attachBatteryService(accessory, device, context);
+
+		const service = accessory.getService(Service.Battery);
+		const levelChar = service?.getCharacteristic(Characteristic.BatteryLevel);
+		const lowBatChar = service?.getCharacteristic(Characteristic.StatusLowBattery);
+
+		expect(levelChar?.value).toBe(100);
 		expect(lowBatChar?.value).toBe(Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL);
 	});
 });

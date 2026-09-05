@@ -15,7 +15,7 @@ import {
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
-import { DEVICES_HOMEKIT_PLUGIN_NAME } from '../devices-homekit.constants';
+import { DEVICES_HOMEKIT_PLUGIN_NAME, HOMEKIT_MAX_BRIDGED_ACCESSORIES } from '../devices-homekit.constants';
 
 @ApiSchema({ name: 'DevicesHomeKitPluginUpdateConfig' })
 export class HomeKitUpdatePluginConfigDto extends UpdatePluginConfigDto {
@@ -98,7 +98,7 @@ export class HomeKitUpdatePluginConfigDto extends UpdatePluginConfigDto {
 		each: true,
 		message: '[{"field":"mapped_device_ids","reason":"Each device ID must be a valid UUID v4."}]',
 	})
-	@ArrayMaxSize(149, {
+	@ArrayMaxSize(HOMEKIT_MAX_BRIDGED_ACCESSORIES, {
 		message:
 			'[{"field":"mapped_device_ids","reason":"Maximum 149 accessories can be bridged to a single HomeKit bridge."}]',
 	})
