@@ -206,8 +206,11 @@ import {
 
 import { Icon } from '@iconify/vue';
 
-import { useFlashMessage } from '../../../common';
+import { injectStoresManager, useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import type { IConfigPlugin } from '../../../modules/config/store/config-plugins.store.types';
+import { configPluginsStoreKey } from '../../../modules/config/store/keys';
+import { DEVICES_HOMEKIT_PLUGIN_NAME } from '../devices-homekit.constants';
 import type { IHomeKitConfigEditForm } from '../schemas/config.types';
 import { useHomeKitBridge } from '../store/homekit-bridge.store';
 
@@ -236,8 +239,10 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
 const store = useHomeKitBridge();
+const storesManager = injectStoresManager();
+const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 
-const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditForm<IHomeKitConfigEditForm>({
+const { formEl, model, formChanged, submit, formResult, markSaved, reconcile } = useConfigPluginEditForm<IHomeKitConfigEditForm>({
 	config: props.config,
 	messages: {
 		success: t('devicesHomeKitPlugin.messages.config.edited'),
@@ -261,13 +266,35 @@ const rules = reactive<FormRules<IHomeKitConfigEditForm>>({
 const wizardVisible = ref(false);
 const wizardInitialStep = ref<HomeKitWizardStep>('devices');
 
+const refreshPluginConfig = async (): Promise<void> => {
+	try {
+		const freshConfig = (await configPluginsStore.get({
+			type: DEVICES_HOMEKIT_PLUGIN_NAME,
+			force: true,
+		})) as IConfigPlugin | undefined;
+
+		if (freshConfig) {
+			reconcile(freshConfig);
+			markSaved();
+		}
+	} catch {
+		// Handled
+	}
+};
+
 const openWizard = (step: HomeKitWizardStep): void => {
+	if (formChanged.value) {
+		flashMessage.warning(t('devicesHomeKitPlugin.messages.saveBeforeAction'));
+		return;
+	}
+
 	wizardInitialStep.value = step;
 	wizardVisible.value = true;
 };
 
 const onWizardCompleted = async (): Promise<void> => {
 	try {
+		await refreshPluginConfig();
 		await store.fetchStatus();
 	} catch {
 		// Handled in store
@@ -286,18 +313,20 @@ const copyPinCode = async (): Promise<void> => {
 };
 
 const onResetPairing = async (): Promise<void> => {
+	if (formChanged.value) {
+		flashMessage.warning(t('devicesHomeKitPlugin.messages.saveBeforeAction'));
+		return;
+	}
+
 	try {
-		await ElMessageBox.confirm(
-			t('devicesHomeKitPlugin.messages.confirmResetPairing'),
-			t('devicesHomeKitPlugin.headings.resetPairing'),
-			{
-				type: 'warning',
-				confirmButtonText: t('devicesHomeKitPlugin.buttons.resetPairing'),
-				cancelButtonText: t('devicesHomeKitPlugin.wizard.buttons.cancel'),
-			}
-		);
+		await ElMessageBox.confirm(t('devicesHomeKitPlugin.messages.confirmResetPairing'), t('devicesHomeKitPlugin.headings.resetPairing'), {
+			type: 'warning',
+			confirmButtonText: t('devicesHomeKitPlugin.buttons.resetPairing'),
+			cancelButtonText: t('devicesHomeKitPlugin.wizard.buttons.cancel'),
+		});
 
 		await store.resetPairing();
+		await refreshPluginConfig();
 		flashMessage.success(t('devicesHomeKitPlugin.messages.pairingResetSuccess'));
 	} catch (error) {
 		if (error !== 'cancel') {

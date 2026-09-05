@@ -13,8 +13,8 @@ import type {
 import { DEVICES_HOMEKIT_PLUGIN_PREFIX } from '../devices-homekit.constants';
 import { DevicesHomeKitApiException } from '../devices-homekit.exceptions';
 
-import { transformHomeKitBridgeStatus, transformHomeKitCandidates } from './homekit-bridge.transformers';
 import type { IHomeKitBridgeStatus, IHomeKitDeviceCandidate } from './homekit-bridge.store.types';
+import { transformHomeKitBridgeStatus, transformHomeKitCandidates } from './homekit-bridge.transformers';
 
 export const useHomeKitBridge = defineStore('devices_homekit_plugin-bridge', () => {
 	const backend = useBackend();
@@ -29,9 +29,7 @@ export const useHomeKitBridge = defineStore('devices_homekit_plugin-bridge', () 
 		fetchingStatus.value = true;
 
 		try {
-			const { data, error, response } = await backend.client.GET(
-				`/${PLUGINS_PREFIX}/${DEVICES_HOMEKIT_PLUGIN_PREFIX}/bridge/status`
-			);
+			const { data, error, response } = await backend.client.GET(`/${PLUGINS_PREFIX}/${DEVICES_HOMEKIT_PLUGIN_PREFIX}/bridge/status`);
 
 			if (data) {
 				return (status.value = transformHomeKitBridgeStatus(data.data));
@@ -50,19 +48,14 @@ export const useHomeKitBridge = defineStore('devices_homekit_plugin-bridge', () 
 		fetchingCandidates.value = true;
 
 		try {
-			const { data, error, response } = await backend.client.GET(
-				`/${PLUGINS_PREFIX}/${DEVICES_HOMEKIT_PLUGIN_PREFIX}/bridge/candidates`
-			);
+			const { data, error, response } = await backend.client.GET(`/${PLUGINS_PREFIX}/${DEVICES_HOMEKIT_PLUGIN_PREFIX}/bridge/candidates`);
 
 			if (data) {
 				return (candidates.value = transformHomeKitCandidates(data.data));
 			}
 
 			throw new DevicesHomeKitApiException(
-				getErrorReason<DevicesHomeKitPluginGetCandidatesOperation>(
-					error,
-					'Failed to load HomeKit device candidates.'
-				),
+				getErrorReason<DevicesHomeKitPluginGetCandidatesOperation>(error, 'Failed to load HomeKit device candidates.'),
 				response.status
 			);
 		} finally {
@@ -74,16 +67,13 @@ export const useHomeKitBridge = defineStore('devices_homekit_plugin-bridge', () 
 		savingMapping.value = true;
 
 		try {
-			const { data, error, response } = await backend.client.POST(
-				`/${PLUGINS_PREFIX}/${DEVICES_HOMEKIT_PLUGIN_PREFIX}/bridge/candidates/map`,
-				{
-					body: {
-						data: {
-							device_ids: deviceIds,
-						},
+			const { data, error, response } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOMEKIT_PLUGIN_PREFIX}/bridge/candidates/map`, {
+				body: {
+					data: {
+						device_ids: deviceIds,
 					},
-				}
-			);
+				},
+			});
 
 			if (data) {
 				candidates.value = transformHomeKitCandidates(data.data);
@@ -94,10 +84,7 @@ export const useHomeKitBridge = defineStore('devices_homekit_plugin-bridge', () 
 			}
 
 			throw new DevicesHomeKitApiException(
-				getErrorReason<DevicesHomeKitPluginMapCandidatesOperation>(
-					error,
-					'Failed to update HomeKit device mappings.'
-				),
+				getErrorReason<DevicesHomeKitPluginMapCandidatesOperation>(error, 'Failed to update HomeKit device mappings.'),
 				response.status
 			);
 		} finally {
@@ -109,9 +96,7 @@ export const useHomeKitBridge = defineStore('devices_homekit_plugin-bridge', () 
 		resettingPairing.value = true;
 
 		try {
-			const { data, error, response } = await backend.client.POST(
-				`/${PLUGINS_PREFIX}/${DEVICES_HOMEKIT_PLUGIN_PREFIX}/bridge/reset-pairing`
-			);
+			const { data, error, response } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOMEKIT_PLUGIN_PREFIX}/bridge/reset-pairing`);
 
 			if (data) {
 				return (status.value = transformHomeKitBridgeStatus(data.data));

@@ -100,6 +100,7 @@
 		"copyFailed": "No se pudo copiar al portapapeles.",
 		"confirmResetPairing": "¿Está seguro de que desea restablecer el enlace con Apple Home? Las conexiones existentes se desconectarán y deberá volver a enlazar el puente.",
 		"pairingResetSuccess": "Credenciales de enlace restablecidas. Ahora puede enlazar con Apple Home.",
-		"pairingResetFailed": "No se pudieron restablecer las credenciales de enlace."
+		"pairingResetFailed": "No se pudieron restablecer las credenciales de enlace.",
+		"saveBeforeAction": "Por favor guarde o descarte los cambios en la configuración antes de continuar."
 	}
 }

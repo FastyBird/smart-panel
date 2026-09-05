@@ -1,10 +1,7 @@
 import { type ZodType, z } from 'zod';
 
 import { ConfigPluginResSchema, ConfigPluginSchema, ConfigPluginUpdateReqSchema } from '../../../modules/config/store/config-plugins.store.schemas';
-import type {
-	DevicesHomeKitPluginConfigSchema,
-	DevicesHomeKitPluginUpdateConfigSchema,
-} from '../../../openapi.constants';
+import type { DevicesHomeKitPluginConfigSchema, DevicesHomeKitPluginUpdateConfigSchema } from '../../../openapi.constants';
 import { DEVICES_HOMEKIT_PLUGIN_NAME } from '../devices-homekit.constants';
 
 type ApiUpdateConfig = DevicesHomeKitPluginUpdateConfigSchema;

@@ -286,9 +286,7 @@
 
 				<div class="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
 					<div class="flex items-center gap-2">
-						<el-button
-							@click="currentStep = 'devices'"
-						>
+						<el-button @click="currentStep = 'devices'">
 							{{ t('devicesHomeKitPlugin.wizard.buttons.backToDevices') }}
 						</el-button>
 						<el-button
@@ -473,15 +471,11 @@ const copyPinCode = async (): Promise<void> => {
 
 const onResetPairing = async (): Promise<void> => {
 	try {
-		await ElMessageBox.confirm(
-			t('devicesHomeKitPlugin.messages.confirmResetPairing'),
-			t('devicesHomeKitPlugin.headings.resetPairing'),
-			{
-				type: 'warning',
-				confirmButtonText: t('devicesHomeKitPlugin.wizard.buttons.resetPairing'),
-				cancelButtonText: t('devicesHomeKitPlugin.wizard.buttons.cancel'),
-			}
-		);
+		await ElMessageBox.confirm(t('devicesHomeKitPlugin.messages.confirmResetPairing'), t('devicesHomeKitPlugin.headings.resetPairing'), {
+			type: 'warning',
+			confirmButtonText: t('devicesHomeKitPlugin.wizard.buttons.resetPairing'),
+			cancelButtonText: t('devicesHomeKitPlugin.wizard.buttons.cancel'),
+		});
 
 		await store.resetPairing();
 		flashMessage.success(t('devicesHomeKitPlugin.messages.pairingResetSuccess'));

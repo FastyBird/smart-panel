@@ -1,7 +1,9 @@
 import { createPinia, setActivePinia } from 'pinia';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DevicesHomeKitApiException } from '../devices-homekit.exceptions';
+
 import { useHomeKitBridge } from './homekit-bridge.store';
 
 const get = vi.fn();

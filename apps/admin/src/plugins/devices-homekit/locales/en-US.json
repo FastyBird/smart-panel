@@ -100,6 +100,7 @@
 		"copyFailed": "Failed to copy to clipboard.",
 		"confirmResetPairing": "Are you sure you want to reset Apple Home pairing? Existing Apple Home connections will be disconnected and you will need to re-pair the bridge.",
 		"pairingResetSuccess": "Pairing credentials reset. You can now pair with Apple Home.",
-		"pairingResetFailed": "Failed to reset pairing credentials."
+		"pairingResetFailed": "Failed to reset pairing credentials.",
+		"saveBeforeAction": "Please save or discard your settings changes before continuing."
 	}
 }

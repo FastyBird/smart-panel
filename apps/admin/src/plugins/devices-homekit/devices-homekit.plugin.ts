@@ -7,18 +7,14 @@ import { type IPlugin, type PluginInjectionKey, injectPluginsManager, injectStor
 import { CONFIG_MODULE_NAME, CONFIG_MODULE_PLUGIN_TYPE, type IPluginsComponents, type IPluginsSchemas } from '../../modules/config';
 
 import { HomeKitConfigForm } from './components/components';
-import {
-	DEVICES_HOMEKIT_PLUGIN_NAME,
-	DEVICES_HOMEKIT_SOURCE,
-} from './devices-homekit.constants';
+import { DEVICES_HOMEKIT_PLUGIN_NAME, DEVICES_HOMEKIT_SOURCE } from './devices-homekit.constants';
 import { locales } from './locales';
 import { HomeKitConfigEditFormSchema } from './schemas/schemas';
 import { HomeKitConfigSchema, HomeKitConfigUpdateReqSchema } from './store/config.store.schemas';
 import { registerHomeKitBridgeStore } from './store/homekit-bridge.store';
 import { homeKitBridgeStoreKey } from './store/keys';
 
-export const devicesHomeKitPluginKey: PluginInjectionKey<IPlugin<IPluginsComponents, IPluginsSchemas>> =
-	Symbol('FB-Plugin-DevicesHomeKit');
+export const devicesHomeKitPluginKey: PluginInjectionKey<IPlugin<IPluginsComponents, IPluginsSchemas>> = Symbol('FB-Plugin-DevicesHomeKit');
 
 export default {
 	install: (app: App, options: IPluginOptions): void => {

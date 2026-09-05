@@ -100,6 +100,7 @@
 		"copyFailed": "Kopírovanie do schránky zlyhalo.",
 		"confirmResetPairing": "Naozaj chcete resetovať párovanie Apple Home? Existujúce pripojenia Apple Home budú odpojené a budete musieť bránu znova spárovať.",
 		"pairingResetSuccess": "Párovacie údaje boli resetované. Teraz môžete spárovať s Apple Home.",
-		"pairingResetFailed": "Nepodarilo sa resetovať párovacie údaje."
+		"pairingResetFailed": "Nepodarilo sa resetovať párovacie údaje.",
+		"saveBeforeAction": "Pred pokračovaním prosím uložte alebo zrušte zmeny nastavenia."
 	}
 }

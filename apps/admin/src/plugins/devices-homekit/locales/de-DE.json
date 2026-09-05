@@ -100,6 +100,7 @@
 		"copyFailed": "Kopieren in die Zwischenablage fehlgeschlagen.",
 		"confirmResetPairing": "Sind Sie sicher, dass Sie die Apple Home Kopplung zurücksetzen möchten? Bestehende Apple Home Verbindungen werden getrennt und Sie müssen die Bridge erneut koppeln.",
 		"pairingResetSuccess": "Kopplungsdaten zurückgesetzt. Sie können nun eine neue Kopplung mit Apple Home durchführen.",
-		"pairingResetFailed": "Kopplungsdaten konnten nicht zurückgesetzt werden."
+		"pairingResetFailed": "Kopplungsdaten konnten nicht zurückgesetzt werden.",
+		"saveBeforeAction": "Bitte speichern oder verwerfen Sie Ihre Änderungen, bevor Sie fortfahren."
 	}
 }

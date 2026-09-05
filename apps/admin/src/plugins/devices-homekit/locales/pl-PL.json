@@ -100,6 +100,7 @@
 		"copyFailed": "Kopiowanie do schowka nie powiodło się.",
 		"confirmResetPairing": "Czy na pewno chcesz zresetować parowanie Apple Home? Istniejące połączenia Apple Home zostaną rozłączone i konieczne będzie ponowne sparowanie mostka.",
 		"pairingResetSuccess": "Dane parowania zostały zresetowane. Możesz teraz sparować z Apple Home.",
-		"pairingResetFailed": "Nie udało się zresetować danych parowania."
+		"pairingResetFailed": "Nie udało się zresetować danych parowania.",
+		"saveBeforeAction": "Przed kontynuowaniem zapisz lub odrzuć zmiany ustawień."
 	}
 }
