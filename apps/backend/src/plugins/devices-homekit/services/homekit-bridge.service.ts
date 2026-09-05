@@ -117,27 +117,36 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 		if (!fs.existsSync(storageDir)) {
 			fs.mkdirSync(storageDir, { recursive: true, mode: 0o700 });
 		}
-		try {
-			const stat = fs.statSync(storageDir);
-			if ((stat.mode & 0o777) !== 0o700) {
-				fs.chmodSync(storageDir, 0o700);
-			}
-			const files = fs.readdirSync(storageDir);
-			for (const file of files) {
-				const fullPath = path.join(storageDir, file);
-				try {
-					const fileStat = fs.statSync(fullPath);
-					if (fileStat.isFile() && (fileStat.mode & 0o077) !== 0) {
-						fs.chmodSync(fullPath, 0o600);
-					}
-				} catch {
-					// Ignore individual file chmod errors
+		if (process.platform !== 'win32') {
+			try {
+				const stat = fs.statSync(storageDir);
+				if ((stat.mode & 0o777) !== 0o700) {
+					fs.chmodSync(storageDir, 0o700);
 				}
+				const verifiedStat = fs.statSync(storageDir);
+				if ((verifiedStat.mode & 0o777) !== 0o700) {
+					throw new Error(
+						`HomeKit storage directory '${storageDir}' permissions could not be verified as 0700 (actual: 0${(verifiedStat.mode & 0o777).toString(8)}).`,
+					);
+				}
+				const files = fs.readdirSync(storageDir);
+				for (const file of files) {
+					const fullPath = path.join(storageDir, file);
+					try {
+						const fileStat = fs.statSync(fullPath);
+						if (fileStat.isFile() && (fileStat.mode & 0o077) !== 0) {
+							fs.chmodSync(fullPath, 0o600);
+						}
+					} catch {
+						// Ignore individual file chmod errors
+					}
+				}
+			} catch (error) {
+				this.logger.error(
+					`Failed to secure HomeKit pairing storage directory '${storageDir}': ${(error as Error).message}`,
+				);
+				throw error;
 			}
-		} catch (error) {
-			this.logger.warn(
-				`Failed to verify or enforce permissions on HomeKit storage directory: ${(error as Error).message}`,
-			);
 		}
 		return storageDir;
 	}

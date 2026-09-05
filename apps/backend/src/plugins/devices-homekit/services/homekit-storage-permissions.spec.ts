@@ -13,11 +13,28 @@ import { HomeKitBridgeService } from './homekit-bridge.service';
 import { HomeKitCommandDispatcher } from './homekit-command.dispatcher';
 import { HomeKitMapperRegistryService } from './homekit-mapper-registry.service';
 
+jest.mock('fs', () => {
+	const actual = jest.requireActual<typeof import('fs')>('fs');
+	return {
+		...actual,
+		chmodSync: jest.fn((...args: Parameters<typeof actual.chmodSync>) => actual.chmodSync(...args)),
+		statSync: jest.fn((...args: Parameters<typeof actual.statSync>) => actual.statSync(...args)),
+	};
+});
+
 describe('HomeKitBridgeService Storage Permissions', () => {
 	let testDir: string;
 	let originalConfigPath: string | undefined;
 
 	beforeEach(() => {
+		const actual = jest.requireActual<typeof import('fs')>('fs');
+		(fs.chmodSync as jest.Mock).mockImplementation((...args: Parameters<typeof actual.chmodSync>) =>
+			actual.chmodSync(...args),
+		);
+		(fs.statSync as jest.Mock).mockImplementation((...args: Parameters<typeof actual.statSync>) =>
+			actual.statSync(...args),
+		);
+
 		originalConfigPath = process.env.FB_CONFIG_PATH;
 		testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hk-perm-test-'));
 		process.env.FB_CONFIG_PATH = testDir;
@@ -119,5 +136,37 @@ describe('HomeKitBridgeService Storage Permissions', () => {
 
 		expect(fs.statSync(storageDir).mode & 0o777).toBe(0o700);
 		expect(fs.statSync(pairingFile).mode & 0o777).toBe(0o600);
+	});
+
+	it('fails closed and throws if chmodSync rejects when securing storage directory', () => {
+		const storageDir = path.join(testDir, HOMEKIT_PAIRING_STORAGE_DIR);
+		fs.mkdirSync(storageDir, { recursive: true });
+		fs.chmodSync(storageDir, 0o755);
+
+		const actual = jest.requireActual<typeof import('fs')>('fs');
+		(fs.chmodSync as jest.Mock).mockImplementationOnce((targetPath: string, mode: number) => {
+			if (typeof targetPath === 'string' && targetPath.includes(HOMEKIT_PAIRING_STORAGE_DIR)) {
+				const err = new Error('EPERM: operation not permitted, chmod');
+				(err as NodeJS.ErrnoException).code = 'EPERM';
+				throw err;
+			}
+			return actual.chmodSync(targetPath, mode);
+		});
+
+		const service = createService();
+		expect(() => service['initHapStorage']()).toThrow(/EPERM/);
+	});
+
+	it('fails closed and throws if storage directory permissions cannot be verified as 0700', () => {
+		const storageDir = path.join(testDir, HOMEKIT_PAIRING_STORAGE_DIR);
+		fs.mkdirSync(storageDir, { recursive: true });
+
+		(fs.statSync as jest.Mock).mockReturnValue({
+			mode: 0o777,
+			isFile: () => false,
+		} as fs.Stats);
+
+		const service = createService();
+		expect(() => service['initHapStorage']()).toThrow(/permissions could not be verified as 0700/);
 	});
 });

@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 
-import { Accessory, Characteristic, Service } from '@homebridge/hap-nodejs';
+import { Accessory, Characteristic, HAPStorage, Service } from '@homebridge/hap-nodejs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -89,6 +89,11 @@ describe('HomeKitBridgeService', () => {
 	let baseConfig: HomeKitConfigModel;
 
 	beforeEach(() => {
+		(fs.statSync as jest.Mock).mockReturnValue({ mode: 0o700, isFile: () => false });
+		(fs.chmodSync as jest.Mock).mockReset();
+		(fs.existsSync as jest.Mock).mockReturnValue(true);
+		(fs.readdirSync as jest.Mock).mockReturnValue([]);
+
 		baseConfig = new HomeKitConfigModel();
 		baseConfig.enabled = true;
 		baseConfig.bridgeName = 'Smart Panel Bridge';
@@ -372,7 +377,9 @@ describe('HomeKitBridgeService', () => {
 
 	it('creates pairing storage directory with 0700 permissions and tightens permissions on startup', async () => {
 		(fs.existsSync as jest.Mock).mockReturnValue(false);
-		(fs.statSync as jest.Mock).mockReturnValue({ mode: 0o755, isFile: () => false });
+		(fs.statSync as jest.Mock)
+			.mockReturnValueOnce({ mode: 0o755, isFile: () => false })
+			.mockReturnValue({ mode: 0o700, isFile: () => false });
 
 		await service.start();
 
@@ -381,5 +388,40 @@ describe('HomeKitBridgeService', () => {
 			mode: 0o700,
 		});
 		expect(fs.chmodSync).toHaveBeenCalledWith(expect.stringContaining('homekit'), 0o700);
+	});
+
+	it('fails closed and transitions to error state before HAPStorage is initialized if storage permissions cannot be secured', async () => {
+		const setCustomStoragePathSpy = jest.spyOn(HAPStorage, 'setCustomStoragePath');
+		setCustomStoragePathSpy.mockClear();
+
+		(fs.statSync as jest.Mock).mockReturnValue({ mode: 0o755, isFile: () => false });
+		(fs.chmodSync as jest.Mock).mockImplementationOnce(() => {
+			const err = new Error('EPERM: operation not permitted, chmod');
+			(err as NodeJS.ErrnoException).code = 'EPERM';
+			throw err;
+		});
+
+		await expect(service.start()).rejects.toThrow('EPERM: operation not permitted, chmod');
+
+		expect(setCustomStoragePathSpy).not.toHaveBeenCalled();
+		expect(service.getState()).toBe('error');
+		expect(eventEmitter.emit).toHaveBeenCalledWith(
+			'DevicesHomeKitPlugin.Bridge.StatusChanged',
+			expect.objectContaining({
+				running: false,
+			}),
+		);
+	});
+
+	it('fails closed if storage directory permissions cannot be verified as 0700', async () => {
+		const setCustomStoragePathSpy = jest.spyOn(HAPStorage, 'setCustomStoragePath');
+		setCustomStoragePathSpy.mockClear();
+
+		(fs.statSync as jest.Mock).mockReturnValue({ mode: 0o777, isFile: () => false });
+
+		await expect(service.start()).rejects.toThrow(/permissions could not be verified as 0700/);
+
+		expect(setCustomStoragePathSpy).not.toHaveBeenCalled();
+		expect(service.getState()).toBe('error');
 	});
 });
