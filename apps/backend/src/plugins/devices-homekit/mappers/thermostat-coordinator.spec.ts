@@ -281,6 +281,85 @@ describe('ThermostatCoordinator', () => {
 		]);
 	});
 
+	it('should only dispatch to writable on-properties when TargetHeatingCoolingState changes', () => {
+		heaterOnProp.permissions = [PermissionType.READ_WRITE];
+		coolerOnProp.permissions = [PermissionType.READ_ONLY];
+
+		new ThermostatCoordinator({
+			device,
+			service,
+			context,
+			ambientTempChannel: ambientChannel,
+			ambientTempProperty: ambientProp,
+			heaterChannel,
+			heaterOnProperty: heaterOnProp,
+			heaterTempProperty: heaterTempProp,
+			coolerChannel,
+			coolerOnProperty: coolerOnProp,
+			coolerTempProperty: coolerTempProp,
+		});
+
+		const targetStateChar = service.getCharacteristic(Characteristic.TargetHeatingCoolingState);
+
+		targetStateChar.setValue(Characteristic.TargetHeatingCoolingState.OFF);
+
+		expect(commandDispatcher.dispatchBatch).toHaveBeenCalledWith([{ propertyId: 'prop-heater-on', value: false }]);
+	});
+
+	it('should not register onSet on TargetHeatingCoolingState when neither on-property is writable', () => {
+		heaterOnProp.permissions = [PermissionType.READ_ONLY];
+		coolerOnProp.permissions = [PermissionType.READ_ONLY];
+
+		new ThermostatCoordinator({
+			device,
+			service,
+			context,
+			ambientTempChannel: ambientChannel,
+			ambientTempProperty: ambientProp,
+			heaterChannel,
+			heaterOnProperty: heaterOnProp,
+			heaterTempProperty: heaterTempProp,
+			coolerChannel,
+			coolerOnProperty: coolerOnProp,
+			coolerTempProperty: coolerTempProp,
+		});
+
+		const targetStateChar = service.getCharacteristic(Characteristic.TargetHeatingCoolingState);
+		// With no onSet registered or permitted, dispatchBatch should not be called
+		targetStateChar.setValue(Characteristic.TargetHeatingCoolingState.HEAT);
+		expect(commandDispatcher.dispatchBatch).not.toHaveBeenCalled();
+	});
+
+	it('should safely default nullish threshold and ambient temperatures', async () => {
+		ambientProp.value = new PropertyValueState(null);
+		heaterTempProp.value = new PropertyValueState(null);
+		coolerTempProp.value = new PropertyValueState(null);
+
+		new ThermostatCoordinator({
+			device,
+			service,
+			context,
+			ambientTempChannel: ambientChannel,
+			ambientTempProperty: ambientProp,
+			heaterChannel,
+			heaterOnProperty: heaterOnProp,
+			heaterTempProperty: heaterTempProp,
+			coolerChannel,
+			coolerOnProperty: coolerOnProp,
+			coolerTempProperty: coolerTempProp,
+		});
+
+		const ambientChar = service.getCharacteristic(Characteristic.CurrentTemperature);
+		const heatingThresholdChar = service.getCharacteristic(Characteristic.HeatingThresholdTemperature);
+		const coolingThresholdChar = service.getCharacteristic(Characteristic.CoolingThresholdTemperature);
+
+		// Ambient defaults to 20 via getAmbientTemperature() during refreshCharacteristics()
+		expect(ambientChar.value).toBe(20);
+		// Thresholds skip updateValue when cached setpoint is nullish, and onGet handlers return safe defaults
+		expect(await heatingThresholdChar.handleGetRequest()).toBe(20);
+		expect(await coolingThresholdChar.handleGetRequest()).toBe(25);
+	});
+
 	it('should support AUTO mode with heating and cooling threshold temperatures', () => {
 		new ThermostatCoordinator({
 			device,
