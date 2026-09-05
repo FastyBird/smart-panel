@@ -63,6 +63,7 @@
 		"pairingDescription": "Scannen Sie den unten stehenden QR-Code mit der Apple Home App auf Ihrem iPhone oder iPad, um diese Bridge zu koppeln.",
 		"devicesDescription": "Wählen Sie aus, welche Smart Panel Geräte in Apple Home eingebunden werden sollen. Nur kompatible Geräte mit zugeordneten Diensten werden in Apple Home angezeigt.",
 		"searchPlaceholder": "Geräte nach Name oder Raum suchen...",
+		"filterDevices": "Geräte",
 		"filterAll": "Alle Geräte",
 		"filterCompatibleOnly": "Nur kompatible",
 		"compatible": "Kompatibel",

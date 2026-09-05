@@ -63,6 +63,7 @@
 		"pairingDescription": "Naskenujte QR kód nižšie pomocou aplikácie Apple Domácnosť na svojom iPhone alebo iPade pre spárovanie tohto mosta.",
 		"devicesDescription": "Vyberte zariadenia Smart Panela, ktoré majú byť premostené do Apple Domácnosti. V aplikácii sa zobrazia iba kompatibilné zariadenia s namapovanými službami.",
 		"searchPlaceholder": "Hľadať zariadenia podľa názvu alebo miestnosti...",
+		"filterDevices": "Zariadenia",
 		"filterAll": "Všetky zariadenia",
 		"filterCompatibleOnly": "Iba kompatibilné",
 		"compatible": "Kompatibilné",

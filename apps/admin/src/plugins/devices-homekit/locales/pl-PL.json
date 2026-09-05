@@ -63,6 +63,7 @@
 		"pairingDescription": "Zeskanuj poniższy kod QR za pomocą aplikacji Apple Dom na telefonie iPhone lub iPadzie, aby sparować ten mostek.",
 		"devicesDescription": "Wybierz, które urządzenia Smart Panelu mają zostać zmostkowane do Apple Home. Tylko kompatybilne urządzenia z przypisanymi usługami pojawią się w Apple Home.",
 		"searchPlaceholder": "Szukaj urządzeń według nazwy lub pokoju...",
+		"filterDevices": "Urządzenia",
 		"filterAll": "Wszystkie urządzenia",
 		"filterCompatibleOnly": "Tylko kompatybilne",
 		"compatible": "Kompatybilne",

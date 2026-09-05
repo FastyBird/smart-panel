@@ -31,31 +31,43 @@
 					class="mb-4!"
 				/>
 
-				<div class="flex items-center gap-3 mb-4">
+				<div class="flex flex-wrap sm:flex-nowrap items-center gap-3 mb-4">
 					<el-input
 						v-model="searchQuery"
 						:placeholder="t('devicesHomeKitPlugin.wizard.searchPlaceholder')"
 						clearable
-						class="flex-1 max-w-[360px]"
+						class="flex-1 min-w-[240px] max-w-[380px]"
 					>
 						<template #prefix>
 							<el-icon><icon icon="mdi:magnify" /></el-icon>
 						</template>
 					</el-input>
 
-					<el-select
-						v-model="filterMode"
-						class="w-[180px]"
-					>
-						<el-option
-							value="all"
-							:label="t('devicesHomeKitPlugin.wizard.filterAll')"
-						/>
-						<el-option
-							value="compatible"
-							:label="t('devicesHomeKitPlugin.wizard.filterCompatibleOnly')"
-						/>
-					</el-select>
+					<el-divider
+						direction="vertical"
+						class="hidden sm:inline-block"
+					/>
+
+					<div class="flex items-center gap-2 shrink-0">
+						<span class="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+							{{ t('devicesHomeKitPlugin.wizard.filterDevices') }}:
+						</span>
+
+						<el-select
+							v-model="filterMode"
+							class="w-[180px]! shrink-0"
+							style="width: 180px"
+						>
+							<el-option
+								value="all"
+								:label="t('devicesHomeKitPlugin.wizard.filterAll')"
+							/>
+							<el-option
+								value="compatible"
+								:label="t('devicesHomeKitPlugin.wizard.filterCompatibleOnly')"
+							/>
+						</el-select>
+					</div>
 				</div>
 
 				<!-- Devices Table -->
@@ -316,6 +328,7 @@ import {
 	ElButton,
 	ElCheckbox,
 	ElDialog,
+	ElDivider,
 	ElIcon,
 	ElInput,
 	ElMessageBox,

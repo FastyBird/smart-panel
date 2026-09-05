@@ -115,6 +115,20 @@ describe('HomeKitSetupWizard', () => {
 
 		const table = wrapper.findComponent({ name: 'ElTable' });
 		expect(table.props('maxHeight')).toBe('360px');
+
+		const searchInput = wrapper.findComponent({ name: 'ElInput' });
+		expect(searchInput.classes()).toContain('min-w-[240px]');
+		expect(searchInput.classes()).toContain('max-w-[380px]');
+
+		const divider = wrapper.findComponent({ name: 'ElDivider' });
+		expect(divider.exists()).toBe(true);
+		expect(divider.props('direction')).toBe('vertical');
+
+		expect(wrapper.text()).toContain('devicesHomeKitPlugin.wizard.filterDevices');
+
+		const filterSelect = wrapper.findComponent({ name: 'ElSelect' });
+		expect(filterSelect.classes()).toContain('w-[180px]!');
+		expect(filterSelect.classes()).toContain('shrink-0');
 	});
 
 	it('toggles all compatible devices using the header checkbox', async () => {

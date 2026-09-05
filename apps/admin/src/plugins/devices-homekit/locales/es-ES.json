@@ -63,6 +63,7 @@
 		"pairingDescription": "Escanee el código QR a continuación usando la aplicación Apple Casa en su iPhone o iPad para emparejar este puente.",
 		"devicesDescription": "Elija qué dispositivos de Smart Panel deben enlazarse en Apple Home. Solo los dispositivos compatibles con servicios mapeados aparecerán en Apple Home.",
 		"searchPlaceholder": "Buscar dispositivos por nombre o habitación...",
+		"filterDevices": "Dispositivos",
 		"filterAll": "Todos los dispositivos",
 		"filterCompatibleOnly": "Solo compatibles",
 		"compatible": "Compatible",
