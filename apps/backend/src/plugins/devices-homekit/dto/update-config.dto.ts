@@ -4,18 +4,22 @@ import {
 	ArrayUnique,
 	IsArray,
 	IsInt,
+	IsNotEmpty,
 	IsOptional,
 	IsString,
 	IsUUID,
 	Matches,
 	Max,
 	Min,
+	MinLength,
+	ValidateIf,
 } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdatePluginConfigDto } from '../../../modules/config/dto/config.dto';
 import { DEVICES_HOMEKIT_PLUGIN_NAME, HOMEKIT_MAX_BRIDGED_ACCESSORIES } from '../devices-homekit.constants';
+import { IsNotForbiddenHomeKitPin } from '../validators/is-not-forbidden-homekit-pin.validator';
 
 @ApiSchema({ name: 'DevicesHomeKitPluginUpdateConfig' })
 export class HomeKitUpdatePluginConfigDto extends UpdatePluginConfigDto {
@@ -28,9 +32,14 @@ export class HomeKitUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	type: typeof DEVICES_HOMEKIT_PLUGIN_NAME;
 
 	@Expose({ name: 'bridge_name' })
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@Transform(({ value }: { value: unknown }) => {
+		if (value === null) return undefined;
+		if (typeof value === 'string') return value.trim();
+		return value;
+	})
 	@IsOptional()
 	@IsString({ message: '[{"field":"bridge_name","reason":"Bridge name must be a valid string."}]' })
+	@MinLength(1, { message: '[{"field":"bridge_name","reason":"Bridge name cannot be empty."}]' })
 	@ApiPropertyOptional({
 		description: 'HomeKit Bridge display name visible in Apple Home app',
 		example: 'Smart Panel Bridge',
@@ -51,14 +60,19 @@ export class HomeKitUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	port?: number;
 
 	@Expose()
-	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
-	@IsOptional()
+	@Transform(({ value }: { value: unknown }) => {
+		if (typeof value === 'string') return value.trim();
+		return value;
+	})
+	@ValidateIf((_, val) => val !== undefined)
+	@IsNotEmpty({ message: '[{"field":"pincode","reason":"PIN code cannot be empty or null."}]' })
 	@IsString({ message: '[{"field":"pincode","reason":"PIN code must be a valid string."}]' })
 	@Matches(/^\d{3}-\d{2}-\d{3}$/, {
 		message: '[{"field":"pincode","reason":"PIN code must be in format XXX-XX-XXX."}]',
 	})
+	@IsNotForbiddenHomeKitPin()
 	@ApiPropertyOptional({
-		description: 'HomeKit pairing PIN code in standard XXX-XX-XXX format',
+		description: 'HomeKit pairing PIN code in standard XXX-XX-XXX format. Omit to keep stored PIN.',
 		example: '031-45-154',
 	})
 	pincode?: string;

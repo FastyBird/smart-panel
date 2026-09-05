@@ -1,6 +1,7 @@
-import { BadRequestException, Module, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Logger, Module, OnModuleInit } from '@nestjs/common';
 
 import { ConfigModule } from '../../modules/config/config.module';
+import { ConfigService } from '../../modules/config/services/config.service';
 import { PluginConfigMutationRegistryService } from '../../modules/config/services/plugin-config-mutation-registry.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
@@ -49,6 +50,8 @@ import { HomeKitWizardService } from './services/homekit-wizard.service';
 	exports: [HomeKitBridgeService],
 })
 export class DevicesHomeKitPlugin implements OnModuleInit {
+	private readonly logger = new Logger(DevicesHomeKitPlugin.name);
+
 	constructor(
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
@@ -58,6 +61,7 @@ export class DevicesHomeKitPlugin implements OnModuleInit {
 		private readonly pluginConfigMutations: PluginConfigMutationRegistryService,
 		private readonly devicesService: DevicesService,
 		private readonly mapperRegistry: HomeKitMapperRegistryService,
+		private readonly configService: ConfigService,
 	) {}
 
 	onModuleInit() {
@@ -66,12 +70,20 @@ export class DevicesHomeKitPlugin implements OnModuleInit {
 			type: DEVICES_HOMEKIT_PLUGIN_NAME,
 			class: HomeKitConfigModel,
 			configDto: HomeKitUpdatePluginConfigDto,
+			secretFields: [
+				{
+					path: 'pincode',
+					configuredPath: 'pincode_configured',
+				},
+			],
 		});
 
 		// Register config mutation validator and post-commit bridge reconciler
 		this.pluginConfigMutations.register<HomeKitUpdatePluginConfigDto>(
 			DEVICES_HOMEKIT_PLUGIN_NAME,
 			async (update, commit) => {
+				let previousMappedDeviceIds: string[] = [];
+
 				if (update.mapped_device_ids !== undefined) {
 					if (!Array.isArray(update.mapped_device_ids)) {
 						throw new BadRequestException([{ field: 'mapped_device_ids', reason: 'Device IDs must be an array.' }]);
@@ -112,12 +124,39 @@ export class DevicesHomeKitPlugin implements OnModuleInit {
 							]);
 						}
 					}
+
+					const currentConfig = this.configService.getPluginConfig<HomeKitConfigModel>(DEVICES_HOMEKIT_PLUGIN_NAME);
+					previousMappedDeviceIds = [...(currentConfig.mappedDeviceIds ?? [])];
 				}
 
 				await commit();
 
 				if (update.mapped_device_ids !== undefined) {
-					await this.homeKitBridgeService.reconcileLatestMapping();
+					try {
+						await this.homeKitBridgeService.reconcileLatestMapping();
+					} catch (reconcileError) {
+						let rollbackError: unknown;
+						try {
+							this.configService.setPluginConfig(DEVICES_HOMEKIT_PLUGIN_NAME, {
+								type: DEVICES_HOMEKIT_PLUGIN_NAME,
+								mapped_device_ids: previousMappedDeviceIds,
+							});
+						} catch (err) {
+							rollbackError = err;
+							this.logger.error(
+								`Failed to persist compensating configuration rollback for HomeKit mapping: ${(err as Error).message}`,
+							);
+						}
+
+						if (rollbackError) {
+							throw new Error(
+								`HomeKit mapping reconciliation failed: ${(reconcileError as Error).message}. Additionally, compensating rollback failed: ${(rollbackError as Error).message}`,
+								{ cause: reconcileError },
+							);
+						}
+
+						throw reconcileError;
+					}
 				}
 			},
 		);

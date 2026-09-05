@@ -1,7 +1,7 @@
-import { Expose } from 'class-transformer';
-import { IsArray, IsInt, IsString, Matches, Max, Min } from 'class-validator';
+import { Expose, Transform } from 'class-transformer';
+import { IsArray, IsBoolean, IsInt, IsOptional, IsString, Matches, Max, Min, MinLength } from 'class-validator';
 
-import { ApiProperty, ApiSchema } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { PluginConfigModel } from '../../../modules/config/models/config.model';
 import {
@@ -12,6 +12,7 @@ import {
 	generateRandomMacAddress,
 	generateRandomSetupId,
 } from '../devices-homekit.constants';
+import { IsNotForbiddenHomeKitPin } from '../validators/is-not-forbidden-homekit-pin.validator';
 
 @ApiSchema({ name: 'DevicesHomeKitPluginDataConfig' })
 export class HomeKitConfigModel extends PluginConfigModel {
@@ -30,7 +31,9 @@ export class HomeKitConfigModel extends PluginConfigModel {
 		name: 'bridge_name',
 	})
 	@Expose({ name: 'bridge_name' })
+	@Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
 	@IsString()
+	@MinLength(1, { message: 'Bridge name cannot be empty' })
 	bridgeName: string = DEFAULT_HOMEKIT_BRIDGE_NAME;
 
 	@ApiProperty({
@@ -44,17 +47,30 @@ export class HomeKitConfigModel extends PluginConfigModel {
 	@Max(65535)
 	port: number = DEFAULT_HOMEKIT_PORT;
 
-	@ApiProperty({
-		description: 'HomeKit pairing PIN code in standard XXX-XX-XXX format',
+	@ApiPropertyOptional({
+		description:
+			'HomeKit pairing PIN code in standard XXX-XX-XXX format. This value is accepted on write and never returned.',
 		type: 'string',
 		example: '031-45-154',
+		writeOnly: true,
 	})
 	@Expose()
+	@Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
 	@IsString()
 	@Matches(/^\d{3}-\d{2}-\d{3}$/, {
 		message: 'PIN code must be in XXX-XX-XXX format (8 digits)',
 	})
+	@IsNotForbiddenHomeKitPin()
 	pincode: string = generateRandomHomeKitPin();
+
+	@ApiProperty({
+		description: 'Whether a HomeKit pairing PIN code is configured',
+		name: 'pincode_configured',
+	})
+	@Expose({ name: 'pincode_configured' })
+	@IsOptional()
+	@IsBoolean()
+	pincodeConfigured?: boolean;
 
 	@ApiProperty({
 		description: 'HomeKit Bridge unique username / MAC address',
