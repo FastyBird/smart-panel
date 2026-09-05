@@ -115,7 +115,29 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 		const baseDir = process.env.FB_CONFIG_PATH || path.resolve(process.cwd(), 'var/data');
 		const storageDir = path.join(baseDir, HOMEKIT_PAIRING_STORAGE_DIR);
 		if (!fs.existsSync(storageDir)) {
-			fs.mkdirSync(storageDir, { recursive: true });
+			fs.mkdirSync(storageDir, { recursive: true, mode: 0o700 });
+		}
+		try {
+			const stat = fs.statSync(storageDir);
+			if ((stat.mode & 0o777) !== 0o700) {
+				fs.chmodSync(storageDir, 0o700);
+			}
+			const files = fs.readdirSync(storageDir);
+			for (const file of files) {
+				const fullPath = path.join(storageDir, file);
+				try {
+					const fileStat = fs.statSync(fullPath);
+					if (fileStat.isFile() && (fileStat.mode & 0o077) !== 0) {
+						fs.chmodSync(fullPath, 0o600);
+					}
+				} catch {
+					// Ignore individual file chmod errors
+				}
+			}
+		} catch (error) {
+			this.logger.warn(
+				`Failed to verify or enforce permissions on HomeKit storage directory: ${(error as Error).message}`,
+			);
 		}
 		return storageDir;
 	}

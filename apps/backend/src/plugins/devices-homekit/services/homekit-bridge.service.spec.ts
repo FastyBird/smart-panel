@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+
 import { Accessory, Characteristic, Service } from '@homebridge/hap-nodejs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
@@ -72,6 +74,8 @@ jest.mock('fs', () => ({
 	mkdirSync: jest.fn(),
 	readdirSync: jest.fn().mockReturnValue([]),
 	rmSync: jest.fn(),
+	statSync: jest.fn().mockReturnValue({ mode: 0o700, isFile: () => false }),
+	chmodSync: jest.fn(),
 }));
 
 describe('HomeKitBridgeService', () => {
@@ -364,5 +368,18 @@ describe('HomeKitBridgeService', () => {
 		await new Promise((r) => setImmediate(r));
 
 		expect(eventEmitter.emit).toHaveBeenCalledWith('DevicesHomeKitPlugin.Bridge.StatusChanged', expect.any(Object));
+	});
+
+	it('creates pairing storage directory with 0700 permissions and tightens permissions on startup', async () => {
+		(fs.existsSync as jest.Mock).mockReturnValue(false);
+		(fs.statSync as jest.Mock).mockReturnValue({ mode: 0o755, isFile: () => false });
+
+		await service.start();
+
+		expect(fs.mkdirSync).toHaveBeenCalledWith(expect.stringContaining('homekit'), {
+			recursive: true,
+			mode: 0o700,
+		});
+		expect(fs.chmodSync).toHaveBeenCalledWith(expect.stringContaining('homekit'), 0o700);
 	});
 });
