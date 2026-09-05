@@ -251,7 +251,7 @@
 								:type="store.status?.paired ? 'success' : 'warning'"
 								:closable="false"
 								show-icon
-								class="w-full"
+								class="w-full pairing-status-alert [&_.el-alert\_\_content]:w-full! [&_.el-alert\_\_content]:flex-1!"
 							>
 								<template #title>
 									<div class="flex items-center justify-between gap-2 w-full">
@@ -262,16 +262,18 @@
 													: t('devicesHomeKitPlugin.wizard.waitingForPairing')
 											}}
 										</span>
-										<el-button
-											size="small"
-											link
-											:loading="store.fetchingStatus"
-											class="px-1!"
-											@click="refreshStatus"
-										>
-											<el-icon class="mr-1"><icon icon="mdi:refresh" /></el-icon>
-											{{ t('devicesHomeKitPlugin.buttons.refreshStatus') }}
-										</el-button>
+										<el-tooltip :content="t('devicesHomeKitPlugin.buttons.refreshStatus')">
+											<el-button
+												size="small"
+												link
+												:loading="store.fetchingStatus"
+												:aria-label="t('devicesHomeKitPlugin.buttons.refreshStatus')"
+												class="p-0.5! shrink-0"
+												@click="refreshStatus"
+											>
+												<el-icon :size="16"><icon icon="mdi:refresh" /></el-icon>
+											</el-button>
+										</el-tooltip>
 									</div>
 								</template>
 							</el-alert>
@@ -331,6 +333,7 @@ import {
 	ElTable,
 	ElTableColumn,
 	ElTag,
+	ElTooltip,
 	vLoading,
 } from 'element-plus';
 
@@ -524,3 +527,10 @@ onMounted(async () => {
 	}
 });
 </script>
+
+<style scoped>
+:deep(.pairing-status-alert .el-alert__content) {
+	width: 100%;
+	flex: 1;
+}
+</style>

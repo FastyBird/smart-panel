@@ -138,7 +138,13 @@ describe('HomeKitSetupWizard', () => {
 
 		expect(wrapper.text()).toContain('devicesHomeKitPlugin.wizard.waitingForPairing');
 
-		const refreshBtn = wrapper.findAllComponents({ name: 'ElButton' }).find((b) => b.text().includes('devicesHomeKitPlugin.buttons.refreshStatus'));
+		const refreshBtn = wrapper
+			.findAllComponents({ name: 'ElButton' })
+			.find(
+				(b) =>
+					b.attributes('aria-label') === 'devicesHomeKitPlugin.buttons.refreshStatus' ||
+					b.text().includes('devicesHomeKitPlugin.buttons.refreshStatus')
+			);
 		expect(refreshBtn).toBeDefined();
 
 		await refreshBtn?.trigger('click');
