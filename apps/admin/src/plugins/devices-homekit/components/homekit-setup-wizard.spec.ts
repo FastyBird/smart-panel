@@ -85,7 +85,9 @@ const mountWizard = (props: { visible?: boolean; initialStep?: 'devices' | 'pair
 		global: {
 			stubs: {
 				ElDialog: {
-					template: '<div><slot /></div>',
+					name: 'ElDialog',
+					props: ['width', 'modelValue'],
+					template: '<div class="el-dialog"><slot /></div>',
 				},
 				Icon: true,
 			},
@@ -106,6 +108,51 @@ describe('HomeKitSetupWizard', () => {
 		expect(wrapper.text()).toContain('Kitchen Thermostat');
 		expect(wrapper.text()).toContain('lightbulb');
 		expect(wrapper.text()).toContain('thermostat');
+
+		const dialog = wrapper.findComponent({ name: 'ElDialog' });
+		expect(dialog.props('width')).toBe('90vw');
+		expect(dialog.classes()).toContain('max-w-[860px]!');
+
+		const table = wrapper.findComponent({ name: 'ElTable' });
+		expect(table.props('maxHeight')).toBe('360px');
+	});
+
+	it('toggles all compatible devices using the header checkbox', async () => {
+		const wrapper = mountWizard();
+		await flushPromises();
+
+		const checkboxes = wrapper.findAllComponents({ name: 'ElCheckbox' });
+		// First checkbox is the header checkbox
+		const headerCheckbox = checkboxes[0];
+		expect(headerCheckbox).toBeDefined();
+
+		// Initially 1 of 2 compatible devices is selected, so header checkbox is indeterminate
+		expect(headerCheckbox.props('indeterminate')).toBe(true);
+		expect(headerCheckbox.props('modelValue')).toBe(false);
+
+		// Click header checkbox to select all
+		await headerCheckbox.vm.$emit('change', true);
+		await flushPromises();
+
+		expect(headerCheckbox.props('indeterminate')).toBe(false);
+		expect(headerCheckbox.props('modelValue')).toBe(true);
+
+		// Click Save button
+		const buttons = wrapper.findAllComponents({ name: 'ElButton' });
+		const saveBtn = buttons.find((b) => b.text().includes('devicesHomeKitPlugin.wizard.buttons.saveMappings'));
+		expect(saveBtn).toBeDefined();
+
+		await saveBtn?.trigger('click');
+		await flushPromises();
+
+		expect(mapDevices).toHaveBeenCalledWith(expect.arrayContaining(['d290f1ee-6c54-4b01-90e6-d701748f0851', 'e390f1ee-6c54-4b01-90e6-d701748f0852']));
+
+		// Click header checkbox to deselect all
+		await headerCheckbox.vm.$emit('change', false);
+		await flushPromises();
+
+		expect(headerCheckbox.props('indeterminate')).toBe(false);
+		expect(headerCheckbox.props('modelValue')).toBe(false);
 	});
 
 	it('renders pairing step when initialStep is pairing', async () => {

@@ -2,7 +2,8 @@
 	<el-dialog
 		:model-value="visible"
 		:title="t('devicesHomeKitPlugin.wizard.title')"
-		width="720px"
+		width="90vw"
+		class="max-w-[860px]!"
 		:close-on-click-modal="false"
 		@update:model-value="onDialogUpdate"
 	>
@@ -30,58 +31,42 @@
 					class="mb-4!"
 				/>
 
-				<div class="flex items-center justify-between gap-3 mb-4">
-					<div class="flex items-center gap-2 flex-1">
-						<el-input
-							v-model="searchQuery"
-							:placeholder="t('devicesHomeKitPlugin.wizard.searchPlaceholder')"
-							clearable
-							class="max-w-[280px]"
-						>
-							<template #prefix>
-								<el-icon><icon icon="mdi:magnify" /></el-icon>
-							</template>
-						</el-input>
+				<div class="flex items-center gap-3 mb-4">
+					<el-input
+						v-model="searchQuery"
+						:placeholder="t('devicesHomeKitPlugin.wizard.searchPlaceholder')"
+						clearable
+						class="flex-1 max-w-[360px]"
+					>
+						<template #prefix>
+							<el-icon><icon icon="mdi:magnify" /></el-icon>
+						</template>
+					</el-input>
 
-						<el-select
-							v-model="filterMode"
-							class="w-[180px]"
-						>
-							<el-option
-								value="all"
-								:label="t('devicesHomeKitPlugin.wizard.filterAll')"
-							/>
-							<el-option
-								value="compatible"
-								:label="t('devicesHomeKitPlugin.wizard.filterCompatibleOnly')"
-							/>
-						</el-select>
-					</div>
-
-					<div class="flex items-center gap-2">
-						<el-button
-							size="small"
-							@click="selectAllCompatible"
-						>
-							{{ t('devicesHomeKitPlugin.wizard.buttons.selectAllCompatible') }}
-						</el-button>
-						<el-button
-							size="small"
-							@click="deselectAll"
-						>
-							{{ t('devicesHomeKitPlugin.wizard.buttons.deselectAll') }}
-						</el-button>
-					</div>
+					<el-select
+						v-model="filterMode"
+						class="w-[180px]"
+					>
+						<el-option
+							value="all"
+							:label="t('devicesHomeKitPlugin.wizard.filterAll')"
+						/>
+						<el-option
+							value="compatible"
+							:label="t('devicesHomeKitPlugin.wizard.filterCompatibleOnly')"
+						/>
+					</el-select>
 				</div>
 
 				<!-- Devices Table -->
 				<div
 					v-loading="store.fetchingCandidates"
-					class="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden max-h-[340px] overflow-y-auto mb-4"
+					class="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden mb-4"
 				>
 					<el-table
 						:data="filteredCandidates"
 						style="width: 100%"
+						max-height="360px"
 						size="small"
 						:empty-text="t('devicesHomeKitPlugin.wizard.noDevices')"
 					>
@@ -89,6 +74,14 @@
 							width="48"
 							align="center"
 						>
+							<template #header>
+								<el-checkbox
+									:model-value="isAllSelected"
+									:indeterminate="isIndeterminate"
+									:disabled="filteredCompatibleCandidates.length === 0"
+									@change="onToggleSelectAll"
+								/>
+							</template>
 							<template #default="{ row }">
 								<el-checkbox
 									:model-value="selectedDeviceIds.has(row.id)"
@@ -414,18 +407,29 @@ const onToggleDevice = (deviceId: string, checked: boolean): void => {
 	selectedDeviceIds.value = next;
 };
 
-const selectAllCompatible = (): void => {
+const filteredCompatibleCandidates = computed(() => filteredCandidates.value.filter((d) => d.isCompatible));
+
+const selectedInFiltered = computed(() => filteredCompatibleCandidates.value.filter((d) => selectedDeviceIds.value.has(d.id)).length);
+
+const isAllSelected = computed(
+	() => filteredCompatibleCandidates.value.length > 0 && selectedInFiltered.value === filteredCompatibleCandidates.value.length
+);
+
+const isIndeterminate = computed(() => selectedInFiltered.value > 0 && !isAllSelected.value);
+
+const onToggleSelectAll = (val: unknown): void => {
+	const checked = Boolean(val);
 	const next = new Set(selectedDeviceIds.value);
-	for (const candidate of store.candidates) {
-		if (candidate.isCompatible) {
+	if (checked) {
+		for (const candidate of filteredCompatibleCandidates.value) {
 			next.add(candidate.id);
+		}
+	} else {
+		for (const candidate of filteredCompatibleCandidates.value) {
+			next.delete(candidate.id);
 		}
 	}
 	selectedDeviceIds.value = next;
-};
-
-const deselectAll = (): void => {
-	selectedDeviceIds.value = new Set();
 };
 
 const onSaveOnly = async (): Promise<void> => {

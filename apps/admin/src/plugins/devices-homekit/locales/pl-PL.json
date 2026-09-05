@@ -84,11 +84,9 @@
 			"homeKitService": "Usługa HomeKit"
 		},
 		"buttons": {
-			"selectAllCompatible": "Wybierz wszystkie kompatybilne",
-			"deselectAll": "Odznacz wszystkie",
-			"saveMappings": "Zapisz przypisania",
-			"saveAndPair": "Zapisz i sparuj z Apple Home",
-			"backToDevices": "Wróć do urządzeń",
+			"saveMappings": "Zapisz",
+			"saveAndPair": "Zapisz i sparuj",
+			"backToDevices": "Wstecz",
 			"resetPairing": "Zresetuj parowanie",
 			"done": "Gotowe",
 			"cancel": "Anuluj"

@@ -84,11 +84,9 @@
 			"homeKitService": "HomeKit-Dienst"
 		},
 		"buttons": {
-			"selectAllCompatible": "Alle kompatiblen auswählen",
-			"deselectAll": "Auswahl aufheben",
-			"saveMappings": "Zuordnungen speichern",
-			"saveAndPair": "Speichern & mit Apple Home koppeln",
-			"backToDevices": "Zurück zu den Geräten",
+			"saveMappings": "Speichern",
+			"saveAndPair": "Speichern & Koppeln",
+			"backToDevices": "Zurück",
 			"resetPairing": "Kopplung zurücksetzen",
 			"done": "Fertig",
 			"cancel": "Abbrechen"

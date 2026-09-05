@@ -84,11 +84,9 @@
 			"homeKitService": "HomeKit Služba"
 		},
 		"buttons": {
-			"selectAllCompatible": "Vybrať všetky kompatibilné",
-			"deselectAll": "Zrušiť výber",
-			"saveMappings": "Uložiť priradenia",
-			"saveAndPair": "Uložiť a spárovať s Apple Home",
-			"backToDevices": "Späť na zariadenia",
+			"saveMappings": "Uložiť",
+			"saveAndPair": "Uložiť a spárovať",
+			"backToDevices": "Späť",
 			"resetPairing": "Resetovať párovanie",
 			"done": "Hotovo",
 			"cancel": "Zrušiť"

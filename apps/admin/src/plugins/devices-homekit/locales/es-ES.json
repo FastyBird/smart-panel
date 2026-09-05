@@ -84,11 +84,9 @@
 			"homeKitService": "Servicio HomeKit"
 		},
 		"buttons": {
-			"selectAllCompatible": "Seleccionar todos los compatibles",
-			"deselectAll": "Deseleccionar todos",
-			"saveMappings": "Guardar asignaciones",
-			"saveAndPair": "Guardar y enlazar con Apple Home",
-			"backToDevices": "Volver a dispositivos",
+			"saveMappings": "Guardar",
+			"saveAndPair": "Guardar y enlazar",
+			"backToDevices": "Atrás",
 			"resetPairing": "Restablecer enlace",
 			"done": "Listo",
 			"cancel": "Cancelar"
