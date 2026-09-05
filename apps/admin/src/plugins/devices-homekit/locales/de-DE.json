@@ -5,7 +5,9 @@
 		"resetPairing": "Apple Home Kopplung zurücksetzen"
 	},
 	"texts": {
-		"aboutSettings": "Verbinden Sie Smart Panel Geräte über das lokale HomeKit Accessory Protocol (HAP) mit Apple Home. Wählen Sie mit dem Assistenten aus, welche Geräte eingebunden werden sollen."
+		"aboutSettings": "Verbinden Sie Smart Panel Geräte über das lokale HomeKit Accessory Protocol (HAP) mit Apple Home. Wählen Sie mit dem Assistenten aus, welche Geräte eingebunden werden sollen.",
+		"outOfSyncTitle": "Konfiguration nicht synchronisiert",
+		"outOfSyncDescription": "Die angezeigte Konfiguration konnte nicht mit dem Backend synchronisiert werden. Änderungen können erst nach dem Neuladen der Konfiguration gespeichert werden."
 	},
 	"status": {
 		"running": "Aktiv",
@@ -17,7 +19,8 @@
 	"buttons": {
 		"configureDevices": "Eingebundene Geräte konfigurieren",
 		"showPairing": "Apple Home QR-Code",
-		"resetPairing": "Kopplung zurücksetzen"
+		"resetPairing": "Kopplung zurücksetzen",
+		"retryRefresh": "Synchronisierung wiederholen"
 	},
 	"fields": {
 		"config": {
@@ -101,6 +104,9 @@
 		"confirmResetPairing": "Sind Sie sicher, dass Sie die Apple Home Kopplung zurücksetzen möchten? Bestehende Apple Home Verbindungen werden getrennt und Sie müssen die Bridge erneut koppeln.",
 		"pairingResetSuccess": "Kopplungsdaten zurückgesetzt. Sie können nun eine neue Kopplung mit Apple Home durchführen.",
 		"pairingResetFailed": "Kopplungsdaten konnten nicht zurückgesetzt werden.",
-		"saveBeforeAction": "Bitte speichern oder verwerfen Sie Ihre Änderungen, bevor Sie fortfahren."
+		"saveBeforeAction": "Bitte speichern oder verwerfen Sie Ihre Änderungen, bevor Sie fortfahren.",
+		"refreshFailed": "Synchronisierung der Konfiguration mit dem Backend fehlgeschlagen.",
+		"refreshSuccess": "Konfiguration erfolgreich synchronisiert.",
+		"outOfSyncBlock": "Die Konfiguration ist nicht synchronisiert. Bitte vor dem Speichern neu laden."
 	}
 }

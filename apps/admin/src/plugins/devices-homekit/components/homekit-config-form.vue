@@ -14,6 +14,32 @@
 			class="mb-4!"
 		/>
 
+		<el-alert
+			v-if="isOutOfSync"
+			type="error"
+			:title="t('devicesHomeKitPlugin.texts.outOfSyncTitle')"
+			:closable="false"
+			show-icon
+			class="mb-4!"
+		>
+			<template #default>
+				<p class="text-xs mt-1">
+					{{ t('devicesHomeKitPlugin.texts.outOfSyncDescription') }}
+				</p>
+				<div class="mt-2">
+					<el-button
+						size="small"
+						type="danger"
+						plain
+						:loading="isRetryingRefresh"
+						@click="handleRetryRefresh"
+					>
+						{{ t('devicesHomeKitPlugin.buttons.retryRefresh') }}
+					</el-button>
+				</div>
+			</template>
+		</el-alert>
+
 		<!-- Bridge Status & Actions Card -->
 		<el-card
 			shadow="never"
@@ -66,6 +92,7 @@
 				<div class="flex items-center gap-2 w-full sm:w-auto">
 					<el-button
 						type="primary"
+						:disabled="isOutOfSync"
 						@click="openWizard('devices')"
 					>
 						<el-icon class="mr-1"><icon icon="mdi:cog" /></el-icon>
@@ -74,6 +101,7 @@
 
 					<el-button
 						v-if="store.status?.running"
+						:disabled="isOutOfSync"
 						@click="openWizard('pairing')"
 					>
 						<el-icon class="mr-1"><icon icon="mdi:qrcode" /></el-icon>
@@ -84,6 +112,7 @@
 						v-if="store.status?.paired"
 						type="danger"
 						plain
+						:disabled="isOutOfSync || store.resettingPairing"
 						:loading="store.resettingPairing"
 						@click="onResetPairing"
 					>
@@ -121,60 +150,65 @@
 		</el-card>
 
 		<!-- General Settings -->
-		<el-form-item
-			:label="t('devicesHomeKitPlugin.fields.config.enabled.title')"
-			prop="enabled"
-			label-position="left"
-			class="mt-3"
+		<fieldset
+			:disabled="isOutOfSync"
+			class="border-0 p-0 m-0 min-w-0"
 		>
-			<el-switch
-				v-model="model.enabled"
-				name="enabled"
-			/>
-		</el-form-item>
+			<el-form-item
+				:label="t('devicesHomeKitPlugin.fields.config.enabled.title')"
+				prop="enabled"
+				label-position="left"
+				class="mt-3"
+			>
+				<el-switch
+					v-model="model.enabled"
+					name="enabled"
+				/>
+			</el-form-item>
 
-		<el-form-item
-			:label="t('devicesHomeKitPlugin.fields.config.name.title')"
-			prop="bridgeName"
-		>
-			<el-input
-				v-model="model.bridgeName"
-				:placeholder="t('devicesHomeKitPlugin.fields.config.name.placeholder')"
-				name="bridgeName"
-			/>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('devicesHomeKitPlugin.fields.config.name.description') }}
-			</div>
-		</el-form-item>
+			<el-form-item
+				:label="t('devicesHomeKitPlugin.fields.config.name.title')"
+				prop="bridgeName"
+			>
+				<el-input
+					v-model="model.bridgeName"
+					:placeholder="t('devicesHomeKitPlugin.fields.config.name.placeholder')"
+					name="bridgeName"
+				/>
+				<div class="text-xs text-gray-500 mt-1">
+					{{ t('devicesHomeKitPlugin.fields.config.name.description') }}
+				</div>
+			</el-form-item>
 
-		<el-form-item
-			:label="t('devicesHomeKitPlugin.fields.config.port.title')"
-			prop="port"
-		>
-			<el-input-number
-				v-model="model.port"
-				:min="1024"
-				:max="65535"
-				name="port"
-			/>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('devicesHomeKitPlugin.fields.config.port.description') }}
-			</div>
-		</el-form-item>
+			<el-form-item
+				:label="t('devicesHomeKitPlugin.fields.config.port.title')"
+				prop="port"
+			>
+				<el-input-number
+					v-model="model.port"
+					:min="1024"
+					:max="65535"
+					name="port"
+				/>
+				<div class="text-xs text-gray-500 mt-1">
+					{{ t('devicesHomeKitPlugin.fields.config.port.description') }}
+				</div>
+			</el-form-item>
 
-		<el-form-item
-			:label="t('devicesHomeKitPlugin.fields.config.pinCode.title')"
-			prop="pincode"
-		>
-			<el-input
-				v-model="model.pincode"
-				:placeholder="t('devicesHomeKitPlugin.fields.config.pinCode.placeholder')"
-				name="pincode"
-			/>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('devicesHomeKitPlugin.fields.config.pinCode.description') }}
-			</div>
-		</el-form-item>
+			<el-form-item
+				:label="t('devicesHomeKitPlugin.fields.config.pinCode.title')"
+				prop="pincode"
+			>
+				<el-input
+					v-model="model.pincode"
+					:placeholder="t('devicesHomeKitPlugin.fields.config.pinCode.placeholder')"
+					name="pincode"
+				/>
+				<div class="text-xs text-gray-500 mt-1">
+					{{ t('devicesHomeKitPlugin.fields.config.pinCode.description') }}
+				</div>
+			</el-form-item>
+		</fieldset>
 
 		<!-- Wizard Dialog -->
 		<HomeKitSetupWizard
@@ -215,8 +249,8 @@ import type { IHomeKitConfigEditForm } from '../schemas/config.types';
 import { useHomeKitBridge } from '../store/homekit-bridge.store';
 
 import type { IHomeKitConfigFormProps } from './homekit-config-form.types';
-import HomeKitSetupWizard from './homekit-setup-wizard.vue';
 import type { HomeKitWizardStep } from './homekit-setup-wizard.types';
+import HomeKitSetupWizard from './homekit-setup-wizard.vue';
 
 defineOptions({
 	name: 'HomeKitConfigForm',
@@ -265,6 +299,8 @@ const rules = reactive<FormRules<IHomeKitConfigEditForm>>({
 
 const wizardVisible = ref(false);
 const wizardInitialStep = ref<HomeKitWizardStep>('devices');
+const isOutOfSync = ref(false);
+const isRetryingRefresh = ref(false);
 
 const refreshPluginConfig = async (): Promise<void> => {
 	try {
@@ -276,13 +312,33 @@ const refreshPluginConfig = async (): Promise<void> => {
 		if (freshConfig) {
 			reconcile(freshConfig);
 			markSaved();
+			isOutOfSync.value = false;
 		}
+	} catch (error) {
+		isOutOfSync.value = true;
+		throw error;
+	}
+};
+
+const handleRetryRefresh = async (): Promise<void> => {
+	isRetryingRefresh.value = true;
+	try {
+		await refreshPluginConfig();
+		await store.fetchStatus();
+		flashMessage.success(t('devicesHomeKitPlugin.messages.refreshSuccess'));
 	} catch {
-		// Handled
+		flashMessage.error(t('devicesHomeKitPlugin.messages.refreshFailed'));
+	} finally {
+		isRetryingRefresh.value = false;
 	}
 };
 
 const openWizard = (step: HomeKitWizardStep): void => {
+	if (isOutOfSync.value) {
+		flashMessage.error(t('devicesHomeKitPlugin.messages.outOfSyncBlock'));
+		return;
+	}
+
 	if (formChanged.value) {
 		flashMessage.warning(t('devicesHomeKitPlugin.messages.saveBeforeAction'));
 		return;
@@ -313,6 +369,11 @@ const copyPinCode = async (): Promise<void> => {
 };
 
 const onResetPairing = async (): Promise<void> => {
+	if (isOutOfSync.value) {
+		flashMessage.error(t('devicesHomeKitPlugin.messages.outOfSyncBlock'));
+		return;
+	}
+
 	if (formChanged.value) {
 		flashMessage.warning(t('devicesHomeKitPlugin.messages.saveBeforeAction'));
 		return;
@@ -347,6 +408,11 @@ watch(
 	async (val: boolean): Promise<void> => {
 		if (val) {
 			emit('update:remote-form-submit', false);
+
+			if (isOutOfSync.value) {
+				flashMessage.error(t('devicesHomeKitPlugin.messages.outOfSyncBlock'));
+				return;
+			}
 
 			submit().catch(() => {
 				// Form invalid

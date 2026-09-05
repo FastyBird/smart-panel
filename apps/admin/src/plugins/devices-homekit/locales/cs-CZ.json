@@ -5,7 +5,9 @@
 		"resetPairing": "Resetovat párování Apple Home"
 	},
 	"texts": {
-		"aboutSettings": "Přemostěte zařízení Smart Panelu do Apple Home prostřednictvím lokálního protokolu HomeKit Accessory Protocol (HAP). Pomocí průvodce vyberte, která zařízení mají být přemostěna."
+		"aboutSettings": "Přemostěte zařízení Smart Panelu do Apple Home prostřednictvím lokálního protokolu HomeKit Accessory Protocol (HAP). Pomocí průvodce vyberte, která zařízení mají být přemostěna.",
+		"outOfSyncTitle": "Konfigurace není synchronizována",
+		"outOfSyncDescription": "Zobrazenou konfiguraci se nepodařilo synchronizovat s backendem. Změny nelze uložit, dokud nebude konfigurace znovu načtena."
 	},
 	"status": {
 		"running": "Spuštěno",
@@ -17,7 +19,8 @@
 	"buttons": {
 		"configureDevices": "Nastavit přemostěná zařízení",
 		"showPairing": "Apple Home QR Kód",
-		"resetPairing": "Resetovat párování"
+		"resetPairing": "Resetovat párování",
+		"retryRefresh": "Zkusit synchronizovat znovu"
 	},
 	"fields": {
 		"config": {
@@ -101,6 +104,9 @@
 		"confirmResetPairing": "Opravdu chcete resetovat párování Apple Home? Stávající připojení budou odpojena a bránu bude nutné znovu spárovat.",
 		"pairingResetSuccess": "Párovací údaje byly resetovány. Nyní můžete bránu znovu spárovat.",
 		"pairingResetFailed": "Nepodařilo se resetovat párovací údaje.",
-		"saveBeforeAction": "Před pokračováním prosím uložte nebo zrušte změny nastavení."
+		"saveBeforeAction": "Před pokračováním prosím uložte nebo zrušte změny nastavení.",
+		"refreshFailed": "Nepodařilo se synchronizovat konfiguraci s backendem.",
+		"refreshSuccess": "Konfigurace byla úspěšně synchronizována.",
+		"outOfSyncBlock": "Konfigurace není synchronizována. Před uložením ji znovu načtěte."
 	}
 }

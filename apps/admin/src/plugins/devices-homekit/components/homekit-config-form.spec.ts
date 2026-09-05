@@ -92,12 +92,13 @@ vi.mock('../store/homekit-bridge.store', () => ({
 const mountForm = (options?: { formChanged?: boolean }) => {
 	const markSaved = vi.fn();
 	const reconcile = vi.fn();
+	const submit = vi.fn().mockResolvedValue(true);
 
 	useConfigPluginEditForm.mockReturnValue({
 		formEl: ref(),
 		model,
 		formChanged: ref(options?.formChanged ?? false),
-		submit: vi.fn(),
+		submit,
 		formResult: ref('none'),
 		markSaved,
 		reconcile,
@@ -116,7 +117,7 @@ const mountForm = (options?: { formChanged?: boolean }) => {
 		},
 	});
 
-	return { wrapper, markSaved, reconcile };
+	return { wrapper, markSaved, reconcile, submit };
 };
 
 describe('HomeKitConfigForm', () => {
@@ -175,6 +176,85 @@ describe('HomeKitConfigForm', () => {
 			type: 'devices-homekit',
 			force: true,
 		});
+		expect(reconcile).toHaveBeenCalled();
+		expect(markSaved).toHaveBeenCalled();
+	});
+
+	it('handles refresh failure by entering out-of-sync state and blocking saves/actions', async () => {
+		mockConfigPluginsStore.get.mockRejectedValueOnce(new Error('Network error'));
+
+		const { wrapper, submit } = mountForm({ formChanged: false });
+		await flushPromises();
+
+		const wizard = wrapper.findComponent({ name: 'HomeKitSetupWizard' });
+		await wizard.vm.$emit('completed');
+		await flushPromises();
+
+		// Out-of-sync banner should be visible
+		expect(wrapper.text()).toContain('devicesHomeKitPlugin.texts.outOfSyncTitle');
+		expect(wrapper.text()).toContain('devicesHomeKitPlugin.texts.outOfSyncDescription');
+
+		// Fieldset should be disabled
+		const fieldset = wrapper.find('fieldset');
+		expect(fieldset.attributes('disabled')).toBeDefined();
+
+		// Action buttons should be disabled
+		const buttons = wrapper.findAllComponents({ name: 'ElButton' });
+		const configBtn = buttons.find((b) => b.text().includes('devicesHomeKitPlugin.buttons.configureDevices'));
+		expect(configBtn?.props('disabled')).toBe(true);
+
+		const resetBtn = buttons.find((b) => b.text().includes('devicesHomeKitPlugin.buttons.resetPairing'));
+		expect(resetBtn?.props('disabled')).toBe(true);
+
+		// Submitting form remotely is blocked
+		await wrapper.setProps({ remoteFormSubmit: true });
+		await flushPromises();
+
+		expect(submit).not.toHaveBeenCalled();
+		expect(flashMessageMock.error).toHaveBeenCalledWith('devicesHomeKitPlugin.messages.outOfSyncBlock');
+	});
+
+	it('allows retry refresh to recover from out-of-sync state', async () => {
+		mockConfigPluginsStore.get.mockRejectedValueOnce(new Error('Network error'));
+
+		const { wrapper, reconcile, markSaved } = mountForm({ formChanged: false });
+		await flushPromises();
+
+		const wizard = wrapper.findComponent({ name: 'HomeKitSetupWizard' });
+		await wizard.vm.$emit('completed');
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('devicesHomeKitPlugin.texts.outOfSyncTitle');
+
+		// First retry fails
+		mockConfigPluginsStore.get.mockRejectedValueOnce(new Error('Still down'));
+		const buttons = wrapper.findAllComponents({ name: 'ElButton' });
+		const retryBtn = buttons.find((b) => b.text().includes('devicesHomeKitPlugin.buttons.retryRefresh'));
+		expect(retryBtn).toBeDefined();
+
+		await retryBtn?.trigger('click');
+		await flushPromises();
+
+		expect(flashMessageMock.error).toHaveBeenCalledWith('devicesHomeKitPlugin.messages.refreshFailed');
+		expect(wrapper.text()).toContain('devicesHomeKitPlugin.texts.outOfSyncTitle');
+
+		// Second retry succeeds
+		mockConfigPluginsStore.get.mockResolvedValueOnce({
+			type: 'devices-homekit',
+			enabled: true,
+			bridgeName: 'Smart Panel Bridge',
+			port: 51826,
+			pincode: '031-45-154',
+			username: 'CC:22:3D:E3:CE:30',
+			setupId: 'SP01',
+			mappedDeviceIds: [],
+		});
+
+		await retryBtn?.trigger('click');
+		await flushPromises();
+
+		expect(flashMessageMock.success).toHaveBeenCalledWith('devicesHomeKitPlugin.messages.refreshSuccess');
+		expect(wrapper.text()).not.toContain('devicesHomeKitPlugin.texts.outOfSyncTitle');
 		expect(reconcile).toHaveBeenCalled();
 		expect(markSaved).toHaveBeenCalled();
 	});

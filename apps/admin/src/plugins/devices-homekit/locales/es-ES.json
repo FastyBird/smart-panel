@@ -5,7 +5,9 @@
 		"resetPairing": "Restablecer enlace con Apple Home"
 	},
 	"texts": {
-		"aboutSettings": "Conecte los dispositivos de Smart Panel a Apple Home mediante el protocolo local HomeKit Accessory Protocol (HAP). Utilice el asistente para seleccionar qué dispositivos desea enlazar."
+		"aboutSettings": "Conecte los dispositivos de Smart Panel a Apple Home mediante el protocolo local HomeKit Accessory Protocol (HAP). Utilice el asistente para seleccionar qué dispositivos desea enlazar.",
+		"outOfSyncTitle": "Configuración desincronizada",
+		"outOfSyncDescription": "La configuración mostrada no se pudo sincronizar con el backend. Los cambios no se pueden guardar hasta que se vuelva a cargar la configuración."
 	},
 	"status": {
 		"running": "En ejecución",
@@ -17,7 +19,8 @@
 	"buttons": {
 		"configureDevices": "Configurar dispositivos enlazados",
 		"showPairing": "Código QR de Apple Home",
-		"resetPairing": "Restablecer enlace"
+		"resetPairing": "Restablecer enlace",
+		"retryRefresh": "Reintentar sincronización"
 	},
 	"fields": {
 		"config": {
@@ -101,6 +104,9 @@
 		"confirmResetPairing": "¿Está seguro de que desea restablecer el enlace con Apple Home? Las conexiones existentes se desconectarán y deberá volver a enlazar el puente.",
 		"pairingResetSuccess": "Credenciales de enlace restablecidas. Ahora puede enlazar con Apple Home.",
 		"pairingResetFailed": "No se pudieron restablecer las credenciales de enlace.",
-		"saveBeforeAction": "Por favor guarde o descarte los cambios en la configuración antes de continuar."
+		"saveBeforeAction": "Por favor guarde o descarte los cambios en la configuración antes de continuar.",
+		"refreshFailed": "Error al sincronizar la configuración con el backend.",
+		"refreshSuccess": "Configuración sincronizada con éxito.",
+		"outOfSyncBlock": "La configuración no está sincronizada. Vuelva a cargarla antes de guardar."
 	}
 }

@@ -5,7 +5,9 @@
 		"resetPairing": "Reset Apple Home Pairing"
 	},
 	"texts": {
-		"aboutSettings": "Bridge Smart Panel devices to Apple Home via local HomeKit Accessory Protocol (HAP). Use the wizard to select which devices should be bridged."
+		"aboutSettings": "Bridge Smart Panel devices to Apple Home via local HomeKit Accessory Protocol (HAP). Use the wizard to select which devices should be bridged.",
+		"outOfSyncTitle": "Configuration Out of Sync",
+		"outOfSyncDescription": "The displayed configuration could not be synchronized with the backend. Changes cannot be saved until the configuration is reloaded."
 	},
 	"status": {
 		"running": "Running",
@@ -17,7 +19,8 @@
 	"buttons": {
 		"configureDevices": "Configure Bridged Devices",
 		"showPairing": "Apple Home QR Code",
-		"resetPairing": "Reset Pairing"
+		"resetPairing": "Reset Pairing",
+		"retryRefresh": "Retry Synchronization"
 	},
 	"fields": {
 		"config": {
@@ -101,6 +104,9 @@
 		"confirmResetPairing": "Are you sure you want to reset Apple Home pairing? Existing Apple Home connections will be disconnected and you will need to re-pair the bridge.",
 		"pairingResetSuccess": "Pairing credentials reset. You can now pair with Apple Home.",
 		"pairingResetFailed": "Failed to reset pairing credentials.",
-		"saveBeforeAction": "Please save or discard your settings changes before continuing."
+		"saveBeforeAction": "Please save or discard your settings changes before continuing.",
+		"refreshFailed": "Failed to synchronize configuration with backend.",
+		"refreshSuccess": "Configuration successfully synchronized.",
+		"outOfSyncBlock": "Configuration is out of sync. Please reload before saving."
 	}
 }

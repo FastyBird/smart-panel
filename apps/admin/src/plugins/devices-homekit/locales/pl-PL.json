@@ -5,7 +5,9 @@
 		"resetPairing": "Zresetuj parowanie Apple Home"
 	},
 	"texts": {
-		"aboutSettings": "Mostkuj urządzenia Smart Panelu do Apple Home za pomocą lokalnego protokołu HomeKit Accessory Protocol (HAP). Użyj kreatora, aby wybrać, które urządzenia mają zostać zmostkowane."
+		"aboutSettings": "Mostkuj urządzenia Smart Panelu do Apple Home za pomocą lokalnego protokołu HomeKit Accessory Protocol (HAP). Użyj kreatora, aby wybrać, które urządzenia mają zostać zmostkowane.",
+		"outOfSyncTitle": "Konfiguracja niezsynchronizowana",
+		"outOfSyncDescription": "Wyświetlona konfiguracja nie mogła zostać zsynchronizowana z serwerem. Zmiany nie mogą zostać zapisane do czasu ponownego załadowania konfiguracji."
 	},
 	"status": {
 		"running": "Uruchomiony",
@@ -17,7 +19,8 @@
 	"buttons": {
 		"configureDevices": "Konfiguruj zmostkowane urządzenia",
 		"showPairing": "Kod QR Apple Home",
-		"resetPairing": "Zresetuj parowanie"
+		"resetPairing": "Zresetuj parowanie",
+		"retryRefresh": "Ponów synchronizację"
 	},
 	"fields": {
 		"config": {
@@ -101,6 +104,9 @@
 		"confirmResetPairing": "Czy na pewno chcesz zresetować parowanie Apple Home? Istniejące połączenia Apple Home zostaną rozłączone i konieczne będzie ponowne sparowanie mostka.",
 		"pairingResetSuccess": "Dane parowania zostały zresetowane. Możesz teraz sparować z Apple Home.",
 		"pairingResetFailed": "Nie udało się zresetować danych parowania.",
-		"saveBeforeAction": "Przed kontynuowaniem zapisz lub odrzuć zmiany ustawień."
+		"saveBeforeAction": "Przed kontynuowaniem zapisz lub odrzuć zmiany ustawień.",
+		"refreshFailed": "Nie udało się zsynchronizować konfiguracji z serwerem.",
+		"refreshSuccess": "Konfiguracja pomyślnie zsynchronizowana.",
+		"outOfSyncBlock": "Konfiguracja nie jest zsynchronizowana. Załaduj ponownie przed zapisaniem."
 	}
 }
