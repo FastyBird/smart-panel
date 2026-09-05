@@ -160,4 +160,36 @@ describe('HomeKit Bridge Store', () => {
 		expect(get).toHaveBeenCalledWith('/plugins/devices-homekit/bridge/status');
 		expect(refreshed.running).toBe(true);
 	});
+
+	it('does not overwrite newer websocket event status with an in-flight fetchStatus response', async () => {
+		let resolveFetch!: (value: unknown) => void;
+		const fetchPromise = new Promise((resolve) => {
+			resolveFetch = resolve;
+		});
+		get.mockReturnValueOnce(fetchPromise);
+
+		const store = useHomeKitBridge();
+		const inFlightFetch = store.fetchStatus();
+
+		// Newer event arrives while fetchStatus is in flight
+		store.onEvent({
+			event: 'DevicesHomeKitPlugin.Bridge.StatusChanged',
+			data: {
+				...mockBridgeStatusResponse.data.data,
+				bridge_name: 'Newer Event Bridge Name',
+				running: false,
+			},
+		});
+
+		expect(store.status?.bridgeName).toBe('Newer Event Bridge Name');
+		expect(store.status?.running).toBe(false);
+
+		// In-flight fetch resolves with older status
+		resolveFetch(mockBridgeStatusResponse);
+		await inFlightFetch;
+
+		// Store status should NOT be overwritten by the older response
+		expect(store.status?.bridgeName).toBe('Newer Event Bridge Name');
+		expect(store.status?.running).toBe(false);
+	});
 });

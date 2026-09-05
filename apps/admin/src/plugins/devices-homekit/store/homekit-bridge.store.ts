@@ -25,14 +25,21 @@ export const useHomeKitBridge = defineStore('devices_homekit_plugin-bridge', () 
 	const savingMapping = ref(false);
 	const resettingPairing = ref(false);
 
+	let statusSequence = 0;
+
 	const fetchStatus = async (): Promise<IHomeKitBridgeStatus> => {
 		fetchingStatus.value = true;
+		const currentSequence = ++statusSequence;
 
 		try {
 			const { data, error, response } = await backend.client.GET(`/${PLUGINS_PREFIX}/${DEVICES_HOMEKIT_PLUGIN_PREFIX}/bridge/status`);
 
 			if (data) {
-				return (status.value = transformHomeKitBridgeStatus(data.data));
+				const transformed = transformHomeKitBridgeStatus(data.data);
+				if (currentSequence === statusSequence) {
+					status.value = transformed;
+				}
+				return status.value ?? transformed;
 			}
 
 			throw new DevicesHomeKitApiException(
@@ -99,7 +106,9 @@ export const useHomeKitBridge = defineStore('devices_homekit_plugin-bridge', () 
 			const { data, error, response } = await backend.client.POST(`/${PLUGINS_PREFIX}/${DEVICES_HOMEKIT_PLUGIN_PREFIX}/bridge/reset-pairing`);
 
 			if (data) {
-				return (status.value = transformHomeKitBridgeStatus(data.data));
+				const transformed = transformHomeKitBridgeStatus(data.data);
+				statusSequence++;
+				return (status.value = transformed);
 			}
 
 			throw new DevicesHomeKitApiException(
@@ -114,6 +123,7 @@ export const useHomeKitBridge = defineStore('devices_homekit_plugin-bridge', () 
 	const onEvent = (payload: { event: string; data: unknown }): void => {
 		switch (payload.event) {
 			case EventType.BRIDGE_STATUS_CHANGED:
+				statusSequence++;
 				status.value = transformHomeKitBridgeStatus(payload.data);
 				return;
 		}
