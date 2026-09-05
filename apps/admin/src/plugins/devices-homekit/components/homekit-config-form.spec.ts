@@ -328,12 +328,17 @@ describe('HomeKitConfigForm', () => {
 		await flushPromises();
 
 		const card = wrapper.findComponent({ name: 'ElCard' });
+		expect(card.props('headerClass')).toBe('py-2!');
+		expect(card.props('bodyClass')).toBe('py-3!');
+		expect(card.props('footerClass')).toBe('py-2! px-4!');
+
 		const footer = card.find('.el-card__footer div');
 		expect(footer.classes()).toContain('flex-nowrap');
 
 		const buttons = card.findAllComponents({ name: 'ElButton' });
 		const qrBtn = buttons.find((b) => b.attributes('aria-label') === 'devicesHomeKitPlugin.buttons.showPairing');
 		expect(qrBtn).toBeDefined();
+		expect(qrBtn?.classes()).toContain('px-2!');
 
 		const portInput = wrapper.findComponent({ name: 'ElInputNumber' });
 		expect(portInput.classes()).toContain('port-input');

@@ -60,6 +60,9 @@
 			<el-card
 				shadow="never"
 				class="mb-4"
+				header-class="py-2!"
+				body-class="py-3!"
+				footer-class="py-2! px-4!"
 			>
 				<template #header>
 					<div class="flex items-center justify-between gap-2 flex-wrap">
@@ -143,6 +146,7 @@
 								v-if="store.status?.running"
 								:disabled="isOutOfSync"
 								:aria-label="t('devicesHomeKitPlugin.buttons.showPairing')"
+								class="px-2!"
 								@click="openWizard('pairing')"
 							>
 								<el-icon><icon icon="mdi:qrcode" /></el-icon>
@@ -157,6 +161,7 @@
 								:disabled="isOutOfSync || store.resettingPairing"
 								:loading="store.resettingPairing"
 								:aria-label="t('devicesHomeKitPlugin.buttons.resetPairing')"
+								class="px-2!"
 								@click="onResetPairing"
 							>
 								<el-icon><icon icon="mdi:link-variant-off" /></el-icon>
