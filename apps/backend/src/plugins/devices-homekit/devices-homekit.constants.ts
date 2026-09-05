@@ -38,6 +38,14 @@ export const HOMEKIT_FORBIDDEN_PINS = new Set([
 	'876-54-321',
 ]);
 
+/**
+ * Generates an unbiased random 8-digit HomeKit pairing PIN in `XXX-XX-XXX` format.
+ *
+ * Utilizes cryptographically secure random integers and rejection sampling against
+ * Apple's forbidden code set (`HOMEKIT_FORBIDDEN_PINS`).
+ *
+ * @returns A formatted 8-digit PIN string (e.g. `031-45-154`).
+ */
 export function generateRandomHomeKitPin(): string {
 	let pin: string;
 	do {
@@ -48,6 +56,14 @@ export function generateRandomHomeKitPin(): string {
 	return pin;
 }
 
+/**
+ * Generates a random MAC address formatted as `XX:XX:XX:XX:XX:XX` for HomeKit device identity.
+ *
+ * Sets the locally administered bit and clears the multicast bit on the first octet
+ * to ensure a valid unicast local MAC address.
+ *
+ * @returns A colon-separated uppercase MAC address string.
+ */
 export function generateRandomMacAddress(): string {
 	const bytes = randomBytes(6);
 	// Set locally administered bit (bit 1) and clear multicast bit (bit 0)
@@ -57,6 +73,13 @@ export function generateRandomMacAddress(): string {
 		.join(':');
 }
 
+/**
+ * Generates a random 4-character alphanumeric Setup ID for HomeKit pairing.
+ *
+ * Used in mDNS advertisement records and setup URIs for Apple Home camera QR scanning.
+ *
+ * @returns A 4-character alphanumeric setup identifier (e.g. `SP01`).
+ */
 export function generateRandomSetupId(): string {
 	const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 	const bytes = randomBytes(4);

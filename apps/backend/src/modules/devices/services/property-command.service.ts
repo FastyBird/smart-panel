@@ -191,6 +191,17 @@ export class PropertyCommandService {
 		};
 	}
 
+	/**
+	 * Validates and executes a batch of property commands targeted at a single device.
+	 *
+	 * Performs atomic pre-validation of property existence, channels, devices, permissions,
+	 * and value data types. If any property fails validation or if properties belong to
+	 * multiple devices, the batch is rejected before dispatching commands.
+	 *
+	 * @param commands - Array of property identifiers and target values to execute.
+	 * @param options - Execution options including request identifier, timeout, and intent context.
+	 * @returns A promise resolving to the batch command result and individual outcomes.
+	 */
 	async executePropertyCommands(
 		commands: Array<{ propertyId: string; value: unknown }>,
 		options: PropertyCommandExecutionOptions = {},

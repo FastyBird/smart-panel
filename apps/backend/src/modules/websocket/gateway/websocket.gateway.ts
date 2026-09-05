@@ -336,6 +336,15 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		'secret',
 	]);
 
+	/**
+	 * Recursively sanitizes payload objects before logging to redact sensitive credentials.
+	 *
+	 * Replaces values of sensitive keys (such as PIN codes, pairing URIs, passwords, tokens,
+	 * and secrets) with `'[REDACTED]'` while preserving non-sensitive fields.
+	 *
+	 * @param obj - The payload data or object structure to sanitize.
+	 * @returns The sanitized object with sensitive keys redacted.
+	 */
 	private sanitizeForLogging(obj: unknown): unknown {
 		if (obj === null || typeof obj !== 'object') {
 			return obj;
@@ -359,6 +368,12 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		return sanitized;
 	}
 
+	/**
+	 * Formats a message payload for safe debug logging with sensitive fields redacted.
+	 *
+	 * @param message - The raw message object or event payload to serialize.
+	 * @returns A JSON string representation of the sanitized message.
+	 */
 	private formatMessageForLogging(message: unknown): string {
 		return JSON.stringify(this.sanitizeForLogging(message));
 	}
