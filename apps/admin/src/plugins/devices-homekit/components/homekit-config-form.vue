@@ -40,116 +40,6 @@
 			</template>
 		</el-alert>
 
-		<!-- Bridge Status & Actions Card -->
-		<el-card
-			shadow="never"
-			class="mb-4 bg-gray-50 dark:bg-gray-800/50"
-		>
-			<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-				<div class="flex flex-col gap-2">
-					<div class="flex items-center gap-2">
-						<span class="font-semibold text-gray-900 dark:text-gray-100">
-							{{ t('devicesHomeKitPlugin.headings.bridgeStatus') }}
-						</span>
-						<el-tag
-							v-if="store.status?.running"
-							type="success"
-							size="small"
-						>
-							{{ t('devicesHomeKitPlugin.status.running') }}
-						</el-tag>
-						<el-tag
-							v-else
-							type="info"
-							size="small"
-						>
-							{{ t('devicesHomeKitPlugin.status.stopped') }}
-						</el-tag>
-
-						<el-tag
-							v-if="store.status?.paired"
-							type="success"
-							effect="dark"
-							size="small"
-						>
-							{{ t('devicesHomeKitPlugin.status.pairedWithCount', { count: store.status.pairedClientsCount }) }}
-						</el-tag>
-						<el-tag
-							v-else
-							type="warning"
-							effect="plain"
-							size="small"
-						>
-							{{ t('devicesHomeKitPlugin.status.notPaired') }}
-						</el-tag>
-					</div>
-
-					<span class="text-xs text-gray-500">
-						{{ t('devicesHomeKitPlugin.status.exposedCount', { count: store.status?.exposedDevicesCount || 0 }) }}
-					</span>
-				</div>
-
-				<div class="flex items-center gap-2 w-full sm:w-auto">
-					<el-button
-						type="primary"
-						:disabled="isOutOfSync"
-						@click="openWizard('devices')"
-					>
-						<el-icon class="mr-1"><icon icon="mdi:cog" /></el-icon>
-						{{ t('devicesHomeKitPlugin.buttons.configureDevices') }}
-					</el-button>
-
-					<el-button
-						v-if="store.status?.running"
-						:disabled="isOutOfSync"
-						@click="openWizard('pairing')"
-					>
-						<el-icon class="mr-1"><icon icon="mdi:qrcode" /></el-icon>
-						{{ t('devicesHomeKitPlugin.buttons.showPairing') }}
-					</el-button>
-
-					<el-button
-						v-if="store.status?.paired"
-						type="danger"
-						plain
-						:disabled="isOutOfSync || store.resettingPairing"
-						:loading="store.resettingPairing"
-						@click="onResetPairing"
-					>
-						{{ t('devicesHomeKitPlugin.buttons.resetPairing') }}
-					</el-button>
-				</div>
-			</div>
-
-			<!-- QR Code preview if running -->
-			<div
-				v-if="store.status?.running && store.status?.qrCodeDataUri"
-				class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-4"
-			>
-				<img
-					:src="store.status.qrCodeDataUri"
-					alt="HomeKit QR Code"
-					width="80"
-					height="80"
-					class="p-1 bg-white rounded border border-gray-200"
-				/>
-				<div class="flex flex-col gap-1">
-					<span class="text-xs text-gray-500">{{ t('devicesHomeKitPlugin.wizard.setupCode') }}</span>
-					<div class="flex items-center gap-2">
-						<span class="text-lg font-mono font-bold">{{ store.status.pincode }}</span>
-						<el-button
-							size="small"
-							circle
-							@click="copyPinCode"
-						>
-							<el-icon><icon icon="mdi:content-copy" /></el-icon>
-						</el-button>
-					</div>
-				</div>
-			</div>
-		</el-card>
-
-		<!-- General Settings -->
 		<fieldset
 			:disabled="isOutOfSync"
 			class="border-0 p-0 m-0 min-w-0"
@@ -158,13 +48,118 @@
 				:label="t('devicesHomeKitPlugin.fields.config.enabled.title')"
 				prop="enabled"
 				label-position="left"
-				class="mt-3"
+				class="mt-3 mb-4"
 			>
 				<el-switch
 					v-model="model.enabled"
 					name="enabled"
 				/>
 			</el-form-item>
+
+			<!-- Bridge Status & Actions Card -->
+			<el-card
+				shadow="never"
+				class="mb-4"
+			>
+				<template #header>
+					<div class="flex items-center justify-between gap-2 flex-wrap">
+						<span class="font-medium text-base text-gray-900 dark:text-gray-100">
+							{{ store.status?.bridgeName || model.bridgeName }}
+						</span>
+						<div class="flex items-center gap-1.5 flex-wrap">
+							<el-tag
+								:type="store.status?.running ? 'success' : 'info'"
+								size="small"
+							>
+								{{ store.status?.running ? t('devicesHomeKitPlugin.status.running') : t('devicesHomeKitPlugin.status.stopped') }}
+							</el-tag>
+
+							<el-tag
+								v-if="store.status?.paired"
+								type="success"
+								effect="plain"
+								size="small"
+							>
+								{{ t('devicesHomeKitPlugin.status.pairedWithCount', { count: store.status.pairedClientsCount }) }}
+							</el-tag>
+							<el-tag
+								v-else-if="store.status?.running"
+								type="warning"
+								effect="plain"
+								size="small"
+							>
+								{{ t('devicesHomeKitPlugin.status.notPaired') }}
+							</el-tag>
+						</div>
+					</div>
+				</template>
+
+				<div class="flex flex-col gap-3">
+					<span class="text-xs text-gray-500">
+						{{ t('devicesHomeKitPlugin.status.exposedCount', { count: store.status?.exposedDevicesCount || 0 }) }}
+					</span>
+
+					<!-- QR Code preview if running -->
+					<div
+						v-if="store.status?.running && store.status?.qrCodeDataUri"
+						class="pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-4"
+					>
+						<img
+							:src="store.status.qrCodeDataUri"
+							alt="HomeKit QR Code"
+							width="80"
+							height="80"
+							class="p-1 bg-white rounded border border-gray-200 shrink-0"
+						/>
+						<div class="flex flex-col gap-1 min-w-0">
+							<span class="text-xs text-gray-500">{{ t('devicesHomeKitPlugin.wizard.setupCode') }}</span>
+							<div class="flex items-center gap-2">
+								<span class="text-lg font-mono font-bold">{{ store.status.pincode }}</span>
+								<el-button
+									size="small"
+									circle
+									@click="copyPinCode"
+								>
+									<el-icon><icon icon="mdi:content-copy" /></el-icon>
+								</el-button>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<template #footer>
+					<div class="flex items-center justify-end gap-2 flex-wrap">
+						<el-button
+							type="primary"
+							:disabled="isOutOfSync"
+							@click="openWizard('devices')"
+						>
+							<el-icon class="mr-1"><icon icon="mdi:cog" /></el-icon>
+							{{ t('devicesHomeKitPlugin.buttons.configureDevices') }}
+						</el-button>
+
+						<el-button
+							v-if="store.status?.running"
+							:disabled="isOutOfSync"
+							@click="openWizard('pairing')"
+						>
+							<el-icon class="mr-1"><icon icon="mdi:qrcode" /></el-icon>
+							{{ t('devicesHomeKitPlugin.buttons.showPairing') }}
+						</el-button>
+
+						<el-button
+							v-if="store.status?.paired"
+							type="danger"
+							plain
+							:disabled="isOutOfSync || store.resettingPairing"
+							:loading="store.resettingPairing"
+							@click="onResetPairing"
+						>
+							{{ t('devicesHomeKitPlugin.buttons.resetPairing') }}
+						</el-button>
+					</div>
+				</template>
+			</el-card>
 
 			<el-form-item
 				:label="t('devicesHomeKitPlugin.fields.config.name.title')"
@@ -184,14 +179,21 @@
 				:label="t('devicesHomeKitPlugin.fields.config.port.title')"
 				prop="port"
 			>
-				<el-input-number
-					v-model="model.port"
-					:min="1024"
-					:max="65535"
-					name="port"
-				/>
-				<div class="text-xs text-gray-500 mt-1">
-					{{ t('devicesHomeKitPlugin.fields.config.port.description') }}
+				<div class="flex flex-col gap-1.5 w-full">
+					<el-input-number
+						v-model="model.port"
+						:min="1024"
+						:max="65535"
+						:step="1"
+						:precision="0"
+						:controls="false"
+						name="port"
+						class="w-full!"
+						@keydown="filterPortKeydown"
+					/>
+					<div class="text-xs text-gray-500">
+						{{ t('devicesHomeKitPlugin.fields.config.port.description') }}
+					</div>
 				</div>
 			</el-form-item>
 
@@ -199,13 +201,31 @@
 				:label="t('devicesHomeKitPlugin.fields.config.pinCode.title')"
 				prop="pincode"
 			>
-				<el-input
-					v-model="model.pincode"
-					:placeholder="t('devicesHomeKitPlugin.fields.config.pinCode.placeholder')"
-					name="pincode"
-				/>
-				<div class="text-xs text-gray-500 mt-1">
-					{{ t('devicesHomeKitPlugin.fields.config.pinCode.description') }}
+				<div class="flex flex-col gap-1.5 w-full">
+					<el-input
+						v-model="model.pincode"
+						:placeholder="t('devicesHomeKitPlugin.fields.config.pinCode.placeholder')"
+						name="pincode"
+						maxlength="10"
+						@input="onPinInput"
+						@keydown="filterPinKeydown"
+					>
+						<template #suffix>
+							<el-tooltip :content="t('devicesHomeKitPlugin.buttons.generatePin')">
+								<el-button
+									link
+									:disabled="isOutOfSync"
+									class="px-1!"
+									@click="generateNewPin"
+								>
+									<el-icon :size="16"><icon icon="mdi:dice-multiple-outline" /></el-icon>
+								</el-button>
+							</el-tooltip>
+						</template>
+					</el-input>
+					<div class="text-xs text-gray-500">
+						{{ t('devicesHomeKitPlugin.fields.config.pinCode.description') }}
+					</div>
 				</div>
 			</el-form-item>
 		</fieldset>
@@ -235,6 +255,7 @@ import {
 	ElMessageBox,
 	ElSwitch,
 	ElTag,
+	ElTooltip,
 	type FormRules,
 } from 'element-plus';
 
@@ -301,6 +322,50 @@ const wizardVisible = ref(false);
 const wizardInitialStep = ref<HomeKitWizardStep>('devices');
 const isOutOfSync = ref(false);
 const isRetryingRefresh = ref(false);
+
+const filterPortKeydown = (e: Event | KeyboardEvent): void => {
+	if (!(e instanceof KeyboardEvent)) {
+		return;
+	}
+	if (['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'].includes(e.key) || e.ctrlKey || e.metaKey) {
+		return;
+	}
+	if (!/^[0-9]$/.test(e.key)) {
+		e.preventDefault();
+	}
+};
+
+const filterPinKeydown = (e: Event | KeyboardEvent): void => {
+	if (!(e instanceof KeyboardEvent)) {
+		return;
+	}
+	if (['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'].includes(e.key) || e.ctrlKey || e.metaKey) {
+		return;
+	}
+	if (!/^[0-9]$/.test(e.key)) {
+		e.preventDefault();
+	}
+};
+
+const onPinInput = (val: string): void => {
+	const digits = val.replace(/\D/g, '').slice(0, 8);
+	let formatted = '';
+	if (digits.length <= 3) {
+		formatted = digits;
+	} else if (digits.length <= 5) {
+		formatted = `${digits.slice(0, 3)}-${digits.slice(3)}`;
+	} else {
+		formatted = `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5, 8)}`;
+	}
+	model.pincode = formatted;
+};
+
+const generateNewPin = (): void => {
+	const p1 = Math.floor(100 + Math.random() * 900);
+	const p2 = Math.floor(10 + Math.random() * 90);
+	const p3 = Math.floor(100 + Math.random() * 900);
+	model.pincode = `${p1}-${p2}-${p3}`;
+};
 
 const refreshPluginConfig = async (): Promise<void> => {
 	try {

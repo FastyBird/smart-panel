@@ -1,7 +1,7 @@
 {
 	"headings": {
-		"aboutSettings": "Apple HomeKit Brána",
-		"bridgeStatus": "Stav behu brány",
+		"aboutSettings": "Apple HomeKit Most",
+		"bridgeStatus": "Stav behu mosta",
 		"resetPairing": "Resetovať párovanie Apple Home"
 	},
 	"texts": {
@@ -20,19 +20,21 @@
 		"configureDevices": "Nastaviť premostené zariadenia",
 		"showPairing": "Apple Home QR kód",
 		"resetPairing": "Resetovať párovanie",
-		"retryRefresh": "Skúsiť synchronizovať znova"
+		"retryRefresh": "Skúsiť synchronizovať znova",
+		"generatePin": "Vygenerovať náhodný PIN",
+		"refreshStatus": "Obnoviť"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Povoliť HomeKit bránu"
+				"title": "Povolené"
 			},
 			"name": {
-				"title": "Zobrazovaný názov brány",
+				"title": "Zobrazovaný názov mosta",
 				"placeholder": "Smart Panel Bridge",
-				"description": "Názov zobrazený pre bránu v aplikácii Apple Domácnosť",
+				"description": "Názov zobrazený pre most v aplikácii Apple Domácnosť",
 				"validation": {
-					"required": "Názov brány je povinný"
+					"required": "Názov mosta je povinný"
 				}
 			},
 			"port": {
@@ -53,11 +55,12 @@
 		}
 	},
 	"wizard": {
-		"title": "Nastavenie Apple HomeKit brány",
+		"title": "Nastavenie Apple HomeKit Mosta",
 		"steps": {
 			"devices": "Výber zariadení",
 			"pairing": "Spárovanie s Apple Home"
 		},
+		"pairingDescription": "Naskenujte QR kód nižšie pomocou aplikácie Apple Domácnosť na svojom iPhone alebo iPade pre spárovanie tohto mosta.",
 		"devicesDescription": "Vyberte zariadenia Smart Panela, ktoré majú byť premostené do Apple Domácnosti. V aplikácii sa zobrazia iba kompatibilné zariadenia s namapovanými službami.",
 		"searchPlaceholder": "Hľadať zariadenia podľa názvu alebo miestnosti...",
 		"filterAll": "Všetky zariadenia",
@@ -65,7 +68,7 @@
 		"compatible": "Kompatibilné",
 		"noDevices": "Nenašli sa žiadne zariadenia",
 		"incompatible": "Nekompatibilné",
-		"bridgeLimitWarning": "Apple Home odporúča maximálne 150 príslušenstiev na jednu bránu. Prekročenie limitu môže spôsobiť nestabilitu.",
+		"bridgeLimitWarning": "Apple Home odporúča maximálne 150 príslušenstiev na jeden most. Prekročenie limitu môže spôsobiť nestabilitu.",
 		"selectedCount": "Vybrané {count} z {total} kompatibilných zariadení",
 		"scanWithCamera": "Naskenujte pomocou aplikácie Domácnosť alebo Fotoaparát na iPhone/iPade",
 		"setupCode": "Nastavovací PIN kód",
@@ -93,15 +96,15 @@
 	},
 	"messages": {
 		"config": {
-			"edited": "Nastavenia HomeKit brány boli aktualizované.",
-			"notEdited": "Nepodarilo sa aktualizovať nastavenia HomeKit brány."
+			"edited": "Nastavenia HomeKit Mosta boli aktualizované.",
+			"notEdited": "Nepodarilo sa aktualizovať nastavenia HomeKit Mosta."
 		},
 		"mappingsSaved": "Priradenia zariadení boli úspešne uložené.",
 		"saveMappingsFailed": "Nepodarilo sa uložiť priradenia zariadení.",
-		"statusFetchFailed": "Nepodarilo sa obnoviť stav brány.",
+		"statusFetchFailed": "Nepodarilo sa obnoviť stav mosta.",
 		"pinCopied": "Párovací PIN kód bol skopírovaný do schránky.",
 		"copyFailed": "Kopírovanie do schránky zlyhalo.",
-		"confirmResetPairing": "Naozaj chcete resetovať párovanie Apple Home? Existujúce pripojenia Apple Home budú odpojené a budete musieť bránu znova spárovať.",
+		"confirmResetPairing": "Naozaj chcete resetovať párovanie Apple Home? Existujúce pripojenia Apple Home budú odpojené a budete musieť most znova spárovať.",
 		"pairingResetSuccess": "Párovacie údaje boli resetované. Teraz môžete spárovať s Apple Home.",
 		"pairingResetFailed": "Nepodarilo sa resetovať párovacie údaje.",
 		"saveBeforeAction": "Pred pokračovaním prosím uložte alebo zrušte zmeny nastavenia.",

@@ -10,7 +10,7 @@ import type {
 	DevicesHomeKitPluginMapCandidatesOperation,
 	DevicesHomeKitPluginResetPairingOperation,
 } from '../../../openapi.constants';
-import { DEVICES_HOMEKIT_PLUGIN_PREFIX } from '../devices-homekit.constants';
+import { DEVICES_HOMEKIT_PLUGIN_PREFIX, EventType } from '../devices-homekit.constants';
 import { DevicesHomeKitApiException } from '../devices-homekit.exceptions';
 
 import type { IHomeKitBridgeStatus, IHomeKitDeviceCandidate } from './homekit-bridge.store.types';
@@ -111,6 +111,18 @@ export const useHomeKitBridge = defineStore('devices_homekit_plugin-bridge', () 
 		}
 	};
 
+	const onEvent = (payload: { event: string; data: unknown }): void => {
+		switch (payload.event) {
+			case EventType.BRIDGE_STATUS_CHANGED:
+				status.value = transformHomeKitBridgeStatus(payload.data);
+				return;
+		}
+	};
+
+	const isLoaded = (): boolean => status.value !== null;
+
+	const refresh = (): Promise<IHomeKitBridgeStatus> => fetchStatus();
+
 	return {
 		status,
 		candidates,
@@ -122,6 +134,9 @@ export const useHomeKitBridge = defineStore('devices_homekit_plugin-bridge', () 
 		fetchCandidates,
 		mapDevices,
 		resetPairing,
+		onEvent,
+		isLoaded,
+		refresh,
 	};
 });
 

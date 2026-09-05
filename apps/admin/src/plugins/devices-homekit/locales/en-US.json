@@ -1,6 +1,6 @@
 {
 	"headings": {
-		"aboutSettings": "Apple HomeKit Gateway",
+		"aboutSettings": "Apple HomeKit Bridge",
 		"bridgeStatus": "Bridge Runtime Status",
 		"resetPairing": "Reset Apple Home Pairing"
 	},
@@ -20,12 +20,14 @@
 		"configureDevices": "Configure Bridged Devices",
 		"showPairing": "Apple Home QR Code",
 		"resetPairing": "Reset Pairing",
-		"retryRefresh": "Retry Synchronization"
+		"retryRefresh": "Retry Synchronization",
+		"generatePin": "Generate random PIN",
+		"refreshStatus": "Refresh"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Enable HomeKit Gateway"
+				"title": "Enabled"
 			},
 			"name": {
 				"title": "Bridge Display Name",
@@ -53,11 +55,12 @@
 		}
 	},
 	"wizard": {
-		"title": "Apple HomeKit Gateway Setup",
+		"title": "Apple HomeKit Bridge Setup",
 		"steps": {
 			"devices": "Select Devices",
 			"pairing": "Pair with Apple Home"
 		},
+		"pairingDescription": "Scan the QR code below using the Apple Home app on your iPhone or iPad to pair this bridge.",
 		"devicesDescription": "Choose which Smart Panel devices should be bridged into Apple Home. Only compatible devices with mapped services will appear in Apple Home.",
 		"searchPlaceholder": "Search devices by name or room...",
 		"filterAll": "All Devices",
@@ -93,8 +96,8 @@
 	},
 	"messages": {
 		"config": {
-			"edited": "HomeKit Gateway settings updated.",
-			"notEdited": "Failed to update HomeKit Gateway settings."
+			"edited": "HomeKit Bridge settings updated.",
+			"notEdited": "Failed to update HomeKit Bridge settings."
 		},
 		"mappingsSaved": "Device mappings saved successfully.",
 		"saveMappingsFailed": "Failed to save device mappings.",

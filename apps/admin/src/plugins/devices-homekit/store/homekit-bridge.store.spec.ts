@@ -135,4 +135,29 @@ describe('HomeKit Bridge Store', () => {
 		expect(result.running).toBe(true);
 		expect(store.status).toEqual(result);
 	});
+
+	it('updates status when receiving BRIDGE_STATUS_CHANGED event', () => {
+		const store = useHomeKitBridge();
+		expect(store.status).toBeNull();
+
+		store.onEvent({
+			event: 'DevicesHomeKitPlugin.Bridge.StatusChanged',
+			data: mockBridgeStatusResponse.data.data,
+		});
+
+		expect(store.status).not.toBeNull();
+		expect(store.status?.running).toBe(true);
+		expect(store.status?.bridgeName).toBe('Smart Panel Bridge');
+		expect(store.status?.pincode).toBe('031-45-154');
+	});
+
+	it('refreshes status via refresh() method', async () => {
+		get.mockResolvedValueOnce(mockBridgeStatusResponse);
+		const store = useHomeKitBridge();
+
+		const refreshed = await store.refresh();
+
+		expect(get).toHaveBeenCalledWith('/plugins/devices-homekit/bridge/status');
+		expect(refreshed.running).toBe(true);
+	});
 });

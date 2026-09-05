@@ -114,5 +114,36 @@ describe('HomeKitSetupWizard', () => {
 
 		expect(wrapper.text()).toContain('031-45-154');
 		expect(wrapper.find('img[alt="HomeKit QR Code"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain('devicesHomeKitPlugin.wizard.pairingDescription');
+	});
+
+	it('renders pairing instructions in an ordered list with steps 1 to 3', async () => {
+		const wrapper = mountWizard({ initialStep: 'pairing' });
+		await flushPromises();
+
+		const ol = wrapper.find('ol');
+		expect(ol.exists()).toBe(true);
+		expect(ol.classes()).toContain('list-decimal');
+
+		const listItems = ol.findAll('li');
+		expect(listItems.length).toBe(3);
+		expect(listItems[0].text()).toContain('devicesHomeKitPlugin.wizard.instruction1');
+		expect(listItems[1].text()).toContain('devicesHomeKitPlugin.wizard.instruction2');
+		expect(listItems[2].text()).toContain('devicesHomeKitPlugin.wizard.instruction3');
+	});
+
+	it('renders pairing status alert and refreshes status when refresh button is clicked', async () => {
+		const wrapper = mountWizard({ initialStep: 'pairing' });
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('devicesHomeKitPlugin.wizard.waitingForPairing');
+
+		const refreshBtn = wrapper.findAllComponents({ name: 'ElButton' }).find((b) => b.text().includes('devicesHomeKitPlugin.buttons.refreshStatus'));
+		expect(refreshBtn).toBeDefined();
+
+		await refreshBtn?.trigger('click');
+		await flushPromises();
+
+		expect(fetchStatus).toHaveBeenCalled();
 	});
 });

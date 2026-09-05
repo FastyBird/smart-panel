@@ -1,6 +1,6 @@
 {
 	"headings": {
-		"aboutSettings": "Pasarela Apple HomeKit",
+		"aboutSettings": "Apple HomeKit Bridge",
 		"bridgeStatus": "Estado del puente",
 		"resetPairing": "Restablecer enlace con Apple Home"
 	},
@@ -18,14 +18,16 @@
 	},
 	"buttons": {
 		"configureDevices": "Configurar dispositivos enlazados",
-		"showPairing": "Código QR de Apple Home",
+		"showPairing": "Apple Home QR Code",
 		"resetPairing": "Restablecer enlace",
-		"retryRefresh": "Reintentar sincronización"
+		"retryRefresh": "Reintentar sincronización",
+		"generatePin": "Generar PIN aleatorio",
+		"refreshStatus": "Actualizar"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Habilitar pasarela HomeKit"
+				"title": "Habilitado"
 			},
 			"name": {
 				"title": "Nombre del puente",
@@ -53,11 +55,12 @@
 		}
 	},
 	"wizard": {
-		"title": "Configuración de la pasarela Apple HomeKit",
+		"title": "Configuración de Apple HomeKit Bridge",
 		"steps": {
 			"devices": "Seleccionar dispositivos",
 			"pairing": "Enlazar con Apple Home"
 		},
+		"pairingDescription": "Escanee el código QR a continuación usando la aplicación Apple Casa en su iPhone o iPad para emparejar este puente.",
 		"devicesDescription": "Elija qué dispositivos de Smart Panel deben enlazarse en Apple Home. Solo los dispositivos compatibles con servicios mapeados aparecerán en Apple Home.",
 		"searchPlaceholder": "Buscar dispositivos por nombre o habitación...",
 		"filterAll": "Todos los dispositivos",
@@ -93,8 +96,8 @@
 	},
 	"messages": {
 		"config": {
-			"edited": "Ajustes de la pasarela HomeKit actualizados.",
-			"notEdited": "No se pudieron actualizar los ajustes de la pasarela HomeKit."
+			"edited": "Ajustes de HomeKit Bridge actualizados.",
+			"notEdited": "No se pudieron actualizar los ajustes de HomeKit Bridge."
 		},
 		"mappingsSaved": "Asignaciones de dispositivos guardadas correctamente.",
 		"saveMappingsFailed": "No se pudieron guardar las asignaciones de dispositivos.",

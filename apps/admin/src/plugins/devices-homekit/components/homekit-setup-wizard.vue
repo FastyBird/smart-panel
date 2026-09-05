@@ -247,40 +247,41 @@
 							<div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
 								{{ t('devicesHomeKitPlugin.wizard.bridgeStatus') }}
 							</div>
-							<div class="flex items-center gap-2">
-								<el-tag
-									v-if="store.status?.paired"
-									type="success"
-									effect="dark"
-								>
-									<el-icon class="mr-1"><icon icon="mdi:check-circle" /></el-icon>
-									{{ t('devicesHomeKitPlugin.wizard.pairedWithCount', { count: store.status.pairedClientsCount }) }}
-								</el-tag>
-								<el-tag
-									v-else
-									type="warning"
-									effect="dark"
-								>
-									<el-icon class="mr-1 is-loading"><icon icon="mdi:loading" /></el-icon>
-									{{ t('devicesHomeKitPlugin.wizard.waitingForPairing') }}
-								</el-tag>
-
-								<el-button
-									size="small"
-									circle
-									:loading="store.fetchingStatus"
-									@click="refreshStatus"
-								>
-									<el-icon><icon icon="mdi:refresh" /></el-icon>
-								</el-button>
-							</div>
+							<el-alert
+								:type="store.status?.paired ? 'success' : 'warning'"
+								:closable="false"
+								show-icon
+								class="w-full"
+							>
+								<template #title>
+									<div class="flex items-center justify-between gap-2 w-full">
+										<span class="text-xs font-medium">
+											{{
+												store.status?.paired
+													? t('devicesHomeKitPlugin.wizard.pairedWithCount', { count: store.status.pairedClientsCount })
+													: t('devicesHomeKitPlugin.wizard.waitingForPairing')
+											}}
+										</span>
+										<el-button
+											size="small"
+											link
+											:loading="store.fetchingStatus"
+											class="px-1!"
+											@click="refreshStatus"
+										>
+											<el-icon class="mr-1"><icon icon="mdi:refresh" /></el-icon>
+											{{ t('devicesHomeKitPlugin.buttons.refreshStatus') }}
+										</el-button>
+									</div>
+								</template>
+							</el-alert>
 						</div>
 
-						<div class="text-xs text-gray-500 space-y-1">
-							<p>1. {{ t('devicesHomeKitPlugin.wizard.instruction1') }}</p>
-							<p>2. {{ t('devicesHomeKitPlugin.wizard.instruction2') }}</p>
-							<p>3. {{ t('devicesHomeKitPlugin.wizard.instruction3') }}</p>
-						</div>
+						<ol class="text-xs text-gray-500 dark:text-gray-400 space-y-1 list-decimal pl-4 m-0">
+							<li>{{ t('devicesHomeKitPlugin.wizard.instruction1') }}</li>
+							<li>{{ t('devicesHomeKitPlugin.wizard.instruction2') }}</li>
+							<li>{{ t('devicesHomeKitPlugin.wizard.instruction3') }}</li>
+						</ol>
 					</div>
 				</div>
 

@@ -1,6 +1,6 @@
 {
 	"headings": {
-		"aboutSettings": "Apple HomeKit Gateway",
+		"aboutSettings": "Apple HomeKit Bridge",
 		"bridgeStatus": "Bridge-Laufzeitstatus",
 		"resetPairing": "Apple Home Kopplung zurücksetzen"
 	},
@@ -20,12 +20,14 @@
 		"configureDevices": "Eingebundene Geräte konfigurieren",
 		"showPairing": "Apple Home QR-Code",
 		"resetPairing": "Kopplung zurücksetzen",
-		"retryRefresh": "Synchronisierung wiederholen"
+		"retryRefresh": "Synchronisierung wiederholen",
+		"generatePin": "Zufällige PIN generieren",
+		"refreshStatus": "Aktualisieren"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "HomeKit Gateway aktivieren"
+				"title": "Aktiviert"
 			},
 			"name": {
 				"title": "Bridge-Anzeigename",
@@ -53,11 +55,12 @@
 		}
 	},
 	"wizard": {
-		"title": "Apple HomeKit Gateway Einrichtung",
+		"title": "Apple HomeKit Bridge Einrichtung",
 		"steps": {
 			"devices": "Geräte auswählen",
 			"pairing": "Mit Apple Home koppeln"
 		},
+		"pairingDescription": "Scannen Sie den unten stehenden QR-Code mit der Apple Home App auf Ihrem iPhone oder iPad, um diese Bridge zu koppeln.",
 		"devicesDescription": "Wählen Sie aus, welche Smart Panel Geräte in Apple Home eingebunden werden sollen. Nur kompatible Geräte mit zugeordneten Diensten werden in Apple Home angezeigt.",
 		"searchPlaceholder": "Geräte nach Name oder Raum suchen...",
 		"filterAll": "Alle Geräte",
@@ -93,8 +96,8 @@
 	},
 	"messages": {
 		"config": {
-			"edited": "HomeKit Gateway Einstellungen aktualisiert.",
-			"notEdited": "HomeKit Gateway Einstellungen konnten nicht aktualisiert werden."
+			"edited": "HomeKit Bridge Einstellungen aktualisiert.",
+			"notEdited": "HomeKit Bridge Einstellungen konnten nicht aktualisiert werden."
 		},
 		"mappingsSaved": "Gerätezuordnungen erfolgreich gespeichert.",
 		"saveMappingsFailed": "Gerätezuordnungen konnten nicht gespeichert werden.",

@@ -1,6 +1,6 @@
 {
 	"headings": {
-		"aboutSettings": "Bramka Apple HomeKit",
+		"aboutSettings": "Apple HomeKit Bridge",
 		"bridgeStatus": "Stan działania mostka",
 		"resetPairing": "Zresetuj parowanie Apple Home"
 	},
@@ -20,12 +20,14 @@
 		"configureDevices": "Konfiguruj zmostkowane urządzenia",
 		"showPairing": "Kod QR Apple Home",
 		"resetPairing": "Zresetuj parowanie",
-		"retryRefresh": "Ponów synchronizację"
+		"retryRefresh": "Ponów synchronizację",
+		"generatePin": "Wygeneruj losowy PIN",
+		"refreshStatus": "Odśwież"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
-				"title": "Włącz bramkę HomeKit"
+				"title": "Włączone"
 			},
 			"name": {
 				"title": "Nazwa wyświetlana mostka",
@@ -53,11 +55,12 @@
 		}
 	},
 	"wizard": {
-		"title": "Konfiguracja bramki Apple HomeKit",
+		"title": "Konfiguracja Apple HomeKit Bridge",
 		"steps": {
 			"devices": "Wybór urządzeń",
 			"pairing": "Sparuj z Apple Home"
 		},
+		"pairingDescription": "Zeskanuj poniższy kod QR za pomocą aplikacji Apple Dom na telefonie iPhone lub iPadzie, aby sparować ten mostek.",
 		"devicesDescription": "Wybierz, które urządzenia Smart Panelu mają zostać zmostkowane do Apple Home. Tylko kompatybilne urządzenia z przypisanymi usługami pojawią się w Apple Home.",
 		"searchPlaceholder": "Szukaj urządzeń według nazwy lub pokoju...",
 		"filterAll": "Wszystkie urządzenia",
@@ -93,8 +96,8 @@
 	},
 	"messages": {
 		"config": {
-			"edited": "Ustawienia bramki HomeKit zostały zaktualizowane.",
-			"notEdited": "Nie udało się zaktualizować ustawień bramki HomeKit."
+			"edited": "Ustawienia HomeKit Bridge zostały zaktualizowane.",
+			"notEdited": "Nie udało się zaktualizować ustawień HomeKit Bridge."
 		},
 		"mappingsSaved": "Przypisania urządzeń zostały pomyślnie zapisane.",
 		"saveMappingsFailed": "Nie udało się zapisać przypisań urządzeń.",

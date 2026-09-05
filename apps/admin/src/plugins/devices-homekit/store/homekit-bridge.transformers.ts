@@ -18,11 +18,11 @@ const parse = <T>(value: unknown, schema: ZodType<T>, label: string): T => {
 	return result.data;
 };
 
-export const transformHomeKitBridgeStatus = (value: DevicesHomeKitPluginBridgeStatusSchema): IHomeKitBridgeStatus =>
+export const transformHomeKitBridgeStatus = (value: unknown): IHomeKitBridgeStatus =>
 	parse(value, HomeKitBridgeStatusSchema, 'bridge status');
 
-export const transformHomeKitDeviceCandidate = (value: DevicesHomeKitPluginDeviceCandidateSchema): IHomeKitDeviceCandidate =>
+export const transformHomeKitDeviceCandidate = (value: unknown): IHomeKitDeviceCandidate =>
 	parse(value, HomeKitDeviceCandidateSchema, 'device candidate');
 
-export const transformHomeKitCandidates = (values: DevicesHomeKitPluginDeviceCandidateSchema[]): IHomeKitDeviceCandidate[] =>
+export const transformHomeKitCandidates = (values: unknown[]): IHomeKitDeviceCandidate[] =>
 	values.map(transformHomeKitDeviceCandidate);

@@ -258,4 +258,62 @@ describe('HomeKitConfigForm', () => {
 		expect(reconcile).toHaveBeenCalled();
 		expect(markSaved).toHaveBeenCalled();
 	});
+
+	it('generates a valid random PIN when clicking the dice button', async () => {
+		const { wrapper } = mountForm();
+		await flushPromises();
+
+		const pinFormItem = wrapper.findAllComponents({ name: 'ElFormItem' }).find((item) => item.props('prop') === 'pincode');
+		expect(pinFormItem).toBeDefined();
+
+		const diceBtn = pinFormItem?.findComponent({ name: 'ElButton' });
+		expect(diceBtn?.exists()).toBe(true);
+
+		await diceBtn?.trigger('click');
+		expect(model.pincode).toMatch(/^\d{3}-\d{2}-\d{3}$/);
+	});
+
+	it('formats PIN code with XXX-XX-XXX mask on input', async () => {
+		const { wrapper } = mountForm();
+		await flushPromises();
+
+		const pinFormItem = wrapper.findAllComponents({ name: 'ElFormItem' }).find((item) => item.props('prop') === 'pincode');
+		const pinInput = pinFormItem?.findComponent({ name: 'ElInput' });
+		expect(pinInput?.exists()).toBe(true);
+
+		await pinInput?.vm.$emit('input', '12345678');
+		expect(model.pincode).toBe('123-45-678');
+
+		await pinInput?.vm.$emit('input', '987');
+		expect(model.pincode).toBe('987');
+
+		await pinInput?.vm.$emit('input', '98765');
+		expect(model.pincode).toBe('987-65');
+	});
+
+	it('filters non-digit keydown on port and pin inputs', async () => {
+		const { wrapper } = mountForm();
+		await flushPromises();
+
+		const portFormItem = wrapper.findAllComponents({ name: 'ElFormItem' }).find((item) => item.props('prop') === 'port');
+		const pinFormItem = wrapper.findAllComponents({ name: 'ElFormItem' }).find((item) => item.props('prop') === 'pincode');
+
+		const portNativeInput = portFormItem?.find('input');
+		const pinNativeInput = pinFormItem?.find('input');
+
+		expect(portNativeInput?.exists()).toBe(true);
+		expect(pinNativeInput?.exists()).toBe(true);
+
+		const letterEvent = new KeyboardEvent('keydown', { key: 'a', cancelable: true, bubbles: true });
+		portNativeInput?.element.dispatchEvent(letterEvent);
+		expect(letterEvent.defaultPrevented).toBe(true);
+
+		const pinLetterEvent = new KeyboardEvent('keydown', { key: 'x', cancelable: true, bubbles: true });
+		pinNativeInput?.element.dispatchEvent(pinLetterEvent);
+		expect(pinLetterEvent.defaultPrevented).toBe(true);
+
+		const digitEvent = new KeyboardEvent('keydown', { key: '5', cancelable: true, bubbles: true });
+		portNativeInput?.element.dispatchEvent(digitEvent);
+		expect(digitEvent.defaultPrevented).toBe(false);
+	});
 });
