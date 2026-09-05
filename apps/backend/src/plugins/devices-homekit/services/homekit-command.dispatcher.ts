@@ -28,4 +28,29 @@ export class HomeKitCommandDispatcher {
 			throw new HapStatusError(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
 		}
 	}
+
+	async dispatchBatch(commands: Array<{ propertyId: string; value: unknown }>): Promise<void> {
+		if (commands.length === 0) {
+			return;
+		}
+
+		try {
+			this.logger.debug(`Dispatching HomeKit batch commands for ${commands.length} properties`);
+
+			const result = await this.propertyCommandService.executePropertyCommands(commands);
+
+			if (!result.success) {
+				const failure = result.results.find((r) => !r.success);
+				this.logger.warn(`Property batch command failed: ${failure?.reason ?? 'Unknown reason'}`);
+				throw new HapStatusError(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+			}
+		} catch (error) {
+			if (error instanceof HapStatusError) {
+				throw error;
+			}
+			const err = error as Error;
+			this.logger.error(`Error executing HomeKit batch property command: ${err.message}`, err.stack);
+			throw new HapStatusError(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+		}
+	}
 }

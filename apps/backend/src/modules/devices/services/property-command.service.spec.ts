@@ -548,4 +548,118 @@ describe('PropertyCommandService', () => {
 			expect(mockPlatform.processBatch).toHaveBeenCalled();
 		});
 	});
+
+	describe('executePropertyCommands', () => {
+		it('should reject batch commands across multiple devices', async () => {
+			const deviceA = toInstance(MockDevice, { ...mockDevice, id: 'dev-a' });
+			const deviceB = toInstance(MockDevice, { ...mockDevice, id: 'dev-b' });
+
+			const channelA = toInstance(MockChannel, { ...mockChannel, id: 'chan-a', device: deviceA.id });
+			const channelB = toInstance(MockChannel, { ...mockChannel, id: 'chan-b', device: deviceB.id });
+
+			const propA = toInstance(MockChannelProperty, {
+				...mockChannelProperty,
+				id: 'prop-a',
+				channel: channelA.id,
+				permissions: [PermissionType.READ_WRITE],
+			});
+			const propB = toInstance(MockChannelProperty, {
+				...mockChannelProperty,
+				id: 'prop-b',
+				channel: channelB.id,
+				permissions: [PermissionType.READ_WRITE],
+			});
+
+			jest.spyOn(channelsPropertiesService, 'findOne').mockImplementation((id) => {
+				if (id === 'prop-a') return Promise.resolve(propA);
+				if (id === 'prop-b') return Promise.resolve(propB);
+				return Promise.resolve(null);
+			});
+
+			jest.spyOn(channelsService, 'findOne').mockImplementation((id) => {
+				if (id === 'chan-a') return Promise.resolve(channelA);
+				if (id === 'chan-b') return Promise.resolve(channelB);
+				return Promise.resolve(null);
+			});
+
+			jest.spyOn(devicesService, 'findOne').mockImplementation((id) => {
+				if (id === 'dev-a') return Promise.resolve(deviceA);
+				if (id === 'dev-b') return Promise.resolve(deviceB);
+				return Promise.resolve(null);
+			});
+
+			const result = await service.executePropertyCommands([
+				{ propertyId: 'prop-a', value: true },
+				{ propertyId: 'prop-b', value: false },
+			]);
+
+			expect(result.success).toBe(false);
+			expect(result.results[0].reason).toContain('Single-device batch execution violation');
+		});
+
+		it('should reject non-writable properties in batch', async () => {
+			const readOnlyProp = toInstance(MockChannelProperty, {
+				...mockChannelProperty,
+				id: 'prop-ro',
+				channel: mockChannel.id,
+				permissions: [PermissionType.READ_ONLY],
+			});
+
+			jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(readOnlyProp);
+			jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+
+			const result = await service.executePropertyCommands([{ propertyId: 'prop-ro', value: true }]);
+
+			expect(result.success).toBe(false);
+			expect(result.results[0].reason).toContain('Property is not writable');
+		});
+
+		it('should reject unknown property in batch', async () => {
+			jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(null);
+
+			const result = await service.executePropertyCommands([{ propertyId: 'prop-unknown', value: true }]);
+
+			expect(result.success).toBe(false);
+			expect(result.results[0].reason).toContain('Property not found');
+		});
+
+		it('should successfully execute batch commands on same device', async () => {
+			const propA = toInstance(MockChannelProperty, {
+				...mockChannelProperty,
+				id: 'prop-1',
+				channel: mockChannel.id,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+			});
+			const propB = toInstance(MockChannelProperty, {
+				...mockChannelProperty,
+				id: 'prop-2',
+				channel: mockChannel.id,
+				dataType: DataTypeType.BOOL,
+				permissions: [PermissionType.READ_WRITE],
+			});
+
+			jest.spyOn(channelsPropertiesService, 'findOne').mockImplementation((id) => {
+				if (id === 'prop-1') return Promise.resolve(propA);
+				if (id === 'prop-2') return Promise.resolve(propB);
+				return Promise.resolve(null);
+			});
+
+			jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+			jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
+			jest.spyOn(mockPlatform, 'processBatch').mockResolvedValue(true);
+
+			const result = await service.executePropertyCommands([
+				{ propertyId: 'prop-1', value: true },
+				{ propertyId: 'prop-2', value: false },
+			]);
+
+			expect(result.success).toBe(true);
+			expect(result.results).toHaveLength(2);
+			expect(result.results[0].success).toBe(true);
+			expect(result.results[1].success).toBe(true);
+		});
+	});
 });

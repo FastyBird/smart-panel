@@ -1,6 +1,11 @@
 import { Characteristic, Service } from '@homebridge/hap-nodejs';
 
-import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { HomeKitCommandDispatcher } from '../services/homekit-command.dispatcher';
@@ -21,24 +26,33 @@ describe('LightbulbMapper', () => {
 		context = {
 			commandDispatcher: commandDispatcher as unknown as HomeKitCommandDispatcher,
 			registerBinding: (binding) => registeredBindings.push(binding),
+			registerPropertyListener: jest.fn(),
 		};
 	});
 
-	it('should identify compatible devices', () => {
-		const lightDevice = new DeviceEntity();
-		lightDevice.category = DeviceCategory.LIGHTING;
-		expect(mapper.canMap(lightDevice)).toBe(true);
+	it('should identify compatible devices strictly requiring LIGHT channel with ON property', () => {
+		const validLightDevice = new DeviceEntity();
+		validLightDevice.category = DeviceCategory.LIGHTING;
+		const validChannel = new ChannelEntity();
+		validChannel.category = ChannelCategory.LIGHT;
+		const onProp = new ChannelPropertyEntity();
+		onProp.category = PropertyCategory.ON;
+		validChannel.properties = [onProp];
+		validLightDevice.channels = [validChannel];
+
+		expect(mapper.canMap(validLightDevice)).toBe(true);
+
+		const lightDeviceNoProps = new DeviceEntity();
+		lightDeviceNoProps.category = DeviceCategory.LIGHTING;
+		const emptyChannel = new ChannelEntity();
+		emptyChannel.category = ChannelCategory.LIGHT;
+		emptyChannel.properties = [];
+		lightDeviceNoProps.channels = [emptyChannel];
+		expect(mapper.canMap(lightDeviceNoProps)).toBe(false);
 
 		const switchDevice = new DeviceEntity();
 		switchDevice.category = DeviceCategory.SWITCHER;
 		expect(mapper.canMap(switchDevice)).toBe(false);
-
-		const deviceWithLightChannel = new DeviceEntity();
-		deviceWithLightChannel.category = DeviceCategory.GENERIC;
-		const channel = new ChannelEntity();
-		channel.category = ChannelCategory.LIGHT;
-		deviceWithLightChannel.channels = [channel];
-		expect(mapper.canMap(deviceWithLightChannel)).toBe(true);
 	});
 
 	it('should build accessory with On, Brightness, and ColorTemperature characteristics', () => {
@@ -54,16 +68,19 @@ describe('LightbulbMapper', () => {
 		const onProp = new ChannelPropertyEntity();
 		onProp.id = 'prop-on-1';
 		onProp.category = PropertyCategory.ON;
+		onProp.permissions = [PermissionType.READ_WRITE];
 		onProp.value = new PropertyValueState(true);
 
 		const brightnessProp = new ChannelPropertyEntity();
 		brightnessProp.id = 'prop-bright-1';
 		brightnessProp.category = PropertyCategory.BRIGHTNESS;
+		brightnessProp.permissions = [PermissionType.READ_WRITE];
 		brightnessProp.value = new PropertyValueState(80);
 
 		const ctProp = new ChannelPropertyEntity();
 		ctProp.id = 'prop-ct-1';
 		ctProp.category = PropertyCategory.COLOR_TEMPERATURE;
+		ctProp.permissions = [PermissionType.READ_WRITE];
 		ctProp.value = new PropertyValueState(2700);
 
 		channel.properties = [onProp, brightnessProp, ctProp];

@@ -1,6 +1,11 @@
 import { Characteristic, Service } from '@homebridge/hap-nodejs';
 
-import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import {
+	ChannelCategory,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { HomeKitCommandDispatcher } from '../services/homekit-command.dispatcher';
@@ -21,6 +26,7 @@ describe('SwitchMapper', () => {
 		context = {
 			commandDispatcher: commandDispatcher as unknown as HomeKitCommandDispatcher,
 			registerBinding: (binding) => registeredBindings.push(binding),
+			registerPropertyListener: jest.fn(),
 		};
 	});
 
@@ -37,6 +43,7 @@ describe('SwitchMapper', () => {
 		const onProp = new ChannelPropertyEntity();
 		onProp.id = 'prop-on-sw';
 		onProp.category = PropertyCategory.ON;
+		onProp.permissions = [PermissionType.READ_WRITE];
 		onProp.value = new PropertyValueState(false);
 
 		channel.properties = [onProp];

@@ -2,7 +2,16 @@ import fs from 'fs';
 import path from 'path';
 import QRCode from 'qrcode';
 
-import { Bridge, Categories, Characteristic, HAPStorage, MDNSAdvertiser, Service, uuid } from '@homebridge/hap-nodejs';
+import {
+	Accessory,
+	Bridge,
+	Categories,
+	Characteristic,
+	HAPStorage,
+	MDNSAdvertiser,
+	Service,
+	uuid,
+} from '@homebridge/hap-nodejs';
 import { Injectable, Logger, Optional } from '@nestjs/common';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -43,7 +52,9 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 
 	private state: ServiceState = 'stopped';
 	private bridge: Bridge | null = null;
+	private activeConfig: HomeKitConfigModel | null = null;
 	private storageInitialized = false;
+	private lifecycleQueue: Promise<unknown> = Promise.resolve();
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -52,6 +63,12 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 		private readonly commandDispatcher: HomeKitCommandDispatcher,
 		@Optional() private readonly managedServiceManager?: ManagedServiceManagerService,
 	) {}
+
+	private enqueueLifecycleOperation<T>(operation: () => Promise<T>): Promise<T> {
+		const next = this.lifecycleQueue.then(operation, operation);
+		this.lifecycleQueue = next;
+		return next;
+	}
 
 	getConfig(): HomeKitConfigModel {
 		const config = this.configService.getPluginConfig<HomeKitConfigModel>(DEVICES_HOMEKIT_PLUGIN_NAME);
@@ -101,6 +118,44 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 	}
 
 	async start(): Promise<void> {
+		return this.enqueueLifecycleOperation(() => this.startUnlocked());
+	}
+
+	async stop(): Promise<void> {
+		return this.enqueueLifecycleOperation(() => this.stopUnlocked());
+	}
+
+	async reconcileLatestMapping(): Promise<void> {
+		return this.enqueueLifecycleOperation(() => this.reconcileLatestMappingUnlocked());
+	}
+
+	async onConfigChanged(): Promise<ConfigChangeResult | void> {
+		return this.enqueueLifecycleOperation(async () => {
+			const newConfig = this.getConfig();
+
+			if (!this.activeConfig || this.state !== 'started') {
+				return { restartRequired: false };
+			}
+
+			const coreChanged =
+				this.activeConfig.bridgeName !== newConfig.bridgeName ||
+				this.activeConfig.port !== newConfig.port ||
+				this.activeConfig.pincode !== newConfig.pincode ||
+				this.activeConfig.username !== newConfig.username ||
+				this.activeConfig.setupId !== newConfig.setupId ||
+				this.activeConfig.enabled !== newConfig.enabled;
+
+			if (coreChanged) {
+				return { restartRequired: true };
+			}
+
+			// Core settings unchanged: reconcile device mappings dynamically without restarting
+			await this.reconcileLatestMappingUnlocked();
+			return { restartRequired: false };
+		});
+	}
+
+	private async startUnlocked(): Promise<void> {
 		const config = this.getConfig();
 
 		if (!config.enabled) {
@@ -109,16 +164,18 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			return;
 		}
 
+		// Idempotent startup guard
+		if (this.bridge !== null && this.state === 'started') {
+			this.logger.debug('HomeKit Gateway is already running with current configuration.');
+			return;
+		}
+
 		this.state = 'starting';
 		this.logger.log(`Starting HomeKit Gateway bridge '${config.bridgeName}' on port ${config.port}...`);
 
 		try {
 			if (this.bridge) {
-				this.logger.warn('HomeKit Gateway is already running. Stopping the previous bridge first.');
-				await this.stop();
-				if (this.bridge) {
-					throw new Error('Could not stop the previous HomeKit Gateway bridge.');
-				}
+				await this.stopUnlocked();
 			}
 
 			this.initHapStorage();
@@ -149,6 +206,10 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 				advertiser: MDNSAdvertiser.CIAO,
 			});
 
+			this.activeConfig = {
+				...config,
+				mappedDeviceIds: [...config.mappedDeviceIds],
+			};
 			this.state = 'started';
 			this.logger.log(`HomeKit Gateway published successfully. Port: ${config.port}, Username: ${config.username}`);
 		} catch (error) {
@@ -159,17 +220,18 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 		}
 	}
 
-	async stop(): Promise<void> {
+	private async stopUnlocked(): Promise<void> {
 		this.state = 'stopping';
 		this.logger.log('Stopping HomeKit Gateway...');
 
 		try {
 			if (this.bridge) {
 				await this.bridge.unpublish();
-				await this.bridge.destroy();
+				// Do NOT call this.bridge.destroy() here to preserve pairing keys!
 				this.bridge = null;
 			}
 			this.mapperRegistry.clearAllBindings();
+			this.activeConfig = null;
 			this.state = 'stopped';
 			this.logger.log('HomeKit Gateway stopped cleanly.');
 		} catch (error) {
@@ -179,8 +241,92 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 		}
 	}
 
-	onConfigChanged(): Promise<ConfigChangeResult | void> {
-		return Promise.resolve({ restartRequired: true });
+	private async reconcileLatestMappingUnlocked(): Promise<void> {
+		if (!this.bridge || this.state !== 'started') {
+			return;
+		}
+
+		const config = this.getConfig();
+		const targetDeviceIds = config.mappedDeviceIds ?? [];
+		const targetSet = new Set(targetDeviceIds);
+
+		const currentBridgedMap = new Map<string, Accessory>();
+		for (const acc of this.bridge.bridgedAccessories) {
+			const serial = acc
+				.getService(Service.AccessoryInformation)
+				?.getCharacteristic(Characteristic.SerialNumber)?.value;
+			const serialStr = typeof serial === 'string' ? serial : '';
+			if (serialStr) {
+				currentBridgedMap.set(serialStr, acc);
+			}
+		}
+
+		const currentDeviceIds = new Set(currentBridgedMap.keys());
+		const toAddIds = targetDeviceIds.filter((id) => !currentDeviceIds.has(id));
+		const toRemoveSerials = Array.from(currentDeviceIds).filter((id) => !targetSet.has(id));
+
+		if (toAddIds.length === 0 && toRemoveSerials.length === 0) {
+			return;
+		}
+
+		this.logger.log(
+			`Reconciling HomeKit bridged accessories: adding ${toAddIds.length}, removing ${toRemoveSerials.length}...`,
+		);
+
+		// 1. Pre-build accessories to stage additions
+		const stagedAccessories: Accessory[] = [];
+		for (const deviceId of toAddIds) {
+			try {
+				const device = await this.devicesService.findOne(deviceId);
+				if (!device) {
+					this.logger.warn(`Device ${deviceId} not found in database during reconciliation.`);
+					continue;
+				}
+				const acc = this.mapperRegistry.buildAccessory(device, this.commandDispatcher);
+				if (acc) {
+					stagedAccessories.push(acc);
+				}
+			} catch (err) {
+				this.logger.warn(`Failed to build accessory for device ${deviceId}: ${(err as Error).message}`);
+			}
+		}
+
+		// 2. Snapshot state for transactional rollback
+		const snapshot = this.mapperRegistry.getSnapshot();
+		const originalAccessories = [...this.bridge.bridgedAccessories];
+
+		try {
+			// 3. Remove accessories no longer mapped
+			for (const serial of toRemoveSerials) {
+				const acc = currentBridgedMap.get(serial);
+				if (acc) {
+					this.bridge.removeBridgedAccessory(acc);
+					this.mapperRegistry.clearDeviceBindings(serial);
+				}
+			}
+
+			// 4. Add newly built accessories
+			for (const acc of stagedAccessories) {
+				this.bridge.addBridgedAccessory(acc);
+			}
+
+			if (this.activeConfig) {
+				this.activeConfig.mappedDeviceIds = [...targetDeviceIds];
+			}
+
+			this.logger.log(`Successfully reconciled accessories. Active count: ${this.bridge.bridgedAccessories.length}`);
+		} catch (mutationError) {
+			this.logger.error(`Failed to mutate bridged accessories, rolling back: ${(mutationError as Error).message}`);
+			const currentAfterError = [...this.bridge.bridgedAccessories];
+			for (const acc of currentAfterError) {
+				this.bridge.removeBridgedAccessory(acc);
+			}
+			for (const acc of originalAccessories) {
+				this.bridge.addBridgedAccessory(acc);
+			}
+			this.mapperRegistry.restoreSnapshot(snapshot);
+			throw mutationError;
+		}
 	}
 
 	private async populateBridgedAccessories(mappedDeviceIds: string[]): Promise<void> {
@@ -267,109 +413,60 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 	}
 
 	async resetPairing(): Promise<void> {
-		this.logger.log('Resetting HomeKit pairing credentials...');
+		// Phase 1: Queued destructive teardown
+		await this.enqueueLifecycleOperation(async () => {
+			this.logger.log('Resetting HomeKit pairing credentials (Phase 1: destructive teardown)...');
+			const bridge = this.bridge;
+			await this.stopUnlocked();
+			if (bridge) {
+				await bridge.destroy();
+			}
 
-		const config = this.getConfig();
-
-		// If running, unpublish first
-		if (this.bridge) {
-			await this.bridge.unpublish();
-			await this.bridge.destroy();
-			this.bridge = null;
-		}
-		this.mapperRegistry.clearAllBindings();
-		this.state = 'stopped';
-
-		// Remove all stored pairing records from disk
-		const storagePath = this.getStoragePath();
-		try {
-			if (fs.existsSync(storagePath)) {
-				const files = fs.readdirSync(storagePath);
-				for (const file of files) {
-					const fullPath = path.join(storagePath, file);
-					fs.rmSync(fullPath, { recursive: true, force: true });
+			const storagePath = this.getStoragePath();
+			try {
+				if (fs.existsSync(storagePath)) {
+					const files = fs.readdirSync(storagePath);
+					for (const file of files) {
+						const fullPath = path.join(storagePath, file);
+						fs.rmSync(fullPath, { recursive: true, force: true });
+					}
+					this.logger.log(`Cleared pairing storage files in: ${storagePath}`);
 				}
-				this.logger.log(`Cleared pairing storage files in: ${storagePath}`);
+			} catch (error) {
+				this.logger.warn(`Failed to delete pairing storage files: ${(error as Error).message}`);
 			}
-		} catch (error) {
-			this.logger.warn(`Failed to delete pairing storage files: ${(error as Error).message}`);
-		}
 
-		// Generate fresh credentials
-		const newConfig = new HomeKitConfigModel();
-		newConfig.type = DEVICES_HOMEKIT_PLUGIN_NAME;
-		newConfig.enabled = config.enabled;
-		newConfig.bridgeName = config.bridgeName;
-		newConfig.port = config.port;
-		newConfig.pincode = generateRandomHomeKitPin();
-		newConfig.username = generateRandomMacAddress();
-		newConfig.setupId = generateRandomSetupId();
-		newConfig.mappedDeviceIds = config.mappedDeviceIds;
+			this.mapperRegistry.clearAllBindings();
+		});
 
-		this.configService.setPluginConfig(DEVICES_HOMEKIT_PLUGIN_NAME, newConfig);
+		// Phase 2: Outside queue - rotate credentials without mapped_device_ids
+		this.logger.log('Resetting HomeKit pairing credentials (Phase 2: rotating credentials)...');
+		const pincode = generateRandomHomeKitPin();
+		const username = generateRandomMacAddress();
+		const setup_id = generateRandomSetupId();
 
-		// If plugin was enabled, restart through managed service manager to ensure serialized lifecycle
-		if (config.enabled) {
-			if (this.managedServiceManager) {
-				await this.managedServiceManager.startServiceManually(this.owner.kind, this.owner.type, this.serviceId);
-			} else {
-				await this.start();
-			}
-		}
+		const updateDto = toInstance(HomeKitUpdatePluginConfigDto, {
+			type: DEVICES_HOMEKIT_PLUGIN_NAME,
+			pincode,
+			username,
+			setup_id,
+		});
+
+		await this.configService.updatePluginConfig(DEVICES_HOMEKIT_PLUGIN_NAME, updateDto);
+
+		// Phase 3: Queued restart
+		await this.enqueueLifecycleOperation(async () => {
+			this.logger.log('Resetting HomeKit pairing credentials (Phase 3: starting bridge)...');
+			await this.startUnlocked();
+		});
 	}
 
 	async updateMappedDevices(deviceIds: string[]): Promise<void> {
-		const config = this.getConfig();
-		const currentSet = new Set(config.mappedDeviceIds);
-		const targetSet = new Set(deviceIds);
-
-		// Save updated mapping in config
 		const updateDto = toInstance(HomeKitUpdatePluginConfigDto, {
 			type: DEVICES_HOMEKIT_PLUGIN_NAME,
 			mapped_device_ids: deviceIds,
 		});
-		this.configService.setPluginConfig(DEVICES_HOMEKIT_PLUGIN_NAME, updateDto);
-
-		// If bridge is running, dynamically add/remove bridged accessories
-		if (this.bridge && this.state === 'started') {
-			// 1. Remove accessories that are no longer mapped
-			const toRemove = this.bridge.bridgedAccessories.filter((acc) => {
-				const serial = acc
-					.getService(Service.AccessoryInformation)
-					?.getCharacteristic(Characteristic.SerialNumber)?.value;
-				const serialStr = typeof serial === 'string' ? serial : '';
-				return serialStr && !targetSet.has(serialStr);
-			});
-
-			for (const acc of toRemove) {
-				const serial = acc
-					.getService(Service.AccessoryInformation)
-					?.getCharacteristic(Characteristic.SerialNumber)?.value;
-				const serialStr = typeof serial === 'string' ? serial : '';
-				if (serialStr) {
-					this.mapperRegistry.clearDeviceBindings(serialStr);
-				}
-				this.bridge.removeBridgedAccessory(acc);
-			}
-
-			// 2. Add accessories that are newly mapped
-			for (const deviceId of deviceIds) {
-				if (!currentSet.has(deviceId)) {
-					try {
-						const device = await this.devicesService.findOne(deviceId);
-						if (device) {
-							const acc = this.mapperRegistry.buildAccessory(device, this.commandDispatcher);
-							if (acc) {
-								this.bridge.addBridgedAccessory(acc);
-							}
-						}
-					} catch (err) {
-						this.logger.warn(`Failed to dynamically bridge device ${deviceId}: ${(err as Error).message}`);
-					}
-				}
-			}
-
-			this.logger.log(`Dynamically updated bridged accessories. Total now: ${this.bridge.bridgedAccessories.length}`);
-		}
+		await this.configService.updatePluginConfig(DEVICES_HOMEKIT_PLUGIN_NAME, updateDto);
+		await this.reconcileLatestMapping();
 	}
 }

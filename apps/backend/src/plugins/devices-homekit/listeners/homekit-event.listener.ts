@@ -20,7 +20,9 @@ export class HomeKitEventListener {
 		}
 
 		const bindings = this.mapperRegistry.getBindingsForProperty(property.id);
-		if (bindings.length === 0) {
+		const listeners = this.mapperRegistry.getListenersForProperty(property.id);
+
+		if (bindings.length === 0 && listeners.length === 0) {
 			return;
 		}
 
@@ -28,9 +30,11 @@ export class HomeKitEventListener {
 
 		for (const binding of bindings) {
 			try {
+				binding.revision++;
 				const hapValue: CharacteristicValue = binding.toHomeKit
 					? binding.toHomeKit(rawValue)
 					: (rawValue as CharacteristicValue);
+				binding.currentValue = hapValue;
 				this.logger.debug(
 					`Updating HomeKit characteristic: property=${property.id} value=${JSON.stringify(rawValue)} -> HAP=${JSON.stringify(hapValue)}`,
 				);
@@ -38,6 +42,15 @@ export class HomeKitEventListener {
 			} catch (error) {
 				const err = error as Error;
 				this.logger.warn(`Failed to update HomeKit characteristic for property=${property.id}: ${err.message}`);
+			}
+		}
+
+		for (const listener of listeners) {
+			try {
+				listener.onPropertyChanged(property, rawValue);
+			} catch (error) {
+				const err = error as Error;
+				this.logger.warn(`Failed to notify HomeKit property listener for property=${property.id}: ${err.message}`);
 			}
 		}
 	}

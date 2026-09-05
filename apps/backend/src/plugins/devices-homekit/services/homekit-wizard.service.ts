@@ -1,7 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 
 import { DeviceHiddenFilter } from '../../../modules/devices/devices.constants';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { HomeKitDeviceCandidateModel } from '../models/bridge-candidate.model';
 
 import { HomeKitBridgeService } from './homekit-bridge.service';
@@ -15,6 +16,7 @@ export class HomeKitWizardService {
 		private readonly devicesService: DevicesService,
 		private readonly mapperRegistry: HomeKitMapperRegistryService,
 		private readonly bridgeService: HomeKitBridgeService,
+		@Optional() private readonly spacesService?: SpacesService,
 	) {}
 
 	async getCandidates(): Promise<HomeKitDeviceCandidateModel[]> {
@@ -23,18 +25,27 @@ export class HomeKitWizardService {
 		const devices = await this.devicesService.findAll(undefined, DeviceHiddenFilter.FALSE);
 		const mappedSet = new Set(this.bridgeService.getConfig().mappedDeviceIds);
 
+		const spaces = this.spacesService ? await this.spacesService.findAll() : [];
+		const roomMap = new Map<string, string>();
+		for (const space of spaces) {
+			roomMap.set(space.id, space.name);
+		}
+
 		return devices.map((device) => {
 			const mapper = this.mapperRegistry.findMapper(device);
 			const isCompatible = mapper !== null;
 			const suggestedServiceType = isCompatible ? mapper.getSuggestedServiceType(device) : null;
 			const isMapped = mappedSet.has(device.id);
 
+			const roomId = device.roomId ?? (device.room ? device.room.id : null);
+			const roomName = (roomId ? roomMap.get(roomId) : null) ?? (device.room ? device.room.name : null);
+
 			const candidate = new HomeKitDeviceCandidateModel();
 			candidate.id = device.id;
 			candidate.name = device.name;
 			candidate.category = device.category;
-			candidate.roomId = device.roomId ?? (device.room ? device.room.id : null);
-			candidate.roomName = device.room ? device.room.name : null;
+			candidate.roomId = roomId;
+			candidate.roomName = roomName;
 			candidate.isCompatible = isCompatible;
 			candidate.suggestedServiceType = suggestedServiceType;
 			candidate.isMapped = isMapped;

@@ -1,5 +1,16 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsArray, IsInt, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
+import {
+	ArrayMaxSize,
+	ArrayUnique,
+	IsArray,
+	IsInt,
+	IsOptional,
+	IsString,
+	IsUUID,
+	Matches,
+	Max,
+	Min,
+} from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -82,8 +93,18 @@ export class HomeKitUpdatePluginConfigDto extends UpdatePluginConfigDto {
 	@Expose({ name: 'mapped_device_ids' })
 	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
 	@IsOptional()
-	@IsArray()
-	@IsString({ each: true, message: '[{"field":"mapped_device_ids","reason":"Device IDs must be strings."}]' })
+	@IsArray({ message: '[{"field":"mapped_device_ids","reason":"Device IDs must be an array."}]' })
+	@IsUUID('4', {
+		each: true,
+		message: '[{"field":"mapped_device_ids","reason":"Each device ID must be a valid UUID v4."}]',
+	})
+	@ArrayMaxSize(149, {
+		message:
+			'[{"field":"mapped_device_ids","reason":"Maximum 149 accessories can be bridged to a single HomeKit bridge."}]',
+	})
+	@ArrayUnique({
+		message: '[{"field":"mapped_device_ids","reason":"Device IDs must be unique."}]',
+	})
 	@ApiPropertyOptional({
 		description: 'List of Smart Panel device IDs bridged into HomeKit',
 		type: [String],

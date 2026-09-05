@@ -1,11 +1,14 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Module, OnModuleInit } from '@nestjs/common';
 
 import { ConfigModule } from '../../modules/config/config.module';
+import { PluginConfigMutationRegistryService } from '../../modules/config/services/plugin-config-mutation-registry.service';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
 import { DevicesModule } from '../../modules/devices/devices.module';
+import { DevicesService } from '../../modules/devices/services/devices.service';
 import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { ManagedServiceManagerService } from '../../modules/extensions/services/managed-service-manager.service';
+import { SpacesModule } from '../../modules/spaces/spaces.module';
 import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
@@ -31,7 +34,7 @@ import { HomeKitWizardService } from './services/homekit-wizard.service';
 	description: DEVICES_HOMEKIT_PLUGIN_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [ConfigModule, DevicesModule, ExtensionsModule, SwaggerModule],
+	imports: [ConfigModule, DevicesModule, ExtensionsModule, SpacesModule, SwaggerModule],
 	controllers: [HomeKitBridgeController],
 	providers: [
 		HomeKitBridgeService,
@@ -49,6 +52,9 @@ export class DevicesHomeKitPlugin implements OnModuleInit {
 		private readonly extensionsService: ExtensionsService,
 		private readonly managedServiceManager: ManagedServiceManagerService,
 		private readonly homeKitBridgeService: HomeKitBridgeService,
+		private readonly pluginConfigMutations: PluginConfigMutationRegistryService,
+		private readonly devicesService: DevicesService,
+		private readonly mapperRegistry: HomeKitMapperRegistryService,
 	) {}
 
 	onModuleInit() {
@@ -58,6 +64,54 @@ export class DevicesHomeKitPlugin implements OnModuleInit {
 			class: HomeKitConfigModel,
 			configDto: HomeKitUpdatePluginConfigDto,
 		});
+
+		// Register config mutation validator and post-commit bridge reconciler
+		this.pluginConfigMutations.register<HomeKitUpdatePluginConfigDto>(
+			DEVICES_HOMEKIT_PLUGIN_NAME,
+			async (update, commit) => {
+				if (update.mapped_device_ids !== undefined) {
+					if (!Array.isArray(update.mapped_device_ids)) {
+						throw new BadRequestException([{ field: 'mapped_device_ids', reason: 'Device IDs must be an array.' }]);
+					}
+
+					if (update.mapped_device_ids.length > 149) {
+						throw new BadRequestException([
+							{
+								field: 'mapped_device_ids',
+								reason: 'Maximum 149 accessories can be bridged to a single HomeKit bridge.',
+							},
+						]);
+					}
+
+					const unique = new Set(update.mapped_device_ids);
+					if (unique.size !== update.mapped_device_ids.length) {
+						throw new BadRequestException([{ field: 'mapped_device_ids', reason: 'Device IDs must be unique.' }]);
+					}
+
+					for (const deviceId of update.mapped_device_ids) {
+						const device = await this.devicesService.findOne(deviceId);
+						if (!device) {
+							throw new BadRequestException([{ field: 'mapped_device_ids', reason: `Device ${deviceId} not found.` }]);
+						}
+
+						if (!this.mapperRegistry.canMap(device)) {
+							throw new BadRequestException([
+								{
+									field: 'mapped_device_ids',
+									reason: `Device "${device.name}" (${deviceId}) is not compatible with HomeKit.`,
+								},
+							]);
+						}
+					}
+				}
+
+				await commit();
+
+				if (update.mapped_device_ids !== undefined) {
+					await this.homeKitBridgeService.reconcileLatestMapping();
+				}
+			},
+		);
 
 		// Register Swagger models
 		for (const model of DEVICES_HOMEKIT_PLUGIN_SWAGGER_EXTRA_MODELS) {
