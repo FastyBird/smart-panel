@@ -21,6 +21,15 @@ interface IUseConfigPluginEditFormProps {
 	messages?: { success?: string; error?: string };
 }
 
+/**
+ * Composable for managing and editing plugin configuration forms.
+ *
+ * Manages form reactivity, submission, error handling, flash notifications,
+ * dirty state tracking, and configuration reconciliation with backend responses.
+ *
+ * @param props - Configuration properties containing the plugin config and optional messages.
+ * @returns An object providing reactive form state, validation controls, and action handlers.
+ */
 export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IConfigPluginEditForm>({
 	config,
 	messages,

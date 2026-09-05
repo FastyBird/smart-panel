@@ -16,6 +16,12 @@ import { DevicesHomeKitApiException } from '../devices-homekit.exceptions';
 import type { IHomeKitBridgeStatus, IHomeKitDeviceCandidate } from './homekit-bridge.store.types';
 import { transformHomeKitBridgeStatus, transformHomeKitCandidates } from './homekit-bridge.transformers';
 
+/**
+ * Pinia store managing the Apple HomeKit bridge lifecycle, status, candidate devices, and pairings.
+ *
+ * Provides reactive status updates, real-time WebSocket event synchronization,
+ * candidate device queries, mapping updates, and destructive pairing reset operations.
+ */
 export const useHomeKitBridge = defineStore('devices_homekit_plugin-bridge', () => {
 	const backend = useBackend();
 	const status = ref<IHomeKitBridgeStatus | null>(null);
@@ -150,4 +156,10 @@ export const useHomeKitBridge = defineStore('devices_homekit_plugin-bridge', () 
 	};
 });
 
+/**
+ * Registers and initializes the HomeKit bridge store with the active Pinia root.
+ *
+ * @param pinia - Pinia root instance.
+ * @returns The initialized `useHomeKitBridge` store instance.
+ */
 export const registerHomeKitBridgeStore = (pinia: Pinia): ReturnType<typeof useHomeKitBridge> => useHomeKitBridge(pinia);
