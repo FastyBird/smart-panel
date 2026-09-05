@@ -25,6 +25,13 @@ export interface RegistrySnapshot {
 	deviceProperties: Map<string, Set<string>>;
 }
 
+export interface StagedAccessory {
+	accessory: Accessory;
+	deviceId: string;
+	bindings: CharacteristicBinding[];
+	listeners: PropertyEventListener[];
+}
+
 @Injectable()
 export class HomeKitMapperRegistryService {
 	private readonly logger = new Logger(HomeKitMapperRegistryService.name);
@@ -66,14 +73,14 @@ export class HomeKitMapperRegistryService {
 		return mapper ? mapper.getSuggestedServiceType(device) : null;
 	}
 
-	buildAccessory(device: DeviceEntity, commandDispatcher: HomeKitCommandDispatcher): Accessory | null {
+	buildAccessory(device: DeviceEntity, commandDispatcher: HomeKitCommandDispatcher): StagedAccessory | null {
 		const mapper = this.findMapper(device);
 		if (!mapper) {
 			this.logger.debug(`No compatible HomeKit mapper found for device: ${device.name} (${device.id})`);
 			return null;
 		}
 
-		// Stage bindings and listeners to avoid side effects if build fails
+		// Stage bindings and listeners to avoid side effects on live registry
 		const stagedBindings: CharacteristicBinding[] = [];
 		const stagedListeners: PropertyEventListener[] = [];
 
@@ -95,10 +102,18 @@ export class HomeKitMapperRegistryService {
 		// Check and attach optional battery service
 		BatteryMapper.attachBatteryService(accessory, device, context);
 
-		// Commit staged bindings and listeners
-		this.clearDeviceBindings(device.id);
+		return {
+			accessory,
+			deviceId: device.id,
+			bindings: stagedBindings,
+			listeners: stagedListeners,
+		};
+	}
 
-		for (const binding of stagedBindings) {
+	commitStaged(staged: StagedAccessory): void {
+		this.clearDeviceBindings(staged.deviceId);
+
+		for (const binding of staged.bindings) {
 			const existing = this.propertyBindings.get(binding.propertyId) ?? [];
 			existing.push(binding);
 			this.propertyBindings.set(binding.propertyId, existing);
@@ -111,7 +126,7 @@ export class HomeKitMapperRegistryService {
 			devProps.add(binding.propertyId);
 		}
 
-		for (const listener of stagedListeners) {
+		for (const listener of staged.listeners) {
 			const existing = this.propertyListeners.get(listener.propertyId) ?? [];
 			existing.push(listener);
 			this.propertyListeners.set(listener.propertyId, existing);
@@ -123,8 +138,6 @@ export class HomeKitMapperRegistryService {
 			}
 			devProps.add(listener.propertyId);
 		}
-
-		return accessory;
 	}
 
 	getBindingsForProperty(propertyId: string): CharacteristicBinding[] {

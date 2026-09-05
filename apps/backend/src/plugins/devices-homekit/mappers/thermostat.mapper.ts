@@ -49,7 +49,9 @@ export class ThermostatMapper extends BaseHomeKitMapper {
 			.getCharacteristic(Characteristic.TemperatureDisplayUnits)
 			.onGet(() => Characteristic.TemperatureDisplayUnits.CELSIUS);
 
+		const thermostatChannel = this.findChannel(device, ChannelCategory.THERMOSTAT);
 		const lockedProp =
+			(thermostatChannel && this.findProperty(thermostatChannel, PropertyCategory.LOCKED)) ??
 			(validHeater && this.findProperty(validHeater, PropertyCategory.LOCKED)) ??
 			(validCooler && this.findProperty(validCooler, PropertyCategory.LOCKED)) ??
 			(ambient.channel && this.findProperty(ambient.channel, PropertyCategory.LOCKED));

@@ -38,7 +38,7 @@ import { HomeKitBridgeStatusModel } from '../models/bridge-status.model';
 import { HomeKitConfigModel } from '../models/config.model';
 
 import { HomeKitCommandDispatcher } from './homekit-command.dispatcher';
-import { HomeKitMapperRegistryService } from './homekit-mapper-registry.service';
+import { HomeKitMapperRegistryService, StagedAccessory } from './homekit-mapper-registry.service';
 
 @Injectable()
 export class HomeKitBridgeService implements IManagedExtensionService {
@@ -276,27 +276,35 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			`Reconciling HomeKit bridged accessories: adding ${toAddIds.length}, removing ${toRemoveSerials.length}...`,
 		);
 
-		// 1. Pre-build accessories to stage additions
-		const stagedAccessories: Accessory[] = [];
+		// 1. Pre-build accessories to stage additions. Any failure must abort before mutating bridge.
+		const stagedAccessories: StagedAccessory[] = [];
 		for (const deviceId of toAddIds) {
-			try {
-				const device = await this.devicesService.findOne(deviceId);
-				if (!device) {
-					this.logger.warn(`Device ${deviceId} not found in database during reconciliation.`);
-					continue;
-				}
-				const acc = this.mapperRegistry.buildAccessory(device, this.commandDispatcher);
-				if (acc) {
-					stagedAccessories.push(acc);
-				}
-			} catch (err) {
-				this.logger.warn(`Failed to build accessory for device ${deviceId}: ${(err as Error).message}`);
+			const device = await this.devicesService.findOne(deviceId);
+			if (!device) {
+				const msg = `Device ${deviceId} not found in database during reconciliation.`;
+				this.logger.error(msg);
+				throw new Error(msg);
 			}
+			let staged: StagedAccessory | null;
+			try {
+				staged = this.mapperRegistry.buildAccessory(device, this.commandDispatcher);
+			} catch (err) {
+				const msg = `Failed to build accessory for device ${deviceId}: ${(err as Error).message}`;
+				this.logger.error(msg);
+				throw new Error(msg, { cause: err });
+			}
+			if (!staged) {
+				const msg = `Device ${deviceId} could not be mapped to any supported HomeKit accessory.`;
+				this.logger.error(msg);
+				throw new Error(msg);
+			}
+			stagedAccessories.push(staged);
 		}
 
 		// 2. Snapshot state for transactional rollback
 		const snapshot = this.mapperRegistry.getSnapshot();
 		const originalAccessories = [...this.bridge.bridgedAccessories];
+		const originalAccessoriesMap = new Map(originalAccessories.map((a) => [a.UUID, a]));
 
 		try {
 			// 3. Remove accessories no longer mapped
@@ -309,8 +317,13 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			}
 
 			// 4. Add newly built accessories
-			for (const acc of stagedAccessories) {
-				this.bridge.addBridgedAccessory(acc);
+			for (const staged of stagedAccessories) {
+				this.bridge.addBridgedAccessory(staged.accessory);
+			}
+
+			// 5. Commit staged registry data only after bridge mutations succeed
+			for (const staged of stagedAccessories) {
+				this.mapperRegistry.commitStaged(staged);
 			}
 
 			if (this.activeConfig) {
@@ -320,14 +333,50 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			this.logger.log(`Successfully reconciled accessories. Active count: ${this.bridge.bridgedAccessories.length}`);
 		} catch (mutationError) {
 			this.logger.error(`Failed to mutate bridged accessories, rolling back: ${(mutationError as Error).message}`);
-			const currentAfterError = [...this.bridge.bridgedAccessories];
-			for (const acc of currentAfterError) {
-				this.bridge.removeBridgedAccessory(acc);
+			let rollbackSuccess = true;
+
+			try {
+				// Remove any accessory currently on the bridge that was not in the original snapshot
+				const currentOnBridge = [...this.bridge.bridgedAccessories];
+				for (const acc of currentOnBridge) {
+					if (!originalAccessoriesMap.has(acc.UUID)) {
+						try {
+							this.bridge.removeBridgedAccessory(acc);
+						} catch (e) {
+							rollbackSuccess = false;
+							this.logger.warn(`Failed to remove accessory during rollback: ${(e as Error).message}`);
+						}
+					}
+				}
+
+				// Re-add any original accessory missing from the bridge
+				const remainingOnBridgeMap = new Map(this.bridge.bridgedAccessories.map((a) => [a.UUID, a]));
+				for (const acc of originalAccessories) {
+					if (!remainingOnBridgeMap.has(acc.UUID)) {
+						try {
+							this.bridge.addBridgedAccessory(acc);
+						} catch (e) {
+							rollbackSuccess = false;
+							this.logger.warn(`Failed to restore original accessory during rollback: ${(e as Error).message}`);
+						}
+					}
+				}
+
+				if (this.bridge.bridgedAccessories.length !== originalAccessories.length) {
+					rollbackSuccess = false;
+				}
+			} catch (rollbackError) {
+				rollbackSuccess = false;
+				this.logger.error(`Critical error during bridge rollback: ${(rollbackError as Error).message}`);
+			} finally {
+				this.mapperRegistry.restoreSnapshot(snapshot);
 			}
-			for (const acc of originalAccessories) {
-				this.bridge.addBridgedAccessory(acc);
+
+			if (!rollbackSuccess) {
+				this.state = 'error';
+				this.logger.error('HomeKit Gateway entered error state because bridge rollback could not be fully completed.');
 			}
-			this.mapperRegistry.restoreSnapshot(snapshot);
+
 			throw mutationError;
 		}
 	}
@@ -346,9 +395,10 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 					continue;
 				}
 
-				const accessory = this.mapperRegistry.buildAccessory(device, this.commandDispatcher);
-				if (accessory) {
-					this.bridge.addBridgedAccessory(accessory);
+				const staged = this.mapperRegistry.buildAccessory(device, this.commandDispatcher);
+				if (staged) {
+					this.bridge.addBridgedAccessory(staged.accessory);
+					this.mapperRegistry.commitStaged(staged);
 					addedCount++;
 				}
 			} catch (error) {

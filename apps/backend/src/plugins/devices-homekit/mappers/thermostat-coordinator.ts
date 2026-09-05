@@ -24,6 +24,7 @@ export interface ThermostatCoordinatorConfig {
 
 export class ThermostatCoordinator {
 	private readonly values = new Map<string, unknown>();
+	private readonly revisions = new Map<string, number>();
 
 	private readonly currentHeatingCoolingChar: Characteristic;
 	private readonly targetHeatingCoolingChar: Characteristic;
@@ -31,6 +32,7 @@ export class ThermostatCoordinator {
 	private readonly targetTempChar: Characteristic;
 	private heatingThresholdChar?: Characteristic;
 	private coolingThresholdChar?: Characteristic;
+	private lockPhysicalControlsChar?: Characteristic;
 
 	constructor(private readonly config: ThermostatCoordinatorConfig) {
 		const { service } = config;
@@ -55,6 +57,7 @@ export class ThermostatCoordinator {
 					? (prop.value as { value?: unknown }).value
 					: prop.value;
 			this.values.set(prop.id, unwrapped);
+			this.revisions.set(prop.id, 0);
 		};
 
 		registerProp(this.config.ambientTempProperty);
@@ -144,11 +147,25 @@ export class ThermostatCoordinator {
 				}
 
 				if (commands.length > 0) {
-					await this.config.context.commandDispatcher.dispatchBatch(commands);
+					const targetRevs = new Map<string, number>();
 					for (const cmd of commands) {
-						this.values.set(cmd.propertyId, cmd.value);
+						const nextRev = (this.revisions.get(cmd.propertyId) ?? 0) + 1;
+						this.revisions.set(cmd.propertyId, nextRev);
+						targetRevs.set(cmd.propertyId, nextRev);
+					}
+					await this.config.context.commandDispatcher.dispatchBatch(commands);
+					let hadConflict = false;
+					for (const cmd of commands) {
+						if (this.revisions.get(cmd.propertyId) === targetRevs.get(cmd.propertyId)) {
+							this.values.set(cmd.propertyId, cmd.value);
+						} else {
+							hadConflict = true;
+						}
 					}
 					this.refreshCharacteristics();
+					if (hadConflict) {
+						process.nextTick(() => this.refreshCharacteristics());
+					}
 				}
 			});
 		}
@@ -198,11 +215,25 @@ export class ThermostatCoordinator {
 				}
 
 				if (commands.length > 0) {
-					await this.config.context.commandDispatcher.dispatchBatch(commands);
+					const targetRevs = new Map<string, number>();
 					for (const cmd of commands) {
-						this.values.set(cmd.propertyId, cmd.value);
+						const nextRev = (this.revisions.get(cmd.propertyId) ?? 0) + 1;
+						this.revisions.set(cmd.propertyId, nextRev);
+						targetRevs.set(cmd.propertyId, nextRev);
+					}
+					await this.config.context.commandDispatcher.dispatchBatch(commands);
+					let hadConflict = false;
+					for (const cmd of commands) {
+						if (this.revisions.get(cmd.propertyId) === targetRevs.get(cmd.propertyId)) {
+							this.values.set(cmd.propertyId, cmd.value);
+						} else {
+							hadConflict = true;
+						}
 					}
 					this.refreshCharacteristics();
+					if (hadConflict) {
+						process.nextTick(() => this.refreshCharacteristics());
+					}
 				}
 			});
 		}
@@ -224,9 +255,17 @@ export class ThermostatCoordinator {
 			) {
 				this.heatingThresholdChar.onSet(async (value: CharacteristicValue) => {
 					const target = Number(value);
+					const targetRev = (this.revisions.get(heaterTempProp.id) ?? 0) + 1;
+					this.revisions.set(heaterTempProp.id, targetRev);
 					await this.config.context.commandDispatcher.dispatch(heaterTempProp.id, target);
-					this.values.set(heaterTempProp.id, target);
+					const hasConflict = this.revisions.get(heaterTempProp.id) !== targetRev;
+					if (!hasConflict) {
+						this.values.set(heaterTempProp.id, target);
+					}
 					this.refreshCharacteristics();
+					if (hasConflict) {
+						process.nextTick(() => this.refreshCharacteristics());
+					}
 				});
 			}
 		}
@@ -247,9 +286,17 @@ export class ThermostatCoordinator {
 			) {
 				this.coolingThresholdChar.onSet(async (value: CharacteristicValue) => {
 					const target = Number(value);
+					const targetRev = (this.revisions.get(coolerTempProp.id) ?? 0) + 1;
+					this.revisions.set(coolerTempProp.id, targetRev);
 					await this.config.context.commandDispatcher.dispatch(coolerTempProp.id, target);
-					this.values.set(coolerTempProp.id, target);
+					const hasConflict = this.revisions.get(coolerTempProp.id) !== targetRev;
+					if (!hasConflict) {
+						this.values.set(coolerTempProp.id, target);
+					}
 					this.refreshCharacteristics();
+					if (hasConflict) {
+						process.nextTick(() => this.refreshCharacteristics());
+					}
 				});
 			}
 		}
@@ -257,19 +304,23 @@ export class ThermostatCoordinator {
 		// Child Lock
 		if (this.config.lockedProperty) {
 			const lockProp = this.config.lockedProperty;
-			const lockChar = this.config.service.getCharacteristic(Characteristic.LockPhysicalControls);
-			lockChar.onGet(() => {
-				const val = this.values.get(lockProp.id);
-				return val === true || val === 'true' || val === 1 || val === 'locked'
-					? Characteristic.LockPhysicalControls.CONTROL_LOCK_ENABLED
-					: Characteristic.LockPhysicalControls.CONTROL_LOCK_DISABLED;
-			});
+			this.lockPhysicalControlsChar = this.config.service.getCharacteristic(Characteristic.LockPhysicalControls);
+			this.lockPhysicalControlsChar.onGet(() => this.getLockPhysicalControls());
 
-			if (this.isPropertyWritable(lockProp) && lockChar.props.perms.includes(Perms.PAIRED_WRITE)) {
-				lockChar.onSet(async (value: CharacteristicValue) => {
+			if (this.isPropertyWritable(lockProp) && this.lockPhysicalControlsChar.props.perms.includes(Perms.PAIRED_WRITE)) {
+				this.lockPhysicalControlsChar.onSet(async (value: CharacteristicValue) => {
 					const isLocked = value === Characteristic.LockPhysicalControls.CONTROL_LOCK_ENABLED;
+					const targetRev = (this.revisions.get(lockProp.id) ?? 0) + 1;
+					this.revisions.set(lockProp.id, targetRev);
 					await this.config.context.commandDispatcher.dispatch(lockProp.id, isLocked);
-					this.values.set(lockProp.id, isLocked);
+					const hasConflict = this.revisions.get(lockProp.id) !== targetRev;
+					if (!hasConflict) {
+						this.values.set(lockProp.id, isLocked);
+					}
+					this.refreshCharacteristics();
+					if (hasConflict) {
+						process.nextTick(() => this.refreshCharacteristics());
+					}
 				});
 			}
 		}
@@ -292,6 +343,7 @@ export class ThermostatCoordinator {
 				deviceId: this.config.device.id,
 				propertyId: prop.id,
 				onPropertyChanged: (_property, rawValue) => {
+					this.revisions.set(prop.id, (this.revisions.get(prop.id) ?? 0) + 1);
 					this.values.set(prop.id, rawValue);
 					this.refreshCharacteristics();
 				},
@@ -324,6 +376,20 @@ export class ThermostatCoordinator {
 				}
 			}
 		}
+
+		if (this.lockPhysicalControlsChar && this.config.lockedProperty) {
+			this.lockPhysicalControlsChar.updateValue(this.getLockPhysicalControls());
+		}
+	}
+
+	private getLockPhysicalControls(): number {
+		if (!this.config.lockedProperty) {
+			return Characteristic.LockPhysicalControls.CONTROL_LOCK_DISABLED;
+		}
+		const val = this.values.get(this.config.lockedProperty.id);
+		return val === true || val === 'true' || val === 1 || val === 'locked'
+			? Characteristic.LockPhysicalControls.CONTROL_LOCK_ENABLED
+			: Characteristic.LockPhysicalControls.CONTROL_LOCK_DISABLED;
 	}
 
 	private getAmbientTemperature(): number {

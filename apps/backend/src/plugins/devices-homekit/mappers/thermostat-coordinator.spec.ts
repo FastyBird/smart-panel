@@ -439,7 +439,7 @@ describe('ThermostatCoordinator', () => {
 		]);
 	});
 
-	it('should bind child lock controls when lockedProperty is present', () => {
+	it('should bind child lock controls when lockedProperty is present', async () => {
 		const lockedProp = new ChannelPropertyEntity();
 		lockedProp.id = 'prop-climate-locked';
 		lockedProp.permissions = [PermissionType.READ_WRITE];
@@ -462,11 +462,56 @@ describe('ThermostatCoordinator', () => {
 		expect(lockChar.value).toBe(Characteristic.LockPhysicalControls.CONTROL_LOCK_DISABLED);
 
 		lockChar.setValue(Characteristic.LockPhysicalControls.CONTROL_LOCK_ENABLED);
+		await new Promise((resolve) => process.nextTick(resolve));
 		expect(commandDispatcher.dispatch).toHaveBeenCalledWith('prop-climate-locked', true);
+		expect(lockChar.value).toBe(Characteristic.LockPhysicalControls.CONTROL_LOCK_ENABLED);
 
 		for (const listener of registeredListeners) {
 			listener.onPropertyChanged(lockedProp, false);
 		}
 		expect(lockChar.value).toBe(Characteristic.LockPhysicalControls.CONTROL_LOCK_DISABLED);
+
+		for (const listener of registeredListeners) {
+			listener.onPropertyChanged(lockedProp, true);
+		}
+		expect(lockChar.value).toBe(Characteristic.LockPhysicalControls.CONTROL_LOCK_ENABLED);
+	});
+
+	it('should not overwrite fresher property state when in-flight command completes', async () => {
+		let resolveDispatch: () => void = () => undefined;
+		commandDispatcher.dispatchBatch.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveDispatch = resolve;
+				}),
+		);
+
+		new ThermostatCoordinator({
+			device,
+			service,
+			context,
+			ambientTempChannel: ambientChannel,
+			ambientTempProperty: ambientProp,
+			heaterChannel,
+			heaterOnProperty: heaterOnProp,
+			heaterTempProperty: heaterTempProp,
+		});
+
+		const targetTempChar = service.getCharacteristic(Characteristic.TargetTemperature);
+
+		// Client requests target temp 25.0
+		targetTempChar.setValue(25.0);
+
+		// While dispatchBatch is in-flight, an incoming event updates heaterTempProp to 26.0
+		for (const listener of registeredListeners) {
+			listener.onPropertyChanged(heaterTempProp, 26.0);
+		}
+
+		// Now the in-flight command finishes
+		resolveDispatch();
+		await new Promise((resolve) => process.nextTick(resolve));
+
+		// Value must remain 26.0 (from event), NOT overwritten by the older 25.0 command
+		expect(targetTempChar.value).toBe(26.0);
 	});
 });

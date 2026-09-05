@@ -16,6 +16,7 @@ interface MockHapBridge {
 	destroy: jest.Mock;
 	addBridgedAccessory: jest.Mock;
 	removeBridgedAccessory: jest.Mock;
+	bridgedAccessories: Accessory[];
 }
 
 jest.mock('@homebridge/hap-nodejs', () => {
@@ -99,11 +100,17 @@ describe('HomeKitBridgeService', () => {
 		mapperRegistry = {
 			clearAllBindings: jest.fn(),
 			clearDeviceBindings: jest.fn(),
+			commitStaged: jest.fn(),
 			buildAccessory: jest.fn().mockImplementation((dev: DeviceEntity) => {
 				const acc = new Accessory(dev.name, '550e8400-e29b-41d4-a716-44665544000' + dev.id.slice(-1));
 				const info = acc.getService(Service.AccessoryInformation) ?? acc.addService(Service.AccessoryInformation);
 				info.setCharacteristic(Characteristic.SerialNumber, dev.id);
-				return acc;
+				return {
+					accessory: acc,
+					deviceId: dev.id,
+					bindings: [],
+					listeners: [],
+				};
 			}),
 			getSnapshot: jest
 				.fn()
@@ -235,6 +242,74 @@ describe('HomeKitBridgeService', () => {
 
 		await expect(service.onConfigChanged()).rejects.toThrow('Mutation exploded');
 
+		expect(mapperRegistry.restoreSnapshot).toHaveBeenCalled();
+	});
+
+	it('should abort reconciliation before mutating bridge when an added device fails pre-building', async () => {
+		await service.start();
+
+		const bridge = getBridge();
+		const removeSpy = jest.spyOn(bridge, 'removeBridgedAccessory');
+		const addSpy = jest.spyOn(bridge, 'addBridgedAccessory');
+		addSpy.mockClear();
+
+		// dev-fail returns null from buildAccessory
+		mapperRegistry.buildAccessory.mockImplementationOnce(() => null);
+
+		const changedConfig = { ...baseConfig, mappedDeviceIds: ['dev-2'] };
+		configService.getPluginConfig = jest.fn().mockReturnValue(changedConfig);
+
+		await expect(service.onConfigChanged()).rejects.toThrow(
+			'Device dev-2 could not be mapped to any supported HomeKit accessory.',
+		);
+
+		// Neither removal of dev-1 nor addition should have happened
+		expect(removeSpy).not.toHaveBeenCalled();
+		expect(addSpy).not.toHaveBeenCalled();
+		expect(bridge.bridgedAccessories).toHaveLength(1);
+	});
+
+	it('should abort reconciliation before mutating bridge when an added device is missing in database', async () => {
+		await service.start();
+
+		const bridge = getBridge();
+		const removeSpy = jest.spyOn(bridge, 'removeBridgedAccessory');
+
+		devicesService.findOne.mockImplementationOnce(() => Promise.resolve(null));
+
+		const changedConfig = { ...baseConfig, mappedDeviceIds: ['dev-missing'] };
+		configService.getPluginConfig = jest.fn().mockReturnValue(changedConfig);
+
+		await expect(service.onConfigChanged()).rejects.toThrow(
+			'Device dev-missing not found in database during reconciliation.',
+		);
+
+		expect(removeSpy).not.toHaveBeenCalled();
+		expect(bridge.bridgedAccessories).toHaveLength(1);
+	});
+
+	it('should enter error state if bridge rollback cannot restore original state', async () => {
+		await service.start();
+
+		const bridge = getBridge();
+		// Simulate addBridgedAccessory mutating internal state before throwing
+		jest.spyOn(bridge, 'addBridgedAccessory').mockImplementationOnce((acc: Accessory) => {
+			bridge.bridgedAccessories.push(acc);
+			throw new Error('HAP addition failed');
+		});
+		// Also fail during rollback when removing extra accessory
+		jest.spyOn(bridge, 'removeBridgedAccessory').mockImplementationOnce(() => {
+			throw new Error('Rollback remove failed');
+		});
+
+		const changedConfig = { ...baseConfig, mappedDeviceIds: ['dev-1', 'dev-2'] };
+		configService.getPluginConfig = jest.fn().mockReturnValue(changedConfig);
+
+		await expect(service.onConfigChanged()).rejects.toThrow('HAP addition failed');
+
+		// Service state should be set to error
+		expect(service.getState()).toBe('error');
+		// Registry snapshot must still be restored
 		expect(mapperRegistry.restoreSnapshot).toHaveBeenCalled();
 	});
 });
