@@ -49,7 +49,9 @@
 				"placeholder": "031-45-154",
 				"description": "8-miestny PIN v formáte XXX-XX-XXX používaný na spárovanie s Apple Home",
 				"validation": {
-					"format": "PIN kód musí byť vo formáte XXX-XX-XXX"
+					"format": "PIN kód musí byť vo formáte XXX-XX-XXX",
+					"required": "PIN kód je povinný",
+					"forbidden": "Tento PIN kód nie je povolený systémom Apple HomeKit"
 				}
 			}
 		}

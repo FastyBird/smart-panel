@@ -49,7 +49,9 @@
 				"placeholder": "031-45-154",
 				"description": "8-cyfrowy kod PIN w formacie XXX-XX-XXX używany do parowania z Apple Home",
 				"validation": {
-					"format": "Kod PIN musi być w formacie XXX-XX-XXX"
+					"format": "Kod PIN musi być w formacie XXX-XX-XXX",
+					"required": "Kod PIN jest wymagany",
+					"forbidden": "Ten kod PIN nie jest dozwolony przez Apple HomeKit"
 				}
 			}
 		}

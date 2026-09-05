@@ -214,7 +214,7 @@
 				<div class="flex flex-col gap-1.5 w-full">
 					<el-input
 						v-model="model.pincode"
-						:placeholder="t('devicesHomeKitPlugin.fields.config.pinCode.placeholder')"
+						:placeholder="store.status?.pincode || t('devicesHomeKitPlugin.fields.config.pinCode.placeholder')"
 						name="pincode"
 						maxlength="10"
 						@input="onPinInput"
@@ -275,7 +275,7 @@ import { injectStoresManager, useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import type { IConfigPlugin } from '../../../modules/config/store/config-plugins.store.types';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
-import { DEVICES_HOMEKIT_PLUGIN_NAME } from '../devices-homekit.constants';
+import { DEVICES_HOMEKIT_PLUGIN_NAME, HOMEKIT_FORBIDDEN_PINS } from '../devices-homekit.constants';
 import type { IHomeKitConfigEditForm } from '../schemas/config.types';
 import { useHomeKitBridge } from '../store/homekit-bridge.store';
 
@@ -316,13 +316,42 @@ const { formEl, model, formChanged, submit, formResult, markSaved, reconcile } =
 });
 
 const rules = reactive<FormRules<IHomeKitConfigEditForm>>({
-	bridgeName: [{ required: true, message: t('devicesHomeKitPlugin.fields.config.name.validation.required'), trigger: 'blur' }],
+	bridgeName: [
+		{
+			required: true,
+			validator: (_rule, value: string | undefined, callback) => {
+				if (!value || value.trim().length === 0) {
+					callback(new Error(t('devicesHomeKitPlugin.fields.config.name.validation.required')));
+					return;
+				}
+				callback();
+			},
+			trigger: 'blur',
+		},
+	],
 	port: [{ required: true, message: t('devicesHomeKitPlugin.fields.config.port.validation.required'), trigger: 'blur' }],
 	pincode: [
 		{
-			required: true,
-			pattern: /^\d{3}-\d{2}-\d{3}$/,
-			message: t('devicesHomeKitPlugin.fields.config.pinCode.validation.format'),
+			validator: (_rule, value: string | undefined, callback) => {
+				const pin = value?.trim();
+				if (!pin) {
+					if (model.pincodeConfigured) {
+						callback();
+						return;
+					}
+					callback(new Error(t('devicesHomeKitPlugin.fields.config.pinCode.validation.required')));
+					return;
+				}
+				if (!/^\d{3}-\d{2}-\d{3}$/.test(pin)) {
+					callback(new Error(t('devicesHomeKitPlugin.fields.config.pinCode.validation.format')));
+					return;
+				}
+				if (HOMEKIT_FORBIDDEN_PINS.has(pin)) {
+					callback(new Error(t('devicesHomeKitPlugin.fields.config.pinCode.validation.forbidden')));
+					return;
+				}
+				callback();
+			},
 			trigger: 'blur',
 		},
 	],
@@ -370,21 +399,6 @@ const onPinInput = (val: string): void => {
 	model.pincode = formatted;
 };
 
-const FORBIDDEN_PINS = new Set([
-	'000-00-000',
-	'111-11-111',
-	'222-22-222',
-	'333-33-333',
-	'444-44-444',
-	'555-55-555',
-	'666-66-666',
-	'777-77-777',
-	'888-88-888',
-	'999-99-999',
-	'123-45-678',
-	'876-54-321',
-]);
-
 const MAX_VALID_RANDOM = Math.floor(0x100000000 / 100_000_000) * 100_000_000;
 
 const generateSecurePin = (): string => {
@@ -400,7 +414,7 @@ const generateSecurePin = (): string => {
 
 		const digits = (randomValue % 100_000_000).toString().padStart(8, '0');
 		pin = `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5, 8)}`;
-	} while (FORBIDDEN_PINS.has(pin));
+	} while (HOMEKIT_FORBIDDEN_PINS.has(pin));
 
 	return pin;
 };

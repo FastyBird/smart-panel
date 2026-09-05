@@ -4,6 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { flushPromises, mount } from '@vue/test-utils';
 
+import { ElForm, type FormRules } from 'element-plus';
+
+import { HOMEKIT_FORBIDDEN_PINS } from '../devices-homekit.constants';
+import { HomeKitConfigEditFormSchema } from '../schemas/config.schemas';
+import type { IHomeKitConfigEditForm } from '../schemas/config.types';
 import type { IHomeKitConfig } from '../store/config.store.types';
 
 import HomeKitConfigForm from './homekit-config-form.vue';
@@ -15,6 +20,7 @@ const model = reactive({
 	bridgeName: 'Smart Panel Bridge',
 	port: 51826,
 	pincode: '031-45-154',
+	pincodeConfigured: true,
 	username: 'CC:22:3D:E3:CE:30',
 	setupId: 'SP01',
 	mappedDeviceIds: [],
@@ -123,6 +129,17 @@ const mountForm = (options?: { formChanged?: boolean }) => {
 describe('HomeKitConfigForm', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		Object.assign(model, {
+			type: 'devices-homekit',
+			enabled: true,
+			bridgeName: 'Smart Panel Bridge',
+			port: 51826,
+			pincode: '031-45-154',
+			pincodeConfigured: true,
+			username: 'CC:22:3D:E3:CE:30',
+			setupId: 'SP01',
+			mappedDeviceIds: [],
+		});
 	});
 
 	it('renders all configuration fields', () => {
@@ -391,5 +408,120 @@ describe('HomeKitConfigForm', () => {
 		expect(model.pincode).toBe('123-45-679');
 
 		getRandomValuesSpy.mockRestore();
+	});
+
+	describe('Form validation rules and schema transforms', () => {
+		type Validator = (rule: unknown, value: unknown, callback: (error?: Error) => void) => void;
+
+		const getValidator = (wrapper: ReturnType<typeof mountForm>['wrapper'], field: 'bridgeName' | 'pincode'): Validator => {
+			const elForm = wrapper.findComponent(ElForm);
+			const rules = elForm.props('rules') as FormRules<IHomeKitConfigEditForm>;
+			const rule = rules[field];
+			const first = Array.isArray(rule) ? rule[0] : rule;
+
+			if (!first || typeof first.validator !== 'function') {
+				throw new Error(`${field} rule validator not found`);
+			}
+
+			return first.validator as Validator;
+		};
+
+		const runValidator = (validator: Validator, value: unknown): Promise<void> =>
+			new Promise<void>((resolve, reject) => {
+				validator({}, value, (error) => (error ? reject(error instanceof Error ? error : new Error(String(error))) : resolve()));
+			});
+
+		it('rejects empty or whitespace-only bridge names in form rule validator', async () => {
+			const { wrapper } = mountForm();
+			const validator = getValidator(wrapper, 'bridgeName');
+
+			await expect(runValidator(validator, '')).rejects.toThrow('devicesHomeKitPlugin.fields.config.name.validation.required');
+			await expect(runValidator(validator, '   ')).rejects.toThrow('devicesHomeKitPlugin.fields.config.name.validation.required');
+			await expect(runValidator(validator, undefined)).rejects.toThrow('devicesHomeKitPlugin.fields.config.name.validation.required');
+			await expect(runValidator(validator, 'Smart Panel Bridge')).resolves.toBeUndefined();
+		});
+
+		it('rejects all forbidden PINs in form rule validator', async () => {
+			const { wrapper } = mountForm();
+			const validator = getValidator(wrapper, 'pincode');
+
+			for (const forbiddenPin of HOMEKIT_FORBIDDEN_PINS) {
+				await expect(runValidator(validator, forbiddenPin)).rejects.toThrow(
+					'devicesHomeKitPlugin.fields.config.pinCode.validation.forbidden'
+				);
+			}
+		});
+
+		it('rejects invalid PIN formats in form rule validator', async () => {
+			const { wrapper } = mountForm();
+			const validator = getValidator(wrapper, 'pincode');
+
+			for (const badPin of ['12345678', 'abc-de-fgh', '123-4567']) {
+				await expect(runValidator(validator, badPin)).rejects.toThrow(
+					'devicesHomeKitPlugin.fields.config.pinCode.validation.format'
+				);
+			}
+		});
+
+		it('allows blank PIN in form rule validator when PIN is already configured', async () => {
+			model.pincodeConfigured = true;
+			const { wrapper } = mountForm();
+			const validator = getValidator(wrapper, 'pincode');
+
+			await expect(runValidator(validator, '')).resolves.toBeUndefined();
+			await expect(runValidator(validator, '   ')).resolves.toBeUndefined();
+			await expect(runValidator(validator, undefined)).resolves.toBeUndefined();
+		});
+
+		it('rejects blank PIN in form rule validator when PIN is not configured', async () => {
+			model.pincodeConfigured = false;
+			const { wrapper } = mountForm();
+			const validator = getValidator(wrapper, 'pincode');
+
+			await expect(runValidator(validator, '')).rejects.toThrow(
+				'devicesHomeKitPlugin.fields.config.pinCode.validation.required'
+			);
+			await expect(runValidator(validator, '   ')).rejects.toThrow(
+				'devicesHomeKitPlugin.fields.config.pinCode.validation.required'
+			);
+			await expect(runValidator(validator, undefined)).rejects.toThrow(
+				'devicesHomeKitPlugin.fields.config.pinCode.validation.required'
+			);
+		});
+
+		it('transforms blank PIN to undefined in HomeKitConfigEditFormSchema when pincodeConfigured is true', () => {
+			const parsed = HomeKitConfigEditFormSchema.parse({
+				type: 'devices-homekit',
+				enabled: true,
+				bridgeName: 'Smart Panel Bridge',
+				port: 51826,
+				pincode: '',
+				pincodeConfigured: true,
+				username: 'CC:22:3D:E3:CE:30',
+				setupId: 'SP01',
+				mappedDeviceIds: [],
+			});
+
+			expect(parsed.pincode).toBeUndefined();
+		});
+
+		it('rejects blank PIN in HomeKitConfigEditFormSchema when pincodeConfigured is false', () => {
+			const result = HomeKitConfigEditFormSchema.safeParse({
+				type: 'devices-homekit',
+				enabled: true,
+				bridgeName: 'Smart Panel Bridge',
+				port: 51826,
+				pincode: '',
+				pincodeConfigured: false,
+				username: 'CC:22:3D:E3:CE:30',
+				setupId: 'SP01',
+				mappedDeviceIds: [],
+			});
+
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues.some((issue) => issue.path.includes('pincode') && issue.message === 'PIN code is required')).toBe(true);
+			}
+		});
 	});
 });

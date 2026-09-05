@@ -49,7 +49,9 @@
 				"placeholder": "031-45-154",
 				"description": "8-digit PIN in XXX-XX-XXX format used to pair with Apple Home",
 				"validation": {
-					"format": "PIN code must be in XXX-XX-XXX format"
+					"format": "PIN code must be in XXX-XX-XXX format",
+					"required": "PIN code is required",
+					"forbidden": "PIN code is not allowed by Apple HomeKit"
 				}
 			}
 		}
