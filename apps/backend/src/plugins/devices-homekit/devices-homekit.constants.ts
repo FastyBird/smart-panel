@@ -23,11 +23,29 @@ export const HOMEKIT_MAX_BRIDGED_ACCESSORIES = 149;
 
 export const HOMEKIT_PAIRING_STORAGE_DIR = 'homekit';
 
+export const HOMEKIT_FORBIDDEN_PINS = new Set([
+	'000-00-000',
+	'111-11-111',
+	'222-22-222',
+	'333-33-333',
+	'444-44-444',
+	'555-55-555',
+	'666-66-666',
+	'777-77-777',
+	'888-88-888',
+	'999-99-999',
+	'123-45-678',
+	'876-54-321',
+]);
+
 export function generateRandomHomeKitPin(): string {
-	const part1 = randomInt(100, 999).toString();
-	const part2 = randomInt(10, 99).toString();
-	const part3 = randomInt(100, 999).toString();
-	return `${part1}-${part2}-${part3}`;
+	let pin: string;
+	do {
+		const num = randomInt(0, 100_000_000).toString().padStart(8, '0');
+		pin = `${num.slice(0, 3)}-${num.slice(3, 5)}-${num.slice(5, 8)}`;
+	} while (HOMEKIT_FORBIDDEN_PINS.has(pin));
+
+	return pin;
 }
 
 export function generateRandomMacAddress(): string {

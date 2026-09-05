@@ -1,5 +1,6 @@
 import { ExtensionActionRegistryService } from '../../../modules/extensions/services/extension-action-registry.service';
 import { ActionCategory, IExtensionAction } from '../../../modules/extensions/services/extension-action.interface';
+import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { DEVICES_HOMEKIT_PLUGIN_NAME } from '../devices-homekit.constants';
 
 import { HomeKitActionsService } from './homekit-actions.service';
@@ -9,20 +10,25 @@ type RegisteredAction = IExtensionAction & { execute: NonNullable<IExtensionActi
 
 describe('HomeKitActionsService', () => {
 	let actionRegistry: { register: jest.Mock };
-	let bridgeService: { stop: jest.Mock; start: jest.Mock; resetPairing: jest.Mock };
+	let bridgeService: { owner: { kind: string; type: string }; serviceId: string; resetPairing: jest.Mock };
+	let managedServiceManager: { restartService: jest.Mock };
 	let service: HomeKitActionsService;
 
 	beforeEach(() => {
 		actionRegistry = { register: jest.fn() };
 		bridgeService = {
-			stop: jest.fn().mockResolvedValue(undefined),
-			start: jest.fn().mockResolvedValue(undefined),
+			owner: { kind: 'plugin', type: DEVICES_HOMEKIT_PLUGIN_NAME },
+			serviceId: 'homekit-gateway',
 			resetPairing: jest.fn().mockResolvedValue(undefined),
+		};
+		managedServiceManager = {
+			restartService: jest.fn().mockResolvedValue(true),
 		};
 
 		service = new HomeKitActionsService(
 			actionRegistry as unknown as ExtensionActionRegistryService,
 			bridgeService as unknown as HomeKitBridgeService,
+			managedServiceManager as unknown as ManagedServiceManagerService,
 		);
 	});
 
@@ -45,20 +51,40 @@ describe('HomeKitActionsService', () => {
 	});
 
 	describe('restart-bridge action', () => {
-		it('stops and starts the bridge successfully', async () => {
+		it('restarts the bridge through managed service manager successfully', async () => {
 			service.onModuleInit();
 			const [, restartAction] = actionRegistry.register.mock.calls[0] as [string, RegisteredAction];
 
 			const result = await restartAction.execute({});
 
-			expect(bridgeService.stop).toHaveBeenCalledTimes(1);
-			expect(bridgeService.start).toHaveBeenCalledTimes(1);
+			expect(managedServiceManager.restartService).toHaveBeenCalledWith(
+				'plugin',
+				DEVICES_HOMEKIT_PLUGIN_NAME,
+				'homekit-gateway',
+			);
 			expect(result.success).toBe(true);
 			expect(result.message).toContain('restarted successfully');
 		});
 
-		it('handles error when restarting fails', async () => {
-			bridgeService.stop.mockRejectedValue(new Error('HAP unpublish error'));
+		it('returns failure when managed service manager restart returns false', async () => {
+			managedServiceManager.restartService.mockResolvedValue(false);
+
+			service.onModuleInit();
+			const [, restartAction] = actionRegistry.register.mock.calls[0] as [string, RegisteredAction];
+
+			const result = await restartAction.execute({});
+
+			expect(managedServiceManager.restartService).toHaveBeenCalledWith(
+				'plugin',
+				DEVICES_HOMEKIT_PLUGIN_NAME,
+				'homekit-gateway',
+			);
+			expect(result.success).toBe(false);
+			expect(result.message).toContain('Failed to restart bridge');
+		});
+
+		it('handles error when managed service manager throws', async () => {
+			managedServiceManager.restartService.mockRejectedValue(new Error('Managed service error'));
 
 			service.onModuleInit();
 			const [, restartAction] = actionRegistry.register.mock.calls[0] as [string, RegisteredAction];
@@ -66,7 +92,7 @@ describe('HomeKitActionsService', () => {
 			const result = await restartAction.execute({});
 
 			expect(result.success).toBe(false);
-			expect(result.message).toContain('HAP unpublish error');
+			expect(result.message).toContain('Managed service error');
 		});
 	});
 

@@ -7,6 +7,7 @@ import {
 	IActionResult,
 	IExtensionAction,
 } from '../../../modules/extensions/services/extension-action.interface';
+import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { DEVICES_HOMEKIT_PLUGIN_NAME } from '../devices-homekit.constants';
 
 import { HomeKitBridgeService } from './homekit-bridge.service';
@@ -21,6 +22,7 @@ export class HomeKitActionsService implements OnModuleInit {
 	constructor(
 		private readonly actionRegistry: ExtensionActionRegistryService,
 		private readonly bridgeService: HomeKitBridgeService,
+		private readonly managedServiceManager: ManagedServiceManagerService,
 	) {}
 
 	onModuleInit(): void {
@@ -38,8 +40,20 @@ export class HomeKitActionsService implements OnModuleInit {
 			mode: 'immediate',
 			execute: async (): Promise<IActionResult> => {
 				try {
-					await this.bridgeService.stop();
-					await this.bridgeService.start();
+					const restarted = await this.managedServiceManager.restartService(
+						this.bridgeService.owner.kind,
+						this.bridgeService.owner.type,
+						this.bridgeService.serviceId,
+					);
+
+					if (!restarted) {
+						this.logger.warn('Failed to restart Apple HomeKit Bridge: service manager returned false');
+
+						return {
+							success: false,
+							message: 'Failed to restart bridge. Ensure the plugin is enabled and bridge service is running.',
+						};
+					}
 
 					return { success: true, message: 'Apple HomeKit Bridge restarted successfully.' };
 				} catch (error) {
