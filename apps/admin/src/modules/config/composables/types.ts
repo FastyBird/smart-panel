@@ -43,6 +43,7 @@ export interface IUseConfigPluginEditForm<TForm extends IConfigPluginEditForm = 
 	clear: () => void;
 	formResult: Ref<FormResultType>;
 	markSaved: () => void;
+	reconcile: (saved: IConfigPlugin) => void;
 }
 
 export interface IUsePlugin {

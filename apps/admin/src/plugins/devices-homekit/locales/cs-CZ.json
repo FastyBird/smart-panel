@@ -1,0 +1,117 @@
+{
+	"headings": {
+		"aboutSettings": "Apple HomeKit Most",
+		"bridgeStatus": "Stav běhu mostu",
+		"resetPairing": "Resetovat párování Apple Home"
+	},
+	"texts": {
+		"aboutSettings": "Přemostěte zařízení Smart Panelu do Apple Home prostřednictvím lokálního protokolu HomeKit Accessory Protocol (HAP). Pomocí průvodce vyberte, která zařízení mají být přemostěna.",
+		"outOfSyncTitle": "Konfigurace není synchronizována",
+		"outOfSyncDescription": "Zobrazenou konfiguraci se nepodařilo synchronizovat s backendem. Změny nelze uložit, dokud nebude konfigurace znovu načtena."
+	},
+	"status": {
+		"running": "Spuštěno",
+		"stopped": "Zastaveno",
+		"notPaired": "Nespárováno",
+		"pairedWithCount": "Spárováno ({count} klientů)",
+		"exposedCount": "{count} zařízení aktuálně přemostěno"
+	},
+	"buttons": {
+		"configureDevices": "Nastavit zařízení",
+		"showPairing": "Apple Home QR Kód",
+		"resetPairing": "Resetovat párování",
+		"retryRefresh": "Zkusit synchronizovat znovu",
+		"generatePin": "Vygenerovat náhodný PIN",
+		"refreshStatus": "Obnovit"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"name": {
+				"title": "Zobrazovaný název mostu",
+				"placeholder": "Smart Panel Bridge",
+				"description": "Název zobrazený pro most v aplikaci Apple Domácnost",
+				"validation": {
+					"required": "Název mostu je povinný"
+				}
+			},
+			"port": {
+				"title": "TCP Port",
+				"description": "Místní port pro HAP server (výchozí: 51826)",
+				"validation": {
+					"required": "Port je povinný"
+				}
+			},
+			"pinCode": {
+				"title": "Párovací PIN kód",
+				"placeholder": "031-45-154",
+				"description": "8místný PIN ve formátu XXX-XX-XXX pro spárování s Apple Domácností",
+				"validation": {
+					"format": "PIN kód musí mít formát XXX-XX-XXX",
+					"required": "PIN kód je povinný",
+					"forbidden": "Tento PIN kód není povolen systémem Apple HomeKit"
+				}
+			}
+		}
+	},
+	"wizard": {
+		"title": "Nastavení Apple HomeKit Mostu",
+		"steps": {
+			"devices": "Výběr zařízení",
+			"pairing": "Spárování s Apple Home"
+		},
+		"pairingDescription": "Naskenujte QR kód níže pomocí aplikace Apple Domácnost na svém iPhonu nebo iPadu pro spárování tohoto mostu.",
+		"devicesDescription": "Vyberte zařízení Smart Panelu, která mají být přemostěna do Apple Domácnosti. V aplikaci se zobrazí pouze kompatibilní zařízení s namapovanými službami.",
+		"searchPlaceholder": "Hledat zařízení podle názvu nebo místnosti...",
+		"filterDevices": "Zařízení",
+		"filterAll": "Všechna zařízení",
+		"filterCompatibleOnly": "Pouze kompatibilní",
+		"compatible": "Kompatibilní",
+		"noDevices": "Nenalezena žádná zařízení",
+		"incompatible": "Nekompatibilní",
+		"bridgeLimitWarning": "Apple Home doporučuje maximálně 150 příslušenství na jeden most. Překročení limitu může způsobit nestabilitu.",
+		"selectedCount": "Vybráno {count} z {total} kompatibilních zařízení",
+		"scanWithCamera": "Naskenujte pomocí aplikace Domácnost nebo Fotoaparát na iPhone/iPadu",
+		"setupCode": "Nastavovací PIN kód",
+		"bridgeStatus": "Stav párování",
+		"pairedWithCount": "Počet spárovaných ovladačů: {count}",
+		"waitingForPairing": "Čekání na spárování...",
+		"instruction1": "Otevřete aplikaci Domácnost na zařízení iOS nebo macOS.",
+		"instruction2": "Klepněte na \"+\" a zvolte \"Přidat příslušenství\".",
+		"instruction3": "Naskenujte QR kód nebo zadejte 8místný PIN kód ručně.",
+		"columns": {
+			"name": "Zařízení",
+			"category": "Kategorie",
+			"homeKitService": "HomeKit Služba"
+		},
+		"buttons": {
+			"saveMappings": "Uložit",
+			"saveAndPair": "Uložit a spárovat",
+			"backToDevices": "Zpět",
+			"resetPairing": "Resetovat párování",
+			"done": "Hotovo",
+			"cancel": "Zrušit"
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Nastavení HomeKit Mostu bylo aktualizováno.",
+			"notEdited": "Nepodařilo se aktualizovat nastavení HomeKit Mostu."
+		},
+		"mappingsSaved": "Mapování zařízení bylo úspěšně uloženo.",
+		"saveMappingsFailed": "Nepodařilo se uložit mapování zařízení.",
+		"candidatesFetchFailed": "Nepodařilo se načíst kandidátská zařízení. Zkuste to prosím znovu.",
+		"statusFetchFailed": "Nepodařilo se načíst stav mostu.",
+		"pinCopied": "Párovací PIN kód byl zkopírován do schránky.",
+		"copyFailed": "Kopírování do schránky se nezdařilo.",
+		"confirmResetPairing": "Opravdu chcete resetovat párování Apple Home? Stávající připojení budou odpojena a most bude nutné znovu spárovat.",
+		"pairingResetSuccess": "Párovací údaje byly resetovány. Nyní můžete most znovu spárovat.",
+		"pairingResetFailed": "Nepodařilo se resetovat párovací údaje.",
+		"saveBeforeAction": "Před pokračováním prosím uložte nebo zrušte změny nastavení.",
+		"refreshFailed": "Nepodařilo se synchronizovat konfiguraci s backendem.",
+		"refreshSuccess": "Konfigurace byla úspěšně synchronizována.",
+		"outOfSyncBlock": "Konfigurace není synchronizována. Před uložením ji znovu načtěte."
+	}
+}

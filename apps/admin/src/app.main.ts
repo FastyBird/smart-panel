@@ -75,6 +75,7 @@ import { BuddyWhatsappPlugin } from './plugins/buddy-whatsapp';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
+import { DevicesHomeKitPlugin } from './plugins/devices-homekit';
 import { DevicesHomeyPlugin } from './plugins/devices-homey';
 import { DevicesReTerminalPlugin } from './plugins/devices-reterminal';
 import { DevicesShellyNgPlugin } from './plugins/devices-shelly-ng';
@@ -221,6 +222,7 @@ const pluginOptions: IModuleOptions = {
 
 app.use(DevicesThirdPartyPlugin, pluginOptions);
 app.use(DevicesHomeAssistantPlugin, pluginOptions);
+app.use(DevicesHomeKitPlugin, pluginOptions);
 app.use(DevicesHomeyPlugin, pluginOptions);
 app.use(DevicesReTerminalPlugin, pluginOptions);
 app.use(DevicesShellyNgPlugin, pluginOptions);
