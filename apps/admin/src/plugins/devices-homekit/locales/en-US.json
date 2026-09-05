@@ -17,7 +17,7 @@
 		"exposedCount": "{count} devices currently bridged"
 	},
 	"buttons": {
-		"configureDevices": "Configure Bridged Devices",
+		"configureDevices": "Configure Devices",
 		"showPairing": "Apple Home QR Code",
 		"resetPairing": "Reset Pairing",
 		"retryRefresh": "Retry Synchronization",

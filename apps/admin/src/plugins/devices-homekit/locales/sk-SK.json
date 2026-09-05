@@ -17,7 +17,7 @@
 		"exposedCount": "{count} zariadení aktuálne premostených"
 	},
 	"buttons": {
-		"configureDevices": "Nastaviť premostené zariadenia",
+		"configureDevices": "Nastaviť zariadenia",
 		"showPairing": "Apple Home QR kód",
 		"resetPairing": "Resetovať párovanie",
 		"retryRefresh": "Skúsiť synchronizovať znova",

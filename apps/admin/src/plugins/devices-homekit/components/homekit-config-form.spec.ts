@@ -155,7 +155,10 @@ describe('HomeKitConfigForm', () => {
 		await configBtn?.trigger('click');
 		expect(flashMessageMock.warning).toHaveBeenCalledWith('devicesHomeKitPlugin.messages.saveBeforeAction');
 
-		const resetBtn = buttons.find((b) => b.text().includes('devicesHomeKitPlugin.buttons.resetPairing'));
+		const resetBtn = buttons.find(
+			(b) =>
+				b.attributes('aria-label') === 'devicesHomeKitPlugin.buttons.resetPairing' || b.text().includes('devicesHomeKitPlugin.buttons.resetPairing')
+		);
 		expect(resetBtn).toBeDefined();
 		await resetBtn?.trigger('click');
 		expect(flashMessageMock.warning).toHaveBeenCalledTimes(2);
@@ -203,7 +206,10 @@ describe('HomeKitConfigForm', () => {
 		const configBtn = buttons.find((b) => b.text().includes('devicesHomeKitPlugin.buttons.configureDevices'));
 		expect(configBtn?.props('disabled')).toBe(true);
 
-		const resetBtn = buttons.find((b) => b.text().includes('devicesHomeKitPlugin.buttons.resetPairing'));
+		const resetBtn = buttons.find(
+			(b) =>
+				b.attributes('aria-label') === 'devicesHomeKitPlugin.buttons.resetPairing' || b.text().includes('devicesHomeKitPlugin.buttons.resetPairing')
+		);
 		expect(resetBtn?.props('disabled')).toBe(true);
 
 		// Submitting form remotely is blocked
@@ -315,5 +321,21 @@ describe('HomeKitConfigForm', () => {
 		const digitEvent = new KeyboardEvent('keydown', { key: '5', cancelable: true, bubbles: true });
 		portNativeInput?.element.dispatchEvent(digitEvent);
 		expect(digitEvent.defaultPrevented).toBe(false);
+	});
+
+	it('renders status buttons in a single row with flex-nowrap and icon-only pairing button', async () => {
+		const { wrapper } = mountForm();
+		await flushPromises();
+
+		const card = wrapper.findComponent({ name: 'ElCard' });
+		const footer = card.find('.el-card__footer div');
+		expect(footer.classes()).toContain('flex-nowrap');
+
+		const buttons = card.findAllComponents({ name: 'ElButton' });
+		const qrBtn = buttons.find((b) => b.attributes('aria-label') === 'devicesHomeKitPlugin.buttons.showPairing');
+		expect(qrBtn).toBeDefined();
+
+		const portInput = wrapper.findComponent({ name: 'ElInputNumber' });
+		expect(portInput.classes()).toContain('port-input');
 	});
 });

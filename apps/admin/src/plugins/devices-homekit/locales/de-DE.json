@@ -17,7 +17,7 @@
 		"exposedCount": "{count} Geräte derzeit eingebunden"
 	},
 	"buttons": {
-		"configureDevices": "Eingebundene Geräte konfigurieren",
+		"configureDevices": "Geräte konfigurieren",
 		"showPairing": "Apple Home QR-Code",
 		"resetPairing": "Kopplung zurücksetzen",
 		"retryRefresh": "Synchronisierung wiederholen",

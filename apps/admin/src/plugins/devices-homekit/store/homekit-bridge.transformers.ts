@@ -1,7 +1,6 @@
 import type { ZodType } from 'zod';
 
 import { logger, snakeToCamel } from '../../../common';
-import type { DevicesHomeKitPluginBridgeStatusSchema, DevicesHomeKitPluginDeviceCandidateSchema } from '../../../openapi.constants';
 import { DevicesHomeKitValidationException } from '../devices-homekit.exceptions';
 
 import { HomeKitBridgeStatusSchema, HomeKitDeviceCandidateSchema } from './homekit-bridge.store.schemas';
@@ -18,11 +17,9 @@ const parse = <T>(value: unknown, schema: ZodType<T>, label: string): T => {
 	return result.data;
 };
 
-export const transformHomeKitBridgeStatus = (value: unknown): IHomeKitBridgeStatus =>
-	parse(value, HomeKitBridgeStatusSchema, 'bridge status');
+export const transformHomeKitBridgeStatus = (value: unknown): IHomeKitBridgeStatus => parse(value, HomeKitBridgeStatusSchema, 'bridge status');
 
 export const transformHomeKitDeviceCandidate = (value: unknown): IHomeKitDeviceCandidate =>
 	parse(value, HomeKitDeviceCandidateSchema, 'device candidate');
 
-export const transformHomeKitCandidates = (values: unknown[]): IHomeKitDeviceCandidate[] =>
-	values.map(transformHomeKitDeviceCandidate);
+export const transformHomeKitCandidates = (values: unknown[]): IHomeKitDeviceCandidate[] => values.map(transformHomeKitDeviceCandidate);

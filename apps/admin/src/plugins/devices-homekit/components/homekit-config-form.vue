@@ -128,7 +128,7 @@
 				</div>
 
 				<template #footer>
-					<div class="flex items-center justify-end gap-2 flex-wrap">
+					<div class="flex items-center justify-end gap-2 flex-nowrap">
 						<el-button
 							type="primary"
 							:disabled="isOutOfSync"
@@ -138,25 +138,30 @@
 							{{ t('devicesHomeKitPlugin.buttons.configureDevices') }}
 						</el-button>
 
-						<el-button
-							v-if="store.status?.running"
-							:disabled="isOutOfSync"
-							@click="openWizard('pairing')"
-						>
-							<el-icon class="mr-1"><icon icon="mdi:qrcode" /></el-icon>
-							{{ t('devicesHomeKitPlugin.buttons.showPairing') }}
-						</el-button>
+						<el-tooltip :content="t('devicesHomeKitPlugin.buttons.showPairing')">
+							<el-button
+								v-if="store.status?.running"
+								:disabled="isOutOfSync"
+								:aria-label="t('devicesHomeKitPlugin.buttons.showPairing')"
+								@click="openWizard('pairing')"
+							>
+								<el-icon><icon icon="mdi:qrcode" /></el-icon>
+							</el-button>
+						</el-tooltip>
 
-						<el-button
-							v-if="store.status?.paired"
-							type="danger"
-							plain
-							:disabled="isOutOfSync || store.resettingPairing"
-							:loading="store.resettingPairing"
-							@click="onResetPairing"
-						>
-							{{ t('devicesHomeKitPlugin.buttons.resetPairing') }}
-						</el-button>
+						<el-tooltip :content="t('devicesHomeKitPlugin.buttons.resetPairing')">
+							<el-button
+								v-if="store.status?.paired"
+								type="danger"
+								plain
+								:disabled="isOutOfSync || store.resettingPairing"
+								:loading="store.resettingPairing"
+								:aria-label="t('devicesHomeKitPlugin.buttons.resetPairing')"
+								@click="onResetPairing"
+							>
+								<el-icon><icon icon="mdi:link-variant-off" /></el-icon>
+							</el-button>
+						</el-tooltip>
 					</div>
 				</template>
 			</el-card>
@@ -188,7 +193,7 @@
 						:precision="0"
 						:controls="false"
 						name="port"
-						class="w-full!"
+						class="w-full! port-input [&_input]:text-left!"
 						@keydown="filterPortKeydown"
 					/>
 					<div class="text-xs text-gray-500">
@@ -514,3 +519,9 @@ onMounted(async () => {
 	}
 });
 </script>
+
+<style scoped>
+:deep(.port-input .el-input__inner) {
+	text-align: left;
+}
+</style>

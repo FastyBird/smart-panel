@@ -17,7 +17,7 @@
 		"exposedCount": "{count} urządzeń aktualnie zmostkowanych"
 	},
 	"buttons": {
-		"configureDevices": "Konfiguruj zmostkowane urządzenia",
+		"configureDevices": "Konfiguruj urządzenia",
 		"showPairing": "Kod QR Apple Home",
 		"resetPairing": "Zresetuj parowanie",
 		"retryRefresh": "Ponów synchronizację",

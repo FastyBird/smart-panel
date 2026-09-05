@@ -17,7 +17,7 @@
 		"exposedCount": "{count} dispositivos actualmente enlazados"
 	},
 	"buttons": {
-		"configureDevices": "Configurar dispositivos enlazados",
+		"configureDevices": "Configurar dispositivos",
 		"showPairing": "Apple Home QR Code",
 		"resetPairing": "Restablecer enlace",
 		"retryRefresh": "Reintentar sincronización",
