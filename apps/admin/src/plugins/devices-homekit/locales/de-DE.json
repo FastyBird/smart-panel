@@ -100,6 +100,7 @@
 		},
 		"mappingsSaved": "Gerätezuordnungen erfolgreich gespeichert.",
 		"saveMappingsFailed": "Gerätezuordnungen konnten nicht gespeichert werden.",
+		"candidatesFetchFailed": "Kandidatengeräte konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
 		"statusFetchFailed": "Bridge-Status konnte nicht aktualisiert werden.",
 		"pinCopied": "Kopplungs-PIN-Code in die Zwischenablage kopiert.",
 		"copyFailed": "Kopieren in die Zwischenablage fehlgeschlagen.",

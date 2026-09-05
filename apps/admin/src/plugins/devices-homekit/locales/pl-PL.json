@@ -100,6 +100,7 @@
 		},
 		"mappingsSaved": "Przypisania urządzeń zostały pomyślnie zapisane.",
 		"saveMappingsFailed": "Nie udało się zapisać przypisań urządzeń.",
+		"candidatesFetchFailed": "Nie udało się pobrać listy urządzeń. Spróbuj ponownie.",
 		"statusFetchFailed": "Nie udało się pobrać stanu mostka.",
 		"pinCopied": "Kod PIN parowania został skopiowany do schowka.",
 		"copyFailed": "Kopiowanie do schowka nie powiodło się.",

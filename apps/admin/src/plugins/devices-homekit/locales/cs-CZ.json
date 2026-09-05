@@ -100,6 +100,7 @@
 		},
 		"mappingsSaved": "Mapování zařízení bylo úspěšně uloženo.",
 		"saveMappingsFailed": "Nepodařilo se uložit mapování zařízení.",
+		"candidatesFetchFailed": "Nepodařilo se načíst kandidátská zařízení. Zkuste to prosím znovu.",
 		"statusFetchFailed": "Nepodařilo se načíst stav mostu.",
 		"pinCopied": "Párovací PIN kód byl zkopírován do schránky.",
 		"copyFailed": "Kopírování do schránky se nezdařilo.",

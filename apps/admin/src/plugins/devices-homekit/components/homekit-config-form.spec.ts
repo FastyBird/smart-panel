@@ -343,4 +343,53 @@ describe('HomeKitConfigForm', () => {
 		const portInput = wrapper.findComponent({ name: 'ElInputNumber' });
 		expect(portInput.classes()).toContain('port-input');
 	});
+
+	it('generates a secure PIN when generate button is clicked using crypto.getRandomValues', async () => {
+		const { wrapper } = mountForm();
+		await flushPromises();
+
+		const pinFormItem = wrapper.findAllComponents({ name: 'ElFormItem' }).find((item) => item.props('prop') === 'pincode');
+		const generateBtn = pinFormItem?.findComponent({ name: 'ElButton' });
+		expect(generateBtn?.exists()).toBe(true);
+
+		await generateBtn?.trigger('click');
+		await flushPromises();
+
+		expect(model.pincode).toMatch(/^\d{3}-\d{2}-\d{3}$/);
+	});
+
+	it('rejects values exceeding maxValid and forbidden PINs during rejection sampling', async () => {
+		const getRandomValuesSpy = vi.spyOn(crypto, 'getRandomValues');
+
+		// 1st call: out of range (>= 4_200_000_000) -> rejected by inner loop
+		// 2nd call: forbidden PIN 11111111 (111-11-111) -> rejected by outer loop
+		// 3rd call: valid PIN 12345679 -> accepted (123-45-679)
+		getRandomValuesSpy
+			.mockImplementationOnce((arr) => {
+				(arr as Uint32Array)[0] = 4_250_000_000;
+				return arr;
+			})
+			.mockImplementationOnce((arr) => {
+				(arr as Uint32Array)[0] = 11_111_111;
+				return arr;
+			})
+			.mockImplementationOnce((arr) => {
+				(arr as Uint32Array)[0] = 12_345_679;
+				return arr;
+			});
+
+		const { wrapper } = mountForm();
+		await flushPromises();
+
+		const pinFormItem = wrapper.findAllComponents({ name: 'ElFormItem' }).find((item) => item.props('prop') === 'pincode');
+		const generateBtn = pinFormItem?.findComponent({ name: 'ElButton' });
+
+		await generateBtn?.trigger('click');
+		await flushPromises();
+
+		expect(getRandomValuesSpy).toHaveBeenCalledTimes(3);
+		expect(model.pincode).toBe('123-45-679');
+
+		getRandomValuesSpy.mockRestore();
+	});
 });

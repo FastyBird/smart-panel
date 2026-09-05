@@ -370,11 +370,43 @@ const onPinInput = (val: string): void => {
 	model.pincode = formatted;
 };
 
+const FORBIDDEN_PINS = new Set([
+	'000-00-000',
+	'111-11-111',
+	'222-22-222',
+	'333-33-333',
+	'444-44-444',
+	'555-55-555',
+	'666-66-666',
+	'777-77-777',
+	'888-88-888',
+	'999-99-999',
+	'123-45-678',
+	'876-54-321',
+]);
+
+const MAX_VALID_RANDOM = Math.floor(0x100000000 / 100_000_000) * 100_000_000;
+
+const generateSecurePin = (): string => {
+	const buffer = new Uint32Array(1);
+	let pin: string;
+
+	do {
+		let randomValue: number;
+		do {
+			crypto.getRandomValues(buffer);
+			randomValue = buffer[0];
+		} while (randomValue >= MAX_VALID_RANDOM);
+
+		const digits = (randomValue % 100_000_000).toString().padStart(8, '0');
+		pin = `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5, 8)}`;
+	} while (FORBIDDEN_PINS.has(pin));
+
+	return pin;
+};
+
 const generateNewPin = (): void => {
-	const p1 = Math.floor(100 + Math.random() * 900);
-	const p2 = Math.floor(10 + Math.random() * 90);
-	const p3 = Math.floor(100 + Math.random() * 900);
-	model.pincode = `${p1}-${p2}-${p3}`;
+	model.pincode = generateSecurePin();
 };
 
 const refreshPluginConfig = async (): Promise<void> => {

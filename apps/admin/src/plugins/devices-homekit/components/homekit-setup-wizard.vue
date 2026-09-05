@@ -5,6 +5,9 @@
 		width="90vw"
 		class="max-w-[860px]!"
 		:close-on-click-modal="false"
+		:close-on-press-escape="!isBusy"
+		:show-close="!isBusy"
+		:before-close="handleBeforeClose"
 		@update:model-value="onDialogUpdate"
 	>
 		<el-steps
@@ -26,6 +29,15 @@
 				<el-alert
 					type="info"
 					:title="t('devicesHomeKitPlugin.wizard.devicesDescription')"
+					:closable="false"
+					show-icon
+					class="mb-4!"
+				/>
+
+				<el-alert
+					v-if="candidatesLoadFailed"
+					type="error"
+					:title="t('devicesHomeKitPlugin.messages.candidatesFetchFailed')"
 					:closable="false"
 					show-icon
 					class="mb-4!"
@@ -97,7 +109,7 @@
 							<template #default="{ row }">
 								<el-checkbox
 									:model-value="selectedDeviceIds.has(row.id)"
-									:disabled="!row.isCompatible"
+									:disabled="!row.isCompatible && !selectedDeviceIds.has(row.id)"
 									@update:model-value="(val) => onToggleDevice(row.id, Boolean(val))"
 								/>
 							</template>
@@ -177,6 +189,7 @@
 					<div class="flex items-center gap-2">
 						<el-button
 							:loading="store.savingMapping"
+							:disabled="candidatesLoadFailed || store.fetchingCandidates || isBusy"
 							@click="onSaveOnly"
 						>
 							{{ t('devicesHomeKitPlugin.wizard.buttons.saveMappings') }}
@@ -184,6 +197,7 @@
 						<el-button
 							type="primary"
 							:loading="store.savingMapping"
+							:disabled="candidatesLoadFailed || store.fetchingCandidates || isBusy"
 							@click="onSaveAndProceed"
 						>
 							{{ t('devicesHomeKitPlugin.wizard.buttons.saveAndPair') }}
@@ -294,13 +308,17 @@
 
 				<div class="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
 					<div class="flex items-center gap-2">
-						<el-button @click="currentStep = 'devices'">
+						<el-button
+							:disabled="isBusy"
+							@click="currentStep = 'devices'"
+						>
 							{{ t('devicesHomeKitPlugin.wizard.buttons.backToDevices') }}
 						</el-button>
 						<el-button
 							type="danger"
 							plain
 							:loading="store.resettingPairing"
+							:disabled="isBusy && !store.resettingPairing"
 							@click="onResetPairing"
 						>
 							{{ t('devicesHomeKitPlugin.wizard.buttons.resetPairing') }}
@@ -309,6 +327,7 @@
 
 					<el-button
 						type="primary"
+						:disabled="isBusy"
 						@click="close"
 					>
 						{{ t('devicesHomeKitPlugin.wizard.buttons.done') }}
@@ -410,7 +429,15 @@ const filteredCandidates = computed(() => {
 const selectedCount = computed(() => selectedDeviceIds.value.size);
 const totalCompatibleCount = computed(() => store.candidates.filter((c) => c.isCompatible).length);
 
+const isBusy = computed<boolean>(() => Boolean(store.savingMapping || store.resettingPairing));
+
+const candidatesLoadFailed = ref(false);
+
 const onToggleDevice = (deviceId: string, checked: boolean): void => {
+	const candidate = store.candidates.find((c) => c.id === deviceId);
+	if (!candidate) return;
+	if (!candidate.isCompatible && checked) return;
+
 	const next = new Set(selectedDeviceIds.value);
 	if (checked) {
 		next.add(deviceId);
@@ -446,6 +473,10 @@ const onToggleSelectAll = (val: unknown): void => {
 };
 
 const onSaveOnly = async (): Promise<void> => {
+	if (candidatesLoadFailed.value || store.fetchingCandidates || isBusy.value) {
+		return;
+	}
+
 	try {
 		await store.mapDevices(Array.from(selectedDeviceIds.value));
 		flashMessage.success(t('devicesHomeKitPlugin.messages.mappingsSaved'));
@@ -455,6 +486,10 @@ const onSaveOnly = async (): Promise<void> => {
 };
 
 const onSaveAndProceed = async (): Promise<void> => {
+	if (candidatesLoadFailed.value || store.fetchingCandidates || isBusy.value) {
+		return;
+	}
+
 	try {
 		await store.mapDevices(Array.from(selectedDeviceIds.value));
 		flashMessage.success(t('devicesHomeKitPlugin.messages.mappingsSaved'));
@@ -491,6 +526,10 @@ const copyPinCode = async (): Promise<void> => {
 };
 
 const onResetPairing = async (): Promise<void> => {
+	if (isBusy.value) {
+		return;
+	}
+
 	try {
 		await ElMessageBox.confirm(t('devicesHomeKitPlugin.messages.confirmResetPairing'), t('devicesHomeKitPlugin.headings.resetPairing'), {
 			type: 'warning',
@@ -508,14 +547,39 @@ const onResetPairing = async (): Promise<void> => {
 };
 
 const close = (): void => {
+	if (isBusy.value) {
+		return;
+	}
 	emit('update:visible', false);
 	emit('completed');
 };
 
+const handleBeforeClose = (done: () => void): void => {
+	if (isBusy.value) {
+		return;
+	}
+	done();
+};
+
 const onDialogUpdate = (value: boolean): void => {
-	if (!value) {
+	if (!value && !isBusy.value) {
 		close();
 	}
+};
+
+const loadData = async (): Promise<void> => {
+	candidatesLoadFailed.value = false;
+	await Promise.allSettled([
+		(async () => {
+			try {
+				await store.fetchCandidates();
+				syncSelectionFromCandidates();
+			} catch {
+				candidatesLoadFailed.value = true;
+			}
+		})(),
+		store.fetchStatus().catch(() => {}),
+	]);
 };
 
 watch(
@@ -523,24 +587,14 @@ watch(
 	async (isVisible) => {
 		if (isVisible) {
 			currentStep.value = props.initialStep;
-			try {
-				await Promise.all([store.fetchCandidates(), store.fetchStatus()]);
-				syncSelectionFromCandidates();
-			} catch {
-				// Errors handled in store
-			}
+			await loadData();
 		}
 	}
 );
 
 onMounted(async () => {
 	if (props.visible) {
-		try {
-			await Promise.all([store.fetchCandidates(), store.fetchStatus()]);
-			syncSelectionFromCandidates();
-		} catch {
-			// Errors handled in store
-		}
+		await loadData();
 	}
 });
 </script>

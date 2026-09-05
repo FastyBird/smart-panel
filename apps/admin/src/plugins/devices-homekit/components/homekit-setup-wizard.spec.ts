@@ -49,6 +49,11 @@ const fetchStatus = vi.fn().mockImplementation(async () => mockStatus.value);
 const mapDevices = vi.fn().mockImplementation(async () => mockCandidates.value);
 const resetPairing = vi.fn().mockImplementation(async () => mockStatus.value);
 
+const savingMappingRef = ref(false);
+const resettingPairingRef = ref(false);
+const fetchingCandidatesRef = ref(false);
+const fetchingStatusRef = ref(false);
+
 vi.mock('vue-i18n', async () => {
 	const actual = await vi.importActual('vue-i18n');
 
@@ -64,10 +69,10 @@ vi.mock('../store/homekit-bridge.store', () => ({
 		reactive({
 			candidates: mockCandidates,
 			status: mockStatus,
-			fetchingCandidates: ref(false),
-			fetchingStatus: ref(false),
-			savingMapping: ref(false),
-			resettingPairing: ref(false),
+			fetchingCandidates: fetchingCandidatesRef,
+			fetchingStatus: fetchingStatusRef,
+			savingMapping: savingMappingRef,
+			resettingPairing: resettingPairingRef,
 			fetchCandidates,
 			fetchStatus,
 			mapDevices,
@@ -86,8 +91,8 @@ const mountWizard = (props: { visible?: boolean; initialStep?: 'devices' | 'pair
 			stubs: {
 				ElDialog: {
 					name: 'ElDialog',
-					props: ['width', 'modelValue'],
-					template: '<div class="el-dialog"><slot /></div>',
+					props: ['width', 'modelValue', 'beforeClose', 'showClose', 'closeOnPressEscape'],
+					template: '<div class="el-dialog" :data-show-close="showClose" :data-escape="closeOnPressEscape"><slot /></div>',
 				},
 				Icon: true,
 			},
@@ -98,6 +103,14 @@ const mountWizard = (props: { visible?: boolean; initialStep?: 'devices' | 'pair
 describe('HomeKitSetupWizard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		savingMappingRef.value = false;
+		resettingPairingRef.value = false;
+		fetchingCandidatesRef.value = false;
+		fetchingStatusRef.value = false;
+		fetchCandidates.mockImplementation(async () => mockCandidates.value);
+		fetchStatus.mockImplementation(async () => mockStatus.value);
+		mapDevices.mockImplementation(async () => mockCandidates.value);
+		resetPairing.mockImplementation(async () => mockStatus.value);
 	});
 
 	it('renders wizard with device candidate rows', async () => {
@@ -212,5 +225,160 @@ describe('HomeKitSetupWizard', () => {
 		await flushPromises();
 
 		expect(fetchStatus).toHaveBeenCalled();
+	});
+
+	it('preserves mapping selection when candidates succeed while status fails', async () => {
+		fetchStatus.mockRejectedValueOnce(new Error('Status network error'));
+
+		const wrapper = mountWizard();
+		await flushPromises();
+
+		// Selection was synchronized from candidates despite status failure
+		const checkboxes = wrapper.findAllComponents({ name: 'ElCheckbox' });
+		expect(checkboxes[1].props('modelValue')).toBe(true);
+		expect(checkboxes[2].props('modelValue')).toBe(false);
+
+		// Click Save button
+		const buttons = wrapper.findAllComponents({ name: 'ElButton' });
+		const saveBtn = buttons.find((b) => b.text().includes('devicesHomeKitPlugin.wizard.buttons.saveMappings'));
+		expect(saveBtn?.attributes('disabled')).toBeUndefined();
+
+		await saveBtn?.trigger('click');
+		await flushPromises();
+
+		expect(mapDevices).toHaveBeenCalledWith(['d290f1ee-6c54-4b01-90e6-d701748f0851']);
+	});
+
+	it('displays error alert and prevents submitting when candidate loading fails', async () => {
+		fetchCandidates.mockRejectedValueOnce(new Error('Candidates error'));
+
+		const wrapper = mountWizard();
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('devicesHomeKitPlugin.messages.candidatesFetchFailed');
+
+		const buttons = wrapper.findAllComponents({ name: 'ElButton' });
+		const saveBtn = buttons.find((b) => b.text().includes('devicesHomeKitPlugin.wizard.buttons.saveMappings'));
+		const saveAndPairBtn = buttons.find((b) => b.text().includes('devicesHomeKitPlugin.wizard.buttons.saveAndPair'));
+
+		expect(saveBtn?.attributes('disabled')).toBeDefined();
+		expect(saveAndPairBtn?.attributes('disabled')).toBeDefined();
+
+		// Imperative guard check: triggering click should not invoke mapDevices
+		await saveBtn?.trigger('click');
+		await saveAndPairBtn?.trigger('click');
+		await flushPromises();
+
+		expect(mapDevices).not.toHaveBeenCalled();
+	});
+
+	it('allows unchecking incompatible mapped devices but prevents selecting new incompatible devices', async () => {
+		mockCandidates.value = [
+			{
+				id: 'dev-1',
+				name: 'Compatible Mapped',
+				category: 'lighting',
+				roomName: 'Living Room',
+				roomId: 'room-1',
+				isCompatible: true,
+				suggestedServiceType: 'lightbulb',
+				isMapped: true,
+				channelsCount: 1,
+			},
+			{
+				id: 'dev-2',
+				name: 'Incompatible Mapped',
+				category: 'generic',
+				roomName: 'Garage',
+				roomId: 'room-2',
+				isCompatible: false,
+				suggestedServiceType: 'outlet',
+				isMapped: true,
+				channelsCount: 1,
+			},
+			{
+				id: 'dev-3',
+				name: 'Incompatible Unmapped',
+				category: 'generic',
+				roomName: 'Attic',
+				roomId: 'room-3',
+				isCompatible: false,
+				suggestedServiceType: 'switch',
+				isMapped: false,
+				channelsCount: 1,
+			},
+		];
+
+		const wrapper = mountWizard();
+		await flushPromises();
+
+		const checkboxes = wrapper.findAllComponents({ name: 'ElCheckbox' });
+		// index 0: header, index 1: dev-1, index 2: dev-2, index 3: dev-3
+		const dev1Checkbox = checkboxes[1];
+		const dev2Checkbox = checkboxes[2];
+		const dev3Checkbox = checkboxes[3];
+
+		expect(dev1Checkbox.props('disabled')).toBe(false);
+		expect(dev1Checkbox.props('modelValue')).toBe(true);
+
+		// dev-2 is incompatible BUT mapped (selected) -> not disabled
+		expect(dev2Checkbox.props('disabled')).toBe(false);
+		expect(dev2Checkbox.props('modelValue')).toBe(true);
+
+		// dev-3 is incompatible AND unmapped -> disabled
+		expect(dev3Checkbox.props('disabled')).toBe(true);
+		expect(dev3Checkbox.props('modelValue')).toBe(false);
+
+		// Uncheck dev-2
+		await dev2Checkbox.vm.$emit('update:modelValue', false);
+		await flushPromises();
+
+		// Now dev-2 is unmapped and incompatible -> becomes disabled
+		expect(dev2Checkbox.props('disabled')).toBe(true);
+		expect(dev2Checkbox.props('modelValue')).toBe(false);
+
+		// Attempt to select dev-3 (incompatible) -> guard prevents it
+		await dev3Checkbox.vm.$emit('update:modelValue', true);
+		await flushPromises();
+		expect(dev3Checkbox.props('modelValue')).toBe(false);
+	});
+
+	it('blocks all close mechanisms while saving or resetting and emits completed once when idle', async () => {
+		savingMappingRef.value = true;
+
+		const wrapper = mountWizard();
+		await flushPromises();
+
+		const dialog = wrapper.findComponent({ name: 'ElDialog' });
+		expect(dialog.props('showClose')).toBe(false);
+		expect(dialog.props('closeOnPressEscape')).toBe(false);
+
+		// before-close hook rejects close when busy
+		const doneCallback = vi.fn();
+		dialog.props('beforeClose')(doneCallback);
+		expect(doneCallback).not.toHaveBeenCalled();
+
+		// close attempt via update:modelValue(false)
+		await dialog.vm.$emit('update:modelValue', false);
+		await flushPromises();
+		expect(wrapper.emitted('update:visible')).toBeUndefined();
+		expect(wrapper.emitted('completed')).toBeUndefined();
+
+		// Settle mutation
+		savingMappingRef.value = false;
+		await flushPromises();
+
+		expect(dialog.props('showClose')).toBe(true);
+		expect(dialog.props('closeOnPressEscape')).toBe(true);
+
+		dialog.props('beforeClose')(doneCallback);
+		expect(doneCallback).toHaveBeenCalledTimes(1);
+
+		// Trigger dialog update to false (Element Plus standard close flow)
+		await dialog.vm.$emit('update:modelValue', false);
+		await flushPromises();
+
+		expect(wrapper.emitted('update:visible')).toEqual([[false]]);
+		expect(wrapper.emitted('completed')?.length).toBe(1);
 	});
 });

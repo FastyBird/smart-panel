@@ -100,6 +100,7 @@
 		},
 		"mappingsSaved": "Priradenia zariadení boli úspešne uložené.",
 		"saveMappingsFailed": "Nepodarilo sa uložiť priradenia zariadení.",
+		"candidatesFetchFailed": "Nepodarilo sa načítať kandidátske zariadenia. Skúste to prosím znova.",
 		"statusFetchFailed": "Nepodarilo sa obnoviť stav mosta.",
 		"pinCopied": "Párovací PIN kód bol skopírovaný do schránky.",
 		"copyFailed": "Kopírovanie do schránky zlyhalo.",

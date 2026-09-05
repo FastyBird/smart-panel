@@ -100,6 +100,7 @@
 		},
 		"mappingsSaved": "Asignaciones de dispositivos guardadas correctamente.",
 		"saveMappingsFailed": "No se pudieron guardar las asignaciones de dispositivos.",
+		"candidatesFetchFailed": "No se pudieron cargar los dispositivos candidatos. Inténtelo de nuevo.",
 		"statusFetchFailed": "No se pudo actualizar el estado del puente.",
 		"pinCopied": "Código PIN de enlace copiado al portapapeles.",
 		"copyFailed": "No se pudo copiar al portapapeles.",

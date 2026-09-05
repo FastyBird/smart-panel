@@ -100,6 +100,7 @@
 		},
 		"mappingsSaved": "Device mappings saved successfully.",
 		"saveMappingsFailed": "Failed to save device mappings.",
+		"candidatesFetchFailed": "Failed to load candidate devices. Please try again.",
 		"statusFetchFailed": "Failed to refresh bridge status.",
 		"pinCopied": "Pairing PIN code copied to clipboard.",
 		"copyFailed": "Failed to copy to clipboard.",
