@@ -121,7 +121,7 @@
 		</template>
 
 		<el-button
-			v-else
+			v-else-if="props.showCreateAction !== false"
 			type="primary"
 			:disabled="!canCreate"
 			:loading="submitState === 'submitting'"
@@ -166,7 +166,9 @@ defineOptions({
 	name: 'VirtualWizardReviewStep',
 });
 
-const props = defineProps<IVirtualWizardReviewStepProps>();
+const props = withDefaults(defineProps<IVirtualWizardReviewStepProps>(), {
+	showCreateAction: true,
+});
 
 const emit = defineEmits<{
 	(e: 'created', payload: IVirtualWizardReviewCreatedPayload): void;

@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { type ComputedRef, computed } from 'vue';
 
 import { injectStoresManager } from '../../../common';
 import type { DevicesModuleChannelCategory } from '../../../openapi.constants';
@@ -10,7 +10,7 @@ import { channelsStoreKey, devicesStoreKey } from '../store/keys';
 import type { IUseDeviceSpecification } from './types';
 
 interface IUseDeviceSpecificationProps {
-	id: IDevice['id'];
+	id: IDevice['id'] | ComputedRef<IDevice['id']>;
 }
 
 export const useDeviceSpecification = ({ id }: IUseDeviceSpecificationProps): IUseDeviceSpecification => {
@@ -30,7 +30,7 @@ export const useDeviceSpecification = ({ id }: IUseDeviceSpecificationProps): IU
 	};
 
 	const canAddAnotherChannel = computed<boolean>((): boolean => {
-		const device = getDevice(id);
+		const device = getDevice(typeof id === 'string' ? id : id.value);
 
 		if (device === null) {
 			return true;
@@ -48,7 +48,7 @@ export const useDeviceSpecification = ({ id }: IUseDeviceSpecificationProps): IU
 	});
 
 	const missingRequiredChannels = computed<DevicesModuleChannelCategory[]>((): DevicesModuleChannelCategory[] => {
-		const device = getDevice(id);
+		const device = getDevice(typeof id === 'string' ? id : id.value);
 
 		if (device === null) {
 			throw new DevicesException("Something went wrong, device can't be loaded");

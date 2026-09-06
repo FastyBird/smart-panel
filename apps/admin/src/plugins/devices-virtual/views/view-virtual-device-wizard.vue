@@ -46,15 +46,25 @@
 		>
 			<div class="flex items-center">
 				<el-button
+					v-if="createdDevice === null && activeStep > 0"
+					:disabled="submitting"
+					data-test-id="wizard-back"
+					@click="onBack"
+				>
+					{{ t('devicesModule.wizard.actions.back') }}
+				</el-button>
+				<el-button
 					v-if="createdDevice === null"
+					link
+					class="ml-2!"
 					:disabled="submitting"
 					data-test-id="wizard-cancel"
 					@click="onCancel"
 				>
-					{{ t('devicesModule.buttons.cancel.title') }}
+					{{ t('devicesModule.wizard.actions.cancel') }}
 				</el-button>
 				<el-button
-					v-else
+					v-if="createdDevice !== null"
 					type="primary"
 					data-test-id="wizard-view-device"
 					@click="onViewDevice"
@@ -63,15 +73,16 @@
 				</el-button>
 
 				<el-button
-					v-if="createdDevice === null && activeStep > 0"
+					v-if="createdDevice === null && isLastStep"
+					type="primary"
 					class="ml-2!"
-					:disabled="submitting"
-					data-test-id="wizard-back"
-					@click="onBack"
+					:disabled="!reviewStep?.canCreate"
+					:loading="submitting"
+					data-test-id="create-device"
+					@click="reviewStep?.onCreate"
 				>
-					{{ t('devicesModule.wizard.actions.back') }}
+					{{ t('devicesVirtualPlugin.wizard.review.create') }}
 				</el-button>
-
 				<el-button
 					v-if="createdDevice === null && !isLastStep"
 					type="primary"
@@ -135,15 +146,17 @@
 						:category="state.category"
 					/>
 
-					<!-- Step 4: review. It renders and drives its own "Create device" action — the shell
-						must not add a competing Finish/Create button, or a click could create two devices. -->
+					<!-- Step 4: review. The shell owns the header action; the review component keeps the
+						creation logic and exposes it to avoid duplicating the request. -->
 					<virtual-wizard-review-step
 						v-else
+						ref="reviewStep"
 						:category="state.category"
 						:mappings="state.mappings"
 						:name="state.name"
 						:room-id="state.roomId"
 						:zone-ids="state.zoneIds"
+						:show-create-action="false"
 						@created="onCreated"
 						@submitting="submitting = $event"
 					/>
@@ -164,24 +177,36 @@
 		>
 			{{ t('devicesModule.wizard.actions.back') }}
 		</el-button>
-
 		<el-button
 			v-if="createdDevice === null"
+			link
 			class="ml-2!"
 			:disabled="submitting"
 			data-test-id="wizard-cancel"
 			@click="onCancel"
 		>
-			{{ t('devicesModule.buttons.cancel.title') }}
+			{{ t('devicesModule.wizard.actions.cancel') }}
 		</el-button>
 		<el-button
-			v-else
+			v-if="createdDevice !== null"
 			type="primary"
 			class="ml-2!"
 			data-test-id="wizard-view-device"
 			@click="onViewDevice"
 		>
 			{{ t('devicesVirtualPlugin.wizard.viewDevice') }}
+		</el-button>
+
+		<el-button
+			v-if="createdDevice === null && isLastStep"
+			type="primary"
+			class="ml-2!"
+			:disabled="!reviewStep?.canCreate"
+			:loading="submitting"
+			data-test-id="create-device"
+			@click="reviewStep?.onCreate"
+		>
+			{{ t('devicesVirtualPlugin.wizard.review.create') }}
 		</el-button>
 
 		<el-button
@@ -257,6 +282,7 @@ const mappingValid = ref<boolean>(false);
 // device already exists at that point, so stepping back into the wizard to "keep building" it no
 // longer makes sense.
 const createdDevice = ref<IVirtualWizardReviewCreatedPayload | null>(null);
+const reviewStep = ref<{ canCreate: boolean; onCreate: () => Promise<void> } | null>(null);
 
 // True while the review step's create is in flight. The wizard renders its steps with `v-if`, so going
 // Back unmounts the step that is mid-request — the request carries on, and the freshly mounted Review

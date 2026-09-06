@@ -3,6 +3,7 @@
 		v-loading="fetching"
 		:data="spaces"
 		row-key="id"
+		@row-click="onEdit"
 	>
 		<el-table-column
 			prop="name"

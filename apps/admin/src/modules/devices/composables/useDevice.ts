@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { type MaybeRefOrGetter, computed, toValue } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
@@ -9,7 +9,7 @@ import { devicesStoreKey } from '../store/keys';
 import type { IUseDevice } from './types';
 
 interface IUseDeviceProps {
-	id: IDevice['id'];
+	id: MaybeRefOrGetter<IDevice['id']>;
 }
 
 export const useDevice = ({ id }: IUseDeviceProps): IUseDevice => {
@@ -20,29 +20,34 @@ export const useDevice = ({ id }: IUseDeviceProps): IUseDevice => {
 	const { data, semaphore } = storeToRefs(devicesStore);
 
 	const device = computed<IDevice | null>((): IDevice | null => {
-		if (id === null) {
+		const deviceId = toValue(id);
+
+		if (deviceId === null) {
 			return null;
 		}
 
-		return data.value[id] ?? null;
+		return data.value[deviceId] ?? null;
 	});
 
 	const fetchDevice = async (): Promise<void> => {
-		const item = data.value[id] ?? null;
+		const deviceId = toValue(id);
+		const item = data.value[deviceId] ?? null;
 
 		if (item?.draft) {
 			return;
 		}
 
-		await devicesStore.get({ id });
+		await devicesStore.get({ id: deviceId });
 	};
 
 	const isLoading = computed<boolean>((): boolean => {
-		if (semaphore.value.fetching.item.includes(id)) {
+		const deviceId = toValue(id);
+
+		if (semaphore.value.fetching.item.includes(deviceId)) {
 			return true;
 		}
 
-		const item = data.value[id] ?? null;
+		const item = data.value[deviceId] ?? null;
 
 		if (item !== null) {
 			return false;

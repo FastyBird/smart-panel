@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { type ComputedRef, computed } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
@@ -10,7 +10,7 @@ import { devicesControlsStoreKey } from '../store/keys';
 import type { IUseDeviceControls } from './types';
 
 interface IUseDeviceControlsProps {
-	deviceId: IDevice['id'];
+	deviceId: IDevice['id'] | ComputedRef<IDevice['id']>;
 }
 
 export const useDeviceControls = ({ deviceId }: IUseDeviceControlsProps): IUseDeviceControls => {
@@ -20,19 +20,19 @@ export const useDeviceControls = ({ deviceId }: IUseDeviceControlsProps): IUseDe
 	const { firstLoad, semaphore } = storeToRefs(devicesControlsStore);
 
 	const controls = computed<IDeviceControl[]>((): IDeviceControl[] => {
-		return devicesControlsStore.findForDevice(deviceId);
+		return devicesControlsStore.findForDevice(typeof deviceId === 'string' ? deviceId : deviceId.value);
 	});
 
 	const areLoading = computed<boolean>((): boolean => {
-		return semaphore.value.fetching.items.includes(deviceId);
+		return semaphore.value.fetching.items.includes(typeof deviceId === 'string' ? deviceId : deviceId.value);
 	});
 
 	const loaded = computed<boolean>((): boolean => {
-		return firstLoad.value.includes(deviceId);
+		return firstLoad.value.includes(typeof deviceId === 'string' ? deviceId : deviceId.value);
 	});
 
 	const fetchControls = async (): Promise<IDeviceControl[]> => {
-		return devicesControlsStore.fetch({ deviceId });
+		return devicesControlsStore.fetch({ deviceId: typeof deviceId === 'string' ? deviceId : deviceId.value });
 	};
 
 	return {

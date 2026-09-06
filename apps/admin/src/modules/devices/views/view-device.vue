@@ -148,6 +148,7 @@
 		-->
 		<virtual-device-sources
 			v-if="device && device.type === DEVICES_VIRTUAL_TYPE"
+			:key="device.id"
 			:device="device"
 		/>
 
@@ -156,181 +157,181 @@
 			v-model="activeTab"
 			:class="['flex-1 min-h-0 flex flex-col mt-2', ns.e('tabs')]"
 		>
-				<el-tab-pane
-					name="overview"
-					class="h-full overflow-hidden"
-				>
-					<template #label>
-						<div class="flex items-center gap-2 px-4">
-							<icon icon="mdi:information-outline" />
-							{{ t('devicesModule.labels.overview') }}
-						</div>
-					</template>
+			<el-tab-pane
+				name="overview"
+				class="h-full overflow-hidden"
+			>
+				<template #label>
+					<div class="flex items-center gap-2 px-4">
+						<icon icon="mdi:information-outline" />
+						{{ t('devicesModule.labels.overview') }}
+					</div>
+				</template>
 
-					<el-scrollbar class="h-full">
-						<el-space
-								v-if="sortedChannels"
-								direction="vertical"
-								size="large"
-								class="w-full mb-2"
-								:class="[ns.e('channels-list')]"
-								fill
-							>
-								<channel-detail
-									v-for="channel in sortedChannels"
-									:key="channel.id"
-									:channel="channel"
-									@channel-edit="onChannelEdit"
-									@channel-remove="onChannelRemove"
-									@property-add="onPropertyAdd"
-									@property-edit="onPropertyEdit"
-									@property-remove="onPropertyRemove"
-								/>
-							</el-space>
+				<el-scrollbar class="h-full">
+					<el-space
+						v-if="sortedChannels"
+						direction="vertical"
+						size="large"
+						class="w-full mb-2"
+						:class="[ns.e('channels-list')]"
+						fill
+					>
+						<channel-detail
+							v-for="channel in sortedChannels"
+							:key="channel.id"
+							:channel="channel"
+							@channel-edit="onChannelEdit"
+							@channel-remove="onChannelRemove"
+							@property-add="onPropertyAdd"
+							@property-edit="onPropertyEdit"
+							@property-remove="onPropertyRemove"
+						/>
+					</el-space>
 
-							<el-card
-								v-else
-								body-class="flex flex-row justify-center"
-							>
-								<el-result class="h-full max-w-[700px]">
+					<el-card
+						v-else
+						body-class="flex flex-row justify-center"
+					>
+						<el-result class="h-full max-w-[700px]">
+							<template #icon>
+								<icon-with-child :size="80">
+									<template #primary>
+										<icon icon="mdi:chip" />
+									</template>
+									<template #secondary>
+										<icon icon="mdi:timer-sand-empty" />
+									</template>
+								</icon-with-child>
+							</template>
+
+							<template #title>
+								<el-text class="block">
+									{{ t('devicesModule.texts.devices.noChannels') }}
+								</el-text>
+
+								<el-button
+									type="primary"
+									plain
+									class="mt-4"
+									@click="onChannelAdd"
+								>
 									<template #icon>
-										<icon-with-child :size="80">
-											<template #primary>
-												<icon icon="mdi:chip" />
-											</template>
-											<template #secondary>
-												<icon icon="mdi:timer-sand-empty" />
-											</template>
-										</icon-with-child>
+										<icon icon="mdi:plus" />
 									</template>
 
-									<template #title>
-										<el-text class="block">
-											{{ t('devicesModule.texts.devices.noChannels') }}
-										</el-text>
+									{{ t('devicesModule.buttons.addChannel.title') }}
+								</el-button>
+							</template>
+						</el-result>
+					</el-card>
+				</el-scrollbar>
+			</el-tab-pane>
 
-										<el-button
-											type="primary"
-											plain
-											class="mt-4"
-											@click="onChannelAdd"
-										>
-											<template #icon>
-												<icon icon="mdi:plus" />
-											</template>
-
-											{{ t('devicesModule.buttons.addChannel.title') }}
-										</el-button>
-									</template>
-								</el-result>
-							</el-card>
-					</el-scrollbar>
-				</el-tab-pane>
-
-				<el-tab-pane
-					v-if="validationIssues.length > 0"
-					name="validation"
-					class="h-full overflow-hidden"
-				>
-					<template #label>
-						<div class="flex items-center gap-2 px-4">
-							<icon icon="mdi:alert-circle-outline" />
-							{{ t('devicesModule.labels.validation') }}
-							<el-tag
-								type="danger"
-								size="small"
-							>
-								{{ validationIssues.length }}
-							</el-tag>
-						</div>
-					</template>
-
-					<el-scrollbar class="h-full">
-						<el-table
-							:data="validationIssues"
+			<el-tab-pane
+				v-if="validationIssues.length > 0"
+				name="validation"
+				class="h-full overflow-hidden"
+			>
+				<template #label>
+					<div class="flex items-center gap-2 px-4">
+						<icon icon="mdi:alert-circle-outline" />
+						{{ t('devicesModule.labels.validation') }}
+						<el-tag
+							type="danger"
 							size="small"
-							class="w-full"
 						>
-							<el-table-column
-								:label="t('devicesModule.validation.table.severity')"
-								prop="severity"
-								:width="100"
-							>
-								<template #default="scope">
-									<el-tag
-										:type="scope.row.severity === 'error' ? 'danger' : 'warning'"
-										size="small"
-									>
-										{{ scope.row.severity === 'error' ? t('devicesModule.validation.severity.error') : t('devicesModule.validation.severity.warning') }}
-									</el-tag>
-								</template>
-							</el-table-column>
-							<el-table-column
-								:label="t('devicesModule.validation.table.type')"
-								prop="type"
-								:width="150"
-							>
-								<template #default="scope">
-									{{ t(`devicesModule.validation.issueTypes.${scope.row.type}`, scope.row.type) }}
-								</template>
-							</el-table-column>
-							<el-table-column
-								:label="t('devicesModule.validation.table.message')"
-								prop="message"
-							/>
-							<el-table-column
-								:label="t('devicesModule.validation.table.channel')"
-								prop="channelCategory"
-								:width="150"
-							>
-								<template #default="scope">
-									<template v-if="scope.row.channelCategory">
-										{{ t(`devicesModule.categories.channels.${scope.row.channelCategory}`, scope.row.channelCategory) }}
-									</template>
-									<span
-										v-else
-										class="text-gray-400"
-									>
-										-
-									</span>
-								</template>
-							</el-table-column>
-						</el-table>
-					</el-scrollbar>
-				</el-tab-pane>
+							{{ validationIssues.length }}
+						</el-tag>
+					</div>
+				</template>
 
-				<el-tab-pane
-					name="logs"
-					class="h-full overflow-hidden"
-				>
-					<template #label>
-						<div class="flex items-center gap-2 px-4">
-							<icon icon="mdi:console" />
-							{{ t('devicesModule.labels.logs') }}
-							<el-tag
-								v-if="hasAlerts"
-								type="danger"
-								size="small"
-							>
-								{{ alertCount }}
-							</el-tag>
-						</div>
-					</template>
+				<el-scrollbar class="h-full">
+					<el-table
+						:data="validationIssues"
+						size="small"
+						class="w-full"
+					>
+						<el-table-column
+							:label="t('devicesModule.validation.table.severity')"
+							prop="severity"
+							:width="100"
+						>
+							<template #default="scope">
+								<el-tag
+									:type="scope.row.severity === 'error' ? 'danger' : 'warning'"
+									size="small"
+								>
+									{{ scope.row.severity === 'error' ? t('devicesModule.validation.severity.error') : t('devicesModule.validation.severity.warning') }}
+								</el-tag>
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('devicesModule.validation.table.type')"
+							prop="type"
+							:width="150"
+						>
+							<template #default="scope">
+								{{ t(`devicesModule.validation.issueTypes.${scope.row.type}`, scope.row.type) }}
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('devicesModule.validation.table.message')"
+							prop="message"
+						/>
+						<el-table-column
+							:label="t('devicesModule.validation.table.channel')"
+							prop="channelCategory"
+							:width="150"
+						>
+							<template #default="scope">
+								<template v-if="scope.row.channelCategory">
+									{{ t(`devicesModule.categories.channels.${scope.row.channelCategory}`, scope.row.channelCategory) }}
+								</template>
+								<span
+									v-else
+									class="text-gray-400"
+								>
+									-
+								</span>
+							</template>
+						</el-table-column>
+					</el-table>
+				</el-scrollbar>
+			</el-tab-pane>
 
-					<device-logs
-						v-if="device"
-						v-model:live="logsLive"
-						:device-id="device.id"
-						:logs="sharedDeviceLogs.logs"
-						:has-more="sharedDeviceLogs.hasMore"
-						:is-loading="sharedDeviceLogs.isLoading"
-						:live-ref="sharedDeviceLogs.live"
-						:fetch-logs="sharedDeviceLogs.fetchLogs"
-						:load-more-logs="sharedDeviceLogs.loadMoreLogs"
-						:refresh-logs="sharedDeviceLogs.refreshLogs"
-					/>
-				</el-tab-pane>
-			</el-tabs>
+			<el-tab-pane
+				name="logs"
+				class="h-full overflow-hidden"
+			>
+				<template #label>
+					<div class="flex items-center gap-2 px-4">
+						<icon icon="mdi:console" />
+						{{ t('devicesModule.labels.logs') }}
+						<el-tag
+							v-if="hasAlerts"
+							type="danger"
+							size="small"
+						>
+							{{ alertCount }}
+						</el-tag>
+					</div>
+				</template>
+
+				<device-logs
+					v-if="device"
+					v-model:live="logsLive"
+					:device-id="device.id"
+					:logs="sharedDeviceLogs.logs"
+					:has-more="sharedDeviceLogs.hasMore"
+					:is-loading="sharedDeviceLogs.isLoading"
+					:live-ref="sharedDeviceLogs.live"
+					:fetch-logs="sharedDeviceLogs.fetchLogs"
+					:load-more-logs="sharedDeviceLogs.loadMoreLogs"
+					:refresh-logs="sharedDeviceLogs.refreshLogs"
+				/>
+			</el-tab-pane>
+		</el-tabs>
 	</div>
 
 	<router-view
@@ -471,8 +472,10 @@ const { validate: validateUuid } = useUuid();
 
 const { isMDDevice, isLGDevice } = useBreakpoints();
 
-const { device, isLoading, fetchDevice } = useDevice({ id: props.id });
-const { issues: validationIssues, fetchValidation } = useDeviceValidation({ id: props.id });
+const deviceId = computed(() => props.id);
+
+const { device, isLoading, fetchDevice } = useDevice({ id: deviceId });
+const { issues: validationIssues, fetchValidation } = useDeviceValidation({ id: deviceId });
 
 // Single shared logs composable — used for both the alert badge and the device-logs component
 const sharedDeviceLogs = useDeviceLogs({
@@ -483,9 +486,9 @@ const { alertCount, hasAlerts, fetchLogs } = sharedDeviceLogs;
 // Track if device was previously loaded to detect deletion
 const wasDeviceLoaded = ref<boolean>(false);
 const notFound = ref<boolean>(false);
-const { canAddAnotherChannel } = useDeviceSpecification({ id: props.id });
-const { channels, fetchChannels } = useChannels({ deviceId: props.id });
-const { controls, fetchControls } = useDeviceControls({ deviceId: props.id });
+const { canAddAnotherChannel } = useDeviceSpecification({ id: deviceId });
+const { channels, fetchChannels } = useChannels({ deviceId });
+const { controls, fetchControls } = useDeviceControls({ deviceId });
 const channelsActions = useChannelsActions();
 const channelsPropertiesActions = useChannelsPropertiesActions();
 
@@ -749,10 +752,9 @@ const onClose = (): void => {
 	}
 };
 
-onBeforeMount((): void => {
-	if (notFound.value) {
-		return;
-	}
+const loadDevice = (): void => {
+	notFound.value = false;
+	wasDeviceLoaded.value = false;
 
 	fetchDevice()
 		.then((): void => {
@@ -792,7 +794,9 @@ onBeforeMount((): void => {
 				notFound.value = true;
 			}
 		});
+};
 
+onBeforeMount((): void => {
 	showDrawer.value =
 		route.matched.find(
 			(matched) =>
@@ -804,6 +808,14 @@ onBeforeMount((): void => {
 				matched.name === RouteNames.DEVICE_CHANNEL_EDIT_PROPERTY
 		) !== undefined;
 });
+
+watch(
+	deviceId,
+	(): void => {
+		loadDevice();
+	},
+	{ immediate: true }
+);
 
 onMounted((): void => {
 	mounted.value = true;
