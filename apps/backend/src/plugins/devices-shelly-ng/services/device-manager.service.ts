@@ -2289,7 +2289,7 @@ export class DeviceManagerService {
 		const mappingPropertySpec = this.getMappingPropertySpec(propertyMapping);
 
 		const resolvedFormat = options?.format ?? mappingPropertySpec?.format ?? schemaPropertySpec?.format ?? null;
-		const resolvedStep = options?.step ?? schemaPropertySpec?.step ?? null;
+		const resolvedStep = options?.step !== undefined ? options.step : (schemaPropertySpec?.step ?? null);
 		const normalizedValue = this.normalizeValue(value, { format: resolvedFormat });
 
 		const inferredDataType: DataTypeType =

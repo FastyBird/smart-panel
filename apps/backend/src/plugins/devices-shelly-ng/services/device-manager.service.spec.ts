@@ -730,6 +730,20 @@ describe('DeviceManagerService property metadata', () => {
 			expect.objectContaining({ step: 1 }),
 		);
 	});
+
+	test('preserves an explicitly null step when updating a property', async () => {
+		const svc: any = makeService();
+		const channel = { id: 'light-channel', category: ChannelCategory.LIGHT };
+
+		mockChannelsPropertiesService.findOneBy.mockResolvedValue({ id: 'property-1' });
+
+		await svc.ensureProperty(channel, PropertyCategory.BRIGHTNESS, 'identifier', 'brightness', 55, { step: null });
+
+		expect(mockChannelsPropertiesService.update).toHaveBeenCalledWith(
+			'property-1',
+			expect.objectContaining({ step: null }),
+		);
+	});
 });
 
 describe('DeviceProvisionQueueService', () => {

@@ -43,7 +43,7 @@
 			align="center"
 		>
 			<template #default="{ row }">
-				<el-button-group>
+				<el-button-group @click.stop>
 					<el-button
 						size="small"
 						@click="onEdit(row)"

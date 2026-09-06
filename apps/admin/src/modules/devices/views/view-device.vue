@@ -752,12 +752,19 @@ const onClose = (): void => {
 	}
 };
 
+let loadGeneration = 0;
+
 const loadDevice = (): void => {
+	const generation = ++loadGeneration;
 	notFound.value = false;
 	wasDeviceLoaded.value = false;
 
 	fetchDevice()
 		.then((): void => {
+			if (generation !== loadGeneration) {
+				return;
+			}
+
 			if (!isLoading.value && device.value === null && !wasDeviceLoaded.value) {
 				notFound.value = true;
 				return;
@@ -787,6 +794,10 @@ const loadDevice = (): void => {
 			});
 		})
 		.catch((error: unknown): void => {
+			if (generation !== loadGeneration) {
+				return;
+			}
+
 			if (error instanceof DevicesApiException && error.code === 404) {
 				notFound.value = true;
 			} else {
