@@ -8,6 +8,7 @@ export interface IVirtualWizardReviewStepProps {
 	name: string;
 	roomId: string | null;
 	zoneIds: string[];
+	showCreateAction?: boolean;
 }
 
 /**

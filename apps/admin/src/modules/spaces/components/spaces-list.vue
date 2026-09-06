@@ -3,6 +3,7 @@
 		v-loading="fetching"
 		:data="spaces"
 		row-key="id"
+		@row-click="onEdit"
 	>
 		<el-table-column
 			prop="name"
@@ -42,7 +43,7 @@
 			align="center"
 		>
 			<template #default="{ row }">
-				<el-button-group>
+				<el-button-group @click.stop>
 					<el-button
 						size="small"
 						@click="onEdit(row)"

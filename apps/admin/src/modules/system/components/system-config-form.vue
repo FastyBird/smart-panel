@@ -251,6 +251,34 @@
 
 		<el-divider />
 
+		<el-form-item
+			:label="t('systemModule.labels.update.channel')"
+			prop="updateChannel"
+		>
+			<el-select
+				v-model="model.updateChannel"
+				:placeholder="t('systemModule.fields.update.channel.placeholder', 'Select update channel')"
+				name="updateChannel"
+			>
+				<el-option
+					:label="t('systemModule.fields.update.channel.values.auto')"
+					value="auto"
+				/>
+				<el-option
+					:label="t('systemModule.fields.update.channel.values.stable')"
+					value="stable"
+				/>
+				<el-option
+					:label="t('systemModule.fields.update.channel.values.beta')"
+					value="beta"
+				/>
+				<el-option
+					:label="t('systemModule.fields.update.channel.values.alpha')"
+					value="alpha"
+				/>
+			</el-select>
+		</el-form-item>
+
 		<el-alert
 			type="info"
 			:title="t('systemModule.headings.aboutSystemSettings')"
@@ -284,7 +312,7 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElSelect, ElOption, ElOptionGroup, type FormRules } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElOption, ElOptionGroup, ElSelect, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import type { ISystemConfigEditForm } from '../schemas/config.types';

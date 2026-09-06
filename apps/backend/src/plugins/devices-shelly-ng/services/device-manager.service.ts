@@ -2271,6 +2271,7 @@ export class DeviceManagerService {
 		options?: {
 			data_type?: DataTypeType;
 			format?: string[] | number[];
+			step?: number | null;
 			permissions?: PermissionType[];
 		},
 		propertyMapping?: ResolvedProperty,
@@ -2288,6 +2289,7 @@ export class DeviceManagerService {
 		const mappingPropertySpec = this.getMappingPropertySpec(propertyMapping);
 
 		const resolvedFormat = options?.format ?? mappingPropertySpec?.format ?? schemaPropertySpec?.format ?? null;
+		const resolvedStep = options?.step !== undefined ? options.step : (schemaPropertySpec?.step ?? null);
 		const normalizedValue = this.normalizeValue(value, { format: resolvedFormat });
 
 		const inferredDataType: DataTypeType =
@@ -2341,6 +2343,7 @@ export class DeviceManagerService {
 					permissions: resolvedPermissions,
 					data_type: resolvedDataType,
 					format: resolvedFormat ?? null,
+					step: resolvedStep,
 				},
 				type: DEVICES_SHELLY_NG_TYPE,
 				category,
@@ -2360,6 +2363,7 @@ export class DeviceManagerService {
 				permissions: resolvedPermissions,
 				data_type: resolvedDataType,
 				format: resolvedFormat ?? null,
+				step: resolvedStep,
 			});
 		}
 
@@ -2374,6 +2378,7 @@ export class DeviceManagerService {
 		data_type?: DataTypeType;
 		unit?: string | null;
 		format?: string[] | number[] | null;
+		step?: number | null;
 	} | null {
 		if (!channelSpec || typeof channelSpec !== 'object') {
 			return null;
@@ -2392,6 +2397,7 @@ export class DeviceManagerService {
 				data_type?: DataTypeType;
 				unit?: string | null;
 				format?: string[] | number[] | null;
+				step?: number | null;
 			};
 
 			return {
@@ -2399,6 +2405,7 @@ export class DeviceManagerService {
 				data_type: typed.data_type,
 				unit: typed.unit ?? null,
 				format: typed.format ?? null,
+				step: typed.step ?? null,
 			};
 		}
 
@@ -2410,6 +2417,7 @@ export class DeviceManagerService {
 						data_type?: DataTypeType;
 						unit?: string | null;
 						format?: string[] | number[] | null;
+						step?: number | null;
 					}>;
 				}
 			).data_types;
@@ -2420,6 +2428,7 @@ export class DeviceManagerService {
 					data_type: primaryVariant.data_type,
 					unit: primaryVariant.unit ?? null,
 					format: primaryVariant.format ?? null,
+					step: primaryVariant.step ?? null,
 				};
 			}
 		}

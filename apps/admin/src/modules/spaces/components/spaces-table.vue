@@ -13,6 +13,7 @@
 		class="flex-grow"
 		:style="{ maxHeight: tableHeight + 'px' }"
 		:max-height="tableHeight"
+		@row-click="onRowClick"
 		@sort-change="onSortData"
 		@selection-change="onSelectionChange"
 	>
@@ -235,6 +236,10 @@ const onSortData = ({ prop, order }: { prop: 'name' | 'type' | 'displayOrder'; o
 
 const onSelectionChange = (selected: ISpace[]): void => {
 	emit('selected-changes', selected);
+};
+
+const onRowClick = (space: ISpace): void => {
+	emit('edit', space.id);
 };
 
 const onFilterBy = (value: IPluginElement['type'], add: boolean): void => {

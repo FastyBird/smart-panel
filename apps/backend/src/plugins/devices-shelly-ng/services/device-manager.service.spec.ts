@@ -156,7 +156,7 @@ jest.mock('../../../spec/channels', () => {
 		[ChannelCategory.LIGHT]: {
 			properties: {
 				[PropertyCategory.ON]: { ...common(), data_type: 'bool' as any },
-				[PropertyCategory.BRIGHTNESS]: { ...common(), data_type: 'number' as any },
+				[PropertyCategory.BRIGHTNESS]: { ...common(), data_type: 'number' as any, step: 1 },
 			},
 		},
 		[ChannelCategory.WINDOW_COVERING]: {
@@ -711,6 +711,38 @@ describe('DeviceManagerService battery devices', () => {
 			.find((dto: any) => dto?.category === PropertyCategory.PERCENTAGE);
 
 		expect(percentage?.value).toBe(88);
+	});
+});
+
+describe('DeviceManagerService property metadata', () => {
+	test('copies the schema step to created and updated properties', async () => {
+		const svc: any = makeService();
+		const channel = { id: 'light-channel', category: ChannelCategory.LIGHT };
+
+		mockChannelsPropertiesService.findOneBy.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'property-1' });
+
+		await svc.ensureProperty(channel, PropertyCategory.BRIGHTNESS, 'identifier', 'brightness', 50);
+		await svc.ensureProperty(channel, PropertyCategory.BRIGHTNESS, 'identifier', 'brightness', 55);
+
+		expect(mockChannelsPropertiesService.create).toHaveBeenCalledWith(channel.id, expect.objectContaining({ step: 1 }));
+		expect(mockChannelsPropertiesService.update).toHaveBeenCalledWith(
+			'property-1',
+			expect.objectContaining({ step: 1 }),
+		);
+	});
+
+	test('preserves an explicitly null step when updating a property', async () => {
+		const svc: any = makeService();
+		const channel = { id: 'light-channel', category: ChannelCategory.LIGHT };
+
+		mockChannelsPropertiesService.findOneBy.mockResolvedValue({ id: 'property-1' });
+
+		await svc.ensureProperty(channel, PropertyCategory.BRIGHTNESS, 'identifier', 'brightness', 55, { step: null });
+
+		expect(mockChannelsPropertiesService.update).toHaveBeenCalledWith(
+			'property-1',
+			expect.objectContaining({ step: null }),
+		);
 	});
 });
 

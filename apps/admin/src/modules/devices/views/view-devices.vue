@@ -220,7 +220,7 @@
 	>
 		<div class="flex flex-col gap-2">
 			<el-card
-				v-for="item in wizardOptions"
+				v-for="item in enabledWizardOptions"
 				:key="item.value"
 				shadow="hover"
 				class="devices-wizard-plugin-card"
