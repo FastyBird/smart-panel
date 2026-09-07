@@ -760,6 +760,8 @@ export type RemoteAccessTailscalePluginInstallSchema = components['schemas']['Re
 export type RemoteAccessTailscalePluginLoginSchema = components['schemas']['RemoteAccessTailscalePluginDataLogin'];
 export type RemoteAccessTailscalePluginRequirementSchema = components['schemas']['RemoteAccessTailscalePluginDataRequirement'];
 export type RemoteAccessTailscalePluginLoginRequestSchema = components['schemas']['RemoteAccessTailscalePluginReqLogin'];
+export type RemoteAccessTailscalePluginSetupJobSchema = components['schemas']['RemoteAccessTailscalePluginDataSetupJob'];
+export type RemoteAccessTailscalePluginPrivilegedSetupSchema = components['schemas']['RemoteAccessTailscalePluginDataPrivilegedSetup'];
 
 // Remote Access Tailscale Plugin Operations
 // ============================================
@@ -772,6 +774,7 @@ export type RemoteAccessTailscalePluginCreateResetPreferencesOperation = operati
 // Remote Access Tailscale Plugin Enums
 // =======================================
 export { RemoteAccessTailscalePluginDataRequirementCode as RemoteAccessTailscalePluginRequirementCode } from './openapi';
+export { RemoteAccessTailscalePluginDataSetupJobState as RemoteAccessTailscalePluginSetupJobState } from './openapi';
 
 // Notifications Webhook Plugin Schemas
 // ======================================

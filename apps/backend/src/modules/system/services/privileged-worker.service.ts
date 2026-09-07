@@ -244,7 +244,7 @@ export class PrivilegedWorkerService {
 				this.finishJob(record, {
 					id,
 					state: 'failed',
-					message: this.buildFailureMessage(`Worker process ${reason}`, stderr),
+					message: this.buildGenericFailureMessage(`Worker process ${reason} before reporting completion`, stderr),
 					stderr,
 					updatedAt: new Date().toISOString(),
 				});
@@ -351,15 +351,26 @@ export class PrivilegedWorkerService {
 	}
 
 	/**
-	 * Builds an actionable failure message for a job that failed before ever reporting through
-	 * its own status file — sudo/systemd-run rejecting the invocation is the common case this
-	 * epic exists to fix, so the message always names the fix rather than leaving the admin with
-	 * just a raw exit code or errno.
+	 * Builds an actionable failure message for a job whose child process never spawned at all
+	 * (`error`/synchronous `spawn()` failure) — sudo/systemd-run rejecting the invocation outright
+	 * is the common case this epic exists to fix, so the message always names the fix rather than
+	 * leaving the admin with just a raw errno.
 	 */
 	private buildFailureMessage(summary: string, stderr?: string): string {
 		const detail = stderr ? ` (${stderr})` : '';
 
 		return `The smart-panel user cannot start privileged jobs: ${summary}${detail}. Re-run \`sudo smart-panel-service install\`, or add the sudoers grant from the installation guide.`;
+	}
+
+	/**
+	 * Builds a plain failure message for a job whose child DID spawn (sudo/systemd-run accepted
+	 * the invocation) but exited non-zero before writing a status file — the failure is inside the
+	 * script itself, not a privilege refusal, so this must not carry the sudoers remediation text.
+	 */
+	private buildGenericFailureMessage(summary: string, stderr?: string): string {
+		const detail = stderr ? ` (${stderr})` : '';
+
+		return `${summary}${detail}.`;
 	}
 
 	private startPolling(record: JobRecord): void {

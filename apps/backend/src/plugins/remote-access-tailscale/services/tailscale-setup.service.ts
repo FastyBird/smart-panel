@@ -209,7 +209,13 @@ export class TailscaleSetupService {
 	private async onSetupComplete(): Promise<void> {
 		try {
 			await this.refreshNodeRequirements();
+		} catch (error) {
+			this.logger.warn('Failed to refresh Tailscale requirements after setup', {
+				message: error instanceof Error ? error.message : String(error),
+			});
+		}
 
+		try {
 			const pluginConfig = this.configService.getPluginConfig<RemoteAccessTailscalePluginConfigModel>(
 				REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 			);
@@ -218,7 +224,7 @@ export class TailscaleSetupService {
 				await this.managedServiceManager.restartService('plugin', REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'node');
 			}
 		} catch (error) {
-			this.logger.warn('Failed to refresh Tailscale requirements after setup', {
+			this.logger.warn('Failed to restart the Tailscale node service after setup', {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}

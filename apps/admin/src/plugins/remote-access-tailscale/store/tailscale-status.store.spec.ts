@@ -37,6 +37,7 @@ const statusFields = {
 	advisories: [],
 	updated_at: '2026-01-01T00:00:00.000Z',
 	requirements: [{ code: 'binary-installed', satisfied: true, message: 'Tailscale 1.78.1 is installed.' }],
+	privileged_setup: { available: true, reason: null },
 };
 
 describe('Tailscale status store', () => {

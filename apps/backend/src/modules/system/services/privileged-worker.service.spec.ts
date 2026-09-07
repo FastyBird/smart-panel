@@ -808,26 +808,26 @@ describe('PrivilegedWorkerService', () => {
 			expect(fakeChild.stderr.unref).toHaveBeenCalled();
 		});
 
-		it('includes the captured stderr and an actionable message when the child exits non-zero', async () => {
+		it('includes the captured stderr and a generic message when the child exits non-zero, without the sudoers remediation', async () => {
 			const { id } = await service.run(baseSpec);
 			const handler = jest.fn();
 
 			service.onStatus(id, handler);
 
-			fakeChild.stderr.emit('data', Buffer.from('sudo: a password is required\n'));
+			fakeChild.stderr.emit('data', Buffer.from('some script failure\n'));
 			fakeChild.emit('exit', 1, null);
 
 			expect(handler).toHaveBeenCalledWith(
 				expect.objectContaining({
 					id,
 					state: 'failed',
-					stderr: 'sudo: a password is required\n',
-					message: expect.stringContaining('sudo: a password is required'),
+					stderr: 'some script failure\n',
+					message: expect.stringContaining('some script failure'),
 				}),
 			);
 			expect(handler).toHaveBeenCalledWith(
 				expect.objectContaining({
-					message: expect.stringContaining('sudo smart-panel-service install'),
+					message: expect.not.stringContaining('sudo smart-panel-service install'),
 				}),
 			);
 		});
