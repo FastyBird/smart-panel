@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'fs';
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 
 import { Injectable } from '@nestjs/common';
@@ -88,6 +88,11 @@ const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 /** Caps how much of a failed job's stderr is retained/exposed — enough for a useful diagnostic (e.g. sudo's own refusal reason) without holding an unbounded buffer for a chatty script. */
 const STDERR_CAPTURE_LIMIT_BYTES = 4 * 1024;
 
+/** Bounds the unprivileged `systemctl is-active` read `handleTimeout` uses to confirm a stop attempt — same probe pattern/budget as TailscaleNodeManagedService's own systemd unit check. */
+const IS_ACTIVE_PROBE_TIMEOUT_MS = 2_000;
+/** Bounds the privileged stop attempt `handleTimeout` makes, so a scope that refuses to stop cannot strand the job in 'running'. */
+const STOP_ATTEMPT_TIMEOUT_MS = 15_000;
+
 // 'timeout' is deliberately excluded — it is reserved for this service's own hard-timeout path
 // (see the top of startPolling's tick below). A file/mapper tick claiming it is invalid, same as
 // a missing or unrecognized state.
@@ -138,6 +143,19 @@ export class PrivilegedWorkerService {
 		}
 
 		if (this.busyUnits.has(spec.unit)) {
+			const busyJobId = this.busyUnits.get(spec.unit);
+			const busyRecord = busyJobId ? this.jobs.get(busyJobId) : undefined;
+
+			// The only way a unit stays in busyUnits with a 'timeout' lastStatus is the "still
+			// running after a timeout stop attempt" path in handleTimeout below — every other
+			// terminal path frees the unit via stopPolling. Called out explicitly so an operator
+			// reading this doesn't mistake it for an ordinary busy-unit rejection.
+			if (busyRecord?.lastStatus.state === 'timeout') {
+				throw new PrivilegedWorkerUnavailableException(
+					`Privileged worker unit "${spec.unit}" timed out previously and is still running after a stop attempt; it cannot be reused until the process is confirmed stopped.`,
+				);
+			}
+
 			throw new PrivilegedWorkerUnavailableException(`Privileged worker unit "${spec.unit}" is already busy.`);
 		}
 
@@ -376,14 +394,14 @@ export class PrivilegedWorkerService {
 	private startPolling(record: JobRecord): void {
 		record.pollTimer = setInterval(() => {
 			if (Date.now() - record.startedAt > record.timeoutMs) {
-				this.logger.error(`Privileged worker unit "${record.unit}" timed out after ${record.timeoutMs}ms`);
+				// Cleared here directly (not via stopPolling, which would also release the unit)
+				// so this branch can never re-enter on a later tick while handleTimeout's stop
+				// attempt / is-active check are still in flight — handleTimeout is async and this
+				// callback does not (and must not) await it.
+				clearInterval(record.pollTimer);
+				record.pollTimer = null;
 
-				this.finishJob(record, {
-					id: record.id,
-					state: 'timeout',
-					stderr: this.getCapturedStderr(record),
-					updatedAt: new Date().toISOString(),
-				});
+				void this.handleTimeout(record);
 
 				return;
 			}
@@ -434,20 +452,140 @@ export class PrivilegedWorkerService {
 
 			record.lastStatus = status;
 
-			// Snapshot before iterating: a handler can itself call onStatus()
-			// re-entrantly (e.g. subscribing another handler while reacting to
-			// this one's delivery). Set iteration is live, so without this a
-			// handler added mid-loop would be visited here too, on top of the
-			// replay onStatus() already schedules for it — delivering this same
-			// status to it twice.
-			for (const handler of [...record.handlers]) {
-				handler(status);
-			}
+			this.notifyHandlers(record, status);
 
 			if (status.state === 'complete' || status.state === 'failed') {
 				this.stopPolling(record);
 			}
 		}, STATUS_POLL_INTERVAL_MS);
+	}
+
+	/**
+	 * Attempts to stop the still-running scope for a unit whose job just hit its hard timeout, via
+	 * `sudo -n systemd-run --scope --quiet --unit=<unit>-stop systemctl stop <unit>` — its own
+	 * short-lived scope, run under the SAME `systemd-run *` sudoers grant `run()` already relies
+	 * on (see the installation guide); no new privileged command is introduced. Never rejects: a
+	 * refusal or spawn failure here must not stop the `systemctl is-active` confirmation that
+	 * follows in `handleTimeout` from running.
+	 */
+	private stopUnit(unit: string): Promise<void> {
+		return new Promise((resolve) => {
+			let settled = false;
+			let timer: NodeJS.Timeout | null = null;
+
+			const settle = () => {
+				if (settled) {
+					return;
+				}
+
+				settled = true;
+
+				if (timer) {
+					clearTimeout(timer);
+					timer = null;
+				}
+
+				resolve();
+			};
+
+			try {
+				const child = spawn(
+					'sudo',
+					['-n', 'systemd-run', '--scope', '--quiet', `--unit=${unit}-stop`, 'systemctl', 'stop', unit],
+					{ stdio: 'ignore' },
+				);
+
+				child.on('exit', settle);
+				child.on('error', settle);
+
+				// A scope that refuses to stop must not strand the job: give up waiting and let
+				// the is-active read below decide, exactly like a refused stop attempt.
+				timer = setTimeout(settle, STOP_ATTEMPT_TIMEOUT_MS);
+				timer.unref();
+				child.unref();
+			} catch {
+				// spawn() itself threw synchronously (e.g. EAGAIN) — treated exactly like the
+				// child spawning and then erroring: still proceed to the is-active read below.
+				settle();
+			}
+		});
+	}
+
+	/**
+	 * Unprivileged read of whether `unit` is still active — the same `systemctl is-active`
+	 * pattern TailscaleNodeManagedService already uses to probe a systemd unit. Any failure (unit
+	 * not found, probe timeout, systemctl missing) resolves `false` so a probe failure can never
+	 * keep a unit reserved forever by itself; only a confirmed 'active' does that.
+	 */
+	private isUnitActive(unit: string): Promise<boolean> {
+		return new Promise((resolve) => {
+			execFile('systemctl', ['is-active', unit], { timeout: IS_ACTIVE_PROBE_TIMEOUT_MS }, (error, stdout) => {
+				if (error) {
+					resolve(false);
+
+					return;
+				}
+
+				resolve((stdout ?? '').trim() === 'active');
+			});
+		});
+	}
+
+	/**
+	 * Runs once a job's hard timeout elapses (the poll tick above has already stopped the poll
+	 * timer, without releasing the unit, before calling this). Actually stops the still-running
+	 * scope before freeing the unit for reuse — without this, a retried `run()` for the same unit
+	 * would race the still-alive old `systemd-run --scope` process and fail opaquely instead of
+	 * either succeeding or reporting a clear reason (see the class doc comment / issue #950).
+	 *
+	 * If the unit is confirmed stopped, proceeds exactly like the previous timeout behavior:
+	 * `finishJob` with `state: 'timeout'`, freeing the unit. If it is still active after the stop
+	 * attempt, the unit is deliberately kept reserved in `busyUnits` — `run()`'s busy-unit check
+	 * recognizes this exact case (a busy unit whose job's `lastStatus.state` is `'timeout'`, which
+	 * can only happen via this path) and reports it with equally explicit wording.
+	 */
+	private async handleTimeout(record: JobRecord): Promise<void> {
+		this.logger.error(`Privileged worker unit "${record.unit}" timed out after ${record.timeoutMs}ms`);
+
+		await this.stopUnit(record.unit);
+
+		const stillActive = await this.isUnitActive(record.unit);
+		const stderr = this.getCapturedStderr(record);
+
+		// The main child's own 'exit'/'error' handler (guarded the same way) could have already
+		// finished this job — e.g. it happened to exit right as the stop attempt / is-active check
+		// above were in flight. finishJob below has its own such guard; this branch bypasses
+		// finishJob (it must not release the unit), so it needs the same check explicitly.
+		if (record.lastStatus.state !== 'running') {
+			return;
+		}
+
+		if (stillActive) {
+			this.logger.error(
+				`Privileged worker unit "${record.unit}" is still running after a timeout stop attempt; keeping it reserved.`,
+			);
+
+			const status: PrivilegedJobStatus = {
+				id: record.id,
+				state: 'timeout',
+				message: `Privileged worker unit "${record.unit}" timed out and is still running after a stop attempt; it remains reserved until confirmed stopped.`,
+				stderr,
+				updatedAt: new Date().toISOString(),
+			};
+
+			record.lastStatus = status;
+
+			this.notifyHandlers(record, status);
+
+			return;
+		}
+
+		this.finishJob(record, {
+			id: record.id,
+			state: 'timeout',
+			stderr,
+			updatedAt: new Date().toISOString(),
+		});
 	}
 
 	/** Logs at most once per job so a script stuck writing an unusable status doesn't spam the log every 3 seconds. */
@@ -476,15 +614,21 @@ export class PrivilegedWorkerService {
 
 		record.lastStatus = status;
 
-		// Same re-entrancy guard as the poll tick above: snapshot before
-		// iterating so a handler added during delivery (via a re-entrant
-		// onStatus() call) is not also visited by this loop, on top of its own
-		// replay.
+		this.notifyHandlers(record, status);
+
+		this.stopPolling(record);
+	}
+
+	/**
+	 * Snapshots and notifies every current subscriber with a status tick — shared by the poll
+	 * tick, `finishJob`, and `handleTimeout`'s "still running" path. Snapshotting before iterating
+	 * means a handler added re-entrantly (e.g. another handler calling `onStatus()` from inside
+	 * its own delivery) is not also visited by this same loop, on top of its own replay.
+	 */
+	private notifyHandlers(record: JobRecord, status: PrivilegedJobStatus): void {
 		for (const handler of [...record.handlers]) {
 			handler(status);
 		}
-
-		this.stopPolling(record);
 	}
 
 	private stopPolling(record: JobRecord): void {
