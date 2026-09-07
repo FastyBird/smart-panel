@@ -1,12 +1,21 @@
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { ArrayUnique, IsArray, IsBoolean, IsOptional, IsString, Validate, ValidateIf } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateModuleConfigDto } from '../../config/dto/config.dto';
 import { REMOTE_ACCESS_MODULE_NAME } from '../remote-access.constants';
-import { IsRemoteAccessUrlConstraint } from '../validators/is-remote-access-url.validator';
+import { IsRemoteAccessUrlConstraint, normalizeRemoteAccessUrl } from '../validators/is-remote-access-url.validator';
 import { IsTrustedProxyEntryConstraint } from '../validators/is-trusted-proxy-entry.validator';
+
+// Normalizes to the canonical origin before validation, so a value the validator accepts (e.g. a
+// trailing slash, upper-case scheme/host, or a redundant default port) is also what gets
+// persisted - the validator alone only checks, it never rewrites the field. Passes an invalid
+// input through untouched so IsRemoteAccessUrlConstraint's message still refers to what the
+// caller actually sent.
+function normalizeRemoteAccessUrlField({ value }: { value: unknown }): unknown {
+	return typeof value === 'string' ? (normalizeRemoteAccessUrl(value) ?? value) : value;
+}
 
 @ApiSchema({ name: 'ConfigModuleUpdateRemoteAccess' })
 export class UpdateRemoteAccessConfigDto extends UpdateModuleConfigDto {
@@ -29,6 +38,7 @@ export class UpdateRemoteAccessConfigDto extends UpdateModuleConfigDto {
 	})
 	@Expose({ name: 'internal_url' })
 	@IsOptional()
+	@Transform(normalizeRemoteAccessUrlField)
 	@Validate(IsRemoteAccessUrlConstraint, {
 		message:
 			'[{"field":"internal_url","reason":"Internal URL must be a normalized absolute HTTP(S) origin without a path, query, fragment, or credentials."}]',
@@ -45,6 +55,7 @@ export class UpdateRemoteAccessConfigDto extends UpdateModuleConfigDto {
 	})
 	@Expose({ name: 'external_url' })
 	@IsOptional()
+	@Transform(normalizeRemoteAccessUrlField)
 	@Validate(IsRemoteAccessUrlConstraint, {
 		message:
 			'[{"field":"external_url","reason":"External URL must be a normalized absolute HTTP(S) origin without a path, query, fragment, or credentials."}]',

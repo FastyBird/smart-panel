@@ -42,6 +42,33 @@ describe('UpdateRemoteAccessConfigDto', () => {
 		}
 	});
 
+	it('normalizes a trailing-slash/upper-case/redundant-port URL to its canonical origin before validation and persistence, not just at validation time', async () => {
+		const dto = plainToInstance(UpdateRemoteAccessConfigDto, {
+			type: REMOTE_ACCESS_MODULE_NAME,
+			internal_url: 'https://panel.example.com/',
+			external_url: 'HTTPS://Example.COM:443',
+		});
+
+		expect(await validate(dto)).toHaveLength(0);
+		// The point of the fix: the field itself carries the canonical origin, not the raw
+		// input the caller sent - IsRemoteAccessUrlConstraint only checks, it never rewrites.
+		expect(dto.internal_url).toBe('https://panel.example.com');
+		expect(dto.external_url).toBe('https://example.com');
+	});
+
+	it('leaves an unnormalizable value untouched so the validator error still reflects what the caller sent', async () => {
+		const dto = plainToInstance(UpdateRemoteAccessConfigDto, {
+			type: REMOTE_ACCESS_MODULE_NAME,
+			internal_url: 'https://panel.example.com/reverse-proxy',
+		});
+
+		expect(dto.internal_url).toBe('https://panel.example.com/reverse-proxy');
+
+		const errors = await validate(dto);
+
+		expect(errors.some((error) => error.property === 'internal_url')).toBe(true);
+	});
+
 	it('rejects a URL carrying a path', async () => {
 		const dto = plainToInstance(UpdateRemoteAccessConfigDto, {
 			type: REMOTE_ACCESS_MODULE_NAME,

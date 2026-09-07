@@ -28,6 +28,11 @@ describe('normalizeRemoteAccessUrl', () => {
 		['https://panel.example.com#fragment', 'fragment'],
 		['ftp://panel.example.com', 'non-HTTP(S) scheme'],
 		['not a url', 'unparseable value'],
+		// `new URL()` canonicalizes dot segments before `.pathname` is ever read (e.g. `/..`
+		// collapses to `/`), so these must be caught against the raw input instead.
+		['https://panel.example.com/..', 'a bare ".." path segment'],
+		['https://panel.example.com/.', 'a bare "." path segment'],
+		['https://panel.example.com/foo/..', 'a ".." segment after a real path component'],
 	])('rejects %s (%s)', (value) => {
 		expect(normalizeRemoteAccessUrl(value)).toBeNull();
 	});

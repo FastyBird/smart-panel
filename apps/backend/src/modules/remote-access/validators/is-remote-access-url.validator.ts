@@ -17,7 +17,17 @@ import { Injectable } from '@nestjs/common';
  * are all normalized away, since those are cosmetic differences from the
  * same origin, not a different one.
  */
+// `new URL()` canonicalizes `.`/`..` path segments per the WHATWG URL algorithm before
+// `.pathname` is ever read (e.g. `/..` collapses to `/`), so a literal dot-segment in the raw
+// input would otherwise slip past the `pathname !== '/'` check below undetected. Checked against
+// the raw value, before parsing.
+const RAW_DOT_SEGMENT_PATTERN = /\/\.\.?(?:[/?#]|$)/;
+
 export function normalizeRemoteAccessUrl(value: string): string | null {
+	if (RAW_DOT_SEGMENT_PATTERN.test(value)) {
+		return null;
+	}
+
 	let url: URL;
 
 	try {
