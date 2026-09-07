@@ -36,7 +36,7 @@ export class ConflictExceptionFilter implements ExceptionFilter {
 
 		const applicationCode = this.extractApplicationCode(exceptionResponse);
 
-		if (applicationCode) {
+		if (applicationCode !== undefined) {
 			details.code = applicationCode;
 		}
 

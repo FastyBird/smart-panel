@@ -86,4 +86,14 @@ describe('UnprocessableEntityExceptionFilter', () => {
 
 		expect(body.error.details).toEqual({ reason: 'weird' });
 	});
+
+	it('preserves an empty-string application code instead of treating it as absent', () => {
+		const { host, response } = createHost();
+
+		filter.catch(new UnprocessableEntityException({ code: '', message: 'edge case' }), host);
+
+		const body = response.send.mock.calls[0][0];
+
+		expect(body.error.details).toEqual({ reason: 'edge case', code: '' });
+	});
 });

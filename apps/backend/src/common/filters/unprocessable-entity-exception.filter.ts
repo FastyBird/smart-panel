@@ -27,7 +27,7 @@ export class UnprocessableEntityExceptionFilter implements ExceptionFilter {
 		// `UnprocessableEntityException('...')` keeps working unchanged.
 		const applicationCode = this.extractApplicationCode(exception.getResponse());
 
-		if (applicationCode) {
+		if (applicationCode !== undefined) {
 			details.code = applicationCode;
 		}
 
