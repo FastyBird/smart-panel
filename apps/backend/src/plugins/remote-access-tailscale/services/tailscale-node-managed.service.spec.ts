@@ -16,6 +16,7 @@ import { RemoteAccessProviderStatus } from '../../../modules/remote-access/platf
 import { EventType as RemoteAccessEventType } from '../../../modules/remote-access/remote-access.constants';
 import { RemoteAccessTailscalePluginConfigModel } from '../models/config.model';
 import { REMOTE_ACCESS_TAILSCALE_ALLOW_DEV_ENV } from '../remote-access-tailscale.constants';
+import { TailscaleNodeStopFailedException } from '../remote-access-tailscale.exceptions';
 
 import { TailscaleCliError, TailscaleCliService, TailscaleStatus } from './tailscale-cli.service';
 import { TailscaleNodeManagedService, compareTailscaleVersions } from './tailscale-node-managed.service';
@@ -550,6 +551,21 @@ describe('TailscaleNodeManagedService', () => {
 			await expect(service.start()).resolves.toBeUndefined();
 			expect(service.getState()).toBe('started');
 		});
+
+		it("emits PROVIDER_STATUS immediately after a failed set/up call, before the poller's own first tick fires", async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			cli.set.mockRejectedValue(new Error('boom'));
+
+			await service.start();
+
+			// The poller's own (delay 0) first tick has not fired yet — this
+			// only holds if the emit came from start()'s own catch block.
+			expect(jest.getTimerCount()).toBeGreaterThan(0);
+			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
+				RemoteAccessEventType.PROVIDER_STATUS,
+				expect.objectContaining({ type: 'remote-access-tailscale-plugin' }),
+			);
+		});
 	});
 
 	describe('stop', () => {
@@ -594,11 +610,14 @@ describe('TailscaleNodeManagedService', () => {
 			expect(cli.getStatus.mock.calls.length).toBe(callsAtStop);
 		});
 
-		it('does not revive the poller or emit if a poll tick is still in flight when stop() finishes', async () => {
+		it('does not revive the poller or emit again if a poll tick is still in flight when stop() finishes', async () => {
 			// pollTick() runs outside withLock (it is a bare setTimeout
 			// callback), so stop() can complete while a tick's own
 			// computeStatus() call is still pending. That tick must not
-			// reschedule itself or emit once it finally resolves.
+			// reschedule itself or emit once it finally resolves — stop()'s
+			// own emitStatus() call (D3) short-circuits on `this.state` (D2)
+			// and never touches the CLI once `this.state` is 'stopped', so it
+			// never contends with the in-flight tick's own pending call below.
 			let resolvePendingStatus: ((status: TailscaleStatus) => void) | null = null;
 			let callCount = 0;
 
@@ -626,17 +645,117 @@ describe('TailscaleNodeManagedService', () => {
 			await jest.advanceTimersByTimeAsync(0);
 			expect(resolvePendingStatus).not.toBeNull();
 
-			// stop() runs to completion while that tick is still in flight.
+			// stop() runs to completion while that tick is still in flight —
+			// its own emitStatus() call emits the lifecycle "stopped" status.
 			await service.stop();
 			expect(service.getState()).toBe('stopped');
+			expect(eventEmitterMock.emit).toHaveBeenCalledTimes(1);
+
+			const emitCallsAfterStop = eventEmitterMock.emit.mock.calls.length;
 
 			// Resolve the in-flight tick with a status that differs from the
 			// (still-null) lastStatus — this would normally emit and reschedule.
 			resolvePendingStatus(RUNNING_CONNECTED_STATUS);
 			await jest.advanceTimersByTimeAsync(0);
 
-			expect(eventEmitterMock.emit).not.toHaveBeenCalled();
+			expect(eventEmitterMock.emit).toHaveBeenCalledTimes(emitCallsAfterStop);
 			expect(jest.getTimerCount()).toBe(0);
+		});
+	});
+
+	describe('stop — D3 failure semantics', () => {
+		it('emits PROVIDER_STATUS (disconnected) after a tolerated-success down()', async () => {
+			await service.start();
+			eventEmitterMock.emit.mockClear();
+
+			await service.stop();
+
+			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
+				RemoteAccessEventType.PROVIDER_STATUS,
+				expect.objectContaining({ state: 'disconnected', message: 'The node service is stopped.' }),
+			);
+			expect(service.getState()).toBe('stopped');
+		});
+
+		it.each(['needs-login', 'daemon-down', 'not-installed'] as const)(
+			'tolerates a %s down() failure without throwing',
+			async (kind) => {
+				cli.down.mockRejectedValue(new TailscaleCliError(kind, 'nothing to bring down'));
+
+				await service.start();
+
+				await expect(service.stop()).resolves.toBeUndefined();
+				expect(service.getState()).toBe('stopped');
+			},
+		);
+
+		it('tolerates a down() failure of any other kind when the backend already reports Stopped', async () => {
+			cli.down.mockRejectedValue(new TailscaleCliError('unknown', 'weird failure'));
+
+			await service.start();
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+
+			await expect(service.stop()).resolves.toBeUndefined();
+			expect(service.getState()).toBe('stopped');
+		});
+
+		it.each(['permission-denied', 'timeout', 'unknown'] as const)(
+			'throws TailscaleNodeStopFailedException and sets state to error for a %s down() failure when the backend is not already Stopped',
+			async (kind) => {
+				cli.down.mockRejectedValue(new TailscaleCliError(kind, 'genuine failure'));
+
+				await service.start();
+				cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+				await expect(service.stop()).rejects.toBeInstanceOf(TailscaleNodeStopFailedException);
+				expect(service.getState()).toBe('error');
+			},
+		);
+
+		it('emits PROVIDER_STATUS (error, with the failure message) before throwing on a non-tolerated failure', async () => {
+			cli.down.mockRejectedValue(new TailscaleCliError('permission-denied', 'access denied'));
+
+			await service.start();
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			eventEmitterMock.emit.mockClear();
+
+			await expect(service.stop()).rejects.toBeInstanceOf(TailscaleNodeStopFailedException);
+
+			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
+				RemoteAccessEventType.PROVIDER_STATUS,
+				expect.objectContaining({ state: 'error', message: 'access denied' }),
+			);
+		});
+	});
+
+	describe('computeStatus — lifecycle-aware short-circuit (D2)', () => {
+		it('returns disconnected with no endpoints/proxyAddresses once stopped, even when the CLI/status fixture claims Running', async () => {
+			await service.start();
+			await service.stop();
+
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+			const status = await service.computeStatus();
+
+			expect(status).toMatchObject({
+				state: 'disconnected',
+				message: 'The node service is stopped.',
+				endpoints: [],
+				proxyAddresses: [],
+			});
+		});
+
+		it('returns error with the last error message once the service is in the error state', async () => {
+			cli.down.mockRejectedValue(new TailscaleCliError('permission-denied', 'access denied'));
+
+			await service.start();
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+			await expect(service.stop()).rejects.toBeInstanceOf(TailscaleNodeStopFailedException);
+
+			const status = await service.computeStatus();
+
+			expect(status).toMatchObject({ state: 'error', message: 'access denied' });
 		});
 	});
 
@@ -769,27 +888,46 @@ describe('TailscaleNodeManagedService', () => {
 		});
 	});
 
-	describe('isHealthy', () => {
-		it('is true only when Running and Self.Online', async () => {
+	describe('isHealthy (D3 — requirements AND daemon Running AND Self.Online)', () => {
+		it('is true only when requirements are satisfied, Running, and Self.Online', async () => {
+			await service.evaluateRequirements();
 			cli.getStatus.mockResolvedValue({ BackendState: 'Running', Self: { Online: true } });
 
 			await expect(service.isHealthy()).resolves.toBe(true);
 		});
 
 		it('is false when Running but not Online', async () => {
+			await service.evaluateRequirements();
 			cli.getStatus.mockResolvedValue({ BackendState: 'Running', Self: { Online: false } });
 
 			await expect(service.isHealthy()).resolves.toBe(false);
 		});
 
 		it('is false when Stopped', async () => {
+			await service.evaluateRequirements();
 			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
 
 			await expect(service.isHealthy()).resolves.toBe(false);
 		});
 
 		it('is false when the CLI throws', async () => {
+			await service.evaluateRequirements();
 			cli.getStatus.mockRejectedValue(new TailscaleCliError('daemon-down', 'boom'));
+
+			await expect(service.isHealthy()).resolves.toBe(false);
+		});
+
+		it('is false when requirements were never evaluated (empty cache), even before touching the CLI', async () => {
+			cli.getStatus.mockResolvedValue({ BackendState: 'Running', Self: { Online: true } });
+
+			await expect(service.isHealthy()).resolves.toBe(false);
+			expect(cli.getStatus).not.toHaveBeenCalled();
+		});
+
+		it('is false when a requirement is unsatisfied, even though the daemon reports Running/Online', async () => {
+			cli.getPrefs.mockResolvedValue({ OperatorUser: 'someone-else' });
+			await service.evaluateRequirements();
+			cli.getStatus.mockResolvedValue({ BackendState: 'Running', Self: { Online: true } });
 
 			await expect(service.isHealthy()).resolves.toBe(false);
 		});
@@ -924,6 +1062,10 @@ describe('TailscaleNodeManagedService', () => {
 	describe('Serve/Funnel apply (RA-6)', () => {
 		it('calls TailscaleServeService.apply with the plugin config, backend port and raw status once connected', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			// D2: computeStatus() short-circuits while this.state is 'stopped'
+			// (the default before the service ever starts), so exercising the
+			// live CLI-mapping path below requires the service to be started.
+			await service.start();
 
 			await service.computeStatus();
 
@@ -937,6 +1079,7 @@ describe('TailscaleNodeManagedService', () => {
 		it('reads the backend port from FB_BACKEND_PORT instead of the 3000 default when set', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
 			nestConfigServiceMock.get.mockImplementation((key: string) => (key === 'FB_BACKEND_PORT' ? 8080 : undefined));
+			await service.start();
 
 			await service.computeStatus();
 
@@ -953,6 +1096,7 @@ describe('TailscaleNodeManagedService', () => {
 			};
 			serveServiceMock.apply.mockResolvedValue(serveResult);
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await service.start();
 
 			const status = await service.computeStatus();
 
@@ -963,6 +1107,7 @@ describe('TailscaleNodeManagedService', () => {
 
 		it('does not call apply when the node is not connected', async () => {
 			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			await service.start();
 
 			await service.computeStatus();
 
@@ -971,6 +1116,7 @@ describe('TailscaleNodeManagedService', () => {
 
 		it('does not call apply when the platform is unsupported', async () => {
 			platformServiceMock.getPlatformTypeAsync.mockResolvedValue(PlatformType.DOCKER);
+			await service.start();
 
 			await service.computeStatus();
 
@@ -979,6 +1125,7 @@ describe('TailscaleNodeManagedService', () => {
 
 		it('never calls apply more than once per computeStatus() call', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await service.start();
 
 			await service.computeStatus();
 
@@ -1036,6 +1183,7 @@ describe('TailscaleNodeManagedService', () => {
 	describe('posture advisories (RA-6)', () => {
 		it('adds version-unsupported when the installed version is older than the pinned minimum', async () => {
 			cli.getStatus.mockResolvedValue({ ...RUNNING_CONNECTED_STATUS, Version: '1.40.0' });
+			await service.start();
 
 			const status = await service.computeStatus();
 
@@ -1046,6 +1194,7 @@ describe('TailscaleNodeManagedService', () => {
 
 		it('does not add version-unsupported when the installed version meets the minimum', async () => {
 			cli.getStatus.mockResolvedValue({ ...RUNNING_CONNECTED_STATUS, Version: '1.78.1' });
+			await service.start();
 
 			const status = await service.computeStatus();
 
@@ -1058,6 +1207,7 @@ describe('TailscaleNodeManagedService', () => {
 				...RUNNING_CONNECTED_STATUS,
 				Self: { ...RUNNING_CONNECTED_STATUS.Self, KeyExpiry: soon },
 			});
+			await service.start();
 
 			const status = await service.computeStatus();
 
@@ -1070,6 +1220,7 @@ describe('TailscaleNodeManagedService', () => {
 				...RUNNING_CONNECTED_STATUS,
 				Self: { ...RUNNING_CONNECTED_STATUS.Self, KeyExpiry: later },
 			});
+			await service.start();
 
 			const status = await service.computeStatus();
 
@@ -1078,6 +1229,7 @@ describe('TailscaleNodeManagedService', () => {
 
 		it('does not add key-expiring when Self.KeyExpiry is absent (expiry disabled)', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await service.start();
 
 			const status = await service.computeStatus();
 
@@ -1090,6 +1242,7 @@ describe('TailscaleNodeManagedService', () => {
 				...RUNNING_CONNECTED_STATUS,
 				Self: { ...RUNNING_CONNECTED_STATUS.Self, KeyExpiry: alreadyExpired },
 			});
+			await service.start();
 
 			const status = await service.computeStatus();
 
@@ -1099,6 +1252,7 @@ describe('TailscaleNodeManagedService', () => {
 		it('reports posture advisories even when the node is not connected (e.g. disconnected with a cached KeyExpiry)', async () => {
 			const soon = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
 			cli.getStatus.mockResolvedValue({ BackendState: 'Stopped', Self: { KeyExpiry: soon } });
+			await service.start();
 
 			const status = await service.computeStatus();
 
@@ -1111,6 +1265,7 @@ describe('TailscaleNodeManagedService', () => {
 		it('reports setup-required, not connected, even though status --json reports Running', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
 			cli.getPrefs.mockResolvedValue({ OperatorUser: 'someone-else' });
+			await service.start();
 
 			const status = await service.computeStatus();
 
@@ -1123,6 +1278,7 @@ describe('TailscaleNodeManagedService', () => {
 		it('never calls TailscaleServeService.apply once operator-granted is unsatisfied — it would only fail permission-denied too', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
 			cli.getPrefs.mockResolvedValue({ OperatorUser: 'someone-else' });
+			await service.start();
 
 			await service.computeStatus();
 
@@ -1132,6 +1288,7 @@ describe('TailscaleNodeManagedService', () => {
 		it('does not override the mapped state once operator-granted is satisfied again', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
 			cli.getPrefs.mockResolvedValue({ OperatorUser: os.userInfo().username });
+			await service.start();
 
 			const status = await service.computeStatus();
 

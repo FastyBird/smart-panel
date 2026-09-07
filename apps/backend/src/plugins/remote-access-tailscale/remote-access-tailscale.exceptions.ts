@@ -51,3 +51,20 @@ export class TailscaleSetupUnavailableException extends Error {
 		this.name = 'TailscaleSetupUnavailableException';
 	}
 }
+
+/**
+ * Raised by `TailscaleNodeManagedService.stop()` when the underlying
+ * `tailscale down` call fails with a kind that is not one of the tolerated
+ * "nothing to bring down" outcomes (`needs-login`, `daemon-down`,
+ * `not-installed`, or the backend already reporting `Stopped`) — a genuine
+ * failure to stop the node (`permission-denied`, `timeout`, `unknown`, or any
+ * other unexpected error). `stop()` still transitions to `error` state,
+ * records `lastError`, and emits a `PROVIDER_STATUS` event reflecting that
+ * before this propagates.
+ */
+export class TailscaleNodeStopFailedException extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'TailscaleNodeStopFailedException';
+	}
+}

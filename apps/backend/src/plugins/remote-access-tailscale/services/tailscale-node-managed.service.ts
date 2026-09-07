@@ -30,6 +30,7 @@ import {
 	TAILSCALE_POLL_INTERVAL_TRANSITIONING_MS,
 	TAILSCALE_SYSTEMCTL_PROBE_TIMEOUT_MS,
 } from '../remote-access-tailscale.constants';
+import { TailscaleNodeStopFailedException } from '../remote-access-tailscale.exceptions';
 
 import { TailscaleCliError, TailscaleCliService, TailscaleStatus } from './tailscale-cli.service';
 import { TailscaleServeService } from './tailscale-serve.service';
@@ -127,6 +128,11 @@ const UNEVALUATED_MESSAGE = 'Not evaluated: the platform requirement is not sati
  * Setup, sign-in, sign-out and reset-preferences are out of scope (RA-5):
  * `start()` never authenticates a node that has never signed in — it only
  * reconnects a node that already holds a key. `stop()` never signs out.
+ *
+ * A stopped managed service reports `disconnected` with no endpoints/proxy
+ * addresses regardless of what the daemon itself last reported — every
+ * lifecycle transition (`start()`, `stop()`) emits `PROVIDER_STATUS`
+ * immediately instead of waiting for the next poll tick (D2/D3).
  */
 @Injectable()
 export class TailscaleNodeManagedService extends BaseManagedExtensionService {
@@ -141,6 +147,8 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 	private pollTimer: NodeJS.Timeout | null = null;
 	private lastStatus: RemoteAccessProviderStatus | null = null;
+	/** Set by `stop()` when the underlying `down` call fails with a non-tolerated outcome — read back by `computeStatus()` while `this.state === 'error'`. */
+	private lastError: string | null = null;
 	private pluginConfig: RemoteAccessTailscalePluginConfigModel | null = null;
 	/** Cached `refreshRequirements()` snapshot — see `getRequirements()`/`refreshRequirements()`. */
 	private requirementsCache: TailscaleRequirement[] | null = null;
@@ -197,6 +205,17 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 						message: error instanceof Error ? error.message : String(error),
 					},
 				);
+
+				// Surface the failed start immediately instead of waiting for the
+				// poller's first tick (schedulePoll(0) below) to report it —
+				// emitStatus() itself never throws (computeStatus() never does),
+				// but guard it anyway so a failure here can never mask the
+				// original start() failure.
+				await this.emitStatus().catch((emitError) => {
+					this.logger.debug('Failed to emit status after a failed start', {
+						message: emitError instanceof Error ? emitError.message : String(emitError),
+					});
+				});
 			}
 
 			this.schedulePoll(0);
@@ -207,6 +226,19 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		});
 	}
 
+	/**
+	 * D3: `down()` succeeding, or failing with one of the tolerated "nothing
+	 * to bring down" outcomes (`needs-login`, `daemon-down`, `not-installed`,
+	 * or the backend already reporting `Stopped` regardless of why `down`
+	 * itself failed), transitions to `stopped`. Any other failure
+	 * (`permission-denied`, `timeout`, `unknown`, or a non-`TailscaleCliError`)
+	 * transitions to `error`, records `lastError`, and throws
+	 * `TailscaleNodeStopFailedException` — but only after `emitStatus()` has
+	 * already reported that. Either way, `computeStatus()` (via
+	 * `emitStatus()`) now reads `this.state` first (D2) and short-circuits to
+	 * `disconnected`/`error` accordingly, instead of trusting whatever the
+	 * daemon last reported.
+	 */
 	async stop(): Promise<void> {
 		await this.withLock(async () => {
 			if (this.state === 'stopped') {
@@ -219,18 +251,66 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 			try {
 				await this.cli.down();
+
+				this.state = 'stopped';
 			} catch (error) {
-				// A node that was never brought up (not installed, daemon down, never
-				// signed in) is expected to fail `down` — stop must still complete.
-				this.logger.debug('tailscale down failed while stopping (safe to ignore if the node was already down)', {
-					message: error instanceof Error ? error.message : String(error),
-				});
+				if (await this.isStopFailureTolerated(error)) {
+					// A node that was never brought up (not installed, daemon down, never
+					// signed in) is expected to fail `down` — stop must still complete.
+					this.logger.debug('tailscale down failed while stopping (safe to ignore if the node was already down)', {
+						message: error instanceof Error ? error.message : String(error),
+					});
+
+					this.state = 'stopped';
+				} else {
+					const message = error instanceof Error ? error.message : String(error);
+
+					this.state = 'error';
+					this.lastError = message;
+
+					this.logger.error('Failed to stop the Tailscale node service', { message });
+
+					await this.emitStatus();
+
+					throw new TailscaleNodeStopFailedException(message);
+				}
 			}
 
-			this.state = 'stopped';
+			await this.emitStatus();
 
 			this.logger.log('Tailscale node service stopped');
 		});
+	}
+
+	/**
+	 * Whether a `down()` failure still counts as "stop achieved its goal".
+	 * `needs-login`/`daemon-down`/`not-installed` mean there was nothing to
+	 * bring down in the first place. Any other failure (including a
+	 * non-`TailscaleCliError`) falls back to a live status read: if the
+	 * backend already reports `Stopped` regardless of why `down` itself
+	 * failed, the desired end state already holds. Only a genuine failure —
+	 * the backend still running/reachable in some other state, or the status
+	 * read itself failing — is left non-tolerated.
+	 */
+	private async isStopFailureTolerated(error: unknown): Promise<boolean> {
+		if (
+			error instanceof TailscaleCliError &&
+			(error.kind === 'needs-login' || error.kind === 'daemon-down' || error.kind === 'not-installed')
+		) {
+			return true;
+		}
+
+		const status = await this.getStatusOrNull();
+
+		return status?.BackendState === 'Stopped';
+	}
+
+	/** Computes the current status and pushes it as `PROVIDER_STATUS`, unconditionally (unlike the poller's own `pollTick()`, which only emits on change) — used by `stop()` (both outcomes) and by `start()` after a failed `set`/`up` call. */
+	private async emitStatus(): Promise<void> {
+		const status = await this.computeStatus();
+
+		this.lastStatus = status;
+		this.eventEmitter.emit(RemoteAccessEventType.PROVIDER_STATUS, status);
 	}
 
 	async onConfigChanged(): Promise<ConfigChangeResult> {
@@ -309,7 +389,19 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		return { restartRequired: false };
 	}
 
+	/**
+	 * D3: healthy only when every requirement is satisfied (the cached
+	 * `getRequirements()` snapshot — a live re-evaluation here would add an
+	 * `operator-granted` probe to every health-check tick; the poller already
+	 * keeps that cache fresh at most every five minutes, see
+	 * `refreshRequirements`'s own doc) AND the daemon backend itself reports
+	 * `Running` with `Self.Online`.
+	 */
 	async isHealthy(): Promise<boolean> {
+		if (!this.requirementsSatisfied(this.getRequirements())) {
+			return false;
+		}
+
 		try {
 			const status = await this.cli.getStatus();
 
@@ -556,8 +648,25 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	 * poller and `TailscaleProviderService.getStatus()`. Never throws — CLI
 	 * failures are classified into `not-installed` / `setup-required` /
 	 * `error` states instead.
+	 *
+	 * D2: reads this managed service's own lifecycle state (`this.state`)
+	 * first and short-circuits on it — a `tailscaled` daemon that is still
+	 * technically up (or a stale cached CLI response) must never override
+	 * "this service was stopped/errored" once the admin has acted. `stopped`/
+	 * `stopping` always report `disconnected` with no endpoints/proxy
+	 * addresses, regardless of what `status --json` currently claims;
+	 * `error` reports the `lastError` `stop()` recorded. Neither branch
+	 * touches the CLI at all.
 	 */
 	async computeStatus(): Promise<RemoteAccessProviderStatus> {
+		if (this.state === 'stopped' || this.state === 'stopping') {
+			return this.buildStatus('disconnected', 'The node service is stopped.');
+		}
+
+		if (this.state === 'error') {
+			return this.buildStatus('error', this.lastError ?? 'The Tailscale node service failed.');
+		}
+
 		const platform = await this.evaluatePlatformSupported();
 
 		if (!platform.satisfied) {

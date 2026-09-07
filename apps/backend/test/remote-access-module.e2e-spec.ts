@@ -6,9 +6,10 @@ import request from 'supertest';
 import { CanActivate, ExecutionContext, INestApplication, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
 import { Test } from '@nestjs/testing';
 
+import { TrustedProxyRegistryService } from '../src/modules/api/services/trusted-proxy-registry.service';
 import { TokenOwnerType } from '../src/modules/auth/auth.constants';
 import { AuthenticatedEntity, AuthenticatedRequest } from '../src/modules/auth/guards/auth.guard';
 import { ConfigService } from '../src/modules/config/services/config.service';
@@ -17,8 +18,10 @@ import {
 	IRemoteAccessProvider,
 	RemoteAccessProviderStatus,
 } from '../src/modules/remote-access/platforms/remote-access-provider.platform';
+import { EventType } from '../src/modules/remote-access/remote-access.constants';
 import { RemoteAccessPostureService } from '../src/modules/remote-access/services/remote-access-posture.service';
 import { RemoteAccessProviderRegistryService } from '../src/modules/remote-access/services/remote-access-provider-registry.service';
+import { RemoteAccessProxyContributionService } from '../src/modules/remote-access/services/remote-access-proxy-contribution.service';
 import { RemoteAccessStatusService } from '../src/modules/remote-access/services/remote-access-status.service';
 import { RemoteAccessUrlService } from '../src/modules/remote-access/services/remote-access-url.service';
 import { RolesGuard } from '../src/modules/users/guards/roles.guard';
@@ -69,8 +72,20 @@ class FakeRemoteAccessProvider implements IRemoteAccessProvider {
 	readonly kind = 'mesh' as const;
 	readonly capabilities = { https: true, publicUrl: false, identityHeaders: false, ssh: false };
 
+	private status: RemoteAccessProviderStatus = FAKE_PROVIDER_STATUS;
+
+	/**
+	 * Lets a test drive this provider's status, mirroring a real managed
+	 * service's own lifecycle transitions (e.g. `TailscaleNodeManagedService`
+	 * reporting `disconnected` with no endpoints/proxyAddresses once its
+	 * managed service is stopped — RA-18/D2/D3).
+	 */
+	setStatus(status: RemoteAccessProviderStatus): void {
+		this.status = status;
+	}
+
 	getStatus(): Promise<RemoteAccessProviderStatus> {
-		return Promise.resolve(FAKE_PROVIDER_STATUS);
+		return Promise.resolve(this.status);
 	}
 }
 
@@ -86,6 +101,9 @@ class FakeRemoteAccessProvider implements IRemoteAccessProvider {
 describe('Remote access module endpoints (e2e)', () => {
 	let app: INestApplication;
 	let registry: RemoteAccessProviderRegistryService;
+	let trustedProxyRegistry: TrustedProxyRegistryService;
+	let eventEmitter: EventEmitter2;
+	let fakeProvider: FakeRemoteAccessProvider;
 	let fakeProviderEnabled = true;
 
 	beforeAll(async () => {
@@ -105,17 +123,24 @@ describe('Remote access module endpoints (e2e)', () => {
 		};
 
 		const moduleFixture = await Test.createTestingModule({
+			// A real EventEmitter2 (rather than the earlier bare `{ emit:
+			// jest.fn() }` stand-in) so `RemoteAccessProxyContributionService`'s
+			// `@OnEvent(PROVIDER_STATUS)` listener actually fires — needed to
+			// exercise the trusted-proxy invalidation a real managed service's
+			// `stop()`/`start()` now drives (RA-18/D3).
+			imports: [EventEmitterModule.forRoot()],
 			controllers: [RemoteAccessController],
 			providers: [
 				{ provide: APP_GUARD, useClass: TestCredentialGuard },
 				{ provide: APP_GUARD, useClass: RolesGuard },
 				{ provide: ConfigService, useValue: configService },
 				{ provide: NestConfigService, useValue: nestConfigService },
-				{ provide: EventEmitter2, useValue: { emit: jest.fn(), onAny: jest.fn() } },
 				RemoteAccessProviderRegistryService,
 				RemoteAccessStatusService,
 				RemoteAccessUrlService,
 				RemoteAccessPostureService,
+				RemoteAccessProxyContributionService,
+				TrustedProxyRegistryService,
 			],
 		}).compile();
 
@@ -123,7 +148,11 @@ describe('Remote access module endpoints (e2e)', () => {
 		await app.init();
 
 		registry = moduleFixture.get(RemoteAccessProviderRegistryService);
-		registry.register(new FakeRemoteAccessProvider());
+		trustedProxyRegistry = moduleFixture.get(TrustedProxyRegistryService);
+		eventEmitter = moduleFixture.get(EventEmitter2);
+
+		fakeProvider = new FakeRemoteAccessProvider();
+		registry.register(fakeProvider);
 	});
 
 	afterAll(async () => {
@@ -241,6 +270,69 @@ describe('Remote access module endpoints (e2e)', () => {
 				.expect(200);
 
 			expect(providers.body.data).toEqual([]);
+		});
+	});
+
+	describe('provider reports disconnected (RA-18 — D2/D3: a stopped managed service reports disconnected with no endpoints/proxy addresses)', () => {
+		afterEach(() => {
+			// Restore the shared fake provider to its default connected fixture
+			// for any test that runs after this one, and drop the resulting
+			// PROVIDER_STATUS so RemoteAccessProxyContributionService's cache
+			// does not stay invalidated to a stale computation either.
+			fakeProvider.setStatus(FAKE_PROVIDER_STATUS);
+			eventEmitter.emit(EventType.PROVIDER_STATUS, FAKE_PROVIDER_STATUS);
+		});
+
+		it('drops the endpoints from the aggregated status and stops trusting the previously-registered proxy address once the provider reports disconnected', async () => {
+			// Baseline: connected, its endpoint is listed, and its proxy address
+			// is trusted — exactly like "GET /status › returns the aggregated
+			// status" and "GET /providers/:type › returns the fake provider for
+			// an owner" above establish, plus the trusted-proxy side effect
+			// those two don't check.
+			const before = await request(app.getHttpServer())
+				.get('/status')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(200);
+
+			expect(before.body.data.providers).toEqual([
+				expect.objectContaining({
+					type: 'remote-access-fake',
+					state: 'connected',
+					endpoints: FAKE_PROVIDER_STATUS.endpoints,
+					proxyAddresses: ['100.64.0.9'],
+				}),
+			]);
+			expect(trustedProxyRegistry.isTrusted('100.64.0.9')).toBe(true);
+
+			// The provider now reports disconnected with no endpoints/proxy
+			// addresses — exactly what `TailscaleNodeManagedService.stop()`
+			// does once its managed service is stopped (RA-18), and it emits
+			// PROVIDER_STATUS exactly as that real managed service now does on
+			// every lifecycle transition.
+			const disconnectedStatus: RemoteAccessProviderStatus = {
+				...FAKE_PROVIDER_STATUS,
+				state: 'disconnected',
+				endpoints: [],
+				proxyAddresses: [],
+				message: 'The node service is stopped.',
+			};
+			fakeProvider.setStatus(disconnectedStatus);
+			eventEmitter.emit(EventType.PROVIDER_STATUS, disconnectedStatus);
+
+			const after = await request(app.getHttpServer())
+				.get('/status')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(200);
+
+			expect(after.body.data.providers).toEqual([
+				expect.objectContaining({
+					type: 'remote-access-fake',
+					state: 'disconnected',
+					endpoints: [],
+					proxyAddresses: [],
+				}),
+			]);
+			expect(trustedProxyRegistry.isTrusted('100.64.0.9')).toBe(false);
 		});
 	});
 });

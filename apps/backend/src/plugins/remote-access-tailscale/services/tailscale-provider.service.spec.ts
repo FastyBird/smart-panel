@@ -40,4 +40,20 @@ describe('TailscaleProviderService', () => {
 		await expect(service.getStatus()).resolves.toBe(status);
 		expect(nodeManagedService.computeStatus).toHaveBeenCalledTimes(1);
 	});
+
+	it('delegates a disconnected (stopped) status exactly as computeStatus() produced it, without duplicating the D2 lifecycle logic', async () => {
+		const status: RemoteAccessProviderStatus = {
+			type: 'remote-access-tailscale-plugin',
+			state: 'disconnected',
+			endpoints: [],
+			message: 'The node service is stopped.',
+			details: {},
+			proxyAddresses: [],
+			advisories: [],
+			updatedAt: '2026-09-07T00:00:00.000Z',
+		};
+		nodeManagedService.computeStatus.mockResolvedValue(status);
+
+		await expect(service.getStatus()).resolves.toEqual(status);
+	});
 });
