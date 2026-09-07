@@ -13,6 +13,7 @@ import {
 	type RemoteAccessTailscalePluginLoginSchema,
 	type RemoteAccessTailscalePluginPrivilegedSetupSchema,
 	RemoteAccessTailscalePluginRequirementCode,
+	type RemoteAccessTailscalePluginRequirementRemedySchema,
 	type RemoteAccessTailscalePluginRequirementSchema,
 	type RemoteAccessTailscalePluginSetupJobSchema,
 	RemoteAccessTailscalePluginSetupJobState,
@@ -22,10 +23,19 @@ import {
 // STORE STATE
 // ===========
 
+// D12's manual remedy contract - exact console commands (or a documentation link) that satisfy
+// one unsatisfied requirement. `commands` is empty and `note` carries a link/explanation instead
+// when no exact command applies. `null` once the requirement is satisfied.
+export const TailscaleRequirementRemedySchema = z.object({
+	commands: z.array(z.string()),
+	note: z.string().nullable().optional(),
+});
+
 export const TailscaleRequirementSchema = z.object({
 	code: z.nativeEnum(RemoteAccessTailscalePluginRequirementCode),
 	satisfied: z.boolean(),
 	message: z.string(),
+	remedy: TailscaleRequirementRemedySchema.nullable().optional(),
 });
 
 export const TailscaleSetupJobSchema = z.object({
@@ -56,14 +66,15 @@ export const TailscaleStatusSchema = z.object({
 	// `applyTailscaleProviderStatusEvent` as soon as the node leaves `pending-auth`.
 	authUrl: z.string().optional(),
 	qr: z.string().optional(),
-	// Last known privileged setup job (RA-20/D6) - lets the setup wizard poll `GET /status` as a
-	// fallback to the `Setup.Progress` websocket event. `.optional()` only (not `.nullable()`)
-	// because the generated wire type is `setup?: T` without a null member - `nullable: true` on
-	// a `type: () => Class` ApiProperty does not survive NestJS Swagger -> openapi-typescript for
-	// OpenAPI 3.1 the way it does for a primitive/oneOf property (see `RemoteAccessTailscalePluginDataStatus`
-	// in openapi.ts). `TailscaleStatusResSchema` below is never `.safeParse()`d (see the note above
-	// STORE STATE), so this is a compile-time-only mismatch with the runtime shape, not a behaviour bug.
-	setup: TailscaleSetupJobSchema.optional(),
+	// Last known privileged setup job (RA-20/D6, RA-22) - lets the setup wizard poll `GET /status`
+	// as a fallback to the `Setup.Progress` websocket event, and resume its progress view purely
+	// from this field after a page reload. The backend model types this `T | null` and
+	// unconditionally assigns it (`null` once no job has run yet in this process) - `snakeToCamel`
+	// preserves that literal `null`, so this MUST be `.nullable()` here, even though the generated
+	// wire type (`setup?: T`, no null member - see the note on `TailscaleStatusResSchema.setup`
+	// below) would let `.optional()` alone type-check. Getting this wrong makes `.safeParse()`
+	// reject every `GET /status` response from a node that has never run a setup job.
+	setup: TailscaleSetupJobSchema.nullable().optional(),
 	privilegedSetup: TailscalePrivilegedSetupSchema,
 });
 
@@ -114,10 +125,20 @@ export const TailscaleStatusOnEventActionPayloadSchema = z.object({
 // the note above STORE STATE); the store transformers parse the camelCase `TailscaleStatusSchema`
 // and friends instead, fed by `snakeToCamel()` on the real `.data` payload.
 
+export const TailscaleRequirementRemedyResSchema: ZodType<RemoteAccessTailscalePluginRequirementRemedySchema> = z.object({
+	commands: z.array(z.string()),
+	note: z.string().nullable().optional(),
+});
+
 export const TailscaleRequirementResSchema: ZodType<RemoteAccessTailscalePluginRequirementSchema> = z.object({
 	code: z.nativeEnum(RemoteAccessTailscalePluginRequirementCode),
 	satisfied: z.boolean(),
 	message: z.string(),
+	// `.optional()` only, matching the generated (non-nullable) wire type - same reasoning as
+	// `TailscaleStatusResSchema.setup` below. This schema is a compile-time anchor only, never
+	// `.safeParse()`d (see the note above STORE STATE), so it never hits the runtime-null bug the
+	// camelCase `TailscaleRequirementSchema.remedy` above has to guard against.
+	remedy: TailscaleRequirementRemedyResSchema.optional(),
 });
 
 export const TailscaleSetupJobResSchema: ZodType<RemoteAccessTailscalePluginSetupJobSchema> = z.object({

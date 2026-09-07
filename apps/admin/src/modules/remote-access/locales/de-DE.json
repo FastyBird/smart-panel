@@ -73,6 +73,8 @@
 		"banner": {
 			"disabledTitle": "Fernzugriff ist deaktiviert",
 			"disabledDescription": "Aktivieren Sie das Fernzugriffsmodul auf der Seite Erweiterungen, um Anbieter und externe URLs zu konfigurieren.",
+			"noExternalUrlTitle": "Fernzugriff ist aktiviert, aber noch nicht erreichbar",
+			"noExternalUrlDescription": "Der Fernzugriff ist aktiviert, aber es ist noch keine externe URL verfügbar. Aktivieren Sie einen Anbieter oder fügen Sie in den Einstellungen eine manuelle externe URL hinzu.",
 			"okTitle": "Fernzugriff ist in Ordnung",
 			"okDescription": "Es wurden keine Sicherheitshinweise gemeldet.",
 			"advisoriesTitle": "Ein Hinweis | {count} Hinweise",

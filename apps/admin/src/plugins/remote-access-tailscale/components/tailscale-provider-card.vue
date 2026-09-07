@@ -34,6 +34,15 @@
 		</template>
 
 		<div class="provider-card__content">
+			<el-alert
+				v-if="showCannotBeUsedYetBanner"
+				type="warning"
+				:title="t('remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle')"
+				:description="firstUnsatisfiedRequirement?.message"
+				:closable="false"
+				show-icon
+			/>
+
 			<p
 				v-if="displayMessage"
 				class="provider-card__description"
@@ -101,6 +110,37 @@
 					<span>{{ requirement.message }}</span>
 				</div>
 			</div>
+
+			<!-- D12: the operator-not-granted advisory names the exact recovery command, sourced from the operator-granted requirement's own remedy. -->
+			<div
+				v-if="operatorNotGrantedAdvisory"
+				class="flex flex-col gap-1"
+			>
+				<div class="flex items-center gap-2 text-sm text-red-600">
+					<icon icon="mdi:alert-circle" />
+					<span>{{ operatorNotGrantedAdvisory.message }}</span>
+				</div>
+				<div
+					v-if="operatorGrantCommand"
+					class="flex items-start gap-2"
+				>
+					<pre class="font-mono text-xs bg-gray-100 rounded px-2 py-1 flex-1 whitespace-pre-wrap break-all">{{ operatorGrantCommand }}</pre>
+					<el-button
+						size="small"
+						@click="onCopyOperatorCommand"
+					>
+						{{ t('remoteAccessTailscalePlugin.buttons.copy') }}
+					</el-button>
+				</div>
+			</div>
+
+			<el-alert
+				v-if="actionErrorHintKey"
+				type="warning"
+				:title="t(actionErrorHintKey)"
+				:closable="false"
+				show-icon
+			/>
 		</div>
 
 		<template
@@ -161,18 +201,27 @@
 import { computed, onBeforeMount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCard, ElDropdown, ElDropdownItem, ElDropdownMenu, ElTag } from 'element-plus';
+import { ElAlert, ElButton, ElCard, ElDropdown, ElDropdownItem, ElDropdownMenu, ElTag } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useFlashMessage } from '../../../common';
+import { useClipboard, useFlashMessage } from '../../../common';
 import { useSession } from '../../../modules/auth/composables/composables';
 import { useExtension, useServiceActions } from '../../../modules/extensions';
-import type { IRemoteAccessProviderCardProps } from '../../../modules/remote-access';
+import { type IRemoteAccessProviderCardProps, useRemoteAccessStatus } from '../../../modules/remote-access';
 import { ExtensionsModuleServiceOwnerKind, UsersModuleUserRole } from '../../../openapi.constants';
 import { useTailscaleStatus } from '../composables';
 import { REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME } from '../remote-access-tailscale.constants';
-import { type ITailscaleProviderActions, resolveTailscaleProviderActions } from '../utils/provider-actions';
+import { RemoteAccessTailscaleApiException } from '../remote-access-tailscale.exceptions';
+import {
+	type ITailscaleProviderActions,
+	findFirstUnsatisfiedRequirement,
+	findOperatorGrantCommand,
+	flashTailscaleApiError,
+	isTailscaleUnusableState,
+	resolveTailscaleErrorHintKey,
+	resolveTailscaleProviderActions,
+} from '../utils/provider-actions';
 
 import type { TailscaleWizardStep } from './tailscale-setup-wizard.types';
 import TailscaleSetupWizard from './tailscale-setup-wizard.vue';
@@ -185,18 +234,29 @@ const props = defineProps<IRemoteAccessProviderCardProps>();
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
+const { copy } = useClipboard();
 
 const { profile } = useSession();
 const { status, requirements, isLoggingOut, isResettingPreferences, fetchStatus, logout, resetPreferences } = useTailscaleStatus();
+const { fetchStatus: fetchRemoteAccessStatus } = useRemoteAccessStatus();
 const { startService, stopService, restartService, isActing } = useServiceActions();
 // Only ever reads the extensions store - never triggers its own fetch, so the documentation link
 // simply stays hidden until something else (e.g. the Extensions page) has loaded the list. Purely
 // presentational: no new network call is introduced by this card.
 const { extension } = useExtension({ type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME });
 
+const actionErrorCode = ref<string | null>(null);
+
 onBeforeMount(async (): Promise<void> => {
 	try {
 		await fetchStatus();
+
+		// A page reload during a running privileged setup job must resume the wizard's progress
+		// view purely from this same `GET /status` read - no extra endpoint, no remembering
+		// anything client-side across the reload.
+		if (status.value?.setup?.state === 'running') {
+			openWizard('setup');
+		}
 	} catch {
 		flashMessage.error(t('remoteAccessTailscalePlugin.messages.requestError'));
 	}
@@ -225,6 +285,27 @@ const ipv6 = computed(() => detailString('ipv6'));
 const httpsEndpoint = computed(() => displayEndpoints.value.find((endpoint) => endpoint.https));
 
 const unsatisfiedRequirements = computed(() => requirements.value.filter((requirement) => !requirement.satisfied));
+
+// D12: "Cannot be used yet", naming the first unsatisfied requirement - only while a prerequisite
+// (not a normal sign-in step) is what's actually blocking the node.
+const firstUnsatisfiedRequirement = computed(() => findFirstUnsatisfiedRequirement(requirements.value));
+const showCannotBeUsedYetBanner = computed<boolean>(() => isTailscaleUnusableState(displayState.value) && firstUnsatisfiedRequirement.value !== null);
+
+// D12: the operator-not-granted advisory, and its exact recovery command sourced from the
+// `operator-granted` requirement's own remedy - never hardcoded, since only the backend knows the
+// actual detected service-user name.
+const operatorNotGrantedAdvisory = computed(
+	() => (status.value?.advisories ?? []).find((advisory) => advisory.code === 'operator-not-granted') ?? null
+);
+const operatorGrantCommand = computed<string | null>(() => findOperatorGrantCommand(requirements.value));
+
+const actionErrorHintKey = computed<string | null>(() => resolveTailscaleErrorHintKey(actionErrorCode.value));
+
+// Mirrors the wizard's own `flashApiError` (see `flashTailscaleApiError`'s doc) - the backend's
+// actual reason for a 409 (e.g. sign-out/reset-preferences refused because a prerequisite isn't
+// satisfied) instead of a generic message.
+const flashApiError = (error: unknown, meaningfulCodes: number[], fallback: string): void =>
+	flashTailscaleApiError(error, meaningfulCodes, fallback, flashMessage.error);
 
 const stateTagType = computed<'success' | 'warning' | 'danger' | 'info'>(() => {
 	switch (displayState.value) {
@@ -268,35 +349,77 @@ const openWizard = (step: TailscaleWizardStep): void => {
 	wizardVisible.value = true;
 };
 
+// Refetches both the plugin status (this card's own state/requirements/advisories) and the
+// module-level remote-access status (URLs/aggregate advisories) once the service action settles,
+// whether it succeeded or failed - `startService`/`stopService`/`restartService` never throw (they
+// report failure via their own return value/toast), so a plain sequential `finally` is enough.
+const refreshAfterServiceAction = async (): Promise<void> => {
+	await Promise.allSettled([fetchStatus(), fetchRemoteAccessStatus()]);
+};
+
 const onConnect = async (): Promise<void> => {
-	await startService(ExtensionsModuleServiceOwnerKind.plugin, REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'node');
+	try {
+		await startService(ExtensionsModuleServiceOwnerKind.plugin, REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'node');
+	} finally {
+		await refreshAfterServiceAction();
+	}
 };
 
 const onDisconnect = async (): Promise<void> => {
-	await stopService(ExtensionsModuleServiceOwnerKind.plugin, REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'node');
+	try {
+		await stopService(ExtensionsModuleServiceOwnerKind.plugin, REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'node');
+	} finally {
+		await refreshAfterServiceAction();
+	}
 };
 
 const onReconnect = async (): Promise<void> => {
-	await restartService(ExtensionsModuleServiceOwnerKind.plugin, REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'node');
+	try {
+		await restartService(ExtensionsModuleServiceOwnerKind.plugin, REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'node');
+	} finally {
+		await refreshAfterServiceAction();
+	}
 };
 
 const onSignOut = async (): Promise<void> => {
+	actionErrorCode.value = null;
+
 	try {
 		await logout();
 
 		flashMessage.success(t('remoteAccessTailscalePlugin.messages.signedOut'));
-	} catch {
-		flashMessage.error(t('remoteAccessTailscalePlugin.messages.signOutFailed'));
+	} catch (error) {
+		actionErrorCode.value = error instanceof RemoteAccessTailscaleApiException ? error.errorCode : null;
+
+		flashApiError(error, [409], t('remoteAccessTailscalePlugin.messages.signOutFailed'));
 	}
 };
 
 const onResetPreferences = async (): Promise<void> => {
+	actionErrorCode.value = null;
+
 	try {
 		await resetPreferences();
 
 		flashMessage.success(t('remoteAccessTailscalePlugin.messages.preferencesReset'));
-	} catch {
-		flashMessage.error(t('remoteAccessTailscalePlugin.messages.preferencesResetFailed'));
+	} catch (error) {
+		actionErrorCode.value = error instanceof RemoteAccessTailscaleApiException ? error.errorCode : null;
+
+		flashApiError(error, [409], t('remoteAccessTailscalePlugin.messages.preferencesResetFailed'));
+	}
+};
+
+const onCopyOperatorCommand = async (): Promise<void> => {
+	if (!operatorGrantCommand.value) {
+		return;
+	}
+
+	const copied = await copy(operatorGrantCommand.value);
+
+	if (copied) {
+		flashMessage.success(t('remoteAccessTailscalePlugin.messages.commandCopied'));
+	} else {
+		flashMessage.error(t('remoteAccessTailscalePlugin.messages.commandCopyFailed'));
 	}
 };
 

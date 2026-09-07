@@ -24,6 +24,7 @@ vi.mock('../../../common', async () => {
 			debug: vi.fn(),
 		})),
 		getErrorReason: () => 'Sanitized Tailscale request failure',
+		getErrorCode: (error: { error?: { details?: { code?: string } } }) => error?.error?.details?.code ?? null,
 	};
 });
 
@@ -36,7 +37,10 @@ const statusFields = {
 	proxy_addresses: [],
 	advisories: [],
 	updated_at: '2026-01-01T00:00:00.000Z',
-	requirements: [{ code: 'binary-installed', satisfied: true, message: 'Tailscale 1.78.1 is installed.' }],
+	requirements: [{ code: 'binary-installed', satisfied: true, message: 'Tailscale 1.78.1 is installed.', remedy: null }],
+	// `null` (not omitted) is exactly what the real backend sends before any privileged setup job
+	// has ever run in this process - see the note on `TailscaleStatusSchema.setup`.
+	setup: null,
 	privileged_setup: { available: true, reason: null },
 };
 
@@ -66,8 +70,38 @@ describe('Tailscale status store', () => {
 			expect(status.state).toBe('connected');
 			expect(status.details.tailnet).toBe('example.ts.net');
 			expect(status.requirements).toHaveLength(1);
+			// `setup: null` (the real shape before any privileged setup job has ever run) must parse
+			// successfully, not throw a validation exception - regression coverage for the
+			// `.nullable()` fix on `TailscaleStatusSchema.setup`.
+			expect(status.setup).toBeNull();
 			expect(store.data).toEqual(status);
 			expect(store.firstLoadFinished()).toBe(true);
+		});
+
+		it('accepts a requirement carrying a real remedy (unsatisfied) alongside one carrying null (satisfied)', async () => {
+			get.mockResolvedValue({
+				data: {
+					data: {
+						...statusFields,
+						requirements: [
+							{ code: 'binary-installed', satisfied: true, message: 'Tailscale 1.78.1 is installed.', remedy: null },
+							{
+								code: 'daemon-active',
+								satisfied: false,
+								message: 'tailscaled is not active.',
+								remedy: { commands: ['sudo systemctl enable --now tailscaled'], note: null },
+							},
+						],
+					},
+				},
+				response: { status: 200 },
+			});
+			const store = useTailscaleStatusStore();
+
+			const status = await store.get();
+
+			expect(status.requirements[0].remedy).toBeNull();
+			expect(status.requirements[1].remedy).toEqual({ commands: ['sudo systemctl enable --now tailscaled'], note: null });
 		});
 
 		it('throws a sanitized exception on a failed request and clears the getting flag', async () => {
@@ -78,9 +112,22 @@ describe('Tailscale status store', () => {
 				expect.objectContaining<Partial<RemoteAccessTailscaleApiException>>({
 					message: 'Sanitized Tailscale request failure',
 					code: 503,
+					errorCode: null,
 				})
 			);
 			expect(store.semaphore.getting).toBe(false);
+		});
+
+		it('threads the application error code from a 409/422 response through to the thrown exception', async () => {
+			get.mockResolvedValue({ error: { error: { details: { code: 'operator-not-granted', reason: 'x' } } }, response: { status: 409 } });
+			const store = useTailscaleStatusStore();
+
+			await expect(store.get()).rejects.toEqual(
+				expect.objectContaining<Partial<RemoteAccessTailscaleApiException>>({
+					code: 409,
+					errorCode: 'operator-not-granted',
+				})
+			);
 		});
 
 		it('coalesces concurrent calls into a single request', async () => {
@@ -114,6 +161,21 @@ describe('Tailscale status store', () => {
 			expect(result).toEqual({ job: 'job-123' });
 			// `install()` never carries endpoints/details/requirements - it must not clobber `data`.
 			expect(store.data).toBeNull();
+		});
+
+		it('threads the 422 application error code (e.g. platform-unsupported) through to the thrown exception', async () => {
+			post.mockResolvedValue({
+				error: { error: { details: { code: 'platform-unsupported', reason: 'Tailscale setup requires a supported platform.' } } },
+				response: { status: 422 },
+			});
+			const store = useTailscaleStatusStore();
+
+			await expect(store.install()).rejects.toEqual(
+				expect.objectContaining<Partial<RemoteAccessTailscaleApiException>>({
+					code: 422,
+					errorCode: 'platform-unsupported',
+				})
+			);
 		});
 	});
 

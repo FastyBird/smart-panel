@@ -20,7 +20,8 @@
 	},
 	"texts": {
 		"cardDescription": "Prywatny dostęp przez Twój tailnet, z HTTPS za pomocą Tailscale Serve.",
-		"funnelWarning": "Funnel publikuje tę instalację w publicznym internecie. Jedyną ochroną jest logowanie do Smart Panel."
+		"funnelWarning": "Funnel publikuje tę instalację w publicznym internecie. Jedyną ochroną jest logowanie do Smart Panel.",
+		"cannotBeUsedYetTitle": "Nie można jeszcze korzystać"
 	},
 	"buttons": {
 		"setup": "Skonfiguruj",
@@ -29,7 +30,8 @@
 		"disconnect": "Rozłącz",
 		"reconnect": "Połącz ponownie",
 		"signOut": "Wyloguj się",
-		"resetPreferences": "Zresetuj preferencje"
+		"resetPreferences": "Zresetuj preferencje",
+		"copy": "Kopiuj"
 	},
 	"fields": {
 		"tailnet": "Tailnet",
@@ -90,10 +92,19 @@
 		"preferencesResetFailed": "Nie udało się zresetować preferencji Tailscale",
 		"urlCopied": "Adres URL został skopiowany do schowka",
 		"copyFailed": "Nie udało się skopiować adresu URL do schowka",
+		"commandCopied": "Polecenie zostało skopiowane do schowka",
+		"commandCopyFailed": "Nie udało się skopiować polecenia do schowka",
 		"config": {
 			"edited": "Konfiguracja Tailscale została pomyślnie zaktualizowana",
 			"notEdited": "Nie udało się zaktualizować konfiguracji Tailscale"
 		}
+	},
+	"errors": {
+		"operatorNotGranted": "Użytkownik usługi Smart Panel nie został ustawiony jako operator Tailscale. Uruchom poniższe polecenie, a następnie spróbuj ponownie.",
+		"daemonNotActive": "Demon Tailscale nie jest uruchomiony. Uruchom „sudo systemctl enable --now tailscaled”, a następnie spróbuj ponownie.",
+		"notSignedIn": "Ten węzeł nie jest jeszcze zalogowany do Tailscale. Najpierw użyj opcji Zaloguj się.",
+		"privilegedWorkerUnavailable": "Uprzywilejowane zadania konfiguracyjne są obecnie niedostępne w tej instalacji. Uruchom ponownie „sudo smart-panel-service install” lub dodaj uprawnienie w sudoers, a następnie spróbuj ponownie.",
+		"platformUnsupported": "Ta platforma nie może automatycznie uruchomić konfiguracji Tailscale. Przygotuj Tailscale ręcznie, a następnie użyj opcji Zaloguj się."
 	},
 	"wizard": {
 		"title": "Skonfiguruj Tailscale",
@@ -112,6 +123,7 @@
 		"waitingForLink": "Pobieranie linku logowania...",
 		"qrAlt": "Kod QR zawierający link logowania Tailscale",
 		"doneDescription": "Tailscale jest połączony. Ta instalacja jest dostępna pod poniższymi adresami.",
+		"setupUnavailable": "Automatyczna konfiguracja nie jest dostępna w tej instalacji.",
 		"tabs": {
 			"interactive": "Zaloguj się",
 			"advanced": "Zaawansowane"
@@ -129,7 +141,9 @@
 			"saveAndContinue": "Zapisz i kontynuuj",
 			"skip": "Pomiń",
 			"close": "Zamknij",
-			"copy": "Kopiuj"
+			"copy": "Kopiuj",
+			"recheck": "Sprawdź ponownie",
+			"runItYourself": "Wykonaj ręcznie"
 		}
 	}
 }

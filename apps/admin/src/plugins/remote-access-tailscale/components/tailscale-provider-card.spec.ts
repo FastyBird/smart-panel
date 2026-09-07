@@ -2,7 +2,7 @@ import { computed, ref } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { shallowMount } from '@vue/test-utils';
+import { flushPromises, shallowMount } from '@vue/test-utils';
 
 import type { IRemoteAccessProvider } from '../../../modules/remote-access';
 import {
@@ -11,22 +11,27 @@ import {
 	RemoteAccessModuleProviderState,
 	UsersModuleUserRole,
 } from '../../../openapi.constants';
+import { RemoteAccessTailscaleApiException } from '../remote-access-tailscale.exceptions';
 
 import TailscaleProviderCard from './tailscale-provider-card.vue';
 
 // Only the mock functions themselves are hoisted - mirrors tailscale-setup-wizard.spec.ts.
 const fns = vi.hoisted(() => ({
 	fetchStatus: vi.fn(),
+	fetchRemoteAccessStatus: vi.fn(),
 	startService: vi.fn(),
 	stopService: vi.fn(),
 	restartService: vi.fn(),
 	logout: vi.fn(),
 	resetPreferences: vi.fn(),
+	copy: vi.fn(),
+	flashSuccess: vi.fn(),
+	flashError: vi.fn(),
 }));
 
 const profile = ref<{ role: UsersModuleUserRole } | null>(null);
-const status = ref<null>(null);
-const requirements = ref<{ code: string; satisfied: boolean; message: string }[]>([]);
+const status = ref<{ advisories: { code: string; message: string }[]; setup?: { state: string } | null } | null>(null);
+const requirements = ref<{ code: string; satisfied: boolean; message: string; remedy: { commands: string[]; note: string | null } | null }[]>([]);
 const isLoggingOut = ref(false);
 const isResettingPreferences = ref(false);
 const isActingReturn = ref(false);
@@ -39,7 +44,8 @@ vi.mock('vue-i18n', async () => {
 });
 
 vi.mock('../../../common', () => ({
-	useFlashMessage: () => ({ success: vi.fn(), error: vi.fn() }),
+	useFlashMessage: () => ({ success: fns.flashSuccess, error: fns.flashError }),
+	useClipboard: () => ({ copy: fns.copy }),
 }));
 
 vi.mock('../../../modules/auth/composables/composables', () => ({
@@ -54,6 +60,10 @@ vi.mock('../../../modules/extensions', () => ({
 		restartService: fns.restartService,
 		isActing: () => isActingReturn.value,
 	}),
+}));
+
+vi.mock('../../../modules/remote-access', () => ({
+	useRemoteAccessStatus: () => ({ fetchStatus: fns.fetchRemoteAccessStatus }),
 }));
 
 vi.mock('../composables', () => ({
@@ -120,11 +130,15 @@ describe('TailscaleProviderCard', () => {
 		isActingReturn.value = false;
 		extension.value = null;
 		fns.fetchStatus.mockReset().mockResolvedValue(undefined);
-		fns.startService.mockReset();
-		fns.stopService.mockReset();
-		fns.restartService.mockReset();
+		fns.fetchRemoteAccessStatus.mockReset().mockResolvedValue(undefined);
+		fns.startService.mockReset().mockResolvedValue(true);
+		fns.stopService.mockReset().mockResolvedValue(true);
+		fns.restartService.mockReset().mockResolvedValue(true);
 		fns.logout.mockReset();
 		fns.resetPreferences.mockReset();
+		fns.copy.mockReset().mockResolvedValue(true);
+		fns.flashSuccess.mockReset();
+		fns.flashError.mockReset();
 	});
 
 	it('offers setup as the primary action for an owner on a fresh node, with no secondary actions', () => {
@@ -199,5 +213,225 @@ describe('TailscaleProviderCard', () => {
 		const tags = wrapper.findAllComponents({ name: 'ElTag' });
 
 		expect(tags.some((tag) => tag.text().includes('remoteAccessModule.texts.https'))).toBe(false);
+	});
+
+	describe('refetch after connect/disconnect/reconnect (F1)', () => {
+		it('refetches both the plugin and the module status once connect resolves successfully', async () => {
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.disconnected, details: { tailnet: 'example.ts.net' } });
+			fns.fetchStatus.mockClear();
+			fns.fetchRemoteAccessStatus.mockClear();
+
+			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.startService).toHaveBeenCalled();
+			expect(fns.fetchStatus).toHaveBeenCalled();
+			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
+		});
+
+		it('still refetches both statuses when connect reports failure', async () => {
+			fns.startService.mockResolvedValue(false);
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.disconnected, details: { tailnet: 'example.ts.net' } });
+			fns.fetchStatus.mockClear();
+			fns.fetchRemoteAccessStatus.mockClear();
+
+			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.fetchStatus).toHaveBeenCalled();
+			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
+		});
+
+		it('refetches both statuses once disconnect resolves', async () => {
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
+			fns.fetchStatus.mockClear();
+			fns.fetchRemoteAccessStatus.mockClear();
+
+			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.stopService).toHaveBeenCalled();
+			expect(fns.fetchStatus).toHaveBeenCalled();
+			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
+		});
+
+		it('still refetches both statuses when disconnect reports failure', async () => {
+			fns.stopService.mockResolvedValue(false);
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
+			fns.fetchStatus.mockClear();
+			fns.fetchRemoteAccessStatus.mockClear();
+
+			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.fetchStatus).toHaveBeenCalled();
+			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
+		});
+
+		it('refetches both statuses once reconnect resolves', async () => {
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.error });
+			fns.fetchStatus.mockClear();
+			fns.fetchRemoteAccessStatus.mockClear();
+
+			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.restartService).toHaveBeenCalled();
+			expect(fns.fetchStatus).toHaveBeenCalled();
+			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
+		});
+
+		it('still refetches both statuses when reconnect reports failure', async () => {
+			fns.restartService.mockResolvedValue(false);
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.error });
+			fns.fetchStatus.mockClear();
+			fns.fetchRemoteAccessStatus.mockClear();
+
+			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.fetchStatus).toHaveBeenCalled();
+			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
+		});
+	});
+
+	describe('D12: "Cannot be used yet" banner', () => {
+		it('shows the banner naming the first unsatisfied requirement while setup-required', () => {
+			requirements.value = [
+				{ code: 'binary-installed', satisfied: true, message: 'Tailscale is installed.', remedy: null },
+				{ code: 'daemon-active', satisfied: false, message: 'tailscaled is not active.', remedy: null },
+			];
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.setup_required });
+
+			const alert = wrapper
+				.findAllComponents({ name: 'ElAlert' })
+				.find((alert) => alert.props('title') === 'remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle');
+
+			expect(alert).toBeTruthy();
+			expect(alert?.props('description')).toBe('tailscaled is not active.');
+		});
+
+		it('shows the banner naming the first unsatisfied requirement while not-installed', () => {
+			requirements.value = [{ code: 'binary-installed', satisfied: false, message: 'Tailscale is not installed.', remedy: null }];
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.not_installed });
+
+			const alert = wrapper
+				.findAllComponents({ name: 'ElAlert' })
+				.find((alert) => alert.props('title') === 'remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle');
+
+			expect(alert?.props('description')).toBe('Tailscale is not installed.');
+		});
+
+		it('does not show the banner once every requirement is satisfied', () => {
+			requirements.value = [{ code: 'binary-installed', satisfied: true, message: 'x', remedy: null }];
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.setup_required });
+
+			const alert = wrapper
+				.findAllComponents({ name: 'ElAlert' })
+				.find((alert) => alert.props('title') === 'remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle');
+
+			expect(alert).toBeUndefined();
+		});
+
+		it('does not show the banner for a normal, non-blocked state', () => {
+			requirements.value = [{ code: 'daemon-active', satisfied: false, message: 'x', remedy: null }];
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.disconnected, details: { tailnet: 'x' } });
+
+			const alert = wrapper
+				.findAllComponents({ name: 'ElAlert' })
+				.find((alert) => alert.props('title') === 'remoteAccessTailscalePlugin.texts.cannotBeUsedYetTitle');
+
+			expect(alert).toBeUndefined();
+		});
+	});
+
+	describe('D12: operator-not-granted advisory', () => {
+		it('shows the advisory text and the copyable operator-grant command', () => {
+			status.value = { advisories: [{ code: 'operator-not-granted', message: 'The smart-panel operator has not been granted.' }] };
+			requirements.value = [
+				{ code: 'operator-granted', satisfied: false, message: 'x', remedy: { commands: ['sudo tailscale set --operator=smart-panel'], note: null } },
+			];
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.setup_required });
+
+			expect(wrapper.text()).toContain('The smart-panel operator has not been granted.');
+			expect(wrapper.text()).toContain('sudo tailscale set --operator=smart-panel');
+		});
+
+		it('copies the operator-grant command via the shared clipboard composable', async () => {
+			status.value = { advisories: [{ code: 'operator-not-granted', message: 'x' }] };
+			requirements.value = [
+				{ code: 'operator-granted', satisfied: false, message: 'x', remedy: { commands: ['sudo tailscale set --operator=smart-panel'], note: null } },
+			];
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.setup_required });
+
+			const copyButton = wrapper
+				.findAllComponents({ name: 'ElButton' })
+				.find((button) => button.text().includes('remoteAccessTailscalePlugin.buttons.copy'));
+			await copyButton?.vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.copy).toHaveBeenCalledWith('sudo tailscale set --operator=smart-panel');
+			expect(fns.flashSuccess).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.commandCopied');
+		});
+
+		it('does not show the advisory block when there is no operator-not-granted advisory', () => {
+			status.value = { advisories: [] };
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
+
+			expect(wrapper.text()).not.toContain('sudo tailscale set --operator');
+		});
+	});
+
+	describe('D13: action error hints', () => {
+		it('shows a recovery hint after sign-out fails with a known error code', async () => {
+			fns.logout.mockRejectedValue(
+				new RemoteAccessTailscaleApiException('The smart-panel operator has not been granted.', 409, null, 'operator-not-granted')
+			);
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
+
+			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'signOut');
+			await flushPromises();
+
+			const hint = wrapper
+				.findAllComponents({ name: 'ElAlert' })
+				.find((alert) => alert.props('title') === 'remoteAccessTailscalePlugin.errors.operatorNotGranted');
+			expect(hint).toBeTruthy();
+		});
+
+		it('shows a recovery hint after reset-preferences fails with a known error code', async () => {
+			fns.resetPreferences.mockRejectedValue(new RemoteAccessTailscaleApiException('The daemon is not running.', 409, null, 'daemon-not-active'));
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
+
+			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'resetPreferences');
+			await flushPromises();
+
+			const hint = wrapper
+				.findAllComponents({ name: 'ElAlert' })
+				.find((alert) => alert.props('title') === 'remoteAccessTailscalePlugin.errors.daemonNotActive');
+			expect(hint).toBeTruthy();
+		});
+
+		it('shows no hint for an unrecognised or absent error code', async () => {
+			fns.logout.mockRejectedValue(new RemoteAccessTailscaleApiException('Internal error detail', 500));
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
+
+			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'signOut');
+			await flushPromises();
+
+			const hint = wrapper
+				.findAllComponents({ name: 'ElAlert' })
+				.find((alert) => typeof alert.props('title') === 'string' && alert.props('title').startsWith('remoteAccessTailscalePlugin.errors.'));
+			expect(hint).toBeUndefined();
+		});
+
+		it('shows the backend reason as a toast for a 409 sign-out failure', async () => {
+			fns.logout.mockRejectedValue(new RemoteAccessTailscaleApiException('A prerequisite is not satisfied.', 409));
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
+
+			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('command', 'signOut');
+			await flushPromises();
+
+			expect(fns.flashError).toHaveBeenCalledWith('A prerequisite is not satisfied.');
+		});
 	});
 });

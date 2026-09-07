@@ -20,7 +20,8 @@
 	},
 	"texts": {
 		"cardDescription": "Privater Zugriff über Ihr Tailnet, mit HTTPS über Tailscale Serve.",
-		"funnelWarning": "Funnel veröffentlicht diese Installation im öffentlichen Internet. Die Anmeldung bei Smart Panel ist der einzige Schutz."
+		"funnelWarning": "Funnel veröffentlicht diese Installation im öffentlichen Internet. Die Anmeldung bei Smart Panel ist der einzige Schutz.",
+		"cannotBeUsedYetTitle": "Kann noch nicht verwendet werden"
 	},
 	"buttons": {
 		"setup": "Einrichten",
@@ -29,7 +30,8 @@
 		"disconnect": "Trennen",
 		"reconnect": "Erneut verbinden",
 		"signOut": "Abmelden",
-		"resetPreferences": "Einstellungen zurücksetzen"
+		"resetPreferences": "Einstellungen zurücksetzen",
+		"copy": "Kopieren"
 	},
 	"fields": {
 		"tailnet": "Tailnet",
@@ -90,10 +92,19 @@
 		"preferencesResetFailed": "Zurücksetzen der Tailscale-Einstellungen fehlgeschlagen",
 		"urlCopied": "URL wurde in die Zwischenablage kopiert",
 		"copyFailed": "Kopieren der URL in die Zwischenablage fehlgeschlagen",
+		"commandCopied": "Der Befehl wurde in die Zwischenablage kopiert",
+		"commandCopyFailed": "Kopieren des Befehls in die Zwischenablage fehlgeschlagen",
 		"config": {
 			"edited": "Die Tailscale-Konfiguration wurde erfolgreich aktualisiert",
 			"notEdited": "Aktualisierung der Tailscale-Konfiguration fehlgeschlagen"
 		}
+	},
+	"errors": {
+		"operatorNotGranted": "Der Smart-Panel-Dienstbenutzer wurde nicht als Tailscale-Operator festgelegt. Führen Sie den folgenden Befehl aus und versuchen Sie es erneut.",
+		"daemonNotActive": "Der Tailscale-Daemon läuft nicht. Führen Sie „sudo systemctl enable --now tailscaled“ aus und versuchen Sie es erneut.",
+		"notSignedIn": "Dieser Knoten ist noch nicht bei Tailscale angemeldet. Verwenden Sie zuerst „Anmelden“.",
+		"privilegedWorkerUnavailable": "Privilegierte Einrichtungsjobs sind auf dieser Installation derzeit nicht verfügbar. Führen Sie „sudo smart-panel-service install“ erneut aus oder fügen Sie die sudoers-Berechtigung hinzu, und versuchen Sie es dann erneut.",
+		"platformUnsupported": "Auf dieser Plattform kann die Tailscale-Einrichtung nicht automatisch ausgeführt werden. Bereiten Sie Tailscale manuell vor und verwenden Sie dann „Anmelden“."
 	},
 	"wizard": {
 		"title": "Tailscale einrichten",
@@ -112,6 +123,7 @@
 		"waitingForLink": "Anmeldelink wird angefordert ...",
 		"qrAlt": "QR-Code mit dem Tailscale-Anmeldelink",
 		"doneDescription": "Tailscale ist verbunden. Diese Installation ist über die unten stehenden Adressen erreichbar.",
+		"setupUnavailable": "Die automatische Einrichtung ist auf dieser Installation nicht verfügbar.",
 		"tabs": {
 			"interactive": "Anmelden",
 			"advanced": "Erweitert"
@@ -129,7 +141,9 @@
 			"saveAndContinue": "Speichern und fortfahren",
 			"skip": "Überspringen",
 			"close": "Schließen",
-			"copy": "Kopieren"
+			"copy": "Kopieren",
+			"recheck": "Erneut prüfen",
+			"runItYourself": "Manuell ausführen"
 		}
 	}
 }

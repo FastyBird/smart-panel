@@ -759,6 +759,7 @@ export type RemoteAccessTailscalePluginStatusSchema = components['schemas']['Rem
 export type RemoteAccessTailscalePluginInstallSchema = components['schemas']['RemoteAccessTailscalePluginDataInstall'];
 export type RemoteAccessTailscalePluginLoginSchema = components['schemas']['RemoteAccessTailscalePluginDataLogin'];
 export type RemoteAccessTailscalePluginRequirementSchema = components['schemas']['RemoteAccessTailscalePluginDataRequirement'];
+export type RemoteAccessTailscalePluginRequirementRemedySchema = components['schemas']['RemoteAccessTailscalePluginDataRequirementRemedy'];
 export type RemoteAccessTailscalePluginLoginRequestSchema = components['schemas']['RemoteAccessTailscalePluginReqLogin'];
 export type RemoteAccessTailscalePluginSetupJobSchema = components['schemas']['RemoteAccessTailscalePluginDataSetupJob'];
 export type RemoteAccessTailscalePluginPrivilegedSetupSchema = components['schemas']['RemoteAccessTailscalePluginDataPrivilegedSetup'];

@@ -20,7 +20,8 @@
 	},
 	"texts": {
 		"cardDescription": "Súkromný prístup cez váš tailnet, s HTTPS pomocou Tailscale Serve.",
-		"funnelWarning": "Funnel zverejní túto inštaláciu na verejnom internete. Jedinou ochranou je prihlásenie do Smart Panelu."
+		"funnelWarning": "Funnel zverejní túto inštaláciu na verejnom internete. Jedinou ochranou je prihlásenie do Smart Panelu.",
+		"cannotBeUsedYetTitle": "Zatiaľ nemožno použiť"
 	},
 	"buttons": {
 		"setup": "Nastaviť",
@@ -29,7 +30,8 @@
 		"disconnect": "Odpojiť",
 		"reconnect": "Znova pripojiť",
 		"signOut": "Odhlásiť sa",
-		"resetPreferences": "Obnoviť predvolené nastavenia"
+		"resetPreferences": "Obnoviť predvolené nastavenia",
+		"copy": "Kopírovať"
 	},
 	"fields": {
 		"tailnet": "Tailnet",
@@ -90,10 +92,19 @@
 		"preferencesResetFailed": "Obnovenie nastavení Tailscale zlyhalo",
 		"urlCopied": "Adresa URL bola skopírovaná do schránky",
 		"copyFailed": "Kopírovanie adresy URL do schránky zlyhalo",
+		"commandCopied": "Príkaz bol skopírovaný do schránky",
+		"commandCopyFailed": "Kopírovanie príkazu do schránky zlyhalo",
 		"config": {
 			"edited": "Konfigurácia Tailscale bola úspešne aktualizovaná",
 			"notEdited": "Aktualizácia konfigurácie Tailscale zlyhala"
 		}
+	},
+	"errors": {
+		"operatorNotGranted": "Servisný účet Smart Panelu nemá udelenú rolu operátora Tailscale. Spustite nižšie uvedený príkaz a skúste to znova.",
+		"daemonNotActive": "Démon Tailscale nebeží. Spustite „sudo systemctl enable --now tailscaled“ a skúste to znova.",
+		"notSignedIn": "Tento uzol zatiaľ nie je prihlásený do Tailscale. Najprv použite Prihlásiť sa.",
+		"privilegedWorkerUnavailable": "Privilegované úlohy nastavenia nie sú v tejto inštalácii momentálne k dispozícii. Spustite znova „sudo smart-panel-service install“, alebo pridajte oprávnenie v sudoers, a potom to skúste znova.",
+		"platformUnsupported": "Táto platforma nemôže automaticky spustiť nastavenie Tailscale. Pripravte Tailscale ručne a potom použite Prihlásiť sa."
 	},
 	"wizard": {
 		"title": "Nastaviť Tailscale",
@@ -112,6 +123,7 @@
 		"waitingForLink": "Získava sa prihlasovací odkaz...",
 		"qrAlt": "QR kód obsahujúci prihlasovací odkaz Tailscale",
 		"doneDescription": "Tailscale je pripojený. Táto inštalácia je dostupná na nižšie uvedených adresách.",
+		"setupUnavailable": "Automatické nastavenie nie je v tejto inštalácii k dispozícii.",
 		"tabs": {
 			"interactive": "Prihlásiť sa",
 			"advanced": "Pokročilé"
@@ -129,7 +141,9 @@
 			"saveAndContinue": "Uložiť a pokračovať",
 			"skip": "Preskočiť",
 			"close": "Zavrieť",
-			"copy": "Kopírovať"
+			"copy": "Kopírovať",
+			"recheck": "Skontrolovať znova",
+			"runItYourself": "Vykonať ručne"
 		}
 	}
 }
