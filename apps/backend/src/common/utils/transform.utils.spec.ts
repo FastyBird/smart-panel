@@ -1,4 +1,4 @@
-import { clampNumber, readSubmittedValue } from './transform.utils';
+import { clampNumber, coerceNumberSafe, readSubmittedValue } from './transform.utils';
 
 describe('clampNumber', () => {
 	test('returns value when within bounds', () => {
@@ -25,6 +25,40 @@ describe('clampNumber', () => {
 	test('returns NaN when input is NaN (matches current implementation)', () => {
 		const result = clampNumber(NaN, 0, 10);
 		expect(Number.isNaN(result)).toBe(true);
+	});
+});
+
+describe('coerceNumberSafe', () => {
+	// Regression guard for RC1 (shelly-ng): object characteristics like Shelly's
+	// `aenergy: { total, by_minute, minute_ts }` used to coerce to 0 here, silently
+	// overwriting a correct value on every tick. They must now be rejected as `null`
+	// so callers can drop-and-warn instead of writing a bogus zero.
+	test('returns null for a plain object', () => {
+		expect(coerceNumberSafe({})).toBeNull();
+		expect(coerceNumberSafe({ total: 12.345 })).toBeNull();
+	});
+
+	test('returns null for an array', () => {
+		expect(coerceNumberSafe([])).toBeNull();
+		expect(coerceNumberSafe([1, 2, 3])).toBeNull();
+	});
+
+	test('returns null for undefined', () => {
+		expect(coerceNumberSafe(undefined)).toBeNull();
+	});
+
+	test('primitives are unaffected', () => {
+		expect(coerceNumberSafe(42)).toBe(42);
+		expect(coerceNumberSafe('42')).toBe(42);
+		expect(coerceNumberSafe(true)).toBe(1);
+		expect(coerceNumberSafe(false)).toBe(0);
+		expect(coerceNumberSafe(null)).toBe(0);
+		expect(coerceNumberSafe(null, { allowNull: true })).toBeNull();
+	});
+
+	test('still applies round/clamp options to numeric input', () => {
+		expect(coerceNumberSafe(7.6, { round: true })).toBe(8);
+		expect(coerceNumberSafe(150, { clamp: { min: 0, max: 100 } })).toBe(100);
 	});
 });
 

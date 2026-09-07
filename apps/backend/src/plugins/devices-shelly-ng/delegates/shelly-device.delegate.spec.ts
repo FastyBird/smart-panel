@@ -190,6 +190,39 @@ describe('ShellyDeviceDelegate', () => {
 		sw.emit('change', 'output', true);
 	});
 
+	test('propagates an object change as both the parent key and its flattened leaves', () => {
+		const { Switch, Device } = require('shellies-ds9');
+
+		const sw = new Switch('switch:0');
+		const comps = new Map<string, typeof Component>([['switch:0', sw]]);
+		const dev = new Device('dev-2b', 'FAKE_MODEL', comps, true);
+
+		const delegate = new ShellyDeviceDelegate(dev);
+
+		const received: [string, string, unknown][] = [];
+		delegate.on('value', (compKey: string, char: string, val: unknown) => {
+			received.push([compKey, char, val]);
+		});
+
+		sw.emit('change', 'aenergy', { total: 12.345, by_minute: [0, 0, 0], minute_ts: 111 });
+
+		const keys = received.map(([, char]) => char);
+
+		expect(keys).toEqual(
+			expect.arrayContaining(['aenergy', 'aenergy.total', 'aenergy.by_minute', 'aenergy.minute_ts']),
+		);
+
+		const parent = received.find(([, char]) => char === 'aenergy');
+		expect(parent?.[2]).toEqual({ total: 12.345, by_minute: [0, 0, 0], minute_ts: 111 });
+
+		const total = received.find(([, char]) => char === 'aenergy.total');
+		expect(total?.[2]).toBe(12.345);
+
+		// by_minute is an array - it must be emitted as a leaf, not recursed into.
+		const byMinute = received.find(([, char]) => char === 'aenergy.by_minute');
+		expect(byMinute?.[2]).toEqual([0, 0, 0]);
+	});
+
 	test('emits connected events on rpc connect/disconnect', () => {
 		const { Switch, Device } = require('shellies-ds9');
 

@@ -82,13 +82,30 @@ type FakeSwitch = {
 	set: (v: boolean) => Promise<{ was_on: boolean }>;
 };
 
+type FakePm1 = {
+	id: number;
+	key: string;
+	apower: number;
+	voltage?: number;
+	current?: number;
+	aenergy?: number | { total: number };
+};
+
+type FakeDevicePower = {
+	id: number;
+	key: string;
+	battery: { percent: number };
+};
+
 type FakeDevice = {
 	id: string;
 	modelName: string;
 	system: { config: { device: { name: string | null; mac: string } } };
 	wifi?: Wifi;
 	ethernet?: { key: string; ip: string | null };
-	switch?: { key: string; output: boolean };
+	switch?: { key: string; output: boolean; aenergy?: number | { total: number } };
+	pm1?: FakePm1;
+	devicePower?: FakeDevicePower;
 };
 
 jest.mock('../delegates/shelly-device.delegate', () => {
@@ -117,6 +134,12 @@ jest.mock('../delegates/shelly-device.delegate', () => {
 			// simple one-switch wiring for tests
 			if (shelly.switch) {
 				this.switches.set(0, shelly.switch);
+			}
+			if (shelly.pm1) {
+				this.pm1.set(0, shelly.pm1);
+			}
+			if (shelly.devicePower) {
+				this.devPwr.set(0, shelly.devicePower);
 			}
 		}
 
@@ -935,6 +958,281 @@ describe('DelegatesManagerService', () => {
 			expect(ok2).toBe(true);
 			expect(ethSpy).toHaveBeenCalledWith(false);
 			expect(wifiSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	// RC1/RC5 regression guards (PR1): `aenergy` and `battery` are object characteristics
+	// ({ total, ... } / { percent, ... }). Before this fix, coerceNumberSafe coerced the whole
+	// object to 0, so every tick silently overwrote a correct consumption/battery reading.
+	describe('aenergy and battery track the device on both transports (PR1)', () => {
+		function arrangeDeviceInfoMocks() {
+			const device = { id: uuid().toString() } as ShellyNgDeviceEntity;
+
+			const deviceInfoCh = {
+				device: device.id,
+				category: ChannelCategory.DEVICE_INFORMATION,
+				identifier: 'device-information',
+				name: 'Device information',
+			} as ShellyNgChannelEntity;
+
+			const statusProp = {
+				channel: deviceInfoCh.id,
+				category: PropertyCategory.STATUS,
+				identifier: 'status',
+				value: new PropertyValueState(ConnectionState.UNKNOWN),
+			} as ShellyNgChannelPropertyEntity;
+
+			const linkQProp = {
+				channel: deviceInfoCh.id,
+				category: PropertyCategory.LINK_QUALITY,
+				identifier: 'link_quality',
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
+			(devicesService.findOne as jest.Mock).mockResolvedValueOnce(device);
+			(devicesService.create as jest.Mock).mockImplementation(
+				async (dto: CreateShellyNgDeviceDto): Promise<ShellyNgDeviceEntity> => {
+					device.identifier = dto.identifier;
+					device.name = dto.name;
+					device.category = dto.category;
+					return device as unknown as ShellyNgDeviceEntity;
+				},
+			);
+
+			(channelsService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => null)
+				.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity);
+
+			(channelsPropertiesService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => statusProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => linkQProp as unknown as ShellyNgChannelPropertyEntity);
+
+			(channelsPropertiesService.update as jest.Mock).mockImplementation(
+				async (_id: string, payload: unknown): Promise<unknown> => payload,
+			);
+
+			return { device };
+		}
+
+		function arrangeSwitchWithEnergyEntities() {
+			const { device } = arrangeDeviceInfoMocks();
+
+			const switchCh = {
+				device: device.id,
+				category: ChannelCategory.SWITCHER,
+				identifier: 'switch:0',
+				name: 'Switch 0',
+			} as ShellyNgChannelEntity;
+
+			const switchOn = {
+				channel: switchCh.id,
+				category: PropertyCategory.ON,
+				identifier: 'output',
+				value: new PropertyValueState(false),
+			} as ShellyNgChannelPropertyEntity;
+
+			const energyCh = {
+				device: device.id,
+				category: ChannelCategory.ELECTRICAL_ENERGY,
+				identifier: 'energy:0',
+				name: 'Energy 0',
+			} as ShellyNgChannelEntity;
+
+			const consumptionProp = {
+				channel: energyCh.id,
+				category: PropertyCategory.CONSUMPTION,
+				identifier: 'aenergy',
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			(channelsService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => switchCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => energyCh as unknown as ShellyNgChannelEntity);
+
+			(channelsPropertiesService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => switchOn as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => consumptionProp as unknown as ShellyNgChannelPropertyEntity);
+
+			return { device, consumptionProp };
+		}
+
+		function arrangePm1WithEnergyEntities() {
+			const { device } = arrangeDeviceInfoMocks();
+
+			const electricalPowerCh = {
+				device: device.id,
+				category: ChannelCategory.ELECTRICAL_POWER,
+				identifier: 'power:0',
+				name: 'Power 0',
+			} as ShellyNgChannelEntity;
+
+			const apowerProp = {
+				channel: electricalPowerCh.id,
+				category: PropertyCategory.POWER,
+				identifier: 'apower',
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			const energyCh = {
+				device: device.id,
+				category: ChannelCategory.ELECTRICAL_ENERGY,
+				identifier: 'energy:0',
+				name: 'Energy 0',
+			} as ShellyNgChannelEntity;
+
+			const consumptionProp = {
+				channel: energyCh.id,
+				category: PropertyCategory.CONSUMPTION,
+				identifier: 'aenergy',
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			(channelsService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => electricalPowerCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => energyCh as unknown as ShellyNgChannelEntity);
+
+			(channelsPropertiesService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => apowerProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => consumptionProp as unknown as ShellyNgChannelPropertyEntity);
+
+			return { device, consumptionProp };
+		}
+
+		function arrangeDevicePowerEntities() {
+			const { device } = arrangeDeviceInfoMocks();
+
+			const devicePowerCh = {
+				device: device.id,
+				category: ChannelCategory.BATTERY,
+				identifier: 'devicePower:0',
+				name: 'Device power 0',
+			} as ShellyNgChannelEntity;
+
+			const batteryProp = {
+				channel: devicePowerCh.id,
+				category: PropertyCategory.PERCENTAGE,
+				identifier: 'battery',
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			(channelsService.findOneBy as jest.Mock).mockImplementationOnce(
+				async () => devicePowerCh as unknown as ShellyNgChannelEntity,
+			);
+
+			(channelsPropertiesService.findOneBy as jest.Mock).mockImplementationOnce(
+				async () => batteryProp as unknown as ShellyNgChannelPropertyEntity,
+			);
+
+			return { device, batteryProp };
+		}
+
+		function updatesFor(identifier: string): unknown[] {
+			return (channelsPropertiesService.update as jest.Mock).mock.calls
+				.map(([, payload]: [string, { identifier?: string; value?: unknown }]) => payload)
+				.filter((payload) => payload?.identifier === identifier);
+		}
+
+		test('switch: aenergy.total leaf writes consumption; the bare aenergy object does not', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const { consumptionProp } = arrangeSwitchWithEnergyEntities();
+
+				const shelly: FakeDevice = {
+					id: 'shelly-energy-switch',
+					modelName: 'Plus 1PM',
+					system: { config: { device: { name: 'PM Switch', mac: 'AABBCCDDEE01' } } },
+					wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.41' },
+					switch: { key: 'switch:0', output: true, aenergy: { total: 1.0 } },
+				};
+
+				const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+				(channelsPropertiesService.update as jest.Mock).mockClear();
+
+				// Regression guard: a bare `aenergy` object must never be coerced to 0 and written.
+				delegate.emitValue('switch:0', 'aenergy', { total: 12.345 });
+				jest.advanceTimersByTime(300);
+
+				expect(updatesFor(consumptionProp.identifier)).toHaveLength(0);
+
+				// The flattened leaf carries the real scalar and is the only thing that writes.
+				delegate.emitValue('switch:0', 'aenergy.total', 12.345);
+				jest.advanceTimersByTime(300);
+
+				const writes = updatesFor(consumptionProp.identifier) as { value: unknown }[];
+				expect(writes).toHaveLength(1);
+				expect(writes[0].value).toBe(12.345);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('pm1: aenergy.total leaf writes consumption; the bare aenergy object does not', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const { consumptionProp } = arrangePm1WithEnergyEntities();
+
+				const shelly: FakeDevice = {
+					id: 'shelly-energy-pm1',
+					modelName: 'Plus PM Mini',
+					system: { config: { device: { name: 'PM Mini', mac: 'AABBCCDDEE02' } } },
+					wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.42' },
+					pm1: { id: 0, key: 'pm1:0', apower: 0, aenergy: { total: 1.0 } },
+				};
+
+				const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+				(channelsPropertiesService.update as jest.Mock).mockClear();
+
+				delegate.emitValue('pm1:0', 'aenergy', { total: 45.6 });
+				jest.advanceTimersByTime(300);
+
+				expect(updatesFor(consumptionProp.identifier)).toHaveLength(0);
+
+				delegate.emitValue('pm1:0', 'aenergy.total', 45.6);
+				jest.advanceTimersByTime(300);
+
+				const writes = updatesFor(consumptionProp.identifier) as { value: unknown }[];
+				expect(writes).toHaveLength(1);
+				expect(writes[0].value).toBe(45.6);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('device power: battery.percent reaches the property write via the library path', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const { batteryProp } = arrangeDevicePowerEntities();
+
+				const shelly: FakeDevice = {
+					id: 'shelly-battery-1',
+					modelName: 'Plus H&T',
+					system: { config: { device: { name: 'H&T', mac: 'AABBCCDDEE03' } } },
+					wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.43' },
+					devicePower: { id: 0, key: 'devicepower:0', battery: { percent: 90 } },
+				};
+
+				const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+				(channelsPropertiesService.update as jest.Mock).mockClear();
+
+				// Previously only reachable through ShellyWsServerService (sleeping-device path).
+				// The shared flatten helper in ShellyDeviceDelegate.handleChange now emits this key
+				// on the library WebSocket path too.
+				delegate.emitValue('devicepower:0', 'battery.percent', 87);
+				jest.advanceTimersByTime(300);
+
+				const writes = updatesFor(batteryProp.identifier) as { value: unknown }[];
+				expect(writes).toHaveLength(1);
+				expect(writes[0].value).toBe(87);
+			} finally {
+				jest.useRealTimers();
+			}
 		});
 	});
 });

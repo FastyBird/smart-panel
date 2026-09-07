@@ -30,6 +30,7 @@ import {
 	DeviceProfile,
 } from '../devices-shelly-ng.constants';
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
+import { emitFlattenedValue } from '../utils/transform.utils';
 
 type SupportedComponent =
 	| Switch
@@ -332,7 +333,10 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	};
 
 	private handleChange = (compKey: string, char: string, val: CharacteristicValue): void => {
-		this.emit('value', compKey, char, val);
+		// Flatten object characteristics (e.g. `aenergy: { total, ... }`, `battery: { percent, ... }`)
+		// so handlers keyed on a leaf attribute (e.g. `aenergy.total`, `battery.percent`) receive the
+		// unwrapped scalar, matching the shape ShellyWsServerService emits for sleeping devices.
+		emitFlattenedValue((event: string, ...args: unknown[]): boolean => this.emit(event, ...args), compKey, char, val);
 	};
 
 	detach(): void {

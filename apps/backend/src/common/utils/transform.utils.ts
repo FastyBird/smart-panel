@@ -66,6 +66,15 @@ export const coerceNumberSafe = (input: unknown, opts: CoerceNumberOpts = {}): n
 		return opts.allowNull ? null : 0;
 	}
 
+	// Object characteristics (e.g. Shelly's `aenergy: { total, by_minute, minute_ts }` or
+	// `battery: { percent, V }`) must never coerce to 0 - that silently overwrites a correct
+	// value with a bogus reading. Anything that isn't a primitive we know how to parse is
+	// dropped by returning null, which callers (e.g. handleNumericChange) already treat as
+	// "invalid, warn and skip" rather than "valid zero".
+	if (typeof input !== 'number' && typeof input !== 'string' && typeof input !== 'boolean') {
+		return null;
+	}
+
 	if (typeof input === 'number') {
 		if (!Number.isFinite(input)) {
 			return 0;

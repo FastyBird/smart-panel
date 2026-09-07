@@ -1,4 +1,4 @@
-import { rssiToQuality, toEnergy } from './transform.utils';
+import { emitFlattenedValue, rssiToQuality, toEnergy } from './transform.utils';
 
 describe('toEnergy', () => {
 	test('returns number as-is', () => {
@@ -60,5 +60,97 @@ describe('rssiToQuality', () => {
 		// check rounding behavior at .5
 		// rssi = -74.5 -> 2 * 25.5 = 51 → round = 51
 		expect(rssiToQuality(-74.5)).toBe(51);
+	});
+});
+
+describe('emitFlattenedValue', () => {
+	function collect(): { emit: jest.Mock; calls: () => [string, string, unknown][] } {
+		const emit = jest.fn();
+
+		return {
+			emit,
+			calls: () =>
+				emit.mock.calls
+					.filter((c: unknown[]) => c[0] === 'value')
+					.map((c: unknown[]) => [c[1], c[2], c[3]] as [string, string, unknown]),
+		};
+	}
+
+	test('emits the parent key for a scalar value and nothing else', () => {
+		const { emit, calls } = collect();
+
+		emitFlattenedValue(emit, 'switch:0', 'output', true);
+
+		expect(calls()).toEqual([['switch:0', 'output', true]]);
+	});
+
+	test('emits the parent object plus a leaf per own key for a nested object', () => {
+		const { emit, calls } = collect();
+
+		emitFlattenedValue(emit, 'switch:0', 'aenergy', { total: 12.345, by_minute: [1, 2, 3], minute_ts: 111 });
+
+		const keys = calls().map(([, attr]) => attr);
+
+		expect(keys).toEqual(
+			expect.arrayContaining(['aenergy', 'aenergy.total', 'aenergy.by_minute', 'aenergy.minute_ts']),
+		);
+
+		const total = calls().find(([, attr]) => attr === 'aenergy.total');
+		expect(total?.[2]).toBe(12.345);
+
+		// The parent event still carries the full raw object.
+		const parent = calls().find(([, attr]) => attr === 'aenergy');
+		expect(parent?.[2]).toEqual({ total: 12.345, by_minute: [1, 2, 3], minute_ts: 111 });
+	});
+
+	test('treats arrays as leaves, not recursing into their entries', () => {
+		const { emit, calls } = collect();
+
+		emitFlattenedValue(emit, 'devicepower:0', 'by_minute', [1, 2, 3]);
+
+		expect(calls()).toEqual([['devicepower:0', 'by_minute', [1, 2, 3]]]);
+	});
+
+	test('recurses through nested objects two levels deep', () => {
+		const { emit, calls } = collect();
+
+		emitFlattenedValue(emit, 'devicepower:0', 'battery', { percent: 95, V: 3.2 });
+
+		const keys = calls().map(([, attr]) => attr);
+
+		expect(keys).toEqual(expect.arrayContaining(['battery', 'battery.percent', 'battery.V']));
+
+		const percent = calls().find(([, attr]) => attr === 'battery.percent');
+		expect(percent?.[2]).toBe(95);
+
+		const voltage = calls().find(([, attr]) => attr === 'battery.V');
+		expect(voltage?.[2]).toBe(3.2);
+	});
+
+	test('treats null as a leaf', () => {
+		const { emit, calls } = collect();
+
+		emitFlattenedValue(emit, 'switch:0', 'apower', null);
+
+		expect(calls()).toEqual([['switch:0', 'apower', null]]);
+	});
+
+	// Denial-of-service guard: both producers of this function feed on attacker-reachable
+	// input (the library WebSocket and the unauthenticated sleeping-device WS server), and
+	// neither wraps the call in a try/catch. Unbounded recursion on a maliciously nested
+	// object would exhaust the call stack and crash the process.
+	test('does not blow the stack on a deeply nested object and stops recursing at the depth cap', () => {
+		const { emit, calls } = collect();
+
+		let deepest: Record<string, unknown> = { leaf: 'bottom' };
+		for (let i = 0; i < 10_000; i++) {
+			deepest = { next: deepest };
+		}
+
+		expect(() => emitFlattenedValue(emit, 'switch:0', 'root', deepest)).not.toThrow();
+
+		// Real Shelly payloads never nest more than one level - the cap is far above that,
+		// so only a handful of levels are actually flattened before recursion stops.
+		expect(calls().length).toBeLessThan(20);
 	});
 });
