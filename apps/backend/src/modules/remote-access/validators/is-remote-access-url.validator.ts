@@ -12,7 +12,10 @@ import { Injectable } from '@nestjs/common';
  * change security behaviour, and this module follows the same rule.
  *
  * Returns the canonical origin string, or `null` when `value` is not a
- * normalized absolute HTTP(S) origin.
+ * valid absolute HTTP(S) origin. `value` need not already be canonical —
+ * a trailing slash, upper-case scheme/host, or a redundant default port
+ * are all normalized away, since those are cosmetic differences from the
+ * same origin, not a different one.
  */
 export function normalizeRemoteAccessUrl(value: string): string | null {
 	let url: URL;
@@ -35,9 +38,7 @@ export function normalizeRemoteAccessUrl(value: string): string | null {
 		return null;
 	}
 
-	const normalized = url.origin;
-
-	return normalized === value ? normalized : null;
+	return url.origin;
 }
 
 @ValidatorConstraint({ name: 'isRemoteAccessUrl', async: false })
