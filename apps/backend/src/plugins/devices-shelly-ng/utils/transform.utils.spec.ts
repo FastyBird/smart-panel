@@ -134,4 +134,23 @@ describe('emitFlattenedValue', () => {
 
 		expect(calls()).toEqual([['switch:0', 'apower', null]]);
 	});
+
+	// Denial-of-service guard: both producers of this function feed on attacker-reachable
+	// input (the library WebSocket and the unauthenticated sleeping-device WS server), and
+	// neither wraps the call in a try/catch. Unbounded recursion on a maliciously nested
+	// object would exhaust the call stack and crash the process.
+	test('does not blow the stack on a deeply nested object and stops recursing at the depth cap', () => {
+		const { emit, calls } = collect();
+
+		let deepest: Record<string, unknown> = { leaf: 'bottom' };
+		for (let i = 0; i < 10_000; i++) {
+			deepest = { next: deepest };
+		}
+
+		expect(() => emitFlattenedValue(emit, 'switch:0', 'root', deepest)).not.toThrow();
+
+		// Real Shelly payloads never nest more than one level - the cap is far above that,
+		// so only a handful of levels are actually flattened before recursion stops.
+		expect(calls().length).toBeLessThan(20);
+	});
 });
