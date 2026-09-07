@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from 'fs';
 import { execFile } from 'node:child_process';
 import si from 'systeminformation';
-import { promisify } from 'util';
 
 import { Injectable } from '@nestjs/common';
 
@@ -14,8 +13,6 @@ import { GenericPlatform } from '../platforms/generic.platform';
 import { HomeAssistantPlatform } from '../platforms/home-assistant.platform';
 import { RaspberryPlatform } from '../platforms/raspberry.platform';
 
-const execFileAsync = promisify(execFile);
-
 // Platforms that never own the host's systemd/sudoers configuration — privileged
 // workers (OS update, Tailscale setup, ...) are never available there, so there is
 // nothing to probe.
@@ -24,6 +21,29 @@ const PRIVILEGED_WORKERS_UNSUPPORTED_PLATFORMS: ReadonlySet<PlatformType> = new 
 	PlatformType.HOME_ASSISTANT,
 	PlatformType.DEVELOPMENT,
 ]);
+
+// A negative probe result (sudo/systemd-run currently refuses) is cached only this long, so a
+// sudoers grant added after boot — the exact failure mode hardware acceptance testing hit on
+// 2026-09-07 — is picked up without a full backend restart. A positive result never expires for
+// the life of the process — see getPrivilegedWorkerSupport().
+const PRIVILEGED_WORKER_SUPPORT_NEGATIVE_CACHE_TTL_MS = 60_000;
+
+// systemd-run --scope spins up a real transient unit rather than merely asking sudo to list its
+// policy, so this allows a little more headroom than the previous, cheaper `sudo -n -l` probe.
+const PRIVILEGED_WORKER_PROBE_TIMEOUT_MS = 5_000;
+
+/** Result of probing whether this platform can run a privileged job right now. */
+export interface PrivilegedWorkerSupport {
+	/** Whether `PrivilegedWorkerService.run()` can spawn a privileged job right now. */
+	supported: boolean;
+	/**
+	 * Why not, when `supported` is false — a technical detail (e.g. sudo's own stderr), not
+	 * user-facing copy on its own. `null` when `supported` is true.
+	 */
+	reason: string | null;
+	/** ISO 8601 timestamp of when this result was produced — freshly probed, or served from cache. */
+	checkedAt: string;
+}
 
 @Injectable()
 export class PlatformService {
@@ -36,10 +56,17 @@ export class PlatformService {
 	// while it is still undefined.
 	private readonly platformDetection: Promise<void>;
 
-	// Caches the in-flight/resolved probe promise itself (not just its resolved value) so
-	// concurrent callers before the first result share one probe instead of each starting
-	// their own sudo/systemd-run checks.
-	private privilegedWorkersSupportedPromise: Promise<boolean> | null = null;
+	// Caches the resolved probe result. `cacheExpiresAt === null` means "cached for the process
+	// lifetime" (a positive result, or an architecturally-unsupported platform that can never
+	// change without a redeploy); otherwise the cache is only valid until that timestamp (a
+	// negative, potentially-transient probe result on an otherwise-capable platform).
+	private privilegedWorkerSupportCache: PrivilegedWorkerSupport | null = null;
+	private privilegedWorkerSupportCacheExpiresAt: number | null = null;
+
+	// Caches the in-flight probe promise itself (not just its resolved value) so concurrent
+	// callers before the first result share one probe instead of each starting their own
+	// sudo/systemd-run invocation.
+	private privilegedWorkerSupportPromise: Promise<PrivilegedWorkerSupport> | null = null;
 
 	constructor() {
 		this.platformDetection = this.detectPlatform()
@@ -80,32 +107,99 @@ export class PlatformService {
 
 	/**
 	 * True when this platform can run privileged operations (OS update, Tailscale setup, ...)
-	 * through PrivilegedWorkerService — i.e. passwordless sudo and systemd-run are both
-	 * available. Always false for docker, home-assistant and development. Waits for platform
-	 * detection to finish before deciding, then probes at most once — the probe (in-flight or
-	 * resolved) is cached for the life of the process.
+	 * through PrivilegedWorkerService right now. A boolean-only wrapper over
+	 * `getPrivilegedWorkerSupport()` for callers that only need the yes/no answer, not the reason
+	 * (`PrivilegedWorkerService.run()`'s own pre-check, in particular).
 	 */
 	async supportsPrivilegedWorkers(): Promise<boolean> {
-		if (this.privilegedWorkersSupportedPromise === null) {
-			this.privilegedWorkersSupportedPromise = this.probeSupportsPrivilegedWorkers();
-		}
+		const { supported } = await this.getPrivilegedWorkerSupport();
 
-		return this.privilegedWorkersSupportedPromise;
+		return supported;
 	}
 
-	private async probeSupportsPrivilegedWorkers(): Promise<boolean> {
+	/**
+	 * Whether this platform can run a privileged job right now, and why not when it can't.
+	 * Always false for docker, home-assistant and development — see
+	 * `isPlatformCapableOfPrivilegedWorkers()` to distinguish that permanent case from a probe
+	 * that merely fails right now.
+	 *
+	 * A positive result is cached for the life of the process — once a privileged job has run
+	 * successfully there is no operational reason it would stop working. A negative result on an
+	 * otherwise-capable platform is cached for only `PRIVILEGED_WORKER_SUPPORT_NEGATIVE_CACHE_TTL_MS`
+	 * (60s): unlike a positive result, "no" can become "yes" purely from an administrator adding a
+	 * sudoers grant, and without this short TTL that fix would silently require a full backend
+	 * restart to take effect (the exact gap hardware acceptance testing hit on 2026-09-07). An
+	 * architecturally unsupported platform is cached forever too — no sudoers change can ever make
+	 * privileged workers available there.
+	 *
+	 * Waits for platform detection to finish before deciding. Concurrent callers before the first
+	 * result share one in-flight probe.
+	 */
+	async getPrivilegedWorkerSupport(): Promise<PrivilegedWorkerSupport> {
 		await this.platformDetection;
 
-		if (PRIVILEGED_WORKERS_UNSUPPORTED_PLATFORMS.has(this.platformType)) {
-			return false;
+		const cached = this.getFreshPrivilegedWorkerSupportCache();
+
+		if (cached) {
+			return cached;
 		}
 
-		const [sudoAvailable, systemdRunAvailable] = await Promise.all([
-			this.probeSudoNonInteractive(),
-			this.probeSystemdRunAvailable(),
-		]);
+		if (this.privilegedWorkerSupportPromise === null) {
+			this.privilegedWorkerSupportPromise = this.probePrivilegedWorkerSupport().finally(() => {
+				this.privilegedWorkerSupportPromise = null;
+			});
+		}
 
-		return sudoAvailable && systemdRunAvailable;
+		const result = await this.privilegedWorkerSupportPromise;
+
+		this.privilegedWorkerSupportCache = result;
+		this.privilegedWorkerSupportCacheExpiresAt =
+			result.supported || PRIVILEGED_WORKERS_UNSUPPORTED_PLATFORMS.has(this.platformType)
+				? null
+				: Date.now() + PRIVILEGED_WORKER_SUPPORT_NEGATIVE_CACHE_TTL_MS;
+
+		return result;
+	}
+
+	/**
+	 * True unless this platform (docker, home-assistant, development) has no privileged-worker
+	 * support built in at all. Distinguishes an architectural "no" — nothing short of changing
+	 * platform/deployment fixes it — from a probed "no" from `getPrivilegedWorkerSupport()` (e.g.
+	 * a missing sudoers grant), which can resolve itself without a redeploy.
+	 *
+	 * Reads `platformType` synchronously, so callers must have already awaited platform detection
+	 * at least once (e.g. by calling `getPrivilegedWorkerSupport()` or `getPlatformTypeAsync()`
+	 * first) — this method does not itself await `platformDetection`.
+	 */
+	isPlatformCapableOfPrivilegedWorkers(): boolean {
+		return !PRIVILEGED_WORKERS_UNSUPPORTED_PLATFORMS.has(this.platformType);
+	}
+
+	private getFreshPrivilegedWorkerSupportCache(): PrivilegedWorkerSupport | null {
+		if (!this.privilegedWorkerSupportCache) {
+			return null;
+		}
+
+		const fresh =
+			this.privilegedWorkerSupportCacheExpiresAt === null || Date.now() < this.privilegedWorkerSupportCacheExpiresAt;
+
+		return fresh ? this.privilegedWorkerSupportCache : null;
+	}
+
+	private async probePrivilegedWorkerSupport(): Promise<PrivilegedWorkerSupport> {
+		const checkedAt = new Date().toISOString();
+
+		if (PRIVILEGED_WORKERS_UNSUPPORTED_PLATFORMS.has(this.platformType)) {
+			return {
+				supported: false,
+				reason: `The '${this.platformType}' platform does not support privileged workers.`,
+				checkedAt,
+			};
+		}
+
+		const probe = await this.probeSystemdRunScope();
+
+		return { supported: probe.success, reason: probe.success ? null : probe.reason, checkedAt };
 	}
 
 	getSystemInfo() {
@@ -247,48 +341,40 @@ export class PlatformService {
 	}
 
 	/**
-	 * Passwordless sudo probe — checks the sudoers policy allows
-	 * `systemd-run` without prompting, since that is the command every
-	 * privileged job actually invokes (`PrivilegedWorkerService.run()`), not
-	 * `/usr/bin/true`: the sudoers file a script install grants
-	 * (`build/src/installers/linux.ts`'s `createSudoersRule()`) allows
-	 * `systemctl`, `npm` and `/usr/bin/systemd-run *`, but never
-	 * `/usr/bin/true`, which would otherwise make this probe fail on every
-	 * script-installed host. `sudo -n -l <command>` exits 0 when the policy
-	 * permits that command without a password — the same check
-	 * `update-worker.sh` runs before it relies on `sudo -n` itself.
+	 * Runs a real, harmless `systemd-run --scope` through the exact sudoers grant every
+	 * privileged job actually uses (`/usr/bin/systemd-run *` — see
+	 * `build/src/installers/linux.ts`'s `createSudoersRule()`), rather than only asking sudo to
+	 * list its policy (`sudo -n -l`): a sudoers rule can permit `-l` while the real invocation
+	 * still fails for an unrelated reason (a wrong NOPASSWD tag, `systemd-run` missing from the
+	 * elevated PATH, dbus unavailable, ...) — only actually running the command tells the whole
+	 * story. `--unit` is namespaced with this process's pid so concurrent probes (e.g. across a
+	 * restart window) can never collide on the same transient unit name. stderr is captured so a
+	 * real refusal reason (e.g. "sudo: a password is required") reaches the admin instead of a
+	 * generic failure.
 	 */
-	private async probeSudoNonInteractive(): Promise<boolean> {
-		try {
-			await execFileAsync('sudo', ['-n', '-l', '/usr/bin/systemd-run'], { timeout: 2000 });
+	private async probeSystemdRunScope(): Promise<{ success: boolean; reason: string | null }> {
+		const unit = `smart-panel-privileged-probe-${process.pid}`;
 
-			return true;
-		} catch (error) {
-			const err = error as Error;
+		return new Promise((resolve) => {
+			execFile(
+				'sudo',
+				['-n', 'systemd-run', '--scope', '--quiet', `--unit=${unit}`, '/bin/true'],
+				{ timeout: PRIVILEGED_WORKER_PROBE_TIMEOUT_MS },
+				(error, _stdout, stderr) => {
+					if (!error) {
+						resolve({ success: true, reason: null });
 
-			this.logger.debug(
-				`Passwordless sudo probe for systemd-run failed, treating privileged workers as unsupported: ${err.message}`,
+						return;
+					}
+
+					const detail = (stderr ?? '').toString().trim() || error.message;
+
+					this.logger.debug(`Privileged-worker probe (systemd-run scope) failed: ${detail}`);
+
+					resolve({ success: false, reason: detail });
+				},
 			);
-
-			return false;
-		}
-	}
-
-	/** systemd-run presence probe — privileged jobs run inside a systemd-run --scope. */
-	private async probeSystemdRunAvailable(): Promise<boolean> {
-		try {
-			await execFileAsync('which', ['systemd-run'], { timeout: 2000 });
-
-			return true;
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.debug(
-				`systemd-run availability probe failed, treating privileged workers as unsupported: ${err.message}`,
-			);
-
-			return false;
-		}
+		});
 	}
 
 	private createPlatform(type: PlatformType): Platform {

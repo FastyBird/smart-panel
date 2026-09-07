@@ -133,12 +133,18 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 	// This e2e's job for the four mutating endpoints is role gating and
 	// response shape/headers through the real HTTP + guard stack, exactly
 	// like the existing GET /status suite below covers that endpoint.
-	let setupServiceMock: { install: jest.Mock };
+	let setupServiceMock: { install: jest.Mock; getLastJob: jest.Mock };
 	let loginServiceMock: {
 		login: jest.Mock;
 		logout: jest.Mock;
 		resetPreferences: jest.Mock;
 		getPendingInteractiveAuth: jest.Mock;
+	};
+	let platformService: {
+		getPlatformType: jest.Mock;
+		getPlatformTypeAsync: jest.Mock;
+		getPrivilegedWorkerSupport: jest.Mock;
+		isPlatformCapableOfPrivilegedWorkers: jest.Mock;
 	};
 
 	beforeAll(async () => {
@@ -164,15 +170,20 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 			}),
 		};
 		const nestConfigService = { get: jest.fn((key: string) => ({ FB_BACKEND_PORT: 3000 })[key]) };
-		const platformService = {
+		platformService = {
 			getPlatformType: jest.fn().mockReturnValue(PlatformType.RASPBERRY),
 			// evaluatePlatformSupported() awaits this instead of the synchronous
 			// getPlatformType() above, so it never observes platformType while
 			// still undefined right after boot (RA-12 F7).
 			getPlatformTypeAsync: jest.fn().mockResolvedValue(PlatformType.RASPBERRY),
+			// StatusController's `privileged_setup` field (RA-20).
+			getPrivilegedWorkerSupport: jest
+				.fn()
+				.mockResolvedValue({ supported: true, reason: null, checkedAt: '2026-09-07T00:00:00.000Z' }),
+			isPlatformCapableOfPrivilegedWorkers: jest.fn().mockReturnValue(true),
 		};
 
-		setupServiceMock = { install: jest.fn() };
+		setupServiceMock = { install: jest.fn(), getLastJob: jest.fn().mockReturnValue(null) };
 		loginServiceMock = {
 			login: jest.fn(),
 			logout: jest.fn(),
@@ -209,10 +220,14 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 
 	afterEach(() => {
 		setupServiceMock.install.mockReset();
+		setupServiceMock.getLastJob.mockReset().mockReturnValue(null);
 		loginServiceMock.login.mockReset();
 		loginServiceMock.logout.mockReset();
 		loginServiceMock.resetPreferences.mockReset();
 		loginServiceMock.getPendingInteractiveAuth.mockReset().mockReturnValue(null);
+		platformService.getPrivilegedWorkerSupport
+			.mockReset()
+			.mockResolvedValue({ supported: true, reason: null, checkedAt: '2026-09-07T00:00:00.000Z' });
 	});
 
 	describe('GET /status', () => {
@@ -251,6 +266,52 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 			expect(response.body.data).not.toHaveProperty('authUrl');
 			expect(response.body.data).not.toHaveProperty('auth_url');
 			expect(response.body.data).not.toHaveProperty('qr');
+			// RA-20: setup-progress-over-REST fields.
+			expect(response.body.data.setup).toBeNull();
+			expect(response.body.data.privilegedSetup).toEqual({ available: true, reason: null });
+		});
+
+		it('reports the last known setup job on GET /status (RA-20)', async () => {
+			setupServiceMock.getLastJob.mockReturnValue({
+				id: 'job-1',
+				status: {
+					id: 'job-1',
+					state: 'running',
+					step: 'install-package',
+					message: 'Installing tailscale',
+					updatedAt: '2026-09-07T00:00:00.000Z',
+				},
+			});
+
+			const response = await request(app.getHttpServer())
+				.get('/status')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(200);
+
+			expect(response.body.data.setup).toMatchObject({
+				jobId: 'job-1',
+				state: 'running',
+				step: 'install-package',
+				message: 'Installing tailscale',
+			});
+		});
+
+		it('reports privilegedSetup: unavailable with a reason when the probe fails (RA-20)', async () => {
+			platformService.getPrivilegedWorkerSupport.mockResolvedValue({
+				supported: false,
+				reason: 'sudo: a password is required',
+				checkedAt: '2026-09-07T00:00:00.000Z',
+			});
+
+			const response = await request(app.getHttpServer())
+				.get('/status')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(200);
+
+			expect(response.body.data.privilegedSetup).toEqual({
+				available: false,
+				reason: 'sudo: a password is required',
+			});
 		});
 
 		it.each(['regular-user', 'display-token'])('denies %s', async (credential) => {
@@ -341,14 +402,42 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 			await request(app.getHttpServer()).post('/install').set('Authorization', 'Bearer owner-user').expect(409);
 		});
 
-		it('maps an unsupported-platform or dev-override refusal (permanent) to 422', async () => {
+		it('maps an unsupported-platform or dev-override refusal (permanent) to 422 with code: platform-unsupported', async () => {
 			setupServiceMock.install.mockRejectedValue(
 				new TailscaleSetupUnavailableException(
 					"Tailscale setup requires a platform with privileged-worker support; the 'docker' platform does not have it.",
+					'platform-unsupported',
 				),
 			);
 
-			await request(app.getHttpServer()).post('/install').set('Authorization', 'Bearer owner-user').expect(422);
+			const response = await request(app.getHttpServer())
+				.post('/install')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(422);
+
+			// Shape-agnostic (RA-27/D13): this test app registers no global exception
+			// filters, so the body here is Nest's raw default shape, not the production
+			// envelope (`error.details.code`/`error.details.reason`) - asserting a
+			// top-level `body.code` would pass here and fail in production.
+			expect(JSON.stringify(response.body)).toContain('platform-unsupported');
+			expect(JSON.stringify(response.body)).toContain('privileged-worker support');
+		});
+
+		it('maps a probe-currently-failing refusal (permanent, but self-resolving) to 422 with code: privileged-worker-unavailable', async () => {
+			setupServiceMock.install.mockRejectedValue(
+				new TailscaleSetupUnavailableException(
+					'sudo: a password is required. Re-run `sudo smart-panel-service install`, or add the sudoers grant from the installation guide.',
+					'privileged-worker-unavailable',
+				),
+			);
+
+			const response = await request(app.getHttpServer())
+				.post('/install')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(422);
+
+			expect(JSON.stringify(response.body)).toContain('privileged-worker-unavailable');
+			expect(JSON.stringify(response.body)).toContain('sudo smart-panel-service install');
 		});
 	});
 

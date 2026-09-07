@@ -32,13 +32,15 @@ jest.mock('node:child_process', () => ({
 	execFile: jest.fn(),
 }));
 
-type ExecFileCallback = (error: Error | null) => void;
+type ExecFileCallback = (error: Error | null, stdout?: string, stderr?: string) => void;
 
-function mockExecFile(resolve: (file: string) => boolean): void {
-	(execFile as unknown as jest.Mock).mockImplementation((file: string, ...rest: unknown[]) => {
+/** Only one command is ever probed now (`sudo -n systemd-run --scope ... /bin/true`) — `succeed` decides the single outcome. */
+function mockExecFile(succeed: () => boolean, stderr = 'sudo: a password is required'): void {
+	(execFile as unknown as jest.Mock).mockImplementation((...rest: unknown[]) => {
 		const callback = rest[rest.length - 1] as ExecFileCallback;
+		const ok = succeed();
 
-		callback(resolve(file) ? null : new Error(`${file} probe failed`));
+		callback(ok ? null : new Error('probe failed'), '', ok ? '' : stderr);
 
 		return {};
 	});
@@ -215,9 +217,9 @@ describe('PlatformService', () => {
 		});
 	});
 
-	describe('supportsPrivilegedWorkers', () => {
+	describe('getPrivilegedWorkerSupport / supportsPrivilegedWorkers', () => {
 		beforeEach(async () => {
-			// supportsPrivilegedWorkers() now awaits the constructor's own detection promise
+			// getPrivilegedWorkerSupport() now awaits the constructor's own detection promise
 			// before deciding. Letting the (uncontrolled, auto-detected) constructor detection
 			// settle here first means each test's manual `service['platformType'] = ...`
 			// override below happens after it — and stays put, since that promise's `.then()`
@@ -226,16 +228,39 @@ describe('PlatformService', () => {
 		});
 
 		it.each([PlatformType.DOCKER, PlatformType.HOME_ASSISTANT, PlatformType.DEVELOPMENT])(
-			'returns false for %s without probing sudo/systemd-run',
+			'returns unsupported for %s without probing sudo/systemd-run',
 			async (platformType) => {
 				service['platformType'] = platformType;
 
 				await expect(service.supportsPrivilegedWorkers()).resolves.toBe(false);
 				expect(execFile).not.toHaveBeenCalled();
+
+				const support = await service.getPrivilegedWorkerSupport();
+
+				expect(support.supported).toBe(false);
+				expect(support.reason).toContain(platformType);
 			},
 		);
 
-		it('returns true for raspberry when passwordless sudo and systemd-run are both available', async () => {
+		it.each([PlatformType.DOCKER, PlatformType.HOME_ASSISTANT, PlatformType.DEVELOPMENT])(
+			'reports %s as architecturally incapable via isPlatformCapableOfPrivilegedWorkers()',
+			(platformType) => {
+				service['platformType'] = platformType;
+
+				expect(service.isPlatformCapableOfPrivilegedWorkers()).toBe(false);
+			},
+		);
+
+		it.each([PlatformType.RASPBERRY, PlatformType.GENERIC])(
+			'reports %s as architecturally capable via isPlatformCapableOfPrivilegedWorkers()',
+			(platformType) => {
+				service['platformType'] = platformType;
+
+				expect(service.isPlatformCapableOfPrivilegedWorkers()).toBe(true);
+			},
+		);
+
+		it('returns true for raspberry when the systemd-run scope probe succeeds', async () => {
 			service['platformType'] = PlatformType.RASPBERRY;
 
 			mockExecFile(() => true);
@@ -243,14 +268,20 @@ describe('PlatformService', () => {
 			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(true);
 			expect(execFile).toHaveBeenCalledWith(
 				'sudo',
-				['-n', '-l', '/usr/bin/systemd-run'],
-				{ timeout: 2000 },
+				[
+					'-n',
+					'systemd-run',
+					'--scope',
+					'--quiet',
+					expect.stringMatching(/^--unit=smart-panel-privileged-probe-\d+$/),
+					'/bin/true',
+				],
+				{ timeout: 5000 },
 				expect.any(Function),
 			);
-			expect(execFile).toHaveBeenCalledWith('which', ['systemd-run'], { timeout: 2000 }, expect.any(Function));
 		});
 
-		it('returns true for generic when passwordless sudo and systemd-run are both available', async () => {
+		it('returns true for generic when the systemd-run scope probe succeeds', async () => {
 			service['platformType'] = PlatformType.GENERIC;
 
 			mockExecFile(() => true);
@@ -258,75 +289,101 @@ describe('PlatformService', () => {
 			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(true);
 		});
 
-		it('returns false when passwordless sudo is unavailable', async () => {
-			service['platformType'] = PlatformType.RASPBERRY;
-
-			mockExecFile((file) => file !== 'sudo');
-
-			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(false);
-		});
-
-		it('reports unsupported and logs which probe failed when `sudo -n -l /usr/bin/systemd-run` exits non-zero', async () => {
-			// A script-installed host's sudoers file grants systemd-run but never
-			// `/usr/bin/true` (build/src/installers/linux.ts) — probing the wrong
-			// command would report unsupported even though privileged jobs would
-			// actually work, which is exactly the bug this probe change fixes.
-			service['platformType'] = PlatformType.RASPBERRY;
-
-			const debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
-
-			mockExecFile((file) => file !== 'sudo');
-
-			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(false);
-			expect(execFile).toHaveBeenCalledWith(
-				'sudo',
-				['-n', '-l', '/usr/bin/systemd-run'],
-				{ timeout: 2000 },
-				expect.any(Function),
-			);
-			expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('Passwordless sudo probe'), expect.anything());
-		});
-
-		it('returns false when systemd-run is not on PATH', async () => {
-			service['platformType'] = PlatformType.RASPBERRY;
-
-			mockExecFile((file) => file !== 'which');
-
-			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(false);
-		});
-
-		it('logs which probe failed when the systemd-run availability probe fails', async () => {
-			service['platformType'] = PlatformType.RASPBERRY;
-
-			const debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
-
-			mockExecFile((file) => file !== 'which');
-
-			await expect(service.supportsPrivilegedWorkers()).resolves.toBe(false);
-			expect(debugSpy).toHaveBeenCalledWith(
-				expect.stringContaining('systemd-run availability probe'),
-				expect.anything(),
-			);
-		});
-
-		it('probes only once and caches the result across repeated calls', async () => {
+		it('returns supported: true with a null reason on success', async () => {
 			service['platformType'] = PlatformType.RASPBERRY;
 
 			mockExecFile(() => true);
 
-			await service.supportsPrivilegedWorkers();
-			await service.supportsPrivilegedWorkers();
+			const support = await service.getPrivilegedWorkerSupport();
 
-			expect(execFile).toHaveBeenCalledTimes(2); // one sudo + one systemd-run probe, first call only
+			expect(support.supported).toBe(true);
+			expect(support.reason).toBeNull();
+			expect(support.checkedAt).toEqual(expect.any(String));
+			expect(new Date(support.checkedAt).toString()).not.toBe('Invalid Date');
 		});
 
-		it('caches a false result for an unsupported platform without probing on repeated calls', async () => {
+		it('surfaces the probe stderr as the reason and logs it when the scope probe fails', async () => {
+			service['platformType'] = PlatformType.RASPBERRY;
+
+			const debugSpy = jest.spyOn(Logger.prototype, 'debug').mockImplementation(() => undefined);
+
+			mockExecFile(() => false, 'sudo: a password is required');
+
+			const support = await service.getPrivilegedWorkerSupport();
+
+			expect(support.supported).toBe(false);
+			expect(support.reason).toBe('sudo: a password is required');
+			expect(debugSpy).toHaveBeenCalledWith(expect.stringContaining('sudo: a password is required'), expect.anything());
+		});
+
+		it('falls back to the error message when the probe fails with no stderr', async () => {
+			service['platformType'] = PlatformType.RASPBERRY;
+
+			(execFile as unknown as jest.Mock).mockImplementation((...rest: unknown[]) => {
+				const callback = rest[rest.length - 1] as ExecFileCallback;
+
+				callback(new Error('spawn sudo ENOENT'), '', '');
+
+				return {};
+			});
+
+			const support = await service.getPrivilegedWorkerSupport();
+
+			expect(support.supported).toBe(false);
+			expect(support.reason).toBe('spawn sudo ENOENT');
+		});
+
+		it('probes only once and caches a positive result for the life of the process', async () => {
+			service['platformType'] = PlatformType.RASPBERRY;
+
+			mockExecFile(() => true);
+
+			await service.getPrivilegedWorkerSupport();
+			await service.getPrivilegedWorkerSupport();
+
+			expect(execFile).toHaveBeenCalledTimes(1);
+		});
+
+		it('caches an unsupported-platform result forever without probing on repeated calls', async () => {
 			service['platformType'] = PlatformType.DOCKER;
 
-			await service.supportsPrivilegedWorkers();
-			await service.supportsPrivilegedWorkers();
+			await service.getPrivilegedWorkerSupport();
+			await service.getPrivilegedWorkerSupport();
 
 			expect(execFile).not.toHaveBeenCalled();
+		});
+
+		it('caches a negative result for only 60 seconds, then re-probes (so a sudoers grant added later is picked up)', async () => {
+			service['platformType'] = PlatformType.RASPBERRY;
+
+			const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+
+			mockExecFile(() => false);
+
+			const first = await service.getPrivilegedWorkerSupport();
+
+			expect(first.supported).toBe(false);
+			expect(execFile).toHaveBeenCalledTimes(1);
+
+			// Still inside the 60s TTL — served from cache, no re-probe.
+			nowSpy.mockReturnValue(1_000_000 + 59_000);
+
+			const second = await service.getPrivilegedWorkerSupport();
+
+			expect(second.supported).toBe(false);
+			expect(execFile).toHaveBeenCalledTimes(1);
+
+			// Past the TTL — re-probes. Simulates an administrator having added the sudoers
+			// grant in between, without restarting the backend.
+			nowSpy.mockReturnValue(1_000_000 + 60_001);
+			mockExecFile(() => true);
+
+			const third = await service.getPrivilegedWorkerSupport();
+
+			expect(third.supported).toBe(true);
+			expect(execFile).toHaveBeenCalledTimes(2);
+
+			nowSpy.mockRestore();
 		});
 
 		it('waits for platform detection to finish before deciding, even when called immediately after construction', async () => {
@@ -375,7 +432,7 @@ describe('PlatformService', () => {
 
 			expect(first).toBe(true);
 			expect(second).toBe(true);
-			expect(execFile).toHaveBeenCalledTimes(2); // one sudo + one systemd-run probe, shared
+			expect(execFile).toHaveBeenCalledTimes(1);
 		});
 	});
 });

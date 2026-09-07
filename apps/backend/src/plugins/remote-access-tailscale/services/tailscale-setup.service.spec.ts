@@ -6,6 +6,8 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ConfigService } from '../../../modules/config/services/config.service';
+import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { PlatformType } from '../../../modules/platform/platform.constants';
 import { PlatformService } from '../../../modules/platform/services/platform.service';
 import { EventType as RemoteAccessEventType } from '../../../modules/remote-access/remote-access.constants';
@@ -32,11 +34,19 @@ describe('TailscaleSetupService', () => {
 	let privilegedWorker: {
 		run: jest.Mock<Promise<{ id: string }>, [Parameters<PrivilegedWorkerService['run']>[0]]>;
 		onStatus: jest.Mock;
+		getStatus: jest.Mock;
 	};
 	let nestConfigServiceMock: { get: jest.Mock };
 	let nodeManagedService: { evaluateRequirements: jest.Mock };
 	let eventEmitterMock: { emit: jest.Mock };
-	let platformServiceMock: { supportsPrivilegedWorkers: jest.Mock; getPlatformType: jest.Mock };
+	let platformServiceMock: {
+		supportsPrivilegedWorkers: jest.Mock;
+		getPrivilegedWorkerSupport: jest.Mock;
+		isPlatformCapableOfPrivilegedWorkers: jest.Mock;
+		getPlatformType: jest.Mock;
+	};
+	let configServiceMock: { getPluginConfig: jest.Mock };
+	let managedServiceManagerMock: { restartService: jest.Mock };
 	let dataDir: string;
 	let unsubscribe: jest.Mock;
 	let capturedHandler: StatusHandler | null;
@@ -55,6 +65,7 @@ describe('TailscaleSetupService', () => {
 
 				return unsubscribe;
 			}),
+			getStatus: jest.fn().mockReturnValue(null),
 		};
 
 		nestConfigServiceMock = {
@@ -71,8 +82,14 @@ describe('TailscaleSetupService', () => {
 		eventEmitterMock = { emit: jest.fn() };
 		platformServiceMock = {
 			supportsPrivilegedWorkers: jest.fn().mockResolvedValue(true),
+			getPrivilegedWorkerSupport: jest
+				.fn()
+				.mockResolvedValue({ supported: true, reason: null, checkedAt: '2026-09-07T00:00:00.000Z' }),
+			isPlatformCapableOfPrivilegedWorkers: jest.fn().mockReturnValue(true),
 			getPlatformType: jest.fn().mockReturnValue(PlatformType.DOCKER),
 		};
+		configServiceMock = { getPluginConfig: jest.fn().mockReturnValue({ enabled: false }) };
+		managedServiceManagerMock = { restartService: jest.fn().mockResolvedValue(true) };
 
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -82,6 +99,8 @@ describe('TailscaleSetupService', () => {
 				{ provide: TailscaleNodeManagedService, useValue: nodeManagedService },
 				{ provide: EventEmitter2, useValue: eventEmitterMock },
 				{ provide: PlatformService, useValue: platformServiceMock },
+				{ provide: ConfigService, useValue: configServiceMock },
+				{ provide: ManagedServiceManagerService, useValue: managedServiceManagerMock },
 			],
 		}).compile();
 
@@ -132,19 +151,70 @@ describe('TailscaleSetupService', () => {
 				return undefined;
 			});
 
-			await expect(service.install()).rejects.toBeInstanceOf(TailscaleSetupUnavailableException);
+			let caught: unknown;
+
+			try {
+				await service.install();
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(TailscaleSetupUnavailableException);
+			expect((caught as TailscaleSetupUnavailableException).code).toBe('platform-unsupported');
 			expect(privilegedWorker.run).not.toHaveBeenCalled();
 		});
 
-		it('refuses without spawning (TailscaleSetupUnavailableException, a permanent 422-mapped reason) when the platform has no privileged-worker support', async () => {
-			platformServiceMock.supportsPrivilegedWorkers.mockResolvedValue(false);
+		it('refuses without spawning (platform-unsupported, a permanent 422-mapped reason) when the platform architecturally has no privileged-worker support', async () => {
+			platformServiceMock.getPrivilegedWorkerSupport.mockResolvedValue({
+				supported: false,
+				reason: "The 'docker' platform does not support privileged workers.",
+				checkedAt: '2026-09-07T00:00:00.000Z',
+			});
+			platformServiceMock.isPlatformCapableOfPrivilegedWorkers.mockReturnValue(false);
 
-			await expect(service.install()).rejects.toBeInstanceOf(TailscaleSetupUnavailableException);
+			let caught: unknown;
+
+			try {
+				await service.install();
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(TailscaleSetupUnavailableException);
+			expect((caught as TailscaleSetupUnavailableException).code).toBe('platform-unsupported');
+			expect(privilegedWorker.run).not.toHaveBeenCalled();
+		});
+
+		it('refuses without spawning (privileged-worker-unavailable, a permanent 422-mapped reason) when the platform is capable but the probe currently fails', async () => {
+			platformServiceMock.getPrivilegedWorkerSupport.mockResolvedValue({
+				supported: false,
+				reason: 'sudo: a password is required',
+				checkedAt: '2026-09-07T00:00:00.000Z',
+			});
+			platformServiceMock.isPlatformCapableOfPrivilegedWorkers.mockReturnValue(true);
+
+			let caught: unknown;
+
+			try {
+				await service.install();
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(TailscaleSetupUnavailableException);
+			expect((caught as TailscaleSetupUnavailableException).code).toBe('privileged-worker-unavailable');
+			expect((caught as Error).message).toContain('sudo: a password is required');
+			expect((caught as Error).message).toContain('sudo smart-panel-service install');
 			expect(privilegedWorker.run).not.toHaveBeenCalled();
 		});
 
 		it('includes the detected platform type in the unsupported-platform message', async () => {
-			platformServiceMock.supportsPrivilegedWorkers.mockResolvedValue(false);
+			platformServiceMock.getPrivilegedWorkerSupport.mockResolvedValue({
+				supported: false,
+				reason: null,
+				checkedAt: '2026-09-07T00:00:00.000Z',
+			});
+			platformServiceMock.isPlatformCapableOfPrivilegedWorkers.mockReturnValue(false);
 			platformServiceMock.getPlatformType.mockReturnValue(PlatformType.HOME_ASSISTANT);
 
 			// expect.stringContaining(...) inside a plain object literal trips
@@ -277,6 +347,154 @@ describe('TailscaleSetupService', () => {
 			capturedHandler({ id: 'job-1', state: 'timeout', updatedAt: '2026-09-02T00:00:00.000Z' });
 
 			expect(unsubscribe).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('getLastJob', () => {
+		it('returns null before any job has run', () => {
+			expect(service.getLastJob()).toBeNull();
+		});
+
+		it('returns the running job right after install() resolves', async () => {
+			const { id } = await service.install();
+			const lastJob = service.getLastJob();
+
+			// Nesting expect.objectContaining(...) inside a plain object literal trips
+			// @typescript-eslint/no-unsafe-assignment (same pattern noted elsewhere in this
+			// plugin) — asserted field-by-field on the real return value instead.
+			expect(lastJob?.id).toBe(id);
+			expect(lastJob?.status).toEqual(expect.objectContaining({ id, state: 'running' }));
+		});
+
+		it('reflects every status tick forwarded through watchJob()', async () => {
+			await service.install();
+
+			capturedHandler({
+				id: 'job-1',
+				state: 'running',
+				step: 'install',
+				message: 'Installing',
+				updatedAt: '2026-09-02T00:00:00.000Z',
+			});
+
+			expect(service.getLastJob()?.id).toBe('job-1');
+			expect(service.getLastJob()?.status).toEqual(
+				expect.objectContaining({ id: 'job-1', state: 'running', step: 'install' }),
+			);
+
+			capturedHandler({
+				id: 'job-1',
+				state: 'complete',
+				step: 'complete',
+				message: 'done',
+				updatedAt: '2026-09-02T00:00:00.000Z',
+			});
+
+			expect(service.getLastJob()?.status).toEqual(expect.objectContaining({ id: 'job-1', state: 'complete' }));
+		});
+	});
+
+	describe('onSetupComplete (restart-on-completion)', () => {
+		it('restarts the node managed service when the plugin is enabled', async () => {
+			configServiceMock.getPluginConfig.mockReturnValue({ enabled: true });
+
+			await service.install();
+
+			capturedHandler({
+				id: 'job-1',
+				state: 'complete',
+				step: 'complete',
+				message: 'done',
+				updatedAt: '2026-09-02T00:00:00.000Z',
+			});
+
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(managedServiceManagerMock.restartService).toHaveBeenCalledWith(
+				'plugin',
+				'remote-access-tailscale-plugin',
+				'node',
+			);
+		});
+
+		it('does not restart the node managed service when the plugin is disabled', async () => {
+			configServiceMock.getPluginConfig.mockReturnValue({ enabled: false });
+
+			await service.install();
+
+			capturedHandler({
+				id: 'job-1',
+				state: 'complete',
+				step: 'complete',
+				message: 'done',
+				updatedAt: '2026-09-02T00:00:00.000Z',
+			});
+
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(managedServiceManagerMock.restartService).not.toHaveBeenCalled();
+		});
+
+		it('calls TailscaleNodeManagedService.refreshRequirements(reason) instead of evaluateRequirements() once it exists (RA-17)', async () => {
+			const nodeManagedServiceWithRefresh = {
+				...nodeManagedService,
+				refreshRequirements: jest.fn().mockResolvedValue(undefined),
+			};
+
+			const module: TestingModule = await Test.createTestingModule({
+				providers: [
+					TailscaleSetupService,
+					{ provide: PrivilegedWorkerService, useValue: privilegedWorker },
+					{ provide: NestConfigService, useValue: nestConfigServiceMock },
+					{ provide: TailscaleNodeManagedService, useValue: nodeManagedServiceWithRefresh },
+					{ provide: EventEmitter2, useValue: eventEmitterMock },
+					{ provide: PlatformService, useValue: platformServiceMock },
+					{ provide: ConfigService, useValue: configServiceMock },
+					{ provide: ManagedServiceManagerService, useValue: managedServiceManagerMock },
+				],
+			}).compile();
+
+			const serviceWithRefresh = module.get<TailscaleSetupService>(TailscaleSetupService);
+
+			await serviceWithRefresh.install();
+
+			capturedHandler({
+				id: 'job-1',
+				state: 'complete',
+				step: 'complete',
+				message: 'done',
+				updatedAt: '2026-09-02T00:00:00.000Z',
+			});
+
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(nodeManagedServiceWithRefresh.refreshRequirements).toHaveBeenCalledWith('setup-complete');
+			expect(nodeManagedService.evaluateRequirements).not.toHaveBeenCalled();
+		});
+
+		it('never lets a restart failure surface as a job failure', async () => {
+			configServiceMock.getPluginConfig.mockReturnValue({ enabled: true });
+			managedServiceManagerMock.restartService.mockRejectedValue(new Error('boom'));
+
+			await service.install();
+
+			expect(() => {
+				capturedHandler({
+					id: 'job-1',
+					state: 'complete',
+					step: 'complete',
+					message: 'done',
+					updatedAt: '2026-09-02T00:00:00.000Z',
+				});
+			}).not.toThrow();
+
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(managedServiceManagerMock.restartService).toHaveBeenCalled();
 		});
 	});
 });

@@ -16,7 +16,9 @@ import {
 	RemoteAccessTailscalePluginLoginResponseModel,
 } from './models/login.model';
 import {
+	RemoteAccessTailscalePluginPrivilegedSetupModel,
 	RemoteAccessTailscalePluginRequirementModel,
+	RemoteAccessTailscalePluginSetupJobModel,
 	RemoteAccessTailscalePluginStatusModel,
 	RemoteAccessTailscalePluginStatusResponseModel,
 } from './models/status.model';
@@ -36,4 +38,6 @@ export const REMOTE_ACCESS_TAILSCALE_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	RemoteAccessTailscalePluginRequirementModel,
 	RemoteAccessTailscalePluginInstallModel,
 	RemoteAccessTailscalePluginLoginModel,
+	RemoteAccessTailscalePluginSetupJobModel,
+	RemoteAccessTailscalePluginPrivilegedSetupModel,
 ];

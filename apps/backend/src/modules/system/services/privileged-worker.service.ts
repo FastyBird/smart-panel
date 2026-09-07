@@ -28,6 +28,13 @@ export interface PrivilegedJobSpec {
 	 * unrecognized `state`, or the mapper itself throwing.
 	 */
 	mapStatus?: (raw: Record<string, unknown>) => Partial<PrivilegedJobStatus> | null;
+	/**
+	 * Applied per-line to the captured stderr (see `PrivilegedJobStatus.stderr`) before it is
+	 * exposed on any status this service produces — e.g. to strip a secret a script might echo
+	 * by accident. The raw, unredacted buffer this service accumulates internally is never
+	 * itself exposed. Omit when the child's stderr carries nothing sensitive.
+	 */
+	redact?: (line: string) => string;
 }
 
 export interface PrivilegedJobStatus {
@@ -45,6 +52,12 @@ export interface PrivilegedJobStatus {
 	step?: string;
 	/** Free-form, caller-defined. Non-string values from the file/mapper are dropped. */
 	message?: string;
+	/**
+	 * The first 4 KiB of the child's stderr captured so far, redacted through `spec.redact` (when
+	 * given). Always service-owned, accumulated from the spawned process's own `stderr` stream —
+	 * never read from the status file. `undefined` until at least one byte of stderr has arrived.
+	 */
+	stderr?: string;
 	/** Always set by the service when it accepts a status tick — never read from the file. */
 	updatedAt: string;
 }
@@ -61,6 +74,9 @@ interface JobRecord {
 	lastStatus: PrivilegedJobStatus;
 	handlers: Set<StatusHandler>;
 	mapStatus?: PrivilegedJobSpec['mapStatus'];
+	redact?: PrivilegedJobSpec['redact'];
+	/** Accumulates the child's stderr, capped at STDERR_CAPTURE_LIMIT_BYTES — see getCapturedStderr(). */
+	stderrBuffer: Buffer;
 	/** True once an unusable tick (missing/invalid state, or mapStatus returning null) has been
 	 *  logged for this job — caps the debug log at one per job instead of one per bad tick. */
 	loggedInvalidStatus: boolean;
@@ -68,6 +84,9 @@ interface JobRecord {
 
 const STATUS_POLL_INTERVAL_MS = 3_000; // Poll worker status every 3 seconds
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
+/** Caps how much of a failed job's stderr is retained/exposed — enough for a useful diagnostic (e.g. sudo's own refusal reason) without holding an unbounded buffer for a chatty script. */
+const STDERR_CAPTURE_LIMIT_BYTES = 4 * 1024;
 
 // 'timeout' is deliberately excluded — it is reserved for this service's own hard-timeout path
 // (see the top of startPolling's tick below). A file/mapper tick claiming it is invalid, same as
@@ -135,6 +154,8 @@ export class PrivilegedWorkerService {
 			lastStatus: { id, state: 'running', updatedAt: new Date().toISOString() },
 			handlers: new Set(),
 			mapStatus: spec.mapStatus,
+			redact: spec.redact,
+			stderrBuffer: Buffer.alloc(0),
 			loggedInvalidStatus: false,
 		};
 
@@ -149,8 +170,27 @@ export class PrivilegedWorkerService {
 			const child = spawn(
 				'sudo',
 				['-n', 'systemd-run', '--scope', `--unit=${spec.unit}`, ...setenvArgs, 'bash', spec.script, ...spec.args],
-				{ detached: true, stdio: 'ignore' },
+				// stderr is piped (not ignored) so a refusal sudo/systemd-run itself only ever
+				// reports on stderr — e.g. "sudo: a password is required" — reaches the admin
+				// instead of a bare "Worker process exited with code 1". stdin/stdout stay
+				// ignored: nothing here ever reads them.
+				{ detached: true, stdio: ['ignore', 'ignore', 'pipe'] },
 			);
+
+			// The child is detached + unref'd below so it can outlive this process; an actively
+			// read pipe would otherwise keep this process's event loop alive on its own (a
+			// separate handle from the child itself), defeating that. `@types/node` types
+			// `child.stderr` as a plain `Readable`, but a piped child stdio stream is backed by a
+			// handle that does implement `unref()` at runtime — hence the cast.
+			(child.stderr as unknown as { unref?: () => void } | null)?.unref?.();
+
+			child.stderr?.on('data', (chunk: Buffer) => {
+				if (record.stderrBuffer.length >= STDERR_CAPTURE_LIMIT_BYTES) {
+					return;
+				}
+
+				record.stderrBuffer = Buffer.concat([record.stderrBuffer, chunk]).subarray(0, STDERR_CAPTURE_LIMIT_BYTES);
+			});
 
 			// Detached + unref'd, so a crash of this process's own error handling must not
 			// crash the process — sudo/systemd-run missing is a config error, not a fatal one.
@@ -161,12 +201,17 @@ export class PrivilegedWorkerService {
 					return;
 				}
 
-				this.logger.error(`Privileged worker unit "${spec.unit}" failed to spawn: ${error.message}`);
+				const stderr = this.getCapturedStderr(record);
+
+				this.logger.error(
+					`Privileged worker unit "${spec.unit}" failed to spawn: ${error.message}${stderr ? ` (${stderr})` : ''}`,
+				);
 
 				this.finishJob(record, {
 					id,
 					state: 'failed',
-					message: error.message,
+					message: this.buildFailureMessage(error.message, stderr),
+					stderr,
 					updatedAt: new Date().toISOString(),
 				});
 			});
@@ -190,13 +235,17 @@ export class PrivilegedWorkerService {
 				}
 
 				const reason = signal ? `was terminated by signal ${signal}` : `exited with code ${code}`;
+				const stderr = this.getCapturedStderr(record);
 
-				this.logger.error(`Privileged worker unit "${spec.unit}" ${reason} before reporting completion`);
+				this.logger.error(
+					`Privileged worker unit "${spec.unit}" ${reason} before reporting completion${stderr ? ` (${stderr})` : ''}`,
+				);
 
 				this.finishJob(record, {
 					id,
 					state: 'failed',
-					message: `Worker process ${reason}`,
+					message: this.buildGenericFailureMessage(`Worker process ${reason} before reporting completion`, stderr),
+					stderr,
 					updatedAt: new Date().toISOString(),
 				});
 			});
@@ -277,12 +326,64 @@ export class PrivilegedWorkerService {
 		};
 	}
 
+	/**
+	 * The captured stderr accumulated for this job so far (see the `data` listener in `run()`),
+	 * redacted line-by-line through the caller-supplied `redact` when given. `undefined` while
+	 * nothing has arrived yet, so callers can cheaply skip an empty `stderr` field instead of
+	 * exposing an empty string.
+	 */
+	private getCapturedStderr(record: JobRecord): string | undefined {
+		if (record.stderrBuffer.length === 0) {
+			return undefined;
+		}
+
+		const text = record.stderrBuffer.toString('utf-8');
+		const redact = record.redact;
+
+		if (!redact) {
+			return text;
+		}
+
+		return text
+			.split('\n')
+			.map((line) => redact(line))
+			.join('\n');
+	}
+
+	/**
+	 * Builds an actionable failure message for a job whose child process never spawned at all
+	 * (`error`/synchronous `spawn()` failure) — sudo/systemd-run rejecting the invocation outright
+	 * is the common case this epic exists to fix, so the message always names the fix rather than
+	 * leaving the admin with just a raw errno.
+	 */
+	private buildFailureMessage(summary: string, stderr?: string): string {
+		const detail = stderr ? ` (${stderr})` : '';
+
+		return `The smart-panel user cannot start privileged jobs: ${summary}${detail}. Re-run \`sudo smart-panel-service install\`, or add the sudoers grant from the installation guide.`;
+	}
+
+	/**
+	 * Builds a plain failure message for a job whose child DID spawn (sudo/systemd-run accepted
+	 * the invocation) but exited non-zero before writing a status file — the failure is inside the
+	 * script itself, not a privilege refusal, so this must not carry the sudoers remediation text.
+	 */
+	private buildGenericFailureMessage(summary: string, stderr?: string): string {
+		const detail = stderr ? ` (${stderr})` : '';
+
+		return `${summary}${detail}.`;
+	}
+
 	private startPolling(record: JobRecord): void {
 		record.pollTimer = setInterval(() => {
 			if (Date.now() - record.startedAt > record.timeoutMs) {
 				this.logger.error(`Privileged worker unit "${record.unit}" timed out after ${record.timeoutMs}ms`);
 
-				this.finishJob(record, { id: record.id, state: 'timeout', updatedAt: new Date().toISOString() });
+				this.finishJob(record, {
+					id: record.id,
+					state: 'timeout',
+					stderr: this.getCapturedStderr(record),
+					updatedAt: new Date().toISOString(),
+				});
 
 				return;
 			}

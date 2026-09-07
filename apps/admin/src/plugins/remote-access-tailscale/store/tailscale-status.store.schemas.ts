@@ -11,8 +11,11 @@ import {
 	type RemoteAccessTailscalePluginInstallSchema,
 	type RemoteAccessTailscalePluginLoginRequestSchema,
 	type RemoteAccessTailscalePluginLoginSchema,
+	type RemoteAccessTailscalePluginPrivilegedSetupSchema,
 	RemoteAccessTailscalePluginRequirementCode,
 	type RemoteAccessTailscalePluginRequirementSchema,
+	type RemoteAccessTailscalePluginSetupJobSchema,
+	RemoteAccessTailscalePluginSetupJobState,
 	type RemoteAccessTailscalePluginStatusSchema,
 } from '../../../openapi.constants';
 
@@ -23,6 +26,19 @@ export const TailscaleRequirementSchema = z.object({
 	code: z.nativeEnum(RemoteAccessTailscalePluginRequirementCode),
 	satisfied: z.boolean(),
 	message: z.string(),
+});
+
+export const TailscaleSetupJobSchema = z.object({
+	jobId: z.string(),
+	state: z.nativeEnum(RemoteAccessTailscalePluginSetupJobState),
+	step: z.string().nullable(),
+	message: z.string().nullable(),
+	updatedAt: z.string(),
+});
+
+export const TailscalePrivilegedSetupSchema = z.object({
+	available: z.boolean(),
+	reason: z.string().nullable(),
 });
 
 export const TailscaleStatusSchema = z.object({
@@ -40,6 +56,15 @@ export const TailscaleStatusSchema = z.object({
 	// `applyTailscaleProviderStatusEvent` as soon as the node leaves `pending-auth`.
 	authUrl: z.string().optional(),
 	qr: z.string().optional(),
+	// Last known privileged setup job (RA-20/D6) - lets the setup wizard poll `GET /status` as a
+	// fallback to the `Setup.Progress` websocket event. `.optional()` only (not `.nullable()`)
+	// because the generated wire type is `setup?: T` without a null member - `nullable: true` on
+	// a `type: () => Class` ApiProperty does not survive NestJS Swagger -> openapi-typescript for
+	// OpenAPI 3.1 the way it does for a primitive/oneOf property (see `RemoteAccessTailscalePluginDataStatus`
+	// in openapi.ts). `TailscaleStatusResSchema` below is never `.safeParse()`d (see the note above
+	// STORE STATE), so this is a compile-time-only mismatch with the runtime shape, not a behaviour bug.
+	setup: TailscaleSetupJobSchema.optional(),
+	privilegedSetup: TailscalePrivilegedSetupSchema,
 });
 
 export const TailscaleLoginResultSchema = z.object({
@@ -95,6 +120,19 @@ export const TailscaleRequirementResSchema: ZodType<RemoteAccessTailscalePluginR
 	message: z.string(),
 });
 
+export const TailscaleSetupJobResSchema: ZodType<RemoteAccessTailscalePluginSetupJobSchema> = z.object({
+	job_id: z.string(),
+	state: z.nativeEnum(RemoteAccessTailscalePluginSetupJobState),
+	step: z.string().nullable(),
+	message: z.string().nullable(),
+	updated_at: z.string(),
+});
+
+export const TailscalePrivilegedSetupResSchema: ZodType<RemoteAccessTailscalePluginPrivilegedSetupSchema> = z.object({
+	available: z.boolean(),
+	reason: z.string().nullable(),
+});
+
 export const TailscaleStatusResSchema: ZodType<RemoteAccessTailscalePluginStatusSchema> = z.object({
 	type: z.string(),
 	state: z.nativeEnum(RemoteAccessModuleProviderState),
@@ -107,6 +145,10 @@ export const TailscaleStatusResSchema: ZodType<RemoteAccessTailscalePluginStatus
 	requirements: z.array(TailscaleRequirementResSchema),
 	auth_url: z.string().optional(),
 	qr: z.string().optional(),
+	// See the note on `TailscaleStatusSchema.setup` above - `.optional()` only, matching the
+	// generated (non-nullable) wire type.
+	setup: TailscaleSetupJobResSchema.optional(),
+	privileged_setup: TailscalePrivilegedSetupResSchema,
 });
 
 export const TailscaleLoginResultResSchema: ZodType<RemoteAccessTailscalePluginLoginSchema> = z.object({

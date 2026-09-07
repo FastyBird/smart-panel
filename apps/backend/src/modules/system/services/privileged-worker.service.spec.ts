@@ -20,7 +20,14 @@ jest.mock('node:child_process', () => ({
 	spawn: jest.fn(),
 }));
 
-type FakeChild = EventEmitter & { unref: jest.Mock; pid: number };
+type FakeStderr = EventEmitter & { unref: jest.Mock };
+type FakeChild = EventEmitter & { unref: jest.Mock; pid: number; stderr: FakeStderr };
+
+function createFakeChild(pid: number): FakeChild {
+	const stderr = Object.assign(new EventEmitter(), { unref: jest.fn() }) as FakeStderr;
+
+	return Object.assign(new EventEmitter(), { unref: jest.fn(), pid, stderr }) as FakeChild;
+}
 
 describe('PrivilegedWorkerService', () => {
 	let service: PrivilegedWorkerService;
@@ -38,7 +45,7 @@ describe('PrivilegedWorkerService', () => {
 	beforeEach(() => {
 		jest.useFakeTimers();
 
-		fakeChild = Object.assign(new EventEmitter(), { unref: jest.fn(), pid: 4242 }) as FakeChild;
+		fakeChild = createFakeChild(4242);
 
 		(spawn as jest.Mock).mockReturnValue(fakeChild);
 		(existsSync as jest.Mock).mockReturnValue(false);
@@ -75,7 +82,7 @@ describe('PrivilegedWorkerService', () => {
 					'/opt/smart-panel/scripts/test-worker.sh',
 					'1.2.3',
 				],
-				{ detached: true, stdio: 'ignore' },
+				{ detached: true, stdio: ['ignore', 'ignore', 'pipe'] },
 			);
 			expect(fakeChild.unref).toHaveBeenCalled();
 		});
@@ -101,7 +108,7 @@ describe('PrivilegedWorkerService', () => {
 					'/opt/smart-panel/scripts/test-worker.sh',
 					'1.2.3',
 				],
-				{ detached: true, stdio: 'ignore' },
+				{ detached: true, stdio: ['ignore', 'ignore', 'pipe'] },
 			);
 		});
 
@@ -558,7 +565,7 @@ describe('PrivilegedWorkerService', () => {
 			expect(service.getStatus(oldId)).toEqual(expect.objectContaining({ state: 'failed' }));
 
 			// A newer job now reserves the same unit, with its own child.
-			const newChild = Object.assign(new EventEmitter(), { unref: jest.fn(), pid: 5151 }) as FakeChild;
+			const newChild = createFakeChild(5151);
 			(spawn as jest.Mock).mockReturnValueOnce(newChild);
 
 			const { id: newId } = await service.run(baseSpec);
@@ -791,6 +798,106 @@ describe('PrivilegedWorkerService', () => {
 			expect(handler).toHaveBeenCalledWith(
 				expect.objectContaining({ id, state: 'running', step: undefined, message: undefined }),
 			);
+		});
+	});
+
+	describe('stderr capture', () => {
+		it('unrefs the stderr pipe right after spawning, so it cannot keep the process alive on its own', async () => {
+			await service.run(baseSpec);
+
+			expect(fakeChild.stderr.unref).toHaveBeenCalled();
+		});
+
+		it('includes the captured stderr and a generic message when the child exits non-zero, without the sudoers remediation', async () => {
+			const { id } = await service.run(baseSpec);
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			fakeChild.stderr.emit('data', Buffer.from('some script failure\n'));
+			fakeChild.emit('exit', 1, null);
+
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id,
+					state: 'failed',
+					stderr: 'some script failure\n',
+					message: expect.stringContaining('some script failure'),
+				}),
+			);
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.not.stringContaining('sudo smart-panel-service install'),
+				}),
+			);
+		});
+
+		it('includes the captured stderr when the child emits an error', async () => {
+			const { id } = await service.run(baseSpec);
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			fakeChild.stderr.emit('data', Buffer.from('sudo: a password is required\n'));
+			fakeChild.emit('error', new Error('spawn sudo ENOENT'));
+
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({ id, state: 'failed', stderr: 'sudo: a password is required\n' }),
+			);
+		});
+
+		it('includes the stderr captured so far in a hard-timeout status', async () => {
+			const { id } = await service.run({ ...baseSpec, timeoutMs: 5_000 });
+
+			fakeChild.stderr.emit('data', Buffer.from('still installing...\n'));
+
+			jest.advanceTimersByTime(6_001);
+
+			expect(service.getStatus(id)).toEqual(
+				expect.objectContaining({ state: 'timeout', stderr: 'still installing...\n' }),
+			);
+		});
+
+		it('omits stderr when nothing was ever written to it', async () => {
+			const { id } = await service.run(baseSpec);
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			fakeChild.emit('exit', 1, null);
+
+			expect(handler).toHaveBeenCalledWith(expect.objectContaining({ id, state: 'failed', stderr: undefined }));
+		});
+
+		it('caps the captured stderr at 4 KiB, dropping anything beyond that', async () => {
+			const { id } = await service.run(baseSpec);
+
+			fakeChild.stderr.emit('data', Buffer.alloc(4096, 'a'));
+			fakeChild.stderr.emit('data', Buffer.from('overflow-should-be-dropped'));
+			fakeChild.emit('exit', 1, null);
+
+			const status = service.getStatus(id);
+
+			expect(status?.stderr).toHaveLength(4096);
+			expect(status?.stderr).not.toContain('overflow-should-be-dropped');
+		});
+
+		it('redacts the captured stderr line by line through the caller-supplied redact callback', async () => {
+			const redact = jest.fn((line: string) => line.replace('tskey-secret-value', '[redacted]'));
+
+			const { id } = await service.run({ ...baseSpec, redact });
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			fakeChild.stderr.emit('data', Buffer.from('line one\ntskey-secret-value leaked\n'));
+			fakeChild.emit('exit', 1, null);
+
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({ id, state: 'failed', stderr: 'line one\n[redacted] leaked\n' }),
+			);
+			expect(redact).toHaveBeenCalledWith('line one');
+			expect(redact).toHaveBeenCalledWith('tskey-secret-value leaked');
 		});
 	});
 });

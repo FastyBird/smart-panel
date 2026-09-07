@@ -93,15 +93,18 @@ export class SetupController {
 			return response;
 		} catch (error) {
 			// A busy unit is transient (retry once the running job finishes) —
-			// 409 Conflict. An unsupported platform or the dev override is
-			// permanent until the deployment itself changes — 422 Unprocessable
-			// Entity. Each carries its own distinct message from the service.
+			// 409 Conflict. A permanent refusal — the platform architecturally
+			// cannot run privileged workers, or the privileged-worker probe
+			// currently fails — is 422 Unprocessable Entity, with a `code` the
+			// admin UI can branch on (`platform-unsupported` vs
+			// `privileged-worker-unavailable`) and a `message` that already
+			// carries the actionable "here's the fix" text from the service.
 			if (error instanceof PrivilegedWorkerUnavailableException) {
 				throw new ConflictException(error.message);
 			}
 
 			if (error instanceof TailscaleSetupUnavailableException) {
-				throw new UnprocessableEntityException(error.message);
+				throw new UnprocessableEntityException({ code: error.code, message: error.message });
 			}
 
 			const err = error as Error;
