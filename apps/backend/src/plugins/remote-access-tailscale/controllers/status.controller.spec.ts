@@ -10,10 +10,12 @@ import { FastifyReply } from 'fastify';
 
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { PlatformService } from '../../../modules/platform/services/platform.service';
 import { RemoteAccessProviderStatus } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
 import { TailscaleLoginService } from '../services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../services/tailscale-provider.service';
+import { TailscaleSetupService } from '../services/tailscale-setup.service';
 
 import { StatusController } from './status.controller';
 
@@ -22,6 +24,8 @@ describe('StatusController', () => {
 	let providerService: { getStatus: jest.Mock };
 	let nodeManagedService: { evaluateRequirements: jest.Mock };
 	let loginService: { getPendingInteractiveAuth: jest.Mock };
+	let setupService: { getLastJob: jest.Mock };
+	let platformService: { getPrivilegedWorkerSupport: jest.Mock };
 
 	const baseStatus: RemoteAccessProviderStatus = {
 		type: 'remote-access-tailscale-plugin',
@@ -45,6 +49,12 @@ describe('StatusController', () => {
 		providerService = { getStatus: jest.fn().mockResolvedValue(baseStatus) };
 		nodeManagedService = { evaluateRequirements: jest.fn().mockResolvedValue(baseRequirements) };
 		loginService = { getPendingInteractiveAuth: jest.fn().mockReturnValue(null) };
+		setupService = { getLastJob: jest.fn().mockReturnValue(null) };
+		platformService = {
+			getPrivilegedWorkerSupport: jest
+				.fn()
+				.mockResolvedValue({ supported: true, reason: null, checkedAt: '2026-09-07T00:00:00.000Z' }),
+		};
 
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [StatusController],
@@ -52,6 +62,8 @@ describe('StatusController', () => {
 				{ provide: TailscaleProviderService, useValue: providerService },
 				{ provide: TailscaleNodeManagedService, useValue: nodeManagedService },
 				{ provide: TailscaleLoginService, useValue: loginService },
+				{ provide: TailscaleSetupService, useValue: setupService },
+				{ provide: PlatformService, useValue: platformService },
 			],
 		}).compile();
 
@@ -135,5 +147,67 @@ describe('StatusController', () => {
 		expect(response.data.authUrl).toBe('https://login.tailscale.com/a/xyz');
 		expect(response.data.qr).toBe('data:image/png;base64,AAA');
 		expect(res.header).toHaveBeenCalledWith('Cache-Control', 'no-store');
+	});
+
+	describe('setup / privilegedSetup', () => {
+		it('reports setup: null when no job has run since this process started', async () => {
+			const res = fakeResponse();
+
+			const response = await controller.getStatus(res);
+
+			expect(response.data.setup).toBeNull();
+		});
+
+		it('composes the last known setup job from TailscaleSetupService.getLastJob()', async () => {
+			setupService.getLastJob.mockReturnValue({
+				id: 'job-1',
+				status: {
+					id: 'job-1',
+					state: 'running',
+					step: 'install-package',
+					message: 'Installing tailscale',
+					updatedAt: '2026-09-07T00:00:00.000Z',
+				},
+			});
+			const res = fakeResponse();
+
+			const response = await controller.getStatus(res);
+
+			expect(response.data.setup).toMatchObject({
+				jobId: 'job-1',
+				state: 'running',
+				step: 'install-package',
+				message: 'Installing tailscale',
+				updatedAt: '2026-09-07T00:00:00.000Z',
+			});
+		});
+
+		it('falls back to null step/message when the job status omits them', async () => {
+			setupService.getLastJob.mockReturnValue({
+				id: 'job-1',
+				status: { id: 'job-1', state: 'complete', updatedAt: '2026-09-07T00:00:00.000Z' },
+			});
+			const res = fakeResponse();
+
+			const response = await controller.getStatus(res);
+
+			expect(response.data.setup).toMatchObject({ jobId: 'job-1', state: 'complete', step: null, message: null });
+		});
+
+		it('reports privilegedSetup from PlatformService.getPrivilegedWorkerSupport()', async () => {
+			platformService.getPrivilegedWorkerSupport.mockResolvedValue({
+				supported: false,
+				reason: 'sudo: a password is required',
+				checkedAt: '2026-09-07T00:00:00.000Z',
+			});
+			const res = fakeResponse();
+
+			const response = await controller.getStatus(res);
+
+			expect(response.data.privilegedSetup).toEqual({
+				available: false,
+				reason: 'sudo: a password is required',
+			});
+		});
 	});
 });

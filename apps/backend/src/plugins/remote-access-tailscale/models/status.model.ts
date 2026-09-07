@@ -9,6 +9,7 @@ import {
 	RemoteAccessEndpointModel,
 } from '../../../modules/remote-access/models/provider.model';
 import { RemoteAccessProviderState } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
+import { PrivilegedJobStatus } from '../../../modules/system/services/privileged-worker.service';
 import { REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME } from '../remote-access-tailscale.constants';
 import { TailscaleRequirementCode } from '../services/tailscale-node-managed.service';
 
@@ -31,6 +32,8 @@ const TAILSCALE_REQUIREMENT_CODES: TailscaleRequirementCode[] = [
 	'operator-granted',
 	'version-supported',
 ];
+
+const TAILSCALE_SETUP_JOB_STATES: PrivilegedJobStatus['state'][] = ['running', 'complete', 'failed', 'timeout'];
 
 /**
  * Exact console commands (and/or a documentation link) that satisfy one
@@ -108,6 +111,99 @@ export class RemoteAccessTailscalePluginRequirementModel {
 	@ValidateNested()
 	@Type(() => RemoteAccessTailscalePluginRequirementRemedyModel)
 	remedy: RemoteAccessTailscalePluginRequirementRemedyModel | null;
+}
+
+/**
+ * Last known privileged setup job (`POST /install`), so the admin setup wizard can poll
+ * `GET /status` every few seconds as a fallback to the `RemoteAccessModule.Setup.Progress`
+ * websocket event — a lost websocket or a page reload must not strand the wizard's spinner
+ * forever. Mirrors `PrivilegedJobStatus` (see `PrivilegedWorkerService`), minus the raw `stderr`
+ * diagnostic, which stays an internal detail folded into `message` instead of a separate field.
+ */
+@ApiSchema({ name: 'RemoteAccessTailscalePluginDataSetupJob' })
+export class RemoteAccessTailscalePluginSetupJobModel {
+	@ApiProperty({
+		name: 'job_id',
+		description: 'Identifier of the privileged setup job this status reflects',
+		type: 'string',
+		example: '3fa1c2f0-9c3e-4c3b-8f0a-8f0a8f0a8f0a',
+	})
+	@Expose({ name: 'job_id' })
+	@IsString()
+	jobId: string;
+
+	@ApiProperty({
+		description: 'Current lifecycle state of the setup job',
+		enum: TAILSCALE_SETUP_JOB_STATES,
+		example: 'running',
+	})
+	@Expose()
+	@IsEnum(TAILSCALE_SETUP_JOB_STATES)
+	state: PrivilegedJobStatus['state'];
+
+	@ApiProperty({
+		description: 'Free-form step label reported by the setup script, null when none was reported yet',
+		type: 'string',
+		nullable: true,
+		example: 'install-package',
+	})
+	@Expose()
+	@IsOptional()
+	@IsString()
+	step: string | null;
+
+	@ApiProperty({
+		description: 'Free-form human-readable message reported by the setup script or the worker itself',
+		type: 'string',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	@IsOptional()
+	@IsString()
+	message: string | null;
+
+	@ApiProperty({
+		name: 'updated_at',
+		description: 'ISO 8601 timestamp of the last status tick for this job',
+		type: 'string',
+		format: 'date-time',
+		example: '2026-09-07T12:00:00Z',
+	})
+	@Expose({ name: 'updated_at' })
+	@IsString()
+	updatedAt: string;
+}
+
+/**
+ * Whether a privileged setup job (Tailscale install, OS update, ...) can run on this
+ * installation right now, sourced from `PlatformService.getPrivilegedWorkerSupport()`. Distinct
+ * from `RemoteAccessTailscalePluginRequirementModel`'s `platform-supported` requirement, which
+ * only reports whether the *platform kind* is architecturally eligible — this additionally
+ * reflects the *current* sudo/systemd-run probe outcome, which can flip from unavailable to
+ * available without a backend restart once an administrator adds the sudoers grant.
+ */
+@ApiSchema({ name: 'RemoteAccessTailscalePluginDataPrivilegedSetup' })
+export class RemoteAccessTailscalePluginPrivilegedSetupModel {
+	@ApiProperty({
+		description: 'Whether a privileged setup job can run on this installation right now',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose()
+	@IsBoolean()
+	available: boolean;
+
+	@ApiProperty({
+		description: 'Why privileged setup is unavailable, null when it is available',
+		type: 'string',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	@IsOptional()
+	@IsString()
+	reason: string | null;
 }
 
 /**
@@ -235,6 +331,27 @@ export class RemoteAccessTailscalePluginStatusModel {
 	@IsOptional()
 	@IsString()
 	qr?: string;
+
+	@ApiPropertyOptional({
+		description: 'Last known privileged setup job, null when none has run since this process started',
+		nullable: true,
+		type: () => RemoteAccessTailscalePluginSetupJobModel,
+	})
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => RemoteAccessTailscalePluginSetupJobModel)
+	setup: RemoteAccessTailscalePluginSetupJobModel | null;
+
+	@ApiProperty({
+		name: 'privileged_setup',
+		description: 'Whether a privileged setup job can run on this installation right now',
+		type: () => RemoteAccessTailscalePluginPrivilegedSetupModel,
+	})
+	@Expose({ name: 'privileged_setup' })
+	@ValidateNested()
+	@Type(() => RemoteAccessTailscalePluginPrivilegedSetupModel)
+	privilegedSetup: RemoteAccessTailscalePluginPrivilegedSetupModel;
 }
 
 /**

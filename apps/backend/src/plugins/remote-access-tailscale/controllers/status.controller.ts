@@ -5,6 +5,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { PlatformService } from '../../../modules/platform/services/platform.service';
 import {
 	RemoteAccessAdvisoryModel,
 	RemoteAccessEndpointModel,
@@ -13,7 +14,9 @@ import { ApiSuccessResponse } from '../../../modules/swagger/decorators/api-docu
 import { Roles } from '../../../modules/users/guards/roles.guard';
 import { UserRole } from '../../../modules/users/users.constants';
 import {
+	RemoteAccessTailscalePluginPrivilegedSetupModel,
 	RemoteAccessTailscalePluginRequirementModel,
+	RemoteAccessTailscalePluginSetupJobModel,
 	RemoteAccessTailscalePluginStatusModel,
 	RemoteAccessTailscalePluginStatusResponseModel,
 } from '../models/status.model';
@@ -24,6 +27,7 @@ import {
 import { TailscaleLoginService } from '../services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../services/tailscale-provider.service';
+import { TailscaleSetupService } from '../services/tailscale-setup.service';
 
 @ApiTags(REMOTE_ACCESS_TAILSCALE_PLUGIN_API_TAG_NAME)
 @Controller()
@@ -35,6 +39,8 @@ export class StatusController {
 		private readonly providerService: TailscaleProviderService,
 		private readonly nodeManagedService: TailscaleNodeManagedService,
 		private readonly loginService: TailscaleLoginService,
+		private readonly setupService: TailscaleSetupService,
+		private readonly platformService: PlatformService,
 	) {}
 
 	@ApiOperation({
@@ -49,9 +55,10 @@ export class StatusController {
 	async getStatus(@Res({ passthrough: true }) res: Response): Promise<RemoteAccessTailscalePluginStatusResponseModel> {
 		this.logger.debug('Fetching Tailscale node status');
 
-		const [status, requirements] = await Promise.all([
+		const [status, requirements, privilegedWorkerSupport] = await Promise.all([
 			this.providerService.getStatus(),
 			this.nodeManagedService.evaluateRequirements(),
+			this.platformService.getPrivilegedWorkerSupport(),
 		]);
 
 		const data = new RemoteAccessTailscalePluginStatusModel();
@@ -64,6 +71,12 @@ export class StatusController {
 		data.advisories = toInstance(RemoteAccessAdvisoryModel, status.advisories);
 		data.updatedAt = status.updatedAt;
 		data.requirements = toInstance(RemoteAccessTailscalePluginRequirementModel, requirements);
+		data.setup = this.buildSetupJobModel();
+
+		const privilegedSetup = new RemoteAccessTailscalePluginPrivilegedSetupModel();
+		privilegedSetup.available = privilegedWorkerSupport.supported;
+		privilegedSetup.reason = privilegedWorkerSupport.reason;
+		data.privilegedSetup = privilegedSetup;
 
 		if (data.state === 'pending-auth') {
 			// authUrl/qr reflect this service's own tracked interactive sign-in,
@@ -86,5 +99,23 @@ export class StatusController {
 		response.data = data;
 
 		return response;
+	}
+
+	/** The last known privileged setup job, or null when none has run since this process started. */
+	private buildSetupJobModel(): RemoteAccessTailscalePluginSetupJobModel | null {
+		const lastJob = this.setupService.getLastJob();
+
+		if (!lastJob) {
+			return null;
+		}
+
+		const model = new RemoteAccessTailscalePluginSetupJobModel();
+		model.jobId = lastJob.id;
+		model.state = lastJob.status.state;
+		model.step = lastJob.status.step ?? null;
+		model.message = lastJob.status.message ?? null;
+		model.updatedAt = lastJob.status.updatedAt;
+
+		return model;
 	}
 }
