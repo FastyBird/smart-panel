@@ -35,7 +35,14 @@ export const useClipboard = (): IUseClipboard => {
 
 	const copy = async (text: string): Promise<boolean> => {
 		if (window.isSecureContext && navigator.clipboard) {
-			return copyViaClipboardApi(text);
+			const copiedViaClipboardApi = await copyViaClipboardApi(text);
+
+			if (copiedViaClipboardApi) {
+				return true;
+			}
+
+			// The Clipboard API rejected (e.g. permission denied) - fall through to the legacy
+			// approach below instead of giving up after a single failed attempt.
 		}
 
 		return copyViaExecCommand(text);
