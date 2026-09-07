@@ -164,6 +164,55 @@ Day-to-day, the Tailscale node is managed like any other extension service:
 
 ---
 
+## Manual Setup
+
+**Set up** normally runs unattended, as a privileged one-time job. If it's unavailable on this installation
+(see [Set up cannot run](#set-up-cannot-run) below) — or you simply prefer to prepare the system yourself —
+every requirement Smart Panel checks for has an exact console command behind it. **Preparing a provider
+entirely this way is fully supported, not just tolerated:** once every requirement is satisfied, Smart Panel
+picks up the node exactly as if its own **Set up** action had run.
+
+### Tailscale
+
+These are the exact commands the privileged **Set up** job runs on a Debian-family host (Raspberry Pi OS,
+Debian, Ubuntu) — the same ones Smart Panel shows you inline, per unsatisfied requirement, on the Remote
+access page:
+
+<Steps>
+	### Install the package
+
+	```bash copy
+	curl -fsSL https://pkgs.tailscale.com/stable/<id>/<codename>.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+	curl -fsSL https://pkgs.tailscale.com/stable/<id>/<codename>.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list >/dev/null
+	sudo apt-get update -qq
+	sudo apt-get install -y -qq --no-install-recommends tailscale
+	```
+
+	Replace `<id>`/`<codename>` with your distribution's ID and version codename from `/etc/os-release` (for
+	example `debian`/`bookworm`, `ubuntu`/`noble`). On a non-Debian-family distribution, install Tailscale
+	using [the vendor's own instructions](https://tailscale.com/download/linux) instead.
+
+	### Enable the daemon
+
+	```bash copy
+	sudo systemctl enable --now tailscaled
+	```
+
+	### Grant the operator
+
+	```bash copy
+	sudo tailscale set --operator=smart-panel
+	```
+
+	Replace `smart-panel` with your installation's actual service user if you changed it during installation.
+</Steps>
+
+Once all three are done — and the node is signed in, either with `sudo tailscale up` or through Smart Panel's
+own **Sign in** step — open the Remote access page: Smart Panel reports the node as connected without any
+further action.
+
+---
+
 ## External URL Baseline
 
 You don't need Tailscale, or any provider plugin, to use remote access. If you already run your own reverse
@@ -237,11 +286,39 @@ The daemon isn't active yet, the operator grant is missing, or the node needs to
 after a key expired). Open the Tailscale provider card and choose **Set up** — it's safe to re-run — then
 **Sign in** if a login is still needed.
 
+### Set up cannot run
+
+**Set up** reports it can't start a privileged job on this installation — usually because this host was
+installed before the privileged-setup sudoers grant existed. Fix it by re-running the installer's setup
+step, which is safe to repeat and won't touch your existing data or configuration:
+
+```bash copy
+sudo smart-panel-service install
+```
+
+Retry **Set up** afterward. If it still refuses immediately, wait about a minute — a failed check is cached
+briefly so a fix doesn't require a full restart, but that also means it can take up to a minute to notice.
+
 ### Sign-in fails with a permission error
 
 This means the `smart-panel` service user was never granted as the Tailscale operator, usually because
 **Set up** hasn't completed successfully yet, or `tailscaled` was reinstalled and lost the grant. Re-run
 **Set up**; it's idempotent and re-applies the operator grant.
+
+### Actions do nothing / operator not granted
+
+Sign in, sign out, reset preferences, or the Serve/Funnel toggles fail or seem to have no effect. This is the
+same underlying cause as the permission error above — the `smart-panel` service user isn't (or is no longer)
+the Tailscale operator. Fix it with the exact one-line command **Set up** itself runs:
+
+```bash copy
+sudo tailscale set --operator=smart-panel
+```
+
+Replace `smart-panel` with your installation's actual service user if you changed it during installation.
+
+Or just re-run **Set up** from the Remote access page — it's idempotent and re-applies the same grant among
+its other steps.
 
 ### The HTTPS URL never appears
 
@@ -260,6 +337,26 @@ since it's an always-on appliance rather than a laptop that regularly re-authent
 Your tailnet requires device approval for new nodes. Open the
 [Tailscale admin console](https://login.tailscale.com/admin/machines) and approve the new Smart Panel
 device; the card moves to **Connected** once it's approved.
+
+### Adopting a node prepared from the console
+
+If you ran `tailscale up` by hand as root — for example while testing Tailscale on this device, or migrating
+from a hand-rolled setup — before ever opening Smart Panel's Remote access page, the node is already signed
+in and connected, but the `smart-panel` service user isn't the operator yet. Every action reports "operator
+not granted," as above.
+
+You do **not** need to sign out or re-authenticate. Grant the operator once:
+
+```bash copy
+sudo tailscale set --operator=smart-panel
+```
+
+Replace `smart-panel` with your installation's actual service user if you changed it during installation.
+
+Then reopen the Remote access page, or restart the `remote-access-tailscale-plugin / node` service from
+**Extensions → Services**. Smart Panel picks up the already-connected node exactly as if its own **Set up**
+action had prepared it from the start — a node prepared entirely from the console like this is fully
+supported, not merely tolerated.
 
 ---
 
