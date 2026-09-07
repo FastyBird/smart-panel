@@ -357,25 +357,24 @@ CLI-level failures are classified before they ever reach the mapper: `not-instal
   (`TAILSCALE_POLL_INTERVAL_TRANSITIONING_MS` = 5s while the state is settling,
   `TAILSCALE_POLL_INTERVAL_STABLE_MS` = 30s once stable) and only emits `PROVIDER_STATUS` when the mapped
   status actually changed since the last tick.
-- **`stop()`** clears the poller first, then runs `tailscale down` — never `tailscale logout`. A node that
-  was never brought up (not installed, daemon down, never signed in) is expected to fail `down`, and **every**
-  failure kind is tolerated the same way (swallowed as a debug log, not an error): unlike `onConfigChanged()`'s
-  kind-filtered tolerance around `logout()`, `stop()` unconditionally reaches `stopped` regardless of why
-  `down` failed. Once `down` actually succeeds, the daemon's own `BackendState` moves to `Stopped`, which the
-  mapper reports as `disconnected` with empty `endpoints`/`proxyAddresses` — Serve is only ever applied while
-  `mapped.state === 'connected'` (see [Serve, Funnel, and Advisories](#serve-funnel-and-advisories) below), so
-  a stopped node never carries a stale Serve endpoint either.
-- **Lifecycle events.** `PROVIDER_STATUS` is emitted from exactly one place in this service: the poller's own
-  tick, gated on `hasStatusChanged()`. `start()` schedules an immediate tick (`schedulePoll(0)`), so a state
-  change is normally announced within moments of starting — but `stop()` only clears the poller; it does
-  **not** itself emit a status event for the transition it just performed. The resulting `disconnected` status
-  becomes visible to the rest of the system only on the next *live* read (`GET .../status`, or
-  `RemoteAccessStatusService`'s own live `getAggregatedStatuses()`/`getProviderStatus()` calls) or the next
-  time the poller runs again (e.g. after a subsequent `start()`) — everything that reads only the cache
-  (`RemoteAccessStatusService.getCachedStatuses()`, and through it `RemoteAccessUrlService`,
-  `RemoteAccessPostureService`, `RemoteAccessProxyContributionService`) can therefore keep reporting the
-  pre-stop status for a while after a manual **Stop** from the Extensions page, until something triggers a
-  live read.
+- **`stop()`** clears the poller first, then runs `tailscale down` — never `tailscale logout`. `down` succeeding,
+  or failing with one of the tolerated "nothing to bring down" outcomes (`needs-login`, `daemon-down`,
+  `not-installed`, or the backend already reporting `Stopped` regardless of why `down` itself failed),
+  transitions the managed service's own lifecycle state (`this.state`, distinct from the daemon's
+  `BackendState`) to `stopped`. Any other failure (`permission-denied`, `timeout`, `unknown`, or a
+  non-`TailscaleCliError`) transitions to `error`, records `lastError`, and throws
+  `TailscaleNodeStopFailedException` after still reporting the status (see Lifecycle events below).
+  `computeStatus()` reads `this.state` first (D2) and short-circuits to `disconnected` (empty
+  `endpoints`/`proxyAddresses`) while `stopped`/`stopping`, or to `error` with the recorded message while
+  `error` — instead of trusting whatever the daemon last reported. Serve is only ever applied while the mapped
+  state is `connected` (see [Serve, Funnel, and Advisories](#serve-funnel-and-advisories) below), so a stopped
+  node never carries a stale Serve endpoint either.
+- **Lifecycle events.** `PROVIDER_STATUS` is emitted from three places: the poller's own tick (gated on
+  `hasStatusChanged()`), `start()` (schedules an immediate tick via `schedulePoll(0)`, and additionally emits
+  directly from its `catch` block when `set`/`up` fails, so a failed start is visible immediately rather than
+  waiting for that first tick), and `stop()` (emits directly at the end of both the tolerated-success and the
+  thrown-failure paths). A stopped/errored node's status is therefore visible to the rest of the system the
+  moment `stop()` returns or throws — not only on the next live read or poller tick.
 - **`onConfigChanged()`** diffs the cached `login_server`: a change signs the node out (best-effort) and
   reports `{ restartRequired: true }` so it re-authenticates against the new control plane instead of
   silently keeping a key from the old one. Every other preference change is applied in place via

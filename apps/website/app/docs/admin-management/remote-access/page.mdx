@@ -315,6 +315,8 @@ the Tailscale operator. Fix it with the exact one-line command **Set up** itself
 sudo tailscale set --operator=smart-panel
 ```
 
+Replace `smart-panel` with your installation's actual service user if you changed it during installation.
+
 Or just re-run **Set up** from the Remote access page — it's idempotent and re-applies the same grant among
 its other steps.
 
@@ -349,7 +351,9 @@ You do **not** need to sign out or re-authenticate. Grant the operator once:
 sudo tailscale set --operator=smart-panel
 ```
 
-then reopen the Remote access page, or restart the `remote-access-tailscale-plugin / node` service from
+Replace `smart-panel` with your installation's actual service user if you changed it during installation.
+
+Then reopen the Remote access page, or restart the `remote-access-tailscale-plugin / node` service from
 **Extensions → Services**. Smart Panel picks up the already-connected node exactly as if its own **Set up**
 action had prepared it from the start — a node prepared entirely from the console like this is fully
 supported, not merely tolerated.
