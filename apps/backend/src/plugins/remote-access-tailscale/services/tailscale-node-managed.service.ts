@@ -514,7 +514,13 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 				return { commands: [], note: TAILSCALE_VENDOR_DOWNLOAD_URL };
 			}
 
-			return { commands: lines.map((line) => `sudo ${line}`), note: null };
+			// A line containing a pipe already carries its own `sudo` on the privileged
+			// segment (e.g. `curl ... | sudo tee <path>`) - prefixing the whole line would
+			// elevate only the left-hand command and leave the actual write unprivileged.
+			return {
+				commands: lines.map((line) => (line.includes('|') ? line : `sudo ${line}`)),
+				note: null,
+			};
 		} catch (error) {
 			this.logger.debug('Failed to build the install remedy from tailscale-setup.sh --print-plan', {
 				message: error instanceof Error ? error.message : String(error),

@@ -333,6 +333,22 @@ export class TailscaleLoginService implements OnModuleInit {
 		// above and before ever spawning a new `tailscale up` process.
 		await this.assertActionable();
 
+		// Re-check both guards after the await above: `assertActionable()` yields,
+		// so a second concurrent interactive `login()` call could have passed the
+		// `this.pending` check before either call set it, or a keyed login could
+		// have raced in and set `keyedLoginInFlight` while this call waited on its
+		// own requirements check. Without this, two `tailscale up` processes could
+		// spawn at once.
+		if (this.pending) {
+			return { state: 'pending-auth', authUrl: this.pending.authUrl, qr: this.pending.qr };
+		}
+
+		if (this.keyedLoginInFlight) {
+			throw new TailscaleLoginInProgressException(
+				'A Tailscale sign-in with an auth key is currently in progress. Wait for it to finish before starting an interactive sign-in.',
+			);
+		}
+
 		const child = this.cli.spawnUp(['--json', '--timeout=10m', ...this.buildManagedFlags()]);
 
 		child.stderr.resume(); // drain — never read, but must not block the pipe

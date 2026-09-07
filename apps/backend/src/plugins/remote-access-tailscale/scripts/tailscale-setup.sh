@@ -67,8 +67,12 @@ if [ "$PRINT_PLAN" -eq 1 ]; then
 	install)
 		case "$OS_ID" in
 		raspbian | debian | ubuntu)
-			echo "curl -fsSL https://pkgs.tailscale.com/stable/${OS_ID}/${VERSION_CODENAME}.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null"
-			echo "curl -fsSL https://pkgs.tailscale.com/stable/${OS_ID}/${VERSION_CODENAME}.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list >/dev/null"
+			# `sudo` sits on the `tee` side, not the whole pipeline - prefixing the
+			# entire line would only elevate `curl` and leave `tee` unable to write
+			# these root-owned paths. The caller (TailscaleNodeManagedService) only
+			# blind-prefixes `sudo` onto lines that do not already contain a pipe.
+			echo "curl -fsSL https://pkgs.tailscale.com/stable/${OS_ID}/${VERSION_CODENAME}.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null"
+			echo "curl -fsSL https://pkgs.tailscale.com/stable/${OS_ID}/${VERSION_CODENAME}.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list >/dev/null"
 			echo "apt-get update -qq"
 			echo "apt-get install -y -qq --no-install-recommends tailscale"
 			;;

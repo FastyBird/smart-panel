@@ -404,6 +404,44 @@ describe('TailscaleLoginService', () => {
 			await keyedPromise;
 		});
 
+		it('never spawns two concurrent `tailscale up` processes when two interactive logins race past the requirements check', async () => {
+			// Both calls' `assertActionable()` awaits this same gate, simulating two
+			// interactive `login()` calls arriving before either has set
+			// `this.pending` - the exact window the re-check after `assertActionable()`
+			// exists to close.
+			let resolveRequirements!: (value: unknown) => void;
+			const gate = new Promise((resolve) => {
+				resolveRequirements = resolve;
+			});
+
+			nodeManagedService.refreshRequirements.mockReturnValueOnce(gate).mockReturnValueOnce(gate);
+
+			const child = new FakeChildProcess();
+
+			cli.spawnUp.mockReturnValueOnce(child);
+
+			const first = service.login();
+			const second = service.login();
+
+			resolveRequirements([
+				{ code: 'operator-granted', satisfied: true, message: 'granted', remedy: null },
+				{ code: 'daemon-active', satisfied: true, message: 'active', remedy: null },
+			]);
+
+			await expect(second).resolves.toEqual(expect.objectContaining({ state: 'pending-auth' }));
+
+			expect(cli.spawnUp).toHaveBeenCalledTimes(1);
+
+			child.stdout.emit(
+				'data',
+				Buffer.from(
+					'{"AuthURL":"https://login.tailscale.com/a/abc","QR":"data:image/png;base64,QQQ","BackendState":"NeedsLogin"}',
+				),
+			);
+
+			await first;
+		});
+
 		it('allows a new login (either mode) once the in-flight keyed one has completed', async () => {
 			const firstChild = new FakeChildProcess();
 

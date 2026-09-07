@@ -203,13 +203,13 @@ describe('tailscale-setup.sh --print-plan', () => {
 		}
 	}
 
-	it('prints the exact apt keyring/list/update/install lines for a Debian-family host, unprefixed (the caller adds sudo)', () => {
+	it('prints the exact apt keyring/list/update/install lines for a Debian-family host - pipelines carry their own `sudo` on the `tee` side, plain commands are unprefixed (the caller adds sudo)', () => {
 		const stdout = runPrintPlanInstallForDistro('ID=debian\nVERSION_CODENAME=bookworm\n');
 		const lines = stdout.split('\n').filter((line) => line.length > 0);
 
 		expect(lines).toEqual([
-			'curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null',
-			'curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list >/dev/null',
+			'curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null',
+			'curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list >/dev/null',
 			'apt-get update -qq',
 			'apt-get install -y -qq --no-install-recommends tailscale',
 		]);

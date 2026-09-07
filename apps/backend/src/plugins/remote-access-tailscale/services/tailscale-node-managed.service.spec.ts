@@ -424,14 +424,17 @@ describe('TailscaleNodeManagedService', () => {
 			expect(remedy?.note).toEqual(expect.any(String));
 		});
 
-		it('binary-installed/version-supported: the sudo-prefixed lines tailscale-setup.sh --print-plan --step=install prints', async () => {
+		it('binary-installed/version-supported: the lines tailscale-setup.sh --print-plan --step=install prints, sudo-prefixed only where no pipe already carries it', async () => {
 			cli.getVersion.mockRejectedValue(new TailscaleCliError('not-installed', 'not installed'));
-			mockSystemctlActive(true, 'curl -fsSL https://pkgs.tailscale.com/x | tee /y\napt-get install -y tailscale\n');
+			mockSystemctlActive(
+				true,
+				'curl -fsSL https://pkgs.tailscale.com/x | sudo tee /y\napt-get install -y tailscale\n',
+			);
 
 			const requirements = await service.evaluateRequirements();
 
 			expect(requirements.find((r) => r.code === 'binary-installed')?.remedy).toEqual({
-				commands: ['sudo curl -fsSL https://pkgs.tailscale.com/x | tee /y', 'sudo apt-get install -y tailscale'],
+				commands: ['curl -fsSL https://pkgs.tailscale.com/x | sudo tee /y', 'sudo apt-get install -y tailscale'],
 				note: null,
 			});
 		});
