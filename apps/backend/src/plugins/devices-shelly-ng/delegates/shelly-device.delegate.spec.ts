@@ -32,6 +32,10 @@ jest.mock('shellies-ds9', () => {
 	class Humidity extends BaseComponent {}
 	class Temperature extends BaseComponent {}
 	class Pm1 extends BaseComponent {}
+	class Em extends BaseComponent {}
+	class EmData extends BaseComponent {}
+	class Em1 extends BaseComponent {}
+	class Em1Data extends BaseComponent {}
 
 	class MockRpcHandler extends EventEmitter {
 		constructor(public connected: boolean) {
@@ -89,13 +93,30 @@ jest.mock('shellies-ds9', () => {
 		Humidity,
 		Temperature,
 		Pm1,
+		Em,
+		EmData,
+		Em1,
+		Em1Data,
 		Device,
 		MultiProfileDevice,
 	};
 });
 
 jest.mock('../devices-shelly-ng.constants', () => {
-	const { Switch, Light, Cover, Input, DevicePower, Humidity, Temperature, Pm1 } = require('shellies-ds9');
+	const {
+		Switch,
+		Light,
+		Cover,
+		Input,
+		DevicePower,
+		Humidity,
+		Temperature,
+		Pm1,
+		Em,
+		EmData,
+		Em1,
+		Em1Data,
+	} = require('shellies-ds9');
 
 	const DESCRIPTORS = {
 		FAKE_GROUP: {
@@ -110,6 +131,10 @@ jest.mock('../devices-shelly-ng.constants', () => {
 				{ type: 'temperature', cls: Temperature, ids: [0] },
 				// POZOR: typ pro PM1 musí odpovídat ComponentType.PM1 v implementaci
 				{ type: 'pm1', cls: Pm1, ids: [0] },
+				{ type: 'em', cls: Em, ids: [0] },
+				{ type: 'emdata', cls: EmData, ids: [0] },
+				{ type: 'em1', cls: Em1, ids: [0] },
+				{ type: 'em1data', cls: Em1Data, ids: [0] },
 			],
 		},
 	};
@@ -121,6 +146,10 @@ jest.mock('../devices-shelly-ng.constants', () => {
 			LIGHT: 'light',
 			COVER: 'cover',
 			PM1: 'pm1',
+			EM: 'em',
+			EM_DATA: 'emdata',
+			EM1: 'em1',
+			EM1_DATA: 'em1data',
 			INPUT: 'input',
 			DEVICE_POWER: 'devicepower',
 			HUMIDITY: 'humidity',
@@ -135,7 +164,20 @@ jest.mock('../devices-shelly-ng.constants', () => {
 
 describe('ShellyDeviceDelegate', () => {
 	test('constructs for supported model and wires components', () => {
-		const { Switch, Light, Cover, Input, DevicePower, Humidity, Temperature, Pm1 } = require('shellies-ds9');
+		const {
+			Switch,
+			Light,
+			Cover,
+			Input,
+			DevicePower,
+			Humidity,
+			Temperature,
+			Pm1,
+			Em,
+			EmData,
+			Em1,
+			Em1Data,
+		} = require('shellies-ds9');
 
 		const comps = new Map<string, typeof Component>([
 			['switch:0', new Switch('switch:0')],
@@ -148,6 +190,10 @@ describe('ShellyDeviceDelegate', () => {
 			['temperature:0', new Temperature('temperature:0')],
 			// PM1 – klíč musí odpovídat type 'pm1'
 			['pm1:0', new Pm1('pm1:0')],
+			['em:0', new Em('em:0')],
+			['emdata:0', new EmData('emdata:0')],
+			['em1:0', new Em1('em1:0')],
+			['em1data:0', new Em1Data('em1data:0')],
 		]);
 
 		const { Device } = require('shellies-ds9');
@@ -163,8 +209,38 @@ describe('ShellyDeviceDelegate', () => {
 		expect(delegate.humidity.size).toBe(1);
 		expect(delegate.temperature.size).toBe(1);
 		expect(delegate.pm1.size).toBe(1);
+		expect(delegate.em.size).toBe(1);
+		expect(delegate.emData.size).toBe(1);
+		expect(delegate.em1.size).toBe(1);
+		expect(delegate.em1Data.size).toBe(1);
 		expect(delegate.components.has('switch:0')).toBe(true);
 		expect(delegate.components.has('light:0')).toBe(true);
+		expect(delegate.components.has('em:0')).toBe(true);
+		expect(delegate.components.has('em1data:0')).toBe(true);
+	});
+
+	test('typed em/emData/em1/em1Data maps hold the right component instances', () => {
+		const { Em, EmData, Em1, Em1Data, Device } = require('shellies-ds9');
+
+		const em = new Em('em:0');
+		const emData = new EmData('emdata:0');
+		const em1 = new Em1('em1:0');
+		const em1Data = new Em1Data('em1data:0');
+
+		const comps = new Map<string, typeof Component>([
+			['em:0', em],
+			['emdata:0', emData],
+			['em1:0', em1],
+			['em1data:0', em1Data],
+		]);
+
+		const dev = new Device('dev-1b', 'FAKE_MODEL', comps, true);
+		const delegate = new ShellyDeviceDelegate(dev);
+
+		expect(delegate.em.get(0)).toBe(em);
+		expect(delegate.emData.get(0)).toBe(emData);
+		expect(delegate.em1.get(0)).toBe(em1);
+		expect(delegate.em1Data.get(0)).toBe(em1Data);
 	});
 
 	test('propagates component "change" into delegate "value"', (done) => {

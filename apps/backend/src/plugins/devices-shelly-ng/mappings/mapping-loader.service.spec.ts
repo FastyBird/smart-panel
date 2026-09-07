@@ -166,4 +166,39 @@ describe('MappingLoaderService', () => {
 			expect(Array.isArray(results)).toBe(true);
 		});
 	});
+
+	describe('resolveComponentType', () => {
+		// resolveComponentType() is private and only reachable today through a YAML mapping's
+		// `condition.component_type`, which no built-in mapping currently sets for the energy
+		// meter types. Exercised directly to guard the fallback-to-SWITCH bug (no YAML mapping
+		// uses em/emdata/em1/em1data yet, so a regression here would stay silent otherwise).
+		type PrivateApi = { resolveComponentType(type: string): ComponentType };
+
+		const resolve = (type: string): ComponentType => (service as unknown as PrivateApi).resolveComponentType(type);
+
+		it('resolves em to ComponentType.EM', () => {
+			expect(resolve('em')).toBe(ComponentType.EM);
+		});
+
+		it('resolves emdata to ComponentType.EM_DATA', () => {
+			expect(resolve('emdata')).toBe(ComponentType.EM_DATA);
+		});
+
+		it('resolves em1 to ComponentType.EM1', () => {
+			expect(resolve('em1')).toBe(ComponentType.EM1);
+		});
+
+		it('resolves em1data to ComponentType.EM1_DATA', () => {
+			expect(resolve('em1data')).toBe(ComponentType.EM1_DATA);
+		});
+
+		it('is case-insensitive', () => {
+			expect(resolve('EM')).toBe(ComponentType.EM);
+			expect(resolve('EM1Data')).toBe(ComponentType.EM1_DATA);
+		});
+
+		it('falls back to SWITCH for an unknown type', () => {
+			expect(resolve('not-a-real-type')).toBe(ComponentType.SWITCH);
+		});
+	});
 });
