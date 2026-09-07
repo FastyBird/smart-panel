@@ -142,7 +142,7 @@ import QRCode from 'qrcode';
 
 import { Icon } from '@iconify/vue';
 
-import { useFlashMessage } from '../../../common';
+import { useClipboard, useFlashMessage } from '../../../common';
 import { useRemoteAccessUrls } from '../composables';
 
 defineOptions({
@@ -151,6 +151,7 @@ defineOptions({
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
+const { copy } = useClipboard();
 
 const { internal, candidates, external } = useRemoteAccessUrls();
 
@@ -158,10 +159,11 @@ const openQrUrl = ref<string | null>(null);
 const qrDataUrls = reactive<Record<string, string>>({});
 
 const copyUrl = async (url: string): Promise<void> => {
-	try {
-		await navigator.clipboard.writeText(url);
+	const copied = await copy(url);
+
+	if (copied) {
 		flashMessage.success(t('remoteAccessModule.messages.urlCopied'));
-	} catch {
+	} else {
 		flashMessage.error(t('remoteAccessModule.messages.copyFailed'));
 	}
 };

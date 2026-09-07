@@ -10,5 +10,6 @@ export { useMenu } from './useMenu';
 export { useNumberFormat } from './useNumberFormat';
 export { useSockets } from './useSockets';
 export { useUuid } from './useUuid';
+export { useClipboard } from './useClipboard';
 
 export * from './types';

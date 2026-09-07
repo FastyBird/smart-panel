@@ -20,6 +20,13 @@ const useRemoteAccessUrlsMock = vi.fn<() => IUseRemoteAccessUrls>();
 
 const toDataURL = vi.fn().mockResolvedValue('data:image/png;base64,mockqrcode');
 
+// Plain top-level `vi.fn()` consts, not `vi.hoisted()` - mirrors the pattern already used above for
+// `useRemoteAccessUrlsMock`: `vi.fn()` does not depend on any import that needs linking first, so it
+// is safe to reference from the `vi.mock('../../../common', ...)` factory below.
+const copyMock = vi.fn<(text: string) => Promise<boolean>>();
+const flashSuccessMock = vi.fn();
+const flashErrorMock = vi.fn();
+
 vi.mock('vue-i18n', () => ({
 	createI18n: () => ({ global: { locale: { value: 'en-US' }, getLocaleMessage: () => ({}), setLocaleMessage: () => {} } }),
 	useI18n: () => ({
@@ -29,6 +36,11 @@ vi.mock('vue-i18n', () => ({
 
 vi.mock('qrcode', () => ({
 	default: { toDataURL: (...args: unknown[]) => toDataURL(...args) },
+}));
+
+vi.mock('../../../common', () => ({
+	useClipboard: () => ({ copy: copyMock }),
+	useFlashMessage: () => ({ success: flashSuccessMock, error: flashErrorMock }),
 }));
 
 vi.mock('../composables', () => ({
@@ -41,10 +53,9 @@ describe('AccessUrlsList', () => {
 		// `mockImplementation` (the race-condition regression below) must not leak it forward.
 		toDataURL.mockReset().mockResolvedValue('data:image/png;base64,mockqrcode');
 
-		Object.defineProperty(navigator, 'clipboard', {
-			value: { writeText: vi.fn().mockResolvedValue(undefined) },
-			configurable: true,
-		});
+		copyMock.mockReset().mockResolvedValue(true);
+		flashSuccessMock.mockReset();
+		flashErrorMock.mockReset();
 
 		useRemoteAccessUrlsMock.mockReturnValue({
 			internal: computed(() => 'http://localhost:3000') as ComputedRef<string | null>,
@@ -74,14 +85,29 @@ describe('AccessUrlsList', () => {
 		expect(primaryTags).toHaveLength(1);
 	});
 
-	it('copies a URL to the clipboard when the copy button is pressed', async () => {
+	it('copies a URL to the clipboard when the copy button is pressed and shows a success toast', async () => {
 		const wrapper = mount(AccessUrlsList);
 
 		const copyButtons = wrapper.findAll('button[aria-label="remoteAccessModule.buttons.copy.title"]');
 		await copyButtons[0]!.trigger('click');
 		await flushPromises();
 
-		expect(navigator.clipboard.writeText).toHaveBeenCalledWith('http://localhost:3000');
+		expect(copyMock).toHaveBeenCalledWith('http://localhost:3000');
+		expect(flashSuccessMock).toHaveBeenCalledWith('remoteAccessModule.messages.urlCopied');
+		expect(flashErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('shows an error toast only when the clipboard copy actually fails', async () => {
+		copyMock.mockResolvedValue(false);
+
+		const wrapper = mount(AccessUrlsList);
+
+		const copyButtons = wrapper.findAll('button[aria-label="remoteAccessModule.buttons.copy.title"]');
+		await copyButtons[0]!.trigger('click');
+		await flushPromises();
+
+		expect(flashErrorMock).toHaveBeenCalledWith('remoteAccessModule.messages.copyFailed');
+		expect(flashSuccessMock).not.toHaveBeenCalled();
 	});
 
 	it('lazily generates and displays a QR code the first time it is requested for a URL', async () => {

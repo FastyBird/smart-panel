@@ -252,7 +252,7 @@ import { ElAlert, ElButton, ElDialog, ElForm, ElFormItem, ElIcon, ElInput, ElSte
 
 import { Icon } from '@iconify/vue';
 
-import { useFlashMessage } from '../../../common';
+import { useClipboard, useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, useConfigPlugin } from '../../../modules/config';
 import { useTailscaleLogin, useTailscaleSetup, useTailscaleStatus } from '../composables';
 import { REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME } from '../remote-access-tailscale.constants';
@@ -275,6 +275,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const flashMessage = useFlashMessage();
+const { copy } = useClipboard();
 
 const steps: TailscaleWizardStep[] = ['setup', 'signin', 'options', 'done'];
 
@@ -363,10 +364,11 @@ const onSaveOptions = (): void => {
 };
 
 const copyUrl = async (url: string): Promise<void> => {
-	try {
-		await navigator.clipboard.writeText(url);
+	const copied = await copy(url);
+
+	if (copied) {
 		flashMessage.success(t('remoteAccessTailscalePlugin.messages.urlCopied'));
-	} catch {
+	} else {
 		flashMessage.error(t('remoteAccessTailscalePlugin.messages.copyFailed'));
 	}
 };

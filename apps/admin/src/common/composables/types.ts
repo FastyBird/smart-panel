@@ -90,3 +90,7 @@ export interface IUseUuid {
 	generate: () => string;
 	validate: (uuid: string) => boolean;
 }
+
+export interface IUseClipboard {
+	copy: (text: string) => Promise<boolean>;
+}
