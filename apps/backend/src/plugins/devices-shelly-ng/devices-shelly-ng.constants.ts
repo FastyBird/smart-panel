@@ -299,7 +299,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 	SHELLYPLUSPM: {
 		name: ShellyPlusPmMini.modelName,
 		models: [ShellyPlusPmMini.model.toUpperCase()],
-		components: [{ type: ComponentType.PM1, cls: Pm1, ids: [1] }],
+		components: [{ type: ComponentType.PM1, cls: Pm1, ids: [0] }],
 		system: [{ type: ComponentType.WIFI, cls: WiFi }],
 		categories: [DeviceCategory.SENSOR],
 	},
@@ -702,7 +702,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 	SHELLYPMMINIGEN3: {
 		name: ShellyPmMiniGen3.modelName,
 		models: [ShellyPmMiniGen3.model.toUpperCase()],
-		components: [{ type: ComponentType.PM1, cls: Pm1, ids: [1] }],
+		components: [{ type: ComponentType.PM1, cls: Pm1, ids: [0] }],
 		system: [{ type: ComponentType.WIFI, cls: WiFi }],
 		categories: [DeviceCategory.SENSOR],
 	},

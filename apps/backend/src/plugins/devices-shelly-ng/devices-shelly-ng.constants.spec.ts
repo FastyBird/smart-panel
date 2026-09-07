@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Shelly3EmGen3, ShellyEmGen3, ShellyPro3Em, ShellyProEm } from 'shellies-ds9';
+import { Device, Shelly3EmGen3, ShellyEmGen3, ShellyPro3Em, ShellyProEm } from 'shellies-ds9';
 
 import { devicesSchema } from '../../spec/devices';
 
@@ -132,5 +132,128 @@ describe('Shelly NG energy meters', () => {
 			// because the sensor spec permits no outlet or switcher channel.
 			expect(descriptor.categories[0]).toBe('switcher');
 		}
+	});
+
+	it('declares only component ids the library device class exposes', () => {
+		// Regression guard: verify declared component IDs actually exist in the library device classes.
+		// For each model in each descriptor, construct the device and check that all
+		// declared component IDs are present. This catches bugs like pm1:1 being
+		// declared when the library only exposes pm1:0.
+		//
+		// Per plan §16 decision 2: fail only if declared IDs are missing; undeclared
+		// components (issue #978 follow-up) are logged, not failed.
+
+		// Known pre-existing drift (descriptor declares component IDs the library lacks).
+		// These are tracked in issue #978 and NOT fixed in this epic per plan §16 decision 2.
+		// The regression guard still reports them but allows them to pass the test suite.
+		const knownDrift = new Set<string>([
+			'SNDM-0013US:input:0', // SHELLYPLUSWALLDIMMER: input:0 not exposed by library
+			'SNDM-00100WW:light:1', // SHELLYPLUSDIMMER: light:1 not exposed by library
+			'SNSX-0043X:input:3', // SHELLYPLUSUNI: input:3 not exposed by library
+		]);
+
+		// Minimal stub RpcHandler for testing. We don't need real RPC; just the interface.
+		class StubRpcHandler {
+			on(): StubRpcHandler {
+				return this;
+			}
+
+			off(): StubRpcHandler {
+				return this;
+			}
+
+			get connected(): boolean {
+				return false;
+			}
+
+			// eslint-disable-next-line @typescript-eslint/require-await
+			async request<T>(): Promise<T> {
+				throw new Error('Not implemented');
+			}
+
+			async destroy(): Promise<void> {
+				// noop
+			}
+
+			resetReconnectInterval(): void {
+				// noop
+			}
+		}
+
+		const errors: string[] = [];
+		const undeclaredComponents: string[] = [];
+		const knownDriftFound: string[] = [];
+
+		for (const descriptor of Object.values(DESCRIPTORS)) {
+			for (const model of descriptor.models) {
+				try {
+					// Get the device class for this model from the library
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+					const DeviceClass = (Device as unknown as { getClass: (model: string) => unknown }).getClass(model);
+
+					if (!DeviceClass) {
+						errors.push(`Model ${model}: Device.getClass() returned undefined`);
+						continue;
+					}
+
+					// Construct an instance with minimal info and our stub handler
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+					const instance = new (DeviceClass as new (
+						info: { id: string; mac: string; model?: string },
+						handler: unknown,
+					) => {
+						hasComponent: (key: string) => boolean;
+						[Symbol.iterator]: () => IterableIterator<[string, unknown]>;
+					})({ id: 'test-' + model, mac: '00:00:00:00:00:00', model }, new StubRpcHandler());
+
+					// Check all declared IDs are present in the device
+					for (const component of descriptor.components) {
+						for (const id of component.ids) {
+							const key = `${String(component.type)}:${id}`;
+
+							if (!instance.hasComponent(key)) {
+								const driftKey = `${model}:${key}`;
+
+								if (knownDrift.has(driftKey)) {
+									// Known drift, log it but don't fail (issue #978)
+									knownDriftFound.push(`Model ${model}: descriptor declares ${key} but library device class does not expose it`);
+								} else {
+									// New drift, fail the test
+									errors.push(`Model ${model}: descriptor declares ${key} but library device class does not expose it`);
+								}
+							}
+						}
+					}
+
+					// Log any components the device has that aren't declared (issue #978)
+					for (const [key] of instance) {
+						const [type, idStr] = key.split(':') as [string, string];
+						const id = parseInt(idStr, 10);
+						const isDeclared = descriptor.components.some((c) => String(c.type) === type && c.ids.includes(id));
+
+						if (!isDeclared) {
+							undeclaredComponents.push(`Model ${model}: library exposes ${key} (not in descriptor — issue #978)`);
+						}
+					}
+				} catch (e) {
+					errors.push(`Model ${model}: ${String(e)}`);
+				}
+			}
+		}
+
+		// Log known drift as informational (tracked in issue #978)
+		if (knownDriftFound.length > 0) {
+			// eslint-disable-next-line no-console
+			console.warn('Known descriptor drift (issue #978, not fixed per plan §16 decision 2):', knownDriftFound);
+		}
+
+		// Log undeclared components as informational (follow-up #978)
+		if (undeclaredComponents.length > 0) {
+			// eslint-disable-next-line no-console
+			console.warn('Components exposed by library but not declared in descriptor (issue #978):', undeclaredComponents);
+		}
+
+		// Fail only if there are NEW declared-but-absent issues (not in knownDrift allowlist)
+		expect(errors).toEqual([]);
 	});
 });

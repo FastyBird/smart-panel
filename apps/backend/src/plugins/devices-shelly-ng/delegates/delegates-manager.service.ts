@@ -2114,7 +2114,7 @@ export class DelegatesManagerService {
 	private determineCategory(delegate: ShellyDeviceDelegate): DeviceCategory {
 		// Prefer the descriptor's canonical first category. The component-based heuristic
 		// below misclassified some sensor-only devices (e.g. Shelly PM Mini Gen3, whose
-		// only relevant component is `pm1:1`) as GENERIC when the lib didn't expose the
+		// only relevant component is `pm1:0`) as GENERIC when the lib didn't expose the
 		// expected component shape — descriptor-first is the source of truth.
 		if (delegate.descriptor && delegate.descriptor.categories.length > 0) {
 			return delegate.descriptor.categories[0];
