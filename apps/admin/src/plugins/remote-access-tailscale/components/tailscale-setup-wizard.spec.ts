@@ -20,6 +20,7 @@ const fns = vi.hoisted(() => ({
 	install: vi.fn(),
 	login: vi.fn(),
 	stopPolling: vi.fn(),
+	stopSetupPolling: vi.fn(),
 	fetchConfigPlugin: vi.fn(),
 	flashError: vi.fn(),
 	flashSuccess: vi.fn(),
@@ -27,7 +28,9 @@ const fns = vi.hoisted(() => ({
 }));
 
 const status = ref<{ state: string; endpoints: { url: string; label: string }[]; authUrl?: string; qr?: string } | null>(null);
-const requirements = ref<{ code: string; satisfied: boolean; message: string }[]>([]);
+const requirements = ref<{ code: string; satisfied: boolean; message: string; remedy: { commands: string[]; note: string | null } | null }[]>([]);
+const setup = ref<{ state: string; step: string | null; message: string | null } | null>(null);
+const privilegedSetup = ref<{ available: boolean; reason: string | null } | null>({ available: true, reason: null });
 const progress = ref<{ state: string; step?: string; message?: string } | null>(null);
 const isInstalling = ref(false);
 const isLoggingIn = ref(false);
@@ -58,6 +61,8 @@ vi.mock('../composables', () => ({
 	useTailscaleStatus: () => ({
 		status,
 		requirements,
+		setup,
+		privilegedSetup,
 		isLoading: ref(false),
 		isLoggingOut: ref(false),
 		isResettingPreferences: ref(false),
@@ -69,6 +74,7 @@ vi.mock('../composables', () => ({
 		progress,
 		isInstalling,
 		install: fns.install,
+		stopPolling: fns.stopSetupPolling,
 	}),
 	useTailscaleLogin: () => ({
 		isLoggingIn,
@@ -95,10 +101,23 @@ const mountWizard = (initialStep: 'setup' | 'signin' | 'options' | 'done' = 'set
 
 const stepsProp = (wrapper: ReturnType<typeof mountWizard>): number => wrapper.findComponent({ name: 'ElSteps' }).props('active') as number;
 
+// The error-code hint alert's text is an ElAlert `title` prop, not slot content - it never reaches
+// `wrapper.text()` even with `renderStubDefaultSlot: true` (mirrors the existing "install job
+// failed" test's own note on `progress.message`).
+const findHintAlert = (wrapper: ReturnType<typeof mountWizard>, title: string) =>
+	wrapper.findAllComponents({ name: 'ElAlert' }).find((alert) => alert.props('title') === title);
+
+const findAnyHintAlert = (wrapper: ReturnType<typeof mountWizard>) =>
+	wrapper
+		.findAllComponents({ name: 'ElAlert' })
+		.find((alert) => typeof alert.props('title') === 'string' && alert.props('title').startsWith('remoteAccessTailscalePlugin.errors.'));
+
 describe('TailscaleSetupWizard', () => {
 	beforeEach(() => {
 		status.value = null;
 		requirements.value = [];
+		setup.value = null;
+		privilegedSetup.value = { available: true, reason: null };
 		progress.value = null;
 		isInstalling.value = false;
 		isLoggingIn.value = false;
@@ -108,6 +127,7 @@ describe('TailscaleSetupWizard', () => {
 		fns.install.mockReset().mockResolvedValue('job-123');
 		fns.login.mockReset();
 		fns.stopPolling.mockReset();
+		fns.stopSetupPolling.mockReset();
 		fns.fetchConfigPlugin.mockReset().mockResolvedValue(undefined);
 		fns.flashError.mockReset();
 		fns.flashSuccess.mockReset();
@@ -381,5 +401,199 @@ describe('TailscaleSetupWizard', () => {
 		await wrapper.setProps({ visible: false });
 
 		expect(fns.stopPolling).toHaveBeenCalled();
+	});
+
+	it('also stops the setup poll when the wizard is closed', async () => {
+		const wrapper = mountWizard('setup');
+
+		await wrapper.setProps({ visible: false });
+
+		expect(fns.stopSetupPolling).toHaveBeenCalled();
+	});
+
+	it('also stops the setup poll when the wizard unmounts', () => {
+		const wrapper = mountWizard('setup');
+
+		wrapper.unmount();
+
+		expect(fns.stopSetupPolling).toHaveBeenCalled();
+	});
+
+	describe('D12: privileged setup availability', () => {
+		it('offers the Set up button plus a "Run it yourself" disclosure when privileged setup is available and a remedy exists', () => {
+			privilegedSetup.value = { available: true, reason: null };
+			requirements.value = [
+				{
+					code: 'daemon-active',
+					satisfied: false,
+					message: 'tailscaled is not active.',
+					remedy: { commands: ['sudo systemctl enable --now tailscaled'], note: null },
+				},
+			];
+			const wrapper = mountWizard('setup');
+
+			expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.buttons.startSetup');
+			expect(wrapper.findComponent({ name: 'ElCollapse' }).exists()).toBe(true);
+			expect(wrapper.text()).toContain('sudo systemctl enable --now tailscaled');
+		});
+
+		it('does not render the disclosure when privileged setup is available and there is nothing unsatisfied', () => {
+			privilegedSetup.value = { available: true, reason: null };
+			requirements.value = [{ code: 'binary-installed', satisfied: true, message: 'Tailscale is installed.', remedy: null }];
+			const wrapper = mountWizard('setup');
+
+			expect(wrapper.findComponent({ name: 'ElCollapse' }).exists()).toBe(false);
+		});
+
+		it('replaces the Set up button with the reason, an ordered command block and a Re-check button when unavailable', () => {
+			privilegedSetup.value = { available: false, reason: 'Privileged jobs are currently unavailable on this installation.' };
+			requirements.value = [
+				{ code: 'daemon-active', satisfied: false, message: 'x', remedy: { commands: ['sudo systemctl enable --now tailscaled'], note: null } },
+				{ code: 'operator-granted', satisfied: false, message: 'x', remedy: { commands: ['sudo tailscale set --operator=smart-panel'], note: null } },
+			];
+			const wrapper = mountWizard('setup');
+
+			expect(wrapper.text()).not.toContain('remoteAccessTailscalePlugin.wizard.buttons.startSetup');
+			const reasonAlert = wrapper
+				.findAllComponents({ name: 'ElAlert' })
+				.find((alert) => alert.props('title') === 'Privileged jobs are currently unavailable on this installation.');
+			expect(reasonAlert).toBeTruthy();
+			expect(wrapper.text()).toContain('sudo systemctl enable --now tailscaled');
+			expect(wrapper.text()).toContain('sudo tailscale set --operator=smart-panel');
+			expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.buttons.recheck');
+		});
+
+		it('shows only the note, with no empty command block, when the sole unsatisfied requirement has no exact command', () => {
+			privilegedSetup.value = { available: false, reason: 'Unsupported platform.' };
+			requirements.value = [
+				{ code: 'platform-supported', satisfied: false, message: 'x', remedy: { commands: [], note: 'https://tailscale.com/download' } },
+			];
+			const wrapper = mountWizard('setup');
+
+			expect(wrapper.text()).toContain('https://tailscale.com/download');
+			expect(wrapper.find('pre').exists()).toBe(false);
+		});
+
+		it('the Re-check button refetches status', async () => {
+			privilegedSetup.value = { available: false, reason: 'Unavailable.' };
+			const wrapper = mountWizard('setup');
+			fns.fetchStatus.mockClear();
+
+			const recheckButton = wrapper.findAllComponents({ name: 'ElButton' }).find((button) => button.text().includes('recheck'));
+			await recheckButton?.vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.fetchStatus).toHaveBeenCalled();
+		});
+
+		it('copies the concatenated remedy commands to the clipboard', async () => {
+			privilegedSetup.value = { available: false, reason: 'Unavailable.' };
+			requirements.value = [
+				{ code: 'daemon-active', satisfied: false, message: 'x', remedy: { commands: ['sudo systemctl enable --now tailscaled'], note: null } },
+			];
+			const wrapper = mountWizard('setup');
+
+			const copyButton = wrapper
+				.findAllComponents({ name: 'ElButton' })
+				.find((button) => button.text().includes('remoteAccessTailscalePlugin.wizard.buttons.copy'));
+			await copyButton?.vm.$emit('click');
+			await flushPromises();
+
+			expect(fns.copy).toHaveBeenCalledWith('sudo systemctl enable --now tailscaled');
+			expect(fns.flashSuccess).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.commandCopied');
+		});
+	});
+
+	describe('resuming setup progress from a fresh GET /status read (D6/RA-22)', () => {
+		it('shows the running spinner from the polled status even though no websocket progress event has arrived', async () => {
+			// Simulates a page reload: `progress` (the websocket-driven ref) is still null, but the
+			// very first `GET /status` this page made already reports a running job.
+			setup.value = { state: 'running', step: 'install-package', message: null };
+			const wrapper = mountWizard('setup');
+			await flushPromises();
+
+			expect(wrapper.text()).toContain('install-package');
+		});
+
+		it('advances to sign-in once the polled status alone reaches complete', async () => {
+			const wrapper = mountWizard('setup');
+
+			setup.value = { state: 'complete', step: null, message: null };
+			await flushPromises();
+
+			expect(stepsProp(wrapper)).toBe(1);
+			expect(fns.fetchStatus).toHaveBeenCalled();
+		});
+	});
+
+	describe('action error hints (D13)', () => {
+		it('shows the operator-not-granted hint after a Set up failure carrying that error code', async () => {
+			const error = new RemoteAccessTailscaleApiException('The smart-panel operator has not been granted.', 409, null, 'operator-not-granted');
+			fns.install.mockRejectedValue(error);
+			const wrapper = mountWizard('setup');
+
+			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await flushPromises();
+
+			expect(findHintAlert(wrapper, 'remoteAccessTailscalePlugin.errors.operatorNotGranted')).toBeTruthy();
+		});
+
+		it('shows the privileged-worker-unavailable hint after a Set up failure carrying that error code', async () => {
+			const error = new RemoteAccessTailscaleApiException('Privileged jobs are currently unavailable.', 422, null, 'privileged-worker-unavailable');
+			fns.install.mockRejectedValue(error);
+			const wrapper = mountWizard('setup');
+
+			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await flushPromises();
+
+			expect(findHintAlert(wrapper, 'remoteAccessTailscalePlugin.errors.privilegedWorkerUnavailable')).toBeTruthy();
+		});
+
+		it('shows the platform-unsupported hint after a Set up failure carrying that error code', async () => {
+			const error = new RemoteAccessTailscaleApiException('Tailscale setup is unavailable on this platform.', 422, null, 'platform-unsupported');
+			fns.install.mockRejectedValue(error);
+			const wrapper = mountWizard('setup');
+
+			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await flushPromises();
+
+			expect(findHintAlert(wrapper, 'remoteAccessTailscalePlugin.errors.platformUnsupported')).toBeTruthy();
+		});
+
+		it('shows no hint for an unrecognised or absent error code', async () => {
+			fns.install.mockRejectedValue(new RemoteAccessTailscaleApiException('Internal error detail', 500));
+			const wrapper = mountWizard('setup');
+
+			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await flushPromises();
+
+			expect(findAnyHintAlert(wrapper)).toBeUndefined();
+		});
+
+		it('shows the not-signed-in hint after a Sign in failure carrying that error code', async () => {
+			const error = new RemoteAccessTailscaleApiException('This node is not signed in.', 409, null, 'not-signed-in');
+			fns.login.mockRejectedValue(error);
+			const wrapper = mountWizard('signin');
+
+			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await flushPromises();
+
+			expect(findHintAlert(wrapper, 'remoteAccessTailscalePlugin.errors.notSignedIn')).toBeTruthy();
+		});
+
+		it('clears a stale error hint once the dialog reopens', async () => {
+			const error = new RemoteAccessTailscaleApiException('x', 409, null, 'daemon-not-active');
+			fns.install.mockRejectedValue(error);
+			const wrapper = mountWizard('setup');
+
+			await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+			await flushPromises();
+			expect(findHintAlert(wrapper, 'remoteAccessTailscalePlugin.errors.daemonNotActive')).toBeTruthy();
+
+			await wrapper.setProps({ visible: false });
+			await wrapper.setProps({ visible: true });
+
+			expect(findAnyHintAlert(wrapper)).toBeUndefined();
+		});
 	});
 });

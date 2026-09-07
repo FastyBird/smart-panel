@@ -73,6 +73,8 @@
 		"banner": {
 			"disabledTitle": "Dostęp zdalny jest wyłączony",
 			"disabledDescription": "Włącz moduł dostępu zdalnego na stronie Rozszerzenia, aby skonfigurować dostawców i zewnętrzne adresy URL.",
+			"noExternalUrlTitle": "Dostęp zdalny jest włączony, ale jeszcze niedostępny",
+			"noExternalUrlDescription": "Dostęp zdalny jest włączony, ale nie jest jeszcze dostępny żaden zewnętrzny adres URL. Włącz dostawcę lub dodaj ręczny zewnętrzny adres URL w ustawieniach.",
 			"okTitle": "Dostęp zdalny działa prawidłowo",
 			"okDescription": "Nie zgłoszono żadnych powiadomień dotyczących stanu zabezpieczeń.",
 			"advisoriesTitle": "Jedno powiadomienie | {count} powiadomień",

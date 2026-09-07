@@ -73,6 +73,8 @@
 		"banner": {
 			"disabledTitle": "Vzdálený přístup je vypnutý",
 			"disabledDescription": "Modul vzdáleného přístupu povolte na stránce Rozšíření, abyste mohli nastavit poskytovatele a externí URL.",
+			"noExternalUrlTitle": "Vzdálený přístup je zapnutý, ale zatím není dostupný",
+			"noExternalUrlDescription": "Vzdálený přístup je zapnutý, ale zatím není k dispozici žádná externí URL. Nastavte poskytovatele nebo přidejte ruční externí URL v nastavení.",
 			"okTitle": "Vzdálený přístup je v pořádku",
 			"okDescription": "Nebyla nahlášena žádná upozornění na stav zabezpečení.",
 			"advisoriesTitle": "Jedno upozornění | {count} upozornění",

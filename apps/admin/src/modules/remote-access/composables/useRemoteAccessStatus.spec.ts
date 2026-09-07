@@ -5,7 +5,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
-import { RemoteAccessModuleAdvisorySeverity } from '../../../openapi.constants';
+import { RemoteAccessModuleAdvisorySeverity, RemoteAccessModuleEndpointScope } from '../../../openapi.constants';
 import type { IRemoteAccessStatus } from '../store/remote-access-status.store.types';
 
 import { useRemoteAccessStatus } from './useRemoteAccessStatus';
@@ -97,5 +97,37 @@ describe('useRemoteAccessStatus', () => {
 		await fetchStatus();
 
 		expect(get).toHaveBeenCalled();
+	});
+
+	describe('hasExternalUrl', () => {
+		it('is false before the first fetch', () => {
+			const { hasExternalUrl } = useRemoteAccessStatus();
+
+			expect(hasExternalUrl.value).toBe(false);
+		});
+
+		it('is false when no external URL is published', () => {
+			mockStore.data.value = { ...mockStatus, urls: { internal: 'http://localhost:3000', candidates: [], external: [], primary: null } };
+
+			const { hasExternalUrl } = useRemoteAccessStatus();
+
+			expect(hasExternalUrl.value).toBe(false);
+		});
+
+		it('is true once at least one external URL is published', () => {
+			mockStore.data.value = {
+				...mockStatus,
+				urls: {
+					internal: 'http://localhost:3000',
+					candidates: [],
+					external: [{ url: 'https://panel.example.ts.net', scope: RemoteAccessModuleEndpointScope.public, https: true, label: 'Tailscale' }],
+					primary: 'https://panel.example.ts.net',
+				},
+			};
+
+			const { hasExternalUrl } = useRemoteAccessStatus();
+
+			expect(hasExternalUrl.value).toBe(true);
+		});
 	});
 });

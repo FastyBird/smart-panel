@@ -13,6 +13,7 @@ export interface IUseRemoteAccessStatus {
 	status: ComputedRef<IRemoteAccessStatus | null>;
 	enabled: ComputedRef<boolean>;
 	advisories: ComputedRef<IRemoteAccessAdvisory[]>;
+	hasExternalUrl: ComputedRef<boolean>;
 	isLoading: ComputedRef<boolean>;
 	fetchStatus: () => Promise<void>;
 }

@@ -73,6 +73,8 @@
 		"banner": {
 			"disabledTitle": "Remote access is disabled",
 			"disabledDescription": "Enable the Remote access module from the Extensions page to configure providers and external URLs.",
+			"noExternalUrlTitle": "Remote access is enabled, but not reachable yet",
+			"noExternalUrlDescription": "Remote access is enabled, but no external URL is available yet. Enable a provider or add a manual external URL in the settings.",
 			"okTitle": "Remote access is healthy",
 			"okDescription": "No posture advisories were reported.",
 			"advisoriesTitle": "One advisory | {count} advisories",

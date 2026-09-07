@@ -73,6 +73,8 @@
 		"banner": {
 			"disabledTitle": "El acceso remoto está deshabilitado",
 			"disabledDescription": "Habilita el módulo de acceso remoto desde la página Extensiones para configurar proveedores y URL externas.",
+			"noExternalUrlTitle": "El acceso remoto está habilitado, pero aún no es accesible",
+			"noExternalUrlDescription": "El acceso remoto está habilitado, pero todavía no hay ninguna URL externa disponible. Habilite un proveedor o añada una URL externa manual en los ajustes.",
 			"okTitle": "El acceso remoto está en buen estado",
 			"okDescription": "No se ha notificado ningún aviso de seguridad.",
 			"advisoriesTitle": "Un aviso | {count} avisos",

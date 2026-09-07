@@ -20,7 +20,8 @@
 	},
 	"texts": {
 		"cardDescription": "Acceso privado a través de tu tailnet, con HTTPS mediante Tailscale Serve.",
-		"funnelWarning": "Funnel publica esta instalación en internet. El inicio de sesión de Smart Panel es la única protección."
+		"funnelWarning": "Funnel publica esta instalación en internet. El inicio de sesión de Smart Panel es la única protección.",
+		"cannotBeUsedYetTitle": "Aún no se puede usar"
 	},
 	"buttons": {
 		"setup": "Configurar",
@@ -29,7 +30,8 @@
 		"disconnect": "Desconectar",
 		"reconnect": "Reconectar",
 		"signOut": "Cerrar sesión",
-		"resetPreferences": "Restablecer preferencias"
+		"resetPreferences": "Restablecer preferencias",
+		"copy": "Copiar"
 	},
 	"fields": {
 		"tailnet": "Tailnet",
@@ -90,10 +92,19 @@
 		"preferencesResetFailed": "No se pudieron restablecer las preferencias de Tailscale",
 		"urlCopied": "La URL se ha copiado al portapapeles",
 		"copyFailed": "No se pudo copiar la URL al portapapeles",
+		"commandCopied": "El comando se ha copiado al portapapeles",
+		"commandCopyFailed": "No se pudo copiar el comando al portapapeles",
 		"config": {
 			"edited": "La configuración de Tailscale se ha actualizado correctamente",
 			"notEdited": "No se pudo actualizar la configuración de Tailscale"
 		}
+	},
+	"errors": {
+		"operatorNotGranted": "El usuario de servicio de Smart Panel no ha sido concedido como operador de Tailscale. Ejecute el siguiente comando y vuelva a intentarlo.",
+		"daemonNotActive": "El demonio de Tailscale no se está ejecutando. Ejecute «sudo systemctl enable --now tailscaled» y vuelva a intentarlo.",
+		"notSignedIn": "Este nodo aún no ha iniciado sesión en Tailscale. Utilice primero Iniciar sesión.",
+		"privilegedWorkerUnavailable": "Los trabajos de configuración privilegiados no están disponibles actualmente en esta instalación. Vuelva a ejecutar «sudo smart-panel-service install» o añada el permiso en sudoers, y luego vuelva a intentarlo.",
+		"platformUnsupported": "Esta plataforma no puede ejecutar la configuración de Tailscale automáticamente. Prepare Tailscale manualmente y luego use Iniciar sesión."
 	},
 	"wizard": {
 		"title": "Configurar Tailscale",
@@ -112,6 +123,7 @@
 		"waitingForLink": "Solicitando el enlace de inicio de sesión...",
 		"qrAlt": "Código QR con el enlace de inicio de sesión de Tailscale",
 		"doneDescription": "Tailscale está conectado. Esta instalación es accesible en las direcciones siguientes.",
+		"setupUnavailable": "La configuración automática no está disponible en esta instalación.",
 		"tabs": {
 			"interactive": "Iniciar sesión",
 			"advanced": "Avanzado"
@@ -129,7 +141,9 @@
 			"saveAndContinue": "Guardar y continuar",
 			"skip": "Omitir",
 			"close": "Cerrar",
-			"copy": "Copiar"
+			"copy": "Copiar",
+			"recheck": "Volver a comprobar",
+			"runItYourself": "Ejecutarlo manualmente"
 		}
 	}
 }

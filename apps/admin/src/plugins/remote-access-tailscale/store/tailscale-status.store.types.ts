@@ -7,7 +7,10 @@ import { z } from 'zod';
 import {
 	TailscaleInstallResultSchema,
 	TailscaleLoginResultSchema,
+	TailscalePrivilegedSetupSchema,
+	TailscaleRequirementRemedySchema,
 	TailscaleRequirementSchema,
+	TailscaleSetupJobSchema,
 	TailscaleSetupProgressSchema,
 	TailscaleStatusOnEventActionPayloadSchema,
 	TailscaleStatusSchema,
@@ -17,7 +20,13 @@ import {
 // STORE STATE
 // ===========
 
+export type ITailscaleRequirementRemedy = z.infer<typeof TailscaleRequirementRemedySchema>;
+
 export type ITailscaleRequirement = z.infer<typeof TailscaleRequirementSchema>;
+
+export type ITailscaleSetupJob = z.infer<typeof TailscaleSetupJobSchema>;
+
+export type ITailscalePrivilegedSetup = z.infer<typeof TailscalePrivilegedSetupSchema>;
 
 export type ITailscaleStatus = z.infer<typeof TailscaleStatusSchema>;
 

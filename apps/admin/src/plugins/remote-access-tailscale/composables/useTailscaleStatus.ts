@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
 import { tailscaleStatusStoreKey } from '../store/keys';
-import type { ITailscaleRequirement, ITailscaleStatus } from '../store/tailscale-status.store.types';
+import type { ITailscalePrivilegedSetup, ITailscaleRequirement, ITailscaleSetupJob, ITailscaleStatus } from '../store/tailscale-status.store.types';
 
 import type { IUseTailscaleStatus } from './types';
 
@@ -23,6 +23,15 @@ export const useTailscaleStatus = (): IUseTailscaleStatus => {
 	const status = computed<ITailscaleStatus | null>((): ITailscaleStatus | null => data.value);
 
 	const requirements = computed<ITailscaleRequirement[]>((): ITailscaleRequirement[] => data.value?.requirements ?? []);
+
+	// Last known privileged setup job (D12/RA-22) - lets the wizard poll `GET /status` as a
+	// fallback to the `Setup.Progress` websocket event and resume its progress view after a page
+	// reload, purely from whatever this field already holds.
+	const setup = computed<ITailscaleSetupJob | null>((): ITailscaleSetupJob | null => data.value?.setup ?? null);
+
+	// Whether a privileged setup job can run on this installation right now (D12) - `null` only
+	// before the first successful fetch; once loaded, the backend always includes this field.
+	const privilegedSetup = computed<ITailscalePrivilegedSetup | null>((): ITailscalePrivilegedSetup | null => data.value?.privilegedSetup ?? null);
 
 	const isLoading = computed<boolean>((): boolean => {
 		if (data.value !== null) {
@@ -47,6 +56,8 @@ export const useTailscaleStatus = (): IUseTailscaleStatus => {
 	return {
 		status,
 		requirements,
+		setup,
+		privilegedSetup,
 		isLoading,
 		isLoggingOut,
 		isResettingPreferences,

@@ -20,7 +20,8 @@
 	},
 	"texts": {
 		"cardDescription": "Private access over your tailnet, with HTTPS through Tailscale Serve.",
-		"funnelWarning": "Funnel publishes this installation to the public internet. Smart Panel sign-in is the only gate protecting it."
+		"funnelWarning": "Funnel publishes this installation to the public internet. Smart Panel sign-in is the only gate protecting it.",
+		"cannotBeUsedYetTitle": "Cannot be used yet"
 	},
 	"buttons": {
 		"setup": "Set up",
@@ -29,7 +30,8 @@
 		"disconnect": "Disconnect",
 		"reconnect": "Reconnect",
 		"signOut": "Sign out",
-		"resetPreferences": "Reset preferences"
+		"resetPreferences": "Reset preferences",
+		"copy": "Copy"
 	},
 	"fields": {
 		"tailnet": "Tailnet",
@@ -90,10 +92,19 @@
 		"preferencesResetFailed": "Failed to reset Tailscale preferences",
 		"urlCopied": "URL has been copied to the clipboard",
 		"copyFailed": "Failed to copy the URL to the clipboard",
+		"commandCopied": "Command has been copied to the clipboard",
+		"commandCopyFailed": "Failed to copy the command to the clipboard",
 		"config": {
 			"edited": "Tailscale configuration has been successfully updated",
 			"notEdited": "Failed to update Tailscale configuration"
 		}
+	},
+	"errors": {
+		"operatorNotGranted": "The Smart Panel service user has not been granted as the Tailscale operator. Run the command below, then try again.",
+		"daemonNotActive": "The Tailscale daemon is not running. Run \"sudo systemctl enable --now tailscaled\", then try again.",
+		"notSignedIn": "This node is not signed in to Tailscale yet. Use Sign in first.",
+		"privilegedWorkerUnavailable": "Privileged setup jobs are currently unavailable on this installation. Re-run \"sudo smart-panel-service install\", or add the sudoers grant, then try again.",
+		"platformUnsupported": "This platform cannot run Tailscale setup automatically. Prepare Tailscale manually, then use Sign in."
 	},
 	"wizard": {
 		"title": "Set up Tailscale",
@@ -112,6 +123,7 @@
 		"waitingForLink": "Requesting the sign-in link...",
 		"qrAlt": "QR code encoding the Tailscale sign-in link",
 		"doneDescription": "Tailscale is connected. This installation is reachable at the URLs below.",
+		"setupUnavailable": "Automated setup is not available on this installation.",
 		"tabs": {
 			"interactive": "Sign in",
 			"advanced": "Advanced"
@@ -129,7 +141,9 @@
 			"saveAndContinue": "Save and continue",
 			"skip": "Skip",
 			"close": "Close",
-			"copy": "Copy"
+			"copy": "Copy",
+			"recheck": "Re-check",
+			"runItYourself": "Run it yourself"
 		}
 	}
 }

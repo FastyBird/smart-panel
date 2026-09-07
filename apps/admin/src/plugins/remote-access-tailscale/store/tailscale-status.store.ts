@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import { getErrorReason, useBackend, useLogger } from '../../../common';
+import { getErrorCode, getErrorReason, useBackend, useLogger } from '../../../common';
 import { EventType } from '../../../modules/remote-access';
 import type {
 	RemoteAccessTailscalePluginCreateInstallOperation,
@@ -98,7 +98,9 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 
 					throw new RemoteAccessTailscaleApiException(
 						getErrorReason<RemoteAccessTailscalePluginGetStatusOperation>(error, 'Failed to load the Tailscale status.'),
-						httpResponse.status
+						httpResponse.status,
+						null,
+						getErrorCode<RemoteAccessTailscalePluginGetStatusOperation>(error)
 					);
 				} finally {
 					semaphore.value.getting = false;
@@ -129,7 +131,9 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 
 				throw new RemoteAccessTailscaleApiException(
 					getErrorReason<RemoteAccessTailscalePluginCreateInstallOperation>(error, 'Failed to start the Tailscale setup job.'),
-					httpResponse.status
+					httpResponse.status,
+					null,
+					getErrorCode<RemoteAccessTailscalePluginCreateInstallOperation>(error)
 				);
 			} finally {
 				semaphore.value.installing = false;
@@ -168,7 +172,9 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 
 				throw new RemoteAccessTailscaleApiException(
 					getErrorReason<RemoteAccessTailscalePluginCreateLoginOperation>(error, 'Failed to sign in to Tailscale.'),
-					httpResponse.status
+					httpResponse.status,
+					null,
+					getErrorCode<RemoteAccessTailscalePluginCreateLoginOperation>(error)
 				);
 			} finally {
 				semaphore.value.loggingIn = false;
@@ -192,7 +198,9 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 
 				throw new RemoteAccessTailscaleApiException(
 					getErrorReason<RemoteAccessTailscalePluginCreateLogoutOperation>(error, 'Failed to sign out of Tailscale.'),
-					httpResponse.status
+					httpResponse.status,
+					null,
+					getErrorCode<RemoteAccessTailscalePluginCreateLogoutOperation>(error)
 				);
 			} finally {
 				semaphore.value.loggingOut = false;
@@ -216,7 +224,9 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 
 				throw new RemoteAccessTailscaleApiException(
 					getErrorReason<RemoteAccessTailscalePluginCreateResetPreferencesOperation>(error, 'Failed to reset Tailscale preferences.'),
-					httpResponse.status
+					httpResponse.status,
+					null,
+					getErrorCode<RemoteAccessTailscalePluginCreateResetPreferencesOperation>(error)
 				);
 			} finally {
 				semaphore.value.resettingPreferences = false;

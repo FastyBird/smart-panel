@@ -21,3 +21,8 @@ export const TAILSCALE_LOGIN_POLL_INTERVAL_MS = 3_000;
 // `useTailscaleLogin`: give up polling after this long even if the node never leaves
 // `pending-auth` (matches the CLI's own `--timeout=10m` on the interactive sign-in).
 export const TAILSCALE_LOGIN_POLL_TIMEOUT_MS = 10 * 60 * 1000;
+
+// `useTailscaleSetup`: poll `GET /status` at this interval while a privileged setup job's `state`
+// is `running` - a fallback to the `RemoteAccessModule.Setup.Progress` websocket event so a lost
+// websocket or a page reload never strands the wizard's spinner. Same interval as the sign-in poll.
+export const TAILSCALE_SETUP_POLL_INTERVAL_MS = 3_000;

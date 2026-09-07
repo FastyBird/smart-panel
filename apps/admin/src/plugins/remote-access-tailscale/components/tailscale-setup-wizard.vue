@@ -47,34 +47,123 @@
 				</ul>
 
 				<div
-					v-if="progress && progress.state === 'running'"
+					v-if="effectiveProgress && effectiveProgress.state === 'running'"
 					class="flex items-center gap-2 text-sm mb-4"
 				>
 					<el-icon class="is-loading">
 						<icon icon="mdi:loading" />
 					</el-icon>
-					<span>{{ progress.message || progress.step || t('remoteAccessTailscalePlugin.wizard.settingUp') }}</span>
+					<span>{{ effectiveProgress.message || effectiveProgress.step || t('remoteAccessTailscalePlugin.wizard.settingUp') }}</span>
 				</div>
 
 				<el-alert
-					v-if="progress && (progress.state === 'failed' || progress.state === 'timeout')"
+					v-if="effectiveProgress && (effectiveProgress.state === 'failed' || effectiveProgress.state === 'timeout')"
 					type="error"
-					:title="progress.message || t('remoteAccessTailscalePlugin.wizard.setupFailed')"
+					:title="effectiveProgress.message || t('remoteAccessTailscalePlugin.wizard.setupFailed')"
 					:closable="false"
 					class="mb-4!"
 				/>
 
-				<el-button
-					type="primary"
-					:loading="isInstalling || progress?.state === 'running'"
-					@click="onInstall"
-				>
-					{{ t('remoteAccessTailscalePlugin.wizard.buttons.startSetup') }}
-				</el-button>
+				<el-alert
+					v-if="installErrorHintKey"
+					type="warning"
+					:title="t(installErrorHintKey)"
+					:closable="false"
+					show-icon
+					class="mb-4!"
+				/>
+
+				<!-- D12: privileged setup is available - offer the automated button, plus a manual fallback for anyone who prefers doing it by hand. -->
+				<template v-if="!privilegedSetupUnavailable">
+					<el-button
+						type="primary"
+						:loading="isInstalling || effectiveProgress?.state === 'running'"
+						@click="onInstall"
+					>
+						{{ t('remoteAccessTailscalePlugin.wizard.buttons.startSetup') }}
+					</el-button>
+
+					<el-collapse
+						v-if="remedyPlan.commands.length > 0 || remedyPlan.notes.length > 0"
+						class="mt-4"
+					>
+						<el-collapse-item
+							:title="t('remoteAccessTailscalePlugin.wizard.buttons.runItYourself')"
+							name="manual"
+						>
+							<div
+								v-if="remedyPlan.commands.length > 0"
+								class="flex items-start gap-2"
+							>
+								<pre class="font-mono text-xs bg-gray-100 rounded px-2 py-1 flex-1 whitespace-pre-wrap break-all">{{ remedyCommandText }}</pre>
+								<el-button
+									size="small"
+									@click="onCopyRemedyCommands"
+								>
+									{{ t('remoteAccessTailscalePlugin.wizard.buttons.copy') }}
+								</el-button>
+							</div>
+							<p
+								v-for="(note, index) in remedyPlan.notes"
+								:key="index"
+								class="text-sm"
+							>
+								{{ note }}
+							</p>
+						</el-collapse-item>
+					</el-collapse>
+				</template>
+
+				<!-- D12: privileged setup is unavailable - show why, plus the manual remedy for every unsatisfied requirement. -->
+				<template v-else>
+					<el-alert
+						type="warning"
+						:title="privilegedSetupReason || t('remoteAccessTailscalePlugin.wizard.setupUnavailable')"
+						:closable="false"
+						show-icon
+						class="mb-4!"
+					/>
+
+					<div
+						v-if="remedyPlan.commands.length > 0"
+						class="flex items-start gap-2 mb-4"
+					>
+						<pre class="font-mono text-xs bg-gray-100 rounded px-2 py-1 flex-1 whitespace-pre-wrap break-all">{{ remedyCommandText }}</pre>
+						<el-button
+							size="small"
+							@click="onCopyRemedyCommands"
+						>
+							{{ t('remoteAccessTailscalePlugin.wizard.buttons.copy') }}
+						</el-button>
+					</div>
+					<p
+						v-for="(note, index) in remedyPlan.notes"
+						:key="index"
+						class="text-sm mb-4"
+					>
+						{{ note }}
+					</p>
+
+					<el-button
+						:loading="isRechecking"
+						@click="onRecheck"
+					>
+						{{ t('remoteAccessTailscalePlugin.wizard.buttons.recheck') }}
+					</el-button>
+				</template>
 			</template>
 
 			<!-- Sign in -->
 			<template v-else-if="currentStep === 'signin'">
+				<el-alert
+					v-if="loginErrorHintKey"
+					type="warning"
+					:title="t(loginErrorHintKey)"
+					:closable="false"
+					show-icon
+					class="mb-4!"
+				/>
+
 				<el-tabs v-model="signInTab">
 					<el-tab-pane
 						:label="t('remoteAccessTailscalePlugin.wizard.tabs.interactive')"
@@ -248,7 +337,21 @@
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElDialog, ElForm, ElFormItem, ElIcon, ElInput, ElStep, ElSteps, ElTabPane, ElTabs } from 'element-plus';
+import {
+	ElAlert,
+	ElButton,
+	ElCollapse,
+	ElCollapseItem,
+	ElDialog,
+	ElForm,
+	ElFormItem,
+	ElIcon,
+	ElInput,
+	ElStep,
+	ElSteps,
+	ElTabPane,
+	ElTabs,
+} from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -257,6 +360,7 @@ import { FormResult, type FormResultType, useConfigPlugin } from '../../../modul
 import { useTailscaleLogin, useTailscaleSetup, useTailscaleStatus } from '../composables';
 import { REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME } from '../remote-access-tailscale.constants';
 import { RemoteAccessTailscaleApiException } from '../remote-access-tailscale.exceptions';
+import { buildTailscaleRemedyPlan, flashTailscaleApiError, resolveTailscaleErrorHintKey } from '../utils/provider-actions';
 
 import TailscaleConfigForm from './tailscale-config-form.vue';
 import type { ITailscaleSetupWizardProps, TailscaleWizardStep } from './tailscale-setup-wizard.types';
@@ -287,8 +391,8 @@ const goToStep = (step: TailscaleWizardStep): void => {
 	currentStep.value = step;
 };
 
-const { status, requirements, fetchStatus } = useTailscaleStatus();
-const { progress, isInstalling, install } = useTailscaleSetup();
+const { status, requirements, setup, privilegedSetup, fetchStatus } = useTailscaleStatus();
+const { progress, isInstalling, install, stopPolling: stopSetupPolling } = useTailscaleSetup();
 const { isLoggingIn, isPolling, login, stopPolling } = useTailscaleLogin();
 const { configPlugin, fetchConfigPlugin } = useConfigPlugin({ type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME });
 
@@ -300,43 +404,103 @@ const qr = ref<string | undefined>(undefined);
 const optionsFormSubmit = ref<boolean>(false);
 const optionsFormResult = ref<FormResultType>(FormResult.NONE);
 
+const isRechecking = ref<boolean>(false);
+const installErrorCode = ref<string | null>(null);
+const loginErrorCode = ref<string | null>(null);
+
 const endpoints = computed(() => status.value?.endpoints ?? []);
+
+// Prefers the live `Setup.Progress` websocket event; falls back to the polled `GET /status`
+// `setup` job (kept current by `useTailscaleSetup`'s own poll) once a websocket event has arrived
+// at least once, or right after a page reload before any websocket event has arrived at all -
+// this is what lets the progress view resume purely from `GET /status`, with no extra endpoint.
+const effectiveProgress = computed(() => {
+	if (progress.value) {
+		return progress.value;
+	}
+
+	if (setup.value) {
+		return { state: setup.value.state, step: setup.value.step ?? undefined, message: setup.value.message ?? undefined };
+	}
+
+	return null;
+});
+
+const privilegedSetupUnavailable = computed<boolean>(() => privilegedSetup.value !== null && !privilegedSetup.value.available);
+
+const privilegedSetupReason = computed<string | null>(() => privilegedSetup.value?.reason ?? null);
+
+// D12: every unsatisfied requirement's manual remedy, concatenated into one copyable block (used
+// both by the "Run it yourself" disclosure when setup is available, and as the primary fallback
+// when it is not).
+const remedyPlan = computed(() => buildTailscaleRemedyPlan(requirements.value));
+
+const remedyCommandText = computed<string>(() => remedyPlan.value.commands.join('\n'));
+
+const installErrorHintKey = computed<string | null>(() => resolveTailscaleErrorHintKey(installErrorCode.value));
+
+const loginErrorHintKey = computed<string | null>(() => resolveTailscaleErrorHintKey(loginErrorCode.value));
 
 // The backend gives a specific, actionable reason for these status codes (install: 409 a setup
 // job is already running - transient, retry shortly; 422 this platform/override can never run
 // one - permanent. login: 409 a sign-in is already in flight). Anything else (a plain 500, a
 // network failure) has no such structured reason, so it falls back to a translated generic
 // message instead of surfacing raw, unlocalized backend text.
-const flashApiError = (error: unknown, meaningfulCodes: number[], fallback: string): void => {
-	if (error instanceof RemoteAccessTailscaleApiException && error.code !== null && meaningfulCodes.includes(error.code)) {
-		flashMessage.error(error.message);
-
-		return;
-	}
-
-	flashMessage.error(fallback);
-};
+const flashApiError = (error: unknown, meaningfulCodes: number[], fallback: string): void =>
+	flashTailscaleApiError(error, meaningfulCodes, fallback, flashMessage.error);
 
 const onInstall = async (): Promise<void> => {
+	installErrorCode.value = null;
+
 	try {
 		await install();
 	} catch (error) {
+		installErrorCode.value = error instanceof RemoteAccessTailscaleApiException ? error.errorCode : null;
+
 		flashApiError(error, [409, 422], t('remoteAccessTailscalePlugin.messages.setupFailed'));
 	}
 };
 
+const onRecheck = async (): Promise<void> => {
+	isRechecking.value = true;
+
+	try {
+		await fetchStatus();
+	} catch (error) {
+		flashApiError(error, [409, 422], t('remoteAccessTailscalePlugin.messages.requestError'));
+	} finally {
+		isRechecking.value = false;
+	}
+};
+
+const onCopyRemedyCommands = async (): Promise<void> => {
+	const copied = await copy(remedyCommandText.value);
+
+	if (copied) {
+		flashMessage.success(t('remoteAccessTailscalePlugin.messages.commandCopied'));
+	} else {
+		flashMessage.error(t('remoteAccessTailscalePlugin.messages.commandCopyFailed'));
+	}
+};
+
 const onInteractiveLogin = async (): Promise<void> => {
+	loginErrorCode.value = null;
+
 	try {
 		const result = await login();
 
 		authUrl.value = result.authUrl;
 		qr.value = result.qr;
 	} catch (error) {
+		loginErrorCode.value = error instanceof RemoteAccessTailscaleApiException ? error.errorCode : null;
+
 		flashApiError(error, [409], t('remoteAccessTailscalePlugin.messages.loginFailed'));
 	}
 };
 
 const onKeyedLogin = async (): Promise<void> => {
+	loginErrorCode.value = null;
+
 	try {
 		const result = await login(authKey.value);
 
@@ -354,6 +518,7 @@ const onKeyedLogin = async (): Promise<void> => {
 		goToStep('options');
 	} catch (error) {
 		authKey.value = '';
+		loginErrorCode.value = error instanceof RemoteAccessTailscaleApiException ? error.errorCode : null;
 
 		flashApiError(error, [409], t('remoteAccessTailscalePlugin.messages.loginFailed'));
 	}
@@ -385,9 +550,10 @@ const onDialogUpdate = (value: boolean): void => {
 
 // Progress reaching a terminal state re-checks the requirements/status and, once satisfied,
 // moves on to sign-in on its own - the admin does not have to notice the job finished and press
-// anything.
+// anything. Watches `effectiveProgress` (websocket, or the polled status as a fallback) so this
+// still fires when the websocket event was missed and only the poll ever saw `complete`.
 watch(
-	(): string | undefined => progress.value?.state,
+	(): string | undefined => effectiveProgress.value?.state,
 	async (state): Promise<void> => {
 		if (state !== 'complete') {
 			return;
@@ -445,10 +611,13 @@ watch(
 			qr.value = undefined;
 			authKey.value = '';
 			signInTab.value = 'interactive';
+			installErrorCode.value = null;
+			loginErrorCode.value = null;
 
 			void fetchStatus();
 		} else {
 			stopPolling();
+			stopSetupPolling();
 		}
 	},
 	{ immediate: true }
@@ -472,9 +641,11 @@ watch(
 	}
 );
 
-// The `visible` watcher stops the sign-in poll when the dialog closes; leaving the page with the dialog
-// still open would otherwise keep polling until the login timeout.
+// The `visible` watcher stops both polls when the dialog closes; leaving the page with the dialog
+// still open would otherwise keep polling until the login timeout (sign-in) or forever (setup, an
+// unmount is the only thing that stops it once the job is genuinely still running).
 onUnmounted(() => {
 	stopPolling();
+	stopSetupPolling();
 });
 </script>
