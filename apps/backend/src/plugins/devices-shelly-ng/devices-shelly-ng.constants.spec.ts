@@ -188,7 +188,7 @@ describe('Shelly NG energy meters', () => {
 			for (const model of descriptor.models) {
 				try {
 					// Get the device class for this model from the library
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+
 					const DeviceClass = (Device as unknown as { getClass: (model: string) => unknown }).getClass(model);
 
 					if (!DeviceClass) {
@@ -197,7 +197,7 @@ describe('Shelly NG energy meters', () => {
 					}
 
 					// Construct an instance with minimal info and our stub handler
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+
 					const instance = new (DeviceClass as new (
 						info: { id: string; mac: string; model?: string },
 						handler: unknown,
@@ -216,7 +216,9 @@ describe('Shelly NG energy meters', () => {
 
 								if (knownDrift.has(driftKey)) {
 									// Known drift, log it but don't fail (issue #978)
-									knownDriftFound.push(`Model ${model}: descriptor declares ${key} but library device class does not expose it`);
+									knownDriftFound.push(
+										`Model ${model}: descriptor declares ${key} but library device class does not expose it`,
+									);
 								} else {
 									// New drift, fail the test
 									errors.push(`Model ${model}: descriptor declares ${key} but library device class does not expose it`);
@@ -243,13 +245,11 @@ describe('Shelly NG energy meters', () => {
 
 		// Log known drift as informational (tracked in issue #978)
 		if (knownDriftFound.length > 0) {
-			// eslint-disable-next-line no-console
 			console.warn('Known descriptor drift (issue #978, not fixed per plan §16 decision 2):', knownDriftFound);
 		}
 
 		// Log undeclared components as informational (follow-up #978)
 		if (undeclaredComponents.length > 0) {
-			// eslint-disable-next-line no-console
 			console.warn('Components exposed by library but not declared in descriptor (issue #978):', undeclaredComponents);
 		}
 
