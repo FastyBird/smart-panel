@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { RemoteAccessTailscalePluginConfigModel } from '../models/config.model';
 
-import { TailscaleCliService, TailscaleServeStatus, TailscaleStatus } from './tailscale-cli.service';
+import { TailscaleCliError, TailscaleCliService, TailscaleServeStatus, TailscaleStatus } from './tailscale-cli.service';
 import { TailscaleServeService } from './tailscale-serve.service';
 
 const PORT = 3000;
@@ -116,12 +116,101 @@ describe('TailscaleServeService', () => {
 		expect(service).toBeDefined();
 	});
 
-	describe('apply — enabling private (serve), https capability present', () => {
+	describe('read — never mutates, only reads back current state', () => {
+		it('reports nothing when no Serve config exists, without issuing any mutation', async () => {
+			cli.serveStatus.mockResolvedValue(NO_CONFIG);
+
+			const status = statusWithCaps(['https']);
+			const result = await service.read(defaultConfig(), PORT, status);
+
+			expect(cli.serveStatus).toHaveBeenCalledTimes(1);
+			expect(cli.serve).not.toHaveBeenCalled();
+			expect(cli.serveOff).not.toHaveBeenCalled();
+			expect(cli.funnelOn).not.toHaveBeenCalled();
+			expect(cli.serveReset).not.toHaveBeenCalled();
+			expect(result.endpoints).toEqual([]);
+			expect(result.proxyAddresses).toEqual([]);
+			expect(result.permissionDenied).toBe(false);
+		});
+
+		it('reports the existing private handler when one is already configured, without issuing any mutation', async () => {
+			cli.serveStatus.mockResolvedValue(OUR_PRIVATE_CONFIG);
+
+			const status = statusWithCaps(['https']);
+			const result = await service.read(defaultConfig(), PORT, status);
+
+			expect(cli.serveStatus).toHaveBeenCalledTimes(1);
+			expect(cli.serve).not.toHaveBeenCalled();
+			expect(cli.serveOff).not.toHaveBeenCalled();
+			expect(cli.funnelOn).not.toHaveBeenCalled();
+			expect(cli.serveReset).not.toHaveBeenCalled();
+			expect(result.endpoints).toEqual([
+				{ url: `https://${DNS_NAME}`, scope: 'private', https: true, label: 'Tailscale (HTTPS)' },
+			]);
+			expect(result.proxyAddresses).toEqual(['127.0.0.1', '::1']);
+			expect(result.permissionDenied).toBe(false);
+		});
+
+		it('reports the existing public (Funnel) handler when one is already configured, without issuing any mutation', async () => {
+			cli.serveStatus.mockResolvedValue(OUR_PUBLIC_CONFIG);
+
+			const config = defaultConfig();
+			config.funnel = true;
+
+			const status = statusWithCaps(['https', 'funnel']);
+			const result = await service.read(config, PORT, status);
+
+			expect(cli.serve).not.toHaveBeenCalled();
+			expect(cli.funnelOn).not.toHaveBeenCalled();
+			expect(cli.serveOff).not.toHaveBeenCalled();
+			expect(result.endpoints).toEqual([
+				{ url: `https://${DNS_NAME}`, scope: 'public', https: true, label: 'Tailscale (Funnel)' },
+			]);
+			expect(result.advisories).toContainEqual(expect.objectContaining({ code: 'public-exposure' }));
+		});
+
+		it('never reads Serve status (and reports nothing) when Self.DNSName is absent', async () => {
+			const status = statusWithCaps(['https'], { Self: { Online: true, CapMap: { https: null } } });
+			const result = await service.read(defaultConfig(), PORT, status);
+
+			expect(cli.serveStatus).not.toHaveBeenCalled();
+			expect(result.endpoints).toEqual([]);
+			expect(result.proxyAddresses).toEqual([]);
+		});
+
+		it('still reports the tailnet-https-disabled/funnel-not-allowed advisories from the raw status alone', async () => {
+			cli.serveStatus.mockResolvedValue(NO_CONFIG);
+
+			const config = defaultConfig();
+			config.funnel = true;
+
+			const status = statusWithCaps([]);
+			const result = await service.read(config, PORT, status);
+
+			expect(result.advisories).toContainEqual(expect.objectContaining({ code: 'tailnet-https-disabled' }));
+			expect(result.advisories).toContainEqual(expect.objectContaining({ code: 'funnel-not-allowed' }));
+		});
+
+		it('never throws when reading the serve status fails', async () => {
+			cli.serveStatus.mockRejectedValue(new Error('daemon down'));
+
+			const status = statusWithCaps(['https']);
+
+			await expect(service.read(defaultConfig(), PORT, status)).resolves.toEqual({
+				endpoints: [],
+				proxyAddresses: [],
+				advisories: [],
+				permissionDenied: false,
+			});
+		});
+	});
+
+	describe('converge — enabling private (serve), https capability present', () => {
 		it('creates the handler with serve() when nothing is currently configured', async () => {
 			cli.serveStatus.mockResolvedValueOnce(NO_CONFIG).mockResolvedValueOnce(OUR_PRIVATE_CONFIG);
 
 			const status = statusWithCaps(['https']);
-			const result = await service.apply(defaultConfig(), PORT, status);
+			const result = await service.converge(defaultConfig(), PORT, status);
 
 			expect(cli.serve).toHaveBeenCalledWith(PORT);
 			expect(cli.funnelOn).not.toHaveBeenCalled();
@@ -137,7 +226,7 @@ describe('TailscaleServeService', () => {
 			cli.serveStatus.mockResolvedValue(OUR_PRIVATE_CONFIG);
 
 			const status = statusWithCaps(['https']);
-			await service.apply(defaultConfig(), PORT, status);
+			await service.converge(defaultConfig(), PORT, status);
 
 			expect(cli.serve).not.toHaveBeenCalled();
 			expect(cli.funnelOn).not.toHaveBeenCalled();
@@ -148,7 +237,7 @@ describe('TailscaleServeService', () => {
 			cli.serveStatus.mockResolvedValueOnce(OUR_PUBLIC_CONFIG).mockResolvedValueOnce(OUR_PRIVATE_CONFIG);
 
 			const status = statusWithCaps(['https', 'funnel']);
-			const result = await service.apply(defaultConfig(), PORT, status);
+			const result = await service.converge(defaultConfig(), PORT, status);
 
 			expect(cli.serve).toHaveBeenCalledWith(PORT);
 			expect(cli.funnelOn).not.toHaveBeenCalled();
@@ -157,7 +246,7 @@ describe('TailscaleServeService', () => {
 		});
 	});
 
-	describe('apply — enabling public (funnel), capabilities present', () => {
+	describe('converge — enabling public (funnel), capabilities present', () => {
 		it('upgrades from private to public with funnelOn()', async () => {
 			cli.serveStatus.mockResolvedValueOnce(OUR_PRIVATE_CONFIG).mockResolvedValueOnce(OUR_PUBLIC_CONFIG);
 
@@ -165,7 +254,7 @@ describe('TailscaleServeService', () => {
 			config.funnel = true;
 
 			const status = statusWithCaps(['https', 'funnel']);
-			const result = await service.apply(config, PORT, status);
+			const result = await service.converge(config, PORT, status);
 
 			expect(cli.funnelOn).toHaveBeenCalledWith(PORT);
 			expect(cli.serve).not.toHaveBeenCalled();
@@ -182,7 +271,7 @@ describe('TailscaleServeService', () => {
 			config.funnel = true;
 
 			const status = statusWithCaps(['https', 'funnel']);
-			await service.apply(config, PORT, status);
+			await service.converge(config, PORT, status);
 
 			expect(cli.funnelOn).toHaveBeenCalledWith(PORT);
 			expect(cli.serve).not.toHaveBeenCalled();
@@ -195,14 +284,14 @@ describe('TailscaleServeService', () => {
 			config.funnel = true;
 
 			const status = statusWithCaps(['https', 'funnel']);
-			await service.apply(config, PORT, status);
+			await service.converge(config, PORT, status);
 
 			expect(cli.funnelOn).not.toHaveBeenCalled();
 			expect(cli.serve).not.toHaveBeenCalled();
 		});
 	});
 
-	describe('apply — disabling (off)', () => {
+	describe('converge — disabling (off)', () => {
 		it('removes the handler with serveOff(), never serveReset(), when currently private', async () => {
 			cli.serveStatus.mockResolvedValueOnce(OUR_PRIVATE_CONFIG).mockResolvedValueOnce(NO_CONFIG);
 
@@ -210,7 +299,7 @@ describe('TailscaleServeService', () => {
 			config.serveHttps = false;
 
 			const status = statusWithCaps(['https']);
-			const result = await service.apply(config, PORT, status);
+			const result = await service.converge(config, PORT, status);
 
 			expect(cli.serveOff).toHaveBeenCalledTimes(1);
 			expect(cli.serveOff).toHaveBeenCalledWith();
@@ -227,7 +316,7 @@ describe('TailscaleServeService', () => {
 			config.serveHttps = false;
 
 			const status = statusWithCaps(['https', 'funnel']);
-			await service.apply(config, PORT, status);
+			await service.converge(config, PORT, status);
 
 			expect(cli.serveOff).toHaveBeenCalledTimes(1);
 			expect(cli.serveReset).not.toHaveBeenCalled();
@@ -240,7 +329,7 @@ describe('TailscaleServeService', () => {
 			config.serveHttps = false;
 
 			const status = statusWithCaps([]);
-			await service.apply(config, PORT, status);
+			await service.converge(config, PORT, status);
 
 			expect(cli.serveOff).not.toHaveBeenCalled();
 			expect(cli.serve).not.toHaveBeenCalled();
@@ -252,7 +341,7 @@ describe('TailscaleServeService', () => {
 			cli.serveStatus.mockResolvedValueOnce(OUR_PRIVATE_CONFIG).mockResolvedValueOnce(NO_CONFIG);
 
 			const status = statusWithCaps([]);
-			const result = await service.apply(defaultConfig(), PORT, status);
+			const result = await service.converge(defaultConfig(), PORT, status);
 
 			expect(cli.serveOff).toHaveBeenCalledTimes(1);
 			expect(cli.serveReset).not.toHaveBeenCalled();
@@ -266,7 +355,7 @@ describe('TailscaleServeService', () => {
 			config.serveHttps = false;
 
 			const status = statusWithCaps(['https']);
-			const result = await service.apply(config, PORT, status);
+			const result = await service.converge(config, PORT, status);
 
 			expect(cli.serveOff).toHaveBeenCalledTimes(1);
 			expect(cli.serveReset).not.toHaveBeenCalled();
@@ -280,7 +369,7 @@ describe('TailscaleServeService', () => {
 		});
 	});
 
-	describe('apply — drift: unrelated entries never look like our own handler', () => {
+	describe('converge — drift: unrelated entries never look like our own handler', () => {
 		it('an unrelated host on the same port is never read as our handler being active', async () => {
 			cli.serveStatus.mockResolvedValue(UNRELATED_HOST_CONFIG);
 
@@ -288,7 +377,7 @@ describe('TailscaleServeService', () => {
 			config.serveHttps = false;
 
 			const status = statusWithCaps([]);
-			await service.apply(config, PORT, status);
+			await service.converge(config, PORT, status);
 
 			// Desired is "off" and the (correctly scoped) current read is also
 			// "off" — no command is issued at all. A pre-fix, unscoped
@@ -306,7 +395,7 @@ describe('TailscaleServeService', () => {
 			config.serveHttps = false;
 
 			const status = statusWithCaps([]);
-			await service.apply(config, PORT, status);
+			await service.converge(config, PORT, status);
 
 			expect(cli.serveOff).not.toHaveBeenCalled();
 		});
@@ -320,7 +409,7 @@ describe('TailscaleServeService', () => {
 			cli.serveStatus.mockResolvedValueOnce(wrongTarget).mockResolvedValueOnce(OUR_PRIVATE_CONFIG);
 
 			const status = statusWithCaps(['https']);
-			await service.apply(defaultConfig(), PORT, status);
+			await service.converge(defaultConfig(), PORT, status);
 
 			// Desired is "private" and current reads as "off" (wrong target
 			// port), so serve() still runs to converge on the right target.
@@ -335,7 +424,7 @@ describe('TailscaleServeService', () => {
 			cli.serveStatus.mockResolvedValueOnce(noTcp).mockResolvedValueOnce(OUR_PRIVATE_CONFIG);
 
 			const status = statusWithCaps(['https']);
-			await service.apply(defaultConfig(), PORT, status);
+			await service.converge(defaultConfig(), PORT, status);
 
 			expect(cli.serve).toHaveBeenCalledWith(PORT);
 		});
@@ -345,7 +434,7 @@ describe('TailscaleServeService', () => {
 
 			// funnel: false — we want private only.
 			const status = statusWithCaps(['https', 'funnel']);
-			const result = await service.apply(defaultConfig(), PORT, status);
+			const result = await service.converge(defaultConfig(), PORT, status);
 
 			// Correctly scoped: current reads as "private" (matches desired),
 			// so nothing is called. An unscoped isFunnelActive() would have
@@ -359,12 +448,12 @@ describe('TailscaleServeService', () => {
 		});
 	});
 
-	describe('apply — capability missing', () => {
+	describe('converge — capability missing', () => {
 		it('never calls serve() or funnelOn() when the https capability is missing, even though serve_https is true', async () => {
 			cli.serveStatus.mockResolvedValue(NO_CONFIG);
 
 			const status = statusWithCaps([]);
-			const result = await service.apply(defaultConfig(), PORT, status);
+			const result = await service.converge(defaultConfig(), PORT, status);
 
 			expect(cli.serve).not.toHaveBeenCalled();
 			expect(cli.funnelOn).not.toHaveBeenCalled();
@@ -379,7 +468,7 @@ describe('TailscaleServeService', () => {
 			config.funnel = true;
 
 			const status = statusWithCaps(['https']);
-			const result = await service.apply(config, PORT, status);
+			const result = await service.converge(config, PORT, status);
 
 			expect(cli.serve).toHaveBeenCalledWith(PORT);
 			expect(cli.funnelOn).not.toHaveBeenCalled();
@@ -393,7 +482,7 @@ describe('TailscaleServeService', () => {
 			config.funnel = true;
 
 			const status = statusWithCaps(['https']);
-			await service.apply(config, PORT, status);
+			await service.converge(config, PORT, status);
 
 			expect(cli.serve).toHaveBeenCalledWith(PORT);
 			expect(cli.funnelOn).not.toHaveBeenCalled();
@@ -401,10 +490,10 @@ describe('TailscaleServeService', () => {
 		});
 	});
 
-	describe('apply — endpoints without a DNS name', () => {
+	describe('converge — endpoints without a DNS name', () => {
 		it('applies nothing and publishes no endpoint when Self.DNSName is absent', async () => {
 			const status = statusWithCaps(['https'], { Self: { Online: true, CapMap: { https: null } } });
-			const result = await service.apply(defaultConfig(), PORT, status);
+			const result = await service.converge(defaultConfig(), PORT, status);
 
 			expect(cli.serveStatus).not.toHaveBeenCalled();
 			expect(cli.serve).not.toHaveBeenCalled();
@@ -413,10 +502,10 @@ describe('TailscaleServeService', () => {
 		});
 	});
 
-	describe('apply — advisories', () => {
+	describe('converge — advisories', () => {
 		it('adds tailnet-https-disabled when serve_https is wanted but the https capability is missing', async () => {
 			const status = statusWithCaps([]);
-			const result = await service.apply(defaultConfig(), PORT, status);
+			const result = await service.converge(defaultConfig(), PORT, status);
 
 			expect(result.advisories).toContainEqual(
 				expect.objectContaining({ code: 'tailnet-https-disabled', severity: 'warning' }),
@@ -428,7 +517,7 @@ describe('TailscaleServeService', () => {
 			config.serveHttps = false;
 
 			const status = statusWithCaps([]);
-			const result = await service.apply(config, PORT, status);
+			const result = await service.converge(config, PORT, status);
 
 			expect(result.advisories).not.toContainEqual(expect.objectContaining({ code: 'tailnet-https-disabled' }));
 		});
@@ -437,7 +526,7 @@ describe('TailscaleServeService', () => {
 			cli.serveStatus.mockResolvedValue(OUR_PRIVATE_CONFIG);
 
 			const status = statusWithCaps(['https']);
-			const result = await service.apply(defaultConfig(), PORT, status);
+			const result = await service.converge(defaultConfig(), PORT, status);
 
 			expect(result.advisories).not.toContainEqual(expect.objectContaining({ code: 'tailnet-https-disabled' }));
 		});
@@ -449,7 +538,7 @@ describe('TailscaleServeService', () => {
 			config.funnel = true;
 
 			const status = statusWithCaps(['https']);
-			const result = await service.apply(config, PORT, status);
+			const result = await service.converge(config, PORT, status);
 
 			expect(result.advisories).toContainEqual(
 				expect.objectContaining({ code: 'funnel-not-allowed', severity: 'warning' }),
@@ -458,7 +547,7 @@ describe('TailscaleServeService', () => {
 
 		it('does not add funnel-not-allowed when funnel is off', async () => {
 			const status = statusWithCaps([]);
-			const result = await service.apply(defaultConfig(), PORT, status);
+			const result = await service.converge(defaultConfig(), PORT, status);
 
 			expect(result.advisories).not.toContainEqual(expect.objectContaining({ code: 'funnel-not-allowed' }));
 		});
@@ -470,7 +559,7 @@ describe('TailscaleServeService', () => {
 			config.funnel = true;
 
 			const status = statusWithCaps(['https', 'funnel']);
-			const result = await service.apply(config, PORT, status);
+			const result = await service.converge(config, PORT, status);
 
 			expect(result.advisories).toContainEqual(
 				expect.objectContaining({ code: 'public-exposure', severity: 'warning' }),
@@ -485,22 +574,23 @@ describe('TailscaleServeService', () => {
 			config.funnel = true;
 
 			const status = statusWithCaps(['https', 'funnel']);
-			const result = await service.apply(config, PORT, status);
+			const result = await service.converge(config, PORT, status);
 
 			expect(result.advisories).not.toContainEqual(expect.objectContaining({ code: 'public-exposure' }));
 		});
 	});
 
-	describe('apply — resilience', () => {
+	describe('converge — resilience', () => {
 		it('never throws when reading the serve status fails', async () => {
 			cli.serveStatus.mockRejectedValue(new Error('daemon down'));
 
 			const status = statusWithCaps(['https']);
 
-			await expect(service.apply(defaultConfig(), PORT, status)).resolves.toEqual({
+			await expect(service.converge(defaultConfig(), PORT, status)).resolves.toEqual({
 				endpoints: [],
 				proxyAddresses: [],
 				advisories: [],
+				permissionDenied: false,
 			});
 		});
 
@@ -509,9 +599,10 @@ describe('TailscaleServeService', () => {
 			cli.serve.mockRejectedValue(new Error('boom'));
 
 			const status = statusWithCaps(['https']);
-			const result = await service.apply(defaultConfig(), PORT, status);
+			const result = await service.converge(defaultConfig(), PORT, status);
 
 			expect(result.endpoints).toEqual([]);
+			expect(result.permissionDenied).toBe(false);
 		});
 
 		it('never throws when the mutating serveOff() call fails, and reports the pre-attempt (active) state', async () => {
@@ -522,9 +613,73 @@ describe('TailscaleServeService', () => {
 			config.serveHttps = false;
 
 			const status = statusWithCaps(['https']);
-			const result = await service.apply(config, PORT, status);
+			const result = await service.converge(config, PORT, status);
 
 			expect(result.endpoints[0]).toMatchObject({ scope: 'private' });
+			expect(result.permissionDenied).toBe(false);
+		});
+	});
+
+	describe('converge — permission-denied mutation failures', () => {
+		it('reports permissionDenied on the result when the mutating serve() call is denied, and reports the pre-attempt (inactive) state', async () => {
+			cli.serveStatus.mockResolvedValue(NO_CONFIG);
+			cli.serve.mockRejectedValue(new TailscaleCliError('permission-denied', 'Access denied: serve config denied'));
+
+			const status = statusWithCaps(['https']);
+			const result = await service.converge(defaultConfig(), PORT, status);
+
+			expect(result.permissionDenied).toBe(true);
+			expect(result.endpoints).toEqual([]);
+		});
+
+		it('reports permissionDenied when the mutating serveOff() call is denied', async () => {
+			cli.serveStatus.mockResolvedValue(OUR_PRIVATE_CONFIG);
+			cli.serveOff.mockRejectedValue(new TailscaleCliError('permission-denied', 'Access denied: serve config denied'));
+
+			const config = defaultConfig();
+			config.serveHttps = false;
+
+			const status = statusWithCaps(['https']);
+			const result = await service.converge(config, PORT, status);
+
+			expect(result.permissionDenied).toBe(true);
+		});
+
+		it('reports permissionDenied when the mutating funnelOn() call is denied', async () => {
+			cli.serveStatus.mockResolvedValue(OUR_PRIVATE_CONFIG);
+			cli.funnelOn.mockRejectedValue(new TailscaleCliError('permission-denied', 'Access denied: serve config denied'));
+
+			const config = defaultConfig();
+			config.funnel = true;
+
+			const status = statusWithCaps(['https', 'funnel']);
+			const result = await service.converge(config, PORT, status);
+
+			expect(result.permissionDenied).toBe(true);
+		});
+
+		it('never logs a warning itself for a permission-denied mutation failure — the caller owns the once-per-transition log line', async () => {
+			cli.serveStatus.mockResolvedValue(NO_CONFIG);
+			cli.serve.mockRejectedValue(new TailscaleCliError('permission-denied', 'Access denied: serve config denied'));
+
+			const warnSpy = jest.spyOn(service['logger'], 'warn');
+
+			const status = statusWithCaps(['https']);
+			await service.converge(defaultConfig(), PORT, status);
+
+			expect(warnSpy).not.toHaveBeenCalled();
+		});
+
+		it('does log a warning for a non-permission-denied mutation failure, unlike the denied case above', async () => {
+			cli.serveStatus.mockResolvedValue(NO_CONFIG);
+			cli.serve.mockRejectedValue(new Error('boom'));
+
+			const warnSpy = jest.spyOn(service['logger'], 'warn');
+
+			const status = statusWithCaps(['https']);
+			await service.converge(defaultConfig(), PORT, status);
+
+			expect(warnSpy).toHaveBeenCalledTimes(1);
 		});
 	});
 });

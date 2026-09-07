@@ -20,10 +20,15 @@ import { TailscaleNodeStopFailedException } from '../remote-access-tailscale.exc
 
 import { TailscaleCliError, TailscaleCliService, TailscaleStatus } from './tailscale-cli.service';
 import { TailscaleNodeManagedService, compareTailscaleVersions } from './tailscale-node-managed.service';
-import { TailscaleServeApplyResult, TailscaleServeService } from './tailscale-serve.service';
+import { TailscaleServeResult, TailscaleServeService } from './tailscale-serve.service';
 import { TailscaleStatusMapperService } from './tailscale-status-mapper.service';
 
-const EMPTY_SERVE_RESULT: TailscaleServeApplyResult = { endpoints: [], proxyAddresses: [], advisories: [] };
+const EMPTY_SERVE_RESULT: TailscaleServeResult = {
+	endpoints: [],
+	proxyAddresses: [],
+	advisories: [],
+	permissionDenied: false,
+};
 
 jest.mock('node:child_process', () => ({
 	...jest.requireActual<typeof import('node:child_process')>('node:child_process'),
@@ -104,7 +109,7 @@ describe('TailscaleNodeManagedService', () => {
 	let nestConfigServiceMock: { get: jest.Mock };
 	let platformServiceMock: { getPlatformTypeAsync: jest.Mock };
 	let eventEmitterMock: { emit: jest.Mock };
-	let serveServiceMock: { apply: jest.Mock };
+	let serveServiceMock: { read: jest.Mock; converge: jest.Mock };
 
 	const defaultConfig = (): RemoteAccessTailscalePluginConfigModel => {
 		const config = new RemoteAccessTailscalePluginConfigModel();
@@ -144,12 +149,15 @@ describe('TailscaleNodeManagedService', () => {
 		nestConfigServiceMock = { get: jest.fn().mockReturnValue(undefined) };
 		platformServiceMock = { getPlatformTypeAsync: jest.fn().mockResolvedValue(PlatformType.RASPBERRY) };
 		eventEmitterMock = { emit: jest.fn() };
-		// Serve/Funnel apply matrix and read-back parsing are covered in full
-		// by tailscale-serve.service.spec.ts; this mock defaults to "nothing
-		// to contribute" so every pre-existing test in this file (written
-		// before RA-6) keeps observing empty proxyAddresses/advisories and no
-		// extra endpoint unless a test below overrides it.
-		serveServiceMock = { apply: jest.fn().mockResolvedValue(EMPTY_SERVE_RESULT) };
+		// Serve/Funnel read/converge matrix and read-back parsing are covered
+		// in full by tailscale-serve.service.spec.ts; this mock defaults to
+		// "nothing to contribute" so every pre-existing test in this file
+		// (written before RA-6) keeps observing empty proxyAddresses/advisories
+		// and no extra endpoint unless a test below overrides it.
+		serveServiceMock = {
+			read: jest.fn().mockResolvedValue(EMPTY_SERVE_RESULT),
+			converge: jest.fn().mockResolvedValue(EMPTY_SERVE_RESULT),
+		};
 
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -1059,8 +1067,8 @@ describe('TailscaleNodeManagedService', () => {
 		});
 	});
 
-	describe('Serve/Funnel apply (RA-6)', () => {
-		it('calls TailscaleServeService.apply with the plugin config, backend port and raw status once connected', async () => {
+	describe('computeStatus() — Serve/Funnel read, never converge (RA-6 / RA-19)', () => {
+		it('calls TailscaleServeService.read with the plugin config, backend port and raw status once connected', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
 			// D2: computeStatus() short-circuits while this.state is 'stopped'
 			// (the default before the service ever starts), so exercising the
@@ -1069,11 +1077,21 @@ describe('TailscaleNodeManagedService', () => {
 
 			await service.computeStatus();
 
-			expect(serveServiceMock.apply).toHaveBeenCalledWith(
+			expect(serveServiceMock.read).toHaveBeenCalledWith(
 				expect.objectContaining({ serveHttps: true, funnel: false }),
 				3000,
 				expect.objectContaining({ BackendState: 'Running' }),
 			);
+		});
+
+		it('never calls converge — a GET must not mutate', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await service.start();
+
+			await service.computeStatus();
+
+			expect(serveServiceMock.read).toHaveBeenCalledTimes(1);
+			expect(serveServiceMock.converge).not.toHaveBeenCalled();
 		});
 
 		it('reads the backend port from FB_BACKEND_PORT instead of the 3000 default when set', async () => {
@@ -1083,18 +1101,19 @@ describe('TailscaleNodeManagedService', () => {
 
 			await service.computeStatus();
 
-			expect(serveServiceMock.apply).toHaveBeenCalledWith(expect.anything(), 8080, expect.anything());
+			expect(serveServiceMock.read).toHaveBeenCalledWith(expect.anything(), 8080, expect.anything());
 		});
 
 		it('merges the Serve result endpoints, proxyAddresses and advisories into the computed status', async () => {
-			const serveResult: TailscaleServeApplyResult = {
+			const serveResult: TailscaleServeResult = {
 				endpoints: [
 					{ url: 'https://panel.tailc0ffee.ts.net', scope: 'private', https: true, label: 'Tailscale (HTTPS)' },
 				],
 				proxyAddresses: ['127.0.0.1', '::1'],
 				advisories: [{ code: 'tailnet-https-disabled', severity: 'warning', message: 'x' }],
+				permissionDenied: false,
 			};
-			serveServiceMock.apply.mockResolvedValue(serveResult);
+			serveServiceMock.read.mockResolvedValue(serveResult);
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
 			await service.start();
 
@@ -1105,38 +1124,40 @@ describe('TailscaleNodeManagedService', () => {
 			expect(status.advisories).toEqual(expect.arrayContaining(serveResult.advisories));
 		});
 
-		it('does not call apply when the node is not connected', async () => {
+		it('does not call read when the node is not connected', async () => {
 			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
 			await service.start();
 
 			await service.computeStatus();
 
-			expect(serveServiceMock.apply).not.toHaveBeenCalled();
+			expect(serveServiceMock.read).not.toHaveBeenCalled();
 		});
 
-		it('does not call apply when the platform is unsupported', async () => {
+		it('does not call read when the platform is unsupported', async () => {
 			platformServiceMock.getPlatformTypeAsync.mockResolvedValue(PlatformType.DOCKER);
 			await service.start();
 
 			await service.computeStatus();
 
-			expect(serveServiceMock.apply).not.toHaveBeenCalled();
+			expect(serveServiceMock.read).not.toHaveBeenCalled();
 		});
 
-		it('never calls apply more than once per computeStatus() call', async () => {
+		it('never calls read more than once per computeStatus() call', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
 			await service.start();
 
 			await service.computeStatus();
 
-			expect(serveServiceMock.apply).toHaveBeenCalledTimes(1);
+			expect(serveServiceMock.read).toHaveBeenCalledTimes(1);
 		});
+	});
 
-		it('applies again immediately on a config change, without waiting for the next poll', async () => {
+	describe('onConfigChanged() — Serve/Funnel converge (RA-6 / RA-19)', () => {
+		it('converges again immediately on a config change, without waiting for the next poll', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
 			await service.start();
 			await jest.runOnlyPendingTimersAsync();
-			serveServiceMock.apply.mockClear();
+			serveServiceMock.converge.mockClear();
 
 			const changed = defaultConfig();
 			changed.funnel = true;
@@ -1144,39 +1165,161 @@ describe('TailscaleNodeManagedService', () => {
 
 			await service.onConfigChanged();
 
-			expect(serveServiceMock.apply).toHaveBeenCalledWith(
+			expect(serveServiceMock.converge).toHaveBeenCalledWith(
 				expect.objectContaining({ funnel: true }),
 				3000,
 				expect.objectContaining({ BackendState: 'Running' }),
 			);
 		});
 
-		it('does not apply on config change when the node has never held a key', async () => {
+		it('does not converge on config change when the node has never held a key', async () => {
 			cli.getStatus.mockResolvedValue({ BackendState: 'NeedsLogin' });
 			await service.start();
 
 			await service.onConfigChanged();
 
-			expect(serveServiceMock.apply).not.toHaveBeenCalled();
+			expect(serveServiceMock.converge).not.toHaveBeenCalled();
 		});
 
-		it('does not apply on config change when the node holds a key but is not connected', async () => {
+		it('does not converge on config change when the node holds a key but is not connected', async () => {
 			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
 			await service.start();
 
 			await service.onConfigChanged();
 
-			expect(serveServiceMock.apply).not.toHaveBeenCalled();
+			expect(serveServiceMock.converge).not.toHaveBeenCalled();
 		});
 
-		it('does not fail the config change when apply rejects', async () => {
+		it('does not fail the config change when converge rejects', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
 			await service.start();
 			await jest.runOnlyPendingTimersAsync();
 
-			serveServiceMock.apply.mockRejectedValueOnce(new Error('boom'));
+			serveServiceMock.converge.mockRejectedValueOnce(new Error('boom'));
 
 			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: false });
+		});
+	});
+
+	describe('pollTick() — Serve/Funnel converge gating (RA-19)', () => {
+		it('converges once per tick while every requirement is satisfied and the mapped state is connected', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+
+			expect(serveServiceMock.converge).toHaveBeenCalledTimes(1);
+			expect(serveServiceMock.converge).toHaveBeenCalledWith(
+				expect.objectContaining({ serveHttps: true, funnel: false }),
+				3000,
+				expect.objectContaining({ BackendState: 'Running' }),
+			);
+		});
+
+		it('never converges (no serve/funnel command issued) while the mapped state is not connected', async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+
+			expect(serveServiceMock.converge).not.toHaveBeenCalled();
+		});
+
+		it('never converges while operator-granted is unsatisfied (forces setup-required, so the mapped state is never reported connected)', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			cli.getPrefs.mockResolvedValue({ OperatorUser: 'someone-else' });
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+
+			expect(serveServiceMock.converge).not.toHaveBeenCalled();
+		});
+
+		it('never converges while a requirement other than operator-granted is unsatisfied, even though the mapped state is connected', async () => {
+			// daemon-active unsatisfied — deliberately independent of the raw
+			// status --json read below, which still reports Running/Online.
+			mockSystemctlActive(false);
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+
+			expect(serveServiceMock.converge).not.toHaveBeenCalled();
+		});
+
+		it('reads status only once per tick even while converging (no extra status --json call to converge)', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+			await service.start();
+			// start() itself makes its own getStatus() call before the poller's
+			// first tick — cleared so the count below reflects only the tick.
+			cli.getStatus.mockClear();
+
+			await jest.runOnlyPendingTimersAsync();
+
+			expect(cli.getStatus).toHaveBeenCalledTimes(1);
+			expect(serveServiceMock.converge).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('permission-denied Serve/Funnel converge (RA-19)', () => {
+		it('refreshes the operator-granted requirement and logs the denial once on the first denied tick', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			serveServiceMock.converge.mockResolvedValue({ ...EMPTY_SERVE_RESULT, permissionDenied: true });
+			const refreshSpy = jest.spyOn(service, 'refreshRequirements');
+			const warnSpy = jest.spyOn(service['logger'], 'warn');
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+
+			const permissionDeniedRefreshes = refreshSpy.mock.calls.filter(([reason]) => reason === 'permission-denied');
+			expect(permissionDeniedRefreshes).toHaveLength(1);
+			expect(warnSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not refresh or log again on a second consecutive denied tick while the denial persists', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			serveServiceMock.converge.mockResolvedValue({ ...EMPTY_SERVE_RESULT, permissionDenied: true });
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+
+			const refreshSpy = jest.spyOn(service, 'refreshRequirements');
+			const warnSpy = jest.spyOn(service['logger'], 'warn');
+
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
+
+			expect(serveServiceMock.converge).toHaveBeenCalledTimes(2);
+			const permissionDeniedRefreshes = refreshSpy.mock.calls.filter(([reason]) => reason === 'permission-denied');
+			expect(permissionDeniedRefreshes).toHaveLength(0);
+			expect(warnSpy).not.toHaveBeenCalled();
+		});
+
+		it('logs again once the denial clears (flips back to allowed)', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			serveServiceMock.converge.mockResolvedValue({ ...EMPTY_SERVE_RESULT, permissionDenied: true });
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+
+			serveServiceMock.converge.mockResolvedValue(EMPTY_SERVE_RESULT);
+			const refreshSpy = jest.spyOn(service, 'refreshRequirements');
+
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
+
+			// Clearing itself does not need a fresh requirements probe — only a
+			// *new* denial does (there is nothing to invalidate once the
+			// mutation stops failing).
+			expect(refreshSpy.mock.calls.filter(([reason]) => reason === 'permission-denied')).toHaveLength(0);
+
+			// A subsequent denial after having cleared logs again — proving the
+			// suppression is keyed off the transition, not a one-shot latch.
+			serveServiceMock.converge.mockResolvedValue({ ...EMPTY_SERVE_RESULT, permissionDenied: true });
+			const warnSpy = jest.spyOn(service['logger'], 'warn');
+
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
+
+			expect(warnSpy).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -1275,14 +1418,14 @@ describe('TailscaleNodeManagedService', () => {
 			);
 		});
 
-		it('never calls TailscaleServeService.apply once operator-granted is unsatisfied — it would only fail permission-denied too', async () => {
+		it('never calls TailscaleServeService.read once operator-granted is unsatisfied — a mutation would only fail permission-denied too', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
 			cli.getPrefs.mockResolvedValue({ OperatorUser: 'someone-else' });
 			await service.start();
 
 			await service.computeStatus();
 
-			expect(serveServiceMock.apply).not.toHaveBeenCalled();
+			expect(serveServiceMock.read).not.toHaveBeenCalled();
 		});
 
 		it('does not override the mapped state once operator-granted is satisfied again', async () => {
