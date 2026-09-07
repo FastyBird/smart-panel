@@ -13,6 +13,7 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
+import { EmitValueFn, emitFlattenedValue } from '../utils/transform.utils';
 
 const WS_PATH = '/api/v1/plugins/shelly-ng/ws';
 
@@ -203,44 +204,25 @@ export class ShellyWsServerService implements OnModuleDestroy {
 		const delegate = this.delegatesManager.get(deviceId);
 
 		if (delegate) {
-			// Route status values through the delegate's change pipeline.
-			// Flatten nested objects to dot-notation keys so handlers like
-			// "battery.percent" receive the leaf value, not the parent object.
-			for (const [key, values] of Object.entries(params)) {
-				if (key === 'ts' || typeof values !== 'object' || values === null) {
+			// Route status values through the delegate's change pipeline, using the same
+			// flattening helper the library WebSocket path uses so both producers emit the
+			// identical key shape (e.g. "battery" the object, and "battery.percent" the leaf).
+			const emit: EmitValueFn = (event: string, ...args: unknown[]): boolean => delegate.emit(event, ...args);
+
+			for (const [compKey, values] of Object.entries(params)) {
+				if (compKey === 'ts' || typeof values !== 'object' || values === null) {
 					continue;
 				}
 
-				this.emitFlattened(delegate, key, values as Record<string, unknown>);
+				for (const [attr, val] of Object.entries(values as Record<string, unknown>)) {
+					emitFlattenedValue(emit, compKey, attr, val);
+				}
 			}
 
 			// Briefly mark device as connected during wake
 			this.markDeviceAwake(deviceId);
 		} else {
 			this.logger.debug(`No delegate for sleeping device=${deviceId}, skipping status update`);
-		}
-	}
-
-	/**
-	 * Emit values with dot-notation keys for nested objects.
-	 * e.g., { battery: { percent: 95 } } emits both "battery" (the object)
-	 * and "battery.percent" (the leaf value), matching how the library's
-	 * component change handlers register keys like "battery.percent".
-	 */
-	private emitFlattened(
-		delegate: { emit: (event: string, ...args: unknown[]) => boolean },
-		compKey: string,
-		values: Record<string, unknown>,
-		prefix: string = '',
-	): void {
-		for (const [attr, val] of Object.entries(values)) {
-			const fullKey = prefix ? `${prefix}.${attr}` : attr;
-
-			delegate.emit('value', compKey, fullKey, val);
-
-			if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-				this.emitFlattened(delegate, compKey, val as Record<string, unknown>, fullKey);
-			}
 		}
 	}
 

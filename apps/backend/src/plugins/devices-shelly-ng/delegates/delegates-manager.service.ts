@@ -447,8 +447,11 @@ export class DelegatesManagerService {
 					} else {
 						await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
 
-						this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
-							this.handleNumericChange(comp.key, 'aenergy', consumption.id, val, (n) =>
+						// Registered on the flattened leaf key, not the bare `aenergy` object key: the
+						// library emits `aenergy` as `{ total, by_minute, minute_ts }`, and
+						// coerceNumberSafe now (correctly) rejects that instead of coercing it to 0.
+						this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy.total`, (val: CharacteristicValue): void => {
+							this.handleNumericChange(comp.key, 'aenergy.total', consumption.id, val, (n) =>
 								this.handleChange(consumption, toEnergy(n), false),
 							);
 						});
@@ -1688,8 +1691,11 @@ export class DelegatesManagerService {
 					} else {
 						await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
 
-						this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy`, (val: CharacteristicValue): void => {
-							this.handleNumericChange(comp.key, 'aenergy', consumption.id, val, (n) =>
+						// Registered on the flattened leaf key, not the bare `aenergy` object key: the
+						// library emits `aenergy` as `{ total, by_minute, minute_ts }`, and
+						// coerceNumberSafe now (correctly) rejects that instead of coercing it to 0.
+						this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy.total`, (val: CharacteristicValue): void => {
+							this.handleNumericChange(comp.key, 'aenergy.total', consumption.id, val, (n) =>
 								this.handleChange(consumption, toEnergy(n), false),
 							);
 						});
