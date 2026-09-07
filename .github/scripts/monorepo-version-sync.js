@@ -21,6 +21,7 @@ const ref = process.argv[2];
 const tag = process.argv[3] || "alpha";
 
 const BRANCH_VERSION_PATTERN = /^([a-zA-Z]+)-(\d+\.\d+\.\d+)$/;
+const TAG_VERSION_PATTERN = /^v?(\d+\.\d+\.\d+)(?:-(?:alpha|beta)(?:\.\d+)?)?$/;
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+$/;
 
 if (!ref) {
@@ -33,6 +34,18 @@ const parseBaseVersion = (ref) => {
 	// Direct version string (e.g. "1.2.3") — used with workflow_dispatch inputs
 	if (ref.match(SEMVER_PATTERN)) {
 		return ref;
+	}
+
+	// Release tag ref (e.g. "refs/tags/v1.2.3-alpha.0") — used with release triggers
+	if (ref.startsWith("refs/tags/")) {
+		const releaseTag = ref.replace("refs/tags/", "");
+		const match = releaseTag.match(TAG_VERSION_PATTERN);
+
+		if (!match) {
+			throw new Error("Invalid tag format. Expected: vx.y.z-alpha.n or vx.y.z-beta.n");
+		}
+
+		return match[1];
 	}
 
 	// Branch ref (e.g. "refs/heads/alpha-1.2.3") — used with branch push triggers
