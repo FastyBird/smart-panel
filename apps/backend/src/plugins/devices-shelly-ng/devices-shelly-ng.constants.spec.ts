@@ -134,23 +134,16 @@ describe('Shelly NG energy meters', () => {
 		}
 	});
 
-	it('declares only component ids the library device class exposes', () => {
-		// Regression guard: verify declared component IDs actually exist in the library device classes.
-		// For each model in each descriptor, construct the device and check that all
-		// declared component IDs are present. This catches bugs like pm1:1 being
-		// declared when the library only exposes pm1:0.
+	it('declares exactly the component ids the library device class exposes', () => {
+		// Regression guard: verify declared component IDs match the library device classes
+		// in both directions. For each model in each descriptor, construct the device and
+		// check that every declared ID is present, and that every ID the library exposes is
+		// declared. This catches bugs like pm1:1 being declared when the library only exposes
+		// pm1:0, and the reverse (issue #978): a component the library exposes but the
+		// descriptor never declares, so it's never wired up.
 		//
-		// Per plan §16 decision 2: fail only if declared IDs are missing; undeclared
-		// components (issue #978 follow-up) are logged, not failed.
-
-		// Known pre-existing drift (descriptor declares component IDs the library lacks).
-		// These are tracked in issue #978 and NOT fixed in this epic per plan §16 decision 2.
-		// The regression guard still reports them but allows them to pass the test suite.
-		const knownDrift = new Set<string>([
-			'SNDM-0013US:input:0', // SHELLYPLUSWALLDIMMER: input:0 not exposed by library
-			'SNDM-00100WW:light:1', // SHELLYPLUSDIMMER: light:1 not exposed by library
-			'SNSX-0043X:input:3', // SHELLYPLUSUNI: input:3 not exposed by library
-		]);
+		// Issue #978 closed out the last of this drift, so there is no allowlist left: any
+		// mismatch in either direction fails the suite.
 
 		// Minimal stub RpcHandler for testing. We don't need real RPC; just the interface.
 		class StubRpcHandler {
@@ -180,9 +173,18 @@ describe('Shelly NG energy meters', () => {
 			}
 		}
 
+		// Only component types that are ever declared inside `descriptor.components` are in
+		// scope here. WIFI/ETHERNET live under `descriptor.system` instead and are validated
+		// by other tests; the library also reports plenty of components (ble, cloud, mqtt,
+		// script, sys, ws, wd_ui, ...) that no descriptor models at all, and comparing those
+		// would just be noise.
+		const trackedTypes = new Set<string>(
+			Object.values(DESCRIPTORS).flatMap((descriptor) =>
+				descriptor.components.map((component) => String(component.type)),
+			),
+		);
+
 		const errors: string[] = [];
-		const undeclaredComponents: string[] = [];
-		const knownDriftFound: string[] = [];
 
 		for (const descriptor of Object.values(DESCRIPTORS)) {
 			for (const model of descriptor.models) {
@@ -206,35 +208,30 @@ describe('Shelly NG energy meters', () => {
 						[Symbol.iterator]: () => IterableIterator<[string, unknown]>;
 					})({ id: 'test-' + model, mac: '00:00:00:00:00:00', model }, new StubRpcHandler());
 
-					// Check all declared IDs are present in the device
+					// Direction 1: every declared ID must actually exist on the library device class.
 					for (const component of descriptor.components) {
 						for (const id of component.ids) {
 							const key = `${String(component.type)}:${id}`;
 
 							if (!instance.hasComponent(key)) {
-								const driftKey = `${model}:${key}`;
-
-								if (knownDrift.has(driftKey)) {
-									// Known drift, log it but don't fail (issue #978)
-									knownDriftFound.push(
-										`Model ${model}: descriptor declares ${key} but library device class does not expose it`,
-									);
-								} else {
-									// New drift, fail the test
-									errors.push(`Model ${model}: descriptor declares ${key} but library device class does not expose it`);
-								}
+								errors.push(`Model ${model}: descriptor declares ${key} but library device class does not expose it`);
 							}
 						}
 					}
 
-					// Log any components the device has that aren't declared (issue #978)
+					// Direction 2: every tracked-type ID the library exposes must be declared.
 					for (const [key] of instance) {
-						const [type, idStr] = key.split(':') as [string, string];
+						const [type, idStr] = key.split(':') as [string, string | undefined];
+
+						if (!trackedTypes.has(type) || idStr === undefined) {
+							continue;
+						}
+
 						const id = parseInt(idStr, 10);
 						const isDeclared = descriptor.components.some((c) => String(c.type) === type && c.ids.includes(id));
 
 						if (!isDeclared) {
-							undeclaredComponents.push(`Model ${model}: library exposes ${key} (not in descriptor — issue #978)`);
+							errors.push(`Model ${model}: library exposes ${key} but descriptor does not declare it`);
 						}
 					}
 				} catch (e) {
@@ -243,17 +240,6 @@ describe('Shelly NG energy meters', () => {
 			}
 		}
 
-		// Log known drift as informational (tracked in issue #978)
-		if (knownDriftFound.length > 0) {
-			console.warn('Known descriptor drift (issue #978, not fixed per plan §16 decision 2):', knownDriftFound);
-		}
-
-		// Log undeclared components as informational (follow-up #978)
-		if (undeclaredComponents.length > 0) {
-			console.warn('Components exposed by library but not declared in descriptor (issue #978):', undeclaredComponents);
-		}
-
-		// Fail only if there are NEW declared-but-absent issues (not in knownDrift allowlist)
 		expect(errors).toEqual([]);
 	});
 });
