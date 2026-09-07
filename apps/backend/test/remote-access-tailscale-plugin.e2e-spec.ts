@@ -76,6 +76,12 @@ function mockProcesses(): void {
 				// `tailscale funnel status --json` is registered as the exact
 				// same command upstream, so there is no separate branch for it.
 				callback(null, '{}', '');
+			} else if (file === 'tailscale' && (args[0] === 'set' || args[0] === 'up' || args[0] === 'down')) {
+				// `TailscaleNodeManagedService.start()`/`stop()` apply preferences
+				// and bring the node up/down — the managed service is started for
+				// real below (mirroring `ManagedServiceManager` in production), so
+				// these need a clean success response too.
+				callback(null, '', '');
 			} else if (file === 'systemctl') {
 				callback(null, 'active\n', '');
 			} else {
@@ -127,6 +133,12 @@ class TestCredentialGuard implements CanActivate {
  */
 describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 	let app: INestApplication;
+	// Started for real in `beforeAll` below, mirroring `ManagedServiceManager`
+	// bringing an owner-enabled managed service up before the app starts
+	// serving traffic in production — `computeStatus()` now reads its own
+	// lifecycle state (D2), so `GET /status` only reflects the live CLI
+	// mapping while this is actually 'started'.
+	let nodeManagedService: TailscaleNodeManagedService;
 	// `TailscaleSetupService`/`TailscaleLoginService` are mocked here rather
 	// than wired for real: their own detailed behaviour (spawn args, auth-key
 	// file lifecycle, two-block JSON parsing) is covered by their unit specs.
@@ -212,9 +224,13 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 
 		app = moduleFixture.createNestApplication();
 		await app.init();
+
+		nodeManagedService = app.get(TailscaleNodeManagedService);
+		await nodeManagedService.start();
 	});
 
 	afterAll(async () => {
+		await nodeManagedService.stop().catch(() => undefined);
 		await app.close();
 	});
 
@@ -371,6 +387,30 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 			expect(JSON.stringify(response.body)).not.toContain('login.tailscale.com');
 
 			mockProcesses();
+		});
+
+		it('reports disconnected with no endpoints/proxyAddresses once the node managed service is stopped, even though the daemon still reports Running (D2/D3 — RA-18)', async () => {
+			// The daemon fixture is left at CONNECTED_STATUS_JSON (mockProcesses()
+			// from beforeAll/the previous test's own restore) — this is exactly
+			// the bug this task closes: `tailscaled` itself may still report
+			// Running/connected after the admin stops the `node` managed service,
+			// so `computeStatus()` must trust its own lifecycle state instead.
+			await nodeManagedService.stop();
+
+			const response = await request(app.getHttpServer())
+				.get('/status')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(200);
+
+			expect(response.body.data).toMatchObject({
+				state: 'disconnected',
+				message: 'The node service is stopped.',
+				endpoints: [],
+				proxyAddresses: [],
+			});
+
+			// Restore the started state for every test that runs after this one.
+			await nodeManagedService.start();
 		});
 	});
 
