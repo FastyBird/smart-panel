@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { EventEmitter } from 'events';
 import { existsSync, readFileSync } from 'fs';
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 
 import { PlatformType } from '../../platform/platform.constants';
 import { PlatformService } from '../../platform/services/platform.service';
@@ -18,15 +18,32 @@ jest.mock('fs', () => ({
 jest.mock('node:child_process', () => ({
 	...jest.requireActual<typeof import('node:child_process')>('node:child_process'),
 	spawn: jest.fn(),
+	execFile: jest.fn(),
 }));
 
 type FakeStderr = EventEmitter & { unref: jest.Mock };
 type FakeChild = EventEmitter & { unref: jest.Mock; pid: number; stderr: FakeStderr };
 
+type ExecFileCallback = (error: Error | null, stdout?: string, stderr?: string) => void;
+
 function createFakeChild(pid: number): FakeChild {
 	const stderr = Object.assign(new EventEmitter(), { unref: jest.fn() }) as FakeStderr;
 
 	return Object.assign(new EventEmitter(), { unref: jest.fn(), pid, stderr }) as FakeChild;
+}
+
+/**
+ * Drains the real (unfaked, see the note on jest.useFakeTimers() above onStatus in the service
+ * itself) Promise microtask queue several times over. The timeout-handling chain under test here
+ * (stopUnit -> isUnitActive -> finishJob/notifyHandlers) is native-Promise-based, not timer-based,
+ * so `jest.advanceTimersByTime` never resolves it — only awaiting real microtask ticks does. A
+ * generous, fixed number of ticks is used rather than counting exact hops: once the chain has
+ * settled, extra ticks are harmless no-ops.
+ */
+async function flushMicrotasks(times = 5): Promise<void> {
+	for (let i = 0; i < times; i++) {
+		await Promise.resolve();
+	}
 }
 
 describe('PrivilegedWorkerService', () => {
@@ -50,6 +67,13 @@ describe('PrivilegedWorkerService', () => {
 		(spawn as jest.Mock).mockReturnValue(fakeChild);
 		(existsSync as jest.Mock).mockReturnValue(false);
 		(readFileSync as jest.Mock).mockReturnValue('');
+		// Default: the unit is confirmed stopped, so a bare timeout (no test-specific override)
+		// still frees the unit exactly like before this change.
+		(execFile as unknown as jest.Mock).mockImplementation(
+			(_file: string, _args: readonly string[], _options: unknown, callback: ExecFileCallback) => {
+				callback(null, 'inactive\n', '');
+			},
+		);
 
 		platformService = {
 			supportsPrivilegedWorkers: jest.fn().mockResolvedValue(true),
@@ -277,13 +301,59 @@ describe('PrivilegedWorkerService', () => {
 	});
 
 	describe('timeout', () => {
-		it('reports a timeout state and frees the unit once the hard timeout elapses', async () => {
+		it('attempts to stop the still-running scope, then reads systemctl is-active, before finishing a timed-out job', async () => {
+			const { id } = await service.run({ ...baseSpec, timeoutMs: 5_000 });
+
+			const stopChild = createFakeChild(9001);
+			(spawn as jest.Mock).mockReturnValueOnce(stopChild);
+
+			jest.advanceTimersByTime(6_001);
+
+			// The stop-attempt scope is spawned synchronously, as its own array of argv — no
+			// shell string building — reusing the same `systemd-run *` sudoers grant run() uses.
+			expect(spawn).toHaveBeenLastCalledWith(
+				'sudo',
+				[
+					'-n',
+					'systemd-run',
+					'--scope',
+					'--quiet',
+					'--unit=smart-panel-test-stop',
+					'systemctl',
+					'stop',
+					'smart-panel-test',
+				],
+				{ stdio: 'ignore' },
+			);
+
+			// The is-active read only happens after the stop attempt's own process settles.
+			expect(execFile).not.toHaveBeenCalled();
+
+			stopChild.emit('exit', 0, null);
+			await flushMicrotasks();
+
+			expect(execFile).toHaveBeenCalledWith(
+				'systemctl',
+				['is-active', 'smart-panel-test'],
+				expect.objectContaining({ timeout: expect.any(Number) }),
+				expect.any(Function),
+			);
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'timeout' }));
+		});
+
+		it('reports a timeout state and frees the unit once the stop attempt confirms the unit stopped', async () => {
 			const { id } = await service.run({ ...baseSpec, timeoutMs: 5_000 });
 			const handler = jest.fn();
 
 			service.onStatus(id, handler);
 
+			const stopChild = createFakeChild(9001);
+			(spawn as jest.Mock).mockReturnValueOnce(stopChild);
+
 			jest.advanceTimersByTime(6_001);
+
+			stopChild.emit('exit', 0, null);
+			await flushMicrotasks();
 
 			expect(handler).toHaveBeenCalledWith(expect.objectContaining({ id, state: 'timeout' }));
 			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'timeout' }));
@@ -296,7 +366,13 @@ describe('PrivilegedWorkerService', () => {
 		it('stops polling the status file once timed out', async () => {
 			await service.run({ ...baseSpec, timeoutMs: 5_000 });
 
+			const stopChild = createFakeChild(9001);
+			(spawn as jest.Mock).mockReturnValueOnce(stopChild);
+
 			jest.advanceTimersByTime(6_001);
+
+			stopChild.emit('exit', 0, null);
+			await flushMicrotasks();
 
 			(readFileSync as jest.Mock).mockClear();
 			(existsSync as jest.Mock).mockReturnValue(true);
@@ -304,6 +380,71 @@ describe('PrivilegedWorkerService', () => {
 			jest.advanceTimersByTime(30_000);
 
 			expect(readFileSync).not.toHaveBeenCalled();
+		});
+
+		it('still runs the is-active check and frees the unit when the stop attempt itself errors but the unit already stopped on its own (race)', async () => {
+			const { id } = await service.run({ ...baseSpec, timeoutMs: 5_000 });
+
+			const stopChild = createFakeChild(9002);
+			(spawn as jest.Mock).mockReturnValueOnce(stopChild);
+
+			jest.advanceTimersByTime(6_001);
+
+			// sudo/systemd-run itself refuses the stop-attempt invocation — must not crash the
+			// flow or skip the is-active confirmation that follows.
+			stopChild.emit('error', new Error('sudo: a password is required'));
+			await flushMicrotasks();
+
+			expect(execFile).toHaveBeenCalled();
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'timeout' }));
+
+			await expect(service.run(baseSpec)).resolves.toEqual(expect.objectContaining({ id: expect.any(String) }));
+		});
+
+		it('still runs the is-active check and frees the unit when spawn() itself throws synchronously for the stop attempt', async () => {
+			const { id } = await service.run({ ...baseSpec, timeoutMs: 5_000 });
+
+			(spawn as jest.Mock).mockImplementationOnce(() => {
+				throw new Error('EAGAIN: resource temporarily unavailable');
+			});
+
+			jest.advanceTimersByTime(6_001);
+			await flushMicrotasks();
+
+			expect(execFile).toHaveBeenCalled();
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'timeout' }));
+		});
+
+		it('keeps the unit reserved and reports an explicit "still running" message when the unit is still active after the stop attempt', async () => {
+			const { id } = await service.run({ ...baseSpec, timeoutMs: 5_000 });
+			const handler = jest.fn();
+
+			service.onStatus(id, handler);
+
+			const stopChild = createFakeChild(9003);
+			(spawn as jest.Mock).mockReturnValueOnce(stopChild);
+			(execFile as unknown as jest.Mock).mockImplementationOnce(
+				(_file: string, _args: readonly string[], _options: unknown, callback: ExecFileCallback) => {
+					callback(null, 'active\n', '');
+				},
+			);
+
+			jest.advanceTimersByTime(6_001);
+
+			stopChild.emit('exit', 0, null);
+			await flushMicrotasks();
+
+			expect(handler).toHaveBeenCalledWith(
+				expect.objectContaining({ id, state: 'timeout', message: expect.stringContaining('still running') }),
+			);
+			expect(service.getStatus(id)).toEqual(
+				expect.objectContaining({ state: 'timeout', message: expect.stringContaining('still running') }),
+			);
+
+			// Not freed — a retry for the same unit must be rejected with wording that clearly
+			// distinguishes this from an ordinary "already busy" rejection.
+			await expect(service.run(baseSpec)).rejects.toThrow(PrivilegedWorkerUnavailableException);
+			await expect(service.run(baseSpec)).rejects.toThrow(/still running/);
 		});
 	});
 
@@ -851,7 +992,15 @@ describe('PrivilegedWorkerService', () => {
 
 			fakeChild.stderr.emit('data', Buffer.from('still installing...\n'));
 
+			// A distinct child for the stop-attempt spawn — reusing fakeChild here would also
+			// fire the main job's own 'exit' handler when emitting below.
+			const stopChild = createFakeChild(9004);
+			(spawn as jest.Mock).mockReturnValueOnce(stopChild);
+
 			jest.advanceTimersByTime(6_001);
+
+			stopChild.emit('exit', 0, null);
+			await flushMicrotasks();
 
 			expect(service.getStatus(id)).toEqual(
 				expect.objectContaining({ state: 'timeout', stderr: 'still installing...\n' }),
