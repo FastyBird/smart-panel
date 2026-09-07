@@ -267,10 +267,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 	SHELLYPLUSWALLDIMMER: {
 		name: ShellyPlusWallDimmer.modelName,
 		models: [ShellyPlusWallDimmer.model.toUpperCase()],
-		components: [
-			{ type: ComponentType.LIGHT, cls: Light, ids: [0] },
-			{ type: ComponentType.INPUT, cls: Input, ids: [0] },
-		],
+		components: [{ type: ComponentType.LIGHT, cls: Light, ids: [0] }],
 		system: [{ type: ComponentType.WIFI, cls: WiFi }],
 		categories: [DeviceCategory.LIGHTING],
 	},
@@ -290,8 +287,8 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		name: ShellyPlusDimmer.modelName,
 		models: [ShellyPlusDimmer.model.toUpperCase()],
 		components: [
-			{ type: ComponentType.LIGHT, cls: Light, ids: [0, 1] },
-			{ type: ComponentType.INPUT, cls: Input, ids: [0] },
+			{ type: ComponentType.LIGHT, cls: Light, ids: [0] },
+			{ type: ComponentType.INPUT, cls: Input, ids: [0, 1] },
 		],
 		system: [{ type: ComponentType.WIFI, cls: WiFi }],
 		categories: [DeviceCategory.LIGHTING],
@@ -308,7 +305,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		models: [ShellyPlusUni.model.toUpperCase()],
 		components: [
 			{ type: ComponentType.SWITCH, cls: Switch, ids: [0, 1] },
-			{ type: ComponentType.INPUT, cls: Input, ids: [0, 1, 3] },
+			{ type: ComponentType.INPUT, cls: Input, ids: [0, 1, 2] },
 		],
 		system: [{ type: ComponentType.WIFI, cls: WiFi }],
 		categories: [
@@ -489,7 +486,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		models: [ShellyProDimmer2Pm.model.toUpperCase()],
 		components: [
 			{ type: ComponentType.LIGHT, cls: Light, ids: [0, 1] },
-			{ type: ComponentType.INPUT, cls: Input, ids: [0, 1] },
+			{ type: ComponentType.INPUT, cls: Input, ids: [0, 1, 2, 3] },
 		],
 		system: [
 			{ type: ComponentType.WIFI, cls: WiFi },
@@ -516,7 +513,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		components: [
 			{ type: ComponentType.LIGHT, cls: Light, ids: [0, 1, 2, 3, 4] },
 			{ type: ComponentType.RGB, cls: Rgb, ids: [0] },
-			{ type: ComponentType.CCT, cls: Cct, ids: [0] },
+			{ type: ComponentType.CCT, cls: Cct, ids: [0, 1] },
 			{ type: ComponentType.INPUT, cls: Input, ids: [0, 1, 2, 3, 4] },
 		],
 		system: [
