@@ -23,6 +23,7 @@ const fns = vi.hoisted(() => ({
 	fetchConfigPlugin: vi.fn(),
 	flashError: vi.fn(),
 	flashSuccess: vi.fn(),
+	copy: vi.fn(),
 }));
 
 const status = ref<{ state: string; endpoints: { url: string; label: string }[]; authUrl?: string; qr?: string } | null>(null);
@@ -41,6 +42,7 @@ vi.mock('vue-i18n', async () => {
 
 vi.mock('../../../common', () => ({
 	useFlashMessage: () => ({ success: fns.flashSuccess, error: fns.flashError }),
+	useClipboard: () => ({ copy: fns.copy }),
 }));
 
 vi.mock('../../../modules/config', async () => {
@@ -109,6 +111,7 @@ describe('TailscaleSetupWizard', () => {
 		fns.fetchConfigPlugin.mockReset().mockResolvedValue(undefined);
 		fns.flashError.mockReset();
 		fns.flashSuccess.mockReset();
+		fns.copy.mockReset().mockResolvedValue(true);
 	});
 
 	it('opens on the step the card decided (setup)', () => {
@@ -331,6 +334,31 @@ describe('TailscaleSetupWizard', () => {
 		const wrapper = mountWizard('done');
 
 		expect(wrapper.text()).toContain('https://panel.example.ts.net');
+	});
+
+	it('copies an endpoint URL to the clipboard via the shared composable and shows a success toast', async () => {
+		status.value = { state: 'connected', endpoints: [{ url: 'https://panel.example.ts.net', label: 'Tailscale (HTTPS)' }] };
+		const wrapper = mountWizard('done');
+
+		// The 'done' step renders exactly two buttons, in order: the endpoint's copy button, then Close.
+		await wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		await flushPromises();
+
+		expect(fns.copy).toHaveBeenCalledWith('https://panel.example.ts.net');
+		expect(fns.flashSuccess).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.urlCopied');
+		expect(fns.flashError).not.toHaveBeenCalled();
+	});
+
+	it('shows an error toast only when the clipboard copy actually fails', async () => {
+		fns.copy.mockResolvedValue(false);
+		status.value = { state: 'connected', endpoints: [{ url: 'https://panel.example.ts.net', label: 'Tailscale (HTTPS)' }] };
+		const wrapper = mountWizard('done');
+
+		await wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		await flushPromises();
+
+		expect(fns.flashError).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.copyFailed');
+		expect(fns.flashSuccess).not.toHaveBeenCalled();
 	});
 
 	it('resets back to the initial step and clears the sign-in link every time it reopens', async () => {
