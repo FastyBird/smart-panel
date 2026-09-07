@@ -91,6 +91,24 @@ export interface TailscaleVersionInfo {
 }
 
 /**
+ * Parsed `tailscale debug prefs` document — the `ipn.Prefs` struct. The
+ * `debug` namespace is explicitly unstable across Tailscale releases (unlike
+ * `status --json`, which is at least documented as a stable-ish, if evolving,
+ * contract), so this is read tolerantly: only the fields
+ * `TailscaleNodeManagedService.evaluateOperatorGranted()` actually reads are
+ * declared, and a caller whose release renamed or dropped a field simply sees
+ * it as `undefined` rather than a parse failure.
+ */
+export interface TailscalePrefs {
+	OperatorUser?: string;
+	ControlURL?: string;
+	Hostname?: string;
+	LoggedOut?: boolean;
+	WantRunning?: boolean;
+	[key: string]: unknown;
+}
+
+/**
  * Parsed `tailscale serve status --json` document (`tailscale funnel status
  * --json` is registered as the exact same command upstream — confirmed
  * against `cmd/tailscale/cli/serve_v2.go`'s `newServeV2Command`, which wires
@@ -237,6 +255,31 @@ export class TailscaleCliService {
 		}
 
 		return parsed as unknown as TailscaleStatus;
+	}
+
+	/**
+	 * Reads the node's current preferences via `tailscale debug prefs`
+	 * (`ipn.Prefs`, JSON) — read-only, so it succeeds for any local user
+	 * (`ipnauth.IsReadonlyConn`) exactly like `status --json` does, unlike
+	 * every mutating call above. `TailscaleNodeManagedService.evaluateOperatorGranted()`
+	 * uses `OperatorUser` from this to check the operator grant without
+	 * relying on `status --json` succeeding being mistaken for proof of it
+	 * (the bug this whole check exists to close). The `debug` namespace is
+	 * explicitly unstable upstream, so a caller whose release moved or
+	 * removed it falls back to a write probe instead of trusting this.
+	 */
+	async getPrefs(): Promise<TailscalePrefs> {
+		const { stdout, stderr, exitCode } = await this.exec(['debug', 'prefs']);
+
+		if (exitCode !== 0) {
+			throw this.classify(stdout, stderr, `tailscale debug prefs exited with code ${exitCode}`);
+		}
+
+		try {
+			return JSON.parse(stdout) as TailscalePrefs;
+		} catch (error) {
+			throw new TailscaleCliError('unknown', 'Failed to parse `tailscale debug prefs` output.', error);
+		}
 	}
 
 	async up(args: readonly string[]): Promise<void> {

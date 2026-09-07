@@ -2,6 +2,7 @@
 eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
 */
 import { execFile } from 'node:child_process';
+import os from 'os';
 import request from 'supertest';
 
 import { CanActivate, ExecutionContext, INestApplication, Injectable, UnauthorizedException } from '@nestjs/common';
@@ -21,7 +22,11 @@ import { UserRole } from '../src/modules/users/users.constants';
 import { SetupController } from '../src/plugins/remote-access-tailscale/controllers/setup.controller';
 import { StatusController } from '../src/plugins/remote-access-tailscale/controllers/status.controller';
 import { RemoteAccessTailscalePluginConfigModel } from '../src/plugins/remote-access-tailscale/models/config.model';
-import { TailscaleCliService } from '../src/plugins/remote-access-tailscale/services/tailscale-cli.service';
+import { TailscaleRequirementUnsatisfiedException } from '../src/plugins/remote-access-tailscale/remote-access-tailscale.exceptions';
+import {
+	TailscaleCliError,
+	TailscaleCliService,
+} from '../src/plugins/remote-access-tailscale/services/tailscale-cli.service';
 import { TailscaleLoginService } from '../src/plugins/remote-access-tailscale/services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../src/plugins/remote-access-tailscale/services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../src/plugins/remote-access-tailscale/services/tailscale-provider.service';
@@ -58,6 +63,11 @@ function mockProcesses(): void {
 				callback(null, JSON.stringify({ majorMinorPatch: '1.78.1', short: '1.78.1' }), '');
 			} else if (file === 'tailscale' && args[0] === 'status') {
 				callback(null, CONNECTED_STATUS_JSON, '');
+			} else if (file === 'tailscale' && args[0] === 'debug' && args[1] === 'prefs') {
+				// D1's operator check — read-only, granted to whichever local
+				// user is actually running this test process, exactly as it
+				// would be on a device where setup has already run.
+				callback(null, JSON.stringify({ OperatorUser: os.userInfo().username }), '');
 			} else if (file === 'tailscale' && args[0] === 'serve' && args[1] === 'status') {
 				// The fixture's plugin config disables serve_https (see
 				// `configService` below), so nothing ever actually gets served —
@@ -262,10 +272,10 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 
 		it('sets Cache-Control: no-store while pending-auth', async () => {
 			// A full custom implementation (not mockImplementationOnce) — a
-			// single request fans out to several execFile calls (status is
-			// read twice: once for the live status, once for the
-			// operator-granted probe), so every `tailscale status` call must
-			// consistently report NeedsLogin for this scenario.
+			// single request fans out to several execFile calls (the live
+			// `status`, the `version` probe, the `debug prefs` operator check
+			// and the `systemctl` daemon probe), so every one of them needs a
+			// consistent answer for this scenario.
 			(execFile as unknown as jest.Mock).mockImplementation(
 				(file: string, args: string[], _options: unknown, ...rest: unknown[]) => {
 					const callback = rest[rest.length - 1] as ExecFileCallback;
@@ -278,6 +288,8 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 							JSON.stringify({ BackendState: 'NeedsLogin', AuthURL: 'https://login.tailscale.com/a/xyz' }),
 							'',
 						);
+					} else if (file === 'tailscale' && args[0] === 'debug' && args[1] === 'prefs') {
+						callback(null, JSON.stringify({ OperatorUser: os.userInfo().username }), '');
 					} else if (file === 'systemctl') {
 						callback(null, 'active\n', '');
 					} else {
@@ -413,6 +425,38 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 
 			expect(JSON.stringify(response.body)).not.toContain('tskey-auth-e2e-secret');
 		});
+
+		it('maps a requirement-unsatisfied refusal (operator-granted) to 409 with a code and message (RA-17 / D1)', async () => {
+			loginServiceMock.login.mockRejectedValue(
+				new TailscaleRequirementUnsatisfiedException({
+					code: 'operator-granted',
+					satisfied: false,
+					message: 'The smart-panel user is not the tailscaled operator.',
+					remedy: { commands: ['sudo tailscale set --operator=smart-panel'], note: null },
+				}),
+			);
+
+			const response = await request(app.getHttpServer())
+				.post('/login')
+				.set('Authorization', 'Bearer owner-user')
+				.send({})
+				.expect(409);
+
+			expect(JSON.stringify(response.body)).toContain('operator-granted');
+			expect(JSON.stringify(response.body)).toContain('The smart-panel user is not the tailscaled operator.');
+		});
+
+		it('maps a permission-denied CLI failure to 409 with an operator-not-granted code', async () => {
+			loginServiceMock.login.mockRejectedValue(new TailscaleCliError('permission-denied', 'Access denied'));
+
+			const response = await request(app.getHttpServer())
+				.post('/login')
+				.set('Authorization', 'Bearer owner-user')
+				.send({})
+				.expect(409);
+
+			expect(JSON.stringify(response.body)).toContain('operator-not-granted');
+		});
 	});
 
 	describe('POST /logout', () => {
@@ -433,6 +477,35 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 
 		it('denies an unauthenticated request', async () => {
 			await request(app.getHttpServer()).post('/logout').expect(401);
+		});
+
+		it('maps a requirement-unsatisfied refusal (daemon-active) to 409 with a code and message (RA-17 / D1)', async () => {
+			loginServiceMock.logout.mockRejectedValue(
+				new TailscaleRequirementUnsatisfiedException({
+					code: 'daemon-active',
+					satisfied: false,
+					message: 'tailscaled is not active. Run setup or start the service.',
+					remedy: { commands: ['sudo systemctl enable --now tailscaled'], note: null },
+				}),
+			);
+
+			const response = await request(app.getHttpServer())
+				.post('/logout')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(409);
+
+			expect(JSON.stringify(response.body)).toContain('daemon-active');
+		});
+
+		it('maps a daemon-down CLI failure to 409 with a daemon-not-active code', async () => {
+			loginServiceMock.logout.mockRejectedValue(new TailscaleCliError('daemon-down', 'connection refused'));
+
+			const response = await request(app.getHttpServer())
+				.post('/logout')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(409);
+
+			expect(JSON.stringify(response.body)).toContain('daemon-not-active');
 		});
 	});
 
@@ -457,6 +530,17 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 
 		it('denies an unauthenticated request', async () => {
 			await request(app.getHttpServer()).post('/reset-preferences').expect(401);
+		});
+
+		it('maps a needs-login CLI failure to 409 with a not-signed-in code', async () => {
+			loginServiceMock.resetPreferences.mockRejectedValue(new TailscaleCliError('needs-login', 'not logged in'));
+
+			const response = await request(app.getHttpServer())
+				.post('/reset-preferences')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(409);
+
+			expect(JSON.stringify(response.body)).toContain('not-signed-in');
 		});
 	});
 });

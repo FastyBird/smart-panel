@@ -29,10 +29,24 @@ jest.mock('node:child_process', () => ({
 	execFile: jest.fn(),
 }));
 
-/** Controls the `systemctl is-active tailscaled` probe result. */
-function mockSystemctlActive(active: boolean): void {
+/** A plausible-looking (but arbitrary — remedy *content* is asserted separately below) install plan, so `buildInstallRemedy()`'s script call has something to parse in every test that does not itself care about remedy content. */
+const DEFAULT_PRINT_PLAN_STDOUT = 'apt-get update -qq\napt-get install -y -qq --no-install-recommends tailscale\n';
+
+/**
+ * Controls both processes this service shells out to directly (bypassing the
+ * mocked `TailscaleCliService`): the `systemctl is-active tailscaled` probe,
+ * and `bash tailscale-setup.sh --print-plan --step=install` (the remedy
+ * builder for `binary-installed`/`version-supported`).
+ */
+function mockSystemctlActive(active: boolean, printPlanStdout: string = DEFAULT_PRINT_PLAN_STDOUT): void {
 	(execFile as unknown as jest.Mock).mockImplementation(
-		(_file: string, _args: string[], _options: unknown, callback: (error: Error | null, stdout?: string) => void) => {
+		(file: string, _args: string[], _options: unknown, callback: (error: Error | null, stdout?: string) => void) => {
+			if (file === 'bash') {
+				callback(null, printPlanStdout);
+
+				return {};
+			}
+
 			if (active) {
 				callback(null, 'active\n');
 			} else {
@@ -78,6 +92,7 @@ describe('TailscaleNodeManagedService', () => {
 	let cli: {
 		getVersion: jest.Mock;
 		getStatus: jest.Mock;
+		getPrefs: jest.Mock;
 		up: jest.Mock;
 		set: jest.Mock;
 		down: jest.Mock;
@@ -111,6 +126,12 @@ describe('TailscaleNodeManagedService', () => {
 		cli = {
 			getVersion: jest.fn().mockResolvedValue({ version: '1.78.1', raw: {} }),
 			getStatus: jest.fn().mockResolvedValue(STOPPED_STATUS),
+			// Satisfied by default (OperatorUser matches the current process
+			// user) so every pre-existing test in this file — written before
+			// the operator check moved from `getStatus` to `debug prefs` —
+			// keeps observing an "all satisfied" baseline unless it overrides
+			// this explicitly.
+			getPrefs: jest.fn().mockResolvedValue({ OperatorUser: os.userInfo().username }),
 			up: jest.fn().mockResolvedValue(undefined),
 			set: jest.fn().mockResolvedValue(undefined),
 			down: jest.fn().mockResolvedValue(undefined),
@@ -183,6 +204,7 @@ describe('TailscaleNodeManagedService', () => {
 			]);
 			expect(cli.getVersion).not.toHaveBeenCalled();
 			expect(cli.getStatus).not.toHaveBeenCalled();
+			expect(cli.getPrefs).not.toHaveBeenCalled();
 			expect(execFile).not.toHaveBeenCalled();
 		});
 
@@ -233,7 +255,7 @@ describe('TailscaleNodeManagedService', () => {
 
 		it('binary-installed missing (and version-supported cannot be verified)', async () => {
 			cli.getVersion.mockRejectedValue(new TailscaleCliError('not-installed', 'not installed'));
-			cli.getStatus.mockRejectedValue(new TailscaleCliError('not-installed', 'not installed'));
+			cli.getPrefs.mockRejectedValue(new TailscaleCliError('not-installed', 'not installed'));
 
 			const requirements = await service.evaluateRequirements();
 
@@ -248,7 +270,7 @@ describe('TailscaleNodeManagedService', () => {
 
 		it('daemon-active missing (and operator-granted cannot be verified)', async () => {
 			mockSystemctlActive(false);
-			cli.getStatus.mockRejectedValue(new TailscaleCliError('daemon-down', 'daemon down'));
+			cli.getPrefs.mockRejectedValue(new TailscaleCliError('daemon-down', 'daemon down'));
 
 			const requirements = await service.evaluateRequirements();
 
@@ -261,8 +283,8 @@ describe('TailscaleNodeManagedService', () => {
 			]);
 		});
 
-		it('operator-granted missing', async () => {
-			cli.getStatus.mockRejectedValue(new TailscaleCliError('permission-denied', 'denied'));
+		it('operator-granted missing (OperatorUser does not match the current process user)', async () => {
+			cli.getPrefs.mockResolvedValue({ OperatorUser: 'someone-else' });
 
 			const requirements = await service.evaluateRequirements();
 
@@ -293,6 +315,174 @@ describe('TailscaleNodeManagedService', () => {
 			const requirements = await service.evaluateRequirements();
 
 			expect(requirements.every((r) => r.satisfied)).toBe(true);
+		});
+	});
+
+	describe('operator-granted — exact match and the debug-prefs write-probe fallback (D1)', () => {
+		it('is satisfied only when OperatorUser exactly matches the current process user', async () => {
+			cli.getPrefs.mockResolvedValue({ OperatorUser: os.userInfo().username });
+
+			const requirements = await service.evaluateRequirements();
+
+			expect(requirements.find((r) => r.code === 'operator-granted')).toMatchObject({ satisfied: true });
+		});
+
+		it('is unsatisfied when OperatorUser is a different (even if similar) user', async () => {
+			cli.getPrefs.mockResolvedValue({ OperatorUser: `${os.userInfo().username}-other` });
+
+			const requirements = await service.evaluateRequirements();
+
+			expect(requirements.find((r) => r.code === 'operator-granted')).toMatchObject({ satisfied: false });
+		});
+
+		it('is unsatisfied when the prefs document has no OperatorUser field at all (never granted)', async () => {
+			cli.getPrefs.mockResolvedValue({});
+
+			const requirements = await service.evaluateRequirements();
+
+			expect(requirements.find((r) => r.code === 'operator-granted')).toMatchObject({ satisfied: false });
+		});
+
+		it('falls back to a write probe (tailscale set --operator=<user>) when debug prefs rejects with an unrecognised failure', async () => {
+			cli.getPrefs.mockRejectedValue(new TailscaleCliError('unknown', 'unknown command "prefs" for "tailscale debug"'));
+			cli.set.mockResolvedValue(undefined);
+
+			const requirements = await service.evaluateRequirements();
+
+			expect(cli.set).toHaveBeenCalledWith([`--operator=${os.userInfo().username}`]);
+			expect(requirements.find((r) => r.code === 'operator-granted')).toMatchObject({ satisfied: true });
+		});
+
+		it('falls back to the write probe when debug prefs output cannot be parsed, and reports unsatisfied when the probe itself is denied', async () => {
+			cli.getPrefs.mockRejectedValue(
+				new TailscaleCliError('unknown', 'Failed to parse `tailscale debug prefs` output.'),
+			);
+			cli.set.mockRejectedValue(new TailscaleCliError('permission-denied', 'Access denied'));
+
+			const requirements = await service.evaluateRequirements();
+
+			expect(cli.set).toHaveBeenCalledWith([`--operator=${os.userInfo().username}`]);
+			expect(requirements.find((r) => r.code === 'operator-granted')).toMatchObject({ satisfied: false });
+		});
+
+		it('does not fall back to the probe when debug prefs itself reports the daemon is down', async () => {
+			cli.getPrefs.mockRejectedValue(new TailscaleCliError('daemon-down', 'connection refused'));
+
+			const requirements = await service.evaluateRequirements();
+
+			expect(cli.set).not.toHaveBeenCalled();
+			expect(requirements.find((r) => r.code === 'operator-granted')).toMatchObject({ satisfied: false });
+		});
+
+		it('does not fall back to the probe when debug prefs itself reports Tailscale is not installed', async () => {
+			cli.getPrefs.mockRejectedValue(new TailscaleCliError('not-installed', 'not installed'));
+
+			const requirements = await service.evaluateRequirements();
+
+			expect(cli.set).not.toHaveBeenCalled();
+			expect(requirements.find((r) => r.code === 'operator-granted')).toMatchObject({ satisfied: false });
+		});
+	});
+
+	describe('requirement remedies (D12)', () => {
+		it('is null for every satisfied requirement', async () => {
+			const requirements = await service.evaluateRequirements();
+
+			expect(requirements.every((r) => r.remedy === null)).toBe(true);
+		});
+
+		it('daemon-active: a fixed systemctl one-liner, no script involved', async () => {
+			mockSystemctlActive(false);
+
+			const requirements = await service.evaluateRequirements();
+
+			expect(requirements.find((r) => r.code === 'daemon-active')?.remedy).toEqual({
+				commands: ['sudo systemctl enable --now tailscaled'],
+				note: null,
+			});
+		});
+
+		it('operator-granted: a fixed tailscale one-liner naming the current process user', async () => {
+			cli.getPrefs.mockResolvedValue({ OperatorUser: 'someone-else' });
+
+			const requirements = await service.evaluateRequirements();
+
+			expect(requirements.find((r) => r.code === 'operator-granted')?.remedy).toEqual({
+				commands: [`sudo tailscale set --operator=${os.userInfo().username}`],
+				note: null,
+			});
+		});
+
+		it('platform-supported: no commands, a documentation link instead', async () => {
+			platformServiceMock.getPlatformTypeAsync.mockResolvedValue(PlatformType.DOCKER);
+
+			const requirements = await service.evaluateRequirements();
+
+			const remedy = requirements.find((r) => r.code === 'platform-supported')?.remedy;
+
+			expect(remedy?.commands).toEqual([]);
+			expect(remedy?.note).toEqual(expect.any(String));
+		});
+
+		it('binary-installed/version-supported: the lines tailscale-setup.sh --print-plan --step=install prints, sudo-prefixed only where no pipe already carries it', async () => {
+			cli.getVersion.mockRejectedValue(new TailscaleCliError('not-installed', 'not installed'));
+			mockSystemctlActive(
+				true,
+				'curl -fsSL https://pkgs.tailscale.com/x | sudo tee /y\napt-get install -y tailscale\n',
+			);
+
+			const requirements = await service.evaluateRequirements();
+
+			expect(requirements.find((r) => r.code === 'binary-installed')?.remedy).toEqual({
+				commands: ['curl -fsSL https://pkgs.tailscale.com/x | sudo tee /y', 'sudo apt-get install -y tailscale'],
+				note: null,
+			});
+		});
+
+		it('binary-installed/version-supported: falls back to the vendor link when the script reports an unsupported distribution (empty --print-plan output)', async () => {
+			cli.getVersion.mockRejectedValue(new TailscaleCliError('not-installed', 'not installed'));
+			mockSystemctlActive(true, '');
+
+			const requirements = await service.evaluateRequirements();
+
+			expect(requirements.find((r) => r.code === 'binary-installed')?.remedy).toEqual({
+				commands: [],
+				note: 'https://tailscale.com/download/linux',
+			});
+		});
+
+		it('binary-installed/version-supported: falls back to the vendor link when the script call itself fails (missing/erroring bash)', async () => {
+			cli.getVersion.mockRejectedValue(new TailscaleCliError('not-installed', 'not installed'));
+			(execFile as unknown as jest.Mock).mockImplementation(
+				(file: string, _args: string[], _options: unknown, callback: (error: Error | null) => void) => {
+					if (file === 'bash') {
+						callback(new Error('spawn bash ENOENT'));
+
+						return {};
+					}
+
+					callback(null);
+
+					return {};
+				},
+			);
+
+			const requirements = await service.evaluateRequirements();
+
+			expect(requirements.find((r) => r.code === 'binary-installed')?.remedy).toEqual({
+				commands: [],
+				note: 'https://tailscale.com/download/linux',
+			});
+		});
+
+		it('calls tailscale-setup.sh --print-plan --step=install only once even though binary-installed and version-supported are unsatisfied together', async () => {
+			cli.getVersion.mockRejectedValue(new TailscaleCliError('not-installed', 'not installed'));
+
+			await service.evaluateRequirements();
+
+			const bashCalls = (execFile as unknown as jest.Mock).mock.calls.filter(([file]) => file === 'bash');
+
+			expect(bashCalls).toHaveLength(1);
 		});
 	});
 
@@ -415,15 +605,15 @@ describe('TailscaleNodeManagedService', () => {
 			cli.getStatus.mockImplementation(() => {
 				callCount += 1;
 
-				// The first two calls are start()'s own synchronous checks
-				// (the operator-granted probe, then the "does it hold a key"
-				// check) — resolve those immediately so start() completes and
-				// schedules the poller.
-				if (callCount <= 2) {
+				// The first call is start()'s own synchronous "does it hold a
+				// key" check (the operator-granted probe no longer calls
+				// getStatus — it reads getPrefs instead) — resolve it
+				// immediately so start() completes and schedules the poller.
+				if (callCount <= 1) {
 					return Promise.resolve(STOPPED_STATUS);
 				}
 
-				// The third call is the poller's own first tick — hold it open.
+				// The second call is the poller's own first tick — hold it open.
 				return new Promise<TailscaleStatus>((resolve) => {
 					resolvePendingStatus = resolve;
 				});
@@ -914,6 +1104,82 @@ describe('TailscaleNodeManagedService', () => {
 
 			expect(status.state).toBe('disconnected');
 			expect(status.advisories).toContainEqual(expect.objectContaining({ code: 'key-expiring' }));
+		});
+	});
+
+	describe('computeStatus() — operator-not-granted overrides the mapped state (D1)', () => {
+		it('reports setup-required, not connected, even though status --json reports Running', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			cli.getPrefs.mockResolvedValue({ OperatorUser: 'someone-else' });
+
+			const status = await service.computeStatus();
+
+			expect(status.state).toBe('setup-required');
+			expect(status.advisories).toContainEqual(
+				expect.objectContaining({ code: 'operator-not-granted', severity: 'critical' }),
+			);
+		});
+
+		it('never calls TailscaleServeService.apply once operator-granted is unsatisfied — it would only fail permission-denied too', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			cli.getPrefs.mockResolvedValue({ OperatorUser: 'someone-else' });
+
+			await service.computeStatus();
+
+			expect(serveServiceMock.apply).not.toHaveBeenCalled();
+		});
+
+		it('does not override the mapped state once operator-granted is satisfied again', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			cli.getPrefs.mockResolvedValue({ OperatorUser: os.userInfo().username });
+
+			const status = await service.computeStatus();
+
+			expect(status.state).toBe('connected');
+		});
+	});
+
+	describe('periodic requirements refresh cadence (poller — at most every five minutes)', () => {
+		it('does not re-run the operator/binary/daemon probes on every poll tick once cached', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+			cli.getPrefs.mockClear();
+			cli.getVersion.mockClear();
+
+			// Two more stable-interval ticks (60s), well under the 5-minute floor.
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
+
+			expect(cli.getPrefs).not.toHaveBeenCalled();
+			expect(cli.getVersion).not.toHaveBeenCalled();
+			// The single `status --json` call per tick is unaffected.
+			expect(cli.getStatus.mock.calls.length).toBeGreaterThanOrEqual(3);
+		});
+
+		it('refreshes again once five minutes have passed since the last refresh', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+			cli.getPrefs.mockClear();
+
+			await jest.advanceTimersByTimeAsync(5 * 60 * 1000);
+
+			expect(cli.getPrefs).toHaveBeenCalled();
+		});
+
+		it('a non-periodic reason (e.g. GET /status via evaluateRequirements()) always forces a fresh evaluation regardless of the 5-minute floor', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+			cli.getPrefs.mockClear();
+
+			await service.evaluateRequirements();
+
+			expect(cli.getPrefs).toHaveBeenCalledTimes(1);
 		});
 	});
 });

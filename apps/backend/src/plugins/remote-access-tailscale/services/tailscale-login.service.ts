@@ -16,9 +16,13 @@ import {
 	TAILSCALE_LOGIN_FIRST_BLOCK_TIMEOUT_MS,
 	TAILSCALE_LOGIN_INTERACTIVE_TIMEOUT_MS,
 } from '../remote-access-tailscale.constants';
+import { TailscaleRequirementUnsatisfiedException } from '../remote-access-tailscale.exceptions';
 
 import { TailscaleCliError, TailscaleCliService } from './tailscale-cli.service';
 import { TailscaleNodeManagedService } from './tailscale-node-managed.service';
+
+/** `login()`/`logout()`/`resetPreferences()` all refuse unless both of these hold — see `assertActionable()`. */
+const ACTIONABLE_REQUIREMENT_CODES = ['operator-granted', 'daemon-active'] as const;
 
 export interface TailscaleLoginResult {
 	state: RemoteAccessProviderState;
@@ -163,6 +167,12 @@ export class TailscaleLoginService implements OnModuleInit {
 	}
 
 	async login(authKey?: string): Promise<TailscaleLoginResult> {
+		// The requirements pre-check (`assertActionable()`) deliberately runs
+		// *inside* `loginWithAuthKey()`/`loginInteractively()` below, not here:
+		// the "at most one `tailscale up` in flight" guards and the
+		// synchronous cancellation of a pending interactive login (both
+		// right below) must stay synchronous — awaiting anything first would
+		// let a second concurrent `login()` call race in ahead of them.
 		if (authKey) {
 			if (this.keyedLoginInFlight) {
 				throw new TailscaleLoginInProgressException(
@@ -191,6 +201,8 @@ export class TailscaleLoginService implements OnModuleInit {
 	}
 
 	async logout(): Promise<TailscaleLoginResult> {
+		await this.assertActionable();
+
 		this.stopPendingLogin();
 
 		try {
@@ -211,6 +223,8 @@ export class TailscaleLoginService implements OnModuleInit {
 	}
 
 	async resetPreferences(): Promise<TailscaleLoginResult> {
+		await this.assertActionable();
+
 		// Unlike logout(), there is no TailscaleCliError.kind worth tolerating
 		// here — "nothing to reset" is not a meaningful state, so every
 		// failure (needs-login included) propagates, consistent with how
@@ -218,6 +232,27 @@ export class TailscaleLoginService implements OnModuleInit {
 		await this.cli.up(['--reset', ...this.buildManagedFlags()]);
 
 		return this.currentStatus();
+	}
+
+	/**
+	 * Refuses `login()`/`logout()`/`resetPreferences()` with
+	 * `TailscaleRequirementUnsatisfiedException` — mapped by `SetupController`
+	 * to `409 Conflict` — unless both `operator-granted` and `daemon-active`
+	 * are satisfied. Always re-evaluates first (`refreshRequirements('status-read')`,
+	 * never the cached snapshot) so a stale cache never lets a call through
+	 * that would only fail `permission-denied`/`daemon-down` for real a moment
+	 * later.
+	 */
+	private async assertActionable(): Promise<void> {
+		const requirements = await this.nodeManagedService.refreshRequirements('status-read');
+
+		for (const code of ACTIONABLE_REQUIREMENT_CODES) {
+			const requirement = requirements.find((candidate) => candidate.code === code);
+
+			if (requirement && !requirement.satisfied) {
+				throw new TailscaleRequirementUnsatisfiedException(requirement);
+			}
+		}
 	}
 
 	/** Read by `StatusController` to fill `auth_url`/`qr` on `GET /status` while a login is pending. */
@@ -254,6 +289,12 @@ export class TailscaleLoginService implements OnModuleInit {
 		this.keyedLoginInFlight = true;
 
 		try {
+			// Checked only now (inside the `keyedLoginInFlight` guard, not in
+			// the synchronous `login()` dispatch above) so the pre-check's own
+			// CLI calls never delay the synchronous "cancel a pending
+			// interactive login" guarantee `login()` provides.
+			await this.assertActionable();
+
 			const keyFilePath = await this.writeAuthKeyFile(authKey);
 
 			try {
@@ -280,11 +321,32 @@ export class TailscaleLoginService implements OnModuleInit {
 		}
 	}
 
-	private loginInteractively(): Promise<TailscaleLoginResult> {
+	private async loginInteractively(): Promise<TailscaleLoginResult> {
 		if (this.pending) {
 			// Only one pending login at a time: hand back the URL already in
-			// flight instead of spawning a second `up` process.
-			return Promise.resolve({ state: 'pending-auth', authUrl: this.pending.authUrl, qr: this.pending.qr });
+			// flight instead of spawning a second `up` process — reusing an
+			// already-running sign-in needs no fresh requirements check.
+			return { state: 'pending-auth', authUrl: this.pending.authUrl, qr: this.pending.qr };
+		}
+
+		// Checked only now, after the "reuse an existing pending login" guard
+		// above and before ever spawning a new `tailscale up` process.
+		await this.assertActionable();
+
+		// Re-check both guards after the await above: `assertActionable()` yields,
+		// so a second concurrent interactive `login()` call could have passed the
+		// `this.pending` check before either call set it, or a keyed login could
+		// have raced in and set `keyedLoginInFlight` while this call waited on its
+		// own requirements check. Without this, two `tailscale up` processes could
+		// spawn at once.
+		if (this.pending) {
+			return { state: 'pending-auth', authUrl: this.pending.authUrl, qr: this.pending.qr };
+		}
+
+		if (this.keyedLoginInFlight) {
+			throw new TailscaleLoginInProgressException(
+				'A Tailscale sign-in with an auth key is currently in progress. Wait for it to finish before starting an interactive sign-in.',
+			);
 		}
 
 		const child = this.cli.spawnUp(['--json', '--timeout=10m', ...this.buildManagedFlags()]);

@@ -13,6 +13,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { TAILSCALE_DATA_SUBDIR } from '../remote-access-tailscale.constants';
+import { TailscaleRequirementUnsatisfiedException } from '../remote-access-tailscale.exceptions';
 
 import { TailscaleCliError, TailscaleCliService } from './tailscale-cli.service';
 import {
@@ -137,7 +138,12 @@ describe('TailscaleLoginService', () => {
 	// `string[]` instead of `any` — see the file-level note in
 	// tailscale-setup.service.spec.ts for the same pattern.
 	let cli: { spawnUp: jest.Mock<FakeChildProcess, [string[]]>; up: jest.Mock; logout: jest.Mock };
-	let nodeManagedService: { computeStatus: jest.Mock; getPluginConfig: jest.Mock; buildUpFlags: jest.Mock };
+	let nodeManagedService: {
+		computeStatus: jest.Mock;
+		getPluginConfig: jest.Mock;
+		buildUpFlags: jest.Mock;
+		refreshRequirements: jest.Mock;
+	};
 	let nestConfigServiceMock: { get: jest.Mock };
 	let dataDir: string;
 	let warnSpy: jest.SpyInstance;
@@ -156,6 +162,14 @@ describe('TailscaleLoginService', () => {
 			computeStatus: jest.fn().mockResolvedValue({ state: 'setup-required' }),
 			getPluginConfig: jest.fn().mockReturnValue({}),
 			buildUpFlags: jest.fn().mockReturnValue(['--hostname=panel', '--operator=smart-panel']),
+			// Satisfied by default so every pre-existing test in this file
+			// keeps observing login()/logout()/resetPreferences() proceeding
+			// past the new assertActionable() pre-check unless a test below
+			// overrides this explicitly.
+			refreshRequirements: jest.fn().mockResolvedValue([
+				{ code: 'operator-granted', satisfied: true, message: 'granted', remedy: null },
+				{ code: 'daemon-active', satisfied: true, message: 'active', remedy: null },
+			]),
 		};
 
 		nestConfigServiceMock = {
@@ -388,6 +402,44 @@ describe('TailscaleLoginService', () => {
 			keyedChild.emit('close', 0);
 
 			await keyedPromise;
+		});
+
+		it('never spawns two concurrent `tailscale up` processes when two interactive logins race past the requirements check', async () => {
+			// Both calls' `assertActionable()` awaits this same gate, simulating two
+			// interactive `login()` calls arriving before either has set
+			// `this.pending` - the exact window the re-check after `assertActionable()`
+			// exists to close.
+			let resolveRequirements!: (value: unknown) => void;
+			const gate = new Promise((resolve) => {
+				resolveRequirements = resolve;
+			});
+
+			nodeManagedService.refreshRequirements.mockReturnValueOnce(gate).mockReturnValueOnce(gate);
+
+			const child = new FakeChildProcess();
+
+			cli.spawnUp.mockReturnValueOnce(child);
+
+			const first = service.login();
+			const second = service.login();
+
+			resolveRequirements([
+				{ code: 'operator-granted', satisfied: true, message: 'granted', remedy: null },
+				{ code: 'daemon-active', satisfied: true, message: 'active', remedy: null },
+			]);
+
+			await expect(second).resolves.toEqual(expect.objectContaining({ state: 'pending-auth' }));
+
+			expect(cli.spawnUp).toHaveBeenCalledTimes(1);
+
+			child.stdout.emit(
+				'data',
+				Buffer.from(
+					'{"AuthURL":"https://login.tailscale.com/a/abc","QR":"data:image/png;base64,QQQ","BackendState":"NeedsLogin"}',
+				),
+			);
+
+			await first;
 		});
 
 		it('allows a new login (either mode) once the in-flight keyed one has completed', async () => {
@@ -772,6 +824,66 @@ describe('TailscaleLoginService', () => {
 			cli.up.mockRejectedValue(new TailscaleCliError('needs-login', 'not logged in'));
 
 			await expect(service.resetPreferences()).rejects.toMatchObject({ kind: 'needs-login' });
+		});
+	});
+
+	describe('assertActionable() — refuses login/logout/resetPreferences when a prerequisite is unsatisfied (RA-17 / D1)', () => {
+		function unsatisfied(code: 'operator-granted' | 'daemon-active', message: string): void {
+			nodeManagedService.refreshRequirements.mockResolvedValue([
+				{
+					code,
+					satisfied: false,
+					message,
+					remedy: { commands: [`sudo tailscale set --operator=smart-panel`], note: null },
+				},
+				{
+					code: code === 'operator-granted' ? 'daemon-active' : 'operator-granted',
+					satisfied: true,
+					message: 'ok',
+					remedy: null,
+				},
+			]);
+		}
+
+		it("login() refuses with the operator-granted requirement when it is unsatisfied, without spawning anything (and always via refreshRequirements('status-read'), never the cached snapshot)", async () => {
+			unsatisfied('operator-granted', 'The smart-panel user is not the tailscaled operator.');
+
+			const error = await service.login().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(TailscaleRequirementUnsatisfiedException);
+			expect((error as TailscaleRequirementUnsatisfiedException).requirement.code).toBe('operator-granted');
+			expect(cli.spawnUp).not.toHaveBeenCalled();
+			expect(nodeManagedService.refreshRequirements).toHaveBeenCalledWith('status-read');
+		});
+
+		it('login() refuses with the daemon-active requirement when it is unsatisfied', async () => {
+			unsatisfied('daemon-active', 'tailscaled is not active.');
+
+			const error = await service.login().catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(TailscaleRequirementUnsatisfiedException);
+			expect((error as TailscaleRequirementUnsatisfiedException).requirement.code).toBe('daemon-active');
+		});
+
+		it('logout() refuses before ever calling cli.logout() or cancelling a pending login', async () => {
+			unsatisfied('operator-granted', 'The smart-panel user is not the tailscaled operator.');
+
+			await expect(service.logout()).rejects.toBeInstanceOf(TailscaleRequirementUnsatisfiedException);
+			expect(cli.logout).not.toHaveBeenCalled();
+		});
+
+		it('resetPreferences() refuses before ever calling cli.up()', async () => {
+			unsatisfied('daemon-active', 'tailscaled is not active.');
+
+			await expect(service.resetPreferences()).rejects.toBeInstanceOf(TailscaleRequirementUnsatisfiedException);
+			expect(cli.up).not.toHaveBeenCalled();
+		});
+
+		it('proceeds normally when both operator-granted and daemon-active are satisfied', async () => {
+			nodeManagedService.computeStatus.mockResolvedValue({ state: 'setup-required' });
+
+			await expect(service.logout()).resolves.toEqual({ state: 'setup-required' });
+			expect(cli.logout).toHaveBeenCalledTimes(1);
 		});
 	});
 

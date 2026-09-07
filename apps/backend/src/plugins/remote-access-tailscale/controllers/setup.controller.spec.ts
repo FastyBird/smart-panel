@@ -13,6 +13,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { RemoteAccessProviderStatus } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
 import { PrivilegedWorkerUnavailableException } from '../../../modules/system/system.exceptions';
+import { TailscaleRequirementUnsatisfiedException } from '../remote-access-tailscale.exceptions';
+import { TailscaleCliError } from '../services/tailscale-cli.service';
 import { TailscaleLoginInProgressException, TailscaleLoginService } from '../services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../services/tailscale-provider.service';
@@ -200,6 +202,69 @@ describe('SetupController', () => {
 
 			await expect(controller.login({ authKey: undefined }, res)).rejects.toBeInstanceOf(ConflictException);
 		});
+
+		it('maps a requirement-unsatisfied refusal (operator-granted) to 409 with { code, message }', async () => {
+			loginService.login.mockRejectedValue(
+				new TailscaleRequirementUnsatisfiedException({
+					code: 'operator-granted',
+					satisfied: false,
+					message: 'The smart-panel user is not the tailscaled operator.',
+					remedy: { commands: ['sudo tailscale set --operator=smart-panel'], note: null },
+				}),
+			);
+			const res = fakeResponse();
+
+			const error = await controller.login({ authKey: undefined }, res).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(ConflictException);
+			expect((error as ConflictException).getResponse()).toEqual({
+				code: 'operator-granted',
+				message: 'The smart-panel user is not the tailscaled operator.',
+			});
+		});
+
+		it('maps a permission-denied CLI failure to 409 { code: "operator-not-granted" }', async () => {
+			loginService.login.mockRejectedValue(new TailscaleCliError('permission-denied', 'Access denied'));
+			const res = fakeResponse();
+
+			const error = await controller.login({ authKey: undefined }, res).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(ConflictException);
+			expect((error as ConflictException).getResponse()).toEqual({
+				code: 'operator-not-granted',
+				message: 'Access denied',
+			});
+		});
+
+		it('maps a daemon-down CLI failure to 409 { code: "daemon-not-active" }', async () => {
+			loginService.login.mockRejectedValue(new TailscaleCliError('daemon-down', 'connection refused'));
+			const res = fakeResponse();
+
+			const error = await controller.login({ authKey: undefined }, res).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(ConflictException);
+			expect((error as ConflictException).getResponse()).toEqual({
+				code: 'daemon-not-active',
+				message: 'connection refused',
+			});
+		});
+
+		it('maps a needs-login CLI failure to 409 { code: "not-signed-in" }', async () => {
+			loginService.login.mockRejectedValue(new TailscaleCliError('needs-login', 'not logged in'));
+			const res = fakeResponse();
+
+			const error = await controller.login({ authKey: undefined }, res).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(ConflictException);
+			expect((error as ConflictException).getResponse()).toEqual({ code: 'not-signed-in', message: 'not logged in' });
+		});
+
+		it('leaves an unrecognised CLI failure kind (e.g. timeout) as a 500', async () => {
+			loginService.login.mockRejectedValue(new TailscaleCliError('timeout', 'tailscale up did not complete in time'));
+			const res = fakeResponse();
+
+			await expect(controller.login({ authKey: undefined }, res)).rejects.toBeInstanceOf(InternalServerErrorException);
+		});
 	});
 
 	describe('logout', () => {
@@ -227,6 +292,39 @@ describe('SetupController', () => {
 
 			expect(res.header).toHaveBeenCalledWith('Cache-Control', 'no-store');
 		});
+
+		it('maps a requirement-unsatisfied refusal (daemon-active) to 409 with { code, message }', async () => {
+			loginService.logout.mockRejectedValue(
+				new TailscaleRequirementUnsatisfiedException({
+					code: 'daemon-active',
+					satisfied: false,
+					message: 'tailscaled is not active. Run setup or start the service.',
+					remedy: { commands: ['sudo systemctl enable --now tailscaled'], note: null },
+				}),
+			);
+			const res = fakeResponse();
+
+			const error = await controller.logout(res).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(ConflictException);
+			expect((error as ConflictException).getResponse()).toEqual({
+				code: 'daemon-active',
+				message: 'tailscaled is not active. Run setup or start the service.',
+			});
+		});
+
+		it('maps a permission-denied CLI failure to 409 { code: "operator-not-granted" }', async () => {
+			loginService.logout.mockRejectedValue(new TailscaleCliError('permission-denied', 'Access denied'));
+			const res = fakeResponse();
+
+			const error = await controller.logout(res).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(ConflictException);
+			expect((error as ConflictException).getResponse()).toEqual({
+				code: 'operator-not-granted',
+				message: 'Access denied',
+			});
+		});
 	});
 
 	describe('resetPreferences', () => {
@@ -237,6 +335,19 @@ describe('SetupController', () => {
 
 			expect(loginService.resetPreferences).toHaveBeenCalledTimes(1);
 			expect(response.data.type).toBe('remote-access-tailscale-plugin');
+		});
+
+		it('maps a daemon-down CLI failure to 409 { code: "daemon-not-active" }', async () => {
+			loginService.resetPreferences.mockRejectedValue(new TailscaleCliError('daemon-down', 'connection refused'));
+			const res = fakeResponse();
+
+			const error = await controller.resetPreferences(res).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(ConflictException);
+			expect((error as ConflictException).getResponse()).toEqual({
+				code: 'daemon-not-active',
+				message: 'connection refused',
+			});
 		});
 
 		it('maps an unexpected failure to 500', async () => {
