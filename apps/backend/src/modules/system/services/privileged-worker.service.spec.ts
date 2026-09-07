@@ -1074,4 +1074,75 @@ describe('PrivilegedWorkerService', () => {
 			expect(redact).toHaveBeenCalledWith('tskey-secret-value leaked');
 		});
 	});
+
+	describe('job record pruning', () => {
+		it('keeps a terminal job readable via getStatus() for a while, then prunes it once the retention window elapses', async () => {
+			const { id } = await service.run(baseSpec);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({ id, state: 'complete', updatedAt: new Date().toISOString() }),
+			);
+
+			jest.advanceTimersByTime(3_000);
+
+			// Terminal, and still readable right after (the unit was just freed).
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ id, state: 'complete' }));
+
+			// Still readable well before the 5-minute retention window elapses.
+			jest.advanceTimersByTime(4 * 60_000);
+
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ id, state: 'complete' }));
+
+			// The retention window has now elapsed since the job went terminal.
+			jest.advanceTimersByTime(60_000 + 1);
+
+			expect(service.getStatus(id)).toBeNull();
+		});
+
+		it('returns a no-op unsubscribe for a pruned job, matching the existing unknown-id behavior', async () => {
+			const { id } = await service.run(baseSpec);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({ id, state: 'complete', updatedAt: new Date().toISOString() }),
+			);
+
+			jest.advanceTimersByTime(3_000);
+			jest.advanceTimersByTime(5 * 60_000 + 1);
+
+			expect(service.getStatus(id)).toBeNull();
+			expect(() => service.onStatus(id, jest.fn())()).not.toThrow();
+		});
+
+		it('does not prune a job still reserved in busyUnits after a timeout stop attempt (the RA-24 "still running" case)', async () => {
+			const { id } = await service.run({ ...baseSpec, timeoutMs: 5_000 });
+
+			const stopChild = createFakeChild(9010);
+			(spawn as jest.Mock).mockReturnValueOnce(stopChild);
+			(execFile as unknown as jest.Mock).mockImplementationOnce(
+				(_file: string, _args: readonly string[], _options: unknown, callback: ExecFileCallback) => {
+					callback(null, 'active\n', '');
+				},
+			);
+
+			jest.advanceTimersByTime(6_001);
+
+			stopChild.emit('exit', 0, null);
+			await flushMicrotasks();
+
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ id, state: 'timeout' }));
+
+			// Advance well past the normal 5-minute prune window — the job must still be reserved
+			// and readable, since its unit was never actually freed (see stopPolling/schedulePrune
+			// in the service: pruning is only scheduled from the branch that frees the unit).
+			jest.advanceTimersByTime(10 * 60_000);
+
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ id, state: 'timeout' }));
+
+			// Still reserved — a retry for the same unit is still rejected the same way as before
+			// this window elapsed.
+			await expect(service.run(baseSpec)).rejects.toThrow(/still running/);
+		});
+	});
 });
