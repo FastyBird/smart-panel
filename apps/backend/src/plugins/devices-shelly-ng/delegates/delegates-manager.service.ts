@@ -53,6 +53,21 @@ type BatchUpdate = {
 	val: string | number | boolean;
 };
 
+/**
+ * Structural shape shared by every component that exposes `power:{id}` / `energy:{id}`
+ * channels (switch, PM1, cover, light, RGB, RGBW, CCT). CCT never reports `aenergy` (no
+ * energy metering on that component), which is why the field stays optional here rather
+ * than being required.
+ */
+type ElectricalComponent = {
+	id: number;
+	key: string;
+	apower?: number;
+	voltage?: number;
+	current?: number;
+	aenergy?: { total: number };
+};
+
 @Injectable()
 export class DelegatesManagerService {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
@@ -424,112 +439,7 @@ export class DelegatesManagerService {
 				},
 			);
 
-			if (typeof comp.aenergy !== 'undefined') {
-				const electricalEnergy = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
-					'identifier',
-					`energy:${comp.id}`,
-					device.id,
-					DEVICES_SHELLY_NG_TYPE,
-				);
-
-				if (electricalEnergy === null) {
-					// Channel may not be created yet - this is expected during device initialization
-					// Continue without energy monitoring rather than failing
-				} else {
-					const consumption = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-						'identifier',
-						'aenergy',
-						electricalEnergy.id,
-					);
-
-					if (consumption === null) {
-						// Property may not be created yet - this is expected during device initialization
-					} else {
-						await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
-
-						// Registered on the flattened leaf key, not the bare `aenergy` object key: the
-						// library emits `aenergy` as `{ total, by_minute, minute_ts }`, and
-						// coerceNumberSafe now (correctly) rejects that instead of coercing it to 0.
-						this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy.total`, (val: CharacteristicValue): void => {
-							this.handleNumericChange(comp.key, 'aenergy.total', consumption.id, val, (n) =>
-								this.handleChange(consumption, toEnergy(n), false),
-							);
-						});
-					}
-				}
-			}
-
-			if (typeof comp.apower !== 'undefined') {
-				const electricalPower = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
-					'identifier',
-					`power:${comp.id}`,
-					device.id,
-					DEVICES_SHELLY_NG_TYPE,
-				);
-
-				if (electricalPower === null) {
-					// Channel may not be created yet - this is expected during device initialization
-					// Continue without power monitoring rather than failing
-				} else {
-					const power = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-						'identifier',
-						'apower',
-						electricalPower.id,
-					);
-
-					if (power === null) {
-						// Property may not be created yet - this is expected during device initialization
-					} else {
-						await this.setDefaultPropertyValue(device.id, power, Math.max(0, comp.apower));
-
-						this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
-							this.handleNumericChange(comp.key, 'apower', power.id, val, (n) =>
-								this.handleChange(power, Math.max(0, n), false),
-							);
-						});
-
-						if (typeof comp.voltage !== 'undefined') {
-							const voltage = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-								'identifier',
-								'voltage',
-								electricalPower.id,
-							);
-
-							if (voltage === null) {
-								// Property may not be created yet - this is expected during device initialization
-							} else {
-								await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
-
-								this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
-									this.handleNumericChange(comp.key, 'voltage', voltage.id, val, (n) =>
-										this.handleChange(voltage, n, false),
-									);
-								});
-							}
-						}
-
-						if (typeof comp.current !== 'undefined') {
-							const current = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-								'identifier',
-								'current',
-								electricalPower.id,
-							);
-
-							if (current === null) {
-								// Property may not be created yet - this is expected during device initialization
-							} else {
-								await this.setDefaultPropertyValue(device.id, current, comp.current);
-
-								this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
-									this.handleNumericChange(comp.key, 'current', current.id, val, (n) =>
-										this.handleChange(current, n, false),
-									);
-								});
-							}
-						}
-					}
-				}
-			}
+			await this.wireElectricalChannels(delegate, device, comp);
 		}
 
 		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
@@ -646,6 +556,8 @@ export class DelegatesManagerService {
 					return true;
 				},
 			);
+
+			await this.wireElectricalChannels(delegate, device, comp);
 		}
 
 		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
@@ -744,6 +656,8 @@ export class DelegatesManagerService {
 					},
 				);
 			}
+
+			await this.wireElectricalChannels(delegate, device, comp);
 		}
 
 		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
@@ -1002,6 +916,8 @@ export class DelegatesManagerService {
 
 				return true;
 			});
+
+			await this.wireElectricalChannels(delegate, device, comp);
 		}
 
 		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
@@ -1312,6 +1228,8 @@ export class DelegatesManagerService {
 
 				return true;
 			});
+
+			await this.wireElectricalChannels(delegate, device, comp);
 		}
 
 		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
@@ -1483,6 +1401,10 @@ export class DelegatesManagerService {
 
 				return true;
 			});
+
+			// CCT never reports `aenergy` (no energy metering on this component), so only
+			// `apower` / `voltage` / `current` are ever wired here.
+			await this.wireElectricalChannels(delegate, device, comp);
 		}
 
 		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
@@ -1602,106 +1524,7 @@ export class DelegatesManagerService {
 		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
 
 		for (const comp of delegate.pm1.values()) {
-			const electricalPower = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
-				'identifier',
-				`power:${comp.id}`,
-				device.id,
-				DEVICES_SHELLY_NG_TYPE,
-			);
-
-			if (electricalPower === null) {
-				// Channel may not be created yet - this is expected during device initialization
-				continue;
-			}
-
-			const power = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-				'identifier',
-				'apower',
-				electricalPower.id,
-			);
-
-			if (power === null) {
-				throw new DevicesShellyNgNotFoundException('Failed to load electrical power channel property');
-			}
-
-			await this.setDefaultPropertyValue(device.id, power, Math.max(0, comp.apower));
-
-			this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
-				this.handleNumericChange(comp.key, 'apower', power.id, val, (n) =>
-					this.handleChange(power, Math.max(0, n), false),
-				);
-			});
-
-			if (typeof comp.voltage !== 'undefined') {
-				const voltage = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-					'identifier',
-					'voltage',
-					electricalPower.id,
-				);
-
-				if (voltage === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load electrical power voltage channel property');
-				}
-
-				await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
-
-				this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
-					this.handleNumericChange(comp.key, 'voltage', voltage.id, val, (n) => this.handleChange(voltage, n, false));
-				});
-			}
-
-			if (typeof comp.current !== 'undefined') {
-				const current = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-					'identifier',
-					'current',
-					electricalPower.id,
-				);
-
-				if (current === null) {
-					throw new DevicesShellyNgNotFoundException('Failed to load electrical power current channel property');
-				}
-
-				await this.setDefaultPropertyValue(device.id, current, comp.current);
-
-				this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
-					this.handleNumericChange(comp.key, 'current', current.id, val, (n) => this.handleChange(current, n, false));
-				});
-			}
-
-			if (typeof comp.aenergy !== 'undefined') {
-				const electricalEnergy = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
-					'identifier',
-					`energy:${comp.id}`,
-					device.id,
-					DEVICES_SHELLY_NG_TYPE,
-				);
-
-				if (electricalEnergy === null) {
-					// Channel may not be created yet - this is expected during device initialization
-					// Continue without energy monitoring rather than failing
-				} else {
-					const consumption = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-						'identifier',
-						'aenergy',
-						electricalEnergy.id,
-					);
-
-					if (consumption === null) {
-						// Property may not be created yet - this is expected during device initialization
-					} else {
-						await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
-
-						// Registered on the flattened leaf key, not the bare `aenergy` object key: the
-						// library emits `aenergy` as `{ total, by_minute, minute_ts }`, and
-						// coerceNumberSafe now (correctly) rejects that instead of coercing it to 0.
-						this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy.total`, (val: CharacteristicValue): void => {
-							this.handleNumericChange(comp.key, 'aenergy.total', consumption.id, val, (n) =>
-								this.handleChange(consumption, toEnergy(n), false),
-							);
-						});
-					}
-				}
-			}
+			await this.wireElectricalChannels(delegate, device, comp);
 		}
 
 		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
@@ -2115,6 +1938,141 @@ export class DelegatesManagerService {
 		}
 
 		set.add(property.id);
+	}
+
+	/**
+	 * Wires the `power:{id}` / `energy:{id}` channels for any component that exposes
+	 * `apower` / `voltage` / `current` / `aenergy` (switch, PM1, cover, light, RGB, RGBW,
+	 * CCT). Writes the initial value and registers a live-update handler for each
+	 * attribute the component actually reports.
+	 *
+	 * A missing channel or property is always treated as a provisioning race (channel not
+	 * created yet) and skipped with a comment rather than thrown — never crash delegate
+	 * wiring over it. `energy:{id}` is checked first, matching what the switch block has
+	 * always done; the order has no behavioural effect since the two channels are
+	 * independent.
+	 */
+	private async wireElectricalChannels(
+		delegate: ShellyDeviceDelegate,
+		device: ShellyNgDeviceEntity,
+		comp: ElectricalComponent,
+	): Promise<void> {
+		if (typeof comp.aenergy !== 'undefined') {
+			const electricalEnergy = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+				'identifier',
+				`energy:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (electricalEnergy === null) {
+				// Channel may not be created yet - this is expected during device initialization
+				// Continue without energy monitoring rather than failing
+			} else {
+				const consumption = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'identifier',
+					'aenergy',
+					electricalEnergy.id,
+				);
+
+				if (consumption === null) {
+					// Property may not be created yet - this is expected during device initialization
+				} else {
+					await this.setDefaultPropertyValue(device.id, consumption, toEnergy(comp.aenergy));
+
+					// Registered on the flattened leaf key, not the bare `aenergy` object key: the
+					// library emits `aenergy` as `{ total, by_minute, minute_ts }`, and
+					// coerceNumberSafe now (correctly) rejects that instead of coercing it to 0.
+					this.changeHandlers.set(`${delegate.id}|${comp.key}|aenergy.total`, (val: CharacteristicValue): void => {
+						this.handleNumericChange(comp.key, 'aenergy.total', consumption.id, val, (n) =>
+							this.handleChange(consumption, toEnergy(n), false),
+						);
+					});
+				}
+			}
+		}
+
+		if (
+			typeof comp.apower !== 'undefined' ||
+			typeof comp.voltage !== 'undefined' ||
+			typeof comp.current !== 'undefined'
+		) {
+			const electricalPower = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+				'identifier',
+				`power:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (electricalPower === null) {
+				// Channel may not be created yet - this is expected during device initialization
+				// Continue without power monitoring rather than failing
+			} else {
+				// apower / voltage / current are resolved and registered independently: the
+				// library declares all three as independently optional (each "shown if
+				// applicable"), so a component may report only some of them. A missing
+				// property is always a provisioning race, never a reason to skip the others.
+				if (typeof comp.apower !== 'undefined') {
+					const power = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+						'identifier',
+						'apower',
+						electricalPower.id,
+					);
+
+					if (power === null) {
+						// Property may not be created yet - this is expected during device initialization
+					} else {
+						await this.setDefaultPropertyValue(device.id, power, Math.max(0, comp.apower));
+
+						this.changeHandlers.set(`${delegate.id}|${comp.key}|apower`, (val: CharacteristicValue): void => {
+							this.handleNumericChange(comp.key, 'apower', power.id, val, (n) =>
+								this.handleChange(power, Math.max(0, n), false),
+							);
+						});
+					}
+				}
+
+				if (typeof comp.voltage !== 'undefined') {
+					const voltage = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+						'identifier',
+						'voltage',
+						electricalPower.id,
+					);
+
+					if (voltage === null) {
+						// Property may not be created yet - this is expected during device initialization
+					} else {
+						await this.setDefaultPropertyValue(device.id, voltage, comp.voltage);
+
+						this.changeHandlers.set(`${delegate.id}|${comp.key}|voltage`, (val: CharacteristicValue): void => {
+							this.handleNumericChange(comp.key, 'voltage', voltage.id, val, (n) =>
+								this.handleChange(voltage, n, false),
+							);
+						});
+					}
+				}
+
+				if (typeof comp.current !== 'undefined') {
+					const current = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+						'identifier',
+						'current',
+						electricalPower.id,
+					);
+
+					if (current === null) {
+						// Property may not be created yet - this is expected during device initialization
+					} else {
+						await this.setDefaultPropertyValue(device.id, current, comp.current);
+
+						this.changeHandlers.set(`${delegate.id}|${comp.key}|current`, (val: CharacteristicValue): void => {
+							this.handleNumericChange(comp.key, 'current', current.id, val, (n) =>
+								this.handleChange(current, n, false),
+							);
+						});
+					}
+				}
+			}
+		}
 	}
 
 	private determineCategory(delegate: ShellyDeviceDelegate): DeviceCategory {
