@@ -33,7 +33,7 @@ import {
 import { TailscaleNodeStopFailedException } from '../remote-access-tailscale.exceptions';
 
 import { TailscaleCliError, TailscaleCliService, TailscaleStatus } from './tailscale-cli.service';
-import { TailscaleServeService } from './tailscale-serve.service';
+import { TailscaleServeResult, TailscaleServeService } from './tailscale-serve.service';
 import { TailscaleStatusMapperService } from './tailscale-status-mapper.service';
 
 export type TailscaleRequirementCode =
@@ -153,6 +153,8 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	/** Cached `refreshRequirements()` snapshot — see `getRequirements()`/`refreshRequirements()`. */
 	private requirementsCache: TailscaleRequirement[] | null = null;
 	private requirementsRefreshedAt = 0;
+	/** Set by `convergeServe()` while the last Serve/Funnel mutation attempt was denied — read back so the denial is logged, and `operator-granted` refreshed, only once per transition instead of on every call. */
+	private lastServeConvergeDenied = false;
 
 	constructor(
 		private readonly cli: TailscaleCliService,
@@ -368,11 +370,12 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 					const port = this.getBackendPort();
 
-					// Applied immediately here for a responsive config change,
-					// rather than waiting for the next poll tick to self-heal it
-					// (computeStatus() calls the same apply step every tick).
+					// Converged immediately here for a responsive config change,
+					// rather than waiting for the next poll tick to pick it up
+					// (pollTick() runs the same converge step, at most once per
+					// tick, gated on requirements satisfied + connected).
 					if (this.mapper.map(status, { port }).state === 'connected') {
-						await this.serveService.apply(next, port, status);
+						await this.convergeServe(next, port, status);
 					}
 				}
 			}
@@ -645,9 +648,12 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 	/**
 	 * Live status merged with the platform requirement, used by both the
-	 * poller and `TailscaleProviderService.getStatus()`. Never throws — CLI
-	 * failures are classified into `not-installed` / `setup-required` /
-	 * `error` states instead.
+	 * poller and `TailscaleProviderService.getStatus()` (hence every GET
+	 * status endpoint). Never throws — CLI failures are classified into
+	 * `not-installed` / `setup-required` / `error` states instead. Never
+	 * mutates: Serve/Funnel state is read via `TailscaleServeService.read()`
+	 * only — a GET must not converge anything. Converging is `pollTick()`'s
+	 * and `onConfigChanged()`'s job, not this method's (see their own docs).
 	 *
 	 * D2: reads this managed service's own lifecycle state (`this.state`)
 	 * first and short-circuits on it — a `tailscaled` daemon that is still
@@ -659,18 +665,33 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	 * touches the CLI at all.
 	 */
 	async computeStatus(): Promise<RemoteAccessProviderStatus> {
+		return (await this.computeStatusWithRawStatus()).status;
+	}
+
+	/**
+	 * Shared by `computeStatus()` and `pollTick()`: computes the exact same
+	 * status `computeStatus()` returns, but also hands back the raw
+	 * `status --json` read this call made (or `null` when one was never
+	 * made — every short-circuit branch and the catch block below), so
+	 * `pollTick()` can pass it straight to `serveService.converge()` without
+	 * paying for a second `status --json` call just to converge Serve/Funnel.
+	 */
+	private async computeStatusWithRawStatus(): Promise<{
+		status: RemoteAccessProviderStatus;
+		raw: TailscaleStatus | null;
+	}> {
 		if (this.state === 'stopped' || this.state === 'stopping') {
-			return this.buildStatus('disconnected', 'The node service is stopped.');
+			return { status: this.buildStatus('disconnected', 'The node service is stopped.'), raw: null };
 		}
 
 		if (this.state === 'error') {
-			return this.buildStatus('error', this.lastError ?? 'The Tailscale node service failed.');
+			return { status: this.buildStatus('error', this.lastError ?? 'The Tailscale node service failed.'), raw: null };
 		}
 
 		const platform = await this.evaluatePlatformSupported();
 
 		if (!platform.satisfied) {
-			return this.buildStatus('unsupported', platform.message);
+			return { status: this.buildStatus('unsupported', platform.message), raw: null };
 		}
 
 		try {
@@ -691,67 +712,115 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 				// operator: every write (`set`/`up`/`serve`) fails
 				// permission-denied even though the read-only call above just
 				// succeeded and may report Running. Report setup-required
-				// instead of trusting BackendState, and skip the Serve/Funnel
-				// apply step below entirely — it would only fail the same way.
-				return this.buildStatus(
-					'setup-required',
-					operatorRequirement.message,
-					{},
-					[],
-					[],
-					[
-						...postureAdvisories,
-						{ code: 'operator-not-granted', severity: 'critical', message: operatorRequirement.message },
-					],
-				);
+				// instead of trusting BackendState, and skip reading Serve/Funnel
+				// below entirely — it would only report a drifted/absent handler
+				// this plugin cannot fix anyway.
+				return {
+					status: this.buildStatus(
+						'setup-required',
+						operatorRequirement.message,
+						{},
+						[],
+						[],
+						[
+							...postureAdvisories,
+							{ code: 'operator-not-granted', severity: 'critical', message: operatorRequirement.message },
+						],
+					),
+					raw: status,
+				};
 			}
 
 			const mapped = this.mapper.map(status, { port });
 
 			if (mapped.state !== 'connected') {
-				return this.buildStatus(
-					mapped.state,
-					mapped.message,
-					mapped.details,
-					mapped.proxyAddresses,
-					mapped.endpoints,
-					postureAdvisories,
-				);
+				return {
+					status: this.buildStatus(
+						mapped.state,
+						mapped.message,
+						mapped.details,
+						mapped.proxyAddresses,
+						mapped.endpoints,
+						postureAdvisories,
+					),
+					raw: status,
+				};
 			}
 
 			// Serve/Funnel are only meaningful once connected — `Self.CapMap`
-			// (the ACL capabilities the apply step gates on) is only populated
-			// then. This call is what applies a config change and self-heals a
-			// drifted Serve/Funnel state; never more than once per computeStatus()
-			// call, called by every poll tick and (for immediate effect) by
-			// onConfigChanged() too.
+			// (the ACL capabilities `read()`/`converge()` gate on) is only
+			// populated then. `read()` never mutates; never more than once per
+			// call, called by every status read (the poller's tick included).
 			const config = this.getPluginConfig();
-			const serveResult = await this.serveService.apply(config, port, status);
+			const serveResult = await this.serveService.read(config, port, status);
 
-			return this.buildStatus(
-				mapped.state,
-				mapped.message,
-				mapped.details,
-				[...mapped.proxyAddresses, ...serveResult.proxyAddresses],
-				[...mapped.endpoints, ...serveResult.endpoints],
-				[...postureAdvisories, ...serveResult.advisories],
-			);
+			return {
+				status: this.buildStatus(
+					mapped.state,
+					mapped.message,
+					mapped.details,
+					[...mapped.proxyAddresses, ...serveResult.proxyAddresses],
+					[...mapped.endpoints, ...serveResult.endpoints],
+					[...postureAdvisories, ...serveResult.advisories],
+				),
+				raw: status,
+			};
 		} catch (error) {
 			if (error instanceof TailscaleCliError) {
 				switch (error.kind) {
 					case 'not-installed':
-						return this.buildStatus('not-installed', 'Tailscale is not installed.');
+						return { status: this.buildStatus('not-installed', 'Tailscale is not installed.'), raw: null };
 					case 'permission-denied':
-						return this.buildStatus('setup-required', 'The smart-panel operator has not been granted on tailscaled.');
+						return {
+							status: this.buildStatus(
+								'setup-required',
+								'The smart-panel operator has not been granted on tailscaled.',
+							),
+							raw: null,
+						};
 					case 'daemon-down':
-						return this.buildStatus('setup-required', 'The Tailscale daemon is not running.');
+						return { status: this.buildStatus('setup-required', 'The Tailscale daemon is not running.'), raw: null };
 					default:
-						return this.buildStatus('error', 'Failed to retrieve the Tailscale status.');
+						return { status: this.buildStatus('error', 'Failed to retrieve the Tailscale status.'), raw: null };
 				}
 			}
 
 			throw error;
 		}
+	}
+
+	/**
+	 * The only place `TailscaleServeService.converge()` is called from — at
+	 * most one Serve/Funnel mutation, gated by the caller (`pollTick()`:
+	 * once per tick, only while healthy; `onConfigChanged()`: immediately,
+	 * unconditionally once connected). Centralised here so both call sites
+	 * share the same `permission-denied` handling: refreshing the
+	 * `operator-granted` requirement and logging the denial, both only once
+	 * per state transition — not on every call while the grant stays
+	 * revoked, which is what produced the original per-tick warning spam.
+	 */
+	private async convergeServe(
+		config: RemoteAccessTailscalePluginConfigModel,
+		port: number,
+		status: TailscaleStatus,
+	): Promise<TailscaleServeResult> {
+		const result = await this.serveService.converge(config, port, status);
+
+		if (result.permissionDenied) {
+			if (!this.lastServeConvergeDenied) {
+				this.lastServeConvergeDenied = true;
+
+				this.logger.warn(
+					'Tailscale Serve/Funnel mutation was denied — the smart-panel operator grant may have been revoked.',
+				);
+
+				await this.refreshRequirements('permission-denied').catch(() => undefined);
+			}
+		} else {
+			this.lastServeConvergeDenied = false;
+		}
+
+		return result;
 	}
 
 	// ─── Requirements ─────────────────────────────────────────────────
@@ -989,13 +1058,29 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		}
 	}
 
+	/**
+	 * Reads the live status exactly once (`computeStatusWithRawStatus()`,
+	 * shared with `computeStatus()`), then — only while `getRequirements()`
+	 * reports every requirement satisfied and the mapped state is
+	 * `connected` — converges Serve/Funnel at most once via `convergeServe()`.
+	 * A degraded node (an unsatisfied requirement, or not connected) never
+	 * attempts a Serve/Funnel mutation; there is nothing for it to converge
+	 * towards until the node itself is healthy again. `raw` is guaranteed
+	 * non-null whenever `status.state === 'connected'` (both come from the
+	 * same live branch of `computeStatusWithRawStatus()`) — the null check
+	 * here is only for the type checker.
+	 */
 	private async pollTick(): Promise<void> {
 		try {
-			const status = await this.computeStatus();
+			const { status, raw } = await this.computeStatusWithRawStatus();
 
 			if (!this.isPollable()) {
 				// stop() ran while this tick's computeStatus() was in flight.
 				return;
+			}
+
+			if (raw && status.state === 'connected' && this.requirementsSatisfied(this.getRequirements())) {
+				await this.convergeServe(this.getPluginConfig(), this.getBackendPort(), raw);
 			}
 
 			if (this.hasStatusChanged(this.lastStatus, status)) {
