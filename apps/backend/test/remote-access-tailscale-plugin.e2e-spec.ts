@@ -415,10 +415,12 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				.set('Authorization', 'Bearer owner-user')
 				.expect(422);
 
-			// expect.stringContaining(...) inside a plain object literal trips
-			// @typescript-eslint/no-unsafe-assignment — asserted field-by-field instead.
-			expect(response.body.code).toBe('platform-unsupported');
-			expect(response.body.message).toContain('privileged-worker support');
+			// Shape-agnostic (RA-27/D13): this test app registers no global exception
+			// filters, so the body here is Nest's raw default shape, not the production
+			// envelope (`error.details.code`/`error.details.reason`) - asserting a
+			// top-level `body.code` would pass here and fail in production.
+			expect(JSON.stringify(response.body)).toContain('platform-unsupported');
+			expect(JSON.stringify(response.body)).toContain('privileged-worker support');
 		});
 
 		it('maps a probe-currently-failing refusal (permanent, but self-resolving) to 422 with code: privileged-worker-unavailable', async () => {
@@ -434,8 +436,8 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				.set('Authorization', 'Bearer owner-user')
 				.expect(422);
 
-			expect(response.body.code).toBe('privileged-worker-unavailable');
-			expect(response.body.message).toContain('sudo smart-panel-service install');
+			expect(JSON.stringify(response.body)).toContain('privileged-worker-unavailable');
+			expect(JSON.stringify(response.body)).toContain('sudo smart-panel-service install');
 		});
 	});
 
