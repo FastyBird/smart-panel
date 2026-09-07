@@ -13,12 +13,7 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 
 import { API_PREFIX, MODULES_PREFIX, MULTIPART_MAX_FILE_SIZE_BYTES } from './app.constants';
 import { AppModule } from './app.module';
-import { BadRequestExceptionFilter } from './common/filters/bad-request-exception.filter';
-import { GlobalErrorFilter } from './common/filters/global-error.filter';
-import { InternalServerErrorExceptionFilter } from './common/filters/internal-server-error-exception.filter';
-import { NotFoundExceptionFilter } from './common/filters/not-found-exception.filter';
-import { QueryFailedExceptionFilter } from './common/filters/query-failed-exception.filter';
-import { UnprocessableEntityExceptionFilter } from './common/filters/unprocessable-entity-exception.filter';
+import { createGlobalExceptionFilters } from './common/filters/global-filters';
 import { AppInstanceHolder } from './common/services/app-instance-holder.service';
 import { getEnvValue } from './common/utils/config.utils';
 import { ValidationExceptionFactory } from './common/validation/validation-exception-factory';
@@ -125,14 +120,7 @@ async function bootstrap() {
 		});
 	}
 
-	app.useGlobalFilters(
-		new GlobalErrorFilter(),
-		new InternalServerErrorExceptionFilter(),
-		new BadRequestExceptionFilter(),
-		new UnprocessableEntityExceptionFilter(),
-		new NotFoundExceptionFilter(configService),
-		new QueryFailedExceptionFilter(),
-	);
+	app.useGlobalFilters(...createGlobalExceptionFilters(configService));
 
 	app.useGlobalPipes(
 		new ValidationPipe({

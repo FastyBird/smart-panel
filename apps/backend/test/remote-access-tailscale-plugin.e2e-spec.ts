@@ -1,16 +1,18 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+eslint-disable @typescript-eslint/no-unsafe-member-access
 */
 import { execFile } from 'node:child_process';
 import os from 'os';
 import request from 'supertest';
 
-import { CanActivate, ExecutionContext, INestApplication, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 
+import { createGlobalExceptionFilters } from '../src/common/filters/global-filters';
 import { TokenOwnerType } from '../src/modules/auth/auth.constants';
 import { AuthenticatedEntity, AuthenticatedRequest } from '../src/modules/auth/guards/auth.guard';
 import { ConfigService } from '../src/modules/config/services/config.service';
@@ -132,7 +134,7 @@ class TestCredentialGuard implements CanActivate {
  * services through a minimal testing module rather than the full AppModule.
  */
 describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
-	let app: INestApplication;
+	let app: NestFastifyApplication;
 	// Started for real in `beforeAll` below, mirroring `ManagedServiceManager`
 	// bringing an owner-enabled managed service up before the app starts
 	// serving traffic in production — `computeStatus()` now reads its own
@@ -222,8 +224,15 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 			],
 		}).compile();
 
-		app = moduleFixture.createNestApplication();
-		await app.init();
+		// RA-27/D13: registers the same production exception filter chain
+		// `main.ts` uses (via the Fastify adapter production actually runs on,
+		// rather than this testing module's Express default) so the 409/422
+		// assertions below observe the real `BaseErrorResponseModel` envelope
+		// production sends, not Nest's raw default shape a bare testing module
+		// would otherwise produce.
+		app = moduleFixture.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+		app.useGlobalFilters(...createGlobalExceptionFilters(nestConfigService as unknown as NestConfigService));
+		await app.listen(0, '127.0.0.1');
 
 		nodeManagedService = app.get(TailscaleNodeManagedService);
 		await nodeManagedService.start();
@@ -455,12 +464,11 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				.set('Authorization', 'Bearer owner-user')
 				.expect(422);
 
-			// Shape-agnostic (RA-27/D13): this test app registers no global exception
-			// filters, so the body here is Nest's raw default shape, not the production
-			// envelope (`error.details.code`/`error.details.reason`) - asserting a
-			// top-level `body.code` would pass here and fail in production.
-			expect(JSON.stringify(response.body)).toContain('platform-unsupported');
-			expect(JSON.stringify(response.body)).toContain('privileged-worker support');
+			// RA-27/D13: the production envelope carries the application code in
+			// `error.details.code` and the message in `error.details.reason` —
+			// `error.code` itself stays the coarse `'UnprocessableEntity'` class code.
+			expect(response.body.error.details.code).toBe('platform-unsupported');
+			expect(response.body.error.details.reason).toContain('privileged-worker support');
 		});
 
 		it('maps a probe-currently-failing refusal (permanent, but self-resolving) to 422 with code: privileged-worker-unavailable', async () => {
@@ -476,8 +484,8 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				.set('Authorization', 'Bearer owner-user')
 				.expect(422);
 
-			expect(JSON.stringify(response.body)).toContain('privileged-worker-unavailable');
-			expect(JSON.stringify(response.body)).toContain('sudo smart-panel-service install');
+			expect(response.body.error.details.code).toBe('privileged-worker-unavailable');
+			expect(response.body.error.details.reason).toContain('sudo smart-panel-service install');
 		});
 	});
 
@@ -571,8 +579,8 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				.send({})
 				.expect(409);
 
-			expect(JSON.stringify(response.body)).toContain('operator-granted');
-			expect(JSON.stringify(response.body)).toContain('The smart-panel user is not the tailscaled operator.');
+			expect(response.body.error.details.code).toBe('operator-granted');
+			expect(response.body.error.details.reason).toContain('The smart-panel user is not the tailscaled operator.');
 		});
 
 		it('maps a permission-denied CLI failure to 409 with an operator-not-granted code', async () => {
@@ -584,7 +592,8 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				.send({})
 				.expect(409);
 
-			expect(JSON.stringify(response.body)).toContain('operator-not-granted');
+			expect(response.body.error.details.code).toBe('operator-not-granted');
+			expect(response.body.error.details.reason).toContain('Access denied');
 		});
 	});
 
@@ -623,7 +632,8 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				.set('Authorization', 'Bearer owner-user')
 				.expect(409);
 
-			expect(JSON.stringify(response.body)).toContain('daemon-active');
+			expect(response.body.error.details.code).toBe('daemon-active');
+			expect(response.body.error.details.reason).toContain('tailscaled is not active. Run setup or start the service.');
 		});
 
 		it('maps a daemon-down CLI failure to 409 with a daemon-not-active code', async () => {
@@ -634,7 +644,8 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				.set('Authorization', 'Bearer owner-user')
 				.expect(409);
 
-			expect(JSON.stringify(response.body)).toContain('daemon-not-active');
+			expect(response.body.error.details.code).toBe('daemon-not-active');
+			expect(response.body.error.details.reason).toContain('connection refused');
 		});
 	});
 
@@ -669,7 +680,8 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				.set('Authorization', 'Bearer owner-user')
 				.expect(409);
 
-			expect(JSON.stringify(response.body)).toContain('not-signed-in');
+			expect(response.body.error.details.code).toBe('not-signed-in');
+			expect(response.body.error.details.reason).toContain('not logged in');
 		});
 	});
 });

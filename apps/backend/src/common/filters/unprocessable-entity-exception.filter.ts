@@ -17,6 +17,20 @@ export class UnprocessableEntityExceptionFilter implements ExceptionFilter {
 		};
 		const requestId = uuidv4();
 
+		const details: { reason: unknown; code?: string } = {
+			reason: exceptionResponse.message || `The data provided could not be processed in its current state.`,
+		};
+
+		// Application reason code pass-through (D13, RA-27, #996) — mirrors
+		// `ConflictExceptionFilter`: only a plain object response carrying a
+		// string `code` contributes one, so a string-thrown
+		// `UnprocessableEntityException('...')` keeps working unchanged.
+		const applicationCode = this.extractApplicationCode(exception.getResponse());
+
+		if (applicationCode !== undefined) {
+			details.code = applicationCode;
+		}
+
 		return response
 			.code(status)
 			.type('application/json')
@@ -29,13 +43,21 @@ export class UnprocessableEntityExceptionFilter implements ExceptionFilter {
 				error: {
 					code: 'UnprocessableEntity',
 					message: 'The request could not be processed due to semantic issues.',
-					details: {
-						reason: exceptionResponse.message || `The data provided could not be processed in its current state.`,
-					},
+					details,
 				},
 				metadata: {
 					server_time: new Date().toISOString(),
 				},
 			});
+	}
+
+	private extractApplicationCode(exceptionResponse: unknown): string | undefined {
+		if (typeof exceptionResponse === 'object' && exceptionResponse !== null && 'code' in exceptionResponse) {
+			const code = (exceptionResponse as Record<string, unknown>).code;
+
+			return typeof code === 'string' ? code : undefined;
+		}
+
+		return undefined;
 	}
 }

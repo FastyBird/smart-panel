@@ -224,17 +224,8 @@ export class SetupController {
 	 * Everything else (timeout, unknown, a plain Error, ...) stays a 500,
 	 * exactly as it always has.
 	 *
-	 * NOTE: this app's `GlobalErrorFilter` (`common/filters/global-error.filter.ts`)
-	 * hardcodes the top-level `error.code` in its response envelope to the
-	 * *exception class name* for every `HttpException` (so `error.code` is
-	 * always literally `"ConflictException"` here, never the value below) and
-	 * replaces `error.details` with a generic `{ reason: ... }` in production
-	 * — only a non-production request sees the object thrown here verbatim via
-	 * `error.details`. The distinct `code` this method attaches is therefore
-	 * reliably visible only in `error.details.code` outside production; a
-	 * shared-infrastructure change to `GlobalErrorFilter` (or a dedicated
-	 * `ConflictException` filter) is needed before this is visible in
-	 * production too, and is out of this controller's scope.
+	 * In production the envelope carries this as `error.details.code` /
+	 * `error.details.reason` (see D13, RA-27, #996).
 	 */
 	private mapActionError(error: unknown, logPrefix: string, fallbackMessage: string): never {
 		if (error instanceof TailscaleRequirementUnsatisfiedException) {
