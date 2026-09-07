@@ -105,7 +105,9 @@ jobs:
           ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
 
       - name: "Pull Updated Branch"
-        run: git pull origin ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        env:
+          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        run: git pull origin "$PULL_REF"
 
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"
@@ -160,7 +162,9 @@ jobs:
           ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
 
       - name: "Pull Updated Branch"
-        run: git pull origin ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        env:
+          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        run: git pull origin "$PULL_REF"
 
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"
@@ -215,7 +219,9 @@ jobs:
           ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
 
       - name: "Pull Updated Branch"
-        run: git pull origin ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        env:
+          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        run: git pull origin "$PULL_REF"
 
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"
@@ -269,7 +275,9 @@ jobs:
           ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
 
       - name: "Pull Updated Branch"
-        run: git pull origin ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        env:
+          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        run: git pull origin "$PULL_REF"
 
       - name: "Setup Node"
         uses: "actions/setup-node@v7"
@@ -328,7 +336,9 @@ jobs:
           ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
 
       - name: "Pull Updated Branch"
-        run: git pull origin ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        env:
+          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        run: git pull origin "$PULL_REF"
 
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"
@@ -383,7 +393,9 @@ jobs:
           ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
 
       - name: "Pull Updated Branch"
-        run: git pull origin ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        env:
+          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        run: git pull origin "$PULL_REF"
 
       - name: "Setup Node Project"
         uses: "./.github/actions/setup-node-project"
@@ -443,7 +455,9 @@ jobs:
           ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
 
       - name: "Pull Updated Branch"
-        run: git pull origin ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        env:
+          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        run: git pull origin "$PULL_REF"
 
       - name: "Install Linux Build Dependencies"
         run: |
@@ -501,7 +515,9 @@ jobs:
           ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
 
       - name: "Pull Updated Branch"
-        run: git pull origin ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        env:
+          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        run: git pull origin "$PULL_REF"
 
       - name: "Remove Monorepo Configuration"
         run: |
@@ -605,7 +621,9 @@ jobs:
           ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
 
       - name: "Pull Updated Branch"
-        run: git pull origin ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        env:
+          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        run: git pull origin "$PULL_REF"
 
       - name: "Summary"
         run: |
@@ -709,7 +727,9 @@ jobs:
           ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
 
       - name: "Pull Updated Branch"
-        run: git pull origin ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        env:
+          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        run: git pull origin "$PULL_REF"
 
       - name: "Set up Docker Buildx"
         uses: "docker/setup-buildx-action@v4"
@@ -754,7 +774,9 @@ jobs:
           ref: ${{ github.event_name == 'release' && 'main' || github.ref }}
 
       - name: "Pull Updated Branch"
-        run: git pull origin ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        env:
+          PULL_REF: ${{ github.event_name == 'release' && 'main' || github.ref_name }}
+        run: git pull origin "$PULL_REF"
 
       - name: "Send Discord Notification"
         uses: "./.github/actions/send-discord-notification"
