@@ -341,6 +341,31 @@ describe('PrivilegedWorkerService', () => {
 			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'timeout' }));
 		});
 
+		it('gives up waiting on a stop attempt that never settles and still runs the is-active read (a scope that refuses to stop must not strand the job)', async () => {
+			const { id } = await service.run({ ...baseSpec, timeoutMs: 5_000 });
+
+			const stopChild = createFakeChild(9001);
+
+			(spawn as jest.Mock).mockReturnValueOnce(stopChild);
+
+			jest.advanceTimersByTime(6_001);
+
+			expect(execFile).not.toHaveBeenCalled();
+
+			// The stop child never emits 'exit' or 'error' - only the internal bound-wait timer
+			// (STOP_ATTEMPT_TIMEOUT_MS) settles the stop attempt.
+			jest.advanceTimersByTime(15_000);
+			await flushMicrotasks();
+
+			expect(execFile).toHaveBeenCalledWith(
+				'systemctl',
+				['is-active', 'smart-panel-test'],
+				expect.objectContaining({ timeout: expect.any(Number) }),
+				expect.any(Function),
+			);
+			expect(service.getStatus(id)).toEqual(expect.objectContaining({ state: 'timeout' }));
+		});
+
 		it('reports a timeout state and frees the unit once the stop attempt confirms the unit stopped', async () => {
 			const { id } = await service.run({ ...baseSpec, timeoutMs: 5_000 });
 			const handler = jest.fn();

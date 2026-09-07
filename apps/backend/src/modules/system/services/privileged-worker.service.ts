@@ -90,6 +90,8 @@ const STDERR_CAPTURE_LIMIT_BYTES = 4 * 1024;
 
 /** Bounds the unprivileged `systemctl is-active` read `handleTimeout` uses to confirm a stop attempt — same probe pattern/budget as TailscaleNodeManagedService's own systemd unit check. */
 const IS_ACTIVE_PROBE_TIMEOUT_MS = 2_000;
+/** Bounds the privileged stop attempt `handleTimeout` makes, so a scope that refuses to stop cannot strand the job in 'running'. */
+const STOP_ATTEMPT_TIMEOUT_MS = 15_000;
 
 // 'timeout' is deliberately excluded — it is reserved for this service's own hard-timeout path
 // (see the top of startPolling's tick below). A file/mapper tick claiming it is invalid, same as
@@ -469,6 +471,7 @@ export class PrivilegedWorkerService {
 	private stopUnit(unit: string): Promise<void> {
 		return new Promise((resolve) => {
 			let settled = false;
+			let timer: NodeJS.Timeout | null = null;
 
 			const settle = () => {
 				if (settled) {
@@ -476,6 +479,12 @@ export class PrivilegedWorkerService {
 				}
 
 				settled = true;
+
+				if (timer) {
+					clearTimeout(timer);
+					timer = null;
+				}
+
 				resolve();
 			};
 
@@ -488,6 +497,12 @@ export class PrivilegedWorkerService {
 
 				child.on('exit', settle);
 				child.on('error', settle);
+
+				// A scope that refuses to stop must not strand the job: give up waiting and let
+				// the is-active read below decide, exactly like a refused stop attempt.
+				timer = setTimeout(settle, STOP_ATTEMPT_TIMEOUT_MS);
+				timer.unref();
+				child.unref();
 			} catch {
 				// spawn() itself threw synchronously (e.g. EAGAIN) — treated exactly like the
 				// child spawning and then erroring: still proceed to the is-active read below.
