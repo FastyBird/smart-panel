@@ -80,6 +80,15 @@ interface JobRecord {
 	/** True once an unusable tick (missing/invalid state, or mapStatus returning null) has been
 	 *  logged for this job — caps the debug log at one per job instead of one per bad tick. */
 	loggedInvalidStatus: boolean;
+	/**
+	 * Non-null from the moment this job's unit is actually freed (see `stopPolling`) until
+	 * `PRUNE_AFTER_MS` elapses, at which point the record is dropped from `jobs` (see
+	 * `schedulePrune`). Never set while the job is still running or still occupying its unit — a
+	 * job kept reserved in `busyUnits` past its terminal state (the "still running after a stop
+	 * attempt" case in `handleTimeout`) never reaches the branch that sets this. Unref'd like every
+	 * other timer in this file so a pending prune can never keep the process alive.
+	 */
+	pruneTimer: NodeJS.Timeout | null;
 }
 
 const STATUS_POLL_INTERVAL_MS = 3_000; // Poll worker status every 3 seconds
@@ -92,6 +101,15 @@ const STDERR_CAPTURE_LIMIT_BYTES = 4 * 1024;
 const IS_ACTIVE_PROBE_TIMEOUT_MS = 2_000;
 /** Bounds the privileged stop attempt `handleTimeout` makes, so a scope that refuses to stop cannot strand the job in 'running'. */
 const STOP_ATTEMPT_TIMEOUT_MS = 15_000;
+
+/**
+ * How long a job's record is kept in `jobs` after its unit is actually freed (see `stopPolling`)
+ * before being pruned — bounds the map to recently-finished jobs instead of retaining every job
+ * (including its handler set) for the life of the process (see issue #949). Implemented as a
+ * single unref'd `setTimeout` scheduled once, at the moment the unit is released — not a periodic
+ * sweep — so a job kept reserved past its terminal state is naturally never scheduled at all.
+ */
+const PRUNE_AFTER_MS = 5 * 60_000; // 5 minutes
 
 // 'timeout' is deliberately excluded — it is reserved for this service's own hard-timeout path
 // (see the top of startPolling's tick below). A file/mapper tick claiming it is invalid, same as
@@ -123,6 +141,12 @@ function toOptionalString(value: unknown): string | undefined {
  * to write `{ state, step?, message? }`; a caller with a different status-file shape supplies
  * `mapStatus` to produce the same three fields before this service's own terminal-state
  * detection and validation run.
+ *
+ * A job's record (including its handler set) is not kept for the life of the process once it is
+ * done: `PRUNE_AFTER_MS` after its unit is actually freed, the record is dropped from `jobs` and
+ * `getStatus(id)` starts returning `null`, matching its existing behavior for an unknown id — see
+ * `schedulePrune`. A job kept reserved past its terminal state (the "still running after a stop
+ * attempt" case in `handleTimeout`) is never pruned while it still occupies its unit.
  */
 @Injectable()
 export class PrivilegedWorkerService {
@@ -175,6 +199,7 @@ export class PrivilegedWorkerService {
 			redact: spec.redact,
 			stderrBuffer: Buffer.alloc(0),
 			loggedInvalidStatus: false,
+			pruneTimer: null,
 		};
 
 		// Reserve the unit before spawning so a caller can never slip a second job in
@@ -642,6 +667,33 @@ export class PrivilegedWorkerService {
 		// job, so a stale/late event from an old record can never evict a newer job's lock.
 		if (this.busyUnits.get(record.unit) === record.id) {
 			this.busyUnits.delete(record.unit);
+
+			// The unit is actually free at this exact point, not merely "the job reached a
+			// terminal status" — a job kept reserved in busyUnits (handleTimeout's "still
+			// running after a stop attempt" case) never reaches this branch, so it is never
+			// scheduled for pruning while it still occupies its unit. See schedulePrune.
+			this.schedulePrune(record);
 		}
+	}
+
+	/**
+	 * Schedules this job's record for removal once its retention window (`PRUNE_AFTER_MS`)
+	 * elapses. Only ever called from `stopPolling`, at the exact point the unit is actually freed —
+	 * see the call site. Once the timer fires, `getStatus(id)` starts returning `null` for this job
+	 * (matching its existing behavior for an unknown id) and the handler set is cleared so no stale
+	 * closures are retained.
+	 */
+	private schedulePrune(record: JobRecord): void {
+		if (record.pruneTimer) {
+			return;
+		}
+
+		record.pruneTimer = setTimeout(() => {
+			record.pruneTimer = null;
+			record.handlers.clear();
+			this.jobs.delete(record.id);
+		}, PRUNE_AFTER_MS);
+
+		record.pruneTimer.unref();
 	}
 }
