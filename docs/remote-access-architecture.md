@@ -242,10 +242,63 @@ run(spec: {
 - `PlatformService.supportsPrivilegedWorkers()` is `true` for `raspberry`/`generic` with systemd, `false` for
   `docker`/`home-assistant`/`development`. The Tailscale plugin's own `FB_REMOTE_ACCESS_ALLOW_DEV` override
   is plugin-local — it never changes the platform capability itself.
+- **`getPrivilegedWorkerSupport()`** is the end-to-end probe every provider's `privileged_setup` field (see
+  [Manual Remedy Contract (D12)](#manual-remedy-contract-d12) below) is sourced from. Rather than only asking
+  `sudo -n -l` whether the policy *would* allow it, it actually runs the exact command every privileged job
+  itself uses — `sudo -n systemd-run --scope --quiet --unit=smart-panel-privileged-probe-<pid> /bin/true` —
+  through the real sudoers grant (`/usr/bin/systemd-run *`, installed by `build/src/installers/linux.ts`'s
+  `createSudoersRule()`). A sudoers rule can permit `-l` while the real invocation still fails for an unrelated
+  reason (a wrong `NOPASSWD` tag, `systemd-run` missing from the elevated `PATH`, dbus unavailable, ...); only
+  actually running the command tells the whole story. The probe's `reason` (`null` when `supported`) is the
+  captured stderr verbatim (e.g. `"sudo: a password is required"`), or the architectural message for a
+  platform with no privileged-worker support at all.
+- **Caching.** A **positive** result is cached for the life of the process — once a privileged job has run
+  successfully there is no operational reason it would stop working. A **negative** result on an otherwise
+  capable platform is cached for only 60 seconds (`PRIVILEGED_WORKER_SUPPORT_NEGATIVE_CACHE_TTL_MS`): unlike a
+  positive result, "no" can become "yes" purely from an administrator adding the sudoers grant, and without
+  this short TTL that fix would silently require a full backend restart to take effect — the exact gap
+  hardware acceptance testing hit on 2026-09-07. A platform with no privileged-worker support at all
+  (`docker`/`home-assistant`/`development`) is cached forever too — no sudoers change can ever make it
+  available there. Concurrent callers before the first result share one in-flight probe promise.
+- **Stderr capture on failure.** `PrivilegedWorkerService` itself captures the spawned job's stderr (capped at
+  4 KiB, `STDERR_CAPTURE_LIMIT_BYTES`) whenever the child fails to spawn or exits non-zero before ever
+  reporting completion, and folds it into the job's `stderr`/`message` fields — so a real refusal reason (e.g.
+  sudo itself rejecting the invocation) reaches the admin instead of a bare "Worker process exited with code
+  1".
 
 `TailscaleSetupService.install()` (RA-5) calls `run()` with `scripts/tailscale-setup.sh`
 (`apps/backend/src/plugins/remote-access-tailscale/scripts/tailscale-setup.sh`, bundled via `nest-cli.json`
 assets) and forwards every `onStatus()` tick as a `RemoteAccessModule.Setup.Progress` event.
+
+## Manual Remedy Contract (D12)
+
+Every provider plugin — Tailscale today, the milestone-2 Cloudflare Tunnel and milestone-3 WireGuard plugins
+later — surfaces its own prerequisite checklist and privileged-setup availability through the same shape, so
+the admin UI and the setup wizard need exactly one rendering path regardless of provider. This is a rule every
+future provider plugin must follow, not a Tailscale-only convention:
+
+- **Requirement**: `{ code, satisfied, message, remedy }`. `remedy` is always `null` once `satisfied` is
+  `true`; otherwise it is `{ commands: string[], note: string | null }` — the exact console commands that
+  satisfy this one requirement on the detected system, or (when no exact command applies — a non-apt system,
+  or a platform the provider cannot run on at all) an empty `commands` array with a documentation/vendor link
+  in `note` instead.
+- **The remedy commands are never hand-authored copy.** They are produced by the same script/logic path the
+  privileged installer itself runs — Tailscale's requirement builder shells out to its own
+  `tailscale-setup.sh --print-plan` (see [Setup Script](#setup-script) below) to get the exact per-distro
+  command list, rather than maintaining a second, parallel description that could silently drift from what
+  the privileged `install` step actually executes. Every future provider plugin's own setup script must expose
+  the equivalent read-only, side-effect-free `--print-plan` mode for the same reason.
+- **`privileged_setup`**: `{ available: boolean, reason: string | null }`, sourced verbatim from
+  `PlatformService.getPrivilegedWorkerSupport()` (see [Privileged Worker](#privileged-worker) above) and
+  exposed on every provider's own status model (`RemoteAccessTailscalePluginPrivilegedSetupModel` today).
+  Distinct from the `platform-supported` requirement, which only reports whether the *platform kind* is
+  architecturally eligible — `privileged_setup.available` additionally reflects the *current* probe outcome,
+  which can flip from unavailable to available without a backend restart once an administrator adds the
+  sudoers grant.
+- A provider prepared **entirely by hand** — every requirement already satisfied before the admin ever opens
+  Smart Panel — is a fully supported end state, not merely a tolerated one: the requirements evaluation reports
+  every requirement satisfied with `remedy: null` throughout, and the provider's own `start()` picks up the
+  already-configured system exactly as if Smart Panel's own **Set up** action had run it.
 
 ## Tailscale Plugin
 
@@ -304,8 +357,25 @@ CLI-level failures are classified before they ever reach the mapper: `not-instal
   (`TAILSCALE_POLL_INTERVAL_TRANSITIONING_MS` = 5s while the state is settling,
   `TAILSCALE_POLL_INTERVAL_STABLE_MS` = 30s once stable) and only emits `PROVIDER_STATUS` when the mapped
   status actually changed since the last tick.
-- **`stop()`** clears the poller and runs `tailscale down`. It never signs out — a node that was never
-  brought up is expected to fail `down`, which is swallowed as a debug log, not an error.
+- **`stop()`** clears the poller first, then runs `tailscale down` — never `tailscale logout`. A node that
+  was never brought up (not installed, daemon down, never signed in) is expected to fail `down`, and **every**
+  failure kind is tolerated the same way (swallowed as a debug log, not an error): unlike `onConfigChanged()`'s
+  kind-filtered tolerance around `logout()`, `stop()` unconditionally reaches `stopped` regardless of why
+  `down` failed. Once `down` actually succeeds, the daemon's own `BackendState` moves to `Stopped`, which the
+  mapper reports as `disconnected` with empty `endpoints`/`proxyAddresses` — Serve is only ever applied while
+  `mapped.state === 'connected'` (see [Serve, Funnel, and Advisories](#serve-funnel-and-advisories) below), so
+  a stopped node never carries a stale Serve endpoint either.
+- **Lifecycle events.** `PROVIDER_STATUS` is emitted from exactly one place in this service: the poller's own
+  tick, gated on `hasStatusChanged()`. `start()` schedules an immediate tick (`schedulePoll(0)`), so a state
+  change is normally announced within moments of starting — but `stop()` only clears the poller; it does
+  **not** itself emit a status event for the transition it just performed. The resulting `disconnected` status
+  becomes visible to the rest of the system only on the next *live* read (`GET .../status`, or
+  `RemoteAccessStatusService`'s own live `getAggregatedStatuses()`/`getProviderStatus()` calls) or the next
+  time the poller runs again (e.g. after a subsequent `start()`) — everything that reads only the cache
+  (`RemoteAccessStatusService.getCachedStatuses()`, and through it `RemoteAccessUrlService`,
+  `RemoteAccessPostureService`, `RemoteAccessProxyContributionService`) can therefore keep reporting the
+  pre-stop status for a while after a manual **Stop** from the Extensions page, until something triggers a
+  live read.
 - **`onConfigChanged()`** diffs the cached `login_server`: a change signs the node out (best-effort) and
   reports `{ restartRequired: true }` so it re-authenticates against the new control plane instead of
   silently keeping a key from the old one. Every other preference change is applied in place via
@@ -325,13 +395,36 @@ CLI-level failures are classified before they ever reach the mapper: `not-instal
 
 ### Requirements
 
-`evaluateRequirements()` (used by `start()`/`onConfigChanged()` gating and surfaced verbatim on
-`GET /status` as a checklist) runs, in order: `platform-supported` (short-circuits the rest to
-"not evaluated" if it fails), then `binary-installed`+`version-supported`, `daemon-active`, and
-`operator-granted` in parallel. `daemon-active`/`operator-granted` are checked unprivileged
-(`systemctl is-active tailscaled`, a `status --json` call), needing no sudo — a `permission-denied` result
-means the setup script's `--operator=` step is still missing, and re-running **Set up** (idempotent) is the
-fix.
+`refreshRequirements(reason)` re-evaluates, in order: `platform-supported` (short-circuits the rest to "not
+evaluated" if it fails), then `binary-installed`+`version-supported`, `daemon-active`, and `operator-granted`
+in parallel, caching the result for `getRequirements()`/`GET /status` to read. Every reason except the
+poller's own `'periodic'` (`'start'`, `'permission-denied'`, `'setup-complete'`, `'status-read'` — all rare,
+admin/lifecycle-triggered events, used by `start()`/`onConfigChanged()` gating among others) always performs a
+fresh evaluation; `'periodic'` is throttled to at most once every five minutes, so the steady-state poll stays
+at one `status --json` call per tick instead of also paying for the operator check's own extra CLI calls on
+every tick. `evaluateRequirements()` is a backward-compatible alias that always forces a fresh
+(`'status-read'`) evaluation. `daemon-active` is checked unprivileged (`systemctl is-active tailscaled`),
+needing no sudo.
+
+**Operator grant (D1).** `operator-granted` is verified via `tailscale debug prefs`
+(`OperatorUser === os.userInfo().username`) rather than trusting a plain `status --json` call succeeding —
+that call is read-only and succeeds for *any* local user regardless of the operator grant (`ipnauth.IsReadonlyConn`
+upstream), which is exactly the false positive this check exists to close. `debug` is an unstable namespace
+across Tailscale releases, so a `debug prefs` call that fails outright or whose output cannot be parsed falls
+back to an idempotent **write probe** instead: `tailscale set --operator=<service user>`, harmless for the
+current operator (it just re-asserts the same grant) and `permission-denied` for anyone else. Either path is
+authoritative; the write-probe fallback exists purely for the case where `debug prefs` itself is unavailable,
+not as a weaker substitute check. A `permission-denied` result means the setup script's `--operator=` step is
+still missing (or was lost, e.g. by reinstalling `tailscaled`) — re-running **Set up** (idempotent), or
+running the one-line remedy `GET /status` returns for this requirement
+(`sudo tailscale set --operator=<service user>`), is the fix.
+
+**Manual remedy (D12).** Every unsatisfied requirement carries a `remedy: { commands, note }` (`null` once
+satisfied) — see [Manual Remedy Contract (D12)](#manual-remedy-contract-d12) above for the shape every
+provider plugin follows. For `binary-installed`/`version-supported` the remedy is built by shelling out to
+this plugin's own `tailscale-setup.sh --print-plan` (memoized so both codes share one script invocation when
+evaluated together); for `daemon-active`/`operator-granted` it's a fixed one-line command; `platform-supported`
+has no command at all, only a documentation link.
 
 ### Serve, Funnel, and Advisories
 
@@ -359,6 +452,17 @@ this advisory computation on top, per the design spec:
 Commands: `tailscale serve --bg --https=443 --set-path=/ http://127.0.0.1:<port>`, `serve reset`,
 `serve status --json`, `funnel 443 on|off`, `funnel status --json`.
 
+**Convergence timing.** `TailscaleServeService.apply()` runs from two call sites, both inside
+`TailscaleNodeManagedService`: once per `computeStatus()` call, gated on `mapped.state === 'connected'`
+(`Self.CapMap`/`Self.DNSName` are only meaningful then); and once, immediately, from `onConfigChanged()` —
+the latter builds its own live status directly (`getStatusOrNull()` + its own `mapper.map()` call) rather than
+calling `computeStatus()`, so a config change converges Serve/Funnel without waiting for the next poll tick.
+`computeStatus()` itself is reached both by the poller's tick **and** by every live status read
+(`TailscaleProviderService.getStatus()`, which backs both this plugin's own `GET status` and the remote-access
+module's aggregated/live status calls) — so opening the Remote access page, or any live poll of `GET status`,
+also re-applies and self-heals a drifted Serve/Funnel handler, exactly like a poll tick. A plain cache read
+(`RemoteAccessStatusService.getCachedStatuses()`) never triggers it — only a live call does.
+
 ### Setup Script
 
 **Location:** `apps/backend/src/plugins/remote-access-tailscale/scripts/tailscale-setup.sh`, run as unit
@@ -380,6 +484,42 @@ Commands: `tailscale serve --bg --https=443 --set-path=/ http://127.0.0.1:<port>
 `TailscaleSetupService.install()` throws `TailscaleSetupUnavailableException` immediately (never spawns a
 privileged worker) and the plugin expects a locally-prepared `tailscale` binary with the operator already
 granted; without the flag, the provider reports `unsupported` on `development`.
+
+### Setup Job Status and Action Errors
+
+`GET .../status` (`StatusController.getStatus()`) also returns two fields beyond the generic provider status:
+
+- **`setup`** (`RemoteAccessTailscalePluginSetupJobModel`, nullable) — the last known privileged setup job
+  (`POST /install`) since this process started: `job_id`, `state` (`running` | `complete` | `failed` |
+  `timeout`), `step`, `message`, `updated_at`. Lets the admin setup wizard poll as a fallback to the
+  `RemoteAccessModule.Setup.Progress` websocket event if it's lost, or if the page reloads mid-job.
+- **`privileged_setup`** (`RemoteAccessTailscalePluginPrivilegedSetupModel`) — `{ available, reason }`, see
+  [Manual Remedy Contract (D12)](#manual-remedy-contract-d12) above.
+
+`SetupController`'s four mutating actions (`install`, `login`, `logout`, `reset-preferences`) map failures to
+either `409 Conflict` (a transient condition — retry once it clears) or `422 Unprocessable Entity` (a
+permanent refusal — fix the installation first):
+
+| Status | `code` | Raised when |
+| --- | --- | --- |
+| 409 | *(none — `reason`/message only)* | A setup job is already running for this unit (`PrivilegedWorkerUnavailableException`), or a login is already in flight (`TailscaleLoginInProgressException`) |
+| 409 | `operator-granted` or `daemon-active` | `login`/`logout`/`reset-preferences`'s own pre-check (`assertActionable()`) found the requirement unsatisfied before ever calling the CLI |
+| 409 | `operator-not-granted` | ...the CLI call itself then failed live with `permission-denied` |
+| 409 | `daemon-not-active` | ...the CLI call itself then failed live with `daemon-down` |
+| 409 | `not-signed-in` | ...the CLI call itself then failed live with `needs-login` |
+| 422 | `platform-unsupported` | `install` was called on a platform that cannot run privileged workers at all, or is blocked by the `FB_REMOTE_ACCESS_ALLOW_DEV` override |
+| 422 | `privileged-worker-unavailable` | `install` was called on a capable platform whose privileged-worker probe currently fails (e.g. a missing sudoers grant) |
+
+Every case carries a `message` with actionable "here's the fix" text (e.g. "Re-run `sudo smart-panel-service
+install`, or add the sudoers grant from the installation guide."). The target wire contract (RA-27, #996,
+epic decision D13) puts the machine-readable code at `error.details.code`, with the human message duplicated
+at `error.details.reason`, in every environment, for both 409 and 422 responses; the two 409s with no `code`
+above are string-thrown `ConflictException`s and, under that same contract, always yield `details.reason`
+only, never `details.code`. As of this writing that contract is not fully in place yet: `GlobalErrorFilter`
+— the only filter in the chain that would otherwise see these 409s — currently masks `error.details` down to
+a generic `{ reason }` in production, so only a non-production request observes `error.details.code` today
+(see the `mapActionError()` doc comment on `SetupController` for the exact gap). #996 closes it by adding
+dedicated `ConflictException`/`UnprocessableEntityException` filters.
 
 ## Events
 

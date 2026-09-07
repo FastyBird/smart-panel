@@ -52,6 +52,20 @@ curl -fsSL https://get.smart-panel.fastybird.com | sudo bash -s -- --with-tailsc
 A Tailscale install failure is reported in the completion banner but never aborts the rest of the install.
 See [Remote Access](/docs/admin-management/remote-access) for the setup walkthrough.
 
+<Callout type="warning">
+	Installed before privileged remote-access setup (Tailscale's **Set up** step) existed? The sudoers grant
+	it needs is added by the installer's own setup step, so an installation that predates it is missing that
+	grant. Re-run it once to pick it up — safe to repeat, and it won't touch your existing data or
+	configuration:
+
+	```bash copy
+	sudo smart-panel-service install
+	```
+
+	See [Set up cannot run](/docs/admin-management/remote-access#set-up-cannot-run) if **Set up** still
+	refuses afterward.
+</Callout>
+
 ---
 
 ## Install the Display App

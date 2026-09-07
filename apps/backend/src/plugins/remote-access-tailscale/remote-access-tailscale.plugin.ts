@@ -95,7 +95,7 @@ Connects this installation to a Tailscale tailnet, a private WireGuard-based mes
 ## Requirements
 
 - \`raspberry\` or \`generic\` platform with systemd and the existing sudoers allowlist (Docker and the Home Assistant add-on are not supported — see the docs for alternatives)
-- The \`tailscale\` package installed and \`tailscaled\` active, with the \`smart-panel\` service user granted as the Tailscale operator
+- The \`tailscale\` package installed and \`tailscaled\` active, with the \`smart-panel\` service user granted as the Tailscale operator — without this grant, every action (sign-in, sign-out, Serve/Funnel) is refused. **Set up** applies it automatically; if it's ever lost (e.g. after reinstalling \`tailscaled\`, or the node was signed in by hand as root before **Set up** ever ran), recover it with a single command: \`sudo tailscale set --operator=smart-panel\`
 
 ## Configuration
 
