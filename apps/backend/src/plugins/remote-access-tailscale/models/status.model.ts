@@ -33,6 +33,38 @@ const TAILSCALE_REQUIREMENT_CODES: TailscaleRequirementCode[] = [
 ];
 
 /**
+ * Exact console commands (and/or a documentation link) that satisfy one
+ * unsatisfied requirement on the detected system — D12's manual remedy
+ * contract. `commands` is empty and `note` carries a link instead when no
+ * exact command applies (a non-apt system, or a platform this plugin cannot
+ * run on at all).
+ */
+@ApiSchema({ name: 'RemoteAccessTailscalePluginDataRequirementRemedy' })
+export class RemoteAccessTailscalePluginRequirementRemedyModel {
+	@ApiProperty({
+		description: 'Exact console commands that satisfy this requirement on the detected system',
+		type: 'array',
+		items: { type: 'string' },
+		example: ['sudo systemctl enable --now tailscaled'],
+	})
+	@Expose()
+	@IsArray()
+	@IsString({ each: true })
+	commands: string[];
+
+	@ApiPropertyOptional({
+		description: 'Vendor or documentation link, present instead of commands when no exact command applies',
+		type: 'string',
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	@IsOptional()
+	@IsString()
+	note: string | null;
+}
+
+/**
  * One prerequisite check surfaced to the admin ("is Tailscale even usable on
  * this installation"), distinct from the posture advisories a connected
  * provider reports about its current configuration.
@@ -65,6 +97,17 @@ export class RemoteAccessTailscalePluginRequirementModel {
 	@Expose()
 	@IsString()
 	message: string;
+
+	@ApiPropertyOptional({
+		description: 'Exact console commands that satisfy this requirement; null once it is satisfied',
+		type: () => RemoteAccessTailscalePluginRequirementRemedyModel,
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => RemoteAccessTailscalePluginRequirementRemedyModel)
+	remedy: RemoteAccessTailscalePluginRequirementRemedyModel | null;
 }
 
 /**

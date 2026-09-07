@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import os from 'os';
+import { join } from 'path';
 
 import { Injectable } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
@@ -41,11 +42,58 @@ export type TailscaleRequirementCode =
 	| 'operator-granted'
 	| 'version-supported';
 
+/**
+ * Exact console commands (and/or a documentation link) that satisfy one
+ * unsatisfied requirement on the detected system — D12's manual remedy
+ * contract, first implemented here; every later provider plugin copies this
+ * shape. `commands` is empty and `note` is a link when no exact command
+ * applies (a non-apt system, or a platform this plugin cannot run on at
+ * all).
+ */
+export interface TailscaleRequirementRemedy {
+	commands: string[];
+	note: string | null;
+}
+
 export interface TailscaleRequirement {
 	code: TailscaleRequirementCode;
 	satisfied: boolean;
 	message: string;
+	/** Always `null` when `satisfied` is `true`. */
+	remedy: TailscaleRequirementRemedy | null;
 }
+
+/** One requirement before `attachRemedies()` fills in `remedy` — every private `evaluate*()` helper below returns this shape. */
+type TailscaleRequirementBase = Omit<TailscaleRequirement, 'remedy'>;
+
+/**
+ * Why `refreshRequirements()` was called — every reason other than
+ * `'periodic'` always performs a fresh evaluation; `'periodic'` (the poller,
+ * via `computeStatus()`) is throttled to at most once every
+ * `TAILSCALE_REQUIREMENTS_PERIODIC_REFRESH_MS`, so the steady-state poll
+ * stays at one `status --json` call per tick instead of also paying for the
+ * operator write-probe's own CLI calls on every tick.
+ */
+export type TailscaleRequirementRefreshReason =
+	| 'start'
+	| 'permission-denied'
+	| 'setup-complete'
+	| 'status-read'
+	| 'periodic';
+
+/** Floor between two `'periodic'` requirement refreshes (see `TailscaleRequirementRefreshReason`'s own doc). */
+const TAILSCALE_REQUIREMENTS_PERIODIC_REFRESH_MS = 5 * 60 * 1000;
+
+/** Timeout for the unprivileged `tailscale-setup.sh --print-plan` probe — a local file read and a few `echo`s, nowhere near this ceiling in practice. */
+const TAILSCALE_PRINT_PLAN_TIMEOUT_MS = 2_000;
+
+const OPERATOR_GRANTED_SATISFIED_MESSAGE = 'The smart-panel operator is granted.';
+
+/** `platform-supported`'s remedy note — this plugin's own documentation, listing the Docker/Home Assistant alternatives. */
+const TAILSCALE_DOCUMENTATION_URL = 'https://smart-panel.fastybird.com/docs';
+
+/** `binary-installed`/`version-supported`'s remedy note when the script reports an unsupported (non-Debian-family) distribution — matches the link `tailscale-setup.sh` itself prints in that same case. */
+const TAILSCALE_VENDOR_DOWNLOAD_URL = 'https://tailscale.com/download/linux';
 
 /** Simple dotted-numeric version compare; non-numeric segments count as 0. */
 export function compareTailscaleVersions(a: string, b: string): number {
@@ -94,6 +142,9 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	private pollTimer: NodeJS.Timeout | null = null;
 	private lastStatus: RemoteAccessProviderStatus | null = null;
 	private pluginConfig: RemoteAccessTailscalePluginConfigModel | null = null;
+	/** Cached `refreshRequirements()` snapshot — see `getRequirements()`/`refreshRequirements()`. */
+	private requirementsCache: TailscaleRequirement[] | null = null;
+	private requirementsRefreshedAt = 0;
 
 	constructor(
 		private readonly cli: TailscaleCliService,
@@ -125,9 +176,9 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 			this.logger.log('Starting Tailscale node service');
 
 			try {
-				const requirements = await this.evaluateRequirements();
+				const requirements = await this.refreshRequirements('start');
 
-				if (requirements.every((requirement) => requirement.satisfied)) {
+				if (this.requirementsSatisfied(requirements)) {
 					const status = await this.getStatusOrNull();
 
 					if (status && this.mapper.hasExistingKey(status)) {
@@ -136,6 +187,10 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 					}
 				}
 			} catch (error) {
+				if (error instanceof TailscaleCliError && error.kind === 'permission-denied') {
+					await this.refreshRequirements('permission-denied').catch(() => undefined);
+				}
+
 				this.logger.warn(
 					'Failed to bring the Tailscale node up during start; the poller keeps reporting live status.',
 					{
@@ -218,9 +273,14 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		}
 
 		try {
-			const requirements = await this.evaluateRequirements();
+			// A config change is a rare, admin-triggered event (never the
+			// poller), so a fresh evaluation here is cheap enough — reuses
+			// the 'start' reason since both represent "about to apply
+			// preferences, recheck gating first" (only the poller's own
+			// 'periodic' reason is throttled; see `refreshRequirements`'s doc).
+			const requirements = await this.refreshRequirements('start');
 
-			if (requirements.every((requirement) => requirement.satisfied)) {
+			if (this.requirementsSatisfied(requirements)) {
 				const status = await this.getStatusOrNull();
 
 				if (status && this.mapper.hasExistingKey(status)) {
@@ -237,6 +297,10 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 				}
 			}
 		} catch (error) {
+			if (error instanceof TailscaleCliError && error.kind === 'permission-denied') {
+				await this.refreshRequirements('permission-denied').catch(() => undefined);
+			}
+
 			this.logger.warn('Failed to apply changed Tailscale preferences', {
 				message: error instanceof Error ? error.message : String(error),
 			});
@@ -279,17 +343,78 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		}
 	}
 
-	/** Used by `start()`/`onConfigChanged()` gating and the plugin's `GET /status` requirements list. */
+	/**
+	 * Backward-compatible alias kept for `StatusController.getStatus()` and
+	 * `TailscaleSetupService`'s post-job refresh (both outside this task's
+	 * file ownership) — always forces a fresh evaluation via
+	 * `refreshRequirements('status-read')`, same as before this method grew
+	 * a cache.
+	 */
 	async evaluateRequirements(): Promise<TailscaleRequirement[]> {
+		return this.refreshRequirements('status-read');
+	}
+
+	/**
+	 * Cached snapshot from the last `refreshRequirements()` call — never
+	 * `null`/empty after `start()` has run once (`start()` always calls
+	 * `refreshRequirements('start')` before completing, regardless of
+	 * whether every requirement turns out satisfied). Returns an empty array
+	 * if read before that, which `requirementsSatisfied()` treats the same
+	 * as "not ready" rather than vacuously true.
+	 */
+	getRequirements(): TailscaleRequirement[] {
+		return this.requirementsCache ?? [];
+	}
+
+	/**
+	 * Re-evaluates every prerequisite and updates the cache `getRequirements()`
+	 * reads — except for `reason: 'periodic'` (the poller, via
+	 * `computeStatus()`), which is throttled to at most once every
+	 * `TAILSCALE_REQUIREMENTS_PERIODIC_REFRESH_MS` and otherwise just returns
+	 * the existing cache: this is what keeps the steady-state poll at one
+	 * `status --json` call per tick instead of also paying for
+	 * `evaluateOperatorGranted()`'s own `debug prefs`/write-probe CLI calls
+	 * on every tick. Every other reason ('start', 'permission-denied',
+	 * 'setup-complete', 'status-read') always performs a fresh evaluation —
+	 * these are all rare, admin/lifecycle-triggered events, never the poller.
+	 */
+	async refreshRequirements(reason: TailscaleRequirementRefreshReason): Promise<TailscaleRequirement[]> {
+		if (
+			reason === 'periodic' &&
+			this.requirementsCache &&
+			Date.now() - this.requirementsRefreshedAt < TAILSCALE_REQUIREMENTS_PERIODIC_REFRESH_MS
+		) {
+			return this.requirementsCache;
+		}
+
+		const requirements = await this.evaluateRequirementsLive();
+
+		this.requirementsCache = requirements;
+		this.requirementsRefreshedAt = Date.now();
+
+		return requirements;
+	}
+
+	/** `true` only when the list is non-empty and every requirement is satisfied — an empty (never-evaluated) list is treated as "not ready", not vacuously true. */
+	private requirementsSatisfied(requirements: TailscaleRequirement[]): boolean {
+		return requirements.length > 0 && requirements.every((requirement) => requirement.satisfied);
+	}
+
+	/** The actual, always-live evaluation — reached only through `refreshRequirements()`, which owns the cache and the periodic throttle. */
+	private async evaluateRequirementsLive(): Promise<TailscaleRequirement[]> {
 		const platform = await this.evaluatePlatformSupported();
 
 		if (!platform.satisfied) {
+			// The other four are not actually evaluated when the platform
+			// itself is unsupported (UNEVALUATED_MESSAGE) — showing a remedy
+			// for them would be misleading (there is nothing to fix there yet);
+			// only platform-supported's own remedy is real.
 			return [
-				platform,
-				{ code: 'binary-installed', satisfied: false, message: UNEVALUATED_MESSAGE },
-				{ code: 'daemon-active', satisfied: false, message: UNEVALUATED_MESSAGE },
-				{ code: 'operator-granted', satisfied: false, message: UNEVALUATED_MESSAGE },
-				{ code: 'version-supported', satisfied: false, message: UNEVALUATED_MESSAGE },
+				await this.finalizeRequirement(platform),
+				this.unevaluatedRequirement('binary-installed'),
+				this.unevaluatedRequirement('daemon-active'),
+				this.unevaluatedRequirement('operator-granted'),
+				this.unevaluatedRequirement('version-supported'),
 			];
 		}
 
@@ -299,7 +424,125 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 			this.evaluateOperatorGranted(),
 		]);
 
-		return [platform, binary, daemonActive, operatorGranted, version];
+		return this.attachRemedies([platform, binary, daemonActive, operatorGranted, version]);
+	}
+
+	private unevaluatedRequirement(code: TailscaleRequirementCode): TailscaleRequirement {
+		return { code, satisfied: false, message: UNEVALUATED_MESSAGE, remedy: null };
+	}
+
+	/** Attaches `remedy` to each requirement: `null` when satisfied (D12: "remedy is null when the requirement is satisfied"), otherwise the manual remedy for its code. */
+	private async attachRemedies(requirements: TailscaleRequirementBase[]): Promise<TailscaleRequirement[]> {
+		// Memoized as a shared *promise* (not just the resolved value) so
+		// `binary-installed` and `version-supported` — both unsatisfied
+		// together on a freshly detected missing install, and both mapped to
+		// this same script call — never spawn `tailscale-setup.sh
+		// --print-plan` twice for the one request evaluating them
+		// concurrently below.
+		let installRemedyPromise: Promise<TailscaleRequirementRemedy> | null = null;
+
+		const getInstallRemedy = (): Promise<TailscaleRequirementRemedy> => {
+			installRemedyPromise ??= this.buildInstallRemedy();
+
+			return installRemedyPromise;
+		};
+
+		return Promise.all(requirements.map((requirement) => this.finalizeRequirement(requirement, getInstallRemedy)));
+	}
+
+	private async finalizeRequirement(
+		requirement: TailscaleRequirementBase,
+		getInstallRemedy?: () => Promise<TailscaleRequirementRemedy>,
+	): Promise<TailscaleRequirement> {
+		if (requirement.satisfied) {
+			return { ...requirement, remedy: null };
+		}
+
+		const remedy =
+			getInstallRemedy && (requirement.code === 'binary-installed' || requirement.code === 'version-supported')
+				? await getInstallRemedy()
+				: await this.buildRemedy(requirement.code);
+
+		return { ...requirement, remedy };
+	}
+
+	/**
+	 * D12's manual remedy contract for one requirement code, for the codes
+	 * whose command never depends on the detected script output —
+	 * `daemon-active`/`operator-granted` are plain one-line systemd/tailscale
+	 * commands that never vary by distro, and `platform-supported` has no
+	 * command at all (Docker and the Home Assistant add-on cannot run a mesh
+	 * client no matter what is typed into their console). `binary-installed`/
+	 * `version-supported` go through `buildInstallRemedy()` instead — see
+	 * `finalizeRequirement()`, the only caller of this method for those two
+	 * codes.
+	 */
+	private async buildRemedy(code: TailscaleRequirementCode): Promise<TailscaleRequirementRemedy> {
+		const serviceUser = os.userInfo().username;
+
+		switch (code) {
+			case 'binary-installed':
+			case 'version-supported':
+				return this.buildInstallRemedy();
+			case 'daemon-active':
+				return { commands: ['sudo systemctl enable --now tailscaled'], note: null };
+			case 'operator-granted':
+				return { commands: [`sudo tailscale set --operator=${serviceUser}`], note: null };
+			case 'platform-supported':
+			default:
+				return { commands: [], note: TAILSCALE_DOCUMENTATION_URL };
+		}
+	}
+
+	/**
+	 * Runs the plugin's own setup script in its unprivileged `--print-plan`
+	 * mode to get the exact commands the privileged install step would run
+	 * on this distro (see the script's own header doc). Never throws: a
+	 * missing script, a non-zero exit, a timeout or empty output (an
+	 * unsupported distribution — the script's own `--print-plan` signal for
+	 * that case) all fall back to the vendor download link instead.
+	 */
+	private async buildInstallRemedy(): Promise<TailscaleRequirementRemedy> {
+		try {
+			const stdout = await this.runSetupScriptPrintPlan('install');
+			const lines = stdout
+				.split('\n')
+				.map((line) => line.trim())
+				.filter((line) => line.length > 0);
+
+			if (lines.length === 0) {
+				return { commands: [], note: TAILSCALE_VENDOR_DOWNLOAD_URL };
+			}
+
+			return { commands: lines.map((line) => `sudo ${line}`), note: null };
+		} catch (error) {
+			this.logger.debug('Failed to build the install remedy from tailscale-setup.sh --print-plan', {
+				message: error instanceof Error ? error.message : String(error),
+			});
+
+			return { commands: [], note: TAILSCALE_VENDOR_DOWNLOAD_URL };
+		}
+	}
+
+	private runSetupScriptPrintPlan(step: 'install' | 'daemon' | 'operator'): Promise<string> {
+		const script = join(__dirname, '..', 'scripts', 'tailscale-setup.sh');
+
+		return new Promise((resolve, reject) => {
+			execFile(
+				'bash',
+				[script, '--print-plan', `--step=${step}`],
+				{ timeout: TAILSCALE_PRINT_PLAN_TIMEOUT_MS },
+				(error: NodeJS.ErrnoException | null, stdout?: string) => {
+					if (error) {
+						reject(error);
+
+						return;
+					}
+
+					resolve(stdout ?? '');
+				},
+			);
+		});
 	}
 
 	/**
@@ -318,8 +561,37 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		try {
 			const status = await this.cli.getStatus();
 			const port = this.getBackendPort();
-			const mapped = this.mapper.map(status, { port });
 			const postureAdvisories = this.buildPostureAdvisories(status);
+
+			// Throttled to at most once every five minutes on this ('periodic')
+			// reason — see `refreshRequirements`'s own doc — so the poller's
+			// steady state stays at this single `status --json` call per tick
+			// instead of also paying for `evaluateOperatorGranted()`'s own CLI
+			// calls on every tick.
+			const requirements = await this.refreshRequirements('periodic');
+			const operatorRequirement = requirements.find((requirement) => requirement.code === 'operator-granted');
+
+			if (operatorRequirement && !operatorRequirement.satisfied) {
+				// The smart-panel user was never granted as the tailscaled
+				// operator: every write (`set`/`up`/`serve`) fails
+				// permission-denied even though the read-only call above just
+				// succeeded and may report Running. Report setup-required
+				// instead of trusting BackendState, and skip the Serve/Funnel
+				// apply step below entirely — it would only fail the same way.
+				return this.buildStatus(
+					'setup-required',
+					operatorRequirement.message,
+					{},
+					[],
+					[],
+					[
+						...postureAdvisories,
+						{ code: 'operator-not-granted', severity: 'critical', message: operatorRequirement.message },
+					],
+				);
+			}
+
+			const mapped = this.mapper.map(status, { port });
 
 			if (mapped.state !== 'connected') {
 				return this.buildStatus(
@@ -378,7 +650,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	 * platform. `getPlatformTypeAsync()` resolves only once detection has
 	 * actually settled, so this never happens.
 	 */
-	private async evaluatePlatformSupported(): Promise<TailscaleRequirement> {
+	private async evaluatePlatformSupported(): Promise<TailscaleRequirementBase> {
 		const platformType = await this.platformService.getPlatformTypeAsync();
 
 		if (platformType === PlatformType.RASPBERRY || platformType === PlatformType.GENERIC) {
@@ -410,7 +682,10 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		};
 	}
 
-	private async evaluateBinaryAndVersion(): Promise<{ binary: TailscaleRequirement; version: TailscaleRequirement }> {
+	private async evaluateBinaryAndVersion(): Promise<{
+		binary: TailscaleRequirementBase;
+		version: TailscaleRequirementBase;
+	}> {
 		try {
 			const info = await this.cli.getVersion();
 			const supported = compareTailscaleVersions(info.version, TAILSCALE_MIN_VERSION) >= 0;
@@ -443,7 +718,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		}
 	}
 
-	private async evaluateDaemonActive(): Promise<TailscaleRequirement> {
+	private async evaluateDaemonActive(): Promise<TailscaleRequirementBase> {
 		const active = await this.isSystemdUnitActive('tailscaled');
 
 		return {
@@ -453,19 +728,60 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		};
 	}
 
-	private async evaluateOperatorGranted(): Promise<TailscaleRequirement> {
-		try {
-			await this.cli.getStatus();
+	/**
+	 * D1: verifies the operator grant via `tailscale debug prefs`
+	 * (`OperatorUser === os.userInfo().username`) instead of trusting
+	 * `status --json` succeeding — that call is read-only and succeeds for
+	 * every local user regardless of the operator grant
+	 * (`ipnauth.IsReadonlyConn` upstream), which is exactly the false
+	 * positive this check exists to close. `debug` is an unstable namespace
+	 * across Tailscale releases, so a command that fails outright or whose
+	 * output cannot be parsed falls back to an idempotent write probe
+	 * (`tailscale set --operator=<user>`) instead: harmless for the current
+	 * operator, `permission-denied` for anyone else.
+	 */
+	private async evaluateOperatorGranted(): Promise<TailscaleRequirementBase> {
+		const serviceUser = os.userInfo().username;
 
-			return { code: 'operator-granted', satisfied: true, message: 'The smart-panel operator is granted.' };
+		try {
+			const prefs = await this.cli.getPrefs();
+
+			return this.buildOperatorRequirement(prefs.OperatorUser === serviceUser, serviceUser);
 		} catch (error) {
 			if (error instanceof TailscaleCliError) {
-				if (error.kind === 'permission-denied') {
+				if (error.kind === 'daemon-down') {
 					return {
 						code: 'operator-granted',
 						satisfied: false,
-						message: 'The smart-panel operator has not been granted; run setup again.',
+						message: 'Cannot verify the operator grant while tailscaled is not running.',
 					};
+				}
+
+				if (error.kind === 'not-installed') {
+					return {
+						code: 'operator-granted',
+						satisfied: false,
+						message: 'Cannot verify the operator grant before Tailscale is installed.',
+					};
+				}
+			}
+
+			// `debug prefs` is unavailable on this Tailscale release, or its
+			// output could not be parsed — fall back to the write probe,
+			// which is authoritative either way.
+			return this.evaluateOperatorGrantedViaProbe(serviceUser);
+		}
+	}
+
+	private async evaluateOperatorGrantedViaProbe(serviceUser: string): Promise<TailscaleRequirementBase> {
+		try {
+			await this.cli.set([`--operator=${serviceUser}`]);
+
+			return this.buildOperatorRequirement(true, serviceUser);
+		} catch (error) {
+			if (error instanceof TailscaleCliError) {
+				if (error.kind === 'permission-denied') {
+					return this.buildOperatorRequirement(false, serviceUser);
 				}
 
 				if (error.kind === 'daemon-down') {
@@ -487,6 +803,16 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 			return { code: 'operator-granted', satisfied: false, message: 'Failed to verify the operator grant.' };
 		}
+	}
+
+	private buildOperatorRequirement(satisfied: boolean, serviceUser: string): TailscaleRequirementBase {
+		return {
+			code: 'operator-granted',
+			satisfied,
+			message: satisfied
+				? OPERATOR_GRANTED_SATISFIED_MESSAGE
+				: `The ${serviceUser} user is not the tailscaled operator. Run Set up, or on the device run \`sudo tailscale set --operator=${serviceUser}\`.`,
+		};
 	}
 
 	/** Live status, or null when the CLI call fails for any reason (used to gate preference/up calls, never surfaced as an error). */

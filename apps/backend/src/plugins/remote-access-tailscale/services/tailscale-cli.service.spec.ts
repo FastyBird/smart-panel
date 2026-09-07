@@ -186,6 +186,55 @@ describe('TailscaleCliService', () => {
 		});
 	});
 
+	describe('getPrefs', () => {
+		it('parses a document with OperatorUser set', async () => {
+			mockExecFileOnce(() => ({
+				stdout: JSON.stringify({ OperatorUser: 'smart-panel', ControlURL: 'https://controlplane.tailscale.com' }),
+			}));
+
+			const prefs = await service.getPrefs();
+
+			expect(prefs.OperatorUser).toBe('smart-panel');
+			expect(execFile).toHaveBeenCalledWith('tailscale', ['debug', 'prefs'], expect.any(Object), expect.any(Function));
+		});
+
+		it('tolerates a document with no OperatorUser field (never granted)', async () => {
+			mockExecFileOnce(() => ({ stdout: JSON.stringify({ ControlURL: 'https://controlplane.tailscale.com' }) }));
+
+			const prefs = await service.getPrefs();
+
+			expect(prefs.OperatorUser).toBeUndefined();
+		});
+
+		it('raises unknown when the output is not valid JSON (the debug namespace moved on this release)', async () => {
+			mockExecFileOnce(() => ({ stdout: 'not json' }));
+
+			await expect(service.getPrefs()).rejects.toMatchObject({ kind: 'unknown' });
+		});
+
+		it('classifies a non-zero exit code as an error', async () => {
+			mockExecFileOnce(() => ({ stdout: '', stderr: 'unknown command "prefs" for "tailscale debug"', exitCode: 1 }));
+
+			await expect(service.getPrefs()).rejects.toBeInstanceOf(TailscaleCliError);
+		});
+
+		it('classifies daemon-down from stderr', async () => {
+			mockExecFileOnce(() => ({
+				stdout: '',
+				stderr: "failed to connect to local tailscaled; it doesn't appear to be running: connection refused",
+				exitCode: 1,
+			}));
+
+			await expect(service.getPrefs()).rejects.toMatchObject({ kind: 'daemon-down' });
+		});
+
+		it('classifies timeout when the process is killed', async () => {
+			mockExecFileOnce(() => ({ killed: true }));
+
+			await expect(service.getPrefs()).rejects.toMatchObject({ kind: 'timeout' });
+		});
+	});
+
 	describe('up/set/down/logout/serveReset', () => {
 		it('sends `up` with the given flags and resolves on success', async () => {
 			mockExecFileOnce(() => ({ exitCode: 0 }));

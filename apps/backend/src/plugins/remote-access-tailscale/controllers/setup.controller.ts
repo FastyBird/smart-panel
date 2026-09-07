@@ -42,6 +42,8 @@ import {
 	REMOTE_ACCESS_TAILSCALE_PLUGIN_API_TAG_NAME,
 	REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 } from '../remote-access-tailscale.constants';
+import { TailscaleRequirementUnsatisfiedException } from '../remote-access-tailscale.exceptions';
+import { TailscaleCliError } from '../services/tailscale-cli.service';
 import { TailscaleLoginInProgressException, TailscaleLoginService } from '../services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../services/tailscale-provider.service';
@@ -153,11 +155,7 @@ export class SetupController {
 				throw new ConflictException(error.message);
 			}
 
-			const err = error as Error;
-
-			this.logger.error(`Tailscale login failed: ${err.message}`);
-
-			throw new InternalServerErrorException('Failed to sign in to Tailscale');
+			this.mapActionError(error, 'Tailscale login failed', 'Failed to sign in to Tailscale');
 		}
 	}
 
@@ -177,11 +175,7 @@ export class SetupController {
 		try {
 			await this.loginService.logout();
 		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Tailscale logout failed: ${err.message}`);
-
-			throw new InternalServerErrorException('Failed to sign out of Tailscale');
+			this.mapActionError(error, 'Tailscale logout failed', 'Failed to sign out of Tailscale');
 		}
 
 		return this.buildStatusResponse(res);
@@ -209,14 +203,59 @@ export class SetupController {
 		try {
 			await this.loginService.resetPreferences();
 		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Tailscale reset-preferences failed: ${err.message}`);
-
-			throw new InternalServerErrorException('Failed to reset Tailscale preferences');
+			this.mapActionError(error, 'Tailscale reset-preferences failed', 'Failed to reset Tailscale preferences');
 		}
 
 		return this.buildStatusResponse(res);
+	}
+
+	/**
+	 * Shared by `login`/`logout`/`resetPreferences`: a prerequisite refused by
+	 * `TailscaleLoginService`'s own pre-check (`TailscaleRequirementUnsatisfiedException`)
+	 * or a CLI call that still failed for real after passing it
+	 * (`TailscaleCliError`) both map to `409 Conflict` with a body carrying a
+	 * stable machine-readable `code` alongside the human `message` — 'kind' is
+	 * remapped to a distinct, action-oriented code rather than reusing the
+	 * requirement code verbatim, since "the daemon isn't running" reads
+	 * differently discovered from a live call than from the pre-check.
+	 * Everything else (timeout, unknown, a plain Error, ...) stays a 500,
+	 * exactly as it always has.
+	 *
+	 * NOTE: this app's `GlobalErrorFilter` (`common/filters/global-error.filter.ts`)
+	 * hardcodes the top-level `error.code` in its response envelope to the
+	 * *exception class name* for every `HttpException` (so `error.code` is
+	 * always literally `"ConflictException"` here, never the value below) and
+	 * replaces `error.details` with a generic `{ reason: ... }` in production
+	 * — only a non-production request sees the object thrown here verbatim via
+	 * `error.details`. The distinct `code` this method attaches is therefore
+	 * reliably visible only in `error.details.code` outside production; a
+	 * shared-infrastructure change to `GlobalErrorFilter` (or a dedicated
+	 * `ConflictException` filter) is needed before this is visible in
+	 * production too, and is out of this controller's scope.
+	 */
+	private mapActionError(error: unknown, logPrefix: string, fallbackMessage: string): never {
+		if (error instanceof TailscaleRequirementUnsatisfiedException) {
+			throw new ConflictException({ code: error.requirement.code, message: error.message });
+		}
+
+		if (error instanceof TailscaleCliError) {
+			switch (error.kind) {
+				case 'permission-denied':
+					throw new ConflictException({ code: 'operator-not-granted', message: error.message });
+				case 'daemon-down':
+					throw new ConflictException({ code: 'daemon-not-active', message: error.message });
+				case 'needs-login':
+					throw new ConflictException({ code: 'not-signed-in', message: error.message });
+				default:
+					break;
+			}
+		}
+
+		const err = error as Error;
+
+		this.logger.error(`${logPrefix}: ${err.message}`);
+
+		throw new InternalServerErrorException(fallbackMessage);
 	}
 
 	/** Shared by `logout`/`resetPreferences` — the same composition `StatusController.getStatus()` uses, including the no-store guard for a state that happens to come back pending-auth. */

@@ -13,6 +13,17 @@
 # and always finishes at "complete" with exit 0, regardless of the host OS —
 # it previews the real branching logic without requiring root, apt, systemd
 # or a Debian-family host, so it can run from a Jest spec on any platform.
+#
+# --print-plan [--step=install|daemon|operator] is a separate, read-only mode
+# for TailscaleNodeManagedService's D12 remedy builder: it prints one command
+# per line for the detected ID/VERSION_CODENAME from /etc/os-release and
+# executes nothing at all — no status file, no trap, not even SMART_PANEL_USER
+# defaulted to root's own id (the caller always passes it explicitly). This is
+# what keeps the admin-facing "run this yourself" remedy list from ever
+# drifting out of sync with what the privileged install step above actually
+# runs. An unsupported (non-Debian-family) distribution prints nothing for
+# --step=install — the caller's own signal to fall back to a vendor link
+# instead of a command list.
 set -e
 # Without this, `curl ... | tee ...` reports tee's exit status, not curl's —
 # a failed download would be silently treated as success by the `|| { ... }`
@@ -23,11 +34,57 @@ STATUS_FILE="${STATUS_FILE:-/var/lib/smart-panel/remote-access/tailscale-setup-s
 SMART_PANEL_USER="${SMART_PANEL_USER:-$(id -un)}"
 
 DRY_RUN=0
+PRINT_PLAN=0
+PRINT_PLAN_STEP="install"
 for arg in "$@"; do
 	case "$arg" in
 	--dry-run) DRY_RUN=1 ;;
+	--print-plan) PRINT_PLAN=1 ;;
+	--step=*) PRINT_PLAN_STEP="${arg#--step=}" ;;
 	esac
 done
+
+# Read-only, side-effect-free: print the plan and exit before this script
+# ever touches STATUS_FILE or registers the cleanup trap below.
+if [ "$PRINT_PLAN" -eq 1 ]; then
+	OS_ID=""
+	VERSION_CODENAME=""
+
+	if [ -f /etc/os-release ]; then
+		# shellcheck source=/dev/null
+		. /etc/os-release
+		OS_ID="${ID:-}"
+		VERSION_CODENAME="${VERSION_CODENAME:-}"
+	fi
+
+	case "$PRINT_PLAN_STEP" in
+	daemon)
+		echo "systemctl enable --now tailscaled"
+		;;
+	operator)
+		echo "tailscale set --operator=${SMART_PANEL_USER}"
+		;;
+	install)
+		case "$OS_ID" in
+		raspbian | debian | ubuntu)
+			echo "curl -fsSL https://pkgs.tailscale.com/stable/${OS_ID}/${VERSION_CODENAME}.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null"
+			echo "curl -fsSL https://pkgs.tailscale.com/stable/${OS_ID}/${VERSION_CODENAME}.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list >/dev/null"
+			echo "apt-get update -qq"
+			echo "apt-get install -y -qq --no-install-recommends tailscale"
+			;;
+		*)
+			# Unsupported distribution: intentionally prints nothing on
+			# stdout — the caller's signal to fall back to a vendor link
+			# instead of a command list. A note on stderr only, for a human
+			# running this script directly.
+			echo "unsupported distribution (ID=${OS_ID:-unknown}); install manually: https://tailscale.com/download/linux" >&2
+			;;
+		esac
+		;;
+	esac
+
+	exit 0
+fi
 
 # Writes the canonical `{ state, step, message }` status PrivilegedWorkerService
 # expects, via a temp file + rename so a concurrent read never sees a
