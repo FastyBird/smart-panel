@@ -82,6 +82,14 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 
 	public pm1: Map<number, Pm1> = new Map();
 
+	public em: Map<number, Em> = new Map();
+
+	public emData: Map<number, EmData> = new Map();
+
+	public em1: Map<number, Em1> = new Map();
+
+	public em1Data: Map<number, Em1Data> = new Map();
+
 	/**
 	 * The descriptor that matched this device's model. Stored on construction so callers
 	 * (e.g. `DelegatesManagerService.determineCategory`) can read the canonical category
@@ -192,6 +200,14 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 							this.humidity.set(id, component as unknown as Humidity);
 						} else if (componentSpec.type === ComponentType.TEMPERATURE) {
 							this.temperature.set(id, component as unknown as Temperature);
+						} else if (componentSpec.type === ComponentType.EM) {
+							this.em.set(id, component as unknown as Em);
+						} else if (componentSpec.type === ComponentType.EM_DATA) {
+							this.emData.set(id, component as unknown as EmData);
+						} else if (componentSpec.type === ComponentType.EM1) {
+							this.em1.set(id, component as unknown as Em1);
+						} else if (componentSpec.type === ComponentType.EM1_DATA) {
+							this.em1Data.set(id, component as unknown as Em1Data);
 						}
 
 						this.components.set(componentKey, component);

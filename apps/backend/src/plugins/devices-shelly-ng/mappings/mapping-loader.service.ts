@@ -537,6 +537,10 @@ export class MappingLoaderService implements OnModuleInit {
 			humidity: ComponentType.HUMIDITY,
 			temperature: ComponentType.TEMPERATURE,
 			pm1: ComponentType.PM1,
+			em: ComponentType.EM,
+			emdata: ComponentType.EM_DATA,
+			em1: ComponentType.EM1,
+			em1data: ComponentType.EM1_DATA,
 			wifi: ComponentType.WIFI,
 			ethernet: ComponentType.ETHERNET,
 		};

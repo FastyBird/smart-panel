@@ -135,6 +135,58 @@ type FakeCct = {
 	current?: number;
 };
 
+// Fields are optional (rather than `number | null`) so a test can leave everything but the
+// one reading under test as `undefined` — `wireMeterProperty` skips a reading entirely (no
+// findOneBy calls at all) when it is `undefined`, which keeps the mock queue setup minimal.
+// A `null` value (present, but a CT clamp is not connected) still queues a lookup.
+type FakeEm = {
+	id: number;
+	key: string;
+	a_act_power?: number | null;
+	a_voltage?: number | null;
+	a_current?: number | null;
+	a_freq?: number | null;
+	b_act_power?: number | null;
+	b_voltage?: number | null;
+	b_current?: number | null;
+	b_freq?: number | null;
+	c_act_power?: number | null;
+	c_voltage?: number | null;
+	c_current?: number | null;
+	c_freq?: number | null;
+	total_act_power?: number | null;
+	total_current?: number | null;
+};
+
+type FakeEmData = {
+	id: number;
+	key: string;
+	a_total_act_energy?: number;
+	a_total_act_ret_energy?: number;
+	b_total_act_energy?: number;
+	b_total_act_ret_energy?: number;
+	c_total_act_energy?: number;
+	c_total_act_ret_energy?: number;
+	total_act?: number;
+	total_act_ret?: number;
+};
+
+type FakeEm1 = {
+	id: number;
+	key: string;
+	act_power?: number | null;
+	voltage?: number | null;
+	current?: number | null;
+	freq?: number | null;
+};
+
+type FakeEm1Data = {
+	id: number;
+	key: string;
+	total_act_energy?: number;
+	total_act_ret_energy?: number;
+};
+
 type FakeDevice = {
 	id: string;
 	modelName: string;
@@ -149,6 +201,10 @@ type FakeDevice = {
 	rgb?: FakeRgb;
 	rgbw?: FakeRgbw;
 	cct?: FakeCct;
+	em?: FakeEm;
+	emData?: FakeEmData;
+	em1?: FakeEm1;
+	em1Data?: FakeEm1Data;
 };
 
 jest.mock('../delegates/shelly-device.delegate', () => {
@@ -173,6 +229,10 @@ jest.mock('../delegates/shelly-device.delegate', () => {
 			this.humidity = new Map();
 			this.temperature = new Map();
 			this.pm1 = new Map();
+			this.em = new Map();
+			this.emData = new Map();
+			this.em1 = new Map();
+			this.em1Data = new Map();
 
 			// simple one-switch wiring for tests
 			if (shelly.switch) {
@@ -198,6 +258,20 @@ jest.mock('../delegates/shelly-device.delegate', () => {
 			}
 			if (shelly.cct) {
 				this.cct.set(0, shelly.cct);
+			}
+			// EM/EM1/EMData/EM1Data key on the fixture's own id (rather than hard-coded 0) so
+			// tests can exercise a non-zero component id, e.g. a second em1data meter.
+			if (shelly.em) {
+				this.em.set(shelly.em.id, shelly.em);
+			}
+			if (shelly.emData) {
+				this.emData.set(shelly.emData.id, shelly.emData);
+			}
+			if (shelly.em1) {
+				this.em1.set(shelly.em1.id, shelly.em1);
+			}
+			if (shelly.em1Data) {
+				this.em1Data.set(shelly.em1Data.id, shelly.em1Data);
 			}
 		}
 
@@ -1792,6 +1866,279 @@ describe('DelegatesManagerService', () => {
 
 				expect(writes).toHaveLength(1);
 				expect(writes[0].value).toBe(231.4);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+	});
+
+	describe('EM/EM1/EMData/EM1Data energy meter channels track the device (PR4/RC4)', () => {
+		function arrangeDeviceInfoMocks() {
+			const device = { id: uuid().toString() } as ShellyNgDeviceEntity;
+
+			const deviceInfoCh = {
+				device: device.id,
+				category: ChannelCategory.DEVICE_INFORMATION,
+				identifier: 'device-information',
+				name: 'Device information',
+			} as ShellyNgChannelEntity;
+
+			const statusProp = {
+				channel: deviceInfoCh.id,
+				category: PropertyCategory.STATUS,
+				identifier: 'status',
+				value: new PropertyValueState(ConnectionState.UNKNOWN),
+			} as ShellyNgChannelPropertyEntity;
+
+			const linkQProp = {
+				channel: deviceInfoCh.id,
+				category: PropertyCategory.LINK_QUALITY,
+				identifier: 'link_quality',
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
+			(devicesService.findOne as jest.Mock).mockResolvedValueOnce(device);
+			(devicesService.create as jest.Mock).mockImplementation(
+				async (dto: CreateShellyNgDeviceDto): Promise<ShellyNgDeviceEntity> => {
+					device.identifier = dto.identifier;
+					device.name = dto.name;
+					device.category = dto.category;
+					return device as unknown as ShellyNgDeviceEntity;
+				},
+			);
+
+			(channelsService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => null)
+				.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity);
+
+			(channelsPropertiesService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => statusProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => linkQProp as unknown as ShellyNgChannelPropertyEntity);
+
+			(channelsPropertiesService.update as jest.Mock).mockImplementation(
+				async (_id: string, payload: unknown): Promise<unknown> => payload,
+			);
+
+			return { device };
+		}
+
+		function meterChannelAndProperty(
+			deviceId: string,
+			category: ChannelCategory.ELECTRICAL_POWER | ChannelCategory.ELECTRICAL_ENERGY,
+			channelIdentifier: string,
+			propertyCategory: PropertyCategory,
+			propertyIdentifier: string,
+		) {
+			const channel = {
+				device: deviceId,
+				category,
+				identifier: channelIdentifier,
+				name: channelIdentifier,
+			} as ShellyNgChannelEntity;
+
+			const property = {
+				channel: channel.id,
+				category: propertyCategory,
+				identifier: propertyIdentifier,
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			return { channel, property };
+		}
+
+		function updatesFor(identifier: string): { value: unknown }[] {
+			return (channelsPropertiesService.update as jest.Mock).mock.calls
+				.map(([, payload]: [string, { identifier?: string; value?: unknown }]) => payload)
+				.filter((payload) => payload?.identifier === identifier) as { value: unknown }[];
+		}
+
+		test('em: a_act_power reaches power:0:a / a_act_power; a null phase reading (b_act_power) writes nothing', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const { device } = arrangeDeviceInfoMocks();
+
+				const { channel: channelA, property: propA } = meterChannelAndProperty(
+					device.id,
+					ChannelCategory.ELECTRICAL_POWER,
+					'power:0:a',
+					PropertyCategory.POWER,
+					'a_act_power',
+				);
+				const { channel: channelB, property: propB } = meterChannelAndProperty(
+					device.id,
+					ChannelCategory.ELECTRICAL_POWER,
+					'power:0:b',
+					PropertyCategory.POWER,
+					'b_act_power',
+				);
+
+				// Only `a_act_power` and `b_act_power` are set on the fixture - every other
+				// reading on `em:0` stays `undefined` and is skipped with no lookup at all,
+				// keeping this queue in lockstep with the a → b → c → total loop order.
+				(channelsService.findOneBy as jest.Mock)
+					.mockImplementationOnce(async () => channelA as unknown as ShellyNgChannelEntity)
+					.mockImplementationOnce(async () => channelB as unknown as ShellyNgChannelEntity);
+
+				(channelsPropertiesService.findOneBy as jest.Mock)
+					.mockImplementationOnce(async () => propA as unknown as ShellyNgChannelPropertyEntity)
+					.mockImplementationOnce(async () => propB as unknown as ShellyNgChannelPropertyEntity);
+
+				const shelly: FakeDevice = {
+					id: 'shelly-em-meter',
+					modelName: 'Pro 3EM',
+					system: { config: { device: { name: '3EM', mac: 'AABBCCDDEE20' } } },
+					wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.60' },
+					// b_act_power: null simulates a disconnected CT clamp on phase B.
+					em: { id: 0, key: 'em:0', a_act_power: 100.0, b_act_power: null },
+				};
+
+				const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+				(channelsPropertiesService.update as jest.Mock).mockClear();
+
+				delegate.emitValue('em:0', 'a_act_power', 130.2);
+				delegate.emitValue('em:0', 'b_act_power', null);
+				jest.advanceTimersByTime(300);
+
+				expect(updatesFor('a_act_power')).toHaveLength(1);
+				expect(updatesFor('a_act_power')[0].value).toBe(130.2);
+
+				// The allowNull path: a null phase reading must not be written at all.
+				expect(updatesFor('b_act_power')).toHaveLength(0);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('emdata: a_total_act_energy reaches energy:0:a / a_total_act_energy', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const { device } = arrangeDeviceInfoMocks();
+
+				const { channel, property } = meterChannelAndProperty(
+					device.id,
+					ChannelCategory.ELECTRICAL_ENERGY,
+					'energy:0:a',
+					PropertyCategory.CONSUMPTION,
+					'a_total_act_energy',
+				);
+
+				(channelsService.findOneBy as jest.Mock).mockImplementationOnce(
+					async () => channel as unknown as ShellyNgChannelEntity,
+				);
+
+				(channelsPropertiesService.findOneBy as jest.Mock).mockImplementationOnce(
+					async () => property as unknown as ShellyNgChannelPropertyEntity,
+				);
+
+				const shelly: FakeDevice = {
+					id: 'shelly-emdata-meter',
+					modelName: 'Pro 3EM',
+					system: { config: { device: { name: '3EM', mac: 'AABBCCDDEE21' } } },
+					wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.61' },
+					emData: { id: 0, key: 'emdata:0', a_total_act_energy: 111.1 },
+				};
+
+				const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+				(channelsPropertiesService.update as jest.Mock).mockClear();
+
+				delegate.emitValue('emdata:0', 'a_total_act_energy', 222.2);
+				jest.advanceTimersByTime(300);
+
+				expect(updatesFor('a_total_act_energy')).toHaveLength(1);
+				expect(updatesFor('a_total_act_energy')[0].value).toBe(222.2);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('em1: act_power reaches power:0 / act_power', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const { device } = arrangeDeviceInfoMocks();
+
+				const { channel, property } = meterChannelAndProperty(
+					device.id,
+					ChannelCategory.ELECTRICAL_POWER,
+					'power:0',
+					PropertyCategory.POWER,
+					'act_power',
+				);
+
+				(channelsService.findOneBy as jest.Mock).mockImplementationOnce(
+					async () => channel as unknown as ShellyNgChannelEntity,
+				);
+
+				(channelsPropertiesService.findOneBy as jest.Mock).mockImplementationOnce(
+					async () => property as unknown as ShellyNgChannelPropertyEntity,
+				);
+
+				const shelly: FakeDevice = {
+					id: 'shelly-em1-meter',
+					modelName: 'Pro EM',
+					system: { config: { device: { name: 'Pro EM', mac: 'AABBCCDDEE22' } } },
+					wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.62' },
+					em1: { id: 0, key: 'em1:0', act_power: 45.6 },
+				};
+
+				const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+				(channelsPropertiesService.update as jest.Mock).mockClear();
+
+				delegate.emitValue('em1:0', 'act_power', 50.0);
+				jest.advanceTimersByTime(300);
+
+				expect(updatesFor('act_power')).toHaveLength(1);
+				expect(updatesFor('act_power')[0].value).toBe(50.0);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('em1data: total_act_energy reaches energy:1 / total_act_energy (non-zero component id)', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const { device } = arrangeDeviceInfoMocks();
+
+				const { channel, property } = meterChannelAndProperty(
+					device.id,
+					ChannelCategory.ELECTRICAL_ENERGY,
+					'energy:1',
+					PropertyCategory.CONSUMPTION,
+					'total_act_energy',
+				);
+
+				(channelsService.findOneBy as jest.Mock).mockImplementationOnce(
+					async () => channel as unknown as ShellyNgChannelEntity,
+				);
+
+				(channelsPropertiesService.findOneBy as jest.Mock).mockImplementationOnce(
+					async () => property as unknown as ShellyNgChannelPropertyEntity,
+				);
+
+				const shelly: FakeDevice = {
+					id: 'shelly-em1data-meter',
+					modelName: 'Pro EM',
+					system: { config: { device: { name: 'Pro EM', mac: 'AABBCCDDEE23' } } },
+					wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.63' },
+					em1Data: { id: 1, key: 'em1data:1', total_act_energy: 555.5 },
+				};
+
+				const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+				(channelsPropertiesService.update as jest.Mock).mockClear();
+
+				delegate.emitValue('em1data:1', 'total_act_energy', 600.1);
+				jest.advanceTimersByTime(300);
+
+				expect(updatesFor('total_act_energy')).toHaveLength(1);
+				expect(updatesFor('total_act_energy')[0].value).toBe(600.1);
 			} finally {
 				jest.useRealTimers();
 			}

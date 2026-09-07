@@ -1529,6 +1529,217 @@ export class DelegatesManagerService {
 
 		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
 
+		// Pro EM / Pro 3EM / EM Gen3 / 3EM Gen3: one power channel per phase plus a total, and
+		// (for 3EM-style devices) an `em1:{id}` per phase in parallel - see the `em` component
+		// spec comment in devices-shelly-ng.constants.ts for why both shapes can coexist.
+		for (const comp of delegate.em.values()) {
+			const phases: {
+				id: 'a' | 'b' | 'c';
+				power: number | null;
+				voltage: number | null;
+				current: number | null;
+				freq: number | null;
+			}[] = [
+				{ id: 'a', power: comp.a_act_power, voltage: comp.a_voltage, current: comp.a_current, freq: comp.a_freq },
+				{ id: 'b', power: comp.b_act_power, voltage: comp.b_voltage, current: comp.b_current, freq: comp.b_freq },
+				{ id: 'c', power: comp.c_act_power, voltage: comp.c_voltage, current: comp.c_current, freq: comp.c_freq },
+			];
+
+			for (const phase of phases) {
+				const channelIdentifier = `power:${comp.id}:${phase.id}`;
+
+				await this.wireMeterProperty(
+					delegate,
+					device,
+					comp.key,
+					channelIdentifier,
+					`${phase.id}_act_power`,
+					`${phase.id}_act_power`,
+					phase.power,
+					true,
+				);
+				await this.wireMeterProperty(
+					delegate,
+					device,
+					comp.key,
+					channelIdentifier,
+					`${phase.id}_voltage`,
+					`${phase.id}_voltage`,
+					phase.voltage,
+					true,
+				);
+				await this.wireMeterProperty(
+					delegate,
+					device,
+					comp.key,
+					channelIdentifier,
+					`${phase.id}_current`,
+					`${phase.id}_current`,
+					phase.current,
+					true,
+				);
+				await this.wireMeterProperty(
+					delegate,
+					device,
+					comp.key,
+					channelIdentifier,
+					`${phase.id}_freq`,
+					`${phase.id}_freq`,
+					phase.freq,
+					true,
+				);
+			}
+
+			const totalChannelIdentifier = `power:${comp.id}:total`;
+
+			await this.wireMeterProperty(
+				delegate,
+				device,
+				comp.key,
+				totalChannelIdentifier,
+				'total_act_power',
+				'total_act_power',
+				comp.total_act_power,
+				true,
+			);
+			await this.wireMeterProperty(
+				delegate,
+				device,
+				comp.key,
+				totalChannelIdentifier,
+				'total_current',
+				'total_current',
+				comp.total_current,
+				true,
+			);
+		}
+
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
+
+		for (const comp of delegate.emData.values()) {
+			const phases: { id: 'a' | 'b' | 'c'; energy: number; returned: number }[] = [
+				{ id: 'a', energy: comp.a_total_act_energy, returned: comp.a_total_act_ret_energy },
+				{ id: 'b', energy: comp.b_total_act_energy, returned: comp.b_total_act_ret_energy },
+				{ id: 'c', energy: comp.c_total_act_energy, returned: comp.c_total_act_ret_energy },
+			];
+
+			for (const phase of phases) {
+				const channelIdentifier = `energy:${comp.id}:${phase.id}`;
+
+				await this.wireMeterProperty(
+					delegate,
+					device,
+					comp.key,
+					channelIdentifier,
+					`${phase.id}_total_act_energy`,
+					`${phase.id}_total_act_energy`,
+					phase.energy,
+					false,
+				);
+				await this.wireMeterProperty(
+					delegate,
+					device,
+					comp.key,
+					channelIdentifier,
+					`${phase.id}_total_act_ret_energy`,
+					`${phase.id}_total_act_ret_energy`,
+					phase.returned,
+					false,
+				);
+			}
+
+			const totalChannelIdentifier = `energy:${comp.id}:total`;
+
+			await this.wireMeterProperty(
+				delegate,
+				device,
+				comp.key,
+				totalChannelIdentifier,
+				'total_act',
+				'total_act',
+				comp.total_act,
+				false,
+			);
+			await this.wireMeterProperty(
+				delegate,
+				device,
+				comp.key,
+				totalChannelIdentifier,
+				'total_act_ret',
+				'total_act_ret',
+				comp.total_act_ret,
+				false,
+			);
+		}
+
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
+
+		// Pro EM (monophase profile) / EM Gen3 / one `em1:{id}` per phase on 3EM-style devices.
+		for (const comp of delegate.em1.values()) {
+			const channelIdentifier = `power:${comp.id}`;
+
+			await this.wireMeterProperty(
+				delegate,
+				device,
+				comp.key,
+				channelIdentifier,
+				'act_power',
+				'act_power',
+				comp.act_power,
+				true,
+			);
+			await this.wireMeterProperty(
+				delegate,
+				device,
+				comp.key,
+				channelIdentifier,
+				'voltage',
+				'voltage',
+				comp.voltage,
+				true,
+			);
+			await this.wireMeterProperty(
+				delegate,
+				device,
+				comp.key,
+				channelIdentifier,
+				'current',
+				'current',
+				comp.current,
+				true,
+			);
+			await this.wireMeterProperty(delegate, device, comp.key, channelIdentifier, 'freq', 'freq', comp.freq, true);
+		}
+
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
+
+		for (const comp of delegate.em1Data.values()) {
+			const channelIdentifier = `energy:${comp.id}`;
+
+			await this.wireMeterProperty(
+				delegate,
+				device,
+				comp.key,
+				channelIdentifier,
+				'total_act_energy',
+				'total_act_energy',
+				comp.total_act_energy,
+				false,
+			);
+			await this.wireMeterProperty(
+				delegate,
+				device,
+				comp.key,
+				channelIdentifier,
+				'total_act_ret_energy',
+				'total_act_ret_energy',
+				comp.total_act_ret_energy,
+				false,
+			);
+		}
+
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
+
 		const valueHandler = (compKey: string, attr: string, val: CharacteristicValue): void => {
 			const handler = this.changeHandlers.get(`${delegate.id}|${compKey}|${attr}`);
 
@@ -2075,6 +2286,68 @@ export class DelegatesManagerService {
 		}
 	}
 
+	/**
+	 * Wires one energy-meter reading: resolves `${channelIdentifier}` → `${propertyIdentifier}`,
+	 * writes the component's current value as a baseline, then registers a change handler keyed
+	 * on `${delegate.id}|${compKey}|${attr}`.
+	 *
+	 * `value === undefined` means the reading does not apply to this component (e.g. EM1's
+	 * `freq` is only reported "if applicable") and is skipped entirely - no lookup, no handler.
+	 * `value === null` means the reading currently has no data (e.g. a meter phase whose CT
+	 * clamp is not connected) - the channel/property may still exist (`ensureMeterChannel` only
+	 * skips a channel when its *required* reading is absent), so the handler is still
+	 * registered with `allowNull: true` to keep dropping future `null` updates silently, but no
+	 * baseline value is written now.
+	 */
+	private async wireMeterProperty(
+		delegate: ShellyDeviceDelegate,
+		device: ShellyNgDeviceEntity,
+		compKey: string,
+		channelIdentifier: string,
+		attr: string,
+		propertyIdentifier: string,
+		value: number | null | undefined,
+		allowNull: boolean,
+	): Promise<void> {
+		if (typeof value === 'undefined') {
+			return;
+		}
+
+		const channel = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+			'identifier',
+			channelIdentifier,
+			device.id,
+			DEVICES_SHELLY_NG_TYPE,
+		);
+
+		if (channel === null) {
+			// Channel may not be created yet, or ensureMeterChannel skipped it entirely because
+			// its required reading was absent (e.g. every phase of this meter is disconnected).
+			return;
+		}
+
+		const property = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+			'identifier',
+			propertyIdentifier,
+			channel.id,
+		);
+
+		if (property === null) {
+			// Property may not be created yet - this is expected during device initialization
+			return;
+		}
+
+		if (value !== null) {
+			await this.setDefaultPropertyValue(device.id, property, value);
+		}
+
+		this.changeHandlers.set(`${delegate.id}|${compKey}|${attr}`, (val: CharacteristicValue): void => {
+			this.handleNumericChange(compKey, attr, property.id, val, (n) => this.handleChange(property, n, false), {
+				allowNull,
+			});
+		});
+	}
+
 	private determineCategory(delegate: ShellyDeviceDelegate): DeviceCategory {
 		// Prefer the descriptor's canonical first category. The component-based heuristic
 		// below misclassified some sensor-only devices (e.g. Shelly PM Mini Gen3, whose
@@ -2112,6 +2385,14 @@ export class DelegatesManagerService {
 		write: (n: number) => Promise<void>,
 		opts?: CoerceNumberOpts,
 	): void {
+		// A meter reports `null` for a phase whose CT clamp is not connected (e.g. EM/EM1
+		// `*_act_power`). Callers opt in with `allowNull` so that expected case is dropped
+		// silently, the same way `ensureMeterChannel` skips an absent phase at provisioning -
+		// it must not be logged as an invalid update, nor written as a bogus 0.
+		if (val === null && opts?.allowNull) {
+			return;
+		}
+
 		const n = coerceNumberSafe(val, opts);
 
 		if (n === null || Number.isNaN(n)) {
