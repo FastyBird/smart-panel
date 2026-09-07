@@ -5,6 +5,17 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logge
 
 import { RequestResultState } from '../../app.constants';
 
+/**
+ * In the registered global filter chain (see `createGlobalExceptionFilters()`),
+ * every `HttpException` subtype used in this app has its own dedicated filter
+ * ahead of this one (`BadRequestExceptionFilter`, `ConflictExceptionFilter`,
+ * `UnprocessableEntityExceptionFilter`, `NotFoundExceptionFilter`,
+ * `InternalServerErrorExceptionFilter`), and Nest matches the first filter
+ * whose `@Catch()` metadata fits. So this `@Catch()` catch-all only ever
+ * actually handles non-`HttpException` errors (an unexpected thrown `Error`,
+ * etc.) in practice — it still masks those as a generic 500 in production,
+ * unchanged (D13, RA-27, #996).
+ */
 @Catch()
 export class GlobalErrorFilter implements ExceptionFilter {
 	private readonly logger = new Logger(GlobalErrorFilter.name);
@@ -41,8 +52,6 @@ export class GlobalErrorFilter implements ExceptionFilter {
 			exception instanceof Error ? exception.stack : undefined,
 		);
 
-		const isProduction = process.env.NODE_ENV === 'production';
-
 		const errorResponse = {
 			status: RequestResultState.ERROR,
 			timestamp: new Date().toISOString(),
@@ -52,10 +61,7 @@ export class GlobalErrorFilter implements ExceptionFilter {
 			error: {
 				code: exception instanceof HttpException ? exception.name : 'InternalServerError',
 				message: errorMessage,
-				details:
-					!isProduction && exception instanceof HttpException
-						? exception.getResponse()
-						: { reason: 'An unexpected server error occurred.' },
+				details: { reason: 'An unexpected server error occurred.' },
 			},
 			metadata: {
 				server_time: new Date().toISOString(),
