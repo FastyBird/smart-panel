@@ -67,7 +67,8 @@ jobs:
         id: "set-version"
         env:
           INPUT_VERSION: ${{ inputs.version }}
-        run: "node .github/scripts/monorepo-version-sync.js ${INPUT_VERSION:-${{ github.ref }}} alpha"
+          RELEASE_REF: ${{ github.ref }}
+        run: 'node .github/scripts/monorepo-version-sync.js "${INPUT_VERSION:-$RELEASE_REF}" alpha'
 
       - name: "Commit Version Changes"
         run: |
