@@ -93,4 +93,8 @@ describe('getErrorCode', () => {
 	it('returns null for an array details payload with no string codes', () => {
 		expect(code(withDetails([{ reason: 'Some reason.' }]))).toBeNull();
 	});
+
+	it('skips null and primitive entries in an array details payload instead of throwing', () => {
+		expect(code(withDetails([null, 'a string entry', 42, { code: 'daemon-not-active' }]))).toBe('daemon-not-active');
+	});
 });

@@ -524,6 +524,20 @@ describe('TailscaleSetupWizard', () => {
 			expect(stepsProp(wrapper)).toBe(1);
 			expect(fns.fetchStatus).toHaveBeenCalled();
 		});
+
+		it('advances to sign-in when the poll reports complete even though the last websocket event is stale at running (a missed final tick must not strand the spinner)', async () => {
+			const wrapper = mountWizard('setup');
+
+			progress.value = { state: 'running', step: 'install-package' };
+			await flushPromises();
+
+			expect(stepsProp(wrapper)).toBe(0);
+
+			setup.value = { state: 'complete', step: null, message: null };
+			await flushPromises();
+
+			expect(stepsProp(wrapper)).toBe(1);
+		});
 	});
 
 	describe('action error hints (D13)', () => {

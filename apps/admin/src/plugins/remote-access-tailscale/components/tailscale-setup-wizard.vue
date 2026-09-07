@@ -414,7 +414,15 @@ const endpoints = computed(() => status.value?.endpoints ?? []);
 // `setup` job (kept current by `useTailscaleSetup`'s own poll) once a websocket event has arrived
 // at least once, or right after a page reload before any websocket event has arrived at all -
 // this is what lets the progress view resume purely from `GET /status`, with no extra endpoint.
+// A polled *terminal* state always wins over a stale `running` websocket event, though: if the
+// websocket's final tick was ever missed, `progress.value.state` would stay 'running' forever and
+// strand the spinner - the poll is the fallback specifically for that case, so it must be allowed
+// to override once it reports the job is actually done.
 const effectiveProgress = computed(() => {
+	if (setup.value && setup.value.state !== 'running') {
+		return { state: setup.value.state, step: setup.value.step ?? undefined, message: setup.value.message ?? undefined };
+	}
+
 	if (progress.value) {
 		return progress.value;
 	}

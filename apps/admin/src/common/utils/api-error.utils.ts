@@ -35,7 +35,7 @@ export const getErrorCode = <T extends Record<string | number, unknown>>(error: 
 
 	if (Array.isArray(details)) {
 		const codes = details
-			.map((row) => ('code' in row && typeof row['code'] === 'string' ? row.code : undefined))
+			.map((row) => (row && typeof row === 'object' && 'code' in row && typeof row['code'] === 'string' ? row.code : undefined))
 			.filter((row): row is string => typeof row === 'string');
 
 		return codes.length > 0 ? codes[0] : null;
