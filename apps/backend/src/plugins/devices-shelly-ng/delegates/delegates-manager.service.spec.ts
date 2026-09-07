@@ -97,6 +97,44 @@ type FakeDevicePower = {
 	battery: { percent: number };
 };
 
+// Minimal fixtures for the RC3 (PR3) electrical-wiring tests. Brightness/rgb/white are
+// deliberately omitted so the loop's optional sub-blocks (which need their own property
+// mocks) stay inert, keeping the mock queue focused on the electrical wiring under test.
+type FakeCover = {
+	id: number;
+	key: string;
+	state: string;
+	current_pos: number;
+	apower?: number;
+	voltage?: number;
+	current?: number;
+	aenergy?: number | { total: number };
+};
+
+type FakeLight = {
+	id: number;
+	key: string;
+	output: boolean;
+	apower?: number;
+	voltage?: number;
+	current?: number;
+	aenergy?: number | { total: number };
+};
+
+type FakeRgb = FakeLight;
+
+type FakeRgbw = FakeLight;
+
+// CCT never reports `aenergy` (no energy metering on this component) — no such field here.
+type FakeCct = {
+	id: number;
+	key: string;
+	output: boolean;
+	apower?: number;
+	voltage?: number;
+	current?: number;
+};
+
 type FakeDevice = {
 	id: string;
 	modelName: string;
@@ -106,6 +144,11 @@ type FakeDevice = {
 	switch?: { key: string; output: boolean; aenergy?: number | { total: number } };
 	pm1?: FakePm1;
 	devicePower?: FakeDevicePower;
+	cover?: FakeCover;
+	light?: FakeLight;
+	rgb?: FakeRgb;
+	rgbw?: FakeRgbw;
+	cct?: FakeCct;
 };
 
 jest.mock('../delegates/shelly-device.delegate', () => {
@@ -140,6 +183,21 @@ jest.mock('../delegates/shelly-device.delegate', () => {
 			}
 			if (shelly.devicePower) {
 				this.devPwr.set(0, shelly.devicePower);
+			}
+			if (shelly.cover) {
+				this.covers.set(0, shelly.cover);
+			}
+			if (shelly.light) {
+				this.lights.set(0, shelly.light);
+			}
+			if (shelly.rgb) {
+				this.rgb.set(0, shelly.rgb);
+			}
+			if (shelly.rgbw) {
+				this.rgbw.set(0, shelly.rgbw);
+			}
+			if (shelly.cct) {
+				this.cct.set(0, shelly.cct);
 			}
 		}
 
@@ -1088,13 +1146,16 @@ describe('DelegatesManagerService', () => {
 				value: new PropertyValueState(0),
 			} as ShellyNgChannelPropertyEntity;
 
+			// PR3 normalises PM1 onto the shared `wireElectricalChannels` helper, which checks
+			// `aenergy` before `apower` (matching what the switch block has always done) — so
+			// the energy channel/property are resolved first here too.
 			(channelsService.findOneBy as jest.Mock)
-				.mockImplementationOnce(async () => electricalPowerCh as unknown as ShellyNgChannelEntity)
-				.mockImplementationOnce(async () => energyCh as unknown as ShellyNgChannelEntity);
+				.mockImplementationOnce(async () => energyCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => electricalPowerCh as unknown as ShellyNgChannelEntity);
 
 			(channelsPropertiesService.findOneBy as jest.Mock)
-				.mockImplementationOnce(async () => apowerProp as unknown as ShellyNgChannelPropertyEntity)
-				.mockImplementationOnce(async () => consumptionProp as unknown as ShellyNgChannelPropertyEntity);
+				.mockImplementationOnce(async () => consumptionProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => apowerProp as unknown as ShellyNgChannelPropertyEntity);
 
 			return { device, consumptionProp };
 		}
@@ -1233,6 +1294,435 @@ describe('DelegatesManagerService', () => {
 			} finally {
 				jest.useRealTimers();
 			}
+		});
+	});
+
+	// RC3 regression guards (PR3): cover, light, RGB, RGBW and CCT get `power:{id}` /
+	// `energy:{id}` channels at adoption (DeviceManagerService.ensureElectricalPower /
+	// ensureElectricalEnergy), but before this fix only switch and PM1 had live handlers
+	// wired for them — the other five component types were frozen at their adoption-time
+	// values forever. `wireElectricalChannels` (extracted from the switch block) is now
+	// called from all seven component loops.
+	describe('cover, light, RGB, RGBW and CCT electrical channels track the device (PR3)', () => {
+		function arrangeDeviceInfoMocks() {
+			const device = { id: uuid().toString() } as ShellyNgDeviceEntity;
+
+			const deviceInfoCh = {
+				device: device.id,
+				category: ChannelCategory.DEVICE_INFORMATION,
+				identifier: 'device-information',
+				name: 'Device information',
+			} as ShellyNgChannelEntity;
+
+			const statusProp = {
+				channel: deviceInfoCh.id,
+				category: PropertyCategory.STATUS,
+				identifier: 'status',
+				value: new PropertyValueState(ConnectionState.UNKNOWN),
+			} as ShellyNgChannelPropertyEntity;
+
+			const linkQProp = {
+				channel: deviceInfoCh.id,
+				category: PropertyCategory.LINK_QUALITY,
+				identifier: 'link_quality',
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
+			(devicesService.findOne as jest.Mock).mockResolvedValueOnce(device);
+			(devicesService.create as jest.Mock).mockImplementation(
+				async (dto: CreateShellyNgDeviceDto): Promise<ShellyNgDeviceEntity> => {
+					device.identifier = dto.identifier;
+					device.name = dto.name;
+					device.category = dto.category;
+					return device as unknown as ShellyNgDeviceEntity;
+				},
+			);
+
+			(channelsService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => null)
+				.mockImplementationOnce(async () => deviceInfoCh as unknown as ShellyNgChannelEntity);
+
+			(channelsPropertiesService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => statusProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => linkQProp as unknown as ShellyNgChannelPropertyEntity);
+
+			(channelsPropertiesService.update as jest.Mock).mockImplementation(
+				async (_id: string, payload: unknown): Promise<unknown> => payload,
+			);
+
+			return { device };
+		}
+
+		function arrangeElectricalChannelEntities(deviceId: string) {
+			const electricalPowerCh = {
+				device: deviceId,
+				category: ChannelCategory.ELECTRICAL_POWER,
+				identifier: 'power:0',
+				name: 'Power 0',
+			} as ShellyNgChannelEntity;
+
+			const apowerProp = {
+				id: uuid(),
+				channel: electricalPowerCh.id,
+				category: PropertyCategory.POWER,
+				identifier: 'apower',
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			const energyCh = {
+				device: deviceId,
+				category: ChannelCategory.ELECTRICAL_ENERGY,
+				identifier: 'energy:0',
+				name: 'Energy 0',
+			} as ShellyNgChannelEntity;
+
+			const consumptionProp = {
+				id: uuid(),
+				channel: energyCh.id,
+				category: PropertyCategory.CONSUMPTION,
+				identifier: 'aenergy',
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			return { electricalPowerCh, apowerProp, energyCh, consumptionProp };
+		}
+
+		function updatesFor(identifier: string): unknown[] {
+			return (channelsPropertiesService.update as jest.Mock).mock.calls
+				.map(([, payload]: [string, { identifier?: string; value?: unknown }]) => payload)
+				.filter((payload) => payload?.identifier === identifier);
+		}
+
+		function arrangeCoverWithElectricalEntities() {
+			const { device } = arrangeDeviceInfoMocks();
+
+			const coverCh = {
+				device: device.id,
+				category: ChannelCategory.WINDOW_COVERING,
+				identifier: 'cover:0',
+				name: 'Cover 0',
+			} as ShellyNgChannelEntity;
+
+			const coverState = {
+				channel: coverCh.id,
+				identifier: 'state',
+				value: new PropertyValueState('closed'),
+			} as ShellyNgChannelPropertyEntity;
+
+			const coverPosition = {
+				channel: coverCh.id,
+				identifier: 'current_pos',
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			const coverCommand = {
+				channel: coverCh.id,
+				category: PropertyCategory.COMMAND,
+				identifier: 'command',
+				value: new PropertyValueState('stop'),
+			} as ShellyNgChannelPropertyEntity;
+
+			const { electricalPowerCh, apowerProp, energyCh, consumptionProp } = arrangeElectricalChannelEntities(device.id);
+
+			(channelsService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => coverCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => energyCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => electricalPowerCh as unknown as ShellyNgChannelEntity);
+
+			(channelsPropertiesService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => coverState as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => coverPosition as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => coverCommand as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => consumptionProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => apowerProp as unknown as ShellyNgChannelPropertyEntity);
+
+			return { device, apowerProp, consumptionProp };
+		}
+
+		function arrangeOutputComponentWithElectricalEntities(channelIdentifier: string, channelCategory: ChannelCategory) {
+			const { device } = arrangeDeviceInfoMocks();
+
+			const componentCh = {
+				device: device.id,
+				category: channelCategory,
+				identifier: channelIdentifier,
+				name: channelIdentifier,
+			} as ShellyNgChannelEntity;
+
+			const componentOn = {
+				channel: componentCh.id,
+				category: PropertyCategory.ON,
+				identifier: 'output',
+				value: new PropertyValueState(false),
+			} as ShellyNgChannelPropertyEntity;
+
+			const { electricalPowerCh, apowerProp, energyCh, consumptionProp } = arrangeElectricalChannelEntities(device.id);
+
+			(channelsService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => componentCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => energyCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => electricalPowerCh as unknown as ShellyNgChannelEntity);
+
+			(channelsPropertiesService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => componentOn as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => consumptionProp as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => apowerProp as unknown as ShellyNgChannelPropertyEntity);
+
+			return { device, apowerProp, consumptionProp };
+		}
+
+		function arrangeCctWithElectricalEntities() {
+			const { device } = arrangeDeviceInfoMocks();
+
+			const cctCh = {
+				device: device.id,
+				category: ChannelCategory.LIGHT,
+				identifier: 'cct:0',
+				name: 'cct:0',
+			} as ShellyNgChannelEntity;
+
+			const cctOn = {
+				channel: cctCh.id,
+				category: PropertyCategory.ON,
+				identifier: 'output',
+				value: new PropertyValueState(false),
+			} as ShellyNgChannelPropertyEntity;
+
+			const electricalPowerCh = {
+				device: device.id,
+				category: ChannelCategory.ELECTRICAL_POWER,
+				identifier: 'power:0',
+				name: 'Power 0',
+			} as ShellyNgChannelEntity;
+
+			const apowerProp = {
+				channel: electricalPowerCh.id,
+				category: PropertyCategory.POWER,
+				identifier: 'apower',
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			// CCT never reports `aenergy` — no energy channel lookup happens for it, so no
+			// energy fixture is queued here (asserted implicitly: the mock queue would
+			// desync and fail the test if the production code tried to read one).
+			(channelsService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => cctCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => electricalPowerCh as unknown as ShellyNgChannelEntity);
+
+			(channelsPropertiesService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => cctOn as unknown as ShellyNgChannelPropertyEntity)
+				.mockImplementationOnce(async () => apowerProp as unknown as ShellyNgChannelPropertyEntity);
+
+			return { device, apowerProp };
+		}
+
+		test('cover: apower and aenergy.total reach the power:0 / energy:0 properties', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const { apowerProp, consumptionProp } = arrangeCoverWithElectricalEntities();
+
+				const shelly: FakeDevice = {
+					id: 'shelly-cover-electrical',
+					modelName: 'Pro Dual Cover PM',
+					system: { config: { device: { name: 'Cover PM', mac: 'AABBCCDDEE10' } } },
+					wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.50' },
+					cover: { id: 0, key: 'cover:0', state: 'closed', current_pos: 0, apower: 0, aenergy: { total: 1.0 } },
+				};
+
+				const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+				(channelsPropertiesService.update as jest.Mock).mockClear();
+
+				delegate.emitValue('cover:0', 'apower', 42.5);
+				delegate.emitValue('cover:0', 'aenergy.total', 3.21);
+				jest.advanceTimersByTime(300);
+
+				const powerWrites = updatesFor(apowerProp.identifier) as { value: unknown }[];
+				expect(powerWrites).toHaveLength(1);
+				expect(powerWrites[0].value).toBe(42.5);
+
+				const energyWrites = updatesFor(consumptionProp.identifier) as { value: unknown }[];
+				expect(energyWrites).toHaveLength(1);
+				expect(energyWrites[0].value).toBe(3.21);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('light: apower and aenergy.total reach the power:0 / energy:0 properties', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const { apowerProp, consumptionProp } = arrangeOutputComponentWithElectricalEntities(
+					'light:0',
+					ChannelCategory.LIGHT,
+				);
+
+				const shelly: FakeDevice = {
+					id: 'shelly-light-electrical',
+					modelName: 'Pro Dimmer 2PM',
+					system: { config: { device: { name: 'Dimmer PM', mac: 'AABBCCDDEE11' } } },
+					wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.51' },
+					light: { id: 0, key: 'light:0', output: true, apower: 0, aenergy: { total: 1.0 } },
+				};
+
+				const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+				(channelsPropertiesService.update as jest.Mock).mockClear();
+
+				delegate.emitValue('light:0', 'apower', 12.3);
+				delegate.emitValue('light:0', 'aenergy.total', 4.56);
+				jest.advanceTimersByTime(300);
+
+				expect((updatesFor(apowerProp.identifier) as { value: unknown }[])[0].value).toBe(12.3);
+				expect((updatesFor(consumptionProp.identifier) as { value: unknown }[])[0].value).toBe(4.56);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('rgb: apower and aenergy.total reach the power:0 / energy:0 properties', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const { apowerProp, consumptionProp } = arrangeOutputComponentWithElectricalEntities(
+					'rgb:0',
+					ChannelCategory.LIGHT,
+				);
+
+				const shelly: FakeDevice = {
+					id: 'shelly-rgb-electrical',
+					modelName: 'Plus RGBW PM (RGB profile)',
+					system: { config: { device: { name: 'RGB PM', mac: 'AABBCCDDEE12' } } },
+					wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.52' },
+					rgb: { id: 0, key: 'rgb:0', output: true, apower: 0, aenergy: { total: 1.0 } },
+				};
+
+				const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+				(channelsPropertiesService.update as jest.Mock).mockClear();
+
+				delegate.emitValue('rgb:0', 'apower', 8.1);
+				delegate.emitValue('rgb:0', 'aenergy.total', 2.34);
+				jest.advanceTimersByTime(300);
+
+				expect((updatesFor(apowerProp.identifier) as { value: unknown }[])[0].value).toBe(8.1);
+				expect((updatesFor(consumptionProp.identifier) as { value: unknown }[])[0].value).toBe(2.34);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('rgbw: apower and aenergy.total reach the power:0 / energy:0 properties', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const { apowerProp, consumptionProp } = arrangeOutputComponentWithElectricalEntities(
+					'rgbw:0',
+					ChannelCategory.LIGHT,
+				);
+
+				const shelly: FakeDevice = {
+					id: 'shelly-rgbw-electrical',
+					modelName: 'Pro RGBW PM',
+					system: { config: { device: { name: 'RGBW PM', mac: 'AABBCCDDEE13' } } },
+					wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.53' },
+					rgbw: { id: 0, key: 'rgbw:0', output: true, apower: 0, aenergy: { total: 1.0 } },
+				};
+
+				const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+				(channelsPropertiesService.update as jest.Mock).mockClear();
+
+				delegate.emitValue('rgbw:0', 'apower', 15.7);
+				delegate.emitValue('rgbw:0', 'aenergy.total', 6.78);
+				jest.advanceTimersByTime(300);
+
+				expect((updatesFor(apowerProp.identifier) as { value: unknown }[])[0].value).toBe(15.7);
+				expect((updatesFor(consumptionProp.identifier) as { value: unknown }[])[0].value).toBe(6.78);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('cct: apower reaches the power:0 property; CCT has no energy channel to wire', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const { apowerProp } = arrangeCctWithElectricalEntities();
+
+				const shelly: FakeDevice = {
+					id: 'shelly-cct-electrical',
+					modelName: 'Pro RGBW PM (CCT profile)',
+					system: { config: { device: { name: 'CCT PM', mac: 'AABBCCDDEE14' } } },
+					wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.54' },
+					cct: { id: 0, key: 'cct:0', output: true, apower: 0 },
+				};
+
+				const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+				(channelsPropertiesService.update as jest.Mock).mockClear();
+
+				delegate.emitValue('cct:0', 'apower', 9.9);
+				jest.advanceTimersByTime(300);
+
+				expect((updatesFor(apowerProp.identifier) as { value: unknown }[])[0].value).toBe(9.9);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('pm1: a missing apower property is skipped, not thrown (provisioning race)', async () => {
+			const { device } = arrangeDeviceInfoMocks();
+
+			const energyCh = {
+				device: device.id,
+				category: ChannelCategory.ELECTRICAL_ENERGY,
+				identifier: 'energy:0',
+				name: 'Energy 0',
+			} as ShellyNgChannelEntity;
+
+			const consumptionProp = {
+				channel: energyCh.id,
+				category: PropertyCategory.CONSUMPTION,
+				identifier: 'aenergy',
+				value: new PropertyValueState(0),
+			} as ShellyNgChannelPropertyEntity;
+
+			const electricalPowerCh = {
+				device: device.id,
+				category: ChannelCategory.ELECTRICAL_POWER,
+				identifier: 'power:0',
+				name: 'Power 0',
+			} as ShellyNgChannelEntity;
+
+			(channelsService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => energyCh as unknown as ShellyNgChannelEntity)
+				.mockImplementationOnce(async () => electricalPowerCh as unknown as ShellyNgChannelEntity);
+
+			(channelsPropertiesService.findOneBy as jest.Mock)
+				.mockImplementationOnce(async () => consumptionProp as unknown as ShellyNgChannelPropertyEntity)
+				// `apower` property not created yet — before PR3 this threw
+				// DevicesShellyNgNotFoundException and aborted the whole insert().
+				.mockImplementationOnce(async () => null);
+
+			const shelly: FakeDevice = {
+				id: 'shelly-pm1-missing-apower',
+				modelName: 'Plus PM Mini',
+				system: { config: { device: { name: 'PM Mini', mac: 'AABBCCDDEE15' } } },
+				wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.55' },
+				pm1: { id: 0, key: 'pm1:0', apower: 0, aenergy: { total: 2.0 } },
+			};
+
+			await expect(svc.insert(shelly as unknown as Device)).resolves.toBeDefined();
+
+			const powerWrites = (channelsPropertiesService.update as jest.Mock).mock.calls
+				.map(([, payload]: [string, { identifier?: string }]) => payload)
+				.filter((payload) => payload?.identifier === 'apower');
+
+			expect(powerWrites).toHaveLength(0);
 		});
 	});
 });
