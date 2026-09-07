@@ -1724,5 +1724,77 @@ describe('DelegatesManagerService', () => {
 
 			expect(powerWrites).toHaveLength(0);
 		});
+
+		test('light: voltage reaches power:0 even when apower is absent (voltage/current wire independently)', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const { device } = arrangeDeviceInfoMocks();
+
+				const lightCh = {
+					device: device.id,
+					category: ChannelCategory.LIGHT,
+					identifier: 'light:0',
+					name: 'light:0',
+				} as ShellyNgChannelEntity;
+
+				const lightOn = {
+					channel: lightCh.id,
+					category: PropertyCategory.ON,
+					identifier: 'output',
+					value: new PropertyValueState(false),
+				} as ShellyNgChannelPropertyEntity;
+
+				const electricalPowerCh = {
+					device: device.id,
+					category: ChannelCategory.ELECTRICAL_POWER,
+					identifier: 'power:0',
+					name: 'Power 0',
+				} as ShellyNgChannelEntity;
+
+				const voltageProp = {
+					id: uuid(),
+					channel: electricalPowerCh.id,
+					category: PropertyCategory.VOLTAGE,
+					identifier: 'voltage',
+					value: new PropertyValueState(0),
+				} as ShellyNgChannelPropertyEntity;
+
+				// No `aenergy` and no `apower` on this component — only `voltage` is reported.
+				// Before the CodeRabbit fix, resolving `power:0` and registering the voltage
+				// handler were both gated on `apower` being present, so this case never wired.
+				(channelsService.findOneBy as jest.Mock)
+					.mockImplementationOnce(async () => lightCh as unknown as ShellyNgChannelEntity)
+					.mockImplementationOnce(async () => electricalPowerCh as unknown as ShellyNgChannelEntity);
+
+				(channelsPropertiesService.findOneBy as jest.Mock)
+					.mockImplementationOnce(async () => lightOn as unknown as ShellyNgChannelPropertyEntity)
+					.mockImplementationOnce(async () => voltageProp as unknown as ShellyNgChannelPropertyEntity);
+
+				const shelly: FakeDevice = {
+					id: 'shelly-light-voltage-only',
+					modelName: 'Pro Dimmer 2PM',
+					system: { config: { device: { name: 'Dimmer PM', mac: 'AABBCCDDEE16' } } },
+					wifi: { key: 'wifi:0', rssi: -60, sta_ip: '192.168.1.56' },
+					light: { id: 0, key: 'light:0', output: true, voltage: 230 },
+				};
+
+				const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+				(channelsPropertiesService.update as jest.Mock).mockClear();
+
+				delegate.emitValue('light:0', 'voltage', 231.4);
+				jest.advanceTimersByTime(300);
+
+				const writes = (channelsPropertiesService.update as jest.Mock).mock.calls
+					.map(([, payload]: [string, { identifier?: string; value?: unknown }]) => payload)
+					.filter((payload) => payload?.identifier === 'voltage');
+
+				expect(writes).toHaveLength(1);
+				expect(writes[0].value).toBe(231.4);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
 	});
 });
