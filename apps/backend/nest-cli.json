@@ -60,6 +60,10 @@
       {
         "include": "plugins/remote-access-tailscale/scripts/**/*.sh",
         "outDir": "dist"
+      },
+      {
+        "include": "plugins/remote-access-cloudflare-tunnel/scripts/**/*.sh",
+        "outDir": "dist"
       }
     ]
   }

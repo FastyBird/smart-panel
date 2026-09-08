@@ -19,6 +19,7 @@ import { UpdateNotificationsDiscordConfigDto } from './notifications-discord/dto
 import { UpdateNotificationsSlackConfigDto } from './notifications-slack/dto/update-config.dto';
 import { UpdateNotificationsTelegramConfigDto } from './notifications-telegram/dto/update-config.dto';
 import { UpdateNotificationsWebhookConfigDto } from './notifications-webhook/dto/update-config.dto';
+import { UpdateRemoteAccessCloudflareTunnelPluginConfigDto } from './remote-access-cloudflare-tunnel/dto/update-config.dto';
 import { UpdateOpenWeatherMapOneCallConfigDto } from './weather-openweathermap-onecall/dto/update-config.dto';
 import { UpdateOpenWeatherMapConfigDto } from './weather-openweathermap/dto/update-config.dto';
 
@@ -56,6 +57,12 @@ const SECRETS: { label: string; dto: object; submit: Record<string, unknown>; re
 		['notifications-telegram', UpdateNotificationsTelegramConfigDto, 'bot_token', 'botToken'],
 		['notifications-webhook headers', UpdateNotificationsWebhookConfigDto, 'headers', 'headers'],
 		['notifications-webhook url', UpdateNotificationsWebhookConfigDto, 'url', 'url'],
+		[
+			'remote-access-cloudflare-tunnel',
+			UpdateRemoteAccessCloudflareTunnelPluginConfigDto,
+			'tunnel_token',
+			'tunnelToken',
+		],
 		['weather-openweathermap', UpdateOpenWeatherMapConfigDto, 'api_key', 'apiKey'],
 		['weather-openweathermap-onecall', UpdateOpenWeatherMapOneCallConfigDto, 'api_key', 'apiKey'],
 	].map(([label, dto, wire, property]) => ({
