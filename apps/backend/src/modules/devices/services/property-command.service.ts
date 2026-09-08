@@ -22,6 +22,7 @@ import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
+import { PropertyCommandDispatchService } from './property-command-dispatch.service';
 
 export interface PropertyCommandExecutionOptions {
 	requestId?: string;
@@ -56,6 +57,7 @@ export class PropertyCommandService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly intentsService: IntentsService,
+		private readonly propertyCommandDispatchService: PropertyCommandDispatchService,
 	) {}
 
 	async handleInternal(
@@ -373,13 +375,14 @@ export class PropertyCommandService {
 		});
 
 		// Create the intent with the value map and optional requestId for tracking
+		const ttlMs = await this.resolveCommandIntentTtlMs(groupedProperties);
 		const intent = this.intentsService.createIntent({
 			requestId: options.requestId,
 			type: IntentType.DEVICE_SET_PROPERTY,
 			context: options.context,
 			targets,
 			value: valueMap,
-			ttlMs: await this.resolveCommandIntentTtlMs(groupedProperties),
+			ttlMs,
 		});
 
 		this.logger.log(
@@ -391,7 +394,10 @@ export class PropertyCommandService {
 		try {
 			// Process commands per device
 			for (const deviceId of Object.keys(groupedProperties)) {
-				const result = await this.processDeviceCommands(deviceId, groupedProperties[deviceId]);
+				const result = await this.processDeviceCommands(deviceId, groupedProperties[deviceId], {
+					intentId: intent.id,
+					ttlMs,
+				});
 
 				results.push(result);
 			}
@@ -467,6 +473,7 @@ export class PropertyCommandService {
 	private async processDeviceCommands(
 		deviceId: string,
 		commands: PropertyCommandValueDto[],
+		dispatchOptions: { intentId: string; ttlMs: number },
 	): Promise<{ device: string; success: boolean; reason?: string }> {
 		const device = await this.devicesService.findOne(deviceId);
 
@@ -540,12 +547,12 @@ export class PropertyCommandService {
 		// Process the batch of commands in one request
 		this.logger.log(`Processing batch of ${propertyUpdates.length} commands for deviceId=${device.id}`);
 
-		const success = await platform.processBatch(propertyUpdates);
+		const dispatch = await this.propertyCommandDispatchService.dispatchBatch(propertyUpdates, dispatchOptions);
 
-		if (!success) {
+		if (!dispatch.success) {
 			this.logger.error(`Batch command execution failed for deviceId=${device.id}`);
 
-			return { device: deviceId, success: false, reason: 'Execution failed' };
+			return { device: deviceId, success: false, reason: dispatch.reason ?? 'Execution failed' };
 		}
 
 		this.logger.log(`Successfully executed batch command for deviceId=${device.id}`);

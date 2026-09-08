@@ -3,7 +3,7 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -34,6 +34,7 @@ import {
 	ChannelsPropertiesTypeMapperService,
 } from './channels.properties-type-mapper.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
+import { PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
@@ -119,9 +120,10 @@ export interface ChannelPropertyUpdateOptions {
 }
 
 @Injectable()
-export class ChannelsPropertiesService {
+export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelsPropertiesService');
 	private static readonly VISIBLE_READABLE_STATE_CANDIDATE_MAX_LIMIT = 500;
+	private commandWindowCleanupTimer: NodeJS.Timeout | null = null;
 
 	constructor(
 		@InjectRepository(ChannelPropertyEntity)
@@ -131,9 +133,28 @@ export class ChannelsPropertiesService {
 		private readonly valueSourceRegistry: PropertyValueSourceRegistryService,
 		private readonly structureLock: DeviceStructureLockService,
 		private readonly propertyStateCoordinator: PropertyStateCoordinatorService,
+		private readonly propertyCommandWindowService: PropertyCommandWindowService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
+
+	onModuleInit(): void {
+		if (this.commandWindowCleanupTimer !== null) {
+			return;
+		}
+
+		this.commandWindowCleanupTimer = setInterval(() => this.propertyCommandWindowService.sweep(), 500);
+		this.commandWindowCleanupTimer.unref();
+	}
+
+	onModuleDestroy(): void {
+		if (this.commandWindowCleanupTimer !== null) {
+			clearInterval(this.commandWindowCleanupTimer);
+			this.commandWindowCleanupTimer = null;
+		}
+
+		this.propertyCommandWindowService.clear();
+	}
 
 	async findAll<TProperty extends ChannelPropertyEntity>(
 		channelId?: string | string[],

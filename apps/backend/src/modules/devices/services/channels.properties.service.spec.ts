@@ -29,6 +29,7 @@ import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
+import { PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
@@ -84,6 +85,7 @@ describe('ChannelsPropertiesService', () => {
 	let dataSource: DataSource;
 	let propertyValueService: jest.Mocked<PropertyValueService>;
 	let valueSourceRegistry: PropertyValueSourceRegistryService;
+	let propertyCommandWindowService: PropertyCommandWindowService;
 
 	const mockChannel: MockChannel = {
 		id: uuid().toString(),
@@ -157,6 +159,7 @@ describe('ChannelsPropertiesService', () => {
 				// what these tests exercise.
 				DeviceStructureLockService,
 				PropertyStateCoordinatorService,
+				PropertyCommandWindowService,
 				{ provide: getRepositoryToken(ChannelPropertyEntity), useFactory: mockRepository },
 				{
 					provide: ChannelsPropertiesTypeMapperService,
@@ -216,6 +219,7 @@ describe('ChannelsPropertiesService', () => {
 		dataSource = module.get<DataSource>(DataSource);
 		propertyValueService = module.get<PropertyValueService>(PropertyValueService) as jest.Mocked<PropertyValueService>;
 		valueSourceRegistry = module.get<PropertyValueSourceRegistryService>(PropertyValueSourceRegistryService);
+		propertyCommandWindowService = module.get<PropertyCommandWindowService>(PropertyCommandWindowService);
 	});
 
 	afterEach(() => {
@@ -229,6 +233,23 @@ describe('ChannelsPropertiesService', () => {
 		expect(mapper).toBeDefined();
 		expect(eventEmitter).toBeDefined();
 		expect(dataSource).toBeDefined();
+	});
+
+	it('sweeps command windows on the lifecycle cleanup cadence', () => {
+		jest.useFakeTimers();
+		const sweep = jest.spyOn(propertyCommandWindowService, 'sweep');
+		const clear = jest.spyOn(propertyCommandWindowService, 'clear');
+
+		channelsPropertiesService.onModuleInit();
+		channelsPropertiesService.onModuleInit();
+		jest.advanceTimersByTime(1000);
+		expect(sweep).toHaveBeenCalledTimes(2);
+
+		channelsPropertiesService.onModuleDestroy();
+		expect(clear).toHaveBeenCalledTimes(1);
+		jest.advanceTimersByTime(1000);
+		expect(sweep).toHaveBeenCalledTimes(2);
+		jest.useRealTimers();
 	});
 
 	describe('findAll', () => {

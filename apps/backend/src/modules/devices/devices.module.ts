@@ -69,6 +69,8 @@ import { DevicesControlsService } from './services/devices.controls.service';
 import { DevicesService } from './services/devices.service';
 import { ModuleResetService } from './services/module-reset.service';
 import { PlatformRegistryService } from './services/platform.registry.service';
+import { PropertyCommandDispatchService } from './services/property-command-dispatch.service';
+import { PropertyCommandWindowService } from './services/property-command-window.service';
 import { PropertyCommandService } from './services/property-command.service';
 import { PropertyStateCoordinatorService } from './services/property-state-coordinator.service';
 import { PropertyTimeseriesService } from './services/property-timeseries.service';
@@ -142,6 +144,8 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		PropertyValueService,
 		PropertyStateCoordinatorService,
 		PropertyTimeseriesService,
+		PropertyCommandWindowService,
+		PropertyCommandDispatchService,
 		PropertyCommandService,
 		DeviceConnectionStateService,
 		StatsService,
@@ -178,6 +182,8 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		PropertyValueService,
 		PropertyStateCoordinatorService,
 		PropertyTimeseriesService,
+		PropertyCommandWindowService,
+		PropertyCommandDispatchService,
 		PropertyCommandService,
 		DeviceExistsConstraintValidator,
 		DeviceNotHiddenConstraintValidator,
