@@ -125,6 +125,22 @@ export class PropertyValueService {
 	}
 
 	/**
+	 * Normal (best-effort) value write with the exact cache/storage state selected by the write.
+	 *
+	 * High-level callers use this to publish an immutable event snapshot without a second entity
+	 * read. `write()` remains the compatibility API for existing boolean-only callers.
+	 */
+	async writeWithState(
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+		valueTimestamp?: Date,
+	): Promise<PropertyValueWriteResult> {
+		const key = this.valueSourceRegistry.resolve(property);
+
+		return this.withValueLock(key, () => this.writeInternal(property, value, false, undefined, valueTimestamp));
+	}
+
+	/**
 	 * Persist a value to at least one storage backend before publishing it to the
 	 * process-local cache. Reconciliation callers can then retry a failed write
 	 * without the cache falsely claiming that the measurement already exists.

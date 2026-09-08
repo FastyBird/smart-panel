@@ -1,4 +1,3 @@
-import { instanceToPlain } from 'class-transformer';
 import { CharacteristicValue, Device, Ethernet, WiFi } from 'shellies-ds9';
 
 import { Injectable } from '@nestjs/common';
@@ -2446,7 +2445,7 @@ export class DelegatesManagerService {
 		return await this.channelsPropertiesService.update(
 			property.id,
 			toInstance(UpdateShellyNgChannelPropertyDto, {
-				...instanceToPlain(property),
+				type: DEVICES_SHELLY_NG_TYPE,
 				value,
 			}),
 		);

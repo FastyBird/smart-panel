@@ -1030,62 +1030,66 @@ export class DevicesService {
 	 * DEVICE_DELETED event.
 	 */
 	async rollbackUnannouncedCreate(id: string): Promise<boolean> {
-		const target = await this.repository.findOne({ where: { id }, loadEagerRelations: false });
+		return this.structureLock.runExclusive(async (): Promise<boolean> => {
+			const target = await this.repository.findOne({ where: { id }, loadEagerRelations: false });
 
-		if (target === null) {
-			return false;
-		}
-
-		const orphanedChannels = await this.channelsService.findAll(id);
-
-		for (const channel of orphanedChannels) {
-			for (const property of channel.properties ?? []) {
-				await this.channelsPropertiesService.remove(property.id);
+			if (target === null) {
+				return false;
 			}
-		}
 
-		const rollbackTarget = await this.repository.findOne({ where: { id }, loadEagerRelations: false });
+			const orphanedChannels = await this.channelsService.findAll(id);
 
-		if (rollbackTarget === null) {
-			return false;
-		}
+			for (const channel of orphanedChannels) {
+				for (const property of channel.properties ?? []) {
+					await this.channelsPropertiesService.remove(property.id);
+				}
+			}
 
-		await this.repository.remove(rollbackTarget);
+			const rollbackTarget = await this.repository.findOne({ where: { id }, loadEagerRelations: false });
 
-		for (const channel of orphanedChannels) {
-			this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
-		}
+			if (rollbackTarget === null) {
+				return false;
+			}
 
-		return true;
+			await this.repository.remove(rollbackTarget);
+
+			for (const channel of orphanedChannels) {
+				this.eventEmitter.emit(EventType.CHANNEL_DELETED, channel);
+			}
+
+			return true;
+		});
 	}
 
 	async remove(id: string): Promise<void> {
-		this.logger.debug(`Removing device with id=${id}`);
+		return this.structureLock.runExclusive(async (): Promise<void> => {
+			this.logger.debug(`Removing device with id=${id}`);
 
-		// Get the full device entity before removal to preserve ID for event emission
-		const fullDevice = await this.getOneOrThrow(id);
+			// Get the full device entity before removal to preserve ID for event emission
+			const fullDevice = await this.getOneOrThrow(id);
 
-		await this.dataSource.transaction(async (manager) => {
-			const device = await manager.findOneOrFail<DeviceEntity>(DeviceEntity, { where: { id } });
+			await this.dataSource.transaction(async (manager) => {
+				const device = await manager.findOneOrFail<DeviceEntity>(DeviceEntity, { where: { id } });
 
-			const channels = await manager.find<ChannelEntity>(ChannelEntity, { where: { device: { id } } });
+				const channels = await manager.find<ChannelEntity>(ChannelEntity, { where: { device: { id } } });
 
-			for (const channel of channels) {
-				await this.channelsService.remove(channel.id, manager);
-			}
+				for (const channel of channels) {
+					await this.channelsService.remove(channel.id, manager);
+				}
 
-			const controls = await manager.find<DeviceControlEntity>(DeviceControlEntity, { where: { device: { id } } });
+				const controls = await manager.find<DeviceControlEntity>(DeviceControlEntity, { where: { device: { id } } });
 
-			for (const control of controls) {
-				await this.devicesControlsService.remove(control.id, device.id, manager);
-			}
+				for (const control of controls) {
+					await this.devicesControlsService.remove(control.id, device.id, manager);
+				}
 
-			await manager.remove(device);
+				await manager.remove(device);
 
-			this.logger.log(`Successfully removed device with id=${id}`);
+				this.logger.log(`Successfully removed device with id=${id}`);
 
-			// Emit event with the full device entity captured before removal to preserve ID
-			this.eventEmitter.emit(EventType.DEVICE_DELETED, fullDevice);
+				// Emit event with the full device entity captured before removal to preserve ID
+				this.eventEmitter.emit(EventType.DEVICE_DELETED, fullDevice);
+			});
 		});
 	}
 

@@ -1,5 +1,3 @@
-import { instanceToPlain } from 'class-transformer';
-
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
@@ -139,7 +137,7 @@ export class StateChangedEventService implements WsEventService {
 							await this.channelsPropertiesService.update(
 								property.id,
 								toInstance(UpdateHomeAssistantChannelPropertyDto, {
-									...instanceToPlain(property),
+									type: DEVICES_HOME_ASSISTANT_TYPE,
 									value,
 								}),
 							);
@@ -242,7 +240,7 @@ export class StateChangedEventService implements WsEventService {
 					await this.channelsPropertiesService.update(
 						virtualProp.id,
 						toInstance(UpdateHomeAssistantChannelPropertyDto, {
-							...instanceToPlain(virtualProp),
+							type: DEVICES_HOME_ASSISTANT_TYPE,
 							value: resolved.value,
 						}),
 					);

@@ -5,8 +5,6 @@ eslint-disable @typescript-eslint/unbound-method
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { instanceToPlain } from 'class-transformer';
-
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -121,9 +119,10 @@ describe('StateChangedEventService', () => {
 		expect(channelsPropertiesService.update).toHaveBeenCalledWith(
 			property.id,
 			toInstance(UpdateHomeAssistantChannelPropertyDto, {
-				...instanceToPlain(property),
+				type: 'devices-home-assistant',
 				value: 25,
 			}),
 		);
+		expect(Object.keys(channelsPropertiesService.update.mock.calls[0][1]).sort()).toEqual(['type', 'value']);
 	});
 });
