@@ -14,11 +14,15 @@ describe('PropertyStateCoordinatorService', () => {
 			await firstGate;
 			order.push('a:first:end');
 		});
-		const second = coordinator.run('property-a', async () => {
+		const second = coordinator.run('property-a', () => {
 			order.push('a:second');
+
+			return Promise.resolve();
 		});
-		const independent = coordinator.run('property-b', async () => {
+		const independent = coordinator.run('property-b', () => {
 			order.push('b');
+
+			return Promise.resolve();
 		});
 
 		await Promise.resolve();

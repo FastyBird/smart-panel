@@ -123,8 +123,10 @@ describe('DeviceStructureLockService', () => {
 			await first.promise;
 			order.push('a:end');
 		});
-		const b = lock.runShared(async (): Promise<void> => {
+		const b = lock.runShared((): Promise<void> => {
 			order.push('b');
+
+			return Promise.resolve();
 		});
 
 		await Promise.resolve();
@@ -155,8 +157,10 @@ describe('DeviceStructureLockService', () => {
 			await releaseWriter.promise;
 			order.push('writer:end');
 		});
-		const lateReader = lock.runShared(async (): Promise<void> => {
+		const lateReader = lock.runShared((): Promise<void> => {
 			order.push('late-reader');
+
+			return Promise.resolve();
 		});
 
 		await Promise.resolve();
@@ -180,8 +184,10 @@ describe('DeviceStructureLockService', () => {
 
 	it('does not let a detached inherited context bypass a writer after its lease releases', async () => {
 		let runDetached!: () => Promise<void>;
-		await lock.runExclusive(async (): Promise<void> => {
+		await lock.runExclusive((): Promise<void> => {
 			runDetached = () => lock.runShared(() => Promise.resolve());
+
+			return Promise.resolve();
 		});
 
 		const gate = deferred();
