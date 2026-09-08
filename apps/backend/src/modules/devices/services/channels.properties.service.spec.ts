@@ -241,11 +241,14 @@ describe('ChannelsPropertiesService', () => {
 		const clear = jest.spyOn(propertyCommandWindowService, 'clear');
 
 		channelsPropertiesService.onModuleInit();
-		jest.advanceTimersByTime(500);
-		expect(sweep).toHaveBeenCalledTimes(1);
+		channelsPropertiesService.onModuleInit();
+		jest.advanceTimersByTime(1000);
+		expect(sweep).toHaveBeenCalledTimes(2);
 
 		channelsPropertiesService.onModuleDestroy();
 		expect(clear).toHaveBeenCalledTimes(1);
+		jest.advanceTimersByTime(1000);
+		expect(sweep).toHaveBeenCalledTimes(2);
 		jest.useRealTimers();
 	});
 

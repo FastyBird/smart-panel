@@ -139,6 +139,10 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 	) {}
 
 	onModuleInit(): void {
+		if (this.commandWindowCleanupTimer !== null) {
+			return;
+		}
+
 		this.commandWindowCleanupTimer = setInterval(() => this.propertyCommandWindowService.sweep(), 500);
 		this.commandWindowCleanupTimer.unref();
 	}

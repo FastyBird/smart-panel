@@ -32,7 +32,7 @@ describe('PropertyCommandDispatchService', () => {
 		value: { value: false },
 	} as ChannelPropertyEntity;
 
-	const update = (propertyId = sourceProperty.id, value = true): IDevicePropertyData => ({
+	const update = (propertyId = sourceProperty.id, value: string | number | boolean = true): IDevicePropertyData => ({
 		device,
 		channel,
 		property: { ...sourceProperty, id: propertyId } as ChannelPropertyEntity,
@@ -102,6 +102,24 @@ describe('PropertyCommandDispatchService', () => {
 		);
 	});
 
+	it('coalesces equivalent scalar candidates after canonical-source normalization', async () => {
+		const numericSource = {
+			...sourceProperty,
+			dataType: DataTypeType.INT,
+			format: null,
+			invalid: null,
+			step: null,
+		} as ChannelPropertyEntity;
+		sources.set('alias', sourceProperty.id);
+		properties.findOne.mockResolvedValue(numericSource);
+
+		await expect(service.dispatchBatch([update('alias', '1'), update(sourceProperty.id, 1)])).resolves.toEqual({
+			success: true,
+		});
+		expect(platform.processBatch).toHaveBeenCalledTimes(1);
+		expect(windows.get(sourceProperty.id)?.commandedValue).toBe(1);
+	});
+
 	it('rejects conflicting direct-source and alias values before platform dispatch', async () => {
 		sources.set('alias', sourceProperty.id);
 
@@ -147,6 +165,28 @@ describe('PropertyCommandDispatchService', () => {
 
 		await expect(service.dispatchBatch([update('virtual-alias')])).resolves.toEqual({ success: true });
 		expect(platformRegistry.usesAuthoritativePropertyReadback).toHaveBeenCalledWith(device, sourceProperty);
+		expect(windows.get(sourceProperty.id)).toBeNull();
+	});
+
+	it('does not open a window for read-only telemetry', async () => {
+		properties.findOne.mockResolvedValue({
+			...sourceProperty,
+			permissions: [PermissionType.READ_ONLY],
+		} as ChannelPropertyEntity);
+
+		await expect(service.dispatchBatch([update()])).resolves.toEqual({ success: true });
+		expect(platform.processBatch).toHaveBeenCalledTimes(1);
+		expect(windows.get(sourceProperty.id)).toBeNull();
+	});
+
+	it('does not open a window for a write-only action', async () => {
+		properties.findOne.mockResolvedValue({
+			...sourceProperty,
+			permissions: [PermissionType.WRITE_ONLY],
+		} as ChannelPropertyEntity);
+
+		await expect(service.dispatchBatch([update()])).resolves.toEqual({ success: true });
+		expect(platform.processBatch).toHaveBeenCalledTimes(1);
 		expect(windows.get(sourceProperty.id)).toBeNull();
 	});
 });

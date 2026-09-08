@@ -106,10 +106,6 @@ export class PropertyCommandDispatchService {
 				const canonicalPropertyId = this.valueSourceRegistry.resolve(update.property);
 				const requested = requestedByCanonical.get(canonicalPropertyId) ?? [];
 
-				if (requested.some((candidate) => candidate.value !== update.value)) {
-					return null;
-				}
-
 				requested.push(update);
 				requestedByCanonical.set(canonicalPropertyId, requested);
 			}
@@ -182,9 +178,23 @@ export class PropertyCommandDispatchService {
 			return null;
 		}
 
-		const validation = validatePropertyCommandValue(sourceProperty, first.value);
+		let commandedValue: PropertyCommandValue | undefined;
 
-		if (!validation.valid || validation.value === undefined) {
+		for (const requested of requestedUpdates) {
+			const validation = validatePropertyCommandValue(sourceProperty, requested.value);
+
+			if (!validation.valid || validation.value === undefined) {
+				return null;
+			}
+
+			if (commandedValue !== undefined && commandedValue !== validation.value) {
+				return null;
+			}
+
+			commandedValue = validation.value;
+		}
+
+		if (commandedValue === undefined) {
 			return null;
 		}
 
@@ -197,7 +207,7 @@ export class PropertyCommandDispatchService {
 			canonicalPropertyId,
 			canonicalTarget,
 			requestedTargets,
-			commandedValue: validation.value,
+			commandedValue,
 			previousValue: sourceProperty.value?.value ?? null,
 			eligible: writable && !authoritative,
 		};
