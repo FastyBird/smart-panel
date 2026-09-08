@@ -78,10 +78,10 @@ Each property follows a 4-state machine:
 │     │ SETTLING │ ← Still shows desired value                │        │
 │     └────┬─────┘   (waiting for actual value to match)      │        │
 │          │                                                  │        │
-│          │ Actual value matches OR timeout                  │        │
+│          │ Actual value matches                             │        │
 │          ▼                                                  │        │
-│     ┌──────────┐                                            │        │
-│     │  IDLE    │                                            │        │
+│     ┌──────────┐        timeout          ┌──────────┐       │        │
+│     │  IDLE    │◄────────────────────────│  MIXED   │       │        │
 │     └──────────┘                                            │        │
 │                                                                       │
 └──────────────────────────────────────────────────────────────────────┘
@@ -94,6 +94,26 @@ Each property follows a 4-state machine:
 | IDLE | No | No pending command, show actual server value |
 | PENDING | Yes | Command sent, show desired value until API responds |
 | SETTLING | Yes | API succeeded, waiting for actual value to sync |
+| MIXED | Yes | The confirmation window elapsed; retain the optimistic result until a fresh report resolves it |
+
+## Backend read-back reconciliation
+
+The backend treats platform acceptance and a device report as separate facts. A command window is
+keyed by the canonical source property, so a virtual alias and its source share one generation. The
+window uses the platform TTL only to bound stale-read-back handling; acceptance alone never confirms
+that hardware changed state.
+
+While a command is pending, a report equal to the prior value is held outside current state and
+history. A report equal to the commanded value confirms the generation and enters a fixed grace
+period. During that grace period a prior-value report is discarded. A third, distinct value is fresh
+device truth and replaces the window. On an unconfirmed expiry or dispatch failure, the held report is
+reconciled once through the ordinary value path; confirmed grace never replays it.
+
+This is intentionally heuristic: without a provider-side causal receipt, two identical scalar reports
+cannot prove which command caused them. Generation tokens prevent an earlier A→B→A callback from
+acting on the final A. Suppressed reports are omitted from both current state and history, so projected
+aliases receive only the accepted source event. The panel's PENDING, SETTLING, and MIXED semantics are
+unchanged: MIXED remains a locked state until a fresh report resolves it.
 
 ### Getter Behavior
 

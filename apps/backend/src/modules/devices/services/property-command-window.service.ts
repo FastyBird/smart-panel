@@ -61,6 +61,11 @@ type MutablePropertyCommandWindow = {
 	requestedTargets: PropertyCommandWindowTarget[];
 };
 
+interface RecoveryWindow {
+	readonly window: MutablePropertyCommandWindow;
+	readonly deadlineAt: number;
+}
+
 /**
  * Holds command generations only. It intentionally has no dependency on device/property services:
  * callers admit and validate targets before publishing a window, and #1009 consumes its immutable
@@ -69,6 +74,7 @@ type MutablePropertyCommandWindow = {
 @Injectable()
 export class PropertyCommandWindowService {
 	private readonly windows = new Map<string, MutablePropertyCommandWindow>();
+	private readonly recoveries = new Map<string, RecoveryWindow>();
 
 	open(input: OpenPropertyCommandWindowInput): PropertyCommandWindowHandle {
 		const now = Date.now();
@@ -77,6 +83,7 @@ export class PropertyCommandWindowService {
 		const ttlMs = Number.isFinite(input.ttlMs) && input.ttlMs > 0 ? input.ttlMs : 3_000;
 		const generation = randomUUID();
 		const previousValue = current?.commandedValue ?? input.previousValue;
+		this.recoveries.delete(canonicalPropertyId);
 
 		this.windows.set(canonicalPropertyId, {
 			canonicalTarget: freezeTarget(input.canonicalTarget),
@@ -114,9 +121,36 @@ export class PropertyCommandWindowService {
 			current.confirmedAt = receipt.receivedAt;
 			current.confirmationExpiresAt = receipt.receivedAt + PROPERTY_COMMAND_CONFIRMATION_GRACE_MS;
 			current.lastReceipt = freezeReceipt(receipt);
+			current.heldReceipt = null;
 		}
 
 		return this.toSnapshot(current);
+	}
+
+	/** Retains only the newest stale report while this generation is still awaiting confirmation. */
+	hold(handle: PropertyCommandWindowHandle, receipt: PropertyCommandReceipt): PropertyCommandWindow | null {
+		const current = this.getCurrent(handle.canonicalPropertyId, Date.now());
+
+		if (current === undefined || current.generation !== handle.generation || current.state !== 'pending') {
+			return null;
+		}
+
+		current.heldReceipt = freezeReceipt(receipt);
+
+		return this.toSnapshot(current);
+	}
+
+	/** Removes a generation after a distinct external report becomes the source of truth. */
+	close(handle: PropertyCommandWindowHandle): boolean {
+		const current = this.windows.get(handle.canonicalPropertyId);
+
+		if (current !== undefined && current.generation === handle.generation) {
+			this.windows.delete(handle.canonicalPropertyId);
+
+			return true;
+		}
+
+		return false;
 	}
 
 	/** Closes only an unconfirmed window that this invocation still owns. */
@@ -127,37 +161,85 @@ export class PropertyCommandWindowService {
 			return false;
 		}
 
-		this.windows.delete(handle.canonicalPropertyId);
+		this.detach(handle.canonicalPropertyId, current);
 
 		return true;
 	}
 
-	/** Removes windows whose actual deadline elapsed; callers own any recovery work. */
+	/**
+	 * Detaches expired windows and returns the recovery generations that still own a held report.
+	 * ChannelsPropertiesService commits those reports through its normal value path.
+	 */
 	sweep(): readonly PropertyCommandWindowHandle[] {
 		const now = Date.now();
-		const expired: PropertyCommandWindowHandle[] = [];
 
 		for (const [canonicalPropertyId, window] of this.windows) {
 			if (!this.isExpired(window, now)) {
 				continue;
 			}
 
-			this.windows.delete(canonicalPropertyId);
-			expired.push(Object.freeze({ canonicalPropertyId, generation: window.generation }));
+			this.detach(canonicalPropertyId, window);
+		}
+		this.pruneRecoveries(now);
+
+		return Object.freeze(
+			[...this.recoveries.entries()].map(([canonicalPropertyId, recovery]) =>
+				Object.freeze({ canonicalPropertyId, generation: recovery.window.generation }),
+			),
+		);
+	}
+
+	/** Detaches an elapsed active generation before a fresh report is classified. */
+	expire(canonicalPropertyId: string): PropertyCommandWindowHandle | null {
+		const current = this.windows.get(canonicalPropertyId);
+
+		if (current === undefined || !this.isExpired(current, Date.now())) {
+			return null;
 		}
 
-		return Object.freeze(expired);
+		this.detach(canonicalPropertyId, current);
+
+		return Object.freeze({ canonicalPropertyId, generation: current.generation });
+	}
+
+	getRecovery(handle: PropertyCommandWindowHandle): PropertyCommandWindow | null {
+		this.pruneRecoveries(Date.now());
+		const recovery = this.recoveries.get(handle.canonicalPropertyId);
+
+		return recovery?.window.generation === handle.generation ? this.toSnapshot(recovery.window) : null;
+	}
+
+	completeRecovery(handle: PropertyCommandWindowHandle): boolean {
+		const recovery = this.recoveries.get(handle.canonicalPropertyId);
+
+		if (recovery === undefined || recovery.window.generation !== handle.generation) {
+			return false;
+		}
+
+		this.recoveries.delete(handle.canonicalPropertyId);
+
+		return true;
+	}
+
+	cancelRecovery(canonicalPropertyId: string): void {
+		this.recoveries.delete(canonicalPropertyId);
+	}
+
+	cancel(canonicalPropertyId: string): void {
+		this.windows.delete(canonicalPropertyId);
+		this.recoveries.delete(canonicalPropertyId);
 	}
 
 	clear(): void {
 		this.windows.clear();
+		this.recoveries.clear();
 	}
 
 	private getCurrent(canonicalPropertyId: string, now: number): MutablePropertyCommandWindow | undefined {
 		const current = this.windows.get(canonicalPropertyId);
 
 		if (current !== undefined && this.isExpired(current, now)) {
-			this.windows.delete(canonicalPropertyId);
+			this.detach(canonicalPropertyId, current);
 
 			return undefined;
 		}
@@ -167,6 +249,25 @@ export class PropertyCommandWindowService {
 
 	private isExpired(window: MutablePropertyCommandWindow, now: number): boolean {
 		return now >= (window.confirmationExpiresAt ?? window.expiresAt);
+	}
+
+	private detach(canonicalPropertyId: string, window: MutablePropertyCommandWindow, now = Date.now()): void {
+		this.windows.delete(canonicalPropertyId);
+
+		if (window.state === 'pending' && window.heldReceipt !== null) {
+			this.recoveries.set(canonicalPropertyId, {
+				window,
+				deadlineAt: now + (window.expiresAt - window.openedAt),
+			});
+		}
+	}
+
+	private pruneRecoveries(now: number): void {
+		for (const [canonicalPropertyId, recovery] of this.recoveries) {
+			if (now >= recovery.deadlineAt) {
+				this.recoveries.delete(canonicalPropertyId);
+			}
+		}
 	}
 
 	private toSnapshot(window: MutablePropertyCommandWindow | undefined): PropertyCommandWindow | null {
