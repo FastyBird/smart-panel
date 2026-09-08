@@ -223,6 +223,7 @@ describe('ChannelsPropertiesService', () => {
 	});
 
 	afterEach(() => {
+		jest.useRealTimers();
 		jest.clearAllMocks();
 	});
 
@@ -249,7 +250,6 @@ describe('ChannelsPropertiesService', () => {
 		expect(clear).toHaveBeenCalledTimes(1);
 		jest.advanceTimersByTime(1000);
 		expect(sweep).toHaveBeenCalledTimes(2);
-		jest.useRealTimers();
 	});
 
 	describe('findAll', () => {
@@ -1320,7 +1320,6 @@ describe('ChannelsPropertiesService', () => {
 			expect(propertyValueService.writeWithState).toHaveBeenCalledTimes(1);
 			expect(propertyValueService.writeWithState).toHaveBeenLastCalledWith(property, 'previous');
 			expect(propertyCommandWindowService.sweep()).toEqual([]);
-			jest.useRealTimers();
 		});
 
 		it('publishes exactly one unchanged confirmation and discards a grace-period stale report', async () => {
@@ -1665,7 +1664,7 @@ describe('ChannelsPropertiesService', () => {
 			);
 		});
 
-		it('uses strict value persistence when the caller requires retry-safe storage', async () => {
+		it('uses strict value persistence without a command window when the caller requires retry-safe storage', async () => {
 			const storageBinding = {} as StorageBackendBinding;
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
 				type: 'mock',
@@ -1700,7 +1699,7 @@ describe('ChannelsPropertiesService', () => {
 			);
 		});
 
-		it('delegates comparison and persistence to one atomic property-value operation', async () => {
+		it('delegates no-window comparison and persistence to one atomic property-value operation', async () => {
 			const property = toInstance(MockChannelProperty, mockChannelProperty);
 			const persistedState = new PropertyValueState('new value', '2026-08-21T12:00:00.000Z');
 			const beforeValuePersistence = jest.fn().mockResolvedValue(undefined);

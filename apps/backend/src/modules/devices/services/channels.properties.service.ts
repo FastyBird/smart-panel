@@ -129,6 +129,11 @@ interface WindowedValueCommitResult {
 	readonly forceValueEvent: boolean;
 }
 
+interface WindowedValueWriters {
+	readonly unwindowed: () => Promise<PropertyValueWriteResult>;
+	readonly windowed: () => Promise<PropertyValueWriteResult>;
+}
+
 @Injectable()
 export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelsPropertiesService');
@@ -925,71 +930,54 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			let forceConfirmationValueEvent = false;
 			if (typeof updateDto.value !== 'undefined') {
 				const valueTimestamp = options.resolveValueTimestamp?.() ?? options.valueTimestamp;
-				const canonicalPropertyId = this.valueSourceRegistry.resolve(raw);
-				const validation = validatePropertyCommandValue(raw, updateDto.value);
-				const expired = validation.valid ? this.propertyCommandWindowService.expire(canonicalPropertyId) : null;
-				if (expired !== null) {
-					this.propertyCommandWindowService.cancelRecovery(canonicalPropertyId);
-				}
-				const window = validation.valid ? this.propertyCommandWindowService.get(canonicalPropertyId) : null;
-
-				if (window !== null) {
-					const windowed = await this.commitWindowedProviderValue(raw, updateDto.value, async () => {
-						if (options.strictValuePersistence && options.comparePersistedValue) {
-							return this.propertyValueService.writeStrictIfPersistedDifferent(
-								raw,
-								updateDto.value,
-								options.expectedPersistedState ?? null,
-								options.beforeValuePersistence,
-								valueTimestamp,
-							);
-						}
-
-						if (options.strictValuePersistence) {
-							await options.beforeValuePersistence?.();
-
-							return this.propertyValueService.writeStrictWithState(
-								raw,
-								updateDto.value,
-								options.storageBinding,
-								valueTimestamp,
-							);
-						}
-
-						return this.propertyValueService.writeWithState(raw, updateDto.value, valueTimestamp);
-					});
-					valueChanged = windowed.changed;
-					persistedValueState = windowed.state;
-					forceConfirmationValueEvent = windowed.forceValueEvent;
-				} else {
-					if (validation.valid) {
-						this.propertyCommandWindowService.cancelRecovery(canonicalPropertyId);
-					}
-
+				const writeStrictValue = async (): Promise<PropertyValueWriteResult | null> => {
 					if (options.strictValuePersistence && options.comparePersistedValue) {
-						const result = await this.propertyValueService.writeStrictIfPersistedDifferent(
+						return this.propertyValueService.writeStrictIfPersistedDifferent(
 							raw,
 							updateDto.value,
 							options.expectedPersistedState ?? null,
 							options.beforeValuePersistence,
 							valueTimestamp,
 						);
-						valueChanged = result.changed;
-						persistedValueState = result.state;
-					} else if (options.strictValuePersistence) {
+					}
+
+					if (options.strictValuePersistence) {
 						await options.beforeValuePersistence?.();
-						const result = await this.propertyValueService.writeStrictWithState(
+
+						return this.propertyValueService.writeStrictWithState(
 							raw,
 							updateDto.value,
 							options.storageBinding,
 							valueTimestamp,
 						);
-						valueChanged = result.changed;
-						persistedValueState = result.state;
-					} else {
-						valueChanged = await this.propertyValueService.write(raw, updateDto.value, valueTimestamp);
 					}
-				}
+
+					return null;
+				};
+				const writeWithoutWindow = async (): Promise<PropertyValueWriteResult> => {
+					const strictResult = await writeStrictValue();
+
+					if (strictResult !== null) {
+						return strictResult;
+					}
+
+					return {
+						changed: await this.propertyValueService.write(raw, updateDto.value, valueTimestamp),
+						state: null,
+					};
+				};
+				const writeWithWindow = async (): Promise<PropertyValueWriteResult> => {
+					const strictResult = await writeStrictValue();
+
+					return strictResult ?? this.propertyValueService.writeWithState(raw, updateDto.value, valueTimestamp);
+				};
+				const windowed = await this.commitWindowedProviderValue(raw, updateDto.value, {
+					unwindowed: writeWithoutWindow,
+					windowed: writeWithWindow,
+				});
+				valueChanged = windowed.changed;
+				persistedValueState = windowed.state;
+				forceConfirmationValueEvent = windowed.forceValueEvent;
 			}
 			const strictValueEventEmitted = options.strictValuePersistence === true && valueChanged;
 			const confirmationValueEventEmitted = forceConfirmationValueEvent && !strictValueEventEmitted;
@@ -1058,9 +1046,9 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					return { type: current.type };
 				}
 				const commit = async (): Promise<{ property: TProperty }> => {
-					const result = await this.commitWindowedProviderValue(current, value, () =>
-						this.propertyValueService.writeWithState(current, value),
-					);
+					const write = (): Promise<PropertyValueWriteResult> =>
+						this.propertyValueService.writeWithState(current, value);
+					const result = await this.commitWindowedProviderValue(current, value, { unwindowed: write, windowed: write });
 
 					if (result.held) {
 						return { property: current };
@@ -1093,13 +1081,13 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 	private async commitWindowedProviderValue(
 		property: ChannelPropertyEntity,
 		value: string | number | boolean | null,
-		write: () => Promise<PropertyValueWriteResult>,
+		writers: WindowedValueWriters,
 	): Promise<WindowedValueCommitResult> {
 		const canonicalPropertyId = this.valueSourceRegistry.resolve(property);
 		const validation = validatePropertyCommandValue(property, value);
 
 		if (!validation.valid || validation.value === undefined) {
-			const result = await write();
+			const result = await writers.unwindowed();
 
 			return { ...result, held: false, forceValueEvent: false };
 		}
@@ -1114,7 +1102,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		const window = this.propertyCommandWindowService.get(canonicalPropertyId);
 		if (window === null) {
 			this.propertyCommandWindowService.cancelRecovery(canonicalPropertyId);
-			const result = await write();
+			const result = await writers.unwindowed();
 
 			return { ...result, held: false, forceValueEvent: false };
 		}
@@ -1132,7 +1120,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 		const isConfirmation = validation.value === window.commandedValue;
 		const firstConfirmation = isConfirmation && window.state === 'pending';
-		const result = await write();
+		const result = await writers.windowed();
 
 		if (result.state === null) {
 			return { ...result, held: false, forceValueEvent: false };

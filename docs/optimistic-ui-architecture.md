@@ -78,11 +78,11 @@ Each property follows a 4-state machine:
 │     │ SETTLING │ ← Still shows desired value                │        │
 │     └────┬─────┘   (waiting for actual value to match)      │        │
 │          │                                                  │        │
-│          │ Actual value matches                             │        │
-│          ▼                                                  │        │
-│     ┌──────────┐        timeout          ┌──────────┐       │        │
-│     │  IDLE    │◄────────────────────────│  MIXED   │       │        │
-│     └──────────┘                                            │        │
+│          ├── Actual value matches ──────────────────────────┘        │
+│          │                                                   │        │
+│          └── timeout ──► ┌──────────┐                                │
+│                           │  MIXED   │── fresh report ───────┘        │
+│                           └──────────┘                                │
 │                                                                       │
 └──────────────────────────────────────────────────────────────────────┘
 ```
