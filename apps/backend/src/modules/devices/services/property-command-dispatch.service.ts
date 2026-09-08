@@ -270,6 +270,8 @@ export class PropertyCommandDispatchService {
 		handles: readonly PropertyCommandWindowHandle[],
 	): Promise<boolean> {
 		return this.structureLock.runShared(async () => {
+			const requestedByCanonical = new Map<string, IDevicePropertyData[]>();
+
 			for (const update of updates) {
 				const current = await this.channelsPropertiesService.findOne(update.property.id);
 				if (current === null) {
@@ -277,10 +279,27 @@ export class PropertyCommandDispatchService {
 				}
 
 				const canonicalPropertyId = this.valueSourceRegistry.resolve(current);
-				const handle = handles.find((candidate) => candidate.canonicalPropertyId === canonicalPropertyId);
-				const window = handle === undefined ? null : this.commandWindowService.get(canonicalPropertyId);
+				const requested = requestedByCanonical.get(canonicalPropertyId) ?? [];
+				requested.push({ ...update, property: current });
+				requestedByCanonical.set(canonicalPropertyId, requested);
+			}
 
-				if (window === null || handle === undefined || window.generation !== handle.generation) {
+			if (requestedByCanonical.size !== handles.length) {
+				return false;
+			}
+
+			for (const [canonicalPropertyId, requestedUpdates] of requestedByCanonical) {
+				const handle = handles.find((candidate) => candidate.canonicalPropertyId === canonicalPropertyId);
+				if (handle === undefined) {
+					return false;
+				}
+
+				const admission = await this.propertyStateCoordinator.run(canonicalPropertyId, async () =>
+					this.createAdmission(canonicalPropertyId, requestedUpdates),
+				);
+				const window = this.commandWindowService.get(canonicalPropertyId);
+
+				if (admission === null || !admission.eligible || window === null || window.generation !== handle.generation) {
 					return false;
 				}
 			}

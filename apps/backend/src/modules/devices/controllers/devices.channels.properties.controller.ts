@@ -431,10 +431,7 @@ export class DevicesChannelsPropertiesController {
 				commandReceipt?.optimisticEligible && commandReceipt.baseline !== null
 					? { commandOrigin: { handle: commandReceipt.handle, baseline: commandReceipt.baseline } }
 					: undefined;
-			const updatedProperty =
-				updateOptions === undefined
-					? await this.channelsPropertiesService.update(property.id, dtoInstance)
-					: await this.channelsPropertiesService.update(property.id, dtoInstance, updateOptions);
+			const updatedProperty = await this.channelsPropertiesService.update(property.id, dtoInstance, updateOptions);
 
 			this.logger.debug(
 				`Successfully updated channel id=${updatedProperty.id} for deviceId=${device.id} channelId=${channel.id}`,
@@ -442,21 +439,13 @@ export class DevicesChannelsPropertiesController {
 
 			// If value was provided, send command to the physical device (fire-and-forget)
 			if (typeof commandValue !== 'undefined' && commandValue !== null) {
-				const command =
-					commandReceipt === null
-						? this.propertyCommandService.processApiPropertyCommand(
-								device.id,
-								channel.id,
-								updatedProperty.id,
-								commandValue,
-							)
-						: this.propertyCommandService.processApiPropertyCommand(
-								device.id,
-								channel.id,
-								updatedProperty.id,
-								commandValue,
-								commandReceipt,
-							);
+				const command = this.propertyCommandService.processApiPropertyCommand(
+					device.id,
+					channel.id,
+					updatedProperty.id,
+					commandValue,
+					commandReceipt ?? undefined,
+				);
 
 				command.catch((err: Error) => {
 					this.logger.error(`Failed to send device command for property id=${updatedProperty.id}: ${err.message}`);

@@ -241,7 +241,7 @@ describe('ChannelsPropertiesController', () => {
 			const result = await controller.update(mockChannel.id, mockChannelProperty.id, { data: updateDto });
 
 			expect(result.data).toEqual(toInstance(ChannelPropertyEntity, mockChannelProperty));
-			expect(channelsPropertiesService.update).toHaveBeenCalledWith(mockChannelProperty.id, updateDto);
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(mockChannelProperty.id, updateDto, undefined);
 		});
 
 		it('should persist a command value for a command-only platform', async () => {
@@ -335,6 +335,7 @@ describe('ChannelsPropertiesController', () => {
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
 				mockChannelProperty.id,
 				expect.objectContaining({ value: undefined }),
+				undefined,
 			);
 		});
 
@@ -380,6 +381,7 @@ describe('ChannelsPropertiesController', () => {
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
 				mockChannelProperty.id,
 				expect.objectContaining({ type: 'mock', value: undefined }),
+				undefined,
 			);
 			expect(propertyCommandService.usesAuthoritativePropertyReadback).toHaveBeenCalledWith(
 				mockDevice,
@@ -391,6 +393,7 @@ describe('ChannelsPropertiesController', () => {
 				mockChannel.id,
 				mockChannelProperty.id,
 				'reported-later',
+				undefined,
 			);
 		});
 
