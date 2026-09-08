@@ -777,6 +777,42 @@ export type RemoteAccessTailscalePluginCreateResetPreferencesOperation = operati
 export { RemoteAccessTailscalePluginDataRequirementCode as RemoteAccessTailscalePluginRequirementCode } from './openapi';
 export { RemoteAccessTailscalePluginDataSetupJobState as RemoteAccessTailscalePluginSetupJobState } from './openapi';
 
+// Remote Access Cloudflare Tunnel Plugin Schemas
+// =================================================
+export type RemoteAccessCloudflareTunnelPluginConfigSchema =
+	components['schemas']['RemoteAccessCloudflareTunnelPluginDataConfig'];
+export type RemoteAccessCloudflareTunnelPluginUpdateConfigSchema =
+	components['schemas']['RemoteAccessCloudflareTunnelPluginUpdateConfig'];
+export type RemoteAccessCloudflareTunnelPluginStatusSchema =
+	components['schemas']['RemoteAccessCloudflareTunnelPluginDataStatus'];
+export type RemoteAccessCloudflareTunnelPluginInstallSchema =
+	components['schemas']['RemoteAccessCloudflareTunnelPluginDataInstall'];
+export type RemoteAccessCloudflareTunnelPluginRequirementSchema =
+	components['schemas']['RemoteAccessCloudflareTunnelPluginDataRequirement'];
+export type RemoteAccessCloudflareTunnelPluginRequirementRemedySchema =
+	components['schemas']['RemoteAccessCloudflareTunnelPluginDataRequirementRemedy'];
+export type RemoteAccessCloudflareTunnelPluginSetupJobSchema =
+	components['schemas']['RemoteAccessCloudflareTunnelPluginDataSetupJob'];
+export type RemoteAccessCloudflareTunnelPluginPrivilegedSetupSchema =
+	components['schemas']['RemoteAccessCloudflareTunnelPluginDataPrivilegedSetup'];
+
+// Remote Access Cloudflare Tunnel Plugin Operations
+// ====================================================
+export type RemoteAccessCloudflareTunnelPluginGetStatusOperation =
+	operations['get-remote-access-cloudflare-tunnel-plugin-status'];
+export type RemoteAccessCloudflareTunnelPluginCreateInstallOperation =
+	operations['create-remote-access-cloudflare-tunnel-plugin-install'];
+export type RemoteAccessCloudflareTunnelPluginCreateResetOperation =
+	operations['create-remote-access-cloudflare-tunnel-plugin-reset'];
+
+// Remote Access Cloudflare Tunnel Plugin Enums
+// ================================================
+export { RemoteAccessCloudflareTunnelPluginDataRequirementCode as RemoteAccessCloudflareTunnelPluginRequirementCode } from './openapi';
+export { RemoteAccessCloudflareTunnelPluginDataConfigProtocol as RemoteAccessCloudflareTunnelPluginProtocol } from './openapi';
+// `--dedupe-enums` merged the setup-job `state` enum into the Tailscale plugin's own generated
+// enum, since the two are structurally identical (`running` | `complete` | `failed` | `timeout`)
+// — reuse `RemoteAccessTailscalePluginSetupJobState` above rather than a second, redundant alias.
+
 // Notifications Webhook Plugin Schemas
 // ======================================
 export type NotificationsWebhookPluginConfigSchema = components['schemas']['NotificationsWebhookPluginDataConfig'];
