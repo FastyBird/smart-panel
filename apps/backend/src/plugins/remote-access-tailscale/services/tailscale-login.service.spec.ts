@@ -558,6 +558,27 @@ describe('TailscaleLoginService', () => {
 			expect(service.getPendingInteractiveAuth()).toBeNull();
 		});
 
+		it('rejects with the real reason when the first block reports an immediate failure via Error, instead of silently reporting a fake status', async () => {
+			const child = new FakeChildProcess();
+			cli.spawnUp.mockReturnValue(child);
+
+			const loginPromise = service.login();
+
+			await flushMicrotasks();
+			child.stdout.emit(
+				'data',
+				Buffer.from('{"BackendState":"NeedsLogin","Error":"register request: http 410: auth path not found"}'),
+			);
+
+			await expect(loginPromise).rejects.toThrow('register request: http 410: auth path not found');
+			expect(service.getPendingInteractiveAuth()).toBeNull();
+			// The old behaviour fell back to computeStatus() (reporting a fake
+			// success) whenever the first block had no AuthURL, Error included -
+			// asserting this is never called here proves the Error branch is what
+			// actually ran, not the "already authenticated" fallback.
+			expect(nodeManagedService.computeStatus).not.toHaveBeenCalled();
+		});
+
 		it('rejects the caller with an error, propagated by the controller, when the process errors before any block', async () => {
 			const child = new FakeChildProcess();
 			cli.spawnUp.mockReturnValue(child);

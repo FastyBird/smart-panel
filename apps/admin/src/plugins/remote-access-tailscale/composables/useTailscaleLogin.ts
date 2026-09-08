@@ -81,7 +81,13 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 						return;
 					}
 
-					if (status.state === 'connected' || status.state === 'error') {
+					// Anything other than `pending-auth`/`connecting`/`pending-approval` means the
+					// sign-in attempt is no longer actively progressing - `connected` (success),
+					// but also e.g. `setup-required`/`disconnected`/`error` (a late failure, such
+					// as the control server rejecting an already-approved auth path). Stopping only
+					// on `connected`/`error` left the wizard polling forever - looking "frozen" -
+					// through every one of those other terminal outcomes.
+					if (status.state !== 'pending-auth' && status.state !== 'connecting' && status.state !== 'pending-approval') {
 						stopPolling();
 					}
 				})

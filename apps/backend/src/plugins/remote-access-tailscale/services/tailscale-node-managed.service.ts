@@ -28,6 +28,8 @@ import {
 	TAILSCALE_MIN_VERSION,
 	TAILSCALE_POLL_INTERVAL_STABLE_MS,
 	TAILSCALE_POLL_INTERVAL_TRANSITIONING_MS,
+	TAILSCALE_RECONNECT_BASE_DELAY_MS,
+	TAILSCALE_RECONNECT_MAX_DELAY_MS,
 	TAILSCALE_SYSTEMCTL_PROBE_TIMEOUT_MS,
 } from '../remote-access-tailscale.constants';
 import { TailscaleNodeStopFailedException } from '../remote-access-tailscale.exceptions';
@@ -155,6 +157,10 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	private requirementsRefreshedAt = 0;
 	/** Set by `convergeServe()` while the last Serve/Funnel mutation attempt was denied — read back so the denial is logged, and `operator-granted` refreshed, only once per transition instead of on every call. */
 	private lastServeConvergeDenied = false;
+	/** Consecutive failed `attemptReconnect()` calls since the node last reported `connected` — drives the backoff `nextReconnectAttemptAt` uses. */
+	private reconnectAttempts = 0;
+	/** Earliest time `pollTick()` may call `attemptReconnect()` again — `0` means "due now". */
+	private nextReconnectAttemptAt = 0;
 
 	constructor(
 		private readonly cli: TailscaleCliService,
@@ -176,6 +182,11 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 			this.state = 'starting';
 			this.pluginConfig = null;
+			// A fresh start cycle gets an immediate reconnect opportunity from
+			// the poller rather than waiting out a backoff timer left over
+			// from before this service was last stopped.
+			this.reconnectAttempts = 0;
+			this.nextReconnectAttemptAt = 0;
 			// Cache the config unconditionally, even when a prerequisite is
 			// missing or the node holds no key and neither set nor up ever
 			// runs below — onConfigChanged()'s login_server diff needs a known
@@ -663,9 +674,21 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	 * addresses, regardless of what `status --json` currently claims;
 	 * `error` reports the `lastError` `stop()` recorded. Neither branch
 	 * touches the CLI at all.
+	 *
+	 * `requirementsReason` controls how fresh the internal `operator-granted`
+	 * gate below is: every caller except the poller's own tick wants the
+	 * live truth (default `'status-read'`, always fresh — this is what makes
+	 * `GET /status`, "Re-check" and every action's post-call refresh reflect
+	 * an operator grant fixed a moment ago instead of the periodic cache).
+	 * Only `pollTick()` passes `'periodic'`, which is what keeps the
+	 * continuous background poll at one `status --json` call per tick
+	 * instead of also paying for `evaluateOperatorGranted()`'s own CLI calls
+	 * on every tick (see `refreshRequirements`'s own doc).
 	 */
-	async computeStatus(): Promise<RemoteAccessProviderStatus> {
-		return (await this.computeStatusWithRawStatus()).status;
+	async computeStatus(
+		requirementsReason: TailscaleRequirementRefreshReason = 'status-read',
+	): Promise<RemoteAccessProviderStatus> {
+		return (await this.computeStatusWithRawStatus(requirementsReason)).status;
 	}
 
 	/**
@@ -676,7 +699,9 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	 * `pollTick()` can pass it straight to `serveService.converge()` without
 	 * paying for a second `status --json` call just to converge Serve/Funnel.
 	 */
-	private async computeStatusWithRawStatus(): Promise<{
+	private async computeStatusWithRawStatus(
+		requirementsReason: TailscaleRequirementRefreshReason = 'status-read',
+	): Promise<{
 		status: RemoteAccessProviderStatus;
 		raw: TailscaleStatus | null;
 	}> {
@@ -699,12 +724,12 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 			const port = this.getBackendPort();
 			const postureAdvisories = this.buildPostureAdvisories(status);
 
-			// Throttled to at most once every five minutes on this ('periodic')
-			// reason — see `refreshRequirements`'s own doc — so the poller's
-			// steady state stays at this single `status --json` call per tick
-			// instead of also paying for `evaluateOperatorGranted()`'s own CLI
-			// calls on every tick.
-			const requirements = await this.refreshRequirements('periodic');
+			// Only throttled (at most once every five minutes) when the poller's
+			// own tick passes 'periodic' — see this method's and
+			// `refreshRequirements`'s own docs. Every other caller (GET /status,
+			// Re-check, every action's post-call refresh) gets `requirementsReason`'s
+			// default 'status-read', always fresh.
+			const requirements = await this.refreshRequirements(requirementsReason);
 			const operatorRequirement = requirements.find((requirement) => requirement.code === 'operator-granted');
 
 			if (operatorRequirement && !operatorRequirement.satisfied) {
@@ -1072,11 +1097,34 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	 */
 	private async pollTick(): Promise<void> {
 		try {
-			const { status, raw } = await this.computeStatusWithRawStatus();
+			let { status, raw } = await this.computeStatusWithRawStatus('periodic');
 
 			if (!this.isPollable()) {
 				// stop() ran while this tick's computeStatus() was in flight.
 				return;
+			}
+
+			if (
+				status.state === 'disconnected' &&
+				raw &&
+				this.mapper.hasExistingKey(raw) &&
+				this.requirementsSatisfied(this.getRequirements()) &&
+				Date.now() >= this.nextReconnectAttemptAt
+			) {
+				const reconnected = await this.attemptReconnect();
+
+				if (!this.isPollable()) {
+					// stop() ran while attemptReconnect() held the lock.
+					return;
+				}
+
+				if (reconnected) {
+					({ status, raw } = await this.computeStatusWithRawStatus('periodic'));
+
+					if (!this.isPollable()) {
+						return;
+					}
+				}
 			}
 
 			if (raw && status.state === 'connected' && this.requirementsSatisfied(this.getRequirements())) {
@@ -1102,6 +1150,63 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 			this.schedulePoll(TAILSCALE_POLL_INTERVAL_STABLE_MS);
 		}
+	}
+
+	/**
+	 * Retries bringing the node back up when the poller finds it unexpectedly
+	 * `Stopped` (mapped to `disconnected`) while this managed service is
+	 * still `started` and every requirement is satisfied — the same
+	 * `set`/`up` pair `start()` runs once, given another chance instead of
+	 * leaving a transient failure (or a `stop()`/`start()` reconnect whose
+	 * `up` call missed) stuck until a human intervenes. Shares `withLock()`
+	 * with `start()`/`stop()` so a concurrent manual stop is never raced —
+	 * `stop()` simply waits for this attempt to finish first, same as it
+	 * already does for a concurrent `start()`. Never throws: failure only
+	 * schedules the next backoff attempt via `nextReconnectAttemptAt`.
+	 */
+	private async attemptReconnect(): Promise<boolean> {
+		return this.withLock(async () => {
+			if (this.state !== 'started') {
+				// stop() (or a fresh start() cycle) already changed things
+				// while this call waited for the lock — nothing to reconnect.
+				return false;
+			}
+
+			try {
+				const config = this.getPluginConfig();
+
+				await this.cli.set(this.buildPreferenceFlags(config));
+				await this.cli.up(this.buildUpFlags(config));
+
+				this.reconnectAttempts = 0;
+				this.nextReconnectAttemptAt = 0;
+
+				this.logger.log('Tailscale node reconnected automatically after being found unexpectedly disconnected.');
+
+				return true;
+			} catch (error) {
+				this.reconnectAttempts += 1;
+
+				const delayMs = Math.min(
+					TAILSCALE_RECONNECT_BASE_DELAY_MS * 2 ** (this.reconnectAttempts - 1),
+					TAILSCALE_RECONNECT_MAX_DELAY_MS,
+				);
+
+				this.nextReconnectAttemptAt = Date.now() + delayMs;
+
+				if (error instanceof TailscaleCliError && error.kind === 'permission-denied') {
+					await this.refreshRequirements('permission-denied').catch(() => undefined);
+				}
+
+				this.logger.warn('Automatic Tailscale reconnect attempt failed; will retry with backoff.', {
+					attempt: this.reconnectAttempts,
+					nextAttemptInMs: delayMs,
+					message: error instanceof Error ? error.message : String(error),
+				});
+
+				return false;
+			}
+		});
 	}
 
 	private hasStatusChanged(previous: RemoteAccessProviderStatus | null, next: RemoteAccessProviderStatus): boolean {

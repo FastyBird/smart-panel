@@ -160,7 +160,7 @@ describe('TailscaleProviderCard', () => {
 		expect(fns.startService).toHaveBeenCalledWith('plugin', 'remote-access-tailscale-plugin', 'node');
 	});
 
-	it('offers connect as the primary action, and the owner-only actions as secondary, for a disconnected node with a tailnet', () => {
+	it('offers connect as the primary action, and reconnect plus the owner-only actions as secondary, for a disconnected node with a tailnet', () => {
 		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.disconnected, details: { tailnet: 'example.ts.net' } });
 
 		const dropdown = wrapper.findComponent({ name: 'ElDropdown' });
@@ -171,7 +171,10 @@ describe('TailscaleProviderCard', () => {
 
 		const items = wrapper.findAllComponents({ name: 'ElDropdownItem' });
 
-		expect(items.map((item) => item.props('command'))).toEqual(['signOut', 'resetPreferences']);
+		// "Reconnect" (POST /restart) is offered as a working fallback alongside "Connect" (POST
+		// /start): the managed service is almost always already started by the time this state is
+		// visible at all, which makes "Connect" fail with "already started" - see provider-actions.ts.
+		expect(items.map((item) => item.props('command'))).toEqual(['reconnect', 'signOut', 'resetPreferences']);
 	});
 
 	it('offers disconnect as the primary action and reconnect plus the owner-only actions as secondary for a connected node', () => {

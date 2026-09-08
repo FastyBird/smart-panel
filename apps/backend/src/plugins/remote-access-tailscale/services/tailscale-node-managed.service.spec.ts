@@ -973,6 +973,117 @@ describe('TailscaleNodeManagedService', () => {
 		});
 	});
 
+	describe('automatic reconnect from an unexpectedly disconnected state (pollTick self-heal)', () => {
+		it('retries set()+up() on the next tick when the node is found Stopped while every requirement stays satisfied, and reports connected once it recovers', async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+
+			await service.start();
+			// start()'s own attempt, and the poller's first tick (schedulePoll(0)),
+			// both already try to reconnect against the default (always-succeeding)
+			// set()/up() mocks - flush both before observing the *next* tick in
+			// isolation.
+			await jest.runOnlyPendingTimersAsync();
+
+			cli.set.mockClear();
+			cli.up.mockClear();
+			eventEmitterMock.emit.mockClear();
+			// Simulate the daemon actually coming back up once `up()` succeeds.
+			cli.up.mockImplementation(() => {
+				cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+				return Promise.resolve();
+			});
+
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
+
+			expect(cli.set).toHaveBeenCalledTimes(1);
+			expect(cli.up).toHaveBeenCalledTimes(1);
+			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
+				RemoteAccessEventType.PROVIDER_STATUS,
+				expect.objectContaining({ state: 'connected' }),
+			);
+		});
+
+		it('does not attempt a reconnect while a requirement other than the connection itself is unsatisfied', async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			cli.getPrefs.mockResolvedValue({ OperatorUser: 'someone-else' });
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+
+			cli.set.mockClear();
+			cli.up.mockClear();
+
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
+
+			expect(cli.set).not.toHaveBeenCalled();
+			expect(cli.up).not.toHaveBeenCalled();
+		});
+
+		it('does not attempt a reconnect for a node that has never signed in (NeedsLogin, no existing key)', async () => {
+			cli.getStatus.mockResolvedValue({ BackendState: 'NeedsLogin' });
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+
+			cli.set.mockClear();
+			cli.up.mockClear();
+
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
+
+			expect(cli.set).not.toHaveBeenCalled();
+			expect(cli.up).not.toHaveBeenCalled();
+		});
+
+		it('backs off exponentially after a failed reconnect attempt instead of retrying every tick', async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			cli.up.mockRejectedValue(new TailscaleCliError('unknown', 'still down'));
+
+			await service.start();
+			// Tick from start()'s own schedulePoll(0): first reconnect attempt,
+			// which fails and arms a 30s backoff (reconnectAttempts = 1).
+			await jest.runOnlyPendingTimersAsync();
+
+			cli.up.mockClear();
+
+			// The base backoff (30s) equals the stable poll interval, so the very
+			// next tick is exactly when it elapses - it retries (reconnectAttempts
+			// becomes 2, doubling the backoff to 60s).
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
+			expect(cli.up).toHaveBeenCalledTimes(1);
+
+			// A single stable-interval tick lands well inside the now-60s backoff -
+			// must not retry yet.
+			cli.up.mockClear();
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
+			expect(cli.up).not.toHaveBeenCalled();
+
+			// A second stable-interval tick reaches the 60s mark - retries again.
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
+			expect(cli.up).toHaveBeenCalledTimes(1);
+		});
+
+		it('resets the backoff once start() runs a fresh lifecycle (stop then start)', async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			cli.up.mockRejectedValue(new TailscaleCliError('unknown', 'still down'));
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
+			// reconnectAttempts is now 2 (backoff 60s) — a fresh start cycle must
+			// not inherit that backoff.
+			await service.stop();
+			cli.up.mockClear();
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+
+			// start()'s own attempt plus the immediate first poll tick both try —
+			// either is proof the backoff did not carry over a 60s wait.
+			expect(cli.up).toHaveBeenCalled();
+		});
+	});
+
 	describe('event emission', () => {
 		it('emits PROVIDER_STATUS on the first poll', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
@@ -1478,6 +1589,22 @@ describe('TailscaleNodeManagedService', () => {
 			cli.getPrefs.mockClear();
 
 			await service.evaluateRequirements();
+
+			expect(cli.getPrefs).toHaveBeenCalledTimes(1);
+		});
+
+		it("a direct computeStatus() call also forces a fresh evaluation regardless of the 5-minute floor — only the poller's own tick is throttled", async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync();
+			cli.getPrefs.mockClear();
+
+			// A just-fixed operator grant must be reflected immediately by a
+			// caller-triggered status read (GET /status, "Re-check", the
+			// post-action refresh every login/logout/reset-preferences call
+			// does), not held back by the poller's own 5-minute cache.
+			await service.computeStatus();
 
 			expect(cli.getPrefs).toHaveBeenCalledTimes(1);
 		});
