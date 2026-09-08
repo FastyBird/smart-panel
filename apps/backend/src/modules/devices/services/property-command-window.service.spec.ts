@@ -78,12 +78,49 @@ describe('PropertyCommandWindowService', () => {
 
 	it('does not let an old ABA generation close the latest command', () => {
 		const first = open({ commandedValue: true });
+		service.attachPatchReceipt(first, {
+			baseline: { value: false, lastUpdated: '2026-09-08T12:00:00.000Z', trend: null },
+			optimisticState: { value: true, lastUpdated: '2026-09-08T12:00:00.100Z', trend: null },
+		});
 		const second = open({ commandedValue: false });
 		const third = open({ commandedValue: true });
 
 		expect(service.fail(first)).toBe(false);
 		expect(service.fail(second)).toBe(false);
 		expect(service.get(third.canonicalPropertyId)?.generation).toBe(third.generation);
+		expect(service.get(third.canonicalPropertyId)?.patchReceipt?.baseline.value).toBe(false);
+	});
+
+	it('keeps the last reported rollback baseline across two failed optimistic generations', () => {
+		const first = open({ commandedValue: true });
+		service.attachPatchReceipt(first, {
+			baseline: { value: false, lastUpdated: '2026-09-08T12:00:00.000Z', trend: null },
+			optimisticState: { value: true, lastUpdated: '2026-09-08T12:00:00.100Z', trend: null },
+		});
+		const second = open({ commandedValue: false });
+		service.attachPatchReceipt(second, {
+			baseline: { value: true, lastUpdated: '2026-09-08T12:00:00.100Z', trend: null },
+			optimisticState: { value: false, lastUpdated: '2026-09-08T12:00:00.200Z', trend: null },
+		});
+
+		expect(service.fail(first)).toBe(false);
+		expect(service.fail(second)).toBe(true);
+		expect(service.getRecovery(second)?.patchReceipt).toEqual(
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			expect.objectContaining({ baseline: expect.objectContaining({ value: false }) }),
+		);
+	});
+
+	it('lets a provider confirmation win over a late API failure', () => {
+		const handle = open();
+		service.attachPatchReceipt(handle, {
+			baseline: { value: false, lastUpdated: '2026-09-08T12:00:00.000Z', trend: null },
+			optimisticState: { value: true, lastUpdated: '2026-09-08T12:00:00.100Z', trend: null },
+		});
+		service.confirm(handle, { value: true, receivedAt: Date.now() + 100 });
+
+		expect(service.fail(handle)).toBe(false);
+		expect(service.getRecovery(handle)).toBeNull();
 	});
 
 	it('only lets the owning invocation fail an unconfirmed generation', () => {

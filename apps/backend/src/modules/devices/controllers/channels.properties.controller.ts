@@ -440,6 +440,10 @@ export class ChannelsPropertiesController {
 
 			return response;
 		} catch (error) {
+			if (commandReceipt !== null) {
+				this.propertyCommandService.failApiPropertyCommandReceipt(commandReceipt);
+			}
+
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Channel property could not be updated. Please try again later');
 			}

@@ -636,6 +636,11 @@ export class PropertyCommandService {
 		}
 	}
 
+	/** Releases a receipt whose optimistic persistence failed before asynchronous dispatch could begin. */
+	failApiPropertyCommandReceipt(receipt: ApiPropertyCommandReceipt): void {
+		this.propertyCommandWindowService.fail(receipt.handle);
+	}
+
 	async usesAuthoritativePropertyReadback(
 		device: DeviceEntity | string,
 		property: ChannelPropertyEntity,

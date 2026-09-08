@@ -1324,6 +1324,7 @@ describe('ChannelsPropertiesService', () => {
 
 		it('reconciles a failed optimistic PATCH through the token-fenced strict fallback once', async () => {
 			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			property.mockValue = 'accepted metadata';
 			const baseline = new PropertyValueState('previous', '2026-09-08T12:00:00.000Z');
 			const optimisticState = new PropertyValueState('commanded', '2026-09-08T12:00:00.100Z');
 			const queryBuilder = {
@@ -1355,6 +1356,42 @@ describe('ChannelsPropertiesService', () => {
 			);
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
 			expect(propertyCommandWindowService.getRecovery(handle)).toBeNull();
+			expect(property.mockValue).toBe('accepted metadata');
+		});
+
+		it('prefers a held provider report over a failed optimistic PATCH baseline', async () => {
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			const queryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(property),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as any);
+			const handle = propertyCommandWindowService.open({
+				canonicalTarget: { deviceId: 'device', channelId: mockChannel.id, propertyId: property.id },
+				requestedTargets: [{ deviceId: 'device', channelId: mockChannel.id, propertyId: property.id }],
+				commandedValue: 'commanded',
+				previousValue: 'previous',
+				ttlMs: 3_000,
+			});
+			propertyCommandWindowService.attachPatchReceipt(handle, {
+				baseline: new PropertyValueState('previous', '2026-09-08T12:00:00.000Z'),
+				optimisticState: new PropertyValueState('commanded', '2026-09-08T12:00:00.100Z'),
+			});
+			propertyCommandWindowService.hold(handle, { value: 'provider-truth', receivedAt: Date.now() });
+			propertyCommandWindowService.fail(handle);
+			propertyValueService.writeWithState.mockResolvedValue({
+				changed: true,
+				state: new PropertyValueState('provider-truth'),
+			});
+
+			await (
+				channelsPropertiesService as unknown as { recoverExpiredCommandWindows: () => Promise<void> }
+			).recoverExpiredCommandWindows();
+
+			expect(propertyValueService.writeWithState).toHaveBeenCalledWith(property, 'provider-truth');
+			expect(propertyValueService.writeStrictIfPersistedDifferent).not.toHaveBeenCalled();
 		});
 
 		it('publishes exactly one unchanged confirmation and discards a grace-period stale report', async () => {

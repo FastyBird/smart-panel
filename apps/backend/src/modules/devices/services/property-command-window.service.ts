@@ -103,7 +103,9 @@ export class PropertyCommandWindowService {
 			lastReceipt: null,
 			heldReceipt: null,
 			recoveryReceipt: null,
-			patchReceipt: null,
+			// A replacement command's observed baseline remains the oldest unconfirmed PATCH baseline.
+			// Its own optimistic revision is attached only after persistence succeeds.
+			patchReceipt: current?.patchReceipt ?? null,
 			openedAt: now,
 			expiresAt: now + ttlMs,
 			state: 'pending',
@@ -145,7 +147,10 @@ export class PropertyCommandWindowService {
 			return false;
 		}
 
-		current.patchReceipt = freezePatchReceipt(receipt);
+		current.patchReceipt = freezePatchReceipt({
+			baseline: current.patchReceipt?.baseline ?? receipt.baseline,
+			optimisticState: receipt.optimisticState,
+		});
 
 		return true;
 	}
