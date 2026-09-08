@@ -30,9 +30,14 @@ import { DeviceExistsConstraintValidator } from '../validators/device-exists-con
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
+import { PropertyCommandDispatchService } from './property-command-dispatch.service';
+import { PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyCommandService } from './property-command.service';
+import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
+import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 
 class MockDevice extends DeviceEntity {
 	@Expose({ name: 'mock_value' })
@@ -83,6 +88,7 @@ describe('PropertyCommandService', () => {
 	let channelsPropertiesService: ChannelsPropertiesService;
 	let platformRegistryService: PlatformRegistryService;
 	let intentsService: IntentsService;
+	let propertyCommandWindowService: PropertyCommandWindowService;
 	let mockPlatform: IDevicePlatform;
 	let loggerErrorSpy: jest.SpiedFunction<any>;
 	let loggerWarnSpy: jest.SpiedFunction<any>;
@@ -159,6 +165,11 @@ describe('PropertyCommandService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				PropertyCommandService,
+				PropertyCommandDispatchService,
+				PropertyCommandWindowService,
+				PropertyValueSourceRegistryService,
+				DeviceStructureLockService,
+				PropertyStateCoordinatorService,
 				DeviceExistsConstraintValidator,
 				ChannelExistsConstraintValidator,
 				ChannelPropertyExistsConstraintValidator,
@@ -206,6 +217,7 @@ describe('PropertyCommandService', () => {
 		channelsPropertiesService = module.get<ChannelsPropertiesService>(ChannelsPropertiesService);
 		platformRegistryService = module.get<PlatformRegistryService>(PlatformRegistryService);
 		intentsService = module.get<IntentsService>(IntentsService);
+		propertyCommandWindowService = module.get<PropertyCommandWindowService>(PropertyCommandWindowService);
 
 		mockPlatform = {
 			getType: jest.fn().mockReturnValue('mock'),
@@ -303,6 +315,7 @@ describe('PropertyCommandService', () => {
 			undefined,
 			expect.objectContaining({ tag: 'devices-module' }),
 		);
+		expect(propertyCommandWindowService.get(mockChannelProperty.id)).toBeNull();
 	});
 
 	it('should return an error if device is not found', async () => {
@@ -371,6 +384,7 @@ describe('PropertyCommandService', () => {
 			undefined,
 			expect.objectContaining({ tag: 'devices-module' }),
 		);
+		expect(propertyCommandWindowService.get(mockChannelProperty.id)).toBeNull();
 	});
 
 	it('executes a property-id command through validation, intent tracking, and batch dispatch', async () => {
@@ -409,6 +423,9 @@ describe('PropertyCommandService', () => {
 				context: { origin: 'api', extra: { source: 'mcp' } },
 			}),
 		);
+		const window = propertyCommandWindowService.get(property.id);
+		expect(window?.commandedValue).toBe(true);
+		expect(window?.canonicalTarget.propertyId).toBe(property.id);
 	});
 
 	it('should reject writes to read-only properties before platform dispatch', async () => {
