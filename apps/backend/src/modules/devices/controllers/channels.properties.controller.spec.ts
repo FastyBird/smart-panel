@@ -133,6 +133,13 @@ describe('ChannelsPropertiesController', () => {
 					provide: PropertyCommandService,
 					useValue: {
 						processApiPropertyCommand: jest.fn().mockResolvedValue(undefined),
+						prepareApiPropertyCommand: jest.fn().mockResolvedValue({
+							handle: { canonicalPropertyId: mockChannelProperty.id, generation: 'api-generation' },
+							canonicalPropertyId: mockChannelProperty.id,
+							baseline: { value: '22.5', lastUpdated: '2026-09-08T00:00:00.000Z', trend: null },
+							optimisticEligible: true,
+							ttlMs: 3_000,
+						}),
 						usesAuthoritativePropertyReadback: jest.fn().mockResolvedValue(false),
 					},
 				},
@@ -256,12 +263,16 @@ describe('ChannelsPropertiesController', () => {
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
 				mockChannelProperty.id,
 				expect.objectContaining({ type: 'mock', value: 'command-state' }),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				expect.objectContaining({ commandOrigin: expect.any(Object) }),
 			);
 			expect(propertyCommandService.processApiPropertyCommand).toHaveBeenCalledWith(
 				mockDevice.id,
 				mockChannel.id,
 				mockChannelProperty.id,
 				'command-state',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				expect.objectContaining({ handle: expect.any(Object) }),
 			);
 		});
 

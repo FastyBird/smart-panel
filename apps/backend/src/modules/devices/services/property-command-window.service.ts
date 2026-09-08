@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Injectable } from '@nestjs/common';
 
+import { PropertyValueState } from '../models/property-value-state.model';
 import { PropertyCommandValue } from '../utils/property-command-value.utils';
 
 export const PROPERTY_COMMAND_CONFIRMATION_GRACE_MS = 1_500;
@@ -29,6 +30,12 @@ export interface PropertyCommandReceipt {
 	readonly receivedAt: number;
 }
 
+/** Internal optimistic PATCH state. It never crosses a transport or event boundary. */
+export interface PropertyCommandPatchReceipt {
+	readonly baseline: PropertyValueState;
+	readonly optimisticState: PropertyValueState;
+}
+
 export interface PropertyCommandWindow {
 	readonly canonicalTarget: PropertyCommandWindowTarget;
 	readonly requestedTargets: readonly PropertyCommandWindowTarget[];
@@ -39,6 +46,7 @@ export interface PropertyCommandWindow {
 	readonly lastReceipt: PropertyCommandReceipt | null;
 	readonly heldReceipt: PropertyCommandReceipt | null;
 	readonly recoveryReceipt: PropertyCommandReceipt | null;
+	readonly patchReceipt: PropertyCommandPatchReceipt | null;
 	readonly openedAt: number;
 	readonly expiresAt: number;
 	readonly state: PropertyCommandWindowState;
@@ -95,6 +103,7 @@ export class PropertyCommandWindowService {
 			lastReceipt: null,
 			heldReceipt: null,
 			recoveryReceipt: null,
+			patchReceipt: null,
 			openedAt: now,
 			expiresAt: now + ttlMs,
 			state: 'pending',
@@ -122,9 +131,23 @@ export class PropertyCommandWindowService {
 			current.confirmationExpiresAt = receipt.receivedAt + PROPERTY_COMMAND_CONFIRMATION_GRACE_MS;
 			current.lastReceipt = freezeReceipt(receipt);
 			current.heldReceipt = null;
+			current.patchReceipt = null;
 		}
 
 		return this.toSnapshot(current);
+	}
+
+	/** Associates a successfully persisted API PATCH revision with its owning generation. */
+	attachPatchReceipt(handle: PropertyCommandWindowHandle, receipt: PropertyCommandPatchReceipt): boolean {
+		const current = this.getCurrent(handle.canonicalPropertyId, Date.now());
+
+		if (current === undefined || current.generation !== handle.generation || current.state !== 'pending') {
+			return false;
+		}
+
+		current.patchReceipt = freezePatchReceipt(receipt);
+
+		return true;
 	}
 
 	/** Retains only the newest stale report while this generation is still awaiting confirmation. */
@@ -167,8 +190,8 @@ export class PropertyCommandWindowService {
 	}
 
 	/**
-	 * Detaches expired windows and returns the recovery generations that still own a held report.
-	 * ChannelsPropertiesService commits those reports through its normal value path.
+	 * Detaches expired windows and returns recovery generations with a held provider report or a
+	 * generation-fenced optimistic PATCH fallback. ChannelsPropertiesService owns their commit.
 	 */
 	sweep(): readonly PropertyCommandWindowHandle[] {
 		const now = Date.now();
@@ -254,7 +277,7 @@ export class PropertyCommandWindowService {
 	private detach(canonicalPropertyId: string, window: MutablePropertyCommandWindow, now = Date.now()): void {
 		this.windows.delete(canonicalPropertyId);
 
-		if (window.state === 'pending' && window.heldReceipt !== null) {
+		if (window.state === 'pending' && (window.heldReceipt !== null || window.patchReceipt !== null)) {
 			this.recoveries.set(canonicalPropertyId, {
 				window,
 				deadlineAt: now + (window.expiresAt - window.openedAt),
@@ -282,6 +305,7 @@ export class PropertyCommandWindowService {
 			lastReceipt: window.lastReceipt === null ? null : freezeReceipt(window.lastReceipt),
 			heldReceipt: window.heldReceipt === null ? null : freezeReceipt(window.heldReceipt),
 			recoveryReceipt: window.recoveryReceipt === null ? null : freezeReceipt(window.recoveryReceipt),
+			patchReceipt: window.patchReceipt === null ? null : freezePatchReceipt(window.patchReceipt),
 		});
 	}
 }
@@ -289,3 +313,12 @@ export class PropertyCommandWindowService {
 const freezeTarget = (target: PropertyCommandWindowTarget): PropertyCommandWindowTarget => Object.freeze({ ...target });
 
 const freezeReceipt = (receipt: PropertyCommandReceipt): PropertyCommandReceipt => Object.freeze({ ...receipt });
+
+const freezePatchReceipt = (receipt: PropertyCommandPatchReceipt): PropertyCommandPatchReceipt =>
+	Object.freeze({
+		baseline: freezeValueState(receipt.baseline),
+		optimisticState: freezeValueState(receipt.optimisticState),
+	});
+
+const freezeValueState = (state: PropertyValueState): PropertyValueState =>
+	Object.freeze(new PropertyValueState(state.value, state.lastUpdated, state.trend));

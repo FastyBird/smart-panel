@@ -15,6 +15,7 @@ import { ConnectionState, DEVICES_MODULE_NAME, PermissionType } from '../devices
 import { PropertyCommandDto, PropertyCommandValueDto } from '../dto/property-command.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
+import { PropertyValueState } from '../models/property-value-state.model';
 import { IDevicePropertyData } from '../platforms/device.platform';
 import { PropertyCommandValue, validatePropertyCommandValue } from '../utils/property-command-value.utils';
 
@@ -23,10 +24,21 @@ import { ChannelsService } from './channels.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandDispatchService } from './property-command-dispatch.service';
+import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
 
 export interface PropertyCommandExecutionOptions {
 	requestId?: string;
 	context?: IntentContext;
+	/** Internal only: the controller already admitted this PATCH generation before local persistence. */
+	apiReceipt?: ApiPropertyCommandReceipt;
+}
+
+export interface ApiPropertyCommandReceipt {
+	readonly handle: PropertyCommandWindowHandle;
+	readonly canonicalPropertyId: string;
+	readonly baseline: PropertyValueState | null;
+	readonly optimisticEligible: boolean;
+	readonly ttlMs: number;
 }
 
 export interface DevicePropertyCommandResult {
@@ -58,6 +70,7 @@ export class PropertyCommandService {
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly intentsService: IntentsService,
 		private readonly propertyCommandDispatchService: PropertyCommandDispatchService,
+		private readonly propertyCommandWindowService: PropertyCommandWindowService,
 	) {}
 
 	async handleInternal(
@@ -375,7 +388,7 @@ export class PropertyCommandService {
 		});
 
 		// Create the intent with the value map and optional requestId for tracking
-		const ttlMs = await this.resolveCommandIntentTtlMs(groupedProperties);
+		const ttlMs = options.apiReceipt?.ttlMs ?? (await this.resolveCommandIntentTtlMs(groupedProperties));
 		const intent = this.intentsService.createIntent({
 			requestId: options.requestId,
 			type: IntentType.DEVICE_SET_PROPERTY,
@@ -397,6 +410,7 @@ export class PropertyCommandService {
 				const result = await this.processDeviceCommands(deviceId, groupedProperties[deviceId], {
 					intentId: intent.id,
 					ttlMs,
+					windowHandles: options.apiReceipt === undefined ? undefined : [options.apiReceipt.handle],
 				});
 
 				results.push(result);
@@ -473,7 +487,7 @@ export class PropertyCommandService {
 	private async processDeviceCommands(
 		deviceId: string,
 		commands: PropertyCommandValueDto[],
-		dispatchOptions: { intentId: string; ttlMs: number },
+		dispatchOptions: { intentId: string; ttlMs: number; windowHandles?: readonly PropertyCommandWindowHandle[] },
 	): Promise<{ device: string; success: boolean; reason?: string }> {
 		const device = await this.devicesService.findOne(deviceId);
 
@@ -569,17 +583,56 @@ export class PropertyCommandService {
 		channelId: string,
 		propertyId: string,
 		value: string | number | boolean,
+		receipt?: ApiPropertyCommandReceipt,
 	): Promise<void> {
 		const execution = await this.executeCommands(
 			[{ device: deviceId, channel: channelId, property: propertyId, value }],
-			{ context: { origin: 'api' } },
+			{ context: { origin: 'api' }, apiReceipt: receipt },
 		);
 		const result = Array.isArray(execution.results) ? execution.results[0] : undefined;
 
 		if (!execution.success) {
+			if (receipt !== undefined) {
+				this.propertyCommandWindowService.fail(receipt.handle);
+			}
 			const reason = result?.reason ?? (typeof execution.results === 'string' ? execution.results : 'Execution failed');
 
 			this.logger.warn(`[API Command] Failed for deviceId=${deviceId}: ${reason}`);
+		}
+	}
+
+	/**
+	 * Admits the API PATCH generation before its optimistic store write. It is deliberately shared by
+	 * both REST routes; callers only persist optimistically when a direct source has a known baseline.
+	 */
+	async prepareApiPropertyCommand(
+		device: DeviceEntity | string,
+		channel: ChannelEntity,
+		property: ChannelPropertyEntity,
+		value: string | number | boolean,
+	): Promise<ApiPropertyCommandReceipt | null> {
+		try {
+			const resolvedDevice = typeof device === 'string' ? await this.devicesService.findOne(device) : device;
+			if (resolvedDevice === null) {
+				return null;
+			}
+			const ttlMs = await this.resolveCommandIntentTtlMs({
+				[resolvedDevice.id]: [{ device: resolvedDevice.id, channel: channel.id, property: property.id, value }],
+			});
+			const prepared = await this.propertyCommandDispatchService.prepareApiCommand(
+				{ device: resolvedDevice, channel, property, value },
+				ttlMs,
+			);
+
+			return prepared === null ? null : { ...prepared, ttlMs };
+		} catch (error) {
+			this.logger.warn(
+				`[API Command] Could not prepare optimistic receipt for propertyId=${property.id}: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
+
+			return null;
 		}
 	}
 

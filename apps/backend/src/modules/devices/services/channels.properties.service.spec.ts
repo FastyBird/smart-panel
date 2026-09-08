@@ -1322,6 +1322,41 @@ describe('ChannelsPropertiesService', () => {
 			expect(propertyCommandWindowService.sweep()).toEqual([]);
 		});
 
+		it('reconciles a failed optimistic PATCH through the token-fenced strict fallback once', async () => {
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			const baseline = new PropertyValueState('previous', '2026-09-08T12:00:00.000Z');
+			const optimisticState = new PropertyValueState('commanded', '2026-09-08T12:00:00.100Z');
+			const queryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(property),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as any);
+			const handle = propertyCommandWindowService.open({
+				canonicalTarget: { deviceId: 'device', channelId: mockChannel.id, propertyId: property.id },
+				requestedTargets: [{ deviceId: 'device', channelId: mockChannel.id, propertyId: property.id }],
+				commandedValue: 'commanded',
+				previousValue: 'previous',
+				ttlMs: 3_000,
+			});
+			propertyCommandWindowService.attachPatchReceipt(handle, { baseline, optimisticState });
+			propertyCommandWindowService.fail(handle);
+			propertyValueService.writeStrictIfPersistedDifferent.mockResolvedValue({ changed: true, state: baseline });
+
+			await (
+				channelsPropertiesService as unknown as { recoverExpiredCommandWindows: () => Promise<void> }
+			).recoverExpiredCommandWindows();
+
+			expect(propertyValueService.writeStrictIfPersistedDifferent).toHaveBeenCalledWith(
+				property,
+				'previous',
+				optimisticState,
+			);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
+			expect(propertyCommandWindowService.getRecovery(handle)).toBeNull();
+		});
+
 		it('publishes exactly one unchanged confirmation and discards a grace-period stale report', async () => {
 			const property = toInstance(MockChannelProperty, mockChannelProperty);
 			const queryBuilder = {

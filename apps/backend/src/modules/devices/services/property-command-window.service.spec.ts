@@ -108,6 +108,22 @@ describe('PropertyCommandWindowService', () => {
 		expect(service.getRecovery(handle)).toBeNull();
 	});
 
+	it('retains an optimistic PATCH fallback for its owning failed generation', () => {
+		const handle = open({ ttlMs: 100 });
+		expect(
+			service.attachPatchReceipt(handle, {
+				baseline: { value: false, lastUpdated: '2026-09-08T12:00:00.000Z', trend: null },
+				optimisticState: { value: true, lastUpdated: '2026-09-08T12:00:00.100Z', trend: null },
+			}),
+		).toBe(true);
+
+		expect(service.fail(handle)).toBe(true);
+		expect(service.getRecovery(handle)?.patchReceipt).toEqual(
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			expect.objectContaining({ optimisticState: expect.objectContaining({ value: true }) }),
+		);
+	});
+
 	it('cancels a pending recovery when a newer generation replaces it', () => {
 		const first = open({ ttlMs: 100 });
 		service.hold(first, { value: false, receivedAt: Date.now() });

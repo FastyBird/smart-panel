@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { PermissionType } from '../devices.constants';
+import { PropertyValueState } from '../models/property-value-state.model';
 import { IDevicePropertyData } from '../platforms/device.platform';
 import { PropertyCommandValue, validatePropertyCommandValue } from '../utils/property-command-value.utils';
 
@@ -22,11 +23,21 @@ export interface PropertyCommandDispatchOptions {
 	readonly ttlMs?: number;
 	/** The caller already performed its platform-specific preparation. The dispatcher never prepares again. */
 	readonly prepared?: boolean;
+	/** A PATCH generation admitted before its optimistic local persistence. */
+	readonly windowHandles?: readonly PropertyCommandWindowHandle[];
 }
 
 export interface PropertyCommandDispatchResult {
 	readonly success: boolean;
 	readonly reason?: string;
+}
+
+/** A pre-admitted API PATCH generation, kept internal to the devices module. */
+export interface PreparedApiPropertyCommand {
+	readonly handle: PropertyCommandWindowHandle;
+	readonly canonicalPropertyId: string;
+	readonly baseline: PropertyValueState | null;
+	readonly optimisticEligible: boolean;
 }
 
 interface WindowAdmission {
@@ -35,7 +46,13 @@ interface WindowAdmission {
 	readonly requestedTargets: readonly PropertyCommandWindowTarget[];
 	readonly commandedValue: PropertyCommandValue;
 	readonly previousValue: PropertyCommandValue | null;
+	readonly baseline: PropertyValueState | null;
 	readonly eligible: boolean;
+}
+
+interface AdmittedWindow {
+	readonly handle: PropertyCommandWindowHandle;
+	readonly admission: WindowAdmission;
 }
 
 /**
@@ -70,13 +87,16 @@ export class PropertyCommandDispatchService {
 			return { success: false, reason: 'Unsupported device type' };
 		}
 
-		const admissions = await this.admitWindows(updates, options);
+		const handles = options.windowHandles ?? (await this.admitWindows(updates, options))?.map(({ handle }) => handle);
 
-		if (admissions === null) {
+		if (handles === undefined) {
 			return { success: false, reason: 'Canonical property target is invalid or conflicts within the batch' };
 		}
+		if (options.windowHandles !== undefined && !(await this.verifyPreopenedWindows(updates, handles))) {
+			this.failOwned(handles);
 
-		const handles = admissions.handles;
+			return { success: false, reason: 'Canonical property target changed before dispatch' };
+		}
 
 		try {
 			const success = await platform.processBatch([...updates]);
@@ -95,10 +115,32 @@ export class PropertyCommandDispatchService {
 		}
 	}
 
+	/**
+	 * Opens the generation that an API PATCH will later dispatch. The caller uses the returned receipt
+	 * only for a direct source with a known baseline; projections and authoritative sources remain
+	 * command-only and cannot fabricate source measurements.
+	 */
+	async prepareApiCommand(update: IDevicePropertyData, ttlMs: number): Promise<PreparedApiPropertyCommand | null> {
+		const admitted = await this.admitWindows([update], { ttlMs });
+		const first = admitted?.[0];
+
+		if (first === undefined) {
+			return null;
+		}
+
+		return {
+			handle: first.handle,
+			canonicalPropertyId: first.admission.canonicalPropertyId,
+			baseline: first.admission.baseline,
+			optimisticEligible:
+				first.admission.canonicalPropertyId === update.property.id && first.admission.baseline !== null,
+		};
+	}
+
 	private async admitWindows(
 		updates: readonly IDevicePropertyData[],
 		options: PropertyCommandDispatchOptions,
-	): Promise<{ handles: readonly PropertyCommandWindowHandle[] } | null> {
+	): Promise<readonly AdmittedWindow[] | null> {
 		return this.structureLock.runShared(async () => {
 			const requestedByCanonical = new Map<string, IDevicePropertyData[]>();
 
@@ -110,7 +152,7 @@ export class PropertyCommandDispatchService {
 				requestedByCanonical.set(canonicalPropertyId, requested);
 			}
 
-			const handles: PropertyCommandWindowHandle[] = [];
+			const admitted: AdmittedWindow[] = [];
 
 			for (const [canonicalPropertyId, requestedUpdates] of requestedByCanonical) {
 				const admission = await this.propertyStateCoordinator.run(canonicalPropertyId, async () =>
@@ -118,7 +160,7 @@ export class PropertyCommandDispatchService {
 				);
 
 				if (admission === null) {
-					this.failOwned(handles);
+					this.failOwned(admitted.map(({ handle }) => handle));
 
 					return null;
 				}
@@ -127,8 +169,8 @@ export class PropertyCommandDispatchService {
 					continue;
 				}
 
-				handles.push(
-					this.commandWindowService.open({
+				admitted.push({
+					handle: this.commandWindowService.open({
 						canonicalTarget: admission.canonicalTarget,
 						requestedTargets: admission.requestedTargets,
 						intentId: options.intentId,
@@ -136,10 +178,11 @@ export class PropertyCommandDispatchService {
 						previousValue: admission.previousValue,
 						ttlMs: options.ttlMs ?? 3_000,
 					}),
-				);
+					admission,
+				});
 			}
 
-			return { handles };
+			return admitted;
 		});
 	}
 
@@ -209,8 +252,41 @@ export class PropertyCommandDispatchService {
 			requestedTargets,
 			commandedValue,
 			previousValue: sourceProperty.value?.value ?? null,
+			baseline:
+				sourceProperty.value === null
+					? null
+					: new PropertyValueState(
+							sourceProperty.value.value,
+							sourceProperty.value.lastUpdated,
+							sourceProperty.value.trend,
+						),
 			eligible: writable && !authoritative,
 		};
+	}
+
+	/** Revalidates a receipt's requested alias/source identity before platform I/O without opening another generation. */
+	private async verifyPreopenedWindows(
+		updates: readonly IDevicePropertyData[],
+		handles: readonly PropertyCommandWindowHandle[],
+	): Promise<boolean> {
+		return this.structureLock.runShared(async () => {
+			for (const update of updates) {
+				const current = await this.channelsPropertiesService.findOne(update.property.id);
+				if (current === null) {
+					return false;
+				}
+
+				const canonicalPropertyId = this.valueSourceRegistry.resolve(current);
+				const handle = handles.find((candidate) => candidate.canonicalPropertyId === canonicalPropertyId);
+				const window = handle === undefined ? null : this.commandWindowService.get(canonicalPropertyId);
+
+				if (window === null || handle === undefined || window.generation !== handle.generation) {
+					return false;
+				}
+			}
+
+			return true;
+		});
 	}
 
 	private failOwned(handles: readonly PropertyCommandWindowHandle[]): void {
