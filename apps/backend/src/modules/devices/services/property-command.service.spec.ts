@@ -87,6 +87,7 @@ describe('PropertyCommandService', () => {
 	let channelsService: ChannelsService;
 	let channelsPropertiesService: ChannelsPropertiesService;
 	let platformRegistryService: PlatformRegistryService;
+	let propertyCommandDispatchService: PropertyCommandDispatchService;
 	let intentsService: IntentsService;
 	let propertyCommandWindowService: PropertyCommandWindowService;
 	let mockPlatform: IDevicePlatform;
@@ -216,6 +217,7 @@ describe('PropertyCommandService', () => {
 		channelsService = module.get<ChannelsService>(ChannelsService);
 		channelsPropertiesService = module.get<ChannelsPropertiesService>(ChannelsPropertiesService);
 		platformRegistryService = module.get<PlatformRegistryService>(PlatformRegistryService);
+		propertyCommandDispatchService = module.get<PropertyCommandDispatchService>(PropertyCommandDispatchService);
 		intentsService = module.get<IntentsService>(IntentsService);
 		propertyCommandWindowService = module.get<PropertyCommandWindowService>(PropertyCommandWindowService);
 
@@ -266,6 +268,22 @@ describe('PropertyCommandService', () => {
 
 		await expect(service.usesAuthoritativePropertyReadback(device, property, update)).resolves.toBe(false);
 		expect(readbackSpy).toHaveBeenCalledWith(device, expect.objectContaining({ value: true }));
+	});
+
+	it('treats API receipt preparation exceptions as command-only dispatches', async () => {
+		const device = toInstance(MockDevice, mockDevice);
+		const channel = toInstance(MockChannel, mockChannel);
+		const property = toInstance(MockChannelProperty, mockChannelProperty);
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(device);
+		jest
+			.spyOn(propertyCommandDispatchService, 'prepareApiCommand')
+			.mockRejectedValue(new Error('admission unavailable'));
+
+		await expect(service.prepareApiPropertyCommand(device, channel, property, true)).resolves.toBeNull();
+		expect(loggerWarnSpy).toHaveBeenCalledWith(
+			expect.stringContaining('Could not prepare optimistic receipt'),
+			expect.objectContaining({ tag: 'devices-module' }),
+		);
 	});
 
 	it('should validate and process a valid command', async () => {

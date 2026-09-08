@@ -37,7 +37,7 @@ import {
 	ChannelsPropertiesTypeMapperService,
 } from './channels.properties-type-mapper.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
-import { PropertyCommandWindowService } from './property-command-window.service';
+import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService, type PropertyValueWriteResult } from './property-value.service';
@@ -120,6 +120,11 @@ export interface ChannelPropertyUpdateOptions {
 	beforeValuePersistence?: () => Promise<void>;
 	valueTimestamp?: Date;
 	resolveValueTimestamp?: () => Date;
+	/** Internal API PATCH receipt. Command-origin writes bypass provider read-back classification. */
+	commandOrigin?: {
+		readonly handle: PropertyCommandWindowHandle;
+		readonly baseline: PropertyValueState;
+	};
 }
 
 interface WindowedValueCommitResult {
@@ -971,10 +976,13 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 					return strictResult ?? this.propertyValueService.writeWithState(raw, updateDto.value, valueTimestamp);
 				};
-				const windowed = await this.commitWindowedProviderValue(raw, updateDto.value, {
-					unwindowed: writeWithoutWindow,
-					windowed: writeWithWindow,
-				});
+				const windowed =
+					options.commandOrigin === undefined
+						? await this.commitWindowedProviderValue(raw, updateDto.value, {
+								unwindowed: writeWithoutWindow,
+								windowed: writeWithWindow,
+							})
+						: await this.commitCommandOriginValue(raw, updateDto.value, options.commandOrigin, writeWithWindow);
 				valueChanged = windowed.changed;
 				persistedValueState = windowed.state;
 				forceConfirmationValueEvent = windowed.forceValueEvent;
@@ -1135,6 +1143,37 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		return { ...result, held: false, forceValueEvent: firstConfirmation };
 	}
 
+	/**
+	 * Persists a controller-originated optimistic PATCH without treating it as a provider report.
+	 * A stale receipt is deliberately a no-op: a newer command or accepted report already owns truth.
+	 */
+	private async commitCommandOriginValue(
+		property: ChannelPropertyEntity,
+		value: string | number | boolean | null,
+		origin: NonNullable<ChannelPropertyUpdateOptions['commandOrigin']>,
+		write: () => Promise<PropertyValueWriteResult>,
+	): Promise<WindowedValueCommitResult> {
+		if (this.valueSourceRegistry.resolve(property) !== origin.handle.canonicalPropertyId) {
+			return { changed: false, state: null, held: false, forceValueEvent: false };
+		}
+
+		const window = this.propertyCommandWindowService.get(origin.handle.canonicalPropertyId);
+		if (window === null || window.generation !== origin.handle.generation || window.state !== 'pending') {
+			return { changed: false, state: null, held: false, forceValueEvent: false };
+		}
+
+		const result = await write();
+
+		if (result.changed && result.state !== null) {
+			this.propertyCommandWindowService.attachPatchReceipt(origin.handle, {
+				baseline: origin.baseline,
+				optimisticState: result.state,
+			});
+		}
+
+		return { ...result, held: false, forceValueEvent: false };
+	}
+
 	private async recoverExpiredCommandWindows(): Promise<void> {
 		const handles = this.propertyCommandWindowService.sweep();
 
@@ -1142,7 +1181,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			await this.structureLock.runShared(() =>
 				this.propertyStateCoordinator.run(handle.canonicalPropertyId, async () => {
 					const recovery = this.propertyCommandWindowService.getRecovery(handle);
-					if (recovery === null || recovery.heldReceipt === null) {
+					if (recovery === null) {
 						return;
 					}
 
@@ -1165,9 +1204,22 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 						return;
 					}
 
-					const result = await this.propertyValueService.writeWithState(property, recovery.heldReceipt.value);
+					const result =
+						recovery.heldReceipt !== null
+							? await this.propertyValueService.writeWithState(property, recovery.heldReceipt.value)
+							: recovery.patchReceipt !== null
+								? await this.propertyValueService.writeStrictIfPersistedDifferent(
+										property,
+										recovery.patchReceipt.baseline.value,
+										recovery.patchReceipt.optimisticState,
+									)
+								: null;
 
-					if (result.state === null || this.propertyCommandWindowService.getRecovery(handle) === null) {
+					if (
+						result === null ||
+						result.state === null ||
+						this.propertyCommandWindowService.getRecovery(handle) === null
+					) {
 						return;
 					}
 
@@ -1226,6 +1278,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 		return (
 			!options.strictValuePersistence &&
+			options.commandOrigin === undefined &&
 			!options.resolveValueTimestamp &&
 			!options.valueTimestamp &&
 			updateDto.value !== undefined &&

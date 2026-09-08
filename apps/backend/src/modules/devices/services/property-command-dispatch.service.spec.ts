@@ -159,6 +159,34 @@ describe('PropertyCommandDispatchService', () => {
 		expect(windows.get(sourceProperty.id)).toBeNull();
 	});
 
+	it('fails a pre-opened receipt when the source becomes read-only before dispatch', async () => {
+		const prepared = await service.prepareApiCommand(update(), 3_000);
+		properties.findOne.mockResolvedValue({
+			...sourceProperty,
+			permissions: [PermissionType.READ_ONLY],
+		} as ChannelPropertyEntity);
+
+		await expect(
+			service.dispatchBatch([update()], { windowHandles: prepared === null ? [] : [prepared.handle] }),
+		).resolves.toEqual(expect.objectContaining({ success: false }));
+		expect(platform.processBatch).not.toHaveBeenCalled();
+		expect(windows.get(sourceProperty.id)).toBeNull();
+	});
+
+	it('fails a pre-opened receipt when the source data type no longer accepts its command value', async () => {
+		const prepared = await service.prepareApiCommand(update(), 3_000);
+		properties.findOne.mockResolvedValue({
+			...sourceProperty,
+			dataType: DataTypeType.STRING,
+		} as ChannelPropertyEntity);
+
+		await expect(
+			service.dispatchBatch([update()], { windowHandles: prepared === null ? [] : [prepared.handle] }),
+		).resolves.toEqual(expect.objectContaining({ success: false }));
+		expect(platform.processBatch).not.toHaveBeenCalled();
+		expect(windows.get(sourceProperty.id)).toBeNull();
+	});
+
 	it('does not open a generic window for an authoritative source property', async () => {
 		sources.set('virtual-alias', sourceProperty.id);
 		platformRegistry.usesAuthoritativePropertyReadback.mockReturnValue(true);

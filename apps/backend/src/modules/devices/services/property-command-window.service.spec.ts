@@ -78,12 +78,65 @@ describe('PropertyCommandWindowService', () => {
 
 	it('does not let an old ABA generation close the latest command', () => {
 		const first = open({ commandedValue: true });
+		service.attachPatchReceipt(first, {
+			baseline: { value: false, lastUpdated: '2026-09-08T12:00:00.000Z', trend: null },
+			optimisticState: { value: true, lastUpdated: '2026-09-08T12:00:00.100Z', trend: null },
+		});
 		const second = open({ commandedValue: false });
 		const third = open({ commandedValue: true });
 
 		expect(service.fail(first)).toBe(false);
 		expect(service.fail(second)).toBe(false);
 		expect(service.get(third.canonicalPropertyId)?.generation).toBe(third.generation);
+		expect(service.get(third.canonicalPropertyId)?.rollbackBaseline?.value).toBe(false);
+		expect(service.get(third.canonicalPropertyId)?.patchReceipt).toBeNull();
+	});
+
+	it('does not recover a prior PATCH when replacement persistence fails before dispatch', () => {
+		const first = open({ commandedValue: true });
+		service.attachPatchReceipt(first, {
+			baseline: { value: false, lastUpdated: '2026-09-08T12:00:00.000Z', trend: null },
+			optimisticState: { value: true, lastUpdated: '2026-09-08T12:00:00.100Z', trend: null },
+		});
+		const replacement = open({ commandedValue: false });
+
+		expect(replacement.generation).not.toBe(first.generation);
+		expect(service.get(replacement.canonicalPropertyId)?.rollbackBaseline?.value).toBe(false);
+		expect(service.fail(replacement)).toBe(true);
+		expect(service.getRecovery(replacement)).toBeNull();
+		expect(service.fail(first)).toBe(false);
+	});
+
+	it('keeps the last reported rollback baseline across two failed optimistic generations', () => {
+		const first = open({ commandedValue: true });
+		service.attachPatchReceipt(first, {
+			baseline: { value: false, lastUpdated: '2026-09-08T12:00:00.000Z', trend: null },
+			optimisticState: { value: true, lastUpdated: '2026-09-08T12:00:00.100Z', trend: null },
+		});
+		const second = open({ commandedValue: false });
+		service.attachPatchReceipt(second, {
+			baseline: { value: true, lastUpdated: '2026-09-08T12:00:00.100Z', trend: null },
+			optimisticState: { value: false, lastUpdated: '2026-09-08T12:00:00.200Z', trend: null },
+		});
+
+		expect(service.fail(first)).toBe(false);
+		expect(service.fail(second)).toBe(true);
+		expect(service.getRecovery(second)?.patchReceipt).toEqual(
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			expect.objectContaining({ baseline: expect.objectContaining({ value: false }) }),
+		);
+	});
+
+	it('lets a provider confirmation win over a late API failure', () => {
+		const handle = open();
+		service.attachPatchReceipt(handle, {
+			baseline: { value: false, lastUpdated: '2026-09-08T12:00:00.000Z', trend: null },
+			optimisticState: { value: true, lastUpdated: '2026-09-08T12:00:00.100Z', trend: null },
+		});
+		service.confirm(handle, { value: true, receivedAt: Date.now() + 100 });
+
+		expect(service.fail(handle)).toBe(false);
+		expect(service.getRecovery(handle)).toBeNull();
 	});
 
 	it('only lets the owning invocation fail an unconfirmed generation', () => {
@@ -106,6 +159,22 @@ describe('PropertyCommandWindowService', () => {
 
 		expect(service.completeRecovery(handle)).toBe(true);
 		expect(service.getRecovery(handle)).toBeNull();
+	});
+
+	it('retains an optimistic PATCH fallback for its owning failed generation', () => {
+		const handle = open({ ttlMs: 100 });
+		expect(
+			service.attachPatchReceipt(handle, {
+				baseline: { value: false, lastUpdated: '2026-09-08T12:00:00.000Z', trend: null },
+				optimisticState: { value: true, lastUpdated: '2026-09-08T12:00:00.100Z', trend: null },
+			}),
+		).toBe(true);
+
+		expect(service.fail(handle)).toBe(true);
+		expect(service.getRecovery(handle)?.patchReceipt).toEqual(
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			expect.objectContaining({ optimisticState: expect.objectContaining({ value: true }) }),
+		);
 	});
 
 	it('cancels a pending recovery when a newer generation replaces it', () => {

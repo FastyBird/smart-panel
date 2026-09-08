@@ -373,6 +373,7 @@ export class ChannelsPropertiesController {
 
 		const commandValue = dtoInstance.value;
 		const effectivePropertyUpdate = { ...dtoInstance };
+		let commandReceipt: Awaited<ReturnType<PropertyCommandService['prepareApiPropertyCommand']>> = null;
 		if (
 			typeof commandValue !== 'undefined' &&
 			commandValue !== null &&
@@ -383,10 +384,25 @@ export class ChannelsPropertiesController {
 			))
 		) {
 			dtoInstance.value = undefined;
+		} else if (typeof commandValue !== 'undefined' && commandValue !== null) {
+			commandReceipt = await this.propertyCommandService.prepareApiPropertyCommand(
+				channel.device,
+				channel,
+				property,
+				commandValue,
+			);
+
+			if (!commandReceipt?.optimisticEligible || commandReceipt.baseline === null) {
+				dtoInstance.value = undefined;
+			}
 		}
 
 		try {
-			const updatedProperty = await this.channelsPropertiesService.update(property.id, dtoInstance);
+			const updateOptions =
+				commandReceipt?.optimisticEligible && commandReceipt.baseline !== null
+					? { commandOrigin: { handle: commandReceipt.handle, baseline: commandReceipt.baseline } }
+					: undefined;
+			const updatedProperty = await this.channelsPropertiesService.update(property.id, dtoInstance, updateOptions);
 
 			this.logger.debug(`Successfully updated property id=${updatedProperty.id} for channelId=${channel.id}`);
 
@@ -394,11 +410,17 @@ export class ChannelsPropertiesController {
 			if (typeof commandValue !== 'undefined' && commandValue !== null) {
 				const deviceId = typeof channel.device === 'string' ? channel.device : channel.device.id;
 
-				this.propertyCommandService
-					.processApiPropertyCommand(deviceId, channel.id, updatedProperty.id, commandValue)
-					.catch((err: Error) => {
-						this.logger.error(`Failed to send device command for property id=${updatedProperty.id}: ${err.message}`);
-					});
+				const command = this.propertyCommandService.processApiPropertyCommand(
+					deviceId,
+					channel.id,
+					updatedProperty.id,
+					commandValue,
+					commandReceipt ?? undefined,
+				);
+
+				command.catch((err: Error) => {
+					this.logger.error(`Failed to send device command for property id=${updatedProperty.id}: ${err.message}`);
+				});
 			}
 
 			const response = new ChannelPropertyResponseModel();
@@ -407,6 +429,10 @@ export class ChannelsPropertiesController {
 
 			return response;
 		} catch (error) {
+			if (commandReceipt !== null) {
+				this.propertyCommandService.failApiPropertyCommandReceipt(commandReceipt);
+			}
+
 			if (error instanceof DevicesException) {
 				throw new UnprocessableEntityException('Channel property could not be updated. Please try again later');
 			}

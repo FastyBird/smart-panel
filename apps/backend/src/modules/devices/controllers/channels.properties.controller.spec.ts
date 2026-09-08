@@ -21,6 +21,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../devices.constants';
+import { DevicesException } from '../devices.exceptions';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
@@ -133,6 +134,14 @@ describe('ChannelsPropertiesController', () => {
 					provide: PropertyCommandService,
 					useValue: {
 						processApiPropertyCommand: jest.fn().mockResolvedValue(undefined),
+						failApiPropertyCommandReceipt: jest.fn(),
+						prepareApiPropertyCommand: jest.fn().mockResolvedValue({
+							handle: { canonicalPropertyId: mockChannelProperty.id, generation: 'api-generation' },
+							canonicalPropertyId: mockChannelProperty.id,
+							baseline: { value: '22.5', lastUpdated: '2026-09-08T00:00:00.000Z', trend: null },
+							optimisticEligible: true,
+							ttlMs: 3_000,
+						}),
 						usesAuthoritativePropertyReadback: jest.fn().mockResolvedValue(false),
 					},
 				},
@@ -232,7 +241,7 @@ describe('ChannelsPropertiesController', () => {
 			const result = await controller.update(mockChannel.id, mockChannelProperty.id, { data: updateDto });
 
 			expect(result.data).toEqual(toInstance(ChannelPropertyEntity, mockChannelProperty));
-			expect(channelsPropertiesService.update).toHaveBeenCalledWith(mockChannelProperty.id, updateDto);
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(mockChannelProperty.id, updateDto, undefined);
 		});
 
 		it('should persist a command value for a command-only platform', async () => {
@@ -256,13 +265,98 @@ describe('ChannelsPropertiesController', () => {
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
 				mockChannelProperty.id,
 				expect.objectContaining({ type: 'mock', value: 'command-state' }),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				expect.objectContaining({ commandOrigin: expect.any(Object) }),
 			);
 			expect(propertyCommandService.processApiPropertyCommand).toHaveBeenCalledWith(
 				mockDevice.id,
 				mockChannel.id,
 				mockChannelProperty.id,
 				'command-state',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				expect.objectContaining({ handle: expect.any(Object) }),
 			);
+		});
+
+		it.each([false, 0, ''])(
+			'keeps a %p command value through receipt preparation and asynchronous dispatch',
+			async (value) => {
+				const updateDto = { type: 'mock', value } as UpdateChannelPropertyDto;
+				jest.spyOn(mapper, 'getMapping').mockReturnValue({
+					type: 'mock',
+					class: ChannelPropertyEntity,
+					createDto: CreateChannelPropertyDto,
+					updateDto: UpdateChannelPropertyDto,
+				});
+				jest
+					.spyOn(channelsService, 'findOne')
+					.mockResolvedValue(Object.assign(toInstance(ChannelEntity, mockChannel), { device: mockDevice }));
+
+				await controller.update(mockChannel.id, mockChannelProperty.id, { data: updateDto });
+
+				expect(propertyCommandService.prepareApiPropertyCommand).toHaveBeenCalledWith(
+					mockDevice,
+					expect.anything(),
+					expect.anything(),
+					value,
+				);
+				expect(propertyCommandService.processApiPropertyCommand).toHaveBeenCalledWith(
+					mockDevice.id,
+					mockChannel.id,
+					mockChannelProperty.id,
+					value,
+					expect.anything(),
+				);
+			},
+		);
+
+		it('keeps a null-baseline PATCH command-only while preserving its asynchronous response path', async () => {
+			const updateDto: UpdateChannelPropertyDto = { type: 'mock', value: 'command-state' };
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: ChannelPropertyEntity,
+				createDto: CreateChannelPropertyDto,
+				updateDto: UpdateChannelPropertyDto,
+			});
+			jest
+				.spyOn(channelsService, 'findOne')
+				.mockResolvedValue(Object.assign(toInstance(ChannelEntity, mockChannel), { device: mockDevice }));
+			jest.spyOn(propertyCommandService, 'prepareApiPropertyCommand').mockResolvedValue({
+				handle: { canonicalPropertyId: mockChannelProperty.id, generation: 'null-baseline' },
+				canonicalPropertyId: mockChannelProperty.id,
+				baseline: null,
+				optimisticEligible: false,
+				ttlMs: 3_000,
+			});
+
+			const result = await controller.update(mockChannel.id, mockChannelProperty.id, { data: updateDto });
+
+			expect(result.data).toEqual(toInstance(ChannelPropertyEntity, mockChannelProperty));
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+				mockChannelProperty.id,
+				expect.objectContaining({ value: undefined }),
+				undefined,
+			);
+		});
+
+		it('releases a prepared receipt when optimistic persistence fails before dispatch', async () => {
+			const updateDto: UpdateChannelPropertyDto = { type: 'mock', value: 'command-state' };
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: ChannelPropertyEntity,
+				createDto: CreateChannelPropertyDto,
+				updateDto: UpdateChannelPropertyDto,
+			});
+			jest
+				.spyOn(channelsService, 'findOne')
+				.mockResolvedValue(Object.assign(toInstance(ChannelEntity, mockChannel), { device: mockDevice }));
+			jest.spyOn(channelsPropertiesService, 'update').mockRejectedValue(new DevicesException('write failed'));
+
+			await expect(controller.update(mockChannel.id, mockChannelProperty.id, { data: updateDto })).rejects.toThrow(
+				'Channel property could not be updated',
+			);
+			expect(propertyCommandService.failApiPropertyCommandReceipt).toHaveBeenCalledWith(expect.any(Object));
+			expect(propertyCommandService.processApiPropertyCommand).not.toHaveBeenCalled();
 		});
 
 		it('should not persist a command value for an authoritative-readback platform', async () => {
@@ -287,6 +381,7 @@ describe('ChannelsPropertiesController', () => {
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
 				mockChannelProperty.id,
 				expect.objectContaining({ type: 'mock', value: undefined }),
+				undefined,
 			);
 			expect(propertyCommandService.usesAuthoritativePropertyReadback).toHaveBeenCalledWith(
 				mockDevice,
@@ -298,6 +393,7 @@ describe('ChannelsPropertiesController', () => {
 				mockChannel.id,
 				mockChannelProperty.id,
 				'reported-later',
+				undefined,
 			);
 		});
 
