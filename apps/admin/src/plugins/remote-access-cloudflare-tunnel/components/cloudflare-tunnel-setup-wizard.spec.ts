@@ -169,6 +169,18 @@ describe('CloudflareTunnelSetupWizard', () => {
 		expect(errorAlert?.props('title')).toBe('apt-get failed');
 	});
 
+	it('refetches status right after a successful install, so the polling fallback has something current even if the Setup.Progress websocket event is lost', async () => {
+		const wrapper = mountWizard('install');
+
+		fns.fetchStatus.mockClear();
+
+		await wrapper.findAllComponents({ name: 'ElButton' })[0].vm.$emit('click');
+		await flushPromises();
+
+		expect(fns.install).toHaveBeenCalled();
+		expect(fns.fetchStatus).toHaveBeenCalled();
+	});
+
 	describe('install error messages', () => {
 		it('surfaces the backend reason for a 422 (permanently unsupported platform)', async () => {
 			fns.install.mockRejectedValue(new RemoteAccessCloudflareTunnelApiException('Cloudflare Tunnel setup is unavailable on this platform.', 422));

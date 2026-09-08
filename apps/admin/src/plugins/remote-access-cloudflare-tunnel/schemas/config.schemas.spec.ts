@@ -45,6 +45,15 @@ describe('CloudflareTunnelConfigEditFormSchema', () => {
 		}
 	});
 
+	it('trims a padded hostname instead of rejecting it — the form field validates the trimmed value, so the schema must accept what the field already accepted', () => {
+		const result = CloudflareTunnelConfigEditFormSchema.safeParse(createConfig({ publicHostname: '  panel.example.com  ' }));
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.publicHostname).toBe('panel.example.com');
+		}
+	});
+
 	it('rejects a hostname with a scheme', () => {
 		const result = CloudflareTunnelConfigEditFormSchema.safeParse(createConfig({ publicHostname: 'https://panel.example.com' }));
 

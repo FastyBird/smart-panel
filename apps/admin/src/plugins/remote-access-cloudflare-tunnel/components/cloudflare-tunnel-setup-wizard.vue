@@ -345,6 +345,13 @@ const onInstall = async (): Promise<void> => {
 
 	try {
 		await install();
+
+		// install() only returns the job id - data.value.setup (what the polling fallback in
+		// useCloudflareTunnelSetup watches) stays whatever it was before this call until the
+		// next GET /status. The websocket Setup.Progress event usually arrives first, but if it
+		// is ever lost between here and its first tick, the polling fallback would never start
+		// without this - refetch immediately so it always has something current to watch.
+		await fetchStatus();
 	} catch (error) {
 		installErrorCode.value = error instanceof RemoteAccessCloudflareTunnelApiException ? error.errorCode : null;
 

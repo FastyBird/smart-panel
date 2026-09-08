@@ -1,9 +1,10 @@
 import type { FormInstance } from 'element-plus';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useConfigPluginEditForm } from '../../../modules/config/composables/useConfigPluginEditForm';
 import { CONFIG_MODULE_NAME } from '../../../modules/config/config.constants';
 import { REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME } from '../remote-access-cloudflare-tunnel.constants';
+import { CloudflareTunnelConfigEditFormSchema } from '../schemas/config.schemas';
 import type { ICloudflareTunnelConfigEditForm } from '../schemas/config.types';
 import type { ICloudflareTunnelConfig } from '../store/config.store.types';
 
@@ -42,7 +43,12 @@ const mockPlugin = {
 	name: 'Cloudflare Tunnel',
 	description: 'Description',
 	links: { documentation: '', devDocumentation: '', bugsTracking: '' },
-	elements: [{ type: 'config', schemas: {} }],
+	// The real plugin edit schema, not `{}` - `useConfigPluginEditForm.submit()` falls back to the
+	// generic `ConfigPluginEditFormSchema` (only `type`/`enabled`) whenever this is missing, which
+	// silently strips every Cloudflare-specific field (including `tunnelToken`) before `edit()` is
+	// ever called - a test using that fallback could not tell "the token survived being sent, then
+	// got cleared from the model" from "the token was never sent at all".
+	elements: [{ type: 'config', schemas: { pluginConfigEditFormSchema: CloudflareTunnelConfigEditFormSchema } }],
 	isCore: false,
 	modules: [CONFIG_MODULE_NAME],
 };
@@ -59,17 +65,27 @@ const validatedForm = (): FormInstance =>
 		validate: vi.fn().mockResolvedValue(true),
 	}) as unknown as FormInstance;
 
-const baseConfig: ICloudflareTunnelConfig = {
-	type: REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME,
-	enabled: true,
-	publicHostname: 'panel.example.com',
-	protocol: 'auto',
-	tunnelTokenConfigured: false,
-} as unknown as ICloudflareTunnelConfig;
+// A factory, not a shared constant: `useConfigPluginEditForm()` does `reactive(config)` on the
+// exact object passed in (never a clone), and `submit()`'s `reconcile()` step then mutates that
+// same object in place. A single module-level `baseConfig` object reused (even via a shallow
+// `{ ...baseConfig }` spread) would carry a previous test's mutations into the next one.
+const buildConfig = (overrides: Partial<ICloudflareTunnelConfig> = {}): ICloudflareTunnelConfig =>
+	({
+		type: REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME,
+		enabled: true,
+		publicHostname: 'panel.example.com',
+		protocol: 'auto',
+		tunnelTokenConfigured: false,
+		...overrides,
+	}) as unknown as ICloudflareTunnelConfig;
 
 describe('Cloudflare Tunnel config form - tunnel token retention (real useConfigPluginEditForm)', () => {
+	beforeEach(() => {
+		mockEdit.mockReset();
+	});
+
 	it('drops the typed tunnel token from the live model once the backend confirms the save', async () => {
-		const form = useConfigPluginEditForm<ICloudflareTunnelConfigEditForm>({ config: baseConfig });
+		const form = useConfigPluginEditForm<ICloudflareTunnelConfigEditForm>({ config: buildConfig() });
 
 		form.formEl.value = validatedForm();
 		form.model.tunnelToken = 'cf-tunnel-token-secret-value';
@@ -85,6 +101,13 @@ describe('Cloudflare Tunnel config form - tunnel token retention (real useConfig
 
 		await form.submit();
 
+		// Proves the typed token actually reached the backend - a false pass here (the token
+		// silently stripped by validation before ever being sent) would still leave the
+		// assertions below looking green for the wrong reason.
+		expect(mockEdit).toHaveBeenCalledWith(
+			expect.objectContaining({ data: expect.objectContaining({ tunnelToken: 'cf-tunnel-token-secret-value' }) })
+		);
+
 		// Left in place it would be sent again on the next save, and the field would still offer
 		// no way to notice the token had already been stored.
 		expect(form.model.tunnelToken).toBeUndefined();
@@ -92,26 +115,21 @@ describe('Cloudflare Tunnel config form - tunnel token retention (real useConfig
 		expect(JSON.stringify(form.model)).not.toContain('cf-tunnel-token-secret-value');
 	});
 
-	it('drops a staged removal (null) once the backend confirms the token was cleared', async () => {
+	it('rejects an explicit null token instead of silently clearing it - a tunnel cannot run without one, unlike an optional webhook URL', async () => {
+		// `ConfigSecretInput`'s remove control stages `null` for fields where that means "clear
+		// it" (e.g. an optional webhook URL). The tunnel token schema's own superRefine never
+		// treats `null` as a valid "retain" or "provide" state (see config.schemas.ts), so this
+		// documents the real, current contract: removal only happens through the plugin's own
+		// `POST /reset` ("Remove tunnel"), never through this generic edit form.
 		const form = useConfigPluginEditForm<ICloudflareTunnelConfigEditForm>({
-			config: { ...baseConfig, tunnelTokenConfigured: true } as unknown as ICloudflareTunnelConfig,
+			config: buildConfig({ tunnelTokenConfigured: true }),
 		});
 
 		form.formEl.value = validatedForm();
-		// What `ConfigSecretInput`'s remove control stages: null is the one value that asks for a removal.
 		form.model.tunnelToken = null;
 
-		mockEdit.mockResolvedValueOnce({
-			type: REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME,
-			enabled: true,
-			publicHostname: 'panel.example.com',
-			protocol: 'auto',
-			tunnelTokenConfigured: false,
-		});
+		await expect(form.submit()).rejects.toThrow();
 
-		await form.submit();
-
-		expect(form.model.tunnelToken).toBeUndefined();
-		expect(form.model.tunnelTokenConfigured).toBe(false);
+		expect(mockEdit).not.toHaveBeenCalled();
 	});
 });
