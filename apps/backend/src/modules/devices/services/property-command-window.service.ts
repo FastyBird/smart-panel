@@ -46,6 +46,8 @@ export interface PropertyCommandWindow {
 	readonly lastReceipt: PropertyCommandReceipt | null;
 	readonly heldReceipt: PropertyCommandReceipt | null;
 	readonly recoveryReceipt: PropertyCommandReceipt | null;
+	/** Last accepted provider baseline inherited by a replacement generation; not recovery authority on its own. */
+	readonly rollbackBaseline: PropertyValueState | null;
 	readonly patchReceipt: PropertyCommandPatchReceipt | null;
 	readonly openedAt: number;
 	readonly expiresAt: number;
@@ -103,9 +105,10 @@ export class PropertyCommandWindowService {
 			lastReceipt: null,
 			heldReceipt: null,
 			recoveryReceipt: null,
-			// A replacement command's observed baseline remains the oldest unconfirmed PATCH baseline.
-			// Its own optimistic revision is attached only after persistence succeeds.
-			patchReceipt: current?.patchReceipt ?? null,
+			// A replacement keeps the oldest unconfirmed provider baseline, but never inherits another
+			// operation's persisted receipt. Only its own successful optimistic write gains recovery authority.
+			rollbackBaseline: current?.rollbackBaseline ?? current?.patchReceipt?.baseline ?? null,
+			patchReceipt: null,
 			openedAt: now,
 			expiresAt: now + ttlMs,
 			state: 'pending',
@@ -133,6 +136,7 @@ export class PropertyCommandWindowService {
 			current.confirmationExpiresAt = receipt.receivedAt + PROPERTY_COMMAND_CONFIRMATION_GRACE_MS;
 			current.lastReceipt = freezeReceipt(receipt);
 			current.heldReceipt = null;
+			current.rollbackBaseline = null;
 			current.patchReceipt = null;
 		}
 
@@ -147,8 +151,10 @@ export class PropertyCommandWindowService {
 			return false;
 		}
 
+		const baseline = current.rollbackBaseline ?? receipt.baseline;
+		current.rollbackBaseline = freezeValueState(baseline);
 		current.patchReceipt = freezePatchReceipt({
-			baseline: current.patchReceipt?.baseline ?? receipt.baseline,
+			baseline,
 			optimisticState: receipt.optimisticState,
 		});
 
@@ -310,6 +316,7 @@ export class PropertyCommandWindowService {
 			lastReceipt: window.lastReceipt === null ? null : freezeReceipt(window.lastReceipt),
 			heldReceipt: window.heldReceipt === null ? null : freezeReceipt(window.heldReceipt),
 			recoveryReceipt: window.recoveryReceipt === null ? null : freezeReceipt(window.recoveryReceipt),
+			rollbackBaseline: window.rollbackBaseline === null ? null : freezeValueState(window.rollbackBaseline),
 			patchReceipt: window.patchReceipt === null ? null : freezePatchReceipt(window.patchReceipt),
 		});
 	}

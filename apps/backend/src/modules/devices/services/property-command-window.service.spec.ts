@@ -88,7 +88,23 @@ describe('PropertyCommandWindowService', () => {
 		expect(service.fail(first)).toBe(false);
 		expect(service.fail(second)).toBe(false);
 		expect(service.get(third.canonicalPropertyId)?.generation).toBe(third.generation);
-		expect(service.get(third.canonicalPropertyId)?.patchReceipt?.baseline.value).toBe(false);
+		expect(service.get(third.canonicalPropertyId)?.rollbackBaseline?.value).toBe(false);
+		expect(service.get(third.canonicalPropertyId)?.patchReceipt).toBeNull();
+	});
+
+	it('does not recover a prior PATCH when replacement persistence fails before dispatch', () => {
+		const first = open({ commandedValue: true });
+		service.attachPatchReceipt(first, {
+			baseline: { value: false, lastUpdated: '2026-09-08T12:00:00.000Z', trend: null },
+			optimisticState: { value: true, lastUpdated: '2026-09-08T12:00:00.100Z', trend: null },
+		});
+		const replacement = open({ commandedValue: false });
+
+		expect(replacement.generation).not.toBe(first.generation);
+		expect(service.get(replacement.canonicalPropertyId)?.rollbackBaseline?.value).toBe(false);
+		expect(service.fail(replacement)).toBe(true);
+		expect(service.getRecovery(replacement)).toBeNull();
+		expect(service.fail(first)).toBe(false);
 	});
 
 	it('keeps the last reported rollback baseline across two failed optimistic generations', () => {
