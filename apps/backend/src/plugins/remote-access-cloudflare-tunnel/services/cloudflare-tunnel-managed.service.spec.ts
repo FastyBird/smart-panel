@@ -520,11 +520,30 @@ describe('CloudflareTunnelManagedService', () => {
 		});
 
 		it('reports failure with the error reason when stopping fails', async () => {
+			// Started first: factoryReset() now goes through the full stop() lifecycle, which
+			// no-ops (never touching processService.stop()) while already 'stopped' — the
+			// default state before start() has ever run.
+			await service.start();
 			processService.stop.mockRejectedValue(new Error('kill failed'));
 
 			const result = await service.factoryReset();
 
 			expect(result).toEqual({ success: false, reason: 'kill failed' });
+		});
+
+		it('stops the managed service (not just the process), so a pending poll tick cannot respawn cloudflared afterwards', async () => {
+			await service.start();
+
+			await service.factoryReset();
+
+			processService.isRunning.mockReturnValue(false);
+			processService.start.mockClear();
+
+			// factoryReset() -> stop() clears the poll timer entirely, so there is no pending
+			// tick left to fire at all — advancing time proves nothing tries to respawn it.
+			await jest.advanceTimersByTimeAsync(30_000);
+
+			expect(processService.start).not.toHaveBeenCalled();
 		});
 	});
 

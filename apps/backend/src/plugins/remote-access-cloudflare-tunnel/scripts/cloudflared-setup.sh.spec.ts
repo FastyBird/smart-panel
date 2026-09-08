@@ -89,7 +89,12 @@ describe('cloudflared-setup.sh --dry-run', () => {
 			const patchedSource = realSource
 				.replaceAll('/etc/os-release', fakeOsRelease)
 				.replaceAll('/usr/share/keyrings/cloudflare-main.gpg', fakeKeyring)
-				.replaceAll('/etc/apt/sources.list.d/cloudflared.list', fakeList);
+				.replaceAll('/etc/apt/sources.list.d/cloudflared.list', fakeList)
+				// Force the install branch regardless of whether the host actually has
+				// cloudflared on /usr/bin or /bin already (a real machine testing the
+				// WireGuard/other milestones of this same epic plausibly does) — the PATH
+				// override below cannot guarantee that on its own.
+				.replace('if command -v cloudflared >/dev/null 2>&1; then', 'if false; then');
 
 			expect(patchedSource).not.toBe(realSource); // sanity: the replace actually matched
 
@@ -104,7 +109,6 @@ describe('cloudflared-setup.sh --dry-run', () => {
 			writeFileSync(join(fakeBinDir, 'curl'), '#!/bin/bash\nexit 1\n');
 			chmodSync(join(fakeBinDir, 'curl'), 0o755);
 
-			// `cloudflared` must not already be on PATH for the install branch to run.
 			expect(() =>
 				execFileSync('bash', [scriptCopy], {
 					env: {

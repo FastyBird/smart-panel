@@ -261,10 +261,18 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 		return ready !== null;
 	}
 
-	/** Registered with `FactoryResetRegistryService` by the plugin module — stops the process; the token/hostname themselves are cleared by `POST /reset` through `ConfigService`, not here. */
+	/**
+	 * Registered with `FactoryResetRegistryService` by the plugin module — stops the process
+	 * through the full managed-service `stop()`, not `processService.stop()` directly: this
+	 * service's poller self-heals a `started`-but-not-running process (see `pollTick()`), so
+	 * stopping only the child process while leaving `this.state === 'started'` would let a
+	 * pending tick see valid requirements and respawn `cloudflared` moments after this reports
+	 * success. `stop()` clears the poll timer and moves `this.state` to `stopped` first.
+	 * The token/hostname themselves are cleared by `POST /reset` through `ConfigService`, not here.
+	 */
 	async factoryReset(): Promise<{ success: boolean; reason?: string }> {
 		try {
-			await this.processService.stop();
+			await this.stop();
 
 			return { success: true };
 		} catch (error) {
