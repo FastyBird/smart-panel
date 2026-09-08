@@ -95,4 +95,38 @@ describe('PropertyCommandWindowService', () => {
 		expect(service.fail(handle)).toBe(false);
 		expect(service.get(handle.canonicalPropertyId)).not.toBeNull();
 	});
+
+	it('retains a held pending report for token-fenced recovery on expiry', () => {
+		const handle = open({ ttlMs: 100 });
+		service.hold(handle, { value: false, receivedAt: Date.now() });
+
+		jest.advanceTimersByTime(100);
+		expect(service.sweep()).toEqual([handle]);
+		expect(service.getRecovery(handle)?.heldReceipt).toEqual(expect.objectContaining({ value: false }));
+
+		expect(service.completeRecovery(handle)).toBe(true);
+		expect(service.getRecovery(handle)).toBeNull();
+	});
+
+	it('cancels a pending recovery when a newer generation replaces it', () => {
+		const first = open({ ttlMs: 100 });
+		service.hold(first, { value: false, receivedAt: Date.now() });
+		jest.advanceTimersByTime(100);
+		service.sweep();
+
+		const second = open({ commandedValue: false });
+		expect(service.getRecovery(first)).toBeNull();
+		expect(service.get(second.canonicalPropertyId)?.generation).toBe(second.generation);
+	});
+
+	it('bounds a failed recovery to one original command TTL', () => {
+		const handle = open({ ttlMs: 100 });
+		service.hold(handle, { value: false, receivedAt: Date.now() });
+		jest.advanceTimersByTime(100);
+		expect(service.sweep()).toEqual([handle]);
+
+		jest.advanceTimersByTime(100);
+		expect(service.sweep()).toEqual([]);
+		expect(service.getRecovery(handle)).toBeNull();
+	});
 });
