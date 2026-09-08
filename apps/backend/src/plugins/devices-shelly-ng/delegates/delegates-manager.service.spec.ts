@@ -14,6 +14,7 @@ import { Logger } from '@nestjs/common';
 
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
+import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { CreateShellyNgDeviceDto } from '../dto/create-device.dto';
 import {
 	ShellyNgChannelEntity,
@@ -326,6 +327,7 @@ describe('DelegatesManagerService', () => {
 		} as ShellyNgChannelEntity;
 
 		const statusProp = {
+			id: uuid(),
 			channel: deviceInfoCh.id,
 			category: PropertyCategory.STATUS,
 			identifier: 'status',
@@ -333,6 +335,7 @@ describe('DelegatesManagerService', () => {
 		} as ShellyNgChannelPropertyEntity;
 
 		const linkQProp = {
+			id: uuid(),
 			channel: deviceInfoCh.id,
 			category: PropertyCategory.LINK_QUALITY,
 			identifier: 'link_quality',
@@ -347,6 +350,7 @@ describe('DelegatesManagerService', () => {
 		} as ShellyNgChannelEntity;
 
 		const switchOn = {
+			id: uuid(),
 			channel: switchCh.id,
 			category: PropertyCategory.ON,
 			identifier: 'output',
@@ -407,16 +411,20 @@ describe('DelegatesManagerService', () => {
 		delegate.emitValue('switch:0', 'output', true);
 
 		const updateCalls = (channelsPropertiesService.update as jest.Mock).mock.calls;
-		const updates = updateCalls.map(([, payload]) => payload as ShellyNgChannelPropertyEntity);
-
 		expect(
-			updates.some(
-				(p: any) =>
-					p && p.identifier === linkQProp.identifier && typeof p.value === 'number' && p.value > 0 && p.value <= 100,
+			updateCalls.some(
+				([id, payload]: [string, { value?: unknown }]) =>
+					id === linkQProp.id && typeof payload.value === 'number' && payload.value > 0 && payload.value <= 100,
 			),
 		).toBe(true);
 
-		expect(updates.some((p: any) => p && p.identifier === switchOn.identifier && p.value === true)).toBe(true);
+		expect(
+			updateCalls.some(([id, payload]: [string, { value?: unknown }]) => id === switchOn.id && payload.value === true),
+		).toBe(true);
+		const valueOnlyReport = updateCalls.find(
+			([id, payload]: [string, { value?: unknown }]) => id === switchOn.id && payload.value === true,
+		)?.[1];
+		expect(valueOnlyReport).toEqual({ type: DEVICES_SHELLY_NG_TYPE, value: true });
 
 		expect(updateCalls.map(([id]: [string]) => id)).toEqual(expect.arrayContaining([linkQProp.id, switchOn.id]));
 
@@ -1264,8 +1272,8 @@ describe('DelegatesManagerService', () => {
 
 		function updatesFor(identifier: string): unknown[] {
 			return (channelsPropertiesService.update as jest.Mock).mock.calls
-				.map(([, payload]: [string, { identifier?: string; value?: unknown }]) => payload)
-				.filter((payload) => payload?.identifier === identifier);
+				.filter(([id]: [string]) => id === identifier)
+				.map(([, payload]: [string, { value?: unknown }]) => payload);
 		}
 
 		test('switch: aenergy.total leaf writes consumption; the bare aenergy object does not', async () => {
@@ -1290,13 +1298,13 @@ describe('DelegatesManagerService', () => {
 				delegate.emitValue('switch:0', 'aenergy', { total: 12.345 });
 				jest.advanceTimersByTime(300);
 
-				expect(updatesFor(consumptionProp.identifier)).toHaveLength(0);
+				expect(updatesFor(consumptionProp.id)).toHaveLength(0);
 
 				// The flattened leaf carries the real scalar and is the only thing that writes.
 				delegate.emitValue('switch:0', 'aenergy.total', 12.345);
 				jest.advanceTimersByTime(300);
 
-				const writes = updatesFor(consumptionProp.identifier) as { value: unknown }[];
+				const writes = updatesFor(consumptionProp.id) as { value: unknown }[];
 				expect(writes).toHaveLength(1);
 				expect(writes[0].value).toBe(12.345);
 			} finally {
@@ -1325,12 +1333,12 @@ describe('DelegatesManagerService', () => {
 				delegate.emitValue('pm1:0', 'aenergy', { total: 45.6 });
 				jest.advanceTimersByTime(300);
 
-				expect(updatesFor(consumptionProp.identifier)).toHaveLength(0);
+				expect(updatesFor(consumptionProp.id)).toHaveLength(0);
 
 				delegate.emitValue('pm1:0', 'aenergy.total', 45.6);
 				jest.advanceTimersByTime(300);
 
-				const writes = updatesFor(consumptionProp.identifier) as { value: unknown }[];
+				const writes = updatesFor(consumptionProp.id) as { value: unknown }[];
 				expect(writes).toHaveLength(1);
 				expect(writes[0].value).toBe(45.6);
 			} finally {
@@ -1362,7 +1370,7 @@ describe('DelegatesManagerService', () => {
 				delegate.emitValue('devicepower:0', 'battery.percent', 87);
 				jest.advanceTimersByTime(300);
 
-				const writes = updatesFor(batteryProp.identifier) as { value: unknown }[];
+				const writes = updatesFor(batteryProp.id) as { value: unknown }[];
 				expect(writes).toHaveLength(1);
 				expect(writes[0].value).toBe(87);
 			} finally {
@@ -1464,8 +1472,8 @@ describe('DelegatesManagerService', () => {
 
 		function updatesFor(identifier: string): unknown[] {
 			return (channelsPropertiesService.update as jest.Mock).mock.calls
-				.map(([, payload]: [string, { identifier?: string; value?: unknown }]) => payload)
-				.filter((payload) => payload?.identifier === identifier);
+				.filter(([id]: [string]) => id === identifier)
+				.map(([, payload]: [string, { value?: unknown }]) => payload);
 		}
 
 		function arrangeCoverWithElectricalEntities() {
@@ -1613,11 +1621,11 @@ describe('DelegatesManagerService', () => {
 				delegate.emitValue('cover:0', 'aenergy.total', 3.21);
 				jest.advanceTimersByTime(300);
 
-				const powerWrites = updatesFor(apowerProp.identifier) as { value: unknown }[];
+				const powerWrites = updatesFor(apowerProp.id) as { value: unknown }[];
 				expect(powerWrites).toHaveLength(1);
 				expect(powerWrites[0].value).toBe(42.5);
 
-				const energyWrites = updatesFor(consumptionProp.identifier) as { value: unknown }[];
+				const energyWrites = updatesFor(consumptionProp.id) as { value: unknown }[];
 				expect(energyWrites).toHaveLength(1);
 				expect(energyWrites[0].value).toBe(3.21);
 			} finally {
@@ -1650,8 +1658,8 @@ describe('DelegatesManagerService', () => {
 				delegate.emitValue('light:0', 'aenergy.total', 4.56);
 				jest.advanceTimersByTime(300);
 
-				expect((updatesFor(apowerProp.identifier) as { value: unknown }[])[0].value).toBe(12.3);
-				expect((updatesFor(consumptionProp.identifier) as { value: unknown }[])[0].value).toBe(4.56);
+				expect((updatesFor(apowerProp.id) as { value: unknown }[])[0].value).toBe(12.3);
+				expect((updatesFor(consumptionProp.id) as { value: unknown }[])[0].value).toBe(4.56);
 			} finally {
 				jest.useRealTimers();
 			}
@@ -1682,8 +1690,8 @@ describe('DelegatesManagerService', () => {
 				delegate.emitValue('rgb:0', 'aenergy.total', 2.34);
 				jest.advanceTimersByTime(300);
 
-				expect((updatesFor(apowerProp.identifier) as { value: unknown }[])[0].value).toBe(8.1);
-				expect((updatesFor(consumptionProp.identifier) as { value: unknown }[])[0].value).toBe(2.34);
+				expect((updatesFor(apowerProp.id) as { value: unknown }[])[0].value).toBe(8.1);
+				expect((updatesFor(consumptionProp.id) as { value: unknown }[])[0].value).toBe(2.34);
 			} finally {
 				jest.useRealTimers();
 			}
@@ -1714,8 +1722,8 @@ describe('DelegatesManagerService', () => {
 				delegate.emitValue('rgbw:0', 'aenergy.total', 6.78);
 				jest.advanceTimersByTime(300);
 
-				expect((updatesFor(apowerProp.identifier) as { value: unknown }[])[0].value).toBe(15.7);
-				expect((updatesFor(consumptionProp.identifier) as { value: unknown }[])[0].value).toBe(6.78);
+				expect((updatesFor(apowerProp.id) as { value: unknown }[])[0].value).toBe(15.7);
+				expect((updatesFor(consumptionProp.id) as { value: unknown }[])[0].value).toBe(6.78);
 			} finally {
 				jest.useRealTimers();
 			}
@@ -1742,7 +1750,7 @@ describe('DelegatesManagerService', () => {
 				delegate.emitValue('cct:0', 'apower', 9.9);
 				jest.advanceTimersByTime(300);
 
-				expect((updatesFor(apowerProp.identifier) as { value: unknown }[])[0].value).toBe(9.9);
+				expect((updatesFor(apowerProp.id) as { value: unknown }[])[0].value).toBe(9.9);
 			} finally {
 				jest.useRealTimers();
 			}
@@ -1861,8 +1869,8 @@ describe('DelegatesManagerService', () => {
 				jest.advanceTimersByTime(300);
 
 				const writes = (channelsPropertiesService.update as jest.Mock).mock.calls
-					.map(([, payload]: [string, { identifier?: string; value?: unknown }]) => payload)
-					.filter((payload) => payload?.identifier === 'voltage');
+					.filter(([id]: [string]) => id === voltageProp.id)
+					.map(([, payload]: [string, { value?: unknown }]) => payload);
 
 				expect(writes).toHaveLength(1);
 				expect(writes[0].value).toBe(231.4);
@@ -1938,6 +1946,7 @@ describe('DelegatesManagerService', () => {
 			} as ShellyNgChannelEntity;
 
 			const property = {
+				id: uuid(),
 				channel: channel.id,
 				category: propertyCategory,
 				identifier: propertyIdentifier,
@@ -1949,8 +1958,8 @@ describe('DelegatesManagerService', () => {
 
 		function updatesFor(identifier: string): { value: unknown }[] {
 			return (channelsPropertiesService.update as jest.Mock).mock.calls
-				.map(([, payload]: [string, { identifier?: string; value?: unknown }]) => payload)
-				.filter((payload) => payload?.identifier === identifier) as { value: unknown }[];
+				.filter(([id]: [string]) => id === identifier)
+				.map(([, payload]: [string, { value: unknown }]) => payload);
 		}
 
 		test('em: a_act_power reaches power:0:a / a_act_power; a null phase reading (b_act_power) writes nothing', async () => {
@@ -2002,11 +2011,11 @@ describe('DelegatesManagerService', () => {
 				delegate.emitValue('em:0', 'b_act_power', null);
 				jest.advanceTimersByTime(300);
 
-				expect(updatesFor('a_act_power')).toHaveLength(1);
-				expect(updatesFor('a_act_power')[0].value).toBe(130.2);
+				expect(updatesFor(propA.id)).toHaveLength(1);
+				expect(updatesFor(propA.id)[0].value).toBe(130.2);
 
 				// The allowNull path: a null phase reading must not be written at all.
-				expect(updatesFor('b_act_power')).toHaveLength(0);
+				expect(updatesFor(propB.id)).toHaveLength(0);
 			} finally {
 				jest.useRealTimers();
 			}
@@ -2049,8 +2058,8 @@ describe('DelegatesManagerService', () => {
 				delegate.emitValue('emdata:0', 'a_total_act_energy', 222.2);
 				jest.advanceTimersByTime(300);
 
-				expect(updatesFor('a_total_act_energy')).toHaveLength(1);
-				expect(updatesFor('a_total_act_energy')[0].value).toBe(222.2);
+				expect(updatesFor(property.id)).toHaveLength(1);
+				expect(updatesFor(property.id)[0].value).toBe(222.2);
 			} finally {
 				jest.useRealTimers();
 			}
@@ -2093,8 +2102,8 @@ describe('DelegatesManagerService', () => {
 				delegate.emitValue('em1:0', 'act_power', 50.0);
 				jest.advanceTimersByTime(300);
 
-				expect(updatesFor('act_power')).toHaveLength(1);
-				expect(updatesFor('act_power')[0].value).toBe(50.0);
+				expect(updatesFor(property.id)).toHaveLength(1);
+				expect(updatesFor(property.id)[0].value).toBe(50.0);
 			} finally {
 				jest.useRealTimers();
 			}
@@ -2137,8 +2146,8 @@ describe('DelegatesManagerService', () => {
 				delegate.emitValue('em1data:1', 'total_act_energy', 600.1);
 				jest.advanceTimersByTime(300);
 
-				expect(updatesFor('total_act_energy')).toHaveLength(1);
-				expect(updatesFor('total_act_energy')[0].value).toBe(600.1);
+				expect(updatesFor(property.id)).toHaveLength(1);
+				expect(updatesFor(property.id)[0].value).toBe(600.1);
 			} finally {
 				jest.useRealTimers();
 			}

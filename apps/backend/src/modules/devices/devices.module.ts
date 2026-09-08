@@ -70,6 +70,7 @@ import { DevicesService } from './services/devices.service';
 import { ModuleResetService } from './services/module-reset.service';
 import { PlatformRegistryService } from './services/platform.registry.service';
 import { PropertyCommandService } from './services/property-command.service';
+import { PropertyStateCoordinatorService } from './services/property-state-coordinator.service';
 import { PropertyTimeseriesService } from './services/property-timeseries.service';
 import { PropertyValueLockService } from './services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from './services/property-value-source.registry.service';
@@ -139,6 +140,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		PropertyValueSourceRegistryService,
 		PropertyValueLockService,
 		PropertyValueService,
+		PropertyStateCoordinatorService,
 		PropertyTimeseriesService,
 		PropertyCommandService,
 		DeviceConnectionStateService,
@@ -174,6 +176,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		PlatformRegistryService,
 		PropertyValueSourceRegistryService,
 		PropertyValueService,
+		PropertyStateCoordinatorService,
 		PropertyTimeseriesService,
 		PropertyCommandService,
 		DeviceExistsConstraintValidator,

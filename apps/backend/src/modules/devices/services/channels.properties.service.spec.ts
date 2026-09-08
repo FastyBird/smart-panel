@@ -29,6 +29,7 @@ import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
+import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
@@ -143,6 +144,7 @@ describe('ChannelsPropertiesService', () => {
 				leftJoinAndSelect: jest.fn().mockReturnThis(),
 				where: jest.fn().mockReturnThis(),
 				andWhere: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
 				getMany: jest.fn(),
 				getOne: jest.fn(),
 			})),
@@ -154,6 +156,7 @@ describe('ChannelsPropertiesService', () => {
 				// Dependency-free and re-entrant, so the real one is used: what it serializes is exactly
 				// what these tests exercise.
 				DeviceStructureLockService,
+				PropertyStateCoordinatorService,
 				{ provide: getRepositoryToken(ChannelPropertyEntity), useFactory: mockRepository },
 				{
 					provide: ChannelsPropertiesTypeMapperService,
@@ -171,6 +174,7 @@ describe('ChannelsPropertiesService', () => {
 					provide: PropertyValueService,
 					useValue: {
 						write: jest.fn(() => {}),
+						writeWithState: jest.fn(() => {}),
 						writeStrict: jest.fn(() => {}),
 						writeStrictWithState: jest.fn(() => {}),
 						writeStrictIfPersistedDifferent: jest.fn(() => {}),
@@ -1136,7 +1140,7 @@ describe('ChannelsPropertiesService', () => {
 	});
 
 	describe('update', () => {
-		it('holds the structure lock through value persistence and readback', async () => {
+		it('keeps metadata updates exclusive through value persistence and readback', async () => {
 			const property = toInstance(MockChannelProperty, mockChannelProperty);
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
 				type: 'mock',
@@ -1162,6 +1166,7 @@ describe('ChannelsPropertiesService', () => {
 
 			const update = channelsPropertiesService.update(property.id, {
 				type: 'mock',
+				mock_value: property.mockValue,
 				value: 'new value',
 			} as UpdateMockChannelPropertyDto);
 			await writeEntered;
@@ -1178,6 +1183,161 @@ describe('ChannelsPropertiesService', () => {
 			await expect(update).resolves.toEqual(property);
 			await expect(removal).resolves.toBeUndefined();
 			expect(removalEntered).toBe(true);
+		});
+
+		it('uses one listener-free entity load and no repository save for a minimal value report', async () => {
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			const queryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(property),
+			};
+			const state = new PropertyValueState('new value', '2026-09-08T10:00:00.000Z', 'stable');
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as any);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			propertyValueService.writeWithState.mockResolvedValue({ changed: true, state });
+
+			const result = await channelsPropertiesService.update(property.id, {
+				type: 'mock',
+				value: 'new value',
+			} as UpdateMockChannelPropertyDto);
+
+			expect(queryBuilder.callListeners).toHaveBeenCalledWith(false);
+			expect(queryBuilder.getOne).toHaveBeenCalledTimes(1);
+			expect(repository.save).not.toHaveBeenCalled();
+			expect(propertyValueService.writeWithState).toHaveBeenCalledWith(property, 'new value');
+			expect(result.value).toEqual(state);
+			expect(result.value).not.toBe(state);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_VALUE_SET, result);
+
+			state.value = 'mutated after publication';
+			expect(result.value?.value).toBe('new value');
+		});
+
+		it('finishes an admitted value report before a property removal can begin', async () => {
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			const queryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(property),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as any);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			let releaseWrite!: () => void;
+			const writeEntered = new Promise<void>((resolve) => {
+				propertyValueService.writeWithState.mockImplementation(
+					() =>
+						new Promise((writeResolve) => {
+							resolve();
+							releaseWrite = () => writeResolve({ changed: true, state: new PropertyValueState('new value') });
+						}),
+				);
+			});
+			mockManager.findOne = jest.fn().mockResolvedValue(property);
+
+			const update = channelsPropertiesService.update(property.id, {
+				type: 'mock',
+				value: 'new value',
+			} as UpdateMockChannelPropertyDto);
+			await writeEntered;
+			const removal = channelsPropertiesService.remove(property.id);
+
+			await Promise.resolve();
+			expect(mockManager.findOne).not.toHaveBeenCalled();
+
+			releaseWrite();
+			await Promise.all([update, removal]);
+			expect(mockManager.remove).toHaveBeenCalledWith(property);
+		});
+
+		it('accepts a minimal value report without an explicit type', async () => {
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			const queryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(property),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as any);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			propertyValueService.writeWithState.mockResolvedValue({
+				changed: true,
+				state: new PropertyValueState('new value'),
+			});
+
+			await channelsPropertiesService.update(property.id, { value: 'new value' } as UpdateMockChannelPropertyDto);
+
+			expect(queryBuilder.getOne).toHaveBeenCalledTimes(1);
+			expect(propertyValueService.writeWithState).toHaveBeenCalledWith(property, 'new value');
+		});
+
+		it('coordinates aliases by their canonical value source before persistence and publication', async () => {
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			const queryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(property),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as any);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			valueSourceRegistry.register({ getType: () => 'mock', resolve: () => 'canonical-source' });
+			let releaseFirst!: () => void;
+			let firstWriteEntered!: () => void;
+			const firstWriteEnteredPromise = new Promise<void>((resolve) => {
+				firstWriteEntered = resolve;
+			});
+			propertyValueService.writeWithState.mockImplementationOnce(
+				() =>
+					new Promise((resolve) => {
+						firstWriteEntered();
+						releaseFirst = () => resolve({ changed: true, state: new PropertyValueState('first') });
+					}),
+			);
+			propertyValueService.writeWithState.mockResolvedValueOnce({
+				changed: true,
+				state: new PropertyValueState('second'),
+			});
+
+			const first = channelsPropertiesService.update('alias-a', {
+				type: 'mock',
+				value: 'first',
+			} as UpdateMockChannelPropertyDto);
+			await firstWriteEnteredPromise;
+			const second = channelsPropertiesService.update('alias-b', {
+				type: 'mock',
+				value: 'second',
+			} as UpdateMockChannelPropertyDto);
+
+			await Promise.resolve();
+			await Promise.resolve();
+			expect(propertyValueService.writeWithState).toHaveBeenCalledTimes(1);
+
+			releaseFirst();
+			await Promise.all([first, second]);
+			expect(propertyValueService.writeWithState).toHaveBeenCalledTimes(2);
 		});
 
 		it('resolves a value timestamp inside the serialized update before persistence', async () => {

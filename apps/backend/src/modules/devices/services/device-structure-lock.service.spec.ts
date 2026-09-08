@@ -113,4 +113,90 @@ describe('DeviceStructureLockService', () => {
 		await expect(failing).rejects.toThrow('refused');
 		await expect(following).resolves.toBe('unaffected');
 	});
+
+	it('admits independent shared work concurrently', async () => {
+		const first = deferred();
+		const order: string[] = [];
+
+		const a = lock.runShared(async (): Promise<void> => {
+			order.push('a:start');
+			await first.promise;
+			order.push('a:end');
+		});
+		const b = lock.runShared(async (): Promise<void> => {
+			order.push('b');
+		});
+
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(order).toEqual(['a:start', 'b']);
+
+		first.resolve();
+		await Promise.all([a, b]);
+	});
+
+	it('blocks later readers behind a queued writer until that writer completes', async () => {
+		const releaseReader = deferred();
+		const releaseWriter = deferred();
+		let writerStarted!: () => void;
+		const writerStartedPromise = new Promise<void>((resolve) => {
+			writerStarted = resolve;
+		});
+		const order: string[] = [];
+
+		const reader = lock.runShared(async (): Promise<void> => {
+			order.push('reader:start');
+			await releaseReader.promise;
+			order.push('reader:end');
+		});
+		const writer = lock.runExclusive(async (): Promise<void> => {
+			order.push('writer:start');
+			writerStarted();
+			await releaseWriter.promise;
+			order.push('writer:end');
+		});
+		const lateReader = lock.runShared(async (): Promise<void> => {
+			order.push('late-reader');
+		});
+
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(order).toEqual(['reader:start']);
+
+		releaseReader.resolve();
+		await writerStartedPromise;
+		expect(order).toEqual(['reader:start', 'reader:end', 'writer:start']);
+
+		releaseWriter.resolve();
+		await Promise.all([reader, writer, lateReader]);
+		expect(order).toEqual(['reader:start', 'reader:end', 'writer:start', 'writer:end', 'late-reader']);
+	});
+
+	it('rejects a shared-to-exclusive upgrade instead of deadlocking', async () => {
+		await expect(lock.runShared(() => lock.runExclusive(() => Promise.resolve()))).rejects.toThrow(
+			'cannot be upgraded',
+		);
+	});
+
+	it('does not let a detached inherited context bypass a writer after its lease releases', async () => {
+		let runDetached!: () => Promise<void>;
+		await lock.runExclusive(async (): Promise<void> => {
+			runDetached = () => lock.runShared(() => Promise.resolve());
+		});
+
+		const gate = deferred();
+		const writer = lock.runExclusive(async (): Promise<void> => gate.promise);
+		await Promise.resolve();
+
+		const detached = runDetached();
+		let detachedDone = false;
+		void detached.then(() => {
+			detachedDone = true;
+		});
+		await Promise.resolve();
+		expect(detachedDone).toBe(false);
+
+		gate.resolve();
+		await Promise.all([writer, detached]);
+	});
 });

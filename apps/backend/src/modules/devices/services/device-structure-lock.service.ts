@@ -27,27 +27,109 @@ import { Injectable } from '@nestjs/common';
  */
 @Injectable()
 export class DeviceStructureLockService {
-	private readonly heldOnThisChain = new AsyncLocalStorage<true>();
+	private readonly context = new AsyncLocalStorage<LockContext>();
+	private readonly queue: LockRequest<unknown>[] = [];
+	private activeReaders = 0;
+	private writerActive = false;
 
-	private tail: Promise<unknown> = Promise.resolve();
+	async runShared<T>(fn: () => Promise<T>): Promise<T> {
+		const context = this.context.getStore();
 
-	async runExclusive<T>(fn: () => Promise<T>): Promise<T> {
-		if (this.heldOnThisChain.getStore()) {
+		// An exclusive operation already excludes structural writers. A nested shared operation must not
+		// wait behind its own caller. The same is true for a nested report operation on this chain.
+		if (context?.active) {
 			return fn();
 		}
 
-		// Chained onto the previous ticket whether it resolved or rejected: a refused structural write
-		// must not leave the queue closed behind it.
-		const ticket = this.tail.then(
-			() => this.heldOnThisChain.run(true, fn),
-			() => this.heldOnThisChain.run(true, fn),
-		);
-
-		this.tail = ticket.then(
-			() => {},
-			() => {},
-		);
-
-		return ticket;
+		return this.enqueue('shared', fn);
 	}
+
+	async runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+		const context = this.context.getStore();
+
+		if (context?.active) {
+			if (context.mode === 'shared') {
+				throw new Error('Device structure lock cannot be upgraded from shared to exclusive');
+			}
+
+			return fn();
+		}
+
+		return this.enqueue('exclusive', fn);
+	}
+
+	private enqueue<T>(mode: LockMode, fn: () => Promise<T>): Promise<T> {
+		return new Promise<T>((resolve, reject) => {
+			this.queue.push({ mode, fn, resolve, reject });
+			this.drain();
+		});
+	}
+
+	private drain(): void {
+		if (this.writerActive || this.queue.length === 0) {
+			return;
+		}
+
+		const next = this.queue[0];
+
+		if (next.mode === 'exclusive') {
+			if (this.activeReaders !== 0) {
+				return;
+			}
+
+			this.queue.shift();
+			this.writerActive = true;
+			this.execute(next);
+
+			return;
+		}
+
+		// Admit every reader already ahead of the first writer. Once an exclusive request is queued,
+		// later readers stay queued, which prevents a continuous report stream from starving deletion.
+		while (this.queue[0]?.mode === 'shared') {
+			const reader = this.queue.shift();
+
+			if (!reader) {
+				return;
+			}
+
+			this.activeReaders += 1;
+			this.execute(reader);
+		}
+	}
+
+	private execute<T>(request: LockRequest<T>): void {
+		const context: LockContext = { mode: request.mode, active: true };
+
+		void Promise.resolve()
+			.then(() => this.context.run(context, request.fn))
+			.then(request.resolve, request.reject)
+			.finally(() => {
+				// AsyncLocalStorage context can survive into a detached callback. Marking its lease inactive
+				// prevents that callback from bypassing a later writer after the original operation returns.
+				context.active = false;
+
+				if (request.mode === 'exclusive') {
+					this.writerActive = false;
+				} else {
+					this.activeReaders -= 1;
+				}
+
+				this.drain();
+			});
+	}
+}
+
+type LockMode = 'shared' | 'exclusive';
+
+interface LockContext {
+	mode: LockMode;
+	active: boolean;
+}
+
+interface LockRequest<T> {
+	mode: LockMode;
+	fn: () => Promise<T>;
+	resolve: (value: T | PromiseLike<T>) => void;
+	reject: (reason?: unknown) => void;
 }

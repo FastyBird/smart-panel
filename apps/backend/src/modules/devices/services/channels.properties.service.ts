@@ -24,13 +24,17 @@ import { DevicesException, DevicesNotFoundException, DevicesValidationException 
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
-import { type PropertyValueState } from '../models/property-value-state.model';
+import { PropertyValueState } from '../models/property-value-state.model';
 import { SUPPORTED_PROPERTY_COMMAND_DATA_TYPES } from '../utils/property-command-value.utils';
 import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 
-import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
+import {
+	type ChannelPropertyTypeMapping,
+	ChannelsPropertiesTypeMapperService,
+} from './channels.properties-type-mapper.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
+import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
 
@@ -126,6 +130,7 @@ export class ChannelsPropertiesService {
 		private readonly propertyValueService: PropertyValueService,
 		private readonly valueSourceRegistry: PropertyValueSourceRegistryService,
 		private readonly structureLock: DeviceStructureLockService,
+		private readonly propertyStateCoordinator: PropertyStateCoordinatorService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -785,6 +790,26 @@ export class ChannelsPropertiesService {
 	): Promise<TProperty> {
 		this.logger.debug(`Updating data source with id=${id}`);
 
+		if (this.isValueOnlyUpdate(updateDto, options)) {
+			const valueOnlyMapping =
+				typeof updateDto.type === 'string'
+					? this.getValueOnlyMapping<TProperty, TUpdateDTO>(updateDto.type)
+					: undefined;
+
+			if (valueOnlyMapping !== null) {
+				const result = await this.updateValueOnly<TProperty, TUpdateDTO>(id, updateDto, valueOnlyMapping);
+
+				if ('property' in result) {
+					return result.property;
+				}
+
+				// A type-less report can only reveal a mapper's structural hooks after its one admitted
+				// entity load. Leave shared admission before taking the existing exclusive path; upgrades
+				// are forbidden by the lifecycle barrier.
+				return this.update<TProperty, TUpdateDTO>(id, { ...updateDto, type: result.type } as TUpdateDTO, options);
+			}
+		}
+
 		const property = await this.getOneOrThrow(id);
 
 		const mapping = this.propertiesMapperService.getMapping<TProperty, any, TUpdateDTO>(property.type);
@@ -912,25 +937,73 @@ export class ChannelsPropertiesService {
 		});
 	}
 
+	private async updateValueOnly<TProperty extends ChannelPropertyEntity, TUpdateDTO extends UpdateChannelPropertyDto>(
+		id: string,
+		updateDto: TUpdateDTO,
+		knownMapping: ChannelPropertyTypeMapping<TProperty, any, TUpdateDTO> | undefined,
+	): Promise<{ property: TProperty } | { type: string }> {
+		return this.structureLock.runShared(() =>
+			this.propertyStateCoordinator.run(id, async (): Promise<{ property: TProperty } | { type: string }> => {
+				// This is deliberately the sole entity load on the hot path. Disabling afterLoad avoids a
+				// second property-value storage read; writeWithState below supplies the event state instead.
+				const current = (await this.findOneForValueUpdate(id)) as TProperty;
+				const mapping =
+					knownMapping ?? this.propertiesMapperService.getMapping<TProperty, any, TUpdateDTO>(current.type);
+
+				if (mapping.beforeUpdate || mapping.afterUpdate) {
+					return { type: current.type };
+				}
+				const dto = await this.validateDto<TUpdateDTO>(mapping.updateDto, {
+					...updateDto,
+					type: updateDto.type ?? current.type,
+				});
+
+				if (dto.type !== current.type) {
+					throw new DevicesValidationException('Provided property type does not match the stored property type.');
+				}
+				const value = dto.value;
+				if (value === undefined) {
+					return { type: current.type };
+				}
+				const commit = async (): Promise<{ property: TProperty }> => {
+					const result = await this.propertyValueService.writeWithState(current, value);
+					const snapshot = this.snapshotValueState(result.state);
+					current.value = snapshot;
+
+					if (result.changed) {
+						this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, current);
+					}
+
+					return { property: current };
+				};
+				const canonicalPropertyId = this.valueSourceRegistry.resolve(current);
+
+				return canonicalPropertyId === id ? commit() : this.propertyStateCoordinator.run(canonicalPropertyId, commit);
+			}),
+		);
+	}
+
 	async remove(id: string, manager: EntityManager = this.dataSource.manager): Promise<void> {
-		const property = await manager.findOne<ChannelPropertyEntity>(ChannelPropertyEntity, {
-			where: { id },
+		return this.structureLock.runExclusive(async (): Promise<void> => {
+			const property = await manager.findOne<ChannelPropertyEntity>(ChannelPropertyEntity, {
+				where: { id },
+			});
+
+			if (!property) {
+				this.logger.warn(`Property with id=${id} not found during removal (skipping)`);
+				return;
+			}
+
+			// Capture property entity before removal to preserve ID for event emission
+			const propertyForEvent = { ...property };
+
+			await manager.remove(property);
+
+			this.logger.log(`Successfully removed property with id=${id}`);
+
+			// Emit event with the property entity captured before removal to preserve ID
+			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_DELETED, propertyForEvent);
 		});
-
-		if (!property) {
-			this.logger.warn(`Property with id=${id} not found during removal (skipping)`);
-			return;
-		}
-
-		// Capture property entity before removal to preserve ID for event emission
-		const propertyForEvent = { ...property };
-
-		await manager.remove(property);
-
-		this.logger.log(`Successfully removed property with id=${id}`);
-
-		// Emit event with the property entity captured before removal to preserve ID
-		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_DELETED, propertyForEvent);
 	}
 
 	async getOneOrThrow(id: string): Promise<ChannelPropertyEntity> {
@@ -943,6 +1016,56 @@ export class ChannelsPropertiesService {
 		}
 
 		return property;
+	}
+
+	private isValueOnlyUpdate<TUpdateDTO extends UpdateChannelPropertyDto>(
+		updateDto: TUpdateDTO,
+		options: ChannelPropertyUpdateOptions,
+	): boolean {
+		const keys = Object.keys(updateDto);
+
+		return (
+			!options.strictValuePersistence &&
+			!options.resolveValueTimestamp &&
+			!options.valueTimestamp &&
+			updateDto.value !== undefined &&
+			Object.prototype.hasOwnProperty.call(updateDto, 'value') &&
+			keys.every((key) => key === 'type' || key === 'value')
+		);
+	}
+
+	private getValueOnlyMapping<TProperty extends ChannelPropertyEntity, TUpdateDTO extends UpdateChannelPropertyDto>(
+		type: string,
+	): ChannelPropertyTypeMapping<TProperty, any, TUpdateDTO> | null {
+		try {
+			const mapping = this.propertiesMapperService.getMapping<TProperty, any, TUpdateDTO>(type);
+
+			return mapping.beforeUpdate || mapping.afterUpdate ? null : mapping;
+		} catch {
+			return null;
+		}
+	}
+
+	private async findOneForValueUpdate(id: string): Promise<ChannelPropertyEntity> {
+		const property = await this.repository
+			.createQueryBuilder('property')
+			.innerJoinAndSelect('property.channel', 'channel')
+			.innerJoinAndSelect('channel.device', 'device')
+			.where('property.id = :id', { id })
+			.callListeners(false)
+			.getOne();
+
+		if (!property) {
+			throw new DevicesNotFoundException('Channel property does not exist');
+		}
+
+		property.unit = resolvePropertyUnit(property);
+
+		return property;
+	}
+
+	private snapshotValueState(state: PropertyValueState | null): PropertyValueState | null {
+		return state === null ? null : new PropertyValueState(state.value, state.lastUpdated, state.trend);
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {

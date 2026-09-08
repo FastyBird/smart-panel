@@ -15,6 +15,8 @@ import {
 	DeviceEntity,
 } from '../entities/devices.entity';
 
+import { DeviceStructureLockService } from './device-structure-lock.service';
+
 @Injectable()
 export class ModuleResetService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ModuleResetService');
@@ -31,39 +33,42 @@ export class ModuleResetService {
 		@InjectRepository(ChannelControlEntity)
 		private readonly channelsControlsRepository: Repository<ChannelControlEntity>,
 		private readonly storageService: StorageService,
+		private readonly structureLock: DeviceStructureLockService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async reset(): Promise<{ success: boolean; reason?: string }> {
 		try {
-			await this.channelsPropertiesRepository.deleteAll();
+			return await this.structureLock.runExclusive(async (): Promise<{ success: boolean; reason?: string }> => {
+				await this.channelsPropertiesRepository.deleteAll();
 
-			this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_RESET, null);
+				this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_RESET, null);
 
-			await this.channelsControlsRepository.deleteAll();
+				await this.channelsControlsRepository.deleteAll();
 
-			this.eventEmitter.emit(EventType.CHANNEL_CONTROL_RESET, null);
+				this.eventEmitter.emit(EventType.CHANNEL_CONTROL_RESET, null);
 
-			await this.channelsRepository.deleteAll();
+				await this.channelsRepository.deleteAll();
 
-			this.eventEmitter.emit(EventType.CHANNEL_RESET, null);
+				this.eventEmitter.emit(EventType.CHANNEL_RESET, null);
 
-			await this.devicesControlsRepository.deleteAll();
+				await this.devicesControlsRepository.deleteAll();
 
-			this.eventEmitter.emit(EventType.DEVICE_CONTROL_RESET, null);
+				this.eventEmitter.emit(EventType.DEVICE_CONTROL_RESET, null);
 
-			await this.devicesRepository.deleteAll();
+				await this.devicesRepository.deleteAll();
 
-			this.eventEmitter.emit(EventType.DEVICE_RESET, null);
+				this.eventEmitter.emit(EventType.DEVICE_RESET, null);
 
-			await this.storageService.dropMeasurement('property_value');
-			await this.storageService.dropMeasurement('device_status');
+				await this.storageService.dropMeasurement('property_value');
+				await this.storageService.dropMeasurement('device_status');
 
-			this.logger.log('Module data were successfully reset');
+				this.logger.log('Module data were successfully reset');
 
-			this.eventEmitter.emit(EventType.MODULE_RESET, null);
+				this.eventEmitter.emit(EventType.MODULE_RESET, null);
 
-			return { success: true };
+				return { success: true };
+			});
 		} catch (error) {
 			const err = error as Error;
 
