@@ -1,0 +1,96 @@
+{
+	"headings": {
+		"cloudflareTunnel": "Cloudflare Tunnel",
+		"removeTunnel": "Usuń tunel"
+	},
+	"texts": {
+		"cardDescription": "Publiczny dostęp przez Cloudflare Tunnel, bez przekierowania portów.",
+		"cannotBeUsedYetTitle": "Nie można jeszcze użyć",
+		"aboutTunnelSettings": "Token tunelu pochodzi z panelu Cloudflare Zero Trust. Publiczna nazwa hosta to adres, którego odwiedzający używają, aby dotrzeć do tej instalacji.",
+		"confirmRemove": "Spowoduje to zatrzymanie tunelu i wyczyszczenie zapisanego tokenu oraz publicznej nazwy hosta. Aby ponownie korzystać z Cloudflare Tunnel, trzeba będzie skonfigurować je od nowa."
+	},
+	"buttons": {
+		"setup": "Skonfiguruj",
+		"configure": "Ustawienia",
+		"connect": "Połącz",
+		"disconnect": "Rozłącz",
+		"reconnect": "Połącz ponownie",
+		"removeTunnel": "Usuń tunel",
+		"remove": "Usuń",
+		"cancel": "Anuluj"
+	},
+	"fields": {
+		"hostname": "Nazwa hosta",
+		"connectorId": "ID łącznika",
+		"readyConnections": "Gotowe połączenia",
+		"config": {
+			"enabled": {
+				"title": "Włączone"
+			},
+			"publicHostname": {
+				"title": "Publiczna nazwa hosta",
+				"placeholder": "np. panel.example.com",
+				"description": "Nazwa hosta publikowana przez ten tunel. Tylko nazwa hosta - bez schematu i ścieżki.",
+				"invalid": "Publiczna nazwa hosta musi być prawidłową nazwą hosta, bez schematu i ścieżki."
+			},
+			"protocol": {
+				"title": "Protokół",
+				"options": {
+					"auto": "Automatycznie",
+					"http2": "HTTP/2",
+					"quic": "QUIC"
+				}
+			},
+			"tunnelToken": {
+				"title": "Token tunelu",
+				"placeholder": "Wklej token tunelu z panelu Cloudflare Zero Trust",
+				"description": "Z panelu Cloudflare Zero Trust. Przyjmowany przy zapisie i nigdy więcej niewyświetlany.",
+				"validation": {
+					"required": "Token tunelu jest wymagany"
+				}
+			}
+		}
+	},
+	"messages": {
+		"requestError": "Wystąpił błąd podczas wczytywania stanu Cloudflare Tunnel",
+		"setupFailed": "Nie udało się uruchomić zadania konfiguracji Cloudflare Tunnel",
+		"tunnelRemoved": "Cloudflare Tunnel został usunięty",
+		"tunnelRemoveFailed": "Nie udało się usunąć Cloudflare Tunnel",
+		"urlCopied": "Adres URL został skopiowany do schowka",
+		"copyFailed": "Nie udało się skopiować adresu URL do schowka",
+		"commandCopied": "Polecenie zostało skopiowane do schowka",
+		"commandCopyFailed": "Nie udało się skopiować polecenia do schowka",
+		"config": {
+			"edited": "Konfiguracja Cloudflare Tunnel została pomyślnie zaktualizowana",
+			"notEdited": "Nie udało się zaktualizować konfiguracji Cloudflare Tunnel"
+		}
+	},
+	"errors": {
+		"privilegedWorkerUnavailable": "Zadania uprzywilejowanej konfiguracji są obecnie niedostępne w tej instalacji. Uruchom ponownie „sudo smart-panel-service install” lub dodaj uprawnienie sudoers, a następnie spróbuj ponownie.",
+		"platformUnsupported": "Ta platforma nie może automatycznie uruchomić konfiguracji Cloudflare Tunnel. Przygotuj cloudflared ręcznie, a następnie użyj opcji Ustawienia."
+	},
+	"wizard": {
+		"title": "Skonfiguruj Cloudflare Tunnel",
+		"steps": {
+			"install": "Instalacja",
+			"config": "Token i nazwa hosta",
+			"done": "Gotowe"
+		},
+		"installDescription": "Instaluje pakiet cloudflared, jeśli go brakuje.",
+		"settingUp": "Trwa konfigurowanie Cloudflare Tunnel...",
+		"setupFailed": "Zadanie konfiguracji nie zostało ukończone. Możesz spróbować ponownie.",
+		"configDescription": "Wklej token tunelu z panelu Cloudflare Zero Trust oraz publiczną nazwę hosta, którą ma publikować. Zapisanie włącza tunel.",
+		"doneDescription": "Cloudflare Tunnel jest połączony. Ta instalacja jest dostępna pod poniższym adresem URL.",
+		"setupUnavailable": "Automatyczna konfiguracja nie jest dostępna w tej instalacji.",
+		"accessRecommendation": "Ta instalacja jest dostępna z internetu; jedynym zabezpieczeniem jest logowanie do Smart Panel, chyba że skonfigurowano Cloudflare Access.",
+		"qrAlt": "Kod QR zawierający publiczny adres URL Cloudflare Tunnel",
+		"buttons": {
+			"startSetup": "Rozpocznij konfigurację",
+			"saveAndContinue": "Zapisz i kontynuuj",
+			"close": "Zamknij",
+			"copy": "Kopiuj",
+			"recheck": "Sprawdź ponownie",
+			"runItYourself": "Wykonaj samodzielnie"
+		}
+	}
+}

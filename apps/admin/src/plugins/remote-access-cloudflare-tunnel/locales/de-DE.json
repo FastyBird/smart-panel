@@ -1,0 +1,96 @@
+{
+	"headings": {
+		"cloudflareTunnel": "Cloudflare Tunnel",
+		"removeTunnel": "Tunnel entfernen"
+	},
+	"texts": {
+		"cardDescription": "Öffentlicher Zugriff über einen Cloudflare Tunnel, ohne Portweiterleitung.",
+		"cannotBeUsedYetTitle": "Kann noch nicht verwendet werden",
+		"aboutTunnelSettings": "Das Tunnel-Token stammt aus dem Cloudflare Zero Trust-Dashboard. Der öffentliche Hostname ist die Adresse, über die Besucher diese Installation erreichen.",
+		"confirmRemove": "Dadurch wird der Tunnel gestoppt und das gespeicherte Token sowie der öffentliche Hostname werden gelöscht. Sie müssen dies erneut konfigurieren, um Cloudflare Tunnel zu verwenden."
+	},
+	"buttons": {
+		"setup": "Einrichten",
+		"configure": "Konfigurieren",
+		"connect": "Verbinden",
+		"disconnect": "Trennen",
+		"reconnect": "Erneut verbinden",
+		"removeTunnel": "Tunnel entfernen",
+		"remove": "Entfernen",
+		"cancel": "Abbrechen"
+	},
+	"fields": {
+		"hostname": "Hostname",
+		"connectorId": "Connector-ID",
+		"readyConnections": "Bereite Verbindungen",
+		"config": {
+			"enabled": {
+				"title": "Aktiviert"
+			},
+			"publicHostname": {
+				"title": "Öffentlicher Hostname",
+				"placeholder": "z. B. panel.example.com",
+				"description": "Hostname, den dieser Tunnel veröffentlicht. Nur der Hostname - kein Schema oder Pfad.",
+				"invalid": "Der öffentliche Hostname muss ein gültiger Hostname ohne Schema oder Pfad sein."
+			},
+			"protocol": {
+				"title": "Protokoll",
+				"options": {
+					"auto": "Automatisch",
+					"http2": "HTTP/2",
+					"quic": "QUIC"
+				}
+			},
+			"tunnelToken": {
+				"title": "Tunnel-Token",
+				"placeholder": "Tunnel-Token aus dem Cloudflare Zero Trust-Dashboard einfügen",
+				"description": "Aus dem Cloudflare Zero Trust-Dashboard. Wird beim Schreiben akzeptiert und danach nie wieder angezeigt.",
+				"validation": {
+					"required": "Ein Tunnel-Token ist erforderlich"
+				}
+			}
+		}
+	},
+	"messages": {
+		"requestError": "Beim Laden des Cloudflare Tunnel-Status ist ein Fehler aufgetreten",
+		"setupFailed": "Der Cloudflare Tunnel-Einrichtungsjob konnte nicht gestartet werden",
+		"tunnelRemoved": "Der Cloudflare Tunnel wurde entfernt",
+		"tunnelRemoveFailed": "Entfernen des Cloudflare Tunnel fehlgeschlagen",
+		"urlCopied": "Die URL wurde in die Zwischenablage kopiert",
+		"copyFailed": "Kopieren der URL in die Zwischenablage fehlgeschlagen",
+		"commandCopied": "Der Befehl wurde in die Zwischenablage kopiert",
+		"commandCopyFailed": "Kopieren des Befehls in die Zwischenablage fehlgeschlagen",
+		"config": {
+			"edited": "Die Cloudflare Tunnel-Konfiguration wurde erfolgreich aktualisiert",
+			"notEdited": "Aktualisieren der Cloudflare Tunnel-Konfiguration fehlgeschlagen"
+		}
+	},
+	"errors": {
+		"privilegedWorkerUnavailable": "Privilegierte Einrichtungsjobs sind auf dieser Installation derzeit nicht verfügbar. Führen Sie „sudo smart-panel-service install“ erneut aus, oder fügen Sie die sudoers-Berechtigung hinzu, und versuchen Sie es dann erneut.",
+		"platformUnsupported": "Diese Plattform kann die Cloudflare Tunnel-Einrichtung nicht automatisch durchführen. Bereiten Sie cloudflared manuell vor und verwenden Sie dann Konfigurieren."
+	},
+	"wizard": {
+		"title": "Cloudflare Tunnel einrichten",
+		"steps": {
+			"install": "Installation",
+			"config": "Token und Hostname",
+			"done": "Fertig"
+		},
+		"installDescription": "Installiert das cloudflared-Paket, falls es fehlt.",
+		"settingUp": "Cloudflare Tunnel wird eingerichtet...",
+		"setupFailed": "Der Einrichtungsjob wurde nicht abgeschlossen. Sie können es erneut versuchen.",
+		"configDescription": "Fügen Sie das Tunnel-Token aus dem Cloudflare Zero Trust-Dashboard sowie den zu veröffentlichenden öffentlichen Hostnamen ein. Durch Speichern wird der Tunnel aktiviert.",
+		"doneDescription": "Cloudflare Tunnel ist verbunden. Diese Installation ist unter der unten stehenden URL erreichbar.",
+		"setupUnavailable": "Die automatische Einrichtung ist auf dieser Installation nicht verfügbar.",
+		"accessRecommendation": "Diese Installation ist aus dem Internet erreichbar; nur die Smart Panel-Anmeldung schützt sie, sofern Cloudflare Access nicht konfiguriert ist.",
+		"qrAlt": "QR-Code mit der öffentlichen Cloudflare Tunnel-URL",
+		"buttons": {
+			"startSetup": "Einrichtung starten",
+			"saveAndContinue": "Speichern und fortfahren",
+			"close": "Schließen",
+			"copy": "Kopieren",
+			"recheck": "Erneut prüfen",
+			"runItYourself": "Selbst ausführen"
+		}
+	}
+}

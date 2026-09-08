@@ -1,0 +1,96 @@
+{
+	"headings": {
+		"cloudflareTunnel": "Cloudflare Tunnel",
+		"removeTunnel": "Remove tunnel"
+	},
+	"texts": {
+		"cardDescription": "Public access through a Cloudflare Tunnel, with no port forwarding.",
+		"cannotBeUsedYetTitle": "Cannot be used yet",
+		"aboutTunnelSettings": "The tunnel token comes from the Cloudflare Zero Trust dashboard. The public hostname is the address visitors use to reach this installation.",
+		"confirmRemove": "This stops the tunnel and clears the stored token and public hostname. You will need to configure it again to use Cloudflare Tunnel."
+	},
+	"buttons": {
+		"setup": "Set up",
+		"configure": "Configure",
+		"connect": "Connect",
+		"disconnect": "Disconnect",
+		"reconnect": "Reconnect",
+		"removeTunnel": "Remove tunnel",
+		"remove": "Remove",
+		"cancel": "Cancel"
+	},
+	"fields": {
+		"hostname": "Hostname",
+		"connectorId": "Connector ID",
+		"readyConnections": "Ready connections",
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"publicHostname": {
+				"title": "Public hostname",
+				"placeholder": "e.g. panel.example.com",
+				"description": "Hostname this tunnel publishes. Hostname only - no scheme or path.",
+				"invalid": "Public hostname must be a valid hostname, without a scheme or path."
+			},
+			"protocol": {
+				"title": "Protocol",
+				"options": {
+					"auto": "Auto",
+					"http2": "HTTP/2",
+					"quic": "QUIC"
+				}
+			},
+			"tunnelToken": {
+				"title": "Tunnel token",
+				"placeholder": "Paste the tunnel token from the Cloudflare Zero Trust dashboard",
+				"description": "From the Cloudflare Zero Trust dashboard. Accepted on write and never displayed again.",
+				"validation": {
+					"required": "A tunnel token is required"
+				}
+			}
+		}
+	},
+	"messages": {
+		"requestError": "An error occurred while loading the Cloudflare Tunnel status",
+		"setupFailed": "Failed to start the Cloudflare Tunnel setup job",
+		"tunnelRemoved": "The Cloudflare Tunnel has been removed",
+		"tunnelRemoveFailed": "Failed to remove the Cloudflare Tunnel",
+		"urlCopied": "URL has been copied to the clipboard",
+		"copyFailed": "Failed to copy the URL to the clipboard",
+		"commandCopied": "Command has been copied to the clipboard",
+		"commandCopyFailed": "Failed to copy the command to the clipboard",
+		"config": {
+			"edited": "Cloudflare Tunnel configuration has been successfully updated",
+			"notEdited": "Failed to update Cloudflare Tunnel configuration"
+		}
+	},
+	"errors": {
+		"privilegedWorkerUnavailable": "Privileged setup jobs are currently unavailable on this installation. Re-run \"sudo smart-panel-service install\", or add the sudoers grant, then try again.",
+		"platformUnsupported": "This platform cannot run Cloudflare Tunnel setup automatically. Prepare cloudflared manually, then use Configure."
+	},
+	"wizard": {
+		"title": "Set up Cloudflare Tunnel",
+		"steps": {
+			"install": "Install",
+			"config": "Token and hostname",
+			"done": "Done"
+		},
+		"installDescription": "Installs the cloudflared package if missing.",
+		"settingUp": "Setting up Cloudflare Tunnel...",
+		"setupFailed": "The setup job did not complete. You can try again.",
+		"configDescription": "Paste the tunnel token from the Cloudflare Zero Trust dashboard and the public hostname it should publish. Saving enables the tunnel.",
+		"doneDescription": "Cloudflare Tunnel is connected. This installation is reachable at the URL below.",
+		"setupUnavailable": "Automated setup is not available on this installation.",
+		"accessRecommendation": "This installation is reachable from the internet; only the Smart Panel login protects it unless Cloudflare Access is configured.",
+		"qrAlt": "QR code encoding the public Cloudflare Tunnel URL",
+		"buttons": {
+			"startSetup": "Start setup",
+			"saveAndContinue": "Save and continue",
+			"close": "Close",
+			"copy": "Copy",
+			"recheck": "Re-check",
+			"runItYourself": "Run it yourself"
+		}
+	}
+}

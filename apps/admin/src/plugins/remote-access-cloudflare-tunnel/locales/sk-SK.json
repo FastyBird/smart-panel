@@ -1,0 +1,96 @@
+{
+	"headings": {
+		"cloudflareTunnel": "Cloudflare Tunnel",
+		"removeTunnel": "Odstrániť tunel"
+	},
+	"texts": {
+		"cardDescription": "Verejný prístup cez Cloudflare Tunnel, bez presmerovania portov.",
+		"cannotBeUsedYetTitle": "Zatiaľ nie je možné použiť",
+		"aboutTunnelSettings": "Token tunela pochádza z ovládacieho panela Cloudflare Zero Trust. Verejný názov hostiteľa je adresa, ktorú návštevníci použijú na prístup k tejto inštalácii.",
+		"confirmRemove": "Týmto sa tunel zastaví a vymaže sa uložený token aj verejný názov hostiteľa. Na ďalšie použitie Cloudflare Tunnel bude potrebné ich znova nastaviť."
+	},
+	"buttons": {
+		"setup": "Nastaviť",
+		"configure": "Konfigurovať",
+		"connect": "Pripojiť",
+		"disconnect": "Odpojiť",
+		"reconnect": "Znova pripojiť",
+		"removeTunnel": "Odstrániť tunel",
+		"remove": "Odstrániť",
+		"cancel": "Zrušiť"
+	},
+	"fields": {
+		"hostname": "Názov hostiteľa",
+		"connectorId": "ID konektora",
+		"readyConnections": "Pripravené pripojenia",
+		"config": {
+			"enabled": {
+				"title": "Povolené"
+			},
+			"publicHostname": {
+				"title": "Verejný názov hostiteľa",
+				"placeholder": "napr. panel.example.com",
+				"description": "Názov hostiteľa, ktorý tento tunel zverejňuje. Iba názov hostiteľa - bez schémy alebo cesty.",
+				"invalid": "Verejný názov hostiteľa musí byť platný názov hostiteľa, bez schémy alebo cesty."
+			},
+			"protocol": {
+				"title": "Protokol",
+				"options": {
+					"auto": "Automaticky",
+					"http2": "HTTP/2",
+					"quic": "QUIC"
+				}
+			},
+			"tunnelToken": {
+				"title": "Token tunela",
+				"placeholder": "Vložte token tunela z ovládacieho panela Cloudflare Zero Trust",
+				"description": "Z ovládacieho panela Cloudflare Zero Trust. Prijíma sa pri zápise a už sa nikdy nezobrazí.",
+				"validation": {
+					"required": "Token tunela je povinný"
+				}
+			}
+		}
+	},
+	"messages": {
+		"requestError": "Pri načítaní stavu Cloudflare Tunnel došlo k chybe",
+		"setupFailed": "Nepodarilo sa spustiť úlohu nastavenia Cloudflare Tunnel",
+		"tunnelRemoved": "Cloudflare Tunnel bol odstránený",
+		"tunnelRemoveFailed": "Odstránenie Cloudflare Tunnel zlyhalo",
+		"urlCopied": "Adresa URL bola skopírovaná do schránky",
+		"copyFailed": "Skopírovanie adresy URL do schránky zlyhalo",
+		"commandCopied": "Príkaz bol skopírovaný do schránky",
+		"commandCopyFailed": "Skopírovanie príkazu do schránky zlyhalo",
+		"config": {
+			"edited": "Konfigurácia Cloudflare Tunnel bola úspešne aktualizovaná",
+			"notEdited": "Aktualizácia konfigurácie Cloudflare Tunnel zlyhala"
+		}
+	},
+	"errors": {
+		"privilegedWorkerUnavailable": "Privilegované úlohy nastavenia nie sú v tejto inštalácii momentálne k dispozícii. Znova spustite „sudo smart-panel-service install“, alebo pridajte oprávnenie v sudoers, a potom to skúste znova.",
+		"platformUnsupported": "Táto platforma nemôže automaticky spustiť nastavenie Cloudflare Tunnel. Pripravte cloudflared ručne a potom použite Konfigurovať."
+	},
+	"wizard": {
+		"title": "Nastaviť Cloudflare Tunnel",
+		"steps": {
+			"install": "Inštalácia",
+			"config": "Token a názov hostiteľa",
+			"done": "Hotovo"
+		},
+		"installDescription": "Nainštaluje balík cloudflared, ak chýba.",
+		"settingUp": "Prebieha nastavenie Cloudflare Tunnel...",
+		"setupFailed": "Úloha nastavenia nebola dokončená. Môžete to skúsiť znova.",
+		"configDescription": "Vložte token tunela z ovládacieho panela Cloudflare Zero Trust a verejný názov hostiteľa, ktorý má zverejňovať. Uložením sa tunel povolí.",
+		"doneDescription": "Cloudflare Tunnel je pripojený. Táto inštalácia je dostupná na nižšie uvedenej adrese.",
+		"setupUnavailable": "Automatické nastavenie nie je v tejto inštalácii k dispozícii.",
+		"accessRecommendation": "Táto inštalácia je dostupná z internetu; jedinou ochranou je prihlásenie do Smart Panelu, pokiaľ nie je nakonfigurovaný Cloudflare Access.",
+		"qrAlt": "QR kód obsahujúci verejnú adresu URL Cloudflare Tunnel",
+		"buttons": {
+			"startSetup": "Spustiť nastavenie",
+			"saveAndContinue": "Uložiť a pokračovať",
+			"close": "Zavrieť",
+			"copy": "Kopírovať",
+			"recheck": "Skontrolovať znova",
+			"runItYourself": "Vykonať ručne"
+		}
+	}
+}

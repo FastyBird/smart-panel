@@ -1,0 +1,96 @@
+{
+	"headings": {
+		"cloudflareTunnel": "Cloudflare Tunnel",
+		"removeTunnel": "Eliminar túnel"
+	},
+	"texts": {
+		"cardDescription": "Acceso público a través de un Cloudflare Tunnel, sin redirección de puertos.",
+		"cannotBeUsedYetTitle": "Aún no se puede usar",
+		"aboutTunnelSettings": "El token del túnel proviene del panel de Cloudflare Zero Trust. El nombre de host público es la dirección que usan los visitantes para acceder a esta instalación.",
+		"confirmRemove": "Esto detiene el túnel y borra el token almacenado y el nombre de host público. Deberá configurarlo de nuevo para usar Cloudflare Tunnel."
+	},
+	"buttons": {
+		"setup": "Configurar",
+		"configure": "Configurar ajustes",
+		"connect": "Conectar",
+		"disconnect": "Desconectar",
+		"reconnect": "Reconectar",
+		"removeTunnel": "Eliminar túnel",
+		"remove": "Eliminar",
+		"cancel": "Cancelar"
+	},
+	"fields": {
+		"hostname": "Nombre de host",
+		"connectorId": "ID del conector",
+		"readyConnections": "Conexiones listas",
+		"config": {
+			"enabled": {
+				"title": "Habilitado"
+			},
+			"publicHostname": {
+				"title": "Nombre de host público",
+				"placeholder": "p. ej. panel.example.com",
+				"description": "Nombre de host que publica este túnel. Solo el nombre de host, sin esquema ni ruta.",
+				"invalid": "El nombre de host público debe ser un nombre de host válido, sin esquema ni ruta."
+			},
+			"protocol": {
+				"title": "Protocolo",
+				"options": {
+					"auto": "Automático",
+					"http2": "HTTP/2",
+					"quic": "QUIC"
+				}
+			},
+			"tunnelToken": {
+				"title": "Token del túnel",
+				"placeholder": "Pegue el token del túnel del panel de Cloudflare Zero Trust",
+				"description": "Del panel de Cloudflare Zero Trust. Se acepta al escribirlo y nunca se vuelve a mostrar.",
+				"validation": {
+					"required": "Se requiere un token de túnel"
+				}
+			}
+		}
+	},
+	"messages": {
+		"requestError": "Se produjo un error al cargar el estado de Cloudflare Tunnel",
+		"setupFailed": "No se pudo iniciar el trabajo de configuración de Cloudflare Tunnel",
+		"tunnelRemoved": "Se ha eliminado el Cloudflare Tunnel",
+		"tunnelRemoveFailed": "No se pudo eliminar el Cloudflare Tunnel",
+		"urlCopied": "La URL se ha copiado al portapapeles",
+		"copyFailed": "No se pudo copiar la URL al portapapeles",
+		"commandCopied": "El comando se ha copiado al portapapeles",
+		"commandCopyFailed": "No se pudo copiar el comando al portapapeles",
+		"config": {
+			"edited": "La configuración de Cloudflare Tunnel se ha actualizado correctamente",
+			"notEdited": "No se pudo actualizar la configuración de Cloudflare Tunnel"
+		}
+	},
+	"errors": {
+		"privilegedWorkerUnavailable": "Los trabajos de configuración privilegiados no están disponibles actualmente en esta instalación. Vuelva a ejecutar «sudo smart-panel-service install», o añada el permiso de sudoers, y vuelva a intentarlo.",
+		"platformUnsupported": "Esta plataforma no puede ejecutar automáticamente la configuración de Cloudflare Tunnel. Prepare cloudflared manualmente y luego use Configurar ajustes."
+	},
+	"wizard": {
+		"title": "Configurar Cloudflare Tunnel",
+		"steps": {
+			"install": "Instalación",
+			"config": "Token y nombre de host",
+			"done": "Hecho"
+		},
+		"installDescription": "Instala el paquete cloudflared si falta.",
+		"settingUp": "Configurando Cloudflare Tunnel...",
+		"setupFailed": "El trabajo de configuración no se completó. Puede intentarlo de nuevo.",
+		"configDescription": "Pegue el token del túnel del panel de Cloudflare Zero Trust y el nombre de host público que debe publicar. Al guardar se habilita el túnel.",
+		"doneDescription": "Cloudflare Tunnel está conectado. Esta instalación es accesible en la URL siguiente.",
+		"setupUnavailable": "La configuración automática no está disponible en esta instalación.",
+		"accessRecommendation": "Esta instalación es accesible desde internet; solo el inicio de sesión de Smart Panel la protege, a menos que se configure Cloudflare Access.",
+		"qrAlt": "Código QR que codifica la URL pública de Cloudflare Tunnel",
+		"buttons": {
+			"startSetup": "Iniciar configuración",
+			"saveAndContinue": "Guardar y continuar",
+			"close": "Cerrar",
+			"copy": "Copiar",
+			"recheck": "Volver a comprobar",
+			"runItYourself": "Hacerlo usted mismo"
+		}
+	}
+}

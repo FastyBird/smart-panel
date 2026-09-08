@@ -1,0 +1,96 @@
+{
+	"headings": {
+		"cloudflareTunnel": "Cloudflare Tunnel",
+		"removeTunnel": "Odstranit tunel"
+	},
+	"texts": {
+		"cardDescription": "Veřejný přístup přes Cloudflare Tunnel, bez přesměrování portů.",
+		"cannotBeUsedYetTitle": "Zatím nelze použít",
+		"aboutTunnelSettings": "Token tunelu pochází z řídicího panelu Cloudflare Zero Trust. Veřejný název hostitele je adresa, kterou návštěvníci použijí k přístupu k této instalaci.",
+		"confirmRemove": "Tímto se tunel zastaví a vymaže se uložený token i veřejný název hostitele. Pro další použití Cloudflare Tunnel bude nutné je znovu nastavit."
+	},
+	"buttons": {
+		"setup": "Nastavit",
+		"configure": "Konfigurovat",
+		"connect": "Připojit",
+		"disconnect": "Odpojit",
+		"reconnect": "Znovu připojit",
+		"removeTunnel": "Odstranit tunel",
+		"remove": "Odstranit",
+		"cancel": "Zrušit"
+	},
+	"fields": {
+		"hostname": "Název hostitele",
+		"connectorId": "ID konektoru",
+		"readyConnections": "Připravená spojení",
+		"config": {
+			"enabled": {
+				"title": "Povoleno"
+			},
+			"publicHostname": {
+				"title": "Veřejný název hostitele",
+				"placeholder": "např. panel.example.com",
+				"description": "Název hostitele, který tento tunel zveřejňuje. Pouze název hostitele - bez schématu nebo cesty.",
+				"invalid": "Veřejný název hostitele musí být platný název hostitele, bez schématu nebo cesty."
+			},
+			"protocol": {
+				"title": "Protokol",
+				"options": {
+					"auto": "Automaticky",
+					"http2": "HTTP/2",
+					"quic": "QUIC"
+				}
+			},
+			"tunnelToken": {
+				"title": "Token tunelu",
+				"placeholder": "Vložte token tunelu z řídicího panelu Cloudflare Zero Trust",
+				"description": "Z řídicího panelu Cloudflare Zero Trust. Přijímá se při zápisu a už se nikdy nezobrazí.",
+				"validation": {
+					"required": "Token tunelu je povinný"
+				}
+			}
+		}
+	},
+	"messages": {
+		"requestError": "Při načítání stavu Cloudflare Tunnel došlo k chybě",
+		"setupFailed": "Nepodařilo se spustit úlohu nastavení Cloudflare Tunnel",
+		"tunnelRemoved": "Cloudflare Tunnel byl odstraněn",
+		"tunnelRemoveFailed": "Odstranění Cloudflare Tunnel se nezdařilo",
+		"urlCopied": "Adresa URL byla zkopírována do schránky",
+		"copyFailed": "Zkopírování adresy URL do schránky se nezdařilo",
+		"commandCopied": "Příkaz byl zkopírován do schránky",
+		"commandCopyFailed": "Zkopírování příkazu do schránky se nezdařilo",
+		"config": {
+			"edited": "Konfigurace Cloudflare Tunnel byla úspěšně aktualizována",
+			"notEdited": "Aktualizace konfigurace Cloudflare Tunnel se nezdařila"
+		}
+	},
+	"errors": {
+		"privilegedWorkerUnavailable": "Privilegované úlohy nastavení nejsou v této instalaci momentálně k dispozici. Spusťte znovu „sudo smart-panel-service install“, nebo přidejte oprávnění v sudoers, a poté to zkuste znovu.",
+		"platformUnsupported": "Tato platforma nemůže automaticky spustit nastavení Cloudflare Tunnel. Připravte cloudflared ručně a poté použijte Konfigurovat."
+	},
+	"wizard": {
+		"title": "Nastavit Cloudflare Tunnel",
+		"steps": {
+			"install": "Instalace",
+			"config": "Token a název hostitele",
+			"done": "Hotovo"
+		},
+		"installDescription": "Nainstaluje balíček cloudflared, pokud chybí.",
+		"settingUp": "Probíhá nastavení Cloudflare Tunnel...",
+		"setupFailed": "Úloha nastavení nebyla dokončena. Můžete to zkusit znovu.",
+		"configDescription": "Vložte token tunelu z řídicího panelu Cloudflare Zero Trust a veřejný název hostitele, který má zveřejňovat. Uložením se tunel povolí.",
+		"doneDescription": "Cloudflare Tunnel je připojen. Tato instalace je dostupná na níže uvedené adrese.",
+		"setupUnavailable": "Automatické nastavení není v této instalaci k dispozici.",
+		"accessRecommendation": "Tato instalace je dostupná z internetu; jedinou ochranou je přihlášení do Smart Panelu, pokud není nakonfigurován Cloudflare Access.",
+		"qrAlt": "QR kód obsahující veřejnou adresu URL Cloudflare Tunnel",
+		"buttons": {
+			"startSetup": "Zahájit nastavení",
+			"saveAndContinue": "Uložit a pokračovat",
+			"close": "Zavřít",
+			"copy": "Kopírovat",
+			"recheck": "Zkontrolovat znovu",
+			"runItYourself": "Provést ručně"
+		}
+	}
+}
