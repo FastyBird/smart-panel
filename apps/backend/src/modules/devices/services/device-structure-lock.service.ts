@@ -134,7 +134,7 @@ export class DeviceStructureLockService {
 		try {
 			operation = Promise.resolve(fn());
 		} catch (error) {
-			operation = Promise.reject(error);
+			operation = Promise.reject(error instanceof Error ? error : new Error(String(error)));
 		}
 
 		context.nestedOperations.add(operation);
