@@ -73,7 +73,14 @@ export const resolveTailscaleProviderActions = ({
 		signIn: state === 'pending-auth' || (state === 'disconnected' && !hasTailnet),
 		connect: state === 'disconnected' && hasTailnet,
 		disconnect: state === 'connected' || state === 'connecting' || state === 'pending-approval',
-		reconnect: state === 'connected' || state === 'error',
+		// Also offered (as the secondary action behind "Connect") for a disconnected keyed node:
+		// the managed service is almost always already `started` by the time this state is
+		// visible at all (it auto-starts once the plugin is enabled), which makes "Connect"
+		// (`POST /start`) fail with "already started" - "Reconnect" (`POST /restart`) is what
+		// actually works in that case. Keeping "Connect" as the primary action too since it is
+		// still correct for the one case where the managed service really is stopped (e.g. via
+		// the generic Extensions page).
+		reconnect: state === 'connected' || state === 'error' || (state === 'disconnected' && hasTailnet),
 		signOut: isOwner && hasKey,
 		resetPreferences: isOwner && hasKey,
 	};

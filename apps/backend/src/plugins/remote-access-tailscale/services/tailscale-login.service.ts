@@ -453,17 +453,32 @@ export class TailscaleLoginService implements OnModuleInit {
 							}
 
 							settleResolve({ state: 'pending-auth', authUrl: parsed.AuthURL, qr: parsed.QR });
+						} else if (parsed.Error) {
+							// An immediate failure (rejected flags, a control-server
+							// error) with nothing to wait for — reject with the real
+							// reason instead of silently falling back to "already
+							// authenticated", which previously reported a fake
+							// `disconnected` success and discarded `Error` entirely.
+							this.stopPendingLogin();
+							settleReject(new Error(parsed.Error));
 						} else {
-							// Already authenticated (or an immediate error) — nothing to
-							// wait for; report the real status instead.
+							// Already authenticated — nothing to wait for; report the
+							// real status instead.
 							this.stopPendingLogin();
 							fallbackToCurrentStatus();
 						}
 					} else {
-						// Second block: sign-in resolved one way or another. The node
-						// managed service's own poller picks up the real state on its
-						// next tick — this flow's job is only to stop reporting a now
-						// stale auth URL/QR.
+						// Second block: sign-in resolved one way or another. The
+						// original POST /login response already returned (settled on
+						// the first block above), so there is no request left to
+						// reject on a late failure here — only clear the now-stale
+						// auth URL/QR. The daemon's own reason for a late failure
+						// (e.g. the control server rejecting an approved auth path)
+						// surfaces through `status --json`'s `Health` field on the
+						// next `GET /status` poll (see
+						// TailscaleStatusMapperService.buildDetails()'s
+						// `healthWarnings`) — the node managed service's own poller
+						// picks up the real state on its next tick regardless.
 						this.stopPendingLogin();
 					}
 				}

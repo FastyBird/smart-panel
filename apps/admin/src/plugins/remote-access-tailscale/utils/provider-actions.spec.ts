@@ -60,6 +60,19 @@ describe('resolveTailscaleProviderActions', () => {
 		expect(actions.connect).toBe(true);
 	});
 
+	it('also offers reconnect alongside connect for a disconnected keyed node, since the managed service is usually already started', () => {
+		const actions = resolveTailscaleProviderActions({ state: 'disconnected' as RemoteAccessModuleProviderState, hasTailnet: true, isOwner: false });
+
+		expect(actions.connect).toBe(true);
+		expect(actions.reconnect).toBe(true);
+	});
+
+	it('does not offer reconnect for a disconnected node with no key', () => {
+		const actions = resolveTailscaleProviderActions({ state: 'disconnected' as RemoteAccessModuleProviderState, hasTailnet: false, isOwner: false });
+
+		expect(actions.reconnect).toBe(false);
+	});
+
 	it('offers disconnect and reconnect while connected', () => {
 		const actions = resolveTailscaleProviderActions({ state: 'connected' as RemoteAccessModuleProviderState, hasTailnet: true, isOwner: false });
 

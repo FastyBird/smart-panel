@@ -83,3 +83,16 @@ export const TAILSCALE_LOGIN_FIRST_BLOCK_TIMEOUT_MS = 30_000;
 
 /** How far ahead of `Self.KeyExpiry` the `key-expiring` advisory starts firing (RA-6). */
 export const TAILSCALE_KEY_EXPIRY_ADVISORY_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+
+/**
+ * Base delay before the poller retries `tailscale up` on a node the daemon
+ * unexpectedly reports as `Stopped` while this managed service is still
+ * `started` (e.g. a transient failure during `start()`/`onConfigChanged()`,
+ * or the daemon settling right after a `down`). Doubles on each consecutive
+ * failed attempt up to `TAILSCALE_RECONNECT_MAX_DELAY_MS`; resets to this
+ * floor once the node reports `connected` again.
+ */
+export const TAILSCALE_RECONNECT_BASE_DELAY_MS = 30_000;
+
+/** Ceiling for the reconnect backoff above — retries never slow down beyond this. */
+export const TAILSCALE_RECONNECT_MAX_DELAY_MS = 5 * 60 * 1000;

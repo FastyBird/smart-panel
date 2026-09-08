@@ -27,7 +27,7 @@ const fns = vi.hoisted(() => ({
 	copy: vi.fn(),
 }));
 
-const status = ref<{ state: string; endpoints: { url: string; label: string }[]; authUrl?: string; qr?: string } | null>(null);
+const status = ref<{ state: string; endpoints: { url: string; label: string }[]; authUrl?: string; qr?: string; message?: string } | null>(null);
 const requirements = ref<{ code: string; satisfied: boolean; message: string; remedy: { commands: string[]; note: string | null } | null }[]>([]);
 const setup = ref<{ state: string; step: string | null; message: string | null } | null>(null);
 const privilegedSetup = ref<{ available: boolean; reason: string | null } | null>({ available: true, reason: null });
@@ -291,6 +291,70 @@ describe('TailscaleSetupWizard', () => {
 		await flushPromises();
 
 		expect(stepsProp(wrapper)).toBe(2);
+	});
+
+	describe('a pending sign-in that fails after the link was already shown (previously looked "frozen")', () => {
+		it('flashes the failure reason and resets the link once the poll stops on a non-connected state', async () => {
+			const wrapper = mountWizard('signin');
+
+			isPolling.value = true;
+			status.value = { state: 'pending-auth', endpoints: [], authUrl: 'https://login.tailscale.com/a/abc123' };
+			await nextTick();
+
+			expect(wrapper.text()).toContain('https://login.tailscale.com/a/abc123');
+
+			// useTailscaleLogin's own widened terminal check already stopped the poll; the
+			// status landed on setup-required instead of connected (e.g. the control server
+			// rejecting an already-approved auth path).
+			isPolling.value = false;
+			status.value = { state: 'setup-required', endpoints: [], message: 'Tailscale needs to sign in again.' };
+			await nextTick();
+
+			expect(fns.flashError).toHaveBeenCalledWith('Tailscale needs to sign in again.');
+			expect(wrapper.text()).not.toContain('https://login.tailscale.com/a/abc123');
+			expect(wrapper.text()).toContain('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink');
+		});
+
+		it('falls back to a translated generic message when the status carries none', async () => {
+			mountWizard('signin');
+
+			isPolling.value = true;
+			status.value = { state: 'pending-auth', endpoints: [], authUrl: 'https://login.tailscale.com/a/abc123' };
+			await nextTick();
+
+			isPolling.value = false;
+			status.value = { state: 'disconnected', endpoints: [] };
+			await nextTick();
+
+			expect(fns.flashError).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.loginFailed');
+		});
+
+		it('does not flash an error when the poll stops because the node reached connected', async () => {
+			mountWizard('signin');
+
+			isPolling.value = true;
+			status.value = { state: 'pending-auth', endpoints: [], authUrl: 'https://login.tailscale.com/a/abc123' };
+			await nextTick();
+
+			isPolling.value = false;
+			status.value = { state: 'connected', endpoints: [] };
+			await nextTick();
+
+			expect(fns.flashError).not.toHaveBeenCalled();
+		});
+
+		it('does not flash an error while still polling, or before any link was ever shown', async () => {
+			mountWizard('signin');
+
+			// Still polling — a transient non-connected read mid-poll is not a final answer.
+			isPolling.value = true;
+			status.value = { state: 'pending-auth', endpoints: [], authUrl: 'https://login.tailscale.com/a/abc123' };
+			await nextTick();
+			status.value = { state: 'setup-required', endpoints: [] };
+			await nextTick();
+
+			expect(fns.flashError).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('login error messages', () => {

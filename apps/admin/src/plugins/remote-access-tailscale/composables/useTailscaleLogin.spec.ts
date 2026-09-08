@@ -96,6 +96,30 @@ describe('useTailscaleLogin', () => {
 		expect(isPolling.value).toBe(false);
 	});
 
+	it('stops polling on any other non-progressing state, not just connected/error (e.g. a late failure surfacing as setup-required)', async () => {
+		vi.useFakeTimers();
+		login.mockResolvedValue({ state: 'pending-auth' });
+		get.mockResolvedValue({ state: 'setup-required' });
+		const { login: doLogin, isPolling } = useTailscaleLogin();
+
+		await doLogin();
+		await vi.advanceTimersByTimeAsync(3_000);
+
+		expect(isPolling.value).toBe(false);
+	});
+
+	it('keeps polling while pending-approval, since the tailnet admin console approval step is still in progress', async () => {
+		vi.useFakeTimers();
+		login.mockResolvedValue({ state: 'pending-auth' });
+		get.mockResolvedValue({ state: 'pending-approval' });
+		const { login: doLogin, isPolling } = useTailscaleLogin();
+
+		await doLogin();
+		await vi.advanceTimersByTimeAsync(3_000);
+
+		expect(isPolling.value).toBe(true);
+	});
+
 	it('gives up after the ten-minute absolute deadline even if still pending-auth', async () => {
 		vi.useFakeTimers();
 		login.mockResolvedValue({ state: 'pending-auth' });

@@ -582,6 +582,29 @@ watch(
 	(state): void => {
 		if (state === 'connected' && currentStep.value === 'signin') {
 			goToStep('options');
+
+			return;
+		}
+
+		// A sign-in that was waiting for approval (authUrl already shown) landed on a
+		// non-progressing state without ever reaching 'connected' - e.g. the control server
+		// rejecting an already-approved auth path, or the daemon reporting setup-required
+		// again. useTailscaleLogin's poll already stopped itself on this same widened
+		// terminal check (see its own doc); surface the reason here instead of leaving the
+		// QR/link panel showing a dead link with no explanation ("frozen").
+		if (
+			currentStep.value === 'signin' &&
+			authUrl.value &&
+			!isPolling.value &&
+			state !== undefined &&
+			state !== 'connected' &&
+			state !== 'pending-auth' &&
+			state !== 'connecting'
+		) {
+			flashMessage.error(status.value?.message ?? t('remoteAccessTailscalePlugin.messages.loginFailed'));
+
+			authUrl.value = undefined;
+			qr.value = undefined;
 		}
 	}
 );
