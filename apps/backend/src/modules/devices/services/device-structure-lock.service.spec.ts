@@ -205,4 +205,34 @@ describe('DeviceStructureLockService', () => {
 		gate.resolve();
 		await Promise.all([writer, detached]);
 	});
+
+	it('keeps an exclusive lease through fire-and-forget nested work', async () => {
+		const nestedGate = deferred();
+		let nestedStarted!: () => void;
+		const nestedStartedPromise = new Promise<void>((resolve) => {
+			nestedStarted = resolve;
+		});
+		let writerEntered = false;
+
+		const parent = lock.runExclusive(async (): Promise<void> => {
+			void lock.runShared(async (): Promise<void> => {
+				nestedStarted();
+				await nestedGate.promise;
+			});
+			await nestedStartedPromise;
+		});
+		await nestedStartedPromise;
+		const writer = lock.runExclusive((): Promise<void> => {
+			writerEntered = true;
+
+			return Promise.resolve();
+		});
+
+		await Promise.resolve();
+		expect(writerEntered).toBe(false);
+
+		nestedGate.resolve();
+		await Promise.all([parent, writer]);
+		expect(writerEntered).toBe(true);
+	});
 });

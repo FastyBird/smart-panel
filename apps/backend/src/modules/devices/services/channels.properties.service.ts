@@ -967,8 +967,12 @@ export class ChannelsPropertiesService {
 				}
 				const commit = async (): Promise<{ property: TProperty }> => {
 					const result = await this.propertyValueService.writeWithState(current, value);
-					const snapshot = this.snapshotValueState(result.state);
-					current.value = snapshot;
+
+					// Rejected/null reports have no replacement state. Keep the entity's existing read-back
+					// instead of turning a harmless no-op into a visible null value.
+					if (result.state !== null) {
+						current.value = this.snapshotValueState(result.state);
+					}
 
 					if (result.changed) {
 						this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, current);

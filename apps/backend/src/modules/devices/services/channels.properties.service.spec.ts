@@ -1288,6 +1288,33 @@ describe('ChannelsPropertiesService', () => {
 			expect(propertyValueService.writeWithState).toHaveBeenCalledWith(property, 'new value');
 		});
 
+		it.each([null, 'invalid value'])('keeps the existing value when a %p report is rejected', async (value) => {
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			property.value = new PropertyValueState('existing value');
+			const queryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(property),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as any);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			propertyValueService.writeWithState.mockResolvedValue({ changed: false, state: null });
+
+			const result = await channelsPropertiesService.update(property.id, {
+				type: 'mock',
+				value,
+			} as UpdateMockChannelPropertyDto);
+
+			expect(result.value).toEqual(new PropertyValueState('existing value'));
+			expect(eventEmitter.emit).not.toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_VALUE_SET, expect.anything());
+		});
+
 		it('coordinates aliases by their canonical value source before persistence and publication', async () => {
 			const property = toInstance(MockChannelProperty, mockChannelProperty);
 			const queryBuilder = {

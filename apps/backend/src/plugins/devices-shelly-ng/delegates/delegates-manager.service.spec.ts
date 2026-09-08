@@ -1180,6 +1180,7 @@ describe('DelegatesManagerService', () => {
 			} as ShellyNgChannelEntity;
 
 			const consumptionProp = {
+				id: uuid(),
 				channel: energyCh.id,
 				category: PropertyCategory.CONSUMPTION,
 				identifier: 'aenergy',
@@ -1222,6 +1223,7 @@ describe('DelegatesManagerService', () => {
 			} as ShellyNgChannelEntity;
 
 			const consumptionProp = {
+				id: uuid(),
 				channel: energyCh.id,
 				category: PropertyCategory.CONSUMPTION,
 				identifier: 'aenergy',
@@ -1253,6 +1255,7 @@ describe('DelegatesManagerService', () => {
 			} as ShellyNgChannelEntity;
 
 			const batteryProp = {
+				id: uuid(),
 				channel: devicePowerCh.id,
 				category: PropertyCategory.PERCENTAGE,
 				identifier: 'battery',
@@ -1579,6 +1582,7 @@ describe('DelegatesManagerService', () => {
 			} as ShellyNgChannelEntity;
 
 			const apowerProp = {
+				id: uuid(),
 				channel: electricalPowerCh.id,
 				category: PropertyCategory.POWER,
 				identifier: 'apower',

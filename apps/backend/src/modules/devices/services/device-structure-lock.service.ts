@@ -38,7 +38,7 @@ export class DeviceStructureLockService {
 		// An exclusive operation already excludes structural writers. A nested shared operation must not
 		// wait behind its own caller. The same is true for a nested report operation on this chain.
 		if (context?.active) {
-			return fn();
+			return this.runNested(context, fn);
 		}
 
 		return this.enqueue('shared', fn);
@@ -52,7 +52,7 @@ export class DeviceStructureLockService {
 				throw new Error('Device structure lock cannot be upgraded from shared to exclusive');
 			}
 
-			return fn();
+			return this.runNested(context, fn);
 		}
 
 		return this.enqueue('exclusive', fn);
@@ -99,11 +99,20 @@ export class DeviceStructureLockService {
 	}
 
 	private execute<T>(request: LockRequest<T>): void {
-		const context: LockContext = { mode: request.mode, active: true };
+		const context: LockContext = { mode: request.mode, active: true, nestedOperations: new Set() };
 
 		void Promise.resolve()
 			.then(() => this.context.run(context, request.fn))
-			.then(request.resolve, request.reject)
+			.then(
+				async (value) => {
+					await this.waitForNestedOperations(context);
+					request.resolve(value);
+				},
+				async (error: unknown) => {
+					await this.waitForNestedOperations(context);
+					request.reject(error);
+				},
+			)
 			.finally(() => {
 				// AsyncLocalStorage context can survive into a detached callback. Marking its lease inactive
 				// prevents that callback from bypassing a later writer after the original operation returns.
@@ -118,6 +127,30 @@ export class DeviceStructureLockService {
 				this.drain();
 			});
 	}
+
+	private runNested<T>(context: LockContext, fn: () => Promise<T>): Promise<T> {
+		let operation: Promise<T>;
+
+		try {
+			operation = Promise.resolve(fn());
+		} catch (error) {
+			operation = Promise.reject(error);
+		}
+
+		context.nestedOperations.add(operation);
+		void operation.then(
+			() => context.nestedOperations.delete(operation),
+			() => context.nestedOperations.delete(operation),
+		);
+
+		return operation;
+	}
+
+	private async waitForNestedOperations(context: LockContext): Promise<void> {
+		while (context.nestedOperations.size > 0) {
+			await Promise.allSettled(context.nestedOperations);
+		}
+	}
 }
 
 type LockMode = 'shared' | 'exclusive';
@@ -125,6 +158,7 @@ type LockMode = 'shared' | 'exclusive';
 interface LockContext {
 	mode: LockMode;
 	active: boolean;
+	nestedOperations: Set<Promise<unknown>>;
 }
 
 interface LockRequest<T> {
