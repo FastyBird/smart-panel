@@ -1104,6 +1104,17 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 				return;
 			}
 
+			if (status.state === 'connected') {
+				// Reset on every connected tick, not only inside attemptReconnect()'s own
+				// success path — the node can also reach `connected` through a route that
+				// never went through attemptReconnect() at all (e.g. onConfigChanged()'s own
+				// reconnect, or simply never having disconnected this tick). Without this, a
+				// later disconnect would reuse whatever backoff a previous, unrelated outage
+				// left behind instead of starting fresh at the base delay.
+				this.reconnectAttempts = 0;
+				this.nextReconnectAttemptAt = 0;
+			}
+
 			if (
 				status.state === 'disconnected' &&
 				raw &&

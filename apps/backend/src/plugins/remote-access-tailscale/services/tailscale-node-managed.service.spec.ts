@@ -1082,6 +1082,33 @@ describe('TailscaleNodeManagedService', () => {
 			// either is proof the backoff did not carry over a 60s wait.
 			expect(cli.up).toHaveBeenCalled();
 		});
+
+		it("resets the backoff on any tick that reports connected, not only inside attemptReconnect()'s own success path", async () => {
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			cli.up.mockRejectedValue(new TailscaleCliError('unknown', 'still down'));
+
+			await service.start();
+			await jest.runOnlyPendingTimersAsync(); // tick #1: fails, reconnectAttempts=1, backoff 30s
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL); // tick #2: fails, reconnectAttempts=2, backoff 60s
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL); // tick #3: still inside the 60s window, skipped
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL); // tick #4: fails, reconnectAttempts=3, backoff 120s
+
+			// The node comes back on its own — e.g. via onConfigChanged()'s own
+			// reconnect — without ever going through attemptReconnect()'s own
+			// success path, so only a reset keyed on "the tick itself reports
+			// connected" (not "attemptReconnect() itself just succeeded") clears
+			// the still-armed 120s backoff from tick #4.
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL); // tick #5: connected, backoff reset
+
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			cli.up.mockClear();
+			// Only one stable interval later - well inside where the stale 120s
+			// backoff from tick #4 would still have forbidden a retry.
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL); // tick #6
+
+			expect(cli.up).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('event emission', () => {
