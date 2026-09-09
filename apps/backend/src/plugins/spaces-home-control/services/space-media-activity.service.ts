@@ -8,6 +8,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { toSnakeCaseKeys } from '../../../common/utils/transform.utils';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import { SpacesValidationException } from '../../../modules/spaces/spaces.exceptions';
@@ -128,6 +129,7 @@ export class SpaceMediaActivityService {
 		private readonly bindingService: SpaceMediaActivityBindingService,
 		private readonly derivedEndpointService: DerivedMediaEndpointService,
 		private readonly platformRegistryService: PlatformRegistryService,
+		private readonly propertyCommandDispatchService: PropertyCommandDispatchService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -786,7 +788,7 @@ export class SpaceMediaActivityService {
 				} as IDevicePropertyData;
 
 				const result = await Promise.race([
-					platform.processBatch([command]),
+					this.propertyCommandDispatchService.dispatchBatch([command]).then(({ success }) => success),
 					new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error('Step timeout')), STEP_TIMEOUT_MS)),
 				]);
 
@@ -1014,15 +1016,17 @@ export class SpaceMediaActivityService {
 						value: 'pause',
 					} as IDevicePropertyData;
 
-					await Promise.race([
-						platform.processBatch([command]),
+					const success = await Promise.race([
+						this.propertyCommandDispatchService.dispatchBatch([command]).then(({ success }) => success),
 						new Promise<boolean>((_, reject) =>
 							setTimeout(() => reject(new Error('Pause playback timeout')), STEP_TIMEOUT_MS),
 						),
 					]);
 
-					if (successMessage) {
+					if (success && successMessage) {
 						messages.push(successMessage(ep));
+					} else if (!success) {
+						messages.push(failureMessage(ep));
 					}
 				}
 			} catch (error) {

@@ -6,6 +6,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../mod
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 
@@ -93,6 +94,7 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 		private readonly spacesService: SpacesService,
 		private readonly devicesService: DevicesService,
 		private readonly platformRegistryService: PlatformRegistryService,
+		private readonly propertyCommandDispatchService: PropertyCommandDispatchService,
 	) {
 		// Start periodic cleanup every minute
 		this.cleanupTimer = setInterval(() => this.cleanupExpiredEntries(), 60 * 1000);
@@ -312,7 +314,7 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 				return true;
 			}
 
-			const success = await platform.processBatch(commands);
+			const { success } = await this.propertyCommandDispatchService.dispatchBatch(commands);
 
 			if (!success) {
 				this.logger.error(`Failed to restore light state deviceId=${device.id}`);
@@ -389,7 +391,7 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 				value: setpointToRestore,
 			};
 
-			const success = await platform.processBatch([command]);
+			const { success } = await this.propertyCommandDispatchService.dispatchBatch([command]);
 
 			if (!success) {
 				this.logger.error(`Failed to restore climate state deviceId=${device.id}`);
@@ -449,7 +451,7 @@ export class SpaceUndoHistoryService implements OnModuleDestroy {
 				value: coverState.position,
 			};
 
-			const success = await platform.processBatch([command]);
+			const { success } = await this.propertyCommandDispatchService.dispatchBatch([command]);
 
 			if (!success) {
 				this.logger.error(`Failed to restore cover state deviceId=${device.id}`);

@@ -12,9 +12,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import { IDevicePlatform } from '../../../modules/devices/platforms/device.platform';
+import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { ClimateMode } from '../spaces-home-control.constants';
 
@@ -196,6 +197,15 @@ describe('SpaceUndoHistoryService', () => {
 					provide: PlatformRegistryService,
 					useValue: {
 						get: jest.fn(),
+					},
+				},
+				{
+					provide: PropertyCommandDispatchService,
+					useValue: {
+						dispatchBatch: jest.fn(async (updates: IDevicePropertyData[]) => {
+							const platform = platformRegistryService.get(updates[0].device);
+							return { success: await platform.processBatch(updates) };
+						}),
 					},
 				},
 			],

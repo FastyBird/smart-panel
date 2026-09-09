@@ -4,6 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../../modules/intents/intents.constants';
 import { IntentTarget, IntentTargetResult } from '../../../modules/intents/models/intent.model';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
@@ -109,6 +110,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 	constructor(
 		private readonly spacesService: SpacesService,
 		private readonly platformRegistryService: PlatformRegistryService,
+		private readonly propertyCommandDispatchService: PropertyCommandDispatchService,
 		private readonly coversStateService: SpaceCoversStateService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly contextSnapshotService: SpaceContextSnapshotService,
@@ -859,7 +861,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		}
 
 		try {
-			const success = await platform.processBatch(commands);
+			const { success } = await this.propertyCommandDispatchService.dispatchBatch(commands);
 
 			if (!success) {
 				this.logger.error(`Command execution failed for device id=${cover.device.id}`);
@@ -901,7 +903,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		];
 
 		try {
-			const success = await platform.processBatch(commands);
+			const { success } = await this.propertyCommandDispatchService.dispatchBatch(commands);
 
 			if (!success) {
 				this.logger.error(`Stop command execution failed for device id=${cover.device.id}`);

@@ -5,6 +5,7 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { toInstance } from '../../../common/utils/transform.utils';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { DEFAULT_TTL_SPACE_COMMAND, IntentTargetStatus, IntentType } from '../../../modules/intents/intents.constants';
 import { IntentTarget, IntentTargetResult } from '../../../modules/intents/models/intent.model';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
@@ -57,6 +58,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 	constructor(
 		private readonly spacesService: SpacesService,
 		private readonly platformRegistryService: PlatformRegistryService,
+		private readonly propertyCommandDispatchService: PropertyCommandDispatchService,
 		private readonly climateStateService: SpaceClimateStateService,
 		private readonly contextSnapshotService: SpaceContextSnapshotService,
 		private readonly undoHistoryService: SpaceUndoHistoryService,
@@ -484,7 +486,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 		}
 
 		try {
-			const success = await platform.processBatch(commands);
+			const { success } = await this.propertyCommandDispatchService.dispatchBatch(commands);
 			if (!success) {
 				this.logger.error(`Mode command execution failed for device id=${device.device.id}`);
 				return false;
@@ -749,7 +751,7 @@ export class ClimateIntentService extends SpaceIntentBaseService {
 				return { success: false, heatingSetpoint: null, coolingSetpoint: null };
 			}
 
-			const success = await platform.processBatch(preparedCommands);
+			const { success } = await this.propertyCommandDispatchService.dispatchBatch(preparedCommands, { prepared: true });
 			if (!success) {
 				this.logger.error(`Setpoint command execution failed for device id=${device.device.id}`);
 				return { success: false, heatingSetpoint: null, coolingSetpoint: null };
