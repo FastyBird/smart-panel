@@ -217,11 +217,16 @@ describe('property command convergence integration', () => {
 
 	it('holds a delayed source report until confirmation and projects only the confirmed value to a bound HomeKit alias', async () => {
 		let releaseHomeKitDispatch: () => void = () => undefined;
+		let resolveCommandDispatch: () => void = () => undefined;
+		const commandDispatched = new Promise<void>((resolve) => {
+			resolveCommandDispatch = resolve;
+		});
 		const bindings: CharacteristicBinding[] = [];
 		const homeKitDispatcher = {
 			dispatch: jest.fn(async (propertyId: string, value: unknown) => {
 				expect(propertyId).toBe(aliasA.id);
 				await commandDispatch.dispatchBatch([update(aliasA, Boolean(value))]);
+				resolveCommandDispatch();
 				await new Promise<void>((resolve) => {
 					releaseHomeKitDispatch = resolve;
 				});
@@ -234,7 +239,9 @@ describe('property command convergence integration', () => {
 		};
 		const accessory = new LightbulbMapper().buildAccessory(device, context);
 		const characteristic = accessory?.getService(Service.Lightbulb)?.getCharacteristic(Characteristic.On);
-		expect(characteristic).toBeDefined();
+		if (characteristic === undefined) {
+			throw new Error('Lightbulb On characteristic was not built');
+		}
 		const updateValue = jest.spyOn(characteristic, 'updateValue');
 		const homeKitListener = new HomeKitEventListener({
 			getBindingsForProperty: jest.fn((id: string) => (id === aliasA.id ? bindings : [])),
@@ -249,7 +256,7 @@ describe('property command convergence integration', () => {
 		);
 
 		const set = characteristic.handleSetRequest(true);
-		await new Promise((resolve) => process.nextTick(resolve));
+		await commandDispatched;
 		expect(await characteristic.handleGetRequest()).toBe(true);
 		expect(platform.processBatch).toHaveBeenCalledWith([expect.objectContaining({ property: aliasA, value: true })]);
 
