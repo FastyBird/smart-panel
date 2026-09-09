@@ -365,31 +365,57 @@ describe('NotificationsService', () => {
 	});
 
 	describe('per-key ordering', () => {
-		/** Flushes every pending microtask, unlike a fixed number of `await Promise.resolve()` hops. */
+		/**
+		 * Flushes every pending microtask, unlike a fixed number of `await Promise.resolve()` hops.
+		 *
+		 * This only guarantees that the actor under test has *started* - i.e. reached (and is
+		 * blocked on) its gated `repository.save()` call - not that its database statements have
+		 * completed. Under load a "fast" actor issued afterwards can still reach its own `save()`
+		 * first, so gating must key off which payload is being saved rather than which `save()`
+		 * call happens to run next.
+		 */
 		const flush = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
-		/** Delays the next `repository.save()` call until `release()` is invoked, then runs it for real. */
-		const gateNextSave = (): (() => void) => {
+		type SavePayload = NotificationEntity | NotificationEntity[];
+
+		/**
+		 * Holds the first `repository.save()` whose payload satisfies `matches` until `release()`
+		 * runs, then performs it for real. Every other save passes straight through, so the hold is
+		 * tied to the actor under test and not to which statement happens to finish first.
+		 */
+		const gateSaveMatching = (
+			matches: (payload: SavePayload) => boolean,
+		): { release: () => void; gated: () => SavePayload | null } => {
 			let release: () => void = () => undefined;
+			let gated: SavePayload | null = null;
 			const gate = new Promise<void>((resolve) => {
 				release = resolve;
 			});
 			const originalSave = repository.save.bind(repository) as (
-				entity: NotificationEntity,
+				payload: SavePayload,
 				options?: { transaction?: boolean },
-			) => Promise<NotificationEntity>;
+			) => Promise<SavePayload>;
 
-			jest
-				.spyOn(repository, 'save')
-				.mockImplementationOnce((entity: NotificationEntity, options?: { transaction?: boolean }) => {
-					return gate.then(() => originalSave(entity, options));
-				});
+			jest.spyOn(repository, 'save').mockImplementation(((
+				payload: SavePayload,
+				options?: { transaction?: boolean },
+			) => {
+				if (gated === null && matches(payload)) {
+					gated = payload;
 
-			return release;
+					return gate.then(() => originalSave(payload, options));
+				}
+
+				return originalSave(payload, options);
+			}) as unknown as typeof repository.save);
+
+			return { release, gated: () => gated };
 		};
 
 		it('waits for a slow notify to finish before resolving the same key', async () => {
-			const release = gateNextSave();
+			const { release, gated } = gateSaveMatching(
+				(payload) => !Array.isArray(payload) && payload.key === 'connection' && payload.resolvedAt === null,
+			);
 
 			const notifyResult = service.notify(
 				baseInput({ kind: NotificationKind.ISSUE, key: 'connection', severity: NotificationSeverity.ERROR }),
@@ -413,6 +439,7 @@ describe('NotificationsService', () => {
 
 			const [created, resolved] = await Promise.all([notifyResult, resolveResult]);
 
+			expect(gated()).toMatchObject({ key: 'connection', resolvedAt: null });
 			expect(created).not.toBeNull();
 			expect(resolved).toBe(true);
 
@@ -423,7 +450,9 @@ describe('NotificationsService', () => {
 		});
 
 		it('lets two different keys proceed without waiting on each other', async () => {
-			const release = gateNextSave();
+			const { release, gated } = gateSaveMatching(
+				(payload) => !Array.isArray(payload) && payload.key === 'connection-a',
+			);
 
 			const slowResult = service.notify(
 				baseInput({ kind: NotificationKind.ISSUE, key: 'connection-a', severity: NotificationSeverity.ERROR }),
@@ -444,13 +473,18 @@ describe('NotificationsService', () => {
 			expect(fastSettled).toBe(true);
 
 			release();
+
 			await slowResult;
+
+			expect(gated()).toMatchObject({ key: 'connection-a' });
 
 			await expect(repository.count()).resolves.toBe(2);
 		});
 
 		it('resolveAll waits for a pending notify of the same source before counting resolutions', async () => {
-			const release = gateNextSave();
+			const { release, gated } = gateSaveMatching(
+				(payload) => !Array.isArray(payload) && payload.key === 'connection' && payload.resolvedAt === null,
+			);
 
 			const pendingNotify = service.notify(
 				baseInput({ kind: NotificationKind.ISSUE, key: 'connection', severity: NotificationSeverity.ERROR }),
@@ -472,6 +506,7 @@ describe('NotificationsService', () => {
 
 			const [, count] = await Promise.all([pendingNotify, resolveAllResult]);
 
+			expect(gated()).toMatchObject({ key: 'connection', resolvedAt: null });
 			expect(count).toBe(1);
 			await expect(repository.count({ where: { resolvedAt: Not(IsNull()) } })).resolves.toBe(1);
 		});
@@ -506,7 +541,9 @@ describe('NotificationsService', () => {
 				occurrences: 1,
 			});
 
-			const release = gateNextSave();
+			const { release, gated } = gateSaveMatching(
+				(payload) => Array.isArray(payload) && payload.every((notification) => notification.source === 'system-module'),
+			);
 
 			const resolveAllResult = service.resolveAll('system-module');
 
@@ -540,6 +577,7 @@ describe('NotificationsService', () => {
 
 			const [resolvedCount, created] = await Promise.all([resolveAllResult, notifyResult]);
 
+			expect(gated()).toEqual([expect.objectContaining({ source: 'system-module' })]);
 			expect(resolvedCount).toBe(1);
 			expect(created).not.toBeNull();
 
@@ -566,7 +604,9 @@ describe('NotificationsService', () => {
 		it('lets a different source proceed while resolveAll on one source is held', async () => {
 			await seed({ key: 'connection', kind: NotificationKind.ISSUE, severity: NotificationSeverity.ERROR });
 
-			const release = gateNextSave();
+			const { release, gated } = gateSaveMatching(
+				(payload) => Array.isArray(payload) && payload.every((notification) => notification.source === 'system-module'),
+			);
 
 			const resolveAllResult = service.resolveAll('system-module');
 
@@ -594,6 +634,8 @@ describe('NotificationsService', () => {
 			release();
 
 			await expect(resolveAllResult).resolves.toBe(1);
+
+			expect(gated()).toEqual([expect.objectContaining({ source: 'system-module' })]);
 		});
 
 		it('empties its internal source-barrier map once resolveAll settles', async () => {
