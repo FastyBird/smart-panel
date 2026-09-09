@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 import { ConnectionState } from '../../../modules/devices/devices.constants';
+import { emitFlattenedValue } from '../utils/transform.utils';
 
 import { ShellyWsServerService } from './shelly-ws-server.service';
 
@@ -15,15 +16,14 @@ function createService(
 	const delegateEmit = overrides.delegateEmit ?? jest.fn().mockReturnValue(true);
 	const delegateEmitNotificationValue =
 		overrides.delegateEmitNotificationValue ??
-		jest.fn((compKey: string, attr: string, value: unknown): void => {
-			delegateEmit('value', compKey, attr, value, 'notify');
-
-			if (typeof value === 'object' && value !== null) {
-				for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
-					delegateEmitNotificationValue(compKey, `${attr}.${key}`, nested);
-				}
-			}
-		});
+		jest.fn((compKey: string, attr: string, value: unknown): void =>
+			emitFlattenedValue(
+				(event: string, ...args: unknown[]): unknown => delegateEmit(event, ...args, 'notify'),
+				compKey,
+				attr,
+				value,
+			),
+		);
 	const delegateGet =
 		overrides.delegateGet ??
 		jest.fn().mockReturnValue({ emit: delegateEmit, emitNotificationValue: delegateEmitNotificationValue });

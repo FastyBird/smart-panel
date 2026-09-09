@@ -419,6 +419,24 @@ describe('ShellyDeviceDelegate', () => {
 		expect(values).toHaveBeenCalledWith('switch:0', 'output', true, 'poll');
 	});
 
+	test('contains a malformed component update and clears its poll context', async () => {
+		const { Switch, Device } = require('shellies-ds9');
+		const sw = new Switch('switch:0');
+		const dev = new Device('dev-poll-error', 'FAKE_MODEL', new Map([['switch:0', sw]]), true);
+		dev.shelly.getStatus.mockResolvedValue({ 'switch:0': { output: true } });
+		sw.update = jest.fn(() => {
+			throw new Error('invalid component status');
+		});
+		const delegate = new ShellyDeviceDelegate(dev);
+		const values = jest.fn();
+		delegate.on('value', values);
+
+		await expect(delegate.pollStatus()).resolves.toBe(false);
+
+		sw.emit('change', 'output', false);
+		expect(values).toHaveBeenCalledWith('switch:0', 'output', false, 'notify');
+	});
+
 	test('unsupported model throws', () => {
 		const { Device } = require('shellies-ds9');
 

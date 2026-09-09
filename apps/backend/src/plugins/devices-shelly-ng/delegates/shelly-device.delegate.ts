@@ -309,6 +309,8 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 
 			try {
 				component.update(componentValues);
+			} catch {
+				return false;
 			} finally {
 				this.applyingPollComponent = null;
 			}
