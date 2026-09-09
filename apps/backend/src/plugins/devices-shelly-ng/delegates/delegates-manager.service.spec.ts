@@ -2157,4 +2157,79 @@ describe('DelegatesManagerService', () => {
 			}
 		});
 	});
+
+	describe('poll write coalescing', () => {
+		test('drains only the latest poll value once per property', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const property = { id: 'poll-property' } as ShellyNgChannelPropertyEntity;
+				(svc as any).delegates.set('delegate-poll', {});
+				(svc as any).currentValueUpdateContext = {
+					delegateId: 'delegate-poll',
+					deviceId: 'device-poll',
+					origin: 'poll',
+				};
+				await (svc as any).handleChange(property, 1);
+				await (svc as any).handleChange(property, 2);
+				(svc as any).currentValueUpdateContext = null;
+
+				await jest.advanceTimersByTimeAsync(250);
+				expect(channelsPropertiesService.update).toHaveBeenCalledTimes(1);
+				expect((channelsPropertiesService.update as jest.Mock).mock.calls[0][0]).toBe('poll-property');
+				expect((channelsPropertiesService.update as jest.Mock).mock.calls[0][1].value).toBe(2);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('an immediate notification confirmation cancels an older queued poll value', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const property = { id: 'poll-confirmation' } as ShellyNgChannelPropertyEntity;
+				(svc as any).delegates.set('delegate-poll', {});
+				(svc as any).currentValueUpdateContext = {
+					delegateId: 'delegate-poll',
+					deviceId: 'device-poll',
+					origin: 'poll',
+				};
+				await (svc as any).handleChange(property, false);
+				(svc as any).currentValueUpdateContext = {
+					delegateId: 'delegate-poll',
+					deviceId: 'device-poll',
+					origin: 'notify',
+				};
+				await (svc as any).handleChange(property, true);
+				(svc as any).currentValueUpdateContext = null;
+
+				await jest.advanceTimersByTimeAsync(250);
+				expect(channelsPropertiesService.update).toHaveBeenCalledTimes(1);
+				expect((channelsPropertiesService.update as jest.Mock).mock.calls[0][1].value).toBe(true);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('detach cancels queued poll writes', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const property = { id: 'poll-detach' } as ShellyNgChannelPropertyEntity;
+				(svc as any).delegates.set('delegate-poll', {});
+				(svc as any).currentValueUpdateContext = {
+					delegateId: 'delegate-poll',
+					deviceId: 'device-poll',
+					origin: 'poll',
+				};
+				await (svc as any).handleChange(property, 1);
+				(svc as any).detach();
+
+				await jest.advanceTimersByTimeAsync(250);
+				expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+	});
 });

@@ -40,7 +40,7 @@ import { DeviceAddressService, normalizeMac } from '../services/device-address.s
 import { DeviceManagerService } from '../services/device-manager.service';
 import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
-import { ShellyDeviceDelegate } from './shelly-device.delegate';
+import { ShellyDeviceDelegate, ShellyValueOrigin } from './shelly-device.delegate';
 
 type MaybeNet = {
 	wifi?: WiFi & { sta_ip?: string | null };
@@ -50,6 +50,24 @@ type MaybeNet = {
 type BatchUpdate = {
 	property: ShellyNgChannelPropertyEntity;
 	val: string | number | boolean;
+};
+
+type PollWrite = {
+	delegateId: string;
+	delegateGeneration: number;
+	property: ShellyNgChannelPropertyEntity;
+	value: string | number | boolean;
+};
+
+type PollWriteBucket = {
+	timer: NodeJS.Timeout;
+	values: Map<string, PollWrite>;
+};
+
+type ValueUpdateContext = {
+	delegateId: string;
+	deviceId: string;
+	origin: ShellyValueOrigin;
 };
 
 /**
@@ -78,7 +96,7 @@ export class DelegatesManagerService {
 
 	private readonly delegateValueHandlers: Map<
 		string,
-		(compKey: string, attr: string, val: CharacteristicValue) => void
+		(compKey: string, attr: string, val: CharacteristicValue, origin?: ShellyValueOrigin) => void
 	> = new Map();
 
 	private readonly delegateConnectionHandlers: Map<string, (state: boolean | null) => void> = new Map();
@@ -90,6 +108,13 @@ export class DelegatesManagerService {
 	private readonly setPropertiesHandlers: Map<string, (val: string | number | boolean) => Promise<boolean>> = new Map();
 
 	private readonly pendingWrites: Map<string, NodeJS.Timeout> = new Map();
+
+	/** Latest poll value per property, drained once per physical device after 250 ms. */
+	private readonly pendingPollWrites: Map<string, PollWriteBucket> = new Map();
+
+	private readonly delegatePollGenerations: Map<string, number> = new Map();
+
+	private currentValueUpdateContext: ValueUpdateContext | null = null;
 
 	private readonly propertiesMap: Map<string, Set<string>> = new Map();
 
@@ -184,6 +209,7 @@ export class DelegatesManagerService {
 		// Increment generation so any previous in-progress insert for this device bails out.
 		const generation = (this.insertGeneration.get(shelly.id) ?? 0) + 1;
 		this.insertGeneration.set(shelly.id, generation);
+		this.delegatePollGenerations.set(shelly.id, (this.delegatePollGenerations.get(shelly.id) ?? 0) + 1);
 
 		const delegate = new ShellyDeviceDelegate(shelly);
 
@@ -1739,7 +1765,12 @@ export class DelegatesManagerService {
 
 		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
 
-		const valueHandler = (compKey: string, attr: string, val: CharacteristicValue): void => {
+		const valueHandler = (
+			compKey: string,
+			attr: string,
+			val: CharacteristicValue,
+			origin: ShellyValueOrigin = 'notify',
+		): void => {
 			const handler = this.changeHandlers.get(`${delegate.id}|${compKey}|${attr}`);
 
 			if (!handler) {
@@ -1747,6 +1778,7 @@ export class DelegatesManagerService {
 			}
 
 			try {
+				this.currentValueUpdateContext = { delegateId: delegate.id, deviceId: device.id, origin };
 				handler(val);
 			} catch (error) {
 				const err = error as Error;
@@ -1756,6 +1788,8 @@ export class DelegatesManagerService {
 					message: err.message,
 					stack: err.stack,
 				});
+			} finally {
+				this.currentValueUpdateContext = null;
 			}
 		};
 
@@ -1909,6 +1943,9 @@ export class DelegatesManagerService {
 		if (!delegate) {
 			return;
 		}
+
+		this.delegatePollGenerations.set(deviceId, (this.delegatePollGenerations.get(deviceId) ?? 0) + 1);
+		this.cancelPollWritesForDelegate(deviceId);
 
 		const valueHandler = this.delegateValueHandlers.get(delegate.id);
 		const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
@@ -2116,7 +2153,17 @@ export class DelegatesManagerService {
 		value: string | number | boolean,
 		immediately = true,
 	): Promise<void> {
+		const context = this.currentValueUpdateContext;
+
+		if (context?.origin === 'poll') {
+			this.schedulePollWrite(context, property, value);
+
+			return;
+		}
+
 		if (immediately) {
+			this.cancelScheduledWrite(property.id);
+			this.cancelPollWrite(property.id);
 			await this.writeValueToProperty(property, value);
 		} else {
 			this.scheduleWrite(property, value);
@@ -2438,6 +2485,97 @@ export class DelegatesManagerService {
 		this.pendingWrites.set(property.id, t);
 	}
 
+	private schedulePollWrite(
+		context: ValueUpdateContext,
+		property: ShellyNgChannelPropertyEntity,
+		value: string | number | boolean,
+	): void {
+		let bucket = this.pendingPollWrites.get(context.deviceId);
+
+		if (!bucket) {
+			const values = new Map<string, PollWrite>();
+			const timer = setTimeout(() => {
+				void this.flushPollWrites(context.deviceId);
+			}, 250);
+
+			bucket = { timer, values };
+			this.pendingPollWrites.set(context.deviceId, bucket);
+		}
+
+		bucket.values.set(property.id, {
+			delegateId: context.delegateId,
+			delegateGeneration: this.delegatePollGenerations.get(context.delegateId) ?? 0,
+			property,
+			value,
+		});
+	}
+
+	private async flushPollWrites(deviceId: string): Promise<void> {
+		const bucket = this.pendingPollWrites.get(deviceId);
+
+		if (!bucket) {
+			return;
+		}
+
+		this.pendingPollWrites.delete(deviceId);
+		clearTimeout(bucket.timer);
+
+		for (const pending of bucket.values.values()) {
+			if (
+				!this.delegates.has(pending.delegateId) ||
+				(this.delegatePollGenerations.get(pending.delegateId) ?? 0) !== pending.delegateGeneration
+			) {
+				continue;
+			}
+
+			try {
+				await this.writeValueToProperty(pending.property, pending.value);
+			} catch (error) {
+				const err = error as Error;
+
+				this.logger.error(
+					`Failed to process poll write of value=${safeToString(pending.value)} to property=${pending.property.id}`,
+					{ message: err.message, stack: err.stack },
+				);
+			}
+		}
+	}
+
+	private cancelScheduledWrite(propertyId: string): void {
+		const timer = this.pendingWrites.get(propertyId);
+
+		if (timer) {
+			clearTimeout(timer);
+			this.pendingWrites.delete(propertyId);
+		}
+	}
+
+	private cancelPollWrite(propertyId: string): void {
+		for (const [deviceId, bucket] of this.pendingPollWrites.entries()) {
+			bucket.values.delete(propertyId);
+
+			if (bucket.values.size === 0) {
+				clearTimeout(bucket.timer);
+				this.pendingPollWrites.delete(deviceId);
+			}
+		}
+	}
+
+	private cancelPollWritesForDelegate(delegateId: string): void {
+		for (const [deviceId, bucket] of this.pendingPollWrites.entries()) {
+			for (const [propertyId, pending] of bucket.values.entries()) {
+				if (pending.delegateId === delegateId) {
+					bucket.values.delete(propertyId);
+				}
+			}
+
+			if (bucket.values.size === 0) {
+				clearTimeout(bucket.timer);
+				this.pendingPollWrites.delete(deviceId);
+			}
+		}
+	}
+
 	private async writeValueToProperty(
 		property: ShellyNgChannelPropertyEntity,
 		value: string | number | boolean,
@@ -2539,6 +2677,14 @@ export class DelegatesManagerService {
 		}
 
 		this.pendingWrites.clear();
+
+		for (const bucket of this.pendingPollWrites.values()) {
+			clearTimeout(bucket.timer);
+		}
+
+		this.pendingPollWrites.clear();
+		this.delegatePollGenerations.clear();
+		this.currentValueUpdateContext = null;
 		this.deviceLocks.clear();
 		this.canonicalMacLocks.clear();
 		this.connectedDelegatesPerDevice.clear();
@@ -2605,27 +2751,59 @@ export class DelegatesManagerService {
 		}
 	}
 
+	/** Returns a stable snapshot used by the service-owned staggered poll scheduler. */
+	getConnectedDelegateIds(): string[] {
+		return Array.from(this.delegates.entries())
+			.filter(([, delegate]) => delegate.connected)
+			.map(([id]) => id)
+			.sort();
+	}
+
+	/** Invalidates outstanding poll responses and drains during service lifecycle changes. */
+	invalidateStatusPolls(): void {
+		for (const delegateId of this.delegates.keys()) {
+			this.delegatePollGenerations.set(delegateId, (this.delegatePollGenerations.get(delegateId) ?? 0) + 1);
+		}
+
+		for (const bucket of this.pendingPollWrites.values()) {
+			clearTimeout(bucket.timer);
+		}
+
+		this.pendingPollWrites.clear();
+	}
+
 	/**
-	 * Polls Shelly.GetStatus on all connected delegates to refresh values
-	 * that aren't pushed via WebSocket notifications (energy counters, etc.).
+	 * Polls one delegate while fencing a late response after detach/reinsert.  Scheduling is
+	 * deliberately kept in ShellyNgService so config reload and service lifecycle own its timers.
+	 */
+	async pollDevice(deviceId: string, timeoutMs: number = 10_000): Promise<void> {
+		const delegate = this.delegates.get(deviceId);
+
+		if (!delegate || !delegate.connected) {
+			return;
+		}
+
+		const generation = this.delegatePollGenerations.get(deviceId) ?? 0;
+		const ok = await delegate.pollStatus(
+			timeoutMs,
+			() =>
+				this.delegates.get(deviceId) === delegate &&
+				delegate.connected &&
+				this.delegatePollGenerations.get(deviceId) === generation,
+		);
+
+		if (!ok && this.delegates.get(deviceId) === delegate && this.delegatePollGenerations.get(deviceId) === generation) {
+			this.logger.warn(`Status poll failed for device=${deviceId}`);
+		}
+	}
+
+	/**
+	 * Compatibility helper for callers outside the fixed scheduler.  The service scheduler uses
+	 * pollDevice() directly to retain fixed slots and skip rather than queue missed work.
 	 */
 	async pollAllDevices(timeoutMs: number = 10_000): Promise<void> {
 		const CONCURRENCY = 10;
-		const tasks: Array<() => Promise<void>> = [];
-
-		for (const [id, delegate] of this.delegates.entries()) {
-			if (!delegate.connected) {
-				continue;
-			}
-
-			tasks.push(async () => {
-				const ok = await delegate.pollStatus(timeoutMs);
-
-				if (!ok) {
-					this.logger.warn(`Status poll failed for device=${id}`);
-				}
-			});
-		}
+		const tasks = this.getConnectedDelegateIds().map((id) => () => this.pollDevice(id, timeoutMs));
 
 		for (let i = 0; i < tasks.length; i += CONCURRENCY) {
 			await Promise.all(tasks.slice(i, i + CONCURRENCY).map((fn) => fn()));

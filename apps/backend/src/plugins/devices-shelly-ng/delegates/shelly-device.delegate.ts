@@ -49,6 +49,8 @@ type SupportedComponent =
 	| Em1
 	| Em1Data;
 
+export type ShellyValueOrigin = 'notify' | 'poll';
+
 export class ShellyDeviceDelegate extends EventEmitter2 {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_SHELLY_NG_PLUGIN_NAME,
@@ -100,6 +102,19 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	public readonly descriptor: DeviceDescriptor | null;
 
 	private changeHandlers: Map<string, (char: string, val: CharacteristicValue) => void> = new Map();
+
+	/**
+	 * Native status notifications and an HTTP poll both update components synchronously.  Keep
+	 * the origin in this tiny synchronous window; it must never span the RPC await.
+	 */
+	private applyingPollComponent: string | null = null;
+
+	/**
+	 * A notification revision is captured before an HTTP poll starts.  A component which
+	 * receives a notification while that request is in flight must not be overwritten by the
+	 * older poll response.
+	 */
+	private readonly notificationRevisions: Map<string, number> = new Map();
 
 	constructor(private shelly: Device) {
 		super();
@@ -250,41 +265,85 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	 * is actually responsive. Resolves to true if the device responds, false otherwise.
 	 */
 	async ping(timeoutMs: number = 5_000): Promise<boolean> {
-		return this.rpcWithTimeout(() => this.shelly.rpcHandler.request('Shelly.GetDeviceInfo'), timeoutMs);
+		return (await this.rpcWithTimeout(() => this.shelly.rpcHandler.request('Shelly.GetDeviceInfo'), timeoutMs)).ok;
 	}
 
 	/**
-	 * Polls the device by calling the library's loadStatus(), which internally
-	 * fetches Shelly.GetStatus and applies the values to each component.
-	 * Components then emit proper 'change' events through the existing pipeline,
-	 * correctly handling nested values like aenergy ({ total, by_minute, ... }).
+	 * Polls the device with the public Shelly.GetStatus API.  The library's loadStatus()
+	 * cannot distinguish a poll update from a concurrent WebSocket notification, so apply the
+	 * response ourselves in a synchronous poll-only context after the bounded RPC completes.
 	 */
-	async pollStatus(timeoutMs: number = 10_000): Promise<boolean> {
-		return this.rpcWithTimeout(() => this.shelly.loadStatus(), timeoutMs);
+	async pollStatus(timeoutMs: number = 10_000, isCurrent: () => boolean = () => true): Promise<boolean> {
+		if (!this.shelly.rpcHandler.connected) {
+			return false;
+		}
+
+		const revisionsAtStart = new Map(this.notificationRevisions);
+		const result = await this.rpcWithTimeout(() => this.shelly.shelly.getStatus(), timeoutMs);
+
+		if (!result.ok || !isCurrent()) {
+			return false;
+		}
+
+		for (const [componentKey, values] of Object.entries(result.value)) {
+			if (!isCurrent() || typeof values !== 'object' || values === null) {
+				continue;
+			}
+
+			const componentValues = values as unknown as Record<string, unknown>;
+
+			// A newer notification is authoritative for the whole component.  Do not mutate
+			// the cached component and merely suppress its event afterwards: that would leave
+			// the next notification comparing against stale state.
+			if ((this.notificationRevisions.get(componentKey) ?? 0) !== (revisionsAtStart.get(componentKey) ?? 0)) {
+				continue;
+			}
+
+			const component = this.shelly.getComponent(componentKey);
+
+			if (!component) {
+				continue;
+			}
+
+			this.applyingPollComponent = componentKey;
+
+			try {
+				component.update(componentValues);
+			} catch {
+				return false;
+			} finally {
+				this.applyingPollComponent = null;
+			}
+		}
+
+		return true;
 	}
 
 	/**
 	 * Runs a lazily-created promise with a timeout guard. The factory is only
 	 * called after the connected check, avoiding orphaned in-flight promises.
 	 */
-	private async rpcWithTimeout(factory: () => PromiseLike<unknown>, timeoutMs: number): Promise<boolean> {
+	private async rpcWithTimeout<T>(
+		factory: () => PromiseLike<T>,
+		timeoutMs: number,
+	): Promise<{ ok: true; value: T } | { ok: false }> {
 		if (!this.shelly.rpcHandler.connected) {
-			return false;
+			return { ok: false };
 		}
 
 		let timer: NodeJS.Timeout | undefined;
 
 		try {
-			await Promise.race([
+			const value = await Promise.race([
 				factory(),
 				new Promise<never>((_, reject) => {
 					timer = setTimeout(() => reject(new Error('RPC timeout')), timeoutMs);
 				}),
 			]);
 
-			return true;
+			return { ok: true, value };
 		} catch {
-			return false;
+			return { ok: false };
 		} finally {
 			if (timer) {
 				clearTimeout(timer);
@@ -349,11 +408,37 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	};
 
 	private handleChange = (compKey: string, char: string, val: CharacteristicValue): void => {
+		const origin: ShellyValueOrigin = this.applyingPollComponent === compKey ? 'poll' : 'notify';
+
+		if (origin === 'notify') {
+			this.notificationRevisions.set(compKey, (this.notificationRevisions.get(compKey) ?? 0) + 1);
+		}
+
 		// Flatten object characteristics (e.g. `aenergy: { total, ... }`, `battery: { percent, ... }`)
 		// so handlers keyed on a leaf attribute (e.g. `aenergy.total`, `battery.percent`) receive the
 		// unwrapped scalar, matching the shape ShellyWsServerService emits for sleeping devices.
-		emitFlattenedValue((event: string, ...args: unknown[]): boolean => this.emit(event, ...args), compKey, char, val);
+		emitFlattenedValue(
+			(event: string, ...args: unknown[]): boolean => this.emit(event, ...args, origin),
+			compKey,
+			char,
+			val,
+		);
 	};
+
+	/**
+	 * Applies a raw NotifyStatus frame which did not pass through a library component.  It
+	 * still advances the component revision so a concurrent poll cannot overwrite it.
+	 */
+	emitNotificationValue(compKey: string, char: string, val: unknown): void {
+		this.notificationRevisions.set(compKey, (this.notificationRevisions.get(compKey) ?? 0) + 1);
+
+		emitFlattenedValue(
+			(event: string, ...args: unknown[]): boolean => this.emit(event, ...args, 'notify'),
+			compKey,
+			char,
+			val,
+		);
+	}
 
 	detach(): void {
 		this.shelly.rpcHandler
