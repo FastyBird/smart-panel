@@ -7,6 +7,7 @@ import { ChannelsPropertiesService } from '../../../modules/devices/services/cha
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { DEFAULT_TTL_SCENE } from '../../../modules/intents/intents.constants';
 import { SceneActionEntity, SceneEntity } from '../../../modules/scenes/entities/scenes.entity';
 import { ActionExecutionResultModel } from '../../../modules/scenes/models/scenes.model';
@@ -44,6 +45,7 @@ export class LocalScenePlatform implements IScenePlatform {
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly platformRegistryService: PlatformRegistryService,
+		private readonly propertyCommandDispatchService: PropertyCommandDispatchService,
 		private readonly spacesService: SpacesService,
 	) {}
 
@@ -270,12 +272,14 @@ export class LocalScenePlatform implements IScenePlatform {
 				}
 
 				// Send command to device via platform
-				const success = await platform.process({
-					device,
-					channel,
-					property,
-					value: action.value,
-				});
+				const { success } = await this.propertyCommandDispatchService.dispatchBatch([
+					{
+						device,
+						channel,
+						property,
+						value: action.value,
+					},
+				]);
 
 				results.push({
 					actionId: action.id,

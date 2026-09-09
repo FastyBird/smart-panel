@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { v4 as uuid } from 'uuid';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -13,6 +14,7 @@ import {
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { DEFAULT_TTL_SPACE_COMMAND } from '../../../modules/intents/intents.constants';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
@@ -98,6 +100,14 @@ describe('LightingIntentService', () => {
 					useValue: {
 						get: jest.fn().mockReturnValue(mockPlatform),
 						getCommandTtlMs: jest.fn().mockReturnValue(DEFAULT_TTL_SPACE_COMMAND),
+					},
+				},
+				{
+					provide: PropertyCommandDispatchService,
+					useValue: {
+						dispatchBatch: jest.fn(async (updates: IDevicePropertyData[]) => ({
+							success: await mockPlatform.processBatch(updates),
+						})),
 					},
 				},
 				{

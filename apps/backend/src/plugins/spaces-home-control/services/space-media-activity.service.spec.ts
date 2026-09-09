@@ -1,10 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import { v4 as uuid } from 'uuid';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-activity.entity';
 import { EventType, MediaActivationState, MediaActivityKey, MediaEndpointType } from '../spaces-home-control.constants';
@@ -113,6 +116,15 @@ describe('SpaceMediaActivityService', () => {
 				{ provide: SpaceMediaActivityBindingService, useValue: mockBindingService },
 				{ provide: DerivedMediaEndpointService, useValue: mockDerivedEndpointService },
 				{ provide: PlatformRegistryService, useValue: mockPlatformRegistry },
+				{
+					provide: PropertyCommandDispatchService,
+					useValue: {
+						dispatchBatch: jest.fn(async (updates: IDevicePropertyData[]) => {
+							const platform = mockPlatformRegistry.get(updates[0].device);
+							return { success: await platform.processBatch(updates) };
+						}),
+					},
+				},
 				{ provide: EventEmitter2, useValue: mockEventEmitter },
 			],
 		}).compile();
