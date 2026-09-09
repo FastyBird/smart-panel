@@ -334,6 +334,7 @@ export class ThermostatCoordinator {
 		useBatch = true,
 	): Promise<void> {
 		const pendingWrites = new Map<string, PendingPropertyWrite>();
+		let failureHandled = false;
 		for (const command of commands) {
 			pendingWrites.set(command.propertyId, this.beginPendingWrite(command.propertyId, command.value));
 		}
@@ -346,6 +347,7 @@ export class ThermostatCoordinator {
 				await this.config.context.commandDispatcher.dispatch(commands[0].propertyId, commands[0].value);
 			}
 		} catch (error) {
+			failureHandled = true;
 			let hadConflict = false;
 			for (const [propertyId, pending] of pendingWrites) {
 				if (this.ownsPendingWrite(propertyId, pending)) {
@@ -370,7 +372,7 @@ export class ThermostatCoordinator {
 					hadConflict = true;
 				}
 			}
-			if (hadConflict) {
+			if (!failureHandled && hadConflict) {
 				this.refreshFresherState();
 			}
 		}

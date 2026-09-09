@@ -627,6 +627,36 @@ describe('ThermostatCoordinator', () => {
 		await lockSet;
 	});
 
+	it('should not schedule a fresher-state refresh after restoring an owned failed write', async () => {
+		commandDispatcher.dispatch.mockRejectedValueOnce(new Error('threshold command failed'));
+
+		const coordinator = new ThermostatCoordinator({
+			device,
+			service,
+			context,
+			ambientTempChannel: ambientChannel,
+			ambientTempProperty: ambientProp,
+			heaterChannel,
+			heaterOnProperty: heaterOnProp,
+			heaterTempProperty: heaterTempProp,
+			coolerChannel,
+			coolerOnProperty: coolerOnProp,
+			coolerTempProperty: coolerTempProp,
+		});
+		const refreshFresherState = jest.spyOn(
+			coordinator as unknown as { refreshFresherState: () => void },
+			'refreshFresherState',
+		);
+		const heatingThresholdChar = service.getCharacteristic(Characteristic.HeatingThresholdTemperature);
+		const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		await expect(heatingThresholdChar.handleSetRequest(25)).rejects.toBeDefined();
+
+		consoleError.mockRestore();
+		expect(refreshFresherState).not.toHaveBeenCalled();
+		expect(await heatingThresholdChar.handleGetRequest()).toBe(22);
+	});
+
 	it('should not restore a threshold when a newer property report wins before dispatch failure', async () => {
 		let rejectDispatch: (error: Error) => void = () => undefined;
 		commandDispatcher.dispatch.mockImplementationOnce(
