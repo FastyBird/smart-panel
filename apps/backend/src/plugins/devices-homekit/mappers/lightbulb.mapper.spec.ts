@@ -8,7 +8,9 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
+import { HomeKitEventListener } from '../listeners/homekit-event.listener';
 import { HomeKitCommandDispatcher } from '../services/homekit-command.dispatcher';
+import { HomeKitMapperRegistryService } from '../services/homekit-mapper-registry.service';
 
 import { CharacteristicBinding, HomeKitMapperContext } from './homekit-mapper.interface';
 import { LightbulbMapper } from './lightbulb.mapper';
@@ -112,5 +114,116 @@ describe('LightbulbMapper', () => {
 
 		brightnessChar?.setValue(50);
 		expect(commandDispatcher.dispatch).toHaveBeenCalledWith('prop-bright-1', 50);
+	});
+
+	it('should keep the commanded cache through a GET and suppress a stale bound property event', async () => {
+		let resolveDispatch: () => void = () => undefined;
+		commandDispatcher.dispatch.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveDispatch = resolve;
+				}),
+		);
+
+		const device = new DeviceEntity();
+		device.id = 'dev-light-cache';
+		device.name = 'Cache Light';
+		device.category = DeviceCategory.LIGHTING;
+		const channel = new ChannelEntity();
+		channel.id = 'chan-light-cache';
+		channel.category = ChannelCategory.LIGHT;
+		const onProp = new ChannelPropertyEntity();
+		onProp.id = 'prop-on-cache';
+		onProp.category = PropertyCategory.ON;
+		onProp.permissions = [PermissionType.READ_WRITE];
+		onProp.value = new PropertyValueState(true);
+		channel.properties = [onProp];
+		device.channels = [channel];
+
+		const accessory = mapper.buildAccessory(device, context);
+		const characteristic = accessory?.getService(Service.Lightbulb)?.getCharacteristic(Characteristic.On);
+		expect(characteristic).toBeDefined();
+		const binding = registeredBindings[0];
+		const registry = {
+			getBindingsForProperty: jest.fn().mockReturnValue([binding]),
+			getListenersForProperty: jest.fn().mockReturnValue([]),
+		};
+		const eventListener = new HomeKitEventListener(registry as unknown as HomeKitMapperRegistryService);
+		const updateValue = jest.spyOn(characteristic, 'updateValue');
+
+		const setPromise = characteristic.handleSetRequest(false);
+		await Promise.resolve();
+
+		expect(await characteristic.handleGetRequest()).toBe(false);
+		expect(binding.currentValue).toBe(false);
+
+		onProp.value = new PropertyValueState(true);
+		eventListener.handlePropertyValueChanged(onProp);
+
+		expect(updateValue).not.toHaveBeenCalled();
+		expect(binding.revision).toBe(1);
+		expect(binding.currentValue).toBe(false);
+
+		onProp.value = new PropertyValueState(false);
+		eventListener.handlePropertyValueChanged(onProp);
+
+		expect(updateValue).toHaveBeenCalledWith(false);
+		expect(binding.pendingWrite).toBeUndefined();
+
+		resolveDispatch();
+		await setPromise;
+		expect(await characteristic.handleGetRequest()).toBe(false);
+	});
+
+	it('should not let an older failed write overwrite a newer ABA command', async () => {
+		let rejectFirst: (error: Error) => void = () => undefined;
+		let resolveSecond: () => void = () => undefined;
+		commandDispatcher.dispatch
+			.mockImplementationOnce(
+				() =>
+					new Promise<void>((_, reject) => {
+						rejectFirst = reject;
+					}),
+			)
+			.mockImplementationOnce(
+				() =>
+					new Promise<void>((resolve) => {
+						resolveSecond = resolve;
+					}),
+			);
+
+		const device = new DeviceEntity();
+		device.id = 'dev-light-aba';
+		device.name = 'ABA Light';
+		device.category = DeviceCategory.LIGHTING;
+		const channel = new ChannelEntity();
+		channel.id = 'chan-light-aba';
+		channel.category = ChannelCategory.LIGHT;
+		const onProp = new ChannelPropertyEntity();
+		onProp.id = 'prop-on-aba';
+		onProp.category = PropertyCategory.ON;
+		onProp.permissions = [PermissionType.READ_WRITE];
+		onProp.value = new PropertyValueState(true);
+		channel.properties = [onProp];
+		device.channels = [channel];
+
+		const accessory = mapper.buildAccessory(device, context);
+		const characteristic = accessory?.getService(Service.Lightbulb)?.getCharacteristic(Characteristic.On);
+		expect(characteristic).toBeDefined();
+
+		const firstSet = characteristic.handleSetRequest(false);
+		await Promise.resolve();
+		const secondSet = characteristic.handleSetRequest(true);
+		await Promise.resolve();
+
+		const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+		rejectFirst(new Error('first command failed'));
+		await expect(firstSet).rejects.toBeDefined();
+		consoleError.mockRestore();
+		expect(await characteristic.handleGetRequest()).toBe(true);
+
+		resolveSecond();
+		await secondSet;
+		expect(await characteristic.handleGetRequest()).toBe(true);
 	});
 });

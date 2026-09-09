@@ -514,4 +514,187 @@ describe('ThermostatCoordinator', () => {
 		// Value must remain 26.0 (from event), NOT overwritten by the older 25.0 command
 		expect(targetTempChar.value).toBe(26.0);
 	});
+
+	it('should retain a pending batch target mode while stale per-property reports arrive', async () => {
+		let resolveDispatch: () => void = () => undefined;
+		commandDispatcher.dispatchBatch.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveDispatch = resolve;
+				}),
+		);
+
+		new ThermostatCoordinator({
+			device,
+			service,
+			context,
+			ambientTempChannel: ambientChannel,
+			ambientTempProperty: ambientProp,
+			heaterChannel,
+			heaterOnProperty: heaterOnProp,
+			heaterTempProperty: heaterTempProp,
+			coolerChannel,
+			coolerOnProperty: coolerOnProp,
+			coolerTempProperty: coolerTempProp,
+		});
+
+		const targetStateChar = service.getCharacteristic(Characteristic.TargetHeatingCoolingState);
+		const setPromise = targetStateChar.handleSetRequest(Characteristic.TargetHeatingCoolingState.COOL);
+		await Promise.resolve();
+
+		expect(await targetStateChar.handleGetRequest()).toBe(Characteristic.TargetHeatingCoolingState.COOL);
+		for (const listener of registeredListeners) {
+			if (listener.propertyId === heaterOnProp.id) {
+				listener.onPropertyChanged(heaterOnProp, true);
+			}
+			if (listener.propertyId === coolerOnProp.id) {
+				listener.onPropertyChanged(coolerOnProp, false);
+			}
+		}
+		expect(await targetStateChar.handleGetRequest()).toBe(Characteristic.TargetHeatingCoolingState.COOL);
+
+		for (const listener of registeredListeners) {
+			if (listener.propertyId === heaterOnProp.id) {
+				listener.onPropertyChanged(heaterOnProp, false);
+			}
+			if (listener.propertyId === coolerOnProp.id) {
+				listener.onPropertyChanged(coolerOnProp, true);
+			}
+		}
+		resolveDispatch();
+		await setPromise;
+		expect(await targetStateChar.handleGetRequest()).toBe(Characteristic.TargetHeatingCoolingState.COOL);
+	});
+
+	it('should hold pending threshold and physical lock values through stale reports', async () => {
+		const lockedProp = new ChannelPropertyEntity();
+		lockedProp.id = 'prop-climate-pending-lock';
+		lockedProp.permissions = [PermissionType.READ_WRITE];
+		lockedProp.value = new PropertyValueState(false);
+		let resolveThreshold: () => void = () => undefined;
+		let resolveLock: () => void = () => undefined;
+		commandDispatcher.dispatch
+			.mockImplementationOnce(
+				() =>
+					new Promise<void>((resolve) => {
+						resolveThreshold = resolve;
+					}),
+			)
+			.mockImplementationOnce(
+				() =>
+					new Promise<void>((resolve) => {
+						resolveLock = resolve;
+					}),
+			);
+
+		new ThermostatCoordinator({
+			device,
+			service,
+			context,
+			ambientTempChannel: ambientChannel,
+			ambientTempProperty: ambientProp,
+			heaterChannel,
+			heaterOnProperty: heaterOnProp,
+			heaterTempProperty: heaterTempProp,
+			coolerChannel,
+			coolerOnProperty: coolerOnProp,
+			coolerTempProperty: coolerTempProp,
+			lockedProperty: lockedProp,
+		});
+
+		const heatingThresholdChar = service.getCharacteristic(Characteristic.HeatingThresholdTemperature);
+		const thresholdSet = heatingThresholdChar.handleSetRequest(25);
+		await Promise.resolve();
+		for (const listener of registeredListeners) {
+			if (listener.propertyId === heaterTempProp.id) {
+				listener.onPropertyChanged(heaterTempProp, 22);
+			}
+		}
+		expect(await heatingThresholdChar.handleGetRequest()).toBe(25);
+		resolveThreshold();
+		await thresholdSet;
+
+		const lockChar = service.getCharacteristic(Characteristic.LockPhysicalControls);
+		const lockSet = lockChar.handleSetRequest(Characteristic.LockPhysicalControls.CONTROL_LOCK_ENABLED);
+		await Promise.resolve();
+		for (const listener of registeredListeners) {
+			if (listener.propertyId === lockedProp.id) {
+				listener.onPropertyChanged(lockedProp, false);
+			}
+		}
+		expect(await lockChar.handleGetRequest()).toBe(Characteristic.LockPhysicalControls.CONTROL_LOCK_ENABLED);
+		resolveLock();
+		await lockSet;
+	});
+
+	it('should not schedule a fresher-state refresh after restoring an owned failed write', async () => {
+		commandDispatcher.dispatch.mockRejectedValueOnce(new Error('threshold command failed'));
+
+		const coordinator = new ThermostatCoordinator({
+			device,
+			service,
+			context,
+			ambientTempChannel: ambientChannel,
+			ambientTempProperty: ambientProp,
+			heaterChannel,
+			heaterOnProperty: heaterOnProp,
+			heaterTempProperty: heaterTempProp,
+			coolerChannel,
+			coolerOnProperty: coolerOnProp,
+			coolerTempProperty: coolerTempProp,
+		});
+		const refreshFresherState = jest.spyOn(
+			coordinator as unknown as { refreshFresherState: () => void },
+			'refreshFresherState',
+		);
+		const heatingThresholdChar = service.getCharacteristic(Characteristic.HeatingThresholdTemperature);
+		const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		await expect(heatingThresholdChar.handleSetRequest(25)).rejects.toBeDefined();
+
+		consoleError.mockRestore();
+		expect(refreshFresherState).not.toHaveBeenCalled();
+		expect(await heatingThresholdChar.handleGetRequest()).toBe(22);
+	});
+
+	it('should not restore a threshold when a newer property report wins before dispatch failure', async () => {
+		let rejectDispatch: (error: Error) => void = () => undefined;
+		commandDispatcher.dispatch.mockImplementationOnce(
+			() =>
+				new Promise<void>((_, reject) => {
+					rejectDispatch = reject;
+				}),
+		);
+
+		new ThermostatCoordinator({
+			device,
+			service,
+			context,
+			ambientTempChannel: ambientChannel,
+			ambientTempProperty: ambientProp,
+			heaterChannel,
+			heaterOnProperty: heaterOnProp,
+			heaterTempProperty: heaterTempProp,
+			coolerChannel,
+			coolerOnProperty: coolerOnProp,
+			coolerTempProperty: coolerTempProp,
+		});
+
+		const heatingThresholdChar = service.getCharacteristic(Characteristic.HeatingThresholdTemperature);
+		const setPromise = heatingThresholdChar.handleSetRequest(25);
+		await Promise.resolve();
+		expect(commandDispatcher.dispatch).toHaveBeenCalledWith(heaterTempProp.id, 25);
+		for (const listener of registeredListeners) {
+			if (listener.propertyId === heaterTempProp.id) {
+				listener.onPropertyChanged(heaterTempProp, 24);
+			}
+		}
+		const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+		rejectDispatch(new Error('threshold command failed'));
+		await expect(setPromise).rejects.toBeDefined();
+		consoleError.mockRestore();
+		await new Promise((resolve) => process.nextTick(resolve));
+
+		expect(await heatingThresholdChar.handleGetRequest()).toBe(24);
+	});
 });

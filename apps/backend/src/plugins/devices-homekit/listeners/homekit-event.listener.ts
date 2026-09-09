@@ -30,11 +30,19 @@ export class HomeKitEventListener {
 
 		for (const binding of bindings) {
 			try {
-				binding.revision++;
 				const hapValue: CharacteristicValue = binding.toHomeKit
 					? binding.toHomeKit(rawValue)
 					: (rawValue as CharacteristicValue);
+				if (binding.pendingWrite && Object.is(hapValue, binding.pendingWrite.previousValue)) {
+					this.logger.debug(
+						`Suppressing stale HomeKit characteristic update: property=${property.id} value=${JSON.stringify(rawValue)}`,
+					);
+					continue;
+				}
+
+				binding.revision++;
 				binding.currentValue = hapValue;
+				binding.pendingWrite = undefined;
 				this.logger.debug(
 					`Updating HomeKit characteristic: property=${property.id} value=${JSON.stringify(rawValue)} -> HAP=${JSON.stringify(hapValue)}`,
 				);
