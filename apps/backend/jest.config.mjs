@@ -2,6 +2,7 @@ export default {
 	moduleFileExtensions: ['js', 'json', 'ts'],
 	rootDir: 'src',
 	testRegex: '.*\\.spec\\.ts$',
+	reporters: ['default', '<rootDir>/../test/reporters/failure-details.reporter.js'],
 	transform: {
 		'^.+\\.(t|j)s$': [
 			'ts-jest',
