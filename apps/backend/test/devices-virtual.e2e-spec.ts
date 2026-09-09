@@ -217,14 +217,6 @@ async function ensureDeviceDeleted(
 	throw new Error(`Failed to delete device ${deviceId} after ${attempts} attempts (still present)`);
 }
 
-// Zigbee2mqttService's background reconnect loop (see ensureDeviceDeleted's comment above) can also
-// just make arbitrary, unrelated requests slow rather than fail outright — observed directly as a
-// property-creation call exceeding the default 5000ms test timeout during a run that otherwise took
-// 3x longer than usual. Raising the timeout for this whole file is the proportionate fix for general
-// slowness from an external, pre-existing interference source; ensureDeviceDeleted above additionally
-// handles the sharper failure mode (a transaction collision that surfaces as a 500).
-jest.setTimeout(20_000);
-
 describe('devices-virtual plugin (e2e)', () => {
 	let app: INestApplication;
 	let accessToken: string;
