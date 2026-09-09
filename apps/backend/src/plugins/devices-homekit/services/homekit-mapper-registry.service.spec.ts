@@ -79,6 +79,28 @@ describe('HomeKitMapperRegistryService', () => {
 		expect(bindings[0].deviceId).toBe(device.id);
 	});
 
+	it('should replace pending bindings when rebuilding an accessory', () => {
+		const first = registry.buildAccessory(device, commandDispatcher);
+		expect(first).not.toBeNull();
+		registry.commitStaged(first);
+		const retiredBinding = registry.getBindingsForProperty(onProp.id)[0];
+		retiredBinding.pendingWrite = {
+			token: 1,
+			previousValue: false,
+			requestedValue: true,
+			startingRevision: 0,
+		};
+
+		const replacement = registry.buildAccessory(device, commandDispatcher);
+		expect(replacement).not.toBeNull();
+		registry.commitStaged(replacement);
+
+		const activeBinding = registry.getBindingsForProperty(onProp.id)[0];
+		expect(activeBinding).not.toBe(retiredBinding);
+		expect(activeBinding.pendingWrite).toBeUndefined();
+		expect(registry.getBindingsForProperty(onProp.id)).toHaveLength(1);
+	});
+
 	it('should leave zero orphan bindings if accessory addition throws before commit', () => {
 		const staged = registry.buildAccessory(device, commandDispatcher);
 		expect(staged).not.toBeNull();

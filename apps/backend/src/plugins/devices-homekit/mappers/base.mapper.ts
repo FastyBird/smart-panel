@@ -94,11 +94,36 @@ export abstract class BaseHomeKitMapper implements IHomeKitAccessoryMapper {
 
 		if (isPropertyWritable && isCharacteristicWritable) {
 			characteristic.onSet(async (value: CharacteristicValue) => {
-				const targetRev = ++binding.revision;
+				const startingRevision = binding.revision;
+				const token = (binding.nextWriteToken ?? 0) + 1;
+				binding.nextWriteToken = token;
+				binding.revision = startingRevision + 1;
+				binding.pendingWrite = {
+					token,
+					previousValue: binding.currentValue,
+					requestedValue: value,
+					startingRevision,
+				};
+				binding.currentValue = value;
 				const smartPanelValue = fromHomeKit(value);
-				await context.commandDispatcher.dispatch(property.id, smartPanelValue);
-				if (binding.revision === targetRev) {
-					binding.currentValue = value;
+
+				try {
+					await context.commandDispatcher.dispatch(property.id, smartPanelValue);
+				} catch (error) {
+					if (
+						binding.pendingWrite?.token === token &&
+						binding.revision === startingRevision + 1 &&
+						Object.is(binding.currentValue, value)
+					) {
+						binding.currentValue = binding.pendingWrite.previousValue;
+						binding.characteristic.updateValue(binding.pendingWrite.previousValue);
+					}
+
+					throw error;
+				} finally {
+					if (binding.pendingWrite?.token === token) {
+						binding.pendingWrite = undefined;
+					}
 				}
 			});
 		}

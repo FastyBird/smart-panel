@@ -3,6 +3,13 @@ import { Characteristic, CharacteristicValue } from '@homebridge/hap-nodejs';
 import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { HomeKitCommandDispatcher } from '../services/homekit-command.dispatcher';
 
+export interface CharacteristicPendingWrite {
+	token: number;
+	previousValue: CharacteristicValue;
+	requestedValue: CharacteristicValue;
+	startingRevision: number;
+}
+
 export interface CharacteristicBinding {
 	deviceId: string;
 	channelId: string;
@@ -12,6 +19,8 @@ export interface CharacteristicBinding {
 	fromHomeKit?: (value: CharacteristicValue) => unknown;
 	currentValue: CharacteristicValue;
 	revision: number;
+	nextWriteToken?: number;
+	pendingWrite?: CharacteristicPendingWrite;
 }
 
 export interface PropertyEventListener {

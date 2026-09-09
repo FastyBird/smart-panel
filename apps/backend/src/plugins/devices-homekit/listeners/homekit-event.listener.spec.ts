@@ -60,4 +60,41 @@ describe('HomeKitEventListener', () => {
 
 		expect(mockCharacteristic.updateValue).not.toHaveBeenCalled();
 	});
+
+	it('should suppress only the pending previous HAP value after conversion', () => {
+		const property = new ChannelPropertyEntity();
+		property.id = 'prop-pending';
+		property.value = new PropertyValueState('off');
+		const binding = {
+			deviceId: 'dev-1',
+			channelId: 'chan-1',
+			propertyId: property.id,
+			characteristic: mockCharacteristic as unknown as Characteristic,
+			toHomeKit: (value: unknown) => (value === 'on' ? 1 : 0),
+			currentValue: 1,
+			revision: 3,
+			pendingWrite: {
+				token: 1,
+				previousValue: 0,
+				requestedValue: 1,
+				startingRevision: 2,
+			},
+		};
+
+		mapperRegistry.getBindingsForProperty.mockReturnValue([binding]);
+
+		listener.handlePropertyValueChanged(property);
+
+		expect(mockCharacteristic.updateValue).not.toHaveBeenCalled();
+		expect(binding.currentValue).toBe(1);
+		expect(binding.revision).toBe(3);
+		expect(binding.pendingWrite).toBeDefined();
+
+		property.value = new PropertyValueState('on');
+		listener.handlePropertyValueChanged(property);
+
+		expect(mockCharacteristic.updateValue).toHaveBeenCalledWith(1);
+		expect(binding.revision).toBe(4);
+		expect(binding.pendingWrite).toBeUndefined();
+	});
 });
