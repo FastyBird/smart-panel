@@ -1016,15 +1016,17 @@ export class SpaceMediaActivityService {
 						value: 'pause',
 					} as IDevicePropertyData;
 
-					await Promise.race([
+					const success = await Promise.race([
 						this.propertyCommandDispatchService.dispatchBatch([command]).then(({ success }) => success),
 						new Promise<boolean>((_, reject) =>
 							setTimeout(() => reject(new Error('Pause playback timeout')), STEP_TIMEOUT_MS),
 						),
 					]);
 
-					if (successMessage) {
+					if (success && successMessage) {
 						messages.push(successMessage(ep));
+					} else if (!success) {
+						messages.push(failureMessage(ep));
 					}
 				}
 			} catch (error) {

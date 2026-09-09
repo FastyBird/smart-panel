@@ -21,7 +21,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { DeviceCategory } from '../../../modules/devices/devices.constants';
+import { IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-activity.entity';
 import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
@@ -70,6 +72,18 @@ function buildSummaryFromDevice(d: ScenarioDevice): Record<string, unknown> {
 		input: d.input,
 		remote: d.remote,
 		trackMetadata: d.trackMetadata,
+	};
+}
+
+function createPropertyCommandDispatchMock(harness: MediaTestHarness) {
+	return {
+		dispatchBatch: jest.fn(async (updates: IDevicePropertyData[]) => {
+			const platform = harness.mockPlatformRegistry.get(updates[0].device) as {
+				processBatch: (commands: IDevicePropertyData[]) => Promise<boolean>;
+			};
+
+			return { success: await platform.processBatch(updates) };
+		}),
 	};
 }
 
@@ -519,6 +533,7 @@ describe('Media Regression – Activation Behavior', () => {
 				{ provide: SpaceMediaActivityBindingService, useValue: harness.mockBindingService },
 				{ provide: DerivedMediaEndpointService, useValue: harness.mockDerivedEndpointService },
 				{ provide: PlatformRegistryService, useValue: harness.mockPlatformRegistry },
+				{ provide: PropertyCommandDispatchService, useValue: createPropertyCommandDispatchMock(harness) },
 				{ provide: EventEmitter2, useValue: harness.mockEventEmitter },
 			],
 		}).compile();
@@ -731,6 +746,7 @@ describe('Media Regression – Failure Model', () => {
 				{ provide: SpaceMediaActivityBindingService, useValue: harness.mockBindingService },
 				{ provide: DerivedMediaEndpointService, useValue: harness.mockDerivedEndpointService },
 				{ provide: PlatformRegistryService, useValue: harness.mockPlatformRegistry },
+				{ provide: PropertyCommandDispatchService, useValue: createPropertyCommandDispatchMock(harness) },
 				{ provide: EventEmitter2, useValue: harness.mockEventEmitter },
 			],
 		}).compile();
@@ -841,6 +857,7 @@ describe('Media Regression – WS Events', () => {
 				{ provide: SpaceMediaActivityBindingService, useValue: harness.mockBindingService },
 				{ provide: DerivedMediaEndpointService, useValue: harness.mockDerivedEndpointService },
 				{ provide: PlatformRegistryService, useValue: harness.mockPlatformRegistry },
+				{ provide: PropertyCommandDispatchService, useValue: createPropertyCommandDispatchMock(harness) },
 				{ provide: EventEmitter2, useValue: harness.mockEventEmitter },
 			],
 		}).compile();

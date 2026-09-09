@@ -78,6 +78,7 @@ describe('SpaceMediaActivityService', () => {
 	let mockBindingService: { findBySpace: jest.Mock };
 	let mockDerivedEndpointService: { buildEndpointsForSpace: jest.Mock };
 	let mockPlatformRegistry: { get: jest.Mock };
+	let mockPropertyCommandDispatchService: { dispatchBatch: jest.Mock };
 	let mockEventEmitter: { emit: jest.Mock };
 
 	beforeEach(async () => {
@@ -103,6 +104,12 @@ describe('SpaceMediaActivityService', () => {
 		mockPlatformRegistry = {
 			get: jest.fn().mockReturnValue(null),
 		};
+		mockPropertyCommandDispatchService = {
+			dispatchBatch: jest.fn(async (updates: IDevicePropertyData[]) => {
+				const platform = mockPlatformRegistry.get(updates[0].device);
+				return { success: await platform.processBatch(updates) };
+			}),
+		};
 
 		mockEventEmitter = {
 			emit: jest.fn(),
@@ -118,12 +125,7 @@ describe('SpaceMediaActivityService', () => {
 				{ provide: PlatformRegistryService, useValue: mockPlatformRegistry },
 				{
 					provide: PropertyCommandDispatchService,
-					useValue: {
-						dispatchBatch: jest.fn(async (updates: IDevicePropertyData[]) => {
-							const platform = mockPlatformRegistry.get(updates[0].device);
-							return { success: await platform.processBatch(updates) };
-						}),
-					},
+					useValue: mockPropertyCommandDispatchService,
 				},
 				{ provide: EventEmitter2, useValue: mockEventEmitter },
 			],
@@ -721,6 +723,36 @@ describe('SpaceMediaActivityService', () => {
 	});
 
 	describe('deactivate', () => {
+		it('should report a pause failure when dispatch reports failure', async () => {
+			const playbackPropertyId = uuid();
+			const endpoint = buildEndpoint(
+				MediaEndpointType.AUDIO_OUTPUT,
+				deviceSpeakerId,
+				{ playback: true },
+				{ playback: { propertyId: playbackPropertyId } },
+			);
+			const device = {
+				id: deviceSpeakerId,
+				type: 'test-platform',
+				channels: [{ id: uuid(), properties: [{ id: playbackPropertyId, value: 'playing' }] }],
+			};
+
+			mockSpacesService.findDevicesByIds.mockResolvedValue([device]);
+			mockPlatformRegistry.get.mockReturnValue({});
+			mockPropertyCommandDispatchService.dispatchBatch.mockResolvedValue({ success: false });
+
+			const messages = await (service as any).pausePlaybackOnEndpoints(
+				[endpoint],
+				(ep: ReturnType<typeof buildEndpoint>) => `Failed to pause ${ep.name}`,
+				(ep: ReturnType<typeof buildEndpoint>) => `Paused ${ep.name}`,
+			);
+
+			expect(messages).toEqual(['Failed to pause Device (audio_output)']);
+			expect(mockPropertyCommandDispatchService.dispatchBatch).toHaveBeenCalledWith([
+				expect.objectContaining({ device, value: 'pause' }),
+			]);
+		});
+
 		it('should deactivate and emit event', async () => {
 			const existingRecord = {
 				id: uuid(),

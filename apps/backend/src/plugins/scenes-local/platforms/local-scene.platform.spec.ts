@@ -31,6 +31,9 @@ describe('LocalScenePlatform', () => {
 		expect(dispatchBatch).toHaveBeenNthCalledWith(1, [
 			expect.objectContaining({ device, channel, property, value: true }),
 		]);
+		expect(dispatchBatch).toHaveBeenNthCalledWith(2, [
+			expect.objectContaining({ device, channel, property, value: false }),
+		]);
 		expect(results.map((result) => result.success)).toEqual([true, false]);
 	});
 });
