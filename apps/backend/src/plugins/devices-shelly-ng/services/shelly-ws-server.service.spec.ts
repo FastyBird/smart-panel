@@ -6,13 +6,27 @@ import { ShellyWsServerService } from './shelly-ws-server.service';
 function createService(
 	overrides: {
 		delegateEmit?: jest.Mock;
+		delegateEmitNotificationValue?: jest.Mock;
 		delegateGet?: jest.Mock;
 		findOneBy?: jest.Mock;
 		setConnectionState?: jest.Mock;
 	} = {},
 ) {
 	const delegateEmit = overrides.delegateEmit ?? jest.fn().mockReturnValue(true);
-	const delegateGet = overrides.delegateGet ?? jest.fn().mockReturnValue({ emit: delegateEmit });
+	const delegateEmitNotificationValue =
+		overrides.delegateEmitNotificationValue ??
+		jest.fn((compKey: string, attr: string, value: unknown): void => {
+			delegateEmit('value', compKey, attr, value, 'notify');
+
+			if (typeof value === 'object' && value !== null) {
+				for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+					delegateEmitNotificationValue(compKey, `${attr}.${key}`, nested);
+				}
+			}
+		});
+	const delegateGet =
+		overrides.delegateGet ??
+		jest.fn().mockReturnValue({ emit: delegateEmit, emitNotificationValue: delegateEmitNotificationValue });
 	const findOneBy = overrides.findOneBy ?? jest.fn().mockResolvedValue({ id: 'db-device-1' });
 	const setConnectionState = overrides.setConnectionState ?? jest.fn().mockResolvedValue(undefined);
 
@@ -23,7 +37,7 @@ function createService(
 		{ setConnectionState } as any,
 	);
 
-	return { svc, delegateEmit, delegateGet, findOneBy, setConnectionState };
+	return { svc, delegateEmit, delegateEmitNotificationValue, delegateGet, findOneBy, setConnectionState };
 }
 
 function makeWs(): { send: jest.Mock } {

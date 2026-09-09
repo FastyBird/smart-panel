@@ -16,6 +16,13 @@ jest.mock('shellies-ds9', () => {
 		constructor(public key: string) {
 			super();
 		}
+		update(values: Record<string, unknown>): void {
+			for (const [key, value] of Object.entries(values)) {
+				if ((this as Record<string, unknown>)[key] === value) continue;
+				(this as Record<string, unknown>)[key] = value;
+				this.emit('change', key, value);
+			}
+		}
 		on(event: string, listener: (...args: unknown[]) => void): this {
 			return super.on(event, listener);
 		}
@@ -56,6 +63,7 @@ jest.mock('shellies-ds9', () => {
 
 	class Device {
 		public rpcHandler: MockRpcHandler;
+		public shelly: { getStatus: jest.Mock };
 		constructor(
 			public id: string,
 			public model: string,
@@ -63,6 +71,7 @@ jest.mock('shellies-ds9', () => {
 			connected = false,
 		) {
 			this.rpcHandler = new MockRpcHandler(connected);
+			this.shelly = { getStatus: jest.fn().mockResolvedValue({}) };
 		}
 		hasComponent(key: string) {
 			return this.compMap.has(key);
@@ -371,6 +380,43 @@ describe('ShellyDeviceDelegate', () => {
 
 		expect(delegate.covers.size).toBe(0);
 		expect(delegate.switches.size).toBe(1);
+	});
+
+	test('does not overwrite a notification received while a poll is in flight', async () => {
+		const { Switch, Device } = require('shellies-ds9');
+		const sw = new Switch('switch:0');
+		sw.output = false;
+		const dev = new Device('dev-poll-notify', 'FAKE_MODEL', new Map([['switch:0', sw]]), true);
+		let resolveStatus!: (status: Record<string, unknown>) => void;
+		dev.shelly.getStatus.mockImplementation(
+			() => new Promise((resolve: (status: Record<string, unknown>) => void) => (resolveStatus = resolve)),
+		);
+		const delegate = new ShellyDeviceDelegate(dev);
+		const values = jest.fn();
+		delegate.on('value', values);
+
+		const poll = delegate.pollStatus();
+		sw.update({ output: true });
+		resolveStatus({ 'switch:0': { output: false } });
+
+		await expect(poll).resolves.toBe(true);
+		expect(sw.output).toBe(true);
+		expect(values).toHaveBeenCalledWith('switch:0', 'output', true, 'notify');
+		expect(values).not.toHaveBeenCalledWith('switch:0', 'output', false, 'poll');
+	});
+
+	test('marks synchronous status application as a poll', async () => {
+		const { Switch, Device } = require('shellies-ds9');
+		const sw = new Switch('switch:0');
+		sw.output = false;
+		const dev = new Device('dev-poll', 'FAKE_MODEL', new Map([['switch:0', sw]]), true);
+		dev.shelly.getStatus.mockResolvedValue({ 'switch:0': { output: true } });
+		const delegate = new ShellyDeviceDelegate(dev);
+		const values = jest.fn();
+		delegate.on('value', values);
+
+		await expect(delegate.pollStatus()).resolves.toBe(true);
+		expect(values).toHaveBeenCalledWith('switch:0', 'output', true, 'poll');
 	});
 
 	test('unsupported model throws', () => {

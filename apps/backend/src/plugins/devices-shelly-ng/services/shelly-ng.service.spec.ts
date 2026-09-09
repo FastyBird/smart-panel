@@ -115,7 +115,9 @@ const mockDelegates = () => ({
 	detach: jest.fn(),
 	get: jest.fn().mockReturnValue(undefined),
 	checkHealth: jest.fn().mockResolvedValue(undefined),
-	pollAllDevices: jest.fn().mockResolvedValue(undefined),
+	invalidateStatusPolls: jest.fn(),
+	getConnectedDelegateIds: jest.fn().mockReturnValue([]),
+	pollDevice: jest.fn().mockResolvedValue(undefined),
 });
 
 const mockDevicesService = (devices: any[] = []) => ({
@@ -149,6 +151,30 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 describe('ShellyNgService', () => {
 	let svc: ShellyNgService | null = null;
 
+	function createPollingService(delegates: {
+		getConnectedDelegateIds: jest.Mock;
+		pollDevice: jest.Mock;
+		invalidateStatusPolls?: jest.Mock;
+	}): ShellyNgService {
+		delegates.invalidateStatusPolls ??= jest.fn();
+
+		const pollingService = new ShellyNgService(
+			mockConfigService({ ...pluginConfigEnabled, statusPollInterval: 1 }) as any,
+			mockDbDiscoverer() as any,
+			delegates as any,
+			mockDeviceManagerService as any,
+			mockDevicesService() as any,
+			mockDeviceConnectivityService as any,
+			mockPluginServiceManager as any,
+			mockWsServer as any,
+		);
+
+		(pollingService as any).pluginConfig = { ...pluginConfigEnabled, statusPollInterval: 1 };
+		(pollingService as any).state = 'started';
+
+		return pollingService;
+	}
+
 	afterEach(async () => {
 		if (svc && svc.getState() === 'started') {
 			await svc.stop();
@@ -160,6 +186,52 @@ describe('ShellyNgService', () => {
 		ds9.__testing.shelliesInstances.length = 0;
 		ds9.__testing.mdnsInstances.length = 0;
 		jest.clearAllMocks();
+		jest.useRealTimers();
+	});
+
+	describe('status poll scheduler', () => {
+		test('uses stable staggered slots and skips an occupied delegate instead of catching up', async () => {
+			jest.useFakeTimers();
+			let release!: () => void;
+			const delegates = {
+				getConnectedDelegateIds: jest.fn().mockReturnValue(['c', 'a', 'b']),
+				pollDevice: jest.fn().mockImplementation(() => new Promise<void>((resolve) => (release = resolve))),
+			};
+			const pollingService = createPollingService(delegates);
+
+			(pollingService as any).startStatusPoll();
+			await jest.advanceTimersByTimeAsync(0);
+			expect(delegates.pollDevice).toHaveBeenCalledWith('a', 10_000);
+
+			await jest.advanceTimersByTimeAsync(334);
+			expect(delegates.pollDevice).toHaveBeenCalledWith('b', 10_000);
+			await jest.advanceTimersByTimeAsync(333);
+			expect(delegates.pollDevice).toHaveBeenCalledWith('c', 10_000);
+
+			await jest.advanceTimersByTimeAsync(333);
+			expect(delegates.pollDevice).toHaveBeenCalledTimes(3);
+
+			release();
+			await Promise.resolve();
+			(pollingService as any).stopStatusPoll();
+		});
+
+		test('caps concurrent work at ten and cancels slots on lifecycle stop', async () => {
+			jest.useFakeTimers();
+			const delegates = {
+				getConnectedDelegateIds: jest.fn().mockReturnValue(Array.from({ length: 11 }, (_, index) => `device-${index}`)),
+				pollDevice: jest.fn().mockImplementation(() => new Promise<void>(() => undefined)),
+			};
+			const pollingService = createPollingService(delegates);
+
+			(pollingService as any).startStatusPoll();
+			await jest.advanceTimersByTimeAsync(1_000);
+			expect(delegates.pollDevice).toHaveBeenCalledTimes(10);
+
+			(pollingService as any).stopStatusPoll();
+			await jest.advanceTimersByTimeAsync(2_000);
+			expect(delegates.pollDevice).toHaveBeenCalledTimes(10);
+		});
 	});
 
 	test('start(): initializes when enabled', async () => {

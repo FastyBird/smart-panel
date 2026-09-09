@@ -47,7 +47,13 @@ export class ShellyNgService extends BaseManagedExtensionService {
 	private healthCheckTimer: NodeJS.Timeout | null = null;
 	private healthCheckRunning = false;
 	private statusPollTimer: NodeJS.Timeout | null = null;
-	private statusPollRunning = false;
+	private readonly statusPollTimers: Set<NodeJS.Timeout> = new Set();
+	private readonly statusPollInFlight: Set<string> = new Set();
+	private statusPollGeneration = 0;
+	private statusPollActive = 0;
+
+	private static readonly STATUS_POLL_CONCURRENCY = 10;
+	private static readonly STATUS_POLL_TIMEOUT_MS = 10_000;
 
 	/**
 	 * Global sequential queue for processing discovered devices.
@@ -642,8 +648,8 @@ export class ShellyNgService extends BaseManagedExtensionService {
 	}
 
 	/**
-	 * Starts periodic Shelly.GetStatus polling on all connected devices.
-	 * Captures values that aren't pushed via WS notifications (energy counters, etc.).
+	 * Starts fixed-slot Shelly.GetStatus polling. Delegates retain their stable position for a
+	 * complete interval; a busy slot is skipped rather than queued, preventing catch-up bursts.
 	 */
 	private startStatusPoll(): void {
 		this.stopStatusPoll();
@@ -656,34 +662,78 @@ export class ShellyNgService extends BaseManagedExtensionService {
 			return;
 		}
 
-		const intervalMs = intervalSec * 1000;
-
-		this.statusPollTimer = setInterval(() => {
-			if (this.state !== 'started' || this.statusPollRunning) {
-				return;
-			}
-
-			this.statusPollRunning = true;
-
-			this.delegatesRegistryService
-				.pollAllDevices()
-				.catch((err: Error) => {
-					this.logger.error('Status poll failed', {
-						message: err.message,
-						stack: err.stack,
-					});
-				})
-				.finally(() => {
-					this.statusPollRunning = false;
-				});
-		}, intervalMs);
+		this.scheduleStatusPollCycle(intervalSec * 1000, this.statusPollGeneration);
 	}
 
 	private stopStatusPoll(): void {
-		if (this.statusPollTimer) {
-			clearInterval(this.statusPollTimer);
-			this.statusPollTimer = null;
+		this.statusPollGeneration++;
+		this.delegatesRegistryService.invalidateStatusPolls();
+
+		for (const timer of this.statusPollTimers) {
+			clearTimeout(timer);
 		}
+
+		this.statusPollTimers.clear();
+		this.statusPollTimer = null;
+	}
+
+	private scheduleStatusPollCycle(intervalMs: number, generation: number): void {
+		if ((this.state !== 'started' && this.state !== 'starting') || generation !== this.statusPollGeneration) {
+			return;
+		}
+
+		const delegates = this.delegatesRegistryService.getConnectedDelegateIds().slice().sort();
+
+		for (const [index, delegateId] of delegates.entries()) {
+			const delay = Math.floor((index * intervalMs) / delegates.length);
+
+			this.scheduleStatusPollTimeout(() => this.runStatusPollSlot(delegateId, generation), delay);
+		}
+
+		this.statusPollTimer = this.scheduleStatusPollTimeout(
+			() => this.scheduleStatusPollCycle(intervalMs, generation),
+			intervalMs,
+		);
+	}
+
+	private scheduleStatusPollTimeout(callback: () => void, delayMs: number): NodeJS.Timeout {
+		const timer = setTimeout(() => {
+			this.statusPollTimers.delete(timer);
+			callback();
+		}, delayMs);
+
+		this.statusPollTimers.add(timer);
+
+		return timer;
+	}
+
+	private runStatusPollSlot(delegateId: string, generation: number): void {
+		if (
+			this.state !== 'started' ||
+			generation !== this.statusPollGeneration ||
+			this.statusPollActive >= ShellyNgService.STATUS_POLL_CONCURRENCY ||
+			this.statusPollInFlight.has(delegateId)
+		) {
+			return;
+		}
+
+		this.statusPollActive++;
+		this.statusPollInFlight.add(delegateId);
+
+		void this.delegatesRegistryService
+			.pollDevice(delegateId, ShellyNgService.STATUS_POLL_TIMEOUT_MS)
+			.catch((err: Error) => {
+				if (generation === this.statusPollGeneration) {
+					this.logger.error(`Status poll failed for device=${delegateId}`, {
+						message: err.message,
+						stack: err.stack,
+					});
+				}
+			})
+			.finally(() => {
+				this.statusPollActive--;
+				this.statusPollInFlight.delete(delegateId);
+			});
 	}
 
 	private async waitUntil(...states: ServiceState[]): Promise<void> {

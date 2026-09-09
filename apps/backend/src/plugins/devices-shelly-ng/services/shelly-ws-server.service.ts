@@ -13,7 +13,6 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import { DelegatesManagerService } from '../delegates/delegates-manager.service';
 import { DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { ShellyNgDeviceEntity } from '../entities/devices-shelly-ng.entity';
-import { EmitValueFn, emitFlattenedValue } from '../utils/transform.utils';
 
 const WS_PATH = '/api/v1/plugins/shelly-ng/ws';
 
@@ -204,18 +203,13 @@ export class ShellyWsServerService implements OnModuleDestroy {
 		const delegate = this.delegatesManager.get(deviceId);
 
 		if (delegate) {
-			// Route status values through the delegate's change pipeline, using the same
-			// flattening helper the library WebSocket path uses so both producers emit the
-			// identical key shape (e.g. "battery" the object, and "battery.percent" the leaf).
-			const emit: EmitValueFn = (event: string, ...args: unknown[]): boolean => delegate.emit(event, ...args);
-
 			for (const [compKey, values] of Object.entries(params)) {
 				if (compKey === 'ts' || typeof values !== 'object' || values === null) {
 					continue;
 				}
 
 				for (const [attr, val] of Object.entries(values as Record<string, unknown>)) {
-					emitFlattenedValue(emit, compKey, attr, val);
+					delegate.emitNotificationValue(compKey, attr, val);
 				}
 			}
 
