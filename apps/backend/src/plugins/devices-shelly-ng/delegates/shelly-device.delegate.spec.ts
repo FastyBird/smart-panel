@@ -409,6 +409,7 @@ describe('ShellyDeviceDelegate', () => {
 
 		await expect(poll).resolves.toBe(true);
 		expect(sw.output).toBe(true);
+		expect(values).toHaveBeenCalledTimes(1);
 		expect(values).toHaveBeenCalledWith('switch:0', 'output', true, 'notify');
 		expect(values).not.toHaveBeenCalledWith('switch:0', 'output', false, 'poll');
 	});
