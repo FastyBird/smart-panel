@@ -1118,7 +1118,12 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		const handle = { canonicalPropertyId, generation: window.generation };
 		const receipt = { value: validation.value, receivedAt: Date.now() };
 
-		if (window.previousValue !== null && validation.value === window.previousValue) {
+		const isConfirmation = validation.value === window.commandedValue;
+
+		// A same-value command (or a repeated command generation) can deliberately have an identical
+		// previous and commanded value. A valid matching report still confirms that generation; holding it
+		// would make a received read-back invisible until expiry.
+		if (!isConfirmation && window.previousValue !== null && validation.value === window.previousValue) {
 			if (window.state === 'pending') {
 				this.propertyCommandWindowService.hold(handle, receipt);
 			}
@@ -1126,7 +1131,6 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			return { changed: false, state: null, held: true, forceValueEvent: false };
 		}
 
-		const isConfirmation = validation.value === window.commandedValue;
 		const firstConfirmation = isConfirmation && window.state === 'pending';
 		const result = await writers.windowed();
 

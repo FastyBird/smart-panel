@@ -282,6 +282,26 @@ describe('property command convergence integration', () => {
 		expect(await characteristic.handleGetRequest()).toBe(true);
 	});
 
+	it('publishes one unchanged same-value confirmation to the source and each virtual alias', async () => {
+		const published: Array<{ id: string; value: unknown }> = [];
+		events.on(EventType.CHANNEL_PROPERTY_VALUE_SET, (property: ChannelPropertyEntity) =>
+			published.push({ id: property.id, value: property.value?.value }),
+		);
+
+		await commandDispatch.dispatchBatch([update(aliasA, false)]);
+		await channelsProperties.update(source.id, { type: source.type, value: false });
+		await channelsProperties.update(source.id, { type: source.type, value: false });
+
+		expect(history).toEqual([]);
+		expect(published).toEqual([
+			{ id: aliasA.id, value: false },
+			{ id: aliasB.id, value: false },
+			{ id: source.id, value: false },
+		]);
+		expect(writeWithState).toHaveBeenCalledTimes(2);
+		expect(windows.get(source.id)?.state).toBe('confirmed_grace');
+	});
+
 	it('reconciles one held direct-source report after expiry without replaying it through projections before recovery', async () => {
 		jest.useFakeTimers();
 		jest.setSystemTime(new Date('2026-09-09T12:00:00.000Z'));
