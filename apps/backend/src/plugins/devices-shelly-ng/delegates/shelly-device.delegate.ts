@@ -116,6 +116,15 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 	 */
 	private readonly notificationRevisions: Map<string, number> = new Map();
 
+	/**
+	 * The library processes a statusUpdate before this delegate observes the public event. Keep
+	 * the characteristics it already emitted from that synchronous turn so the status listener
+	 * can forward only equal values which Component.update() deliberately suppresses.
+	 */
+	private readonly changedNotificationCharacteristics: Map<string, Set<string>> = new Map();
+
+	private clearChangedNotificationCharacteristicsQueued: boolean = false;
+
 	constructor(private shelly: Device) {
 		super();
 
@@ -132,7 +141,8 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 				this.shelly.rpcHandler
 					.on('connect', this.handleConnect)
 					.on('disconnect', this.handleDisconnect)
-					.on('request', this.handleRequest);
+					.on('request', this.handleRequest)
+					.on('statusUpdate', this.handleStatusUpdate);
 
 				DESCRIPTOR.components.forEach((componentSpec): void => {
 					for (const id of componentSpec.ids) {
@@ -412,6 +422,7 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 
 		if (origin === 'notify') {
 			this.notificationRevisions.set(compKey, (this.notificationRevisions.get(compKey) ?? 0) + 1);
+			this.rememberChangedNotificationCharacteristic(compKey, char);
 		}
 
 		// Flatten object characteristics (e.g. `aenergy: { total, ... }`, `battery: { percent, ... }`)
@@ -424,6 +435,60 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 			val,
 		);
 	};
+
+	/**
+	 * The pinned library updates components before emitting its public statusUpdate event. Equal
+	 * characteristics are omitted from its component change events, but still constitute a newer
+	 * provider report: they must fence a concurrent poll and reach command confirmation.
+	 */
+	private handleStatusUpdate = (update: Record<string, unknown>): void => {
+		for (const [componentKey, values] of Object.entries(update)) {
+			if (
+				componentKey === 'ts' ||
+				typeof values !== 'object' ||
+				values === null ||
+				!this.components.has(componentKey)
+			) {
+				continue;
+			}
+
+			const changedCharacteristics = this.changedNotificationCharacteristics.get(componentKey);
+
+			for (const [characteristic, value] of Object.entries(values)) {
+				if (changedCharacteristics?.delete(characteristic)) {
+					continue;
+				}
+
+				this.emitNotificationValue(componentKey, characteristic, value);
+			}
+
+			if (changedCharacteristics?.size === 0) {
+				this.changedNotificationCharacteristics.delete(componentKey);
+			}
+		}
+	};
+
+	private rememberChangedNotificationCharacteristic(componentKey: string, characteristic: string): void {
+		let changedCharacteristics = this.changedNotificationCharacteristics.get(componentKey);
+
+		if (!changedCharacteristics) {
+			changedCharacteristics = new Set();
+			this.changedNotificationCharacteristics.set(componentKey, changedCharacteristics);
+		}
+
+		changedCharacteristics.add(characteristic);
+
+		if (this.clearChangedNotificationCharacteristicsQueued) {
+			return;
+		}
+
+		this.clearChangedNotificationCharacteristicsQueued = true;
+
+		queueMicrotask((): void => {
+			this.changedNotificationCharacteristics.clear();
+			this.clearChangedNotificationCharacteristicsQueued = false;
+		});
+	}
 
 	/**
 	 * Applies a raw NotifyStatus frame which did not pass through a library component.  It
@@ -444,7 +509,8 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		this.shelly.rpcHandler
 			.off('connect', this.handleConnect)
 			.off('disconnect', this.handleDisconnect)
-			.off('request', this.handleRequest);
+			.off('request', this.handleRequest)
+			.off('statusUpdate', this.handleStatusUpdate);
 
 		for (const [componentKey, component] of this.components.entries()) {
 			const handler = this.changeHandlers.get(componentKey);
