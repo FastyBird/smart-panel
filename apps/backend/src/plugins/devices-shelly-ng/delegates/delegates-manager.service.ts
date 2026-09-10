@@ -112,6 +112,9 @@ export class DelegatesManagerService {
 	/** Latest poll value per property, drained once per physical device after 250 ms. */
 	private readonly pendingPollWrites: Map<string, PollWriteBucket> = new Map();
 
+	/** Detached drains remain cancellable until every queued property has either run or been skipped. */
+	private readonly activePollWrites: Map<string, Set<PollWriteBucket>> = new Map();
+
 	private readonly delegatePollGenerations: Map<string, number> = new Map();
 
 	private currentValueUpdateContext: ValueUpdateContext | null = null;
@@ -2519,24 +2522,46 @@ export class DelegatesManagerService {
 
 		this.pendingPollWrites.delete(deviceId);
 		clearTimeout(bucket.timer);
+		let activeBuckets = this.activePollWrites.get(deviceId);
 
-		for (const pending of bucket.values.values()) {
-			if (
-				!this.delegates.has(pending.delegateId) ||
-				(this.delegatePollGenerations.get(pending.delegateId) ?? 0) !== pending.delegateGeneration
-			) {
-				continue;
+		if (activeBuckets === undefined) {
+			activeBuckets = new Set();
+			this.activePollWrites.set(deviceId, activeBuckets);
+		}
+
+		activeBuckets.add(bucket);
+
+		try {
+			for (const [propertyId, pending] of [...bucket.values.entries()]) {
+				// A notify-origin confirmation may arrive while an earlier property in this drain awaits
+				// persistence. It must be able to remove a later stale poll candidate before it starts.
+				if (bucket.values.get(propertyId) !== pending) {
+					continue;
+				}
+
+				if (
+					!this.delegates.has(pending.delegateId) ||
+					(this.delegatePollGenerations.get(pending.delegateId) ?? 0) !== pending.delegateGeneration
+				) {
+					continue;
+				}
+
+				try {
+					await this.writeValueToProperty(pending.property, pending.value);
+				} catch (error) {
+					const err = error as Error;
+
+					this.logger.error(
+						`Failed to process poll write of value=${safeToString(pending.value)} to property=${pending.property.id}`,
+						{ message: err.message, stack: err.stack },
+					);
+				}
 			}
+		} finally {
+			activeBuckets.delete(bucket);
 
-			try {
-				await this.writeValueToProperty(pending.property, pending.value);
-			} catch (error) {
-				const err = error as Error;
-
-				this.logger.error(
-					`Failed to process poll write of value=${safeToString(pending.value)} to property=${pending.property.id}`,
-					{ message: err.message, stack: err.stack },
-				);
+			if (activeBuckets.size === 0 && this.activePollWrites.get(deviceId) === activeBuckets) {
+				this.activePollWrites.delete(deviceId);
 			}
 		}
 	}
@@ -2559,6 +2584,12 @@ export class DelegatesManagerService {
 				this.pendingPollWrites.delete(deviceId);
 			}
 		}
+
+		for (const buckets of this.activePollWrites.values()) {
+			for (const bucket of buckets) {
+				bucket.values.delete(propertyId);
+			}
+		}
 	}
 
 	private cancelPollWritesForDelegate(delegateId: string): void {
@@ -2574,6 +2605,32 @@ export class DelegatesManagerService {
 				this.pendingPollWrites.delete(deviceId);
 			}
 		}
+
+		for (const buckets of this.activePollWrites.values()) {
+			for (const bucket of buckets) {
+				for (const [propertyId, pending] of bucket.values.entries()) {
+					if (pending.delegateId === delegateId) {
+						bucket.values.delete(propertyId);
+					}
+				}
+			}
+		}
+	}
+
+	private clearPollWrites(): void {
+		for (const bucket of this.pendingPollWrites.values()) {
+			clearTimeout(bucket.timer);
+		}
+
+		this.pendingPollWrites.clear();
+
+		for (const buckets of this.activePollWrites.values()) {
+			for (const bucket of buckets) {
+				bucket.values.clear();
+			}
+		}
+
+		this.activePollWrites.clear();
 	}
 
 	private async writeValueToProperty(
@@ -2678,11 +2735,7 @@ export class DelegatesManagerService {
 
 		this.pendingWrites.clear();
 
-		for (const bucket of this.pendingPollWrites.values()) {
-			clearTimeout(bucket.timer);
-		}
-
-		this.pendingPollWrites.clear();
+		this.clearPollWrites();
 		this.delegatePollGenerations.clear();
 		this.currentValueUpdateContext = null;
 		this.deviceLocks.clear();
@@ -2765,11 +2818,7 @@ export class DelegatesManagerService {
 			this.delegatePollGenerations.set(delegateId, (this.delegatePollGenerations.get(delegateId) ?? 0) + 1);
 		}
 
-		for (const bucket of this.pendingPollWrites.values()) {
-			clearTimeout(bucket.timer);
-		}
-
-		this.pendingPollWrites.clear();
+		this.clearPollWrites();
 	}
 
 	/**

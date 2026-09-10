@@ -2211,6 +2211,140 @@ describe('DelegatesManagerService', () => {
 			}
 		});
 
+		test('an immediate notification cancels a stale poll value still waiting in an active drain', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const first = { id: 'poll-active-first' } as ShellyNgChannelPropertyEntity;
+				const second = { id: 'poll-active-second' } as ShellyNgChannelPropertyEntity;
+				let releaseFirst!: () => void;
+				const firstWriteStarted = new Promise<void>((resolve) => {
+					(channelsPropertiesService.update as jest.Mock).mockImplementation((propertyId: string) => {
+						if (propertyId !== first.id) {
+							return Promise.resolve({});
+						}
+
+						resolve();
+
+						return new Promise<void>((writeResolve) => {
+							releaseFirst = writeResolve;
+						});
+					});
+				});
+				(svc as any).delegates.set('delegate-poll', {});
+				(svc as any).currentValueUpdateContext = {
+					delegateId: 'delegate-poll',
+					deviceId: 'device-poll',
+					origin: 'poll',
+				};
+				await (svc as any).handleChange(first, 1);
+				await (svc as any).handleChange(second, false);
+				await jest.advanceTimersByTimeAsync(250);
+				await firstWriteStarted;
+
+				(svc as any).currentValueUpdateContext = {
+					delegateId: 'delegate-poll',
+					deviceId: 'device-poll',
+					origin: 'notify',
+				};
+				await (svc as any).handleChange(second, true);
+				(svc as any).currentValueUpdateContext = null;
+				releaseFirst();
+				await jest.advanceTimersByTimeAsync(0);
+
+				const updates = (channelsPropertiesService.update as jest.Mock).mock.calls as Array<
+					[string, { value: string | number | boolean }]
+				>;
+				const firstUpdates = updates.filter(([propertyId]) => propertyId === first.id);
+				const secondUpdates = updates.filter(([propertyId]) => propertyId === second.id);
+				expect(firstUpdates).toHaveLength(1);
+				expect(secondUpdates).toHaveLength(1);
+				expect(secondUpdates[0][1].value).toBe(true);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('keeps a newer active drain cancellable after poll invalidation releases an older drain', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const oldFirst = { id: 'poll-old-first' } as ShellyNgChannelPropertyEntity;
+				const newFirst = { id: 'poll-new-first' } as ShellyNgChannelPropertyEntity;
+				const newSecond = { id: 'poll-new-second' } as ShellyNgChannelPropertyEntity;
+				let releaseOldFirst!: () => void;
+				let releaseNewFirst!: () => void;
+				let resolveOldFirstStarted!: () => void;
+				let resolveNewFirstStarted!: () => void;
+				const oldFirstStarted = new Promise<void>((resolve) => {
+					resolveOldFirstStarted = resolve;
+				});
+				const newFirstStarted = new Promise<void>((resolve) => {
+					resolveNewFirstStarted = resolve;
+				});
+				(channelsPropertiesService.update as jest.Mock).mockImplementation((propertyId: string) => {
+					if (propertyId === oldFirst.id) {
+						resolveOldFirstStarted();
+
+						return new Promise<void>((resolve) => {
+							releaseOldFirst = resolve;
+						});
+					}
+
+					if (propertyId === newFirst.id) {
+						resolveNewFirstStarted();
+
+						return new Promise<void>((resolve) => {
+							releaseNewFirst = resolve;
+						});
+					}
+
+					return Promise.resolve({});
+				});
+				(svc as any).delegates.set('delegate-poll', {});
+				(svc as any).currentValueUpdateContext = {
+					delegateId: 'delegate-poll',
+					deviceId: 'device-poll',
+					origin: 'poll',
+				};
+				await (svc as any).handleChange(oldFirst, 1);
+				await jest.advanceTimersByTimeAsync(250);
+				await oldFirstStarted;
+
+				(svc as any).invalidateStatusPolls();
+				(svc as any).currentValueUpdateContext = {
+					delegateId: 'delegate-poll',
+					deviceId: 'device-poll',
+					origin: 'poll',
+				};
+				await (svc as any).handleChange(newFirst, 1);
+				await (svc as any).handleChange(newSecond, false);
+				await jest.advanceTimersByTimeAsync(250);
+				await newFirstStarted;
+
+				releaseOldFirst();
+				await jest.advanceTimersByTimeAsync(0);
+				(svc as any).currentValueUpdateContext = {
+					delegateId: 'delegate-poll',
+					deviceId: 'device-poll',
+					origin: 'notify',
+				};
+				await (svc as any).handleChange(newSecond, true);
+				(svc as any).currentValueUpdateContext = null;
+				releaseNewFirst();
+				await jest.advanceTimersByTimeAsync(0);
+
+				const updates = (channelsPropertiesService.update as jest.Mock).mock.calls as Array<
+					[string, { value: string | number | boolean }]
+				>;
+				const newSecondUpdates = updates.filter(([propertyId]) => propertyId === newSecond.id);
+				expect(newSecondUpdates).toHaveLength(1);
+				expect(newSecondUpdates[0][1].value).toBe(true);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
 		test('detach cancels queued poll writes', async () => {
 			jest.useFakeTimers();
 
