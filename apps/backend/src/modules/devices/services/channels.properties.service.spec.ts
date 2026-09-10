@@ -1278,6 +1278,203 @@ describe('ChannelsPropertiesService', () => {
 			);
 		});
 
+		it.each([
+			{ dataType: DataTypeType.BOOL, value: false },
+			{ dataType: DataTypeType.BOOL, value: true },
+			{ dataType: DataTypeType.FLOAT, value: 21.5 },
+		])('confirms an unchanged $dataType report when it equals both command values', async ({ dataType, value }) => {
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			property.dataType = dataType;
+			property.step = null;
+			property.value = new PropertyValueState(value);
+			const queryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(property),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as any);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			const handle = propertyCommandWindowService.open({
+				canonicalTarget: { deviceId: 'device', channelId: mockChannel.id, propertyId: property.id },
+				requestedTargets: [{ deviceId: 'device', channelId: mockChannel.id, propertyId: property.id }],
+				commandedValue: value,
+				previousValue: value,
+				ttlMs: 3_000,
+			});
+			propertyValueService.writeWithState.mockResolvedValue({
+				changed: false,
+				state: new PropertyValueState(value),
+			});
+
+			await channelsPropertiesService.update(property.id, {
+				type: 'mock',
+				value,
+			} as UpdateMockChannelPropertyDto);
+			await channelsPropertiesService.update(property.id, {
+				type: 'mock',
+				value,
+			} as UpdateMockChannelPropertyDto);
+
+			expect(propertyValueService.writeWithState).toHaveBeenCalledTimes(2);
+			expect(propertyCommandWindowService.get(property.id)).toEqual(
+				expect.objectContaining({ generation: handle.generation, state: 'confirmed_grace', heldReceipt: null }),
+			);
+			expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
+				EventType.CHANNEL_PROPERTY_VALUE_SET,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				expect.objectContaining({ id: property.id, value: expect.objectContaining({ value }) }),
+			);
+		});
+
+		it('confirms the newest repeated same-value generation, including during prior grace', async () => {
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			property.dataType = DataTypeType.BOOL;
+			property.value = new PropertyValueState(false);
+			const queryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(property),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as any);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			const stale = propertyCommandWindowService.open({
+				canonicalTarget: { deviceId: 'device', channelId: mockChannel.id, propertyId: property.id },
+				requestedTargets: [{ deviceId: 'device', channelId: mockChannel.id, propertyId: property.id }],
+				commandedValue: false,
+				previousValue: false,
+				ttlMs: 3_000,
+			});
+			const pending = propertyCommandWindowService.open({
+				canonicalTarget: { deviceId: 'device', channelId: mockChannel.id, propertyId: property.id },
+				requestedTargets: [{ deviceId: 'device', channelId: mockChannel.id, propertyId: property.id }],
+				commandedValue: false,
+				previousValue: false,
+				ttlMs: 3_000,
+			});
+			propertyValueService.writeWithState.mockResolvedValue({ changed: false, state: new PropertyValueState(false) });
+
+			await channelsPropertiesService.update(property.id, {
+				type: 'mock',
+				value: false,
+			} as UpdateMockChannelPropertyDto);
+			expect(propertyCommandWindowService.confirm(stale, { value: false, receivedAt: Date.now() })).toBeNull();
+			expect(propertyCommandWindowService.get(property.id)).toEqual(
+				expect.objectContaining({ generation: pending.generation, state: 'confirmed_grace' }),
+			);
+
+			const newest = propertyCommandWindowService.open({
+				canonicalTarget: { deviceId: 'device', channelId: mockChannel.id, propertyId: property.id },
+				requestedTargets: [{ deviceId: 'device', channelId: mockChannel.id, propertyId: property.id }],
+				commandedValue: false,
+				previousValue: false,
+				ttlMs: 3_000,
+			});
+			await channelsPropertiesService.update(property.id, {
+				type: 'mock',
+				value: false,
+			} as UpdateMockChannelPropertyDto);
+
+			expect(propertyCommandWindowService.get(property.id)).toEqual(
+				expect.objectContaining({ generation: newest.generation, state: 'confirmed_grace' }),
+			);
+			expect(eventEmitter.emit).toHaveBeenCalledTimes(2);
+		});
+
+		it('holds the carry-forward value and confirms the final A in an A-to-B-to-A sequence', async () => {
+			jest.useFakeTimers();
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			property.value = new PropertyValueState('A');
+			const queryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(property),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as any);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			propertyCommandWindowService.open({
+				canonicalTarget: { deviceId: 'device', channelId: mockChannel.id, propertyId: property.id },
+				requestedTargets: [{ deviceId: 'device', channelId: mockChannel.id, propertyId: property.id }],
+				commandedValue: 'B',
+				previousValue: 'A',
+				ttlMs: 3_000,
+			});
+			const final = propertyCommandWindowService.open({
+				canonicalTarget: { deviceId: 'device', channelId: mockChannel.id, propertyId: property.id },
+				requestedTargets: [{ deviceId: 'device', channelId: mockChannel.id, propertyId: property.id }],
+				commandedValue: 'A',
+				previousValue: 'A',
+				ttlMs: 3_000,
+			});
+			propertyValueService.writeWithState.mockResolvedValue({ changed: false, state: new PropertyValueState('A') });
+
+			await channelsPropertiesService.update(property.id, { type: 'mock', value: 'B' } as UpdateMockChannelPropertyDto);
+			expect(propertyCommandWindowService.get(property.id)?.heldReceipt).toEqual(
+				expect.objectContaining({ value: 'B' }),
+			);
+			await channelsPropertiesService.update(property.id, { type: 'mock', value: 'A' } as UpdateMockChannelPropertyDto);
+
+			expect(propertyCommandWindowService.get(property.id)).toEqual(
+				expect.objectContaining({ generation: final.generation, state: 'confirmed_grace', heldReceipt: null }),
+			);
+			expect(propertyValueService.writeWithState).toHaveBeenCalledTimes(1);
+			jest.advanceTimersByTime(1_500);
+			expect(propertyCommandWindowService.get(property.id)).toBeNull();
+			expect(propertyValueService.writeWithState).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not confirm a matching metadata report when its writer rejects it', async () => {
+			const property = toInstance(MockChannelProperty, mockChannelProperty);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: MockChannelProperty,
+				createDto: CreateMockChannelPropertyDto,
+				updateDto: UpdateMockChannelPropertyDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(channelsPropertiesService, 'getOneOrThrow').mockResolvedValue(property);
+			jest.spyOn(repository, 'save').mockResolvedValue(property);
+			const handle = propertyCommandWindowService.open({
+				canonicalTarget: { deviceId: 'device', channelId: mockChannel.id, propertyId: property.id },
+				requestedTargets: [{ deviceId: 'device', channelId: mockChannel.id, propertyId: property.id }],
+				commandedValue: 'matched',
+				previousValue: 'matched',
+				ttlMs: 3_000,
+			});
+			propertyValueService.writeWithState.mockResolvedValue({ changed: false, state: null });
+
+			await channelsPropertiesService.update(property.id, {
+				type: 'mock',
+				mock_value: 'changed metadata',
+				value: 'matched',
+			} as UpdateMockChannelPropertyDto);
+
+			expect(propertyValueService.writeWithState).toHaveBeenCalledWith(expect.anything(), 'matched', undefined);
+			expect(propertyCommandWindowService.get(property.id)).toEqual(
+				expect.objectContaining({ generation: handle.generation, state: 'pending' }),
+			);
+			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_UPDATED, property);
+			expect(eventEmitter.emit).not.toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_VALUE_SET, expect.anything());
+		});
+
 		it('reconciles an expired unconfirmed held report through the normal value writer once', async () => {
 			jest.useFakeTimers();
 			jest.setSystemTime(new Date('2026-09-08T12:00:00.000Z'));
@@ -1450,7 +1647,7 @@ describe('ChannelsPropertiesService', () => {
 				canonicalTarget: { deviceId: 'device', channelId: mockChannel.id, propertyId: property.id },
 				requestedTargets: [{ deviceId: 'device', channelId: mockChannel.id, propertyId: property.id }],
 				commandedValue: 'commanded',
-				previousValue: 'previous',
+				previousValue: 'commanded',
 				ttlMs: 3_000,
 			});
 			propertyValueService.writeWithState.mockResolvedValue({
