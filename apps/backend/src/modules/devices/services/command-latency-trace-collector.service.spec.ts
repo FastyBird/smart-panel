@@ -93,6 +93,69 @@ describe('CommandLatencyTraceCollectorService', () => {
 		expect(capture?.records.filter((record) => record.invocationId === capture.invocationId)).toHaveLength(4);
 	});
 
+	it('finishes the capture at source publication before unrelated outer work settles', async () => {
+		const collector = new CommandLatencyTraceCollectorService(config);
+		arm(collector);
+		let releaseOuterWork: () => void = () => undefined;
+		const update = collector.traceUpdate(
+			{ propertyId: config.sourcePropertyId, value: true, windowGeneration: 'generation-1' },
+			async () => {
+				collector.recordWriteComplete(sourceProperty(true), { changed: true });
+				collector.recordSourcePublication(sourceProperty(true));
+				await new Promise<void>((resolve) => {
+					releaseOuterWork = resolve;
+				});
+			},
+		);
+
+		const [capture] = collector.getCaptures();
+		expect(capture?.status).toBe('complete');
+		expect(capture?.records.map((record) => record.stage)).toEqual([
+			'command-received',
+			'window-bound',
+			'update-entry',
+			'write-complete',
+			'source-publication',
+			'update-complete',
+		]);
+
+		releaseOuterWork();
+		await update;
+	});
+
+	it('retains the one active invocation when source publication runs outside its async context', async () => {
+		const collector = new CommandLatencyTraceCollectorService(config);
+		arm(collector);
+		let releaseUpdate: () => void = () => undefined;
+		const update = collector.traceUpdate(
+			{ propertyId: config.sourcePropertyId, value: true, windowGeneration: 'generation-1' },
+			async () =>
+				new Promise<void>((resolve) => {
+					releaseUpdate = resolve;
+				}),
+		);
+
+		await Promise.resolve();
+		collector.recordSourcePublication(sourceProperty(true));
+
+		const [capture] = collector.getCaptures();
+		expect(capture).toMatchObject({
+			status: 'complete',
+			trialId: 'request-1',
+			windowGeneration: 'generation-1',
+		});
+		expect(capture?.records.map((record) => record.stage)).toEqual([
+			'command-received',
+			'window-bound',
+			'update-entry',
+			'source-publication',
+			'update-complete',
+		]);
+
+		releaseUpdate();
+		await update;
+	});
+
 	it('keeps a held stale provider report diagnostic-only and permits its later confirmation', async () => {
 		const collector = new CommandLatencyTraceCollectorService(config);
 		arm(collector);
