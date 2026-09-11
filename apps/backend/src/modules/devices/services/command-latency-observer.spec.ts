@@ -77,6 +77,17 @@ describe('CommandLatencyObserver', () => {
 				observer.record('projection-event', 100);
 			}).toThrow('Projection event requires prior dispatch');
 		});
+
+		it('rejects projection-event before a source-event', () => {
+			const observer = new CommandLatencyObserver(createConfig());
+			observer.record('listener-ready', 50);
+			observer.record('subscription-acknowledged', 60);
+			observer.record('dispatch', 70);
+
+			expect(() => {
+				observer.record('projection-event', 100);
+			}).toThrow('Projection event requires prior source event');
+		});
 	});
 
 	describe('monotonic timestamp enforcement', () => {
@@ -201,7 +212,7 @@ describe('CommandLatencyObserver', () => {
 			expect(result.failureReason).toBe('Socket reconnect');
 		});
 
-		it('rejects recording new stages after trial completion/timeout', () => {
+		it('rejects recording new stages after a timeout', () => {
 			const observer = new CommandLatencyObserver(createConfig());
 			observer.record('listener-ready', 10);
 			observer.record('subscription-acknowledged', 20);
@@ -211,6 +222,25 @@ describe('CommandLatencyObserver', () => {
 			expect(() => {
 				observer.record('source-event', 5040);
 			}).toThrow(/Cannot record stage 'source-event' after trial has finalized with status 'timeout'/);
+		});
+
+		it('rejects recording new stages after successful convergence', () => {
+			const config = createConfig({
+				target: {
+					deviceId: 'dev-1',
+					channelId: 'chan-1',
+					propertyId: 'prop-source',
+				},
+			});
+			const observer = new CommandLatencyObserver(config);
+			observer.record('listener-ready', 10);
+			observer.record('subscription-acknowledged', 20);
+			observer.record('dispatch', 30);
+			observer.onPropertyEvent('prop-source', true, 40);
+
+			expect(() => {
+				observer.record('source-event', 50);
+			}).toThrow(/Cannot record stage 'source-event' after trial has finalized with status 'success'/);
 		});
 	});
 
@@ -291,11 +321,13 @@ describe('CommandLatencyObserver', () => {
 
 			expect(report.idle.count).toBe(20);
 			expect(report.idle.successCount).toBe(20);
+			expect(report.idle.pipelineSampleCount).toBe(20);
 			expect(report.idle.timeoutCount).toBe(0);
 			expect(report.idle.p95Ms).toBeLessThan(800);
 
 			expect(report.pollOverlap.count).toBe(20);
 			expect(report.pollOverlap.successCount).toBe(20);
+			expect(report.pollOverlap.pipelineSampleCount).toBe(20);
 			expect(report.pollOverlap.timeoutCount).toBe(0);
 			expect(report.pollOverlap.p95Ms).toBeLessThan(800);
 
@@ -325,19 +357,50 @@ describe('CommandLatencyObserver', () => {
 		});
 
 		it('fails overallPipelineGate if p95 exceeds 800ms', () => {
-			const trials: TrialResult[] = Array.from({ length: 20 }, (_, i) => ({
-				trialIndex: i,
-				scenario: 'idle',
+			const createTrial = (index: number, scenario: 'idle' | 'poll-overlap'): TrialResult => ({
+				trialIndex: index,
+				scenario,
 				status: 'success',
 				target: { deviceId: 'd', channelId: 'c', propertyId: 'p' },
 				commandValue: true,
 				records: [],
-				spans: { updateEntryToSourceMs: 850 },
+				spans: { updateEntryToSourceMs: scenario === 'idle' ? 850 : 50 },
 				elapsedMs: 850,
-			}));
+			});
+			const trials: TrialResult[] = [
+				...Array.from({ length: 20 }, (_, i) => createTrial(i, 'idle')),
+				...Array.from({ length: 20 }, (_, i) => createTrial(20 + i, 'poll-overlap')),
+			];
 
 			const report = compileSessionReport(trials);
 			expect(report.idle.p95Ms).toBe(850);
+			expect(report.overallPipelineGatePassed).toBe(false);
+		});
+
+		it('fails overallPipelineGate without a complete 20-trial pipeline series', () => {
+			const report = compileSessionReport([]);
+			expect(report.overallPipelineGatePassed).toBe(false);
+		});
+
+		it('fails overallPipelineGate when a successful trial lacks the pipeline span', () => {
+			const createTrial = (index: number, scenario: 'idle' | 'poll-overlap'): TrialResult => ({
+				trialIndex: index,
+				scenario,
+				status: 'success',
+				target: { deviceId: 'd', channelId: 'c', propertyId: 'p' },
+				commandValue: true,
+				records: [],
+				spans: { updateEntryToSourceMs: 50 },
+				elapsedMs: 50,
+			});
+			const trials = [
+				...Array.from({ length: 20 }, (_, i) => createTrial(i, 'idle')),
+				...Array.from({ length: 20 }, (_, i) => createTrial(20 + i, 'poll-overlap')),
+			];
+			trials[0] = { ...trials[0], spans: {} };
+
+			const report = compileSessionReport(trials);
+			expect(report.idle.pipelineSampleCount).toBe(19);
 			expect(report.overallPipelineGatePassed).toBe(false);
 		});
 	});
