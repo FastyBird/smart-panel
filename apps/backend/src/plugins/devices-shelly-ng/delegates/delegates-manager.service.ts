@@ -1,6 +1,6 @@
 import { CharacteristicValue, Device, Ethernet, WiFi } from 'shellies-ds9';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import {
@@ -18,6 +18,7 @@ import {
 } from '../../../modules/devices/devices.constants';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { CommandLatencyTraceCollectorService } from '../../../modules/devices/services/command-latency-trace-collector.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { ComponentType, DEVICES_SHELLY_NG_PLUGIN_NAME, DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
@@ -190,6 +191,8 @@ export class DelegatesManagerService {
 		private readonly deviceAddressService: DeviceAddressService,
 		private readonly propertyMappingStorage: PropertyMappingStorageService,
 		private readonly transformerRegistry: TransformerRegistry,
+		@Optional()
+		private readonly commandLatencyTraceCollector: CommandLatencyTraceCollectorService = new CommandLatencyTraceCollectorService(),
 	) {}
 
 	get(id: Device['id']): ShellyDeviceDelegate | undefined {
@@ -2157,8 +2160,18 @@ export class DelegatesManagerService {
 		immediately = true,
 	): Promise<void> {
 		const context = this.currentValueUpdateContext;
+		if (context !== null) {
+			this.commandLatencyTraceCollector.recordProviderReceipt(property.id, value, context.origin, {
+				delegateId: context.delegateId,
+				deviceId: context.deviceId,
+			});
+		}
 
 		if (context?.origin === 'poll') {
+			this.commandLatencyTraceCollector.recordPollActivity(property.id, 'poll-coalescer-admission', {
+				delegateId: context.delegateId,
+				deviceId: context.deviceId,
+			});
 			this.schedulePollWrite(context, property, value);
 
 			return;
@@ -2547,6 +2560,10 @@ export class DelegatesManagerService {
 				}
 
 				try {
+					this.commandLatencyTraceCollector.recordPollActivity(pending.property.id, 'poll-drain', {
+						delegateId: pending.delegateId,
+						deviceId,
+					});
 					await this.writeValueToProperty(pending.property, pending.value);
 				} catch (error) {
 					const err = error as Error;
@@ -2833,13 +2850,24 @@ export class DelegatesManagerService {
 		}
 
 		const generation = this.delegatePollGenerations.get(deviceId) ?? 0;
-		const ok = await delegate.pollStatus(
-			timeoutMs,
-			() =>
-				this.delegates.get(deviceId) === delegate &&
-				delegate.connected &&
-				this.delegatePollGenerations.get(deviceId) === generation,
-		);
+		this.commandLatencyTraceCollector.recordPollRpc(deviceId, 'poll-rpc-start', { timeoutMs });
+		let ok: boolean;
+		try {
+			ok = await delegate.pollStatus(
+				timeoutMs,
+				() =>
+					this.delegates.get(deviceId) === delegate &&
+					delegate.connected &&
+					this.delegatePollGenerations.get(deviceId) === generation,
+			);
+		} catch (error) {
+			this.commandLatencyTraceCollector.recordPollRpc(deviceId, 'poll-rpc-complete', {
+				ok: false,
+				error: error instanceof Error ? error.message : 'unknown failure',
+			});
+			throw error;
+		}
+		this.commandLatencyTraceCollector.recordPollRpc(deviceId, 'poll-rpc-complete', { ok });
 
 		if (!ok && this.delegates.get(deviceId) === delegate && this.delegatePollGenerations.get(deviceId) === generation) {
 			this.logger.warn(`Status poll failed for device=${deviceId}`);

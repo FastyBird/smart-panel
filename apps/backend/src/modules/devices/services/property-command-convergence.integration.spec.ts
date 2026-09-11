@@ -25,6 +25,7 @@ import { IDevicePlatform, IDevicePropertyData } from '../platforms/device.platfo
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
@@ -66,6 +67,7 @@ describe('property command convergence integration', () => {
 	let windows: PropertyCommandWindowService;
 	let channelsProperties: ChannelsPropertiesService;
 	let commandDispatch: PropertyCommandDispatchService;
+	let traceCollector: CommandLatencyTraceCollectorService;
 	let platform: jest.Mocked<Pick<IDevicePlatform, 'processBatch'>>;
 
 	const makeProperty = <T extends ChannelPropertyEntity>(PropertyClass: new () => T, id: string): T => {
@@ -117,6 +119,11 @@ describe('property command convergence integration', () => {
 		]);
 		history = [];
 		windows = new PropertyCommandWindowService();
+		traceCollector = new CommandLatencyTraceCollectorService({
+			runId: 'integration-run',
+			sourcePropertyId: source.id,
+			projectionPropertyId: aliasA.id,
+		});
 
 		const valueSources = new PropertyValueSourceRegistryService();
 		valueSources.register({
@@ -178,6 +185,7 @@ describe('property command convergence integration', () => {
 			windows,
 			{ manager: {}, getRepository: jest.fn() } as never,
 			events,
+			traceCollector,
 		);
 		jest.spyOn(channelsProperties, 'findOne').mockImplementation((id) => Promise.resolve(properties.get(id) ?? null));
 
@@ -198,6 +206,7 @@ describe('property command convergence integration', () => {
 			structureLocks,
 			propertyState,
 			windows,
+			traceCollector,
 		);
 
 		const projection = new VirtualProjectionListener(
@@ -322,5 +331,32 @@ describe('property command convergence integration', () => {
 		expect(published).toEqual([]);
 		expect(windows.get(source.id)).toBeNull();
 		expect(writeWithState).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps one outer server invocation across the type-less value-only fallback', async () => {
+		const mapper = (channelsProperties as unknown as { propertiesMapperService: { getMapping: jest.Mock } })
+			.propertiesMapperService;
+		mapper.getMapping.mockReturnValue({
+			type: source.type,
+			class: SourceProperty,
+			createDto: class {},
+			updateDto: UpdateChannelPropertyDto,
+			beforeUpdate: jest.fn(),
+		});
+		const dataSource = (channelsProperties as unknown as { dataSource: { getRepository: jest.Mock } }).dataSource;
+		dataSource.getRepository.mockReturnValue({ save: jest.fn().mockResolvedValue(source) });
+		traceCollector.observeCommand({
+			requestId: 'fallback-request',
+			intentId: 'fallback-intent',
+			properties: [{ property: aliasA.id, value: true }],
+		});
+		await commandDispatch.dispatchBatch([update(aliasA, true)], { intentId: 'fallback-intent' });
+
+		await channelsProperties.update(source.id, { value: true } as UpdateChannelPropertyDto);
+
+		const complete = traceCollector.getCaptures().filter((capture) => capture.status === 'complete');
+		expect(complete).toHaveLength(1);
+		expect(complete[0]?.records.filter((record) => record.stage === 'update-entry')).toHaveLength(1);
+		expect(complete[0]?.records.filter((record) => record.stage === 'source-publication')).toHaveLength(1);
 	});
 });

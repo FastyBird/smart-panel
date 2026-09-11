@@ -1,6 +1,6 @@
 import { validate } from 'class-validator';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -21,6 +21,7 @@ import { PropertyCommandValue, validatePropertyCommandValue } from '../utils/pro
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandDispatchService } from './property-command-dispatch.service';
@@ -71,6 +72,8 @@ export class PropertyCommandService {
 		private readonly intentsService: IntentsService,
 		private readonly propertyCommandDispatchService: PropertyCommandDispatchService,
 		private readonly propertyCommandWindowService: PropertyCommandWindowService,
+		@Optional()
+		private readonly commandLatencyTraceCollector: CommandLatencyTraceCollectorService = new CommandLatencyTraceCollectorService(),
 	) {}
 
 	async handleInternal(
@@ -401,6 +404,11 @@ export class PropertyCommandService {
 		this.logger.log(
 			`Created intent ${intent.id} for ${targets.length} target(s)${options.requestId ? ` requestId=${options.requestId}` : ''}`,
 		);
+		this.commandLatencyTraceCollector.observeCommand({
+			requestId: options.requestId,
+			intentId: intent.id,
+			properties: commands,
+		});
 
 		const results: DevicePropertyCommandResult[] = [];
 

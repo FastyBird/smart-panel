@@ -30,6 +30,7 @@ import { DeviceExistsConstraintValidator } from '../validators/device-exists-con
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
@@ -94,6 +95,7 @@ describe('PropertyCommandService', () => {
 	let loggerErrorSpy: jest.SpiedFunction<any>;
 	let loggerWarnSpy: jest.SpiedFunction<any>;
 	let loggerLogSpy: jest.SpiedFunction<any>;
+	let traceCollector: { observeCommand: jest.Mock; bindWindow: jest.Mock };
 
 	const mockDevice = {
 		id: uuid().toString(),
@@ -163,6 +165,7 @@ describe('PropertyCommandService', () => {
 	};
 
 	beforeEach(async () => {
+		traceCollector = { observeCommand: jest.fn(), bindWindow: jest.fn() };
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				PropertyCommandService,
@@ -171,6 +174,7 @@ describe('PropertyCommandService', () => {
 				PropertyValueSourceRegistryService,
 				DeviceStructureLockService,
 				PropertyStateCoordinatorService,
+				{ provide: CommandLatencyTraceCollectorService, useValue: traceCollector },
 				DeviceExistsConstraintValidator,
 				ChannelExistsConstraintValidator,
 				ChannelPropertyExistsConstraintValidator,
@@ -319,6 +323,11 @@ describe('PropertyCommandService', () => {
 			),
 			expect.objectContaining({ tag: 'devices-module' }),
 		);
+		expect(traceCollector.observeCommand).toHaveBeenCalledWith({
+			requestId: validPayload.request_id,
+			intentId: 'mock-intent-id',
+			properties: validPayload.properties,
+		});
 	});
 
 	it('should return an error if validation fails', async () => {

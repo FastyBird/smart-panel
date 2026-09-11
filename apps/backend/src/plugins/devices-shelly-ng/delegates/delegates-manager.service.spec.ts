@@ -14,6 +14,7 @@ import { Logger } from '@nestjs/common';
 
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
+import { CommandLatencyTraceCollectorService } from '../../../modules/devices/services/command-latency-trace-collector.service';
 import { DEVICES_SHELLY_NG_TYPE } from '../devices-shelly-ng.constants';
 import { CreateShellyNgDeviceDto } from '../dto/create-device.dto';
 import {
@@ -2159,6 +2160,55 @@ describe('DelegatesManagerService', () => {
 	});
 
 	describe('poll write coalescing', () => {
+		test('records provider receipt, coalescer admission, and drain as separate timing evidence', async () => {
+			jest.useFakeTimers();
+
+			try {
+				const recordProviderReceipt = jest.fn();
+				const recordPollActivity = jest.fn();
+				const traceCollector = {
+					recordProviderReceipt,
+					recordPollActivity,
+				} as unknown as CommandLatencyTraceCollectorService;
+				const tracedService = new DelegatesManagerService(
+					devicesService as any,
+					channelsService as any,
+					channelsPropertiesService as any,
+					deviceConnectivityService as any,
+					deviceManagerService as any,
+					deviceAddressService as any,
+					propertyMappingStorage as any,
+					transformerRegistry as any,
+					traceCollector,
+				);
+				const property = { id: 'trace-poll-property' } as ShellyNgChannelPropertyEntity;
+				(tracedService as any).delegates.set('trace-delegate', {});
+				(tracedService as any).currentValueUpdateContext = {
+					delegateId: 'trace-delegate',
+					deviceId: 'trace-device',
+					origin: 'poll',
+				};
+
+				await (tracedService as any).handleChange(property, true);
+				await jest.advanceTimersByTimeAsync(250);
+
+				expect(recordProviderReceipt).toHaveBeenCalledWith(property.id, true, 'poll', {
+					delegateId: 'trace-delegate',
+					deviceId: 'trace-device',
+				});
+				expect(recordPollActivity).toHaveBeenNthCalledWith(1, property.id, 'poll-coalescer-admission', {
+					delegateId: 'trace-delegate',
+					deviceId: 'trace-device',
+				});
+				expect(recordPollActivity).toHaveBeenNthCalledWith(2, property.id, 'poll-drain', {
+					delegateId: 'trace-delegate',
+					deviceId: 'trace-device',
+				});
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
 		test('drains only the latest poll value once per property', async () => {
 			jest.useFakeTimers();
 

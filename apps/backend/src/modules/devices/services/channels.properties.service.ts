@@ -3,7 +3,7 @@ import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -26,6 +26,7 @@ import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
 import {
+	type PropertyCommandValue,
 	SUPPORTED_PROPERTY_COMMAND_DATA_TYPES,
 	validatePropertyCommandValue,
 } from '../utils/property-command-value.utils';
@@ -36,6 +37,7 @@ import {
 	type ChannelPropertyTypeMapping,
 	ChannelsPropertiesTypeMapperService,
 } from './channels.properties-type-mapper.service';
+import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
@@ -156,6 +158,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		private readonly propertyCommandWindowService: PropertyCommandWindowService,
 		private readonly dataSource: DataSource,
 		private readonly eventEmitter: EventEmitter2,
+		@Optional()
+		private readonly commandLatencyTraceCollector: CommandLatencyTraceCollectorService = new CommandLatencyTraceCollectorService(),
 	) {}
 
 	onModuleInit(): void {
@@ -834,6 +838,27 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		updateDto: TUpdateDTO,
 		options: ChannelPropertyUpdateOptions = {},
 	): Promise<TProperty> {
+		const windowGeneration =
+			options.commandOrigin?.handle.generation ??
+			(this.commandLatencyTraceCollector.isEnabled()
+				? this.propertyCommandWindowService.peekGeneration(id)
+				: undefined);
+
+		return this.commandLatencyTraceCollector.traceUpdate(
+			{
+				propertyId: id,
+				value: updateDto.value as PropertyCommandValue | undefined,
+				windowGeneration,
+			},
+			() => this.updateInternal<TProperty, TUpdateDTO>(id, updateDto, options),
+		);
+	}
+
+	private async updateInternal<TProperty extends ChannelPropertyEntity, TUpdateDTO extends UpdateChannelPropertyDto>(
+		id: string,
+		updateDto: TUpdateDTO,
+		options: ChannelPropertyUpdateOptions = {},
+	): Promise<TProperty> {
 		this.logger.debug(`Updating data source with id=${id}`);
 
 		if (this.isValueOnlyUpdate(updateDto, options)) {
@@ -852,7 +877,11 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 				// A type-less report can only reveal a mapper's structural hooks after its one admitted
 				// entity load. Leave shared admission before taking the existing exclusive path; upgrades
 				// are forbidden by the lifecycle barrier.
-				return this.update<TProperty, TUpdateDTO>(id, { ...updateDto, type: result.type } as TUpdateDTO, options);
+				return this.updateInternal<TProperty, TUpdateDTO>(
+					id,
+					{ ...updateDto, type: result.type } as TUpdateDTO,
+					options,
+				);
 			}
 		}
 
@@ -986,6 +1015,16 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 				valueChanged = windowed.changed;
 				persistedValueState = windowed.state;
 				forceConfirmationValueEvent = windowed.forceValueEvent;
+				this.commandLatencyTraceCollector.recordWriteComplete(raw, {
+					changed: windowed.changed,
+					held: windowed.held,
+				});
+				if (windowed.held) {
+					this.commandLatencyTraceCollector.recordSuppressed(
+						raw,
+						'The provider report was held by the command window.',
+					);
+				}
 			}
 			const strictValueEventEmitted = options.strictValuePersistence === true && valueChanged;
 			const confirmationValueEventEmitted = forceConfirmationValueEvent && !strictValueEventEmitted;
@@ -994,10 +1033,10 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 				// Persistence is already durable. Publish before post-update readback/hooks so a later failure
 				// cannot make an idempotent retry skip the only value event for this measurement.
 				raw.value = persistedValueState;
-				this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, raw);
+				this.publishValueSet(raw);
 			} else if (confirmationValueEventEmitted) {
 				raw.value = persistedValueState;
-				this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, raw);
+				this.publishValueSet(raw);
 			}
 
 			let updatedProperty = (await this.getOneOrThrow(property.id)) as TProperty;
@@ -1018,11 +1057,17 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 				this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_UPDATED, updatedProperty);
 			} else if (valueChanged && !strictValueEventEmitted && !confirmationValueEventEmitted) {
 				// Only value changed - emit CHANNEL_PROPERTY_VALUE_SET
-				this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, updatedProperty);
+				this.publishValueSet(updatedProperty);
 			}
 
 			return updatedProperty;
 		});
+	}
+
+	/** Keeps diagnostic capture synchronous and immediately adjacent to the existing value event. */
+	private publishValueSet(property: ChannelPropertyEntity): void {
+		this.commandLatencyTraceCollector.recordSourcePublication(property);
+		this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
 	}
 
 	private async updateValueOnly<TProperty extends ChannelPropertyEntity, TUpdateDTO extends UpdateChannelPropertyDto>(
@@ -1057,8 +1102,16 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					const write = (): Promise<PropertyValueWriteResult> =>
 						this.propertyValueService.writeWithState(current, value);
 					const result = await this.commitWindowedProviderValue(current, value, { unwindowed: write, windowed: write });
+					this.commandLatencyTraceCollector.recordWriteComplete(current, {
+						changed: result.changed,
+						held: result.held,
+					});
 
 					if (result.held) {
+						this.commandLatencyTraceCollector.recordSuppressed(
+							current,
+							'The provider report was held by the command window.',
+						);
 						return { property: current };
 					}
 
@@ -1069,7 +1122,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					}
 
 					if (result.changed || result.forceValueEvent) {
-						this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, current);
+						this.publishValueSet(current);
 					}
 
 					return { property: current };
