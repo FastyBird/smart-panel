@@ -96,8 +96,9 @@ value event emit. Shelly provider receipt, actual poll RPC (when the optional so
 provided), poll-coalescer admission, and poll-drain remain distinct diagnostic stages.
 
 After each client observer trial has finalized, `CommandLatencyLiveAdapter` reads the private NDJSON
-output and joins it with `joinServerTimingCapture()`. It requires exactly one complete capture for that
-correlation id; it preserves the raw client and server records separately.
+output together with the active collector `runId` and joins it with `joinServerTimingCapture()`. It
+requires exactly one complete capture for that run and correlation id; it preserves the raw client and
+server records separately.
 Keep the source revision/hash of both observer and installed collector with the private report.
 
 After the bounded run, remove the temporary private output and unset the environment value/restart the

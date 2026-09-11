@@ -354,7 +354,7 @@ describe('CommandLatencyObserver', () => {
 	describe('server timing evidence joins', () => {
 		it('joins delayed, skewed server evidence without placing server time in the client record stream', () => {
 			const clientTrial = completedClientTrial();
-			const adapter = new CommandLatencyLiveAdapter(`${JSON.stringify(completedCapture())}\n`);
+			const adapter = new CommandLatencyLiveAdapter(`${JSON.stringify(completedCapture())}\n`, 'server-run');
 			const joined = adapter.join(clientTrial, 'test-corr-1');
 
 			expect(joined.records).toEqual(clientTrial.records);
@@ -364,11 +364,14 @@ describe('CommandLatencyObserver', () => {
 
 		it('rejects missing, duplicate, or non-monotonic server capture correlation', () => {
 			const clientTrial = completedClientTrial();
-			expect(() => joinServerTimingCapture(clientTrial, [], 'test-corr-1')).toThrow('Expected one complete');
+			expect(() => joinServerTimingCapture(clientTrial, [], 'server-run', 'test-corr-1')).toThrow(
+				'Expected one complete',
+			);
 			expect(() =>
 				joinServerTimingCapture(
 					clientTrial,
 					[completedCapture(), completedCapture({ invocationId: 'second' })],
+					'server-run',
 					'test-corr-1',
 				),
 			).toThrow('Expected one complete');
@@ -383,9 +386,17 @@ describe('CommandLatencyObserver', () => {
 							})),
 						}),
 					],
+					'server-run',
 					'test-corr-1',
 				),
 			).toThrow('invalid monotonic');
+		});
+
+		it('rejects a prior run that reused the command correlation id', () => {
+			const clientTrial = completedClientTrial();
+			expect(() =>
+				joinServerTimingCapture(clientTrial, [completedCapture({ runId: 'prior-run' })], 'server-run', 'test-corr-1'),
+			).toThrow('Expected one complete');
 		});
 	});
 

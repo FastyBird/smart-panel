@@ -543,22 +543,32 @@ export class CommandLatencyTraceCollectorService implements OnModuleDestroy {
 	}
 
 	private expireDueTrials(): void {
+		const captureDurationMs = this.config?.captureDurationMs;
+		if (captureDurationMs === undefined) {
+			return;
+		}
+
 		const now = this.now();
 		for (const trial of [...this.trialsByIntent.values()]) {
-			if (now - trial.startedAtMs >= (this.config?.captureDurationMs ?? 0)) {
+			if (now - trial.startedAtMs >= captureDurationMs) {
 				this.finishTrial(
 					trial,
 					'expired',
-					'The 30 second validation capture window elapsed before source publication.',
+					`The ${captureDurationMs}ms validation capture window elapsed before source publication.`,
 				);
 			}
 		}
 	}
 
 	private expireTrial(intentId: string): void {
+		const captureDurationMs = this.config?.captureDurationMs;
 		const trial = this.trialsByIntent.get(intentId);
-		if (trial !== undefined) {
-			this.finishTrial(trial, 'expired', 'The 30 second validation capture window elapsed before source publication.');
+		if (trial !== undefined && captureDurationMs !== undefined) {
+			this.finishTrial(
+				trial,
+				'expired',
+				`The ${captureDurationMs}ms validation capture window elapsed before source publication.`,
+			);
 		}
 	}
 

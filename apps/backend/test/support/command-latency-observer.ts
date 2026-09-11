@@ -127,16 +127,20 @@ export function parseServerTimingCaptures(serialized: string): CommandLatencyTra
 export function joinServerTimingCapture(
 	trial: TrialResult,
 	captures: readonly CommandLatencyTraceCapture[],
+	runId: string,
 	correlationId: string | undefined,
 ): TrialResult {
 	if (trial.status !== 'success') {
 		throw new Error('Server timing may be joined only to a successful, finalized client trial.');
 	}
+	if (!runId) {
+		throw new Error('Server timing join requires the active validation run id.');
+	}
 	if (!correlationId) {
 		throw new Error('Server timing join requires the client command correlation id.');
 	}
 
-	const related = captures.filter((capture) => capture.trialId === correlationId);
+	const related = captures.filter((capture) => capture.runId === runId && capture.trialId === correlationId);
 	const invalid = related.find((capture) => ['error', 'expired', 'overflow', 'shutdown'].includes(capture.status));
 	if (invalid) {
 		throw new Error(`Server timing capture is invalid: ${invalid.failureReason ?? invalid.status}.`);
@@ -207,12 +211,15 @@ export function joinServerTimingCapture(
 export class CommandLatencyLiveAdapter {
 	readonly captures: readonly CommandLatencyTraceCapture[];
 
-	constructor(serializedCaptures: string) {
+	constructor(
+		serializedCaptures: string,
+		private readonly runId: string,
+	) {
 		this.captures = parseServerTimingCaptures(serializedCaptures);
 	}
 
 	join(trial: TrialResult, correlationId: string | undefined): TrialResult {
-		return joinServerTimingCapture(trial, this.captures, correlationId);
+		return joinServerTimingCapture(trial, this.captures, this.runId, correlationId);
 	}
 }
 

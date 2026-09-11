@@ -144,16 +144,20 @@ describe('CommandLatencyTraceCollectorService', () => {
 		expect(capture?.failureReason).toContain('Concurrent provider updates');
 	});
 
-	it('invalidates an armed capture at its bounded 30 second expiry', () => {
+	it('invalidates an armed capture at its configured bounded expiry', () => {
 		jest.useFakeTimers();
-		const collector = new CommandLatencyTraceCollectorService(config);
-		arm(collector);
-		jest.advanceTimersByTime(30_000);
+		try {
+			const captureDurationMs = 1_500;
+			const collector = new CommandLatencyTraceCollectorService({ ...config, captureDurationMs });
+			arm(collector);
+			jest.advanceTimersByTime(captureDurationMs);
 
-		const [capture] = collector.getCaptures();
-		expect(capture?.status).toBe('expired');
-		expect(capture?.failureReason).toContain('30 second');
-		jest.useRealTimers();
+			const [capture] = collector.getCaptures();
+			expect(capture?.status).toBe('expired');
+			expect(capture?.failureReason).toContain(`${captureDurationMs}ms`);
+		} finally {
+			jest.useRealTimers();
+		}
 	});
 
 	it('invalidates all active evidence when the bounded record buffer overflows', async () => {
