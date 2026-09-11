@@ -96,6 +96,7 @@ interface ActiveTrial {
 	/** Unassigned receipt/poll records are transferred to exactly one subsequent invocation capture. */
 	readonly pendingRecords: CommandLatencyTraceRecord[];
 	windowGeneration?: string;
+	activeInvocation?: TraceInvocation;
 	completed: boolean;
 	activeInvocationCount: number;
 }
@@ -315,7 +316,7 @@ export class CommandLatencyTraceCollectorService implements OnModuleDestroy {
 
 	/** Must run immediately before the existing source event emitter call. */
 	recordSourcePublication(property: ChannelPropertyEntity): void {
-		const invocation = this.context.getStore();
+		const invocation = this.context.getStore() ?? this.getActiveInvocation(property.id);
 		if (invocation === undefined || property.id !== this.config?.sourcePropertyId) {
 			return;
 		}
@@ -329,6 +330,8 @@ export class CommandLatencyTraceCollectorService implements OnModuleDestroy {
 		}
 
 		this.recordInvocation(invocation, 'source-publication');
+		this.recordInvocation(invocation, 'update-complete');
+		this.finishTrial(invocation.trial, 'complete', undefined, invocation);
 	}
 
 	/** A live adapter reads immutable completed captures after the client observer has settled. */
@@ -373,6 +376,7 @@ export class CommandLatencyTraceCollectorService implements OnModuleDestroy {
 			status: 'pending',
 		};
 		trial.activeInvocationCount++;
+		trial.activeInvocation = invocation;
 		this.recordInvocation(invocation, 'update-entry', { receivedValue: input.value });
 
 		return invocation;
@@ -380,6 +384,9 @@ export class CommandLatencyTraceCollectorService implements OnModuleDestroy {
 
 	private finishInvocation(invocation: TraceInvocation): void {
 		invocation.trial.activeInvocationCount = Math.max(0, invocation.trial.activeInvocationCount - 1);
+		if (invocation.trial.activeInvocation === invocation) {
+			invocation.trial.activeInvocation = undefined;
+		}
 		if (invocation.trial.completed) {
 			return;
 		}
@@ -398,6 +405,25 @@ export class CommandLatencyTraceCollectorService implements OnModuleDestroy {
 		if (invocation.status === 'error') {
 			this.finishTrial(invocation.trial, 'error', invocation.failureReason, invocation);
 		}
+	}
+
+	/**
+	 * Value publication is the terminal server timing boundary. Most callers retain the invocation's
+	 * async context, but event/lifecycle work may publish after that context has unwound. Reuse only
+	 * the one active invocation for the armed canonical source; an absent or ambiguous invocation is
+	 * intentionally not inferred as a capture.
+	 */
+	private getActiveInvocation(propertyId: string): TraceInvocation | undefined {
+		if (!this.isEnabled() || propertyId !== this.config?.sourcePropertyId) {
+			return undefined;
+		}
+
+		const candidates = [...this.trialsByGeneration.values()]
+			.filter((trial) => !trial.completed && trial.activeInvocation !== undefined)
+			.map((trial) => trial.activeInvocation)
+			.filter((invocation): invocation is TraceInvocation => invocation !== undefined);
+
+		return candidates.length === 1 ? candidates[0] : undefined;
 	}
 
 	private recordCurrentInvocation(
@@ -535,6 +561,7 @@ export class CommandLatencyTraceCollectorService implements OnModuleDestroy {
 		}
 
 		trial.completed = true;
+		trial.activeInvocation = undefined;
 		clearTimeout(trial.expiryTimer);
 		this.trialsByIntent.delete(trial.intentId);
 		if (trial.windowGeneration !== undefined && this.trialsByGeneration.get(trial.windowGeneration) === trial) {
