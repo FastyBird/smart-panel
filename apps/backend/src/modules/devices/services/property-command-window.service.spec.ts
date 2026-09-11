@@ -42,8 +42,20 @@ describe('PropertyCommandWindowService', () => {
 		expect(Object.isFrozen(current)).toBe(true);
 		expect(Object.isFrozen(current?.requestedTargets)).toBe(true);
 
-		jest.advanceTimersByTime(100);
+		jest.advanceTimersByTime(101);
 		expect(service.get(handle.canonicalPropertyId)).toBeNull();
+	});
+
+	it('reads a diagnostic generation without expiring or detaching the command window', () => {
+		const handle = open({ ttlMs: 100 });
+		expect(service.peekGeneration(handle.canonicalPropertyId)).toBe(handle.generation);
+
+		jest.advanceTimersByTime(100);
+		expect(service.peekGeneration(handle.canonicalPropertyId)).toBeUndefined();
+		expect(
+			(service as unknown as { windows: Map<string, { generation: string }> }).windows.get(handle.canonicalPropertyId)
+				?.generation,
+		).toBe(handle.generation);
 	});
 
 	it('starts confirmation grace once and does not extend it for repeated confirmation', () => {

@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
+import { type CommandLatencyTraceCapture } from '../../src/modules/devices/services/command-latency-trace-collector.service';
+
 export type ObserverStage =
 	| 'listener-ready'
 	| 'subscription-acknowledged'
@@ -53,6 +55,22 @@ export interface StageSpans {
 	totalConvergenceMs?: number;
 }
 
+/**
+ * Server evidence stays deliberately separate from the client's monotonic record stream. The
+ * timestamps below all share the backend performance clock; they are joined only after client
+ * convergence has completed and must never be used to derive a cross-process duration.
+ */
+export interface ServerTimingEvidence {
+	clock: 'backend-performance-now-v1';
+	collectorHash: string;
+	processId: number;
+	runId: string;
+	trialId: string;
+	invocationId: string;
+	windowGeneration: string;
+	updateEntryToSourceMs: number;
+}
+
 export interface TrialResult {
 	trialIndex: number;
 	scenario: TrialScenario;
@@ -65,6 +83,7 @@ export interface TrialResult {
 	pollActivity?: PollActivitySnapshot;
 	failureReason?: string;
 	elapsedMs: number;
+	serverTiming?: ServerTimingEvidence;
 }
 
 export interface AggregateStats {
@@ -88,6 +107,120 @@ export interface SessionReport {
 	pollOverlap: AggregateStats;
 	overallPipelineGatePassed: boolean;
 	trials: TrialResult[];
+}
+
+/**
+ * Parses newline-delimited captures copied from the private validation host. It intentionally has
+ * no endpoint knowledge or private target defaults; malformed input is rejected by the join.
+ */
+export function parseServerTimingCaptures(serialized: string): CommandLatencyTraceCapture[] {
+	return serialized
+		.split('\n')
+		.filter((line) => line.trim().length > 0)
+		.map((line) => JSON.parse(line) as CommandLatencyTraceCapture);
+}
+
+/**
+ * Joins an already-finalized client convergence result to one immutable server capture. The
+ * function neither appends server records to the client stream nor compares their raw timestamps.
+ */
+export function joinServerTimingCapture(
+	trial: TrialResult,
+	captures: readonly CommandLatencyTraceCapture[],
+	runId: string,
+	correlationId: string | undefined,
+): TrialResult {
+	if (trial.status !== 'success') {
+		throw new Error('Server timing may be joined only to a successful, finalized client trial.');
+	}
+	if (!runId) {
+		throw new Error('Server timing join requires the active validation run id.');
+	}
+	if (!correlationId) {
+		throw new Error('Server timing join requires the client command correlation id.');
+	}
+
+	const related = captures.filter((capture) => capture.runId === runId && capture.trialId === correlationId);
+	const invalid = related.find((capture) => ['error', 'expired', 'overflow', 'shutdown'].includes(capture.status));
+	if (invalid) {
+		throw new Error(`Server timing capture is invalid: ${invalid.failureReason ?? invalid.status}.`);
+	}
+
+	const complete = related.filter(
+		(capture) =>
+			capture.status === 'complete' &&
+			capture.sourcePropertyId === trial.target.propertyId &&
+			capture.projectionPropertyId === trial.target.projectionPropertyId &&
+			capture.commandValue === trial.commandValue,
+	);
+	if (complete.length !== 1) {
+		throw new Error(
+			`Expected one complete server timing capture for trial '${correlationId}', found ${complete.length}.`,
+		);
+	}
+
+	const capture = complete[0];
+	if (!capture || !capture.invocationId || !capture.windowGeneration || !/^[a-f0-9]{64}$/.test(capture.collectorHash)) {
+		throw new Error('Server timing capture is missing its collector hash, invocation, or command-window generation.');
+	}
+	const entries = capture.records.filter((record) => record.stage === 'update-entry');
+	const publications = capture.records.filter((record) => record.stage === 'source-publication');
+	if (entries.length !== 1 || publications.length !== 1) {
+		throw new Error('Server timing capture must contain one update entry and one source publication.');
+	}
+
+	const entry = entries[0];
+	const publication = publications[0];
+	if (
+		!entry ||
+		!publication ||
+		!Number.isFinite(entry.timestampMs) ||
+		!Number.isFinite(publication.timestampMs) ||
+		publication.timestampMs < entry.timestampMs
+	) {
+		throw new Error('Server timing capture has invalid monotonic update-entry/source-publication timestamps.');
+	}
+	if (
+		entry.invocationId !== capture.invocationId ||
+		publication.invocationId !== capture.invocationId ||
+		entry.windowGeneration !== capture.windowGeneration ||
+		publication.windowGeneration !== capture.windowGeneration
+	) {
+		throw new Error('Server timing capture has ambiguous invocation or command-window correlation.');
+	}
+
+	return {
+		...trial,
+		serverTiming: {
+			clock: capture.clock,
+			collectorHash: capture.collectorHash,
+			processId: capture.processId,
+			runId: capture.runId,
+			trialId: capture.trialId,
+			invocationId: capture.invocationId,
+			windowGeneration: capture.windowGeneration,
+			updateEntryToSourceMs: publication.timestampMs - entry.timestampMs,
+		},
+	};
+}
+
+/**
+ * Private-run adapter for captures copied from the validation host after a client trial settles.
+ * It deliberately owns no socket, credential, or endpoint configuration.
+ */
+export class CommandLatencyLiveAdapter {
+	readonly captures: readonly CommandLatencyTraceCapture[];
+
+	constructor(
+		serializedCaptures: string,
+		private readonly runId: string,
+	) {
+		this.captures = parseServerTimingCaptures(serializedCaptures);
+	}
+
+	join(trial: TrialResult, correlationId: string | undefined): TrialResult {
+		return joinServerTimingCapture(trial, this.captures, this.runId, correlationId);
+	}
 }
 
 const MINIMUM_ACCEPTANCE_TRIALS_PER_SCENARIO = 20;
@@ -337,8 +470,8 @@ export function compileSessionReport(
 		for (const trial of scenarioTrials) {
 			if (trial.status === 'success') {
 				successCount++;
-				if (trial.spans.updateEntryToSourceMs !== undefined) {
-					pipelineLatencies.push(trial.spans.updateEntryToSourceMs);
+				if (trial.serverTiming?.updateEntryToSourceMs !== undefined) {
+					pipelineLatencies.push(trial.serverTiming.updateEntryToSourceMs);
 				}
 			} else if (trial.status === 'timeout') {
 				timeoutCount++;

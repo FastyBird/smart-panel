@@ -123,6 +123,15 @@ export class PropertyCommandWindowService {
 		return this.toSnapshot(this.getCurrent(canonicalPropertyId, Date.now()));
 	}
 
+	/**
+	 * Read-only generation lookup for bounded diagnostics. Unlike `get()`, it never expires or
+	 * detaches a command window; lifecycle ownership remains at the existing commit boundary.
+	 */
+	peekGeneration(canonicalPropertyId: string): string | undefined {
+		const current = this.windows.get(canonicalPropertyId);
+		return current !== undefined && current.expiresAt > Date.now() ? current.generation : undefined;
+	}
+
 	confirm(handle: PropertyCommandWindowHandle, receipt: PropertyCommandReceipt): PropertyCommandWindow | null {
 		const current = this.getCurrent(handle.canonicalPropertyId, Date.now());
 

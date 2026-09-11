@@ -1,10 +1,15 @@
 import {
+	CommandLatencyLiveAdapter,
 	CommandLatencyObserver,
 	ObserverTrialConfig,
+	ServerTimingEvidence,
 	TrialResult,
 	calculatePercentiles,
 	compileSessionReport,
+	joinServerTimingCapture,
 } from '../../../../test/support/command-latency-observer';
+
+import { CommandLatencyTraceCapture } from './command-latency-trace-collector.service';
 
 describe('CommandLatencyObserver', () => {
 	const createConfig = (overrides: Partial<ObserverTrialConfig> = {}): ObserverTrialConfig => ({
@@ -20,6 +25,72 @@ describe('CommandLatencyObserver', () => {
 		correlationId: 'test-corr-1',
 		...overrides,
 	});
+
+	const serverTiming = (updateEntryToSourceMs: number): ServerTimingEvidence => ({
+		clock: 'backend-performance-now-v1',
+		collectorHash: 'a'.repeat(64),
+		processId: 1,
+		runId: 'run-1',
+		trialId: 'trial-1',
+		invocationId: 'invocation-1',
+		windowGeneration: 'generation-1',
+		updateEntryToSourceMs,
+	});
+
+	const completedCapture = (overrides: Partial<CommandLatencyTraceCapture> = {}): CommandLatencyTraceCapture => ({
+		schemaVersion: 1,
+		clock: 'backend-performance-now-v1',
+		collectorHash: 'a'.repeat(64),
+		processId: 42,
+		runId: 'server-run',
+		trialId: 'test-corr-1',
+		invocationId: 'server-invocation',
+		sourcePropertyId: 'prop-source',
+		projectionPropertyId: 'prop-alias',
+		commandValue: true,
+		intentId: 'intent-1',
+		windowGeneration: 'generation-1',
+		status: 'complete',
+		records: [
+			{
+				stage: 'update-entry',
+				timestampMs: 9_000_001,
+				processId: 42,
+				runId: 'server-run',
+				trialId: 'test-corr-1',
+				invocationId: 'server-invocation',
+				sourcePropertyId: 'prop-source',
+				projectionPropertyId: 'prop-alias',
+				commandValue: true,
+				intentId: 'intent-1',
+				windowGeneration: 'generation-1',
+			},
+			{
+				stage: 'source-publication',
+				timestampMs: 9_000_009,
+				processId: 42,
+				runId: 'server-run',
+				trialId: 'test-corr-1',
+				invocationId: 'server-invocation',
+				sourcePropertyId: 'prop-source',
+				projectionPropertyId: 'prop-alias',
+				commandValue: true,
+				intentId: 'intent-1',
+				windowGeneration: 'generation-1',
+			},
+		],
+		...overrides,
+	});
+
+	const completedClientTrial = (): TrialResult => {
+		const observer = new CommandLatencyObserver(createConfig());
+		observer.record('listener-ready', 10);
+		observer.record('subscription-acknowledged', 20);
+		observer.record('dispatch', 30);
+		observer.onPropertyEvent('prop-source', true, 40);
+		observer.onPropertyEvent('prop-alias', true, 45);
+		return observer.getResult();
+	};
 
 	it('computes a consistent sha256 source hash for provenance', () => {
 		const hash = CommandLatencyObserver.getSourceHash();
@@ -280,6 +351,55 @@ describe('CommandLatencyObserver', () => {
 		});
 	});
 
+	describe('server timing evidence joins', () => {
+		it('joins delayed, skewed server evidence without placing server time in the client record stream', () => {
+			const clientTrial = completedClientTrial();
+			const adapter = new CommandLatencyLiveAdapter(`${JSON.stringify(completedCapture())}\n`, 'server-run');
+			const joined = adapter.join(clientTrial, 'test-corr-1');
+
+			expect(joined.records).toEqual(clientTrial.records);
+			expect(joined.serverTiming?.updateEntryToSourceMs).toBe(8);
+			expect(joined.spans.totalConvergenceMs).toBe(15);
+		});
+
+		it('rejects missing, duplicate, or non-monotonic server capture correlation', () => {
+			const clientTrial = completedClientTrial();
+			expect(() => joinServerTimingCapture(clientTrial, [], 'server-run', 'test-corr-1')).toThrow(
+				'Expected one complete',
+			);
+			expect(() =>
+				joinServerTimingCapture(
+					clientTrial,
+					[completedCapture(), completedCapture({ invocationId: 'second' })],
+					'server-run',
+					'test-corr-1',
+				),
+			).toThrow('Expected one complete');
+			expect(() =>
+				joinServerTimingCapture(
+					clientTrial,
+					[
+						completedCapture({
+							records: completedCapture().records.map((record, index) => ({
+								...record,
+								timestampMs: index === 1 ? 9_000_000 : record.timestampMs,
+							})),
+						}),
+					],
+					'server-run',
+					'test-corr-1',
+				),
+			).toThrow('invalid monotonic');
+		});
+
+		it('rejects a prior run that reused the command correlation id', () => {
+			const clientTrial = completedClientTrial();
+			expect(() =>
+				joinServerTimingCapture(clientTrial, [completedCapture({ runId: 'prior-run' })], 'server-run', 'test-corr-1'),
+			).toThrow('Expected one complete');
+		});
+	});
+
 	describe('percentile and session report calculation', () => {
 		it('computes percentiles accurately', () => {
 			expect(calculatePercentiles([])).toEqual({ p50: null, p95: null, max: null });
@@ -307,6 +427,7 @@ describe('CommandLatencyObserver', () => {
 				spans: {
 					updateEntryToSourceMs: status === 'success' ? pipelineMs : undefined,
 				},
+				serverTiming: status === 'success' ? serverTiming(pipelineMs) : undefined,
 				elapsedMs: pipelineMs,
 			});
 
@@ -343,6 +464,7 @@ describe('CommandLatencyObserver', () => {
 				commandValue: true,
 				records: [],
 				spans: { updateEntryToSourceMs: status === 'success' ? 50 : undefined },
+				serverTiming: status === 'success' ? serverTiming(50) : undefined,
 				elapsedMs: 5000,
 			});
 
@@ -365,6 +487,7 @@ describe('CommandLatencyObserver', () => {
 				commandValue: true,
 				records: [],
 				spans: { updateEntryToSourceMs: scenario === 'idle' ? 850 : 50 },
+				serverTiming: serverTiming(scenario === 'idle' ? 850 : 50),
 				elapsedMs: 850,
 			});
 			const trials: TrialResult[] = [
@@ -391,13 +514,14 @@ describe('CommandLatencyObserver', () => {
 				commandValue: true,
 				records: [],
 				spans: { updateEntryToSourceMs: 50 },
+				serverTiming: serverTiming(50),
 				elapsedMs: 50,
 			});
 			const trials = [
 				...Array.from({ length: 20 }, (_, i) => createTrial(i, 'idle')),
 				...Array.from({ length: 20 }, (_, i) => createTrial(20 + i, 'poll-overlap')),
 			];
-			trials[0] = { ...trials[0], spans: {} };
+			trials[0] = { ...trials[0], spans: {}, serverTiming: undefined };
 
 			const report = compileSessionReport(trials);
 			expect(report.idle.pipelineSampleCount).toBe(19);

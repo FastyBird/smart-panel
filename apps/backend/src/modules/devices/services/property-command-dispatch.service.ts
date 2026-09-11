@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { PermissionType } from '../devices.constants';
 import { PropertyValueState } from '../models/property-value-state.model';
@@ -7,6 +7,7 @@ import { PropertyCommandValue, validatePropertyCommandValue } from '../utils/pro
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
@@ -71,6 +72,8 @@ export class PropertyCommandDispatchService {
 		private readonly structureLock: DeviceStructureLockService,
 		private readonly propertyStateCoordinator: PropertyStateCoordinatorService,
 		private readonly commandWindowService: PropertyCommandWindowService,
+		@Optional()
+		private readonly commandLatencyTraceCollector: CommandLatencyTraceCollectorService = new CommandLatencyTraceCollectorService(),
 	) {}
 
 	async dispatchBatch(
@@ -169,15 +172,21 @@ export class PropertyCommandDispatchService {
 					continue;
 				}
 
+				const handle = this.commandWindowService.open({
+					canonicalTarget: admission.canonicalTarget,
+					requestedTargets: admission.requestedTargets,
+					intentId: options.intentId,
+					commandedValue: admission.commandedValue,
+					previousValue: admission.previousValue,
+					ttlMs: options.ttlMs ?? 3_000,
+				});
+				this.commandLatencyTraceCollector.bindWindow(
+					options.intentId,
+					admission.canonicalPropertyId,
+					handle.generation,
+				);
 				admitted.push({
-					handle: this.commandWindowService.open({
-						canonicalTarget: admission.canonicalTarget,
-						requestedTargets: admission.requestedTargets,
-						intentId: options.intentId,
-						commandedValue: admission.commandedValue,
-						previousValue: admission.previousValue,
-						ttlMs: options.ttlMs ?? 3_000,
-					}),
+					handle,
 					admission,
 				});
 			}
