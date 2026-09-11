@@ -31,7 +31,7 @@ cross-process clock alignment:
 1. **Ordering Invariants:**
    - Listeners MUST be attached before requesting exchange subscription (`listener-ready` precedes `subscription-acknowledged`).
    - Exchange subscription MUST be acknowledged by the server before command dispatch (`subscription-acknowledged` precedes `dispatch`).
-   - Command acknowledgement, source events, and projection events MUST follow dispatch.
+   - Command acknowledgement and source events MUST follow dispatch; a projection event MUST follow its source event.
 
 2. **Monotonic Timing:**
    - All stage records within a process MUST have monotonically non-decreasing timestamps ($t_{n} \ge t_{n-1}$).
@@ -48,9 +48,12 @@ cross-process clock alignment:
 ## Engineering Latency Gates
 
 For hardware release acceptance on Raspberry Pi staging:
+
 - **Write-pipeline latency ($P_{95}$)**: `< 800 ms` across both `idle` and `poll-overlap` series.
 - **Maximum latency ($Max$)**: `< 3000 ms` for every sample.
 - **Timeouts**: Exactly `0` timeouts across 20 idle + 20 actual poll-overlap trials.
+- **Complete samples**: Every trial must converge successfully and include an `update-entry` → `source-event` span. A
+  missing stage, reconnect/invalidation, or command failure makes the gate fail; it is not omitted from the series.
 
 ## Offline Validation
 

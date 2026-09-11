@@ -70,6 +70,7 @@ export interface TrialResult {
 export interface AggregateStats {
 	count: number;
 	successCount: number;
+	pipelineSampleCount: number;
 	timeoutCount: number;
 	failureCount: number;
 	invalidatedCount: number;
@@ -88,6 +89,8 @@ export interface SessionReport {
 	overallPipelineGatePassed: boolean;
 	trials: TrialResult[];
 }
+
+const MINIMUM_ACCEPTANCE_TRIALS_PER_SCENARIO = 20;
 
 /**
  * Retained, reviewable measurement observer for property command convergence
@@ -116,7 +119,7 @@ export class CommandLatencyObserver {
 	}
 
 	record(stage: ObserverStage, timestampMs: number, metadata?: Record<string, unknown>): void {
-		if (this.status === 'timeout' || this.status === 'failure' || this.status === 'invalidated') {
+		if (this.status !== 'pending') {
 			throw new Error(`Cannot record stage '${stage}' after trial has finalized with status '${this.status}'`);
 		}
 
@@ -149,8 +152,13 @@ export class CommandLatencyObserver {
 			throw new Error('Source event requires prior dispatch');
 		}
 
-		if (stage === 'projection-event' && !this.has('dispatch')) {
-			throw new Error('Projection event requires prior dispatch');
+		if (stage === 'projection-event') {
+			if (!this.has('dispatch')) {
+				throw new Error('Projection event requires prior dispatch');
+			}
+			if (!this.has('source-event')) {
+				throw new Error('Projection event requires prior source event');
+			}
 		}
 
 		this.records.push({ stage, timestampMs, metadata });
@@ -162,6 +170,7 @@ export class CommandLatencyObserver {
 
 		if (hasSource && (!expectsProjection || hasProjection)) {
 			this.status = 'success';
+			this.finalizedAtMs = timestampMs;
 		}
 	}
 
@@ -345,6 +354,7 @@ export function compileSessionReport(
 		return {
 			count: scenarioTrials.length,
 			successCount,
+			pipelineSampleCount: pipelineLatencies.length,
 			timeoutCount,
 			failureCount,
 			invalidatedCount,
@@ -361,18 +371,26 @@ export function compileSessionReport(
 	const pollOverlapStats = summarize(pollOverlapTrials);
 
 	// Engineering gates:
-	// 1. Write-pipeline p95 < 800ms
-	// 2. No sample >= 3000ms
-	// 3. No timeouts
+	// 1. At least 20 complete samples per scenario.
+	// 2. Write-pipeline p95 < 800ms.
+	// 3. No sample >= 3000ms.
+	// 4. No timeout, failure, invalidation, or missing pipeline span.
 	const p95Pass =
 		(idleStats.p95Ms === null || idleStats.p95Ms < 800) &&
 		(pollOverlapStats.p95Ms === null || pollOverlapStats.p95Ms < 800);
 	const maxPass =
 		(idleStats.maxMs === null || idleStats.maxMs < 3000) &&
 		(pollOverlapStats.maxMs === null || pollOverlapStats.maxMs < 3000);
-	const noTimeouts = idleStats.timeoutCount === 0 && pollOverlapStats.timeoutCount === 0;
+	const hasRequiredSamples =
+		idleStats.count >= MINIMUM_ACCEPTANCE_TRIALS_PER_SCENARIO &&
+		pollOverlapStats.count >= MINIMUM_ACCEPTANCE_TRIALS_PER_SCENARIO;
+	const hasCompletePipelines =
+		idleStats.successCount === idleStats.count &&
+		pollOverlapStats.successCount === pollOverlapStats.count &&
+		idleStats.pipelineSampleCount === idleStats.count &&
+		pollOverlapStats.pipelineSampleCount === pollOverlapStats.count;
 
-	const overallPipelineGatePassed = p95Pass && maxPass && noTimeouts;
+	const overallPipelineGatePassed = hasRequiredSamples && hasCompletePipelines && p95Pass && maxPass;
 
 	return {
 		observerHash: CommandLatencyObserver.getSourceHash(),
