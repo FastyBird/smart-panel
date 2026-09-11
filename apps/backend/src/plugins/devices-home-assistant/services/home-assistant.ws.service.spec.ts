@@ -27,6 +27,7 @@ describe('HomeAssistantWsService', () => {
 	let mockWs: {
 		send: jest.Mock;
 		close: jest.Mock;
+		terminate: jest.Mock;
 		on: jest.Mock;
 		readyState: number;
 	};
@@ -70,6 +71,7 @@ describe('HomeAssistantWsService', () => {
 		mockWs = {
 			send: jest.fn(),
 			close: jest.fn(),
+			terminate: jest.fn(),
 			on: jest.fn(),
 			readyState: WebSocket.OPEN,
 		};
@@ -98,6 +100,8 @@ describe('HomeAssistantWsService', () => {
 	});
 
 	afterEach(() => {
+		service?.['stopPing']();
+
 		// A test that drives an unexpected close leaves a real reconnect timer scheduled;
 		// clear it so it cannot fire against a torn-down service once the test has moved on.
 		const pendingReconnect = service?.['reconnectTimeout'];
@@ -170,6 +174,8 @@ describe('HomeAssistantWsService', () => {
 	});
 
 	it('should resolve send promise when matching response arrives', async () => {
+		jest.useFakeTimers();
+
 		setupStartedService();
 
 		const responseData = JSON.stringify({
@@ -180,11 +186,13 @@ describe('HomeAssistantWsService', () => {
 		});
 
 		const sendPromise = service.send({ type: 'config/device_registry/get' });
+		expect(jest.getTimerCount()).toBe(1);
 
 		// Simulate message received
 		await service['handleMessage'](responseData);
 
 		await expect(sendPromise).resolves.toEqual(responseData);
+		expect(jest.getTimerCount()).toBe(0);
 	});
 
 	it('should timeout send after 10s', async () => {

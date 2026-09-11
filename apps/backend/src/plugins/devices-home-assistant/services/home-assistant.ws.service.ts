@@ -697,9 +697,10 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 		}
 
 		if ('id' in msg && msg.id && typeof msg.id === 'number' && this.responses.has(msg.id)) {
-			const { resolve } = this.responses.get(msg.id);
+			const { resolve, timeout } = this.responses.get(msg.id);
 
 			this.responses.delete(msg.id);
+			clearTimeout(timeout);
 
 			resolve(data);
 		}
