@@ -105,6 +105,73 @@ After the bounded run, remove the temporary private output and unset the environ
 service to restore normal operation. A collector that cannot export, expires, overflows, or observes a
 shutdown is failed evidence, never a partial pass.
 
+## Private Runner Evidence Retention
+
+The private Socket.IO wrapper must use
+`apps/backend/test/support/command-latency-smoke-runner.ts`; it owns the failure-safe evidence protocol
+without embedding credentials, endpoints, or target defaults. The private wrapper creates an owner-only
+artifact directory, supplies the actual command payload/restore adapter, and retains the wrapper source
+hash alongside `getCommandLatencySmokeRunnerSourceHash()`, the observer hash, and the installed collector
+hash. The artifact path is private and task-specific; `raw-smoke.json` is written atomically with mode
+`0600` and is the only record to use for the associated trial.
+
+Before emitting, the runner allocates the outbound `requestId`, initializes this durable shape, and writes
+it successfully. A failed initial write aborts before dispatch. It injects that same ID as the Socket.IO
+payload's `request_id` and retains it as both `trial.requestId` and `trial.emittedRequestId`; cleanup
+receives a new `cleanup.correlationId` so a restoration request cannot be confused with the trial.
+
+```json
+{
+  "schemaVersion": 1,
+  "runnerHash": "sha256",
+  "wrapperHash": "private-wrapper-sha256-or-null",
+  "runId": "private-run",
+  "observerHash": "sha256-or-null",
+  "collectorHash": "sha256-or-null",
+  "target": "private target metadata",
+  "baseline": "private pre-command state",
+  "trial": {
+    "requestId": "outbound request id",
+    "dispatchAttempted": true,
+    "emittedRequestId": "outbound request id",
+    "acknowledgement": {
+      "outcome": "success | rejected | timeout | transport-failure | malformed | runner-exception",
+      "envelope": "exact private acknowledgement or null",
+      "handlerResult": "exact private property result or null",
+      "failureReason": "string or null"
+    },
+    "observation": "private client/collector result or null"
+  },
+  "cleanup": {
+    "correlationId": "separate restoration request id",
+    "attempted": true,
+    "restored": true,
+    "result": "private restoration result or null"
+  },
+  "failures": {
+    "original": "original failure or null",
+    "cleanup": "cleanup failure or null",
+    "acknowledgementPersistence": "acknowledgement checkpoint failure or null",
+    "finalization": "evidence-write failure or null"
+  },
+  "evidence": {
+    "initialPersisted": true,
+    "finalPersisted": true,
+    "valid": true
+  }
+}
+```
+
+Persist the entire acknowledgement envelope immediately, before client observation or cleanup, including
+nested per-device failure details.
+An explicit negative acknowledgement, no acknowledgement timeout, transport failure, malformed envelope,
+and later runner exception remain separate outcomes. Finalization is attempted on every exit path. A
+checkpoint or final-write failure invalidates the evidence but never prevents target restoration; the
+original failure and restoration outcome remain separate. Never substitute an older success, a restoration
+request, a matching value, or an approximate timestamp for the trial's exact request correlation.
+`evidence.valid` reports only that the runner retained a structurally complete successful acknowledgement
+and cleanup record; it is never a convergence, server-capture, timing-gate, or acceptance result.
+
 ## Engineering Latency Gates
 
 For hardware release acceptance on Raspberry Pi staging:
@@ -128,4 +195,10 @@ Execute the property command convergence integration suite:
 
 ```bash
 pnpm --filter @fastybird/smart-panel-backend run test:unit src/modules/devices/services/property-command-convergence.integration.spec.ts
+```
+
+Execute the private-runner retention suite before any future bounded physical command:
+
+```bash
+pnpm --filter @fastybird/smart-panel-backend run test:unit src/modules/devices/services/command-latency-smoke-runner.spec.ts
 ```
