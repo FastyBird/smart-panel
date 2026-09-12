@@ -146,18 +146,22 @@ export class CommandAcknowledgementTimeoutError extends Error {
 export class JsonFileCommandLatencySmokeEvidenceStore implements CommandLatencySmokeEvidenceStore {
 	constructor(private readonly artifactPath: string) {}
 
+	/** Writes the pre-dispatch checkpoint required before a command can be emitted. */
 	async writeInitial(artifact: CommandLatencySmokeArtifact): Promise<void> {
 		await this.write(artifact);
 	}
 
+	/** Writes the acknowledgement checkpoint before optional observations are collected. */
 	async writeAcknowledgement(artifact: CommandLatencySmokeArtifact): Promise<void> {
 		await this.write(artifact);
 	}
 
+	/** Writes the final artifact after restoration has been attempted. */
 	async writeFinal(artifact: CommandLatencySmokeArtifact): Promise<void> {
 		await this.write(artifact);
 	}
 
+	/** Replaces the artifact atomically and preserves owner-only permissions on each write. */
 	private async write(artifact: CommandLatencySmokeArtifact): Promise<void> {
 		const temporaryPath = join(dirname(this.artifactPath), `.${basename(this.artifactPath)}.${randomUUID()}.tmp`);
 
@@ -173,12 +177,38 @@ export class JsonFileCommandLatencySmokeEvidenceStore implements CommandLatencyS
 	}
 }
 
+/**
+ * Builds a fallback digest input when the TypeScript source is not available at runtime. Every
+ * runtime implementation that affects the artifact is included so the fallback still identifies
+ * the complete runner rather than only its top-level orchestration function.
+ */
+function getCommandLatencySmokeRunnerFallbackSource(): string {
+	return [
+		CommandAcknowledgementTimeoutError,
+		JsonFileCommandLatencySmokeEvidenceStore,
+		getCommandLatencySmokeRunnerSourceHash,
+		getCommandLatencySmokeRunnerFallbackSource,
+		runCommandLatencySmokeTrial,
+		persistAcknowledgementArtifact,
+		persistFinalArtifact,
+		decodeAcknowledgement,
+		findPropertyHandlerResult,
+		acknowledgement,
+		failure,
+		errorMessage,
+		isRecord,
+	]
+		.map((implementation) => implementation.toString())
+		.join('\n');
+}
+
+/** Returns the runner source digest recorded with each private trial artifact. */
 export function getCommandLatencySmokeRunnerSourceHash(): string {
 	try {
 		const source = readFileSync(__filename, 'utf8');
 		return createHash('sha256').update(source).digest('hex');
 	} catch {
-		return createHash('sha256').update(runCommandLatencySmokeTrial.toString()).digest('hex');
+		return createHash('sha256').update(getCommandLatencySmokeRunnerFallbackSource()).digest('hex');
 	}
 }
 
@@ -289,15 +319,13 @@ export async function runCommandLatencySmokeTrial(
 		}
 	}
 
-	await persistAcknowledgementArtifact(options.evidenceStore, artifact);
+	const acknowledgementPersisted = await persistAcknowledgementArtifact(options.evidenceStore, artifact);
 
-	if (artifact.trial.acknowledgement.outcome === 'success') {
+	if (acknowledgementPersisted && artifact.trial.acknowledgement.outcome === 'success') {
 		try {
 			artifact.trial.observation =
 				(await options.observe?.({ dispatch, acknowledgement: artifact.trial.acknowledgement.envelope })) ?? null;
 		} catch (error) {
-			artifact.trial.acknowledgement.outcome = 'runner-exception';
-			artifact.trial.acknowledgement.failureReason = errorMessage(error);
 			artifact.failures.original = failure('runner-exception', error);
 		}
 	}
@@ -324,18 +352,25 @@ export async function runCommandLatencySmokeTrial(
 	return persistFinalArtifact(options.evidenceStore, artifact);
 }
 
+/**
+ * Checkpoints the decoded acknowledgement before observations. A failed checkpoint invalidates
+ * evidence and skips observations, but does not prevent restoration or finalization.
+ */
 async function persistAcknowledgementArtifact(
 	evidenceStore: CommandLatencySmokeEvidenceStore,
 	artifact: CommandLatencySmokeArtifact,
-): Promise<void> {
+): Promise<boolean> {
 	try {
 		await evidenceStore.writeAcknowledgement(artifact);
+		return true;
 	} catch (error) {
 		artifact.failures.acknowledgementPersistence = failure('evidence-acknowledgement', error);
 		artifact.evidence.valid = false;
+		return false;
 	}
 }
 
+/** Calculates validity and attempts the terminal write without obscuring earlier failures. */
 async function persistFinalArtifact(
 	evidenceStore: CommandLatencySmokeEvidenceStore,
 	artifact: CommandLatencySmokeArtifact,
@@ -364,6 +399,7 @@ async function persistFinalArtifact(
 	};
 }
 
+/** Decodes the raw private response envelope into a retained acknowledgement classification. */
 function decodeAcknowledgement(envelope: unknown): CommandLatencySmokeAcknowledgement {
 	if (!isRecord(envelope) || typeof envelope.status !== 'string') {
 		return acknowledgement('malformed', envelope, null, 'Command acknowledgement is missing a string status.');
@@ -404,6 +440,7 @@ function decodeAcknowledgement(envelope: unknown): CommandLatencySmokeAcknowledg
 	return acknowledgement('success', envelope, handlerResult, null);
 }
 
+/** Finds the property-operation result nested within a command acknowledgement. */
 function findPropertyHandlerResult(results: unknown): unknown {
 	if (!Array.isArray(results)) {
 		return null;
@@ -414,6 +451,7 @@ function findPropertyHandlerResult(results: unknown): unknown {
 	);
 }
 
+/** Constructs one acknowledgement record while preserving raw evidence values untouched. */
 function acknowledgement(
 	outcome: CommandAcknowledgementOutcome,
 	envelope: unknown,
@@ -423,10 +461,12 @@ function acknowledgement(
 	return { outcome, envelope, handlerResult, failureReason };
 }
 
+/** Normalizes a caught error into the artifact's structured failure form. */
 function failure(kind: CommandLatencySmokeFailureKind, error: unknown): CommandLatencySmokeFailure {
 	return { kind, message: errorMessage(error) };
 }
 
+/** Provides a safe, non-sensitive message for arbitrary thrown values. */
 function errorMessage(error: unknown): string {
 	if (error instanceof Error && error.message) {
 		return error.message;
@@ -435,6 +475,7 @@ function errorMessage(error: unknown): string {
 	return 'Unexpected runner failure.';
 }
 
+/** Narrows an unknown value to a non-null object record. */
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null;
 }

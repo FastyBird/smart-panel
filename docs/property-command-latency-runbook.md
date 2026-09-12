@@ -135,7 +135,7 @@ receives a new `cleanup.correlationId` so a restoration request cannot be confus
     "dispatchAttempted": true,
     "emittedRequestId": "outbound request id",
     "acknowledgement": {
-      "outcome": "success | rejected | timeout | transport-failure | malformed | runner-exception",
+      "outcome": "pending | success | rejected | timeout | transport-failure | malformed | runner-exception | not-dispatched",
       "envelope": "exact private acknowledgement or null",
       "handlerResult": "exact private property result or null",
       "failureReason": "string or null"

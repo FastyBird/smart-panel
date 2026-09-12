@@ -241,10 +241,10 @@ describe('runCommandLatencySmokeTrial', () => {
 		);
 
 		expect(result.artifact.trial.acknowledgement).toEqual({
-			outcome: 'runner-exception',
+			outcome: 'success',
 			envelope: successAcknowledgement,
 			handlerResult: successAcknowledgement.results[0],
-			failureReason: 'Observer decode failed.',
+			failureReason: null,
 		});
 		expect(result.artifact.failures.original).toEqual({ kind: 'runner-exception', message: 'Observer decode failed.' });
 	});
@@ -256,10 +256,12 @@ describe('runCommandLatencySmokeTrial', () => {
 			emit: jest.fn().mockResolvedValue(successAcknowledgement),
 		};
 		const restore = jest.fn().mockResolvedValue({ restored: true });
+		const observe = jest.fn();
 
-		const result = await runCommandLatencySmokeTrial(createOptions(transport, evidenceStore, { restore }));
+		const result = await runCommandLatencySmokeTrial(createOptions(transport, evidenceStore, { observe, restore }));
 
 		expect(restore).toHaveBeenCalledWith({ correlationId: 'cleanup-request-id', trialRequestId: 'trial-request-id' });
+		expect(observe).not.toHaveBeenCalled();
 		expect(result.artifact.failures.acknowledgementPersistence).toEqual({
 			kind: 'evidence-acknowledgement',
 			message: 'Acknowledgement checkpoint write failed.',
