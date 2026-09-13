@@ -2850,7 +2850,11 @@ export class DelegatesManagerService {
 		}
 
 		const generation = this.delegatePollGenerations.get(deviceId) ?? 0;
-		this.commandLatencyTraceCollector.recordPollRpc(deviceId, 'poll-rpc-start', { timeoutMs });
+		// The scheduler is keyed by the library's delegate ID, while the scoped collector configuration
+		// is keyed by the canonical backend device entity ID used by source-property resolution.
+		// Resolve it once so a detach during the RPC cannot split the start and completion correlations.
+		const traceDeviceId = this.delegateDeviceIds.get(deviceId) ?? deviceId;
+		this.commandLatencyTraceCollector.recordPollRpc(traceDeviceId, 'poll-rpc-start', { timeoutMs });
 		let ok: boolean;
 		try {
 			ok = await delegate.pollStatus(
@@ -2861,13 +2865,13 @@ export class DelegatesManagerService {
 					this.delegatePollGenerations.get(deviceId) === generation,
 			);
 		} catch (error) {
-			this.commandLatencyTraceCollector.recordPollRpc(deviceId, 'poll-rpc-complete', {
+			this.commandLatencyTraceCollector.recordPollRpc(traceDeviceId, 'poll-rpc-complete', {
 				ok: false,
 				error: error instanceof Error ? error.message : 'unknown failure',
 			});
 			throw error;
 		}
-		this.commandLatencyTraceCollector.recordPollRpc(deviceId, 'poll-rpc-complete', { ok });
+		this.commandLatencyTraceCollector.recordPollRpc(traceDeviceId, 'poll-rpc-complete', { ok });
 
 		if (!ok && this.delegates.get(deviceId) === delegate && this.delegatePollGenerations.get(deviceId) === generation) {
 			this.logger.warn(`Status poll failed for device=${deviceId}`);

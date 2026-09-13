@@ -2160,6 +2160,61 @@ describe('DelegatesManagerService', () => {
 	});
 
 	describe('poll write coalescing', () => {
+		test('records poll RPCs against the canonical backend device ID', async () => {
+			const recordPollRpc = jest.fn();
+			const traceCollector = { recordPollRpc } as unknown as CommandLatencyTraceCollectorService;
+			const tracedService = new DelegatesManagerService(
+				devicesService as any,
+				channelsService as any,
+				channelsPropertiesService as any,
+				deviceConnectivityService as any,
+				deviceManagerService as any,
+				deviceAddressService as any,
+				propertyMappingStorage as any,
+				transformerRegistry as any,
+				traceCollector,
+			);
+			const delegateId = 'shelly-delegate-id';
+			const backendDeviceId = 'backend-device-id';
+			const pollStatus = jest.fn().mockResolvedValue(true);
+
+			(tracedService as any).delegates.set(delegateId, { connected: true, pollStatus });
+			(tracedService as any).delegateDeviceIds.set(delegateId, backendDeviceId);
+
+			await tracedService.pollDevice(delegateId);
+
+			expect(pollStatus).toHaveBeenCalledWith(10_000, expect.any(Function));
+			expect(recordPollRpc).toHaveBeenNthCalledWith(1, backendDeviceId, 'poll-rpc-start', { timeoutMs: 10_000 });
+			expect(recordPollRpc).toHaveBeenNthCalledWith(2, backendDeviceId, 'poll-rpc-complete', { ok: true });
+		});
+
+		test('uses the delegate ID for poll RPCs before a backend device mapping exists', async () => {
+			const recordPollRpc = jest.fn();
+			const traceCollector = { recordPollRpc } as unknown as CommandLatencyTraceCollectorService;
+			const tracedService = new DelegatesManagerService(
+				devicesService as any,
+				channelsService as any,
+				channelsPropertiesService as any,
+				deviceConnectivityService as any,
+				deviceManagerService as any,
+				deviceAddressService as any,
+				propertyMappingStorage as any,
+				transformerRegistry as any,
+				traceCollector,
+			);
+			const delegateId = 'unmapped-shelly-delegate-id';
+
+			(tracedService as any).delegates.set(delegateId, {
+				connected: true,
+				pollStatus: jest.fn().mockResolvedValue(false),
+			});
+
+			await tracedService.pollDevice(delegateId);
+
+			expect(recordPollRpc).toHaveBeenNthCalledWith(1, delegateId, 'poll-rpc-start', { timeoutMs: 10_000 });
+			expect(recordPollRpc).toHaveBeenNthCalledWith(2, delegateId, 'poll-rpc-complete', { ok: false });
+		});
+
 		test('records provider receipt, coalescer admission, and drain as separate timing evidence', async () => {
 			jest.useFakeTimers();
 
