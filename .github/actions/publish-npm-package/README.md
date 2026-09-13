@@ -8,6 +8,7 @@ This GitHub Action publishes a package to the NPM registry. It supports versioni
 - 🔄 Supports **manual** or **dynamic versioning**
 - 🏷️ Handles **pre-release tags** like `alpha`, `beta`
 - 🔐 Supports **custom registries** and **authentication**
+- ⏳ Waits for a published version to become visible before downstream jobs consume it
 - 📤 Outputs the published version for downstream jobs
 - 🧱 Optimized for **monorepos** and **pnpm**
 
@@ -46,7 +47,8 @@ This GitHub Action publishes a package to the NPM registry. It supports versioni
 
 1. Run versioning logic (manual or dynamic)
 2. Publish package to NPM with tag or default
-3. Output published version
+3. Wait until the published version is visible from the selected registry (30 bounded probes)
+4. Output published version
 
 ## 📁 Project Structure
 
