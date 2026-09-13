@@ -169,6 +169,9 @@ and later runner exception remain separate outcomes. Finalization is attempted o
 checkpoint or final-write failure invalidates the evidence but never prevents target restoration; the
 original failure and restoration outcome remain separate. Never substitute an older success, a restoration
 request, a matching value, or an approximate timestamp for the trial's exact request correlation.
+File-backed checkpoints use a `0600` temporary file, file sync, atomic rename and parent-directory sync. A
+failure after rename replaces the destination with an explicitly invalid commit-uncertain artifact, so a
+runner-reported finalization failure cannot leave final-valid evidence behind.
 `evidence.valid` reports only that the runner retained a structurally complete successful acknowledgement
 and cleanup record; it is never a convergence, server-capture, timing-gate, or acceptance result.
 
