@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, open, readFile, rename, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -284,6 +284,45 @@ describe('runCommandLatencySmokeTrial', () => {
 
 			expect(persisted).toEqual(result.artifact);
 			expect((await stat(artifactPath)).mode & 0o777).toBe(0o600);
+		} finally {
+			await rm(artifactDirectory, { force: true, recursive: true });
+		}
+	});
+
+	it('replaces a post-rename finalization failure with an invalid commit-uncertain artifact', async () => {
+		const artifactDirectory = await mkdtemp(join(tmpdir(), 'command-latency-smoke-runner-'));
+		const artifactPath = join(artifactDirectory, 'raw-smoke.json');
+		let parentDirectoryOpenCount = 0;
+		const evidenceStore = new JsonFileCommandLatencySmokeEvidenceStore(artifactPath, {
+			open: async (path, flags, mode) => {
+				const handle = await open(path, flags, mode);
+
+				if (path === artifactDirectory) {
+					parentDirectoryOpenCount++;
+					if (parentDirectoryOpenCount === 3) {
+						jest.spyOn(handle, 'sync').mockRejectedValueOnce(new Error('Directory sync failed.'));
+					}
+				}
+
+				return handle;
+			},
+			rename,
+			rm,
+		});
+		const transport: CommandLatencySmokeTransport = {
+			emit: jest.fn().mockResolvedValue(successAcknowledgement),
+		};
+
+		try {
+			const result = await runCommandLatencySmokeTrial(createOptions(transport, evidenceStore));
+			const persisted: unknown = JSON.parse(await readFile(artifactPath, 'utf8'));
+
+			expect(result.artifact.evidence).toEqual({ initialPersisted: true, finalPersisted: false, valid: false });
+			expect(result.artifact.failures.finalization).toEqual({
+				kind: 'evidence-finalization',
+				message: 'Private artifact commit is uncertain after atomic rename.',
+			});
+			expect(persisted).toEqual(result.artifact);
 		} finally {
 			await rm(artifactDirectory, { force: true, recursive: true });
 		}

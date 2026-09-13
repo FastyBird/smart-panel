@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { chmod, rename, rm, writeFile } from 'node:fs/promises';
+import { type FileHandle, open, rename, rm } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 
 export type CommandAcknowledgementOutcome =
@@ -138,13 +138,33 @@ export class CommandAcknowledgementTimeoutError extends Error {
 	}
 }
 
+const COMMIT_UNCERTAIN_MESSAGE = 'Private artifact commit is uncertain after atomic rename.';
+
+class CommandLatencySmokeEvidenceCommitUncertainError extends Error {
+	constructor() {
+		super(COMMIT_UNCERTAIN_MESSAGE);
+		this.name = 'CommandLatencySmokeEvidenceCommitUncertainError';
+	}
+}
+
+interface CommandLatencySmokeEvidenceFileSystem {
+	open(path: string, flags: 'r' | 'w', mode?: number): Promise<FileHandle>;
+	rename(oldPath: string, newPath: string): Promise<void>;
+	rm(path: string, options: { force: boolean }): Promise<void>;
+}
+
+const commandLatencySmokeEvidenceFileSystem: CommandLatencySmokeEvidenceFileSystem = { open, rename, rm };
+
 /**
  * Persists the private artifact atomically in a caller-created, private directory. The runner
  * deliberately does not create that directory: its ownership and permissions are a preflight
  * responsibility, and a missing/unwritable directory must stop dispatch before the command.
  */
 export class JsonFileCommandLatencySmokeEvidenceStore implements CommandLatencySmokeEvidenceStore {
-	constructor(private readonly artifactPath: string) {}
+	constructor(
+		private readonly artifactPath: string,
+		private readonly fileSystem: CommandLatencySmokeEvidenceFileSystem = commandLatencySmokeEvidenceFileSystem,
+	) {}
 
 	/** Writes the pre-dispatch checkpoint required before a command can be emitted. */
 	async writeInitial(artifact: CommandLatencySmokeArtifact): Promise<void> {
@@ -163,16 +183,71 @@ export class JsonFileCommandLatencySmokeEvidenceStore implements CommandLatencyS
 
 	/** Replaces the artifact atomically and preserves owner-only permissions on each write. */
 	private async write(artifact: CommandLatencySmokeArtifact): Promise<void> {
-		const temporaryPath = join(dirname(this.artifactPath), `.${basename(this.artifactPath)}.${randomUUID()}.tmp`);
+		const temporaryPath = this.createTemporaryPath();
+		let renamed = false;
 
 		try {
-			await writeFile(temporaryPath, `${JSON.stringify(artifact)}\n`, { encoding: 'utf8', mode: 0o600 });
-			await chmod(temporaryPath, 0o600);
-			await rename(temporaryPath, this.artifactPath);
-			await chmod(this.artifactPath, 0o600);
+			await this.writeTemporaryArtifact(temporaryPath, artifact);
+			await this.fileSystem.rename(temporaryPath, this.artifactPath);
+			renamed = true;
+			await this.syncParentDirectory();
 		} catch (error) {
-			await rm(temporaryPath, { force: true }).catch(() => undefined);
+			await this.fileSystem.rm(temporaryPath, { force: true }).catch(() => undefined);
+
+			if (renamed) {
+				await this.replaceWithCommitUncertainArtifact(artifact).catch(() => undefined);
+				throw new CommandLatencySmokeEvidenceCommitUncertainError();
+			}
+
 			throw error;
+		}
+	}
+
+	private createTemporaryPath(): string {
+		return join(dirname(this.artifactPath), `.${basename(this.artifactPath)}.${randomUUID()}.tmp`);
+	}
+
+	private async writeTemporaryArtifact(path: string, artifact: CommandLatencySmokeArtifact): Promise<void> {
+		const file = await this.fileSystem.open(path, 'w', 0o600);
+
+		try {
+			await file.writeFile(`${JSON.stringify(artifact)}\n`, 'utf8');
+			await file.chmod(0o600);
+			await file.sync();
+		} finally {
+			await file.close();
+		}
+	}
+
+	private async syncParentDirectory(): Promise<void> {
+		const directory = await this.fileSystem.open(dirname(this.artifactPath), 'r');
+
+		try {
+			await directory.sync();
+		} finally {
+			await directory.close();
+		}
+	}
+
+	/** Replaces a post-rename failure with an explicitly invalid artifact before reporting uncertainty. */
+	private async replaceWithCommitUncertainArtifact(artifact: CommandLatencySmokeArtifact): Promise<void> {
+		const uncertainArtifact = structuredClone(artifact);
+		uncertainArtifact.evidence.finalPersisted = false;
+		uncertainArtifact.evidence.valid = false;
+		uncertainArtifact.failures.finalization = {
+			kind: 'evidence-finalization',
+			message: COMMIT_UNCERTAIN_MESSAGE,
+		};
+
+		await this.fileSystem.rm(this.artifactPath, { force: true });
+
+		const temporaryPath = this.createTemporaryPath();
+		try {
+			await this.writeTemporaryArtifact(temporaryPath, uncertainArtifact);
+			await this.fileSystem.rename(temporaryPath, this.artifactPath);
+			await this.syncParentDirectory().catch(() => undefined);
+		} finally {
+			await this.fileSystem.rm(temporaryPath, { force: true }).catch(() => undefined);
 		}
 	}
 }
