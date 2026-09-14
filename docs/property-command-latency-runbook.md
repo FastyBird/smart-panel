@@ -175,6 +175,33 @@ runner-reported finalization failure cannot leave final-valid evidence behind.
 `evidence.valid` reports only that the runner retained a structurally complete successful acknowledgement
 and cleanup record; it is never a convergence, server-capture, timing-gate, or acceptance result.
 
+## Bounded Acknowledgement Diagnostics
+
+When a command's acknowledgement boundary needs diagnosis, the backend can be armed with the private,
+process-only `FB_COMMAND_ACK_TRACE` setting. It is disabled when absent or malformed and must never be
+used in timing-acceptance measurements. The setting names one source property target, one trial request ID,
+one restoration request ID with the opposite Boolean value, and a separate owner-only JSON snapshot path.
+Its lifetime is bounded to 30 seconds from the first matching Socket.IO receipt, 256 records, and a 256 KiB
+snapshot.
+
+The private wrapper must allocate the two IDs before arming the service and then pass that exact pair through
+its existing `requestIdFactory`. Before dispatch, it must retain both the private trace configuration and the
+runner's initial durable artifact, then verify their request IDs, target, and values agree. The trace records
+only these boundaries: Socket.IO receipt, gateway entry, registered-handler outcome, Nest's automatic
+acknowledgement callback invocation, and socket close. It does not record payloads, credentials, endpoints,
+other traffic, or timing acceptance values.
+
+The callback mark means only that the server invoked its Socket.IO acknowledgement delegate; it is not proof
+that a peer received the acknowledgement. Conversely, a missing mark is unknown rather than proof of a lost
+command. Incomplete, invalid, stale, or failed exports remain diagnostic evidence only. The wrapper must keep
+late callback observations and retain the snapshot before cleanup, even if the trial acknowledgement fails.
+
+The normal finalizer has one total 25-second bounded retrieval attempt. It must fetch the existing latency
+NDJSON and the separate acknowledgement snapshot during that same attempt, retaining independent result
+statuses before removing either temporary export. Trace-enabled runs never enter the 20 idle + 20 actual
+poll-overlap matrix or its p95 calculation. After any diagnostic run, restore the temporary setting, trace
+artifact, collector setting, and target baseline; verify that restoration separately.
+
 ## Engineering Latency Gates
 
 For hardware release acceptance on Raspberry Pi staging:

@@ -24,6 +24,7 @@ import { ClientUserDto } from '../dto/client-user.dto';
 import { CommandMessageDto } from '../dto/command-message.dto';
 import { CommandResultDto } from '../dto/command-result.dto';
 import { WsClientDto, WsClientEventType } from '../dto/ws-client.dto';
+import { CommandAcknowledgementTraceService } from '../services/command-acknowledgement-trace.service';
 import { CommandEventRegistryService } from '../services/command-event-registry.service';
 import { WsAuthService } from '../services/ws-auth.service';
 import {
@@ -58,6 +59,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		private readonly eventEmitter: EventEmitter2,
 		private readonly wsAuthService: WsAuthService,
 		private readonly clientAddressService: ClientAddressService,
+		private readonly commandAcknowledgementTrace: CommandAcknowledgementTraceService,
 	) {
 		this.eventEmitter.onAny((event: string, payload: Record<string, any>) => {
 			this.handleBusEvent(event, payload);
@@ -124,6 +126,10 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 	// admits rather than authenticates.
 	async handleConnection(client: Socket): Promise<void> {
 		try {
+			// This is intentionally before the first await. The socket has already passed the
+			// handshake guard above, so the private diagnostic can observe command packets without
+			// changing authentication or admission behavior.
+			this.observeAcknowledgementTrace(() => this.commandAcknowledgementTrace.attachSocket(client));
 			this.logger.log(`Client connected: ${client.id}`);
 
 			await client.join(CLIENT_DEFAULT_ROOM);
@@ -174,6 +180,9 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 	}
 
 	handleDisconnect(client: Socket): void {
+		this.observeAcknowledgementTrace(() =>
+			this.commandAcknowledgementTrace.recordSocketClose(client, 'gateway-disconnect'),
+		);
 		this.logger.log(`Client disconnected: ${client.id}`);
 
 		const clientData = client.data as ClientData;
@@ -217,11 +226,17 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		const { event, payload } = message;
 
 		this.logger.log(`Received command '${event}' from client ${client.id}`);
+		this.observeAcknowledgementTrace(() => this.commandAcknowledgementTrace.recordGatewayEntry(client, message));
 
 		if (!this.commandEventRegistry.has(event)) {
 			this.logger.warn(`No subscribers for event: ${event}`);
 
-			return toInstance(CommandResultDto, { status: 'error', message: `Event '${event}' is not supported.` });
+			const result = toInstance(CommandResultDto, { status: 'error', message: `Event '${event}' is not supported.` });
+			this.observeAcknowledgementTrace(() =>
+				this.commandAcknowledgementTrace.recordGatewayReturn(client, message, 'error'),
+			);
+
+			return result;
 		}
 
 		try {
@@ -234,14 +249,31 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 					handlers.map(async ({ name, handler, requiredRoles }) => {
 						try {
 							if (requiredRoles && (!clientData.user || !requiredRoles.includes(clientData.user.role))) {
+								this.observeAcknowledgementTrace(() =>
+									this.commandAcknowledgementTrace.recordHandlerSkipped(client, message, name),
+								);
 								return { handler: name, success: false, reason: 'Insufficient permissions' };
 							}
 
+							this.observeAcknowledgementTrace(() =>
+								this.commandAcknowledgementTrace.recordHandlerStart(client, message, name),
+							);
 							const response = await handler(clientData.user, payload);
+							this.observeAcknowledgementTrace(() =>
+								this.commandAcknowledgementTrace.recordHandlerSettled(
+									client,
+									message,
+									name,
+									response === null ? 'null' : 'resolved',
+								),
+							);
 
 							return response !== null ? { handler: name, ...response } : null;
 						} catch (error) {
 							const err = error as Error;
+							this.observeAcknowledgementTrace(() =>
+								this.commandAcknowledgementTrace.recordHandlerSettled(client, message, name, 'rejected'),
+							);
 
 							this.logger.error(`Error in '${name}'`, { message: err.message, stack: err.stack });
 
@@ -255,17 +287,27 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 				)
 			).filter((result) => result !== null);
 
-			return toInstance(
+			const result = toInstance(
 				CommandResultDto,
 				{ status: 'ok', message: 'Event handled successfully', results },
 				{ excludeExtraneousValues: false },
 			);
+			this.observeAcknowledgementTrace(() =>
+				this.commandAcknowledgementTrace.recordGatewayReturn(client, message, 'ok'),
+			);
+
+			return result;
 		} catch (error) {
 			const err = error as Error;
 
 			this.logger.error(`Error handling event: ${event}`, { message: err.message, stack: err.stack });
 
-			return toInstance(CommandResultDto, { status: 'error', message: `Failed to handle event: ${event}` });
+			const result = toInstance(CommandResultDto, { status: 'error', message: `Failed to handle event: ${event}` });
+			this.observeAcknowledgementTrace(() =>
+				this.commandAcknowledgementTrace.recordGatewayReturn(client, message, 'error'),
+			);
+
+			return result;
 		}
 	}
 
@@ -291,6 +333,15 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		this.logger.debug(`Emitting message: ${JSON.stringify(message)}`);
 
 		this.server.emit('event', message);
+	}
+
+	/** The private trace must be observational even if its own bounded bookkeeping fails. */
+	private observeAcknowledgementTrace(callback: () => void): void {
+		try {
+			callback();
+		} catch {
+			// Never change an existing Socket.IO command result because diagnostic capture failed.
+		}
 	}
 
 	// Internal event prefixes that should NOT be forwarded to WebSocket clients

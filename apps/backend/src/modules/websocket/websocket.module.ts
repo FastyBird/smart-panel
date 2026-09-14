@@ -15,6 +15,7 @@ import { UsersModule } from '../users/users.module';
 
 import { WebsocketGateway } from './gateway/websocket.gateway';
 import { WsStatsProvider } from './providers/ws-stats.provider';
+import { CommandAcknowledgementTraceService } from './services/command-acknowledgement-trace.service';
 import { CommandEventRegistryService } from './services/command-event-registry.service';
 import { WsAuthService } from './services/ws-auth.service';
 import { WsMetricsService } from './services/ws-metrics.service';
@@ -39,7 +40,14 @@ import { WEBSOCKET_SWAGGER_EXTRA_MODELS } from './websocket.openapi';
 		StatsModule,
 		ApiModule,
 	],
-	providers: [WebsocketGateway, CommandEventRegistryService, WsAuthService, WsMetricsService, WsStatsProvider],
+	providers: [
+		WebsocketGateway,
+		CommandAcknowledgementTraceService,
+		CommandEventRegistryService,
+		WsAuthService,
+		WsMetricsService,
+		WsStatsProvider,
+	],
 	exports: [WebsocketGateway, CommandEventRegistryService],
 })
 export class WebsocketModule {
