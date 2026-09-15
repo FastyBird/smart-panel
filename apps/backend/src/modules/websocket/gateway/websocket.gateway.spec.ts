@@ -19,6 +19,7 @@ import { TokenOwnerType } from '../../auth/auth.constants';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
 import { CommandMessageDto } from '../dto/command-message.dto';
+import { CommandAcknowledgementTraceService } from '../services/command-acknowledgement-trace.service';
 import { CommandEventRegistryService } from '../services/command-event-registry.service';
 import { WsAuthService } from '../services/ws-auth.service';
 import { ADMIN_ROOM, DISPLAY_INTERNAL_ROOM, EXCHANGE_ROOM } from '../websocket.constants';
@@ -84,6 +85,18 @@ describe('WebsocketGateway', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				WebsocketGateway,
+				{
+					provide: CommandAcknowledgementTraceService,
+					useValue: {
+						attachSocket: jest.fn(),
+						recordGatewayEntry: jest.fn(),
+						recordHandlerStart: jest.fn(),
+						recordHandlerSettled: jest.fn(),
+						recordHandlerSkipped: jest.fn(),
+						recordGatewayReturn: jest.fn(),
+						recordSocketClose: jest.fn(),
+					},
+				},
 				{
 					provide: CommandEventRegistryService,
 					useValue: {
