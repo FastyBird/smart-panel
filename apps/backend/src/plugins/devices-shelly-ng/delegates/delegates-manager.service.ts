@@ -39,6 +39,7 @@ import { ITransformer } from '../mappings/transformers/transformer.types';
 import { createInlineTransformer } from '../mappings/transformers/transformers';
 import { DeviceAddressService, normalizeMac } from '../services/device-address.service';
 import { DeviceManagerService } from '../services/device-manager.service';
+import { PollPlacementDiagnosticsService } from '../services/poll-placement-diagnostics.service';
 import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { ShellyDeviceDelegate, ShellyValueOrigin } from './shelly-device.delegate';
@@ -193,6 +194,8 @@ export class DelegatesManagerService {
 		private readonly transformerRegistry: TransformerRegistry,
 		@Optional()
 		private readonly commandLatencyTraceCollector: CommandLatencyTraceCollectorService = new CommandLatencyTraceCollectorService(),
+		@Optional()
+		private readonly pollPlacementDiagnostics: PollPlacementDiagnosticsService = new PollPlacementDiagnosticsService(),
 	) {}
 
 	get(id: Device['id']): ShellyDeviceDelegate | undefined {
@@ -301,6 +304,12 @@ export class DelegatesManagerService {
 
 		this.delegateDeviceIds.set(delegate.id, device.id);
 		this.delegateToIdentifier.set(delegate.id, device.identifier);
+		this.pollPlacementDiagnostics.observeDelegate({
+			delegateId: delegate.id,
+			sourceDeviceId: device.identifier,
+			connected: delegate.connected,
+			generation,
+		});
 
 		// Track reverse mapping: device.identifier → delegate IDs
 		const delegateSet = this.identifierToDelegates.get(device.identifier) ?? new Set();
@@ -1811,6 +1820,12 @@ export class DelegatesManagerService {
 				if (wasConnected) return;
 
 				this.delegateConnectedState.set(delegate.id, true);
+				this.pollPlacementDiagnostics.observeDelegate({
+					delegateId: delegate.id,
+					sourceDeviceId: device.identifier,
+					connected: true,
+					generation,
+				});
 
 				// Cancel any pending disconnect grace timer — device reconnected in time
 				const pendingTimer = this.disconnectTimers.get(deviceDbId);
@@ -1836,6 +1851,12 @@ export class DelegatesManagerService {
 				if (!wasConnected) return;
 
 				this.delegateConnectedState.set(delegate.id, false);
+				this.pollPlacementDiagnostics.observeDelegate({
+					delegateId: delegate.id,
+					sourceDeviceId: device.identifier,
+					connected: false,
+					generation,
+				});
 
 				const count = Math.max(0, (this.connectedDelegatesPerDevice.get(deviceDbId) ?? 1) - 1);
 				this.connectedDelegatesPerDevice.set(deviceDbId, count);
@@ -2042,6 +2063,7 @@ export class DelegatesManagerService {
 
 		this.delegateDeviceIds.delete(deviceId);
 		this.delegateToIdentifier.delete(deviceId);
+		this.pollPlacementDiagnostics.invalidate('delegate-detached-or-remapped');
 
 		// Invalidate any in-progress insert so it bails out at its next check point.
 		this.insertGeneration.delete(deviceId);

@@ -57,6 +57,7 @@ import { ShellyNgDevicePlatform } from './platforms/shelly-ng.device.platform';
 import { DatabaseDiscovererService } from './services/database-discoverer.service';
 import { DeviceAddressService } from './services/device-address.service';
 import { DeviceManagerService } from './services/device-manager.service';
+import { PollPlacementDiagnosticsService } from './services/poll-placement-diagnostics.service';
 import { ShellyNgAdoptionService } from './services/shelly-ng-adoption.service';
 import { ShellyNgDiscoveryService } from './services/shelly-ng-discovery.service';
 import { ShellyNgService } from './services/shelly-ng.service';
@@ -94,6 +95,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		DeviceManagerService,
 		ShellyNgDiscoveryService,
 		ShellyNgAdoptionService,
+		PollPlacementDiagnosticsService,
 		ShellyNgService,
 		ShellyWsServerService,
 		ShellyNgDevicePlatform,
