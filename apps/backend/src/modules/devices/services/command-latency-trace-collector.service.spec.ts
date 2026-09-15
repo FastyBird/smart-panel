@@ -93,6 +93,43 @@ describe('CommandLatencyTraceCollectorService', () => {
 		expect(capture?.records.filter((record) => record.invocationId === capture.invocationId)).toHaveLength(4);
 	});
 
+	it('retains unassigned poll activity observed while the update callback awaits', async () => {
+		const collector = new CommandLatencyTraceCollectorService(config);
+		arm(collector);
+		let releaseUpdate!: () => void;
+		const update = collector.traceUpdate(
+			{ propertyId: config.sourcePropertyId, value: true, windowGeneration: 'generation-1' },
+			async () =>
+				new Promise<void>((resolve) => {
+					releaseUpdate = resolve;
+				}),
+		);
+
+		await Promise.resolve();
+		collector.recordPollRpc('source-device', 'poll-rpc-start', { timeoutMs: 10_000 });
+		collector.recordPollActivity(config.sourcePropertyId, 'poll-coalescer-admission');
+		collector.recordPollRpc('source-device', 'poll-rpc-complete', { ok: true });
+		collector.recordPollActivity(config.sourcePropertyId, 'poll-drain');
+		collector.recordSourcePublication(sourceProperty(true));
+		releaseUpdate();
+		await update;
+
+		const [capture] = collector.getCaptures();
+		expect(capture?.status).toBe('complete');
+		expect(capture?.records.map((record) => record.stage)).toEqual([
+			'command-received',
+			'window-bound',
+			'update-entry',
+			'poll-rpc-start',
+			'poll-coalescer-admission',
+			'poll-rpc-complete',
+			'poll-drain',
+			'source-publication',
+			'update-complete',
+		]);
+		expect(capture?.records.filter((record) => record.stage.startsWith('poll-'))).toHaveLength(4);
+	});
+
 	it('finishes the capture at source publication before unrelated outer work settles', async () => {
 		const collector = new CommandLatencyTraceCollectorService(config);
 		arm(collector);
