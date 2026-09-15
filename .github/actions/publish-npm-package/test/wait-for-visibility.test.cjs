@@ -54,7 +54,7 @@ exit 1
 
 	const result = await new Promise((resolve) => {
 		const child = spawn(scriptPath, ['@scope/package', '1.2.3-alpha.9', 'https://registry.example'], {
-			env: { ...process.env, PATH: `${join(testRoot, 'bin')}:${process.env.PATH}`, MAX_ATTEMPTS: '3', SLEEP_SECONDS: '0' },
+			env: { ...process.env, PATH: `${join(testRoot, 'bin')}:${process.env.PATH}`, SLEEP_SECONDS: '0' },
 		});
 		let output = '';
 		child.stdout.on('data', (chunk) => (output += chunk));
@@ -62,7 +62,7 @@ exit 1
 	});
 
 	assert.equal(result.code, 1);
-	assert.match(result.output, /after 3 attempts/);
-	assert.equal(await readFile(join(testRoot, 'attempts'), 'utf8'), '3\n');
+	assert.match(result.output, /after 90 attempts/);
+	assert.equal(await readFile(join(testRoot, 'attempts'), 'utf8'), '90\n');
 	await rm(testRoot, { recursive: true, force: true });
 });
