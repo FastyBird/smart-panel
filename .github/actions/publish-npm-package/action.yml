@@ -106,27 +106,7 @@ runs:
       run: |
         VERSION=$(jq -r .version package.json)
         PACKAGE_NAME=$(jq -r .name package.json)
-        MAX_ATTEMPTS=30
-
-        for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
-          if npm view "$PACKAGE_NAME@$VERSION" \
-            --registry="${{ inputs.npm-registry-url }}" \
-            --prefer-online \
-            --fetch-retries=0 \
-            --fetch-timeout=5000 \
-            --cache=/tmp/npm-publish-visibility-cache > /dev/null 2>&1; then
-            echo "✅ $PACKAGE_NAME@$VERSION is visible on ${{ inputs.npm-registry-url }}"
-            exit 0
-          fi
-
-          if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
-            echo "Waiting for $PACKAGE_NAME@$VERSION to become visible (attempt $attempt/$MAX_ATTEMPTS)..."
-            sleep 2
-          fi
-        done
-
-        echo "::error::$PACKAGE_NAME@$VERSION was not visible on ${{ inputs.npm-registry-url }} after $MAX_ATTEMPTS attempts."
-        exit 1
+        "${GITHUB_ACTION_PATH}/wait-for-visibility.sh" "$PACKAGE_NAME" "$VERSION" "${{ inputs.npm-registry-url }}"
       shell: bash
       env:
         NODE_AUTH_TOKEN: ${{ inputs.npm-auth-token }}
