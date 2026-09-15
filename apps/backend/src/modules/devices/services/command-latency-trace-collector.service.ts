@@ -462,10 +462,23 @@ export class CommandLatencyTraceCollectorService implements OnModuleDestroy {
 			return null;
 		}
 		if (invocationId === undefined) {
-			trial.pendingRecords.push(record);
+			const activeInvocation = trial.activeInvocation;
+			if (activeInvocation !== undefined && !trial.completed && trial.activeInvocationCount === 1) {
+				this.appendRecord(activeInvocation.records, record);
+			} else {
+				this.appendRecord(trial.pendingRecords, record);
+			}
 		}
 
 		return record;
+	}
+
+	private appendRecord(records: CommandLatencyTraceRecord[], record: CommandLatencyTraceRecord): void {
+		let index = records.length;
+		while (index > 0 && records[index - 1].timestampMs > record.timestampMs) {
+			index--;
+		}
+		records.splice(index, 0, record);
 	}
 
 	private recordInvocation(

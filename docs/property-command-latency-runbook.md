@@ -65,7 +65,18 @@ across the two clocks.
      expiry, shutdown, sink failure, a missing capture, duplicate completed capture, missing generation,
      or non-monotonic server records makes the affected evidence invalid.
    - A stale report held by the command window is preserved as a `suppressed` diagnostic. It is not a
-     completed source-publication capture and cannot satisfy a trial by itself.
+   - completed source-publication capture and cannot satisfy a trial by itself.
+
+6. **Concurrent poll-record ownership:**
+   - Records observed before `update-entry` remain pending until the unique active invocation starts.
+   - While exactly one invocation is active for the bound trial, unassigned provider/poll/coalescer
+     records are appended to that invocation in backend-clock order, including equal timestamps.
+   - If no unique active invocation exists, the record remains pending and existing ambiguity rules apply;
+     the collector never guesses a trial, generation, or invocation. Records after terminal publication
+     cannot be added to the immutable completed capture.
+   - A missing poll marker is therefore inconclusive. Later export fetches cannot add activity to an already
+     completed capture; poll-overlap qualification must use markers in the joined trial capture itself, not
+     restoration or another request's records.
 
 ## Scoped Server Capture and Live Adapter
 
