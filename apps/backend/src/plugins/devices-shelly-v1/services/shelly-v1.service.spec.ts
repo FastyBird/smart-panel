@@ -1,6 +1,5 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access,
-@typescript-eslint/no-unused-vars, @typescript-eslint/unbound-method
+eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/unbound-method
 */
 /*
 Reason: The mocking and test setup requires dynamic assignment and
@@ -10,8 +9,9 @@ import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { ConnectionState } from '../../../modules/devices/devices.constants';
+import { ConnectionState, DataTypeType } from '../../../modules/devices/devices.constants';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
+import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -28,6 +28,7 @@ import {
 	NormalizedDeviceEvent,
 	ShelliesAdapterCallbacks,
 } from '../interfaces/shellies.interface';
+import { ShellyDevice } from '../interfaces/shellies.interface';
 import { ShellyV1ConfigModel } from '../models/config.model';
 
 import { DeviceMapperService } from './device-mapper.service';
@@ -43,6 +44,7 @@ describe('ShellyV1Service', () => {
 	let channelsPropertiesService: jest.Mocked<ChannelsPropertiesService>;
 	let deviceConnectivityService: jest.Mocked<DeviceConnectivityService>;
 	let deviceMapper: jest.Mocked<DeviceMapperService>;
+	let channelInputOccurrencesService: jest.Mocked<ChannelInputOccurrencesService>;
 	let shelliesAdapter: jest.Mocked<ShelliesAdapterService>;
 	let adapterCallbacks: ShelliesAdapterCallbacks;
 
@@ -77,6 +79,33 @@ describe('ShellyV1Service', () => {
 		value: new PropertyValueState(false),
 	} as ShellyV1ChannelPropertyEntity;
 
+	const mockInputChannel = {
+		id: 'channel-input_0-uuid',
+		identifier: 'input_0',
+		get type() {
+			return DEVICES_SHELLY_V1_TYPE;
+		},
+	} as ShellyV1ChannelEntity;
+
+	const mockDetectedProperty = {
+		id: 'prop-detected-uuid',
+		identifier: 'detected',
+		dataType: DataTypeType.BOOL,
+		get type() {
+			return DEVICES_SHELLY_V1_TYPE;
+		},
+		value: new PropertyValueState(false),
+	} as ShellyV1ChannelPropertyEntity;
+
+	const mockEventProperty = {
+		id: 'prop-event-uuid',
+		identifier: 'event',
+		get type() {
+			return DEVICES_SHELLY_V1_TYPE;
+		},
+		value: new PropertyValueState(null),
+	} as ShellyV1ChannelPropertyEntity;
+
 	const mockModelProperty = {
 		id: 'model-property-uuid',
 		identifier: 'model',
@@ -90,6 +119,12 @@ describe('ShellyV1Service', () => {
 		module = await Test.createTestingModule({
 			providers: [
 				ShellyV1Service,
+				{
+					provide: ChannelInputOccurrencesService,
+					useValue: {
+						publishOccurrence: jest.fn(),
+					},
+				},
 				{
 					provide: ConfigService,
 					useValue: {
@@ -166,6 +201,7 @@ describe('ShellyV1Service', () => {
 		deviceConnectivityService = module.get(DeviceConnectivityService);
 		deviceMapper = module.get(DeviceMapperService);
 		shelliesAdapter = module.get(ShelliesAdapterService);
+		channelInputOccurrencesService = module.get(ChannelInputOccurrencesService);
 	});
 
 	afterEach(() => {
@@ -610,6 +646,173 @@ describe('ShellyV1Service', () => {
 				expect.objectContaining({ tag: 'devices-shelly-v1-plugin' }),
 			);
 			loggerErrorSpy.mockRestore();
+		});
+	});
+
+	describe('Hardware inputs and button gestures', () => {
+		it('should publish occurrence when inputEventCounter changes and baseline exists', async () => {
+			const shellyDevice = {
+				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
+				inputEvent0: 'S',
+				inputEventCounter0: 1,
+			};
+
+			shelliesAdapter.getDevice.mockReturnValue(shellyDevice as unknown as ShellyDevice);
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			channelsService.findOneBy.mockResolvedValue(mockInputChannel);
+			channelsPropertiesService.findOneBy.mockResolvedValue(mockEventProperty);
+
+			// First counter event baselines the tracker (counter=1)
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 1,
+				oldValue: 0,
+			});
+
+			expect(channelInputOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
+
+			// Second counter event increments counter (counter=2, rawEvent='S') -> fires press occurrence!
+			shellyDevice.inputEventCounter0 = 2;
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 2,
+				oldValue: 1,
+			});
+
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledWith({
+				deviceId: 'device-uuid',
+				channelId: 'channel-input_0-uuid',
+				propertyId: 'prop-event-uuid',
+				event: 'press',
+				nativeEventType: 'S',
+				sourceTimestamp: expect.any(String) as unknown as string,
+				sourceOccurrenceId: 'channel-input_0-uuid:S:2',
+			});
+
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+				'prop-event-uuid',
+				expect.objectContaining({ value: 'press' }),
+			);
+		});
+
+		it('should suppress duplicate occurrence when counter is unchanged', async () => {
+			const shellyDevice = {
+				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
+				inputEvent0: 'S',
+				inputEventCounter0: 5,
+			};
+
+			shelliesAdapter.getDevice.mockReturnValue(shellyDevice as unknown as ShellyDevice);
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+
+			// Baseline at 5
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 5,
+				oldValue: 5,
+			});
+
+			// Repeated multicast with counter still 5
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 5,
+				oldValue: 5,
+			});
+
+			expect(channelInputOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
+		});
+
+		it('should dispatch consecutive identical presses when counter increments', async () => {
+			const shellyDevice = {
+				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
+				inputEvent0: 'S',
+				inputEventCounter0: 10,
+			};
+
+			shelliesAdapter.getDevice.mockReturnValue(shellyDevice as unknown as ShellyDevice);
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			channelsService.findOneBy.mockResolvedValue(mockInputChannel);
+			channelsPropertiesService.findOneBy.mockResolvedValue(mockEventProperty);
+
+			// Baseline at 10
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 10,
+				oldValue: 10,
+			});
+
+			// Press 1 (counter 11, S)
+			shellyDevice.inputEventCounter0 = 11;
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 11,
+				oldValue: 10,
+			});
+
+			// Press 2 (counter 12, S)
+			shellyDevice.inputEventCounter0 = 12;
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 12,
+				oldValue: 11,
+			});
+
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledTimes(2);
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ event: 'press', sourceOccurrenceId: 'channel-input_0-uuid:S:11' }),
+			);
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ event: 'press', sourceOccurrenceId: 'channel-input_0-uuid:S:12' }),
+			);
+		});
+
+		it('should update detected property as boolean when input0 changes', async () => {
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			channelsService.findOneBy
+				.mockResolvedValueOnce(mockDeviceInfoChannel) // descriptor lookup
+				.mockResolvedValueOnce(mockInputChannel); // input_0 channel lookup
+			channelsPropertiesService.findOneBy
+				.mockResolvedValueOnce(mockModelProperty) // model lookup
+				.mockResolvedValueOnce(mockDetectedProperty); // detected property lookup
+
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'input0',
+				newValue: 1,
+				oldValue: 0,
+			});
+
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+				'prop-detected-uuid',
+				expect.objectContaining({ value: true }),
+			);
+		});
+
+		it('should ignore direct inputEvent0 change events', async () => {
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEvent0',
+				newValue: 'S',
+				oldValue: '',
+			});
+
+			expect(channelsService.findOneBy).not.toHaveBeenCalled();
+			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
+			expect(channelInputOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
 		});
 	});
 });

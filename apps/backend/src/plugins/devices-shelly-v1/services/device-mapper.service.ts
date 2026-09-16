@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -50,6 +50,7 @@ import { VALUE_MAP_REGISTRY, mapValueToCanonical, validateEnumValue } from '../u
 
 import { ShelliesAdapterService } from './shellies-adapter.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
+import { ShellyV1InputTrackerService } from './shelly-v1-input-tracker.service';
 
 @Injectable()
 export class DeviceMapperService {
@@ -66,6 +67,7 @@ export class DeviceMapperService {
 		private readonly shelliesAdapter: ShelliesAdapterService,
 		private readonly httpClient: ShellyV1HttpClientService,
 		private readonly provisionQueue: DeviceProvisionQueueService,
+		@Optional() private readonly inputTracker?: ShellyV1InputTrackerService,
 	) {}
 
 	/**
@@ -214,6 +216,16 @@ export class DeviceMapperService {
 
 		// Create channels and properties from bindings
 		await this.createChannelsFromBindings(device, bindings, shellyDevice);
+
+		// Baseline input event counters on discovery/mapping to prevent stale events on startup
+		if (this.inputTracker) {
+			for (let i = 0; i < 3; i++) {
+				const counter = shellyDevice[`inputEventCounter${i}`];
+				if (typeof counter === 'number') {
+					this.inputTracker.baseline(device.id, i, counter);
+				}
+			}
+		}
 
 		// Set device connection state to CONNECTED after successful discovery
 		await this.deviceConnectivityService.setConnectionState(device.id, {
@@ -500,6 +512,10 @@ export class DeviceMapperService {
 			const rawValue = shellyDevice[binding.shelliesProperty];
 			// Filter out function values (methods on the device object)
 			let initialValue: ShellyDevicePropertyValue = typeof rawValue === 'function' ? undefined : rawValue;
+
+			if (binding.dataType === DataTypeType.BOOL && typeof initialValue === 'number') {
+				initialValue = Boolean(initialValue);
+			}
 
 			// Apply value mapping for ENUM properties (data-driven via binding.valueMap)
 			if (

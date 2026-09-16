@@ -50,6 +50,7 @@ import { ShelliesAdapterService } from './services/shellies-adapter.service';
 import { ShellyV1AdoptionService } from './services/shelly-v1-adoption.service';
 import { ShellyV1DiscoveryService } from './services/shelly-v1-discovery.service';
 import { ShellyV1HttpClientService } from './services/shelly-v1-http-client.service';
+import { ShellyV1InputTrackerService } from './services/shelly-v1-input-tracker.service';
 import { ShellyV1ProbeService } from './services/shelly-v1-probe.service';
 import { ShellyV1Service } from './services/shelly-v1.service';
 import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
@@ -68,6 +69,7 @@ import { DeviceEntitySubscriber } from './subscribers/device-entity.subscriber';
 		ExtensionsModule,
 	],
 	providers: [
+		ShellyV1InputTrackerService,
 		ShelliesAdapterService,
 		DeviceMapperService,
 		ShellyV1HttpClientService,

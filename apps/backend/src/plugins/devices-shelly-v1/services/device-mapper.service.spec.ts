@@ -647,4 +647,154 @@ describe('DeviceMapperService', () => {
 			});
 		});
 	});
+	describe('Input devices mapping', () => {
+		it('should provision Shelly i3 with all 3 input channels and event/detected properties', async () => {
+			const event = makeNormalizedEvent('shellyi3-ABC123', 'SHIX3-1');
+			const shellyDevice = makeShellyDevice('shellyi3-ABC123', 'SHIX3-1');
+			shellyDevice.inputEventCounter0 = 10;
+			shellyDevice.inputEventCounter1 = 20;
+			shellyDevice.inputEventCounter2 = 30;
+
+			shelliesAdapter.getDevice.mockReturnValue(shellyDevice as any);
+			httpClient.getDeviceSettings.mockResolvedValue(makeMockSettings('My i3 Controller') as any);
+			httpClient.getDeviceInfo.mockResolvedValue({ ...makeMockInfo(), type: 'SHIX3-1' });
+			httpClient.getDeviceStatus.mockResolvedValue(makeMockStatus() as any);
+
+			devicesService.findOneBy.mockResolvedValue(null);
+
+			const mockDevice = Object.assign(new ShellyV1DeviceEntity(), {
+				id: 'device-i3-uuid',
+				identifier: 'shellyi3-ABC123',
+			});
+			devicesService.create.mockResolvedValue(mockDevice);
+
+			const createdChannels: any[] = [];
+			channelsService.create.mockImplementation((dto: any) => {
+				const ch = Object.assign(new ShellyV1ChannelEntity(), {
+					id: `channel-${dto.identifier}-uuid`,
+					identifier: dto.identifier,
+					category: dto.category,
+				});
+				createdChannels.push(dto);
+				return Promise.resolve(ch);
+			});
+			channelsPropertiesService.create.mockResolvedValue({} as any);
+
+			await service.mapDevice(event);
+
+			// Verify 3 input channels created
+			expect(createdChannels).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ identifier: 'input_0', category: ChannelCategory.BUTTON }),
+					expect.objectContaining({ identifier: 'input_1', category: ChannelCategory.BUTTON }),
+					expect.objectContaining({ identifier: 'input_2', category: ChannelCategory.BUTTON }),
+				]),
+			);
+
+			// Verify properties created for each input
+			const propCalls = (channelsPropertiesService.create as jest.Mock).mock.calls;
+			for (let i = 0; i < 3; i++) {
+				const detectedProp = propCalls.find(
+					(c) => c[0] === `channel-input_${i}-uuid` && c[1]?.identifier === 'detected',
+				);
+				const eventProp = propCalls.find((c) => c[0] === `channel-input_${i}-uuid` && c[1]?.identifier === 'event');
+				expect(detectedProp).toBeDefined();
+				expect(detectedProp[1]).toMatchObject({
+					identifier: 'detected',
+					category: PropertyCategory.DETECTED,
+					data_type: DataTypeType.BOOL,
+				});
+				expect(eventProp).toBeDefined();
+				expect(eventProp[1]).toMatchObject({
+					identifier: 'event',
+					category: PropertyCategory.EVENT,
+					data_type: DataTypeType.ENUM,
+				});
+			}
+		});
+
+		it('should provision Shelly Button1 with button input and battery channels', async () => {
+			const event = makeNormalizedEvent('shellybutton1-ABC123', 'SHBTN-1');
+			const shellyDevice = makeShellyDevice('shellybutton1-ABC123', 'SHBTN-1');
+			shellyDevice.battery = 95;
+			shellyDevice.inputEventCounter0 = 5;
+
+			shelliesAdapter.getDevice.mockReturnValue(shellyDevice as any);
+			httpClient.getDeviceSettings.mockResolvedValue(makeMockSettings('Button 1') as any);
+			httpClient.getDeviceInfo.mockResolvedValue({ ...makeMockInfo(), type: 'SHBTN-1' });
+			httpClient.getDeviceStatus.mockResolvedValue(makeMockStatus() as any);
+
+			devicesService.findOneBy.mockResolvedValue(null);
+
+			const mockDevice = Object.assign(new ShellyV1DeviceEntity(), {
+				id: 'device-btn-uuid',
+				identifier: 'shellybutton1-ABC123',
+			});
+			devicesService.create.mockResolvedValue(mockDevice);
+
+			const createdChannels: any[] = [];
+			channelsService.create.mockImplementation((dto: any) => {
+				const ch = Object.assign(new ShellyV1ChannelEntity(), {
+					id: `channel-${dto.identifier}-uuid`,
+					identifier: dto.identifier,
+					category: dto.category,
+				});
+				createdChannels.push(dto);
+				return Promise.resolve(ch);
+			});
+			channelsPropertiesService.create.mockResolvedValue({} as any);
+
+			await service.mapDevice(event);
+
+			expect(createdChannels).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ identifier: 'input_0', category: ChannelCategory.BUTTON }),
+					expect.objectContaining({ identifier: 'battery_0', category: ChannelCategory.BATTERY }),
+				]),
+			);
+		});
+
+		it('should provision Shelly Uni with relays, inputs, and analog voltage channels', async () => {
+			const event = makeNormalizedEvent('shellyuni-ABC123', 'SHUNI-1');
+			const shellyDevice = makeShellyDevice('shellyuni-ABC123', 'SHUNI-1');
+			shellyDevice.voltage0 = 12.3;
+
+			shelliesAdapter.getDevice.mockReturnValue(shellyDevice as any);
+			httpClient.getDeviceSettings.mockResolvedValue(makeMockSettings('Uni Controller') as any);
+			httpClient.getDeviceInfo.mockResolvedValue({ ...makeMockInfo(), type: 'SHUNI-1' });
+			httpClient.getDeviceStatus.mockResolvedValue(makeMockStatus() as any);
+
+			devicesService.findOneBy.mockResolvedValue(null);
+
+			const mockDevice = Object.assign(new ShellyV1DeviceEntity(), {
+				id: 'device-uni-uuid',
+				identifier: 'shellyuni-ABC123',
+			});
+			devicesService.create.mockResolvedValue(mockDevice);
+
+			const createdChannels: any[] = [];
+			channelsService.create.mockImplementation((dto: any) => {
+				const ch = Object.assign(new ShellyV1ChannelEntity(), {
+					id: `channel-${dto.identifier}-uuid`,
+					identifier: dto.identifier,
+					category: dto.category,
+				});
+				createdChannels.push(dto);
+				return Promise.resolve(ch);
+			});
+			channelsPropertiesService.create.mockResolvedValue({} as any);
+
+			await service.mapDevice(event);
+
+			expect(createdChannels).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ identifier: 'relay_0', category: ChannelCategory.SWITCHER }),
+					expect.objectContaining({ identifier: 'relay_1', category: ChannelCategory.SWITCHER }),
+					expect.objectContaining({ identifier: 'input_0', category: ChannelCategory.BUTTON }),
+					expect.objectContaining({ identifier: 'input_1', category: ChannelCategory.BUTTON }),
+					expect.objectContaining({ identifier: 'voltage_0', category: ChannelCategory.ANALOG_INPUT }),
+				]),
+			);
+		});
+	});
 });
