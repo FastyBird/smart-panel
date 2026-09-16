@@ -8,12 +8,14 @@ function createService(
 	overrides: {
 		delegateEmit?: jest.Mock;
 		delegateEmitNotificationValue?: jest.Mock;
+		delegateEmitNotificationEvent?: jest.Mock;
 		delegateGet?: jest.Mock;
 		findOneBy?: jest.Mock;
 		setConnectionState?: jest.Mock;
 	} = {},
 ) {
 	const delegateEmit = overrides.delegateEmit ?? jest.fn().mockReturnValue(true);
+	const delegateEmitNotificationEvent = overrides.delegateEmitNotificationEvent ?? jest.fn();
 	const delegateEmitNotificationValue =
 		overrides.delegateEmitNotificationValue ??
 		jest.fn((compKey: string, attr: string, value: unknown): void =>
@@ -26,7 +28,11 @@ function createService(
 		);
 	const delegateGet =
 		overrides.delegateGet ??
-		jest.fn().mockReturnValue({ emit: delegateEmit, emitNotificationValue: delegateEmitNotificationValue });
+		jest.fn().mockReturnValue({
+			emit: delegateEmit,
+			emitNotificationValue: delegateEmitNotificationValue,
+			emitNotificationEvent: delegateEmitNotificationEvent,
+		});
 	const findOneBy = overrides.findOneBy ?? jest.fn().mockResolvedValue({ id: 'db-device-1' });
 	const setConnectionState = overrides.setConnectionState ?? jest.fn().mockResolvedValue(undefined);
 
@@ -37,7 +43,15 @@ function createService(
 		{ setConnectionState } as any,
 	);
 
-	return { svc, delegateEmit, delegateEmitNotificationValue, delegateGet, findOneBy, setConnectionState };
+	return {
+		svc,
+		delegateEmit,
+		delegateEmitNotificationValue,
+		delegateEmitNotificationEvent,
+		delegateGet,
+		findOneBy,
+		setConnectionState,
+	};
 }
 
 function makeWs(): { send: jest.Mock } {
@@ -109,6 +123,24 @@ describe('ShellyWsServerService', () => {
 			expect(keys).toContain('battery');
 			expect(keys).toContain('battery.percent');
 			expect(keys).toContain('battery.V');
+		});
+
+		it('should route NotifyEvent to delegate emitNotificationEvent', () => {
+			const { svc, delegateEmitNotificationEvent } = createService();
+
+			callHandleMessage(svc, makeWs(), {
+				src: 'shellyplus-i4-1',
+				method: 'NotifyEvent',
+				params: {
+					ts: 1630489390.12,
+					events: [{ component: 'input:0', id: 0, event: 'single_push', ts: 1630489390.12 }],
+				},
+			});
+
+			expect(delegateEmitNotificationEvent).toHaveBeenCalledWith({
+				ts: 1630489390.12,
+				events: [{ component: 'input:0', id: 0, event: 'single_push', ts: 1630489390.12 }],
+			});
 		});
 
 		it('should skip ts field in status params', () => {

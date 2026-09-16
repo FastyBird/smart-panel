@@ -36,6 +36,8 @@ const mockChannelsPropertiesService = {
 	findOneBy: jest.fn(),
 	create: jest.fn(),
 	update: jest.fn(),
+	findAll: jest.fn().mockResolvedValue([]),
+	remove: jest.fn().mockResolvedValue(undefined),
 } as any;
 
 const mockMappingLoaderService = {
@@ -48,6 +50,42 @@ const mockMappingLoaderService = {
 						identifier: `devicePower:${context.componentKey}`,
 						name: `Battery: ${context.componentKey}`,
 						category: ChannelCategory.BATTERY,
+						properties: [],
+					},
+				],
+			};
+		}
+		if (context.componentType === 'input') {
+			if (context.inputMode === 'switch') {
+				return {
+					channels: [
+						{
+							identifier: `input:${context.componentKey}`,
+							name: `Switch Input: ${context.componentKey}`,
+							category: ChannelCategory.BINARY_INPUT,
+							properties: [],
+						},
+					],
+				};
+			}
+			if (context.inputMode === 'analog' || context.inputMode === 'count') {
+				return {
+					channels: [
+						{
+							identifier: `input:${context.componentKey}`,
+							name: `Analog Input: ${context.componentKey}`,
+							category: ChannelCategory.ANALOG_INPUT,
+							properties: [],
+						},
+					],
+				};
+			}
+			return {
+				channels: [
+					{
+						identifier: `input:${context.componentKey}`,
+						name: `Button: ${context.componentKey}`,
+						category: ChannelCategory.BUTTON,
 						properties: [],
 					},
 				],
@@ -120,6 +158,26 @@ jest.mock('../../../spec/channels', () => {
 	});
 
 	const channelsSchema = {
+		[ChannelCategory.BUTTON]: {
+			properties: {
+				[PropertyCategory.EVENT]: common(),
+				[PropertyCategory.DETECTED]: { ...common(), data_type: 'bool' as any },
+				[PropertyCategory.ACTIVE]: { ...common(), data_type: 'bool' as any },
+			},
+		},
+		[ChannelCategory.BINARY_INPUT]: {
+			properties: {
+				[PropertyCategory.STATE]: { ...common(), data_type: 'bool' as any },
+				[PropertyCategory.ACTIVE]: { ...common(), data_type: 'bool' as any },
+			},
+		},
+		[ChannelCategory.ANALOG_INPUT]: {
+			properties: {
+				[PropertyCategory.VALUE]: { ...common(), data_type: 'number' as any },
+				[PropertyCategory.UNIT]: common(),
+				[PropertyCategory.ACTIVE]: { ...common(), data_type: 'bool' as any },
+			},
+		},
 		[ChannelCategory.DEVICE_INFORMATION]: {
 			properties: {
 				[PropertyCategory.MANUFACTURER]: common(),
@@ -903,5 +961,184 @@ describe('DeviceProvisionQueueService', () => {
 			expect(() => svc.applyDerivation(derivation, 50)).not.toThrow();
 			expect(svc.applyDerivation(derivation, 50)).toBeUndefined();
 		});
+	});
+});
+
+describe('DeviceManagerService input components', () => {
+	let channelCounter = 0;
+	let propCounter = 0;
+
+	const arrange = (svc: DeviceManagerService, components: any[]) => {
+		channelCounter = 0;
+		propCounter = 0;
+
+		jest.spyOn<any, any>(svc as any, 'getSpecification').mockReturnValue({
+			models: ['SHELLYPLUSI4'],
+			system: [{ type: 'wifi' }],
+		});
+
+		mockRpc.getDeviceInfo.mockResolvedValue({
+			id: 'shellyplus-i4-1',
+			mac: 'mac',
+			model: 'SNSW-001X16EU',
+			fw_id: 'fw',
+			ver: '1.2.3',
+			app: 'PlusI4',
+			profile: undefined,
+			auth_en: false,
+			auth_domain: null,
+			discoverable: true,
+			key: 'key',
+			batch: 'batch',
+			fw_sbits: 'sbits',
+		} as any);
+
+		mockRpc.getComponents.mockResolvedValue(components);
+
+		mockRpc.getSystemConfig.mockResolvedValue({
+			device: { name: 'Shelly Plus i4', eco_mode: false, mac: 'mac', fw_id: 'fw', discoverable: true },
+			location: { tz: null, lat: null, lon: null },
+			debug: { mqtt: { enabled: false }, websocket: { enabled: false }, udp: { addr: null } },
+			rpc_udp: { dst_addr: '', listen_port: null },
+			sntp: { server: '' },
+			cfg_rev: 1,
+		} as any);
+
+		mockRpc.getWifiStatus.mockResolvedValue({ rssi: -60 } as any);
+
+		mockChannelsService.findOneBy.mockResolvedValue(null);
+		mockChannelsService.findAll.mockResolvedValue([]);
+		mockChannelsService.create.mockImplementation(async (dto: any) => ({
+			id: `ch_${++channelCounter}`,
+			...dto,
+		}));
+		mockChannelsService.update.mockImplementation(async (id: string, dto: any) => ({ id, ...dto }));
+
+		mockChannelsPropertiesService.findOneBy.mockResolvedValue(null);
+		mockChannelsPropertiesService.create.mockImplementation(async (channelId: string, dto: any) => ({
+			id: `p_${++propCounter}`,
+			channel: channelId,
+			...dto,
+		}));
+		mockChannelsPropertiesService.update.mockImplementation(async (id: string, dto: any) => ({ id, ...dto }));
+	};
+
+	const createdChannels = () =>
+		mockChannelsService.create.mock.calls.map((call: any[]) => call[0]).filter((dto: any) => dto?.identifier);
+
+	const propertiesOf = (identifier: string) => {
+		const index = mockChannelsService.create.mock.calls.findIndex((call: any[]) => call[0]?.identifier === identifier);
+
+		if (index === -1) {
+			return [];
+		}
+
+		const channelId = `ch_${index + 1}`;
+
+		return mockChannelsPropertiesService.create.mock.calls
+			.filter((call: any[]) => call[0] === channelId)
+			.map((call: any[]) => call[1]);
+	};
+
+	test('provisions button input channels with event, detected, active properties', async () => {
+		const svc = makeService();
+		const device = { id: 'db-i4-1', password: null, category: DeviceCategory.INPUT_CONTROLLER } as any;
+
+		mockDevicesService.findOne.mockResolvedValue(device);
+		arrange(svc, [{ key: 'input:0' }, { key: 'input:1' }]);
+
+		mockRpc.getInputConfig.mockImplementation(
+			async (_host: string, id: number) =>
+				({
+					id,
+					name: `Button ${id}`,
+					type: 'button',
+					enable: true,
+				}) as any,
+		);
+		mockRpc.getInputStatus.mockImplementation(
+			async (_host: string, id: number) =>
+				({
+					id,
+					state: false,
+				}) as any,
+		);
+
+		await svc.createOrUpdate(device.id);
+
+		const identifiers = createdChannels().map((dto: any) => dto.identifier);
+		expect(identifiers).toContain('input:0');
+		expect(identifiers).toContain('input:1');
+
+		const props0 = propertiesOf('input:0');
+		const propCategories = props0.map((p: any) => p.category);
+		expect(propCategories).toContain(PropertyCategory.EVENT);
+		expect(propCategories).toContain(PropertyCategory.DETECTED);
+		expect(propCategories).toContain(PropertyCategory.ACTIVE);
+	});
+
+	test('provisions binary_input channel when input is in switch mode', async () => {
+		const svc = makeService();
+		const device = { id: 'db-i4-2', password: null, category: DeviceCategory.INPUT_CONTROLLER } as any;
+
+		mockDevicesService.findOne.mockResolvedValue(device);
+		arrange(svc, [{ key: 'input:0' }]);
+
+		mockRpc.getInputConfig.mockResolvedValue({
+			id: 0,
+			name: 'Switch 0',
+			type: 'switch',
+			enable: true,
+		} as any);
+		mockRpc.getInputStatus.mockResolvedValue({
+			id: 0,
+			state: true,
+		} as any);
+
+		await svc.createOrUpdate(device.id);
+
+		const ch = createdChannels().find((c: any) => c.identifier === 'input:0');
+		expect(ch?.category).toBe(ChannelCategory.BINARY_INPUT);
+
+		const props = propertiesOf('input:0');
+		const propCategories = props.map((p: any) => p.category);
+		expect(propCategories).toContain(PropertyCategory.STATE);
+		expect(propCategories).toContain(PropertyCategory.ACTIVE);
+		expect(propCategories).not.toContain(PropertyCategory.EVENT);
+	});
+
+	test('preserves existing channel during partial RPC failure', async () => {
+		const svc = makeService();
+		const device = { id: 'db-i4-3', password: null, category: DeviceCategory.INPUT_CONTROLLER } as any;
+
+		mockDevicesService.findOne.mockResolvedValue(device);
+		arrange(svc, [{ key: 'input:0' }, { key: 'input:1' }]);
+
+		// input:0 exists in db
+		mockChannelsService.findOneBy.mockImplementation(async (crit: any) => {
+			if (crit.identifier === 'input:0') {
+				return { id: 'existing-ch-0', identifier: 'input:0', category: ChannelCategory.BUTTON };
+			}
+			return null;
+		});
+
+		// input:0 fails RPC
+		mockRpc.getInputConfig.mockImplementation(async (_host: string, id: number) => {
+			if (id === 0) {
+				throw new Error('RPC timeout');
+			}
+			return { id, name: 'Input 1', type: 'button', enable: true } as any;
+		});
+		mockRpc.getInputStatus.mockImplementation(async (_host: string, id: number) => {
+			if (id === 0) {
+				throw new Error('RPC timeout');
+			}
+			return { id, state: false } as any;
+		});
+
+		await svc.createOrUpdate(device.id);
+
+		// existing channel is NOT removed
+		expect(mockChannelsService.remove).not.toHaveBeenCalledWith('existing-ch-0');
 	});
 });

@@ -49,7 +49,7 @@ import { createInlineTransformer } from '../mappings/transformers/transformers';
 import { rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { DeviceAddressService } from './device-address.service';
-import { ShellyRpcClientService } from './shelly-rpc-client.service';
+import { InputConfig, InputStatus, ShellyRpcClientService } from './shelly-rpc-client.service';
 
 @Injectable()
 export class DeviceManagerService {
@@ -1344,39 +1344,218 @@ export class DeviceManagerService {
 				} else if (type === String(ComponentType.INPUT)) {
 					const tasks = ids.map((key) =>
 						limit(async () => {
-							await retry(
-								() =>
-									withTimeout(
-										Promise.all([
-											this.shellyRpcClientService.getInputConfig(host, key, { password }),
-											this.shellyRpcClientService.getInputStatus(host, key, { password }),
-										]),
-										this.timeoutSec * 1000,
-										`Input.GetConfig+Input.GetStatus - ${key}`,
-									),
-								{ retries: 2, baseMs: 300, factor: 2 },
-							).catch((err: Error) => {
+							let inputConfig: InputConfig | undefined;
+							let inputStatus: InputStatus | undefined;
+
+							try {
+								[inputConfig, inputStatus] = await retry(
+									() =>
+										withTimeout(
+											Promise.all([
+												this.shellyRpcClientService.getInputConfig(host, key, { password }),
+												this.shellyRpcClientService.getInputStatus(host, key, { password }),
+											]),
+											this.timeoutSec * 1000,
+											`Input.GetConfig+Input.GetStatus - ${key}`,
+										),
+									{ retries: 2, baseMs: 300, factor: 2 },
+								);
+							} catch (err) {
+								const error = err as Error;
 								this.logger.error(`Failed load for input=${key} on device=${device.id}`, {
 									resource: device.id,
-									message: err.message,
-									stack: err.stack,
+									message: error.message,
+									stack: error.stack,
 								});
 
-								throw err;
-							});
+								// Preserve existing channel to avoid dropping valid input during partial failure
+								const existing = await this.channelsService.findOneBy(
+									'identifier',
+									`input:${key}`,
+									device.id,
+									DEVICES_SHELLY_NG_TYPE,
+								);
+								if (existing) {
+									channelsIds.push(existing.id);
+								}
 
-							/**
-							 * NOTE: Input processing is not yet implemented.
-							 *
-							 * Future implementation should:
-							 * 1. Create or update input channels based on inputConfig
-							 * 2. Map input types (button, switch, analog) to appropriate channel properties
-							 * 3. Store input state (pressed, released, long-press) based on inputStatus
-							 * 4. Handle input events (single press, double press, long press) via WebSocket
-							 *
-							 * Reference: Shelly Gen2 API Input component documentation
-							 * @see https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Input
-							 */
+								throw err;
+							}
+
+							const inputMode = inputConfig?.type ?? 'button';
+
+							const mappingContext: MappingContext = {
+								componentType: ComponentType.INPUT,
+								componentKey: key,
+								deviceCategory: device.category,
+								inputMode,
+								model: deviceInfo.model,
+								profile: deviceInfo.profile ?? undefined,
+							};
+
+							const mapping = this.mappingLoaderService.findMatchingMapping(mappingContext);
+							let channelCategory: ChannelCategory = ChannelCategory.BUTTON;
+							let defaultChannelName = `Button: ${key}`;
+
+							if (mapping && mapping.channels.length > 0) {
+								channelCategory = mapping.channels[0].category;
+								defaultChannelName = this.mappingLoaderService.interpolateTemplate(
+									mapping.channels[0].name ?? `Input: {key}`,
+									mappingContext,
+								);
+							} else {
+								if (inputMode === 'switch') {
+									channelCategory = ChannelCategory.BINARY_INPUT;
+									defaultChannelName = `Switch Input: ${key}`;
+								} else if (inputMode === 'analog' || inputMode === 'count') {
+									channelCategory = ChannelCategory.ANALOG_INPUT;
+									defaultChannelName = inputMode === 'count' ? `Counter: ${key}` : `Analog Input: ${key}`;
+								}
+							}
+
+							const channelName =
+								inputConfig.name && inputConfig.name.trim() !== '' ? inputConfig.name : defaultChannelName;
+
+							const channel = await this.ensureChannel(
+								device,
+								'identifier',
+								`input:${key}`,
+								channelCategory,
+								channelName,
+							);
+							channelsIds.push(channel.id);
+
+							// If channel mode/category changed, clean up properties that don't belong to the new category
+							const existingProps = await this.channelsPropertiesService.findAll(channel.id);
+							const validCategories =
+								channelCategory === ChannelCategory.BUTTON
+									? [PropertyCategory.EVENT, PropertyCategory.DETECTED, PropertyCategory.ACTIVE]
+									: channelCategory === ChannelCategory.BINARY_INPUT
+										? [PropertyCategory.STATE, PropertyCategory.ACTIVE]
+										: [PropertyCategory.VALUE, PropertyCategory.UNIT, PropertyCategory.ACTIVE];
+
+							for (const prop of existingProps) {
+								if (!validCategories.includes(prop.category)) {
+									try {
+										await this.channelsPropertiesService.remove(prop.id);
+									} catch {
+										// Ignore if already deleted
+									}
+								}
+							}
+
+							const isActive = inputConfig.enable !== false && (!inputStatus.errors || inputStatus.errors.length === 0);
+
+							if (channelCategory === ChannelCategory.BUTTON) {
+								await this.ensureProperty(
+									channel,
+									PropertyCategory.EVENT,
+									'category',
+									PropertyCategory.EVENT,
+									undefined,
+									{
+										data_type: DataTypeType.ENUM,
+										permissions: [PermissionType.EVENT_ONLY],
+										format: ['press', 'double_press', 'triple_press', 'long_press', 'down', 'up'],
+									},
+								);
+
+								await this.ensureProperty(
+									channel,
+									PropertyCategory.DETECTED,
+									'category',
+									PropertyCategory.DETECTED,
+									typeof inputStatus.state === 'boolean' ? inputStatus.state : false,
+									{
+										data_type: DataTypeType.BOOL,
+										permissions: [PermissionType.READ_ONLY],
+									},
+								);
+
+								await this.ensureProperty(
+									channel,
+									PropertyCategory.ACTIVE,
+									'category',
+									PropertyCategory.ACTIVE,
+									isActive,
+									{
+										data_type: DataTypeType.BOOL,
+										permissions: [PermissionType.READ_ONLY],
+									},
+								);
+							} else if (channelCategory === ChannelCategory.BINARY_INPUT) {
+								await this.ensureProperty(
+									channel,
+									PropertyCategory.STATE,
+									'category',
+									PropertyCategory.STATE,
+									Boolean(inputStatus.state),
+									{
+										data_type: DataTypeType.BOOL,
+										permissions: [PermissionType.READ_ONLY],
+									},
+								);
+
+								await this.ensureProperty(
+									channel,
+									PropertyCategory.ACTIVE,
+									'category',
+									PropertyCategory.ACTIVE,
+									isActive,
+									{
+										data_type: DataTypeType.BOOL,
+										permissions: [PermissionType.READ_ONLY],
+									},
+								);
+							} else if (channelCategory === ChannelCategory.ANALOG_INPUT) {
+								const analogValue =
+									inputMode === 'count'
+										? (inputStatus.counts?.total ?? 0)
+										: typeof inputStatus.percent === 'number'
+											? inputStatus.percent
+											: typeof inputStatus.xpercent === 'number'
+												? inputStatus.xpercent
+												: 0;
+
+								const unitValue =
+									inputMode === 'count' ? inputConfig.xcounts?.unit || 'counts' : inputConfig.xpercent?.unit || '%';
+
+								await this.ensureProperty(
+									channel,
+									PropertyCategory.VALUE,
+									'category',
+									PropertyCategory.VALUE,
+									analogValue,
+									{
+										data_type: DataTypeType.FLOAT,
+										permissions: [PermissionType.READ_ONLY],
+									},
+								);
+
+								await this.ensureProperty(
+									channel,
+									PropertyCategory.UNIT,
+									'category',
+									PropertyCategory.UNIT,
+									unitValue,
+									{
+										data_type: DataTypeType.STRING,
+										permissions: [PermissionType.READ_ONLY],
+									},
+								);
+
+								await this.ensureProperty(
+									channel,
+									PropertyCategory.ACTIVE,
+									'category',
+									PropertyCategory.ACTIVE,
+									isActive,
+									{
+										data_type: DataTypeType.BOOL,
+										permissions: [PermissionType.READ_ONLY],
+									},
+								);
+							}
 						}),
 					);
 

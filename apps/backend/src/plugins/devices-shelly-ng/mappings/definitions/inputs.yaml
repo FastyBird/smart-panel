@@ -1,0 +1,80 @@
+# Shelly NG Input Component Mappings
+# Maps input components to button, binary_input, or analog_input channels based on configured mode
+
+version: "1.0"
+
+mappings:
+  # Input configured as button (default)
+  - name: input_as_button
+    description: "Shelly input component mapped as button channel"
+    priority: 100
+    match:
+      all_of:
+        - component_type: input
+        - input_mode: button
+    channels:
+      - identifier: "input:{key}"
+        name: "Button: {key}"
+        category: BUTTON
+        properties:
+          - shelly_property: event
+            panel:
+              identifier: EVENT
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - down
+                - up
+              settable: false
+              queryable: false
+          - shelly_property: state
+            panel:
+              identifier: DETECTED
+              data_type: BOOL
+              settable: false
+              queryable: true
+
+  # Input configured as binary switch / toggle
+  - name: input_as_binary_input
+    description: "Shelly input component mapped as binary_input channel"
+    priority: 100
+    match:
+      all_of:
+        - component_type: input
+        - input_mode: switch
+    channels:
+      - identifier: "input:{key}"
+        name: "Switch Input: {key}"
+        category: BINARY_INPUT
+        properties:
+          - shelly_property: state
+            panel:
+              identifier: STATE
+              data_type: BOOL
+              settable: false
+              queryable: true
+
+  # Input configured as analog input
+  - name: input_as_analog_input
+    description: "Shelly input component mapped as analog_input channel"
+    priority: 100
+    match:
+      all_of:
+        - component_type: input
+        - any_of:
+            - input_mode: analog
+            - input_mode: count
+    channels:
+      - identifier: "input:{key}"
+        name: "Analog Input: {key}"
+        category: ANALOG_INPUT
+        properties:
+          - shelly_property: percent
+            panel:
+              identifier: VALUE
+              data_type: FLOAT
+              settable: false
+              queryable: true

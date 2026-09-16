@@ -240,6 +240,9 @@ jest.mock('../delegates/shelly-device.delegate', () => {
 			if (shelly.switch) {
 				this.switches.set(0, shelly.switch);
 			}
+			if (shelly.input) {
+				this.inputs.set(shelly.input.id ?? 0, shelly.input);
+			}
 			if (shelly.pm1) {
 				this.pm1.set(0, shelly.pm1);
 			}
@@ -2469,6 +2472,195 @@ describe('DelegatesManagerService', () => {
 			} finally {
 				jest.useRealTimers();
 			}
+		});
+	});
+
+	describe('inputs and hardware occurrences', () => {
+		test('delegate event dispatches occurrence via channelInputOccurrencesService', async () => {
+			const mockOccurrencesService = {
+				publishOccurrence: jest.fn().mockResolvedValue(null),
+			};
+
+			const localSvc = new DelegatesManagerService(
+				devicesService as any,
+				channelsService as any,
+				channelsPropertiesService as any,
+				deviceConnectivityService as any,
+				deviceManagerService as any,
+				deviceAddressService as any,
+				propertyMappingStorage as any,
+				transformerRegistry as any,
+				undefined,
+				undefined,
+				mockOccurrencesService as any,
+			);
+
+			const device = { id: uuid().toString() } as ShellyNgDeviceEntity;
+			const inputChannel = {
+				id: uuid(),
+				device: device.id,
+				category: ChannelCategory.BUTTON,
+				identifier: 'input:0',
+			} as ShellyNgChannelEntity;
+
+			const eventProp = {
+				id: uuid(),
+				channel: inputChannel.id,
+				category: PropertyCategory.EVENT,
+				identifier: 'event',
+			} as ShellyNgChannelPropertyEntity;
+
+			const detectedProp = {
+				id: uuid(),
+				channel: inputChannel.id,
+				category: PropertyCategory.DETECTED,
+				identifier: 'detected',
+			} as ShellyNgChannelPropertyEntity;
+
+			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
+			(devicesService.findOne as jest.Mock).mockResolvedValueOnce(device);
+			(devicesService.create as jest.Mock).mockResolvedValue(device);
+
+			(channelsService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+				if (field === 'identifier' && val === 'input:0') return inputChannel;
+				return null;
+			});
+
+			(channelsPropertiesService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+				if (field === 'category' && val === String(PropertyCategory.EVENT)) return eventProp;
+				if (field === 'category' && val === String(PropertyCategory.DETECTED)) return detectedProp;
+				return null;
+			});
+
+			const shelly: any = {
+				id: 'shelly-i4-dev',
+				modelName: 'Plus I4',
+				system: { config: { device: { name: 'Plus I4', mac: 'AABBCCDDEE99' } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.99' },
+			};
+
+			const delegate = (await localSvc.insert(shelly as unknown as Device)) as any;
+
+			delegate.emit('event', {
+				ts: 1630489390.5,
+				events: [
+					{
+						component: 'input:0',
+						id: 0,
+						event: 'single_push',
+						ts: 1630489390.5,
+					},
+				],
+			});
+
+			await new Promise((r) => setImmediate(r));
+
+			expect(mockOccurrencesService.publishOccurrence).toHaveBeenCalledWith({
+				deviceId: device.id,
+				channelId: inputChannel.id,
+				propertyId: eventProp.id,
+				event: 'press',
+				nativeEventType: 'single_push',
+				sourceTimestamp: new Date(1630489390.5 * 1000).toISOString(),
+				sourceOccurrenceId: `${inputChannel.id}:single_push:1630489390.5`,
+			});
+		});
+
+		test('btn_down updates detected property and publishes down event', async () => {
+			const mockOccurrencesService = {
+				publishOccurrence: jest.fn().mockResolvedValue(null),
+			};
+
+			const localSvc = new DelegatesManagerService(
+				devicesService as any,
+				channelsService as any,
+				channelsPropertiesService as any,
+				deviceConnectivityService as any,
+				deviceManagerService as any,
+				deviceAddressService as any,
+				propertyMappingStorage as any,
+				transformerRegistry as any,
+				undefined,
+				undefined,
+				mockOccurrencesService as any,
+			);
+
+			const device = { id: uuid().toString() } as ShellyNgDeviceEntity;
+			const inputChannel = {
+				id: uuid(),
+				device: device.id,
+				category: ChannelCategory.BUTTON,
+				identifier: 'input:0',
+			} as ShellyNgChannelEntity;
+
+			const eventProp = {
+				id: uuid(),
+				channel: inputChannel.id,
+				category: PropertyCategory.EVENT,
+				identifier: 'event',
+			} as ShellyNgChannelPropertyEntity;
+
+			const detectedProp = {
+				id: uuid(),
+				channel: inputChannel.id,
+				category: PropertyCategory.DETECTED,
+				identifier: 'detected',
+			} as ShellyNgChannelPropertyEntity;
+
+			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
+			(devicesService.findOne as jest.Mock).mockResolvedValueOnce(device);
+			(devicesService.create as jest.Mock).mockResolvedValue(device);
+
+			(channelsService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+				if (field === 'identifier' && val === 'input:0') return inputChannel;
+				return null;
+			});
+
+			(channelsPropertiesService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+				if (field === 'category' && val === String(PropertyCategory.EVENT)) return eventProp;
+				if (field === 'category' && val === String(PropertyCategory.DETECTED)) return detectedProp;
+				return null;
+			});
+
+			const shelly: any = {
+				id: 'shelly-i4-dev-2',
+				modelName: 'Plus I4',
+				system: { config: { device: { name: 'Plus I4', mac: 'AABBCCDDEE98' } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.98' },
+			};
+
+			const delegate = (await localSvc.insert(shelly as unknown as Device)) as any;
+
+			delegate.emit('event', {
+				ts: 1630489391.0,
+				events: [
+					{
+						component: 'input:0',
+						id: 0,
+						event: 'btn_down',
+						ts: 1630489391.0,
+					},
+				],
+			});
+
+			await new Promise((r) => setImmediate(r));
+
+			expect(mockOccurrencesService.publishOccurrence).toHaveBeenCalledWith({
+				deviceId: device.id,
+				channelId: inputChannel.id,
+				propertyId: eventProp.id,
+				event: 'down',
+				nativeEventType: 'btn_down',
+				sourceTimestamp: new Date(1630489391.0 * 1000).toISOString(),
+				sourceOccurrenceId: `${inputChannel.id}:btn_down:1630489391`,
+			});
+
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+				detectedProp.id,
+				expect.objectContaining({
+					value: true,
+				}),
+			);
 		});
 	});
 });

@@ -16,6 +16,7 @@ import {
 	DeviceCategory,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { CommandLatencyTraceCollectorService } from '../../../modules/devices/services/command-latency-trace-collector.service';
@@ -43,6 +44,16 @@ import { PollPlacementDiagnosticsService } from '../services/poll-placement-diag
 import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { ShellyDeviceDelegate, ShellyValueOrigin } from './shelly-device.delegate';
+
+const SHELLY_TO_PANEL_EVENT_MAP: Record<string, string> = {
+	single_push: 'press',
+	double_push: 'double_press',
+	triple_push: 'triple_press',
+	triple_press: 'triple_press',
+	long_push: 'long_press',
+	btn_down: 'down',
+	btn_up: 'up',
+};
 
 type MaybeNet = {
 	wifi?: WiFi & { sta_ip?: string | null };
@@ -102,6 +113,8 @@ export class DelegatesManagerService {
 	> = new Map();
 
 	private readonly delegateConnectionHandlers: Map<string, (state: boolean | null) => void> = new Map();
+
+	private readonly delegateEventHandlers: Map<string, (params: unknown) => void> = new Map();
 
 	private readonly changeHandlers: Map<string, (val: CharacteristicValue) => void> = new Map();
 
@@ -196,6 +209,8 @@ export class DelegatesManagerService {
 		private readonly commandLatencyTraceCollector: CommandLatencyTraceCollectorService = new CommandLatencyTraceCollectorService(),
 		@Optional()
 		private readonly pollPlacementDiagnostics: PollPlacementDiagnosticsService = new PollPlacementDiagnosticsService(),
+		@Optional()
+		private readonly channelInputOccurrencesService?: ChannelInputOccurrencesService,
 	) {}
 
 	get(id: Device['id']): ShellyDeviceDelegate | undefined {
@@ -1778,6 +1793,87 @@ export class DelegatesManagerService {
 			);
 		}
 
+		// Wire inputs (button, binary_input, analog_input)
+		for (const comp of delegate.inputs.values()) {
+			const channel = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+				'identifier',
+				`input:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (channel === null) {
+				continue;
+			}
+
+			if (channel.category === ChannelCategory.BUTTON) {
+				const detectedProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'category',
+					PropertyCategory.DETECTED,
+					channel.id,
+				);
+
+				if (detectedProp) {
+					await this.setDefaultPropertyValue(device.id, detectedProp, Boolean(comp.state));
+
+					this.changeHandlers.set(`${delegate.id}|${comp.key}|state`, (val: CharacteristicValue): void => {
+						if (typeof val === 'boolean') {
+							this.handleChange(detectedProp, val, false).catch((err: Error): void => {
+								this.logger.error(`Failed to update detected for ${detectedProp.id}: ${err.message}`);
+							});
+						}
+					});
+				}
+			} else if (channel.category === ChannelCategory.BINARY_INPUT) {
+				const stateProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'category',
+					PropertyCategory.STATE,
+					channel.id,
+				);
+
+				if (stateProp) {
+					await this.setDefaultPropertyValue(device.id, stateProp, Boolean(comp.state));
+
+					this.changeHandlers.set(`${delegate.id}|${comp.key}|state`, (val: CharacteristicValue): void => {
+						if (typeof val === 'boolean') {
+							this.handleChange(stateProp, val, false).catch((err: Error): void => {
+								this.logger.error(`Failed to update state for ${stateProp.id}: ${err.message}`);
+							});
+						}
+					});
+				}
+			} else if (channel.category === ChannelCategory.ANALOG_INPUT) {
+				const valueProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'category',
+					PropertyCategory.VALUE,
+					channel.id,
+				);
+
+				if (valueProp) {
+					const initialVal = comp.percent ?? (typeof comp.counts?.total === 'number' ? comp.counts.total : 0);
+					await this.setDefaultPropertyValue(device.id, valueProp, initialVal);
+
+					this.changeHandlers.set(`${delegate.id}|${comp.key}|percent`, (val: CharacteristicValue): void => {
+						const n = coerceNumberSafe(val);
+						if (n !== null) {
+							this.handleChange(valueProp, n, false).catch((err: Error): void => {
+								this.logger.error(`Failed to update value for ${valueProp.id}: ${err.message}`);
+							});
+						}
+					});
+
+					this.changeHandlers.set(`${delegate.id}|${comp.key}|counts`, (val: CharacteristicValue): void => {
+						const n = coerceNumberSafe(val);
+						if (n !== null) {
+							this.handleChange(valueProp, n, false).catch((err: Error): void => {
+								this.logger.error(`Failed to update counts for ${valueProp.id}: ${err.message}`);
+							});
+						}
+					});
+				}
+			}
+		}
+
 		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
 
 		const valueHandler = (
@@ -1944,6 +2040,21 @@ export class DelegatesManagerService {
 
 		this.delegateConnectionHandlers.set(delegate.id, connectionHandler);
 
+		const eventHandler = (params: unknown): void => {
+			this.handleDeviceEvent(delegate, device, params).catch((error) => {
+				const err = error as Error;
+				this.logger.error(`Shelly event error for device=${device.id}`, {
+					resource: device.id,
+					message: err.message,
+					stack: err.stack,
+				});
+			});
+		};
+
+		delegate.on('event', eventHandler);
+
+		this.delegateEventHandlers.set(delegate.id, eventHandler);
+
 		// Signal initial connection state based on the delegate's current state.
 		// The guard inside connectionHandler prevents double-increment if the
 		// library later fires a redundant 'connect' event.
@@ -2011,6 +2122,14 @@ export class DelegatesManagerService {
 
 		this.delegateValueHandlers.delete(delegate.id);
 		this.delegateConnectionHandlers.delete(delegate.id);
+
+		const eventHandler = this.delegateEventHandlers.get(delegate.id);
+
+		if (eventHandler) {
+			delegate.off('event', eventHandler);
+		}
+
+		this.delegateEventHandlers.delete(delegate.id);
 
 		for (const key of Array.from(this.changeHandlers.keys())) {
 			if (key.startsWith(`${deviceId}|`)) {
@@ -2173,6 +2292,101 @@ export class DelegatesManagerService {
 		} catch (error) {
 			this.logger.warn(`Failed to apply transformer: ${error instanceof Error ? error.message : String(error)}`);
 			return value;
+		}
+	}
+
+	private async handleDeviceEvent(
+		delegate: ShellyDeviceDelegate,
+		device: ShellyNgDeviceEntity,
+		params: unknown,
+	): Promise<void> {
+		if (typeof params !== 'object' || params === null) {
+			return;
+		}
+
+		const eventPayload = params as Record<string, unknown>;
+		const rawEvents = Array.isArray(eventPayload.events) ? eventPayload.events : [eventPayload];
+
+		for (const rawItem of rawEvents) {
+			if (typeof rawItem !== 'object' || rawItem === null) {
+				continue;
+			}
+
+			const item = rawItem as Record<string, unknown>;
+			const rawEvent = typeof item.event === 'string' ? item.event : undefined;
+
+			if (!rawEvent) {
+				continue;
+			}
+
+			const mappedEvent = SHELLY_TO_PANEL_EVENT_MAP[rawEvent];
+
+			if (!mappedEvent) {
+				this.logger.debug(`Unknown Shelly event=${rawEvent} from device=${device.id}`);
+				continue;
+			}
+
+			let channelIdentifier: string;
+			if (typeof item.component === 'string' && item.component.length > 0) {
+				channelIdentifier = item.component;
+			} else if (typeof item.id === 'number' || typeof item.id === 'string') {
+				channelIdentifier = `input:${item.id}`;
+			} else {
+				continue;
+			}
+
+			const channel = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+				'identifier',
+				channelIdentifier,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (!channel) {
+				this.logger.debug(`No channel found for ${channelIdentifier} on device=${device.id}`);
+				continue;
+			}
+
+			const eventProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'category',
+				PropertyCategory.EVENT,
+				channel.id,
+			);
+
+			if (!eventProp) {
+				this.logger.debug(`No EVENT property on channel=${channel.id} for device=${device.id}`);
+				continue;
+			}
+
+			const ts =
+				typeof item.ts === 'number' ? item.ts : typeof eventPayload.ts === 'number' ? eventPayload.ts : undefined;
+			const timestamp = ts !== undefined ? new Date(ts < 1e11 ? Math.round(ts * 1000) : Math.round(ts)) : new Date();
+
+			const sourceOccurrenceId = `${channel.id}:${rawEvent}:${ts ?? timestamp.getTime()}`;
+
+			if (this.channelInputOccurrencesService) {
+				await this.channelInputOccurrencesService.publishOccurrence({
+					deviceId: device.id,
+					channelId: channel.id,
+					propertyId: eventProp.id,
+					event: mappedEvent,
+					nativeEventType: rawEvent,
+					sourceTimestamp: timestamp.toISOString(),
+					sourceOccurrenceId,
+				});
+			}
+
+			if (rawEvent === 'btn_down' || rawEvent === 'btn_up') {
+				const detectedProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'category',
+					PropertyCategory.DETECTED,
+					channel.id,
+				);
+
+				if (detectedProp) {
+					await this.handleChange(detectedProp, rawEvent === 'btn_down', true);
+				}
+			}
 		}
 	}
 

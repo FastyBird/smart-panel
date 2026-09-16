@@ -107,6 +107,8 @@ export interface MappingConfig {
 export interface MatchCondition {
 	/** Shelly component type (switch, cover, light, rgb, rgbw, cct, etc.) */
 	component_type?: string;
+	/** Configured input mode (button, switch, analog, count) */
+	input_mode?: string;
 	/** Device category - maps to the user-selected device category */
 	device_category?: string;
 	/** Device model ID (exact match) - for device-specific mappings */
@@ -142,24 +144,23 @@ export interface PanelPropertyConfig {
 }
 
 /**
- * Property mapping for Shelly properties
+ * Property mapping configuration
  */
 export interface PropertyMapping {
-	/** Shelly property name (e.g., output, brightness, rgb, etc.) */
+	/** Shelly property/attribute name */
 	shelly_property: string;
 	/** Data flow direction */
 	direction?: TransformDirection;
 	/** Smart Panel property configuration */
 	panel: PanelPropertyConfig;
-	/** Reference to named transformer */
+	/** Named transformer reference */
 	transformer?: string;
-	/** Inline transform definition */
+	/** Inline transformer configuration */
 	transform?: InlineTransform;
 }
 
 /**
- * Static property configuration
- * Properties with fixed values that don't change
+ * Static property with a fixed value
  */
 export interface StaticPropertyConfig {
 	/** Property identifier (maps to PropertyCategory) */
@@ -168,35 +169,34 @@ export interface StaticPropertyConfig {
 	name?: string;
 	/** Data type */
 	data_type: string;
-	/** Value format/range (for ENUM types) */
+	/** Fixed value for this property */
+	value: string | number | boolean;
+	/** Value format/range */
 	format?: number[] | string[];
 	/** Unit of measurement */
 	unit?: string;
-	/** The fixed value */
-	value: string | number | boolean;
 }
 
 /**
  * Derived property configuration
- * Properties calculated from other properties
  */
 export interface DerivedPropertyConfig {
-	/** Property identifier (maps to PropertyCategory) */
+	/** Property identifier for the derived property */
 	identifier: string;
 	/** Human-readable name */
 	name?: string;
 	/** Data type */
 	data_type: string;
+	/** Source property on the same channel to derive from */
+	source_property: string;
+	/** Reference to named derivation in derivation-rules.yaml */
+	derivation?: string;
+	/** Inline derivation rule */
+	derive?: AnyDerivation;
 	/** Value format/range */
 	format?: number[] | string[];
 	/** Unit of measurement */
 	unit?: string;
-	/** Source property identifier (must exist in the same channel) */
-	source_property: string;
-	/** Reference to named derivation rule */
-	derivation?: string;
-	/** Inline derivation definition */
-	derive?: AnyDerivation;
 }
 
 /**
@@ -251,6 +251,7 @@ export interface ResolvedMapping {
  */
 export interface ResolvedMatchCondition {
 	componentType?: ComponentType;
+	inputMode?: string;
 	deviceCategory?: DeviceCategory;
 	model?: string;
 	profile?: string;
@@ -358,6 +359,8 @@ export interface MappingContext {
 	componentKey: number;
 	/** Device category (user-selected) */
 	deviceCategory: DeviceCategory;
+	/** Configured input mode (button, switch, analog, count) */
+	inputMode?: string;
 	/** Device model */
 	model?: string;
 	/** Device profile */
