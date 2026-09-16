@@ -81,11 +81,16 @@ across the two clocks.
 7. **Scoped poll-placement diagnostics:**
    - The optional private `FB_SHELLY_POLL_PLACEMENT` setting enables a bounded, read-only observer for
      the scheduler's actual sorted delegate array. It records the same cycle anchor, interval, target
-     slot, computed delay, registration bounds, generation and skip decision used by the scheduler.
+     slot, computed delay, registration bounds, generation, lifecycle state, active/concurrency counts,
+     target in-flight state and skip decision used by the scheduler. Registration bounds bracket the
+     actual target timeout registrations; they do not claim an exact callback execution time.
    - The observer is disabled for absent or invalid configuration, expires after at most 180 seconds,
      retains at most 64 observations/256 KiB, and never changes polling, provider calls, concurrency,
-     timers or command handling. Writes are owner-only and atomic; any stale, failed or mismatched
-     snapshot is non-selectable.
+     timers or command handling. The session uses the backend `performance-now-v1` monotonic clock and
+     paired UTC timestamps for conservative freshness only. Writes acquire an exclusive owner record,
+     use owner-checked atomic publication with file and parent-directory sync, and await pending writes
+     during shutdown; any stale, failed, foreign, symlinked or mismatched snapshot is non-selectable.
+     Runtime provenance is a hash of the executing observer artifact, not a schema label.
    - Placement forecasts are not poll activity. A timing row qualifies as `poll-overlap` only when
      the joined trial capture contains canonical poll RPC/coalescer/drain records between its explicit
      `command-received` and `source-publication` timestamps. Restoration-only, pre-command, late or
