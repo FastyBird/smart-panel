@@ -371,6 +371,7 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 		await mkdir(directory, { recursive: true, mode: 0o700 });
 		const directoryStat = await lstat(directory);
 		if (!directoryStat.isDirectory()) throw new ExportOwnershipError('export parent is not a directory');
+		if ((directoryStat.mode & 0o077) !== 0) throw new ExportOwnershipError('export parent is not owner-only');
 		const existingOutput = await this.lstatIfExists(this.config.exportPath);
 		if (existingOutput?.isSymbolicLink()) throw new ExportOwnershipError('export output is a symlink');
 		if (existingOutput) throw new ExportOwnershipError('export output already exists');
@@ -398,8 +399,10 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 			throw new ExportOwnershipError('export ownership is not acquired');
 		const directoryStat = await lstat(dirname(this.config.exportPath));
 		if (!directoryStat.isDirectory()) throw new ExportOwnershipError('export parent is not a directory');
+		if ((directoryStat.mode & 0o077) !== 0) throw new ExportOwnershipError('export parent is not owner-only');
 		const ownerStat = await lstat(this.ownerPath);
 		if (ownerStat.isSymbolicLink()) throw new ExportOwnershipError('owner record is a symlink');
+		if ((ownerStat.mode & 0o177) !== 0) throw new ExportOwnershipError('owner record is not owner-only');
 		const ownerHandle = await open(this.ownerPath, 'r');
 		let owner: OwnerRecord;
 		try {
@@ -415,6 +418,7 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 			return;
 		}
 		if (outputStat.isSymbolicLink()) throw new ExportOwnershipError('export output is a symlink');
+		if ((outputStat.mode & 0o177) !== 0) throw new ExportOwnershipError('export output is not owner-only');
 		const outputHandle = await open(this.config.exportPath, 'r');
 		let current: DiagnosticSnapshot;
 		try {
