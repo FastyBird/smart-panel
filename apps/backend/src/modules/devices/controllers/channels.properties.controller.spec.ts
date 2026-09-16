@@ -82,7 +82,7 @@ describe('ChannelsPropertiesController', () => {
 		name: 'Test Property',
 		category: PropertyCategory.GENERIC,
 		identifier: null,
-		permissions: [PermissionType.READ_ONLY],
+		permissions: [PermissionType.READ_WRITE],
 		dataType: DataTypeType.STRING,
 		format: null,
 		invalid: null,

@@ -38,7 +38,9 @@ import { ReqCreateDeviceChannelDto } from '../dto/create-device-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
 import { ReqUpdateDeviceChannelDto } from '../dto/update-device-channel.dto';
 import { ChannelEntity, DeviceEntity } from '../entities/devices.entity';
+import { ChannelInputCapabilitiesResponseModel } from '../models/channel-input-capabilities.model';
 import { DeviceChannelResponseModel, DeviceChannelsResponseModel } from '../models/devices-response.model';
+import { ChannelInputOccurrencesService } from '../services/channel-input-occurrences.service';
 import { ChannelTypeMapping, ChannelsTypeMapperService } from '../services/channels-type-mapper.service';
 import { ChannelsService } from '../services/channels.service';
 import { DevicesService } from '../services/devices.service';
@@ -52,6 +54,7 @@ export class DevicesChannelsController {
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
 		private readonly channelsMapperService: ChannelsTypeMapperService,
+		private readonly channelInputOccurrencesService: ChannelInputOccurrencesService,
 	) {}
 
 	@ApiOperation({
@@ -120,6 +123,44 @@ export class DevicesChannelsController {
 		const response = new DeviceChannelResponseModel();
 
 		response.data = channel;
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: "Retrieve input capabilities of a specific device's channel",
+		description: 'Fetches input capabilities and supported event interactions for a device channel.',
+		operationId: 'get-devices-module-device-channel-input-capabilities',
+	})
+	@ApiParam({ name: 'deviceId', type: 'string', format: 'uuid', description: 'Device ID' })
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiSuccessResponse(
+		ChannelInputCapabilitiesResponseModel,
+		'Input capabilities of the channel successfully retrieved.',
+	)
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Device or channel not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id/input-capabilities')
+	async getInputCapabilities(
+		@Param('deviceId', new ParseUUIDPipe({ version: '4' })) deviceId: string,
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<ChannelInputCapabilitiesResponseModel> {
+		this.logger.debug(`Fetching input capabilities for channel id=${id} deviceId=${deviceId}`);
+
+		const device = await this.getDeviceOrThrow(deviceId);
+		const channel = await this.getOneOrThrow(id, device.id);
+
+		const capabilities = await this.channelInputOccurrencesService.getInputCapabilities(channel.id);
+
+		if (!capabilities) {
+			throw new NotFoundException(`Channel with ID ${id} was not found.`);
+		}
+
+		const response = new ChannelInputCapabilitiesResponseModel();
+
+		response.data = capabilities;
 
 		return response;
 	}

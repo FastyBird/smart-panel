@@ -36,7 +36,9 @@ import { DevicesException } from '../devices.exceptions';
 import { CreateChannelDto, ReqCreateChannelDto } from '../dto/create-channel.dto';
 import { ReqUpdateChannelDto, UpdateChannelDto } from '../dto/update-channel.dto';
 import { ChannelEntity } from '../entities/devices.entity';
+import { ChannelInputCapabilitiesResponseModel } from '../models/channel-input-capabilities.model';
 import { ChannelResponseModel, ChannelsResponseModel } from '../models/devices-response.model';
+import { ChannelInputOccurrencesService } from '../services/channel-input-occurrences.service';
 import { ChannelTypeMapping, ChannelsTypeMapperService } from '../services/channels-type-mapper.service';
 import { ChannelsService } from '../services/channels.service';
 
@@ -48,6 +50,7 @@ export class ChannelsController {
 	constructor(
 		private readonly channelsService: ChannelsService,
 		private readonly channelsMapperService: ChannelsTypeMapperService,
+		private readonly channelInputOccurrencesService: ChannelInputOccurrencesService,
 	) {}
 
 	@ApiOperation({
@@ -104,6 +107,39 @@ export class ChannelsController {
 		const response = new ChannelResponseModel();
 
 		response.data = channel;
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [DEVICES_MODULE_API_TAG_NAME],
+		summary: 'Retrieve input capabilities of a specific channel',
+		description: 'Fetches input capabilities and supported event interactions for a channel.',
+		operationId: 'get-devices-module-channel-input-capabilities',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Channel ID' })
+	@ApiSuccessResponse(
+		ChannelInputCapabilitiesResponseModel,
+		'Input capabilities of the channel successfully retrieved.',
+	)
+	@ApiBadRequestResponse('Invalid UUID format')
+	@ApiNotFoundResponse('Channel not found')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id/input-capabilities')
+	async getInputCapabilities(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<ChannelInputCapabilitiesResponseModel> {
+		this.logger.debug(`Fetching input capabilities for channel id=${id}`);
+
+		const capabilities = await this.channelInputOccurrencesService.getInputCapabilities(id);
+
+		if (!capabilities) {
+			throw new NotFoundException(`Channel with ID ${id} was not found.`);
+		}
+
+		const response = new ChannelInputCapabilitiesResponseModel();
+
+		response.data = capabilities;
 
 		return response;
 	}

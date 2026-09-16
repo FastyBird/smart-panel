@@ -47,6 +47,11 @@ export enum EventType {
 	 * Use this for reacting to value changes without triggering cache invalidation.
 	 */
 	CHANNEL_PROPERTY_VALUE_SET = 'DevicesModule.ChannelProperty.ValueSet',
+	/**
+	 * Emitted for discrete hardware input interactions (button presses, gesture events).
+	 * Delivered independently of property state caching.
+	 */
+	CHANNEL_INPUT_OCCURRENCE = 'DevicesModule.ChannelInput.Occurrence',
 	MODULE_RESET = 'DevicesModule.All.Reset',
 }
 

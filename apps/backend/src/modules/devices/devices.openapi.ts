@@ -9,6 +9,15 @@ import {
 	DeviceControlEntity,
 	DeviceEntity,
 } from './entities/devices.entity';
+import {
+	ChannelInputCapabilitiesModel,
+	ChannelInputCapabilitiesResponseModel,
+	ChannelInputPropertyCapabilityModel,
+} from './models/channel-input-capabilities.model';
+import {
+	ChannelInputOccurrencePayload,
+	ChannelInputOccurrenceResponseModel,
+} from './models/channel-input-occurrence.model';
 import { DevicesConfigModel } from './models/config.model';
 import {
 	DeviceValidationResponseModel,
@@ -73,6 +82,8 @@ export const DEVICES_SWAGGER_EXTRA_MODELS = [
 	ChannelControlResponseModel,
 	ChannelControlsResponseModel,
 	PropertyTimeseriesResponseModel,
+	ChannelInputOccurrenceResponseModel,
+	ChannelInputCapabilitiesResponseModel,
 	// Validation response models
 	DevicesValidationResponseModel,
 	DeviceValidationResponseModel,
@@ -94,6 +105,9 @@ export const DEVICES_SWAGGER_EXTRA_MODELS = [
 	ModuleStatsModel,
 	TimeseriesPointModel,
 	PropertyTimeseriesModel,
+	ChannelInputOccurrencePayload,
+	ChannelInputCapabilitiesModel,
+	ChannelInputPropertyCapabilityModel,
 	// Enum wrapper models
 	DevicesModuleDeviceCategory,
 	DevicesModuleChannelCategory,

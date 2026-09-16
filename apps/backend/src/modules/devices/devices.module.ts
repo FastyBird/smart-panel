@@ -50,6 +50,8 @@ import { PropertyValueLockEntity } from './entities/property-value-lock.entity';
 import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { DevicesConfigModel } from './models/config.model';
 import { DevicesStatsProvider } from './providers/devices-stats.provider';
+import { ChannelInputDeduplicationService } from './services/channel-input-deduplication.service';
+import { ChannelInputOccurrencesService } from './services/channel-input-occurrences.service';
 import { ChannelsTypeMapperService } from './services/channels-type-mapper.service';
 import { ChannelsControlsService } from './services/channels.controls.service';
 import { ChannelsPropertiesTypeMapperService } from './services/channels.properties-type-mapper.service';
@@ -156,6 +158,8 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		DeviceConnectivityService,
 		DeviceProvisionQueueService,
 		WebsocketExchangeListener,
+		ChannelInputDeduplicationService,
+		ChannelInputOccurrencesService,
 	],
 	controllers: [
 		DevicesController,
@@ -197,6 +201,8 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		DeviceProvisionQueueService,
 		DeviceValidationService,
 		DeviceStructureLockService,
+		ChannelInputDeduplicationService,
+		ChannelInputOccurrencesService,
 	],
 })
 export class DevicesModule implements OnModuleInit {
@@ -297,7 +303,6 @@ Central module for registering, configuring and controlling every IoT device con
 			},
 		});
 	}
-
 	async onApplicationBootstrap() {
 		// Create all continuous queries in parallel for faster startup
 		const queries = [

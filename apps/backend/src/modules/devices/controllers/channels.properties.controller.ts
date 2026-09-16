@@ -32,7 +32,12 @@ import {
 	ApiSuccessResponse,
 	ApiUnprocessableEntityResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { DEVICES_MODULE_API_TAG_NAME, DEVICES_MODULE_NAME, DEVICES_MODULE_PREFIX } from '../devices.constants';
+import {
+	DEVICES_MODULE_API_TAG_NAME,
+	DEVICES_MODULE_NAME,
+	DEVICES_MODULE_PREFIX,
+	PermissionType,
+} from '../devices.constants';
 import { DevicesException } from '../devices.exceptions';
 import { CreateChannelPropertyDto, ReqCreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { QueryPropertyTimeseriesDto } from '../dto/query-property-timeseries.dto';
@@ -374,6 +379,17 @@ export class ChannelsPropertiesController {
 		const commandValue = dtoInstance.value;
 		const effectivePropertyUpdate = { ...dtoInstance };
 		let commandReceipt: Awaited<ReturnType<PropertyCommandService['prepareApiPropertyCommand']>> = null;
+
+		if (typeof commandValue !== 'undefined' && commandValue !== null) {
+			if (
+				!property.permissions.some((permission) =>
+					[PermissionType.READ_WRITE, PermissionType.WRITE_ONLY].includes(permission),
+				)
+			) {
+				throw new BadRequestException([JSON.stringify({ field: 'value', reason: 'Property is not writable.' })]);
+			}
+		}
+
 		if (
 			typeof commandValue !== 'undefined' &&
 			commandValue !== null &&
