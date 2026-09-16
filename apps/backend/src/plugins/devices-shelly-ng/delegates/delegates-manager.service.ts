@@ -306,7 +306,7 @@ export class DelegatesManagerService {
 		this.delegateToIdentifier.set(delegate.id, device.identifier);
 		this.pollPlacementDiagnostics.observeDelegate({
 			delegateId: delegate.id,
-			sourceDeviceId: device.identifier,
+			sourceDeviceId: device.id,
 			connected: delegate.connected,
 			generation,
 		});
@@ -1822,7 +1822,7 @@ export class DelegatesManagerService {
 				this.delegateConnectedState.set(delegate.id, true);
 				this.pollPlacementDiagnostics.observeDelegate({
 					delegateId: delegate.id,
-					sourceDeviceId: device.identifier,
+					sourceDeviceId: device.id,
 					connected: true,
 					generation,
 				});
@@ -1853,7 +1853,7 @@ export class DelegatesManagerService {
 				this.delegateConnectedState.set(delegate.id, false);
 				this.pollPlacementDiagnostics.observeDelegate({
 					delegateId: delegate.id,
-					sourceDeviceId: device.identifier,
+					sourceDeviceId: device.id,
 					connected: false,
 					generation,
 				});

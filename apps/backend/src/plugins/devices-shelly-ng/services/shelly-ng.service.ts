@@ -655,7 +655,7 @@ export class ShellyNgService extends BaseManagedExtensionService {
 	 * complete interval; a busy slot is skipped rather than queued, preventing catch-up bursts.
 	 */
 	private startStatusPoll(): void {
-		this.stopStatusPoll();
+		this.stopStatusPoll(false);
 
 		const intervalSec = this.config.statusPollInterval;
 
@@ -668,9 +668,11 @@ export class ShellyNgService extends BaseManagedExtensionService {
 		this.scheduleStatusPollCycle(intervalSec * 1000, this.statusPollGeneration);
 	}
 
-	private stopStatusPoll(): void {
+	private stopStatusPoll(invalidateDiagnostics = true): void {
 		this.statusPollGeneration++;
-		this.pollPlacementDiagnostics.invalidate('poll-scheduler-stopped');
+		if (invalidateDiagnostics) {
+			this.pollPlacementDiagnostics.invalidate('poll-scheduler-stopped');
+		}
 		this.delegatesRegistryService.invalidateStatusPolls();
 
 		for (const timer of this.statusPollTimers) {

@@ -123,7 +123,7 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 
 	observeCycle(generation: number, intervalMs: number, delegates: string[]): void {
 		const snapshot = this.snapshot;
-		if (!snapshot || this.destroyed || snapshot.status === 'invalidated' || snapshot.status === 'expired') return;
+		if (!snapshot || this.destroyed || (snapshot.status !== 'armed' && snapshot.status !== 'ready')) return;
 		if (this.now() >= snapshot.expiresAtMonotonicMs) {
 			snapshot.status = 'expired';
 			snapshot.reason = 'diagnostic-expired';
@@ -154,8 +154,8 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 				slotIndex: targetId ? targetIndex : null,
 				connected: target?.connected === true,
 				generation: target?.generation ?? null,
-				decision: targetId ? 'dispatch-attempt' : 'unresolved',
-				skipReason: targetId ? undefined : 'target-unresolved',
+				decision: 'unresolved',
+				skipReason: targetId ? 'slot-pending' : 'target-unresolved',
 				delayMs,
 				registrationBeforeMs: before,
 				registrationAfterMs: after,
@@ -178,7 +178,13 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 		skipReason?: string,
 	): void {
 		const snapshot = this.snapshot;
-		if (!snapshot || snapshot.status === 'invalidated' || snapshot.status === 'expired') return;
+		if (!snapshot || this.destroyed || (snapshot.status !== 'armed' && snapshot.status !== 'ready')) return;
+		if (this.now() >= snapshot.expiresAtMonotonicMs) {
+			snapshot.status = 'expired';
+			snapshot.reason = 'diagnostic-expired';
+			void this.publish();
+			return;
+		}
 		const observation = snapshot.observations.at(-1);
 		if (!observation || observation.generation !== generation || observation.target.delegateId !== delegateId) return;
 		observation.target.decision = decision;
@@ -194,7 +200,7 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 			const value = JSON.parse(raw) as Record<string, unknown>;
 			if (value.schemaVersion !== 1 || typeof value.runId !== 'string' || !UUID_RE.test(value.runId)) return null;
 			if (typeof value.sourceDeviceId !== 'string' || !UUID_RE.test(value.sourceDeviceId)) return null;
-			if (typeof value.exportPath !== 'string' || !value.exportPath.startsWith('/') || value.exportPath.includes('\\0'))
+			if (typeof value.exportPath !== 'string' || !value.exportPath.startsWith('/') || value.exportPath.includes('\0'))
 				return null;
 			const durationMs = value.durationMs === undefined ? 180_000 : value.durationMs;
 			if (
@@ -235,7 +241,16 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 			const body = JSON.stringify(this.snapshot) + '\n';
 			await writeFile(temporary, body, { mode: 0o600, flag: 'wx' });
 			const handle = await open(temporary, 'r');
-			await handle.sync();
+			try {
+				await handle.sync();
+			} catch (error) {
+				try {
+					await handle.close();
+				} catch {
+					// Preserve the original sync failure.
+				}
+				throw error;
+			}
 			await handle.close();
 			await rename(temporary, this.config.exportPath);
 			await stat(this.config.exportPath);

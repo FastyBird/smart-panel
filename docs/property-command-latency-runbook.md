@@ -65,7 +65,7 @@ across the two clocks.
      expiry, shutdown, sink failure, a missing capture, duplicate completed capture, missing generation,
      or non-monotonic server records makes the affected evidence invalid.
    - A stale report held by the command window is preserved as a `suppressed` diagnostic. It is not a
-   - completed source-publication capture and cannot satisfy a trial by itself.
+     completed source-publication capture and cannot satisfy a trial by itself.
 
 6. **Concurrent poll-record ownership:**
    - Records observed before `update-entry` remain pending until the unique active invocation starts.
