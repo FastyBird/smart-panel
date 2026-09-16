@@ -94,6 +94,7 @@ DomainType? classifyDeviceToDomain(DevicesModuleDeviceCategory category) {
     case DevicesModuleDeviceCategory.alarm:
     case DevicesModuleDeviceCategory.door:
     case DevicesModuleDeviceCategory.doorbell:
+    case DevicesModuleDeviceCategory.inputController:
     case DevicesModuleDeviceCategory.lock:
     case DevicesModuleDeviceCategory.outlet:
     case DevicesModuleDeviceCategory.pump:

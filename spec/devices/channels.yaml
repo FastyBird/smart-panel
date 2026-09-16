@@ -3340,7 +3340,7 @@ button:
         - ev
       data_type: enum
       unit: null
-      format: ["press","long_press","double_press"]
+      format: ["press","long_press","double_press","triple_press","down","up"]
     detected:
       category: detected
       required: false
@@ -3356,6 +3356,79 @@ button:
       required: false
       description:
         en: Indicates if the button channel is currently active and functioning
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+
+binary_input:
+  category: binary_input
+  name:
+    en: Binary Input
+  description:
+    en: >-
+      Represents a physical binary control input (e.g. wall switch contact, toggle switch,
+      or dry contact input). Reports a static boolean state (true/false) representing open/closed
+      or on/off state. Distinct from transient button press events and security contact sensors.
+  docGroup: control
+  properties:
+    state:
+      category: state
+      required: true
+      description:
+        en: Current logical state of the binary input (true = closed/active/high, false = open/inactive/low)
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+    active:
+      category: active
+      required: false
+      description:
+        en: Indicates if the binary input is currently active and functioning
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+
+analog_input:
+  category: analog_input
+  name:
+    en: Analog Input
+  description:
+    en: >-
+      Represents a physical analog control input (e.g. 0-10V, 4-20mA, potentiometer slider,
+      or resistive sensor). Reports a continuous numeric value.
+  docGroup: control
+  properties:
+    value:
+      category: value
+      required: true
+      description:
+        en: Measured analog input value
+      permissions:
+        - ro
+      data_type: float
+      unit: null
+      format: null
+    unit:
+      category: unit
+      required: false
+      description:
+        en: Measurement unit for the analog value (e.g. V, %, mA)
+      permissions:
+        - ro
+      data_type: string
+      unit: null
+      format: null
+    active:
+      category: active
+      required: false
+      description:
+        en: Indicates if the analog input is currently active and functioning
       permissions:
         - ro
       data_type: bool

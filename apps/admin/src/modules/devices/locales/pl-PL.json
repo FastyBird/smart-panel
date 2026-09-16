@@ -756,7 +756,8 @@
 			"thermostat": "Termostat",
 			"valve": "Zawór",
 			"water_heater": "Podgrzewacz wody",
-			"window_covering": "Osłona okienna"
+			"window_covering": "Osłona okienna",
+			"input_controller": "Kontroler wejść"
 		},
 		"channels": {
 			"generic": "Ogólny",
@@ -811,7 +812,9 @@
 			"thermostat": "Termostat",
 			"valve": "Zawór",
 			"volatile_organic_compounds": "Lotne związki organiczne",
-			"window_covering": "Osłona okienna"
+			"window_covering": "Osłona okienna",
+			"analog_input": "Wejście analogowe",
+			"binary_input": "Wejście binarne"
 		},
 		"channelsProperties": {
 			"generic": "Ogólny",
@@ -914,7 +917,9 @@
 			"water_tank_empty": "Zbiornik na wodę pusty",
 			"water_tank_full": "Zbiornik na wodę pełny",
 			"water_tank_level": "Poziom zbiornika wody",
-			"zoom": "Brzęczenie"
+			"zoom": "Brzęczenie",
+			"unit": "Jednotka",
+			"value": "Wartość"
 		}
 	},
 	"hidden": {

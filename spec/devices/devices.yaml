@@ -32,6 +32,24 @@ generic:
         en: >-
           Provides metadata about the device, including manufacturer details,
           model information, and operational statuses.
+    button:
+      category: button
+      required: false
+      multiple: true
+      description:
+        en: Hardware push-button input.
+    binary_input:
+      category: binary_input
+      required: false
+      multiple: true
+      description:
+        en: Binary toggle or contact switch input.
+    analog_input:
+      category: analog_input
+      required: false
+      multiple: true
+      description:
+        en: Analog control input.
 
 # =============================================================================
 # CLIMATE CONTROL DEVICES
@@ -134,6 +152,24 @@ air_conditioner:
       multiple: false
       description:
         en: Monitors the filter status and remaining life, with option to reset after replacement.
+    button:
+      category: button
+      required: false
+      multiple: true
+      description:
+        en: Hardware push-button input.
+    binary_input:
+      category: binary_input
+      required: false
+      multiple: true
+      description:
+        en: Binary toggle or contact switch input.
+    analog_input:
+      category: analog_input
+      required: false
+      multiple: true
+      description:
+        en: Analog control input.
 
 air_dehumidifier:
   category: air_dehumidifier
@@ -502,6 +538,24 @@ thermostat:
       multiple: false
       description:
         en: Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics.
+    button:
+      category: button
+      required: false
+      multiple: true
+      description:
+        en: Hardware push-button input.
+    binary_input:
+      category: binary_input
+      required: false
+      multiple: true
+      description:
+        en: Binary toggle or contact switch input.
+    analog_input:
+      category: analog_input
+      required: false
+      multiple: true
+      description:
+        en: Analog control input.
 
 # =============================================================================
 # SECURITY & MONITORING DEVICES
@@ -910,6 +964,24 @@ fan:
       multiple: false
       description:
         en: Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics.
+    button:
+      category: button
+      required: false
+      multiple: true
+      description:
+        en: Hardware push-button input.
+    binary_input:
+      category: binary_input
+      required: false
+      multiple: true
+      description:
+        en: Binary toggle or contact switch input.
+    analog_input:
+      category: analog_input
+      required: false
+      multiple: true
+      description:
+        en: Analog control input.
 
 heating_unit:
   category: heating_unit
@@ -1048,6 +1120,61 @@ water_heater:
       description:
         en: Identifies the presence of water leaks to prevent damage.
 
+input_controller:
+  category: input_controller
+  name:
+    en: Input Controller
+  description:
+    en: >-
+      Represents a dedicated physical input device such as a multi-button wall controller,
+      push-button panel, or sensor interface without built-in actuators.
+  docGroup: home_automation
+  useCases:
+    en:
+      - title: Wall switch and scene controller
+        description: >-
+          Capture physical button clicks, double-presses, long-presses, or binary toggle
+          inputs to trigger automations and scenes throughout the home.
+      - title: Multi-channel input interface
+        description: >-
+          Expose multiple independent push buttons, toggle switches, or analog potentiometer
+          inputs on dedicated controller devices (e.g. Shelly Plus i4).
+  developerNotes:
+    en:
+      - >-
+        Dedicated input controllers do not require actuator channels (no relay or dimmer).
+      - >-
+        Button events are emitted as event-type occurrences, bypassing state equality checks.
+      - >-
+        Configure channel categories truthfully according to the physical wiring and device mode.
+  channels:
+    device_information:
+      category: device_information
+      required: true
+      multiple: false
+      description:
+        en: >-
+          Provides metadata about the device, including manufacturer details,
+          model information, and operational statuses.
+    button:
+      category: button
+      required: false
+      multiple: true
+      description:
+        en: Hardware push-button input reporting press, double press, long press, or raw down/up interactions.
+    binary_input:
+      category: binary_input
+      required: false
+      multiple: true
+      description:
+        en: Binary toggle or contact switch input reporting steady-state on/off or closed/open status.
+    analog_input:
+      category: analog_input
+      required: false
+      multiple: true
+      description:
+        en: Analog voltage, resistance, or slider input reporting continuous float values.
+
 lighting:
   category: lighting
   name:
@@ -1107,6 +1234,24 @@ lighting:
       multiple: false
       description:
         en: Detects ambient light levels, typically measured in lux, to monitor brightness in a space.
+    button:
+      category: button
+      required: false
+      multiple: true
+      description:
+        en: Hardware push-button input.
+    binary_input:
+      category: binary_input
+      required: false
+      multiple: true
+      description:
+        en: Binary toggle or contact switch input.
+    analog_input:
+      category: analog_input
+      required: false
+      multiple: true
+      description:
+        en: Analog control input.
 
 outlet:
   category: outlet
@@ -1161,6 +1306,24 @@ outlet:
       multiple: false
       description:
         en: Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics.
+    button:
+      category: button
+      required: false
+      multiple: true
+      description:
+        en: Hardware push-button input.
+    binary_input:
+      category: binary_input
+      required: false
+      multiple: true
+      description:
+        en: Binary toggle or contact switch input.
+    analog_input:
+      category: analog_input
+      required: false
+      multiple: true
+      description:
+        en: Analog control input.
 
 pump:
   category: pump
@@ -1368,6 +1531,24 @@ switcher:
       multiple: false
       description:
         en: Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics.
+    button:
+      category: button
+      required: false
+      multiple: true
+      description:
+        en: Hardware push-button input.
+    binary_input:
+      category: binary_input
+      required: false
+      multiple: true
+      description:
+        en: Binary toggle or contact switch input.
+    analog_input:
+      category: analog_input
+      required: false
+      multiple: true
+      description:
+        en: Analog control input.
 
 valve:
   category: valve
@@ -1503,6 +1684,24 @@ window_covering:
       multiple: false
       description:
         en: Reports real-time power metrics such as voltage, current, and wattage for monitoring and diagnostics.
+    button:
+      category: button
+      required: false
+      multiple: true
+      description:
+        en: Hardware push-button input.
+    binary_input:
+      category: binary_input
+      required: false
+      multiple: true
+      description:
+        en: Binary toggle or contact switch input.
+    analog_input:
+      category: analog_input
+      required: false
+      multiple: true
+      description:
+        en: Analog control input.
 
 # =============================================================================
 # ENTERTAINMENT & MEDIA DEVICES

@@ -214,6 +214,8 @@ definitions:
       - treble
       - track
       - type
+      - unit
+      - value
       - voltage
       - volume
       - warm_mist
@@ -308,7 +310,9 @@ patternProperties:
           - air_particulate
           - air_quality
           - alarm
+          - analog_input
           - battery
+          - binary_input
           - button
           - buzzer
           - camera
@@ -427,5 +431,3 @@ patternProperties:
         additionalProperties: false
 
     additionalProperties: false
-
-additionalProperties: false

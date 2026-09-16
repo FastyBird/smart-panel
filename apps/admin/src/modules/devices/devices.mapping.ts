@@ -135,6 +135,12 @@ const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, De
 		DevicesModuleChannelCategory.electrical_power,
 		DevicesModuleChannelCategory.device_information,
 	],
+	[DevicesModuleDeviceCategory.input_controller]: [
+		DevicesModuleChannelCategory.button,
+		DevicesModuleChannelCategory.binary_input,
+		DevicesModuleChannelCategory.analog_input,
+		DevicesModuleChannelCategory.device_information,
+	],
 	[DevicesModuleDeviceCategory.lighting]: [
 		DevicesModuleChannelCategory.light,
 		DevicesModuleChannelCategory.illuminance,

@@ -756,7 +756,8 @@
 			"thermostat": "Termostat",
 			"valve": "Ventil",
 			"water_heater": "Ohrievač vody",
-			"window_covering": "Okenné tienenie"
+			"window_covering": "Okenné tienenie",
+			"input_controller": "Vstupný ovládač"
 		},
 		"channels": {
 			"generic": "Všeobecné",
@@ -811,7 +812,9 @@
 			"thermostat": "Termostat",
 			"valve": "Ventil",
 			"volatile_organic_compounds": "Prchavé organické zlúčeniny",
-			"window_covering": "Obloženie okien"
+			"window_covering": "Obloženie okien",
+			"analog_input": "Analógový vstup",
+			"binary_input": "Binárny vstup"
 		},
 		"channelsProperties": {
 			"generic": "Generic",
@@ -914,7 +917,9 @@
 			"water_tank_empty": "Prázdna nádrž na vodu",
 			"water_tank_full": "Nádrž na vodu plná",
 			"water_tank_level": "Úroveň nádrže na vodu",
-			"zoom": "Zoom"
+			"zoom": "Zoom",
+			"unit": "Jednotka",
+			"value": "Hodnota"
 		}
 	},
 	"hidden": {

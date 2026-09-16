@@ -31,6 +31,7 @@ patternProperties:
           - fan
           - game_console
           - heating_unit
+          - input_controller
           - lighting
           - lock
           - media
@@ -166,7 +167,9 @@ patternProperties:
                   - air_particulate
                   - air_quality
                   - alarm
+                  - analog_input
                   - battery
+                  - binary_input
                   - button
                   - buzzer
                   - camera
