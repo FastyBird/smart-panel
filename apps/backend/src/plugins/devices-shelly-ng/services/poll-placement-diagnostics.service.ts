@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'crypto';
-import { mkdir, open, rename, stat, writeFile } from 'fs/promises';
+import { mkdir, open, rename, stat, unlink, writeFile } from 'fs/promises';
 import { dirname } from 'path';
 
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
@@ -235,11 +235,14 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 			return;
 		}
 		this.writePending = true;
+		let temporary: string | null = null;
+		let temporaryCreated = false;
 		try {
 			await mkdir(dirname(this.config.exportPath), { recursive: true, mode: 0o700 });
-			const temporary = this.config.exportPath + '.tmp-' + process.pid + '-' + this.snapshot.sequence;
+			temporary = this.config.exportPath + '.tmp-' + process.pid + '-' + this.snapshot.sequence;
 			const body = JSON.stringify(this.snapshot) + '\n';
 			await writeFile(temporary, body, { mode: 0o600, flag: 'wx' });
+			temporaryCreated = true;
 			const handle = await open(temporary, 'r');
 			try {
 				await handle.sync();
@@ -255,6 +258,9 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 			await rename(temporary, this.config.exportPath);
 			await stat(this.config.exportPath);
 		} catch {
+			if (temporaryCreated && temporary !== null) {
+				await unlink(temporary).catch(() => undefined);
+			}
 			if (this.snapshot) {
 				this.snapshot.status = 'writer-failure';
 				this.snapshot.reason = 'export-write-failed';
