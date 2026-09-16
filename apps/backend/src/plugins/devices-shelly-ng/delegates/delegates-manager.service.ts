@@ -2063,7 +2063,7 @@ export class DelegatesManagerService {
 
 		this.delegateDeviceIds.delete(deviceId);
 		this.delegateToIdentifier.delete(deviceId);
-		this.pollPlacementDiagnostics.invalidate('delegate-detached-or-remapped');
+		this.pollPlacementDiagnostics.removeDelegate(deviceId);
 
 		// Invalidate any in-progress insert so it bails out at its next check point.
 		this.insertGeneration.delete(deviceId);

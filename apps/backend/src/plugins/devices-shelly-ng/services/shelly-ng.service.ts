@@ -655,7 +655,9 @@ export class ShellyNgService extends BaseManagedExtensionService {
 	 * complete interval; a busy slot is skipped rather than queued, preventing catch-up bursts.
 	 */
 	private startStatusPoll(): void {
-		this.stopStatusPoll(false);
+		// Keep a just-armed diagnostic alive during initial startup, but invalidate
+		// an existing candidate when polling is hot-reloaded in a running service.
+		this.stopStatusPoll(this.state === 'started');
 
 		const intervalSec = this.config.statusPollInterval;
 
@@ -689,13 +691,23 @@ export class ShellyNgService extends BaseManagedExtensionService {
 		}
 
 		const delegates = this.delegatesRegistryService.getConnectedDelegateIds().slice().sort();
-		this.pollPlacementDiagnostics.observeCycle(generation, intervalMs, delegates);
+		const cycleSequence = this.pollPlacementDiagnostics.observeCycle(
+			generation,
+			intervalMs,
+			delegates,
+			this.statusPollActive,
+			ShellyNgService.STATUS_POLL_CONCURRENCY,
+			Array.from(this.statusPollInFlight),
+			this.state === 'starting' ? 'starting' : 'started',
+		);
 
 		for (const [index, delegateId] of delegates.entries()) {
 			const delay = Math.floor((index * intervalMs) / delegates.length);
 
-			this.scheduleStatusPollTimeout(() => this.runStatusPollSlot(delegateId, generation), delay);
+			this.scheduleStatusPollTimeout(() => this.runStatusPollSlot(delegateId, generation, cycleSequence), delay);
 		}
+
+		if (cycleSequence !== null) this.pollPlacementDiagnostics.completeCycleRegistration(cycleSequence);
 
 		this.statusPollTimer = this.scheduleStatusPollTimeout(
 			() => this.scheduleStatusPollCycle(intervalMs, generation),
@@ -714,7 +726,7 @@ export class ShellyNgService extends BaseManagedExtensionService {
 		return timer;
 	}
 
-	private runStatusPollSlot(delegateId: string, generation: number): void {
+	private runStatusPollSlot(delegateId: string, generation: number, cycleSequence: number | null): void {
 		if (
 			this.state !== 'started' ||
 			generation !== this.statusPollGeneration ||
@@ -724,6 +736,7 @@ export class ShellyNgService extends BaseManagedExtensionService {
 			this.pollPlacementDiagnostics.observeSlot(
 				delegateId,
 				generation,
+				cycleSequence ?? -1,
 				'skipped',
 				this.state !== 'started'
 					? 'lifecycle-inactive'
@@ -736,7 +749,9 @@ export class ShellyNgService extends BaseManagedExtensionService {
 			return;
 		}
 
-		this.pollPlacementDiagnostics.observeSlot(delegateId, generation, 'dispatch-attempt');
+		if (cycleSequence !== null) {
+			this.pollPlacementDiagnostics.observeSlot(delegateId, generation, cycleSequence, 'dispatch-attempt');
+		}
 		this.statusPollActive++;
 		this.statusPollInFlight.add(delegateId);
 
