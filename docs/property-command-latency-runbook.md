@@ -65,7 +65,7 @@ across the two clocks.
      expiry, shutdown, sink failure, a missing capture, duplicate completed capture, missing generation,
      or non-monotonic server records makes the affected evidence invalid.
    - A stale report held by the command window is preserved as a `suppressed` diagnostic. It is not a
-   - completed source-publication capture and cannot satisfy a trial by itself.
+     completed source-publication capture and cannot satisfy a trial by itself.
 
 6. **Concurrent poll-record ownership:**
    - Records observed before `update-entry` remain pending until the unique active invocation starts.
@@ -74,9 +74,22 @@ across the two clocks.
    - If no unique active invocation exists, the record remains pending and existing ambiguity rules apply;
      the collector never guesses a trial, generation, or invocation. Records after terminal publication
      cannot be added to the immutable completed capture.
-   - A missing poll marker is therefore inconclusive. Later export fetches cannot add activity to an already
-     completed capture; poll-overlap qualification must use markers in the joined trial capture itself, not
-     restoration or another request's records.
+  - A missing poll marker is therefore inconclusive. Later export fetches cannot add activity to an already
+    completed capture; poll-overlap qualification must use markers in the joined trial capture itself, not
+    restoration or another request's records.
+
+7. **Scoped poll-placement diagnostics:**
+   - The optional private `FB_SHELLY_POLL_PLACEMENT` setting enables a bounded, read-only observer for
+     the scheduler's actual sorted delegate array. It records the same cycle anchor, interval, target
+     slot, computed delay, registration bounds, generation and skip decision used by the scheduler.
+   - The observer is disabled for absent or invalid configuration, expires after at most 180 seconds,
+     retains at most 64 observations/256 KiB, and never changes polling, provider calls, concurrency,
+     timers or command handling. Writes are owner-only and atomic; any stale, failed or mismatched
+     snapshot is non-selectable.
+   - Placement forecasts are not poll activity. A timing row qualifies as `poll-overlap` only when
+     the joined trial capture contains canonical poll RPC/coalescer/drain records between its explicit
+     `command-received` and `source-publication` timestamps. Restoration-only, pre-command, late or
+     unrelated markers do not qualify.
 
 ## Scoped Server Capture and Live Adapter
 

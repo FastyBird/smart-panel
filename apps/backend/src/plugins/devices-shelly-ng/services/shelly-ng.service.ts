@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Device, DeviceId, DeviceOptions, MdnsDeviceDiscoverer, Shellies } from 'shellies-ds9';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -21,6 +21,7 @@ import { ShellyNgConfigModel } from '../models/config.model';
 
 import { DatabaseDiscovererService } from './database-discoverer.service';
 import { DeviceManagerService } from './device-manager.service';
+import { PollPlacementDiagnosticsService } from './poll-placement-diagnostics.service';
 import { ShellyWsServerService } from './shelly-ws-server.service';
 
 /**
@@ -74,6 +75,8 @@ export class ShellyNgService extends BaseManagedExtensionService {
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly managedServiceManager: ManagedServiceManagerService,
 		private readonly wsServer: ShellyWsServerService,
+		@Optional()
+		private readonly pollPlacementDiagnostics: PollPlacementDiagnosticsService = new PollPlacementDiagnosticsService(),
 	) {
 		super();
 	}
@@ -652,7 +655,7 @@ export class ShellyNgService extends BaseManagedExtensionService {
 	 * complete interval; a busy slot is skipped rather than queued, preventing catch-up bursts.
 	 */
 	private startStatusPoll(): void {
-		this.stopStatusPoll();
+		this.stopStatusPoll(false);
 
 		const intervalSec = this.config.statusPollInterval;
 
@@ -665,8 +668,11 @@ export class ShellyNgService extends BaseManagedExtensionService {
 		this.scheduleStatusPollCycle(intervalSec * 1000, this.statusPollGeneration);
 	}
 
-	private stopStatusPoll(): void {
+	private stopStatusPoll(invalidateDiagnostics = true): void {
 		this.statusPollGeneration++;
+		if (invalidateDiagnostics) {
+			this.pollPlacementDiagnostics.invalidate('poll-scheduler-stopped');
+		}
 		this.delegatesRegistryService.invalidateStatusPolls();
 
 		for (const timer of this.statusPollTimers) {
@@ -683,6 +689,7 @@ export class ShellyNgService extends BaseManagedExtensionService {
 		}
 
 		const delegates = this.delegatesRegistryService.getConnectedDelegateIds().slice().sort();
+		this.pollPlacementDiagnostics.observeCycle(generation, intervalMs, delegates);
 
 		for (const [index, delegateId] of delegates.entries()) {
 			const delay = Math.floor((index * intervalMs) / delegates.length);
@@ -714,9 +721,22 @@ export class ShellyNgService extends BaseManagedExtensionService {
 			this.statusPollActive >= ShellyNgService.STATUS_POLL_CONCURRENCY ||
 			this.statusPollInFlight.has(delegateId)
 		) {
+			this.pollPlacementDiagnostics.observeSlot(
+				delegateId,
+				generation,
+				'skipped',
+				this.state !== 'started'
+					? 'lifecycle-inactive'
+					: generation !== this.statusPollGeneration
+						? 'generation-changed'
+						: this.statusPollActive >= ShellyNgService.STATUS_POLL_CONCURRENCY
+							? 'global-cap'
+							: 'delegate-in-flight',
+			);
 			return;
 		}
 
+		this.pollPlacementDiagnostics.observeSlot(delegateId, generation, 'dispatch-attempt');
 		this.statusPollActive++;
 		this.statusPollInFlight.add(delegateId);
 
