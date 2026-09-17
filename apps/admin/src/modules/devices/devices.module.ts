@@ -20,6 +20,7 @@ import {
 import { DEVICES_MODULE_EVENT_PREFIX, DEVICES_MODULE_NAME, EventType } from './devices.constants';
 import { locales } from './locales';
 import { ModuleRoutes } from './router';
+import { registerChannelInputOccurrencesStore } from './store/channel-input-occurrences.store';
 import { registerChannelsControlsStore } from './store/channels.controls.store';
 import { registerChannelsPropertiesStore } from './store/channels.properties.store';
 import { registerChannelsStore } from './store/channels.store';
@@ -27,6 +28,7 @@ import { registerDevicesControlsStore } from './store/devices.controls.store';
 import { registerDevicesStore } from './store/devices.store';
 import { registerDevicesValidationStore } from './store/devices.validation.store';
 import {
+	channelInputOccurrencesStoreKey,
 	channelsControlsStoreKey,
 	channelsPropertiesStoreKey,
 	channelsStoreKey,
@@ -81,6 +83,11 @@ export default {
 
 		app.provide(devicesValidationStoreKey, devicesValidationStore);
 		storesManager.addStore(devicesValidationStoreKey, devicesValidationStore);
+
+		const channelInputOccurrencesStore = registerChannelInputOccurrencesStore(options.store);
+
+		app.provide(channelInputOccurrencesStoreKey, channelInputOccurrencesStore);
+		storesManager.addStore(channelInputOccurrencesStoreKey, channelInputOccurrencesStore);
 
 		modulesManager.addModule(devicesAdminModuleKey, {
 			type: DEVICES_MODULE_NAME,
@@ -214,6 +221,10 @@ export default {
 						type: String(get(data.payload, 'type', 'unknown')),
 						data: data.payload,
 					});
+					break;
+
+				case EventType.CHANNEL_INPUT_OCCURRENCE:
+					channelInputOccurrencesStore.onEvent(data.payload);
 					break;
 
 				default:

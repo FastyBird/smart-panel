@@ -9,7 +9,7 @@
 					<div>
 						<el-avatar :size="32">
 							<icon
-								icon="mdi:chip"
+								:icon="icon"
 								class="w[20px] h[20px]"
 							/>
 						</el-avatar>
@@ -78,22 +78,32 @@
 			@remove="(id: IChannelProperty['id']) => emit('property-remove', props.channel.id, id)"
 			@reset-filters="onResetFilters"
 		/>
+
+		<!-- Hardware Input Diagnostics (if input channel) -->
+		<div
+			v-if="isInputChannel"
+			class="p-4 border-t border-gray-100 dark:border-gray-800"
+		>
+			<channel-input-diagnostics :channel="channel" />
+		</div>
 	</el-card>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAvatar, ElButton, ElCard, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-import { useChannelSpecification, useChannelsPropertiesDataSource } from '../../composables/composables';
+import { DevicesModuleChannelCategory } from '../../../../openapi.constants';
+import { useChannelIcon, useChannelSpecification, useChannelsPropertiesDataSource } from '../../composables/composables';
 import type { IChannelProperty } from '../../store/channels.properties.store.types';
 import type { IChannel } from '../../store/channels.store.types';
 
 import type { IChannelDetailProps } from './channel-detail.types';
+import ChannelInputDiagnostics from './channel-input-diagnostics.vue';
 import ChannelsPropertiesTable from './channels-properties-table.vue';
 
 defineOptions({
@@ -112,11 +122,21 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+const { icon } = useChannelIcon({ id: props.channel.id });
+
 const { properties, totalRows, sortBy, sortDir, filters, filtersActive, fetchProperties, areLoading, resetFilter } = useChannelsPropertiesDataSource({
 	channelId: props.channel.id,
 	key: `channel-detail-${props.channel.id}`,
 });
 const { canAddAnotherProperty } = useChannelSpecification({ id: props.channel.id });
+
+const isInputChannel = computed<boolean>(() => {
+	return (
+		props.channel.category === DevicesModuleChannelCategory.button ||
+		props.channel.category === DevicesModuleChannelCategory.binary_input ||
+		props.channel.category === DevicesModuleChannelCategory.analog_input
+	);
+});
 
 const onResetFilters = (): void => {
 	resetFilter();

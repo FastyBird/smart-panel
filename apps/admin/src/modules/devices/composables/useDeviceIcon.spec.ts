@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 
 import { useDeviceIcon } from './useDeviceIcon';
 
@@ -61,5 +62,13 @@ describe('useDeviceIcon', () => {
 		const { icon } = useDeviceIcon({ id: deviceId });
 
 		expect(icon.value).toBe('mdi:devices');
+	});
+
+	it('returns gesture-tap-button icon for input_controller', () => {
+		findById.mockReturnValue({ id: deviceId, category: DevicesModuleDeviceCategory.input_controller });
+
+		const { icon } = useDeviceIcon({ id: deviceId });
+
+		expect(icon.value).toBe('mdi:gesture-tap-button');
 	});
 });

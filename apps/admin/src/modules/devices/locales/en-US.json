@@ -1019,5 +1019,17 @@
 			"resultsSuccess": "All selected devices were added successfully",
 			"resultsFailed": "Some devices could not be added"
 		}
+	},
+	"diagnostics": {
+		"capabilitiesTitle": "Input Capabilities",
+		"supportedInteractions": "Supported interactions",
+		"noDiscreteEvents": "Continuous / analog input (no discrete interaction events)",
+		"liveEventsTitle": "Live Events",
+		"clearEvents": "Clear",
+		"noOccurrences": "No occurrences received yet",
+		"columnEvent": "Event",
+		"columnNativeType": "Native Type",
+		"columnTimestamp": "Received At",
+		"columnData": "Payload"
 	}
 }

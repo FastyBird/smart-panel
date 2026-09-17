@@ -4,6 +4,7 @@ export { registerChannelsStore } from './channels.store';
 export { registerChannelsControlsStore } from './channels.controls.store';
 export { registerChannelsPropertiesStore } from './channels.properties.store';
 export { registerDevicesValidationStore } from './devices.validation.store';
+export { registerChannelInputOccurrencesStore, useChannelInputOccurrencesStore } from './channel-input-occurrences.store';
 
 export * from './devices.store.types';
 export * from './devices.validation.store';
@@ -11,6 +12,7 @@ export * from './devices.controls.store.types';
 export * from './channels.store.types';
 export * from './channels.controls.store.types';
 export * from './channels.properties.store.types';
+export * from './channel-input-occurrences.store.types';
 
 export * from './devices.store.schemas';
 export * from './devices.controls.store.schemas';

@@ -1,5 +1,9 @@
 import type { StoreInjectionKey } from '../../../common';
 
+import type {
+	IChannelInputOccurrencesStoreActions,
+	IChannelInputOccurrencesStoreState,
+} from './channel-input-occurrences.store.types';
 import type { IChannelsControlsStoreActions, IChannelsControlsStoreState } from './channels.controls.store.types';
 import type { IChannelsPropertiesStoreActions, IChannelsPropertiesStoreState } from './channels.properties.store.types';
 import type { IChannelsStoreActions, IChannelsStoreState } from './channels.store.types';
@@ -27,3 +31,10 @@ export const channelsPropertiesStoreKey: StoreInjectionKey<string, IChannelsProp
 export const devicesValidationStoreKey: StoreInjectionKey<string, IDevicesValidationStoreState, object, IDevicesValidationStoreActions> = Symbol(
 	'FB-Module-Devices-DevicesValidationStore'
 );
+
+export const channelInputOccurrencesStoreKey: StoreInjectionKey<
+	string,
+	IChannelInputOccurrencesStoreState,
+	object,
+	IChannelInputOccurrencesStoreActions
+> = Symbol('FB-Module-Devices-ChannelInputOccurrencesStore');

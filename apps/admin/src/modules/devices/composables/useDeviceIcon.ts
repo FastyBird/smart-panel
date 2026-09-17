@@ -1,6 +1,7 @@
 import { computed } from 'vue';
 
 import { injectStoresManager } from '../../../common';
+import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
 import type { IDevice } from '../store/devices.store.types';
 import { devicesStoreKey } from '../store/keys';
 
@@ -19,6 +20,8 @@ export const useDeviceIcon = ({ id }: IUseDeviceIconProps): IUseDeviceIcon => {
 		const device = devicesStore.findById(id);
 
 		switch (device?.category) {
+			case DevicesModuleDeviceCategory.input_controller:
+				return 'mdi:gesture-tap-button';
 			default:
 				return 'mdi:devices';
 		}
