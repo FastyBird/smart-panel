@@ -1,92 +1,103 @@
 <template>
-	<el-card
-		shadow="never"
-		body-class="p-0!"
-	>
-		<template #header>
-			<div class="flex flex-row items-center">
-				<div class="flex-grow flex flex-row items-center">
-					<div>
-						<el-avatar :size="32">
-							<icon
-								:icon="icon"
-								class="w[20px] h[20px]"
-							/>
-						</el-avatar>
-					</div>
-					<div class="ml-3">
-						<strong>{{ channel.name }}</strong>
-						<el-text class="block">
-							{{ t(`devicesModule.categories.channels.${channel.category}`) }}
-						</el-text>
-					</div>
-				</div>
-
-				<div class="flex-grow flex flex-row items-center justify-end">
-					<el-button
-						type="primary"
-						plain
-						class="px-4!"
-						size="small"
-						:disabled="!canAddAnotherProperty"
-						data-test-id="add-property"
-						@click="emit('property-add', props.channel.id)"
-					>
-						<template #icon>
-							<icon icon="mdi:plus" />
-						</template>
-
-						{{ t('devicesModule.buttons.addProperty.title') }}
-					</el-button>
-					<el-button
-						plain
-						class="ml-2! px-4!"
-						size="small"
-						data-test-id="edit-channel"
-						@click="emit('channel-edit', props.channel.id)"
-					>
-						<template #icon>
-							<icon icon="mdi:pencil" />
-						</template>
-					</el-button>
-					<el-button
-						type="warning"
-						plain
-						class="ml-2! px-4!"
-						size="small"
-						data-test-id="remove-channel"
-						@click="emit('channel-remove', props.channel.id)"
-					>
-						<template #icon>
-							<icon icon="mdi:trash" />
-						</template>
-					</el-button>
-				</div>
-			</div>
-		</template>
-
-		<channels-properties-table
-			v-model:filters="filters"
-			v-model:sort-by="sortBy"
-			v-model:sort-dir="sortDir"
-			:items="properties"
-			:total-rows="totalRows"
-			:loading="areLoading"
-			:filters-active="filtersActive"
-			:with-filters="false"
-			@edit="(id: IChannelProperty['id']) => emit('property-edit', props.channel.id, id)"
-			@remove="(id: IChannelProperty['id']) => emit('property-remove', props.channel.id, id)"
-			@reset-filters="onResetFilters"
-		/>
-
-		<!-- Hardware Input Diagnostics (if input channel) -->
-		<div
-			v-if="isInputChannel"
-			class="p-4 border-t border-gray-100 dark:border-gray-800"
+	<div class="space-y-4">
+		<el-card
+			shadow="never"
+			body-class="p-0!"
 		>
+			<template #header>
+				<div class="flex flex-row items-center">
+					<div class="flex-grow flex flex-row items-center">
+						<div>
+							<el-avatar :size="32">
+								<icon
+									icon="mdi:chip"
+									class="w[20px] h[20px]"
+								/>
+							</el-avatar>
+						</div>
+						<div class="ml-3">
+							<strong>{{ channel.name }}</strong>
+							<el-text class="block">
+								{{ t(`devicesModule.categories.channels.${channel.category}`) }}
+							</el-text>
+						</div>
+					</div>
+
+					<div class="flex-grow flex flex-row items-center justify-end">
+						<el-button
+							type="primary"
+							plain
+							class="px-4!"
+							size="small"
+							:disabled="!canAddAnotherProperty"
+							data-test-id="add-property"
+							@click="emit('property-add', props.channel.id)"
+						>
+							<template #icon>
+								<icon icon="mdi:plus" />
+							</template>
+
+							{{ t('devicesModule.buttons.addProperty.title') }}
+						</el-button>
+						<el-button
+							plain
+							class="ml-2! px-4!"
+							size="small"
+							data-test-id="edit-channel"
+							@click="emit('channel-edit', props.channel.id)"
+						>
+							<template #icon>
+								<icon icon="mdi:pencil" />
+							</template>
+						</el-button>
+						<el-button
+							type="warning"
+							plain
+							class="ml-2! px-4!"
+							size="small"
+							data-test-id="remove-channel"
+							@click="emit('channel-remove', props.channel.id)"
+						>
+							<template #icon>
+								<icon icon="mdi:trash" />
+							</template>
+						</el-button>
+					</div>
+				</div>
+			</template>
+
+			<channels-properties-table
+				v-model:filters="filters"
+				v-model:sort-by="sortBy"
+				v-model:sort-dir="sortDir"
+				:items="properties"
+				:total-rows="totalRows"
+				:loading="areLoading"
+				:filters-active="filtersActive"
+				:with-filters="false"
+				@edit="(id: IChannelProperty['id']) => emit('property-edit', props.channel.id, id)"
+				@remove="(id: IChannelProperty['id']) => emit('property-remove', props.channel.id, id)"
+				@reset-filters="onResetFilters"
+			/>
+		</el-card>
+
+		<!-- Hardware Input Diagnostics Card -->
+		<el-card
+			v-if="isInputChannel"
+			shadow="never"
+			class="channel-input-card"
+		>
+			<template #header>
+				<div class="flex items-center justify-between">
+					<h4 class="text-base font-semibold text-gray-900 dark:text-gray-100">
+						{{ t('devicesModule.diagnostics.title') }}
+					</h4>
+				</div>
+			</template>
+
 			<channel-input-diagnostics :channel="channel" />
-		</div>
-	</el-card>
+		</el-card>
+	</div>
 </template>
 
 <script setup lang="ts">
@@ -98,7 +109,7 @@ import { ElAvatar, ElButton, ElCard, ElText } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { DevicesModuleChannelCategory } from '../../../../openapi.constants';
-import { useChannelIcon, useChannelSpecification, useChannelsPropertiesDataSource } from '../../composables/composables';
+import { useChannelSpecification, useChannelsPropertiesDataSource } from '../../composables/composables';
 import type { IChannelProperty } from '../../store/channels.properties.store.types';
 import type { IChannel } from '../../store/channels.store.types';
 
@@ -122,14 +133,6 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { icon } = useChannelIcon({ id: props.channel.id });
-
-const { properties, totalRows, sortBy, sortDir, filters, filtersActive, fetchProperties, areLoading, resetFilter } = useChannelsPropertiesDataSource({
-	channelId: props.channel.id,
-	key: `channel-detail-${props.channel.id}`,
-});
-const { canAddAnotherProperty } = useChannelSpecification({ id: props.channel.id });
-
 const isInputChannel = computed<boolean>(() => {
 	return (
 		props.channel.category === DevicesModuleChannelCategory.button ||
@@ -137,6 +140,12 @@ const isInputChannel = computed<boolean>(() => {
 		props.channel.category === DevicesModuleChannelCategory.analog_input
 	);
 });
+
+const { properties, totalRows, sortBy, sortDir, filters, filtersActive, fetchProperties, areLoading, resetFilter } = useChannelsPropertiesDataSource({
+	channelId: props.channel.id,
+	key: `channel-detail-${props.channel.id}`,
+});
+const { canAddAnotherProperty } = useChannelSpecification({ id: props.channel.id });
 
 const onResetFilters = (): void => {
 	resetFilter();

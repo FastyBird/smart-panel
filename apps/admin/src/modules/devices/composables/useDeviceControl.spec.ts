@@ -134,7 +134,7 @@ vi.mock('../../../common', async () => {
 	return {
 		...actual,
 		injectStoresManager: () => ({
-			getStore: (key: any) => {
+			getStore: (key: unknown) => {
 				if (key === devicesStoreKey) {
 					return useMockDevicesStore();
 				}
