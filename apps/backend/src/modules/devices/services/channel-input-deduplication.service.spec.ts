@@ -55,6 +55,19 @@ describe('ChannelInputDeduplicationService', () => {
 		).toBe(true);
 	});
 
+	it('disambiguates delimiter-containing components that would collide under flat string concatenation', () => {
+		// dev-1, ch-1, prop-1, press, nativeEventType: 'btn_down', sourceOccurrenceId: '42'
+		expect(service.isDuplicate('dev-1', 'ch-1', '42', 'prop-1', 'press', 'btn_down')).toBe(false);
+
+		// dev-1, ch-1, prop-1, press, nativeEventType: undefined, sourceOccurrenceId: 'btn_down:42'
+		// Under simple `join(':')`, both keys would be `dev-1:ch-1:prop-1:press:btn_down:42`.
+		// Fixed-position tuple serialization prevents false deduplication.
+		expect(service.isDuplicate('dev-1', 'ch-1', 'btn_down:42', 'prop-1', 'press', undefined)).toBe(false);
+
+		// Retransmission of the second occurrence is detected as duplicate
+		expect(service.isDuplicate('dev-1', 'ch-1', 'btn_down:42', 'prop-1', 'press', undefined)).toBe(true);
+	});
+
 	it('expires entries after TTL', () => {
 		jest.useFakeTimers();
 
