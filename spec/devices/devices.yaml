@@ -2459,7 +2459,7 @@ terminal:
         Button events are emitted as event-type properties, not polled state.
         The plugin should use evdev or similar input subsystem for button detection.
       - >-
-        For the reTerminal DM variant, digital inputs and outputs use the contact
+        For the reTerminal DM variant, digital inputs and outputs use the binary_input
         and switcher channels respectively, which are already defined in the spec.
   channels:
     device_information:
@@ -2507,8 +2507,8 @@ terminal:
       description:
         en: >-
           Onboard accelerometer for orientation and motion detection.
-    contact:
-      category: contact
+    binary_input:
+      category: binary_input
       required: false
       multiple: true
       description:

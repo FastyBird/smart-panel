@@ -170,4 +170,27 @@ describe('AddHardwareInputCategories1000000000026', () => {
 			expect(ftsProp[0]?.context).not.toContain('value');
 		}
 	});
+	it('configures transaction = false and restores PRAGMA foreign_keys on success and failure', async () => {
+		expect(migration.transaction).toBe(false);
+
+		await migration.up(queryRunner);
+		const fkAfterUp = await queryRunner.query('PRAGMA foreign_keys');
+		expect(Number(fkAfterUp[0].foreign_keys)).toBe(1);
+
+		await migration.down(queryRunner);
+		const fkAfterDown = await queryRunner.query('PRAGMA foreign_keys');
+		expect(Number(fkAfterDown[0].foreign_keys)).toBe(1);
+
+		const originalQuery = queryRunner.query.bind(queryRunner);
+		jest.spyOn(queryRunner, 'query').mockImplementation(async (query, parameters) => {
+			if (typeof query === 'string' && query.includes('CREATE TABLE "temporary_devices_module_devices"')) {
+				throw new Error('Simulated DDL failure');
+			}
+			return originalQuery(query, parameters);
+		});
+
+		await expect(migration.up(queryRunner)).rejects.toThrow('Simulated DDL failure');
+		const fkAfterFailure = await originalQuery('PRAGMA foreign_keys');
+		expect(Number(fkAfterFailure[0].foreign_keys)).toBe(1);
+	});
 });
