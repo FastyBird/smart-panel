@@ -42,6 +42,7 @@ import {
 	SuggestedDeviceModel,
 	ValidationSummaryModel,
 } from '../models/mapping-preview.model';
+import { mapHaEventTypesToFormat } from '../utils/ha-event.utils';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
@@ -801,6 +802,17 @@ export class MappingPreviewService {
 			}
 		}
 
+		// Button event - use event_types from HA if available
+		if (channelCategory === ChannelCategory.BUTTON && propertyCategory === PropertyCategory.EVENT) {
+			const eventTypes = attrs.event_types;
+			if (Array.isArray(eventTypes) && eventTypes.length > 0) {
+				const formatted = mapHaEventTypesToFormat(eventTypes as string[]);
+				if (formatted.length > 0) {
+					return formatted;
+				}
+			}
+		}
+
 		return null;
 	}
 
@@ -975,9 +987,9 @@ export class MappingPreviewService {
 
 		// Process each group
 		for (const [category, entities] of groupedByCategory.entries()) {
-			if (entities.length === 1) {
-				// No consolidation needed
-				consolidated.push(entities[0]);
+			if (entities.length === 1 || category === ChannelCategory.BUTTON) {
+				// No consolidation needed (each physical button is an independent channel/endpoint)
+				consolidated.push(...entities);
 				continue;
 			}
 

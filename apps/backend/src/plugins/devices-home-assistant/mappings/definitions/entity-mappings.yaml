@@ -56,6 +56,7 @@ domain_roles:
   standalone:
     - sensor
     - binary_sensor
+    - event
   secondary:
     - button
     - input_boolean
@@ -75,7 +76,6 @@ domain_roles:
     - zone
     - weather
     - calendar
-    - event
     - image
     - image_processing
     - input_button
@@ -1061,12 +1061,11 @@ mappings:
     device_class: null
     priority: 10
     channel:
-      category: SWITCHER
-    device_category: SWITCHER
+      category: GENERIC
+    device_category: GENERIC
     property_bindings:
       - ha_attribute: fb.main_state
-        property_category: ON
-        transformer: state_on_off
+        property_category: GENERIC
 
   # ============================================================================
   # TIMER ENTITIES
@@ -1141,8 +1140,7 @@ mappings:
     device_category: GENERIC
     property_bindings:
       - ha_attribute: fb.main_state
-        property_category: ON
-        transformer: state_on_off
+        property_category: GENERIC
 
   # ============================================================================
   # REMOTE ENTITIES
@@ -1159,3 +1157,54 @@ mappings:
       - ha_attribute: fb.main_state
         property_category: ON
         transformer: state_on_off
+
+  # ============================================================================
+  # EVENT ENTITIES (Hardware Inputs, Remotes, Buttons)
+  # ============================================================================
+  - name: event_button_default
+    description: "Hardware event entity (buttons, remotes)"
+    domain: event
+    device_class: button
+    priority: 60
+    channel:
+      category: BUTTON
+    device_category: INPUT_CONTROLLER
+    property_bindings:
+      - ha_attribute: event_type
+        property_category: EVENT
+
+  - name: event_doorbell_default
+    description: "Hardware event entity (doorbell)"
+    domain: event
+    device_class: doorbell
+    priority: 60
+    channel:
+      category: BUTTON
+    device_category: INPUT_CONTROLLER
+    property_bindings:
+      - ha_attribute: event_type
+        property_category: EVENT
+
+  - name: event_motion_default
+    description: "Hardware event entity (motion detector)"
+    domain: event
+    device_class: motion
+    priority: 60
+    channel:
+      category: OCCUPANCY
+    device_category: SENSOR
+    property_bindings:
+      - ha_attribute: event_type
+        property_category: OCCUPANCY
+
+  - name: event_default
+    description: "General hardware event entity"
+    domain: event
+    device_class: null
+    priority: 50
+    channel:
+      category: BUTTON
+    device_category: INPUT_CONTROLLER
+    property_bindings:
+      - ha_attribute: event_type
+        property_category: EVENT
