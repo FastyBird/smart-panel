@@ -1,3 +1,8 @@
+/*
+Reason: The mocking and test setup requires dynamic assignment and
+handling of Jest mocks, which ESLint rules flag unnecessarily.
+*/
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';

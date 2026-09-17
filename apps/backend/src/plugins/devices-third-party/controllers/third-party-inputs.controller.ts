@@ -28,7 +28,11 @@ import { ChannelInputOccurrencesService } from '../../../modules/devices/service
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
-import { DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME, DEVICES_THIRD_PARTY_PLUGIN_NAME, DEVICES_THIRD_PARTY_TYPE } from '../devices-third-party.constants';
+import {
+	DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME,
+	DEVICES_THIRD_PARTY_PLUGIN_NAME,
+	DEVICES_THIRD_PARTY_TYPE,
+} from '../devices-third-party.constants';
 import { ReportInputOccurrenceDto, ReportInputOccurrenceResponseDto } from '../dto/report-input-occurrence.dto';
 import { ThirdPartyDeviceEntity } from '../entities/devices-third-party.entity';
 
@@ -75,7 +79,9 @@ export class ThirdPartyInputsController {
 	})
 	@ApiBadRequestResponse({ description: 'Invalid device type or input channel' })
 	@ApiNotFoundResponse({ description: 'Device, channel, or target property not found' })
-	@ApiUnprocessableEntityResponse({ description: 'Reported event is not declared as a supported capability for this channel' })
+	@ApiUnprocessableEntityResponse({
+		description: 'Reported event is not declared as a supported capability for this channel',
+	})
 	@Post(':id/channels/:channelId/occurrences')
 	@HttpCode(HttpStatus.CREATED)
 	async reportOccurrence(
@@ -106,7 +112,11 @@ export class ThirdPartyInputsController {
 
 		if (dto.property) {
 			property = await this.channelsPropertiesService.findOne(dto.property);
-			const propChannelId = property ? (typeof property.channel === 'string' ? property.channel : property.channel?.id) : null;
+			const propChannelId = property
+				? typeof property.channel === 'string'
+					? property.channel
+					: property.channel?.id
+				: null;
 
 			if (!property || propChannelId !== channel.id) {
 				throw new NotFoundException(`Property id=${dto.property} not found on channel id=${channelId}`);
@@ -188,7 +198,9 @@ export class ThirdPartyInputsController {
 	})
 	@ApiBadRequestResponse({ description: 'Invalid device type or input channel' })
 	@ApiNotFoundResponse({ description: 'Device, channel, or target property not found' })
-	@ApiUnprocessableEntityResponse({ description: 'Reported event is not declared as a supported capability for this channel' })
+	@ApiUnprocessableEntityResponse({
+		description: 'Reported event is not declared as a supported capability for this channel',
+	})
 	@Post(':id/channels/:channelId/events')
 	@HttpCode(HttpStatus.CREATED)
 	async reportEvent(
