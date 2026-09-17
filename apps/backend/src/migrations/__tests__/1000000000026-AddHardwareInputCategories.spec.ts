@@ -155,5 +155,19 @@ describe('AddHardwareInputCategories1000000000026', () => {
 			{ id: 'prop-unt', category: 'generic' },
 			{ id: 'prop-val', category: 'generic' },
 		]);
+
+		if (await queryRunner.hasTable('home_context_entity_search_fts')) {
+			const ftsDev = await queryRunner.query(
+				`SELECT "context" FROM "home_context_entity_search_fts" WHERE "entity_id" = 'dev-ic'`,
+			);
+			expect(ftsDev[0]?.context).toContain('generic');
+			expect(ftsDev[0]?.context).not.toContain('input_controller');
+
+			const ftsProp = await queryRunner.query(
+				`SELECT "context" FROM "home_context_entity_search_fts" WHERE "entity_id" = 'prop-val'`,
+			);
+			expect(ftsProp[0]?.context).toContain('generic');
+			expect(ftsProp[0]?.context).not.toContain('value');
+		}
 	});
 });
