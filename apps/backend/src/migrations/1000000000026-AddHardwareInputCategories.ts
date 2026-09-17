@@ -6,12 +6,13 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query('PRAGMA foreign_keys = OFF');
-		const shouldManageTransaction = !queryRunner.isTransactionActive;
-		if (shouldManageTransaction) {
-			await queryRunner.startTransaction();
-		}
+		let transactionStarted = false;
 
 		try {
+			if (!queryRunner.isTransactionActive) {
+				await queryRunner.startTransaction();
+				transactionStarted = true;
+			}
 
 		// 1. Update devices_module_devices with 'input_controller'
 		await queryRunner.query(`CREATE TABLE "temporary_devices_module_devices" (
@@ -201,11 +202,11 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 				DELETE FROM "home_context_entity_search_fts" WHERE "entity_kind" = 'property' AND "entity_id" = OLD."id";
 			END`);
 
-			if (shouldManageTransaction) {
+			if (transactionStarted) {
 				await queryRunner.commitTransaction();
 			}
 		} catch (error) {
-			if (shouldManageTransaction) {
+			if (transactionStarted) {
 				await queryRunner.rollbackTransaction();
 			}
 			throw error;
@@ -216,12 +217,13 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query('PRAGMA foreign_keys = OFF');
-		const shouldManageTransaction = !queryRunner.isTransactionActive;
-		if (shouldManageTransaction) {
-			await queryRunner.startTransaction();
-		}
+		let transactionStarted = false;
 
 		try {
+			if (!queryRunner.isTransactionActive) {
+				await queryRunner.startTransaction();
+				transactionStarted = true;
+			}
 
 		// 1. Revert devices_module_devices (remove 'input_controller')
 		await queryRunner.query(`CREATE TABLE "temporary_devices_module_devices" (
@@ -423,11 +425,11 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 				await queryRunner.query(`UPDATE "devices_module_channels_properties" SET "category" = "category"`);
 			}
 
-			if (shouldManageTransaction) {
+			if (transactionStarted) {
 				await queryRunner.commitTransaction();
 			}
 		} catch (error) {
-			if (shouldManageTransaction) {
+			if (transactionStarted) {
 				await queryRunner.rollbackTransaction();
 			}
 			throw error;
