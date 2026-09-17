@@ -1,8 +1,3 @@
-/*
-Reason: The mocking and test setup requires dynamic assignment and
-handling of Jest mocks, which ESLint rules flag unnecessarily.
-*/
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
@@ -28,13 +23,13 @@ describe('ThirdPartyInputsController', () => {
 	const mockDevice = {
 		id: uuid(),
 		type: DEVICES_THIRD_PARTY_TYPE,
-	} as ThirdPartyDeviceEntity;
+	} as unknown as ThirdPartyDeviceEntity;
 
 	const mockChannel = {
 		id: uuid(),
 		device: mockDevice,
 		category: ChannelCategory.BUTTON,
-	} as ChannelEntity;
+	} as unknown as ChannelEntity;
 
 	const mockEventProperty = {
 		id: uuid(),
@@ -42,7 +37,7 @@ describe('ThirdPartyInputsController', () => {
 		identifier: 'event',
 		category: PropertyCategory.EVENT,
 		format: ['press', 'double_press', 'long_press'],
-	} as ChannelPropertyEntity;
+	} as unknown as ChannelPropertyEntity;
 
 	beforeEach(() => {
 		devicesService = {
@@ -143,7 +138,7 @@ describe('ThirdPartyInputsController', () => {
 	});
 
 	it('throws NotFoundException if channel does not belong to device', async () => {
-		const otherChannel = { id: uuid(), device: { id: uuid() } } as ChannelEntity;
+		const otherChannel = { id: uuid(), device: { id: uuid() } } as unknown as ChannelEntity;
 		channelsService.findOne.mockResolvedValueOnce(otherChannel);
 
 		await expect(

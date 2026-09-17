@@ -45,10 +45,16 @@ describe('ReTerminalButtonService', () => {
 
 		channelsService = {
 			findAll: jest.fn().mockResolvedValue([mockChannel]),
+			findOneBy: jest.fn().mockResolvedValue(mockChannel),
 		} as unknown as jest.Mocked<ChannelsService>;
 
 		channelsPropertiesService = {
 			findAll: jest.fn().mockResolvedValue([mockDetectedProp, mockEventProp]),
+			findOneBy: jest.fn().mockImplementation((_col: string, val: string) => {
+				if (val === 'event') return Promise.resolve(mockEventProp);
+				if (val === 'detected') return Promise.resolve(mockDetectedProp);
+				return Promise.resolve(null);
+			}),
 			update: jest.fn().mockResolvedValue(mockDetectedProp),
 		} as unknown as jest.Mocked<ChannelsPropertiesService>;
 
@@ -63,14 +69,7 @@ describe('ReTerminalButtonService', () => {
 		} as unknown as jest.Mocked<ChannelInputOccurrencesService>;
 
 		service = new ReTerminalButtonService(channelsService, channelsPropertiesService, occurrencesService);
-		(service as any).device = mockDevice;
-
-		// Initialize channel mapping
-		(service as any).channelProperties.set(mockChannel.id, {
-			channel: mockChannel,
-			detectedProperty: mockDetectedProp,
-			eventProperty: mockEventProp,
-		});
+		(service as any).deviceId = mockDevice.id;
 	});
 
 	afterEach(() => {
@@ -93,13 +92,19 @@ describe('ReTerminalButtonService', () => {
 		// Press (EV_KEY, code 30 -> KEY_A -> BUTTON_F1, value 1)
 		service.handleInputEvent(createBuffer(1, 30, 1));
 
-		expect(channelsPropertiesService.update).toHaveBeenCalledWith(mockDetectedProp, { value: true });
+		expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+			mockDetectedProp.id,
+			expect.objectContaining({ value: true }),
+		);
 		expect(occurrencesService.publishOccurrence).not.toHaveBeenCalled();
 
 		// Release (EV_KEY, code 30, value 0)
 		service.handleInputEvent(createBuffer(1, 30, 0));
 
-		expect(channelsPropertiesService.update).toHaveBeenCalledWith(mockDetectedProp, { value: false });
+		expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+			mockDetectedProp.id,
+			expect.objectContaining({ value: false }),
+		);
 	});
 
 	it('publishes single press occurrence after double press window expires', () => {

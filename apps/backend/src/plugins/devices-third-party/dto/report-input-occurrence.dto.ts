@@ -58,3 +58,72 @@ export class ReportInputOccurrenceDto {
 	@IsOptional()
 	data?: Record<string, unknown>;
 }
+
+@ApiSchema({ name: 'DevicesThirdPartyPluginReportInputOccurrenceResponse' })
+export class ReportInputOccurrenceResponseDto {
+	@ApiProperty({
+		description: 'Occurrence UUID',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
+	@Expose()
+	@IsString()
+	id: string;
+
+	@ApiProperty({
+		description: 'Device UUID',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
+	@Expose()
+	@IsString()
+	deviceId: string;
+
+	@ApiProperty({
+		description: 'Channel UUID',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
+	@Expose()
+	@IsString()
+	channelId: string;
+
+	@ApiProperty({
+		description: 'Property UUID',
+		example: '123e4567-e89b-12d3-a456-426614174000',
+	})
+	@Expose()
+	@IsString()
+	propertyId: string;
+
+	@ApiProperty({
+		description: 'Event name',
+		example: 'press',
+	})
+	@Expose()
+	@IsString()
+	event: string;
+
+	@ApiPropertyOptional({
+		description: 'Native event type string',
+		example: 'single_click',
+	})
+	@Expose()
+	@IsString()
+	@IsOptional()
+	nativeEventType?: string;
+
+	@ApiPropertyOptional({
+		description: 'Source occurrence ID',
+		example: 'occ-12345',
+	})
+	@Expose()
+	@IsString()
+	@IsOptional()
+	sourceOccurrenceId?: string;
+
+	@ApiProperty({
+		description: 'Occurrence timestamp',
+		example: '2026-03-30T12:00:00.000Z',
+	})
+	@Expose()
+	@IsString()
+	timestamp: string;
+}

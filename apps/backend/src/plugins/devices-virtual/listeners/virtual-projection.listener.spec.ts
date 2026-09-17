@@ -41,7 +41,7 @@ describe('VirtualProjectionListener', () => {
 		Object.assign(property, {
 			id,
 			sourcePropertyId,
-			valueOrigin: VirtualValueOrigin.SOURCE_LINKED,
+			valueOrigin: VirtualValueOrigin.SOURCE,
 			value: new PropertyValueState('old'),
 		});
 
