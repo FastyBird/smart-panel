@@ -47,7 +47,7 @@
 				},
 				"direction": {
 					"type": "string",
-					"enum": ["bidirectional", "read_only", "write_only"],
+					"enum": ["bidirectional", "read_only", "write_only", "event_only"],
 					"default": "bidirectional",
 					"description": "Direction of transformation"
 				}
@@ -334,7 +334,7 @@
 				},
 				"direction": {
 					"type": "string",
-					"enum": ["bidirectional", "read_only", "write_only"],
+					"enum": ["bidirectional", "read_only", "write_only", "event_only"],
 					"default": "bidirectional",
 					"description": "Data flow direction"
 				},
@@ -390,7 +390,7 @@
 				},
 				"direction": {
 					"type": "string",
-					"enum": ["bidirectional", "read_only", "write_only"],
+					"enum": ["bidirectional", "read_only", "write_only", "event_only"],
 					"default": "bidirectional",
 					"description": "Data flow direction"
 				},

@@ -301,7 +301,9 @@ export class Z2mDeviceAdoptionService {
 					manufacturer: z2mDevice.definition.vendor,
 				})
 			: [];
-		const mappedChannel = mappedChannels.find((mc) => mc.category === channelDef.category);
+		const mappedChannel = mappedChannels.find((mc) =>
+			channelDef.identifier ? mc.identifier === channelDef.identifier : mc.category === channelDef.category,
+		);
 
 		// Helper to find transformer name for a property
 		const findTransformerName = (z2mProperty: string, category: PropertyCategory): string | undefined => {
@@ -513,7 +515,9 @@ export class Z2mDeviceAdoptionService {
 			: [];
 
 		// Find the mapped channel that matches this category
-		const mappedChannel = mappedChannels.find((mc) => mc.category === channelCategory);
+		const mappedChannel = mappedChannels.find((mc) =>
+			channel.identifier ? mc.identifier === channel.identifier : mc.category === channelCategory,
+		);
 		if (!mappedChannel) {
 			return;
 		}

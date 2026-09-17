@@ -357,16 +357,14 @@ describe('Z2mExposesMapperService', () => {
 			expect(batteryProperty?.category).toBe(PropertyCategory.PERCENTAGE);
 		});
 
-		// Remote control action mapping is commented out - GENERIC category not supported by Smart Panel
-		// Button events (push, click, double_click) are not supported by the current UI
-		it.skip('should map action event for remote controls and buttons', () => {
+		it('should map action event for remote controls and buttons', () => {
 			// Remote control action expose (e.g., Aqara wireless switch)
 			const exposes: Z2mExposeEnum[] = [
 				{
 					type: 'enum',
 					name: 'action',
 					property: 'action',
-					access: 1, // read only
+					access: 1,
 					values: ['single', 'double', 'hold', 'release'],
 				},
 			];
@@ -375,16 +373,14 @@ describe('Z2mExposesMapperService', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].identifier).toBe('button');
-			expect(result[0].category).toBe(ChannelCategory.GENERIC);
+			expect(result[0].category).toBe(ChannelCategory.BUTTON);
 
 			// Action property should be mapped with EVENT category
 			const actionProperty = result[0].properties.find((p) => p.z2mProperty === 'action');
 			expect(actionProperty).toBeDefined();
 			expect(actionProperty?.dataType).toBe(DataTypeType.ENUM);
 			expect(actionProperty?.category).toBe(PropertyCategory.EVENT);
-			expect(actionProperty?.permissions).toContain(PermissionType.READ_ONLY);
-			// Format derived from device values
-			expect(actionProperty?.format).toEqual(['single', 'double', 'hold', 'release']);
+			expect(actionProperty?.permissions).toContain(PermissionType.EVENT_ONLY);
 		});
 
 		it('should map carbon monoxide sensor (safety-critical)', () => {

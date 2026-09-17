@@ -502,15 +502,15 @@ export const mapZ2mCategoryToDeviceCategory = (exposeTypes: string[], propertyNa
 	const hasOtherProperties = propertyNames.some((prop) => !sensorOnlyProperties.includes(prop) && prop !== 'action');
 	if (hasSensorOnlyProperties && !hasOtherProperties) {
 		// Remote controls / buttons with only battery
-		if (propertyNames.includes('action')) {
-			return DeviceCategory.SENSOR; // Remote controls are sensors
+		if (propertyNames.includes('action') || propertyNames.includes('click') || propertyNames.includes('operation')) {
+			return DeviceCategory.INPUT_CONTROLLER;
 		}
 		return DeviceCategory.SENSOR;
 	}
 
 	// Devices with action property (remotes, buttons)
-	if (propertyNames.includes('action')) {
-		return DeviceCategory.SENSOR;
+	if (propertyNames.includes('action') || propertyNames.includes('click') || propertyNames.includes('operation')) {
+		return DeviceCategory.INPUT_CONTROLLER;
 	}
 
 	return DeviceCategory.GENERIC;
@@ -531,6 +531,9 @@ export const mapZ2mExposeToChannelCategory = (exposeType: string): ChannelCatego
 			return ChannelCategory.LOCK;
 		case 'fan':
 			return ChannelCategory.FAN;
+		case 'action':
+		case 'button':
+			return ChannelCategory.BUTTON;
 		default:
 			return ChannelCategory.GENERIC;
 	}
@@ -596,4 +599,39 @@ export const mapZ2mAccessToPermissions = (access: number): PermissionType[] => {
 	}
 
 	return permissions;
+};
+
+/**
+ * Normalized mapping from Z2M action / button interaction strings to canonical Smart Panel event values
+ */
+export const Z2M_ACTION_TO_PANEL_EVENT: Record<string, string> = {
+	single: 'press',
+	click: 'press',
+	press: 'press',
+	initial_press: 'press',
+	on: 'press',
+	off: 'press',
+	double: 'double_press',
+	double_click: 'double_press',
+	double_press: 'double_press',
+	triple: 'triple_press',
+	triple_click: 'triple_press',
+	triple_press: 'triple_press',
+	hold: 'long_press',
+	long: 'long_press',
+	long_click: 'long_press',
+	long_press: 'long_press',
+	brightness_move_up: 'long_press',
+	brightness_move_down: 'long_press',
+	release: 'release',
+	up: 'release',
+	stop: 'release',
+	brightness_stop: 'release',
+	press_release: 'release',
+	hold_release: 'release',
+	short_release: 'release',
+	long_release: 'release',
+	down: 'down',
+	rotate_left: 'rotate_left',
+	rotate_right: 'rotate_right',
 };

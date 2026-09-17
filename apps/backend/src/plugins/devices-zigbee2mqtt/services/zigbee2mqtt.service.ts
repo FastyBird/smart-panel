@@ -13,7 +13,13 @@ import {
 import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
-import { Z2mDevice, Z2mMqttConfig, Z2mRegisteredDevice, Z2mWsConfig } from '../interfaces/zigbee2mqtt.interface';
+import {
+	Z2mDevice,
+	Z2mDeviceStateMetadata,
+	Z2mMqttConfig,
+	Z2mRegisteredDevice,
+	Z2mWsConfig,
+} from '../interfaces/zigbee2mqtt.interface';
 import { Zigbee2mqttConfigModel } from '../models/config.model';
 
 import { Z2mBaseClientAdapter } from './base-client-adapter';
@@ -401,7 +407,8 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 			onBridgeOnline: () => this.handleBridgeOnline(),
 			onBridgeOffline: () => this.handleBridgeOffline(),
 			onDevicesReceived: (devices) => this.handleDevicesReceived(devices),
-			onDeviceStateChanged: (friendlyName, state) => this.handleDeviceStateChanged(friendlyName, state),
+			onDeviceStateChanged: (friendlyName, state, metadata) =>
+				this.handleDeviceStateChanged(friendlyName, state, metadata),
 			onDeviceAvailabilityChanged: (friendlyName, available) =>
 				this.handleDeviceAvailabilityChanged(friendlyName, available),
 			onDeviceJoined: (ieeeAddress, friendlyName) => this.handleDeviceJoined(ieeeAddress, friendlyName),
@@ -547,7 +554,7 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 			const cachedState = this.activeAdapter.getCachedState(device.identifier);
 			if (Object.keys(cachedState).length > 0) {
 				try {
-					await this.deviceMapper.updateDeviceState(device.identifier, cachedState);
+					await this.deviceMapper.updateDeviceState(device.identifier, cachedState, { isCached: true });
 				} catch (error) {
 					this.logger.debug(`Failed to process cached state for ${device.identifier}: ${error}`);
 				}
@@ -593,7 +600,11 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 	/**
 	 * Handle device state changed event
 	 */
-	private async handleDeviceStateChanged(friendlyName: string, state: Record<string, unknown>): Promise<void> {
+	private async handleDeviceStateChanged(
+		friendlyName: string,
+		state: Record<string, unknown>,
+		metadata?: Z2mDeviceStateMetadata,
+	): Promise<void> {
 		if (!this.transformersRestored) {
 			this.logger.debug(`Skipping state update for ${friendlyName} - transformers not yet restored`);
 			return;
@@ -602,7 +613,11 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 		this.logger.debug(`Device state changed: ${friendlyName}, state keys: ${Object.keys(state).join(', ')}`);
 
 		try {
-			await this.deviceMapper.updateDeviceState(friendlyName, state);
+			if (metadata !== undefined) {
+				await this.deviceMapper.updateDeviceState(friendlyName, state, metadata);
+			} else {
+				await this.deviceMapper.updateDeviceState(friendlyName, state);
+			}
 		} catch (error) {
 			this.logger.error(`Failed to update device state: ${friendlyName}`, {
 				message: error instanceof Error ? error.message : String(error),

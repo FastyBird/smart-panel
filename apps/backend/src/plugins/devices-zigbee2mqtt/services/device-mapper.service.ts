@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -9,6 +9,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -17,6 +18,7 @@ import { DevicesService } from '../../../modules/devices/services/devices.servic
 import {
 	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
 	DEVICES_ZIGBEE2MQTT_TYPE,
+	Z2M_ACTION_TO_PANEL_EVENT,
 	Z2M_CHANNEL_IDENTIFIERS,
 	Z2M_DEVICE_INFO_PROPERTY_IDENTIFIERS,
 	mapZ2mCategoryToDeviceCategory,
@@ -31,7 +33,7 @@ import {
 	Zigbee2mqttChannelPropertyEntity,
 	Zigbee2mqttDeviceEntity,
 } from '../entities/devices-zigbee2mqtt.entity';
-import { Z2mDevice, Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
+import { Z2mDevice, Z2mDeviceStateMetadata, Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 import { ConfigDrivenConverter } from '../mappings/config-driven.converter';
 import { MappingLoaderService } from '../mappings/mapping-loader.service';
 import { TransformerRegistry } from '../mappings/transformers';
@@ -75,6 +77,7 @@ export class Z2mDeviceMapperService {
 		private readonly configDrivenConverter: ConfigDrivenConverter,
 		private readonly transformerRegistry: TransformerRegistry,
 		private readonly provisionQueue: DeviceProvisionQueueService,
+		@Optional() private readonly channelInputOccurrencesService?: ChannelInputOccurrencesService,
 	) {}
 
 	/**
@@ -313,7 +316,217 @@ export class Z2mDeviceMapperService {
 	 * Device is found by identifier (which equals friendly_name)
 	 * Properties are matched by identifier (which equals z2m property name)
 	 */
-	async updateDeviceState(friendlyName: string, state: Record<string, unknown>): Promise<void> {
+
+	private occurrenceSequence = 0;
+
+	/**
+	 * Process hardware input occurrences for buttons and remotes
+	 * Called before latest-state merge, equality suppression, or debouncing
+	 */
+	private async processInputOccurrences(
+		device: Zigbee2mqttDeviceEntity,
+		channels: Zigbee2mqttChannelEntity[],
+		state: Record<string, unknown>,
+		metadata?: Z2mDeviceStateMetadata,
+	): Promise<void> {
+		// Suppress occurrences for retained startup messages or cached replays
+		if (metadata?.isRetained || metadata?.isCached) {
+			return;
+		}
+
+		// Find action properties in the fresh state
+		const actionKeys = Object.keys(state).filter(
+			(key) => key === 'action' || key === 'click' || key.startsWith('action_'),
+		);
+
+		if (actionKeys.length === 0) {
+			return;
+		}
+
+		const buttonChannels = channels.filter((c) => c.category === ChannelCategory.BUTTON);
+		if (buttonChannels.length === 0) {
+			return;
+		}
+
+		for (const key of actionKeys) {
+			const rawAction = state[key];
+
+			// Ignore empty action resets, null, undefined or non-string values
+			if (typeof rawAction !== 'string' || rawAction.trim() === '') {
+				continue;
+			}
+
+			const trimmedAction = rawAction.trim();
+
+			// Resolve target channel and normalized event
+			const resolved = this.resolveActionAndChannel(key, trimmedAction, buttonChannels);
+			if (!resolved) {
+				continue;
+			}
+
+			const { targetChannel, normalizedEvent } = resolved;
+
+			// Find EVENT property on target channel
+			const properties = await this.channelsPropertiesService.findAll<Zigbee2mqttChannelPropertyEntity>(
+				targetChannel.id,
+				DEVICES_ZIGBEE2MQTT_TYPE,
+			);
+			const eventProperty = properties.find((p) => p.category === PropertyCategory.EVENT);
+			if (!eventProperty) {
+				continue;
+			}
+
+			this.occurrenceSequence++;
+			const occurrenceSeq =
+				metadata?.isDup && metadata?.packetId != null
+					? `mqtt_dup_${metadata.packetId}`
+					: `${Date.now()}_${this.occurrenceSequence}`;
+			const sourceOccurrenceId = `${targetChannel.id}:${trimmedAction}:${occurrenceSeq}`;
+
+			if (this.channelInputOccurrencesService) {
+				await this.channelInputOccurrencesService.publishOccurrence({
+					deviceId: device.id,
+					channelId: targetChannel.id,
+					propertyId: eventProperty.id,
+					event: normalizedEvent,
+					nativeEventType: trimmedAction,
+					sourceOccurrenceId,
+					sourceTimestamp: new Date().toISOString(),
+				});
+			}
+
+			await this.channelsPropertiesService.update<
+				Zigbee2mqttChannelPropertyEntity,
+				UpdateZigbee2mqttChannelPropertyDto
+			>(
+				eventProperty.id,
+				toInstance(UpdateZigbee2mqttChannelPropertyDto, {
+					type: DEVICES_ZIGBEE2MQTT_TYPE,
+					value: normalizedEvent,
+				}),
+			);
+		}
+	}
+
+	/**
+	 * Resolve matching channel and canonical Smart Panel event from Z2M action
+	 */
+	private resolveActionAndChannel(
+		key: string,
+		rawAction: string,
+		buttonChannels: Zigbee2mqttChannelEntity[],
+	): { targetChannel: Zigbee2mqttChannelEntity; normalizedEvent: string } | null {
+		let targetChannel: Zigbee2mqttChannelEntity | undefined;
+		let actionStr = rawAction;
+
+		if (key.startsWith('action_')) {
+			const endpoint = key.replace('action_', '');
+			targetChannel = buttonChannels.find(
+				(c) =>
+					c.identifier === endpoint || c.identifier === `button_${endpoint}` || c.identifier.endsWith(`_${endpoint}`),
+			);
+		}
+
+		if (buttonChannels.length === 1) {
+			targetChannel = buttonChannels[0];
+		} else if (!targetChannel) {
+			if (rawAction.startsWith('on_') || rawAction === 'on') {
+				targetChannel = buttonChannels.find((c) => c.identifier === 'button_on' || c.identifier === 'on');
+				actionStr = rawAction.startsWith('on_') ? rawAction.replace('on_', '') : 'press';
+			} else if (rawAction.startsWith('off_') || rawAction === 'off') {
+				targetChannel = buttonChannels.find((c) => c.identifier === 'button_off' || c.identifier === 'off');
+				actionStr = rawAction.startsWith('off_') ? rawAction.replace('off_', '') : 'press';
+			} else if (rawAction.startsWith('up_') || rawAction.startsWith('brightness_move_up') || rawAction === 'up') {
+				targetChannel = buttonChannels.find((c) => c.identifier === 'button_up' || c.identifier === 'up');
+				actionStr = rawAction.startsWith('up_') ? rawAction.replace('up_', '') : rawAction;
+			} else if (
+				rawAction.startsWith('down_') ||
+				rawAction.startsWith('brightness_move_down') ||
+				rawAction === 'down'
+			) {
+				targetChannel = buttonChannels.find((c) => c.identifier === 'button_down' || c.identifier === 'down');
+				actionStr = rawAction.startsWith('down_') ? rawAction.replace('down_', '') : rawAction;
+			} else if (
+				rawAction.startsWith('arrow_left_') ||
+				rawAction.startsWith('left_') ||
+				rawAction === 'arrow_left_click'
+			) {
+				targetChannel = buttonChannels.find((c) => c.identifier === 'button_left' || c.identifier === 'left');
+				actionStr = rawAction.replace(/^(arrow_left|left)_/, '');
+			} else if (
+				rawAction.startsWith('arrow_right_') ||
+				rawAction.startsWith('right_') ||
+				rawAction === 'arrow_right_click'
+			) {
+				targetChannel = buttonChannels.find((c) => c.identifier === 'button_right' || c.identifier === 'right');
+				actionStr = rawAction.replace(/^(arrow_right|right)_/, '');
+			} else if (rawAction.startsWith('rotate_')) {
+				targetChannel = buttonChannels.find((c) => c.identifier === 'rotary' || c.identifier === 'dial');
+			} else if (
+				['single', 'double', 'triple', 'hold', 'release'].includes(rawAction) &&
+				buttonChannels.some((c) => c.identifier === 'rotary' || c.identifier === 'dial')
+			) {
+				targetChannel = buttonChannels.find((c) => c.identifier === 'button');
+			} else {
+				for (const ch of buttonChannels) {
+					const id = ch.identifier;
+					const bareId = id.replace(/^button_/, '');
+					if (rawAction.startsWith(`${id}_`)) {
+						targetChannel = ch;
+						actionStr = rawAction.slice(id.length + 1);
+						break;
+					} else if (rawAction.startsWith(`${bareId}_`)) {
+						targetChannel = ch;
+						actionStr = rawAction.slice(bareId.length + 1);
+						break;
+					}
+				}
+			}
+
+			if (!targetChannel) {
+				targetChannel = buttonChannels.find(
+					(c) => rawAction.includes(c.identifier) || rawAction.includes(c.identifier.replace(/^button_/, '')),
+				);
+			}
+
+			if (!targetChannel) {
+				targetChannel = buttonChannels[0];
+			}
+		}
+
+		const normalizedEvent = this.normalizeAction(actionStr, rawAction);
+		if (!normalizedEvent) {
+			this.logger.warn(`Device action "${rawAction}" is unsupported and ignored without mislabeling`);
+			return null;
+		}
+
+		return { targetChannel, normalizedEvent };
+	}
+
+	/**
+	 * Normalize action interaction string to canonical Smart Panel event
+	 */
+	private normalizeAction(actionStr: string, fullAction: string): string | null {
+		if (Z2M_ACTION_TO_PANEL_EVENT[actionStr]) {
+			return Z2M_ACTION_TO_PANEL_EVENT[actionStr];
+		}
+		if (Z2M_ACTION_TO_PANEL_EVENT[fullAction]) {
+			return Z2M_ACTION_TO_PANEL_EVENT[fullAction];
+		}
+
+		const normalized = actionStr.toLowerCase().replace(/[- ]/g, '_');
+		if (Z2M_ACTION_TO_PANEL_EVENT[normalized]) {
+			return Z2M_ACTION_TO_PANEL_EVENT[normalized];
+		}
+
+		return null;
+	}
+
+	async updateDeviceState(
+		friendlyName: string,
+		state: Record<string, unknown>,
+		metadata?: Z2mDeviceStateMetadata,
+	): Promise<void> {
 		// Find device by identifier (= friendly_name)
 		const device = await this.devicesService.findOneBy<Zigbee2mqttDeviceEntity>(
 			'identifier',
@@ -336,6 +549,9 @@ export class Z2mDeviceMapperService {
 
 		this.logger.debug(`Found ${channels.length} channels for device ${friendlyName}`, { resource: device.id });
 
+		// Process input occurrences before state merge, equality suppression, or debouncing
+		await this.processInputOccurrences(device, channels, state, metadata);
+
 		// Build virtual property context
 		const virtualContext: VirtualPropertyContext = {
 			state,
@@ -352,6 +568,11 @@ export class Z2mDeviceMapperService {
 
 			for (const property of properties) {
 				const propertyIdentifier = property.identifier;
+
+				// Skip EVENT properties on BUTTON channels - already handled by processInputOccurrences
+				if (property.category === PropertyCategory.EVENT) {
+					continue;
+				}
 
 				// Skip properties without identifier
 				if (!propertyIdentifier) {
