@@ -16,11 +16,8 @@ export const MAX_DEDUPLICATION_CACHE_SIZE = 1_000;
 export class ChannelInputDeduplicationService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'ChannelInputDeduplicationService');
 	private readonly cache = new Map<string, number>();
-
-	constructor(
-		private readonly ttlMs: number = DEFAULT_DEDUPLICATION_TTL_MS,
-		private readonly maxCapacity: number = MAX_DEDUPLICATION_CACHE_SIZE,
-	) {}
+	private readonly ttlMs = DEFAULT_DEDUPLICATION_TTL_MS;
+	private readonly maxCapacity = MAX_DEDUPLICATION_CACHE_SIZE;
 
 	/**
 	 * Checks if an occurrence with the given source identity has already been delivered within the deduplication window.

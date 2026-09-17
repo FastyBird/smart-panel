@@ -41,7 +41,9 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 			"enabled", "roomId", "password", "hostname", "haDeviceId", "canonicalMac",
 			"hasEthernet", "autoSimulate", "simulateInterval", "behaviorMode", "serviceAddress",
 			"variant", "type", "hidden", "hiddenBy", "mac"
-		) SELECT "id", "createdAt", "updatedAt", "category", "identifier", "name", "description",
+		) SELECT "id", "createdAt", "updatedAt",
+			CASE WHEN "category" = 'input_controller' THEN 'generic' ELSE "category" END AS "category",
+			"identifier", "name", "description",
 			"enabled", "roomId", "password", "hostname", "haDeviceId", "canonicalMac",
 			"hasEthernet", "autoSimulate", "simulateInterval", "behaviorMode", "serviceAddress",
 			"variant", "type", "hidden", "hiddenBy", "mac" FROM "devices_module_devices"`);
@@ -52,11 +54,15 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 		await queryRunner.query(`CREATE INDEX "IDX_2e587b2a8bcb55f468bb6ec6fe" ON "devices_module_devices" ("identifier")`);
 		await queryRunner.query(`CREATE INDEX "IDX_b6aa1841ab84616391d34cd5cf" ON "devices_module_devices" ("enabled")`);
 		await queryRunner.query(`CREATE INDEX "IDX_9c2fa00cfe1d7964da6b8ad497" ON "devices_module_devices" ("roomId")`);
-		await queryRunner.query(`CREATE UNIQUE INDEX "IDX_36ec1c9bafc04373563cfb5f83" ON "devices_module_devices" ("haDeviceId")`);
+		await queryRunner.query(
+			`CREATE UNIQUE INDEX "IDX_36ec1c9bafc04373563cfb5f83" ON "devices_module_devices" ("haDeviceId")`,
+		);
 		await queryRunner.query(`CREATE INDEX "IDX_de1447169fa1df5ea8d41bf02a" ON "devices_module_devices" ("type")`);
 		await queryRunner.query(`CREATE INDEX "IDX_devices_hidden" ON "devices_module_devices" ("hidden")`);
 		await queryRunner.query(`CREATE INDEX "IDX_devices_hiddenBy" ON "devices_module_devices" ("hiddenBy")`);
-		await queryRunner.query(`CREATE UNIQUE INDEX "UQ_devices_wled_mac_type" ON "devices_module_devices" ("mac", "type") WHERE "mac" IS NOT NULL AND "type" = 'devices-wled'`);
+		await queryRunner.query(
+			`CREATE UNIQUE INDEX "UQ_devices_wled_mac_type" ON "devices_module_devices" ("mac", "type") WHERE "mac" IS NOT NULL AND "type" = 'devices-wled'`,
+		);
 
 		await queryRunner.query(`CREATE TRIGGER "TRG_home_search_devices_insert"
 			AFTER INSERT ON "devices_module_devices"
@@ -99,13 +105,17 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 		await queryRunner.query(`INSERT INTO "temporary_devices_module_channels" (
 			"id", "createdAt", "updatedAt", "category", "identifier", "name", "description",
 			"parentId", "type", "deviceId"
-		) SELECT "id", "createdAt", "updatedAt", "category", "identifier", "name", "description",
+		) SELECT "id", "createdAt", "updatedAt",
+			CASE WHEN "category" IN ('binary_input', 'analog_input') THEN 'generic' ELSE "category" END AS "category",
+			"identifier", "name", "description",
 			"parentId", "type", "deviceId" FROM "devices_module_channels"`);
 
 		await queryRunner.query(`DROP TABLE "devices_module_channels"`);
 		await queryRunner.query(`ALTER TABLE "temporary_devices_module_channels" RENAME TO "devices_module_channels"`);
 
-		await queryRunner.query(`CREATE INDEX "IDX_38441e91ae9be25547912ebc44" ON "devices_module_channels" ("identifier")`);
+		await queryRunner.query(
+			`CREATE INDEX "IDX_38441e91ae9be25547912ebc44" ON "devices_module_channels" ("identifier")`,
+		);
 		await queryRunner.query(`CREATE INDEX "IDX_4ff87e5bef5426c24fe7f0ff6c" ON "devices_module_channels" ("parentId")`);
 		await queryRunner.query(`CREATE INDEX "IDX_a654e0cabea37168a1a967ab5d" ON "devices_module_channels" ("type")`);
 
@@ -141,19 +151,33 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 			"dataType", "format", "invalid", "step", "haEntityId", "haAttribute", "haTransformer",
 			"type", "channelId", "valueOrigin", "sourcePropertyId", "energyClaimPropertyId",
 			"homeyCapabilityId", "homeyMappingName"
-		) SELECT "id", "createdAt", "updatedAt", "category", "identifier", "name", "permissions",
+		) SELECT "id", "createdAt", "updatedAt",
+			CASE WHEN "category" IN ('unit', 'value') THEN 'generic' ELSE "category" END AS "category",
+			"identifier", "name", "permissions",
 			"dataType", "format", "invalid", "step", "haEntityId", "haAttribute", "haTransformer",
 			"type", "channelId", "valueOrigin", "sourcePropertyId", "energyClaimPropertyId",
 			"homeyCapabilityId", "homeyMappingName" FROM "devices_module_channels_properties"`);
 
 		await queryRunner.query(`DROP TABLE "devices_module_channels_properties"`);
-		await queryRunner.query(`ALTER TABLE "temporary_devices_module_channels_properties" RENAME TO "devices_module_channels_properties"`);
+		await queryRunner.query(
+			`ALTER TABLE "temporary_devices_module_channels_properties" RENAME TO "devices_module_channels_properties"`,
+		);
 
-		await queryRunner.query(`CREATE INDEX "IDX_869661aed3457e1949b0e7e335" ON "devices_module_channels_properties" ("identifier")`);
-		await queryRunner.query(`CREATE INDEX "IDX_98ffd1e6ff9c4463c3e7d9a9c7" ON "devices_module_channels_properties" ("type")`);
-		await queryRunner.query(`CREATE INDEX "IDX_channels_properties_sourcePropertyId" ON "devices_module_channels_properties" ("sourcePropertyId")`);
-		await queryRunner.query(`CREATE UNIQUE INDEX "UQ_channels_properties_energyClaim" ON "devices_module_channels_properties" ("energyClaimPropertyId") WHERE "energyClaimPropertyId" IS NOT NULL`);
-		await queryRunner.query(`CREATE UNIQUE INDEX "UQ_homey_capability_mapping_channel" ON "devices_module_channels_properties" ("homeyCapabilityId", "homeyMappingName", "channelId") WHERE "type" = 'devices-homey' AND "homeyCapabilityId" IS NOT NULL AND "homeyMappingName" IS NOT NULL`);
+		await queryRunner.query(
+			`CREATE INDEX "IDX_869661aed3457e1949b0e7e335" ON "devices_module_channels_properties" ("identifier")`,
+		);
+		await queryRunner.query(
+			`CREATE INDEX "IDX_98ffd1e6ff9c4463c3e7d9a9c7" ON "devices_module_channels_properties" ("type")`,
+		);
+		await queryRunner.query(
+			`CREATE INDEX "IDX_channels_properties_sourcePropertyId" ON "devices_module_channels_properties" ("sourcePropertyId")`,
+		);
+		await queryRunner.query(
+			`CREATE UNIQUE INDEX "UQ_channels_properties_energyClaim" ON "devices_module_channels_properties" ("energyClaimPropertyId") WHERE "energyClaimPropertyId" IS NOT NULL`,
+		);
+		await queryRunner.query(
+			`CREATE UNIQUE INDEX "UQ_homey_capability_mapping_channel" ON "devices_module_channels_properties" ("homeyCapabilityId", "homeyMappingName", "channelId") WHERE "type" = 'devices-homey' AND "homeyCapabilityId" IS NOT NULL AND "homeyMappingName" IS NOT NULL`,
+		);
 
 		await queryRunner.query(`CREATE TRIGGER "TRG_home_search_properties_insert"
 			AFTER INSERT ON "devices_module_channels_properties"
@@ -228,11 +252,15 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 		await queryRunner.query(`CREATE INDEX "IDX_2e587b2a8bcb55f468bb6ec6fe" ON "devices_module_devices" ("identifier")`);
 		await queryRunner.query(`CREATE INDEX "IDX_b6aa1841ab84616391d34cd5cf" ON "devices_module_devices" ("enabled")`);
 		await queryRunner.query(`CREATE INDEX "IDX_9c2fa00cfe1d7964da6b8ad497" ON "devices_module_devices" ("roomId")`);
-		await queryRunner.query(`CREATE UNIQUE INDEX "IDX_36ec1c9bafc04373563cfb5f83" ON "devices_module_devices" ("haDeviceId")`);
+		await queryRunner.query(
+			`CREATE UNIQUE INDEX "IDX_36ec1c9bafc04373563cfb5f83" ON "devices_module_devices" ("haDeviceId")`,
+		);
 		await queryRunner.query(`CREATE INDEX "IDX_de1447169fa1df5ea8d41bf02a" ON "devices_module_devices" ("type")`);
 		await queryRunner.query(`CREATE INDEX "IDX_devices_hidden" ON "devices_module_devices" ("hidden")`);
 		await queryRunner.query(`CREATE INDEX "IDX_devices_hiddenBy" ON "devices_module_devices" ("hiddenBy")`);
-		await queryRunner.query(`CREATE UNIQUE INDEX "UQ_devices_wled_mac_type" ON "devices_module_devices" ("mac", "type") WHERE "mac" IS NOT NULL AND "type" = 'devices-wled'`);
+		await queryRunner.query(
+			`CREATE UNIQUE INDEX "UQ_devices_wled_mac_type" ON "devices_module_devices" ("mac", "type") WHERE "mac" IS NOT NULL AND "type" = 'devices-wled'`,
+		);
 
 		await queryRunner.query(`CREATE TRIGGER "TRG_home_search_devices_insert"
 			AFTER INSERT ON "devices_module_devices"
@@ -281,7 +309,9 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 		await queryRunner.query(`DROP TABLE "devices_module_channels"`);
 		await queryRunner.query(`ALTER TABLE "temporary_devices_module_channels" RENAME TO "devices_module_channels"`);
 
-		await queryRunner.query(`CREATE INDEX "IDX_38441e91ae9be25547912ebc44" ON "devices_module_channels" ("identifier")`);
+		await queryRunner.query(
+			`CREATE INDEX "IDX_38441e91ae9be25547912ebc44" ON "devices_module_channels" ("identifier")`,
+		);
 		await queryRunner.query(`CREATE INDEX "IDX_4ff87e5bef5426c24fe7f0ff6c" ON "devices_module_channels" ("parentId")`);
 		await queryRunner.query(`CREATE INDEX "IDX_a654e0cabea37168a1a967ab5d" ON "devices_module_channels" ("type")`);
 
@@ -323,13 +353,25 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 			"homeyCapabilityId", "homeyMappingName" FROM "devices_module_channels_properties"`);
 
 		await queryRunner.query(`DROP TABLE "devices_module_channels_properties"`);
-		await queryRunner.query(`ALTER TABLE "temporary_devices_module_channels_properties" RENAME TO "devices_module_channels_properties"`);
+		await queryRunner.query(
+			`ALTER TABLE "temporary_devices_module_channels_properties" RENAME TO "devices_module_channels_properties"`,
+		);
 
-		await queryRunner.query(`CREATE INDEX "IDX_869661aed3457e1949b0e7e335" ON "devices_module_channels_properties" ("identifier")`);
-		await queryRunner.query(`CREATE INDEX "IDX_98ffd1e6ff9c4463c3e7d9a9c7" ON "devices_module_channels_properties" ("type")`);
-		await queryRunner.query(`CREATE INDEX "IDX_channels_properties_sourcePropertyId" ON "devices_module_channels_properties" ("sourcePropertyId")`);
-		await queryRunner.query(`CREATE UNIQUE INDEX "UQ_channels_properties_energyClaim" ON "devices_module_channels_properties" ("energyClaimPropertyId") WHERE "energyClaimPropertyId" IS NOT NULL`);
-		await queryRunner.query(`CREATE UNIQUE INDEX "UQ_homey_capability_mapping_channel" ON "devices_module_channels_properties" ("homeyCapabilityId", "homeyMappingName", "channelId") WHERE "type" = 'devices-homey' AND "homeyCapabilityId" IS NOT NULL AND "homeyMappingName" IS NOT NULL`);
+		await queryRunner.query(
+			`CREATE INDEX "IDX_869661aed3457e1949b0e7e335" ON "devices_module_channels_properties" ("identifier")`,
+		);
+		await queryRunner.query(
+			`CREATE INDEX "IDX_98ffd1e6ff9c4463c3e7d9a9c7" ON "devices_module_channels_properties" ("type")`,
+		);
+		await queryRunner.query(
+			`CREATE INDEX "IDX_channels_properties_sourcePropertyId" ON "devices_module_channels_properties" ("sourcePropertyId")`,
+		);
+		await queryRunner.query(
+			`CREATE UNIQUE INDEX "UQ_channels_properties_energyClaim" ON "devices_module_channels_properties" ("energyClaimPropertyId") WHERE "energyClaimPropertyId" IS NOT NULL`,
+		);
+		await queryRunner.query(
+			`CREATE UNIQUE INDEX "UQ_homey_capability_mapping_channel" ON "devices_module_channels_properties" ("homeyCapabilityId", "homeyMappingName", "channelId") WHERE "type" = 'devices-homey' AND "homeyCapabilityId" IS NOT NULL AND "homeyMappingName" IS NOT NULL`,
+		);
 
 		await queryRunner.query(`CREATE TRIGGER "TRG_home_search_properties_insert"
 			AFTER INSERT ON "devices_module_channels_properties"
