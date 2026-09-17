@@ -8,7 +8,7 @@ import { ChannelCategory, DataTypeType, PermissionType, PropertyCategory } from 
 /**
  * Capability descriptor for an individual input property
  */
-@ApiSchema({ name: 'DevicesModuleChannelInputPropertyCapability' })
+@ApiSchema({ name: 'DevicesModuleDataChannelInputPropertyCapability' })
 export class ChannelInputPropertyCapabilityModel {
 	@ApiProperty({ description: 'Property unique identifier', format: 'uuid' })
 	@Expose()
@@ -39,7 +39,7 @@ export class ChannelInputPropertyCapabilityModel {
 /**
  * Channel input capability descriptor
  */
-@ApiSchema({ name: 'DevicesModuleChannelInputCapabilities' })
+@ApiSchema({ name: 'DevicesModuleDataChannelInputCapabilities' })
 export class ChannelInputCapabilitiesModel {
 	@ApiProperty({ description: 'Channel unique identifier', format: 'uuid' })
 	@Expose()
