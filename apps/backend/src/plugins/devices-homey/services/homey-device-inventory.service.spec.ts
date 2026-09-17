@@ -185,4 +185,43 @@ describe('HomeyDeviceInventoryService', () => {
 		await expect(service.findAll()).rejects.toBeInstanceOf(HomeyInventoryUnavailableError);
 		await expect(service.findOne('homey-light-a')).rejects.toBeInstanceOf(HomeyInventoryUnavailableError);
 	});
+	it('marks a Flow-only button device as UNSUPPORTED with UNSUPPORTED_PHYSICAL_EVENTS', async () => {
+		const buttonDevice: HomeyDevice = {
+			id: 'homey-button-1',
+			name: 'Flow Button',
+			class: 'button',
+			zoneId: 'zone-hall',
+			zoneName: 'Hall',
+			zonePath: ['Hall'],
+			available: true,
+			availabilityMessage: null,
+			driverId: 'homey:app:test:button',
+			manufacturer: 'Example',
+			model: 'Button',
+			energy: null,
+			capabilities: [
+				createHomeyCapability({
+					id: 'button',
+					title: 'Button',
+					value: null,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: false,
+					writable: true,
+					available: true,
+					lastUpdatedAt: '2026-08-20T10:00:00.000Z',
+				}),
+			],
+		};
+
+		snapshot = [buttonDevice];
+		const result = await service.findOne('homey-button-1');
+
+		expect(result.supportState).toBe(HomeyDeviceSupportState.UNSUPPORTED);
+		expect(result.supportReasons).toEqual([HomeyDeviceSupportReason.UNSUPPORTED_PHYSICAL_EVENTS]);
+	});
 });

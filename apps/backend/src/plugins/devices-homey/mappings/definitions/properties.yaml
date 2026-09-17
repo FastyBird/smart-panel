@@ -549,3 +549,58 @@ mappings:
         input_range: [0, 1]
         output_range: [-90, 90]
         clamp: true
+
+  - name: binary-input-1-state
+    priority: 100
+    match:
+      classes: [sensor, socket, other]
+      capability_base_ids: [input_1]
+    property:
+      channel: input-1
+      category: state
+      data_type: bool
+      direction: read_only
+
+  - name: binary-input-2-state
+    priority: 100
+    match:
+      classes: [sensor, socket, other]
+      capability_base_ids: [input_2]
+    property:
+      channel: input-2
+      category: state
+      data_type: bool
+      direction: read_only
+
+  - name: binary-input-3-state
+    priority: 100
+    match:
+      classes: [sensor, socket, other]
+      capability_base_ids: [input_3]
+    property:
+      channel: input-3
+      category: state
+      data_type: bool
+      direction: read_only
+
+  - name: binary-input-4-state
+    priority: 100
+    match:
+      classes: [sensor, socket, other]
+      capability_base_ids: [input_4]
+    property:
+      channel: input-4
+      category: state
+      data_type: bool
+      direction: read_only
+
+  - name: tamper-alarm-detected
+    priority: 100
+    match:
+      classes: [sensor, lock, other]
+      capability_base_ids: [alarm_tamper]
+    property:
+      channel: tamper
+      category: detected
+      data_type: bool
+      direction: read_only
