@@ -756,7 +756,8 @@
 			"thermostat": "Thermostat",
 			"valve": "Valve",
 			"water_heater": "Water heater",
-			"window_covering": "Window covering"
+			"window_covering": "Window covering",
+			"input_controller": "Input controller"
 		},
 		"channels": {
 			"generic": "Generic",
@@ -811,7 +812,9 @@
 			"thermostat": "Thermostat",
 			"valve": "Valve",
 			"volatile_organic_compounds": "Volatile organic compounds",
-			"window_covering": "Window covering"
+			"window_covering": "Window covering",
+			"analog_input": "Analog input",
+			"binary_input": "Binary input"
 		},
 		"channelsProperties": {
 			"generic": "Generic",
@@ -914,7 +917,9 @@
 			"water_tank_empty": "Water tank empty",
 			"water_tank_full": "Water tank full",
 			"water_tank_level": "Water tank level",
-			"zoom": "Zoom"
+			"zoom": "Zoom",
+			"unit": "Unit",
+			"value": "Value"
 		}
 	},
 	"hidden": {

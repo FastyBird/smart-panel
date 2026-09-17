@@ -756,7 +756,8 @@
 			"thermostat": "Thermostat",
 			"valve": "Ventil",
 			"water_heater": "Warmwasserbereiter",
-			"window_covering": "Jalousie/Rollladen"
+			"window_covering": "Jalousie/Rollladen",
+			"input_controller": "Eingangssteuerung"
 		},
 		"channels": {
 			"generic": "Generisch",
@@ -811,7 +812,9 @@
 			"thermostat": "Thermostat",
 			"valve": "Ventil",
 			"volatile_organic_compounds": "Flüchtige organische Verbindungen",
-			"window_covering": "Jalousie/Rollladen"
+			"window_covering": "Jalousie/Rollladen",
+			"analog_input": "Analoger Eingang",
+			"binary_input": "Binärer Eingang"
 		},
 		"channelsProperties": {
 			"generic": "Generisch",
@@ -914,7 +917,9 @@
 			"water_tank_empty": "Wassertank leer",
 			"water_tank_full": "Wassertank voll",
 			"water_tank_level": "Füllstand des Wassertanks",
-			"zoom": "Zoom"
+			"zoom": "Zoom",
+			"unit": "Einheit",
+			"value": "Wert"
 		}
 	},
 	"hidden": {
