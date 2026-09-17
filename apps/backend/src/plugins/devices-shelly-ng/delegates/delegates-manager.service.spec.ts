@@ -2662,5 +2662,186 @@ describe('DelegatesManagerService', () => {
 				}),
 			);
 		});
+
+		test("btn_down updates detected property even when EVENT property is missing", async () => {
+			const mockOccurrencesService = {
+				publishOccurrence: jest.fn().mockResolvedValue(null),
+			};
+
+			const localSvc = new DelegatesManagerService(
+				devicesService as any,
+				channelsService as any,
+				channelsPropertiesService as any,
+				deviceConnectivityService as any,
+				deviceManagerService as any,
+				deviceAddressService as any,
+				propertyMappingStorage as any,
+				transformerRegistry as any,
+				undefined,
+				undefined,
+				mockOccurrencesService as any,
+			);
+
+			const device = { id: uuid().toString() } as ShellyNgDeviceEntity;
+			const inputChannel = {
+				id: uuid(),
+				device: device.id,
+				category: ChannelCategory.BUTTON,
+				identifier: "input:0",
+			} as ShellyNgChannelEntity;
+
+			const detectedProp = {
+				id: uuid(),
+				channel: inputChannel.id,
+				category: PropertyCategory.DETECTED,
+				identifier: "detected",
+			} as ShellyNgChannelPropertyEntity;
+
+			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
+			(devicesService.findOne as jest.Mock).mockResolvedValueOnce(device);
+			(devicesService.create as jest.Mock).mockResolvedValue(device);
+
+			(channelsService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+				if (field === "identifier" && val === "input:0") return inputChannel;
+				return null;
+			});
+
+			(channelsPropertiesService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+				if (field === "category" && val === String(PropertyCategory.DETECTED)) return detectedProp;
+				return null; // EVENT property is missing
+			});
+
+			const shelly: any = {
+				id: "shelly-i4-missing-event",
+				modelName: "Plus I4",
+				system: { config: { device: { name: "Plus I4", mac: "AABBCCDDEE97" } } },
+				wifi: { key: "wifi:0", rssi: -50, sta_ip: "192.168.1.97" },
+			};
+
+			const delegate = (await localSvc.insert(shelly as unknown as Device)) as any;
+
+			delegate.emit("event", {
+				ts: 1630489392.0,
+				events: [
+					{
+						component: "input:0",
+						id: 0,
+						event: "btn_down",
+						ts: 1630489392.0,
+					},
+				],
+			});
+
+			await new Promise((r) => setImmediate(r));
+
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+				detectedProp.id,
+				expect.objectContaining({
+					value: true,
+				}),
+			);
+			expect(mockOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
+		});
+
+		test("btn_down and btn_up serialize execution preserving final false state", async () => {
+			const mockOccurrencesService = {
+				publishOccurrence: jest.fn().mockImplementation(async () => {
+					await new Promise((r) => setTimeout(r, 10));
+				}),
+			};
+
+			const localSvc = new DelegatesManagerService(
+				devicesService as any,
+				channelsService as any,
+				channelsPropertiesService as any,
+				deviceConnectivityService as any,
+				deviceManagerService as any,
+				deviceAddressService as any,
+				propertyMappingStorage as any,
+				transformerRegistry as any,
+				undefined,
+				undefined,
+				mockOccurrencesService as any,
+			);
+
+			const device = { id: uuid().toString() } as ShellyNgDeviceEntity;
+			const inputChannel = {
+				id: uuid(),
+				device: device.id,
+				category: ChannelCategory.BUTTON,
+				identifier: "input:0",
+			} as ShellyNgChannelEntity;
+
+			const eventProp = {
+				id: uuid(),
+				channel: inputChannel.id,
+				category: PropertyCategory.EVENT,
+				identifier: "event",
+			} as ShellyNgChannelPropertyEntity;
+
+			const detectedProp = {
+				id: uuid(),
+				channel: inputChannel.id,
+				category: PropertyCategory.DETECTED,
+				identifier: "detected",
+			} as ShellyNgChannelPropertyEntity;
+
+			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
+			(devicesService.findOne as jest.Mock).mockResolvedValueOnce(device);
+			(devicesService.create as jest.Mock).mockResolvedValue(device);
+
+			(channelsService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+				if (field === "identifier" && val === "input:0") return inputChannel;
+				return null;
+			});
+
+			(channelsPropertiesService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+				if (field === "category" && val === String(PropertyCategory.EVENT)) return eventProp;
+				if (field === "category" && val === String(PropertyCategory.DETECTED)) return detectedProp;
+				return null;
+			});
+
+			const shelly: any = {
+				id: "shelly-i4-serialize",
+				modelName: "Plus I4",
+				system: { config: { device: { name: "Plus I4", mac: "AABBCCDDEE96" } } },
+				wifi: { key: "wifi:0", rssi: -50, sta_ip: "192.168.1.96" },
+			};
+
+			const delegate = (await localSvc.insert(shelly as unknown as Device)) as any;
+
+			// Emit btn_down followed immediately by btn_up
+			delegate.emit("event", {
+				ts: 1630489393.0,
+				events: [
+					{
+						component: "input:0",
+						id: 0,
+						event: "btn_down",
+						ts: 1630489393.0,
+					},
+				],
+			});
+
+			delegate.emit("event", {
+				ts: 1630489393.1,
+				events: [
+					{
+						component: "input:0",
+						id: 0,
+						event: "btn_up",
+						ts: 1630489393.1,
+					},
+				],
+			});
+
+			await new Promise((r) => setTimeout(r, 50));
+
+			const updateCalls = (channelsPropertiesService.update as jest.Mock).mock.calls
+				.filter(([id]) => id === detectedProp.id)
+				.map(([, dto]) => dto.value);
+
+			expect(updateCalls).toEqual([true, false]);
+		});
 	});
 });

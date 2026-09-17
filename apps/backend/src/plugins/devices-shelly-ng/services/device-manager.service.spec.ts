@@ -1141,4 +1141,29 @@ describe('DeviceManagerService input components', () => {
 		// existing channel is NOT removed
 		expect(mockChannelsService.remove.mock.calls.some(([id]: [string]) => id === 'existing-ch-0')).toBe(false);
 	});
+
+	test('preserves descriptor-declared input channel when component discovery omits it', async () => {
+		const svc = makeService();
+		const device = { id: 'db-plus1-omit', password: null, category: DeviceCategory.SWITCHER } as any;
+
+		mockDevicesService.findOne.mockResolvedValue(device);
+		arrange(svc, []);
+		jest.spyOn<any, any>(svc as any, "getSpecification").mockReturnValue({
+			models: ["SHELLYPLUSI4"],
+			system: [{ type: "wifi" }],
+			components: [{ type: 'input' as any, ids: [0, 1, 2, 3] }],
+		});
+
+		mockChannelsService.findAll.mockResolvedValue([
+			{ id: 'ch-input-0', identifier: 'input:0', category: ChannelCategory.BUTTON },
+			{ id: 'ch-stale', identifier: 'custom:99', category: ChannelCategory.GENERIC },
+		]);
+
+		await svc.createOrUpdate(device.id);
+
+		// ch-input-0 is preserved because input:0 is declared in Plus 1 descriptor
+		expect(mockChannelsService.remove.mock.calls.some(([id]: [string]) => id === 'ch-input-0')).toBe(false);
+		// ch-stale is removed
+		expect(mockChannelsService.remove.mock.calls.some(([id]: [string]) => id === 'ch-stale')).toBe(true);
+	});
 });

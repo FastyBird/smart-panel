@@ -2275,8 +2275,20 @@ export class DeviceManagerService {
 
 			const allChannels = await this.channelsService.findAll(device.id, DEVICES_SHELLY_NG_TYPE);
 
+			const descriptorInputKeys = new Set(
+				(deviceSpec?.components ?? [])
+					.filter((c) => c.type === ComponentType.INPUT)
+					.flatMap((c) => (c.ids ?? []).map((inputKey) => `input:${inputKey}`)),
+			);
+
 			for (const channel of allChannels) {
 				if (!channelsIds.includes(channel.id)) {
+					if (descriptorInputKeys.has(channel.identifier)) {
+						this.logger.debug(
+							`Preserving descriptor-declared input channel=${channel.identifier} for device=${device.id}`,
+						);
+						continue;
+					}
 					try {
 						if (this.defaultManager) {
 							await this.channelsService.remove(channel.id, this.defaultManager);

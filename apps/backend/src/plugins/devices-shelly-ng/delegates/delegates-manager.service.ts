@@ -115,6 +115,7 @@ export class DelegatesManagerService {
 	private readonly delegateConnectionHandlers: Map<string, (state: boolean | null) => void> = new Map();
 
 	private readonly delegateEventHandlers: Map<string, (params: unknown) => void> = new Map();
+	private readonly delegateEventQueues: Map<string, Promise<void>> = new Map();
 
 	private readonly changeHandlers: Map<string, (val: CharacteristicValue) => void> = new Map();
 
@@ -2043,14 +2044,24 @@ export class DelegatesManagerService {
 		this.delegateConnectionHandlers.set(delegate.id, connectionHandler);
 
 		const eventHandler = (params: unknown): void => {
-			this.handleDeviceEvent(delegate, device, params).catch((error) => {
-				const err = error as Error;
-				this.logger.error(`Shelly event error for device=${device.id}`, {
-					resource: device.id,
-					message: err.message,
-					stack: err.stack,
+			const previousPromise = this.delegateEventQueues.get(delegate.id) ?? Promise.resolve();
+			const nextPromise = previousPromise
+				.then(() => this.handleDeviceEvent(delegate, device, params))
+				.catch((error) => {
+					const err = error as Error;
+					this.logger.error(`Shelly event error for device=${device.id}`, {
+						resource: device.id,
+						message: err.message,
+						stack: err.stack,
+					});
+				})
+				.finally(() => {
+					if (this.delegateEventQueues.get(delegate.id) === nextPromise) {
+						this.delegateEventQueues.delete(delegate.id);
+					}
 				});
-			});
+
+			this.delegateEventQueues.set(delegate.id, nextPromise);
 		};
 
 		delegate.on('event', eventHandler);
@@ -2132,6 +2143,7 @@ export class DelegatesManagerService {
 		}
 
 		this.delegateEventHandlers.delete(delegate.id);
+		this.delegateEventQueues.delete(delegate.id);
 
 		for (const key of Array.from(this.changeHandlers.keys())) {
 			if (key.startsWith(`${deviceId}|`)) {
@@ -2349,6 +2361,24 @@ export class DelegatesManagerService {
 				continue;
 			}
 
+			if (rawEvent === 'btn_down' || rawEvent === 'btn_up') {
+				try {
+					const detectedProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+						'category',
+						PropertyCategory.DETECTED,
+						channel.id,
+					);
+
+					if (detectedProp) {
+						await this.handleChange(detectedProp, rawEvent === 'btn_down', true);
+					}
+				} catch (err) {
+					this.logger.error(
+						`Failed to update DETECTED property for channel=${channel.id} on device=${device.id}: ${(err as Error).message}`,
+					);
+				}
+			}
+
 			const eventProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 				'category',
 				PropertyCategory.EVENT,
@@ -2360,33 +2390,27 @@ export class DelegatesManagerService {
 				continue;
 			}
 
-			const ts =
-				typeof item.ts === 'number' ? item.ts : typeof eventPayload.ts === 'number' ? eventPayload.ts : undefined;
-			const timestamp = ts !== undefined ? new Date(ts < 1e11 ? Math.round(ts * 1000) : Math.round(ts)) : new Date();
-
-			const sourceOccurrenceId = `${channel.id}:${rawEvent}:${ts ?? timestamp.getTime()}`;
-
 			if (this.channelInputOccurrencesService) {
-				await this.channelInputOccurrencesService.publishOccurrence({
-					deviceId: device.id,
-					channelId: channel.id,
-					propertyId: eventProp.id,
+				const ts =
+					typeof item.ts === 'number' ? item.ts : typeof eventPayload.ts === 'number' ? eventPayload.ts : undefined;
+				const timestamp = ts !== undefined ? new Date(ts < 1e11 ? Math.round(ts * 1000) : Math.round(ts)) : new Date();
+
+				const sourceOccurrenceId = `${channel.id}:${rawEvent}:${ts ?? timestamp.getTime()}`;
+
+				try {
+					await this.channelInputOccurrencesService.publishOccurrence({
+						deviceId: device.id,
+						channelId: channel.id,
+						propertyId: eventProp.id,
 					event: mappedEvent,
 					nativeEventType: rawEvent,
 					sourceTimestamp: timestamp.toISOString(),
 					sourceOccurrenceId,
-				});
-			}
-
-			if (rawEvent === 'btn_down' || rawEvent === 'btn_up') {
-				const detectedProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
-					'category',
-					PropertyCategory.DETECTED,
-					channel.id,
-				);
-
-				if (detectedProp) {
-					await this.handleChange(detectedProp, rawEvent === 'btn_down', true);
+					});
+				} catch (err) {
+					this.logger.error(
+						`Failed to publish occurrence for channel=${channel.id} on device=${device.id}: ${(err as Error).message}`,
+					);
 				}
 			}
 		}
