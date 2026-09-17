@@ -394,6 +394,12 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 				DELETE FROM "home_context_entity_search_fts" WHERE "entity_kind" = 'property' AND "entity_id" = OLD."id";
 			END`);
 
+		const hasSearchFts = await queryRunner.hasTable('home_context_entity_search_fts');
+		if (hasSearchFts) {
+			await queryRunner.query(`UPDATE "devices_module_devices" SET "category" = "category"`);
+			await queryRunner.query(`UPDATE "devices_module_channels_properties" SET "category" = "category"`);
+		}
+
 		await queryRunner.query('PRAGMA foreign_keys = ON');
 	}
 }
