@@ -192,5 +192,12 @@ describe('AddHardwareInputCategories1000000000026', () => {
 		await expect(migration.up(queryRunner)).rejects.toThrow('Simulated DDL failure');
 		const fkAfterFailure = await originalQuery('PRAGMA foreign_keys');
 		expect(Number(fkAfterFailure[0].foreign_keys)).toBe(1);
+
+		jest.spyOn(queryRunner, 'startTransaction').mockImplementationOnce(async () => {
+			throw new Error('Simulated startTransaction failure');
+		});
+		await expect(migration.up(queryRunner)).rejects.toThrow('Simulated startTransaction failure');
+		const fkAfterTxStartupFailure = await originalQuery('PRAGMA foreign_keys');
+		expect(Number(fkAfterTxStartupFailure[0].foreign_keys)).toBe(1);
 	});
 });
