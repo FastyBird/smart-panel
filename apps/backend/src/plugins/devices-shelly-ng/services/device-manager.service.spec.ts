@@ -1148,9 +1148,9 @@ describe('DeviceManagerService input components', () => {
 
 		mockDevicesService.findOne.mockResolvedValue(device);
 		arrange(svc, []);
-		jest.spyOn<any, any>(svc as any, "getSpecification").mockReturnValue({
-			models: ["SHELLYPLUSI4"],
-			system: [{ type: "wifi" }],
+		jest.spyOn<any, any>(svc as any, 'getSpecification').mockReturnValue({
+			models: ['SHELLYPLUSI4'],
+			system: [{ type: 'wifi' }],
 			components: [{ type: 'input' as any, ids: [0, 1, 2, 3] }],
 		});
 

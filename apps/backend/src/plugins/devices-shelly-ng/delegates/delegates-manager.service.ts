@@ -2402,10 +2402,10 @@ export class DelegatesManagerService {
 						deviceId: device.id,
 						channelId: channel.id,
 						propertyId: eventProp.id,
-					event: mappedEvent,
-					nativeEventType: rawEvent,
-					sourceTimestamp: timestamp.toISOString(),
-					sourceOccurrenceId,
+						event: mappedEvent,
+						nativeEventType: rawEvent,
+						sourceTimestamp: timestamp.toISOString(),
+						sourceOccurrenceId,
 					});
 				} catch (err) {
 					this.logger.error(

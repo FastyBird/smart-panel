@@ -2663,7 +2663,7 @@ describe('DelegatesManagerService', () => {
 			);
 		});
 
-		test("btn_down updates detected property even when EVENT property is missing", async () => {
+		test('btn_down updates detected property even when EVENT property is missing', async () => {
 			const mockOccurrencesService = {
 				publishOccurrence: jest.fn().mockResolvedValue(null),
 			};
@@ -2687,14 +2687,14 @@ describe('DelegatesManagerService', () => {
 				id: uuid(),
 				device: device.id,
 				category: ChannelCategory.BUTTON,
-				identifier: "input:0",
+				identifier: 'input:0',
 			} as ShellyNgChannelEntity;
 
 			const detectedProp = {
 				id: uuid(),
 				channel: inputChannel.id,
 				category: PropertyCategory.DETECTED,
-				identifier: "detected",
+				identifier: 'detected',
 			} as ShellyNgChannelPropertyEntity;
 
 			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
@@ -2702,31 +2702,31 @@ describe('DelegatesManagerService', () => {
 			(devicesService.create as jest.Mock).mockResolvedValue(device);
 
 			(channelsService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
-				if (field === "identifier" && val === "input:0") return inputChannel;
+				if (field === 'identifier' && val === 'input:0') return inputChannel;
 				return null;
 			});
 
 			(channelsPropertiesService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
-				if (field === "category" && val === String(PropertyCategory.DETECTED)) return detectedProp;
+				if (field === 'category' && val === String(PropertyCategory.DETECTED)) return detectedProp;
 				return null; // EVENT property is missing
 			});
 
 			const shelly: any = {
-				id: "shelly-i4-missing-event",
-				modelName: "Plus I4",
-				system: { config: { device: { name: "Plus I4", mac: "AABBCCDDEE97" } } },
-				wifi: { key: "wifi:0", rssi: -50, sta_ip: "192.168.1.97" },
+				id: 'shelly-i4-missing-event',
+				modelName: 'Plus I4',
+				system: { config: { device: { name: 'Plus I4', mac: 'AABBCCDDEE97' } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.97' },
 			};
 
 			const delegate = (await localSvc.insert(shelly as unknown as Device)) as any;
 
-			delegate.emit("event", {
+			delegate.emit('event', {
 				ts: 1630489392.0,
 				events: [
 					{
-						component: "input:0",
+						component: 'input:0',
 						id: 0,
-						event: "btn_down",
+						event: 'btn_down',
 						ts: 1630489392.0,
 					},
 				],
@@ -2743,7 +2743,7 @@ describe('DelegatesManagerService', () => {
 			expect(mockOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
 		});
 
-		test("btn_down and btn_up serialize execution preserving final false state", async () => {
+		test('btn_down and btn_up serialize execution preserving final false state', async () => {
 			const mockOccurrencesService = {
 				publishOccurrence: jest.fn().mockImplementation(async () => {
 					await new Promise((r) => setTimeout(r, 10));
@@ -2769,21 +2769,21 @@ describe('DelegatesManagerService', () => {
 				id: uuid(),
 				device: device.id,
 				category: ChannelCategory.BUTTON,
-				identifier: "input:0",
+				identifier: 'input:0',
 			} as ShellyNgChannelEntity;
 
 			const eventProp = {
 				id: uuid(),
 				channel: inputChannel.id,
 				category: PropertyCategory.EVENT,
-				identifier: "event",
+				identifier: 'event',
 			} as ShellyNgChannelPropertyEntity;
 
 			const detectedProp = {
 				id: uuid(),
 				channel: inputChannel.id,
 				category: PropertyCategory.DETECTED,
-				identifier: "detected",
+				identifier: 'detected',
 			} as ShellyNgChannelPropertyEntity;
 
 			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
@@ -2791,45 +2791,45 @@ describe('DelegatesManagerService', () => {
 			(devicesService.create as jest.Mock).mockResolvedValue(device);
 
 			(channelsService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
-				if (field === "identifier" && val === "input:0") return inputChannel;
+				if (field === 'identifier' && val === 'input:0') return inputChannel;
 				return null;
 			});
 
 			(channelsPropertiesService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
-				if (field === "category" && val === String(PropertyCategory.EVENT)) return eventProp;
-				if (field === "category" && val === String(PropertyCategory.DETECTED)) return detectedProp;
+				if (field === 'category' && val === String(PropertyCategory.EVENT)) return eventProp;
+				if (field === 'category' && val === String(PropertyCategory.DETECTED)) return detectedProp;
 				return null;
 			});
 
 			const shelly: any = {
-				id: "shelly-i4-serialize",
-				modelName: "Plus I4",
-				system: { config: { device: { name: "Plus I4", mac: "AABBCCDDEE96" } } },
-				wifi: { key: "wifi:0", rssi: -50, sta_ip: "192.168.1.96" },
+				id: 'shelly-i4-serialize',
+				modelName: 'Plus I4',
+				system: { config: { device: { name: 'Plus I4', mac: 'AABBCCDDEE96' } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.96' },
 			};
 
 			const delegate = (await localSvc.insert(shelly as unknown as Device)) as any;
 
 			// Emit btn_down followed immediately by btn_up
-			delegate.emit("event", {
+			delegate.emit('event', {
 				ts: 1630489393.0,
 				events: [
 					{
-						component: "input:0",
+						component: 'input:0',
 						id: 0,
-						event: "btn_down",
+						event: 'btn_down',
 						ts: 1630489393.0,
 					},
 				],
 			});
 
-			delegate.emit("event", {
+			delegate.emit('event', {
 				ts: 1630489393.1,
 				events: [
 					{
-						component: "input:0",
+						component: 'input:0',
 						id: 0,
-						event: "btn_up",
+						event: 'btn_up',
 						ts: 1630489393.1,
 					},
 				],
@@ -2838,8 +2838,8 @@ describe('DelegatesManagerService', () => {
 			await new Promise((r) => setTimeout(r, 50));
 
 			const updateCalls = (channelsPropertiesService.update as jest.Mock).mock.calls
-				.filter(([id]) => id === detectedProp.id)
-				.map(([, dto]) => dto.value);
+				.filter(([id]: [string]) => id === detectedProp.id)
+				.map(([, dto]: [string, { value: boolean }]): boolean => dto.value);
 
 			expect(updateCalls).toEqual([true, false]);
 		});
