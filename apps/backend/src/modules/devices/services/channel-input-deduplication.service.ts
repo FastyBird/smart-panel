@@ -15,7 +15,7 @@ export interface ChannelInputDeduplicationOptions {
 /**
  * Service for deduplicating transport redeliveries of hardware input occurrences.
  *
- * Deduplicates strictly by source identity (${deviceId}:${channelId}:${propertyId}:${event}:${nativeEventType}:${sourceOccurrenceId}),
+ * Deduplicates strictly by source identity ([deviceId, channelId, propertyId, event, nativeEventType, sourceOccurrenceId]),
  * never by event value or blanket time debounce. Rapid distinct multi-clicks are preserved.
  */
 @Injectable()
@@ -61,19 +61,15 @@ export class ChannelInputDeduplicationService {
 			propertyId = propertyIdOrOptions;
 		}
 
-		const parts = [deviceId, channelId];
-		if (propertyId) {
-			parts.push(propertyId);
-		}
-		if (ev) {
-			parts.push(ev);
-		}
-		if (nativeType) {
-			parts.push(nativeType);
-		}
-		parts.push(sourceOccurrenceId);
-
-		const key = parts.join(':');
+		// Fixed-position tuple serialization prevents delimiter collisions and false duplicates
+		const key = JSON.stringify([
+			deviceId,
+			channelId,
+			propertyId ?? null,
+			ev ?? null,
+			nativeType ?? null,
+			sourceOccurrenceId,
+		]);
 		const now = Date.now();
 
 		const expiry = this.cache.get(key);
