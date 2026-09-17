@@ -1,14 +1,17 @@
-/*
-Reason: The mocking and test setup requires dynamic assignment and
-handling of Jest mocks, which ESLint rules flag unnecessarily.
-*/
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/unbound-method */
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 
-import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
-import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import {
+	ChannelCategory,
+	DataTypeType,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/channel-input-occurrence.model';
 import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
@@ -28,19 +31,22 @@ describe('ThirdPartyInputsController', () => {
 	const mockDevice = {
 		id: uuid(),
 		type: DEVICES_THIRD_PARTY_TYPE,
-	} as unknown as ThirdPartyDeviceEntity;
+		category: DeviceCategory.GENERIC,
+	} as ThirdPartyDeviceEntity;
 
 	const mockChannel = {
 		id: uuid(),
-		device: mockDevice,
 		category: ChannelCategory.BUTTON,
+		device: { id: mockDevice.id },
 	} as unknown as ChannelEntity;
 
-	const mockEventProperty = {
+	const mockProperty = {
 		id: uuid(),
-		channel: mockChannel,
-		identifier: 'event',
 		category: PropertyCategory.EVENT,
+		identifier: 'event',
+		channel: { id: mockChannel.id },
+		permissions: [PermissionType.READ_ONLY, PermissionType.EVENT_ONLY],
+		dataType: DataTypeType.ENUM,
 		format: ['press', 'double_press', 'long_press'],
 	} as unknown as ChannelPropertyEntity;
 
@@ -61,29 +67,42 @@ describe('ThirdPartyInputsController', () => {
 
 		channelsPropertiesService = {
 			findOne: jest.fn().mockImplementation((id: string) => {
-				if (id === mockEventProperty.id) return Promise.resolve(mockEventProperty);
+				if (id === mockProperty.id) return Promise.resolve(mockProperty);
 				return Promise.resolve(null);
 			}),
 			findOneBy: jest.fn().mockImplementation((field: string, val: string) => {
-				if (field === 'identifier' && val === 'event') return Promise.resolve(mockEventProperty);
+				if (field === 'identifier' && val === 'event') return Promise.resolve(mockProperty);
 				return Promise.resolve(null);
 			}),
-			findAll: jest.fn().mockResolvedValue([mockEventProperty]),
+			findAll: jest.fn().mockResolvedValue([mockProperty]),
 		} as unknown as jest.Mocked<ChannelsPropertiesService>;
 
 		occurrencesService = {
-			publishOccurrence: jest.fn().mockImplementation((params) =>
-				Promise.resolve({
-					id: uuid(),
-					deviceId: params.deviceId,
-					channelId: params.channelId,
-					propertyId: params.propertyId,
-					channelCategory: ChannelCategory.BUTTON,
-					propertyCategory: PropertyCategory.EVENT,
-					event: params.event,
-					timestamp: new Date().toISOString(),
-				}),
-			),
+			publishOccurrence: jest
+				.fn()
+				.mockImplementation(
+					(dto: {
+						deviceId: string;
+						channelId: string;
+						propertyId: string;
+						event: string;
+						sourceOccurrenceId?: string;
+						sourceTimestamp?: string;
+					}): Promise<ChannelInputOccurrencePayload> => {
+						return Promise.resolve({
+							id: uuid(),
+							deviceId: dto.deviceId,
+							channelId: dto.channelId,
+							propertyId: dto.propertyId,
+							event: dto.event,
+							timestamp: new Date().toISOString(),
+							sourceOccurrenceId: dto.sourceOccurrenceId,
+							sourceTimestamp: dto.sourceTimestamp,
+							channelCategory: ChannelCategory.BUTTON,
+							propertyCategory: PropertyCategory.EVENT,
+						});
+					},
+				),
 		} as unknown as jest.Mocked<ChannelInputOccurrencesService>;
 
 		controller = new ThirdPartyInputsController(
@@ -100,16 +119,16 @@ describe('ThirdPartyInputsController', () => {
 			sourceOccurrenceId: 'ext-1',
 		});
 
-		expect(res1.event).toBe('press');
-		expect(res1.id).toBeDefined();
+		expect(res1.data.event).toBe('press');
+		expect(res1.data.id).toBeDefined();
 
 		const res2 = await controller.reportOccurrence(mockDevice.id, mockChannel.id, {
 			event: 'press',
 			sourceOccurrenceId: 'ext-2',
 		});
 
-		expect(res2.event).toBe('press');
-		expect(res2.id).toBeDefined();
+		expect(res2.data.event).toBe('press');
+		expect(res2.data.id).toBeDefined();
 		expect(occurrencesService.publishOccurrence).toHaveBeenCalledTimes(2);
 	});
 
@@ -132,7 +151,7 @@ describe('ThirdPartyInputsController', () => {
 	});
 
 	it('throws BadRequestException if device is not third-party', async () => {
-		const otherDevice = { id: uuid(), type: 'other_plugin' } as any;
+		const otherDevice = { id: uuid(), type: 'other_plugin' } as unknown as DeviceEntity;
 		devicesService.findOne.mockResolvedValueOnce(otherDevice);
 
 		await expect(

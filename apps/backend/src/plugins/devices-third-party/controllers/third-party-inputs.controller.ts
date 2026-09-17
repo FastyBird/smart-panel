@@ -10,30 +10,28 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import {
-	ApiBadRequestResponse,
-	ApiBearerAuth,
-	ApiBody,
-	ApiNotFoundResponse,
-	ApiOperation,
-	ApiParam,
-	ApiResponse,
-	ApiTags,
-	ApiUnprocessableEntityResponse,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelInputOccurrenceResponseModel } from '../../../modules/devices/models/channel-input-occurrence.model';
 import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
+	ApiBadRequestResponse,
+	ApiCreatedSuccessResponse,
+	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
+	ApiUnprocessableEntityResponse,
+} from '../../../modules/swagger/decorators/api-documentation.decorator';
+import {
 	DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME,
 	DEVICES_THIRD_PARTY_PLUGIN_NAME,
 	DEVICES_THIRD_PARTY_TYPE,
 } from '../devices-third-party.constants';
-import { ReportInputOccurrenceDto, ReportInputOccurrenceResponseDto } from '../dto/report-input-occurrence.dto';
+import { ReportInputOccurrenceDto } from '../dto/report-input-occurrence.dto';
 import { ThirdPartyDeviceEntity } from '../entities/devices-third-party.entity';
 
 @ApiTags(DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME)
@@ -72,23 +70,18 @@ export class ThirdPartyInputsController {
 		type: ReportInputOccurrenceDto,
 		description: 'Occurrence payload including event name and optional deduplication or timing metadata',
 	})
-	@ApiResponse({
-		status: HttpStatus.CREATED,
-		description: 'Occurrence ingested and broadcast successfully',
-		type: ReportInputOccurrenceResponseDto,
-	})
-	@ApiBadRequestResponse({ description: 'Invalid device type or input channel' })
-	@ApiNotFoundResponse({ description: 'Device, channel, or target property not found' })
-	@ApiUnprocessableEntityResponse({
-		description: 'Reported event is not declared as a supported capability for this channel',
-	})
+	@ApiCreatedSuccessResponse(ChannelInputOccurrenceResponseModel, 'Occurrence ingested and broadcast successfully')
+	@ApiBadRequestResponse('Invalid device type or input channel')
+	@ApiNotFoundResponse('Device, channel, or target property not found')
+	@ApiUnprocessableEntityResponse('Reported event is not declared as a supported capability for this channel')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Post(':id/channels/:channelId/occurrences')
 	@HttpCode(HttpStatus.CREATED)
 	async reportOccurrence(
 		@Param('id', ParseUUIDPipe) deviceId: string,
 		@Param('channelId', ParseUUIDPipe) channelId: string,
 		@Body() dto: ReportInputOccurrenceDto,
-	): Promise<ReportInputOccurrenceResponseDto> {
+	): Promise<ChannelInputOccurrenceResponseModel> {
 		// 1. Verify device ownership and type
 		const device = await this.devicesService.findOne<ThirdPartyDeviceEntity>(deviceId);
 		if (!device) {
@@ -99,11 +92,10 @@ export class ThirdPartyInputsController {
 			throw new BadRequestException(`Device id=${deviceId} is not a third-party device`);
 		}
 
-		// 2. Verify channel existence on device
+		// 2. Verify channel existence and linkage
 		const channel = await this.channelsService.findOne<ChannelEntity>(channelId);
-		const channelDeviceId = channel ? (typeof channel.device === 'string' ? channel.device : channel.device?.id) : null;
-
-		if (!channel || channelDeviceId !== device.id) {
+		const devChannelId = typeof channel?.device === 'string' ? channel.device : channel?.device?.id;
+		if (!channel || devChannelId !== device.id) {
 			throw new NotFoundException(`Channel id=${channelId} not found on device id=${deviceId}`);
 		}
 
@@ -122,25 +114,33 @@ export class ThirdPartyInputsController {
 				throw new NotFoundException(`Property id=${dto.property} not found on channel id=${channelId}`);
 			}
 		} else {
-			// Find primary input event property
-			property = await this.channelsPropertiesService.findOneBy(
-				'identifier',
-				'event',
-				channel.id,
-				DEVICES_THIRD_PARTY_TYPE,
-			);
+			// Find 'event' or first property on channel
+			property = await this.channelsPropertiesService.findOneBy('identifier', 'event');
+			if (
+				!property ||
+				(typeof property.channel === 'string' ? property.channel : property.channel?.id) !== channel.id
+			) {
+				const allProps = await this.channelsPropertiesService.findAll();
+				property =
+					allProps.find(
+						(p) =>
+							(typeof p.channel === 'string' ? p.channel : p.channel?.id) === channel.id && p.identifier === 'event',
+					) ??
+					allProps.find((p) => (typeof p.channel === 'string' ? p.channel : p.channel?.id) === channel.id) ??
+					null;
+			}
 		}
 
 		if (!property) {
-			throw new NotFoundException(`No suitable input property found on channel id=${channelId}`);
+			throw new NotFoundException(`No valid property found for channel id=${channelId} to associate event with`);
 		}
 
-		// 4. Validate event capability against property format if declared
-		if (Array.isArray(property.format) && property.format.length > 0) {
-			const supportedEvents = property.format.map((v) => String(v));
-			if (!supportedEvents.includes(dto.event)) {
+		// 4. Validate capability/format constraints if enum format is declared
+		if (property.format && Array.isArray(property.format) && property.format.length > 0) {
+			const supportedEvents = property.format.map((val) => String(val));
+			if (!supportedEvents.includes(String(dto.event))) {
 				throw new UnprocessableEntityException(
-					`Event '${dto.event}' is not supported by channel id=${channelId}. Supported events: ${supportedEvents.join(', ')}`,
+					`Reported event '${dto.event}' is not within declared supported events: ${supportedEvents.join(', ')}`,
 				);
 			}
 		}
@@ -151,28 +151,42 @@ export class ThirdPartyInputsController {
 			channelId: channel.id,
 			propertyId: property.id,
 			event: dto.event,
-			nativeEventType: dto.nativeEventType,
 			sourceOccurrenceId: dto.sourceOccurrenceId,
 			sourceTimestamp: dto.sourceTimestamp,
+			nativeEventType: dto.nativeEventType,
+			data: dto.data,
 		});
 
-		return {
-			id: occurrence.id,
-			deviceId: occurrence.deviceId,
-			channelId: occurrence.channelId,
-			propertyId: occurrence.propertyId,
-			event: occurrence.event,
-			nativeEventType: occurrence.nativeEventType,
-			sourceOccurrenceId: occurrence.sourceOccurrenceId,
-			timestamp: occurrence.timestamp,
-		};
+		const response = new ChannelInputOccurrenceResponseModel();
+		if (!occurrence) {
+			this.logger.debug(
+				`Duplicate occurrence dropped: device=${deviceId} channel=${channelId} sourceOccurrenceId=${dto.sourceOccurrenceId}`,
+			);
+			response.data = {
+				id: '',
+				deviceId: device.id,
+				channelId: channel.id,
+				propertyId: property.id,
+				event: dto.event,
+				timestamp: new Date().toISOString(),
+				sourceOccurrenceId: dto.sourceOccurrenceId,
+				sourceTimestamp: dto.sourceTimestamp,
+				nativeEventType: dto.nativeEventType,
+				data: dto.data,
+				channelCategory: channel.category,
+				propertyCategory: property.category,
+			};
+			return response;
+		}
+
+		response.data = occurrence;
+		return response;
 	}
 
 	@ApiOperation({
 		tags: [DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME],
-		summary: 'Report a physical hardware input event from an authenticated third-party device',
-		description:
-			'Ingests physical button presses, switch clicks, or sensor occurrences for third-party devices. Alias for occurrences endpoint.',
+		summary: 'Report a physical hardware input event for a third-party channel',
+		description: 'Alternative alias endpoint to report hardware input occurrences for third-party devices.',
 		operationId: 'report-devices-third-party-input-event',
 	})
 	@ApiParam({
@@ -191,23 +205,18 @@ export class ThirdPartyInputsController {
 		type: ReportInputOccurrenceDto,
 		description: 'Occurrence payload including event name and optional deduplication or timing metadata',
 	})
-	@ApiResponse({
-		status: HttpStatus.CREATED,
-		description: 'Occurrence ingested and broadcast successfully',
-		type: ReportInputOccurrenceResponseDto,
-	})
-	@ApiBadRequestResponse({ description: 'Invalid device type or input channel' })
-	@ApiNotFoundResponse({ description: 'Device, channel, or target property not found' })
-	@ApiUnprocessableEntityResponse({
-		description: 'Reported event is not declared as a supported capability for this channel',
-	})
+	@ApiCreatedSuccessResponse(ChannelInputOccurrenceResponseModel, 'Occurrence ingested and broadcast successfully')
+	@ApiBadRequestResponse('Invalid device type or input channel')
+	@ApiNotFoundResponse('Device, channel, or target property not found')
+	@ApiUnprocessableEntityResponse('Reported event is not declared as a supported capability for this channel')
+	@ApiInternalServerErrorResponse('Internal server error')
 	@Post(':id/channels/:channelId/events')
 	@HttpCode(HttpStatus.CREATED)
 	async reportEvent(
 		@Param('id', ParseUUIDPipe) deviceId: string,
 		@Param('channelId', ParseUUIDPipe) channelId: string,
 		@Body() dto: ReportInputOccurrenceDto,
-	): Promise<ReportInputOccurrenceResponseDto> {
+	): Promise<ChannelInputOccurrenceResponseModel> {
 		return this.reportOccurrence(deviceId, channelId, dto);
 	}
 }
