@@ -94,6 +94,16 @@ export class ChannelInputOccurrencesService {
 			);
 		}
 
+		// Validate channel category / input classification
+		const isInputChannel =
+			[ChannelCategory.BUTTON, ChannelCategory.BINARY_INPUT, ChannelCategory.ANALOG_INPUT].includes(channel.category) ||
+			property.permissions.includes(PermissionType.EVENT_ONLY);
+		if (!isInputChannel) {
+			throw new DevicesValidationException(
+				`Channel ${channel.id} is not an input channel and property ${property.id} does not have EVENT_ONLY permission.`,
+			);
+		}
+
 		// Validate event format if an enum format is defined
 		if (property.dataType === DataTypeType.ENUM && Array.isArray(property.format) && property.format.length > 0) {
 			const allowedValues = property.format.map((val) => String(val));
@@ -140,16 +150,20 @@ export class ChannelInputOccurrencesService {
 	 * @param listener - Callback receiving published occurrence envelopes
 	 * @returns Unsubscribe function
 	 */
-	subscribe(listener: (occurrence: ChannelInputOccurrencePayload) => void): () => void {
+	subscribe(listener: (occurrence: ChannelInputOccurrencePayload) => void | Promise<void>): () => void {
+		const reportError = (error: unknown): void => {
+			const err = error as Error;
+			this.logger.error(`Error in occurrence subscriber callback: ${err.message}`, {
+				message: err.message,
+				stack: err.stack,
+			});
+		};
+
 		const handler = (payload: ChannelInputOccurrencePayload) => {
 			try {
-				listener(payload);
+				void Promise.resolve(listener(payload)).catch(reportError);
 			} catch (error) {
-				const err = error as Error;
-				this.logger.error(`Error in occurrence subscriber callback: ${err.message}`, {
-					message: err.message,
-					stack: err.stack,
-				});
+				reportError(error);
 			}
 		};
 

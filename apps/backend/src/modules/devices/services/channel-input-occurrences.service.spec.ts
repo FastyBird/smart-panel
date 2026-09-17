@@ -205,6 +205,32 @@ describe('ChannelInputOccurrencesService', () => {
 			).rejects.toThrow(DevicesValidationException);
 		});
 
+		it('throws DevicesValidationException if channel is not an input channel and property has only READ_ONLY', async () => {
+			const nonInputChannel = Object.assign(new ChannelEntity(), {
+				id: 'ch-sensor',
+				category: ChannelCategory.GENERIC,
+				device: mockDevice,
+			});
+			const readOnlyProp = Object.assign(new ChannelPropertyEntity(), {
+				...mockProperty,
+				channel: nonInputChannel,
+				permissions: [PermissionType.READ_ONLY],
+			});
+
+			devicesService.findOne.mockResolvedValue(mockDevice);
+			channelsService.findOne.mockResolvedValue(nonInputChannel);
+			channelsPropertiesService.findOne.mockResolvedValue(readOnlyProp);
+
+			await expect(
+				service.ingestOccurrence({
+					deviceId: 'dev-1',
+					channelId: 'ch-sensor',
+					propertyId: 'prop-1',
+					event: 'press',
+				}),
+			).rejects.toThrow(DevicesValidationException);
+		});
+
 		it('throws DevicesValidationException if event is not in format enum', async () => {
 			devicesService.findOne.mockResolvedValue(mockDevice);
 			channelsService.findOne.mockResolvedValue(mockChannel);
@@ -294,6 +320,28 @@ describe('ChannelInputOccurrencesService', () => {
 			});
 
 			expect(subscriber).toHaveBeenCalledTimes(1);
+		});
+
+		it('isolates async subscriber rejection so other subscribers still receive occurrences', async () => {
+			devicesService.findOne.mockResolvedValue(mockDevice);
+			channelsService.findOne.mockResolvedValue(mockChannel);
+			channelsPropertiesService.findOne.mockResolvedValue(mockProperty);
+
+			const rejectingSubscriber = jest.fn().mockRejectedValue(new Error('Async subscriber failed'));
+			const goodSubscriber = jest.fn();
+
+			service.subscribe(rejectingSubscriber);
+			service.subscribe(goodSubscriber);
+
+			const occurrence = await service.ingestOccurrence({
+				deviceId: 'dev-1',
+				channelId: 'ch-1',
+				propertyId: 'prop-1',
+				event: 'press',
+			});
+
+			expect(goodSubscriber).toHaveBeenCalledWith(occurrence);
+			expect(rejectingSubscriber).toHaveBeenCalledWith(occurrence);
 		});
 
 		it('isolates subscriber errors so other subscribers still receive occurrences', async () => {

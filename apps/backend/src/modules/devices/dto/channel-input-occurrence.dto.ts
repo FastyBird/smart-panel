@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsNotEmpty, IsObject, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsISO8601, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -46,7 +46,7 @@ export class CreateChannelInputOccurrenceDto {
 	@ApiPropertyOptional({
 		description: 'Source timestamp of the event in ISO 8601 string format (if recorded at hardware)',
 	})
-	@IsString()
+	@IsISO8601()
 	@IsOptional()
 	@Expose()
 	sourceTimestamp?: string;
