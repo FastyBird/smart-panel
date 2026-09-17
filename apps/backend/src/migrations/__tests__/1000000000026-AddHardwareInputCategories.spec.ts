@@ -78,7 +78,9 @@ describe('AddHardwareInputCategories1000000000026', () => {
 			{ id: 'ch-2', category: 'analog_input' },
 		]);
 
-		const properties = await queryRunner.query(`SELECT "id", "category" FROM "devices_module_channels_properties" ORDER BY "id"`);
+		const properties = await queryRunner.query(
+			`SELECT "id", "category" FROM "devices_module_channels_properties" ORDER BY "id"`,
+		);
 		expect(properties).toEqual([
 			{ id: 'prop-1', category: 'value' },
 			{ id: 'prop-2', category: 'unit' },
@@ -99,7 +101,9 @@ describe('AddHardwareInputCategories1000000000026', () => {
 		await migration.down(queryRunner);
 
 		// Verify generic records still exist
-		const dev = await queryRunner.query(`SELECT "id", "category" FROM "devices_module_devices" WHERE "id" = 'dev-generic'`);
+		const dev = await queryRunner.query(
+			`SELECT "id", "category" FROM "devices_module_devices" WHERE "id" = 'dev-generic'`,
+		);
 		expect(dev[0].category).toBe('generic');
 
 		// After down, input_controller should be rejected again
@@ -108,5 +112,48 @@ describe('AddHardwareInputCategories1000000000026', () => {
 				`INSERT INTO "devices_module_devices" ("id", "name", "type", "category") VALUES ('dev-ic', 'Controller', 'devices-virtual', 'input_controller')`,
 			),
 		).rejects.toThrow();
+	});
+
+	it('reverts successfully on down even when rows with new categories exist by mapping to generic', async () => {
+		await migration.up(queryRunner);
+
+		// Insert rows using newly added categories
+		await queryRunner.query(
+			`INSERT INTO "devices_module_devices" ("id", "name", "type", "category") VALUES ('dev-ic', 'Input Controller', 'devices-virtual', 'input_controller')`,
+		);
+		await queryRunner.query(
+			`INSERT INTO "devices_module_channels" ("id", "name", "type", "category", "deviceId") VALUES ('ch-bin', 'Binary In', 'channels-virtual', 'binary_input', 'dev-ic')`,
+		);
+		await queryRunner.query(
+			`INSERT INTO "devices_module_channels" ("id", "name", "type", "category", "deviceId") VALUES ('ch-ana', 'Analog In', 'channels-virtual', 'analog_input', 'dev-ic')`,
+		);
+		await queryRunner.query(
+			`INSERT INTO "devices_module_channels_properties" ("id", "name", "type", "category", "dataType", "channelId") VALUES ('prop-val', 'Value', 'properties-virtual', 'value', 'float', 'ch-ana')`,
+		);
+		await queryRunner.query(
+			`INSERT INTO "devices_module_channels_properties" ("id", "name", "type", "category", "dataType", "channelId") VALUES ('prop-unt', 'Unit', 'properties-virtual', 'unit', 'string', 'ch-ana')`,
+		);
+
+		// Down should succeed and map them to generic
+		await migration.down(queryRunner);
+
+		const dev = await queryRunner.query(`SELECT "id", "category" FROM "devices_module_devices" WHERE "id" = 'dev-ic'`);
+		expect(dev[0].category).toBe('generic');
+
+		const channels = await queryRunner.query(
+			`SELECT "id", "category" FROM "devices_module_channels" WHERE "deviceId" = 'dev-ic' ORDER BY "id"`,
+		);
+		expect(channels).toEqual([
+			{ id: 'ch-ana', category: 'generic' },
+			{ id: 'ch-bin', category: 'generic' },
+		]);
+
+		const properties = await queryRunner.query(
+			`SELECT "id", "category" FROM "devices_module_channels_properties" WHERE "id" IN ('prop-val', 'prop-unt') ORDER BY "id"`,
+		);
+		expect(properties).toEqual([
+			{ id: 'prop-unt', category: 'generic' },
+			{ id: 'prop-val', category: 'generic' },
+		]);
 	});
 });

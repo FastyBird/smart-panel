@@ -1129,6 +1129,9 @@ input_controller:
       Represents a dedicated physical input device such as a multi-button wall controller,
       push-button panel, or sensor interface without built-in actuators.
   docGroup: home_automation
+  constraints:
+    oneOrMoreOf:
+      - [button, binary_input, analog_input]
   useCases:
     en:
       - title: Wall switch and scene controller
@@ -1174,6 +1177,12 @@ input_controller:
       multiple: true
       description:
         en: Analog voltage, resistance, or slider input reporting continuous float values.
+    battery:
+      category: battery
+      required: false
+      multiple: false
+      description:
+        en: Battery state of charge and power reporting for wireless remotes and battery-powered controllers.
 
 lighting:
   category: lighting
