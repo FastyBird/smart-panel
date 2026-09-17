@@ -21,6 +21,7 @@ export enum EventType {
 	CHANNEL_PROPERTY_DELETED = 'DevicesModule.ChannelProperty.Deleted',
 	CHANNEL_PROPERTY_SET = 'DevicesModule.ChannelProperty.Set',
 	CHANNEL_PROPERTY_VALUE_SET = 'DevicesModule.ChannelProperty.ValueSet',
+	CHANNEL_INPUT_OCCURRENCE = 'DevicesModule.ChannelInput.Occurrence',
 }
 
 export enum FormResult {

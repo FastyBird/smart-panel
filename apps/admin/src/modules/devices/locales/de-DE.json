@@ -1019,5 +1019,17 @@
 			"resultsSuccess": "Alle ausgewählten Geräte wurden erfolgreich hinzugefügt",
 			"resultsFailed": "Einige Geräte konnten nicht hinzugefügt werden"
 		}
+	},
+	"diagnostics": {
+		"capabilitiesTitle": "Eingabefunktionen",
+		"supportedInteractions": "Unterstützte Interaktionen",
+		"noDiscreteEvents": "Kontinuierlicher / analoger Eingang (keine diskreten Ereignisse)",
+		"liveEventsTitle": "Live-Ereignisse",
+		"clearEvents": "Löschen",
+		"noOccurrences": "Noch keine Ereignisse empfangen",
+		"columnEvent": "Ereignis",
+		"columnNativeType": "Nativer Typ",
+		"columnTimestamp": "Empfangszeit",
+		"columnData": "Nutzlast"
 	}
 }

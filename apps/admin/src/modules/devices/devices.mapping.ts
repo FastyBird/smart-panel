@@ -139,10 +139,13 @@ const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, De
 		DevicesModuleChannelCategory.button,
 		DevicesModuleChannelCategory.binary_input,
 		DevicesModuleChannelCategory.analog_input,
+		DevicesModuleChannelCategory.battery,
 		DevicesModuleChannelCategory.device_information,
 	],
 	[DevicesModuleDeviceCategory.lighting]: [
 		DevicesModuleChannelCategory.light,
+		DevicesModuleChannelCategory.button,
+		DevicesModuleChannelCategory.binary_input,
 		DevicesModuleChannelCategory.illuminance,
 		DevicesModuleChannelCategory.electrical_energy,
 		DevicesModuleChannelCategory.electrical_power,
@@ -252,6 +255,8 @@ const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, De
 	],
 	[DevicesModuleDeviceCategory.switcher]: [
 		DevicesModuleChannelCategory.switcher,
+		DevicesModuleChannelCategory.button,
+		DevicesModuleChannelCategory.binary_input,
 		DevicesModuleChannelCategory.electrical_energy,
 		DevicesModuleChannelCategory.electrical_power,
 		DevicesModuleChannelCategory.device_information,
