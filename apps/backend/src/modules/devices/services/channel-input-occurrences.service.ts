@@ -137,6 +137,7 @@ export class ChannelInputOccurrencesService {
 			nativeEventType: dto.nativeEventType,
 			data: dto.data,
 			integration: device.type,
+			endpoint: device.identifier ?? null,
 		};
 
 		this.eventEmitter.emit(EventType.CHANNEL_INPUT_OCCURRENCE, occurrence);

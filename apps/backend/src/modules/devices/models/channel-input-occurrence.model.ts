@@ -103,6 +103,14 @@ export class ChannelInputOccurrencePayload {
 	})
 	@Expose()
 	integration?: string;
+
+	@ApiPropertyOptional({
+		description: 'Native device endpoint identifier within the integration',
+		type: 'string',
+		nullable: true,
+	})
+	@Expose()
+	endpoint?: string | null;
 }
 
 /**
