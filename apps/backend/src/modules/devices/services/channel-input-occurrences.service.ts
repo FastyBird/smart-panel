@@ -115,9 +115,18 @@ export class ChannelInputOccurrencesService {
 		}
 
 		// Transport-level source identity deduplication
-		if (this.deduplicationService.isDuplicate(device.id, channel.id, dto.sourceOccurrenceId)) {
+		if (
+			this.deduplicationService.isDuplicate(
+				device.id,
+				channel.id,
+				dto.sourceOccurrenceId,
+				property.id,
+				dto.event,
+				dto.nativeEventType,
+			)
+		) {
 			this.logger.debug(
-				`[OCCURRENCE DROPPED] Duplicate redelivery detected for device=${device.id} channel=${channel.id} sourceOccurrenceId=${dto.sourceOccurrenceId}`,
+				`[OCCURRENCE DROPPED] Duplicate redelivery detected for device=${device.id} channel=${channel.id} property=${property.id} event=${dto.event} sourceOccurrenceId=${dto.sourceOccurrenceId}`,
 			);
 			return null;
 		}

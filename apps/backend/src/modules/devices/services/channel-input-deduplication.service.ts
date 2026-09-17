@@ -6,10 +6,16 @@ import { DEVICES_MODULE_NAME } from '../devices.constants';
 export const DEFAULT_DEDUPLICATION_TTL_MS = 5_000;
 export const MAX_DEDUPLICATION_CACHE_SIZE = 1_000;
 
+export interface ChannelInputDeduplicationOptions {
+	propertyId?: string;
+	event?: string;
+	nativeEventType?: string;
+}
+
 /**
  * Service for deduplicating transport redeliveries of hardware input occurrences.
  *
- * Deduplicates strictly by source identity (${deviceId}:${channelId}:${sourceOccurrenceId}),
+ * Deduplicates strictly by source identity (${deviceId}:${channelId}:${propertyId}:${event}:${nativeEventType}:${sourceOccurrenceId}),
  * never by event value or blanket time debounce. Rapid distinct multi-clicks are preserved.
  */
 @Injectable()
@@ -21,19 +27,53 @@ export class ChannelInputDeduplicationService {
 
 	/**
 	 * Checks if an occurrence with the given source identity has already been delivered within the deduplication window.
-	 * If sourceOccurrenceId is not provided, deduplication is bypassed and returns false immediately atmospheric.
+	 * If sourceOccurrenceId is not provided, deduplication is bypassed and returns false immediately.
 	 *
 	 * @param deviceId - Device unique identifier
 	 * @param channelId - Channel unique identifier
 	 * @param sourceOccurrenceId - Native sequence counter, packet ID, or event counter
+	 * @param propertyIdOrOptions - Property unique identifier or options object containing propertyId, event, nativeEventType
+	 * @param event - Normalized event name (optional)
+	 * @param nativeEventType - Provider native event type (optional)
 	 * @returns true if identified as a redelivery duplicate, false if fresh
 	 */
-	isDuplicate(deviceId: string, channelId: string, sourceOccurrenceId?: string): boolean {
+	isDuplicate(
+		deviceId: string,
+		channelId: string,
+		sourceOccurrenceId?: string,
+		propertyIdOrOptions?: string | ChannelInputDeduplicationOptions,
+		event?: string,
+		nativeEventType?: string,
+	): boolean {
 		if (!sourceOccurrenceId || sourceOccurrenceId.trim() === '') {
 			return false;
 		}
 
-		const key = `${deviceId}:${channelId}:${sourceOccurrenceId}`;
+		let propertyId: string | undefined;
+		let ev = event;
+		let nativeType = nativeEventType;
+
+		if (typeof propertyIdOrOptions === 'object' && propertyIdOrOptions !== null) {
+			propertyId = propertyIdOrOptions.propertyId;
+			ev = propertyIdOrOptions.event ?? ev;
+			nativeType = propertyIdOrOptions.nativeEventType ?? nativeType;
+		} else if (typeof propertyIdOrOptions === 'string') {
+			propertyId = propertyIdOrOptions;
+		}
+
+		const parts = [deviceId, channelId];
+		if (propertyId) {
+			parts.push(propertyId);
+		}
+		if (ev) {
+			parts.push(ev);
+		}
+		if (nativeType) {
+			parts.push(nativeType);
+		}
+		parts.push(sourceOccurrenceId);
+
+		const key = parts.join(':');
 		const now = Date.now();
 
 		const expiry = this.cache.get(key);
