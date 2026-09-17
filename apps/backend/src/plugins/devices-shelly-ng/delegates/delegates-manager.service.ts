@@ -1793,6 +1793,8 @@ export class DelegatesManagerService {
 			);
 		}
 
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
+
 		// Wire inputs (button, binary_input, analog_input)
 		for (const comp of delegate.inputs.values()) {
 			const channel = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
@@ -1862,7 +1864,7 @@ export class DelegatesManagerService {
 						}
 					});
 
-					this.changeHandlers.set(`${delegate.id}|${comp.key}|counts`, (val: CharacteristicValue): void => {
+					this.changeHandlers.set(`${delegate.id}|${comp.key}|counts.total`, (val: CharacteristicValue): void => {
 						const n = coerceNumberSafe(val);
 						if (n !== null) {
 							this.handleChange(valueProp, n, false).catch((err: Error): void => {

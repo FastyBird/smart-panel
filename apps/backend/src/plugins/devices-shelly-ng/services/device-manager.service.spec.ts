@@ -1139,6 +1139,6 @@ describe('DeviceManagerService input components', () => {
 		await svc.createOrUpdate(device.id);
 
 		// existing channel is NOT removed
-		expect(mockChannelsService.remove).not.toHaveBeenCalledWith('existing-ch-0');
+		expect(mockChannelsService.remove.mock.calls.some(([id]: [string]) => id === 'existing-ch-0')).toBe(false);
 	});
 });

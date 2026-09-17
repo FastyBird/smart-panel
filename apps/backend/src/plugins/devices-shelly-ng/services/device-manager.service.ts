@@ -1438,8 +1438,15 @@ export class DeviceManagerService {
 								if (!validCategories.includes(prop.category)) {
 									try {
 										await this.channelsPropertiesService.remove(prop.id);
-									} catch {
-										// Ignore if already deleted
+									} catch (error) {
+										if (
+											(error as { name?: string })?.name === 'EntityNotFoundError' ||
+											(error as { status?: number })?.status === 404
+										) {
+											// Ignore if already deleted
+										} else {
+											throw error;
+										}
 									}
 								}
 							}
@@ -1508,17 +1515,26 @@ export class DeviceManagerService {
 									},
 								);
 							} else if (channelCategory === ChannelCategory.ANALOG_INPUT) {
+								const hasExtendedCount = inputMode === 'count' && typeof inputStatus.counts?.xtotal === 'number';
+								const hasExtendedPercent = inputMode === 'analog' && typeof inputStatus.xpercent === 'number';
+
 								const analogValue =
 									inputMode === 'count'
-										? (inputStatus.counts?.total ?? 0)
-										: typeof inputStatus.percent === 'number'
-											? inputStatus.percent
-											: typeof inputStatus.xpercent === 'number'
-												? inputStatus.xpercent
-												: 0;
+										? hasExtendedCount
+											? inputStatus.counts.xtotal
+											: (inputStatus.counts?.total ?? 0)
+										: hasExtendedPercent
+											? inputStatus.xpercent
+											: (inputStatus.percent ?? 0);
 
 								const unitValue =
-									inputMode === 'count' ? inputConfig.xcounts?.unit || 'counts' : inputConfig.xpercent?.unit || '%';
+									inputMode === 'count'
+										? hasExtendedCount
+											? inputConfig.xcounts?.unit || 'counts'
+											: 'counts'
+										: hasExtendedPercent
+											? inputConfig.xpercent?.unit || '%'
+											: '%';
 
 								await this.ensureProperty(
 									channel,
