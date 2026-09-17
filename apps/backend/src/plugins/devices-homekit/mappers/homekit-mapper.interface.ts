@@ -1,6 +1,7 @@
 import { Characteristic, CharacteristicValue } from '@homebridge/hap-nodejs';
 
 import { ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/channel-input-occurrence.model';
 import { HomeKitCommandDispatcher } from '../services/homekit-command.dispatcher';
 
 export interface CharacteristicPendingWrite {
@@ -29,10 +30,18 @@ export interface PropertyEventListener {
 	onPropertyChanged: (property: ChannelPropertyEntity, rawValue: unknown) => void;
 }
 
+export interface InputOccurrenceListener {
+	deviceId: string;
+	channelId: string;
+	propertyId: string;
+	onOccurrence: (occurrence: ChannelInputOccurrencePayload) => void;
+}
+
 export interface HomeKitMapperContext {
 	readonly commandDispatcher: HomeKitCommandDispatcher;
 	registerBinding(binding: CharacteristicBinding): void;
 	registerPropertyListener(listener: PropertyEventListener): void;
+	registerOccurrenceListener(listener: InputOccurrenceListener): void;
 }
 
 export interface IHomeKitAccessoryMapper {
