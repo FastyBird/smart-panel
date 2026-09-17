@@ -8,7 +8,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../devices.co
 /**
  * Standard typed occurrence envelope delivered independently of property state.
  */
-@ApiSchema({ name: 'DevicesModuleChannelInputOccurrence' })
+@ApiSchema({ name: 'DevicesModuleDataChannelInputOccurrence' })
 export class ChannelInputOccurrencePayload {
 	@ApiProperty({
 		description: 'Unique occurrence identifier (UUIDv4)',
