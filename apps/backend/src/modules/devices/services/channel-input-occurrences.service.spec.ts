@@ -296,6 +296,7 @@ describe('ChannelInputOccurrencesService', () => {
 			expect(occurrence?.channelId).toBe('ch-1');
 			expect(occurrence?.propertyId).toBe('prop-1');
 			expect(occurrence?.sourceOccurrenceId).toBe('src-unique-1');
+			expect(occurrence?.endpoint).toBeNull();
 			expect(occurrence?.id).toBeDefined();
 			expect(occurrence?.timestamp).toBeDefined();
 
@@ -320,6 +321,27 @@ describe('ChannelInputOccurrencesService', () => {
 			});
 
 			expect(subscriber).toHaveBeenCalledTimes(1);
+		});
+
+		it('populates endpoint and integration from native device identifier and type', async () => {
+			class ShellyDeviceEntity extends DeviceEntity {}
+			const nativeDevice = Object.assign(new ShellyDeviceEntity(), {
+				...mockDevice,
+				identifier: 'shelly-123456',
+			});
+			devicesService.findOne.mockResolvedValue(nativeDevice);
+			channelsService.findOne.mockResolvedValue(mockChannel);
+			channelsPropertiesService.findOne.mockResolvedValue(mockProperty);
+
+			const occurrence = await service.ingestOccurrence({
+				deviceId: 'dev-1',
+				channelId: 'ch-1',
+				propertyId: 'prop-1',
+				event: 'press',
+			});
+
+			expect(occurrence?.integration).toBe('shellydeviceentity');
+			expect(occurrence?.endpoint).toBe('shelly-123456');
 		});
 
 		it('isolates async subscriber rejection so other subscribers still receive occurrences', async () => {
