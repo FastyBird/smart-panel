@@ -41,9 +41,7 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 			"enabled", "roomId", "password", "hostname", "haDeviceId", "canonicalMac",
 			"hasEthernet", "autoSimulate", "simulateInterval", "behaviorMode", "serviceAddress",
 			"variant", "type", "hidden", "hiddenBy", "mac"
-		) SELECT "id", "createdAt", "updatedAt",
-			CASE WHEN "category" = 'input_controller' THEN 'generic' ELSE "category" END AS "category",
-			"identifier", "name", "description",
+		) SELECT "id", "createdAt", "updatedAt", "category", "identifier", "name", "description",
 			"enabled", "roomId", "password", "hostname", "haDeviceId", "canonicalMac",
 			"hasEthernet", "autoSimulate", "simulateInterval", "behaviorMode", "serviceAddress",
 			"variant", "type", "hidden", "hiddenBy", "mac" FROM "devices_module_devices"`);
@@ -105,9 +103,7 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 		await queryRunner.query(`INSERT INTO "temporary_devices_module_channels" (
 			"id", "createdAt", "updatedAt", "category", "identifier", "name", "description",
 			"parentId", "type", "deviceId"
-		) SELECT "id", "createdAt", "updatedAt",
-			CASE WHEN "category" IN ('binary_input', 'analog_input') THEN 'generic' ELSE "category" END AS "category",
-			"identifier", "name", "description",
+		) SELECT "id", "createdAt", "updatedAt", "category", "identifier", "name", "description",
 			"parentId", "type", "deviceId" FROM "devices_module_channels"`);
 
 		await queryRunner.query(`DROP TABLE "devices_module_channels"`);
@@ -151,9 +147,7 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 			"dataType", "format", "invalid", "step", "haEntityId", "haAttribute", "haTransformer",
 			"type", "channelId", "valueOrigin", "sourcePropertyId", "energyClaimPropertyId",
 			"homeyCapabilityId", "homeyMappingName"
-		) SELECT "id", "createdAt", "updatedAt",
-			CASE WHEN "category" IN ('unit', 'value') THEN 'generic' ELSE "category" END AS "category",
-			"identifier", "name", "permissions",
+		) SELECT "id", "createdAt", "updatedAt", "category", "identifier", "name", "permissions",
 			"dataType", "format", "invalid", "step", "haEntityId", "haAttribute", "haTransformer",
 			"type", "channelId", "valueOrigin", "sourcePropertyId", "energyClaimPropertyId",
 			"homeyCapabilityId", "homeyMappingName" FROM "devices_module_channels_properties"`);
@@ -241,7 +235,9 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 			"enabled", "roomId", "password", "hostname", "haDeviceId", "canonicalMac",
 			"hasEthernet", "autoSimulate", "simulateInterval", "behaviorMode", "serviceAddress",
 			"variant", "type", "hidden", "hiddenBy", "mac"
-		) SELECT "id", "createdAt", "updatedAt", "category", "identifier", "name", "description",
+		) SELECT "id", "createdAt", "updatedAt",
+			CASE WHEN "category" = 'input_controller' THEN 'generic' ELSE "category" END AS "category",
+			"identifier", "name", "description",
 			"enabled", "roomId", "password", "hostname", "haDeviceId", "canonicalMac",
 			"hasEthernet", "autoSimulate", "simulateInterval", "behaviorMode", "serviceAddress",
 			"variant", "type", "hidden", "hiddenBy", "mac" FROM "devices_module_devices"`);
@@ -303,7 +299,9 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 		await queryRunner.query(`INSERT INTO "temporary_devices_module_channels" (
 			"id", "createdAt", "updatedAt", "category", "identifier", "name", "description",
 			"parentId", "type", "deviceId"
-		) SELECT "id", "createdAt", "updatedAt", "category", "identifier", "name", "description",
+		) SELECT "id", "createdAt", "updatedAt",
+			CASE WHEN "category" IN ('binary_input', 'analog_input') THEN 'generic' ELSE "category" END AS "category",
+			"identifier", "name", "description",
 			"parentId", "type", "deviceId" FROM "devices_module_channels"`);
 
 		await queryRunner.query(`DROP TABLE "devices_module_channels"`);
@@ -347,7 +345,9 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 			"dataType", "format", "invalid", "step", "haEntityId", "haAttribute", "haTransformer",
 			"type", "channelId", "valueOrigin", "sourcePropertyId", "energyClaimPropertyId",
 			"homeyCapabilityId", "homeyMappingName"
-		) SELECT "id", "createdAt", "updatedAt", "category", "identifier", "name", "permissions",
+		) SELECT "id", "createdAt", "updatedAt",
+			CASE WHEN "category" IN ('unit', 'value') THEN 'generic' ELSE "category" END AS "category",
+			"identifier", "name", "permissions",
 			"dataType", "format", "invalid", "step", "haEntityId", "haAttribute", "haTransformer",
 			"type", "channelId", "valueOrigin", "sourcePropertyId", "energyClaimPropertyId",
 			"homeyCapabilityId", "homeyMappingName" FROM "devices_module_channels_properties"`);
