@@ -85,20 +85,28 @@
 				:data="occurrences"
 				size="small"
 				stripe
-				max-height="240"
-				class="w-full text-xs"
-				data-test-id="occurrences-table"
+				class="w-full"
 			>
 				<el-table-column
+					prop="receivedAt"
+					:label="t('devicesModule.diagnostics.time')"
+					width="120"
+				>
+					<template #default="{ row }">
+						<span class="font-mono text-xs text-gray-500 dark:text-gray-400">
+							{{ formatTimestamp(row.receivedAt) }}
+						</span>
+					</template>
+				</el-table-column>
+
+				<el-table-column
 					prop="event"
-					:label="t('devicesModule.diagnostics.columnEvent')"
-					width="130"
+					:label="t('devicesModule.diagnostics.event')"
 				>
 					<template #default="{ row }">
 						<el-tag
-							:type="getEventTagType(row.event)"
 							size="small"
-							effect="dark"
+							:type="getEventTagType(row.event)"
 							class="font-mono"
 						>
 							{{ row.event }}
@@ -107,39 +115,30 @@
 				</el-table-column>
 
 				<el-table-column
+					prop="data"
+					:label="t('devicesModule.diagnostics.value')"
+				>
+					<template #default="{ row }">
+						<span class="font-mono text-xs text-gray-700 dark:text-gray-300">
+							{{ row.data !== null && row.data !== undefined ? JSON.stringify(row.data) : '-' }}
+						</span>
+					</template>
+				</el-table-column>
+
+				<el-table-column
 					prop="nativeEventType"
-					:label="t('devicesModule.diagnostics.columnNativeType')"
-					width="140"
-				>
-					<template #default="{ row }">
-						<span class="text-xs text-gray-500 font-mono">{{ row.nativeEventType || '-' }}</span>
-					</template>
-				</el-table-column>
-
-				<el-table-column
-					prop="timestamp"
-					:label="t('devicesModule.diagnostics.columnTimestamp')"
-					width="120"
-				>
-					<template #default="{ row }">
-						<span class="text-xs text-gray-400 font-mono">{{ formatTimestamp(row.timestamp) }}</span>
-					</template>
-				</el-table-column>
-
-				<el-table-column
-					prop="value"
-					:label="t('devicesModule.diagnostics.columnValue')"
+					:label="t('devicesModule.diagnostics.nativeType')"
 				>
 					<template #default="{ row }">
 						<span
-							v-if="row.value !== undefined && row.value !== null"
-							class="text-xs text-gray-600 dark:text-gray-300 font-mono"
+							v-if="row.nativeEventType"
+							class="font-mono text-xs text-gray-500 dark:text-gray-400"
 						>
-							{{ row.value }}
+							{{ row.nativeEventType }}
 						</span>
 						<span
 							v-else
-							class="text-xs text-gray-400"
+							class="text-xs text-gray-400 dark:text-gray-600"
 						>
 							-
 						</span>
@@ -174,7 +173,7 @@ interface IChannelCapabilities {
 	device_id: string;
 	input_category?: string;
 	supported_events?: string[];
-	event_metadata?: Record<string, any>;
+	event_metadata?: Record<string, unknown>;
 }
 
 const props = defineProps<IChannelInputDiagnosticsProps>();
@@ -217,11 +216,11 @@ const getEventTagType = (event: string): 'primary' | 'success' | 'warning' | 'in
 	}
 };
 
-const formatTimestamp = (ts: string): string => {
+const formatTimestamp = (ts: string | number): string => {
 	try {
 		const date = new Date(ts);
 		if (isNaN(date.getTime())) {
-			return ts;
+			return String(ts);
 		}
 		const hours = String(date.getHours()).padStart(2, '0');
 		const minutes = String(date.getMinutes()).padStart(2, '0');
@@ -229,7 +228,7 @@ const formatTimestamp = (ts: string): string => {
 		const ms = String(date.getMilliseconds()).padStart(3, '0');
 		return `${hours}:${minutes}:${seconds}.${ms}`;
 	} catch {
-		return ts;
+		return String(ts);
 	}
 };
 

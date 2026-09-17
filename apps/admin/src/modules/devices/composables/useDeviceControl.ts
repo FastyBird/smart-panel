@@ -1,4 +1,4 @@
-import { type ComputedRef, computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
@@ -13,15 +13,14 @@ import { channelsPropertiesStoreKey, channelsStoreKey, devicesStoreKey } from '.
 import type { IUseDeviceControl } from './types';
 
 interface IUseDeviceControlProps {
-	id: IDevice['id'] | null;
+	id: IDevice['id'];
 }
 
-const DEBOUNCE_DELAY = 100;
-const PENDING_VALUE_TIMEOUT = 5000;
+const DEBOUNCE_DELAY = 300;
+const PENDING_VALUE_TIMEOUT = 10000; // Clear pending values after 10 seconds as failsafe
 
 export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceControl => {
 	const storesManager = injectStoresManager();
-	const { sendCommand } = useSockets();
 
 	const devicesStore = storesManager.getStore(devicesStoreKey);
 	const channelsStore = storesManager.getStore(channelsStoreKey);
@@ -31,20 +30,22 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 	const { data: channelsData, semaphore: channelsSemaphore, firstLoad: channelsFirstLoad } = storeToRefs(channelsStore);
 	const { semaphore: propertiesSemaphore, firstLoad: propertiesFirstLoad } = storeToRefs(channelsPropertiesStore);
 
-	// Pending values waiting for backend confirmation (optimistic updates)
-	const pendingValues = ref<Record<string, string | number | boolean | null>>({});
+	const { sendCommand } = useSockets();
 
-	// Loading state per property (during debounce/API call)
-	const loadingProperties = ref<Record<string, boolean>>({});
-
-	// Debounce timers per property
+	// Debounce timers for each property
 	const debounceTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
-	// Debounce promise resolvers to return proper results to callers
+	// Resolve callbacks for debounced promises (to resolve when cancelled)
 	const debounceResolvers: Record<string, (value: boolean) => void> = {};
 
-	// Failsafe timeout timers to clear pending values if no WS update arrives
+	// Pending value cleanup timers
 	const pendingValueTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+
+	// Pending values (for optimistic updates)
+	const pendingValues: Ref<Record<string, string | number | boolean | null>> = ref({});
+
+	// Loading state for each property
+	const loadingProperties: Ref<Record<string, boolean>> = ref({});
 
 	const device = computed<IDevice | null>((): IDevice | null => {
 		if (id === null) {
@@ -98,14 +99,14 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 	};
 
 	const getPropertyValue = (propertyId: IChannelProperty['id']): string | number | boolean | null => {
-		// Return pending value if exists (optimistic update)
-		if (propertyId in pendingValues.value) {
-			return pendingValues.value[propertyId];
+		// Return pending value if exists
+		const pendingValue = pendingValues.value[propertyId];
+		if (pendingValue !== undefined) {
+			return pendingValue;
 		}
 
 		const property = channelsPropertiesStore.findById(propertyId);
 
-		// Otherwise return store value
 		return property?.value?.value ?? null;
 	};
 
@@ -113,33 +114,41 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 		return loadingProperties.value[propertyId] ?? false;
 	};
 
-	const clearPendingValue = (propertyId: string, expectedValue?: string | number | boolean | null): void => {
-		// If expectedValue is provided, only clear if the current pending value matches
-		if (expectedValue !== undefined && pendingValues.value[propertyId] !== expectedValue) {
-			return;
+	const clearPendingValue = (propertyId: IChannelProperty['id'], expectedValue?: string | number | boolean | null): void => {
+		// Only clear if expectedValue matches current pending value (or no expected value specified)
+		if (expectedValue !== undefined) {
+			const currentPending = pendingValues.value[propertyId];
+
+			// Don't clear if user has set a newer value while command was in-flight
+			if (currentPending !== expectedValue && String(currentPending) !== String(expectedValue)) {
+				return;
+			}
 		}
 
-		// Clear failsafe timer
+		delete pendingValues.value[propertyId];
+
 		if (pendingValueTimers[propertyId]) {
 			clearTimeout(pendingValueTimers[propertyId]);
 			delete pendingValueTimers[propertyId];
 		}
-
-		// Delete pending value
-		const newPendingValues = { ...pendingValues.value };
-		delete newPendingValues[propertyId];
-		pendingValues.value = newPendingValues;
 	};
 
-	const schedulePendingValueCleanup = (propertyId: string, value: string | number | boolean | null): void => {
-		// Clear existing failsafe timer
+	const schedulePendingValueCleanup = (propertyId: IChannelProperty['id'], expectedValue: string | number | boolean | null): void => {
+		// Clear any existing cleanup timer
 		if (pendingValueTimers[propertyId]) {
 			clearTimeout(pendingValueTimers[propertyId]);
 		}
 
-		// Set failsafe timer to clear pending value if no WS update arrives
+		// Set a failsafe timeout to clear pending value (only if it still matches)
 		pendingValueTimers[propertyId] = setTimeout(() => {
-			clearPendingValue(propertyId, value);
+			const currentPending = pendingValues.value[propertyId];
+
+			// Only clear if the pending value hasn't changed
+			if (currentPending === expectedValue || String(currentPending) === String(expectedValue)) {
+				delete pendingValues.value[propertyId];
+			}
+
+			delete pendingValueTimers[propertyId];
 		}, PENDING_VALUE_TIMEOUT);
 	};
 
@@ -227,21 +236,17 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 	};
 
 	const fetchDevice = async (): Promise<void> => {
-		const item = id && id in devicesData.value ? devicesData.value[id] : null;
+		const item = id in devicesData.value ? devicesData.value[id] : null;
 
 		if (item?.draft) {
 			return;
 		}
 
-		if (id) {
-			await devicesStore.get({ id });
-		}
+		await devicesStore.get({ id });
 	};
 
 	const fetchChannels = async (): Promise<void> => {
-		if (id) {
-			await channelsStore.fetch({ deviceId: id });
-		}
+		await channelsStore.fetch({ deviceId: id });
 	};
 
 	const fetchProperties = async (): Promise<void> => {
@@ -253,10 +258,6 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 	};
 
 	const isLoading = computed<boolean>((): boolean => {
-		if (!id) {
-			return false;
-		}
-
 		// Device is loading
 		if (devicesSemaphore.value.fetching.item.includes(id)) {
 			return true;
@@ -278,7 +279,7 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 	});
 
 	const areChannelsLoaded = computed<boolean>((): boolean => {
-		return id ? channelsFirstLoad.value.includes(id) : false;
+		return channelsFirstLoad.value.includes(id);
 	});
 
 	const arePropertiesLoaded = computed<boolean>((): boolean => {

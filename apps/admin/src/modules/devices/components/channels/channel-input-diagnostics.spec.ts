@@ -4,12 +4,13 @@ import { ElButton, ElTag } from 'element-plus';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DevicesModuleChannelCategory } from '../../../../openapi.constants';
+import type { IChannelInputOccurrence } from '../../store/channel-input-occurrences.store.types';
 import type { IChannel } from '../../store/channels.store.types';
 import ChannelInputDiagnostics from './channel-input-diagnostics.vue';
 
 const { mockGet, mockOccurrences } = vi.hoisted(() => ({
 	mockGet: vi.fn(),
-	mockOccurrences: { value: [] as any[] },
+	mockOccurrences: { value: [] as IChannelInputOccurrence[] },
 }));
 
 vi.mock('../../../../common', async () => {
@@ -37,7 +38,7 @@ vi.mock('vue-i18n', async () => {
 	return {
 		...actual,
 		useI18n: () => ({
-			t: (key: string, params?: any) => {
+			t: (key: string, params?: { count?: number }) => {
 				if (params?.count !== undefined) {
 					return `${key} (${params.count})`;
 				}
@@ -156,9 +157,13 @@ describe('ChannelInputDiagnostics', () => {
 				channelCategory: 'button',
 				propertyCategory: 'event',
 				event: 'press',
-				nativeEventType: null,
+				timestamp: '2026-09-17T00:00:00.000Z',
+				sourceTimestamp: null,
 				sourceOccurrenceId: null,
-				value: 'press',
+				nativeEventType: null,
+				data: { state: 'pressed' },
+				integration: 'test',
+				endpoint: null,
 				receivedAt: 1700000000000,
 			},
 		];
