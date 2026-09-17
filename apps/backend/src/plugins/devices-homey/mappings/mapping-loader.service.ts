@@ -59,6 +59,16 @@ const CONFLICT_SEVERITY: Record<HomeyMappingConflictPolicy, number> = {
 	error: 2,
 };
 
+const PHYSICAL_INPUT_BASE_IDS = new Set<string>([
+	'input_1',
+	'input_2',
+	'input_3',
+	'input_4',
+	'alarm_contact',
+	'alarm_motion',
+	'alarm_tamper',
+]);
+
 @Injectable()
 export class HomeyMappingLoaderService implements OnModuleInit {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(DEVICES_HOMEY_PLUGIN_NAME, 'MappingLoader');
@@ -233,11 +243,37 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 	}
 
 	resolveChannelMappings(device: HomeyDevice): HomeyMappingResolution<ResolvedHomeyChannelMapping> {
-		return this.resolveCandidateGroups(
+		const baseResolution = this.resolveCandidateGroups(
 			'channels',
 			this.channelMappings.filter((mapping) => this.matchesDevice(mapping.match, device)),
 			(mapping) => mapping.channel.identifier,
 		);
+
+		const expandedMappings = [...baseResolution.mappings];
+
+		for (const capability of device.capabilities) {
+			if (capability.id !== capability.baseId && PHYSICAL_INPUT_BASE_IDS.has(capability.baseId)) {
+				const suffix = capability.id.slice(capability.baseId.length + 1);
+				const matchingBaseChannel = this.channelMappings.find(
+					(mapping) =>
+						this.matchesDevice(mapping.match, device) &&
+						(mapping.match.allCapabilities.includes(capability.baseId) ||
+							mapping.match.anyCapabilities.includes(capability.baseId)),
+				);
+
+				if (matchingBaseChannel !== undefined) {
+					const candidateMapping = this.validateSuffixedChannelMapping(matchingBaseChannel, suffix);
+					if (!expandedMappings.some((m) => m.channel.identifier === candidateMapping.channel.identifier)) {
+						expandedMappings.push(candidateMapping);
+					}
+				}
+			}
+		}
+
+		return {
+			mappings: expandedMappings,
+			conflicts: baseResolution.conflicts,
+		};
 	}
 
 	resolvePropertyMappings(device: HomeyDevice): HomeyMappingResolution<ResolvedHomeyPropertyBinding> {
@@ -245,6 +281,9 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 		const conflicts: HomeyMappingConflict[] = [];
 
 		for (const capability of device.capabilities) {
+			const isSuffixedInput = capability.id !== capability.baseId && PHYSICAL_INPUT_BASE_IDS.has(capability.baseId);
+			const suffix = isSuffixedInput ? capability.id.slice(capability.baseId.length + 1) : null;
+
 			const candidates = this.propertyMappings.filter(
 				(mapping) =>
 					this.matchesPropertyDevice(mapping, device) && mapping.match.capabilityBaseIds.includes(capability.baseId),
@@ -255,11 +294,39 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 				(mapping) => `${capability.id}:${mapping.property.channel}:${mapping.property.category}`,
 			);
 
-			bindings.push(...resolution.mappings.map((mapping) => this.bindPropertyMapping(capability, mapping)));
+			for (const mapping of resolution.mappings) {
+				const adjustedMapping: ResolvedHomeyPropertyMapping =
+					isSuffixedInput && suffix !== null
+						? {
+								...mapping,
+								property: {
+									...mapping.property,
+									channel: `${mapping.property.channel}-${suffix}`,
+								},
+							}
+						: mapping;
+
+				bindings.push(this.bindPropertyMapping(capability, adjustedMapping));
+			}
 			conflicts.push(...resolution.conflicts);
 		}
 
 		return { mappings: this.selectPrimaryPropertyBindings(bindings), conflicts };
+	}
+
+	private validateSuffixedChannelMapping(
+		matchingBaseChannel: ResolvedHomeyChannelMapping,
+		suffix: string,
+	): ResolvedHomeyChannelMapping {
+		const suffixedMapping: ResolvedHomeyChannelMapping = {
+			...matchingBaseChannel,
+			channel: { ...matchingBaseChannel.channel },
+		};
+		Reflect.set(suffixedMapping, 'name', `${matchingBaseChannel.name}-${suffix}`);
+		Reflect.set(suffixedMapping.channel, 'identifier', `${matchingBaseChannel.channel.identifier}-${suffix}`);
+		Reflect.set(suffixedMapping.channel, 'name', `${matchingBaseChannel.channel.name} (${suffix})`);
+
+		return suffixedMapping;
 	}
 
 	private selectPrimaryPropertyBindings(
@@ -268,9 +335,13 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 		const selected = new Map<string, ResolvedHomeyPropertyBinding>();
 
 		for (const binding of bindings) {
-			const current = selected.get(binding.mapping.name);
+			const key = PHYSICAL_INPUT_BASE_IDS.has(binding.capabilityBaseId)
+				? `${binding.mapping.name}:${binding.capabilityId}`
+				: binding.mapping.name;
+
+			const current = selected.get(key);
 			if (current === undefined || this.compareCapabilityInstances(binding, current) < 0) {
-				selected.set(binding.mapping.name, binding);
+				selected.set(key, binding);
 			}
 		}
 

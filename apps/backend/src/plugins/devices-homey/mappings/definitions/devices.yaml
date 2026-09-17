@@ -61,9 +61,27 @@ mappings:
         - alarm_contact
         - alarm_smoke
         - alarm_co
+        - alarm_tamper
+        - input_1
+        - input_2
+        - input_3
+        - input_4
         - measure_battery
     device:
       category: sensor
+
+  - name: input-controller
+    description: Homey hardware input controller device
+    priority: 220
+    match:
+      classes: [sensor, socket, other]
+      any_capabilities:
+        - input_1
+        - input_2
+        - input_3
+        - input_4
+    device:
+      category: input_controller
 
   - name: generic-switch
     description: Homey generic device exposing standardized power control

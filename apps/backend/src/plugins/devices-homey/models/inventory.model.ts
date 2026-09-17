@@ -22,6 +22,7 @@ export enum HomeyDeviceSupportReason {
 	DEVICE_MAPPING_CONFLICT = 'device_mapping_conflict',
 	CHANNEL_MAPPING_CONFLICT = 'channel_mapping_conflict',
 	PROPERTY_MAPPING_CONFLICT = 'property_mapping_conflict',
+	UNSUPPORTED_PHYSICAL_EVENTS = 'unsupported_physical_events',
 }
 
 @ApiSchema({ name: 'DevicesHomeyPluginDataCapabilitySummary' })

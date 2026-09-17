@@ -1555,4 +1555,48 @@ describe('HomeyMappingPreviewService', () => {
 			new HomeyMappingPreviewUnavailableError(),
 		);
 	});
+	it('emits UNSUPPORTED_PHYSICAL_EVENTS warning for Flow-only button or remote devices', async () => {
+		const buttonDevice: HomeyDevice = {
+			id: 'dev-button-1',
+			name: 'Smart Remote',
+			class: 'button',
+			zoneId: 'zone-1',
+			zoneName: 'Living Room',
+			zonePath: ['Living Room'],
+			driverId: 'homey:app:test:remote',
+			manufacturer: 'Example',
+			model: 'Remote',
+			available: true,
+			availabilityMessage: null,
+			energy: null,
+			capabilities: [
+				createHomeyCapability({
+					id: 'button',
+					title: 'Button',
+					value: null,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: false,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		};
+		homeyService.getFreshDevice.mockResolvedValue(buttonDevice);
+
+		const preview = await service.generatePreview({ deviceId: buttonDevice.id });
+
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.UNSUPPORTED_PHYSICAL_EVENTS,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
 });

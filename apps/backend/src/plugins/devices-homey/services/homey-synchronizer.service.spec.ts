@@ -6,6 +6,7 @@ import {
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
+import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import {
 	ChannelPropertyUpdateOptions,
 	ChannelsPropertiesService,
@@ -186,6 +187,7 @@ describe('HomeySynchronizerService', () => {
 	let devicesService: jest.Mocked<Pick<DevicesService, 'findAll'>>;
 	let propertiesService: jest.Mocked<Pick<ChannelsPropertiesService, 'update'>>;
 	let connectivityService: jest.Mocked<Pick<DeviceConnectivityService, 'trySetConnectionState'>>;
+	let channelInputOccurrencesService: jest.Mocked<Pick<ChannelInputOccurrencesService, 'publishOccurrence'>>;
 	let mappingLoader: jest.Mocked<
 		Pick<
 			HomeyMappingLoaderService,
@@ -218,6 +220,7 @@ describe('HomeySynchronizerService', () => {
 			}),
 		};
 		connectivityService = { trySetConnectionState: jest.fn().mockResolvedValue(true) };
+		channelInputOccurrencesService = { publishOccurrence: jest.fn().mockResolvedValue(null) };
 		mappingLoader = {
 			getPropertyMappings: jest.fn().mockReturnValue([powerMapping, stateMapping, brightnessMapping]),
 			resolveDeviceMappings: jest.fn().mockReturnValue({ mappings: [{}], conflicts: [] }),
@@ -236,6 +239,7 @@ describe('HomeySynchronizerService', () => {
 			connectivityService as unknown as DeviceConnectivityService,
 			mappingLoader as unknown as HomeyMappingLoaderService,
 			new HomeyMappingTransformerService(),
+			channelInputOccurrencesService as unknown as ChannelInputOccurrencesService,
 		);
 	});
 
@@ -983,6 +987,119 @@ describe('HomeySynchronizerService', () => {
 				value: false,
 			},
 			backendValueTimestamp(),
+		);
+	});
+	it('dispatches hardware input occurrence for physical input live events and deduplicates repeated snapshots', async () => {
+		const inputMapping: ResolvedHomeyPropertyMapping = {
+			kind: 'properties',
+			source: 'builtin',
+			name: 'binary-input-1-state',
+			priority: 100,
+			exclusive: false,
+			conflict: 'error',
+			match: {
+				classes: ['sensor'],
+				capabilityBaseIds: ['input_1'],
+				allCapabilities: [],
+				noneCapabilities: [],
+				driverIds: [],
+				manufacturers: [],
+				models: [],
+			},
+			property: {
+				channel: 'input-1',
+				category: PropertyCategory.STATE,
+				dataType: DataTypeType.BOOL,
+				direction: 'read_only',
+			},
+		};
+
+		const inputProp = property('property-input-1', 'input_1', inputMapping.name);
+		inputProp.category = PropertyCategory.STATE;
+
+		const inputChannel = Object.assign(new HomeyChannelEntity(), {
+			id: 'panel-input-channel',
+			identifier: 'input-1',
+			name: 'Input 1',
+			category: ChannelCategory.BINARY_INPUT,
+			properties: [inputProp],
+		});
+
+		const adoptedInputDev = Object.assign(new HomeyDeviceEntity(), {
+			id: 'panel-input-device',
+			identifier: 'homey-sensor',
+			name: 'Sensor',
+			channels: [inputChannel],
+		});
+
+		devicesService.findAll.mockResolvedValue([adoptedInputDev]);
+		mappingLoader.getPropertyMappings.mockReturnValue([inputMapping]);
+		mappingLoader.resolveChannelMappings.mockReturnValue({
+			mappings: [{ channel: { identifier: 'input-1' } }] as never,
+			conflicts: [],
+		});
+		mappingLoader.resolvePropertyMappings.mockReturnValue({
+			mappings: [{ capabilityId: 'input_1', mapping: inputMapping }] as never,
+			conflicts: [],
+		});
+
+		await service.refreshIndex();
+
+		const sensorDevice: HomeyDevice = {
+			id: 'homey-sensor',
+			name: 'Sensor',
+			class: 'sensor',
+			zoneId: 'zone-1',
+			zoneName: 'Living',
+			zonePath: ['Living'],
+			driverId: 'homey:app:test:sensor',
+			manufacturer: 'Example',
+			model: 'Sensor',
+			available: true,
+			availabilityMessage: null,
+			energy: null,
+			capabilities: [
+				createHomeyCapability({
+					id: 'input_1',
+					title: 'Input 1',
+					value: true,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: false,
+					available: true,
+					lastUpdatedAt: '2026-08-21T10:00:00.000Z',
+				}),
+			],
+		};
+
+		// 1. Snapshot synchronization does NOT dispatch live occurrence
+		await service.synchronizeSnapshot([sensorDevice]);
+		expect(channelInputOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
+
+		// 2. Live event synchronization DOES dispatch live occurrence
+		const liveEvent: Extract<HomeyEvent, { type: HomeyEventType.CAPABILITY_VALUE_CHANGED }> = {
+			type: HomeyEventType.CAPABILITY_VALUE_CHANGED,
+			deviceId: 'homey-sensor',
+			capabilityId: 'input_1',
+			value: true,
+			lastUpdatedAt: '2026-08-21T10:05:00.000Z',
+			occurredAt: '2026-08-21T10:05:00.000Z',
+			sequence: 1,
+		};
+
+		await service.synchronizeEvents([liveEvent], new Map([['homey-sensor', sensorDevice]]));
+		expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledTimes(1);
+		expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledWith(
+			expect.objectContaining({
+				channelId: 'panel-input-channel',
+				propertyId: 'property-input-1',
+				event: 'press',
+			}),
 		);
 	});
 });
