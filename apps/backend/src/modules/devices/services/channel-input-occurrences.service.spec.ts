@@ -274,6 +274,32 @@ describe('ChannelInputOccurrencesService', () => {
 			expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
 		});
 
+		it('allows subsequent occurrence with reused sourceOccurrenceId when event differs', async () => {
+			devicesService.findOne.mockResolvedValue(mockDevice);
+			channelsService.findOne.mockResolvedValue(mockChannel);
+			channelsPropertiesService.findOne.mockResolvedValue(mockProperty);
+
+			const first = await service.ingestOccurrence({
+				deviceId: 'dev-1',
+				channelId: 'ch-1',
+				propertyId: 'prop-1',
+				event: 'press',
+				sourceOccurrenceId: 'shared-seq-1',
+			});
+
+			const second = await service.ingestOccurrence({
+				deviceId: 'dev-1',
+				channelId: 'ch-1',
+				propertyId: 'prop-1',
+				event: 'long_press',
+				sourceOccurrenceId: 'shared-seq-1',
+			});
+
+			expect(first).not.toBeNull();
+			expect(second).not.toBeNull();
+			expect(eventEmitter.emit).toHaveBeenCalledTimes(2);
+		});
+
 		it('successfully delivers occurrence, emits event, and delivers to subscribers', async () => {
 			devicesService.findOne.mockResolvedValue(mockDevice);
 			channelsService.findOne.mockResolvedValue(mockChannel);

@@ -35,6 +35,26 @@ describe('ChannelInputDeduplicationService', () => {
 		expect(service.isDuplicate('dev-1', 'ch-2', sourceId)).toBe(true);
 	});
 
+	it('differentiates by propertyId, event, and nativeEventType for the same sourceOccurrenceId', () => {
+		const sourceId = 'shared-seq-1';
+
+		expect(service.isDuplicate('dev-1', 'ch-1', sourceId, 'prop-1', 'press', 'btn_down')).toBe(false);
+		expect(service.isDuplicate('dev-1', 'ch-1', sourceId, 'prop-1', 'release', 'btn_up')).toBe(false);
+		expect(service.isDuplicate('dev-1', 'ch-1', sourceId, 'prop-2', 'press')).toBe(false);
+
+		// Retransmission of the exact same occurrence is detected as duplicate
+		expect(service.isDuplicate('dev-1', 'ch-1', sourceId, 'prop-1', 'press', 'btn_down')).toBe(true);
+
+		// Options object overload behaves identically
+		expect(
+			service.isDuplicate('dev-1', 'ch-1', sourceId, {
+				propertyId: 'prop-1',
+				event: 'release',
+				nativeEventType: 'btn_up',
+			}),
+		).toBe(true);
+	});
+
 	it('expires entries after TTL', () => {
 		jest.useFakeTimers();
 
