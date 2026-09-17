@@ -201,11 +201,17 @@ describe('Z2mDeviceMapperService', () => {
 		});
 
 		it('should deduplicate identifiable MQTT redeliveries sharing packetId', async () => {
-			await service.updateDeviceState('sonoff-button', { action: 'single' }, { isDup: true, packetId: 999 });
-
-			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledWith(
+			await service.updateDeviceState('sonoff-button', { action: 'single' }, { packetId: 999 });
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenLastCalledWith(
 				expect.objectContaining({
-					sourceOccurrenceId: `${buttonChannel.id}:single:mqtt_dup_999`,
+					sourceOccurrenceId: `${buttonChannel.id}:single:pkt_999`,
+				}),
+			);
+
+			await service.updateDeviceState('sonoff-button', { action: 'single' }, { isDup: true, packetId: 999 });
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					sourceOccurrenceId: `${buttonChannel.id}:single:pkt_999`,
 				}),
 			);
 		});
