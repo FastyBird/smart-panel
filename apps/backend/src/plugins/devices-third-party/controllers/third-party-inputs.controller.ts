@@ -10,7 +10,7 @@ import {
 	Post,
 	UnprocessableEntityException,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
@@ -35,7 +35,6 @@ import { ReportInputOccurrenceDto } from '../dto/report-input-occurrence.dto';
 import { ThirdPartyDeviceEntity } from '../entities/devices-third-party.entity';
 
 @ApiTags(DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME)
-@ApiBearerAuth()
 @Controller('devices')
 export class ThirdPartyInputsController {
 	private readonly logger = createExtensionLogger(DEVICES_THIRD_PARTY_PLUGIN_NAME, ThirdPartyInputsController.name);
@@ -58,13 +57,13 @@ export class ThirdPartyInputsController {
 		name: 'id',
 		type: 'string',
 		format: 'uuid',
-		description: 'Third-party device UUID',
+		description: 'Third-party device unique identifier',
 	})
 	@ApiParam({
 		name: 'channelId',
 		type: 'string',
 		format: 'uuid',
-		description: 'Hardware input channel UUID',
+		description: 'Input channel unique identifier',
 	})
 	@ApiBody({
 		type: ReportInputOccurrenceDto,
@@ -101,15 +100,9 @@ export class ThirdPartyInputsController {
 
 		// 3. Resolve target property
 		let property: ChannelPropertyEntity | null;
-
 		if (dto.property) {
-			property = await this.channelsPropertiesService.findOne(dto.property);
-			const propChannelId = property
-				? typeof property.channel === 'string'
-					? property.channel
-					: property.channel?.id
-				: null;
-
+			property = await this.channelsPropertiesService.findOne<ChannelPropertyEntity>(dto.property);
+			const propChannelId = typeof property?.channel === 'string' ? property.channel : property?.channel?.id;
 			if (!property || propChannelId !== channel.id) {
 				throw new NotFoundException(`Property id=${dto.property} not found on channel id=${channelId}`);
 			}
@@ -145,7 +138,7 @@ export class ThirdPartyInputsController {
 			}
 		}
 
-		// 5. Publish occurrence through occurrences service
+		// 5. Emit normalized occurrence
 		const occurrence = await this.channelInputOccurrencesService.publishOccurrence({
 			deviceId: device.id,
 			channelId: channel.id,
@@ -193,13 +186,13 @@ export class ThirdPartyInputsController {
 		name: 'id',
 		type: 'string',
 		format: 'uuid',
-		description: 'Third-party device UUID',
+		description: 'Third-party device unique identifier',
 	})
 	@ApiParam({
 		name: 'channelId',
 		type: 'string',
 		format: 'uuid',
-		description: 'Hardware input channel UUID',
+		description: 'Input channel unique identifier',
 	})
 	@ApiBody({
 		type: ReportInputOccurrenceDto,
