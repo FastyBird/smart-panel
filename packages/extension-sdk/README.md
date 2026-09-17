@@ -102,7 +102,7 @@ GET /api/plugins/example-extension/status
 
 ---
 
-## 🧾 SDK Types
+## 🪪 SDK Types
 
 ```ts
 import type {
@@ -211,8 +211,7 @@ const input: CreateNotificationInput = {
   title: 'Connection lost',
   message: 'The websocket connection was refused: 401 Unauthorized.',
   actions: [
-    {
-      type: 'service',
+    {\n      type: 'service',
       label: 'Restart',
       extension_kind: 'plugin',
       extension_type: 'my-plugin',
@@ -273,6 +272,37 @@ channel is the one documented exception, for trusted-network targets over plain 
 
 ---
 
+## Hardware Inputs and Occurrence Reporting
+
+Extensions managing hardware devices with physical controls (e.g. pushbuttons, industrial
+digital inputs, rotary encoders) can describe input capabilities and ingest physical event
+occurrences via the dedicated input API contract.
+
+### Ingestion Contract
+
+Physical button gestures and discrete trigger events (such as `'press'`, `'double_press'`,
+`'long_press'`, `'triple_press'`) are delivered using the dedicated occurrence contract
+(`ReportInputOccurrencePayload` / `InputOccurrenceResult`).
+
+```ts
+import type {
+  ReportInputOccurrencePayload,
+  InputOccurrenceResult,
+} from '@fastybird/smart-panel-extension-sdk';
+
+const payload: ReportInputOccurrencePayload = {
+  event: 'press',
+  sourceOccurrenceId: 'evt-987213',
+  sourceTimestamp: new Date().toISOString(),
+  nativeEventType: 'click',
+};
+
+// Send to authenticated Smart Panel input ingestion endpoint
+// POST /api/plugins/devices-third-party/devices/:id/channels/:channelId/occurrences
+```
+
+---
+
 ## ⚙️ Building & Publishing
 
 Extensions should be built to either **CJS** or **ESM** format — both are supported by the backend discovery system.
@@ -319,68 +349,4 @@ import {
   isSmartPanelExtensionManifest,
   normalizeRoutePrefix,
 } from '@fastybird/smart-panel-extension-sdk';
-
-// used in discoverExtensions()
 ```
-
-It scans installed NPM packages, validates the manifest, loads the entry file, and dynamically mounts the exported Nest module at runtime.
-
----
-
-## 🧪 Compatibility
-
-| Backend Runtime | Supported Extension Types | Loader Used      |
-|-----------------|---------------------------|------------------|
-| CommonJS        | CJS & ESM                 | `require()` + native `import()` shim |
-| ES Module       | ESM only (recommended)    | native `import()` |
-
-> The backend automatically handles both formats; you just need to build your extension.
-
----
-
-## 🪄 Architecture Overview
-
-```text
- ┌────────────────────────────────────────────┐
- │            Smart Panel Backend             │
- │                                            │
- │  ┌───────────────┐   ┌─────────────────┐   │
- │  │  Discovery    │──▶│  Extension SDK  │   │
- │  └───────────────┘   └─────────────────┘   │
- │          │                  ▲              │
- │          ▼                  │              │
- │   Scans node_modules        │              │
- │  for fastybird.smartPanel   │              │
- │          │                  │              │
- │          ▼                  │              │
- │    Loads moduleExport from  │              │
- │      dist/index.js          │              │
- │          │                  │              │
- │          ▼                  │              │
- │     Mounts as route under   │              │
- │   /api or /api/plugins/...  │              │
- └────────────────────────────────────────────┘
-```
-
-## 📜 License
-
-This project is licensed under the **Apache License 2.0**. See the [LICENSE](../../LICENSE.md) file for details.
-
-## 👨‍💻 Maintainers
-
-<table>
-	<tbody>
-		<tr>
-			<td align="center">
-				<a href="https://github.com/akadlec">
-					<img alt="akadlec" width="80" height="80" src="https://avatars3.githubusercontent.com/u/1866672?s=460&amp;v=4" />
-				</a>
-				<br>
-				<a href="https://github.com/akadlec">Adam Kadlec</a>
-			</td>
-		</tr>
-	</tbody>
-</table>
-
-***
-Homepage [https://smart-panel.fastybird.com](https://smart-panel.fastybird.com) and repository [https://github.com/fastybird/smart-panel](https://github.com/fastybird/smart-panel).

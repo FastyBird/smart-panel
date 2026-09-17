@@ -1,4 +1,5 @@
 export * from './action.types.js';
+export * from './input.types.js';
 export * from './notification.types.js';
 export * from './types.js';
 export * from './validate.js';
