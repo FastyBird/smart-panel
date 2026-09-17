@@ -114,7 +114,7 @@ describe('ButtonMapper', () => {
 
 			const switchService = accessory?.getService(Service.StatelessProgrammableSwitch);
 			expect(switchService).toBeDefined();
-			expect(switchService?.getCharacteristic(Characteristic.ServiceLabelIndex).value).toBeUndefined();
+			expect(switchService?.testCharacteristic(Characteristic.ServiceLabelIndex)).toBe(false);
 
 			expect(registeredOccurrenceListeners.length).toBe(1);
 			expect(registeredOccurrenceListeners[0].propertyId).toBe('prop-1');

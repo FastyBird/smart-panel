@@ -41,7 +41,7 @@ export interface HomeKitMapperContext {
 	readonly commandDispatcher: HomeKitCommandDispatcher;
 	registerBinding(binding: CharacteristicBinding): void;
 	registerPropertyListener(listener: PropertyEventListener): void;
-	registerOccurrenceListener(listener: InputOccurrenceListener): void;
+	registerOccurrenceListener?(listener: InputOccurrenceListener): void;
 }
 
 export interface IHomeKitAccessoryMapper {

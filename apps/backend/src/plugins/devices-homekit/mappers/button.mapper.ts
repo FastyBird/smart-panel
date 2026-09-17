@@ -157,7 +157,7 @@ export class ButtonMapper extends BaseHomeKitMapper {
 			const validValues = ButtonMapper.resolveValidValues(eventProp);
 			switchEventChar.setProps({ validValues });
 
-			context.registerOccurrenceListener({
+			context.registerOccurrenceListener?.({
 				deviceId: device.id,
 				channelId: channel.id,
 				propertyId: eventProp.id,
