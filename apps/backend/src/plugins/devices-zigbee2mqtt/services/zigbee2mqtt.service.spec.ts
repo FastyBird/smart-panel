@@ -451,6 +451,20 @@ describe('Zigbee2mqttService', () => {
 
 			expect(deviceMapper.updateDeviceState).toHaveBeenCalledWith('living_room_light', state);
 		});
+
+		it('should queue fresh action states when transformers not restored and replay them upon restoration', async () => {
+			const actionState = { action: 'single' };
+			const metadata = { isRetained: false, isCached: false, packetId: 10 };
+
+			await capturedCallbacks.onDeviceStateChanged?.('wireless_button', actionState, metadata);
+
+			expect(deviceMapper.updateDeviceState).not.toHaveBeenCalled();
+
+			await capturedCallbacks.onBridgeOnline?.();
+			await capturedCallbacks.onDevicesReceived?.([]);
+
+			expect(deviceMapper.updateDeviceState).toHaveBeenCalledWith('wireless_button', actionState, metadata);
+		});
 	});
 
 	describe('callback: onDeviceAvailabilityChanged', () => {

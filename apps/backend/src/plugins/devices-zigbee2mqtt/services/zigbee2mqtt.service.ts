@@ -49,6 +49,11 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 	private pendingDevices: Z2mDevice[] | null = null;
 	private isSyncing = false; // Prevents concurrent sync operations
 	private transformersRestored = false; // Tracks if transformers have been restored after restart
+	private pendingActionStates: Array<{
+		friendlyName: string;
+		state: Record<string, unknown>;
+		metadata?: Z2mDeviceStateMetadata;
+	}> = [];
 
 	// The active adapter is selected based on connection_type config
 	private activeAdapter: Z2mBaseClientAdapter;
@@ -527,6 +532,25 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 		await this.deviceMapper.restoreTransformersForExistingDevices(registeredDevices);
 		this.transformersRestored = true;
 
+		// Replay any fresh input actions queued before transformers were restored
+		if (this.pendingActionStates.length > 0) {
+			const pending = [...this.pendingActionStates];
+			this.pendingActionStates = [];
+			for (const item of pending) {
+				try {
+					if (item.metadata !== undefined) {
+						await this.deviceMapper.updateDeviceState(item.friendlyName, item.state, item.metadata);
+					} else {
+						await this.deviceMapper.updateDeviceState(item.friendlyName, item.state);
+					}
+				} catch (error) {
+					this.logger.error(`Failed to replay pending action state for ${item.friendlyName}`, {
+						message: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+		}
+
 		// Drain pending joined IEEE addresses. The bridge fires a real
 		// `device_joined` / `device_announce` event for new devices, then
 		// republishes `bridge/devices` once the interview completes. Here we
@@ -606,6 +630,12 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 		metadata?: Z2mDeviceStateMetadata,
 	): Promise<void> {
 		if (!this.transformersRestored) {
+			const hasAction = Object.keys(state).some(
+				(key) => key === 'action' || key === 'click' || key.startsWith('action_'),
+			);
+			if (hasAction && !metadata?.isRetained && !metadata?.isCached) {
+				this.pendingActionStates.push({ friendlyName, state, metadata });
+			}
 			this.logger.debug(`Skipping state update for ${friendlyName} - transformers not yet restored`);
 			return;
 		}

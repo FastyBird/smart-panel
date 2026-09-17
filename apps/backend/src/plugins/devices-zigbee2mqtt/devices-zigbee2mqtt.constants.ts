@@ -502,14 +502,14 @@ export const mapZ2mCategoryToDeviceCategory = (exposeTypes: string[], propertyNa
 	const hasOtherProperties = propertyNames.some((prop) => !sensorOnlyProperties.includes(prop) && prop !== 'action');
 	if (hasSensorOnlyProperties && !hasOtherProperties) {
 		// Remote controls / buttons with only battery
-		if (propertyNames.includes('action') || propertyNames.includes('click') || propertyNames.includes('operation')) {
+		if (propertyNames.includes('action') || propertyNames.includes('click')) {
 			return DeviceCategory.INPUT_CONTROLLER;
 		}
 		return DeviceCategory.SENSOR;
 	}
 
 	// Devices with action property (remotes, buttons)
-	if (propertyNames.includes('action') || propertyNames.includes('click') || propertyNames.includes('operation')) {
+	if (propertyNames.includes('action') || propertyNames.includes('click')) {
 		return DeviceCategory.INPUT_CONTROLLER;
 	}
 

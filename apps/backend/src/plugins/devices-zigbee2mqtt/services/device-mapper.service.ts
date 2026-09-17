@@ -378,9 +378,7 @@ export class Z2mDeviceMapperService {
 
 			this.occurrenceSequence++;
 			const occurrenceSeq =
-				metadata?.isDup && metadata?.packetId != null
-					? `mqtt_dup_${metadata.packetId}`
-					: `${Date.now()}_${this.occurrenceSequence}`;
+				metadata?.packetId != null ? `pkt_${metadata.packetId}` : `${Date.now()}_${this.occurrenceSequence}`;
 			const sourceOccurrenceId = `${targetChannel.id}:${trimmedAction}:${occurrenceSeq}`;
 
 			if (this.channelInputOccurrencesService) {
@@ -438,6 +436,9 @@ export class Z2mDeviceMapperService {
 				actionStr = rawAction.startsWith('off_') ? rawAction.replace('off_', '') : 'press';
 			} else if (rawAction.startsWith('up_') || rawAction.startsWith('brightness_move_up') || rawAction === 'up') {
 				targetChannel = buttonChannels.find((c) => c.identifier === 'button_up' || c.identifier === 'up');
+				if (!targetChannel && buttonChannels.some((c) => c.identifier === 'rotary' || c.identifier === 'dial')) {
+					targetChannel = buttonChannels.find((c) => c.identifier === 'rotary' || c.identifier === 'dial');
+				}
 				actionStr = rawAction.startsWith('up_') ? rawAction.replace('up_', '') : rawAction;
 			} else if (
 				rawAction.startsWith('down_') ||
@@ -445,7 +446,15 @@ export class Z2mDeviceMapperService {
 				rawAction === 'down'
 			) {
 				targetChannel = buttonChannels.find((c) => c.identifier === 'button_down' || c.identifier === 'down');
+				if (!targetChannel && buttonChannels.some((c) => c.identifier === 'rotary' || c.identifier === 'dial')) {
+					targetChannel = buttonChannels.find((c) => c.identifier === 'rotary' || c.identifier === 'dial');
+				}
 				actionStr = rawAction.startsWith('down_') ? rawAction.replace('down_', '') : rawAction;
+			} else if (rawAction.startsWith('brightness_') || rawAction === 'brightness_stop') {
+				const rotaryChannel = buttonChannels.find((c) => c.identifier === 'rotary' || c.identifier === 'dial');
+				if (rotaryChannel) {
+					targetChannel = rotaryChannel;
+				}
 			} else if (
 				rawAction.startsWith('arrow_left_') ||
 				rawAction.startsWith('left_') ||
