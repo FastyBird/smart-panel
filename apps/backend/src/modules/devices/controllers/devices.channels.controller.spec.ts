@@ -17,6 +17,7 @@ import { CreateChannelDto } from '../dto/create-channel.dto';
 import { CreateDeviceChannelDto } from '../dto/create-device-channel.dto';
 import { UpdateChannelDto } from '../dto/update-channel.dto';
 import { ChannelEntity, DeviceEntity } from '../entities/devices.entity';
+import { ChannelInputOccurrencesService } from '../services/channel-input-occurrences.service';
 import { ChannelsTypeMapperService } from '../services/channels-type-mapper.service';
 import { ChannelsService } from '../services/channels.service';
 import { DevicesService } from '../services/devices.service';
@@ -30,6 +31,7 @@ describe('DevicesChannelsController', () => {
 	let devicesService: DevicesService;
 	let channelsService: ChannelsService;
 	let mapper: ChannelsTypeMapperService;
+	let inputOccurrencesService: ChannelInputOccurrencesService;
 
 	const mockDevice = {
 		id: uuid().toString(),
@@ -99,6 +101,19 @@ describe('DevicesChannelsController', () => {
 						remove: jest.fn().mockResolvedValue(undefined),
 					},
 				},
+				{
+					provide: ChannelInputOccurrencesService,
+					useValue: {
+						getInputCapabilities: jest.fn().mockResolvedValue({
+							channel_id: mockChannel.id,
+							device_id: mockDevice.id,
+							category: mockChannel.category,
+							is_input: true,
+							supported_events: ['press'],
+							properties: [],
+						}),
+					},
+				},
 			],
 		}).compile();
 
@@ -108,6 +123,7 @@ describe('DevicesChannelsController', () => {
 		devicesService = module.get<DevicesService>(DevicesService);
 		channelsService = module.get<ChannelsService>(ChannelsService);
 		mapper = module.get<ChannelsTypeMapperService>(ChannelsTypeMapperService);
+		inputOccurrencesService = module.get<ChannelInputOccurrencesService>(ChannelInputOccurrencesService);
 	});
 
 	afterEach(() => {
@@ -134,6 +150,14 @@ describe('DevicesChannelsController', () => {
 
 			expect(result.data).toEqual(toInstance(ChannelEntity, mockChannel));
 			expect(channelsService.findOne).toHaveBeenCalledWith(mockChannel.id, mockDevice.id);
+		});
+
+		it('should return input capabilities for a device channel', async () => {
+			const result = await controller.getInputCapabilities(mockDevice.id, mockChannel.id);
+
+			expect(result.data.channel_id).toBe(mockChannel.id);
+			expect(result.data.is_input).toBe(true);
+			expect(inputOccurrencesService.getInputCapabilities).toHaveBeenCalledWith(mockChannel.id);
 		});
 
 		it('should create a new device channel', async () => {

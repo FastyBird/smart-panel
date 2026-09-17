@@ -9,6 +9,7 @@ import { useContainer } from 'class-validator';
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { v4 as uuid } from 'uuid';
 
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { toInstance } from '../../../common/utils/transform.utils';
@@ -82,7 +83,7 @@ describe('ChannelsPropertiesController', () => {
 		name: 'Test Property',
 		category: PropertyCategory.GENERIC,
 		identifier: null,
-		permissions: [PermissionType.READ_ONLY],
+		permissions: [PermissionType.READ_WRITE],
 		dataType: DataTypeType.STRING,
 		format: null,
 		invalid: null,
@@ -242,6 +243,32 @@ describe('ChannelsPropertiesController', () => {
 
 			expect(result.data).toEqual(toInstance(ChannelPropertyEntity, mockChannelProperty));
 			expect(channelsPropertiesService.update).toHaveBeenCalledWith(mockChannelProperty.id, updateDto, undefined);
+		});
+
+		it('should reject value update with BadRequestException when property is not writable', async () => {
+			const readOnlyProperty = {
+				...mockChannelProperty,
+				permissions: [PermissionType.READ_ONLY],
+			};
+
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: 'mock',
+				class: ChannelPropertyEntity,
+				createDto: CreateChannelPropertyDto,
+				updateDto: UpdateChannelPropertyDto,
+			});
+			jest
+				.spyOn(channelsPropertiesService, 'findOne')
+				.mockResolvedValue(toInstance(ChannelPropertyEntity, readOnlyProperty));
+
+			const updateDto: UpdateChannelPropertyDto = {
+				type: 'mock',
+				value: 'new-value',
+			};
+
+			await expect(controller.update(mockChannel.id, mockChannelProperty.id, { data: updateDto })).rejects.toThrow(
+				BadRequestException,
+			);
 		});
 
 		it('should persist a command value for a command-only platform', async () => {
