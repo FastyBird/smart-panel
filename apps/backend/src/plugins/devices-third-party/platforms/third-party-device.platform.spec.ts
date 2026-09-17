@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid';
 
 import { Logger } from '@nestjs/common';
 
+import { ChannelCategory, PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
 import { ThirdPartyPropertiesUpdateStatus } from '../devices-third-party.constants';
 import { ReqUpdatePropertiesDto } from '../dto/third-party-property-update-request.dto';
@@ -28,8 +29,11 @@ describe('ThirdPartyDevicePlatform', () => {
 		platform = new ThirdPartyDevicePlatform();
 
 		mockDevice = { id: uuid().toString(), serviceAddress: 'http://device.local' } as ThirdPartyDeviceEntity;
-		mockChannel = { id: uuid().toString() } as ChannelEntity;
-		mockChannelProperty = { id: uuid().toString() } as ChannelPropertyEntity;
+		mockChannel = { id: uuid().toString(), category: ChannelCategory.LIGHT } as ChannelEntity;
+		mockChannelProperty = {
+			id: uuid().toString(),
+			permissions: [PermissionType.READ_WRITE],
+		} as ChannelPropertyEntity;
 
 		// Spy on logger methods
 		loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
@@ -159,7 +163,7 @@ describe('ThirdPartyDevicePlatform', () => {
 
 		expect(result).toBe(false);
 		expect(loggerErrorSpy).toHaveBeenCalledWith(
-			expect.stringContaining('[ThirdPartyDevicePlatform] Error processing property update'),
+			expect.stringContaining('[ThirdPartyDevicePlatform] Exception while processing property updates'),
 			undefined,
 			expect.objectContaining({ tag: 'devices-third-party-plugin' }),
 		);
@@ -199,5 +203,29 @@ describe('ThirdPartyDevicePlatform', () => {
 
 		expect(result).toBe(false);
 		expect(validateSpy).toHaveBeenCalledWith(PropertiesUpdateResultModel, expect.any(Object), 'response');
+	});
+
+	it('should refuse to send command to actuator webhook if property is event-only or input channel', async () => {
+		const buttonChannel = { id: uuid().toString(), category: ChannelCategory.BUTTON } as ChannelEntity;
+		const eventProp = {
+			id: uuid().toString(),
+			permissions: [PermissionType.EVENT_ONLY],
+		} as ChannelPropertyEntity;
+
+		const result = await platform.processBatch([
+			{
+				device: mockDevice,
+				channel: buttonChannel,
+				property: eventProp,
+				value: 'press',
+			},
+		]);
+
+		expect(result).toBe(true);
+		expect(mockSendCommand).not.toHaveBeenCalled();
+		expect(loggerWarnSpy).toHaveBeenCalledWith(
+			expect.stringContaining('Refusing to dispatch actuator command for non-actuator/event-only property'),
+			expect.objectContaining({ resource: mockDevice.id }),
+		);
 	});
 });

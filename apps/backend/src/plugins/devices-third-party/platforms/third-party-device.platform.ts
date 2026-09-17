@@ -4,6 +4,7 @@ import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ChannelCategory, PermissionType } from '../../../modules/devices/devices.constants';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { HttpDevicePlatform } from '../../../modules/devices/platforms/http-device.platform';
 import {
@@ -39,11 +40,35 @@ export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDev
 
 	async processBatch(updates: Array<IThirdPartyDevicePropertyData>): Promise<boolean> {
 		try {
-			const device = updates[0].device;
+			// Filter out non-actuator / non-writable / event-only properties so they are never sent as actuator commands
+			const validUpdates = updates.filter((update) => {
+				const permissions = update.property.permissions ?? [];
+				const isWritable =
+					permissions.includes(PermissionType.READ_WRITE) || permissions.includes(PermissionType.WRITE_ONLY);
+				const isEventOnly = permissions.includes(PermissionType.EVENT_ONLY);
+				const isInputChannel = [ChannelCategory.BUTTON, ChannelCategory.BINARY_INPUT].includes(update.channel.category);
+
+				if (isEventOnly || !isWritable || isInputChannel) {
+					this.logger.warn(
+						`Refusing to dispatch actuator command for non-actuator/event-only property id=${update.property.id} on channel=${update.channel.id}`,
+						{ resource: update.device.id },
+					);
+
+					return false;
+				}
+
+				return true;
+			});
+
+			if (validUpdates.length === 0) {
+				return true;
+			}
+
+			const device = validUpdates[0].device;
 			const endpoint = device.serviceAddress;
 
 			const payload = {
-				properties: updates.map((update) => ({
+				properties: validUpdates.map((update) => ({
 					device: update.device.id,
 					channel: update.channel.id,
 					property: update.property.id,
@@ -62,7 +87,7 @@ export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDev
 
 				return false;
 			} else if (response.status === 204) {
-				this.logger.log('Successfully updated properties');
+				this.logger.log('Successfully updated properties', { resource: device.id });
 
 				return true;
 			} else if (response.status === 207) {
@@ -75,7 +100,7 @@ export class ThirdPartyDevicePlatform extends HttpDevicePlatform implements IDev
 				const responseModel = toInstance(PropertiesUpdateResultModel, responseBody);
 
 				const failedProperties = responseModel.properties.filter(
-					(p: PropertyUpdateResultModel) => p.status != ThirdPartyPropertiesUpdateStatus.SUCCESS,
+					(p: PropertyUpdateResultModel) => p.status !== ThirdPartyPropertiesUpdateStatus.SUCCESS,
 				);
 
 				if (failedProperties.length > 0) {

@@ -4,6 +4,7 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import {
@@ -55,6 +56,7 @@ export class ReTerminalButtonService {
 	constructor(
 		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly channelInputOccurrencesService: ChannelInputOccurrencesService,
 	) {}
 
 	/**
@@ -97,8 +99,14 @@ export class ReTerminalButtonService {
 
 		// Clear all timers
 		for (const state of this.buttonStates.values()) {
-			if (state.longPressTimer) clearTimeout(state.longPressTimer);
-			if (state.doublePressTimer) clearTimeout(state.doublePressTimer);
+			if (state.longPressTimer) {
+				clearTimeout(state.longPressTimer);
+				state.longPressTimer = null;
+			}
+			if (state.doublePressTimer) {
+				clearTimeout(state.doublePressTimer);
+				state.doublePressTimer = null;
+			}
 		}
 
 		this.buttonStates.clear();
@@ -135,7 +143,7 @@ export class ReTerminalButtonService {
 		return null;
 	}
 
-	private handleInputEvent(data: Buffer): void {
+	handleInputEvent(data: Buffer): void {
 		// Process all input events in the buffer (a single chunk may contain multiple events)
 		for (let offset = 0; offset + INPUT_EVENT_SIZE <= data.length; offset += INPUT_EVENT_SIZE) {
 			// Parse input_event struct (field offsets depend on architecture)
@@ -151,6 +159,11 @@ export class ReTerminalButtonService {
 			if (!channelIdentifier) continue;
 
 			if (value === 1) {
+				const state = this.getButtonState(channelIdentifier);
+				// Suppress evdev autorepeat or repeated press without release
+				if (state.pressedAt !== null) {
+					continue;
+				}
 				// Key pressed
 				this.handleButtonPress(channelIdentifier);
 			} else if (value === 0) {
@@ -165,12 +178,13 @@ export class ReTerminalButtonService {
 		state.pressedAt = Date.now();
 		state.longPressFired = false;
 
-		// Set detected = true
-		void this.emitPropertyValue(channelIdentifier, 'detected', true);
+		// Set raw held state detected = true
+		void this.emitDetected(channelIdentifier, true);
 
 		// Clear any existing long press timer before starting a new one
 		if (state.longPressTimer) {
 			clearTimeout(state.longPressTimer);
+			state.longPressTimer = null;
 		}
 
 		// Cancel pending single-press timer from a previous release so it doesn't
@@ -182,7 +196,7 @@ export class ReTerminalButtonService {
 
 		// Start long press detection timer
 		state.longPressTimer = setTimeout(() => {
-			void this.emitPropertyValue(channelIdentifier, 'event', 'long_press');
+			void this.emitOccurrence(channelIdentifier, 'long_press');
 			state.longPressTimer = null;
 			state.longPressFired = true;
 		}, DEFAULT_BUTTON_LONG_PRESS_MS);
@@ -192,9 +206,10 @@ export class ReTerminalButtonService {
 		const state = this.getButtonState(channelIdentifier);
 		const now = Date.now();
 		const pressDuration = state.pressedAt ? now - state.pressedAt : 0;
+		state.pressedAt = null;
 
-		// Set detected = false
-		void this.emitPropertyValue(channelIdentifier, 'detected', false);
+		// Set raw held state detected = false
+		void this.emitDetected(channelIdentifier, false);
 
 		// Cancel long press timer if still pending
 		const timerWasPending = state.longPressTimer !== null;
@@ -206,12 +221,11 @@ export class ReTerminalButtonService {
 
 		// If it was a long press (timer already fired, or duration met but timer
 		// hadn't fired yet due to event loop scheduling), emit long_press and return
-		if (pressDuration >= DEFAULT_BUTTON_LONG_PRESS_MS) {
+		if (state.longPressFired || pressDuration >= DEFAULT_BUTTON_LONG_PRESS_MS) {
 			if (timerWasPending && !state.longPressFired) {
-				void this.emitPropertyValue(channelIdentifier, 'event', 'long_press');
+				void this.emitOccurrence(channelIdentifier, 'long_press');
 			}
-
-			state.pressedAt = null;
+			state.lastReleaseAt = null;
 
 			return;
 		}
@@ -224,18 +238,17 @@ export class ReTerminalButtonService {
 				state.doublePressTimer = null;
 			}
 
-			void this.emitPropertyValue(channelIdentifier, 'event', 'double_press');
 			state.lastReleaseAt = null;
+			void this.emitOccurrence(channelIdentifier, 'double_press');
 		} else {
 			// Potential single press - wait for double press window
 			state.lastReleaseAt = now;
 			state.doublePressTimer = setTimeout(() => {
-				void this.emitPropertyValue(channelIdentifier, 'event', 'press');
+				void this.emitOccurrence(channelIdentifier, 'press');
 				state.doublePressTimer = null;
+				state.lastReleaseAt = null;
 			}, DEFAULT_BUTTON_DOUBLE_PRESS_MS);
 		}
-
-		state.pressedAt = null;
 	}
 
 	private getButtonState(channelIdentifier: string): ButtonState {
@@ -256,11 +269,7 @@ export class ReTerminalButtonService {
 		return state;
 	}
 
-	private async emitPropertyValue(
-		channelIdentifier: string,
-		propertyIdentifier: string,
-		value: string | boolean,
-	): Promise<void> {
+	private async emitOccurrence(channelIdentifier: string, event: string): Promise<void> {
 		if (!this.deviceId) return;
 
 		try {
@@ -275,7 +284,41 @@ export class ReTerminalButtonService {
 
 			const property = await this.channelsPropertiesService.findOneBy<ReTerminalChannelPropertyEntity>(
 				'identifier',
-				propertyIdentifier,
+				'event',
+				channel.id,
+				DEVICES_RETERMINAL_TYPE,
+			);
+
+			if (!property) return;
+
+			await this.channelInputOccurrencesService.publishOccurrence({
+				deviceId: this.deviceId,
+				channelId: channel.id,
+				propertyId: property.id,
+				event,
+				nativeEventType: event,
+			});
+		} catch (error) {
+			this.logger.debug(`Failed to emit button occurrence ${channelIdentifier}.event: ${error}`);
+		}
+	}
+
+	private async emitDetected(channelIdentifier: string, value: boolean): Promise<void> {
+		if (!this.deviceId) return;
+
+		try {
+			const channel = await this.channelsService.findOneBy<ReTerminalChannelEntity>(
+				'identifier',
+				channelIdentifier,
+				this.deviceId,
+				DEVICES_RETERMINAL_TYPE,
+			);
+
+			if (!channel) return;
+
+			const property = await this.channelsPropertiesService.findOneBy<ReTerminalChannelPropertyEntity>(
+				'identifier',
+				'detected',
 				channel.id,
 				DEVICES_RETERMINAL_TYPE,
 			);
@@ -290,7 +333,7 @@ export class ReTerminalButtonService {
 				}),
 			);
 		} catch (error) {
-			this.logger.debug(`Failed to emit button event ${channelIdentifier}.${propertyIdentifier}: ${error}`);
+			this.logger.debug(`Failed to emit button detected ${channelIdentifier}.detected: ${error}`);
 		}
 	}
 }
