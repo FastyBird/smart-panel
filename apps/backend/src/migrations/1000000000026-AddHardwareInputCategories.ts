@@ -2,9 +2,16 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddHardwareInputCategories1000000000026 implements MigrationInterface {
 	name = 'AddHardwareInputCategories1000000000026';
+	transaction = false;
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query('PRAGMA foreign_keys = OFF');
+		const shouldManageTransaction = !queryRunner.isTransactionActive;
+		if (shouldManageTransaction) {
+			await queryRunner.startTransaction();
+		}
+
+		try {
 
 		// 1. Update devices_module_devices with 'input_controller'
 		await queryRunner.query(`CREATE TABLE "temporary_devices_module_devices" (
@@ -194,11 +201,27 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 				DELETE FROM "home_context_entity_search_fts" WHERE "entity_kind" = 'property' AND "entity_id" = OLD."id";
 			END`);
 
-		await queryRunner.query('PRAGMA foreign_keys = ON');
+			if (shouldManageTransaction) {
+				await queryRunner.commitTransaction();
+			}
+		} catch (error) {
+			if (shouldManageTransaction) {
+				await queryRunner.rollbackTransaction();
+			}
+			throw error;
+		} finally {
+			await queryRunner.query('PRAGMA foreign_keys = ON');
+		}
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
 		await queryRunner.query('PRAGMA foreign_keys = OFF');
+		const shouldManageTransaction = !queryRunner.isTransactionActive;
+		if (shouldManageTransaction) {
+			await queryRunner.startTransaction();
+		}
+
+		try {
 
 		// 1. Revert devices_module_devices (remove 'input_controller')
 		await queryRunner.query(`CREATE TABLE "temporary_devices_module_devices" (
@@ -394,12 +417,22 @@ export class AddHardwareInputCategories1000000000026 implements MigrationInterfa
 				DELETE FROM "home_context_entity_search_fts" WHERE "entity_kind" = 'property' AND "entity_id" = OLD."id";
 			END`);
 
-		const hasSearchFts = await queryRunner.hasTable('home_context_entity_search_fts');
-		if (hasSearchFts) {
-			await queryRunner.query(`UPDATE "devices_module_devices" SET "category" = "category"`);
-			await queryRunner.query(`UPDATE "devices_module_channels_properties" SET "category" = "category"`);
-		}
+			const hasSearchFts = await queryRunner.hasTable('home_context_entity_search_fts');
+			if (hasSearchFts) {
+				await queryRunner.query(`UPDATE "devices_module_devices" SET "category" = "category"`);
+				await queryRunner.query(`UPDATE "devices_module_channels_properties" SET "category" = "category"`);
+			}
 
-		await queryRunner.query('PRAGMA foreign_keys = ON');
+			if (shouldManageTransaction) {
+				await queryRunner.commitTransaction();
+			}
+		} catch (error) {
+			if (shouldManageTransaction) {
+				await queryRunner.rollbackTransaction();
+			}
+			throw error;
+		} finally {
+			await queryRunner.query('PRAGMA foreign_keys = ON');
+		}
 	}
 }
