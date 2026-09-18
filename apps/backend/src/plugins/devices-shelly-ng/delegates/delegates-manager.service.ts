@@ -126,6 +126,10 @@ export class DelegatesManagerService {
 
 	private readonly pendingWrites: Map<string, NodeJS.Timeout> = new Map();
 
+	private readonly delegatePendingWrites: Map<string, Set<string>> = new Map();
+
+	private readonly delegateActiveWrites: Map<string, Set<Promise<void>>> = new Map();
+
 	/** Latest poll value per property, drained once per physical device after 250 ms. */
 	private readonly pendingPollWrites: Map<string, PollWriteBucket> = new Map();
 
@@ -2139,8 +2143,10 @@ export class DelegatesManagerService {
 
 		this.delegatePollGenerations.set(deviceId, (this.delegatePollGenerations.get(deviceId) ?? 0) + 1);
 		this.cancelPollWritesForDelegate(deviceId);
+		this.cancelPendingWritesForDelegate(deviceId);
 
 		await this.teardownDelegateEvents(delegate);
+		await this.awaitActiveWritesForDelegate(deviceId);
 
 		const valueHandler = this.delegateValueHandlers.get(delegate.id);
 		const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
@@ -2484,8 +2490,10 @@ export class DelegatesManagerService {
 		property: ShellyNgChannelPropertyEntity,
 		value: string | number | boolean,
 		immediately = true,
+		delegateId?: string,
 	): Promise<void> {
 		const context = this.currentValueUpdateContext;
+		const effectiveDelegateId = delegateId ?? context?.delegateId;
 		if (context !== null) {
 			this.commandLatencyTraceCollector.recordProviderReceipt(property.id, value, context.origin, {
 				delegateId: context.delegateId,
@@ -2508,7 +2516,7 @@ export class DelegatesManagerService {
 			this.cancelPollWrite(property.id);
 			await this.writeValueToProperty(property, value);
 		} else {
-			this.scheduleWrite(property, value);
+			this.scheduleWrite(property, value, effectiveDelegateId);
 		}
 	}
 
@@ -2800,11 +2808,30 @@ export class DelegatesManagerService {
 		});
 	}
 
-	private scheduleWrite(property: ShellyNgChannelPropertyEntity, value: string | number | boolean): void {
+	private scheduleWrite(
+		property: ShellyNgChannelPropertyEntity,
+		value: string | number | boolean,
+		delegateId?: string,
+	): void {
 		const existing = this.pendingWrites.get(property.id);
 
 		if (existing) {
 			clearTimeout(existing);
+
+			for (const set of this.delegatePendingWrites.values()) {
+				set.delete(property.id);
+			}
+		}
+
+		if (delegateId) {
+			let set = this.delegatePendingWrites.get(delegateId);
+
+			if (!set) {
+				set = new Set();
+				this.delegatePendingWrites.set(delegateId, set);
+			}
+
+			set.add(property.id);
 		}
 
 		const t = setTimeout(() => {
@@ -2816,12 +2843,55 @@ export class DelegatesManagerService {
 				this.pendingWrites.delete(property.id);
 			}
 
-			this.writeValueToProperty(property, value).catch((err: Error) => {
-				this.logger.error(
-					`Failed to process scheduled write of value=${safeToString(value)} to property=${property.id}`,
-					{ message: err.message, stack: err.stack },
-				);
-			});
+			if (delegateId) {
+				const set = this.delegatePendingWrites.get(delegateId);
+
+				if (set) {
+					set.delete(property.id);
+
+					if (set.size === 0) {
+						this.delegatePendingWrites.delete(delegateId);
+					}
+				}
+
+				if (!this.delegates.has(delegateId)) {
+					return;
+				}
+			}
+
+			const writePromise = (async (): Promise<void> => {
+				try {
+					await this.writeValueToProperty(property, value);
+				} catch (err) {
+					this.logger.error(
+						`Failed to process scheduled write of value=${safeToString(value)} to property=${property.id}`,
+						{ message: (err as Error).message, stack: (err as Error).stack },
+					);
+				}
+			})();
+
+			if (delegateId) {
+				let active = this.delegateActiveWrites.get(delegateId);
+
+				if (!active) {
+					active = new Set();
+					this.delegateActiveWrites.set(delegateId, active);
+				}
+
+				active.add(writePromise);
+
+				void writePromise.finally(() => {
+					const currentActive = this.delegateActiveWrites.get(delegateId);
+
+					if (currentActive) {
+						currentActive.delete(writePromise);
+
+						if (currentActive.size === 0) {
+							this.delegateActiveWrites.delete(delegateId);
+						}
+					}
+				});
+			}
 		}, 250);
 
 		this.pendingWrites.set(property.id, t);
@@ -2916,6 +2986,55 @@ export class DelegatesManagerService {
 			clearTimeout(timer);
 			this.pendingWrites.delete(propertyId);
 		}
+
+		for (const [delegateId, set] of this.delegatePendingWrites.entries()) {
+			set.delete(propertyId);
+
+			if (set.size === 0) {
+				this.delegatePendingWrites.delete(delegateId);
+			}
+		}
+	}
+
+	private cancelPendingWritesForDelegate(delegateId: string): void {
+		const pendingPropertyIds = this.delegatePendingWrites.get(delegateId);
+
+		if (pendingPropertyIds) {
+			for (const propertyId of pendingPropertyIds) {
+				const timer = this.pendingWrites.get(propertyId);
+
+				if (timer) {
+					clearTimeout(timer);
+					this.pendingWrites.delete(propertyId);
+				}
+			}
+
+			this.delegatePendingWrites.delete(delegateId);
+		}
+	}
+
+	private async awaitActiveWritesForDelegate(delegateId: string): Promise<void> {
+		const activeWrites = this.delegateActiveWrites.get(delegateId);
+
+		if (activeWrites && activeWrites.size > 0) {
+			await Promise.all(Array.from(activeWrites));
+		}
+
+		this.delegateActiveWrites.delete(delegateId);
+	}
+
+	private async awaitAllActiveWrites(): Promise<void> {
+		const allPromises: Promise<void>[] = [];
+
+		for (const activeWrites of this.delegateActiveWrites.values()) {
+			allPromises.push(...activeWrites);
+		}
+
+		if (allPromises.length > 0) {
+			await Promise.all(allPromises);
+		}
+
+		this.delegateActiveWrites.clear();
 	}
 
 	private cancelPollWrite(propertyId: string): void {
@@ -3072,10 +3191,12 @@ export class DelegatesManagerService {
 		}
 
 		this.pendingWrites.clear();
+		this.delegatePendingWrites.clear();
 
 		this.clearPollWrites();
 
 		await Promise.all(teardownPromises);
+		await this.awaitAllActiveWrites();
 
 		this.delegates.clear();
 		this.delegateValueHandlers.clear();

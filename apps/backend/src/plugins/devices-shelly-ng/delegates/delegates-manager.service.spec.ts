@@ -3270,5 +3270,89 @@ describe('DelegatesManagerService', () => {
 			expect(pendingWritesCountDuringTeardown).toBe(0);
 			expect(svc['pendingWrites'].size).toBe(0);
 		});
+
+		test('remove() cancels pending writes and awaits active deferred writes for delegate before teardown', async () => {
+			arrangeBaseEntities();
+
+			const shelly: any = {
+				id: 'shelly-remove-deferred',
+				modelName: 'Plus 1',
+				system: { config: { device: { name: 'D1', mac: 'AABBCCDDEE88' } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.88' },
+			};
+
+			await svc.insert(shelly as unknown as Device);
+
+			// 1. Pending write timer should be cancelled
+			const timer = setTimeout(() => {}, 1000);
+			svc['pendingWrites'].set('p-remove-test', timer);
+			let set = svc['delegatePendingWrites'].get(shelly.id);
+			if (!set) {
+				set = new Set();
+				svc['delegatePendingWrites'].set(shelly.id, set);
+			}
+			set.add('p-remove-test');
+
+			// 2. Active deferred write promise should be awaited before removal completes
+			let activeWriteFinished = false;
+			const activeDeferredWrite = new Promise<void>((resolve) => {
+				setTimeout(() => {
+					activeWriteFinished = true;
+					resolve();
+				}, 50);
+			});
+
+			let active = svc['delegateActiveWrites'].get(shelly.id);
+			if (!active) {
+				active = new Set();
+				svc['delegateActiveWrites'].set(shelly.id, active);
+			}
+			active.add(activeDeferredWrite);
+
+			await svc.remove(shelly.id);
+
+			expect(activeWriteFinished).toBe(true);
+			expect(svc['pendingWrites'].has('p-remove-test')).toBe(false);
+			expect(svc['delegatePendingWrites'].has(shelly.id)).toBe(false);
+			expect(svc['delegateActiveWrites'].has(shelly.id)).toBe(false);
+			expect(svc['delegates'].has(shelly.id)).toBe(false);
+		});
+
+		test('detach() awaits active deferred writes before clearing delegate state', async () => {
+			arrangeBaseEntities();
+
+			const shelly: any = {
+				id: 'shelly-detach-deferred',
+				modelName: 'Plus 1',
+				system: { config: { device: { name: 'D1', mac: 'AABBCCDDEE77' } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.77' },
+			};
+
+			await svc.insert(shelly as unknown as Device);
+
+			let activeWriteFinished = false;
+			let delegatesSizeDuringActiveWrite = -1;
+			const activeDeferredWrite = new Promise<void>((resolve) => {
+				setTimeout(() => {
+					delegatesSizeDuringActiveWrite = svc['delegates'].size;
+					activeWriteFinished = true;
+					resolve();
+				}, 50);
+			});
+
+			let active = svc['delegateActiveWrites'].get(shelly.id);
+			if (!active) {
+				active = new Set();
+				svc['delegateActiveWrites'].set(shelly.id, active);
+			}
+			active.add(activeDeferredWrite);
+
+			await svc.detach();
+
+			expect(activeWriteFinished).toBe(true);
+			expect(delegatesSizeDuringActiveWrite).toBe(1);
+			expect(svc['delegates'].size).toBe(0);
+			expect(svc['delegateActiveWrites'].size).toBe(0);
+		});
 	});
 });
