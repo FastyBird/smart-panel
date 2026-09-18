@@ -591,7 +591,7 @@ describe('DelegatesManagerService', () => {
 			setTimeout(() => {}, 10),
 		);
 
-		svc.detach();
+		await svc.detach();
 
 		expect(svc['delegates'].size).toBe(0);
 		expect(svc['changeHandlers'].size).toBe(0);
@@ -2465,7 +2465,7 @@ describe('DelegatesManagerService', () => {
 					origin: 'poll',
 				};
 				await (svc as any).handleChange(property, 1);
-				(svc as any).detach();
+				await (svc as any).detach();
 
 				await jest.advanceTimersByTimeAsync(250);
 				expect(channelsPropertiesService.update).not.toHaveBeenCalled();
@@ -3133,6 +3133,110 @@ describe('DelegatesManagerService', () => {
 			await localSvcWithOccurrences.remove(shelly.id);
 
 			// In-flight update completed before remove finished
+			expect(inFlightUpdateFinished).toBe(true);
+			// Queued second event was cancelled and never triggered update
+			expect(channelsPropertiesService.update).toHaveBeenCalledTimes(1);
+			// Occurrence was not published because teardown invalidated generation
+			expect(mockOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
+		});
+
+		test('detach() awaits in-flight event updates before resolving', async () => {
+			const mockOccurrencesService = {
+				publishOccurrence: jest.fn().mockImplementation(async () => {
+					await new Promise((r) => setTimeout(r, 50));
+					return null;
+				}),
+			};
+
+			const localSvcWithOccurrences = new DelegatesManagerService(
+				devicesService as any,
+				channelsService as any,
+				channelsPropertiesService as any,
+				deviceConnectivityService as any,
+				deviceManagerService as any,
+				deviceAddressService as any,
+				propertyMappingStorage as any,
+				transformerRegistry as any,
+				undefined,
+				undefined,
+				mockOccurrencesService as any,
+			);
+
+			const device = {
+				id: uuid(),
+				type: DEVICES_SHELLY_NG_TYPE,
+				identifier: 'shelly-detach-flight',
+			} as ShellyNgDeviceEntity;
+
+			const inputChannel = {
+				id: uuid(),
+				device: device.id,
+				category: ChannelCategory.BUTTON,
+				identifier: 'input:0',
+			} as ShellyNgChannelEntity;
+
+			const eventProp = {
+				id: uuid(),
+				channel: inputChannel.id,
+				category: PropertyCategory.EVENT,
+				identifier: 'event',
+			} as ShellyNgChannelPropertyEntity;
+
+			const detectedProp = {
+				id: uuid(),
+				channel: inputChannel.id,
+				category: PropertyCategory.DETECTED,
+				identifier: 'detected',
+			} as ShellyNgChannelPropertyEntity;
+
+			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
+			(devicesService.findOne as jest.Mock).mockResolvedValueOnce(device);
+			(devicesService.create as jest.Mock).mockResolvedValue(device);
+
+			(channelsService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+				if (field === 'identifier' && val === 'input:0') return inputChannel;
+				return null;
+			});
+
+			(channelsPropertiesService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+				if (field === 'category' && val === String(PropertyCategory.EVENT)) return eventProp;
+				if (field === 'category' && val === String(PropertyCategory.DETECTED)) return detectedProp;
+				return null;
+			});
+
+			const shelly: any = {
+				id: 'shelly-detach-flight',
+				modelName: 'Plus I4',
+				system: { config: { device: { name: 'Plus I4', mac: 'AABBCCDDEE84' } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.84' },
+			};
+
+			const delegate = (await localSvcWithOccurrences.insert(shelly as unknown as Device)) as any;
+
+			let inFlightUpdateFinished = false;
+			(channelsPropertiesService.update as jest.Mock).mockImplementation(async () => {
+				await new Promise((r) => setTimeout(r, 40));
+				inFlightUpdateFinished = true;
+				return detectedProp;
+			});
+
+			delegate.emit('event', {
+				ts: 1630489394.0,
+				events: [{ component: 'input:0', id: 0, event: 'btn_down', ts: 1630489394.0 }],
+			});
+
+			// Queue a second event behind the first
+			delegate.emit('event', {
+				ts: 1630489395.0,
+				events: [{ component: 'input:0', id: 0, event: 'btn_up', ts: 1630489395.0 }],
+			});
+
+			// Allow the first event to begin execution and enter its in-flight update
+			await new Promise((r) => setTimeout(r, 10));
+
+			await localSvcWithOccurrences.detach();
+
+			// In-flight update completed before detach finished
 			expect(inFlightUpdateFinished).toBe(true);
 			// Queued second event was cancelled and never triggered update
 			expect(channelsPropertiesService.update).toHaveBeenCalledTimes(1);
