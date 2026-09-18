@@ -2118,7 +2118,7 @@ export class DelegatesManagerService {
 		this.delegateEventQueues.delete(delegate.id);
 		this.delegateEventGenerations.set(delegate.id, (this.delegateEventGenerations.get(delegate.id) ?? 0) + 1);
 
-		if (pendingQueue) {
+		if (pendingQueue !== undefined) {
 			try {
 				await pendingQueue;
 			} catch (err) {
