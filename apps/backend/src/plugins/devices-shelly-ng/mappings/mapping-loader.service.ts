@@ -409,6 +409,10 @@ export class MappingLoaderService implements OnModuleInit {
 			resolved.componentType = this.resolveComponentType(condition.component_type);
 		}
 
+		if (condition.input_mode) {
+			resolved.inputMode = condition.input_mode;
+		}
+
 		if (condition.device_category) {
 			resolved.deviceCategory = this.resolveDeviceCategory(condition.device_category);
 		}
@@ -609,7 +613,7 @@ export class MappingLoaderService implements OnModuleInit {
 	 * Generate cache key from mapping context
 	 */
 	private getCacheKey(context: MappingContext): string {
-		return `${context.componentType}:${context.componentKey}:${context.deviceCategory}:${context.model ?? 'none'}:${context.profile ?? 'none'}`;
+		return `${context.componentType}:${context.componentKey}:${context.deviceCategory}:${context.model ?? 'none'}:${context.profile ?? 'none'}:${context.inputMode ?? 'none'}`;
 	}
 
 	/**
@@ -697,6 +701,11 @@ export class MappingLoaderService implements OnModuleInit {
 	private matchesSimpleConditions(condition: ResolvedMatchCondition, context: MappingContext): boolean {
 		// Check component_type
 		if (condition.componentType !== undefined && condition.componentType !== context.componentType) {
+			return false;
+		}
+
+		// Check input_mode
+		if (condition.inputMode && condition.inputMode !== context.inputMode) {
 			return false;
 		}
 

@@ -193,7 +193,21 @@ export class ShellyWsServerService implements OnModuleDestroy {
 		if (frame.method === 'NotifyStatus' || frame.method === 'NotifyFullStatus') {
 			this.handleStatusNotification(deviceId, frame.params ?? {}, ip);
 		} else if (frame.method === 'NotifyEvent') {
-			this.logger.debug(`Event from sleeping device=${deviceId}: ${JSON.stringify(frame.params)}`);
+			this.logger.debug(`Event from device=${deviceId}: ${JSON.stringify(frame.params)}`);
+			this.handleEventNotification(deviceId, frame.params ?? {}, ip);
+		}
+	}
+
+	private handleEventNotification(deviceId: string, params: unknown, ip: string): void {
+		this.logger.log(`Event notification from device=${deviceId} at ${ip}`);
+
+		const delegate = this.delegatesManager.get(deviceId);
+
+		if (delegate) {
+			delegate.emitNotificationEvent(params);
+			this.markDeviceAwake(deviceId);
+		} else {
+			this.logger.debug(`No delegate for device=${deviceId}, skipping event notification`);
 		}
 	}
 

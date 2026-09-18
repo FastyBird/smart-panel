@@ -112,7 +112,7 @@ const mockConfigService = (cfg = pluginConfigEnabled) => ({
 const mockDelegates = () => ({
 	insert: jest.fn(),
 	remove: jest.fn().mockResolvedValue(undefined),
-	detach: jest.fn(),
+	detach: jest.fn().mockResolvedValue(undefined),
 	get: jest.fn().mockReturnValue(undefined),
 	checkHealth: jest.fn().mockResolvedValue(undefined),
 	invalidateStatusPolls: jest.fn(),
