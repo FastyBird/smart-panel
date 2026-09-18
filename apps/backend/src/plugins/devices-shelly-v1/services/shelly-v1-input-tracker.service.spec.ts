@@ -172,6 +172,56 @@ describe('ShellyV1InputTrackerService', () => {
 		ch2.commit();
 	});
 
+	it('ignores out-of-order commits within the same reset generation to prevent counter regression', () => {
+		tracker.baseline('dev-1', 0, 10);
+
+		const res11 = tracker.trackEvent('dev-1', 0, 11, 'S');
+		const res12 = tracker.trackEvent('dev-1', 0, 12, 'S');
+
+		// res12 finishes and commits first
+		res12.commit();
+		expect(tracker.getLastCounter('dev-1', 0)).toBe(12);
+
+		// res11 finishes late and attempts commit
+		res11.commit();
+		// Must not regress back to 11
+		expect(tracker.getLastCounter('dev-1', 0)).toBe(12);
+	});
+
+	it('ignores commits from older reset generations to prevent overwriting reboot state', () => {
+		tracker.baseline('dev-1', 0, 50);
+
+		// Prior-generation event
+		const preResetEvent = tracker.trackEvent('dev-1', 0, 51, 'S');
+
+		// Device reboots and triggers reset event
+		const resetEvent = tracker.trackEvent('dev-1', 0, 1, 'S');
+		expect(resetEvent.isReset).toBe(true);
+		expect(resetEvent.resetGeneration).toBe(1);
+
+		// Reset event commits
+		resetEvent.commit();
+		expect(tracker.getLastCounter('dev-1', 0)).toBe(1);
+
+		// Pre-reset event finishes late and attempts commit
+		preResetEvent.commit();
+		// Must not overwrite post-reboot state
+		expect(tracker.getLastCounter('dev-1', 0)).toBe(1);
+	});
+
+	it('ignores commit if device was removed/reset', () => {
+		tracker.baseline('dev-1', 0, 10);
+
+		const res11 = tracker.trackEvent('dev-1', 0, 11, 'S');
+
+		tracker.resetDevice('dev-1');
+		expect(tracker.getLastCounter('dev-1', 0)).toBeUndefined();
+
+		// Late commit after resetDevice
+		res11.commit();
+		expect(tracker.getLastCounter('dev-1', 0)).toBeUndefined();
+	});
+
 	it('clears device state on resetDevice', () => {
 		tracker.baseline('dev-1', 0, 5);
 		tracker.baseline('dev-2', 0, 10);

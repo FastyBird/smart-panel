@@ -90,7 +90,11 @@ export class ShellyV1InputTrackerService {
 					resetGeneration: nextResetGeneration,
 					commit: (): void => {
 						const currentState = this.states.get(key);
-						if (currentState) {
+						if (
+							currentState === state &&
+							(currentState.resetGeneration < nextResetGeneration ||
+								(currentState.resetGeneration === nextResetGeneration && counter > currentState.lastCounter))
+						) {
 							currentState.lastCounter = counter;
 							currentState.resetGeneration = nextResetGeneration;
 						}
@@ -105,13 +109,18 @@ export class ShellyV1InputTrackerService {
 
 		// Normal increment (counter > state.lastCounter): genuine new event
 		if (rawEvent.length > 0) {
+			const eventResetGeneration = state.resetGeneration;
 			return {
 				shouldPublish: true,
 				isReset: false,
-				resetGeneration: state.resetGeneration,
+				resetGeneration: eventResetGeneration,
 				commit: (): void => {
 					const currentState = this.states.get(key);
-					if (currentState) {
+					if (
+						currentState === state &&
+						currentState.resetGeneration === eventResetGeneration &&
+						counter > currentState.lastCounter
+					) {
 						currentState.lastCounter = counter;
 					}
 				},
