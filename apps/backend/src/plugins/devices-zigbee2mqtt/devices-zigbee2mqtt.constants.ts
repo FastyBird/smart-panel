@@ -28,6 +28,10 @@ export const DEFAULT_WS_PORT = 8080;
 export const DEFAULT_WS_CONNECT_TIMEOUT = 10000;
 export const DEFAULT_WS_RECONNECT_INTERVAL = 5000;
 
+// Pending action states queue configuration (before transformers restored)
+export const MAX_PENDING_ACTION_STATES = 100;
+export const MAX_PENDING_ACTION_AGE_MS = 30_000;
+
 // Connection type
 export const DEFAULT_CONNECTION_TYPE = 'mqtt' as const;
 

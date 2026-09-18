@@ -11,7 +11,12 @@ import {
 	ServiceState,
 } from '../../../modules/extensions/services/managed-extension-service.interface';
 import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
-import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
+import {
+	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
+	DEVICES_ZIGBEE2MQTT_TYPE,
+	MAX_PENDING_ACTION_AGE_MS,
+	MAX_PENDING_ACTION_STATES,
+} from '../devices-zigbee2mqtt.constants';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
 import {
 	Z2mDevice,
@@ -53,6 +58,7 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 		friendlyName: string;
 		state: Record<string, unknown>;
 		metadata?: Z2mDeviceStateMetadata;
+		queuedAt: number;
 	}> = [];
 
 	// The active adapter is selected based on connection_type config
@@ -378,6 +384,7 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 	private async doStop(): Promise<void> {
 		this.state = 'stopping';
 		this.transformersRestored = false;
+		this.pendingActionStates = [];
 
 		this.logger.log('Stopping Zigbee2MQTT plugin service');
 
@@ -494,6 +501,7 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 		this.pendingDevices = null;
 		this.isSyncing = false;
 		this.transformersRestored = false;
+		this.pendingActionStates = [];
 		this.pendingJoinedIeeeAddresses.clear();
 
 		// Set all devices to unknown state
@@ -534,7 +542,8 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 
 		// Replay any fresh input actions queued before transformers were restored
 		if (this.pendingActionStates.length > 0) {
-			const pending = [...this.pendingActionStates];
+			const now = Date.now();
+			const pending = this.pendingActionStates.filter((item) => now - item.queuedAt <= MAX_PENDING_ACTION_AGE_MS);
 			this.pendingActionStates = [];
 			for (const item of pending) {
 				try {
@@ -634,7 +643,15 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 				(key) => key === 'action' || key === 'click' || key.startsWith('action_'),
 			);
 			if (hasAction && !metadata?.isRetained && !metadata?.isCached) {
-				this.pendingActionStates.push({ friendlyName, state, metadata });
+				if (this.pendingActionStates.length >= MAX_PENDING_ACTION_STATES) {
+					this.pendingActionStates.shift();
+				}
+				this.pendingActionStates.push({
+					friendlyName,
+					state,
+					metadata,
+					queuedAt: Date.now(),
+				});
 			}
 			this.logger.debug(`Skipping state update for ${friendlyName} - transformers not yet restored`);
 			return;
