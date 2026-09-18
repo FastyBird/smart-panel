@@ -254,7 +254,7 @@ mappings:
               settable: false
               queryable: false
 
-  # Rotary Dial / Smart Knob (e.g. Tuya Smart Knob ERS-10TZBVK-AA, TS004F, IKEA Symfonisk E1744, Philips Hue Tap Dial 8719514440937, 929003500201)
+  # Rotary Dial / Smart Knob (e.g. Tuya Smart Knob ERS-10TZBVK-AA, TS004F dimmer/knob, IKEA Symfonisk E1744, Philips Hue Tap Dial 8719514440937, 929003500201)
   # 2 physical controls: push button and rotary dial
   - name: rotary_dial_remote
     description: 'Rotary dial and button controller'
@@ -266,6 +266,15 @@ mappings:
         - any_of:
             - model: ERS-10TZBVK-AA
             - model: TS004F
+              manufacturer: _TZ3000_pftj0i7z
+            - model: TS004F
+              manufacturer: _TZ3000_4fjiwweb
+            - model: TS004F
+              manufacturer: _TZ3000_uri7ongn
+            - model: TS004F
+              manufacturer: _TZ3000_abrsvsou
+            - model: TS004F
+              manufacturer: _TZ3000_402vrq2i
             - model: E1744
             - model: '8719514440937'
             - model: '929003500201'
@@ -311,6 +320,102 @@ mappings:
                 - up
                 - rotate_left
                 - rotate_right
+              settable: false
+              queryable: false
+
+  # Tuya 4-Button Remote / Scene Switch (TS004F, TS004F_1, TS0044)
+  # 4 physical buttons: button_1, button_2, button_3, button_4
+  - name: tuya_4button_remote
+    description: 'Tuya 4-Button Scene Switch (4 buttons)'
+    priority: 115
+    match:
+      all_of:
+        - expose_type: enum
+        - property: action
+        - any_of:
+            - model: TS004F
+            - model: TS004F_1
+            - model: TS0044
+    device_category: INPUT_CONTROLLER
+    channels:
+      - identifier: button_1
+        name: Button 1
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+      - identifier: button_2
+        name: Button 2
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+      - identifier: button_3
+        name: Button 3
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+      - identifier: button_4
+        name: Button 4
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
               settable: false
               queryable: false
 

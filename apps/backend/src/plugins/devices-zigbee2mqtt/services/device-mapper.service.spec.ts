@@ -458,4 +458,92 @@ describe('Z2mDeviceMapperService', () => {
 			);
 		});
 	});
+
+	describe('updateDeviceState - 4-button switch actions', () => {
+		let device: Zigbee2mqttDeviceEntity;
+		let chanBtn1: Zigbee2mqttChannelEntity;
+		let chanBtn2: Zigbee2mqttChannelEntity;
+		let chanBtn3: Zigbee2mqttChannelEntity;
+		let chanBtn4: Zigbee2mqttChannelEntity;
+		let propBtn1: Zigbee2mqttChannelPropertyEntity;
+		let propBtn2: Zigbee2mqttChannelPropertyEntity;
+		let propBtn3: Zigbee2mqttChannelPropertyEntity;
+		let propBtn4: Zigbee2mqttChannelPropertyEntity;
+
+		beforeEach(() => {
+			device = createMockDevice('ts004f-switch');
+			chanBtn1 = createMockChannel('chan-btn-1', 'button_1', ChannelCategory.BUTTON);
+			chanBtn2 = createMockChannel('chan-btn-2', 'button_2', ChannelCategory.BUTTON);
+			chanBtn3 = createMockChannel('chan-btn-3', 'button_3', ChannelCategory.BUTTON);
+			chanBtn4 = createMockChannel('chan-btn-4', 'button_4', ChannelCategory.BUTTON);
+
+			propBtn1 = createMockProperty('prop-btn-1', 'event', PropertyCategory.EVENT, 'action');
+			propBtn2 = createMockProperty('prop-btn-2', 'event', PropertyCategory.EVENT, 'action');
+			propBtn3 = createMockProperty('prop-btn-3', 'event', PropertyCategory.EVENT, 'action');
+			propBtn4 = createMockProperty('prop-btn-4', 'event', PropertyCategory.EVENT, 'action');
+
+			devicesService.findOneBy.mockResolvedValue(device);
+			channelsService.findAll.mockResolvedValue([chanBtn1, chanBtn2, chanBtn3, chanBtn4]);
+
+			channelsPropertiesService.findAll.mockImplementation(async (channelId: string) => {
+				if (channelId === chanBtn1.id) return [propBtn1];
+				if (channelId === chanBtn2.id) return [propBtn2];
+				if (channelId === chanBtn3.id) return [propBtn3];
+				if (channelId === chanBtn4.id) return [propBtn4];
+				return [];
+			});
+		});
+
+		it('should route 1_single to button_1 as press', async () => {
+			await service.updateDeviceState('ts004f-switch', { action: '1_single' });
+
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledWith(
+				expect.objectContaining({
+					channelId: chanBtn1.id,
+					propertyId: propBtn1.id,
+					event: 'press',
+					nativeEventType: '1_single',
+				}),
+			);
+		});
+
+		it('should route 2_double to button_2 as double_press', async () => {
+			await service.updateDeviceState('ts004f-switch', { action: '2_double' });
+
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledWith(
+				expect.objectContaining({
+					channelId: chanBtn2.id,
+					propertyId: propBtn2.id,
+					event: 'double_press',
+					nativeEventType: '2_double',
+				}),
+			);
+		});
+
+		it('should route 3_hold to button_3 as long_press', async () => {
+			await service.updateDeviceState('ts004f-switch', { action: '3_hold' });
+
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledWith(
+				expect.objectContaining({
+					channelId: chanBtn3.id,
+					propertyId: propBtn3.id,
+					event: 'long_press',
+					nativeEventType: '3_hold',
+				}),
+			);
+		});
+
+		it('should route 4_single to button_4 as press', async () => {
+			await service.updateDeviceState('ts004f-switch', { action: '4_single' });
+
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledWith(
+				expect.objectContaining({
+					channelId: chanBtn4.id,
+					propertyId: propBtn4.id,
+					event: 'press',
+					nativeEventType: '4_single',
+				}),
+			);
+		});
+	});
 });

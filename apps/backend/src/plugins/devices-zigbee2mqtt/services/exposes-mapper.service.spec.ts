@@ -383,6 +383,45 @@ describe('Z2mExposesMapperService', () => {
 			expect(actionProperty?.permissions).toContain(PermissionType.EVENT_ONLY);
 		});
 
+		it('should map Tuya TS004F 4-button switch to 4 button channels', () => {
+			const exposes: Z2mExposeEnum[] = [
+				{
+					type: 'enum',
+					name: 'action',
+					property: 'action',
+					access: 1,
+					values: ['1_single', '1_double', '2_single', '3_single', '4_single'],
+				},
+			];
+
+			const result = service.mapExposes(exposes, { model: 'TS004F', manufacturer: 'Tuya' });
+
+			expect(result).toHaveLength(4);
+			expect(result.map((c) => c.identifier)).toEqual(['button_1', 'button_2', 'button_3', 'button_4']);
+			result.forEach((channel) => {
+				expect(channel.category).toBe(ChannelCategory.BUTTON);
+				expect(channel.properties).toHaveLength(1);
+				expect(channel.properties[0].category).toBe(PropertyCategory.EVENT);
+			});
+		});
+
+		it('should map Tuya TS004F dimmer fingerprint (_TZ3000_pftj0i7z) to rotary dial remote', () => {
+			const exposes: Z2mExposeEnum[] = [
+				{
+					type: 'enum',
+					name: 'action',
+					property: 'action',
+					access: 1,
+					values: ['brightness_move_up', 'brightness_move_down', 'brightness_stop', 'on', 'off'],
+				},
+			];
+
+			const result = service.mapExposes(exposes, { model: 'TS004F', manufacturer: '_TZ3000_pftj0i7z' });
+
+			expect(result).toHaveLength(2);
+			expect(result.map((c) => c.identifier)).toEqual(['button', 'rotary']);
+		});
+
 		it('should map carbon monoxide sensor (safety-critical)', () => {
 			const exposes: Z2mExposeBinary[] = [
 				{
