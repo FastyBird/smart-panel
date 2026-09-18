@@ -3109,8 +3109,10 @@ describe('DelegatesManagerService', () => {
 
 			const delegate = (await localSvcWithOccurrences.insert(shelly as unknown as Device)) as any;
 
+			let inFlightUpdateFinished = false;
 			(channelsPropertiesService.update as jest.Mock).mockImplementation(async () => {
 				await new Promise((r) => setTimeout(r, 40));
+				inFlightUpdateFinished = true;
 				return detectedProp;
 			});
 
@@ -3119,10 +3121,22 @@ describe('DelegatesManagerService', () => {
 				events: [{ component: 'input:0', id: 0, event: 'btn_down', ts: 1630489394.0 }],
 			});
 
+			// Queue a second event behind the first
+			delegate.emit('event', {
+				ts: 1630489395.0,
+				events: [{ component: 'input:0', id: 0, event: 'btn_up', ts: 1630489395.0 }],
+			});
+
+			// Allow the first event to begin execution and enter its in-flight update
+			await new Promise((r) => setTimeout(r, 10));
+
 			await localSvcWithOccurrences.remove(shelly.id);
 
-			await new Promise((r) => setTimeout(r, 80));
-
+			// In-flight update completed before remove finished
+			expect(inFlightUpdateFinished).toBe(true);
+			// Queued second event was cancelled and never triggered update
+			expect(channelsPropertiesService.update).toHaveBeenCalledTimes(1);
+			// Occurrence was not published because teardown invalidated generation
 			expect(mockOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
 		});
 	});

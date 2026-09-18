@@ -226,7 +226,7 @@ export class DelegatesManagerService {
 	private async performInsert(shelly: Device & MaybeNet, force: boolean = false): Promise<ShellyDeviceDelegate> {
 		if (this.delegates.has(shelly.id)) {
 			if (force) {
-				this.performRemove(shelly.id);
+				await this.performRemove(shelly.id);
 			} else {
 				return this.delegates.get(shelly.id);
 			}
@@ -2102,26 +2102,35 @@ export class DelegatesManagerService {
 	}
 
 	remove(deviceId: string): Promise<void> {
-		return this.withDeviceLock(deviceId, () => {
-			this.performRemove(deviceId);
-
-			return Promise.resolve();
-		});
+		return this.withDeviceLock(deviceId, () => this.performRemove(deviceId));
 	}
 
-	private teardownDelegateEvents(delegate: ShellyDeviceDelegate): void {
+	private async teardownDelegateEvents(delegate: ShellyDeviceDelegate): Promise<void> {
 		const eventHandler = this.delegateEventHandlers.get(delegate.id);
 
 		if (eventHandler) {
 			delegate.off('event', eventHandler);
 		}
 
+		const pendingQueue = this.delegateEventQueues.get(delegate.id);
+
 		this.delegateEventHandlers.delete(delegate.id);
 		this.delegateEventQueues.delete(delegate.id);
 		this.delegateEventGenerations.set(delegate.id, (this.delegateEventGenerations.get(delegate.id) ?? 0) + 1);
+
+		if (pendingQueue) {
+			try {
+				await pendingQueue;
+			} catch (err) {
+				this.logger.error(`Error while awaiting event queue teardown for delegate=${delegate.id}`, {
+					message: (err as Error).message,
+					stack: (err as Error).stack,
+				});
+			}
+		}
 	}
 
-	private performRemove(deviceId: string): void {
+	private async performRemove(deviceId: string): Promise<void> {
 		const delegate = this.delegates.get(deviceId);
 
 		if (!delegate) {
@@ -2131,7 +2140,7 @@ export class DelegatesManagerService {
 		this.delegatePollGenerations.set(deviceId, (this.delegatePollGenerations.get(deviceId) ?? 0) + 1);
 		this.cancelPollWritesForDelegate(deviceId);
 
-		this.teardownDelegateEvents(delegate);
+		await this.teardownDelegateEvents(delegate);
 
 		const valueHandler = this.delegateValueHandlers.get(delegate.id);
 		const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
@@ -3053,7 +3062,7 @@ export class DelegatesManagerService {
 				delegate.off('connected', connectionHandler);
 			}
 
-			this.teardownDelegateEvents(delegate);
+			void this.teardownDelegateEvents(delegate);
 		}
 
 		this.delegates.clear();
