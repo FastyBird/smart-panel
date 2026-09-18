@@ -1859,9 +1859,9 @@ export class DelegatesManagerService {
 
 					let initialVal: number;
 					if (comp.counts !== undefined) {
-						initialVal = hasExtendedCount ? comp.counts.xtotal! : (comp.counts.total ?? 0);
+						initialVal = hasExtendedCount ? comp.counts.xtotal : (comp.counts.total ?? 0);
 					} else {
-						initialVal = hasExtendedPercent ? comp.xpercent! : (comp.percent ?? 0);
+						initialVal = hasExtendedPercent ? comp.xpercent : (comp.percent ?? 0);
 					}
 
 					await this.setDefaultPropertyValue(device.id, valueProp, initialVal);
