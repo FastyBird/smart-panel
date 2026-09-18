@@ -222,6 +222,23 @@ describe('Z2mDeviceMapperService', () => {
 			expect(channelInputOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
 			expect(channelsPropertiesService.update).not.toHaveBeenCalled();
 		});
+
+		it('should not skip EVENT properties on non-button channels during property mapping', async () => {
+			const genericChannel = createMockChannel('chan-generic-1', 'generic', ChannelCategory.GENERIC);
+			const genericEventProp = createMockProperty('prop-generic-event', 'event', PropertyCategory.EVENT, 'event');
+
+			channelsService.findAll.mockResolvedValue([genericChannel]);
+			channelsPropertiesService.findAll.mockResolvedValue([genericEventProp]);
+
+			await service.updateDeviceState('sonoff-button', { event: 'motion_detected' });
+
+			expect(channelsPropertiesService.update).toHaveBeenCalledWith(
+				genericEventProp.id,
+				expect.objectContaining({
+					value: 'motion_detected',
+				}),
+			);
+		});
 	});
 
 	describe('Input Occurrences - Multi-Button Remote (Hue Dimmer)', () => {

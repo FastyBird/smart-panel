@@ -579,7 +579,7 @@ export class Z2mDeviceMapperService {
 				const propertyIdentifier = property.identifier;
 
 				// Skip EVENT properties on BUTTON channels - already handled by processInputOccurrences
-				if (property.category === PropertyCategory.EVENT) {
+				if (channel.category === ChannelCategory.BUTTON && property.category === PropertyCategory.EVENT) {
 					continue;
 				}
 
