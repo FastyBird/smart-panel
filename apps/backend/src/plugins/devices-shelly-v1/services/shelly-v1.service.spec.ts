@@ -800,6 +800,147 @@ describe('ShellyV1Service', () => {
 			);
 		});
 
+		it('should snapshot inputEvent before asynchronous device lookup to prevent race conditions', async () => {
+			const shellyDevice = {
+				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
+				inputEvent0: 'S',
+				inputEventCounter0: 1,
+			};
+
+			shelliesAdapter.getDevice.mockReturnValue(shellyDevice as unknown as ShellyDevice);
+			channelsService.findOneBy.mockResolvedValue(mockInputChannel);
+			channelsPropertiesService.findOneBy.mockResolvedValue(mockEventProperty);
+
+			// Baseline counter 1
+			devicesService.findOneBy.mockResolvedValueOnce(mockDevice);
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 1,
+				oldValue: 0,
+			});
+
+			// Setup findOneBy to simulate asynchronous delay during which shellyDevice.inputEvent0 mutates to 'L'
+			devicesService.findOneBy.mockImplementationOnce(() => {
+				shellyDevice.inputEvent0 = 'L'; // Later adapter update during async lookup
+				return Promise.resolve(mockDevice);
+			});
+
+			// Event arrives with counter 2 when inputEvent0 was 'S'
+			shellyDevice.inputEvent0 = 'S';
+			shellyDevice.inputEventCounter0 = 2;
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 2,
+				oldValue: 1,
+			});
+
+			// Must publish 'press' ('S'), not 'long_press' ('L')
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: 'press',
+					nativeEventType: 'S',
+					sourceOccurrenceId: 'channel-input_0-uuid:S:2',
+				}),
+			);
+		});
+
+		it('should allow retrying event when occurrence publication fails and commit is withheld', async () => {
+			const shellyDevice = {
+				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
+				inputEvent0: 'S',
+				inputEventCounter0: 1,
+			};
+
+			shelliesAdapter.getDevice.mockReturnValue(shellyDevice as unknown as ShellyDevice);
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			channelsService.findOneBy.mockResolvedValue(mockInputChannel);
+			channelsPropertiesService.findOneBy.mockResolvedValue(mockEventProperty);
+
+			// Baseline at 1
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 1,
+				oldValue: 0,
+			});
+
+			// Next event: counter 2 fails during occurrence publication
+			shellyDevice.inputEventCounter0 = 2;
+			channelInputOccurrencesService.publishOccurrence.mockRejectedValueOnce(new Error('Network failure'));
+
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 2,
+				oldValue: 1,
+			});
+
+			// Retry with same counter 2 succeeds
+			channelInputOccurrencesService.publishOccurrence.mockResolvedValueOnce(undefined);
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 2,
+				oldValue: 1,
+			});
+
+			// Occurrence publication was called again for the retry
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledTimes(2);
+
+			// Once succeeded, subsequent repeated call with counter 2 is suppressed
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 2,
+				oldValue: 2,
+			});
+
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledTimes(2);
+		});
+
+		it('should include reset generation in sourceOccurrenceId on counter reset events', async () => {
+			const shellyDevice = {
+				id: 'shelly1pm-ABC123',
+				type: 'SHSW-PM',
+				inputEvent0: 'S',
+				inputEventCounter0: 50,
+			};
+
+			shelliesAdapter.getDevice.mockReturnValue(shellyDevice as unknown as ShellyDevice);
+			devicesService.findOneBy.mockResolvedValue(mockDevice);
+			channelsService.findOneBy.mockResolvedValue(mockInputChannel);
+			channelsPropertiesService.findOneBy.mockResolvedValue(mockEventProperty);
+
+			// Baseline at counter 50
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 50,
+				oldValue: 0,
+			});
+
+			// Device reboots, counter resets to 1 with event 'S'
+			shellyDevice.inputEventCounter0 = 1;
+			await adapterCallbacks.onDeviceChanged?.({
+				id: 'shelly1pm-ABC123',
+				property: 'inputEventCounter0',
+				newValue: 1,
+				oldValue: 50,
+			});
+
+			expect(channelInputOccurrencesService.publishOccurrence).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: 'press',
+					nativeEventType: 'S',
+					sourceOccurrenceId: 'channel-input_0-uuid:S:1:reset:1',
+				}),
+			);
+		});
+
 		it('should ignore direct inputEvent0 change events', async () => {
 			devicesService.findOneBy.mockResolvedValue(mockDevice);
 

@@ -6,11 +6,14 @@ import { DEVICES_SHELLY_V1_PLUGIN_NAME } from '../devices-shelly-v1.constants';
 export interface InputTrackResult {
 	shouldPublish: boolean;
 	isReset: boolean;
+	resetGeneration: number;
+	commit: () => void;
 }
 
 interface ChannelCounterState {
 	lastCounter: number;
 	isInitialized: boolean;
+	resetGeneration: number;
 }
 
 /**
@@ -39,9 +42,11 @@ export class ShellyV1InputTrackerService {
 	 */
 	baseline(deviceId: string, channelIndex: number, counter: number): void {
 		const key = this.getKey(deviceId, channelIndex);
+		const existing = this.states.get(key);
 		this.states.set(key, {
 			lastCounter: counter,
 			isInitialized: true,
+			resetGeneration: existing?.resetGeneration ?? 0,
 		});
 		this.logger.debug(`Baselined input counter for ${key} at ${counter}`);
 	}
@@ -53,43 +58,68 @@ export class ShellyV1InputTrackerService {
 		const key = this.getKey(deviceId, channelIndex);
 		const state = this.states.get(key);
 
+		const noopCommit = (): void => {};
+
 		// If this channel has never been seen or baselined, baseline it now.
 		// Stale status received on initial connection/startup must not trigger an event.
 		if (!state || !state.isInitialized) {
 			this.states.set(key, {
 				lastCounter: counter,
 				isInitialized: true,
+				resetGeneration: 0,
 			});
 			this.logger.debug(`Initial state baseline for ${key} at counter=${counter}, suppressing event`);
-			return { shouldPublish: false, isReset: false };
+			return { shouldPublish: false, isReset: false, resetGeneration: 0, commit: noopCommit };
 		}
 
 		// Counter unchanged: repeated status read, periodic CoAP multicast, or reconnect without new events
 		if (counter === state.lastCounter) {
-			return { shouldPublish: false, isReset: false };
+			return { shouldPublish: false, isReset: false, resetGeneration: state.resetGeneration, commit: noopCommit };
 		}
 
 		// Counter reset or rollover: device rebooted, battery replaced, or 32-bit counter overflow
 		if (counter < state.lastCounter) {
 			this.logger.debug(`Counter reset detected on ${key}: previous=${state.lastCounter}, new=${counter}`);
-			state.lastCounter = counter;
+			const nextResetGeneration = state.resetGeneration + 1;
 
 			// If reset happened and there is a valid event with counter > 0 (e.g. initial press after reboot)
 			if (counter > 0 && rawEvent.length > 0) {
-				return { shouldPublish: true, isReset: true };
+				return {
+					shouldPublish: true,
+					isReset: true,
+					resetGeneration: nextResetGeneration,
+					commit: (): void => {
+						const currentState = this.states.get(key);
+						if (currentState) {
+							currentState.lastCounter = counter;
+							currentState.resetGeneration = nextResetGeneration;
+						}
+					},
+				};
 			}
 
-			return { shouldPublish: false, isReset: true };
+			state.lastCounter = counter;
+			state.resetGeneration = nextResetGeneration;
+			return { shouldPublish: false, isReset: true, resetGeneration: nextResetGeneration, commit: noopCommit };
 		}
 
 		// Normal increment (counter > state.lastCounter): genuine new event
-		state.lastCounter = counter;
-
 		if (rawEvent.length > 0) {
-			return { shouldPublish: true, isReset: false };
+			return {
+				shouldPublish: true,
+				isReset: false,
+				resetGeneration: state.resetGeneration,
+				commit: (): void => {
+					const currentState = this.states.get(key);
+					if (currentState) {
+						currentState.lastCounter = counter;
+					}
+				},
+			};
 		}
 
-		return { shouldPublish: false, isReset: false };
+		state.lastCounter = counter;
+		return { shouldPublish: false, isReset: false, resetGeneration: state.resetGeneration, commit: noopCommit };
 	}
 
 	/**

@@ -286,6 +286,20 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 				return;
 			}
 
+			// Snapshot raw inputEvent before asynchronous device lookup to prevent race conditions
+			let rawEventSnapshot: string | undefined;
+			let counterChannelIndex: number | undefined;
+			const counterMatch = event.property.match(/^inputEventCounter(\d+)$/);
+			if (counterMatch) {
+				counterChannelIndex = parseInt(counterMatch[1], 10);
+				const shellyDevice = registeredDevice
+					? this.shelliesAdapter.getDevice(registeredDevice.type, registeredDevice.id)
+					: undefined;
+				if (shellyDevice) {
+					rawEventSnapshot = String(shellyDevice[`inputEvent${counterChannelIndex}`] ?? '');
+				}
+			}
+
 			// Find the device
 			const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
 				'identifier',
@@ -300,10 +314,8 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 			}
 
 			// Handle input event counters for hardware button/input occurrence publishing
-			const counterMatch = event.property.match(/^inputEventCounter(\d+)$/);
-			if (counterMatch) {
-				const channelIndex = parseInt(counterMatch[1], 10);
-				await this.handleInputEventCounter(device, channelIndex, Number(event.newValue));
+			if (counterMatch && counterChannelIndex !== undefined) {
+				await this.handleInputEventCounter(device, counterChannelIndex, Number(event.newValue), rawEventSnapshot);
 
 				return;
 			}
@@ -392,16 +404,18 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 		device: ShellyV1DeviceEntity,
 		channelIndex: number,
 		counter: number,
+		rawEventSnapshot?: string,
 	): Promise<void> {
 		const registeredDevice = this.shelliesAdapter.getRegisteredDevice(device.identifier);
 		const shellyDevice = registeredDevice
 			? this.shelliesAdapter.getDevice(registeredDevice.type, registeredDevice.id)
 			: undefined;
 
-		const rawEvent = String(shellyDevice?.[`inputEvent${channelIndex}`] ?? '');
-		const { shouldPublish } = this.tracker.trackEvent(device.id, channelIndex, counter, rawEvent);
+		const rawEvent =
+			rawEventSnapshot !== undefined ? rawEventSnapshot : String(shellyDevice?.[`inputEvent${channelIndex}`] ?? '');
+		const trackResult = this.tracker.trackEvent(device.id, channelIndex, counter, rawEvent);
 
-		if (!shouldPublish) {
+		if (!trackResult.shouldPublish) {
 			this.logger.debug(
 				`Input event suppressed (counter=${counter}, rawEvent=${rawEvent}) on device ${device.identifier} channel ${channelIndex}`,
 			);
@@ -414,6 +428,7 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 			this.logger.warn(
 				`Unrecognized Shelly V1 input event "${rawEvent}" on device ${device.identifier} channel ${channelIndex}`,
 			);
+			trackResult.commit();
 
 			return;
 		}
@@ -461,7 +476,9 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 		// Publish occurrence independently through ChannelInputOccurrencesService
 		if (this.channelInputOccurrencesService) {
 			const sourceTimestamp = new Date().toISOString();
-			const sourceOccurrenceId = `${channel.id}:${rawEvent}:${counter}`;
+			const sourceOccurrenceId = trackResult.isReset
+				? `${channel.id}:${rawEvent}:${counter}:reset:${trackResult.resetGeneration}`
+				: `${channel.id}:${rawEvent}:${counter}`;
 
 			try {
 				await this.channelInputOccurrencesService.publishOccurrence({
@@ -483,8 +500,13 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 					`Failed to publish input occurrence for device ${device.identifier}: ${error instanceof Error ? error.message : String(error)}`,
 					{ resource: device.id },
 				);
+
+				return;
 			}
 		}
+
+		// Commit the counter only after channel lookup, property updates, and occurrence publication all succeed
+		trackResult.commit();
 	}
 
 	/**
