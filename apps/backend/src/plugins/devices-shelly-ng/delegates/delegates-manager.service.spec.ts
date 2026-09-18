@@ -3354,5 +3354,142 @@ describe('DelegatesManagerService', () => {
 			expect(svc['delegates'].size).toBe(0);
 			expect(svc['delegateActiveWrites'].size).toBe(0);
 		});
+
+		test('remove() cannot finish while an immediate value update remains pending', async () => {
+			const { switchOn } = arrangeBaseEntities();
+
+			const shelly: any = {
+				id: 'shelly-immediate-write-pending',
+				modelName: 'Plus 1',
+				system: { config: { device: { name: 'D1', mac: 'AABBCCDDEE66' } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.66' },
+				switch: { key: 'switch:0', output: false },
+			};
+
+			const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+			let resolveUpdate!: (prop: any) => void;
+			const updatePromise = new Promise((resolve) => {
+				resolveUpdate = resolve;
+			});
+
+			(channelsPropertiesService.update as jest.Mock).mockImplementation(() => updatePromise);
+
+			// Emit real value notification from delegate
+			delegate.emit('value', 'switch:0', 'output', true, 'notify');
+
+			// Start delegate removal
+			let removeFinished = false;
+			const removePromise = svc.remove(shelly.id).then(() => {
+				removeFinished = true;
+			});
+
+			// Wait for performRemove to begin and pause on awaiting active writes
+			await new Promise((r) => setTimeout(r, 20));
+
+			// Verify value listener was detached immediately
+			expect(svc['delegateValueHandlers'].has(shelly.id)).toBe(false);
+
+			// Removal cannot finish while update is still pending
+			expect(removeFinished).toBe(false);
+			expect(svc['delegates'].has(shelly.id)).toBe(true);
+
+			// Now complete the delayed update
+			resolveUpdate(switchOn);
+			await removePromise;
+
+			// Verify removal is now complete
+			expect(removeFinished).toBe(true);
+			expect(svc['delegates'].has(shelly.id)).toBe(false);
+			expect(svc['delegateActiveWrites'].has(shelly.id)).toBe(false);
+		});
+
+		test('remove() awaits active poll drains for delegate before completing teardown', async () => {
+			const { switchOn } = arrangeBaseEntities();
+
+			const shelly: any = {
+				id: 'shelly-poll-remove',
+				modelName: 'Plus 1',
+				system: { config: { device: { name: 'D1', mac: 'AABBCCDDEE55' } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.55' },
+				switch: { key: 'switch:0', output: false },
+			};
+
+			const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+			let resolvePollUpdate!: (prop: any) => void;
+			const pollUpdatePromise = new Promise((resolve) => {
+				resolvePollUpdate = resolve;
+			});
+
+			(channelsPropertiesService.update as jest.Mock).mockImplementation(() => pollUpdatePromise);
+
+			delegate.emit('value', 'switch:0', 'output', true, 'poll');
+			const deviceDbId = svc['delegateDeviceIds'].get(shelly.id) ?? shelly.id;
+			const drainPromise = svc['flushPollWrites'](deviceDbId);
+
+			let removeFinished = false;
+			const removePromise = svc.remove(shelly.id).then(() => {
+				removeFinished = true;
+			});
+
+			await new Promise((r) => setTimeout(r, 20));
+			expect(removeFinished).toBe(false);
+			expect(svc['delegates'].has(shelly.id)).toBe(true);
+
+			resolvePollUpdate(switchOn);
+			await removePromise;
+			await drainPromise;
+
+			expect(removeFinished).toBe(true);
+			expect(svc['delegates'].has(shelly.id)).toBe(false);
+		});
+
+		test('detach() awaits all active poll drains before clearing activePollWrites', async () => {
+			const { switchOn } = arrangeBaseEntities();
+
+			const shelly: any = {
+				id: 'shelly-poll-detach',
+				modelName: 'Plus 1',
+				system: { config: { device: { name: 'D1', mac: 'AABBCCDDEE44' } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.44' },
+				switch: { key: 'switch:0', output: false },
+			};
+
+			const delegate = (await svc.insert(shelly as unknown as Device)) as any;
+
+			let resolvePollUpdate!: (prop: any) => void;
+			const pollUpdatePromise = new Promise((resolve) => {
+				resolvePollUpdate = resolve;
+			});
+
+			(channelsPropertiesService.update as jest.Mock).mockImplementation(() => pollUpdatePromise);
+
+			delegate.emit('value', 'switch:0', 'output', true, 'poll');
+			const deviceDbId = svc['delegateDeviceIds'].get(shelly.id) ?? shelly.id;
+			const drainPromise = svc['flushPollWrites'](deviceDbId);
+
+			let detachFinished = false;
+			let activePollWritesSizeDuringDrain = -1;
+			const detachPromise = (async () => {
+				const p = svc.detach();
+				activePollWritesSizeDuringDrain = svc['activePollWrites'].size;
+				await p;
+				detachFinished = true;
+			})();
+
+			await new Promise((r) => setTimeout(r, 20));
+			expect(detachFinished).toBe(false);
+			expect(activePollWritesSizeDuringDrain).toBe(1);
+
+			resolvePollUpdate(switchOn);
+			await detachPromise;
+			await drainPromise;
+
+			expect(detachFinished).toBe(true);
+			expect(svc['activePollWrites'].size).toBe(0);
+			expect(svc['activePollDrainPromises'].size).toBe(0);
+			expect(svc['delegates'].size).toBe(0);
+		});
 	});
 });

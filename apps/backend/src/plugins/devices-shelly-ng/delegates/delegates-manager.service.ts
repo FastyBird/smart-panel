@@ -136,6 +136,10 @@ export class DelegatesManagerService {
 	/** Detached drains remain cancellable until every queued property has either run or been skipped. */
 	private readonly activePollWrites: Map<string, Set<PollWriteBucket>> = new Map();
 
+	private readonly activePollDrainPromises: Map<string, Set<Promise<void>>> = new Map();
+
+	private readonly delegatePollDeviceIds: Map<string, Set<string>> = new Map();
+
 	private readonly delegatePollGenerations: Map<string, number> = new Map();
 
 	private currentValueUpdateContext: ValueUpdateContext | null = null;
@@ -2141,14 +2145,21 @@ export class DelegatesManagerService {
 			return;
 		}
 
+		const valueHandler = this.delegateValueHandlers.get(delegate.id);
+
+		if (valueHandler) {
+			delegate.off('value', valueHandler);
+			this.delegateValueHandlers.delete(delegate.id);
+		}
+
 		this.delegatePollGenerations.set(deviceId, (this.delegatePollGenerations.get(deviceId) ?? 0) + 1);
 		this.cancelPollWritesForDelegate(deviceId);
 		this.cancelPendingWritesForDelegate(deviceId);
 
 		await this.teardownDelegateEvents(delegate);
 		await this.awaitActiveWritesForDelegate(deviceId);
+		await this.awaitActivePollDrainsForDelegate(deviceId);
 
-		const valueHandler = this.delegateValueHandlers.get(delegate.id);
 		const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
 
 		if (connectionHandler) {
@@ -2175,16 +2186,10 @@ export class DelegatesManagerService {
 			}
 		}
 
-		if (valueHandler) {
-			delegate.off('value', valueHandler);
-		}
-
 		if (connectionHandler) {
 			delegate.off('connected', connectionHandler);
+			this.delegateConnectionHandlers.delete(delegate.id);
 		}
-
-		this.delegateValueHandlers.delete(delegate.id);
-		this.delegateConnectionHandlers.delete(delegate.id);
 
 		for (const key of Array.from(this.changeHandlers.keys())) {
 			if (key.startsWith(`${deviceId}|`)) {
@@ -2242,6 +2247,10 @@ export class DelegatesManagerService {
 		// Invalidate any in-progress insert so it bails out at its next check point.
 		this.insertGeneration.delete(deviceId);
 
+		this.delegatePendingWrites.delete(deviceId);
+		this.delegateActiveWrites.delete(deviceId);
+		this.delegatePollGenerations.delete(deviceId);
+		this.delegatePollDeviceIds.delete(deviceId);
 		this.delegates.delete(deviceId);
 
 		this.logger.log(`Detached Shelly device=${deviceId}`, { resource: deviceId });
@@ -2514,7 +2523,39 @@ export class DelegatesManagerService {
 		if (immediately) {
 			this.cancelScheduledWrite(property.id);
 			this.cancelPollWrite(property.id);
-			await this.writeValueToProperty(property, value);
+
+			if (effectiveDelegateId) {
+				let active = this.delegateActiveWrites.get(effectiveDelegateId);
+
+				if (!active) {
+					active = new Set();
+					this.delegateActiveWrites.set(effectiveDelegateId, active);
+				}
+
+				const writePromise = (async (): Promise<void> => {
+					await this.writeValueToProperty(property, value);
+				})();
+
+				void writePromise.catch(() => {});
+
+				active.add(writePromise);
+
+				try {
+					await writePromise;
+				} finally {
+					const currentActive = this.delegateActiveWrites.get(effectiveDelegateId);
+
+					if (currentActive) {
+						currentActive.delete(writePromise);
+
+						if (currentActive.size === 0) {
+							this.delegateActiveWrites.delete(effectiveDelegateId);
+						}
+					}
+				}
+			} else {
+				await this.writeValueToProperty(property, value);
+			}
 		} else {
 			this.scheduleWrite(property, value, effectiveDelegateId);
 		}
@@ -2902,6 +2943,15 @@ export class DelegatesManagerService {
 		property: ShellyNgChannelPropertyEntity,
 		value: string | number | boolean,
 	): void {
+		let tracked = this.delegatePollDeviceIds.get(context.delegateId);
+
+		if (!tracked) {
+			tracked = new Set();
+			this.delegatePollDeviceIds.set(context.delegateId, tracked);
+		}
+
+		tracked.add(context.deviceId);
+
 		let bucket = this.pendingPollWrites.get(context.deviceId);
 
 		if (!bucket) {
@@ -2940,41 +2990,68 @@ export class DelegatesManagerService {
 
 		activeBuckets.add(bucket);
 
-		try {
-			for (const [propertyId, pending] of [...bucket.values.entries()]) {
-				// A notify-origin confirmation may arrive while an earlier property in this drain awaits
-				// persistence. It must be able to remove a later stale poll candidate before it starts.
-				if (bucket.values.get(propertyId) !== pending) {
-					continue;
+		const drainPromise = (async (): Promise<void> => {
+			try {
+				for (const [propertyId, pending] of [...bucket.values.entries()]) {
+					// A notify-origin confirmation may arrive while an earlier property in this drain awaits
+					// persistence. It must be able to remove a later stale poll candidate before it starts.
+					if (bucket.values.get(propertyId) !== pending) {
+						continue;
+					}
+
+					if (
+						!this.delegates.has(pending.delegateId) ||
+						(this.delegatePollGenerations.get(pending.delegateId) ?? 0) !== pending.delegateGeneration
+					) {
+						continue;
+					}
+
+					try {
+						this.commandLatencyTraceCollector.recordPollActivity(pending.property.id, 'poll-drain', {
+							delegateId: pending.delegateId,
+							deviceId,
+						});
+						await this.writeValueToProperty(pending.property, pending.value);
+					} catch (error) {
+						const err = error as Error;
+
+						this.logger.error(
+							`Failed to process poll write of value=${safeToString(pending.value)} to property=${pending.property.id}`,
+							{ message: err.message, stack: err.stack },
+						);
+					}
 				}
+			} finally {
+				activeBuckets.delete(bucket);
 
-				if (
-					!this.delegates.has(pending.delegateId) ||
-					(this.delegatePollGenerations.get(pending.delegateId) ?? 0) !== pending.delegateGeneration
-				) {
-					continue;
-				}
-
-				try {
-					this.commandLatencyTraceCollector.recordPollActivity(pending.property.id, 'poll-drain', {
-						delegateId: pending.delegateId,
-						deviceId,
-					});
-					await this.writeValueToProperty(pending.property, pending.value);
-				} catch (error) {
-					const err = error as Error;
-
-					this.logger.error(
-						`Failed to process poll write of value=${safeToString(pending.value)} to property=${pending.property.id}`,
-						{ message: err.message, stack: err.stack },
-					);
+				if (activeBuckets.size === 0 && this.activePollWrites.get(deviceId) === activeBuckets) {
+					this.activePollWrites.delete(deviceId);
 				}
 			}
-		} finally {
-			activeBuckets.delete(bucket);
+		})();
 
-			if (activeBuckets.size === 0 && this.activePollWrites.get(deviceId) === activeBuckets) {
-				this.activePollWrites.delete(deviceId);
+		void drainPromise.catch(() => {});
+
+		let drains = this.activePollDrainPromises.get(deviceId);
+
+		if (!drains) {
+			drains = new Set();
+			this.activePollDrainPromises.set(deviceId, drains);
+		}
+
+		drains.add(drainPromise);
+
+		try {
+			await drainPromise;
+		} finally {
+			const currentDrains = this.activePollDrainPromises.get(deviceId);
+
+			if (currentDrains) {
+				currentDrains.delete(drainPromise);
+
+				if (currentDrains.size === 0) {
+					this.activePollDrainPromises.delete(deviceId);
+				}
 			}
 		}
 	}
@@ -3014,27 +3091,123 @@ export class DelegatesManagerService {
 	}
 
 	private async awaitActiveWritesForDelegate(delegateId: string): Promise<void> {
-		const activeWrites = this.delegateActiveWrites.get(delegateId);
+		while (true) {
+			const activeWrites = this.delegateActiveWrites.get(delegateId);
 
-		if (activeWrites && activeWrites.size > 0) {
-			await Promise.all(Array.from(activeWrites));
+			if (!activeWrites || activeWrites.size === 0) {
+				break;
+			}
+
+			const toAwait = Array.from(activeWrites);
+			await Promise.allSettled(toAwait);
+
+			for (const p of toAwait) {
+				activeWrites.delete(p);
+			}
 		}
 
 		this.delegateActiveWrites.delete(delegateId);
 	}
 
 	private async awaitAllActiveWrites(): Promise<void> {
-		const allPromises: Promise<void>[] = [];
+		while (true) {
+			const allPromises: Promise<void>[] = [];
 
-		for (const activeWrites of this.delegateActiveWrites.values()) {
-			allPromises.push(...activeWrites);
-		}
+			for (const activeWrites of this.delegateActiveWrites.values()) {
+				allPromises.push(...activeWrites);
+			}
 
-		if (allPromises.length > 0) {
-			await Promise.all(allPromises);
+			if (allPromises.length === 0) {
+				break;
+			}
+
+			await Promise.allSettled(allPromises);
+
+			for (const activeWrites of this.delegateActiveWrites.values()) {
+				for (const p of allPromises) {
+					activeWrites.delete(p);
+				}
+			}
 		}
 
 		this.delegateActiveWrites.clear();
+	}
+
+	private async awaitActivePollDrainsForDelegate(delegateId: string): Promise<void> {
+		const deviceDbId = this.delegateDeviceIds.get(delegateId);
+		const relevantDeviceIds = new Set<string>([delegateId]);
+
+		if (deviceDbId) {
+			relevantDeviceIds.add(deviceDbId);
+		}
+
+		const trackedPollDeviceIds = this.delegatePollDeviceIds.get(delegateId);
+
+		if (trackedPollDeviceIds) {
+			for (const devId of trackedPollDeviceIds) {
+				relevantDeviceIds.add(devId);
+			}
+		}
+
+		for (const [devId, buckets] of this.activePollWrites.entries()) {
+			for (const bucket of buckets) {
+				for (const pending of bucket.values.values()) {
+					if (pending.delegateId === delegateId) {
+						relevantDeviceIds.add(devId);
+					}
+				}
+			}
+		}
+
+		while (true) {
+			const promises: Promise<void>[] = [];
+
+			for (const devId of relevantDeviceIds) {
+				const drains = this.activePollDrainPromises.get(devId);
+
+				if (drains && drains.size > 0) {
+					promises.push(...drains);
+				}
+			}
+
+			if (promises.length === 0) {
+				break;
+			}
+
+			await Promise.allSettled(promises);
+
+			for (const devId of relevantDeviceIds) {
+				const drains = this.activePollDrainPromises.get(devId);
+
+				if (drains) {
+					for (const p of promises) {
+						drains.delete(p);
+					}
+				}
+			}
+		}
+	}
+
+	private async awaitAllActivePollDrains(): Promise<void> {
+		while (true) {
+			const allPromises: Promise<void>[] = [];
+
+			for (const drains of this.activePollDrainPromises.values()) {
+				allPromises.push(...drains);
+			}
+
+			if (allPromises.length === 0) {
+				break;
+			}
+
+			await Promise.allSettled(allPromises);
+
+			for (const drains of this.activePollDrainPromises.values()) {
+				for (const p of allPromises) {
+					drains.delete(p);
+				}
+			}
+		}
 	}
 
 	private cancelPollWrite(propertyId: string): void {
@@ -3193,10 +3366,25 @@ export class DelegatesManagerService {
 		this.pendingWrites.clear();
 		this.delegatePendingWrites.clear();
 
-		this.clearPollWrites();
+		for (const bucket of this.pendingPollWrites.values()) {
+			clearTimeout(bucket.timer);
+		}
+
+		this.pendingPollWrites.clear();
+
+		for (const buckets of this.activePollWrites.values()) {
+			for (const bucket of buckets) {
+				bucket.values.clear();
+			}
+		}
 
 		await Promise.all(teardownPromises);
 		await this.awaitAllActiveWrites();
+		await this.awaitAllActivePollDrains();
+
+		this.activePollWrites.clear();
+		this.activePollDrainPromises.clear();
+		this.delegatePollDeviceIds.clear();
 
 		this.delegates.clear();
 		this.delegateValueHandlers.clear();
