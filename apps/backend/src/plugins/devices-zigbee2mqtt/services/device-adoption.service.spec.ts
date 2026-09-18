@@ -608,5 +608,56 @@ describe('Z2mDeviceAdoptionService', () => {
 				}),
 			);
 		});
+
+		it('should persist mapped property identifier (event) instead of z2mProperty when adopting remote button channel', async () => {
+			const z2mRemote = createMockZ2mDevice({
+				friendlyName: 'ikea_button',
+				definition: {
+					model: 'E2202',
+					vendor: 'IKEA',
+					description: 'SOMRIG shortcut button',
+					exposes: [
+						{
+							type: 'enum',
+							name: 'action',
+							property: 'action',
+							access: 1,
+							values: ['button_1_single', 'button_2_single'],
+						},
+					],
+				},
+			});
+			zigbee2mqttService.getRegisteredDevices.mockReturnValue([z2mRemote]);
+
+			const request = createAdoptRequest({
+				category: DeviceCategory.INPUT_CONTROLLER,
+				channels: [
+					{
+						identifier: 'button_1',
+						name: 'Button 1',
+						category: ChannelCategory.BUTTON,
+						properties: [
+							{
+								category: PropertyCategory.EVENT,
+								dataType: DataTypeType.ENUM,
+								permissions: [PermissionType.EVENT_ONLY],
+								z2mProperty: 'action',
+							},
+						],
+					},
+				] as AdoptDeviceRequestDto['channels'],
+			});
+
+			await service.adoptDevice(request);
+
+			expect(channelsPropertiesService.create).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					identifier: 'event',
+					name: 'Event',
+					category: PropertyCategory.EVENT,
+				}),
+			);
+		});
 	});
 });
