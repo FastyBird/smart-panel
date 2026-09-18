@@ -2867,7 +2867,7 @@ describe('DelegatesManagerService', () => {
 
 				const device = {
 					id: uuid(),
-				type: DEVICES_SHELLY_NG_TYPE,
+					type: DEVICES_SHELLY_NG_TYPE,
 					identifier: 'shelly-analog-test',
 				} as ShellyNgDeviceEntity;
 
@@ -2962,7 +2962,7 @@ describe('DelegatesManagerService', () => {
 
 				const device = {
 					id: uuid(),
-				type: DEVICES_SHELLY_NG_TYPE,
+					type: DEVICES_SHELLY_NG_TYPE,
 					identifier: 'shelly-count-test',
 				} as ShellyNgDeviceEntity;
 
@@ -2998,8 +2998,8 @@ describe('DelegatesManagerService', () => {
 				const shelly: any = {
 					id: 'shelly-count-test',
 					modelName: 'Plus Uni',
-				system: { config: { device: { name: 'Plus Uni', mac: 'AABBCCDDEE82' } } },
-				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.82' },
+					system: { config: { device: { name: 'Plus Uni', mac: 'AABBCCDDEE82' } } },
+					wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.82' },
 					input: {
 						id: 0,
 						key: 'input:0',
@@ -3030,7 +3030,7 @@ describe('DelegatesManagerService', () => {
 				delegate.emit('value', 'input:0', 'counts.total', 110, 'notify');
 				jest.advanceTimersByTime(300);
 
-			expect(valueCalls).toEqual([5.5]);
+				expect(valueCalls).toEqual([5.5]);
 			} finally {
 				jest.useRealTimers();
 			}

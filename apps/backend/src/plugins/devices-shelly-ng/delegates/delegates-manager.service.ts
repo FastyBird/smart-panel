@@ -2171,8 +2171,6 @@ export class DelegatesManagerService {
 		this.delegateValueHandlers.delete(delegate.id);
 		this.delegateConnectionHandlers.delete(delegate.id);
 
-
-
 		for (const key of Array.from(this.changeHandlers.keys())) {
 			if (key.startsWith(`${deviceId}|`)) {
 				this.changeHandlers.delete(key);
