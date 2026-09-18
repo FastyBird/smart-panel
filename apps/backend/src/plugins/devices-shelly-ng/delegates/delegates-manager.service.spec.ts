@@ -3243,5 +3243,32 @@ describe('DelegatesManagerService', () => {
 			// Occurrence was not published because teardown invalidated generation
 			expect(mockOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
 		});
+
+		test('detach() cancels pending writes before awaiting event teardown', async () => {
+			arrangeBaseEntities();
+			let pendingWritesCountDuringTeardown = -1;
+
+			const shelly: any = {
+				id: 'shelly-detach-writes',
+				modelName: 'Plus 1',
+				system: { config: { device: { name: 'D1', mac: 'AABBCCDDEE99' } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.99' },
+			};
+
+			await svc.insert(shelly as unknown as Device);
+
+			const timer = setTimeout(() => {}, 1000);
+			svc['pendingWrites'].set('p-detach-test', timer);
+
+			jest.spyOn(svc as any, 'teardownDelegateEvents').mockImplementation(async () => {
+				await new Promise((r) => setTimeout(r, 20));
+				pendingWritesCountDuringTeardown = svc['pendingWrites'].size;
+			});
+
+			await svc.detach();
+
+			expect(pendingWritesCountDuringTeardown).toBe(0);
+			expect(svc['pendingWrites'].size).toBe(0);
+		});
 	});
 });

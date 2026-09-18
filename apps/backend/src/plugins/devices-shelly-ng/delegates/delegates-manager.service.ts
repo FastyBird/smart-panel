@@ -3067,6 +3067,14 @@ export class DelegatesManagerService {
 			teardownPromises.push(this.teardownDelegateEvents(delegate));
 		}
 
+		for (const pendingWrite of this.pendingWrites.values()) {
+			clearTimeout(pendingWrite);
+		}
+
+		this.pendingWrites.clear();
+
+		this.clearPollWrites();
+
 		await Promise.all(teardownPromises);
 
 		this.delegates.clear();
@@ -3080,14 +3088,6 @@ export class DelegatesManagerService {
 		this.setPropertiesHandlers.clear();
 		this.setChannelsHandlers.clear();
 		this.propertiesMap.clear();
-
-		for (const pendingWrite of this.pendingWrites.values()) {
-			clearTimeout(pendingWrite);
-		}
-
-		this.pendingWrites.clear();
-
-		this.clearPollWrites();
 		this.delegatePollGenerations.clear();
 		this.currentValueUpdateContext = null;
 		this.deviceLocks.clear();
