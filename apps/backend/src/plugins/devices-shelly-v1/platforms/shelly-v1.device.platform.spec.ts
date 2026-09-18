@@ -356,6 +356,36 @@ describe('ShellyV1DevicePlatform', () => {
 		});
 	});
 
+	describe('Input channels', () => {
+		it('should reject command execution on read-only input channels', async () => {
+			const shellyDevice = makeShellyDevice('SHIX3-1');
+			const getDevice = jest.fn().mockReturnValue(shellyDevice);
+			const { platform } = makePlatform({ getDevice });
+
+			const device = makeDevice('dev-1', 'shellyi3-ABC123');
+			const channel = makeChannel('ch-1', 'input_0');
+			const property = makeProp('p-1', 'detected');
+
+			const ok = await platform.processBatch([{ device, channel, property, value: true }]);
+
+			expect(ok).toBe(false);
+		});
+
+		it('should reject command execution on read-only analog voltage channels', async () => {
+			const shellyDevice = makeShellyDevice('SHUNI-1');
+			const getDevice = jest.fn().mockReturnValue(shellyDevice);
+			const { platform } = makePlatform({ getDevice });
+
+			const device = makeDevice('dev-1', 'shellyuni-ABC123');
+			const channel = makeChannel('ch-1', 'voltage_0');
+			const property = makeProp('p-1', 'value');
+
+			const ok = await platform.processBatch([{ device, channel, property, value: 12.5 }]);
+
+			expect(ok).toBe(false);
+		});
+	});
+
 	describe('Error handling', () => {
 		it('should handle errors during command execution', async () => {
 			const shellyDevice = makeShellyDevice();
