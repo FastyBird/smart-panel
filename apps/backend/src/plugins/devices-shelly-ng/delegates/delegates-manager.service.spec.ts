@@ -2843,5 +2843,287 @@ describe('DelegatesManagerService', () => {
 
 			expect(updateCalls).toEqual([true, false]);
 		});
+
+		test('analog input initializes from xpercent and prefers xpercent handler over percent', async () => {
+			jest.useFakeTimers();
+			try {
+				const mockOccurrencesService = {
+					publishOccurrence: jest.fn().mockResolvedValue(null),
+				};
+
+				const localSvc = new DelegatesManagerService(
+					devicesService as any,
+					channelsService as any,
+					channelsPropertiesService as any,
+					deviceConnectivityService as any,
+					deviceManagerService as any,
+					deviceAddressService as any,
+					propertyMappingStorage as any,
+					transformerRegistry as any,
+					undefined,
+					undefined,
+					mockOccurrencesService as any,
+				);
+
+				const device = {
+					id: uuid(),
+				type: DEVICES_SHELLY_NG_TYPE,
+					identifier: 'shelly-analog-test',
+				} as ShellyNgDeviceEntity;
+
+				const inputChannel = {
+					id: uuid(),
+					device: device.id,
+					category: ChannelCategory.ANALOG_INPUT,
+					identifier: 'input:0',
+				} as ShellyNgChannelEntity;
+
+				const valueProp = {
+					id: uuid(),
+					channel: inputChannel.id,
+					category: PropertyCategory.VALUE,
+					identifier: 'value',
+					value: null,
+				} as ShellyNgChannelPropertyEntity;
+
+				(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
+				(devicesService.findOne as jest.Mock).mockResolvedValueOnce(device);
+				(devicesService.create as jest.Mock).mockResolvedValue(device);
+
+				(channelsService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+					if (field === 'identifier' && val === 'input:0') return inputChannel;
+					return null;
+				});
+
+				(channelsPropertiesService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+					if (field === 'category' && val === String(PropertyCategory.VALUE)) return valueProp;
+					return null;
+				});
+
+				const shelly: any = {
+					id: 'shelly-analog-test',
+					modelName: 'Plus Uni',
+					system: { config: { device: { name: 'Plus Uni', mac: 'AABBCCDDEE81' } } },
+					wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.81' },
+					input: {
+						id: 0,
+						key: 'input:0',
+						percent: 80,
+						xpercent: 24.5,
+					},
+				};
+
+				const delegate = (await localSvc.insert(shelly as unknown as Device)) as any;
+
+				const valueCalls: number[] = [];
+				(channelsPropertiesService.update as jest.Mock).mockImplementation(
+					async (id: string, dto: { value: number }): Promise<ShellyNgChannelPropertyEntity> => {
+						if (id === valueProp.id) {
+							valueCalls.push(dto.value);
+						}
+						return valueProp;
+					},
+				);
+
+				// Emit xpercent update
+				delegate.emit('value', 'input:0', 'xpercent', 25.5, 'notify');
+				jest.advanceTimersByTime(300);
+
+				// Emit percent update (raw) - should be ignored
+				delegate.emit('value', 'input:0', 'percent', 85, 'notify');
+				jest.advanceTimersByTime(300);
+
+				expect(valueCalls).toEqual([25.5]);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('count input initializes from counts.xtotal and prefers counts.xtotal handler over counts.total', async () => {
+			jest.useFakeTimers();
+			try {
+				const mockOccurrencesService = {
+					publishOccurrence: jest.fn().mockResolvedValue(null),
+				};
+
+				const localSvc = new DelegatesManagerService(
+					devicesService as any,
+					channelsService as any,
+					channelsPropertiesService as any,
+					deviceConnectivityService as any,
+					deviceManagerService as any,
+					deviceAddressService as any,
+					propertyMappingStorage as any,
+					transformerRegistry as any,
+					undefined,
+					undefined,
+					mockOccurrencesService as any,
+				);
+
+				const device = {
+					id: uuid(),
+				type: DEVICES_SHELLY_NG_TYPE,
+					identifier: 'shelly-count-test',
+				} as ShellyNgDeviceEntity;
+
+				const inputChannel = {
+					id: uuid(),
+					device: device.id,
+					category: ChannelCategory.ANALOG_INPUT,
+					identifier: 'input:0',
+				} as ShellyNgChannelEntity;
+
+				const valueProp = {
+					id: uuid(),
+					channel: inputChannel.id,
+					category: PropertyCategory.VALUE,
+					identifier: 'value',
+					value: null,
+				} as ShellyNgChannelPropertyEntity;
+
+				(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
+				(devicesService.findOne as jest.Mock).mockResolvedValueOnce(device);
+				(devicesService.create as jest.Mock).mockResolvedValue(device);
+
+				(channelsService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+					if (field === 'identifier' && val === 'input:0') return inputChannel;
+					return null;
+				});
+
+				(channelsPropertiesService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+					if (field === 'category' && val === String(PropertyCategory.VALUE)) return valueProp;
+					return null;
+				});
+
+				const shelly: any = {
+					id: 'shelly-count-test',
+					modelName: 'Plus Uni',
+				system: { config: { device: { name: 'Plus Uni', mac: 'AABBCCDDEE82' } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.82' },
+					input: {
+						id: 0,
+						key: 'input:0',
+						counts: {
+							total: 100,
+							xtotal: 5.0,
+						},
+					},
+				};
+
+				const delegate = (await localSvc.insert(shelly as unknown as Device)) as any;
+
+				const valueCalls: number[] = [];
+				(channelsPropertiesService.update as jest.Mock).mockImplementation(
+					async (id: string, dto: { value: number }): Promise<ShellyNgChannelPropertyEntity> => {
+						if (id === valueProp.id) {
+							valueCalls.push(dto.value);
+						}
+						return valueProp;
+					},
+				);
+
+				// Emit counts.xtotal update
+				delegate.emit('value', 'input:0', 'counts.xtotal', 5.5, 'notify');
+				jest.advanceTimersByTime(300);
+
+				// Emit raw counts.total update - should be ignored
+				delegate.emit('value', 'input:0', 'counts.total', 110, 'notify');
+				jest.advanceTimersByTime(300);
+
+			expect(valueCalls).toEqual([5.5]);
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+
+		test('queued and in-flight events do not publish occurrences or update DETECTED after teardown', async () => {
+			const mockOccurrencesService = {
+				publishOccurrence: jest.fn().mockImplementation(async () => {
+					await new Promise((r) => setTimeout(r, 50));
+					return null;
+				}),
+			};
+
+			const localSvcWithOccurrences = new DelegatesManagerService(
+				devicesService as any,
+				channelsService as any,
+				channelsPropertiesService as any,
+				deviceConnectivityService as any,
+				deviceManagerService as any,
+				deviceAddressService as any,
+				propertyMappingStorage as any,
+				transformerRegistry as any,
+				undefined,
+				undefined,
+				mockOccurrencesService as any,
+			);
+
+			const device = {
+				id: uuid(),
+				type: DEVICES_SHELLY_NG_TYPE,
+				identifier: 'shelly-teardown-test',
+			} as ShellyNgDeviceEntity;
+
+			const inputChannel = {
+				id: uuid(),
+				device: device.id,
+				category: ChannelCategory.BUTTON,
+				identifier: 'input:0',
+			} as ShellyNgChannelEntity;
+
+			const eventProp = {
+				id: uuid(),
+				channel: inputChannel.id,
+				category: PropertyCategory.EVENT,
+				identifier: 'event',
+			} as ShellyNgChannelPropertyEntity;
+
+			const detectedProp = {
+				id: uuid(),
+				channel: inputChannel.id,
+				category: PropertyCategory.DETECTED,
+				identifier: 'detected',
+			} as ShellyNgChannelPropertyEntity;
+
+			(devicesService.findOneBy as jest.Mock).mockResolvedValueOnce(null);
+			(devicesService.findOne as jest.Mock).mockResolvedValueOnce(device);
+			(devicesService.create as jest.Mock).mockResolvedValue(device);
+
+			(channelsService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+				if (field === 'identifier' && val === 'input:0') return inputChannel;
+				return null;
+			});
+
+			(channelsPropertiesService.findOneBy as jest.Mock).mockImplementation(async (field: string, val: string) => {
+				if (field === 'category' && val === String(PropertyCategory.EVENT)) return eventProp;
+				if (field === 'category' && val === String(PropertyCategory.DETECTED)) return detectedProp;
+				return null;
+			});
+
+			const shelly: any = {
+				id: 'shelly-teardown-test',
+				modelName: 'Plus I4',
+				system: { config: { device: { name: 'Plus I4', mac: 'AABBCCDDEE83' } } },
+				wifi: { key: 'wifi:0', rssi: -50, sta_ip: '192.168.1.83' },
+			};
+
+			const delegate = (await localSvcWithOccurrences.insert(shelly as unknown as Device)) as any;
+
+			(channelsPropertiesService.update as jest.Mock).mockImplementation(async () => {
+				await new Promise((r) => setTimeout(r, 40));
+				return detectedProp;
+			});
+
+			delegate.emit('event', {
+				ts: 1630489394.0,
+				events: [{ component: 'input:0', id: 0, event: 'btn_down', ts: 1630489394.0 }],
+			});
+
+			await localSvcWithOccurrences.remove(shelly.id);
+
+			await new Promise((r) => setTimeout(r, 80));
+
+			expect(mockOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
+		});
 	});
 });

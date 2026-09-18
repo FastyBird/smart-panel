@@ -116,6 +116,7 @@ export class DelegatesManagerService {
 
 	private readonly delegateEventHandlers: Map<string, (params: unknown) => void> = new Map();
 	private readonly delegateEventQueues: Map<string, Promise<void>> = new Map();
+	private readonly delegateEventGenerations: Map<string, number> = new Map();
 
 	private readonly changeHandlers: Map<string, (val: CharacteristicValue) => void> = new Map();
 
@@ -1853,10 +1854,20 @@ export class DelegatesManagerService {
 				);
 
 				if (valueProp) {
-					const initialVal = comp.percent ?? (typeof comp.counts?.total === 'number' ? comp.counts.total : 0);
+					const hasExtendedPercent = typeof comp.xpercent === 'number';
+					const hasExtendedCount = typeof comp.counts?.xtotal === 'number';
+
+					let initialVal: number;
+					if (comp.counts !== undefined) {
+						initialVal = hasExtendedCount ? comp.counts.xtotal! : (comp.counts.total ?? 0);
+					} else {
+						initialVal = hasExtendedPercent ? comp.xpercent! : (comp.percent ?? 0);
+					}
+
 					await this.setDefaultPropertyValue(device.id, valueProp, initialVal);
 
-					this.changeHandlers.set(`${delegate.id}|${comp.key}|percent`, (val: CharacteristicValue): void => {
+					const percentAttr = hasExtendedPercent ? 'xpercent' : 'percent';
+					this.changeHandlers.set(`${delegate.id}|${comp.key}|${percentAttr}`, (val: CharacteristicValue): void => {
 						const n = coerceNumberSafe(val);
 						if (n !== null) {
 							this.handleChange(valueProp, n, false).catch((err: Error): void => {
@@ -1865,7 +1876,8 @@ export class DelegatesManagerService {
 						}
 					});
 
-					this.changeHandlers.set(`${delegate.id}|${comp.key}|counts.total`, (val: CharacteristicValue): void => {
+					const countAttr = hasExtendedCount ? 'counts.xtotal' : 'counts.total';
+					this.changeHandlers.set(`${delegate.id}|${comp.key}|${countAttr}`, (val: CharacteristicValue): void => {
 						const n = coerceNumberSafe(val);
 						if (n !== null) {
 							this.handleChange(valueProp, n, false).catch((err: Error): void => {
@@ -2043,10 +2055,19 @@ export class DelegatesManagerService {
 
 		this.delegateConnectionHandlers.set(delegate.id, connectionHandler);
 
+		const eventGeneration = (this.delegateEventGenerations.get(delegate.id) ?? 0) + 1;
+		this.delegateEventGenerations.set(delegate.id, eventGeneration);
+
 		const eventHandler = (params: unknown): void => {
 			const previousPromise = this.delegateEventQueues.get(delegate.id) ?? Promise.resolve();
 			const nextPromise = previousPromise
-				.then(() => this.handleDeviceEvent(delegate, device, params))
+				.then(async () => {
+					if (this.delegateEventGenerations.get(delegate.id) !== eventGeneration) {
+						return;
+					}
+
+					await this.handleDeviceEvent(delegate, device, params, eventGeneration);
+				})
 				.catch((error) => {
 					const err = error as Error;
 					this.logger.error(`Shelly event error for device=${device.id}`, {
@@ -2088,6 +2109,18 @@ export class DelegatesManagerService {
 		});
 	}
 
+	private teardownDelegateEvents(delegate: ShellyDeviceDelegate): void {
+		const eventHandler = this.delegateEventHandlers.get(delegate.id);
+
+		if (eventHandler) {
+			delegate.off('event', eventHandler);
+		}
+
+		this.delegateEventHandlers.delete(delegate.id);
+		this.delegateEventQueues.delete(delegate.id);
+		this.delegateEventGenerations.set(delegate.id, (this.delegateEventGenerations.get(delegate.id) ?? 0) + 1);
+	}
+
 	private performRemove(deviceId: string): void {
 		const delegate = this.delegates.get(deviceId);
 
@@ -2097,6 +2130,8 @@ export class DelegatesManagerService {
 
 		this.delegatePollGenerations.set(deviceId, (this.delegatePollGenerations.get(deviceId) ?? 0) + 1);
 		this.cancelPollWritesForDelegate(deviceId);
+
+		this.teardownDelegateEvents(delegate);
 
 		const valueHandler = this.delegateValueHandlers.get(delegate.id);
 		const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
@@ -2136,14 +2171,7 @@ export class DelegatesManagerService {
 		this.delegateValueHandlers.delete(delegate.id);
 		this.delegateConnectionHandlers.delete(delegate.id);
 
-		const eventHandler = this.delegateEventHandlers.get(delegate.id);
 
-		if (eventHandler) {
-			delegate.off('event', eventHandler);
-		}
-
-		this.delegateEventHandlers.delete(delegate.id);
-		this.delegateEventQueues.delete(delegate.id);
 
 		for (const key of Array.from(this.changeHandlers.keys())) {
 			if (key.startsWith(`${deviceId}|`)) {
@@ -2313,7 +2341,12 @@ export class DelegatesManagerService {
 		delegate: ShellyDeviceDelegate,
 		device: ShellyNgDeviceEntity,
 		params: unknown,
+		generation: number,
 	): Promise<void> {
+		if (this.delegateEventGenerations.get(delegate.id) !== generation) {
+			return;
+		}
+
 		if (typeof params !== 'object' || params === null) {
 			return;
 		}
@@ -2322,6 +2355,10 @@ export class DelegatesManagerService {
 		const rawEvents = Array.isArray(eventPayload.events) ? eventPayload.events : [eventPayload];
 
 		for (const rawItem of rawEvents) {
+			if (this.delegateEventGenerations.get(delegate.id) !== generation) {
+				return;
+			}
+
 			if (typeof rawItem !== 'object' || rawItem === null) {
 				continue;
 			}
@@ -2356,6 +2393,10 @@ export class DelegatesManagerService {
 				DEVICES_SHELLY_NG_TYPE,
 			);
 
+			if (this.delegateEventGenerations.get(delegate.id) !== generation) {
+				return;
+			}
+
 			if (!channel) {
 				this.logger.debug(`No channel found for ${channelIdentifier} on device=${device.id}`);
 				continue;
@@ -2369,6 +2410,10 @@ export class DelegatesManagerService {
 						channel.id,
 					);
 
+					if (this.delegateEventGenerations.get(delegate.id) !== generation) {
+						return;
+					}
+
 					if (detectedProp) {
 						await this.handleChange(detectedProp, rawEvent === 'btn_down', true);
 					}
@@ -2379,11 +2424,19 @@ export class DelegatesManagerService {
 				}
 			}
 
+			if (this.delegateEventGenerations.get(delegate.id) !== generation) {
+				return;
+			}
+
 			const eventProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
 				'category',
 				PropertyCategory.EVENT,
 				channel.id,
 			);
+
+			if (this.delegateEventGenerations.get(delegate.id) !== generation) {
+				return;
+			}
 
 			if (!eventProp) {
 				this.logger.debug(`No EVENT property on channel=${channel.id} for device=${device.id}`);
@@ -2398,6 +2451,10 @@ export class DelegatesManagerService {
 				const sourceOccurrenceId = `${channel.id}:${rawEvent}:${ts ?? timestamp.getTime()}`;
 
 				try {
+					if (this.delegateEventGenerations.get(delegate.id) !== generation) {
+						return;
+					}
+
 					await this.channelInputOccurrencesService.publishOccurrence({
 						deviceId: device.id,
 						channelId: channel.id,
@@ -2997,11 +3054,16 @@ export class DelegatesManagerService {
 			if (connectionHandler) {
 				delegate.off('connected', connectionHandler);
 			}
+
+			this.teardownDelegateEvents(delegate);
 		}
 
 		this.delegates.clear();
 		this.delegateValueHandlers.clear();
 		this.delegateConnectionHandlers.clear();
+		this.delegateEventHandlers.clear();
+		this.delegateEventQueues.clear();
+		this.delegateEventGenerations.clear();
 		this.delegateDeviceIds.clear();
 		this.changeHandlers.clear();
 		this.setPropertiesHandlers.clear();
