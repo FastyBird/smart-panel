@@ -84,7 +84,8 @@ across the two clocks.
      slot, computed delay, registration bounds, generation, lifecycle state, active/concurrency counts,
      target in-flight state and skip decision used by the scheduler. Registration bounds bracket the
      actual target timeout registrations; they do not claim an exact callback execution time.
-   - The observer is disabled for absent or invalid configuration, expires after at most 180 seconds,
+   - The observer is disabled for absent or invalid configuration, defaults to 180 seconds and accepts
+     an explicit diagnostic duration up to 360 seconds,
      retains at most 64 observations/256 KiB, and never changes polling, provider calls, concurrency,
      timers or command handling. The session uses the backend `performance-now-v1` monotonic clock and
      paired UTC timestamps for conservative freshness only. Writes acquire an exclusive owner record,

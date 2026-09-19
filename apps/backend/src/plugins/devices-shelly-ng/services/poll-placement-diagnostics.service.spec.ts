@@ -24,6 +24,49 @@ describe('PollPlacementDiagnosticsService', () => {
 		expect(new PollPlacementDiagnosticsService().isEnabled()).toBe(false);
 	});
 
+	it('uses the three-minute default and accepts the bounded six-minute diagnostic', async () => {
+		const defaultDirectory = await mkdtemp(join(tmpdir(), 'poll-placement-default-'));
+		process.env.FB_SHELLY_POLL_PLACEMENT = JSON.stringify({
+			schemaVersion: 1,
+			runId: '11111111-1111-4111-8111-111111111111',
+			sourceDeviceId: '22222222-2222-4222-8222-222222222222',
+			exportPath: join(defaultDirectory, 'snapshot.json'),
+		});
+		const defaultService = new PollPlacementDiagnosticsService();
+		expect(
+			(defaultService as any).snapshot.expiresAtMonotonicMs - (defaultService as any).snapshot.armedAtMonotonicMs,
+		).toBe(180_000);
+		await defaultService.onModuleDestroy();
+		await rm(defaultDirectory, { recursive: true, force: true });
+
+		const extendedDirectory = await mkdtemp(join(tmpdir(), 'poll-placement-extended-'));
+		process.env.FB_SHELLY_POLL_PLACEMENT = JSON.stringify({
+			schemaVersion: 1,
+			runId: '11111111-1111-4111-8111-111111111111',
+			sourceDeviceId: '22222222-2222-4222-8222-222222222222',
+			exportPath: join(extendedDirectory, 'snapshot.json'),
+			durationMs: 360_000,
+		});
+		const extendedService = new PollPlacementDiagnosticsService();
+		expect(extendedService.isEnabled()).toBe(true);
+		expect(
+			(extendedService as any).snapshot.expiresAtMonotonicMs - (extendedService as any).snapshot.armedAtMonotonicMs,
+		).toBe(360_000);
+		await extendedService.onModuleDestroy();
+		await rm(extendedDirectory, { recursive: true, force: true });
+	});
+
+	it.each([999, 360_001])('rejects duration outside the bounded diagnostic range: %s ms', (durationMs) => {
+		process.env.FB_SHELLY_POLL_PLACEMENT = JSON.stringify({
+			schemaVersion: 1,
+			runId: '11111111-1111-4111-8111-111111111111',
+			sourceDeviceId: '22222222-2222-4222-8222-222222222222',
+			exportPath: uniqueExportPath('poll-placement-duration'),
+			durationMs,
+		});
+		expect(new PollPlacementDiagnosticsService().isEnabled()).toBe(false);
+	});
+
 	it('retains a bounded ready snapshot for the actual sorted delegate cycle', async () => {
 		const directory = await mkdtemp(join(tmpdir(), 'poll-placement-'));
 		const exportPath = join(directory, 'snapshot.json');
