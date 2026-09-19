@@ -154,6 +154,10 @@ export class HomeAssistantRawEventService implements WsEventService {
 		const actionCode = eventCode % 100;
 		const buttonNum = Math.floor(eventCode / 1000);
 
+		if (buttonNum < 1 || buttonNum > 4) {
+			return null;
+		}
+
 		let eventType: string;
 		switch (actionCode) {
 			case 0:
@@ -193,7 +197,7 @@ export class HomeAssistantRawEventService implements WsEventService {
 			deviceIdentifier: identifier,
 			eventType,
 			nativeCommand: String(eventCode),
-			endpointId: buttonNum > 0 ? buttonNum : undefined,
+			endpointId: buttonNum,
 			sourceOccurrenceId,
 		};
 	}

@@ -159,6 +159,17 @@ describe('HomeAssistantRawEventService', () => {
 			expect(service.parseDeconzEvent({ id: 'smart_switch_1', event: Number.NaN })).toBeNull();
 		});
 
+		it('returns null for event values with out-of-range button numbers or malformed codes', () => {
+			// Event 0 (buttonNum 0)
+			expect(service.parseDeconzEvent({ id: 'smart_switch_1', event: 0 })).toBeNull();
+			// Event 2 (buttonNum 0)
+			expect(service.parseDeconzEvent({ id: 'smart_switch_1', event: 2 })).toBeNull();
+			// Event 5002 (buttonNum 5, exceeds 1-4 range)
+			expect(service.parseDeconzEvent({ id: 'smart_switch_1', event: 5002 })).toBeNull();
+			// Event 9001 (buttonNum 9, exceeds 1-4 range)
+			expect(service.parseDeconzEvent({ id: 'smart_switch_1', event: 9001 })).toBeNull();
+		});
+
 		it('returns null if missing id or event number', () => {
 			expect(service.parseDeconzEvent({})).toBeNull();
 			expect(service.parseDeconzEvent({ id: 'switch' })).toBeNull();
