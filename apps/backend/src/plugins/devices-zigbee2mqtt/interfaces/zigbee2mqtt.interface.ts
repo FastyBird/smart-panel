@@ -13,11 +13,22 @@
  * Callback interface for MQTT adapter events
  * Used for direct communication between adapter and service without event bus
  */
+export interface Z2mDeviceStateMetadata {
+	isRetained?: boolean;
+	isCached?: boolean;
+	isDup?: boolean;
+	packetId?: number;
+}
+
 export interface Z2mAdapterCallbacks {
 	onBridgeOnline?: () => void | Promise<void>;
 	onBridgeOffline?: () => void | Promise<void>;
 	onDevicesReceived?: (devices: Z2mDevice[]) => void | Promise<void>;
-	onDeviceStateChanged?: (friendlyName: string, state: Record<string, unknown>) => void | Promise<void>;
+	onDeviceStateChanged?: (
+		friendlyName: string,
+		state: Record<string, unknown>,
+		metadata?: Z2mDeviceStateMetadata,
+	) => void | Promise<void>;
 	onDeviceAvailabilityChanged?: (friendlyName: string, available: boolean) => void | Promise<void>;
 	onDeviceJoined?: (ieeeAddress: string, friendlyName: string) => void | Promise<void>;
 	onDeviceLeft?: (ieeeAddress: string, friendlyName: string) => void | Promise<void>;

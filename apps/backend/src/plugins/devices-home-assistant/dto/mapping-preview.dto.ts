@@ -185,6 +185,16 @@ export class AdoptChannelDefinitionDto {
 	@IsString()
 	name: string;
 
+	@ApiPropertyOptional({
+		description: 'Channel identifier',
+		type: 'string',
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsString()
+	identifier?: string | null;
+
 	@ApiProperty({
 		description: 'Property definitions',
 		type: [AdoptPropertyDefinitionDto],

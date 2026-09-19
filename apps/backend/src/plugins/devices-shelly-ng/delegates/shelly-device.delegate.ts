@@ -142,7 +142,8 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 					.on('connect', this.handleConnect)
 					.on('disconnect', this.handleDisconnect)
 					.on('request', this.handleRequest)
-					.on('statusUpdate', this.handleStatusUpdate);
+					.on('statusUpdate', this.handleStatusUpdate)
+					.on('event', this.handleEvent);
 
 				DESCRIPTOR.components.forEach((componentSpec): void => {
 					for (const id of componentSpec.ids) {
@@ -417,6 +418,14 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 		// Intentionally empty
 	};
 
+	private handleEvent = (params: unknown): void => {
+		this.emit('event', params);
+	};
+
+	public emitNotificationEvent(params: unknown): void {
+		this.emit('event', params);
+	}
+
 	private handleChange = (compKey: string, char: string, val: CharacteristicValue): void => {
 		const origin: ShellyValueOrigin = this.applyingPollComponent === compKey ? 'poll' : 'notify';
 
@@ -510,7 +519,8 @@ export class ShellyDeviceDelegate extends EventEmitter2 {
 			.off('connect', this.handleConnect)
 			.off('disconnect', this.handleDisconnect)
 			.off('request', this.handleRequest)
-			.off('statusUpdate', this.handleStatusUpdate);
+			.off('statusUpdate', this.handleStatusUpdate)
+			.off('event', this.handleEvent);
 
 		for (const [componentKey, component] of this.components.entries()) {
 			const handler = this.changeHandlers.get(componentKey);

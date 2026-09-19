@@ -377,7 +377,7 @@ export class ShellyNgService extends BaseManagedExtensionService {
 		this.discoveryGeneration++;
 		this.processingDiscovery = false;
 
-		this.delegatesRegistryService.detach();
+		await this.delegatesRegistryService.detach();
 
 		// Mark all managed devices as UNKNOWN since the plugin is no longer running
 		try {

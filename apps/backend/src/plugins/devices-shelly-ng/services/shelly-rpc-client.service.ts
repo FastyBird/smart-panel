@@ -546,6 +546,11 @@ export class ShellyRpcClientService {
 			offset = page.offset + page.components.length;
 
 			if (page.components.length === 0) {
+				if (offset < total) {
+					throw new DevicesShellyNgException(
+						`Incomplete component discovery for host=${host}: received ${all.length} of ${total} components`,
+					);
+				}
 				break;
 			}
 		}

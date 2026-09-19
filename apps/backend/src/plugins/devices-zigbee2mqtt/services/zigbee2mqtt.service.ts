@@ -11,9 +11,20 @@ import {
 	ServiceState,
 } from '../../../modules/extensions/services/managed-extension-service.interface';
 import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
-import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
+import {
+	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
+	DEVICES_ZIGBEE2MQTT_TYPE,
+	MAX_PENDING_ACTION_AGE_MS,
+	MAX_PENDING_ACTION_STATES,
+} from '../devices-zigbee2mqtt.constants';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
-import { Z2mDevice, Z2mMqttConfig, Z2mRegisteredDevice, Z2mWsConfig } from '../interfaces/zigbee2mqtt.interface';
+import {
+	Z2mDevice,
+	Z2mDeviceStateMetadata,
+	Z2mMqttConfig,
+	Z2mRegisteredDevice,
+	Z2mWsConfig,
+} from '../interfaces/zigbee2mqtt.interface';
 import { Zigbee2mqttConfigModel } from '../models/config.model';
 
 import { Z2mBaseClientAdapter } from './base-client-adapter';
@@ -43,6 +54,12 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 	private pendingDevices: Z2mDevice[] | null = null;
 	private isSyncing = false; // Prevents concurrent sync operations
 	private transformersRestored = false; // Tracks if transformers have been restored after restart
+	private pendingActionStates: Array<{
+		friendlyName: string;
+		state: Record<string, unknown>;
+		metadata?: Z2mDeviceStateMetadata;
+		queuedAt: number;
+	}> = [];
 
 	// The active adapter is selected based on connection_type config
 	private activeAdapter: Z2mBaseClientAdapter;
@@ -367,6 +384,7 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 	private async doStop(): Promise<void> {
 		this.state = 'stopping';
 		this.transformersRestored = false;
+		this.pendingActionStates = [];
 
 		this.logger.log('Stopping Zigbee2MQTT plugin service');
 
@@ -401,7 +419,8 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 			onBridgeOnline: () => this.handleBridgeOnline(),
 			onBridgeOffline: () => this.handleBridgeOffline(),
 			onDevicesReceived: (devices) => this.handleDevicesReceived(devices),
-			onDeviceStateChanged: (friendlyName, state) => this.handleDeviceStateChanged(friendlyName, state),
+			onDeviceStateChanged: (friendlyName, state, metadata) =>
+				this.handleDeviceStateChanged(friendlyName, state, metadata),
 			onDeviceAvailabilityChanged: (friendlyName, available) =>
 				this.handleDeviceAvailabilityChanged(friendlyName, available),
 			onDeviceJoined: (ieeeAddress, friendlyName) => this.handleDeviceJoined(ieeeAddress, friendlyName),
@@ -482,6 +501,7 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 		this.pendingDevices = null;
 		this.isSyncing = false;
 		this.transformersRestored = false;
+		this.pendingActionStates = [];
 		this.pendingJoinedIeeeAddresses.clear();
 
 		// Set all devices to unknown state
@@ -520,6 +540,26 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 		await this.deviceMapper.restoreTransformersForExistingDevices(registeredDevices);
 		this.transformersRestored = true;
 
+		// Replay any fresh input actions queued before transformers were restored
+		if (this.pendingActionStates.length > 0) {
+			const now = Date.now();
+			const pending = this.pendingActionStates.filter((item) => now - item.queuedAt <= MAX_PENDING_ACTION_AGE_MS);
+			this.pendingActionStates = [];
+			for (const item of pending) {
+				try {
+					if (item.metadata !== undefined) {
+						await this.deviceMapper.updateDeviceState(item.friendlyName, item.state, item.metadata);
+					} else {
+						await this.deviceMapper.updateDeviceState(item.friendlyName, item.state);
+					}
+				} catch (error) {
+					this.logger.error(`Failed to replay pending action state for ${item.friendlyName}`, {
+						message: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+		}
+
 		// Drain pending joined IEEE addresses. The bridge fires a real
 		// `device_joined` / `device_announce` event for new devices, then
 		// republishes `bridge/devices` once the interview completes. Here we
@@ -547,7 +587,7 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 			const cachedState = this.activeAdapter.getCachedState(device.identifier);
 			if (Object.keys(cachedState).length > 0) {
 				try {
-					await this.deviceMapper.updateDeviceState(device.identifier, cachedState);
+					await this.deviceMapper.updateDeviceState(device.identifier, cachedState, { isCached: true });
 				} catch (error) {
 					this.logger.debug(`Failed to process cached state for ${device.identifier}: ${error}`);
 				}
@@ -593,8 +633,26 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 	/**
 	 * Handle device state changed event
 	 */
-	private async handleDeviceStateChanged(friendlyName: string, state: Record<string, unknown>): Promise<void> {
+	private async handleDeviceStateChanged(
+		friendlyName: string,
+		state: Record<string, unknown>,
+		metadata?: Z2mDeviceStateMetadata,
+	): Promise<void> {
 		if (!this.transformersRestored) {
+			const hasAction = Object.keys(state).some(
+				(key) => key === 'action' || key === 'click' || key.startsWith('action_'),
+			);
+			if (hasAction && !metadata?.isRetained && !metadata?.isCached) {
+				if (this.pendingActionStates.length >= MAX_PENDING_ACTION_STATES) {
+					this.pendingActionStates.shift();
+				}
+				this.pendingActionStates.push({
+					friendlyName,
+					state,
+					metadata,
+					queuedAt: Date.now(),
+				});
+			}
 			this.logger.debug(`Skipping state update for ${friendlyName} - transformers not yet restored`);
 			return;
 		}
@@ -602,7 +660,11 @@ export class Zigbee2mqttService extends BaseManagedExtensionService {
 		this.logger.debug(`Device state changed: ${friendlyName}, state keys: ${Object.keys(state).join(', ')}`);
 
 		try {
-			await this.deviceMapper.updateDeviceState(friendlyName, state);
+			if (metadata !== undefined) {
+				await this.deviceMapper.updateDeviceState(friendlyName, state, metadata);
+			} else {
+				await this.deviceMapper.updateDeviceState(friendlyName, state);
+			}
 		} catch (error) {
 			this.logger.error(`Failed to update device state: ${friendlyName}`, {
 				message: error instanceof Error ? error.message : String(error),

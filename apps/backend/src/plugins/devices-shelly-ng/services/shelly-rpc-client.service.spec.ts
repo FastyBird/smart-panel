@@ -162,4 +162,30 @@ describe('ShellyRpcClientService', () => {
 		expect(out.map((c) => c.key)).toEqual(['a', 'b', 'c']);
 		expect(mockFetch).toHaveBeenCalledTimes(3);
 	});
+
+	test('getComponents: throws DevicesShellyNgException when pagination terminates prematurely', async () => {
+		mockFetch
+			.mockResolvedValueOnce(
+				okJson({
+					result: {
+						components: [{ key: 'a', config: {}, status: {} }],
+						cfg_rev: 1,
+						offset: 0,
+						total: 3,
+					},
+				}),
+			)
+			.mockResolvedValueOnce(
+				okJson({
+					result: {
+						components: [],
+						cfg_rev: 1,
+						offset: 1,
+						total: 3,
+					},
+				}),
+			);
+
+		await expect(svc.getComponents('host')).rejects.toThrow(DevicesShellyNgException);
+	});
 });

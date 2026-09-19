@@ -124,7 +124,48 @@ export const SHELLY_V1_CHANNEL_PREFIX_TO_CATEGORY: Record<string, ChannelCategor
 	gas: ChannelCategory.GAS,
 	thermostat: ChannelCategory.THERMOSTAT,
 	heater: ChannelCategory.HEATER,
+	input: ChannelCategory.BUTTON,
+	voltage: ChannelCategory.ANALOG_INPUT,
 };
+
+/**
+ * Shelly V1 native CoIoT input event code to canonical Smart Panel event mapping
+ */
+export const SHELLY_V1_TO_PANEL_EVENT_MAP: Record<string, string> = {
+	S: 'press',
+	SS: 'double_press',
+	SSS: 'triple_press',
+	L: 'long_press',
+	SL: 'long_press',
+	LS: 'press',
+};
+
+/**
+ * Helper to generate input channel bindings for a given input index (0, 1, 2)
+ */
+export const createInputBindings = (index: number): PropertyBinding[] => [
+	// input index - detected (physical switch/button contact state)
+	{
+		shelliesProperty: `input${index}`,
+		channelIdentifier: `input_${index}`,
+		propertyIdentifier: 'detected',
+		category: PropertyCategory.DETECTED,
+		dataType: DataTypeType.BOOL,
+		permissions: [PermissionType.READ_ONLY],
+		channelCategory: ChannelCategory.BUTTON,
+	},
+	// input index - event (stateless button press interaction)
+	{
+		shelliesProperty: `inputEvent${index}`,
+		channelIdentifier: `input_${index}`,
+		propertyIdentifier: 'event',
+		category: PropertyCategory.EVENT,
+		dataType: DataTypeType.ENUM,
+		permissions: [PermissionType.EVENT_ONLY],
+		format: ['press', 'long_press', 'double_press', 'triple_press'],
+		channelCategory: ChannelCategory.BUTTON,
+	},
+];
 
 // Device descriptors for common Shelly Gen 1 devices
 // This is a minimal set to start with, can be extended later
@@ -151,6 +192,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 				dataType: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_WRITE],
 			},
+			...createInputBindings(0),
 		],
 	},
 	SHELLY1PM: {
@@ -203,6 +245,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 				permissions: [PermissionType.READ_ONLY],
 				unit: 'Wh',
 			},
+			...createInputBindings(0),
 		],
 	},
 	SHELLY1L: {
@@ -247,6 +290,8 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 				permissions: [PermissionType.READ_ONLY],
 				unit: 'Wh',
 			},
+			...createInputBindings(0),
+			...createInputBindings(1),
 		],
 	},
 	SHELLYRGBW2: {
@@ -335,6 +380,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 						permissions: [PermissionType.READ_ONLY],
 						unit: 'Wh',
 					},
+					...createInputBindings(0),
 				],
 			},
 			{
@@ -492,6 +538,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 						permissions: [PermissionType.READ_ONLY],
 						unit: 'Wh',
 					},
+					...createInputBindings(0),
 				],
 			},
 		],
@@ -563,6 +610,8 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 						permissions: [PermissionType.READ_ONLY],
 						unit: 'Wh',
 					},
+					...createInputBindings(0),
+					...createInputBindings(1),
 				],
 			},
 			{
@@ -620,6 +669,8 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 						permissions: [PermissionType.READ_ONLY],
 						unit: 'Wh',
 					},
+					...createInputBindings(0),
+					...createInputBindings(1),
 				],
 			},
 		],
@@ -719,6 +770,8 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 						permissions: [PermissionType.READ_ONLY],
 						unit: 'Wh',
 					},
+					...createInputBindings(0),
+					...createInputBindings(1),
 				],
 			},
 			{
@@ -776,6 +829,8 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 						permissions: [PermissionType.READ_ONLY],
 						unit: 'Wh',
 					},
+					...createInputBindings(0),
+					...createInputBindings(1),
 				],
 			},
 		],
@@ -832,6 +887,8 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 				permissions: [PermissionType.READ_ONLY],
 				unit: 'Wh',
 			},
+			...createInputBindings(0),
+			...createInputBindings(1),
 		],
 	},
 	SHELLYPLUG: {
@@ -1264,7 +1321,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 	SHELLYBUTTON1: {
 		name: 'Shelly Button1',
 		models: ['SHBTN-1', 'SHBTN-2'],
-		categories: [DeviceCategory.SENSOR],
+		categories: [DeviceCategory.INPUT_CONTROLLER, DeviceCategory.SENSOR],
 		bindings: [
 			// battery
 			{
@@ -1276,6 +1333,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 				permissions: [PermissionType.READ_ONLY],
 				unit: '%',
 			},
+			...createInputBindings(0),
 		],
 	},
 	SHELLYDIMMERW1: {
@@ -1679,8 +1737,8 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 	SHELLYI3: {
 		name: 'Shelly i3',
 		models: ['SHIX3-1'],
-		categories: [DeviceCategory.SENSOR],
-		bindings: [],
+		categories: [DeviceCategory.INPUT_CONTROLLER, DeviceCategory.SENSOR],
+		bindings: [...createInputBindings(0), ...createInputBindings(1), ...createInputBindings(2)],
 	},
 	SHELLYMOTION: {
 		name: 'Shelly Motion',
@@ -1927,6 +1985,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		name: 'Shelly Uni',
 		models: ['SHUNI-1'],
 		categories: [
+			DeviceCategory.INPUT_CONTROLLER,
 			DeviceCategory.OUTLET,
 			DeviceCategory.SWITCHER,
 			DeviceCategory.PUMP,
@@ -1956,6 +2015,19 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 				category: PropertyCategory.ON,
 				dataType: DataTypeType.BOOL,
 				permissions: [PermissionType.READ_WRITE],
+			},
+			...createInputBindings(0),
+			...createInputBindings(1),
+			// voltage (analog input)
+			{
+				shelliesProperty: 'voltage0',
+				channelIdentifier: 'voltage_0',
+				propertyIdentifier: 'value',
+				category: PropertyCategory.VALUE,
+				dataType: DataTypeType.FLOAT,
+				permissions: [PermissionType.READ_ONLY],
+				unit: 'V',
+				channelCategory: ChannelCategory.ANALOG_INPUT,
 			},
 		],
 	},

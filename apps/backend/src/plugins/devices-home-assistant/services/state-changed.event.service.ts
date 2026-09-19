@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { EventType as DevicesModuleEventType } from '../../../modules/devices/devices.constants';
+import { EventType as DevicesModuleEventType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
@@ -21,6 +22,7 @@ import {
 	HomeAssistantDeviceEntity,
 } from '../entities/devices-home-assistant.entity';
 import { MapperService } from '../mappers/mapper.service';
+import { normalizeHaEventType } from '../utils/ha-event.utils';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { WsEventService } from './home-assistant.ws.service';
@@ -55,6 +57,8 @@ export class StateChangedEventService implements WsEventService {
 		private readonly homeAssistantMapperService: MapperService,
 		private readonly homeAssistantHttpService: HomeAssistantHttpService,
 		private readonly virtualPropertyService: VirtualPropertyService,
+		@Optional()
+		private readonly channelInputOccurrencesService?: ChannelInputOccurrencesService,
 	) {}
 
 	// Invalidate cache on structural changes (create/delete/update).
@@ -92,6 +96,12 @@ export class StateChangedEventService implements WsEventService {
 		}
 
 		const entityId = event.data.new_state.entity_id;
+
+		// Handle Home Assistant event.* entities immediately for hardware input occurrences
+		if (entityId.startsWith('event.')) {
+			await this.handleHardwareEventEntity(event);
+			return;
+		}
 
 		if (this.debounceTimers.has(entityId)) {
 			clearTimeout(this.debounceTimers.get(entityId));
@@ -149,6 +159,103 @@ export class StateChangedEventService implements WsEventService {
 				})();
 			}, 500),
 		);
+	}
+
+	/**
+	 * Handles Home Assistant event.* entities, publishing hardware input occurrences
+	 * independently of property state and without debounce delay.
+	 */
+	private async handleHardwareEventEntity(event: HomeAssistantStateChangedEventDto): Promise<void> {
+		if (event.data.new_state === null) {
+			return;
+		}
+
+		const entityId = event.data.new_state.entity_id;
+
+		// 1. Startup snapshot / reconnect / initial refresh: old_state is null -> skip!
+		if (event.data.old_state === null) {
+			this.logger.debug(`[HARDWARE EVENT] Skipping startup/initial state refresh for ${entityId}, no event occurred.`);
+			return;
+		}
+
+		// 2. State timestamp didn't change (e.g. friendly_name or availability update) -> skip!
+		if (event.data.new_state.state === event.data.old_state.state) {
+			this.logger.debug(
+				`[HARDWARE EVENT] Skipping state change for ${entityId}: timestamp ${event.data.new_state.state} unchanged.`,
+			);
+			return;
+		}
+
+		// 3. Unavailable / unknown states -> skip!
+		if (event.data.new_state.state === 'unavailable' || event.data.new_state.state === 'unknown') {
+			return;
+		}
+
+		// 4. Raw event_type attribute
+		const rawEventType = event.data.new_state.attributes?.event_type;
+		if (typeof rawEventType !== 'string' || !rawEventType.trim()) {
+			this.logger.debug(`[HARDWARE EVENT] Event entity ${entityId} state changed without event_type attribute`);
+			return;
+		}
+
+		// 5. Look up device and channel
+		const haDevice = this.entityIdToHaDevice?.get(entityId);
+		if (!haDevice) {
+			this.logger.debug(`[HARDWARE EVENT] No HA device mapped for entity ${entityId}`);
+			return;
+		}
+
+		const device = this.devices.find((d) => d.haDeviceId === haDevice.id);
+		if (!device) {
+			this.logger.debug(`[HARDWARE EVENT] No adopted Smart Panel device for HA device ${haDevice.id}`);
+			return;
+		}
+
+		const channels = await this.getChannelsForDevice(device.id);
+		const properties = await this.getPropertiesForChannels(channels);
+
+		// Find property mapped to this entityId with EVENT category
+		const eventProp = properties.find((p) => p.haEntityId === entityId && p.category === PropertyCategory.EVENT);
+
+		if (!eventProp) {
+			this.logger.debug(`[HARDWARE EVENT] No EVENT property mapped to ${entityId} on device ${device.id}`);
+			return;
+		}
+
+		const channelId = typeof eventProp.channel === 'string' ? eventProp.channel : eventProp.channel?.id;
+		if (!channelId) {
+			return;
+		}
+
+		const normalizedEvent = normalizeHaEventType(rawEventType);
+		const sourceTimestamp = event.data.new_state.state;
+		const contextId = event.data.new_state.context?.id;
+		const sourceOccurrenceId = contextId
+			? `${entityId}:${event.data.new_state.state}:${contextId}`
+			: `${entityId}:${event.data.new_state.state}`;
+
+		this.logger.debug(
+			`[HARDWARE EVENT] Publishing occurrence: device=${device.id}, channel=${channelId}, ` +
+				`event=${normalizedEvent}, sourceOccurrenceId=${sourceOccurrenceId}`,
+		);
+
+		if (this.channelInputOccurrencesService) {
+			await this.channelInputOccurrencesService.publishOccurrence({
+				deviceId: device.id,
+				channelId,
+				propertyId: eventProp.id,
+				event: normalizedEvent,
+				nativeEventType: rawEventType,
+				sourceTimestamp,
+				sourceOccurrenceId,
+				data: {
+					entity_id: entityId,
+					event_type: rawEventType,
+					state: event.data.new_state.state,
+					context: event.data.new_state.context,
+				},
+			});
+		}
 	}
 
 	/**

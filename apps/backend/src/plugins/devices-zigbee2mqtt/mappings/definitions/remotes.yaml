@@ -1,83 +1,514 @@
 # Zigbee2MQTT Remote Control and Button Mappings
 # Handles remote controls, buttons, and devices with action/click events
 
-version: "1.0"
+version: '1.0'
 
-# DISABLED: All remote/button mappings are commented out because:
-# - They use GENERIC category which is only a fallback and not used by the system
-# - Button events (push, click, double click, hold, etc.) are not supported by Smart Panel
-# Enable when event-based device support is added to the spec.
-
-mappings: []
-
+mappings:
   # ============================================
-  # REMOTE CONTROLS AND BUTTONS
+  # SPECIFIC REMOTE CONTROLS
   # ============================================
 
-  # Action event (most common for remotes/buttons)
-  # Values like: single, double, triple, hold, release, rotate_left, rotate_right, etc.
-  # - name: action_event
-  #   description: "Remote control or button action event"
-  #   priority: 50
-  #   match:
-  #     expose_type: enum
-  #     property: action
-  #   device_category: GENERIC
-  #   channels:
-  #     - identifier: button
-  #       name: Button
-  #       category: GENERIC
-  #       properties:
-  #         - z2m_property: action
-  #           direction: read_only
-  #           panel:
-  #             identifier: EVENT
-  #             name: Action
-  #             data_type: ENUM
-  #             settable: false
-  #             queryable: false
+  # Philips Hue Dimmer switch (RWL020, RWL021, RWL022, 324131092621)
+  # 4 physical buttons: on, up, down, off
+  - name: hue_dimmer
+    description: 'Philips Hue Dimmer Switch (4 buttons)'
+    priority: 120
+    match:
+      all_of:
+        - expose_type: enum
+        - property: action
+        - any_of:
+            - model: RWL020
+            - model: RWL021
+            - model: RWL022
+            - model: '324131092621'
+    device_category: INPUT_CONTROLLER
+    channels:
+      - identifier: button_on
+        name: On Button
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+      - identifier: button_up
+        name: Up Button
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+      - identifier: button_down
+        name: Down Button
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+      - identifier: button_off
+        name: Off Button
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
 
-  # Click event (alternative naming used by some devices)
-  # Values like: single, double, long, etc.
-  # - name: click_event
-  #   description: "Button click event"
-  #   priority: 50
-  #   match:
-  #     expose_type: enum
-  #     property: click
-  #   device_category: GENERIC
-  #   channels:
-  #     - identifier: button
-  #       name: Button
-  #       category: GENERIC
-  #       properties:
-  #         - z2m_property: click
-  #           direction: read_only
-  #           panel:
-  #             identifier: EVENT
-  #             name: Click
-  #             data_type: ENUM
-  #             settable: false
-  #             queryable: false
+  # IKEA SOMRIG shortcut button (E2202)
+  # 2 physical buttons: button_1, button_2
+  - name: ikea_somrig
+    description: 'IKEA SOMRIG Shortcut Button (2 buttons)'
+    priority: 120
+    match:
+      all_of:
+        - expose_type: enum
+        - property: action
+        - any_of:
+            - model: E2202
+    device_category: INPUT_CONTROLLER
+    channels:
+      - identifier: button_1
+        name: Button 1
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+      - identifier: button_2
+        name: Button 2
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
 
-  # Operation event (used by some remotes for mode switching)
-  # - name: operation_event
-  #   description: "Operation mode event"
-  #   priority: 50
-  #   match:
-  #     expose_type: enum
-  #     property: operation
-  #   device_category: GENERIC
-  #   channels:
-  #     - identifier: remote
-  #       name: Remote
-  #       category: GENERIC
-  #       properties:
-  #         - z2m_property: operation
-  #           direction: read_only
-  #           panel:
-  #             identifier: EVENT
-  #             name: Operation
-  #             data_type: ENUM
-  #             settable: false
-  #             queryable: false
+  # IKEA STYRBAR remote control (E2001, E2002)
+  # 4 physical buttons: on, off, left, right
+  - name: ikea_styrbar
+    description: 'IKEA STYRBAR Remote Control (4 buttons)'
+    priority: 120
+    match:
+      all_of:
+        - expose_type: enum
+        - property: action
+        - any_of:
+            - model: E2001
+            - model: E2002
+    device_category: INPUT_CONTROLLER
+    channels:
+      - identifier: button_on
+        name: On Button
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+      - identifier: button_off
+        name: Off Button
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+      - identifier: button_left
+        name: Left Button
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+      - identifier: button_right
+        name: Right Button
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+
+  # Rotary Dial / Smart Knob (e.g. Tuya Smart Knob ERS-10TZBVK-AA, TS004F dimmer/knob, IKEA Symfonisk E1744, Philips Hue Tap Dial 8719514440937, 929003500201)
+  # 2 physical controls: push button and rotary dial
+  - name: rotary_dial_remote
+    description: 'Rotary dial and button controller'
+    priority: 120
+    match:
+      all_of:
+        - expose_type: enum
+        - property: action
+        - any_of:
+            - model: ERS-10TZBVK-AA
+            - model: TS004F
+              manufacturer: _TZ3000_pftj0i7z
+            - model: TS004F
+              manufacturer: _TZ3000_4fjiwweb
+            - model: TS004F
+              manufacturer: _TZ3000_uri7ongn
+            - model: TS004F
+              manufacturer: _TZ3000_abrsvsou
+            - model: TS004F
+              manufacturer: _TZ3000_402vrq2i
+            - model: E1744
+            - model: '8719514440937'
+            - model: '929003500201'
+    device_category: INPUT_CONTROLLER
+    channels:
+      - identifier: button
+        name: Button
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+      - identifier: rotary
+        name: Rotary Dial
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Dial Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+                - rotate_left
+                - rotate_right
+              settable: false
+              queryable: false
+
+  # Tuya 4-Button Remote / Scene Switch (TS004F, TS004F_1, TS0044)
+  # 4 physical buttons: button_1, button_2, button_3, button_4
+  - name: tuya_4button_remote
+    description: 'Tuya 4-Button Scene Switch (4 buttons)'
+    priority: 115
+    match:
+      all_of:
+        - expose_type: enum
+        - property: action
+        - any_of:
+            - model: TS004F
+            - model: TS004F_1
+            - model: TS0044
+    device_category: INPUT_CONTROLLER
+    channels:
+      - identifier: button_1
+        name: Button 1
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+      - identifier: button_2
+        name: Button 2
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+      - identifier: button_3
+        name: Button 3
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+      - identifier: button_4
+        name: Button 4
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+
+  # Generic Multi-Endpoint Remote (matches exposes that have an endpoint or are list elements)
+  - name: generic_endpoint_button
+    description: 'Multi-endpoint remote button'
+    priority: 60
+    match:
+      all_of:
+        - expose_type: enum
+        - property: action
+        - is_list: true
+    device_category: INPUT_CONTROLLER
+    channels:
+      - identifier: 'button_{endpoint}'
+        name: 'Button {endpoint}'
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false
+
+  # Generic single button action event (Sonoff SNZB-01, Aqara Wireless Mini Switch WXKG11LM, etc.)
+  - name: action_event
+    description: 'Remote control or button action event'
+    priority: 50
+    match:
+      expose_type: enum
+      property: action
+    device_category: INPUT_CONTROLLER
+    channels:
+      - identifier: button
+        name: Button
+        category: BUTTON
+        properties:
+          - z2m_property: action
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+                - rotate_left
+                - rotate_right
+              settable: false
+              queryable: false
+
+  # Generic click event (alternative naming used by some legacy devices)
+  - name: click_event
+    description: 'Button click event'
+    priority: 50
+    match:
+      expose_type: enum
+      property: click
+    device_category: INPUT_CONTROLLER
+    channels:
+      - identifier: button
+        name: Button
+        category: BUTTON
+        properties:
+          - z2m_property: click
+            direction: event_only
+            panel:
+              identifier: EVENT
+              name: Event
+              data_type: ENUM
+              format:
+                - press
+                - double_press
+                - triple_press
+                - long_press
+                - release
+                - down
+                - up
+              settable: false
+              queryable: false

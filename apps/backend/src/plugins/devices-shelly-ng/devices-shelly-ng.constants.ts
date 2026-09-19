@@ -239,7 +239,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		models: [ShellyPlusI4.model.toUpperCase(), ShellyPlusI4Dc.model.toUpperCase()],
 		components: [{ type: ComponentType.INPUT, cls: Input, ids: [0, 1, 2, 3] }],
 		system: [{ type: ComponentType.WIFI, cls: WiFi }],
-		categories: [DeviceCategory.SENSOR],
+		categories: [DeviceCategory.INPUT_CONTROLLER, DeviceCategory.SENSOR],
 	},
 	SHELLYPLUSPLUG: {
 		name: ShellyPlusPlugS.modelName,
@@ -309,6 +309,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		],
 		system: [{ type: ComponentType.WIFI, cls: WiFi }],
 		categories: [
+			DeviceCategory.INPUT_CONTROLLER,
 			DeviceCategory.OUTLET,
 			DeviceCategory.SWITCHER,
 			DeviceCategory.PUMP,
@@ -622,7 +623,7 @@ export const DESCRIPTORS: Record<string, DeviceDescriptor> = {
 		models: [ShellyI4Gen3.model.toUpperCase()],
 		components: [{ type: ComponentType.INPUT, cls: Input, ids: [0, 1, 2, 3] }],
 		system: [{ type: ComponentType.WIFI, cls: WiFi }],
-		categories: [DeviceCategory.SENSOR],
+		categories: [DeviceCategory.INPUT_CONTROLLER, DeviceCategory.SENSOR],
 	},
 	SHELLY1LGEN3: {
 		name: Shelly1LGen3.modelName,

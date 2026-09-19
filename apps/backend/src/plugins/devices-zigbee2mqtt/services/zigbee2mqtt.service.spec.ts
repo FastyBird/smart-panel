@@ -12,7 +12,12 @@ import { ConnectionState, DeviceCategory } from '../../../modules/devices/device
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
-import { DEVICES_ZIGBEE2MQTT_PLUGIN_NAME, DEVICES_ZIGBEE2MQTT_TYPE } from '../devices-zigbee2mqtt.constants';
+import {
+	DEVICES_ZIGBEE2MQTT_PLUGIN_NAME,
+	DEVICES_ZIGBEE2MQTT_TYPE,
+	MAX_PENDING_ACTION_AGE_MS,
+	MAX_PENDING_ACTION_STATES,
+} from '../devices-zigbee2mqtt.constants';
 import { Zigbee2mqttDeviceEntity } from '../entities/devices-zigbee2mqtt.entity';
 import { Z2mAdapterCallbacks, Z2mDevice, Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 import { Zigbee2mqttConfigModel } from '../models/config.model';
@@ -450,6 +455,120 @@ describe('Zigbee2mqttService', () => {
 			await capturedCallbacks.onDeviceStateChanged?.('living_room_light', state);
 
 			expect(deviceMapper.updateDeviceState).toHaveBeenCalledWith('living_room_light', state);
+		});
+
+		it('should queue fresh action states when transformers not restored and replay them upon restoration', async () => {
+			const actionState = { action: 'single' };
+			const metadata = { isRetained: false, isCached: false, packetId: 10 };
+
+			await capturedCallbacks.onDeviceStateChanged?.('wireless_button', actionState, metadata);
+
+			expect(deviceMapper.updateDeviceState).not.toHaveBeenCalled();
+
+			await capturedCallbacks.onBridgeOnline?.();
+			await capturedCallbacks.onDevicesReceived?.([]);
+
+			expect(deviceMapper.updateDeviceState).toHaveBeenCalledWith('wireless_button', actionState, metadata);
+		});
+		it('should drop stale action states exceeding MAX_PENDING_ACTION_AGE_MS upon restoration', async () => {
+			const staleAction = { action: 'single' };
+			const freshAction = { action: 'double' };
+
+			await capturedCallbacks.onDeviceStateChanged?.('wireless_button', staleAction, {
+				isRetained: false,
+				isCached: false,
+			});
+
+			jest.advanceTimersByTime(MAX_PENDING_ACTION_AGE_MS + 1000);
+
+			await capturedCallbacks.onDeviceStateChanged?.('wireless_button', freshAction, {
+				isRetained: false,
+				isCached: false,
+			});
+
+			await capturedCallbacks.onBridgeOnline?.();
+			await capturedCallbacks.onDevicesReceived?.([]);
+
+			expect(deviceMapper.updateDeviceState).not.toHaveBeenCalledWith(
+				'wireless_button',
+				staleAction,
+				expect.anything(),
+			);
+			expect(deviceMapper.updateDeviceState).toHaveBeenCalledWith(
+				'wireless_button',
+				freshAction,
+				expect.objectContaining({ isRetained: false, isCached: false }),
+			);
+		});
+
+		it('should enforce queue cap MAX_PENDING_ACTION_STATES by removing oldest entries', async () => {
+			for (let i = 0; i < MAX_PENDING_ACTION_STATES + 5; i++) {
+				await capturedCallbacks.onDeviceStateChanged?.(
+					'wireless_button',
+					{ action: `action_${i}` },
+					{
+						isRetained: false,
+						isCached: false,
+					},
+				);
+			}
+
+			await capturedCallbacks.onBridgeOnline?.();
+			await capturedCallbacks.onDevicesReceived?.([]);
+
+			expect(deviceMapper.updateDeviceState).not.toHaveBeenCalledWith(
+				'wireless_button',
+				{ action: 'action_0' },
+				expect.anything(),
+			);
+			expect(deviceMapper.updateDeviceState).not.toHaveBeenCalledWith(
+				'wireless_button',
+				{ action: 'action_4' },
+				expect.anything(),
+			);
+			expect(deviceMapper.updateDeviceState).toHaveBeenCalledWith(
+				'wireless_button',
+				{ action: 'action_5' },
+				expect.anything(),
+			);
+			expect(deviceMapper.updateDeviceState).toHaveBeenCalledWith(
+				'wireless_button',
+				{ action: `action_${MAX_PENDING_ACTION_STATES + 4}` },
+				expect.anything(),
+			);
+		});
+
+		it('should clear pendingActionStates on bridge offline', async () => {
+			const actionState = { action: 'single' };
+			await capturedCallbacks.onDeviceStateChanged?.('wireless_button', actionState, {
+				isRetained: false,
+				isCached: false,
+			});
+
+			await capturedCallbacks.onBridgeOffline?.();
+
+			await capturedCallbacks.onBridgeOnline?.();
+			await capturedCallbacks.onDevicesReceived?.([]);
+
+			expect(deviceMapper.updateDeviceState).not.toHaveBeenCalled();
+		});
+
+		it('should clear pendingActionStates on service stop', async () => {
+			mqttAdapter.connect.mockResolvedValue(undefined);
+			await service.start();
+
+			const actionState = { action: 'single' };
+			await capturedCallbacks.onDeviceStateChanged?.('wireless_button', actionState, {
+				isRetained: false,
+				isCached: false,
+			});
+
+			await service.stop();
+
+			await capturedCallbacks.onBridgeOnline?.();
+			await capturedCallbacks.onDevicesReceived?.([]);
+
+			expect(deviceMapper.updateDeviceState).not.toHaveBeenCalled();
 		});
 	});
 
