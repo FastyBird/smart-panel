@@ -36,14 +36,14 @@ describe('ThirdPartyInputsController', () => {
 		type: DEVICES_THIRD_PARTY_TYPE,
 		category: DeviceCategory.GENERIC,
 		name: 'Test Third Party Device',
-	} as DeviceEntity;
+	} as unknown as DeviceEntity;
 
 	const mockChannel = {
 		id: uuid(),
 		category: ChannelCategory.BUTTON,
 		name: 'Action Button',
 		device: mockDevice,
-	} as ChannelEntity;
+	} as unknown as ChannelEntity;
 
 	const mockProperty = {
 		id: uuid(),
@@ -51,10 +51,10 @@ describe('ThirdPartyInputsController', () => {
 		identifier: 'event',
 		name: 'Event',
 		dataType: DataTypeType.ENUM,
-		permissions: [PermissionType.READ_ONLY, PermissionType.EVENT_ONLY] as PermissionType[],
+		permissions: [PermissionType.READ_ONLY, PermissionType.EVENT_ONLY],
 		format: ['press', 'double_press', 'long_press'],
 		channel: mockChannel,
-	} as ChannelPropertyEntity;
+	} as unknown as ChannelPropertyEntity;
 
 	beforeEach(() => {
 		devicesService = {
@@ -234,7 +234,7 @@ describe('ThirdPartyInputsController', () => {
 	});
 
 	it('rejects request for non-third-party device', async () => {
-		const otherDevice = { ...mockDevice, type: 'other' };
+		const otherDevice = { ...mockDevice, type: 'other' } as unknown as DeviceEntity;
 		devicesService.findOne.mockResolvedValueOnce(otherDevice);
 
 		await expect(
@@ -248,7 +248,7 @@ describe('ThirdPartyInputsController', () => {
 		const otherDeviceChannel = {
 			...mockChannel,
 			device: { id: uuid() } as unknown as DeviceEntity,
-		};
+		} as unknown as ChannelEntity;
 		channelsService.findOne.mockResolvedValueOnce(otherDeviceChannel);
 
 		await expect(
