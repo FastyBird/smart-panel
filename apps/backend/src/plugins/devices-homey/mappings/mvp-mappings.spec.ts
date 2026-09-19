@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { DeviceCategory } from '../../../modules/devices/devices.constants';
+import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { getRequiredProperties } from '../../../modules/devices/utils/schema.utils';
 import { HomeyCapabilityType, HomeyCapabilityValue, createHomeyCapability } from '../models/homey-capability.model';
 import { HomeyDevice } from '../models/homey-device.model';
@@ -104,9 +104,9 @@ describe('Homey MVP mapping catalog', () => {
 	});
 
 	it('loads the complete built-in catalog without ambiguity', () => {
-		expect(loader.getDeviceMappings()).toHaveLength(7);
-		expect(loader.getChannelMappings()).toHaveLength(21);
-		expect(loader.getPropertyMappings()).toHaveLength(38);
+		expect(loader.getDeviceMappings()).toHaveLength(8);
+		expect(loader.getChannelMappings()).toHaveLength(26);
+		expect(loader.getPropertyMappings()).toHaveLength(43);
 	});
 
 	it('maps the captured light fixture and applies inverse lighting transformations', () => {
@@ -301,5 +301,18 @@ describe('Homey MVP mapping catalog', () => {
 		expect(read(coverBindings, 'window-covering-type-generic', null)).toBe('roller');
 		expect(read(coverBindings, 'window-covering-tilt', 0.5)).toBe(0);
 		expect(write(coverBindings, 'window-covering-tilt', 45)).toBe(0.75);
+	});
+	it('maps input_1 on repeated-capabilities fixture to binary input channel without collapsing', () => {
+		const device = readDeviceFixture('repeated-capabilities');
+		const channelResolution = loader.resolveChannelMappings(device);
+		const propertyResolution = loader.resolvePropertyMappings(device);
+
+		const inputChannels = channelResolution.mappings.filter((m) => m.channel.category === ChannelCategory.BINARY_INPUT);
+		expect(inputChannels.map((m) => m.channel.identifier)).toContain('input-1');
+
+		const inputProperties = propertyResolution.mappings.filter(
+			(b) => b.mapping.property.category === PropertyCategory.STATE && b.mapping.property.channel === 'input-1',
+		);
+		expect(inputProperties.map((b) => b.capabilityId)).toContain('input_1');
 	});
 });

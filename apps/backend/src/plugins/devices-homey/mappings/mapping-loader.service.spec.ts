@@ -593,4 +593,106 @@ describe('HomeyMappingLoaderService', () => {
 
 		expect(() => service.loadAllMappings()).toThrow(HomeyMappingConfigurationError);
 	});
+	it('maps suffixed physical input capabilities to stable independent channels and property bindings', () => {
+		writeBuiltin('devices', [
+			deviceDefinition({
+				name: 'input-controller',
+				match: { classes: ['sensor'], any_capabilities: ['input_1'] },
+				device: { category: 'input_controller' },
+			}),
+		]);
+		writeBuiltin('channels', [
+			channelDefinition({
+				name: 'binary-input-1',
+				match: { classes: ['sensor'], all_capabilities: ['input_1'] },
+				channel: { identifier: 'input-1', category: 'binary_input', name: 'Input 1' },
+			}),
+		]);
+		writeBuiltin('properties', [
+			propertyDefinition({
+				name: 'binary-input-1-state',
+				match: { classes: ['sensor'], capability_base_ids: ['input_1'] },
+				property: { channel: 'input-1', category: 'state', data_type: 'bool', direction: 'read_only' },
+			}),
+		]);
+
+		service.loadAllMappings();
+
+		const multiInputDevice = createDevice({
+			capabilities: [
+				createHomeyCapability({
+					id: 'input_1',
+					title: 'input_1',
+					value: true,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: false,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+				createHomeyCapability({
+					id: 'input_1.aux',
+					title: 'input_1.aux',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: false,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		});
+
+		const channelResolution = service.resolveChannelMappings(multiInputDevice);
+		expect(channelResolution.mappings.map((m) => m.channel.identifier)).toEqual(['input-1', 'input-1-aux']);
+		expect(channelResolution.mappings.map((m) => m.channel.name)).toEqual(['Input 1', 'Input 1 (aux)']);
+
+		const propertyResolution = service.resolvePropertyMappings(multiInputDevice);
+		expect(propertyResolution.mappings).toHaveLength(2);
+		expect(
+			propertyResolution.mappings.map((b) => ({ id: b.capabilityId, channel: b.mapping.property.channel })),
+		).toEqual([
+			{ id: 'input_1', channel: 'input-1' },
+			{ id: 'input_1.aux', channel: 'input-1-aux' },
+		]);
+
+		const suffixOnlyDevice = createDevice({
+			capabilities: [
+				createHomeyCapability({
+					id: 'input_1.aux',
+					title: 'input_1.aux',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: false,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		});
+
+		const suffixOnlyResolution = service.resolveChannelMappings(suffixOnlyDevice);
+		expect(suffixOnlyResolution.mappings.map((m) => m.channel.identifier)).toEqual(['input-1-aux']);
+		expect(suffixOnlyResolution.mappings.map((m) => m.channel.name)).toEqual(['Input 1 (aux)']);
+
+		const suffixOnlyPropertyResolution = service.resolvePropertyMappings(suffixOnlyDevice);
+		expect(
+			suffixOnlyPropertyResolution.mappings.map((b) => ({ id: b.capabilityId, channel: b.mapping.property.channel })),
+		).toEqual([{ id: 'input_1.aux', channel: 'input-1-aux' }]);
+	});
 });
