@@ -25,7 +25,6 @@ export interface RegistrySnapshot {
 	propertyBindings: Map<string, CharacteristicBinding[]>;
 	propertyListeners: Map<string, PropertyEventListener[]>;
 	occurrenceListeners: Map<string, InputOccurrenceListener[]>;
-	occurrenceListenersByChannel: Map<string, InputOccurrenceListener[]>;
 	deviceProperties: Map<string, Set<string>>;
 }
 
@@ -48,8 +47,6 @@ export class HomeKitMapperRegistryService {
 	private readonly propertyListeners = new Map<string, PropertyEventListener[]>();
 	// propertyId -> occurrence listeners
 	private readonly occurrenceListeners = new Map<string, InputOccurrenceListener[]>();
-	// channelId -> occurrence listeners
-	private readonly occurrenceListenersByChannel = new Map<string, InputOccurrenceListener[]>();
 	// deviceId -> propertyIds
 	private readonly deviceProperties = new Map<string, Set<string>>();
 
@@ -162,10 +159,6 @@ export class HomeKitMapperRegistryService {
 			existingProp.push(occListener);
 			this.occurrenceListeners.set(occListener.propertyId, existingProp);
 
-			const existingChan = this.occurrenceListenersByChannel.get(occListener.channelId) ?? [];
-			existingChan.push(occListener);
-			this.occurrenceListenersByChannel.set(occListener.channelId, existingChan);
-
 			let devProps = this.deviceProperties.get(occListener.deviceId);
 			if (!devProps) {
 				devProps = new Set();
@@ -183,15 +176,8 @@ export class HomeKitMapperRegistryService {
 		return this.propertyListeners.get(propertyId) ?? [];
 	}
 
-	getOccurrenceListeners(propertyId: string, channelId?: string): InputOccurrenceListener[] {
-		const byProp = this.occurrenceListeners.get(propertyId) ?? [];
-		if (byProp.length > 0) {
-			return byProp;
-		}
-		if (channelId) {
-			return this.occurrenceListenersByChannel.get(channelId) ?? [];
-		}
-		return [];
+	getOccurrenceListeners(propertyId: string, _channelId?: string): InputOccurrenceListener[] {
+		return this.occurrenceListeners.get(propertyId) ?? [];
 	}
 
 	clearDeviceBindings(deviceId: string): void {
@@ -223,16 +209,6 @@ export class HomeKitMapperRegistryService {
 				}
 			}
 
-			// Also clean channel-indexed occurrence listeners
-			for (const [chanId, occList] of this.occurrenceListenersByChannel.entries()) {
-				const remaining = occList.filter((l) => l.deviceId !== deviceId);
-				if (remaining.length === 0) {
-					this.occurrenceListenersByChannel.delete(chanId);
-				} else {
-					this.occurrenceListenersByChannel.set(chanId, remaining);
-				}
-			}
-
 			this.deviceProperties.delete(deviceId);
 		}
 	}
@@ -241,7 +217,6 @@ export class HomeKitMapperRegistryService {
 		this.propertyBindings.clear();
 		this.propertyListeners.clear();
 		this.occurrenceListeners.clear();
-		this.occurrenceListenersByChannel.clear();
 		this.deviceProperties.clear();
 	}
 
@@ -258,10 +233,6 @@ export class HomeKitMapperRegistryService {
 		for (const [k, v] of this.occurrenceListeners.entries()) {
 			cloneOcc.set(k, [...v]);
 		}
-		const cloneOccChan = new Map<string, InputOccurrenceListener[]>();
-		for (const [k, v] of this.occurrenceListenersByChannel.entries()) {
-			cloneOccChan.set(k, [...v]);
-		}
 		const cloneProps = new Map<string, Set<string>>();
 		for (const [k, v] of this.deviceProperties.entries()) {
 			cloneProps.set(k, new Set(v));
@@ -270,7 +241,6 @@ export class HomeKitMapperRegistryService {
 			propertyBindings: cloneBindings,
 			propertyListeners: cloneListeners,
 			occurrenceListeners: cloneOcc,
-			occurrenceListenersByChannel: cloneOccChan,
 			deviceProperties: cloneProps,
 		};
 	}
@@ -286,11 +256,6 @@ export class HomeKitMapperRegistryService {
 		if (snapshot.occurrenceListeners) {
 			for (const [k, v] of snapshot.occurrenceListeners.entries()) {
 				this.occurrenceListeners.set(k, [...v]);
-			}
-		}
-		if (snapshot.occurrenceListenersByChannel) {
-			for (const [k, v] of snapshot.occurrenceListenersByChannel.entries()) {
-				this.occurrenceListenersByChannel.set(k, [...v]);
 			}
 		}
 		for (const [k, v] of snapshot.deviceProperties.entries()) {

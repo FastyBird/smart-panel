@@ -193,5 +193,63 @@ describe('VirtualProjectionListener', () => {
 			expect(index.findBySourceProperty).not.toHaveBeenCalled();
 			expect(eventEmitter.emit).not.toHaveBeenCalled();
 		});
+
+		it('relays occurrences and preserves integration and endpoint metadata', () => {
+			const virtualPropWithChannel = {
+				...virtualA,
+				id: 'virt-a-prop',
+				category: PropertyCategory.EVENT,
+				channel: {
+					id: 'virt-a-chan',
+					category: ChannelCategory.BUTTON,
+					device: {
+						id: 'virt-a-dev',
+						category: 'generic',
+					},
+				},
+			} as unknown as VirtualChannelPropertyEntity;
+
+			index.findBySourceProperty.mockReturnValue([virtualPropWithChannel]);
+
+			listener.handleChannelInputOccurrence({
+				...mockOccurrence,
+				integration: 'homekit',
+				endpoint: 'ep-1',
+			});
+
+			expect(eventEmitter.emit).toHaveBeenCalledWith(
+				EventType.CHANNEL_INPUT_OCCURRENCE,
+				expect.objectContaining({
+					integration: 'homekit',
+					endpoint: 'ep-1',
+				}),
+			);
+		});
+
+		it('does not treat user data.projection without originalOccurrenceId as loop', () => {
+			const virtualPropWithChannel = {
+				...virtualA,
+				id: 'virt-a-prop',
+				category: PropertyCategory.EVENT,
+				channel: {
+					id: 'virt-a-chan',
+					category: ChannelCategory.BUTTON,
+					device: {
+						id: 'virt-a-dev',
+						category: 'generic',
+					},
+				},
+			} as unknown as VirtualChannelPropertyEntity;
+
+			index.findBySourceProperty.mockReturnValue([virtualPropWithChannel]);
+
+			listener.handleChannelInputOccurrence({
+				...mockOccurrence,
+				data: { projection: { mode: 'cinema' } },
+			});
+
+			expect(index.findBySourceProperty).toHaveBeenCalled();
+			expect(eventEmitter.emit).toHaveBeenCalledTimes(1);
+		});
 	});
 });

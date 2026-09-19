@@ -51,7 +51,11 @@ export class VirtualProjectionListener {
 	@OnEvent(EventType.CHANNEL_INPUT_OCCURRENCE)
 	handleChannelInputOccurrence(occurrence: ChannelInputOccurrencePayload): void {
 		// Prevent loops: if the incoming occurrence is already a projection, do not project again
-		if (occurrence.data?.projection) {
+		if (
+			typeof occurrence.data?.projection === 'object' &&
+			occurrence.data.projection !== null &&
+			'originalOccurrenceId' in occurrence.data.projection
+		) {
 			return;
 		}
 
@@ -88,6 +92,8 @@ export class VirtualProjectionListener {
 				sourceTimestamp: occurrence.sourceTimestamp ?? occurrence.timestamp,
 				sourceOccurrenceId: occurrence.sourceOccurrenceId ?? occurrence.id,
 				nativeEventType: occurrence.nativeEventType,
+				integration: occurrence.integration,
+				endpoint: occurrence.endpoint,
 				data: {
 					...(occurrence.data ?? {}),
 					projection: {

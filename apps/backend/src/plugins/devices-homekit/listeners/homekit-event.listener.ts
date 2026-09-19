@@ -70,7 +70,7 @@ export class HomeKitEventListener {
 			return;
 		}
 
-		const listeners = this.mapperRegistry.getOccurrenceListeners(occurrence.propertyId, occurrence.channelId);
+		const listeners = this.mapperRegistry.getOccurrenceListeners(occurrence.propertyId);
 		for (const listener of listeners) {
 			try {
 				listener.onOccurrence(occurrence);

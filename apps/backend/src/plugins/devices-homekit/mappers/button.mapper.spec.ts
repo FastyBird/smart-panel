@@ -120,12 +120,14 @@ describe('ButtonMapper', () => {
 			expect(registeredOccurrenceListeners[0].propertyId).toBe('prop-1');
 		});
 
-		it('builds a multi-button accessory with ServiceLabel and ServiceLabelIndex', () => {
+		it('builds a multi-button accessory with ServiceLabel and index characteristics', () => {
 			const prop1 = createMockProperty('prop-1', PropertyCategory.EVENT, [PermissionType.EVENT_ONLY]);
+			const chan1 = createMockChannel('ch-1', ChannelCategory.BUTTON, 'Top Button', [prop1]);
+
 			const prop2 = createMockProperty('prop-2', PropertyCategory.EVENT, [PermissionType.EVENT_ONLY]);
-			const ch1 = createMockChannel('ch-1', ChannelCategory.BUTTON, 'Button 1', [prop1]);
-			const ch2 = createMockChannel('ch-2', ChannelCategory.BUTTON, 'Button 2', [prop2]);
-			const device = createMockDevice([ch1, ch2]);
+			const chan2 = createMockChannel('ch-2', ChannelCategory.BUTTON, 'Bottom Button', [prop2]);
+
+			const device = createMockDevice([chan1, chan2]);
 
 			const accessory = mapper.buildAccessory(device, context);
 			expect(accessory).not.toBeNull();
@@ -134,26 +136,23 @@ describe('ButtonMapper', () => {
 			expect(labelService).toBeDefined();
 
 			const switch1 = accessory?.getServiceById(Service.StatelessProgrammableSwitch, 'ch-1');
-			const switch2 = accessory?.getServiceById(Service.StatelessProgrammableSwitch, 'ch-2');
 			expect(switch1).toBeDefined();
-			expect(switch2).toBeDefined();
-
 			expect(switch1?.getCharacteristic(Characteristic.ServiceLabelIndex).value).toBe(1);
+
+			const switch2 = accessory?.getServiceById(Service.StatelessProgrammableSwitch, 'ch-2');
+			expect(switch2).toBeDefined();
 			expect(switch2?.getCharacteristic(Characteristic.ServiceLabelIndex).value).toBe(2);
 
 			expect(registeredOccurrenceListeners.length).toBe(2);
 		});
 
-		it('returns null when device has no button channels', () => {
-			const device = createMockDevice([]);
-			const accessory = mapper.buildAccessory(device, context);
-			expect(accessory).toBeNull();
-		});
-	});
-
-	describe('occurrence event delivery and mapping', () => {
-		it('maps single, double, and long press events correctly to HAP notifications', () => {
-			const prop = createMockProperty('prop-1', PropertyCategory.EVENT, [PermissionType.EVENT_ONLY]);
+		it('resolves validValues from property.format correctly', () => {
+			const prop = createMockProperty(
+				'prop-1',
+				PropertyCategory.EVENT,
+				[PermissionType.EVENT_ONLY],
+				['press', 'double_press'],
+			);
 			const channel = createMockChannel('ch-1', ChannelCategory.BUTTON, 'Button', [prop]);
 			const device = createMockDevice([channel]);
 
@@ -161,9 +160,24 @@ describe('ButtonMapper', () => {
 			const switchService = accessory?.getService(Service.StatelessProgrammableSwitch);
 			const char = switchService?.getCharacteristic(Characteristic.ProgrammableSwitchEvent);
 
+			expect(char?.props.validValues).toEqual([
+				Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS,
+				Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS,
+			]);
+		});
+
+		it('dispatches incoming input occurrence to sendEventNotification', () => {
+			const prop = createMockProperty('prop-1', PropertyCategory.EVENT, [PermissionType.EVENT_ONLY]);
+			const channel = createMockChannel('ch-1', ChannelCategory.BUTTON, 'Button', [prop]);
+			const device = createMockDevice([channel]);
+
+			const accessory = mapper.buildAccessory(device, context);
+			const switchService = accessory?.getService(Service.StatelessProgrammableSwitch);
+			const char = switchService?.getCharacteristic(Characteristic.ProgrammableSwitchEvent);
 			const sendSpy = jest.spyOn(char, 'sendEventNotification');
 
 			const listener = registeredOccurrenceListeners[0];
+			expect(listener).toBeDefined();
 
 			// Single press
 			listener.onOccurrence({
@@ -284,6 +298,44 @@ describe('ButtonMapper', () => {
 
 			const getValue = await char?.handleGetRequest();
 			expect(getValue).toBeNull();
+		});
+
+		it('skips attaching StatelessProgrammableSwitch when property format has only unsupported gestures', () => {
+			const prop = createMockProperty(
+				'prop-unsupported',
+				PropertyCategory.EVENT,
+				[PermissionType.EVENT_ONLY],
+				['rotate_left', 'rotate_right', 'triple_press'],
+			);
+			const channel = createMockChannel('ch-1', ChannelCategory.BUTTON, 'Rotary Knob', [prop]);
+			const device = createMockDevice([channel]);
+
+			const accessory = mapper.buildAccessory(device, context);
+			expect(accessory?.getService(Service.StatelessProgrammableSwitch)).toBeUndefined();
+			expect(registeredOccurrenceListeners.length).toBe(0);
+		});
+	});
+
+	describe('resolveValidValues', () => {
+		it('returns empty array when property format has only non-HAP gestures', () => {
+			const prop = createMockProperty(
+				'prop-1',
+				PropertyCategory.EVENT,
+				[PermissionType.EVENT_ONLY],
+				['rotate_left', 'rotate_right'],
+			);
+			expect(ButtonMapper.resolveValidValues(prop)).toEqual([]);
+		});
+
+		it('returns default 3 gestures when format is not specified', () => {
+			const prop = new ChannelPropertyEntity();
+			prop.id = 'prop-no-format';
+			prop.format = undefined;
+			expect(ButtonMapper.resolveValidValues(prop)).toEqual([
+				Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS,
+				Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS,
+				Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
+			]);
 		});
 	});
 

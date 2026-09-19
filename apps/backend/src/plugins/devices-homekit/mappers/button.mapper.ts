@@ -61,16 +61,23 @@ export class ButtonMapper extends BaseHomeKitMapper {
 		if (!event) {
 			return null;
 		}
-		switch (event.toLowerCase()) {
+		const normalized = event.toLowerCase().trim();
+		switch (normalized) {
 			case 'press':
-			case 'single_press':
 			case 'single':
+			case 'single_press':
+			case 'click':
+			case 'button_1':
 				return Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS;
-			case 'double_press':
 			case 'double':
+			case 'double_press':
+			case 'double_click':
+			case 'button_2':
 				return Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS;
 			case 'long_press':
-			case 'long':
+			case 'hold':
+			case 'long_click':
+			case 'button_3':
 				return Characteristic.ProgrammableSwitchEvent.LONG_PRESS;
 			default:
 				return null;
@@ -98,13 +105,7 @@ export class ButtonMapper extends BaseHomeKitMapper {
 			}
 		}
 
-		return valid.size > 0
-			? Array.from(valid).sort((a, b) => a - b)
-			: [
-					Characteristic.ProgrammableSwitchEvent.SINGLE_PRESS,
-					Characteristic.ProgrammableSwitchEvent.DOUBLE_PRESS,
-					Characteristic.ProgrammableSwitchEvent.LONG_PRESS,
-				];
+		return valid.size > 0 ? Array.from(valid).sort((a, b) => a - b) : [];
 	}
 
 	static attachButtonServices(accessory: Accessory, device: DeviceEntity, context: HomeKitMapperContext): void {
@@ -132,13 +133,6 @@ export class ButtonMapper extends BaseHomeKitMapper {
 			const serviceName =
 				buttonChannels.length === 1 ? device.name : `${device.name} ${channel.name || `Button ${serviceIndex}`}`;
 
-			const switchService = accessory.addService(Service.StatelessProgrammableSwitch, serviceName, channel.id);
-
-			if (buttonChannels.length > 1) {
-				const indexChar = switchService.getCharacteristic(Characteristic.ServiceLabelIndex);
-				indexChar.setValue(serviceIndex);
-			}
-
 			const eventProp =
 				channel.properties?.find((p) => p.category === PropertyCategory.EVENT) ??
 				channel.properties?.find((p) => p.permissions?.includes(PermissionType.EVENT_ONLY)) ??
@@ -148,13 +142,23 @@ export class ButtonMapper extends BaseHomeKitMapper {
 				return;
 			}
 
+			const validValues = ButtonMapper.resolveValidValues(eventProp);
+			if (validValues.length === 0) {
+				return;
+			}
+
+			const switchService = accessory.addService(Service.StatelessProgrammableSwitch, serviceName, channel.id);
+
+			if (buttonChannels.length > 1) {
+				const indexChar = switchService.getCharacteristic(Characteristic.ServiceLabelIndex);
+				indexChar.setValue(serviceIndex);
+			}
+
 			const switchEventChar = switchService.getCharacteristic(Characteristic.ProgrammableSwitchEvent);
 
 			// Stateless programmable switch has no persistent state; GET returns null.
-			// Replays on startup/restart are strictly avoided.
-			switchEventChar.onGet(() => null);
+			// Replays on startup/restart are strictly avoided.\n			switchEventChar.onGet(() => null);
 
-			const validValues = ButtonMapper.resolveValidValues(eventProp);
 			switchEventChar.setProps({ validValues });
 
 			context.registerOccurrenceListener?.({

@@ -4,7 +4,7 @@ This document details the hardware input capabilities, protocol audit findings, 
 
 ## Executive Summary
 
-- **Firmware audited**: WLED `v0.13.x`, `v0.14.x`, and `v0.15.x` (current stable / pre-release).
+- **Firmware versions audited**: WLED `v0.13.x`, `v0.14.x`, and `v0.15.x` (audited September 2026).
 - **Transports audited**: HTTP JSON API (`/json/state`, `/json/info`, `/json/si`, `/json/cfg`) and real-time WebSocket (`/ws`).
 - **Conclusion**: Stock WLED firmware does not expose identifiable physical input gesture events (e.g. button click, double click, long press, or rotary encoder rotation) over its JSON API or WebSocket streams. In accordance with Smart Panel architectural guidelines, the `devices-wled` plugin **does not synthesize or infer button events** from lighting state modifications. All lighting actuators, power telemetry, and synchronization behaviors remain fully supported.
 
@@ -24,13 +24,13 @@ This document details the hardware input capabilities, protocol audit findings, 
 
 - **Documentation**: [WLED WebSocket Reference](https://kno.wled.ge/interfaces/websocket/)
 - **Inspection Findings**:
-  - The WebSocket transport broadcasts JSON state frames upon any state change or periodically (when live preview/updates are enabled).
+  - The WebSocket transport broadcasts JSON state/info frames on connection and upon lighting state changes. (Note: live LED preview uses a separate binary WebSocket stream, not periodic JSON state frames.)
   - When a physical push button connected to an ESP GPIO pin is pressed, WLED internally executes the action assigned in its Button Settings (such as toggling power, advancing presets, or ramping brightness) and broadcasts the updated lighting state frame (`{"state": {"on": true, "bri": 128, ...}}`).
   - **Identifiability Limitation**: The frame broadcast over WebSocket carries only the resulting lighting state. It does **not** contain metadata identifying:
     1. Which physical button or GPIO pin was triggered.
     2. What physical gesture was performed (press, double press, long press, release).
     3. Whether the state mutation was caused by a hardware button, an app/web client HTTP request, a home automation automation, UDP sync packet, infrared remote, or a scheduled timer.
-  - **Architectural Policy**: Mislabling state mutations as identifiable hardware button gestures without authoritative provenance would violate system correctness and trigger unintended event automations whenever lights are turned on or off via the UI, schedules, or external integrations.
+  - **Architectural Policy**: Mislabeling state mutations as identifiable hardware button gestures without authoritative provenance would violate system correctness and trigger unintended event automations whenever lights are turned on or off via the UI, schedules, or external integrations.
 
 ### 3. Hardware Configuration (`/json/cfg`)
 
@@ -49,7 +49,7 @@ This document details the hardware input capabilities, protocol audit findings, 
 | **Light On/Off Actuation** | ✅ Supported | ✅ Supported | ✅ Supported | **Fully Supported** | Bi-directional control via `/json/state` and WebSocket. |
 | **Brightness & Color Actuation** | ✅ Supported | ✅ Supported | ✅ Supported | **Fully Supported** | Mapped to `ChannelCategory.LIGHT`. |
 | **Multi-Segment Control** | ✅ Supported | ✅ Supported | ✅ Supported | **Fully Supported** | Mapped to individual segment light channels. |
-| **Electrical Power Telemetry** | ✅ Supported | ✅ Supported | ✅ Supported | **Fully Supported** | Calculated from estimated current and voltage in `/json/info.leds`. |
+| **Electrical Power Telemetry** | ✅ Supported | ✅ Supported | ✅ Supported | **Fully Supported** | Exposes ABL-determined current in Amps from `/json/info.leds.pwr` (mA) and calculates power in Watts assuming standard 5V LED operating voltage. |
 
 ---
 

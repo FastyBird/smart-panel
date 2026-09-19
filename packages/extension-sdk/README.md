@@ -59,12 +59,25 @@ Every extension is an NPM package that includes a special manifest field in its 
   "types": "dist/index.d.ts",
   "fastybird": {
     "smartPanel": {
-      "kind": "plugin",                    // "module" | "plugin"
-      "routePrefix": "example-extension",  // Mounted as /api/plugins/example-extension
-      "moduleExport": "ExampleExtensionModule", // Named export from entry file
-      "sdkVersion": "^0.1.0",
+      "type": "plugin",
+      "name": "example-extension",
       "displayName": "Example Extension",
-      "description": "Adds demonstration endpoints for Smart Panel."
+      "description": "Demonstrates how to build an extension using the SDK",
+      "version": "0.1.0",
+      "routePrefix": "example",
+      "entrypoint": "dist/index.js",
+      "compatibility": {
+        "panel": "^1.0.0"
+      },
+      "services": [
+        {
+          "id": "example-worker",
+          "name": "Example Background Worker",
+          "description": "Periodically synchronizes data from an external API",
+          "defaultEnabled": true,
+          "operations": ["start", "stop", "restart"]
+        }
+      ]
     }
   }
 }
@@ -72,121 +85,77 @@ Every extension is an NPM package that includes a special manifest field in its 
 
 ---
 
-## 🧱 Example Extension
+## 🏷️ Manifest Field Reference
 
-A minimal working example:
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `type` | `'module' \| 'plugin'` | ✅ | Extension category. |
+| `name` | `string` | ✅ | Short slug, e.g. `'devices-shelly'`. |
+| `displayName` | `string` | ❌ | Human-readable title for UI display. |
+| `description` | `string` | ❌ | Brief description of the extension. |
+| `version` | `string` | ✅ | Extension version (SemVer). |
+| `routePrefix` | `string` | ❌ | Mount point under `/api/{type}s/{routePrefix}`. Defaults to `name`. |
+| `entrypoint` | `string` | ❌ | Path to module entrypoint relative to package root. Defaults to `main`. |
+| `compatibility.panel` | `string` | ❌ | SemVer range of compatible Smart Panel versions. |
+| `services` | `Array<ExtensionServiceDefinition>` | ❌ | Declarative list of services exposed by this extension. |
 
-```ts
-// src/index.ts
-import { Module, Controller, Get } from '@nestjs/common';
+---
 
-@Controller()
-class ExampleController {
-  @Get('status')
-  getStatus() {
-    return { ok: true, time: new Date().toISOString() };
+## 🛠️ Background Services
+
+Extensions can declare long-running background services so the host application can monitor their health and allow users to start, stop, or restart them from the admin UI.
+
+### Declaring Services in the Manifest
+
+Add a `services` array to `fastybird.smartPanel`:
+
+```jsonc
+"services": [
+  {
+    "id": "poller",
+    "name": "Device Poller",
+    "description": "Polls local network devices every 30 seconds",
+    "defaultEnabled": true,
+    "operations": ["start", "stop", "restart"]
   }
-}
-
-@Module({
-  controllers: [ExampleController],
-})
-export class ExampleExtensionModule {}
+]
 ```
 
-After building and installing, the backend automatically mounts it at:
+Each service must define:
 
-```
-GET /api/plugins/example-extension/status
+- `id` — a kebab-case identifier, unique within this extension (e.g. `'poller'`).
+- `name` — human-readable title shown in the UI.
+- `description` — optional explanation of what the service does.
+- `defaultEnabled` — whether the service runs automatically when the extension loads.
+- `operations` — array of operations supported by this service; valid values are `'start'`, `'stop'`, `'restart'`.
+
+### Implementing Service Control
+
+Your NestJS module should implement an API endpoint or internal handler to respond to lifecycle operations:
+
+```ts
+import type { ExtensionServiceDefinition, ExtensionServiceStatus } from '@fastybird/smart-panel-extension-sdk';
+
+// Report status back to Smart Panel
+const currentStatus: ExtensionServiceStatus = 'running'; // 'stopped' | 'running' | 'degraded' | 'error'
 ```
 
 ---
 
-## 🪪 SDK Types
+## 🔔 Notifications
 
-```ts
-import type {
-  SmartPanelExtensionManifest,
-  DiscoveredExtension,
-  ExtensionKind,
-} from '@fastybird/smart-panel-extension-sdk';
-```
+Extensions can raise issues, warnings, and alerts that surface in the Smart Panel bell popover,
+push to external sinks (Slack, Discord, Telegram, Webhook), and can be resolved when the
+underlying condition clears.
 
-### `ExtensionKind`
+### Overview
 
-```ts
-type ExtensionKind = 'module' | 'plugin';
-```
+There are two ways an extension interacts with notifications:
 
-### `SmartPanelExtensionManifest`
+1. **Emit notifications** — raise an alert or issue from a plugin (e.g., connection lost, device offline, auth expired).
+2. **Implement a delivery channel** — provide a new notification sink (like an SMS gateway or custom webhook) by implementing the `NotificationChannel` interface.
 
-Describes the metadata that must appear in `package.json` under `fastybird.smartPanel`.
-
-```ts
-interface SmartPanelExtensionManifest {
-  kind: ExtensionKind;
-  routePrefix: string;
-  moduleExport: string;
-  sdkVersion?: string;
-  displayName?: string;
-  description?: string;
-}
-```
-
-### `DiscoveredExtension`
-
-Returned by the backend discovery process once an extension is successfully loaded.
-
-```ts
-interface DiscoveredExtension {
-  pkgName: string;      // e.g. "@fastybird/extension-devices-acme"
-  routePrefix: string;  // sanitized route
-  moduleClass: unknown; // Nest module class
-  kind: ExtensionKind;
-  displayName?: string;
-  description?: string;
-}
-```
-
----
-
-## 🔍 Runtime Validation Helpers
-
-The SDK provides small utility functions to make runtime checking safe and easy.
-
-```ts
-import {
-  isSmartPanelExtensionManifest,
-  normalizeRoutePrefix,
-} from '@fastybird/smart-panel-extension-sdk';
-
-const pkgJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-const manifest = pkgJson?.fastybird?.smartPanel;
-
-if (isSmartPanelExtensionManifest(manifest)) {
-  console.log('Valid Smart Panel extension manifest ✅');
-} else {
-  console.warn('Invalid or missing Smart Panel manifest ❌');
-}
-
-// Normalize route prefix (strip leading/trailing slashes)
-const route = normalizeRoutePrefix(manifest.routePrefix); // "devices/acme"
-```
-
----
-
-## Notifications
-
-The backend's notifications module gives the administrator one place to see what needs
-attention (a lost connection, a failed update, a security alert) and can forward those
-notifications to external channels such as Discord or a generic webhook. See
-`docs/notifications.md` in the repository root for the full developer guide: the lifecycle
-table, the emitter rules, the REST and websocket surface, and how to write a channel.
-
-This SDK exports plain mirrors of that contract, for extension packages built outside the
-backend's own TypeScript program: `NotificationKind`, `NotificationSeverity`,
-`NotificationActionType`, `NotificationAction`, `CreateNotificationInput`, `Notification`,
-`NotificationChannel` and `ChannelDeliveryError` (see `src/notification.types.ts`). A plugin
+A standalone NPM package extension uses the types from this SDK. A built-in plugin
 compiled as part of the backend itself (`apps/backend/src/plugins/**`) keeps using the real
 `NotificationsService` and `INotificationChannel` from `apps/backend/src/modules/notifications/`.
 
@@ -211,7 +180,8 @@ const input: CreateNotificationInput = {
   title: 'Connection lost',
   message: 'The websocket connection was refused: 401 Unauthorized.',
   actions: [
-    {\n      type: 'service',
+    {
+      type: 'service',
       label: 'Restart',
       extension_kind: 'plugin',
       extension_type: 'my-plugin',

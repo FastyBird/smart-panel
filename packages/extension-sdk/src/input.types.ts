@@ -47,9 +47,9 @@ export interface ReportInputOccurrencePayload {
 }
 
 /**
- * Result returned upon successful ingestion of a hardware input occurrence.
+ * Data payload contained within an input occurrence result.
  */
-export interface InputOccurrenceResult {
+export interface InputOccurrenceData {
 	/**
 	 * Unique UUID assigned to the occurrence by Smart Panel.
 	 */
@@ -64,6 +64,51 @@ export interface InputOccurrenceResult {
 	 * Standardized event name.
 	 */
 	event: string;
+
+	/**
+	 * Device unique identifier.
+	 */
+	deviceId?: string;
+
+	/**
+	 * Channel unique identifier.
+	 */
+	channelId?: string;
+
+	/**
+	 * Property unique identifier.
+	 */
+	propertyId?: string;
+
+	/**
+	 * Optional external occurrence identifier.
+	 */
+	sourceOccurrenceId?: string;
+
+	/**
+	 * Optional source hardware timestamp.
+	 */
+	sourceTimestamp?: string;
+
+	/**
+	 * Optional native event identifier.
+	 */
+	nativeEventType?: string;
+
+	/**
+	 * Optional structured context data.
+	 */
+	data?: Record<string, unknown>;
+}
+
+/**
+ * Result returned upon successful ingestion of a hardware input occurrence.
+ */
+export interface InputOccurrenceResult {
+	/**
+	 * Occurrence response data envelope.
+	 */
+	data: InputOccurrenceData;
 }
 
 /**

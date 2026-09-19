@@ -7,10 +7,20 @@ export interface ReportInputOccurrencePayload {
     nativeEventType?: string;
     data?: Record<string, unknown>;
 }
-export interface InputOccurrenceResult {
+export interface InputOccurrenceData {
     id: string;
     timestamp: string;
     event: string;
+    deviceId?: string;
+    channelId?: string;
+    propertyId?: string;
+    sourceOccurrenceId?: string;
+    sourceTimestamp?: string;
+    nativeEventType?: string;
+    data?: Record<string, unknown>;
+}
+export interface InputOccurrenceResult {
+    data: InputOccurrenceData;
 }
 export interface InputChannelCapability {
     category: 'button' | 'binary_input' | 'analog_input';

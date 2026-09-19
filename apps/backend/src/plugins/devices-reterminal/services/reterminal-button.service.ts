@@ -51,6 +51,7 @@ export class ReTerminalButtonService {
 	private readonly logger = createExtensionLogger(DEVICES_RETERMINAL_PLUGIN_NAME, ReTerminalButtonService.name);
 	private inputStream: fs.ReadStream | null = null;
 	private deviceId: string | null = null;
+	private lifecycleGeneration = 0;
 	private readonly buttonStates: Map<string, ButtonState> = new Map();
 
 	constructor(
@@ -66,6 +67,7 @@ export class ReTerminalButtonService {
 		// Clean up any previous stream and timers to prevent fd leaks and duplicate events
 		this.stop();
 
+		this.lifecycleGeneration++;
 		this.deviceId = deviceId;
 
 		try {
@@ -92,6 +94,7 @@ export class ReTerminalButtonService {
 	 * Stop listening for button events.
 	 */
 	stop(): void {
+		this.lifecycleGeneration++;
 		if (this.inputStream) {
 			this.inputStream.destroy();
 			this.inputStream = null;
@@ -271,12 +274,14 @@ export class ReTerminalButtonService {
 
 	private async emitOccurrence(channelIdentifier: string, event: string): Promise<void> {
 		if (!this.deviceId) return;
+		const deviceId = this.deviceId;
+		const generation = this.lifecycleGeneration;
 
 		try {
 			const channel = await this.channelsService.findOneBy<ReTerminalChannelEntity>(
 				'identifier',
 				channelIdentifier,
-				this.deviceId,
+				deviceId,
 				DEVICES_RETERMINAL_TYPE,
 			);
 
@@ -290,9 +295,10 @@ export class ReTerminalButtonService {
 			);
 
 			if (!property) return;
+			if (this.lifecycleGeneration !== generation || this.deviceId !== deviceId) return;
 
 			await this.channelInputOccurrencesService.publishOccurrence({
-				deviceId: this.deviceId,
+				deviceId,
 				channelId: channel.id,
 				propertyId: property.id,
 				event,
@@ -305,12 +311,14 @@ export class ReTerminalButtonService {
 
 	private async emitDetected(channelIdentifier: string, value: boolean): Promise<void> {
 		if (!this.deviceId) return;
+		const deviceId = this.deviceId;
+		const generation = this.lifecycleGeneration;
 
 		try {
 			const channel = await this.channelsService.findOneBy<ReTerminalChannelEntity>(
 				'identifier',
 				channelIdentifier,
-				this.deviceId,
+				deviceId,
 				DEVICES_RETERMINAL_TYPE,
 			);
 
@@ -324,6 +332,7 @@ export class ReTerminalButtonService {
 			);
 
 			if (!property) return;
+			if (this.lifecycleGeneration !== generation || this.deviceId !== deviceId) return;
 
 			await this.channelsPropertiesService.update<ReTerminalChannelPropertyEntity, UpdateReTerminalChannelPropertyDto>(
 				property.id,

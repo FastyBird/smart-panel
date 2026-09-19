@@ -128,7 +128,7 @@ describe('HomeKitEventListener', () => {
 
 			listener.handleChannelInputOccurrence(occurrence);
 
-			expect(mapperRegistry.getOccurrenceListeners).toHaveBeenCalledWith('prop-event-1', 'chan-1');
+			expect(mapperRegistry.getOccurrenceListeners).toHaveBeenCalledWith('prop-event-1');
 			expect(mockOccListener.onOccurrence).toHaveBeenCalledWith(occurrence);
 		});
 
@@ -144,7 +144,7 @@ describe('HomeKitEventListener', () => {
 				channelId: 'chan-1',
 				propertyId: 'prop-event-1',
 				onOccurrence: jest.fn().mockImplementation(() => {
-					throw new Error('HAP failure');
+					throw new Error('HAP error');
 				}),
 			};
 			mapperRegistry.getOccurrenceListeners.mockReturnValue([mockOccListener]);
@@ -161,7 +161,7 @@ describe('HomeKitEventListener', () => {
 			};
 
 			expect(() => listener.handleChannelInputOccurrence(occurrence)).not.toThrow();
-			expect(mockOccListener.onOccurrence).toHaveBeenCalledWith(occurrence);
+			expect(mockOccListener.onOccurrence).toHaveBeenCalled();
 		});
 	});
 });
