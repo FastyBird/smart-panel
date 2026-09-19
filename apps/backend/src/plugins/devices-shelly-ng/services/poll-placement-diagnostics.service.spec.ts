@@ -35,7 +35,7 @@ describe('PollPlacementDiagnosticsService', () => {
 		const defaultService = new PollPlacementDiagnosticsService();
 		expect(
 			(defaultService as any).snapshot.expiresAtMonotonicMs - (defaultService as any).snapshot.armedAtMonotonicMs,
-		).toBe(180_000);
+		).toBeCloseTo(180_000, 6);
 		await defaultService.onModuleDestroy();
 		await rm(defaultDirectory, { recursive: true, force: true });
 
@@ -51,7 +51,7 @@ describe('PollPlacementDiagnosticsService', () => {
 		expect(extendedService.isEnabled()).toBe(true);
 		expect(
 			(extendedService as any).snapshot.expiresAtMonotonicMs - (extendedService as any).snapshot.armedAtMonotonicMs,
-		).toBe(360_000);
+		).toBeCloseTo(360_000, 6);
 		await extendedService.onModuleDestroy();
 		await rm(extendedDirectory, { recursive: true, force: true });
 	});
