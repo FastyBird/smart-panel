@@ -48,6 +48,7 @@ export enum HomeyMappingPreviewWarningCode {
 	NON_REVERSIBLE_CONVERSION = 'non_reversible_conversion',
 	INCOMPLETE_CAPABILITY_DOMAIN = 'incomplete_capability_domain',
 	INVALID_CAPABILITY_VALUE_DOMAIN = 'invalid_capability_value_domain',
+	UNSUPPORTED_PHYSICAL_EVENTS = 'unsupported_physical_events',
 	INVALID_PROPERTY_VALUE_DOMAIN = 'invalid_property_value_domain',
 	INVALID_DEVICE_CATEGORY = 'invalid_device_category',
 }

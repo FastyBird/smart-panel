@@ -1555,4 +1555,90 @@ describe('HomeyMappingPreviewService', () => {
 			new HomeyMappingPreviewUnavailableError(),
 		);
 	});
+	it('emits UNSUPPORTED_PHYSICAL_EVENTS warning for Flow-only button or remote devices', async () => {
+		const buttonDevice: HomeyDevice = {
+			id: 'dev-button-1',
+			name: 'Smart Remote',
+			class: 'button',
+			zoneId: 'zone-1',
+			zoneName: 'Living Room',
+			zonePath: ['Living Room'],
+			driverId: 'homey:app:test:remote',
+			manufacturer: 'Example',
+			model: 'Remote',
+			available: true,
+			availabilityMessage: null,
+			energy: null,
+			capabilities: [
+				createHomeyCapability({
+					id: 'button',
+					title: 'Button',
+					value: null,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: false,
+					writable: true,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		};
+		homeyService.getFreshDevice.mockResolvedValue(buttonDevice);
+
+		const preview = await service.generatePreview({ deviceId: buttonDevice.id });
+
+		expect(preview.warnings).toContainEqual(
+			expect.objectContaining({
+				code: HomeyMappingPreviewWarningCode.UNSUPPORTED_PHYSICAL_EVENTS,
+				severity: HomeyMappingPreviewWarningSeverity.ERROR,
+			}),
+		);
+		expect(preview.readyToAdopt).toBe(false);
+	});
+
+	it('resolves only the suffixed channel without phantom base channels when device has suffix-only capability', async () => {
+		const suffixDevice: HomeyDevice = {
+			id: 'dev-input-suffix-only',
+			name: 'Input Suffix Device',
+			class: 'sensor',
+			zoneId: 'zone-1',
+			zoneName: 'Living Room',
+			zonePath: ['Living Room'],
+			driverId: 'homey:app:test:sensor',
+			manufacturer: 'Example',
+			model: 'Sensor',
+			available: true,
+			availabilityMessage: null,
+			energy: null,
+			capabilities: [
+				createHomeyCapability({
+					id: 'input_1.aux',
+					title: 'Input Aux',
+					value: true,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: false,
+					available: true,
+					lastUpdatedAt: '2026-08-21T10:00:00.000Z',
+				}),
+			],
+		};
+		homeyService.getFreshDevice.mockResolvedValue(suffixDevice);
+
+		const preview = await service.generatePreview({ deviceId: suffixDevice.id });
+
+		expect(preview.channels.map((channel) => channel.identifier)).toEqual(['input-1-aux']);
+		expect(preview.channels.find((channel) => channel.identifier === 'input-1')).toBeUndefined();
+		expect(preview.channels[0].properties).toHaveLength(1);
+		expect(preview.readyToAdopt).toBe(true);
+	});
 });

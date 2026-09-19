@@ -18,6 +18,19 @@ export function resolveHomeyDeviceSupport(
 	const propertyResolution = mappingLoader.resolvePropertyMappings(device);
 	const reasons: HomeyDeviceSupportReason[] = [];
 
+	const isButtonOrRemote =
+		device.class === 'button' ||
+		device.class === 'remote' ||
+		(device.capabilities.length > 0 &&
+			device.capabilities.every((cap) => cap.baseId === 'button' || cap.baseId === 'actionEvents'));
+
+	if (isButtonOrRemote && propertyResolution.mappings.length === 0) {
+		return {
+			state: HomeyDeviceSupportState.UNSUPPORTED,
+			reasons: [HomeyDeviceSupportReason.UNSUPPORTED_PHYSICAL_EVENTS],
+		};
+	}
+
 	if (hasBlockingConflict(deviceResolution.conflicts)) {
 		reasons.push(HomeyDeviceSupportReason.DEVICE_MAPPING_CONFLICT);
 	} else if (deviceResolution.mappings.length === 0) {
