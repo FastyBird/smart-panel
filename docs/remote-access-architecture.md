@@ -285,6 +285,13 @@ history and integrity/readability, restart the previous service and confirm heal
 rollback is not evidence that database changes were rolled back; per-migration commits and any recovery state must
 be checked separately.
 
+Migration 26 has one deliberately narrow recovery contract. If its body completed on a verified, populated database
+but the migration-history insert failed, and the resulting schema, ownership, links, FTS rows and SQLite integrity are
+intact with only migration 26 missing from history, remove the external fault and rerun the ordinary target CLI. The
+rerun records exactly one history row and a subsequent run is a no-op. This is not an automatic retry policy: never
+invent a history row, edit migration state manually, replay an unknown or damaged database, or perform a destructive
+restore. Any state outside those verified prerequisites stops the update and requires diagnosis/escalation.
+
 ## Manual Remedy Contract (D12)
 
 Every provider plugin — Tailscale today, the milestone-2 Cloudflare Tunnel and milestone-3 WireGuard plugins
