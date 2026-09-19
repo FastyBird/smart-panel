@@ -1,8 +1,38 @@
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
-import { DataSource, QueryRunner } from 'typeorm';
+import { DataSource, MigrationInterface, QueryRunner } from 'typeorm';
 
 import { AddHardwareInputCategories1000000000026 } from '../1000000000026-AddHardwareInputCategories';
+
+class CreateRecoveryFixture1000000000001 implements MigrationInterface {
+	name = 'CreateRecoveryFixture1000000000001';
+
+	async up(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(`CREATE TABLE "recovery_prefix" ("id" integer PRIMARY KEY NOT NULL)`);
+	}
+
+	async down(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(`DROP TABLE "recovery_prefix"`);
+	}
+}
+
+class FailRecoveryFixture1000000000002 implements MigrationInterface {
+	static shouldFail = true;
+
+	name = 'FailRecoveryFixture1000000000002';
+
+	async up(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(`CREATE TABLE "recovery_failed" ("id" integer PRIMARY KEY NOT NULL)`);
+		if (FailRecoveryFixture1000000000002.shouldFail) {
+			throw new Error('intentional migration failure');
+		}
+	}
+
+	async down(queryRunner: QueryRunner): Promise<void> {
+		await queryRunner.query(`DROP TABLE "recovery_failed"`);
+	}
+}
 
 describe('AddHardwareInputCategories1000000000026', () => {
 	let dataSource: DataSource;
@@ -199,5 +229,143 @@ describe('AddHardwareInputCategories1000000000026', () => {
 		await expect(migration.up(queryRunner)).rejects.toThrow('Simulated startTransaction failure');
 		const fkAfterTxStartupFailure = await originalQuery('PRAGMA foreign_keys');
 		expect(Number(fkAfterTxStartupFailure[0].foreign_keys)).toBe(1);
+	});
+});
+
+describe('migration transaction compatibility', () => {
+	const migrationFiles = fs
+		.readdirSync(path.resolve(__dirname, '..'))
+		.filter((f) => f.endsWith('.ts'))
+		.sort()
+		.map((f) => path.resolve(__dirname, '..', f));
+
+	const createDataSource = (
+		migrationsTransactionMode: 'all' | 'each',
+		database = ':memory:',
+		migrations = migrationFiles,
+	): DataSource =>
+		new DataSource({
+			type: 'sqlite',
+			database,
+			migrations,
+			migrationsTransactionMode,
+			logging: false,
+		});
+
+	it('rejects the migration override when the executor uses all-migration transactions', async () => {
+		const dataSource = createDataSource('all');
+
+		await dataSource.initialize();
+
+		try {
+			await expect(dataSource.runMigrations()).rejects.toThrow(
+				'Migrations "AddHardwareInputCategories1000000000026" override the transaction mode',
+			);
+			await expect(dataSource.query(`SELECT COUNT(*) AS count FROM "migrations"`)).resolves.toEqual([{ count: 0 }]);
+		} finally {
+			await dataSource.destroy();
+		}
+	});
+
+	it('runs the complete migration set with per-migration transactions and is idempotent', async () => {
+		const dataSource = createDataSource('each');
+
+		await dataSource.initialize();
+
+		try {
+			const executed = await dataSource.runMigrations();
+
+			expect(executed.at(-1)?.name).toBe('AddHardwareInputCategories1000000000026');
+			expect(await dataSource.query(`PRAGMA integrity_check`)).toEqual([{ integrity_check: 'ok' }]);
+			expect(await dataSource.query(`PRAGMA foreign_key_check`)).toEqual([]);
+
+			const migrationCount = await dataSource.query(`SELECT COUNT(*) AS count FROM "migrations"`);
+			expect(Number(migrationCount[0].count)).toBe(executed.length);
+			expect(await dataSource.runMigrations()).toEqual([]);
+
+			const migrationCountAfterRetry = await dataSource.query(`SELECT COUNT(*) AS count FROM "migrations"`);
+			expect(Number(migrationCountAfterRetry[0].count)).toBe(executed.length);
+		} finally {
+			await dataSource.destroy();
+		}
+	});
+
+	it('upgrades a migration-25 database with the corrected target CLI configuration', async () => {
+		const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'smart-panel-migration-'));
+		const database = path.join(directory, 'database.sqlite');
+		const migration25Files = migrationFiles.filter(
+			(file) => !file.endsWith('1000000000026-AddHardwareInputCategories.ts'),
+		);
+		const alpha12DataSource = createDataSource('each', database, migration25Files);
+
+		try {
+			await alpha12DataSource.initialize();
+			await alpha12DataSource.runMigrations();
+			await alpha12DataSource.destroy();
+
+			const targetDataSource = createDataSource('each', database);
+			await targetDataSource.initialize();
+			const executed = await targetDataSource.runMigrations();
+
+			expect(executed).toHaveLength(1);
+			expect(executed[0].name).toBe('AddHardwareInputCategories1000000000026');
+			expect(await targetDataSource.query(`PRAGMA integrity_check`)).toEqual([{ integrity_check: 'ok' }]);
+			expect(await targetDataSource.query(`PRAGMA foreign_key_check`)).toEqual([]);
+			await targetDataSource.destroy();
+		} finally {
+			if (alpha12DataSource.isInitialized) {
+				await alpha12DataSource.destroy();
+			}
+			fs.rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it('commits completed migrations independently and can recover from a later body failure', async () => {
+		const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'smart-panel-migration-recovery-'));
+		const database = path.join(directory, 'database.sqlite');
+		FailRecoveryFixture1000000000002.shouldFail = true;
+
+		try {
+			const failedDataSource = new DataSource({
+				type: 'sqlite',
+				database,
+				migrations: [CreateRecoveryFixture1000000000001, FailRecoveryFixture1000000000002],
+				migrationsTransactionMode: 'each',
+			});
+			await failedDataSource.initialize();
+			await expect(failedDataSource.runMigrations()).rejects.toThrow('intentional migration failure');
+			expect(
+				await failedDataSource.query(
+					`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'recovery_prefix'`,
+				),
+			).toHaveLength(1);
+			expect(
+				await failedDataSource.query(
+					`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'recovery_failed'`,
+				),
+			).toHaveLength(0);
+			expect(await failedDataSource.query(`SELECT name FROM "migrations"`)).toEqual([
+				{ name: 'CreateRecoveryFixture1000000000001' },
+			]);
+			await failedDataSource.destroy();
+
+			FailRecoveryFixture1000000000002.shouldFail = false;
+			const recoveredDataSource = new DataSource({
+				type: 'sqlite',
+				database,
+				migrations: [CreateRecoveryFixture1000000000001, FailRecoveryFixture1000000000002],
+				migrationsTransactionMode: 'each',
+			});
+			await recoveredDataSource.initialize();
+			await expect(recoveredDataSource.runMigrations()).resolves.toHaveLength(1);
+			expect(
+				await recoveredDataSource.query(
+					`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'recovery_failed'`,
+				),
+			).toHaveLength(1);
+			await recoveredDataSource.destroy();
+		} finally {
+			fs.rmSync(directory, { recursive: true, force: true });
+		}
 	});
 });

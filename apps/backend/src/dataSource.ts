@@ -17,6 +17,7 @@ const AppDataSource = new DataSource({
 	entities: [__dirname + '/**/*.entity{.ts,.js}'],
 	subscribers: [__dirname + '/**/*.subscriber{.ts,.js}'],
 	migrations: [__dirname + '/migrations/*{.ts,.js}'],
+	migrationsTransactionMode: 'each',
 	synchronize: process.env.FB_DB_SYNC === 'true',
 	logging: process.env.FB_DB_LOGGING === 'true',
 });

@@ -222,6 +222,7 @@ export class AppModule {
 							entities: [__dirname + '/**/*.entity{.ts,.js}'],
 							subscribers: [__dirname + '/**/*.subscriber{.ts,.js}'],
 							migrations: [__dirname + '/migrations/*{.ts,.js}'],
+							migrationsTransactionMode: 'each',
 							synchronize: getEnvValue<boolean>(configService, 'FB_DB_SYNC', false),
 							migrationsRun: getEnvValue<boolean>(configService, 'FB_DB_MIGRATIONS_RUN', false),
 							logging: getEnvValue<boolean>(configService, 'FB_DB_LOGGING', false),
