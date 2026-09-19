@@ -45,7 +45,25 @@ describe('HomeAssistantRawEventService', () => {
 	});
 
 	describe('parseZhaEvent', () => {
-		it('parses valid zha_event commands correctly', () => {
+		it('prefers device_id registry identifier when present', () => {
+			const parsed = service.parseZhaEvent({
+				device_id: 'ha_reg_device_123',
+				device_ieee: '00:15:8d:00:01:23:45:67',
+				unique_id: 'some_unique_id',
+				command: 'button_single',
+				endpoint_id: 1,
+			});
+
+			expect(parsed).toEqual({
+				deviceIdentifier: 'ha_reg_device_123',
+				eventType: 'press',
+				nativeCommand: 'button_single',
+				endpointId: 1,
+				sourceOccurrenceId: expect.stringContaining('ha_reg_device_123:button_single:'),
+			});
+		});
+
+		it('falls back to device_ieee when device_id is omitted', () => {
 			const parsed = service.parseZhaEvent({
 				device_ieee: '00:15:8d:00:01:23:45:67',
 				command: 'button_single',
@@ -102,6 +120,18 @@ describe('HomeAssistantRawEventService', () => {
 			expect(parsed?.endpointId).toBe(1);
 		});
 
+		it('returns null for unsupported deCONZ action codes', () => {
+			// Action code 6 is not mapped
+			expect(service.parseDeconzEvent({ id: 'smart_switch_1', event: 1006 })).toBeNull();
+			// Action code 99 is not mapped
+			expect(service.parseDeconzEvent({ id: 'smart_switch_1', event: 2099 })).toBeNull();
+		});
+
+		it('returns null for non-integer event numbers', () => {
+			expect(service.parseDeconzEvent({ id: 'smart_switch_1', event: 1002.5 })).toBeNull();
+			expect(service.parseDeconzEvent({ id: 'smart_switch_1', event: Number.NaN })).toBeNull();
+		});
+
 		it('returns null if missing id or event number', () => {
 			expect(service.parseDeconzEvent({})).toBeNull();
 			expect(service.parseDeconzEvent({ id: 'switch' })).toBeNull();
@@ -122,10 +152,10 @@ describe('HomeAssistantRawEventService', () => {
 	});
 
 	describe('handle', () => {
-		it('routes and publishes occurrence for matching adopted device', async () => {
+		it('routes and publishes occurrence using Home Assistant registry device_id', async () => {
 			const device: HomeAssistantDeviceEntity = {
 				id: 'dev-1',
-				haDeviceId: '00:15:8d:00:01:23:45:67',
+				haDeviceId: 'ha-reg-device-id-1',
 			} as HomeAssistantDeviceEntity;
 
 			const channel: HomeAssistantChannelEntity = {
@@ -145,6 +175,7 @@ describe('HomeAssistantRawEventService', () => {
 			await service.handle({
 				event_type: 'zha_event',
 				data: {
+					device_id: 'ha-reg-device-id-1',
 					device_ieee: '00:15:8d:00:01:23:45:67',
 					command: 'single',
 				},
@@ -159,6 +190,89 @@ describe('HomeAssistantRawEventService', () => {
 					nativeEventType: 'single',
 				}),
 			);
+		});
+
+		it('routes multi-endpoint event to exact matching button channel', async () => {
+			const device: HomeAssistantDeviceEntity = {
+				id: 'dev-multi',
+				haDeviceId: 'ha-multi-btn',
+			} as HomeAssistantDeviceEntity;
+
+			const chan1: HomeAssistantChannelEntity = {
+				id: 'chan-btn-1',
+				category: ChannelCategory.BUTTON,
+				identifier: 'button_1',
+			} as HomeAssistantChannelEntity;
+
+			const chan2: HomeAssistantChannelEntity = {
+				id: 'chan-btn-2',
+				category: ChannelCategory.BUTTON,
+				identifier: 'button_2',
+			} as HomeAssistantChannelEntity;
+
+			const prop1: HomeAssistantChannelPropertyEntity = {
+				id: 'prop-btn-1',
+				category: PropertyCategory.EVENT,
+			} as HomeAssistantChannelPropertyEntity;
+
+			const prop2: HomeAssistantChannelPropertyEntity = {
+				id: 'prop-btn-2',
+				category: PropertyCategory.EVENT,
+			} as HomeAssistantChannelPropertyEntity;
+
+			// Order deliberately reversed in findAll to verify resolution is not index-dependent
+			devicesService.findAll.mockResolvedValue([device]);
+			channelsService.findAll.mockResolvedValue([chan2, chan1]);
+			channelsPropertiesService.findAll.mockImplementation((channelId: string) => {
+				if (channelId === 'chan-btn-1') return Promise.resolve([prop1]);
+				if (channelId === 'chan-btn-2') return Promise.resolve([prop2]);
+				return Promise.resolve([] as HomeAssistantChannelPropertyEntity[]);
+			});
+
+			await service.handle({
+				event_type: 'zha_event',
+				data: {
+					device_id: 'ha-multi-btn',
+					command: 'single',
+					endpoint_id: 1,
+				},
+			});
+
+			expect(inputOccurrencesService.publishOccurrence).toHaveBeenCalledWith(
+				expect.objectContaining({
+					deviceId: 'dev-multi',
+					channelId: 'chan-btn-1',
+					propertyId: 'prop-btn-1',
+					event: 'press',
+				}),
+			);
+		});
+
+		it('does not publish occurrence when endpoint does not match any channel', async () => {
+			const device: HomeAssistantDeviceEntity = {
+				id: 'dev-multi',
+				haDeviceId: 'ha-multi-btn',
+			} as HomeAssistantDeviceEntity;
+
+			const chan1: HomeAssistantChannelEntity = {
+				id: 'chan-btn-1',
+				category: ChannelCategory.BUTTON,
+				identifier: 'button_1',
+			} as HomeAssistantChannelEntity;
+
+			devicesService.findAll.mockResolvedValue([device]);
+			channelsService.findAll.mockResolvedValue([chan1]);
+
+			await service.handle({
+				event_type: 'zha_event',
+				data: {
+					device_id: 'ha-multi-btn',
+					command: 'single',
+					endpoint_id: 99,
+				},
+			});
+
+			expect(inputOccurrencesService.publishOccurrence).not.toHaveBeenCalled();
 		});
 
 		it('does nothing when device is not adopted', async () => {

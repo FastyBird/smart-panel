@@ -347,6 +347,16 @@ export class MappingPreviewService {
 			status = 'partial';
 		}
 
+		const targetCategory = overrideChannelCategory ?? mapping.channel.category;
+		let channelIdentifier: string | null = null;
+		if (targetCategory === ChannelCategory.BUTTON) {
+			const match = /(?:button|btn|endpoint)[_.-]?(\d+)|[_.-](\d+)$/i.exec(entityId);
+			const num = match ? (match[1] ?? match[2]) : null;
+			if (num) {
+				channelIdentifier = `button_${num}`;
+			}
+		}
+
 		return {
 			entityId,
 			domain: domain as string,
@@ -355,9 +365,10 @@ export class MappingPreviewService {
 			attributes: state?.attributes ?? {},
 			status,
 			suggestedChannel: {
-				category: overrideChannelCategory ?? mapping.channel.category,
-				name: friendlyName ?? this.generateChannelName(entityId, mapping.channel.category),
+				category: targetCategory,
+				name: friendlyName ?? this.generateChannelName(entityId, targetCategory),
 				confidence: overrideChannelCategory ? 'high' : this.determineConfidenceFromMapping(mapping, deviceClass),
+				identifier: channelIdentifier,
 			},
 			suggestedProperties,
 			unmappedAttributes,

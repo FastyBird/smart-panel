@@ -51,10 +51,13 @@ export class HomeAssistantRawEventService implements WsEventService {
 	 * Parses a zha_event payload into a normalized button event.
 	 */
 	parseZhaEvent(data: Record<string, unknown>): ParsedRawEvent | null {
-		const deviceIeee = typeof data.device_ieee === 'string' ? data.device_ieee : (data.unique_id as string);
+		const deviceIdentifier =
+			(typeof data.device_id === 'string' && data.device_id.trim() ? data.device_id.trim() : null) ??
+			(typeof data.device_ieee === 'string' && data.device_ieee.trim() ? data.device_ieee.trim() : null) ??
+			(typeof data.unique_id === 'string' && data.unique_id.trim() ? data.unique_id.trim() : null);
 		const command = typeof data.command === 'string' ? data.command : null;
 
-		if (!deviceIeee || !command) {
+		if (!deviceIdentifier || !command) {
 			return null;
 		}
 
@@ -96,11 +99,11 @@ export class HomeAssistantRawEventService implements WsEventService {
 		const endpointId = typeof data.endpoint_id === 'number' ? data.endpoint_id : undefined;
 
 		return {
-			deviceIdentifier: deviceIeee,
+			deviceIdentifier,
 			eventType,
 			nativeCommand: command,
 			endpointId,
-			sourceOccurrenceId: `${deviceIeee}:${command}:${Date.now()}`,
+			sourceOccurrenceId: `${deviceIdentifier}:${command}:${Date.now()}`,
 		};
 	}
 
@@ -115,7 +118,7 @@ export class HomeAssistantRawEventService implements WsEventService {
 					? data.id
 					: (data.device_id as string);
 
-		const eventCode = typeof data.event === 'number' ? data.event : null;
+		const eventCode = typeof data.event === 'number' && Number.isInteger(data.event) ? data.event : null;
 
 		if (!identifier || eventCode === null) {
 			return null;
@@ -147,8 +150,7 @@ export class HomeAssistantRawEventService implements WsEventService {
 				eventType = 'triple_press';
 				break;
 			default:
-				eventType = 'press';
-				break;
+				return null;
 		}
 
 		return {
@@ -244,10 +246,25 @@ export class HomeAssistantRawEventService implements WsEventService {
 				return;
 			}
 
-			// If endpoint is specified, select corresponding button channel, otherwise default to first
-			targetChannel = buttonChannels[0];
-			if (parsed.endpointId && buttonChannels.length >= parsed.endpointId) {
-				targetChannel = buttonChannels[parsed.endpointId - 1];
+			if (parsed.endpointId !== undefined) {
+				const endpoint = parsed.endpointId;
+				targetChannel = buttonChannels.find(
+					(c) =>
+						c.identifier === String(endpoint) ||
+						c.identifier === `button_${endpoint}` ||
+						c.identifier === `btn_${endpoint}` ||
+						c.identifier === `endpoint_${endpoint}` ||
+						c.identifier?.endsWith(`_${endpoint}`),
+				);
+
+				if (!targetChannel) {
+					this.logger.debug(
+						`[RAW EVENT] No button channel found matching endpoint ${endpoint} for device ${device.id}.`,
+					);
+					return;
+				}
+			} else {
+				targetChannel = buttonChannels[0];
 			}
 		}
 

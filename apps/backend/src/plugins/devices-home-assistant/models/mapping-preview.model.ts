@@ -179,6 +179,16 @@ export class SuggestedChannelModel {
 	@Expose()
 	@IsString()
 	confidence: 'high' | 'medium' | 'low';
+
+	@ApiPropertyOptional({
+		description: 'Suggested channel identifier',
+		type: 'string',
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsString()
+	identifier?: string | null;
 }
 
 // ============================================================================

@@ -1195,7 +1195,7 @@ mappings:
     device_category: SENSOR
     property_bindings:
       - ha_attribute: event_type
-        property_category: OCCUPANCY
+        property_category: EVENT
 
   - name: event_default
     description: "General hardware event entity"
