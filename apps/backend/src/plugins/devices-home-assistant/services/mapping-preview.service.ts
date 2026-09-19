@@ -42,6 +42,7 @@ import {
 	SuggestedDeviceModel,
 	ValidationSummaryModel,
 } from '../models/mapping-preview.model';
+import { mapHaEventTypesToFormat } from '../utils/ha-event.utils';
 
 import { HomeAssistantHttpService } from './home-assistant.http.service';
 import { HomeAssistantWsService } from './home-assistant.ws.service';
@@ -346,6 +347,16 @@ export class MappingPreviewService {
 			status = 'partial';
 		}
 
+		const targetCategory = overrideChannelCategory ?? mapping.channel.category;
+		let channelIdentifier: string | null = null;
+		if (targetCategory === ChannelCategory.BUTTON) {
+			const match = /(?:button|btn|endpoint)[_.-]?(\d+)|[_.-](\d+)$/i.exec(entityId);
+			const num = match ? (match[1] ?? match[2]) : null;
+			if (num) {
+				channelIdentifier = `button_${num}`;
+			}
+		}
+
 		return {
 			entityId,
 			domain: domain as string,
@@ -354,9 +365,10 @@ export class MappingPreviewService {
 			attributes: state?.attributes ?? {},
 			status,
 			suggestedChannel: {
-				category: overrideChannelCategory ?? mapping.channel.category,
-				name: friendlyName ?? this.generateChannelName(entityId, mapping.channel.category),
+				category: targetCategory,
+				name: friendlyName ?? this.generateChannelName(entityId, targetCategory),
 				confidence: overrideChannelCategory ? 'high' : this.determineConfidenceFromMapping(mapping, deviceClass),
+				identifier: channelIdentifier,
 			},
 			suggestedProperties,
 			unmappedAttributes,
@@ -801,6 +813,17 @@ export class MappingPreviewService {
 			}
 		}
 
+		// Button event - use event_types from HA if available
+		if (channelCategory === ChannelCategory.BUTTON && propertyCategory === PropertyCategory.EVENT) {
+			const eventTypes = attrs.event_types;
+			if (Array.isArray(eventTypes) && eventTypes.length > 0) {
+				const formatted = mapHaEventTypesToFormat(eventTypes as string[]);
+				if (formatted.length > 0) {
+					return formatted;
+				}
+			}
+		}
+
 		return null;
 	}
 
@@ -975,9 +998,9 @@ export class MappingPreviewService {
 
 		// Process each group
 		for (const [category, entities] of groupedByCategory.entries()) {
-			if (entities.length === 1) {
-				// No consolidation needed
-				consolidated.push(entities[0]);
+			if (entities.length === 1 || category === ChannelCategory.BUTTON) {
+				// No consolidation needed (each physical button is an independent channel/endpoint)
+				consolidated.push(...entities);
 				continue;
 			}
 

@@ -38,7 +38,7 @@ import { HomeAssistantHttpService } from './home-assistant.http.service';
 
 export interface WsEventService {
 	get event(): string;
-	handle(event: HomeAssistantStateChangedEventDto): Promise<void>;
+	handle(event: HomeAssistantStateChangedEventDto | Record<string, unknown>): Promise<void>;
 }
 
 /**
@@ -725,7 +725,7 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 			this.unexpectedCloseStreak = 0;
 			await this.resolveConnectionIssue();
 
-			this.subscribeToStates();
+			this.subscribeToEvents();
 			this.startPing();
 
 			// Mark all HA devices as connected now that we're authenticated
@@ -755,32 +755,49 @@ export class HomeAssistantWsService extends BaseManagedExtensionService {
 			if (
 				'event' in msg &&
 				typeof msg.event === 'object' &&
+				msg.event !== null &&
 				'event_type' in msg.event &&
-				msg.event.event_type === 'state_changed'
+				typeof msg.event.event_type === 'string'
 			) {
-				const handler = this.eventsHandlers.get(msg.event.event_type) ?? this.eventsHandlers.get('*');
+				const eventType = msg.event.event_type;
+				const handler = this.eventsHandlers.get(eventType) ?? this.eventsHandlers.get('*');
 
 				if (handler) {
-					// Use excludeExtraneousValues: false to preserve dynamic attributes like brightness, color, etc.
-					// Without this, class-transformer strips the nested attributes object
-					const event = toInstance(HomeAssistantStateChangedEventDto, msg.event as object, {
-						excludeExtraneousValues: false,
-					});
+					if (eventType === 'state_changed') {
+						// Use excludeExtraneousValues: false to preserve dynamic attributes like brightness, color, etc.
+						// Without this, class-transformer strips the nested attributes object
+						const event = toInstance(HomeAssistantStateChangedEventDto, msg.event as object, {
+							excludeExtraneousValues: false,
+						});
 
-					await handler.handle(event);
+						await handler.handle(event);
+					} else {
+						await handler.handle(msg.event as unknown as Record<string, unknown>);
+					}
+				} else {
+					this.logger.debug(`[WS EVENT] Unhandled event on Home Assistant event bus: "${eventType}".`);
 				}
 			}
 		}
 	}
 
-	private subscribeToStates() {
-		this.ws?.send(
-			JSON.stringify({
-				id: this.nextId++,
-				type: 'subscribe_events',
-				event_type: 'state_changed',
-			}),
-		);
+	private subscribeToEvents() {
+		const subscribedEvents = new Set<string>(['state_changed']);
+		for (const eventType of this.eventsHandlers.keys()) {
+			if (eventType !== '*') {
+				subscribedEvents.add(eventType);
+			}
+		}
+
+		for (const eventType of subscribedEvents) {
+			this.ws?.send(
+				JSON.stringify({
+					id: this.nextId++,
+					type: 'subscribe_events',
+					event_type: eventType,
+				}),
+			);
+		}
 	}
 
 	/**

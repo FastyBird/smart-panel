@@ -410,6 +410,7 @@ export class HomeAssistantWizardService implements OnModuleDestroy {
 					entityId: entity.entityId,
 					category: entity.suggestedChannel.category,
 					name: entity.suggestedChannel.name,
+					identifier: entity.suggestedChannel.identifier ?? null,
 					properties: entity.suggestedProperties.map((property) => ({
 						category: property.category,
 						haAttribute: property.haAttribute,
