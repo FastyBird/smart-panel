@@ -270,6 +270,21 @@ run(spec: {
 (`apps/backend/src/plugins/remote-access-tailscale/scripts/tailscale-setup.sh`, bundled via `nest-cli.json`
 assets) and forwards every `onStatus()` tick as a `RemoteAccessModule.Setup.Progress` event.
 
+## Image update migration runbook
+
+Image updates stop the service before invoking the target release's TypeORM CLI and `dist/dataSource.js`.
+The target data source must set `migrationsTransactionMode: 'each'`: ordinary migrations remain transactional,
+while migrations that deliberately manage their own SQLite transaction and foreign-key PRAGMA can run without
+TypeORM's global `all`-transaction guard rejecting them. The Nest `TypeOrmModule` configuration uses the same
+mode for optional automatic migrations (`FB_DB_MIGRATIONS_RUN` remains disabled by default).
+
+Before accepting an image update, verify the target data-source mode and migration set in a disposable SQLite
+database, then run the exact old-worker target-CLI invocation. Retain the target version/hash, migration history,
+exit status and bounded stdout/stderr privately. On failure, keep the previous build active, verify the database
+history and integrity/readability, restart the previous service and confirm health before any retry. A symlink
+rollback is not evidence that database changes were rolled back; per-migration commits and any recovery state must
+be checked separately.
+
 ## Manual Remedy Contract (D12)
 
 Every provider plugin — Tailscale today, the milestone-2 Cloudflare Tunnel and milestone-3 WireGuard plugins
