@@ -44,7 +44,7 @@ import {
 import { Z2mRegisteredDevice } from '../interfaces/zigbee2mqtt.interface';
 
 import { Z2mDeviceMapperService } from './device-mapper.service';
-import { MappedChannel, Z2mExposesMapperService } from './exposes-mapper.service';
+import { MappedChannel, MappedProperty, Z2mExposesMapperService } from './exposes-mapper.service';
 import { Z2mVirtualPropertyService } from './virtual-property.service';
 import { VirtualPropertyContext, getVirtualPropertyDefinition } from './virtual-property.types';
 import { Zigbee2mqttService } from './zigbee2mqtt.service';
@@ -301,13 +301,19 @@ export class Z2mDeviceAdoptionService {
 					manufacturer: z2mDevice.definition.vendor,
 				})
 			: [];
-		const mappedChannel = mappedChannels.find((mc) => mc.category === channelDef.category);
+		const mappedChannel = mappedChannels.find((mc) =>
+			channelDef.identifier ? mc.identifier === channelDef.identifier : mc.category === channelDef.category,
+		);
+
+		// Helper to find mapped property from YAML mapping
+		const findMappedProperty = (z2mProperty: string, category: PropertyCategory): MappedProperty | undefined => {
+			if (!mappedChannel) return undefined;
+			return mappedChannel.properties.find((p) => p.z2mProperty === z2mProperty && p.category === category);
+		};
 
 		// Helper to find transformer name for a property
 		const findTransformerName = (z2mProperty: string, category: PropertyCategory): string | undefined => {
-			if (!mappedChannel) return undefined;
-			const mappedProp = mappedChannel.properties.find((p) => p.z2mProperty === z2mProperty && p.category === category);
-			return mappedProp?.transformerName;
+			return findMappedProperty(z2mProperty, category)?.transformerName;
 		};
 
 		// Helper to find invalid value from YAML mapping
@@ -315,9 +321,7 @@ export class Z2mDeviceAdoptionService {
 			z2mProperty: string,
 			category: PropertyCategory,
 		): string | number | boolean | undefined => {
-			if (!mappedChannel) return undefined;
-			const mappedProp = mappedChannel.properties.find((p) => p.z2mProperty === z2mProperty && p.category === category);
-			return mappedProp?.invalid;
+			return findMappedProperty(z2mProperty, category)?.invalid;
 		};
 
 		// Create channel
@@ -355,6 +359,7 @@ export class Z2mDeviceAdoptionService {
 		// Create properties
 		for (const propDef of channelDef.properties) {
 			const propSpec = channelSpec?.properties?.find((p) => p.category === propDef.category);
+			const mappedProp = findMappedProperty(propDef.z2mProperty, propDef.category);
 
 			// Check if this is a virtual property (z2mProperty starts with "fb.virtual.")
 			const isVirtualProperty = propDef.z2mProperty.startsWith('fb.virtual.');
@@ -374,11 +379,16 @@ export class Z2mDeviceAdoptionService {
 					initialValue = this.virtualPropertyService.resolveVirtualPropertyValue(virtualDef, virtualContext);
 				}
 			} else {
+				// For remote channels, persist the matched mapped property identifier (e.g., "event")
+				// instead of the Z2M property name ("action" or "click").
 				// For properties that share the same z2mProperty (like hue/saturation both mapping to "color",
 				// or status/command both mapping to "state"), use category as identifier to avoid conflicts
-				const potentialIdentifier = propDef.z2mProperty;
+				const potentialIdentifier =
+					channelDef.category === ChannelCategory.BUTTON && mappedProp?.identifier
+						? mappedProp.identifier
+						: propDef.z2mProperty;
 
-				// If this z2mProperty was already used as an identifier, use category instead
+				// If this z2mProperty / identifier was already used as an identifier, use category instead
 				if (usedIdentifiers.has(potentialIdentifier)) {
 					identifier = propDef.category.toLowerCase();
 				} else {
@@ -445,7 +455,14 @@ export class Z2mDeviceAdoptionService {
 			const isColorProperty =
 				propDef.z2mProperty === 'color' &&
 				(propDef.category === PropertyCategory.HUE || propDef.category === PropertyCategory.SATURATION);
-			const propertyName = isVirtualProperty || isColorProperty ? propDef.category : propDef.z2mProperty;
+			const isButtonProperty =
+				channelDef.category === ChannelCategory.BUTTON && Boolean(mappedProp?.name || mappedProp?.identifier);
+			const propertyName =
+				isVirtualProperty || isColorProperty
+					? propDef.category
+					: isButtonProperty
+						? (mappedProp?.name ?? propDef.category)
+						: propDef.z2mProperty;
 
 			// Get invalid value from YAML mapping (fallback if frontend doesn't send it)
 			const yamlInvalidValue = findInvalidValue(propDef.z2mProperty, propDef.category);
@@ -513,7 +530,9 @@ export class Z2mDeviceAdoptionService {
 			: [];
 
 		// Find the mapped channel that matches this category
-		const mappedChannel = mappedChannels.find((mc) => mc.category === channelCategory);
+		const mappedChannel = mappedChannels.find((mc) =>
+			channel.identifier ? mc.identifier === channel.identifier : mc.category === channelCategory,
+		);
 		if (!mappedChannel) {
 			return;
 		}

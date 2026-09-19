@@ -13,7 +13,7 @@ export type TransformerType = 'scale' | 'map' | 'formula' | 'boolean' | 'clamp' 
 /**
  * Direction of transformation
  */
-export type TransformDirection = 'bidirectional' | 'read_only' | 'write_only';
+export type TransformDirection = 'bidirectional' | 'read_only' | 'write_only' | 'event_only';
 
 /**
  * Base transformer definition from config
