@@ -35,6 +35,20 @@ export class HomeAssistantRawEventService implements WsEventService {
 		'HomeAssistantRawEventService',
 	);
 
+	private occurrenceSequence = 0;
+
+	private generateSourceOccurrenceId(
+		deviceIdentifier: string,
+		command: string | number,
+		contextId?: string | null,
+	): string {
+		if (contextId && typeof contextId === 'string' && contextId.trim()) {
+			return `${deviceIdentifier}:${command}:${contextId.trim()}`;
+		}
+		this.occurrenceSequence = (this.occurrenceSequence + 1) % Number.MAX_SAFE_INTEGER;
+		return `${deviceIdentifier}:${command}:${Date.now()}_${this.occurrenceSequence}`;
+	}
+
 	constructor(
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
@@ -50,7 +64,7 @@ export class HomeAssistantRawEventService implements WsEventService {
 	/**
 	 * Parses a zha_event payload into a normalized button event.
 	 */
-	parseZhaEvent(data: Record<string, unknown>): ParsedRawEvent | null {
+	parseZhaEvent(data: Record<string, unknown>, contextId?: string | null): ParsedRawEvent | null {
 		const deviceIdentifier =
 			(typeof data.device_id === 'string' && data.device_id.trim() ? data.device_id.trim() : null) ??
 			(typeof data.device_ieee === 'string' && data.device_ieee.trim() ? data.device_ieee.trim() : null) ??
@@ -98,19 +112,30 @@ export class HomeAssistantRawEventService implements WsEventService {
 
 		const endpointId = typeof data.endpoint_id === 'number' ? data.endpoint_id : undefined;
 
+		const upstreamContextId =
+			(typeof contextId === 'string' && contextId.trim() ? contextId.trim() : null) ??
+			(typeof data.context === 'object' &&
+			data.context !== null &&
+			typeof (data.context as Record<string, unknown>).id === 'string'
+				? ((data.context as Record<string, unknown>).id as string).trim()
+				: null) ??
+			(typeof data.context_id === 'string' && data.context_id.trim() ? data.context_id.trim() : null);
+
+		const sourceOccurrenceId = this.generateSourceOccurrenceId(deviceIdentifier, command, upstreamContextId);
+
 		return {
 			deviceIdentifier,
 			eventType,
 			nativeCommand: command,
 			endpointId,
-			sourceOccurrenceId: `${deviceIdentifier}:${command}:${Date.now()}`,
+			sourceOccurrenceId,
 		};
 	}
 
 	/**
 	 * Parses a deconz_event payload into a normalized button event.
 	 */
-	parseDeconzEvent(data: Record<string, unknown>): ParsedRawEvent | null {
+	parseDeconzEvent(data: Record<string, unknown>, contextId?: string | null): ParsedRawEvent | null {
 		const identifier =
 			typeof data.unique_id === 'string'
 				? data.unique_id
@@ -153,12 +178,23 @@ export class HomeAssistantRawEventService implements WsEventService {
 				return null;
 		}
 
+		const upstreamContextId =
+			(typeof contextId === 'string' && contextId.trim() ? contextId.trim() : null) ??
+			(typeof data.context === 'object' &&
+			data.context !== null &&
+			typeof (data.context as Record<string, unknown>).id === 'string'
+				? ((data.context as Record<string, unknown>).id as string).trim()
+				: null) ??
+			(typeof data.context_id === 'string' && data.context_id.trim() ? data.context_id.trim() : null);
+
+		const sourceOccurrenceId = this.generateSourceOccurrenceId(identifier, eventCode, upstreamContextId);
+
 		return {
 			deviceIdentifier: identifier,
 			eventType,
 			nativeCommand: String(eventCode),
 			endpointId: buttonNum > 0 ? buttonNum : undefined,
-			sourceOccurrenceId: `${identifier}:${eventCode}:${Date.now()}`,
+			sourceOccurrenceId,
 		};
 	}
 
@@ -192,11 +228,18 @@ export class HomeAssistantRawEventService implements WsEventService {
 			return;
 		}
 
+		const contextId =
+			typeof rawMsg.context === 'object' &&
+			rawMsg.context !== null &&
+			typeof (rawMsg.context as Record<string, unknown>).id === 'string'
+				? ((rawMsg.context as Record<string, unknown>).id as string)
+				: null;
+
 		let parsed: ParsedRawEvent | null = null;
 		if (eventType === 'zha_event') {
-			parsed = this.parseZhaEvent(data);
+			parsed = this.parseZhaEvent(data, contextId);
 		} else if (eventType === 'deconz_event') {
-			parsed = this.parseDeconzEvent(data);
+			parsed = this.parseDeconzEvent(data, contextId);
 		}
 
 		if (!parsed) {

@@ -92,6 +92,33 @@ describe('HomeAssistantRawEventService', () => {
 			expect(service.parseZhaEvent({})).toBeNull();
 			expect(service.parseZhaEvent({ device_ieee: '00:11:22' })).toBeNull();
 		});
+
+		it('generates collision-resistant unique sourceOccurrenceId for consecutive same-command events', () => {
+			const event1 = service.parseZhaEvent({
+				device_ieee: '00:15:8d:00:01:23:45:67',
+				command: 'button_single',
+			});
+			const event2 = service.parseZhaEvent({
+				device_ieee: '00:15:8d:00:01:23:45:67',
+				command: 'button_single',
+			});
+
+			expect(event1?.sourceOccurrenceId).not.toEqual(event2?.sourceOccurrenceId);
+			expect(event1?.sourceOccurrenceId).toMatch(/^00:15:8d:00:01:23:45:67:button_single:\d+_\d+$/);
+			expect(event2?.sourceOccurrenceId).toMatch(/^00:15:8d:00:01:23:45:67:button_single:\d+_\d+$/);
+		});
+
+		it('uses upstream context ID in sourceOccurrenceId when provided', () => {
+			const event = service.parseZhaEvent(
+				{
+					device_ieee: '00:15:8d:00:01:23:45:67',
+					command: 'button_single',
+				},
+				'ctx-upstream-123',
+			);
+
+			expect(event?.sourceOccurrenceId).toBe('00:15:8d:00:01:23:45:67:button_single:ctx-upstream-123');
+		});
 	});
 
 	describe('parseDeconzEvent', () => {
@@ -136,6 +163,33 @@ describe('HomeAssistantRawEventService', () => {
 			expect(service.parseDeconzEvent({})).toBeNull();
 			expect(service.parseDeconzEvent({ id: 'switch' })).toBeNull();
 		});
+
+		it('generates collision-resistant unique sourceOccurrenceId for consecutive same-command events', () => {
+			const event1 = service.parseDeconzEvent({
+				id: 'smart_switch_1',
+				event: 2002,
+			});
+			const event2 = service.parseDeconzEvent({
+				id: 'smart_switch_1',
+				event: 2002,
+			});
+
+			expect(event1?.sourceOccurrenceId).not.toEqual(event2?.sourceOccurrenceId);
+			expect(event1?.sourceOccurrenceId).toMatch(/^smart_switch_1:2002:\d+_\d+$/);
+			expect(event2?.sourceOccurrenceId).toMatch(/^smart_switch_1:2002:\d+_\d+$/);
+		});
+
+		it('uses upstream context ID in sourceOccurrenceId when provided', () => {
+			const event = service.parseDeconzEvent(
+				{
+					id: 'smart_switch_1',
+					event: 2002,
+				},
+				'ctx-deconz-456',
+			);
+
+			expect(event?.sourceOccurrenceId).toBe('smart_switch_1:2002:ctx-deconz-456');
+		});
 	});
 
 	describe('diagnoseUnsupportedEvent', () => {
@@ -174,6 +228,7 @@ describe('HomeAssistantRawEventService', () => {
 
 			await service.handle({
 				event_type: 'zha_event',
+				context: { id: 'ctx-msg-789' },
 				data: {
 					device_id: 'ha-reg-device-id-1',
 					device_ieee: '00:15:8d:00:01:23:45:67',
@@ -188,6 +243,7 @@ describe('HomeAssistantRawEventService', () => {
 					propertyId: 'prop-1',
 					event: 'press',
 					nativeEventType: 'single',
+					sourceOccurrenceId: 'ha-reg-device-id-1:single:ctx-msg-789',
 				}),
 			);
 		});
