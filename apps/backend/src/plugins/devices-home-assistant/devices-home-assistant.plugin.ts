@@ -49,6 +49,7 @@ import {
 	HomeAssistantDeviceEntity,
 } from './entities/devices-home-assistant.entity';
 import { BinarySensorEntityMapperService } from './mappers/binary-sensor.entity.mapper.service';
+import { ButtonEntityMapperService, InputButtonEntityMapperService } from './mappers/button.entity.mapper.service';
 import { ClimateEntityMapperService } from './mappers/climate.entity.mapper.service';
 import { CoverEntityMapperService } from './mappers/cover.entity.mapper.service';
 import { LightEntityMapperService } from './mappers/light.entity.mapper.service';
@@ -65,6 +66,7 @@ import { HaSupervisorService } from './services/ha-supervisor.service';
 import { HelperAdoptionService } from './services/helper-adoption.service';
 import { HelperMappingPreviewService } from './services/helper-mapping-preview.service';
 import { HomeAssistantConfigValidatorService } from './services/home-assistant-config-validator.service';
+import { HomeAssistantRawEventService } from './services/home-assistant-raw-event.service';
 import { HomeAssistantHttpService } from './services/home-assistant.http.service';
 import { HomeAssistantWsService } from './services/home-assistant.ws.service';
 import { LightCapabilityAnalyzer } from './services/light-capability.analyzer';
@@ -108,8 +110,11 @@ import { DevicesServiceSubscriber } from './subscribers/devices-service.subscrib
 		LightEntityMapperService,
 		SensorEntityMapperService,
 		SwitchEntityMapperService,
+		ButtonEntityMapperService,
+		InputButtonEntityMapperService,
 		UniversalEntityMapperService,
 		StateChangedEventService,
+		HomeAssistantRawEventService,
 		DevicesServiceSubscriber,
 		MappingPreviewService,
 		DeviceAdoptionService,
@@ -145,7 +150,10 @@ export class DevicesHomeAssistantPlugin {
 		private readonly homeAssistantLightEntityMapper: LightEntityMapperService,
 		private readonly homeAssistantSensorEntityMapper: SensorEntityMapperService,
 		private readonly homeAssistantSwitchEntityMapper: SwitchEntityMapperService,
+		private readonly homeAssistantButtonEntityMapper: ButtonEntityMapperService,
+		private readonly homeAssistantInputButtonEntityMapper: InputButtonEntityMapperService,
 		private readonly homeAssistantWsService: HomeAssistantWsService,
+		private readonly homeAssistantRawEventService: HomeAssistantRawEventService,
 		private readonly haMdnsDiscovererService: HaMdnsDiscovererService,
 		private readonly stateChangedEventService: StateChangedEventService,
 		private readonly devicesServiceSubscriber: DevicesServiceSubscriber,
@@ -217,6 +225,8 @@ export class DevicesHomeAssistantPlugin {
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantLightEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantSensorEntityMapper);
 		this.homeAssistantMapperService.registerMapper(this.homeAssistantSwitchEntityMapper);
+		this.homeAssistantMapperService.registerMapper(this.homeAssistantButtonEntityMapper);
+		this.homeAssistantMapperService.registerMapper(this.homeAssistantInputButtonEntityMapper);
 
 		this.discriminatorRegistry.register({
 			parentClass: DeviceEntity,
@@ -390,6 +400,8 @@ Key concepts: \`priority\` (higher matches first), \`device_class\` (or \`null\`
 			this.stateChangedEventService.event,
 			this.stateChangedEventService,
 		);
+		this.homeAssistantWsService.registerEventsHandler('zha_event', this.homeAssistantRawEventService);
+		this.homeAssistantWsService.registerEventsHandler('deconz_event', this.homeAssistantRawEventService);
 
 		// Register service with the centralized plugin service manager
 		// The manager handles startup, shutdown, and config-based enable/disable

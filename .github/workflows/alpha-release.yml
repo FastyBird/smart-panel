@@ -354,6 +354,7 @@ jobs:
 
       - name: "Build ARM64 Flutter Bundle"
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FB_FLUTTERPI_APP_VERSION: "${{ needs.sync-versions.outputs.version }}"
           FB_FLUTTERPI_APP_BUILD: "${{ needs.sync-versions.outputs.buildNumber }}"
         run: "melos build-panel-arm64-release"

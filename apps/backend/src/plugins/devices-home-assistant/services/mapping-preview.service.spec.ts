@@ -23,6 +23,7 @@ describe('MappingPreviewService', () => {
 	let homeAssistantHttpService: jest.Mocked<HomeAssistantHttpService>;
 	let homeAssistantWsService: jest.Mocked<HomeAssistantWsService>;
 	let deviceValidationService: jest.Mocked<DeviceValidationService>;
+	let mappingLoaderService: jest.Mocked<MappingLoaderService>;
 
 	const mockDeviceRegistry = [
 		{
@@ -147,6 +148,7 @@ describe('MappingPreviewService', () => {
 		homeAssistantHttpService = module.get(HomeAssistantHttpService);
 		homeAssistantWsService = module.get(HomeAssistantWsService);
 		deviceValidationService = module.get(DeviceValidationService);
+		mappingLoaderService = module.get(MappingLoaderService);
 	});
 
 	afterEach(() => {
@@ -318,6 +320,117 @@ describe('MappingPreviewService', () => {
 			// Thermostat requires thermostat channel, so there should be warnings about missing channels
 			expect(result.warnings.some((w) => w.type === 'missing_required_channel')).toBe(true);
 			expect(result.readyToAdopt).toBe(false);
+		});
+
+		it('preserves distinct channels for multi-button event entities without consolidating', async () => {
+			const mockMultiButtonDeviceRegistry = [
+				{
+					id: 'remote_dev_1',
+					name: 'Wireless Remote',
+					manufacturer: 'Aqara',
+					model: 'WXKG11LM',
+					swVersion: '1.0.0',
+					areaId: null,
+					configurationUrl: null,
+					viaDeviceId: null,
+					disabledBy: null,
+					entryType: null,
+				},
+			];
+
+			const mockMultiButtonEntitiesRegistry = [
+				{
+					id: 'e1',
+					entityId: 'event.remote_btn_1',
+					deviceId: 'remote_dev_1',
+					platform: 'zha',
+					originalName: 'Button 1',
+					areaId: null,
+					entityCategory: null,
+					hasEntityName: true,
+					icon: null,
+					name: 'Button 1',
+					uniqueId: 'u1',
+					createdAt: new Date(),
+					modifiedAt: new Date(),
+				},
+				{
+					id: 'e2',
+					entityId: 'event.remote_btn_2',
+					deviceId: 'remote_dev_1',
+					platform: 'zha',
+					originalName: 'Button 2',
+					areaId: null,
+					entityCategory: null,
+					hasEntityName: true,
+					icon: null,
+					name: 'Button 2',
+					uniqueId: 'u2',
+					createdAt: new Date(),
+					modifiedAt: new Date(),
+				},
+			];
+
+			const mockMultiButtonDiscoveredDevice = {
+				id: 'remote_dev_1',
+				name: 'Wireless Remote',
+				entities: ['event.remote_btn_1', 'event.remote_btn_2'],
+				states: [
+					{
+						entityId: 'event.remote_btn_1',
+						state: '2026-09-17T00:00:00.000Z',
+						attributes: {
+							device_class: 'button',
+							event_types: ['press', 'double_press', 'hold'],
+						},
+						lastChanged: new Date(),
+						lastReported: new Date(),
+						lastUpdated: new Date(),
+					},
+					{
+						entityId: 'event.remote_btn_2',
+						state: '2026-09-17T00:00:00.000Z',
+						attributes: {
+							device_class: 'button',
+							event_types: ['press', 'double_press', 'hold'],
+						},
+						lastChanged: new Date(),
+						lastReported: new Date(),
+						lastUpdated: new Date(),
+					},
+				],
+				adoptedDeviceId: null,
+			};
+
+			const mockButtonMapping = {
+				name: 'event_button_default',
+				domain: HomeAssistantDomain.EVENT,
+				deviceClass: 'button',
+				priority: 60,
+				channel: { category: ChannelCategory.BUTTON },
+				deviceCategory: DeviceCategory.GENERIC,
+				propertyBindings: [{ haAttribute: 'fb.main_state', propertyCategory: PropertyCategory.EVENT }],
+			};
+
+			mappingLoaderService.findMatchingMapping.mockReturnValue(mockButtonMapping);
+			homeAssistantWsService.getDevicesRegistry.mockResolvedValue(mockMultiButtonDeviceRegistry as never);
+			homeAssistantWsService.getEntitiesRegistry.mockResolvedValue(mockMultiButtonEntitiesRegistry as never);
+			homeAssistantHttpService.getDiscoveredDevice.mockResolvedValue(mockMultiButtonDiscoveredDevice as never);
+
+			deviceValidationService.validateDeviceStructure.mockReturnValue({
+				isValid: true,
+				issues: [],
+			});
+
+			const result = await service.generatePreview('remote_dev_1');
+
+			expect(result.entities).toHaveLength(2);
+			for (const entity of result.entities) {
+				expect(entity.suggestedChannel?.category).toBe(ChannelCategory.BUTTON);
+				const eventProp = entity.suggestedProperties.find((p) => p.category === PropertyCategory.EVENT);
+				expect(eventProp).toBeDefined();
+				expect(eventProp?.format).toEqual(['press', 'double_press', 'long_press']);
+			}
 		});
 	});
 });

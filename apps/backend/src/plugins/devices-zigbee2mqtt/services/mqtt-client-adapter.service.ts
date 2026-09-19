@@ -105,8 +105,11 @@ export class Z2mMqttClientAdapterService extends Z2mBaseClientAdapter {
 					this.logger.warn('MQTT client is offline');
 				});
 
-				this.client.on('message', (topic, payload) => {
-					this.handleMessage(topic, payload.toString());
+				this.client.on('message', (topic, payload, packet) => {
+					const isRetained = packet?.retain === true;
+					const isDup = packet?.dup === true;
+					const packetId = packet?.messageId;
+					this.handleMessage(topic, payload.toString(), false, isRetained, { isDup, packetId });
 				});
 			} catch (error) {
 				this.logger.error('Failed to create MQTT client', {

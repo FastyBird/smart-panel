@@ -10,6 +10,7 @@ import {
 	Z2mBridgeState,
 	Z2mDevice,
 	Z2mDeviceAvailability,
+	Z2mDeviceStateMetadata,
 	Z2mMqttConfig,
 	Z2mRegisteredDevice,
 	Z2mSetPayload,
@@ -149,7 +150,13 @@ export abstract class Z2mBaseClientAdapter {
 	 * @param message - The message payload as string.
 	 * @param isRelative - If true, topic is already relative to baseTopic.
 	 */
-	protected handleMessage(topic: string, message: string, isRelative = false): void {
+	protected handleMessage(
+		topic: string,
+		message: string,
+		isRelative = false,
+		isRetained = false,
+		options?: { isDup?: boolean; packetId?: number },
+	): void {
 		try {
 			const relativePath = isRelative ? topic : topic.replace(`${this.baseTopic}/`, '');
 
@@ -162,7 +169,7 @@ export abstract class Z2mBaseClientAdapter {
 			// IMPORTANT: Check device registry FIRST, before bridge routing
 			// This handles devices with names starting with "bridge/" (e.g., "bridge/light1")
 			if (this.deviceRegistry.has(relativePath)) {
-				this.handleDeviceStateMessage(relativePath, message);
+				this.handleDeviceStateMessage(relativePath, message, isRetained, options);
 				return;
 			}
 
@@ -186,7 +193,7 @@ export abstract class Z2mBaseClientAdapter {
 			}
 
 			// Default: treat as state message for the full path
-			this.handleDeviceStateMessage(relativePath, message);
+			this.handleDeviceStateMessage(relativePath, message, isRetained, options);
 		} catch (error) {
 			this.logger.warn(`Failed to handle message on topic ${topic}`, {
 				message: error instanceof Error ? error.message : String(error),
@@ -370,7 +377,12 @@ export abstract class Z2mBaseClientAdapter {
 	/**
 	 * Handle device state message
 	 */
-	protected handleDeviceStateMessage(friendlyName: string, message: string): void {
+	protected handleDeviceStateMessage(
+		friendlyName: string,
+		message: string,
+		isRetained = false,
+		options?: { isDup?: boolean; packetId?: number },
+	): void {
 		try {
 			const state = JSON.parse(message) as Record<string, unknown>;
 
@@ -390,7 +402,8 @@ export abstract class Z2mBaseClientAdapter {
 				this.logger.debug(`Updated cache for "${friendlyName}" (not yet in registry)`);
 			}
 
-			void this.callbacks.onDeviceStateChanged?.(friendlyName, state);
+			const metadata: Z2mDeviceStateMetadata = { isRetained, isDup: options?.isDup, packetId: options?.packetId };
+			void this.callbacks.onDeviceStateChanged?.(friendlyName, state, metadata);
 		} catch (error) {
 			this.logger.warn(`Failed to parse state for device ${friendlyName}`, {
 				message: error instanceof Error ? error.message : String(error),

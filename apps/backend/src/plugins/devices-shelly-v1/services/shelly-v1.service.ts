@@ -1,12 +1,13 @@
 import { instanceToPlain } from 'class-transformer';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { ConnectionState } from '../../../modules/devices/devices.constants';
+import { ConnectionState, DataTypeType } from '../../../modules/devices/devices.constants';
+import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -24,6 +25,7 @@ import {
 	SHELLY_AUTH_USERNAME,
 	SHELLY_V1_CHANNEL_IDENTIFIERS,
 	SHELLY_V1_DEVICE_INFO_PROPERTY_IDENTIFIERS,
+	SHELLY_V1_TO_PANEL_EVENT_MAP,
 } from '../devices-shelly-v1.constants';
 import { UpdateShellyV1ChannelPropertyDto } from '../dto/update-channel-property.dto';
 import {
@@ -38,6 +40,7 @@ import { findShellyV1Descriptor } from '../utils/descriptor.utils';
 import { DeviceMapperService } from './device-mapper.service';
 import { ShelliesAdapterService } from './shellies-adapter.service';
 import { ShellyV1HttpClientService } from './shelly-v1-http-client.service';
+import { ShellyV1InputTrackerService } from './shelly-v1-input-tracker.service';
 
 /**
  * Shelly V1 device discovery and synchronization service.
@@ -61,6 +64,7 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 	readonly serviceId = 'connector';
 
 	private pluginConfig: ShellyV1ConfigModel | null = null;
+	private readonly tracker: ShellyV1InputTrackerService;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -71,8 +75,11 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly httpClient: ShellyV1HttpClientService,
+		@Optional() private readonly channelInputOccurrencesService?: ChannelInputOccurrencesService,
+		@Optional() private readonly inputTracker?: ShellyV1InputTrackerService,
 	) {
 		super();
+		this.tracker = this.inputTracker ?? new ShellyV1InputTrackerService();
 
 		// Set up adapter callbacks
 		this.shelliesAdapter.setCallbacks({
@@ -279,6 +286,20 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 				return;
 			}
 
+			// Snapshot raw inputEvent before asynchronous device lookup to prevent race conditions
+			let rawEventSnapshot: string | undefined;
+			let counterChannelIndex: number | undefined;
+			const counterMatch = event.property.match(/^inputEventCounter(\d+)$/);
+			if (counterMatch) {
+				counterChannelIndex = parseInt(counterMatch[1], 10);
+				const shellyDevice = registeredDevice
+					? this.shelliesAdapter.getDevice(registeredDevice.type, registeredDevice.id)
+					: undefined;
+				if (shellyDevice) {
+					rawEventSnapshot = String(shellyDevice[`inputEvent${counterChannelIndex}`] ?? '');
+				}
+			}
+
 			// Find the device
 			const device = await this.devicesService.findOneBy<ShellyV1DeviceEntity>(
 				'identifier',
@@ -289,6 +310,18 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 			if (!device) {
 				this.logger.debug(`Device not found in database: ${event.id}, skipping property update`);
 
+				return;
+			}
+
+			// Handle input event counters for hardware button/input occurrence publishing
+			if (counterMatch && counterChannelIndex !== undefined) {
+				await this.handleInputEventCounter(device, counterChannelIndex, Number(event.newValue), rawEventSnapshot);
+
+				return;
+			}
+
+			// Suppress raw inputEvent property changes since occurrences are dispatched via inputEventCounter
+			if (/^inputEvent\d+$/.test(event.property)) {
 				return;
 			}
 
@@ -338,12 +371,17 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 				return;
 			}
 
+			let propValue: unknown = event.newValue;
+			if (property.dataType === DataTypeType.BOOL && typeof event.newValue === 'number') {
+				propValue = Boolean(event.newValue);
+			}
+
 			// Update the property value
 			await this.channelsPropertiesService.update<ShellyV1ChannelPropertyEntity, UpdateShellyV1ChannelPropertyDto>(
 				property.id,
 				toInstance(UpdateShellyV1ChannelPropertyDto, {
 					...instanceToPlain(property),
-					value: event.newValue,
+					value: propValue,
 				}),
 			);
 
@@ -357,6 +395,118 @@ export class ShellyV1Service extends BaseManagedExtensionService {
 				stack: error instanceof Error ? error.stack : undefined,
 			});
 		}
+	}
+
+	/**
+	 * Handle input event counter changes from Shelly Gen 1 devices
+	 */
+	private async handleInputEventCounter(
+		device: ShellyV1DeviceEntity,
+		channelIndex: number,
+		counter: number,
+		rawEventSnapshot?: string,
+	): Promise<void> {
+		const registeredDevice = this.shelliesAdapter.getRegisteredDevice(device.identifier);
+		const shellyDevice = registeredDevice
+			? this.shelliesAdapter.getDevice(registeredDevice.type, registeredDevice.id)
+			: undefined;
+
+		const rawEvent =
+			rawEventSnapshot !== undefined ? rawEventSnapshot : String(shellyDevice?.[`inputEvent${channelIndex}`] ?? '');
+		const trackResult = this.tracker.trackEvent(device.id, channelIndex, counter, rawEvent);
+
+		if (!trackResult.shouldPublish) {
+			this.logger.debug(
+				`Input event suppressed (counter=${counter}, rawEvent=${rawEvent}) on device ${device.identifier} channel ${channelIndex}`,
+			);
+
+			return;
+		}
+
+		const mappedEvent = SHELLY_V1_TO_PANEL_EVENT_MAP[rawEvent];
+		if (!mappedEvent) {
+			this.logger.warn(
+				`Unrecognized Shelly V1 input event "${rawEvent}" on device ${device.identifier} channel ${channelIndex}`,
+			);
+			trackResult.commit();
+
+			return;
+		}
+
+		const channelIdentifier = `input_${channelIndex}`;
+		const channel = await this.channelsService.findOneBy<ShellyV1ChannelEntity>(
+			'identifier',
+			channelIdentifier,
+			device.id,
+			DEVICES_SHELLY_V1_TYPE,
+		);
+
+		if (!channel) {
+			this.logger.debug(`Channel ${channelIdentifier} not found for device ${device.identifier}, skipping occurrence`, {
+				resource: device.id,
+			});
+
+			return;
+		}
+
+		const eventProperty = await this.channelsPropertiesService.findOneBy<ShellyV1ChannelPropertyEntity>(
+			'identifier',
+			'event',
+			channel.id,
+			DEVICES_SHELLY_V1_TYPE,
+		);
+
+		if (!eventProperty) {
+			this.logger.debug(`Event property not found on channel ${channelIdentifier} for device ${device.identifier}`, {
+				resource: device.id,
+			});
+
+			return;
+		}
+
+		// Update property value in database
+		await this.channelsPropertiesService.update<ShellyV1ChannelPropertyEntity, UpdateShellyV1ChannelPropertyDto>(
+			eventProperty.id,
+			toInstance(UpdateShellyV1ChannelPropertyDto, {
+				...instanceToPlain(eventProperty),
+				value: mappedEvent,
+			}),
+		);
+
+		// Publish occurrence independently through ChannelInputOccurrencesService
+		if (this.channelInputOccurrencesService) {
+			const sourceTimestamp = new Date().toISOString();
+			const sourceOccurrenceId = trackResult.isReset
+				? `${channel.id}:${rawEvent}:${counter}:reset:${trackResult.resetGeneration}`
+				: `${channel.id}:${rawEvent}:${counter}`;
+
+			try {
+				await this.channelInputOccurrencesService.publishOccurrence({
+					deviceId: device.id,
+					channelId: channel.id,
+					propertyId: eventProperty.id,
+					event: mappedEvent,
+					nativeEventType: rawEvent,
+					sourceTimestamp,
+					sourceOccurrenceId,
+				});
+
+				this.logger.log(
+					`Published input occurrence ${mappedEvent} (${rawEvent}) for channel ${channel.identifier} on device ${device.identifier}`,
+					{ resource: device.id },
+				);
+			} catch (error) {
+				this.logger.error(
+					`Failed to publish input occurrence for device ${device.identifier}: ${error instanceof Error ? error.message : String(error)}`,
+					{ resource: device.id },
+				);
+
+				return;
+			}
+		}
+
+		// Commit the counter only after channel lookup, property updates, and occurrence publication all succeed
+		trackResult.commit();
 	}
 
 	/**

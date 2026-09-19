@@ -665,5 +665,34 @@ describe('HomeyMappingLoaderService', () => {
 			{ id: 'input_1', channel: 'input-1' },
 			{ id: 'input_1.aux', channel: 'input-1-aux' },
 		]);
+
+		const suffixOnlyDevice = createDevice({
+			capabilities: [
+				createHomeyCapability({
+					id: 'input_1.aux',
+					title: 'input_1.aux',
+					value: false,
+					type: HomeyCapabilityType.BOOLEAN,
+					unit: null,
+					minimum: null,
+					maximum: null,
+					step: null,
+					enumValues: [],
+					readable: true,
+					writable: false,
+					available: true,
+					lastUpdatedAt: null,
+				}),
+			],
+		});
+
+		const suffixOnlyResolution = service.resolveChannelMappings(suffixOnlyDevice);
+		expect(suffixOnlyResolution.mappings.map((m) => m.channel.identifier)).toEqual(['input-1-aux']);
+		expect(suffixOnlyResolution.mappings.map((m) => m.channel.name)).toEqual(['Input 1 (aux)']);
+
+		const suffixOnlyPropertyResolution = service.resolvePropertyMappings(suffixOnlyDevice);
+		expect(
+			suffixOnlyPropertyResolution.mappings.map((b) => ({ id: b.capabilityId, channel: b.mapping.property.channel })),
+		).toEqual([{ id: 'input_1.aux', channel: 'input-1-aux' }]);
 	});
 });

@@ -507,7 +507,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 				}
 			}
 
-			return [
+			properties.push(
 				this.createProperty({
 					identifier: propDef.panel.identifier.toLowerCase(),
 					name: propDef.panel.name ?? this.formatName(propDef.z2mProperty),
@@ -521,7 +521,7 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 					transformerName: propDef.transformerName,
 					invalid: propDef.panel.invalid,
 				}),
-			];
+			);
 		}
 
 		return properties;
@@ -749,6 +749,9 @@ export class ConfigDrivenConverter extends BaseConverter implements IConverter {
 		}
 		if (direction === 'write_only') {
 			return [PermissionType.WRITE_ONLY];
+		}
+		if (direction === 'event_only') {
+			return [PermissionType.EVENT_ONLY];
 		}
 
 		// For bidirectional, use Z2M access bits

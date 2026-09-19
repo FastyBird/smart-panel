@@ -78,7 +78,8 @@ type OwnerRecord = {
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const MAX_DURATION_MS = 180_000;
+const DEFAULT_DURATION_MS = 180_000;
+const MAX_DURATION_MS = 360_000;
 const MAX_RECORDS = 64;
 const MAX_BYTES = 256 * 1024;
 const OWNER_SUFFIX = '.owner.json';
@@ -316,7 +317,7 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 			if (typeof value.sourceDeviceId !== 'string' || !UUID_RE.test(value.sourceDeviceId)) return null;
 			if (typeof value.exportPath !== 'string' || !value.exportPath.startsWith('/') || value.exportPath.includes('\0'))
 				return null;
-			const durationMs = value.durationMs === undefined ? MAX_DURATION_MS : value.durationMs;
+			const durationMs = value.durationMs === undefined ? DEFAULT_DURATION_MS : value.durationMs;
 			if (
 				typeof durationMs !== 'number' ||
 				!Number.isInteger(durationMs) ||

@@ -594,11 +594,29 @@ export class DeviceAdoptionService {
 			ha_transformer: propDef.haTransformer ?? null,
 		}));
 
+		let channelIdentifier = channelDef.identifier ?? null;
+		if (!channelIdentifier && channelDef.category === ChannelCategory.BUTTON) {
+			if (channelDef.entityId) {
+				const match = /(?:button|btn|endpoint)[_.-]?(\d+)|[_.-](\d+)$/i.exec(channelDef.entityId);
+				const num = match ? (match[1] ?? match[2]) : null;
+				if (num) {
+					channelIdentifier = `button_${num}`;
+				}
+			}
+			if (!channelIdentifier && channelDef.name) {
+				const nameMatch = /(?:button|btn|endpoint)\s*(\d+)/i.exec(channelDef.name);
+				if (nameMatch?.[1]) {
+					channelIdentifier = `button_${nameMatch[1]}`;
+				}
+			}
+		}
+
 		const createChannelDto = toInstance(CreateHomeAssistantChannelDto, {
 			device: device.id,
 			type: DEVICES_HOME_ASSISTANT_TYPE,
 			category: channelDef.category,
 			name: channelDef.name,
+			identifier: channelIdentifier,
 			properties,
 		});
 

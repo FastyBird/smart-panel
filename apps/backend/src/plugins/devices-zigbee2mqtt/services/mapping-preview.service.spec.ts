@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import {
+	Z2mExpose,
 	Z2mExposeBinary,
 	Z2mExposeNumeric,
 	Z2mExposeSpecific,
@@ -484,6 +485,77 @@ describe('Z2mMappingPreviewService', () => {
 			const offlineWarning = preview.warnings.find((w) => w.type === 'device_not_available');
 			expect(offlineWarning).toBeDefined();
 			expect(offlineWarning?.message).toContain('offline');
+		});
+
+		it('should map single-button remote to INPUT_CONTROLLER with BUTTON channel', async () => {
+			const remoteDevice: Z2mRegisteredDevice = {
+				ieeeAddress: '0x00158d0001999999',
+				friendlyName: 'wireless-button',
+				type: 'EndDevice',
+				supported: true,
+				disabled: false,
+				available: true,
+				currentState: {},
+				definition: {
+					model: 'SNZB-01',
+					vendor: 'SONOFF',
+					description: 'Wireless button',
+					exposes: [
+						{
+							type: 'enum',
+							name: 'action',
+							property: 'action',
+							access: 1,
+							values: ['single', 'double', 'long'],
+						} as unknown as Z2mExpose,
+					],
+				},
+			};
+
+			zigbee2mqttService.getRegisteredDevices.mockReturnValue([remoteDevice]);
+
+			const preview = await service.generatePreview('0x00158d0001999999');
+
+			expect(preview.suggestedDevice.category).toBe(DeviceCategory.INPUT_CONTROLLER);
+			expect(preview.readyToAdopt).toBe(true);
+
+			const actionExpose = preview.exposes.find((e) => e.exposeName === 'action');
+			expect(actionExpose).toBeDefined();
+			expect(actionExpose?.status).toBe('mapped');
+			expect(actionExpose?.suggestedChannel?.category).toBe(ChannelCategory.BUTTON);
+		});
+
+		it('should map Philips Hue Dimmer to INPUT_CONTROLLER with 4 button channels', async () => {
+			const dimmerDevice: Z2mRegisteredDevice = {
+				ieeeAddress: '0x0017880104e12345',
+				friendlyName: 'hue-dimmer',
+				type: 'EndDevice',
+				supported: true,
+				disabled: false,
+				available: true,
+				currentState: {},
+				definition: {
+					model: 'RWL021',
+					vendor: 'Philips',
+					description: 'Hue Dimmer switch',
+					exposes: [
+						{
+							type: 'enum',
+							name: 'action',
+							property: 'action',
+							access: 1,
+							values: ['on_press', 'up_press', 'down_press', 'off_press'],
+						} as unknown as Z2mExpose,
+					],
+				},
+			};
+
+			zigbee2mqttService.getRegisteredDevices.mockReturnValue([dimmerDevice]);
+
+			const preview = await service.generatePreview('0x0017880104e12345');
+
+			expect(preview.suggestedDevice.category).toBe(DeviceCategory.INPUT_CONTROLLER);
+			expect(preview.readyToAdopt).toBe(true);
 		});
 	});
 });

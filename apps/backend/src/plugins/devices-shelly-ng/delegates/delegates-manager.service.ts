@@ -16,6 +16,7 @@ import {
 	DeviceCategory,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
+import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { CommandLatencyTraceCollectorService } from '../../../modules/devices/services/command-latency-trace-collector.service';
@@ -43,6 +44,16 @@ import { PollPlacementDiagnosticsService } from '../services/poll-placement-diag
 import { CoerceNumberOpts, rssiToQuality, toEnergy } from '../utils/transform.utils';
 
 import { ShellyDeviceDelegate, ShellyValueOrigin } from './shelly-device.delegate';
+
+const SHELLY_TO_PANEL_EVENT_MAP: Record<string, string> = {
+	single_push: 'press',
+	double_push: 'double_press',
+	triple_push: 'triple_press',
+	triple_press: 'triple_press',
+	long_push: 'long_press',
+	btn_down: 'down',
+	btn_up: 'up',
+};
 
 type MaybeNet = {
 	wifi?: WiFi & { sta_ip?: string | null };
@@ -103,6 +114,10 @@ export class DelegatesManagerService {
 
 	private readonly delegateConnectionHandlers: Map<string, (state: boolean | null) => void> = new Map();
 
+	private readonly delegateEventHandlers: Map<string, (params: unknown) => void> = new Map();
+	private readonly delegateEventQueues: Map<string, Promise<void>> = new Map();
+	private readonly delegateEventGenerations: Map<string, number> = new Map();
+
 	private readonly changeHandlers: Map<string, (val: CharacteristicValue) => void> = new Map();
 
 	private readonly setChannelsHandlers: Map<string, (updates: BatchUpdate[]) => Promise<boolean>> = new Map();
@@ -111,11 +126,19 @@ export class DelegatesManagerService {
 
 	private readonly pendingWrites: Map<string, NodeJS.Timeout> = new Map();
 
+	private readonly delegatePendingWrites: Map<string, Set<string>> = new Map();
+
+	private readonly delegateActiveWrites: Map<string, Set<Promise<void>>> = new Map();
+
 	/** Latest poll value per property, drained once per physical device after 250 ms. */
 	private readonly pendingPollWrites: Map<string, PollWriteBucket> = new Map();
 
 	/** Detached drains remain cancellable until every queued property has either run or been skipped. */
 	private readonly activePollWrites: Map<string, Set<PollWriteBucket>> = new Map();
+
+	private readonly activePollDrainPromises: Map<string, Set<Promise<void>>> = new Map();
+
+	private readonly delegatePollDeviceIds: Map<string, Set<string>> = new Map();
 
 	private readonly delegatePollGenerations: Map<string, number> = new Map();
 
@@ -196,6 +219,8 @@ export class DelegatesManagerService {
 		private readonly commandLatencyTraceCollector: CommandLatencyTraceCollectorService = new CommandLatencyTraceCollectorService(),
 		@Optional()
 		private readonly pollPlacementDiagnostics: PollPlacementDiagnosticsService = new PollPlacementDiagnosticsService(),
+		@Optional()
+		private readonly channelInputOccurrencesService?: ChannelInputOccurrencesService,
 	) {}
 
 	get(id: Device['id']): ShellyDeviceDelegate | undefined {
@@ -209,7 +234,7 @@ export class DelegatesManagerService {
 	private async performInsert(shelly: Device & MaybeNet, force: boolean = false): Promise<ShellyDeviceDelegate> {
 		if (this.delegates.has(shelly.id)) {
 			if (force) {
-				this.performRemove(shelly.id);
+				await this.performRemove(shelly.id);
 			} else {
 				return this.delegates.get(shelly.id);
 			}
@@ -1780,6 +1805,100 @@ export class DelegatesManagerService {
 
 		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
 
+		// Wire inputs (button, binary_input, analog_input)
+		for (const comp of delegate.inputs.values()) {
+			const channel = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+				'identifier',
+				`input:${comp.id}`,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (channel === null) {
+				continue;
+			}
+
+			if (channel.category === ChannelCategory.BUTTON) {
+				const detectedProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'category',
+					PropertyCategory.DETECTED,
+					channel.id,
+				);
+
+				if (detectedProp) {
+					await this.setDefaultPropertyValue(device.id, detectedProp, Boolean(comp.state));
+
+					this.changeHandlers.set(`${delegate.id}|${comp.key}|state`, (val: CharacteristicValue): void => {
+						if (typeof val === 'boolean') {
+							this.handleChange(detectedProp, val, false).catch((err: Error): void => {
+								this.logger.error(`Failed to update detected for ${detectedProp.id}: ${err.message}`);
+							});
+						}
+					});
+				}
+			} else if (channel.category === ChannelCategory.BINARY_INPUT) {
+				const stateProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'category',
+					PropertyCategory.STATE,
+					channel.id,
+				);
+
+				if (stateProp) {
+					await this.setDefaultPropertyValue(device.id, stateProp, Boolean(comp.state));
+
+					this.changeHandlers.set(`${delegate.id}|${comp.key}|state`, (val: CharacteristicValue): void => {
+						if (typeof val === 'boolean') {
+							this.handleChange(stateProp, val, false).catch((err: Error): void => {
+								this.logger.error(`Failed to update state for ${stateProp.id}: ${err.message}`);
+							});
+						}
+					});
+				}
+			} else if (channel.category === ChannelCategory.ANALOG_INPUT) {
+				const valueProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+					'category',
+					PropertyCategory.VALUE,
+					channel.id,
+				);
+
+				if (valueProp) {
+					const hasExtendedPercent = typeof comp.xpercent === 'number';
+					const hasExtendedCount = typeof comp.counts?.xtotal === 'number';
+
+					let initialVal: number;
+					if (comp.counts !== undefined) {
+						initialVal = hasExtendedCount ? comp.counts.xtotal : (comp.counts.total ?? 0);
+					} else {
+						initialVal = hasExtendedPercent ? comp.xpercent : (comp.percent ?? 0);
+					}
+
+					await this.setDefaultPropertyValue(device.id, valueProp, initialVal);
+
+					const percentAttr = hasExtendedPercent ? 'xpercent' : 'percent';
+					this.changeHandlers.set(`${delegate.id}|${comp.key}|${percentAttr}`, (val: CharacteristicValue): void => {
+						const n = coerceNumberSafe(val);
+						if (n !== null) {
+							this.handleChange(valueProp, n, false).catch((err: Error): void => {
+								this.logger.error(`Failed to update value for ${valueProp.id}: ${err.message}`);
+							});
+						}
+					});
+
+					const countAttr = hasExtendedCount ? 'counts.xtotal' : 'counts.total';
+					this.changeHandlers.set(`${delegate.id}|${comp.key}|${countAttr}`, (val: CharacteristicValue): void => {
+						const n = coerceNumberSafe(val);
+						if (n !== null) {
+							this.handleChange(valueProp, n, false).catch((err: Error): void => {
+								this.logger.error(`Failed to update counts for ${valueProp.id}: ${err.message}`);
+							});
+						}
+					});
+				}
+			}
+		}
+
+		if (this.insertGeneration.get(shelly.id) !== generation) return delegate;
+
 		const valueHandler = (
 			compKey: string,
 			attr: string,
@@ -1944,6 +2063,40 @@ export class DelegatesManagerService {
 
 		this.delegateConnectionHandlers.set(delegate.id, connectionHandler);
 
+		const eventGeneration = (this.delegateEventGenerations.get(delegate.id) ?? 0) + 1;
+		this.delegateEventGenerations.set(delegate.id, eventGeneration);
+
+		const eventHandler = (params: unknown): void => {
+			const previousPromise = this.delegateEventQueues.get(delegate.id) ?? Promise.resolve();
+			const nextPromise = previousPromise
+				.then(async () => {
+					if (this.delegateEventGenerations.get(delegate.id) !== eventGeneration) {
+						return;
+					}
+
+					await this.handleDeviceEvent(delegate, device, params, eventGeneration);
+				})
+				.catch((error) => {
+					const err = error as Error;
+					this.logger.error(`Shelly event error for device=${device.id}`, {
+						resource: device.id,
+						message: err.message,
+						stack: err.stack,
+					});
+				})
+				.finally(() => {
+					if (this.delegateEventQueues.get(delegate.id) === nextPromise) {
+						this.delegateEventQueues.delete(delegate.id);
+					}
+				});
+
+			this.delegateEventQueues.set(delegate.id, nextPromise);
+		};
+
+		delegate.on('event', eventHandler);
+
+		this.delegateEventHandlers.set(delegate.id, eventHandler);
+
 		// Signal initial connection state based on the delegate's current state.
 		// The guard inside connectionHandler prevents double-increment if the
 		// library later fires a redundant 'connect' event.
@@ -1957,24 +2110,56 @@ export class DelegatesManagerService {
 	}
 
 	remove(deviceId: string): Promise<void> {
-		return this.withDeviceLock(deviceId, () => {
-			this.performRemove(deviceId);
-
-			return Promise.resolve();
-		});
+		return this.withDeviceLock(deviceId, () => this.performRemove(deviceId));
 	}
 
-	private performRemove(deviceId: string): void {
+	private async teardownDelegateEvents(delegate: ShellyDeviceDelegate): Promise<void> {
+		const eventHandler = this.delegateEventHandlers.get(delegate.id);
+
+		if (eventHandler) {
+			delegate.off('event', eventHandler);
+		}
+
+		const pendingQueue = this.delegateEventQueues.get(delegate.id);
+
+		this.delegateEventHandlers.delete(delegate.id);
+		this.delegateEventQueues.delete(delegate.id);
+		this.delegateEventGenerations.set(delegate.id, (this.delegateEventGenerations.get(delegate.id) ?? 0) + 1);
+
+		if (pendingQueue !== undefined) {
+			try {
+				await pendingQueue;
+			} catch (err) {
+				this.logger.error(`Error while awaiting event queue teardown for delegate=${delegate.id}`, {
+					message: (err as Error).message,
+					stack: (err as Error).stack,
+				});
+			}
+		}
+	}
+
+	private async performRemove(deviceId: string): Promise<void> {
 		const delegate = this.delegates.get(deviceId);
 
 		if (!delegate) {
 			return;
 		}
 
+		const valueHandler = this.delegateValueHandlers.get(delegate.id);
+
+		if (valueHandler) {
+			delegate.off('value', valueHandler);
+			this.delegateValueHandlers.delete(delegate.id);
+		}
+
 		this.delegatePollGenerations.set(deviceId, (this.delegatePollGenerations.get(deviceId) ?? 0) + 1);
 		this.cancelPollWritesForDelegate(deviceId);
+		this.cancelPendingWritesForDelegate(deviceId);
 
-		const valueHandler = this.delegateValueHandlers.get(delegate.id);
+		await this.teardownDelegateEvents(delegate);
+		await this.awaitActiveWritesForDelegate(deviceId);
+		await this.awaitActivePollDrainsForDelegate(deviceId);
+
 		const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
 
 		if (connectionHandler) {
@@ -2001,16 +2186,10 @@ export class DelegatesManagerService {
 			}
 		}
 
-		if (valueHandler) {
-			delegate.off('value', valueHandler);
-		}
-
 		if (connectionHandler) {
 			delegate.off('connected', connectionHandler);
+			this.delegateConnectionHandlers.delete(delegate.id);
 		}
-
-		this.delegateValueHandlers.delete(delegate.id);
-		this.delegateConnectionHandlers.delete(delegate.id);
 
 		for (const key of Array.from(this.changeHandlers.keys())) {
 			if (key.startsWith(`${deviceId}|`)) {
@@ -2068,6 +2247,10 @@ export class DelegatesManagerService {
 		// Invalidate any in-progress insert so it bails out at its next check point.
 		this.insertGeneration.delete(deviceId);
 
+		this.delegatePendingWrites.delete(deviceId);
+		this.delegateActiveWrites.delete(deviceId);
+		this.delegatePollGenerations.delete(deviceId);
+		this.delegatePollDeviceIds.delete(deviceId);
 		this.delegates.delete(deviceId);
 
 		this.logger.log(`Detached Shelly device=${deviceId}`, { resource: deviceId });
@@ -2176,12 +2359,150 @@ export class DelegatesManagerService {
 		}
 	}
 
+	private async handleDeviceEvent(
+		delegate: ShellyDeviceDelegate,
+		device: ShellyNgDeviceEntity,
+		params: unknown,
+		generation: number,
+	): Promise<void> {
+		if (this.delegateEventGenerations.get(delegate.id) !== generation) {
+			return;
+		}
+
+		if (typeof params !== 'object' || params === null) {
+			return;
+		}
+
+		const eventPayload = params as Record<string, unknown>;
+		const rawEvents = Array.isArray(eventPayload.events) ? eventPayload.events : [eventPayload];
+
+		for (const rawItem of rawEvents) {
+			if (this.delegateEventGenerations.get(delegate.id) !== generation) {
+				return;
+			}
+
+			if (typeof rawItem !== 'object' || rawItem === null) {
+				continue;
+			}
+
+			const item = rawItem as Record<string, unknown>;
+			const rawEvent = typeof item.event === 'string' ? item.event : undefined;
+
+			if (!rawEvent) {
+				continue;
+			}
+
+			const mappedEvent = SHELLY_TO_PANEL_EVENT_MAP[rawEvent];
+
+			if (!mappedEvent) {
+				this.logger.debug(`Unknown Shelly event=${rawEvent} from device=${device.id}`);
+				continue;
+			}
+
+			let channelIdentifier: string;
+			if (typeof item.component === 'string' && item.component.length > 0) {
+				channelIdentifier = item.component;
+			} else if (typeof item.id === 'number' || typeof item.id === 'string') {
+				channelIdentifier = `input:${item.id}`;
+			} else {
+				continue;
+			}
+
+			const channel = await this.channelsService.findOneBy<ShellyNgChannelEntity>(
+				'identifier',
+				channelIdentifier,
+				device.id,
+				DEVICES_SHELLY_NG_TYPE,
+			);
+
+			if (this.delegateEventGenerations.get(delegate.id) !== generation) {
+				return;
+			}
+
+			if (!channel) {
+				this.logger.debug(`No channel found for ${channelIdentifier} on device=${device.id}`);
+				continue;
+			}
+
+			if (rawEvent === 'btn_down' || rawEvent === 'btn_up') {
+				try {
+					const detectedProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+						'category',
+						PropertyCategory.DETECTED,
+						channel.id,
+					);
+
+					if (this.delegateEventGenerations.get(delegate.id) !== generation) {
+						return;
+					}
+
+					if (detectedProp) {
+						await this.handleChange(detectedProp, rawEvent === 'btn_down', true);
+					}
+				} catch (err) {
+					this.logger.error(
+						`Failed to update DETECTED property for channel=${channel.id} on device=${device.id}: ${(err as Error).message}`,
+					);
+				}
+			}
+
+			if (this.delegateEventGenerations.get(delegate.id) !== generation) {
+				return;
+			}
+
+			const eventProp = await this.channelsPropertiesService.findOneBy<ShellyNgChannelPropertyEntity>(
+				'category',
+				PropertyCategory.EVENT,
+				channel.id,
+			);
+
+			if (this.delegateEventGenerations.get(delegate.id) !== generation) {
+				return;
+			}
+
+			if (!eventProp) {
+				this.logger.debug(`No EVENT property on channel=${channel.id} for device=${device.id}`);
+				continue;
+			}
+
+			if (this.channelInputOccurrencesService) {
+				const ts =
+					typeof item.ts === 'number' ? item.ts : typeof eventPayload.ts === 'number' ? eventPayload.ts : undefined;
+				const timestamp = ts !== undefined ? new Date(ts < 1e11 ? Math.round(ts * 1000) : Math.round(ts)) : new Date();
+
+				const sourceOccurrenceId = `${channel.id}:${rawEvent}:${ts ?? timestamp.getTime()}`;
+
+				try {
+					if (this.delegateEventGenerations.get(delegate.id) !== generation) {
+						return;
+					}
+
+					await this.channelInputOccurrencesService.publishOccurrence({
+						deviceId: device.id,
+						channelId: channel.id,
+						propertyId: eventProp.id,
+						event: mappedEvent,
+						nativeEventType: rawEvent,
+						sourceTimestamp: timestamp.toISOString(),
+						sourceOccurrenceId,
+					});
+				} catch (err) {
+					this.logger.error(
+						`Failed to publish occurrence for channel=${channel.id} on device=${device.id}: ${(err as Error).message}`,
+					);
+				}
+			}
+		}
+	}
+
 	private async handleChange(
 		property: ShellyNgChannelPropertyEntity,
 		value: string | number | boolean,
 		immediately = true,
+		delegateId?: string,
 	): Promise<void> {
 		const context = this.currentValueUpdateContext;
+		const effectiveDelegateId = delegateId ?? context?.delegateId;
 		if (context !== null) {
 			this.commandLatencyTraceCollector.recordProviderReceipt(property.id, value, context.origin, {
 				delegateId: context.delegateId,
@@ -2202,9 +2523,41 @@ export class DelegatesManagerService {
 		if (immediately) {
 			this.cancelScheduledWrite(property.id);
 			this.cancelPollWrite(property.id);
-			await this.writeValueToProperty(property, value);
+
+			if (effectiveDelegateId) {
+				let active = this.delegateActiveWrites.get(effectiveDelegateId);
+
+				if (!active) {
+					active = new Set();
+					this.delegateActiveWrites.set(effectiveDelegateId, active);
+				}
+
+				const writePromise = (async (): Promise<void> => {
+					await this.writeValueToProperty(property, value);
+				})();
+
+				void writePromise.catch(() => {});
+
+				active.add(writePromise);
+
+				try {
+					await writePromise;
+				} finally {
+					const currentActive = this.delegateActiveWrites.get(effectiveDelegateId);
+
+					if (currentActive) {
+						currentActive.delete(writePromise);
+
+						if (currentActive.size === 0) {
+							this.delegateActiveWrites.delete(effectiveDelegateId);
+						}
+					}
+				}
+			} else {
+				await this.writeValueToProperty(property, value);
+			}
 		} else {
-			this.scheduleWrite(property, value);
+			this.scheduleWrite(property, value, effectiveDelegateId);
 		}
 	}
 
@@ -2496,11 +2849,30 @@ export class DelegatesManagerService {
 		});
 	}
 
-	private scheduleWrite(property: ShellyNgChannelPropertyEntity, value: string | number | boolean): void {
+	private scheduleWrite(
+		property: ShellyNgChannelPropertyEntity,
+		value: string | number | boolean,
+		delegateId?: string,
+	): void {
 		const existing = this.pendingWrites.get(property.id);
 
 		if (existing) {
 			clearTimeout(existing);
+
+			for (const set of this.delegatePendingWrites.values()) {
+				set.delete(property.id);
+			}
+		}
+
+		if (delegateId) {
+			let set = this.delegatePendingWrites.get(delegateId);
+
+			if (!set) {
+				set = new Set();
+				this.delegatePendingWrites.set(delegateId, set);
+			}
+
+			set.add(property.id);
 		}
 
 		const t = setTimeout(() => {
@@ -2512,12 +2884,55 @@ export class DelegatesManagerService {
 				this.pendingWrites.delete(property.id);
 			}
 
-			this.writeValueToProperty(property, value).catch((err: Error) => {
-				this.logger.error(
-					`Failed to process scheduled write of value=${safeToString(value)} to property=${property.id}`,
-					{ message: err.message, stack: err.stack },
-				);
-			});
+			if (delegateId) {
+				const set = this.delegatePendingWrites.get(delegateId);
+
+				if (set) {
+					set.delete(property.id);
+
+					if (set.size === 0) {
+						this.delegatePendingWrites.delete(delegateId);
+					}
+				}
+
+				if (!this.delegates.has(delegateId)) {
+					return;
+				}
+			}
+
+			const writePromise = (async (): Promise<void> => {
+				try {
+					await this.writeValueToProperty(property, value);
+				} catch (err) {
+					this.logger.error(
+						`Failed to process scheduled write of value=${safeToString(value)} to property=${property.id}`,
+						{ message: (err as Error).message, stack: (err as Error).stack },
+					);
+				}
+			})();
+
+			if (delegateId) {
+				let active = this.delegateActiveWrites.get(delegateId);
+
+				if (!active) {
+					active = new Set();
+					this.delegateActiveWrites.set(delegateId, active);
+				}
+
+				active.add(writePromise);
+
+				void writePromise.finally(() => {
+					const currentActive = this.delegateActiveWrites.get(delegateId);
+
+					if (currentActive) {
+						currentActive.delete(writePromise);
+
+						if (currentActive.size === 0) {
+							this.delegateActiveWrites.delete(delegateId);
+						}
+					}
+				});
+			}
 		}, 250);
 
 		this.pendingWrites.set(property.id, t);
@@ -2528,6 +2943,15 @@ export class DelegatesManagerService {
 		property: ShellyNgChannelPropertyEntity,
 		value: string | number | boolean,
 	): void {
+		let tracked = this.delegatePollDeviceIds.get(context.delegateId);
+
+		if (!tracked) {
+			tracked = new Set();
+			this.delegatePollDeviceIds.set(context.delegateId, tracked);
+		}
+
+		tracked.add(context.deviceId);
+
 		let bucket = this.pendingPollWrites.get(context.deviceId);
 
 		if (!bucket) {
@@ -2566,41 +2990,68 @@ export class DelegatesManagerService {
 
 		activeBuckets.add(bucket);
 
-		try {
-			for (const [propertyId, pending] of [...bucket.values.entries()]) {
-				// A notify-origin confirmation may arrive while an earlier property in this drain awaits
-				// persistence. It must be able to remove a later stale poll candidate before it starts.
-				if (bucket.values.get(propertyId) !== pending) {
-					continue;
+		const drainPromise = (async (): Promise<void> => {
+			try {
+				for (const [propertyId, pending] of [...bucket.values.entries()]) {
+					// A notify-origin confirmation may arrive while an earlier property in this drain awaits
+					// persistence. It must be able to remove a later stale poll candidate before it starts.
+					if (bucket.values.get(propertyId) !== pending) {
+						continue;
+					}
+
+					if (
+						!this.delegates.has(pending.delegateId) ||
+						(this.delegatePollGenerations.get(pending.delegateId) ?? 0) !== pending.delegateGeneration
+					) {
+						continue;
+					}
+
+					try {
+						this.commandLatencyTraceCollector.recordPollActivity(pending.property.id, 'poll-drain', {
+							delegateId: pending.delegateId,
+							deviceId,
+						});
+						await this.writeValueToProperty(pending.property, pending.value);
+					} catch (error) {
+						const err = error as Error;
+
+						this.logger.error(
+							`Failed to process poll write of value=${safeToString(pending.value)} to property=${pending.property.id}`,
+							{ message: err.message, stack: err.stack },
+						);
+					}
 				}
+			} finally {
+				activeBuckets.delete(bucket);
 
-				if (
-					!this.delegates.has(pending.delegateId) ||
-					(this.delegatePollGenerations.get(pending.delegateId) ?? 0) !== pending.delegateGeneration
-				) {
-					continue;
-				}
-
-				try {
-					this.commandLatencyTraceCollector.recordPollActivity(pending.property.id, 'poll-drain', {
-						delegateId: pending.delegateId,
-						deviceId,
-					});
-					await this.writeValueToProperty(pending.property, pending.value);
-				} catch (error) {
-					const err = error as Error;
-
-					this.logger.error(
-						`Failed to process poll write of value=${safeToString(pending.value)} to property=${pending.property.id}`,
-						{ message: err.message, stack: err.stack },
-					);
+				if (activeBuckets.size === 0 && this.activePollWrites.get(deviceId) === activeBuckets) {
+					this.activePollWrites.delete(deviceId);
 				}
 			}
-		} finally {
-			activeBuckets.delete(bucket);
+		})();
 
-			if (activeBuckets.size === 0 && this.activePollWrites.get(deviceId) === activeBuckets) {
-				this.activePollWrites.delete(deviceId);
+		void drainPromise.catch(() => {});
+
+		let drains = this.activePollDrainPromises.get(deviceId);
+
+		if (!drains) {
+			drains = new Set();
+			this.activePollDrainPromises.set(deviceId, drains);
+		}
+
+		drains.add(drainPromise);
+
+		try {
+			await drainPromise;
+		} finally {
+			const currentDrains = this.activePollDrainPromises.get(deviceId);
+
+			if (currentDrains) {
+				currentDrains.delete(drainPromise);
+
+				if (currentDrains.size === 0) {
+					this.activePollDrainPromises.delete(deviceId);
+				}
 			}
 		}
 	}
@@ -2611,6 +3062,151 @@ export class DelegatesManagerService {
 		if (timer) {
 			clearTimeout(timer);
 			this.pendingWrites.delete(propertyId);
+		}
+
+		for (const [delegateId, set] of this.delegatePendingWrites.entries()) {
+			set.delete(propertyId);
+
+			if (set.size === 0) {
+				this.delegatePendingWrites.delete(delegateId);
+			}
+		}
+	}
+
+	private cancelPendingWritesForDelegate(delegateId: string): void {
+		const pendingPropertyIds = this.delegatePendingWrites.get(delegateId);
+
+		if (pendingPropertyIds) {
+			for (const propertyId of pendingPropertyIds) {
+				const timer = this.pendingWrites.get(propertyId);
+
+				if (timer) {
+					clearTimeout(timer);
+					this.pendingWrites.delete(propertyId);
+				}
+			}
+
+			this.delegatePendingWrites.delete(delegateId);
+		}
+	}
+
+	private async awaitActiveWritesForDelegate(delegateId: string): Promise<void> {
+		while (true) {
+			const activeWrites = this.delegateActiveWrites.get(delegateId);
+
+			if (!activeWrites || activeWrites.size === 0) {
+				break;
+			}
+
+			const toAwait = Array.from(activeWrites);
+			await Promise.allSettled(toAwait);
+
+			for (const p of toAwait) {
+				activeWrites.delete(p);
+			}
+		}
+
+		this.delegateActiveWrites.delete(delegateId);
+	}
+
+	private async awaitAllActiveWrites(): Promise<void> {
+		while (true) {
+			const allPromises: Promise<void>[] = [];
+
+			for (const activeWrites of this.delegateActiveWrites.values()) {
+				allPromises.push(...activeWrites);
+			}
+
+			if (allPromises.length === 0) {
+				break;
+			}
+
+			await Promise.allSettled(allPromises);
+
+			for (const activeWrites of this.delegateActiveWrites.values()) {
+				for (const p of allPromises) {
+					activeWrites.delete(p);
+				}
+			}
+		}
+
+		this.delegateActiveWrites.clear();
+	}
+
+	private async awaitActivePollDrainsForDelegate(delegateId: string): Promise<void> {
+		const deviceDbId = this.delegateDeviceIds.get(delegateId);
+		const relevantDeviceIds = new Set<string>([delegateId]);
+
+		if (deviceDbId) {
+			relevantDeviceIds.add(deviceDbId);
+		}
+
+		const trackedPollDeviceIds = this.delegatePollDeviceIds.get(delegateId);
+
+		if (trackedPollDeviceIds) {
+			for (const devId of trackedPollDeviceIds) {
+				relevantDeviceIds.add(devId);
+			}
+		}
+
+		for (const [devId, buckets] of this.activePollWrites.entries()) {
+			for (const bucket of buckets) {
+				for (const pending of bucket.values.values()) {
+					if (pending.delegateId === delegateId) {
+						relevantDeviceIds.add(devId);
+					}
+				}
+			}
+		}
+
+		while (true) {
+			const promises: Promise<void>[] = [];
+
+			for (const devId of relevantDeviceIds) {
+				const drains = this.activePollDrainPromises.get(devId);
+
+				if (drains && drains.size > 0) {
+					promises.push(...drains);
+				}
+			}
+
+			if (promises.length === 0) {
+				break;
+			}
+
+			await Promise.allSettled(promises);
+
+			for (const devId of relevantDeviceIds) {
+				const drains = this.activePollDrainPromises.get(devId);
+
+				if (drains) {
+					for (const p of promises) {
+						drains.delete(p);
+					}
+				}
+			}
+		}
+	}
+
+	private async awaitAllActivePollDrains(): Promise<void> {
+		while (true) {
+			const allPromises: Promise<void>[] = [];
+
+			for (const drains of this.activePollDrainPromises.values()) {
+				allPromises.push(...drains);
+			}
+
+			if (allPromises.length === 0) {
+				break;
+			}
+
+			await Promise.allSettled(allPromises);
+
+			for (const drains of this.activePollDrainPromises.values()) {
+				for (const p of allPromises) {
+					drains.delete(p);
+				}
+			}
 		}
 	}
 
@@ -2740,12 +3336,14 @@ export class DelegatesManagerService {
 		return fallback;
 	}
 
-	detach(): void {
+	async detach(): Promise<void> {
 		// Remove event listeners from all delegates without triggering connection
 		// state updates. During a service restart, the UNKNOWN state set by
 		// performRemove() would race with the CONNECTED state from the new
 		// connections — the async UNKNOWN call often wins and leaves devices
 		// stuck in UNKNOWN even though they are actually connected.
+		const teardownPromises: Promise<void>[] = [];
+
 		for (const [, delegate] of this.delegates.entries()) {
 			const valueHandler = this.delegateValueHandlers.get(delegate.id);
 			const connectionHandler = this.delegateConnectionHandlers.get(delegate.id);
@@ -2757,24 +3355,48 @@ export class DelegatesManagerService {
 			if (connectionHandler) {
 				delegate.off('connected', connectionHandler);
 			}
-		}
 
-		this.delegates.clear();
-		this.delegateValueHandlers.clear();
-		this.delegateConnectionHandlers.clear();
-		this.delegateDeviceIds.clear();
-		this.changeHandlers.clear();
-		this.setPropertiesHandlers.clear();
-		this.setChannelsHandlers.clear();
-		this.propertiesMap.clear();
+			teardownPromises.push(this.teardownDelegateEvents(delegate));
+		}
 
 		for (const pendingWrite of this.pendingWrites.values()) {
 			clearTimeout(pendingWrite);
 		}
 
 		this.pendingWrites.clear();
+		this.delegatePendingWrites.clear();
 
-		this.clearPollWrites();
+		for (const bucket of this.pendingPollWrites.values()) {
+			clearTimeout(bucket.timer);
+		}
+
+		this.pendingPollWrites.clear();
+
+		for (const buckets of this.activePollWrites.values()) {
+			for (const bucket of buckets) {
+				bucket.values.clear();
+			}
+		}
+
+		await Promise.all(teardownPromises);
+		await this.awaitAllActiveWrites();
+		await this.awaitAllActivePollDrains();
+
+		this.activePollWrites.clear();
+		this.activePollDrainPromises.clear();
+		this.delegatePollDeviceIds.clear();
+
+		this.delegates.clear();
+		this.delegateValueHandlers.clear();
+		this.delegateConnectionHandlers.clear();
+		this.delegateEventHandlers.clear();
+		this.delegateEventQueues.clear();
+		this.delegateEventGenerations.clear();
+		this.delegateDeviceIds.clear();
+		this.changeHandlers.clear();
+		this.setPropertiesHandlers.clear();
+		this.setChannelsHandlers.clear();
+		this.propertiesMap.clear();
 		this.delegatePollGenerations.clear();
 		this.currentValueUpdateContext = null;
 		this.deviceLocks.clear();
@@ -2792,8 +3414,8 @@ export class DelegatesManagerService {
 		this.insertGeneration.clear();
 	}
 
-	destroy(): void {
-		this.detach();
+	async destroy(): Promise<void> {
+		await this.detach();
 	}
 
 	/**

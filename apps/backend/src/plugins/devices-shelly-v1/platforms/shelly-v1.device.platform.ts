@@ -161,6 +161,15 @@ export class ShellyV1DevicePlatform implements IDevicePlatform {
 		const relayMatch = channel.identifier.match(/^relay_(\d+)$/);
 		const lightMatch = channel.identifier.match(/^light_(\d+)$/);
 		const rollerMatch = channel.identifier.match(/^roller_(\d+)$/);
+		const inputMatch = channel.identifier.match(/^(?:input|voltage)_(\d+)$/);
+
+		if (inputMatch) {
+			this.logger.warn(`Cannot execute command on read-only input channel: ${channel.identifier}`, {
+				resource: device.id,
+			});
+
+			return false;
+		}
 
 		try {
 			if (relayMatch) {
