@@ -157,7 +157,8 @@ export class ButtonMapper extends BaseHomeKitMapper {
 			const switchEventChar = switchService.getCharacteristic(Characteristic.ProgrammableSwitchEvent);
 
 			// Stateless programmable switch has no persistent state; GET returns null.
-			// Replays on startup/restart are strictly avoided.\n			switchEventChar.onGet(() => null);
+			// Replays on startup/restart are strictly avoided.
+			switchEventChar.onGet(() => null);
 
 			switchEventChar.setProps({ validValues });
 
@@ -166,24 +167,24 @@ export class ButtonMapper extends BaseHomeKitMapper {
 				channelId: channel.id,
 				propertyId: eventProp.id,
 				onOccurrence: (occurrence: ChannelInputOccurrencePayload) => {
-					const hapValue = ButtonMapper.mapEventToHap(occurrence.event);
-					if (hapValue === null) {
+					const hapEvent = ButtonMapper.mapEventToHap(occurrence.event);
+					if (hapEvent === null) {
 						ButtonMapper.logger.debug(
-							`[HOMEKIT INPUT] Dropping unsupported HomeKit interaction '${occurrence.event}' for device=${device.id} channel=${channel.id}`,
+							`Dropping unsupported input occurrence event="${occurrence.event}" for device="${device.id}" channel="${channel.id}"`,
 						);
 						return;
 					}
 
-					if (!validValues.includes(hapValue)) {
-						ButtonMapper.logger.debug(
-							`[HOMEKIT INPUT] Event '${occurrence.event}' (${hapValue}) not supported by HomeKit configuration for channel=${channel.id}`,
+					if (!validValues.includes(hapEvent)) {
+						ButtonMapper.logger.warn(
+							`Dropping occurrence event="${occurrence.event}" (HAP ${hapEvent}) outside validValues=[${validValues.join(',')}] for channel="${channel.id}"`,
 						);
 						return;
 					}
 
-					// Use sendEventNotification to force event delivery to HomeKit clients,
-					// preserving rapid repeated identical presses without debounce or suppression.
-					switchEventChar.sendEventNotification(hapValue);
+					// Apple HomeKit requires sendEventNotification to be called for stateless switches
+					// to deliver consecutive presses of the same type even if the value has not changed.
+					switchEventChar.sendEventNotification(hapEvent);
 				},
 			});
 		});

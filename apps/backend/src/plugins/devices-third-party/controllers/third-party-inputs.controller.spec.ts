@@ -51,7 +51,7 @@ describe('ThirdPartyInputsController', () => {
 		identifier: 'event',
 		name: 'Event',
 		dataType: DataTypeType.ENUM,
-		permissions: [PermissionType.READ, PermissionType.EVENT_ONLY] as PermissionType[],
+		permissions: [PermissionType.READ_ONLY, PermissionType.EVENT_ONLY] as PermissionType[],
 		format: ['press', 'double_press', 'long_press'],
 		channel: mockChannel,
 	} as ChannelPropertyEntity;
