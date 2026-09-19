@@ -212,3 +212,53 @@ mappings:
       identifier: window-covering
       category: window_covering
       name: Window covering
+
+  - name: binary-input-1
+    priority: 100
+    match:
+      classes: [sensor, socket, other]
+      all_capabilities: [input_1]
+    channel:
+      identifier: input-1
+      category: binary_input
+      name: Input 1
+
+  - name: binary-input-2
+    priority: 100
+    match:
+      classes: [sensor, socket, other]
+      all_capabilities: [input_2]
+    channel:
+      identifier: input-2
+      category: binary_input
+      name: Input 2
+
+  - name: binary-input-3
+    priority: 100
+    match:
+      classes: [sensor, socket, other]
+      all_capabilities: [input_3]
+    channel:
+      identifier: input-3
+      category: binary_input
+      name: Input 3
+
+  - name: binary-input-4
+    priority: 100
+    match:
+      classes: [sensor, socket, other]
+      all_capabilities: [input_4]
+    channel:
+      identifier: input-4
+      category: binary_input
+      name: Input 4
+
+  - name: tamper-alarm
+    priority: 100
+    match:
+      classes: [sensor, lock, other]
+      all_capabilities: [alarm_tamper]
+    channel:
+      identifier: tamper
+      category: alarm
+      name: Tamper

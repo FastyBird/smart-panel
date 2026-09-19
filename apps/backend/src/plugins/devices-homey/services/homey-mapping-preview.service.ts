@@ -143,6 +143,25 @@ export class HomeyMappingPreviewService {
 			);
 		}
 
+		const isButtonOrRemote =
+			device.class === 'button' ||
+			device.class === 'remote' ||
+			(device.capabilities.length > 0 &&
+				device.capabilities.every((cap) => cap.baseId === 'button' || cap.baseId === 'actionEvents'));
+
+		if (isButtonOrRemote && propertyResolution.mappings.length === 0) {
+			warnings.push(
+				this.warning(
+					HomeyMappingPreviewWarningCode.UNSUPPORTED_PHYSICAL_EVENTS,
+					HomeyMappingPreviewWarningSeverity.ERROR,
+					HomeyMappingPreviewWarningScope.DEVICE,
+					device.id,
+					[],
+					'Physical button and remote events on Homey are Flow-based triggers that cannot be observed through the supported Device API.',
+				),
+			);
+		}
+
 		if (!device.available) {
 			warnings.push(
 				this.warning(

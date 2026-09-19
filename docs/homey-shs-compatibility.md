@@ -1047,6 +1047,20 @@ contract testing until a fresh corrected live capture is available.
 Capability bases are retained, while suffixes after the first `.` are consistently pseudonymized across every
 representation because driver suffixes can contain household-derived semantics.
 
+## Hardware input and button capability matrix
+
+This versioned matrix governs Smart Panel's support boundaries for Homey hardware input capabilities, momentary action buttons, state actuators, and Flow-only triggers.
+
+| Category | Capability ID / Base ID | Semantics & Direction | Smart Panel Channel & Property | Support Disposition |
+| --- | --- | --- | --- | --- |
+| Observable Physical Input | `input_1`, `input_2`, `input_3`, `input_4` (and suffixed instances `input_1.*`) | Digital / binary input state (`getable: true, setable: false`, `type: boolean`) | Channel: `binary_input` (`input-1`, `input-2`, etc.; suffixed instances create independent stable channels `input-1-<suffix>`). Property: `category: state`, `data_type: bool`, `direction: read_only`. | **Supported**. Emits state changes and dispatches hardware input occurrences via `ChannelInputOccurrencesService`. |
+| Observable Physical Input | `alarm_contact` (and suffixed instances `alarm_contact.*`) | Physical contact sensor (`getable: true`, `type: boolean`) | Channel: `contact` (`contact` or `contact-<suffix>`). Property: `category: detected`, `data_type: bool`, `direction: read_only`. | **Supported**. Emits sensor state updates. |
+| Observable Physical Input | `alarm_motion` (and suffixed instances `alarm_motion.*`) | Physical motion detection (`getable: true`, `type: boolean`) | Channel: `motion` (`motion` or `motion-<suffix>`). Property: `category: detected`, `data_type: bool`, `direction: read_only`. | **Supported**. Emits sensor state updates. |
+| Observable Physical Input | `alarm_tamper` (and suffixed instances `alarm_tamper.*`) | Physical tamper sensor (`getable: true`, `type: boolean`) | Channel: `alarm` (`tamper` or `tamper-<suffix>`). Property: `category: detected`, `data_type: bool`, `direction: read_only`. | **Supported**. Emits sensor state updates. |
+| Command Button | `button`, `button.*` (`maintenanceAction: true`, `getable: false, setable: true`) | Momentary action trigger / maintenance button on Homey | Excluded from physical input press mappings. | **Action only**. Must not be inferred as an incoming physical press event. Excluded from input occurrence dispatch. |
+| State-Only Control | `onoff`, `dim`, `locked`, `windowcoverings_state` | Actuator control state (`getable: true, setable: true`) | Mapped to respective actuator channels (`light`, `outlet`, `switcher`, `lock`, `window_covering`). | **Actuator only**. Ordinary on/off or dim updates are never inferred as button press occurrences. |
+| Unavailable Event Source | Homey Flow trigger cards (e.g. wireless remotes, wall switches in class `button` or `remote` without observable getable capabilities) | Flow-only trigger cards (`Homey Flow`) | None. Refused. | **Unsupported** (`UNSUPPORTED_PHYSICAL_EVENTS` / `unsupported_physical_events`). Physical button events on Homey remotes are exposed exclusively through Flow cards and are not accessible via the supported Device API. Follow-up boundary: requires a dedicated Homey App or webhook event bridge. Smart Panel explicitly refuses fictitious click inference. |
+
 ## References
 
 - [Homey SHS installation and ports](https://support.homey.app/hc/en-us/articles/24010537261980-How-to-install-Homey-Self-Hosted-Server-with-Docker-on-Linux)

@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
-import { ConnectionState, EventType } from '../../../modules/devices/devices.constants';
+import { ConnectionState, EventType, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
@@ -21,6 +22,7 @@ import { HomeyFailureLogLimiter } from './homey-failure-log-limiter';
 
 interface HomeyIndexedProperty {
 	readonly panelDeviceId: string;
+	readonly channelId: string;
 	readonly property: HomeyChannelPropertyEntity;
 	readonly mapping: ResolvedHomeyPropertyMapping;
 }
@@ -90,6 +92,8 @@ export class HomeySynchronizerService {
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly mappingLoader: HomeyMappingLoaderService,
 		private readonly transformer: HomeyMappingTransformerService,
+		@Optional()
+		private readonly channelInputOccurrencesService?: ChannelInputOccurrencesService,
 	) {}
 
 	@OnEvent(EventType.DEVICE_CREATED)
@@ -242,6 +246,7 @@ export class HomeySynchronizerService {
 							event.lastUpdatedAt ?? event.occurredAt,
 							event.sequence,
 							result,
+							true,
 						);
 
 						if (applied) {
@@ -433,7 +438,7 @@ export class HomeySynchronizerService {
 					}
 
 					const bindings = capabilities.get(property.homeyCapabilityId) ?? [];
-					bindings.push({ panelDeviceId: device.id, property, mapping });
+					bindings.push({ panelDeviceId: device.id, channelId: channel.id, property, mapping });
 					capabilities.set(property.homeyCapabilityId, bindings);
 				}
 			}
@@ -505,6 +510,7 @@ export class HomeySynchronizerService {
 		updatedAt: string | null,
 		sequence: string | number | null,
 		result: MutableSynchronizationResult,
+		isLiveEvent = false,
 	): Promise<boolean> {
 		const bindings = this.propertiesByDeviceCapability.get(homeyDeviceId)?.get(capabilityId);
 
@@ -564,6 +570,29 @@ export class HomeySynchronizerService {
 				this.lastAppliedValues.set(binding.property.id, value);
 				this.lastPersistedValueTimestamp.set(binding.property.id, valueTimestamp.getTime());
 				result.updated += 1;
+
+				if (isLiveEvent && this.channelInputOccurrencesService) {
+					const isPhysicalInput =
+						binding.mapping.property.category === PropertyCategory.EVENT ||
+						(binding.mapping.property.category === PropertyCategory.STATE &&
+							binding.mapping.property.channel.startsWith('input'));
+
+					if (isPhysicalInput) {
+						const eventName = typeof value === 'boolean' ? (value ? 'press' : 'release') : 'press';
+						await this.channelInputOccurrencesService
+							.publishOccurrence({
+								deviceId: binding.panelDeviceId,
+								channelId: binding.channelId,
+								propertyId: binding.property.id,
+								event: eventName,
+								sourceTimestamp: updatedAt ?? new Date(receivedTimestamp).toISOString(),
+								sourceOccurrenceId: `${homeyDeviceId}:${capabilityId}:${updatedAt ?? order.arrival}`,
+							})
+							.catch((err: Error) => {
+								this.logger.debug(`Failed to publish input occurrence: ${err.message}`);
+							});
+					}
+				}
 			} catch {
 				result.failed += 1;
 				allBindingsApplied = false;
@@ -611,6 +640,7 @@ export class HomeySynchronizerService {
 					null,
 					event.sequence,
 					result,
+					true,
 				);
 
 				if (applied) {
