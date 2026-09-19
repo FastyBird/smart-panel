@@ -245,7 +245,7 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 	resolveChannelMappings(device: HomeyDevice): HomeyMappingResolution<ResolvedHomeyChannelMapping> {
 		const baseResolution = this.resolveCandidateGroups(
 			'channels',
-			this.channelMappings.filter((mapping) => this.matchesDevice(mapping.match, device)),
+			this.channelMappings.filter((mapping) => this.matchesDevice(mapping.match, device, true)),
 			(mapping) => mapping.channel.identifier,
 		);
 
@@ -256,7 +256,7 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 				const suffix = capability.id.slice(capability.baseId.length + 1);
 				const matchingBaseChannel = this.channelMappings.find(
 					(mapping) =>
-						this.matchesDevice(mapping.match, device) &&
+						this.matchesDevice(mapping.match, device, false) &&
 						(mapping.match.allCapabilities.includes(capability.baseId) ||
 							mapping.match.anyCapabilities.includes(capability.baseId)),
 				);
@@ -546,17 +546,27 @@ export class HomeyMappingLoaderService implements OnModuleInit {
 		return value as TEnum[keyof TEnum];
 	}
 
-	private matchesDevice(match: ResolvedHomeyDeviceMapping['match'], device: HomeyDevice): boolean {
+	private matchesDevice(
+		match: ResolvedHomeyDeviceMapping['match'],
+		device: HomeyDevice,
+		requireExactCapabilities = false,
+	): boolean {
 		if (!match.classes.includes(device.class) || !this.matchesNarrowingFilters(match, device)) {
 			return false;
 		}
 
-		const capabilityBaseIds = new Set(device.capabilities.map((capability) => capability.baseId));
-		if (!match.allCapabilities.every((baseId) => capabilityBaseIds.has(baseId))) {
+		const capabilityIds = requireExactCapabilities
+			? new Set(
+					device.capabilities
+						.filter((c) => !PHYSICAL_INPUT_BASE_IDS.has(c.baseId) || c.id === c.baseId)
+						.map((c) => c.baseId),
+				)
+			: new Set(device.capabilities.map((capability) => capability.baseId));
+		if (!match.allCapabilities.every((baseId) => capabilityIds.has(baseId))) {
 			return false;
 		}
 
-		return match.anyCapabilities.length === 0 || match.anyCapabilities.some((baseId) => capabilityBaseIds.has(baseId));
+		return match.anyCapabilities.length === 0 || match.anyCapabilities.some((baseId) => capabilityIds.has(baseId));
 	}
 
 	private matchesPropertyDevice(mapping: ResolvedHomeyPropertyMapping, device: HomeyDevice): boolean {

@@ -579,6 +579,10 @@ export class HomeySynchronizerService {
 
 					if (isPhysicalInput) {
 						const eventName = typeof value === 'boolean' ? (value ? 'press' : 'release') : 'press';
+						const occurrenceSeq = sequence ?? order.arrival;
+						const sourceOccurrenceId = updatedAt
+							? `${homeyDeviceId}:${capabilityId}:${updatedAt}:${occurrenceSeq}`
+							: `${homeyDeviceId}:${capabilityId}:${occurrenceSeq}`;
 						await this.channelInputOccurrencesService
 							.publishOccurrence({
 								deviceId: binding.panelDeviceId,
@@ -586,7 +590,7 @@ export class HomeySynchronizerService {
 								propertyId: binding.property.id,
 								event: eventName,
 								sourceTimestamp: updatedAt ?? new Date(receivedTimestamp).toISOString(),
-								sourceOccurrenceId: `${homeyDeviceId}:${capabilityId}:${updatedAt ?? order.arrival}`,
+								sourceOccurrenceId,
 							})
 							.catch((err: Error) => {
 								this.logger.debug(`Failed to publish input occurrence: ${err.message}`);
