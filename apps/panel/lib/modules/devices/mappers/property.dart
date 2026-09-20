@@ -86,6 +86,8 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/timer.dar
 import 'package:fastybird_smart_panel/modules/devices/views/properties/track.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/triggered.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/type.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/unit.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/value.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/voltage.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/volume.dart';
@@ -324,6 +326,10 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, TrackChannelPropertyView.new);
     case DevicesModulePropertyCategory.type:
       return _createPropertyView(property, TypeChannelPropertyView.new);
+    case DevicesModulePropertyCategory.unit:
+      return _createPropertyView(property, UnitChannelPropertyView.new);
+    case DevicesModulePropertyCategory.value:
+      return _createPropertyView(property, ValueChannelPropertyView.new);
     case DevicesModulePropertyCategory.voltage:
       return _createPropertyView(property, VoltageChannelPropertyView.new);
     case DevicesModulePropertyCategory.volume:
@@ -424,6 +430,8 @@ Map<DevicesModulePropertyCategory, IconData Function()>
   DevicesModulePropertyCategory.triggered: () => MdiIcons.alarmLightOutline,
   DevicesModulePropertyCategory.track: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.type: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.unit: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.value: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.voltage: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.volume: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.warmMist: () => MdiIcons.databaseCog,

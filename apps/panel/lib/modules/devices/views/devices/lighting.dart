@@ -1,6 +1,8 @@
 import 'package:collection/collection.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/binary_input.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/button.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_energy.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_power.dart';
@@ -14,7 +16,9 @@ class LightingDeviceView extends DeviceView
         DeviceDeviceInformationMixin,
         DeviceElectricalEnergyMixin,
         DeviceElectricalPowerMixin,
-        DeviceIlluminanceMixin {
+        DeviceIlluminanceMixin,
+        DeviceButtonMixin,
+        DeviceBinaryInputMixin {
   LightingDeviceView({
     required super.id,
     required super.type,
@@ -47,6 +51,20 @@ class LightingDeviceView extends DeviceView
   @override
   IlluminanceChannelView? get illuminanceChannel =>
       channels.whereType<IlluminanceChannelView>().firstOrNull;
+
+  @override
+  ButtonChannelView? get buttonChannel =>
+      channels.whereType<ButtonChannelView>().firstOrNull;
+
+  @override
+  BinaryInputChannelView? get binaryInputChannel =>
+      channels.whereType<BinaryInputChannelView>().firstOrNull;
+
+  List<ButtonChannelView> get buttonChannels =>
+      channels.whereType<ButtonChannelView>().toList();
+
+  List<BinaryInputChannelView> get binaryInputChannels =>
+      channels.whereType<BinaryInputChannelView>().toList();
 
   List<LightChannelView> get lightChannels =>
       channels.whereType<LightChannelView>().toList();

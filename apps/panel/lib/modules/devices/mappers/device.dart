@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/input_controller.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/input_controller.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/generic_device.dart';
@@ -140,6 +142,9 @@ Map<DevicesModuleDeviceCategory, DeviceView Function(DeviceModel, List<ChannelVi
   DevicesModuleDeviceCategory.generic: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, GenericDeviceView.new);
   },
+  DevicesModuleDeviceCategory.inputController: (device, channels, isValid, validationIssues) {
+    return _createDeviceView(device, channels, isValid, validationIssues, InputControllerDeviceView.new);
+  },
   DevicesModuleDeviceCategory.airConditioner: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, AirConditionerDeviceView.new);
   },
@@ -251,6 +256,9 @@ DeviceView buildDeviceView(
 Map<DevicesModuleDeviceCategory, IconData Function()> deviceIconMappers = {
   DevicesModuleDeviceCategory.generic: () {
     return MdiIcons.powerPlug;
+  },
+  DevicesModuleDeviceCategory.inputController: () {
+    return MdiIcons.gestureTapButton;
   },
   DevicesModuleDeviceCategory.airConditioner: () {
     return MdiIcons.airConditioner;
@@ -600,6 +608,14 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView, {DeviceDetailConfig
       );
     }
     return WindowCoveringDeviceDetail(device: device, config: config);
+  },
+  DevicesModuleDeviceCategory.inputController: (device, {DeviceDetailConfig? config}) {
+    if (device is! InputControllerDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Input controller device detail',
+      );
+    }
+    return InputControllerDeviceDetail(device: device, config: config);
   },
 };
 

@@ -1,3 +1,6 @@
+import 'package:fastybird_smart_panel/modules/devices/views/channels/analog_input.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/binary_input.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/button.dart';
 import 'dart:ui';
 
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
@@ -1304,4 +1307,46 @@ mixin DeviceVolatileOrganicCompoundsMixin {
 
   num? get volatileOrganicCompoundsFaultCode =>
       volatileOrganicCompoundsChannel?.faultCode;
+}
+
+mixin DeviceAnalogInputMixin {
+  AnalogInputChannelView? get analogInputChannel;
+
+  bool get hasAnalogInput => analogInputChannel != null;
+
+  num? get analogInputValue => analogInputChannel?.value;
+
+  String? get analogInputUnit => analogInputChannel?.unit;
+
+  bool get hasAnalogInputActive => analogInputChannel?.hasActive ?? false;
+
+  bool get isAnalogInputActive => analogInputChannel?.isActive ?? false;
+}
+
+mixin DeviceBinaryInputMixin {
+  BinaryInputChannelView? get binaryInputChannel;
+
+  bool get hasBinaryInput => binaryInputChannel != null;
+
+  bool? get binaryInputState => binaryInputChannel?.state;
+
+  bool get hasBinaryInputActive => binaryInputChannel?.hasActive ?? false;
+
+  bool get isBinaryInputActive => binaryInputChannel?.isActive ?? false;
+}
+
+mixin DeviceButtonMixin {
+  ButtonChannelView? get buttonChannel;
+
+  bool get hasButton => buttonChannel != null;
+
+  String? get buttonEvent => buttonChannel?.event;
+
+  bool get hasButtonDetected => buttonChannel?.hasDetected ?? false;
+
+  bool get isButtonDetected => buttonChannel?.detected ?? false;
+
+  bool get hasButtonActive => buttonChannel?.hasActive ?? false;
+
+  bool get isButtonActive => buttonChannel?.isActive ?? false;
 }
