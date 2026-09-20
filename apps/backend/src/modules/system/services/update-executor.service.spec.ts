@@ -65,6 +65,85 @@ describe('UpdateExecutorService', () => {
 	});
 
 	describe('checkPendingUpdateStatus (via onModuleInit)', () => {
+		it('retains an active starting attempt while its worker still owns the update', async () => {
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockImplementation((path: string) => {
+				if (path.includes('update-attempt')) {
+					return JSON.stringify({
+						attemptId: 'attempt-1',
+						ownerPid: process.pid,
+						targetVersion: '1.1.0-alpha.15',
+						state: 'active',
+						phase: 'starting',
+						recoveryRequired: false,
+					});
+				}
+
+				return JSON.stringify({
+					status: UpdateStatusType.STARTING,
+					phase: 'starting',
+					targetVersion: '1.1.0-alpha.15',
+					startedAt: new Date().toISOString(),
+				});
+			});
+
+			await executor.onModuleInit();
+
+			expect(updateService.setStatus).not.toHaveBeenCalled();
+			expect(unlinkSync).not.toHaveBeenCalled();
+			expect(updateService.releaseUpdateLock).not.toHaveBeenCalled();
+		});
+
+		it('reports an unresolved recovery hold without deleting its status or attempt', async () => {
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockImplementation((path: string) => {
+				if (path.includes('update-attempt')) {
+					return JSON.stringify({
+						attemptId: 'attempt-2',
+						ownerPid: 999999,
+						targetVersion: '1.1.0-alpha.15',
+						state: 'recovery_required',
+						phase: 'migration_failed',
+						recoveryRequired: true,
+						error: 'migration failed; recovery required',
+					});
+				}
+
+				return JSON.stringify({
+					status: UpdateStatusType.FAILED,
+					phase: 'failed',
+					targetVersion: '1.1.0-alpha.15',
+					startedAt: new Date().toISOString(),
+					error: 'migration failed; recovery required',
+				});
+			});
+
+			await executor.onModuleInit();
+
+			expect(notifications.notify).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'migration failed; recovery required' }),
+			);
+			expect(unlinkSync).not.toHaveBeenCalled();
+			expect(updateService.releaseUpdateLock).not.toHaveBeenCalled();
+		});
+
+		it('does not permit another update while a durable attempt requires recovery', async () => {
+			(existsSync as jest.Mock).mockImplementation((path: string) => path.includes('update-attempt'));
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({
+					attemptId: 'attempt-3',
+					ownerPid: 999999,
+					targetVersion: '1.1.0-alpha.15',
+					state: 'recovery_required',
+					phase: 'start_failed',
+					recoveryRequired: true,
+				}),
+			);
+
+			await expect(executor.startUpdate('1.1.0-alpha.16')).rejects.toThrow('requires recovery');
+			expect(updateService.acquireUpdateLock).not.toHaveBeenCalled();
+		});
+
 		it('should do nothing when no status file exists', async () => {
 			(existsSync as jest.Mock).mockReturnValue(false);
 

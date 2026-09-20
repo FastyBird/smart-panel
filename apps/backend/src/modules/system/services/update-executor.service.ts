@@ -25,7 +25,18 @@ export interface UpdateProgressFile {
 	error?: string;
 }
 
+interface UpdateAttemptFile {
+	attemptId: string;
+	ownerPid: number;
+	targetVersion: string;
+	state: 'active' | 'failed_preflight' | 'recovery_required' | 'complete';
+	phase: string;
+	recoveryRequired: boolean;
+	error?: string;
+}
+
 const STATUS_FILE = '/var/lib/smart-panel/update-status.json';
+const ATTEMPT_FILE = '/var/lib/smart-panel/update-attempt/attempt.json';
 const UPDATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
 // PrivilegedWorkerService's own hard timeout for this job. Kept slightly longer than
@@ -93,14 +104,81 @@ export class UpdateExecutorService implements OnModuleInit {
 		await this.checkPendingUpdateStatus();
 	}
 
+	private readAttempt(): UpdateAttemptFile | null {
+		if (!existsSync(ATTEMPT_FILE)) {
+			return null;
+		}
+
+		try {
+			return JSON.parse(readFileSync(ATTEMPT_FILE, 'utf-8')) as UpdateAttemptFile;
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`Failed to read update attempt record: ${err.message}`);
+
+			return null;
+		}
+	}
+
+	private isAttemptUnresolved(attempt: UpdateAttemptFile | null): attempt is UpdateAttemptFile {
+		return Boolean(attempt && (attempt.state === 'active' || attempt.recoveryRequired === true));
+	}
+
+	private isAttemptOwnerAlive(attempt: UpdateAttemptFile): boolean {
+		if (!Number.isInteger(attempt.ownerPid) || attempt.ownerPid <= 0) {
+			return false;
+		}
+
+		try {
+			process.kill(attempt.ownerPid, 0);
+
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
 	private async checkPendingUpdateStatus(): Promise<void> {
+		const attemptBeforeStatus = this.readAttempt();
+
 		if (!existsSync(STATUS_FILE)) {
+			if (this.isAttemptUnresolved(attemptBeforeStatus) && !this.isAttemptOwnerAlive(attemptBeforeStatus)) {
+				await this.failUpdate(
+					attemptBeforeStatus.error ??
+						`Update attempt ${attemptBeforeStatus.attemptId} requires operator recovery (phase: ${attemptBeforeStatus.phase})`,
+				);
+			}
+
 			return;
 		}
 
 		try {
 			const raw = readFileSync(STATUS_FILE, 'utf-8');
 			const status = JSON.parse(raw) as UpdateProgressFile;
+			const attempt = this.readAttempt();
+
+			// A target service is intentionally started while the detached updater still owns the
+			// attempt. In particular, `starting` is not an interruption: the worker must verify the
+			// target and publish completion before this process may clear status or release ownership.
+			if (this.isAttemptUnresolved(attempt)) {
+				if (attempt.state === 'active' && this.isAttemptOwnerAlive(attempt)) {
+					this.logger.warn(
+						`Update attempt ${attempt.attemptId} remains owned by worker ${attempt.ownerPid} (phase: ${attempt.phase}); retaining status until the worker settles`,
+					);
+
+					return;
+				}
+
+				const recoveryMessage =
+					attempt.error ?? `Update attempt ${attempt.attemptId} requires operator recovery (phase: ${attempt.phase})`;
+
+				this.logger.error(recoveryMessage);
+				await this.failUpdate(recoveryMessage);
+
+				// Keep both the durable attempt and public status for the operator. Removing either
+				// would make an unresolved migration/restart indistinguishable from a clean rollback.
+				return;
+			}
 
 			if (status.status === UpdateStatusType.COMPLETE) {
 				this.logger.log(`Update to ${status.targetVersion} completed successfully`);
@@ -154,6 +232,14 @@ export class UpdateExecutorService implements OnModuleInit {
 	}
 
 	async startUpdate(targetVersion: string): Promise<void> {
+		const attempt = this.readAttempt();
+
+		if (this.isAttemptUnresolved(attempt)) {
+			throw new Error(
+				`An earlier update attempt (${attempt.attemptId}) requires recovery before another update can start`,
+			);
+		}
+
 		if (!this.updateService.acquireUpdateLock()) {
 			throw new Error('An update is already in progress');
 		}

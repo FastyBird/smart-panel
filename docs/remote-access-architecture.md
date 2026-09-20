@@ -272,18 +272,31 @@ assets) and forwards every `onStatus()` tick as a `RemoteAccessModule.Setup.Prog
 
 ## Image update migration runbook
 
-Image updates stop the service before invoking the target release's TypeORM CLI and `dist/dataSource.js`.
-The target data source must set `migrationsTransactionMode: 'each'`: ordinary migrations remain transactional,
-while migrations that deliberately manage their own SQLite transaction and foreign-key PRAGMA can run without
-TypeORM's global `all`-transaction guard rejecting them. The Nest `TypeOrmModule` configuration uses the same
-mode for optional automatic migrations (`FB_DB_MIGRATIONS_RUN` remains disabled by default).
+Image updates use a durable, owner-only attempt record beside the public status file. The worker takes an atomic
+installation lock before download/extraction and rejects a concurrent or unresolved attempt. The record survives a
+backend restart and target-directory cleanup; an old timestamp or missing lock is never treated as proof that a
+migration did not commit.
+
+Before changing the `current` symlink or invoking the target release's TypeORM CLI and `dist/dataSource.js`, the
+worker stops the exact service and verifies `ActiveState=inactive|failed`, `MainPID=0`, `ControlPID=0` and an empty
+service cgroup. Read-only probe errors and finite deadline expiry fail closed. The target data source must set
+`migrationsTransactionMode: 'each'`: ordinary migrations remain transactional, while migrations that deliberately
+manage their own SQLite transaction and foreign-key PRAGMA can run without TypeORM's global `all`-transaction guard
+rejecting them. The Nest `TypeOrmModule` configuration uses the same mode for optional automatic migrations
+(`FB_DB_MIGRATIONS_RUN` remains disabled by default).
+
+The worker persists a migration-entry checkpoint before invoking the CLI. A nonzero/unknown migration result or a
+failed target start/health check leaves the target link, target directory, database and private attempt evidence in a
+`recovery_required` hold; it does not automatically switch back to an older build, delete the target or claim that
+database changes were rolled back. Only a failure proven before migration entry may perform verified cleanup and
+restart the unchanged build. Completion is recorded only after the target service has a live main process and passes
+the configured bounded health check. The restarted backend retains an active `starting` attempt instead of clearing
+status or releasing update ownership prematurely.
 
 Before accepting an image update, verify the target data-source mode and migration set in a disposable SQLite
-database, then run the exact old-worker target-CLI invocation. Retain the target version/hash, migration history,
-exit status and bounded stdout/stderr privately. On failure, keep the previous build active, verify the database
-history and integrity/readability, restart the previous service and confirm health before any retry. A symlink
-rollback is not evidence that database changes were rolled back; per-migration commits and any recovery state must
-be checked separately.
+database, then run the exact legacy-worker target-CLI invocation. Retain the target version/hash, migration history,
+exit status and bounded stdout/stderr privately. A symlink rollback is not evidence that database changes were rolled
+back; per-migration commits and any recovery state must be checked separately.
 
 Migration 26 has one deliberately narrow recovery contract. If its body completed on a verified, populated database
 but the migration-history insert failed, and the resulting schema, ownership, links, FTS rows and SQLite integrity are
