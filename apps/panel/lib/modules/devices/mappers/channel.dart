@@ -5,7 +5,10 @@ import 'package:fastybird_smart_panel/modules/devices/repositories/validation.da
 import 'package:fastybird_smart_panel/modules/devices/views/channels/air_particulate.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/air_quality.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/alarm.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/analog_input.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/battery.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/binary_input.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/button.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/camera.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/carbon_dioxide.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/carbon_monoxide.dart';
@@ -128,8 +131,17 @@ Map<DevicesModuleChannelCategory, ChannelView Function(ChannelModel, List<Channe
   DevicesModuleChannelCategory.alarm: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, AlarmChannelView.new);
   },
+  DevicesModuleChannelCategory.analogInput: (channel, properties, isValid, validationIssues) {
+    return _createChannelView(channel, properties, isValid, validationIssues, AnalogInputChannelView.new);
+  },
   DevicesModuleChannelCategory.battery: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, BatteryChannelView.new);
+  },
+  DevicesModuleChannelCategory.binaryInput: (channel, properties, isValid, validationIssues) {
+    return _createChannelView(channel, properties, isValid, validationIssues, BinaryInputChannelView.new);
+  },
+  DevicesModuleChannelCategory.button: (channel, properties, isValid, validationIssues) {
+    return _createChannelView(channel, properties, isValid, validationIssues, ButtonChannelView.new);
   },
   DevicesModuleChannelCategory.camera: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, CameraChannelView.new);
@@ -283,8 +295,7 @@ ChannelView buildChannelView(
 
 /// Returns the canonical icon for a channel category.
 ///
-/// This is the single source of truth for channel/sensor icons.
-/// Use this instead of hardcoding [MdiIcons] for sensor types.
+/// This is the single source of truth for channel/sensor icons.\n/// Use this instead of hardcoding [MdiIcons] for sensor types.
 IconData buildChannelIcon(DevicesModuleChannelCategory category) {
   switch (category) {
     // Environmental sensors
@@ -366,6 +377,14 @@ IconData buildChannelIcon(DevicesModuleChannelCategory category) {
       return MdiIcons.doorbell;
     case DevicesModuleChannelCategory.flow:
       return MdiIcons.waves;
+
+    // Hardware inputs
+    case DevicesModuleChannelCategory.button:
+      return MdiIcons.gestureTapButton;
+    case DevicesModuleChannelCategory.binaryInput:
+      return MdiIcons.toggleSwitch;
+    case DevicesModuleChannelCategory.analogInput:
+      return MdiIcons.tuneVertical;
 
     // Media
     case DevicesModuleChannelCategory.television:
