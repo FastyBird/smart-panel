@@ -123,6 +123,29 @@ void main() {
       expect(button.detected, isTrue);
       expect(button.hasActive, isTrue);
       expect(button.isActive, isTrue);
+      expect(button.hasEvent, isTrue);
+    });
+
+    test('ButtonChannelView without event property returns null event safely', () {
+      final button = ButtonChannelView(
+        id: 'btn-no-event',
+        type: 'button',
+        category: DevicesModuleChannelCategory.button,
+        device: 'd1',
+        properties: [
+          DetectedChannelPropertyView(
+            id: 'p-detected',
+            type: 'detected',
+            category: DevicesModulePropertyCategory.detected,
+            channel: 'btn-no-event',
+            valueState: PropertyValueState(value: BooleanValueType(true)),
+          ),
+        ],
+      );
+
+      expect(button.hasEvent, isFalse);
+      expect(button.event, isNull);
+      expect(button.detected, isTrue);
     });
 
     test('BinaryInputChannelView exposes state and active', () {

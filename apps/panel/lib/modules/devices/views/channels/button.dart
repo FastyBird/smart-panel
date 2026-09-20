@@ -30,5 +30,9 @@ class ButtonChannelView extends ChannelView
   ActiveChannelPropertyView? get activeProp =>
       properties.whereType<ActiveChannelPropertyView>().firstOrNull;
 
-  String? get event => eventProp.event;
+  bool get hasEvent =>
+      properties.whereType<EventChannelPropertyView>().isNotEmpty;
+
+  String? get event =>
+      properties.whereType<EventChannelPropertyView>().firstOrNull?.event;
 }

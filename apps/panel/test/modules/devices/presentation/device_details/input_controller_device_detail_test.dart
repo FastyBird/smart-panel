@@ -194,4 +194,60 @@ void main() {
     expect(find.byType(Switch), findsNothing);
     expect(find.byType(Slider), findsNothing);
   });
+
+  testWidgets('InputControllerDeviceDetail renders detected/idle fallback when button has no event', (tester) async {
+    final devInfo = DeviceInformationChannelView(
+      id: 'info-2',
+      type: 'device_information',
+      category: DevicesModuleChannelCategory.deviceInformation,
+      device: 'ic-2',
+      properties: [],
+    );
+
+    final buttonDetected = ButtonChannelView(
+      id: 'btn-det',
+      type: 'button',
+      category: DevicesModuleChannelCategory.button,
+      name: 'Held Button',
+      device: 'ic-2',
+      properties: [
+        DetectedChannelPropertyView(
+          id: 'p-det',
+          type: 'detected',
+          category: DevicesModulePropertyCategory.detected,
+          channel: 'btn-det',
+          valueState: PropertyValueState(value: BooleanValueType(true)),
+        ),
+      ],
+    );
+
+    final buttonIdle = ButtonChannelView(
+      id: 'btn-idle',
+      type: 'button',
+      category: DevicesModuleChannelCategory.button,
+      name: 'Idle Button',
+      device: 'ic-2',
+      properties: [],
+    );
+
+    final device = InputControllerDeviceView(
+      id: 'ic-2',
+      type: 'input_controller',
+      category: DevicesModuleDeviceCategory.inputController,
+      name: 'Fallback Controller',
+      channels: [devInfo, buttonDetected, buttonIdle],
+    );
+
+    await tester.pumpWidget(MaterialApp(
+      home: InputControllerDeviceDetail(device: device),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Held Button'), findsOneWidget);
+    expect(find.text('Detected'), findsOneWidget);
+
+    expect(find.text('Idle Button'), findsOneWidget);
+    expect(find.text('Idle'), findsOneWidget);
+  });
 }
+
