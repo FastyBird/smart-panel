@@ -1021,9 +1021,11 @@
 		}
 	},
 	"diagnostics": {
+		"title": "Diagnostyka wejść sprzętowych",
 		"capabilitiesTitle": "Możliwości wejścia",
 		"supportedInteractions": "Obsługiwane interakcje",
 		"noDiscreteEvents": "Wejście ciągłe / analogowe (brak dyskretnych zdarzeń)",
+		"noCapabilities": "Brak dostępnych możliwości wejścia",
 		"liveEventsTitle": "Zdarzenia na żywo",
 		"clearEvents": "Wyczyść",
 		"noOccurrences": "Nie odebrano jeszcze żadnych zdarzeń",

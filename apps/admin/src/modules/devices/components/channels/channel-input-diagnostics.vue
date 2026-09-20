@@ -32,10 +32,16 @@
 					</el-tag>
 				</template>
 				<span
-					v-else
+					v-else-if="isAnalogInput"
 					class="text-xs text-gray-500 dark:text-gray-400 italic"
 				>
-					{{ t('devicesModule.diagnostics.continuousReporting') }}
+					{{ t('devicesModule.diagnostics.noDiscreteEvents') }}
+				</span>
+				<span
+					v-else
+					class="text-xs text-gray-400 italic"
+				>
+					{{ t('devicesModule.diagnostics.noCapabilities') }}
 				</span>
 			</div>
 
@@ -52,11 +58,9 @@
 			<div class="flex items-center justify-between mb-2">
 				<div class="flex items-center space-x-2">
 					<h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-						{{ t('devicesModule.diagnostics.eventsTitle') }}
+						{{ t('devicesModule.diagnostics.liveEventsTitle') }}
 					</h4>
-					<span class="text-xs text-gray-400">
-						({{ occurrences.length }})
-					</span>
+					<span class="text-xs text-gray-400">({{ occurrences.length }})</span>
 				</div>
 
 				<el-button
@@ -77,7 +81,7 @@
 				v-if="occurrences.length === 0"
 				class="py-4 text-center text-xs text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded"
 			>
-				{{ t('devicesModule.diagnostics.emptyEvents') }}
+				{{ t('devicesModule.diagnostics.noOccurrences') }}
 			</div>
 
 			<el-table
@@ -89,7 +93,7 @@
 			>
 				<el-table-column
 					prop="receivedAt"
-					:label="t('devicesModule.diagnostics.time')"
+					:label="t('devicesModule.diagnostics.columnTimestamp')"
 					width="120"
 				>
 					<template #default="{ row }">
@@ -101,7 +105,7 @@
 
 				<el-table-column
 					prop="event"
-					:label="t('devicesModule.diagnostics.event')"
+					:label="t('devicesModule.diagnostics.columnEvent')"
 				>
 					<template #default="{ row }">
 						<el-tag
@@ -116,7 +120,7 @@
 
 				<el-table-column
 					prop="data"
-					:label="t('devicesModule.diagnostics.value')"
+					:label="t('devicesModule.diagnostics.columnData')"
 				>
 					<template #default="{ row }">
 						<span class="font-mono text-xs text-gray-700 dark:text-gray-300">
@@ -127,7 +131,7 @@
 
 				<el-table-column
 					prop="nativeEventType"
-					:label="t('devicesModule.diagnostics.nativeType')"
+					:label="t('devicesModule.diagnostics.columnNativeType')"
 				>
 					<template #default="{ row }">
 						<span
@@ -159,6 +163,7 @@ import { Icon } from '@iconify/vue';
 
 import { MODULES_PREFIX } from '../../../../app.constants';
 import { injectStoresManager, useBackend } from '../../../../common';
+import { DevicesModuleChannelCategory } from '../../../../openapi.constants';
 import { DEVICES_MODULE_PREFIX } from '../../devices.constants';
 import type { IChannelInputOccurrence } from '../../store/channel-input-occurrences.store.types';
 import type { IChannel } from '../../store/channels.store.types';
@@ -171,6 +176,8 @@ interface IChannelInputDiagnosticsProps {
 interface IChannelCapabilities {
 	channel_id: string;
 	device_id: string;
+	category?: string;
+	is_input?: boolean;
 	input_category?: string;
 	supported_events?: string[];
 	event_metadata?: Record<string, unknown>;
@@ -185,6 +192,12 @@ const occurrencesStore = storesManager.getStore(channelInputOccurrencesStoreKey)
 
 const capabilities = ref<IChannelCapabilities | null>(null);
 const isLoadingCapabilities = ref<boolean>(false);
+
+const isAnalogInput = computed<boolean>(() => {
+	const isInput = capabilities.value?.is_input ?? props.channel.category === DevicesModuleChannelCategory.analog_input;
+	const category = capabilities.value?.category ?? props.channel.category;
+	return isInput && category === DevicesModuleChannelCategory.analog_input;
+});
 
 const occurrences = computed<IChannelInputOccurrence[]>(() => {
 	return occurrencesStore.findByChannel(props.channel.id);
@@ -235,14 +248,11 @@ const formatTimestamp = (ts: string | number): string => {
 const fetchCapabilities = async (): Promise<void> => {
 	isLoadingCapabilities.value = true;
 	try {
-		const response = await backend.client.GET(
-			`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{id}/input-capabilities`,
-			{
-				params: {
-					path: { id: props.channel.id },
-				},
-			}
-		);
+		const response = await backend.client.GET(`/${MODULES_PREFIX}/${DEVICES_MODULE_PREFIX}/channels/{id}/input-capabilities`, {
+			params: {
+				path: { id: props.channel.id },
+			},
+		});
 		if (response.data && response.data.data) {
 			capabilities.value = response.data.data as IChannelCapabilities;
 		}

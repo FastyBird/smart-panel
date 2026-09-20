@@ -1021,9 +1021,11 @@
 		}
 	},
 	"diagnostics": {
+		"title": "Hardware Input Diagnostics",
 		"capabilitiesTitle": "Input Capabilities",
 		"supportedInteractions": "Supported interactions",
 		"noDiscreteEvents": "Continuous / analog input (no discrete interaction events)",
+		"noCapabilities": "No input capabilities available",
 		"liveEventsTitle": "Live Events",
 		"clearEvents": "Clear",
 		"noOccurrences": "No occurrences received yet",

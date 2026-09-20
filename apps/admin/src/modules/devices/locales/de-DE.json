@@ -1021,9 +1021,11 @@
 		}
 	},
 	"diagnostics": {
+		"title": "Hardware-Eingangsdiagnose",
 		"capabilitiesTitle": "Eingabefunktionen",
 		"supportedInteractions": "Unterstützte Interaktionen",
 		"noDiscreteEvents": "Kontinuierlicher / analoger Eingang (keine diskreten Ereignisse)",
+		"noCapabilities": "Keine Eingabefunktionen verfügbar",
 		"liveEventsTitle": "Live-Ereignisse",
 		"clearEvents": "Löschen",
 		"noOccurrences": "Noch keine Ereignisse empfangen",

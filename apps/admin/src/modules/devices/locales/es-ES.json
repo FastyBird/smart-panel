@@ -1021,9 +1021,11 @@
 		}
 	},
 	"diagnostics": {
+		"title": "Diagnóstico de entradas de hardware",
 		"capabilitiesTitle": "Capacidades de entrada",
 		"supportedInteractions": "Interacciones admitidas",
 		"noDiscreteEvents": "Entrada continua / analógica (sin eventos discretos)",
+		"noCapabilities": "No hay capacidades de entrada disponibles",
 		"liveEventsTitle": "Eventos en vivo",
 		"clearEvents": "Borrar",
 		"noOccurrences": "Aún no se han recibido eventos",

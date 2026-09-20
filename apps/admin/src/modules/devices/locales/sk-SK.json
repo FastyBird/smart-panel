@@ -1021,9 +1021,11 @@
 		}
 	},
 	"diagnostics": {
+		"title": "Diagnostika hardvérových vstupov",
 		"capabilitiesTitle": "Možnosti vstupu",
 		"supportedInteractions": "Podporované interakcie",
 		"noDiscreteEvents": "Kontinuálny / analógový vstup (žiadne diskrétne udalosti)",
+		"noCapabilities": "Nie sú k dispozícii žiadne možnosti vstupu",
 		"liveEventsTitle": "Živé udalosti",
 		"clearEvents": "Vymazať",
 		"noOccurrences": "Zatiaľ neboli prijaté žiadne udalosti",

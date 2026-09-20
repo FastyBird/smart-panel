@@ -1,11 +1,12 @@
-import { mount } from '@vue/test-utils';
 import { ElButton, ElTag } from 'element-plus';
-
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { mount } from '@vue/test-utils';
 
 import { DevicesModuleChannelCategory } from '../../../../openapi.constants';
 import type { IChannelInputOccurrence } from '../../store/channel-input-occurrences.store.types';
 import type { IChannel } from '../../store/channels.store.types';
+
 import ChannelInputDiagnostics from './channel-input-diagnostics.vue';
 
 const { mockGet, mockOccurrences } = vi.hoisted(() => ({
@@ -62,6 +63,20 @@ const mockChannel: IChannel = {
 	updatedAt: null,
 };
 
+const mockAnalogChannel: IChannel = {
+	id: 'channel-analog-1',
+	type: 'device-channel',
+	device: 'device-1',
+	category: DevicesModuleChannelCategory.analog_input,
+	name: 'Dimmer knob input',
+	identifier: 'knob_1',
+	description: null,
+	parent: null,
+	draft: false,
+	createdAt: new Date('2026-01-01T00:00:00.000Z'),
+	updatedAt: null,
+};
+
 describe('ChannelInputDiagnostics', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -71,7 +86,8 @@ describe('ChannelInputDiagnostics', () => {
 				data: {
 					channel_id: 'channel-btn-1',
 					device_id: 'device-1',
-					input_category: 'button',
+					category: 'button',
+					is_input: true,
 					supported_events: ['press', 'double_press', 'long_press'],
 					event_metadata: {},
 				},
@@ -128,6 +144,70 @@ describe('ChannelInputDiagnostics', () => {
 		expect(wrapper.text()).toContain('devicesModule.diagnostics.noCapabilities');
 	});
 
+	it('renders continuous reporting message for analog input channels with empty supported events', async () => {
+		mockGet.mockResolvedValueOnce({
+			data: {
+				data: {
+					channel_id: 'channel-analog-1',
+					device_id: 'device-1',
+					category: 'analog_input',
+					is_input: true,
+					supported_events: [],
+				},
+			},
+		});
+
+		const wrapper = mount(ChannelInputDiagnostics, {
+			props: {
+				channel: mockAnalogChannel,
+			},
+			global: {
+				components: {
+					ElTag,
+					ElButton,
+				},
+			},
+		});
+
+		await wrapper.vm.$nextTick();
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.text()).toContain('devicesModule.diagnostics.noDiscreteEvents');
+	});
+
+	it('renders neutral unsupported message for non-analog channels with empty supported events', async () => {
+		mockGet.mockResolvedValueOnce({
+			data: {
+				data: {
+					channel_id: 'channel-btn-1',
+					device_id: 'device-1',
+					category: 'button',
+					is_input: true,
+					supported_events: [],
+				},
+			},
+		});
+
+		const wrapper = mount(ChannelInputDiagnostics, {
+			props: {
+				channel: mockChannel,
+			},
+			global: {
+				components: {
+					ElTag,
+					ElButton,
+				},
+			},
+		});
+
+		await wrapper.vm.$nextTick();
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.text()).toContain('devicesModule.diagnostics.noCapabilities');
+	});
+
 	it('renders empty table message when no occurrences have arrived yet', async () => {
 		const wrapper = mount(ChannelInputDiagnostics, {
 			props: {
@@ -143,7 +223,7 @@ describe('ChannelInputDiagnostics', () => {
 
 		await wrapper.vm.$nextTick();
 
-		expect(wrapper.text()).toContain('devicesModule.diagnostics.emptyEvents');
+		expect(wrapper.text()).toContain('devicesModule.diagnostics.noOccurrences');
 	});
 
 	it('renders live events table and allows clearing', async () => {
