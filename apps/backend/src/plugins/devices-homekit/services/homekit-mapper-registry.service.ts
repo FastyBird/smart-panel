@@ -3,10 +3,12 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { BatteryMapper } from '../mappers/battery.mapper';
+import { ButtonMapper } from '../mappers/button.mapper';
 import {
 	CharacteristicBinding,
 	HomeKitMapperContext,
 	IHomeKitAccessoryMapper,
+	InputOccurrenceListener,
 	PropertyEventListener,
 } from '../mappers/homekit-mapper.interface';
 import { LightbulbMapper } from '../mappers/lightbulb.mapper';
@@ -22,6 +24,7 @@ import { HomeKitCommandDispatcher } from './homekit-command.dispatcher';
 export interface RegistrySnapshot {
 	propertyBindings: Map<string, CharacteristicBinding[]>;
 	propertyListeners: Map<string, PropertyEventListener[]>;
+	occurrenceListeners: Map<string, InputOccurrenceListener[]>;
 	deviceProperties: Map<string, Set<string>>;
 }
 
@@ -30,6 +33,7 @@ export interface StagedAccessory {
 	deviceId: string;
 	bindings: CharacteristicBinding[];
 	listeners: PropertyEventListener[];
+	occurrenceListeners: InputOccurrenceListener[];
 }
 
 @Injectable()
@@ -41,6 +45,8 @@ export class HomeKitMapperRegistryService {
 	private readonly propertyBindings = new Map<string, CharacteristicBinding[]>();
 	// propertyId -> listeners
 	private readonly propertyListeners = new Map<string, PropertyEventListener[]>();
+	// propertyId -> occurrence listeners
+	private readonly occurrenceListeners = new Map<string, InputOccurrenceListener[]>();
 	// deviceId -> propertyIds
 	private readonly deviceProperties = new Map<string, Set<string>>();
 
@@ -53,6 +59,7 @@ export class HomeKitMapperRegistryService {
 		this.mappers.push(new WindowCoveringMapper());
 		this.mappers.push(new LockMapper());
 		this.mappers.push(new SensorMapper());
+		this.mappers.push(new ButtonMapper());
 	}
 
 	canMap(device: DeviceEntity): boolean {
@@ -83,6 +90,7 @@ export class HomeKitMapperRegistryService {
 		// Stage bindings and listeners to avoid side effects on live registry
 		const stagedBindings: CharacteristicBinding[] = [];
 		const stagedListeners: PropertyEventListener[] = [];
+		const stagedOccurrenceListeners: InputOccurrenceListener[] = [];
 
 		const context: HomeKitMapperContext = {
 			commandDispatcher,
@@ -92,12 +100,18 @@ export class HomeKitMapperRegistryService {
 			registerPropertyListener: (listener: PropertyEventListener) => {
 				stagedListeners.push(listener);
 			},
+			registerOccurrenceListener: (listener: InputOccurrenceListener) => {
+				stagedOccurrenceListeners.push(listener);
+			},
 		};
 
 		const accessory = mapper.buildAccessory(device, context);
 		if (!accessory) {
 			return null;
 		}
+
+		// Check and attach optional button services (for mixed devices or if not already attached)
+		ButtonMapper.attachButtonServices(accessory, device, context);
 
 		// Check and attach optional battery service
 		BatteryMapper.attachBatteryService(accessory, device, context);
@@ -107,6 +121,7 @@ export class HomeKitMapperRegistryService {
 			deviceId: device.id,
 			bindings: stagedBindings,
 			listeners: stagedListeners,
+			occurrenceListeners: stagedOccurrenceListeners,
 		};
 	}
 
@@ -138,6 +153,19 @@ export class HomeKitMapperRegistryService {
 			}
 			devProps.add(listener.propertyId);
 		}
+
+		for (const occListener of staged.occurrenceListeners) {
+			const existingProp = this.occurrenceListeners.get(occListener.propertyId) ?? [];
+			existingProp.push(occListener);
+			this.occurrenceListeners.set(occListener.propertyId, existingProp);
+
+			let devProps = this.deviceProperties.get(occListener.deviceId);
+			if (!devProps) {
+				devProps = new Set();
+				this.deviceProperties.set(occListener.deviceId, devProps);
+			}
+			devProps.add(occListener.propertyId);
+		}
 	}
 
 	getBindingsForProperty(propertyId: string): CharacteristicBinding[] {
@@ -146,6 +174,10 @@ export class HomeKitMapperRegistryService {
 
 	getListenersForProperty(propertyId: string): PropertyEventListener[] {
 		return this.propertyListeners.get(propertyId) ?? [];
+	}
+
+	getOccurrenceListeners(propertyId: string, _channelId?: string): InputOccurrenceListener[] {
+		return this.occurrenceListeners.get(propertyId) ?? [];
 	}
 
 	clearDeviceBindings(deviceId: string): void {
@@ -167,7 +199,16 @@ export class HomeKitMapperRegistryService {
 				} else {
 					this.propertyListeners.set(propId, remainingListeners);
 				}
+
+				const occListeners = this.occurrenceListeners.get(propId) ?? [];
+				const remainingOccListeners = occListeners.filter((l) => l.deviceId !== deviceId);
+				if (remainingOccListeners.length === 0) {
+					this.occurrenceListeners.delete(propId);
+				} else {
+					this.occurrenceListeners.set(propId, remainingOccListeners);
+				}
 			}
+
 			this.deviceProperties.delete(deviceId);
 		}
 	}
@@ -175,6 +216,7 @@ export class HomeKitMapperRegistryService {
 	clearAllBindings(): void {
 		this.propertyBindings.clear();
 		this.propertyListeners.clear();
+		this.occurrenceListeners.clear();
 		this.deviceProperties.clear();
 	}
 
@@ -187,6 +229,10 @@ export class HomeKitMapperRegistryService {
 		for (const [k, v] of this.propertyListeners.entries()) {
 			cloneListeners.set(k, [...v]);
 		}
+		const cloneOcc = new Map<string, InputOccurrenceListener[]>();
+		for (const [k, v] of this.occurrenceListeners.entries()) {
+			cloneOcc.set(k, [...v]);
+		}
 		const cloneProps = new Map<string, Set<string>>();
 		for (const [k, v] of this.deviceProperties.entries()) {
 			cloneProps.set(k, new Set(v));
@@ -194,6 +240,7 @@ export class HomeKitMapperRegistryService {
 		return {
 			propertyBindings: cloneBindings,
 			propertyListeners: cloneListeners,
+			occurrenceListeners: cloneOcc,
 			deviceProperties: cloneProps,
 		};
 	}
@@ -205,6 +252,11 @@ export class HomeKitMapperRegistryService {
 		}
 		for (const [k, v] of snapshot.propertyListeners.entries()) {
 			this.propertyListeners.set(k, [...v]);
+		}
+		if (snapshot.occurrenceListeners) {
+			for (const [k, v] of snapshot.occurrenceListeners.entries()) {
+				this.occurrenceListeners.set(k, [...v]);
+			}
 		}
 		for (const [k, v] of snapshot.deviceProperties.entries()) {
 			this.deviceProperties.set(k, new Set(v));

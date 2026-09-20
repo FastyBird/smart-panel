@@ -23,6 +23,7 @@ import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swa
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
 import { ThirdPartyDemoController } from './controllers/third-party-demo.controller';
+import { ThirdPartyInputsController } from './controllers/third-party-inputs.controller';
 import {
 	DEVICES_THIRD_PARTY_PLUGIN_API_TAG_DESCRIPTION,
 	DEVICES_THIRD_PARTY_PLUGIN_API_TAG_NAME,
@@ -59,7 +60,7 @@ import { ThirdPartyDevicePlatform } from './platforms/third-party-device.platfor
 		SwaggerModule,
 	],
 	providers: [ThirdPartyDevicePlatform],
-	controllers: [ThirdPartyDemoController],
+	controllers: [ThirdPartyDemoController, ThirdPartyInputsController],
 })
 export class DevicesThirdPartyPlugin {
 	constructor(

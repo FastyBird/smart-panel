@@ -186,4 +186,83 @@ describe('HomeKitMapperRegistryService', () => {
 		registry.restoreSnapshot(cleanSnapshot);
 		expect(registry.getBindingsForProperty(onProp.id)).toEqual([]);
 	});
+
+	describe('button device and occurrence listener management', () => {
+		let buttonDevice: DeviceEntity;
+		let buttonChannel: ChannelEntity;
+		let eventProp: ChannelPropertyEntity;
+
+		beforeEach(() => {
+			buttonDevice = new DeviceEntity();
+			buttonDevice.id = 'dev-btn-1';
+			buttonDevice.name = 'Test Button';
+			buttonDevice.category = DeviceCategory.GENERIC;
+
+			buttonChannel = new ChannelEntity();
+			buttonChannel.id = 'chan-btn-1';
+			buttonChannel.category = ChannelCategory.BUTTON;
+			buttonChannel.name = 'Button 1';
+			buttonChannel.device = buttonDevice;
+
+			eventProp = new ChannelPropertyEntity();
+			eventProp.id = 'prop-event-1';
+			eventProp.category = PropertyCategory.EVENT;
+			eventProp.permissions = [PermissionType.EVENT_ONLY];
+			eventProp.channel = buttonChannel;
+
+			buttonChannel.properties = [eventProp];
+			buttonDevice.channels = [buttonChannel];
+		});
+
+		it('should recognize button device and suggest button service type', () => {
+			expect(registry.canMap(buttonDevice)).toBe(true);
+			expect(registry.getSuggestedServiceType(buttonDevice)).toBe('button');
+		});
+
+		it('should stage and commit occurrence listeners for button device', () => {
+			const staged = registry.buildAccessory(buttonDevice, commandDispatcher);
+			expect(staged).not.toBeNull();
+			expect(staged?.occurrenceListeners).toHaveLength(1);
+			expect(staged?.occurrenceListeners[0].propertyId).toBe(eventProp.id);
+
+			// Pre-commit: live registry should have no listeners
+			expect(registry.getOccurrenceListeners(eventProp.id, buttonChannel.id)).toHaveLength(0);
+
+			registry.commitStaged(staged);
+
+			// Post-commit: live registry has occurrence listeners
+			const listeners = registry.getOccurrenceListeners(eventProp.id, buttonChannel.id);
+			expect(listeners).toHaveLength(1);
+			expect(listeners[0].propertyId).toBe(eventProp.id);
+		});
+
+		it('should clean up occurrence listeners when clearDeviceBindings or clearAllBindings is called', () => {
+			const staged = registry.buildAccessory(buttonDevice, commandDispatcher);
+			expect(staged).not.toBeNull();
+			registry.commitStaged(staged);
+
+			expect(registry.getOccurrenceListeners(eventProp.id, buttonChannel.id)).toHaveLength(1);
+
+			registry.clearDeviceBindings(buttonDevice.id);
+			expect(registry.getOccurrenceListeners(eventProp.id, buttonChannel.id)).toHaveLength(0);
+
+			// Re-commit and test clearAllBindings
+			registry.commitStaged(staged);
+			expect(registry.getOccurrenceListeners(eventProp.id, buttonChannel.id)).toHaveLength(1);
+
+			registry.clearAllBindings();
+			expect(registry.getOccurrenceListeners(eventProp.id, buttonChannel.id)).toHaveLength(0);
+		});
+
+		it('should snapshot and restore occurrence listeners across rollback', () => {
+			const initialSnapshot = registry.getSnapshot();
+
+			const staged = registry.buildAccessory(buttonDevice, commandDispatcher);
+			registry.commitStaged(staged);
+			expect(registry.getOccurrenceListeners(eventProp.id, buttonChannel.id)).toHaveLength(1);
+
+			registry.restoreSnapshot(initialSnapshot);
+			expect(registry.getOccurrenceListeners(eventProp.id, buttonChannel.id)).toHaveLength(0);
+		});
+	});
 });

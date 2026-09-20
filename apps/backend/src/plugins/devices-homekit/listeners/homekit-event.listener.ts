@@ -4,6 +4,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 
 import { EventType as DevicesEventType } from '../../../modules/devices/devices.constants';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/channel-input-occurrence.model';
 import { HomeKitMapperRegistryService } from '../services/homekit-mapper-registry.service';
 
 @Injectable()
@@ -59,6 +60,25 @@ export class HomeKitEventListener {
 			} catch (error) {
 				const err = error as Error;
 				this.logger.warn(`Failed to notify HomeKit property listener for property=${property.id}: ${err.message}`);
+			}
+		}
+	}
+
+	@OnEvent(DevicesEventType.CHANNEL_INPUT_OCCURRENCE)
+	handleChannelInputOccurrence(occurrence: ChannelInputOccurrencePayload): void {
+		if (!occurrence || !occurrence.propertyId) {
+			return;
+		}
+
+		const listeners = this.mapperRegistry.getOccurrenceListeners(occurrence.propertyId);
+		for (const listener of listeners) {
+			try {
+				listener.onOccurrence(occurrence);
+			} catch (error) {
+				const err = error as Error;
+				this.logger.warn(
+					`Failed to process HomeKit input occurrence for device=${occurrence.deviceId} channel=${occurrence.channelId} property=${occurrence.propertyId}: ${err.message}`,
+				);
 			}
 		}
 	}

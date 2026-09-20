@@ -1,6 +1,8 @@
 import { Characteristic } from '@homebridge/hap-nodejs';
 
+import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/channel-input-occurrence.model';
 import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { HomeKitMapperRegistryService } from '../services/homekit-mapper-registry.service';
 
@@ -8,7 +10,11 @@ import { HomeKitEventListener } from './homekit-event.listener';
 
 describe('HomeKitEventListener', () => {
 	let listener: HomeKitEventListener;
-	let mapperRegistry: { getBindingsForProperty: jest.Mock; getListenersForProperty: jest.Mock };
+	let mapperRegistry: {
+		getBindingsForProperty: jest.Mock;
+		getListenersForProperty: jest.Mock;
+		getOccurrenceListeners: jest.Mock;
+	};
 	let mockCharacteristic: { updateValue: jest.Mock };
 
 	beforeEach(() => {
@@ -16,6 +22,7 @@ describe('HomeKitEventListener', () => {
 		mapperRegistry = {
 			getBindingsForProperty: jest.fn(),
 			getListenersForProperty: jest.fn().mockReturnValue([]),
+			getOccurrenceListeners: jest.fn().mockReturnValue([]),
 		};
 		listener = new HomeKitEventListener(mapperRegistry as unknown as HomeKitMapperRegistryService);
 	});
@@ -96,5 +103,65 @@ describe('HomeKitEventListener', () => {
 		expect(mockCharacteristic.updateValue).toHaveBeenCalledWith(1);
 		expect(binding.revision).toBe(4);
 		expect(binding.pendingWrite).toBeUndefined();
+	});
+
+	describe('handleChannelInputOccurrence', () => {
+		it('should route occurrence to registered occurrence listeners', () => {
+			const mockOccListener = {
+				deviceId: 'dev-1',
+				channelId: 'chan-1',
+				propertyId: 'prop-event-1',
+				onOccurrence: jest.fn(),
+			};
+			mapperRegistry.getOccurrenceListeners.mockReturnValue([mockOccListener]);
+
+			const occurrence: ChannelInputOccurrencePayload = {
+				id: 'occ-1',
+				deviceId: 'dev-1',
+				channelId: 'chan-1',
+				propertyId: 'prop-event-1',
+				channelCategory: ChannelCategory.BUTTON,
+				propertyCategory: PropertyCategory.EVENT,
+				event: 'press',
+				timestamp: new Date().toISOString(),
+			};
+
+			listener.handleChannelInputOccurrence(occurrence);
+
+			expect(mapperRegistry.getOccurrenceListeners).toHaveBeenCalledWith('prop-event-1');
+			expect(mockOccListener.onOccurrence).toHaveBeenCalledWith(occurrence);
+		});
+
+		it('should safely ignore undefined occurrences or occurrences without propertyId', () => {
+			listener.handleChannelInputOccurrence(null as unknown as ChannelInputOccurrencePayload);
+			listener.handleChannelInputOccurrence({} as unknown as ChannelInputOccurrencePayload);
+			expect(mapperRegistry.getOccurrenceListeners).not.toHaveBeenCalled();
+		});
+
+		it('should catch and log errors in occurrence listener without throwing', () => {
+			const mockOccListener = {
+				deviceId: 'dev-1',
+				channelId: 'chan-1',
+				propertyId: 'prop-event-1',
+				onOccurrence: jest.fn().mockImplementation(() => {
+					throw new Error('HAP error');
+				}),
+			};
+			mapperRegistry.getOccurrenceListeners.mockReturnValue([mockOccListener]);
+
+			const occurrence: ChannelInputOccurrencePayload = {
+				id: 'occ-1',
+				deviceId: 'dev-1',
+				channelId: 'chan-1',
+				propertyId: 'prop-event-1',
+				channelCategory: ChannelCategory.BUTTON,
+				propertyCategory: PropertyCategory.EVENT,
+				event: 'press',
+				timestamp: new Date().toISOString(),
+			};
+
+			expect(() => listener.handleChannelInputOccurrence(occurrence)).not.toThrow();
+			expect(mockOccListener.onOccurrence).toHaveBeenCalled();
+		});
 	});
 });
