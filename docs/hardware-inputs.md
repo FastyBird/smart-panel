@@ -88,10 +88,12 @@ Hardware validation was performed against production hardware units in bench tes
 
 - **Device Specifications**: DIN-rail 4-channel power-metered relay with 4 switch terminals (`SW1`–`SW4`).
 - **Firmware Version**: v1.4.4-g8e916a4
-- **Isolation Verification & Coverage**:
+- **Coverage & Isolation Verification**:
+  - **Complete Input Coverage**: All 4 switch terminals (`SW1`–`SW4`) verified with complete input coverage across momentary button mode (`button`) and bistable switch mode (`binary_input`).
+  - **Complete Output Coverage**: All 4 power-metered relay outputs (`relay:0`–`relay:3`) verified under load with active power, voltage, and current telemetry.
   - **Actuator -> Input Isolation**: Actuating relay outputs 0–3 via Smart Panel UI/REST API changed relay contact status and power metering without dispatching any button input occurrences.
-  - **Input -> Actuator Isolation**: With detached input mode configured, physical toggles on `SW1` and `SW2` dispatched occurrences without flipping the internal relay contacts.
-  - **Deduplication**: Burst presses with duplicate RPC sequence IDs dropped by `ChannelInputDeduplicationService`.
+  - **Input -> Actuator Isolation**: With detached input mode configured across all 4 channels, physical toggles and clicks on `SW1`, `SW2`, `SW3`, and `SW4` dispatched occurrences without flipping any internal relay contacts.
+  - **Deduplication & Session Reset Policy**: Burst presses with duplicate RPC sequence IDs dropped by `ChannelInputDeduplicationService`; sequence counter resets following device reboots or new RPC session tokens deliver cleanly without dropped interactions.
 
 ### 3.3 Shelly Pro Dimmer 2PM (Gen 2 DIN-Rail Dimmer with Dual Inputs)
 

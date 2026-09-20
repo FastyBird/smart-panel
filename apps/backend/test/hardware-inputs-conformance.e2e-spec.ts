@@ -321,7 +321,6 @@ describe('Hardware Input Conformance (e2e)', () => {
 							name: 'Value',
 							permissions: [PermissionType.READ_ONLY],
 							data_type: DataTypeType.FLOAT,
-							value: 0.0,
 						},
 					],
 				},
@@ -336,10 +335,19 @@ describe('Hardware Input Conformance (e2e)', () => {
 	describe('Scenario 1: Wall button 1.1 single click occurrence ingestion', () => {
 		it('emits a single press occurrence and dispatches event to internal bus', async () => {
 			const eventsReceived: ChannelInputOccurrencePayload[] = [];
+			const recordedActions: Array<{ target: string; action: string }> = [];
+
 			const listener = (payload: ChannelInputOccurrencePayload) => {
 				eventsReceived.push(payload);
+				// Test-only action consumer: matches button 1 press -> records room-light toggle
+				if (
+					payload.deviceId === inputControllerId &&
+					payload.channelId === btn1ChannelId &&
+					payload.event === 'press'
+				) {
+					recordedActions.push({ target: 'room-light', action: 'toggle' });
+				}
 			};
-
 			eventEmitter.on(DevicesEventType.CHANNEL_INPUT_OCCURRENCE, listener);
 
 			try {
@@ -371,6 +379,7 @@ describe('Hardware Input Conformance (e2e)', () => {
 						event: 'press',
 					}),
 				);
+				expect(recordedActions).toEqual([{ target: 'room-light', action: 'toggle' }]);
 			} finally {
 				eventEmitter.off(DevicesEventType.CHANNEL_INPUT_OCCURRENCE, listener);
 			}
@@ -380,10 +389,19 @@ describe('Hardware Input Conformance (e2e)', () => {
 	describe('Scenario 2: Wall button gestures (double_press, long_press, triple_press)', () => {
 		it('emits double_press gesture occurrence independently', async () => {
 			const eventsReceived: ChannelInputOccurrencePayload[] = [];
+			const recordedActions: Array<{ target: string; action: string; brightness?: number }> = [];
+
 			const listener = (payload: ChannelInputOccurrencePayload) => {
 				eventsReceived.push(payload);
+				// Test-only action consumer: matches button 2 (1.2) double_press -> records room-light on at 100% brightness
+				if (
+					payload.deviceId === inputControllerId &&
+					payload.channelId === btn2ChannelId &&
+					payload.event === 'double_press'
+				) {
+					recordedActions.push({ target: 'room-light', action: 'on', brightness: 100 });
+				}
 			};
-
 			eventEmitter.on(DevicesEventType.CHANNEL_INPUT_OCCURRENCE, listener);
 
 			try {
@@ -406,6 +424,7 @@ describe('Hardware Input Conformance (e2e)', () => {
 				expect(eventsReceived).toHaveLength(1);
 				expect(eventsReceived[0].event).toBe('double_press');
 				expect(eventsReceived[0].channelId).toBe(btn2ChannelId);
+				expect(recordedActions).toEqual([{ target: 'room-light', action: 'on', brightness: 100 }]);
 			} finally {
 				eventEmitter.off(DevicesEventType.CHANNEL_INPUT_OCCURRENCE, listener);
 			}
@@ -450,7 +469,9 @@ describe('Hardware Input Conformance (e2e)', () => {
 
 				expect(eventsReceived).toHaveLength(2);
 				expect(eventsReceived[0].event).toBe('long_press');
+				expect(eventsReceived[0].channelId).toBe(btn1ChannelId);
 				expect(eventsReceived[1].event).toBe('triple_press');
+				expect(eventsReceived[1].channelId).toBe(btn3ChannelId);
 			} finally {
 				eventEmitter.off(DevicesEventType.CHANNEL_INPUT_OCCURRENCE, listener);
 			}
@@ -678,6 +699,23 @@ describe('Hardware Input Conformance (e2e)', () => {
 
 				expect(differentChannelRes.body.data.dropped).toBe(false);
 				expect(eventsReceived).toHaveLength(2);
+
+				// Sequence counter reset / new session policy: new session delivers occurrences without dropping
+				const sessionResetRes = await request(app.getHttpServer())
+					.post(`/plugins/simulator/simulator/${inputControllerId}/simulate-occurrence`)
+					.set('Authorization', `Bearer ${accessToken}`)
+					.send({
+						data: {
+							channel_id: btn1ChannelId,
+							event: 'press',
+							source_occurrence_id: 'shelly-session2-seq-0',
+						},
+					})
+					.expect(201);
+
+				expect(sessionResetRes.body.data.dropped).toBe(false);
+				expect(sessionResetRes.body.data.occurrence_id).not.toBeNull();
+				expect(eventsReceived).toHaveLength(3);
 			} finally {
 				eventEmitter.off(DevicesEventType.CHANNEL_INPUT_OCCURRENCE, listener);
 			}
@@ -721,18 +759,54 @@ describe('Hardware Input Conformance (e2e)', () => {
 			expect(finalRes.body.data.value.value).toBe(false);
 		});
 
-		it('properly represents continuous analog input updates', async () => {
-			await channelsPropertiesService.update(analogInputValuePropId, {
-				type: SIMULATOR_TYPE,
-				value: 7.35,
-			});
+		it('properly represents continuous analog input updates and out-of-range semantics without fabricating clicks or false zero', async () => {
+			const eventsReceived: ChannelInputOccurrencePayload[] = [];
+			const listener = (payload: ChannelInputOccurrencePayload) => {
+				eventsReceived.push(payload);
+			};
 
-			const res = await request(app.getHttpServer())
-				.get(`/modules/devices/channels/${analogInputChannelId}/properties/${analogInputValuePropId}`)
-				.set('Authorization', `Bearer ${accessToken}`)
-				.expect(200);
+			eventEmitter.on(DevicesEventType.CHANNEL_INPUT_OCCURRENCE, listener);
 
-			expect(res.body.data.value.value).toBe(7.35);
+			try {
+				// Initial state before any report is received: null (unknown), NOT fabricated false zero (0)
+				const initialRes = await request(app.getHttpServer())
+					.get(`/modules/devices/channels/${analogInputChannelId}/properties/${analogInputValuePropId}`)
+					.set('Authorization', `Bearer ${accessToken}`)
+					.expect(200);
+
+				expect(initialRes.body.data.value).toBeNull();
+
+				// Continuous analog update (e.g. 7.35)
+				await channelsPropertiesService.update(analogInputValuePropId, {
+					type: SIMULATOR_TYPE,
+					value: 7.35,
+				});
+
+				const res = await request(app.getHttpServer())
+					.get(`/modules/devices/channels/${analogInputChannelId}/properties/${analogInputValuePropId}`)
+					.set('Authorization', `Bearer ${accessToken}`)
+					.expect(200);
+
+				expect(res.body.data.value.value).toBe(7.35);
+
+				// Out-of-range analog update (e.g. 105.5)
+				await channelsPropertiesService.update(analogInputValuePropId, {
+					type: SIMULATOR_TYPE,
+					value: 105.5,
+				});
+
+				const outOfRangeRes = await request(app.getHttpServer())
+					.get(`/modules/devices/channels/${analogInputChannelId}/properties/${analogInputValuePropId}`)
+					.set('Authorization', `Bearer ${accessToken}`)
+					.expect(200);
+
+				expect(outOfRangeRes.body.data.value.value).toBe(105.5);
+
+				// Ensure analog transitions never emit false button occurrences
+				expect(eventsReceived).toHaveLength(0);
+			} finally {
+				eventEmitter.off(DevicesEventType.CHANNEL_INPUT_OCCURRENCE, listener);
+			}
 		});
 	});
 
