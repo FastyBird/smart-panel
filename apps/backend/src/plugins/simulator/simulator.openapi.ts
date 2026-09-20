@@ -2,6 +2,7 @@ import { CreateSimulatorChannelPropertyDto } from './dto/create-channel-property
 import { CreateSimulatorChannelDto } from './dto/create-channel.dto';
 import { CreateSimulatorDeviceDto } from './dto/create-device.dto';
 import { GenerateDeviceDto, ReqGenerateDeviceDto } from './dto/generate-device.dto';
+import { ReqSimulateOccurrenceDto, SimulateOccurrenceDto } from './dto/simulate-occurrence.dto';
 import { ReqSimulateValueDto, SimulateValueDto } from './dto/simulate-value.dto';
 import { UpdateSimulatorChannelPropertyDto } from './dto/update-channel-property.dto';
 import { UpdateSimulatorChannelDto } from './dto/update-channel.dto';
@@ -17,6 +18,8 @@ import {
 	DeviceCategoriesResponseModel,
 	DeviceCategoryModel,
 	GeneratedDeviceResponseModel,
+	SimulatedOccurrenceResponseModel,
+	SimulatedOccurrenceResultModel,
 	SimulatedValueResponseModel,
 	SimulatedValueResultModel,
 } from './models/simulator-response.model';
@@ -42,6 +45,8 @@ export const SIMULATOR_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	ReqGenerateDeviceDto,
 	SimulateValueDto,
 	ReqSimulateValueDto,
+	SimulateOccurrenceDto,
+	ReqSimulateOccurrenceDto,
 
 	// Response models
 	GeneratedDeviceResponseModel,
@@ -51,4 +56,6 @@ export const SIMULATOR_PLUGIN_SWAGGER_EXTRA_MODELS = [
 	SimulatedValueResponseModel,
 	ConnectionStateResultModel,
 	ConnectionStateResponseModel,
+	SimulatedOccurrenceResultModel,
+	SimulatedOccurrenceResponseModel,
 ];

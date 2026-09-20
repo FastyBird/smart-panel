@@ -255,7 +255,7 @@ export function getPropertyDefaultValue(
 ): string | number | boolean | null {
 	const metadata = getPropertyMetadata(channelCategory, propertyCategory);
 
-	if (!metadata) {
+	if (!metadata || metadata.permissions.includes(PermissionType.EVENT_ONLY)) {
 		return null;
 	}
 

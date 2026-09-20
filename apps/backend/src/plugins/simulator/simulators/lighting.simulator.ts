@@ -24,6 +24,8 @@ export class LightingSimulator extends BaseDeviceSimulator {
 			values.push(...this.simulateLight(device, context, previousValues));
 		}
 
+		values.push(...this.simulateInputChannels(device, context, previousValues));
+
 		return values;
 	}
 

@@ -1,13 +1,30 @@
-import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+	BadRequestException,
+	Body,
+	Controller,
+	Get,
+	Param,
+	ParseUUIDPipe,
+	Post,
+	UnprocessableEntityException,
+} from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { toInstance } from '../../../common/utils/transform.utils';
-import { ConnectionState, DeviceCategory } from '../../../modules/devices/devices.constants';
-import { DevicesNotFoundException } from '../../../modules/devices/devices.exceptions';
+import {
+	ConnectionState,
+	DeviceCategory,
+	PermissionType,
+	PropertyCategory,
+} from '../../../modules/devices/devices.constants';
+import { DevicesNotFoundException, DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/channel-input-occurrence.model';
 import { DeviceResponseModel } from '../../../modules/devices/models/devices-response.model';
+import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
+import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { getAllProperties } from '../../../modules/devices/utils/schema.utils';
@@ -19,6 +36,7 @@ import {
 	ApiSuccessResponse,
 } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { ReqGenerateDeviceDto } from '../dto/generate-device.dto';
+import { ReqSimulateOccurrenceDto } from '../dto/simulate-occurrence.dto';
 import { ReqSimulateValueDto } from '../dto/simulate-value.dto';
 import { SimulatorDeviceEntity } from '../entities/simulator.entity';
 import {
@@ -26,6 +44,8 @@ import {
 	ConnectionStateResultModel,
 	DeviceCategoriesResponseModel,
 	DeviceCategoryModel,
+	SimulatedOccurrenceResponseModel,
+	SimulatedOccurrenceResultModel,
 	SimulatedValueResponseModel,
 	SimulatedValueResultModel,
 } from '../models/simulator-response.model';
@@ -39,9 +59,11 @@ export class SimulatorController {
 
 	constructor(
 		private readonly devicesService: DevicesService,
+		private readonly channelsService: ChannelsService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
 		private readonly deviceGeneratorService: DeviceGeneratorService,
+		private readonly channelInputOccurrencesService: ChannelInputOccurrencesService,
 	) {}
 
 	@ApiOperation({
@@ -279,6 +301,109 @@ export class SimulatorController {
 	}
 
 	@ApiOperation({
+		summary: 'Simulate a hardware input occurrence',
+		description:
+			'Emits a deterministic hardware input occurrence (e.g. button press, double press, long press, down, up) through the DevicesModule occurrence delivery pipeline.',
+		operationId: 'simulate-simulator-plugin-occurrence',
+	})
+	@ApiParam({
+		name: 'deviceId',
+		description: 'Device UUID',
+		type: 'string',
+		format: 'uuid',
+	})
+	@ApiBody({
+		type: ReqSimulateOccurrenceDto,
+		description: 'Input occurrence simulation parameters',
+	})
+	@ApiSuccessResponse(SimulatedOccurrenceResponseModel, 'Occurrence simulation result')
+	@ApiNotFoundResponse('Device, channel, or property not found')
+	@ApiBadRequestResponse('Invalid simulation parameters or device is not a simulator device')
+	@Post(':deviceId/simulate-occurrence')
+	async simulateOccurrence(
+		@Param('deviceId', ParseUUIDPipe) deviceId: string,
+		@Body() body: ReqSimulateOccurrenceDto,
+	): Promise<SimulatedOccurrenceResponseModel> {
+		const dto = body.data;
+
+		this.logger.debug(
+			`Simulating input occurrence for device=${deviceId}, channel=${dto.channel_id}, event=${dto.event}`,
+		);
+
+		// Verify the device exists and is a simulator device
+		const device = await this.devicesService.findOne<SimulatorDeviceEntity>(deviceId, SIMULATOR_TYPE);
+
+		if (!device) {
+			throw new DevicesNotFoundException(`Simulator device ${deviceId} not found`);
+		}
+
+		// Find the channel and verify it belongs to this device
+		const channel = await this.channelsService.findOne(dto.channel_id);
+		if (!channel) {
+			throw new DevicesNotFoundException(`Channel ${dto.channel_id} not found`);
+		}
+
+		const channelDeviceId = typeof channel.device === 'string' ? channel.device : channel.device?.id;
+		if (channelDeviceId !== deviceId) {
+			throw new DevicesNotFoundException(`Channel ${dto.channel_id} does not belong to device ${deviceId}`);
+		}
+
+		// Resolve property: if property_id provided, verify it belongs to the channel;
+		// otherwise, find the event property on the channel.
+		let propertyId = dto.property_id;
+		if (!propertyId) {
+			const channelProps = await this.channelsPropertiesService.findAll(channel.id);
+			const eventProp = channelProps.find(
+				(p) => p.category === PropertyCategory.EVENT || p.permissions.includes(PermissionType.EVENT_ONLY),
+			);
+			if (!eventProp) {
+				throw new BadRequestException(`No event property found on channel ${dto.channel_id}`);
+			}
+			propertyId = eventProp.id;
+		} else {
+			const property = await this.channelsPropertiesService.findOne(propertyId);
+			if (!property) {
+				throw new DevicesNotFoundException(`Property ${propertyId} not found`);
+			}
+			const propChannelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
+			if (propChannelId !== dto.channel_id) {
+				throw new BadRequestException(`Property ${propertyId} does not belong to channel ${dto.channel_id}`);
+			}
+		}
+
+		let payload: ChannelInputOccurrencePayload | null;
+		try {
+			payload = await this.channelInputOccurrencesService.publishOccurrence({
+				deviceId,
+				channelId: dto.channel_id,
+				propertyId,
+				event: dto.event,
+				sourceTimestamp: dto.source_timestamp,
+				sourceOccurrenceId: dto.source_occurrence_id,
+				nativeEventType: dto.native_event_type,
+				data: dto.data,
+			});
+		} catch (error: unknown) {
+			if (error instanceof DevicesValidationException) {
+				throw new UnprocessableEntityException(error.message);
+			}
+			throw error;
+		}
+
+		const result: SimulatedOccurrenceResultModel = {
+			occurrence_id: payload?.id ?? null,
+			channel_id: dto.channel_id,
+			property_id: propertyId,
+			event: dto.event,
+			timestamp: payload?.timestamp ?? new Date().toISOString(),
+			dropped: payload === null,
+			success: true,
+		};
+
+		return toInstance(SimulatedOccurrenceResponseModel, { data: result }, { excludeExtraneousValues: true });
+	}
+
+	@ApiOperation({
 		summary: 'Simulate random values for all properties',
 		description:
 			'Generates and sets random values for all properties of a simulated device. This is useful for quick testing of UI updates.',
@@ -309,6 +434,9 @@ export class SimulatorController {
 			const allProperties = getAllProperties(channel.category);
 
 			for (const property of channel.properties) {
+				if (property.permissions.includes(PermissionType.EVENT_ONLY)) {
+					continue;
+				}
 				const propMeta = allProperties.find((p) => p.category === property.category);
 
 				if (propMeta) {

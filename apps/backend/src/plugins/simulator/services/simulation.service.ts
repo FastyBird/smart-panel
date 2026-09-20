@@ -20,6 +20,7 @@ import {
 	FanSimulator,
 	HeatingUnitSimulator,
 	IDeviceSimulator,
+	InputControllerSimulator,
 	LightingSimulator,
 	LockSimulator,
 	OutletSimulator,
@@ -116,6 +117,7 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 			FanSimulator,
 			LockSimulator,
 			WindowCoveringSimulator,
+			InputControllerSimulator,
 		];
 
 		for (const SimulatorClass of simulatorClasses) {
@@ -394,6 +396,9 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 
 					// Update previous values map
 					if (devicePrevValues) {
+						if (simValue.channelId) {
+							devicePrevValues.set(`${simValue.channelId}:${simValue.propertyCategory}`, simValue.value);
+						}
 						const key = `${simValue.channelCategory}:${simValue.propertyCategory}`;
 						devicePrevValues.set(key, simValue.value);
 					}
@@ -490,8 +495,10 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 	 * Apply a simulated value to a device property
 	 */
 	private async applySimulatedValue(device: SimulatorDeviceEntity, simValue: SimulatedPropertyValue): Promise<boolean> {
-		// Find the channel
-		const channel = device.channels?.find((ch) => ch.category === simValue.channelCategory);
+		// Find the channel - prefer exact channelId match if available, otherwise match by category
+		const channel = simValue.channelId
+			? device.channels?.find((ch) => ch.id === simValue.channelId)
+			: device.channels?.find((ch) => ch.category === simValue.channelCategory);
 		if (!channel) {
 			return false;
 		}
@@ -526,6 +533,9 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 				if (property.value?.value !== null && property.value?.value !== undefined) {
 					const key = `${channel.category}:${property.category}`;
 					values.set(key, property.value.value);
+					if (channel.id) {
+						values.set(`${channel.id}:${property.category}`, property.value.value);
+					}
 				}
 			}
 		}
