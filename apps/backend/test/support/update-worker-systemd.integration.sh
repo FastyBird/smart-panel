@@ -53,7 +53,13 @@ done
 
 state="$(systemctl --user show "$UNIT" --property=ActiveState --value 2>/dev/null || true)"
 [ "$state" = "inactive" ] || [ "$state" = "failed" ]
-if [ -r "$cgroup_procs" ] && grep -q '[0-9]' "$cgroup_procs"; then
+
+if [ ! -r "$cgroup_procs" ]; then
+	echo "FAIL: service cgroup process list is missing or unreadable after stop" >&2
+	exit 1
+fi
+
+if grep -q '[0-9]' "$cgroup_procs"; then
 	echo "FAIL: service cgroup retained a writer after stop" >&2
 	exit 1
 fi

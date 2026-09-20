@@ -43,6 +43,7 @@ const UPDATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 // UPDATE_TIMEOUT_MS (used above for restart-recovery detection) so a completion signal
 // landing right at the boundary is still caught by the last poll tick.
 const STATUS_POLL_MAX_MS = UPDATE_TIMEOUT_MS + 30_000;
+const ATTEMPT_RECONCILIATION_POLL_INTERVAL_MS = 3_000;
 
 const UPDATE_WORKER_UNIT = 'smart-panel-update';
 
@@ -138,11 +139,115 @@ export class UpdateExecutorService implements OnModuleInit {
 		}
 	}
 
+	private readStatusFile(): UpdateProgressFile | null {
+		if (!existsSync(STATUS_FILE)) {
+			return null;
+		}
+
+		return JSON.parse(readFileSync(STATUS_FILE, 'utf-8')) as UpdateProgressFile;
+	}
+
+	private async waitForAttemptSettlement(
+		initialAttempt: UpdateAttemptFile,
+	): Promise<{ attempt: UpdateAttemptFile | null; status: UpdateProgressFile | null }> {
+		let attempt: UpdateAttemptFile | null = initialAttempt;
+		let status: UpdateProgressFile | null = null;
+		const deadline = Date.now() + STATUS_POLL_MAX_MS;
+
+		while (this.isAttemptUnresolved(attempt) && this.isAttemptOwnerAlive(attempt)) {
+			if (Date.now() >= deadline) {
+				break;
+			}
+
+			await new Promise<void>((resolve) => {
+				setTimeout(resolve, ATTEMPT_RECONCILIATION_POLL_INTERVAL_MS).unref?.();
+			});
+
+			attempt = this.readAttempt();
+
+			try {
+				status = this.readStatusFile();
+			} catch {
+				// The worker may be replacing the status file. Keep the durable attempt as the
+				// source of truth and retry on the next poll rather than deleting a partial file.
+				status = null;
+			}
+		}
+
+		return { attempt, status };
+	}
+
+	private async reconcileCompletedAttempt(
+		attempt: UpdateAttemptFile,
+		status?: UpdateProgressFile | null,
+	): Promise<void> {
+		const targetVersion = status?.targetVersion ?? attempt.targetVersion;
+
+		this.logger.log(`Update to ${targetVersion} completed successfully (durable attempt record)`);
+
+		this.updateService.setStatus({
+			status: UpdateStatusType.COMPLETE,
+			phase: UpdatePhase.COMPLETE,
+			progressPercent: 100,
+			message: `Successfully updated to ${targetVersion}`,
+			error: null,
+		});
+
+		await this.reportUpdateSucceeded();
+
+		if (existsSync(STATUS_FILE)) {
+			unlinkSync(STATUS_FILE);
+		}
+	}
+
+	private async reconcileLiveAttempt(attempt: UpdateAttemptFile): Promise<void> {
+		const settled = await this.waitForAttemptSettlement(attempt);
+
+		if (settled.attempt?.state === 'complete') {
+			await this.reconcileCompletedAttempt(settled.attempt, settled.status);
+			this.updateService.releaseUpdateLock();
+
+			return;
+		}
+
+		if (this.isAttemptUnresolved(settled.attempt)) {
+			const recoveryMessage =
+				settled.attempt.error ??
+				`Update attempt ${settled.attempt.attemptId} requires operator recovery (phase: ${settled.attempt.phase})`;
+
+			this.logger.error(recoveryMessage);
+			await this.failUpdate(recoveryMessage);
+
+			return;
+		}
+
+		// A worker can finish its pre-migration failure path without leaving a status file. Keep
+		// the durable record for the next operator action rather than treating that gap as success.
+		if (settled.status) {
+			await this.processPendingStatus(settled.status);
+			this.cleanupPendingStatus();
+			this.updateService.releaseUpdateLock();
+		}
+	}
+
 	private async checkPendingUpdateStatus(): Promise<void> {
 		const attemptBeforeStatus = this.readAttempt();
 
 		if (!existsSync(STATUS_FILE)) {
-			if (this.isAttemptUnresolved(attemptBeforeStatus) && !this.isAttemptOwnerAlive(attemptBeforeStatus)) {
+			if (attemptBeforeStatus?.state === 'complete') {
+				await this.reconcileCompletedAttempt(attemptBeforeStatus);
+				this.updateService.releaseUpdateLock();
+
+				return;
+			}
+
+			if (this.isAttemptUnresolved(attemptBeforeStatus)) {
+				if (attemptBeforeStatus.state === 'active' && this.isAttemptOwnerAlive(attemptBeforeStatus)) {
+					await this.reconcileLiveAttempt(attemptBeforeStatus);
+
+					return;
+				}
+
 				await this.failUpdate(
 					attemptBeforeStatus.error ??
 						`Update attempt ${attemptBeforeStatus.attemptId} requires operator recovery (phase: ${attemptBeforeStatus.phase})`,
@@ -153,18 +258,42 @@ export class UpdateExecutorService implements OnModuleInit {
 		}
 
 		try {
-			const raw = readFileSync(STATUS_FILE, 'utf-8');
-			const status = JSON.parse(raw) as UpdateProgressFile;
+			const status = this.readStatusFile();
 			const attempt = this.readAttempt();
+
+			if (attempt?.state === 'complete') {
+				await this.reconcileCompletedAttempt(attempt, status);
+				this.updateService.releaseUpdateLock();
+
+				return;
+			}
+
+			if (!status) {
+				if (this.isAttemptUnresolved(attempt)) {
+					if (attempt.state === 'active' && this.isAttemptOwnerAlive(attempt)) {
+						await this.reconcileLiveAttempt(attempt);
+
+						return;
+					}
+
+					await this.failUpdate(
+						attempt.error ?? `Update attempt ${attempt.attemptId} requires operator recovery (phase: ${attempt.phase})`,
+					);
+				}
+
+				return;
+			}
 
 			// A target service is intentionally started while the detached updater still owns the
 			// attempt. In particular, `starting` is not an interruption: the worker must verify the
 			// target and publish completion before this process may clear status or release ownership.
 			if (this.isAttemptUnresolved(attempt)) {
 				if (attempt.state === 'active' && this.isAttemptOwnerAlive(attempt)) {
-					this.logger.warn(
-						`Update attempt ${attempt.attemptId} remains owned by worker ${attempt.ownerPid} (phase: ${attempt.phase}); retaining status until the worker settles`,
+					this.logger.log(
+						`Update attempt ${attempt.attemptId} remains owned by worker ${attempt.ownerPid} (phase: ${attempt.phase}); waiting for durable settlement`,
 					);
+
+					await this.reconcileLiveAttempt(attempt);
 
 					return;
 				}
@@ -180,41 +309,10 @@ export class UpdateExecutorService implements OnModuleInit {
 				return;
 			}
 
-			if (status.status === UpdateStatusType.COMPLETE) {
-				this.logger.log(`Update to ${status.targetVersion} completed successfully`);
-
-				this.updateService.setStatus({
-					status: UpdateStatusType.COMPLETE,
-					phase: UpdatePhase.COMPLETE,
-					progressPercent: 100,
-					message: `Successfully updated to ${status.targetVersion}`,
-					error: null,
-				});
-
-				await this.reportUpdateSucceeded();
-			} else if (status.status === UpdateStatusType.FAILED) {
-				this.logger.error(`Update to ${status.targetVersion} failed: ${status.error ?? 'unknown error'}`);
-
-				await this.failUpdate(status.error ?? 'Update failed with unknown error');
-			} else {
-				// Update was in progress when the service restarted - check timeout
-				const startedAt = new Date(status.startedAt).getTime();
-
-				if (Date.now() - startedAt > UPDATE_TIMEOUT_MS) {
-					this.logger.error(`Update to ${status.targetVersion} timed out`);
-
-					await this.failUpdate('Update timed out after 10 minutes');
-				} else {
-					this.logger.warn(
-						`Update to ${status.targetVersion} was in progress (phase: ${status.phase}), service restarted`,
-					);
-
-					await this.failUpdate(`Update interrupted during ${status.phase} phase`);
-				}
-			}
+			await this.processPendingStatus(status);
 
 			// Clean up status file after processing
-			unlinkSync(STATUS_FILE);
+			this.cleanupPendingStatus();
 		} catch (error) {
 			const err = error as Error;
 
@@ -229,6 +327,49 @@ export class UpdateExecutorService implements OnModuleInit {
 
 		// Release the lock in case it was set before restart
 		this.updateService.releaseUpdateLock();
+	}
+
+	private async processPendingStatus(status: UpdateProgressFile): Promise<void> {
+		if (status.status === UpdateStatusType.COMPLETE) {
+			this.logger.log(`Update to ${status.targetVersion} completed successfully`);
+
+			this.updateService.setStatus({
+				status: UpdateStatusType.COMPLETE,
+				phase: UpdatePhase.COMPLETE,
+				progressPercent: 100,
+				message: `Successfully updated to ${status.targetVersion}`,
+				error: null,
+			});
+
+			await this.reportUpdateSucceeded();
+		} else if (status.status === UpdateStatusType.FAILED) {
+			this.logger.error(`Update to ${status.targetVersion} failed: ${status.error ?? 'unknown error'}`);
+
+			await this.failUpdate(status.error ?? 'Update failed with unknown error');
+		} else {
+			// Update was in progress when the service restarted - check timeout
+			const startedAt = new Date(status.startedAt).getTime();
+
+			if (Date.now() - startedAt > UPDATE_TIMEOUT_MS) {
+				this.logger.error(`Update to ${status.targetVersion} timed out`);
+
+				await this.failUpdate('Update timed out after 10 minutes');
+			} else {
+				this.logger.warn(
+					`Update to ${status.targetVersion} was in progress (phase: ${status.phase}), service restarted`,
+				);
+
+				await this.failUpdate(`Update interrupted during ${status.phase} phase`);
+			}
+		}
+	}
+
+	private cleanupPendingStatus(): void {
+		if (!existsSync(STATUS_FILE)) {
+			return;
+		}
+
+		unlinkSync(STATUS_FILE);
 	}
 
 	async startUpdate(targetVersion: string): Promise<void> {

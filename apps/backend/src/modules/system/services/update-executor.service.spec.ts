@@ -65,18 +65,33 @@ describe('UpdateExecutorService', () => {
 	});
 
 	describe('checkPendingUpdateStatus (via onModuleInit)', () => {
-		it('retains an active starting attempt while its worker still owns the update', async () => {
+		it('reconciles a live worker when its durable attempt reaches complete', async () => {
+			jest.useFakeTimers();
 			(existsSync as jest.Mock).mockReturnValue(true);
+			let attemptReads = 0;
 			(readFileSync as jest.Mock).mockImplementation((path: string) => {
 				if (path.includes('update-attempt')) {
-					return JSON.stringify({
-						attemptId: 'attempt-1',
-						ownerPid: process.pid,
-						targetVersion: '1.1.0-alpha.15',
-						state: 'active',
-						phase: 'starting',
-						recoveryRequired: false,
-					});
+					attemptReads += 1;
+
+					return JSON.stringify(
+						attemptReads <= 2
+							? {
+									attemptId: 'attempt-1',
+									ownerPid: process.pid,
+									targetVersion: '1.1.0-alpha.15',
+									state: 'active',
+									phase: 'starting',
+									recoveryRequired: false,
+								}
+							: {
+									attemptId: 'attempt-1',
+									ownerPid: process.pid,
+									targetVersion: '1.1.0-alpha.15',
+									state: 'complete',
+									phase: 'complete',
+									recoveryRequired: false,
+								},
+					);
 				}
 
 				return JSON.stringify({
@@ -87,11 +102,43 @@ describe('UpdateExecutorService', () => {
 				});
 			});
 
+			const init = executor.onModuleInit();
+			await jest.advanceTimersByTimeAsync(3_000);
+			await init;
+			jest.useRealTimers();
+
+			expect(updateService.setStatus).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: UpdateStatusType.COMPLETE,
+					progressPercent: 100,
+				}),
+			);
+			expect(unlinkSync).toHaveBeenCalled();
+			expect(updateService.releaseUpdateLock).toHaveBeenCalled();
+		});
+
+		it('reconciles a complete attempt even when completed status was not persisted', async () => {
+			(existsSync as jest.Mock).mockImplementation((path: string) => path.includes('update-attempt'));
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({
+					attemptId: 'attempt-complete',
+					ownerPid: process.pid,
+					targetVersion: '1.1.0-alpha.15',
+					state: 'complete',
+					phase: 'complete',
+					recoveryRequired: false,
+				}),
+			);
+
 			await executor.onModuleInit();
 
-			expect(updateService.setStatus).not.toHaveBeenCalled();
-			expect(unlinkSync).not.toHaveBeenCalled();
-			expect(updateService.releaseUpdateLock).not.toHaveBeenCalled();
+			expect(updateService.setStatus).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: UpdateStatusType.COMPLETE,
+					message: 'Successfully updated to 1.1.0-alpha.15',
+				}),
+			);
+			expect(updateService.releaseUpdateLock).toHaveBeenCalled();
 		});
 
 		it('reports an unresolved recovery hold without deleting its status or attempt', async () => {
