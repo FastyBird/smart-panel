@@ -125,4 +125,79 @@ export abstract class BaseDeviceSimulator implements IDeviceSimulator {
 		const channel = device.channels?.find((ch) => ch.category === channelCategory);
 		return channel?.properties?.some((p) => p.category === propertyCategory) ?? false;
 	}
+
+	/**
+	 * Simulate hardware input channels (button detected/active, binary_input state/active, analog_input value/active)
+	 * if present on the device.
+	 */
+	protected simulateInputChannels(
+		device: SimulatorDeviceEntity,
+		context: SimulationContext,
+		previousValues?: Map<string, string | number | boolean>,
+	): SimulatedPropertyValue[] {
+		const values: SimulatedPropertyValue[] = [];
+		const isActivityTime = !context.isNight && context.hour >= 7 && context.hour <= 22;
+
+		if (this.hasChannel(device, ChannelCategory.BUTTON)) {
+			if (this.hasProperty(device, ChannelCategory.BUTTON, PropertyCategory.DETECTED)) {
+				const detected = isActivityTime && Math.random() < 0.05;
+				values.push({
+					channelCategory: ChannelCategory.BUTTON,
+					propertyCategory: PropertyCategory.DETECTED,
+					value: detected,
+				});
+			}
+			if (this.hasProperty(device, ChannelCategory.BUTTON, PropertyCategory.ACTIVE)) {
+				values.push({
+					channelCategory: ChannelCategory.BUTTON,
+					propertyCategory: PropertyCategory.ACTIVE,
+					value: true,
+				});
+			}
+		}
+
+		if (this.hasChannel(device, ChannelCategory.BINARY_INPUT)) {
+			if (this.hasProperty(device, ChannelCategory.BINARY_INPUT, PropertyCategory.STATE)) {
+				const prev = this.getPreviousValue(previousValues, ChannelCategory.BINARY_INPUT, PropertyCategory.STATE, false);
+				const shouldToggle = isActivityTime && Math.random() < 0.1;
+				const state = shouldToggle ? !prev : prev;
+				values.push({
+					channelCategory: ChannelCategory.BINARY_INPUT,
+					propertyCategory: PropertyCategory.STATE,
+					value: Boolean(state),
+				});
+			}
+			if (this.hasProperty(device, ChannelCategory.BINARY_INPUT, PropertyCategory.ACTIVE)) {
+				values.push({
+					channelCategory: ChannelCategory.BINARY_INPUT,
+					propertyCategory: PropertyCategory.ACTIVE,
+					value: true,
+				});
+			}
+		}
+
+		if (this.hasChannel(device, ChannelCategory.ANALOG_INPUT)) {
+			if (this.hasProperty(device, ChannelCategory.ANALOG_INPUT, PropertyCategory.VALUE)) {
+				const prev = Number(
+					this.getPreviousValue(previousValues, ChannelCategory.ANALOG_INPUT, PropertyCategory.VALUE, 5.0),
+				);
+				const target = isActivityTime ? 7.5 : 2.5;
+				const value = this.smoothTransition(prev, target, 0.5);
+				values.push({
+					channelCategory: ChannelCategory.ANALOG_INPUT,
+					propertyCategory: PropertyCategory.VALUE,
+					value,
+				});
+			}
+			if (this.hasProperty(device, ChannelCategory.ANALOG_INPUT, PropertyCategory.ACTIVE)) {
+				values.push({
+					channelCategory: ChannelCategory.ANALOG_INPUT,
+					propertyCategory: PropertyCategory.ACTIVE,
+					value: true,
+				});
+			}
+		}
+
+		return values;
+	}
 }

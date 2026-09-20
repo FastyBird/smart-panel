@@ -202,6 +202,84 @@ devices:
           - category: manufacturer
             value: "FastyBird"
 
+  - name: "Living Room Wall Button Controller"
+    category: input_controller
+    room: living-room
+    channels:
+      - category: button
+        name: "Button 1"
+        properties:
+          - category: event
+      - category: button
+        name: "Button 2"
+        properties:
+          - category: event
+      - category: button
+        name: "Button 3"
+        properties:
+          - category: event
+      - category: button
+        name: "Button 4"
+        properties:
+          - category: event
+      - category: battery
+        properties:
+          - category: percentage
+            value: 95
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+          - category: model
+            value: "SIM-WallButton-04"
+
+  - name: "Hallway Smart Dimmer Switch"
+    category: lighting
+    room: hallway
+    channels:
+      - category: light
+        properties:
+          - category: on
+            value: false
+          - category: brightness
+            value: 100
+      - category: button
+        name: "Switch Button"
+        properties:
+          - category: event
+      - category: binary_input
+        name: "Switch Input"
+        properties:
+          - category: state
+            value: false
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+          - category: model
+            value: "SIM-DimmerSW-01"
+
+  - name: "Hallway Auxiliary Controls"
+    category: input_controller
+    room: hallway
+    channels:
+      - category: binary_input
+        name: "Auxiliary Switch"
+        properties:
+          - category: state
+            value: false
+      - category: analog_input
+        name: "Rotary Dial"
+        properties:
+          - category: value
+            value: 0.0
+      - category: device_information
+        properties:
+          - category: manufacturer
+            value: "FastyBird"
+          - category: model
+            value: "SIM-AuxControl-01"
+
 scenes:
   - name: "Movie Night"
     category: movie

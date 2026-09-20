@@ -12,6 +12,7 @@ import {
 	ChannelCategory,
 	ConnectionState,
 	DeviceCategory,
+	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
 import { CreateDeviceChannelPropertyDto } from '../../../modules/devices/dto/create-device-channel-property.dto';
@@ -583,7 +584,9 @@ export class ScenarioExecutorService {
 			// Determine value - use provided value or generate default
 			let value = propertyDef.value;
 			if (value === undefined) {
-				value = this.getDefaultValue(metadata.data_type, metadata.format);
+				value = metadata.permissions.includes(PermissionType.EVENT_ONLY)
+					? null
+					: this.getDefaultValue(metadata.data_type, metadata.format);
 			}
 
 			return {

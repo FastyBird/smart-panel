@@ -17,6 +17,10 @@ integrations:
     name: Home Assistant
     section: Devices
 
+  - id: hardware-inputs
+    name: Hardware Inputs & Wall Controllers
+    section: Devices
+
   - id: openai
     name: OpenAI
     section: Buddy

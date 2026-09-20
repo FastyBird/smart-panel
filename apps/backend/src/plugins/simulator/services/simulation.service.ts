@@ -20,6 +20,7 @@ import {
 	FanSimulator,
 	HeatingUnitSimulator,
 	IDeviceSimulator,
+	InputControllerSimulator,
 	LightingSimulator,
 	LockSimulator,
 	OutletSimulator,
@@ -116,6 +117,7 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 			FanSimulator,
 			LockSimulator,
 			WindowCoveringSimulator,
+			InputControllerSimulator,
 		];
 
 		for (const SimulatorClass of simulatorClasses) {

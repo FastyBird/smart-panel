@@ -146,3 +146,78 @@ export class ConnectionStateResponseModel extends BaseSuccessResponseModel<Conne
 	@Expose()
 	declare data: ConnectionStateResultModel;
 }
+
+/**
+ * Simulated occurrence result model
+ */
+@ApiSchema({ name: 'SimulatorPluginDataSimulatedOccurrenceResult' })
+export class SimulatedOccurrenceResultModel {
+	@ApiProperty({
+		description: 'Generated occurrence ID (or null if dropped by deduplication / disabled device)',
+		name: 'occurrence_id',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+	})
+	@Expose()
+	occurrence_id: string | null;
+
+	@ApiProperty({
+		description: 'Channel ID',
+		name: 'channel_id',
+		type: 'string',
+		format: 'uuid',
+	})
+	@Expose()
+	channel_id: string;
+
+	@ApiProperty({
+		description: 'Property ID',
+		name: 'property_id',
+		type: 'string',
+		format: 'uuid',
+	})
+	@Expose()
+	property_id: string;
+
+	@ApiProperty({
+		description: 'Normalized input event',
+		type: 'string',
+	})
+	@Expose()
+	event: string;
+
+	@ApiProperty({
+		description: 'ISO timestamp of occurrence emission',
+		type: 'string',
+	})
+	@Expose()
+	timestamp: string;
+
+	@ApiProperty({
+		description: 'Whether the occurrence was dropped by deduplication',
+		type: 'boolean',
+	})
+	@Expose()
+	dropped: boolean;
+
+	@ApiProperty({
+		description: 'Whether the simulation was successful',
+		type: 'boolean',
+	})
+	@Expose()
+	success: boolean;
+}
+
+/**
+ * Response wrapper for simulated occurrence
+ */
+@ApiSchema({ name: 'SimulatorPluginResSimulatedOccurrence' })
+export class SimulatedOccurrenceResponseModel extends BaseSuccessResponseModel<SimulatedOccurrenceResultModel> {
+	@ApiProperty({
+		description: 'Occurrence simulation result',
+		type: () => SimulatedOccurrenceResultModel,
+	})
+	@Expose()
+	declare data: SimulatedOccurrenceResultModel;
+}

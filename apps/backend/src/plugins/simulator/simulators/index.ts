@@ -11,3 +11,4 @@ export * from './outlet.simulator';
 export * from './fan.simulator';
 export * from './lock.simulator';
 export * from './window-covering.simulator';
+export * from './input-controller.simulator';
