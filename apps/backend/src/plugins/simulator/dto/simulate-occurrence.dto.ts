@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { IsDefined, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -88,6 +88,8 @@ export class SimulateOccurrenceDto {
 export class ReqSimulateOccurrenceDto {
 	@ApiProperty({ description: 'Simulation occurrence data', type: () => SimulateOccurrenceDto })
 	@Expose()
+	@IsDefined({ message: '[{"field":"data","reason":"Simulation occurrence data is required."}]' })
+	@IsObject({ message: '[{"field":"data","reason":"Simulation occurrence data must be an object."}]' })
 	@ValidateNested()
 	@Type(() => SimulateOccurrenceDto)
 	data: SimulateOccurrenceDto;

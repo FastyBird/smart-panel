@@ -7,6 +7,7 @@ import { SimulationContext } from './simulation-context';
  * Represents a simulated property value update
  */
 export interface SimulatedPropertyValue {
+	channelId?: string;
 	channelCategory: ChannelCategory;
 	propertyCategory: PropertyCategory;
 	value: string | number | boolean;
@@ -128,7 +129,7 @@ export abstract class BaseDeviceSimulator implements IDeviceSimulator {
 
 	/**
 	 * Simulate hardware input channels (button detected/active, binary_input state/active, analog_input value/active)
-	 * if present on the device.
+	 * if present on the device. Iterates all concrete matching channels preserving channel identity.
 	 */
 	protected simulateInputChannels(
 		device: SimulatorDeviceEntity,
@@ -138,17 +139,23 @@ export abstract class BaseDeviceSimulator implements IDeviceSimulator {
 		const values: SimulatedPropertyValue[] = [];
 		const isActivityTime = !context.isNight && context.hour >= 7 && context.hour <= 22;
 
-		if (this.hasChannel(device, ChannelCategory.BUTTON)) {
-			if (this.hasProperty(device, ChannelCategory.BUTTON, PropertyCategory.DETECTED)) {
+		const buttonChannels = device.channels?.filter((ch) => ch.category === ChannelCategory.BUTTON) ?? [];
+		for (const channel of buttonChannels) {
+			const hasDetected = channel.properties?.some((p) => p.category === PropertyCategory.DETECTED);
+			const hasActive = channel.properties?.some((p) => p.category === PropertyCategory.ACTIVE);
+
+			if (hasDetected) {
 				const detected = isActivityTime && Math.random() < 0.05;
 				values.push({
+					channelId: channel.id,
 					channelCategory: ChannelCategory.BUTTON,
 					propertyCategory: PropertyCategory.DETECTED,
 					value: detected,
 				});
 			}
-			if (this.hasProperty(device, ChannelCategory.BUTTON, PropertyCategory.ACTIVE)) {
+			if (hasActive) {
 				values.push({
+					channelId: channel.id,
 					channelCategory: ChannelCategory.BUTTON,
 					propertyCategory: PropertyCategory.ACTIVE,
 					value: true,
@@ -156,19 +163,29 @@ export abstract class BaseDeviceSimulator implements IDeviceSimulator {
 			}
 		}
 
-		if (this.hasChannel(device, ChannelCategory.BINARY_INPUT)) {
-			if (this.hasProperty(device, ChannelCategory.BINARY_INPUT, PropertyCategory.STATE)) {
-				const prev = this.getPreviousValue(previousValues, ChannelCategory.BINARY_INPUT, PropertyCategory.STATE, false);
+		const binaryInputChannels = device.channels?.filter((ch) => ch.category === ChannelCategory.BINARY_INPUT) ?? [];
+		for (const channel of binaryInputChannels) {
+			const hasState = channel.properties?.some((p) => p.category === PropertyCategory.STATE);
+			const hasActive = channel.properties?.some((p) => p.category === PropertyCategory.ACTIVE);
+
+			if (hasState) {
+				const prevKey = channel.id ? `${channel.id}:${PropertyCategory.STATE}` : undefined;
+				const prev =
+					prevKey && previousValues?.has(prevKey)
+						? previousValues.get(prevKey)
+						: this.getPreviousValue(previousValues, ChannelCategory.BINARY_INPUT, PropertyCategory.STATE, false);
 				const shouldToggle = isActivityTime && Math.random() < 0.1;
 				const state = shouldToggle ? !prev : prev;
 				values.push({
+					channelId: channel.id,
 					channelCategory: ChannelCategory.BINARY_INPUT,
 					propertyCategory: PropertyCategory.STATE,
 					value: Boolean(state),
 				});
 			}
-			if (this.hasProperty(device, ChannelCategory.BINARY_INPUT, PropertyCategory.ACTIVE)) {
+			if (hasActive) {
 				values.push({
+					channelId: channel.id,
 					channelCategory: ChannelCategory.BINARY_INPUT,
 					propertyCategory: PropertyCategory.ACTIVE,
 					value: true,
@@ -176,21 +193,30 @@ export abstract class BaseDeviceSimulator implements IDeviceSimulator {
 			}
 		}
 
-		if (this.hasChannel(device, ChannelCategory.ANALOG_INPUT)) {
-			if (this.hasProperty(device, ChannelCategory.ANALOG_INPUT, PropertyCategory.VALUE)) {
-				const prev = Number(
-					this.getPreviousValue(previousValues, ChannelCategory.ANALOG_INPUT, PropertyCategory.VALUE, 5.0),
-				);
+		const analogInputChannels = device.channels?.filter((ch) => ch.category === ChannelCategory.ANALOG_INPUT) ?? [];
+		for (const channel of analogInputChannels) {
+			const hasValue = channel.properties?.some((p) => p.category === PropertyCategory.VALUE);
+			const hasActive = channel.properties?.some((p) => p.category === PropertyCategory.ACTIVE);
+
+			if (hasValue) {
+				const prevKey = channel.id ? `${channel.id}:${PropertyCategory.VALUE}` : undefined;
+				const prevRaw =
+					prevKey && previousValues?.has(prevKey)
+						? previousValues.get(prevKey)
+						: this.getPreviousValue(previousValues, ChannelCategory.ANALOG_INPUT, PropertyCategory.VALUE, 5.0);
+				const prev = Number(prevRaw);
 				const target = isActivityTime ? 7.5 : 2.5;
 				const value = this.smoothTransition(prev, target, 0.5);
 				values.push({
+					channelId: channel.id,
 					channelCategory: ChannelCategory.ANALOG_INPUT,
 					propertyCategory: PropertyCategory.VALUE,
 					value,
 				});
 			}
-			if (this.hasProperty(device, ChannelCategory.ANALOG_INPUT, PropertyCategory.ACTIVE)) {
+			if (hasActive) {
 				values.push({
+					channelId: channel.id,
 					channelCategory: ChannelCategory.ANALOG_INPUT,
 					propertyCategory: PropertyCategory.ACTIVE,
 					value: true,

@@ -377,7 +377,7 @@ describe('Hardware Input Conformance (e2e)', () => {
 		});
 	});
 
-	describe('Scenario 2: Wall button 1.2 double click occurrence', () => {
+	describe('Scenario 2: Wall button gestures (double_press, long_press, triple_press)', () => {
 		it('emits double_press gesture occurrence independently', async () => {
 			const eventsReceived: ChannelInputOccurrencePayload[] = [];
 			const listener = (payload: ChannelInputOccurrencePayload) => {
@@ -406,6 +406,51 @@ describe('Hardware Input Conformance (e2e)', () => {
 				expect(eventsReceived).toHaveLength(1);
 				expect(eventsReceived[0].event).toBe('double_press');
 				expect(eventsReceived[0].channelId).toBe(btn2ChannelId);
+			} finally {
+				eventEmitter.off(DevicesEventType.CHANNEL_INPUT_OCCURRENCE, listener);
+			}
+		});
+
+		it('emits long_press and triple_press gesture occurrences', async () => {
+			const eventsReceived: ChannelInputOccurrencePayload[] = [];
+			const listener = (payload: ChannelInputOccurrencePayload) => {
+				eventsReceived.push(payload);
+			};
+
+			eventEmitter.on(DevicesEventType.CHANNEL_INPUT_OCCURRENCE, listener);
+
+			try {
+				const longRes = await request(app.getHttpServer())
+					.post(`/plugins/simulator/simulator/${inputControllerId}/simulate-occurrence`)
+					.set('Authorization', `Bearer ${accessToken}`)
+					.send({
+						data: {
+							channel_id: btn1ChannelId,
+							event: 'long_press',
+						},
+					})
+					.expect(201);
+
+				expect(longRes.body.data.success).toBe(true);
+				expect(longRes.body.data.event).toBe('long_press');
+
+				const tripleRes = await request(app.getHttpServer())
+					.post(`/plugins/simulator/simulator/${inputControllerId}/simulate-occurrence`)
+					.set('Authorization', `Bearer ${accessToken}`)
+					.send({
+						data: {
+							channel_id: btn3ChannelId,
+							event: 'triple_press',
+						},
+					})
+					.expect(201);
+
+				expect(tripleRes.body.data.success).toBe(true);
+				expect(tripleRes.body.data.event).toBe('triple_press');
+
+				expect(eventsReceived).toHaveLength(2);
+				expect(eventsReceived[0].event).toBe('long_press');
+				expect(eventsReceived[1].event).toBe('triple_press');
 			} finally {
 				eventEmitter.off(DevicesEventType.CHANNEL_INPUT_OCCURRENCE, listener);
 			}
@@ -788,6 +833,72 @@ describe('Hardware Input Conformance (e2e)', () => {
 				expect(brightnessResAfter.body.data.value.value).toBe(85);
 			} finally {
 				eventEmitter.off(DevicesEventType.CHANNEL_INPUT_OCCURRENCE, listener);
+			}
+		});
+	});
+
+	describe('Scenario 12: Input error handling and unavailable device state', () => {
+		it('rejects malformed request when data envelope is omitted', async () => {
+			await request(app.getHttpServer())
+				.post(`/plugins/simulator/simulator/${inputControllerId}/simulate-occurrence`)
+				.set('Authorization', `Bearer ${accessToken}`)
+				.send({})
+				.expect(400);
+		});
+
+		it('rejects invalid or unsupported event format', async () => {
+			await request(app.getHttpServer())
+				.post(`/plugins/simulator/simulator/${inputControllerId}/simulate-occurrence`)
+				.set('Authorization', `Bearer ${accessToken}`)
+				.send({
+					data: {
+						channel_id: btn1ChannelId,
+						event: 'unsupported_gesture_name',
+					},
+				})
+				.expect(422);
+		});
+
+		it('drops occurrences when the device is disabled / unavailable', async () => {
+			// Disable device via PATCH
+			await request(app.getHttpServer())
+				.patch(`/modules/devices/devices/${inputControllerId}`)
+				.set('Authorization', `Bearer ${accessToken}`)
+				.send({
+					data: {
+						type: SIMULATOR_TYPE,
+						enabled: false,
+					},
+				})
+				.expect(200);
+
+			try {
+				const res = await request(app.getHttpServer())
+					.post(`/plugins/simulator/simulator/${inputControllerId}/simulate-occurrence`)
+					.set('Authorization', `Bearer ${accessToken}`)
+					.send({
+						data: {
+							channel_id: btn1ChannelId,
+							event: 'press',
+						},
+					})
+					.expect(201);
+
+				expect(res.body.data.success).toBe(true);
+				expect(res.body.data.dropped).toBe(true);
+				expect(res.body.data.occurrence_id).toBeNull();
+			} finally {
+				// Re-enable device
+				await request(app.getHttpServer())
+					.patch(`/modules/devices/devices/${inputControllerId}`)
+					.set('Authorization', `Bearer ${accessToken}`)
+					.send({
+						data: {
+							type: SIMULATOR_TYPE,
+							enabled: true,
+						},
+					})
+					.expect(200);
 			}
 		});
 	});

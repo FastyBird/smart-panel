@@ -1,4 +1,4 @@
-import { Callout } from 'nextra/components'
+import { Callout } from "nextra/components";
 
 # Hardware Inputs & Wall Controllers
 
@@ -7,7 +7,9 @@ Smart Panel provides first-class support for physical hardware inputs — includ
 Whether you are using a dedicated wall switch module (such as a **Shelly Plus i4**), smart relays with switch inputs (**Shelly Pro 4PM**), smart dimmers (**Shelly Pro Dimmer 2PM**), Zigbee battery remotes, or embedded panel buttons, Smart Panel normalizes their signals into a unified event architecture.
 
 <Callout type="info">
-	Hardware inputs operate with **sub-millisecond local latency**. Push-button clicks are delivered directly through the internal event bus without waiting for database writes or cloud round-trips.
+  Hardware inputs operate with **sub-millisecond local latency**. Push-button
+  clicks are delivered directly through the internal event bus without waiting
+  for database writes or cloud round-trips.
 </Callout>
 
 ---
@@ -17,20 +19,26 @@ Whether you are using a dedicated wall switch module (such as a **Shelly Plus i4
 Smart Panel organizes hardware inputs into three standard channel categories:
 
 ### 1. Push Buttons (`button`)
+
 Momentary push buttons, tactile switches, and scene keypads emit **ephemeral event occurrences**.
+
 - **Properties**:
   - `event` (`EVENT_ONLY`): Emits discrete gestures such as `press`, `double_press`, `triple_press`, `long_press`, `down` (press down edge), and `up` (release edge).
   - `detected` (`READ_ONLY`, optional): Indicates whether the button is actively held down (`true`/`false`).
 - **No Stale State**: Because button events are ephemeral, they do not retain a static value in storage. Reconnecting devices or restarting the backend will never replay past button clicks.
 
 ### 2. Binary Inputs (`binary_input`)
+
 Bistable physical switches, wall rocker switches, or contact sensors represent **persistent state**.
+
 - **Properties**:
   - `state` (`READ_ONLY`): Reflects the current electrical contact position (`true` for closed/on, `false` for open/off).
 - **Stateful Storage**: Transitions are stored and queryable via the REST API and WebSocket channels.
 
 ### 3. Analog Inputs (`analog_input`)
+
 Continuous physical controls like rotary dials, sliders, or 0–10V potentiometers.
+
 - **Properties**:
   - `value` (`READ_ONLY`): Current measurement value (floating-point number or integer).
 
@@ -39,32 +47,36 @@ Continuous physical controls like rotary dials, sliders, or 0–10V potentiomete
 ## Architectural Guarantees
 
 ### Channel-Scoped Deduplication
+
 Hardware protocols (such as Shelly Gen 2 RPC or Zigbee) may retransmit packets during network disruptions. Smart Panel applies deduplication scoped strictly by `deviceId` + `channelId` + `sourceOccurrenceId`.
+
 - Duplicate packets arriving within a sliding debounce window are automatically dropped.
 - Simultaneous presses on distinct channels with the same sequence counter are preserved independently.
 - Repeated rapid clicks without external sequence IDs are always treated as separate, valid occurrences.
 
 ### Actuator and Input Isolation
+
 On mixed devices (e.g. smart dimmers or smart relays with physical switch terminals):
+
 - Issuing commands to the actuator (turning on a light or adjusting brightness) **never** triggers spurious button events.
-- Physical input events do not directly mutate actuator state unless linked through automations or scenes.
+- Physical input events do not directly mutate actuator state in the devices core; occurrences are delivered as events only, reserving actuator state changes and action routing for future automation capabilities.
 
 ---
 
 ## Integration Matrix
 
-| Integration | Supported Channels | Gestures / Events | Notes |
-|:---|:---|:---|:---|
-| **Shelly Next-Gen** | `button`, `binary_input`, `analog_input` | `btn_down`, `btn_up`, `single_push`, `double_push`, `triple_push`, `long_push` | Shelly Plus i4, Pro 4PM, Pro Dimmer 2PM |
-| **Shelly v1** | `button`, `binary_input` | `S` (single), `SS` (double), `SSS` (triple), `L` (long) | Shelly 1, 2.5, Dimmer 2 |
-| **Home Assistant** | `button`, `binary_input`, `analog_input` | `press`, `double_press`, `long_press` | Synchronized via HASS entity events |
-| **Homey SHS** | `button`, `binary_input` | `press`, `double_press`, `long_press` | Mapped from Homey device capabilities |
-| **HomeKit** | `button` | `single_press`, `double_press`, `long_press` | Stateless programmable switch profile |
-| **WLED** | `button`, `analog_input` | `press`, `long_press`, `value` | ESP32 physical buttons and rotary dials |
-| **Zigbee2MQTT** | `button`, `binary_input`, `analog_input` | `single`, `double`, `triple`, `hold`, `release` | Philips Hue Dimmer, IKEA remotes, etc. |
-| **reTerminal** | `button` | `press`, `down`, `up` | Built-in physical buttons F1–F4 |
-| **Virtual Devices** | `button`, `binary_input`, `analog_input` | Passthrough from source | Allows mirroring or aliasing physical inputs |
-| **Third-Party** | `button`, `binary_input`, `analog_input` | Configurable | Ingestion via HTTP REST / Webhooks |
+| Integration         | Supported Channels                       | Gestures / Events                                                              | Notes                                        |
+| :------------------ | :--------------------------------------- | :----------------------------------------------------------------------------- | :------------------------------------------- |
+| **Shelly Next-Gen** | `button`, `binary_input`, `analog_input` | `btn_down`, `btn_up`, `single_push`, `double_push`, `triple_push`, `long_push` | Shelly Plus i4, Pro 4PM, Pro Dimmer 2PM      |
+| **Shelly v1**       | `button`, `binary_input`                 | `S` (single), `SS` (double), `SSS` (triple), `L` (long)                        | Shelly 1, 2.5, Dimmer 2                      |
+| **Home Assistant**  | `button`, `binary_input`, `analog_input` | `press`, `double_press`, `long_press`                                          | Synchronized via HASS entity events          |
+| **Homey SHS**       | `button`, `binary_input`                 | `press`, `double_press`, `long_press`                                          | Mapped from Homey device capabilities        |
+| **HomeKit**         | `button`                                 | `single_press`, `double_press`, `long_press`                                   | Stateless programmable switch profile        |
+| **WLED**            | `button`, `analog_input`                 | `press`, `long_press`, `value`                                                 | ESP32 physical buttons and rotary dials      |
+| **Zigbee2MQTT**     | `button`, `binary_input`, `analog_input` | `single`, `double`, `triple`, `hold`, `release`                                | Philips Hue Dimmer, IKEA remotes, etc.       |
+| **reTerminal**      | `button`                                 | `press`, `down`, `up`                                                          | Built-in physical buttons F1–F4              |
+| **Virtual Devices** | `button`, `binary_input`, `analog_input` | Passthrough from source                                                        | Allows mirroring or aliasing physical inputs |
+| **Third-Party**     | `button`, `binary_input`, `analog_input` | Configurable                                                                   | Ingestion via HTTP REST / Webhooks           |
 
 ---
 

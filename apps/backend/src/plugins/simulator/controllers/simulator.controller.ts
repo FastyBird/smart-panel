@@ -1,4 +1,13 @@
-import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+	BadRequestException,
+	Body,
+	Controller,
+	Get,
+	Param,
+	ParseUUIDPipe,
+	Post,
+	UnprocessableEntityException,
+} from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -9,8 +18,9 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../../../modules/devices/devices.constants';
-import { DevicesNotFoundException } from '../../../modules/devices/devices.exceptions';
+import { DevicesNotFoundException, DevicesValidationException } from '../../../modules/devices/devices.exceptions';
 import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelInputOccurrencePayload } from '../../../modules/devices/models/channel-input-occurrence.model';
 import { DeviceResponseModel } from '../../../modules/devices/models/devices-response.model';
 import { ChannelInputOccurrencesService } from '../../../modules/devices/services/channel-input-occurrences.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
@@ -361,16 +371,24 @@ export class SimulatorController {
 			}
 		}
 
-		const payload = await this.channelInputOccurrencesService.publishOccurrence({
-			deviceId,
-			channelId: dto.channel_id,
-			propertyId,
-			event: dto.event,
-			sourceTimestamp: dto.source_timestamp,
-			sourceOccurrenceId: dto.source_occurrence_id,
-			nativeEventType: dto.native_event_type,
-			data: dto.data,
-		});
+		let payload: ChannelInputOccurrencePayload | null;
+		try {
+			payload = await this.channelInputOccurrencesService.publishOccurrence({
+				deviceId,
+				channelId: dto.channel_id,
+				propertyId,
+				event: dto.event,
+				sourceTimestamp: dto.source_timestamp,
+				sourceOccurrenceId: dto.source_occurrence_id,
+				nativeEventType: dto.native_event_type,
+				data: dto.data,
+			});
+		} catch (error: unknown) {
+			if (error instanceof DevicesValidationException) {
+				throw new UnprocessableEntityException(error.message);
+			}
+			throw error;
+		}
 
 		const result: SimulatedOccurrenceResultModel = {
 			occurrence_id: payload?.id ?? null,
