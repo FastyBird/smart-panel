@@ -25,6 +25,7 @@ interface Fixture {
 	statusFile: string;
 	attemptDir: string;
 	cgroupProcs: string;
+	processRoot: string;
 	archive: string;
 	stateFile: string;
 	installedWorker: string;
@@ -42,6 +43,7 @@ function createFixture(): Fixture {
 	const statusFile = join(root, 'update-status.json');
 	const attemptDir = join(root, 'update-attempt');
 	const cgroupProcs = join(root, 'cgroup.procs');
+	const processRoot = join(root, 'proc');
 	const archiveRoot = join(root, 'archive');
 	const archive = join(root, 'alpha15.tar.gz');
 	const stateFile = join(root, 'service-state');
@@ -49,12 +51,14 @@ function createFixture(): Fixture {
 
 	mkdirSync(bin);
 	mkdirSync(imageBase);
+	mkdirSync(join(processRoot, '999'), { recursive: true });
 	mkdirSync(join(imageBase, 'v1.1.0-alpha.12'), { recursive: true });
 	mkdirSync(join(archiveRoot, 'dist'), { recursive: true });
 	mkdirSync(join(archiveRoot, 'node_modules', 'typeorm'), { recursive: true });
 	writeFileSync(join(archiveRoot, 'dist', 'dataSource.js'), 'module.exports = {};\n');
 	writeFileSync(join(archiveRoot, 'node_modules', 'typeorm', 'cli.js'), 'fixture cli\n');
-	writeFileSync(cgroupProcs, '');
+	writeFileSync(cgroupProcs, '999\n');
+	writeFileSync(join(processRoot, '999', 'identity'), 'fixture-main-process');
 	writeFileSync(stateFile, 'active');
 	copyFileSync(WORKER, installedWorker);
 	chmodSync(installedWorker, 0o700);
@@ -100,13 +104,33 @@ if [ "$1" = "stop" ]; then
     printf '123\\n' > "$SERVICE_CGROUP_PROCS_FILE"
     exit 0
   fi
+  if [ "\${STOP_RESULT:-success}" = "removed-live" ]; then
+    printf inactive > "$SERVICE_STATE_FILE"
+    rm -f "$SERVICE_CGROUP_PROCS_FILE"
+    exit 0
+  fi
+  if [ "\${STOP_RESULT:-success}" = "read-error" ]; then
+    printf inactive > "$SERVICE_STATE_FILE"
+    rm -f "$SERVICE_CGROUP_PROCS_FILE"
+    mkdir "$SERVICE_CGROUP_PROCS_FILE"
+    exit 0
+  fi
+  if [ "\${STOP_RESULT:-success}" = "removed" ]; then
+    printf inactive > "$SERVICE_STATE_FILE"
+    rm -rf "$SERVICE_PROCESS_ROOT/999"
+    rm -f "$SERVICE_CGROUP_PROCS_FILE"
+    exit 0
+  fi
   printf inactive > "$SERVICE_STATE_FILE"
+  rm -rf "$SERVICE_PROCESS_ROOT/999"
   : > "$SERVICE_CGROUP_PROCS_FILE"
   exit 0
 fi
 if [ "$1" = "start" ]; then
   if [ "\${START_RESULT:-success}" = "failure" ]; then exit 17; fi
   printf active > "$SERVICE_STATE_FILE"
+  mkdir -p "$SERVICE_PROCESS_ROOT/999"
+  printf 'fixture-main-process' > "$SERVICE_PROCESS_ROOT/999/identity"
   printf '999\\n' > "$SERVICE_CGROUP_PROCS_FILE"
   exit 0
 fi
@@ -126,7 +150,18 @@ exit 1
 `,
 	);
 
-	return { root, bin, imageBase, statusFile, attemptDir, cgroupProcs, archive, stateFile, installedWorker };
+	return {
+		root,
+		bin,
+		imageBase,
+		statusFile,
+		attemptDir,
+		cgroupProcs,
+		processRoot,
+		archive,
+		stateFile,
+		installedWorker,
+	};
 }
 
 function runWorker(fixture: Fixture, overrides: Record<string, string> = {}): { status: string; output: string } {
@@ -138,6 +173,7 @@ function runWorker(fixture: Fixture, overrides: Record<string, string> = {}): { 
 		STATUS_FILE: fixture.statusFile,
 		ATTEMPT_DIR: fixture.attemptDir,
 		SERVICE_CGROUP_PROCS_FILE: fixture.cgroupProcs,
+		SERVICE_PROCESS_ROOT: fixture.processRoot,
 		SERVICE_STATE_FILE: fixture.stateFile,
 		FIXTURE_ARCHIVE: fixture.archive,
 		DOWNLOAD_URL: 'fixture://alpha15',
@@ -240,6 +276,53 @@ describe('legacy image update worker lifecycle', () => {
 			expect(result.status).not.toBe('success');
 			expect(attempt.state).toBe('recovery_required');
 			expect(attempt.phase).toBe('stopping');
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it('accepts a removed original cgroup after independent process checks prove it empty', () => {
+		const fixture = createFixture();
+
+		try {
+			const result = runWorker(fixture, { STOP_RESULT: 'removed' });
+			const status = readJson(fixture.statusFile);
+
+			expect(result.status).toBe('success');
+			expect(status.status).toBe('complete');
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toContain('v1.1.0-alpha.15');
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it('rejects a removed original cgroup when a captured process identity survives', () => {
+		const fixture = createFixture();
+
+		try {
+			const result = runWorker(fixture, { STOP_RESULT: 'removed-live' });
+			const attempt = readJson(join(fixture.attemptDir, 'attempt.json'));
+
+			expect(result.status).not.toBe('success');
+			expect(attempt.state).toBe('recovery_required');
+			expect(attempt.phase).toBe('stopping');
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it('fails closed when the retained cgroup membership read errors', () => {
+		const fixture = createFixture();
+
+		try {
+			const result = runWorker(fixture, { STOP_RESULT: 'read-error' });
+			const attempt = readJson(join(fixture.attemptDir, 'attempt.json'));
+
+			expect(result.status).not.toBe('success');
+			expect(attempt.state).toBe('recovery_required');
+			expect(attempt.recoveryRequired).toBe(true);
 			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
 		} finally {
 			rmSync(fixture.root, { recursive: true, force: true });

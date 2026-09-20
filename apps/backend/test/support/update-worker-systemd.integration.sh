@@ -15,53 +15,130 @@ if ! systemctl --user is-system-running >/dev/null 2>&1; then
 	exit 77
 fi
 
-UNIT="smart-panel-update-fixture-$$"
+process_identity() {
+	local pid="$1"
+	local stat_line start_time executable command
 
-cleanup() {
-	systemctl --user stop "$UNIT" >/dev/null 2>&1 || true
-	systemctl --user reset-failed "$UNIT" >/dev/null 2>&1 || true
+	if [ -r "/proc/${pid}/stat" ]; then
+		stat_line="$(cat "/proc/${pid}/stat")" || return 2
+		start_time="$(printf '%s\n' "$stat_line" | awk '{ sub(/^.*\\) /, ""); print $20 }')" || return 2
+		executable="$(readlink "/proc/${pid}/exe" 2>/dev/null)" || return 2
+		[ -n "$start_time" ] && [ -n "$executable" ] || return 2
+		printf '%s|%s|%s\n' "$pid" "$start_time" "$executable"
+		return 0
+	fi
+
+	if ! kill -0 "$pid" 2>/dev/null; then
+		return 1
+	fi
+
+	command="$(ps -p "$pid" -o command= 2>/dev/null)" || return 2
+	[ -n "$command" ] || return 2
+	printf '%s|%s\n' "$pid" "$command"
 }
 
-trap cleanup EXIT
+case_status() {
+	local unit="$1"
+	local state
 
-systemd-run --user --unit="$UNIT" --collect /bin/sh -c 'sleep 300' >/dev/null
+	for _ in $(seq 1 20); do
+		state="$(systemctl --user show "$unit" --property=ActiveState --value 2>/dev/null || true)"
+		if [ "$state" = "active" ] || [ "$state" = "inactive" ] || [ "$state" = "failed" ]; then
+			printf '%s\n' "$state"
+			return 0
+		fi
+		sleep 1
+	done
 
-for _ in $(seq 1 20); do
-	if [ "$(systemctl --user show "$UNIT" --property=ActiveState --value 2>/dev/null || true)" = "active" ]; then
-		break
+	return 1
+}
+
+run_case() {
+	local kill_mode="$1"
+	local unit="smart-panel-update-fixture-${kill_mode}-$$"
+	local main_pid control_pid control_group cgroup_procs state current_members
+	local captured_identities="" captured_identity pid current_identity survivor=0
+
+	cleanup_case() {
+		local cleanup_pid cleanup_identity
+
+		while IFS= read -r captured_identity; do
+			[ -n "$captured_identity" ] || continue
+			cleanup_pid="${captured_identity%%|*}"
+			cleanup_identity="$(process_identity "$cleanup_pid" 2>/dev/null || true)"
+			if [ "$cleanup_identity" = "$captured_identity" ]; then
+				kill -KILL "$cleanup_pid" 2>/dev/null || true
+			fi
+		done <<EOF
+$(printf '%b' "$captured_identities")
+EOF
+		systemctl --user stop "$unit" >/dev/null 2>&1 || true
+		systemctl --user reset-failed "$unit" >/dev/null 2>&1 || true
+	}
+
+	trap cleanup_case RETURN
+	systemd-run --user --unit="$unit" --property="KillMode=$kill_mode" /bin/sh -c 'sleep 300 & wait' >/dev/null
+	[ "$(case_status "$unit")" = "active" ]
+	main_pid="$(systemctl --user show "$unit" --property=MainPID --value)"
+	control_pid="$(systemctl --user show "$unit" --property=ControlPID --value)"
+	[ "$main_pid" -gt 0 ]
+	[ "$control_pid" = "0" ]
+
+	control_group="$(systemctl --user show "$unit" --property=ControlGroup --value)"
+	[ -n "$control_group" ]
+	cgroup_procs="/sys/fs/cgroup${control_group}/cgroup.procs"
+	[ -r "$cgroup_procs" ]
+	current_members="$(grep -E '^[0-9]+$' "$cgroup_procs")" || true
+	[ -n "$current_members" ]
+	printf '%s\n' "$current_members" | grep -qx "$main_pid"
+
+	while IFS= read -r pid; do
+		[ -n "$pid" ] || continue
+		captured_identity="$(process_identity "$pid")" || return 2
+		captured_identities="${captured_identities}${captured_identity}\\n"
+	done <<EOF
+$current_members
+EOF
+
+	systemctl --user stop "$unit"
+	state="$(case_status "$unit")"
+	[ "$state" = "inactive" ] || [ "$state" = "failed" ]
+	main_pid="$(systemctl --user show "$unit" --property=MainPID --value 2>/dev/null || true)"
+	control_pid="$(systemctl --user show "$unit" --property=ControlPID --value 2>/dev/null || true)"
+	[ "$main_pid" = "0" ]
+	[ "$control_pid" = "0" ]
+
+	while IFS= read -r captured_identity; do
+		[ -n "$captured_identity" ] || continue
+		pid="${captured_identity%%|*}"
+		current_identity=""
+		if current_identity="$(process_identity "$pid" 2>/dev/null)"; then
+			[ "$current_identity" != "$captured_identity" ] || survivor=1
+		else
+			case "$?" in
+				1) ;;
+				*) return 2 ;;
+			esac
+		fi
+	done <<EOF
+$(printf '%b' "$captured_identities")
+EOF
+
+	if [ -e "$cgroup_procs" ]; then
+		[ -r "$cgroup_procs" ] || return 2
+		current_members="$(grep -E '^[0-9]+$' "$cgroup_procs")" || true
+		[ -z "$current_members" ] || survivor=1
 	fi
-	sleep 1
-done
 
-[ "$(systemctl --user show "$UNIT" --property=ActiveState --value)" = "active" ]
-main_pid="$(systemctl --user show "$UNIT" --property=MainPID --value)"
-[ "$main_pid" -gt 0 ]
-
-control_group="$(systemctl --user show "$UNIT" --property=ControlGroup --value)"
-cgroup_procs="/sys/fs/cgroup${control_group}/cgroup.procs"
-[ -r "$cgroup_procs" ]
-grep -q "^${main_pid}$" "$cgroup_procs"
-
-systemctl --user stop "$UNIT"
-for _ in $(seq 1 20); do
-	state="$(systemctl --user show "$UNIT" --property=ActiveState --value 2>/dev/null || true)"
-	if [ "$state" = "inactive" ] || [ "$state" = "failed" ]; then
-		break
+	if [ "$kill_mode" = "control-group" ]; then
+		[ "$survivor" -eq 0 ] || return 1
+		echo "PASS: KillMode=control-group stopped with empty/removed original cgroup"
+	else
+		[ "$survivor" -eq 1 ] || return 1
+		echo "PASS: KillMode=process retained a captured child and independent checks rejected quiescence"
 	fi
-	sleep 1
-done
+}
 
-state="$(systemctl --user show "$UNIT" --property=ActiveState --value 2>/dev/null || true)"
-[ "$state" = "inactive" ] || [ "$state" = "failed" ]
-
-if [ ! -r "$cgroup_procs" ]; then
-	echo "FAIL: service cgroup process list is missing or unreadable after stop" >&2
-	exit 1
-fi
-
-if grep -q '[0-9]' "$cgroup_procs"; then
-	echo "FAIL: service cgroup retained a writer after stop" >&2
-	exit 1
-fi
-
+run_case control-group
+run_case process
 echo "PASS: systemd stop/readback/cgroup ownership and cleanup contract"

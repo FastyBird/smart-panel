@@ -22,6 +22,8 @@ SERVICE_NAME="smart-panel"
 QUIESCENCE_TIMEOUT_SECONDS="${QUIESCENCE_TIMEOUT_SECONDS:-30}"
 START_TIMEOUT_SECONDS="${START_TIMEOUT_SECONDS:-60}"
 HEALTH_URL="${HEALTH_URL:-}"
+CAPTURED_SERVICE_CGROUP_PROCS=""
+CAPTURED_SERVICE_MEMBER_IDENTITIES=""
 
 json_escape() {
 	printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/[[:cntrl:]]//g'
@@ -168,13 +170,81 @@ service_property() {
 	systemctl show "$SERVICE_NAME" --property="$property" --value
 }
 
-service_quiesced() {
-	local active_state main_pid control_pid control_group cgroup_procs
+process_identity() {
+	local pid="$1"
+	local proc_root="${SERVICE_PROCESS_ROOT:-/proc}"
+	local proc_dir="${proc_root}/${pid}"
+	local stat_line start_time executable command
+
+	[ "$pid" != "0" ] && [ -n "$pid" ] || return 1
+
+	# SERVICE_PROCESS_ROOT is a private fixture hook; the production default is /proc.
+	if [ -r "${proc_dir}/identity" ]; then
+		printf '%s|%s\n' "$pid" "$(cat "${proc_dir}/identity")"
+		return 0
+	fi
+
+	if [ -r "${proc_dir}/stat" ]; then
+		stat_line="$(cat "${proc_dir}/stat")" || return 2
+		start_time="$(printf '%s\n' "$stat_line" | awk '{ sub(/^.*\\) /, ""); print $20 }')" || return 2
+		[ -n "$start_time" ] || return 2
+		executable="$(readlink "${proc_dir}/exe" 2>/dev/null)" || return 2
+		[ -n "$executable" ] || return 2
+		printf '%s|%s|%s\n' "$pid" "$start_time" "$executable"
+		return 0
+	fi
+
+	if ! kill -0 "$pid" 2>/dev/null; then
+		return 1
+	fi
+
+	command="$(ps -p "$pid" -o command= 2>/dev/null)" || return 2
+	[ -n "$command" ] || return 2
+	printf '%s|%s\n' "$pid" "$command"
+}
+
+capture_service_identity() {
+	local active_state main_pid control_pid control_group cgroup_procs members pid identity
 
 	active_state="$(service_property ActiveState 2>/dev/null)" || return 2
 	main_pid="$(service_property MainPID 2>/dev/null)" || return 2
 	control_pid="$(service_property ControlPID 2>/dev/null)" || return 2
 	control_group="$(service_property ControlGroup 2>/dev/null)" || return 2
+
+	case "$active_state" in
+		active|activating) ;;
+		*) return 1 ;;
+	esac
+
+	[ "$main_pid" -gt 0 ] 2>/dev/null || return 1
+	[ "$control_pid" = "0" ] || [ "$control_pid" -gt 0 ] 2>/dev/null || return 2
+	[ -n "$control_group" ] || return 2
+
+	cgroup_procs="${SERVICE_CGROUP_PROCS_FILE:-/sys/fs/cgroup${control_group}/cgroup.procs}"
+	[ -r "$cgroup_procs" ] || return 2
+	members="$(grep -E '^[0-9]+$' "$cgroup_procs" 2>/dev/null)" || true
+	[ -n "$members" ] || return 1
+
+	CAPTURED_SERVICE_MEMBER_IDENTITIES=""
+	while IFS= read -r pid; do
+		[ -n "$pid" ] || continue
+		identity="$(process_identity "$pid")" || return 2
+		CAPTURED_SERVICE_MEMBER_IDENTITIES="${CAPTURED_SERVICE_MEMBER_IDENTITIES}${identity}\n"
+	done <<EOF
+$members
+EOF
+
+	printf '%s\n' "$members" | grep -qx "$main_pid" || return 1
+	CAPTURED_SERVICE_CGROUP_PROCS="$cgroup_procs"
+}
+
+service_quiesced() {
+	local active_state main_pid control_pid cgroup_contents current_members pid captured_identity current_identity identity_status
+
+	[ -n "$CAPTURED_SERVICE_CGROUP_PROCS" ] || return 2
+	active_state="$(service_property ActiveState 2>/dev/null)" || return 2
+	main_pid="$(service_property MainPID 2>/dev/null)" || return 2
+	control_pid="$(service_property ControlPID 2>/dev/null)" || return 2
 
 	case "$active_state" in
 		inactive|failed) ;;
@@ -184,10 +254,36 @@ service_quiesced() {
 	[ "$main_pid" = "0" ] || return 1
 	[ "$control_pid" = "0" ] || return 1
 
-	cgroup_procs="${SERVICE_CGROUP_PROCS_FILE:-/sys/fs/cgroup${control_group}/cgroup.procs}"
-	[ -r "$cgroup_procs" ] || return 2
-	if grep -q '[0-9]' "$cgroup_procs"; then
-		return 1
+	# Check every member captured before stop independently. This catches KillMode=process
+	# survivors even when systemd has already removed the original cgroup directory.
+	while IFS= read -r captured_identity; do
+		[ -n "$captured_identity" ] || continue
+		pid="${captured_identity%%|*}"
+		current_identity=""
+		if current_identity="$(process_identity "$pid")"; then
+			identity_status=0
+		else
+			identity_status=$?
+		fi
+		case "$identity_status" in
+			0) [ "$current_identity" != "$captured_identity" ] || return 1 ;;
+			1) ;;
+			*) return 2 ;;
+		esac
+	done <<EOF
+$(printf '%b' "$CAPTURED_SERVICE_MEMBER_IDENTITIES")
+EOF
+
+	# The original cgroup may be empty or removed after the service reaches inactive/failed with
+	# zero MainPID/ControlPID. If it still exists, it must be readable and contain no members.
+	if [ -e "$CAPTURED_SERVICE_CGROUP_PROCS" ]; then
+		[ -r "$CAPTURED_SERVICE_CGROUP_PROCS" ] || return 2
+		if ! cgroup_contents="$(cat "$CAPTURED_SERVICE_CGROUP_PROCS" 2>/dev/null)"; then
+			[ ! -e "$CAPTURED_SERVICE_CGROUP_PROCS" ] || return 2
+			cgroup_contents=""
+		fi
+		current_members="$(printf '%s\n' "$cgroup_contents" | grep -E '^[0-9]+$')" || true
+		[ -z "$current_members" ] || return 1
 	fi
 
 	return 0
@@ -200,9 +296,9 @@ wait_for_quiescence() {
 	while [ "$SECONDS" -le "$deadline" ]; do
 		if service_quiesced; then
 			return 0
+		else
+			result=$?
 		fi
-
-		result=$?
 		if [ "$result" -eq 2 ]; then
 			return 2
 		fi
@@ -415,6 +511,13 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	# ── Stop service ──
 	update_status "stopping" "stopping"
 	write_attempt "active" "stopping" "" "false" "$MIGRATION_ENTERED"
+	if ! capture_service_identity; then
+		hold_attempt "stopping" "Could not capture service process/cgroup identity before stop"
+		update_status "failed" "failed" "Service process/cgroup identity could not be captured; update is held for recovery"
+		FINALIZED="true"
+		exit 1
+	fi
+
 	if ! sudo -n systemctl stop "$SERVICE_NAME" 2>/dev/null; then
 		hold_attempt "stopping" "Service stop failed; writer quiescence is unknown"
 		update_status "failed" "failed" "Could not stop ${SERVICE_NAME}; update is held for recovery"
