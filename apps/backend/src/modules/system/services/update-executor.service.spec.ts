@@ -65,6 +65,132 @@ describe('UpdateExecutorService', () => {
 	});
 
 	describe('checkPendingUpdateStatus (via onModuleInit)', () => {
+		it('reconciles a live worker when its durable attempt reaches complete', async () => {
+			jest.useFakeTimers();
+			(existsSync as jest.Mock).mockReturnValue(true);
+			let attemptReads = 0;
+			(readFileSync as jest.Mock).mockImplementation((path: string) => {
+				if (path.includes('update-attempt')) {
+					attemptReads += 1;
+
+					return JSON.stringify(
+						attemptReads <= 2
+							? {
+									attemptId: 'attempt-1',
+									ownerPid: process.pid,
+									targetVersion: '1.1.0-alpha.15',
+									state: 'active',
+									phase: 'starting',
+									recoveryRequired: false,
+								}
+							: {
+									attemptId: 'attempt-1',
+									ownerPid: process.pid,
+									targetVersion: '1.1.0-alpha.15',
+									state: 'complete',
+									phase: 'complete',
+									recoveryRequired: false,
+								},
+					);
+				}
+
+				return JSON.stringify({
+					status: UpdateStatusType.STARTING,
+					phase: 'starting',
+					targetVersion: '1.1.0-alpha.15',
+					startedAt: new Date().toISOString(),
+				});
+			});
+
+			const init = executor.onModuleInit();
+			await jest.advanceTimersByTimeAsync(3_000);
+			await init;
+			jest.useRealTimers();
+
+			expect(updateService.setStatus).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: UpdateStatusType.COMPLETE,
+					progressPercent: 100,
+				}),
+			);
+			expect(unlinkSync).toHaveBeenCalled();
+			expect(updateService.releaseUpdateLock).toHaveBeenCalled();
+		});
+
+		it('reconciles a complete attempt even when completed status was not persisted', async () => {
+			(existsSync as jest.Mock).mockImplementation((path: string) => path.includes('update-attempt'));
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({
+					attemptId: 'attempt-complete',
+					ownerPid: process.pid,
+					targetVersion: '1.1.0-alpha.15',
+					state: 'complete',
+					phase: 'complete',
+					recoveryRequired: false,
+				}),
+			);
+
+			await executor.onModuleInit();
+
+			expect(updateService.setStatus).toHaveBeenCalledWith(
+				expect.objectContaining({
+					status: UpdateStatusType.COMPLETE,
+					message: 'Successfully updated to 1.1.0-alpha.15',
+				}),
+			);
+			expect(updateService.releaseUpdateLock).toHaveBeenCalled();
+		});
+
+		it('reports an unresolved recovery hold without deleting its status or attempt', async () => {
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockImplementation((path: string) => {
+				if (path.includes('update-attempt')) {
+					return JSON.stringify({
+						attemptId: 'attempt-2',
+						ownerPid: 999999,
+						targetVersion: '1.1.0-alpha.15',
+						state: 'recovery_required',
+						phase: 'migration_failed',
+						recoveryRequired: true,
+						error: 'migration failed; recovery required',
+					});
+				}
+
+				return JSON.stringify({
+					status: UpdateStatusType.FAILED,
+					phase: 'failed',
+					targetVersion: '1.1.0-alpha.15',
+					startedAt: new Date().toISOString(),
+					error: 'migration failed; recovery required',
+				});
+			});
+
+			await executor.onModuleInit();
+
+			expect(notifications.notify).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'migration failed; recovery required' }),
+			);
+			expect(unlinkSync).not.toHaveBeenCalled();
+			expect(updateService.releaseUpdateLock).not.toHaveBeenCalled();
+		});
+
+		it('does not permit another update while a durable attempt requires recovery', async () => {
+			(existsSync as jest.Mock).mockImplementation((path: string) => path.includes('update-attempt'));
+			(readFileSync as jest.Mock).mockReturnValue(
+				JSON.stringify({
+					attemptId: 'attempt-3',
+					ownerPid: 999999,
+					targetVersion: '1.1.0-alpha.15',
+					state: 'recovery_required',
+					phase: 'start_failed',
+					recoveryRequired: true,
+				}),
+			);
+
+			await expect(executor.startUpdate('1.1.0-alpha.16')).rejects.toThrow('requires recovery');
+			expect(updateService.acquireUpdateLock).not.toHaveBeenCalled();
+		});
+
 		it('should do nothing when no status file exists', async () => {
 			(existsSync as jest.Mock).mockReturnValue(false);
 
