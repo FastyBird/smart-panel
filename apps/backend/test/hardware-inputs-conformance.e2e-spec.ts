@@ -1,5 +1,5 @@
 /*
-eslint-disable @typescript-eslint/no-unsafe-argument
+eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 */
 /*
 Reason: Supertest HTTP response bodies are typed dynamically, following the established e2e test conventions.
@@ -7,7 +7,6 @@ Reason: Supertest HTTP response bodies are typed dynamically, following the esta
 import { useContainer } from 'class-validator';
 import request from 'supertest';
 import 'systeminformation';
-import { DataSource } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -26,10 +25,8 @@ import {
 } from '../src/modules/devices/devices.constants';
 import { ChannelInputOccurrencePayload } from '../src/modules/devices/models/channel-input-occurrence.model';
 import { ChannelsPropertiesService } from '../src/modules/devices/services/channels.properties.service';
-import { ChannelsService } from '../src/modules/devices/services/channels.service';
 import { DevicesService } from '../src/modules/devices/services/devices.service';
 import { DEVICES_VIRTUAL_TYPE } from '../src/plugins/devices-virtual/devices-virtual.constants';
-import { VirtualPropertyIndexService } from '../src/plugins/devices-virtual/services/virtual-property-index.service';
 import { SIMULATOR_TYPE } from '../src/plugins/simulator/simulator.constants';
 
 describe('Hardware Input Conformance (e2e)', () => {
@@ -37,9 +34,7 @@ describe('Hardware Input Conformance (e2e)', () => {
 	let accessToken: string;
 	let eventEmitter: EventEmitter2;
 	let devicesService: DevicesService;
-	let channelsService: ChannelsService;
 	let channelsPropertiesService: ChannelsPropertiesService;
-	let virtualPropertyIndex: VirtualPropertyIndexService;
 
 	// Test devices and IDs
 	let inputControllerId: string;
@@ -92,9 +87,7 @@ describe('Hardware Input Conformance (e2e)', () => {
 
 		eventEmitter = moduleFixture.get<EventEmitter2>(EventEmitter2);
 		devicesService = moduleFixture.get<DevicesService>(DevicesService);
-		channelsService = moduleFixture.get<ChannelsService>(ChannelsService);
 		channelsPropertiesService = moduleFixture.get<ChannelsPropertiesService>(ChannelsPropertiesService);
-		virtualPropertyIndex = moduleFixture.get<VirtualPropertyIndexService>(VirtualPropertyIndexService);
 
 		// Register and login for auth token
 		await request(app.getHttpServer())
