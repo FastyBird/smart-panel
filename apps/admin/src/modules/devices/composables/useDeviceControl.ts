@@ -63,8 +63,16 @@ export const useDeviceControl = ({ id }: IUseDeviceControlProps): IUseDeviceCont
 	});
 
 	const controllableChannels = computed<IChannel[]>((): IChannel[] => {
-		// Return channels that have at least one writable property
+		// Return channels that have at least one writable property and are not hardware inputs
 		return channels.value.filter((channel) => {
+			if (
+				channel.category === DevicesModuleChannelCategory.button ||
+				channel.category === DevicesModuleChannelCategory.binary_input ||
+				channel.category === DevicesModuleChannelCategory.analog_input
+			) {
+				return false;
+			}
+
 			const properties = channelsPropertiesStore.findForChannel(channel.id);
 
 			return properties.some(

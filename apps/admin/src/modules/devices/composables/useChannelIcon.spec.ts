@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
+import { DevicesModuleChannelCategory } from '../../../openapi.constants';
 
 import { useChannelIcon } from './useChannelIcon';
 
@@ -61,5 +62,29 @@ describe('useChannelIcon', () => {
 		const { icon } = useChannelIcon({ id: channelId });
 
 		expect(icon.value).toBe('mdi:chip');
+	});
+
+	it('returns gesture-tap-button icon for button', () => {
+		findById.mockReturnValue({ id: channelId, category: DevicesModuleChannelCategory.button });
+
+		const { icon } = useChannelIcon({ id: channelId });
+
+		expect(icon.value).toBe('mdi:gesture-tap-button');
+	});
+
+	it('returns toggle-switch icon for binary_input', () => {
+		findById.mockReturnValue({ id: channelId, category: DevicesModuleChannelCategory.binary_input });
+
+		const { icon } = useChannelIcon({ id: channelId });
+
+		expect(icon.value).toBe('mdi:toggle-switch');
+	});
+
+	it('returns tune-vertical icon for analog_input', () => {
+		findById.mockReturnValue({ id: channelId, category: DevicesModuleChannelCategory.analog_input });
+
+		const { icon } = useChannelIcon({ id: channelId });
+
+		expect(icon.value).toBe('mdi:tune-vertical');
 	});
 });

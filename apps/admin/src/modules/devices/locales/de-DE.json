@@ -1019,5 +1019,19 @@
 			"resultsSuccess": "Alle ausgewählten Geräte wurden erfolgreich hinzugefügt",
 			"resultsFailed": "Einige Geräte konnten nicht hinzugefügt werden"
 		}
+	},
+	"diagnostics": {
+		"title": "Hardware-Eingangsdiagnose",
+		"capabilitiesTitle": "Eingabefunktionen",
+		"supportedInteractions": "Unterstützte Interaktionen",
+		"noDiscreteEvents": "Kontinuierlicher / analoger Eingang (keine diskreten Ereignisse)",
+		"noCapabilities": "Keine Eingabefunktionen verfügbar",
+		"liveEventsTitle": "Live-Ereignisse",
+		"clearEvents": "Löschen",
+		"noOccurrences": "Noch keine Ereignisse empfangen",
+		"columnEvent": "Ereignis",
+		"columnNativeType": "Nativer Typ",
+		"columnTimestamp": "Empfangszeit",
+		"columnData": "Nutzlast"
 	}
 }

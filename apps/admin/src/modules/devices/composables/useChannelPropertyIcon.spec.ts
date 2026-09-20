@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { injectStoresManager } from '../../../common';
+import { DevicesModuleChannelPropertyCategory } from '../../../openapi.constants';
 
 import { useChannelPropertyIcon } from './useChannelPropertyIcon';
 
@@ -61,5 +62,21 @@ describe('useChannelPropertyIcon', () => {
 		const { icon } = useChannelPropertyIcon({ id: propertyId });
 
 		expect(icon.value).toBe('mdi:tune');
+	});
+
+	it('returns bell-ring-outline icon for event', () => {
+		findById.mockReturnValue({ id: propertyId, category: DevicesModuleChannelPropertyCategory.event });
+
+		const { icon } = useChannelPropertyIcon({ id: propertyId });
+
+		expect(icon.value).toBe('mdi:bell-ring-outline');
+	});
+
+	it('returns record-circle-outline icon for detected', () => {
+		findById.mockReturnValue({ id: propertyId, category: DevicesModuleChannelPropertyCategory.detected });
+
+		const { icon } = useChannelPropertyIcon({ id: propertyId });
+
+		expect(icon.value).toBe('mdi:record-circle-outline');
 	});
 });

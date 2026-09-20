@@ -1019,5 +1019,19 @@
 			"resultsSuccess": "Všechna vybraná zařízení byla úspěšně přidána",
 			"resultsFailed": "Některá zařízení se nepodařilo přidat"
 		}
+	},
+	"diagnostics": {
+		"title": "Diagnostika hardwarových vstupů",
+		"capabilitiesTitle": "Možnosti vstupu",
+		"supportedInteractions": "Podporované interakce",
+		"noDiscreteEvents": "Kontinuální / analogový vstup (žádné diskrétní události)",
+		"noCapabilities": "Nejsou k dispozici žádné možnosti vstupu",
+		"liveEventsTitle": "Živé události",
+		"clearEvents": "Vymazat",
+		"noOccurrences": "Zatím nebyly přijaty žádné události",
+		"columnEvent": "Událost",
+		"columnNativeType": "Nativní typ",
+		"columnTimestamp": "Čas přijetí",
+		"columnData": "Data"
 	}
 }
