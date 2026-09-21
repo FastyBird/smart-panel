@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import {
@@ -29,7 +29,7 @@ interface UpdateAttemptFile {
 	attemptId: string;
 	ownerPid: number;
 	targetVersion: string;
-	state: 'active' | 'failed_preflight' | 'recovery_required' | 'complete';
+	state: 'active' | 'failed_preflight' | 'reconciled' | 'recovery_required' | 'complete';
 	phase: string;
 	recoveryRequired: boolean;
 	error?: string;
@@ -44,6 +44,7 @@ const UPDATE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 // landing right at the boundary is still caught by the last poll tick.
 const STATUS_POLL_MAX_MS = UPDATE_TIMEOUT_MS + 30_000;
 const ATTEMPT_RECONCILIATION_POLL_INTERVAL_MS = 3_000;
+const LOCAL_HEALTH_PATH = '/api/v1/modules/system/system/health';
 
 const UPDATE_WORKER_UNIT = 'smart-panel-update';
 
@@ -91,9 +92,13 @@ function mapUpdateWorkerStatus(raw: Record<string, unknown>): Partial<Privileged
 }
 
 @Injectable()
-export class UpdateExecutorService implements OnModuleInit {
+export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'UpdateExecutorService');
 	private progressHighWaterMark = 0;
+	private observerGeneration = 0;
+	private observerAttemptId: string | null = null;
+	private observerTask: Promise<void> | null = null;
+	private readonly observerTimers = new Map<NodeJS.Timeout, () => void>();
 
 	constructor(
 		private readonly updateService: UpdateService,
@@ -103,6 +108,19 @@ export class UpdateExecutorService implements OnModuleInit {
 
 	async onModuleInit(): Promise<void> {
 		await this.checkPendingUpdateStatus();
+	}
+
+	onModuleDestroy(): void {
+		this.observerGeneration += 1;
+
+		for (const [timer, cancel] of this.observerTimers) {
+			clearTimeout(timer);
+			cancel();
+		}
+
+		this.observerTimers.clear();
+		this.observerAttemptId = null;
+		this.observerTask = null;
 	}
 
 	private readAttempt(): UpdateAttemptFile | null {
@@ -123,6 +141,10 @@ export class UpdateExecutorService implements OnModuleInit {
 
 	private isAttemptUnresolved(attempt: UpdateAttemptFile | null): attempt is UpdateAttemptFile {
 		return Boolean(attempt && (attempt.state === 'active' || attempt.recoveryRequired === true));
+	}
+
+	private isObserverCurrent(generation: number, attemptId: string): boolean {
+		return this.observerGeneration === generation && this.observerAttemptId === attemptId;
 	}
 
 	private isAttemptOwnerAlive(attempt: UpdateAttemptFile): boolean {
@@ -147,21 +169,43 @@ export class UpdateExecutorService implements OnModuleInit {
 		return JSON.parse(readFileSync(STATUS_FILE, 'utf-8')) as UpdateProgressFile;
 	}
 
+	private async waitForObserverPoll(generation: number, attemptId: string): Promise<boolean> {
+		if (!this.isObserverCurrent(generation, attemptId)) {
+			return false;
+		}
+
+		await new Promise<void>((resolve) => {
+			const timer = setTimeout(() => {
+				this.observerTimers.delete(timer);
+				resolve();
+			}, ATTEMPT_RECONCILIATION_POLL_INTERVAL_MS);
+			timer.unref?.();
+			this.observerTimers.set(timer, resolve);
+		});
+
+		return this.isObserverCurrent(generation, attemptId);
+	}
+
 	private async waitForAttemptSettlement(
 		initialAttempt: UpdateAttemptFile,
+		generation: number,
 	): Promise<{ attempt: UpdateAttemptFile | null; status: UpdateProgressFile | null }> {
 		let attempt: UpdateAttemptFile | null = initialAttempt;
 		let status: UpdateProgressFile | null = null;
 		const deadline = Date.now() + STATUS_POLL_MAX_MS;
 
-		while (this.isAttemptUnresolved(attempt) && this.isAttemptOwnerAlive(attempt)) {
+		while (
+			this.isObserverCurrent(generation, initialAttempt.attemptId) &&
+			this.isAttemptUnresolved(attempt) &&
+			this.isAttemptOwnerAlive(attempt)
+		) {
 			if (Date.now() >= deadline) {
 				break;
 			}
 
-			await new Promise<void>((resolve) => {
-				setTimeout(resolve, ATTEMPT_RECONCILIATION_POLL_INTERVAL_MS).unref?.();
-			});
+			if (!(await this.waitForObserverPoll(generation, initialAttempt.attemptId))) {
+				break;
+			}
 
 			attempt = this.readAttempt();
 
@@ -200,8 +244,39 @@ export class UpdateExecutorService implements OnModuleInit {
 		}
 	}
 
-	private async reconcileLiveAttempt(attempt: UpdateAttemptFile): Promise<void> {
-		const settled = await this.waitForAttemptSettlement(attempt);
+	private observeLiveAttempt(attempt: UpdateAttemptFile): void {
+		if (this.observerTask !== null) {
+			return;
+		}
+
+		const generation = ++this.observerGeneration;
+		this.observerAttemptId = attempt.attemptId;
+		const task = this.reconcileLiveAttempt(attempt, generation).catch((error: unknown) => {
+			const message = error instanceof Error ? error.message : 'Unknown observer failure';
+			this.logger.error(`Failed to observe update attempt ${attempt.attemptId}: ${message}`);
+		});
+
+		this.observerTask = task;
+		void task.finally(() => {
+			if (this.observerGeneration === generation) {
+				this.observerAttemptId = null;
+				this.observerTask = null;
+			}
+		});
+	}
+
+	private async reconcileLiveAttempt(attempt: UpdateAttemptFile, generation: number): Promise<void> {
+		const settled = await this.waitForAttemptSettlement(attempt, generation);
+
+		if (!this.isObserverCurrent(generation, attempt.attemptId)) {
+			return;
+		}
+
+		if (settled.attempt && settled.attempt.attemptId !== attempt.attemptId) {
+			this.logger.warn(`Update attempt ${attempt.attemptId} was replaced while being observed`);
+
+			return;
+		}
 
 		if (settled.attempt?.state === 'complete') {
 			await this.reconcileCompletedAttempt(settled.attempt, settled.status);
@@ -243,7 +318,7 @@ export class UpdateExecutorService implements OnModuleInit {
 
 			if (this.isAttemptUnresolved(attemptBeforeStatus)) {
 				if (attemptBeforeStatus.state === 'active' && this.isAttemptOwnerAlive(attemptBeforeStatus)) {
-					await this.reconcileLiveAttempt(attemptBeforeStatus);
+					this.observeLiveAttempt(attemptBeforeStatus);
 
 					return;
 				}
@@ -271,7 +346,7 @@ export class UpdateExecutorService implements OnModuleInit {
 			if (!status) {
 				if (this.isAttemptUnresolved(attempt)) {
 					if (attempt.state === 'active' && this.isAttemptOwnerAlive(attempt)) {
-						await this.reconcileLiveAttempt(attempt);
+						this.observeLiveAttempt(attempt);
 
 						return;
 					}
@@ -293,7 +368,7 @@ export class UpdateExecutorService implements OnModuleInit {
 						`Update attempt ${attempt.attemptId} remains owned by worker ${attempt.ownerPid} (phase: ${attempt.phase}); waiting for durable settlement`,
 					);
 
-					await this.reconcileLiveAttempt(attempt);
+					this.observeLiveAttempt(attempt);
 
 					return;
 				}
@@ -386,6 +461,20 @@ export class UpdateExecutorService implements OnModuleInit {
 		}
 
 		const installType = this.updateService.getInstallType();
+		let healthUrl: string | undefined;
+
+		if (installType === 'image') {
+			try {
+				healthUrl = this.getLocalHealthUrl();
+			} catch (error) {
+				const err = error as Error;
+
+				this.updateService.releaseUpdateLock();
+				await this.failUpdate(err.message);
+
+				throw err;
+			}
+		}
 
 		this.logger.log(`Starting ${installType} update to version ${targetVersion}`);
 
@@ -455,6 +544,11 @@ export class UpdateExecutorService implements OnModuleInit {
 			HOME: process.env.HOME ?? '/root',
 			PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
 		};
+
+		if (healthUrl) {
+			envVars.HEALTH_URL = healthUrl;
+			envVars.HEALTH_EXPECTED_VERSION = targetVersion;
+		}
 
 		if (process.env.FB_DATA_DIR) envVars.FB_DATA_DIR = process.env.FB_DATA_DIR;
 		if (process.env.FB_DB_PATH) envVars.FB_DB_PATH = process.env.FB_DB_PATH;
@@ -660,5 +754,21 @@ export class UpdateExecutorService implements OnModuleInit {
 		const message = error instanceof Error ? error.message : 'Unknown error';
 
 		this.logger.error(`${context}: ${message}`);
+	}
+
+	private getLocalHealthUrl(): string {
+		const rawPort = process.env.FB_BACKEND_PORT ?? '3000';
+
+		if (!/^\d+$/.test(rawPort)) {
+			throw new Error(`Invalid FB_BACKEND_PORT for update health check: ${rawPort}`);
+		}
+
+		const port = Number(rawPort);
+
+		if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+			throw new Error(`Invalid FB_BACKEND_PORT for update health check: ${rawPort}`);
+		}
+
+		return `http://127.0.0.1:${port}${LOCAL_HEALTH_PATH}`;
 	}
 }

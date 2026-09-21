@@ -84,16 +84,33 @@ exec "$@"
 		join(bin, 'curl'),
 		`#!/bin/bash
 output=""
+url="$*"
 while [ "$#" -gt 0 ]; do
   if [ "$1" = "-o" ]; then output="$2"; shift 2; continue; fi
   shift
 done
+if [[ "$url" == *"/api/v1/modules/system/system/health"* ]]; then
+  if [ "\${HEALTH_RESULT:-success}" = "failure" ]; then exit 17; fi
+  if [ "\${HEALTH_RESULT:-success}" = "malformed" ]; then printf 'not-json\\n'; exit 0; fi
+  printf '{"data":{"status":"ok","version":"%s"}}\\n' "\${HEALTH_RESPONSE_VERSION:-\${HEALTH_EXPECTED_VERSION:-1.1.0-alpha.15}}"
+  exit 0
+fi
 cp "$FIXTURE_ARCHIVE" "$output"
 `,
 	);
 	writeExecutable(
 		join(bin, 'node'),
 		`#!/bin/bash
+	if [ "$1" = "-e" ]; then
+		case "\${2:-}" in
+			*HEALTH_EXPECTED_VERSION*) ;;
+			*) exit 0 ;;
+		esac
+		[ "\${HEALTH_RESULT:-success}" = "failure" ] && exit 17
+		[ "\${HEALTH_RESULT:-success}" = "malformed" ] && exit 17
+		[ "\${HEALTH_RESPONSE_VERSION:-\${HEALTH_EXPECTED_VERSION:-1.1.0-alpha.15}}" = "\${HEALTH_EXPECTED_VERSION:-1.1.0-alpha.15}" ] || exit 1
+		exit 0
+	fi
 	if [ "\${MIGRATION_RESULT:-success}" = "failure" ]; then echo 'fixture migration failed' >&2; exit 17; fi
 	exit 0
 `,
@@ -170,12 +187,13 @@ if [ "$1" = "show" ]; then
   property=""
   for argument in "$@"; do case "$argument" in --property=*) property="\${argument#--property=}";; esac; done
   state="$(cat "$SERVICE_STATE_FILE")"
-  case "$property" in
-    ActiveState) printf '%s\\n' "$state";;
-    MainPID) [ "$state" = active ] && printf '999\\n' || printf '0\\n';;
-    ControlPID) printf '0\\n';;
-    ControlGroup) printf '/fixture\\n';;
-  esac
+			case "$property" in
+				ActiveState) printf '%s\\n' "$state";;
+				MainPID) [ "$state" = active ] && printf '999\\n' || printf '0\\n';;
+				ControlPID) printf '0\\n';;
+				ControlGroup) printf '/fixture\\n';;
+				ExecMainStartTimestampMonotonic) printf '1\\n';;
+			esac
   exit 0
 fi
 exit 1
@@ -213,6 +231,8 @@ function runWorker(fixture: Fixture, overrides: Record<string, string> = {}): { 
 		SERVICE_STATE_FILE: fixture.stateFile,
 		FIXTURE_ARCHIVE: fixture.archive,
 		DOWNLOAD_URL: 'fixture://alpha15',
+		HEALTH_URL: 'http://127.0.0.1:3000/api/v1/modules/system/system/health',
+		HEALTH_EXPECTED_VERSION: '1.1.0-alpha.15',
 		QUIESCENCE_TIMEOUT_SECONDS: '2',
 		START_TIMEOUT_SECONDS: '2',
 		...overrides,
@@ -468,6 +488,41 @@ describe('legacy image update worker lifecycle', () => {
 			expect(attempt.phase).toBe('start_failed');
 			expect(readlinkSync(join(fixture.imageBase, 'current'))).toContain('v1.1.0-alpha.15');
 			expect(readFileSync(fixture.stateFile, 'utf8')).toBe('inactive');
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it('rejects an image update before mutation when the local health URL is missing', () => {
+		const fixture = createFixture();
+
+		try {
+			const result = runWorker(fixture, { HEALTH_URL: '' });
+			const status = readJson(fixture.statusFile);
+
+			expect(result.status).not.toBe('success');
+			expect(status.error).toBe('No local health URL configured for image update');
+			expect(existsSync(join(fixture.attemptDir, 'attempt.json'))).toBe(false);
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it.each([
+		['wrong target version', { HEALTH_RESPONSE_VERSION: '1.1.0-alpha.99' }],
+		['malformed payload', { HEALTH_RESULT: 'malformed' }],
+	])('holds the target when health validation rejects a %s', (_label, overrides) => {
+		const fixture = createFixture();
+
+		try {
+			const result = runWorker(fixture, overrides);
+			const attempt = readJson(join(fixture.attemptDir, 'attempt.json'));
+
+			expect(result.status).not.toBe('success');
+			expect(attempt.state).toBe('recovery_required');
+			expect(attempt.phase).toBe('start_failed');
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toContain('v1.1.0-alpha.15');
 		} finally {
 			rmSync(fixture.root, { recursive: true, force: true });
 		}

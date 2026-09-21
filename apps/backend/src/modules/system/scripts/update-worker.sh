@@ -6,6 +6,8 @@ STATUS_FILE="${STATUS_FILE:-/var/lib/smart-panel/update-status.json}"
 INSTALL_TYPE="${INSTALL_TYPE:-npm}"
 IMAGE_BASE_DIR="${IMAGE_BASE_DIR:-/opt/smart-panel}"
 DOWNLOAD_URL="${DOWNLOAD_URL:-}"
+HEALTH_URL="${HEALTH_URL:-}"
+HEALTH_EXPECTED_VERSION="${HEALTH_EXPECTED_VERSION:-$VERSION}"
 
 # The attempt record and lock live beside the public status file, never inside a versioned image
 # directory.  This lets the record survive a backend restart, target-directory cleanup or a
@@ -21,7 +23,6 @@ CURRENT_PHASE="preparing"
 SERVICE_NAME="smart-panel"
 QUIESCENCE_TIMEOUT_SECONDS="${QUIESCENCE_TIMEOUT_SECONDS:-30}"
 START_TIMEOUT_SECONDS="${START_TIMEOUT_SECONDS:-60}"
-HEALTH_URL="${HEALTH_URL:-}"
 CAPTURED_SERVICE_CGROUP_PROCS=""
 CAPTURED_SERVICE_CGROUP_DIR=""
 CAPTURED_SERVICE_CGROUP_EVENTS=""
@@ -172,6 +173,44 @@ service_property() {
 	local property="$1"
 
 	systemctl show "$SERVICE_NAME" --property="$property" --value
+}
+
+target_health_is_valid() {
+	local payload
+
+	[ -n "$HEALTH_URL" ] || return 1
+	payload="$(curl -fsS --max-time 5 "$HEALTH_URL" 2>/dev/null)" || return 1
+
+	printf '%s' "$payload" | HEALTH_EXPECTED_VERSION="$HEALTH_EXPECTED_VERSION" node -e '
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => { input += chunk; });
+process.stdin.on("end", () => {
+  try {
+    const body = JSON.parse(input);
+    const data = body && body.data;
+    process.exit(data?.status === "ok" && data.version === process.env.HEALTH_EXPECTED_VERSION ? 0 : 1);
+  } catch {
+    process.exit(1);
+  }
+});
+'
+}
+
+target_process_is_stable() {
+	local state main_pid start_identity resolved_target expected_target
+
+	state="$(service_property ActiveState 2>/dev/null || true)"
+	main_pid="$(service_property MainPID 2>/dev/null || true)"
+	start_identity="$(service_property ExecMainStartTimestampMonotonic 2>/dev/null || true)"
+	resolved_target="$(readlink -f "$CURRENT_LINK" 2>/dev/null || true)"
+	expected_target="$(realpath "$NEW_VERSION_DIR" 2>/dev/null || true)"
+
+	[ "$state" = "active" ] || return 1
+	[ "$main_pid" != "0" ] && [ -n "$main_pid" ] || return 1
+	[ -n "$start_identity" ] || return 1
+	[ -n "$CURRENT_LINK" ] && [ -n "$NEW_VERSION_DIR" ] || return 1
+	[ -n "$expected_target" ] && [ "$resolved_target" = "$expected_target" ] || return 1
 }
 
 process_identity() {
@@ -438,16 +477,21 @@ wait_for_quiescence() {
 
 wait_for_started_service() {
 	local deadline=$((SECONDS + START_TIMEOUT_SECONDS))
-	local state main_pid
+	local previous_main_pid=""
+	local previous_start_identity=""
+	local main_pid start_identity
 
 	while [ "$SECONDS" -le "$deadline" ]; do
-		state="$(service_property ActiveState 2>/dev/null || true)"
-		main_pid="$(service_property MainPID 2>/dev/null || true)"
+		if target_process_is_stable && target_health_is_valid; then
+			main_pid="$(service_property MainPID 2>/dev/null || true)"
+			start_identity="$(service_property ExecMainStartTimestampMonotonic 2>/dev/null || true)"
 
-		if [ "$state" = "active" ] && [ "$main_pid" != "0" ] && [ -n "$main_pid" ]; then
-			if [ -z "$HEALTH_URL" ] || curl -fsS --max-time 5 "$HEALTH_URL" >/dev/null 2>&1; then
+			if [ "$main_pid" = "$previous_main_pid" ] && [ "$start_identity" = "$previous_start_identity" ]; then
 				return 0
 			fi
+
+			previous_main_pid="$main_pid"
+			previous_start_identity="$start_identity"
 		fi
 
 		sleep 1
@@ -540,6 +584,15 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	CLEAN_VERSION="${VERSION#v}"
 	NEW_VERSION_DIR="${IMAGE_BASE_DIR}/v${CLEAN_VERSION}"
 	CURRENT_LINK="${IMAGE_BASE_DIR}/current"
+
+	# Image updates must verify the target release through the existing local health route. A
+	# missing route would otherwise silently reduce readiness to a PID check and reintroduce the
+	# startup/worker circular wait that the updater is designed to avoid.
+	if [ -z "$HEALTH_URL" ]; then
+		update_status "failed" "failed" "No local health URL configured for image update"
+		FINALIZED="true"
+		exit 1
+	fi
 
 	if ! acquire_attempt; then
 		update_status "failed" "failed" "An unresolved update attempt already owns the updater"

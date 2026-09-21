@@ -293,6 +293,22 @@ restart the unchanged build. Completion is recorded only after the target servic
 the configured bounded health check. The restarted backend retains an active `starting` attempt instead of clearing
 status or releasing update ownership prematurely.
 
+The backend does not wait for an active worker to settle from a Nest initialization hook: it returns the listener to
+the platform and observes the owner-bound attempt in one bounded, cancellable background task. This prevents the
+restarted target from waiting on the worker while the worker waits for the target health route. The observer never
+signals the worker, extends its deadline, clears a recovery hold or treats a later HTTP response as ordinary update
+completion. Image launches must provide the local loopback health route
+`/api/v1/modules/system/system/health`; readiness requires a parsed `data.status = 'ok'`, the expected target
+version, a stable service main-PID/start identity and a resolved `current` release path.
+
+If migration entered and the target later proves healthy after a `start_failed` hold, an explicitly reviewed operator
+reconciliation may write the internal `reconciled` / `reconciled_post_migration` state with a bound durable receipt.
+This is a resolved failure, not `complete`: the original public failed status and notification remain, the target and
+database are retained, and the exact updater lock is released only after receipt/record readback and fresh ownership,
+online-backup, migration-classification and three-spaced-health checks. No SQL, history edit, rollback, automatic
+retry or old-image cleanup occurs during this reconciliation. A changed owner, busy/inconsistent backup, wrong target
+or failed receipt/lock sync keeps the hold.
+
 Before accepting an image update, verify the target data-source mode and migration set in a disposable SQLite
 database, then run the exact legacy-worker target-CLI invocation. Retain the target version/hash, migration history,
 exit status and bounded stdout/stderr privately. A symlink rollback is not evidence that database changes were rolled
