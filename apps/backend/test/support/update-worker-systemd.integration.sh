@@ -56,7 +56,7 @@ case_status() {
 run_case() {
 	local kill_mode="$1"
 	local unit="smart-panel-update-fixture-${kill_mode}-$$"
-	local main_pid control_pid control_group cgroup_procs state current_members
+	local main_pid control_pid control_group cgroup_dir cgroup_procs cgroup_events state current_members populated
 	local captured_identities="" captured_identity pid current_identity survivor=0
 
 	cleanup_case() {
@@ -86,9 +86,13 @@ EOF
 
 	control_group="$(systemctl --user show "$unit" --property=ControlGroup --value)"
 	[ -n "$control_group" ]
+	cgroup_dir="/sys/fs/cgroup${control_group}"
 	cgroup_procs="/sys/fs/cgroup${control_group}/cgroup.procs"
+	cgroup_events="/sys/fs/cgroup${control_group}/cgroup.events"
+	[ -d "$cgroup_dir" ]
 	[ -r "$cgroup_procs" ]
-	current_members="$(grep -E '^[0-9]+$' "$cgroup_procs")" || true
+	[ -r "$cgroup_events" ]
+	current_members="$(awk 'length($0) > 0 { if ($0 !~ /^[0-9]+$/) exit 2; print }' "$cgroup_procs")"
 	[ -n "$current_members" ]
 	printf '%s\n' "$current_members" | grep -qx "$main_pid"
 
@@ -124,10 +128,15 @@ EOF
 $(printf '%b' "$captured_identities")
 EOF
 
-	if [ -e "$cgroup_procs" ]; then
+	if [ -d "$cgroup_dir" ]; then
 		[ -r "$cgroup_procs" ] || return 2
-		current_members="$(grep -E '^[0-9]+$' "$cgroup_procs")" || true
+		[ -r "$cgroup_events" ] || return 2
+		current_members="$(awk 'length($0) > 0 { if ($0 !~ /^[0-9]+$/) exit 2; print }' "$cgroup_procs")"
 		[ -z "$current_members" ] || survivor=1
+		populated="$(awk '$1 == "populated" { count++; if (NF != 2 || $2 !~ /^[01]$/) invalid=1; else value=$2 } END { if (count != 1 || invalid) exit 2; print value }' "$cgroup_events")"
+		[ "$populated" = "0" ] || survivor=1
+	elif [ -e "$cgroup_dir" ]; then
+		return 2
 	fi
 
 	if [ "$kill_mode" = "control-group" ]; then

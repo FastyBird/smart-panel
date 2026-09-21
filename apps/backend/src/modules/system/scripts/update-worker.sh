@@ -23,7 +23,11 @@ QUIESCENCE_TIMEOUT_SECONDS="${QUIESCENCE_TIMEOUT_SECONDS:-30}"
 START_TIMEOUT_SECONDS="${START_TIMEOUT_SECONDS:-60}"
 HEALTH_URL="${HEALTH_URL:-}"
 CAPTURED_SERVICE_CGROUP_PROCS=""
+CAPTURED_SERVICE_CGROUP_DIR=""
+CAPTURED_SERVICE_CGROUP_EVENTS=""
 CAPTURED_SERVICE_MEMBER_IDENTITIES=""
+CGROUP_MEMBERS=""
+CGROUP_POPULATED=""
 
 json_escape() {
 	printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/[[:cntrl:]]//g'
@@ -203,8 +207,86 @@ process_identity() {
 	printf '%s|%s\n' "$pid" "$command"
 }
 
+read_cgroup_members() {
+	local cgroup_procs="$1"
+	local contents members
+
+	CGROUP_MEMBERS=""
+	if ! contents="$(cat "$cgroup_procs" 2>/dev/null)"; then
+		return 2
+	fi
+
+	if ! members="$(printf '%s\n' "$contents" | awk '
+		length($0) > 0 {
+			if ($0 !~ /^[0-9]+$/) {
+				exit 2
+			}
+			print
+		}
+	')"; then
+		return 2
+	fi
+
+	CGROUP_MEMBERS="$members"
+}
+
+read_cgroup_population() {
+	local cgroup_events="$1"
+	local contents populated
+
+	CGROUP_POPULATED=""
+	if ! contents="$(cat "$cgroup_events" 2>/dev/null)"; then
+		return 2
+	fi
+
+	if ! populated="$(printf '%s\n' "$contents" | awk '
+		$1 == "populated" {
+			count++
+			if (NF != 2 || $2 !~ /^[01]$/) {
+				invalid=1
+			} else {
+				value=$2
+			}
+		}
+		END {
+			if (count != 1 || invalid) {
+				exit 2
+			}
+			print value
+		}
+	')"; then
+		return 2
+	fi
+
+	CGROUP_POPULATED="$populated"
+}
+
+probe_cgroup_directory() {
+	local cgroup_dir="$1"
+	local gnu_stat bsd_stat
+
+	if gnu_stat="$(LC_ALL=C stat -c '%F' "$cgroup_dir" 2>&1)"; then
+		case "$gnu_stat" in
+			directory) return 0 ;;
+			*) return 2 ;;
+		esac
+	fi
+
+	if bsd_stat="$(LC_ALL=C stat -f '%HT' "$cgroup_dir" 2>&1)"; then
+		case "$bsd_stat" in
+			Directory|directory) return 0 ;;
+			*) return 2 ;;
+		esac
+	fi
+
+	case "$gnu_stat\n$bsd_stat" in
+		*"No such file or directory"*|*"no such file or directory"*) return 1 ;;
+		*) return 2 ;;
+	esac
+}
+
 capture_service_identity() {
-	local active_state main_pid control_pid control_group cgroup_procs members pid identity
+	local active_state main_pid control_pid control_group cgroup_procs cgroup_dir cgroup_events members pid identity member_status
 
 	active_state="$(service_property ActiveState 2>/dev/null)" || return 2
 	main_pid="$(service_property MainPID 2>/dev/null)" || return 2
@@ -221,8 +303,18 @@ capture_service_identity() {
 	[ -n "$control_group" ] || return 2
 
 	cgroup_procs="${SERVICE_CGROUP_PROCS_FILE:-/sys/fs/cgroup${control_group}/cgroup.procs}"
+	cgroup_dir="${SERVICE_CGROUP_DIR:-${cgroup_procs%/cgroup.procs}}"
+	cgroup_events="${SERVICE_CGROUP_EVENTS_FILE:-${cgroup_dir}/cgroup.events}"
+	if probe_cgroup_directory "$cgroup_dir"; then :; else return 2; fi
 	[ -r "$cgroup_procs" ] || return 2
-	members="$(grep -E '^[0-9]+$' "$cgroup_procs" 2>/dev/null)" || true
+	[ -r "$cgroup_events" ] || return 2
+	if read_cgroup_members "$cgroup_procs"; then
+		member_status=0
+	else
+		member_status=$?
+	fi
+	[ "$member_status" -eq 0 ] || return "$member_status"
+	members="$CGROUP_MEMBERS"
 	[ -n "$members" ] || return 1
 
 	CAPTURED_SERVICE_MEMBER_IDENTITIES=""
@@ -236,10 +328,12 @@ EOF
 
 	printf '%s\n' "$members" | grep -qx "$main_pid" || return 1
 	CAPTURED_SERVICE_CGROUP_PROCS="$cgroup_procs"
+	CAPTURED_SERVICE_CGROUP_DIR="$cgroup_dir"
+	CAPTURED_SERVICE_CGROUP_EVENTS="$cgroup_events"
 }
 
 service_quiesced() {
-	local active_state main_pid control_pid cgroup_contents current_members pid captured_identity current_identity identity_status
+	local active_state main_pid control_pid cgroup_dir_status member_status population_status probe_status pid captured_identity current_identity identity_status
 
 	[ -n "$CAPTURED_SERVICE_CGROUP_PROCS" ] || return 2
 	active_state="$(service_property ActiveState 2>/dev/null)" || return 2
@@ -275,15 +369,48 @@ $(printf '%b' "$CAPTURED_SERVICE_MEMBER_IDENTITIES")
 EOF
 
 	# The original cgroup may be empty or removed after the service reaches inactive/failed with
-	# zero MainPID/ControlPID. If it still exists, it must be readable and contain no members.
-	if [ -e "$CAPTURED_SERVICE_CGROUP_PROCS" ]; then
-		[ -r "$CAPTURED_SERVICE_CGROUP_PROCS" ] || return 2
-		if ! cgroup_contents="$(cat "$CAPTURED_SERVICE_CGROUP_PROCS" 2>/dev/null)"; then
-			[ ! -e "$CAPTURED_SERVICE_CGROUP_PROCS" ] || return 2
-			cgroup_contents=""
+	# zero MainPID/ControlPID. A missing membership file while its directory remains is an
+	# unavailable probe, not proof that the subtree is empty.
+	if probe_cgroup_directory "$CAPTURED_SERVICE_CGROUP_DIR"; then
+		if read_cgroup_members "$CAPTURED_SERVICE_CGROUP_PROCS"; then
+			member_status=0
+		else
+			member_status=$?
 		fi
-		current_members="$(printf '%s\n' "$cgroup_contents" | grep -E '^[0-9]+$')" || true
-		[ -z "$current_members" ] || return 1
+		if [ "$member_status" -eq 2 ]; then
+			if probe_cgroup_directory "$CAPTURED_SERVICE_CGROUP_DIR"; then
+				return 2
+			else
+				probe_status=$?
+			fi
+			[ "$probe_status" -eq 1 ] || return 2
+			return 0
+		fi
+		[ "$member_status" -eq 0 ] || return "$member_status"
+		[ -z "$CGROUP_MEMBERS" ] || return 1
+
+		if read_cgroup_population "$CAPTURED_SERVICE_CGROUP_EVENTS"; then
+			population_status=0
+		else
+			population_status=$?
+		fi
+		if [ "$population_status" -eq 2 ]; then
+			if probe_cgroup_directory "$CAPTURED_SERVICE_CGROUP_DIR"; then
+				return 2
+			else
+				probe_status=$?
+			fi
+			[ "$probe_status" -eq 1 ] || return 2
+			return 0
+		fi
+		[ "$population_status" -eq 0 ] || return "$population_status"
+		[ "$CGROUP_POPULATED" = "0" ] || return 1
+	else
+		cgroup_dir_status=$?
+		case "$cgroup_dir_status" in
+			1) ;;
+			*) return 2 ;;
+		esac
 	fi
 
 	return 0
