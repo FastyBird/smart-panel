@@ -479,19 +479,37 @@ wait_for_started_service() {
 	local deadline=$((SECONDS + START_TIMEOUT_SECONDS))
 	local previous_main_pid=""
 	local previous_start_identity=""
-	local main_pid start_identity
+	local before_main_pid before_start_identity main_pid start_identity
 
 	while [ "$SECONDS" -le "$deadline" ]; do
-		if target_process_is_stable && target_health_is_valid; then
-			main_pid="$(service_property MainPID 2>/dev/null || true)"
-			start_identity="$(service_property ExecMainStartTimestampMonotonic 2>/dev/null || true)"
+		if target_process_is_stable; then
+			before_main_pid="$(service_property MainPID 2>/dev/null || true)"
+			before_start_identity="$(service_property ExecMainStartTimestampMonotonic 2>/dev/null || true)"
 
-			if [ "$main_pid" = "$previous_main_pid" ] && [ "$start_identity" = "$previous_start_identity" ]; then
-				return 0
+			if [ "$before_main_pid" = "0" ] || [ -z "$before_main_pid" ] || [ -z "$before_start_identity" ]; then
+				previous_main_pid=""
+				previous_start_identity=""
+				sleep 1
+				continue
 			fi
 
-			previous_main_pid="$main_pid"
-			previous_start_identity="$start_identity"
+			if target_health_is_valid && target_process_is_stable; then
+				main_pid="$(service_property MainPID 2>/dev/null || true)"
+				start_identity="$(service_property ExecMainStartTimestampMonotonic 2>/dev/null || true)"
+
+				if [ "$before_main_pid" = "$main_pid" ] &&
+					[ "$before_start_identity" = "$start_identity" ] &&
+					[ "$main_pid" = "$previous_main_pid" ] &&
+					[ "$start_identity" = "$previous_start_identity" ]; then
+					return 0
+				fi
+
+				previous_main_pid="$main_pid"
+				previous_start_identity="$start_identity"
+			else
+				previous_main_pid=""
+				previous_start_identity=""
+			fi
 		else
 			previous_main_pid=""
 			previous_start_identity=""
