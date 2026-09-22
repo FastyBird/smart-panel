@@ -65,6 +65,74 @@ describe('UpdateExecutorService', () => {
 	});
 
 	describe('checkPendingUpdateStatus (via onModuleInit)', () => {
+		it('does not block module initialization while a live worker settles', async () => {
+			jest.useFakeTimers();
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockImplementation((path: string) => {
+				if (path.includes('update-attempt')) {
+					return JSON.stringify({
+						attemptId: 'attempt-startup',
+						ownerPid: process.pid,
+						targetVersion: '1.1.0-alpha.18',
+						state: 'active',
+						phase: 'starting',
+						recoveryRequired: false,
+					});
+				}
+
+				return JSON.stringify({
+					status: UpdateStatusType.STARTING,
+					phase: 'starting',
+					targetVersion: '1.1.0-alpha.18',
+					startedAt: new Date().toISOString(),
+				});
+			});
+
+			const init = executor.onModuleInit();
+			await init;
+
+			expect(updateService.setStatus).not.toHaveBeenCalledWith(
+				expect.objectContaining({ status: UpdateStatusType.COMPLETE }),
+			);
+
+			executor.onModuleDestroy();
+			jest.useRealTimers();
+		});
+
+		it('accepts a reconciled failure without reporting success', async () => {
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockImplementation((path: string) => {
+				if (path.includes('update-attempt')) {
+					return JSON.stringify({
+						attemptId: 'attempt-reconciled',
+						ownerPid: 999999,
+						targetVersion: '1.1.0-alpha.18',
+						state: 'reconciled',
+						phase: 'reconciled_post_migration',
+						recoveryRequired: false,
+						error: 'Target service did not reach verified health after migration',
+					});
+				}
+
+				return JSON.stringify({
+					status: UpdateStatusType.FAILED,
+					phase: UpdateStatusType.FAILED,
+					targetVersion: '1.1.0-alpha.18',
+					startedAt: new Date().toISOString(),
+					error: 'Target service did not reach verified health after migration',
+				});
+			});
+
+			await executor.onModuleInit();
+
+			expect(updateService.setStatus).toHaveBeenCalledWith(
+				expect.objectContaining({ status: UpdateStatusType.FAILED }),
+			);
+			expect(updateService.setStatus).not.toHaveBeenCalledWith(
+				expect.objectContaining({ status: UpdateStatusType.COMPLETE }),
+			);
+		});
+
 		it('reconciles a live worker when its durable attempt reaches complete', async () => {
 			jest.useFakeTimers();
 			(existsSync as jest.Mock).mockReturnValue(true);
