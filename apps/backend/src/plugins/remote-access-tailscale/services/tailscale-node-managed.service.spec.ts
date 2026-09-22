@@ -15,7 +15,10 @@ import { PlatformService } from '../../../modules/platform/services/platform.ser
 import { RemoteAccessProviderStatus } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
 import { EventType as RemoteAccessEventType } from '../../../modules/remote-access/remote-access.constants';
 import { RemoteAccessTailscalePluginConfigModel } from '../models/config.model';
-import { REMOTE_ACCESS_TAILSCALE_ALLOW_DEV_ENV } from '../remote-access-tailscale.constants';
+import {
+	REMOTE_ACCESS_TAILSCALE_ALLOW_DEV_ENV,
+	TAILSCALE_STOP_STATUS_TIMEOUT_MS,
+} from '../remote-access-tailscale.constants';
 import { TailscaleNodeStopFailedException } from '../remote-access-tailscale.exceptions';
 
 import { TailscaleCliError, TailscaleCliService, TailscaleStatus } from './tailscale-cli.service';
@@ -733,6 +736,37 @@ describe('TailscaleNodeManagedService', () => {
 				RemoteAccessEventType.PROVIDER_STATUS,
 				expect.objectContaining({ state: 'error', message: 'access denied' }),
 			);
+		});
+
+		it('fails closed when the stopped-state read-back hangs after down fails', async () => {
+			let statusCalls = 0;
+			cli.getStatus.mockImplementation(() => {
+				statusCalls += 1;
+
+				if (statusCalls === 1) {
+					return Promise.resolve(STOPPED_STATUS);
+				}
+
+				return new Promise<TailscaleStatus>(() => undefined);
+			});
+			cli.down.mockRejectedValue(new TailscaleCliError('permission-denied', 'access denied'));
+
+			await service.start();
+			const stopPromise = service.stop();
+			const stopOutcome = stopPromise.then(
+				() => null,
+				(error: unknown) => error,
+			);
+
+			await jest.advanceTimersByTimeAsync(TAILSCALE_STOP_STATUS_TIMEOUT_MS);
+
+			expect(await stopOutcome).toBeInstanceOf(TailscaleNodeStopFailedException);
+			expect(service.getState()).toBe('error');
+			expect(statusCalls).toBe(2);
+
+			// Let the shared teardown perform its normal idempotent stop without
+			// inheriting the deliberately hung read-back from this fixture.
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
 		});
 	});
 

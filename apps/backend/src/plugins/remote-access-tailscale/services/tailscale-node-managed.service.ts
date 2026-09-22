@@ -30,6 +30,7 @@ import {
 	TAILSCALE_POLL_INTERVAL_TRANSITIONING_MS,
 	TAILSCALE_RECONNECT_BASE_DELAY_MS,
 	TAILSCALE_RECONNECT_MAX_DELAY_MS,
+	TAILSCALE_STOP_STATUS_TIMEOUT_MS,
 	TAILSCALE_SYSTEMCTL_PROBE_TIMEOUT_MS,
 } from '../remote-access-tailscale.constants';
 import { TailscaleNodeStopFailedException } from '../remote-access-tailscale.exceptions';
@@ -313,9 +314,34 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 			return true;
 		}
 
-		const status = await this.getStatusOrNull();
+		const status = await this.getStatusOrNullWithin(TAILSCALE_STOP_STATUS_TIMEOUT_MS);
 
 		return status?.BackendState === 'Stopped';
+	}
+
+	/**
+	 * A failed management command may leave the daemon in its desired state, so
+	 * one read-back is useful for classifying an already-stopped node. During
+	 * application shutdown that read-back must have its own finite bound: a
+	 * wedged daemon cannot keep Nest's destruction hook waiting after `down()`
+	 * has already failed. A timeout deliberately returns `null`, preserving the
+	 * original failure and fail-closed quiescence semantics.
+	 */
+	private async getStatusOrNullWithin(timeoutMs: number): Promise<TailscaleStatus | null> {
+		let timer: NodeJS.Timeout | undefined;
+
+		try {
+			return await Promise.race([
+				this.getStatusOrNull(),
+				new Promise<null>((resolve) => {
+					timer = setTimeout(() => resolve(null), timeoutMs);
+				}),
+			]);
+		} finally {
+			if (timer) {
+				clearTimeout(timer);
+			}
+		}
 	}
 
 	/** Computes the current status and pushes it as `PROVIDER_STATUS`, unconditionally (unlike the poller's own `pollTick()`, which only emits on change) — used by `stop()` (both outcomes) and by `start()` after a failed `set`/`up` call. */
