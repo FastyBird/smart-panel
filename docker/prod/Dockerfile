@@ -16,7 +16,9 @@
 # ============================================================
 FROM node:24-alpine AS admin-builder
 
-RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
+RUN apk add --no-cache g++ make python3 \
+	&& corepack enable \
+	&& corepack prepare pnpm@10.30.3 --activate
 
 WORKDIR /build
 
@@ -50,7 +52,9 @@ RUN pnpm run generate:spec && \
 # ============================================================
 FROM node:24-alpine AS backend-builder
 
-RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
+RUN apk add --no-cache g++ make python3 \
+	&& corepack enable \
+	&& corepack prepare pnpm@10.30.3 --activate
 
 WORKDIR /build
 
