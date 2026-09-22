@@ -498,14 +498,18 @@ wait_for_started_service() {
 				start_identity="$(service_property ExecMainStartTimestampMonotonic 2>/dev/null || true)"
 
 				if [ "$before_main_pid" = "$main_pid" ] &&
-					[ "$before_start_identity" = "$start_identity" ] &&
-					[ "$main_pid" = "$previous_main_pid" ] &&
-					[ "$start_identity" = "$previous_start_identity" ]; then
-					return 0
-				fi
+					[ "$before_start_identity" = "$start_identity" ]; then
+					if [ "$main_pid" = "$previous_main_pid" ] &&
+						[ "$start_identity" = "$previous_start_identity" ]; then
+						return 0
+					fi
 
-				previous_main_pid="$main_pid"
-				previous_start_identity="$start_identity"
+					previous_main_pid="$main_pid"
+					previous_start_identity="$start_identity"
+				else
+					previous_main_pid=""
+					previous_start_identity=""
+				fi
 			else
 				previous_main_pid=""
 				previous_start_identity=""
