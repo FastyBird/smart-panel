@@ -34,6 +34,14 @@ export const TAILSCALE_CLI_MAX_BUFFER_BYTES = 16 * 1024 * 1024;
 /** Timeout for the unprivileged `systemctl is-active` prerequisite probe. */
 export const TAILSCALE_SYSTEMCTL_PROBE_TIMEOUT_MS = 2_000;
 
+/**
+ * Maximum time spent checking whether a failed `tailscale down` already
+ * achieved its desired stopped state. Shutdown must not wait on a second
+ * unbounded daemon read after the management command has failed; timeout is
+ * fail-closed and the original stop error remains authoritative.
+ */
+export const TAILSCALE_STOP_STATUS_TIMEOUT_MS = 2_000;
+
 export const TAILSCALE_DEFAULT_LOGIN_SERVER = 'https://controlplane.tailscale.com';
 
 /** Poll interval while the node's state is transitioning (e.g. connecting). */
