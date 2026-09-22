@@ -135,8 +135,6 @@ EOF
 		[ -z "$current_members" ] || survivor=1
 		populated="$(awk '$1 == "populated" { count++; if (NF != 2 || $2 !~ /^[01]$/) invalid=1; else value=$2 } END { if (count != 1 || invalid) exit 2; print value }' "$cgroup_events")"
 		[ "$populated" = "0" ] || survivor=1
-	elif [ -e "$cgroup_dir" ]; then
-		return 2
 	fi
 
 	if [ "$kill_mode" = "control-group" ]; then

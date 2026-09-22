@@ -492,6 +492,9 @@ wait_for_started_service() {
 
 			previous_main_pid="$main_pid"
 			previous_start_identity="$start_identity"
+		else
+			previous_main_pid=""
+			previous_start_identity=""
 		fi
 
 		sleep 1
