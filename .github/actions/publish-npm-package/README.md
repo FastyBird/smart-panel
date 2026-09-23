@@ -47,7 +47,7 @@ This GitHub Action publishes a package to the NPM registry. It supports versioni
 
 1. Run versioning logic (manual or dynamic)
 2. Publish package to NPM with tag or default
-3. Wait until the published version is visible from the selected registry (90 bounded probes over three minutes)
+3. Wait until the published version is visible from the selected registry (240 bounded probes over eight minutes)
 4. Output published version
 
 ## 📁 Project Structure

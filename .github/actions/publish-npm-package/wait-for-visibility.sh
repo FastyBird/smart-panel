@@ -5,7 +5,7 @@ set -euo pipefail
 PACKAGE_NAME=${1:?package name is required}
 VERSION=${2:?package version is required}
 REGISTRY_URL=${3:?registry URL is required}
-MAX_ATTEMPTS=${MAX_ATTEMPTS:-90}
+MAX_ATTEMPTS=${MAX_ATTEMPTS:-240}
 SLEEP_SECONDS=${SLEEP_SECONDS:-2}
 
 for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
