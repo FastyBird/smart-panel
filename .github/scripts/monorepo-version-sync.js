@@ -224,8 +224,10 @@ const updatePubspecYaml = (filePath, baseVersion, tag, buildNumber) => {
 	const repoVersion = getCurrentRepoVersion(baseVersion, tag);
 	if (repoVersion && !allPublishedVersions.includes(repoVersion)) {
 		allPublishedVersions.push(repoVersion);
-		allPublishedVersions.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 	}
+	// Each package history is sorted, but concatenating them does not preserve
+	// order. This must run even when the repo version was already published.
+	allPublishedVersions.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
 	const { fullVersion, buildNumber } = computeVersionInfo(baseVersion, allPublishedVersions);
 
