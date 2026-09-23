@@ -89,6 +89,9 @@ jobs:
           node-version: "${{ matrix.node-version }}"
           pnpm-version: "${{ matrix.pnpm-version }}"
 
+      - name: "Install SQLite CLI"
+        run: "sudo apt-get update && sudo apt-get install -y sqlite3"
+
       - name: "Start InfluxDB"
         run: |
           docker run -d --name influxdb \

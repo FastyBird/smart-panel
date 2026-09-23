@@ -6,6 +6,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	readdirSync,
 	readlinkSync,
 	rmSync,
 	statSync,
@@ -17,6 +18,7 @@ import { join } from 'node:path';
 import { DataSource } from 'typeorm';
 
 const WORKER = join(__dirname, 'update-worker.sh');
+const SQLITE = execFileSync('which', ['sqlite3'], { encoding: 'utf8' }).trim();
 
 interface Fixture {
 	root: string;
@@ -30,7 +32,12 @@ interface Fixture {
 	processRoot: string;
 	archive: string;
 	stateFile: string;
+	managerProcesses: string;
+	databaseDir: string;
+	database: string;
 	installedWorker: string;
+	targetWorkerSha256: string;
+	archiveSha256: string;
 }
 
 function writeExecutable(path: string, contents: string): void {
@@ -51,21 +58,29 @@ function createFixture(): Fixture {
 	const archiveRoot = join(root, 'archive');
 	const archive = join(root, 'alpha15.tar.gz');
 	const stateFile = join(root, 'service-state');
+	const managerProcesses = join(root, 'manager-processes');
+	const databaseDir = join(root, 'database');
+	const database = join(databaseDir, 'database.sqlite');
 	const installedWorker = join(root, 'alpha12-installed-update-worker.sh');
 
 	mkdirSync(bin);
 	mkdirSync(imageBase);
 	mkdirSync(cgroupDir);
+	mkdirSync(databaseDir);
 	mkdirSync(join(processRoot, '999'), { recursive: true });
 	mkdirSync(join(imageBase, 'v1.1.0-alpha.12'), { recursive: true });
 	mkdirSync(join(archiveRoot, 'dist'), { recursive: true });
 	mkdirSync(join(archiveRoot, 'node_modules', 'typeorm'), { recursive: true });
 	writeFileSync(join(archiveRoot, 'dist', 'dataSource.js'), 'module.exports = {};\n');
 	writeFileSync(join(archiveRoot, 'node_modules', 'typeorm', 'cli.js'), 'fixture cli\n');
+	mkdirSync(join(archiveRoot, 'dist', 'modules', 'system', 'scripts'), { recursive: true });
+	writeFileSync(join(archiveRoot, 'dist', 'modules', 'system', 'scripts', 'update-worker.sh'), readFileSync(WORKER));
+	writeFileSync(managerProcesses, '');
 	writeFileSync(cgroupProcs, '999\n');
 	writeFileSync(cgroupEvents, 'populated 1\n');
 	writeFileSync(join(processRoot, '999', 'identity'), 'fixture-main-process');
 	writeFileSync(stateFile, 'active');
+	execFileSync(SQLITE, [database, 'CREATE TABLE IF NOT EXISTS fixture_seed (id INTEGER PRIMARY KEY)']);
 	copyFileSync(WORKER, installedWorker);
 	chmodSync(installedWorker, 0o700);
 	symlinkSync('v1.1.0-alpha.12', join(imageBase, 'current'));
@@ -95,6 +110,7 @@ if [[ "$url" == *"/api/v1/modules/system/system/health"* ]]; then
   printf '{"data":{"status":"ok","version":"%s"}}\\n' "\${HEALTH_RESPONSE_VERSION:-\${HEALTH_EXPECTED_VERSION:-1.1.0-alpha.15}}"
   exit 0
 fi
+if [ "\${CREATE_BACKUP_DURING_RUN:-false}" = true ]; then printf 'created during run' > "\${DB_BACKUP_PATH}"; fi
 cp "$FIXTURE_ARCHIVE" "$output"
 `,
 	);
@@ -116,6 +132,21 @@ cp "$FIXTURE_ARCHIVE" "$output"
 `,
 	);
 	writeExecutable(join(bin, 'chown'), '#!/bin/bash\nexit 0\n');
+	writeExecutable(
+		join(bin, 'sqlite3'),
+		`#!/bin/bash
+backup_path="$(printf '%s' "$2" | sed "s/^\\.backup '//; s/'$//")"
+if [ "\${SQLITE_RESULT:-success}" = failure ]; then printf 'partial backup' > "$backup_path"; exit 17; fi
+if [ "\${SQLITE_RESULT:-success}" = empty ]; then : > "$backup_path"; exit 0; fi
+if [ "\${SQLITE_RESULT:-success}" = race ]; then
+	${SQLITE} "$@"
+	result=$?
+	printf 'created during sqlite backup' > "\${DB_BACKUP_PATH}"
+	exit "$result"
+fi
+exec ${SQLITE} "$@"
+`,
+	);
 	writeExecutable(
 		join(bin, 'systemctl'),
 		`#!/bin/bash
@@ -192,6 +223,14 @@ if [ "$1" = "show" ]; then
 				MainPID) [ "$state" = active ] && printf '999\\n' || printf '0\\n';;
 				ControlPID) printf '0\\n';;
 				ControlGroup) printf '/fixture\\n';;
+				Job) [ "\${JOB_RESULT:-empty}" = pending ] && printf '123\\n';;
+				FragmentPath) printf '/etc/systemd/system/smart-panel.service\\n';;
+				ExecStart) printf '/opt/smart-panel/current/dist/main.js\\n';;
+				Slice) printf 'system.slice\\n';;
+				Delegate) printf 'no\\n';;
+				KillMode) printf 'control-group\\n';;
+				InvocationID) printf 'fixture-invocation\\n';;
+				Result) printf 'success\\n';;
 				ExecMainStartTimestampMonotonic) printf '1\\n';;
 			esac
   exit 0
@@ -212,7 +251,12 @@ exit 1
 		processRoot,
 		archive,
 		stateFile,
+		managerProcesses,
+		databaseDir,
+		database,
 		installedWorker,
+		targetWorkerSha256: execFileSync('sha256sum', [WORKER], { encoding: 'utf8' }).split(/\s+/)[0],
+		archiveSha256: execFileSync('sha256sum', [archive], { encoding: 'utf8' }).split(/\s+/)[0],
 	};
 }
 
@@ -229,6 +273,9 @@ function runWorker(fixture: Fixture, overrides: Record<string, string> = {}): { 
 		SERVICE_CGROUP_EVENTS_FILE: fixture.cgroupEvents,
 		SERVICE_PROCESS_ROOT: fixture.processRoot,
 		SERVICE_STATE_FILE: fixture.stateFile,
+		SERVICE_MANAGER_PROCS_FILE: fixture.managerProcesses,
+		SERVICE_CGROUP_MOUNT_TYPE: 'cgroup2fs',
+		FB_DB_PATH: fixture.databaseDir,
 		FIXTURE_ARCHIVE: fixture.archive,
 		DOWNLOAD_URL: 'fixture://alpha15',
 		HEALTH_URL: 'http://127.0.0.1:3000/api/v1/modules/system/system/health',
@@ -284,6 +331,355 @@ function readJson(path: string): Record<string, unknown> {
 }
 
 describe('legacy image update worker lifecycle', () => {
+	it('runs a verified stopped-maintenance update without starting the old release', async () => {
+		const fixture = createFixture();
+		const backup = join(fixture.root, 'backup.sqlite');
+		const source = new DataSource({ type: 'sqlite', database: fixture.database });
+		let backupSource: DataSource | undefined;
+
+		try {
+			await source.initialize();
+			await source.query('PRAGMA journal_mode = WAL');
+			await source.query('PRAGMA wal_autocheckpoint = 0');
+			await source.query('CREATE TABLE maintenance_fixture (id integer primary key, value text not null)');
+			await source.query("INSERT INTO maintenance_fixture (value) VALUES ('committed in WAL')");
+			expect(existsSync(`${fixture.database}-wal`)).toBe(true);
+			writeFileSync(fixture.stateFile, 'inactive');
+			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+			writeFileSync(fixture.cgroupProcs, '');
+			writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+
+			const result = runWorker(fixture, {
+				UPDATE_START_MODE: 'stopped-maintenance',
+				EXPECTED_CURRENT_VERSION: '1.1.0-alpha.12',
+				TARGET_ARCHIVE_SHA256: fixture.archiveSha256.toUpperCase(),
+				TARGET_WORKER_SHA256: fixture.targetWorkerSha256.toUpperCase(),
+				EXPECTED_IMAGE_BASE_DIR: fixture.imageBase,
+				EXPECTED_STATUS_FILE: fixture.statusFile,
+				EXPECTED_ATTEMPT_DIR: fixture.attemptDir,
+				EXPECTED_DB_PATH: fixture.databaseDir,
+				DB_BACKUP_PATH: backup,
+			});
+			const status = readJson(fixture.statusFile);
+			expect(result.status).toBe('success');
+			expect(status.status).toBe('complete');
+			expect(existsSync(backup)).toBe(true);
+			backupSource = new DataSource({ type: 'sqlite', database: backup });
+			await backupSource.initialize();
+			expect(await backupSource.query('SELECT value FROM maintenance_fixture')).toEqual([
+				{ value: 'committed in WAL' },
+			]);
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toContain('v1.1.0-alpha.15');
+			expect(readFileSync(fixture.stateFile, 'utf8')).toBe('active');
+		} finally {
+			if (backupSource?.isInitialized) await backupSource.destroy();
+			if (source.isInitialized) await source.destroy();
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it('rejects an existing stopped-maintenance backup before downloading or extracting', () => {
+		const fixture = createFixture();
+		const backup = join(fixture.root, 'backup.sqlite');
+
+		try {
+			writeFileSync(backup, 'existing backup');
+			const result = runWorker(fixture, {
+				UPDATE_START_MODE: 'stopped-maintenance',
+				EXPECTED_CURRENT_VERSION: '1.1.0-alpha.12',
+				TARGET_ARCHIVE_SHA256: fixture.archiveSha256,
+				TARGET_WORKER_SHA256: fixture.targetWorkerSha256,
+				EXPECTED_IMAGE_BASE_DIR: fixture.imageBase,
+				EXPECTED_STATUS_FILE: fixture.statusFile,
+				EXPECTED_ATTEMPT_DIR: fixture.attemptDir,
+				EXPECTED_DB_PATH: fixture.databaseDir,
+				DB_BACKUP_PATH: backup,
+			});
+			expect(result.status).not.toBe('success');
+			expect(readJson(fixture.statusFile)).toMatchObject({
+				status: 'failed',
+				error: 'Stopped maintenance backup path already exists',
+			});
+			expect(existsSync(fixture.attemptDir)).toBe(false);
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+			expect(existsSync(join(fixture.imageBase, 'v1.1.0-alpha.15'))).toBe(false);
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it.each(['missing', 'symlinked', 'empty'] as const)(
+		'rejects a %s stopped-maintenance source database before downloading',
+		(sourceState) => {
+			const fixture = createFixture();
+			const backup = join(fixture.root, 'backup.sqlite');
+
+			try {
+				rmSync(fixture.database, { force: true });
+				if (sourceState === 'symlinked') {
+					writeFileSync(join(fixture.root, 'alternate.sqlite'), 'alternate source');
+					symlinkSync(join(fixture.root, 'alternate.sqlite'), fixture.database);
+				} else if (sourceState === 'empty') {
+					writeFileSync(fixture.database, '');
+				}
+
+				const result = runWorker(fixture, {
+					UPDATE_START_MODE: 'stopped-maintenance',
+					EXPECTED_CURRENT_VERSION: '1.1.0-alpha.12',
+					TARGET_ARCHIVE_SHA256: fixture.archiveSha256,
+					TARGET_WORKER_SHA256: fixture.targetWorkerSha256,
+					EXPECTED_IMAGE_BASE_DIR: fixture.imageBase,
+					EXPECTED_STATUS_FILE: fixture.statusFile,
+					EXPECTED_ATTEMPT_DIR: fixture.attemptDir,
+					EXPECTED_DB_PATH: fixture.databaseDir,
+					DB_BACKUP_PATH: backup,
+				});
+
+				expect(result.status).not.toBe('success');
+				expect(readJson(fixture.statusFile)).toMatchObject({
+					status: 'failed',
+					error: 'Stopped maintenance source database is missing, symlinked, or empty',
+				});
+				expect(existsSync(join(fixture.imageBase, 'v1.1.0-alpha.15'))).toBe(false);
+			} finally {
+				rmSync(fixture.root, { recursive: true, force: true });
+			}
+		},
+	);
+
+	it('rejects a backup path created during the run before SQLite can overwrite it', () => {
+		const fixture = createFixture();
+		const backup = join(fixture.root, 'backup.sqlite');
+
+		try {
+			writeFileSync(fixture.stateFile, 'inactive');
+			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+			writeFileSync(fixture.cgroupProcs, '');
+			writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+			const result = runWorker(fixture, {
+				UPDATE_START_MODE: 'stopped-maintenance',
+				CREATE_BACKUP_DURING_RUN: 'true',
+				EXPECTED_CURRENT_VERSION: '1.1.0-alpha.12',
+				TARGET_ARCHIVE_SHA256: fixture.archiveSha256,
+				TARGET_WORKER_SHA256: fixture.targetWorkerSha256,
+				EXPECTED_IMAGE_BASE_DIR: fixture.imageBase,
+				EXPECTED_STATUS_FILE: fixture.statusFile,
+				EXPECTED_ATTEMPT_DIR: fixture.attemptDir,
+				EXPECTED_DB_PATH: fixture.databaseDir,
+				DB_BACKUP_PATH: backup,
+			});
+			expect(result.status).not.toBe('success');
+			expect(readJson(fixture.statusFile)).toMatchObject({
+				status: 'failed',
+				error: 'Stopped maintenance backup path was created during the run',
+			});
+			expect(readFileSync(backup, 'utf8')).toBe('created during run');
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it('publishes the temporary SQLite backup without replacing a concurrent destination', () => {
+		const fixture = createFixture();
+		const backup = join(fixture.root, 'backup.sqlite');
+
+		try {
+			writeFileSync(fixture.stateFile, 'inactive');
+			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+			writeFileSync(fixture.cgroupProcs, '');
+			writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+			const result = runWorker(fixture, {
+				UPDATE_START_MODE: 'stopped-maintenance',
+				SQLITE_RESULT: 'race',
+				EXPECTED_CURRENT_VERSION: '1.1.0-alpha.12',
+				TARGET_ARCHIVE_SHA256: fixture.archiveSha256,
+				TARGET_WORKER_SHA256: fixture.targetWorkerSha256,
+				EXPECTED_IMAGE_BASE_DIR: fixture.imageBase,
+				EXPECTED_STATUS_FILE: fixture.statusFile,
+				EXPECTED_ATTEMPT_DIR: fixture.attemptDir,
+				EXPECTED_DB_PATH: fixture.databaseDir,
+				DB_BACKUP_PATH: backup,
+			});
+
+			expect(result.status).not.toBe('success');
+			expect(readJson(fixture.statusFile)).toMatchObject({
+				status: 'failed',
+				error: 'Stopped maintenance backup path was created during the run',
+			});
+			expect(readFileSync(backup, 'utf8')).toBe('created during sqlite backup');
+			expect(existsSync(join(fixture.imageBase, 'v1.1.0-alpha.15'))).toBe(false);
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it.each([
+		['failure', 'Consistent SQLite backup failed'],
+		['empty', 'Consistent SQLite backup is empty'],
+	] as const)('cleans up a %s SQLite backup failure before recording the preflight error', (sqliteResult, error) => {
+		const fixture = createFixture();
+		const backup = join(fixture.root, 'backup.sqlite');
+
+		try {
+			writeFileSync(fixture.stateFile, 'inactive');
+			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+			writeFileSync(fixture.cgroupProcs, '');
+			writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+			const result = runWorker(fixture, {
+				UPDATE_START_MODE: 'stopped-maintenance',
+				SQLITE_RESULT: sqliteResult,
+				EXPECTED_CURRENT_VERSION: '1.1.0-alpha.12',
+				TARGET_ARCHIVE_SHA256: fixture.archiveSha256,
+				TARGET_WORKER_SHA256: fixture.targetWorkerSha256,
+				EXPECTED_IMAGE_BASE_DIR: fixture.imageBase,
+				EXPECTED_STATUS_FILE: fixture.statusFile,
+				EXPECTED_ATTEMPT_DIR: fixture.attemptDir,
+				EXPECTED_DB_PATH: fixture.databaseDir,
+				DB_BACKUP_PATH: backup,
+			});
+
+			expect(result.status).not.toBe('success');
+			expect(readJson(fixture.statusFile)).toMatchObject({ status: 'failed', error });
+			expect(existsSync(backup)).toBe(false);
+			expect(readdirSync(fixture.root).filter((name) => name.startsWith('backup.sqlite'))).toEqual([]);
+			expect(existsSync(join(fixture.imageBase, 'v1.1.0-alpha.15'))).toBe(false);
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it('cleans up the extracted release when the SQLite backup directory cannot be created', () => {
+		const fixture = createFixture();
+		const backupParent = join(fixture.root, 'backup-parent');
+		const backup = join(backupParent, 'backup.sqlite');
+
+		try {
+			writeFileSync(fixture.stateFile, 'inactive');
+			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+			writeFileSync(fixture.cgroupProcs, '');
+			writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+			writeFileSync(backupParent, 'not a directory');
+			const result = runWorker(fixture, {
+				UPDATE_START_MODE: 'stopped-maintenance',
+				EXPECTED_CURRENT_VERSION: '1.1.0-alpha.12',
+				TARGET_ARCHIVE_SHA256: fixture.archiveSha256,
+				TARGET_WORKER_SHA256: fixture.targetWorkerSha256,
+				EXPECTED_IMAGE_BASE_DIR: fixture.imageBase,
+				EXPECTED_STATUS_FILE: fixture.statusFile,
+				EXPECTED_ATTEMPT_DIR: fixture.attemptDir,
+				EXPECTED_DB_PATH: fixture.databaseDir,
+				DB_BACKUP_PATH: backup,
+			});
+
+			expect(result.status).not.toBe('success');
+			expect(readJson(fixture.statusFile)).toMatchObject({
+				status: 'failed',
+				error: 'Could not create SQLite backup directory',
+			});
+			expect(readFileSync(backupParent, 'utf8')).toBe('not a directory');
+			expect(existsSync(join(fixture.imageBase, 'v1.1.0-alpha.15'))).toBe(false);
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it('accepts a removed stopped-service cgroup after independent checks prove it empty', async () => {
+		const fixture = createFixture();
+		const backup = join(fixture.root, 'backup.sqlite');
+		const source = new DataSource({ type: 'sqlite', database: fixture.database });
+
+		try {
+			await source.initialize();
+			await source.query('CREATE TABLE maintenance_fixture (id integer primary key)');
+			writeFileSync(fixture.stateFile, 'inactive');
+			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+			rmSync(fixture.cgroupDir, { recursive: true, force: true });
+
+			const result = runWorker(fixture, {
+				UPDATE_START_MODE: 'stopped-maintenance',
+				EXPECTED_CURRENT_VERSION: '1.1.0-alpha.12',
+				TARGET_ARCHIVE_SHA256: fixture.archiveSha256,
+				TARGET_WORKER_SHA256: fixture.targetWorkerSha256,
+				EXPECTED_IMAGE_BASE_DIR: fixture.imageBase,
+				EXPECTED_STATUS_FILE: fixture.statusFile,
+				EXPECTED_ATTEMPT_DIR: fixture.attemptDir,
+				EXPECTED_DB_PATH: fixture.databaseDir,
+				DB_BACKUP_PATH: backup,
+				SERVICE_CGROUP_MOUNT: fixture.root,
+			});
+
+			expect(result.status).toBe('success');
+			expect(readJson(fixture.statusFile).status).toBe('complete');
+		} finally {
+			if (source.isInitialized) await source.destroy();
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it('fails closed when stopped-maintenance manager enumeration reports a process', () => {
+		const fixture = createFixture();
+
+		try {
+			writeFileSync(fixture.stateFile, 'inactive');
+			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+			writeFileSync(fixture.cgroupProcs, '');
+			writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+			writeFileSync(fixture.managerProcesses, '123\n');
+
+			const result = runWorker(fixture, {
+				UPDATE_START_MODE: 'stopped-maintenance',
+				EXPECTED_CURRENT_VERSION: '1.1.0-alpha.12',
+				TARGET_ARCHIVE_SHA256: fixture.archiveSha256,
+				TARGET_WORKER_SHA256: fixture.targetWorkerSha256,
+				EXPECTED_IMAGE_BASE_DIR: fixture.imageBase,
+				EXPECTED_STATUS_FILE: fixture.statusFile,
+				EXPECTED_ATTEMPT_DIR: fixture.attemptDir,
+				EXPECTED_DB_PATH: fixture.databaseDir,
+				DB_BACKUP_PATH: join(fixture.root, 'backup.sqlite'),
+			});
+			const attempt = readJson(join(fixture.attemptDir, 'attempt.json'));
+
+			expect(result.status).not.toBe('success');
+			expect(attempt.state).toBe('recovery_required');
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it('fails closed when stopped-maintenance has a pending systemd job', () => {
+		const fixture = createFixture();
+
+		try {
+			writeFileSync(fixture.stateFile, 'inactive');
+			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+			writeFileSync(fixture.cgroupProcs, '');
+			writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+
+			const result = runWorker(fixture, {
+				UPDATE_START_MODE: 'stopped-maintenance',
+				JOB_RESULT: 'pending',
+				EXPECTED_CURRENT_VERSION: '1.1.0-alpha.12',
+				TARGET_ARCHIVE_SHA256: fixture.archiveSha256,
+				TARGET_WORKER_SHA256: fixture.targetWorkerSha256,
+				EXPECTED_IMAGE_BASE_DIR: fixture.imageBase,
+				EXPECTED_STATUS_FILE: fixture.statusFile,
+				EXPECTED_ATTEMPT_DIR: fixture.attemptDir,
+				EXPECTED_DB_PATH: fixture.databaseDir,
+				DB_BACKUP_PATH: join(fixture.root, 'backup.sqlite'),
+			});
+
+			expect(result.status).not.toBe('success');
+			expect(readJson(join(fixture.attemptDir, 'attempt.json')).state).toBe('recovery_required');
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
 	it('bootstraps the repaired worker into alpha.12 and records a clean completed attempt', () => {
 		const fixture = createFixture();
 

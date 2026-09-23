@@ -8,6 +8,15 @@ IMAGE_BASE_DIR="${IMAGE_BASE_DIR:-/opt/smart-panel}"
 DOWNLOAD_URL="${DOWNLOAD_URL:-}"
 HEALTH_URL="${HEALTH_URL:-}"
 HEALTH_EXPECTED_VERSION="${HEALTH_EXPECTED_VERSION:-$VERSION}"
+UPDATE_START_MODE="${UPDATE_START_MODE:-running-service}"
+
+# `stopped-maintenance` is an operator-only mode.  The API always supplies the default
+# running-service mode; this mode is intentionally guarded by a complete, explicit identity
+# packet and is never inferred from a stale status file or an ambient process environment.
+if [ "$UPDATE_START_MODE" != "running-service" ] && [ "$UPDATE_START_MODE" != "stopped-maintenance" ]; then
+	printf 'Unsupported update start mode: %s\n' "$UPDATE_START_MODE" >&2
+	exit 64
+fi
 
 # The attempt record and lock live beside the public status file, never inside a versioned image
 # directory.  This lets the record survive a backend restart, target-directory cleanup or a
@@ -21,6 +30,7 @@ FINALIZED="false"
 MIGRATION_LOG=""
 CURRENT_PHASE="preparing"
 SERVICE_NAME="smart-panel"
+SERVICE_UNIT="${SERVICE_UNIT:-${SERVICE_NAME}.service}"
 QUIESCENCE_TIMEOUT_SECONDS="${QUIESCENCE_TIMEOUT_SECONDS:-30}"
 START_TIMEOUT_SECONDS="${START_TIMEOUT_SECONDS:-60}"
 CAPTURED_SERVICE_CGROUP_PROCS=""
@@ -29,9 +39,19 @@ CAPTURED_SERVICE_CGROUP_EVENTS=""
 CAPTURED_SERVICE_MEMBER_IDENTITIES=""
 CGROUP_MEMBERS=""
 CGROUP_POPULATED=""
+MAINTENANCE_DIR=""
+DB_BACKUP_PATH="${DB_BACKUP_PATH:-}"
+BACKUP_TMP_PATH=""
+SOURCE_DB_PATH=""
+STOPPED_SERVICE_BASELINE=""
 
 json_escape() {
 	printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/[[:cntrl:]]//g'
+}
+
+source_database_is_valid() {
+	[ -n "${SOURCE_DB_PATH:-}" ] || return 1
+	[ ! -L "$SOURCE_DB_PATH" ] && [ -f "$SOURCE_DB_PATH" ] && [ -s "$SOURCE_DB_PATH" ]
 }
 
 write_attempt() {
@@ -123,6 +143,10 @@ finish_before_migration() {
 	local phase="$1"
 	local error="$2"
 
+	if [ -n "${BACKUP_TMP_PATH:-}" ]; then
+		rm -f "$BACKUP_TMP_PATH" 2>/dev/null || true
+		BACKUP_TMP_PATH=""
+	fi
 	if [ -n "${TMP_TARBALL:-}" ]; then
 		rm -f "$TMP_TARBALL" 2>/dev/null || true
 	fi
@@ -173,6 +197,118 @@ service_property() {
 	local property="$1"
 
 	systemctl show "$SERVICE_NAME" --property="$property" --value
+}
+
+manager_processes_are_empty() {
+	local output token
+
+	# Tests may provide a deterministic manager enumeration.  Production uses the systemd Manager
+	# D-Bus method instead of treating MainPID=0 as an independent process proof.
+	if [ -n "${SERVICE_MANAGER_PROCS_FILE:-}" ]; then
+		[ -r "$SERVICE_MANAGER_PROCS_FILE" ] || return 2
+		output="$(cat "$SERVICE_MANAGER_PROCS_FILE" 2>/dev/null)" || return 2
+	else
+		command -v busctl >/dev/null 2>&1 || return 2
+		output="$(busctl --system call org.freedesktop.systemd1 /org/freedesktop/systemd1 \
+			org.freedesktop.systemd1.Manager GetUnitProcesses s "$SERVICE_UNIT" 2>/dev/null)" || return 2
+	fi
+
+	# busctl returns an array header followed by tuples.  Any positive integer in the tuple stream
+	# is a process owned by the unit; zero is the empty-array count/fixture sentinel.
+	while IFS= read -r token; do
+		case "$token" in
+			''|0) ;;
+			*[!0-9]*) ;;
+			*) [ "$token" -eq 0 ] || return 1 ;;
+		esac
+	done <<EOF
+$(printf '%s\n' "$output" | grep -Eo '[0-9]+' || true)
+EOF
+}
+
+stopped_service_quiesced() {
+	local active_state main_pid control_pid job_id control_group cgroup_dir cgroup_procs cgroup_events
+	local member_status population_status probe_status members subtree_file baseline current_baseline property value cgroup_mount_type
+
+	active_state="$(service_property ActiveState 2>/dev/null)" || return 2
+	if [ -n "${SERVICE_CGROUP_MOUNT_TYPE:-}" ]; then
+		[ "$SERVICE_CGROUP_MOUNT_TYPE" = "cgroup2fs" ] || return 2
+	else
+		cgroup_mount_type="$(LC_ALL=C stat -f -c '%T' "${SERVICE_CGROUP_MOUNT:-/sys/fs/cgroup}" 2>/dev/null || true)"
+		[ "$cgroup_mount_type" = "cgroup2fs" ] || return 2
+	fi
+	main_pid="$(service_property MainPID 2>/dev/null)" || return 2
+	control_pid="$(service_property ControlPID 2>/dev/null)" || return 2
+	job_id="$(service_property Job 2>/dev/null)" || return 2
+	case "$active_state" in inactive|failed) ;; *) return 1 ;; esac
+	[ "$main_pid" = "0" ] || return 1
+	[ "$control_pid" = "0" ] || return 1
+	# systemctl --value prints an empty value when the unit has no pending job.
+	[ -z "$job_id" ] || [ "$job_id" = "0" ] || return 1
+
+	manager_processes_are_empty || return $?
+	baseline=""
+	for property in FragmentPath ExecStart Slice Delegate KillMode InvocationID Result; do
+		value="$(service_property "$property" 2>/dev/null || true)"
+		[ -n "$value" ] || return 2
+		baseline="${baseline}${property}=${value}\n"
+	done
+	if [ -n "$STOPPED_SERVICE_BASELINE" ]; then
+		current_baseline="$baseline"
+		[ "$current_baseline" = "$STOPPED_SERVICE_BASELINE" ] || return 1
+	else
+		STOPPED_SERVICE_BASELINE="$baseline"
+	fi
+
+	control_group="$(service_property ControlGroup 2>/dev/null || true)"
+	# systemd may clear ControlGroup after a stopped unit is reaped.  The canonical unit cgroup is
+	# still the only acceptable fallback; it is checked against the cgroup-v2 mount below.
+	[ -n "$control_group" ] || control_group="/system.slice/${SERVICE_NAME}.service"
+	case "$control_group" in
+		/*) ;;
+		*) return 2 ;;
+	esac
+	cgroup_procs="${SERVICE_CGROUP_PROCS_FILE:-/sys/fs/cgroup${control_group}/cgroup.procs}"
+	cgroup_dir="${SERVICE_CGROUP_DIR:-${cgroup_procs%/cgroup.procs}}"
+	cgroup_events="${SERVICE_CGROUP_EVENTS_FILE:-${cgroup_dir}/cgroup.events}"
+
+	if probe_cgroup_directory "$cgroup_dir"; then
+		[ -r "$cgroup_procs" ] || return 2
+		[ -r "$cgroup_events" ] || return 2
+		read_cgroup_members "$cgroup_procs" || return $?
+		members="$CGROUP_MEMBERS"
+		[ -z "$members" ] || return 1
+		read_cgroup_population "$cgroup_events" || return $?
+		[ "$CGROUP_POPULATED" = "0" ] || return 1
+		# Check descendants as well as the unit's direct cgroup.  A delegated child subtree is not
+		# quiescent merely because the parent cgroup.procs is empty.
+		while IFS= read -r subtree_file; do
+			[ "$subtree_file" = "$cgroup_procs" ] && continue
+			read_cgroup_members "$subtree_file" || return $?
+			[ -z "$CGROUP_MEMBERS" ] || return 1
+		done < <(find "$cgroup_dir" -type f -name cgroup.procs -print 2>/dev/null)
+		return 0
+	else
+		probe_status=$?
+	fi
+	[ "$probe_status" -eq 1 ] || return 2
+
+	# A removed original cgroup is valid only when the cgroup-v2 mount and its stable parent remain
+	# readable; manager enumeration above is the independent proof that no unit process survived.
+	[ -d "${SERVICE_CGROUP_MOUNT:-/sys/fs/cgroup}" ] || return 2
+	[ -d "$(dirname "$cgroup_dir")" ] || return 2
+	return 0
+}
+
+wait_for_stopped_service() {
+	local deadline=$((SECONDS + QUIESCENCE_TIMEOUT_SECONDS)) result
+
+	while [ "$SECONDS" -le "$deadline" ]; do
+		if stopped_service_quiesced; then return 0; else result=$?; fi
+		[ "$result" -eq 2 ] || sleep 1
+		[ "$result" -eq 2 ] && return 2
+	done
+	return 1
 }
 
 target_health_is_valid() {
@@ -303,6 +439,12 @@ read_cgroup_population() {
 probe_cgroup_directory() {
 	local cgroup_dir="$1"
 	local gnu_stat bsd_stat
+
+	if [ ! -e "$cgroup_dir" ]; then
+		[ -d "$(dirname "$cgroup_dir")" ] || return 2
+		return 1
+	fi
+	[ -d "$cgroup_dir" ] || return 2
 
 	if gnu_stat="$(LC_ALL=C stat -c '%F' "$cgroup_dir" 2>&1)"; then
 		case "$gnu_stat" in
@@ -563,6 +705,10 @@ update_status() {
 cleanup() {
 	local exit_code=$?
 
+	if [ -n "${BACKUP_TMP_PATH:-}" ]; then
+		rm -f "$BACKUP_TMP_PATH" 2>/dev/null || true
+		BACKUP_TMP_PATH=""
+	fi
 	if [ "$exit_code" -ne 0 ] && [ "$FINALIZED" != "true" ]; then
 		if [ -n "$ATTEMPT_ID" ] && { [ "$MIGRATION_ENTERED" = "true" ] || phase_requires_hold; }; then
 				hold_attempt "interrupted" "Update worker exited with code $exit_code during a state-changing phase"
@@ -609,6 +755,70 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	CLEAN_VERSION="${VERSION#v}"
 	NEW_VERSION_DIR="${IMAGE_BASE_DIR}/v${CLEAN_VERSION}"
 	CURRENT_LINK="${IMAGE_BASE_DIR}/current"
+	ENV_FILE="${ENV_FILE:-/etc/smart-panel/environment}"
+
+	if [ "$UPDATE_START_MODE" = "stopped-maintenance" ]; then
+		case "$VERSION" in latest|vlatest|'')
+			update_status "failed" "failed" "Stopped maintenance requires an exact target version"
+			FINALIZED="true"
+			exit 1
+		;; esac
+		for required in EXPECTED_CURRENT_VERSION TARGET_ARCHIVE_SHA256 TARGET_WORKER_SHA256 EXPECTED_IMAGE_BASE_DIR \
+			EXPECTED_STATUS_FILE EXPECTED_ATTEMPT_DIR EXPECTED_DB_PATH DB_BACKUP_PATH; do
+			if [ -z "${!required:-}" ]; then
+				update_status "failed" "failed" "Stopped maintenance identity is missing: ${required}"
+				FINALIZED="true"
+				exit 1
+			fi
+		done
+		TARGET_ARCHIVE_SHA256="$(printf '%s' "$TARGET_ARCHIVE_SHA256" | tr '[:upper:]' '[:lower:]')"
+		TARGET_WORKER_SHA256="$(printf '%s' "$TARGET_WORKER_SHA256" | tr '[:upper:]' '[:lower:]')"
+		case "$TARGET_ARCHIVE_SHA256$TARGET_WORKER_SHA256" in *[!0123456789abcdef]*)
+			update_status "failed" "failed" "Stopped maintenance checksum is invalid"
+			FINALIZED="true"
+			exit 1
+		;; esac
+		[ "${#TARGET_ARCHIVE_SHA256}" -eq 64 ] && [ "${#TARGET_WORKER_SHA256}" -eq 64 ] || {
+			update_status "failed" "failed" "Stopped maintenance checksum must be SHA-256"
+			FINALIZED="true"
+			exit 1
+		}
+		[ "$EXPECTED_IMAGE_BASE_DIR" = "$IMAGE_BASE_DIR" ] || {
+			update_status "failed" "failed" "Stopped maintenance image base identity mismatch"
+			FINALIZED="true"
+			exit 1
+		}
+		[ "$EXPECTED_STATUS_FILE" = "$STATUS_FILE" ] || {
+			update_status "failed" "failed" "Stopped maintenance status identity mismatch"
+			FINALIZED="true"
+			exit 1
+		}
+		[ "$EXPECTED_ATTEMPT_DIR" = "$ATTEMPT_DIR" ] || {
+			update_status "failed" "failed" "Stopped maintenance attempt identity mismatch"
+			FINALIZED="true"
+			exit 1
+		}
+		[ "$EXPECTED_DB_PATH" = "${FB_DB_PATH:-}" ] || {
+			update_status "failed" "failed" "Stopped maintenance database identity mismatch"
+			FINALIZED="true"
+			exit 1
+		}
+		if [ -f "$ENV_FILE" ]; then
+			configured_db_path="$(
+				set -a
+				# shellcheck source=/dev/null
+				. "$ENV_FILE"
+				printf '%s' "${FB_DB_PATH:-}"
+			)"
+			[ "$configured_db_path" = "$EXPECTED_DB_PATH" ] || \
+				fail_before_migration "preflight" "Configured database identity does not match stopped-maintenance packet"
+		fi
+		if [ -e "$DB_BACKUP_PATH" ] || [ -L "$DB_BACKUP_PATH" ]; then
+			fail_before_migration "preflight" "Stopped maintenance backup path already exists"
+		fi
+		SOURCE_DB_PATH="${FB_DB_PATH%/}/database.sqlite"
+		source_database_is_valid || fail_before_migration "preflight" "Stopped maintenance source database is missing, symlinked, or empty"
+	fi
 
 	# Image updates must verify the target release through the existing local health route. A
 	# missing route would otherwise silently reduce readiness to a PID check and reintroduce the
@@ -651,6 +861,20 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 		esac
 	fi
 
+	if [ "$UPDATE_START_MODE" = "stopped-maintenance" ]; then
+		EXPECTED_CURRENT_LINK="${IMAGE_BASE_DIR}/v${EXPECTED_CURRENT_VERSION#v}"
+		RESOLVED_CURRENT="$(realpath "$CURRENT_LINK" 2>/dev/null || true)"
+		RESOLVED_EXPECTED="$(realpath "$EXPECTED_CURRENT_LINK" 2>/dev/null || true)"
+		[ -n "$RESOLVED_CURRENT" ] && [ "$RESOLVED_CURRENT" = "$RESOLVED_EXPECTED" ] || \
+			fail_before_migration "preflight" "Current release/link identity does not match stopped-maintenance packet"
+		if ! wait_for_stopped_service; then
+			hold_attempt "stopping" "Stopped service did not reach verified quiescence"
+			update_status "failed" "failed" "Stopped service quiescence could not be verified; update is held for recovery"
+			FINALIZED="true"
+			exit 1
+		fi
+	fi
+
 	# Guard: refuse to overwrite the currently running version
 	# Resolve relative to IMAGE_BASE_DIR since PREVIOUS_TARGET may be relative
 	RESOLVED_PREV=$(cd "$IMAGE_BASE_DIR" && realpath "$PREVIOUS_TARGET" 2>/dev/null || true)
@@ -673,6 +897,12 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 		fail_before_migration "downloading" "Download failed from ${DOWNLOAD_URL}"
 	}
 
+	if [ "$UPDATE_START_MODE" = "stopped-maintenance" ]; then
+		actual_archive_sha256="$(sha256sum "$TMP_TARBALL" 2>/dev/null | awk '{print $1}')"
+		[ "$actual_archive_sha256" = "$TARGET_ARCHIVE_SHA256" ] || \
+			fail_before_migration "downloading" "Downloaded archive checksum does not match maintenance packet"
+	fi
+
 	# ── Extract ──
 	update_status "installing" "installing"
 
@@ -685,6 +915,27 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	}
 
 	rm -f "$TMP_TARBALL"
+
+	if [ "$UPDATE_START_MODE" = "stopped-maintenance" ]; then
+		target_worker="${NEW_VERSION_DIR}/dist/modules/system/scripts/update-worker.sh"
+		[ -f "$target_worker" ] || {
+			rm -rf "$NEW_VERSION_DIR"
+			fail_before_migration "installing" "Target release worker is missing"
+		}
+		actual_worker_sha256="$(sha256sum "$target_worker" 2>/dev/null | awk '{print $1}')"
+		[ "$actual_worker_sha256" = "$TARGET_WORKER_SHA256" ] || {
+			rm -rf "$NEW_VERSION_DIR"
+			fail_before_migration "installing" "Target release worker checksum does not match maintenance packet"
+		}
+		MAINTENANCE_DIR="${MAINTENANCE_DIR:-${ATTEMPT_DIR}/maintenance-${ATTEMPT_ID}}"
+		case "$MAINTENANCE_DIR" in
+			"$IMAGE_BASE_DIR"/*|"$NEW_VERSION_DIR"/*) fail_before_migration "installing" "Maintenance directory is inside a release tree" ;;
+		esac
+		mkdir -p "$MAINTENANCE_DIR"
+		chmod 700 "$MAINTENANCE_DIR"
+		cp "$target_worker" "$MAINTENANCE_DIR/update-worker.sh"
+		chmod 700 "$MAINTENANCE_DIR/update-worker.sh"
+	fi
 
 	# Create the image-install marker in the new version
 	touch "${NEW_VERSION_DIR}/.image-install" || {
@@ -713,9 +964,17 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 		fail_before_migration "installing" "Failed to set ownership on ${NEW_VERSION_DIR}"
 	}
 
-	# ── Stop service ──
+	# ── Stop/qualify service ──
 	update_status "stopping" "stopping"
 	write_attempt "active" "stopping" "" "false" "$MIGRATION_ENTERED"
+	if [ "$UPDATE_START_MODE" = "stopped-maintenance" ]; then
+		if ! wait_for_stopped_service; then
+			hold_attempt "stopping" "Stopped service changed or failed quiescence recheck"
+			update_status "failed" "failed" "Stopped service quiescence could not be rechecked; update is held for recovery"
+			FINALIZED="true"
+			exit 1
+		fi
+	else
 	if ! capture_service_identity; then
 		hold_attempt "stopping" "Could not capture service process/cgroup identity before stop"
 		update_status "failed" "failed" "Service process/cgroup identity could not be captured; update is held for recovery"
@@ -738,9 +997,64 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	fi
 
 	write_attempt "active" "quiesced" "" "false" "$MIGRATION_ENTERED"
+	fi
+
+	if [ "$UPDATE_START_MODE" = "stopped-maintenance" ]; then
+		# A consistent backup is an input safeguard, never a rollback mechanism.  SQLite's own
+		# backup API is required so a copied WAL database cannot be mistaken for a snapshot.
+		command -v sqlite3 >/dev/null 2>&1 || {
+			rm -rf "$NEW_VERSION_DIR"
+			fail_before_migration "quiesced" "sqlite3 is required for stopped-maintenance backup"
+		}
+		if [ -e "$DB_BACKUP_PATH" ] || [ -L "$DB_BACKUP_PATH" ]; then
+			rm -rf "$NEW_VERSION_DIR"
+			fail_before_migration "quiesced" "Stopped maintenance backup path was created during the run"
+		fi
+		source_database_is_valid || {
+			rm -rf "$NEW_VERSION_DIR"
+			fail_before_migration "quiesced" "Stopped maintenance source database became unavailable"
+		}
+		mkdir -p "$(dirname "$DB_BACKUP_PATH")" || {
+			rm -rf "$NEW_VERSION_DIR"
+			fail_before_migration "quiesced" "Could not create SQLite backup directory"
+		}
+		BACKUP_TMP_PATH="$(mktemp "${DB_BACKUP_PATH}.tmp-${ATTEMPT_ID}.XXXXXX")" || {
+			rm -rf "$NEW_VERSION_DIR"
+			fail_before_migration "quiesced" "Could not create temporary SQLite backup"
+		}
+		if ! sqlite3 "${SOURCE_DB_PATH}" ".backup '${BACKUP_TMP_PATH}'"; then
+			rm -f "$BACKUP_TMP_PATH"
+			BACKUP_TMP_PATH=""
+			rm -rf "$NEW_VERSION_DIR"
+			fail_before_migration "quiesced" "Consistent SQLite backup failed"
+		fi
+		if [ ! -s "$BACKUP_TMP_PATH" ]; then
+			rm -f "$BACKUP_TMP_PATH"
+			BACKUP_TMP_PATH=""
+			rm -rf "$NEW_VERSION_DIR"
+			fail_before_migration "quiesced" "Consistent SQLite backup is empty"
+		fi
+		if ! ln "$BACKUP_TMP_PATH" "$DB_BACKUP_PATH" 2>/dev/null; then
+			rm -f "$BACKUP_TMP_PATH"
+			BACKUP_TMP_PATH=""
+			rm -rf "$NEW_VERSION_DIR"
+			if [ -e "$DB_BACKUP_PATH" ] || [ -L "$DB_BACKUP_PATH" ]; then
+				fail_before_migration "quiesced" "Stopped maintenance backup path was created during the run"
+			fi
+			fail_before_migration "quiesced" "Consistent SQLite backup publish failed"
+		fi
+		rm -f "$BACKUP_TMP_PATH"
+		BACKUP_TMP_PATH=""
+	fi
 
 	# ── Switch symlink (atomic on same filesystem) ──
 	sudo -n ln -sfn "$NEW_VERSION_DIR" "$CURRENT_LINK" || {
+		if [ "$UPDATE_START_MODE" = "stopped-maintenance" ]; then
+			hold_attempt "switching" "Failed to switch version symlink in stopped maintenance"
+			update_status "failed" "failed" "Failed to switch version symlink; update is held for recovery"
+			FINALIZED="true"
+			exit 1
+		fi
 		# Revert only when the old link, target cleanup and old-service health are all verified.
 		if restore_before_migration "$PREVIOUS_TARGET" "$CURRENT_LINK" "$NEW_VERSION_DIR"; then
 			fail_before_migration "switching" "Failed to switch version symlink"
@@ -754,7 +1068,6 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 
 	# ── Run database migrations ──
 	update_status "migrating" "migrating"
-	ENV_FILE="/etc/smart-panel/environment"
 
 	if [ ! -f "${NEW_VERSION_DIR}/dist/dataSource.js" ]; then
 		hold_attempt "migrating" "Target data source is missing; update is held for recovery"

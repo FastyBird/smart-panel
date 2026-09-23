@@ -53,6 +53,19 @@ case_status() {
 	return 1
 }
 
+manager_processes_empty() {
+	local output count
+	command -v busctl >/dev/null 2>&1 || return 77
+	output="$(busctl --user call org.freedesktop.systemd1 /org/freedesktop/systemd1 \
+		org.freedesktop.systemd1.Manager GetUnitProcesses s "$1" 2>/dev/null)" || return 2
+	count="$(printf '%s\n' "$output" | awk '{ for (i = 1; i <= NF; i++) if ($i == "a(sus)") { print $(i + 1); exit } }')"
+	if [ -z "$count" ]; then return 2; fi
+	if [ "$count" -gt 0 ] 2>/dev/null; then
+		return 1
+	fi
+	return 0
+}
+
 run_case() {
 	local kill_mode="$1"
 	local unit="smart-panel-update-fixture-${kill_mode}-$$"
@@ -111,6 +124,7 @@ EOF
 	control_pid="$(systemctl --user show "$unit" --property=ControlPID --value 2>/dev/null || true)"
 	[ "$main_pid" = "0" ]
 	[ "$control_pid" = "0" ]
+	manager_processes_empty "$unit"
 
 	while IFS= read -r captured_identity; do
 		[ -n "$captured_identity" ] || continue

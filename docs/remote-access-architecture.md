@@ -272,6 +272,29 @@ assets) and forwards every `onStatus()` tick as a `RemoteAccessModule.Setup.Prog
 
 ## Image update migration runbook
 
+### Stopped-service maintenance mode
+
+The release worker defaults to `UPDATE_START_MODE=running-service`; the public update executor
+always sets that value explicitly.  Operators may use `UPDATE_START_MODE=stopped-maintenance` only
+with a reviewed, private identity packet for a device whose installed release is already stopped or
+failed.  This is a maintenance procedure, not an API option and not a recovery retry.
+
+Before invoking the released worker, retain the exact target archive and worker SHA-256 values and
+the expected current version, image base, status/attempt paths and database path.  The worker verifies
+the canonical `current` link, systemd `ActiveState`, `MainPID`, `ControlPID`, pending job state,
+systemd Manager process enumeration and the cgroup-v2 subtree.  A removed original cgroup is accepted
+only when its stable parent/mount remains readable and both independent process checks are empty; a
+probe error or surviving process fails closed.  It then creates a SQLite `.backup` snapshot, stages
+the target worker in a private directory outside release trees, verifies the archive/worker hashes,
+switches once, runs the target migration CLI and starts the target only after migration.  No old
+release is started first, no automatic rollback/retry is performed, and migration/start/health
+failures remain a durable recovery hold.
+
+The operator must retain the command, exact environment packet, worker/target hashes, backup path,
+attempt record, migration log and target health readback.  Do not pass `UPDATE_START_MODE` through
+the backend API or an ambient service environment.  A real Linux/systemd integration run is required
+before using this mode on staging.
+
 Image updates use a durable, owner-only attempt record beside the public status file. The worker takes an atomic
 installation lock before download/extraction and rejects a concurrent or unresolved attempt. The record survives a
 backend restart and target-directory cleanup; an old timestamp or missing lock is never treated as proof that a

@@ -537,6 +537,9 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 
 		const envVars: Record<string, string> = {
 			UPDATE_VERSION: targetVersion,
+			// The public API never selects the operator-only stopped-maintenance mode.  Keep this
+			// explicit so an ambient service environment cannot change the lifecycle contract.
+			UPDATE_START_MODE: 'running-service',
 			STATUS_FILE,
 			INSTALL_TYPE: installType,
 			IMAGE_BASE_DIR: installType === 'image' ? this.updateService.getImageBaseDir() : '',
