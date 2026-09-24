@@ -552,10 +552,10 @@ const mount = process.env.CGROUP_PROBE_MOUNT;
 const dir = process.env.CGROUP_PROBE_PATH;
 if (!path.isAbsolute(mount) || !path.isAbsolute(dir) || !dir.startsWith(`${mount}/`)) process.exit(2);
 const parent = path.dirname(dir);
-function directoryIdentity(name) {
+function directoryIdentity(name, includeChangeTime = false) {
   const stat = fs.lstatSync(name, { bigint: true });
   if (!stat.isDirectory()) process.exit(2);
-  return `${stat.dev}:${stat.ino}`;
+  return includeChangeTime ? `${stat.dev}:${stat.ino}:${stat.ctimeNs}` : `${stat.dev}:${stat.ino}`;
 }
 try {
   const mountId = directoryIdentity(mount);
@@ -571,7 +571,7 @@ try {
   const parentId = directoryIdentity(parent);
   let dirId = "-";
   let absent = false;
-  try { dirId = directoryIdentity(dir); }
+  try { dirId = directoryIdentity(dir, true); }
   catch (error) {
     if (error.code !== "ENOENT") process.exit(2);
     absent = true;
