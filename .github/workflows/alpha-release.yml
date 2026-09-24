@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - "alpha-*.*.*"
-      - "alpha"
   # A published release already has a tag, before this workflow syncs versions.
   # Only start from a branch or dispatch so the new tag names the sync commit.
   workflow_dispatch:

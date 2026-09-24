@@ -40,7 +40,7 @@ jobs:
           VERSION: "${{ inputs.version }}"
         run: |
           set -euo pipefail
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-alpha\.[1-9][0-9]*$ ]]
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-alpha\.(0|[1-9][0-9]*)$ ]]
           test "$(node -p "require('./package.json').version")" = "$VERSION"
           test "$(node -p "require('./apps/backend/package.json').version")" = "$VERSION"
           git fetch --no-tags --depth=1 origin main
