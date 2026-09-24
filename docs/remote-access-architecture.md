@@ -286,7 +286,9 @@ the service later appears stopped. There is no automatic retry, force kill or re
 release. This is not an API option or a recovery retry.
 
 Before invoking the released worker, retain the exact target archive and worker SHA-256 values and
-the expected current version, image base, status/attempt paths and database path.  The worker verifies
+the expected current version, image base, status/attempt paths and database path. The supported image
+unit retains `KillMode=process`; its independent manager/cgroup checks and the operator's captured
+process roster remain necessary after the ordinary stop. The worker verifies
 the canonical `current` link, systemd `ActiveState`, `MainPID`, `ControlPID`, pending job state,
 systemd Manager process enumeration and the cgroup-v2 subtree. Manager replies must have the
 expected typed array and complete tuples; blank, malformed, unknown-unit or failed replies are

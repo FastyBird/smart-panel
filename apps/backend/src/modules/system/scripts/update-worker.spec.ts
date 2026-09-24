@@ -276,7 +276,7 @@ if [ "$1" = "show" ]; then
 				LoadState) printf 'loaded\\n';;
 				Slice) printf '%s\\n' "\${SLICE_VALUE:-system.slice}";;
 				Delegate) printf '%s\\n' "\${DELEGATE_VALUE:-no}";;
-				KillMode) printf '%s\\n' "\${KILL_MODE_VALUE:-control-group}";;
+				KillMode) printf '%s\\n' "\${KILL_MODE_VALUE:-process}";;
 				InvocationID) printf 'fixture-invocation\\n';;
 				Result) printf 'success\\n';;
 				ExecMainStartTimestampMonotonic) printf '1\\n';;
@@ -839,7 +839,7 @@ describe('legacy image update worker lifecycle', () => {
 		['wrong cgroup path', { CONTROL_GROUP_VALUE: '/system.slice/other.service' }],
 		['wrong slice', { SLICE_VALUE: 'other.slice' }],
 		['delegated unit', { DELEGATE_VALUE: 'yes' }],
-		['process-only kill mode', { KILL_MODE_VALUE: 'process' }],
+		['unsupported kill mode', { KILL_MODE_VALUE: 'none' }],
 	] as const)('rejects a %s before download and SQL', (_caseName, overrides) => {
 		const fixture = createFixture();
 		try {

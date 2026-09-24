@@ -291,7 +291,7 @@ stopped_service_identity() {
 	[ "$unit_id" = "$SERVICE_UNIT" ] && [ "$load_state" = "loaded" ] || return 2
 	[ "$fragment_path" = "/etc/systemd/system/${SERVICE_UNIT}" ] || return 2
 	[[ "$exec_start" == *"${IMAGE_BASE_DIR}/current"* ]] || return 2
-	[ "$slice" = "system.slice" ] && [ "$delegate" = "no" ] && [ "$kill_mode" = "control-group" ] || return 2
+	[ "$slice" = "system.slice" ] && [ "$delegate" = "no" ] && [ "$kill_mode" = "process" ] || return 2
 	printf 'boot=%s\nmanager=%s\nobject=%s\n' "$boot_id" "$manager_identity" "$unit_object"
 	for property in FragmentPath ExecStart Slice Delegate KillMode InvocationID Result; do
 		value="$(service_property "$property" 2>/dev/null)" || return 2
