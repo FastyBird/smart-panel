@@ -68,6 +68,7 @@ function createFixture(): Fixture {
 	mkdirSync(cgroupDir);
 	mkdirSync(databaseDir);
 	mkdirSync(join(processRoot, '999'), { recursive: true });
+	mkdirSync(join(processRoot, '1'), { recursive: true });
 	mkdirSync(join(imageBase, 'v1.1.0-alpha.12'), { recursive: true });
 	mkdirSync(join(archiveRoot, 'dist'), { recursive: true });
 	mkdirSync(join(archiveRoot, 'node_modules', 'typeorm'), { recursive: true });
@@ -75,10 +76,12 @@ function createFixture(): Fixture {
 	writeFileSync(join(archiveRoot, 'node_modules', 'typeorm', 'cli.js'), 'fixture cli\n');
 	mkdirSync(join(archiveRoot, 'dist', 'modules', 'system', 'scripts'), { recursive: true });
 	writeFileSync(join(archiveRoot, 'dist', 'modules', 'system', 'scripts', 'update-worker.sh'), readFileSync(WORKER));
-	writeFileSync(managerProcesses, '');
+	writeFileSync(managerProcesses, '{"type":"a(sus)","data":[[]]}');
 	writeFileSync(cgroupProcs, '999\n');
 	writeFileSync(cgroupEvents, 'populated 1\n');
 	writeFileSync(join(processRoot, '999', 'identity'), 'fixture-main-process');
+	writeFileSync(join(processRoot, '1', 'identity'), 'fixture-systemd-manager');
+	writeFileSync(join(root, 'boot-id'), 'fixture-boot-id');
 	writeFileSync(stateFile, 'active');
 	execFileSync(SQLITE, [database, 'CREATE TABLE IF NOT EXISTS fixture_seed (id INTEGER PRIMARY KEY)']);
 	copyFileSync(WORKER, installedWorker);
@@ -92,6 +95,11 @@ function createFixture(): Fixture {
 		`#!/bin/bash
 if [ "$1" = "-n" ] && [ "$2" = "-l" ]; then exit 0; fi
 [ "$1" = "-n" ] && shift
+if [ "$1" = "ln" ] && [ "\${ACTIVATE_AFTER_SWITCH:-false}" = true ]; then
+  "$@" || exit $?
+  printf active > "$SERVICE_STATE_FILE"
+  exit 0
+fi
 exec "$@"
 `,
 	);
@@ -117,6 +125,7 @@ cp "$FIXTURE_ARCHIVE" "$output"
 	writeExecutable(
 		join(bin, 'node'),
 		`#!/bin/bash
+	if [ -n "\${CGROUP_PROBE_PATH:-}" ] || [ -n "\${CGROUP_FILE_PATH:-}" ] || [ -n "\${MANAGER_REPLY:-}" ]; then exec ${process.execPath} "$@"; fi
 	if [ "$1" = "-e" ]; then
 		case "\${2:-}" in
 			*HEALTH_EXPECTED_VERSION*) ;;
@@ -131,6 +140,23 @@ cp "$FIXTURE_ARCHIVE" "$output"
 	exit 0
 `,
 	);
+	writeExecutable(
+		join(bin, 'busctl'),
+		`#!/bin/bash
+case " $* " in
+  *" GetUnitProcesses "*)
+    [ "\${BUSCTL_RESULT:-success}" = success ] || exit 17
+    [ -r "$SERVICE_MANAGER_PROCS_FILE" ] || exit 17
+    cat "$SERVICE_MANAGER_PROCS_FILE"
+    ;;
+  *" GetUnit "*)
+    [ "\${BUSCTL_RESULT:-success}" = success ] || exit 17
+    printf '{"type":"o","data":["/org/freedesktop/systemd1/unit/smart_2dpanel_2eservice"]}\\n'
+    ;;
+  *) exit 17 ;;
+esac
+`,
+	);
 	writeExecutable(join(bin, 'chown'), '#!/bin/bash\nexit 0\n');
 	writeExecutable(
 		join(bin, 'sqlite3'),
@@ -143,6 +169,25 @@ if [ "\${SQLITE_RESULT:-success}" = race ]; then
 	result=$?
 	printf 'created during sqlite backup' > "\${DB_BACKUP_PATH}"
 	exit "$result"
+fi
+if [ "\${ACTIVATE_AFTER_BACKUP:-false}" = true ]; then
+  ${SQLITE} "$@" || exit $?
+  printf active > "$SERVICE_STATE_FILE"
+  exit 0
+fi
+if [ -n "\${IDENTITY_CHANGE_AFTER_BACKUP:-}" ]; then
+  ${SQLITE} "$@" || exit $?
+  case "$IDENTITY_CHANGE_AFTER_BACKUP" in
+    boot) printf 'replacement-boot' > "$SERVICE_BOOT_ID_FILE";;
+    manager) printf 'replacement-manager' > "$SERVICE_PROCESS_ROOT/1/identity";;
+    cgroup)
+      rm -rf "$SERVICE_CGROUP_DIR"
+      mkdir "$SERVICE_CGROUP_DIR"
+      : > "$SERVICE_CGROUP_PROCS_FILE"
+      printf 'populated 0\n' > "$SERVICE_CGROUP_EVENTS_FILE"
+      ;;
+  esac
+  exit 0
 fi
 exec ${SQLITE} "$@"
 `,
@@ -217,18 +262,21 @@ fi
 if [ "$1" = "show" ]; then
   property=""
   for argument in "$@"; do case "$argument" in --property=*) property="\${argument#--property=}";; esac; done
+  if [ "$property" = "\${PROPERTY_READ_ERROR:-}" ]; then exit 17; fi
   state="$(cat "$SERVICE_STATE_FILE")"
 			case "$property" in
 				ActiveState) printf '%s\\n' "$state";;
 				MainPID) [ "$state" = active ] && printf '999\\n' || printf '0\\n';;
 				ControlPID) printf '0\\n';;
-				ControlGroup) printf '/fixture\\n';;
+				ControlGroup) printf '%s\\n' "\${CONTROL_GROUP_VALUE:-/system.slice/smart-panel.service}";;
 				Job) [ "\${JOB_RESULT:-empty}" = pending ] && printf '123\\n';;
 				FragmentPath) printf '/etc/systemd/system/smart-panel.service\\n';;
-				ExecStart) printf '/opt/smart-panel/current/dist/main.js\\n';;
-				Slice) printf 'system.slice\\n';;
-				Delegate) printf 'no\\n';;
-				KillMode) printf 'control-group\\n';;
+				ExecStart) printf '%s/current/dist/main.js\\n' "$IMAGE_BASE_DIR";;
+				Id) printf '%s\\n' "$SERVICE_UNIT";;
+				LoadState) printf 'loaded\\n';;
+				Slice) printf '%s\\n' "\${SLICE_VALUE:-system.slice}";;
+				Delegate) printf '%s\\n' "\${DELEGATE_VALUE:-no}";;
+				KillMode) printf '%s\\n' "\${KILL_MODE_VALUE:-control-group}";;
 				InvocationID) printf 'fixture-invocation\\n';;
 				Result) printf 'success\\n';;
 				ExecMainStartTimestampMonotonic) printf '1\\n';;
@@ -271,8 +319,11 @@ function runWorker(fixture: Fixture, overrides: Record<string, string> = {}): { 
 		SERVICE_CGROUP_DIR: fixture.cgroupDir,
 		SERVICE_CGROUP_PROCS_FILE: fixture.cgroupProcs,
 		SERVICE_CGROUP_EVENTS_FILE: fixture.cgroupEvents,
+		SERVICE_CGROUP_MOUNT: fixture.root,
 		SERVICE_PROCESS_ROOT: fixture.processRoot,
+		SERVICE_BOOT_ID_FILE: join(fixture.root, 'boot-id'),
 		SERVICE_STATE_FILE: fixture.stateFile,
+		SERVICE_UNIT: 'smart-panel.service',
 		SERVICE_MANAGER_PROCS_FILE: fixture.managerProcesses,
 		SERVICE_CGROUP_MOUNT_TYPE: 'cgroup2fs',
 		FB_DB_PATH: fixture.databaseDir,
@@ -329,6 +380,23 @@ module.exports = new DataSource({ type: 'sqlite', database: process.env.FB_DB_PA
 function readJson(path: string): Record<string, unknown> {
 	return JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
 }
+
+function stoppedMaintenanceEnv(fixture: Fixture, overrides: Record<string, string> = {}): Record<string, string> {
+	return {
+		UPDATE_START_MODE: 'stopped-maintenance',
+		EXPECTED_CURRENT_VERSION: '1.1.0-alpha.12',
+		TARGET_ARCHIVE_SHA256: fixture.archiveSha256,
+		TARGET_WORKER_SHA256: fixture.targetWorkerSha256,
+		EXPECTED_IMAGE_BASE_DIR: fixture.imageBase,
+		EXPECTED_STATUS_FILE: fixture.statusFile,
+		EXPECTED_ATTEMPT_DIR: fixture.attemptDir,
+		EXPECTED_DB_PATH: fixture.databaseDir,
+		DB_BACKUP_PATH: join(fixture.root, 'backup.sqlite'),
+		...overrides,
+	};
+}
+
+jest.setTimeout(30_000);
 
 describe('legacy image update worker lifecycle', () => {
 	it('runs a verified stopped-maintenance update without starting the old release', async () => {
@@ -516,6 +584,72 @@ describe('legacy image update worker lifecycle', () => {
 	});
 
 	it.each([
+		['after backup, before switch', 'ACTIVATE_AFTER_BACKUP', 'v1.1.0-alpha.12'],
+		['after switch, before migration entry', 'ACTIVATE_AFTER_SWITCH', 'v1.1.0-alpha.15'],
+	] as const)('holds an activation %s without entering SQL', (_phase, activationFlag, expectedLink) => {
+		const fixture = createFixture();
+		try {
+			writeFileSync(fixture.stateFile, 'inactive');
+			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+			writeFileSync(fixture.cgroupProcs, '');
+			writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+			const result = runWorker(fixture, stoppedMaintenanceEnv(fixture, { [activationFlag]: 'true' }));
+			expect(result.status).not.toBe('success');
+			expect(readJson(join(fixture.attemptDir, 'attempt.json'))).toMatchObject({
+				state: 'recovery_required',
+				migrationEntered: false,
+			});
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toContain(expectedLink);
+			expect(readdirSync(fixture.attemptDir).some((name) => name.endsWith('.migration.log'))).toBe(false);
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it('rejects a failed manager command before download and SQL', () => {
+		const fixture = createFixture();
+		try {
+			writeFileSync(fixture.stateFile, 'inactive');
+			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+			writeFileSync(fixture.cgroupProcs, '');
+			writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+			const result = runWorker(fixture, stoppedMaintenanceEnv(fixture, { BUSCTL_RESULT: 'failure' }));
+			expect(result.status).not.toBe('success');
+			expect(readJson(join(fixture.attemptDir, 'attempt.json'))).toMatchObject({
+				state: 'recovery_required',
+				migrationEntered: false,
+			});
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+			expect(existsSync(join(fixture.imageBase, 'v1.1.0-alpha.15'))).toBe(false);
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it.each(['boot', 'manager', 'cgroup'] as const)(
+		'holds a changed %s identity after backup without switch or SQL',
+		(identity) => {
+			const fixture = createFixture();
+			try {
+				writeFileSync(fixture.stateFile, 'inactive');
+				rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+				writeFileSync(fixture.cgroupProcs, '');
+				writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+				const result = runWorker(fixture, stoppedMaintenanceEnv(fixture, { IDENTITY_CHANGE_AFTER_BACKUP: identity }));
+				expect(result.status).not.toBe('success');
+				expect(readJson(join(fixture.attemptDir, 'attempt.json'))).toMatchObject({
+					state: 'recovery_required',
+					migrationEntered: false,
+				});
+				expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+				expect(readdirSync(fixture.attemptDir).some((name) => name.endsWith('.migration.log'))).toBe(false);
+			} finally {
+				rmSync(fixture.root, { recursive: true, force: true });
+			}
+		},
+	);
+
+	it.each([
 		['failure', 'Consistent SQLite backup failed'],
 		['empty', 'Consistent SQLite backup is empty'],
 	] as const)('cleans up a %s SQLite backup failure before recording the preflight error', (sqliteResult, error) => {
@@ -628,7 +762,7 @@ describe('legacy image update worker lifecycle', () => {
 			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
 			writeFileSync(fixture.cgroupProcs, '');
 			writeFileSync(fixture.cgroupEvents, 'populated 0\n');
-			writeFileSync(fixture.managerProcesses, '123\n');
+			writeFileSync(fixture.managerProcesses, '{"type":"a(sus)","data":[[["smart-panel.service",123,"node"]]]}');
 
 			const result = runWorker(fixture, {
 				UPDATE_START_MODE: 'stopped-maintenance',
@@ -650,6 +784,136 @@ describe('legacy image update worker lifecycle', () => {
 			rmSync(fixture.root, { recursive: true, force: true });
 		}
 	});
+
+	it.each([
+		['blank', ''],
+		['malformed text', 'a(sus) nope'],
+		['wrong signature', '{"type":"as","data":[[]]}'],
+		['truncated tuple', '{"type":"a(sus)","data":[[["smart-panel.service",123]]]}'],
+		['overflow PID', '{"type":"a(sus)","data":[[["smart-panel.service",4294967296,"node"]]]}'],
+	])('rejects a %s successful manager reply before download and SQL', (_caseName, output) => {
+		const fixture = createFixture();
+		try {
+			writeFileSync(fixture.stateFile, 'inactive');
+			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+			writeFileSync(fixture.cgroupProcs, '');
+			writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+			writeFileSync(fixture.managerProcesses, output);
+			const result = runWorker(fixture, stoppedMaintenanceEnv(fixture));
+			expect(result.status).not.toBe('success');
+			expect(readJson(join(fixture.attemptDir, 'attempt.json'))).toMatchObject({
+				state: 'recovery_required',
+				migrationEntered: false,
+			});
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+			expect(existsSync(join(fixture.imageBase, 'v1.1.0-alpha.15'))).toBe(false);
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it.each(['FragmentPath', 'ExecStart', 'Slice', 'Delegate', 'KillMode', 'InvocationID', 'Result', 'ControlGroup'])(
+		'rejects a failed %s property read before download and SQL',
+		(property) => {
+			const fixture = createFixture();
+			try {
+				writeFileSync(fixture.stateFile, 'inactive');
+				rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+				writeFileSync(fixture.cgroupProcs, '');
+				writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+				const result = runWorker(fixture, stoppedMaintenanceEnv(fixture, { PROPERTY_READ_ERROR: property }));
+				expect(result.status).not.toBe('success');
+				expect(readJson(join(fixture.attemptDir, 'attempt.json'))).toMatchObject({
+					state: 'recovery_required',
+					migrationEntered: false,
+				});
+				expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+				expect(existsSync(join(fixture.imageBase, 'v1.1.0-alpha.15'))).toBe(false);
+			} finally {
+				rmSync(fixture.root, { recursive: true, force: true });
+			}
+		},
+	);
+
+	it.each([
+		['wrong cgroup path', { CONTROL_GROUP_VALUE: '/system.slice/other.service' }],
+		['wrong slice', { SLICE_VALUE: 'other.slice' }],
+		['delegated unit', { DELEGATE_VALUE: 'yes' }],
+		['process-only kill mode', { KILL_MODE_VALUE: 'process' }],
+	] as const)('rejects a %s before download and SQL', (_caseName, overrides) => {
+		const fixture = createFixture();
+		try {
+			writeFileSync(fixture.stateFile, 'inactive');
+			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+			writeFileSync(fixture.cgroupProcs, '');
+			writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+			const result = runWorker(fixture, stoppedMaintenanceEnv(fixture, overrides));
+			expect(result.status).not.toBe('success');
+			expect(readJson(join(fixture.attemptDir, 'attempt.json'))).toMatchObject({
+				state: 'recovery_required',
+				migrationEntered: false,
+			});
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+			expect(existsSync(join(fixture.imageBase, 'v1.1.0-alpha.15'))).toBe(false);
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it('rejects a dangling cgroup directory symlink instead of treating it as removed', () => {
+		const fixture = createFixture();
+		try {
+			writeFileSync(fixture.stateFile, 'inactive');
+			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+			rmSync(fixture.cgroupDir, { recursive: true });
+			symlinkSync(join(fixture.root, 'missing-cgroup'), fixture.cgroupDir);
+			const result = runWorker(fixture, stoppedMaintenanceEnv(fixture));
+			expect(result.status).not.toBe('success');
+			expect(readJson(join(fixture.attemptDir, 'attempt.json'))).toMatchObject({
+				state: 'recovery_required',
+				migrationEntered: false,
+			});
+			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+			expect(existsSync(join(fixture.imageBase, 'v1.1.0-alpha.15'))).toBe(false);
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
+
+	it.each(['membership symlink', 'descendant symlink', 'nondirectory parent'] as const)(
+		'rejects a %s as unavailable cgroup evidence',
+		(cgroupFault) => {
+			const fixture = createFixture();
+			try {
+				writeFileSync(fixture.stateFile, 'inactive');
+				rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+				writeFileSync(fixture.cgroupProcs, '');
+				writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+				const overrides: Record<string, string> = {};
+				if (cgroupFault === 'membership symlink') {
+					writeFileSync(join(fixture.root, 'empty-members'), '');
+					rmSync(fixture.cgroupProcs);
+					symlinkSync(join(fixture.root, 'empty-members'), fixture.cgroupProcs);
+				} else if (cgroupFault === 'descendant symlink') {
+					symlinkSync(join(fixture.root, 'elsewhere'), join(fixture.cgroupDir, 'child'));
+				} else {
+					writeFileSync(join(fixture.root, 'not-a-directory'), 'file');
+					overrides.SERVICE_CGROUP_DIR = join(fixture.root, 'not-a-directory', 'cgroup');
+					overrides.SERVICE_CGROUP_PROCS_FILE = join(overrides.SERVICE_CGROUP_DIR, 'cgroup.procs');
+				}
+				const result = runWorker(fixture, stoppedMaintenanceEnv(fixture, overrides));
+				expect(result.status).not.toBe('success');
+				expect(readJson(join(fixture.attemptDir, 'attempt.json'))).toMatchObject({
+					state: 'recovery_required',
+					migrationEntered: false,
+				});
+				expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
+				expect(existsSync(join(fixture.imageBase, 'v1.1.0-alpha.15'))).toBe(false);
+			} finally {
+				rmSync(fixture.root, { recursive: true, force: true });
+			}
+		},
+	);
 
 	it('fails closed when stopped-maintenance has a pending systemd job', () => {
 		const fixture = createFixture();
