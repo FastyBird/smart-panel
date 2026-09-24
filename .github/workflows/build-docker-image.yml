@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: "docker-image-${{ inputs.version }}"
+  group: "docker-image-alpha"
   cancel-in-progress: false
 
 jobs:
@@ -131,6 +131,7 @@ jobs:
           name: "docker-digest-${{ matrix.arch }}"
           path: "${{ runner.temp }}/digests/${{ matrix.arch }}"
           if-no-files-found: error
+          overwrite: true
           retention-days: 7
 
   publish-manifest:
