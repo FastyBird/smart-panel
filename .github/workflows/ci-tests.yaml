@@ -350,6 +350,9 @@ jobs:
         with:
           node-version: "${{ matrix.node-version }}"
 
+      - name: "Test alpha release version selection"
+        run: "node --test .github/scripts/test/monorepo-version-sync.test.cjs"
+
       - name: "Install validation dependencies"
         run: "npm install ajv yaml"
 
