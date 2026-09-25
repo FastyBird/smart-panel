@@ -275,25 +275,40 @@ assets) and forwards every `onStatus()` tick as a `RemoteAccessModule.Setup.Prog
 ### Stopped-service maintenance mode
 
 The release worker defaults to `UPDATE_START_MODE=running-service`; the public update executor
-always sets that value explicitly.  Operators may use `UPDATE_START_MODE=stopped-maintenance` only
-with a reviewed, private identity packet for a device whose installed release is already stopped or
-failed.  This is a maintenance procedure, not an API option and not a recovery retry.
+always sets that value explicitly. Operators may use `UPDATE_START_MODE=stopped-maintenance` only
+with a reviewed, private identity packet. An already inactive or failed installed service uses the
+original stopped entry. For an eligible active service, the approved operator procedure first owns
+the exact `smart-panel-update.scope` collision domain outside `smart-panel.service`, verifies the
+installed release, updater/lock, service and database identities, then records and issues exactly one
+ordinary stop. It must retain the same supervisor through the stop, worker and settlement. A failed
+stop, pending job, changed identity, survivor or unavailable probe prohibits worker launch even if
+the service later appears stopped. There is no automatic retry, force kill or restart of the old
+release. This is not an API option or a recovery retry.
 
 Before invoking the released worker, retain the exact target archive and worker SHA-256 values and
-the expected current version, image base, status/attempt paths and database path.  The worker verifies
+the expected current version, image base, status/attempt paths and database path. The supported image
+unit retains `KillMode=process`; its independent manager/cgroup checks and the operator's captured
+process roster remain necessary after the ordinary stop. The worker verifies
 the canonical `current` link, systemd `ActiveState`, `MainPID`, `ControlPID`, pending job state,
-systemd Manager process enumeration and the cgroup-v2 subtree.  A removed original cgroup is accepted
-only when its stable parent/mount remains readable and both independent process checks are empty; a
-probe error or surviving process fails closed.  It then creates a SQLite `.backup` snapshot, stages
+systemd Manager process enumeration and the cgroup-v2 subtree. Manager replies must have the
+expected typed array and complete tuples; blank, malformed, unknown-unit or failed replies are
+unavailable, never empty. A removed original cgroup is accepted only when typed no-follow inspection
+proves that directory absent with a stable parent/mount and independent process checks remain empty.
+Symlinks, failed reads, malformed membership, recreated directories or surviving processes fail
+closed. The worker rechecks this qualification after the backup, before switch and immediately before
+the durable migration-entry checkpoint/CLI. It then creates a SQLite `.backup` snapshot, stages
 the target worker in a private directory outside release trees, verifies the archive/worker hashes,
 switches once, runs the target migration CLI and starts the target only after migration.  No old
 release is started first, no automatic rollback/retry is performed, and migration/start/health
 failures remain a durable recovery hold.
 
-The operator must retain the command, exact environment packet, worker/target hashes, backup path,
-attempt record, migration log and target health readback.  Do not pass `UPDATE_START_MODE` through
-the backend API or an ambient service environment.  A real Linux/systemd integration run is required
-before using this mode on staging.
+The operator must retain the command, exact environment packet, worker/target hashes, preparation
+receipt and stop result, backup path, attempt record, migration log, target health, scope/child
+settlement and cleanup readback. A private preparation failure is not a fabricated worker completion
+or a worker-owned recovery record. The worker alone owns its attempt, backup, migration, target health
+and completion. Do not pass `UPDATE_START_MODE` through the backend API or an ambient service
+environment. The complete active-stop and already-stopped paths require real Linux/systemd integration
+with the compiled target and representative SQLite data before staging use.
 
 Image updates use a durable, owner-only attempt record beside the public status file. The worker takes an atomic
 installation lock before download/extraction and rejects a concurrent or unresolved attempt. The record survives a

@@ -44,6 +44,12 @@ DB_BACKUP_PATH="${DB_BACKUP_PATH:-}"
 BACKUP_TMP_PATH=""
 SOURCE_DB_PATH=""
 STOPPED_SERVICE_BASELINE=""
+CGROUP_PROBE_MOUNT_ID=""
+CGROUP_PROBE_PARENT_ID=""
+CGROUP_PROBE_DIR_ID=""
+CGROUP_PROBE_EVENTS_ID=""
+CGROUP_PROBE_NAMESPACE_ID=""
+CGROUP_PROBE_ABSENT="false"
 
 json_escape() {
 	printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g; s/[[:cntrl:]]//g'
@@ -200,35 +206,104 @@ service_property() {
 }
 
 manager_processes_are_empty() {
-	local output token
+	local output
 
-	# Tests may provide a deterministic manager enumeration.  Production uses the systemd Manager
-	# D-Bus method instead of treating MainPID=0 as an independent process proof.
-	if [ -n "${SERVICE_MANAGER_PROCS_FILE:-}" ]; then
-		[ -r "$SERVICE_MANAGER_PROCS_FILE" ] || return 2
-		output="$(cat "$SERVICE_MANAGER_PROCS_FILE" 2>/dev/null)" || return 2
-	else
-		command -v busctl >/dev/null 2>&1 || return 2
-		output="$(busctl --system call org.freedesktop.systemd1 /org/freedesktop/systemd1 \
-			org.freedesktop.systemd1.Manager GetUnitProcesses s "$SERVICE_UNIT" 2>/dev/null)" || return 2
+	command -v busctl >/dev/null 2>&1 || return 2
+	output="$(busctl --system --json=short call org.freedesktop.systemd1 /org/freedesktop/systemd1 \
+		org.freedesktop.systemd1.Manager GetUnitProcesses s "$SERVICE_UNIT" 2>/dev/null)" || return 2
+
+	# busctl's JSON preserves the a(sus) signature and tuple boundaries. Never infer an empty
+	# process set from omitted digits, a truncated reply, or a successful command with no payload.
+	[ "${#output}" -le 65536 ] || return 2
+	printf '%s' "$output" | MANAGER_REPLY=true node -e '
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => { input += chunk; });
+process.stdin.on("end", () => {
+  try {
+    const reply = JSON.parse(input);
+    if (reply?.type !== "a(sus)" || !Array.isArray(reply.data) ||
+        reply.data.length !== 1 || !Array.isArray(reply.data[0])) process.exit(2);
+    const members = reply.data[0];
+    if (members.length > 4096) process.exit(2);
+    for (const tuple of members) {
+      if (!Array.isArray(tuple) || tuple.length !== 3 ||
+          typeof tuple[0] !== "string" || typeof tuple[2] !== "string" ||
+          !Number.isInteger(tuple[1]) || tuple[1] < 1 || tuple[1] > 4294967295) process.exit(2);
+    }
+    process.exit(members.length === 0 ? 0 : 1);
+  } catch {
+    process.exit(2);
+  }
+});
+'
+}
+
+service_unit_object() {
+	local output
+	command -v busctl >/dev/null 2>&1 || return 2
+	output="$(busctl --system --json=short call org.freedesktop.systemd1 /org/freedesktop/systemd1 \
+		org.freedesktop.systemd1.Manager GetUnit s "$SERVICE_UNIT" 2>/dev/null)" || return 2
+	[ "${#output}" -le 4096 ] || return 2
+	printf '%s' "$output" | MANAGER_REPLY=true node -e '
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => { input += chunk; });
+process.stdin.on("end", () => {
+  try {
+    const reply = JSON.parse(input);
+    const object = reply?.data?.[0];
+    if (reply.type !== "o" || reply.data.length !== 1 || typeof object !== "string" ||
+        !object.startsWith("/org/freedesktop/systemd1/unit/")) process.exit(2);
+    process.stdout.write(object);
+  } catch { process.exit(2); }
+});
+'
+}
+
+systemd_manager_identity() {
+	local stat_line start_time
+	if [ "${SERVICE_PROCESS_ROOT:-/proc}" != "/proc" ]; then
+		process_identity 1
+		return $?
 	fi
+	stat_line="$(cat /proc/1/stat 2>/dev/null)" || return 2
+	case "$stat_line" in '1 (systemd) '*) ;; *) return 2 ;; esac
+	start_time="$(printf '%s\n' "$stat_line" | awk '{ sub(/^.*\) /, ""); print $20 }')" || return 2
+	case "$start_time" in ''|*[!0-9]*) return 2 ;; esac
+	[ "$start_time" -gt 0 ] 2>/dev/null || return 2
+	printf '1|%s\n' "$start_time"
+}
 
-	# busctl returns an array header followed by tuples.  Any positive integer in the tuple stream
-	# is a process owned by the unit; zero is the empty-array count/fixture sentinel.
-	while IFS= read -r token; do
-		case "$token" in
-			''|0) ;;
-			*[!0-9]*) ;;
-			*) [ "$token" -eq 0 ] || return 1 ;;
-		esac
-	done <<EOF
-$(printf '%s\n' "$output" | grep -Eo '[0-9]+' || true)
-EOF
+stopped_service_identity() {
+	local boot_id manager_identity unit_object property value fragment_path exec_start slice delegate kill_mode unit_id load_state
+
+	boot_id="$(cat "${SERVICE_BOOT_ID_FILE:-/proc/sys/kernel/random/boot_id}" 2>/dev/null)" || return 2
+	[ -n "$boot_id" ] || return 2
+	manager_identity="$(systemd_manager_identity)" || return 2
+	unit_object="$(service_unit_object)" || return 2
+	unit_id="$(service_property Id 2>/dev/null)" || return 2
+	load_state="$(service_property LoadState 2>/dev/null)" || return 2
+	fragment_path="$(service_property FragmentPath 2>/dev/null)" || return 2
+	exec_start="$(service_property ExecStart 2>/dev/null)" || return 2
+	slice="$(service_property Slice 2>/dev/null)" || return 2
+	delegate="$(service_property Delegate 2>/dev/null)" || return 2
+	kill_mode="$(service_property KillMode 2>/dev/null)" || return 2
+	[ "$unit_id" = "$SERVICE_UNIT" ] && [ "$load_state" = "loaded" ] || return 2
+	[ "$fragment_path" = "/etc/systemd/system/${SERVICE_UNIT}" ] || return 2
+	[[ "$exec_start" == *"${IMAGE_BASE_DIR}/current"* ]] || return 2
+	[ "$slice" = "system.slice" ] && [ "$delegate" = "no" ] && [ "$kill_mode" = "process" ] || return 2
+	printf 'boot=%s\nmanager=%s\nobject=%s\n' "$boot_id" "$manager_identity" "$unit_object"
+	for property in FragmentPath ExecStart Slice Delegate KillMode InvocationID Result; do
+		value="$(service_property "$property" 2>/dev/null)" || return 2
+		[ -n "$value" ] || return 2
+		printf '%s=%s\n' "$property" "$value"
+	done
 }
 
 stopped_service_quiesced() {
 	local active_state main_pid control_pid job_id control_group cgroup_dir cgroup_procs cgroup_events
-	local member_status population_status probe_status members subtree_file baseline current_baseline property value cgroup_mount_type
+	local member_status population_status probe_status members subtree_file baseline current_baseline cgroup_mount_type
 
 	active_state="$(service_property ActiveState 2>/dev/null)" || return 2
 	if [ -n "${SERVICE_CGROUP_MOUNT_TYPE:-}" ]; then
@@ -247,27 +322,22 @@ stopped_service_quiesced() {
 	[ -z "$job_id" ] || [ "$job_id" = "0" ] || return 1
 
 	manager_processes_are_empty || return $?
-	baseline=""
-	for property in FragmentPath ExecStart Slice Delegate KillMode InvocationID Result; do
-		value="$(service_property "$property" 2>/dev/null || true)"
-		[ -n "$value" ] || return 2
-		baseline="${baseline}${property}=${value}\n"
-	done
+	baseline="$(stopped_service_identity)" || return 2
 	if [ -n "$STOPPED_SERVICE_BASELINE" ]; then
-		current_baseline="$baseline"
-		[ "$current_baseline" = "$STOPPED_SERVICE_BASELINE" ] || return 1
+		[ "$baseline" = "$STOPPED_SERVICE_BASELINE" ] || return 1
 	else
 		STOPPED_SERVICE_BASELINE="$baseline"
 	fi
 
-	control_group="$(service_property ControlGroup 2>/dev/null || true)"
+	control_group="$(service_property ControlGroup 2>/dev/null)" || return 2
 	# systemd may clear ControlGroup after a stopped unit is reaped.  The canonical unit cgroup is
 	# still the only acceptable fallback; it is checked against the cgroup-v2 mount below.
-	[ -n "$control_group" ] || control_group="/system.slice/${SERVICE_NAME}.service"
-	case "$control_group" in
-		/*) ;;
-		*) return 2 ;;
-	esac
+	if [ -z "$control_group" ]; then
+		[ "$(service_property Slice 2>/dev/null)" = "system.slice" ] || return 2
+		[ "$(service_property Delegate 2>/dev/null)" = "no" ] || return 2
+		control_group="/system.slice/${SERVICE_UNIT}"
+	fi
+	[ "$control_group" = "/system.slice/${SERVICE_UNIT}" ] || return 2
 	cgroup_procs="${SERVICE_CGROUP_PROCS_FILE:-/sys/fs/cgroup${control_group}/cgroup.procs}"
 	cgroup_dir="${SERVICE_CGROUP_DIR:-${cgroup_procs%/cgroup.procs}}"
 	cgroup_events="${SERVICE_CGROUP_EVENTS_FILE:-${cgroup_dir}/cgroup.events}"
@@ -282,11 +352,19 @@ stopped_service_quiesced() {
 		[ "$CGROUP_POPULATED" = "0" ] || return 1
 		# Check descendants as well as the unit's direct cgroup.  A delegated child subtree is not
 		# quiescent merely because the parent cgroup.procs is empty.
+		local subtree_files symlinks
+		symlinks="$(find "$cgroup_dir" -type l -print 2>/dev/null)" || return 2
+		[ -z "$symlinks" ] || return 2
+		subtree_files="$(find "$cgroup_dir" -type f -name cgroup.procs -print 2>/dev/null)" || return 2
 		while IFS= read -r subtree_file; do
+			[ -n "$subtree_file" ] || continue
 			[ "$subtree_file" = "$cgroup_procs" ] && continue
 			read_cgroup_members "$subtree_file" || return $?
 			[ -z "$CGROUP_MEMBERS" ] || return 1
-		done < <(find "$cgroup_dir" -type f -name cgroup.procs -print 2>/dev/null)
+		done <<< "$subtree_files"
+		current_baseline="$(stopped_service_identity)" || return 2
+		[ "$current_baseline" = "$baseline" ] || return 1
+		manager_processes_are_empty || return $?
 		return 0
 	else
 		probe_status=$?
@@ -295,8 +373,9 @@ stopped_service_quiesced() {
 
 	# A removed original cgroup is valid only when the cgroup-v2 mount and its stable parent remain
 	# readable; manager enumeration above is the independent proof that no unit process survived.
-	[ -d "${SERVICE_CGROUP_MOUNT:-/sys/fs/cgroup}" ] || return 2
-	[ -d "$(dirname "$cgroup_dir")" ] || return 2
+	current_baseline="$(stopped_service_identity)" || return 2
+	[ "$current_baseline" = "$baseline" ] || return 1
+	manager_processes_are_empty || return $?
 	return 0
 }
 
@@ -353,7 +432,7 @@ process_identity() {
 	local pid="$1"
 	local proc_root="${SERVICE_PROCESS_ROOT:-/proc}"
 	local proc_dir="${proc_root}/${pid}"
-	local stat_line start_time executable command
+	local stat_line start_time executable
 
 	[ "$pid" != "0" ] && [ -n "$pid" ] || return 1
 
@@ -365,21 +444,44 @@ process_identity() {
 
 	if [ -r "${proc_dir}/stat" ]; then
 		stat_line="$(cat "${proc_dir}/stat")" || return 2
-		start_time="$(printf '%s\n' "$stat_line" | awk '{ sub(/^.*\\) /, ""); print $20 }')" || return 2
-		[ -n "$start_time" ] || return 2
+		start_time="$(printf '%s\n' "$stat_line" | awk '{ sub(/^.*\) /, ""); print $20 }')" || return 2
+		case "$start_time" in ''|*[!0-9]*) return 2 ;; esac
+		[ "$start_time" -gt 0 ] 2>/dev/null || return 2
 		executable="$(readlink "${proc_dir}/exe" 2>/dev/null)" || return 2
 		[ -n "$executable" ] || return 2
 		printf '%s|%s|%s\n' "$pid" "$start_time" "$executable"
 		return 0
 	fi
+	[ "$proc_root" = "/proc" ] || return 1
 
 	if ! kill -0 "$pid" 2>/dev/null; then
 		return 1
 	fi
+	# A live process without readable /proc start ticks and executable has unknown identity.
+	return 2
+}
 
-	command="$(ps -p "$pid" -o command= 2>/dev/null)" || return 2
-	[ -n "$command" ] || return 2
-	printf '%s|%s\n' "$pid" "$command"
+read_cgroup_file() {
+	CGROUP_FILE_PATH="$1" node -e '
+const fs = require("node:fs");
+let fd;
+try {
+  fd = fs.openSync(process.env.CGROUP_FILE_PATH, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+  if (!fs.fstatSync(fd).isFile()) process.exit(2);
+  const chunks = [];
+  let size = 0;
+  while (true) {
+    const buffer = Buffer.allocUnsafe(4096);
+    const count = fs.readSync(fd, buffer, 0, buffer.length, null);
+    if (count === 0) break;
+    size += count;
+    if (size > 65536) process.exit(2);
+    chunks.push(buffer.subarray(0, count));
+  }
+  process.stdout.write(Buffer.concat(chunks));
+} catch { process.exitCode = 2; }
+finally { if (fd !== undefined) fs.closeSync(fd); }
+'
 }
 
 read_cgroup_members() {
@@ -387,7 +489,7 @@ read_cgroup_members() {
 	local contents members
 
 	CGROUP_MEMBERS=""
-	if ! contents="$(cat "$cgroup_procs" 2>/dev/null)"; then
+	if ! contents="$(read_cgroup_file "$cgroup_procs" 2>/dev/null)"; then
 		return 2
 	fi
 
@@ -410,7 +512,7 @@ read_cgroup_population() {
 	local contents populated
 
 	CGROUP_POPULATED=""
-	if ! contents="$(cat "$cgroup_events" 2>/dev/null)"; then
+	if ! contents="$(read_cgroup_file "$cgroup_events" 2>/dev/null)"; then
 		return 2
 	fi
 
@@ -438,32 +540,87 @@ read_cgroup_population() {
 
 probe_cgroup_directory() {
 	local cgroup_dir="$1"
-	local gnu_stat bsd_stat
+	local output result mount_id parent_id dir_id events_id namespace_id
 
-	if [ ! -e "$cgroup_dir" ]; then
-		[ -d "$(dirname "$cgroup_dir")" ] || return 2
+	# lstat keeps a dangling link, permission error, and a genuinely absent cgroup distinct.
+	# The mount and parent are identified both inside the probe and across all worker checks.
+	# Compare the events node too: kernfs can reinitialize directory timestamps without replacing the cgroup.
+	# JavaScript template literals are intentionally passed verbatim.
+	# shellcheck disable=SC2016
+	if output="$(CGROUP_PROBE_PATH="$cgroup_dir" CGROUP_PROBE_EVENTS="${SERVICE_CGROUP_EVENTS_FILE:-${cgroup_dir}/cgroup.events}" CGROUP_PROBE_MOUNT="${SERVICE_CGROUP_MOUNT:-/sys/fs/cgroup}" node -e '
+const fs = require("node:fs");
+const path = require("node:path");
+const mount = process.env.CGROUP_PROBE_MOUNT;
+const dir = process.env.CGROUP_PROBE_PATH;
+if (!path.isAbsolute(mount) || !path.isAbsolute(dir) || !dir.startsWith(`${mount}/`)) process.exit(2);
+const parent = path.dirname(dir);
+function directoryIdentity(name) {
+  const stat = fs.lstatSync(name, { bigint: true });
+  if (!stat.isDirectory()) process.exit(2);
+  return `${stat.dev}:${stat.ino}`;
+}
+function fileIdentity(name) {
+  const stat = fs.lstatSync(name, { bigint: true });
+  if (!stat.isFile()) process.exit(2);
+  return `${stat.dev}:${stat.ino}`;
+}
+try {
+  const mountId = directoryIdentity(mount);
+  let namespaceId;
+  try { namespaceId = `${fs.readlinkSync("/proc/self/ns/mnt")}:${fs.readlinkSync("/proc/self/ns/cgroup")}`; }
+  catch {
+    if (!process.env.SERVICE_CGROUP_MOUNT_TYPE) process.exit(2);
+    namespaceId = "fixture-namespace";
+  }
+  if (process.env.SERVICE_CGROUP_MOUNT_TYPE) {
+    if (process.env.SERVICE_CGROUP_MOUNT_TYPE !== "cgroup2fs") process.exit(2);
+  } else if (fs.statfsSync(mount, { bigint: true }).type !== 0x63677270n) process.exit(2);
+  const parentId = directoryIdentity(parent);
+  let dirId = "-";
+  let eventsId = "-";
+  let absent = false;
+  try { dirId = directoryIdentity(dir); }
+  catch (error) {
+    if (error.code !== "ENOENT") process.exit(2);
+    absent = true;
+  }
+  if (!absent) eventsId = fileIdentity(process.env.CGROUP_PROBE_EVENTS);
+  if (directoryIdentity(mount) !== mountId || directoryIdentity(parent) !== parentId) process.exit(2);
+  if (absent) {
+    try { fs.lstatSync(dir); process.exit(2); }
+    catch (error) { if (error.code !== "ENOENT") process.exit(2); }
+  }
+  process.stdout.write(`${mountId}|${parentId}|${dirId}|${eventsId}|${namespaceId}`);
+  process.exit(absent ? 1 : 0);
+} catch { process.exit(2); }
+' 2>/dev/null)"; then
+		result=0
+	else
+		result=$?
+	fi
+	[ "$result" -eq 0 ] || [ "$result" -eq 1 ] || return 2
+	IFS='|' read -r mount_id parent_id dir_id events_id namespace_id <<< "$output"
+	[ -n "$mount_id" ] && [ -n "$parent_id" ] && [ -n "$dir_id" ] && [ -n "$events_id" ] && [ -n "$namespace_id" ] || return 2
+	if [ -n "$CGROUP_PROBE_MOUNT_ID" ]; then
+		[ "$CGROUP_PROBE_MOUNT_ID" = "$mount_id" ] && [ "$CGROUP_PROBE_PARENT_ID" = "$parent_id" ] && \
+			[ "$CGROUP_PROBE_NAMESPACE_ID" = "$namespace_id" ] || return 2
+	else
+		CGROUP_PROBE_MOUNT_ID="$mount_id"
+		CGROUP_PROBE_PARENT_ID="$parent_id"
+		CGROUP_PROBE_NAMESPACE_ID="$namespace_id"
+	fi
+	if [ "$result" -eq 1 ]; then
+		CGROUP_PROBE_ABSENT="true"
 		return 1
 	fi
-	[ -d "$cgroup_dir" ] || return 2
-
-	if gnu_stat="$(LC_ALL=C stat -c '%F' "$cgroup_dir" 2>&1)"; then
-		case "$gnu_stat" in
-			directory) return 0 ;;
-			*) return 2 ;;
-		esac
+	[ "$CGROUP_PROBE_ABSENT" = "false" ] || return 2
+	if [ -n "$CGROUP_PROBE_DIR_ID" ]; then
+		[ "$CGROUP_PROBE_DIR_ID" = "$dir_id" ] && [ "$CGROUP_PROBE_EVENTS_ID" = "$events_id" ] || return 2
+	else
+		CGROUP_PROBE_DIR_ID="$dir_id"
+		CGROUP_PROBE_EVENTS_ID="$events_id"
 	fi
-
-	if bsd_stat="$(LC_ALL=C stat -f '%HT' "$cgroup_dir" 2>&1)"; then
-		case "$bsd_stat" in
-			Directory|directory) return 0 ;;
-			*) return 2 ;;
-		esac
-	fi
-
-	case "$gnu_stat\n$bsd_stat" in
-		*"No such file or directory"*|*"no such file or directory"*) return 1 ;;
-		*) return 2 ;;
-	esac
+	return 0
 }
 
 capture_service_identity() {
@@ -1046,6 +1203,12 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 		rm -f "$BACKUP_TMP_PATH"
 		BACKUP_TMP_PATH=""
 	fi
+	if [ "$UPDATE_START_MODE" = "stopped-maintenance" ] && ! stopped_service_quiesced; then
+		hold_attempt "quiesced" "Stopped service changed after backup before switch"
+		update_status "failed" "failed" "Stopped service changed after backup; update is held for recovery"
+		FINALIZED="true"
+		exit 1
+	fi
 
 	# ── Switch symlink (atomic on same filesystem) ──
 	sudo -n ln -sfn "$NEW_VERSION_DIR" "$CURRENT_LINK" || {
@@ -1072,6 +1235,12 @@ if [ "$INSTALL_TYPE" = "image" ]; then
 	if [ ! -f "${NEW_VERSION_DIR}/dist/dataSource.js" ]; then
 		hold_attempt "migrating" "Target data source is missing; update is held for recovery"
 		update_status "failed" "failed" "Target data source is missing; update is held for recovery"
+		FINALIZED="true"
+		exit 1
+	fi
+	if [ "$UPDATE_START_MODE" = "stopped-maintenance" ] && ! stopped_service_quiesced; then
+		hold_attempt "migrating" "Stopped service changed before migration entry"
+		update_status "failed" "failed" "Stopped service changed before migration entry; update is held for recovery"
 		FINALIZED="true"
 		exit 1
 	fi
