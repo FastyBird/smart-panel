@@ -186,6 +186,15 @@ if [ -n "\${IDENTITY_CHANGE_AFTER_BACKUP:-}" ]; then
       : > "$SERVICE_CGROUP_PROCS_FILE"
       printf 'populated 0\n' > "$SERVICE_CGROUP_EVENTS_FILE"
       ;;
+    events)
+      exec 9< "$SERVICE_CGROUP_EVENTS_FILE"
+      rm "$SERVICE_CGROUP_EVENTS_FILE"
+      printf 'populated 0\n' > "$SERVICE_CGROUP_EVENTS_FILE"
+      exec 9<&-
+      ;;
+    metadata)
+      chmod 700 "$SERVICE_CGROUP_DIR"
+      ;;
   esac
   exit 0
 fi
@@ -626,7 +635,7 @@ describe('legacy image update worker lifecycle', () => {
 		}
 	});
 
-	it.each(['boot', 'manager', 'cgroup'] as const)(
+	it.each(['boot', 'manager', 'cgroup', 'events'] as const)(
 		'holds a changed %s identity after backup without switch or SQL',
 		(identity) => {
 			const fixture = createFixture();
@@ -648,6 +657,21 @@ describe('legacy image update worker lifecycle', () => {
 			}
 		},
 	);
+
+	it('accepts changed cgroup directory metadata when the directory and events file are unchanged', () => {
+		const fixture = createFixture();
+		try {
+			writeFileSync(fixture.stateFile, 'inactive');
+			rmSync(join(fixture.processRoot, '999'), { recursive: true, force: true });
+			writeFileSync(fixture.cgroupProcs, '');
+			writeFileSync(fixture.cgroupEvents, 'populated 0\n');
+			const result = runWorker(fixture, stoppedMaintenanceEnv(fixture, { IDENTITY_CHANGE_AFTER_BACKUP: 'metadata' }));
+			expect(result.status).toBe('success');
+			expect(readJson(join(fixture.attemptDir, 'attempt.json'))).toMatchObject({ state: 'complete' });
+		} finally {
+			rmSync(fixture.root, { recursive: true, force: true });
+		}
+	});
 
 	it.each([
 		['failure', 'Consistent SQLite backup failed'],
@@ -880,7 +904,7 @@ describe('legacy image update worker lifecycle', () => {
 		}
 	});
 
-	it.each(['membership symlink', 'descendant symlink', 'nondirectory parent'] as const)(
+	it.each(['membership symlink', 'events symlink', 'descendant symlink', 'nondirectory parent'] as const)(
 		'rejects a %s as unavailable cgroup evidence',
 		(cgroupFault) => {
 			const fixture = createFixture();
@@ -894,6 +918,10 @@ describe('legacy image update worker lifecycle', () => {
 					writeFileSync(join(fixture.root, 'empty-members'), '');
 					rmSync(fixture.cgroupProcs);
 					symlinkSync(join(fixture.root, 'empty-members'), fixture.cgroupProcs);
+				} else if (cgroupFault === 'events symlink') {
+					writeFileSync(join(fixture.root, 'empty-events'), 'populated 0\n');
+					rmSync(fixture.cgroupEvents);
+					symlinkSync(join(fixture.root, 'empty-events'), fixture.cgroupEvents);
 				} else if (cgroupFault === 'descendant symlink') {
 					symlinkSync(join(fixture.root, 'elsewhere'), join(fixture.cgroupDir, 'child'));
 				} else {

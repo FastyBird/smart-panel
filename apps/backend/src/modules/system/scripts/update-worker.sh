@@ -47,6 +47,7 @@ STOPPED_SERVICE_BASELINE=""
 CGROUP_PROBE_MOUNT_ID=""
 CGROUP_PROBE_PARENT_ID=""
 CGROUP_PROBE_DIR_ID=""
+CGROUP_PROBE_EVENTS_ID=""
 CGROUP_PROBE_NAMESPACE_ID=""
 CGROUP_PROBE_ABSENT="false"
 
@@ -539,23 +540,29 @@ read_cgroup_population() {
 
 probe_cgroup_directory() {
 	local cgroup_dir="$1"
-	local output result mount_id parent_id dir_id namespace_id
+	local output result mount_id parent_id dir_id events_id namespace_id
 
 	# lstat keeps a dangling link, permission error, and a genuinely absent cgroup distinct.
 	# The mount and parent are identified both inside the probe and across all worker checks.
+	# Compare the events node too: kernfs can reinitialize directory timestamps without replacing the cgroup.
 	# JavaScript template literals are intentionally passed verbatim.
 	# shellcheck disable=SC2016
-	if output="$(CGROUP_PROBE_PATH="$cgroup_dir" CGROUP_PROBE_MOUNT="${SERVICE_CGROUP_MOUNT:-/sys/fs/cgroup}" node -e '
+	if output="$(CGROUP_PROBE_PATH="$cgroup_dir" CGROUP_PROBE_EVENTS="${SERVICE_CGROUP_EVENTS_FILE:-${cgroup_dir}/cgroup.events}" CGROUP_PROBE_MOUNT="${SERVICE_CGROUP_MOUNT:-/sys/fs/cgroup}" node -e '
 const fs = require("node:fs");
 const path = require("node:path");
 const mount = process.env.CGROUP_PROBE_MOUNT;
 const dir = process.env.CGROUP_PROBE_PATH;
 if (!path.isAbsolute(mount) || !path.isAbsolute(dir) || !dir.startsWith(`${mount}/`)) process.exit(2);
 const parent = path.dirname(dir);
-function directoryIdentity(name, includeChangeTime = false) {
+function directoryIdentity(name) {
   const stat = fs.lstatSync(name, { bigint: true });
   if (!stat.isDirectory()) process.exit(2);
-  return includeChangeTime ? `${stat.dev}:${stat.ino}:${stat.ctimeNs}` : `${stat.dev}:${stat.ino}`;
+  return `${stat.dev}:${stat.ino}`;
+}
+function fileIdentity(name) {
+  const stat = fs.lstatSync(name, { bigint: true });
+  if (!stat.isFile()) process.exit(2);
+  return `${stat.dev}:${stat.ino}`;
 }
 try {
   const mountId = directoryIdentity(mount);
@@ -570,18 +577,20 @@ try {
   } else if (fs.statfsSync(mount, { bigint: true }).type !== 0x63677270n) process.exit(2);
   const parentId = directoryIdentity(parent);
   let dirId = "-";
+  let eventsId = "-";
   let absent = false;
-  try { dirId = directoryIdentity(dir, true); }
+  try { dirId = directoryIdentity(dir); }
   catch (error) {
     if (error.code !== "ENOENT") process.exit(2);
     absent = true;
   }
+  if (!absent) eventsId = fileIdentity(process.env.CGROUP_PROBE_EVENTS);
   if (directoryIdentity(mount) !== mountId || directoryIdentity(parent) !== parentId) process.exit(2);
   if (absent) {
     try { fs.lstatSync(dir); process.exit(2); }
     catch (error) { if (error.code !== "ENOENT") process.exit(2); }
   }
-  process.stdout.write(`${mountId}|${parentId}|${dirId}|${namespaceId}`);
+  process.stdout.write(`${mountId}|${parentId}|${dirId}|${eventsId}|${namespaceId}`);
   process.exit(absent ? 1 : 0);
 } catch { process.exit(2); }
 ' 2>/dev/null)"; then
@@ -590,8 +599,8 @@ try {
 		result=$?
 	fi
 	[ "$result" -eq 0 ] || [ "$result" -eq 1 ] || return 2
-	IFS='|' read -r mount_id parent_id dir_id namespace_id <<< "$output"
-	[ -n "$mount_id" ] && [ -n "$parent_id" ] && [ -n "$dir_id" ] && [ -n "$namespace_id" ] || return 2
+	IFS='|' read -r mount_id parent_id dir_id events_id namespace_id <<< "$output"
+	[ -n "$mount_id" ] && [ -n "$parent_id" ] && [ -n "$dir_id" ] && [ -n "$events_id" ] && [ -n "$namespace_id" ] || return 2
 	if [ -n "$CGROUP_PROBE_MOUNT_ID" ]; then
 		[ "$CGROUP_PROBE_MOUNT_ID" = "$mount_id" ] && [ "$CGROUP_PROBE_PARENT_ID" = "$parent_id" ] && \
 			[ "$CGROUP_PROBE_NAMESPACE_ID" = "$namespace_id" ] || return 2
@@ -606,9 +615,10 @@ try {
 	fi
 	[ "$CGROUP_PROBE_ABSENT" = "false" ] || return 2
 	if [ -n "$CGROUP_PROBE_DIR_ID" ]; then
-		[ "$CGROUP_PROBE_DIR_ID" = "$dir_id" ] || return 2
+		[ "$CGROUP_PROBE_DIR_ID" = "$dir_id" ] && [ "$CGROUP_PROBE_EVENTS_ID" = "$events_id" ] || return 2
 	else
 		CGROUP_PROBE_DIR_ID="$dir_id"
+		CGROUP_PROBE_EVENTS_ID="$events_id"
 	fi
 	return 0
 }
