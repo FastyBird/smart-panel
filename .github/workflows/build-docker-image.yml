@@ -127,7 +127,7 @@ jobs:
           printf '%s\n' "$DIGEST" > "$RUNNER_TEMP/digests/$ARCH"
 
       - name: "Upload platform digest"
-        uses: "actions/upload-artifact@v4"
+        uses: "actions/upload-artifact@v7"
         with:
           name: "docker-digest-${{ matrix.arch }}"
           path: "${{ runner.temp }}/digests/${{ matrix.arch }}"
