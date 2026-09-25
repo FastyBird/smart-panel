@@ -181,10 +181,13 @@ if [ -n "\${IDENTITY_CHANGE_AFTER_BACKUP:-}" ]; then
     boot) printf 'replacement-boot' > "$SERVICE_BOOT_ID_FILE";;
     manager) printf 'replacement-manager' > "$SERVICE_PROCESS_ROOT/1/identity";;
     cgroup)
+      # Keep the old fixture inode allocated while replacing the directory, like kernfs cyclic IDs.
+      exec 9< "$SERVICE_CGROUP_EVENTS_FILE"
       rm -rf "$SERVICE_CGROUP_DIR"
       mkdir "$SERVICE_CGROUP_DIR"
       : > "$SERVICE_CGROUP_PROCS_FILE"
       printf 'populated 0\n' > "$SERVICE_CGROUP_EVENTS_FILE"
+      exec 9<&-
       ;;
     events)
       exec 9< "$SERVICE_CGROUP_EVENTS_FILE"
