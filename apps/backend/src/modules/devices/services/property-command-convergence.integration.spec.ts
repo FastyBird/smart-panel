@@ -257,7 +257,7 @@ describe('property command convergence integration', () => {
 			getListenersForProperty: jest.fn(() => []),
 		} as unknown as HomeKitMapperRegistryService);
 		events.on(EventType.CHANNEL_PROPERTY_VALUE_SET, (property: ChannelPropertyEntity) =>
-			homeKitListener.handlePropertyValueChanged(property),
+			homeKitListener.handlePropertyValueSet(property),
 		);
 		const published: Array<{ id: string; value: unknown }> = [];
 		events.on(EventType.CHANNEL_PROPERTY_VALUE_SET, (property: ChannelPropertyEntity) =>
@@ -328,7 +328,7 @@ describe('property command convergence integration', () => {
 		).recoverExpiredCommandWindows();
 
 		expect(history).toEqual([]);
-		expect(published).toEqual([]);
+		expect(published).toEqual([aliasA.id, aliasB.id, source.id]);
 		expect(windows.get(source.id)).toBeNull();
 		expect(writeWithState).toHaveBeenCalledTimes(1);
 	});

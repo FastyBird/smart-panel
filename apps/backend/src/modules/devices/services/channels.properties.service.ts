@@ -1155,17 +1155,16 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 		// A report that arrives at/after the deadline is fresher than a due recovery candidate. Retire
 		// that candidate before its write so an old stale report can never replay after this report.
-		const expired = this.propertyCommandWindowService.expire(canonicalPropertyId);
-		if (expired !== null) {
-			this.propertyCommandWindowService.cancelRecovery(canonicalPropertyId);
-		}
+		this.propertyCommandWindowService.expire(canonicalPropertyId);
 
 		const window = this.propertyCommandWindowService.get(canonicalPropertyId);
 		if (window === null) {
-			this.propertyCommandWindowService.cancelRecovery(canonicalPropertyId);
-			const result = await writers.unwindowed();
+			const reconcilesCommand = this.propertyCommandWindowService.cancelRecovery(canonicalPropertyId);
+			const result = await (reconcilesCommand ? writers.windowed() : writers.unwindowed());
 
-			return { ...result, held: false, forceValueEvent: false };
+			// Clients may still display the unconfirmed command even when the provider reports the
+			// unchanged stored value. Resolve that optimistic state without adding duplicate history.
+			return { ...result, held: false, forceValueEvent: reconcilesCommand && result.state !== null };
 		}
 
 		const handle = { canonicalPropertyId, generation: window.generation };
@@ -1281,7 +1280,9 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					}
 
 					property.value = this.snapshotValueState(result.state);
-					if (result.changed) {
+					// A held provider report resolves the client's optimistic command even if the backend
+					// never moved from this value. Publish it once; storage still deduplicates the sample.
+					if (result.changed || recovery.heldReceipt !== null) {
 						this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
 					}
 					this.propertyCommandWindowService.completeRecovery(handle);

@@ -109,6 +109,18 @@ period. During that grace period a prior-value report is discarded. A third, dis
 device truth and replaces the window. On an unconfirmed expiry or dispatch failure, the held report is
 reconciled once through the ordinary value path; confirmed grace never replays it.
 
+Reconciliation publishes the held provider value once even if it equals the backend's cached value:
+HomeKit or another optimistic client may still display the unconfirmed command. If a fresh report
+supersedes that pending reconciliation, it likewise publishes the accepted state once. The normal
+storage deduplication remains in effect, so this notification does not create a duplicate history sample.
+
+HomeKit distinguishes accepted value events from metadata updates carrying a cached value. Accepted
+values win over a pending local SET, including confirmation through another virtual alias. SET handlers
+use HAP's write-response support to complete with the current mapped value; otherwise HAP republishes
+the original request value after awaiting dispatch, even if a newer command or report already won.
+The same rule applies to thermostat characteristics. Tests observe the full HAP change-event sequence,
+not only the final value after a scheduled refresh.
+
 This is intentionally heuristic: without a provider-side causal receipt, two identical scalar reports
 cannot prove which command caused them. Generation tokens prevent an earlier A→B→A callback from
 acting on the final A. Suppressed reports are omitted from both current state and history, so projected

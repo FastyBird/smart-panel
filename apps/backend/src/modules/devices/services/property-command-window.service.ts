@@ -264,8 +264,12 @@ export class PropertyCommandWindowService {
 		return true;
 	}
 
-	cancelRecovery(canonicalPropertyId: string): void {
+	/** Returns whether a fresh report supersedes a still-pending reconciliation. */
+	cancelRecovery(canonicalPropertyId: string): boolean {
+		const recovery = this.recoveries.get(canonicalPropertyId);
 		this.recoveries.delete(canonicalPropertyId);
+
+		return recovery !== undefined && recovery.deadlineAt > Date.now();
 	}
 
 	cancel(canonicalPropertyId: string): void {

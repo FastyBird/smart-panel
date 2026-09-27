@@ -500,19 +500,24 @@ describe('ThermostatCoordinator', () => {
 		const targetTempChar = service.getCharacteristic(Characteristic.TargetTemperature);
 
 		// Client requests target temp 25.0
-		targetTempChar.setValue(25.0);
+		const setPromise = targetTempChar.handleSetRequest(25.0);
 
 		// While dispatchBatch is in-flight, an incoming event updates heaterTempProp to 26.0
 		for (const listener of registeredListeners) {
 			listener.onPropertyChanged(heaterTempProp, 26.0);
 		}
 
+		const notifications: unknown[] = [];
+		targetTempChar.on('change', (change: { newValue: unknown }) => notifications.push(change.newValue));
+
 		// Now the in-flight command finishes
 		resolveDispatch();
+		await setPromise;
 		await new Promise((resolve) => process.nextTick(resolve));
 
 		// Value must remain 26.0 (from event), NOT overwritten by the older 25.0 command
 		expect(targetTempChar.value).toBe(26.0);
+		expect(notifications).not.toContain(25.0);
 	});
 
 	it('should retain a pending batch target mode while stale per-property reports arrive', async () => {
