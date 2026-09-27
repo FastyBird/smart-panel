@@ -242,7 +242,10 @@ run(spec: {
 - One job per `unit` at a time (`PrivilegedWorkerUnavailableException` on a second concurrent job); the unit
   is released only on a terminal state (`complete`/`failed`/`timeout`), a spawn failure, or the child process
   exiting unsuccessfully before ever reporting completion — never merely because a service launcher
-  exits successfully or the last `onStatus` subscriber unsubscribed.
+  exits successfully or the last `onStatus` subscriber unsubscribed. After a service launch is confirmed,
+  polling also checks its systemd state: a stopped/collected worker without terminal status fails promptly.
+  The status file is re-read after that check to preserve a concurrently published terminal result;
+  unavailable or ambiguous probes keep the reservation until the existing timeout path settles it.
 - `PlatformService.supportsPrivilegedWorkers()` is `true` for `raspberry`/`generic` with systemd, `false` for
   `docker`/`home-assistant`/`development`. The Tailscale plugin's own `FB_REMOTE_ACCESS_ALLOW_DEV` override
   is plugin-local — it never changes the platform capability itself.

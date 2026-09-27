@@ -91,6 +91,8 @@ interface JobRecord {
 	 * other timer in this file so a pending prune can never keep the process alive.
 	 */
 	pruneTimer: NodeJS.Timeout | null;
+	serviceLaunched: boolean;
+	serviceProbePending: boolean;
 }
 
 const STATUS_POLL_INTERVAL_MS = 3_000; // Poll worker status every 3 seconds
@@ -99,7 +101,7 @@ const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 /** Caps how much of a failed job's stderr is retained/exposed — enough for a useful diagnostic (e.g. sudo's own refusal reason) without holding an unbounded buffer for a chatty script. */
 const STDERR_CAPTURE_LIMIT_BYTES = 4 * 1024;
 
-/** Bounds the unprivileged `systemctl is-active` read `handleTimeout` uses to confirm a stop attempt — same probe pattern/budget as TailscaleNodeManagedService's own systemd unit check. */
+/** Bounds the unprivileged `systemctl is-active` read used to confirm worker settlement or a timeout stop attempt — same probe pattern/budget as TailscaleNodeManagedService's own systemd unit check. */
 const IS_ACTIVE_PROBE_TIMEOUT_MS = 2_000;
 /** Bounds the privileged stop attempt `handleTimeout` makes, so a scope that refuses to stop cannot strand the job in 'running'. */
 const STOP_ATTEMPT_TIMEOUT_MS = 15_000;
@@ -202,6 +204,8 @@ export class PrivilegedWorkerService {
 			stderrBuffer: Buffer.alloc(0),
 			loggedInvalidStatus: false,
 			pruneTimer: null,
+			serviceLaunched: false,
+			serviceProbePending: false,
 		};
 
 		// Reserve the unit before spawning so a caller can never slip a second job in
@@ -280,6 +284,8 @@ export class PrivilegedWorkerService {
 				}
 
 				if (code === 0 && !signal) {
+					record.serviceLaunched = spec.unitType === 'service';
+
 					return;
 				}
 
@@ -437,58 +443,100 @@ export class PrivilegedWorkerService {
 				return;
 			}
 
-			if (!existsSync(record.statusFile)) {
-				return;
-			}
+			this.pollStatusFile(record);
 
-			let mapped: Partial<PrivilegedJobStatus> | null;
-
-			try {
-				const raw = readFileSync(record.statusFile, 'utf-8');
-				const rawParsed = JSON.parse(raw) as Record<string, unknown>;
-
-				// mapStatus is caller-supplied code — a throw here must be handled exactly like a
-				// torn/mid-write read, not propagate out of this interval callback.
-				mapped = record.mapStatus ? record.mapStatus(rawParsed) : (rawParsed as Partial<PrivilegedJobStatus>);
-			} catch (error) {
-				const err = error as Error;
-
-				this.logInvalidStatusOnce(record, `failed to read status: ${err.message}`);
-
-				return;
-			}
-
-			if (!mapped || !isValidTickState(mapped.state)) {
-				// mapStatus returned null, or the (mapped/native) state is missing or not one of
-				// 'running' | 'complete' | 'failed' (never 'timeout' — reserved, see above) — not
-				// a usable status. Ignored: the previous status stands, and this never advances
-				// or releases the unit.
-				this.logInvalidStatusOnce(
-					record,
-					mapped ? `unrecognized state ${JSON.stringify(mapped.state)}` : 'mapStatus returned null',
-				);
-
-				return;
-			}
-
-			// id and updatedAt are always service-owned — never trusted from the file/mapper —
-			// so a script can never claim a different job's id or backdate its own progress.
-			const status: PrivilegedJobStatus = {
-				id: record.id,
-				state: mapped.state,
-				step: toOptionalString(mapped.step),
-				message: toOptionalString(mapped.message),
-				updatedAt: new Date().toISOString(),
-			};
-
-			record.lastStatus = status;
-
-			this.notifyHandlers(record, status);
-
-			if (status.state === 'complete' || status.state === 'failed') {
-				this.stopPolling(record);
+			if (record.serviceLaunched && record.lastStatus.state === 'running' && !record.serviceProbePending) {
+				void this.checkServiceSettlement(record);
 			}
 		}, STATUS_POLL_INTERVAL_MS);
+	}
+
+	private pollStatusFile(record: JobRecord): void {
+		if (!existsSync(record.statusFile)) {
+			return;
+		}
+
+		let mapped: Partial<PrivilegedJobStatus> | null;
+
+		try {
+			const raw = readFileSync(record.statusFile, 'utf-8');
+			const rawParsed = JSON.parse(raw) as Record<string, unknown>;
+
+			// mapStatus is caller-supplied code — a throw here must be handled exactly like a
+			// torn/mid-write read, not propagate out of this interval callback.
+			mapped = record.mapStatus ? record.mapStatus(rawParsed) : (rawParsed as Partial<PrivilegedJobStatus>);
+		} catch (error) {
+			const err = error as Error;
+
+			this.logInvalidStatusOnce(record, `failed to read status: ${err.message}`);
+
+			return;
+		}
+
+		if (!mapped || !isValidTickState(mapped.state)) {
+			// mapStatus returned null, or the (mapped/native) state is missing or not one of
+			// 'running' | 'complete' | 'failed' (never 'timeout' — reserved, see above) — not
+			// a usable status. Ignored: the previous status stands, and this never advances
+			// or releases the unit.
+			this.logInvalidStatusOnce(
+				record,
+				mapped ? `unrecognized state ${JSON.stringify(mapped.state)}` : 'mapStatus returned null',
+			);
+
+			return;
+		}
+
+		// id and updatedAt are always service-owned — never trusted from the file/mapper —
+		// so a script can never claim a different job's id or backdate its own progress.
+		const status: PrivilegedJobStatus = {
+			id: record.id,
+			state: mapped.state,
+			step: toOptionalString(mapped.step),
+			message: toOptionalString(mapped.message),
+			updatedAt: new Date().toISOString(),
+		};
+
+		record.lastStatus = status;
+
+		this.notifyHandlers(record, status);
+
+		if (status.state === 'complete' || status.state === 'failed') {
+			this.stopPolling(record);
+		}
+	}
+
+	private async checkServiceSettlement(record: JobRecord): Promise<void> {
+		record.serviceProbePending = true;
+
+		try {
+			const stopped = await new Promise<boolean>((resolve) => {
+				execFile('systemctl', ['is-active', record.unit], { timeout: IS_ACTIVE_PROBE_TIMEOUT_MS }, (error, stdout) => {
+					const state = (stdout ?? '').trim();
+					// Only typed stopped/not-found replies count. A timeout, permission error or
+					// malformed response must not release a potentially live worker's reservation.
+					resolve(
+						((!error || error.code === 3) && (state === 'inactive' || state === 'failed')) ||
+							((!error || error.code === 4) && state === 'unknown'),
+					);
+				});
+			}).catch(() => false);
+
+			if (!stopped || record.lastStatus.state !== 'running' || !record.pollTimer) {
+				return;
+			}
+
+			// The worker may have published its terminal file while systemctl was in flight.
+			// Read it again before deciding that an exited service failed to report completion.
+			this.pollStatusFile(record);
+			this.finishJob(record, {
+				id: record.id,
+				state: 'failed',
+				message: `Privileged worker service "${record.unit}" stopped without reporting completion`,
+				updatedAt: new Date().toISOString(),
+			});
+		} finally {
+			record.serviceProbePending = false;
+		}
 	}
 
 	/**

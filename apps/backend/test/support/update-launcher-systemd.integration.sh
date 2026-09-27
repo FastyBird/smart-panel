@@ -61,10 +61,15 @@ const service = new loaded.exports.PrivilegedWorkerService({
  getPlatformType: () => 'raspberry',
 });
 service.run({
- unit: unit + '-worker', unitType: kind,
+ unit: unit + '-worker', unitType: kind === 'scope' ? 'scope' : 'service',
  script: path.join(root, 'worker.sh'), args: [root, unit, kind],
  statusFile: path.join(root, kind, 'status.json'),
-}).catch(error => { console.error(error); process.exit(1); });
+}).then(({ id }) => service.onStatus(id, status => {
+ if (kind === 'service-exit' && status.state === 'failed') {
+  fs.writeFileSync(path.join(root, kind, 'observed-status.json'), JSON.stringify(status));
+  fs.writeFileSync(path.join(root, kind, 'result'), 'failed');
+ }
+})).catch(error => { console.error(error); process.exit(1); });
 setInterval(() => {}, 1000);
 JS
 cat > "$fixture_root/worker.sh" <<'SH_WORKER'
@@ -73,6 +78,7 @@ root="$1"
 unit="$2"
 kind="$3"
 exec > "$root/$kind/output.log" 2>&1
+if [ "$kind" = service-exit ]; then exit 7; fi
 source "$root/functions.sh"
 SERVICE_NAME="$unit.service"
 SERVICE_UNIT="$unit.service"
@@ -90,10 +96,11 @@ printf '{"state":"complete"}\n' > "$root/$kind/status.json"
 SH_WORKER
 chmod 755 "$fixture_root/worker.sh"
 
-for kind in scope service; do
+for kind in scope service service-exit; do
 	unit="$fixture_name-$kind"
 	units+=("$unit.service")
-	if [ "$kind" = scope ]; then units+=("$unit-worker.scope"); else units+=("$unit-worker.service"); fi
+	if [ "$kind" = scope ]; then unit_type=scope; else unit_type=service; fi
+	units+=("$unit-worker.$unit_type")
 	install -d -o "$service_user" -m 700 "$fixture_root/$kind"
 	cat > "/run/systemd/system/$unit.service" <<EOF
 [Service]
@@ -113,13 +120,19 @@ EOF
 	if [ "$kind" = scope ]; then
 		[ "$result" = 1 ]
 		echo 'PASS: scope launcher prevents caller quiescence'
+	elif [ "$kind" = service-exit ]; then
+		[ "$result" = failed ]
+		echo 'PASS: early worker exit is reported without waiting for the job timeout'
 	else
 		[ "$result" = 0 ]
 		echo 'PASS: independent service allows unchanged production quiescence'
 	fi
 	for _ in $(seq 1 10); do
-		if ! systemctl is-active --quiet "$unit-worker.$kind"; then break; fi
+		if ! systemctl is-active --quiet "$unit-worker.$unit_type"; then break; fi
 		sleep 1
 	done
-	! systemctl is-active --quiet "$unit-worker.$kind"
+	if systemctl is-active --quiet "$unit-worker.$unit_type"; then
+		echo "FAIL: $unit-worker.$unit_type is still active" >&2
+		exit 1
+	fi
 done

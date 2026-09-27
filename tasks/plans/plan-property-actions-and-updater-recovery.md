@@ -37,13 +37,17 @@ The repair adds an opt-in independent transient-service launch to `PrivilegedWor
 `UpdateExecutorService` selects it. `--collect --service-type=exec` lets the sudo launcher return
 without `--wait`. Existing worker quiescence, attempt ownership, deadlines, migration and health
 checks are unchanged. The initial status replay also retains a readable starting message instead
-of exposing `undefined` as a phase.
+of exposing `undefined` as a phase. Confirmed service settlement without a terminal status fails
+promptly; ambiguous probes retain the reservation, and a concurrent terminal file wins over the
+settlement fallback.
 
-Validation: **208 tests / 5 suites** pass across privileged workers, executor, updater service,
+Validation: **221 tests / 5 suites** pass across privileged workers, executor, updater service,
 worker script and update CLI; backend build passes. The new
 `test/support/update-launcher-systemd.integration.sh` executes the actual compiled launcher and
 unchanged worker predicates: scope control returns busy (`1`), independent-service case returns
-quiescent (`0`) under real `KillMode=process`. The fixture has no application database or device I/O.
+quiescent (`0`) under real `KillMode=process`. A third case confirms that an early worker exit is
+reported without waiting for the job timeout. Every case explicitly fails if its worker remains
+active. The fixture has no application database or device I/O.
 This proves the launcher correction, not a repaired live upgrade. The failed staging hold still
 requires an evidence-preserving recovery/deployment step after review; alpha.24 alone cannot replace
 its own installed launcher. Full latency and client acceptance remain open.

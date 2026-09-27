@@ -230,6 +230,146 @@ describe('PrivilegedWorkerService', () => {
 		});
 	});
 
+	describe('independent service settlement', () => {
+		const spec: PrivilegedJobSpec = { ...baseSpec, unitType: 'service' };
+
+		it.each([
+			['inactive', 3],
+			['failed', 3],
+			['unknown', 4],
+		])('reports a %s worker without a terminal file and releases its reservation', async (state, code) => {
+			(execFile as unknown as jest.Mock).mockImplementation(
+				(_file: string, _args: readonly string[], _options: unknown, callback: ExecFileCallback) => {
+					callback(Object.assign(new Error('Unit stopped'), { code }), `${state}\n`);
+				},
+			);
+			const { id } = await service.run(spec);
+			fakeChild.emit('exit', 0, null);
+			jest.advanceTimersByTime(3_000);
+			await flushMicrotasks();
+
+			expect(service.getStatus(id)).toEqual(
+				expect.objectContaining({
+					state: 'failed',
+					message: expect.stringContaining('stopped without reporting completion'),
+				}),
+			);
+			await expect(service.run(spec)).resolves.toEqual(expect.objectContaining({ id: expect.any(String) }));
+		});
+
+		it.each([
+			['active', null],
+			['deactivating', 3],
+			['', 'ETIMEDOUT'],
+			['inactive', 'EACCES'],
+			['malformed', 3],
+		])('keeps the reservation for an active or unverified worker (%s, %s)', async (state, code) => {
+			(execFile as unknown as jest.Mock).mockImplementation(
+				(_file: string, _args: readonly string[], _options: unknown, callback: ExecFileCallback) => {
+					callback(code === null ? null : Object.assign(new Error('Probe failed'), { code }), `${state}\n`);
+				},
+			);
+			const { id } = await service.run(spec);
+			fakeChild.emit('exit', 0, null);
+			jest.advanceTimersByTime(3_000);
+			await flushMicrotasks();
+
+			expect(service.getStatus(id)?.state).toBe('running');
+			await expect(service.run(spec)).rejects.toThrow(PrivilegedWorkerUnavailableException);
+		});
+
+		it('retries a synchronously failed probe without releasing the reservation', async () => {
+			(execFile as unknown as jest.Mock).mockImplementationOnce(() => {
+				throw new Error('EAGAIN');
+			});
+			const { id } = await service.run(spec);
+			fakeChild.emit('exit', 0, null);
+			jest.advanceTimersByTime(3_000);
+			await flushMicrotasks();
+			expect(service.getStatus(id)?.state).toBe('running');
+			await expect(service.run(spec)).rejects.toThrow(PrivilegedWorkerUnavailableException);
+			jest.advanceTimersByTime(3_000);
+			await flushMicrotasks();
+			expect(service.getStatus(id)?.state).toBe('failed');
+		});
+
+		it('does not probe before systemd confirms launch or for a scope', async () => {
+			await service.run(spec);
+			jest.advanceTimersByTime(3_000);
+			expect(execFile).not.toHaveBeenCalled();
+			await service.run({ ...baseSpec, unit: 'another-scope' });
+			fakeChild.emit('exit', 0, null);
+			jest.advanceTimersByTime(3_000);
+			await flushMicrotasks();
+			expect(execFile).toHaveBeenCalledTimes(1);
+			expect(execFile).toHaveBeenCalledWith(
+				'systemctl',
+				['is-active', spec.unit],
+				expect.any(Object),
+				expect.any(Function),
+			);
+		});
+
+		it('re-reads a terminal file published while the unit probe is pending', async () => {
+			let reply: ExecFileCallback;
+			(execFile as unknown as jest.Mock).mockImplementation(
+				(_file: string, _args: readonly string[], _options: unknown, callback: ExecFileCallback) => {
+					reply = callback;
+				},
+			);
+			const { id } = await service.run(spec);
+			fakeChild.emit('exit', 0, null);
+			jest.advanceTimersByTime(6_000);
+			expect(execFile).toHaveBeenCalledTimes(1);
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ state: 'complete' }));
+			reply(Object.assign(new Error('Collected'), { code: 4 }), 'unknown');
+			await flushMicrotasks();
+			expect(service.getStatus(id)?.state).toBe('complete');
+		});
+
+		it('does not let a pending settlement probe override timeout handling', async () => {
+			let reply: ExecFileCallback;
+			(execFile as unknown as jest.Mock).mockImplementationOnce(
+				(_file: string, _args: readonly string[], _options: unknown, callback: ExecFileCallback) => {
+					reply = callback;
+				},
+			);
+			const { id } = await service.run({ ...spec, timeoutMs: 6_000 });
+			fakeChild.emit('exit', 0, null);
+			jest.advanceTimersByTime(9_000);
+			// The timeout has taken ownership, but its stop command has not completed yet.
+			reply(Object.assign(new Error('Collected'), { code: 4 }), 'unknown');
+			await flushMicrotasks();
+			expect(service.getStatus(id)?.state).toBe('running');
+			fakeChild.emit('exit', 0, null);
+			await flushMicrotasks();
+			expect(service.getStatus(id)?.state).toBe('timeout');
+		});
+
+		it('ignores a late probe after terminal status and cannot release the next job', async () => {
+			let reply: ExecFileCallback;
+			(execFile as unknown as jest.Mock).mockImplementation(
+				(_file: string, _args: readonly string[], _options: unknown, callback: ExecFileCallback) => {
+					reply = callback;
+				},
+			);
+			const { id } = await service.run(spec);
+			fakeChild.emit('exit', 0, null);
+			jest.advanceTimersByTime(3_000);
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ state: 'complete' }));
+			jest.advanceTimersByTime(3_000);
+			(existsSync as jest.Mock).mockReturnValue(false);
+			const next = await service.run(spec);
+			reply(Object.assign(new Error('Collected'), { code: 4 }), 'unknown');
+			await flushMicrotasks();
+			expect(service.getStatus(id)?.state).toBe('complete');
+			expect(service.getStatus(next.id)?.state).toBe('running');
+			await expect(service.run(spec)).rejects.toThrow(PrivilegedWorkerUnavailableException);
+		});
+	});
+
 	describe('status polling', () => {
 		it('notifies subscribers with the parsed status file contents every 3 seconds', async () => {
 			const { id } = await service.run(baseSpec);
