@@ -2,11 +2,46 @@
 
 **Date:** 2026-09-27
 
-**Status:** property fixes merged in #1120 and published as alpha.24; normal staging upgrade failed before migration; sudo launcher deadlock reproduced; independent-service launcher repair validated; full acceptance still open
+**Status:** property and launcher fixes published in alpha.25; normal worker upgrade completed, but restarted backend reported a false failure; observer permission repair validated in fixtures; full acceptance still open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Alpha.25 normal-upgrade result — 2026-09-28
+
+PR #1121 merged as `95c5cbf86a1b96ca3163442538098327d3a46527`. The authorized
+[alpha.25 release](https://github.com/FastyBird/smart-panel/releases/tag/v1.1.0-alpha.25)
+names version-sync commit `ba21c789f9e34630523c6b0ba62f0ec165e0f3a0`. Its server archive SHA-256 is
+`cd370d552b4e5e7021e8bb3a058b3d773647bae907b8832aefde00a437927222`; compiled executor,
+privileged launcher and worker were checked against the tested source/build.
+
+An authorized staging rebuild preserved the complete old runtime, including the failed alpha.24
+attempt and lock. It bootstrapped an explicitly unpublished `alpha.24+review.95c5cbf86` source
+with the repaired launcher, preserved 111 devices and HomeKit pairing, and verified an isolated
+Apple Home ON/OFF cycle. This bootstrap is distinct from a normal update or legacy-hold recovery.
+
+Exactly one normal System API request was accepted at **22:36:56 UTC on September 27**. Attempt
+`1790548616-549198` passed stop/quiescence, ran the real migration CLI with **no pending migrations**,
+started published alpha.25, verified health, and durably completed at **22:39:07 UTC**, exit 0,
+`recoveryRequired:false`, with its lock removed by the worker. Database schema and all 28 migration
+history records are unchanged. No manual lock deletion, SQL replay or second update was performed.
+
+However, the restarted backend incorrectly reported **FAILED: Update interrupted during starting
+phase**. As the actual `smart-panel` user, `existsSync(attempt.json)` returns false and reading it
+returns `EACCES`: the root worker creates a 0700 root directory and 0600 root record. A signal-0
+probe of a live root process also returns `EPERM`, which the observer treated as process death.
+Thus the worker execution succeeded, but **end-to-end System status acceptance remains open**.
+
+The follow-up passes the backend's own numeric group to the worker through its internal launch
+environment. Only attempt metadata becomes group-readable (directory 0710, atomic record 0640);
+writer ownership, the 0700 lock and private migration logs remain unchanged. `EPERM` keeps a live
+privileged owner observable. Operator invocations without an observer group keep owner-only modes.
+A real root/service-user fixture executes production writer functions and the compiled observer:
+private metadata reproduces FAILED; readable metadata with the old PID probe reproduces FAILED;
+both corrections together produce COMPLETE without blocking initialization. It also rejects
+service-user writes to the record and reads of the lock/private migration log. These are disposable
+fixture results, not a second staging upgrade or deployment of the follow-up.
 
 ## Current release and upgrade result — 2026-09-27
 

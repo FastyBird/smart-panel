@@ -246,6 +246,12 @@ run(spec: {
   polling also checks its systemd state: a stopped/collected worker without terminal status fails promptly.
   The status file is re-read after that check to preserve a concurrently published terminal result;
   unavailable or ambiguous probes keep the reservation until the existing timeout path settles it.
+- The updater's internal launch environment supplies `UPDATE_OBSERVER_GID` from the backend's own
+  process group. The root worker grants that group traversal of the attempt directory (0710) and
+  read-only access to each atomically replaced attempt record (0640). The lock stays 0700 and
+  migration logs remain private. No public request selects this group. Invocations without it retain
+  owner-only metadata permissions. On restart, a signal-0 `EPERM` response denotes a live privileged
+  worker rather than an interrupted update; the bounded background observer awaits its durable result.
 - `PlatformService.supportsPrivilegedWorkers()` is `true` for `raspberry`/`generic` with systemd, `false` for
   `docker`/`home-assistant`/`development`. The Tailscale plugin's own `FB_REMOTE_ACCESS_ALLOW_DEV` override
   is plugin-local — it never changes the platform capability itself.

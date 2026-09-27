@@ -24,6 +24,12 @@ fi
 ATTEMPT_DIR="${ATTEMPT_DIR:-$(dirname "$STATUS_FILE")/update-attempt}"
 ATTEMPT_FILE="${ATTEMPT_DIR}/attempt.json"
 ATTEMPT_LOCK="${ATTEMPT_DIR}/lock"
+# Only the internal executor supplies its own group; callers cannot select it through the API.
+# Legacy/operator invocations without a reader retain owner-only permissions.
+UPDATE_OBSERVER_GID="${UPDATE_OBSERVER_GID:-}"
+case "$UPDATE_OBSERVER_GID" in
+	*[!0-9]*) printf 'Invalid update observer group\n' >&2; exit 64 ;;
+esac
 ATTEMPT_ID=""
 MIGRATION_ENTERED="false"
 FINALIZED="false"
@@ -70,7 +76,13 @@ write_attempt() {
 	CURRENT_PHASE="$phase"
 
 	mkdir -p "$ATTEMPT_DIR"
-	chmod 700 "$ATTEMPT_DIR"
+	if [ -n "$UPDATE_OBSERVER_GID" ]; then
+		chgrp "$UPDATE_OBSERVER_GID" "$ATTEMPT_DIR" || return 1
+		# Traverse to the known attempt file without exposing directory listings or writes.
+		chmod 710 "$ATTEMPT_DIR" || return 1
+	else
+		chmod 700 "$ATTEMPT_DIR"
+	fi
 
 	{
 		printf '{\n'
@@ -88,6 +100,10 @@ write_attempt() {
 	} > "$tmp_file"
 
 	chmod 600 "$tmp_file"
+	if [ -n "$UPDATE_OBSERVER_GID" ]; then
+		chgrp "$UPDATE_OBSERVER_GID" "$tmp_file" || return 1
+		chmod 640 "$tmp_file" || return 1
+	fi
 	mv -f "$tmp_file" "$ATTEMPT_FILE"
 }
 
