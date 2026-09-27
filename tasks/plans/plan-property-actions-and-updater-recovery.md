@@ -2,11 +2,55 @@
 
 **Date:** 2026-09-27
 
-**Status:** residual HomeKit fixes deployed; live latency failures reproduced; SQLite value-path regression identified; single-process default agreed; optional shared leases and metadata snapshot deployed; three physical command/restore cycles pass; full acceptance still open
+**Status:** property fixes merged in #1120 and published as alpha.24; normal staging upgrade failed before migration; sudo launcher deadlock reproduced; independent-service launcher repair validated; full acceptance still open
 
-**Reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
+**Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Current release and upgrade result — 2026-09-27
+
+PR [#1120](https://github.com/FastyBird/smart-panel/pull/1120) was squash-merged as
+`7ff77089031d24c5b820d7579759470ba8335e10`. The authorized
+[Alpha Release run](https://github.com/FastyBird/smart-panel/actions/runs/36348182816)
+published `1.1.0-alpha.24`; its tag points to version-sync commit
+`35619a082483aca59fab02e1c0381c9964fcf3ff`. The ARM64 server archive SHA-256 is
+`4bac9ecd21904078ee6b5cd83342f7683c8cf439c6785fb5d1815f0350c9718d`.
+Its worker matches the installed review worker and repository source byte-for-byte
+(`b09055998997d374d86f523921b655ee64f7ec9d32e2de48c271b9d3c7f33b7c`).
+
+The private review deployment had omitted `.image-install`. Restoring that marker corrected
+installation detection without product changes. The ordinary authenticated System API then offered
+alpha.24 and accepted one install request at **20:59:02 UTC**. At **20:59:56 UTC** the worker held
+in `recovery_required/stopping`, `migrationEntered:false`, because quiescence did not settle.
+The original binary remained selected. The failed attempt, status and journals were archived;
+its lock was preserved. The unchanged original installation was restarted and verified healthy
+with 111 devices and the designated source/alias online and OFF. This is a **failed normal upgrade**,
+not installation or migration success.
+
+A separate throwaway service on the same Linux/systemd host reproduced the launcher's circular wait:
+`sudo systemd-run --scope` moved the worker into a scope but left its waiting sudo parent in the
+backend's service cgroup. The worker therefore waited for a captured process that could exit only
+when that worker finished. Removing the lock or exempting sudo by name would not repair this cause.
+
+The repair adds an opt-in independent transient-service launch to `PrivilegedWorkerService`; only
+`UpdateExecutorService` selects it. `--collect --service-type=exec` lets the sudo launcher return
+without `--wait`. Existing worker quiescence, attempt ownership, deadlines, migration and health
+checks are unchanged. The initial status replay also retains a readable starting message instead
+of exposing `undefined` as a phase. Confirmed service settlement without a terminal status fails
+promptly; ambiguous probes retain the reservation, and a concurrent terminal file wins over the
+settlement fallback.
+
+Validation: **221 tests / 5 suites** pass across privileged workers, executor, updater service,
+worker script and update CLI; backend build passes. The new
+`test/support/update-launcher-systemd.integration.sh` executes the actual compiled launcher and
+unchanged worker predicates: scope control returns busy (`1`), independent-service case returns
+quiescent (`0`) under real `KillMode=process`. A third case confirms that an early worker exit is
+reported without waiting for the job timeout. Every case explicitly fails if its worker remains
+active. The fixture has no application database or device I/O.
+This proves the launcher correction, not a repaired live upgrade. The failed staging hold still
+requires an evidence-preserving recovery/deployment step after review; alpha.24 alone cannot replace
+its own installed launcher. Full latency and client acceptance remain open.
 
 ## Recommendation
 
@@ -14,7 +58,7 @@ Keep the command-window convergence semantics. Restore the intended separation b
 
 **Owner clarification, 2026-09-27:** The existing Raspberry Pi is staging and may be overwritten as needed. A second SD card/RPi is therefore not required. Preserve the useful failure evidence and representative configuration, then rebuild this staging installation directly from the verified candidate. Repairing the old installation in place is no longer on the critical path. Backend integration and updater compatibility tests can also run on disposable infrastructure. Fresh-install results remain separate from upgrade acceptance and require representative load before qualifying as performance evidence.
 
-This document proposes a replacement execution plan incorporating the owner's authorization to overwrite staging. It does not change existing timing limits or weaken the updater's safety contracts for installations upgraded in place. Record the staging-reset decision in the issue ledger when implementing the plan; the old private recovery packet is no longer a prerequisite for this reset. The new issue organization and diagnostic lifecycle described below remain proposals. The local P1 implementation and validation are recorded below; no GitHub issues or release have been changed. Staging reads and a private evidence snapshot are recorded below.
+This document proposes a replacement execution plan incorporating the owner's authorization to overwrite staging. It does not change existing timing limits or weaken the updater's safety contracts for installations upgraded in place. Record the staging-reset decision in the issue ledger when implementing the plan; the old private recovery packet is no longer a prerequisite for this reset. The new issue organization and diagnostic lifecycle described below remain proposals. The implementation and validation history is recorded below; the current release and failed normal-upgrade result above supersede the initial documentation-only inventory.
 
 ## What the evidence establishes
 
@@ -244,4 +288,4 @@ Reviewed source boundaries:
 - Tailscale managed-service shutdown, admin `useDeviceControl.ts`, panel `device_control_state.service.dart`, and `.github/workflows/ci-tests.yaml`
 - `docs/optimistic-ui-architecture.md`, `docs/property-command-latency-runbook.md`, and the image update runbook in `docs/remote-access-architecture.md`
 
-GitHub issue bodies/comments and source were inspected. Private recovery-packet outcomes remain attributed to issue records. Live SSH inventory, a consistent database archive, published artifact hash verification, disposable migration/health checks and the limited physical diagnostics above were subsequently performed. No ordinary System upgrade or release was performed. The initial assessment was documentation-only; dependencies were subsequently prepared and the targeted backend verification recorded under P1 was executed. Full hardware latency and client acceptance remain outstanding; actual Apple Home smoke observations and their sampling limits are recorded above.
+GitHub issue bodies/comments and source were inspected. Private recovery-packet outcomes remain attributed to issue records. Live SSH inventory, a consistent database archive, published artifact hash verification, disposable migration/health checks and the limited physical diagnostics above were subsequently performed. The later alpha.24 release and failed ordinary System upgrade are recorded in the current-result section above. The initial assessment was documentation-only; dependencies were subsequently prepared and the targeted backend verification recorded under P1 was executed. Full hardware latency and client acceptance remain outstanding; actual Apple Home smoke observations and their sampling limits are recorded above.

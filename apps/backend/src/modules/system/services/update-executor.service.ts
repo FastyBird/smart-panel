@@ -558,11 +558,11 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 		if (process.env.FB_CONFIG_PATH) envVars.FB_CONFIG_PATH = process.env.FB_CONFIG_PATH;
 
 		try {
-			// Spawn the update worker in its own systemd scope so it survives when the
-			// smart-panel service is stopped during the update — otherwise systemd would
-			// kill every process in the service's cgroup, including this one.
+			// Let systemd own the worker as a service. A scope leaves a waiting sudo parent
+			// in the backend cgroup, so the worker's quiescence check waits on its own launcher.
 			const { id } = await this.privilegedWorker.run({
 				unit: UPDATE_WORKER_UNIT,
+				unitType: 'service',
 				script: updateScript,
 				args: [targetVersion],
 				env: envVars,
@@ -668,7 +668,7 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 				status: (status.step as UpdateStatusType) ?? UpdateStatusType.DOWNLOADING,
 				phase: (status.step as UpdatePhase) ?? UpdatePhase.DOWNLOADING,
 				progressPercent: progress,
-				message: `Update in progress: ${status.step}...`,
+				message: status.step ? `Update in progress: ${status.step}...` : 'Starting update process...',
 				error: null,
 			});
 		});
