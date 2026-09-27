@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-27
 
-**Status:** residual HomeKit fixes deployed; live latency failures reproduced; SQLite value-path regression identified; single-process default agreed; optional shared leases and metadata snapshot verified locally
+**Status:** residual HomeKit fixes deployed; live latency failures reproduced; SQLite value-path regression identified; single-process default agreed; optional shared leases and metadata snapshot deployed; three physical command/restore cycles pass; full acceptance still open
 
 **Reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
@@ -27,7 +27,7 @@ This document proposes a replacement execution plan incorporating the owner's au
 | Some later failures belong to measurement tools | [#1052](https://github.com/FastyBird/smart-panel/issues/1052) distinguishes a ValueState/boolean parser defect, false-valued baseline rejection, missing exports/correlation, and collector defects. These do not retrospectively explain the original uncorrelated timeout. Its original cause is recorded as irrecoverably underdetermined. |
 | Updater failure is a separate lifecycle problem | [#1093](https://github.com/FastyBird/smart-panel/issues/1093) records the TypeORM transaction-mode incompatibility, old-worker execution, stop/quiescence failures, startup/health deadlock and recovery holds. Command-window changes are not established as their cause. |
 | Current deployment blocker is narrower than the issue history | The latest #1093 description and [re-review](https://github.com/FastyBird/smart-panel/issues/1093#issuecomment-5840370271) identify two private recovery-tool defects: inexact cgroup membership and late verification of original lock identity. Alpha.23 publication and isolated published-byte replay are already recorded as passing. |
-| Live staging was rebuilt during this review | The original alpha.18 installation and its failed updater metadata were archived. The unpublished candidate `1.1.0-alpha.23+review.212840af2` runs with preserved database/configuration/pairing and a fresh runtime directory. This is maintenance deployment, not ordinary updater acceptance. |
+| Live staging was rebuilt during this review | The original alpha.18 installation and its failed updater metadata were archived. The original review candidate was `1.1.0-alpha.23+review.212840af2`; staging now runs `1.1.0-alpha.23+review.002aa2e4f` with preserved database/configuration/pairing and a fresh runtime directory. This is maintenance deployment, not ordinary updater acceptance. |
 | CI and release issues have different outcomes | [#1040](https://github.com/FastyBird/smart-panel/issues/1040)/[#1045](https://github.com/FastyBird/smart-panel/issues/1045) own CI stability and recounting. [#1110](https://github.com/FastyBird/smart-panel/issues/1110) owns npm visibility/release reconciliation; its comments record successful alpha.22 artifact reconciliation and separate Docker recovery under closed #1114. Neither proves device installation. |
 
 ## Why the work stopped converging
@@ -125,7 +125,7 @@ A first maintenance deployment preserved the complete old working directory and 
 
 **Owner clarification:** SQLite is the structural catalog. Property values belong in memory or InfluxDB; ordinary value reports must not start ORM work or mutate SQLite.
 
-The live candidate still writes `devices_module_property_value_locks` for each property operation, including unchanged reports. `PropertyValueLockService` creates a Unix socket and performs SQLite INSERT/SELECT/DELETE operations around the value store. Git history locates its introduction in `23d4accba`, Homey adoption **#816**, to serialize terminal reconciliation against writers in independent backend processes. This cost was added to the common value service and affects every provider. `ChannelsPropertiesService.updateValueOnly()` separately loads property/channel/device metadata using an ORM query for every value update.
+The first live candidate (`212840af2`) wrote `devices_module_property_value_locks` for each property operation, including unchanged reports. `PropertyValueLockService` creates a Unix socket and performs SQLite INSERT/SELECT/DELETE operations around the value store. Git history locates its introduction in `23d4accba`, Homey adoption **#816**, to serialize terminal reconciliation against writers in independent backend processes. This cost was added to the common value service and affects every provider. `ChannelsPropertiesService.updateValueOnly()` separately loads property/channel/device metadata using an ORM query for every value update.
 
 A small isolated storage benchmark on staging measured a median **38.84 ms** per INSERT/two SELECTs/DELETE with SQLite DELETE/FULL (25 iterations; max 98.82 ms). WAL/FULL still cost 35.40 ms median. These are scratch-database measurements under live load, not property latency samples or proof that WAL solves the issue. A short vmstat observation showed 12–20% I/O wait. Do not change SQLite durability to hide this overhead.
 
@@ -137,7 +137,11 @@ An initial optimization in `dde47d550` skips durable leases only for unchanged v
 - [ ] Retain a regression that counts database/ORM operations across a fully initialized ordinary source→alias value update and requires **zero** catalog queries and mutations. Cover changed and unchanged reports, event fan-out, deletion/remapping and concurrent adoption.
 Local verification of the single-process change: **635 tests / 53 suites** covering Devices services and HomeKit, plus **921 tests / 56 suites** covering Homey, virtual devices and the updated real-SQLite/HAP fixture (the batches overlap; do not sum them). Both lease modes pass the convergence fixture. The default mode executes **zero SQLite queries** for changed/unchanged source reports and alias/HAP publication after metadata initialization. Real SQLite tests cover creation, property/channel/device changes, source remaps, deletion and rollback; focused tests cover in-flight invalidation, concurrent initial loads, load failure/retry and caller isolation. Type checking, lint and build pass. Full hardware acceptance and combined adoption/zero-query coverage remain separate obligations.
 
-- [ ] Re-measure representative startup and warm commands before changing lifecycle design: repeated metadata and lease I/O may also contribute to slow integration startup. Keep independently demonstrated lifecycle faults separate.
+- [x] Re-measure representative startup and warm commands before changing lifecycle design: repeated metadata and lease I/O may also contribute to slow integration startup. Keep independently demonstrated lifecycle faults separate.
+
+The default single-process candidate `002aa2e4f` is now deployed on staging. No migrations were pending. An initial private deployment attempt failed before migration/activation because the overlay archive imposed its local root-directory permissions; the script restored the previous binary, and the retry corrected ownership and checked imports as the service user before stopping anything. This was deployment-tooling failure, not an application migration failure.
+
+The new build reached health in **25 s**, then **21 s** after removing the temporary command-capture override. Its observed normal stop plus cgroup-quiescence check took **6 s**. The earlier build had also demonstrated a **90 s** stop timeout with SIGKILL; the last managed-service stop log concerned Zigbee2MQTT, with a separate Tailscale permission error before it. These observations warrant repeating the full lifecycle test, but do not identify the exact blocked await or independently prove that every lifecycle fault was caused by lease I/O.
 
 **Exit:** values and metadata have separate operational paths, with explicit writer ownership and no SQLite/ORM work per ordinary value report. Convergence and adoption guarantees remain tested rather than removed implicitly.
 
@@ -184,6 +188,18 @@ A correlated command/restore cycle then converged in **502 ms / 478 ms**. Its co
 The real Apple Home app on the Mac contains the paired target. Isolated ON/OFF cycles reached matching backend states and ended at baseline OFF. Desktop video attempts were unsuitable (one ended with its short-lived CLI session; another recorded the foreground display while Home was covered). Those cannot establish visual convergence. A subsequent exact-window capture retained **201 frames over 55.36 s**, with a maximum request gap of **0.691 s**. Sampled tile backgrounds showed only OFF→ON→OFF; short flicker between frames and the rapid alternating-tap matrix remain unverified. A video assembled from these frames preserves their observation timing and remains private with the original frames and backend events.
 
 No 20+20 acceptance matrix, normal System upgrade, admin UI or panel UI acceptance is claimed. Temporary capture and startup overrides were removed after evidence retention, followed by a normal service restart.
+
+#### P4 single-process candidate — 2026-09-27
+
+On `1.1.0-alpha.23+review.002aa2e4f`, a readiness preflight initially rejected the still-offline target without sending a command. After source and alias both became online with the same OFF baseline, three authenticated WebSocket command/restore cycles completed. All six operations had complete, request-correlated server captures and passed the unchanged 5 s client bound:
+
+| Cycle | Command client convergence | Restore client convergence | Command / restore update→publication |
+| --- | ---: | ---: | ---: |
+| 1 | 359.5 ms | 471.4 ms | 129.3 / 161.4 ms |
+| 2 | 1067.5 ms | 303.8 ms | 15.3 / 7.5 ms |
+| 3 | 760.9 ms | 592.8 ms | 65.9 / 13.7 ms |
+
+Acknowledgement times ranged from 187.0 to 580.6 ms. Every cycle independently confirmed restoration to OFF. These are exploratory samples under the existing 111-device configuration, with unqualified idle/overlap labels; they are not the required 20+20 matrix or new Apple Home visual evidence. Retain all earlier failures alongside these samples. The scoped capture override was removed and a normal service restart passed health. The normal System API upgrade remains untested.
 
 ### P5 — Close the independent follow-ups and retire temporary machinery
 
