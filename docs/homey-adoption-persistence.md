@@ -97,11 +97,21 @@ and fallback still receives the normal best-effort mirror; a newly recovered pri
 comparison. Persisted reads and strict writes also capture a per-property cache version and publish their result only
 if the version is unchanged when the operation completes, preventing slower storage work from replacing a newer value
 or trend published by a concurrent normal writer. Every property write and deletion enters the same process-local keyed
-queue and then acquires a shared SQLite claim fenced by a live Unix socket. That second boundary serializes writers from
+queue. The default installation has one backend writer; value operations therefore require no SQLite claim or socket.
+Optional **`FB_PROPERTY_VALUE_LOCKS_ENABLED=true`** restores the shared SQLite claim fenced by a live Unix socket.
+This startup setting defaults to false and requires a backend restart; enable it on every writer when using independent
+backend processes over the same storage. Mixed modes do not provide cross-process value coordination. The setting only
+controls property-value leases: the provider-private adoption claim and structural identity constraints are unchanged.
+In the default single-process mode, value ingestion uses an in-memory property/channel/device metadata snapshot,
+invalidated by structural writes and transaction completion. Ordinary changed and unchanged value reports perform
+no catalog query or SQLite mutation after initialization. Shared-writer mode bypasses that snapshot because another
+process cannot invalidate local metadata; it retains fresh catalog reads as well as the shared lease.
+When enabled, that second boundary serializes writers from
 independent backend processes and lets a survivor reclaim a claim after its owner exits unexpectedly. Socket addresses
 use a fixed short alias plus a hash of the owner token, so deeply nested database paths cannot exceed the platform
 socket-path limit without moving the liveness endpoint off shared storage. Homey performs its
-final persisted read, ownership checks, snapshot compare-and-set, and bound strict write while holding both boundaries;
+final persisted read, ownership checks, snapshot compare-and-set, and bound strict write while holding the local queue
+and, when enabled, the shared claim;
 if the durable value changed after the adoption snapshot, the preview is not allowed to replace it. The
 strict value event carries the exact `PropertyValueState` returned by persistence and is emitted immediately after the
 durable write, before fallible readback and plugin post-update hooks, so an idempotent retry cannot permanently skip the

@@ -14,8 +14,14 @@ export class HomeKitEventListener {
 	constructor(private readonly mapperRegistry: HomeKitMapperRegistryService) {}
 
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET)
+	handlePropertyValueSet(property: ChannelPropertyEntity): void {
+		// The backend command window has already accepted this value, including confirmations
+		// from another alias and expiry reconciliation. A local pending SET must not hide it.
+		this.handlePropertyValueChanged(property, true);
+	}
+
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
-	handlePropertyValueChanged(property: ChannelPropertyEntity): void {
+	handlePropertyValueChanged(property: ChannelPropertyEntity, acceptedValue = false): void {
 		if (!property || !property.id) {
 			return;
 		}
@@ -34,7 +40,7 @@ export class HomeKitEventListener {
 				const hapValue: CharacteristicValue = binding.toHomeKit
 					? binding.toHomeKit(rawValue)
 					: (rawValue as CharacteristicValue);
-				if (binding.pendingWrite && Object.is(hapValue, binding.pendingWrite.previousValue)) {
+				if (!acceptedValue && binding.pendingWrite && Object.is(hapValue, binding.pendingWrite.previousValue)) {
 					this.logger.debug(
 						`Suppressing stale HomeKit characteristic update: property=${property.id} value=${JSON.stringify(rawValue)}`,
 					);
@@ -56,7 +62,7 @@ export class HomeKitEventListener {
 
 		for (const listener of listeners) {
 			try {
-				listener.onPropertyChanged(property, rawValue);
+				listener.onPropertyChanged(property, rawValue, acceptedValue);
 			} catch (error) {
 				const err = error as Error;
 				this.logger.warn(`Failed to notify HomeKit property listener for property=${property.id}: ${err.message}`);

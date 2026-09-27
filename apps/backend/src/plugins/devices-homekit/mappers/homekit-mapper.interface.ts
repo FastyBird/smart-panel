@@ -27,7 +27,8 @@ export interface CharacteristicBinding {
 export interface PropertyEventListener {
 	deviceId: string;
 	propertyId: string;
-	onPropertyChanged: (property: ChannelPropertyEntity, rawValue: unknown) => void;
+	/** acceptedValue distinguishes a committed value event from a metadata update's cached value. */
+	onPropertyChanged: (property: ChannelPropertyEntity, rawValue: unknown, acceptedValue?: boolean) => void;
 }
 
 export interface InputOccurrenceListener {

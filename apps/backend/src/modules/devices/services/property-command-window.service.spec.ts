@@ -210,4 +210,16 @@ describe('PropertyCommandWindowService', () => {
 		expect(service.sweep()).toEqual([]);
 		expect(service.getRecovery(handle)).toBeNull();
 	});
+
+	it.each([0, 100])('only signals a cancelled recovery before its deadline (elapsed %i ms)', (elapsed) => {
+		const handle = open({ ttlMs: 100 });
+		service.hold(handle, { value: false, receivedAt: Date.now() });
+		jest.advanceTimersByTime(100);
+		service.sweep();
+		jest.advanceTimersByTime(elapsed);
+
+		expect(service.cancelRecovery(handle.canonicalPropertyId)).toBe(elapsed < 100);
+		expect(service.cancelRecovery(handle.canonicalPropertyId)).toBe(false);
+		expect(service.getRecovery(handle)).toBeNull();
+	});
 });

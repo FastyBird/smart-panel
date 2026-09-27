@@ -3,6 +3,7 @@ import { Characteristic, CharacteristicValue, Perms, Service } from '@homebridge
 import { PermissionType } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 
+import { bindCharacteristicWrite } from './characteristic-write';
 import { HomeKitMapperContext, PropertyEventListener } from './homekit-mapper.interface';
 
 export interface ThermostatCoordinatorConfig {
@@ -118,47 +119,51 @@ export class ThermostatCoordinator {
 			this.isPropertyWritable(this.config.coolerTempProperty);
 
 		if (hasWritableTemp && this.targetTempChar.props.perms.includes(Perms.PAIRED_WRITE)) {
-			this.targetTempChar.onSet(async (value: CharacteristicValue) => {
-				const targetVal = Number(value);
-				const targetMode = this.deriveTargetHeatingCoolingState();
-				const commands: Array<{ propertyId: string; value: unknown }> = [];
+			bindCharacteristicWrite(
+				this.targetTempChar,
+				async (value: CharacteristicValue) => {
+					const targetVal = Number(value);
+					const targetMode = this.deriveTargetHeatingCoolingState();
+					const commands: Array<{ propertyId: string; value: unknown }> = [];
 
-				if (targetMode === Characteristic.TargetHeatingCoolingState.HEAT) {
-					if (this.config.heaterTempProperty && this.isPropertyWritable(this.config.heaterTempProperty)) {
-						commands.push({ propertyId: this.config.heaterTempProperty.id, value: targetVal });
-					}
-				} else if (targetMode === Characteristic.TargetHeatingCoolingState.COOL) {
-					if (this.config.coolerTempProperty && this.isPropertyWritable(this.config.coolerTempProperty)) {
-						commands.push({ propertyId: this.config.coolerTempProperty.id, value: targetVal });
-					}
-				} else if (targetMode === Characteristic.TargetHeatingCoolingState.AUTO) {
-					const heatProp = this.config.heaterTempProperty;
-					const coolProp = this.config.coolerTempProperty;
-					const heatRaw = heatProp ? this.values.get(heatProp.id) : null;
-					const coolRaw = coolProp ? this.values.get(coolProp.id) : null;
-					const currentHeat = heatRaw !== null && heatRaw !== undefined ? Number(heatRaw) : NaN;
-					const currentCool = coolRaw !== null && coolRaw !== undefined ? Number(coolRaw) : NaN;
-					const span = !isNaN(currentHeat) && !isNaN(currentCool) ? Math.max(0, currentCool - currentHeat) / 2 : 1;
+					if (targetMode === Characteristic.TargetHeatingCoolingState.HEAT) {
+						if (this.config.heaterTempProperty && this.isPropertyWritable(this.config.heaterTempProperty)) {
+							commands.push({ propertyId: this.config.heaterTempProperty.id, value: targetVal });
+						}
+					} else if (targetMode === Characteristic.TargetHeatingCoolingState.COOL) {
+						if (this.config.coolerTempProperty && this.isPropertyWritable(this.config.coolerTempProperty)) {
+							commands.push({ propertyId: this.config.coolerTempProperty.id, value: targetVal });
+						}
+					} else if (targetMode === Characteristic.TargetHeatingCoolingState.AUTO) {
+						const heatProp = this.config.heaterTempProperty;
+						const coolProp = this.config.coolerTempProperty;
+						const heatRaw = heatProp ? this.values.get(heatProp.id) : null;
+						const coolRaw = coolProp ? this.values.get(coolProp.id) : null;
+						const currentHeat = heatRaw !== null && heatRaw !== undefined ? Number(heatRaw) : NaN;
+						const currentCool = coolRaw !== null && coolRaw !== undefined ? Number(coolRaw) : NaN;
+						const span = !isNaN(currentHeat) && !isNaN(currentCool) ? Math.max(0, currentCool - currentHeat) / 2 : 1;
 
-					if (heatProp && this.isPropertyWritable(heatProp)) {
-						commands.push({ propertyId: heatProp.id, value: targetVal - span });
+						if (heatProp && this.isPropertyWritable(heatProp)) {
+							commands.push({ propertyId: heatProp.id, value: targetVal - span });
+						}
+						if (coolProp && this.isPropertyWritable(coolProp)) {
+							commands.push({ propertyId: coolProp.id, value: targetVal + span });
+						}
+					} else {
+						// OFF: update whichever is writable
+						if (this.config.heaterTempProperty && this.isPropertyWritable(this.config.heaterTempProperty)) {
+							commands.push({ propertyId: this.config.heaterTempProperty.id, value: targetVal });
+						} else if (this.config.coolerTempProperty && this.isPropertyWritable(this.config.coolerTempProperty)) {
+							commands.push({ propertyId: this.config.coolerTempProperty.id, value: targetVal });
+						}
 					}
-					if (coolProp && this.isPropertyWritable(coolProp)) {
-						commands.push({ propertyId: coolProp.id, value: targetVal + span });
-					}
-				} else {
-					// OFF: update whichever is writable
-					if (this.config.heaterTempProperty && this.isPropertyWritable(this.config.heaterTempProperty)) {
-						commands.push({ propertyId: this.config.heaterTempProperty.id, value: targetVal });
-					} else if (this.config.coolerTempProperty && this.isPropertyWritable(this.config.coolerTempProperty)) {
-						commands.push({ propertyId: this.config.coolerTempProperty.id, value: targetVal });
-					}
-				}
 
-				if (commands.length > 0) {
-					await this.dispatchPendingBatch(commands);
-				}
-			});
+					if (commands.length > 0) {
+						await this.dispatchPendingBatch(commands);
+					}
+				},
+				() => this.targetTempChar.value,
+			);
 		}
 
 		// CurrentHeatingCoolingState
@@ -171,44 +176,48 @@ export class ThermostatCoordinator {
 			(this.config.coolerOnProperty && this.isPropertyWritable(this.config.coolerOnProperty));
 
 		if (hasWritableState && this.targetHeatingCoolingChar.props.perms.includes(Perms.PAIRED_WRITE)) {
-			this.targetHeatingCoolingChar.onSet(async (value: CharacteristicValue) => {
-				const targetMode = Number(value);
-				const commands: Array<{ propertyId: string; value: unknown }> = [];
+			bindCharacteristicWrite(
+				this.targetHeatingCoolingChar,
+				async (value: CharacteristicValue) => {
+					const targetMode = Number(value);
+					const commands: Array<{ propertyId: string; value: unknown }> = [];
 
-				if (targetMode === Characteristic.TargetHeatingCoolingState.OFF) {
-					if (this.config.heaterOnProperty && this.isPropertyWritable(this.config.heaterOnProperty)) {
-						commands.push({ propertyId: this.config.heaterOnProperty.id, value: false });
+					if (targetMode === Characteristic.TargetHeatingCoolingState.OFF) {
+						if (this.config.heaterOnProperty && this.isPropertyWritable(this.config.heaterOnProperty)) {
+							commands.push({ propertyId: this.config.heaterOnProperty.id, value: false });
+						}
+						if (this.config.coolerOnProperty && this.isPropertyWritable(this.config.coolerOnProperty)) {
+							commands.push({ propertyId: this.config.coolerOnProperty.id, value: false });
+						}
+					} else if (targetMode === Characteristic.TargetHeatingCoolingState.HEAT) {
+						if (this.config.heaterOnProperty && this.isPropertyWritable(this.config.heaterOnProperty)) {
+							commands.push({ propertyId: this.config.heaterOnProperty.id, value: true });
+						}
+						if (this.config.coolerOnProperty && this.isPropertyWritable(this.config.coolerOnProperty)) {
+							commands.push({ propertyId: this.config.coolerOnProperty.id, value: false });
+						}
+					} else if (targetMode === Characteristic.TargetHeatingCoolingState.COOL) {
+						if (this.config.heaterOnProperty && this.isPropertyWritable(this.config.heaterOnProperty)) {
+							commands.push({ propertyId: this.config.heaterOnProperty.id, value: false });
+						}
+						if (this.config.coolerOnProperty && this.isPropertyWritable(this.config.coolerOnProperty)) {
+							commands.push({ propertyId: this.config.coolerOnProperty.id, value: true });
+						}
+					} else if (targetMode === Characteristic.TargetHeatingCoolingState.AUTO) {
+						if (this.config.heaterOnProperty && this.isPropertyWritable(this.config.heaterOnProperty)) {
+							commands.push({ propertyId: this.config.heaterOnProperty.id, value: true });
+						}
+						if (this.config.coolerOnProperty && this.isPropertyWritable(this.config.coolerOnProperty)) {
+							commands.push({ propertyId: this.config.coolerOnProperty.id, value: true });
+						}
 					}
-					if (this.config.coolerOnProperty && this.isPropertyWritable(this.config.coolerOnProperty)) {
-						commands.push({ propertyId: this.config.coolerOnProperty.id, value: false });
-					}
-				} else if (targetMode === Characteristic.TargetHeatingCoolingState.HEAT) {
-					if (this.config.heaterOnProperty && this.isPropertyWritable(this.config.heaterOnProperty)) {
-						commands.push({ propertyId: this.config.heaterOnProperty.id, value: true });
-					}
-					if (this.config.coolerOnProperty && this.isPropertyWritable(this.config.coolerOnProperty)) {
-						commands.push({ propertyId: this.config.coolerOnProperty.id, value: false });
-					}
-				} else if (targetMode === Characteristic.TargetHeatingCoolingState.COOL) {
-					if (this.config.heaterOnProperty && this.isPropertyWritable(this.config.heaterOnProperty)) {
-						commands.push({ propertyId: this.config.heaterOnProperty.id, value: false });
-					}
-					if (this.config.coolerOnProperty && this.isPropertyWritable(this.config.coolerOnProperty)) {
-						commands.push({ propertyId: this.config.coolerOnProperty.id, value: true });
-					}
-				} else if (targetMode === Characteristic.TargetHeatingCoolingState.AUTO) {
-					if (this.config.heaterOnProperty && this.isPropertyWritable(this.config.heaterOnProperty)) {
-						commands.push({ propertyId: this.config.heaterOnProperty.id, value: true });
-					}
-					if (this.config.coolerOnProperty && this.isPropertyWritable(this.config.coolerOnProperty)) {
-						commands.push({ propertyId: this.config.coolerOnProperty.id, value: true });
-					}
-				}
 
-				if (commands.length > 0) {
-					await this.dispatchPendingBatch(commands);
-				}
-			});
+					if (commands.length > 0) {
+						await this.dispatchPendingBatch(commands);
+					}
+				},
+				() => this.targetHeatingCoolingChar.value,
+			);
 		}
 
 		// HeatingThresholdTemperature & CoolingThresholdTemperature (for AUTO mode)
@@ -226,10 +235,14 @@ export class ThermostatCoordinator {
 				this.isPropertyWritable(heaterTempProp) &&
 				this.heatingThresholdChar.props.perms.includes(Perms.PAIRED_WRITE)
 			) {
-				this.heatingThresholdChar.onSet(async (value: CharacteristicValue) => {
-					const target = Number(value);
-					await this.dispatchPending(heaterTempProp.id, target);
-				});
+				bindCharacteristicWrite(
+					this.heatingThresholdChar,
+					async (value: CharacteristicValue) => {
+						const target = Number(value);
+						await this.dispatchPending(heaterTempProp.id, target);
+					},
+					() => this.heatingThresholdChar.value,
+				);
 			}
 		}
 
@@ -247,10 +260,14 @@ export class ThermostatCoordinator {
 				this.isPropertyWritable(coolerTempProp) &&
 				this.coolingThresholdChar.props.perms.includes(Perms.PAIRED_WRITE)
 			) {
-				this.coolingThresholdChar.onSet(async (value: CharacteristicValue) => {
-					const target = Number(value);
-					await this.dispatchPending(coolerTempProp.id, target);
-				});
+				bindCharacteristicWrite(
+					this.coolingThresholdChar,
+					async (value: CharacteristicValue) => {
+						const target = Number(value);
+						await this.dispatchPending(coolerTempProp.id, target);
+					},
+					() => this.coolingThresholdChar.value,
+				);
 			}
 		}
 
@@ -261,10 +278,14 @@ export class ThermostatCoordinator {
 			this.lockPhysicalControlsChar.onGet(() => this.getLockPhysicalControls());
 
 			if (this.isPropertyWritable(lockProp) && this.lockPhysicalControlsChar.props.perms.includes(Perms.PAIRED_WRITE)) {
-				this.lockPhysicalControlsChar.onSet(async (value: CharacteristicValue) => {
-					const isLocked = value === Characteristic.LockPhysicalControls.CONTROL_LOCK_ENABLED;
-					await this.dispatchPending(lockProp.id, isLocked);
-				});
+				bindCharacteristicWrite(
+					this.lockPhysicalControlsChar,
+					async (value: CharacteristicValue) => {
+						const isLocked = value === Characteristic.LockPhysicalControls.CONTROL_LOCK_ENABLED;
+						await this.dispatchPending(lockProp.id, isLocked);
+					},
+					() => this.lockPhysicalControlsChar.value,
+				);
 			}
 		}
 	}
@@ -285,9 +306,9 @@ export class ThermostatCoordinator {
 			const listener: PropertyEventListener = {
 				deviceId: this.config.device.id,
 				propertyId: prop.id,
-				onPropertyChanged: (_property, rawValue) => {
+				onPropertyChanged: (_property, rawValue, acceptedValue) => {
 					const pending = this.pendingWrites.get(prop.id);
-					if (pending && Object.is(rawValue, pending.previousValue)) {
+					if (!acceptedValue && pending && Object.is(rawValue, pending.previousValue)) {
 						return;
 					}
 

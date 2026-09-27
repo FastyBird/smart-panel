@@ -40,6 +40,7 @@ import {
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
+import { PropertyMetadataService } from './property-metadata.service';
 import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService, type PropertyValueWriteResult } from './property-value.service';
@@ -160,6 +161,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		private readonly eventEmitter: EventEmitter2,
 		@Optional()
 		private readonly commandLatencyTraceCollector: CommandLatencyTraceCollectorService = new CommandLatencyTraceCollectorService(),
+		@Optional()
+		private readonly propertyMetadata?: PropertyMetadataService,
 	) {}
 
 	onModuleInit(): void {
@@ -1077,8 +1080,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 	): Promise<{ property: TProperty } | { type: string }> {
 		return this.structureLock.runShared(() =>
 			this.propertyStateCoordinator.run(id, async (): Promise<{ property: TProperty } | { type: string }> => {
-				// This is deliberately the sole entity load on the hot path. Disabling afterLoad avoids a
-				// second property-value storage read; writeWithState below supplies the event state instead.
+				// Read the structural catalog without loading a value. In the default single-writer mode,
+				// initialized metadata is served from memory; writeWithState supplies the live value below.
 				const current = (await this.findOneForValueUpdate(id)) as TProperty;
 				const mapping =
 					knownMapping ?? this.propertiesMapperService.getMapping<TProperty, any, TUpdateDTO>(current.type);
@@ -1155,17 +1158,16 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 		// A report that arrives at/after the deadline is fresher than a due recovery candidate. Retire
 		// that candidate before its write so an old stale report can never replay after this report.
-		const expired = this.propertyCommandWindowService.expire(canonicalPropertyId);
-		if (expired !== null) {
-			this.propertyCommandWindowService.cancelRecovery(canonicalPropertyId);
-		}
+		this.propertyCommandWindowService.expire(canonicalPropertyId);
 
 		const window = this.propertyCommandWindowService.get(canonicalPropertyId);
 		if (window === null) {
-			this.propertyCommandWindowService.cancelRecovery(canonicalPropertyId);
-			const result = await writers.unwindowed();
+			const reconcilesCommand = this.propertyCommandWindowService.cancelRecovery(canonicalPropertyId);
+			const result = await (reconcilesCommand ? writers.windowed() : writers.unwindowed());
 
-			return { ...result, held: false, forceValueEvent: false };
+			// Clients may still display the unconfirmed command even when the provider reports the
+			// unchanged stored value. Resolve that optimistic state without adding duplicate history.
+			return { ...result, held: false, forceValueEvent: reconcilesCommand && result.state !== null };
 		}
 
 		const handle = { canonicalPropertyId, generation: window.generation };
@@ -1281,7 +1283,9 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					}
 
 					property.value = this.snapshotValueState(result.state);
-					if (result.changed) {
+					// A held provider report resolves the client's optimistic command even if the backend
+					// never moved from this value. Publish it once; storage still deduplicates the sample.
+					if (result.changed || recovery.heldReceipt !== null) {
 						this.eventEmitter.emit(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
 					}
 					this.propertyCommandWindowService.completeRecovery(handle);
@@ -1357,6 +1361,12 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 	}
 
 	private async findOneForValueUpdate(id: string): Promise<ChannelPropertyEntity> {
+		if (this.propertyMetadata) {
+			const property = await this.propertyMetadata.findOne(id);
+			if (!property) throw new DevicesNotFoundException('Channel property does not exist');
+			return property;
+		}
+
 		const property = await this.repository
 			.createQueryBuilder('property')
 			.innerJoinAndSelect('property.channel', 'channel')

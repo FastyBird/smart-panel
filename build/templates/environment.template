@@ -14,6 +14,10 @@ FB_BACKEND_PORT=3000
 # Database path
 FB_DB_PATH=/var/lib/smart-panel/data
 
+# Optional cross-process coordination for property-value writes. Default: false.
+# A normal installation has one backend and uses in-memory ordering. Restart required.
+# FB_PROPERTY_VALUE_LOCKS_ENABLED=false
+
 # Configuration path (for config.yaml)
 FB_CONFIG_PATH=/var/lib/smart-panel/config
 

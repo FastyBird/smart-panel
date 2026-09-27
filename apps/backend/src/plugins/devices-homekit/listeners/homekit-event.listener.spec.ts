@@ -52,7 +52,7 @@ describe('HomeKitEventListener', () => {
 		expect(mockCharacteristic.updateValue).toHaveBeenCalledWith(true);
 		expect(binding.currentValue).toBe(true);
 		expect(binding.revision).toBe(1);
-		expect(mockPropertyListener.onPropertyChanged).toHaveBeenCalledWith(property, true);
+		expect(mockPropertyListener.onPropertyChanged).toHaveBeenCalledWith(property, true, false);
 	});
 
 	it('should ignore properties with no HomeKit bindings and no listeners', () => {

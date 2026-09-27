@@ -21,7 +21,7 @@ process_identity() {
 
 	if [ -r "/proc/${pid}/stat" ]; then
 		stat_line="$(cat "/proc/${pid}/stat")" || return 2
-		start_time="$(printf '%s\n' "$stat_line" | awk '{ sub(/^.*\\) /, ""); print $20 }')" || return 2
+		start_time="$(printf '%s\n' "$stat_line" | awk '{ sub(/^.*\) /, ""); print $20 }')" || return 2
 		executable="$(readlink "/proc/${pid}/exe" 2>/dev/null)" || return 2
 		[ -n "$start_time" ] && [ -n "$executable" ] || return 2
 		printf '%s|%s|%s\n' "$pid" "$start_time" "$executable"
@@ -66,11 +66,12 @@ manager_processes_empty() {
 	return 0
 }
 
-run_case() {
+run_case() (
 	local kill_mode="$1"
-	local unit="smart-panel-update-fixture-${kill_mode}-$$"
+	local unit="smart-panel-update-fixture-${kill_mode}-$$.service"
+	local unit_file="${XDG_RUNTIME_DIR:?A user runtime directory is required}/systemd/user/${unit}"
 	local main_pid control_pid control_group cgroup_dir cgroup_procs cgroup_events state current_members populated
-	local captured_identities="" captured_identity pid current_identity survivor=0
+	local captured_identities="" captured_identity pid current_identity survivor=0 manager_result=0
 
 	cleanup_case() {
 		local cleanup_pid cleanup_identity
@@ -87,10 +88,25 @@ $(printf '%b' "$captured_identities")
 EOF
 		systemctl --user stop "$unit" >/dev/null 2>&1 || true
 		systemctl --user reset-failed "$unit" >/dev/null 2>&1 || true
+		systemctl --user disable --runtime "$unit" >/dev/null 2>&1 || true
+		rm -f "$unit_file"
+		systemctl --user daemon-reload >/dev/null 2>&1 || true
 	}
 
-	trap cleanup_case RETURN
-	systemd-run --user --unit="$unit" --property="KillMode=$kill_mode" /bin/sh -c 'sleep 300 & wait' >/dev/null
+	trap cleanup_case EXIT
+	# A transient unit is garbage-collected on stop, making GetUnitProcesses fail with
+	# "unit not loaded". Keep this fixture loaded for the same readback as the installed service.
+	mkdir -p "$(dirname "$unit_file")"
+	cat > "$unit_file" <<EOF
+[Service]
+ExecStart=/bin/sh -c 'sleep 300 & wait'
+KillMode=$kill_mode
+[Install]
+WantedBy=default.target
+EOF
+	systemctl --user daemon-reload
+	systemctl --user enable --runtime "$unit" >/dev/null
+	systemctl --user start "$unit"
 	[ "$(case_status "$unit")" = "active" ]
 	main_pid="$(systemctl --user show "$unit" --property=MainPID --value)"
 	control_pid="$(systemctl --user show "$unit" --property=ControlPID --value)"
@@ -124,7 +140,8 @@ EOF
 	control_pid="$(systemctl --user show "$unit" --property=ControlPID --value 2>/dev/null || true)"
 	[ "$main_pid" = "0" ]
 	[ "$control_pid" = "0" ]
-	manager_processes_empty "$unit"
+	manager_processes_empty "$unit" || manager_result=$?
+	[ "$manager_result" -le 1 ] || return "$manager_result"
 
 	while IFS= read -r captured_identity; do
 		[ -n "$captured_identity" ] || continue
@@ -152,13 +169,14 @@ EOF
 	fi
 
 	if [ "$kill_mode" = "control-group" ]; then
+		[ "$manager_result" -eq 0 ] || return 1
 		[ "$survivor" -eq 0 ] || return 1
 		echo "PASS: KillMode=control-group stopped with empty/removed original cgroup"
 	else
 		[ "$survivor" -eq 1 ] || return 1
 		echo "PASS: KillMode=process retained a captured child and independent checks rejected quiescence"
 	fi
-}
+)
 
 run_case control-group
 run_case process
