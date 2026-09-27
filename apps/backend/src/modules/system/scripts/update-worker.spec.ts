@@ -975,22 +975,39 @@ describe('legacy image update worker lifecycle', () => {
 		}
 	});
 
-	it('bootstraps the repaired worker into alpha.12 and records a clean completed attempt', () => {
+	it.each([undefined, String(process.getgid())])(
+		'records a completed attempt with observer group %s',
+		(observerGid) => {
+			const fixture = createFixture();
+
+			try {
+				expect(readFileSync(fixture.installedWorker)).toEqual(readFileSync(WORKER));
+				const result = runWorker(fixture, observerGid ? { UPDATE_OBSERVER_GID: observerGid } : {});
+				const status = readJson(fixture.statusFile);
+				const attempt = readJson(join(fixture.attemptDir, 'attempt.json'));
+
+				expect(result.status).toBe('success');
+				expect(status.status).toBe('complete');
+				expect(attempt.state).toBe('complete');
+				expect(existsSync(join(fixture.attemptDir, 'lock'))).toBe(false);
+				expect(statSync(fixture.attemptDir).mode & 0o777).toBe(observerGid ? 0o710 : 0o700);
+				expect(statSync(join(fixture.attemptDir, 'attempt.json')).mode & 0o777).toBe(observerGid ? 0o640 : 0o600);
+				expect(readlinkSync(join(fixture.imageBase, 'current'))).toContain('v1.1.0-alpha.15');
+				expect(readFileSync(fixture.stateFile, 'utf8')).toBe('active');
+			} finally {
+				rmSync(fixture.root, { recursive: true, force: true });
+			}
+		},
+	);
+
+	it('rejects a non-numeric observer group before creating an attempt or stopping the service', () => {
 		const fixture = createFixture();
 
 		try {
-			expect(readFileSync(fixture.installedWorker)).toEqual(readFileSync(WORKER));
-			const result = runWorker(fixture);
-			const status = readJson(fixture.statusFile);
-			const attempt = readJson(join(fixture.attemptDir, 'attempt.json'));
-
-			expect(result.status).toBe('success');
-			expect(status.status).toBe('complete');
-			expect(attempt.state).toBe('complete');
-			expect(existsSync(join(fixture.attemptDir, 'lock'))).toBe(false);
-			expect(statSync(fixture.attemptDir).mode & 0o777).toBe(0o700);
-			expect(statSync(join(fixture.attemptDir, 'attempt.json')).mode & 0o777).toBe(0o600);
-			expect(readlinkSync(join(fixture.imageBase, 'current'))).toContain('v1.1.0-alpha.15');
+			const result = runWorker(fixture, { UPDATE_OBSERVER_GID: '--reference=/tmp/other' });
+			expect(result.status).not.toBe('success');
+			expect(result.output).toContain('Invalid update observer group');
+			expect(existsSync(join(fixture.attemptDir, 'attempt.json'))).toBe(false);
 			expect(readFileSync(fixture.stateFile, 'utf8')).toBe('active');
 		} finally {
 			rmSync(fixture.root, { recursive: true, force: true });
@@ -1001,12 +1018,14 @@ describe('legacy image update worker lifecycle', () => {
 		const fixture = createFixture();
 
 		try {
-			const result = runWorker(fixture, { STOP_RESULT: 'failure' });
+			const result = runWorker(fixture, { STOP_RESULT: 'failure', UPDATE_OBSERVER_GID: String(process.getgid()) });
 			const attempt = readJson(join(fixture.attemptDir, 'attempt.json'));
 
 			expect(result.status).not.toBe('success');
 			expect(attempt.state).toBe('recovery_required');
 			expect(attempt.recoveryRequired).toBe(true);
+			expect(statSync(join(fixture.attemptDir, 'lock')).mode & 0o777).toBe(0o700);
+			expect(statSync(join(fixture.attemptDir, 'attempt.json')).mode & 0o777).toBe(0o640);
 			expect(readlinkSync(join(fixture.imageBase, 'current'))).toBe('v1.1.0-alpha.12');
 		} finally {
 			rmSync(fixture.root, { recursive: true, force: true });

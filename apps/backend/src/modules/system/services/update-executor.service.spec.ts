@@ -64,6 +64,12 @@ describe('UpdateExecutorService', () => {
 		jest.clearAllMocks();
 	});
 
+	afterEach(() => {
+		executor.onModuleDestroy();
+		jest.useRealTimers();
+		jest.restoreAllMocks();
+	});
+
 	it('launches updates independently and preserves a readable initial progress message', async () => {
 		(existsSync as jest.Mock).mockImplementation((path: string) => !path.includes('update-attempt'));
 		privilegedWorker.run.mockResolvedValue({ id: 'update-job' });
@@ -79,7 +85,10 @@ describe('UpdateExecutorService', () => {
 			expect.objectContaining({
 				unit: 'smart-panel-update',
 				unitType: 'service',
-				env: expect.objectContaining({ UPDATE_START_MODE: 'running-service' }),
+				env: expect.objectContaining({
+					UPDATE_START_MODE: 'running-service',
+					UPDATE_OBSERVER_GID: String(process.getgid()),
+				}),
 			}),
 		);
 		expect(updateService.setStatus).toHaveBeenLastCalledWith(
@@ -159,57 +168,64 @@ describe('UpdateExecutorService', () => {
 			);
 		});
 
-		it('reconciles a live worker when its durable attempt reaches complete', async () => {
-			jest.useFakeTimers();
-			(existsSync as jest.Mock).mockReturnValue(true);
-			let attemptReads = 0;
-			(readFileSync as jest.Mock).mockImplementation((path: string) => {
-				if (path.includes('update-attempt')) {
-					attemptReads += 1;
-
-					return JSON.stringify(
-						attemptReads <= 2
-							? {
-									attemptId: 'attempt-1',
-									ownerPid: process.pid,
-									targetVersion: '1.1.0-alpha.15',
-									state: 'active',
-									phase: 'starting',
-									recoveryRequired: false,
-								}
-							: {
-									attemptId: 'attempt-1',
-									ownerPid: process.pid,
-									targetVersion: '1.1.0-alpha.15',
-									state: 'complete',
-									phase: 'complete',
-									recoveryRequired: false,
-								},
-					);
-				}
-
-				return JSON.stringify({
-					status: UpdateStatusType.STARTING,
-					phase: 'starting',
-					targetVersion: '1.1.0-alpha.15',
-					startedAt: new Date().toISOString(),
+		it.each([null, 'EPERM'])(
+			'reconciles a live worker with process probe error %s when its durable attempt completes',
+			async (probeError) => {
+				jest.spyOn(process, 'kill').mockImplementation(() => {
+					if (probeError) throw Object.assign(new Error('Operation not permitted'), { code: probeError });
+					return true;
 				});
-			});
+				jest.useFakeTimers();
+				(existsSync as jest.Mock).mockReturnValue(true);
+				let attemptReads = 0;
+				(readFileSync as jest.Mock).mockImplementation((path: string) => {
+					if (path.includes('update-attempt')) {
+						attemptReads += 1;
 
-			const init = executor.onModuleInit();
-			await jest.advanceTimersByTimeAsync(3_000);
-			await init;
-			jest.useRealTimers();
+						return JSON.stringify(
+							attemptReads <= 2
+								? {
+										attemptId: 'attempt-1',
+										ownerPid: process.pid,
+										targetVersion: '1.1.0-alpha.15',
+										state: 'active',
+										phase: 'starting',
+										recoveryRequired: false,
+									}
+								: {
+										attemptId: 'attempt-1',
+										ownerPid: process.pid,
+										targetVersion: '1.1.0-alpha.15',
+										state: 'complete',
+										phase: 'complete',
+										recoveryRequired: false,
+									},
+						);
+					}
 
-			expect(updateService.setStatus).toHaveBeenCalledWith(
-				expect.objectContaining({
-					status: UpdateStatusType.COMPLETE,
-					progressPercent: 100,
-				}),
-			);
-			expect(unlinkSync).toHaveBeenCalled();
-			expect(updateService.releaseUpdateLock).toHaveBeenCalled();
-		});
+					return JSON.stringify({
+						status: UpdateStatusType.STARTING,
+						phase: 'starting',
+						targetVersion: '1.1.0-alpha.15',
+						startedAt: new Date().toISOString(),
+					});
+				});
+
+				const init = executor.onModuleInit();
+				await jest.advanceTimersByTimeAsync(3_000);
+				await init;
+				jest.useRealTimers();
+
+				expect(updateService.setStatus).toHaveBeenCalledWith(
+					expect.objectContaining({
+						status: UpdateStatusType.COMPLETE,
+						progressPercent: 100,
+					}),
+				);
+				expect(unlinkSync).toHaveBeenCalled();
+				expect(updateService.releaseUpdateLock).toHaveBeenCalled();
+			},
+		);
 
 		it('reconciles a complete attempt even when completed status was not persisted', async () => {
 			(existsSync as jest.Mock).mockImplementation((path: string) => path.includes('update-attempt'));

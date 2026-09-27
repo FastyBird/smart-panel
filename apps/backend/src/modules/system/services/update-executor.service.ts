@@ -156,8 +156,9 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 			process.kill(attempt.ownerPid, 0);
 
 			return true;
-		} catch {
-			return false;
+		} catch (error) {
+			// signal 0 can see a live privileged worker without being allowed to signal it.
+			return (error as NodeJS.ErrnoException).code === 'EPERM';
 		}
 	}
 
@@ -547,6 +548,14 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 			HOME: process.env.HOME ?? '/root',
 			PATH: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin',
 		};
+
+		// Grant this backend group read access to the root-owned attempt metadata only.
+		// The worker retains exclusive write access and private lock/migration artifacts.
+		const observerGid = process.getgid?.();
+
+		if (observerGid !== undefined) {
+			envVars.UPDATE_OBSERVER_GID = String(observerGid);
+		}
 
 		if (healthUrl) {
 			envVars.HEALTH_URL = healthUrl;
