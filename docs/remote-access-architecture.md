@@ -223,12 +223,16 @@ re-implementing it:
 run(spec: {
   unit: string; script: string; args: string[]; env?: Record<string, string>;
   statusFile: string; timeoutMs?: number;                 // default 10 minutes
+  unitType?: 'scope' | 'service';                         // default scope
   mapStatus?: (raw: Record<string, unknown>) => Partial<PrivilegedJobStatus> | null;
 }): Promise<{ id: string }>
 ```
 
 - Spawns `sudo -n systemd-run --scope --unit=<unit> [--setenv K=V ...] bash <script> [...args]`, detached and
-  `unref()`'d.
+  `unref()`'d by default. The updater opts into `unitType: 'service'`, replacing `--scope` with
+  `--collect --service-type=exec`. Systemd then owns the worker and the sudo launcher exits after exec.
+  A scope keeps that sudo process waiting inside the backend cgroup, causing the updater to wait on
+  its own launcher during writer-quiescence verification. The service mode does not use `--wait`.
 - Tracks progress by polling `statusFile` every 3 seconds. A native script only ever needs to write
   `{ state: 'running' | 'complete' | 'failed', step?, message? }`; `id`/`updatedAt` are always
   service-owned, never trusted from the file. `mapStatus` lets a caller with a differently-shaped status file
@@ -237,8 +241,8 @@ run(spec: {
   file/mapper tick claiming it is rejected like an unrecognised state.
 - One job per `unit` at a time (`PrivilegedWorkerUnavailableException` on a second concurrent job); the unit
   is released only on a terminal state (`complete`/`failed`/`timeout`), a spawn failure, or the child process
-  exiting before ever reporting completion — never merely because the last `onStatus` subscriber
-  unsubscribed.
+  exiting unsuccessfully before ever reporting completion — never merely because a service launcher
+  exits successfully or the last `onStatus` subscriber unsubscribed.
 - `PlatformService.supportsPrivilegedWorkers()` is `true` for `raspberry`/`generic` with systemd, `false` for
   `docker`/`home-assistant`/`development`. The Tailscale plugin's own `FB_REMOTE_ACCESS_ALLOW_DEV` override
   is plugin-local — it never changes the platform capability itself.

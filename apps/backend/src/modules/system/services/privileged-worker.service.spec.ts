@@ -90,6 +90,37 @@ describe('PrivilegedWorkerService', () => {
 	});
 
 	describe('run', () => {
+		it('keeps a transient service reserved after the launcher exits until the worker reports completion', async () => {
+			const spec: PrivilegedJobSpec = { ...baseSpec, unitType: 'service' };
+			const { id } = await service.run(spec);
+
+			expect(spawn).toHaveBeenCalledWith(
+				'sudo',
+				[
+					'-n',
+					'systemd-run',
+					'--collect',
+					'--service-type=exec',
+					'--unit=smart-panel-test',
+					'--setenv',
+					'FOO=bar',
+					'bash',
+					'/opt/smart-panel/scripts/test-worker.sh',
+					'1.2.3',
+				],
+				{ detached: true, stdio: ['ignore', 'ignore', 'pipe'] },
+			);
+			fakeChild.emit('exit', 0, null);
+			expect(service.getStatus(id)?.state).toBe('running');
+			await expect(service.run(spec)).rejects.toThrow(PrivilegedWorkerUnavailableException);
+
+			(existsSync as jest.Mock).mockReturnValue(true);
+			(readFileSync as jest.Mock).mockReturnValue(JSON.stringify({ state: 'complete' }));
+			jest.advanceTimersByTime(3_000);
+			expect(service.getStatus(id)?.state).toBe('complete');
+			await expect(service.run(spec)).resolves.toEqual(expect.objectContaining({ id: expect.any(String) }));
+		});
+
 		it('spawns the worker through sudo/systemd-run with the expected arguments', async () => {
 			await service.run(baseSpec);
 

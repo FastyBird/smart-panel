@@ -64,6 +64,32 @@ describe('UpdateExecutorService', () => {
 		jest.clearAllMocks();
 	});
 
+	it('launches updates independently and preserves a readable initial progress message', async () => {
+		(existsSync as jest.Mock).mockImplementation((path: string) => !path.includes('update-attempt'));
+		privilegedWorker.run.mockResolvedValue({ id: 'update-job' });
+		privilegedWorker.onStatus.mockImplementation((_id: string, handler: (status: unknown) => void) => {
+			handler({ id: 'update-job', state: 'running' });
+
+			return jest.fn();
+		});
+
+		await executor.startUpdate('1.1.0-alpha.25');
+
+		expect(privilegedWorker.run).toHaveBeenCalledWith(
+			expect.objectContaining({
+				unit: 'smart-panel-update',
+				unitType: 'service',
+				env: expect.objectContaining({ UPDATE_START_MODE: 'running-service' }),
+			}),
+		);
+		expect(updateService.setStatus).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				status: UpdateStatusType.DOWNLOADING,
+				message: 'Starting update process...',
+			}),
+		);
+	});
+
 	describe('checkPendingUpdateStatus (via onModuleInit)', () => {
 		it('does not block module initialization while a live worker settles', async () => {
 			jest.useFakeTimers();

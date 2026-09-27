@@ -16,6 +16,8 @@ export interface PrivilegedJobSpec {
 	env?: Record<string, string>;
 	statusFile: string;
 	timeoutMs?: number;
+	/** Use a manager-owned service when the worker must stop its launching application. */
+	unitType?: 'scope' | 'service';
 	/**
 	 * Maps a raw, caller-defined status-file JSON shape onto the generic PrivilegedJobStatus
 	 * fields this service understands, applied before the service's own terminal-state
@@ -125,7 +127,7 @@ function toOptionalString(value: unknown): string | undefined {
 }
 
 /**
- * Runs a script as a detached, root-owned systemd scope via `sudo -n systemd-run` and tracks its
+ * Runs a script in a root-owned systemd scope (default) or independent service and tracks its
  * progress through a JSON status file the script writes itself.
  *
  * Extracted from UpdateExecutorService so any privileged, long-running operation (OS update,
@@ -210,9 +212,13 @@ export class PrivilegedWorkerService {
 		try {
 			const setenvArgs = Object.entries(spec.env ?? {}).flatMap(([key, value]) => ['--setenv', `${key}=${value}`]);
 
+			// A scope's sudo parent waits inside the caller's cgroup until the worker exits.
+			// A transient service releases that launcher after exec, so a worker can verify
+			// the caller's entire cgroup has stopped without waiting on its own launcher.
+			const unitArgs = spec.unitType === 'service' ? ['--collect', '--service-type=exec'] : ['--scope'];
 			const child = spawn(
 				'sudo',
-				['-n', 'systemd-run', '--scope', `--unit=${spec.unit}`, ...setenvArgs, 'bash', spec.script, ...spec.args],
+				['-n', 'systemd-run', ...unitArgs, `--unit=${spec.unit}`, ...setenvArgs, 'bash', spec.script, ...spec.args],
 				// stderr is piped (not ignored) so a refusal sudo/systemd-run itself only ever
 				// reports on stderr — e.g. "sudo: a password is required" — reaches the admin
 				// instead of a bare "Worker process exited with code 1". stdin/stdout stay
@@ -259,8 +265,8 @@ export class PrivilegedWorkerService {
 				});
 			});
 
-			// `systemd-run --scope` runs its command in the foreground, so this `sudo` process
-			// stays alive for the whole job and exits with its result. A non-zero exit (or a
+			// A scope's sudo process stays alive for the whole job. For a service it exits
+			// after exec; that successful launch is not job completion. A non-zero exit (or a
 			// signal) before any status file ever reported completion means the job failed
 			// without writing one — e.g. sudo/systemd-run itself rejected the invocation, or the
 			// script errored before its first status write. Guarded on `lastStatus.state` still
