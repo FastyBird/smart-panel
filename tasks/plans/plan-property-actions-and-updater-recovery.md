@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-27
 
-**Status:** residual HomeKit fixes deployed; live latency failures reproduced; SQLite value-path regression identified; runtime ownership decision pending
+**Status:** residual HomeKit fixes deployed; live latency failures reproduced; SQLite value-path regression identified; single-process default agreed; optional shared leases and metadata snapshot verified locally
 
 **Reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
@@ -129,12 +129,14 @@ The live candidate still writes `devices_module_property_value_locks` for each p
 
 A small isolated storage benchmark on staging measured a median **38.84 ms** per INSERT/two SELECTs/DELETE with SQLite DELETE/FULL (25 iterations; max 98.82 ms). WAL/FULL still cost 35.40 ms median. These are scratch-database measurements under live load, not property latency samples or proof that WAL solves the issue. A short vmstat observation showed 12–20% I/O wait. Do not change SQLite durability to hide this overhead.
 
-An initial optimization in `dde47d550` skips durable leases only for unchanged values while retaining local ordering. It passed **610 tests / 51 suites**, type checking, lint and build, but is **not deployed and is not the final architecture fix**. The owner clarification exposed its insufficient scope. Its candidate overlay is retained privately and must not be described as running on staging.
+An initial optimization in `dde47d550` skips durable leases only for unchanged values while retaining local ordering. It passed **610 tests / 51 suites**, type checking, lint and build, but was **not deployed and has been superseded by the optional-lock configuration**. The owner clarification exposed its insufficient scope. Its candidate overlay is retained privately and must not be described as running on staging.
 
-- [ ] Confirm whether one installation supports one backend writer process or concurrent backend processes sharing storage. The current cross-process behavior is explicit in the Homey adoption documentation and must receive a deliberate disposition.
-- [ ] Remove SQLite lease operations from ordinary value updates, including changed values. Preserve same-property ordering, reconciliation comparison/write atomicity, failure handling and deletion safety through the agreed runtime ownership model.
-- [ ] Supply value updates with a maintained in-memory metadata snapshot. Handle startup, creation, metadata changes, channel/device changes, source remaps and deletion with explicit invalidation/ordering. Do not trust an indefinitely cached provider entity or silently recreate removed properties.
+- [x] Confirm runtime ownership: the owner specifies one backend process per installation, including smaller Raspberry Pi models. Preserve cross-process property leases as an optional startup setting, disabled by default: `FB_PROPERTY_VALUE_LOCKS_ENABLED=false`. All writers must enable it for cross-process coordination; changing modes requires restart. The ordinary in-process keyed queue remains active in both modes.
+- [x] Remove SQLite lease operations from ordinary value updates, including changed values. Preserve same-property ordering, reconciliation comparison/write atomicity, failure handling and deletion safety through the agreed runtime ownership model.
+- [x] Supply value updates with a maintained in-memory metadata snapshot. Handle startup, creation, metadata changes, channel/device changes, source remaps and deletion with explicit invalidation/ordering. Do not trust an indefinitely cached provider entity or silently recreate removed properties.
 - [ ] Retain a regression that counts database/ORM operations across a fully initialized ordinary source→alias value update and requires **zero** catalog queries and mutations. Cover changed and unchanged reports, event fan-out, deletion/remapping and concurrent adoption.
+Local verification of the single-process change: **635 tests / 53 suites** covering Devices services and HomeKit, plus **921 tests / 56 suites** covering Homey, virtual devices and the updated real-SQLite/HAP fixture (the batches overlap; do not sum them). Both lease modes pass the convergence fixture. The default mode executes **zero SQLite queries** for changed/unchanged source reports and alias/HAP publication after metadata initialization. Real SQLite tests cover creation, property/channel/device changes, source remaps, deletion and rollback; focused tests cover in-flight invalidation, concurrent initial loads, load failure/retry and caller isolation. Type checking, lint and build pass. Full hardware acceptance and combined adoption/zero-query coverage remain separate obligations.
+
 - [ ] Re-measure representative startup and warm commands before changing lifecycle design: repeated metadata and lease I/O may also contribute to slow integration startup. Keep independently demonstrated lifecycle faults separate.
 
 **Exit:** values and metadata have separate operational paths, with explicit writer ownership and no SQLite/ORM work per ordinary value report. Convergence and adoption guarantees remain tested rather than removed implicitly.

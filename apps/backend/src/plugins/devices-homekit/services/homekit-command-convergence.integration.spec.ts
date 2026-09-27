@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 
 import { Characteristic, HAPStatus, Service } from '@homebridge/hap-nodejs';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -35,6 +36,7 @@ import { PlatformRegistryService } from '../../../modules/devices/services/platf
 import { PropertyCommandDispatchService } from '../../../modules/devices/services/property-command-dispatch.service';
 import { PropertyCommandWindowService } from '../../../modules/devices/services/property-command-window.service';
 import { PropertyCommandService } from '../../../modules/devices/services/property-command.service';
+import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
 import { PropertyStateCoordinatorService } from '../../../modules/devices/services/property-state-coordinator.service';
 import { PropertyValueLockService } from '../../../modules/devices/services/property-value-lock.service';
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
@@ -74,12 +76,13 @@ import { HomeKitMapperRegistryService } from './homekit-mapper-registry.service'
  * No bridge is advertised and no physical device/network command is sent. HTTP/WS transport,
  * authentication and Raspberry Pi performance remain separate acceptance boundaries.
  */
-describe('HomeKit command convergence with SQLite', () => {
+describe.each([false, true])('HomeKit command convergence with SQLite (cross-process locks: %s)', (locksEnabled) => {
 	let database: DataSource;
 	let memory: MemoryStorage;
 	let events: EventEmitter2;
 	let properties: ChannelsPropertiesService;
 	let values: PropertyValueService;
+	let propertyMetadata: PropertyMetadataService;
 	let windows: PropertyCommandWindowService;
 	let source: SimulatorChannelPropertyEntity;
 	let aliases: VirtualChannelPropertyEntity[];
@@ -119,7 +122,9 @@ describe('HomeKit command convergence with SQLite', () => {
 		storage.registerPlugin(memory.name, memory);
 		const valueSources = new PropertyValueSourceRegistryService();
 		valueSources.register(new VirtualValueSourceService());
-		values = new PropertyValueService(storage, valueSources, new PropertyValueLockService(database));
+		const runtimeConfig = new NestConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: locksEnabled });
+		propertyMetadata = new PropertyMetadataService(database, runtimeConfig);
+		values = new PropertyValueService(storage, valueSources, new PropertyValueLockService(database, runtimeConfig));
 		// The unused removal collaborator is deliberately absent: this fixture does not remove entities.
 		new ChannelPropertyEntitySubscriber(values, null as never, database);
 		events = new EventEmitter2();
@@ -143,6 +148,8 @@ describe('HomeKit command convergence with SQLite', () => {
 			windows,
 			database,
 			events,
+			undefined,
+			propertyMetadata,
 		);
 		// Use production catalog reads; CRUD-only collaborators are not needed for command execution.
 		const channels = new ChannelsService(
@@ -255,11 +262,13 @@ describe('HomeKit command convergence with SQLite', () => {
 			characteristic.on('change', (change: { newValue: unknown }) => changes.push(change.newValue));
 			notifications.push(changes);
 		}
+		await propertyMetadata.onModuleInit();
 	});
 
 	afterEach(async () => {
 		jest.restoreAllMocks();
 		events?.removeAllListeners();
+		propertyMetadata?.onModuleDestroy();
 		await memory?.destroy();
 		if (database?.isInitialized) await database.destroy();
 	});
@@ -280,6 +289,69 @@ describe('HomeKit command convergence with SQLite', () => {
 		expect(rows.every((row) => row.propertyId === source.id)).toBe(true);
 		expect(await database.getRepository(PropertyValueLockEntity).count()).toBe(0);
 	}
+
+	it('reports changed and unchanged values without SQLite in the default single-process mode', async () => {
+		// SQLite has a single query runner; spying here includes both ORM queries and raw lease SQL.
+		const query = jest.spyOn(database.createQueryRunner(), 'query');
+		await report(true);
+		await report(true);
+		await report(false);
+		if (locksEnabled) {
+			expect(query.mock.calls.some(([sql]) => sql.includes('devices_module_property_value_locks'))).toBe(true);
+		} else {
+			expect(query).not.toHaveBeenCalled();
+		}
+		query.mockRestore();
+		expect(published).toHaveLength(6);
+		expect(notifications).toEqual([
+			[true, false],
+			[true, false],
+		]);
+		await expectState(false, [false, true, false]);
+	});
+
+	it('refreshes property, channel and device metadata after structural writes and deletion', async () => {
+		const original = await propertyMetadata.findOne(source.id);
+		if (!original || typeof original.channel === 'string' || typeof original.channel.device === 'string') {
+			throw new Error('Missing source relations');
+		}
+		await database.getRepository(SimulatorChannelPropertyEntity).update(source.id, { name: 'Renamed property' });
+		await database.getRepository(SimulatorChannelEntity).update(original.channel.id, { name: 'Renamed channel' });
+		await database.getRepository(SimulatorDeviceEntity).update(original.channel.device.id, { name: 'Renamed device' });
+		const updated = await propertyMetadata.findOne(source.id);
+		expect(updated).toMatchObject({
+			name: 'Renamed property',
+			channel: { name: 'Renamed channel', device: { name: 'Renamed device' } },
+		});
+		await database.getRepository(SimulatorChannelPropertyEntity).delete(source.id);
+		expect(await propertyMetadata.findOne(source.id)).toBeNull();
+		await expect(report(true)).rejects.toThrow('Channel property does not exist');
+	});
+
+	it('sees newly created properties and source remaps after the catalog was warmed', async () => {
+		const added = await database.getRepository(SimulatorChannelPropertyEntity).save({
+			channel: source.channel,
+			category: PropertyCategory.ON,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+		});
+		expect((await propertyMetadata.findOne(added.id))?.id).toBe(added.id);
+		await database.getRepository(VirtualChannelPropertyEntity).update(aliases[0].id, { sourcePropertyId: added.id });
+		expect(await propertyMetadata.findOne(aliases[0].id)).toMatchObject({ sourcePropertyId: added.id });
+	});
+
+	it('discards metadata read inside a rolled-back transaction', async () => {
+		const original = await propertyMetadata.findOne(source.id);
+		const rollback = new Error('rollback fixture');
+		await expect(
+			database.transaction(async (manager) => {
+				await manager.getRepository(SimulatorChannelPropertyEntity).update(source.id, { name: 'Uncommitted' });
+				expect((await propertyMetadata.findOne(source.id))?.name).toBe('Uncommitted');
+				throw rollback;
+			}),
+		).rejects.toBe(rollback);
+		expect((await propertyMetadata.findOne(source.id))?.name).toBe(original?.name);
+	});
 
 	it('forwards an alias to its source and never publishes a stale value before or after confirmation', async () => {
 		await characteristics[0].handleSetRequest(true);

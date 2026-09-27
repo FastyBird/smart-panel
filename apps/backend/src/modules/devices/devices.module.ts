@@ -75,6 +75,7 @@ import { PlatformRegistryService } from './services/platform.registry.service';
 import { PropertyCommandDispatchService } from './services/property-command-dispatch.service';
 import { PropertyCommandWindowService } from './services/property-command-window.service';
 import { PropertyCommandService } from './services/property-command.service';
+import { PropertyMetadataService } from './services/property-metadata.service';
 import { PropertyStateCoordinatorService } from './services/property-state-coordinator.service';
 import { PropertyTimeseriesService } from './services/property-timeseries.service';
 import { PropertyValueLockService } from './services/property-value-lock.service';
@@ -145,6 +146,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		PropertyValueSourceRegistryService,
 		PropertyValueLockService,
 		PropertyValueService,
+		PropertyMetadataService,
 		PropertyStateCoordinatorService,
 		PropertyTimeseriesService,
 		PropertyCommandWindowService,

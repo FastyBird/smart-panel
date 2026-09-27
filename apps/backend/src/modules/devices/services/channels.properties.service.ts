@@ -40,6 +40,7 @@ import {
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
+import { PropertyMetadataService } from './property-metadata.service';
 import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService, type PropertyValueWriteResult } from './property-value.service';
@@ -160,6 +161,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		private readonly eventEmitter: EventEmitter2,
 		@Optional()
 		private readonly commandLatencyTraceCollector: CommandLatencyTraceCollectorService = new CommandLatencyTraceCollectorService(),
+		@Optional()
+		private readonly propertyMetadata?: PropertyMetadataService,
 	) {}
 
 	onModuleInit(): void {
@@ -1077,8 +1080,8 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 	): Promise<{ property: TProperty } | { type: string }> {
 		return this.structureLock.runShared(() =>
 			this.propertyStateCoordinator.run(id, async (): Promise<{ property: TProperty } | { type: string }> => {
-				// This is deliberately the sole entity load on the hot path. Disabling afterLoad avoids a
-				// second property-value storage read; writeWithState below supplies the event state instead.
+				// Read the structural catalog without loading a value. In the default single-writer mode,
+				// initialized metadata is served from memory; writeWithState supplies the live value below.
 				const current = (await this.findOneForValueUpdate(id)) as TProperty;
 				const mapping =
 					knownMapping ?? this.propertiesMapperService.getMapping<TProperty, any, TUpdateDTO>(current.type);
@@ -1358,6 +1361,12 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 	}
 
 	private async findOneForValueUpdate(id: string): Promise<ChannelPropertyEntity> {
+		if (this.propertyMetadata) {
+			const property = await this.propertyMetadata.findOne(id);
+			if (!property) throw new DevicesNotFoundException('Channel property does not exist');
+			return property;
+		}
+
 		const property = await this.repository
 			.createQueryBuilder('property')
 			.innerJoinAndSelect('property.channel', 'channel')

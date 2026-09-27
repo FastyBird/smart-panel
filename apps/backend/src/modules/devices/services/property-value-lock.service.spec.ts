@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DataSource } from 'typeorm';
 
+import { ConfigService as NestConfigService } from '@nestjs/config';
+
 import { AddPropertyValueLocks1000000000023 } from '../../../migrations/1000000000023-AddPropertyValueLocks';
 import { PropertyValueLockEntity } from '../entities/property-value-lock.entity';
 
@@ -35,8 +37,36 @@ describe('PropertyValueLockService', () => {
 		await new AddPropertyValueLocks1000000000023().up(queryRunner);
 		await queryRunner.release();
 		await secondDataSource.initialize();
-		firstLock = new PropertyValueLockService(firstDataSource);
-		secondLock = new PropertyValueLockService(secondDataSource);
+		const config = new NestConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: true });
+		firstLock = new PropertyValueLockService(firstDataSource, config);
+		secondLock = new PropertyValueLockService(secondDataSource, config);
+	});
+
+	it('does not access SQLite for the default single-process mode', async () => {
+		const config = new NestConfigService();
+		jest.spyOn(config, 'get').mockReturnValue(undefined);
+		const localLock = new PropertyValueLockService(firstDataSource, config);
+		const query = jest.spyOn(firstDataSource, 'query');
+
+		await expect(
+			localLock.runExclusive('temperature', async (lease) => {
+				await lease.assertOwned();
+				return 'written';
+			}),
+		).resolves.toBe('written');
+		expect(query).not.toHaveBeenCalled();
+	});
+
+	it('keeps the configured mode for the lifetime of the service', async () => {
+		const config = new NestConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: 'false' });
+		const localLock = new PropertyValueLockService(firstDataSource, config);
+		config.set('FB_PROPERTY_VALUE_LOCKS_ENABLED', 'true');
+		const query = jest.spyOn(firstDataSource, 'query');
+
+		await expect(
+			localLock.runExclusive('temperature', () => Promise.reject(new Error('write failed'))),
+		).rejects.toThrow('write failed');
+		expect(query).not.toHaveBeenCalled();
 	});
 
 	afterEach(async () => {
@@ -92,7 +122,10 @@ describe('PropertyValueLockService', () => {
 
 		try {
 			await expect(
-				new PropertyValueLockService(synchronized).runExclusive('temperature', () => Promise.resolve('written')),
+				new PropertyValueLockService(
+					synchronized,
+					new NestConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: true }),
+				).runExclusive('temperature', () => Promise.resolve('written')),
 			).resolves.toBe('written');
 		} finally {
 			await synchronized.destroy();

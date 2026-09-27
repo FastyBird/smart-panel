@@ -118,7 +118,10 @@ export class PropertyValueService {
 		value: string | boolean | number | null,
 		valueTimestamp?: Date,
 	): Promise<boolean> {
-		return (await this.writeWithState(property, value, valueTimestamp)).changed;
+		const key = this.valueSourceRegistry.resolve(property);
+
+		return (await this.withValueLock(key, () => this.writeInternal(property, value, false, undefined, valueTimestamp)))
+			.changed;
 	}
 
 	/**
@@ -134,43 +137,7 @@ export class PropertyValueService {
 	): Promise<PropertyValueWriteResult> {
 		const key = this.valueSourceRegistry.resolve(property);
 
-		return this.withLocalValueLock(key, () => {
-			// Deduplication only refreshes this process's cache; it does not mutate shared history.
-			// Check after earlier local writes/deletes settle, but avoid two durable SQLite writes
-			// for a distributed lease on every unchanged poll report. Changed/strict writes and
-			// deletion still acquire that lease before touching storage.
-			const unchanged = this.refreshUnchangedValue(property, value, valueTimestamp);
-			if (unchanged) {
-				return Promise.resolve(unchanged);
-			}
-
-			return this.valueLock.runExclusive(key, () =>
-				this.writeInternal(property, value, false, undefined, valueTimestamp),
-			);
-		});
-	}
-
-	private refreshUnchangedValue(
-		property: ChannelPropertyEntity,
-		value: string | boolean | number | null,
-		valueTimestamp?: Date,
-	): PropertyValueWriteResult | null {
-		if (
-			this.valueSourceRegistry.resolve(property) !== property.id ||
-			value === null ||
-			value === undefined ||
-			(property.invalid !== null && this.isInvalidValue(property.invalid, value))
-		) {
-			return null;
-		}
-		const cached = this.valuesMap.get(property.id);
-		if (!cached || cached.value !== value) {
-			return null;
-		}
-
-		cached.lastUpdated = (valueTimestamp ?? new Date()).toISOString();
-		this.bumpCacheVersion(property.id);
-		return { changed: false, state: cached };
+		return this.withValueLock(key, () => this.writeInternal(property, value, false, undefined, valueTimestamp));
 	}
 
 	/**
@@ -274,9 +241,12 @@ export class PropertyValueService {
 			return { changed: false, state: null };
 		}
 
-		const unchanged = strict ? null : this.refreshUnchangedValue(property, value, valueTimestamp);
-		if (unchanged) {
-			return unchanged;
+		const cached = this.valuesMap.get(key);
+		if (!strict && cached && cached.value === value) {
+			// no change → skip storage write, but refresh lastUpdated so freshness stays accurate
+			cached.lastUpdated = (valueTimestamp ?? new Date()).toISOString();
+			this.bumpCacheVersion(key);
+			return { changed: false, state: cached };
 		}
 
 		// Validate value against format constraints
@@ -709,10 +679,6 @@ export class PropertyValueService {
 		key: ChannelPropertyEntity['id'],
 		operation: (lease: PropertyValueLease) => Promise<T>,
 	): Promise<T> {
-		return this.withLocalValueLock(key, () => this.valueLock.runExclusive(key, operation));
-	}
-
-	private withLocalValueLock<T>(key: ChannelPropertyEntity['id'], operation: () => Promise<T>): Promise<T> {
 		const previous = this.valueTails.get(key) ?? Promise.resolve();
 		let release: () => void = () => {};
 		const ticket = new Promise<void>((resolve) => {
@@ -724,7 +690,9 @@ export class PropertyValueService {
 		);
 		this.valueTails.set(key, tail);
 
-		return previous.then(operation, operation).finally(() => {
+		const runOperation = (): Promise<T> => this.valueLock.runExclusive(key, operation);
+
+		return previous.then(runOperation, runOperation).finally(() => {
 			release();
 			if (this.valueTails.get(key) === tail) {
 				this.valueTails.delete(key);

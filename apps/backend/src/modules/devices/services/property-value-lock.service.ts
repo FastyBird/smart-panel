@@ -3,8 +3,10 @@ import { unlink } from 'node:fs/promises';
 import { Server, createConnection, createServer } from 'node:net';
 import { DataSource } from 'typeorm';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 
+import { getEnvValue } from '../../../common/utils/config.utils';
 import { sharedLockSocketPath } from '../../../common/utils/shared-lock-socket-path.utils';
 
 const PROPERTY_VALUE_LOCK_TABLE = 'devices_module_property_value_locks';
@@ -31,9 +33,23 @@ export interface PropertyValueLease {
 
 @Injectable()
 export class PropertyValueLockService {
-	constructor(private readonly dataSource: DataSource) {}
+	private readonly enabled: boolean;
+
+	constructor(
+		private readonly dataSource: DataSource,
+		@Optional() configService: NestConfigService = new NestConfigService(),
+	) {
+		// Read once: switching synchronization modes during an operation would break ownership.
+		this.enabled = getEnvValue<boolean>(configService, 'FB_PROPERTY_VALUE_LOCKS_ENABLED', false);
+	}
 
 	async runExclusive<T>(propertyId: string, operation: (lease: PropertyValueLease) => Promise<T>): Promise<T> {
+		if (!this.enabled) {
+			// PropertyValueService still serializes writes and deletion with its local keyed queue.
+			// A single backend needs no SQLite claim or filesystem socket for a value operation.
+			return operation({ assertOwned: () => Promise.resolve() });
+		}
+
 		const ownerToken = randomUUID();
 		const ownerSocket = await this.openOwnerSocket(ownerToken);
 		let acquired = false;
