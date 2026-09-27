@@ -66,6 +66,94 @@ describe('PropertyValueService', () => {
 	});
 
 	describe('write', () => {
+		it('refreshes an unchanged report without another durable lease or history write', async () => {
+			const property = { id: 'unchanged', dataType: DataTypeType.BOOL, invalid: null } as ChannelPropertyEntity;
+			const measuredAt = new Date('2026-09-27T17:00:00.000Z');
+			await service.write(property, false);
+			const lock = module.get<PropertyValueLockService>(PropertyValueLockService);
+			jest.mocked(lock.runExclusive).mockClear();
+			storageService.writePoints.mockClear();
+
+			await expect(service.writeWithState(property, false, measuredAt)).resolves.toMatchObject({
+				changed: false,
+				state: { value: false, lastUpdated: measuredAt.toISOString() },
+			});
+			expect(lock.runExclusive).not.toHaveBeenCalled();
+			expect(storageService.writePoints).not.toHaveBeenCalled();
+		});
+
+		it('checks for an unchanged report only after an earlier strict write settles', async () => {
+			const property = { id: 'queued', dataType: DataTypeType.INT, invalid: null } as ChannelPropertyEntity;
+			await service.write(property, 10);
+			let release: () => void;
+			let entered: () => void;
+			const started = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			storageService.writePointsStrict.mockImplementation(
+				() =>
+					new Promise<void>((resolve) => {
+						release = resolve;
+						entered();
+					}),
+			);
+			const strict = service.writeStrict(property, 42);
+			await started;
+			const report = service.writeWithState(property, 10);
+			release();
+			await strict;
+			await expect(report).resolves.toMatchObject({ changed: true, state: { value: 10 } });
+			expect(storageService.writePoints).toHaveBeenCalledTimes(2);
+		});
+
+		it('keeps duplicate reports behind an in-flight ordinary persistence operation', async () => {
+			const property = { id: 'queued-duplicate', dataType: DataTypeType.INT, invalid: null } as ChannelPropertyEntity;
+			let release: () => void;
+			let entered: () => void;
+			const started = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			storageService.writePoints.mockImplementation(
+				() =>
+					new Promise<void>((resolve) => {
+						release = resolve;
+						entered();
+					}),
+			);
+			const first = service.write(property, 42);
+			await started;
+			let duplicateFinished = false;
+			const duplicate = service.write(property, 42).then((result) => {
+				duplicateFinished = true;
+				return result;
+			});
+			await Promise.resolve();
+			expect(duplicateFinished).toBe(false);
+			release();
+			await first;
+			await expect(duplicate).resolves.toBe(false);
+			expect(storageService.writePoints).toHaveBeenCalledTimes(1);
+		});
+
+		it('still acquires a durable lease and persists an unchanged strict write', async () => {
+			const property = { id: 'strict-duplicate', dataType: DataTypeType.INT, invalid: null } as ChannelPropertyEntity;
+			await service.write(property, 42);
+			const lock = module.get<PropertyValueLockService>(PropertyValueLockService);
+			jest.mocked(lock.runExclusive).mockClear();
+			await expect(service.writeStrict(property, 42)).resolves.toBe(true);
+			expect(lock.runExclusive).toHaveBeenCalledTimes(1);
+			expect(storageService.writePointsStrict).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not refresh a cached value that is now an invalid sentinel', async () => {
+			const property = { id: 'invalid-duplicate', dataType: DataTypeType.INT, invalid: null } as ChannelPropertyEntity;
+			const original = new Date('2026-09-27T16:00:00.000Z');
+			await service.write(property, 42, original);
+			property.invalid = 42;
+			await expect(service.writeWithState(property, 42)).resolves.toEqual({ changed: false, state: null });
+			expect(await service.readLatest(property)).toMatchObject({ lastUpdated: original.toISOString() });
+		});
+
 		it('should write a string value to storage and cache', async () => {
 			const property: ChannelPropertyEntity = {
 				id: 'test-property-id',
