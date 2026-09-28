@@ -11,6 +11,9 @@ Keep snapshots, configuration, freshness and retained owner records in an owner-
   `DISPATCH_ALLOWANCE_MS`. Use the reader in live work; invoking the selector alone does not establish
   process provenance. V2 validates the original activation pair, distinguishes preparation from
   measurement, and still requires the latest two adjacent observed target decisions before forecasting.
+  Observed cycle/registration times and v2 decision times must be no later than the conservative
+  lower bound of the current time. UTC observations must agree with the paired backend anchor within
+  2 seconds. V1 lacks decision timestamps, so it can only verify that the claimed slot was already due.
 - `finalize.cjs absolute-export retained-owner` removes only the matching export/owner after its
   recorded writer PID is absent. Archive the final snapshot and owner first. A live/reused PID, EPERM,
   missing owner, symlink, public directory or foreign file fails closed. It does not stop a process,

@@ -172,6 +172,66 @@ describe('poll placement readiness: actual publisher → reader → selector →
 		expect((await select(602001)).status).toBe(1);
 	});
 
+	it('rejects future measurement cycles and decisions, including the clock uncertainty boundary', async () => {
+		await start();
+		await command('observeDelegate', [delegate]);
+		await cycle(10000);
+		await cycle(70000);
+		await cycle(130000);
+		await cycle(190000);
+		expect((await select(180000)).output.reason).toBe('observation-in-future');
+		for (const now of [200000, 220000, 220000.5]) {
+			expect(await select(now)).toMatchObject({ status: 1, output: { reason: 'decision-in-future' } });
+		}
+		expect(await select(220001)).toMatchObject({ status: 0, output: { state: 'selectable' } });
+	});
+
+	it('rejects a future v1 slot without inventing an observed decision timestamp', async () => {
+		await start({ schemaVersion: 1 });
+		await command('observeDelegate', [delegate]);
+		await cycle(10000);
+		await cycle(70000);
+		expect((await select(90000)).output.reason).toBe('decision-in-future');
+		expect((await select(100000)).output.reason).toBe('decision-in-future');
+		expect((await select(100001)).status).toBe(0);
+	});
+
+	it.each(['anchor', 'registration'])(
+		'rejects %s UTC drift despite locally consistent registration bounds',
+		async (field) => {
+			await start();
+			await command('observeDelegate', [delegate]);
+			await cycle(10000);
+			await cycle(70000);
+			await cycle(130000);
+			const snapshot = await cycle(190000);
+			const last = snapshot.observations.at(-1);
+			const shift = (utc: string) => new Date(Date.parse(utc) + 3000).toISOString();
+			if (field === 'anchor') {
+				last.anchorUtc = shift(last.anchorUtc);
+			} else {
+				last.target.registrationBeforeUtc = shift(last.target.registrationBeforeUtc);
+				last.target.registrationAfterUtc = shift(last.target.registrationAfterUtc);
+			}
+			await writeFile(exportPath, JSON.stringify(snapshot));
+			expect((await select(220001)).output.reason).toBe('observation-clock-mismatch');
+		},
+	);
+
+	it('rejects future registration completion even when its duration agrees in both clocks', async () => {
+		await start();
+		await command('observeDelegate', [delegate]);
+		await cycle(10000);
+		await cycle(70000);
+		await cycle(130000);
+		const snapshot = await cycle(190000);
+		const target = snapshot.observations.at(-1).target;
+		target.registrationAfterMs = 230000;
+		target.registrationAfterUtc = new Date(Date.UTC(2026, 0, 1) + 230000).toISOString();
+		await writeFile(exportPath, JSON.stringify(snapshot));
+		expect((await select(220001)).output.reason).toBe('observation-in-future');
+	});
+
 	it('does not activate across changed order, an empty cycle or a skipped slot', async () => {
 		await start();
 		await command('observeDelegate', [delegate]);

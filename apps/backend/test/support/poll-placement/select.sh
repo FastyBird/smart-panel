@@ -58,7 +58,7 @@ if (!Number.isFinite(nowUncertaintyMs) || nowUncertaintyMs < 0 || nowUncertainty
   fail('freshness-uncertainty-invalid');
 if (!Number.isInteger(dispatchAllowanceMs) || dispatchAllowanceMs < 0 || dispatchAllowanceMs > 10000)
   fail('dispatch-allowance-invalid');
-const { canonicalConfig: canonicalize, validateLifecycle, validatePair } = require(process.env.PLACEMENT_CONTRACT);
+const { canonicalConfig: canonicalize, validateLifecycle, validatePair, validateObservedTimes } = require(process.env.PLACEMENT_CONTRACT);
 const canonicalConfig = canonicalize(config, fail);
 validateLifecycle(snapshot, canonicalConfig, fail);
 const expectedFingerprint = createHash('sha256').update(JSON.stringify(canonicalConfig)).digest('hex');
@@ -83,6 +83,7 @@ for (let index = 1; index < observations.length; index++) {
 }
 const pair = observations.slice(-2);
 validatePair(pair, snapshot.schemaVersion, fail);
+validateObservedTimes(snapshot, nowMonotonicMs, nowUncertaintyMs, fail);
 const last = pair[1];
 const dueLowerMs = last.target.registrationBeforeMs + last.intervalMs + last.target.delayMs;
 const dueUpperMs = last.target.registrationAfterMs + last.intervalMs + last.target.delayMs;
