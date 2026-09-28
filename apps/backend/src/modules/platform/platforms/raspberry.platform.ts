@@ -35,7 +35,7 @@ export class RaspberryPlatform extends Platform {
 
 		const defaultNetworkInterface = Array.isArray(networkInterface) ? networkInterface[0] : networkInterface;
 
-		const resolution = await this.getCurrentResolution();
+		const resolution = await this.getCurrentResolution(graphics);
 
 		const networkMode = await this.detectNetworkMode(defaultNetworkInterface?.ip4 ?? '');
 
@@ -342,7 +342,9 @@ export class RaspberryPlatform extends Platform {
 		});
 	}
 
-	private async getCurrentResolution(): Promise<{ width: number; height: number } | null> {
+	private async getCurrentResolution(
+		graphics: Systeminformation.GraphicsData,
+	): Promise<{ width: number; height: number } | null> {
 		try {
 			const data = await fs.readFile('/sys/class/graphics/fb0/virtual_size', 'utf-8');
 
@@ -371,15 +373,12 @@ export class RaspberryPlatform extends Platform {
 			// Error could be ignored
 		}
 
-		try {
-			const graphics = await si.graphics();
-			const display = graphics.displays.find((d) => d.currentResX && d.currentResY);
+		// Reuse the sample already obtained through cachedGraphics(). Headless systems reach
+		// this fallback on every poll; another si.graphics() would bypass its one-minute cache.
+		const display = graphics.displays.find((d) => d.currentResX && d.currentResY);
 
-			if (display) {
-				return { width: display.currentResX, height: display.currentResY };
-			}
-		} catch {
-			// Error could be ignored
+		if (display) {
+			return { width: display.currentResX, height: display.currentResY };
 		}
 
 		return null;

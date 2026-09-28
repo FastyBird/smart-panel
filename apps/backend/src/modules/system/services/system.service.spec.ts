@@ -13,6 +13,7 @@ import { toInstance } from '../../../common/utils/transform.utils';
 import { SystemInfoDto } from '../../platform/dto/system-info.dto';
 import { PlatformService } from '../../platform/services/platform.service';
 import { SystemInfoModel } from '../models/system.model';
+import { SystemStatsProvider } from '../providers/system-stats.provider';
 import { EventType } from '../system.constants';
 
 import { SystemService } from './system.service';
@@ -66,6 +67,57 @@ describe('SystemService', () => {
 	});
 
 	describe('getSystemInfo', () => {
+		it('shares one pending sample between both broadcasts and HTTP consumers, then samples again', async () => {
+			let resolve: (info: SystemInfoDto) => void;
+			const pending = new Promise<SystemInfoDto>((done) => {
+				resolve = done;
+			});
+			const sample = toInstance(SystemInfoDto, {
+				cpuLoad: 12,
+				memory: { total: 100, used: 25, free: 75 },
+				storage: [{ size: 100, used: 20 }],
+				os: { uptime: 60 },
+				process: { uptime: 30 },
+				temperature: { cpu: 42 },
+			});
+			const getInfo = jest.spyOn(platform, 'getSystemInfo').mockReturnValueOnce(pending).mockResolvedValue(sample);
+			const broadcast = service.broadcastSystemInfo();
+			const stats = new SystemStatsProvider(service).getStats();
+			const http = service.getSystemInfo();
+
+			expect(getInfo).toHaveBeenCalledTimes(1);
+			resolve(sample);
+			const [, statsResult, httpResult] = await Promise.all([broadcast, stats, http]);
+
+			expect(statsResult.memUsedPct.value).toBe(25);
+			expect(httpResult.cpuLoad).toBe(12);
+			const emitted = jest.mocked(eventEmitter.emit).mock.calls[0][1] as SystemInfoModel;
+			httpResult.memory.used = 99;
+			expect(emitted.memory.used).toBe(25);
+			expect(sample.memory.used).toBe(25);
+
+			await service.getSystemInfo();
+			expect(getInfo).toHaveBeenCalledTimes(2);
+		});
+
+		it('releases a failed shared sample so the next caller can retry', async () => {
+			let reject: (error: Error) => void;
+			const pending = new Promise<SystemInfoDto>((_resolve, fail) => {
+				reject = fail;
+			});
+			const getInfo = jest.spyOn(platform, 'getSystemInfo').mockReturnValueOnce(pending);
+			const first = expect(service.getSystemInfo()).rejects.toThrow('probe failed');
+			const second = expect(service.getSystemInfo()).rejects.toThrow('probe failed');
+
+			reject(new Error('probe failed'));
+			await Promise.all([first, second]);
+			expect(getInfo).toHaveBeenCalledTimes(1);
+
+			getInfo.mockResolvedValue(toInstance(SystemInfoDto, { cpuLoad: 20 }));
+			await expect(service.getSystemInfo()).resolves.toEqual(expect.objectContaining({ cpuLoad: 20 }));
+			expect(getInfo).toHaveBeenCalledTimes(2);
+		});
+
 		it('should return system info', async () => {
 			const mockInfo = {
 				cpuLoad: 10,

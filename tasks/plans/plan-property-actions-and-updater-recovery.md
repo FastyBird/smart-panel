@@ -2,11 +2,64 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.28 normal staging upgrade verified; metadata receive-path mitigation validated in a temporary overlay; pre-dispatch latency, network delays and full client acceptance remain open
+**Status:** alpha.28 normal staging upgrade verified; metadata mitigation merged in #1127; persistence-gated publication and blocking system probes measured; redundant system probes mitigated locally; command latency and full client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Persistence and system-probe findings — 2026-09-29
+
+Additional packet-correlated tracing with the merged metadata overlay reproduced a **2.347 s**
+notification-to-alias delay. The notification and outbound command used the same TCP connection;
+JavaScript received the notification **0.173 ms** after packet completion. Metadata/admission finished
+promptly, but `StorageService.writePoints()` took **2.341 s** before the source event could publish.
+The complete command took **4.018 s**: 142.7 ms before RPC, 54.0 ms to its response, 1.474 s until
+notification and 2.347 s inside Smart Panel. Six operations converged and restored OFF. Pre-dispatch
+latency in this sample was 115–259 ms; the earlier 2.70 s pre-dispatch outlier was not reproduced.
+
+A separate finer storage trace identified **1.579 s** and **0.522 s** Influx writes. Memory writes
+remained below 0.24 ms across 443 traced writes. For the 1.579 s write, the HTTP request finished
+writing within 0.2 ms, then awaited a successful HTTP 204 response; no >30 ms event-loop stall was
+observed during that interval. This is an application-observed HTTP delay, not an Influx server/disk
+profile. That write belonged to a background Shelly `ensureProperty()` update, which held the global
+exclusive structure barrier for **1.584 s**. It demonstrates how persistence can delay both publication
+and unrelated command admission, but does not retroactively attribute the earlier 2.70 s command.
+
+A 90.6 s CPU profile independently exposed expensive platform probes: approximately 3.42 s of sampled
+time was in native process spawning, including `systeminformation` graphics, network, CPU and time
+probes. Some use `execSync` on the main thread. Aggregate CPU/memory usage alone cannot exclude short
+event-loop stalls. The system broadcaster and stats aggregator both request system info every five
+seconds; Raspberry's resolution fallback also called `si.graphics()` outside the existing cache.
+
+The narrow mitigation in this change shares a pending system-info sample among concurrent consumers
+and reuses cached graphics for the resolution fallback. It keeps fresh framebuffer/fbset checks and
+returns independent response models; successful and failed samples are released for the next poll.
+It does **not** move all platform probes off the event loop or change persistence/lock semantics.
+Validation: 49 tests across system service/controller, platform service and Raspberry resolution suites;
+backend type checking and focused linting. No staging latency improvement is claimed for this change
+before deployment. All temporary overlays, profiling and captures were removed, with alpha.28 restored.
+
+The finer storage run completed one ON/OFF pair, then rejected a subsequent command while the Shelly
+delegate was detached/replaced. That rejected trial is excluded from latency acceptance. Independent
+HTTP readback confirmed OFF; normal-runtime source and alias were subsequently online/OFF.
+
+Remaining work, ordered by the measured blocking boundaries:
+
+- [ ] Avoid unchanged structural updates in Shelly discovery/`ensureProperty()` while preserving actual
+  metadata changes, validation and lifecycle locking. Verify that value-only reports do not take the
+  exclusive barrier or touch SQLite metadata.
+- [ ] Separate live value publication from best-effort history persistence with explicit ordering,
+  bounded buffering, shutdown and failure semantics. Preserve strict reconciliation, deletion/remap
+  barriers, shared-writer mode and restart readback; do not replace awaited writes with unchecked
+  fire-and-forget promises.
+- [ ] Attribute slow Influx HTTP responses using server/disk evidence and verify the above changes
+  under a controlled delayed storage response, independently of Shelly network timing.
+- [ ] Remove remaining main-thread synchronous platform probes and measure their impact after the
+  duplicate work mitigation. Reduce repeated command-path ORM reads without weakening ownership checks.
+- [ ] Complete successful/canonical Shelly replacement lifecycle coverage, then repeat stable real
+  device, Apple Home and normal-upgrade acceptance. Failed-discovery cleanup from #1126 covers a
+  different lifecycle boundary.
 
 ## Metadata receive-path mitigation — 2026-09-29
 

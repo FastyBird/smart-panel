@@ -4,6 +4,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { SystemInfoDto } from '../../platform/dto/system-info.dto';
 import { PlatformService } from '../../platform/services/platform.service';
 import { NetworkStatsModel, SystemInfoModel, TemperatureInfoModel, ThrottleStatusModel } from '../models/system.model';
 import { EventType, SYSTEM_MODULE_NAME } from '../system.constants';
@@ -11,6 +12,7 @@ import { EventType, SYSTEM_MODULE_NAME } from '../system.constants';
 @Injectable()
 export class SystemService {
 	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'SystemService');
+	private systemInfoRequest: Promise<SystemInfoDto> | null = null;
 
 	constructor(
 		private readonly platformService: PlatformService,
@@ -18,12 +20,21 @@ export class SystemService {
 	) {}
 
 	async getSystemInfo(): Promise<SystemInfoModel> {
-		const rawInfo = await this.platformService.getSystemInfo();
+		// The system and stats broadcasts run on the same five-second schedule. Share their
+		// expensive platform sample, including concurrent HTTP callers, only while it is pending.
+		const request = (this.systemInfoRequest ??= this.platformService.getSystemInfo());
 
-		return toInstance(SystemInfoModel, {
-			...rawInfo,
-			platform: this.platformService.getPlatformType(),
-		});
+		try {
+			const rawInfo = await request;
+
+			// Each consumer owns its model; sharing the sample must not share mutable responses.
+			return toInstance(SystemInfoModel, {
+				...rawInfo,
+				platform: this.platformService.getPlatformType(),
+			});
+		} finally {
+			if (this.systemInfoRequest === request) this.systemInfoRequest = null;
+		}
 	}
 
 	async getThrottleStatus(): Promise<ThrottleStatusModel> {
