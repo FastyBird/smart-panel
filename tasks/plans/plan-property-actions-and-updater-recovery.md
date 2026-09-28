@@ -2,11 +2,48 @@
 
 **Date:** 2026-09-27
 
-**Status:** property and launcher fixes published in alpha.25; normal worker upgrade completed, but restarted backend reported a false failure; observer permission repair validated in fixtures; full acceptance still open
+**Status:** alpha.26 normal staging upgrade completed with worker and public COMPLETE; a short post-restart IDLE progress gap is addressed by a focused follow-up; hardware/client acceptance remains open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Alpha.26 normal-upgrade result — 2026-09-28
+
+PR #1122 merged as `843f3e0039ba260562708cff33c657e72bac4578`. The authorized
+[alpha.26 release](https://github.com/FastyBird/smart-panel/releases/tag/v1.1.0-alpha.26)
+names version-sync commit `6156106533db123fcd295b9737465b53a6d16378`. Its ARM64 archive SHA-256 is
+`7aa29bfde8f75d0d51a622c4121bce05a6048d72b8bb6930b6c2ae5c09f8b67b`. Published archive and npm updater
+implementations match the tested build byte-for-byte.
+
+A separate bootstrap installed `alpha.25+review.843f3e003` with the repaired source worker,
+preserving the live runtime and an offline copy of the previous database/configuration/attempt.
+Exactly one normal System API install request was accepted at **00:07:51 UTC on September 28**.
+Attempt `1790554071-619957` completed at **00:09:07 UTC**, and the restarted alpha.26 backend
+reported **COMPLETE** without the previous false failure. The worker exited successfully and
+removed its own lock. No manual lock deletion, migration-history editing or repeated install was used.
+All 111 devices and their property mappings, database schema and 28 migration-history records are
+unchanged; the real migration CLI reported no pending migrations.
+
+A real service-user probe during startup read the root-owned attempt and received `EPERM` when
+probing its live owner, while record writes and lock/private migration-log reads remained denied.
+The backend journal confirms that initialization returned while it observed the live worker, then
+reconciled the durable completion. This closes the observed permission/false-failure boundary.
+It does not establish automatic first-hop compatibility for older installed workers: those still
+require the separately documented bootstrap/recovery step.
+
+The API exposed a narrower remaining display issue: polls at **00:09:02** and **00:09:05 UTC** returned
+IDLE before COMPLETE at **00:09:08 UTC**. Durable ownership already prevented a second worker;
+inspection showed that the new process observed startup without restoring its in-memory progress.
+The follow-up restores STARTING/85% synchronously when observing a live `starting` attempt, while
+completion still requires durable settlement. Tests cover startup with/without a public status file,
+EPERM, nonblocking initialization and rejection of another update. The real root/service-user fixture
+also asserts STARTING before initialization returns. This follow-up is not deployed on staging.
+
+Source and virtual target were online and OFF after the upgrade. A fresh Apple Home UI smoke could
+not run: Home was running, but both name and bundle-ID attachment returned `cgWindowNotFound`.
+No post-upgrade visual flicker result is claimed. The 20+20 timing matrix and full client acceptance
+remain open; they are not prerequisites for recording this successful normal updater execution.
 
 ## Alpha.25 normal-upgrade result — 2026-09-28
 
