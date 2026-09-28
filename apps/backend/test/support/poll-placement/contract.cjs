@@ -144,4 +144,35 @@ const validateLifecycle = (snapshot, config, fail) => {
 			fail('observation-phase-invalid');
 	}
 };
-module.exports = { canonicalConfig, validateLifecycle, validatePair };
+const validateObservedTimes = (snapshot, nowMonotonicMs, uncertaintyMs, fail) => {
+	const earliestNowMs = nowMonotonicMs - uncertaintyMs;
+	const armedUtcMs = Date.parse(snapshot.armedAtUtc);
+	if (!Number.isFinite(armedUtcMs)) fail('observation-clock-mismatch');
+	const checkClock = (monotonicMs, utc) => {
+		if (!Number.isFinite(monotonicMs)) fail('observation-time-invalid');
+		if (monotonicMs > earliestNowMs) fail('observation-in-future');
+		const expectedUtcMs = armedUtcMs + monotonicMs - snapshot.armedAtMonotonicMs;
+		if (!Number.isFinite(Date.parse(utc)) || Math.abs(Date.parse(utc) - expectedUtcMs) > 2000)
+			fail('observation-clock-mismatch');
+	};
+	for (const entry of snapshot.observations) {
+		checkClock(entry.anchorMonotonicMs, entry.anchorUtc);
+		const target = entry.target;
+		if (!target) continue;
+		checkClock(target.registrationBeforeMs, target.registrationBeforeUtc);
+		if (target.registrationAfterMs !== null) checkClock(target.registrationAfterMs, target.registrationAfterUtc);
+		if (target.decision !== 'dispatch-attempt' && target.decision !== 'skipped') continue;
+		if (snapshot.schemaVersion === 2) {
+			if (!Number.isFinite(target.decisionMonotonicMs) || target.decisionMonotonicMs < entry.anchorMonotonicMs)
+				fail('decision-time-invalid');
+			if (target.decisionMonotonicMs > earliestNowMs) fail('decision-in-future');
+		} else {
+			// V1 has no decision timestamp: its claimed decision must at least be due already.
+			const earliestDueMs = target.registrationBeforeMs + target.delayMs;
+			if (!Number.isFinite(earliestDueMs)) fail('decision-time-invalid');
+			if (earliestDueMs > earliestNowMs) fail('decision-in-future');
+		}
+	}
+};
+
+module.exports = { canonicalConfig, validateLifecycle, validatePair, validateObservedTimes };

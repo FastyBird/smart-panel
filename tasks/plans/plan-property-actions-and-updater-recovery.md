@@ -333,13 +333,34 @@ The implementation and local service/export/reader/selector/finalizer tests belo
 #1032/#1077 work. They do not establish live feasibility or command/RPC overlap.
 
 - [x] Add the bounded opt-in lifecycle and reviewable private adapter conformance tests.
-- [ ] Review/release the candidate and complete one fresh command-free staging placement gate.
+- [x] Review/release the candidate and complete one fresh command-free staging placement gate.
 - [ ] Complete the original physical/client acceptance with independently qualified captures.
 
 PR #1123 was merged as `bd6a30dab2188e04412466380fa9e91d4dc9e899`; it restores visible STARTING
-progress during observation, and is not yet a staging release. Its review separately recommends
+progress during observation, verified in the normal alpha.26 → alpha.27 staging upgrade. Its review separately recommends
 binding in-memory update-lock release to the acquiring attempt so late settlement cannot release a
 successor's lock. Retain that hardening item for the updater path; it is outside this diagnostic PR.
+
+#### P4 bounded placement gate — 2026-09-28
+
+PR #1124 shipped in the alpha.27 server package. The normal System API upgrade from alpha.26
+completed with STARTING → COMPLETE, preserved all 111 device identities and migration history,
+and left no updater lock. Raspberry image jobs were still running when this result was recorded.
+
+One command-free schema-v2 session activated after 419.477 seconds, on actual cycles 6/7.
+The first local caller omitted Node from PATH; the unchanged session and active deadline were
+retained while correcting that caller. The actual reader/selector then selected cycles 8/9 with
+the next target slot 55.859 seconds ahead. Original failed reads and the corrected positive read
+remain separate evidence. The final export/owner were archived, the writer stopped, the owned
+files and override removed, and normal alpha.27 health and source/alias OFF verified. There were
+zero device commands and zero latency samples; the 20+20 and client acceptance remain open.
+
+An offline negative replay exposed a separate private-selector gap: a decision 21.764 seconds
+ahead of the validated current time was accepted. The focused adapter repair rejects future
+cycle/registration/decision observations conservatively and checks UTC against the paired clock
+anchor. The actual publisher/reader/selector suite passes 23 tests; the retained positive staging
+read still selects, and the negative replay now rejects with `decision-in-future`. Review this
+repair before command batches. It changes local diagnostic tools, not the deployed runtime.
 
 ### P5 — Close the independent follow-ups and retire temporary machinery
 
