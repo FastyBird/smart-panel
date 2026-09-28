@@ -155,7 +155,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "shellies": "^1.7.0",
-    "shellies-ds9": "github:fastybird/node-shellies-ds9#main",
+    "shellies-ds9": "github:fastybird/node-shellies-ds9#273d243203fc89574cc4f0085e92393200922730",
     "socket.io": "^4.8.3",
     "sqlite3": "^5.1.7",
     "systeminformation": "^5.31.4",
