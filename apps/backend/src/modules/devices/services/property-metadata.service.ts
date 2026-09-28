@@ -24,8 +24,8 @@ export class PropertyMetadataService implements EntitySubscriberInterface, OnMod
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyMetadataService');
 	private readonly enabled: boolean;
 	private generation = 0;
-	private catalog: Map<string, ChannelPropertyEntity> | null = null;
-	private loading: { generation: number; promise: Promise<Map<string, ChannelPropertyEntity>> } | null = null;
+	private readonly catalog = new Map<string, ChannelPropertyEntity>();
+	private readonly loading = new Map<string, { generation: number; promise: Promise<ChannelPropertyEntity | null> }>();
 	private readonly dirtyTransactions = new WeakSet<object>();
 
 	constructor(
@@ -40,7 +40,11 @@ export class PropertyMetadataService implements EntitySubscriberInterface, OnMod
 	async onModuleInit(): Promise<void> {
 		if (!this.enabled) return;
 		try {
-			await this.snapshot();
+			const generation = this.generation;
+			const properties = await this.query().getMany();
+			if (generation === this.generation) {
+				for (const property of properties) this.catalog.set(property.id, property);
+			}
 		} catch (error) {
 			// OpenAPI generation can bootstrap before schema creation. A later value read retries;
 			// never turn a failed catalog load into an authoritative empty catalog.
@@ -58,7 +62,7 @@ export class PropertyMetadataService implements EntitySubscriberInterface, OnMod
 
 	async findOne(id: string): Promise<ChannelPropertyEntity | null> {
 		const property = this.enabled
-			? (await this.snapshot()).get(id)
+			? await this.findCached(id)
 			: await this.query().where('property.id = :id', { id }).getOne();
 		if (!property) return null;
 
@@ -120,29 +124,34 @@ export class PropertyMetadataService implements EntitySubscriberInterface, OnMod
 
 	private invalidate(): void {
 		this.generation += 1;
-		this.catalog = null;
+		this.catalog.clear();
 	}
 
-	private async snapshot(): Promise<Map<string, ChannelPropertyEntity>> {
-		while (this.catalog === null) {
+	/** Refresh only the requested row; discovery must not rebuild every property's metadata per report. */
+	private async findCached(id: string): Promise<ChannelPropertyEntity | null> {
+		while (true) {
+			const cached = this.catalog.get(id);
+			if (cached) return cached;
+
 			const generation = this.generation;
-			if (this.loading?.generation !== generation) {
-				this.loading = {
+			if (this.loading.get(id)?.generation !== generation) {
+				this.loading.set(id, {
 					generation,
-					promise: this.query()
-						.getMany()
-						.then((properties) => new Map(properties.map((p) => [p.id, p]))),
-				};
+					promise: this.query().where('property.id = :id', { id }).getOne(),
+				});
 			}
-			const loading = this.loading;
+			const loading = this.loading.get(id);
 			try {
-				const catalog = await loading.promise;
-				if (generation === this.generation) this.catalog = catalog;
+				const property = await loading.promise;
+				if (generation === this.generation) {
+					// Missing IDs are not retained: invalid commands must not grow this cache.
+					if (property) this.catalog.set(id, property);
+					return property;
+				}
 			} finally {
-				if (this.loading === loading) this.loading = null;
+				if (this.loading.get(id) === loading) this.loading.delete(id);
 			}
 		}
-		return this.catalog;
 	}
 
 	private query() {
