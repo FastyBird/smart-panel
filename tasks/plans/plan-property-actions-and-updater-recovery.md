@@ -319,6 +319,28 @@ On `1.1.0-alpha.23+review.002aa2e4f`, a readiness preflight initially rejected t
 
 Acknowledgement times ranged from 187.0 to 580.6 ms. Every cycle independently confirmed restoration to OFF. These are exploratory samples under the existing 111-device configuration, with unqualified idle/overlap labels; they are not the required 20+20 matrix or new Apple Home visual evidence. Retain all earlier failures alongside these samples. The scoped capture override was removed and a normal service restart passed health. The normal System API upgrade remains untested.
 
+#### P4 bounded preparation decision — 2026-09-28
+
+The alpha.26 command-free placement attempt retained target decisions but no stable adjacent pair:
+connected delegate counts grew 7 → 26 → 46 → 49 → 51 and every adjacent order fingerprint changed.
+The fifth target slot fell beyond the constructor-armed 360-second limit. There were zero device
+commands and zero qualified latency samples. This negative result does not change earlier failures.
+
+The user approved a separate opt-in preparation lifecycle: at most ten minutes from observer creation,
+then one active window of at most 360 seconds after two qualifying actual adjacent cycles. Schema v2
+retains preparation observations and separate creation/activation timestamps; v1 stays compatible.
+The implementation and local service/export/reader/selector/finalizer tests belong to the existing
+#1032/#1077 work. They do not establish live feasibility or command/RPC overlap.
+
+- [x] Add the bounded opt-in lifecycle and reviewable private adapter conformance tests.
+- [ ] Review/release the candidate and complete one fresh command-free staging placement gate.
+- [ ] Complete the original physical/client acceptance with independently qualified captures.
+
+PR #1123 was merged as `bd6a30dab2188e04412466380fa9e91d4dc9e899`; it restores visible STARTING
+progress during observation, and is not yet a staging release. Its review separately recommends
+binding in-memory update-lock release to the acquiring attempt so late settlement cannot release a
+successor's lock. Retain that hardening item for the updater path; it is outside this diagnostic PR.
+
 ### P5 — Close the independent follow-ups and retire temporary machinery
 
 - [ ] **#1110:** Verify its recorded npm/server/image/Docker reconciliation against its own scope and close it if complete. Keep the failed original workflow history; later success does not rewrite it. Do not make it wait for hardware latency.
