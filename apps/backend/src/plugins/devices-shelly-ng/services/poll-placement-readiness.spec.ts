@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { once } from 'events';
 import { chmod, copyFile, mkdtemp, readFile, rm, symlink, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
-import { join, resolve } from 'path';
+import { join, relative, resolve } from 'path';
 
 import type { PollPlacementDiagnosticsService } from './poll-placement-diagnostics.service';
 
@@ -125,6 +125,41 @@ describe('poll placement readiness: actual publisher → reader → selector →
 		await stop();
 		expect(finalize().status).toBe(0);
 		await expect(readFile(exportPath)).rejects.toMatchObject({ code: 'ENOENT' });
+	});
+
+	it.each([resolve(support, '../../..'), support])('runs both adapters using relative paths from %s', async (cwd) => {
+		await start();
+		await command('observeDelegate', [delegate]);
+		await cycle(10000);
+		await cycle(70000);
+		await select(100001);
+		const env: NodeJS.ProcessEnv = {
+			...process.env,
+			NOW_MONOTONIC_MS: '100001',
+			NOW_UNCERTAINTY_MS: '1',
+			DISPATCH_ALLOWANCE_MS: '1000',
+		};
+		delete env.FB_COMMAND_LATENCY_SELECTOR;
+		for (const name of ['read', 'select']) {
+			const output = join(directory, `relative-${name}.json`);
+			const args =
+				name === 'read'
+					? [
+							exportPath,
+							`${exportPath}.owner.json`,
+							join(directory, 'config.json'),
+							join(directory, 'freshness.json'),
+							output,
+						]
+					: [exportPath, join(directory, 'config.json'), output];
+			const result = spawnSync('bash', [relative(cwd, join(support, `${name}.sh`)), ...args], {
+				cwd,
+				env,
+				encoding: 'utf8',
+			});
+			expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: '' });
+			expect((JSON.parse(await readFile(output, 'utf8')) as { state: string }).state).toBe('selectable');
+		}
 	});
 
 	it('never arms an unresolved target and expires preparation without a scheduler callback', async () => {

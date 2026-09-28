@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 umask 077
-export PLACEMENT_CONTRACT="$(dirname "$0")/contract.cjs"
+SCRIPT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
+PLACEMENT_CONTRACT="$SCRIPT_DIR/contract.cjs"
+export PLACEMENT_CONTRACT
 
 if [[ $# -ne 3 ]]; then
 	echo 'usage: command-latency-poll-placement-select.sh <snapshot.json> <expected-config.json> <output.json>' >&2

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 umask 077
-export PLACEMENT_CONTRACT="$(dirname "$0")/contract.cjs"
+SCRIPT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
+PLACEMENT_CONTRACT="$SCRIPT_DIR/contract.cjs"
+export PLACEMENT_CONTRACT
 
 if [[ $# -ne 5 ]]; then
 	printf 'usage: command-latency-poll-placement-read.sh <snapshot.json> <owner.json> <expected-config.json> <freshness.json> <output.json>\n' >&2
@@ -13,7 +15,7 @@ OWNER=$2
 CONFIG=$3
 FRESHNESS=$4
 OUTPUT=$5
-SELECTOR="${FB_COMMAND_LATENCY_SELECTOR:-$(dirname "$0")/select.sh}"
+SELECTOR="${FB_COMMAND_LATENCY_SELECTOR:-$SCRIPT_DIR/select.sh}"
 test -f "$SNAPSHOT"
 test -f "$OWNER"
 test -f "$CONFIG"
