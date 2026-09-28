@@ -250,6 +250,19 @@ export class UpdateExecutorService implements OnModuleDestroy, OnModuleInit {
 			return;
 		}
 
+		// The restarted process starts with IDLE in memory, even though the worker still
+		// owns startup/health verification. Restore that visible phase before returning
+		// from initialization; only durable settlement may publish COMPLETE.
+		if (attempt.phase === 'starting') {
+			this.updateService.setStatus({
+				status: UpdateStatusType.STARTING,
+				phase: UpdatePhase.STARTING,
+				progressPercent: PHASE_PROGRESS.starting,
+				message: 'Update in progress: starting...',
+				error: null,
+			});
+		}
+
 		const generation = ++this.observerGeneration;
 		this.observerAttemptId = attempt.attemptId;
 		const task = this.reconcileLiveAttempt(attempt, generation).catch((error: unknown) => {

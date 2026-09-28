@@ -89,7 +89,16 @@ JS
 		sleep 0.1
 	done
 	[ -f "$case_root/initialized" ]
-	if [ "$kind" = fixed ]; then [ ! -f "$case_root/result" ]; fi
+	if [ "$kind" = fixed ]; then
+		[ ! -f "$case_root/result" ]
+		node - "$case_root/observations.json" <<'JS'
+const observations = JSON.parse(require('node:fs').readFileSync(process.argv[2], 'utf8'));
+if (observations.length !== 1 || observations[0].status !== 'starting' ||
+ observations[0].phase !== 'starting' || observations[0].progressPercent !== 85) {
+ throw new Error('Observer must restore STARTING before initialization returns');
+}
+JS
+	fi
 	release_attempt
 	wait "$observer_pid"
 	result="$(cat "$case_root/result")"

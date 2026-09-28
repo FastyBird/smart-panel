@@ -100,39 +100,54 @@ describe('UpdateExecutorService', () => {
 	});
 
 	describe('checkPendingUpdateStatus (via onModuleInit)', () => {
-		it('does not block module initialization while a live worker settles', async () => {
-			jest.useFakeTimers();
-			(existsSync as jest.Mock).mockReturnValue(true);
-			(readFileSync as jest.Mock).mockImplementation((path: string) => {
-				if (path.includes('update-attempt')) {
-					return JSON.stringify({
-						attemptId: 'attempt-startup',
-						ownerPid: process.pid,
-						targetVersion: '1.1.0-alpha.18',
-						state: 'active',
-						phase: 'starting',
-						recoveryRequired: false,
-					});
-				}
+		it.each([true, false])(
+			'restores startup progress without blocking initialization (status file: %s)',
+			async (hasStatus) => {
+				jest.useFakeTimers();
+				(existsSync as jest.Mock).mockImplementation((path: string) => path.includes('update-attempt') || hasStatus);
+				(readFileSync as jest.Mock).mockImplementation((path: string) => {
+					if (path.includes('update-attempt')) {
+						return JSON.stringify({
+							attemptId: 'attempt-startup',
+							ownerPid: process.pid,
+							targetVersion: '1.1.0-alpha.18',
+							state: 'active',
+							phase: 'starting',
+							recoveryRequired: false,
+						});
+					}
 
-				return JSON.stringify({
+					return JSON.stringify({
+						status: UpdateStatusType.STARTING,
+						phase: 'starting',
+						targetVersion: '1.1.0-alpha.18',
+						startedAt: new Date().toISOString(),
+					});
+				});
+
+				const init = executor.onModuleInit();
+				await init;
+
+				expect(updateService.setStatus).toHaveBeenCalledWith({
 					status: UpdateStatusType.STARTING,
 					phase: 'starting',
-					targetVersion: '1.1.0-alpha.18',
-					startedAt: new Date().toISOString(),
+					progressPercent: 85,
+					message: 'Update in progress: starting...',
+					error: null,
 				});
-			});
+				await expect(executor.startUpdate('1.1.0-alpha.19')).rejects.toThrow('requires recovery');
+				expect(privilegedWorker.run).not.toHaveBeenCalled();
+				expect(updateService.releaseUpdateLock).not.toHaveBeenCalled();
+				expect(unlinkSync).not.toHaveBeenCalled();
 
-			const init = executor.onModuleInit();
-			await init;
+				expect(updateService.setStatus).not.toHaveBeenCalledWith(
+					expect.objectContaining({ status: UpdateStatusType.COMPLETE }),
+				);
 
-			expect(updateService.setStatus).not.toHaveBeenCalledWith(
-				expect.objectContaining({ status: UpdateStatusType.COMPLETE }),
-			);
-
-			executor.onModuleDestroy();
-			jest.useRealTimers();
-		});
+				executor.onModuleDestroy();
+				jest.useRealTimers();
+			},
+		);
 
 		it('accepts a reconciled failure without reporting success', async () => {
 			(existsSync as jest.Mock).mockReturnValue(true);
@@ -212,8 +227,11 @@ describe('UpdateExecutorService', () => {
 				});
 
 				const init = executor.onModuleInit();
-				await jest.advanceTimersByTimeAsync(3_000);
 				await init;
+				expect(updateService.setStatus).toHaveBeenLastCalledWith(
+					expect.objectContaining({ status: UpdateStatusType.STARTING, progressPercent: 85 }),
+				);
+				await jest.advanceTimersByTimeAsync(3_000);
 				jest.useRealTimers();
 
 				expect(updateService.setStatus).toHaveBeenCalledWith(
