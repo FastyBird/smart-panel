@@ -2,11 +2,42 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.26 normal staging upgrade completed with worker and public COMPLETE; a short post-restart IDLE progress gap is addressed by a focused follow-up; hardware/client acceptance remains open
+**Status:** alpha.28 normal staging upgrade verified; metadata receive-path mitigation validated in a temporary overlay; pre-dispatch latency, network delays and full client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Metadata receive-path mitigation — 2026-09-29
+
+Fine-grained staging tracing confirmed that metadata cache misses rebuilt all **1,732 properties**.
+Across 322 completed rebuilds during discovery, median query-plus-hydration time was **115.75 ms**;
+the SQLite query-runner span was **71.88 ms**, with approximately **40.10 ms** of remaining work
+(medians calculated independently). Any structural change invalidated the complete catalog.
+Earlier packet-correlated target trials attributed 109–129 ms to metadata lookup versus 0.025–0.043 ms
+with a warm cache.
+
+The mitigation preserves startup preload and global structural invalidation, but refreshes only the
+requested row after invalidation. Concurrent reads share a per-property load; old-generation results
+cannot repopulate the cache. Shared-writer mode keeps fresh reads. No schema, durable-lock, storage or
+command-window semantics change.
+
+An unpublished service overlay was tested on alpha.28 with the same temporary tracing and bounded
+packet capture. Across the completed trace, single-row queries had a **2.22 ms** median. Three ON/OFF pairs all converged and
+restored OFF; packet receipt of NotifyStatus to alias publication was **10.9–39.2 ms** across six operations.
+This is a small diagnostic sample during discovery, not steady-state acceptance or a published release.
+Some background single-row query spans still reached 1 s, so scheduling/storage tails remain to investigate.
+
+End-to-end latency remains open. The slowest overlay command took 3.80 s: **2.70 s before outbound RPC**,
+40.5 ms to its response, **1.02 s until notification**, then **39.2 ms to alias publication**. Another command
+waited 1.35 s between response and notification. Investigate pre-dispatch admission/lookup independently
+of transport/device timing. The historical 1.57 s post-notification outlier was not reproduced with the
+finer probe; its exact cause must not be declared resolved by this mitigation.
+
+Validation: 145 tests across seven metadata/value/coordinator/structure/convergence suites, full backend
+type checking and focused linting. Tests cover coalescing, independent keys, preload/load invalidation
+races, failed-load retry, transaction commit/rollback, deletion and shared-writer mode. Temporary overlay
+and diagnostics are removed after measurement; this experiment does not publish a release or migrate data.
 
 ## Alpha.26 normal-upgrade result — 2026-09-28
 
