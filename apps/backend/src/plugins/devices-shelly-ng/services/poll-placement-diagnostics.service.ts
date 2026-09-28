@@ -8,7 +8,8 @@ import { performance } from 'perf_hooks';
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 
 type PollPlacementConfig = {
-	schemaVersion: 1;
+	schemaVersion: 1 | 2;
+	preparationMs?: number;
 	runId: string;
 	sourceDeviceId: string;
 	exportPath: string;
@@ -23,6 +24,8 @@ type DelegateObservation = {
 };
 
 type CycleObservation = {
+	phase?: 'preparation' | 'measurement';
+	attachmentRevision?: number;
 	cycleSequence: number;
 	generation: number;
 	intervalMs: number;
@@ -40,6 +43,7 @@ type CycleObservation = {
 		connected: boolean;
 		generation: number | null;
 		decision: 'dispatch-attempt' | 'skipped' | 'unresolved';
+		decisionMonotonicMs?: number | null;
 		skipReason?: string;
 		delayMs: number | null;
 		registrationBeforeMs: number;
@@ -50,9 +54,15 @@ type CycleObservation = {
 };
 
 type DiagnosticSnapshot = {
-	schemaVersion: 1;
+	schemaVersion: 1 | 2;
+	preparation?: {
+		createdAtMonotonicMs: number;
+		createdAtUtc: string;
+		deadlineMonotonicMs: number;
+		activationCycles: number[] | null;
+	};
 	runId: string;
-	status: 'armed' | 'ready' | 'invalidated' | 'expired' | 'overflow' | 'writer-failure';
+	status: 'preparing' | 'armed' | 'ready' | 'invalidated' | 'expired' | 'overflow' | 'writer-failure';
 	reason?: string;
 	candidateStatus: 'valid' | 'invalidated';
 	candidateReason?: string;
@@ -62,9 +72,9 @@ type DiagnosticSnapshot = {
 	sourceDeviceId: string;
 	observerRuntimeHash: string;
 	backendClock: 'performance-now-v1';
-	armedAtMonotonicMs: number;
-	armedAtUtc: string;
-	expiresAtMonotonicMs: number;
+	armedAtMonotonicMs: number | null;
+	armedAtUtc: string | null;
+	expiresAtMonotonicMs: number | null;
 	sequence: number;
 	observations: CycleObservation[];
 };
@@ -80,6 +90,7 @@ type OwnerRecord = {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DEFAULT_DURATION_MS = 180_000;
 const MAX_DURATION_MS = 360_000;
+const MAX_PREPARATION_MS = 600_000;
 const MAX_RECORDS = 64;
 const MAX_BYTES = 256 * 1024;
 const OWNER_SUFFIX = '.owner.json';
@@ -106,6 +117,7 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 	private ownershipAcquired = false;
 	private expiryTimer: NodeJS.Timeout | null = null;
 	private cycleSequence = 0;
+	private attachmentRevision = 0;
 
 	constructor() {
 		this.config = this.parseConfig(process.env.FB_SHELLY_POLL_PLACEMENT);
@@ -114,9 +126,9 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 			const now = this.now();
 			const nowUtc = this.utcNow();
 			this.snapshot = {
-				schemaVersion: 1,
+				schemaVersion: this.config.schemaVersion,
 				runId: this.config.runId,
-				status: 'armed',
+				status: this.config.schemaVersion === 2 ? 'preparing' : 'armed',
 				candidateStatus: 'invalidated',
 				candidateReason: 'awaiting-cycle',
 				configFingerprint: createHash('sha256').update(JSON.stringify(this.config)).digest('hex'),
@@ -125,14 +137,23 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 				sourceDeviceId: this.config.sourceDeviceId,
 				observerRuntimeHash: this.observerRuntimeHash,
 				backendClock: 'performance-now-v1',
-				armedAtMonotonicMs: now,
-				armedAtUtc: nowUtc,
-				expiresAtMonotonicMs: now + this.config.durationMs,
+				armedAtMonotonicMs: this.config.schemaVersion === 2 ? null : now,
+				armedAtUtc: this.config.schemaVersion === 2 ? null : nowUtc,
+				expiresAtMonotonicMs: this.config.schemaVersion === 2 ? null : now + this.config.durationMs,
+				...(this.config.schemaVersion === 2
+					? {
+							preparation: {
+								createdAtMonotonicMs: now,
+								createdAtUtc: nowUtc,
+								deadlineMonotonicMs: now + this.config.preparationMs,
+								activationCycles: null,
+							},
+						}
+					: {}),
 				sequence: 0,
 				observations: [],
 			};
-			this.expiryTimer = setTimeout(() => this.expireIfNeeded(), this.config.durationMs);
-			this.expiryTimer.unref?.();
+			this.scheduleExpiry(this.config.preparationMs ?? this.config.durationMs);
 			void this.publish();
 		}
 	}
@@ -159,15 +180,16 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 	}
 
 	observeDelegate(observation: DelegateObservation): void {
-		if (!this.snapshot || this.destroyed || !this.isActive()) return;
+		if (!this.isEnabled()) return;
 		const previous = this.delegateObservations.get(observation.delegateId);
 		this.delegateObservations.set(observation.delegateId, observation);
 		if (
-			previous &&
-			(previous.sourceDeviceId === this.snapshot.sourceDeviceId ||
+			(previous || this.config?.schemaVersion === 2) &&
+			(previous?.sourceDeviceId === this.snapshot.sourceDeviceId ||
 				observation.sourceDeviceId === this.snapshot.sourceDeviceId) &&
-			(previous.sourceDeviceId !== observation.sourceDeviceId ||
-				previous.generation !== observation.generation ||
+			(previous?.sourceDeviceId !== observation.sourceDeviceId ||
+				previous?.generation !== observation.generation ||
+				previous?.connected !== observation.connected ||
 				observation.connected !== true)
 		) {
 			this.invalidateCandidate('target-delegate-changed');
@@ -181,14 +203,15 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 	}
 
 	invalidate(reason: string): void {
-		if (!this.snapshot || this.destroyed || !this.isActive()) return;
+		if (!this.isEnabled()) return;
 		this.snapshot.status = 'invalidated';
 		this.snapshot.reason = reason;
 		void this.publish();
 	}
 
 	private invalidateCandidate(reason: string): void {
-		if (!this.snapshot || this.destroyed || !this.isActive()) return;
+		if (!this.isEnabled()) return;
+		this.attachmentRevision++;
 		this.snapshot.candidateStatus = 'invalidated';
 		this.snapshot.candidateReason = reason;
 		this.snapshot.sequence++;
@@ -205,8 +228,13 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 		schedulerState: 'starting' | 'started' = 'started',
 	): number | null {
 		const snapshot = this.snapshot;
-		if (!snapshot || this.destroyed || !this.isActive()) return null;
-		if (!Number.isInteger(generation) || !Number.isInteger(intervalMs) || intervalMs < 1 || delegates.length === 0) {
+		if (!snapshot || !this.isEnabled()) return null;
+		if (
+			!Number.isInteger(generation) ||
+			!Number.isInteger(intervalMs) ||
+			intervalMs < 1 ||
+			(delegates.length === 0 && snapshot.schemaVersion === 1)
+		) {
 			return null;
 		}
 		const cycleEntryMonotonicMs = this.now();
@@ -225,6 +253,12 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 		snapshot.candidateStatus = targetId === null ? 'invalidated' : 'valid';
 		snapshot.candidateReason = targetId === null ? 'target-unresolved' : undefined;
 		snapshot.observations.push({
+			...(snapshot.schemaVersion === 2
+				? {
+						phase: snapshot.status === 'preparing' ? ('preparation' as const) : ('measurement' as const),
+						attachmentRevision: this.attachmentRevision,
+					}
+				: {}),
 			cycleSequence,
 			generation,
 			intervalMs,
@@ -242,6 +276,7 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 				connected: target?.connected === true,
 				generation: target?.generation ?? null,
 				decision: 'unresolved',
+				...(snapshot.schemaVersion === 2 ? { decisionMonotonicMs: null } : {}),
 				skipReason: targetId ? 'slot-pending' : 'target-unresolved',
 				delayMs: targetId ? Math.floor((targetIndex * intervalMs) / ordered.length) : null,
 				registrationBeforeMs,
@@ -251,7 +286,7 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 			},
 		});
 		snapshot.sequence++;
-		snapshot.status = 'ready';
+		if (snapshot.status !== 'preparing') snapshot.status = 'ready';
 		this.enforceBounds();
 		void this.publish();
 		return cycleSequence;
@@ -259,11 +294,12 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 
 	completeCycleRegistration(cycleSequence: number): void {
 		const snapshot = this.snapshot;
-		if (!snapshot || this.destroyed || !this.isActive()) return;
+		if (!snapshot || !this.isEnabled()) return;
 		const observation = snapshot.observations.find((candidate) => candidate.cycleSequence === cycleSequence);
-		if (!observation) return;
+		if (!observation || observation.target.registrationAfterMs !== null) return;
 		observation.target.registrationAfterMs = this.now();
 		observation.target.registrationAfterUtc = this.utcNow();
+		this.tryActivate();
 		snapshot.sequence++;
 		void this.publish();
 	}
@@ -276,24 +312,82 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 		skipReason?: string,
 	): void {
 		const snapshot = this.snapshot;
-		if (!snapshot || this.destroyed || !this.isActive()) return;
+		if (!snapshot || !this.isEnabled()) return;
 		const observation = snapshot.observations.find((candidate) => candidate.cycleSequence === cycleSequence);
-		if (!observation || observation.generation !== generation || observation.target.delegateId !== delegateId) return;
+		if (
+			!observation ||
+			observation.generation !== generation ||
+			observation.target.delegateId !== delegateId ||
+			observation.target.decision !== 'unresolved'
+		)
+			return;
 		observation.target.decision = decision;
+		if (snapshot.schemaVersion === 2) observation.target.decisionMonotonicMs = this.now();
 		observation.target.skipReason = skipReason;
+		this.tryActivate();
 		snapshot.sequence++;
 		void this.publish();
 	}
 
 	private isActive(): boolean {
-		return this.snapshot?.status === 'armed' || this.snapshot?.status === 'ready';
+		return (
+			this.snapshot?.status === 'preparing' || this.snapshot?.status === 'armed' || this.snapshot?.status === 'ready'
+		);
 	}
 
 	private expireIfNeeded(): void {
-		if (!this.snapshot || this.destroyed || !this.isActive() || this.now() < this.snapshot.expiresAtMonotonicMs) return;
+		if (!this.snapshot || this.destroyed || !this.isActive()) return;
+		const preparing = this.snapshot.status === 'preparing';
+		const deadline = preparing ? this.snapshot.preparation.deadlineMonotonicMs : this.snapshot.expiresAtMonotonicMs;
+		if (this.now() < deadline) return;
 		this.snapshot.status = 'expired';
-		this.snapshot.reason = 'diagnostic-expired';
+		this.snapshot.reason = preparing ? 'preparation-expired' : 'diagnostic-expired';
 		void this.publish();
+	}
+
+	private scheduleExpiry(durationMs: number): void {
+		if (this.expiryTimer) clearTimeout(this.expiryTimer);
+		this.expiryTimer = setTimeout(() => this.expireIfNeeded(), durationMs);
+		this.expiryTimer.unref?.();
+	}
+
+	private tryActivate(): void {
+		const snapshot = this.snapshot;
+		if (snapshot?.status !== 'preparing' || !this.isEnabled()) return;
+		const pair = snapshot.observations.slice(-2);
+		if (pair.length !== 2) return;
+		const [first, last] = pair;
+		if (last.cycleSequence !== first.cycleSequence + 1 || last.anchorMonotonicMs <= first.anchorMonotonicMs) return;
+		if (
+			pair.some(
+				(entry) =>
+					entry.generation !== first.generation ||
+					entry.intervalMs !== first.intervalMs ||
+					entry.delegateOrderFingerprint !== first.delegateOrderFingerprint ||
+					entry.attachmentRevision !== this.attachmentRevision ||
+					entry.target.delegateId !== first.target.delegateId ||
+					entry.target.slotIndex !== first.target.slotIndex ||
+					entry.target.generation !== first.target.generation ||
+					!entry.target.connected ||
+					entry.target.decision !== 'dispatch-attempt' ||
+					entry.target.registrationAfterMs === null,
+			)
+		)
+			return;
+		const current = this.delegateObservations.get(last.target.delegateId);
+		if (
+			!current?.connected ||
+			current.sourceDeviceId !== snapshot.sourceDeviceId ||
+			current.generation !== last.target.generation
+		)
+			return;
+		const now = this.now();
+		snapshot.armedAtMonotonicMs = now;
+		snapshot.armedAtUtc = this.utcNow();
+		snapshot.expiresAtMonotonicMs = now + this.config.durationMs;
+		snapshot.preparation.activationCycles = pair.map((entry) => entry.cycleSequence);
+		snapshot.status = 'ready';
+		this.scheduleExpiry(this.config.durationMs);
 	}
 
 	private enforceBounds(): void {
@@ -313,7 +407,12 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 		try {
 			if (Buffer.byteLength(raw, 'utf8') > 8192) return null;
 			const value = JSON.parse(raw) as Record<string, unknown>;
-			if (value.schemaVersion !== 1 || typeof value.runId !== 'string' || !UUID_RE.test(value.runId)) return null;
+			if (
+				(value.schemaVersion !== 1 && value.schemaVersion !== 2) ||
+				typeof value.runId !== 'string' ||
+				!UUID_RE.test(value.runId)
+			)
+				return null;
 			if (typeof value.sourceDeviceId !== 'string' || !UUID_RE.test(value.sourceDeviceId)) return null;
 			if (typeof value.exportPath !== 'string' || !value.exportPath.startsWith('/') || value.exportPath.includes('\0'))
 				return null;
@@ -325,14 +424,31 @@ export class PollPlacementDiagnosticsService implements OnModuleDestroy {
 				durationMs > MAX_DURATION_MS
 			)
 				return null;
-			const allowed = new Set(['schemaVersion', 'runId', 'sourceDeviceId', 'exportPath', 'durationMs']);
+			const preparationMs = value.preparationMs === undefined ? MAX_PREPARATION_MS : value.preparationMs;
+			if (
+				value.schemaVersion === 2 &&
+				(typeof preparationMs !== 'number' ||
+					!Number.isInteger(preparationMs) ||
+					preparationMs < 1000 ||
+					preparationMs > MAX_PREPARATION_MS)
+			)
+				return null;
+			const allowed = new Set([
+				'schemaVersion',
+				'runId',
+				'sourceDeviceId',
+				'exportPath',
+				'durationMs',
+				...(value.schemaVersion === 2 ? ['preparationMs'] : []),
+			]);
 			if (Object.keys(value).some((key) => !allowed.has(key))) return null;
 			return {
-				schemaVersion: 1,
+				schemaVersion: value.schemaVersion,
 				runId: value.runId,
 				sourceDeviceId: value.sourceDeviceId,
 				exportPath: value.exportPath,
 				durationMs,
+				...(value.schemaVersion === 2 ? { preparationMs: preparationMs as number } : {}),
 			};
 		} catch {
 			return null;

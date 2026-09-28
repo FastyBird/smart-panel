@@ -87,11 +87,37 @@ across the two clocks.
    - The observer is disabled for absent or invalid configuration, defaults to 180 seconds and accepts
      an explicit diagnostic duration up to 360 seconds,
      retains at most 64 observations/256 KiB, and never changes polling, provider calls, concurrency,
-     timers or command handling. The session uses the backend `performance-now-v1` monotonic clock and
+     scheduler timers or command handling. The session uses the backend `performance-now-v1` monotonic clock and
      paired UTC timestamps for conservative freshness only. Writes acquire an exclusive owner record,
      use owner-checked atomic publication with file and parent-directory sync, and await pending writes
      during shutdown; any stale, failed, foreign, symlinked or mismatched snapshot is non-selectable.
      Runtime provenance is a hash of the executing observer artifact, not a schema label.
+   - **Optional preparation mode (schema v2):** explicitly set `schemaVersion: 2` in the private
+     configuration with the same `runId`, `sourceDeviceId`, `exportPath` and `durationMs` fields.
+     `preparationMs` defaults to 600000 and accepts 1000–600000 ms. V1 rejects this additional field
+     and retains its existing immediate-arm behavior. Neither mode is enabled by default.
+     Preparation starts when the observer is constructed, has an absolute non-renewable deadline,
+     and observes the existing scheduler without sending commands or changing its timers.
+   - V2 starts its sole active window only after two adjacent cycles have matching generation,
+     interval, ordered-delegate fingerprint and target attachment, completed timeout registration,
+     and an observed `dispatch-attempt` decision for each target slot. Skips, missing/empty cycles,
+     changed order and detach/re-attach cannot qualify. A slot decision is **not** proof of completed
+     RPC; this gate concerns placement stability only. The active duration still defaults to 180 s
+     and cannot exceed 360 s. Expiry, overflow, scheduler invalidation and writer failure are terminal;
+     later cycles, reads, target changes and configuration changes cannot re-arm the same instance.
+   - V2 exports `preparation.createdAtMonotonicMs`/`createdAtUtc`, its fixed deadline and the two
+     `activationCycles`. `armedAtMonotonicMs`, `armedAtUtc` and `expiresAtMonotonicMs` are null until
+     activation and set once. Original observations are retained with `phase: preparation`; subsequent
+     cycles have `phase: measurement`. Both phases share the existing 64-record / 256-KiB budget.
+     A `preparing` snapshot is never selectable. Do not rewrite a v1 snapshot's arm time or reuse an
+     expired run. The version-aware [private adapters](../apps/backend/test/support/poll-placement/README.md)
+     validate activation evidence and retain its phase in selection output.
+   - Before a new live activation, run the actual service → private reader/selector → finalizer
+     conformance suite. Then perform one fresh command-free staging feasibility run with a unique
+     run ID/path. Archive the export, stop/join its writer, remove only owned files and temporary
+     configuration, and verify the normal backend's health/environment. Only a successful gate permits
+     new command batches; six minutes does not promise 20 overlap samples. Additional batches need
+     independent identities and results, never a silently extended window.
    - Placement forecasts are not poll activity. A timing row qualifies as `poll-overlap` only when
      the joined trial capture contains canonical poll RPC/coalescer/drain records between its explicit
      `command-received` and `source-publication` timestamps. Restoration-only, pre-command, late or
