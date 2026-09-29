@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.28 normal staging upgrade verified; metadata mitigation merged in #1127; persistence-gated publication and blocking system probes measured; redundant system probes mitigation merged in #1128; unchanged Shelly metadata optimization verified locally; command latency and full client acceptance remain open
+**Status:** alpha.28 normal staging upgrade verified; metadata mitigation merged in #1127; persistence-gated publication and blocking system probes measured; redundant system probes mitigation merged in #1128; unchanged Shelly metadata optimization merged in #1129; alpha.29 release started; missing source/alias binding blocks physical latency trials; command latency and full client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
@@ -67,6 +67,34 @@ Remaining work, ordered by the measured blocking boundaries:
 - [ ] Complete successful/canonical Shelly replacement lifecycle coverage, then repeat stable real
   device, Apple Home and normal-upgrade acceptance. Failed-discovery cleanup from #1126 covers a
   different lifecycle boundary.
+
+## Partial provisioning and staging readiness — 2026-09-29
+
+PR #1129 merged as `97bbc81e4` after successful CI and a latest-commit CodeRabbit assessment of
+minimal merge risk / low security risk. Alpha.29 was dispatched from that commit to deploy #1127–#1129
+through the normal System upgrade. Before any upgrade or physical command, alpha.28 inventory already
+showed the test source property missing, its virtual alias binding null, and the source device offline.
+Direct Shelly readback returned OFF. The baseline trial stopped before listener readiness and sent no
+command; it is not a latency sample. A consistent database/config backup and device inventory were saved.
+
+A retained alpha.28 journal segment (03:36–11:10 local time) contained 94,524 connected, 94,520 disconnected
+and 135,437 reconnect-scheduled log records for the test Shelly, plus component RPC failures. These are
+log-event counts, not unique TCP connections. The segment starts after the alias became disconnected,
+so it cannot prove the exact deletion that originally detached the alias. Evidence is retained privately
+as a checksum-verified compressed archive. No credentials or full device inventory belong in the repo.
+
+Regression tests establish a destructive provisioning path independently: when a component RPC or
+property write rejects, `Promise.allSettled()` logs the failure, then stale-channel pruning treats
+unvisited channels as removed. This can delete existing switch/energy/power channels and their property
+identities. A guard now skips the final pruning pass if any component failed, including the separately
+handled device-power RPC. Successful component updates still apply; the next complete pass removes
+truly obsolete channels. Tests first failed on the original deletion calls and pass with the guard,
+including successful retry. Existing input preservation and complete provisioning tests remain covered.
+
+This guard neither restores already detached aliases nor fixes the reconnect lifecycle. Those remain
+prerequisites for representative device/HomeKit latency acceptance. Preserve the failed baseline and
+verify the published upgrade independently; do not silently relink an alias and call the original
+identity intact, or attribute the pre-existing missing property to alpha.29.
 
 ## Unchanged Shelly metadata — 2026-09-29
 

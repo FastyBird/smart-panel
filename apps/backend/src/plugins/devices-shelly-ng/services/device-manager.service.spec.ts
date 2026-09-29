@@ -486,6 +486,75 @@ describe('DeviceManagerService.createOrUpdate', () => {
 	});
 });
 
+describe('DeviceManagerService partial provisioning', () => {
+	test.each(['rpc', 'property write', 'device power RPC'])(
+		'preserves channels after a component %s failure and prunes only after a complete retry',
+		async (failure) => {
+			const svc = makeService();
+			const device = { id: 'partial-device', category: DeviceCategory.SWITCHER, password: null };
+			mockDevicesService.findOne.mockResolvedValue(device);
+			jest.spyOn<any, any>(svc, 'getSpecification').mockReturnValue({ system: [], components: [] });
+			jest.spyOn(svc, 'getDeviceInfo').mockResolvedValue({
+				model: 'test',
+				profile: 'switch',
+				components: [
+					{ type: 'switch', ids: [0, 1] },
+					{ type: 'devicepower', ids: [0] },
+				],
+			} as any);
+			jest.spyOn<any, any>(svc, 'ensureChannel').mockImplementation(async (...args: any[]) => ({
+				id: args[2],
+				identifier: args[2],
+				category: args[3],
+			}));
+			let fail = true;
+			jest.spyOn<any, any>(svc, 'ensureProperty').mockImplementation(async (...args: any[]) => {
+				if (fail && failure === 'property write' && args[0].id === 'switch:1') {
+					throw new Error('Storage temporarily unavailable');
+				}
+				return { id: args[0].id + '-' + args[1] };
+			});
+			jest.spyOn<any, any>(svc, 'ensureElectricalEnergy').mockImplementation(async (...args: any[]) => ({
+				channel: { id: 'energy:' + args[1] },
+			}));
+			jest.spyOn<any, any>(svc, 'ensureElectricalPower').mockImplementation(async (...args: any[]) => ({
+				channel: { id: 'power:' + args[1] },
+			}));
+			mockRpc.getSwitchConfig.mockResolvedValue({ name: 'Switch' } as any);
+			mockRpc.getSwitchStatus.mockImplementation(async (_host, id) => {
+				if (fail && failure === 'rpc' && id === 1) throw new Error('RPC temporarily unavailable');
+				return { id, output: false } as any;
+			});
+			mockRpc.getDevicePowerStatus.mockImplementation(async () => {
+				if (fail && failure === 'device power RPC') throw new Error('Device power RPC unavailable');
+				return { battery: { percent: 90 } } as any;
+			});
+			const channels = [
+				'device_information',
+				'switch:0',
+				'switch:1',
+				'energy:0',
+				'energy:1',
+				'power:0',
+				'power:1',
+				'devicePower:0',
+				'obsolete',
+			];
+			mockChannelsService.findAll.mockResolvedValue(channels.map((id) => ({ id, identifier: id })));
+			try {
+				await expect(svc.createOrUpdate(device.id)).resolves.toBe(device);
+				expect(mockChannelsService.remove).not.toHaveBeenCalled();
+				fail = false;
+				await expect(svc.createOrUpdate(device.id)).resolves.toBe(device);
+				expect(mockChannelsService.remove).toHaveBeenCalledTimes(1);
+				expect(mockChannelsService.remove).toHaveBeenCalledWith('obsolete');
+			} finally {
+				jest.restoreAllMocks();
+			}
+		},
+	);
+});
+
 describe('DeviceManagerService energy meters', () => {
 	const baseDeviceInfo = {
 		id: 'shelly-dev-id',
