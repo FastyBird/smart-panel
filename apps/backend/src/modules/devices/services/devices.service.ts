@@ -456,6 +456,11 @@ export class DevicesService {
 		};
 	}
 
+	/** Checks identity without loading the device graph or running value/status subscribers. */
+	async exists(id: string): Promise<boolean> {
+		return this.repository.createQueryBuilder('device').where('device.id = :id', { id }).getExists();
+	}
+
 	async findOne<TDevice extends DeviceEntity>(id: string, type?: string): Promise<TDevice | null> {
 		const mapping = type ? this.devicesMapperService.getMapping<TDevice, any, any>(type) : null;
 

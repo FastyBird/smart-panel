@@ -9,15 +9,11 @@ import {
 import { Injectable } from '@nestjs/common';
 
 import { ChannelsService } from '../services/channels.service';
-import { DevicesService } from '../services/devices.service';
 
 @Injectable()
 @ValidatorConstraint({ name: 'DeviceChannelExistsValidation', async: true })
 export class ChannelExistsConstraintValidator implements ValidatorConstraintInterface {
-	constructor(
-		private readonly devicesService: DevicesService,
-		private readonly channelsService: ChannelsService,
-	) {}
+	constructor(private readonly channelsService: ChannelsService) {}
 
 	async validate(channelId: string | undefined, args: ValidationArguments): Promise<boolean> {
 		if (!channelId) return false; // Prevent empty values
@@ -27,21 +23,7 @@ export class ChannelExistsConstraintValidator implements ValidatorConstraintInte
 		// Get the `device` property from the DTO object
 		const deviceId = typeof dto?.device === 'string' ? dto.device : undefined;
 
-		if (!deviceId) {
-			// Check if the channel exists
-			const channelExists = await this.channelsService.findOne(channelId);
-
-			return !!channelExists;
-		}
-
-		// Check if the device exists
-		const deviceExists = await this.devicesService.findOne(deviceId);
-		if (!deviceExists) return false;
-
-		// Check if the channel exists and belongs to the device
-		const channelExists = await this.channelsService.findOne(channelId, deviceId);
-
-		return !!channelExists;
+		return this.channelsService.exists(channelId, deviceId);
 	}
 
 	defaultMessage(args: ValidationArguments): string {

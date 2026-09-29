@@ -21,6 +21,8 @@ describe('PropertyCommandDispatchService', () => {
 	let valueSourceRegistry: jest.Mocked<Pick<PropertyValueSourceRegistryService, 'resolve'>>;
 	let sources: Map<string, string>;
 	let properties: jest.Mocked<Pick<ChannelsPropertiesService, 'findOne'>>;
+	let channels: jest.Mocked<Pick<ChannelsService, 'findOne'>>;
+	let devices: jest.Mocked<Pick<DevicesService, 'findOne'>>;
 
 	const device = { id: 'source-device', type: 'mock' } as DeviceEntity;
 	const channel = { id: 'source-channel', device: device.id } as ChannelEntity;
@@ -49,8 +51,8 @@ describe('PropertyCommandDispatchService', () => {
 			processBatch: jest.fn().mockResolvedValue(true),
 		};
 
-		const channels = { findOne: jest.fn().mockResolvedValue(channel) } as unknown as ChannelsService;
-		const devices = { findOne: jest.fn().mockResolvedValue(device) } as unknown as DevicesService;
+		channels = { findOne: jest.fn().mockResolvedValue(channel) };
+		devices = { findOne: jest.fn().mockResolvedValue(device) };
 		platformRegistry = {
 			get: jest.fn().mockReturnValue(platform),
 			usesAuthoritativePropertyReadback: jest.fn().mockReturnValue(false),
@@ -61,8 +63,8 @@ describe('PropertyCommandDispatchService', () => {
 
 		service = new PropertyCommandDispatchService(
 			properties as unknown as ChannelsPropertiesService,
-			channels,
-			devices,
+			channels as unknown as ChannelsService,
+			devices as unknown as DevicesService,
 			platformRegistry as unknown as PlatformRegistryService,
 			valueSourceRegistry as unknown as PropertyValueSourceRegistryService,
 			new DeviceStructureLockService(),
@@ -128,6 +130,34 @@ describe('PropertyCommandDispatchService', () => {
 		);
 		expect(platform.processBatch).not.toHaveBeenCalled();
 		expect(windows.get(sourceProperty.id)).toBeNull();
+	});
+
+	it('uses the fresh joined target for admission without loading sibling properties again', async () => {
+		const joinedChannel = { ...channel, device } as ChannelEntity;
+		const joinedProperty = { ...sourceProperty, channel: joinedChannel } as ChannelPropertyEntity;
+		properties.findOne.mockResolvedValue(joinedProperty);
+		channels.findOne.mockRejectedValue(new Error('Unnecessary channel graph read'));
+		devices.findOne.mockRejectedValue(new Error('Unnecessary device graph read'));
+
+		await expect(service.dispatchBatch([update()])).resolves.toEqual({ success: true });
+		expect(channels.findOne).not.toHaveBeenCalled();
+		expect(devices.findOne).not.toHaveBeenCalled();
+		expect(platformRegistry.usesAuthoritativePropertyReadback).toHaveBeenCalledWith(device, joinedProperty);
+		expect(windows.get(sourceProperty.id)?.canonicalTarget).toEqual({
+			deviceId: device.id,
+			channelId: channel.id,
+			propertyId: sourceProperty.id,
+		});
+	});
+
+	it.each(['channel', 'device'])('rejects a fresh source with a missing %s relation', async (missing) => {
+		properties.findOne.mockResolvedValue({
+			...sourceProperty,
+			channel: missing === 'channel' ? null : { ...channel, device: null },
+		} as unknown as ChannelPropertyEntity);
+
+		await expect(service.dispatchBatch([update()])).resolves.toEqual(expect.objectContaining({ success: false }));
+		expect(platform.processBatch).not.toHaveBeenCalled();
 	});
 
 	it('rejects an alias remapped after initial validation before forwarding', async () => {

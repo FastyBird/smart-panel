@@ -67,7 +67,10 @@ describe('nested virtual device creation DTOs', () => {
 	const defaultDeviceLookup = (id: string): Promise<DeviceEntity> =>
 		Promise.resolve(id === VIRTUAL_DEVICE_ID ? virtualDeviceRow : physicalDevice);
 
-	const devicesService = { findOne: jest.fn().mockImplementation(defaultDeviceLookup) };
+	const devicesService = {
+		exists: jest.fn().mockResolvedValue(true),
+		findOne: jest.fn().mockImplementation(defaultDeviceLookup),
+	};
 
 	beforeAll(() => {
 		const channel = Object.assign(new ChannelEntity(), { id: 'source-channel', device: physicalDevice });
@@ -245,6 +248,7 @@ describe('nested virtual device creation DTOs', () => {
 	});
 
 	it('still rejects a device that does not exist on a virtual channel', async () => {
+		devicesService.exists.mockResolvedValue(false);
 		const missing = '550e8400-e29b-41d4-a716-446655440097';
 
 		devicesService.findOne.mockImplementation((id: string) =>
@@ -261,6 +265,7 @@ describe('nested virtual device creation DTOs', () => {
 			expect(constraintsAt(await validate(dto, strict), 'device')).toContain('DeviceExistsValidation');
 		} finally {
 			devicesService.findOne.mockImplementation(defaultDeviceLookup);
+			devicesService.exists.mockResolvedValue(true);
 		}
 	});
 

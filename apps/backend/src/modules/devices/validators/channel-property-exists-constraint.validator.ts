@@ -9,15 +9,11 @@ import {
 import { Injectable } from '@nestjs/common';
 
 import { ChannelsPropertiesService } from '../services/channels.properties.service';
-import { ChannelsService } from '../services/channels.service';
 
 @Injectable()
 @ValidatorConstraint({ name: 'ChannelPropertyExistsValidation', async: true })
 export class ChannelPropertyExistsConstraintValidator implements ValidatorConstraintInterface {
-	constructor(
-		private readonly channelsService: ChannelsService,
-		private readonly channelsPropertiesService: ChannelsPropertiesService,
-	) {}
+	constructor(private readonly channelsPropertiesService: ChannelsPropertiesService) {}
 
 	async validate(propertyId: string | undefined, args: ValidationArguments): Promise<boolean> {
 		if (!propertyId) return false; // Prevent empty values
@@ -27,21 +23,7 @@ export class ChannelPropertyExistsConstraintValidator implements ValidatorConstr
 		// Get the `channel` property from the DTO object
 		const channelId = typeof dto?.channel === 'string' ? dto.channel : undefined;
 
-		if (!channelId) {
-			// Check if the channel property exists
-			const propertyExists = await this.channelsPropertiesService.findOne(propertyId);
-
-			return !!propertyExists;
-		}
-
-		// Check if the channel exists
-		const channelExists = await this.channelsService.findOne(channelId);
-		if (!channelExists) return false;
-
-		// Check if the channel property exists and belongs to the channel
-		const propertyExists = await this.channelsPropertiesService.findOne(propertyId, channelId);
-
-		return !!propertyExists;
+		return this.channelsPropertiesService.exists(propertyId, channelId);
 	}
 
 	defaultMessage(args: ValidationArguments): string {

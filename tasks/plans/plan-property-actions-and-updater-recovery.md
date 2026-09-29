@@ -2,11 +2,68 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.28 normal staging upgrade verified; metadata mitigation merged in #1127; persistence-gated publication and blocking system probes measured; redundant system probes mitigation merged in #1128; unchanged Shelly metadata optimization merged in #1129; alpha.29 normal staging upgrade verified; partial-provisioning guard merged in #1130; canonical connection cleanup merged in the Shelly fork, backend lifecycle cleanup awaiting review; missing source/alias binding blocks physical latency trials; command latency and full client acceptance remain open
+**Status:** alpha.30 published and all release jobs successful; normal System staging upgrade and Shelly plugin restart verified; source/alias binding restored explicitly; six normal-runtime operations measured; repeated command-path entity loading profiled and a focused optimization under validation; persistence delay, startup readiness and full client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Alpha.30 upgrade and command-read findings — 2026-09-29
+
+PR #1131 merged as `b47a969833129e6367b679298989f79a43f669d2`. Alpha.30's complete release
+workflow succeeded on attempt 2, including all Raspberry images. Only failed jobs were retried after
+npm visibility lag; this did not create another release. One normal System API staging upgrade
+completed, its worker exited and its lock disappeared. All 111 device IDs, the schema and 28 migration
+records were preserved; SQLite integrity was OK. Deployed backend/library files matched the verified
+published artifacts. A normal Shelly plugin restart completed in 7.528 s without restarting the backend.
+
+The switch's original source property had already disappeared **before** installing alpha.30. Startup
+created a replacement; the test alias was explicitly remapped to it, and that replacement survived the
+plugin restart. This is fixture recovery, not evidence that the original identity was preserved. After
+readiness, a two-minute observation showed one target TCP connection and no target reconnect log records.
+Startup/restart readiness can still take several minutes, with intermediate UNKNOWN status and delegate
+replacement; the short steady-state observation does not establish that all lifecycle issues are closed.
+
+Three normal-runtime ON/OFF pairs all converged and restored OFF. Pi packet timestamps measured
+123–418 ms before outbound RPC, 23–37 ms to the RPC response, and 13–80 ms from incoming notification
+to alias publication. One 1.876 s command spent 1.529 s between the RPC response and incoming status
+notification. This separates that device/network interval from Smart Panel processing, without assigning
+it conclusively to either Shelly firmware or the network.
+
+A separate trace of the published alpha.30 code (no behavior overlay) completed another six operations.
+Pre-RPC time was 124–344 ms. In five of six traces, a single command loaded 106 property entities,
+performed six full device lookups and issued 16 SQL queries before platform dispatch. The remaining
+trace also inherited overlapping asynchronous work and is not used as the deterministic query count.
+Shared structure admission waited only 0.020–0.024 ms. DTO existence validation took 33–46 ms;
+redundant channel/device reads during canonical admission took another 24–76 ms. One 1.616 s command
+again spent 1.440 s waiting for the incoming notification, after its RPC response.
+
+The candidate replaces existence validators' full graph reads with fresh SQL EXISTS queries, retaining
+parent existence and ownership joins without entity/value/status subscribers. Canonical admission reuses
+the channel/device already joined by its fresh source-property lookup under the lifecycle barrier,
+with the existing ID-only fallback. Alias revalidation, value normalization, platform dispatch, runtime
+status checks and persistence semantics stay in their existing paths. This does not eliminate every
+command-path ORM read, implement a metadata cache, or change history publication semantics.
+
+Candidate validation: 233 tests across ten suites, full backend type checking/build, focused lint and
+formatting passed. A joined-admission regression first failed against the original code. Real SQLite
+DTO tests cover valid and missing IDs, mismatched parents, deletion, orphan rows and zero entity-load
+subscriber calls. Existing command-window/remap and hidden-device selection tests remain green.
+
+A bounded seven-module overlay of the built candidate completed another three ON/OFF pairs, all
+converged and restored OFF. Full device reads fell from six to three per command; five traces loaded
+54 property entities and issued 12 SQL queries (the remaining trace loaded 52/10). Pre-RPC packet time
+was 60–194 ms, median 75.7 ms, versus 124–344 ms, median 159.6 ms, in the preceding instrumented baseline.
+Five DTO validations took 2.6–11.7 ms; one still took 76.6 ms, with its three SQL queries each awaiting
+completion for approximately 73 ms and no overlapping >30 ms loop-lag record. SQL contention/scheduling
+therefore remains an open boundary despite the lower query/hydration count.
+
+These are six diagnostic operations per build, not a qualified latency distribution. Discovery selected
+the Shelly Wi-Fi address for the candidate versus Ethernet for the baseline, so end-to-end/network
+latency is not a controlled comparison. The reduced graph reads and pre-platform timings identify the
+backend work removed; they do not establish a universal percentage improvement. One candidate RPC took
+447 ms on the wire. Both diagnostic runs were archived, overlays and capture namespaces removed, and
+normal published alpha.30 restarted. Startup readiness and Apple Home visual acceptance remain open.
 
 ## Persistence and system-probe findings — 2026-09-29
 
@@ -110,11 +167,11 @@ timing out and allowing that operation to mutate handler maps after restart.
 Backend validation: 100 tests across connector, delegate manager and provisioning suites; full backend
 type checking, focused ESLint/Prettier and diff checks passed.
 
-Staging remains on published alpha.29, which contains neither this connection fix nor #1130. After
-review/deployment, measure the connection count/reconnect rate, restore the deliberately recorded
-missing source/alias binding through the API, and repeat command timing. The old source identity was
-already lost before alpha.29; restoration must not be reported as identity preservation. Awaited Influx
-persistence and remaining synchronous probes are still independent latency work.
+At the pre-merge checkpoint staging was still on alpha.29, containing neither this connection fix
+nor #1130. The alpha.30 deployment, connection observation, explicit alias repair and resumed command
+measurements are recorded above. The old source identity was already lost before alpha.29; restoration
+is not identity preservation. Awaited Influx persistence and remaining synchronous probes are still
+independent latency work.
 
 ## Partial provisioning and staging readiness — 2026-09-29
 

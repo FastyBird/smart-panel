@@ -603,6 +603,21 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		};
 	}
 
+	/** Checks the same parent chain as findOne without invoking value/status subscribers. */
+	async exists(id: string, channelId?: string): Promise<boolean> {
+		const query = this.repository
+			.createQueryBuilder('property')
+			.innerJoin('property.channel', 'channel')
+			.innerJoin('channel.device', 'device')
+			.where('property.id = :id', { id });
+
+		if (channelId) {
+			query.andWhere('channel.id = :channelId', { channelId });
+		}
+
+		return query.getExists();
+	}
+
 	async findOne<TProperty extends ChannelPropertyEntity>(
 		id: string,
 		channelId?: string,

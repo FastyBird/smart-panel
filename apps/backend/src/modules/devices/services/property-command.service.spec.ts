@@ -181,18 +181,21 @@ describe('PropertyCommandService', () => {
 				{
 					provide: DevicesService,
 					useValue: {
+						exists: jest.fn().mockResolvedValue(true),
 						findOne: jest.fn(() => {}),
 					},
 				},
 				{
 					provide: ChannelsService,
 					useValue: {
+						exists: jest.fn().mockResolvedValue(true),
 						findOne: jest.fn(() => {}),
 					},
 				},
 				{
 					provide: ChannelsPropertiesService,
 					useValue: {
+						exists: jest.fn().mockResolvedValue(true),
 						findOne: jest.fn(() => {}),
 					},
 				},
@@ -346,6 +349,7 @@ describe('PropertyCommandService', () => {
 	});
 
 	it('should return an error if device is not found', async () => {
+		jest.spyOn(devicesService, 'exists').mockResolvedValue(false);
 		jest.spyOn(devicesService, 'findOne').mockResolvedValue(null);
 
 		const result = await service.handleInternal(mockWsUser, validPayload);
@@ -356,6 +360,7 @@ describe('PropertyCommandService', () => {
 
 	it('should return an error if channel is not found', async () => {
 		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+		jest.spyOn(channelsService, 'exists').mockResolvedValue(false);
 		jest.spyOn(channelsService, 'findOne').mockResolvedValue(null);
 
 		const result = await service.handleInternal(mockWsUser, validPayload);
@@ -367,6 +372,7 @@ describe('PropertyCommandService', () => {
 	it('should return an error if property is not found', async () => {
 		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
 		jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
+		jest.spyOn(channelsPropertiesService, 'exists').mockResolvedValue(false);
 		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(null);
 
 		const result = await service.handleInternal(mockWsUser, validPayload);
