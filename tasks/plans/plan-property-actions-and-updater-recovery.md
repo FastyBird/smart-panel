@@ -2,11 +2,45 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.30 published and all release jobs successful; normal System staging upgrade and Shelly plugin restart verified; source/alias binding restored explicitly; six normal-runtime operations measured; repeated command-path entity loading profiled and a focused optimization under validation; persistence delay, startup readiness and full client acceptance remain open
+**Status:** alpha.30 normal upgrade verified; command-read optimization merged in #1132; stale discovery ownership reproduced locally and on staging, guard verified in a bounded overlay and pending review; delayed SQL/persistence, remaining startup readiness and full client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Discarding superseded Shelly discovery instances — 2026-09-29
+
+PR #1132 merged as `29e557015f7ebb5b3500905762dd3e305101a6e1` after successful CI and a
+CodeRabbit review covering the final commit (`dbf62f026`), with Minimal merge risk, Low security
+risk and no actionable comments. It is not yet in a published release; staging remains alpha.30.
+
+Further investigation reproduced a distinct startup race. The library can replace a canonical
+`Device` and destroy the removed instance's RPC handler while the backend still has that instance
+queued, awaiting its database lookup, or awaiting provisioning. The connector lifecycle generation
+has not changed, so the existing generation guards allowed the obsolete instance to attach again.
+Six regression cases (three wait locations, each with replacement or removal) failed on the original
+code by inserting the removed object. This explains a concrete way to attach an unusable transport;
+it does not assign every startup delay or reconnect to this race.
+
+The guard checks both the connector generation and `Shellies.get(device.id) === device` before the
+lookup and after each lookup/provisioning await. It discards superseded objects without closing the
+current transport. Connection state is deliberately not an admission condition: the current transport
+can be temporarily disconnected and still need normal recovery. A provisioning call already started
+is not cancelled; ownership is checked again before delegate insertion. Existing insertion draining
+on connector stop/restart remains in place.
+
+Validation: 106 tests across connector, delegate manager and provisioning suites; full backend type
+checking/build and focused ESLint/Prettier passed. The six cases now reject the destroyed old instance
+and still process the latest instance, including when its transport is reconnecting. Existing shutdown
+and in-flight insertion tests remain green.
+
+A bounded one-module staging overlay reproduced the production condition directly: eight discarded
+instances still matched the connector generation but had a destroyed RPC handler. One was the test
+Shelly, whose replacement already had a connected transport. The target subsequently became online;
+source and alias remained OFF, all 111 device IDs and the target/alias property IDs were unchanged.
+No physical commands were sent. The overlay and private runtime probe were archived and removed,
+and normal published alpha.30 restarted. This confirms the ownership race, not a startup-time SLA:
+the single target still needed roughly two minutes to become ready in the sequential discovery queue.
 
 ## Alpha.30 upgrade and command-read findings — 2026-09-29
 

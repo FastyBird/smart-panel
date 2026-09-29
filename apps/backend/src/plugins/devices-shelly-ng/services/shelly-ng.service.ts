@@ -513,13 +513,17 @@ export class ShellyNgService extends BaseManagedExtensionService {
 	 * reconnection instead of waiting for backoff.
 	 */
 	private async processDiscoveredDevice(device: Device, generation: number): Promise<void> {
+		if (!this.isCurrentDiscovery(device, generation)) {
+			return;
+		}
+
 		const sysDevice = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
 			'identifier',
 			device.id,
 			DEVICES_SHELLY_NG_TYPE,
 		);
 
-		if (this.discoveryGeneration !== generation) {
+		if (!this.isCurrentDiscovery(device, generation)) {
 			return;
 		}
 
@@ -527,7 +531,7 @@ export class ShellyNgService extends BaseManagedExtensionService {
 			await this.deviceManagerService.createOrUpdate(sysDevice.id);
 		}
 
-		if (this.discoveryGeneration !== generation) {
+		if (!this.isCurrentDiscovery(device, generation)) {
 			return;
 		}
 
@@ -560,6 +564,16 @@ export class ShellyNgService extends BaseManagedExtensionService {
 				this.delegateInsertion = null;
 			}
 		}
+	}
+
+	/**
+	 * Discovery can replace a canonical device while an older instance waits in this queue or
+	 * in a database/provisioning call. The removed instance's RPC handler is already destroyed;
+	 * matching the connector generation alone would attach it again. Compare object ownership,
+	 * not connection state: a currently owned transport may legitimately be reconnecting.
+	 */
+	private isCurrentDiscovery(device: Device, generation: number): boolean {
+		return this.discoveryGeneration === generation && this.shellies?.get(device.id) === device;
 	}
 
 	/**

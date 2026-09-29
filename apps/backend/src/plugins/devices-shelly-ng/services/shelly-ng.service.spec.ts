@@ -49,6 +49,22 @@ jest.mock('shellies-ds9', () => {
 		public options: any;
 		public listeners: Record<string, Function[]> = {};
 		public registered: any[] = [];
+		public devices = new Map<string, any>();
+		get(id: string) {
+			return this.devices.get(id);
+		}
+		add(device: any) {
+			if (this.devices.has(device.id)) this.delete(device.id);
+			this.devices.set(device.id, device);
+			for (const listener of this.listeners.add ?? []) listener(device);
+		}
+		delete(id: string) {
+			const device = this.devices.get(id);
+			if (!device) return;
+			this.devices.delete(id);
+			device.rpcHandler?.destroy();
+			for (const listener of this.listeners.remove ?? []) listener(device);
+		}
 		constructor(options: any) {
 			this.options = options;
 			shelliesInstances.push(this);
@@ -72,7 +88,7 @@ jest.mock('shellies-ds9', () => {
 			this.listeners = {};
 		}
 		clear() {
-			/* noop */
+			for (const id of this.devices.keys()) this.delete(id);
 		}
 	}
 
@@ -349,7 +365,7 @@ describe('ShellyNgService', () => {
 
 		delegates.insert.mockResolvedValue({ id: 'dev-1' });
 
-		emit('add', mkDevice({ id: 'dev-1' }));
+		sh.add(mkDevice({ id: 'dev-1' }));
 		await sleep(0); // wait for async handler
 
 		expect(delegates.insert).toHaveBeenCalledWith(expect.objectContaining({ id: 'dev-1' }));
@@ -396,6 +412,77 @@ describe('ShellyNgService', () => {
 		expect(sh.registered).toEqual([]);
 	});
 
+	test.each([
+		{ stage: 'queued', replacement: true },
+		{ stage: 'lookup', replacement: true },
+		{ stage: 'provision', replacement: true },
+		{ stage: 'queued', replacement: false },
+		{ stage: 'lookup', replacement: false },
+		{ stage: 'provision', replacement: false },
+	])('does not attach a removed discovery (stage=$stage, replacement=$replacement)', async ({ stage, replacement }) => {
+		const delegates = mockDelegates();
+		const devices = mockDevicesService();
+		devices.findOneBy.mockResolvedValue({ id: 'stored-device' });
+		const manager = { createOrUpdate: jest.fn().mockResolvedValue(undefined) };
+		let release!: () => void;
+		let entered!: () => void;
+		const waiting = new Promise<void>((resolve) => (entered = resolve));
+		const held = new Promise<void>((resolve) => (release = resolve));
+		if (stage === 'provision') {
+			manager.createOrUpdate.mockImplementationOnce(async () => {
+				entered();
+				await held;
+			});
+		} else {
+			devices.findOneBy.mockImplementationOnce(async () => {
+				entered();
+				await held;
+				return { id: 'stored-device' };
+			});
+		}
+		svc = new ShellyNgService(
+			mockConfigService() as any,
+			mockDbDiscoverer() as any,
+			delegates as any,
+			manager as any,
+			devices as any,
+			mockDeviceConnectivityService as any,
+			mockPluginServiceManager as any,
+			mockWsServer as any,
+		);
+		await svc.start();
+		const ds9 = require('shellies-ds9');
+		const sh = ds9.__testing.shelliesInstances[0];
+		const rpcHandler = { connected: true, destroy: jest.fn(() => (rpcHandler.connected = false)) };
+		const old = mkDevice({ rpcHandler });
+		// A currently owned transport may be reconnecting; ownership must not depend on connected=true.
+		const latest = mkDevice({ rpcHandler: { connected: false, destroy: jest.fn() } });
+
+		if (stage === 'queued') {
+			sh.add(mkDevice({ id: 'blocker' }));
+			await waiting;
+			sh.add(old);
+		} else {
+			sh.add(old);
+			await waiting;
+		}
+
+		if (replacement) sh.add(latest);
+		else sh.delete(old.id);
+		expect(rpcHandler.destroy).toHaveBeenCalledTimes(1);
+		expect(rpcHandler.connected).toBe(false);
+		release();
+		await sleep(0);
+
+		const attached = delegates.insert.mock.calls.filter(([device]) => device.id === old.id).map(([device]) => device);
+		expect(attached).toEqual(replacement ? [latest] : []);
+		if (stage === 'queued') {
+			expect(devices.findOneBy).toHaveBeenCalledTimes(replacement ? 2 : 1);
+		} else if (stage === 'lookup') {
+			expect(manager.createOrUpdate).toHaveBeenCalledTimes(replacement ? 1 : 0);
+		}
+	});
+
 	test.each(['lookup', 'provision'])(
 		'stop prevents a discovery awaiting %s from attaching a stale delegate',
 		async (stage) => {
@@ -432,7 +519,7 @@ describe('ShellyNgService', () => {
 			await svc.start();
 			const ds9 = require('shellies-ds9');
 			const sh = ds9.__testing.shelliesInstances[0];
-			sh.listeners.add[0](mkDevice());
+			sh.add(mkDevice());
 			await pending;
 			await svc.stop();
 			release(stage === 'lookup' ? { id: 'existing' } : undefined);
@@ -488,7 +575,7 @@ describe('ShellyNgService', () => {
 			);
 			await svc.start();
 			const ds9 = require('shellies-ds9');
-			ds9.__testing.shelliesInstances[0].listeners.add[0](mkDevice());
+			ds9.__testing.shelliesInstances[0].add(mkDevice());
 			await started;
 			const stopping = svc.stop();
 			const restarting = svc.start();
