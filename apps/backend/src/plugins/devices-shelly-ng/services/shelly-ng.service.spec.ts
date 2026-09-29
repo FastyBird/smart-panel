@@ -445,6 +445,71 @@ describe('ShellyNgService', () => {
 		},
 	);
 
+	test.each([
+		{ force: false, reject: false },
+		{ force: true, reject: false },
+		{ force: false, reject: true },
+		{ force: true, reject: true },
+	])(
+		'stop drains admitted insertion before detach/restart (force=$force, reject=$reject)',
+		async ({ force, reject }) => {
+			const delegates = mockDelegates();
+			const handlers = new Set<string>();
+			let finish!: () => void;
+			let entered!: () => void;
+			const started = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			const pending = new Promise<void>((resolve) => {
+				finish = resolve;
+			});
+			delegates.get.mockReturnValue(force ? { connected: false } : undefined);
+			delegates.insert.mockImplementation(async () => {
+				entered();
+				await pending;
+				// performInsert can populate handler maps after an asynchronous lookup.
+				handlers.add('old-handler');
+				if (reject) throw new Error('insertion failed after partial setup');
+				return { id: 'dev-1' };
+			});
+			delegates.detach.mockImplementation(() => {
+				handlers.clear();
+				return Promise.resolve();
+			});
+			svc = new ShellyNgService(
+				mockConfigService() as any,
+				mockDbDiscoverer() as any,
+				delegates as any,
+				mockDeviceManagerService as any,
+				mockDevicesService() as any,
+				mockDeviceConnectivityService as any,
+				mockPluginServiceManager as any,
+				mockWsServer as any,
+			);
+			await svc.start();
+			const ds9 = require('shellies-ds9');
+			ds9.__testing.shelliesInstances[0].listeners.add[0](mkDevice());
+			await started;
+			const stopping = svc.stop();
+			const restarting = svc.start();
+
+			try {
+				await sleep(0);
+				expect(delegates.detach).not.toHaveBeenCalled();
+				expect(ds9.__testing.shelliesInstances).toHaveLength(1);
+			} finally {
+				finish();
+				await stopping;
+				await restarting;
+			}
+
+			expect(delegates.detach).toHaveBeenCalledTimes(1);
+			expect(handlers.size).toBe(0);
+			expect(svc.getState()).toBe('started');
+			expect(ds9.__testing.shelliesInstances).toHaveLength(2);
+		},
+	);
+
 	test.each(['reject', 'timeout'])('stop continues delegate cleanup when mDNS stop ends with %s', async (failure) => {
 		jest.useFakeTimers();
 		const delegates = mockDelegates();

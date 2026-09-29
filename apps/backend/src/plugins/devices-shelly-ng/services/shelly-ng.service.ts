@@ -68,6 +68,7 @@ export class ShellyNgService extends BaseManagedExtensionService {
 	private readonly discoveryQueue: Device[] = [];
 	private processingDiscovery = false;
 	private discoveryGeneration = 0;
+	private delegateInsertion: ReturnType<DelegatesManagerService['insert']> | null = null;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -405,6 +406,11 @@ export class ShellyNgService extends BaseManagedExtensionService {
 			}
 		}
 
+		// Generation checks stop work before insert(), but cannot cancel an insertion
+		// already populating handler maps. Drain it before clearing those maps; the
+		// service lifecycle lock also keeps restart from admitting a new insertion.
+		// processDiscoveryQueue reports any rejection; cleanup must still continue.
+		await this.delegateInsertion?.catch(() => {});
 		await this.delegatesRegistryService.detach();
 
 		// Mark all managed devices as UNKNOWN since the plugin is no longer running
@@ -531,20 +537,29 @@ export class ShellyNgService extends BaseManagedExtensionService {
 		// the WebSocket connects to the right address.
 		const existingDelegate = this.delegatesRegistryService.get(device.id);
 
-		if (existingDelegate && !existingDelegate.connected) {
+		const force = existingDelegate && !existingDelegate.connected;
+
+		if (force) {
 			this.logger.log(
 				`mDNS re-discovered disconnected device=${device.id}, re-creating delegate with current address`,
 				{
 					resource: device.id,
 				},
 			);
-
-			await this.delegatesRegistryService.insert(device, true);
-
-			return;
 		}
 
-		await this.delegatesRegistryService.insert(device);
+		const insertion = force
+			? this.delegatesRegistryService.insert(device, true)
+			: this.delegatesRegistryService.insert(device);
+		this.delegateInsertion = insertion;
+
+		try {
+			await insertion;
+		} finally {
+			if (this.delegateInsertion === insertion) {
+				this.delegateInsertion = null;
+			}
+		}
 	}
 
 	/**

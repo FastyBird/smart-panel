@@ -99,7 +99,15 @@ startup. Cleanup continues if mDNS stop rejects or times out. Pending backend di
 lifecycle generation after lookup/provisioning so it cannot attach an old delegate after stop/restart.
 Two service regressions first failed for the retained registrations on stop/startup failure. Tests also
 cover restarting, late lookup/provisioning completion, and rejected/timed-out mDNS shutdown.
-Backend validation: 96 tests across connector, delegate manager and provisioning suites; full backend
+The low-risk review also identified an already-admitted insertion racing with detach. Four regression
+cases failed before the follow-up: normal/forced insertion, with successful/failed partial setup.
+The connector now tracks the admitted insertion and awaits settlement before delegate teardown;
+its lifecycle lock prevents restart until that cleanup completes. Generation checks still discard
+lookup/provisioning work which has not entered insertion. A rejected insertion is reported by the
+discovery queue and does not skip cleanup. This drain deliberately waits for completion rather than
+timing out and allowing that operation to mutate handler maps after restart.
+
+Backend validation: 100 tests across connector, delegate manager and provisioning suites; full backend
 type checking, focused ESLint/Prettier and diff checks passed.
 
 Staging remains on published alpha.29, which contains neither this connection fix nor #1130. After
