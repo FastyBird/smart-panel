@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
@@ -33,7 +33,7 @@ interface BufferedStoragePoint {
 }
 
 @Injectable()
-export class StorageService implements OnModuleDestroy {
+export class StorageService implements OnApplicationShutdown {
 	private readonly logger = createExtensionLogger(STORAGE_MODULE_NAME, 'StorageService');
 
 	private primary: StoragePlugin | null = null;
@@ -118,7 +118,9 @@ export class StorageService implements OnModuleDestroy {
 		await this.flushQueuedWrites();
 	}
 
-	onModuleDestroy(): Promise<void> {
+	onApplicationShutdown(): Promise<void> {
+		// Managed producers emit final reports during onModuleDestroy. Keep admission
+		// open until the manager stops them and unregisterPlugin drains their backends.
 		return this.writes.close();
 	}
 

@@ -271,7 +271,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		jest.restoreAllMocks();
 		events?.removeAllListeners();
 		propertyMetadata?.onModuleDestroy();
-		await storage?.onModuleDestroy();
+		await storage?.onApplicationShutdown();
 		await memory?.destroy();
 		if (database?.isInitialized) await database.destroy();
 	});

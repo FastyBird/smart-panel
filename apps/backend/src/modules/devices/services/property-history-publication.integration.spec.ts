@@ -51,7 +51,7 @@ describe('Live property publication and buffered history', () => {
 		await values.write(property, false, new Date(1000));
 	});
 
-	afterEach(async () => storage.onModuleDestroy());
+	afterEach(async () => storage.onApplicationShutdown());
 
 	it('returns consecutive live states before delayed history while preserving every ordered measurement', async () => {
 		const gate = deferred();
@@ -168,7 +168,7 @@ describe('Live property publication and buffered history', () => {
 		});
 		await values.writeLiveWithState(property, true, new Date(2000));
 		let stopped = false;
-		const shutdown = storage.onModuleDestroy().then(() => (stopped = true));
+		const shutdown = storage.onApplicationShutdown().then(() => (stopped = true));
 		expect(stopped).toBe(false);
 		gate.resolve();
 		await shutdown;
