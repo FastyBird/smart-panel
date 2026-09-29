@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
@@ -6,6 +6,8 @@ import { StoragePlugin } from '../interfaces/storage-plugin.interface';
 import { StorageConfigModel } from '../models/config.model';
 import { STORAGE_MODULE_NAME } from '../storage.constants';
 import { StorageMeasurementSchema, StoragePoint, StorageQueryOptions } from '../storage.types';
+
+import { StorageWriteBuffer } from './storage-write-buffer';
 
 declare const storageBackendBindingBrand: unique symbol;
 
@@ -24,13 +26,24 @@ interface StorageBackendBindingState {
 	readonly mirror?: StorageBackendBindingState;
 }
 
+interface BufferedStoragePoint {
+	readonly point: StoragePoint;
+	readonly primary: StoragePlugin | null;
+	readonly fallback: StoragePlugin | null;
+}
+
 @Injectable()
-export class StorageService {
+export class StorageService implements OnModuleDestroy {
 	private readonly logger = createExtensionLogger(STORAGE_MODULE_NAME, 'StorageService');
 
 	private primary: StoragePlugin | null = null;
 	private fallback: StoragePlugin | null = null;
 	private readonly backendBindings = new WeakMap<StorageBackendBinding, StorageBackendBindingState>();
+	private readonly writes = new StorageWriteBuffer<BufferedStoragePoint>(
+		(batch) => this.writeBufferedBatch(batch),
+		(error) =>
+			this.logger.error(`Buffered storage write failed: ${error instanceof Error ? error.message : 'Unknown error'}`),
+	);
 
 	/**
 	 * All schemas registered so far, keyed by measurement name.
@@ -85,7 +98,7 @@ export class StorageService {
 	 * Matches by plugin instance name rather than config role to avoid
 	 * stale references when config changes race with service stop.
 	 */
-	unregisterPlugin(name: string): void {
+	async unregisterPlugin(name: string): Promise<void> {
 		if (this.primary?.name === name) {
 			this.primary = null;
 
@@ -96,6 +109,56 @@ export class StorageService {
 			this.fallback = null;
 
 			this.logger.log(`Fallback storage unregistered: ${name}`);
+		}
+		// Admission captures plugin instances. Finish their accepted writes before the managed
+		// service destroys them; later admissions can only select the remaining/new backends.
+		await this.flushQueuedWrites();
+	}
+
+	onModuleDestroy(): Promise<void> {
+		return this.writes.close();
+	}
+
+	/** Accept one best-effort point; completion means bounded admission, not durable persistence. */
+	enqueueWritePoint(point: StoragePoint): Promise<void> {
+		const snapshot = {
+			...point,
+			tags: point.tags ? { ...point.tags } : undefined,
+			fields: { ...point.fields },
+			timestamp: point.timestamp ? new Date(point.timestamp) : undefined,
+		};
+		return this.writes.enqueue(() => ({
+			point: snapshot,
+			primary: this.primary?.isAvailable() ? this.primary : null,
+			fallback: this.fallback?.isAvailable() ? this.fallback : null,
+		}));
+	}
+
+	/** Join writes admitted before this call. Lifecycle/strict callers must hold their admission barrier. */
+	flushQueuedWrites(): Promise<void> {
+		return this.writes.flush();
+	}
+
+	private async writeBufferedBatch(batch: BufferedStoragePoint[]): Promise<void> {
+		// Batch only adjacent points with the same captured destinations; never reroute old history
+		// into a newly registered backend. Array order also preserves same-timestamp last-write wins.
+		for (let start = 0; start < batch.length; ) {
+			const { primary, fallback } = batch[start];
+			let end = start + 1;
+			while (end < batch.length && batch[end].primary === primary && batch[end].fallback === fallback) end++;
+			const points = batch.slice(start, end).map(({ point }) => point);
+			for (const plugin of [fallback, primary]) {
+				if (!plugin) continue;
+				try {
+					await plugin.writePoints(points);
+				} catch (error) {
+					this.logger.error(
+						`Buffered write to ${plugin.name} failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+					);
+				}
+			}
+			if (!primary && !fallback) this.logger.warn('Buffered history has no available storage backend');
+			start = end;
 		}
 	}
 

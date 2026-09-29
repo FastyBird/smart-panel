@@ -93,7 +93,7 @@ export class InfluxV2ManagedService extends BaseManagedExtensionService {
 				const err = error as Error;
 
 				if (registered) {
-					this.storageService.unregisterPlugin(INFLUX_V2_PLUGIN_NAME);
+					await this.storageService.unregisterPlugin(INFLUX_V2_PLUGIN_NAME);
 				}
 
 				this.logger.error(`Failed to start InfluxDB v2 storage: ${err.message}`, err.stack);
@@ -118,7 +118,7 @@ export class InfluxV2ManagedService extends BaseManagedExtensionService {
 
 			this.logger.log('Stopping InfluxDB v2 storage service');
 
-			this.storageService.unregisterPlugin(INFLUX_V2_PLUGIN_NAME);
+			await this.storageService.unregisterPlugin(INFLUX_V2_PLUGIN_NAME);
 
 			if (this.storage) {
 				await this.storage.destroy();

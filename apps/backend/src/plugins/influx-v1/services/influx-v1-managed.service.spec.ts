@@ -177,6 +177,25 @@ describe('InfluxV1ManagedService', () => {
 	});
 
 	describe('stop', () => {
+		it('waits for accepted history before destroying the storage connection', async () => {
+			await svc.start();
+			let release!: () => void;
+			storageService.unregisterPlugin.mockImplementationOnce(
+				() =>
+					new Promise<void>((resolve) => {
+						release = resolve;
+					}),
+			);
+			const stop = svc.stop();
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			expect(MockInfluxV1Storage.prototype.destroy).not.toHaveBeenCalled();
+			expect(svc.getState()).toBe('stopping');
+			release();
+			await stop;
+			expect(MockInfluxV1Storage.prototype.destroy).toHaveBeenCalledTimes(1);
+			expect(svc.getState()).toBe('stopped');
+		});
+
 		it('unregisters plugin and destroys storage', async () => {
 			await svc.start();
 			await svc.stop();

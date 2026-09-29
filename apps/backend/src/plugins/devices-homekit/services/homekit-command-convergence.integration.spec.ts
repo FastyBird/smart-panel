@@ -79,6 +79,7 @@ import { HomeKitMapperRegistryService } from './homekit-mapper-registry.service'
 describe.each([false, true])('HomeKit command convergence with SQLite (cross-process locks: %s)', (locksEnabled) => {
 	let database: DataSource;
 	let memory: MemoryStorage;
+	let storage: StorageService;
 	let events: EventEmitter2;
 	let properties: ChannelsPropertiesService;
 	let values: PropertyValueService;
@@ -117,7 +118,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		await database.initialize();
 		memory = new MemoryStorage();
 		await memory.initialize();
-		const storage = new StorageService({
+		storage = new StorageService({
 			getModuleConfig: () => new StorageConfigModel(),
 		} as unknown as ConfigService);
 		storage.registerPlugin(memory.name, memory);
@@ -270,6 +271,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		jest.restoreAllMocks();
 		events?.removeAllListeners();
 		propertyMetadata?.onModuleDestroy();
+		await storage?.onModuleDestroy();
 		await memory?.destroy();
 		if (database?.isInitialized) await database.destroy();
 	});
@@ -277,6 +279,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 	const report = (value: boolean) => properties.update(source.id, { type: SIMULATOR_TYPE, value });
 
 	async function expectState(value: boolean, history: boolean[]): Promise<void> {
+		await values.flushHistory();
 		for (const property of [source, ...aliases]) {
 			expect((await properties.findOne(property.id))?.value?.value).toBe(value);
 		}
@@ -383,7 +386,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		await expectState(false, [false]);
 	});
 
-	it('admits readers during slow persistence but keeps structural mutations waiting', async () => {
+	it('publishes provider state before slow history while structural changes still drain history', async () => {
 		const entered = deferred();
 		const release = deferred();
 		const originalWrite = memory.writePoints.bind(memory) as MemoryStorage['writePoints'];
@@ -392,29 +395,61 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			await release.promise;
 			return originalWrite(...args);
 		});
-		const update = metadataReport(true);
-		await entered.promise;
-		let otherReaderEntered = false;
-		const reader = structure.runShared(() => {
-			otherReaderEntered = true;
-			return Promise.resolve();
+		let publishedLive = false;
+		const update = metadataReport(true).then(() => {
+			publishedLive = true;
 		});
-		let mutationEntered = false;
-		const mutation = structure.runExclusive(() => {
-			mutationEntered = true;
-			return Promise.resolve();
+		await entered.promise;
+		const save = jest.spyOn(database.getRepository(SimulatorChannelPropertyEntity), 'save');
+		let mutationFinished = false;
+		const mutation = metadataReport(true, { identifier: 'changed-after-history' }).then(() => {
+			mutationFinished = true;
 		});
 		try {
-			await Promise.resolve();
-			expect(otherReaderEntered).toBe(true);
-			expect(mutationEntered).toBe(false);
+			await new Promise<void>((resolve) => setTimeout(resolve, 100));
+			expect(publishedLive).toBe(!locksEnabled);
+			expect(mutationFinished).toBe(false);
+			expect(save).not.toHaveBeenCalled();
+			if (!locksEnabled) {
+				expect(published.map(({ value }) => value)).toEqual([true, true, true]);
+				expect(characteristics.map((characteristic) => characteristic.value)).toEqual([true, true]);
+			}
 		} finally {
 			release.resolve();
-			await Promise.all([update, reader, mutation]);
+			await Promise.all([update, mutation]);
 		}
-		expect(mutationEntered).toBe(true);
+		expect(mutationFinished).toBe(true);
 		await expectState(true, [false, true]);
 	});
+
+	if (!locksEnabled) {
+		it('does not replay an old HomeKit state when delayed history finishes after a newer report', async () => {
+			const release = deferred();
+			const originalWrite = memory.writePoints.bind(memory) as MemoryStorage['writePoints'];
+			jest.spyOn(memory, 'writePoints').mockImplementationOnce(async (...args) => {
+				await release.promise;
+				return originalWrite(...args);
+			});
+			try {
+				await metadataReport(true);
+				await new Promise<void>((resolve) => setTimeout(resolve, 5));
+				await metadataReport(false);
+				expect(characteristics.map((characteristic) => characteristic.value)).toEqual([false, false]);
+				expect(notifications).toEqual([
+					[true, false],
+					[true, false],
+				]);
+			} finally {
+				release.resolve();
+				await values.flushHistory();
+			}
+			expect(notifications).toEqual([
+				[true, false],
+				[true, false],
+			]);
+			await expectState(false, [false, true, false]);
+		});
+	}
 
 	it.each(['change', 'delete'])('re-reads metadata after a queued structural %s', async (operation) => {
 		const entered = deferred();

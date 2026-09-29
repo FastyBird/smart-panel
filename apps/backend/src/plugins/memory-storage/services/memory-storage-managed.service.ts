@@ -70,7 +70,7 @@ export class MemoryStorageManagedService extends BaseManagedExtensionService {
 				const err = error as Error;
 
 				if (registered) {
-					this.storageService.unregisterPlugin(MEMORY_PLUGIN_NAME);
+					await this.storageService.unregisterPlugin(MEMORY_PLUGIN_NAME);
 				}
 
 				this.logger.error(`Failed to start in-memory storage: ${err.message}`, err.stack);
@@ -95,7 +95,7 @@ export class MemoryStorageManagedService extends BaseManagedExtensionService {
 
 			this.logger.log('Stopping in-memory storage service');
 
-			this.storageService.unregisterPlugin(MEMORY_PLUGIN_NAME);
+			await this.storageService.unregisterPlugin(MEMORY_PLUGIN_NAME);
 
 			if (this.storage) {
 				await this.storage.destroy();

@@ -288,3 +288,26 @@ Execute the private-runner retention suite before any future bounded physical co
 ```bash
 pnpm --filter @fastybird/smart-panel-backend run test:unit src/modules/devices/services/command-latency-smoke-runner.spec.ts
 ```
+
+## Live values and history persistence
+
+Hook-free provider value reports in the default single-process mode publish their accepted in-memory
+state after history has been admitted to a bounded process-local buffer. Historical queries may lag the
+live value. This path does not add SQLite value writes. With `FB_PROPERTY_VALUE_LOCKS_ENABLED=true`,
+provider writes retain awaited persistence under the shared lease. Strict/adoption/CAS writes and other
+legacy callers also retain awaited semantics.
+
+The buffer admits up to 1024 points including the active batch. It preserves arrival order and provider
+timestamps, batches adjacent points for the same captured backend instances, and waits for capacity
+rather than dropping old points. A storage failure is logged; accepted live state is retained and failed
+history is not automatically retried. The buffer is not a durable outbox: an abrupt process exit can lose
+pending points. History saturation can again delay provider publication; this limit is deliberate.
+
+Durable value snapshots, strict/legacy writes and deletion drain preceding admitted history. Structural
+metadata/source changes drain under the structure barrier. Managed storage plugins must await
+`unregisterPlugin()` before destroying their connection. Graceful shutdown refuses new buffered
+admissions and waits for admitted writes to settle; it does not pretend a timed-out write has stopped.
+
+When measuring latency, distinguish provider receipt → live publication from history completion. Test
+slow/rejected storage, rapid opposite reports, strict reconciliation, remapping/deletion and shutdown.
+A fast server event does not establish Apple Home visual convergence or physical relay response time.

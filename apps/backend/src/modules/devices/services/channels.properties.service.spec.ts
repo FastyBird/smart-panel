@@ -182,6 +182,10 @@ describe('ChannelsPropertiesService', () => {
 					useValue: {
 						write: jest.fn(() => {}),
 						writeWithState: jest.fn(() => {}),
+						writeLiveWithState: jest.fn((...args: Parameters<PropertyValueService['writeLiveWithState']>) =>
+							propertyValueService.writeWithState(...args),
+						),
+						flushHistory: jest.fn().mockResolvedValue(undefined),
 						writeStrict: jest.fn(() => {}),
 						writeStrictWithState: jest.fn(() => {}),
 						writeStrictIfPersistedDifferent: jest.fn(() => {}),

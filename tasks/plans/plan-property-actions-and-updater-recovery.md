@@ -2,11 +2,51 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.30 normal upgrade verified; command-read optimization merged in #1132; stale discovery ownership reproduced locally and on staging, guard verified in a bounded overlay and pending review; delayed SQL/persistence, remaining startup readiness and full client acceptance remain open
+**Status:** alpha.31 normal upgrade and published-byte verification passed; command/discovery repairs deployed; bounded provider-history publication candidate locally verified; remaining Shelly reconnect/transport delay, SQL/probes and full client acceptance stay open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Live provider publication and history buffering — 2026-09-29
+
+PR #1133 merged as `97dcbd4b5eb0e1b1c052d4e6d6cddf3cb9d2b5db`; alpha.31 includes it and #1132.
+The ordinary System API upgrade from alpha.30 completed, preserved all 111 device IDs and the current
+source-property/alias binding, retained schema/migration hashes and released the updater lock. Server,
+npm and deployed runtime hashes match. The first release attempt published the backend but failed its
+240-attempt registry visibility check; only failed jobs were retried for the same version.
+
+Six exploratory operations per version used the same Shelly Ethernet address. Pre-RPC timing changed
+from 105–438 ms (median 205) to 56–174 ms (median 99). This is a small before/after sample with uncontrolled
+background work, not the qualified acceptance matrix. One alpha.31 operation took 4.218 s: 136 ms before
+RPC, 48 ms to reply, 4.003 s until inbound status, then 30 ms to alias publication. Slow ON replies were
+retransmitted despite immediate outgoing Pi ACKs. This locates the delay before inbound status, without
+establishing Shelly-versus-network causality. A ten-minute follow-up also captured a five-second Shelly
+detach/reattach; uninterrupted readiness and Apple Home visual acceptance remain open. Target ended OFF.
+
+A separate candidate now lets hook-free provider value reports publish after bounded history admission
+in the default single-process mode. It does not change strict/adoption/CAS persistence or the opted-in
+shared-writer behavior. The storage buffer admits at most 1024 points including the active batch, batches
+adjacent points with the same captured destinations, and applies backpressure when full. Points and
+backend instances are captured; old history is not redirected into a replacement plugin. Failures are
+logged with existing best-effort semantics, without automatic retries or rolling back accepted live state.
+
+Legacy awaited writes, strict reconciliation, durable snapshots and property deletion drain previously
+admitted history. Structural metadata/source changes drain under exclusive admission. Storage plugin
+unregistration is awaited before destroying its connection; module shutdown closes admission and drains.
+This is process-local buffering, not a durable outbox: abrupt process loss can lose queued history, and
+saturation/strict/lifecycle barriers still wait for storage. Ordinary history queries can lag live values.
+
+Regression coverage includes a real SQLite/HAP fixture with controlled slow storage: the old awaited
+provider path fails to publish before storage completes, while the candidate publishes source/aliases
+and HAP characteristics. Late history completion cannot replay an older visible state. Buffer tests cover
+capacity, batching, ordering, immutable snapshots, backend replacement, failure and shutdown; value tests
+cover strict/CAS/read/delete barriers and fresh-service readback after drain. Hardware verification of this
+candidate and the original full client matrix remain separate from these deterministic tests.
+
+Local validation: 777 tests across 35 distinct suites (including the final HAP/readback cases), backend
+type checking/build, focused ESLint/Prettier and diff whitespace checks passed. No schema, dependency
+or generated API change is involved.
 
 ## Discarding superseded Shelly discovery instances — 2026-09-29
 
@@ -148,10 +188,11 @@ Remaining work, ordered by the measured blocking boundaries:
 - [x] Review and deploy the unchanged-metadata optimization in alpha.29 through the normal System API.
 - [ ] Measure staging lock admission and publication latency separately after restoring target readiness;
   the persistence delay remains a distinct boundary.
-- [ ] Separate live value publication from best-effort history persistence with explicit ordering,
-  bounded buffering, shutdown and failure semantics. Preserve strict reconciliation, deletion/remap
-  barriers, shared-writer mode and restart readback; do not replace awaited writes with unchecked
-  fire-and-forget promises.
+- [x] Implement and locally verify hook-free provider publication after bounded history admission in
+  single-process mode, preserving strict reconciliation, deletion/remap barriers, shared-writer mode
+  and fresh-service readback after drain. Keep the documented saturation/failure/shutdown semantics.
+- [ ] Review/deploy the history-buffer candidate and verify live latency and normal restart; strict,
+  metadata-hook and legacy callers intentionally retain awaited persistence.
 - [ ] Attribute slow Influx HTTP responses using server/disk evidence and verify the above changes
   under a controlled delayed storage response, independently of Shelly network timing.
 - [ ] Remove remaining main-thread synchronous platform probes and measure their impact after the

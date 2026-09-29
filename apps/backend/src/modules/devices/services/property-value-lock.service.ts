@@ -76,6 +76,10 @@ export class PropertyValueLockService {
 		}
 	}
 
+	isEnabled(): boolean {
+		return this.enabled;
+	}
+
 	private async acquire(propertyId: string, ownerToken: string): Promise<void> {
 		const deadline = Date.now() + PROPERTY_VALUE_LOCK_WAIT_TIMEOUT_MS;
 

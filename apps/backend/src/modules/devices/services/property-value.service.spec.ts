@@ -27,6 +27,7 @@ describe('PropertyValueService', () => {
 	beforeEach(async () => {
 		const mockStorageService = {
 			writePoints: jest.fn(),
+			flushQueuedWrites: jest.fn().mockResolvedValue(undefined),
 			writePointsStrict: jest.fn(),
 			query: jest.fn(),
 			queryStrict: jest.fn(),
@@ -41,6 +42,7 @@ describe('PropertyValueService', () => {
 				{
 					provide: PropertyValueLockService,
 					useValue: {
+						isEnabled: jest.fn().mockReturnValue(false),
 						runExclusive: jest.fn(
 							<T>(_key: string, operation: (lease: { assertOwned(): Promise<void> }) => Promise<T>) =>
 								operation({ assertOwned: jest.fn().mockResolvedValue(undefined) }),
@@ -133,18 +135,23 @@ describe('PropertyValueService', () => {
 				format: null,
 				step: null,
 			} as ChannelPropertyEntity;
+			let enterStrictWrite: () => void = () => {};
+			const strictEntered = new Promise<void>((resolve) => {
+				enterStrictWrite = resolve;
+			});
 			let resolveStrictWrite: () => void = () => {};
 			storageService.writePointsStrict.mockImplementation(
 				() =>
 					new Promise<void>((resolve) => {
 						resolveStrictWrite = resolve;
+						enterStrictWrite();
 					}),
 			);
 			storageService.writePoints.mockResolvedValue();
 			const strictWrite = service.writeStrict(property, 42);
 			const normalWrite = service.write(property, 200);
 
-			await Promise.resolve();
+			await strictEntered;
 			expect(storageService.writePoints).not.toHaveBeenCalled();
 			resolveStrictWrite();
 

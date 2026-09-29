@@ -933,6 +933,11 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			const current = (await this.getOneOrThrow(id)) as TProperty;
 			const previousCanonicalPropertyId = this.valueSourceRegistry.resolve(current);
 			const entityFieldsChanged = this.hasEntityFieldChanges(current, updateFields);
+			if (entityFieldsChanged) {
+				// Shared live-report admission has drained. Finish accepted old-type/source history
+				// before changing the catalog so it cannot arrive after remapping or recategorization.
+				await this.propertyValueService.flushHistory();
+			}
 			Object.assign(current, updateFields);
 			if (entityFieldsChanged) {
 				const nextCanonicalPropertyId = this.valueSourceRegistry.resolve(current);
@@ -1076,7 +1081,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		return this.structureLock.runShared(() =>
 			this.propertyStateCoordinator.run(id, async (): Promise<{ property: TProperty } | { type: string }> => {
 				// Read the structural catalog without loading a value. In the default single-writer mode,
-				// initialized metadata is served from memory; writeWithState supplies the live value below.
+				// initialized metadata is served from memory; writeLiveWithState supplies the live value below.
 				const current = (await this.findOneForValueUpdate(id)) as TProperty;
 				const mapping =
 					knownMapping ?? this.propertiesMapperService.getMapping<TProperty, any, TUpdateDTO>(current.type);
@@ -1106,7 +1111,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 				}
 				const commit = async (): Promise<{ property: TProperty }> => {
 					const write = (): Promise<PropertyValueWriteResult> =>
-						this.propertyValueService.writeWithState(current, value);
+						this.propertyValueService.writeLiveWithState(current, value);
 					const result = await this.commitWindowedProviderValue(current, value, { unwindowed: write, windowed: write });
 					this.commandLatencyTraceCollector.recordWriteComplete(current, {
 						changed: result.changed,
