@@ -65,6 +65,9 @@ jest.mock('shellies-ds9', () => {
 		registerDiscoverer(d: any) {
 			this.registered.push(d);
 		}
+		unregisterDiscoverer(d: any) {
+			this.registered = this.registered.filter((registered) => registered !== d);
+		}
 		removeAllListeners() {
 			this.listeners = {};
 		}
@@ -83,6 +86,7 @@ jest.mock('shellies-ds9', () => {
 		async start() {
 			/* noop */
 		}
+		stop = jest.fn().mockResolvedValue(undefined);
 	}
 
 	return {
@@ -385,6 +389,114 @@ describe('ShellyNgService', () => {
 		expect(Object.values(sh.listeners).flat().length).toBeGreaterThan(0);
 		await svc.stop();
 		expect(delegates.detach).toHaveBeenCalledTimes(1);
+		expect(sh.registered).toEqual([]);
+		expect(ds9.__testing.mdnsInstances[0].stop).toHaveBeenCalledTimes(1);
+		await svc.start();
+		expect(ds9.__testing.shelliesInstances[1].registered).toHaveLength(2);
+		expect(sh.registered).toEqual([]);
+	});
+
+	test.each(['lookup', 'provision'])(
+		'stop prevents a discovery awaiting %s from attaching a stale delegate',
+		async (stage) => {
+			const delegates = mockDelegates();
+			const devices = mockDevicesService();
+			const manager = { createOrUpdate: jest.fn().mockResolvedValue(undefined) };
+			let release!: (value?: unknown) => void;
+			let entered!: () => void;
+			const pending = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			const wait = () => {
+				entered();
+				return new Promise((resolve) => {
+					release = resolve;
+				});
+			};
+			if (stage === 'lookup') {
+				devices.findOneBy.mockImplementation(wait);
+			} else {
+				devices.findOneBy.mockResolvedValue({ id: 'existing' });
+				manager.createOrUpdate.mockImplementation(wait);
+			}
+			svc = new ShellyNgService(
+				mockConfigService() as any,
+				mockDbDiscoverer() as any,
+				delegates as any,
+				manager as any,
+				devices as any,
+				mockDeviceConnectivityService as any,
+				mockPluginServiceManager as any,
+				mockWsServer as any,
+			);
+			await svc.start();
+			const ds9 = require('shellies-ds9');
+			const sh = ds9.__testing.shelliesInstances[0];
+			sh.listeners.add[0](mkDevice());
+			await pending;
+			await svc.stop();
+			release(stage === 'lookup' ? { id: 'existing' } : undefined);
+			await sleep(0);
+
+			expect(delegates.insert).not.toHaveBeenCalled();
+			if (stage === 'lookup') {
+				expect(manager.createOrUpdate).not.toHaveBeenCalled();
+			}
+		},
+	);
+
+	test.each(['reject', 'timeout'])('stop continues delegate cleanup when mDNS stop ends with %s', async (failure) => {
+		jest.useFakeTimers();
+		const delegates = mockDelegates();
+		svc = new ShellyNgService(
+			mockConfigService() as any,
+			mockDbDiscoverer() as any,
+			delegates as any,
+			mockDeviceManagerService as any,
+			mockDevicesService() as any,
+			mockDeviceConnectivityService as any,
+			mockPluginServiceManager as any,
+			mockWsServer as any,
+		);
+		await svc.start();
+		const ds9 = require('shellies-ds9');
+		const mdns = ds9.__testing.mdnsInstances[0];
+		mdns.stop.mockImplementation(() =>
+			failure === 'reject' ? Promise.reject(new Error('close failed')) : new Promise(() => {}),
+		);
+
+		const stopped = svc.stop();
+		await jest.advanceTimersByTimeAsync(5_000);
+		await stopped;
+
+		expect(ds9.__testing.shelliesInstances[0].registered).toEqual([]);
+		expect(delegates.detach).toHaveBeenCalledTimes(1);
+		expect(svc.getState()).toBe('stopped');
+	});
+
+	test('failed database discovery releases its registration before a retry', async () => {
+		const db = mockDbDiscoverer();
+		db.run.mockRejectedValueOnce(new Error('database discovery failed'));
+		const delegates = mockDelegates();
+		svc = new ShellyNgService(
+			mockConfigService() as any,
+			db as any,
+			delegates as any,
+			mockDeviceManagerService as any,
+			mockDevicesService() as any,
+			mockDeviceConnectivityService as any,
+			mockPluginServiceManager as any,
+			mockWsServer as any,
+		);
+
+		await expect(svc.start()).rejects.toThrow('database discovery failed');
+		const ds9 = require('shellies-ds9');
+		expect(svc.getState()).toBe('error');
+		expect(ds9.__testing.shelliesInstances[0].registered).toEqual([]);
+		expect(delegates.detach).toHaveBeenCalledTimes(1);
+		await svc.start();
+		expect(svc.getState()).toBe('started');
+		expect(ds9.__testing.shelliesInstances[1].registered).toHaveLength(2);
 	});
 
 	test('getState() returns current service state', async () => {
