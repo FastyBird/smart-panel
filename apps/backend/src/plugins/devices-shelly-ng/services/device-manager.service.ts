@@ -190,6 +190,7 @@ export class DeviceManagerService {
 			}
 
 			const channelsIds: string[] = [];
+			let hasComponentFailures = false;
 
 			const deviceInformation = await this.ensureChannel(
 				device,
@@ -383,6 +384,7 @@ export class DeviceManagerService {
 					const failed = settled.filter((r) => r.status === 'rejected').length;
 
 					if (failed) {
+						hasComponentFailures = true;
 						this.logger.warn(`${failed}/${ids.length} switch component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
@@ -579,6 +581,7 @@ export class DeviceManagerService {
 					const failed = settled.filter((r) => r.status === 'rejected').length;
 
 					if (failed) {
+						hasComponentFailures = true;
 						this.logger.warn(`${failed}/${ids.length} cover component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
@@ -728,6 +731,7 @@ export class DeviceManagerService {
 					const failed = settled.filter((r) => r.status === 'rejected').length;
 
 					if (failed) {
+						hasComponentFailures = true;
 						this.logger.warn(`${failed}/${ids.length} light component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
@@ -936,6 +940,7 @@ export class DeviceManagerService {
 					const failed = settled.filter((r) => r.status === 'rejected').length;
 
 					if (failed) {
+						hasComponentFailures = true;
 						this.logger.warn(`${failed}/${ids.length} rgb component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
@@ -1171,6 +1176,7 @@ export class DeviceManagerService {
 					const failed = settled.filter((r) => r.status === 'rejected').length;
 
 					if (failed) {
+						hasComponentFailures = true;
 						this.logger.warn(`${failed}/${ids.length} rgbw component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
@@ -1337,6 +1343,7 @@ export class DeviceManagerService {
 					const failed = settled.filter((r) => r.status === 'rejected').length;
 
 					if (failed) {
+						hasComponentFailures = true;
 						this.logger.warn(`${failed}/${ids.length} cct component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
@@ -1580,6 +1587,7 @@ export class DeviceManagerService {
 					const failed = settled.filter((r) => r.status === 'rejected').length;
 
 					if (failed) {
+						hasComponentFailures = true;
 						this.logger.warn(`${failed}/${ids.length} input component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
@@ -1595,6 +1603,7 @@ export class DeviceManagerService {
 						} catch (error) {
 							const err = error as Error;
 
+							hasComponentFailures = true;
 							this.logger.error(`Failed to load device power status for device=${device.id} and devicePower=${key}`, {
 								resource: device.id,
 								message: err.message,
@@ -1815,6 +1824,7 @@ export class DeviceManagerService {
 					const failed = settled.filter((r) => r.status === 'rejected').length;
 
 					if (failed) {
+						hasComponentFailures = true;
 						this.logger.warn(`${failed}/${ids.length} humidity component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
@@ -1923,6 +1933,7 @@ export class DeviceManagerService {
 					const failed = settled.filter((r) => r.status === 'rejected').length;
 
 					if (failed) {
+						hasComponentFailures = true;
 						this.logger.warn(`${failed}/${ids.length} temperature component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
@@ -1970,6 +1981,7 @@ export class DeviceManagerService {
 					const failed = settled.filter((r) => r.status === 'rejected').length;
 
 					if (failed) {
+						hasComponentFailures = true;
 						this.logger.warn(`${failed}/${ids.length} pm1 component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
@@ -2065,6 +2077,7 @@ export class DeviceManagerService {
 					const failed = settled.filter((r) => r.status === 'rejected').length;
 
 					if (failed) {
+						hasComponentFailures = true;
 						this.logger.warn(`${failed}/${ids.length} em component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
@@ -2159,6 +2172,7 @@ export class DeviceManagerService {
 					const failed = settled.filter((r) => r.status === 'rejected').length;
 
 					if (failed) {
+						hasComponentFailures = true;
 						this.logger.warn(`${failed}/${ids.length} emdata component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
@@ -2211,6 +2225,7 @@ export class DeviceManagerService {
 					const failed = settled.filter((r) => r.status === 'rejected').length;
 
 					if (failed) {
+						hasComponentFailures = true;
 						this.logger.warn(`${failed}/${ids.length} em1 component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
@@ -2266,11 +2281,23 @@ export class DeviceManagerService {
 					const failed = settled.filter((r) => r.status === 'rejected').length;
 
 					if (failed) {
+						hasComponentFailures = true;
 						this.logger.warn(`${failed}/${ids.length} em1data component(s) failed for device=${device.id}`, {
 							resource: device.id,
 						});
 					}
 				}
+			}
+
+			// A partial inventory is not evidence that an existing component was removed. Deleting
+			// its channel would cascade to properties and detach virtual aliases. Retry pruning
+			// after a complete pass; successful components above still receive their updates.
+			if (hasComponentFailures) {
+				this.logger.warn(`Skipping stale-channel removal after partial provisioning for device=${device.id}`, {
+					resource: device.id,
+				});
+
+				return device;
 			}
 
 			const allChannels = await this.channelsService.findAll(device.id, DEVICES_SHELLY_NG_TYPE);
