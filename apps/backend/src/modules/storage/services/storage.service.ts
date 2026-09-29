@@ -38,6 +38,7 @@ export class StorageService implements OnModuleDestroy {
 
 	private primary: StoragePlugin | null = null;
 	private fallback: StoragePlugin | null = null;
+	private readonly pendingAdmissions = new Set<Promise<void>>();
 	private readonly backendBindings = new WeakMap<StorageBackendBinding, StorageBackendBindingState>();
 	private readonly writes = new StorageWriteBuffer<BufferedStoragePoint>(
 		(batch) => this.writeBufferedBatch(batch),
@@ -110,8 +111,10 @@ export class StorageService implements OnModuleDestroy {
 
 			this.logger.log(`Fallback storage unregistered: ${name}`);
 		}
-		// Admission captures plugin instances. Finish their accepted writes before the managed
-		// service destroys them; later admissions can only select the remaining/new backends.
+		// Removing the roles synchronously prevents new producers from selecting this plugin.
+		// Existing producers already own their destinations, including those waiting for capacity.
+		// Join their admission first: flush alone only covers points already inside the buffer.
+		await Promise.allSettled([...this.pendingAdmissions]);
 		await this.flushQueuedWrites();
 	}
 
@@ -119,19 +122,28 @@ export class StorageService implements OnModuleDestroy {
 		return this.writes.close();
 	}
 
-	/** Accept one best-effort point; completion means bounded admission, not durable persistence. */
-	enqueueWritePoint(point: StoragePoint): Promise<void> {
+	/**
+	 * Capture destinations before waiting for capacity so plugin stop can drain every producer.
+	 * Completion means bounded admission, not durable persistence. Admission rejects without an available destination.
+	 */
+	async enqueueWritePoint(point: StoragePoint): Promise<void> {
+		const primary = this.primary?.isAvailable() ? this.primary : null;
+		const fallback = this.fallback?.isAvailable() ? this.fallback : null;
+		if (!primary && !fallback) throw new Error('No available storage backend for buffered history');
+
 		const snapshot = {
 			...point,
 			tags: point.tags ? { ...point.tags } : undefined,
 			fields: { ...point.fields },
 			timestamp: point.timestamp ? new Date(point.timestamp) : undefined,
 		};
-		return this.writes.enqueue(() => ({
-			point: snapshot,
-			primary: this.primary?.isAvailable() ? this.primary : null,
-			fallback: this.fallback?.isAvailable() ? this.fallback : null,
-		}));
+		const admission = this.writes.enqueue(() => ({ point: snapshot, primary, fallback }));
+		this.pendingAdmissions.add(admission);
+		try {
+			await admission;
+		} finally {
+			this.pendingAdmissions.delete(admission);
+		}
 	}
 
 	/** Join writes admitted before this call. Lifecycle/strict callers must hold their admission barrier. */

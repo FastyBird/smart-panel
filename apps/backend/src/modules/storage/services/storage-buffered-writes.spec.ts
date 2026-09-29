@@ -26,6 +26,63 @@ describe('Buffered storage destinations', () => {
 	});
 	afterEach(async () => service.onModuleDestroy());
 
+	it.each([
+		['primary', false],
+		['primary', true],
+		['fallback', false],
+		['fallback', true],
+	] as const)('drains capacity-waiting writes before destroying %s (replacement: %s)', async (name, replace) => {
+		const old = plugin(name);
+		const replacement = plugin(name);
+		const first = deferred();
+		const last = deferred();
+		old.writePoints.mockImplementation(async (points) => {
+			if (points.some((point) => point.fields.numberValue === 0)) await first.promise;
+			if (points.some((point) => point.fields.numberValue === 1025)) await last.promise;
+		});
+		service.registerPlugin(name, old);
+		for (let index = 0; index < 1024; index++) {
+			await service.enqueueWritePoint({ measurement: 'test', fields: { numberValue: index } });
+		}
+		const waiting = [1024, 1025].map((numberValue) =>
+			service.enqueueWritePoint({ measurement: 'test', fields: { numberValue } }),
+		);
+		let stopped = false;
+		const stop = service.unregisterPlugin(name).then(() => (stopped = true));
+		if (replace) service.registerPlugin(name, replacement);
+		const next = replace
+			? service.enqueueWritePoint({ measurement: 'test', fields: { numberValue: 1026 } })
+			: expect(service.enqueueWritePoint({ measurement: 'test', fields: { numberValue: 1026 } })).rejects.toThrow(
+					'No available storage backend',
+				);
+		first.resolve();
+		try {
+			await Promise.all(waiting);
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			expect(stopped).toBe(false);
+			expect(old.writePoints.mock.calls.flatMap(([points]) => points.map((point) => point.fields.numberValue))).toEqual(
+				Array.from({ length: 1026 }, (_, index) => index),
+			);
+		} finally {
+			last.resolve();
+			await Promise.all([stop, next]);
+			await service.flushQueuedWrites();
+		}
+		if (replace) {
+			expect(replacement.writePoints).toHaveBeenCalledWith([
+				expect.objectContaining({ fields: { numberValue: 1026 } }),
+			]);
+		} else {
+			expect(replacement.writePoints).not.toHaveBeenCalled();
+		}
+	});
+
+	it('rejects a new buffered write when no destination is available', async () => {
+		await expect(service.enqueueWritePoint({ measurement: 'test', fields: { numberValue: 1 } })).rejects.toThrow(
+			'No available storage backend',
+		);
+	});
+
 	it('captures immutable points and destinations, and drains before unregister completes', async () => {
 		const old = plugin('primary');
 		const replacement = plugin('primary');

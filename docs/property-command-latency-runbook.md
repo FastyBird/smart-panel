@@ -305,8 +305,12 @@ pending points. History saturation can again delay provider publication; this li
 
 Durable value snapshots, strict/legacy writes and deletion drain preceding admitted history. Structural
 metadata/source changes drain under the structure barrier. Managed storage plugins must await
-`unregisterPlugin()` before destroying their connection. Graceful shutdown refuses new buffered
-admissions and waits for admitted writes to settle; it does not pretend a timed-out write has stopped.
+`unregisterPlugin()` before destroying their connection. A producer captures its destinations before
+waiting for capacity. Unregistration removes the plugin from selection for new producers, then joins
+existing capacity-waiting producers and drains their admitted writes before permitting destruction.
+Replacement plugins never receive those older points. New buffered writes without an available
+destination reject admission and are logged by the best-effort value path. Graceful shutdown refuses new
+buffered admissions and waits for admitted writes to settle; it does not pretend a timed-out write has stopped.
 
 When measuring latency, distinguish provider receipt → live publication from history completion. Test
 slow/rejected storage, rapid opposite reports, strict reconciliation, remapping/deletion and shutdown.
