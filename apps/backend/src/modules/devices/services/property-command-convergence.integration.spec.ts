@@ -171,6 +171,8 @@ describe('property command convergence integration', () => {
 		});
 		const propertyValueService = {
 			writeWithState,
+			writeLiveWithState: writeWithState,
+			flushHistory: jest.fn().mockResolvedValue(undefined),
 		};
 		const structureLocks = new DeviceStructureLockService();
 		const propertyState = new PropertyStateCoordinatorService();

@@ -140,6 +140,28 @@ export class PropertyValueService {
 		return this.withValueLock(key, () => this.writeInternal(property, value, false, undefined, valueTimestamp));
 	}
 
+	/** Publishable live state after history admission, without waiting for best-effort I/O. */
+	async writeLiveWithState(
+		property: ChannelPropertyEntity,
+		value: string | boolean | number | null,
+		valueTimestamp?: Date,
+	): Promise<PropertyValueWriteResult> {
+		// A shared-writer lease must cover actual persistence, not just local buffer admission.
+		if (this.valueLock.isEnabled()) {
+			return this.writeWithState(property, value, valueTimestamp);
+		}
+		const key = this.valueSourceRegistry.resolve(property);
+		return this.withValueLock(
+			key,
+			() => this.writeInternal(property, value, false, undefined, valueTimestamp, true),
+			false,
+		);
+	}
+
+	flushHistory(): Promise<void> {
+		return this.storageService.flushQueuedWrites();
+	}
+
 	/**
 	 * Persist a value to at least one storage backend before publishing it to the
 	 * process-local cache. Reconciliation callers can then retry a failed write
@@ -198,6 +220,7 @@ export class PropertyValueService {
 		strict: boolean,
 		storageBinding?: StorageBackendBinding,
 		valueTimestamp?: Date,
+		deferHistory = false,
 	): Promise<PropertyValueWriteResult> {
 		const key = this.valueSourceRegistry.resolve(property);
 
@@ -334,9 +357,13 @@ export class PropertyValueService {
 		}
 
 		try {
-			await this.storageService.writePoints([point]);
+			if (deferHistory) {
+				await this.storageService.enqueueWritePoint(point);
+			} else {
+				await this.storageService.writePoints([point]);
+			}
 
-			this.logger.debug(`Value saved id=${property.id} dataType=${property.dataType} value=${value}`);
+			this.logger.debug(`Value ${deferHistory ? 'queued' : 'saved'} id=${property.id} dataType=${property.dataType}`);
 		} catch (error) {
 			const err = error as Error;
 
@@ -367,6 +394,9 @@ export class PropertyValueService {
 	}
 
 	async readLatestPersistedSnapshot(property: ChannelPropertyEntity): Promise<PersistedPropertyValueSnapshot> {
+		// Keep reads concurrent with later writes. readLatestInternal fences cache refresh by version;
+		// only history already admitted at this boundary must be visible to the durable read.
+		await this.flushHistory();
 		const result = await this.readLatestInternal(property, true, true, true);
 
 		if (!result.storageBinding) {
@@ -678,6 +708,7 @@ export class PropertyValueService {
 	private withValueLock<T>(
 		key: ChannelPropertyEntity['id'],
 		operation: (lease: PropertyValueLease) => Promise<T>,
+		drainHistory = true,
 	): Promise<T> {
 		const previous = this.valueTails.get(key) ?? Promise.resolve();
 		let release: () => void = () => {};
@@ -690,7 +721,11 @@ export class PropertyValueService {
 		);
 		this.valueTails.set(key, tail);
 
-		const runOperation = (): Promise<T> => this.valueLock.runExclusive(key, operation);
+		const runOperation = (): Promise<T> =>
+			this.valueLock.runExclusive(key, async (lease) => {
+				if (drainHistory) await this.flushHistory();
+				return operation(lease);
+			});
 
 		return previous.then(runOperation, runOperation).finally(() => {
 			release();
