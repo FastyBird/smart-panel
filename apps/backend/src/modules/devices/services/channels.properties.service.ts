@@ -116,6 +116,8 @@ export interface VisiblePropertySearchSummaryPage {
 }
 
 export interface ChannelPropertyUpdateOptions {
+	/** Provider discovery may use the value path when its validated metadata is unchanged. */
+	skipUnchangedMetadata?: boolean;
 	strictValuePersistence?: boolean;
 	storageBinding?: StorageBackendBinding;
 	comparePersistedValue?: boolean;
@@ -871,20 +873,24 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 					: undefined;
 
 			if (valueOnlyMapping !== null) {
-				const result = await this.updateValueOnly<TProperty, TUpdateDTO>(id, updateDto, valueOnlyMapping);
+				const result = await this.updateValueOnly<TProperty, TUpdateDTO>(
+					id,
+					updateDto,
+					valueOnlyMapping,
+					options.skipUnchangedMetadata,
+				);
 
 				if ('property' in result) {
 					return result.property;
 				}
 
-				// A type-less report can only reveal a mapper's structural hooks after its one admitted
-				// entity load. Leave shared admission before taking the existing exclusive path; upgrades
-				// are forbidden by the lifecycle barrier.
-				return this.updateInternal<TProperty, TUpdateDTO>(
-					id,
-					{ ...updateDto, type: result.type } as TUpdateDTO,
-					options,
-				);
+				// Changed metadata or hooks discovered after loading a type-less report need the
+				// structural path. Leave shared admission first; the lifecycle barrier forbids upgrades.
+				// Disable the optimization on retry so a metadata difference cannot recurse.
+				return this.updateInternal<TProperty, TUpdateDTO>(id, { ...updateDto, type: result.type } as TUpdateDTO, {
+					...options,
+					skipUnchangedMetadata: false,
+				});
 			}
 		}
 
@@ -911,34 +917,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			// was validating; saving the earlier entity would otherwise insert it again.
 			const current = (await this.getOneOrThrow(id)) as TProperty;
 			const previousCanonicalPropertyId = this.valueSourceRegistry.resolve(current);
-			const entityFieldsChanged = Object.keys(updateFields).some((key) => {
-				if (key === 'value' || key === 'type') {
-					return false;
-				}
-
-				const newValue = (updateFields as Record<string, unknown>)[key];
-				const existingValue = (current as unknown as Record<string, unknown>)[key];
-
-				if (Array.isArray(newValue) && Array.isArray(existingValue)) {
-					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
-				}
-				if (
-					typeof newValue === 'object' &&
-					typeof existingValue === 'object' &&
-					newValue !== null &&
-					existingValue !== null
-				) {
-					return JSON.stringify(newValue) !== JSON.stringify(existingValue);
-				}
-				if (newValue === null && existingValue === null) {
-					return false;
-				}
-				if (newValue === null || existingValue === null) {
-					return true;
-				}
-
-				return newValue !== existingValue;
-			});
+			const entityFieldsChanged = this.hasEntityFieldChanges(current, updateFields);
 			Object.assign(current, updateFields);
 			if (entityFieldsChanged) {
 				const nextCanonicalPropertyId = this.valueSourceRegistry.resolve(current);
@@ -1077,6 +1056,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		id: string,
 		updateDto: TUpdateDTO,
 		knownMapping: ChannelPropertyTypeMapping<TProperty, any, TUpdateDTO> | undefined,
+		skipUnchangedMetadata = false,
 	): Promise<{ property: TProperty } | { type: string }> {
 		return this.structureLock.runShared(() =>
 			this.propertyStateCoordinator.run(id, async (): Promise<{ property: TProperty } | { type: string }> => {
@@ -1096,6 +1076,14 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 
 				if (dto.type !== current.type) {
 					throw new DevicesValidationException('Provided property type does not match the stored property type.');
+				}
+				if (skipUnchangedMetadata) {
+					const updateFields = omitBy(toInstance(mapping.class, dto), isUndefined);
+					if (this.hasEntityFieldChanges(current, updateFields)) {
+						// Leave shared admission before taking the structural path. It re-reads the row
+						// under exclusive admission, so deletion or remapping cannot resurrect stale data.
+						return { type: current.type };
+					}
 				}
 				const value = dto.value;
 				if (value === undefined) {
@@ -1331,6 +1319,37 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 		return property;
 	}
 
+	private hasEntityFieldChanges(current: ChannelPropertyEntity, updateFields: object): boolean {
+		return Object.keys(updateFields).some((key) => {
+			if (key === 'value' || key === 'type') {
+				return false;
+			}
+
+			const newValue = (updateFields as Record<string, unknown>)[key];
+			const existingValue = (current as unknown as Record<string, unknown>)[key];
+
+			if (Array.isArray(newValue) && Array.isArray(existingValue)) {
+				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+			}
+			if (
+				typeof newValue === 'object' &&
+				typeof existingValue === 'object' &&
+				newValue !== null &&
+				existingValue !== null
+			) {
+				return JSON.stringify(newValue) !== JSON.stringify(existingValue);
+			}
+			if (newValue === null && existingValue === null) {
+				return false;
+			}
+			if (newValue === null || existingValue === null) {
+				return true;
+			}
+
+			return newValue !== existingValue;
+		});
+	}
+
 	private isValueOnlyUpdate<TUpdateDTO extends UpdateChannelPropertyDto>(
 		updateDto: TUpdateDTO,
 		options: ChannelPropertyUpdateOptions,
@@ -1344,7 +1363,7 @@ export class ChannelsPropertiesService implements OnModuleInit, OnModuleDestroy 
 			!options.valueTimestamp &&
 			updateDto.value !== undefined &&
 			Object.prototype.hasOwnProperty.call(updateDto, 'value') &&
-			keys.every((key) => key === 'type' || key === 'value')
+			(options.skipUnchangedMetadata || keys.every((key) => key === 'type' || key === 'value'))
 		);
 	}
 

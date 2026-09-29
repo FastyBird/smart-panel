@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.28 normal staging upgrade verified; metadata mitigation merged in #1127; persistence-gated publication and blocking system probes measured; redundant system probes mitigated locally; command latency and full client acceptance remain open
+**Status:** alpha.28 normal staging upgrade verified; metadata mitigation merged in #1127; persistence-gated publication and blocking system probes measured; redundant system probes mitigation merged in #1128; unchanged Shelly metadata optimization verified locally; command latency and full client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
@@ -32,7 +32,7 @@ probes. Some use `execSync` on the main thread. Aggregate CPU/memory usage alone
 event-loop stalls. The system broadcaster and stats aggregator both request system info every five
 seconds; Raspberry's resolution fallback also called `si.graphics()` outside the existing cache.
 
-The narrow mitigation in this change shares a pending system-info sample among concurrent consumers
+The narrow mitigation merged in #1128 (`f5c7e2ba0`) shares a pending system-info sample among concurrent consumers
 and reuses cached graphics for the resolution fallback. It keeps fresh framebuffer/fbset checks and
 returns independent response models; successful and failed samples are released for the next poll.
 Callers share a ten-second timeout from the start of the sample. If it expires, subsequent callers
@@ -52,9 +52,10 @@ HTTP readback confirmed OFF; normal-runtime source and alias were subsequently o
 
 Remaining work, ordered by the measured blocking boundaries:
 
-- [ ] Avoid unchanged structural updates in Shelly discovery/`ensureProperty()` while preserving actual
-  metadata changes, validation and lifecycle locking. Verify that value-only reports do not take the
-  exclusive barrier or touch SQLite metadata.
+- [x] Implement and locally verify unchanged-metadata reports from Shelly `ensureProperty()` without
+  exclusive admission or SQLite metadata writes, preserving real changes, validation and lifecycle locking.
+- [ ] Review and deploy the unchanged-metadata optimization, then measure staging lock admission and
+  publication latency separately; the persistence delay remains a distinct boundary.
 - [ ] Separate live value publication from best-effort history persistence with explicit ordering,
   bounded buffering, shutdown and failure semantics. Preserve strict reconciliation, deletion/remap
   barriers, shared-writer mode and restart readback; do not replace awaited writes with unchecked
@@ -66,6 +67,26 @@ Remaining work, ordered by the measured blocking boundaries:
 - [ ] Complete successful/canonical Shelly replacement lifecycle coverage, then repeat stable real
   device, Apple Home and normal-upgrade acceptance. Failed-discovery cleanup from #1126 covers a
   different lifecycle boundary.
+
+## Unchanged Shelly metadata — 2026-09-29
+
+Shelly discovery supplies metadata together with each value, which previously selected the structural
+update path even when every metadata field matched. Its repository save invalidated the metadata cache,
+and the exclusive lifecycle barrier remained held while Influx persisted the value.
+
+An internal `skipUnchangedMetadata` option now lets `ensureProperty()` request comparison of the
+validated, mapped fields after shared lifecycle admission. Equal metadata uses the existing value path.
+Different metadata leaves shared admission and retries the original exclusive path with a fresh row;
+mapper hooks, strict persistence and timestamp/command-origin options retain their original behavior.
+The existing field comparison is shared between both paths. No schema or public API changes are needed.
+
+Local validation: 161 tests across property updates, Shelly discovery, real SQLite/HAP convergence,
+command dispatch and lifecycle locking. The integration fixture runs with durable value locks both off
+and on. It covers changed fields, invalid metadata, queued metadata changes/deletion, stale HomeKit
+reports and delayed storage: unrelated readers can enter, while structural mutations still wait.
+With warmed metadata and durable locks off, the metadata-bearing update performs no SQL. Discovery's
+preceding lookup can still read SQLite. Value persistence remains awaited, so this does not fix the
+measured Influx response delay or claim a staging latency result. Staging remains unmodified alpha.28.
 
 ## Metadata receive-path mitigation — 2026-09-29
 

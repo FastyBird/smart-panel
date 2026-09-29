@@ -16,6 +16,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { toInstance } from '../../../common/utils/transform.utils';
+import { DEVICES_SHELLY_NG_TYPE } from '../../../plugins/devices-shelly-ng/devices-shelly-ng.constants';
+import { CreateShellyNgChannelPropertyDto } from '../../../plugins/devices-shelly-ng/dto/create-channel-property.dto';
+import { UpdateShellyNgChannelPropertyDto } from '../../../plugins/devices-shelly-ng/dto/update-channel-property.dto';
+import { ShellyNgChannelPropertyEntity } from '../../../plugins/devices-shelly-ng/entities/devices-shelly-ng.entity';
 import { type StorageBackendBinding } from '../../storage/services/storage.service';
 import { ChannelCategory, DataTypeType, EventType, PermissionType, PropertyCategory } from '../devices.constants';
 import { DevicesException, DevicesValidationException } from '../devices.exceptions';
@@ -1206,6 +1210,52 @@ describe('ChannelsPropertiesService', () => {
 			expect(removalEntered).toBe(true);
 		});
 
+		it.each([false, true])('uses the real Shelly mapping with a changed category: %s', async (changed) => {
+			const property = toInstance(ShellyNgChannelPropertyEntity, {
+				...mockChannelProperty,
+				type: DEVICES_SHELLY_NG_TYPE,
+			});
+			const queryBuilder = {
+				innerJoinAndSelect: jest.fn().mockReturnThis(),
+				where: jest.fn().mockReturnThis(),
+				callListeners: jest.fn().mockReturnThis(),
+				getOne: jest.fn().mockResolvedValue(property),
+			};
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilder as any);
+			jest.spyOn(mapper, 'getMapping').mockReturnValue({
+				type: DEVICES_SHELLY_NG_TYPE,
+				class: ShellyNgChannelPropertyEntity,
+				createDto: CreateShellyNgChannelPropertyDto,
+				updateDto: UpdateShellyNgChannelPropertyDto,
+			});
+			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+			jest.spyOn(channelsPropertiesService, 'getOneOrThrow').mockResolvedValue(property);
+			jest.spyOn(repository, 'save').mockResolvedValue(property);
+			const exclusive = jest.spyOn(structureLock, 'runExclusive');
+			propertyValueService.writeWithState.mockResolvedValue({
+				changed: true,
+				state: new PropertyValueState('new value'),
+			});
+			const category = changed ? PropertyCategory.ON : property.category;
+			await channelsPropertiesService.update(
+				property.id,
+				{
+					type: DEVICES_SHELLY_NG_TYPE,
+					category,
+					identifier: property.identifier,
+					permissions: [...property.permissions],
+					data_type: property.dataType,
+					format: property.format,
+					step: property.step,
+					value: 'new value',
+				} as UpdateShellyNgChannelPropertyDto,
+				{ skipUnchangedMetadata: true },
+			);
+			expect(repository.save).toHaveBeenCalledTimes(changed ? 1 : 0);
+			expect(exclusive).toHaveBeenCalledTimes(changed ? 1 : 0);
+			expect(property.category).toBe(category);
+		});
+
 		it('uses one listener-free entity load and no repository save for a minimal value report', async () => {
 			const property = toInstance(MockChannelProperty, mockChannelProperty);
 			const queryBuilder = {
@@ -1669,44 +1719,47 @@ describe('ChannelsPropertiesService', () => {
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.CHANNEL_PROPERTY_UPDATED, property);
 		});
 
-		it('keeps strict persistence inside the confirmation gate', async () => {
-			const property = toInstance(MockChannelProperty, mockChannelProperty);
-			const storageBinding = {} as StorageBackendBinding;
-			jest.spyOn(mapper, 'getMapping').mockReturnValue({
-				type: 'mock',
-				class: MockChannelProperty,
-				createDto: CreateMockChannelPropertyDto,
-				updateDto: UpdateMockChannelPropertyDto,
-			});
-			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
-			jest.spyOn(channelsPropertiesService, 'getOneOrThrow').mockResolvedValue(property);
-			jest.spyOn(repository, 'save').mockResolvedValue(property);
-			propertyCommandWindowService.open({
-				canonicalTarget: { deviceId: 'device', channelId: mockChannel.id, propertyId: property.id },
-				requestedTargets: [{ deviceId: 'device', channelId: mockChannel.id, propertyId: property.id }],
-				commandedValue: 'commanded',
-				previousValue: 'previous',
-				ttlMs: 3_000,
-			});
-			propertyValueService.writeStrictWithState.mockResolvedValue({
-				changed: false,
-				state: new PropertyValueState('commanded'),
-			});
+		it.each([false, true])(
+			'keeps strict persistence inside the confirmation gate (metadata optimization: %s)',
+			async (skipUnchangedMetadata) => {
+				const property = toInstance(MockChannelProperty, mockChannelProperty);
+				const storageBinding = {} as StorageBackendBinding;
+				jest.spyOn(mapper, 'getMapping').mockReturnValue({
+					type: 'mock',
+					class: MockChannelProperty,
+					createDto: CreateMockChannelPropertyDto,
+					updateDto: UpdateMockChannelPropertyDto,
+				});
+				jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+				jest.spyOn(channelsPropertiesService, 'getOneOrThrow').mockResolvedValue(property);
+				jest.spyOn(repository, 'save').mockResolvedValue(property);
+				propertyCommandWindowService.open({
+					canonicalTarget: { deviceId: 'device', channelId: mockChannel.id, propertyId: property.id },
+					requestedTargets: [{ deviceId: 'device', channelId: mockChannel.id, propertyId: property.id }],
+					commandedValue: 'commanded',
+					previousValue: 'previous',
+					ttlMs: 3_000,
+				});
+				propertyValueService.writeStrictWithState.mockResolvedValue({
+					changed: false,
+					state: new PropertyValueState('commanded'),
+				});
 
-			await channelsPropertiesService.update(
-				property.id,
-				{ type: 'mock', value: 'commanded' } as UpdateMockChannelPropertyDto,
-				{ strictValuePersistence: true, storageBinding },
-			);
+				await channelsPropertiesService.update(
+					property.id,
+					{ type: 'mock', value: 'commanded' } as UpdateMockChannelPropertyDto,
+					{ strictValuePersistence: true, storageBinding, skipUnchangedMetadata },
+				);
 
-			expect(propertyValueService.writeStrictWithState).toHaveBeenCalledWith(
-				expect.objectContaining({ id: property.id }),
-				'commanded',
-				storageBinding,
-				undefined,
-			);
-			expect(propertyValueService.writeWithState).not.toHaveBeenCalled();
-		});
+				expect(propertyValueService.writeStrictWithState).toHaveBeenCalledWith(
+					expect.objectContaining({ id: property.id }),
+					'commanded',
+					storageBinding,
+					undefined,
+				);
+				expect(propertyValueService.writeWithState).not.toHaveBeenCalled();
+			},
+		);
 
 		it('keeps strict compare-and-set persistence inside the confirmation gate', async () => {
 			const property = toInstance(MockChannelProperty, mockChannelProperty);
@@ -2181,42 +2234,50 @@ describe('ChannelsPropertiesService', () => {
 		// field it did not — which is only decidable once the two are merged, and only useful if that
 		// happens before anything is written.
 
-		it('should call the mapping beforeUpdate hook with the merged row, before saving it', async () => {
-			const beforeUpdate = jest.fn().mockResolvedValue(undefined);
+		it.each([false, true])(
+			'calls beforeUpdate before saving the merged row (metadata optimization: %s)',
+			async (skipUnchangedMetadata) => {
+				const beforeUpdate = jest.fn().mockResolvedValue(undefined);
 
-			jest.spyOn(mapper, 'getMapping').mockReturnValue({
-				type: 'mock',
-				class: MockChannelProperty,
-				createDto: CreateMockChannelPropertyDto,
-				updateDto: UpdateMockChannelPropertyDto,
-				beforeUpdate,
-			});
+				jest.spyOn(mapper, 'getMapping').mockReturnValue({
+					type: 'mock',
+					class: MockChannelProperty,
+					createDto: CreateMockChannelPropertyDto,
+					updateDto: UpdateMockChannelPropertyDto,
+					beforeUpdate,
+				});
 
-			jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
+				jest.spyOn(dataSource, 'getRepository').mockReturnValue(repository);
 
-			const queryBuilderMock: any = {
-				innerJoinAndSelect: jest.fn().mockReturnThis(),
-				leftJoinAndSelect: jest.fn().mockReturnThis(),
-				where: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty)),
-			};
+				const queryBuilderMock: any = {
+					innerJoinAndSelect: jest.fn().mockReturnThis(),
+					leftJoinAndSelect: jest.fn().mockReturnThis(),
+					where: jest.fn().mockReturnThis(),
+					getOne: jest.fn().mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty)),
+				};
 
-			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
-			jest.spyOn(repository, 'save').mockResolvedValue(toInstance(ChannelPropertyEntity, mockChannelProperty));
+				jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(queryBuilderMock);
+				jest.spyOn(repository, 'save').mockResolvedValue(toInstance(ChannelPropertyEntity, mockChannelProperty));
 
-			await channelsPropertiesService.update(mockChannelProperty.id, {
-				type: 'mock',
-				name: 'New name',
-			} as UpdateMockChannelPropertyDto);
+				await channelsPropertiesService.update(
+					mockChannelProperty.id,
+					{
+						type: 'mock',
+						name: 'New name',
+						value: 'new value',
+					} as UpdateMockChannelPropertyDto,
+					{ skipUnchangedMetadata },
+				);
 
-			expect(beforeUpdate).toHaveBeenCalledTimes(1);
-			// The merged row: the field the PATCH sent, on the entity that was loaded from storage.
-			expect((beforeUpdate.mock.calls[0][0] as MockChannelProperty).name).toBe('New name');
-			expect((beforeUpdate.mock.calls[0][0] as MockChannelProperty).id).toBe(mockChannelProperty.id);
-			expect(beforeUpdate.mock.invocationCallOrder[0]).toBeLessThan(
-				(repository.save as jest.Mock).mock.invocationCallOrder[0],
-			);
-		});
+				expect(beforeUpdate).toHaveBeenCalledTimes(1);
+				// The merged row: the field the PATCH sent, on the entity that was loaded from storage.
+				expect((beforeUpdate.mock.calls[0][0] as MockChannelProperty).name).toBe('New name');
+				expect((beforeUpdate.mock.calls[0][0] as MockChannelProperty).id).toBe(mockChannelProperty.id);
+				expect(beforeUpdate.mock.invocationCallOrder[0]).toBeLessThan(
+					(repository.save as jest.Mock).mock.invocationCallOrder[0],
+				);
+			},
+		);
 
 		it('should leave the row untouched when the beforeUpdate hook rejects it', async () => {
 			jest.spyOn(mapper, 'getMapping').mockReturnValue({
