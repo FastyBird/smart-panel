@@ -48,12 +48,12 @@ const PROPERTY_ID = '550e8400-e29b-41d4-a716-446655440003';
  * rather than assumed.
  */
 describe('ValidateDeviceNotHidden on the device selection DTOs', () => {
-	let devicesService: { findOne: jest.Mock };
+	let devicesService: { findOne: jest.Mock; exists: jest.Mock };
 	let channelsService: { findOne: jest.Mock };
 	let channelsPropertiesService: { findOne: jest.Mock };
 
 	beforeAll(() => {
-		devicesService = { findOne: jest.fn() };
+		devicesService = { findOne: jest.fn(), exists: jest.fn() };
 		channelsService = { findOne: jest.fn() };
 		channelsPropertiesService = { findOne: jest.fn() };
 
@@ -106,6 +106,9 @@ describe('ValidateDeviceNotHidden on the device selection DTOs', () => {
 		const hiddenDevice = Object.assign(new DeviceEntity(), { id: HIDDEN_DEVICE_ID, hidden: true });
 		const channel = Object.assign(new ChannelEntity(), { id: CHANNEL_ID, device: visibleDevice });
 
+		devicesService.exists.mockImplementation((id: string) =>
+			Promise.resolve([VISIBLE_DEVICE_ID, HIDDEN_DEVICE_ID].includes(id)),
+		);
 		devicesService.findOne.mockImplementation((id: string) => {
 			if (id === HIDDEN_DEVICE_ID) {
 				return Promise.resolve(hiddenDevice);

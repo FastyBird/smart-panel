@@ -84,6 +84,7 @@ describe('DevicesChannelsController', () => {
 				{
 					provide: DevicesService,
 					useValue: {
+						exists: jest.fn().mockResolvedValue(true),
 						findAll: jest.fn().mockResolvedValue([toInstance(DeviceEntity, mockDevice)]),
 						findOne: jest.fn().mockResolvedValue(toInstance(DeviceEntity, mockDevice)),
 						create: jest.fn().mockResolvedValue(toInstance(DeviceEntity, mockDevice)),
@@ -94,6 +95,7 @@ describe('DevicesChannelsController', () => {
 				{
 					provide: ChannelsService,
 					useValue: {
+						exists: jest.fn().mockResolvedValue(true),
 						findAll: jest.fn().mockResolvedValue([toInstance(ChannelEntity, mockChannel)]),
 						findOne: jest.fn().mockResolvedValue(toInstance(ChannelEntity, mockChannel)),
 						create: jest.fn().mockResolvedValue(toInstance(ChannelEntity, mockChannel)),

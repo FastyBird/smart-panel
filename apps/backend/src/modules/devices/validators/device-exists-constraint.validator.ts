@@ -18,10 +18,7 @@ export class DeviceExistsConstraintValidator implements ValidatorConstraintInter
 	async validate(deviceId: string | undefined): Promise<boolean> {
 		if (!deviceId) return false; // Prevent empty values
 
-		// Check if the channel exists and belongs to the device
-		const deviceExists = await this.devicesService.findOne(deviceId);
-
-		return !!deviceExists;
+		return this.devicesService.exists(deviceId);
 	}
 
 	defaultMessage(args: ValidationArguments): string {

@@ -221,10 +221,16 @@ export class PropertyCommandDispatchService {
 			return null;
 		}
 
-		const sourceChannelId = getEntityId(sourceProperty.channel);
-		const sourceChannel = sourceChannelId === null ? null : await this.channelsService.findOne(sourceChannelId);
-		const sourceDeviceId = sourceChannel === null ? null : getEntityId(sourceChannel.device);
-		const sourceDevice = sourceDeviceId === null ? null : await this.devicesService.findOne(sourceDeviceId);
+		// findOne already joins the channel and device in this fresh, barrier-protected read.
+		// Admission needs their identities/type, not another full graph and every sibling value.
+		const sourceChannel =
+			typeof sourceProperty.channel === 'string'
+				? await this.channelsService.findOne(sourceProperty.channel)
+				: (sourceProperty.channel ?? null);
+		const sourceDevice =
+			typeof sourceChannel?.device === 'string'
+				? await this.devicesService.findOne(sourceChannel.device)
+				: (sourceChannel?.device ?? null);
 
 		if (sourceChannel === null || sourceDevice === null) {
 			return null;
@@ -323,9 +329,6 @@ export class PropertyCommandDispatchService {
 		}
 	}
 }
-
-const getEntityId = <T extends { id: string }>(entity: T | string | null | undefined): string | null =>
-	typeof entity === 'string' ? entity : (entity?.id ?? null);
 
 const toTarget = ({
 	device,

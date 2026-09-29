@@ -183,6 +183,20 @@ export class ChannelsService {
 		};
 	}
 
+	/** Keeps the parent existence/ownership checks without hydrating property values. */
+	async exists(id: string, deviceId?: string): Promise<boolean> {
+		const query = this.repository
+			.createQueryBuilder('channel')
+			.innerJoin('channel.device', 'device')
+			.where('channel.id = :id', { id });
+
+		if (deviceId) {
+			query.andWhere('device.id = :deviceId', { deviceId });
+		}
+
+		return query.getExists();
+	}
+
 	async findOne<TChannel extends ChannelEntity>(
 		id: string,
 		deviceId?: string,

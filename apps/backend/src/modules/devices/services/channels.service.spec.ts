@@ -162,6 +162,7 @@ describe('ChannelsService', () => {
 				{
 					provide: ChannelsPropertiesService,
 					useValue: {
+						exists: jest.fn().mockResolvedValue(true),
 						create: jest.fn(() => {}),
 						// Reached by the rollback below: the properties created before a nested failure are
 						// read back and removed one by one, which is what answers the creations they already
@@ -194,6 +195,7 @@ describe('ChannelsService', () => {
 				{
 					provide: DevicesService,
 					useValue: {
+						exists: jest.fn().mockResolvedValue(true),
 						findOne: jest.fn().mockReturnValue(mockDevice),
 					},
 				},
