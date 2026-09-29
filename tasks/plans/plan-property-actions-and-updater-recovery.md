@@ -54,8 +54,9 @@ Remaining work, ordered by the measured blocking boundaries:
 
 - [x] Implement and locally verify unchanged-metadata reports from Shelly `ensureProperty()` without
   exclusive admission or SQLite metadata writes, preserving real changes, validation and lifecycle locking.
-- [ ] Review and deploy the unchanged-metadata optimization, then measure staging lock admission and
-  publication latency separately; the persistence delay remains a distinct boundary.
+- [x] Review and deploy the unchanged-metadata optimization in alpha.29 through the normal System API.
+- [ ] Measure staging lock admission and publication latency separately after restoring target readiness;
+  the persistence delay remains a distinct boundary.
 - [ ] Separate live value publication from best-effort history persistence with explicit ordering,
   bounded buffering, shutdown and failure semantics. Preserve strict reconciliation, deletion/remap
   barriers, shared-writer mode and restart readback; do not replace awaited writes with unchecked
@@ -87,7 +88,6 @@ passed SQLite integrity checks. The service journal recorded successful deactiva
 The original source identity remained missing and the alias remained unbound; a replacement switch:2
 property was observed. Independent device readback remained OFF. No physical command was sent, and
 there is no post-upgrade latency acceptance result. Raspbian image builds continued after server upgrade.
-
 
 A retained alpha.28 journal segment (03:36–11:10 local time) contained 94,524 connected, 94,520 disconnected
 and 135,437 reconnect-scheduled log records for the test Shelly, plus component RPC failures. These are
@@ -126,7 +126,9 @@ and on. It covers changed fields, invalid metadata, queued metadata changes/dele
 reports and delayed storage: unrelated readers can enter, while structural mutations still wait.
 With warmed metadata and durable locks off, the metadata-bearing update performs no SQL. Discovery's
 preceding lookup can still read SQLite. Value persistence remains awaited, so this does not fix the
-measured Influx response delay or claim a staging latency result. Staging remains unmodified alpha.28.
+measured Influx response delay or claim a staging latency result. During this local validation, staging
+remained on unmodified alpha.28. Alpha.29 was subsequently installed through one normal System API
+request, as recorded in the staging-readiness section above; physical latency acceptance remains open.
 
 ## Metadata receive-path mitigation — 2026-09-29
 
