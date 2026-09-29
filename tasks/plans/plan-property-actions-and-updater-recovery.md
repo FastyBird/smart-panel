@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.28 normal staging upgrade verified; metadata mitigation merged in #1127; persistence-gated publication and blocking system probes measured; redundant system probes mitigation merged in #1128; unchanged Shelly metadata optimization merged in #1129; alpha.29 release started; missing source/alias binding blocks physical latency trials; command latency and full client acceptance remain open
+**Status:** alpha.28 normal staging upgrade verified; metadata mitigation merged in #1127; persistence-gated publication and blocking system probes measured; redundant system probes mitigation merged in #1128; unchanged Shelly metadata optimization merged in #1129; alpha.29 normal staging upgrade verified; missing source/alias binding blocks physical latency trials; command latency and full client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
@@ -76,6 +76,18 @@ through the normal System upgrade. Before any upgrade or physical command, alpha
 showed the test source property missing, its virtual alias binding null, and the source device offline.
 Direct Shelly readback returned OFF. The baseline trial stopped before listener readiness and sent no
 command; it is not a latency sample. A consistent database/config backup and device inventory were saved.
+
+Alpha.29 was subsequently published and installed through one normal System API request. The first
+release attempt failed the npm visibility check after publishing the backend; the tarball was already
+available with the expected hash while package metadata returned 404. A failed-jobs-only retry completed
+publication after metadata became visible. Server and npm hashes matched for all five changed runtime
+files; the deployed files matched that verified artifact. The upgrade exposed STARTING, reached COMPLETE,
+released its worker lock, preserved all 111 device IDs and the unchanged schema/migration history, and
+passed SQLite integrity checks. The service journal recorded successful deactivation and restart.
+The original source identity remained missing and the alias remained unbound; a replacement switch:2
+property was observed. Independent device readback remained OFF. No physical command was sent, and
+there is no post-upgrade latency acceptance result. Raspbian image builds continued after server upgrade.
+
 
 A retained alpha.28 journal segment (03:36–11:10 local time) contained 94,524 connected, 94,520 disconnected
 and 135,437 reconnect-scheduled log records for the test Shelly, plus component RPC failures. These are
