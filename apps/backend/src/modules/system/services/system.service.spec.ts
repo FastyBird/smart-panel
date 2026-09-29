@@ -58,6 +58,7 @@ describe('SystemService', () => {
 
 	afterEach(() => {
 		jest.clearAllMocks();
+		jest.useRealTimers();
 	});
 
 	it('should be defined', () => {
@@ -67,6 +68,69 @@ describe('SystemService', () => {
 	});
 
 	describe('getSystemInfo', () => {
+		it('bounds a hung sample, rejects later callers without new probes and recovers after late completion', async () => {
+			jest.useFakeTimers();
+			let resolve: (info: SystemInfoDto) => void;
+			const sample = new Promise<SystemInfoDto>((done) => {
+				resolve = done;
+			});
+			const getInfo = jest.spyOn(platform, 'getSystemInfo').mockReturnValueOnce(sample);
+			const broadcast = service.broadcastSystemInfo();
+			const first = expect(service.getSystemInfo()).rejects.toThrow('probe timed out');
+
+			await jest.advanceTimersByTimeAsync(8_000);
+			const later = expect(service.getSystemInfo()).rejects.toThrow('probe timed out');
+			await jest.advanceTimersByTimeAsync(2_000);
+			await Promise.all([broadcast, first, later]);
+			expect(eventEmitter.emit).not.toHaveBeenCalled();
+
+			for (let i = 0; i < 3; i++) {
+				await jest.advanceTimersByTimeAsync(60_000);
+				await expect(service.getSystemInfo()).rejects.toThrow('probe timed out');
+			}
+			expect(getInfo).toHaveBeenCalledTimes(1);
+			expect(jest.getTimerCount()).toBe(0);
+
+			resolve(toInstance(SystemInfoDto, { cpuLoad: 10 }));
+			await jest.advanceTimersByTimeAsync(0);
+			expect(eventEmitter.emit).not.toHaveBeenCalled();
+			getInfo.mockResolvedValue(toInstance(SystemInfoDto, { cpuLoad: 20 }));
+			await expect(service.getSystemInfo()).resolves.toEqual(expect.objectContaining({ cpuLoad: 20 }));
+			expect(getInfo).toHaveBeenCalledTimes(2);
+			expect(jest.getTimerCount()).toBe(0);
+		});
+
+		it('handles a late probe rejection after timeout and permits a fresh sample', async () => {
+			jest.useFakeTimers();
+			let reject: (error: Error) => void;
+			const sample = new Promise<SystemInfoDto>((_resolve, fail) => {
+				reject = fail;
+			});
+			const getInfo = jest.spyOn(platform, 'getSystemInfo').mockReturnValueOnce(sample);
+			const timedOut = expect(service.getSystemInfo()).rejects.toThrow('probe timed out');
+
+			await jest.advanceTimersByTimeAsync(10_000);
+			await timedOut;
+			reject(new Error('late failure'));
+			await jest.advanceTimersByTimeAsync(0);
+
+			getInfo.mockResolvedValue(toInstance(SystemInfoDto, { cpuLoad: 20 }));
+			await expect(service.getSystemInfo()).resolves.toEqual(expect.objectContaining({ cpuLoad: 20 }));
+			expect(getInfo).toHaveBeenCalledTimes(2);
+			expect(jest.getTimerCount()).toBe(0);
+		});
+
+		it('does not retain a synchronously failing platform invocation', async () => {
+			const getInfo = jest.spyOn(platform, 'getSystemInfo').mockImplementationOnce(() => {
+				throw new Error('synchronous failure');
+			});
+
+			await expect(service.getSystemInfo()).rejects.toThrow('synchronous failure');
+			getInfo.mockResolvedValue(toInstance(SystemInfoDto, { cpuLoad: 20 }));
+			await expect(service.getSystemInfo()).resolves.toEqual(expect.objectContaining({ cpuLoad: 20 }));
+			expect(getInfo).toHaveBeenCalledTimes(2);
+		});
+
 		it('shares one pending sample between both broadcasts and HTTP consumers, then samples again', async () => {
 			let resolve: (info: SystemInfoDto) => void;
 			const pending = new Promise<SystemInfoDto>((done) => {

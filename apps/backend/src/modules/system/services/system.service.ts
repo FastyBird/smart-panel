@@ -9,6 +9,8 @@ import { PlatformService } from '../../platform/services/platform.service';
 import { NetworkStatsModel, SystemInfoModel, TemperatureInfoModel, ThrottleStatusModel } from '../models/system.model';
 import { EventType, SYSTEM_MODULE_NAME } from '../system.constants';
 
+const SYSTEM_INFO_TIMEOUT_MS = 10_000;
+
 @Injectable()
 export class SystemService {
 	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'SystemService');
@@ -22,19 +24,37 @@ export class SystemService {
 	async getSystemInfo(): Promise<SystemInfoModel> {
 		// The system and stats broadcasts run on the same five-second schedule. Share their
 		// expensive platform sample, including concurrent HTTP callers, only while it is pending.
-		const request = (this.systemInfoRequest ??= this.platformService.getSystemInfo());
+		const request = this.systemInfoRequest ?? this.startSystemInfoRequest();
+		const rawInfo = await request;
 
-		try {
-			const rawInfo = await request;
+		// Each consumer owns its model; sharing the sample must not share mutable responses.
+		return toInstance(SystemInfoModel, {
+			...rawInfo,
+			platform: this.platformService.getPlatformType(),
+		});
+	}
 
-			// Each consumer owns its model; sharing the sample must not share mutable responses.
-			return toInstance(SystemInfoModel, {
-				...rawInfo,
-				platform: this.platformService.getPlatformType(),
-			});
-		} finally {
+	private startSystemInfoRequest(): Promise<SystemInfoDto> {
+		const sample = this.platformService.getSystemInfo();
+		let timeout: ReturnType<typeof setTimeout>;
+		const request = new Promise<SystemInfoDto>((resolve, reject) => {
+			timeout = setTimeout(() => {
+				reject(new Error(`System information probe timed out after ${SYSTEM_INFO_TIMEOUT_MS} ms`));
+			}, SYSTEM_INFO_TIMEOUT_MS);
+			void sample.then(resolve, reject);
+		});
+
+		// The platform API cannot cancel its probes. Keep the rejected request while the actual
+		// sample still runs: later callers fail promptly instead of accumulating waiters or probes.
+		// Only real settlement permits a fresh sample; a late result never becomes a fresh response.
+		const release = (): void => {
+			clearTimeout(timeout);
 			if (this.systemInfoRequest === request) this.systemInfoRequest = null;
-		}
+		};
+		void sample.then(release, release);
+		this.systemInfoRequest = request;
+
+		return request;
 	}
 
 	async getThrottleStatus(): Promise<ThrottleStatusModel> {

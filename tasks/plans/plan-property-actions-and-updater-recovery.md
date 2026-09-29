@@ -35,8 +35,14 @@ seconds; Raspberry's resolution fallback also called `si.graphics()` outside the
 The narrow mitigation in this change shares a pending system-info sample among concurrent consumers
 and reuses cached graphics for the resolution fallback. It keeps fresh framebuffer/fbset checks and
 returns independent response models; successful and failed samples are released for the next poll.
+Callers share a ten-second timeout from the start of the sample. If it expires, subsequent callers
+fail promptly while the underlying platform promise remains pending, rather than attaching indefinitely
+or launching replacement probes. Late completion/rejection permits the next fresh sample and is handled
+without publishing an expired result. The platform interface does not support cancellation: a permanently
+hung sample still needs platform/process recovery, and a JavaScript timer cannot preempt synchronous
+main-thread blocking. This bounds asynchronous caller waiting, not the lifetime of every OS probe.
 It does **not** move all platform probes off the event loop or change persistence/lock semantics.
-Validation: 49 tests across system service/controller, platform service and Raspberry resolution suites;
+Validation: 52 tests across system service/controller, platform service and Raspberry resolution suites;
 backend type checking and focused linting. No staging latency improvement is claimed for this change
 before deployment. All temporary overlays, profiling and captures were removed, with alpha.28 restored.
 
