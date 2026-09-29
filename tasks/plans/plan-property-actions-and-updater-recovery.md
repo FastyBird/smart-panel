@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.28 normal staging upgrade verified; metadata mitigation merged in #1127; persistence-gated publication and blocking system probes measured; redundant system probes mitigation merged in #1128; unchanged Shelly metadata optimization merged in #1129; alpha.29 normal staging upgrade verified; missing source/alias binding blocks physical latency trials; command latency and full client acceptance remain open
+**Status:** alpha.28 normal staging upgrade verified; metadata mitigation merged in #1127; persistence-gated publication and blocking system probes measured; redundant system probes mitigation merged in #1128; unchanged Shelly metadata optimization merged in #1129; alpha.29 normal staging upgrade verified; partial-provisioning guard merged in #1130; canonical connection cleanup merged in the Shelly fork, backend lifecycle cleanup awaiting review; missing source/alias binding blocks physical latency trials; command latency and full client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
@@ -69,6 +69,53 @@ Remaining work, ordered by the measured blocking boundaries:
   device, Apple Home and normal-upgrade acceptance. Failed-discovery cleanup from #1126 covers a
   different lifecycle boundary.
 
+## Successful Shelly connection cleanup — 2026-09-29
+
+A real local WebSocket regression reproduced a separate leak: discovery of a device by its configured
+name resolves to an already-adopted canonical ID, replaces that instance, and previously left the old
+RPC socket connected. `Shellies.delete()` and `clear()` removed collection entries without destroying
+their transports. Backend delegate teardown only removes listeners, so it did not close those orphaned
+clients either. This establishes a lifecycle defect; it does not prove how many staging reconnect log
+records came from this path or that it explains all observed latency.
+
+The fix merged in [FastyBird/node-shellies-ds9#3](https://github.com/FastyBird/node-shellies-ds9/pull/3)
+as `ca42c0c8251a08c3985fce26425a4c2e55e7e753`. Removal/replacement now starts RPC destruction; clear
+also invalidates discovery loads already in progress. Destroyed clients reject late requests and ignore
+manual reconnects, including a connection attempt that was awaiting an old socket's close. Active
+clients retain ordinary network recovery. The ID returned by the device is consistently used to check
+adoption, including case-only discovery differences. Removal stays synchronous; it does not wait for
+all close handshakes. Cleanup errors use the library error event.
+
+Library validation: 51 tests across five suites, TypeScript build and full ESLint. The real socket test
+failed before the repair, then covered replacement, active-client network recovery, clear and stale
+request/reconnect attempts. Additional coverage includes clear during info/status/config loading,
+cleanup failures, throwing removal listeners and case-only IDs. Committed runtime artifacts were
+regenerated. The Smart Panel dependency pin and generated lockfile now select this merged revision.
+
+Backend shutdown also retained the database discovery listener and the mDNS discoverer. Those could
+feed new discoveries into the cleared instance. The connector now unregisters both discoverers before
+clearing devices, stops mDNS with a five-second bound, and releases discovery resources after a failed
+startup. Cleanup continues if mDNS stop rejects or times out. Pending backend discovery work checks its
+lifecycle generation after lookup/provisioning so it cannot attach an old delegate after stop/restart.
+Two service regressions first failed for the retained registrations on stop/startup failure. Tests also
+cover restarting, late lookup/provisioning completion, and rejected/timed-out mDNS shutdown.
+The low-risk review also identified an already-admitted insertion racing with detach. Four regression
+cases failed before the follow-up: normal/forced insertion, with successful/failed partial setup.
+The connector now tracks the admitted insertion and awaits settlement before delegate teardown;
+its lifecycle lock prevents restart until that cleanup completes. Generation checks still discard
+lookup/provisioning work which has not entered insertion. A rejected insertion is reported by the
+discovery queue and does not skip cleanup. This drain deliberately waits for completion rather than
+timing out and allowing that operation to mutate handler maps after restart.
+
+Backend validation: 100 tests across connector, delegate manager and provisioning suites; full backend
+type checking, focused ESLint/Prettier and diff checks passed.
+
+Staging remains on published alpha.29, which contains neither this connection fix nor #1130. After
+review/deployment, measure the connection count/reconnect rate, restore the deliberately recorded
+missing source/alias binding through the API, and repeat command timing. The old source identity was
+already lost before alpha.29; restoration must not be reported as identity preservation. Awaited Influx
+persistence and remaining synchronous probes are still independent latency work.
+
 ## Partial provisioning and staging readiness — 2026-09-29
 
 PR #1129 merged as `97bbc81e4` after successful CI and a latest-commit CodeRabbit assessment of
@@ -87,7 +134,8 @@ released its worker lock, preserved all 111 device IDs and the unchanged schema/
 passed SQLite integrity checks. The service journal recorded successful deactivation and restart.
 The original source identity remained missing and the alias remained unbound; a replacement switch:2
 property was observed. Independent device readback remained OFF. No physical command was sent, and
-there is no post-upgrade latency acceptance result. Raspbian image builds continued after server upgrade.
+there is no post-upgrade latency acceptance result. Raspbian image builds continued after server upgrade;
+all release jobs subsequently completed successfully on workflow attempt 2.
 
 A retained alpha.28 journal segment (03:36–11:10 local time) contained 94,524 connected, 94,520 disconnected
 and 135,437 reconnect-scheduled log records for the test Shelly, plus component RPC failures. These are
@@ -98,7 +146,7 @@ as a checksum-verified compressed archive. No credentials or full device invento
 Regression tests establish a destructive provisioning path independently: when a component RPC or
 property write rejects, `Promise.allSettled()` logs the failure, then stale-channel pruning treats
 unvisited channels as removed. This can delete existing switch/energy/power channels and their property
-identities. A guard now skips the final pruning pass if any component failed, including the separately
+identities. The guard merged in #1130 (`f41447a0b`) skips the final pruning pass if any component failed, including the separately
 handled device-power RPC. Successful component updates still apply; the next complete pass removes
 truly obsolete channels. Tests first failed on the original deletion calls and pass with the guard,
 including successful retry. Existing input preservation and complete provisioning tests remain covered.

@@ -512,8 +512,8 @@ importers:
         specifier: ^1.7.0
         version: 1.7.0
       shellies-ds9:
-        specifier: github:fastybird/node-shellies-ds9#273d243203fc89574cc4f0085e92393200922730
-        version: https://codeload.github.com/fastybird/node-shellies-ds9/tar.gz/273d243203fc89574cc4f0085e92393200922730
+        specifier: github:fastybird/node-shellies-ds9#ca42c0c8251a08c3985fce26425a4c2e55e7e753
+        version: https://codeload.github.com/fastybird/node-shellies-ds9/tar.gz/ca42c0c8251a08c3985fce26425a4c2e55e7e753
       socket.io:
         specifier: ^4.8.3
         version: 4.8.3
@@ -10657,8 +10657,8 @@ packages:
     resolution: {integrity: sha512-w1aiOKwKuRgtwAReIIj89puqg+I7GvX4IbLrvmhXbzQsj1+Zwi4VO3+fa6ZF91TWSjIxoEkKnMeHcLEODK5ZXA==}
     engines: {node: '>= 0.4'}
 
-  shellies-ds9@https://codeload.github.com/fastybird/node-shellies-ds9/tar.gz/273d243203fc89574cc4f0085e92393200922730:
-    resolution: {tarball: https://codeload.github.com/fastybird/node-shellies-ds9/tar.gz/273d243203fc89574cc4f0085e92393200922730}
+  shellies-ds9@https://codeload.github.com/fastybird/node-shellies-ds9/tar.gz/ca42c0c8251a08c3985fce26425a4c2e55e7e753:
+    resolution: {tarball: https://codeload.github.com/fastybird/node-shellies-ds9/tar.gz/ca42c0c8251a08c3985fce26425a4c2e55e7e753}
     version: 1.1.9
 
   shellies@1.7.0:
@@ -23784,7 +23784,7 @@ snapshots:
 
   shell-quote@1.10.0: {}
 
-  shellies-ds9@https://codeload.github.com/fastybird/node-shellies-ds9/tar.gz/273d243203fc89574cc4f0085e92393200922730:
+  shellies-ds9@https://codeload.github.com/fastybird/node-shellies-ds9/tar.gz/ca42c0c8251a08c3985fce26425a4c2e55e7e753:
     dependencies:
       '@types/multicast-dns': 7.2.4
       eventemitter3: 5.0.1

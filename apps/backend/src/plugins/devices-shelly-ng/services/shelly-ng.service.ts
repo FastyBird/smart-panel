@@ -4,6 +4,7 @@ import { Device, DeviceId, DeviceOptions, MdnsDeviceDiscoverer, Shellies } from 
 import { Injectable, Optional } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { withTimeout } from '../../../common/utils/http.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -41,6 +42,8 @@ export class ShellyNgService extends BaseManagedExtensionService {
 
 	private shellies?: Shellies;
 
+	private mdnsDiscoverer?: MdnsDeviceDiscoverer;
+
 	private pluginConfig: ShellyNgConfigModel | null = null;
 
 	private pendingRestart: Promise<void> | null = null;
@@ -65,6 +68,7 @@ export class ShellyNgService extends BaseManagedExtensionService {
 	private readonly discoveryQueue: Device[] = [];
 	private processingDiscovery = false;
 	private discoveryGeneration = 0;
+	private delegateInsertion: ReturnType<DelegatesManagerService['insert']> | null = null;
 
 	constructor(
 		private readonly configService: ConfigService,
@@ -298,6 +302,7 @@ export class ShellyNgService extends BaseManagedExtensionService {
 					interface: this.config.mdns.interface ?? undefined,
 				});
 
+				this.mdnsDiscoverer = discoverer;
 				this.shellies.registerDiscoverer(discoverer);
 
 				discoverer.on('error', (error: Error): void => {
@@ -338,8 +343,14 @@ export class ShellyNgService extends BaseManagedExtensionService {
 
 			this.state = 'started';
 		} catch (e) {
+			try {
+				await this.doStop();
+			} catch (cleanupError) {
+				this.logger.error('Failed to clean up Shelly discovery after startup failure', {
+					message: String(cleanupError),
+				});
+			}
 			this.state = 'error';
-			this.shellies = undefined;
 			throw e;
 		}
 	}
@@ -369,6 +380,16 @@ export class ShellyNgService extends BaseManagedExtensionService {
 
 		this.shellies.removeAllListeners();
 
+		// Discoverers retain their registered Shellies instance. Disconnect them before
+		// clear(), otherwise a later announcement can create clients in a stopped instance.
+		this.shellies.unregisterDiscoverer(this.databaseDiscovererService);
+		const mdnsDiscoverer = this.mdnsDiscoverer;
+		this.mdnsDiscoverer = undefined;
+
+		if (mdnsDiscoverer) {
+			this.shellies.unregisterDiscoverer(mdnsDiscoverer);
+		}
+
 		this.shellies.clear();
 
 		this.shellies = undefined;
@@ -377,6 +398,19 @@ export class ShellyNgService extends BaseManagedExtensionService {
 		this.discoveryGeneration++;
 		this.processingDiscovery = false;
 
+		if (mdnsDiscoverer) {
+			try {
+				await withTimeout(mdnsDiscoverer.stop(), 5_000, 'mDNS discovery stop');
+			} catch (error) {
+				this.logger.error('Failed to stop mDNS device discovery', { message: String(error) });
+			}
+		}
+
+		// Generation checks stop work before insert(), but cannot cancel an insertion
+		// already populating handler maps. Drain it before clearing those maps; the
+		// service lifecycle lock also keeps restart from admitting a new insertion.
+		// processDiscoveryQueue reports any rejection; cleanup must still continue.
+		await this.delegateInsertion?.catch(() => {});
 		await this.delegatesRegistryService.detach();
 
 		// Mark all managed devices as UNKNOWN since the plugin is no longer running
@@ -441,7 +475,7 @@ export class ShellyNgService extends BaseManagedExtensionService {
 				}
 
 				try {
-					await this.processDiscoveredDevice(device);
+					await this.processDiscoveredDevice(device, generation);
 				} catch (err) {
 					const error = err as Error;
 
@@ -478,15 +512,23 @@ export class ShellyNgService extends BaseManagedExtensionService {
 	 * (e.g., device rebooted and reappeared on mDNS), triggers immediate
 	 * reconnection instead of waiting for backoff.
 	 */
-	private async processDiscoveredDevice(device: Device): Promise<void> {
+	private async processDiscoveredDevice(device: Device, generation: number): Promise<void> {
 		const sysDevice = await this.devicesService.findOneBy<ShellyNgDeviceEntity>(
 			'identifier',
 			device.id,
 			DEVICES_SHELLY_NG_TYPE,
 		);
 
+		if (this.discoveryGeneration !== generation) {
+			return;
+		}
+
 		if (sysDevice !== null) {
 			await this.deviceManagerService.createOrUpdate(sysDevice.id);
+		}
+
+		if (this.discoveryGeneration !== generation) {
+			return;
 		}
 
 		// Check if we already have a delegate — mDNS may re-discover a known device
@@ -495,20 +537,29 @@ export class ShellyNgService extends BaseManagedExtensionService {
 		// the WebSocket connects to the right address.
 		const existingDelegate = this.delegatesRegistryService.get(device.id);
 
-		if (existingDelegate && !existingDelegate.connected) {
+		const force = existingDelegate && !existingDelegate.connected;
+
+		if (force) {
 			this.logger.log(
 				`mDNS re-discovered disconnected device=${device.id}, re-creating delegate with current address`,
 				{
 					resource: device.id,
 				},
 			);
-
-			await this.delegatesRegistryService.insert(device, true);
-
-			return;
 		}
 
-		await this.delegatesRegistryService.insert(device);
+		const insertion = force
+			? this.delegatesRegistryService.insert(device, true)
+			: this.delegatesRegistryService.insert(device);
+		this.delegateInsertion = insertion;
+
+		try {
+			await insertion;
+		} finally {
+			if (this.delegateInsertion === insertion) {
+				this.delegateInsertion = null;
+			}
+		}
 	}
 
 	/**
