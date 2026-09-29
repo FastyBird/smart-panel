@@ -84,6 +84,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 	let values: PropertyValueService;
 	let propertyMetadata: PropertyMetadataService;
 	let windows: PropertyCommandWindowService;
+	let structure: DeviceStructureLockService;
 	let source: SimulatorChannelPropertyEntity;
 	let aliases: VirtualChannelPropertyEntity[];
 	let characteristics: Characteristic[];
@@ -129,7 +130,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		new ChannelPropertyEntitySubscriber(values, null as never, database);
 		events = new EventEmitter2();
 		windows = new PropertyCommandWindowService();
-		const structure = new DeviceStructureLockService();
+		structure = new DeviceStructureLockService();
 		const coordinator = new PropertyStateCoordinatorService();
 		const propertyMapper = new ChannelsPropertiesTypeMapperService();
 		propertyMapper.registerMapping({
@@ -308,6 +309,135 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			[true, false],
 		]);
 		await expectState(false, [false, true, false]);
+	});
+
+	function deferred(): { promise: Promise<void>; resolve: () => void } {
+		let resolve: () => void = () => {};
+		const promise = new Promise<void>((done) => {
+			resolve = done;
+		});
+		return { promise, resolve };
+	}
+
+	const metadataReport = (value: boolean, overrides: Partial<UpdateChannelPropertyDto> = {}) =>
+		properties.update(
+			source.id,
+			{
+				type: SIMULATOR_TYPE,
+				identifier: source.identifier,
+				permissions: [...source.permissions],
+				data_type: source.dataType,
+				format: source.format,
+				step: source.step,
+				value,
+				...overrides,
+			},
+			{ skipUnchangedMetadata: true },
+		);
+
+	it('converges metadata-bearing reports without structural writes or exclusive admission', async () => {
+		await characteristics[0].handleSetRequest(true);
+		const exclusive = jest.spyOn(structure, 'runExclusive');
+		const save = jest.spyOn(database.getRepository(SimulatorChannelPropertyEntity), 'save');
+		const query = jest.spyOn(database.createQueryRunner(), 'query');
+		await metadataReport(true);
+		await metadataReport(true);
+		// The old OFF report is suppressed during the confirmed ON command window.
+		await metadataReport(false);
+		expect(exclusive).not.toHaveBeenCalled();
+		expect(save).not.toHaveBeenCalled();
+		if (!locksEnabled) expect(query).not.toHaveBeenCalled();
+		query.mockRestore();
+		expect(published).toHaveLength(3);
+		// SET completion and provider confirmation may both notify true; neither emits stale false.
+		expect(notifications).toEqual([[true, true], [true]]);
+		await expectState(true, [false, true]);
+	});
+
+	it.each([
+		{ identifier: 'changed' },
+		{ permissions: [PermissionType.READ_ONLY] },
+		{ data_type: DataTypeType.STRING },
+		{ format: [0, 1] },
+		{ step: 1 },
+	])('persists changed metadata through exclusive admission: %j', async (overrides) => {
+		const exclusive = jest.spyOn(structure, 'runExclusive');
+		const save = jest.spyOn(database.getRepository(SimulatorChannelPropertyEntity), 'save');
+		await metadataReport(true, overrides);
+		expect(exclusive).toHaveBeenCalledTimes(1);
+		expect(save).toHaveBeenCalledTimes(1);
+		const row = await database.getRepository(SimulatorChannelPropertyEntity).findOneByOrFail({ id: source.id });
+		const { data_type: dataType, ...fields } = overrides as Partial<UpdateChannelPropertyDto>;
+		expect(row).toMatchObject({ ...fields, ...(dataType ? { dataType } : {}) });
+		exclusive.mockClear();
+		save.mockClear();
+		await metadataReport(true, overrides);
+		expect(exclusive).not.toHaveBeenCalled();
+		expect(save).not.toHaveBeenCalled();
+	});
+
+	it('rejects invalid metadata before writing a value', async () => {
+		const write = jest.spyOn(values, 'writeWithState');
+		await expect(metadataReport(true, { permissions: [] })).rejects.toThrow();
+		expect(write).not.toHaveBeenCalled();
+		await expectState(false, [false]);
+	});
+
+	it('admits readers during slow persistence but keeps structural mutations waiting', async () => {
+		const entered = deferred();
+		const release = deferred();
+		const originalWrite = memory.writePoints.bind(memory) as MemoryStorage['writePoints'];
+		jest.spyOn(memory, 'writePoints').mockImplementationOnce(async (...args) => {
+			entered.resolve();
+			await release.promise;
+			return originalWrite(...args);
+		});
+		const update = metadataReport(true);
+		await entered.promise;
+		let otherReaderEntered = false;
+		const reader = structure.runShared(() => {
+			otherReaderEntered = true;
+			return Promise.resolve();
+		});
+		let mutationEntered = false;
+		const mutation = structure.runExclusive(() => {
+			mutationEntered = true;
+			return Promise.resolve();
+		});
+		try {
+			await Promise.resolve();
+			expect(otherReaderEntered).toBe(true);
+			expect(mutationEntered).toBe(false);
+		} finally {
+			release.resolve();
+			await Promise.all([update, reader, mutation]);
+		}
+		expect(mutationEntered).toBe(true);
+		await expectState(true, [false, true]);
+	});
+
+	it.each(['change', 'delete'])('re-reads metadata after a queued structural %s', async (operation) => {
+		const entered = deferred();
+		const release = deferred();
+		const mutation = structure.runExclusive(async () => {
+			entered.resolve();
+			await release.promise;
+			const repository = database.getRepository(SimulatorChannelPropertyEntity);
+			if (operation === 'delete') await repository.delete(source.id);
+			else await repository.update(source.id, { identifier: 'changed while waiting' });
+		});
+		await entered.promise;
+		const update = metadataReport(true);
+		const result =
+			operation === 'delete'
+				? expect(update).rejects.toThrow('Channel property does not exist')
+				: expect(update).resolves.toMatchObject({ identifier: source.identifier });
+		release.resolve();
+		await mutation;
+		await result;
+		const row = await database.getRepository(SimulatorChannelPropertyEntity).findOneBy({ id: source.id });
+		if (operation === 'delete') expect(row).toBeNull();
+		else expect(row?.identifier).toBe(source.identifier);
 	});
 
 	it('refreshes property, channel and device metadata after structural writes and deletion', async () => {

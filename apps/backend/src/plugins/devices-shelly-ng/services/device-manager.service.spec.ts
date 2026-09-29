@@ -786,6 +786,7 @@ describe('DeviceManagerService property metadata', () => {
 		expect(mockChannelsPropertiesService.update).toHaveBeenCalledWith(
 			'property-1',
 			expect.objectContaining({ step: 1 }),
+			{ skipUnchangedMetadata: true },
 		);
 	});
 
@@ -800,6 +801,7 @@ describe('DeviceManagerService property metadata', () => {
 		expect(mockChannelsPropertiesService.update).toHaveBeenCalledWith(
 			'property-1',
 			expect.objectContaining({ step: null }),
+			{ skipUnchangedMetadata: true },
 		);
 	});
 });

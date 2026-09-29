@@ -2562,16 +2562,20 @@ export class DeviceManagerService {
 			prop = await this.channelsPropertiesService.update<
 				ShellyNgChannelPropertyEntity,
 				UpdateShellyNgChannelPropertyDto
-			>(prop.id, {
-				type: DEVICES_SHELLY_NG_TYPE,
-				category,
-				identifier: column === 'identifier' ? identifierOrCategory : null,
-				value: normalizedValue,
-				permissions: resolvedPermissions,
-				data_type: resolvedDataType,
-				format: resolvedFormat ?? null,
-				step: resolvedStep,
-			});
+			>(
+				prop.id,
+				{
+					type: DEVICES_SHELLY_NG_TYPE,
+					category,
+					identifier: column === 'identifier' ? identifierOrCategory : null,
+					value: normalizedValue,
+					permissions: resolvedPermissions,
+					data_type: resolvedDataType,
+					format: resolvedFormat ?? null,
+					step: resolvedStep,
+				},
+				{ skipUnchangedMetadata: true },
+			);
 		}
 
 		return prop;
