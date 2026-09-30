@@ -156,6 +156,18 @@ describe('PropertyCommandService', () => {
 		mockValue: 'Some value',
 	};
 
+	const deviceWithProperties = (
+		properties: ChannelPropertyEntity[] = [toInstance(MockChannelProperty, mockChannelProperty)],
+	): MockDevice => {
+		const device = toInstance(MockDevice, mockDevice);
+		const channel = toInstance(MockChannel, mockChannel);
+		channel.device = device;
+		channel.properties = properties;
+		device.channels = [channel];
+
+		return device;
+	};
+
 	const mockWsUser: ClientUserDto = {
 		id: null,
 		role: UserRole.USER,
@@ -257,7 +269,7 @@ describe('PropertyCommandService', () => {
 	};
 
 	it('evaluates authoritative readback against the merged property update', async () => {
-		const device = toInstance(MockDevice, mockDevice);
+		const device = deviceWithProperties();
 		const property = toInstance(MockChannelProperty, { ...mockChannelProperty, mockValue: 'readable' });
 		const update = {
 			type: 'mock',
@@ -279,7 +291,7 @@ describe('PropertyCommandService', () => {
 	});
 
 	it('treats API receipt preparation exceptions as command-only dispatches', async () => {
-		const device = toInstance(MockDevice, mockDevice);
+		const device = deviceWithProperties();
 		const channel = toInstance(MockChannel, mockChannel);
 		const property = toInstance(MockChannelProperty, mockChannelProperty);
 		jest.spyOn(devicesService, 'findOne').mockResolvedValue(device);
@@ -295,11 +307,13 @@ describe('PropertyCommandService', () => {
 	});
 
 	it('should validate and process a valid command', async () => {
-		const device = toInstance(MockDevice, mockDevice);
+		const device = deviceWithProperties();
 		const channel = toInstance(MockChannel, mockChannel);
 		channel.device = device;
 		const property = toInstance(MockChannelProperty, mockChannelProperty);
 		property.channel = channel;
+		channel.properties = [property];
+		device.channels = [channel];
 		jest.spyOn(devicesService, 'findOne').mockResolvedValue(device);
 		jest.spyOn(channelsService, 'findOne').mockResolvedValue(channel);
 		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(property);
@@ -394,7 +408,7 @@ describe('PropertyCommandService', () => {
 	});
 
 	it('should return an error if channel is not found', async () => {
-		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(deviceWithProperties());
 		jest.spyOn(channelsService, 'exists').mockResolvedValue(false);
 		jest.spyOn(channelsService, 'findOne').mockResolvedValue(null);
 
@@ -405,7 +419,7 @@ describe('PropertyCommandService', () => {
 	});
 
 	it('should return an error if property is not found', async () => {
-		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(deviceWithProperties());
 		jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
 		jest.spyOn(channelsPropertiesService, 'exists').mockResolvedValue(false);
 		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(null);
@@ -416,8 +430,52 @@ describe('PropertyCommandService', () => {
 		expect(result.results).toEqual('Invalid payload');
 	});
 
+	it.each(['channel', 'property'] as const)(
+		'rejects a %s removed or reparented after existence validation',
+		async (target) => {
+			const device = deviceWithProperties();
+			if (target === 'channel') {
+				device.channels = [];
+			} else {
+				device.channels[0].properties = [];
+				jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(null);
+			}
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(device);
+			jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
+
+			const result = await service.handleInternal(mockWsUser, validPayload);
+
+			expect(result).toEqual({
+				success: false,
+				results: [
+					{ device: device.id, success: false, reason: `${target === 'channel' ? 'Channel' : 'Property'} not found` },
+				],
+			});
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(mockPlatform.processBatch).not.toHaveBeenCalled();
+		},
+	);
+
+	it('rejects an invalid value after selecting the channel from the fresh device graph', async () => {
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(deviceWithProperties());
+		jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
+
+		jest
+			.spyOn(channelsPropertiesService, 'findOne')
+			.mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
+
+		const result = await service.handleInternal(mockWsUser, {
+			...validPayload,
+			properties: [{ ...validPayload.properties[0], value: 'not-a-boolean' }],
+		});
+
+		expect(result.success).toBe(false);
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		expect(mockPlatform.processBatch).not.toHaveBeenCalled();
+	});
+
 	it('should return an error if platform is not registered', async () => {
-		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(deviceWithProperties());
 		jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
 		jest
 			.spyOn(channelsPropertiesService, 'findOne')
@@ -435,7 +493,7 @@ describe('PropertyCommandService', () => {
 	});
 
 	it('should return an error if batch execution fails', async () => {
-		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(deviceWithProperties());
 		jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
 		jest
 			.spyOn(channelsPropertiesService, 'findOne')
@@ -459,6 +517,8 @@ describe('PropertyCommandService', () => {
 		const device = { ...mockDevice } as unknown as MockDevice;
 		const channel = { ...mockChannel, device } as unknown as MockChannel;
 		const property = { ...mockChannelProperty, channel } as unknown as MockChannelProperty;
+		channel.properties = [property];
+		device.channels = [channel];
 
 		jest.spyOn(devicesService, 'findOne').mockResolvedValue(device);
 		jest.spyOn(channelsService, 'findOne').mockResolvedValue(channel);
@@ -499,7 +559,9 @@ describe('PropertyCommandService', () => {
 	it('should reject writes to read-only properties before platform dispatch', async () => {
 		const readOnlyProperty = { ...mockChannelProperty, permissions: [PermissionType.READ_ONLY] };
 
-		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+		jest
+			.spyOn(devicesService, 'findOne')
+			.mockResolvedValue(deviceWithProperties([toInstance(MockChannelProperty, readOnlyProperty)]));
 		jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
 		jest
 			.spyOn(channelsPropertiesService, 'findOne')
@@ -518,7 +580,7 @@ describe('PropertyCommandService', () => {
 
 	describe('ACL permissions', () => {
 		beforeEach(() => {
-			jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(deviceWithProperties());
 			jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
 			jest
 				.spyOn(channelsPropertiesService, 'findOne')
@@ -618,7 +680,7 @@ describe('PropertyCommandService', () => {
 		});
 
 		it('should process commands to online devices normally', async () => {
-			jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(deviceWithProperties());
 			jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
 			jest
 				.spyOn(channelsPropertiesService, 'findOne')
@@ -692,7 +754,7 @@ describe('PropertyCommandService', () => {
 
 			jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(readOnlyProp);
 			jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
-			jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(deviceWithProperties());
 
 			const result = await service.executePropertyCommands([{ propertyId: 'prop-ro', value: true }]);
 
@@ -732,7 +794,7 @@ describe('PropertyCommandService', () => {
 			});
 
 			jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
-			jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(deviceWithProperties([propA, propB]));
 			jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
 			jest.spyOn(mockPlatform, 'processBatch').mockResolvedValue(true);
 
