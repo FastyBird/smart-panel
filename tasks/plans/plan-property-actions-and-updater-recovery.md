@@ -2,13 +2,46 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.31 normal upgrade and published-byte verification passed; command/discovery repairs deployed; bounded provider-history publication candidate locally verified; remaining Shelly reconnect/transport delay, SQL/probes and full client acceptance stay open
+**Status:** alpha.32 normal upgrade and history readback passed; one Apple Home cycle had no observed reversal; graceful shutdown exposed premature history-buffer closure, with a local lifecycle correction pending deployment; controlled latency and full client acceptance stay open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
 
 ## Live provider publication and history buffering — 2026-09-29
+
+### Alpha.32 staging verification and shutdown follow-up
+
+PR #1134 merged as `372d5775f83a0c77d8b573416e31aa926d31bd10` and shipped in alpha.32.
+The ordinary System API upgrade from alpha.31 completed once, preserved all 111 device identities,
+the source/alias binding and schema/migration hashes, and left no updater lock. Published server,
+npm and deployed runtime bytes match. All six measured history values survived a normal restart
+with exactly the same timestamps and values in a fixed query window.
+
+Six exploratory commands per version are **not a controlled before/after comparison**: baseline
+RPCs used the Shelly Wi-Fi address, whereas alpha.32 used its Ethernet address. Provider-notify to
+alias publication was 5.3–11.1 ms on alpha.32. Its slowest operation took 1.538 s, including 1.445 s
+between RPC reply and inbound status; pre-RPC outliers still reached 263 ms. A later spontaneous
+disconnect lasted about 27 seconds. These observations leave transport/reconnect and server work open.
+
+One real Apple Home ON/OFF cycle was recorded locally: 1,847 decoded frames showed OFF → ON → OFF
+without an observed reversal (maximum frame gap 83 ms). This is not rapid-toggle or full client
+acceptance. Recording was stopped; the source and alias ended online and OFF with no diagnostic
+runtime overrides. The staging backend remains the published alpha.32 build.
+
+The normal restart exposed 86 `Storage write buffer is closed` errors during final provider reports.
+`StorageService.onModuleDestroy` closed admission before the managed-service manager finished stopping
+producers. The correction moves closure to `onApplicationShutdown`; existing reverse-priority service
+shutdown and unregister/drain-before-destroy remain responsible for final writes. A real Nest application
+close regression covers empty and saturated buffers and verifies final history precedes backend destruction.
+This remains part of the existing provider-history work, not a new architecture workstream.
+
+- [x] Deploy the history-buffer candidate and verify normal upgrade and persisted history after restart.
+- [x] Capture one ordinary Apple Home ON/OFF cycle with no observed reversal.
+- [ ] Deploy the shutdown-order correction and verify final provider reports during a normal restart.
+- [ ] Complete controlled latency and rapid-toggle/full client acceptance.
+
+### Original implementation and alpha.31 observations
 
 PR #1133 merged as `97dcbd4b5eb0e1b1c052d4e6d6cddf3cb9d2b5db`; alpha.31 includes it and #1132.
 The ordinary System API upgrade from alpha.30 completed, preserved all 111 device IDs and the current
@@ -33,7 +66,8 @@ logged with existing best-effort semantics, without automatic retries or rolling
 
 Legacy awaited writes, strict reconciliation, durable snapshots and property deletion drain previously
 admitted history. Structural metadata/source changes drain under exclusive admission. Storage plugin
-unregistration is awaited before destroying its connection; module shutdown closes admission and drains.
+unregistration is awaited before destroying its connection. The premature module-shutdown closure in
+the original candidate is corrected by the lifecycle follow-up above.
 This is process-local buffering, not a durable outbox: abrupt process loss can lose queued history, and
 saturation/strict/lifecycle barriers still wait for storage. Ordinary history queries can lag live values.
 
@@ -42,7 +76,7 @@ provider path fails to publish before storage completes, while the candidate pub
 and HAP characteristics. Late history completion cannot replay an older visible state. Buffer tests cover
 capacity, batching, ordering, immutable snapshots, backend replacement, failure and shutdown; value tests
 cover strict/CAS/read/delete barriers and fresh-service readback after drain. Hardware verification of this
-candidate and the original full client matrix remain separate from these deterministic tests.
+candidate is recorded above; the original full client matrix remains separate from these deterministic tests.
 
 Local validation: 777 tests across 35 distinct suites (including the final HAP/readback cases), backend
 type checking/build, focused ESLint/Prettier and diff whitespace checks passed. No schema, dependency
@@ -191,8 +225,9 @@ Remaining work, ordered by the measured blocking boundaries:
 - [x] Implement and locally verify hook-free provider publication after bounded history admission in
   single-process mode, preserving strict reconciliation, deletion/remap barriers, shared-writer mode
   and fresh-service readback after drain. Keep the documented saturation/failure/shutdown semantics.
-- [ ] Review/deploy the history-buffer candidate and verify live latency and normal restart; strict,
-  metadata-hook and legacy callers intentionally retain awaited persistence.
+- [x] Review/deploy the history-buffer candidate and verify persisted values after normal restart.
+- [ ] Verify the shutdown-order correction on staging and complete controlled live latency acceptance;
+  strict, metadata-hook and legacy callers intentionally retain awaited persistence.
 - [ ] Attribute slow Influx HTTP responses using server/disk evidence and verify the above changes
   under a controlled delayed storage response, independently of Shelly network timing.
 - [ ] Remove remaining main-thread synchronous platform probes and measure their impact after the

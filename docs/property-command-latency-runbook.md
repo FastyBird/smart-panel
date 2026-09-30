@@ -309,8 +309,12 @@ metadata/source changes drain under the structure barrier. Managed storage plugi
 waiting for capacity. Unregistration removes the plugin from selection for new producers, then joins
 existing capacity-waiting producers and drains their admitted writes before permitting destruction.
 Replacement plugins never receive those older points. New buffered writes without an available
-destination reject admission and are logged by the best-effort value path. Graceful shutdown refuses new
-buffered admissions and waits for admitted writes to settle; it does not pretend a timed-out write has stopped.
+destination reject admission and are logged by the best-effort value path. During graceful shutdown,
+admission stays open while the managed-service manager stops producers in `onModuleDestroy`; their
+final reports drain during storage-plugin unregistration. Only `onApplicationShutdown`, after module
+destruction completes, closes the buffer and joins any remaining admitted writes. Closing in
+`onModuleDestroy` races with final provider reports regardless of managed-service priorities.
+Shutdown does not pretend a timed-out write has stopped.
 
 When measuring latency, distinguish provider receipt → live publication from history completion. Test
 slow/rejected storage, rapid opposite reports, strict reconciliation, remapping/deletion and shutdown.

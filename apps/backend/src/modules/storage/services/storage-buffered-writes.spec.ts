@@ -24,7 +24,7 @@ describe('Buffered storage destinations', () => {
 			getModuleConfig: () => ({ primaryStorage: 'primary', fallbackStorage: 'fallback' }),
 		} as unknown as ConfigService);
 	});
-	afterEach(async () => service.onModuleDestroy());
+	afterEach(async () => service.onApplicationShutdown());
 
 	it.each([
 		['primary', false],
