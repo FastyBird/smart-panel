@@ -7,7 +7,7 @@ import { ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity'
 import { IDevicePlatform } from '../platforms/device.platform';
 
 export interface DevicePlatformCommandBudget {
-	readonly device: DeviceEntity;
+	readonly device: Pick<DeviceEntity, 'id' | 'type'>;
 	readonly commandCount: number;
 }
 
@@ -33,7 +33,7 @@ export class PlatformRegistryService {
 		return true;
 	}
 
-	get(device: DeviceEntity): IDevicePlatform | null {
+	get(device: Pick<DeviceEntity, 'type'>): IDevicePlatform | null {
 		const platform = this.platforms[device.type];
 
 		if (!platform) {

@@ -479,7 +479,9 @@ export class PropertyCommandService {
 
 		for (const [deviceId, commands] of Object.entries(groupedProperties)) {
 			try {
-				const device = await this.devicesService.findOne(deviceId);
+				// Budget selection only needs the integration type. Execution still reloads the full
+				// device and canonical admission revalidates its property under the structure barrier.
+				const device = await this.devicesService.findIdentity(deviceId);
 
 				if (device !== null) {
 					executions.push({ device, commandCount: commands.length });

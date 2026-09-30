@@ -2,11 +2,55 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.32 normal upgrade and history readback passed; one Apple Home cycle had no observed reversal; graceful shutdown exposed premature history-buffer closure, with a local lifecycle correction pending deployment; controlled latency and full client acceptance stay open
+**Status:** alpha.34 normal upgrade and discovery-alias verification passed; 20 idle wire observations retained; command profiling identified redundant graph hydration for timeout budgets; candidate optimization pending review and deployment; poll-overlap and full client acceptance stay open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Alpha.34 command preparation profile — 2026-09-30
+
+PR #1136 shipped in alpha.34, whose complete release workflow finished successfully (19 jobs).
+The normal System upgrade preserved all 111 device identities, the source/alias binding and
+schema/migration hashes and left no updater lock. Published and deployed runtime hashes match.
+Live discovery retained the healthy Ethernet transport when the same Shelly announced a Wi-Fi
+alias: the short identity probe closed after verification without replacing the active connection.
+
+Twenty normal-runtime idle commands completed on the same Ethernet peer. Client packet to outgoing
+RPC had a median of 84.8 ms and a maximum of 636.2 ms; inbound notification to alias publication had
+a median of 5.5 ms and a maximum of 26.1 ms. Four commands spent 1.28–1.39 seconds between the RPC reply
+and inbound notification. No command had a qualified poll overlap. A separate pre-command peer
+precondition failure is retained alongside the successful samples; it is not a command result.
+
+A subsequent bounded observational preload correlated twelve further commands with packet captures.
+Each performed twelve SQL reads, including three full device graph loads, before outgoing RPC.
+JavaScript receipt to RPC send was 58–219 ms; structure/coordinator admission waits stayed below
+0.2 ms. Timeout-budget resolution alone took 9.9–18.4 ms (median 12.5 ms) and hydrated a device graph
+that execution immediately loaded again. Inclusive query spans overlap and must not be summed as
+exclusive wall time. These instrumented samples are diagnostic evidence, not a speedup benchmark.
+
+The candidate replaces only that budget lookup with a parameterized raw identity/discriminator read.
+Platform timeout selection needs the integration type and command count, not channels, values or
+connection state. Execution still loads the full device and canonical admission still performs its
+fresh checks under the structure barrier. Missing metadata or lookup failure retains the existing
+fallback timeout; metadata is not cached. Virtual forwarding retains its full graph because some
+source integrations inspect sibling channels/properties. This removes hydration from one query,
+not every command-path database read, and does not add property-value writes to SQLite.
+
+Validation: 121 tests across seven suites, backend type checking/build, focused ESLint/Prettier and
+diff whitespace checks passed. The command regression first failed against the original code with
+two full graph loads instead of one. Real SQLite tests cover the inheritance discriminator, missing
+IDs, bound input, deletion/replacement and zero entity-load subscriber calls for budget metadata.
+
+The twelve diagnostic commands all converged and restored OFF. Trace and packet evidence were
+archived locally; the preload, timer and owned remote files were removed. Normal published alpha.34
+restarted with no diagnostic environment overrides, matching runtime hashes, 111 devices, both target
+devices online and source/alias/direct switch OFF. The owned SSH forward was closed.
+
+- [x] Correlate command preparation spans with the actual outgoing RPC on staging.
+- [x] Remove full graph hydration from timeout-budget lookup and add regression coverage.
+- [ ] Review, deploy and measure the candidate under comparable normal-runtime conditions.
+- [ ] Complete actual poll-overlap and rapid-toggle/full client acceptance.
 
 ## Live provider publication and history buffering — 2026-09-29
 

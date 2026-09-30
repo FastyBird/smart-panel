@@ -183,6 +183,7 @@ describe('PropertyCommandService', () => {
 					useValue: {
 						exists: jest.fn().mockResolvedValue(true),
 						findOne: jest.fn(() => {}),
+						findIdentity: jest.fn().mockResolvedValue({ id: mockDevice.id, type: mockDevice.type }),
 					},
 				},
 				{
@@ -294,11 +295,14 @@ describe('PropertyCommandService', () => {
 	});
 
 	it('should validate and process a valid command', async () => {
-		jest.spyOn(devicesService, 'findOne').mockResolvedValue(toInstance(MockDevice, mockDevice));
-		jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
-		jest
-			.spyOn(channelsPropertiesService, 'findOne')
-			.mockResolvedValue(toInstance(MockChannelProperty, mockChannelProperty));
+		const device = toInstance(MockDevice, mockDevice);
+		const channel = toInstance(MockChannel, mockChannel);
+		channel.device = device;
+		const property = toInstance(MockChannelProperty, mockChannelProperty);
+		property.channel = channel;
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(device);
+		jest.spyOn(channelsService, 'findOne').mockResolvedValue(channel);
+		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(property);
 		jest.spyOn(platformRegistryService, 'get').mockReturnValue(mockPlatform);
 		jest.spyOn(mockPlatform, 'processBatch').mockResolvedValue(true);
 		const ttlSpy = jest
@@ -309,9 +313,12 @@ describe('PropertyCommandService', () => {
 
 		expect(result.success).toBe(true);
 		expect(result.results).toEqual([{ device: mockDevice.id, success: true }]);
+		// The timeout budget must not hydrate the same device graph before actual execution.
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		expect(devicesService.findOne).toHaveBeenCalledTimes(1);
 		const [budgets, defaultTtlMs] = ttlSpy.mock.calls[0];
 		expect(budgets).toHaveLength(1);
-		expect(budgets[0]?.device.id).toBe(mockDevice.id);
+		expect(budgets[0]?.device).toEqual({ id: mockDevice.id, type: mockDevice.type });
 		expect(budgets[0]?.commandCount).toBe(1);
 		expect(defaultTtlMs).toBe(DEFAULT_TTL_DEVICE_COMMAND);
 		// eslint-disable-next-line @typescript-eslint/unbound-method
@@ -332,6 +339,34 @@ describe('PropertyCommandService', () => {
 			properties: validPayload.properties,
 		});
 	});
+
+	it.each(['missing', 'read failure'] as const)(
+		'keeps execution validation when budget metadata has a %s',
+		async (mode) => {
+			const metadata = jest.spyOn(devicesService, 'findIdentity');
+			if (mode === 'missing') {
+				metadata.mockResolvedValue(null);
+			} else {
+				metadata.mockRejectedValue(new Error('metadata unavailable'));
+			}
+			jest.spyOn(devicesService, 'findOne').mockResolvedValue(null);
+
+			const result = await service.handleInternal(mockWsUser, validPayload);
+
+			expect(result).toEqual({
+				success: false,
+				results: [{ device: mockDevice.id, success: false, reason: 'Device not found' }],
+			});
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(intentsService.createIntent).toHaveBeenCalledWith(
+				expect.objectContaining({ ttlMs: DEFAULT_TTL_DEVICE_COMMAND }),
+			);
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(devicesService.findOne).toHaveBeenCalledWith(mockDevice.id);
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(mockPlatform.processBatch).not.toHaveBeenCalled();
+		},
+	);
 
 	it('should return an error if validation fails', async () => {
 		const invalidPayload = { properties: [{ device: 'invalid-id' }] };

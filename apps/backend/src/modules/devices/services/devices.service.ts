@@ -461,6 +461,18 @@ export class DevicesService {
 		return this.repository.createQueryBuilder('device').where('device.id = :id', { id }).getExists();
 	}
 
+	/** Fresh routing metadata only; does not hydrate relations or invoke value/status subscribers. */
+	async findIdentity(id: string): Promise<Pick<DeviceEntity, 'id' | 'type'> | null> {
+		const identity = await this.repository
+			.createQueryBuilder('device')
+			.select('device.id', 'id')
+			.addSelect('device.type', 'type')
+			.where('device.id = :id', { id })
+			.getRawOne<Pick<DeviceEntity, 'id' | 'type'>>();
+
+		return identity ?? null;
+	}
+
 	async findOne<TDevice extends DeviceEntity>(id: string, type?: string): Promise<TDevice | null> {
 		const mapping = type ? this.devicesMapperService.getMapping<TDevice, any, any>(type) : null;
 
