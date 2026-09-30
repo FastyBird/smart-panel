@@ -527,7 +527,9 @@ export class PropertyCommandService {
 		const propertyUpdates: Array<IDevicePropertyData> = [];
 
 		for (const command of commands) {
-			const channel = await this.channelsService.findOne(command.channel, device.id);
+			// findOne already loads the device's channels, controls and sibling properties.
+			// Reuse that fresh channel graph instead of hydrating it again for every command.
+			const channel = device.channels.find((candidate) => candidate.id === command.channel);
 
 			if (!channel) {
 				this.logger.warn(`Channel not found id=${command.channel} for deviceId=${device.id}`);
@@ -535,6 +537,7 @@ export class PropertyCommandService {
 				return { device: deviceId, success: false, reason: 'Channel not found' };
 			}
 
+			// Keep the property read: it also joins property.channel.device for platform consumers.
 			const property = await this.channelsPropertiesService.findOne(command.property, channel.id);
 
 			if (!property) {

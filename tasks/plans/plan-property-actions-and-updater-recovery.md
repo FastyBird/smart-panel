@@ -2,11 +2,58 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.34 normal upgrade and discovery-alias verification passed; 20 idle wire observations retained; command profiling identified redundant graph hydration for timeout budgets; candidate optimization pending review and deployment; poll-overlap and full client acceptance stay open
+**Status:** alpha.35 normal upgrade and ten-click Apple Home convergence verified; warm command profiling identifies another redundant channel graph load; focused optimization under validation; comparable latency, actual poll-overlap and remaining client acceptance stay open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Alpha.35 HomeKit convergence and command preparation — 2026-09-30
+
+PR #1137 shipped in alpha.35 through a successful 19-job release workflow and one normal System
+upgrade. A corrected observational preload preserved Nest listener metadata and queued-callback
+context. The valid manual test contained ten alternating clicks: all ten reached HomeKit ingress,
+outgoing Shelly RPC, successful replies and device notifications. Sequential video decoding found
+ten visual transitions without an extra reversal. One obsolete ON report arrived after the next
+OFF command and was correctly held; nine source publications therefore represent convergence, not
+a missing command. Two reply-to-notification wire intervals exceeded 500 ms. No actual poll overlap
+occurred during this test, so it does not complete the outstanding poll-overlap acceptance.
+
+The earlier observer-v1 run is excluded from acceptance because its wrapper removed Nest listener
+metadata. An initial broad profiling run overflowed its row cap; five complete root spans remain
+partial diagnostic evidence only. Those spans include slow SQL reads and a 29 ms structural barrier
+wait during a period of frequent metadata invalidation. Their cause has not been established.
+
+A narrower, bounded profile after a 120-second stable readiness gate captured four automatic HomeKit
+commands with no dropped records. Preparation before outgoing RPC took 46.77–66.46 ms, with ten SQL
+reads per command. Incoming value updates took 4.66–6.60 ms; structure admission took 0.08–0.11 ms.
+The first metadata read missed the cache and the next three hit; its generation stayed unchanged,
+with zero structural mutations during the 90-second capture. This does not establish a steady-state
+cache invalidation defect or justify removing the structural barrier.
+
+The next candidate reuses the channel already loaded by the execution-time device graph instead of
+hydrating that channel, its controls and sibling properties again for each command. The removed
+lookup took approximately 5–8 ms in these instrumented samples; this is not a demonstrated end-to-end
+speedup. The separate property read remains because it supplies the nested `property.channel.device`
+relation to platform consumers. Canonical admission, fresh property validation and virtual source
+forwarding remain in place. The real SQLite regression distinguishes four preparation SELECTs before
+this change from three afterward, before the separate dispatch/admission stage.
+
+Validation: all 563 backend unit suites passed (8,869 tests, one existing skip), as did all 23 E2E
+suites (256 tests), backend type checking/build, formatting of changed TypeScript and diff whitespace
+checks. Backend ESLint passed with three warnings in unchanged files. The SQLite regression failed against the
+original channel lookup (four SELECTs rather than three). Tests also compare the reused channel
+with the standalone query result and cover deletion, reparenting, permissions and invalid values.
+
+Both profiling runs were archived privately and their owned remote files, preload overrides, capture
+processes and rollback timers removed. Normal alpha.35 passed a subsequent 125-second stable
+111-device/online/OFF check; direct Shelly output was also OFF and the owned SSH forward was closed.
+The first post-restore readiness attempt timed out after a late reconnect and remains recorded.
+
+- [x] Verify ten-click Apple Home convergence with corrected observer metadata and sequential video.
+- [x] Separate warm command preparation from incoming-value commit and metadata cache behavior.
+- [ ] Review and deploy the channel graph reuse candidate, then measure comparable normal-runtime latency.
+- [ ] Complete actual poll-overlap and the remaining full-client acceptance before closing the epic.
 
 ## Alpha.34 command preparation profile — 2026-09-30
 
@@ -49,7 +96,8 @@ devices online and source/alias/direct switch OFF. The owned SSH forward was clo
 
 - [x] Correlate command preparation spans with the actual outgoing RPC on staging.
 - [x] Remove full graph hydration from timeout-budget lookup and add regression coverage.
-- [ ] Review, deploy and measure the candidate under comparable normal-runtime conditions.
+- [x] Review and deploy the budget metadata candidate (PR #1137, alpha.35).
+- [ ] Measure under comparable normal-runtime conditions; instrumented diagnostics alone do not prove a speedup.
 - [ ] Complete actual poll-overlap and rapid-toggle/full client acceptance.
 
 ## Live provider publication and history buffering — 2026-09-29
