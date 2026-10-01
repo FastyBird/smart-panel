@@ -2,11 +2,62 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.37 ordinary upgrade and release verified; full-device reads reproduce internal event-loop stalls; joined batching reduces measured stalls with a list-latency tradeoff; command-overlap and full-client acceptance remain open
+**Status:** alpha.38 release and System upgrade verified; command/catalog overlap confirms residual metadata-read contention; virtual source graph reuse prepared; full-client acceptance remains open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Alpha.38 command/catalog contention and virtual source graph reuse — 2026-10-01
+
+PR #1140 shipped in alpha.38; all 19 release jobs succeeded. One install through the public System
+API completed, preserved all 111 device identities, bindings, schema and migrations, and released
+the updater lock. Keep the three preceding read-only discovery failures: one client timeout and
+two attempts that did not offer the new version after manifest lookup failures. None submitted an
+install. The successful request explicitly named the independently verified published alpha.38,
+using the existing API option. This verifies installation, not reliable release discovery.
+
+Normal-runtime comparisons ran 20 commands per version during concurrent full-device API reads.
+Client-packet-to-RPC median/max changed from 1,064/3,883 ms on alpha.37 to 507/901 ms on alpha.38.
+The alpha.37 observer timed out on one command, whose complete wire path took 5,159 ms; that failed
+sample is retained. Alpha.38 completed all 20 without timeout. Median full-list client latency
+increased from 1,237 to 1,531 ms. Separate sessions and uncontrolled background work limit causal
+claims; client requests being in flight does not alone prove server-handler overlap.
+
+A subsequent observational trace captured ten commands, each with confirmed server catalog-handler
+overlap. All completed and returned OFF, with no missing wire paths, observer drops, packet drops or
+reconnects. Preparation took 227–607 ms (median 519 ms). Each command issued 11 structural SELECTs;
+the union of their native callback waits covered 188–482 ms. These waits include query queueing,
+execution, native result conversion and event-loop scheduling, not just SQLite engine execution.
+Structure/coordinator admission was below one millisecond. This is metadata reading, not a change
+to property-value persistence, and the instrumented timings are not a candidate speedup result.
+
+Incoming notification-to-alias publication took 4.7–139 ms. The largest sample included a first-use
+metadata-cache read taking 118 ms. Another sample waited 93 ms between packet arrival and the JS
+notification callback. Warm value publication remains on the memory-backed metadata path; Shelly
+RPC and reply-to-notification delays remain outside the repair scope. This session had no qualified
+poll-overlap commands and no Apple Home UI recording.
+
+Virtual forwarding also independently loaded the source channel immediately before loading the
+complete source device graph. The redundant channel read took 27 ms median and 125 ms maximum in
+this trace. The candidate derives the parent identity from the property's joined relations and
+reuses the channel from the fresh device graph. It keeps the ID-only relation fallback, full source
+property/device reads, online checks and canonical admission. A channel absent from the fresh graph
+rejects forwarding. No cache, schema, value-store, lock or process change is introduced.
+
+Validation: 83 tests in four suites cover forwarding, command admission and real SQLite/HomeKit
+convergence. The new real-SQLite graph regression preserves controls, sibling properties, units,
+current values, inheritance and parent relations; it fails on the previous implementation's extra
+channel lookup. Backend build and focused ESLint pass. Physical candidate timing remains pending.
+
+Diagnostic artifacts were archived and the owned preload, capture, rollback timer and namespace
+removed. Normal alpha.38 passed a further 126-second stable online/OFF gate and its SSH forward was
+closed. The original epic and remaining acceptance obligations stay open.
+
+- [x] Verify alpha.38 release, System installation and normal-runtime command/catalog comparison.
+- [x] Attribute residual preparation and incoming publication under confirmed catalog overlap.
+- [ ] Review/deploy source channel graph reuse and measure its normal-runtime effect.
+- [ ] Reduce remaining catalog contention and complete qualified poll-overlap/full-client acceptance.
 
 ## Alpha.37 internal API stalls and bounded device loading — 2026-10-01
 
@@ -48,7 +99,7 @@ commands were sent during either API strategy experiment, and the owned SSH forw
 
 - [x] Verify the alpha.37 release and ordinary upgrade, retaining comparison limits and failures.
 - [x] Reproduce catalog-read event-loop stalls and compare joined batching with unchanged metadata.
-- [ ] Review and deploy bounded catalog loading, then verify physical commands during catalog reads.
+- [x] Review and deploy bounded catalog loading, then verify physical commands during catalog reads (alpha.38; residual latency remains).
 - [ ] Complete qualified poll-overlap and full-client acceptance; leave the original epic open.
 
 ## Alpha.36 preparation tails and network-status sampling — 2026-10-01
