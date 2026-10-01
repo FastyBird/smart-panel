@@ -2,11 +2,54 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.36 normal upgrade and command comparison complete; intermittent preparation stalls remain; synchronous Linux network-status sampling reproduced and a nonblocking replacement verified in isolation; deployed latency and full-client acceptance remain open
+**Status:** alpha.37 ordinary upgrade and release verified; full-device reads reproduce internal event-loop stalls; joined batching reduces measured stalls with a list-latency tradeoff; command-overlap and full-client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Alpha.37 internal API stalls and bounded device loading — 2026-10-01
+
+PR #1139 shipped in alpha.37; all 19 release jobs succeeded and one ordinary System upgrade
+preserved device identities, bindings, schema and migrations and released the updater lock.
+Normal-runtime command comparisons did not establish an end-to-end speedup. A 1.56-second interval
+from an incoming Shelly notification on the Raspberry to publication remains an internal tail;
+the preceding network/device response interval is outside the repair scope.
+
+A targeted 20-command trace did not reproduce that incoming tail, but a separate full-device
+readback overlapped a 2.2-second event-loop stall. Four subsequent read-only API measurements
+reproduced 480–505 ms stalls during catalog loading. SQLite callback time includes worker execution,
+scheduling and native row conversion; it is not a measurement of pure SQLite engine time.
+These are structural catalog reads, not property-value persistence changes.
+
+An alternating `relationLoadStrategy: 'query'` experiment was rejected: it was slower and returned
+568 structural differences involving property units. A second six-request experiment retained the
+joined graph and afterLoad subscribers, loading eight devices per query. The three ordinary reads
+had maximum timer lag of 498–510 ms; the three batched reads had 81–158 ms. All six returned identical
+normalized structural data for 111 devices and 1,732 properties; changing values/statuses were
+excluded from that comparison. Client list latency increased from 1.12–1.29 seconds to
+1.31–2.71 seconds, with the first batched read slowest. All samples are retained, with no dropped
+observer records or capture packets. This is a small instrumented read-only comparison, not proof
+of improved command latency or attribution of the earlier 1.56-second tail.
+
+The candidate now uses sequential joined batches in `DevicesService.findAll`, retaining integration
+and visibility filters and afterLoad subscribers. Tests cover real SQLite entity inheritance,
+computed units/live values/statuses, controls/zones, disabled devices, deletion/visibility changes
+between reads, empty results, sequential bounded reads and failure propagation. One large device
+graph and final response serialization remain unbounded; the API remains a non-paginated response.
+No new transaction, value-storage behavior, lock, process or dependency is introduced.
+
+Validation: 129 targeted tests across five suites, the backend build, changed-file ESLint and diff
+checks passed. The bounded-batch regression fails against unchanged main and passes with the fix.
+
+All temporary staging instrumentation, captures, rollback timers and owned namespaces were archived
+and removed. Normal alpha.37 passed another 123-second stable 111-device/online/OFF gate; no physical
+commands were sent during either API strategy experiment, and the owned SSH forward was closed.
+
+- [x] Verify the alpha.37 release and ordinary upgrade, retaining comparison limits and failures.
+- [x] Reproduce catalog-read event-loop stalls and compare joined batching with unchanged metadata.
+- [ ] Review and deploy bounded catalog loading, then verify physical commands during catalog reads.
+- [ ] Complete qualified poll-overlap and full-client acceptance; leave the original epic open.
 
 ## Alpha.36 preparation tails and network-status sampling — 2026-10-01
 
@@ -66,7 +109,7 @@ owned remote namespaces were removed. Published alpha.36 resumed normally, passe
 - [x] Merge/release graph reuse and verify the ordinary alpha.36 upgrade.
 - [x] Retain comparable command observations, incomplete paths and precondition failures explicitly.
 - [x] Reproduce a blocking network-status probe and verify a focused asynchronous replacement.
-- [ ] Review/deploy the network-probe change and repeat normal-runtime command measurements.
+- [x] Review/deploy the network-probe change and repeat normal-runtime command measurements (alpha.37).
 - [ ] Explain remaining preparation/API tails and complete qualified poll-overlap/full-client acceptance.
 
 ## Alpha.35 HomeKit convergence and command preparation — 2026-09-30

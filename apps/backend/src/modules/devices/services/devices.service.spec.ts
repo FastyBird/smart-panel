@@ -9,7 +9,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { Expose, Transform } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -229,14 +229,28 @@ describe('DevicesService', () => {
 	});
 
 	describe('findAll', () => {
-		it('should return all devices', async () => {
-			const mockDevices = [mockDevice];
-			jest.spyOn(repository, 'find').mockResolvedValue(mockDevices.map((entity) => toInstance(MockDevice, entity)));
+		let ids: jest.Mock;
+		let selectOptions: jest.Mock;
 
-			const result = await service.findAll();
+		beforeEach(() => {
+			ids = jest.fn().mockResolvedValue([{ id: mockDevice.id }]);
+			selectOptions = jest.fn().mockReturnThis();
+			jest.spyOn(repository, 'createQueryBuilder').mockReturnValue({
+				setFindOptions: selectOptions,
+				select: jest.fn().mockReturnThis(),
+				getRawMany: ids,
+			} as never);
+		});
 
-			expect(result).toEqual(mockDevices.map((entity) => toInstance(MockDevice, entity)));
+		it('returns the complete joined graph with subscribers enabled', async () => {
+			const devices = [toInstance(MockDevice, mockDevice)];
+			jest.spyOn(repository, 'find').mockResolvedValue(devices);
+
+			await expect(service.findAll()).resolves.toEqual(devices);
+			expect(selectOptions).toHaveBeenCalledWith({ where: {}, loadEagerRelations: false });
 			expect(repository.find).toHaveBeenCalledWith({
+				where: { id: In([mockDevice.id]) },
+				relationLoadStrategy: 'join',
 				relations: [
 					'controls',
 					'controls.device',
@@ -251,23 +265,59 @@ describe('DevicesService', () => {
 			});
 		});
 
-		it('returns only visible devices when hidden=false', async () => {
-			const visibleDevice = toInstance(MockDevice, { ...mockDevice, hidden: false });
-
-			jest.spyOn(repository, 'find').mockResolvedValue([visibleDevice]);
-
-			const devices = await service.findAll(undefined, DeviceHiddenFilter.FALSE);
-
-			expect(repository.find).toHaveBeenCalledWith(expect.objectContaining({ where: { hidden: false } }));
-			expect(devices.every((device) => !device.hidden)).toBe(true);
+		it.each([DeviceHiddenFilter.FALSE, DeviceHiddenFilter.TRUE])('retains hidden=%s in both reads', async (hidden) => {
+			jest.spyOn(repository, 'find').mockResolvedValue([]);
+			await service.findAll(undefined, hidden);
+			expect(selectOptions).toHaveBeenCalledWith({
+				where: { hidden: hidden === DeviceHiddenFilter.TRUE },
+				loadEagerRelations: false,
+			});
+			expect(repository.find).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { id: In([mockDevice.id]), hidden: hidden === DeviceHiddenFilter.TRUE } }),
+			);
 		});
 
-		it('returns every device by default', async () => {
-			const spy = jest.spyOn(repository, 'find').mockResolvedValue([]);
+		it('does not load relations for an empty catalog', async () => {
+			ids.mockResolvedValue([]);
+			await expect(service.findAll()).resolves.toEqual([]);
+			expect(repository.find).not.toHaveBeenCalled();
+		});
 
-			await service.findAll();
+		it('waits for each bounded batch before starting another and retains every result', async () => {
+			const rows = Array.from({ length: 19 }, (_, i) => toInstance(MockDevice, { ...mockDevice, id: String(i) }));
+			ids.mockResolvedValue(rows.map(({ id }) => ({ id })));
+			let release: (devices: DeviceEntity[]) => void;
+			const first = new Promise<DeviceEntity[]>((resolve) => {
+				release = resolve;
+			});
+			const find = jest
+				.spyOn(repository, 'find')
+				.mockReturnValueOnce(first)
+				.mockResolvedValueOnce(rows.slice(8, 16))
+				.mockResolvedValueOnce(rows.slice(16));
+			const result = service.findAll();
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			expect(find).toHaveBeenCalledTimes(1);
+			release(rows.slice(0, 8));
+			await expect(result).resolves.toEqual(rows);
+			expect(find).toHaveBeenCalledTimes(3);
+			for (const [index, offset] of [0, 8, 16].entries()) {
+				expect(find).toHaveBeenNthCalledWith(
+					index + 1,
+					expect.objectContaining({ where: { id: In(rows.slice(offset, offset + 8).map(({ id }) => id)) } }),
+				);
+			}
+		});
 
-			expect(spy).toHaveBeenCalledWith(expect.not.objectContaining({ where: expect.anything() }));
+		it('rejects a failed batch instead of returning a partial catalog', async () => {
+			ids.mockResolvedValue(Array.from({ length: 17 }, (_, i) => ({ id: String(i) })));
+			const failure = new Error('read failed');
+			const find = jest
+				.spyOn(repository, 'find')
+				.mockResolvedValueOnce([toInstance(MockDevice, mockDevice)])
+				.mockRejectedValueOnce(failure);
+			await expect(service.findAll()).rejects.toBe(failure);
+			expect(find).toHaveBeenCalledTimes(2);
 		});
 	});
 
