@@ -53,9 +53,11 @@ verification of the network probe only: the candidate is not deployed in the run
 no end-to-end command improvement is claimed. Other synchronous systeminformation calls remain
 outside this focused change, including default-interface lookup inside `networkStats()`.
 
-Validation: 62 focused platform/system unit tests, the backend build, changed-file ESLint/Prettier
+Validation: 66 focused platform/system unit tests, the backend build, changed-file ESLint/Prettier
 and diff whitespace checks passed. Tests cover pending asynchronous probes, timeout/missing-command
-fallbacks, malformed routes, address changes, IPv6 fallback and cache expiry.
+fallbacks, malformed routes, address changes, IPv6 fallback and cache expiry. Review added alias-aware
+route matching with exact-name precedence and a colon boundary; its alias-only regression first
+failed against the original candidate by selecting the unrelated fallback interface.
 
 The profile was privately archived and hash-verified; its preload, capture, rollback timer and
 owned remote namespaces were removed. Published alpha.36 resumed normally, passed another stable

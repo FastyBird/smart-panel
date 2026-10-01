@@ -31,7 +31,14 @@ export async function readLinuxDefaultNetworkInterface(): Promise<DefaultNetwork
 				.filter((route: unknown): route is { dev: string } =>
 					Boolean(route && typeof route === 'object' && 'dev' in route && typeof route.dev === 'string'),
 				)
-				.map((route) => interfaces.find(({ name }) => name === route.dev))
+				.map((route) => {
+					const networkInterface =
+						interfaces.find(({ name }) => name === route.dev) ??
+						interfaces.find(({ name }) => name.startsWith(`${route.dev}:`));
+
+					// Address labels such as eth0:1 belong to the routed base interface eth0.
+					return networkInterface ? { ...networkInterface, name: route.dev } : undefined;
+				})
 				.find((networkInterface) => networkInterface !== undefined)
 		: undefined;
 	// Match the existing fallback: prefer the external IPv6 interface with the lowest

@@ -58,6 +58,38 @@ describe('readLinuxDefaultNetworkInterface', () => {
 		});
 	});
 
+	it('uses an alias-only routed interface and reports its base name', async () => {
+		jest.mocked(os.networkInterfaces).mockReturnValue({
+			wlan0: [address('192.0.2.10')],
+			'eth0:1': [address('192.0.2.20')],
+		});
+
+		await expect(readLinuxDefaultNetworkInterface()).resolves.toEqual({
+			iface: 'eth0',
+			ip4: '192.0.2.20',
+			ip6: '',
+			mac: '00:11:22:33:44:55',
+		});
+	});
+
+	it('prefers the exact routed interface even when an alias appears first', async () => {
+		jest.mocked(os.networkInterfaces).mockReturnValue({
+			'eth0:1': [address('192.0.2.30')],
+			eth0: [address('192.0.2.20')],
+		});
+
+		await expect(readLinuxDefaultNetworkInterface()).resolves.toMatchObject({ iface: 'eth0', ip4: '192.0.2.20' });
+	});
+
+	it.each(['eth01', 'eth01:1'])('does not confuse %s with an alias of eth0', async (name) => {
+		jest.mocked(os.networkInterfaces).mockReturnValue({
+			wlan0: [address('192.0.2.10')],
+			[name]: [address('192.0.2.30')],
+		});
+
+		await expect(readLinuxDefaultNetworkInterface()).resolves.toMatchObject({ iface: 'wlan0', ip4: '192.0.2.10' });
+	});
+
 	it('keeps the event loop available while the route probe is pending', async () => {
 		let finish: (value: { stdout: string; stderr: string }) => void;
 
