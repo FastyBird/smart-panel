@@ -25,7 +25,6 @@ import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 import { AUTH_MODULE_NAME, TokenOwnerType } from '../auth.constants';
-import { AccessTokenEntity } from '../entities/auth.entity';
 import { TokensService } from '../services/tokens.service';
 import { extractAccessTokenFromHeader, hashToken } from '../utils/token.utils';
 
@@ -192,16 +191,7 @@ export class AuthGuard implements CanActivate {
 		token: string,
 		userId: string,
 	): Promise<boolean> {
-		const storedAccessTokens = await this.tokensService.findAllByOwner<AccessTokenEntity>(userId, AccessTokenEntity);
-
-		let storedAccessToken: AccessTokenEntity | null = null;
-
-		for (const accessToken of storedAccessTokens) {
-			if (hashToken(token) === accessToken.hashedToken) {
-				storedAccessToken = accessToken;
-				break;
-			}
-		}
+		const storedAccessToken = await this.tokensService.findAccessTokenByOwnerAndHash(userId, hashToken(token));
 
 		if (!storedAccessToken) {
 			this.logger.warn('Access token not found in database');

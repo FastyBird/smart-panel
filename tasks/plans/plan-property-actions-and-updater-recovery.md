@@ -2,11 +2,67 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.38 release and System upgrade verified; command/catalog overlap confirms residual metadata-read contention; virtual source graph reuse prepared; full-client acceptance remains open
+**Status:** alpha.39 release and System upgrade verified; residual internal tails remain; bounded access-token lookup prepared after background-query attribution; full-client acceptance remains open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Alpha.39 background queries and bounded access-token lookup — 2026-10-01
+
+PR #1141 shipped in alpha.39. The release's first attempt failed on an upstream Flutter asset
+fetch and exhausted npm visibility polling after a successful publish. Both external prerequisites
+were rechecked, then only failed jobs were rerun once. All release jobs ultimately passed. One
+ordinary System upgrade completed, preserved 111 device identities/bindings/schema/migrations,
+matched published runtime hashes and released the updater lock.
+
+Normal-runtime catalog-load comparisons retained all 20 commands per version. Alpha.38 includes
+one observer timeout with a complete wire path, plus a separately identified continuation for the
+four commands not executed before that stop. Preparation median/max changed from 524/923 ms to
+480/1,960 ms on alpha.39. Incoming notification-to-alias maximum changed from 97 to 116 ms.
+The remaining 1.96-second preparation interval is internal, before Shelly RPC, and unresolved.
+Sequential sessions with uncontrolled background work do not establish a causal tail regression
+or improvement. Shelly/network response delays remain outside the repair scope.
+
+A subsequent bounded observational trace captured 20 successful commands under confirmed server
+catalog-handler overlap. Preparation was 271–681 ms (median 471 ms), with ten structural SELECTs
+per command; native callback-wait unions covered 170–494 ms. The previous 1.96-second tail did not
+reproduce. Incoming publication was 5–120 ms. No observer records or capture packets were dropped,
+and all wire paths were complete. The trace also recorded background SQL and GC without a CPU
+profiler; these instrumented timings are diagnostic, not a deployed candidate comparison.
+
+A recurring background query returned 805 access-token rows when authenticating each API request.
+Source inspection and an exact query-fingerprint match identified the all-owner token lookup in
+HTTP authentication; WebSocket authentication used the same pattern. A separate read-only probe on
+the Raspberry compared five alternating full-owner and owner/hash lookups, with 806 credentials
+at that later point. Full lookup took 227–255 ms; targeted lookup took 2–24 ms and returned one raw
+row. The resulting access token, owner and refresh graph matched in every pair. SQLite selected
+its existing discriminator index in both plans; the improvement does not depend on claiming hash
+index use. This probe does not prove the cause of the original tail or end-to-end command gains.
+
+The candidate filters by the JWT subject and presented token hash before loading relations in HTTP
+and WebSocket user authentication. It preserves subtype filtering, complete refresh children,
+revocation checks, current user lookup and JWT validation. No credential cache, schema/index,
+property-value persistence or process-model change is introduced. Real-SQLite tests cover 805
+credentials, owner/hash/type isolation, fresh revocation/deletion, invalid refresh-child counts and
+query failures. Guard/WebSocket tests retain rejection and authentication behavior.
+
+Validation: all 568 backend unit suites passed (8,914 tests, one existing skip) and all 23 E2E
+suites passed (256 tests). Build, changed-file lint/formatting and diff checks passed. The real-SQLite
+regression fails with the historical all-owner lookup (805 raw rows instead of one). Full backend
+lint reports three warnings and full formatting fails on 11 migration/test files; all those files
+are byte-identical to main. Both full test runs report a worker teardown warning after passing.
+No admin, panel or generated API surface changed.
+
+All temporary instrumentation, captures, rollback timer and owned remote namespace were archived
+and removed. Normal alpha.39 passed a further 126-second stable 111-device online/OFF gate and the
+owned SSH forward was closed. The original epic remains open.
+
+- [x] Verify alpha.39 release, normal System upgrade and command/catalog comparison.
+- [x] Capture background SQL/GC and reproduce the excess authentication lookup independently.
+- [x] Prepare a bounded credential lookup with security and real-SQLite regression coverage.
+- [ ] Review/deploy the credential lookup and measure normal-runtime command impact.
+- [ ] Explain the remaining internal tail and complete qualified poll-overlap/full-client acceptance.
 
 ## Alpha.38 command/catalog contention and virtual source graph reuse — 2026-10-01
 
@@ -56,7 +112,7 @@ closed. The original epic and remaining acceptance obligations stay open.
 
 - [x] Verify alpha.38 release, System installation and normal-runtime command/catalog comparison.
 - [x] Attribute residual preparation and incoming publication under confirmed catalog overlap.
-- [ ] Review/deploy source channel graph reuse and measure its normal-runtime effect.
+- [x] Review/deploy source channel graph reuse and measure its normal-runtime effect (alpha.39; tail remains).
 - [ ] Reduce remaining catalog contention and complete qualified poll-overlap/full-client acceptance.
 
 ## Alpha.37 internal API stalls and bounded device loading — 2026-10-01

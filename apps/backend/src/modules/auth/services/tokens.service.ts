@@ -96,6 +96,19 @@ export class TokensService {
 		return tokens;
 	}
 
+	async findAccessTokenByOwnerAndHash(ownerId: string, hashedToken: string): Promise<AccessTokenEntity | null> {
+		// Filter the presented credential before hydrating its owner and refresh relations.
+		// Keep all refresh children so the existing refreshToken invariant/revocation check still applies.
+		return this.dataSource
+			.getRepository(AccessTokenEntity)
+			.createQueryBuilder('token')
+			.leftJoinAndSelect('token.owner', 'owner')
+			.leftJoinAndSelect('token.children', 'children')
+			.where('owner.id = :ownerId', { ownerId })
+			.andWhere('token.hashedToken = :hashedToken', { hashedToken })
+			.getOne();
+	}
+
 	async findAllByOwnerType(ownerType: TokenOwnerType): Promise<LongLiveTokenEntity[]> {
 		this.logger.debug(`Fetching all long-live tokens by owner type=${ownerType}`);
 
