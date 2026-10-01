@@ -15,6 +15,7 @@ import { ThrottleStatusDto } from '../dto/throttle-status.dto';
 import { WifiNetworksDto } from '../dto/wifi-networks.dto';
 import { PLATFORM_MODULE_NAME } from '../platform.constants';
 import { PlatformException } from '../platform.exceptions';
+import { DefaultNetworkInterface, readLinuxDefaultNetworkInterface } from '../utils/linux-network-interface.utils';
 
 const execFileAsync = promisify(execFile);
 
@@ -35,9 +36,7 @@ export abstract class Platform {
 
 	private siOsInfoCache: CacheEntry<Systeminformation.OsData> | null = null;
 	private siGraphicsCache: CacheEntry<Systeminformation.GraphicsData> | null = null;
-	private siNetworkInterfacesCache: CacheEntry<
-		Systeminformation.NetworkInterfacesData | Systeminformation.NetworkInterfacesData[]
-	> | null = null;
+	private siNetworkInterfacesCache: CacheEntry<DefaultNetworkInterface | DefaultNetworkInterface[]> | null = null;
 	private siFsSizeCache: CacheEntry<Systeminformation.FsSizeData[]> | null = null;
 	private networkModeCache: (CacheEntry<string> & { ip4: string }) | null = null;
 	private static readonly NETWORK_MODE_CACHE_TTL_MS = 30_000; // 30 seconds
@@ -66,14 +65,15 @@ export abstract class Platform {
 		return data;
 	}
 
-	protected async cachedNetworkInterfaces(): Promise<
-		Systeminformation.NetworkInterfacesData | Systeminformation.NetworkInterfacesData[]
-	> {
+	protected async cachedNetworkInterfaces(): Promise<DefaultNetworkInterface | DefaultNetworkInterface[]> {
 		if (this.siNetworkInterfacesCache && Date.now() - this.siNetworkInterfacesCache.at < Platform.SLOW_CACHE_TTL_MS) {
 			return this.siNetworkInterfacesCache.data;
 		}
 
-		const data = await si.networkInterfaces('default');
+		// On Linux this otherwise runs synchronous shell probes for every interface,
+		// blocking property commands even though systeminformation returns a Promise.
+		const data =
+			os.platform() === 'linux' ? await readLinuxDefaultNetworkInterface() : await si.networkInterfaces('default');
 
 		this.siNetworkInterfacesCache = { data, at: Date.now() };
 

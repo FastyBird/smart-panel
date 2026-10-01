@@ -2,11 +2,70 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.35 normal upgrade and ten-click Apple Home convergence verified; warm command profiling identifies another redundant channel graph load; focused optimization under validation; comparable latency, actual poll-overlap and remaining client acceptance stay open
+**Status:** alpha.36 normal upgrade and command comparison complete; intermittent preparation stalls remain; synchronous Linux network-status sampling reproduced and a nonblocking replacement verified in isolation; deployed latency and full-client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Alpha.36 preparation tails and network-status sampling — 2026-10-01
+
+PR #1138 shipped in alpha.36 through a successful 19-job release and one normal System upgrade.
+All 111 device identities, the source/alias binding, schema and migrations were preserved; published
+and deployed runtime hashes match and the updater lock was released.
+
+Twenty normal-runtime commands before and after the upgrade measured median client-packet-to-RPC
+preparation of 84.44 ms and 60.47 ms respectively. The candidate maximum was 755.82 ms, with the two
+largest stalls on immediate OFF restores. Separate sessions and uncontrolled background work prevent
+a causal speedup claim. Baseline downstream timing is complete for 18 commands: one capture started
+mid-frame, so both downstream paths from that pair remain excluded. All 20 candidate paths are
+complete, with one passive-wire poll overlap; this is not the full collector-qualified matrix.
+One 8-second API precondition timeout occurred before any command/capture in that attempt and remains
+unexplained. The five remaining pairs ran under a separately identified continuation, without
+replacing or hiding the failed precondition.
+
+A new bounded profile, after 126 seconds of stable readiness, captured ten further ON/OFF pairs.
+All 20 commands, RPC replies, notifications and source/alias publications completed; there were no
+dropped observer records or kernel packets. Wire preparation ranged from 42.43–169.48 ms
+(median 59.97 ms), so the previous 562/756 ms tails were not reproduced. The slowest internal path
+was 165.26 ms; its query waits overlapped sensor/lighting graph reads, while structure/coordinator
+admission stayed below 0.26 ms and overlapping GC took 9.55 ms. This is diagnostic correlation,
+not proof that previous value-event work caused the earlier tails. Metadata generation did not
+change. Observed SQL UPDATEs targeted space metadata and buddy suggestions, not property values.
+
+CPU sampling identified synchronous systeminformation network probes during a separate roughly
+607 ms event-loop delay. A roughly 953 ms delay at profiler activation belongs to the observer
+itself and is excluded from product findings. Other long native/ORM/API intervals remain unassigned;
+full-device readbacks in the test also generate load. The profile's CPU timestamp alignment is
+approximate and corrected for profiler-start initialization; fine timing uses the span/packet data.
+
+A separate command-free Raspberry probe, without the preload or CPU profiler, reproduced
+`networkInterfaces('default')` blocking the event loop for 286–301 ms. The candidate reads only the
+four network fields consumed by system status, using a bounded asynchronous `ip -j route show default`
+probe and Node's interface addresses on Linux. It retains the one-minute cache, external-interface
+fallback when routing information is unavailable, and systeminformation on other operating systems.
+No extra backend process, dependency, value-storage change or structure-lock change is introduced.
+
+Five alternating isolated comparisons on the same Raspberry measured the published probe at
+281–303 ms, with 281–303 ms maximum timer lag. The candidate took 2.62–4.71 ms, with 1.57–2.51 ms
+maximum timer lag, and returned identical consumed status fields in all five comparisons. This is
+verification of the network probe only: the candidate is not deployed in the running backend and
+no end-to-end command improvement is claimed. Other synchronous systeminformation calls remain
+outside this focused change, including default-interface lookup inside `networkStats()`.
+
+Validation: 62 focused platform/system unit tests, the backend build, changed-file ESLint/Prettier
+and diff whitespace checks passed. Tests cover pending asynchronous probes, timeout/missing-command
+fallbacks, malformed routes, address changes, IPv6 fallback and cache expiry.
+
+The profile was privately archived and hash-verified; its preload, capture, rollback timer and
+owned remote namespaces were removed. Published alpha.36 resumed normally, passed another stable
+111-device/online/OFF gate, and the owned SSH forward was closed.
+
+- [x] Merge/release graph reuse and verify the ordinary alpha.36 upgrade.
+- [x] Retain comparable command observations, incomplete paths and precondition failures explicitly.
+- [x] Reproduce a blocking network-status probe and verify a focused asynchronous replacement.
+- [ ] Review/deploy the network-probe change and repeat normal-runtime command measurements.
+- [ ] Explain remaining preparation/API tails and complete qualified poll-overlap/full-client acceptance.
 
 ## Alpha.35 HomeKit convergence and command preparation — 2026-09-30
 
@@ -52,7 +111,7 @@ The first post-restore readiness attempt timed out after a late reconnect and re
 
 - [x] Verify ten-click Apple Home convergence with corrected observer metadata and sequential video.
 - [x] Separate warm command preparation from incoming-value commit and metadata cache behavior.
-- [ ] Review and deploy the channel graph reuse candidate, then measure comparable normal-runtime latency.
+- [x] Review and deploy the channel graph reuse candidate, then measure comparable normal-runtime latency (PR #1138, alpha.36; limitations above).
 - [ ] Complete actual poll-overlap and the remaining full-client acceptance before closing the epic.
 
 ## Alpha.34 command preparation profile — 2026-09-30
