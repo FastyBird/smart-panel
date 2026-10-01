@@ -6,7 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
-import { AccessTokenEntity, LongLiveTokenEntity } from '../../auth/entities/auth.entity';
+import { LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { TokensService } from '../../auth/services/tokens.service';
 import { hashToken } from '../../auth/utils/token.utils';
 import { MCP_OAUTH_PRINCIPAL_TYPE } from '../../mcp/mcp.constants';
@@ -77,16 +77,7 @@ export class WsAuthService {
 	}
 
 	private async validateUserAccessToken(client: Socket, token: string, userId: string): Promise<boolean> {
-		const storedAccessTokens = await this.tokensService.findAllByOwner<AccessTokenEntity>(userId, AccessTokenEntity);
-
-		let storedAccessToken: AccessTokenEntity | null = null;
-
-		for (const accessToken of storedAccessTokens) {
-			if (hashToken(token) === accessToken.hashedToken) {
-				storedAccessToken = accessToken;
-				break;
-			}
-		}
+		const storedAccessToken = await this.tokensService.findAccessTokenByOwnerAndHash(userId, hashToken(token));
 
 		if (!storedAccessToken) {
 			this.logger.warn('Access token not found in database');
