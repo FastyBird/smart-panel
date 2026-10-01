@@ -1,7 +1,7 @@
 import { validate } from 'class-validator';
 import isUndefined from 'lodash.isundefined';
 import omitBy from 'lodash.omitby';
-import { DataSource, FindOptionsWhere, Repository } from 'typeorm';
+import { DataSource, FindOptionsWhere, In, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable } from '@nestjs/common';
@@ -90,6 +90,9 @@ export interface VisibleBoundedDeviceState {
 	propertiesTruncated: boolean;
 }
 
+// Bound native row conversion and ORM hydration so a catalog read can yield to device traffic.
+const DEVICE_LIST_BATCH_SIZE = 8;
+
 @Injectable()
 export class DevicesService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'DevicesService');
@@ -147,23 +150,38 @@ export class DevicesService {
 
 		this.logger.debug('Fetching all devices');
 
-		// Cast to the base repository type: `hidden` is declared on DeviceEntity itself, but TypeScript
-		// cannot verify a `where` clause referencing it against the generic, union-typed `repository`
-		// (Repository<DeviceEntity> | Repository<TDevice>) without this annotation.
-		const devices = (await (repository as Repository<DeviceEntity>).find({
-			...(hidden === DeviceHiddenFilter.ALL ? {} : { where: { hidden: hidden === DeviceHiddenFilter.TRUE } }),
-			relations: [
-				'controls',
-				'controls.device',
-				'channels',
-				'channels.device',
-				'channels.controls',
-				'channels.controls.channel',
-				'channels.properties',
-				'channels.properties.channel',
-				'deviceZones',
-			],
-		})) as TDevice[];
+		// Use the selected repository for both reads so integration discriminator filtering is preserved.
+		const deviceRepository = repository as Repository<DeviceEntity>;
+		const where: FindOptionsWhere<DeviceEntity> =
+			hidden === DeviceHiddenFilter.ALL ? {} : { hidden: hidden === DeviceHiddenFilter.TRUE };
+		const ids = await deviceRepository
+			.createQueryBuilder('device')
+			.setFindOptions({ where, loadEagerRelations: false })
+			.select('device.id', 'id')
+			.getRawMany<{ id: string }>();
+		const devices: TDevice[] = [];
+
+		// Sequential joined reads let the event loop process incoming device messages between batches.
+		// Keep the complete graph: afterLoad subscribers need channel metadata for units and live values.
+		for (let offset = 0; offset < ids.length; offset += DEVICE_LIST_BATCH_SIZE) {
+			const batch = await deviceRepository.find({
+				where: { ...where, id: In(ids.slice(offset, offset + DEVICE_LIST_BATCH_SIZE).map(({ id }) => id)) },
+				relationLoadStrategy: 'join',
+				relations: [
+					'controls',
+					'controls.device',
+					'channels',
+					'channels.device',
+					'channels.controls',
+					'channels.controls.channel',
+					'channels.properties',
+					'channels.properties.channel',
+					'deviceZones',
+				],
+			});
+
+			devices.push(...(batch as TDevice[]));
+		}
 
 		this.logger.debug(`Found ${devices.length} devices`);
 
