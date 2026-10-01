@@ -151,19 +151,31 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 		}
 
 		const channelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
-		const channel = channelId ? await this.channelsService.findOne(channelId) : null;
+		// Property reads already join channel.device. Keep the fallback for ID-only relations.
+		const parent =
+			typeof property.channel === 'string' ? await this.channelsService.findOne(property.channel) : property.channel;
 
-		if (!channel) {
+		if (!parent) {
 			this.logger.warn(`Source channel for property id=${sourcePropertyId} not found`);
 
 			return null;
 		}
 
-		const deviceId = typeof channel.device === 'string' ? channel.device : channel.device?.id;
+		const deviceId = typeof parent.device === 'string' ? parent.device : parent.device?.id;
 		const device = deviceId ? await this.devicesService.findOne(deviceId) : null;
 
 		if (!device) {
 			this.logger.warn(`Source device for property id=${sourcePropertyId} not found`);
+
+			return null;
+		}
+
+		// The fresh device read includes channel controls and sibling properties. Reuse that graph
+		// rather than hydrating the same channel separately before loading the device.
+		const channel = device.channels.find((candidate) => candidate.id === channelId);
+
+		if (!channel) {
+			this.logger.warn(`Source channel for property id=${sourcePropertyId} is no longer on device id=${device.id}`);
 
 			return null;
 		}

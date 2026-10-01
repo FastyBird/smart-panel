@@ -27,6 +27,8 @@ import { VirtualDevicePlatform } from './virtual-device.platform';
 describe('VirtualDevicePlatform', () => {
 	let platform: VirtualDevicePlatform;
 	let channelsPropertiesService: { findOne: jest.Mock };
+	let channelsService: { findOne: jest.Mock };
+	let devicesService: { findOne: jest.Mock };
 	let platformRegistryService: { get: jest.Mock };
 
 	// Lookup tables the mocked services read from. Populated per test via `linkSource()` so that
@@ -97,6 +99,8 @@ describe('VirtualDevicePlatform', () => {
 		const property = new ChannelPropertyEntity();
 		Object.assign(property, { id: sourcePropertyId, channel: channelId });
 
+		device.channels = [...(device.channels ?? []), channel];
+		channel.properties = [property];
 		devicesById[device.id] = device;
 		channelsById[channelId] = channel;
 		propertiesById[sourcePropertyId] = property;
@@ -139,6 +143,8 @@ describe('VirtualDevicePlatform', () => {
 
 		platform = module.get(VirtualDevicePlatform);
 		channelsPropertiesService = module.get(ChannelsPropertiesService);
+		channelsService = module.get(ChannelsService);
+		devicesService = module.get(DevicesService);
 		platformRegistryService = module.get(PlatformRegistryService);
 
 		jest.spyOn(Logger.prototype, 'error').mockImplementation();
@@ -170,6 +176,56 @@ describe('VirtualDevicePlatform', () => {
 		expect(sourcePlatform.processBatch).toHaveBeenCalledWith([
 			expect.objectContaining({ device: sourceDevice, property: sourceProperty, value: true }),
 		]);
+	});
+
+	it('reuses the fresh device channel graph when the property already joins its parents', async () => {
+		const sourceDevice = makeDevice('source-device');
+		const { channel, property } = linkSource('source-prop', sourceDevice);
+		const joinedParent = new ChannelEntity();
+		Object.assign(joinedParent, { id: channel.id, device: sourceDevice.id });
+		property.channel = joinedParent;
+		const sourcePlatform = createMockPlatform();
+		platformRegistryService.get.mockReturnValue(sourcePlatform);
+
+		const result = await platform.processBatch([
+			{
+				device: virtualDevice,
+				channel: virtualChannel,
+				property: virtualProperty({ sourcePropertyId: property.id }),
+				value: true,
+			},
+		]);
+
+		expect(result).toBe(true);
+		expect(channelsService.findOne).not.toHaveBeenCalled();
+		expect(devicesService.findOne).toHaveBeenCalledWith(sourceDevice.id);
+		expect(sourcePlatform.processBatch.mock.calls[0][0][0].channel).toBe(channel);
+		expect(sourcePlatform.processBatch.mock.calls[0][0][0].property).toBe(property);
+	});
+
+	it.each(['channel', 'device', 'property'])('rejects a missing source %s before forwarding', async (missing) => {
+		const sourceDevice = makeDevice('source-device');
+		const { channel, property } = linkSource('source-prop', sourceDevice);
+		const joinedParent = new ChannelEntity();
+		Object.assign(joinedParent, { id: channel.id, device: sourceDevice });
+		property.channel = joinedParent;
+		if (missing === 'channel') sourceDevice.channels = [];
+		if (missing === 'device') delete devicesById[sourceDevice.id];
+		if (missing === 'property') delete propertiesById[property.id];
+		const sourcePlatform = createMockPlatform();
+		platformRegistryService.get.mockReturnValue(sourcePlatform);
+
+		expect(
+			await platform.processBatch([
+				{
+					device: virtualDevice,
+					channel: virtualChannel,
+					property: virtualProperty({ sourcePropertyId: property.id }),
+					value: true,
+				},
+			]),
+		).toBe(false);
+		expect(sourcePlatform.processBatch).not.toHaveBeenCalled();
 	});
 
 	it('groups updates by source device instead of issuing one call per property', async () => {
