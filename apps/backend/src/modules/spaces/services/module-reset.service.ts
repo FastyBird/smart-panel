@@ -7,6 +7,8 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { SpaceEntity } from '../entities/space.entity';
 import { SPACES_MODULE_NAME } from '../spaces.constants';
 
+import { SpaceActivityService } from './space-activity.service';
+
 @Injectable()
 export class SpacesModuleResetService {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpacesModuleResetService');
@@ -14,6 +16,7 @@ export class SpacesModuleResetService {
 	constructor(
 		@InjectRepository(SpaceEntity)
 		private readonly spacesRepository: Repository<SpaceEntity>,
+		private readonly activity: SpaceActivityService,
 	) {}
 
 	async reset(): Promise<{ success: boolean; reason?: string }> {
@@ -22,6 +25,7 @@ export class SpacesModuleResetService {
 		try {
 			// Child entities (roles, bindings, activities) cascade-delete from SpaceEntity
 			await this.spacesRepository.clear();
+			this.activity.clear();
 
 			this.logger.log('[RESET] Spaces module factory reset completed successfully');
 

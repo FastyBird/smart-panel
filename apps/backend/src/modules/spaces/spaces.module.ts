@@ -28,6 +28,7 @@ import { SpaceRoleEntity } from './entities/space-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpacesConfigModel } from './models/config.model';
 import { SpacesModuleResetService } from './services/module-reset.service';
+import { SpaceActivityService } from './services/space-activity.service';
 import { SpaceCreateBuilderRegistryService } from './services/space-create-builder-registry.service';
 import { SpaceRelationsLoaderRegistryService } from './services/space-relations-loader-registry.service';
 import { SpaceRolesTypeMapperService } from './services/space-roles-type-mapper.service';
@@ -36,6 +37,7 @@ import { SpacesTypeMapperService } from './services/spaces-type-mapper.service';
 import { SpacesService } from './services/spaces.service';
 import { SPACES_MODULE_API_TAG_DESCRIPTION, SPACES_MODULE_API_TAG_NAME, SPACES_MODULE_NAME } from './spaces.constants';
 import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
+import { SpaceActivitySubscriber } from './subscribers/space-activity.subscriber';
 
 @ApiTag({
 	tagName: SPACES_MODULE_NAME,
@@ -73,6 +75,8 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 	controllers: [SpacesController, SpacesDomainController],
 	providers: [
 		SpacesService,
+		SpaceActivityService,
+		SpaceActivitySubscriber,
 		SpacesBulkService,
 		SpacesTypeMapperService,
 		SpaceRolesTypeMapperService,
@@ -82,6 +86,7 @@ import { SPACES_SWAGGER_EXTRA_MODELS } from './spaces.openapi';
 	],
 	exports: [
 		SpacesService,
+		SpaceActivityService,
 		SpacesBulkService,
 		SpacesTypeMapperService,
 		SpaceRolesTypeMapperService,
