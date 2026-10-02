@@ -32,6 +32,7 @@ import { ChannelsTypeMapperService } from '../../../modules/devices/services/cha
 import { ChannelsPropertiesTypeMapperService } from '../../../modules/devices/services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesTypeMapperService } from '../../../modules/devices/services/devices-type-mapper.service';
@@ -95,6 +96,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 	let commands: PropertyCommandService;
 	let devices: DevicesService;
 	let connectivity: DeviceConnectionStateService;
+	let graphs: DeviceCommandGraphService;
 	let windows: PropertyCommandWindowService;
 	let structure: DeviceStructureLockService;
 	let source: SimulatorChannelPropertyEntity;
@@ -194,7 +196,8 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			process: (update) => provider([update]),
 			processBatch: provider,
 		});
-		platforms.register(new VirtualDevicePlatform(devices, channels, properties, platforms));
+		graphs = new DeviceCommandGraphService(propertyMetadata, values, connectivity);
+		platforms.register(new VirtualDevicePlatform(graphs, platforms));
 		dispatch = new PropertyCommandDispatchService(
 			propertyMetadata,
 			values,
@@ -207,7 +210,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			windows,
 		);
 		commands = new PropertyCommandService(
-			devices,
+			graphs,
 			channels,
 			propertyMetadata,
 			values,
@@ -314,10 +317,11 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		return { device: channel.device, channel, property, value };
 	}
 
-	it('validates and dispatches a warm panel WebSocket command with only the provider graph SELECT', async () => {
+	it('validates and dispatches a warm panel WebSocket command without ORM or SQLite after graph warmup', async () => {
 		const metadata = await propertyMetadata.findOne(source.id);
 		if (!metadata) throw new Error('Missing target');
 		const target = commandTarget(metadata);
+		await graphs.findOne(target.device.id);
 		const validators = new Map<unknown, unknown>([
 			[PropertyCommandTargetConstraintValidator, new PropertyCommandTargetConstraintValidator(propertyMetadata)],
 		]);
@@ -336,8 +340,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			if (locksEnabled) {
 				expect(query.mock.calls.length).toBeGreaterThan(1);
 			} else {
-				expect(query).toHaveBeenCalledTimes(1);
-				expect(query.mock.calls[0][0]).toMatch(/^SELECT /);
+				expect(query).not.toHaveBeenCalled();
 			}
 		} finally {
 			useContainer({ get: <T>(type: new () => T): T => new type() });
@@ -345,11 +348,12 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 	});
 
 	it.each(['single', 'batch', 'api'] as const)(
-		'prepares a warm %s command with only the provider graph SELECT and current runtime values',
+		'prepares a warm %s command without ORM or SQLite after graph warmup and current runtime values',
 		async (entrypoint) => {
 			const metadata = await propertyMetadata.findOne(source.id);
 			if (!metadata) throw new Error('Missing source metadata');
 			const target = commandTarget(metadata);
+			await graphs.findOne(target.device.id);
 			await values.writeLiveWithState(source, true);
 			await connectivity.write(
 				target.device,
@@ -368,12 +372,11 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 				await commands.processApiPropertyCommand(target.device.id, target.channel.id, source.id, false);
 			}
 
-			// One full provider graph remains deliberately outside the structural metadata cache.
+			// Both metadata projections are warm; optional shared-writer mode deliberately bypasses them.
 			if (locksEnabled) {
 				expect(query.mock.calls.length).toBeGreaterThan(1);
 			} else {
-				expect(query).toHaveBeenCalledTimes(1);
-				expect(query.mock.calls[0][0]).toMatch(/^SELECT /);
+				expect(query).not.toHaveBeenCalled();
 			}
 			expect(propertyRead).not.toHaveBeenCalled();
 			expect(identityRead).not.toHaveBeenCalled();
@@ -391,6 +394,25 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			);
 		},
 	);
+
+	it('forwards a warmed virtual command without ORM or SQLite', async () => {
+		for (const id of [source.id, aliases[0].id]) {
+			const property = await propertyMetadata.findOne(id);
+			if (!property) throw new Error('Missing target');
+			await graphs.findOne(commandTarget(property).device.id);
+		}
+		const query = jest.spyOn(database.createQueryRunner(), 'query');
+		const repository = jest.spyOn(database, 'getRepository');
+		expect((await commands.executePropertyCommandById(aliases[0].id, true)).success).toBe(true);
+		expect(provider).toHaveBeenCalledTimes(1);
+		expect(provider.mock.calls[0][0][0].property.id).toBe(source.id);
+		if (locksEnabled) {
+			expect(query.mock.calls.length).toBeGreaterThan(0);
+		} else {
+			expect(query).not.toHaveBeenCalled();
+			expect(repository).not.toHaveBeenCalled();
+		}
+	});
 
 	it('rejects current offline connectivity after warming command metadata', async () => {
 		const metadata = await propertyMetadata.findOne(source.id);

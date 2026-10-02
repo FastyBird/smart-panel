@@ -21,7 +21,7 @@ import { PropertyCommandValue, validatePropertyCommandValue } from '../utils/pro
 
 import { ChannelsService } from './channels.service';
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
-import { DevicesService } from './devices.service';
+import { DeviceCommandGraphService } from './device-command-graph.service';
 import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandDispatchService } from './property-command-dispatch.service';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
@@ -66,7 +66,7 @@ export class PropertyCommandService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyCommandService');
 
 	constructor(
-		private readonly devicesService: DevicesService,
+		private readonly deviceGraphs: DeviceCommandGraphService,
 		private readonly channelsService: ChannelsService,
 		private readonly propertyMetadata: PropertyMetadataService,
 		private readonly propertyValues: PropertyValueService,
@@ -147,7 +147,7 @@ export class PropertyCommandService {
 		}
 
 		const channelDevice = channel.device;
-		const device = typeof channelDevice === 'string' ? await this.devicesService.findOne(channelDevice) : channelDevice;
+		const device = typeof channelDevice === 'string' ? await this.deviceGraphs.findOne(channelDevice) : channelDevice;
 
 		if (!device) {
 			return {
@@ -271,8 +271,7 @@ export class PropertyCommandService {
 			}
 
 			const channelDevice = channel.device;
-			const device =
-				typeof channelDevice === 'string' ? await this.devicesService.findOne(channelDevice) : channelDevice;
+			const device = typeof channelDevice === 'string' ? await this.deviceGraphs.findOne(channelDevice) : channelDevice;
 			if (!device) {
 				return {
 					success: false,
@@ -511,7 +510,7 @@ export class PropertyCommandService {
 		commands: PropertyCommandValueDto[],
 		dispatchOptions: { intentId: string; ttlMs: number; windowHandles?: readonly PropertyCommandWindowHandle[] },
 	): Promise<{ device: string; success: boolean; reason?: string }> {
-		const device = await this.devicesService.findOne(deviceId);
+		const device = await this.deviceGraphs.findOne(deviceId);
 
 		if (!device) {
 			this.logger.warn(`Device not found id=${deviceId}`);
@@ -651,7 +650,7 @@ export class PropertyCommandService {
 		value: string | number | boolean,
 	): Promise<ApiPropertyCommandReceipt | null> {
 		try {
-			const resolvedDevice = typeof device === 'string' ? await this.devicesService.findOne(device) : device;
+			const resolvedDevice = typeof device === 'string' ? await this.deviceGraphs.findOne(device) : device;
 			if (resolvedDevice === null) {
 				return null;
 			}
@@ -685,7 +684,7 @@ export class PropertyCommandService {
 		property: ChannelPropertyEntity,
 		update?: UpdateChannelPropertyDto,
 	): Promise<boolean> {
-		const resolvedDevice = typeof device === 'string' ? await this.devicesService.findOne(device) : device;
+		const resolvedDevice = typeof device === 'string' ? await this.deviceGraphs.findOne(device) : device;
 		const effectiveProperty = update
 			? (Object.setPrototypeOf({ ...property, ...update }, Reflect.getPrototypeOf(property)) as ChannelPropertyEntity)
 			: property;

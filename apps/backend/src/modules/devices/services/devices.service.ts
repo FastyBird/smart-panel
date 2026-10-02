@@ -30,6 +30,7 @@ import {
 import { CreateDeviceDto } from '../dto/create-device.dto';
 import { UpdateDeviceDto } from '../dto/update-device.dto';
 import { ChannelEntity, DeviceControlEntity, DeviceEntity } from '../entities/devices.entity';
+import { buildDeviceGraphQuery } from '../utils/device-graph-query.utils';
 import { isPrimaryKeyCollision } from '../utils/unique-constraint.utils';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
@@ -1141,26 +1142,7 @@ export class DevicesService {
 	}
 
 	private buildDeviceQuery(repository: Repository<any>) {
-		const qb = repository
-			.createQueryBuilder('device')
-			.leftJoinAndSelect('device.controls', 'controls')
-			.leftJoinAndSelect('controls.device', 'controlDevice')
-			.leftJoinAndSelect('device.channels', 'channels')
-			.leftJoinAndSelect('channels.device', 'channelDevice')
-			.leftJoinAndSelect('channels.controls', 'channelControls')
-			.leftJoinAndSelect('channelControls.channel', 'channelControlChannel')
-			.leftJoinAndSelect('channels.properties', 'channelProperties')
-			.leftJoinAndSelect('channelProperties.channel', 'channelPropertyChannel')
-			.leftJoinAndSelect('device.deviceZones', 'deviceZones');
-
-		// QueryBuilder ignores eager:true — auto-join any eager relations from plugin entities
-		for (const relation of repository.metadata?.relations ?? []) {
-			if (relation.isEager && !['controls', 'channels', 'deviceZones'].includes(relation.propertyName)) {
-				qb.leftJoinAndSelect(`device.${relation.propertyName}`, relation.propertyName);
-			}
-		}
-
-		return qb;
+		return buildDeviceGraphQuery(repository);
 	}
 
 	private async validateDto<T extends object>(DtoClass: new () => T, dto: any): Promise<T> {

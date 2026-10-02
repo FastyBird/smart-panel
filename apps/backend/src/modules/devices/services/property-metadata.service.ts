@@ -14,18 +14,31 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { SpaceEntity } from '../../spaces/entities/space.entity';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
+import { DeviceZoneEntity } from '../entities/device-zone.entity';
+import {
+	ChannelControlEntity,
+	ChannelEntity,
+	ChannelPropertyEntity,
+	DeviceControlEntity,
+	DeviceEntity,
+} from '../entities/devices.entity';
+import { buildDeviceGraphQuery } from '../utils/device-graph-query.utils';
 import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 
-/** Structural catalog for value ingestion and command admission; excludes live values and connectivity. */
+type PendingMetadata<T> = { generation: number; promise: Promise<T | null> };
+
+/** Shared structural catalog for value ingestion and commands; excludes live values and connectivity. */
 @Injectable()
 export class PropertyMetadataService implements EntitySubscriberInterface, OnModuleInit, OnModuleDestroy {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyMetadataService');
 	private readonly enabled: boolean;
 	private generation = 0;
 	private readonly catalog = new Map<string, ChannelPropertyEntity>();
-	private readonly loading = new Map<string, { generation: number; promise: Promise<ChannelPropertyEntity | null> }>();
+	private readonly loading = new Map<string, PendingMetadata<ChannelPropertyEntity>>();
+	private readonly deviceGraphs = new Map<string, DeviceEntity>();
+	private readonly loadingGraphs = new Map<string, PendingMetadata<DeviceEntity>>();
 	private readonly dirtyTransactions = new WeakSet<object>();
 
 	constructor(
@@ -78,6 +91,19 @@ export class PropertyMetadataService implements EntitySubscriberInterface, OnMod
 		return result;
 	}
 
+	/** Lazily retain one structural graph per commanded device; live state is attached only to detached copies. */
+	async findDevice(id: string): Promise<DeviceEntity | null> {
+		const query = () =>
+			buildDeviceGraphQuery(this.dataSource.getRepository(DeviceEntity))
+				.callListeners(false)
+				.where('device.id = :id', { id })
+				.getOne();
+		const device = this.enabled
+			? await this.loadCached(id, this.deviceGraphs, this.loadingGraphs, query)
+			: await query();
+		return device ? this.copyGraph(device) : null;
+	}
+
 	beforeInsert(event: InsertEvent<unknown>): void {
 		this.structuralMutation(event);
 	}
@@ -109,9 +135,18 @@ export class PropertyMetadataService implements EntitySubscriberInterface, OnMod
 		queryRunner: object & { isTransactionActive: boolean };
 	}): void {
 		if (
-			!event.metadata.inheritanceTree.some(
-				(type) => type === ChannelPropertyEntity || type === ChannelEntity || type === DeviceEntity,
-			)
+			!event.metadata.inheritanceTree.some((type) =>
+				[
+					ChannelPropertyEntity,
+					ChannelEntity,
+					DeviceEntity,
+					ChannelControlEntity,
+					DeviceControlEntity,
+					DeviceZoneEntity,
+					SpaceEntity,
+				].includes(type as typeof DeviceEntity),
+			) &&
+			!this.isEagerGraphDependency(event.metadata)
 		)
 			return;
 		if (event.queryRunner.isTransactionActive) this.dirtyTransactions.add(event.queryRunner);
@@ -130,33 +165,66 @@ export class PropertyMetadataService implements EntitySubscriberInterface, OnMod
 	invalidate(): void {
 		this.generation += 1;
 		this.catalog.clear();
+		this.deviceGraphs.clear();
 	}
 
 	/** Refresh only the requested row; discovery must not rebuild every property's metadata per report. */
-	private async findCached(id: string): Promise<ChannelPropertyEntity | null> {
-		while (true) {
-			const cached = this.catalog.get(id);
-			if (cached) return cached;
+	private findCached(id: string): Promise<ChannelPropertyEntity | null> {
+		return this.loadCached(id, this.catalog, this.loading, () =>
+			this.query().where('property.id = :id', { id }).getOne(),
+		);
+	}
 
+	private async loadCached<T extends { id: string }>(
+		id: string,
+		catalog: Map<string, T>,
+		pending: Map<string, PendingMetadata<T>>,
+		query: () => Promise<T | null>,
+	): Promise<T | null> {
+		while (true) {
+			const cached = catalog.get(id);
+			if (cached) return cached;
 			const generation = this.generation;
-			if (this.loading.get(id)?.generation !== generation) {
-				this.loading.set(id, {
-					generation,
-					promise: this.query().where('property.id = :id', { id }).getOne(),
-				});
+			if (pending.get(id)?.generation !== generation) {
+				pending.set(id, { generation, promise: query() });
 			}
-			const loading = this.loading.get(id);
+			const loading = pending.get(id);
 			try {
-				const property = await loading.promise;
+				const entity = await loading.promise;
 				if (generation === this.generation) {
-					// Missing IDs are not retained: invalid commands must not grow this cache.
-					if (property) this.catalog.set(id, property);
-					return property;
+					// Missing IDs are not retained: invalid commands must not grow either catalog.
+					if (entity) catalog.set(id, entity);
+					return entity;
 				}
 			} finally {
-				if (this.loading.get(id) === loading) this.loading.delete(id);
+				if (pending.get(id) === loading) pending.delete(id);
 			}
 		}
+	}
+
+	private isEagerGraphDependency(metadata: EntityMetadata): boolean {
+		// Discover plugin-owned relation tables (e.g. Shelly addresses) without importing plugins into core.
+		return (this.dataSource.entityMetadatas ?? []).some(
+			(entity) =>
+				entity.inheritanceTree.includes(DeviceEntity) &&
+				entity.relations.some(
+					(relation) =>
+						relation.isEager &&
+						relation.inverseEntityMetadata.inheritanceTree.some((type) => metadata.inheritanceTree.includes(type)),
+				),
+		);
+	}
+
+	/** Keep entity prototypes, dates and relation identity while isolating every mutable provider input. */
+	private copyGraph<T>(value: T, seen = new Map<object, unknown>()): T {
+		if (value === null || typeof value !== 'object') return value;
+		if (value instanceof Date) return new Date(value.getTime()) as T;
+		if (seen.has(value)) return seen.get(value) as T;
+		const prototype = Object.getPrototypeOf(value) as object | null;
+		const result = (Array.isArray(value) ? [] : Object.create(prototype)) as Record<string, unknown>;
+		seen.set(value, result);
+		for (const [key, child] of Object.entries(value)) result[key] = this.copyGraph(child, seen);
+		return result as T;
 	}
 
 	private query() {

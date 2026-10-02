@@ -58,6 +58,7 @@ import { ChannelsPropertiesTypeMapperService } from './services/channels.propert
 import { ChannelsPropertiesService } from './services/channels.properties.service';
 import { ChannelsService } from './services/channels.service';
 import { CommandLatencyTraceCollectorService } from './services/command-latency-trace-collector.service';
+import { DeviceCommandGraphService } from './services/device-command-graph.service';
 import { DeviceConnectionStateService } from './services/device-connection-state.service';
 import { DeviceConnectivityService } from './services/device-connectivity.service';
 import { DeviceControlToolService } from './services/device-control-tool.service';
@@ -149,6 +150,7 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 		PropertyValueLockService,
 		PropertyValueService,
 		PropertyMetadataService,
+		DeviceCommandGraphService,
 		PropertyStateCoordinatorService,
 		PropertyTimeseriesService,
 		PropertyCommandWindowService,
@@ -191,6 +193,7 @@ import { PropertyCommandTargetConstraintValidator } from './validators/property-
 		PropertyValueSourceRegistryService,
 		PropertyValueService,
 		PropertyMetadataService,
+		DeviceCommandGraphService,
 		PropertyStateCoordinatorService,
 		PropertyTimeseriesService,
 		PropertyCommandWindowService,

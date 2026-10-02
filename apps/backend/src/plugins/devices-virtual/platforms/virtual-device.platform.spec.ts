@@ -11,9 +11,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePlatform } from '../../../modules/devices/platforms/device.platform';
-import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
-import { ChannelsService } from '../../../modules/devices/services/channels.service';
-import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import {
 	VirtualChannelEntity,
@@ -26,14 +24,11 @@ import { VirtualDevicePlatform } from './virtual-device.platform';
 
 describe('VirtualDevicePlatform', () => {
 	let platform: VirtualDevicePlatform;
-	let channelsPropertiesService: { findOne: jest.Mock };
-	let channelsService: { findOne: jest.Mock };
-	let devicesService: { findOne: jest.Mock };
+	let graphs: { findPropertyTarget: jest.Mock };
 	let platformRegistryService: { get: jest.Mock };
 
 	// Lookup tables the mocked services read from. Populated per test via `linkSource()` so that
-	// resolving a `sourcePropertyId` walks property -> channel -> device exactly like the real
-	// ChannelsPropertiesService/ChannelsService/DevicesService would for real rows.
+	// resolving a sourcePropertyId returns a complete target; real graph projection has SQLite coverage.
 	let propertiesById: Record<string, ChannelPropertyEntity>;
 	let channelsById: Record<string, ChannelEntity>;
 	let devicesById: Record<string, DeviceEntity>;
@@ -123,16 +118,18 @@ describe('VirtualDevicePlatform', () => {
 			providers: [
 				VirtualDevicePlatform,
 				{
-					provide: DevicesService,
-					useValue: { findOne: jest.fn((id: string) => Promise.resolve(devicesById[id] ?? null)) },
-				},
-				{
-					provide: ChannelsService,
-					useValue: { findOne: jest.fn((id: string) => Promise.resolve(channelsById[id] ?? null)) },
-				},
-				{
-					provide: ChannelsPropertiesService,
-					useValue: { findOne: jest.fn((id: string) => Promise.resolve(propertiesById[id] ?? null)) },
+					provide: DeviceCommandGraphService,
+					useValue: {
+						findPropertyTarget: jest.fn((id: string) => {
+							const property = propertiesById[id];
+							const parent =
+								property && (typeof property.channel === 'string' ? channelsById[property.channel] : property.channel);
+							const deviceId = parent && (typeof parent.device === 'string' ? parent.device : parent.device.id);
+							const device = deviceId && devicesById[deviceId];
+							const channel = device && device.channels.find((item) => item.id === parent.id);
+							return Promise.resolve(property && device && channel ? { property, channel, device } : null);
+						}),
+					},
 				},
 				{
 					provide: PlatformRegistryService,
@@ -142,9 +139,7 @@ describe('VirtualDevicePlatform', () => {
 		}).compile();
 
 		platform = module.get(VirtualDevicePlatform);
-		channelsPropertiesService = module.get(ChannelsPropertiesService);
-		channelsService = module.get(ChannelsService);
-		devicesService = module.get(DevicesService);
+		graphs = module.get(DeviceCommandGraphService);
 		platformRegistryService = module.get(PlatformRegistryService);
 
 		jest.spyOn(Logger.prototype, 'error').mockImplementation();
@@ -197,8 +192,7 @@ describe('VirtualDevicePlatform', () => {
 		]);
 
 		expect(result).toBe(true);
-		expect(channelsService.findOne).not.toHaveBeenCalled();
-		expect(devicesService.findOne).toHaveBeenCalledWith(sourceDevice.id);
+		expect(graphs.findPropertyTarget).toHaveBeenCalledWith(property.id);
 		expect(sourcePlatform.processBatch.mock.calls[0][0][0].channel).toBe(channel);
 		expect(sourcePlatform.processBatch.mock.calls[0][0][0].property).toBe(property);
 	});
@@ -349,7 +343,7 @@ describe('VirtualDevicePlatform', () => {
 
 		expect(result).toBe(false);
 		// The rejection must happen before any resolution is attempted — nothing gets looked up.
-		expect(channelsPropertiesService.findOne).not.toHaveBeenCalled();
+		expect(graphs.findPropertyTarget).not.toHaveBeenCalled();
 		expect(platformRegistryService.get).not.toHaveBeenCalled();
 	});
 
@@ -371,7 +365,7 @@ describe('VirtualDevicePlatform', () => {
 		]);
 
 		expect(result).toBe(false);
-		expect(channelsPropertiesService.findOne).not.toHaveBeenCalled();
+		expect(graphs.findPropertyTarget).not.toHaveBeenCalled();
 	});
 
 	it('refuses to forward to another virtual device', async () => {
@@ -435,7 +429,7 @@ describe('VirtualDevicePlatform', () => {
 
 		expect(result).toBe(false);
 		// Rejected before anything is resolved, so no source platform is ever reached.
-		expect(channelsPropertiesService.findOne).not.toHaveBeenCalled();
+		expect(graphs.findPropertyTarget).not.toHaveBeenCalled();
 		expect(platformRegistryService.get).not.toHaveBeenCalled();
 		expect(sourcePlatform.processBatch).not.toHaveBeenCalled();
 	});
