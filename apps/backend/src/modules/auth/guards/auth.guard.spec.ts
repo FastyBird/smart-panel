@@ -176,7 +176,7 @@ describe('AuthGuard', () => {
 						findByOwnerId: jest.fn(),
 						findAll: jest.fn(),
 						findOneByHashedToken: jest.fn(),
-						updateLastUsedAt: jest.fn(),
+						recordUsage: jest.fn(),
 					},
 				},
 				{
@@ -255,6 +255,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException for invalid token', async () => {
@@ -266,6 +267,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(jwtService, 'verifyAsync').mockRejectedValue(new Error('Invalid token'));
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 	});
 
@@ -299,6 +301,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(tokensService, 'findAccessTokenByOwnerAndHash').mockResolvedValue(null);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException when access token is revoked', async () => {
@@ -319,6 +322,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(tokensService, 'findAccessTokenByOwnerAndHash').mockResolvedValue(revokedToken);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException when refresh token is revoked', async () => {
@@ -340,6 +344,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(tokensService, 'findAccessTokenByOwnerAndHash').mockResolvedValue(tokenWithRevokedRefresh);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException when user not found', async () => {
@@ -353,6 +358,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(usersService, 'getOneOrThrow').mockRejectedValue(new Error('User not found'));
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 	});
 
@@ -370,6 +376,7 @@ describe('AuthGuard', () => {
 			const result = await guard.canActivate(context);
 
 			expect(result).toBe(true);
+			expect(tokensService.recordUsage).toHaveBeenCalledWith(mockDisplayLongLiveToken);
 			expect(request.auth).toEqual({
 				type: 'token',
 				tokenId: mockDisplayLongLiveToken.id,
@@ -389,6 +396,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(null);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException when display token is revoked', async () => {
@@ -403,6 +411,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(revokedToken);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException when display token is expired', async () => {
@@ -420,6 +429,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(expiredToken);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 	});
 
@@ -439,6 +449,7 @@ describe('AuthGuard', () => {
 			const result = await guard.canActivate(context);
 
 			expect(result).toBe(true);
+			expect(tokensService.recordUsage).toHaveBeenCalledWith(mockThirdPartyLongLiveToken);
 			expect(request.auth).toEqual({
 				type: 'token',
 				tokenId: mockThirdPartyLongLiveToken.id,
@@ -459,6 +470,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(null);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException when long-live token is revoked', async () => {
@@ -474,6 +486,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(revokedToken);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException when long-live token is expired', async () => {
@@ -492,6 +505,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(expiredToken);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 
 		it('should authenticate user long-live token with owner', async () => {
@@ -722,6 +736,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 
 		it('should return undefined for non-Bearer token', async () => {
@@ -732,6 +747,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 	});
 });

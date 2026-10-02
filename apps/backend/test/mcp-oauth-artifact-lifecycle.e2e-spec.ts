@@ -493,7 +493,7 @@ async function openWireSubscriptions(
 		findOneByHashedToken: jest.fn((hashedToken: string) =>
 			Promise.resolve(hashedToken === storedStaticToken.hashedToken ? storedStaticToken : null),
 		),
-		updateLastUsedAt: jest.fn(() => Promise.resolve()),
+		recordUsage: jest.fn(),
 	};
 	const clientService = {
 		findActiveByToken: jest.fn((tokenId: string, clientId: string) =>

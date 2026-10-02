@@ -247,8 +247,8 @@ export class AuthGuard implements CanActivate {
 			throw new UnauthorizedException('Invalid display token owner');
 		}
 
-		// Update lastUsedAt asynchronously
-		void this.tokensService.updateLastUsedAt(storedToken.id);
+		// Record usage in memory; persistence runs outside the request path.
+		this.tokensService.recordUsage(storedToken);
 
 		request.auth = {
 			type: 'token',
@@ -309,9 +309,6 @@ export class AuthGuard implements CanActivate {
 			effectiveMcpCapabilities = this.mcpClientsService.getEffectiveCapabilities(client);
 		}
 
-		// Update lastUsedAt asynchronously (fire-and-forget, don't block the request)
-		void this.tokensService.updateLastUsedAt(storedLongLiveToken.id);
-
 		// Determine the role based on owner type
 		let role = UserRole.USER;
 
@@ -321,6 +318,9 @@ export class AuthGuard implements CanActivate {
 				role = user.role;
 			}
 		}
+
+		// Record usage in memory; persistence runs outside the request path.
+		this.tokensService.recordUsage(storedLongLiveToken);
 
 		request.auth = {
 			type: 'token',
