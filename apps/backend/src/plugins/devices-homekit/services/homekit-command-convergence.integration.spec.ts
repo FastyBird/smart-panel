@@ -7,6 +7,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	ChannelCategory,
+	ConnectionState,
 	DataTypeType,
 	DeviceCategory,
 	EventType,
@@ -29,6 +30,7 @@ import { ChannelsTypeMapperService } from '../../../modules/devices/services/cha
 import { ChannelsPropertiesTypeMapperService } from '../../../modules/devices/services/channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DeviceStructureLockService } from '../../../modules/devices/services/device-structure-lock.service';
 import { DevicesTypeMapperService } from '../../../modules/devices/services/devices-type-mapper.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
@@ -42,6 +44,7 @@ import { PropertyValueLockService } from '../../../modules/devices/services/prop
 import { PropertyValueSourceRegistryService } from '../../../modules/devices/services/property-value-source.registry.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { ChannelPropertyEntitySubscriber } from '../../../modules/devices/subscribers/channel-property-entity.subscriber';
+import { DeviceEntitySubscriber } from '../../../modules/devices/subscribers/device-entity.subscriber';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
@@ -85,6 +88,9 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 	let values: PropertyValueService;
 	let propertyMetadata: PropertyMetadataService;
 	let dispatch: PropertyCommandDispatchService;
+	let commands: PropertyCommandService;
+	let devices: DevicesService;
+	let connectivity: DeviceConnectionStateService;
 	let windows: PropertyCommandWindowService;
 	let structure: DeviceStructureLockService;
 	let source: SimulatorChannelPropertyEntity;
@@ -128,8 +134,9 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		const runtimeConfig = new NestConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: locksEnabled });
 		propertyMetadata = new PropertyMetadataService(database, runtimeConfig);
 		values = new PropertyValueService(storage, valueSources, new PropertyValueLockService(database, runtimeConfig));
-		// The unused removal collaborator is deliberately absent: this fixture does not remove entities.
-		new ChannelPropertyEntitySubscriber(values, null as never, database);
+		connectivity = new DeviceConnectionStateService(storage);
+		new ChannelPropertyEntitySubscriber(values, connectivity, database);
+		new DeviceEntitySubscriber(connectivity, database);
 		events = new EventEmitter2();
 		windows = new PropertyCommandWindowService();
 		structure = new DeviceStructureLockService();
@@ -164,7 +171,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			database,
 			events,
 		);
-		const devices = new DevicesService(
+		devices = new DevicesService(
 			database.getRepository(DeviceEntity),
 			database.getRepository(SpaceEntity),
 			new DevicesTypeMapperService(),
@@ -195,10 +202,11 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			coordinator,
 			windows,
 		);
-		const commands = new PropertyCommandService(
+		commands = new PropertyCommandService(
 			devices,
 			channels,
-			properties,
+			propertyMetadata,
+			values,
 			platforms,
 			new IntentsService(events, new IntentTimeseriesService(storage)),
 			dispatch,
@@ -301,6 +309,98 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		if (typeof channel === 'string' || typeof channel.device === 'string') throw new Error('Missing target relations');
 		return { device: channel.device, channel, property, value };
 	}
+
+	it.each(['single', 'batch', 'api'] as const)(
+		'prepares a warm %s command with only the provider graph SELECT and current runtime values',
+		async (entrypoint) => {
+			const metadata = await propertyMetadata.findOne(source.id);
+			if (!metadata) throw new Error('Missing source metadata');
+			const target = commandTarget(metadata);
+			await values.writeLiveWithState(source, true);
+			await connectivity.write(
+				target.device,
+				Object.assign(new SimulatorChannelPropertyEntity(), source, { category: PropertyCategory.STATUS }),
+				ConnectionState.CONNECTED,
+			);
+			const query = jest.spyOn(database.createQueryRunner(), 'query');
+			const propertyRead = jest.spyOn(properties, 'findOne');
+			const identityRead = jest.spyOn(devices, 'findIdentity');
+
+			if (entrypoint === 'single') {
+				expect((await commands.executePropertyCommandById(source.id, false)).success).toBe(true);
+			} else if (entrypoint === 'batch') {
+				expect((await commands.executePropertyCommands([{ propertyId: source.id, value: false }])).success).toBe(true);
+			} else {
+				await commands.processApiPropertyCommand(target.device.id, target.channel.id, source.id, false);
+			}
+
+			// One full provider graph remains deliberately outside the structural metadata cache.
+			if (locksEnabled) {
+				expect(query.mock.calls.length).toBeGreaterThan(1);
+			} else {
+				expect(query).toHaveBeenCalledTimes(1);
+				expect(query.mock.calls[0][0]).toMatch(/^SELECT /);
+			}
+			expect(propertyRead).not.toHaveBeenCalled();
+			expect(identityRead).not.toHaveBeenCalled();
+			expect(provider).toHaveBeenCalledTimes(1);
+			const update = provider.mock.calls[0][0][0];
+			expect(update.property.value?.value).toBe(true);
+			expect(commandTarget(update.property).device.status).toMatchObject({
+				online: true,
+				status: ConnectionState.CONNECTED,
+			});
+			expect(update.value).toBe(false);
+			expect((await propertyMetadata.findOne(source.id))?.value).toBeUndefined();
+			expect(commandTarget(await propertyMetadata.findOne(source.id)).device.status.status).toBe(
+				ConnectionState.UNKNOWN,
+			);
+		},
+	);
+
+	it('rejects current offline connectivity after warming command metadata', async () => {
+		const metadata = await propertyMetadata.findOne(source.id);
+		if (!metadata) throw new Error('Missing source metadata');
+		const target = commandTarget(metadata);
+		const statusProperty = Object.assign(new SimulatorChannelPropertyEntity(), source, {
+			category: PropertyCategory.STATUS,
+		});
+		await connectivity.write(target.device, statusProperty, ConnectionState.CONNECTED);
+		expect((await commands.executePropertyCommandById(source.id, true)).success).toBe(true);
+		provider.mockClear();
+		await connectivity.write(target.device, statusProperty, ConnectionState.DISCONNECTED);
+
+		expect(await commands.executePropertyCommandById(source.id, false)).toMatchObject({
+			success: false,
+			reason: 'Device is offline',
+		});
+		expect(provider).not.toHaveBeenCalled();
+	});
+
+	it.each(['deleted', 'reparented', 'read-only', 'data-type'] as const)(
+		'revalidates a %s property after warming command metadata',
+		async (mutation) => {
+			const metadata = await propertyMetadata.findOne(source.id);
+			if (!metadata) throw new Error('Missing source metadata');
+			const target = commandTarget(metadata);
+			const repository = database.getRepository(SimulatorChannelPropertyEntity);
+			if (mutation === 'deleted') {
+				await repository.delete(source.id);
+			} else if (mutation === 'reparented') {
+				const otherChannel = commandTarget(aliases[0]).channel;
+				await repository.update(source.id, { channel: { id: otherChannel.id } });
+			} else if (mutation === 'read-only') {
+				await repository.update(source.id, { permissions: [PermissionType.READ_ONLY] });
+			} else {
+				await repository.update(source.id, { dataType: DataTypeType.INT });
+			}
+
+			await commands.processApiPropertyCommand(target.device.id, target.channel.id, source.id, true);
+
+			expect(provider).not.toHaveBeenCalled();
+			expect(windows.get(source.id)).toBeNull();
+		},
+	);
 
 	it('admits warmed source and alias commands without ORM/SQLite while reading the current value', async () => {
 		const target = await propertyMetadata.findOne(source.id);

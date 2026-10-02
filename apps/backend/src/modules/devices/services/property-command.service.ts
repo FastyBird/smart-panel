@@ -19,13 +19,14 @@ import { PropertyValueState } from '../models/property-value-state.model';
 import { IDevicePropertyData } from '../platforms/device.platform';
 import { PropertyCommandValue, validatePropertyCommandValue } from '../utils/property-command-value.utils';
 
-import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandDispatchService } from './property-command-dispatch.service';
 import { PropertyCommandWindowHandle, PropertyCommandWindowService } from './property-command-window.service';
+import { PropertyMetadataService } from './property-metadata.service';
+import { PropertyValueService } from './property-value.service';
 
 export interface PropertyCommandExecutionOptions {
 	requestId?: string;
@@ -67,7 +68,8 @@ export class PropertyCommandService {
 	constructor(
 		private readonly devicesService: DevicesService,
 		private readonly channelsService: ChannelsService,
-		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly propertyMetadata: PropertyMetadataService,
+		private readonly propertyValues: PropertyValueService,
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly intentsService: IntentsService,
 		private readonly propertyCommandDispatchService: PropertyCommandDispatchService,
@@ -130,7 +132,7 @@ export class PropertyCommandService {
 		rawValue: unknown,
 		options: PropertyCommandExecutionOptions = {},
 	): Promise<SinglePropertyCommandResult> {
-		const property = await this.channelsPropertiesService.findOne(propertyId);
+		const property = await this.propertyMetadata.findOne(propertyId);
 
 		if (!property) {
 			return { device: '', success: false, reason: 'Property not found' };
@@ -240,7 +242,7 @@ export class PropertyCommandService {
 		let targetDeviceId: string | null = null;
 
 		for (const cmd of commands) {
-			const property = await this.channelsPropertiesService.findOne(cmd.propertyId);
+			const property = await this.propertyMetadata.findOne(cmd.propertyId);
 			if (!property) {
 				return {
 					success: false,
@@ -479,12 +481,22 @@ export class PropertyCommandService {
 
 		for (const [deviceId, commands] of Object.entries(groupedProperties)) {
 			try {
-				// Budget selection only needs the integration type. Execution still reloads the full
-				// device and canonical admission revalidates its property under the structure barrier.
-				const device = await this.devicesService.findIdentity(deviceId);
+				// The shared property catalog already joins the routing identity. This is only a
+				// budget hint: execution and canonical admission still validate the requested chain.
+				const command = commands[0];
+				const property = command ? await this.propertyMetadata.findOne(command.property) : null;
+				const channel = property?.channel;
+				const device = channel && typeof channel !== 'string' ? channel.device : null;
 
-				if (device !== null) {
-					executions.push({ device, commandCount: commands.length });
+				if (
+					channel &&
+					typeof channel !== 'string' &&
+					channel.id === command.channel &&
+					device &&
+					typeof device !== 'string' &&
+					device.id === deviceId
+				) {
+					executions.push({ device: { id: device.id, type: device.type }, commandCount: commands.length });
 				}
 			} catch {
 				return DEFAULT_TTL_DEVICE_COMMAND;
@@ -537,10 +549,11 @@ export class PropertyCommandService {
 				return { device: deviceId, success: false, reason: 'Channel not found' };
 			}
 
-			// Keep the property read: it also joins property.channel.device for platform consumers.
-			const property = await this.channelsPropertiesService.findOne(command.property, channel.id);
+			// Reuse detached metadata, retaining the joined parent chain expected by providers.
+			const property = await this.propertyMetadata.findOne(command.property);
+			const propertyChannelId = typeof property?.channel === 'string' ? property.channel : property?.channel.id;
 
-			if (!property) {
+			if (!property || propertyChannelId !== channel.id) {
 				this.logger.warn(`Property not found id=${command.property} for channelId=${channel.id}`);
 
 				return { device: deviceId, success: false, reason: 'Property not found' };
@@ -564,6 +577,19 @@ export class PropertyCommandService {
 				);
 
 				return { device: deviceId, success: false, reason: validation.reason ?? 'Invalid property value' };
+			}
+
+			// Live values/connectivity are never retained in the structural catalog. Preserve the
+			// previous afterLoad contract on this copy, including best-effort value hydration.
+			try {
+				property.value = await this.propertyValues.readLatest(property);
+			} catch (error) {
+				this.logger.error(
+					`Failed to load command property value id=${property.id}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+			if (typeof property.channel !== 'string' && typeof property.channel.device !== 'string') {
+				property.channel.device.status = device.status;
 			}
 
 			this.logger.log(`Adding command for propertyId=${property.id} value=${validation.value}`);

@@ -2,13 +2,45 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.40 remains on staging; runtime activity #1143, metadata savepoints #1144 and token usage #1145 merged; runtime read/write optimization underway before new staging measurements; deployment and full-client acceptance remain open
+**Status:** alpha.40 remains on staging; runtime activity #1143, metadata savepoints #1144, token usage #1145 and command admission #1146 merged; runtime read/write optimization underway before new staging measurements; deployment and full-client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
 
-## Command admission catalog candidate — 2026-10-02
+## Command preparation metadata candidate — 2026-10-02
+
+`PropertyCommandService` now reuses the existing shared property metadata catalog for single/batch
+pre-validation, timeout-budget routing and per-property preparation. Budget selection checks the
+requested parent chain and passes only the integration identity to the existing timeout policy.
+The provider still receives the fresh complete device/channel graph and a detached property with
+its joined parents. The live property value comes from `PropertyValueService`; joined device
+connectivity comes from that fresh device graph. Neither is written into the metadata catalog.
+Final canonical admission, structure/coordinator barriers and shared-writer cache bypass are unchanged.
+
+- [x] In the real SQLite/production memory-storage fixture, warm direct single, batch and API-service
+  commands perform exactly one SQL SELECT (the complete provider graph) in single-process mode.
+  No standalone property ORM read or device identity read remains. Shared-writer mode retains SQL.
+- [x] Verify fresh provider values/connectivity after cache warmup, offline rejection, and metadata
+  invalidation after deletion, reparenting, permission changes and data-type changes. Existing source/
+  alias convergence, queued admission and savepoint rollback tests remain in the same fixture.
+- [x] Negative control: forcing metadata lookups to bypass the cache fails the three single-process
+  query-count assertions on 6, 6 and 5 queries. This is a test sensitivity check, not a replay of the
+  previous release or a hardware performance measurement. The candidate was restored afterward.
+- [x] Backend build, lint (three existing warnings), changed-file formatting and all 23 E2E suites /
+  256 tests pass. The first E2E run had two virtual-device lifecycle failures (HTTP 501 on metadata
+  rename and 401 on collision readback); an unchanged focused repeat passed all 56 tests and the
+  complete repeat passed with exit 0. Both failures are retained; their root cause is unestablished.
+- [x] Complete backend unit validation: 572 suites / 8,980 passing tests, one existing skip and
+  four snapshots; exit 0. Earlier fixture type/lint failures were corrected and retained.
+- [ ] Review/merge the preparation optimization before subsequent deployment and measurement.
+
+The remaining provider graph, virtual forwarding, HTTP/WS validation/authentication and recurring
+panel reads still require work. The one-query assertion stops at a stub direct provider and does
+not include transport authentication, DTO existence validation or physical Shelly I/O. Staging
+remains alpha.40; there is no new release, physical command or latency measurement.
+
+## Command admission catalog merged — 2026-10-02
 
 The next read optimization reuses `PropertyMetadataService` for the dispatcher's final canonical
 source/alias checks, including verification of preopened API receipts. These checks retain the
@@ -41,8 +73,9 @@ This is not a claim that the entire command path is database-free.
   four snapshots; 23 E2E suites / 256 tests, both processes exit 0. Build and changed-file lint/format
   pass. The first full unit run exposed one outdated dependency fixture; it was updated before the
   successful full rerun. Earlier failures remain archived separately.
-- [ ] Review/merge the admission optimization; continue remaining structural/panel/auth read work
-  from the checklist below before another staging measurement. No release or staging action yet.
+- [x] Review/merge the admission optimization (#1146, `da4aaa1f905072b5af71d620429e9680a26cb469`).
+  CodeRabbit assessed the final head as minimal merge risk and all CI checks passed. Continue
+  remaining structural/panel/auth reads before another staging measurement; staging is unchanged.
 
 ## Runtime read/write optimization — 2026-10-02
 
@@ -72,8 +105,8 @@ Execution and acceptance:
   CodeRabbit reviewed the final head with minimal merge risk; all CI passed. Existing cryptographic, expiry, owner, revocation,
   role and MCP-client checks remain authoritative and uncached.
 - [ ] Replace command-path structural lookups with a shared runtime catalog. Audited remaining
-  callers include property-command validation/preparation, the three existence validators and
-  dispatch's final source/alias revalidation. Preserve the structural barrier, current mapping
+  callers include the provider device graph, virtual forwarding and the three existence validators.
+  Final source/alias admission is merged in #1146; preparation metadata is the candidate above. Preserve the structural barrier, current mapping
   generation checks, nested transaction rollback, reset/import/delete handling and provider input
   shape. Reuse the existing property metadata projection where appropriate; do not cache separate
   full ORM entity graphs in every consumer.

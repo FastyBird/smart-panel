@@ -367,7 +367,7 @@ describe('PropertyCommandService', () => {
 	it.each(['missing', 'read failure'] as const)(
 		'keeps execution validation when budget metadata has a %s',
 		async (mode) => {
-			const metadata = jest.spyOn(devicesService, 'findIdentity');
+			const metadata = jest.spyOn(channelsPropertiesService, 'findOne');
 			if (mode === 'missing') {
 				metadata.mockResolvedValue(null);
 			} else {
@@ -391,6 +391,23 @@ describe('PropertyCommandService', () => {
 			expect(mockPlatform.processBatch).not.toHaveBeenCalled();
 		},
 	);
+
+	it.each(['device', 'channel'] as const)('ignores budget metadata with a different %s parent', async (parent) => {
+		const device = toInstance(MockDevice, { ...mockDevice, id: parent === 'device' ? uuid() : mockDevice.id });
+		const channel = toInstance(MockChannel, { ...mockChannel, id: parent === 'channel' ? uuid() : mockChannel.id });
+		channel.device = device;
+		const property = toInstance(MockChannelProperty, mockChannelProperty);
+		property.channel = channel;
+		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(property);
+		jest.spyOn(devicesService, 'findOne').mockResolvedValue(null);
+		const budget = jest.spyOn(platformRegistryService, 'getCommandTtlMs');
+
+		await service.handleInternal(mockWsUser, validPayload);
+
+		expect(budget).toHaveBeenCalledWith([], DEFAULT_TTL_DEVICE_COMMAND);
+		// eslint-disable-next-line @typescript-eslint/unbound-method
+		expect(mockPlatform.processBatch).not.toHaveBeenCalled();
+	});
 
 	it('should return an error if validation fails', async () => {
 		const invalidPayload = { properties: [{ device: 'invalid-id' }] };
