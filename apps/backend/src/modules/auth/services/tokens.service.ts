@@ -16,6 +16,7 @@ import { UpdateTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { hashToken } from '../utils/token.utils';
 
+import { TokenUsageService } from './token-usage.service';
 import { TokensTypeMapperService } from './tokens-type-mapper.service';
 
 @Injectable()
@@ -27,6 +28,7 @@ export class TokensService {
 		private readonly repository: Repository<TokenEntity>,
 		private readonly tokensMapperService: TokensTypeMapperService,
 		private readonly dataSource: DataSource,
+		private readonly tokenUsageService: TokenUsageService,
 	) {}
 
 	async findAll<TToken extends TokenEntity>(type?: new (...args: any[]) => TToken): Promise<TToken[]> {
@@ -182,14 +184,9 @@ export class TokensService {
 		return token ?? null;
 	}
 
-	async updateLastUsedAt(tokenId: string): Promise<void> {
-		try {
-			const repository = this.dataSource.getRepository(LongLiveTokenEntity);
-			await repository.update(tokenId, { lastUsedAt: new Date() });
-		} catch (error) {
-			// Fire-and-forget: don't let lastUsedAt update failures affect auth
-			this.logger.debug(`Failed to update lastUsedAt for token ${tokenId}: ${(error as Error).message}`);
-		}
+	/** Records successful credential use in memory; timestamp persistence is delayed and best effort. */
+	recordUsage(token: Pick<LongLiveTokenEntity, 'id' | 'hashedToken'>): void {
+		this.tokenUsageService.record(token);
 	}
 
 	async findOne<TToken extends TokenEntity>(id: string, type?: new (...args: any[]) => TToken): Promise<TToken | null> {

@@ -2,13 +2,71 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.40 remains on staging; runtime activity PR #1143 merged; nested-transaction metadata correction prepared separately; deployment and full-client acceptance remain open
+**Status:** alpha.40 remains on staging; runtime activity #1143 and metadata savepoints #1144 merged; runtime read/write optimization underway before new staging measurements; deployment and full-client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
 
-## Runtime activity merged; metadata savepoint follow-up — 2026-10-02
+## Runtime read/write optimization — 2026-10-02
+
+The user approved moving stable runtime facts into bounded, shared in-process read models and
+removing incidental per-request writes before the next staging measurement. This remains a
+single-process design, with no Redis or additional infrastructure. SQLite retains durable
+configuration; property values remain in memory/storage plugins, with history in Influx where
+configured. Reads primarily cost latency/CPU; flash endurance concerns primarily involve writes.
+
+Execution and acceptance:
+
+- [x] Merge #1144 after checking CodeRabbit and all CI checks. Merged as
+  `822792a6272ff6f13d2b25806a6617ee230f282c`. The retained test-spy nitpick was checked against
+  SQLite's shared query runner: deliberately forcing a cache miss makes both integration assertions
+  fail on a real SELECT. No test correction was necessary.
+- [x] Implement bounded token-usage coalescing for display and long-live HTTP authentication.
+  `recordUsage` only records ID, credential hash and observation time in memory. One serialized
+  flush every 60 seconds performs at most one conditional UPDATE per observed credential in that
+  snapshot; idle intervals do no work. Pending and in-flight snapshots each contain at most 1,000
+  identities. Excess new identities and failed writes are dropped with aggregate warnings; later
+  requests can record fresh observations. Graceful shutdown drains both snapshots before database
+  teardown. Matching ID/hash/type and non-revoked state prevents stale usage from affecting a
+  replacement credential; the SQL condition also prevents timestamp regression. This is telemetry,
+  not an authentication cache. `last_used_at` may lag by the flush interval plus database delay;
+  a crash, saturation or persistence failure can lose unflushed telemetry. Periodic writes remain.
+- [ ] Review/merge the token-usage optimization. Existing cryptographic, expiry, owner, revocation,
+  role and MCP-client checks remain authoritative and uncached.
+- [ ] Replace command-path structural lookups with a shared runtime catalog. Audited remaining
+  callers include property-command validation/preparation, the three existence validators and
+  dispatch's final source/alias revalidation. Preserve the structural barrier, current mapping
+  generation checks, nested transaction rollback, reset/import/delete handling and provider input
+  shape. Reuse the existing property metadata projection where appropriate; do not cache separate
+  full ORM entity graphs in every consumer.
+- [ ] Inventory and convert recurring panel reads to shared runtime projections. Explicitly
+  separate normal state/command traffic from initial loading, configuration and history queries.
+- [ ] Add bounded authentication facts with immediate invalidation for token revocation/rotation,
+  user deletion/role changes and display/MCP lifecycle changes. Verify open WebSocket authority as
+  well as HTTP; TTL alone must not preserve access. WebSocket long-live authentication also still
+  scans all tokens and should use targeted lookup before introducing a cache.
+- [ ] Add whole-path query/ORM-count regressions: after warmup with unchanged configuration, a
+  state report, HomeKit/panel property command and state fanout should perform zero synchronous
+  ORM/SQLite work, including listeners. Count the remaining periodic telemetry/history work
+  separately rather than claiming the whole backend is database-free.
+- [ ] Only after the optimization candidates are reviewed, deploy via the normal upgrade and
+  repeat comparable staging measurements. Preserve prior failures/missed overlap samples and
+  distinguish Smart Panel processing from Shelly/network latency. Full client acceptance and epic
+  closure remain pending.
+
+Local validation for the token-usage candidate: 572 backend suites pass (8,950 tests, one existing
+skip; four snapshots), all 23 E2E suites pass (256 tests), backend build passes, backend lint has
+zero errors and three warnings in unchanged files, and changed-file formatting/lint pass.
+Real SQLite verifies zero SQL for 100 request-facing usage observations followed by one conditional
+UPDATE, credential deletion/replacement/rotation/revocation, subtype isolation and monotonic dates.
+Unit tests cover periodic/idle flushes, overflow, slow writes, clock rollback, failure recovery and
+shutdown drain. The monorepo lint/format and admin test commands cannot complete with missing
+non-backend dependencies. Full backend formatting reports 11 unchanged migration files. Panel
+analysis reports missing generated files/mocks (3,110 diagnostics); no panel files were changed.
+These failed local checks are retained, not reported as passes. Staging is unchanged.
+
+## Runtime activity and metadata savepoints merged — 2026-10-02
 
 PR #1143 merged as `554bfee799f091a29180e2b59a897af89bc23293` after all CI checks passed,
 both review threads were resolved and CodeRabbit reported minimal merge risk for the reviewed head.
@@ -20,7 +78,7 @@ commit or roll back an inner savepoint, reload metadata, then roll back the oute
 restores the original room, but the cache still attributes later activity to the uncommitted room.
 The inner settlement prematurely removed the query runner's dirty marker.
 
-A separate small correction invalidates on every dirty settlement while retaining that marker until
+PR #1144 merged the separate correction: it invalidates on every dirty settlement while retaining that marker until
 the outermost transaction ends. It adds no queries to the warm value-report path. Tests cover both
 inner settlement variants, outer rollback, marker release and subsequent zero-SQL activity reports.
 This follow-up does not alter optional locks, schema or persistence. Release/staging measurements
