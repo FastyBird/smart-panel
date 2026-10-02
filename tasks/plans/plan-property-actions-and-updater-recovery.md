@@ -2,11 +2,102 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.39 release and System upgrade verified; residual internal tails remain; bounded access-token lookup prepared after background-query attribution; full-client acceptance remains open
+**Status:** alpha.40 release and System upgrade verified; residual pre-command SQLite waits traced to per-report space activity writes; runtime activity fix prepared; full-client acceptance remains open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Alpha.40 residual SQLite waits and runtime space activity — 2026-10-02
+
+PR #1142 shipped in alpha.40. All 19 release jobs ultimately passed after one failed-job retry
+for npm metadata visibility following a successful publish. One normal System upgrade completed,
+preserved the 111-device catalog/bindings/schema/migrations, matched the published runtime and
+released the updater lock. No additional upgrade was submitted during the following diagnostics.
+
+Normal-runtime comparisons retained 20 commands per version during concurrent catalog requests.
+Preparation median/p95/max changed from 536/1,539/2,091 ms on alpha.39 to 410/617/655 ms on
+alpha.40. Incoming notification-to-alias maxima were 116/110 ms. All commands completed without
+observer timeouts. These sequential sessions have uncontrolled background work; they do not prove
+that every internal tail is resolved. External reply-to-notification delays still reached 4.22 s
+and remain outside the repair scope.
+
+A fresh command-free poll feasibility gate passed. Two later bounded batches aborted before any
+physical commands: the first retained an interrupted caller and a failed create-exclusive resume;
+the second retained an ambiguous test TCP-flow selection caused by HTTP keep-alive. Corrected
+adapter regressions passed. The final fixed 360-second batch executed six successful commands,
+including one overlap confirmed by both the collector and the wire trace. The other five misses,
+the original placement plan and a subsequent explicit 200 ms placement adjustment are retained.
+This is not the required full poll-overlap acceptance matrix. One non-overlap command still took
+2,462 ms before its Shelly RPC, versus 79 ms for the external RPC and 8 ms for incoming publication.
+
+A separate bounded diagnostic ran 20 successful commands without synthetic catalog load. It
+captured one 3,473 ms pre-RPC interval: 3,233 ms was validation, with three simple existence SELECTs
+waiting 3,176–3,230 ms for native callbacks. An overlapping `UPDATE spaces_module_spaces SET
+lastActivityAt = ? WHERE id = ?` began 20 ms before that command and took 3,180 ms. Exact query
+fingerprint matching identifies the space activity listener, which performs a channel lookup and
+space-row write on every property event. The event loop continued servicing periodic callbacks;
+GC and JS scheduling do not account for the multi-second interval. This strongly locates contention
+around shared SQLite/native work, but does not distinguish storage flushes from native lock waits.
+Incoming notification-to-alias publication in this trace was 5 ms median / 18 ms maximum. No trace
+records or capture packets were dropped. Instrumented values are diagnostic, not a candidate
+speedup comparison.
+
+The candidate keeps derived space activity in process memory and resolves current device membership
+through the existing structurally invalidated property metadata cache. Hydrated space entities and
+their API serialization expose the newest runtime/legacy timestamp. Ordinary warm property events
+perform no activity-related SQL. Optional shared-writer mode retains fresh metadata reads, but the
+derived activity itself is process-local. No schema migration or property-value storage change is
+introduced; authentication, command validation and the optional locking policy remain intact.
+
+**Persistence change:** new activity timestamps are not durably written per report. After restart,
+the legacy database timestamp (possibly null or stale) is the fallback until a newer report arrives.
+It is not durable activity history. Deletion and successful factory reset clear runtime entries;
+transaction/savepoint rollback preserves entries. An unknown bulk deletion conservatively clears
+the runtime activity cache. Structural entity saves may still persist a hydrated timestamp.
+
+Real-SQLite/Nest-event coverage checks the warm path, API serialization, unchanged stored timestamp,
+restart fallback, current membership after device moves, deleted properties, rollback and reset.
+The same zero-SQL regression fails against the historical listener with 40 SQL statements for
+20 events. All diagnostic overrides, captures and the rollback timer were archived and removed;
+normal alpha.40 then passed a further 120-second stable online/OFF readiness gate.
+
+Candidate validation: 82 focused tests passed. The full unit run passed 569 suites / 8,925 tests,
+with one existing skip and one Tailscale real-timer test failure (15/50 ms timers). That unchanged
+52-test Tailscale suite passed in a separate rerun; the original full-run failure is retained rather
+than reported as a fully green first run. All 23 E2E suites / 256 tests passed. Backend build,
+changed-file formatting and full lint passed; lint retains three warnings in unchanged buddy files.
+The candidate is not yet deployed and no performance improvement from this change is claimed.
+
+PR #1143's initial CI passed and review reported minimal merge risk, but its security summary
+identified a real reset lifecycle gap. Two additional real-SQLite regressions reproduced stale
+membership and a delayed metadata callback restoring activity after a spaces-only reset and UUID
+reuse. Successful reset now invalidates the structural metadata cache after SQLite clears device
+room references, and activity cleanup advances a generation captured before each asynchronous
+listener lookup. Earlier callbacks cannot recreate activity after cleanup. Failed reset and rolled-back
+deletions retain the previous generation/state. The initial global deletion barrier also rejected
+pending reports for unrelated spaces; the subsequent review correction below narrows that behavior.
+The revised focused suite passes 86 tests, including both initially failing regressions.
+
+Follow-up review: a real-event regression reproduced the unrelated-room report loss. Activity now
+keeps a deletion sequence per removed space and a separate global clear sequence; lookup start is
+still captured before awaiting metadata. Reports predating deletion of their resolved space or a
+global clear are rejected, while deleting another space leaves them valid. Deletion markers are
+retained until clear/shutdown so an old pending lookup cannot revive a reused identity.
+
+The second review claim (ordinary removal never invalidates metadata) does not hold for
+`SpacesService.remove()`: it explicitly updates `DeviceEntity.roomId` inside the transaction,
+triggering existing metadata invalidation before commit. A new real-SQLite test invokes that exact
+production service, sends subsequent property events and recreates the removed UUID; it already
+passed before this follow-up correction. No redundant ordinary-removal invalidation was added.
+The expanded targeted run passes 148 tests across seven suites, including spaces service tests,
+metadata, runtime activity and HomeKit convergence. Warm activity still performs zero SQL.
+
+- [x] Verify alpha.40 release, normal System upgrade and normal-runtime comparison.
+- [x] Retain poll attempts and capture the residual delay before Shelly RPC.
+- [x] Attribute the activity UPDATE and prepare a runtime-only replacement with regression coverage.
+- [ ] Review/deploy the activity fix and measure normal-runtime command impact.
+- [ ] Complete qualified poll-overlap and full-client acceptance before closing the epic.
 
 ## Alpha.39 background queries and bounded access-token lookup — 2026-10-01
 
@@ -61,7 +152,7 @@ owned SSH forward was closed. The original epic remains open.
 - [x] Verify alpha.39 release, normal System upgrade and command/catalog comparison.
 - [x] Capture background SQL/GC and reproduce the excess authentication lookup independently.
 - [x] Prepare a bounded credential lookup with security and real-SQLite regression coverage.
-- [ ] Review/deploy the credential lookup and measure normal-runtime command impact.
+- [x] Review/deploy the credential lookup and measure normal-runtime command impact (alpha.40 above).
 - [ ] Explain the remaining internal tail and complete qualified poll-overlap/full-client acceptance.
 
 ## Alpha.38 command/catalog contention and virtual source graph reuse — 2026-10-01

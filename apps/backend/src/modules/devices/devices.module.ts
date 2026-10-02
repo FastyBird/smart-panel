@@ -188,6 +188,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		PlatformRegistryService,
 		PropertyValueSourceRegistryService,
 		PropertyValueService,
+		PropertyMetadataService,
 		PropertyStateCoordinatorService,
 		PropertyTimeseriesService,
 		PropertyCommandWindowService,
