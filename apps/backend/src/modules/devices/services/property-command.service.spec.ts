@@ -37,8 +37,10 @@ import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandDispatchService } from './property-command-dispatch.service';
 import { PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyCommandService } from './property-command.service';
+import { PropertyMetadataService } from './property-metadata.service';
 import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
+import { PropertyValueService } from './property-value.service';
 
 class MockDevice extends DeviceEntity {
 	@Expose({ name: 'mock_value' })
@@ -182,6 +184,14 @@ describe('PropertyCommandService', () => {
 			providers: [
 				PropertyCommandService,
 				PropertyCommandDispatchService,
+				// Preparation and admission read the same fixture catalog; SQLite cache behavior has integration coverage.
+				{ provide: PropertyMetadataService, useExisting: ChannelsPropertiesService },
+				{
+					provide: PropertyValueService,
+					useValue: {
+						readLatest: jest.fn((property: ChannelPropertyEntity) => Promise.resolve(property.value ?? null)),
+					},
+				},
 				PropertyCommandWindowService,
 				PropertyValueSourceRegistryService,
 				DeviceStructureLockService,
