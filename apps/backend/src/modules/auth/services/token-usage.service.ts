@@ -6,8 +6,8 @@ import { createExtensionLogger } from '../../../common/logger';
 import { AUTH_MODULE_NAME } from '../auth.constants';
 import { LongLiveTokenEntity } from '../entities/auth.entity';
 
-export const TOKEN_USAGE_FLUSH_INTERVAL_MS = 60_000;
-export const TOKEN_USAGE_MAX_PENDING = 1_000;
+export const tokenUsageFlushIntervalMs = 60_000;
+export const tokenUsageMaxPending = 1_000;
 
 type TokenIdentity = Pick<LongLiveTokenEntity, 'id' | 'hashedToken'>;
 type UsageObservation = TokenIdentity & { lastUsedAt: Date };
@@ -25,10 +25,11 @@ export class TokenUsageService implements OnModuleInit, BeforeApplicationShutdow
 	constructor(private readonly dataSource: DataSource) {}
 
 	onModuleInit(): void {
-		this.timer = setInterval(() => void this.flush(), TOKEN_USAGE_FLUSH_INTERVAL_MS);
+		this.timer = setInterval(() => void this.flush(), tokenUsageFlushIntervalMs);
 		this.timer.unref();
 	}
 
+	/** Coalesces an already authenticated credential without ORM work; overflow drops new identities. */
 	record(token: TokenIdentity): void {
 		if (this.stopping) return;
 
@@ -36,7 +37,7 @@ export class TokenUsageService implements OnModuleInit, BeforeApplicationShutdow
 		const previous = this.pending.get(key);
 
 		// Existing credentials can still advance when the queue is full. Do not fall back to SQL.
-		if (!previous && this.pending.size >= TOKEN_USAGE_MAX_PENDING) {
+		if (!previous && this.pending.size >= tokenUsageMaxPending) {
 			this.dropped++;
 			return;
 		}
@@ -48,6 +49,7 @@ export class TokenUsageService implements OnModuleInit, BeforeApplicationShutdow
 		});
 	}
 
+	/** Flushes one snapshot, or joins the running flush while leaving newer observations queued. */
 	flush(): Promise<void> {
 		if (this.inFlight !== undefined) return this.inFlight;
 		if (this.pending.size === 0) return Promise.resolve();
@@ -67,6 +69,7 @@ export class TokenUsageService implements OnModuleInit, BeforeApplicationShutdow
 		return this.inFlight;
 	}
 
+	/** Stops intake and drains both snapshots before TypeORM tears down the data source. */
 	async beforeApplicationShutdown(): Promise<void> {
 		this.stopping = true;
 		if (this.timer) clearInterval(this.timer);

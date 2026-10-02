@@ -184,6 +184,7 @@ export class TokensService {
 		return token ?? null;
 	}
 
+	/** Records successful credential use in memory; timestamp persistence is delayed and best effort. */
 	recordUsage(token: Pick<LongLiveTokenEntity, 'id' | 'hashedToken'>): void {
 		this.tokenUsageService.record(token);
 	}

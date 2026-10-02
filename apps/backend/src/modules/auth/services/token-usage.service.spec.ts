@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 
-import { TOKEN_USAGE_FLUSH_INTERVAL_MS, TOKEN_USAGE_MAX_PENDING, TokenUsageService } from './token-usage.service';
+import { TokenUsageService, tokenUsageFlushIntervalMs, tokenUsageMaxPending } from './token-usage.service';
 
 describe('TokenUsageService', () => {
 	let service: TokenUsageService;
@@ -27,10 +27,10 @@ describe('TokenUsageService', () => {
 		jest.advanceTimersByTime(500);
 		service.record(token);
 		const observedAt = new Date();
-		await jest.advanceTimersByTimeAsync(TOKEN_USAGE_FLUSH_INTERVAL_MS - 500);
+		await jest.advanceTimersByTimeAsync(tokenUsageFlushIntervalMs - 500);
 		expect(update).toHaveBeenCalledTimes(1);
 		expect(update).toHaveBeenNthCalledWith(1, expect.any(Array), { lastUsedAt: observedAt });
-		await jest.advanceTimersByTimeAsync(TOKEN_USAGE_FLUSH_INTERVAL_MS);
+		await jest.advanceTimersByTimeAsync(tokenUsageFlushIntervalMs);
 		expect(update).toHaveBeenCalledTimes(1);
 	});
 
@@ -51,16 +51,16 @@ describe('TokenUsageService', () => {
 	});
 
 	it('bounds pending identities without evicting or directly persisting existing credentials', async () => {
-		for (let i = 0; i < TOKEN_USAGE_MAX_PENDING + 10; i++) service.record({ ...token, id: String(i) });
+		for (let i = 0; i < tokenUsageMaxPending + 10; i++) service.record({ ...token, id: String(i) });
 		jest.advanceTimersByTime(500);
 		service.record({ ...token, id: '0' });
 		expect(getRepository).not.toHaveBeenCalled();
 		await service.flush();
-		expect(update).toHaveBeenCalledTimes(TOKEN_USAGE_MAX_PENDING);
+		expect(update).toHaveBeenCalledTimes(tokenUsageMaxPending);
 		expect(update).toHaveBeenNthCalledWith(1, expect.any(Array), { lastUsedAt: new Date() });
 		service.record({ ...token, id: 'new' });
 		await service.flush();
-		expect(update).toHaveBeenCalledTimes(TOKEN_USAGE_MAX_PENDING + 1);
+		expect(update).toHaveBeenCalledTimes(tokenUsageMaxPending + 1);
 	});
 
 	it('does not fail auth or retain failed telemetry indefinitely and can persist a later observation', async () => {
@@ -88,7 +88,7 @@ describe('TokenUsageService', () => {
 		await first;
 		await shutdown;
 		expect(update).toHaveBeenCalledTimes(2);
-		await jest.advanceTimersByTimeAsync(TOKEN_USAGE_FLUSH_INTERVAL_MS * 2);
+		await jest.advanceTimersByTimeAsync(tokenUsageFlushIntervalMs * 2);
 		expect(update).toHaveBeenCalledTimes(2);
 		expect(jest.getTimerCount()).toBe(0);
 	});
