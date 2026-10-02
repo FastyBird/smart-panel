@@ -226,7 +226,7 @@ export class AuthGuard implements CanActivate {
 		_displayId: string,
 	): Promise<boolean> {
 		const hashedValue = hashToken(token);
-		const storedToken = await this.tokensService.findOneByHashedToken(hashedValue);
+		const storedToken = await this.tokensService.findAuthenticationTokenByHash(hashedValue);
 
 		if (!storedToken) {
 			this.logger.warn('Display token not found in database');
@@ -270,7 +270,7 @@ export class AuthGuard implements CanActivate {
 		expectedOwnerId?: string,
 	): Promise<boolean> {
 		const hashedValue = hashToken(token);
-		const storedLongLiveToken = await this.tokensService.findOneByHashedToken(hashedValue);
+		const storedLongLiveToken = await this.tokensService.findAuthenticationTokenByHash(hashedValue);
 		let effectiveMcpCapabilities: McpCapability[] | undefined;
 
 		if (!storedLongLiveToken) {

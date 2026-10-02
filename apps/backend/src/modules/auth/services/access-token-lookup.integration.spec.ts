@@ -6,6 +6,7 @@ import { AuthException } from '../auth.exceptions';
 import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { hashToken } from '../utils/token.utils';
 
+import { TokenMetadataService } from './token-metadata.service';
 import { TokenUsageService } from './token-usage.service';
 import { TokensService } from './tokens.service';
 
@@ -29,6 +30,7 @@ describe('Access token lookup with real SQLite inheritance and relations', () =>
 			null as never,
 			database,
 			new TokenUsageService(database),
+			new TokenMetadataService(database),
 		);
 		owner = await database.getRepository(UserEntity).save({ username: 'test-owner' });
 		accessId = uuid();
