@@ -16,9 +16,7 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { INTENT_ORIGINS, IntentOrigin } from '../../intents/intents.constants';
-import { ValidateChannelExists } from '../validators/channel-exists-constraint.validator';
-import { ValidateChannelPropertyExists } from '../validators/channel-property-exists-constraint.validator';
-import { ValidateDeviceExists } from '../validators/device-exists-constraint.validator';
+import { ValidatePropertyCommandTarget } from '../validators/property-command-target-constraint.validator';
 
 export class PropertyCommandContextDto {
 	@ApiPropertyOptional({
@@ -77,19 +75,15 @@ export class PropertyCommandContextDto {
 export class PropertyCommandValueDto {
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"device","reason":"Device must be a valid UUID (version 4)."}]' })
-	@ValidateDeviceExists({ message: '[{"field":"device","reason":"The specified device does not exist."}]' })
 	device: string;
 
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"channel","reason":"Channel must be a valid UUID (version 4)."}]' })
-	@ValidateChannelExists({ message: '[{"field":"channel","reason":"The specified channel does not exist."}]' })
 	channel: string;
 
 	@Expose()
 	@IsUUID('4', { message: '[{"field":"property","reason":"Property must be a valid UUID (version 4)."}]' })
-	@ValidateChannelPropertyExists({
-		message: '[{"field":"property","reason":"The specified property does not exist."}]',
-	})
+	@ValidatePropertyCommandTarget()
 	property: string;
 
 	@ApiProperty({

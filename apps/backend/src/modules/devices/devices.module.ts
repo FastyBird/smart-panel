@@ -91,6 +91,7 @@ import { ChannelExistsConstraintValidator } from './validators/channel-exists-co
 import { ChannelPropertyExistsConstraintValidator } from './validators/channel-property-exists-constraint.validator';
 import { DeviceExistsConstraintValidator } from './validators/device-exists-constraint.validator';
 import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidden-constraint.validator';
+import { PropertyCommandTargetConstraintValidator } from './validators/property-command-target-constraint.validator';
 
 @ApiTag({
 	tagName: DEVICES_MODULE_NAME,
@@ -132,6 +133,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		ChannelsPropertiesService,
 		DeviceValidationService,
 		DeviceStructureLockService,
+		PropertyCommandTargetConstraintValidator,
 		DeviceExistsConstraintValidator,
 		DeviceNotHiddenConstraintValidator,
 		ChannelExistsConstraintValidator,
@@ -195,6 +197,7 @@ import { DeviceNotHiddenConstraintValidator } from './validators/device-not-hidd
 		CommandLatencyTraceCollectorService,
 		PropertyCommandDispatchService,
 		PropertyCommandService,
+		PropertyCommandTargetConstraintValidator,
 		DeviceExistsConstraintValidator,
 		DeviceNotHiddenConstraintValidator,
 		ChannelExistsConstraintValidator,

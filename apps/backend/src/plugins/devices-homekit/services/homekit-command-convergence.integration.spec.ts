@@ -1,9 +1,11 @@
+import { useContainer } from 'class-validator';
 import { DataSource } from 'typeorm';
 
 import { Characteristic, HAPStatus, Service } from '@homebridge/hap-nodejs';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { TokenOwnerType } from '../../../modules/auth/auth.constants';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	ChannelCategory,
@@ -45,11 +47,13 @@ import { PropertyValueSourceRegistryService } from '../../../modules/devices/ser
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { ChannelPropertyEntitySubscriber } from '../../../modules/devices/subscribers/channel-property-entity.subscriber';
 import { DeviceEntitySubscriber } from '../../../modules/devices/subscribers/device-entity.subscriber';
+import { PropertyCommandTargetConstraintValidator } from '../../../modules/devices/validators/property-command-target-constraint.validator';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
 import { IntentsService } from '../../../modules/intents/services/intents.service';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { StorageConfigModel } from '../../../modules/storage/models/config.model';
 import { StorageService } from '../../../modules/storage/services/storage.service';
+import { UserRole } from '../../../modules/users/users.constants';
 import {
 	VirtualChannelEntity,
 	VirtualChannelPropertyEntity,
@@ -309,6 +313,36 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		if (typeof channel === 'string' || typeof channel.device === 'string') throw new Error('Missing target relations');
 		return { device: channel.device, channel, property, value };
 	}
+
+	it('validates and dispatches a warm panel WebSocket command with only the provider graph SELECT', async () => {
+		const metadata = await propertyMetadata.findOne(source.id);
+		if (!metadata) throw new Error('Missing target');
+		const target = commandTarget(metadata);
+		const validators = new Map<unknown, unknown>([
+			[PropertyCommandTargetConstraintValidator, new PropertyCommandTargetConstraintValidator(propertyMetadata)],
+		]);
+		useContainer({ get: <T>(type: new () => T): T => (validators.get(type) ?? new type()) as T });
+		const query = jest.spyOn(database.createQueryRunner(), 'query');
+		try {
+			const result = await commands.handleInternal(
+				{ id: null, role: UserRole.USER, type: 'token', ownerType: TokenOwnerType.DISPLAY, tokenId: 'display-token' },
+				{
+					request_id: source.id,
+					properties: [{ device: target.device.id, channel: target.channel.id, property: source.id, value: true }],
+				},
+			);
+			expect(result.success).toBe(true);
+			expect(provider).toHaveBeenCalledTimes(1);
+			if (locksEnabled) {
+				expect(query.mock.calls.length).toBeGreaterThan(1);
+			} else {
+				expect(query).toHaveBeenCalledTimes(1);
+				expect(query.mock.calls[0][0]).toMatch(/^SELECT /);
+			}
+		} finally {
+			useContainer({ get: <T>(type: new () => T): T => new type() });
+		}
+	});
 
 	it.each(['single', 'batch', 'api'] as const)(
 		'prepares a warm %s command with only the provider graph SELECT and current runtime values',

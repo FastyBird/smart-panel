@@ -100,12 +100,16 @@ or trend published by a concurrent normal writer. Every property write and delet
 queue. The default installation has one backend writer; value operations therefore require no SQLite claim or socket.
 Optional **`FB_PROPERTY_VALUE_LOCKS_ENABLED=true`** restores the shared SQLite claim fenced by a live Unix socket.
 This startup setting defaults to false and requires a backend restart; enable it on every writer when using independent
-backend processes over the same storage. Mixed modes do not provide cross-process value coordination. The setting only
-controls property-value leases: the provider-private adoption claim and structural identity constraints are unchanged.
-In the default single-process mode, value ingestion uses an in-memory property/channel/device metadata snapshot,
-invalidated by structural writes and transaction completion. Ordinary changed and unchanged value reports perform
+backend processes over the same storage. Mixed modes do not provide cross-process value coordination. The setting
+controls property-value leases and the use of local structural metadata caches; the provider-private adoption claim
+and structural identity constraints are unchanged.
+In the default single-process mode, value ingestion and command validation/preparation/admission reuse an in-memory
+property/channel/device metadata snapshot, invalidated by structural writes and transaction completion. Ordinary changed and unchanged value reports perform
 no catalog query or SQLite mutation after initialization. Shared-writer mode bypasses that snapshot because another
-process cannot invalidate local metadata; it retains fresh catalog reads as well as the shared lease.
+process cannot invalidate local metadata; it retains fresh catalog reads as well as the shared lease. With the default
+mode, all live configuration changes must go through the same backend so its mutation/transaction hooks invalidate
+the catalog. Independent metadata writers or direct SQL changes while the backend runs are outside that mode;
+use the shared-writer setting on every participating backend when independent writers are required.
 When enabled, that second boundary serializes writers from
 independent backend processes and lets a survivor reclaim a claim after its owner exits unexpectedly. Socket addresses
 use a fixed short alias plus a hash of the owner token, so deeply nested database paths cannot exceed the platform

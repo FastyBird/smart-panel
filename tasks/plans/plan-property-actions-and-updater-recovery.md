@@ -2,13 +2,49 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.40 remains on staging; runtime activity #1143, metadata savepoints #1144, token usage #1145 and command admission #1146 merged; runtime read/write optimization underway before new staging measurements; deployment and full-client acceptance remain open
+**Status:** alpha.40 remains on staging; runtime activity #1143, metadata savepoints #1144, token usage #1145, command admission #1146 and preparation #1147 merged; runtime read/write optimization underway before new staging measurements; deployment and full-client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
 
-## Command preparation metadata candidate — 2026-10-02
+## Command target validation candidate — 2026-10-02
+
+The WebSocket property-command DTO previously ran three independent existence queries for each
+command. A command-specific validator now checks its complete device/channel/property chain in
+one shared metadata lookup. UUID checks remain; malformed IDs are rejected before catalog access.
+The generic existence validators used for configuration/API input remain unchanged. Handler-level
+role checks, permission/value validation and canonical dispatch revalidation remain in place.
+Invalid targets still produce the existing WebSocket `Invalid payload` response; the internal DTO
+validation detail now reports a combined target error on `property`.
+
+- [x] Real production SQLite entity tests verify zero SQL/repository access for a warmed target
+  in single-process mode and a fresh joined read in shared-writer mode, without value/status
+  afterLoad. Reject missing, malformed and mismatched IDs, deleted parents, reparented channels/
+  properties and uncommitted mappings after an inner commit followed by outer rollback.
+- [x] Shared-writer mode sees a metadata update that deliberately bypasses local subscriber
+  invalidation. Documentation explicitly states that independent live metadata writers/direct SQL
+  are outside default single-process mode and require fresh-read mode on participating backends.
+- [x] A real command handler/DTO/preparation/admission integration test now includes the panel
+  WebSocket service entry point: exactly one remaining provider-graph SELECT with warmed metadata
+  in default mode. This starts after authentication and ends at a stub direct provider.
+- [x] Negative control: forcing metadata cache misses makes the warm DTO check fail on one SQL
+  query instead of zero, and the warm WebSocket service path on six instead of one. Restore the
+  candidate afterward; these are sensitivity checks, not prior-release hardware measurements.
+- [x] Complete backend unit validation: 572 suites / 9,002 passing tests, one existing skip and
+  four snapshots; exit 0. The parallel full run warned about a worker requiring forced shutdown;
+  retain that teardown limitation. Build, full backend lint (three existing warnings) and
+  changed-file format pass.
+- [x] All 23 E2E suites / 256 tests pass with exit 0. All three changed suites / 136 tests also
+  pass with `--runInBand --detectOpenHandles`, exit 0 and no open-handle warning; the broader
+  parallel-run worker teardown warning remains recorded separately.
+- [ ] Review/merge the target-validation change.
+
+No additional cache, dependency, migration, release or staging action is introduced. Full provider
+graphs, virtual forwarding, authentication and recurring panel reads remain before whole-path
+zero-ORM acceptance and the next hardware comparison.
+
+## Command preparation metadata merged — 2026-10-02
 
 `PropertyCommandService` now reuses the existing shared property metadata catalog for single/batch
 pre-validation, timeout-budget routing and per-property preparation. Budget selection checks the
@@ -33,7 +69,11 @@ Final canonical admission, structure/coordinator barriers and shared-writer cach
   complete repeat passed with exit 0. Both failures are retained; their root cause is unestablished.
 - [x] Complete backend unit validation: 572 suites / 8,980 passing tests, one existing skip and
   four snapshots; exit 0. Earlier fixture type/lint failures were corrected and retained.
-- [ ] Review/merge the preparation optimization before subsequent deployment and measurement.
+- [x] Merge #1147 (`b5cd7b84ebcc574d657422a0bdbb9cc87f865da0`) after current-head CI passed and
+  CodeRabbit reported minimal merge risk with no actionable comments. The retained conditional
+  concern assumes independent writers while fresh-read mode is disabled; the approved installation
+  uses one backend process. Operational mode documentation and a bypass-writer regression are
+  included in the command-target validation follow-up below. Staging is unchanged.
 
 The remaining provider graph, virtual forwarding, HTTP/WS validation/authentication and recurring
 panel reads still require work. The one-query assertion stops at a stub direct provider and does
@@ -106,7 +146,8 @@ Execution and acceptance:
   role and MCP-client checks remain authoritative and uncached.
 - [ ] Replace command-path structural lookups with a shared runtime catalog. Audited remaining
   callers include the provider device graph, virtual forwarding and the three existence validators.
-  Final source/alias admission is merged in #1146; preparation metadata is the candidate above. Preserve the structural barrier, current mapping
+  Final source/alias admission and preparation metadata are merged in #1146/#1147; command DTO
+  validation is the candidate above. Preserve the structural barrier, current mapping
   generation checks, nested transaction rollback, reset/import/delete handling and provider input
   shape. Reuse the existing property metadata projection where appropriate; do not cache separate
   full ORM entity graphs in every consumer.

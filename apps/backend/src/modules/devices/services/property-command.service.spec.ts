@@ -24,9 +24,7 @@ import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { PropertyValueState } from '../models/property-value-state.model';
 import { IDevicePlatform } from '../platforms/device.platform';
-import { ChannelExistsConstraintValidator } from '../validators/channel-exists-constraint.validator';
-import { ChannelPropertyExistsConstraintValidator } from '../validators/channel-property-exists-constraint.validator';
-import { DeviceExistsConstraintValidator } from '../validators/device-exists-constraint.validator';
+import { PropertyCommandTargetConstraintValidator } from '../validators/property-command-target-constraint.validator';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
@@ -97,6 +95,7 @@ describe('PropertyCommandService', () => {
 	let loggerErrorSpy: jest.SpiedFunction<any>;
 	let loggerWarnSpy: jest.SpiedFunction<any>;
 	let loggerLogSpy: jest.SpiedFunction<any>;
+	let targetValidator: { validate: jest.Mock };
 	let traceCollector: { observeCommand: jest.Mock; bindWindow: jest.Mock };
 
 	const mockDevice = {
@@ -179,6 +178,7 @@ describe('PropertyCommandService', () => {
 	};
 
 	beforeEach(async () => {
+		targetValidator = { validate: jest.fn().mockResolvedValue(true) };
 		traceCollector = { observeCommand: jest.fn(), bindWindow: jest.fn() };
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -197,9 +197,8 @@ describe('PropertyCommandService', () => {
 				DeviceStructureLockService,
 				PropertyStateCoordinatorService,
 				{ provide: CommandLatencyTraceCollectorService, useValue: traceCollector },
-				DeviceExistsConstraintValidator,
-				ChannelExistsConstraintValidator,
-				ChannelPropertyExistsConstraintValidator,
+				// Real DTO target validation and cache lifecycle are covered against SQLite separately.
+				{ provide: PropertyCommandTargetConstraintValidator, useValue: targetValidator },
 				{
 					provide: DevicesService,
 					useValue: {
@@ -425,7 +424,7 @@ describe('PropertyCommandService', () => {
 	});
 
 	it('should return an error if device is not found', async () => {
-		jest.spyOn(devicesService, 'exists').mockResolvedValue(false);
+		targetValidator.validate.mockResolvedValue(false);
 		jest.spyOn(devicesService, 'findOne').mockResolvedValue(null);
 
 		const result = await service.handleInternal(mockWsUser, validPayload);
@@ -436,7 +435,7 @@ describe('PropertyCommandService', () => {
 
 	it('should return an error if channel is not found', async () => {
 		jest.spyOn(devicesService, 'findOne').mockResolvedValue(deviceWithProperties());
-		jest.spyOn(channelsService, 'exists').mockResolvedValue(false);
+		targetValidator.validate.mockResolvedValue(false);
 		jest.spyOn(channelsService, 'findOne').mockResolvedValue(null);
 
 		const result = await service.handleInternal(mockWsUser, validPayload);
@@ -448,7 +447,7 @@ describe('PropertyCommandService', () => {
 	it('should return an error if property is not found', async () => {
 		jest.spyOn(devicesService, 'findOne').mockResolvedValue(deviceWithProperties());
 		jest.spyOn(channelsService, 'findOne').mockResolvedValue(toInstance(MockChannel, mockChannel));
-		jest.spyOn(channelsPropertiesService, 'exists').mockResolvedValue(false);
+		targetValidator.validate.mockResolvedValue(false);
 		jest.spyOn(channelsPropertiesService, 'findOne').mockResolvedValue(null);
 
 		const result = await service.handleInternal(mockWsUser, validPayload);
