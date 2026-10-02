@@ -15,7 +15,10 @@ FB_BACKEND_PORT=3000
 FB_DB_PATH=/var/lib/smart-panel/data
 
 # Optional cross-process coordination for property-value writes. Default: false.
-# A normal installation has one backend and uses in-memory ordering. Restart required.
+# A normal installation has one backend and uses in-memory ordering and structural metadata caches.
+# Enable on every backend if independent processes modify the same storage/configuration.
+# True also bypasses the local metadata catalog; false requires live edits through this backend.
+# Restart required.
 # FB_PROPERTY_VALUE_LOCKS_ENABLED=false
 
 # Configuration path (for config.yaml)
