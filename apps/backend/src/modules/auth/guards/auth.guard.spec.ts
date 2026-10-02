@@ -22,7 +22,8 @@ import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 import { TokenOwnerType } from '../auth.constants';
-import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity } from '../entities/auth.entity';
+import { LongLiveTokenEntity } from '../entities/auth.entity';
+import { AuthenticationAccessToken } from '../services/token-metadata.service';
 import { TokensService } from '../services/tokens.service';
 import { hashToken } from '../utils/token.utils';
 
@@ -78,28 +79,13 @@ describe('AuthGuard', () => {
 	const mockMcpAudience = 'urn:fastybird:smart-panel:installation-id:mcp';
 
 	// Create mock refresh token
-	const mockRefreshTokenEntity = {
-		id: uuid().toString(),
-		hashedToken: 'hashed-refresh-token',
-		revoked: false,
-		expiresAt: new Date(Date.now() + 86400000),
-		createdAt: new Date(),
-		owner: mockUser,
-	} as unknown as RefreshTokenEntity;
-
-	// Create mock access token with refreshToken getter that returns the mock refresh token
-	const mockAccessTokenEntity = {
-		id: uuid().toString(),
-		hashedToken: `hashed-${mockAccessToken}`,
+	const mockAccessTokenEntity: AuthenticationAccessToken = {
+		id: uuid(),
 		revoked: false,
 		expiresAt: new Date(Date.now() + 3600000),
-		createdAt: new Date(),
 		owner: mockUser,
-		get refreshToken() {
-			return mockRefreshTokenEntity;
-		},
-		children: [mockRefreshTokenEntity],
-	} as unknown as AccessTokenEntity;
+		refreshRevoked: false,
+	};
 
 	const mockDisplayLongLiveToken = {
 		id: mockTokenId,
@@ -172,7 +158,7 @@ describe('AuthGuard', () => {
 					provide: TokensService,
 					useValue: {
 						findAllByOwner: jest.fn(),
-						findAccessTokenByOwnerAndHash: jest.fn(),
+						findAuthenticationAccessToken: jest.fn(),
 						findByOwnerId: jest.fn(),
 						findAll: jest.fn(),
 						findAuthenticationTokenByHash: jest.fn(),
@@ -280,13 +266,13 @@ describe('AuthGuard', () => {
 
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockUserId });
-			jest.spyOn(tokensService, 'findAccessTokenByOwnerAndHash').mockResolvedValue(mockAccessTokenEntity);
+			jest.spyOn(tokensService, 'findAuthenticationAccessToken').mockResolvedValue(mockAccessTokenEntity);
 			jest.spyOn(usersService, 'getOneOrThrow').mockResolvedValue(mockUser);
 
 			const result = await guard.canActivate(context);
 
 			expect(result).toBe(true);
-			expect(tokensService.findAccessTokenByOwnerAndHash).toHaveBeenCalledWith(mockUserId, hashToken(mockAccessToken));
+			expect(tokensService.findAuthenticationAccessToken).toHaveBeenCalledWith(mockUserId, hashToken(mockAccessToken));
 			expect(tokensService.findAllByOwner).not.toHaveBeenCalled();
 			expect(request.auth).toEqual({ type: 'user', id: mockUser.id, role: mockUser.role });
 		});
@@ -298,20 +284,14 @@ describe('AuthGuard', () => {
 
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockUserId });
-			jest.spyOn(tokensService, 'findAccessTokenByOwnerAndHash').mockResolvedValue(null);
+			jest.spyOn(tokensService, 'findAuthenticationAccessToken').mockResolvedValue(null);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException when access token is revoked', async () => {
-			const revokedToken = {
-				...mockAccessTokenEntity,
-				revoked: true,
-				get refreshToken() {
-					return mockRefreshTokenEntity;
-				},
-			} as unknown as AccessTokenEntity;
+			const revokedToken = { ...mockAccessTokenEntity, revoked: true };
 
 			const context = createMockExecutionContext({
 				authorization: `Bearer ${mockAccessToken}`,
@@ -319,21 +299,14 @@ describe('AuthGuard', () => {
 
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockUserId });
-			jest.spyOn(tokensService, 'findAccessTokenByOwnerAndHash').mockResolvedValue(revokedToken);
+			jest.spyOn(tokensService, 'findAuthenticationAccessToken').mockResolvedValue(revokedToken);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 			expect(tokensService.recordUsage).not.toHaveBeenCalled();
 		});
 
 		it('should throw UnauthorizedException when refresh token is revoked', async () => {
-			const revokedRefresh = { ...mockRefreshTokenEntity, revoked: true } as unknown as RefreshTokenEntity;
-			const tokenWithRevokedRefresh = {
-				...mockAccessTokenEntity,
-				get refreshToken() {
-					return revokedRefresh;
-				},
-				children: [revokedRefresh],
-			} as unknown as AccessTokenEntity;
+			const tokenWithRevokedRefresh = { ...mockAccessTokenEntity, refreshRevoked: true };
 
 			const context = createMockExecutionContext({
 				authorization: `Bearer ${mockAccessToken}`,
@@ -341,7 +314,7 @@ describe('AuthGuard', () => {
 
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockUserId });
-			jest.spyOn(tokensService, 'findAccessTokenByOwnerAndHash').mockResolvedValue(tokenWithRevokedRefresh);
+			jest.spyOn(tokensService, 'findAuthenticationAccessToken').mockResolvedValue(tokenWithRevokedRefresh);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 			expect(tokensService.recordUsage).not.toHaveBeenCalled();
@@ -354,8 +327,9 @@ describe('AuthGuard', () => {
 
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockUserId });
-			jest.spyOn(tokensService, 'findAccessTokenByOwnerAndHash').mockResolvedValue(mockAccessTokenEntity);
-			jest.spyOn(usersService, 'getOneOrThrow').mockRejectedValue(new Error('User not found'));
+			jest
+				.spyOn(tokensService, 'findAuthenticationAccessToken')
+				.mockResolvedValue({ ...mockAccessTokenEntity, owner: null });
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 			expect(tokensService.recordUsage).not.toHaveBeenCalled();

@@ -2,14 +2,18 @@ import { DataSource, UpdateEvent } from 'typeorm';
 
 import { ConfigService } from '@nestjs/config';
 
+import { UserEntity } from '../../users/entities/users.entity';
+import { UserRole } from '../../users/users.constants';
 import { TokenOwnerType } from '../auth.constants';
-import { LongLiveTokenEntity, TokenEntity } from '../entities/auth.entity';
+import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 
 import { TokenMetadataService, tokenMetadataCapacity } from './token-metadata.service';
 
 describe('Bounded runtime token metadata', () => {
 	let service: TokenMetadataService;
 	let query: jest.Mock;
+	let accessQuery: jest.Mock;
+	let access: AccessTokenEntity;
 	let database: DataSource;
 	let row: LongLiveTokenEntity;
 
@@ -23,7 +27,25 @@ describe('Bounded runtime token metadata', () => {
 			expiresAt: new Date(Date.now() + 60_000),
 		});
 		query = jest.fn().mockResolvedValue(row);
-		database = { subscribers: [], getRepository: () => ({ findOne: query }) } as unknown as DataSource;
+		access = Object.assign(new AccessTokenEntity(), {
+			id: 'access',
+			revoked: false,
+			expiresAt: null,
+			owner: Object.assign(new UserEntity(), { id: 'user', role: UserRole.ADMIN }),
+			children: [Object.assign(new RefreshTokenEntity(), { revoked: false })],
+		});
+		accessQuery = jest.fn().mockResolvedValue(access);
+		const builder = {
+			leftJoinAndSelect: jest.fn().mockReturnThis(),
+			select: jest.fn().mockReturnThis(),
+			where: jest.fn().mockReturnThis(),
+			andWhere: jest.fn().mockReturnThis(),
+			getOne: accessQuery,
+		};
+		database = {
+			subscribers: [],
+			getRepository: () => ({ findOne: query, createQueryBuilder: () => builder }),
+		} as unknown as DataSource;
 		service = new TokenMetadataService(database, new ConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: false }));
 	});
 	afterEach(() => service.onModuleDestroy());
@@ -126,5 +148,39 @@ describe('Bounded runtime token metadata', () => {
 		query.mockClear();
 		await service.findByHash('hash');
 		expect(query).toHaveBeenCalledTimes(1);
+	});
+	it('shares the capacity limit between long-lived and access-token facts', async () => {
+		for (let i = 0; i < tokenMetadataCapacity; i++) await service.findByHash(`hash-${i}`);
+		await service.findAccessToken('user', 'access-hash');
+		await service.findAccessToken('user', 'access-hash');
+		expect(accessQuery).toHaveBeenCalledTimes(1);
+		query.mockClear();
+		await service.findByHash('hash-0');
+		expect(query).toHaveBeenCalledTimes(1);
+	});
+
+	it('discards an in-flight access role when its user is updated', async () => {
+		let finish!: (value: AccessTokenEntity) => void;
+		accessQuery.mockImplementationOnce(() => new Promise<AccessTokenEntity>((resolve) => (finish = resolve)));
+		const pending = service.findAccessToken('user', 'access-hash');
+		service.beforeUpdate({
+			metadata: { inheritanceTree: [UserEntity] },
+			entity: { role: UserRole.USER },
+			queryRunner: { isTransactionActive: false },
+		} as unknown as UpdateEvent<UserEntity>);
+		accessQuery.mockResolvedValue(
+			Object.assign(new AccessTokenEntity(), access, { owner: { id: 'user', role: UserRole.USER } }),
+		);
+		finish(access);
+		expect((await pending).owner.role).toBe(UserRole.USER);
+		expect((await service.findAccessToken('user', 'access-hash')).owner.role).toBe(UserRole.USER);
+		expect(accessQuery).toHaveBeenCalledTimes(2);
+	});
+
+	it('propagates access lookup failures and retries without retaining a missing credential', async () => {
+		accessQuery.mockRejectedValueOnce(new Error('database unavailable'));
+		await expect(service.findAccessToken('user', 'access-hash')).rejects.toThrow('database unavailable');
+		expect((await service.findAccessToken('user', 'access-hash')).owner.role).toBe(UserRole.ADMIN);
+		expect(accessQuery).toHaveBeenCalledTimes(2);
 	});
 });

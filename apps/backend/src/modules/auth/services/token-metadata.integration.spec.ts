@@ -14,6 +14,7 @@ import { UserRole } from '../../users/users.constants';
 import { WsAuthService } from '../../websocket/services/ws-auth.service';
 import { WebsocketNotAllowedException } from '../../websocket/websocket.exceptions';
 import { TokenOwnerType } from '../auth.constants';
+import { AuthException } from '../auth.exceptions';
 import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { AuthGuard, AuthenticatedRequest } from '../guards/auth.guard';
 import { hashToken } from '../utils/token.utils';
@@ -257,6 +258,160 @@ describe('Runtime credential facts with real SQLite and JWT verification', () =>
 		await authenticate();
 		await database.getRepository(LongLiveTokenEntity).clear();
 		metadata.invalidate();
+		await expect(authenticate()).rejects.toBeInstanceOf(UnauthorizedException);
+	});
+	async function createAccess() {
+		const user = await database.getRepository(UserEntity).save({ username: 'access-owner', role: UserRole.ADMIN });
+		credential = jwt.sign({ sub: user.id, role: UserRole.ADMIN }, { expiresIn: 3600 });
+		const access = await database.getRepository(AccessTokenEntity).save(
+			Object.assign(new AccessTokenEntity(), {
+				hashedToken: credential,
+				ownerId: user.id,
+				expiresAt: new Date(Date.now() + 3600_000),
+			}),
+		);
+		const refresh = await database.getRepository(RefreshTokenEntity).save(
+			Object.assign(new RefreshTokenEntity(), {
+				hashedToken: 'refresh-credential',
+				ownerId: user.id,
+				parentId: access.id,
+			}),
+		);
+		return { user, access, refresh };
+	}
+
+	it('authenticates a warm access credential on HTTP and WS without ORM or a second user read', async () => {
+		const { user } = await createAccess();
+		await authenticate();
+		const query = jest.spyOn(database.createQueryRunner(), 'query');
+		const repository = jest.spyOn(database, 'getRepository');
+		const verify = jest.spyOn(jwt, 'verifyAsync');
+		expect(await authenticate()).toEqual({ type: 'user', id: user.id, role: UserRole.ADMIN });
+		const client = socket();
+		expect(await ws.validateClient(client)).toBe(true);
+		expect(client.data).toEqual({ user: { type: 'user', id: user.id, role: UserRole.ADMIN } });
+		expect(verify).toHaveBeenCalledTimes(2);
+		expect(query).not.toHaveBeenCalled();
+		expect(repository).not.toHaveBeenCalled();
+	});
+
+	it('updates cached access roles after ORM edits rather than trusting the signed role claim', async () => {
+		const { user } = await createAccess();
+		await authenticate();
+		await database.getRepository(UserEntity).update(user.id, { role: UserRole.USER });
+		expect((await authenticate()).role).toBe(UserRole.USER);
+		const client = socket();
+		await ws.validateClient(client);
+		expect(client.data).toMatchObject({ user: { role: UserRole.USER } });
+	});
+
+	it.each(['access revoke', 'refresh revoke', 'access delete', 'user delete', 'rotate', 'owner transfer'] as const)(
+		'rejects warm access credentials on both transports after %s',
+		async (change) => {
+			const { user, access, refresh } = await createAccess();
+			await authenticate();
+			if (change === 'access revoke') await tokens.revokeUserCredentials(user.id);
+			if (change === 'refresh revoke')
+				await database.getRepository(RefreshTokenEntity).update(refresh.id, { revoked: true });
+			if (change === 'access delete') await database.getRepository(AccessTokenEntity).delete(access.id);
+			if (change === 'user delete') await database.getRepository(UserEntity).delete(user.id);
+			if (change === 'rotate')
+				await database.getRepository(AccessTokenEntity).update(access.id, { hashedToken: hashToken('replacement') });
+			if (change === 'owner transfer') {
+				const other = await database.getRepository(UserEntity).save({ username: 'other-user' });
+				await database.getRepository(AccessTokenEntity).update(access.id, { ownerId: other.id });
+			}
+			await expect(authenticate()).rejects.toBeInstanceOf(UnauthorizedException);
+			await expect(ws.validateClient(socket())).rejects.toBeInstanceOf(WebsocketNotAllowedException);
+		},
+	);
+
+	it.each(['missing', 'multiple'])(
+		'retains the %s refresh-child rejection after warming an access credential',
+		async (condition) => {
+			const { user, access, refresh } = await createAccess();
+			await authenticate();
+			if (condition === 'missing') await database.getRepository(RefreshTokenEntity).delete(refresh.id);
+			else
+				await database.getRepository(RefreshTokenEntity).save(
+					Object.assign(new RefreshTokenEntity(), {
+						hashedToken: 'extra-refresh',
+						ownerId: user.id,
+						parentId: access.id,
+					}),
+				);
+			await expect(authenticate()).rejects.toBeInstanceOf(AuthException);
+			await expect(ws.validateClient(socket())).rejects.toBeInstanceOf(AuthException);
+		},
+	);
+
+	it('requires both owner and hash and isolates the projected owner facts', async () => {
+		const { user, access } = await createAccess();
+		const hash = hashToken(credential);
+		const facts = await tokens.findAuthenticationAccessToken(user.id, hash);
+		expect(facts).toMatchObject({ id: access.id, owner: { id: user.id, role: UserRole.ADMIN }, refreshRevoked: false });
+		expect(Object.keys(facts.owner).sort()).toEqual(['id', 'role']);
+		facts.owner.role = UserRole.OWNER;
+		facts.expiresAt.setFullYear(1990);
+		expect((await tokens.findAuthenticationAccessToken(user.id, hash)).owner.role).toBe(UserRole.ADMIN);
+		expect(await tokens.findAuthenticationAccessToken(uuid(), hash)).toBeNull();
+		expect(await tokens.findAuthenticationAccessToken(user.id, hashToken('refresh-credential'))).toBeNull();
+		expect(await tokens.findAuthenticationTokenByHash(hash)).toBeNull();
+	});
+
+	it.each(['commitTransaction', 'rollbackTransaction'] as const)(
+		'does not retain a user-role grant across nested %s and outer rollback',
+		async (settleInner) => {
+			const { user } = await createAccess();
+			await database.getRepository(UserEntity).update(user.id, { role: UserRole.USER });
+			await authenticate();
+			const runner = database.createQueryRunner();
+			await runner.startTransaction();
+			try {
+				await runner.manager.update(UserEntity, user.id, { role: UserRole.OWNER });
+				await runner.startTransaction();
+				await runner.manager.update(UserEntity, user.id, { firstName: 'Uncommitted' });
+				expect((await authenticate()).role).toBe(UserRole.OWNER);
+				await runner[settleInner]();
+				expect((await authenticate()).role).toBe(UserRole.OWNER);
+				await runner.rollbackTransaction();
+				expect((await authenticate()).role).toBe(UserRole.USER);
+			} finally {
+				while (runner.isTransactionActive) await runner.rollbackTransaction();
+				await runner.release();
+			}
+		},
+	);
+
+	it('observes independent role and refresh mutations with cache bypass enabled', async () => {
+		const { user, refresh } = await createAccess();
+		metadata.onModuleDestroy();
+		metadata = new TokenMetadataService(database, new ConfigService({ FB_PROPERTY_VALUE_LOCKS_ENABLED: true }));
+		await metadata.findAccessToken(user.id, hashToken(credential));
+		await database
+			.createQueryBuilder()
+			.update(UserEntity)
+			.set({ role: UserRole.USER })
+			.where('id = :id', { id: user.id })
+			.callListeners(false)
+			.execute();
+		await database
+			.createQueryBuilder()
+			.update(RefreshTokenEntity)
+			.set({ revoked: true })
+			.where('id = :id', { id: refresh.id })
+			.callListeners(false)
+			.execute();
+		expect(await metadata.findAccessToken(user.id, hashToken(credential))).toMatchObject({
+			owner: { role: UserRole.USER },
+			refreshRevoked: true,
+		});
+	});
+	it('retains revoked-access rejection even when its refresh child is absent', async () => {
+		const { access, refresh } = await createAccess();
+		await authenticate();
+		await database.getRepository(AccessTokenEntity).update(access.id, { revoked: true });
+		await database.getRepository(RefreshTokenEntity).delete(refresh.id);
 		await expect(authenticate()).rejects.toBeInstanceOf(UnauthorizedException);
 	});
 });

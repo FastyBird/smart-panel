@@ -3,7 +3,7 @@ import { Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 
 import { TokenOwnerType } from '../../auth/auth.constants';
-import { AccessTokenEntity, RefreshTokenEntity } from '../../auth/entities/auth.entity';
+import { AuthenticationAccessToken } from '../../auth/services/token-metadata.service';
 import { TokensService } from '../../auth/services/tokens.service';
 import { hashToken } from '../../auth/utils/token.utils';
 import { MCP_OAUTH_PRINCIPAL_TYPE } from '../../mcp/mcp.constants';
@@ -60,18 +60,22 @@ describe('WsAuthService', () => {
 describe('WebSocket user access credentials', () => {
 	const userId = 'test-user';
 	const token = 'presented-credential';
-	let tokens: { findAccessTokenByOwnerAndHash: jest.Mock; findAllByOwner: jest.Mock };
+	let tokens: { findAuthenticationAccessToken: jest.Mock; findAllByOwner: jest.Mock };
 	let users: { getOneOrThrow: jest.Mock };
 	let jwt: { verifyAsync: jest.Mock };
 	let service: WsAuthService;
 	let client: Socket;
-	let access: AccessTokenEntity;
-	let refresh: RefreshTokenEntity;
+	let access: AuthenticationAccessToken;
 
 	beforeEach(() => {
-		refresh = Object.assign(new RefreshTokenEntity(), { revoked: false });
-		access = Object.assign(new AccessTokenEntity(), { revoked: false, children: [refresh] });
-		tokens = { findAccessTokenByOwnerAndHash: jest.fn().mockResolvedValue(access), findAllByOwner: jest.fn() };
+		access = {
+			id: 'access',
+			revoked: false,
+			expiresAt: null,
+			refreshRevoked: false,
+			owner: { id: userId, role: UserRole.USER },
+		};
+		tokens = { findAuthenticationAccessToken: jest.fn().mockResolvedValue(access), findAllByOwner: jest.fn() };
 		users = { getOneOrThrow: jest.fn().mockResolvedValue({ id: userId, role: UserRole.USER }) };
 		jwt = { verifyAsync: jest.fn().mockResolvedValue({ sub: userId }) };
 		service = new WsAuthService(
@@ -84,16 +88,16 @@ describe('WebSocket user access credentials', () => {
 
 	it('authenticates the presented owner/hash without listing owner credentials', async () => {
 		await expect(service.validateClient(client)).resolves.toBe(true);
-		expect(tokens.findAccessTokenByOwnerAndHash).toHaveBeenCalledWith(userId, hashToken(token));
+		expect(tokens.findAuthenticationAccessToken).toHaveBeenCalledWith(userId, hashToken(token));
 		expect(tokens.findAllByOwner).not.toHaveBeenCalled();
 		expect(client.data).toEqual({ user: { id: userId, role: UserRole.USER, type: 'user' } });
 	});
 
 	it.each(['missing', 'access revoked', 'refresh revoked', 'missing user'])('rejects %s', async (condition) => {
-		if (condition === 'missing') tokens.findAccessTokenByOwnerAndHash.mockResolvedValue(null);
+		if (condition === 'missing') tokens.findAuthenticationAccessToken.mockResolvedValue(null);
 		if (condition === 'access revoked') access.revoked = true;
-		if (condition === 'refresh revoked') refresh.revoked = true;
-		if (condition === 'missing user') users.getOneOrThrow.mockRejectedValue(new Error('User missing'));
+		if (condition === 'refresh revoked') access.refreshRevoked = true;
+		if (condition === 'missing user') access.owner = null;
 		await expect(service.validateClient(client)).rejects.toBeInstanceOf(WebsocketNotAllowedException);
 		expect(client.data).toEqual({});
 	});
@@ -101,6 +105,6 @@ describe('WebSocket user access credentials', () => {
 	it('rejects an expired or invalid JWT before accessing stored credentials', async () => {
 		jwt.verifyAsync.mockRejectedValue(new Error('JWT expired'));
 		await expect(service.validateClient(client)).rejects.toBeInstanceOf(WebsocketNotAllowedException);
-		expect(tokens.findAccessTokenByOwnerAndHash).not.toHaveBeenCalled();
+		expect(tokens.findAuthenticationAccessToken).not.toHaveBeenCalled();
 	});
 });
