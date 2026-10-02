@@ -2,11 +2,32 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.40 release and System upgrade verified; residual pre-command SQLite waits traced to per-report space activity writes; runtime activity fix prepared; full-client acceptance remains open
+**Status:** alpha.40 remains on staging; runtime activity PR #1143 merged; nested-transaction metadata correction prepared separately; deployment and full-client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Runtime activity merged; metadata savepoint follow-up — 2026-10-02
+
+PR #1143 merged as `554bfee799f091a29180e2b59a897af89bc23293` after all CI checks passed,
+both review threads were resolved and CodeRabbit reported minimal merge risk for the reviewed head.
+The activity fix is not yet deployed; staging remains on normal alpha.40.
+
+The final review summary retained a pre-existing metadata cache weakness around nested transactions.
+Two real-SQLite/Nest-event regressions reproduced it: change a device's room in an outer transaction,
+commit or roll back an inner savepoint, reload metadata, then roll back the outer transaction. SQLite
+restores the original room, but the cache still attributes later activity to the uncommitted room.
+The inner settlement prematurely removed the query runner's dirty marker.
+
+A separate small correction invalidates on every dirty settlement while retaining that marker until
+the outermost transaction ends. It adds no queries to the warm value-report path. Tests cover both
+inner settlement variants, outer rollback, marker release and subsequent zero-SQL activity reports.
+This follow-up does not alter optional locks, schema or persistence. Release/staging measurements
+remain pending so the activity and metadata corrections can be verified together.
+Validation: all 152 targeted tests across seven suites, backend build and changed-file lint pass.
+The two new integration cases failed on the merged baseline before the correction; both original
+failures are retained. Full E2E and hardware tests were not repeated for this cache-settlement change.
 
 ## Alpha.40 residual SQLite waits and runtime space activity — 2026-10-02
 

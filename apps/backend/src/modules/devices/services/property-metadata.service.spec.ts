@@ -170,9 +170,33 @@ describe('PropertyMetadataService', () => {
 			} as unknown as InsertEvent<ChannelPropertyEntity>);
 			getOne.mockResolvedValue(Object.assign(new ChannelPropertyEntity(), property, { name: 'In transaction' }));
 			await service.findOne('property');
+			queryRunner.isTransactionActive = false;
 			service[method]({ queryRunner } as unknown as TransactionCommitEvent);
 			getOne.mockResolvedValue(Object.assign(new ChannelPropertyEntity(), property, { name: 'Settled' }));
 			expect((await service.findOne('property'))?.name).toBe('Settled');
+		},
+	);
+
+	it.each(['afterTransactionCommit', 'afterTransactionRollback'] as const)(
+		'keeps outer invalidation pending after a savepoint %s and releases it after final settlement',
+		async (settleInner) => {
+			const queryRunner = { isTransactionActive: true };
+			service.afterInsert({
+				metadata: { inheritanceTree: [ChannelPropertyEntity] },
+				queryRunner,
+			} as unknown as InsertEvent<ChannelPropertyEntity>);
+			service[settleInner]({ queryRunner } as unknown as TransactionCommitEvent);
+			getOne.mockResolvedValue(Object.assign(new ChannelPropertyEntity(), property, { name: 'Uncommitted' }));
+			expect((await service.findOne('property'))?.name).toBe('Uncommitted');
+			queryRunner.isTransactionActive = false;
+			service.afterTransactionRollback({ queryRunner } as unknown as TransactionCommitEvent);
+			getOne.mockResolvedValue(Object.assign(new ChannelPropertyEntity(), property, { name: 'Restored' }));
+			expect((await service.findOne('property'))?.name).toBe('Restored');
+			expect(getOne).toHaveBeenCalledTimes(2);
+			// A later read-only transaction on the same runner must not evict the warm catalog.
+			service.afterTransactionCommit({ queryRunner } as unknown as TransactionCommitEvent);
+			await service.findOne('property');
+			expect(getOne).toHaveBeenCalledTimes(2);
 		},
 	);
 

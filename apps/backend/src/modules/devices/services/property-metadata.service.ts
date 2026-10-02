@@ -118,8 +118,12 @@ export class PropertyMetadataService implements EntitySubscriberInterface, OnMod
 		this.invalidate();
 	}
 
-	private transactionSettled(event: { queryRunner: object }): void {
-		if (this.dirtyTransactions.delete(event.queryRunner)) this.invalidate();
+	private transactionSettled(event: { queryRunner: object & { isTransactionActive: boolean } }): void {
+		if (!this.dirtyTransactions.has(event.queryRunner)) return;
+		this.invalidate();
+		// Savepoint settlement leaves the outer transaction active. Reads can refill the cache
+		// with uncommitted metadata, so retain its dirty marker until the outermost settlement.
+		if (!event.queryRunner.isTransactionActive) this.dirtyTransactions.delete(event.queryRunner);
 	}
 
 	/** Bulk clears and database-side cascades bypass entity mutation subscribers. */

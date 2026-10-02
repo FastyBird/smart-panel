@@ -170,6 +170,32 @@ describe('Space activity through real events and SQLite', () => {
 		expect(activity.readLatest(room)).toEqual(legacy);
 	});
 
+	it.each(['commitTransaction', 'rollbackTransaction'] as const)(
+		'invalidates room membership on outer rollback after an inner %s',
+		async (settleInner) => {
+			const runner = database.createQueryRunner();
+			await runner.startTransaction();
+			try {
+				await runner.manager.update(SimulatorDeviceEntity, device.id, { roomId: other.id });
+				await runner.startTransaction();
+				await runner[settleInner]();
+				// Refill after the savepoint settles, while the outer move is still uncommitted.
+				await metadata.findOne(property.id);
+			} finally {
+				await runner.rollbackTransaction();
+			}
+			expect((await database.getRepository(SimulatorDeviceEntity).findOneByOrFail({ id: device.id })).roomId).toBe(
+				room.id,
+			);
+			await events.emitAsync(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
+			expect(activity.readLatest(room)).not.toEqual(legacy);
+			expect(activity.readLatest(other)).toBeNull();
+			const query = jest.spyOn(runner, 'query');
+			await events.emitAsync(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
+			expect(query).not.toHaveBeenCalled();
+		},
+	);
+
 	it('preserves activity on rolled-back deletion and removes it after a committed deletion', async () => {
 		const at = new Date();
 		activity.record(other.id, at);
