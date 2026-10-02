@@ -25,6 +25,7 @@ export class SpaceActivityListener implements OnModuleInit {
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET)
 	async handlePropertyUpdated(property: ChannelPropertyEntity): Promise<void> {
 		const observedAt = new Date();
+		const generation = this.activity.getGeneration();
 		try {
 			if (!property.id) return;
 			// The shared structural catalog is invalidated on device moves, property remaps and deletion.
@@ -34,7 +35,7 @@ export class SpaceActivityListener implements OnModuleInit {
 			if (!channel || typeof channel === 'string') return;
 			const device = channel.device;
 			if (!device || typeof device === 'string' || !device.roomId) return;
-			this.activity.record(device.roomId, observedAt);
+			this.activity.record(device.roomId, observedAt, generation);
 		} catch (error) {
 			const err = error as Error;
 			this.logger.warn(`Failed to update space activity on property update: ${err.message}`, err.stack);

@@ -45,4 +45,20 @@ describe('SpaceActivityService', () => {
 		service.record('room', new Date(Number.NaN));
 		expect(service.readLatest({ id: 'room', lastActivityAt: null })).toBeNull();
 	});
+
+	it.each(['delete', 'clear'] as const)(
+		'rejects pre-%s observations but accepts new lifecycle reports',
+		(operation) => {
+			const service = new SpaceActivityService();
+			const room = { id: 'room', lastActivityAt: null };
+			const generation = service.getGeneration();
+			if (operation === 'delete') service.delete(room.id);
+			else service.clear();
+			service.record(room.id, new Date(), generation);
+			expect(service.readLatest(room)).toBeNull();
+			const observedAt = new Date();
+			service.record(room.id, observedAt, service.getGeneration());
+			expect(service.readLatest(room)).toEqual(observedAt);
+		},
+	);
 });

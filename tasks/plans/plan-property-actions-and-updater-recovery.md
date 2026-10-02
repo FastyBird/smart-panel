@@ -69,6 +69,16 @@ than reported as a fully green first run. All 23 E2E suites / 256 tests passed. 
 changed-file formatting and full lint passed; lint retains three warnings in unchanged buddy files.
 The candidate is not yet deployed and no performance improvement from this change is claimed.
 
+PR #1143's initial CI passed and review reported minimal merge risk, but its security summary
+identified a real reset lifecycle gap. Two additional real-SQLite regressions reproduced stale
+membership and a delayed metadata callback restoring activity after a spaces-only reset and UUID
+reuse. Successful reset now invalidates the structural metadata cache after SQLite clears device
+room references, and activity cleanup advances a generation captured before each asynchronous
+listener lookup. Earlier callbacks cannot recreate activity after cleanup. Failed reset and rolled-back
+deletions retain the previous generation/state. Deleting one space conservatively rejects already
+pending reports for other spaces too; later reports proceed normally, without extra warm-path SQL.
+The revised focused suite passes 86 tests, including both initially failing regressions.
+
 - [x] Verify alpha.40 release, normal System upgrade and normal-runtime comparison.
 - [x] Retain poll attempts and capture the residual delay before Shelly RPC.
 - [x] Attribute the activity UPDATE and prepare a runtime-only replacement with regression coverage.

@@ -221,11 +221,47 @@ describe('Space activity through real events and SQLite', () => {
 	it('clears activity after a successful factory reset but preserves it if the reset fails', async () => {
 		activity.record(other.id, new Date());
 		const repository = database.getRepository(SpaceEntity);
+		const generation = activity.getGeneration();
 		const clear = jest.spyOn(repository, 'clear').mockRejectedValueOnce(new Error('reset failed'));
 		expect(await module.get(SpacesModuleResetService).reset()).toEqual({ success: false, reason: 'reset failed' });
 		expect(activity.readLatest(other)).toBeInstanceOf(Date);
+		expect(activity.getGeneration()).toBe(generation);
+		const query = jest.spyOn(database.createQueryRunner(), 'query');
+		await events.emitAsync(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
+		expect(query).not.toHaveBeenCalled();
+		expect(activity.readLatest(room)).not.toEqual(legacy);
 		clear.mockRestore();
 		expect(await module.get(SpacesModuleResetService).reset()).toEqual({ success: true });
 		expect(activity.readLatest(other)).toBeNull();
+	});
+
+	it('does not restore pre-reset membership when a removed space UUID is reused', async () => {
+		await events.emitAsync(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
+		expect(await module.get(SpacesModuleResetService).reset()).toEqual({ success: true });
+		expect((await database.getRepository(SimulatorDeviceEntity).findOneByOrFail({ id: device.id })).roomId).toBeNull();
+		await events.emitAsync(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
+		await database.getRepository(ActivityTestRoom).save({ id: room.id, name: 'Recreated room' });
+		expect((await database.getRepository(ActivityTestRoom).findOneByOrFail({ id: room.id })).lastActivityAt).toBeNull();
+	});
+
+	it('discards a report whose metadata callback finishes after reset', async () => {
+		const stale = await metadata.findOne(property.id);
+		let finish!: (value: ChannelPropertyEntity | null) => void;
+		jest.spyOn(metadata, 'findOne').mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finish = resolve;
+				}),
+		);
+		const report = events.emitAsync(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
+		expect(finish).toBeDefined();
+		try {
+			expect(await module.get(SpacesModuleResetService).reset()).toEqual({ success: true });
+			await database.getRepository(ActivityTestRoom).save({ id: room.id, name: 'Recreated room' });
+		} finally {
+			finish(stale);
+			await report;
+		}
+		expect((await database.getRepository(ActivityTestRoom).findOneByOrFail({ id: room.id })).lastActivityAt).toBeNull();
 	});
 });

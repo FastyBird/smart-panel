@@ -10,8 +10,15 @@ import { SpaceEntity } from '../entities/space.entity';
 @Injectable()
 export class SpaceActivityService implements OnModuleDestroy {
 	private readonly activity = new Map<string, number>();
+	private generation = 0;
 
-	record(spaceId: string, observedAt: Date): void {
+	getGeneration(): number {
+		return this.generation;
+	}
+
+	record(spaceId: string, observedAt: Date, generation = this.generation): void {
+		// An asynchronous metadata read must not restore activity from a removed space lifecycle.
+		if (generation !== this.generation) return;
 		const timestamp = observedAt.getTime();
 		if (!Number.isFinite(timestamp)) return;
 		this.activity.set(spaceId, Math.max(timestamp, this.activity.get(spaceId) ?? timestamp));
@@ -27,10 +34,12 @@ export class SpaceActivityService implements OnModuleDestroy {
 	}
 
 	delete(spaceId: string): void {
+		this.generation += 1;
 		this.activity.delete(spaceId);
 	}
 
 	clear(): void {
+		this.generation += 1;
 		this.activity.clear();
 	}
 

@@ -122,7 +122,8 @@ export class PropertyMetadataService implements EntitySubscriberInterface, OnMod
 		if (this.dirtyTransactions.delete(event.queryRunner)) this.invalidate();
 	}
 
-	private invalidate(): void {
+	/** Bulk clears and database-side cascades bypass entity mutation subscribers. */
+	invalidate(): void {
 		this.generation += 1;
 		this.catalog.clear();
 	}
