@@ -5,7 +5,6 @@ import { PropertyValueState } from '../models/property-value-state.model';
 import { IDevicePropertyData } from '../platforms/device.platform';
 import { PropertyCommandValue, validatePropertyCommandValue } from '../utils/property-command-value.utils';
 
-import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
@@ -16,8 +15,10 @@ import {
 	PropertyCommandWindowService,
 	PropertyCommandWindowTarget,
 } from './property-command-window.service';
+import { PropertyMetadataService } from './property-metadata.service';
 import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
+import { PropertyValueService } from './property-value.service';
 
 export interface PropertyCommandDispatchOptions {
 	readonly intentId?: string;
@@ -64,7 +65,8 @@ interface AdmittedWindow {
 @Injectable()
 export class PropertyCommandDispatchService {
 	constructor(
-		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly propertyMetadata: PropertyMetadataService,
+		private readonly propertyValues: PropertyValueService,
 		private readonly channelsService: ChannelsService,
 		private readonly devicesService: DevicesService,
 		private readonly platformRegistryService: PlatformRegistryService,
@@ -205,23 +207,23 @@ export class PropertyCommandDispatchService {
 			return null;
 		}
 
-		// Every requested alias is reloaded while the lifecycle barrier is held. A remap is never
+		// Read the invalidation-aware catalog while the lifecycle barrier is held. A remap is never
 		// silently authorized as a command to a different source between validation and forwarding.
 		for (const requested of requestedUpdates) {
-			const currentRequested = await this.channelsPropertiesService.findOne(requested.property.id);
+			const currentRequested = await this.propertyMetadata.findOne(requested.property.id);
 
 			if (currentRequested === null || this.valueSourceRegistry.resolve(currentRequested) !== canonicalPropertyId) {
 				return null;
 			}
 		}
 
-		const sourceProperty = await this.channelsPropertiesService.findOne(canonicalPropertyId);
+		const sourceProperty = await this.propertyMetadata.findOne(canonicalPropertyId);
 
 		if (sourceProperty === null || this.valueSourceRegistry.resolve(sourceProperty) !== sourceProperty.id) {
 			return null;
 		}
 
-		// findOne already joins the channel and device in this fresh, barrier-protected read.
+		// Metadata includes the channel and device, invalidated by structural writes and settlement.
 		// Admission needs their identities/type, not another full graph and every sibling value.
 		const sourceChannel =
 			typeof sourceProperty.channel === 'string'
@@ -256,6 +258,11 @@ export class PropertyCommandDispatchService {
 			return null;
 		}
 
+		// Values are runtime state, never part of the structural catalog. Read the current baseline
+		// under the source coordinator just as admission previously did through ORM afterLoad.
+		const baseline = await this.propertyValues.readLatest(sourceProperty);
+		sourceProperty.value = baseline;
+
 		const requestedTargets = requestedUpdates.map(toTarget);
 		const canonicalTarget = toTarget({ device: sourceDevice, channel: sourceChannel, property: sourceProperty });
 		const writable = sourceProperty.permissions.includes(PermissionType.READ_WRITE);
@@ -266,15 +273,8 @@ export class PropertyCommandDispatchService {
 			canonicalTarget,
 			requestedTargets,
 			commandedValue,
-			previousValue: sourceProperty.value?.value ?? null,
-			baseline:
-				sourceProperty.value === null
-					? null
-					: new PropertyValueState(
-							sourceProperty.value.value,
-							sourceProperty.value.lastUpdated,
-							sourceProperty.value.trend,
-						),
+			previousValue: baseline?.value ?? null,
+			baseline: baseline === null ? null : new PropertyValueState(baseline.value, baseline.lastUpdated, baseline.trend),
 			eligible: writable && !authoritative,
 		};
 	}
@@ -288,7 +288,7 @@ export class PropertyCommandDispatchService {
 			const requestedByCanonical = new Map<string, IDevicePropertyData[]>();
 
 			for (const update of updates) {
-				const current = await this.channelsPropertiesService.findOne(update.property.id);
+				const current = await this.propertyMetadata.findOne(update.property.id);
 				if (current === null) {
 					return false;
 				}

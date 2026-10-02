@@ -2,11 +2,47 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.40 remains on staging; runtime activity #1143 and metadata savepoints #1144 merged; runtime read/write optimization underway before new staging measurements; deployment and full-client acceptance remain open
+**Status:** alpha.40 remains on staging; runtime activity #1143, metadata savepoints #1144 and token usage #1145 merged; runtime read/write optimization underway before new staging measurements; deployment and full-client acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Command admission catalog candidate — 2026-10-02
+
+The next read optimization reuses `PropertyMetadataService` for the dispatcher's final canonical
+source/alias checks, including verification of preopened API receipts. These checks retain the
+shared structural barrier and per-source coordinator. Existing metadata invalidation covers CRUD,
+transaction/savepoint settlement and resets; optional shared-writer mode still reads SQLite fresh.
+No additional catalog, dependency, configuration switch or schema change is introduced.
+
+The dispatcher reads the current source baseline from `PropertyValueService` instead of relying
+on ORM afterLoad. It attaches that value only to its detached metadata copy and preserves the
+baseline snapshot and existing command-window supersession rules. It passes the original prepared
+batch to the platform. Earlier command preparation, complete provider device graphs, validation,
+authentication and virtual-platform forwarding are outside this candidate and still contain SQL.
+This is not a claim that the entire command path is database-free.
+
+- [x] Implement catalog-based canonical admission and preopened-receipt verification.
+- [x] Verify zero ORM repository access/SQLite queries for warm source/alias admission and source
+  dispatch with a stub provider in default single-process mode; fresh runtime baseline despite
+  a previously warmed catalog; metadata cache remains free of live values. Shared-writer mode
+  retains query activity.
+- [x] Verify queued alias remap/deletion rejects both ordinary and preopened commands before
+  provider I/O, and an outer rollback after an inner savepoint restores correct admission.
+- [x] Run the 97 targeted tests across four suites, including existing HomeKit convergence and
+  metadata lifecycle coverage. A negative control routing metadata lookup through the prior ORM
+  service makes the zero-SQL assertion fail on seven real SELECTs; restore the candidate afterward.
+- [x] Isolate the host graphics probe in E2E-only setup. Two full runs passed all 256 assertions
+  but exited with an asynchronous macOS `systeminformation` require after Jest teardown (hardware
+  conformance, then Home Assistant wizard). Endpoint/conformance suites now stub only `graphics`;
+  production probes and dedicated system unit tests are unchanged. Both failed runs are retained.
+- [x] Final complete backend validation: 572 unit suites / 8,962 passing tests, one existing skip,
+  four snapshots; 23 E2E suites / 256 tests, both processes exit 0. Build and changed-file lint/format
+  pass. The first full unit run exposed one outdated dependency fixture; it was updated before the
+  successful full rerun. Earlier failures remain archived separately.
+- [ ] Review/merge the admission optimization; continue remaining structural/panel/auth read work
+  from the checklist below before another staging measurement. No release or staging action yet.
 
 ## Runtime read/write optimization — 2026-10-02
 
@@ -32,7 +68,8 @@ Execution and acceptance:
   replacement credential; the SQL condition also prevents timestamp regression. This is telemetry,
   not an authentication cache. `last_used_at` may lag by the flush interval plus database delay;
   a crash, saturation or persistence failure can lose unflushed telemetry. Periodic writes remain.
-- [ ] Review/merge the token-usage optimization. Existing cryptographic, expiry, owner, revocation,
+- [x] Review/merge the token-usage optimization (#1145, `4c4e48177fa24294f1b9c1478cc53cc32fbe0227`).
+  CodeRabbit reviewed the final head with minimal merge risk; all CI passed. Existing cryptographic, expiry, owner, revocation,
   role and MCP-client checks remain authoritative and uncached.
 - [ ] Replace command-path structural lookups with a shared runtime catalog. Audited remaining
   callers include property-command validation/preparation, the three existence validators and

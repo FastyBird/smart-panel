@@ -3,15 +3,16 @@ import { DataTypeType, PermissionType } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { IDevicePlatform, IDevicePropertyData } from '../platforms/device.platform';
 
-import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandDispatchService } from './property-command-dispatch.service';
 import { PropertyCommandWindowService } from './property-command-window.service';
+import { PropertyMetadataService } from './property-metadata.service';
 import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
+import { PropertyValueService } from './property-value.service';
 
 describe('PropertyCommandDispatchService', () => {
 	let service: PropertyCommandDispatchService;
@@ -20,7 +21,7 @@ describe('PropertyCommandDispatchService', () => {
 	let platformRegistry: jest.Mocked<Pick<PlatformRegistryService, 'get' | 'usesAuthoritativePropertyReadback'>>;
 	let valueSourceRegistry: jest.Mocked<Pick<PropertyValueSourceRegistryService, 'resolve'>>;
 	let sources: Map<string, string>;
-	let properties: jest.Mocked<Pick<ChannelsPropertiesService, 'findOne'>>;
+	let properties: jest.Mocked<Pick<PropertyMetadataService, 'findOne'>>;
 	let channels: jest.Mocked<Pick<ChannelsService, 'findOne'>>;
 	let devices: jest.Mocked<Pick<DevicesService, 'findOne'>>;
 
@@ -62,7 +63,10 @@ describe('PropertyCommandDispatchService', () => {
 		};
 
 		service = new PropertyCommandDispatchService(
-			properties as unknown as ChannelsPropertiesService,
+			properties as unknown as PropertyMetadataService,
+			{
+				readLatest: jest.fn((property: ChannelPropertyEntity) => Promise.resolve(property.value)),
+			} as unknown as PropertyValueService,
 			channels as unknown as ChannelsService,
 			devices as unknown as DevicesService,
 			platformRegistry as unknown as PlatformRegistryService,

@@ -84,6 +84,7 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 	let properties: ChannelsPropertiesService;
 	let values: PropertyValueService;
 	let propertyMetadata: PropertyMetadataService;
+	let dispatch: PropertyCommandDispatchService;
 	let windows: PropertyCommandWindowService;
 	let structure: DeviceStructureLockService;
 	let source: SimulatorChannelPropertyEntity;
@@ -183,8 +184,9 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 			processBatch: provider,
 		});
 		platforms.register(new VirtualDevicePlatform(devices, channels, properties, platforms));
-		const dispatch = new PropertyCommandDispatchService(
-			properties,
+		dispatch = new PropertyCommandDispatchService(
+			propertyMetadata,
+			values,
 			channels,
 			devices,
 			platforms,
@@ -293,6 +295,111 @@ describe.each([false, true])('HomeKit command convergence with SQLite (cross-pro
 		expect(rows.every((row) => row.propertyId === source.id)).toBe(true);
 		expect(await database.getRepository(PropertyValueLockEntity).count()).toBe(0);
 	}
+
+	function commandTarget(property: ChannelPropertyEntity, value = true): IDevicePropertyData {
+		const channel = property.channel;
+		if (typeof channel === 'string' || typeof channel.device === 'string') throw new Error('Missing target relations');
+		return { device: channel.device, channel, property, value };
+	}
+
+	it('admits warmed source and alias commands without ORM/SQLite while reading the current value', async () => {
+		const target = await propertyMetadata.findOne(source.id);
+		const alias = await propertyMetadata.findOne(aliases[0].id);
+		if (!target || !alias) throw new Error('Missing command targets');
+		await values.writeLiveWithState(source, true);
+		const query = jest.spyOn(database.createQueryRunner(), 'query');
+		const repository = jest.spyOn(database, 'getRepository');
+
+		const receipt = await dispatch.prepareApiCommand(commandTarget(alias, false), 3000);
+		expect(receipt?.baseline?.value).toBe(true);
+		expect(receipt?.canonicalPropertyId).toBe(source.id);
+		expect(windows.get(source.id)?.previousValue).toBe(true);
+		const directReceipt = await dispatch.prepareApiCommand(commandTarget(target, false), 3000);
+		if (!directReceipt) throw new Error('Missing source receipt');
+		await expect(
+			dispatch.dispatchBatch([commandTarget(target, false)], {
+				windowHandles: [directReceipt.handle],
+			}),
+		).resolves.toEqual({ success: true });
+		expect(provider).toHaveBeenCalledTimes(1);
+		if (locksEnabled) {
+			expect(query).toHaveBeenCalled();
+		} else {
+			expect(query).not.toHaveBeenCalled();
+			expect(repository).not.toHaveBeenCalled();
+		}
+		query.mockRestore();
+		repository.mockRestore();
+		// No value was installed into the metadata catalog by admission.
+		expect((await propertyMetadata.findOne(source.id))?.value).toBeUndefined();
+	});
+
+	it.each([
+		['remap', false],
+		['remap', true],
+		['delete', false],
+		['delete', true],
+	] as const)('rejects a queued command after an alias %s (preopened: %s)', async (change, preopened) => {
+		const replacement = await database.getRepository(SimulatorChannelPropertyEntity).save({
+			channel: source.channel,
+			category: PropertyCategory.ON,
+			dataType: DataTypeType.BOOL,
+			permissions: [PermissionType.READ_WRITE],
+		});
+		const target = await propertyMetadata.findOne(aliases[0].id);
+		if (!target) throw new Error('Missing alias');
+		await propertyMetadata.findOne(source.id);
+		const receipt = preopened ? await dispatch.prepareApiCommand(commandTarget(target), 3000) : null;
+		if (preopened && !receipt) throw new Error('Missing preopened receipt');
+		const entered = deferred();
+		const release = deferred();
+		const mutation = structure.runExclusive(async () => {
+			entered.resolve();
+			await release.promise;
+			if (change === 'remap') {
+				await database
+					.getRepository(VirtualChannelPropertyEntity)
+					.update(target.id, { sourcePropertyId: replacement.id });
+			} else {
+				await database.getRepository(VirtualChannelPropertyEntity).delete(target.id);
+			}
+		});
+		await entered.promise;
+		const command = dispatch.dispatchBatch([commandTarget(target)], receipt ? { windowHandles: [receipt.handle] } : {});
+		release.resolve();
+		await mutation;
+		await expect(command).resolves.toEqual(expect.objectContaining({ success: false }));
+		expect(provider).not.toHaveBeenCalled();
+		expect(windows.get(source.id)).toBeNull();
+	});
+
+	it('admits against committed metadata after an outer rollback with an inner savepoint', async () => {
+		const target = await propertyMetadata.findOne(aliases[0].id);
+		if (!target) throw new Error('Missing alias');
+		const entered = deferred();
+		const release = deferred();
+		const rollback = new Error('rollback');
+		const mutation = structure.runExclusive(async () => {
+			await expect(
+				database.transaction(async (manager) => {
+					await manager
+						.getRepository(SimulatorChannelPropertyEntity)
+						.update(source.id, { dataType: DataTypeType.STRING });
+					await manager.transaction(() => Promise.resolve());
+					expect((await propertyMetadata.findOne(source.id))?.dataType).toBe(DataTypeType.STRING);
+					entered.resolve();
+					await release.promise;
+					throw rollback;
+				}),
+			).rejects.toBe(rollback);
+		});
+		await entered.promise;
+		const command = dispatch.prepareApiCommand(commandTarget(target), 3000);
+		release.resolve();
+		await mutation;
+		await expect(command).resolves.toEqual(expect.objectContaining({ canonicalPropertyId: source.id }));
+		expect(windows.get(source.id)?.commandedValue).toBe(true);
+	});
 
 	it('reports changed and unchanged values without SQLite in the default single-process mode', async () => {
 		// SQLite has a single query runner; spying here includes both ORM queries and raw lease SQL.

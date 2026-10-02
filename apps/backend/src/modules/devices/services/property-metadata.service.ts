@@ -18,7 +18,7 @@ import { DEVICES_MODULE_NAME } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../entities/devices.entity';
 import { resolvePropertyUnit } from '../utils/property-metadata.utils';
 
-/** Structural catalog for value ingestion. Values and transient connectivity never populate this cache. */
+/** Structural catalog for value ingestion and command admission; excludes live values and connectivity. */
 @Injectable()
 export class PropertyMetadataService implements EntitySubscriberInterface, OnModuleInit, OnModuleDestroy {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyMetadataService');

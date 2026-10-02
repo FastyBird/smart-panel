@@ -31,6 +31,7 @@ import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandDispatchService } from './property-command-dispatch.service';
 import { PropertyCommandWindowService } from './property-command-window.service';
+import { PropertyMetadataService } from './property-metadata.service';
 import { PropertyStateCoordinatorService } from './property-state-coordinator.service';
 import { PropertyValueSourceRegistryService } from './property-value-source.registry.service';
 import { PropertyValueService } from './property-value.service';
@@ -170,6 +171,7 @@ describe('property command convergence integration', () => {
 			return { changed, state };
 		});
 		const propertyValueService = {
+			readLatest: (property: ChannelPropertyEntity) => Promise.resolve(properties.get(property.id)?.value ?? null),
 			writeWithState,
 			writeLiveWithState: writeWithState,
 			flushHistory: jest.fn().mockResolvedValue(undefined),
@@ -193,7 +195,8 @@ describe('property command convergence integration', () => {
 
 		platform = { processBatch: jest.fn().mockResolvedValue(true) };
 		commandDispatch = new PropertyCommandDispatchService(
-			channelsProperties,
+			{ findOne: (id: string) => Promise.resolve(properties.get(id) ?? null) } as unknown as PropertyMetadataService,
+			propertyValueService as unknown as PropertyValueService,
 			{
 				findOne: jest.fn((id: string) => Promise.resolve(id === channel.id ? channel : null)),
 			} as unknown as ChannelsService,
