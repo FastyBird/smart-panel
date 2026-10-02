@@ -61,4 +61,29 @@ describe('SpaceActivityService', () => {
 			expect(service.readLatest(room)).toEqual(observedAt);
 		},
 	);
+
+	it('scopes deletion barriers to the resolved space and keeps clear as a global barrier', () => {
+		const service = new SpaceActivityService();
+		const first = { id: 'first', lastActivityAt: null };
+		const second = { id: 'second', lastActivityAt: null };
+		const observedAt = new Date();
+		const initial = service.getGeneration();
+		service.delete(first.id);
+		const afterFirstDeletion = service.getGeneration();
+		service.delete(second.id);
+		service.record(first.id, observedAt, initial);
+		service.record(second.id, observedAt, afterFirstDeletion);
+		expect(service.readLatest(first)).toBeNull();
+		expect(service.readLatest(second)).toBeNull();
+		service.record(first.id, observedAt, afterFirstDeletion);
+		expect(service.readLatest(first)).toEqual(observedAt);
+		const beforeClear = service.getGeneration();
+		service.clear();
+		for (const space of [first, second]) {
+			service.record(space.id, observedAt, beforeClear);
+			expect(service.readLatest(space)).toBeNull();
+			service.record(space.id, observedAt, service.getGeneration());
+			expect(service.readLatest(space)).toEqual(observedAt);
+		}
+	});
 });

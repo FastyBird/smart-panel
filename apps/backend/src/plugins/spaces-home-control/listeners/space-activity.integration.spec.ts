@@ -6,6 +6,7 @@ import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { PageEntity } from '../../../modules/dashboard/entities/dashboard.entity';
 import {
 	ChannelCategory,
 	DataTypeType,
@@ -23,9 +24,11 @@ import {
 	DeviceEntity,
 } from '../../../modules/devices/entities/devices.entity';
 import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
+import { DisplayEntity } from '../../../modules/displays/entities/displays.entity';
 import { SpaceEntity } from '../../../modules/spaces/entities/space.entity';
 import { SpacesModuleResetService } from '../../../modules/spaces/services/module-reset.service';
 import { SpaceActivityService } from '../../../modules/spaces/services/space-activity.service';
+import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SpaceType } from '../../../modules/spaces/spaces.constants';
 import { SpaceActivitySubscriber } from '../../../modules/spaces/subscribers/space-activity.subscriber';
 import {
@@ -61,6 +64,8 @@ describe('Space activity through real events and SQLite', () => {
 			database: ':memory:',
 			synchronize: true,
 			entities: [
+				PageEntity,
+				DisplayEntity,
 				SpaceEntity,
 				ActivityTestRoom,
 				DeviceEntity,
@@ -262,6 +267,48 @@ describe('Space activity through real events and SQLite', () => {
 			finish(stale);
 			await report;
 		}
+		expect((await database.getRepository(ActivityTestRoom).findOneByOrFail({ id: room.id })).lastActivityAt).toBeNull();
+	});
+
+	it('keeps a pending report for another room when one space is deleted', async () => {
+		const current = await metadata.findOne(property.id);
+		let finish!: (value: ChannelPropertyEntity | null) => void;
+		jest.spyOn(metadata, 'findOne').mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					finish = resolve;
+				}),
+		);
+		const report = events.emitAsync(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
+		try {
+			await database.getRepository(ActivityTestRoom).remove(other);
+		} finally {
+			finish(current);
+			await report;
+		}
+		expect(activity.readLatest(room)).not.toEqual(legacy);
+	});
+
+	it('invalidates room membership through the production SpacesService.remove path', async () => {
+		// Removal uses real repositories/transactions; unrelated command and type-mapping collaborators are unused.
+		const spaces = new SpacesService(
+			database.getRepository(SpaceEntity),
+			database.getRepository(DeviceEntity),
+			database.getRepository(DisplayEntity),
+			null as never,
+			null as never,
+			null as never,
+			null as never,
+			database,
+			events,
+			null as never,
+		);
+		await events.emitAsync(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
+		await spaces.remove(room.id);
+		expect((await database.getRepository(SimulatorDeviceEntity).findOneByOrFail({ id: device.id })).roomId).toBeNull();
+		await events.emitAsync(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
+		await database.getRepository(ActivityTestRoom).save({ id: room.id, name: 'Recreated room' });
+		await events.emitAsync(EventType.CHANNEL_PROPERTY_VALUE_SET, property);
 		expect((await database.getRepository(ActivityTestRoom).findOneByOrFail({ id: room.id })).lastActivityAt).toBeNull();
 	});
 });

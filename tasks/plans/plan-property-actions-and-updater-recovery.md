@@ -75,9 +75,23 @@ membership and a delayed metadata callback restoring activity after a spaces-onl
 reuse. Successful reset now invalidates the structural metadata cache after SQLite clears device
 room references, and activity cleanup advances a generation captured before each asynchronous
 listener lookup. Earlier callbacks cannot recreate activity after cleanup. Failed reset and rolled-back
-deletions retain the previous generation/state. Deleting one space conservatively rejects already
-pending reports for other spaces too; later reports proceed normally, without extra warm-path SQL.
+deletions retain the previous generation/state. The initial global deletion barrier also rejected
+pending reports for unrelated spaces; the subsequent review correction below narrows that behavior.
 The revised focused suite passes 86 tests, including both initially failing regressions.
+
+Follow-up review: a real-event regression reproduced the unrelated-room report loss. Activity now
+keeps a deletion sequence per removed space and a separate global clear sequence; lookup start is
+still captured before awaiting metadata. Reports predating deletion of their resolved space or a
+global clear are rejected, while deleting another space leaves them valid. Deletion markers are
+retained until clear/shutdown so an old pending lookup cannot revive a reused identity.
+
+The second review claim (ordinary removal never invalidates metadata) does not hold for
+`SpacesService.remove()`: it explicitly updates `DeviceEntity.roomId` inside the transaction,
+triggering existing metadata invalidation before commit. A new real-SQLite test invokes that exact
+production service, sends subsequent property events and recreates the removed UUID; it already
+passed before this follow-up correction. No redundant ordinary-removal invalidation was added.
+The expanded targeted run passes 148 tests across seven suites, including spaces service tests,
+metadata, runtime activity and HomeKit convergence. Warm activity still performs zero SQL.
 
 - [x] Verify alpha.40 release, normal System upgrade and normal-runtime comparison.
 - [x] Retain poll attempts and capture the residual delay before Shelly RPC.
