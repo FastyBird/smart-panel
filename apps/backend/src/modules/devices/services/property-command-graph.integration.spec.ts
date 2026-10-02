@@ -7,6 +7,7 @@ import { IDevicePropertyData } from '../platforms/device.platform';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
+import { DeviceCommandGraphService } from './device-command-graph.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandDispatchService } from './property-command-dispatch.service';
@@ -122,7 +123,7 @@ describe('Property command preparation with a fresh SQLite device graph', () => 
 		channelRead = jest.spyOn(channels, 'findOne');
 		propertyRead = jest.spyOn(properties, 'findOne');
 		service = new PropertyCommandService(
-			devices,
+			devices as unknown as DeviceCommandGraphService,
 			channels,
 			// This graph-shape fixture deliberately uses fresh SQL for metadata; the production
 			// catalog and its invalidation are covered in HomeKit convergence integration tests.

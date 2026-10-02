@@ -29,6 +29,7 @@ import { PropertyCommandTargetConstraintValidator } from '../validators/property
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { ChannelsService } from './channels.service';
 import { CommandLatencyTraceCollectorService } from './command-latency-trace-collector.service';
+import { DeviceCommandGraphService } from './device-command-graph.service';
 import { DeviceStructureLockService } from './device-structure-lock.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
@@ -183,6 +184,7 @@ describe('PropertyCommandService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				PropertyCommandService,
+				{ provide: DeviceCommandGraphService, useExisting: DevicesService },
 				PropertyCommandDispatchService,
 				// Preparation and admission read the same fixture catalog; SQLite cache behavior has integration coverage.
 				{ provide: PropertyMetadataService, useExisting: ChannelsPropertiesService },

@@ -32,6 +32,7 @@ describe('PropertyMetadataService', () => {
 		where = jest.fn().mockReturnThis();
 		const builder = {
 			innerJoinAndSelect: jest.fn().mockReturnThis(),
+			leftJoinAndSelect: jest.fn().mockReturnThis(),
 			callListeners: jest.fn().mockReturnThis(),
 			getMany,
 			getOne,
@@ -96,6 +97,33 @@ describe('PropertyMetadataService', () => {
 		getOne.mockRejectedValueOnce(new Error('database temporarily unavailable'));
 		await expect(service.findOne('property')).rejects.toThrow('database temporarily unavailable');
 		expect((await service.findOne('property'))?.name).toBe('Original');
+		expect(getOne).toHaveBeenCalledTimes(2);
+	});
+
+	it('coalesces graph loads and retries an in-flight graph invalidated by a structural edit', async () => {
+		const original = Object.assign(new DeviceEntity(), { id: 'device', name: 'Original', channels: [] });
+		const current = Object.assign(new DeviceEntity(), { id: 'device', name: 'Current', channels: [] });
+		let finish!: (device: DeviceEntity) => void;
+		getOne.mockImplementationOnce(() => new Promise<DeviceEntity>((resolve) => (finish = resolve)));
+		const first = service.findDevice('device');
+		const second = service.findDevice('device');
+		expect(getOne).toHaveBeenCalledTimes(1);
+		service.invalidate();
+		getOne.mockResolvedValue(current);
+		finish(original);
+		const results = await Promise.all([first, second]);
+		expect(results.map((device) => device.name)).toEqual(['Current', 'Current']);
+		expect(results[0]).not.toBe(results[1]);
+		expect(getOne).toHaveBeenCalledTimes(2);
+		expect((await service.findDevice('device')).name).toBe('Current');
+		expect(getOne).toHaveBeenCalledTimes(2);
+	});
+
+	it('retries failed graph loads without poisoning the catalog', async () => {
+		getOne.mockRejectedValueOnce(new Error('graph query failed'));
+		await expect(service.findDevice('device')).rejects.toThrow('graph query failed');
+		getOne.mockResolvedValue(Object.assign(new DeviceEntity(), { id: 'device', name: 'Recovered' }));
+		expect((await service.findDevice('device')).name).toBe('Recovered');
 		expect(getOne).toHaveBeenCalledTimes(2);
 	});
 

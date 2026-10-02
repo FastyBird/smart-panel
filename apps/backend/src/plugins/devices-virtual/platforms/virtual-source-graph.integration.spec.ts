@@ -16,12 +16,15 @@ import {
 	DeviceControlEntity,
 	DeviceEntity,
 } from '../../../modules/devices/entities/devices.entity';
+import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
+import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
 import { DeviceConnectionStateService } from '../../../modules/devices/services/device-connection-state.service';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
+import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
 import { PropertyValueService } from '../../../modules/devices/services/property-value.service';
 import { ChannelPropertyEntitySubscriber } from '../../../modules/devices/subscribers/channel-property-entity.subscriber';
 import { DeviceEntitySubscriber } from '../../../modules/devices/subscribers/device-entity.subscriber';
@@ -42,9 +45,11 @@ import { VirtualDevicePlatform } from './virtual-device.platform';
 
 describe('Virtual source forwarding with the real SQLite device graph', () => {
 	let database: DataSource;
+	let metadata: PropertyMetadataService;
 
 	afterEach(async () => {
 		jest.restoreAllMocks();
+		metadata?.onModuleDestroy();
 		if (database?.isInitialized) await database.destroy();
 	});
 
@@ -67,18 +72,14 @@ describe('Virtual source forwarding with the real SQLite device graph', () => {
 			],
 		}).initialize();
 		let liveValue = 21;
-		new ChannelPropertyEntitySubscriber(
-			{ readLatest: () => Promise.resolve({ value: liveValue }) } as unknown as PropertyValueService,
-			null as never,
-			database,
-		);
-		new DeviceEntitySubscriber(
-			{
-				readLatest: () =>
-					Promise.resolve({ online: true, status: ConnectionState.CONNECTED, lastChanged: new Date(0) }),
-			} as unknown as DeviceConnectionStateService,
-			database,
-		);
+		const values = {
+			readLatest: () => Promise.resolve(new PropertyValueState(liveValue)),
+		} as unknown as PropertyValueService;
+		new ChannelPropertyEntitySubscriber(values, null as never, database);
+		const connectivity = {
+			readLatest: () => Promise.resolve({ online: true, status: ConnectionState.CONNECTED, lastChanged: new Date(0) }),
+		} as unknown as DeviceConnectionStateService;
+		new DeviceEntitySubscriber(connectivity, database);
 		const devices = new DevicesService(
 			database.getRepository(DeviceEntity),
 			database.getRepository(SpaceEntity),
@@ -137,7 +138,9 @@ describe('Virtual source forwarding with the real SQLite device graph', () => {
 		const findProperty = jest.spyOn(properties, 'findOne');
 		const processBatch = jest.fn<Promise<boolean>, [IDevicePropertyData[]]>().mockResolvedValue(true);
 		const sourcePlatform = { processBatch } as unknown as IDevicePlatform;
-		const platform = new VirtualDevicePlatform(devices, channels, properties, {
+		metadata = new PropertyMetadataService(database);
+		const graphs = new DeviceCommandGraphService(metadata, values, connectivity);
+		const platform = new VirtualDevicePlatform(graphs, {
 			get: () => sourcePlatform,
 		} as unknown as PlatformRegistryService);
 		const virtualProperty = Object.assign(new VirtualChannelPropertyEntity(), {
@@ -151,8 +154,8 @@ describe('Virtual source forwarding with the real SQLite device graph', () => {
 		expect(await platform.processBatch(updates)).toBe(true);
 		const forwarded = processBatch.mock.calls[0][0][0];
 		expect(findChannel).not.toHaveBeenCalled();
-		expect(findProperty).toHaveBeenCalledTimes(1);
-		expect(findDevice).toHaveBeenCalledTimes(1);
+		expect(findProperty).not.toHaveBeenCalled();
+		expect(findDevice).not.toHaveBeenCalled();
 		expect(instanceToPlain(forwarded.channel, { enableCircularCheck: true })).toEqual(
 			instanceToPlain(baselineChannel, { enableCircularCheck: true }),
 		);

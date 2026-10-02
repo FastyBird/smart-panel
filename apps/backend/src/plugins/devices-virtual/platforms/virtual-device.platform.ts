@@ -2,11 +2,9 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/platforms/device.platform';
-import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
-import { ChannelsService } from '../../../modules/devices/services/channels.service';
-import { DevicesService } from '../../../modules/devices/services/devices.service';
+import { DeviceCommandGraphService } from '../../../modules/devices/services/device-command-graph.service';
 import { PlatformRegistryService } from '../../../modules/devices/services/platform.registry.service';
 import { DEVICES_VIRTUAL_PLUGIN_NAME, DEVICES_VIRTUAL_TYPE } from '../devices-virtual.constants';
 import { VirtualChannelPropertyEntity, VirtualValueOrigin } from '../entities/devices-virtual.entity';
@@ -16,9 +14,7 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 	private readonly logger = createExtensionLogger(DEVICES_VIRTUAL_PLUGIN_NAME, 'VirtualDevicePlatform');
 
 	constructor(
-		private readonly devicesService: DevicesService,
-		private readonly channelsService: ChannelsService,
-		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly graphs: DeviceCommandGraphService,
 		private readonly platformRegistryService: PlatformRegistryService,
 	) {}
 
@@ -73,9 +69,11 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 				return false;
 			}
 
-			const resolved = await this.resolveSource(property.sourcePropertyId);
+			const resolved = await this.graphs.findPropertyTarget(property.sourcePropertyId);
 
 			if (!resolved) {
+				this.logger.warn(`Source property id=${property.sourcePropertyId} has no complete device graph`);
+
 				return false;
 			}
 
@@ -137,49 +135,5 @@ export class VirtualDevicePlatform implements IDevicePlatform {
 		}
 
 		return true;
-	}
-
-	private async resolveSource(
-		sourcePropertyId: string,
-	): Promise<{ device: DeviceEntity; channel: ChannelEntity; property: ChannelPropertyEntity } | null> {
-		const property = await this.channelsPropertiesService.findOne(sourcePropertyId);
-
-		if (!property) {
-			this.logger.warn(`Source property id=${sourcePropertyId} not found`);
-
-			return null;
-		}
-
-		const channelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
-		// Property reads already join channel.device. Keep the fallback for ID-only relations.
-		const parent =
-			typeof property.channel === 'string' ? await this.channelsService.findOne(property.channel) : property.channel;
-
-		if (!parent) {
-			this.logger.warn(`Source channel for property id=${sourcePropertyId} not found`);
-
-			return null;
-		}
-
-		const deviceId = typeof parent.device === 'string' ? parent.device : parent.device?.id;
-		const device = deviceId ? await this.devicesService.findOne(deviceId) : null;
-
-		if (!device) {
-			this.logger.warn(`Source device for property id=${sourcePropertyId} not found`);
-
-			return null;
-		}
-
-		// The fresh device read includes channel controls and sibling properties. Reuse that graph
-		// rather than hydrating the same channel separately before loading the device.
-		const channel = device.channels.find((candidate) => candidate.id === channelId);
-
-		if (!channel) {
-			this.logger.warn(`Source channel for property id=${sourcePropertyId} is no longer on device id=${device.id}`);
-
-			return null;
-		}
-
-		return { device, channel, property };
 	}
 }
