@@ -12,6 +12,8 @@ import { PlatformRegistryService } from './platform.registry.service';
 import { PropertyCommandDispatchService } from './property-command-dispatch.service';
 import { PropertyCommandWindowService } from './property-command-window.service';
 import { PropertyCommandService } from './property-command.service';
+import { PropertyMetadataService } from './property-metadata.service';
+import { PropertyValueService } from './property-value.service';
 
 // Keep the production graph's relation names so the real DevicesService query runs against SQLite.
 const deviceSchema = new EntitySchema<DeviceEntity>({
@@ -122,7 +124,10 @@ describe('Property command preparation with a fresh SQLite device graph', () => 
 		service = new PropertyCommandService(
 			devices,
 			channels,
-			properties,
+			// This graph-shape fixture deliberately uses fresh SQL for metadata; the production
+			// catalog and its invalidation are covered in HomeKit convergence integration tests.
+			properties as unknown as PropertyMetadataService,
+			{ readLatest: () => Promise.resolve(null) } as unknown as PropertyValueService,
 			{ get: () => ({}), getCommandTtlMs: () => 3000 } as unknown as PlatformRegistryService,
 			{ createIntent: () => ({ id: 'intent' }), completeIntent } as unknown as IntentsService,
 			{ dispatchBatch } as unknown as PropertyCommandDispatchService,
@@ -146,8 +151,8 @@ describe('Property command preparation with a fresh SQLite device graph', () => 
 
 		expect(query.mock.calls.filter(([sql]: [string]) => sql.startsWith('SELECT'))).toHaveLength(3);
 		expect(channelRead).not.toHaveBeenCalled();
-		expect(propertyRead).toHaveBeenCalledTimes(1);
-		expect(propertyRead).toHaveBeenCalledWith('property', 'channel');
+		expect(propertyRead).toHaveBeenCalledTimes(2);
+		expect(propertyRead).toHaveBeenCalledWith('property');
 		expect(dispatchBatch).toHaveBeenCalledTimes(1);
 		const [updates] = dispatchBatch.mock.calls[0] as [IDevicePropertyData[]];
 		const [{ device, channel, property, value }] = updates;
