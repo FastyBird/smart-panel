@@ -34,6 +34,7 @@ import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity
 import { AuthConfigModel } from './models/config.model';
 import { AuthService } from './services/auth.service';
 import { CryptoService } from './services/crypto.service';
+import { TokenMetadataService } from './services/token-metadata.service';
 import { TokenUsageService } from './services/token-usage.service';
 import { TokensTypeMapperService } from './services/tokens-type-mapper.service';
 import { TokensService } from './services/tokens.service';
@@ -88,6 +89,7 @@ import { TokensService } from './services/tokens.service';
 		AuthService,
 		TokensService,
 		TokenUsageService,
+		TokenMetadataService,
 		CryptoService,
 		TokensTypeMapperService,
 		RegisterOwnerCommand,

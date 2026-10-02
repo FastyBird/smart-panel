@@ -16,6 +16,7 @@ import { UpdateTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { hashToken } from '../utils/token.utils';
 
+import { AuthenticationToken, TokenMetadataService } from './token-metadata.service';
 import { TokenUsageService } from './token-usage.service';
 import { TokensTypeMapperService } from './tokens-type-mapper.service';
 
@@ -29,6 +30,7 @@ export class TokensService {
 		private readonly tokensMapperService: TokensTypeMapperService,
 		private readonly dataSource: DataSource,
 		private readonly tokenUsageService: TokenUsageService,
+		private readonly tokenMetadata: TokenMetadataService,
 	) {}
 
 	async findAll<TToken extends TokenEntity>(type?: new (...args: any[]) => TToken): Promise<TToken[]> {
@@ -170,6 +172,11 @@ export class TokensService {
 		if (!result.affected) {
 			throw new AuthNotFoundException('Requested token does not exist');
 		}
+	}
+
+	/** Runtime credential lookup. Administrative token reads retain fresh telemetry and full entities. */
+	findAuthenticationTokenByHash(hashedToken: string): Promise<AuthenticationToken | null> {
+		return this.tokenMetadata.findByHash(hashedToken);
 	}
 
 	async findOneByHashedToken(hashedToken: string): Promise<LongLiveTokenEntity | null> {

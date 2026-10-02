@@ -6,6 +6,7 @@ import { TokenOwnerType } from '../auth.constants';
 import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { hashToken } from '../utils/token.utils';
 
+import { TokenMetadataService } from './token-metadata.service';
 import { TokenUsageService } from './token-usage.service';
 import { TokensService } from './tokens.service';
 
@@ -24,7 +25,13 @@ describe('Token usage with real SQLite inheritance', () => {
 			entities: [UserEntity, TokenEntity, AccessTokenEntity, RefreshTokenEntity, LongLiveTokenEntity],
 		}).initialize();
 		usage = new TokenUsageService(database);
-		tokens = new TokensService(database.getRepository(TokenEntity), null as never, database, usage);
+		tokens = new TokensService(
+			database.getRepository(TokenEntity),
+			null as never,
+			database,
+			usage,
+			new TokenMetadataService(database),
+		);
 		const id = uuid();
 		await database
 			.createQueryBuilder()

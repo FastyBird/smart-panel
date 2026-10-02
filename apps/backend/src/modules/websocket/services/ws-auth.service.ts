@@ -6,7 +6,6 @@ import { JwtService } from '@nestjs/jwt';
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { TokenOwnerType } from '../../auth/auth.constants';
-import { LongLiveTokenEntity } from '../../auth/entities/auth.entity';
 import { TokensService } from '../../auth/services/tokens.service';
 import { hashToken } from '../../auth/utils/token.utils';
 import { MCP_OAUTH_PRINCIPAL_TYPE } from '../../mcp/mcp.constants';
@@ -107,17 +106,7 @@ export class WsAuthService {
 	}
 
 	private async validateDisplayToken(client: Socket, token: string, displayId: string): Promise<boolean> {
-		// Find the long-live token for this display
-		const displayTokens = await this.tokensService.findByOwnerId(displayId, TokenOwnerType.DISPLAY);
-
-		let storedToken: LongLiveTokenEntity | null = null;
-
-		for (const displayToken of displayTokens) {
-			if (hashToken(token) === displayToken.hashedToken) {
-				storedToken = displayToken;
-				break;
-			}
-		}
+		const storedToken = await this.tokensService.findAuthenticationTokenByHash(hashToken(token));
 
 		if (!storedToken) {
 			this.logger.warn('Display token not found in database');
@@ -134,6 +123,10 @@ export class WsAuthService {
 			throw new WebsocketNotAllowedException('Token expired');
 		}
 
+		if (storedToken.ownerType !== TokenOwnerType.DISPLAY || storedToken.ownerId !== displayId) {
+			throw new WebsocketNotAllowedException('Invalid display token owner');
+		}
+
 		// Set universal long-live token client data
 		(client.data as object)['user'] = toInstance(ClientUserDto, {
 			id: storedToken.ownerId,
@@ -146,23 +139,10 @@ export class WsAuthService {
 		this.logger.debug(`Display authentication successful for display=${displayId}`);
 
 		return true;
-
-		this.logger.debug(`Token authentication successful (ownerType=${storedToken.ownerType})`);
-
-		return true;
 	}
 
 	private async validateLongLiveToken(client: Socket, token: string): Promise<boolean> {
-		const storedLongLiveTokens = await this.tokensService.findAll<LongLiveTokenEntity>(LongLiveTokenEntity);
-
-		let storedLongLiveToken: LongLiveTokenEntity | null = null;
-
-		for (const longLiveToken of storedLongLiveTokens) {
-			if (hashToken(token) === longLiveToken.hashedToken) {
-				storedLongLiveToken = longLiveToken;
-				break;
-			}
-		}
+		const storedLongLiveToken = await this.tokensService.findAuthenticationTokenByHash(hashToken(token));
 
 		if (!storedLongLiveToken) {
 			this.logger.warn('Long-live token not found');
@@ -177,6 +157,10 @@ export class WsAuthService {
 		if (storedLongLiveToken.expiresAt && storedLongLiveToken.expiresAt < new Date()) {
 			this.logger.warn('Long-live token is expired');
 			throw new WebsocketNotAllowedException('Token expired');
+		}
+
+		if (storedLongLiveToken.ownerType === TokenOwnerType.MCP) {
+			throw new WebsocketNotAllowedException('MCP credentials cannot authenticate WebSocket connections');
 		}
 
 		// Determine the role based on owner type

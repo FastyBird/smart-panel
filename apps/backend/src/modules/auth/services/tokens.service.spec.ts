@@ -21,6 +21,7 @@ import { CreateLongLiveTokenDto, CreateTokenDto } from '../dto/create-token.dto'
 import { UpdateLongLiveTokenDto, UpdateTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 
+import { TokenMetadataService } from './token-metadata.service';
 import { TokenUsageService } from './token-usage.service';
 import { TokensTypeMapperService } from './tokens-type-mapper.service';
 import { TokensService } from './tokens.service';
@@ -77,6 +78,7 @@ describe('TokensService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				TokensService,
+				{ provide: TokenMetadataService, useValue: { findByHash: jest.fn() } },
 				{ provide: TokenUsageService, useValue: { record: jest.fn() } },
 				{ provide: getRepositoryToken(TokenEntity), useFactory: mockRepository },
 				{

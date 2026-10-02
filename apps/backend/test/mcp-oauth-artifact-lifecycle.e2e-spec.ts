@@ -490,7 +490,7 @@ async function openWireSubscriptions(
 		token: storedStaticToken,
 	});
 	const tokensService = {
-		findOneByHashedToken: jest.fn((hashedToken: string) =>
+		findAuthenticationTokenByHash: jest.fn((hashedToken: string) =>
 			Promise.resolve(hashedToken === storedStaticToken.hashedToken ? storedStaticToken : null),
 		),
 		recordUsage: jest.fn(),
@@ -551,7 +551,7 @@ async function openWireSubscriptions(
 	try {
 		await staticClient.connect(staticTransport);
 		await oauthClient.connect(oauthTransport);
-		expect(tokensService.findOneByHashedToken).toHaveBeenCalledWith(hashToken(staticToken));
+		expect(tokensService.findAuthenticationTokenByHash).toHaveBeenCalledWith(hashToken(staticToken));
 		expect(clientService.findActiveByToken).toHaveBeenCalledWith(staticTokenId, staticClientId);
 		const staticSubscription = await staticClient.listen({ toolsListChanged: true });
 		const oauthSubscription = await oauthClient.listen({ toolsListChanged: true });

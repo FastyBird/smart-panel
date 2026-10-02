@@ -175,7 +175,7 @@ describe('AuthGuard', () => {
 						findAccessTokenByOwnerAndHash: jest.fn(),
 						findByOwnerId: jest.fn(),
 						findAll: jest.fn(),
-						findOneByHashedToken: jest.fn(),
+						findAuthenticationTokenByHash: jest.fn(),
 						recordUsage: jest.fn(),
 					},
 				},
@@ -371,7 +371,7 @@ describe('AuthGuard', () => {
 
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockDisplayId, type: 'display' });
-			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(mockDisplayLongLiveToken);
+			jest.spyOn(tokensService, 'findAuthenticationTokenByHash').mockResolvedValue(mockDisplayLongLiveToken);
 
 			const result = await guard.canActivate(context);
 
@@ -393,7 +393,7 @@ describe('AuthGuard', () => {
 
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockDisplayId, type: 'display' });
-			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(null);
+			jest.spyOn(tokensService, 'findAuthenticationTokenByHash').mockResolvedValue(null);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 			expect(tokensService.recordUsage).not.toHaveBeenCalled();
@@ -408,7 +408,7 @@ describe('AuthGuard', () => {
 
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockDisplayId, type: 'display' });
-			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(revokedToken);
+			jest.spyOn(tokensService, 'findAuthenticationTokenByHash').mockResolvedValue(revokedToken);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 			expect(tokensService.recordUsage).not.toHaveBeenCalled();
@@ -426,7 +426,7 @@ describe('AuthGuard', () => {
 
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: mockDisplayId, type: 'display' });
-			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(expiredToken);
+			jest.spyOn(tokensService, 'findAuthenticationTokenByHash').mockResolvedValue(expiredToken);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 			expect(tokensService.recordUsage).not.toHaveBeenCalled();
@@ -444,7 +444,7 @@ describe('AuthGuard', () => {
 			// JWT verify returns a payload that doesn't indicate display or user type
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(mockThirdPartyLongLiveToken);
+			jest.spyOn(tokensService, 'findAuthenticationTokenByHash').mockResolvedValue(mockThirdPartyLongLiveToken);
 
 			const result = await guard.canActivate(context);
 
@@ -467,7 +467,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(null);
+			jest.spyOn(tokensService, 'findAuthenticationTokenByHash').mockResolvedValue(null);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 			expect(tokensService.recordUsage).not.toHaveBeenCalled();
@@ -483,7 +483,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(revokedToken);
+			jest.spyOn(tokensService, 'findAuthenticationTokenByHash').mockResolvedValue(revokedToken);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 			expect(tokensService.recordUsage).not.toHaveBeenCalled();
@@ -502,7 +502,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(expiredToken);
+			jest.spyOn(tokensService, 'findAuthenticationTokenByHash').mockResolvedValue(expiredToken);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
 			expect(tokensService.recordUsage).not.toHaveBeenCalled();
@@ -523,7 +523,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(userLongLiveToken);
+			jest.spyOn(tokensService, 'findAuthenticationTokenByHash').mockResolvedValue(userLongLiveToken);
 			jest.spyOn(usersService, 'findOne').mockResolvedValue(mockUser);
 
 			const result = await guard.canActivate(context);
@@ -553,7 +553,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(displayLongLiveToken);
+			jest.spyOn(tokensService, 'findAuthenticationTokenByHash').mockResolvedValue(displayLongLiveToken);
 
 			const result = await guard.canActivate(context);
 
@@ -582,7 +582,7 @@ describe('AuthGuard', () => {
 			jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 			jest.spyOn(jwtService, 'verifyAsync').mockResolvedValue({ sub: 'some-id', type: 'api' });
 			jest.spyOn(tokensService, 'findAllByOwner').mockResolvedValue([]);
-			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(displayTokenWithoutOwner);
+			jest.spyOn(tokensService, 'findAuthenticationTokenByHash').mockResolvedValue(displayTokenWithoutOwner);
 
 			const result = await guard.canActivate(context);
 
@@ -612,7 +612,7 @@ describe('AuthGuard', () => {
 				sub: mockMcpClientId,
 				type: TokenOwnerType.MCP,
 			});
-			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(mockMcpLongLiveToken);
+			jest.spyOn(tokensService, 'findAuthenticationTokenByHash').mockResolvedValue(mockMcpLongLiveToken);
 			jest.spyOn(mcpClientsService, 'findActiveByToken').mockResolvedValue({ id: mockMcpClientId } as never);
 
 			await expect(guard.canActivate(context)).resolves.toBe(true);
@@ -664,7 +664,7 @@ describe('AuthGuard', () => {
 				await expect(guard.canActivate(context)).rejects.toThrow(
 					'OAuth MCP credentials require the isolated OAuth verifier',
 				);
-				expect(tokensService.findOneByHashedToken).not.toHaveBeenCalled();
+				expect(tokensService.findAuthenticationTokenByHash).not.toHaveBeenCalled();
 			},
 		);
 
@@ -687,7 +687,7 @@ describe('AuthGuard', () => {
 				sub: mockMcpClientId,
 				type: TokenOwnerType.MCP,
 			});
-			jest.spyOn(tokensService, 'findOneByHashedToken').mockResolvedValue(mockMcpLongLiveToken);
+			jest.spyOn(tokensService, 'findAuthenticationTokenByHash').mockResolvedValue(mockMcpLongLiveToken);
 			jest.spyOn(mcpClientsService, 'findActiveByToken').mockResolvedValue(null);
 
 			await expect(guard.canActivate(context)).rejects.toThrow(
@@ -706,7 +706,7 @@ describe('AuthGuard', () => {
 				sub: mockMcpClientId,
 				type: TokenOwnerType.MCP,
 			});
-			jest.spyOn(tokensService, 'findOneByHashedToken').mockRejectedValue(new Error('database unavailable'));
+			jest.spyOn(tokensService, 'findAuthenticationTokenByHash').mockRejectedValue(new Error('database unavailable'));
 
 			await expect(guard.canActivate(context)).rejects.toThrow('database unavailable');
 			expect(mcpAuditService.recordAuthenticationFailure).toHaveBeenCalledWith(
