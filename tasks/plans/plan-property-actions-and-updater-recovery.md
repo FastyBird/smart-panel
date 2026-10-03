@@ -2,11 +2,94 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.40 remains on staging; runtime optimizations #1143–#1152 merged; aggregate configuration candidate under validation; reviewed-series deployment and full-client hardware acceptance remain open
+**Status:** alpha.41 deployed through normal System upgrade; runtime series #1143–#1153 merged; controlled idle/catalog comparison complete; full-client hardware acceptance remains open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Alpha.41 normal upgrade and controlled wire comparison — 2026-10-03
+
+PR #1153 merged as `f75a18b3b` after current-head CI passed and CodeRabbit completed review
+without further actionable comments; the transaction-cleanup thread is resolved. The reviewed
+runtime series #1143–#1153 is published in [alpha.41](https://github.com/FastyBird/smart-panel/releases/tag/v1.1.0-alpha.41).
+[Release run 37126573277](https://github.com/FastyBird/smart-panel/actions/runs/37126573277)
+passed all 19 jobs. The release tag `23ef8b1cc` differs from the merge only by version synchronization.
+The ARM64 server archive SHA-256 is
+`3fca862b25b120ad3f88d08b6c2150e07f075ea0f99e03f9d87c3f64762d0de8`.
+Its checksum and npm integrity pass; all 1,714 compiled JavaScript files match between the
+server archive, npm backend package and installed alpha.41 runtime. Seven command/HomeKit files
+captured before upgrade also match the retained published alpha.40 archive.
+
+One ordinary System-module install request upgraded alpha.40 to alpha.41. The public API and
+persistent worker record both reached `complete`; no failed status was observed, and the updater
+lock is absent. The database/configuration backup passed integrity verification before submission.
+All 111 device IDs and channel/property/source topology are preserved. Database integrity, schema
+and migration-history comparisons pass. No private worker replacement, lock deletion or history
+editing was needed. This is another normal-upgrade success, not retrospective recovery of the old
+archived failed installation.
+
+### Measurement boundary and results
+
+Each version ran 10 idle ON/OFF cycles and 10 catalog-load ON/OFF cycles: 20 commands per group,
+40 per version, counting both command and restore. All 80 commands succeeded within the unchanged
+5 s client bound, all cycles restored OFF, and all 80 wire paths are complete. No failed samples
+were removed or replaced. Both versions passed a 120-second stable online/OFF gate before sampling.
+Nine harness files match after normalizing only dataset paths and asserted versions. The same
+Shelly address, Ethernet interface and representative 111-device topology were used; no target
+connection changed during a command and packet capture reported zero kernel drops. After sampling,
+alpha.41 passed another 120-second online/OFF check. All 40 owned remote capture directories were
+archived with matching hashes and removed; the final runtime has no diagnostic flags or updater lock.
+
+The backend ran at normal logging without a preload or diagnostic collector. Passive packet timing
+on the Raspberry Pi uses a single clock: client command arrival → outbound Shelly RPC measures
+backend preparation/waiting; outbound RPC → reply and reply → notification remain device/network
+intervals; incoming notification → published source/alias event measures incoming processing.
+This does not isolate event-loop delay or count live SQL. Commands retain their individual request
+IDs and separate restore evidence. Raw captures, checksums and per-command results remain private.
+
+Times below are **median / nearest-rank p95 / maximum, in milliseconds**, with 20 observations
+in each row/version. These are paired ON/OFF observations, not 20 independent devices. First
+commands and outliers are included.
+
+| Scenario and interval | alpha.40 | alpha.41 |
+| --- | --- | --- |
+| Idle: Before outbound RPC | 56.1 / 1034.6 / 3096.3 | 41.2 / 99.3 / 152.8 |
+| Idle: Notification to alias event | 4.0 / 8.7 / 23.2 | 2.4 / 102.2 / 133.6 |
+| Idle: Client convergence | 140.4 / 1580.5 / 3164.8 | 116.2 / 1374.9 / 1385.4 |
+| Catalog load: Before outbound RPC | 421.0 / 766.3 / 1485.3 | 189.8 / 326.7 / 341.6 |
+| Catalog load: Notification to alias event | 7.8 / 83.4 / 107.5 | 14.7 / 93.0 / 189.0 |
+| Catalog load: Client convergence | 588.7 / 1645.9 / 1673.1 | 343.8 / 1560.1 / 1713.6 |
+
+All 20/20 baseline and 20/20 candidate catalog attempts overlapped the catalog HTTP request at
+client dispatch. Catalog GET medians were 1278.5 ms and 1307 ms respectively. This is controlled
+catalog load, one part of the panel refresh; it is not the complete periodic/reconnect refresh or
+a qualified poll-placement matrix. Background notifications continued naturally and were not
+controlled or replayed. Device/network delays remain visible in the retained breakdown and are
+outside the requested backend optimization scope.
+
+RSS snapshot medians were **676.4 MiB → 660.8 MiB**; process swap was zero throughout both
+sets. Observed RSS ranges were 676.2–676.7 MiB on alpha.40 and
+557.6–1106.0 MiB on alpha.41. The peak occurred around the first cycle; the next cycle ended at
+557.6 MiB and the final cycle at 669.1 MiB. Sustained memory behavior remains to be verified.
+The baseline process had been running since the earlier session, whereas the candidate was
+recently restarted. These are observed footprints, not proof of a cache-caused increase or a leak,
+and do not certify memory behavior on a smaller Raspberry Pi. No forced GC or memory-tuning
+change was used to improve the result.
+
+Backend preparation tails improved in this sequential comparison. Incoming-publication tails did
+not improve uniformly; retain those slower cases rather than describing every interval as faster.
+Uncontrolled background work, small samples and different process ages limit causal attribution.
+The comparison verifies the deployed series' measured behavior, not each PR's independent effect.
+
+- [x] Publish the reviewed runtime series and verify installed bytes.
+- [x] Complete one normal alpha.40 → alpha.41 upgrade with preserved topology and database.
+- [x] Retain matched idle/catalog-load wire samples, all restores and RSS/swap observations.
+- [ ] Reproduce the slower incoming-publication tails under controlled background load before
+  attributing them to a particular service or adding further caches.
+- [ ] Complete actual full-panel refresh/reconnect overlap, qualified poll overlap and remaining
+  Apple Home/admin/panel visual acceptance. This run contains no new UI flicker/rapid-tap evidence
+  and does not close the original hardware/client matrix or change its timing limits.
 
 ## Aggregate state configuration candidate — 2026-10-03
 
@@ -97,7 +180,7 @@ Next work, in order:
 - [x] Implement recurring aggregate configuration reads with explicit mutation,
   transaction rollback and shared-writer tests. Keep live values/connectivity outside structural
   caches; do not cache a rendered state that can hide a new device value.
-- [ ] Review/merge the aggregate configuration candidate.
+- [x] Review/merge the aggregate configuration candidate as PR #1153 (`f75a18b3b`).
 - [ ] Publish the reviewed series and compare staging commands under idle, notification and
   panel-refresh load. Record server processing separately from Shelly/network response time,
   plus query counts, event-loop delay, RSS and swap. Preserve failed samples.
