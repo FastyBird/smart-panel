@@ -1,13 +1,11 @@
-import { Repository } from 'typeorm';
-
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
-import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { EventType as DevicesEventType, PropertyCategory } from '../../../modules/devices/devices.constants';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { ChannelPropertyEntity } from '../../../modules/devices/entities/devices.entity';
+import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
 import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import { SensorStateDataModel } from '../models/spaces-response.model';
 import { SpaceSensorStateService } from '../services/space-sensor-state.service';
@@ -47,8 +45,7 @@ export class SpaceSensorStateListener implements OnModuleInit, OnModuleDestroy {
 	private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
 
 	constructor(
-		@InjectRepository(ChannelEntity)
-		private readonly channelRepository: Repository<ChannelEntity>,
+		private readonly propertyMetadata: PropertyMetadataService,
 		private readonly sensorStateService: SpaceSensorStateService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
@@ -91,42 +88,32 @@ export class SpaceSensorStateListener implements OnModuleInit, OnModuleDestroy {
 
 	private async processSensorPropertyChange(property: ChannelPropertyEntity): Promise<void> {
 		// 1. Check if property category is sensor-relevant
-		if (!SENSOR_PROPERTY_CATEGORIES.includes(property.category)) {
+		if (!property.id || !SENSOR_PROPERTY_CATEGORIES.includes(property.category)) {
 			return;
 		}
 
-		// 2. Get the channel ID
-		const channelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
+		// Use current structural membership, not a potentially stale relation carried by the event.
+		// The ingestion path already warms this catalog; device moves/remaps invalidate it.
+		const metadata = await this.propertyMetadata.findOne(property.id);
+		const channel = metadata?.channel;
 
-		if (!channelId) {
+		if (!channel || typeof channel === 'string') {
 			return;
 		}
 
-		// 3. Find the channel with its device
-		const channel = await this.channelRepository
-			.createQueryBuilder('channel')
-			.innerJoinAndSelect('channel.device', 'device')
-			.where('channel.id = :channelId', { channelId })
-			.andWhere('device.roomId IS NOT NULL')
-			.getOne();
-
-		if (!channel) {
-			return;
-		}
-
-		// 4. Check if channel category is sensor-relevant
+		// Check if channel category is sensor-relevant
 		if (!SENSOR_CHANNEL_CATEGORIES.includes(channel.category as (typeof SENSOR_CHANNEL_CATEGORIES)[number])) {
 			return;
 		}
 
-		const device = channel.device as DeviceEntity;
-		const roomId = device.roomId;
+		const device = channel.device;
+		const roomId = device && typeof device !== 'string' ? device.roomId : null;
 
 		if (!roomId) {
 			return;
 		}
 
-		// 5. Schedule debounced state recalculation and event emission
+		// Schedule debounced state recalculation and event emission
 		this.scheduleSensorStateEmit(roomId);
 	}
 

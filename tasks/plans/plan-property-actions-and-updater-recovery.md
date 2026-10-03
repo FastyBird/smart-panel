@@ -2,11 +2,56 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.40 remains on staging; runtime activity #1143, metadata savepoints #1144, token usage #1145, command admission #1146 and preparation #1147 merged; runtime read/write optimization underway before new staging measurements; deployment and full-client acceptance remain open
+**Status:** alpha.40 remains on staging; runtime read/write optimizations #1143–#1151 merged; event-to-room routing candidate under validation; aggregate state reads and full-client hardware acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Runtime read audit and state-event routing candidate — 2026-10-03
+
+PRs #1148 (target validation), #1149 (provider device graphs), #1150 (long-lived token facts)
+and #1151 (access-token/owner facts) are now merged. PR #1151 was merged at `763aacf1e`
+after current-head CI and CodeRabbit review: no actionable comments, minimal merge risk and
+low security risk. Its complete backend validation passed 9,060 unit tests and 256 E2E tests.
+Staging still runs alpha.40; none of this series has a new hardware latency result.
+
+The panel consumes ordinary property values directly from WebSocket payloads. Separately,
+`PeriodicRefreshService` reloads registered modules every five minutes and after socket reconnect
+(with a three-second reconnect delay and two-second stagger between modules). Device refresh
+loads the catalog, then controls for each device/channel, then validation data. These REST reads
+remain fresh and must be represented in the eventual overlapping-load measurement.
+
+More frequent SQL exists in the event fan-out: lighting, climate and sensor state listeners each
+query the channel/device before their 100 ms room debounce. The candidate replaces those routing
+queries with the existing `PropertyMetadataService`, following the activity listener. It adds no
+cache or retained graph. Routing uses the current property mapping and room, including after
+moves, remapping and deletion; shared-writer mode continues to bypass local metadata.
+
+The test boundary ends at stubbed aggregate calculators. `getLightingState`, `getClimateState`
+and `getSensorState` still load space/role/device configuration, and may also read Influx. Zero
+SQL for event routing does **not** establish zero SQL for complete state publication.
+
+Validation of this routing candidate: 33 SQLite/event routing cases plus the existing listener
+and catalog suites pass (105 focused tests, clean `--detectOpenHandles` exit). Forcing shared-writer
+bypass makes the three warm zero-query assertions fail with 40/40/20 queries, proving that the
+checks detect the eliminated reads; the candidate was restored. Full backend validation passes
+576 suites / 9,093 tests (one skip, four snapshots), 23 E2E suites / 256 tests, build, formatting
+and lint (three pre-existing warnings). The full parallel unit run exits 0 but warns that a worker
+needed forced shutdown; the focused open-handle check is recorded separately. Initial new-fixture failures were corrected: the raw SQL
+column name and a once-only failure mock consumed by the first of two listeners; logs are retained.
+
+Next work, in order:
+
+- [ ] Review/merge the state-event routing change after validation.
+- [ ] Address the remaining recurring aggregate configuration reads with explicit mutation,
+  transaction rollback and shared-writer tests. Keep live values/connectivity outside structural
+  caches; do not cache a rendered state that can hide a new device value.
+- [ ] Publish the reviewed series and compare staging commands under idle, notification and
+  panel-refresh load. Record server processing separately from Shelly/network response time,
+  plus query counts, event-loop delay, RSS and swap. Preserve failed samples.
+- [ ] Reassess the five-minute catalog/control refresh from measured cost before expanding
+  caching to broad administration paths. Retain reconnect correctness.
 
 ## Command target validation candidate — 2026-10-02
 
