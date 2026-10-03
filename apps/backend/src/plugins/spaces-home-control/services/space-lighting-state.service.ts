@@ -5,12 +5,11 @@ import { hsvToHex } from '../../../common/utils/color.utils';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
-import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import { LightingMode, LightingRole, RoleBrightnessRule } from '../spaces-home-control.constants';
 import { IntentSpecLoaderService, ResolvedModeOrchestration } from '../spec';
 
-import { SpaceLightingRoleService } from './space-lighting-role.service';
+import { SpaceStateReadService } from './space-state-read.service';
 
 /**
  * Last intent values for a role - derived from last applied mode
@@ -133,8 +132,7 @@ export class SpaceLightingStateService {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpaceLightingStateService');
 
 	constructor(
-		private readonly spacesService: SpacesService,
-		private readonly lightingRoleService: SpaceLightingRoleService,
+		private readonly stateReads: SpaceStateReadService,
 		private readonly intentTimeseriesService: IntentTimeseriesService,
 		private readonly intentSpecLoaderService: IntentSpecLoaderService,
 	) {}
@@ -155,7 +153,7 @@ export class SpaceLightingStateService {
 	): Promise<SpaceLightingState | null> {
 		const { synchronizeModeValidity = true } = options;
 		// Verify space exists
-		const space = await this.spacesService.findOne(spaceId);
+		const space = await this.stateReads.findOne(spaceId);
 
 		if (!space) {
 			this.logger.warn(`Space not found id=${spaceId}`);
@@ -240,8 +238,8 @@ export class SpaceLightingStateService {
 	 * Get all light states in a space with their roles
 	 */
 	private async getLightStates(spaceId: string): Promise<LightState[]> {
-		const devices = await this.spacesService.findDevicesBySpace(spaceId);
-		const roleMap = await this.lightingRoleService.getRoleMap(spaceId);
+		const devices = await this.stateReads.findDevicesBySpace(spaceId);
+		const roleMap = await this.stateReads.getLightingRoleMap(spaceId);
 
 		const lights: LightState[] = [];
 

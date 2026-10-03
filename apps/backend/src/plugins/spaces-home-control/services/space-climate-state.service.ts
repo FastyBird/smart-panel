@@ -4,7 +4,6 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { IntentTimeseriesService } from '../../../modules/intents/services/intent-timeseries.service';
-import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import {
 	CLIMATE_PRIMARY_DEVICE_CATEGORIES,
@@ -18,8 +17,8 @@ import {
 	TemperatureAveragingStrategy,
 } from '../spaces-home-control.constants';
 
-import { SpaceClimateRoleService } from './space-climate-role.service';
 import { SpaceIntentBaseService } from './space-intent-base.service';
+import { SpaceStateReadService } from './space-state-read.service';
 
 /**
  * Information about a primary climate device (thermostat, heater unit, air conditioner).
@@ -94,8 +93,7 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpaceClimateStateService');
 
 	constructor(
-		private readonly spacesService: SpacesService,
-		private readonly climateRoleService: SpaceClimateRoleService,
+		private readonly stateReads: SpaceStateReadService,
 		private readonly intentTimeseriesService: IntentTimeseriesService,
 	) {
 		super();
@@ -132,14 +130,14 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 
 		// Fetch devices and role map in parallel (performance optimization)
 		const [devices, roleMap] = await Promise.all([
-			this.spacesService.findDevicesBySpace(spaceId),
-			this.climateRoleService.getRoleMap(spaceId),
+			this.stateReads.findDevicesBySpace(spaceId),
+			this.stateReads.getClimateRoleMap(spaceId),
 		]);
 
 		// Early return if no devices (space doesn't exist or has no devices)
 		if (!devices || devices.length === 0) {
 			// Verify space exists only if we need to return null vs default state
-			const space = await this.spacesService.findOne(spaceId);
+			const space = await this.stateReads.findOne(spaceId);
 			if (!space) {
 				this.logger.warn(`Space not found id=${spaceId}`);
 				return null;
@@ -330,8 +328,8 @@ export class SpaceClimateStateService extends SpaceIntentBaseService {
 	async getPrimaryClimateDevicesInSpace(spaceId: string): Promise<PrimaryClimateDevice[]> {
 		// Fetch devices and role map in parallel (performance optimization)
 		const [devices, roleMap] = await Promise.all([
-			this.spacesService.findDevicesBySpace(spaceId),
-			this.climateRoleService.getRoleMap(spaceId),
+			this.stateReads.findDevicesBySpace(spaceId),
+			this.stateReads.getClimateRoleMap(spaceId),
 		]);
 
 		return this.extractPrimaryClimateDevices(devices, roleMap);

@@ -2,11 +2,61 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.40 remains on staging; runtime read/write optimizations #1143–#1151 merged; event-to-room routing candidate under validation; aggregate state reads and full-client hardware acceptance remain open
+**Status:** alpha.40 remains on staging; runtime optimizations #1143–#1152 merged; aggregate configuration candidate under validation; reviewed-series deployment and full-client hardware acceptance remain open
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+## Aggregate state configuration candidate — 2026-10-03
+
+PR #1152 merged as `e3118ff4a` after passing current-head CI and CodeRabbit review with no
+actionable comments, minimal merge risk and low security risk. The next candidate removes the
+remaining space/membership/role ORM reads from lighting, climate and sensor state calculations.
+
+`SpaceStateReadService` retains a bounded projection of existing space identity/type, visible
+device IDs and the three domain role assignments. It shares pending loads and retains at most
+256 configurations and 256 pending entries. It reuses the existing shared device graphs, attaches
+current values/connectivity on every read, and returns detached role maps. It does not retain
+rendered state or mode/history results from Influx. Administrative role reads remain unchanged.
+
+Structural and role writes invalidate before/after mutation; reads during dirty transactions are
+not retained, and inner savepoint settlement keeps invalidation through outer rollback/commit.
+The shared metadata revision carries explicit bulk-reset invalidation into this projection. A
+membership change during graph hydration retries the membership read. Independent-writer mode
+bypasses both caches. Unrelated role subtypes do not evict these three domains' configuration.
+
+Real SQLite tests now run actual aggregate calculators and the debounced property-event
+listeners; live-value/connectivity providers and Influx intent history are controlled test inputs.
+Warm calculation and publication assert no SQL, fresh values/status and the expected emitted
+states. The negative control bypasses caching and fails the same warm aggregate assertion with
+53 SQL calls. This is a sensitivity check, not a previous-release hardware benchmark.
+
+The 12 new SQLite integration cases and eight retention/concurrency cases cover room ordering,
+hiding/moves, zones, all three role types, fresh values/status, copy isolation, deletion cascades,
+bulk reset, role-only and membership savepoint rollback, in-flight changes, shared-writer bypass,
+failed/missing loads, LRU limits and shutdown. The focused set (including unchanged Shelly readiness)
+passes 175 tests with `--detectOpenHandles` and clean exit. All 23 E2E suites / 256 tests pass with
+exit 0; Jest briefly warned about delayed exit. Build and changed-file lint/format pass.
+
+Initial validation failures are retained: an integration fixture used an array accessor for the
+role record and expected a string instead of the runtime Date; E2E found the plugin's missing
+Nest ConfigModule import, now explicit. The first full unit run timed out in an unchanged Shelly
+readiness test (then EPIPE); its focused repeat passes without changing its timeout. The full
+unit repeat is recorded in the final PR validation.
+
+After this candidate is reviewed, prioritize publishing and the staging comparison already
+planned below, including RSS/swap and panel refresh overlap. Do not expand caching into rare
+administrative paths before that measurement identifies a material cost.
+
+PR #1153 review identified missing cleanup when transaction settlement callbacks fail or are
+skipped. Reads now invalidate and remove inactive/released runners before consulting retention.
+An active SQLite transaction remains uncached even after `release()`, which does not close or
+roll back SQLite's shared connection. Four regressions cover failed commit/rollback callbacks,
+failed rollback SQL followed by release and recovery, and overlapping released/active runners.
+The resulting 15 SQLite cases and nine retention cases pass (24 tests, clean exit with
+`--detectOpenHandles`). CI for the initial `1535cca30` revision passed, including backend tests;
+the review fix requires its own CI and review before merge.
 
 ## Runtime read audit and state-event routing candidate — 2026-10-03
 
@@ -43,10 +93,11 @@ column name and a once-only failure mock consumed by the first of two listeners;
 
 Next work, in order:
 
-- [ ] Review/merge the state-event routing change after validation.
-- [ ] Address the remaining recurring aggregate configuration reads with explicit mutation,
+- [x] Review/merge state-event routing as PR #1152 (`e3118ff4a`).
+- [x] Implement recurring aggregate configuration reads with explicit mutation,
   transaction rollback and shared-writer tests. Keep live values/connectivity outside structural
   caches; do not cache a rendered state that can hide a new device value.
+- [ ] Review/merge the aggregate configuration candidate.
 - [ ] Publish the reviewed series and compare staging commands under idle, notification and
   panel-refresh load. Record server processing separately from Shelly/network response time,
   plus query counts, event-loop delay, RSS and swap. Preserve failed samples.

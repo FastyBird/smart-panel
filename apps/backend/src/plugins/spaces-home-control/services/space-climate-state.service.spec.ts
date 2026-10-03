@@ -10,7 +10,6 @@ import {
 	IntentTimeseriesService,
 	LastAppliedClimateState,
 } from '../../../modules/intents/services/intent-timeseries.service';
-import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import {
 	ClimateMode,
@@ -20,13 +19,12 @@ import {
 	SETPOINT_CONSENSUS_TOLERANCE,
 } from '../spaces-home-control.constants';
 
-import { SpaceClimateRoleService } from './space-climate-role.service';
 import { SpaceClimateStateService } from './space-climate-state.service';
+import { SpaceStateReadService } from './space-state-read.service';
 
 describe('SpaceClimateStateService', () => {
 	let service: SpaceClimateStateService;
-	let spacesService: jest.Mocked<SpacesService>;
-	let climateRoleService: jest.Mocked<SpaceClimateRoleService>;
+	let stateReads: jest.Mocked<SpaceStateReadService>;
 	let intentTimeseriesService: jest.Mocked<IntentTimeseriesService>;
 
 	const mockSpaceId = uuid();
@@ -172,16 +170,11 @@ describe('SpaceClimateStateService', () => {
 			providers: [
 				SpaceClimateStateService,
 				{
-					provide: SpacesService,
+					provide: SpaceStateReadService,
 					useValue: {
 						findOne: jest.fn().mockResolvedValue({ id: mockSpaceId }),
 						findDevicesBySpace: jest.fn().mockResolvedValue([]),
-					},
-				},
-				{
-					provide: SpaceClimateRoleService,
-					useValue: {
-						getRoleMap: jest.fn().mockResolvedValue(new Map()),
+						getClimateRoleMap: jest.fn().mockResolvedValue(new Map()),
 					},
 				},
 				{
@@ -194,8 +187,7 @@ describe('SpaceClimateStateService', () => {
 		}).compile();
 
 		service = module.get<SpaceClimateStateService>(SpaceClimateStateService);
-		spacesService = module.get(SpacesService);
-		climateRoleService = module.get(SpaceClimateRoleService);
+		stateReads = module.get(SpaceStateReadService);
 		intentTimeseriesService = module.get(IntentTimeseriesService);
 	});
 
@@ -205,7 +197,7 @@ describe('SpaceClimateStateService', () => {
 
 	describe('getClimateState', () => {
 		it('should return null when space does not exist', async () => {
-			spacesService.findOne.mockResolvedValue(null);
+			stateReads.findOne.mockResolvedValue(null);
 
 			const result = await service.getClimateState(mockSpaceId);
 
@@ -213,7 +205,7 @@ describe('SpaceClimateStateService', () => {
 		});
 
 		it('should return default state when no climate devices exist', async () => {
-			spacesService.findDevicesBySpace.mockResolvedValue([]);
+			stateReads.findDevicesBySpace.mockResolvedValue([]);
 
 			const result = await service.getClimateState(mockSpaceId);
 
@@ -235,7 +227,7 @@ describe('SpaceClimateStateService', () => {
 				heaterSetpoint: 22.0,
 				temperature: 20.5,
 			});
-			spacesService.findDevicesBySpace.mockResolvedValue([heaterDevice]);
+			stateReads.findDevicesBySpace.mockResolvedValue([heaterDevice]);
 
 			const result = await service.getClimateState(mockSpaceId);
 
@@ -255,7 +247,7 @@ describe('SpaceClimateStateService', () => {
 				heaterSetpoint: 22,
 				temperature: 20.5,
 			});
-			spacesService.findDevicesBySpace.mockResolvedValue([thermostat]);
+			stateReads.findDevicesBySpace.mockResolvedValue([thermostat]);
 
 			const result = await service.getClimateState(mockSpaceId);
 
@@ -273,7 +265,7 @@ describe('SpaceClimateStateService', () => {
 				coolerSetpoint: 24.0,
 				temperature: 26.0,
 			});
-			spacesService.findDevicesBySpace.mockResolvedValue([coolerDevice]);
+			stateReads.findDevicesBySpace.mockResolvedValue([coolerDevice]);
 
 			const result = await service.getClimateState(mockSpaceId);
 
@@ -295,7 +287,7 @@ describe('SpaceClimateStateService', () => {
 				coolerSetpoint: 24.0,
 				temperature: 22.0,
 			});
-			spacesService.findDevicesBySpace.mockResolvedValue([acDevice]);
+			stateReads.findDevicesBySpace.mockResolvedValue([acDevice]);
 
 			const result = await service.getClimateState(mockSpaceId);
 
@@ -314,7 +306,7 @@ describe('SpaceClimateStateService', () => {
 				heaterSetpoint: 22.0,
 				temperature: 20.5,
 			});
-			spacesService.findDevicesBySpace.mockResolvedValue([heaterDevice]);
+			stateReads.findDevicesBySpace.mockResolvedValue([heaterDevice]);
 
 			const result = await service.getClimateState(mockSpaceId);
 
@@ -331,7 +323,7 @@ describe('SpaceClimateStateService', () => {
 				heaterSetpoint: 22.0,
 				temperature: 20.5,
 			});
-			spacesService.findDevicesBySpace.mockResolvedValue([heaterDevice]);
+			stateReads.findDevicesBySpace.mockResolvedValue([heaterDevice]);
 
 			const lastApplied: LastAppliedClimateState = {
 				mode: ClimateMode.HEAT,
@@ -363,7 +355,7 @@ describe('SpaceClimateStateService', () => {
 				heaterSetpoint: 22.0,
 				temperature: 22.0,
 			});
-			spacesService.findDevicesBySpace.mockResolvedValue([device1, device2]);
+			stateReads.findDevicesBySpace.mockResolvedValue([device1, device2]);
 
 			const result = await service.getClimateState(mockSpaceId);
 
@@ -389,8 +381,8 @@ describe('SpaceClimateStateService', () => {
 				temperature: 18.0,
 			});
 
-			spacesService.findDevicesBySpace.mockResolvedValue([visibleDevice, hiddenDevice]);
-			climateRoleService.getRoleMap.mockResolvedValue(
+			stateReads.findDevicesBySpace.mockResolvedValue([visibleDevice, hiddenDevice]);
+			stateReads.getClimateRoleMap.mockResolvedValue(
 				createRoleMap([{ deviceId: 'hidden-device', role: ClimateRole.HIDDEN }]),
 			);
 
@@ -413,7 +405,7 @@ describe('SpaceClimateStateService', () => {
 				heaterSetpoint: 24.0, // Different by more than tolerance
 				temperature: 19.0,
 			});
-			spacesService.findDevicesBySpace.mockResolvedValue([device1, device2]);
+			stateReads.findDevicesBySpace.mockResolvedValue([device1, device2]);
 
 			const result = await service.getClimateState(mockSpaceId);
 
@@ -434,7 +426,7 @@ describe('SpaceClimateStateService', () => {
 				heaterSetpoint: 22.0 + SETPOINT_CONSENSUS_TOLERANCE - 0.1, // Within tolerance
 				temperature: 19.0,
 			});
-			spacesService.findDevicesBySpace.mockResolvedValue([device1, device2]);
+			stateReads.findDevicesBySpace.mockResolvedValue([device1, device2]);
 
 			const result = await service.getClimateState(mockSpaceId);
 
@@ -449,7 +441,7 @@ describe('SpaceClimateStateService', () => {
 				heaterSetpoint: 22.0,
 				temperature: 20.0,
 			});
-			spacesService.findDevicesBySpace.mockResolvedValue([device]);
+			stateReads.findDevicesBySpace.mockResolvedValue([device]);
 
 			const result = await service.getClimateState(mockSpaceId);
 
@@ -467,7 +459,7 @@ describe('SpaceClimateStateService', () => {
 				category: DeviceCategory.LIGHTING,
 				channels: [],
 			} as DeviceEntity;
-			spacesService.findDevicesBySpace.mockResolvedValue([lightDevice]);
+			stateReads.findDevicesBySpace.mockResolvedValue([lightDevice]);
 
 			const result = await service.getPrimaryClimateDevicesInSpace(mockSpaceId);
 
@@ -483,7 +475,7 @@ describe('SpaceClimateStateService', () => {
 				coolerSetpoint: 26.0,
 				temperature: 23.0,
 			});
-			spacesService.findDevicesBySpace.mockResolvedValue([thermostat]);
+			stateReads.findDevicesBySpace.mockResolvedValue([thermostat]);
 
 			const result = await service.getPrimaryClimateDevicesInSpace(mockSpaceId);
 
@@ -519,7 +511,7 @@ describe('SpaceClimateStateService', () => {
 				}),
 				name: 'Charlie AC',
 			} as DeviceEntity;
-			spacesService.findDevicesBySpace.mockResolvedValue([heater, ac, thermostat]);
+			stateReads.findDevicesBySpace.mockResolvedValue([heater, ac, thermostat]);
 
 			const result = await service.getPrimaryClimateDevicesInSpace(mockSpaceId);
 
@@ -543,8 +535,8 @@ describe('SpaceClimateStateService', () => {
 				hasHeater: true,
 				heaterSetpoint: 22.0,
 			});
-			spacesService.findDevicesBySpace.mockResolvedValue([visibleDevice, hiddenDevice]);
-			climateRoleService.getRoleMap.mockResolvedValue(
+			stateReads.findDevicesBySpace.mockResolvedValue([visibleDevice, hiddenDevice]);
+			stateReads.getClimateRoleMap.mockResolvedValue(
 				createRoleMap([{ deviceId: 'hidden-device', role: ClimateRole.HIDDEN }]),
 			);
 

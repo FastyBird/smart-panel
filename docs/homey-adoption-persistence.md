@@ -107,9 +107,26 @@ In the default single-process mode, value ingestion and command validation/prepa
 property/channel/device metadata snapshot, invalidated by structural writes and transaction completion. The value-ingestion boundary performs
 no catalog query or SQLite mutation for ordinary changed and unchanged reports after initialization.
 Lighting, climate and sensor state listeners also reuse this snapshot to route property events to the current room,
-including after device moves or property remapping. Their debounced aggregate state calculations still read
-space/role/device configuration; this is not a claim that the complete event fan-out avoids ORM.
-Panel recovery refreshes (every five minutes and after socket reconnection) also retain fresh REST reads. Shared-writer mode bypasses that snapshot because another
+including after device moves or property remapping. Their debounced aggregate calculations use `SpaceStateReadService`
+for room/zone membership and lighting/climate/sensor roles. It retains at most 256 configurations and 256 coalesced
+pending loads; missing spaces and failed loads are not retained. Space, device, channel, zone membership and relevant
+role mutations invalidate these facts before/after writes and through outer transaction settlement. Dirty-transaction
+reads bypass retention. Reads also discard inactive or released runners when a settlement callback was skipped,
+invalidating the projection before resuming retention. SQLite `release()` does not end an active transaction:
+after a failed rollback it must remain uncached until the transaction actually ends. Active outer transactions
+remain protected across savepoints. The shared catalog revision also invalidates this projection after bulk space reset.
+
+Device graphs are reused from the shared structural catalog, with current property values and connectivity attached to
+new detached copies for every calculation. Rendered states and Influx mode/history data are not cached here. A membership
+change during graph hydration retries the read. Role maps and their entries are detached from retained configuration.
+`FB_PROPERTY_VALUE_LOCKS_ENABLED=true` bypasses both catalogs; independent live writers still require it on every backend.
+Raw SQL/bulk mutations that skip subscribers require explicit invalidation of the configuration projection and shared
+catalog (invalidating the shared catalog alone also invalidates dependent configurations on the next read).
+
+This covers the lighting/climate/sensor routing and aggregate calculation boundary, not every event subscriber or API.
+Panel recovery refreshes (every five minutes and after socket reconnection) and administrative role reads retain fresh
+REST/ORM reads. Retained device graphs are shared with command dispatch rather than duplicated per room; their RSS cost
+must still be included in hardware measurements. Shared-writer mode bypasses that snapshot because another
 process cannot invalidate local metadata; it retains fresh catalog reads as well as the shared lease. With the default
 mode, all live configuration changes must go through the same backend so its mutation/transaction hooks invalidate
 the catalog. Independent metadata writers or direct SQL changes while the backend runs are outside that mode;
