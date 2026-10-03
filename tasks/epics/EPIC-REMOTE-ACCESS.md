@@ -26,6 +26,10 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
   already runs a root worker through `sudo -n systemd-run`; that primitive is reused for provider setup.
 - Design: `docs/superpowers/specs/2026-09-02-remote-access-design.md`
 - Plan and delegation map: `docs/superpowers/plans/2026-09-02-remote-access.md`
+- Fresh analysis and proposed completion sequence (2026-10-03):
+  [`2026-10-03-remote-access-completion.md`](../../docs/superpowers/plans/2026-10-03-remote-access-completion.md).
+  This separates delivered code from outstanding hardware acceptance and documents reproduced
+  lifecycle/status defects. The replacement execution sequence is pending adoption.
 - Prior art: Home Assistant `helpers/network.py` and `components/http/forwarded.py`; the Home Assistant
   Tailscale and Cloudflared add-ons; Tailscale CLI `up --json`, operator mechanism, Serve and Funnel.
 
@@ -47,12 +51,13 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
 
 - Cloudflare Tunnel plugin (backend and admin).
 - WireGuard client plugin.
+- Fixed privileged helper and sudoers migration (#914), prerequisite for WireGuard. This was pulled
+  into milestone 3 in the epic's September planning update.
 
 **Out of scope**
 
 - Tailscale inside the Docker image or the Home Assistant add-on (documented alternatives instead).
 - Identity-header single sign-on, multi-factor authentication, a FastyBird relay service, panel changes.
-- Sudoers hardening (tracked as a separate technical task).
 
 ## 4. Acceptance criteria
 
@@ -139,7 +144,6 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 - [ ] Docker compose deployment: the Tailscale card reports unsupported with the documentation link; the manual external URL still works.
 - [ ] Host installed with `scripts/install-server.sh` (not the image): Remote access → Set up installs Tailscale from the apt repository and reports each step, and System → Update runs the in-app updater through the privileged worker (the sudo probe must pass with the script's sudoers file).
 
-
 ## 5. Example scenarios
 
 ### Scenario: sign in from a phone
@@ -180,24 +184,37 @@ Then the display registration guard and the login throttle see the client's tail
 
 Tracked as GitHub sub-issues of the epic issue under the "Remote access" milestone:
 
-| Task | PR title | Status |
-| --- | --- | --- |
-| RA-1 | fix(backend): trust forwarded headers only from configured proxies | done |
-| RA-2 | feat(backend): add remote access module foundation | done |
-| RA-3 | refactor(backend): extract privileged worker runner from update executor | done |
-| RA-4 | feat(backend): add Tailscale remote access provider plugin | done |
-| RA-5 | feat(backend): add Tailscale setup and sign-in flows | done |
-| RA-6 | feat(backend): serve admin over HTTPS through Tailscale | done |
-| RA-7 | feat(admin): add remote access overview and settings | done |
-| RA-8 | feat(admin): add Tailscale remote access setup wizard | done |
-| RA-9 | feat(installer): preinstall Tailscale for remote access | done |
-| RA-10 | docs(cross): document remote access and Tailscale setup | done |
-| RA-11 | feat(cross): suggest remote access URL for MCP OAuth | done |
-| RA-12 | integrated verification and hardware acceptance | in-progress |
-| RA-13 | feat(backend): add Cloudflare Tunnel remote access plugin | milestone 2 |
-| RA-14 | feat(admin): add Cloudflare Tunnel remote access setup | milestone 2 |
-| RA-15 | feat(cross): add WireGuard client remote access plugin | milestone 3 |
-| RA-16 | chore(installer): replace systemd-run sudo grant with fixed helper | follow-up |
+| Task  | PR title                                                                 | Status                                                    |
+| ----- | ------------------------------------------------------------------------ | --------------------------------------------------------- |
+| RA-1  | fix(backend): trust forwarded headers only from configured proxies       | done                                                      |
+| RA-2  | feat(backend): add remote access module foundation                       | done                                                      |
+| RA-3  | refactor(backend): extract privileged worker runner from update executor | done                                                      |
+| RA-4  | feat(backend): add Tailscale remote access provider plugin               | done                                                      |
+| RA-5  | feat(backend): add Tailscale setup and sign-in flows                     | done                                                      |
+| RA-6  | feat(backend): serve admin over HTTPS through Tailscale                  | done                                                      |
+| RA-7  | feat(admin): add remote access overview and settings                     | done                                                      |
+| RA-8  | feat(admin): add Tailscale remote access setup wizard                    | done                                                      |
+| RA-9  | feat(installer): preinstall Tailscale for remote access                  | done                                                      |
+| RA-10 | docs(cross): document remote access and Tailscale setup                  | done                                                      |
+| RA-11 | feat(cross): suggest remote access URL for MCP OAuth                     | done                                                      |
+| RA-12 | integrated verification and hardware acceptance                          | in-progress                                               |
+| RA-13 | feat(backend): add Cloudflare Tunnel remote access plugin                | code merged (#911, PR #1027); hardware acceptance pending |
+| RA-14 | feat(admin): add Cloudflare Tunnel remote access setup                   | code merged (#912, PR #1030); hardware acceptance pending |
+| RA-15 | feat(cross): add WireGuard client remote access plugin                   | milestone 3                                               |
+| RA-16 | chore(installer): replace systemd-run sudo grant with fixed helper       | milestone 3 prerequisite (#914), open                     |
+
+### October reassessment
+
+RA-17–27 and the subsequent PR #1005 fixes are already merged. Their delivery does not complete RA-12.
+On the alpha.41 source baseline, the fresh analysis passed 614 backend and 444 admin tests, then
+reproduced eight missing invariants with controlled diagnostic tests: authentication information after
+Disconnect, stale reads/events after Stop, backend and both provider-store ordering, pending-login
+cancellation, and starting setup reconciliation without websocket events. See the linked completion
+plan for the evidence, repair packages R1–R8 and provider-specific acceptance gates.
+
+No new hardware acceptance is claimed by this reassessment. The checklist above stays open until
+results are recorded against an identified candidate release. #897, #991, #910, #914 and #913 remain
+open; Cloudflare implementation issues #911/#912 remain closed.
 
 ## 9. AI instructions
 
