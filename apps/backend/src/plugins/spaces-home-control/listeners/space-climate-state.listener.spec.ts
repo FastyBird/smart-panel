@@ -1,13 +1,12 @@
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
-import { Repository, SelectQueryBuilder } from 'typeorm';
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment */
 import { v4 as uuid } from 'uuid';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
+import { PropertyMetadataService } from '../../../modules/devices/services/property-metadata.service';
 import { ClimateState, SpaceClimateStateService } from '../services/space-climate-state.service';
 import { ClimateMode, EventType } from '../spaces-home-control.constants';
 
@@ -18,7 +17,7 @@ const DEBOUNCE_DELAY = 100;
 
 describe('SpaceClimateStateListener', () => {
 	let listener: SpaceClimateStateListener;
-	let channelRepository: jest.Mocked<Repository<ChannelEntity>>;
+	let metadata: { findOne: jest.Mock };
 	let climateStateService: jest.Mocked<SpaceClimateStateService>;
 	let eventEmitter: jest.Mocked<EventEmitter2>;
 
@@ -62,20 +61,13 @@ describe('SpaceClimateStateListener', () => {
 		// Use fake timers for debounce testing
 		jest.useFakeTimers();
 
-		const mockChannelQueryBuilder = {
-			innerJoinAndSelect: jest.fn().mockReturnThis(),
-			where: jest.fn().mockReturnThis(),
-			andWhere: jest.fn().mockReturnThis(),
-			getOne: jest.fn().mockResolvedValue(mockChannel),
-		} as unknown as SelectQueryBuilder<ChannelEntity>;
-
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SpaceClimateStateListener,
 				{
-					provide: getRepositoryToken(ChannelEntity),
+					provide: PropertyMetadataService,
 					useValue: {
-						createQueryBuilder: jest.fn().mockReturnValue(mockChannelQueryBuilder),
+						findOne: jest.fn().mockResolvedValue({ channel: mockChannel }),
 					},
 				},
 				{
@@ -94,12 +86,13 @@ describe('SpaceClimateStateListener', () => {
 		}).compile();
 
 		listener = module.get<SpaceClimateStateListener>(SpaceClimateStateListener);
-		channelRepository = module.get(getRepositoryToken(ChannelEntity));
+		metadata = module.get(PropertyMetadataService);
 		climateStateService = module.get(SpaceClimateStateService);
 		eventEmitter = module.get(EventEmitter2);
 	});
 
 	afterEach(() => {
+		listener.onModuleDestroy();
 		jest.clearAllMocks();
 		jest.useRealTimers();
 	});
@@ -129,7 +122,7 @@ describe('SpaceClimateStateListener', () => {
 
 			await listener.handlePropertyChanged(property as ChannelPropertyEntity);
 
-			expect(channelRepository.createQueryBuilder).toHaveBeenCalled();
+			expect(metadata.findOne).toHaveBeenCalled();
 
 			// Flush debounce timer to trigger the event emission
 			await flushDebounce();
@@ -153,7 +146,7 @@ describe('SpaceClimateStateListener', () => {
 
 			await listener.handlePropertyChanged(property as ChannelPropertyEntity);
 
-			expect(channelRepository.createQueryBuilder).not.toHaveBeenCalled();
+			expect(metadata.findOne).not.toHaveBeenCalled();
 			expect(eventEmitter.emit).not.toHaveBeenCalled();
 		});
 
@@ -163,14 +156,7 @@ describe('SpaceClimateStateListener', () => {
 				category: ChannelCategory.LIGHT, // Not a climate channel
 			};
 
-			const mockNonClimateQueryBuilder = {
-				innerJoinAndSelect: jest.fn().mockReturnThis(),
-				where: jest.fn().mockReturnThis(),
-				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(nonClimateChannel),
-			} as unknown as SelectQueryBuilder<ChannelEntity>;
-
-			channelRepository.createQueryBuilder.mockReturnValue(mockNonClimateQueryBuilder as any);
+			metadata.findOne.mockResolvedValue({ channel: nonClimateChannel });
 
 			const property: Partial<ChannelPropertyEntity> = {
 				id: uuid(),
@@ -225,14 +211,7 @@ describe('SpaceClimateStateListener', () => {
 		});
 
 		it('should not emit event when channel not found', async () => {
-			const mockNullQueryBuilder = {
-				innerJoinAndSelect: jest.fn().mockReturnThis(),
-				where: jest.fn().mockReturnThis(),
-				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(null),
-			} as unknown as SelectQueryBuilder<ChannelEntity>;
-
-			channelRepository.createQueryBuilder.mockReturnValue(mockNullQueryBuilder as any);
+			metadata.findOne.mockResolvedValue(null);
 
 			const property: Partial<ChannelPropertyEntity> = {
 				id: uuid(),
@@ -256,14 +235,7 @@ describe('SpaceClimateStateListener', () => {
 				device: deviceWithoutRoom as DeviceEntity,
 			};
 
-			const mockQueryBuilder = {
-				innerJoinAndSelect: jest.fn().mockReturnThis(),
-				where: jest.fn().mockReturnThis(),
-				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockResolvedValue(channelWithoutRoom),
-			} as unknown as SelectQueryBuilder<ChannelEntity>;
-
-			channelRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+			metadata.findOne.mockResolvedValue({ channel: channelWithoutRoom });
 
 			const property: Partial<ChannelPropertyEntity> = {
 				id: uuid(),
@@ -278,14 +250,7 @@ describe('SpaceClimateStateListener', () => {
 		});
 
 		it('should handle errors gracefully', async () => {
-			const mockErrorQueryBuilder = {
-				innerJoinAndSelect: jest.fn().mockReturnThis(),
-				where: jest.fn().mockReturnThis(),
-				andWhere: jest.fn().mockReturnThis(),
-				getOne: jest.fn().mockRejectedValue(new Error('Database error')),
-			} as unknown as SelectQueryBuilder<ChannelEntity>;
-
-			channelRepository.createQueryBuilder.mockReturnValue(mockErrorQueryBuilder as any);
+			metadata.findOne.mockRejectedValue(new Error('Database error'));
 
 			const property: Partial<ChannelPropertyEntity> = {
 				id: uuid(),
@@ -298,7 +263,7 @@ describe('SpaceClimateStateListener', () => {
 			expect(eventEmitter.emit).not.toHaveBeenCalled();
 		});
 
-		it('should extract channel id from channel entity object', async () => {
+		it('resolves current metadata by property id even with an event channel object', async () => {
 			const property: Partial<ChannelPropertyEntity> = {
 				id: uuid(),
 				category: PropertyCategory.TEMPERATURE,
@@ -307,19 +272,19 @@ describe('SpaceClimateStateListener', () => {
 
 			await listener.handlePropertyChanged(property as ChannelPropertyEntity);
 
-			expect(channelRepository.createQueryBuilder).toHaveBeenCalled();
+			expect(metadata.findOne).toHaveBeenCalled();
 		});
 
-		it('should not process when property has no channel', async () => {
+		it('should not process when property has no id', async () => {
 			const property: Partial<ChannelPropertyEntity> = {
-				id: uuid(),
+				id: undefined,
 				category: PropertyCategory.TEMPERATURE,
 				channel: undefined as any,
 			};
 
 			await listener.handlePropertyChanged(property as ChannelPropertyEntity);
 
-			expect(channelRepository.createQueryBuilder).not.toHaveBeenCalled();
+			expect(metadata.findOne).not.toHaveBeenCalled();
 			expect(eventEmitter.emit).not.toHaveBeenCalled();
 		});
 

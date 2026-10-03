@@ -104,8 +104,12 @@ backend processes over the same storage. Mixed modes do not provide cross-proces
 controls property-value leases and the use of local structural and authentication-token metadata caches; the provider-private adoption claim
 and structural identity constraints are unchanged.
 In the default single-process mode, value ingestion and command validation/preparation/admission reuse an in-memory
-property/channel/device metadata snapshot, invalidated by structural writes and transaction completion. Ordinary changed and unchanged value reports perform
-no catalog query or SQLite mutation after initialization. Shared-writer mode bypasses that snapshot because another
+property/channel/device metadata snapshot, invalidated by structural writes and transaction completion. The value-ingestion boundary performs
+no catalog query or SQLite mutation for ordinary changed and unchanged reports after initialization.
+Lighting, climate and sensor state listeners also reuse this snapshot to route property events to the current room,
+including after device moves or property remapping. Their debounced aggregate state calculations still read
+space/role/device configuration; this is not a claim that the complete event fan-out avoids ORM.
+Panel recovery refreshes (every five minutes and after socket reconnection) also retain fresh REST reads. Shared-writer mode bypasses that snapshot because another
 process cannot invalidate local metadata; it retains fresh catalog reads as well as the shared lease. With the default
 mode, all live configuration changes must go through the same backend so its mutation/transaction hooks invalidate
 the catalog. Independent metadata writers or direct SQL changes while the backend runs are outside that mode;
