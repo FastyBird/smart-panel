@@ -161,6 +161,11 @@ export class PropertyMetadataService implements EntitySubscriberInterface, OnMod
 		if (!event.queryRunner.isTransactionActive) this.dirtyTransactions.delete(event.queryRunner);
 	}
 
+	/** Revision for dependent structural projections, including explicit reset/cascade invalidation. */
+	getGeneration(): number {
+		return this.generation;
+	}
+
 	/** Bulk clears and database-side cascades bypass entity mutation subscribers. */
 	invalidate(): void {
 		this.generation += 1;

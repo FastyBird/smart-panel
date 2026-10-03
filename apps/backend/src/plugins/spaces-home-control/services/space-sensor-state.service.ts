@@ -3,7 +3,6 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../../modules/devices/entities/devices.entity';
-import { SpacesService } from '../../../modules/spaces/services/spaces.service';
 import { SPACES_MODULE_NAME } from '../../../modules/spaces/spaces.constants';
 import { SpaceSensorRoleEntity } from '../entities/space-sensor-role.entity';
 import {
@@ -15,7 +14,7 @@ import {
 } from '../spaces-home-control.constants';
 
 import { SpaceIntentBaseService } from './space-intent-base.service';
-import { SpaceSensorRoleService } from './space-sensor-role.service';
+import { SpaceStateReadService } from './space-state-read.service';
 
 /**
  * Additional reading from a multi-property channel
@@ -100,10 +99,7 @@ export interface SensorState {
 export class SpaceSensorStateService extends SpaceIntentBaseService {
 	private readonly logger = createExtensionLogger(SPACES_MODULE_NAME, 'SpaceSensorStateService');
 
-	constructor(
-		private readonly spacesService: SpacesService,
-		private readonly sensorRoleService: SpaceSensorRoleService,
-	) {
+	constructor(private readonly stateReads: SpaceStateReadService) {
 		super();
 	}
 
@@ -125,7 +121,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		};
 
 		// Verify space exists
-		const space = await this.spacesService.findOne(spaceId);
+		const space = await this.stateReads.findOne(spaceId);
 
 		if (!space) {
 			this.logger.warn(`Space not found id=${spaceId}`);
@@ -133,10 +129,10 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		}
 
 		// Get all devices in the space
-		const devices = await this.spacesService.findDevicesBySpace(spaceId);
+		const devices = await this.stateReads.findDevicesBySpace(spaceId);
 
 		// Get all role assignments
-		const roleMap = await this.sensorRoleService.getRoleMap(spaceId);
+		const roleMap = await this.stateReads.getSensorRoleMap(spaceId);
 
 		// Collect all sensor readings
 		const allReadings: SensorReading[] = [];

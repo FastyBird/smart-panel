@@ -1,4 +1,5 @@
 import { Global, Module, OnModuleInit } from '@nestjs/common';
+import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
@@ -65,6 +66,7 @@ import { SpaceMediaActivityBindingService } from './services/space-media-activit
 import { SpaceMediaActivityService } from './services/space-media-activity.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';
 import { SpaceSensorStateService } from './services/space-sensor-state.service';
+import { SpaceStateReadService } from './services/space-state-read.service';
 import { SpaceSuggestionHeartbeatService } from './services/space-suggestion-heartbeat.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
 import { SpaceUndoHistoryService } from './services/space-undo-history.service';
@@ -103,6 +105,7 @@ import { IntentSpecLoaderService } from './spec';
 @Global()
 @Module({
 	imports: [
+		NestConfigModule,
 		// Repositories for the plugin's own entities + the Devices entities
 		// the listeners / role services inject. Repeating the registrations
 		// from SpacesModule is fine — TypeORM scopes per-module and both
@@ -152,6 +155,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceCoversRoleService,
 		SpaceLightingRoleService,
 		SpaceSensorRoleService,
+		SpaceStateReadService,
 		// State services
 		SpaceClimateStateService,
 		SpaceCoversStateService,
