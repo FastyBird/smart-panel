@@ -9,7 +9,6 @@ import { TokenOwnerType } from '../../auth/auth.constants';
 import { TokensService } from '../../auth/services/tokens.service';
 import { hashToken } from '../../auth/utils/token.utils';
 import { MCP_OAUTH_PRINCIPAL_TYPE } from '../../mcp/mcp.constants';
-import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 import { ClientUserDto } from '../dto/client-user.dto';
@@ -76,25 +75,20 @@ export class WsAuthService {
 	}
 
 	private async validateUserAccessToken(client: Socket, token: string, userId: string): Promise<boolean> {
-		const storedAccessToken = await this.tokensService.findAccessTokenByOwnerAndHash(userId, hashToken(token));
+		const storedAccessToken = await this.tokensService.findAuthenticationAccessToken(userId, hashToken(token));
 
 		if (!storedAccessToken) {
 			this.logger.warn('Access token not found in database');
 			throw new WebsocketNotAllowedException('Token not found');
 		}
 
-		if (storedAccessToken.revoked || storedAccessToken.refreshToken.revoked) {
+		if (storedAccessToken.revoked || storedAccessToken.refreshRevoked) {
 			this.logger.warn('Access token is revoked');
 			throw new WebsocketNotAllowedException('Token revoked');
 		}
 
-		let user: UserEntity;
-
-		try {
-			user = await this.usersService.getOneOrThrow(userId);
-		} catch (error) {
-			const err = error as Error;
-			this.logger.warn('Token valid, but user not found', { message: err.message, stack: err.stack });
+		const user = storedAccessToken.owner;
+		if (!user || user.id !== userId) {
 			throw new WebsocketNotAllowedException('Invalid user');
 		}
 

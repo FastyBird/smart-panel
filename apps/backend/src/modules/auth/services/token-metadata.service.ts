@@ -13,21 +13,34 @@ import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { getEnvValue } from '../../../common/utils/config.utils';
-import { LongLiveTokenEntity, TokenEntity } from '../entities/auth.entity';
+import { UserEntity } from '../../users/entities/users.entity';
+import { AccessTokenEntity, LongLiveTokenEntity, TokenEntity } from '../entities/auth.entity';
 
 export type AuthenticationToken = Pick<
 	LongLiveTokenEntity,
 	'id' | 'hashedToken' | 'ownerType' | 'ownerId' | 'revoked' | 'expiresAt'
 >;
+export interface AuthenticationAccessToken {
+	id: string;
+	revoked: boolean;
+	expiresAt: Date | null;
+	owner: Pick<UserEntity, 'id' | 'role'> | null;
+	refreshRevoked: boolean;
+}
+
 export const tokenMetadataCapacity = 1_000;
 
-type PendingToken = { generation: number; promise: Promise<AuthenticationToken | null> };
+type CachedToken =
+	| { kind: 'long-lived'; facts: AuthenticationToken }
+	| { kind: 'access'; facts: AuthenticationAccessToken };
+
+type PendingToken = { generation: number; promise: Promise<CachedToken | null> };
 
 /** Bounded credential facts for runtime authentication; never caches an authorization decision or usage telemetry. */
 @Injectable()
 export class TokenMetadataService implements EntitySubscriberInterface, OnModuleDestroy {
 	private readonly enabled: boolean;
-	private readonly tokens = new Map<string, AuthenticationToken>();
+	private readonly tokens = new Map<string, CachedToken>();
 	private readonly loading = new Map<string, PendingToken>();
 	private readonly dirtyTransactions = new Set<QueryRunner>();
 	private generation = 0;
@@ -43,42 +56,87 @@ export class TokenMetadataService implements EntitySubscriberInterface, OnModule
 
 	/** Returns detached facts; JWT verification, expiry, owner/role and MCP policy checks remain request-local. */
 	async findByHash(hash: string): Promise<AuthenticationToken | null> {
+		const entry = await this.findCached(`long-lived:${hash}`, async () => {
+			const facts = await this.query(hash);
+			return facts ? { kind: 'long-lived', facts } : null;
+		});
+		return entry?.kind === 'long-lived' ? entry.facts : null;
+	}
+
+	/** Caches only the presented access credential and its current owner/refresh facts. */
+	async findAccessToken(ownerId: string, hash: string): Promise<AuthenticationAccessToken | null> {
+		const entry = await this.findCached(JSON.stringify(['access', ownerId, hash]), async () => {
+			const token = await this.dataSource
+				.getRepository(AccessTokenEntity)
+				.createQueryBuilder('token')
+				.leftJoinAndSelect('token.owner', 'owner')
+				.leftJoinAndSelect('token.children', 'children')
+				.select([
+					'token.id',
+					'token.revoked',
+					'token.expiresAt',
+					'owner.id',
+					'owner.role',
+					'children.id',
+					'children.revoked',
+				])
+				.where('owner.id = :ownerId', { ownerId })
+				.andWhere('token.hashedToken = :hash', { hash })
+				.getOne();
+			if (!token) return null;
+			return {
+				kind: 'access',
+				facts: {
+					id: token.id,
+					revoked: token.revoked,
+					expiresAt: token.expiresAt,
+					owner: token.owner ? { id: token.owner.id, role: token.owner.role } : null,
+					// Preserve the entity's missing/multiple refresh-child rejection before retaining any facts.
+					refreshRevoked: token.revoked || token.refreshToken.revoked,
+				},
+			};
+		});
+		return entry?.kind === 'access' ? entry.facts : null;
+	}
+
+	private async findCached(key: string, query: () => Promise<CachedToken | null>): Promise<CachedToken | null> {
 		while (true) {
-			if (!this.enabled || this.stopped || this.dirtyTransactions.size > 0) return this.query(hash);
-			const cached = this.tokens.get(hash);
+			if (!this.enabled || this.stopped || this.dirtyTransactions.size > 0) return query();
+			const cached = this.tokens.get(key);
 			if (cached) {
 				// Refresh LRU order; expiration is still checked by the caller on every request.
-				this.tokens.delete(hash);
-				if (!cached.expiresAt || cached.expiresAt.getTime() >= Date.now()) this.tokens.set(hash, cached);
+				this.tokens.delete(key);
+				if (!cached.facts.expiresAt || cached.facts.expiresAt.getTime() >= Date.now()) this.tokens.set(key, cached);
 				return this.copy(cached);
 			}
 			const generation = this.generation;
-			let pending = this.loading.get(hash);
+			let pending = this.loading.get(key);
 			if (!pending || pending.generation !== generation) {
 				// Invalid credentials and concurrent cold misses must not create an unbounded pending map.
-				if (!pending && this.loading.size >= tokenMetadataCapacity) return this.query(hash);
-				pending = { generation, promise: this.query(hash) };
-				this.loading.set(hash, pending);
+				if (!pending && this.loading.size >= tokenMetadataCapacity) return query();
+				pending = { generation, promise: query() };
+				this.loading.set(key, pending);
 			}
 			try {
 				const token = await pending.promise;
 				if (generation !== this.generation) continue;
 				if (
 					token &&
-					!token.revoked &&
-					(!token.expiresAt || token.expiresAt.getTime() >= Date.now()) &&
+					!token.facts.revoked &&
+					(token.kind !== 'access' || !token.facts.refreshRevoked) &&
+					(!token.facts.expiresAt || token.facts.expiresAt.getTime() >= Date.now()) &&
 					!this.stopped &&
 					this.dirtyTransactions.size === 0
 				) {
-					if (!this.tokens.has(hash) && this.tokens.size >= tokenMetadataCapacity) {
+					if (!this.tokens.has(key) && this.tokens.size >= tokenMetadataCapacity) {
 						const oldest: unknown = this.tokens.keys().next().value;
 						if (typeof oldest === 'string') this.tokens.delete(oldest);
 					}
-					this.tokens.set(hash, token);
+					this.tokens.set(key, token);
 				}
 				return token ? this.copy(token) : null;
 			} finally {
-				if (this.loading.get(hash) === pending) this.loading.delete(hash);
+				if (this.loading.get(key) === pending) this.loading.delete(key);
 			}
 		}
 	}
@@ -123,7 +181,7 @@ export class TokenMetadataService implements EntitySubscriberInterface, OnModule
 	}
 
 	private mutation(event: InsertEvent<unknown> | UpdateEvent<unknown> | RemoveEvent<unknown>): void {
-		if (!event.metadata.inheritanceTree.includes(TokenEntity)) return;
+		if (!event.metadata.inheritanceTree.some((type) => type === TokenEntity || type === UserEntity)) return;
 		if (event.queryRunner.isTransactionActive) this.dirtyTransactions.add(event.queryRunner);
 		this.invalidate();
 	}
@@ -159,7 +217,8 @@ export class TokenMetadataService implements EntitySubscriberInterface, OnModule
 			: null;
 	}
 
-	private copy(token: AuthenticationToken): AuthenticationToken {
-		return { ...token, expiresAt: token.expiresAt ? new Date(token.expiresAt.getTime()) : null };
+	private copy(token: CachedToken): CachedToken {
+		// Facts contain only plain records, scalar values and dates; never retain ORM entities or passwords.
+		return structuredClone(token);
 	}
 }

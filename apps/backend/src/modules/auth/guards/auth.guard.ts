@@ -21,7 +21,6 @@ import { McpClientService } from '../../mcp/services/mcp-client.service';
 import { McpInstallationService } from '../../mcp/services/mcp-installation.service';
 import { McpOAuthRouteGateService } from '../../mcp/services/mcp-oauth-route-gate.service';
 import { ApiPublic } from '../../swagger/decorators/api-documentation.decorator';
-import { UserEntity } from '../../users/entities/users.entity';
 import { UsersService } from '../../users/services/users.service';
 import { UserRole } from '../../users/users.constants';
 import { AUTH_MODULE_NAME, TokenOwnerType } from '../auth.constants';
@@ -191,25 +190,20 @@ export class AuthGuard implements CanActivate {
 		token: string,
 		userId: string,
 	): Promise<boolean> {
-		const storedAccessToken = await this.tokensService.findAccessTokenByOwnerAndHash(userId, hashToken(token));
+		const storedAccessToken = await this.tokensService.findAuthenticationAccessToken(userId, hashToken(token));
 
 		if (!storedAccessToken) {
 			this.logger.warn('Access token not found in database');
 			throw new UnauthorizedException('Token not found');
 		}
 
-		if (storedAccessToken.revoked || storedAccessToken.refreshToken.revoked) {
+		if (storedAccessToken.revoked || storedAccessToken.refreshRevoked) {
 			this.logger.warn('Access token is revoked');
 			throw new UnauthorizedException('Token revoked');
 		}
 
-		let user: UserEntity;
-
-		try {
-			user = await this.usersService.getOneOrThrow(userId);
-		} catch (error) {
-			const err = error as Error;
-			this.logger.warn('Token valid, but user not found', { message: err.message, stack: err.stack });
+		const user = storedAccessToken.owner;
+		if (!user || user.id !== userId) {
 			throw new UnauthorizedException('Invalid user');
 		}
 

@@ -110,10 +110,13 @@ process cannot invalidate local metadata; it retains fresh catalog reads as well
 mode, all live configuration changes must go through the same backend so its mutation/transaction hooks invalidate
 the catalog. Independent metadata writers or direct SQL changes while the backend runs are outside that mode;
 use the shared-writer setting on every participating backend when independent writers are required.
-Runtime HTTP and WebSocket authentication also share a bounded cache of long-lived-token facts (at most 1,000
-credentials and 1,000 pending lookups). Token mutations invalidate it before/after writes and at transaction settlement;
-reads during a dirty token transaction are not cached. Exact usage-only timestamp updates do not invalidate these facts.
-JWT verification, expiration, user roles and MCP client policy are still checked for each authentication. The cache
+Runtime HTTP and WebSocket authentication also share a bounded cache of long-lived and access-token facts (at most 1,000
+credentials and 1,000 pending lookups combined). Token and user mutations invalidate it before/after writes and at transaction settlement;
+reads during a dirty token/user transaction are not cached. Access-token facts include only the owner ID/role and
+refresh revocation state; missing or multiple refresh children still reject authentication. User password/profile data
+are not retained, and a role change or user deletion invalidates any cached access facts. Exact usage-only timestamp updates do not invalidate these facts.
+JWT verification, expiration and current role/policy checks still run per authentication. Access credentials use
+the invalidated owner-role projection; personal long-lived tokens and MCP client policy retain their fresh lookups. The cache
 contains no authorization decisions or usage timestamps; administrative token reads remain fresh. Shared-writer mode
 bypasses this cache too, so external credential writers require the same setting on every backend. Raw SQL/bulk clears
 that bypass mutation hooks must explicitly invalidate the cache; normal display reset revokes credentials through ORM.

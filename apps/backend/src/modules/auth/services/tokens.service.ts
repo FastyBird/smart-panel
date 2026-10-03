@@ -16,7 +16,7 @@ import { UpdateTokenDto } from '../dto/update-token.dto';
 import { AccessTokenEntity, LongLiveTokenEntity, RefreshTokenEntity, TokenEntity } from '../entities/auth.entity';
 import { hashToken } from '../utils/token.utils';
 
-import { AuthenticationToken, TokenMetadataService } from './token-metadata.service';
+import { AuthenticationAccessToken, AuthenticationToken, TokenMetadataService } from './token-metadata.service';
 import { TokenUsageService } from './token-usage.service';
 import { TokensTypeMapperService } from './tokens-type-mapper.service';
 
@@ -172,6 +172,11 @@ export class TokensService {
 		if (!result.affected) {
 			throw new AuthNotFoundException('Requested token does not exist');
 		}
+	}
+
+	/** Runtime access credential facts; role changes and refresh revocation invalidate the shared cache. */
+	findAuthenticationAccessToken(ownerId: string, hashedToken: string): Promise<AuthenticationAccessToken | null> {
+		return this.tokenMetadata.findAccessToken(ownerId, hashedToken);
 	}
 
 	/** Runtime credential lookup. Administrative token reads retain fresh telemetry and full entities. */
