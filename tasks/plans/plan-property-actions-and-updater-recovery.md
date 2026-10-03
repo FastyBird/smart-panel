@@ -49,6 +49,15 @@ After this candidate is reviewed, prioritize publishing and the staging comparis
 planned below, including RSS/swap and panel refresh overlap. Do not expand caching into rare
 administrative paths before that measurement identifies a material cost.
 
+PR #1153 review identified missing cleanup when transaction settlement callbacks fail or are
+skipped. Reads now invalidate and remove inactive/released runners before consulting retention.
+An active SQLite transaction remains uncached even after `release()`, which does not close or
+roll back SQLite's shared connection. Four regressions cover failed commit/rollback callbacks,
+failed rollback SQL followed by release and recovery, and overlapping released/active runners.
+The resulting 15 SQLite cases and nine retention cases pass (24 tests, clean exit with
+`--detectOpenHandles`). CI for the initial `1535cca30` revision passed, including backend tests;
+the review fix requires its own CI and review before merge.
+
 ## Runtime read audit and state-event routing candidate — 2026-10-03
 
 PRs #1148 (target validation), #1149 (provider device graphs), #1150 (long-lived token facts)

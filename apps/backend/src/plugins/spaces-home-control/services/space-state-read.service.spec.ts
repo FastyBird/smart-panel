@@ -147,6 +147,26 @@ describe('Bounded runtime space configuration retention', () => {
 		expect(query).toHaveBeenCalledTimes(2);
 	});
 
+	it('cleans released runners without forgetting another active transaction', async () => {
+		const abandoned = { isTransactionActive: true, isReleased: false };
+		const active = { isTransactionActive: true, isReleased: false };
+		for (const queryRunner of [abandoned, active]) {
+			service.afterUpdate({
+				metadata: { target: SpaceRoleEntity, inheritanceTree: [SpaceRoleEntity] },
+				queryRunner,
+			} as unknown as UpdateEvent<unknown>);
+		}
+		abandoned.isReleased = true;
+		await service.findOne('room');
+		await service.findOne('room');
+		expect(query).toHaveBeenCalledTimes(2);
+		// Neither runner delivers a settlement callback; the next read must resume retention.
+		active.isTransactionActive = false;
+		await service.findOne('room');
+		await service.findOne('room');
+		expect(query).toHaveBeenCalledTimes(3);
+	});
+
 	it('does not refill retention after shutdown', async () => {
 		const old = deferred<Configuration>();
 		query.mockReturnValueOnce(old.promise);

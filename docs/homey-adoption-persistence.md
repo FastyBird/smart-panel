@@ -111,7 +111,10 @@ including after device moves or property remapping. Their debounced aggregate ca
 for room/zone membership and lighting/climate/sensor roles. It retains at most 256 configurations and 256 coalesced
 pending loads; missing spaces and failed loads are not retained. Space, device, channel, zone membership and relevant
 role mutations invalidate these facts before/after writes and through outer transaction settlement. Dirty-transaction
-reads bypass retention. The shared catalog revision also invalidates this projection after bulk space reset.
+reads bypass retention. Reads also discard inactive or released runners when a settlement callback was skipped,
+invalidating the projection before resuming retention. SQLite `release()` does not end an active transaction:
+after a failed rollback it must remain uncached until the transaction actually ends. Active outer transactions
+remain protected across savepoints. The shared catalog revision also invalidates this projection after bulk space reset.
 
 Device graphs are reused from the shared structural catalog, with current property values and connectivity attached to
 new detached copies for every calculation. Rendered states and Influx mode/history data are not cached here. A membership

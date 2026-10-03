@@ -213,6 +213,14 @@ export class SpaceStateReadService implements EntitySubscriberInterface, OnModul
 	}
 
 	private currentGeneration(): number {
+		// Settlement callbacks can be skipped after a transaction lifecycle error. Discard only
+		// runners known to be finished: SQLite release() alone leaves active transactions usable.
+		for (const runner of this.dirtyTransactions) {
+			if (runner.isReleased || !runner.isTransactionActive) {
+				this.dirtyTransactions.delete(runner);
+				this.invalidate();
+			}
+		}
 		// Includes explicit catalog invalidation after factory reset and database-side cascades.
 		const generation = this.metadata.getGeneration();
 		if (generation !== this.catalogGeneration) {

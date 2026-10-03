@@ -370,6 +370,59 @@ describe('Runtime space state configuration with SQLite and real aggregate calcu
 		},
 	);
 
+	it.each(['commitTransaction', 'rollbackTransaction'] as const)(
+		'resumes retention when %s finishes but its settlement callback fails',
+		async (settle) => {
+			await reads.getSensorRoleMap(room.id);
+			const callback = jest
+				.spyOn(reads, settle === 'commitTransaction' ? 'afterTransactionCommit' : 'afterTransactionRollback')
+				.mockImplementationOnce(() => {
+					throw new Error('settlement callback failed');
+				});
+			const runner = database.createQueryRunner();
+			await runner.startTransaction();
+			await runner.manager.update(SpaceSensorRoleEntity, sensorRole.id, { role: SensorRole.HIDDEN });
+			await expect(runner[settle]()).rejects.toThrow('settlement callback failed');
+			expect(runner.isTransactionActive).toBe(false);
+			await runner.release();
+			callback.mockRestore();
+			const expected = settle === 'commitTransaction' ? SensorRole.HIDDEN : SensorRole.ENVIRONMENT;
+			expect((await reads.getSensorRoleMap(room.id)).get(`${heater.id}:${temperatureChannel.id}`).role).toBe(expected);
+			const query = jest.spyOn(runner, 'query');
+			await reads.getSensorRoleMap(room.id);
+			expect(query).not.toHaveBeenCalled();
+		},
+	);
+
+	it('keeps retention disabled when a failed SQLite rollback leaves the transaction active after release', async () => {
+		await reads.getSensorRoleMap(room.id);
+		const runner = database.createQueryRunner();
+		await runner.startTransaction();
+		try {
+			await runner.manager.update(SpaceSensorRoleEntity, sensorRole.id, { role: SensorRole.HIDDEN });
+			const query = jest.spyOn(runner, 'query').mockRejectedValueOnce(new Error('rollback SQL failed'));
+			await expect(runner.rollbackTransaction()).rejects.toThrow('rollback SQL failed');
+			await runner.release();
+			expect(runner.isTransactionActive).toBe(true);
+			expect(runner.isReleased).toBe(false);
+			for (let i = 0; i < 2; i++) {
+				query.mockClear();
+				expect((await reads.getSensorRoleMap(room.id)).get(`${heater.id}:${temperatureChannel.id}`).role).toBe(
+					SensorRole.HIDDEN,
+				);
+				expect(query).toHaveBeenCalled();
+			}
+		} finally {
+			await runner.rollbackTransaction();
+		}
+		expect((await reads.getSensorRoleMap(room.id)).get(`${heater.id}:${temperatureChannel.id}`).role).toBe(
+			SensorRole.ENVIRONMENT,
+		);
+		const query = jest.spyOn(runner, 'query').mockClear();
+		await reads.getSensorRoleMap(room.id);
+		expect(query).not.toHaveBeenCalled();
+	});
+
 	it('invalidates channel/device cascades and bulk space reset through the shared catalog revision', async () => {
 		await state();
 		await database.getRepository(ChannelEntity).delete(temperatureChannel.id);
