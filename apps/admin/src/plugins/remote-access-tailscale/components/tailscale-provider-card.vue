@@ -111,6 +111,17 @@
 				</div>
 			</div>
 
+			<p class="provider-card__description text-sm">
+				{{ t('remoteAccessTailscalePlugin.texts.disconnectExplanation') }}
+			</p>
+			<el-alert
+				v-if="status?.control?.operation"
+				type="info"
+				:title="t('remoteAccessTailscalePlugin.texts.operationInProgress')"
+				:closable="false"
+				show-icon
+			/>
+
 			<!-- D12: the operator-not-granted advisory names the exact recovery command, sourced from the operator-granted requirement's own remedy. -->
 			<div
 				v-if="operatorNotGrantedAdvisory"
@@ -171,6 +182,7 @@
 					trigger="click"
 					:type="primaryActionType"
 					:loading="primaryActionLoading"
+					:disabled="primaryActionLoading"
 					@click="onPrimaryAction"
 					@command="onCommand"
 				>
@@ -181,6 +193,7 @@
 								v-for="key in secondaryActionKeys"
 								:key="key"
 								:command="key"
+								:disabled="isLocalBusy && key !== 'disconnect'"
 							>
 								{{ actionLabel(key) }}
 							</el-dropdown-item>
@@ -191,6 +204,7 @@
 		</template>
 
 		<tailscale-setup-wizard
+			v-if="wizardVisible"
 			v-model:visible="wizardVisible"
 			:initial-step="wizardStep"
 		/>
@@ -207,9 +221,9 @@ import { Icon } from '@iconify/vue';
 
 import { useClipboard, useFlashMessage } from '../../../common';
 import { useSession } from '../../../modules/auth/composables/composables';
-import { useExtension, useServiceActions } from '../../../modules/extensions';
+import { useExtension } from '../../../modules/extensions';
 import { type IRemoteAccessProviderCardProps, useRemoteAccessStatus } from '../../../modules/remote-access';
-import { ExtensionsModuleServiceOwnerKind, UsersModuleUserRole } from '../../../openapi.constants';
+import { UsersModuleUserRole } from '../../../openapi.constants';
 import { useTailscaleStatus } from '../composables';
 import { REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME } from '../remote-access-tailscale.constants';
 import { RemoteAccessTailscaleApiException } from '../remote-access-tailscale.exceptions';
@@ -237,9 +251,21 @@ const flashMessage = useFlashMessage();
 const { copy } = useClipboard();
 
 const { profile } = useSession();
-const { status, requirements, isLoggingOut, isResettingPreferences, fetchStatus, logout, resetPreferences } = useTailscaleStatus();
+const {
+	status,
+	requirements,
+	isConnecting,
+	isDisconnecting,
+	isLoggingOut,
+	isResettingPreferences,
+	fetchStatus,
+	refreshStatus,
+	connect,
+	disconnect,
+	logout,
+	resetPreferences,
+} = useTailscaleStatus();
 const { fetchStatus: fetchRemoteAccessStatus } = useRemoteAccessStatus();
-const { startService, stopService, restartService, isActing } = useServiceActions();
 // Only ever reads the extensions store - never triggers its own fetch, so the documentation link
 // simply stays hidden until something else (e.g. the Extensions page) has loaded the list. Purely
 // presentational: no new network call is introduced by this card.
@@ -328,12 +354,11 @@ const isOwner = computed<boolean>(() => profile.value?.role === UsersModuleUserR
 const actions = computed(() =>
 	resolveTailscaleProviderActions({
 		state: displayState.value,
-		hasTailnet: typeof tailnet.value !== 'undefined',
+		control: status.value?.control,
+		isAdmin: profile.value?.role === UsersModuleUserRole.admin,
 		isOwner: isOwner.value,
 	})
 );
-
-const isActingOnService = computed<boolean>(() => isActing(ExtensionsModuleServiceOwnerKind.plugin, REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'node'));
 
 const documentationLink = computed<string | undefined>(() => extension.value?.links?.documentation ?? undefined);
 
@@ -349,37 +374,25 @@ const openWizard = (step: TailscaleWizardStep): void => {
 	wizardVisible.value = true;
 };
 
-// Refetches both the plugin status (this card's own state/requirements/advisories) and the
-// module-level remote-access status (URLs/aggregate advisories) once the service action settles,
-// whether it succeeded or failed - `startService`/`stopService`/`restartService` never throw (they
-// report failure via their own return value/toast), so a plain sequential `finally` is enough.
+// Reconcile private controls and aggregate URLs after every action, including failures.
 const refreshAfterServiceAction = async (): Promise<void> => {
-	await Promise.allSettled([fetchStatus(), fetchRemoteAccessStatus()]);
+	await Promise.allSettled([refreshStatus(), fetchRemoteAccessStatus()]);
 };
 
-const onConnect = async (): Promise<void> => {
+const runConnectionAction = async (action: 'connect' | 'disconnect'): Promise<void> => {
+	actionErrorCode.value = null;
 	try {
-		await startService(ExtensionsModuleServiceOwnerKind.plugin, REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'node');
+		await (action === 'connect' ? connect() : disconnect());
+	} catch (error: unknown) {
+		actionErrorCode.value = error instanceof RemoteAccessTailscaleApiException ? error.errorCode : null;
+		flashApiError(error, [409, 422], t(`remoteAccessTailscalePlugin.messages.${action}Failed`));
 	} finally {
 		await refreshAfterServiceAction();
 	}
 };
 
-const onDisconnect = async (): Promise<void> => {
-	try {
-		await stopService(ExtensionsModuleServiceOwnerKind.plugin, REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'node');
-	} finally {
-		await refreshAfterServiceAction();
-	}
-};
-
-const onReconnect = async (): Promise<void> => {
-	try {
-		await restartService(ExtensionsModuleServiceOwnerKind.plugin, REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'node');
-	} finally {
-		await refreshAfterServiceAction();
-	}
-};
+const onConnect = (): Promise<void> => runConnectionAction('connect');
+const onDisconnect = (): Promise<void> => runConnectionAction('disconnect');
 
 const onSignOut = async (): Promise<void> => {
 	actionErrorCode.value = null;
@@ -392,6 +405,8 @@ const onSignOut = async (): Promise<void> => {
 		actionErrorCode.value = error instanceof RemoteAccessTailscaleApiException ? error.errorCode : null;
 
 		flashApiError(error, [409], t('remoteAccessTailscalePlugin.messages.signOutFailed'));
+	} finally {
+		await refreshAfterServiceAction();
 	}
 };
 
@@ -406,6 +421,8 @@ const onResetPreferences = async (): Promise<void> => {
 		actionErrorCode.value = error instanceof RemoteAccessTailscaleApiException ? error.errorCode : null;
 
 		flashApiError(error, [409], t('remoteAccessTailscalePlugin.messages.preferencesResetFailed'));
+	} finally {
+		await refreshAfterServiceAction();
 	}
 };
 
@@ -423,25 +440,12 @@ const onCopyOperatorCommand = async (): Promise<void> => {
 	}
 };
 
-// Split-button main action, in priority order - `resolveTailscaleProviderActions` only ever
-// offers one of `setup`/`signIn`/`connect`/`disconnect` at a time for a given state (each is
-// gated on a disjoint set of `state` values), so this reduces to "whichever of those four is
-// true"; `reconnect`/`signOut`/`resetPreferences` are the fallback for states (e.g. `error`) that
-// offer none of the first four, so the split button always has a main action whenever `actions`
-// offers anything at all.
-const primaryActionOrder: (keyof ITailscaleProviderActions)[] = [
-	'setup',
-	'signIn',
-	'connect',
-	'disconnect',
-	'reconnect',
-	'signOut',
-	'resetPreferences',
-];
+// Backend availability determines the primary action; Disconnect remains usable to cancel login.
+const primaryActionOrder: (keyof ITailscaleProviderActions)[] = ['setup', 'signIn', 'connect', 'disconnect', 'signOut', 'resetPreferences'];
 
 const primaryActionKey = computed<keyof ITailscaleProviderActions | null>(() => primaryActionOrder.find((key) => actions.value[key]) ?? null);
 
-const secondaryActionOrder: (keyof ITailscaleProviderActions)[] = ['reconnect', 'disconnect', 'signOut', 'resetPreferences'];
+const secondaryActionOrder: (keyof ITailscaleProviderActions)[] = ['disconnect', 'signOut', 'resetPreferences'];
 
 const secondaryActionKeys = computed<(keyof ITailscaleProviderActions)[]>(() =>
 	secondaryActionOrder.filter((key) => actions.value[key] && key !== primaryActionKey.value)
@@ -451,20 +455,8 @@ const primaryActionType = computed<'primary' | undefined>(() =>
 	primaryActionKey.value === 'setup' || primaryActionKey.value === 'signIn' ? 'primary' : undefined
 );
 
-const primaryActionLoading = computed<boolean>(() => {
-	switch (primaryActionKey.value) {
-		case 'connect':
-		case 'disconnect':
-		case 'reconnect':
-			return isActingOnService.value;
-		case 'signOut':
-			return isLoggingOut.value;
-		case 'resetPreferences':
-			return isResettingPreferences.value;
-		default:
-			return false;
-	}
-});
+const isLocalBusy = computed<boolean>(() => isConnecting.value || isDisconnecting.value || isLoggingOut.value || isResettingPreferences.value);
+const primaryActionLoading = computed<boolean>(() => (primaryActionKey.value === 'disconnect' ? isDisconnecting.value : isLocalBusy.value));
 
 const actionLabel = (key: keyof ITailscaleProviderActions): string => {
 	switch (key) {
@@ -476,8 +468,6 @@ const actionLabel = (key: keyof ITailscaleProviderActions): string => {
 			return t('remoteAccessTailscalePlugin.buttons.connect');
 		case 'disconnect':
 			return t('remoteAccessTailscalePlugin.buttons.disconnect');
-		case 'reconnect':
-			return t('remoteAccessTailscalePlugin.buttons.reconnect');
 		case 'signOut':
 			return t('remoteAccessTailscalePlugin.buttons.signOut');
 		case 'resetPreferences':
@@ -486,6 +476,7 @@ const actionLabel = (key: keyof ITailscaleProviderActions): string => {
 };
 
 const runAction = (key: keyof ITailscaleProviderActions): void => {
+	if (!actions.value[key] || (isLocalBusy.value && (key !== 'disconnect' || isDisconnecting.value))) return;
 	switch (key) {
 		case 'setup':
 			openWizard('setup');
@@ -498,9 +489,6 @@ const runAction = (key: keyof ITailscaleProviderActions): void => {
 			break;
 		case 'disconnect':
 			void onDisconnect();
-			break;
-		case 'reconnect':
-			void onReconnect();
 			break;
 		case 'signOut':
 			void onSignOut();

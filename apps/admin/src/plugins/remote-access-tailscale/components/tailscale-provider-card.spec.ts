@@ -12,6 +12,7 @@ import {
 	UsersModuleUserRole,
 } from '../../../openapi.constants';
 import { RemoteAccessTailscaleApiException } from '../remote-access-tailscale.exceptions';
+import type { ITailscaleControl } from '../store/tailscale-status.store.types';
 
 import TailscaleProviderCard from './tailscale-provider-card.vue';
 
@@ -19,9 +20,9 @@ import TailscaleProviderCard from './tailscale-provider-card.vue';
 const fns = vi.hoisted(() => ({
 	fetchStatus: vi.fn(),
 	fetchRemoteAccessStatus: vi.fn(),
-	startService: vi.fn(),
-	stopService: vi.fn(),
-	restartService: vi.fn(),
+	connect: vi.fn(),
+	disconnect: vi.fn(),
+	refreshStatus: vi.fn(),
 	logout: vi.fn(),
 	resetPreferences: vi.fn(),
 	copy: vi.fn(),
@@ -30,7 +31,7 @@ const fns = vi.hoisted(() => ({
 }));
 
 const profile = ref<{ role: UsersModuleUserRole } | null>(null);
-const status = ref<{ advisories: { code: string; message: string }[]; setup?: { state: string } | null } | null>(null);
+const status = ref<{ control?: ITailscaleControl; advisories: { code: string; message: string }[]; setup?: { state: string } | null } | null>(null);
 const requirements = ref<{ code: string; satisfied: boolean; message: string; remedy: { commands: string[]; note: string | null } | null }[]>([]);
 const isLoggingOut = ref(false);
 const isResettingPreferences = ref(false);
@@ -54,12 +55,6 @@ vi.mock('../../../modules/auth/composables/composables', () => ({
 
 vi.mock('../../../modules/extensions', () => ({
 	useExtension: () => ({ extension, isLoading: computed(() => false), fetchExtension: vi.fn() }),
-	useServiceActions: () => ({
-		startService: fns.startService,
-		stopService: fns.stopService,
-		restartService: fns.restartService,
-		isActing: () => isActingReturn.value,
-	}),
 }));
 
 vi.mock('../../../modules/remote-access', () => ({
@@ -74,6 +69,11 @@ vi.mock('../composables', () => ({
 		isLoggingOut,
 		isResettingPreferences,
 		fetchStatus: fns.fetchStatus,
+		refreshStatus: fns.refreshStatus,
+		connect: fns.connect,
+		disconnect: fns.disconnect,
+		isConnecting: isActingReturn,
+		isDisconnecting: isActingReturn,
 		logout: fns.logout,
 		resetPreferences: fns.resetPreferences,
 	}),
@@ -92,8 +92,24 @@ const baseProvider: IRemoteAccessProvider = {
 	updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
-const mountCard = (provider: Partial<IRemoteAccessProvider>) =>
-	shallowMount(TailscaleProviderCard, {
+const mountCard = (provider: Partial<IRemoteAccessProvider>) => {
+	const state = provider.state ?? baseProvider.state;
+	status.value = {
+		...(status.value ?? { advisories: [] }),
+		control: {
+			enabled: true,
+			serviceState: state === 'connected' ? 'started' : 'stopped',
+			authentication: 'authenticated',
+			operation: null,
+			availableActions:
+				state === 'connected'
+					? ['disconnect', 'logout', 'reset-preferences']
+					: state === 'disconnected' || state === 'error'
+						? ['connect', 'logout', 'reset-preferences']
+						: [],
+		} as ITailscaleControl,
+	};
+	return shallowMount(TailscaleProviderCard, {
 		props: { provider: { ...baseProvider, ...provider } },
 		global: {
 			// Stubbed children keep their slot content as plain text - mirrors
@@ -119,6 +135,7 @@ const mountCard = (provider: Partial<IRemoteAccessProvider>) =>
 			},
 		},
 	});
+};
 
 describe('TailscaleProviderCard', () => {
 	beforeEach(() => {
@@ -131,9 +148,10 @@ describe('TailscaleProviderCard', () => {
 		extension.value = null;
 		fns.fetchStatus.mockReset().mockResolvedValue(undefined);
 		fns.fetchRemoteAccessStatus.mockReset().mockResolvedValue(undefined);
-		fns.startService.mockReset().mockResolvedValue(true);
-		fns.stopService.mockReset().mockResolvedValue(true);
-		fns.restartService.mockReset().mockResolvedValue(true);
+		fns.refreshStatus.mockReset().mockResolvedValue(undefined);
+		fns.connect.mockReset().mockResolvedValue(true);
+		fns.disconnect.mockReset().mockResolvedValue(true);
+		fns.connect.mockReset().mockResolvedValue(true);
 		fns.logout.mockReset();
 		fns.resetPreferences.mockReset();
 		fns.copy.mockReset().mockResolvedValue(true);
@@ -157,10 +175,10 @@ describe('TailscaleProviderCard', () => {
 
 		await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
 
-		expect(fns.startService).toHaveBeenCalledWith('plugin', 'remote-access-tailscale-plugin', 'node');
+		expect(fns.connect).toHaveBeenCalledWith();
 	});
 
-	it('offers connect as the primary action, and reconnect plus the owner-only actions as secondary, for a disconnected node with a tailnet', () => {
+	it('offers connect as the primary action, and the owner-only actions as secondary, for a disconnected node with a tailnet', () => {
 		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.disconnected, details: { tailnet: 'example.ts.net' } });
 
 		const dropdown = wrapper.findComponent({ name: 'ElDropdown' });
@@ -171,13 +189,10 @@ describe('TailscaleProviderCard', () => {
 
 		const items = wrapper.findAllComponents({ name: 'ElDropdownItem' });
 
-		// "Reconnect" (POST /restart) is offered as a working fallback alongside "Connect" (POST
-		// /start): the managed service is almost always already started by the time this state is
-		// visible at all, which makes "Connect" fail with "already started" - see provider-actions.ts.
-		expect(items.map((item) => item.props('command'))).toEqual(['reconnect', 'signOut', 'resetPreferences']);
+		expect(items.map((item) => item.props('command'))).toEqual(['signOut', 'resetPreferences']);
 	});
 
-	it('offers disconnect as the primary action and reconnect plus the owner-only actions as secondary for a connected node', () => {
+	it('offers disconnect as the primary action and the owner-only actions as secondary for a connected node', () => {
 		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
 
 		const dropdown = wrapper.findComponent({ name: 'ElDropdown' });
@@ -188,7 +203,7 @@ describe('TailscaleProviderCard', () => {
 
 		const items = wrapper.findAllComponents({ name: 'ElDropdownItem' });
 
-		expect(items.map((item) => item.props('command'))).toEqual(['reconnect', 'signOut', 'resetPreferences']);
+		expect(items.map((item) => item.props('command'))).toEqual(['signOut', 'resetPreferences']);
 	});
 
 	it('renders no dropdown when the viewer is not the owner and no self-service action applies', () => {
@@ -218,7 +233,7 @@ describe('TailscaleProviderCard', () => {
 		expect(tags.some((tag) => tag.text().includes('remoteAccessModule.texts.https'))).toBe(false);
 	});
 
-	describe('refetch after connect/disconnect/reconnect (F1)', () => {
+	describe('refetch after connection actions (F1)', () => {
 		it('refetches both the plugin and the module status once connect resolves successfully', async () => {
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.disconnected, details: { tailnet: 'example.ts.net' } });
 			fns.fetchStatus.mockClear();
@@ -227,13 +242,13 @@ describe('TailscaleProviderCard', () => {
 			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
 			await flushPromises();
 
-			expect(fns.startService).toHaveBeenCalled();
-			expect(fns.fetchStatus).toHaveBeenCalled();
+			expect(fns.connect).toHaveBeenCalled();
+			expect(fns.refreshStatus).toHaveBeenCalled();
 			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
 		});
 
 		it('still refetches both statuses when connect reports failure', async () => {
-			fns.startService.mockResolvedValue(false);
+			fns.connect.mockRejectedValue(new Error('connection failed'));
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.disconnected, details: { tailnet: 'example.ts.net' } });
 			fns.fetchStatus.mockClear();
 			fns.fetchRemoteAccessStatus.mockClear();
@@ -241,7 +256,7 @@ describe('TailscaleProviderCard', () => {
 			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
 			await flushPromises();
 
-			expect(fns.fetchStatus).toHaveBeenCalled();
+			expect(fns.refreshStatus).toHaveBeenCalled();
 			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
 		});
 
@@ -253,13 +268,13 @@ describe('TailscaleProviderCard', () => {
 			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
 			await flushPromises();
 
-			expect(fns.stopService).toHaveBeenCalled();
-			expect(fns.fetchStatus).toHaveBeenCalled();
+			expect(fns.disconnect).toHaveBeenCalled();
+			expect(fns.refreshStatus).toHaveBeenCalled();
 			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
 		});
 
 		it('still refetches both statuses when disconnect reports failure', async () => {
-			fns.stopService.mockResolvedValue(false);
+			fns.disconnect.mockRejectedValue(new Error('connection failed'));
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.connected });
 			fns.fetchStatus.mockClear();
 			fns.fetchRemoteAccessStatus.mockClear();
@@ -267,11 +282,11 @@ describe('TailscaleProviderCard', () => {
 			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
 			await flushPromises();
 
-			expect(fns.fetchStatus).toHaveBeenCalled();
+			expect(fns.refreshStatus).toHaveBeenCalled();
 			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
 		});
 
-		it('refetches both statuses once reconnect resolves', async () => {
+		it('refetches both statuses once connect from error resolves', async () => {
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.error });
 			fns.fetchStatus.mockClear();
 			fns.fetchRemoteAccessStatus.mockClear();
@@ -279,13 +294,13 @@ describe('TailscaleProviderCard', () => {
 			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
 			await flushPromises();
 
-			expect(fns.restartService).toHaveBeenCalled();
-			expect(fns.fetchStatus).toHaveBeenCalled();
+			expect(fns.connect).toHaveBeenCalled();
+			expect(fns.refreshStatus).toHaveBeenCalled();
 			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
 		});
 
-		it('still refetches both statuses when reconnect reports failure', async () => {
-			fns.restartService.mockResolvedValue(false);
+		it('still refetches both statuses when connect from error fails', async () => {
+			fns.connect.mockRejectedValue(new Error('connection failed'));
 			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.error });
 			fns.fetchStatus.mockClear();
 			fns.fetchRemoteAccessStatus.mockClear();
@@ -293,7 +308,7 @@ describe('TailscaleProviderCard', () => {
 			await wrapper.findComponent({ name: 'ElDropdown' }).vm.$emit('click');
 			await flushPromises();
 
-			expect(fns.fetchStatus).toHaveBeenCalled();
+			expect(fns.refreshStatus).toHaveBeenCalled();
 			expect(fns.fetchRemoteAccessStatus).toHaveBeenCalled();
 		});
 	});

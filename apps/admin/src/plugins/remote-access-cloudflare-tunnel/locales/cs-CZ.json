@@ -7,7 +7,8 @@
 		"cardDescription": "Veřejný přístup přes Cloudflare Tunnel, bez přesměrování portů.",
 		"cannotBeUsedYetTitle": "Zatím nelze použít",
 		"aboutTunnelSettings": "Token tunelu pochází z řídicího panelu Cloudflare Zero Trust. Veřejný název hostitele je adresa, kterou návštěvníci použijí k přístupu k této instalaci.",
-		"confirmRemove": "Tímto se tunel zastaví a vymaže se uložený token i veřejný název hostitele. Pro další použití Cloudflare Tunnel bude nutné je znovu nastavit."
+		"confirmRemove": "Tímto se tunel zastaví a vymaže se uložený token i veřejný název hostitele. Pro další použití Cloudflare Tunnel bude nutné je znovu nastavit.",
+		"disconnectExplanation": "Odpojení ukončí aktuální tunel a zachová jeho nastavení. Aby zůstal vypnutý i po restartu aplikace, vypněte plugin v jeho nastavení."
 	},
 	"buttons": {
 		"setup": "Nastavit",

@@ -5,6 +5,7 @@ import type { Store } from 'pinia';
 import { z } from 'zod';
 
 import {
+	TailscaleControlSchema,
 	TailscaleInstallResultSchema,
 	TailscaleLoginResultSchema,
 	TailscalePrivilegedSetupSchema,
@@ -27,6 +28,8 @@ export type ITailscaleRequirement = z.infer<typeof TailscaleRequirementSchema>;
 export type ITailscaleSetupJob = z.infer<typeof TailscaleSetupJobSchema>;
 
 export type ITailscalePrivilegedSetup = z.infer<typeof TailscalePrivilegedSetupSchema>;
+
+export type ITailscaleControl = z.infer<typeof TailscaleControlSchema>;
 
 export type ITailscaleStatus = z.infer<typeof TailscaleStatusSchema>;
 
@@ -59,6 +62,8 @@ export interface ITailscaleStatusStoreActions {
 	get: () => Promise<ITailscaleStatus>;
 	install: () => Promise<ITailscaleInstallResult>;
 	login: (authKey?: string) => Promise<ITailscaleLoginResult>;
+	connect: () => Promise<ITailscaleStatus>;
+	disconnect: () => Promise<ITailscaleStatus>;
 	logout: () => Promise<ITailscaleStatus>;
 	resetPreferences: () => Promise<ITailscaleStatus>;
 	onEvent: (payload: ITailscaleStatusOnEventActionPayload) => void;

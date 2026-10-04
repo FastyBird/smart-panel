@@ -21,7 +21,9 @@
 	"texts": {
 		"cardDescription": "Prywatny dostęp przez Twój tailnet, z HTTPS za pomocą Tailscale Serve.",
 		"funnelWarning": "Funnel publikuje tę instalację w publicznym internecie. Jedyną ochroną jest logowanie do Smart Panel.",
-		"cannotBeUsedYetTitle": "Nie można jeszcze korzystać"
+		"cannotBeUsedYetTitle": "Nie można jeszcze korzystać",
+		"disconnectExplanation": "Rozłączenie kończy bieżącą sesję i zachowuje zalogowanie. Aby Tailscale pozostał wyłączony po ponownym uruchomieniu aplikacji, wyłącz wtyczkę w jej konfiguracji.",
+		"operationInProgress": "Trwa operacja. Rozłączenie pozwala anulować logowanie lub nawiązywanie połączenia."
 	},
 	"buttons": {
 		"setup": "Skonfiguruj",
@@ -97,7 +99,9 @@
 		"config": {
 			"edited": "Konfiguracja Tailscale została pomyślnie zaktualizowana",
 			"notEdited": "Nie udało się zaktualizować konfiguracji Tailscale"
-		}
+		},
+		"connectFailed": "Nie udało się połączyć z Tailscale",
+		"disconnectFailed": "Nie udało się rozłączyć Tailscale"
 	},
 	"errors": {
 		"operatorNotGranted": "Użytkownik usługi Smart Panel nie został ustawiony jako operator Tailscale. Uruchom poniższe polecenie, a następnie spróbuj ponownie.",

@@ -1,4 +1,4 @@
-import { computed } from 'vue';
+import { computed, onScopeDispose, watch } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
@@ -8,17 +8,33 @@ import type { ITailscalePrivilegedSetup, ITailscaleRequirement, ITailscaleSetupJ
 
 import type { IUseTailscaleStatus } from './types';
 
-/**
- * Fetches the Tailscale node status and stays current from there through
- * `RemoteAccessModule.Provider.Status` events (handled by the store's `onEvent()`, wired up once
- * in `remote-access-tailscale.plugin.ts`) - this composable itself never polls.
- */
+/** Keeps provider metadata current with public events and bounded REST reconciliation. */
 export const useTailscaleStatus = (): IUseTailscaleStatus => {
 	const storesManager = injectStoresManager();
 
 	const tailscaleStatusStore = storesManager.getStore(tailscaleStatusStoreKey);
 
 	const { data, semaphore } = storeToRefs(tailscaleStatusStore);
+
+	// Public events omit private administrative fields. Reconcile once on a new event,
+	// every 5 seconds while work progresses, and every 30 seconds for lost-event recovery.
+	// GET commits happen while `getting` is true, so they cannot trigger a read/event loop.
+	let lastReconciliation = Date.now();
+	const reconcile = (): void => {
+		if (semaphore.value.getting) return;
+		lastReconciliation = Date.now();
+		void tailscaleStatusStore.get().catch(() => {
+			/* Retry on the next bounded tick. */
+		});
+	};
+	watch([() => data.value?.epoch, () => data.value?.revision], reconcile, { flush: 'sync' });
+	const reconciliationTimer = setInterval((): void => {
+		const progressing =
+			(data.value?.control?.operation !== null && data.value?.control?.operation !== undefined) ||
+			['connecting', 'pending-auth', 'pending-approval'].includes(data.value?.state ?? '');
+		if (progressing || Date.now() - lastReconciliation >= 30_000) reconcile();
+	}, 5_000);
+	onScopeDispose(() => clearInterval(reconciliationTimer));
 
 	const status = computed<ITailscaleStatus | null>((): ITailscaleStatus | null => data.value);
 
@@ -41,6 +57,9 @@ export const useTailscaleStatus = (): IUseTailscaleStatus => {
 		return semaphore.value.getting;
 	});
 
+	const isConnecting = computed<boolean>(() => semaphore.value.connecting);
+	const isDisconnecting = computed<boolean>(() => semaphore.value.disconnecting);
+
 	const isLoggingOut = computed<boolean>((): boolean => semaphore.value.loggingOut);
 
 	const isResettingPreferences = computed<boolean>((): boolean => semaphore.value.resettingPreferences);
@@ -48,6 +67,13 @@ export const useTailscaleStatus = (): IUseTailscaleStatus => {
 	const fetchStatus = async (): Promise<void> => {
 		await tailscaleStatusStore.get();
 	};
+
+	const refreshStatus = async (): Promise<void> => {
+		await tailscaleStatusStore.refresh();
+	};
+
+	const connect = (): Promise<ITailscaleStatus> => tailscaleStatusStore.connect();
+	const disconnect = (): Promise<ITailscaleStatus> => tailscaleStatusStore.disconnect();
 
 	const logout = (): Promise<ITailscaleStatus> => tailscaleStatusStore.logout();
 
@@ -59,9 +85,14 @@ export const useTailscaleStatus = (): IUseTailscaleStatus => {
 		setup,
 		privilegedSetup,
 		isLoading,
+		isConnecting,
+		isDisconnecting,
 		isLoggingOut,
 		isResettingPreferences,
 		fetchStatus,
+		refreshStatus,
+		connect,
+		disconnect,
 		logout,
 		resetPreferences,
 	};

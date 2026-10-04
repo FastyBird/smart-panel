@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RemoteAccessTailscaleApiException } from '../remote-access-tailscale.exceptions';
 
@@ -29,6 +29,13 @@ vi.mock('../../../common', async () => {
 });
 
 const statusFields = {
+	control: {
+		enabled: true,
+		service_state: 'started',
+		authentication: 'authenticated',
+		operation: null,
+		available_actions: ['disconnect', 'logout', 'reset-preferences'],
+	},
 	type: 'remote-access-tailscale-plugin',
 	state: 'connected',
 	endpoints: [{ url: 'http://100.64.0.1:3000', scope: 'private', https: false, label: 'Tailscale IPv4' }],
@@ -48,6 +55,106 @@ describe('Tailscale status store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it.each(['stopped', 'started'])('preserves administrative control from the backend for a %s disconnected supervisor', async (serviceState) => {
+		get.mockResolvedValue({
+			data: {
+				data: {
+					...statusFields,
+					state: 'disconnected',
+					details: {},
+					control: { ...statusFields.control, service_state: serviceState, available_actions: ['connect'] },
+				},
+			},
+			response: { status: 200 },
+		});
+		const store = useTailscaleStatusStore();
+		await store.get();
+		expect(store.data?.control).toEqual({
+			enabled: true,
+			serviceState,
+			authentication: 'authenticated',
+			operation: null,
+			availableActions: ['connect'],
+		});
+	});
+
+	it.each(['connect', 'disconnect'] as const)('%s uses the domain endpoint and updates the full snapshot', async (action) => {
+		const state = action === 'connect' ? 'connected' : 'disconnected';
+		post.mockResolvedValue({
+			data: {
+				data: {
+					...statusFields,
+					epoch: 'process',
+					revision: 1,
+					state,
+					details: {},
+					control: {
+						...statusFields.control,
+						service_state: action === 'connect' ? 'started' : 'stopped',
+						available_actions: action === 'connect' ? ['disconnect'] : ['connect'],
+					},
+				},
+			},
+			response: { status: 200 },
+		});
+		const store = useTailscaleStatusStore();
+		await store[action]();
+		expect(post).toHaveBeenCalledWith(`/plugins/remote-access-tailscale/${action}`, { signal: expect.any(AbortSignal) });
+		expect(store.data?.state).toBe(state);
+		expect(store.data?.control?.authentication).toBe('authenticated');
+		expect(store.semaphore.connecting).toBe(false);
+		expect(store.semaphore.disconnecting).toBe(false);
+	});
+
+	it.each(['connect', 'disconnect'] as const)('%s preserves actionable backend errors and clears busy', async (action) => {
+		post.mockResolvedValue({ error: { error: { details: { code: 'operation-in-progress' } } }, response: { status: 409 } });
+		const store = useTailscaleStatusStore();
+		await expect(store[action]()).rejects.toMatchObject({ code: 409, errorCode: 'operation-in-progress' });
+		expect(store.semaphore.connecting).toBe(false);
+		expect(store.semaphore.disconnecting).toBe(false);
+	});
+
+	it.each(['connect', 'disconnect', 'logout', 'resetPreferences'] as const)(
+		'%s aborts an unresponsive fetch and releases its busy flag',
+		async (action) => {
+			vi.useFakeTimers();
+			post.mockImplementation(
+				(_path, { signal }: { signal: AbortSignal }) =>
+					new Promise((_resolve, reject) => {
+						signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+					})
+			);
+			const store = useTailscaleStatusStore();
+			const rejection = expect(store[action]()).rejects.toThrow('aborted');
+			await vi.advanceTimersByTimeAsync(45_000);
+			await rejection;
+			expect(Object.values(store.semaphore)).not.toContain(true);
+			expect(vi.getTimerCount()).toBe(0);
+		}
+	);
+
+	it('allows a keyed login its backend deadline before aborting', async () => {
+		vi.useFakeTimers();
+		post.mockImplementation(
+			(_path, { signal }: { signal: AbortSignal }) =>
+				new Promise((_resolve, reject) => {
+					signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+				})
+		);
+		const store = useTailscaleStatusStore();
+		const rejection = expect(store.login('tskey-auth-secret')).rejects.toThrow('aborted');
+		await vi.advanceTimersByTimeAsync(120_000);
+		expect(store.semaphore.loggingIn).toBe(true);
+		await vi.advanceTimersByTimeAsync(30_000);
+		await rejection;
+		expect(store.semaphore.loggingIn).toBe(false);
+		expect(vi.getTimerCount()).toBe(0);
 	});
 
 	it('starts with no status and no setup progress', () => {
@@ -157,7 +264,7 @@ describe('Tailscale status store', () => {
 
 			const result = await store.install();
 
-			expect(post).toHaveBeenCalledWith('/plugins/remote-access-tailscale/install');
+			expect(post).toHaveBeenCalledWith('/plugins/remote-access-tailscale/install', { signal: expect.any(AbortSignal) });
 			expect(result).toEqual({ job: 'job-123' });
 			// `install()` never carries endpoints/details/requirements - it must not clobber `data`.
 			expect(store.data).toBeNull();
@@ -186,7 +293,10 @@ describe('Tailscale status store', () => {
 
 			const result = await store.login('tskey-auth-secret');
 
-			expect(post).toHaveBeenCalledWith('/plugins/remote-access-tailscale/login', { body: { auth_key: 'tskey-auth-secret' } });
+			expect(post).toHaveBeenCalledWith('/plugins/remote-access-tailscale/login', {
+				body: { auth_key: 'tskey-auth-secret' },
+				signal: expect.any(AbortSignal),
+			});
 			expect(result.state).toBe('connected');
 			expect(JSON.stringify(store.$state)).not.toContain('tskey-auth-secret');
 			expect(JSON.stringify(store.$state)).not.toContain('auth_key');
@@ -201,7 +311,7 @@ describe('Tailscale status store', () => {
 
 			await store.login();
 
-			expect(post).toHaveBeenCalledWith('/plugins/remote-access-tailscale/login', { body: {} });
+			expect(post).toHaveBeenCalledWith('/plugins/remote-access-tailscale/login', { body: {}, signal: expect.any(AbortSignal) });
 		});
 
 		it('merges the login result into an already-loaded status without touching endpoints/requirements', async () => {
@@ -234,7 +344,7 @@ describe('Tailscale status store', () => {
 
 			const status = await store.logout();
 
-			expect(post).toHaveBeenCalledWith('/plugins/remote-access-tailscale/logout');
+			expect(post).toHaveBeenCalledWith('/plugins/remote-access-tailscale/logout', { signal: expect.any(AbortSignal) });
 			expect(status.state).toBe('setup-required');
 			expect(store.data).toEqual(status);
 		});
@@ -245,7 +355,7 @@ describe('Tailscale status store', () => {
 
 			const status = await store.resetPreferences();
 
-			expect(post).toHaveBeenCalledWith('/plugins/remote-access-tailscale/reset-preferences');
+			expect(post).toHaveBeenCalledWith('/plugins/remote-access-tailscale/reset-preferences', { signal: expect.any(AbortSignal) });
 			expect(status.state).toBe('connected');
 		});
 	});

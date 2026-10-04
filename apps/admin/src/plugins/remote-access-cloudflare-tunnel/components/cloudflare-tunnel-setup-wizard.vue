@@ -281,8 +281,14 @@ const goToStep = (step: CloudflareTunnelWizardStep): void => {
 	currentStep.value = step;
 };
 
-const { status, requirements, setup, privilegedSetup, fetchStatus } = useCloudflareTunnelStatus();
-const { progress, isInstalling, install, stopPolling: stopSetupPolling } = useCloudflareTunnelSetup();
+const { status, requirements, privilegedSetup, fetchStatus, refreshStatus } = useCloudflareTunnelStatus();
+const {
+	progress: effectiveProgress,
+	isInstalling,
+	install,
+	startPolling: startSetupPolling,
+	stopPolling: stopSetupPolling,
+} = useCloudflareTunnelSetup();
 const { configPlugin, fetchConfigPlugin } = useConfigPlugin({ type: REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME });
 
 const configFormSubmit = ref<boolean>(false);
@@ -290,35 +296,11 @@ const configFormResult = ref<FormResultType>(FormResult.NONE);
 
 const isRechecking = ref<boolean>(false);
 const installErrorCode = ref<string | null>(null);
+let sessionGeneration = 0;
 
 const qr = ref<string | undefined>(undefined);
 
 const publicUrl = computed<string | undefined>(() => status.value?.endpoints.find((endpoint) => endpoint.https)?.url);
-
-// Prefers the live `Setup.Progress` websocket event; falls back to the polled `GET /status`
-// `setup` job (kept current by `useCloudflareTunnelSetup`'s own poll) once a websocket event has
-// arrived at least once, or right after a page reload before any websocket event has arrived at
-// all - this is what lets the progress view resume purely from `GET /status`, with no extra
-// endpoint. A polled *terminal* state always wins over a stale `running` websocket event, though:
-// if the websocket's final tick was ever missed, `progress.value.state` would stay 'running'
-// forever and strand the spinner - the poll is the fallback specifically for that case, so it must
-// be allowed to override once it reports the job is actually done. Mirrors the Tailscale wizard's
-// own `effectiveProgress`.
-const effectiveProgress = computed(() => {
-	if (setup.value && setup.value.state !== 'running') {
-		return { state: setup.value.state, step: setup.value.step ?? undefined, message: setup.value.message ?? undefined };
-	}
-
-	if (progress.value) {
-		return progress.value;
-	}
-
-	if (setup.value) {
-		return { state: setup.value.state, step: setup.value.step ?? undefined, message: setup.value.message ?? undefined };
-	}
-
-	return null;
-});
 
 const privilegedSetupUnavailable = computed<boolean>(() => privilegedSetup.value !== null && !privilegedSetup.value.available);
 
@@ -341,18 +323,14 @@ const flashApiError = (error: unknown, meaningfulCodes: number[], fallback: stri
 	flashCloudflareTunnelApiError(error, meaningfulCodes, fallback, flashMessage.error);
 
 const onInstall = async (): Promise<void> => {
+	const generation = sessionGeneration;
 	installErrorCode.value = null;
 
 	try {
 		await install();
-
-		// install() only returns the job id - data.value.setup (what the polling fallback in
-		// useCloudflareTunnelSetup watches) stays whatever it was before this call until the
-		// next GET /status. The websocket Setup.Progress event usually arrives first, but if it
-		// is ever lost between here and its first tick, the polling fallback would never start
-		// without this - refetch immediately so it always has something current to watch.
-		await fetchStatus();
 	} catch (error) {
+		if (!props.visible || generation !== sessionGeneration) return;
+
 		installErrorCode.value = error instanceof RemoteAccessCloudflareTunnelApiException ? error.errorCode : null;
 
 		flashApiError(error, [422], t('remoteAccessCloudflareTunnelPlugin.messages.setupFailed'));
@@ -363,7 +341,7 @@ const onRecheck = async (): Promise<void> => {
 	isRechecking.value = true;
 
 	try {
-		await fetchStatus();
+		await refreshStatus();
 	} catch (error) {
 		flashApiError(error, [422], t('remoteAccessCloudflareTunnelPlugin.messages.requestError'));
 	} finally {
@@ -405,23 +383,37 @@ const onDialogUpdate = (value: boolean): void => {
 	}
 };
 
-// Progress reaching a terminal state re-checks the requirements/status and, once satisfied, moves
-// on to the token/hostname step on its own - the admin does not have to notice the job finished
-// and press anything. Watches `effectiveProgress` (websocket, or the polled status as a fallback)
-// so this still fires when the websocket event was missed and only the poll ever saw `complete`.
+let completing = false;
+
+// Revisit completion when requirements are refreshed after a transient read failure.
 watch(
-	(): string | undefined => effectiveProgress.value?.state,
-	async (state): Promise<void> => {
-		if (state !== 'complete') {
-			return;
-		}
+	[effectiveProgress, requirements],
+	async ([completed]): Promise<void> => {
+		if (completing || !props.visible || completed?.state !== 'complete' || currentStep.value !== 'install') return;
 
-		await fetchStatus();
+		const generation = sessionGeneration;
+		completing = true;
 
-		if (currentStep.value === 'install') {
-			goToStep('config');
+		try {
+			await fetchStatus();
+
+			// A second installation may have been accepted while this read was pending.
+			if (
+				props.visible &&
+				generation === sessionGeneration &&
+				effectiveProgress.value?.job === completed.job &&
+				effectiveProgress.value?.state === 'complete' &&
+				requirements.value.every((requirement) => requirement.satisfied)
+			) {
+				goToStep('config');
+			}
+		} catch (error) {
+			flashApiError(error, [422], t('remoteAccessCloudflareTunnelPlugin.messages.requestError'));
+		} finally {
+			completing = false;
 		}
-	}
+	},
+	{ immediate: true }
 );
 
 // `immediate: true` because `currentStep` starts life already set to `props.initialStep` (see its
@@ -478,12 +470,14 @@ watch(
 
 watch(
 	(): boolean => props.visible,
-	(visible): void => {
+	(visible, previous): void => {
+		if (previous !== undefined) sessionGeneration++;
 		if (visible) {
 			currentStep.value = props.initialStep;
 			installErrorCode.value = null;
 
-			void fetchStatus();
+			startSetupPolling();
+			void fetchStatus().catch((error: unknown) => flashApiError(error, [422], t('remoteAccessCloudflareTunnelPlugin.messages.requestError')));
 		} else {
 			stopSetupPolling();
 		}
@@ -495,6 +489,7 @@ watch(
 // still open would otherwise keep polling forever (an unmount is the only other thing that stops
 // it once the job is genuinely still running).
 onUnmounted(() => {
+	sessionGeneration++;
 	stopSetupPolling();
 });
 </script>

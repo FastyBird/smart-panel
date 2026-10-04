@@ -1,4 +1,4 @@
-import type { RemoteAccessModuleProviderState } from '../../../openapi.constants';
+import { ExtensionsModuleServiceState, type RemoteAccessModuleProviderState } from '../../../openapi.constants';
 import { RemoteAccessCloudflareTunnelApiException } from '../remote-access-cloudflare-tunnel.exceptions';
 import type { ICloudflareTunnelRequirement } from '../store/cloudflare-tunnel-status.store.types';
 
@@ -44,6 +44,8 @@ export interface ICloudflareTunnelProviderActions {
 export interface IResolveCloudflareTunnelProviderActionsOptions {
 	state: RemoteAccessModuleProviderState;
 	isOwner: boolean;
+	isAdmin: boolean;
+	service?: { state: ExtensionsModuleServiceState; enabled: boolean };
 }
 
 /**
@@ -56,13 +58,19 @@ export interface IResolveCloudflareTunnelProviderActionsOptions {
 export const resolveCloudflareTunnelProviderActions = ({
 	state,
 	isOwner,
+	isAdmin,
+	service,
 }: IResolveCloudflareTunnelProviderActionsOptions): ICloudflareTunnelProviderActions => {
+	const canManage = (isOwner || isAdmin) && service?.enabled === true;
+	const stopped = service?.state === ExtensionsModuleServiceState.stopped;
+	const started = service?.state === ExtensionsModuleServiceState.started;
+	const canRestart = started || service?.state === ExtensionsModuleServiceState.error;
 	return {
 		setup: isOwner && state === 'not-installed',
 		configure: isOwner && state === 'setup-required',
-		connect: state === 'disconnected',
-		disconnect: state === 'connected' || state === 'connecting',
-		reconnect: state === 'connected' || state === 'error',
+		connect: canManage && state === 'disconnected' && stopped,
+		disconnect: canManage && started && (state === 'connected' || state === 'connecting'),
+		reconnect: canManage && canRestart && (state === 'connected' || state === 'error' || state === 'disconnected'),
 		// Once the platform/binary prerequisites are satisfied there is always something a reset
 		// could usefully clear (a hostname can be set even while `setup-required` for a missing
 		// token, or vice versa) - offered for every state past `not-installed`/`unsupported`.

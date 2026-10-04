@@ -29,8 +29,8 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
 - Fresh analysis and adopted completion sequence (2026-10-03, adopted 2026-10-04):
   [`2026-10-03-remote-access-completion.md`](../../docs/superpowers/plans/2026-10-03-remote-access-completion.md).
   This separates delivered code from outstanding hardware acceptance and documents reproduced
-  lifecycle/status defects. The replacement execution sequence is active: R1 (#1156, PR #1160) is complete; R2 (#1157) is in progress;
-  R3 (#1158), R4 (#910) and R5 (#1159) remain open, followed by #914 and #913.
+  lifecycle/status defects. The replacement execution sequence is active: R1 (#1156, PR #1160) and R2 (#1157, PR #1161) are complete; R3 (#1158) is implemented for review.
+  R4 (#910) and R5 (#1159) remain open, followed by #914 and #913.
 - Prior art: Home Assistant `helpers/network.py` and `components/http/forwarded.py`; the Home Assistant
   Tailscale and Cloudflared add-ons; Tailscale CLI `up --json`, operator mechanism, Serve and Funnel.
 

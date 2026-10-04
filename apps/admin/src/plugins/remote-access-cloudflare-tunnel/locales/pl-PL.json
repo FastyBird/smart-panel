@@ -7,7 +7,8 @@
 		"cardDescription": "Publiczny dostęp przez Cloudflare Tunnel, bez przekierowania portów.",
 		"cannotBeUsedYetTitle": "Nie można jeszcze użyć",
 		"aboutTunnelSettings": "Token tunelu pochodzi z panelu Cloudflare Zero Trust. Publiczna nazwa hosta to adres, którego odwiedzający używają, aby dotrzeć do tej instalacji.",
-		"confirmRemove": "Spowoduje to zatrzymanie tunelu i wyczyszczenie zapisanego tokenu oraz publicznej nazwy hosta. Aby ponownie korzystać z Cloudflare Tunnel, trzeba będzie skonfigurować je od nowa."
+		"confirmRemove": "Spowoduje to zatrzymanie tunelu i wyczyszczenie zapisanego tokenu oraz publicznej nazwy hosta. Aby ponownie korzystać z Cloudflare Tunnel, trzeba będzie skonfigurować je od nowa.",
+		"disconnectExplanation": "Rozłączenie zatrzymuje bieżący tunel i zachowuje jego konfigurację. Aby pozostał wyłączony po ponownym uruchomieniu aplikacji, wyłącz wtyczkę w jej konfiguracji."
 	},
 	"buttons": {
 		"setup": "Skonfiguruj",

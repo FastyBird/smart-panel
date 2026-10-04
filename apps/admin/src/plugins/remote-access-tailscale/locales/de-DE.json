@@ -21,7 +21,9 @@
 	"texts": {
 		"cardDescription": "Privater Zugriff über Ihr Tailnet, mit HTTPS über Tailscale Serve.",
 		"funnelWarning": "Funnel veröffentlicht diese Installation im öffentlichen Internet. Die Anmeldung bei Smart Panel ist der einzige Schutz.",
-		"cannotBeUsedYetTitle": "Kann noch nicht verwendet werden"
+		"cannotBeUsedYetTitle": "Kann noch nicht verwendet werden",
+		"disconnectExplanation": "Trennen beendet die aktuelle Sitzung und behält die Anmeldung bei. Damit Tailscale nach einem Neustart der Anwendung ausgeschaltet bleibt, deaktivieren Sie das Plugin in seiner Konfiguration.",
+		"operationInProgress": "Ein Vorgang läuft. Mit Trennen können Sie die Anmeldung oder den Verbindungsaufbau abbrechen."
 	},
 	"buttons": {
 		"setup": "Einrichten",
@@ -97,7 +99,9 @@
 		"config": {
 			"edited": "Die Tailscale-Konfiguration wurde erfolgreich aktualisiert",
 			"notEdited": "Aktualisierung der Tailscale-Konfiguration fehlgeschlagen"
-		}
+		},
+		"connectFailed": "Tailscale konnte nicht verbunden werden",
+		"disconnectFailed": "Tailscale konnte nicht getrennt werden"
 	},
 	"errors": {
 		"operatorNotGranted": "Der Smart-Panel-Dienstbenutzer wurde nicht als Tailscale-Operator festgelegt. Führen Sie den folgenden Befehl aus und versuchen Sie es erneut.",

@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RemoteAccessCloudflareTunnelApiException } from '../remote-access-cloudflare-tunnel.exceptions';
 
@@ -49,6 +49,7 @@ describe('Cloudflare Tunnel status store', () => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 	});
+	afterEach(() => vi.useRealTimers());
 
 	it('starts with no status and no setup progress', () => {
 		const store = useCloudflareTunnelStatusStore();
@@ -151,6 +152,22 @@ describe('Cloudflare Tunnel status store', () => {
 
 			expect(get).toHaveBeenCalledTimes(1);
 		});
+
+		it('cancels a stalled status request and permits the next reconciliation attempt', async () => {
+			vi.useFakeTimers();
+			get.mockImplementationOnce(
+				(_path: string, { signal }: { signal: AbortSignal }) =>
+					new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }))
+			);
+			const store = useCloudflareTunnelStatusStore();
+			const failed = expect(store.get()).rejects.toThrow('timed out');
+			await vi.advanceTimersByTimeAsync(10_000);
+			await failed;
+			expect(store.semaphore.getting).toBe(false);
+			get.mockResolvedValueOnce({ data: { data: statusFields }, response: { status: 200 } });
+			await expect(store.get()).resolves.toMatchObject({ state: 'connected' });
+			expect(vi.getTimerCount()).toBe(0);
+		});
 	});
 
 	describe('install()', () => {
@@ -160,10 +177,26 @@ describe('Cloudflare Tunnel status store', () => {
 
 			const result = await store.install();
 
-			expect(post).toHaveBeenCalledWith('/plugins/remote-access-cloudflare-tunnel/install');
+			expect(post).toHaveBeenCalledWith('/plugins/remote-access-cloudflare-tunnel/install', { signal: expect.any(AbortSignal) });
 			expect(result).toEqual({ job: 'job-123' });
 			// `install()` never carries endpoints/details/requirements - it must not clobber `data`.
 			expect(store.data).toBeNull();
+		});
+
+		it('clears the prior job progress and releases the installing flag after an acceptance timeout', async () => {
+			vi.useFakeTimers();
+			post.mockImplementationOnce(
+				(_path: string, { signal }: { signal: AbortSignal }) =>
+					new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }))
+			);
+			const store = useCloudflareTunnelStatusStore();
+			store.setupProgress = { type: statusFields.type, job: 'old-job', state: 'complete' };
+			const failed = expect(store.install()).rejects.toThrow('timed out');
+			expect(store.setupProgress).toBeNull();
+			await vi.advanceTimersByTimeAsync(15_000);
+			await failed;
+			expect(store.semaphore.installing).toBe(false);
+			expect(vi.getTimerCount()).toBe(0);
 		});
 
 		it('threads the 422 application error code (e.g. privileged-worker-unavailable) through to the thrown exception', async () => {
@@ -192,7 +225,7 @@ describe('Cloudflare Tunnel status store', () => {
 
 			const status = await store.reset();
 
-			expect(post).toHaveBeenCalledWith('/plugins/remote-access-cloudflare-tunnel/reset');
+			expect(post).toHaveBeenCalledWith('/plugins/remote-access-cloudflare-tunnel/reset', { signal: expect.any(AbortSignal) });
 			expect(status.state).toBe('setup-required');
 			expect(store.data).toEqual(status);
 		});

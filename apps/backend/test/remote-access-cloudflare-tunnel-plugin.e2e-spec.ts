@@ -386,6 +386,7 @@ describe('Remote access Cloudflare Tunnel plugin endpoints (e2e)', () => {
 				expect.objectContaining({ tunnel_token: null, public_hostname: null }),
 			);
 			expect(response.body.data.type).toBe('remote-access-cloudflare-tunnel-plugin');
+			expect(response.body.data.privilegedSetup).toEqual({ available: true, reason: null });
 
 			// Restore the started state for every test that runs after this one.
 			await tunnelManagedService.start();

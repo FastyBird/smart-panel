@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { RemoteAccessModuleProviderState } from '../../../openapi.constants';
+import {
+	ExtensionsModuleServiceState,
+	type RemoteAccessModuleProviderState,
+	RemoteAccessTailscalePluginAuthentication,
+	RemoteAccessTailscalePluginControlAction,
+} from '../../../openapi.constants';
 import { RemoteAccessTailscaleApiException } from '../remote-access-tailscale.exceptions';
-import type { ITailscaleRequirement } from '../store/tailscale-status.store.types';
+import type { ITailscaleControl, ITailscaleRequirement } from '../store/tailscale-status.store.types';
 
 import {
 	buildTailscaleRemedyPlan,
@@ -26,141 +31,87 @@ const ALL_STATES: RemoteAccessModuleProviderState[] = [
 	'error',
 ] as RemoteAccessModuleProviderState[];
 
+const control = (availableActions: ITailscaleControl['availableActions'], overrides: Partial<ITailscaleControl> = {}): ITailscaleControl => ({
+	enabled: true,
+	serviceState: ExtensionsModuleServiceState.stopped,
+	authentication: RemoteAccessTailscalePluginAuthentication.authenticated,
+	operation: null,
+	availableActions,
+	...overrides,
+});
+
 describe('resolveTailscaleProviderActions', () => {
-	it.each(ALL_STATES)('offers setup to an owner only for not-installed/setup-required (state: %s)', (state) => {
-		const actions = resolveTailscaleProviderActions({ state, hasTailnet: false, isOwner: true });
-
-		expect(actions.setup).toBe(state === 'not-installed' || state === 'setup-required');
+	it.each(ALL_STATES)('fails closed without a control snapshot (%s)', (state) => {
+		expect(Object.values(resolveTailscaleProviderActions({ state, isOwner: true, isAdmin: false }))).not.toContain(true);
 	});
 
-	it.each(ALL_STATES)('never offers setup to a non-owner because `POST /install` is owner-only (state: %s)', (state) => {
-		const actions = resolveTailscaleProviderActions({ state, hasTailnet: false, isOwner: false });
-
-		expect(actions.setup).toBe(false);
-	});
-
-	it('offers sign-in while pending-auth', () => {
-		const actions = resolveTailscaleProviderActions({ state: 'pending-auth' as RemoteAccessModuleProviderState, hasTailnet: false, isOwner: false });
-
-		expect(actions.signIn).toBe(true);
-		expect(actions.connect).toBe(false);
-	});
-
-	it('offers sign-in, not connect, for a disconnected node with no key', () => {
-		const actions = resolveTailscaleProviderActions({ state: 'disconnected' as RemoteAccessModuleProviderState, hasTailnet: false, isOwner: false });
-
-		expect(actions.signIn).toBe(true);
-		expect(actions.connect).toBe(false);
-	});
-
-	it('offers connect, not sign-in, for a disconnected node that already has a key (has a tailnet)', () => {
-		const actions = resolveTailscaleProviderActions({ state: 'disconnected' as RemoteAccessModuleProviderState, hasTailnet: true, isOwner: false });
-
-		expect(actions.signIn).toBe(false);
-		expect(actions.connect).toBe(true);
-	});
-
-	it('also offers reconnect alongside connect for a disconnected keyed node, since the managed service is usually already started', () => {
-		const actions = resolveTailscaleProviderActions({ state: 'disconnected' as RemoteAccessModuleProviderState, hasTailnet: true, isOwner: false });
-
-		expect(actions.connect).toBe(true);
-		expect(actions.reconnect).toBe(true);
-	});
-
-	it('does not offer reconnect for a disconnected node with no key', () => {
-		const actions = resolveTailscaleProviderActions({ state: 'disconnected' as RemoteAccessModuleProviderState, hasTailnet: false, isOwner: false });
-
-		expect(actions.reconnect).toBe(false);
-	});
-
-	it('offers disconnect and reconnect while connected', () => {
-		const actions = resolveTailscaleProviderActions({ state: 'connected' as RemoteAccessModuleProviderState, hasTailnet: true, isOwner: false });
-
-		expect(actions.disconnect).toBe(true);
-		expect(actions.reconnect).toBe(true);
-		expect(actions.connect).toBe(false);
-		expect(actions.setup).toBe(false);
-		expect(actions.signIn).toBe(false);
-	});
-
-	it('offers disconnect (as an abort), not reconnect, while pending-approval', () => {
-		const actions = resolveTailscaleProviderActions({
-			state: 'pending-approval' as RemoteAccessModuleProviderState,
-			hasTailnet: false,
-			isOwner: false,
-		});
-
-		expect(actions.disconnect).toBe(true);
-		expect(actions.reconnect).toBe(false);
-	});
-
-	it('offers reconnect, not disconnect, on an error state', () => {
-		const actions = resolveTailscaleProviderActions({ state: 'error' as RemoteAccessModuleProviderState, hasTailnet: true, isOwner: false });
-
-		expect(actions.reconnect).toBe(true);
-		expect(actions.disconnect).toBe(false);
-	});
-
-	it('offers nothing at all for an unsupported platform', () => {
-		const actions = resolveTailscaleProviderActions({ state: 'unsupported' as RemoteAccessModuleProviderState, hasTailnet: false, isOwner: true });
-
-		expect(actions).toEqual({
-			setup: false,
-			signIn: false,
-			connect: false,
-			disconnect: false,
-			reconnect: false,
-			signOut: false,
-			resetPreferences: false,
-		});
-	});
-
-	describe('owner-only actions', () => {
-		const keyedStates: RemoteAccessModuleProviderState[] = [
-			'connected',
-			'connecting',
-			'pending-approval',
-			'error',
-		] as RemoteAccessModuleProviderState[];
-
-		it.each(keyedStates)('offers sign-out and reset-preferences to an owner when a key exists (state: %s)', (state) => {
-			const actions = resolveTailscaleProviderActions({ state, hasTailnet: true, isOwner: true });
-
-			expect(actions.signOut).toBe(true);
-			expect(actions.resetPreferences).toBe(true);
-		});
-
-		it.each(keyedStates)('hides sign-out and reset-preferences from a non-owner even when a key exists (state: %s)', (state) => {
-			const actions = resolveTailscaleProviderActions({ state, hasTailnet: true, isOwner: false });
-
-			expect(actions.signOut).toBe(false);
-			expect(actions.resetPreferences).toBe(false);
-		});
-
-		it('hides sign-out and reset-preferences from an owner when there is no key yet', () => {
+	it.each([ExtensionsModuleServiceState.stopped, ExtensionsModuleServiceState.started])(
+		'offers the explicit connect action for authenticated disconnected nodes (%s)',
+		(serviceState) => {
 			const actions = resolveTailscaleProviderActions({
-				state: 'setup-required' as RemoteAccessModuleProviderState,
-				hasTailnet: false,
-				isOwner: true,
+				state: 'disconnected' as RemoteAccessModuleProviderState,
+				control: control([RemoteAccessTailscalePluginControlAction.connect], { serviceState }),
+				isOwner: false,
+				isAdmin: true,
 			});
+			expect(actions.connect).toBe(true);
+			expect(actions.signIn).toBe(false);
+		}
+	);
 
-			expect(actions.signOut).toBe(false);
-			expect(actions.resetPreferences).toBe(false);
+	it('offers sign-in only when the backend permits it', () => {
+		const actions = resolveTailscaleProviderActions({
+			state: 'disconnected' as RemoteAccessModuleProviderState,
+			control: control([RemoteAccessTailscalePluginControlAction.login], { authentication: RemoteAccessTailscalePluginAuthentication.required }),
+			isOwner: false,
+			isAdmin: true,
 		});
+		expect(actions.signIn).toBe(true);
+		expect(actions.connect).toBe(false);
+	});
 
-		it('offers sign-out and reset-preferences to an owner on a disconnected node with a key', () => {
-			const actions = resolveTailscaleProviderActions({ state: 'disconnected' as RemoteAccessModuleProviderState, hasTailnet: true, isOwner: true });
-
-			expect(actions.signOut).toBe(true);
-			expect(actions.resetPreferences).toBe(true);
+	it('keeps backend cancellation available during login', () => {
+		const actions = resolveTailscaleProviderActions({
+			state: 'pending-auth' as RemoteAccessModuleProviderState,
+			control: control([RemoteAccessTailscalePluginControlAction.disconnect], { operation: 'login' as ITailscaleControl['operation'] }),
+			isOwner: false,
+			isAdmin: true,
 		});
+		expect(actions.disconnect).toBe(true);
+		expect(actions.signIn).toBe(false);
+	});
 
-		it('hides sign-out and reset-preferences from an owner on a disconnected node with no key', () => {
-			const actions = resolveTailscaleProviderActions({ state: 'disconnected' as RemoteAccessModuleProviderState, hasTailnet: false, isOwner: true });
-
-			expect(actions.signOut).toBe(false);
-			expect(actions.resetPreferences).toBe(false);
+	it('restricts owner actions even when an inconsistent response includes them for an admin', () => {
+		const actions = resolveTailscaleProviderActions({
+			state: 'connected' as RemoteAccessModuleProviderState,
+			control: control([
+				RemoteAccessTailscalePluginControlAction.disconnect,
+				RemoteAccessTailscalePluginControlAction.logout,
+				RemoteAccessTailscalePluginControlAction.reset_preferences,
+			]),
+			isOwner: false,
+			isAdmin: true,
 		});
+		expect(actions.disconnect).toBe(true);
+		expect(actions.signOut).toBe(false);
+		expect(actions.resetPreferences).toBe(false);
+	});
+
+	it('hides all controls for a regular user even if available_actions is inconsistent', () => {
+		const actions = resolveTailscaleProviderActions({
+			state: 'disconnected' as RemoteAccessModuleProviderState,
+			control: control([RemoteAccessTailscalePluginControlAction.connect, RemoteAccessTailscalePluginControlAction.login]),
+			isOwner: false,
+			isAdmin: false,
+		});
+		expect(Object.values(actions)).not.toContain(true);
+	});
+
+	it.each(ALL_STATES)('offers setup only to owners on an enabled idle node with unmet prerequisites (%s)', (state) => {
+		expect(resolveTailscaleProviderActions({ state, control: control([]), isOwner: true, isAdmin: false }).setup).toBe(
+			state === 'not-installed' || state === 'setup-required'
+		);
+		expect(resolveTailscaleProviderActions({ state, control: control([], { enabled: false }), isOwner: true, isAdmin: false }).setup).toBe(false);
 	});
 });
 

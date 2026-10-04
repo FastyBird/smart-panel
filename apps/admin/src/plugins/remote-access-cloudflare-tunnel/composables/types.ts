@@ -16,6 +16,7 @@ export interface IUseCloudflareTunnelStatus {
 	isLoading: ComputedRef<boolean>;
 	isResetting: ComputedRef<boolean>;
 	fetchStatus: () => Promise<void>;
+	refreshStatus: () => Promise<void>;
 	reset: () => Promise<ICloudflareTunnelStatus>;
 }
 
@@ -24,5 +25,6 @@ export interface IUseCloudflareTunnelSetup {
 	isInstalling: ComputedRef<boolean>;
 	isPolling: ComputedRef<boolean>;
 	install: () => Promise<string>;
+	startPolling: () => void;
 	stopPolling: () => void;
 }
