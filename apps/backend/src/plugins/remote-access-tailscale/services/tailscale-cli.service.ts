@@ -3,6 +3,7 @@ import { type ChildProcessWithoutNullStreams, execFile, spawn } from 'node:child
 import { Injectable, Optional } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { cancellableExecFile } from '../../../common/utils/cancellable-exec.utils';
 import {
 	REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 	TAILSCALE_BINARY,
@@ -209,8 +210,8 @@ export class TailscaleCliService {
 	private readonly logger = createExtensionLogger(REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'TailscaleCliService');
 	constructor(@Optional() private readonly operations?: TailscaleOperationCoordinatorService) {}
 
-	async getVersion(): Promise<TailscaleVersionInfo> {
-		const { stdout, stderr, exitCode } = await this.exec(['version', '--json']);
+	async getVersion(signal?: AbortSignal): Promise<TailscaleVersionInfo> {
+		const { stdout, stderr, exitCode } = await this.execRead(['version', '--json'], signal);
 
 		if (exitCode !== 0) {
 			throw this.classify(stdout, stderr, `tailscale version --json exited with code ${exitCode}`);
@@ -242,8 +243,8 @@ export class TailscaleCliService {
 	 * fully valid status document to stdout. Parsing is attempted first and
 	 * the exit code only matters when parsing fails.
 	 */
-	async getStatus(): Promise<TailscaleStatus> {
-		const { stdout, stderr, exitCode } = await this.exec(['status', '--json']);
+	async getStatus(signal?: AbortSignal): Promise<TailscaleStatus> {
+		const { stdout, stderr, exitCode } = await this.execRead(['status', '--json'], signal);
 
 		let parsed: Record<string, unknown>;
 
@@ -271,8 +272,8 @@ export class TailscaleCliService {
 	 * explicitly unstable upstream, so a caller whose release moved or
 	 * removed it falls back to a write probe instead of trusting this.
 	 */
-	async getPrefs(): Promise<TailscalePrefs> {
-		const { stdout, stderr, exitCode } = await this.exec(['debug', 'prefs']);
+	async getPrefs(signal?: AbortSignal): Promise<TailscalePrefs> {
+		const { stdout, stderr, exitCode } = await this.execRead(['debug', 'prefs'], signal);
 
 		if (exitCode !== 0) {
 			throw this.classify(stdout, stderr, `tailscale debug prefs exited with code ${exitCode}`);
@@ -375,8 +376,8 @@ export class TailscaleCliService {
 	 * `funnel` subcommands in `newServeV2Command`), so there is no separate
 	 * `funnelStatus()` call.
 	 */
-	async serveStatus(): Promise<TailscaleServeStatus> {
-		return this.execServeConfig(['serve', 'status', '--json']);
+	async serveStatus(signal?: AbortSignal): Promise<TailscaleServeStatus> {
+		return this.execServeConfig(['serve', 'status', '--json'], signal);
 	}
 
 	/**
@@ -407,8 +408,8 @@ export class TailscaleCliService {
 	}
 
 	/** Shared by `serveStatus()`/`funnelStatus()` — both read the same `ipn.ServeConfig` shape; empty stdout means nothing configured. */
-	private async execServeConfig(args: readonly string[]): Promise<TailscaleServeStatus> {
-		const { stdout, stderr, exitCode } = await this.exec(args);
+	private async execServeConfig(args: readonly string[], signal?: AbortSignal): Promise<TailscaleServeStatus> {
+		const { stdout, stderr, exitCode } = await this.execRead(args, signal);
 
 		if (exitCode !== 0) {
 			throw this.classify(stdout, stderr, `tailscale ${args.join(' ')} exited with code ${exitCode}`);
@@ -443,6 +444,35 @@ export class TailscaleCliService {
 			.replace(/tskey-[\w-]+/gi, '[redacted key]');
 
 		return new TailscaleCliError(kind, detail ? `${context}: ${detail}` : context, cause);
+	}
+
+	private async execRead(args: readonly string[], signal?: AbortSignal): Promise<ExecTailscaleResult> {
+		if (!signal && this.operations?.getToken()) {
+			return this.exec(args);
+		}
+		try {
+			return await cancellableExecFile(
+				TAILSCALE_BINARY,
+				args,
+				signal,
+				TAILSCALE_CLI_DEFAULT_TIMEOUT_MS,
+				TAILSCALE_CLI_MAX_BUFFER_BYTES,
+			);
+		} catch (error) {
+			signal?.throwIfAborted();
+			const nodeError = error as NodeJS.ErrnoException & { killed?: boolean };
+			if (nodeError.code === 'ENOENT') {
+				throw new TailscaleCliError('not-installed', 'The tailscale CLI is not installed or not on PATH.', error);
+			}
+			if (nodeError.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
+				throw new TailscaleCliError(
+					'unknown',
+					`tailscale ${args[0] ?? ''} produced more than ${TAILSCALE_CLI_MAX_BUFFER_BYTES} bytes of output.`,
+					error,
+				);
+			}
+			throw new TailscaleCliError(nodeError.killed ? 'timeout' : 'unknown', 'The Tailscale status read failed.', error);
+		}
 	}
 
 	private exec(

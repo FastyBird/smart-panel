@@ -30,7 +30,7 @@ const connectedStatus = (type: string, proxyAddresses: string[]): RemoteAccessPr
 describe('RemoteAccessProxyContributionService', () => {
 	let trustedProxyRegistry: { register: jest.Mock; unregister: jest.Mock };
 	let configService: { getModuleConfig: jest.Mock };
-	let statusService: { getCachedStatuses: jest.Mock; hasProvider: jest.Mock };
+	let statusService: { getCachedStatuses: jest.Mock; getVersion: jest.Mock; hasProvider: jest.Mock };
 	let service: RemoteAccessProxyContributionService;
 
 	beforeEach(() => {
@@ -38,7 +38,11 @@ describe('RemoteAccessProxyContributionService', () => {
 		configService = {
 			getModuleConfig: jest.fn().mockReturnValue({ enabled: true, trustForwardedHeaders: false, trustedProxies: [] }),
 		};
-		statusService = { getCachedStatuses: jest.fn().mockReturnValue([]), hasProvider: jest.fn().mockReturnValue(false) };
+		statusService = {
+			getVersion: jest.fn().mockReturnValue({ epoch: 'process-a', revision: 1 }),
+			getCachedStatuses: jest.fn().mockReturnValue([]),
+			hasProvider: jest.fn().mockReturnValue(false),
+		};
 
 		service = new RemoteAccessProxyContributionService(
 			trustedProxyRegistry as unknown as TrustedProxyRegistryService,
@@ -55,6 +59,16 @@ describe('RemoteAccessProxyContributionService', () => {
 	const registeredSource = (): TrustedProxySource => {
 		return (trustedProxyRegistry.register.mock.calls[0] as [TrustedProxySource])[0];
 	};
+
+	it('reads the committed revision even before its accepted-event listener runs', () => {
+		service.onModuleInit();
+		statusService.getCachedStatuses.mockReturnValue([connectedStatus('remote-access-tailscale', ['127.0.0.1'])]);
+		expect(registeredSource().addresses()).toEqual(['127.0.0.1']);
+		statusService.getCachedStatuses.mockReturnValue([]);
+		statusService.getVersion.mockReturnValue({ epoch: 'process-a', revision: 2 });
+		// A websocket listener registered ahead of this service can synchronously query the proxy registry.
+		expect(registeredSource().addresses()).toEqual([]);
+	});
 
 	it('registers a source under the module name', () => {
 		service.onModuleInit();

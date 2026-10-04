@@ -1,4 +1,3 @@
-import { execFile } from 'node:child_process';
 import { join } from 'path';
 
 import { Injectable } from '@nestjs/common';
@@ -6,7 +5,9 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { cancellableExecFile } from '../../../common/utils/cancellable-exec.utils';
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { RemoteAccessObservation } from '../../../common/utils/remote-access-observation.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
 import { ConfigChangeResult } from '../../../modules/extensions/services/managed-extension-service.interface';
@@ -37,6 +38,10 @@ import { CloudflareTunnelStopFailedException } from '../remote-access-cloudflare
 import { CloudflaredCliError, CloudflaredCliService } from './cloudflared-cli.service';
 import { CloudflaredMetricsService } from './cloudflared-metrics.service';
 import { CloudflaredProcessService } from './cloudflared-process.service';
+
+export interface CloudflareTunnelObservationMetadata {
+	requirements: CloudflareTunnelRequirement[];
+}
 
 export type CloudflareTunnelRequirementCode =
 	| 'platform-supported'
@@ -112,6 +117,12 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 	readonly serviceId = 'tunnel';
 	readonly activationPolicy = 'owner-enabled' as const;
 
+	private generation = 0;
+	private readonly observations = new RemoteAccessObservation<{
+		status: RemoteAccessProviderStatus;
+		metadata: CloudflareTunnelObservationMetadata;
+	}>();
+	private readonly requirementObservations = new RemoteAccessObservation<CloudflareTunnelRequirement[]>();
 	private pollTimer: NodeJS.Timeout | null = null;
 	private lastStatus: RemoteAccessProviderStatus | null = null;
 	/** Set by `stop()` when stopping the child process fails unexpectedly — read back by `computeStatus()` while `this.state === 'error'`. */
@@ -144,6 +155,9 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 				return;
 			}
 
+			const generation = ++this.generation;
+			this.observations.invalidate();
+			this.requirementObservations.invalidate();
 			this.state = 'starting';
 			this.pluginConfig = null;
 
@@ -153,6 +167,9 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 
 			try {
 				const requirements = await this.refreshRequirements();
+				if (generation !== this.generation) {
+					return;
+				}
 
 				if (this.requirementsSatisfied(requirements)) {
 					this.processService.start({
@@ -182,6 +199,10 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 	 * `TailscaleNodeManagedService.stop()`'s D3 failure semantics.
 	 */
 	async stop(): Promise<void> {
+		this.generation++;
+		this.observations.invalidate();
+		this.requirementObservations.invalidate();
+		this.clearPoll();
 		await this.withLock(async () => {
 			if (this.state === 'stopped') {
 				return;
@@ -215,10 +236,23 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 	}
 
 	private async emitStatus(): Promise<void> {
-		const status = await this.computeStatus();
-
+		const generation = this.generation;
+		const snapshot =
+			this.state === 'stopped' || this.state === 'stopping' || this.state === 'error'
+				? {
+						status: this.buildStatus(
+							this.state === 'error' ? 'error' : 'disconnected',
+							this.lastError ?? 'The tunnel service is stopped.',
+						),
+						metadata: { requirements: this.getRequirements() },
+					}
+				: await this.getStatusSnapshot();
+		if (generation !== this.generation) {
+			return;
+		}
+		const status = snapshot.status;
 		this.lastStatus = status;
-		this.eventEmitter.emit(RemoteAccessEventType.PROVIDER_STATUS, status);
+		this.eventEmitter.emit(RemoteAccessEventType.PROVIDER_OBSERVATION, snapshot);
 	}
 
 	/**
@@ -228,6 +262,9 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 	 * reflected immediately.
 	 */
 	async onConfigChanged(): Promise<ConfigChangeResult> {
+		this.generation++;
+		this.observations.invalidate();
+		this.requirementObservations.invalidate();
 		const previous = this.pluginConfig;
 		this.pluginConfig = null;
 		const next = this.getPluginConfig();
@@ -252,13 +289,7 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 
 	/** `/ready` returning 200 — a fresh probe, no caching. */
 	async isHealthy(): Promise<boolean> {
-		if (!this.processService.isRunning()) {
-			return false;
-		}
-
-		const ready = await this.metricsService.fetchReady(this.getMetricsAddress());
-
-		return ready !== null;
+		return (await this.computeStatus()).state === 'connected';
 	}
 
 	/**
@@ -291,11 +322,16 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 	 * (platform detection, one `cloudflared --version` call, a config read) is cheap enough to
 	 * run on every poll tick without a periodic cadence limit.
 	 */
-	async refreshRequirements(): Promise<CloudflareTunnelRequirement[]> {
-		const requirements = await this.evaluateRequirementsLive();
-
-		this.requirementsCache = requirements;
-
+	async refreshRequirements(signal?: AbortSignal): Promise<CloudflareTunnelRequirement[]> {
+		const generation = this.generation;
+		const requirements = await this.requirementObservations.run(
+			(readSignal) => this.evaluateRequirementsLive(readSignal),
+			signal,
+		);
+		signal?.throwIfAborted();
+		if (generation === this.generation) {
+			this.requirementsCache = requirements;
+		}
 		return requirements;
 	}
 
@@ -304,22 +340,26 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 		return requirements.length > 0 && requirements.every((requirement) => requirement.satisfied);
 	}
 
-	private async evaluateRequirementsLive(): Promise<CloudflareTunnelRequirement[]> {
+	private async evaluateRequirementsLive(signal?: AbortSignal): Promise<CloudflareTunnelRequirement[]> {
 		const platform = await this.evaluatePlatformSupported();
+		signal?.throwIfAborted();
 
 		if (!platform.satisfied) {
-			return this.attachRemedies([
-				platform,
-				this.unevaluatedRequirement('binary-installed'),
-				this.unevaluatedRequirement('version-supported'),
-				this.unevaluatedRequirement('token-configured'),
-			]);
+			return this.attachRemedies(
+				[
+					platform,
+					this.unevaluatedRequirement('binary-installed'),
+					this.unevaluatedRequirement('version-supported'),
+					this.unevaluatedRequirement('token-configured'),
+				],
+				signal,
+			);
 		}
 
-		const { binary, version } = await this.evaluateBinaryAndVersion();
+		const { binary, version } = await this.evaluateBinaryAndVersion(signal);
 		const token = this.evaluateTokenConfigured();
 
-		return this.attachRemedies([platform, binary, version, token]);
+		return this.attachRemedies([platform, binary, version, token], signal);
 	}
 
 	private unevaluatedRequirement(code: CloudflareTunnelRequirementCode): CloudflareTunnelRequirementBase {
@@ -329,6 +369,7 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 	/** Attaches `remedy` to each requirement: `null` when satisfied, otherwise the manual remedy for its code. */
 	private async attachRemedies(
 		requirements: CloudflareTunnelRequirementBase[],
+		signal?: AbortSignal,
 	): Promise<CloudflareTunnelRequirement[]> {
 		// Memoized as a shared *promise* so `binary-installed` and `version-supported` — both
 		// unsatisfied together on a freshly detected missing install — never spawn
@@ -336,7 +377,7 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 		let installRemedyPromise: Promise<CloudflareTunnelRequirementRemedy> | null = null;
 
 		const getInstallRemedy = (): Promise<CloudflareTunnelRequirementRemedy> => {
-			installRemedyPromise ??= this.buildInstallRemedy();
+			installRemedyPromise ??= this.buildInstallRemedy(signal);
 
 			return installRemedyPromise;
 		};
@@ -377,9 +418,9 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 	 * missing script, a non-zero exit, a timeout or empty output (an unsupported distribution)
 	 * all fall back to the vendor download link instead.
 	 */
-	private async buildInstallRemedy(): Promise<CloudflareTunnelRequirementRemedy> {
+	private async buildInstallRemedy(signal?: AbortSignal): Promise<CloudflareTunnelRequirementRemedy> {
 		try {
-			const stdout = await this.runSetupScriptPrintPlan();
+			const stdout = await this.runSetupScriptPrintPlan(signal);
 			const lines = stdout
 				.split('\n')
 				.map((line) => line.trim())
@@ -405,25 +446,11 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 		}
 	}
 
-	private runSetupScriptPrintPlan(): Promise<string> {
+	private async runSetupScriptPrintPlan(signal?: AbortSignal): Promise<string> {
 		const script = join(__dirname, '..', 'scripts', 'cloudflared-setup.sh');
-
-		return new Promise((resolve, reject) => {
-			execFile(
-				'bash',
-				[script, '--print-plan'],
-				{ timeout: CLOUDFLARE_TUNNEL_PRINT_PLAN_TIMEOUT_MS },
-				(error: NodeJS.ErrnoException | null, stdout?: string) => {
-					if (error) {
-						reject(error);
-
-						return;
-					}
-
-					resolve(stdout ?? '');
-				},
-			);
-		});
+		return (
+			await cancellableExecFile('bash', [script, '--print-plan'], signal, CLOUDFLARE_TUNNEL_PRINT_PLAN_TIMEOUT_MS)
+		).stdout;
 	}
 
 	private async evaluatePlatformSupported(): Promise<CloudflareTunnelRequirementBase> {
@@ -440,13 +467,14 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 		};
 	}
 
-	private async evaluateBinaryAndVersion(): Promise<{
+	private async evaluateBinaryAndVersion(signal?: AbortSignal): Promise<{
 		binary: CloudflareTunnelRequirementBase;
 		version: CloudflareTunnelRequirementBase;
 	}> {
 		try {
-			const info = await this.cliService.getVersion();
+			const info = await this.cliService.getVersion(signal);
 
+			signal?.throwIfAborted();
 			this.lastKnownVersion = info.version;
 
 			const supported = compareCloudflaredVersions(info.version, CLOUDFLARED_MIN_VERSION) >= 0;
@@ -528,7 +556,50 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 	 * `stopped`/`stopping` always report `disconnected` regardless of the daemon's own state,
 	 * and `error` reports the recorded `lastError`.
 	 */
-	async computeStatus(): Promise<RemoteAccessProviderStatus> {
+	async computeStatus(options?: { signal?: AbortSignal; fresh?: boolean }): Promise<RemoteAccessProviderStatus> {
+		return (await this.getStatusSnapshot(options)).status;
+	}
+
+	async awaitObservationIdle(): Promise<void> {
+		await Promise.all([this.observations.awaitIdle(), this.requirementObservations.awaitIdle()]);
+	}
+
+	async getStatusSnapshot(options?: { signal?: AbortSignal; fresh?: boolean }): Promise<{
+		status: RemoteAccessProviderStatus;
+		metadata: CloudflareTunnelObservationMetadata;
+	}> {
+		const generation = this.generation;
+		try {
+			const snapshot = await this.observations.run(async (signal) => {
+				const requirements = await this.refreshRequirements(signal);
+				const status = await this.collectStatus(requirements, signal);
+				signal.throwIfAborted();
+				return { status, metadata: { requirements } };
+			}, options?.signal);
+			if (generation === this.generation) {
+				return snapshot;
+			}
+		} catch (error) {
+			if (generation === this.generation && this.isPollable()) {
+				return {
+					status: this.buildStatus('error', error instanceof Error ? error.message : 'The status observation failed.'),
+					metadata: { requirements: this.getRequirements() },
+				};
+			}
+		}
+		return {
+			status: this.buildStatus(
+				this.state === 'error' ? 'error' : 'disconnected',
+				this.lastError ?? 'The observation was superseded by a lifecycle action.',
+			),
+			metadata: { requirements: this.getRequirements() },
+		};
+	}
+
+	private async collectStatus(
+		requirements: CloudflareTunnelRequirement[],
+		signal?: AbortSignal,
+	): Promise<RemoteAccessProviderStatus> {
 		if (this.state === 'stopped' || this.state === 'stopping') {
 			return this.buildStatus('disconnected', 'The tunnel service is stopped.');
 		}
@@ -537,7 +608,6 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 			return this.buildStatus('error', this.lastError ?? 'The Cloudflare Tunnel service failed.');
 		}
 
-		const requirements = await this.refreshRequirements();
 		const blocking = this.firstBlockingRequirement(requirements);
 
 		if (blocking) {
@@ -556,7 +626,7 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 			return this.buildStatus('error', message);
 		}
 
-		const ready = await this.metricsService.fetchReady(this.getMetricsAddress());
+		const ready = await this.metricsService.fetchReady(this.getMetricsAddress(), signal);
 
 		if (ready) {
 			return this.buildStatus('connected', undefined, ready);
@@ -608,47 +678,45 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 	 * — simple self-healing, bounded by the poll interval itself rather than a separate backoff.
 	 */
 	private async pollTick(): Promise<void> {
+		const generation = this.generation;
 		try {
-			if (this.state === 'started' && !this.processService.isRunning()) {
-				const requirements = await this.refreshRequirements();
-
-				if (this.requirementsSatisfied(requirements) && this.isPollable()) {
-					const config = this.getPluginConfig();
-
-					this.processService.start({
-						token: config.tunnelToken ?? '',
-						protocol: config.protocol,
-						metricsAddress: this.getMetricsAddress(),
-					});
-				}
-			}
-
-			const status = await this.computeStatus();
-
-			if (!this.isPollable()) {
-				// stop() ran while this tick was in flight.
+			let snapshot = await this.getStatusSnapshot();
+			if (!this.isPollable() || generation !== this.generation) {
 				return;
 			}
-
+			if (
+				this.state === 'started' &&
+				!this.processService.isRunning() &&
+				this.requirementsSatisfied(snapshot.metadata.requirements)
+			) {
+				const config = this.getPluginConfig();
+				this.processService.start({
+					token: config.tunnelToken ?? '',
+					protocol: config.protocol,
+					metricsAddress: this.getMetricsAddress(),
+				});
+				snapshot = await this.getStatusSnapshot({ fresh: true });
+			}
+			if (!this.isPollable() || generation !== this.generation) {
+				return;
+			}
+			const status = snapshot.status;
 			if (this.hasStatusChanged(this.lastStatus, status)) {
 				this.lastStatus = status;
-				this.eventEmitter.emit(RemoteAccessEventType.PROVIDER_STATUS, status);
+				this.eventEmitter.emit(RemoteAccessEventType.PROVIDER_OBSERVATION, snapshot);
 			}
-
 			this.schedulePoll(
 				status.state === 'connecting'
 					? CLOUDFLARED_POLL_INTERVAL_TRANSITIONING_MS
 					: CLOUDFLARED_POLL_INTERVAL_STABLE_MS,
 			);
 		} catch (error) {
-			if (!this.isPollable()) {
+			if (!this.isPollable() || generation !== this.generation) {
 				return;
 			}
-
 			this.logger.error('Cloudflare Tunnel status poll failed', {
 				message: error instanceof Error ? error.message : String(error),
 			});
-
 			this.schedulePoll(CLOUDFLARED_POLL_INTERVAL_STABLE_MS);
 		}
 	}

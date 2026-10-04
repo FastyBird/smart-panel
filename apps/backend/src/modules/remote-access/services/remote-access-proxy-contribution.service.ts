@@ -83,6 +83,7 @@ export class RemoteAccessProxyContributionService implements OnModuleInit {
 	// above; `null` means "no computation cached yet" (also the state right
 	// after an invalidating event).
 	private cachedAddresses: string[] | null = null;
+	private cachedRevision: number | null = null;
 
 	// Last config-read failure message that was actually logged, so a config
 	// that stays broken across many requests warns once instead of on every
@@ -136,8 +137,10 @@ export class RemoteAccessProxyContributionService implements OnModuleInit {
 	}
 
 	private computeAddresses(): string[] {
-		if (this.cachedAddresses === null || this.isFailedReadDueForRetry()) {
+		const revision = this.statusService.getVersion().revision;
+		if (this.cachedAddresses === null || this.cachedRevision !== revision || this.isFailedReadDueForRetry()) {
 			this.cachedAddresses = this.recomputeAddresses();
+			this.cachedRevision = revision;
 		}
 
 		return this.cachedAddresses;
@@ -188,7 +191,7 @@ export class RemoteAccessProxyContributionService implements OnModuleInit {
 		this.lastConfigErrorMessage = null;
 		this.configReadFailedAt = null;
 
-		// Disabled: providers stop, only the internal URL resolves — this
+		// Disabled: only the internal URL resolves through this registry — this
 		// module contributes no trusted proxies at all, regardless of what
 		// trust_forwarded_headers/trusted_proxies still say or whether a
 		// provider hasn't caught up to being disabled yet.

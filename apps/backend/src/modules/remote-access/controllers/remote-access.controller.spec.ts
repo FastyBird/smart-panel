@@ -14,11 +14,19 @@ import { RemoteAccessController } from './remote-access.controller';
 describe('RemoteAccessController', () => {
 	let controller: RemoteAccessController;
 	let configService: { getModuleConfig: jest.Mock };
-	let statusService: { getAggregatedStatuses: jest.Mock; getProviderStatus: jest.Mock };
+	let statusService: {
+		getAggregatedStatuses: jest.Mock;
+		getProviderStatus: jest.Mock;
+		getCachedProviderModels: jest.Mock;
+		getVersion: jest.Mock;
+	};
 	let urlService: { getUrls: jest.Mock; getCandidates: jest.Mock };
 	let postureService: { getAdvisories: jest.Mock };
 
 	const mockProvider: RemoteAccessProviderModel = {
+		enabled: true,
+		epoch: 'process-a',
+		revision: 1,
 		type: 'remote-access-tailscale',
 		kind: 'mesh',
 		capabilities: { https: true, publicUrl: false, identityHeaders: false, ssh: false },
@@ -30,13 +38,21 @@ describe('RemoteAccessController', () => {
 		updatedAt: '2025-01-18T12:00:00Z',
 	};
 
-	const mockUrls = { internal: 'http://localhost:3000', external: [], primaryExternalUrl: null };
+	const mockUrls = {
+		epoch: 'process-a',
+		revision: 1,
+		internal: 'http://localhost:3000',
+		external: [],
+		primaryExternalUrl: null,
+	};
 
 	beforeEach(async () => {
 		configService = {
 			getModuleConfig: jest.fn().mockReturnValue({ type: REMOTE_ACCESS_MODULE_NAME, enabled: true }),
 		};
 		statusService = {
+			getCachedProviderModels: jest.fn().mockReturnValue([mockProvider]),
+			getVersion: jest.fn().mockReturnValue({ epoch: 'process-a', revision: 1 }),
 			getAggregatedStatuses: jest.fn().mockResolvedValue([mockProvider]),
 			getProviderStatus: jest.fn().mockResolvedValue(mockProvider),
 		};
@@ -64,9 +80,13 @@ describe('RemoteAccessController', () => {
 			const response = await controller.getStatus();
 
 			expect(response.data).toEqual({
+				epoch: 'process-a',
+				revision: 1,
 				enabled: true,
 				providers: [mockProvider],
 				urls: {
+					epoch: 'process-a',
+					revision: 1,
 					internal: 'http://localhost:3000',
 					candidates: ['http://192.168.1.50:3000'],
 					external: [],
@@ -75,6 +95,27 @@ describe('RemoteAccessController', () => {
 				advisories: [],
 			});
 		});
+	});
+
+	it('assembles provider, URL and version fields after asynchronous candidate detection', async () => {
+		let resolveCandidates!: (value: string[]) => void;
+		urlService.getCandidates.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveCandidates = resolve;
+				}),
+		);
+		const pending = controller.getStatus();
+		await Promise.resolve();
+		const disconnected = { ...mockProvider, state: 'disconnected', revision: 2 };
+		statusService.getCachedProviderModels.mockReturnValue([disconnected]);
+		statusService.getVersion.mockReturnValue({ epoch: 'process-a', revision: 2 });
+		urlService.getUrls.mockReturnValue({ ...mockUrls, revision: 2 });
+		resolveCandidates([]);
+		const response = await pending;
+		expect(response.data.providers).toEqual([disconnected]);
+		expect(response.data.revision).toBe(2);
+		expect(response.data.urls.revision).toBe(2);
 	});
 
 	describe('getProviders', () => {
@@ -112,6 +153,8 @@ describe('RemoteAccessController', () => {
 			const response = await controller.getUrls();
 
 			expect(response.data).toEqual({
+				epoch: 'process-a',
+				revision: 1,
 				internal: 'http://localhost:3000',
 				candidates: ['http://192.168.1.50:3000'],
 				external: [],

@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { RemoteAccessProviderStatus } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
+import { RemoteAccessStatusService } from '../../../modules/remote-access/services/remote-access-status.service';
 import { PrivilegedWorkerUnavailableException } from '../../../modules/system/system.exceptions';
 import { CloudflareTunnelManagedService } from '../services/cloudflare-tunnel-managed.service';
 import { CloudflareTunnelProviderService } from '../services/cloudflare-tunnel-provider.service';
@@ -45,6 +46,24 @@ describe('SetupController', () => {
 			providers: [
 				{ provide: CloudflareTunnelSetupService, useValue: setupService },
 				{ provide: CloudflareTunnelProviderService, useValue: providerService },
+				{
+					provide: RemoteAccessStatusService,
+					useValue: {
+						getProviderSnapshot: jest.fn(async () => ({
+							status: {
+								...((await providerService.getStatus()) as RemoteAccessProviderStatus),
+								epoch: 'test-epoch',
+								revision: 1,
+							},
+							metadata: {
+								requirements: (await tunnelManagedService.refreshRequirements()) as Awaited<
+									ReturnType<CloudflareTunnelManagedService['refreshRequirements']>
+								>,
+							},
+						})),
+						getCachedProviderSnapshot: jest.fn(),
+					},
+				},
 				{ provide: CloudflareTunnelManagedService, useValue: tunnelManagedService },
 				{ provide: ConfigService, useValue: configService },
 			],

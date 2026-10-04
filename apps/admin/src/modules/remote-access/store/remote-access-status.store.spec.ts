@@ -93,7 +93,7 @@ describe('RemoteAccessStatus Store', () => {
 			expect(result.providers).toHaveLength(1);
 			expect(store.firstLoad).toBe(true);
 			expect(store.isLoaded()).toBe(true);
-			expect(backendClient.GET).toHaveBeenCalledWith('/modules/remote-access/status');
+			expect(backendClient.GET).toHaveBeenCalledWith('/modules/remote-access/status', { signal: expect.any(AbortSignal) });
 		});
 
 		it('throws on API failure', async () => {

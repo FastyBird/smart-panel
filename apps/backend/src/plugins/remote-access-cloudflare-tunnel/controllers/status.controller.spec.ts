@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { PlatformService } from '../../../modules/platform/services/platform.service';
 import { RemoteAccessProviderStatus } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
+import { RemoteAccessStatusService } from '../../../modules/remote-access/services/remote-access-status.service';
 import { CloudflareTunnelManagedService } from '../services/cloudflare-tunnel-managed.service';
 import { CloudflareTunnelProviderService } from '../services/cloudflare-tunnel-provider.service';
 import { CloudflareTunnelSetupService } from '../services/cloudflare-tunnel-setup.service';
@@ -46,6 +47,24 @@ describe('StatusController', () => {
 			controllers: [StatusController],
 			providers: [
 				{ provide: CloudflareTunnelProviderService, useValue: providerService },
+				{
+					provide: RemoteAccessStatusService,
+					useValue: {
+						getProviderSnapshot: jest.fn(async () => ({
+							status: {
+								...((await providerService.getStatus()) as RemoteAccessProviderStatus),
+								epoch: 'test-epoch',
+								revision: 1,
+							},
+							metadata: {
+								requirements: (await tunnelManagedService.refreshRequirements()) as Awaited<
+									ReturnType<CloudflareTunnelManagedService['refreshRequirements']>
+								>,
+							},
+						})),
+						getCachedProviderSnapshot: jest.fn(),
+					},
+				},
 				{ provide: CloudflareTunnelManagedService, useValue: tunnelManagedService },
 				{ provide: CloudflareTunnelSetupService, useValue: setupService },
 				{ provide: PlatformService, useValue: platformService },

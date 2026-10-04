@@ -13,6 +13,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { PlatformService } from '../../../modules/platform/services/platform.service';
 import { RemoteAccessProviderStatus } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
+import { RemoteAccessStatusService } from '../../../modules/remote-access/services/remote-access-status.service';
 import { PrivilegedWorkerUnavailableException } from '../../../modules/system/system.exceptions';
 import { TailscaleRequirementUnsatisfiedException } from '../remote-access-tailscale.exceptions';
 import { TailscaleCliError } from '../services/tailscale-cli.service';
@@ -78,6 +79,27 @@ describe('SetupController', () => {
 				{ provide: TailscaleSetupService, useValue: setupService },
 				{ provide: TailscaleLoginService, useValue: loginService },
 				{ provide: TailscaleProviderService, useValue: providerService },
+				{
+					provide: RemoteAccessStatusService,
+					useValue: {
+						getProviderSnapshot: jest.fn(async () => ({
+							status: {
+								...((await providerService.getStatus()) as RemoteAccessProviderStatus),
+								epoch: 'test-epoch',
+								revision: 1,
+							},
+							metadata: {
+								requirements: (await nodeManagedService.evaluateRequirements()) as Awaited<
+									ReturnType<TailscaleNodeManagedService['evaluateRequirements']>
+								>,
+								control: nodeManagedService.getControlState() as ReturnType<
+									TailscaleNodeManagedService['getControlState']
+								>,
+							},
+						})),
+						getCachedProviderSnapshot: jest.fn(),
+					},
+				},
 				{ provide: TailscaleNodeManagedService, useValue: nodeManagedService },
 			],
 		}).compile();

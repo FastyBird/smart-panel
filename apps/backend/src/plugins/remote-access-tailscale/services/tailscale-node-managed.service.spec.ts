@@ -564,7 +564,7 @@ describe('TailscaleNodeManagedService', () => {
 			expect(service.getState()).toBe('started');
 		});
 
-		it("emits PROVIDER_STATUS immediately after a failed set/up call, before the poller's own first tick fires", async () => {
+		it("emits PROVIDER_OBSERVATION immediately after a failed set/up call, before the poller's own first tick fires", async () => {
 			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
 			cli.set.mockRejectedValue(new Error('boom'));
 
@@ -574,8 +574,10 @@ describe('TailscaleNodeManagedService', () => {
 			// only holds if the emit came from start()'s own catch block.
 			expect(jest.getTimerCount()).toBeGreaterThan(0);
 			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
-				RemoteAccessEventType.PROVIDER_STATUS,
-				expect.objectContaining({ type: 'remote-access-tailscale-plugin' }),
+				RemoteAccessEventType.PROVIDER_OBSERVATION,
+				expect.objectContaining({
+					status: expect.objectContaining({ type: 'remote-access-tailscale-plugin' }) as unknown,
+				}),
 			);
 		});
 	});
@@ -708,15 +710,20 @@ describe('TailscaleNodeManagedService', () => {
 	});
 
 	describe('stop — D3 failure semantics', () => {
-		it('emits PROVIDER_STATUS (disconnected) after a tolerated-success down()', async () => {
+		it('emits PROVIDER_OBSERVATION (disconnected) after a tolerated-success down()', async () => {
 			await service.start();
 			eventEmitterMock.emit.mockClear();
 
 			await service.stop();
 
 			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
-				RemoteAccessEventType.PROVIDER_STATUS,
-				expect.objectContaining({ state: 'disconnected', message: 'The node service is stopped.' }),
+				RemoteAccessEventType.PROVIDER_OBSERVATION,
+				expect.objectContaining({
+					status: expect.objectContaining({
+						state: 'disconnected',
+						message: 'The node service is stopped.',
+					}) as unknown,
+				}),
 			);
 			expect(service.getState()).toBe('stopped');
 		});
@@ -756,7 +763,7 @@ describe('TailscaleNodeManagedService', () => {
 			},
 		);
 
-		it('emits PROVIDER_STATUS (error, with the failure message) before throwing on a non-tolerated failure', async () => {
+		it('emits PROVIDER_OBSERVATION (error, with the failure message) before throwing on a non-tolerated failure', async () => {
 			cli.down.mockRejectedValue(new TailscaleCliError('permission-denied', 'access denied'));
 
 			await service.start();
@@ -766,8 +773,10 @@ describe('TailscaleNodeManagedService', () => {
 			await expect(service.stop()).rejects.toBeInstanceOf(TailscaleNodeStopFailedException);
 
 			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
-				RemoteAccessEventType.PROVIDER_STATUS,
-				expect.objectContaining({ state: 'error', message: 'access denied' }),
+				RemoteAccessEventType.PROVIDER_OBSERVATION,
+				expect.objectContaining({
+					status: expect.objectContaining({ state: 'error', message: 'access denied' }) as unknown,
+				}),
 			);
 		});
 
@@ -1072,8 +1081,8 @@ describe('TailscaleNodeManagedService', () => {
 			expect(cli.set).toHaveBeenCalledTimes(1);
 			expect(cli.up).toHaveBeenCalledTimes(1);
 			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
-				RemoteAccessEventType.PROVIDER_STATUS,
-				expect.objectContaining({ state: 'connected' }),
+				RemoteAccessEventType.PROVIDER_OBSERVATION,
+				expect.objectContaining({ status: expect.objectContaining({ state: 'connected' }) as unknown }),
 			);
 		});
 
@@ -1185,15 +1194,17 @@ describe('TailscaleNodeManagedService', () => {
 	});
 
 	describe('event emission', () => {
-		it('emits PROVIDER_STATUS on the first poll', async () => {
+		it('emits PROVIDER_OBSERVATION on the first poll', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
 
 			await service.start();
 			await jest.runOnlyPendingTimersAsync();
 
 			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
-				RemoteAccessEventType.PROVIDER_STATUS,
-				expect.objectContaining({ type: 'remote-access-tailscale-plugin', state: 'connected' }),
+				RemoteAccessEventType.PROVIDER_OBSERVATION,
+				expect.objectContaining({
+					status: expect.objectContaining({ type: 'remote-access-tailscale-plugin', state: 'connected' }) as unknown,
+				}),
 			);
 		});
 
@@ -1219,8 +1230,8 @@ describe('TailscaleNodeManagedService', () => {
 			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
 
 			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
-				RemoteAccessEventType.PROVIDER_STATUS,
-				expect.objectContaining({ state: 'disconnected' }),
+				RemoteAccessEventType.PROVIDER_OBSERVATION,
+				expect.objectContaining({ status: expect.objectContaining({ state: 'disconnected' }) as unknown }),
 			);
 		});
 
@@ -1233,7 +1244,8 @@ describe('TailscaleNodeManagedService', () => {
 			await service.start();
 			await jest.runOnlyPendingTimersAsync();
 
-			const [, payload] = eventEmitterMock.emit.mock.calls[0] as [string, RemoteAccessProviderStatus];
+			const [, observation] = eventEmitterMock.emit.mock.calls[0] as [string, { status: RemoteAccessProviderStatus }];
+			const payload = observation.status;
 
 			expect(payload).not.toHaveProperty('authUrl');
 			expect(payload).not.toHaveProperty('qr');
@@ -1292,6 +1304,7 @@ describe('TailscaleNodeManagedService', () => {
 				expect.objectContaining({ serveHttps: true, funnel: false }),
 				3000,
 				expect.objectContaining({ BackendState: 'Running' }),
+				expect.any(AbortSignal),
 			);
 		});
 
@@ -1312,7 +1325,12 @@ describe('TailscaleNodeManagedService', () => {
 
 			await service.computeStatus();
 
-			expect(serveServiceMock.read).toHaveBeenCalledWith(expect.anything(), 8080, expect.anything());
+			expect(serveServiceMock.read).toHaveBeenCalledWith(
+				expect.anything(),
+				8080,
+				expect.anything(),
+				expect.any(AbortSignal),
+			);
 		});
 
 		it('merges the Serve result endpoints, proxyAddresses and advisories into the computed status', async () => {
@@ -1650,8 +1668,8 @@ describe('TailscaleNodeManagedService', () => {
 		});
 	});
 
-	describe('periodic requirements refresh cadence (poller — at most every five minutes)', () => {
-		it('does not re-run the operator/binary/daemon probes on every poll tick once cached', async () => {
+	describe('live read-only requirements on each observation', () => {
+		it('collects exactly one live operator/binary/daemon check per poll tick', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
 
 			await service.start();
@@ -1663,8 +1681,8 @@ describe('TailscaleNodeManagedService', () => {
 			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
 			await jest.advanceTimersByTimeAsync(TAILSCALE_STABLE_INTERVAL);
 
-			expect(cli.getPrefs).not.toHaveBeenCalled();
-			expect(cli.getVersion).not.toHaveBeenCalled();
+			expect(cli.getPrefs).toHaveBeenCalledTimes(2);
+			expect(cli.getVersion).toHaveBeenCalledTimes(2);
 			// The single `status --json` call per tick is unaffected.
 			expect(cli.getStatus.mock.calls.length).toBeGreaterThanOrEqual(3);
 		});
@@ -1693,7 +1711,7 @@ describe('TailscaleNodeManagedService', () => {
 			expect(cli.getPrefs).toHaveBeenCalledTimes(1);
 		});
 
-		it("a direct computeStatus() call also forces a fresh evaluation regardless of the 5-minute floor — only the poller's own tick is throttled", async () => {
+		it('a direct computeStatus() call also forces a fresh evaluation regardless of the 5-minute floor alongside the poller', async () => {
 			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
 
 			await service.start();
@@ -1707,6 +1725,95 @@ describe('TailscaleNodeManagedService', () => {
 			await service.computeStatus();
 
 			expect(cli.getPrefs).toHaveBeenCalledTimes(1);
+		});
+	});
+	describe('bounded shared observations', () => {
+		it('shares one observation between REST, fresh re-check and the poller', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await service.start();
+			cli.getStatus.mockClear();
+			cli.getVersion.mockClear();
+			cli.getPrefs.mockClear();
+			let release!: (value: TailscaleServeResult) => void;
+			let entered!: () => void;
+			const reached = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			serveServiceMock.read.mockImplementationOnce(() => {
+				entered();
+				return new Promise<TailscaleServeResult>((resolve) => {
+					release = resolve;
+				});
+			});
+			const first = service.getStatusSnapshot();
+			await reached;
+			const second = service.getStatusSnapshot({ fresh: true });
+			const poll = (service as unknown as { pollTick(): Promise<void> }).pollTick();
+			expect(cli.getStatus).toHaveBeenCalledTimes(1);
+			expect(cli.getVersion).toHaveBeenCalledTimes(1);
+			expect(cli.getPrefs).toHaveBeenCalledTimes(1);
+			release({ endpoints: [], proxyAddresses: [], advisories: [], permissionDenied: false });
+			const [a, b] = await Promise.all([first, second, poll]);
+			expect(a).toEqual(b);
+			expect(a.metadata.requirements).toHaveLength(5);
+		});
+
+		it('never uses the operator write probe for ordinary or fresh reads', async () => {
+			await service.start();
+			cli.getPrefs.mockRejectedValue(new TailscaleCliError('unknown', 'debug prefs unavailable'));
+			(service as unknown as { requirementsCache: unknown }).requirementsCache = null;
+			cli.set.mockClear();
+			const observation = await service.getStatusSnapshot({ fresh: true });
+			expect(cli.set).not.toHaveBeenCalled();
+			expect(observation.metadata.requirements.find((entry) => entry.code === 'operator-granted')?.satisfied).toBe(
+				false,
+			);
+			expect(observation.status.state).toBe('setup-required');
+		});
+
+		it('retains prerequisites when one cancelled sibling closes and another never reaps', async () => {
+			await service.start();
+			cli.getVersion.mockImplementation(
+				(signal: AbortSignal) =>
+					new Promise((_, reject) => {
+						signal.addEventListener('abort', () => reject(signal.reason as Error), { once: true });
+					}),
+			);
+			cli.getPrefs.mockImplementation(() => new Promise(() => undefined));
+			cli.getVersion.mockClear();
+			cli.getPrefs.mockClear();
+			const pending = service.getStatusSnapshot();
+			await jest.advanceTimersByTimeAsync(0);
+			await jest.advanceTimersByTimeAsync(6_000);
+			expect((await pending).status.state).toBe('error');
+			const retries = Promise.all(Array.from({ length: 10 }, () => service.getStatusSnapshot({ fresh: true })));
+			await jest.advanceTimersByTimeAsync(6_000);
+			expect((await retries).every((snapshot) => snapshot.status.state === 'error')).toBe(true);
+			expect(cli.getVersion).toHaveBeenCalledTimes(1);
+			expect(cli.getPrefs).toHaveBeenCalledTimes(1);
+		});
+
+		it('aborts the actual read at the deadline and does not start replacement background reads', async () => {
+			await service.start();
+			let readSignal!: AbortSignal;
+			cli.getStatus.mockImplementation((signal: AbortSignal) => {
+				readSignal = signal;
+				return new Promise(() => undefined);
+			});
+			const pending = service.getStatusSnapshot();
+			// Flush prerequisites before advancing the deadline.
+			await jest.advanceTimersByTimeAsync(0);
+			await jest.advanceTimersByTimeAsync(6_000);
+			expect((await pending).status.state).toBe('error');
+			expect(readSignal.aborted).toBe(true);
+			const calls = cli.getStatus.mock.calls.length;
+			const retries = Promise.all([
+				service.getStatusSnapshot({ fresh: true }),
+				service.getStatusSnapshot({ fresh: true }),
+			]);
+			await jest.advanceTimersByTimeAsync(6_000);
+			expect((await retries).every((snapshot) => snapshot.status.state === 'error')).toBe(true);
+			expect(cli.getStatus).toHaveBeenCalledTimes(calls);
 		});
 	});
 });

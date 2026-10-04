@@ -3,8 +3,9 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import { getErrorCode, getErrorReason, useBackend, useLogger } from '../../../common';
-import { EventType } from '../../../modules/remote-access';
+import { getErrorCode, getErrorReason, snakeToCamel, useBackend, useLogger } from '../../../common';
+import { EventType, RemoteAccessProviderStatusEventSchema } from '../../../modules/remote-access';
+import { createSnapshotOrder } from '../../../modules/remote-access/store/snapshot-order';
 import type {
 	RemoteAccessCloudflareTunnelPluginCreateInstallOperation,
 	RemoteAccessCloudflareTunnelPluginCreateResetOperation,
@@ -58,26 +59,49 @@ export const useCloudflareTunnelStatusStore = defineStore<'remote_access_cloudfl
 
 		const firstLoadFinished = (): boolean => firstLoad.value;
 
-		const isLoaded = (): boolean => data.value !== null;
+		const isLoaded = (): boolean => data.value !== null || semaphore.value.getting || order.hasBuffered();
 
 		let pendingGetPromise: Promise<ICloudflareTunnelStatus> | null = null;
+		const order = createSnapshotOrder();
+		let getController: AbortController | null = null;
+		let resynchronizing = false;
+		const acceptStatus = (status: ICloudflareTunnelStatus, ticket = order.request()): ICloudflareTunnelStatus => {
+			if (order.establish(status, ticket)) {
+				if (order.accept(status, 'provider', ticket)) data.value = status;
+				for (const [, event] of order.drain(ticket)) {
+					if (data.value && order.accept(event, 'provider')) data.value = applyCloudflareTunnelProviderStatusEvent(data.value, event);
+				}
+			}
+			if (data.value === null) throw new Error('Remote access snapshot superseded before initial load.');
+			return data.value;
+		};
 
-		const get = async (): Promise<ICloudflareTunnelStatus> => {
+		const get = async (force = false): Promise<ICloudflareTunnelStatus> => {
+			if (force) {
+				resynchronizing = true;
+				order.resync();
+				getController?.abort();
+				pendingGetPromise = null;
+			}
 			if (pendingGetPromise) {
 				return pendingGetPromise;
 			}
 
+			const ticket = order.request();
+			const controller = new AbortController();
+			getController = controller;
 			const fetchPromise = (async (): Promise<ICloudflareTunnelStatus> => {
 				semaphore.value.getting = true;
 
 				try {
-					const { data: responseData, error, response } = await backend.client.GET(CLOUDFLARE_TUNNEL_STATUS_PATH);
+					const { data: responseData, error, response } = await backend.client.GET(CLOUDFLARE_TUNNEL_STATUS_PATH, { signal: controller.signal });
 
 					if (typeof responseData !== 'undefined') {
-						data.value = transformCloudflareTunnelStatusResponse(responseData.data);
+						const accepted = acceptStatus(transformCloudflareTunnelStatusResponse(responseData.data), ticket);
 						firstLoad.value = true;
+						if (order.hasBuffered() && !resynchronizing) return get(true);
 
-						return data.value;
+						return accepted;
 					}
 
 					// `get-remote-access-cloudflare-tunnel-plugin-status` documents only a `200`
@@ -93,8 +117,17 @@ export const useCloudflareTunnelStatusStore = defineStore<'remote_access_cloudfl
 						null,
 						getErrorCode<RemoteAccessCloudflareTunnelPluginGetStatusOperation>(error)
 					);
+				} catch (error: unknown) {
+					if (!order.currentRequest(ticket)) {
+						if (pendingGetPromise) return pendingGetPromise;
+						if (data.value) return data.value;
+					}
+					throw error;
 				} finally {
-					semaphore.value.getting = false;
+					if (order.currentRequest(ticket)) {
+						semaphore.value.getting = false;
+						resynchronizing = false;
+					}
 				}
 			})();
 
@@ -103,7 +136,7 @@ export const useCloudflareTunnelStatusStore = defineStore<'remote_access_cloudfl
 			try {
 				return await fetchPromise;
 			} finally {
-				pendingGetPromise = null;
+				if (pendingGetPromise === fetchPromise) pendingGetPromise = null;
 			}
 		};
 
@@ -132,15 +165,14 @@ export const useCloudflareTunnelStatusStore = defineStore<'remote_access_cloudfl
 		};
 
 		const reset = async (): Promise<ICloudflareTunnelStatus> => {
+			const ticket = order.request();
 			semaphore.value.resetting = true;
 
 			try {
 				const { data: responseData, error, response } = await backend.client.POST(CLOUDFLARE_TUNNEL_RESET_PATH);
 
 				if (typeof responseData !== 'undefined') {
-					data.value = transformCloudflareTunnelStatusResponse(responseData.data);
-
-					return data.value;
+					return acceptStatus(transformCloudflareTunnelStatusResponse(responseData.data), ticket);
 				}
 
 				// Same `never`-narrowing note as `get()` above.
@@ -163,16 +195,24 @@ export const useCloudflareTunnelStatusStore = defineStore<'remote_access_cloudfl
 		// while the very first `GET /status` this page ever makes is still in flight.
 		const onEvent = (payload: ICloudflareTunnelStatusOnEventActionPayload): void => {
 			switch (payload.event) {
-				case EventType.PROVIDER_STATUS:
-					if (data.value === null) {
-						logger.warn('Received a Cloudflare Tunnel provider status event before the initial status fetch; ignoring.');
-
+				case EventType.PROVIDER_STATUS: {
+					if (typeof payload.data.type !== 'string') return;
+					const expectedType = data.value?.type ?? 'remote-access-cloudflare-tunnel-plugin';
+					if (payload.data.type !== expectedType) return;
+					const parsed = RemoteAccessProviderStatusEventSchema.safeParse(snakeToCamel(payload.data));
+					if (!parsed.success) {
+						if (data.value !== null) applyCloudflareTunnelProviderStatusEvent(data.value, payload.data);
 						return;
 					}
-
-					data.value = applyCloudflareTunnelProviderStatusEvent(data.value, payload.data);
-
+					const decision = order.event(parsed.data, 'provider', parsed.data);
+					if (decision === 'buffer') {
+						if (data.value !== null && !resynchronizing)
+							void get(true).catch((error: unknown) => logger.error('Failed to resynchronize remote access status.', error));
+						return;
+					}
+					if (decision === 'accept' && data.value !== null) data.value = applyCloudflareTunnelProviderStatusEvent(data.value, parsed.data);
 					return;
+				}
 
 				case EventType.SETUP_PROGRESS:
 					setupProgress.value = transformCloudflareTunnelSetupProgressEvent(payload.data);
@@ -184,7 +224,7 @@ export const useCloudflareTunnelStatusStore = defineStore<'remote_access_cloudfl
 			}
 		};
 
-		const refresh = (): Promise<unknown> => get();
+		const refresh = (): Promise<unknown> => get(true);
 
 		return {
 			data,

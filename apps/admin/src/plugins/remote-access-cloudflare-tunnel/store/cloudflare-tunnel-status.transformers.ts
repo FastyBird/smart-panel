@@ -70,6 +70,8 @@ export const applyCloudflareTunnelProviderStatusEvent = (
 
 	return {
 		...status,
+		epoch: event.epoch,
+		revision: event.revision,
 		state: event.state,
 		endpoints: event.endpoints,
 		message: event.message ?? null,

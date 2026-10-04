@@ -26,41 +26,50 @@ export class DataRefreshRegistry implements IDataRefreshRegistry {
 	private handlers: Map<DataRefreshKey, DataRefreshHandler> = new Map();
 
 	private running: Promise<void> | null = null;
+	private rerun = false;
+	private superseding = new Set<DataRefreshKey>();
 
 	constructor(private readonly onError?: DataRefreshErrorHandler) {}
 
-	public register(key: DataRefreshKey, handler: DataRefreshHandler): void {
+	public register(key: DataRefreshKey, handler: DataRefreshHandler, options?: { supersedeOnReconnect?: boolean }): void {
 		this.handlers.set(key, handler);
+		if (options?.supersedeOnReconnect) this.superseding.add(key);
+		else this.superseding.delete(key);
 	}
 
 	public unregister(key: DataRefreshKey): void {
 		this.handlers.delete(key);
+		this.superseding.delete(key);
 	}
 
 	public async refreshAll(): Promise<void> {
-		// A wake can fire several triggers at once - reuse the pass that is already in flight
-		// instead of hitting the backend twice with the same requests.
+		const invoke = async (handler: DataRefreshHandler): Promise<void> => {
+			try {
+				await handler();
+			} catch (error: unknown) {
+				this.onError?.(error);
+			}
+		};
 		if (this.running !== null) {
-			return this.running;
+			// Opt-in handlers cancel and replace their own pending work. They must run now:
+			// waiting for an unrelated hanging handler would prevent reconnect recovery.
+			this.rerun = this.handlers.size > this.superseding.size;
+			await Promise.all([
+				this.running,
+				...[...this.handlers.entries()].filter(([key]) => this.superseding.has(key)).map(([, handler]) => invoke(handler)),
+			]);
+			return;
 		}
 
-		const handlers = [...this.handlers.values()];
-
-		this.running = Promise.all(
-			// One failing module must not stop the others from refreshing. Handlers are invoked
-			// eagerly so the requests are already in flight before the first await.
-			handlers.map((handler): Promise<void> => {
-				try {
-					return Promise.resolve(handler()).catch((error: unknown) => {
-						this.onError?.(error);
-					});
-				} catch (error: unknown) {
-					this.onError?.(error);
-
-					return Promise.resolve();
-				}
-			})
-		).then((): void => {});
+		this.running = (async (): Promise<void> => {
+			let initial = true;
+			do {
+				this.rerun = false;
+				const handlers = [...this.handlers.entries()].filter(([key]) => initial || !this.superseding.has(key));
+				initial = false;
+				await Promise.all(handlers.map(([, handler]) => invoke(handler)));
+			} while (this.rerun);
+		})();
 
 		try {
 			await this.running;

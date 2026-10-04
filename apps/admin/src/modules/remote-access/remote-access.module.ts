@@ -80,7 +80,9 @@ export default {
 		}
 
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold.
-		dataRefreshRegistry.register(remoteAccessAdminModuleKey, (): Promise<void> => refreshLoadedStores([remoteAccessStatusStore]));
+		dataRefreshRegistry.register(remoteAccessAdminModuleKey, (): Promise<void> => refreshLoadedStores([remoteAccessStatusStore]), {
+			supersedeOnReconnect: true,
+		});
 
 		sockets.on('event', (data: { event: string; payload: Record<string, unknown>; metadata: object }): void => {
 			if (!data?.event?.startsWith(REMOTE_ACCESS_MODULE_EVENT_PREFIX)) {

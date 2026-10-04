@@ -1,8 +1,7 @@
-import { execFile } from 'node:child_process';
-
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { cancellableExecFile } from '../../../common/utils/cancellable-exec.utils';
 import {
 	CLOUDFLARED_BINARY,
 	CLOUDFLARED_CLI_DEFAULT_TIMEOUT_MS,
@@ -47,8 +46,8 @@ const VERSION_PATTERN = /(\d+\.\d+\.\d+)/;
 export class CloudflaredCliService {
 	private readonly logger = createExtensionLogger(REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME, 'CloudflaredCliService');
 
-	async getVersion(): Promise<CloudflaredVersionInfo> {
-		const { stdout, stderr, exitCode } = await this.exec(['--version']);
+	async getVersion(signal?: AbortSignal): Promise<CloudflaredVersionInfo> {
+		const { stdout, stderr, exitCode } = await this.exec(['--version'], signal);
 
 		if (exitCode !== 0) {
 			const detail = stderr.trim() || stdout.trim();
@@ -71,38 +70,17 @@ export class CloudflaredCliService {
 		return { version: match[1], raw: stdout.trim() };
 	}
 
-	private exec(args: readonly string[]): Promise<ExecCloudflaredResult> {
-		const argv = [...args];
-
-		this.logger.debug(`Running: ${CLOUDFLARED_BINARY} ${argv.join(' ')}`);
-
-		return new Promise((resolve, reject) => {
-			execFile(CLOUDFLARED_BINARY, argv, { timeout: CLOUDFLARED_CLI_DEFAULT_TIMEOUT_MS }, (error, stdout, stderr) => {
-				const out = stdout ?? '';
-				const err = stderr ?? '';
-
-				if (error) {
-					const nodeError = error as NodeJS.ErrnoException;
-
-					if (nodeError.code === 'ENOENT') {
-						this.logger.warn(`cloudflared binary not found: ${CLOUDFLARED_BINARY} ${argv.join(' ')}`);
-
-						reject(
-							new CloudflaredCliError('not-installed', 'The cloudflared CLI is not installed or not on PATH.', error),
-						);
-
-						return;
-					}
-
-					const exitCode = typeof nodeError.code === 'number' ? nodeError.code : -1;
-
-					resolve({ stdout: out, stderr: err, exitCode });
-
-					return;
-				}
-
-				resolve({ stdout: out, stderr: err, exitCode: 0 });
-			});
-		});
+	private async exec(args: readonly string[], signal?: AbortSignal): Promise<ExecCloudflaredResult> {
+		this.logger.debug(`Running: ${CLOUDFLARED_BINARY} ${args.join(' ')}`);
+		try {
+			return await cancellableExecFile(CLOUDFLARED_BINARY, args, signal, CLOUDFLARED_CLI_DEFAULT_TIMEOUT_MS);
+		} catch (error) {
+			signal?.throwIfAborted();
+			throw new CloudflaredCliError(
+				(error as NodeJS.ErrnoException).code === 'ENOENT' ? 'not-installed' : 'unknown',
+				'Failed to read the cloudflared version.',
+				error,
+			);
+		}
 	}
 }

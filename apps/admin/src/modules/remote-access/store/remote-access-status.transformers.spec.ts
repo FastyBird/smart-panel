@@ -16,9 +16,14 @@ import {
 } from './remote-access-status.transformers';
 
 const mockStatusRes: IRemoteAccessStatusRes = {
+	epoch: 'A',
+	revision: 1,
 	enabled: true,
 	providers: [
 		{
+			enabled: true,
+			epoch: 'A',
+			revision: 1,
 			type: 'remote-access-tailscale',
 			kind: RemoteAccessModuleProviderKind.mesh,
 			capabilities: {
@@ -44,6 +49,8 @@ const mockStatusRes: IRemoteAccessStatusRes = {
 		},
 	],
 	urls: {
+		epoch: 'A',
+		revision: 1,
 		internal: 'http://localhost:3000',
 		candidates: ['http://192.168.1.5:3000'],
 		external: [

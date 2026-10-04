@@ -9,7 +9,7 @@ import request from 'supertest';
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 
@@ -19,6 +19,8 @@ import { AuthenticatedEntity, AuthenticatedRequest } from '../src/modules/auth/g
 import { ConfigService } from '../src/modules/config/services/config.service';
 import { PlatformType } from '../src/modules/platform/platform.constants';
 import { PlatformService } from '../src/modules/platform/services/platform.service';
+import { RemoteAccessProviderRegistryService } from '../src/modules/remote-access/services/remote-access-provider-registry.service';
+import { RemoteAccessStatusService } from '../src/modules/remote-access/services/remote-access-status.service';
 import { PrivilegedWorkerUnavailableException } from '../src/modules/system/system.exceptions';
 import { RolesGuard } from '../src/modules/users/guards/roles.guard';
 import { UserRole } from '../src/modules/users/users.constants';
@@ -224,6 +226,7 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 		};
 
 		const moduleFixture = await Test.createTestingModule({
+			imports: [EventEmitterModule.forRoot()],
 			controllers: [StatusController, SetupController],
 			providers: [
 				{ provide: APP_GUARD, useClass: TestCredentialGuard },
@@ -231,7 +234,8 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				{ provide: ConfigService, useValue: configService },
 				{ provide: NestConfigService, useValue: nestConfigService },
 				{ provide: PlatformService, useValue: platformService },
-				{ provide: EventEmitter2, useValue: { emit: jest.fn(), onAny: jest.fn() } },
+				RemoteAccessStatusService,
+				RemoteAccessProviderRegistryService,
 				TailscaleOperationCoordinatorService,
 				TailscaleCliService,
 				TailscaleStatusMapperService,
@@ -249,6 +253,7 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 		// assertions below observe the real `BaseErrorResponseModel` envelope
 		// production sends, not Nest's raw default shape a bare testing module
 		// would otherwise produce.
+		moduleFixture.get(RemoteAccessProviderRegistryService).register(moduleFixture.get(TailscaleProviderService));
 		app = moduleFixture.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
 		app.useGlobalFilters(...createGlobalExceptionFilters(nestConfigService as unknown as NestConfigService));
 		await app.listen(0, '127.0.0.1');
@@ -359,6 +364,7 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 			expect(response.body.data).toMatchObject({
 				type: 'remote-access-tailscale-plugin',
 				state: 'connected',
+				details: { tailnet: 'example.ts.net' },
 				proxyAddresses: [],
 				advisories: [],
 			});

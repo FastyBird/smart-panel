@@ -318,6 +318,15 @@ describe('WebsocketGateway', () => {
 			onAnyCallback(event, payload);
 		};
 
+		it('never forwards unaccepted remote-access observations or their administrative metadata', () => {
+			emitBusEvent('RemoteAccessModule.Provider.Observation', {
+				status: { type: 'remote-access-tailscale', state: 'connected' },
+				metadata: { requirements: [], control: { operation: 'login' } },
+			});
+			expect(mockServer.to).not.toHaveBeenCalled();
+			expect(mockServer.emit).not.toHaveBeenCalled();
+		});
+
 		it('routes RemoteAccessModule.* events to the admin room only, never to the wider exchange room', () => {
 			emitBusEvent('RemoteAccessModule.Provider.Status', {
 				type: 'remote-access-tailscale',

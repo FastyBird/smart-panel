@@ -204,7 +204,9 @@ export class AppModule {
 					ttl: 30 * 1000,
 					max: 1000,
 				}),
-				EventEmitterModule.forRoot(),
+				// Configuration updates fan out to core modules and registered plugins (currently
+				// more than EventEmitter2's default ten listeners). Keep a finite leak warning threshold.
+				EventEmitterModule.forRoot({ maxListeners: 32 }),
 				TypeOrmModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available
 					inject: [NestConfigService],

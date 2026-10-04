@@ -354,6 +354,7 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		'shelly-ng:', // Shelly NG adapter
 		'HaMdns.', // Home Assistant mDNS discovery
 		'ha.adapter.', // Home Assistant adapter
+		'RemoteAccessModule.Provider.Observation', // Raw observations and private metadata are accepted internally first
 	];
 
 	// Display-specific event prefixes that should be sent to a specific display only

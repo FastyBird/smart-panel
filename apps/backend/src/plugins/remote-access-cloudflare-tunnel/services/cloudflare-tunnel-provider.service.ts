@@ -28,7 +28,17 @@ export class CloudflareTunnelProviderService implements IRemoteAccessProvider {
 
 	constructor(private readonly tunnelManagedService: CloudflareTunnelManagedService) {}
 
-	getStatus(): Promise<RemoteAccessProviderStatus> {
-		return this.tunnelManagedService.computeStatus();
+	awaitObservationIdle(): Promise<void> {
+		return this.tunnelManagedService.awaitObservationIdle();
+	}
+
+	getSnapshot(options?: { signal?: AbortSignal; fresh?: boolean }) {
+		return this.tunnelManagedService.getStatusSnapshot(options);
+	}
+
+	getStatus(options?: { signal?: AbortSignal; fresh?: boolean }): Promise<RemoteAccessProviderStatus> {
+		return this.tunnelManagedService.computeStatus(options);
 	}
 }
+
+export type { CloudflareTunnelObservationMetadata } from './cloudflare-tunnel-managed.service';

@@ -11,13 +11,13 @@ import { isIpInCidr } from '../../api/utils/ip-match.utils';
 import { EventType as ConfigEventType } from '../../config/config.constants';
 import { ConfigService } from '../../config/services/config.service';
 import { RemoteAccessConfigModel } from '../models/config.model';
-import { RemoteAccessEndpoint } from '../platforms/remote-access-provider.platform';
+import { RemoteAccessEndpoint, RemoteAccessSnapshotVersion } from '../platforms/remote-access-provider.platform';
 import { EventType, REMOTE_ACCESS_MODULE_NAME } from '../remote-access.constants';
 import { NoUrlAvailableException } from '../remote-access.exceptions';
 
 import { RemoteAccessStatusService } from './remote-access-status.service';
 
-export interface RemoteAccessUrlsSnapshot {
+export interface RemoteAccessUrlsSnapshot extends RemoteAccessSnapshotVersion {
 	/** Absolute origin, no path. */
 	internal: string;
 	/** Ranked: HTTPS before HTTP, public before private, then registration order. */
@@ -70,12 +70,12 @@ export class RemoteAccessUrlService {
 		const internal = this.resolveInternalUrl(config);
 
 		if (!config.enabled) {
-			return { internal, external: [], primaryExternalUrl: null };
+			return { internal, external: [], primaryExternalUrl: null, ...this.statusService.getVersion() };
 		}
 
 		const external = this.rank(this.collectExternalEndpoints(config));
 
-		return { internal, external, primaryExternalUrl: external[0]?.url ?? null };
+		return { internal, external, primaryExternalUrl: external[0]?.url ?? null, ...this.statusService.getVersion() };
 	}
 
 	/**
@@ -198,6 +198,8 @@ export class RemoteAccessUrlService {
 		this.lastSnapshot = next;
 
 		this.eventEmitter.emit(EventType.URLS_CHANGED, {
+			epoch: next.epoch,
+			revision: next.revision,
 			internal: next.internal,
 			external: next.external,
 			primaryExternalUrl: next.primaryExternalUrl,

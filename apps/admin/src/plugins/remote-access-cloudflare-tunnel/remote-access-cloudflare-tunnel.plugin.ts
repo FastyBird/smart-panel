@@ -102,7 +102,9 @@ export default {
 
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold,
 		// same as the remote-access module's own store.
-		dataRefreshRegistry.register(remoteAccessCloudflareTunnelPluginKey, (): Promise<void> => refreshLoadedStores([cloudflareTunnelStatusStore]));
+		dataRefreshRegistry.register(remoteAccessCloudflareTunnelPluginKey, (): Promise<void> => refreshLoadedStores([cloudflareTunnelStatusStore]), {
+			supersedeOnReconnect: true,
+		});
 
 		// The remote-access module only forwards `Provider.Status` and `Urls.Changed` to its own
 		// store; `Setup.Progress` is explicitly left to "the owning provider plugin's own store"

@@ -31,7 +31,17 @@ export class TailscaleProviderService implements IRemoteAccessProvider {
 
 	constructor(private readonly nodeManagedService: TailscaleNodeManagedService) {}
 
-	getStatus(): Promise<RemoteAccessProviderStatus> {
-		return this.nodeManagedService.computeStatus();
+	awaitObservationIdle(): Promise<void> {
+		return this.nodeManagedService.awaitObservationIdle();
+	}
+
+	getSnapshot(options?: { signal?: AbortSignal; fresh?: boolean }) {
+		return this.nodeManagedService.getStatusSnapshot(options);
+	}
+
+	getStatus(options?: { signal?: AbortSignal; fresh?: boolean }): Promise<RemoteAccessProviderStatus> {
+		return this.nodeManagedService.computeStatus('status-read', options);
 	}
 }
+
+export type { TailscaleObservationMetadata } from './tailscale-node-managed.service';

@@ -52,7 +52,8 @@ export interface RemoteAccessAdvisory {
 
 /**
  * Full status payload a provider reports, on demand (`getStatus()`) or
- * pushed through the `RemoteAccessModule.Provider.Status` event. Never
+ * pushed through the internal `RemoteAccessModule.Provider.Observation` event. The module
+ * accepts and versions it before emitting `RemoteAccessModule.Provider.Status`. Never
  * carries an auth URL, QR code or key material — those are returned only by
  * a provider plugin's own owner/admin-gated REST endpoint.
  */
@@ -97,10 +98,36 @@ export type RemoteAccessProviderKind = 'mesh' | 'tunnel' | 'vpn' | 'external';
  * binary; providers never resolve URLs for other modules and never touch
  * request handling.
  */
+export interface RemoteAccessStatusReadOptions {
+	signal?: AbortSignal;
+	/** Explicit Re-check; ordinary observations can reuse bounded requirements. */
+	fresh?: boolean;
+}
+
+/** Ordering applies only within an epoch; a new process always creates a new epoch. */
+export interface RemoteAccessSnapshotVersion {
+	epoch: string;
+	revision: number;
+}
+
+export interface RemoteAccessAcceptedProviderStatus extends RemoteAccessProviderStatus, RemoteAccessSnapshotVersion {
+	/** Persistent ownership; disconnected providers can still be enabled. */
+	enabled: boolean;
+}
+
+export interface RemoteAccessProviderSnapshot<T = unknown> {
+	status: RemoteAccessProviderStatus;
+	/** Opaque, safe plain-data metadata captured by the same observation; never broadcast. */
+	metadata?: T;
+}
+
 export interface IRemoteAccessProvider {
 	/** Plugin type identifier, e.g. `remote-access-tailscale-plugin`. */
 	readonly type: string;
 	readonly kind: RemoteAccessProviderKind;
 	readonly capabilities: RemoteAccessProviderCapabilities;
-	getStatus(): Promise<RemoteAccessProviderStatus>;
+	getStatus(options?: RemoteAccessStatusReadOptions): Promise<RemoteAccessProviderStatus>;
+	getSnapshot?(options?: RemoteAccessStatusReadOptions): Promise<RemoteAccessProviderSnapshot>;
+	/** Actual cancellation/reaping completion, distinct from a bounded observation result. */
+	awaitObservationIdle?(): Promise<void>;
 }

@@ -39,7 +39,7 @@ const httpPrivate: RemoteAccessEndpoint = {
 describe('RemoteAccessUrlService', () => {
 	let configService: { getModuleConfig: jest.Mock };
 	let nestConfigService: NestConfigService;
-	let statusService: { getCachedStatuses: jest.Mock; hasProvider: jest.Mock };
+	let statusService: { getCachedStatuses: jest.Mock; getVersion: jest.Mock; hasProvider: jest.Mock };
 	let eventEmitter: { emit: jest.Mock };
 	let service: RemoteAccessUrlService;
 
@@ -68,7 +68,11 @@ describe('RemoteAccessUrlService', () => {
 		nestConfigService = {
 			get: jest.fn((key: string) => ({ FB_APP_HOST: 'http://localhost', FB_BACKEND_PORT: 3000 })[key]),
 		} as unknown as NestConfigService;
-		statusService = { getCachedStatuses: jest.fn().mockReturnValue([]), hasProvider: jest.fn().mockReturnValue(false) };
+		statusService = {
+			getVersion: jest.fn().mockReturnValue({ epoch: 'process-a', revision: 1 }),
+			getCachedStatuses: jest.fn().mockReturnValue([]),
+			hasProvider: jest.fn().mockReturnValue(false),
+		};
 		eventEmitter = { emit: jest.fn() };
 
 		service = new RemoteAccessUrlService(
@@ -271,6 +275,8 @@ describe('RemoteAccessUrlService', () => {
 			service.refresh();
 
 			expect(eventEmitter.emit).toHaveBeenCalledWith(EventType.URLS_CHANGED, {
+				epoch: 'process-a',
+				revision: 1,
 				internal: 'http://localhost:3000',
 				external: [],
 				primaryExternalUrl: null,

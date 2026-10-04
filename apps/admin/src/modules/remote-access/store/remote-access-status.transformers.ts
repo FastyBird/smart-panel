@@ -50,6 +50,8 @@ export const applyRemoteAccessProviderStatusEvent = (status: IRemoteAccessStatus
 	const providers = [...status.providers];
 	providers[index] = {
 		...providers[index],
+		epoch: event.epoch,
+		revision: event.revision,
 		state: event.state,
 		endpoints: event.endpoints,
 		message: event.message ?? null,
@@ -87,6 +89,8 @@ export const applyRemoteAccessUrlsChangedEvent = (status: IRemoteAccessStatus, p
 		...status,
 		urls: {
 			...status.urls,
+			epoch: event.epoch,
+			revision: event.revision,
 			internal: event.internal,
 			external: event.external,
 			primary: event.primaryExternalUrl,

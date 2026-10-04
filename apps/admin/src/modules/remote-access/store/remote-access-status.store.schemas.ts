@@ -38,6 +38,9 @@ export const RemoteAccessProviderCapabilitiesSchema = z.object({
 });
 
 export const RemoteAccessProviderSchema = z.object({
+	enabled: z.boolean().optional(),
+	epoch: z.string().optional(),
+	revision: z.number().int().nonnegative().optional(),
 	type: z.string(),
 	kind: z.nativeEnum(RemoteAccessModuleProviderKind),
 	capabilities: RemoteAccessProviderCapabilitiesSchema,
@@ -51,6 +54,8 @@ export const RemoteAccessProviderSchema = z.object({
 });
 
 export const RemoteAccessUrlsSchema = z.object({
+	epoch: z.string().optional(),
+	revision: z.number().int().nonnegative().optional(),
 	internal: z.string(),
 	candidates: z.array(z.string()),
 	external: z.array(RemoteAccessEndpointSchema),
@@ -58,6 +63,8 @@ export const RemoteAccessUrlsSchema = z.object({
 });
 
 export const RemoteAccessStatusSchema = z.object({
+	epoch: z.string().optional(),
+	revision: z.number().int().nonnegative().optional(),
 	enabled: z.boolean(),
 	providers: z.array(RemoteAccessProviderSchema),
 	urls: RemoteAccessUrlsSchema,
@@ -88,6 +95,9 @@ export const RemoteAccessStatusSetActionPayloadSchema = z.object({
 // `capabilities`, which only the module's own registry knows). Field names are already camelCase on
 // the wire because the backend emits a plain object, not a class-transformer instance.
 export const RemoteAccessProviderStatusEventSchema = z.object({
+	enabled: z.boolean().optional(),
+	epoch: z.string().optional(),
+	revision: z.number().int().nonnegative().optional(),
 	type: z.string(),
 	state: z.nativeEnum(RemoteAccessModuleProviderState),
 	endpoints: z.array(RemoteAccessEndpointSchema),
@@ -101,6 +111,8 @@ export const RemoteAccessProviderStatusEventSchema = z.object({
 // The `RemoteAccessModule.Urls.Changed` event payload - camelCase on the wire for the same reason,
 // and a narrower shape than `RemoteAccessModuleDataUrls`: it never carries `candidates`.
 export const RemoteAccessUrlsChangedEventSchema = z.object({
+	epoch: z.string().optional(),
+	revision: z.number().int().nonnegative().optional(),
 	internal: z.string(),
 	external: z.array(RemoteAccessEndpointSchema),
 	primaryExternalUrl: z.string().nullable(),
@@ -131,6 +143,9 @@ export const RemoteAccessProviderCapabilitiesResSchema: ZodType<RemoteAccessModu
 });
 
 export const RemoteAccessProviderResSchema: ZodType<RemoteAccessModuleProviderSchema> = z.object({
+	enabled: z.boolean(),
+	epoch: z.string(),
+	revision: z.number().int().nonnegative(),
 	type: z.string(),
 	kind: z.nativeEnum(RemoteAccessModuleProviderKind),
 	capabilities: RemoteAccessProviderCapabilitiesResSchema,
@@ -144,6 +159,8 @@ export const RemoteAccessProviderResSchema: ZodType<RemoteAccessModuleProviderSc
 });
 
 export const RemoteAccessUrlsResSchema: ZodType<RemoteAccessModuleUrlsSchema> = z.object({
+	epoch: z.string(),
+	revision: z.number().int().nonnegative(),
 	internal: z.string(),
 	candidates: z.array(z.string()),
 	external: z.array(RemoteAccessEndpointResSchema),
@@ -151,6 +168,8 @@ export const RemoteAccessUrlsResSchema: ZodType<RemoteAccessModuleUrlsSchema> = 
 });
 
 export const RemoteAccessStatusResSchema: ZodType<RemoteAccessModuleStatusSchema> = z.object({
+	epoch: z.string(),
+	revision: z.number().int().nonnegative(),
 	enabled: z.boolean(),
 	providers: z.array(RemoteAccessProviderResSchema),
 	urls: RemoteAccessUrlsResSchema,

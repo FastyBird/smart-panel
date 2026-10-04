@@ -11,11 +11,11 @@ import {
 	RemoteAccessModuleProviderState,
 	RemoteAccessTailscalePluginAuthentication,
 	RemoteAccessTailscalePluginControlAction,
-	RemoteAccessTailscalePluginOperation,
 	type RemoteAccessTailscalePluginControlSchema,
 	type RemoteAccessTailscalePluginInstallSchema,
 	type RemoteAccessTailscalePluginLoginRequestSchema,
 	type RemoteAccessTailscalePluginLoginSchema,
+	RemoteAccessTailscalePluginOperation,
 	type RemoteAccessTailscalePluginPrivilegedSetupSchema,
 	RemoteAccessTailscalePluginRequirementCode,
 	type RemoteAccessTailscalePluginRequirementRemedySchema,
@@ -57,6 +57,8 @@ export const TailscalePrivilegedSetupSchema = z.object({
 });
 
 export const TailscaleStatusSchema = z.object({
+	epoch: z.string().optional(),
+	revision: z.number().int().nonnegative().optional(),
 	type: z.string(),
 	state: z.nativeEnum(RemoteAccessModuleProviderState),
 	endpoints: z.array(RemoteAccessEndpointSchema),
@@ -168,6 +170,8 @@ export const TailscaleControlResSchema: ZodType<RemoteAccessTailscalePluginContr
 });
 
 export const TailscaleStatusResSchema: ZodType<RemoteAccessTailscalePluginStatusSchema> = z.object({
+	epoch: z.string(),
+	revision: z.number().int().nonnegative(),
 	control: TailscaleControlResSchema,
 	type: z.string(),
 	state: z.nativeEnum(RemoteAccessModuleProviderState),

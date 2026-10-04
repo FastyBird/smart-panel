@@ -83,6 +83,7 @@ export class TailscaleServeService {
 		config: RemoteAccessTailscalePluginConfigModel,
 		port: number,
 		status: TailscaleStatus,
+		signal?: AbortSignal,
 	): Promise<TailscaleServeResult> {
 		const { hasHttpsCap, hasFunnelCap, dnsName } = this.readCaps(status);
 
@@ -91,7 +92,7 @@ export class TailscaleServeService {
 		// reading entirely rather than issue a call it cannot scope. In
 		// practice a connected, online node always has one.
 		const { serveActive, funnelActive } = dnsName
-			? await this.readHandlerState(`${dnsName}:443`, `http://127.0.0.1:${port}`)
+			? await this.readHandlerState(`${dnsName}:443`, `http://127.0.0.1:${port}`, signal)
 			: { serveActive: false, funnelActive: false };
 
 		return this.buildResult(config, hasHttpsCap, hasFunnelCap, dnsName, serveActive, funnelActive, false);
@@ -219,8 +220,9 @@ export class TailscaleServeService {
 	private async readHandlerState(
 		hostPort: string,
 		targetUrl: string,
+		signal?: AbortSignal,
 	): Promise<{ serveActive: boolean; funnelActive: boolean }> {
-		const serveStatus = await this.readServeStatus();
+		const serveStatus = await this.readServeStatus(signal);
 
 		return {
 			serveActive: this.isServeActive(serveStatus, hostPort, targetUrl),
@@ -283,10 +285,11 @@ export class TailscaleServeService {
 		};
 	}
 
-	private async readServeStatus(): Promise<TailscaleServeStatus | null> {
+	private async readServeStatus(signal?: AbortSignal): Promise<TailscaleServeStatus | null> {
 		try {
-			return await this.cli.serveStatus();
+			return await this.cli.serveStatus(signal);
 		} catch (error) {
+			signal?.throwIfAborted();
 			this.logger.warn('Failed to read the Tailscale Serve status', {
 				message: error instanceof Error ? error.message : String(error),
 			});

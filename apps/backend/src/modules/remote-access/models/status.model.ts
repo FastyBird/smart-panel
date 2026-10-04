@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsBoolean, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsString, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
@@ -15,8 +15,23 @@ import { RemoteAccessUrlsModel } from './urls.model';
  */
 @ApiSchema({ name: 'RemoteAccessModuleDataStatus' })
 export class RemoteAccessStatusModel {
+	@ApiProperty({ description: 'Process epoch; changes after backend restart', type: 'string' })
+	@Expose()
+	@IsString()
+	epoch: string;
+
 	@ApiProperty({
-		description: 'Module enabled state. Disabled: providers stop, only the internal URL resolves',
+		description: 'Monotonic accepted publication revision within this epoch',
+		type: 'integer',
+		minimum: 0,
+	})
+	@Expose()
+	@IsInt()
+	@Min(0)
+	revision: number;
+
+	@ApiProperty({
+		description: 'Module URL registry enabled state; provider plugins retain their independent lifecycle',
 		type: 'boolean',
 		example: true,
 	})
