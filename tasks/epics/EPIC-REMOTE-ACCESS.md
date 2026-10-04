@@ -126,6 +126,30 @@ accepted on hardware; alpha.42 does not pass the R4 gate.
 Fresh installs, keyed/expired login, the full lifecycle/transport matrix, destructive factory reset and
 upgrade while login is pending are not claimed by these checks.
 
+#### Alpha.43 upgrade and CLI compatibility finding
+
+Candidate: [`v1.1.0-alpha.43`](https://github.com/FastyBird/smart-panel/releases/tag/v1.1.0-alpha.43),
+commit `46c2b35a4bf8097c1a70f67a4e37b2615298ac36`, containing PR #1163 (`cf9441c1a`).
+Observed on the same Debian 12/aarch64 Pi with Tailscale `1.102.3`, 2026-10-04 UTC.
+
+| Scenario | Result | Evidence / scope |
+| --- | --- | --- |
+| New tailnet baseline | Passed | User approved Pi and the test Mac in the replacement tailnet. Before upgrade, Pi was Running/self-online and the Mac received HTTP 200 from its Tailscale IP. |
+| Normal alpha.42 → alpha.43 upgrade | Passed for application | One system-module install request; durable worker completed and cleared its lock. All 111 devices/topology, 28 migrations, configuration and authentication data were retained; the previous admin session and a fresh login both worked. |
+| Installed artifacts | Passed | All 1,718 backend JS files and 250 admin static files match the checksum-verified server archive and integrity-verified npm packages. |
+| Tailscale recovery after upgrade | Failed | Node identity/authentication survived, but CLI remained Stopped. Extensions reported the node service started/desired started, while the private API and card correctly reported Disconnected. Start/reconnect failed at `tailscale set --advertise-tags=`, before reaching `up`. |
+| Real CLI contract | Confirmed | On the installed 1.102.3 binary, `set --help` omits `--advertise-tags`; `up --help` supports it. Automatic reconnect retries reproduced the unsupported-flag error. |
+| Explicit UI Connect | Failed, control recovered | One click returned HTTP 500 and a failure notification; the card stayed Disconnected and Connect became available again. |
+| Corrected CLI sequence, run manually | Passed after settling | With installed plugin code unchanged, the service user ran supported `set` flags then `up` with tag flags: both exited 0. Subsequent CLI reads reported Running/self-online and no auth URL; selected preference fields matched baseline except WantRunning false → true. The immediate snapshot had not yet settled and is retained separately. |
+| Connected aggregate regression after manual recovery | Passed | Both connected aggregate /status and /urls returned successfully with the two Tailscale endpoints. The first tailnet HTTP probe timed out; after a successful Tailscale ping, a follow-up health request returned HTTP 200. This is connectivity evidence, not lifecycle acceptance. |
+| Twenty lifecycle cycles | Not run | No cycle-runner actions were sent on alpha.43. Resolve the CLI compatibility defect and repeat on a released candidate before claiming this gate. |
+
+The CLI regression fix separates `set`-compatible preferences from `up`-only flags and applies tag
+changes through `up`. It retains the existing settings-conflict behavior for unmanaged preferences;
+normal lifecycle operations do not use `--reset`. All 404 Tailscale tests, backend type checking and
+changed-file lint/format pass. The correction is not installed yet, and hardware acceptance remains open. No raw node
+identity, tailnet addresses, credentials or authentication links are published with this evidence.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.

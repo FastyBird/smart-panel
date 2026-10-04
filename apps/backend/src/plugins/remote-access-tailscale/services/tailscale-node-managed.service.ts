@@ -623,12 +623,23 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 			const requirements = await this.refreshRequirements('start');
 
 			if (this.requirementsSatisfied(requirements)) {
-				const status = await this.getStatusOrNull();
+				let status = await this.getStatusOrNull();
 
 				if (status && this.mapper.hasExistingKey(status)) {
 					this.operations.assertCurrent();
 					await this.cli.set(this.buildPreferenceFlags(next));
 					this.operations.assertCurrent();
+					if (previous.advertiseTags.join(',') !== next.advertiseTags.join(',')) {
+						// Tags are supported by `up`, not `set`. Keep the complete managed
+						// flags and its settings-conflict check; never reset unmanaged prefs.
+						await this.cli.up(this.buildUpFlags(next));
+						this.operations.assertCurrent();
+						status = await this.getStatusOrNull();
+						this.operations.assertCurrent();
+						if (status) {
+							this.observeAuthentication(status);
+						}
+					}
 
 					const port = this.getBackendPort();
 
@@ -636,7 +647,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 					// rather than waiting for the next poll tick to pick it up
 					// (pollTick() runs the same converge step, at most once per
 					// tick, gated on requirements satisfied + connected).
-					if (this.mapper.map(status, { port }).state === 'connected') {
+					if (status && this.mapper.map(status, { port }).state === 'connected') {
 						await this.convergeServe(next, port, status);
 					}
 				}
@@ -1693,16 +1704,14 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 	// ─── Preferences ──────────────────────────────────────────────────
 
 	/**
-	 * Public so the sign-in flows (RA-5: `TailscaleLoginService`) can build the
-	 * exact same `--operator=` + preference flags this service applies on
-	 * `start()`/`onConfigChanged()`, instead of re-deriving them.
+	 * Preferences supported by `tailscale set`, which changes only the
+	 * explicitly supplied flags. The sign-in flows reuse these via buildUpFlags.
 	 */
 	buildPreferenceFlags(config: RemoteAccessTailscalePluginConfigModel): string[] {
 		return [
 			`--hostname=${config.hostname}`,
 			`--accept-dns=${config.acceptDns}`,
 			`--accept-routes=${config.acceptRoutes}`,
-			`--advertise-tags=${config.advertiseTags.join(',')}`,
 			`--ssh=${config.ssh}`,
 			`--operator=${os.userInfo().username}`,
 		];
@@ -1710,7 +1719,12 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 
 	/** Public for the same reason as `buildPreferenceFlags` — the full flag set the sign-in flows' `up` calls reuse. */
 	buildUpFlags(config: RemoteAccessTailscalePluginConfigModel): string[] {
-		return [...this.buildPreferenceFlags(config), `--login-server=${config.loginServer}`];
+		return [
+			...this.buildPreferenceFlags(config),
+			// Always include an empty value too, so removing configured tags clears them.
+			`--advertise-tags=${config.advertiseTags.join(',')}`,
+			`--login-server=${config.loginServer}`,
+		];
 	}
 
 	private buildStatus(
