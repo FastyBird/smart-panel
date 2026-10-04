@@ -1,6 +1,6 @@
 # Remote access: fresh analysis and completion plan
 
-Date: 2026-10-03. Adopted: 2026-10-04. Status: R1/R2 merged (#1160/#1161); R3 implemented for review (#1158).
+Date: 2026-10-03. Adopted: 2026-10-04. Status: R1–R3 merged (#1160/#1161/#1162); R4 hardware acceptance in progress (#910).
 Epic: [#897](https://github.com/FastyBird/smart-panel/issues/897).
 Coordination: [#991](https://github.com/FastyBird/smart-panel/issues/991).
 Reviewed baseline: `3f7b838fb65a346b86e9100c246d6bfc31af06e1` (`main`, application alpha.41).
@@ -259,8 +259,15 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   [PR #1160](https://github.com/FastyBird/smart-panel/pull/1160), merged as `1a6d2089d`; all CI checks passed.
 - R2: [#1157](https://github.com/FastyBird/smart-panel/issues/1157), ordered snapshots and bounded reads. Completed in
   [PR #1161](https://github.com/FastyBird/smart-panel/pull/1161), merged as `a0ec77488`; all CI checks passed.
-- R3: [#1158](https://github.com/FastyBird/smart-panel/issues/1158), admin plugin controls. Implemented for review; hardware acceptance remains R4/R5.
+- R3: [#1158](https://github.com/FastyBird/smart-panel/issues/1158), admin plugin controls. Completed in
+  [PR #1162](https://github.com/FastyBird/smart-panel/pull/1162), merged as `e6ad90a07`; all CI checks passed.
+  Hardware acceptance remains R4/R5.
 - R4: [#910](https://github.com/FastyBird/smart-panel/issues/910), device acceptance after R1–R3.
+  Alpha.42 passed the normal system upgrade and operator setup with websocket unavailable. Hardware
+  testing found excess pending-login polling (HTTP 429) and frozen endpoint response mutation
+  (connected aggregate HTTP 500); both have regression fixes validated locally. The gate remains open
+  pending a corrected release and the full acceptance matrix; Pi has been approved in the new tailnet. See the epic task
+  verification table for the scoped results.
 - R5: [#1159](https://github.com/FastyBird/smart-panel/issues/1159), Cloudflare lifecycle and acceptance.
 - R6/R7: [#914](https://github.com/FastyBird/smart-panel/issues/914) / [#913](https://github.com/FastyBird/smart-panel/issues/913).
 

@@ -29,7 +29,7 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
 - Fresh analysis and adopted completion sequence (2026-10-03, adopted 2026-10-04):
   [`2026-10-03-remote-access-completion.md`](../../docs/superpowers/plans/2026-10-03-remote-access-completion.md).
   This separates delivered code from outstanding hardware acceptance and documents reproduced
-  lifecycle/status defects. The replacement execution sequence is active: R1 (#1156, PR #1160) and R2 (#1157, PR #1161) are complete; R3 (#1158) is implemented for review.
+  lifecycle/status defects. The replacement execution sequence is active: R1 (#1156, PR #1160), R2 (#1157, PR #1161) and R3 (#1158, PR #1162) are complete.
   R4 (#910) and R5 (#1159) remain open, followed by #914 and #913.
 - Prior art: Home Assistant `helpers/network.py` and `components/http/forwarded.py`; the Home Assistant
   Tailscale and Cloudflared add-ons; Tailscale CLI `up --json`, operator mechanism, Serve and Funnel.
@@ -96,6 +96,35 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
 ### Verification
 
 - [ ] Hardware acceptance matrix from the plan recorded here with dates and outcomes.
+
+#### October R4 candidate verification
+
+Candidate: [`v1.1.0-alpha.42`](https://github.com/FastyBird/smart-panel/releases/tag/v1.1.0-alpha.42),
+commit `5da7e3075c7a6367466f525b159b29167a627e64`, containing R1–R3 through PR #1162
+(`e6ad90a07`). Evidence below was collected on 2026-10-04 UTC using the existing Debian 12/aarch64
+image installation and Tailscale `1.102.3`. LAN SSH and owner admin access are independent of Tailscale.
+The full R4 gate and the original checklist remain open; these results cover only the named scenarios.
+
+| Scenario | Result | Evidence / scope |
+| --- | --- | --- |
+| Baseline before upgrade | Observed | Alpha.41; application and tailscaled active; CLI NeedsLogin; API/UI agree that the operator grant is missing. |
+| Normal system-module upgrade | Passed | One explicit alpha.42 install request; worker survives application stop, reaches complete and releases its lock. Plugin enabled, login not yet started. |
+| Upgrade data and artifact verification | Passed | SQLite integrity ok; all 111 device identities/topology, configuration, schema and 28 migration rows retained; all 1,718 installed backend files match checksum-verified server/npm artifacts. |
+| Operator setup on installed Tailscale | Passed | UI Start setup completes; the wizard advances to Sign in without reload. This tests an existing package, not fresh npm/image installation. |
+| Second setup with websocket unavailable | Passed | Removed only the operator grant while still unauthenticated, then started another setup from the UI. Browser reconnection was suppressed throughout; REST reads began after acceptance and the wizard advanced to Sign in. Browser connection restored afterward. |
+| Pending interactive login privacy | Passed | Privileged response carries the login link with Cache-Control no-store; aggregate status omits it; application journal contains no login URL or auth-key marker during the observed window. |
+| Interactive approval | Partial | Initial approval reached CLI Running/self-online and the UI completed the wizard. The test tailnet was then replaced; Pi was explicitly logged out and the user approved Pi in the replacement tailnet. The plugin API reports connected/authenticated with all requirements satisfied and no auth URL. Logout removed the operator grant; the API correctly blocked login until Set up restored it. |
+| Pending-login request budget | Failed | Hardware observation included HTTP 429. A regression test reproduced 32 status reads/minute from concurrent 3-second login and 5-second fallback polling, above the route limit of 30. The fix lets completed store reads satisfy the fallback; the same test now performs 20 reads/minute and confirms fallback recovery afterward. |
+| Connected aggregate status and URLs | Failed | Connected GET /status returned HTTP 500 because the response interceptor attempted to mutate a frozen accepted endpoint. Production-interceptor E2E tests reproduced this for /status and /urls; copying endpoint models at the response boundary fixes both while preserving frozen cached observations. |
+| Twenty lifecycle cycles and remote reachability | Not run | The cycle runner stopped during its aggregate-status preflight before any lifecycle action. Resume on a released candidate containing both fixes and repeat the full matrix in the new tailnet. |
+
+A retained SQLite and configuration backup passed integrity/hash validation before upgrade. Private
+raw evidence, device addresses, credentials and authentication links are retained outside this repository.
+Both regression fixes pass local validation (544 admin tests, 163 backend unit tests, 16 module HTTP
+tests, backend/admin type checks and changed-file lint/format). They have not yet been deployed or
+accepted on hardware; alpha.42 does not pass the R4 gate.
+Fresh installs, keyed/expired login, the full lifecycle/transport matrix, destructive factory reset and
+upgrade while login is pending are not claimed by these checks.
 
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 

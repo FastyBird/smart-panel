@@ -102,6 +102,85 @@ describe('useRemoteAccessStatusReconciliation', () => {
 		expect(store.get).toHaveBeenCalledTimes(2);
 	});
 
+	it.each([
+		{ state: 'pending-auth', hasOperation: false },
+		{ state: 'connected', hasOperation: true },
+	])('shares the request budget with a 3-second caller during $state (operation: $hasOperation)', async ({ state, hasOperation }) => {
+		const status = source(state);
+		const successfulReads: number[] = [];
+		const store = {
+			get: vi.fn().mockImplementation(async () => {
+				if (status.semaphore.value.getting) throw new Error('Already getting status');
+				status.semaphore.value.getting = true;
+				try {
+					await Promise.resolve();
+					successfulReads.push(Date.now());
+				} finally {
+					status.semaphore.value.getting = false;
+				}
+			}),
+		};
+		subscribe(store, status, () => hasOperation);
+		const externalPoller = setInterval(() => void store.get(), 3_000);
+		try {
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(successfulReads).toHaveLength(20);
+			expect(successfulReads.length).toBeLessThanOrEqual(30);
+		} finally {
+			clearInterval(externalPoller);
+		}
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(successfulReads).toHaveLength(21);
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(successfulReads).toHaveLength(22);
+	});
+
+	it.each([false, true])('resumes the stable fallback after an external read (failed: %s)', async (failed) => {
+		const status = source();
+		status.data.value = null;
+		const store = {
+			get: vi.fn().mockImplementation(async () => {
+				status.semaphore.value.getting = true;
+				try {
+					await Promise.resolve();
+					if (failed) throw new Error('offline');
+					status.data.value = { epoch: 'backend', revision: 1, state: 'connected' };
+				} finally {
+					status.semaphore.value.getting = false;
+				}
+			}),
+		};
+		subscribe(store, status);
+		await vi.advanceTimersByTimeAsync(25_000);
+		await store.get().catch(() => undefined);
+		await vi.advanceTimersByTimeAsync(25_000);
+		expect(store.get).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(store.get).toHaveBeenCalledTimes(2);
+	});
+
+	it('waits for the active cadence after a long external read completes', async () => {
+		const status = source('pending-auth');
+		const store = {
+			get: vi.fn().mockImplementation(async () => {
+				status.semaphore.value.getting = true;
+				try {
+					await new Promise<void>((resolve) => setTimeout(resolve, 8_000));
+				} finally {
+					status.semaphore.value.getting = false;
+				}
+			}),
+		};
+		subscribe(store, status);
+		await vi.advanceTimersByTimeAsync(4_500);
+		const externalRead = store.get();
+		await vi.advanceTimersByTimeAsync(10_500);
+		await externalRead;
+		expect(store.get).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(store.get).toHaveBeenCalledTimes(2);
+	});
+
 	it('reconciles version changes once while ignoring equal versions and GET commits', async () => {
 		const status = source();
 		const store = {
