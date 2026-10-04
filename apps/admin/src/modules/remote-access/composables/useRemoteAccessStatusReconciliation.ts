@@ -18,7 +18,12 @@ interface ReconciliationSession {
 
 const sessions = new WeakMap<object, ReconciliationSession>();
 
-/** Share private-status reconciliation between all mounted consumers of one provider store. */
+/**
+ * Share private-status reconciliation between all mounted consumers of one provider store.
+ * All subscribers for a store must supply refs to the same store state and an equivalent,
+ * store-only operation predicate. The session retains the first subscriber's arguments until
+ * the last subscriber leaves; they must not capture component-local state or lifecycle.
+ */
 export const useRemoteAccessStatusReconciliation = <T extends StatusSnapshot>(
 	store: { get: () => Promise<unknown> },
 	source: StatusSource<T>,
