@@ -7,7 +7,8 @@
 		"cardDescription": "Öffentlicher Zugriff über einen Cloudflare Tunnel, ohne Portweiterleitung.",
 		"cannotBeUsedYetTitle": "Kann noch nicht verwendet werden",
 		"aboutTunnelSettings": "Das Tunnel-Token stammt aus dem Cloudflare Zero Trust-Dashboard. Der öffentliche Hostname ist die Adresse, über die Besucher diese Installation erreichen.",
-		"confirmRemove": "Dadurch wird der Tunnel gestoppt und das gespeicherte Token sowie der öffentliche Hostname werden gelöscht. Sie müssen dies erneut konfigurieren, um Cloudflare Tunnel zu verwenden."
+		"confirmRemove": "Dadurch wird der Tunnel gestoppt und das gespeicherte Token sowie der öffentliche Hostname werden gelöscht. Sie müssen dies erneut konfigurieren, um Cloudflare Tunnel zu verwenden.",
+		"disconnectExplanation": "Trennen beendet den aktuellen Tunnel und behält seine Konfiguration bei. Damit er nach einem Neustart der Anwendung ausgeschaltet bleibt, deaktivieren Sie das Plugin in seiner Konfiguration."
 	},
 	"buttons": {
 		"setup": "Einrichten",

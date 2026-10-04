@@ -7,7 +7,8 @@
 		"cardDescription": "Public access through a Cloudflare Tunnel, with no port forwarding.",
 		"cannotBeUsedYetTitle": "Cannot be used yet",
 		"aboutTunnelSettings": "The tunnel token comes from the Cloudflare Zero Trust dashboard. The public hostname is the address visitors use to reach this installation.",
-		"confirmRemove": "This stops the tunnel and clears the stored token and public hostname. You will need to configure it again to use Cloudflare Tunnel."
+		"confirmRemove": "This stops the tunnel and clears the stored token and public hostname. You will need to configure it again to use Cloudflare Tunnel.",
+		"disconnectExplanation": "Disconnect stops the current tunnel and keeps its configuration. To keep it off after an application restart, disable the plugin in its configuration."
 	},
 	"buttons": {
 		"setup": "Set up",

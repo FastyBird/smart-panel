@@ -7,6 +7,8 @@ import { getErrorCode, getErrorReason, snakeToCamel, useBackend, useLogger } fro
 import { EventType, RemoteAccessProviderStatusEventSchema } from '../../../modules/remote-access';
 import { createSnapshotOrder } from '../../../modules/remote-access/store/snapshot-order';
 import type {
+	RemoteAccessTailscalePluginCreateConnectOperation,
+	RemoteAccessTailscalePluginCreateDisconnectOperation,
 	RemoteAccessTailscalePluginCreateInstallOperation,
 	RemoteAccessTailscalePluginCreateLoginOperation,
 	RemoteAccessTailscalePluginCreateLogoutOperation,
@@ -36,6 +38,9 @@ import {
 	transformTailscaleStatusResponse,
 } from './tailscale-status.transformers';
 
+const TAILSCALE_CONNECT_PATH = `/${PLUGINS_PREFIX}/${REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX}/connect` as const;
+const TAILSCALE_DISCONNECT_PATH = `/${PLUGINS_PREFIX}/${REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX}/disconnect` as const;
+
 const TAILSCALE_STATUS_PATH = `/${PLUGINS_PREFIX}/${REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX}/status` as const;
 const TAILSCALE_INSTALL_PATH = `/${PLUGINS_PREFIX}/${REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX}/install` as const;
 const TAILSCALE_LOGIN_PATH = `/${PLUGINS_PREFIX}/${REMOTE_ACCESS_TAILSCALE_PLUGIN_PREFIX}/login` as const;
@@ -46,6 +51,8 @@ const TAILSCALE_RESET_PREFERENCES_PATH = `/${PLUGINS_PREFIX}/${REMOTE_ACCESS_TAI
 // remote-access module's own status store.
 const createDefaultSemaphore = (): ITailscaleStatusStateSemaphore => ({
 	getting: false,
+	connecting: false,
+	disconnecting: false,
 	installing: false,
 	loggingIn: false,
 	loggingOut: false,
@@ -98,6 +105,7 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 
 			const ticket = order.request();
 			const controller = new AbortController();
+			const deadline = setTimeout(() => controller.abort(), 10_000);
 			getController = controller;
 			const fetchPromise = (async (): Promise<ITailscaleStatus> => {
 				semaphore.value.getting = true;
@@ -133,6 +141,7 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 					}
 					throw error;
 				} finally {
+					clearTimeout(deadline);
 					if (order.currentRequest(ticket)) {
 						semaphore.value.getting = false;
 						resynchronizing = false;
@@ -151,9 +160,12 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 
 		const install = async (): Promise<ITailscaleInstallResult> => {
 			semaphore.value.installing = true;
+			setupProgress.value = null;
+			const controller = new AbortController();
+			const deadline = setTimeout(() => controller.abort(), 15_000);
 
 			try {
-				const { data: responseData, error, response } = await backend.client.POST(TAILSCALE_INSTALL_PATH);
+				const { data: responseData, error, response } = await backend.client.POST(TAILSCALE_INSTALL_PATH, { signal: controller.signal });
 
 				if (typeof responseData !== 'undefined') {
 					return transformTailscaleInstallResponse(responseData.data);
@@ -169,6 +181,7 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 					getErrorCode<RemoteAccessTailscalePluginCreateInstallOperation>(error)
 				);
 			} finally {
+				clearTimeout(deadline);
 				semaphore.value.installing = false;
 			}
 		};
@@ -177,13 +190,15 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 			const ticket = order.request();
 			const sequence = order.action();
 			semaphore.value.loggingIn = true;
+			const controller = new AbortController();
+			const deadline = setTimeout(() => controller.abort(), authKey ? 150_000 : 45_000);
 
 			try {
 				// `authKey` is forwarded straight into the request body and never assigned to a ref or
 				// store field - see `TailscaleLoginRequestSchema`.
 				const body = TailscaleLoginRequestSchema.parse(typeof authKey === 'undefined' ? {} : { auth_key: authKey });
 
-				const { data: responseData, error, response } = await backend.client.POST(TAILSCALE_LOGIN_PATH, { body });
+				const { data: responseData, error, response } = await backend.client.POST(TAILSCALE_LOGIN_PATH, { body, signal: controller.signal });
 
 				if (typeof responseData !== 'undefined') {
 					const result = transformTailscaleLoginResponse(responseData.data);
@@ -219,16 +234,56 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 					getErrorCode<RemoteAccessTailscalePluginCreateLoginOperation>(error)
 				);
 			} finally {
+				clearTimeout(deadline);
 				semaphore.value.loggingIn = false;
 			}
 		};
 
+		const runConnectionAction = async (action: 'connect' | 'disconnect'): Promise<ITailscaleStatus> => {
+			const flag = action === 'connect' ? 'connecting' : 'disconnecting';
+			if (semaphore.value[flag]) {
+				throw new RemoteAccessTailscaleApiException('A Tailscale operation is already in progress.', 409, null, 'operation-in-progress');
+			}
+			const ticket = order.request();
+			semaphore.value[flag] = true;
+			const controller = new AbortController();
+			const deadline = setTimeout(() => controller.abort(), 45_000);
+			try {
+				const {
+					data: responseData,
+					error,
+					response,
+				} = await backend.client.POST(action === 'connect' ? TAILSCALE_CONNECT_PATH : TAILSCALE_DISCONNECT_PATH, { signal: controller.signal });
+				if (typeof responseData !== 'undefined') {
+					return acceptStatus(transformTailscaleStatusResponse(responseData.data), ticket);
+				}
+				const httpResponse: Response = response;
+				throw new RemoteAccessTailscaleApiException(
+					getErrorReason<RemoteAccessTailscalePluginCreateConnectOperation | RemoteAccessTailscalePluginCreateDisconnectOperation>(
+						error,
+						`Failed to ${action} Tailscale.`
+					),
+					httpResponse.status,
+					null,
+					getErrorCode<RemoteAccessTailscalePluginCreateConnectOperation | RemoteAccessTailscalePluginCreateDisconnectOperation>(error)
+				);
+			} finally {
+				clearTimeout(deadline);
+				semaphore.value[flag] = false;
+			}
+		};
+
+		const connect = (): Promise<ITailscaleStatus> => runConnectionAction('connect');
+		const disconnect = (): Promise<ITailscaleStatus> => runConnectionAction('disconnect');
+
 		const logout = async (): Promise<ITailscaleStatus> => {
 			const ticket = order.request();
 			semaphore.value.loggingOut = true;
+			const controller = new AbortController();
+			const deadline = setTimeout(() => controller.abort(), 45_000);
 
 			try {
-				const { data: responseData, error, response } = await backend.client.POST(TAILSCALE_LOGOUT_PATH);
+				const { data: responseData, error, response } = await backend.client.POST(TAILSCALE_LOGOUT_PATH, { signal: controller.signal });
 
 				if (typeof responseData !== 'undefined') {
 					return acceptStatus(transformTailscaleStatusResponse(responseData.data), ticket);
@@ -244,6 +299,7 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 					getErrorCode<RemoteAccessTailscalePluginCreateLogoutOperation>(error)
 				);
 			} finally {
+				clearTimeout(deadline);
 				semaphore.value.loggingOut = false;
 			}
 		};
@@ -251,9 +307,11 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 		const resetPreferences = async (): Promise<ITailscaleStatus> => {
 			const ticket = order.request();
 			semaphore.value.resettingPreferences = true;
+			const controller = new AbortController();
+			const deadline = setTimeout(() => controller.abort(), 45_000);
 
 			try {
-				const { data: responseData, error, response } = await backend.client.POST(TAILSCALE_RESET_PREFERENCES_PATH);
+				const { data: responseData, error, response } = await backend.client.POST(TAILSCALE_RESET_PREFERENCES_PATH, { signal: controller.signal });
 
 				if (typeof responseData !== 'undefined') {
 					return acceptStatus(transformTailscaleStatusResponse(responseData.data), ticket);
@@ -269,6 +327,7 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 					getErrorCode<RemoteAccessTailscalePluginCreateResetPreferencesOperation>(error)
 				);
 			} finally {
+				clearTimeout(deadline);
 				semaphore.value.resettingPreferences = false;
 			}
 		};
@@ -320,6 +379,8 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 			get,
 			install,
 			login,
+			connect,
+			disconnect,
 			logout,
 			resetPreferences,
 			onEvent,

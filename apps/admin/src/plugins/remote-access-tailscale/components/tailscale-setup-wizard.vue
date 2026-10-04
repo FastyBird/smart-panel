@@ -223,7 +223,7 @@
 							v-else
 							type="primary"
 							:loading="isLoggingIn"
-							:disabled="isLoggingIn"
+							:disabled="isLoggingIn || !canLogin"
 							@click="onInteractiveLogin"
 						>
 							{{ t('remoteAccessTailscalePlugin.wizard.buttons.getSignInLink') }}
@@ -257,7 +257,7 @@
 						<el-button
 							type="primary"
 							:loading="isLoggingIn"
-							:disabled="!authKey || isLoggingIn"
+							:disabled="!authKey || isLoggingIn || !canLogin"
 							@click="onKeyedLogin"
 						>
 							{{ t('remoteAccessTailscalePlugin.wizard.buttons.signIn') }}
@@ -357,6 +357,7 @@ import { Icon } from '@iconify/vue';
 
 import { useClipboard, useFlashMessage } from '../../../common';
 import { FormResult, type FormResultType, useConfigPlugin } from '../../../modules/config';
+import { RemoteAccessTailscalePluginControlAction } from '../../../openapi.constants';
 import { useTailscaleLogin, useTailscaleSetup, useTailscaleStatus } from '../composables';
 import { REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME } from '../remote-access-tailscale.constants';
 import { RemoteAccessTailscaleApiException } from '../remote-access-tailscale.exceptions';
@@ -391,8 +392,8 @@ const goToStep = (step: TailscaleWizardStep): void => {
 	currentStep.value = step;
 };
 
-const { status, requirements, setup, privilegedSetup, fetchStatus } = useTailscaleStatus();
-const { progress, isInstalling, install, stopPolling: stopSetupPolling } = useTailscaleSetup();
+const { status, requirements, privilegedSetup, fetchStatus, refreshStatus } = useTailscaleStatus();
+const { progress: effectiveProgress, isInstalling, install, startPolling: startSetupPolling, stopPolling: stopSetupPolling } = useTailscaleSetup();
 const { isLoggingIn, isPolling, login, stopPolling } = useTailscaleLogin();
 const { configPlugin, fetchConfigPlugin } = useConfigPlugin({ type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME });
 
@@ -406,33 +407,17 @@ const optionsFormResult = ref<FormResultType>(FormResult.NONE);
 
 const isRechecking = ref<boolean>(false);
 const installErrorCode = ref<string | null>(null);
+let sessionGeneration = 0;
 const loginErrorCode = ref<string | null>(null);
 
+const canLogin = computed(
+	() =>
+		status.value?.control?.enabled === true &&
+		!status.value.control.operation &&
+		status.value.control.availableActions.includes(RemoteAccessTailscalePluginControlAction.login)
+);
+
 const endpoints = computed(() => status.value?.endpoints ?? []);
-
-// Prefers the live `Setup.Progress` websocket event; falls back to the polled `GET /status`
-// `setup` job (kept current by `useTailscaleSetup`'s own poll) once a websocket event has arrived
-// at least once, or right after a page reload before any websocket event has arrived at all -
-// this is what lets the progress view resume purely from `GET /status`, with no extra endpoint.
-// A polled *terminal* state always wins over a stale `running` websocket event, though: if the
-// websocket's final tick was ever missed, `progress.value.state` would stay 'running' forever and
-// strand the spinner - the poll is the fallback specifically for that case, so it must be allowed
-// to override once it reports the job is actually done.
-const effectiveProgress = computed(() => {
-	if (setup.value && setup.value.state !== 'running') {
-		return { state: setup.value.state, step: setup.value.step ?? undefined, message: setup.value.message ?? undefined };
-	}
-
-	if (progress.value) {
-		return progress.value;
-	}
-
-	if (setup.value) {
-		return { state: setup.value.state, step: setup.value.step ?? undefined, message: setup.value.message ?? undefined };
-	}
-
-	return null;
-});
 
 const privilegedSetupUnavailable = computed<boolean>(() => privilegedSetup.value !== null && !privilegedSetup.value.available);
 
@@ -458,11 +443,14 @@ const flashApiError = (error: unknown, meaningfulCodes: number[], fallback: stri
 	flashTailscaleApiError(error, meaningfulCodes, fallback, flashMessage.error);
 
 const onInstall = async (): Promise<void> => {
+	const generation = sessionGeneration;
 	installErrorCode.value = null;
 
 	try {
 		await install();
 	} catch (error) {
+		if (!props.visible || generation !== sessionGeneration) return;
+
 		installErrorCode.value = error instanceof RemoteAccessTailscaleApiException ? error.errorCode : null;
 
 		flashApiError(error, [409, 422], t('remoteAccessTailscalePlugin.messages.setupFailed'));
@@ -473,7 +461,7 @@ const onRecheck = async (): Promise<void> => {
 	isRechecking.value = true;
 
 	try {
-		await fetchStatus();
+		await refreshStatus();
 	} catch (error) {
 		flashApiError(error, [409, 422], t('remoteAccessTailscalePlugin.messages.requestError'));
 	} finally {
@@ -492,14 +480,20 @@ const onCopyRemedyCommands = async (): Promise<void> => {
 };
 
 const onInteractiveLogin = async (): Promise<void> => {
+	if (!canLogin.value) return;
+	const generation = sessionGeneration;
 	loginErrorCode.value = null;
 
 	try {
 		const result = await login();
 
+		if (!props.visible || generation !== sessionGeneration) return;
+
 		authUrl.value = result.authUrl;
 		qr.value = result.qr;
 	} catch (error) {
+		if (!props.visible || generation !== sessionGeneration) return;
+
 		loginErrorCode.value = error instanceof RemoteAccessTailscaleApiException ? error.errorCode : null;
 
 		flashApiError(error, [409], t('remoteAccessTailscalePlugin.messages.loginFailed'));
@@ -507,10 +501,16 @@ const onInteractiveLogin = async (): Promise<void> => {
 };
 
 const onKeyedLogin = async (): Promise<void> => {
+	if (!canLogin.value) return;
+	const generation = sessionGeneration;
+	const key = authKey.value;
+	authKey.value = '';
 	loginErrorCode.value = null;
 
 	try {
-		const result = await login(authKey.value);
+		const result = await login(key);
+
+		if (!props.visible || generation !== sessionGeneration) return;
 
 		// A one-shot value: forwarded to the request and discarded immediately after, whether the
 		// sign-in succeeded or not - it is never kept around in this component either.
@@ -525,6 +525,8 @@ const onKeyedLogin = async (): Promise<void> => {
 
 		goToStep('options');
 	} catch (error) {
+		if (!props.visible || generation !== sessionGeneration) return;
+
 		authKey.value = '';
 		loginErrorCode.value = error instanceof RemoteAccessTailscaleApiException ? error.errorCode : null;
 
@@ -556,23 +558,39 @@ const onDialogUpdate = (value: boolean): void => {
 	}
 };
 
-// Progress reaching a terminal state re-checks the requirements/status and, once satisfied,
-// moves on to sign-in on its own - the admin does not have to notice the job finished and press
-// anything. Watches `effectiveProgress` (websocket, or the polled status as a fallback) so this
-// still fires when the websocket event was missed and only the poll ever saw `complete`.
+let completing = false;
+
+// Revisit completion when requirements are refreshed after a transient read failure.
 watch(
-	(): string | undefined => effectiveProgress.value?.state,
-	async (state): Promise<void> => {
-		if (state !== 'complete') {
-			return;
-		}
+	[effectiveProgress, requirements],
+	async ([completed]): Promise<void> => {
+		if (completing || !props.visible || completed?.state !== 'complete' || currentStep.value !== 'setup') return;
 
-		await fetchStatus();
+		const generation = sessionGeneration;
+		completing = true;
 
-		if (currentStep.value === 'setup') {
-			goToStep('signin');
+		try {
+			await fetchStatus();
+
+			// A second installation may have been accepted while this read was pending.
+			if (
+				props.visible &&
+				generation === sessionGeneration &&
+				effectiveProgress.value?.job === completed.job &&
+				effectiveProgress.value?.state === 'complete' &&
+				requirements.value.every((requirement) => requirement.satisfied)
+			) {
+				goToStep(status.value?.control?.authentication === 'authenticated' ? 'options' : 'signin');
+			}
+		} catch (error) {
+			if (!props.visible || generation !== sessionGeneration) return;
+
+			flashApiError(error, [422], t('remoteAccessTailscalePlugin.messages.requestError'));
+		} finally {
+			completing = false;
 		}
-	}
+	},
+	{ immediate: true }
 );
 
 // The interactive poll updates the shared status store directly - watch it here instead of
@@ -580,6 +598,8 @@ watch(
 watch(
 	(): string | undefined => status.value?.state,
 	(state): void => {
+		if (!props.visible) return;
+
 		if (state === 'connected' && currentStep.value === 'signin') {
 			goToStep('options');
 
@@ -635,7 +655,8 @@ watch(
 
 watch(
 	(): boolean => props.visible,
-	(visible): void => {
+	(visible, previous): void => {
+		if (previous !== undefined) sessionGeneration++;
 		if (visible) {
 			currentStep.value = props.initialStep;
 			authUrl.value = undefined;
@@ -645,8 +666,12 @@ watch(
 			installErrorCode.value = null;
 			loginErrorCode.value = null;
 
-			void fetchStatus();
+			startSetupPolling();
+			void fetchStatus().catch((error: unknown) => flashApiError(error, [422], t('remoteAccessTailscalePlugin.messages.requestError')));
 		} else {
+			authUrl.value = undefined;
+			qr.value = undefined;
+			authKey.value = '';
 			stopPolling();
 			stopSetupPolling();
 		}
@@ -662,6 +687,7 @@ watch(
 watch(
 	() => [status.value?.authUrl, status.value?.qr] as const,
 	([nextAuthUrl, nextQr]) => {
+		if (!props.visible || currentStep.value !== 'signin') return;
 		if (nextAuthUrl && !authUrl.value) {
 			authUrl.value = nextAuthUrl;
 		}
@@ -676,6 +702,7 @@ watch(
 // still open would otherwise keep polling until the login timeout (sign-in) or forever (setup, an
 // unmount is the only thing that stops it once the job is genuinely still running).
 onUnmounted(() => {
+	sessionGeneration++;
 	stopPolling();
 	stopSetupPolling();
 });

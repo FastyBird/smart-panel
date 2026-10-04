@@ -42,7 +42,7 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 
 	const tailscaleStatusStore = storesManager.getStore(tailscaleStatusStoreKey);
 
-	const stopPolling = (): void => {
+	const clearPolling = (): void => {
 		if (pollTimer !== null) {
 			clearInterval(pollTimer);
 			pollTimer = null;
@@ -51,8 +51,13 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 		polling.value = false;
 	};
 
+	const stopPolling = (): void => {
+		currentAttemptId++;
+		clearPolling();
+	};
+
 	const startPolling = (attemptId: number): void => {
-		stopPolling();
+		clearPolling();
 
 		polling.value = true;
 
@@ -67,7 +72,7 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 			}
 
 			if (Date.now() - startedAt >= TAILSCALE_LOGIN_POLL_TIMEOUT_MS) {
-				stopPolling();
+				clearPolling();
 
 				return;
 			}
@@ -88,7 +93,7 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 					// on `connected`/`error` left the wizard polling forever - looking "frozen" -
 					// through every one of those other terminal outcomes.
 					if (status.state !== 'pending-auth' && status.state !== 'connecting' && status.state !== 'pending-approval') {
-						stopPolling();
+						clearPolling();
 					}
 				})
 				.catch((): void => {
@@ -105,8 +110,8 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 
 		// Claimed synchronously, with no `await` between the guard above and this line, so no
 		// other `login()` call can ever observe `loggingIn.value` as `false` and slip past the
-		// guard while this attempt is in flight - `currentAttemptId` therefore only ever changes
-		// here, one call at a time.
+		// guard while this attempt is in flight. Closing the wizard invalidates the attempt
+		// separately so its late response cannot restart polling.
 		const attemptId = ++currentAttemptId;
 
 		loggingIn.value = true;
@@ -114,13 +119,20 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 		try {
 			const result = await tailscaleStatusStore.login(authKey);
 
-			if (result.state === 'pending-auth') {
+			if (attemptId !== currentAttemptId) {
+				return result;
+			}
+
+			if (result.state === 'pending-auth' || result.state === 'connecting' || result.state === 'pending-approval') {
 				startPolling(attemptId);
 			} else {
-				stopPolling();
+				clearPolling();
 			}
 
 			return result;
+		} catch (error: unknown) {
+			if (attemptId === currentAttemptId) clearPolling();
+			throw error;
 		} finally {
 			loggingIn.value = false;
 		}

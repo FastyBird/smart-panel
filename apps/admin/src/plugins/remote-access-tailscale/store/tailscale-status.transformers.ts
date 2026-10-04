@@ -67,14 +67,14 @@ export const transformTailscaleInstallResponse = (response: RemoteAccessTailscal
 /**
  * Merges a `RemoteAccessModule.Provider.Status` event into the current status snapshot -
  * mirrors `applyRemoteAccessProviderStatusEvent` in the remote-access module. The event never
- * carries `requirements`, `authUrl` or `qr` (only the plugin's own REST responses do), so those
+ * carries `control`, `requirements`, `authUrl` or `qr` (only the plugin's own REST responses do), so those
  * are left untouched - except `authUrl`/`qr`, which are cleared as soon as the node leaves
  * `pending-auth`: a stale capability URL must not linger once it no longer applies.
  */
 export const applyTailscaleProviderStatusEvent = (status: ITailscaleStatus, payload: Record<string, unknown>): ITailscaleStatus => {
 	// Reuses the remote-access module's own event schema: `RemoteAccessModule.Provider.Status` is
 	// shared infrastructure, and every provider's payload (this one included) has exactly this
-	// shape - never `requirements`, `authUrl` or `qr`, which only this plugin's own REST responses
+	// shape - never `control`, `requirements`, `authUrl` or `qr`, which only this plugin's own REST responses
 	// carry.
 	const parsed = RemoteAccessProviderStatusEventSchema.safeParse(snakeToCamel(payload));
 

@@ -104,6 +104,13 @@
 				</div>
 			</div>
 
+			<p
+				v-if="actions.disconnect"
+				class="provider-card__description text-sm"
+			>
+				{{ t('remoteAccessCloudflareTunnelPlugin.texts.disconnectExplanation') }}
+			</p>
+
 			<el-alert
 				v-if="actionErrorHintKey"
 				type="warning"
@@ -141,6 +148,7 @@
 					trigger="click"
 					:type="primaryActionType"
 					:loading="primaryActionLoading"
+					:disabled="isActingOnService || isResetting"
 					@click="onPrimaryAction"
 					@command="onCommand"
 				>
@@ -151,6 +159,7 @@
 								v-for="key in secondaryActionKeys"
 								:key="key"
 								:command="key"
+								:disabled="isActingOnService || isResetting"
 							>
 								{{ actionLabel(key) }}
 							</el-dropdown-item>
@@ -161,6 +170,7 @@
 		</template>
 
 		<cloudflare-tunnel-setup-wizard
+			v-if="wizardVisible"
 			v-model:visible="wizardVisible"
 			:initial-step="wizardStep"
 		/>
@@ -168,7 +178,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, ref } from 'vue';
+import { computed, onBeforeMount, onScopeDispose, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElCard, ElDropdown, ElDropdownItem, ElDropdownMenu, ElMessageBox, ElTag } from 'element-plus';
@@ -177,7 +187,7 @@ import { Icon } from '@iconify/vue';
 
 import { useFlashMessage } from '../../../common';
 import { useSession } from '../../../modules/auth/composables/composables';
-import { useExtension, useServiceActions } from '../../../modules/extensions';
+import { useExtension, useServiceActions, useServices } from '../../../modules/extensions';
 import { type IRemoteAccessProviderCardProps, useRemoteAccessStatus } from '../../../modules/remote-access';
 import { ExtensionsModuleServiceOwnerKind, UsersModuleUserRole } from '../../../openapi.constants';
 import { useCloudflareTunnelStatus } from '../composables';
@@ -205,9 +215,30 @@ const { t } = useI18n();
 const flashMessage = useFlashMessage();
 
 const { profile } = useSession();
-const { status, requirements, isResetting, fetchStatus, reset } = useCloudflareTunnelStatus();
+const { status, requirements, isResetting, fetchStatus, refreshStatus, reset } = useCloudflareTunnelStatus();
 const { fetchStatus: fetchRemoteAccessStatus } = useRemoteAccessStatus();
 const { startService, stopService, restartService, isActing } = useServiceActions();
+const { services, fetchServices } = useServices();
+const service = computed(() =>
+	services.value.find(
+		(item) =>
+			item.extensionKind === ExtensionsModuleServiceOwnerKind.plugin &&
+			item.extensionType === REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME &&
+			item.serviceId === 'tunnel'
+	)
+);
+// The provider snapshot has no lifecycle field; use the existing Extensions service contract.
+// Refresh lifecycle after state events and periodically when those events are lost.
+watch(
+	() => status.value?.state,
+	() => {
+		void fetchServices().catch(() => {});
+	}
+);
+const serviceReconciliationTimer = setInterval(() => {
+	void fetchServices().catch(() => {});
+}, 30_000);
+onScopeDispose(() => clearInterval(serviceReconciliationTimer));
 // Only ever reads the extensions store - never triggers its own fetch, so the documentation link
 // simply stays hidden until something else (e.g. the Extensions page) has loaded the list. Purely
 // presentational: no new network call is introduced by this card.
@@ -217,7 +248,7 @@ const actionErrorCode = ref<string | null>(null);
 
 onBeforeMount(async (): Promise<void> => {
 	try {
-		await fetchStatus();
+		await Promise.all([fetchStatus(), fetchServices()]);
 
 		// A page reload during a running privileged setup job must resume the wizard's progress
 		// view purely from this same `GET /status` read - no extra endpoint, no remembering
@@ -285,7 +316,14 @@ const stateTagType = computed<'success' | 'warning' | 'danger' | 'info'>(() => {
 
 const isOwner = computed<boolean>(() => profile.value?.role === UsersModuleUserRole.owner);
 
-const actions = computed(() => resolveCloudflareTunnelProviderActions({ state: displayState.value, isOwner: isOwner.value }));
+const actions = computed(() =>
+	resolveCloudflareTunnelProviderActions({
+		state: displayState.value,
+		isOwner: isOwner.value,
+		isAdmin: profile.value?.role === UsersModuleUserRole.admin,
+		service: service.value,
+	})
+);
 
 const isActingOnService = computed<boolean>(() =>
 	isActing(ExtensionsModuleServiceOwnerKind.plugin, REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME, 'tunnel')
@@ -310,7 +348,7 @@ const openWizard = (step: CloudflareTunnelWizardStep): void => {
 // whether it succeeded or failed - `startService`/`stopService`/`restartService` never throw (they
 // report failure via their own return value/toast), so a plain sequential `finally` is enough.
 const refreshAfterServiceAction = async (): Promise<void> => {
-	await Promise.allSettled([fetchStatus(), fetchRemoteAccessStatus()]);
+	await Promise.allSettled([refreshStatus(), fetchRemoteAccessStatus(), fetchServices()]);
 };
 
 const onConnect = async (): Promise<void> => {
@@ -350,12 +388,12 @@ const onRemove = (): void => {
 				await reset();
 
 				flashMessage.success(t('remoteAccessCloudflareTunnelPlugin.messages.tunnelRemoved'));
-
-				await fetchRemoteAccessStatus();
 			} catch (error) {
 				actionErrorCode.value = error instanceof RemoteAccessCloudflareTunnelApiException ? error.errorCode : null;
 
-				flashApiError(error, [422], t('remoteAccessCloudflareTunnelPlugin.messages.tunnelRemoveFailed'));
+				flashApiError(error, [409, 422], t('remoteAccessCloudflareTunnelPlugin.messages.tunnelRemoveFailed'));
+			} finally {
+				await refreshAfterServiceAction();
 			}
 		})
 		.catch((): void => {
@@ -412,6 +450,7 @@ const actionLabel = (key: keyof ICloudflareTunnelProviderActions): string => {
 };
 
 const runAction = (key: keyof ICloudflareTunnelProviderActions): void => {
+	if (!actions.value[key] || isActingOnService.value || isResetting.value) return;
 	switch (key) {
 		case 'setup':
 			openWizard('install');

@@ -21,7 +21,9 @@
 	"texts": {
 		"cardDescription": "Soukromý přístup přes váš tailnet, s HTTPS pomocí Tailscale Serve.",
 		"funnelWarning": "Funnel zveřejní tuto instalaci na veřejném internetu. Jedinou ochranou je přihlášení do Smart Panelu.",
-		"cannotBeUsedYetTitle": "Zatím nelze použít"
+		"cannotBeUsedYetTitle": "Zatím nelze použít",
+		"disconnectExplanation": "Odpojení ukončí aktuální relaci a zachová přihlášení. Aby Tailscale zůstal vypnutý i po restartu aplikace, vypněte plugin v jeho nastavení.",
+		"operationInProgress": "Probíhá operace. Odpojením můžete zrušit přihlašování nebo připojování."
 	},
 	"buttons": {
 		"setup": "Nastavit",
@@ -97,7 +99,9 @@
 		"config": {
 			"edited": "Konfigurace Tailscale byla úspěšně aktualizována",
 			"notEdited": "Aktualizace konfigurace Tailscale se nezdařila"
-		}
+		},
+		"connectFailed": "Nepodařilo se připojit Tailscale",
+		"disconnectFailed": "Nepodařilo se odpojit Tailscale"
 	},
 	"errors": {
 		"operatorNotGranted": "Servisní účet Smart Panelu nemá udělenou roli operátora Tailscale. Spusťte níže uvedený příkaz a zkuste to znovu.",

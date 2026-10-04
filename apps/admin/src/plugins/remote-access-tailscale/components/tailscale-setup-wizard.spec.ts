@@ -1,4 +1,4 @@
-import { nextTick, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -21,17 +21,30 @@ const fns = vi.hoisted(() => ({
 	login: vi.fn(),
 	stopPolling: vi.fn(),
 	stopSetupPolling: vi.fn(),
+	startSetupPolling: vi.fn(),
 	fetchConfigPlugin: vi.fn(),
 	flashError: vi.fn(),
 	flashSuccess: vi.fn(),
 	copy: vi.fn(),
 }));
 
-const status = ref<{ state: string; endpoints: { url: string; label: string }[]; authUrl?: string; qr?: string; message?: string } | null>(null);
+const status = ref<{
+	state: string;
+	endpoints: { url: string; label: string }[];
+	authUrl?: string;
+	qr?: string;
+	message?: string;
+	control?: { enabled: boolean; authentication: string; operation: string | null; availableActions: string[] };
+} | null>(null);
 const requirements = ref<{ code: string; satisfied: boolean; message: string; remedy: { commands: string[]; note: string | null } | null }[]>([]);
 const setup = ref<{ state: string; step: string | null; message: string | null } | null>(null);
 const privilegedSetup = ref<{ available: boolean; reason: string | null } | null>({ available: true, reason: null });
-const progress = ref<{ state: string; step?: string; message?: string } | null>(null);
+const progress = ref<{
+	state: string;
+	step?: string;
+	message?: string;
+	control?: { enabled: boolean; authentication: string; operation: string | null; availableActions: string[] };
+} | null>(null);
 const isInstalling = ref(false);
 const isLoggingIn = ref(false);
 const isPolling = ref(false);
@@ -67,14 +80,19 @@ vi.mock('../composables', () => ({
 		isLoggingOut: ref(false),
 		isResettingPreferences: ref(false),
 		fetchStatus: fns.fetchStatus,
+		refreshStatus: fns.fetchStatus,
 		logout: vi.fn(),
 		resetPreferences: vi.fn(),
 	}),
 	useTailscaleSetup: () => ({
-		progress,
+		progress: computed(() => {
+			if (setup.value && setup.value.state !== 'running') return setup.value;
+			return progress.value ?? setup.value;
+		}),
 		isInstalling,
 		install: fns.install,
 		stopPolling: fns.stopSetupPolling,
+		startPolling: fns.startSetupPolling,
 	}),
 	useTailscaleLogin: () => ({
 		isLoggingIn,
@@ -114,7 +132,11 @@ const findAnyHintAlert = (wrapper: ReturnType<typeof mountWizard>) =>
 
 describe('TailscaleSetupWizard', () => {
 	beforeEach(() => {
-		status.value = null;
+		status.value = {
+			state: 'setup-required',
+			endpoints: [],
+			control: { enabled: true, authentication: 'required', operation: null, availableActions: ['login'] },
+		};
 		requirements.value = [];
 		setup.value = null;
 		privilegedSetup.value = { available: true, reason: null };
@@ -132,6 +154,36 @@ describe('TailscaleSetupWizard', () => {
 		fns.flashError.mockReset();
 		fns.flashSuccess.mockReset();
 		fns.copy.mockReset().mockResolvedValue(true);
+	});
+
+	it.each([false, true])('ignores a delayed completion-read failure after closing the wizard (reopened: %s)', async (reopened) => {
+		const wrapper = mountWizard('setup');
+		await flushPromises();
+		let rejectRead!: (error: Error) => void;
+		fns.fetchStatus.mockImplementationOnce(
+			() =>
+				new Promise<void>((_, reject) => {
+					rejectRead = reject;
+				})
+		);
+		progress.value = { state: 'complete' };
+		await flushPromises();
+		await wrapper.setProps({ visible: false });
+		if (reopened) await wrapper.setProps({ visible: true });
+		rejectRead(new Error('delayed status failure'));
+		await flushPromises();
+		expect(fns.flashError).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('reports a completion-read failure in the current visible session', async () => {
+		const wrapper = mountWizard('setup');
+		await flushPromises();
+		fns.fetchStatus.mockRejectedValueOnce(new Error('current status failure'));
+		progress.value = { state: 'complete' };
+		await flushPromises();
+		expect(fns.flashError).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.requestError');
+		wrapper.unmount();
 	});
 
 	it('opens on the step the card decided (setup)', () => {
@@ -355,6 +407,68 @@ describe('TailscaleSetupWizard', () => {
 
 			expect(fns.flashError).not.toHaveBeenCalled();
 		});
+	});
+
+	it('ignores an interactive login result from a closed and reopened session', async () => {
+		let resolveLogin!: (result: { state: string; authUrl: string; qr: string }) => void;
+		fns.login.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolveLogin = resolve;
+				})
+		);
+		const wrapper = mountWizard('signin');
+		wrapper.findAllComponents({ name: 'ElButton' })[0]!.vm.$emit('click');
+		await wrapper.setProps({ visible: false });
+		await wrapper.setProps({ visible: true });
+		resolveLogin({ state: 'pending-auth', authUrl: 'https://login.tailscale.com/a/stale', qr: 'stale-qr' });
+		await flushPromises();
+		expect(wrapper.text()).not.toContain('https://login.tailscale.com/a/stale');
+		expect(wrapper.find('img').exists()).toBe(false);
+		expect(stepsProp(wrapper)).toBe(1);
+	});
+
+	it('ignores a keyed login result from a closed session and clears the key', async () => {
+		let resolveLogin!: (result: { state: string }) => void;
+		fns.login.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolveLogin = resolve;
+				})
+		);
+		const wrapper = mountWizard('signin');
+		wrapper.findComponent({ name: 'ElInput' }).vm.$emit('update:model-value', 'private-key');
+		await nextTick();
+		wrapper.findAllComponents({ name: 'ElButton' })[1]!.vm.$emit('click');
+		await wrapper.setProps({ visible: false });
+		resolveLogin({ state: 'connected' });
+		await flushPromises();
+		expect(fns.login).toHaveBeenCalledWith('private-key');
+		expect(wrapper.findComponent({ name: 'ElInput' }).props('modelValue')).toBe('');
+		expect(stepsProp(wrapper)).toBe(1);
+	});
+
+	it.each([null, { enabled: false, authentication: 'required', operation: null, availableActions: ['login'] }])(
+		'disables sign-in before controls load or while disabled (%s)',
+		(control) => {
+			status.value = control ? { state: 'disconnected', endpoints: [], control } : null;
+			const wrapper = mountWizard('signin');
+			expect(wrapper.findAllComponents({ name: 'ElButton' })[0]!.props('disabled')).toBe(true);
+		}
+	);
+
+	it('gates sign-in on explicit available actions and operation ownership', async () => {
+		status.value = {
+			state: 'disconnected',
+			endpoints: [],
+			control: { enabled: true, authentication: 'required', operation: 'stopping', availableActions: [] },
+		};
+		const wrapper = mountWizard('signin');
+		const button = wrapper.findAllComponents({ name: 'ElButton' })[0]!;
+		expect(button.props('disabled')).toBe(true);
+		button.vm.$emit('click');
+		await flushPromises();
+		expect(fns.login).not.toHaveBeenCalled();
 	});
 
 	describe('login error messages', () => {

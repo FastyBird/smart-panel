@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -15,6 +15,7 @@ const fns = vi.hoisted(() => ({
 	fetchStatus: vi.fn(),
 	install: vi.fn(),
 	stopSetupPolling: vi.fn(),
+	startSetupPolling: vi.fn(),
 	fetchConfigPlugin: vi.fn(),
 	flashError: vi.fn(),
 	flashSuccess: vi.fn(),
@@ -62,13 +63,18 @@ vi.mock('../composables', () => ({
 		isLoading: ref(false),
 		isResetting: ref(false),
 		fetchStatus: fns.fetchStatus,
+		refreshStatus: fns.fetchStatus,
 		reset: vi.fn(),
 	}),
 	useCloudflareTunnelSetup: () => ({
-		progress,
+		progress: computed(() => {
+			if (setup.value && setup.value.state !== 'running') return setup.value;
+			return progress.value ?? setup.value;
+		}),
 		isInstalling,
 		install: fns.install,
 		stopPolling: fns.stopSetupPolling,
+		startPolling: fns.startSetupPolling,
 	}),
 }));
 
@@ -108,6 +114,36 @@ describe('CloudflareTunnelSetupWizard', () => {
 		fns.flashError.mockReset();
 		fns.flashSuccess.mockReset();
 		fns.copy.mockReset().mockResolvedValue(true);
+	});
+
+	it.each([false, true])('ignores a delayed completion-read failure after closing the wizard (reopened: %s)', async (reopened) => {
+		const wrapper = mountWizard('install');
+		await flushPromises();
+		let rejectRead!: (error: Error) => void;
+		fns.fetchStatus.mockImplementationOnce(
+			() =>
+				new Promise<void>((_, reject) => {
+					rejectRead = reject;
+				})
+		);
+		progress.value = { state: 'complete' };
+		await flushPromises();
+		await wrapper.setProps({ visible: false });
+		if (reopened) await wrapper.setProps({ visible: true });
+		rejectRead(new Error('delayed status failure'));
+		await flushPromises();
+		expect(fns.flashError).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('reports a completion-read failure in the current visible session', async () => {
+		const wrapper = mountWizard('install');
+		await flushPromises();
+		fns.fetchStatus.mockRejectedValueOnce(new Error('current status failure'));
+		progress.value = { state: 'complete' };
+		await flushPromises();
+		expect(fns.flashError).toHaveBeenCalledWith('remoteAccessCloudflareTunnelPlugin.messages.requestError');
+		wrapper.unmount();
 	});
 
 	it('opens on the step the card decided (install)', () => {
@@ -169,7 +205,7 @@ describe('CloudflareTunnelSetupWizard', () => {
 		expect(errorAlert?.props('title')).toBe('apt-get failed');
 	});
 
-	it('refetches status right after a successful install, so the polling fallback has something current even if the Setup.Progress websocket event is lost', async () => {
+	it('delegates accepted-install reconciliation to the setup composable', async () => {
 		const wrapper = mountWizard('install');
 
 		fns.fetchStatus.mockClear();
@@ -178,7 +214,7 @@ describe('CloudflareTunnelSetupWizard', () => {
 		await flushPromises();
 
 		expect(fns.install).toHaveBeenCalled();
-		expect(fns.fetchStatus).toHaveBeenCalled();
+		expect(fns.fetchStatus).not.toHaveBeenCalled();
 	});
 
 	describe('install error messages', () => {

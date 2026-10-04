@@ -89,6 +89,7 @@ export const useCloudflareTunnelStatusStore = defineStore<'remote_access_cloudfl
 
 			const ticket = order.request();
 			const controller = new AbortController();
+			const timeout = setTimeout(() => controller.abort(new Error('Cloudflare Tunnel status request timed out.')), 10_000);
 			getController = controller;
 			const fetchPromise = (async (): Promise<ICloudflareTunnelStatus> => {
 				semaphore.value.getting = true;
@@ -124,6 +125,7 @@ export const useCloudflareTunnelStatusStore = defineStore<'remote_access_cloudfl
 					}
 					throw error;
 				} finally {
+					clearTimeout(timeout);
 					if (order.currentRequest(ticket)) {
 						semaphore.value.getting = false;
 						resynchronizing = false;
@@ -142,9 +144,12 @@ export const useCloudflareTunnelStatusStore = defineStore<'remote_access_cloudfl
 
 		const install = async (): Promise<ICloudflareTunnelInstallResult> => {
 			semaphore.value.installing = true;
+			setupProgress.value = null;
+			const controller = new AbortController();
+			const timeout = setTimeout(() => controller.abort(new Error('Cloudflare Tunnel installation request timed out.')), 15_000);
 
 			try {
-				const { data: responseData, error, response } = await backend.client.POST(CLOUDFLARE_TUNNEL_INSTALL_PATH);
+				const { data: responseData, error, response } = await backend.client.POST(CLOUDFLARE_TUNNEL_INSTALL_PATH, { signal: controller.signal });
 
 				if (typeof responseData !== 'undefined') {
 					return transformCloudflareTunnelInstallResponse(responseData.data);
@@ -160,6 +165,7 @@ export const useCloudflareTunnelStatusStore = defineStore<'remote_access_cloudfl
 					getErrorCode<RemoteAccessCloudflareTunnelPluginCreateInstallOperation>(error)
 				);
 			} finally {
+				clearTimeout(timeout);
 				semaphore.value.installing = false;
 			}
 		};
@@ -167,9 +173,11 @@ export const useCloudflareTunnelStatusStore = defineStore<'remote_access_cloudfl
 		const reset = async (): Promise<ICloudflareTunnelStatus> => {
 			const ticket = order.request();
 			semaphore.value.resetting = true;
+			const controller = new AbortController();
+			const timeout = setTimeout(() => controller.abort(new Error('Cloudflare Tunnel reset request timed out.')), 45_000);
 
 			try {
-				const { data: responseData, error, response } = await backend.client.POST(CLOUDFLARE_TUNNEL_RESET_PATH);
+				const { data: responseData, error, response } = await backend.client.POST(CLOUDFLARE_TUNNEL_RESET_PATH, { signal: controller.signal });
 
 				if (typeof responseData !== 'undefined') {
 					return acceptStatus(transformCloudflareTunnelStatusResponse(responseData.data), ticket);
@@ -185,6 +193,7 @@ export const useCloudflareTunnelStatusStore = defineStore<'remote_access_cloudfl
 					getErrorCode<RemoteAccessCloudflareTunnelPluginCreateResetOperation>(error)
 				);
 			} finally {
+				clearTimeout(timeout);
 				semaphore.value.resetting = false;
 			}
 		};

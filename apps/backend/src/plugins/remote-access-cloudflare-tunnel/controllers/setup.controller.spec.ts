@@ -1,7 +1,10 @@
+import { instanceToPlain } from 'class-transformer';
+
 import { ConflictException, UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { PlatformService } from '../../../modules/platform/services/platform.service';
 import { RemoteAccessProviderStatus } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
 import { RemoteAccessStatusService } from '../../../modules/remote-access/services/remote-access-status.service';
 import { PrivilegedWorkerUnavailableException } from '../../../modules/system/system.exceptions';
@@ -66,6 +69,10 @@ describe('SetupController', () => {
 				},
 				{ provide: CloudflareTunnelManagedService, useValue: tunnelManagedService },
 				{ provide: ConfigService, useValue: configService },
+				{
+					provide: PlatformService,
+					useValue: { getPrivilegedWorkerSupport: jest.fn().mockResolvedValue({ supported: true, reason: null }) },
+				},
 			],
 		}).compile();
 
@@ -150,6 +157,11 @@ describe('SetupController', () => {
 
 			expect(response.data.type).toBe('remote-access-cloudflare-tunnel-plugin');
 			expect(response.data.state).toBe('setup-required');
+			expect(response.data.privilegedSetup).toEqual({ available: true, reason: null });
+			expect(instanceToPlain(response.data, { excludeExtraneousValues: true }).privileged_setup).toEqual({
+				available: true,
+				reason: null,
+			});
 		});
 
 		it('tolerates a stop failure and still clears the configuration', async () => {

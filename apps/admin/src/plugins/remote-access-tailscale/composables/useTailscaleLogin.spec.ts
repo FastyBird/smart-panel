@@ -31,6 +31,47 @@ describe('useTailscaleLogin', () => {
 		vi.useRealTimers();
 	});
 
+	it('does not restart polling when a pending login completes after the wizard closes', async () => {
+		vi.useFakeTimers();
+		let resolve!: (result: { state: string }) => void;
+		login.mockReturnValue(
+			new Promise((done) => {
+				resolve = done;
+			})
+		);
+		const composable = useTailscaleLogin();
+		const pending = composable.login();
+		composable.stopPolling();
+		resolve({ state: 'pending-auth' });
+		await pending;
+		await vi.advanceTimersByTimeAsync(6_000);
+		expect(composable.isPolling.value).toBe(false);
+		expect(get).not.toHaveBeenCalled();
+		expect(composable.isLoggingIn.value).toBe(false);
+	});
+
+	it.each(['connecting', 'pending-approval'])('reconciles a %s login result even if completion events are lost', async (state) => {
+		vi.useFakeTimers();
+		login.mockResolvedValue({ state });
+		get.mockResolvedValue({ state: 'connected' });
+		const composable = useTailscaleLogin();
+		await composable.login();
+		expect(composable.isPolling.value).toBe(true);
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(composable.isPolling.value).toBe(false);
+	});
+
+	it('clears the previous poll when a replacement login fails', async () => {
+		vi.useFakeTimers();
+		login.mockResolvedValueOnce({ state: 'pending-auth' }).mockRejectedValueOnce(new Error('network failure'));
+		const composable = useTailscaleLogin();
+		await composable.login();
+		await expect(composable.login()).rejects.toThrow('network failure');
+		expect(composable.isPolling.value).toBe(false);
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(get).not.toHaveBeenCalled();
+	});
+
 	it('does not poll when a keyed login resolves connected immediately', async () => {
 		login.mockResolvedValue({ state: 'connected' });
 		const { login: doLogin, isPolling } = useTailscaleLogin();

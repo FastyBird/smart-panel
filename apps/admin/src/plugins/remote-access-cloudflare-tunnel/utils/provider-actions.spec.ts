@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { RemoteAccessModuleProviderState } from '../../../openapi.constants';
+import { ExtensionsModuleServiceState, type RemoteAccessModuleProviderState } from '../../../openapi.constants';
 import { RemoteAccessCloudflareTunnelApiException } from '../remote-access-cloudflare-tunnel.exceptions';
 import type { ICloudflareTunnelRequirement } from '../store/cloudflare-tunnel-status.store.types';
 
@@ -27,52 +27,108 @@ const ALL_STATES: RemoteAccessModuleProviderState[] = [
 
 describe('resolveCloudflareTunnelProviderActions', () => {
 	it.each(ALL_STATES)('offers setup to an owner only for not-installed (state: %s)', (state) => {
-		const actions = resolveCloudflareTunnelProviderActions({ state, isOwner: true });
+		const actions = resolveCloudflareTunnelProviderActions({ state, isAdmin: false, isOwner: true });
 
 		expect(actions.setup).toBe(state === 'not-installed');
 	});
 
 	it.each(ALL_STATES)('never offers setup to a non-owner because `POST /install` is owner-only (state: %s)', (state) => {
-		const actions = resolveCloudflareTunnelProviderActions({ state, isOwner: false });
+		const actions = resolveCloudflareTunnelProviderActions({ state, isAdmin: true, isOwner: false });
 
 		expect(actions.setup).toBe(false);
 	});
 
 	it.each(ALL_STATES)('offers configure to an owner only for setup-required (state: %s)', (state) => {
-		const actions = resolveCloudflareTunnelProviderActions({ state, isOwner: true });
+		const actions = resolveCloudflareTunnelProviderActions({ state, isAdmin: false, isOwner: true });
 
 		expect(actions.configure).toBe(state === 'setup-required');
 	});
 
 	it.each(ALL_STATES)('never offers configure to a non-owner (state: %s)', (state) => {
-		const actions = resolveCloudflareTunnelProviderActions({ state, isOwner: false });
+		const actions = resolveCloudflareTunnelProviderActions({ state, isAdmin: true, isOwner: false });
 
 		expect(actions.configure).toBe(false);
 	});
 
 	it('offers connect only while disconnected', () => {
-		expect(resolveCloudflareTunnelProviderActions({ state: 'disconnected' as RemoteAccessModuleProviderState, isOwner: false }).connect).toBe(true);
-		expect(resolveCloudflareTunnelProviderActions({ state: 'connected' as RemoteAccessModuleProviderState, isOwner: false }).connect).toBe(false);
+		expect(
+			resolveCloudflareTunnelProviderActions({
+				state: 'disconnected' as RemoteAccessModuleProviderState,
+				service: { state: ExtensionsModuleServiceState.stopped, enabled: true },
+				isAdmin: true,
+				isOwner: false,
+			}).connect
+		).toBe(true);
+		expect(
+			resolveCloudflareTunnelProviderActions({
+				state: 'connected' as RemoteAccessModuleProviderState,
+				service: { state: ExtensionsModuleServiceState.started, enabled: true },
+				isAdmin: true,
+				isOwner: false,
+			}).connect
+		).toBe(false);
 	});
 
 	it('offers disconnect while connected or connecting', () => {
-		expect(resolveCloudflareTunnelProviderActions({ state: 'connected' as RemoteAccessModuleProviderState, isOwner: false }).disconnect).toBe(true);
-		expect(resolveCloudflareTunnelProviderActions({ state: 'connecting' as RemoteAccessModuleProviderState, isOwner: false }).disconnect).toBe(true);
-		expect(resolveCloudflareTunnelProviderActions({ state: 'disconnected' as RemoteAccessModuleProviderState, isOwner: false }).disconnect).toBe(
-			false
-		);
+		expect(
+			resolveCloudflareTunnelProviderActions({
+				state: 'connected' as RemoteAccessModuleProviderState,
+				service: { state: ExtensionsModuleServiceState.started, enabled: true },
+				isAdmin: true,
+				isOwner: false,
+			}).disconnect
+		).toBe(true);
+		expect(
+			resolveCloudflareTunnelProviderActions({
+				state: 'connecting' as RemoteAccessModuleProviderState,
+				service: { state: ExtensionsModuleServiceState.started, enabled: true },
+				isAdmin: true,
+				isOwner: false,
+			}).disconnect
+		).toBe(true);
+		expect(
+			resolveCloudflareTunnelProviderActions({
+				state: 'disconnected' as RemoteAccessModuleProviderState,
+				service: { state: ExtensionsModuleServiceState.stopped, enabled: true },
+				isAdmin: true,
+				isOwner: false,
+			}).disconnect
+		).toBe(false);
 	});
 
 	it('offers reconnect while connected or on error, not while disconnected', () => {
-		expect(resolveCloudflareTunnelProviderActions({ state: 'connected' as RemoteAccessModuleProviderState, isOwner: false }).reconnect).toBe(true);
-		expect(resolveCloudflareTunnelProviderActions({ state: 'error' as RemoteAccessModuleProviderState, isOwner: false }).reconnect).toBe(true);
-		expect(resolveCloudflareTunnelProviderActions({ state: 'disconnected' as RemoteAccessModuleProviderState, isOwner: false }).reconnect).toBe(
-			false
-		);
+		expect(
+			resolveCloudflareTunnelProviderActions({
+				state: 'connected' as RemoteAccessModuleProviderState,
+				service: { state: ExtensionsModuleServiceState.started, enabled: true },
+				isAdmin: true,
+				isOwner: false,
+			}).reconnect
+		).toBe(true);
+		expect(
+			resolveCloudflareTunnelProviderActions({
+				state: 'error' as RemoteAccessModuleProviderState,
+				service: { state: ExtensionsModuleServiceState.started, enabled: true },
+				isAdmin: true,
+				isOwner: false,
+			}).reconnect
+		).toBe(true);
+		expect(
+			resolveCloudflareTunnelProviderActions({
+				state: 'disconnected' as RemoteAccessModuleProviderState,
+				service: { state: ExtensionsModuleServiceState.stopped, enabled: true },
+				isAdmin: true,
+				isOwner: false,
+			}).reconnect
+		).toBe(false);
 	});
 
 	it('offers nothing at all for an unsupported platform to a non-owner', () => {
-		const actions = resolveCloudflareTunnelProviderActions({ state: 'unsupported' as RemoteAccessModuleProviderState, isOwner: false });
+		const actions = resolveCloudflareTunnelProviderActions({
+			state: 'unsupported' as RemoteAccessModuleProviderState,
+			isAdmin: true,
+			isOwner: false,
+		});
 
 		expect(actions).toEqual({
 			setup: false,
@@ -84,23 +140,70 @@ describe('resolveCloudflareTunnelProviderActions', () => {
 		});
 	});
 
+	it('offers reconnect instead of invalid start while disconnected with an already-started supervisor', () => {
+		const actions = resolveCloudflareTunnelProviderActions({
+			state: 'disconnected' as RemoteAccessModuleProviderState,
+			service: { state: ExtensionsModuleServiceState.started, enabled: true },
+			isAdmin: true,
+			isOwner: false,
+		});
+		expect(actions.connect).toBe(false);
+		expect(actions.reconnect).toBe(true);
+	});
+
+	it.each([ExtensionsModuleServiceState.starting, ExtensionsModuleServiceState.stopping])(
+		'does not start or restart a transitioning service (%s)',
+		(state) => {
+			const actions = resolveCloudflareTunnelProviderActions({
+				state: 'disconnected' as RemoteAccessModuleProviderState,
+				service: { state, enabled: true },
+				isAdmin: true,
+				isOwner: false,
+			});
+			expect(actions.connect).toBe(false);
+			expect(actions.reconnect).toBe(false);
+		}
+	);
+
+	it('hides lifecycle actions for regular users and disabled plugins', () => {
+		for (const options of [
+			{ isAdmin: false, enabled: true },
+			{ isAdmin: true, enabled: false },
+		]) {
+			const actions = resolveCloudflareTunnelProviderActions({
+				state: 'disconnected' as RemoteAccessModuleProviderState,
+				service: { state: ExtensionsModuleServiceState.stopped, enabled: options.enabled },
+				isAdmin: options.isAdmin,
+				isOwner: false,
+			});
+			expect(actions.connect).toBe(false);
+		}
+	});
+
 	describe('remove (owner-only, mirrors POST /reset)', () => {
 		it.each(['not-installed', 'unsupported'] as RemoteAccessModuleProviderState[])(
 			'hides remove from an owner while the platform/binary prerequisites are unmet (state: %s)',
 			(state) => {
-				expect(resolveCloudflareTunnelProviderActions({ state, isOwner: true }).remove).toBe(false);
+				expect(resolveCloudflareTunnelProviderActions({ state, isAdmin: false, isOwner: true }).remove).toBe(false);
 			}
 		);
 
 		it.each(['setup-required', 'connecting', 'connected', 'disconnected', 'error'] as RemoteAccessModuleProviderState[])(
 			'offers remove to an owner once the platform/binary prerequisites are met (state: %s)',
 			(state) => {
-				expect(resolveCloudflareTunnelProviderActions({ state, isOwner: true }).remove).toBe(true);
+				expect(resolveCloudflareTunnelProviderActions({ state, isAdmin: false, isOwner: true }).remove).toBe(true);
 			}
 		);
 
 		it('hides remove from a non-owner even once the prerequisites are met', () => {
-			expect(resolveCloudflareTunnelProviderActions({ state: 'connected' as RemoteAccessModuleProviderState, isOwner: false }).remove).toBe(false);
+			expect(
+				resolveCloudflareTunnelProviderActions({
+					state: 'connected' as RemoteAccessModuleProviderState,
+					service: { state: ExtensionsModuleServiceState.started, enabled: true },
+					isAdmin: true,
+					isOwner: false,
+				}).remove
+			).toBe(false);
 		});
 	});
 });

@@ -12,6 +12,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
+import { PlatformService } from '../../../modules/platform/services/platform.service';
 import {
 	RemoteAccessAdvisoryModel,
 	RemoteAccessEndpointModel,
@@ -30,6 +31,7 @@ import {
 	RemoteAccessCloudflareTunnelPluginInstallResponseModel,
 } from '../models/install.model';
 import {
+	RemoteAccessCloudflareTunnelPluginPrivilegedSetupModel,
 	RemoteAccessCloudflareTunnelPluginRequirementModel,
 	RemoteAccessCloudflareTunnelPluginStatusModel,
 	RemoteAccessCloudflareTunnelPluginStatusResponseModel,
@@ -65,6 +67,7 @@ export class SetupController {
 		private readonly statusService: RemoteAccessStatusService,
 		private readonly tunnelManagedService: CloudflareTunnelManagedService,
 		private readonly configService: ConfigService,
+		private readonly platformService: PlatformService,
 	) {}
 
 	@ApiOperation({
@@ -159,12 +162,15 @@ export class SetupController {
 		return this.buildStatusResponse();
 	}
 
-	/** Shared by `reset()` — the same composition `StatusController.getStatus()` uses, minus the setup/privileged-setup fields. */
+	/** Reset returns the complete status contract consumed by the admin store. */
 	private async buildStatusResponse(): Promise<RemoteAccessCloudflareTunnelPluginStatusResponseModel> {
-		const observed = await this.statusService.getProviderSnapshot<CloudflareTunnelObservationMetadata>(
-			REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME,
-			{ fresh: true },
-		);
+		const [observed, privilegedWorkerSupport] = await Promise.all([
+			this.statusService.getProviderSnapshot<CloudflareTunnelObservationMetadata>(
+				REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME,
+				{ fresh: true },
+			),
+			this.platformService.getPrivilegedWorkerSupport(),
+		]);
 		// A provider event can arrive while the platform probe is pending.
 		const snapshot =
 			this.statusService.getCachedProviderSnapshot<CloudflareTunnelObservationMetadata>(
@@ -186,6 +192,10 @@ export class SetupController {
 		data.updatedAt = status.updatedAt;
 		data.requirements = toInstance(RemoteAccessCloudflareTunnelPluginRequirementModel, requirements);
 		data.setup = null;
+		const privilegedSetup = new RemoteAccessCloudflareTunnelPluginPrivilegedSetupModel();
+		privilegedSetup.available = privilegedWorkerSupport.supported;
+		privilegedSetup.reason = privilegedWorkerSupport.reason;
+		data.privilegedSetup = privilegedSetup;
 
 		const response = new RemoteAccessCloudflareTunnelPluginStatusResponseModel();
 		response.data = data;

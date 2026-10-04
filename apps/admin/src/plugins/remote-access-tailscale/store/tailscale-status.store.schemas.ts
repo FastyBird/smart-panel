@@ -56,7 +56,17 @@ export const TailscalePrivilegedSetupSchema = z.object({
 	reason: z.string().nullable(),
 });
 
+export const TailscaleControlSchema = z.object({
+	enabled: z.boolean(),
+	serviceState: z.nativeEnum(ExtensionsModuleServiceState),
+	authentication: z.nativeEnum(RemoteAccessTailscalePluginAuthentication),
+	operation: z.nativeEnum(RemoteAccessTailscalePluginOperation).nullable(),
+	availableActions: z.array(z.nativeEnum(RemoteAccessTailscalePluginControlAction)),
+});
+
 export const TailscaleStatusSchema = z.object({
+	// Older responses may omit control; the UI fails closed until a current snapshot arrives.
+	control: TailscaleControlSchema.optional(),
 	epoch: z.string().optional(),
 	revision: z.number().int().nonnegative().optional(),
 	type: z.string(),
@@ -107,6 +117,8 @@ export const TailscaleSetupProgressSchema = z.object({
 
 export const TailscaleStatusStateSemaphoreSchema = z.object({
 	getting: z.boolean(),
+	connecting: z.boolean(),
+	disconnecting: z.boolean(),
 	installing: z.boolean(),
 	loggingIn: z.boolean(),
 	loggingOut: z.boolean(),

@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
+import { useRemoteAccessStatusReconciliation } from '../../../modules/remote-access/composables/useRemoteAccessStatusReconciliation';
 import type {
 	ICloudflareTunnelPrivilegedSetup,
 	ICloudflareTunnelRequirement,
@@ -13,18 +14,15 @@ import { cloudflareTunnelStatusStoreKey } from '../store/keys';
 
 import type { IUseCloudflareTunnelStatus } from './types';
 
-/**
- * Fetches the Cloudflare Tunnel status and stays current from there through
- * `RemoteAccessModule.Provider.Status` events (handled by the store's `onEvent()`, wired up once
- * in `remote-access-cloudflare-tunnel.plugin.ts`) - this composable itself never polls. Mirrors
- * `useTailscaleStatus`.
- */
+/** Keeps provider metadata current with public events and bounded REST reconciliation. */
 export const useCloudflareTunnelStatus = (): IUseCloudflareTunnelStatus => {
 	const storesManager = injectStoresManager();
 
 	const cloudflareTunnelStatusStore = storesManager.getStore(cloudflareTunnelStatusStoreKey);
 
 	const { data, semaphore } = storeToRefs(cloudflareTunnelStatusStore);
+
+	useRemoteAccessStatusReconciliation(cloudflareTunnelStatusStore, { data, semaphore });
 
 	const status = computed<ICloudflareTunnelStatus | null>((): ICloudflareTunnelStatus | null => data.value);
 
@@ -54,6 +52,10 @@ export const useCloudflareTunnelStatus = (): IUseCloudflareTunnelStatus => {
 		await cloudflareTunnelStatusStore.get();
 	};
 
+	const refreshStatus = async (): Promise<void> => {
+		await cloudflareTunnelStatusStore.refresh();
+	};
+
 	const reset = (): Promise<ICloudflareTunnelStatus> => cloudflareTunnelStatusStore.reset();
 
 	return {
@@ -64,6 +66,7 @@ export const useCloudflareTunnelStatus = (): IUseCloudflareTunnelStatus => {
 		isLoading,
 		isResetting,
 		fetchStatus,
+		refreshStatus,
 		reset,
 	};
 };

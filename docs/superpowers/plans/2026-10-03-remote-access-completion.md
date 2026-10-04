@@ -1,6 +1,6 @@
 # Remote access: fresh analysis and completion plan
 
-Date: 2026-10-03. Adopted: 2026-10-04. Status: R1 merged (#1160); implementation in progress (R2, #1157).
+Date: 2026-10-03. Adopted: 2026-10-04. Status: R1/R2 merged (#1160/#1161); R3 implemented for review (#1158).
 Epic: [#897](https://github.com/FastyBird/smart-panel/issues/897).
 Coordination: [#991](https://github.com/FastyBird/smart-panel/issues/991).
 Reviewed baseline: `3f7b838fb65a346b86e9100c246d6bfc31af06e1` (`main`, application alpha.41).
@@ -257,8 +257,9 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
 - R1: [#1156](https://github.com/FastyBird/smart-panel/issues/1156), provider operation ownership,
   authentication/lifecycle control fields and idempotent connect/disconnect API. Completed in
   [PR #1160](https://github.com/FastyBird/smart-panel/pull/1160), merged as `1a6d2089d`; all CI checks passed.
-- R2: [#1157](https://github.com/FastyBird/smart-panel/issues/1157), ordered snapshots and bounded reads. Implementation in progress.
-- R3: [#1158](https://github.com/FastyBird/smart-panel/issues/1158), admin plugin controls.
+- R2: [#1157](https://github.com/FastyBird/smart-panel/issues/1157), ordered snapshots and bounded reads. Completed in
+  [PR #1161](https://github.com/FastyBird/smart-panel/pull/1161), merged as `a0ec77488`; all CI checks passed.
+- R3: [#1158](https://github.com/FastyBird/smart-panel/issues/1158), admin plugin controls. Implemented for review; hardware acceptance remains R4/R5.
 - R4: [#910](https://github.com/FastyBird/smart-panel/issues/910), device acceptance after R1–R3.
 - R5: [#1159](https://github.com/FastyBird/smart-panel/issues/1159), Cloudflare lifecycle and acceptance.
 - R6/R7: [#914](https://github.com/FastyBird/smart-panel/issues/914) / [#913](https://github.com/FastyBird/smart-panel/issues/913).
@@ -268,10 +269,35 @@ R1 adds a `control` object to plugin status: `enabled`, `service_state`, `authen
 to owners/admins; logout and preference reset remain owner-only. Disconnect cancels pending work and
 retains authentication. It does not persistently disable the plugin: an enabled plugin starts again
 with the application. Lifecycle invalidation also guards setup completion and background reconciliation.
-The existing admin consumes the new contract in R3; R1 alone does not claim the reported UI flow fixed.
+R3 consumes this contract in the admin. Cards use explicit allowed actions and operation state;
+Tailscale Connect/Disconnect call the provider endpoints. Cloudflare cards use the existing Extensions
+lifecycle to choose Start or Restart, with generic service-request transport deadlines still tracked
+in R5. Setup reconciliation starts on job acceptance, follows job IDs and resumes after reload.
+Provider reads and action requests are bounded; setup monitoring settles after backend restart or
+a twelve-minute observation deadline (ten-minute worker limit plus recovery grace).
+R1 alone does not claim the reported UI flow fixed.
 No hardware acceptance checkbox is completed by these automated changes.
 
 ## 6. Verification and completion evidence
+
+### R3 implementation verification (2026-10-04)
+
+- Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and
+  already-started Connect → Disconnect → Connect, lost operation events, initial GET failure,
+  role restrictions, busy cancellation and API error recovery. Final card rerun: 41 tests passed.
+- Setup reconciliation and mounted wizards: 118 targeted tests passed. Accepted setup without
+  websocket events and the stale terminal job failed before the fix. Coverage includes a second
+  job, reload with preloaded completion, transient reads, backend restart, timeout, unmount and
+  authenticated manual adoption. Manual Re-check requests an authoritative refresh.
+- Cloudflare reset now supplies the existing required `privileged_setup` response field: the
+  regression failed before the fix; 10 controller tests and 21 provider HTTP tests passed.
+- Shared per-store status reconciliation keeps one watcher and timer for the card and wizard;
+  regression coverage includes staggered subscribers, disposal and initial-read recovery.
+  Final remote-access admin rerun after review fixes: 35 files / 539 tests passed.
+- Admin/backend TypeScript, affected-file ESLint/Prettier and backend API conventions passed.
+- Full admin suite: 380 files / 3,235 tests passed before the final review regressions.
+  Full backend suite: 583 suites / 9,180 tests passed (one skipped); E2E: 23 suites / 266 tests passed.
+- No real-device, external-hostname, process-crash, reboot or upgrade acceptance is claimed here.
 
 ### R1 implementation verification (2026-10-04)
 

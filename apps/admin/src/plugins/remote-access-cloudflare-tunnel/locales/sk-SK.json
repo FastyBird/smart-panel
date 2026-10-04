@@ -7,7 +7,8 @@
 		"cardDescription": "Verejný prístup cez Cloudflare Tunnel, bez presmerovania portov.",
 		"cannotBeUsedYetTitle": "Zatiaľ nie je možné použiť",
 		"aboutTunnelSettings": "Token tunela pochádza z ovládacieho panela Cloudflare Zero Trust. Verejný názov hostiteľa je adresa, ktorú návštevníci použijú na prístup k tejto inštalácii.",
-		"confirmRemove": "Týmto sa tunel zastaví a vymaže sa uložený token aj verejný názov hostiteľa. Na ďalšie použitie Cloudflare Tunnel bude potrebné ich znova nastaviť."
+		"confirmRemove": "Týmto sa tunel zastaví a vymaže sa uložený token aj verejný názov hostiteľa. Na ďalšie použitie Cloudflare Tunnel bude potrebné ich znova nastaviť.",
+		"disconnectExplanation": "Odpojenie ukončí aktuálny tunel a zachová jeho nastavenia. Aby zostal vypnutý aj po reštarte aplikácie, vypnite plugin v jeho nastaveniach."
 	},
 	"buttons": {
 		"setup": "Nastaviť",
