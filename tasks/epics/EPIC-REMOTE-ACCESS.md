@@ -213,7 +213,8 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 ##### HTTPS and remote use
 
 - [ ] Serve HTTPS is on by default: the page lists `https://<node>.<tailnet>.ts.net` as the primary external URL with copy and QR.
-- [x] From the phone on cellular, open that URL: admin loads, login works, and a live change (toggle a device) updates without reload (websocket through the proxy). User confirmed all visible outcomes on alpha.44; transport frames were not separately captured.
+- [x] From the phone on cellular, open that URL: admin loads, login works, and a live change (toggle a device) updates without reload. User confirmed these visible outcomes on alpha.44.
+- [ ] Verify the phone's WebSocket transport through the proxy. Phone transport frames were not captured; the separate WebSocket-only probe passed from the Mac.
 - [ ] Backend log shows the tailnet client address (not 127.0.0.1) for a login attempt from the phone; the login throttle is per client.
 - [ ] Displays → registration status seen from the phone is "closed" (not treated as local).
 
