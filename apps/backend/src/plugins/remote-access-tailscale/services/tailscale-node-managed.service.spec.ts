@@ -500,6 +500,57 @@ describe('TailscaleNodeManagedService', () => {
 	});
 
 	describe('start', () => {
+		it.each([{ tags: [] }, { tags: ['tag:smart-panel', 'tag:home'] }])(
+			'starts on a CLI whose set command does not support advertise-tags (tags: %j)',
+			async ({ tags }) => {
+				const config = defaultConfig();
+				config.advertiseTags = tags;
+				configServiceMock.getPluginConfig.mockReturnValue(config);
+				cli.set.mockImplementation((flags: string[]) => {
+					if (flags.some((flag) => flag.startsWith('--advertise-tags='))) {
+						throw new TailscaleCliError('unknown', 'flag provided but not defined: -advertise-tags');
+					}
+					return Promise.resolve();
+				});
+
+				await service.start();
+
+				expect(cli.up).toHaveBeenCalledWith(expect.arrayContaining([`--advertise-tags=${tags.join(',')}`]));
+				expect(cli.set).toHaveBeenCalledWith(expect.not.arrayContaining([expect.stringMatching(/^--advertise-tags=/)]));
+			},
+		);
+
+		it('preserves the settings-conflict refusal during Connect without a reset or retry', async () => {
+			const conflict = new TailscaleCliError('settings-conflict', 'must specify all non-default flags');
+			cli.up.mockRejectedValue(conflict);
+
+			await expect(service.connect()).rejects.toBe(conflict);
+
+			expect(cli.up).toHaveBeenCalledTimes(1);
+			expect(cli.up).not.toHaveBeenCalledWith(expect.arrayContaining(['--reset']));
+		});
+
+		it('connects an already-started supervisor using supported set flags and tagged up flags', async () => {
+			cli.getStatus.mockResolvedValue({ BackendState: 'NeedsLogin' });
+			await service.start();
+			const config = defaultConfig();
+			config.advertiseTags = ['tag:smart-panel'];
+			configServiceMock.getPluginConfig.mockReturnValue(config);
+			// The started supervisor caches its configuration until a config change.
+			await service.onConfigChanged();
+			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			cli.set.mockImplementation((flags: string[]) => {
+				if (flags.some((flag) => flag.startsWith('--advertise-tags='))) {
+					throw new TailscaleCliError('unknown', 'flag provided but not defined: -advertise-tags');
+				}
+				return Promise.resolve();
+			});
+
+			await service.connect();
+
+			expect(cli.up).toHaveBeenCalledWith(expect.arrayContaining(['--advertise-tags=tag:smart-panel']));
+		});
+
 		it('applies preferences and brings the node up when it already holds a key and all requirements are satisfied', async () => {
 			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
 
@@ -509,7 +560,6 @@ describe('TailscaleNodeManagedService', () => {
 				'--hostname=smart-panel',
 				'--accept-dns=true',
 				'--accept-routes=false',
-				'--advertise-tags=',
 				'--ssh=false',
 				`--operator=${os.userInfo().username}`,
 			]);
@@ -517,9 +567,9 @@ describe('TailscaleNodeManagedService', () => {
 				'--hostname=smart-panel',
 				'--accept-dns=true',
 				'--accept-routes=false',
-				'--advertise-tags=',
 				'--ssh=false',
 				`--operator=${os.userInfo().username}`,
+				'--advertise-tags=',
 				'--login-server=https://controlplane.tailscale.com',
 			]);
 			expect(cli.up).not.toHaveBeenCalledWith(expect.arrayContaining([expect.stringMatching(/^--auth-key=/)]));
@@ -922,6 +972,7 @@ describe('TailscaleNodeManagedService', () => {
 			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
 			await service.start();
 			cli.set.mockClear();
+			cli.up.mockClear();
 
 			const changed = defaultConfig();
 			changed.hostname = 'new-hostname';
@@ -929,7 +980,196 @@ describe('TailscaleNodeManagedService', () => {
 
 			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: false });
 			expect(cli.set).toHaveBeenCalledWith(expect.arrayContaining(['--hostname=new-hostname']));
+			expect(cli.up).not.toHaveBeenCalled();
 		});
+
+		it.each([
+			{ previousTags: [], nextTags: ['tag:smart-panel', 'tag:home'] },
+			{ previousTags: ['tag:smart-panel'], nextTags: [] },
+		])('applies tag changes through up, including explicit clearing (%j)', async ({ previousTags, nextTags }) => {
+			const previous = defaultConfig();
+			previous.advertiseTags = previousTags;
+			configServiceMock.getPluginConfig.mockReturnValue(previous);
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await service.start();
+			cli.set.mockClear();
+			cli.up.mockClear();
+			cli.set.mockImplementation((flags: string[]) => {
+				if (flags.some((flag) => flag.startsWith('--advertise-tags='))) {
+					throw new TailscaleCliError('unknown', 'flag provided but not defined: -advertise-tags');
+				}
+				return Promise.resolve();
+			});
+			const next = defaultConfig();
+			next.advertiseTags = nextTags;
+			configServiceMock.getPluginConfig.mockReturnValue(next);
+
+			await expect(service.onConfigChanged()).resolves.toEqual({ restartRequired: false });
+
+			expect(cli.set).toHaveBeenCalledTimes(1);
+			expect(cli.up).toHaveBeenCalledWith(expect.arrayContaining([`--advertise-tags=${nextTags.join(',')}`]));
+			expect(cli.up).not.toHaveBeenCalledWith(expect.arrayContaining(['--reset']));
+		});
+
+		it('refreshes authentication after changing tags before converging Serve', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await service.start();
+			serveServiceMock.converge.mockClear();
+			const next = defaultConfig();
+			next.advertiseTags = ['tag:smart-panel'];
+			configServiceMock.getPluginConfig.mockReturnValue(next);
+			cli.up.mockImplementation(() => {
+				cli.getStatus.mockResolvedValue({ BackendState: 'NeedsLogin' });
+				return Promise.resolve();
+			});
+
+			await service.onConfigChanged();
+
+			expect(service.getControlState().authentication).toBe('required');
+			expect(serveServiceMock.converge).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			{ previousTags: [], nextTags: ['tag:smart-panel'], failingCommand: 'up' },
+			{ previousTags: ['tag:smart-panel'], nextTags: [], failingCommand: 'up' },
+			{ previousTags: [], nextTags: ['tag:smart-panel'], failingCommand: 'set' },
+		])(
+			'retries unapplied tags on the next identical config event (%j)',
+			async ({ previousTags, nextTags, failingCommand }) => {
+				const previous = defaultConfig();
+				previous.advertiseTags = previousTags;
+				configServiceMock.getPluginConfig.mockReturnValue(previous);
+				cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+				await service.start();
+				cli.up.mockClear();
+				const next = defaultConfig();
+				next.advertiseTags = nextTags;
+				configServiceMock.getPluginConfig.mockReturnValue(next);
+				cli[failingCommand as 'set' | 'up'].mockRejectedValueOnce(
+					new TailscaleCliError('settings-conflict', 'must specify all non-default flags'),
+				);
+
+				await service.onConfigChanged();
+				const failedAttempts = cli.up.mock.calls.length;
+				// Connected observations do not automatically retry a settings conflict.
+				await jest.runOnlyPendingTimersAsync();
+				expect(cli.up).toHaveBeenCalledTimes(failedAttempts);
+				await service.onConfigChanged();
+
+				expect(cli.up).toHaveBeenCalledTimes(failedAttempts + 1);
+				expect(cli.up).toHaveBeenLastCalledWith(expect.arrayContaining([`--advertise-tags=${nextTags.join(',')}`]));
+				expect(cli.up).not.toHaveBeenCalledWith(expect.arrayContaining(['--reset']));
+				await service.onConfigChanged();
+				expect(cli.up).toHaveBeenCalledTimes(failedAttempts + 1);
+			},
+		);
+
+		it.each(['prerequisites', 'authentication'])(
+			'retains unapplied tags when %s checks skip the write',
+			async (gate) => {
+				cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+				await service.start();
+				cli.up.mockClear();
+				const next = defaultConfig();
+				next.advertiseTags = ['tag:smart-panel'];
+				configServiceMock.getPluginConfig.mockReturnValue(next);
+				if (gate === 'prerequisites') {
+					platformServiceMock.getPlatformTypeAsync.mockResolvedValue(PlatformType.DOCKER);
+				} else {
+					cli.getStatus.mockResolvedValue({ BackendState: 'NeedsLogin' });
+				}
+
+				await service.onConfigChanged();
+				expect(cli.up).not.toHaveBeenCalled();
+				platformServiceMock.getPlatformTypeAsync.mockResolvedValue(PlatformType.RASPBERRY);
+				cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+				await service.onConfigChanged();
+
+				expect(cli.up).toHaveBeenCalledWith(expect.arrayContaining(['--advertise-tags=tag:smart-panel']));
+			},
+		);
+
+		it('conservatively reapplies pending tags once after an up outside the node lifecycle', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await service.start();
+			cli.up.mockClear();
+			const next = defaultConfig();
+			next.advertiseTags = ['tag:smart-panel'];
+			configServiceMock.getPluginConfig.mockReturnValue(next);
+			cli.up.mockRejectedValueOnce(new TailscaleCliError('settings-conflict', 'must specify all non-default flags'));
+			await service.onConfigChanged();
+			// Login/reset owns its own up; it does not acknowledge the node's pending write.
+			await service.getOperationCoordinator().run('login', async () => {
+				await cli.up(service.buildUpFlags(next));
+			});
+
+			await service.onConfigChanged();
+			expect(cli.up).toHaveBeenCalledTimes(3);
+			await service.onConfigChanged();
+			expect(cli.up).toHaveBeenCalledTimes(3);
+		});
+
+		it('does not acknowledge a late successful up from a cancelled config operation', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await service.start();
+			cli.up.mockClear();
+			const next = defaultConfig();
+			next.advertiseTags = ['tag:smart-panel'];
+			configServiceMock.getPluginConfig.mockReturnValue(next);
+			let finishUp!: () => void;
+			let enteredUp!: () => void;
+			const entered = new Promise<void>((resolve) => (enteredUp = resolve));
+			const delayedUp = new Promise<void>((resolve) => (finishUp = resolve));
+			cli.up.mockImplementationOnce(() => {
+				enteredUp();
+				return delayedUp;
+			});
+			const cancelled = service.onConfigChanged();
+			const cancellation = expect(cancelled).rejects.toMatchObject({ code: 'operation-cancelled' });
+			await entered;
+			cli.up.mockRejectedValueOnce(new TailscaleCliError('settings-conflict', 'must specify all non-default flags'));
+			await service.onConfigChanged();
+			await cancellation;
+			finishUp();
+			await delayedUp;
+
+			await service.onConfigChanged();
+
+			expect(cli.up).toHaveBeenCalledTimes(3);
+			await service.onConfigChanged();
+			expect(cli.up).toHaveBeenCalledTimes(3);
+		});
+
+		it.each(['start', 'connect', 'setup', 'reconnect'] as const)(
+			'acknowledges pending tags after a successful %s lifecycle up',
+			async (operation) => {
+				cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+				await service.start();
+				const next = defaultConfig();
+				next.advertiseTags = ['tag:smart-panel'];
+				configServiceMock.getPluginConfig.mockReturnValue(next);
+				cli.up.mockRejectedValueOnce(new TailscaleCliError('settings-conflict', 'must specify all non-default flags'));
+				await service.onConfigChanged();
+				cli.up.mockClear();
+				cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+				if (operation === 'start') {
+					await service.stop();
+					await service.start();
+				} else if (operation === 'connect') {
+					await service.connect();
+				} else if (operation === 'setup') {
+					await service.reconcileSetup(service.getOperationCoordinator().getGeneration());
+				} else {
+					await jest.runOnlyPendingTimersAsync();
+				}
+				expect(cli.up).toHaveBeenCalledTimes(1);
+				cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+				await service.onConfigChanged();
+
+				expect(cli.up).toHaveBeenCalledTimes(1);
+			},
+		);
 
 		it('does not apply preferences when the node has never held a key', async () => {
 			cli.getStatus.mockResolvedValue({ BackendState: 'NeedsLogin' });
@@ -1058,6 +1298,12 @@ describe('TailscaleNodeManagedService', () => {
 	describe('automatic reconnect from an unexpectedly disconnected state (pollTick self-heal)', () => {
 		it('retries set()+up() on the next tick when the node is found Stopped while every requirement stays satisfied, and reports connected once it recovers', async () => {
 			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+			cli.set.mockImplementation((flags: string[]) => {
+				if (flags.some((flag) => flag.startsWith('--advertise-tags='))) {
+					throw new TailscaleCliError('unknown', 'flag provided but not defined: -advertise-tags');
+				}
+				return Promise.resolve();
+			});
 
 			await service.start();
 			// start()'s own attempt, and the poller's first tick (schedulePoll(0)),
@@ -1080,6 +1326,7 @@ describe('TailscaleNodeManagedService', () => {
 
 			expect(cli.set).toHaveBeenCalledTimes(1);
 			expect(cli.up).toHaveBeenCalledTimes(1);
+			expect(cli.up).toHaveBeenCalledWith(expect.arrayContaining(['--advertise-tags=']));
 			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
 				RemoteAccessEventType.PROVIDER_OBSERVATION,
 				expect.objectContaining({ status: expect.objectContaining({ state: 'connected' }) as unknown }),

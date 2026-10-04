@@ -265,9 +265,12 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
 - R4: [#910](https://github.com/FastyBird/smart-panel/issues/910), device acceptance after R1–R3.
   Alpha.42 passed the normal system upgrade and operator setup with websocket unavailable. Hardware
   testing found excess pending-login polling (HTTP 429) and frozen endpoint response mutation
-  (connected aggregate HTTP 500); both have regression fixes validated locally. The gate remains open
-  pending a corrected release and the full acceptance matrix; Pi has been approved in the new tailnet. See the epic task
-  verification table for the scoped results.
+  (connected aggregate HTTP 500); both fixes shipped in alpha.43. The gate remains open pending the
+  full acceptance matrix. Pi and the test Mac are approved in the new tailnet; see the epic task
+  verification table for the scoped results. Alpha.43 (PR #1163 merged as `cf9441c1a`) passed
+  normal application upgrade and artifact/data checks, but Tailscale recovery failed because the
+  plugin passes `--advertise-tags` to `tailscale set`. The installed 1.102.3 CLI supports that flag
+  only on `up`; explicit Connect reproduces the failure. Fix and repeat before starting the cycles.
 - R5: [#1159](https://github.com/FastyBird/smart-panel/issues/1159), Cloudflare lifecycle and acceptance.
 - R6/R7: [#914](https://github.com/FastyBird/smart-panel/issues/914) / [#913](https://github.com/FastyBird/smart-panel/issues/913).
 

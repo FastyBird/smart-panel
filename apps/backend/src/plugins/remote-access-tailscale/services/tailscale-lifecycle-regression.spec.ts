@@ -260,6 +260,7 @@ describe('Tailscale lifecycle regressions', () => {
 	});
 
 	it('cancels and reaps an interactive login child when the node stops', async () => {
+		node.getPluginConfig().advertiseTags = ['tag:smart-panel', 'tag:home'];
 		await node.start();
 		const child = new LoginChild();
 		let closed = false;
@@ -280,6 +281,12 @@ describe('Tailscale lifecycle regressions', () => {
 		});
 		const loginStarted = login.login();
 		await spawned;
+		expect(cli.spawnUp).toHaveBeenCalledWith(
+			expect.arrayContaining([
+				'--advertise-tags=tag:smart-panel,tag:home',
+				'--login-server=https://controlplane.tailscale.com',
+			]),
+		);
 		child.stdout.emit('data', Buffer.from(JSON.stringify({ AuthURL: 'https://login.example.invalid/a/test' })));
 		await expect(loginStarted).resolves.toMatchObject({ state: 'pending-auth' });
 		await node.stop();
@@ -362,6 +369,7 @@ describe('Tailscale lifecycle regressions', () => {
 			const loginAttempt = login.login('tskey-auth-ABCDE1234-secret-value');
 			await spawned;
 			const spawnCalls = cli.spawnUp.mock.calls as unknown as [string[]][];
+			expect(spawnCalls[0][0]).toContain('--advertise-tags=');
 			const authKeyArgument = spawnCalls[0][0].find((arg) => arg.startsWith('--auth-key=file:'));
 			expect(authKeyArgument).toBeDefined();
 			if (!authKeyArgument) {
