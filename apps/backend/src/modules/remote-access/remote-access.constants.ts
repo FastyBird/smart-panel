@@ -7,15 +7,8 @@ export const REMOTE_ACCESS_MODULE_API_TAG_NAME = 'Remote access module';
 export const REMOTE_ACCESS_MODULE_API_TAG_DESCRIPTION =
 	'Endpoints for the internal/external URL registry, remote-access provider status and posture advisories.';
 
-/**
- * Upper bound on a single `provider.getStatus()` call during aggregation.
- * `getAggregatedStatuses()` uses `Promise.all`, so one provider that never
- * settles would otherwise hang the whole aggregate forever; a deadline race
- * (not a real cancellation — the contract has no abort signal) converts a
- * timed-out provider into the same synthesized `error` status used for a
- * rejection, so aggregation always completes.
- */
-export const REMOTE_ACCESS_PROVIDER_STATUS_TIMEOUT_MS = 5000;
+/** Deadline for a coalesced observation. Abort is requested on expiry; ownership remains until it settles. */
+export const REMOTE_ACCESS_PROVIDER_STATUS_TIMEOUT_MS = 7000;
 
 /**
  * How long `RemoteAccessProxyContributionService` waits before retrying a
@@ -29,6 +22,9 @@ export const REMOTE_ACCESS_PROVIDER_STATUS_TIMEOUT_MS = 5000;
 export const REMOTE_ACCESS_CONFIG_READ_RETRY_INTERVAL_MS = 30_000;
 
 export enum EventType {
+	/** Internal unversioned provider observation; only the status service consumes this. */
+	PROVIDER_OBSERVATION = 'RemoteAccessModule.Provider.Observation',
+	/** Accepted, versioned publication; the cache is committed before this event is emitted. */
 	PROVIDER_STATUS = 'RemoteAccessModule.Provider.Status',
 	URLS_CHANGED = 'RemoteAccessModule.Urls.Changed',
 	// Consumed by RA-3/RA-5's privileged setup jobs; no emitter exists yet in this module.

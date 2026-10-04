@@ -40,12 +40,16 @@ export class RemoteAccessController {
 	async getStatus(): Promise<RemoteAccessStatusResponseModel> {
 		this.logger.debug('Fetching remote access module status');
 
+		await this.statusService.getAggregatedStatuses();
+		const candidates = await this.urlService.getCandidates();
+		// Assemble synchronously after every await; an event during candidate detection must be included everywhere.
 		const config = this.configService.getModuleConfig<RemoteAccessConfigModel>(REMOTE_ACCESS_MODULE_NAME);
-		const providers = await this.statusService.getAggregatedStatuses();
-		const urls = await this.buildUrlsModel();
+		const providers = this.statusService.getCachedProviderModels();
+		const urls = this.buildUrlsModel(candidates);
 		const advisories = this.postureService.getAdvisories();
 
 		const data = new RemoteAccessStatusModel();
+		Object.assign(data, this.statusService.getVersion());
 		data.enabled = config.enabled;
 		data.providers = providers;
 		data.urls = urls;
@@ -117,16 +121,17 @@ export class RemoteAccessController {
 		this.logger.debug('Fetching remote access URLs');
 
 		const response = new RemoteAccessUrlsResponseModel();
-		response.data = await this.buildUrlsModel();
+		response.data = this.buildUrlsModel(await this.urlService.getCandidates());
 
 		return response;
 	}
 
-	private async buildUrlsModel(): Promise<RemoteAccessUrlsModel> {
+	private buildUrlsModel(candidates: string[]): RemoteAccessUrlsModel {
 		const snapshot = this.urlService.getUrls();
-		const candidates = await this.urlService.getCandidates();
 
 		const data = new RemoteAccessUrlsModel();
+		data.epoch = snapshot.epoch;
+		data.revision = snapshot.revision;
 		data.internal = snapshot.internal;
 		data.candidates = candidates;
 		data.external = snapshot.external;

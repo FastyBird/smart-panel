@@ -1,6 +1,6 @@
 # Remote access: fresh analysis and completion plan
 
-Date: 2026-10-03. Adopted: 2026-10-04. Status: implementation in progress (R1).
+Date: 2026-10-03. Adopted: 2026-10-04. Status: R1 merged (#1160); implementation in progress (R2, #1157).
 Epic: [#897](https://github.com/FastyBird/smart-panel/issues/897).
 Coordination: [#991](https://github.com/FastyBird/smart-panel/issues/991).
 Reviewed baseline: `3f7b838fb65a346b86e9100c246d6bfc31af06e1` (`main`, application alpha.41).
@@ -215,6 +215,25 @@ Dependencies: R1 → R2 → R3 → R4. R5 consumes R2/R3 conventions. R6 starts 
 so helper migration does not obscure provider debugging. R7 depends on R6 and the verified provider
 contract. R8 requires all gates. Cloudflare's completed implementation is retained throughout.
 
+### R2 implementation contract
+
+- The module accepts provider observations before publishing them. Every accepted provider status,
+  aggregate status and URL snapshot carries a backend process `epoch` and monotonic `revision`;
+  wall-clock timestamps are informational. The cached status is committed before URL/proxy consumers
+  or websocket subscribers are notified. GET-discovered changes use the same publication path.
+- Requirements and provider status are collected together. Provider-specific administrative metadata
+  stays outside shared events; authentication URLs and QR codes remain restricted to privileged
+  responses. Disabled plugin diagnostics remain readable but contribute no endpoints or proxies.
+- Concurrent reads share one full provider observation. Observations have a 6-second budget and the
+  module has a 7-second outer deadline. Cancellation reaches CLI reads and Cloudflare metrics HTTP;
+  unreaped work retains its slot. Ordinary GETs do not run the Tailscale operator write probe.
+- Full observations refresh read-only prerequisites, including periodic observations, so an explicit
+  Re-check cannot join a poll carrying a cached requirements result. This adds read-only prerequisite
+  probes to the normal 30-second polling cadence.
+- Admin stores merge independent provider/URL revisions, buffer initial events, reject stale reads
+  and resync through authoritative REST on an unknown epoch. Reconnect supersedes pending reads;
+  further events during an epoch resync join that resync rather than repeatedly aborting it.
+
 ### Helper and WireGuard constraints
 
 - #914 needs a small design review of allowlisted jobs, root-owned installation/update, validated
@@ -233,8 +252,9 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
 ### Execution tracking (2026-10-04)
 
 - R1: [#1156](https://github.com/FastyBird/smart-panel/issues/1156), provider operation ownership,
-  authentication/lifecycle control fields and idempotent connect/disconnect API. Implementation in review.
-- R2: [#1157](https://github.com/FastyBird/smart-panel/issues/1157), ordered snapshots and bounded reads.
+  authentication/lifecycle control fields and idempotent connect/disconnect API. Completed in
+  [PR #1160](https://github.com/FastyBird/smart-panel/pull/1160), merged as `1a6d2089d`; all CI checks passed.
+- R2: [#1157](https://github.com/FastyBird/smart-panel/issues/1157), ordered snapshots and bounded reads. Implementation in progress.
 - R3: [#1158](https://github.com/FastyBird/smart-panel/issues/1158), admin plugin controls.
 - R4: [#910](https://github.com/FastyBird/smart-panel/issues/910), device acceptance after R1–R3.
 - R5: [#1159](https://github.com/FastyBird/smart-panel/issues/1159), Cloudflare lifecycle and acceptance.

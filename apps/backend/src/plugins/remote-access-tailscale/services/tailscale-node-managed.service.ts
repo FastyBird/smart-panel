@@ -1,4 +1,3 @@
-import { execFile } from 'node:child_process';
 import os from 'os';
 import { join } from 'path';
 
@@ -7,7 +6,9 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
+import { cancellableExecFile } from '../../../common/utils/cancellable-exec.utils';
 import { getEnvValue } from '../../../common/utils/config.utils';
+import { RemoteAccessObservation } from '../../../common/utils/remote-access-observation.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
 import {
@@ -56,6 +57,11 @@ export interface TailscaleControlState {
 	operation: TailscaleOperation | null;
 }
 
+export interface TailscaleObservationMetadata {
+	requirements: TailscaleRequirement[];
+	control: TailscaleControlState;
+}
+
 export type TailscaleRequirementCode =
 	| 'platform-supported'
 	| 'binary-installed'
@@ -87,23 +93,13 @@ export interface TailscaleRequirement {
 /** One requirement before `attachRemedies()` fills in `remedy` — every private `evaluate*()` helper below returns this shape. */
 type TailscaleRequirementBase = Omit<TailscaleRequirement, 'remedy'>;
 
-/**
- * Why `refreshRequirements()` was called — every reason other than
- * `'periodic'` always performs a fresh evaluation; `'periodic'` (the poller,
- * via `computeStatus()`) is throttled to at most once every
- * `TAILSCALE_REQUIREMENTS_PERIODIC_REFRESH_MS`, so the steady-state poll
- * stays at one `status --json` call per tick instead of also paying for the
- * operator write-probe's own CLI calls on every tick.
- */
+/** Action checks may verify management capability; live status observations always use read-only checks. */
 export type TailscaleRequirementRefreshReason =
 	| 'start'
 	| 'permission-denied'
 	| 'setup-complete'
 	| 'status-read'
 	| 'periodic';
-
-/** Floor between two `'periodic'` requirement refreshes (see `TailscaleRequirementRefreshReason`'s own doc). */
-const TAILSCALE_REQUIREMENTS_PERIODIC_REFRESH_MS = 5 * 60 * 1000;
 
 /** Timeout for the unprivileged `tailscale-setup.sh --print-plan` probe — a local file read and a few `echo`s, nowhere near this ceiling in practice. */
 const TAILSCALE_PRINT_PLAN_TIMEOUT_MS = 2_000;
@@ -166,6 +162,12 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 	readonly serviceId = 'node';
 	readonly activationPolicy = 'owner-enabled' as const;
 
+	private readonly observations = new RemoteAccessObservation<{
+		status: RemoteAccessProviderStatus;
+		raw: TailscaleStatus | null;
+		requirements: TailscaleRequirement[];
+	}>();
+	private readonly requirementObservations = new RemoteAccessObservation<TailscaleRequirement[]>();
 	private authentication: TailscaleAuthentication = 'unknown';
 	private identity: Record<string, string | number | boolean | null> = {};
 	private connectPromise: Promise<void> | null = null;
@@ -177,7 +179,6 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 	private pluginConfig: RemoteAccessTailscalePluginConfigModel | null = null;
 	/** Cached `refreshRequirements()` snapshot — see `getRequirements()`/`refreshRequirements()`. */
 	private requirementsCache: TailscaleRequirement[] | null = null;
-	private requirementsRefreshedAt = 0;
 	/** Set by `convergeServe()` while the last Serve/Funnel mutation attempt was denied — read back so the denial is logged, and `operator-granted` refreshed, only once per transition instead of on every call. */
 	private lastServeConvergeDenied = false;
 	/** Consecutive failed `attemptReconnect()` calls since the node last reported `connected` — drives the backoff `nextReconnectAttemptAt` uses. */
@@ -413,6 +414,8 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 		const shouldDown =
 			this.state !== 'stopped' || this.operations.getOperation() !== null || this.operations.hasPendingChildren();
 		this.state = 'stopping';
+		this.observations.invalidate();
+		this.requirementObservations.invalidate();
 		this.clearPoll();
 		this.stopPromise = this.operations
 			.interrupt('disconnect', async (token) => {
@@ -508,17 +511,29 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 	/** Computes the current status and pushes it as `PROVIDER_STATUS`, unconditionally (unlike the poller's own `pollTick()`, which only emits on change) — used by `stop()` (both outcomes) and by `start()` after a failed `set`/`up` call. */
 	private async emitStatus(): Promise<void> {
 		const generation = this.operations.getGeneration();
-		const status = await this.computeStatus();
+		const status =
+			this.state === 'stopped' || this.state === 'stopping' || this.state === 'error'
+				? this.buildStatus(
+						this.state === 'error' ? 'error' : 'disconnected',
+						this.lastError ?? 'The node service is stopped.',
+						this.identity,
+					)
+				: await this.computeStatus();
 		if (!this.operations.isCurrent(generation)) {
 			return;
 		}
 		this.operations.assertCurrent();
 
 		this.lastStatus = status;
-		this.eventEmitter.emit(RemoteAccessEventType.PROVIDER_STATUS, status);
+		this.eventEmitter.emit(RemoteAccessEventType.PROVIDER_OBSERVATION, {
+			status,
+			metadata: { requirements: this.getRequirements(), control: this.getControlState() },
+		});
 	}
 
 	async onConfigChanged(): Promise<ConfigChangeResult> {
+		this.observations.invalidate();
+		this.requirementObservations.invalidate();
 		if (this.stopPromise !== null) {
 			await this.stopPromise;
 		}
@@ -604,8 +619,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 			// A config change is a rare, admin-triggered event (never the
 			// poller), so a fresh evaluation here is cheap enough — reuses
 			// the 'start' reason since both represent "about to apply
-			// preferences, recheck gating first" (only the poller's own
-			// 'periodic' reason is throttled; see `refreshRequirements`'s doc).
+			// preferences, recheck gating first".
 			const requirements = await this.refreshRequirements('start');
 
 			if (this.requirementsSatisfied(requirements)) {
@@ -645,7 +659,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 	 * D3: healthy only when every requirement is satisfied (the cached
 	 * `getRequirements()` snapshot — a live re-evaluation here would add an
 	 * `operator-granted` probe to every health-check tick; the poller already
-	 * keeps that cache fresh at most every five minutes, see
+	 * updates that cache on every shared observation, see
 	 * `refreshRequirements`'s own doc) AND the daemon backend itself reports
 	 * `Running` with `Self.Online`.
 	 */
@@ -659,12 +673,12 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 		}
 
 		try {
-			const status = await this.cli.getStatus();
+			const { raw: status } = await this.computeStatusWithRawStatus();
 
 			return (
 				this.isPollable() &&
 				this.operations.isCurrent(generation) &&
-				status.BackendState === 'Running' &&
+				status?.BackendState === 'Running' &&
 				status.Self?.Online === true
 			);
 		} catch {
@@ -682,6 +696,8 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 	 */
 	async factoryReset(): Promise<{ success: boolean; reason?: string }> {
 		this.state = 'stopping';
+		this.observations.invalidate();
+		this.requirementObservations.invalidate();
 		this.clearPoll();
 		try {
 			return await this.operations.interrupt('reset', async (token) => {
@@ -721,13 +737,11 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 	}
 
 	/**
-	 * Backward-compatible alias kept for `StatusController.getStatus()` and
-	 * `TailscaleSetupService`'s post-job refresh — always forces a fresh evaluation via
-	 * `refreshRequirements('status-read')`, same as before this method grew
-	 * a cache.
+	 * Explicit setup verification alias. Status controllers consume getStatusSnapshot(),
+	 * whose requirement checks cannot initiate capability mutations.
 	 */
 	async evaluateRequirements(): Promise<TailscaleRequirement[]> {
-		return this.refreshRequirements('status-read');
+		return this.refreshRequirements('setup-complete');
 	}
 
 	/** Setup may reconcile only if no later operator action superseded the accepted job. */
@@ -769,35 +783,25 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 		return this.requirementsCache ?? [];
 	}
 
-	/**
-	 * Re-evaluates every prerequisite and updates the cache `getRequirements()`
-	 * reads — except for `reason: 'periodic'` (the poller, via
-	 * `computeStatus()`), which is throttled to at most once every
-	 * `TAILSCALE_REQUIREMENTS_PERIODIC_REFRESH_MS` and otherwise just returns
-	 * the existing cache: this is what keeps the steady-state poll at one
-	 * `status --json` call per tick instead of also paying for
-	 * `evaluateOperatorGranted()`'s own `debug prefs`/write-probe CLI calls
-	 * on every tick. Every other reason ('start', 'permission-denied',
-	 * 'setup-complete', 'status-read') always performs a fresh evaluation —
-	 * these are all rare, admin/lifecycle-triggered events, never the poller.
-	 */
-	async refreshRequirements(reason: TailscaleRequirementRefreshReason): Promise<TailscaleRequirement[]> {
-		if (
-			reason === 'periodic' &&
-			this.requirementsCache &&
-			Date.now() - this.requirementsRefreshedAt < TAILSCALE_REQUIREMENTS_PERIODIC_REFRESH_MS
-		) {
-			return this.requirementsCache;
-		}
-
+	/** Coalesces read-only prerequisite checks. Explicit action/setup checks retain the capability probe. */
+	async refreshRequirements(
+		reason: TailscaleRequirementRefreshReason,
+		signal?: AbortSignal,
+	): Promise<TailscaleRequirement[]> {
 		const generation = this.operations.getGeneration();
-		const requirements = await this.evaluateRequirementsLive(generation);
+		const readOnly = reason === 'periodic' || reason === 'status-read';
+		const requirements = await (readOnly
+			? this.requirementObservations.run(
+					(readSignal) => this.evaluateRequirementsLive(generation, false, readSignal),
+					signal,
+				)
+			: this.evaluateRequirementsLive(generation, true, signal));
+		signal?.throwIfAborted();
 		if (!this.operations.isCurrent(generation)) {
 			return this.getRequirements();
 		}
 
 		this.requirementsCache = requirements;
-		this.requirementsRefreshedAt = Date.now();
 
 		return requirements;
 	}
@@ -807,9 +811,14 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 		return requirements.length > 0 && requirements.every((requirement) => requirement.satisfied);
 	}
 
-	/** The actual, always-live evaluation — reached only through `refreshRequirements()`, which owns the cache and the periodic throttle. */
-	private async evaluateRequirementsLive(generation: number): Promise<TailscaleRequirement[]> {
+	/** The actual, always-live evaluation — reached only through `refreshRequirements()`, which owns the cache and coalesces read-only checks. */
+	private async evaluateRequirementsLive(
+		generation: number,
+		allowProbe = false,
+		signal?: AbortSignal,
+	): Promise<TailscaleRequirement[]> {
 		const platform = await this.evaluatePlatformSupported();
+		signal?.throwIfAborted();
 		if (!this.operations.isCurrent(generation)) {
 			return this.getRequirements();
 		}
@@ -828,13 +837,29 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 			];
 		}
 
-		const [{ binary, version }, daemonActive, operatorGranted] = await Promise.all([
-			this.evaluateBinaryAndVersion(),
-			this.evaluateDaemonActive(),
-			this.evaluateOperatorGranted(generation),
+		// Wait for every read to close before releasing the prerequisite slot. A rejected
+		// sibling must not permit replacement observations while another child is still alive.
+		const results = await Promise.allSettled([
+			this.evaluateBinaryAndVersion(signal),
+			this.evaluateDaemonActive(signal),
+			this.evaluateOperatorGranted(generation, allowProbe, signal),
 		]);
+		signal?.throwIfAborted();
+		const [binaryResult, daemonResult, operatorResult] = results;
+		if (binaryResult.status === 'rejected') {
+			throw binaryResult.reason;
+		}
+		if (daemonResult.status === 'rejected') {
+			throw daemonResult.reason;
+		}
+		if (operatorResult.status === 'rejected') {
+			throw operatorResult.reason;
+		}
+		const { binary, version } = binaryResult.value;
+		const daemonActive = daemonResult.value;
+		const operatorGranted = operatorResult.value;
 
-		return this.attachRemedies([platform, binary, daemonActive, operatorGranted, version]);
+		return this.attachRemedies([platform, binary, daemonActive, operatorGranted, version], signal);
 	}
 
 	private unevaluatedRequirement(code: TailscaleRequirementCode): TailscaleRequirement {
@@ -842,7 +867,10 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 	}
 
 	/** Attaches `remedy` to each requirement: `null` when satisfied (D12: "remedy is null when the requirement is satisfied"), otherwise the manual remedy for its code. */
-	private async attachRemedies(requirements: TailscaleRequirementBase[]): Promise<TailscaleRequirement[]> {
+	private async attachRemedies(
+		requirements: TailscaleRequirementBase[],
+		signal?: AbortSignal,
+	): Promise<TailscaleRequirement[]> {
 		// Memoized as a shared *promise* (not just the resolved value) so
 		// `binary-installed` and `version-supported` — both unsatisfied
 		// together on a freshly detected missing install, and both mapped to
@@ -852,7 +880,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 		let installRemedyPromise: Promise<TailscaleRequirementRemedy> | null = null;
 
 		const getInstallRemedy = (): Promise<TailscaleRequirementRemedy> => {
-			installRemedyPromise ??= this.buildInstallRemedy();
+			installRemedyPromise ??= this.buildInstallRemedy(signal);
 
 			return installRemedyPromise;
 		};
@@ -912,9 +940,9 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 	 * unsupported distribution — the script's own `--print-plan` signal for
 	 * that case) all fall back to the vendor download link instead.
 	 */
-	private async buildInstallRemedy(): Promise<TailscaleRequirementRemedy> {
+	private async buildInstallRemedy(signal?: AbortSignal): Promise<TailscaleRequirementRemedy> {
 		try {
-			const stdout = await this.runSetupScriptPrintPlan('install');
+			const stdout = await this.runSetupScriptPrintPlan(signal);
 			const lines = stdout
 				.split('\n')
 				.map((line) => line.trim())
@@ -940,25 +968,16 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 		}
 	}
 
-	private runSetupScriptPrintPlan(step: 'install' | 'daemon' | 'operator'): Promise<string> {
+	private async runSetupScriptPrintPlan(signal?: AbortSignal): Promise<string> {
 		const script = join(__dirname, '..', 'scripts', 'tailscale-setup.sh');
-
-		return new Promise((resolve, reject) => {
-			execFile(
+		return (
+			await cancellableExecFile(
 				'bash',
-				[script, '--print-plan', `--step=${step}`],
-				{ timeout: TAILSCALE_PRINT_PLAN_TIMEOUT_MS },
-				(error: NodeJS.ErrnoException | null, stdout?: string) => {
-					if (error) {
-						reject(error);
-
-						return;
-					}
-
-					resolve(stdout ?? '');
-				},
-			);
-		});
+				[script, '--print-plan', '--step=install'],
+				signal,
+				TAILSCALE_PRINT_PLAN_TIMEOUT_MS,
+			)
+		).stdout;
 	}
 
 	/**
@@ -976,58 +995,86 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 	 * "this service was stopped/errored" once the admin has acted. `stopped`/
 	 * `stopping` always report `disconnected` with no endpoints/proxy
 	 * addresses, regardless of what `status --json` currently claims;
-	 * `error` reports the `lastError` `stop()` recorded. Neither branch
-	 * touches the CLI at all.
+	 * `error` reports the `lastError` `stop()` recorded. Prerequisite reads remain
+	 * available while stopped so manually prepared installations can be discovered.
 	 *
-	 * `requirementsReason` controls how fresh the internal `operator-granted`
-	 * gate below is: every caller except the poller's own tick wants the
-	 * live truth (default `'status-read'`, always fresh — this is what makes
-	 * `GET /status`, "Re-check" and every action's post-call refresh reflect
-	 * an operator grant fixed a moment ago instead of the periodic cache).
-	 * Only `pollTick()` passes `'periodic'`, which is what keeps the
-	 * continuous background poll at one `status --json` call per tick
-	 * instead of also paying for `evaluateOperatorGranted()`'s own CLI calls
-	 * on every tick (see `refreshRequirements`'s own doc).
+	 * Every observation includes fresh read-only prerequisites. REST and poll callers
+	 * share one in-flight observation; neither initiates an operator write probe.
 	 */
 	async computeStatus(
-		requirementsReason: TailscaleRequirementRefreshReason = 'status-read',
+		_requirementsReason: TailscaleRequirementRefreshReason = 'status-read',
+		options?: { signal?: AbortSignal; fresh?: boolean },
 	): Promise<RemoteAccessProviderStatus> {
-		return (await this.computeStatusWithRawStatus(requirementsReason)).status;
+		return (await this.computeStatusWithRawStatus(options)).status;
 	}
 
-	/**
-	 * Shared by `computeStatus()` and `pollTick()`: computes the exact same
-	 * status `computeStatus()` returns, but also hands back the raw
-	 * `status --json` read this call made (or `null` when one was never
-	 * made — every short-circuit branch and the catch block below), so
-	 * `pollTick()` can pass it straight to `serveService.converge()` without
-	 * paying for a second `status --json` call just to converge Serve/Funnel.
-	 */
-	private async computeStatusWithRawStatus(
-		requirementsReason: TailscaleRequirementRefreshReason = 'status-read',
-	): Promise<{ status: RemoteAccessProviderStatus; raw: TailscaleStatus | null }> {
+	async getStatusSnapshot(options?: { signal?: AbortSignal; fresh?: boolean }): Promise<{
+		status: RemoteAccessProviderStatus;
+		metadata: TailscaleObservationMetadata;
+	}> {
+		const observation = await this.computeStatusWithRawStatus(options);
+		return {
+			status: observation.status,
+			metadata: { requirements: observation.requirements, control: this.getControlState() },
+		};
+	}
+
+	private async computeStatusWithRawStatus(options?: { signal?: AbortSignal; fresh?: boolean }): Promise<{
+		status: RemoteAccessProviderStatus;
+		raw: TailscaleStatus | null;
+		requirements: TailscaleRequirement[];
+	}> {
 		const generation = this.operations.getGeneration();
 		const revision = this.operations.getObservationRevision();
-		const result = await this.collectStatusWithRawStatus(requirementsReason, generation);
-		if (!this.operations.isCurrent(generation) || !this.operations.isObservationCurrent(revision)) {
+		try {
+			const result = await this.observations.run(async (signal) => {
+				const requirements = await this.refreshRequirements('status-read', signal);
+				const collected = await this.collectStatusWithRawStatus(generation, signal, requirements);
+				signal.throwIfAborted();
+				return { ...collected, requirements };
+			}, options?.signal);
+			if (!this.operations.isCurrent(generation) || !this.operations.isObservationCurrent(revision)) {
+				return this.supersededObservation();
+			}
+			if (result.raw && this.isPollable()) {
+				this.observeAuthentication(result.raw);
+			}
+			return result;
+		} catch (error) {
+			if (
+				!this.operations.isCurrent(generation) ||
+				!this.operations.isObservationCurrent(revision) ||
+				!this.isPollable()
+			) {
+				return this.supersededObservation();
+			}
 			return {
-				status: this.buildStatus(
-					this.state === 'error' ? 'error' : 'disconnected',
-					this.lastError ?? 'The observation was superseded by a lifecycle action.',
-					this.identity,
-				),
+				status: this.buildStatus('error', error instanceof Error ? error.message : 'The status observation failed.'),
 				raw: null,
+				requirements: this.getRequirements(),
 			};
 		}
-		if (result.raw && this.isPollable()) {
-			this.observeAuthentication(result.raw);
-		}
-		return result;
+	}
+
+	private supersededObservation(): {
+		status: RemoteAccessProviderStatus;
+		raw: null;
+		requirements: TailscaleRequirement[];
+	} {
+		return {
+			status: this.buildStatus(
+				this.state === 'error' ? 'error' : 'disconnected',
+				this.lastError ?? 'The observation was superseded by a lifecycle action.',
+			),
+			raw: null,
+			requirements: this.getRequirements(),
+		};
 	}
 
 	private async collectStatusWithRawStatus(
-		requirementsReason: TailscaleRequirementRefreshReason = 'status-read',
 		generation = this.operations.getGeneration(),
+		signal?: AbortSignal,
+		requirements: TailscaleRequirement[] = this.getRequirements(),
 	): Promise<{
 		status: RemoteAccessProviderStatus;
 		raw: TailscaleStatus | null;
@@ -1040,7 +1087,11 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 			return { status: this.buildStatus('error', this.lastError ?? 'The Tailscale node service failed.'), raw: null };
 		}
 
-		const platform = await this.evaluatePlatformSupported();
+		const platform = requirements.find((requirement) => requirement.code === 'platform-supported') ?? {
+			satisfied: false,
+			message: 'Platform detection did not complete.',
+		};
+		signal?.throwIfAborted();
 		if (!this.operations.isCurrent(generation)) {
 			return {
 				status: this.buildStatus(
@@ -1057,7 +1108,8 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 		}
 
 		try {
-			const status = await this.cli.getStatus();
+			const status = await this.cli.getStatus(signal);
+			signal?.throwIfAborted();
 			if (!this.operations.isCurrent(generation)) {
 				return {
 					status: this.buildStatus(
@@ -1071,12 +1123,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 			const port = this.getBackendPort();
 			const postureAdvisories = this.buildPostureAdvisories(status);
 
-			// Only throttled (at most once every five minutes) when the poller's
-			// own tick passes 'periodic' — see this method's and
-			// `refreshRequirements`'s own docs. Every other caller (GET /status,
-			// Re-check, every action's post-call refresh) gets `requirementsReason`'s
-			// default 'status-read', always fresh.
-			const requirements = await this.refreshRequirements(requirementsReason);
+			signal?.throwIfAborted();
 			if (!this.operations.isCurrent(generation)) {
 				return {
 					status: this.buildStatus(
@@ -1134,7 +1181,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 			// populated then. `read()` never mutates; never more than once per
 			// call, called by every status read (the poller's tick included).
 			const config = this.getPluginConfig();
-			const serveResult = await this.serveService.read(config, port, status);
+			const serveResult = await this.serveService.read(config, port, status, signal);
 
 			return {
 				status: this.buildStatus(
@@ -1258,12 +1305,12 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 		};
 	}
 
-	private async evaluateBinaryAndVersion(): Promise<{
+	private async evaluateBinaryAndVersion(signal?: AbortSignal): Promise<{
 		binary: TailscaleRequirementBase;
 		version: TailscaleRequirementBase;
 	}> {
 		try {
-			const info = await this.cli.getVersion();
+			const info = await this.cli.getVersion(signal);
 			const supported = compareTailscaleVersions(info.version, TAILSCALE_MIN_VERSION) >= 0;
 
 			return {
@@ -1294,8 +1341,8 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 		}
 	}
 
-	private async evaluateDaemonActive(): Promise<TailscaleRequirementBase> {
-		const active = await this.isSystemdUnitActive('tailscaled');
+	private async evaluateDaemonActive(signal?: AbortSignal): Promise<TailscaleRequirementBase> {
+		const active = await this.isSystemdUnitActive('tailscaled', signal);
 
 		return {
 			code: 'daemon-active',
@@ -1312,17 +1359,19 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 	 * (`ipnauth.IsReadonlyConn` upstream), which is exactly the false
 	 * positive this check exists to close. `debug` is an unstable namespace
 	 * across Tailscale releases, so a command that fails outright or whose
-	 * output cannot be parsed falls back to an idempotent write probe
+	 * output cannot be parsed, explicit actions fall back to an idempotent write probe
 	 * (`tailscale set --operator=<user>`) instead: harmless for the current
 	 * operator, `permission-denied` for anyone else.
 	 */
 	private async evaluateOperatorGranted(
 		generation = this.operations.getGeneration(),
+		allowProbe = false,
+		signal?: AbortSignal,
 	): Promise<TailscaleRequirementBase> {
 		const serviceUser = os.userInfo().username;
 
 		try {
-			const prefs = await this.cli.getPrefs();
+			const prefs = await this.cli.getPrefs(signal);
 
 			return this.buildOperatorRequirement(prefs.OperatorUser === serviceUser, serviceUser);
 		} catch (error) {
@@ -1350,6 +1399,17 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 			// `debug prefs` is unavailable on this Tailscale release, or its
 			// output could not be parsed — fall back to the write probe,
 			// which is authoritative either way.
+			if (!allowProbe) {
+				const verified = this.getRequirements().find((requirement) => requirement.code === 'operator-granted');
+				return verified?.satisfied
+					? verified
+					: {
+							code: 'operator-granted',
+							satisfied: false,
+							message:
+								'The operator grant cannot be verified by this Tailscale version. Run Set up or Connect to verify management access.',
+						};
+			}
 			return this.evaluateOperatorGrantedViaProbe(serviceUser);
 		}
 	}
@@ -1407,18 +1467,19 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 		}
 	}
 
-	private isSystemdUnitActive(unit: string): Promise<boolean> {
-		return new Promise((resolve) => {
-			execFile('systemctl', ['is-active', unit], { timeout: TAILSCALE_SYSTEMCTL_PROBE_TIMEOUT_MS }, (error, stdout) => {
-				if (error) {
-					resolve(false);
-
-					return;
-				}
-
-				resolve((stdout ?? '').trim() === 'active');
-			});
-		});
+	private async isSystemdUnitActive(unit: string, signal?: AbortSignal): Promise<boolean> {
+		try {
+			const result = await cancellableExecFile(
+				'systemctl',
+				['is-active', unit],
+				signal,
+				TAILSCALE_SYSTEMCTL_PROBE_TIMEOUT_MS,
+			);
+			return result.exitCode === 0 && result.stdout.trim() === 'active';
+		} catch {
+			signal?.throwIfAborted();
+			return false;
+		}
 	}
 
 	// ─── Poller ───────────────────────────────────────────────────────
@@ -1470,9 +1531,9 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 	 */
 	private async pollTick(): Promise<void> {
 		const generation = this.operations.getGeneration();
-		const revision = this.operations.getObservationRevision();
+		let revision = this.operations.getObservationRevision();
 		try {
-			let { status, raw } = await this.computeStatusWithRawStatus('periodic');
+			let { status, raw, requirements } = await this.computeStatusWithRawStatus();
 
 			if (
 				!this.isPollable() ||
@@ -1502,6 +1563,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 				Date.now() >= this.nextReconnectAttemptAt
 			) {
 				const reconnected = await this.attemptReconnect();
+				revision = this.operations.getObservationRevision();
 
 				if (!this.isPollable() || !this.operations.isCurrent(generation)) {
 					// stop() revoked this reconnect operation.
@@ -1509,12 +1571,27 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 				}
 
 				if (reconnected) {
-					({ status, raw } = await this.computeStatusWithRawStatus('periodic'));
+					({ status, raw, requirements } = await this.computeStatusWithRawStatus());
 
 					if (!this.isPollable() || !this.operations.isCurrent(generation)) {
 						return;
 					}
 				}
+			}
+
+			if (
+				!this.isPollable() ||
+				!this.operations.isCurrent(generation) ||
+				!this.operations.isObservationCurrent(revision)
+			) {
+				return;
+			}
+			if (this.hasStatusChanged(this.lastStatus, status)) {
+				this.lastStatus = status;
+				this.eventEmitter.emit(RemoteAccessEventType.PROVIDER_OBSERVATION, {
+					status,
+					metadata: { requirements, control: this.getControlState() },
+				});
 			}
 
 			if (raw && status.state === 'connected' && this.requirementsSatisfied(this.getRequirements())) {
@@ -1523,10 +1600,6 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 
 			if (!this.isPollable() || !this.operations.isCurrent(generation)) {
 				return;
-			}
-			if (this.hasStatusChanged(this.lastStatus, status)) {
-				this.lastStatus = status;
-				this.eventEmitter.emit(RemoteAccessEventType.PROVIDER_STATUS, status);
 			}
 
 			this.schedulePoll(

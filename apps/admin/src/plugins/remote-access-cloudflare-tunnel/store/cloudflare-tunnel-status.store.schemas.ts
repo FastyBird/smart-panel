@@ -55,6 +55,8 @@ export const CloudflareTunnelPrivilegedSetupSchema = z.object({
 });
 
 export const CloudflareTunnelStatusSchema = z.object({
+	epoch: z.string().optional(),
+	revision: z.number().int().nonnegative().optional(),
 	type: z.string(),
 	state: z.nativeEnum(RemoteAccessModuleProviderState),
 	endpoints: z.array(RemoteAccessEndpointSchema),
@@ -148,6 +150,8 @@ export const CloudflareTunnelPrivilegedSetupResSchema: ZodType<RemoteAccessCloud
 });
 
 export const CloudflareTunnelStatusResSchema: ZodType<RemoteAccessCloudflareTunnelPluginStatusSchema> = z.object({
+	epoch: z.string(),
+	revision: z.number().int().nonnegative(),
 	type: z.string(),
 	state: z.nativeEnum(RemoteAccessModuleProviderState),
 	endpoints: z.array(RemoteAccessEndpointResSchema),

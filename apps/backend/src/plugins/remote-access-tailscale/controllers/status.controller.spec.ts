@@ -12,6 +12,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { PlatformService } from '../../../modules/platform/services/platform.service';
 import { RemoteAccessProviderStatus } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
+import { RemoteAccessStatusService } from '../../../modules/remote-access/services/remote-access-status.service';
 import { TailscaleLoginService } from '../services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../services/tailscale-provider.service';
@@ -21,6 +22,7 @@ import { StatusController } from './status.controller';
 
 describe('StatusController', () => {
 	let controller: StatusController;
+	let acceptedStatus: { getCachedProviderSnapshot: jest.Mock };
 	let providerService: { getStatus: jest.Mock };
 	let nodeManagedService: { evaluateRequirements: jest.Mock; getControlState: jest.Mock };
 	let loginService: { getPendingInteractiveAuth: jest.Mock };
@@ -65,6 +67,27 @@ describe('StatusController', () => {
 			controllers: [StatusController],
 			providers: [
 				{ provide: TailscaleProviderService, useValue: providerService },
+				{
+					provide: RemoteAccessStatusService,
+					useValue: {
+						getProviderSnapshot: jest.fn(async () => ({
+							status: {
+								...((await providerService.getStatus()) as RemoteAccessProviderStatus),
+								epoch: 'test-epoch',
+								revision: 1,
+							},
+							metadata: {
+								requirements: (await nodeManagedService.evaluateRequirements()) as Awaited<
+									ReturnType<TailscaleNodeManagedService['evaluateRequirements']>
+								>,
+								control: nodeManagedService.getControlState() as ReturnType<
+									TailscaleNodeManagedService['getControlState']
+								>,
+							},
+						})),
+						getCachedProviderSnapshot: jest.fn(),
+					},
+				},
 				{ provide: TailscaleNodeManagedService, useValue: nodeManagedService },
 				{ provide: TailscaleLoginService, useValue: loginService },
 				{ provide: TailscaleSetupService, useValue: setupService },
@@ -73,6 +96,7 @@ describe('StatusController', () => {
 		}).compile();
 
 		controller = module.get<StatusController>(StatusController);
+		acceptedStatus = module.get(RemoteAccessStatusService);
 	});
 
 	function fakeResponse(): FastifyReply {
@@ -94,6 +118,33 @@ describe('StatusController', () => {
 		expect(response.data.endpoints[0]).toMatchObject({ url: 'http://100.64.0.5:3000', label: 'Tailscale IPv4' });
 		expect(response.data.requirements).toHaveLength(5);
 		expect(response.data.requirements[0]).toMatchObject({ code: 'platform-supported', satisfied: true });
+	});
+
+	it('uses the committed snapshot after a delayed platform probe without leaking stale pending auth', async () => {
+		providerService.getStatus.mockResolvedValue({ ...baseStatus, state: 'pending-auth', endpoints: [] });
+		loginService.getPendingInteractiveAuth.mockReturnValue({
+			authUrl: 'https://login.tailscale.com/a/stale',
+			qr: 'stale',
+		});
+		let releaseProbe!: (value: { supported: boolean; reason: null }) => void;
+		platformService.getPrivilegedWorkerSupport.mockReturnValue(
+			new Promise((resolve) => {
+				releaseProbe = resolve;
+			}),
+		);
+		const pending = controller.getStatus(fakeResponse());
+		acceptedStatus.getCachedProviderSnapshot.mockReturnValue({
+			status: { ...baseStatus, epoch: 'test-epoch', revision: 2 },
+			metadata: {
+				requirements: baseRequirements,
+				control: nodeManagedService.getControlState() as ReturnType<TailscaleNodeManagedService['getControlState']>,
+			},
+		});
+		releaseProbe({ supported: true, reason: null });
+		const response = await pending;
+		expect(response.data).toMatchObject({ state: 'connected', epoch: 'test-epoch', revision: 2 });
+		expect(response.data).not.toHaveProperty('authUrl');
+		expect(response.data).not.toHaveProperty('qr');
 	});
 
 	it('does not set Cache-Control when the state is not pending-auth', async () => {

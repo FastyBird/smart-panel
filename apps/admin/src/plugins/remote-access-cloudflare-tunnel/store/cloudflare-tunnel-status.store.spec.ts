@@ -66,7 +66,7 @@ describe('Cloudflare Tunnel status store', () => {
 
 			const status = await store.get();
 
-			expect(get).toHaveBeenCalledWith('/plugins/remote-access-cloudflare-tunnel/status');
+			expect(get).toHaveBeenCalledWith('/plugins/remote-access-cloudflare-tunnel/status', { signal: expect.any(AbortSignal) });
 			expect(status.state).toBe('connected');
 			expect(status.details.hostname).toBe('panel.example.com');
 			expect(status.requirements).toHaveLength(1);

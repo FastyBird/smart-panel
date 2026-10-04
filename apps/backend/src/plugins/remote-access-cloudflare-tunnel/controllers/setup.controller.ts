@@ -16,6 +16,7 @@ import {
 	RemoteAccessAdvisoryModel,
 	RemoteAccessEndpointModel,
 } from '../../../modules/remote-access/models/provider.model';
+import { RemoteAccessStatusService } from '../../../modules/remote-access/services/remote-access-status.service';
 import {
 	ApiAcceptedSuccessResponse,
 	ApiSuccessResponse,
@@ -37,8 +38,10 @@ import {
 	REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_API_TAG_NAME,
 	REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME,
 } from '../remote-access-cloudflare-tunnel.constants';
-import { CloudflareTunnelManagedService } from '../services/cloudflare-tunnel-managed.service';
-import { CloudflareTunnelProviderService } from '../services/cloudflare-tunnel-provider.service';
+import {
+	CloudflareTunnelManagedService,
+	CloudflareTunnelObservationMetadata,
+} from '../services/cloudflare-tunnel-managed.service';
 import {
 	CloudflareTunnelSetupService,
 	CloudflareTunnelSetupUnavailableException,
@@ -59,7 +62,7 @@ export class SetupController {
 
 	constructor(
 		private readonly setupService: CloudflareTunnelSetupService,
-		private readonly providerService: CloudflareTunnelProviderService,
+		private readonly statusService: RemoteAccessStatusService,
 		private readonly tunnelManagedService: CloudflareTunnelManagedService,
 		private readonly configService: ConfigService,
 	) {}
@@ -158,12 +161,21 @@ export class SetupController {
 
 	/** Shared by `reset()` — the same composition `StatusController.getStatus()` uses, minus the setup/privileged-setup fields. */
 	private async buildStatusResponse(): Promise<RemoteAccessCloudflareTunnelPluginStatusResponseModel> {
-		const [status, requirements] = await Promise.all([
-			this.providerService.getStatus(),
-			this.tunnelManagedService.refreshRequirements(),
-		]);
+		const observed = await this.statusService.getProviderSnapshot<CloudflareTunnelObservationMetadata>(
+			REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME,
+			{ fresh: true },
+		);
+		// A provider event can arrive while the platform probe is pending.
+		const snapshot =
+			this.statusService.getCachedProviderSnapshot<CloudflareTunnelObservationMetadata>(
+				REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME,
+			) ?? observed;
+		const { status, metadata } = snapshot;
+		const requirements = metadata?.requirements ?? [];
 
 		const data = new RemoteAccessCloudflareTunnelPluginStatusModel();
+		data.epoch = status.epoch;
+		data.revision = status.revision;
 		data.type = status.type;
 		data.state = status.state;
 		data.endpoints = toInstance(RemoteAccessEndpointModel, status.endpoints);

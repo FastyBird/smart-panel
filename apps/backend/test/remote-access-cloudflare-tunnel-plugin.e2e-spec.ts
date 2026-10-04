@@ -7,7 +7,7 @@ import request from 'supertest';
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 
@@ -17,6 +17,8 @@ import { AuthenticatedEntity, AuthenticatedRequest } from '../src/modules/auth/g
 import { ConfigService } from '../src/modules/config/services/config.service';
 import { PlatformType } from '../src/modules/platform/platform.constants';
 import { PlatformService } from '../src/modules/platform/services/platform.service';
+import { RemoteAccessProviderRegistryService } from '../src/modules/remote-access/services/remote-access-provider-registry.service';
+import { RemoteAccessStatusService } from '../src/modules/remote-access/services/remote-access-status.service';
 import { PrivilegedWorkerUnavailableException } from '../src/modules/system/system.exceptions';
 import { RolesGuard } from '../src/modules/users/guards/roles.guard';
 import { UserRole } from '../src/modules/users/users.constants';
@@ -124,6 +126,7 @@ describe('Remote access Cloudflare Tunnel plugin endpoints (e2e)', () => {
 
 	function buildConfig(overrides: Partial<RemoteAccessCloudflareTunnelPluginConfigModel> = {}) {
 		const config = new RemoteAccessCloudflareTunnelPluginConfigModel();
+		config.enabled = true;
 		config.publicHostname = 'panel.example.com';
 		config.protocol = 'auto';
 		config.tunnelToken = 'a-real-token';
@@ -158,6 +161,7 @@ describe('Remote access Cloudflare Tunnel plugin endpoints (e2e)', () => {
 		setupServiceMock = { install: jest.fn(), getLastJob: jest.fn().mockReturnValue(null) };
 
 		const moduleFixture = await Test.createTestingModule({
+			imports: [EventEmitterModule.forRoot()],
 			controllers: [StatusController, SetupController],
 			providers: [
 				{ provide: APP_GUARD, useClass: TestCredentialGuard },
@@ -165,7 +169,8 @@ describe('Remote access Cloudflare Tunnel plugin endpoints (e2e)', () => {
 				{ provide: ConfigService, useValue: configServiceMock },
 				{ provide: NestConfigService, useValue: { get: jest.fn().mockReturnValue(undefined) } },
 				{ provide: PlatformService, useValue: platformServiceMock },
-				{ provide: EventEmitter2, useValue: { emit: jest.fn(), onAny: jest.fn() } },
+				RemoteAccessStatusService,
+				RemoteAccessProviderRegistryService,
 				{ provide: CloudflaredProcessService, useValue: processServiceMock },
 				{ provide: CloudflaredMetricsService, useValue: metricsServiceMock },
 				CloudflaredCliService,
@@ -175,6 +180,7 @@ describe('Remote access Cloudflare Tunnel plugin endpoints (e2e)', () => {
 			],
 		}).compile();
 
+		moduleFixture.get(RemoteAccessProviderRegistryService).register(moduleFixture.get(CloudflareTunnelProviderService));
 		app = moduleFixture.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
 		app.useGlobalFilters(...createGlobalExceptionFilters(moduleFixture.get(NestConfigService)));
 		await app.listen(0, '127.0.0.1');
@@ -223,6 +229,27 @@ describe('Remote access Cloudflare Tunnel plugin endpoints (e2e)', () => {
 			);
 			expect(response.body.data.setup).toBeNull();
 			expect(response.body.data.privilegedSetup).toEqual({ available: true, reason: null });
+		});
+
+		it('keeps disabled plugin diagnostics available without publishing a tunnel endpoint', async () => {
+			configServiceMock.getPluginConfig.mockImplementation(() => buildConfig({ enabled: false }));
+			try {
+				const response = await request(app.getHttpServer())
+					.get('/status')
+					.set('Authorization', 'Bearer owner-user')
+					.expect(200);
+				expect(response.body.data).toMatchObject({
+					state: 'disconnected',
+					endpoints: [],
+					proxyAddresses: [],
+					epoch: expect.any(String) as string,
+					revision: expect.any(Number) as number,
+				});
+				expect(response.body.data.requirements).toHaveLength(4);
+				expect(app.get(RemoteAccessStatusService).getCachedStatuses()).toEqual([]);
+			} finally {
+				configServiceMock.getPluginConfig.mockImplementation(() => buildConfig());
+			}
 		});
 
 		it('reports the last known setup job on GET /status', async () => {

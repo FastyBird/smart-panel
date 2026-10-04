@@ -25,10 +25,12 @@ export class CloudflaredMetricsService {
 		'CloudflaredMetricsService',
 	);
 
-	async fetchReady(address: string): Promise<CloudflaredReadyInfo | null> {
+	async fetchReady(address: string, signal?: AbortSignal): Promise<CloudflaredReadyInfo | null> {
 		try {
 			const response = await fetch(`http://${address}/ready`, {
-				signal: AbortSignal.timeout(CLOUDFLARED_METRICS_TIMEOUT_MS),
+				signal: signal
+					? AbortSignal.any([signal, AbortSignal.timeout(CLOUDFLARED_METRICS_TIMEOUT_MS)])
+					: AbortSignal.timeout(CLOUDFLARED_METRICS_TIMEOUT_MS),
 			});
 
 			if (!response.ok) {
@@ -47,6 +49,7 @@ export class CloudflaredMetricsService {
 
 			return { readyConnections, connectorId };
 		} catch (error) {
+			signal?.throwIfAborted();
 			this.logger.debug('Failed to fetch the cloudflared /ready endpoint', {
 				message: error instanceof Error ? error.message : String(error),
 			});

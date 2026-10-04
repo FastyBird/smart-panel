@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
@@ -285,6 +285,21 @@ export class RemoteAccessTailscalePluginPrivilegedSetupModel {
  */
 @ApiSchema({ name: 'RemoteAccessTailscalePluginDataStatus' })
 export class RemoteAccessTailscalePluginStatusModel {
+	@ApiProperty({ description: 'Process epoch; changes after backend restart', type: 'string' })
+	@Expose()
+	@IsString()
+	epoch: string;
+
+	@ApiProperty({
+		description: 'Monotonic accepted publication revision within this epoch',
+		type: 'integer',
+		minimum: 0,
+	})
+	@Expose()
+	@IsInt()
+	@Min(0)
+	revision: number;
+
 	@ApiProperty({
 		description: 'Administrative control state; independent of the provider connection state',
 		type: () => RemoteAccessTailscalePluginControlModel,

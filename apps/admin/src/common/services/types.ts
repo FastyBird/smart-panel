@@ -103,7 +103,7 @@ export type DataRefreshHandler = () => Promise<void>;
 export type DataRefreshErrorHandler = (error: unknown) => void;
 
 export interface IDataRefreshRegistry {
-	register(key: DataRefreshKey, handler: DataRefreshHandler): void;
+	register(key: DataRefreshKey, handler: DataRefreshHandler, options?: { supersedeOnReconnect?: boolean }): void;
 
 	unregister(key: DataRefreshKey): void;
 

@@ -22,6 +22,7 @@ import {
 	RemoteAccessAdvisoryModel,
 	RemoteAccessEndpointModel,
 } from '../../../modules/remote-access/models/provider.model';
+import { RemoteAccessStatusService } from '../../../modules/remote-access/services/remote-access-status.service';
 import {
 	ApiAcceptedSuccessResponse,
 	ApiSuccessResponse,
@@ -57,8 +58,7 @@ import {
 } from '../remote-access-tailscale.exceptions';
 import { TailscaleCliError } from '../services/tailscale-cli.service';
 import { TailscaleLoginInProgressException, TailscaleLoginService } from '../services/tailscale-login.service';
-import { TailscaleNodeManagedService } from '../services/tailscale-node-managed.service';
-import { TailscaleProviderService } from '../services/tailscale-provider.service';
+import { TailscaleNodeManagedService, TailscaleObservationMetadata } from '../services/tailscale-node-managed.service';
 import { TailscaleSetupService, TailscaleSetupUnavailableException } from '../services/tailscale-setup.service';
 import { buildTailscaleControlModel } from '../utils/tailscale-control.utils';
 
@@ -75,7 +75,7 @@ export class SetupController {
 	constructor(
 		private readonly setupService: TailscaleSetupService,
 		private readonly loginService: TailscaleLoginService,
-		private readonly providerService: TailscaleProviderService,
+		private readonly statusService: RemoteAccessStatusService,
 		private readonly nodeManagedService: TailscaleNodeManagedService,
 		private readonly platformService: PlatformService,
 	) {}
@@ -335,13 +335,22 @@ export class SetupController {
 		res: Response,
 		request?: AuthenticatedRequest,
 	): Promise<RemoteAccessTailscalePluginStatusResponseModel> {
-		const [status, requirements, privilegedWorkerSupport] = await Promise.all([
-			this.providerService.getStatus(),
-			this.nodeManagedService.evaluateRequirements(),
+		const [observed, privilegedWorkerSupport] = await Promise.all([
+			this.statusService.getProviderSnapshot<TailscaleObservationMetadata>(REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, {
+				fresh: true,
+			}),
 			this.platformService.getPrivilegedWorkerSupport(),
 		]);
+		// A provider event can arrive while the platform probe is pending.
+		const snapshot =
+			this.statusService.getCachedProviderSnapshot<TailscaleObservationMetadata>(REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME) ??
+			observed;
+		const { status, metadata } = snapshot;
+		const requirements = metadata?.requirements ?? [];
 
 		const data = new RemoteAccessTailscalePluginStatusModel();
+		data.epoch = status.epoch;
+		data.revision = status.revision;
 		data.type = status.type;
 		data.state = status.state;
 		data.endpoints = toInstance(RemoteAccessEndpointModel, status.endpoints);
@@ -352,7 +361,7 @@ export class SetupController {
 		data.updatedAt = status.updatedAt;
 		data.requirements = toInstance(RemoteAccessTailscalePluginRequirementModel, requirements);
 		data.control = buildTailscaleControlModel(
-			this.nodeManagedService.getControlState(),
+			metadata?.control ?? this.nodeManagedService.getControlState(),
 			status.state,
 			requirements,
 			request?.auth?.role,

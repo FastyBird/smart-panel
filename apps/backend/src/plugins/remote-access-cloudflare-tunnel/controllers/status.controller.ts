@@ -8,6 +8,7 @@ import {
 	RemoteAccessAdvisoryModel,
 	RemoteAccessEndpointModel,
 } from '../../../modules/remote-access/models/provider.model';
+import { RemoteAccessStatusService } from '../../../modules/remote-access/services/remote-access-status.service';
 import { ApiSuccessResponse } from '../../../modules/swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../../modules/users/guards/roles.guard';
 import { UserRole } from '../../../modules/users/users.constants';
@@ -22,8 +23,7 @@ import {
 	REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_API_TAG_NAME,
 	REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME,
 } from '../remote-access-cloudflare-tunnel.constants';
-import { CloudflareTunnelManagedService } from '../services/cloudflare-tunnel-managed.service';
-import { CloudflareTunnelProviderService } from '../services/cloudflare-tunnel-provider.service';
+import { CloudflareTunnelObservationMetadata } from '../services/cloudflare-tunnel-managed.service';
 import { CloudflareTunnelSetupService } from '../services/cloudflare-tunnel-setup.service';
 
 @ApiTags(REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_API_TAG_NAME)
@@ -33,8 +33,7 @@ export class StatusController {
 	private readonly logger = createExtensionLogger(REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME, 'StatusController');
 
 	constructor(
-		private readonly providerService: CloudflareTunnelProviderService,
-		private readonly tunnelManagedService: CloudflareTunnelManagedService,
+		private readonly statusService: RemoteAccessStatusService,
 		private readonly setupService: CloudflareTunnelSetupService,
 		private readonly platformService: PlatformService,
 	) {}
@@ -54,13 +53,24 @@ export class StatusController {
 	async getStatus(): Promise<RemoteAccessCloudflareTunnelPluginStatusResponseModel> {
 		this.logger.debug('Fetching Cloudflare Tunnel status');
 
-		const [status, requirements, privilegedWorkerSupport] = await Promise.all([
-			this.providerService.getStatus(),
-			this.tunnelManagedService.refreshRequirements(),
+		const [observed, privilegedWorkerSupport] = await Promise.all([
+			this.statusService.getProviderSnapshot<CloudflareTunnelObservationMetadata>(
+				REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME,
+				{ fresh: true },
+			),
 			this.platformService.getPrivilegedWorkerSupport(),
 		]);
+		// A provider event can arrive while the platform probe is pending.
+		const snapshot =
+			this.statusService.getCachedProviderSnapshot<CloudflareTunnelObservationMetadata>(
+				REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME,
+			) ?? observed;
+		const { status, metadata } = snapshot;
+		const requirements = metadata?.requirements ?? [];
 
 		const data = new RemoteAccessCloudflareTunnelPluginStatusModel();
+		data.epoch = status.epoch;
+		data.revision = status.revision;
 		data.type = status.type;
 		data.state = status.state;
 		data.endpoints = toInstance(RemoteAccessEndpointModel, status.endpoints);

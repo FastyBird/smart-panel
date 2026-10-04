@@ -66,7 +66,7 @@ describe('Tailscale status store', () => {
 
 			const status = await store.get();
 
-			expect(get).toHaveBeenCalledWith('/plugins/remote-access-tailscale/status');
+			expect(get).toHaveBeenCalledWith('/plugins/remote-access-tailscale/status', { signal: expect.any(AbortSignal) });
 			expect(status.state).toBe('connected');
 			expect(status.details.tailnet).toBe('example.ts.net');
 			expect(status.requirements).toHaveLength(1);

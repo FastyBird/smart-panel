@@ -425,15 +425,15 @@ describe('CloudflareTunnelManagedService', () => {
 			expect(service.getState()).toBe('stopped');
 		});
 
-		it('emits PROVIDER_STATUS on stop()', async () => {
+		it('emits PROVIDER_OBSERVATION on stop()', async () => {
 			await service.start();
 			eventEmitterMock.emit.mockClear();
 
 			await service.stop();
 
 			expect(eventEmitterMock.emit).toHaveBeenCalledWith(
-				RemoteAccessEventType.PROVIDER_STATUS,
-				expect.objectContaining({ state: 'disconnected' }),
+				RemoteAccessEventType.PROVIDER_OBSERVATION,
+				expect.objectContaining({ status: expect.objectContaining({ state: 'disconnected' }) as unknown }),
 			);
 		});
 
@@ -494,7 +494,8 @@ describe('CloudflareTunnelManagedService', () => {
 			expect(await service.isHealthy()).toBe(false);
 		});
 
-		it('is true when the process is running and /ready succeeds', async () => {
+		it('is true when the managed service is started and /ready succeeds', async () => {
+			await service.start();
 			processService.isRunning.mockReturnValue(true);
 			metricsService.fetchReady.mockResolvedValue({ readyConnections: 1, connectorId: 'x' });
 
@@ -578,6 +579,57 @@ describe('CloudflareTunnelManagedService', () => {
 			await jest.advanceTimersByTimeAsync(30_000);
 
 			expect(processService.start).not.toHaveBeenCalled();
+		});
+	});
+	describe('bounded shared observations', () => {
+		it('coalesces requirements and readiness across REST and poll callers', async () => {
+			await service.start();
+			processService.isRunning.mockReturnValue(true);
+			cliService.getVersion.mockClear();
+			let release!: (ready: { readyConnections: number; connectorId: string }) => void;
+			let entered!: () => void;
+			const reached = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			metricsService.fetchReady.mockImplementationOnce(() => {
+				entered();
+				return new Promise((resolve) => {
+					release = resolve;
+				});
+			});
+			const first = service.getStatusSnapshot();
+			await reached;
+			const second = service.getStatusSnapshot({ fresh: true });
+			const poll = (service as unknown as { pollTick(): Promise<void> }).pollTick();
+			expect(cliService.getVersion).toHaveBeenCalledTimes(1);
+			expect(metricsService.fetchReady).toHaveBeenCalledTimes(1);
+			release({ readyConnections: 1, connectorId: 'connector' });
+			const [a, b] = await Promise.all([first, second, poll]);
+			expect(a).toEqual(b);
+			expect(a.metadata.requirements).toHaveLength(4);
+		});
+
+		it('suppresses readiness from a stopped and restarted generation', async () => {
+			await service.start();
+			processService.isRunning.mockReturnValue(true);
+			let release!: (ready: { readyConnections: number; connectorId: string }) => void;
+			let entered!: () => void;
+			const reached = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			metricsService.fetchReady.mockImplementationOnce(() => {
+				entered();
+				return new Promise((resolve) => {
+					release = resolve;
+				});
+			});
+			const old = service.getStatusSnapshot();
+			await reached;
+			await service.stop();
+			await service.start();
+			release({ readyConnections: 1, connectorId: 'obsolete' });
+			expect((await old).status.state).toBe('disconnected');
+			expect((await old).status.endpoints).toEqual([]);
 		});
 	});
 });

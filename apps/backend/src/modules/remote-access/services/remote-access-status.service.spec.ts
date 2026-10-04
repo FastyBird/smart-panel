@@ -1,8 +1,13 @@
 import { Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { ConfigService } from '../../config/services/config.service';
-import { IRemoteAccessProvider, RemoteAccessProviderStatus } from '../platforms/remote-access-provider.platform';
-import { REMOTE_ACCESS_PROVIDER_STATUS_TIMEOUT_MS } from '../remote-access.constants';
+import {
+	IRemoteAccessProvider,
+	RemoteAccessProviderStatus,
+	RemoteAccessStatusReadOptions,
+} from '../platforms/remote-access-provider.platform';
+import { EventType, REMOTE_ACCESS_PROVIDER_STATUS_TIMEOUT_MS } from '../remote-access.constants';
 import { RemoteAccessProviderNotFoundException } from '../remote-access.exceptions';
 
 import { RemoteAccessProviderRegistryService } from './remote-access-provider-registry.service';
@@ -41,6 +46,175 @@ describe('RemoteAccessStatusService', () => {
 		service = new RemoteAccessStatusService(registry, configService as unknown as ConfigService);
 	});
 
+	it('keeps a newer event when an older GET finishes afterwards (D4)', async () => {
+		let resolveStatus!: (status: RemoteAccessProviderStatus) => void;
+		registry.register(
+			buildProvider(
+				'remote-access-tailscale',
+				() =>
+					new Promise((resolve) => {
+						resolveStatus = resolve;
+					}),
+			),
+		);
+
+		const pending = service.getProviderStatus('remote-access-tailscale');
+		service.onProviderStatus(buildStatus({ state: 'disconnected', updatedAt: '2020-01-01T00:00:00Z' }));
+		resolveStatus(buildStatus({ state: 'connected', updatedAt: '2030-01-01T00:00:00Z' }));
+
+		expect((await pending).state).toBe('disconnected');
+		expect(service.getCachedStatuses()[0].state).toBe('disconnected');
+	});
+
+	it('coalesces aggregate and individual reads into one observation', async () => {
+		let resolveStatus!: (status: RemoteAccessProviderStatus) => void;
+		const getStatus = jest.fn(
+			() =>
+				new Promise<RemoteAccessProviderStatus>((resolve) => {
+					resolveStatus = resolve;
+				}),
+		);
+		registry.register(buildProvider('remote-access-tailscale', getStatus));
+		const aggregate = service.getAggregatedStatuses();
+		const single = service.getProviderStatus('remote-access-tailscale');
+		resolveStatus(buildStatus());
+		expect((await aggregate)[0].revision).toBe((await single).revision);
+		expect(getStatus).toHaveBeenCalledTimes(1);
+	});
+
+	it('commits before downstream listeners and publishes GET-discovered transitions', async () => {
+		const emitter = new EventEmitter2();
+		service = new RemoteAccessStatusService(registry, configService as unknown as ConfigService, emitter);
+		registry.register(buildProvider('remote-access-tailscale', () => Promise.resolve(buildStatus())));
+		const consumed: string[] = [];
+		emitter.on(EventType.PROVIDER_STATUS, (status: RemoteAccessProviderStatus) => {
+			expect(service.getCachedStatuses()[0]).toEqual(status);
+			consumed.push(status.state);
+		});
+		const first = await service.getProviderStatus('remote-access-tailscale');
+		service.onProviderStatus(buildStatus({ state: 'disconnected' }));
+		expect(consumed).toEqual(['connected', 'disconnected']);
+		expect(service.getVersion().revision).toBeGreaterThan(first.revision);
+		expect(service.getVersion().epoch).toBe(first.epoch);
+		expect(
+			new RemoteAccessStatusService(registry, configService as unknown as ConfigService).getVersion().epoch,
+		).not.toBe(first.epoch);
+	});
+
+	it('accepts opaque metadata with its observation and never emits it to subscribers', async () => {
+		const emitter = new EventEmitter2();
+		const emit = jest.spyOn(emitter, 'emit');
+		service = new RemoteAccessStatusService(registry, configService as unknown as ConfigService, emitter);
+		registry.register({
+			...buildProvider('remote-access-tailscale', () => Promise.resolve(buildStatus())),
+			getSnapshot: () => Promise.resolve({ status: buildStatus(), metadata: { ready: true } }),
+		});
+		const result = await service.getProviderSnapshot<{ ready: boolean }>('remote-access-tailscale');
+		expect(result.metadata).toEqual({ ready: true });
+		expect(emit.mock.calls[0][1]).not.toHaveProperty('metadata');
+	});
+
+	it('keeps ownership after the deadline until actual provider work settles', async () => {
+		jest.useFakeTimers();
+		try {
+			let resolveStatus!: (status: RemoteAccessProviderStatus) => void;
+			let signal: AbortSignal | undefined;
+			const getStatus = jest.fn((options?: RemoteAccessStatusReadOptions) => {
+				signal = options?.signal;
+				return new Promise<RemoteAccessProviderStatus>((resolve) => {
+					resolveStatus = resolve;
+				});
+			});
+			registry.register(buildProvider('remote-access-tailscale', getStatus));
+			const first = service.getProviderStatus('remote-access-tailscale');
+			await jest.advanceTimersByTimeAsync(REMOTE_ACCESS_PROVIDER_STATUS_TIMEOUT_MS);
+			expect((await first).state).toBe('error');
+			expect(signal?.aborted).toBe(true);
+			for (let count = 0; count < 10; count++) {
+				expect((await service.getProviderStatus('remote-access-tailscale')).state).toBe('error');
+			}
+			expect(getStatus).toHaveBeenCalledTimes(1);
+			resolveStatus(buildStatus());
+			await Promise.resolve();
+			await Promise.resolve();
+			expect(service.getCachedStatuses()[0].state).toBe('error');
+			getStatus.mockImplementation(() => Promise.resolve(buildStatus({ state: 'disconnected' })));
+			expect((await service.getProviderStatus('remote-access-tailscale')).state).toBe('disconnected');
+			expect(getStatus).toHaveBeenCalledTimes(2);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('keeps disabled administrative details observable without URL or proxy contributions', async () => {
+		const getStatus = jest.fn(() => Promise.resolve(buildStatus({ proxyAddresses: ['127.0.0.1'] })));
+		registry.register(buildProvider('remote-access-tailscale', getStatus));
+		disabledTypes.add('remote-access-tailscale');
+		const snapshot = await service.getProviderSnapshot('remote-access-tailscale');
+		expect(snapshot.status.state).toBe('disconnected');
+		expect(snapshot.status.proxyAddresses).toEqual([]);
+		expect(snapshot.status.epoch).toEqual(expect.any(String));
+		expect(service.getCachedStatuses()).toEqual([]);
+		expect(await service.getAggregatedStatuses()).toEqual([]);
+		expect(getStatus).toHaveBeenCalledTimes(1);
+	});
+
+	it('invalidates administrative details and a delayed GET when configuration disables its provider', async () => {
+		let resolveStatus!: (status: RemoteAccessProviderStatus) => void;
+		registry.register(
+			buildProvider(
+				'remote-access-tailscale',
+				() =>
+					new Promise((resolve) => {
+						resolveStatus = resolve;
+					}),
+			),
+		);
+		service.onProviderStatus(buildStatus());
+		const pending = service.getProviderSnapshot('remote-access-tailscale');
+		disabledTypes.add('remote-access-tailscale');
+		service.onConfigUpdated({ type: 'plugin', source: 'remote-access-tailscale' });
+		resolveStatus(buildStatus());
+		expect((await pending).status.state).toBe('disconnected');
+		expect(service.getCachedProviderSnapshot('remote-access-tailscale')?.status.state).toBe('disconnected');
+		expect(service.getCachedStatuses()).toEqual([]);
+	});
+
+	it('copies provider-owned data and metadata at acceptance', async () => {
+		const status = buildStatus({ details: { tailnet: 'original' } });
+		const metadata = { requirements: { ready: true } };
+		registry.register({
+			...buildProvider('remote-access-tailscale', () => Promise.resolve(status)),
+			getSnapshot: () => Promise.resolve({ status, metadata }),
+		});
+		const result = await service.getProviderSnapshot<typeof metadata>('remote-access-tailscale');
+		status.details.tailnet = 'changed';
+		metadata.requirements.ready = false;
+		result.metadata.requirements.ready = false;
+		expect(
+			service.getCachedProviderSnapshot<typeof metadata>('remote-access-tailscale')?.metadata?.requirements.ready,
+		).toBe(true);
+		expect(service.getCachedStatuses()[0].details.tailnet).toBe('original');
+	});
+
+	it('publishes disabled ownership separately from disconnected observation', () => {
+		const emitter = new EventEmitter2();
+		const emit = jest.spyOn(emitter, 'emit');
+		service = new RemoteAccessStatusService(registry, configService as unknown as ConfigService, emitter);
+		registry.register(buildProvider('remote-access-tailscale', () => Promise.resolve(buildStatus())));
+		disabledTypes.add('remote-access-tailscale');
+		service.onProviderStatus(buildStatus());
+		expect(emit).toHaveBeenCalledWith(
+			EventType.PROVIDER_STATUS,
+			expect.objectContaining({ enabled: false, state: 'disconnected' }),
+		);
+		expect(service.getCachedProviderSnapshot('remote-access-tailscale')?.status.enabled).toBe(false);
+		expect(service.getCachedStatuses()).toEqual([]);
+		disabledTypes.delete('remote-access-tailscale');
+		service.onProviderStatus(buildStatus({ state: 'disconnected' }));
+		expect(service.getCachedStatuses()[0].enabled).toBe(true);
+	});
+
 	describe('getCachedStatuses', () => {
 		it('starts empty', () => {
 			expect(service.getCachedStatuses()).toEqual([]);
@@ -52,7 +226,7 @@ describe('RemoteAccessStatusService', () => {
 
 			service.onProviderStatus(status);
 
-			expect(service.getCachedStatuses()).toEqual([status]);
+			expect(service.getCachedStatuses()).toEqual([expect.objectContaining(status)]);
 		});
 
 		it('replaces the cached entry for the same provider type on a later event', () => {
@@ -61,7 +235,7 @@ describe('RemoteAccessStatusService', () => {
 			service.onProviderStatus(buildStatus({ state: 'connecting' }));
 			service.onProviderStatus(buildStatus({ state: 'connected' }));
 
-			expect(service.getCachedStatuses()).toEqual([buildStatus({ state: 'connected' })]);
+			expect(service.getCachedStatuses()).toEqual([expect.objectContaining(buildStatus({ state: 'connected' }))]);
 		});
 
 		it('drops an event whose type does not resolve to a registered provider, without caching it (F6)', () => {
@@ -92,7 +266,7 @@ describe('RemoteAccessStatusService', () => {
 			registry.register(buildProvider('remote-access-tailscale', () => Promise.resolve(status)));
 			service.onProviderStatus(status);
 
-			expect(service.getCachedStatuses()).toEqual([status]);
+			expect(service.getCachedStatuses()).toEqual([expect.objectContaining(status)]);
 		});
 	});
 
@@ -123,7 +297,7 @@ describe('RemoteAccessStatusService', () => {
 
 			await service.getAggregatedStatuses();
 
-			expect(service.getCachedStatuses()).toEqual([status]);
+			expect(service.getCachedStatuses()).toEqual([expect.objectContaining(status)]);
 		});
 
 		it('synthesizes an error entry instead of throwing when a provider rejects', async () => {

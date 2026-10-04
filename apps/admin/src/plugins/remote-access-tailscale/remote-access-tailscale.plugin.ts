@@ -102,7 +102,9 @@ export default {
 
 		// Events emitted while the browser was suspended are gone for good - re-read what we hold,
 		// same as the remote-access module's own store.
-		dataRefreshRegistry.register(remoteAccessTailscalePluginKey, (): Promise<void> => refreshLoadedStores([tailscaleStatusStore]));
+		dataRefreshRegistry.register(remoteAccessTailscalePluginKey, (): Promise<void> => refreshLoadedStores([tailscaleStatusStore]), {
+			supersedeOnReconnect: true,
+		});
 
 		// The remote-access module only forwards `Provider.Status` and `Urls.Changed` to its own
 		// store; `Setup.Progress` is explicitly left to "the owning provider plugin's own store"

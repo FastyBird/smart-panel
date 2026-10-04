@@ -3,8 +3,9 @@ import { ref } from 'vue';
 import { type Pinia, type Store, defineStore } from 'pinia';
 
 import { PLUGINS_PREFIX } from '../../../app.constants';
-import { getErrorCode, getErrorReason, useBackend, useLogger } from '../../../common';
-import { EventType } from '../../../modules/remote-access';
+import { getErrorCode, getErrorReason, snakeToCamel, useBackend, useLogger } from '../../../common';
+import { EventType, RemoteAccessProviderStatusEventSchema } from '../../../modules/remote-access';
+import { createSnapshotOrder } from '../../../modules/remote-access/store/snapshot-order';
 import type {
 	RemoteAccessTailscalePluginCreateInstallOperation,
 	RemoteAccessTailscalePluginCreateLoginOperation,
@@ -67,26 +68,49 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 
 		const firstLoadFinished = (): boolean => firstLoad.value;
 
-		const isLoaded = (): boolean => data.value !== null;
+		const isLoaded = (): boolean => data.value !== null || semaphore.value.getting || order.hasBuffered();
 
 		let pendingGetPromise: Promise<ITailscaleStatus> | null = null;
+		const order = createSnapshotOrder();
+		let getController: AbortController | null = null;
+		let resynchronizing = false;
+		const acceptStatus = (status: ITailscaleStatus, ticket = order.request()): ITailscaleStatus => {
+			if (order.establish(status, ticket)) {
+				if (order.accept(status, 'provider', ticket)) data.value = status;
+				for (const [, event] of order.drain(ticket)) {
+					if (data.value && order.accept(event, 'provider')) data.value = applyTailscaleProviderStatusEvent(data.value, event);
+				}
+			}
+			if (data.value === null) throw new Error('Remote access snapshot superseded before initial load.');
+			return data.value;
+		};
 
-		const get = async (): Promise<ITailscaleStatus> => {
+		const get = async (force = false): Promise<ITailscaleStatus> => {
+			if (force) {
+				resynchronizing = true;
+				order.resync();
+				getController?.abort();
+				pendingGetPromise = null;
+			}
 			if (pendingGetPromise) {
 				return pendingGetPromise;
 			}
 
+			const ticket = order.request();
+			const controller = new AbortController();
+			getController = controller;
 			const fetchPromise = (async (): Promise<ITailscaleStatus> => {
 				semaphore.value.getting = true;
 
 				try {
-					const { data: responseData, error, response } = await backend.client.GET(TAILSCALE_STATUS_PATH);
+					const { data: responseData, error, response } = await backend.client.GET(TAILSCALE_STATUS_PATH, { signal: controller.signal });
 
 					if (typeof responseData !== 'undefined') {
-						data.value = transformTailscaleStatusResponse(responseData.data);
+						const accepted = acceptStatus(transformTailscaleStatusResponse(responseData.data), ticket);
 						firstLoad.value = true;
+						if (order.hasBuffered() && !resynchronizing) return get(true);
 
-						return data.value;
+						return accepted;
 					}
 
 					// `get-remote-access-tailscale-plugin-status` documents only a `200` response, so
@@ -102,8 +126,17 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 						null,
 						getErrorCode<RemoteAccessTailscalePluginGetStatusOperation>(error)
 					);
+				} catch (error: unknown) {
+					if (!order.currentRequest(ticket)) {
+						if (pendingGetPromise) return pendingGetPromise;
+						if (data.value) return data.value;
+					}
+					throw error;
 				} finally {
-					semaphore.value.getting = false;
+					if (order.currentRequest(ticket)) {
+						semaphore.value.getting = false;
+						resynchronizing = false;
+					}
 				}
 			})();
 
@@ -112,7 +145,7 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 			try {
 				return await fetchPromise;
 			} finally {
-				pendingGetPromise = null;
+				if (pendingGetPromise === fetchPromise) pendingGetPromise = null;
 			}
 		};
 
@@ -141,6 +174,8 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 		};
 
 		const login = async (authKey?: string): Promise<ITailscaleLoginResult> => {
+			const ticket = order.request();
+			const sequence = order.action();
 			semaphore.value.loggingIn = true;
 
 			try {
@@ -155,7 +190,7 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 
 					// The login result never carries endpoints/details/requirements - merge only what it
 					// does carry into an already-loaded status; a caller that needs the rest calls `get()`.
-					if (data.value !== null) {
+					if (data.value !== null && data.value.epoch === undefined && order.actionCurrent(sequence, ticket)) {
 						data.value = {
 							...data.value,
 							state: result.state,
@@ -164,6 +199,13 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 						};
 					}
 
+					if (data.value?.epoch !== undefined && order.actionCurrent(sequence, ticket)) {
+						try {
+							await get(true);
+						} catch (error: unknown) {
+							logger.error('Failed to resynchronize remote access status after sign-in.', error);
+						}
+					}
 					return result;
 				}
 
@@ -182,15 +224,14 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 		};
 
 		const logout = async (): Promise<ITailscaleStatus> => {
+			const ticket = order.request();
 			semaphore.value.loggingOut = true;
 
 			try {
 				const { data: responseData, error, response } = await backend.client.POST(TAILSCALE_LOGOUT_PATH);
 
 				if (typeof responseData !== 'undefined') {
-					data.value = transformTailscaleStatusResponse(responseData.data);
-
-					return data.value;
+					return acceptStatus(transformTailscaleStatusResponse(responseData.data), ticket);
 				}
 
 				// Same `never`-narrowing note as `get()` above.
@@ -208,15 +249,14 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 		};
 
 		const resetPreferences = async (): Promise<ITailscaleStatus> => {
+			const ticket = order.request();
 			semaphore.value.resettingPreferences = true;
 
 			try {
 				const { data: responseData, error, response } = await backend.client.POST(TAILSCALE_RESET_PREFERENCES_PATH);
 
 				if (typeof responseData !== 'undefined') {
-					data.value = transformTailscaleStatusResponse(responseData.data);
-
-					return data.value;
+					return acceptStatus(transformTailscaleStatusResponse(responseData.data), ticket);
 				}
 
 				// Same `never`-narrowing note as `get()` above.
@@ -239,16 +279,24 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 		// while the very first `GET /status` this page ever makes is still in flight.
 		const onEvent = (payload: ITailscaleStatusOnEventActionPayload): void => {
 			switch (payload.event) {
-				case EventType.PROVIDER_STATUS:
-					if (data.value === null) {
-						logger.warn('Received a Tailscale provider status event before the initial status fetch; ignoring.');
-
+				case EventType.PROVIDER_STATUS: {
+					if (typeof payload.data.type !== 'string') return;
+					const expectedType = data.value?.type ?? 'remote-access-tailscale-plugin';
+					if (payload.data.type !== expectedType) return;
+					const parsed = RemoteAccessProviderStatusEventSchema.safeParse(snakeToCamel(payload.data));
+					if (!parsed.success) {
+						if (data.value !== null) applyTailscaleProviderStatusEvent(data.value, payload.data);
 						return;
 					}
-
-					data.value = applyTailscaleProviderStatusEvent(data.value, payload.data);
-
+					const decision = order.event(parsed.data, 'provider', parsed.data);
+					if (decision === 'buffer') {
+						if (data.value !== null && !resynchronizing)
+							void get(true).catch((error: unknown) => logger.error('Failed to resynchronize remote access status.', error));
+						return;
+					}
+					if (decision === 'accept' && data.value !== null) data.value = applyTailscaleProviderStatusEvent(data.value, parsed.data);
 					return;
+				}
 
 				case EventType.SETUP_PROGRESS:
 					setupProgress.value = transformTailscaleSetupProgressEvent(payload.data);
@@ -260,7 +308,7 @@ export const useTailscaleStatusStore = defineStore<'remote_access_tailscale_plug
 			}
 		};
 
-		const refresh = (): Promise<unknown> => get();
+		const refresh = (): Promise<unknown> => get(true);
 
 		return {
 			data,

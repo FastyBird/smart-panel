@@ -208,9 +208,26 @@ describe('Tailscale lifecycle regressions', () => {
 		await tick;
 
 		const published = emitter.emit.mock.calls
-			.filter(([event]) => event === EventType.PROVIDER_STATUS)
-			.map(([, status]) => (status as RemoteAccessProviderStatus).state);
+			.filter(([event]) => event === EventType.PROVIDER_OBSERVATION)
+			.map(([, status]) => (status as { status: RemoteAccessProviderStatus }).status.state);
 		expect(published.at(-1)).toBe('disconnected');
+	});
+
+	it('does not publish an older read after newer REST observations complete during convergence', async () => {
+		await node.start();
+		const gate = deferred<TailscaleServeResult>();
+		serve.converge.mockImplementationOnce(() => {
+			gate.entered();
+			return gate.promise;
+		});
+		const tick = (node as unknown as { pollTick(): Promise<void> }).pollTick();
+		await gate.reached;
+		cli.getStatus.mockResolvedValue({ BackendState: 'NeedsLogin' });
+		expect((await node.getStatusSnapshot({ fresh: true })).status.state).toBe('setup-required');
+		const count = emitter.emit.mock.calls.length;
+		gate.resolve(EMPTY_SERVE);
+		await tick;
+		expect(emitter.emit).toHaveBeenCalledTimes(count);
 	});
 
 	it('keeps a healthy overlapping status read Connected across routine Serve convergence', async () => {

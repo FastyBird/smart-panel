@@ -31,7 +31,11 @@ export const transformTailscaleStatusResponse = (response: RemoteAccessTailscale
 		throw new RemoteAccessTailscaleValidationException('Failed to validate received Tailscale status data.');
 	}
 
-	return parsed.data;
+	return {
+		...parsed.data,
+		authUrl: parsed.data.state === 'pending-auth' ? parsed.data.authUrl : undefined,
+		qr: parsed.data.state === 'pending-auth' ? parsed.data.qr : undefined,
+	};
 };
 
 /** `POST /login`. */
@@ -86,6 +90,8 @@ export const applyTailscaleProviderStatusEvent = (status: ITailscaleStatus, payl
 
 	return {
 		...status,
+		epoch: event.epoch,
+		revision: event.revision,
 		state: event.state,
 		endpoints: event.endpoints,
 		message: event.message ?? null,

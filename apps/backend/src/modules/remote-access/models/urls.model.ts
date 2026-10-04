@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
@@ -14,6 +14,21 @@ import { RemoteAccessEndpointModel } from './provider.model';
  */
 @ApiSchema({ name: 'RemoteAccessModuleDataUrls' })
 export class RemoteAccessUrlsModel {
+	@ApiProperty({ description: 'Process epoch; changes after backend restart', type: 'string' })
+	@Expose()
+	@IsString()
+	epoch: string;
+
+	@ApiProperty({
+		description: 'Monotonic accepted publication revision within this epoch',
+		type: 'integer',
+		minimum: 0,
+	})
+	@Expose()
+	@IsInt()
+	@Min(0)
+	revision: number;
+
 	@ApiProperty({
 		description: 'Resolved internal URL (absolute origin, no path)',
 		type: 'string',

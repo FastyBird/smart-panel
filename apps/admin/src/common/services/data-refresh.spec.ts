@@ -60,7 +60,7 @@ describe('DataRefreshRegistry', () => {
 		expect(healthy).toHaveBeenCalledTimes(1);
 	});
 
-	it('collapses concurrent runs into a single pass', async () => {
+	it('queues at most one fresh pass when reconnects arrive during a pending refresh', async () => {
 		const registry = new DataRefreshRegistry();
 
 		let resolveHandler: () => void = () => {};
@@ -72,16 +72,25 @@ describe('DataRefreshRegistry', () => {
 				})
 		);
 
+		handler.mockImplementationOnce(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveHandler = resolve;
+				})
+		);
+		handler.mockResolvedValue(undefined);
+
 		registry.register(Symbol('slow'), handler);
 
 		const first = registry.refreshAll();
 		const second = registry.refreshAll();
+		const third = registry.refreshAll();
 
 		resolveHandler();
 
-		await Promise.all([first, second]);
+		await Promise.all([first, second, third]);
 
-		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler).toHaveBeenCalledTimes(2);
 	});
 
 	it('reports a rejected handler instead of swallowing it', async () => {

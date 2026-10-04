@@ -280,7 +280,7 @@ describe('Remote access module endpoints (e2e)', () => {
 			// PROVIDER_STATUS so RemoteAccessProxyContributionService's cache
 			// does not stay invalidated to a stale computation either.
 			fakeProvider.setStatus(FAKE_PROVIDER_STATUS);
-			eventEmitter.emit(EventType.PROVIDER_STATUS, FAKE_PROVIDER_STATUS);
+			eventEmitter.emit(EventType.PROVIDER_OBSERVATION, FAKE_PROVIDER_STATUS);
 		});
 
 		it('drops the endpoints from the aggregated status and stops trusting the previously-registered proxy address once the provider reports disconnected', async () => {
@@ -317,7 +317,7 @@ describe('Remote access module endpoints (e2e)', () => {
 				message: 'The node service is stopped.',
 			};
 			fakeProvider.setStatus(disconnectedStatus);
-			eventEmitter.emit(EventType.PROVIDER_STATUS, disconnectedStatus);
+			eventEmitter.emit(EventType.PROVIDER_OBSERVATION, disconnectedStatus);
 
 			const after = await request(app.getHttpServer())
 				.get('/status')
