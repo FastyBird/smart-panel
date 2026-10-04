@@ -408,6 +408,8 @@ watch(
 				goToStep('config');
 			}
 		} catch (error) {
+			if (!props.visible || generation !== sessionGeneration) return;
+
 			flashApiError(error, [422], t('remoteAccessCloudflareTunnelPlugin.messages.requestError'));
 		} finally {
 			completing = false;

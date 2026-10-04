@@ -285,13 +285,18 @@ No hardware acceptance checkbox is completed by these automated changes.
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and
   already-started Connect → Disconnect → Connect, lost operation events, initial GET failure,
   role restrictions, busy cancellation and API error recovery. Final card rerun: 41 tests passed.
-- Setup reconciliation and mounted wizards: 112 targeted tests passed. Accepted setup without
+- Setup reconciliation and mounted wizards: 118 targeted tests passed. Accepted setup without
   websocket events and the stale terminal job failed before the fix. Coverage includes a second
   job, reload with preloaded completion, transient reads, backend restart, timeout, unmount and
   authenticated manual adoption. Manual Re-check requests an authoritative refresh.
 - Cloudflare reset now supplies the existing required `privileged_setup` response field: the
   regression failed before the fix; 10 controller tests and 21 provider HTTP tests passed.
+- Shared per-store status reconciliation keeps one watcher and timer for the card and wizard;
+  regression coverage includes staggered subscribers, disposal and initial-read recovery.
+  Final remote-access admin rerun after review fixes: 35 files / 539 tests passed.
 - Admin/backend TypeScript, affected-file ESLint/Prettier and backend API conventions passed.
+- Full admin suite: 380 files / 3,235 tests passed before the final review regressions.
+  Full backend suite: 583 suites / 9,180 tests passed (one skipped); E2E: 23 suites / 266 tests passed.
 - No real-device, external-hostname, process-crash, reboot or upgrade acceptance is claimed here.
 
 ### R1 implementation verification (2026-10-04)

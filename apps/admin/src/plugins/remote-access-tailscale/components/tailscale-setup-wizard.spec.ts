@@ -156,6 +156,36 @@ describe('TailscaleSetupWizard', () => {
 		fns.copy.mockReset().mockResolvedValue(true);
 	});
 
+	it.each([false, true])('ignores a delayed completion-read failure after closing the wizard (reopened: %s)', async (reopened) => {
+		const wrapper = mountWizard('setup');
+		await flushPromises();
+		let rejectRead!: (error: Error) => void;
+		fns.fetchStatus.mockImplementationOnce(
+			() =>
+				new Promise<void>((_, reject) => {
+					rejectRead = reject;
+				})
+		);
+		progress.value = { state: 'complete' };
+		await flushPromises();
+		await wrapper.setProps({ visible: false });
+		if (reopened) await wrapper.setProps({ visible: true });
+		rejectRead(new Error('delayed status failure'));
+		await flushPromises();
+		expect(fns.flashError).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('reports a completion-read failure in the current visible session', async () => {
+		const wrapper = mountWizard('setup');
+		await flushPromises();
+		fns.fetchStatus.mockRejectedValueOnce(new Error('current status failure'));
+		progress.value = { state: 'complete' };
+		await flushPromises();
+		expect(fns.flashError).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.requestError');
+		wrapper.unmount();
+	});
+
 	it('opens on the step the card decided (setup)', () => {
 		const wrapper = mountWizard('setup');
 

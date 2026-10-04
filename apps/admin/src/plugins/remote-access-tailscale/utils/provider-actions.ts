@@ -1,4 +1,4 @@
-import type { RemoteAccessModuleProviderState } from '../../../openapi.constants';
+import { type RemoteAccessModuleProviderState, RemoteAccessTailscalePluginControlAction } from '../../../openapi.constants';
 import { RemoteAccessTailscaleApiException } from '../remote-access-tailscale.exceptions';
 import type { ITailscaleControl, ITailscaleRequirement } from '../store/tailscale-status.store.types';
 
@@ -50,11 +50,11 @@ export const resolveTailscaleProviderActions = ({
 	const canManage = isOwner || isAdmin;
 	return {
 		setup: isOwner && control?.enabled === true && control.operation === null && (state === 'not-installed' || state === 'setup-required'),
-		signIn: canManage && available.has('login'),
-		connect: canManage && available.has('connect'),
-		disconnect: canManage && available.has('disconnect'),
-		signOut: isOwner && available.has('logout'),
-		resetPreferences: isOwner && available.has('reset-preferences'),
+		signIn: canManage && available.has(RemoteAccessTailscalePluginControlAction.login),
+		connect: canManage && available.has(RemoteAccessTailscalePluginControlAction.connect),
+		disconnect: canManage && available.has(RemoteAccessTailscalePluginControlAction.disconnect),
+		signOut: isOwner && available.has(RemoteAccessTailscalePluginControlAction.logout),
+		resetPreferences: isOwner && available.has(RemoteAccessTailscalePluginControlAction.reset_preferences),
 	};
 };
 

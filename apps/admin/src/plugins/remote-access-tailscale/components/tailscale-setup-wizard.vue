@@ -583,6 +583,8 @@ watch(
 				goToStep(status.value?.control?.authentication === 'authenticated' ? 'options' : 'signin');
 			}
 		} catch (error) {
+			if (!props.visible || generation !== sessionGeneration) return;
+
 			flashApiError(error, [422], t('remoteAccessTailscalePlugin.messages.requestError'));
 		} finally {
 			completing = false;

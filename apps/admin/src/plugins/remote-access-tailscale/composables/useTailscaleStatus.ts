@@ -1,8 +1,9 @@
-import { computed, onScopeDispose, watch } from 'vue';
+import { computed } from 'vue';
 
 import { storeToRefs } from 'pinia';
 
 import { injectStoresManager } from '../../../common';
+import { useRemoteAccessStatusReconciliation } from '../../../modules/remote-access/composables/useRemoteAccessStatusReconciliation';
 import { tailscaleStatusStoreKey } from '../store/keys';
 import type { ITailscalePrivilegedSetup, ITailscaleRequirement, ITailscaleSetupJob, ITailscaleStatus } from '../store/tailscale-status.store.types';
 
@@ -16,25 +17,7 @@ export const useTailscaleStatus = (): IUseTailscaleStatus => {
 
 	const { data, semaphore } = storeToRefs(tailscaleStatusStore);
 
-	// Public events omit private administrative fields. Reconcile once on a new event,
-	// every 5 seconds while work progresses, and every 30 seconds for lost-event recovery.
-	// GET commits happen while `getting` is true, so they cannot trigger a read/event loop.
-	let lastReconciliation = Date.now();
-	const reconcile = (): void => {
-		if (semaphore.value.getting) return;
-		lastReconciliation = Date.now();
-		void tailscaleStatusStore.get().catch(() => {
-			/* Retry on the next bounded tick. */
-		});
-	};
-	watch([() => data.value?.epoch, () => data.value?.revision], reconcile, { flush: 'sync' });
-	const reconciliationTimer = setInterval((): void => {
-		const progressing =
-			(data.value?.control?.operation !== null && data.value?.control?.operation !== undefined) ||
-			['connecting', 'pending-auth', 'pending-approval'].includes(data.value?.state ?? '');
-		if (progressing || Date.now() - lastReconciliation >= 30_000) reconcile();
-	}, 5_000);
-	onScopeDispose(() => clearInterval(reconciliationTimer));
+	useRemoteAccessStatusReconciliation(tailscaleStatusStore, { data, semaphore }, () => data.value?.control?.operation != null);
 
 	const status = computed<ITailscaleStatus | null>((): ITailscaleStatus | null => data.value);
 

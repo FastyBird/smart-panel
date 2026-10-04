@@ -111,7 +111,10 @@
 				</div>
 			</div>
 
-			<p class="provider-card__description text-sm">
+			<p
+				v-if="actions.disconnect"
+				class="provider-card__description text-sm"
+			>
 				{{ t('remoteAccessTailscalePlugin.texts.disconnectExplanation') }}
 			</p>
 			<el-alert

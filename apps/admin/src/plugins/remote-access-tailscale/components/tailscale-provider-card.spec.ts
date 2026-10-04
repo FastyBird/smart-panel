@@ -151,7 +151,6 @@ describe('TailscaleProviderCard', () => {
 		fns.refreshStatus.mockReset().mockResolvedValue(undefined);
 		fns.connect.mockReset().mockResolvedValue(true);
 		fns.disconnect.mockReset().mockResolvedValue(true);
-		fns.connect.mockReset().mockResolvedValue(true);
 		fns.logout.mockReset();
 		fns.resetPreferences.mockReset();
 		fns.copy.mockReset().mockResolvedValue(true);
