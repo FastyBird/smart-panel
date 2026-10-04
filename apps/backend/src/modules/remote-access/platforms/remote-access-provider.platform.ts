@@ -128,4 +128,6 @@ export interface IRemoteAccessProvider {
 	readonly capabilities: RemoteAccessProviderCapabilities;
 	getStatus(options?: RemoteAccessStatusReadOptions): Promise<RemoteAccessProviderStatus>;
 	getSnapshot?(options?: RemoteAccessStatusReadOptions): Promise<RemoteAccessProviderSnapshot>;
+	/** Actual cancellation/reaping completion, distinct from a bounded observation result. */
+	awaitObservationIdle?(): Promise<void>;
 }

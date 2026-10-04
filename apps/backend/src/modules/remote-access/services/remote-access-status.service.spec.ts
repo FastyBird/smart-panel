@@ -1,6 +1,9 @@
+import { instanceToPlain } from 'class-transformer';
+
 import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { RemoteAccessObservation } from '../../../common/utils/remote-access-observation.utils';
 import { ConfigService } from '../../config/services/config.service';
 import {
 	IRemoteAccessProvider,
@@ -213,6 +216,113 @@ describe('RemoteAccessStatusService', () => {
 		disabledTypes.delete('remote-access-tailscale');
 		service.onProviderStatus(buildStatus({ state: 'disconnected' }));
 		expect(service.getCachedStatuses()[0].enabled).toBe(true);
+	});
+
+	it('preserves enabled observed connectivity on a config save and immediately reobserves it', async () => {
+		const getStatus = jest.fn(() => Promise.resolve(buildStatus({ details: { hostname: 'new-name' } })));
+		registry.register(buildProvider('remote-access-tailscale', getStatus));
+		service.onProviderStatus(
+			buildStatus({
+				details: { hostname: 'old-name' },
+				endpoints: [{ url: 'https://old-name.ts.net', scope: 'private', https: true, label: 'private' }],
+				proxyAddresses: ['127.0.0.1'],
+			}),
+		);
+		service.onConfigUpdated({ type: 'plugin', source: 'remote-access-tailscale' });
+		expect(service.getCachedStatuses()[0].state).toBe('connected');
+		expect(service.getCachedStatuses()[0].proxyAddresses).toEqual(['127.0.0.1']);
+		expect(service.getCachedStatuses()[0].endpoints[0].url).toBe('https://old-name.ts.net');
+		const result = await service.getProviderStatus('remote-access-tailscale');
+		expect(result.details.hostname).toBe('new-name');
+		expect(getStatus).toHaveBeenCalledTimes(1);
+	});
+
+	it('coalesces config saves into a fresh read after the invalidated read actually settles', async () => {
+		let resolveOld!: (status: RemoteAccessProviderStatus) => void;
+		const getStatus = jest.fn(
+			(_options?: RemoteAccessStatusReadOptions) =>
+				new Promise<RemoteAccessProviderStatus>((resolve) => {
+					resolveOld = resolve;
+				}),
+		);
+		registry.register(buildProvider('remote-access-tailscale', getStatus));
+		service.onProviderStatus(buildStatus());
+		const old = service.getProviderStatus('remote-access-tailscale');
+		service.onConfigUpdated({ type: 'plugin', source: 'remote-access-tailscale' });
+		service.onConfigUpdated({ type: 'plugin', source: 'remote-access-tailscale' });
+		const fresh = service.getProviderStatus('remote-access-tailscale');
+		expect(getStatus).toHaveBeenCalledTimes(1);
+		getStatus.mockImplementation(() => Promise.resolve(buildStatus({ details: { hostname: 'new-name' } })));
+		resolveOld(buildStatus({ details: { hostname: 'stale-name' } }));
+		await old;
+		expect((await fresh).details.hostname).toBe('new-name');
+		expect(getStatus).toHaveBeenCalledTimes(2);
+		expect(getStatus).toHaveBeenLastCalledWith(expect.objectContaining({ fresh: true }));
+	});
+
+	it('waits for aborted provider-helper cleanup rather than joining its already-rejected result', async () => {
+		const observations = new RemoteAccessObservation<RemoteAccessProviderStatus>();
+		let resolveActual!: (status: RemoteAccessProviderStatus) => void;
+		const actualWork = jest.fn(
+			() =>
+				new Promise<RemoteAccessProviderStatus>((resolve) => {
+					resolveActual = resolve;
+				}),
+		);
+		const getStatus = jest.fn((options?: RemoteAccessStatusReadOptions) =>
+			observations.run(actualWork, options?.signal),
+		);
+		registry.register({
+			...buildProvider('remote-access-tailscale', getStatus),
+			awaitObservationIdle: () => observations.awaitIdle(),
+		});
+		service.onProviderStatus(buildStatus());
+		const old = service.getProviderStatus('remote-access-tailscale');
+		await Promise.resolve();
+		service.onConfigUpdated({ type: 'plugin', source: 'remote-access-tailscale' });
+		const fresh = service.getProviderStatus('remote-access-tailscale');
+		await old;
+		expect(actualWork).toHaveBeenCalledTimes(1);
+		actualWork.mockImplementation(() => Promise.resolve(buildStatus({ details: { hostname: 'fresh' } })));
+		resolveActual(buildStatus({ details: { hostname: 'stale' } }));
+		expect((await fresh).details.hostname).toBe('fresh');
+		expect(actualWork).toHaveBeenCalledTimes(2);
+	});
+
+	it('fails closed within the config refresh budget while hanging invalidated work retains one slot', async () => {
+		jest.useFakeTimers();
+		try {
+			const getStatus = jest.fn(() => new Promise<RemoteAccessProviderStatus>(() => undefined));
+			registry.register(buildProvider('remote-access-tailscale', getStatus));
+			service.onProviderStatus(
+				buildStatus({
+					endpoints: [{ url: 'https://old-name.ts.net', scope: 'private', https: true, label: 'private' }],
+					proxyAddresses: ['127.0.0.1'],
+				}),
+			);
+			const old = service.getProviderStatus('remote-access-tailscale');
+			service.onConfigUpdated({ type: 'plugin', source: 'remote-access-tailscale' });
+			for (let index = 0; index < 20; index++)
+				service.onConfigUpdated({ type: 'plugin', source: 'remote-access-tailscale' });
+			const fresh = service.getProviderStatus('remote-access-tailscale');
+			await jest.advanceTimersByTimeAsync(REMOTE_ACCESS_PROVIDER_STATUS_TIMEOUT_MS);
+			await old;
+			expect((await fresh).state).toBe('error');
+			expect(service.getCachedStatuses()[0].proxyAddresses).toEqual([]);
+			expect(service.getCachedStatuses()[0].endpoints).toEqual([]);
+			for (let index = 0; index < 20; index++) await service.getProviderStatus('remote-access-tailscale');
+			expect(getStatus).toHaveBeenCalledTimes(1);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it('retains provider-specific details keys in both model transformation and production serialization', async () => {
+		const details = { dnsName: 'panel.ts.net', custom_field: 'safe' };
+		registry.register(buildProvider('remote-access-tailscale', () => Promise.resolve(buildStatus({ details }))));
+		const model = await service.getProviderStatus('remote-access-tailscale');
+		expect(model.details).toEqual(details);
+		expect(instanceToPlain(model, { excludeExtraneousValues: true }).details).toEqual(details);
 	});
 
 	describe('getCachedStatuses', () => {

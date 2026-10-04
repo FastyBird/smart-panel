@@ -213,6 +213,7 @@ describe('Remote access Cloudflare Tunnel plugin endpoints (e2e)', () => {
 			expect(response.body.data).toMatchObject({
 				type: 'remote-access-cloudflare-tunnel-plugin',
 				state: 'connected',
+				details: { hostname: 'panel.example.com' },
 				proxyAddresses: ['127.0.0.1', '::1'],
 			});
 			expect(response.body.data.endpoints).toEqual([

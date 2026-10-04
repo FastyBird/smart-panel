@@ -227,6 +227,9 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
 - Concurrent reads share one full provider observation. Observations have a 6-second budget and the
   module has a 7-second outer deadline. Cancellation reaches CLI reads and Cloudflare metrics HTTP;
   unreaped work retains its slot. Ordinary GETs do not run the Tailscale operator write probe.
+- Saving enabled provider configuration retains the last coherent observed state while a fresh read
+  is scheduled after old work drains. This refresh has the same bounded deadline and fails closed
+  if cleanup or observation stalls. Disabling a provider removes its contributions immediately.
 - Full observations refresh read-only prerequisites, including periodic observations, so an explicit
   Re-check cannot join a poll carrying a cached requirements result. This adds read-only prerequisite
   probes to the normal 30-second polling cadence.

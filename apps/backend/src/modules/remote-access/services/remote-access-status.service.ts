@@ -41,6 +41,14 @@ const freezeSnapshot = <T>(value: T): T => {
 interface ProviderObservation {
 	controller: AbortController;
 	result: Promise<RemoteAccessAcceptedProviderStatus>;
+	settled: Promise<void>;
+}
+
+interface ConfigRefresh {
+	generation: number;
+	result: Promise<RemoteAccessAcceptedProviderStatus>;
+	resolve: (status: RemoteAccessAcceptedProviderStatus) => void;
+	timer: ReturnType<typeof setTimeout>;
 }
 
 /** Owns acceptance and ordering for every REST and websocket provider publication. */
@@ -57,6 +65,8 @@ export class RemoteAccessStatusService {
 	>();
 	private readonly generations = new Map<string, number>();
 	private readonly observations = new Map<string, ProviderObservation>();
+	private readonly configRefreshes = new Map<string, ConfigRefresh>();
+	private readonly configRefreshWorkers = new Map<string, Promise<void>>();
 	private readonly warnedTypeMismatches = new Set<string>();
 
 	constructor(
@@ -89,7 +99,9 @@ export class RemoteAccessStatusService {
 
 		this.invalidateObservation(provider.type);
 
-		this.accept(provider, status, metadata);
+		const accepted = this.accept(provider, status, metadata);
+		const refresh = this.configRefreshes.get(provider.type);
+		if (refresh) this.finishConfigRefresh(provider.type, refresh, accepted);
 	}
 
 	@OnEvent(ConfigEventType.CONFIG_UPDATED)
@@ -98,7 +110,15 @@ export class RemoteAccessStatusService {
 			this.invalidateObservation(event.source);
 			const provider = this.registry.get(event.source);
 			if (provider) {
-				this.accept(provider, this.errorStatus(provider, 'Provider configuration changed; awaiting observation.'));
+				if (!this.isProviderEnabled(provider.type)) {
+					const status = this.accept(provider, this.errorStatus(provider, 'Provider plugin is disabled.'));
+					const refresh = this.configRefreshes.get(provider.type);
+					if (refresh) this.finishConfigRefresh(provider.type, refresh, status);
+				} else {
+					// Config events carry no changed fields. Preserve the coherent last-observed runtime
+					// while the provider applies config, bounded by a fresh-read deadline; disable is immediate.
+					this.scheduleConfigRefresh(provider);
+				}
 			}
 		} else if (event.type === 'module' && event.source === REMOTE_ACCESS_MODULE_NAME) {
 			// The module setting governs its registry outputs, not independently enabled provider lifecycle.
@@ -179,8 +199,8 @@ export class RemoteAccessStatusService {
 		if (!provider) {
 			throw new RemoteAccessProviderNotFoundException(`Remote access provider '${type}' is not registered.`);
 		}
-		const observation = this.observations.get(type) ?? this.observe(provider, options);
-		const result = await observation.result;
+		const result = await (this.configRefreshes.get(type)?.result ??
+			(this.observations.get(type) ?? this.observe(provider, options)).result);
 		return this.getCachedProviderSnapshot<T>(type) ?? { status: this.toModel(provider, result) };
 	}
 
@@ -206,10 +226,90 @@ export class RemoteAccessStatusService {
 			});
 		}
 
-		const observation = this.observations.get(provider.type) ?? this.observe(provider, options);
-		const result = await observation.result;
+		const result = await (this.configRefreshes.get(provider.type)?.result ??
+			(this.observations.get(provider.type) ?? this.observe(provider, options)).result);
 		// A second provider may have completed or a newer event may have arrived while this caller awaited.
 		return this.toModel(provider, this.getCachedProviderStatus(provider.type) ?? result);
+	}
+
+	private scheduleConfigRefresh(provider: IRemoteAccessProvider): void {
+		const existing = this.configRefreshes.get(provider.type);
+		if (existing) {
+			existing.generation++;
+			return;
+		}
+		let resolve!: (status: RemoteAccessAcceptedProviderStatus) => void;
+		const result = new Promise<RemoteAccessAcceptedProviderStatus>((done) => {
+			resolve = done;
+		});
+		const refresh: ConfigRefresh = {
+			generation: 0,
+			result,
+			resolve,
+			timer: setTimeout(() => {
+				if (this.configRefreshes.get(provider.type) !== refresh) return;
+				this.invalidateObservation(provider.type);
+				if (this.configRefreshes.get(provider.type) !== refresh) return;
+				const status = this.accept(
+					provider,
+					this.errorStatus(
+						provider,
+						`Provider did not report a fresh configuration status within ${REMOTE_ACCESS_PROVIDER_STATUS_TIMEOUT_MS}ms.`,
+					),
+				);
+				resolve(status);
+				// Keep one queued recovery while old work is still being cancelled/reaped.
+			}, REMOTE_ACCESS_PROVIDER_STATUS_TIMEOUT_MS),
+		};
+		this.configRefreshes.set(provider.type, refresh);
+		this.startConfigRefreshWorker(provider);
+	}
+
+	private startConfigRefreshWorker(provider: IRemoteAccessProvider): void {
+		const refresh = this.configRefreshes.get(provider.type);
+		if (!refresh || this.configRefreshWorkers.has(provider.type)) return;
+		const worker = this.refreshAfterObservationIdle(provider, refresh)
+			.catch(() => {
+				if (this.configRefreshes.get(provider.type) !== refresh) return;
+				const status = this.accept(
+					provider,
+					this.errorStatus(provider, 'Failed to retrieve fresh configuration status.'),
+				);
+				this.finishConfigRefresh(provider.type, refresh, status);
+			})
+			.finally(() => {
+				this.configRefreshWorkers.delete(provider.type);
+				// Disable/re-enable can replace the request while cancellation is still being reaped.
+				this.startConfigRefreshWorker(provider);
+			});
+		this.configRefreshWorkers.set(provider.type, worker);
+	}
+
+	private async refreshAfterObservationIdle(provider: IRemoteAccessProvider, refresh: ConfigRefresh): Promise<void> {
+		while (this.configRefreshes.get(provider.type) === refresh) {
+			await this.observations.get(provider.type)?.settled;
+			await provider.awaitObservationIdle?.();
+			if (this.configRefreshes.get(provider.type) !== refresh) return;
+			if (!this.isProviderEnabled(provider.type)) {
+				const status = this.accept(provider, this.errorStatus(provider, 'Provider plugin is disabled.'));
+				this.finishConfigRefresh(provider.type, refresh, status);
+				return;
+			}
+			const generation = refresh.generation;
+			const observation = this.observations.get(provider.type) ?? this.observe(provider, { fresh: true });
+			const status = await observation.result;
+			if (generation === refresh.generation) {
+				this.finishConfigRefresh(provider.type, refresh, status);
+				return;
+			}
+		}
+	}
+
+	private finishConfigRefresh(type: string, refresh: ConfigRefresh, status: RemoteAccessAcceptedProviderStatus): void {
+		if (this.configRefreshes.get(type) !== refresh) return;
+		clearTimeout(refresh.timer);
+		this.configRefreshes.delete(type);
+		refresh.resolve(status);
 	}
 
 	private observe(provider: IRemoteAccessProvider, options: RemoteAccessStatusReadOptions): ProviderObservation {
@@ -257,7 +357,11 @@ export class RemoteAccessStatusService {
 				return this.accept(provider, status, metadata);
 			});
 
-		const observation = { controller, result };
+		let resolveSettled!: () => void;
+		const settled = new Promise<void>((resolve) => {
+			resolveSettled = resolve;
+		});
+		const observation = { controller, result, settled };
 		this.observations.set(provider.type, observation);
 		// Release only after the actual provider work settles. A provider ignoring abort cannot accumulate calls.
 		let workSettled = false;
@@ -265,6 +369,7 @@ export class RemoteAccessStatusService {
 		const release = (): void => {
 			if (workSettled && resultSettled && this.observations.get(provider.type) === observation) {
 				this.observations.delete(provider.type);
+				resolveSettled();
 			}
 		};
 		const settleWork = (): void => {
@@ -327,11 +432,14 @@ export class RemoteAccessStatusService {
 		provider: IRemoteAccessProvider,
 		status: RemoteAccessAcceptedProviderStatus,
 	): RemoteAccessProviderModel {
-		return toInstance(RemoteAccessProviderModel, {
+		const model = toInstance(RemoteAccessProviderModel, {
 			...status,
 			kind: provider.kind,
 			capabilities: provider.capabilities,
 		});
+		// Record keys are provider data, not class fields; excludeExtraneousValues must not discard them.
+		model.details = { ...status.details };
+		return model;
 	}
 
 	private normalizeStatusType(

@@ -560,6 +560,10 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 		return (await this.getStatusSnapshot(options)).status;
 	}
 
+	async awaitObservationIdle(): Promise<void> {
+		await Promise.all([this.observations.awaitIdle(), this.requirementObservations.awaitIdle()]);
+	}
+
 	async getStatusSnapshot(options?: { signal?: AbortSignal; fresh?: boolean }): Promise<{
 		status: RemoteAccessProviderStatus;
 		metadata: CloudflareTunnelObservationMetadata;

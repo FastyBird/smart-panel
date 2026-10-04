@@ -1,8 +1,13 @@
 /** A bounded, provider-local read. The slot remains occupied until cancelled work has actually settled. */
 export class RemoteAccessObservation<T> {
-	private active: { abort: AbortController; result: Promise<T> } | null = null;
+	private active: { abort: AbortController; result: Promise<T>; settled: Promise<void> } | null = null;
 
 	constructor(private readonly timeoutMs = 6_000) {}
+
+	/** Wait for actual work cleanup, including work whose bounded result already rejected. */
+	awaitIdle(): Promise<void> {
+		return this.active?.settled ?? Promise.resolve();
+	}
 
 	invalidate(): void {
 		this.active?.abort.abort(new Error('The observation was superseded.'));
@@ -25,17 +30,16 @@ export class RemoteAccessObservation<T> {
 			abort.signal.throwIfAborted();
 			return work(abort.signal);
 		});
-		const active = { abort, result: Promise.race([pending, aborted]) };
+		const active = { abort, result: Promise.race([pending, aborted]), settled: Promise.resolve() };
 		this.active = active;
-		void pending
-			.finally(() => {
-				clearTimeout(timer);
-				abort.signal.removeEventListener('abort', onAbort);
-				if (this.active === active) {
-					this.active = null;
-				}
-			})
-			.catch(() => undefined);
+		const settle = (): void => {
+			clearTimeout(timer);
+			abort.signal.removeEventListener('abort', onAbort);
+			if (this.active === active) {
+				this.active = null;
+			}
+		};
+		active.settled = pending.then(settle, settle);
 		return this.join(active, signal);
 	}
 

@@ -31,6 +31,10 @@ export class TailscaleProviderService implements IRemoteAccessProvider {
 
 	constructor(private readonly nodeManagedService: TailscaleNodeManagedService) {}
 
+	awaitObservationIdle(): Promise<void> {
+		return this.nodeManagedService.awaitObservationIdle();
+	}
+
 	getSnapshot(options?: { signal?: AbortSignal; fresh?: boolean }) {
 		return this.nodeManagedService.getStatusSnapshot(options);
 	}

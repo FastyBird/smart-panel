@@ -28,6 +28,10 @@ export class CloudflareTunnelProviderService implements IRemoteAccessProvider {
 
 	constructor(private readonly tunnelManagedService: CloudflareTunnelManagedService) {}
 
+	awaitObservationIdle(): Promise<void> {
+		return this.tunnelManagedService.awaitObservationIdle();
+	}
+
 	getSnapshot(options?: { signal?: AbortSignal; fresh?: boolean }) {
 		return this.tunnelManagedService.getStatusSnapshot(options);
 	}

@@ -364,6 +364,7 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 			expect(response.body.data).toMatchObject({
 				type: 'remote-access-tailscale-plugin',
 				state: 'connected',
+				details: { tailnet: 'example.ts.net' },
 				proxyAddresses: [],
 				advisories: [],
 			});

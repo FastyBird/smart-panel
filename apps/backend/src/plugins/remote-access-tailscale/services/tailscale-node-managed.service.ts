@@ -1008,6 +1008,10 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 		return (await this.computeStatusWithRawStatus(options)).status;
 	}
 
+	async awaitObservationIdle(): Promise<void> {
+		await Promise.all([this.observations.awaitIdle(), this.requirementObservations.awaitIdle()]);
+	}
+
 	async getStatusSnapshot(options?: { signal?: AbortSignal; fresh?: boolean }): Promise<{
 		status: RemoteAccessProviderStatus;
 		metadata: TailscaleObservationMetadata;

@@ -48,6 +48,29 @@ describe('RemoteAccessObservation', () => {
 		await expect(observations.run(() => Promise.resolve(2))).resolves.toBe(2);
 	});
 
+	it('exposes actual idle completion after its aborted result has already rejected', async () => {
+		const observations = new RemoteAccessObservation<number>();
+		let resolveActual!: (value: number) => void;
+		const pending = observations.run(
+			() =>
+				new Promise<number>((resolve) => {
+					resolveActual = resolve;
+				}),
+		);
+		await Promise.resolve();
+		observations.invalidate();
+		await expect(pending).rejects.toThrow('superseded');
+		let idle = false;
+		const cleanup = observations.awaitIdle().then(() => {
+			idle = true;
+		});
+		await Promise.resolve();
+		expect(idle).toBe(false);
+		resolveActual(1);
+		await cleanup;
+		await expect(observations.run(() => Promise.resolve(2))).resolves.toBe(2);
+	});
+
 	it('propagates caller cancellation to the actual shared work', async () => {
 		const observations = new RemoteAccessObservation<number>();
 		const abort = new AbortController();
