@@ -147,8 +147,51 @@ Observed on the same Debian 12/aarch64 Pi with Tailscale `1.102.3`, 2026-10-04 U
 The CLI regression fix separates `set`-compatible preferences from `up`-only flags and applies tag
 changes through `up`. It retains the existing settings-conflict behavior for unmanaged preferences;
 normal lifecycle operations do not use `--reset`. All 404 Tailscale tests, backend type checking and
-changed-file lint/format pass. The correction is not installed yet, and hardware acceptance remains open. No raw node
+changed-file lint/format passed at the first revision; the final review fix brings the total to 415 tests.
+PR #1164 merged as `6ddc03e46` and is deployed in alpha.44. Hardware acceptance remains open. No raw node
 identity, tailnet addresses, credentials or authentication links are published with this evidence.
+
+#### Alpha.44 upgrade, HTTPS and interrupted lifecycle test
+
+Candidate: [`v1.1.0-alpha.44`](https://github.com/FastyBird/smart-panel/releases/tag/v1.1.0-alpha.44),
+commit `80d374a7f9af9fb19aea14d5e6d89f47b3467f99`, containing PR #1164 (`6ddc03e46`).
+Observed on the same Debian 12/aarch64 Pi with Tailscale `1.102.3`, 2026-10-04 UTC
+(2026-10-05 local time). The user enabled HTTPS certificates in the replacement tailnet.
+
+| Scenario | Result | Evidence / scope |
+| --- | --- | --- |
+| Normal alpha.43 → alpha.44 upgrade | Passed | One system-module install request; worker completed and cleared its lock. The retained SQLite/config backup passed integrity checks. All 111 devices and their topology, 28 migrations, configuration and authentication fingerprints were unchanged; both the previous session and fresh login worked. |
+| Installed artifacts | Passed | All 1,718 backend JS files and 250 admin static files match the checksum-verified server archive and integrity-verified npm packages. Tag ancestry includes the approved fix; the release build identity matches the dispatched workflow. |
+| Tailscale recovery after upgrade | Passed | Authentication and node identity survived; CLI returned Running/self-online and private API/card reported Connected. No manual `set`/`up` recovery was performed. |
+| Serve after enabling tailnet HTTPS | Passed for Mac transport | Plugin published a private HTTPS endpoint and cleared the HTTPS advisory. Mac HTTPS health returned 200 for alpha.44 with certificate verification enabled; an initial TLS connection attempt timed out. |
+| Phone cellular HTTPS, login and live updates | Passed, user-confirmed | With Wi-Fi disabled and Tailscale connected to the new tailnet, the user confirmed that admin loaded without a certificate error, login succeeded and a device-state change made in another client appeared without reloading the page. This verifies visible live updates; the phone's transport frames were not captured separately. |
+| WebSocket through Serve | Passed from Mac | A client restricted to the WebSocket transport authenticated over HTTPS with certificate verification enabled, subscribed to the exchange and received an event. No polling fallback was allowed. |
+| Display registration through Serve | Passed from Mac | The HTTPS registration-status endpoint returned `open: false`, rather than treating the proxied tailnet client as a direct localhost request. This does not establish the phone's resolved client address or per-client throttle behavior. |
+| Initial Connect | Passed after settling | Provider, Extensions service, CLI, aggregate endpoints/proxy contributions and direct tailnet HTTP health agreed after completion. Sequential REST revisions advanced and were checked for ordered, semantically equivalent settled state; they do not establish atomic observation. |
+| First Disconnect | Failed: backend process crashed | Disconnect returned successfully in 632 ms with stopped/authenticated control and empty endpoints. The subsequent status read received a connection reset. Journal records an uncaught `@homebridge/ciao` assertion in `MDNSServer.handleMessage` → `getNetAddress`, followed by process exit 1 and a systemd restart. |
+| Reappearance of Connected | Explained by restart | The enabled provider started with the replacement backend process. This is not evidence of an obsolete Tailscale operation reviving the stopped service. The admin recovered to Connected after restart. |
+| Twenty lifecycle cycles | Not completed | The runner stopped at the first Disconnect without retrying the mutation; zero complete rounds. Preserve this failed run and repeat the entire gate after the mDNS correction is released. |
+
+The same assertion is reproducible locally with the installed ciao 1.3.12 packet handler: an IPv4
+datagram reaches an interface whose IPv4 mask is absent. Subnet calculation throws before the
+library's packet-decoding error boundary. This establishes a concrete failure mode consistent with
+interface removal; the exact live packet and interface fields were not captured. The correction must
+preserve ordinary IPv4/IPv6 and loopback filtering and ship in both npm and image installations.
+
+The HomeKit correction installs an idempotent receive guard on the ciao instance resolved from HAP's
+own dependency context before publishing the bridge. Invalid sender families and IPv4 receives on
+interfaces without a valid IPv4 address/mask are discarded before subnet calculation. Valid traffic
+and unrelated errors continue through the original handler; no global exception handler is added.
+The private upstream method is a compatibility dependency, covered by real-library regression tests.
+Validation: 48 HomeKit/mDNS/remote-access suites / 869 tests, backend type checking/build and changed-file
+lint/format passed. The compiled guard also passed with an isolated npm-installed HAP/ciao pair, and
+the backend package includes its runtime files. This correction is not deployed in alpha.44.
+
+The UI recorder started after the initial Connect request began, so this interrupted run does not
+provide full UI action-latency coverage. No HTTP 429 was observed in the captured browser requests;
+that short capture is not a completed polling/idle acceptance test. An earlier browser profile-null
+observation disappeared on standard page initialization; its original authentication setup is not
+established, so it is not recorded as a reproduced session or Tailscale defect.
 
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
@@ -157,8 +200,8 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 ##### Preparation
 
 - [ ] Flash the alpha image (or install the alpha npm package) on the testing Raspberry Pi and complete onboarding.
-- [ ] Have a Tailscale account with **MagicDNS** and **HTTPS certificates** enabled (tailnet DNS settings) and, if device approval is on, access to the admin console.
-- [ ] Have a phone on cellular (not on the home Wi-Fi) with the Tailscale app signed into the same tailnet.
+- [x] Have a Tailscale account with **MagicDNS** and **HTTPS certificates** enabled (tailnet DNS settings) and, if device approval is on, access to the admin console. Verified in the replacement tailnet during alpha.44 acceptance.
+- [x] Have a phone on cellular (not on the home Wi-Fi) with the Tailscale app signed into the same tailnet. User confirmed alpha.44 remote access with Wi-Fi disabled.
 
 ##### Setup and sign-in
 
@@ -170,7 +213,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 ##### HTTPS and remote use
 
 - [ ] Serve HTTPS is on by default: the page lists `https://<node>.<tailnet>.ts.net` as the primary external URL with copy and QR.
-- [ ] From the phone on cellular, open that URL: admin loads, login works, and a live change (toggle a device) updates without reload (websocket through the proxy).
+- [x] From the phone on cellular, open that URL: admin loads, login works, and a live change (toggle a device) updates without reload (websocket through the proxy). User confirmed all visible outcomes on alpha.44; transport frames were not separately captured.
 - [ ] Backend log shows the tailnet client address (not 127.0.0.1) for a login attempt from the phone; the login throttle is per client.
 - [ ] Displays → registration status seen from the phone is "closed" (not treated as local).
 

@@ -8,6 +8,7 @@ import { DeviceEntity } from '../../../modules/devices/entities/devices.entity';
 import { DevicesService } from '../../../modules/devices/services/devices.service';
 import { DEVICES_HOMEKIT_PLUGIN_NAME } from '../devices-homekit.constants';
 import { HomeKitConfigModel } from '../models/config.model';
+import { installCiaoReceiveGuard } from '../utils/ciao-receive-guard';
 
 import { HomeKitBridgeService } from './homekit-bridge.service';
 import { HomeKitCommandDispatcher } from './homekit-command.dispatcher';
@@ -68,6 +69,8 @@ jest.mock('qrcode', () => ({
 	toDataURL: jest.fn().mockResolvedValue('data:image/png;base64,mock-qr-code'),
 }));
 
+jest.mock('../utils/ciao-receive-guard', () => ({ installCiaoReceiveGuard: jest.fn() }));
+
 jest.mock('fs', () => ({
 	...jest.requireActual<typeof import('fs')>('fs'),
 	existsSync: jest.fn().mockReturnValue(true),
@@ -89,6 +92,7 @@ describe('HomeKitBridgeService', () => {
 	let baseConfig: HomeKitConfigModel;
 
 	beforeEach(() => {
+		(installCiaoReceiveGuard as jest.Mock).mockClear();
 		(fs.statSync as jest.Mock).mockReturnValue({ mode: 0o700, isFile: () => false });
 		(fs.chmodSync as jest.Mock).mockReset();
 		(fs.existsSync as jest.Mock).mockReturnValue(true);
@@ -156,6 +160,15 @@ describe('HomeKitBridgeService', () => {
 	const getBridge = (): MockHapBridge => {
 		return (service as unknown as { bridge: MockHapBridge }).bridge;
 	};
+
+	it('installs the mDNS receive guard before publishing the HomeKit bridge', async () => {
+		await service.start();
+
+		expect(installCiaoReceiveGuard).toHaveBeenCalledTimes(1);
+		expect((installCiaoReceiveGuard as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan(
+			getBridge().publish.mock.invocationCallOrder[0],
+		);
+	});
 
 	it('should preserve pairings during normal stop (calls unpublish without destroy)', async () => {
 		await service.start();
