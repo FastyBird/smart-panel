@@ -48,9 +48,20 @@ export const useRemoteAccessStatusReconciliation = <T extends StatusSnapshot>(
 				} catch {
 					// Retry on the next bounded tick, including when the initial read failed.
 				} finally {
+					lastReconciliation = Date.now();
 					reading = false;
 				}
 			};
+
+			// Login/setup pollers use the same store. Their completed reads also satisfy the fallback,
+			// including failed reads, which must leave time before another bounded retry.
+			watch(
+				() => source.semaphore.value.getting,
+				(getting) => {
+					if (!getting) lastReconciliation = Date.now();
+				},
+				{ flush: 'sync' }
+			);
 
 			// GET commits happen while `getting` is true, so they cannot trigger a read/event loop.
 			watch(
@@ -62,7 +73,7 @@ export const useRemoteAccessStatusReconciliation = <T extends StatusSnapshot>(
 			);
 			const timer = setInterval(() => {
 				const progressing = hasOperation() || ['connecting', 'pending-auth', 'pending-approval'].includes(source.data.value?.state ?? '');
-				if (progressing || Date.now() - lastReconciliation >= 30_000) void reconcile();
+				if (Date.now() - lastReconciliation >= (progressing ? 5_000 : 30_000)) void reconcile();
 			}, 5_000);
 			onScopeDispose(() => clearInterval(timer));
 		});

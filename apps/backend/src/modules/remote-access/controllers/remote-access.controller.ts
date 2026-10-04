@@ -2,12 +2,17 @@ import { Controller, Get, NotFoundException, Param } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { toInstance } from '../../../common/utils/transform.utils';
 import { ConfigService } from '../../config/services/config.service';
 import { ApiSuccessResponse } from '../../swagger/decorators/api-documentation.decorator';
 import { Roles } from '../../users/guards/roles.guard';
 import { UserRole } from '../../users/users.constants';
 import { RemoteAccessConfigModel } from '../models/config.model';
-import { RemoteAccessProviderResponseModel, RemoteAccessProvidersResponseModel } from '../models/provider.model';
+import {
+	RemoteAccessEndpointModel,
+	RemoteAccessProviderResponseModel,
+	RemoteAccessProvidersResponseModel,
+} from '../models/provider.model';
 import { RemoteAccessStatusModel, RemoteAccessStatusResponseModel } from '../models/status.model';
 import { RemoteAccessUrlsModel, RemoteAccessUrlsResponseModel } from '../models/urls.model';
 import { REMOTE_ACCESS_MODULE_API_TAG_NAME, REMOTE_ACCESS_MODULE_NAME } from '../remote-access.constants';
@@ -134,7 +139,8 @@ export class RemoteAccessController {
 		data.revision = snapshot.revision;
 		data.internal = snapshot.internal;
 		data.candidates = candidates;
-		data.external = snapshot.external;
+		// Response interceptors mutate model fields; never expose the frozen accepted endpoints directly.
+		data.external = toInstance(RemoteAccessEndpointModel, snapshot.external);
 		data.primary = snapshot.primaryExternalUrl;
 
 		return data;

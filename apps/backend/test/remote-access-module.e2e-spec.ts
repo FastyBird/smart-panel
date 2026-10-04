@@ -5,10 +5,12 @@ import request from 'supertest';
 
 import { CanActivate, ExecutionContext, INestApplication, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, Reflector } from '@nestjs/core';
 import { EventEmitter2, EventEmitterModule } from '@nestjs/event-emitter';
 import { Test } from '@nestjs/testing';
 
+import { LocationReplaceInterceptor } from '../src/modules/api/interceptors/location-replace.interceptor';
+import { TransformResponseInterceptor } from '../src/modules/api/interceptors/transform-response.interceptor';
 import { TrustedProxyRegistryService } from '../src/modules/api/services/trusted-proxy-registry.service';
 import { TokenOwnerType } from '../src/modules/auth/auth.constants';
 import { AuthenticatedEntity, AuthenticatedRequest } from '../src/modules/auth/guards/auth.guard';
@@ -101,6 +103,7 @@ class FakeRemoteAccessProvider implements IRemoteAccessProvider {
 describe('Remote access module endpoints (e2e)', () => {
 	let app: INestApplication;
 	let registry: RemoteAccessProviderRegistryService;
+	let statusService: RemoteAccessStatusService;
 	let trustedProxyRegistry: TrustedProxyRegistryService;
 	let eventEmitter: EventEmitter2;
 	let fakeProvider: FakeRemoteAccessProvider;
@@ -145,9 +148,15 @@ describe('Remote access module endpoints (e2e)', () => {
 		}).compile();
 
 		app = moduleFixture.createNestApplication();
+		// Match ApiModule's response order: URL replacement runs before model serialization.
+		app.useGlobalInterceptors(
+			new TransformResponseInterceptor(moduleFixture.get(Reflector)),
+			new LocationReplaceInterceptor(moduleFixture.get(NestConfigService)),
+		);
 		await app.init();
 
 		registry = moduleFixture.get(RemoteAccessProviderRegistryService);
+		statusService = moduleFixture.get(RemoteAccessStatusService);
 		trustedProxyRegistry = moduleFixture.get(TrustedProxyRegistryService);
 		eventEmitter = moduleFixture.get(EventEmitter2);
 
@@ -158,6 +167,31 @@ describe('Remote access module endpoints (e2e)', () => {
 	afterAll(async () => {
 		await app.close();
 	});
+
+	it.each(['/status', '/urls'])(
+		'serializes connected endpoints at %s without mutating accepted snapshots',
+		async (path) => {
+			await statusService.getAggregatedStatuses();
+			const accepted = statusService.getCachedStatuses()[0];
+			const original = structuredClone(accepted);
+			expect(Object.isFrozen(accepted.endpoints)).toBe(true);
+			expect(Object.isFrozen(accepted.endpoints[0])).toBe(true);
+
+			const response = await request(app.getHttpServer())
+				.get(path)
+				.set('Authorization', 'Bearer owner-user')
+				.expect(200);
+
+			const urls = path === '/status' ? response.body.data.urls : response.body.data;
+			expect(urls.external).toEqual(FAKE_PROVIDER_STATUS.endpoints);
+			expect(urls.primary).toBe(FAKE_PROVIDER_STATUS.endpoints[0].url);
+			expect(urls).toMatchObject(statusService.getVersion());
+			expect(accepted).toEqual(original);
+			expect(Object.isFrozen(accepted.endpoints[0])).toBe(true);
+			expect(statusService.getCachedStatuses()[0].endpoints).toEqual(original.endpoints);
+			expect(Object.isFrozen(statusService.getCachedStatuses()[0].endpoints[0])).toBe(true);
+		},
+	);
 
 	describe('GET /status', () => {
 		it.each(['owner-user', 'admin-user'])('returns the aggregated status for %s', async (credential) => {
@@ -208,7 +242,7 @@ describe('Remote access module endpoints (e2e)', () => {
 			expect(response.body.data).toEqual(
 				expect.objectContaining({
 					type: 'remote-access-fake',
-					proxyAddresses: ['100.64.0.9'],
+					proxy_addresses: ['100.64.0.9'],
 				}),
 			);
 		});
@@ -299,7 +333,7 @@ describe('Remote access module endpoints (e2e)', () => {
 					type: 'remote-access-fake',
 					state: 'connected',
 					endpoints: FAKE_PROVIDER_STATUS.endpoints,
-					proxyAddresses: ['100.64.0.9'],
+					proxy_addresses: ['100.64.0.9'],
 				}),
 			]);
 			expect(trustedProxyRegistry.isTrusted('100.64.0.9')).toBe(true);
@@ -329,7 +363,7 @@ describe('Remote access module endpoints (e2e)', () => {
 					type: 'remote-access-fake',
 					state: 'disconnected',
 					endpoints: [],
-					proxyAddresses: [],
+					proxy_addresses: [],
 				}),
 			]);
 			expect(trustedProxyRegistry.isTrusted('100.64.0.9')).toBe(false);
