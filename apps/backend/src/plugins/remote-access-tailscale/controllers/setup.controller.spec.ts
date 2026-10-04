@@ -11,6 +11,7 @@ import { FastifyReply } from 'fastify';
 import { ConflictException, InternalServerErrorException, UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { PlatformService } from '../../../modules/platform/services/platform.service';
 import { RemoteAccessProviderStatus } from '../../../modules/remote-access/platforms/remote-access-provider.platform';
 import { PrivilegedWorkerUnavailableException } from '../../../modules/system/system.exceptions';
 import { TailscaleRequirementUnsatisfiedException } from '../remote-access-tailscale.exceptions';
@@ -24,7 +25,7 @@ import { SetupController } from './setup.controller';
 
 describe('SetupController', () => {
 	let controller: SetupController;
-	let setupService: { install: jest.Mock };
+	let setupService: { install: jest.Mock; getLastJob: jest.Mock };
 	let loginService: {
 		login: jest.Mock;
 		logout: jest.Mock;
@@ -32,7 +33,12 @@ describe('SetupController', () => {
 		getPendingInteractiveAuth: jest.Mock;
 	};
 	let providerService: { getStatus: jest.Mock };
-	let nodeManagedService: { evaluateRequirements: jest.Mock };
+	let nodeManagedService: {
+		evaluateRequirements: jest.Mock;
+		getControlState: jest.Mock;
+		connect: jest.Mock;
+		stop: jest.Mock;
+	};
 
 	const baseStatus: RemoteAccessProviderStatus = {
 		type: 'remote-access-tailscale-plugin',
@@ -45,7 +51,7 @@ describe('SetupController', () => {
 	};
 
 	beforeEach(async () => {
-		setupService = { install: jest.fn() };
+		setupService = { install: jest.fn(), getLastJob: jest.fn().mockReturnValue(null) };
 		loginService = {
 			login: jest.fn(),
 			logout: jest.fn().mockResolvedValue({ state: 'setup-required' }),
@@ -53,11 +59,22 @@ describe('SetupController', () => {
 			getPendingInteractiveAuth: jest.fn().mockReturnValue(null),
 		};
 		providerService = { getStatus: jest.fn().mockResolvedValue(baseStatus) };
-		nodeManagedService = { evaluateRequirements: jest.fn().mockResolvedValue([]) };
+		nodeManagedService = {
+			evaluateRequirements: jest.fn().mockResolvedValue([]),
+			getControlState: jest
+				.fn()
+				.mockReturnValue({ enabled: true, serviceState: 'started', authentication: 'authenticated', operation: null }),
+			connect: jest.fn().mockResolvedValue(undefined),
+			stop: jest.fn().mockResolvedValue(undefined),
+		};
 
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [SetupController],
 			providers: [
+				{
+					provide: PlatformService,
+					useValue: { getPrivilegedWorkerSupport: jest.fn().mockResolvedValue({ supported: true, reason: null }) },
+				},
 				{ provide: TailscaleSetupService, useValue: setupService },
 				{ provide: TailscaleLoginService, useValue: loginService },
 				{ provide: TailscaleProviderService, useValue: providerService },

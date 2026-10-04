@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import os from 'os';
 import { join } from 'path';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
@@ -10,7 +10,10 @@ import { ExtensionLoggerService, createExtensionLogger } from '../../../common/l
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { BaseManagedExtensionService } from '../../../modules/extensions/services/base-managed-extension.service';
-import { ConfigChangeResult } from '../../../modules/extensions/services/managed-extension-service.interface';
+import {
+	ConfigChangeResult,
+	ServiceState,
+} from '../../../modules/extensions/services/managed-extension-service.interface';
 import { PlatformType } from '../../../modules/platform/platform.constants';
 import { PlatformService } from '../../../modules/platform/services/platform.service';
 import {
@@ -33,11 +36,25 @@ import {
 	TAILSCALE_STOP_STATUS_TIMEOUT_MS,
 	TAILSCALE_SYSTEMCTL_PROBE_TIMEOUT_MS,
 } from '../remote-access-tailscale.constants';
-import { TailscaleNodeStopFailedException } from '../remote-access-tailscale.exceptions';
+import {
+	TailscaleNodeStopFailedException,
+	TailscaleOperationCancelledException,
+	TailscalePluginDisabledException,
+	TailscaleRequirementUnsatisfiedException,
+} from '../remote-access-tailscale.exceptions';
 
 import { TailscaleCliError, TailscaleCliService, TailscaleStatus } from './tailscale-cli.service';
+import { TailscaleOperation, TailscaleOperationCoordinatorService } from './tailscale-operation-coordinator.service';
 import { TailscaleServeResult, TailscaleServeService } from './tailscale-serve.service';
 import { TailscaleStatusMapperService } from './tailscale-status-mapper.service';
+
+export type TailscaleAuthentication = 'unknown' | 'required' | 'authenticated';
+export interface TailscaleControlState {
+	enabled: boolean;
+	serviceState: ServiceState;
+	authentication: TailscaleAuthentication;
+	operation: TailscaleOperation | null;
+}
 
 export type TailscaleRequirementCode =
 	| 'platform-supported'
@@ -128,7 +145,8 @@ const UNEVALUATED_MESSAGE = 'Not evaluated: the platform requirement is not sati
  * registered with the remote-access module) delegates to `computeStatus()`
  * here rather than duplicating the CLI + mapper composition.
  *
- * Setup, sign-in, sign-out and reset-preferences are out of scope (RA-5):
+ * Authentication flows live in TailscaleLoginService and share this
+ * provider's operation coordinator with node and Serve mutations.
  * `start()` never authenticates a node that has never signed in — it only
  * reconnects a node that already holds a key. `stop()` never signs out.
  *
@@ -138,7 +156,7 @@ const UNEVALUATED_MESSAGE = 'Not evaluated: the platform requirement is not sati
  * immediately instead of waiting for the next poll tick (D2/D3).
  */
 @Injectable()
-export class TailscaleNodeManagedService extends BaseManagedExtensionService {
+export class TailscaleNodeManagedService extends BaseManagedExtensionService implements OnModuleDestroy {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 		'TailscaleNodeManagedService',
@@ -148,6 +166,10 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	readonly serviceId = 'node';
 	readonly activationPolicy = 'owner-enabled' as const;
 
+	private authentication: TailscaleAuthentication = 'unknown';
+	private identity: Record<string, string | number | boolean | null> = {};
+	private connectPromise: Promise<void> | null = null;
+	private stopPromise: Promise<void> | null = null;
 	private pollTimer: NodeJS.Timeout | null = null;
 	private lastStatus: RemoteAccessProviderStatus | null = null;
 	/** Set by `stop()` when the underlying `down` call fails with a non-tolerated outcome — read back by `computeStatus()` while `this.state === 'error'`. */
@@ -171,12 +193,123 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		private readonly platformService: PlatformService,
 		private readonly eventEmitter: EventEmitter2,
 		private readonly serveService: TailscaleServeService,
+		@Optional()
+		private readonly operations: TailscaleOperationCoordinatorService = new TailscaleOperationCoordinatorService(),
 	) {
 		super();
+		this.operations.onSettled((operation) => {
+			// The poller's own convergence/reconnect keeps its adaptive timer.
+			if (operation !== 'serve' && operation !== 'reconnect') {
+				this.schedulePoll(0);
+			}
+		});
+	}
+
+	getOperationCoordinator(): TailscaleOperationCoordinatorService {
+		return this.operations;
+	}
+
+	getControlState(): TailscaleControlState {
+		return {
+			enabled: this.isPluginEnabled(),
+			serviceState: this.state,
+			authentication: this.authentication,
+			operation: this.operations.getOperation(),
+		};
+	}
+
+	private isPluginEnabled(): boolean {
+		try {
+			return this.configService.getPluginConfig<RemoteAccessTailscalePluginConfigModel>(
+				REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
+			).enabled;
+		} catch {
+			return false;
+		}
+	}
+
+	clearAuthentication(): void {
+		this.authentication = 'required';
+		this.identity = {};
+	}
+
+	observeAuthentication(status: TailscaleStatus): void {
+		if (status.BackendState === 'NeedsLogin') {
+			this.clearAuthentication();
+		} else if (['Running', 'Starting', 'Stopped', 'NeedsMachineAuth'].includes(status.BackendState)) {
+			this.authentication = 'authenticated';
+			this.identity = this.mapper.map(status, { port: this.getBackendPort() }).details;
+		}
+	}
+
+	async onModuleDestroy(): Promise<void> {
+		await this.stop();
+	}
+
+	async ensureSupervisorStartedForLogin(): Promise<void> {
+		if (!this.isPluginEnabled()) {
+			throw new TailscalePluginDisabledException();
+		}
+		if (this.state !== 'started') {
+			await this.startNode(false);
+		}
+	}
+
+	private assertRequirements(requirements: TailscaleRequirement[]): void {
+		const failed = requirements.find((requirement) => !requirement.satisfied);
+		if (failed) {
+			throw new TailscaleRequirementUnsatisfiedException(failed);
+		}
+		if (requirements.length === 0) {
+			throw new TailscaleCliError(
+				'unknown',
+				'Tailscale setup could not be verified. Re-check setup before connecting.',
+			);
+		}
+	}
+
+	async connect(): Promise<void> {
+		if (!this.isPluginEnabled()) {
+			throw new TailscalePluginDisabledException();
+		}
+		if (this.connectPromise !== null) {
+			return this.connectPromise;
+		}
+		this.connectPromise = (
+			this.state === 'started'
+				? this.operations.run('connect', async (token) => {
+						const config = this.getPluginConfig();
+						const requirements = await this.refreshRequirements('start');
+						this.operations.assertCurrent(token);
+						this.assertRequirements(requirements);
+						const status = await this.cli.getStatus();
+						this.operations.assertCurrent(token);
+						this.observeAuthentication(status);
+						if (!this.mapper.hasExistingKey(status)) {
+							throw new TailscaleCliError('needs-login', 'Sign in to Tailscale before connecting.');
+						}
+						if (this.mapper.map(status, { port: this.getBackendPort() }).state === 'connected') {
+							return;
+						}
+						await this.cli.set(this.buildPreferenceFlags(config));
+						this.operations.assertCurrent(token);
+						await this.cli.up(this.buildUpFlags(config));
+						this.operations.assertCurrent(token);
+						this.schedulePoll(0);
+					})
+				: this.startNode(true)
+		).finally(() => {
+			this.connectPromise = null;
+		});
+		return this.connectPromise;
 	}
 
 	async start(): Promise<void> {
-		await this.withLock(async () => {
+		return this.startNode(false);
+	}
+
+	private async startNode(strict: boolean): Promise<void> {
+		await this.operations.run('connect', async (token) => {
 			if (this.state === 'started') {
 				return;
 			}
@@ -199,16 +332,32 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 			try {
 				const requirements = await this.refreshRequirements('start');
+				this.operations.assertCurrent(token);
+				if (strict) {
+					this.assertRequirements(requirements);
+				}
 
 				if (this.requirementsSatisfied(requirements)) {
 					const status = await this.getStatusOrNull();
+					this.operations.assertCurrent(token);
+					if (status) {
+						this.observeAuthentication(status);
+					}
 
 					if (status && this.mapper.hasExistingKey(status)) {
 						await this.cli.set(this.buildPreferenceFlags(config));
+						this.operations.assertCurrent(token);
 						await this.cli.up(this.buildUpFlags(config));
 					}
 				}
 			} catch (error) {
+				this.operations.assertCurrent(token);
+				if (strict) {
+					this.state = 'error';
+					this.lastError = error instanceof Error ? error.message : 'Unknown Tailscale failure.';
+					await this.emitStatus();
+					throw error;
+				}
 				if (error instanceof TailscaleCliError && error.kind === 'permission-denied') {
 					await this.refreshRequirements('permission-denied').catch(() => undefined);
 				}
@@ -232,12 +381,16 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 				});
 			}
 
-			this.schedulePoll(0);
-
+			this.operations.assertCurrent(token);
 			this.state = 'started';
+			this.lastError = null;
+			this.schedulePoll(0);
 
 			this.logger.log('Tailscale node service started');
 		});
+		if (strict && this.authentication !== 'authenticated') {
+			throw new TailscaleCliError('needs-login', 'Sign in to Tailscale before connecting.');
+		}
 	}
 
 	/**
@@ -254,46 +407,52 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	 * daemon last reported.
 	 */
 	async stop(): Promise<void> {
-		await this.withLock(async () => {
-			if (this.state === 'stopped') {
-				return;
-			}
-
-			this.state = 'stopping';
-
-			this.clearPoll();
-
-			try {
-				await this.cli.down();
-
-				this.state = 'stopped';
-			} catch (error) {
-				if (await this.isStopFailureTolerated(error)) {
-					// A node that was never brought up (not installed, daemon down, never
-					// signed in) is expected to fail `down` — stop must still complete.
-					this.logger.debug('tailscale down failed while stopping (safe to ignore if the node was already down)', {
-						message: error instanceof Error ? error.message : String(error),
-					});
-
+		if (this.stopPromise !== null) {
+			return this.stopPromise;
+		}
+		const shouldDown =
+			this.state !== 'stopped' || this.operations.getOperation() !== null || this.operations.hasPendingChildren();
+		this.state = 'stopping';
+		this.clearPoll();
+		this.stopPromise = this.operations
+			.interrupt('disconnect', async (token) => {
+				if (!shouldDown) {
 					this.state = 'stopped';
-				} else {
-					const message = error instanceof Error ? error.message : String(error);
-
-					this.state = 'error';
-					this.lastError = message;
-
-					this.logger.error('Failed to stop the Tailscale node service', { message });
-
 					await this.emitStatus();
-
-					throw new TailscaleNodeStopFailedException(message);
+					return;
 				}
-			}
-
-			await this.emitStatus();
-
-			this.logger.log('Tailscale node service stopped');
-		});
+				try {
+					await this.cli.down();
+					this.operations.assertCurrent(token);
+					this.state = 'stopped';
+				} catch (error) {
+					this.operations.assertCurrent(token);
+					const tolerated = await this.isStopFailureTolerated(error);
+					this.operations.assertCurrent(token);
+					if (!tolerated) {
+						throw error;
+					}
+					this.state = 'stopped';
+				}
+				this.lastError = null;
+				await this.emitStatus();
+			})
+			.catch(async (error: unknown) => {
+				if (error instanceof TailscaleOperationCancelledException) {
+					throw error;
+				}
+				this.state = 'error';
+				this.lastError = error instanceof Error ? error.message : 'Unknown Tailscale failure.';
+				await this.emitStatus();
+				if (error instanceof Error && 'code' in error) {
+					throw error;
+				}
+				throw new TailscaleNodeStopFailedException(this.lastError);
+			})
+			.finally(() => {
+				this.stopPromise = null;
+			});
+		return this.stopPromise;
 	}
 
 	/**
@@ -333,8 +492,10 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		try {
 			return await Promise.race([
 				this.getStatusOrNull(),
-				new Promise<null>((resolve) => {
-					timer = setTimeout(() => resolve(null), timeoutMs);
+				new Promise<null>((resolve, reject) => {
+					timer = setTimeout(() => {
+						void this.operations.reapPendingChildren().then(() => resolve(null), reject);
+					}, timeoutMs);
 				}),
 			]);
 		} finally {
@@ -346,13 +507,42 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 	/** Computes the current status and pushes it as `PROVIDER_STATUS`, unconditionally (unlike the poller's own `pollTick()`, which only emits on change) — used by `stop()` (both outcomes) and by `start()` after a failed `set`/`up` call. */
 	private async emitStatus(): Promise<void> {
+		const generation = this.operations.getGeneration();
 		const status = await this.computeStatus();
+		if (!this.operations.isCurrent(generation)) {
+			return;
+		}
+		this.operations.assertCurrent();
 
 		this.lastStatus = status;
 		this.eventEmitter.emit(RemoteAccessEventType.PROVIDER_STATUS, status);
 	}
 
 	async onConfigChanged(): Promise<ConfigChangeResult> {
+		if (this.stopPromise !== null) {
+			await this.stopPromise;
+		}
+		this.clearPoll();
+		return this.operations.interrupt('config', async (token) => {
+			let result: ConfigChangeResult;
+			try {
+				result = await this.applyConfigChange();
+			} catch (error) {
+				this.operations.assertCurrent(token);
+				this.state = 'error';
+				this.lastError = error instanceof Error ? error.message : 'Unknown Tailscale failure.';
+				await this.emitStatus();
+				throw error;
+			}
+			this.operations.assertCurrent(token);
+			if (this.isPollable()) {
+				this.schedulePoll(0);
+			}
+			return result;
+		});
+	}
+
+	private async applyConfigChange(): Promise<ConfigChangeResult> {
 		const previous = this.pluginConfig;
 		this.pluginConfig = null;
 		const next = this.getPluginConfig();
@@ -361,6 +551,20 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		// null here — but if it somehow is (config cleared or never cached),
 		// treat the prior login_server as unknown and restart defensively
 		// rather than risk silently missing a real change.
+		if (!next.enabled) {
+			this.state = 'stopping';
+			try {
+				await this.cli.down();
+			} catch (error) {
+				if (!(await this.isStopFailureTolerated(error))) {
+					throw error;
+				}
+			}
+			this.operations.assertCurrent();
+			this.state = 'stopped';
+			await this.emitStatus();
+			return { restartRequired: false };
+		}
 		if (!previous || previous.loginServer !== next.loginServer) {
 			this.logger.log('Tailscale login_server changed (or its prior value was unknown), restart required');
 
@@ -388,9 +592,14 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 				}
 			}
 
+			this.operations.assertCurrent();
+			this.clearAuthentication();
 			return { restartRequired: true };
 		}
 
+		if (!this.isPollable()) {
+			return { restartRequired: false };
+		}
 		try {
 			// A config change is a rare, admin-triggered event (never the
 			// poller), so a fresh evaluation here is cheap enough — reuses
@@ -403,7 +612,9 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 				const status = await this.getStatusOrNull();
 
 				if (status && this.mapper.hasExistingKey(status)) {
+					this.operations.assertCurrent();
 					await this.cli.set(this.buildPreferenceFlags(next));
+					this.operations.assertCurrent();
 
 					const port = this.getBackendPort();
 
@@ -417,6 +628,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 				}
 			}
 		} catch (error) {
+			this.operations.assertCurrent();
 			if (error instanceof TailscaleCliError && error.kind === 'permission-denied') {
 				await this.refreshRequirements('permission-denied').catch(() => undefined);
 			}
@@ -438,6 +650,10 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	 * `Running` with `Self.Online`.
 	 */
 	async isHealthy(): Promise<boolean> {
+		const generation = this.operations.getGeneration();
+		if (!this.isPollable()) {
+			return false;
+		}
 		if (!this.requirementsSatisfied(this.getRequirements())) {
 			return false;
 		}
@@ -445,7 +661,12 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		try {
 			const status = await this.cli.getStatus();
 
-			return status.BackendState === 'Running' && status.Self?.Online === true;
+			return (
+				this.isPollable() &&
+				this.operations.isCurrent(generation) &&
+				status.BackendState === 'Running' &&
+				status.Self?.Online === true
+			);
 		} catch {
 			return false;
 		}
@@ -460,30 +681,80 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	 * same way: the desired end state already holds.
 	 */
 	async factoryReset(): Promise<{ success: boolean; reason?: string }> {
-		await this.cli.serveReset().catch(() => undefined);
-
+		this.state = 'stopping';
+		this.clearPoll();
 		try {
-			await this.cli.logout();
-
-			return { success: true };
-		} catch (error) {
-			if (error instanceof TailscaleCliError && (error.kind === 'not-installed' || error.kind === 'needs-login')) {
+			return await this.operations.interrupt('reset', async (token) => {
+				await this.cli.down().catch((error: unknown) =>
+					this.isStopFailureTolerated(error).then((safe) => {
+						if (!safe) {
+							throw error;
+						}
+					}),
+				);
+				this.operations.assertCurrent(token);
+				await this.cli.serveReset().catch(() => undefined);
+				this.operations.assertCurrent(token);
+				await this.cli.logout().catch((error: unknown) => {
+					if (
+						!(
+							error instanceof TailscaleCliError && ['not-installed', 'needs-login', 'daemon-down'].includes(error.kind)
+						)
+					) {
+						throw error;
+					}
+				});
+				this.operations.assertCurrent(token);
+				this.clearAuthentication();
+				this.state = 'stopped';
+				await this.emitStatus();
 				return { success: true };
+			});
+		} catch (error) {
+			if (!(error instanceof TailscaleOperationCancelledException)) {
+				this.state = 'error';
+				this.lastError = error instanceof Error ? error.message : 'Unknown error';
+				await this.emitStatus();
 			}
-
 			return { success: false, reason: error instanceof Error ? error.message : 'Unknown error' };
 		}
 	}
 
 	/**
 	 * Backward-compatible alias kept for `StatusController.getStatus()` and
-	 * `TailscaleSetupService`'s post-job refresh (both outside this task's
-	 * file ownership) — always forces a fresh evaluation via
+	 * `TailscaleSetupService`'s post-job refresh — always forces a fresh evaluation via
 	 * `refreshRequirements('status-read')`, same as before this method grew
 	 * a cache.
 	 */
 	async evaluateRequirements(): Promise<TailscaleRequirement[]> {
 		return this.refreshRequirements('status-read');
+	}
+
+	/** Setup may reconcile only if no later operator action superseded the accepted job. */
+	async reconcileSetup(generation: number): Promise<void> {
+		if (!this.operations.isCurrent(generation) || !this.getControlState().enabled) {
+			return;
+		}
+		await this.operations.run('config', async (token) => {
+			this.operations.assertCurrent(token);
+			if (!this.operations.isCurrent(generation)) {
+				return;
+			}
+			if (this.state !== 'started') {
+				await this.startNode(false);
+			} else {
+				const status = await this.cli.getStatus();
+				this.operations.assertCurrent(token);
+				this.observeAuthentication(status);
+				if (this.mapper.hasExistingKey(status)) {
+					await this.cli.set(this.buildPreferenceFlags(this.getPluginConfig()));
+					this.operations.assertCurrent(token);
+					await this.cli.up(this.buildUpFlags(this.getPluginConfig()));
+					this.operations.assertCurrent(token);
+				}
+				this.schedulePoll(0);
+			}
+		});
 	}
 
 	/**
@@ -519,7 +790,11 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 			return this.requirementsCache;
 		}
 
-		const requirements = await this.evaluateRequirementsLive();
+		const generation = this.operations.getGeneration();
+		const requirements = await this.evaluateRequirementsLive(generation);
+		if (!this.operations.isCurrent(generation)) {
+			return this.getRequirements();
+		}
 
 		this.requirementsCache = requirements;
 		this.requirementsRefreshedAt = Date.now();
@@ -533,8 +808,11 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	}
 
 	/** The actual, always-live evaluation — reached only through `refreshRequirements()`, which owns the cache and the periodic throttle. */
-	private async evaluateRequirementsLive(): Promise<TailscaleRequirement[]> {
+	private async evaluateRequirementsLive(generation: number): Promise<TailscaleRequirement[]> {
 		const platform = await this.evaluatePlatformSupported();
+		if (!this.operations.isCurrent(generation)) {
+			return this.getRequirements();
+		}
 
 		if (!platform.satisfied) {
 			// The other four are not actually evaluated when the platform
@@ -553,7 +831,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		const [{ binary, version }, daemonActive, operatorGranted] = await Promise.all([
 			this.evaluateBinaryAndVersion(),
 			this.evaluateDaemonActive(),
-			this.evaluateOperatorGranted(),
+			this.evaluateOperatorGranted(generation),
 		]);
 
 		return this.attachRemedies([platform, binary, daemonActive, operatorGranted, version]);
@@ -727,12 +1005,35 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	 */
 	private async computeStatusWithRawStatus(
 		requirementsReason: TailscaleRequirementRefreshReason = 'status-read',
+	): Promise<{ status: RemoteAccessProviderStatus; raw: TailscaleStatus | null }> {
+		const generation = this.operations.getGeneration();
+		const revision = this.operations.getObservationRevision();
+		const result = await this.collectStatusWithRawStatus(requirementsReason, generation);
+		if (!this.operations.isCurrent(generation) || !this.operations.isObservationCurrent(revision)) {
+			return {
+				status: this.buildStatus(
+					this.state === 'error' ? 'error' : 'disconnected',
+					this.lastError ?? 'The observation was superseded by a lifecycle action.',
+					this.identity,
+				),
+				raw: null,
+			};
+		}
+		if (result.raw && this.isPollable()) {
+			this.observeAuthentication(result.raw);
+		}
+		return result;
+	}
+
+	private async collectStatusWithRawStatus(
+		requirementsReason: TailscaleRequirementRefreshReason = 'status-read',
+		generation = this.operations.getGeneration(),
 	): Promise<{
 		status: RemoteAccessProviderStatus;
 		raw: TailscaleStatus | null;
 	}> {
 		if (this.state === 'stopped' || this.state === 'stopping') {
-			return { status: this.buildStatus('disconnected', 'The node service is stopped.'), raw: null };
+			return { status: this.buildStatus('disconnected', 'The node service is stopped.', this.identity), raw: null };
 		}
 
 		if (this.state === 'error') {
@@ -740,6 +1041,16 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		}
 
 		const platform = await this.evaluatePlatformSupported();
+		if (!this.operations.isCurrent(generation)) {
+			return {
+				status: this.buildStatus(
+					'disconnected',
+					'The observation was superseded by a lifecycle action.',
+					this.identity,
+				),
+				raw: null,
+			};
+		}
 
 		if (!platform.satisfied) {
 			return { status: this.buildStatus('unsupported', platform.message), raw: null };
@@ -747,6 +1058,16 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 		try {
 			const status = await this.cli.getStatus();
+			if (!this.operations.isCurrent(generation)) {
+				return {
+					status: this.buildStatus(
+						'disconnected',
+						'The observation was superseded by a lifecycle action.',
+						this.identity,
+					),
+					raw: null,
+				};
+			}
 			const port = this.getBackendPort();
 			const postureAdvisories = this.buildPostureAdvisories(status);
 
@@ -756,6 +1077,16 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 			// Re-check, every action's post-call refresh) gets `requirementsReason`'s
 			// default 'status-read', always fresh.
 			const requirements = await this.refreshRequirements(requirementsReason);
+			if (!this.operations.isCurrent(generation)) {
+				return {
+					status: this.buildStatus(
+						'disconnected',
+						'The observation was superseded by a lifecycle action.',
+						this.identity,
+					),
+					raw: null,
+				};
+			}
 			const operatorRequirement = requirements.find((requirement) => requirement.code === 'operator-granted');
 
 			if (operatorRequirement && !operatorRequirement.satisfied) {
@@ -855,7 +1186,17 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		port: number,
 		status: TailscaleStatus,
 	): Promise<TailscaleServeResult> {
-		const result = await this.serveService.converge(config, port, status);
+		const result = await this.operations.run(
+			'serve',
+			async (token) => {
+				const converged = await this.serveService.converge(config, port, status);
+				this.operations.assertCurrent(token);
+				return converged;
+			},
+			// Routine Serve reconciliation does not change lifecycle or authentication.
+			// Keep ownership/cancellation without invalidating concurrent status reads.
+			false,
+		);
 
 		if (result.permissionDenied) {
 			if (!this.lastServeConvergeDenied) {
@@ -975,7 +1316,9 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	 * (`tailscale set --operator=<user>`) instead: harmless for the current
 	 * operator, `permission-denied` for anyone else.
 	 */
-	private async evaluateOperatorGranted(): Promise<TailscaleRequirementBase> {
+	private async evaluateOperatorGranted(
+		generation = this.operations.getGeneration(),
+	): Promise<TailscaleRequirementBase> {
 		const serviceUser = os.userInfo().username;
 
 		try {
@@ -983,6 +1326,9 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 			return this.buildOperatorRequirement(prefs.OperatorUser === serviceUser, serviceUser);
 		} catch (error) {
+			if (!this.operations.isCurrent(generation)) {
+				return { code: 'operator-granted', satisfied: false, message: 'The requirement observation was superseded.' };
+			}
 			if (error instanceof TailscaleCliError) {
 				if (error.kind === 'daemon-down') {
 					return {
@@ -1010,7 +1356,9 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 	private async evaluateOperatorGrantedViaProbe(serviceUser: string): Promise<TailscaleRequirementBase> {
 		try {
-			await this.cli.set([`--operator=${serviceUser}`]);
+			// The same-value capability probe cannot change auth or transport;
+			// it still owns a mutation slot and remains generation-cancellable.
+			await this.operations.run('preferences', async () => this.cli.set([`--operator=${serviceUser}`]), false);
 
 			return this.buildOperatorRequirement(true, serviceUser);
 		} catch (error) {
@@ -1078,8 +1426,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	/**
 	 * True while the service is starting up or fully started — the only
 	 * states in which the poller is allowed to hold a timer or emit.
-	 * `pollTick()` runs outside `withLock` (it is a `setTimeout` callback,
-	 * not part of `start()`/`stop()`'s own critical section) so a tick whose
+	 * `pollTick()` reads outside a mutation owner (it is a `setTimeout` callback) so a tick whose
 	 * `computeStatus()` was already in flight when `stop()` ran must not
 	 * revive the poller or emit once it resolves; checking this before both
 	 * the emit and the reschedule closes that race.
@@ -1096,7 +1443,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 		}
 
 		this.pollTimer = setTimeout(() => {
-			void this.pollTick();
+			this.operations.withoutOperation(() => void this.pollTick());
 		}, delayMs);
 
 		this.pollTimer.unref?.();
@@ -1122,10 +1469,16 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	 * here is only for the type checker.
 	 */
 	private async pollTick(): Promise<void> {
+		const generation = this.operations.getGeneration();
+		const revision = this.operations.getObservationRevision();
 		try {
 			let { status, raw } = await this.computeStatusWithRawStatus('periodic');
 
-			if (!this.isPollable()) {
+			if (
+				!this.isPollable() ||
+				!this.operations.isCurrent(generation) ||
+				!this.operations.isObservationCurrent(revision)
+			) {
 				// stop() ran while this tick's computeStatus() was in flight.
 				return;
 			}
@@ -1150,15 +1503,15 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 			) {
 				const reconnected = await this.attemptReconnect();
 
-				if (!this.isPollable()) {
-					// stop() ran while attemptReconnect() held the lock.
+				if (!this.isPollable() || !this.operations.isCurrent(generation)) {
+					// stop() revoked this reconnect operation.
 					return;
 				}
 
 				if (reconnected) {
 					({ status, raw } = await this.computeStatusWithRawStatus('periodic'));
 
-					if (!this.isPollable()) {
+					if (!this.isPollable() || !this.operations.isCurrent(generation)) {
 						return;
 					}
 				}
@@ -1168,6 +1521,9 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 				await this.convergeServe(this.getPluginConfig(), this.getBackendPort(), raw);
 			}
 
+			if (!this.isPollable() || !this.operations.isCurrent(generation)) {
+				return;
+			}
 			if (this.hasStatusChanged(this.lastStatus, status)) {
 				this.lastStatus = status;
 				this.eventEmitter.emit(RemoteAccessEventType.PROVIDER_STATUS, status);
@@ -1177,7 +1533,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 				status.state === 'connecting' ? TAILSCALE_POLL_INTERVAL_TRANSITIONING_MS : TAILSCALE_POLL_INTERVAL_STABLE_MS,
 			);
 		} catch (error) {
-			if (!this.isPollable()) {
+			if (!this.isPollable() || !this.operations.isCurrent(generation)) {
 				return;
 			}
 
@@ -1190,19 +1546,12 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 	}
 
 	/**
-	 * Retries bringing the node back up when the poller finds it unexpectedly
-	 * `Stopped` (mapped to `disconnected`) while this managed service is
-	 * still `started` and every requirement is satisfied — the same
-	 * `set`/`up` pair `start()` runs once, given another chance instead of
-	 * leaving a transient failure (or a `stop()`/`start()` reconnect whose
-	 * `up` call missed) stuck until a human intervenes. Shares `withLock()`
-	 * with `start()`/`stop()` so a concurrent manual stop is never raced —
-	 * `stop()` simply waits for this attempt to finish first, same as it
-	 * already does for a concurrent `start()`. Never throws: failure only
-	 * schedules the next backoff attempt via `nextReconnectAttemptAt`.
+	 * Retries an unexpectedly stopped authenticated node with bounded backoff.
+	 * The provider coordinator owns the set/up sequence; stop revokes it
+	 * immediately, so a cancelled reconnect cannot continue or delay stop.
 	 */
 	private async attemptReconnect(): Promise<boolean> {
-		return this.withLock(async () => {
+		return this.operations.run('reconnect', async (token) => {
 			if (this.state !== 'started') {
 				// stop() (or a fresh start() cycle) already changed things
 				// while this call waited for the lock — nothing to reconnect.
@@ -1213,7 +1562,9 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 				const config = this.getPluginConfig();
 
 				await this.cli.set(this.buildPreferenceFlags(config));
+				this.operations.assertCurrent(token);
 				await this.cli.up(this.buildUpFlags(config));
+				this.operations.assertCurrent(token);
 
 				this.reconnectAttempts = 0;
 				this.nextReconnectAttemptAt = 0;
@@ -1222,6 +1573,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService {
 
 				return true;
 			} catch (error) {
+				this.operations.assertCurrent(token);
 				this.reconnectAttempts += 1;
 
 				const delayMs = Math.min(

@@ -9,7 +9,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createExtensionLogger } from '../../../common/logger';
 import { getEnvValue } from '../../../common/utils/config.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { PlatformService } from '../../../modules/platform/services/platform.service';
 import { EventType as RemoteAccessEventType } from '../../../modules/remote-access/remote-access.constants';
 import {
@@ -66,7 +65,6 @@ export class TailscaleSetupService {
 		private readonly eventEmitter: EventEmitter2,
 		private readonly platformService: PlatformService,
 		private readonly configService: ConfigService,
-		private readonly managedServiceManager: ManagedServiceManagerService,
 	) {}
 
 	/**
@@ -84,6 +82,7 @@ export class TailscaleSetupService {
 	 * thing `run()` can still throw from here.
 	 */
 	async install(): Promise<{ id: string }> {
+		const generation = this.nodeManagedService.getOperationCoordinator().getGeneration();
 		const allowDev = getEnvValue<boolean>(this.nestConfigService, REMOTE_ACCESS_TAILSCALE_ALLOW_DEV_ENV, false);
 
 		if (allowDev) {
@@ -152,7 +151,7 @@ export class TailscaleSetupService {
 
 		this.lastJob = { id, status: initialStatus };
 
-		this.watchJob(id);
+		this.watchJob(id, generation);
 
 		return { id };
 	}
@@ -167,7 +166,7 @@ export class TailscaleSetupService {
 		return this.lastJob;
 	}
 
-	private watchJob(id: string): void {
+	private watchJob(id: string, generation: number): void {
 		const unsubscribe = this.privilegedWorker.onStatus(id, (status: PrivilegedJobStatus) => {
 			this.lastJob = { id, status };
 
@@ -188,7 +187,7 @@ export class TailscaleSetupService {
 			if (status.state === 'complete') {
 				this.logger.log(`Tailscale setup job completed (job: ${id})`);
 
-				void this.onSetupComplete();
+				void this.onSetupComplete(generation);
 			} else {
 				this.logger.error(`Tailscale setup job did not complete (job: ${id}, state: ${status.state})`, {
 					step: status.step,
@@ -202,11 +201,11 @@ export class TailscaleSetupService {
 
 	/**
 	 * Best-effort: nothing here must ever surface a completed setup job as a failure.
-	 * Refreshes the node's requirements, then — when the plugin is enabled — restarts the
-	 * `node` managed service so it picks up the freshly-prepared tailscaled/operator grant
+	 * Refreshes the node's requirements, then — when the plugin is enabled — reconciles the
+	 * `node` managed service only if no later operator action superseded the setup job so it picks up the freshly-prepared tailscaled/operator grant
 	 * immediately, instead of waiting for its own poller to notice on its own schedule.
 	 */
-	private async onSetupComplete(): Promise<void> {
+	private async onSetupComplete(generation: number): Promise<void> {
 		try {
 			await this.refreshNodeRequirements();
 		} catch (error) {
@@ -221,10 +220,10 @@ export class TailscaleSetupService {
 			);
 
 			if (pluginConfig.enabled) {
-				await this.managedServiceManager.restartService('plugin', REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'node');
+				await this.nodeManagedService.reconcileSetup(generation);
 			}
 		} catch (error) {
-			this.logger.warn('Failed to restart the Tailscale node service after setup', {
+			this.logger.warn('Failed to reconcile the Tailscale node service after setup', {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		}

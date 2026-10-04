@@ -1,4 +1,36 @@
-import { TailscaleRequirement } from './services/tailscale-node-managed.service';
+import type { TailscaleRequirement } from './services/tailscale-node-managed.service';
+
+export class TailscaleOperationCancelledException extends Error {
+	readonly code = 'operation-cancelled';
+	constructor() {
+		super('The Tailscale operation was cancelled by a newer lifecycle action.');
+		this.name = 'TailscaleOperationCancelledException';
+	}
+}
+
+export class TailscaleOperationInProgressException extends Error {
+	readonly code = 'operation-in-progress';
+	constructor() {
+		super('Another Tailscale operation is in progress. Wait for it to finish or disconnect to cancel it.');
+		this.name = 'TailscaleOperationInProgressException';
+	}
+}
+
+export class TailscalePluginDisabledException extends Error {
+	readonly code = 'plugin-disabled';
+	constructor() {
+		super('Enable the Tailscale plugin before connecting or signing in.');
+		this.name = 'TailscalePluginDisabledException';
+	}
+}
+
+export class TailscaleChildTerminationException extends Error {
+	readonly code = 'child-termination-failed';
+	constructor() {
+		super('A Tailscale command did not exit after cancellation. Disconnect again before retrying.');
+		this.name = 'TailscaleChildTerminationException';
+	}
+}
 
 /**
  * Raised by `TailscaleLoginService.login()`/`logout()`/`resetPreferences()`

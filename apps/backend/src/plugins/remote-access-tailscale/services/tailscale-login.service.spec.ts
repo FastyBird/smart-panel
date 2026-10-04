@@ -22,6 +22,7 @@ import {
 	extractJsonObjects,
 } from './tailscale-login.service';
 import { TailscaleNodeManagedService } from './tailscale-node-managed.service';
+import { TailscaleOperationCoordinatorService } from './tailscale-operation-coordinator.service';
 
 // Node's native ES module exports are non-configurable, so a plain
 // jest.spyOn(fsPromises, 'writeFile') cannot redefine it directly (throws
@@ -60,7 +61,10 @@ jest.mock('../remote-access-tailscale.constants', () => ({
 class FakeChildProcess extends EventEmitter {
 	stdout = Object.assign(new EventEmitter(), { resume: jest.fn() });
 	stderr = Object.assign(new EventEmitter(), { resume: jest.fn() });
-	kill = jest.fn();
+	kill = jest.fn().mockImplementation(() => {
+		this.emit('close', null);
+		return true;
+	});
 }
 
 function flushMicrotasks(): Promise<void> {
@@ -141,8 +145,12 @@ describe('TailscaleLoginService', () => {
 	let nodeManagedService: {
 		computeStatus: jest.Mock;
 		getPluginConfig: jest.Mock;
+		getControlState: jest.Mock;
 		buildUpFlags: jest.Mock;
 		refreshRequirements: jest.Mock;
+		getOperationCoordinator: jest.Mock;
+		ensureSupervisorStartedForLogin: jest.Mock;
+		clearAuthentication: jest.Mock;
 	};
 	let nestConfigServiceMock: { get: jest.Mock };
 	let dataDir: string;
@@ -160,7 +168,11 @@ describe('TailscaleLoginService', () => {
 
 		nodeManagedService = {
 			computeStatus: jest.fn().mockResolvedValue({ state: 'setup-required' }),
-			getPluginConfig: jest.fn().mockReturnValue({}),
+			getPluginConfig: jest.fn().mockReturnValue({ enabled: true }),
+			getControlState: jest.fn().mockReturnValue({ enabled: true }),
+			getOperationCoordinator: jest.fn().mockReturnValue(new TailscaleOperationCoordinatorService()),
+			ensureSupervisorStartedForLogin: jest.fn().mockResolvedValue(undefined),
+			clearAuthentication: jest.fn(),
 			buildUpFlags: jest.fn().mockReturnValue(['--hostname=panel', '--operator=smart-panel']),
 			// Satisfied by default so every pre-existing test in this file
 			// keeps observing login()/logout()/resetPreferences() proceeding
@@ -588,7 +600,7 @@ describe('TailscaleLoginService', () => {
 			await flushMicrotasks();
 			child.emit('error', new Error('spawn tailscale ENOENT'));
 
-			await expect(loginPromise).rejects.toThrow('spawn tailscale ENOENT');
+			await expect(loginPromise).rejects.toThrow('The Tailscale sign-in command failed to start.');
 		});
 
 		it('only one pending login at a time — a second call while pending returns the same URL instead of spawning again', async () => {

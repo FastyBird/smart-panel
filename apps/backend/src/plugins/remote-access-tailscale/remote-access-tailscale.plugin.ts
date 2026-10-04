@@ -24,6 +24,7 @@ import { REMOTE_ACCESS_TAILSCALE_PLUGIN_SWAGGER_EXTRA_MODELS } from './remote-ac
 import { TailscaleCliService } from './services/tailscale-cli.service';
 import { TailscaleLoginService } from './services/tailscale-login.service';
 import { TailscaleNodeManagedService } from './services/tailscale-node-managed.service';
+import { TailscaleOperationCoordinatorService } from './services/tailscale-operation-coordinator.service';
 import { TailscaleProviderService } from './services/tailscale-provider.service';
 import { TailscaleServeService } from './services/tailscale-serve.service';
 import { TailscaleSetupService } from './services/tailscale-setup.service';
@@ -38,6 +39,7 @@ import { TailscaleStatusMapperService } from './services/tailscale-status-mapper
 	imports: [RemoteAccessModule, PlatformModule, NestConfigModule],
 	controllers: [StatusController, SetupController],
 	providers: [
+		TailscaleOperationCoordinatorService,
 		TailscaleCliService,
 		TailscaleStatusMapperService,
 		TailscaleServeService,

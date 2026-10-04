@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -16,10 +16,19 @@ import {
 	TAILSCALE_LOGIN_FIRST_BLOCK_TIMEOUT_MS,
 	TAILSCALE_LOGIN_INTERACTIVE_TIMEOUT_MS,
 } from '../remote-access-tailscale.constants';
-import { TailscaleRequirementUnsatisfiedException } from '../remote-access-tailscale.exceptions';
+import {
+	TailscaleOperationCancelledException,
+	TailscaleOperationInProgressException,
+	TailscalePluginDisabledException,
+	TailscaleRequirementUnsatisfiedException,
+} from '../remote-access-tailscale.exceptions';
 
 import { TailscaleCliError, TailscaleCliService } from './tailscale-cli.service';
 import { TailscaleNodeManagedService } from './tailscale-node-managed.service';
+import {
+	TailscaleOperationCoordinatorService,
+	TailscaleOperationToken,
+} from './tailscale-operation-coordinator.service';
 
 /** `login()`/`logout()`/`resetPreferences()` all refuse unless both of these hold — see `assertActionable()`. */
 const ACTIONABLE_REQUIREMENT_CODES = ['operator-granted', 'daemon-active'] as const;
@@ -32,10 +41,10 @@ export interface TailscaleLoginResult {
 
 interface PendingInteractiveLogin {
 	child: ChildProcessWithoutNullStreams;
-	buffer: string;
+	result: Promise<TailscaleLoginResult>;
 	authUrl?: string;
 	qr?: string;
-	timeoutHandle: NodeJS.Timeout;
+	cancel: () => void;
 }
 
 /** Shape of one JSON block printed by `tailscale up --json`; only these fields are read — see TailscaleCliService's TailscaleStatus for the same "tolerate unknown fields" contract. */
@@ -107,9 +116,10 @@ export function extractJsonObjects(buffer: string): { objects: string[]; rest: s
  * while a keyed one is running. Distinct from a plain `Error` so the
  * controller can map it to `409 Conflict` instead of a generic 500.
  */
-export class TailscaleLoginInProgressException extends Error {
+export class TailscaleLoginInProgressException extends TailscaleOperationInProgressException {
 	constructor(message: string) {
-		super(message);
+		super();
+		this.message = message;
 		this.name = 'TailscaleLoginInProgressException';
 	}
 }
@@ -149,10 +159,11 @@ const STALE_AUTH_KEY_FILE_PATTERN = /^auth-key-.+\.key$/;
  * normal exit path, so a hard kill can leave the key on disk.
  */
 @Injectable()
-export class TailscaleLoginService implements OnModuleInit {
+export class TailscaleLoginService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = createExtensionLogger(REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'TailscaleLoginService');
 
 	private pending: PendingInteractiveLogin | null = null;
+	private interactiveRequest: Promise<TailscaleLoginResult> | null = null;
 	/** True for the whole duration of loginWithAuthKey() — see the class doc. */
 	private keyedLoginInFlight = false;
 
@@ -166,347 +177,222 @@ export class TailscaleLoginService implements OnModuleInit {
 		await this.cleanupStaleAuthKeyFiles();
 	}
 
+	private get operations(): TailscaleOperationCoordinatorService {
+		return this.nodeManagedService.getOperationCoordinator();
+	}
+
+	async onModuleDestroy(): Promise<void> {
+		await this.nodeManagedService.stop();
+	}
+
 	async login(authKey?: string): Promise<TailscaleLoginResult> {
-		// The requirements pre-check (`assertActionable()`) deliberately runs
-		// *inside* `loginWithAuthKey()`/`loginInteractively()` below, not here:
-		// the "at most one `tailscale up` in flight" guards and the
-		// synchronous cancellation of a pending interactive login (both
-		// right below) must stay synchronous — awaiting anything first would
-		// let a second concurrent `login()` call race in ahead of them.
-		if (authKey) {
-			if (this.keyedLoginInFlight) {
-				throw new TailscaleLoginInProgressException(
-					'A Tailscale sign-in with an auth key is already in progress. Wait for it to finish before retrying.',
-				);
-			}
-
-			// A keyed sign-in always wins over an interactive one already in
-			// flight: cancel it first so at most one `tailscale up` ever runs
-			// at a time. An interactive call that arrives while another
-			// interactive one is pending takes the other branch below, which
-			// intentionally keeps reusing the same pending attempt instead of
-			// cancelling it.
-			this.stopPendingLogin();
-
-			return this.loginWithAuthKey(authKey);
+		if (!this.nodeManagedService.getControlState().enabled) {
+			throw new TailscalePluginDisabledException();
 		}
-
 		if (this.keyedLoginInFlight) {
-			throw new TailscaleLoginInProgressException(
-				'A Tailscale sign-in with an auth key is currently in progress. Wait for it to finish before starting an interactive sign-in.',
-			);
+			throw new TailscaleLoginInProgressException('A Tailscale auth-key sign-in is already in progress.');
 		}
-
+		if (!authKey && this.interactiveRequest !== null) {
+			return this.interactiveRequest;
+		}
+		if (authKey) {
+			this.keyedLoginInFlight = true;
+			try {
+				return await (this.interactiveRequest !== null
+					? this.operations.interrupt('login', (token) => this.loginWithAuthKey(authKey, token))
+					: this.operations.run('login', (token) => this.loginWithAuthKey(authKey, token)));
+			} finally {
+				this.keyedLoginInFlight = false;
+			}
+		}
 		return this.loginInteractively();
 	}
 
 	async logout(): Promise<TailscaleLoginResult> {
-		await this.assertActionable();
-
-		this.stopPendingLogin();
-
-		try {
-			await this.cli.logout();
-		} catch (error) {
-			// Only "nothing to sign out of" is tolerated — the desired end state
-			// already holds. A genuine failure (daemon-down, permission-denied,
-			// timeout, unknown, ...) propagates so the controller can surface a
-			// clear error instead of silently reporting success.
-			if (error instanceof TailscaleCliError && error.kind === 'needs-login') {
-				this.logger.debug('tailscale logout had nothing to sign out of', { kind: error.kind });
-			} else {
-				throw error;
+		return this.operations.interrupt('logout', async (token) => {
+			await this.assertActionable();
+			this.operations.assertCurrent(token);
+			try {
+				await this.cli.logout();
+			} catch (error) {
+				if (!(error instanceof TailscaleCliError && error.kind === 'needs-login')) {
+					throw error;
+				}
 			}
-		}
-
-		return this.currentStatus();
+			this.operations.assertCurrent(token);
+			this.nodeManagedService.clearAuthentication();
+			return this.currentStatus();
+		});
 	}
 
 	async resetPreferences(): Promise<TailscaleLoginResult> {
-		await this.assertActionable();
-
-		// Unlike logout(), there is no TailscaleCliError.kind worth tolerating
-		// here — "nothing to reset" is not a meaningful state, so every
-		// failure (needs-login included) propagates, consistent with how
-		// logout() treats every kind other than needs-login.
-		await this.cli.up(['--reset', ...this.buildManagedFlags()]);
-
-		return this.currentStatus();
+		if (!this.nodeManagedService.getControlState().enabled) {
+			throw new TailscalePluginDisabledException();
+		}
+		return this.operations.interrupt('preferences', async (token) => {
+			await this.assertActionable();
+			this.operations.assertCurrent(token);
+			await this.nodeManagedService.ensureSupervisorStartedForLogin();
+			this.operations.assertCurrent(token);
+			await this.cli.up(['--reset', ...this.buildManagedFlags()]);
+			this.operations.assertCurrent(token);
+			return this.currentStatus();
+		});
 	}
 
-	/**
-	 * Refuses `login()`/`logout()`/`resetPreferences()` with
-	 * `TailscaleRequirementUnsatisfiedException` — mapped by `SetupController`
-	 * to `409 Conflict` — unless both `operator-granted` and `daemon-active`
-	 * are satisfied. Always re-evaluates first (`refreshRequirements('status-read')`,
-	 * never the cached snapshot) so a stale cache never lets a call through
-	 * that would only fail `permission-denied`/`daemon-down` for real a moment
-	 * later.
-	 */
 	private async assertActionable(): Promise<void> {
 		const requirements = await this.nodeManagedService.refreshRequirements('status-read');
-
+		this.operations.assertCurrent();
 		for (const code of ACTIONABLE_REQUIREMENT_CODES) {
 			const requirement = requirements.find((candidate) => candidate.code === code);
-
 			if (requirement && !requirement.satisfied) {
 				throw new TailscaleRequirementUnsatisfiedException(requirement);
 			}
 		}
 	}
 
-	/** Read by `StatusController` to fill `auth_url`/`qr` on `GET /status` while a login is pending. */
 	getPendingInteractiveAuth(): { authUrl: string; qr?: string } | null {
-		if (!this.pending?.authUrl) {
-			return null;
-		}
-
-		return { authUrl: this.pending.authUrl, qr: this.pending.qr };
+		return this.pending?.authUrl ? { authUrl: this.pending.authUrl, qr: this.pending.qr } : null;
 	}
 
-	/**
-	 * Kills any in-flight interactive sign-in and clears its auth URL/QR.
-	 * Called by `logout()`, on the second `up --json` block, and on timeout.
-	 * Safe to call when nothing is pending.
-	 */
 	stopPendingLogin(): void {
-		if (!this.pending) {
-			return;
-		}
-
-		const { child, timeoutHandle } = this.pending;
-
-		clearTimeout(timeoutHandle);
-		this.pending = null;
-
-		child.kill('SIGTERM');
+		this.pending?.cancel();
 	}
 
-	private async loginWithAuthKey(authKey: string): Promise<TailscaleLoginResult> {
-		// Set for the whole method body (file write through the up call) so a
-		// second login() call — keyed or interactive — arriving before this one
-		// finishes rejects instead of racing a second `tailscale up`.
-		this.keyedLoginInFlight = true;
+	private async prepareLogin(token: TailscaleOperationToken): Promise<void> {
+		await this.assertActionable();
+		this.operations.assertCurrent(token);
+		// Authentication is also a connection request: start a stopped supervisor.
+		await this.nodeManagedService.ensureSupervisorStartedForLogin();
+		this.operations.assertCurrent(token);
+	}
 
+	private async loginWithAuthKey(authKey: string, token: TailscaleOperationToken): Promise<TailscaleLoginResult> {
+		await this.prepareLogin(token);
+		const keyFilePath = await this.writeAuthKeyFile(authKey);
 		try {
-			// Checked only now (inside the `keyedLoginInFlight` guard, not in
-			// the synchronous `login()` dispatch above) so the pre-check's own
-			// CLI calls never delay the synchronous "cancel a pending
-			// interactive login" guarantee `login()` provides.
-			await this.assertActionable();
-
-			const keyFilePath = await this.writeAuthKeyFile(authKey);
-
+			this.operations.assertCurrent(token);
 			try {
 				await this.runUpToCompletion(
 					[`--auth-key=file:${keyFilePath}`, '--timeout=120s', ...this.buildManagedFlags()],
 					TAILSCALE_LOGIN_AUTH_KEY_TIMEOUT_MS,
+					token,
 				);
-			} catch (error) {
-				// Never rethrown: an invalid/expired key or a timeout still leaves a
-				// real status to report (still NeedsLogin) — the caller always gets
-				// that back, per the brief's "return the resulting status" contract.
-				this.logger.warn('Tailscale auth-key sign-in did not complete successfully', {
-					message: error instanceof Error ? error.message : String(error),
-				});
-			} finally {
-				// Every exit path — success, error, timeout — deletes the ephemeral
-				// key file. force:true makes this a no-op if it is already gone.
-				await rm(keyFilePath, { force: true }).catch(() => undefined);
+			} catch {
+				this.operations.assertCurrent(token);
+				this.logger.warn('Tailscale auth-key sign-in did not complete successfully');
 			}
-
+			this.operations.assertCurrent(token);
 			return await this.currentStatus();
 		} finally {
-			this.keyedLoginInFlight = false;
+			await rm(keyFilePath, { force: true }).catch(() => undefined);
 		}
 	}
 
-	private async loginInteractively(): Promise<TailscaleLoginResult> {
-		if (this.pending) {
-			// Only one pending login at a time: hand back the URL already in
-			// flight instead of spawning a second `up` process — reusing an
-			// already-running sign-in needs no fresh requirements check.
-			return { state: 'pending-auth', authUrl: this.pending.authUrl, qr: this.pending.qr };
-		}
-
-		// Checked only now, after the "reuse an existing pending login" guard
-		// above and before ever spawning a new `tailscale up` process.
-		await this.assertActionable();
-
-		// Re-check both guards after the await above: `assertActionable()` yields,
-		// so a second concurrent interactive `login()` call could have passed the
-		// `this.pending` check before either call set it, or a keyed login could
-		// have raced in and set `keyedLoginInFlight` while this call waited on its
-		// own requirements check. Without this, two `tailscale up` processes could
-		// spawn at once.
-		if (this.pending) {
-			return { state: 'pending-auth', authUrl: this.pending.authUrl, qr: this.pending.qr };
-		}
-
-		if (this.keyedLoginInFlight) {
-			throw new TailscaleLoginInProgressException(
-				'A Tailscale sign-in with an auth key is currently in progress. Wait for it to finish before starting an interactive sign-in.',
-			);
-		}
-
-		const child = this.cli.spawnUp(['--json', '--timeout=10m', ...this.buildManagedFlags()]);
-
-		child.stderr.resume(); // drain — never read, but must not block the pipe
-
-		return new Promise<TailscaleLoginResult>((resolve, reject) => {
-			let settled = false;
-			let firstBlockSeen = false;
-
-			// Declared as `const` further down (after the deadline it guards is
-			// computed) but referenced here: safe because `settleResolve`/
-			// `settleReject` are only ever invoked from callbacks that run after
-			// this whole synchronous setup — including that declaration — has
-			// completed, never during it.
-			const settleResolve = (result: TailscaleLoginResult): void => {
-				if (settled) {
-					return;
-				}
-
-				settled = true;
-				clearTimeout(firstBlockTimeoutHandle);
-				resolve(result);
-			};
-
-			const settleReject = (error: Error): void => {
-				if (settled) {
-					return;
-				}
-
-				settled = true;
-				clearTimeout(firstBlockTimeoutHandle);
-				reject(error);
-			};
-
-			const fallbackToCurrentStatus = (): void => {
-				this.currentStatus().then(settleResolve).catch(settleReject);
-			};
-
-			const timeoutHandle = setTimeout(() => {
-				this.logger.warn('Tailscale interactive sign-in timed out after 10 minutes without completing');
-				this.stopPendingLogin();
-				settleReject(new Error('Tailscale sign-in timed out after 10 minutes.'));
-			}, TAILSCALE_LOGIN_INTERACTIVE_TIMEOUT_MS);
-
-			// A pending sign-in must not, by itself, keep the process alive —
-			// same convention as the node managed service's own poll timer.
-			timeoutHandle.unref?.();
-
-			// A wedged daemon or a slow control-plane round-trip must not hold
-			// this HTTP request open for the full 10 minutes above: if the
-			// first `tailscale up --json` block has not printed by this
-			// deadline, resolve with a URL-less 'pending-auth' and free the
-			// request. The child, the 10-minute timeout and `this.pending`
-			// (the single-in-flight marker) all keep running exactly as
-			// before — once the first block does arrive, it is still stored
-			// on `this.pending` below (see `!firstBlockSeen` in the `data`
-			// handler) so GET /status picks up the auth URL/QR via
-			// getPendingInteractiveAuth().
-			const firstBlockTimeoutHandle = setTimeout(() => {
-				this.logger.debug(
-					'Tailscale interactive sign-in has not printed its first status block yet; resolving pending-auth without a URL, leaving the sign-in running',
-				);
-				settleResolve({ state: 'pending-auth' });
-			}, TAILSCALE_LOGIN_FIRST_BLOCK_TIMEOUT_MS);
-
-			firstBlockTimeoutHandle.unref?.();
-
-			this.pending = { child, buffer: '', timeoutHandle };
-
-			child.stdout.on('data', (chunk: Buffer) => {
-				// Ignore stray data from an already-cleared/replaced pending login
-				// (e.g. arriving just after stopPendingLogin() killed this child).
-				if (this.pending?.child !== child) {
-					return;
-				}
-
-				this.pending.buffer += chunk.toString('utf8');
-
-				const { objects, rest } = extractJsonObjects(this.pending.buffer);
-
-				this.pending.buffer = rest;
-
-				for (const raw of objects) {
-					let parsed: TailscaleUpJsonBlock;
-
-					try {
-						parsed = JSON.parse(raw) as TailscaleUpJsonBlock;
-					} catch {
-						continue; // Never expected from a real `tailscale up --json` — ignored, not fatal.
-					}
-
-					if (!firstBlockSeen) {
-						firstBlockSeen = true;
-						// The request may already have settled via the first-block
-						// timeout above — clear it regardless so it can never fire
-						// after this point, whether or not it already has.
-						clearTimeout(firstBlockTimeoutHandle);
-
-						if (parsed.AuthURL) {
-							if (this.pending) {
-								this.pending.authUrl = parsed.AuthURL;
-								this.pending.qr = parsed.QR;
-							}
-
-							settleResolve({ state: 'pending-auth', authUrl: parsed.AuthURL, qr: parsed.QR });
-						} else if (parsed.Error) {
-							// An immediate failure (rejected flags, a control-server
-							// error) with nothing to wait for — reject with the real
-							// reason instead of silently falling back to "already
-							// authenticated", which previously reported a fake
-							// `disconnected` success and discarded `Error` entirely.
-							this.stopPendingLogin();
-							settleReject(new Error(parsed.Error));
-						} else {
-							// Already authenticated — nothing to wait for; report the
-							// real status instead.
-							this.stopPendingLogin();
-							fallbackToCurrentStatus();
-						}
-					} else {
-						// Second block: sign-in resolved one way or another. The
-						// original POST /login response already returned (settled on
-						// the first block above), so there is no request left to
-						// reject on a late failure here — only clear the now-stale
-						// auth URL/QR. The daemon's own reason for a late failure
-						// (e.g. the control server rejecting an approved auth path)
-						// surfaces through `status --json`'s `Health` field on the
-						// next `GET /status` poll (see
-						// TailscaleStatusMapperService.buildDetails()'s
-						// `healthWarnings`) — the node managed service's own poller
-						// picks up the real state on its next tick regardless.
-						this.stopPendingLogin();
-					}
-				}
-			});
-
-			child.once('error', (error) => {
-				if (this.pending?.child === child) {
-					this.stopPendingLogin();
-				}
-
-				settleReject(error instanceof Error ? error : new Error(String(error)));
-			});
-
-			child.once('close', () => {
-				if (this.pending?.child === child) {
-					this.stopPendingLogin();
-				}
-
-				if (!settled) {
-					fallbackToCurrentStatus();
-				}
-			});
+	private loginInteractively(): Promise<TailscaleLoginResult> {
+		let resolveResult: (result: TailscaleLoginResult) => void;
+		let rejectResult: (error: unknown) => void;
+		const result = new Promise<TailscaleLoginResult>((resolve, reject) => {
+			resolveResult = resolve;
+			rejectResult = reject;
 		});
+		this.interactiveRequest = result;
+		void this.operations
+			.run('login', async (token) => {
+				await this.prepareLogin(token);
+				const child = this.cli.spawnUp(['--json', '--timeout=10m', ...this.buildManagedFlags()]);
+				const closed = this.operations.trackChild(child);
+				child.stderr.resume();
+				let buffer = '';
+				let firstBlockSeen = false;
+				let cancelled = false;
+				const clear = (): void => {
+					clearTimeout(timer);
+					clearTimeout(firstTimer);
+					token.signal.removeEventListener('abort', cancel);
+					if (this.pending?.child === child) {
+						this.pending = null;
+					}
+					if (this.interactiveRequest === result) {
+						this.interactiveRequest = null;
+					}
+				};
+				const cancel = (): void => {
+					cancelled = true;
+					clear();
+					rejectResult(new TailscaleOperationCancelledException());
+					void this.operations.terminateChild(child).catch(() => undefined);
+				};
+				token.signal.addEventListener('abort', cancel, { once: true });
+				this.pending = { child, result, cancel };
+				const timer = setTimeout(() => {
+					cancel();
+				}, TAILSCALE_LOGIN_INTERACTIVE_TIMEOUT_MS);
+				timer.unref?.();
+				const firstTimer = setTimeout(() => {
+					resolveResult({ state: 'pending-auth' });
+				}, TAILSCALE_LOGIN_FIRST_BLOCK_TIMEOUT_MS);
+				firstTimer.unref?.();
+				child.stdout.on('data', (chunk: Buffer) => {
+					if (this.pending?.child !== child || token.signal.aborted) {
+						return;
+					}
+					buffer += chunk.toString('utf8');
+					const { objects, rest } = extractJsonObjects(buffer);
+					buffer = rest;
+					for (const raw of objects) {
+						let block: TailscaleUpJsonBlock;
+						try {
+							block = JSON.parse(raw) as TailscaleUpJsonBlock;
+						} catch {
+							continue;
+						}
+						if (!firstBlockSeen && block.AuthURL) {
+							firstBlockSeen = true;
+							clearTimeout(firstTimer);
+							if (this.pending?.child === child) {
+								this.pending.authUrl = block.AuthURL;
+								this.pending.qr = block.QR;
+							}
+							resolveResult({ state: 'pending-auth', authUrl: block.AuthURL, qr: block.QR });
+						} else {
+							clear();
+							if (block.Error) {
+								cancelled = true;
+								rejectResult(new Error(block.Error.replace(/https?:\/\/\S+/gi, '[redacted URL]')));
+							}
+							void this.operations.terminateChild(child).catch(rejectResult);
+						}
+					}
+				});
+				child.once('error', () => {
+					cancelled = true;
+					clear();
+					rejectResult(new Error('The Tailscale sign-in command failed to start.'));
+				});
+				try {
+					await closed;
+					this.operations.assertCurrent(token);
+					if (!cancelled) {
+						resolveResult(await this.currentStatus());
+					}
+				} finally {
+					clear();
+				}
+			})
+			.catch(rejectResult)
+			.finally(() => {
+				if (this.interactiveRequest === result) {
+					this.interactiveRequest = null;
+				}
+			});
+		return result;
 	}
 
 	private async currentStatus(): Promise<TailscaleLoginResult> {
+		this.operations.assertCurrent();
 		const status = await this.nodeManagedService.computeStatus();
-
+		this.operations.assertCurrent();
 		return { state: status.state };
 	}
 
@@ -592,51 +478,40 @@ export class TailscaleLoginService implements OnModuleInit {
 	}
 
 	/** Runs a spawned `up` to completion without interpreting its output — used by the auth-key flow, which never passes `--json`. */
-	private runUpToCompletion(args: string[], timeoutMs: number): Promise<void> {
-		return new Promise<void>((resolve, reject) => {
-			const child = this.cli.spawnUp(args);
-
-			child.stdout.resume(); // drain — not read in this flow, must not block the pipe
-			child.stderr.resume();
-
-			let settled = false;
-
-			const timer = setTimeout(() => {
-				if (settled) {
-					return;
-				}
-
-				settled = true;
-				child.kill('SIGTERM');
-				reject(new Error(`tailscale up did not complete within ${timeoutMs}ms.`));
+	private async runUpToCompletion(args: string[], timeoutMs: number, token: TailscaleOperationToken): Promise<void> {
+		this.operations.assertCurrent(token);
+		const child = this.cli.spawnUp(args);
+		const closed = this.operations.trackChild(child);
+		child.stdout.resume();
+		child.stderr.resume();
+		let timeout: NodeJS.Timeout;
+		let onAbort: () => void;
+		const outcome = new Promise<void>((resolve, reject) => {
+			onAbort = () => reject(new TailscaleOperationCancelledException());
+			token.signal.addEventListener('abort', onAbort, { once: true });
+			timeout = setTimeout(() => {
+				void this.operations
+					.terminateChild(child)
+					.then(() => reject(new Error('Tailscale sign-in timed out.')), reject);
 			}, timeoutMs);
-
-			timer.unref?.();
-
-			child.once('error', (error) => {
-				if (settled) {
-					return;
-				}
-
-				settled = true;
-				clearTimeout(timer);
-				reject(error instanceof Error ? error : new Error(String(error)));
-			});
-
+			timeout.unref?.();
+			child.once('error', () => reject(new Error('The Tailscale sign-in command failed to start.')));
 			child.once('close', (code) => {
-				if (settled) {
-					return;
-				}
-
-				settled = true;
-				clearTimeout(timer);
-
 				if (code === 0) {
 					resolve();
 				} else {
-					reject(new Error(`tailscale up exited with code ${code ?? 'null'}.`));
+					reject(new Error('The Tailscale sign-in command failed.'));
 				}
 			});
 		});
+		try {
+			await outcome;
+		} finally {
+			clearTimeout(timeout);
+			token.signal.removeEventListener('abort', onAbort);
+			// Cancellation cannot release ownership until the process has been reaped.
+			await this.operations.terminateChild(child);
+			await closed;
+		}
 	}
 }

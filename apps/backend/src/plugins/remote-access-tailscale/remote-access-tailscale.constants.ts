@@ -104,3 +104,6 @@ export const TAILSCALE_RECONNECT_BASE_DELAY_MS = 30_000;
 
 /** Ceiling for the reconnect backoff above — retries never slow down beyond this. */
 export const TAILSCALE_RECONNECT_MAX_DELAY_MS = 5 * 60 * 1000;
+/** Each cancellation phase is bounded; an unreaped command remains a failed stop. */
+export const TAILSCALE_CHILD_TERM_GRACE_MS = 500;
+export const TAILSCALE_CHILD_KILL_GRACE_MS = 500;

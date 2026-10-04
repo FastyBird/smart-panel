@@ -8,6 +8,7 @@ import {
 	HttpStatus,
 	InternalServerErrorException,
 	Post,
+	Req,
 	Res,
 	UnprocessableEntityException,
 } from '@nestjs/common';
@@ -15,6 +16,8 @@ import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { AuthenticatedRequest } from '../../../modules/auth/guards/auth.guard';
+import { PlatformService } from '../../../modules/platform/services/platform.service';
 import {
 	RemoteAccessAdvisoryModel,
 	RemoteAccessEndpointModel,
@@ -34,7 +37,9 @@ import {
 	RemoteAccessTailscalePluginLoginResponseModel,
 } from '../models/login.model';
 import {
+	RemoteAccessTailscalePluginPrivilegedSetupModel,
 	RemoteAccessTailscalePluginRequirementModel,
+	RemoteAccessTailscalePluginSetupJobModel,
 	RemoteAccessTailscalePluginStatusModel,
 	RemoteAccessTailscalePluginStatusResponseModel,
 } from '../models/status.model';
@@ -42,16 +47,23 @@ import {
 	REMOTE_ACCESS_TAILSCALE_PLUGIN_API_TAG_NAME,
 	REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME,
 } from '../remote-access-tailscale.constants';
-import { TailscaleRequirementUnsatisfiedException } from '../remote-access-tailscale.exceptions';
+import {
+	TailscaleChildTerminationException,
+	TailscaleNodeStopFailedException,
+	TailscaleOperationCancelledException,
+	TailscaleOperationInProgressException,
+	TailscalePluginDisabledException,
+	TailscaleRequirementUnsatisfiedException,
+} from '../remote-access-tailscale.exceptions';
 import { TailscaleCliError } from '../services/tailscale-cli.service';
 import { TailscaleLoginInProgressException, TailscaleLoginService } from '../services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../services/tailscale-provider.service';
 import { TailscaleSetupService, TailscaleSetupUnavailableException } from '../services/tailscale-setup.service';
+import { buildTailscaleControlModel } from '../utils/tailscale-control.utils';
 
 /**
- * The four Tailscale actions that mutate the node: privileged setup and the
- * three unprivileged sign-in/preference actions. Kept separate from
+ * Tailscale connection, privileged setup and sign-in/preference actions. Kept separate from
  * `StatusController` (a plain `GET`) so neither file grows past what it
  * needs to hold.
  */
@@ -65,7 +77,56 @@ export class SetupController {
 		private readonly loginService: TailscaleLoginService,
 		private readonly providerService: TailscaleProviderService,
 		private readonly nodeManagedService: TailscaleNodeManagedService,
+		private readonly platformService: PlatformService,
 	) {}
+
+	@ApiOperation({
+		tags: [REMOTE_ACCESS_TAILSCALE_PLUGIN_API_TAG_NAME],
+		summary: 'Connect the Tailscale node',
+		description:
+			'Connect an enabled plugin using its existing authentication. Starts a stopped service or reconciles an already-started disconnected node; repeated requests are harmless.',
+		operationId: 'create-remote-access-tailscale-plugin-connect',
+	})
+	@ApiSuccessResponse(RemoteAccessTailscalePluginStatusResponseModel, 'Tailscale status after connecting')
+	@Roles(UserRole.ADMIN, UserRole.OWNER)
+	@HttpCode(HttpStatus.OK)
+	@Post('connect')
+	async connect(
+		@Res({ passthrough: true }) res: Response,
+		@Req() request?: AuthenticatedRequest,
+	): Promise<RemoteAccessTailscalePluginStatusResponseModel> {
+		try {
+			await this.nodeManagedService.connect();
+		} catch (error) {
+			this.mapActionError(error, 'Tailscale connect failed', 'Failed to connect to Tailscale');
+		}
+
+		return this.buildStatusResponse(res, request);
+	}
+
+	@ApiOperation({
+		tags: [REMOTE_ACCESS_TAILSCALE_PLUGIN_API_TAG_NAME],
+		summary: 'Disconnect the Tailscale node',
+		description:
+			'Cancel pending node operations and disconnect the current session without logging out. Repeated requests are harmless. Disable the plugin to keep it off across application restarts.',
+		operationId: 'create-remote-access-tailscale-plugin-disconnect',
+	})
+	@ApiSuccessResponse(RemoteAccessTailscalePluginStatusResponseModel, 'Tailscale status after disconnecting')
+	@Roles(UserRole.ADMIN, UserRole.OWNER)
+	@HttpCode(HttpStatus.OK)
+	@Post('disconnect')
+	async disconnect(
+		@Res({ passthrough: true }) res: Response,
+		@Req() request?: AuthenticatedRequest,
+	): Promise<RemoteAccessTailscalePluginStatusResponseModel> {
+		try {
+			await this.nodeManagedService.stop();
+		} catch (error) {
+			this.mapActionError(error, 'Tailscale disconnect failed', 'Failed to disconnect from Tailscale');
+		}
+
+		return this.buildStatusResponse(res, request);
+	}
 
 	@ApiOperation({
 		tags: [REMOTE_ACCESS_TAILSCALE_PLUGIN_API_TAG_NAME],
@@ -172,7 +233,10 @@ export class SetupController {
 	@Roles(UserRole.OWNER)
 	@HttpCode(HttpStatus.OK)
 	@Post('logout')
-	async logout(@Res({ passthrough: true }) res: Response): Promise<RemoteAccessTailscalePluginStatusResponseModel> {
+	async logout(
+		@Res({ passthrough: true }) res: Response,
+		@Req() request?: AuthenticatedRequest,
+	): Promise<RemoteAccessTailscalePluginStatusResponseModel> {
 		this.logger.debug('Tailscale logout requested');
 
 		try {
@@ -181,7 +245,7 @@ export class SetupController {
 			this.mapActionError(error, 'Tailscale logout failed', 'Failed to sign out of Tailscale');
 		}
 
-		return this.buildStatusResponse(res);
+		return this.buildStatusResponse(res, request);
 	}
 
 	@ApiOperation({
@@ -200,6 +264,7 @@ export class SetupController {
 	@Post('reset-preferences')
 	async resetPreferences(
 		@Res({ passthrough: true }) res: Response,
+		@Req() request?: AuthenticatedRequest,
 	): Promise<RemoteAccessTailscalePluginStatusResponseModel> {
 		this.logger.debug('Tailscale reset-preferences requested');
 
@@ -209,7 +274,7 @@ export class SetupController {
 			this.mapActionError(error, 'Tailscale reset-preferences failed', 'Failed to reset Tailscale preferences');
 		}
 
-		return this.buildStatusResponse(res);
+		return this.buildStatusResponse(res, request);
 	}
 
 	/**
@@ -228,6 +293,19 @@ export class SetupController {
 	 * `error.details.reason` (see D13, RA-27, #996).
 	 */
 	private mapActionError(error: unknown, logPrefix: string, fallbackMessage: string): never {
+		if (
+			error instanceof TailscaleOperationCancelledException ||
+			error instanceof TailscaleOperationInProgressException ||
+			error instanceof TailscalePluginDisabledException ||
+			error instanceof TailscaleChildTerminationException
+		) {
+			throw new ConflictException({ code: error.code, message: error.message });
+		}
+
+		if (error instanceof TailscaleNodeStopFailedException) {
+			throw new ConflictException({ code: 'disconnect-failed', message: error.message });
+		}
+
 		if (error instanceof TailscaleRequirementUnsatisfiedException) {
 			throw new ConflictException({ code: error.requirement.code, message: error.message });
 		}
@@ -253,10 +331,14 @@ export class SetupController {
 	}
 
 	/** Shared by `logout`/`resetPreferences` — the same composition `StatusController.getStatus()` uses, including the no-store guard for a state that happens to come back pending-auth. */
-	private async buildStatusResponse(res: Response): Promise<RemoteAccessTailscalePluginStatusResponseModel> {
-		const [status, requirements] = await Promise.all([
+	private async buildStatusResponse(
+		res: Response,
+		request?: AuthenticatedRequest,
+	): Promise<RemoteAccessTailscalePluginStatusResponseModel> {
+		const [status, requirements, privilegedWorkerSupport] = await Promise.all([
 			this.providerService.getStatus(),
 			this.nodeManagedService.evaluateRequirements(),
+			this.platformService.getPrivilegedWorkerSupport(),
 		]);
 
 		const data = new RemoteAccessTailscalePluginStatusModel();
@@ -269,6 +351,27 @@ export class SetupController {
 		data.advisories = toInstance(RemoteAccessAdvisoryModel, status.advisories);
 		data.updatedAt = status.updatedAt;
 		data.requirements = toInstance(RemoteAccessTailscalePluginRequirementModel, requirements);
+		data.control = buildTailscaleControlModel(
+			this.nodeManagedService.getControlState(),
+			status.state,
+			requirements,
+			request?.auth?.role,
+		);
+
+		const lastJob = this.setupService.getLastJob();
+		data.setup = lastJob
+			? toInstance(RemoteAccessTailscalePluginSetupJobModel, {
+					job_id: lastJob.id,
+					state: lastJob.status.state,
+					step: lastJob.status.step ?? null,
+					message: lastJob.status.message ?? null,
+					updated_at: lastJob.status.updatedAt,
+				})
+			: null;
+		const privilegedSetup = new RemoteAccessTailscalePluginPrivilegedSetupModel();
+		privilegedSetup.available = privilegedWorkerSupport.supported;
+		privilegedSetup.reason = privilegedWorkerSupport.reason;
+		data.privilegedSetup = privilegedSetup;
 
 		if (data.state === 'pending-auth') {
 			const pending = this.loginService.getPendingInteractiveAuth();

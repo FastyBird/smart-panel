@@ -2,6 +2,7 @@
 eslint-disable @typescript-eslint/no-unsafe-member-access
 */
 import { execFile } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import os from 'os';
 import request from 'supertest';
 
@@ -24,13 +25,20 @@ import { UserRole } from '../src/modules/users/users.constants';
 import { SetupController } from '../src/plugins/remote-access-tailscale/controllers/setup.controller';
 import { StatusController } from '../src/plugins/remote-access-tailscale/controllers/status.controller';
 import { RemoteAccessTailscalePluginConfigModel } from '../src/plugins/remote-access-tailscale/models/config.model';
-import { TailscaleRequirementUnsatisfiedException } from '../src/plugins/remote-access-tailscale/remote-access-tailscale.exceptions';
+import {
+	TailscaleChildTerminationException,
+	TailscaleOperationCancelledException,
+	TailscaleOperationInProgressException,
+	TailscalePluginDisabledException,
+	TailscaleRequirementUnsatisfiedException,
+} from '../src/plugins/remote-access-tailscale/remote-access-tailscale.exceptions';
 import {
 	TailscaleCliError,
 	TailscaleCliService,
 } from '../src/plugins/remote-access-tailscale/services/tailscale-cli.service';
 import { TailscaleLoginService } from '../src/plugins/remote-access-tailscale/services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../src/plugins/remote-access-tailscale/services/tailscale-node-managed.service';
+import { TailscaleOperationCoordinatorService } from '../src/plugins/remote-access-tailscale/services/tailscale-operation-coordinator.service';
 import { TailscaleProviderService } from '../src/plugins/remote-access-tailscale/services/tailscale-provider.service';
 import { TailscaleServeService } from '../src/plugins/remote-access-tailscale/services/tailscale-serve.service';
 import {
@@ -60,37 +68,46 @@ function mockProcesses(): void {
 	(execFile as unknown as jest.Mock).mockImplementation(
 		(file: string, args: string[], _options: unknown, ...rest: unknown[]) => {
 			const callback = rest[rest.length - 1] as ExecFileCallback;
+			const child = Object.assign(new EventEmitter(), {
+				kill: jest.fn(() => {
+					queueMicrotask(() => child.emit('close', null, 'SIGTERM'));
+					return true;
+				}),
+			});
 
-			if (file === 'tailscale' && args[0] === 'version') {
-				callback(null, JSON.stringify({ majorMinorPatch: '1.78.1', short: '1.78.1' }), '');
-			} else if (file === 'tailscale' && args[0] === 'status') {
-				callback(null, CONNECTED_STATUS_JSON, '');
-			} else if (file === 'tailscale' && args[0] === 'debug' && args[1] === 'prefs') {
-				// D1's operator check — read-only, granted to whichever local
-				// user is actually running this test process, exactly as it
-				// would be on a device where setup has already run.
-				callback(null, JSON.stringify({ OperatorUser: os.userInfo().username }), '');
-			} else if (file === 'tailscale' && args[0] === 'serve' && args[1] === 'status') {
-				// The fixture's plugin config disables serve_https (see
-				// `configService` below), so nothing ever actually gets served —
-				// this is read (and, since it reports nothing to remove, never
-				// mutated) on every connected status computation regardless.
-				// `tailscale funnel status --json` is registered as the exact
-				// same command upstream, so there is no separate branch for it.
-				callback(null, '{}', '');
-			} else if (file === 'tailscale' && (args[0] === 'set' || args[0] === 'up' || args[0] === 'down')) {
-				// `TailscaleNodeManagedService.start()`/`stop()` apply preferences
-				// and bring the node up/down — the managed service is started for
-				// real below (mirroring `ManagedServiceManager` in production), so
-				// these need a clean success response too.
-				callback(null, '', '');
-			} else if (file === 'systemctl') {
-				callback(null, 'active\n', '');
-			} else {
-				callback(new Error(`unexpected exec: ${file} ${args.join(' ')}`), '', '');
-			}
+			queueMicrotask(() => {
+				if (file === 'tailscale' && args[0] === 'version') {
+					callback(null, JSON.stringify({ majorMinorPatch: '1.78.1', short: '1.78.1' }), '');
+				} else if (file === 'tailscale' && args[0] === 'status') {
+					callback(null, CONNECTED_STATUS_JSON, '');
+				} else if (file === 'tailscale' && args[0] === 'debug' && args[1] === 'prefs') {
+					// D1's operator check — read-only, granted to whichever local
+					// user is actually running this test process, exactly as it
+					// would be on a device where setup has already run.
+					callback(null, JSON.stringify({ OperatorUser: os.userInfo().username }), '');
+				} else if (file === 'tailscale' && args[0] === 'serve' && args[1] === 'status') {
+					// The fixture's plugin config disables serve_https (see
+					// `configService` below), so nothing ever actually gets served —
+					// this is read (and, since it reports nothing to remove, never
+					// mutated) on every connected status computation regardless.
+					// `tailscale funnel status --json` is registered as the exact
+					// same command upstream, so there is no separate branch for it.
+					callback(null, '{}', '');
+				} else if (file === 'tailscale' && (args[0] === 'set' || args[0] === 'up' || args[0] === 'down')) {
+					// `TailscaleNodeManagedService.start()`/`stop()` apply preferences
+					// and bring the node up/down — the managed service is started for
+					// real below (mirroring `ManagedServiceManager` in production), so
+					// these need a clean success response too.
+					callback(null, '', '');
+				} else if (file === 'systemctl') {
+					callback(null, 'active\n', '');
+				} else {
+					callback(new Error(`unexpected exec: ${file} ${args.join(' ')}`), '', '');
+				}
 
-			return {};
+				child.emit('close', 0, null);
+			});
+			return child;
 		},
 	);
 }
@@ -177,6 +194,7 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 		const configService = {
 			getPluginConfig: jest.fn().mockImplementation(() => {
 				const config = new RemoteAccessTailscalePluginConfigModel();
+				config.enabled = true;
 				config.serveHttps = false;
 				config.funnel = false;
 
@@ -214,6 +232,7 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 				{ provide: NestConfigService, useValue: nestConfigService },
 				{ provide: PlatformService, useValue: platformService },
 				{ provide: EventEmitter2, useValue: { emit: jest.fn(), onAny: jest.fn() } },
+				TailscaleOperationCoordinatorService,
 				TailscaleCliService,
 				TailscaleStatusMapperService,
 				TailscaleServeService,
@@ -255,6 +274,76 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 			.mockResolvedValue({ supported: true, reason: null, checkedAt: '2026-09-07T00:00:00.000Z' });
 	});
 
+	describe('provider connection controls', () => {
+		it.each(['owner-user', 'admin-user'])('disconnects and reconnects idempotently as %s', async (credential) => {
+			for (let attempt = 0; attempt < 2; attempt++) {
+				const stopped = await request(app.getHttpServer())
+					.post('/disconnect')
+					.set('Authorization', `Bearer ${credential}`)
+					.expect(200);
+				expect(stopped.body.data).toMatchObject({
+					state: 'disconnected',
+					endpoints: [],
+					control: { enabled: true, serviceState: 'stopped', authentication: 'authenticated' },
+					setup: null,
+					privilegedSetup: { available: true, reason: null },
+				});
+				expect(stopped.body.data.control.availableActions).toContain('connect');
+				expect(stopped.body.data.control.availableActions).not.toContain('login');
+			}
+			for (let attempt = 0; attempt < 2; attempt++) {
+				const connected = await request(app.getHttpServer())
+					.post('/connect')
+					.set('Authorization', `Bearer ${credential}`)
+					.expect(200);
+				expect(connected.body.data).toMatchObject({
+					state: 'connected',
+					control: { serviceState: 'started', authentication: 'authenticated' },
+				});
+			}
+		});
+
+		it.each(['/connect', '/disconnect'])('guards %s with the production role policy', async (path) => {
+			await request(app.getHttpServer()).post(path).expect(401);
+			for (const credential of ['regular-user', 'display-token']) {
+				await request(app.getHttpServer()).post(path).set('Authorization', `Bearer ${credential}`).expect(403);
+			}
+		});
+
+		it.each([
+			['operation-cancelled', () => new TailscaleOperationCancelledException()],
+			['operation-in-progress', () => new TailscaleOperationInProgressException()],
+			['plugin-disabled', () => new TailscalePluginDisabledException()],
+			['child-termination-failed', () => new TailscaleChildTerminationException()],
+		] as const)('preserves %s in the production 409 envelope', async (code, error) => {
+			const spy = jest.spyOn(nodeManagedService, 'connect').mockRejectedValueOnce(error());
+			try {
+				const response = await request(app.getHttpServer())
+					.post('/connect')
+					.set('Authorization', 'Bearer owner-user')
+					.expect(409);
+				expect(response.body.error.details.code).toBe(code);
+				expect(response.body.error.details.reason).toBe(error().message);
+			} finally {
+				spy.mockRestore();
+			}
+		});
+
+		it('exposes owner-only actions only to the owner', async () => {
+			const owner = await request(app.getHttpServer())
+				.get('/status')
+				.set('Authorization', 'Bearer owner-user')
+				.expect(200);
+			const admin = await request(app.getHttpServer())
+				.get('/status')
+				.set('Authorization', 'Bearer admin-user')
+				.expect(200);
+			expect(owner.body.data.control.availableActions).toContain('logout');
+			expect(owner.body.data.control.availableActions).toContain('reset-preferences');
+			expect(admin.body.data.control.availableActions).not.toContain('logout');
+			expect(admin.body.data.control.availableActions).not.toContain('reset-preferences');
+		});
+	});
 	describe('GET /status', () => {
 		it.each(['owner-user', 'admin-user'])('returns the full node status for %s', async (credential) => {
 			const response = await request(app.getHttpServer())
@@ -365,6 +454,12 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 			(execFile as unknown as jest.Mock).mockImplementation(
 				(file: string, args: string[], _options: unknown, ...rest: unknown[]) => {
 					const callback = rest[rest.length - 1] as ExecFileCallback;
+					const child = Object.assign(new EventEmitter(), {
+						kill: jest.fn(() => {
+							queueMicrotask(() => child.emit('close', null, 'SIGTERM'));
+							return true;
+						}),
+					});
 
 					if (file === 'tailscale' && args[0] === 'version') {
 						callback(null, JSON.stringify({ majorMinorPatch: '1.78.1' }), '');

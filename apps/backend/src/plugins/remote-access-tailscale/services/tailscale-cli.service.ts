@@ -1,6 +1,6 @@
 import { type ChildProcessWithoutNullStreams, execFile, spawn } from 'node:child_process';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger';
 import {
@@ -9,6 +9,8 @@ import {
 	TAILSCALE_CLI_DEFAULT_TIMEOUT_MS,
 	TAILSCALE_CLI_MAX_BUFFER_BYTES,
 } from '../remote-access-tailscale.constants';
+
+import { TailscaleOperationCoordinatorService } from './tailscale-operation-coordinator.service';
 
 /**
  * Classified reasons a `tailscale` CLI invocation can fail. Every call site
@@ -205,6 +207,7 @@ const NEEDS_LOGIN_PATTERN = /not logged in|needs to log in|logged out/i;
 @Injectable()
 export class TailscaleCliService {
 	private readonly logger = createExtensionLogger(REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'TailscaleCliService');
+	constructor(@Optional() private readonly operations?: TailscaleOperationCoordinatorService) {}
 
 	async getVersion(): Promise<TailscaleVersionInfo> {
 		const { stdout, stderr, exitCode } = await this.exec(['version', '--json']);
@@ -387,6 +390,7 @@ export class TailscaleCliService {
 	 * logging redacts `--auth-key=` values exactly like every other command.
 	 */
 	spawnUp(args: readonly string[]): ChildProcessWithoutNullStreams {
+		this.operations?.assertCurrent();
 		const argv = ['up', ...args];
 
 		this.logger.debug(`Spawning: ${TAILSCALE_BINARY} ${redactTailscaleArgs(argv).join(' ')}`);
@@ -432,7 +436,11 @@ export class TailscaleCliService {
 			kind = 'needs-login';
 		}
 
-		const detail = stderr.trim() || stdout.trim();
+		// Even ordinary up/reset can print an authentication URL when a key
+		// expires. Management failures may reach logs and shared error events.
+		const detail = (stderr.trim() || stdout.trim())
+			.replace(/https?:\/\/\S+/gi, '[redacted URL]')
+			.replace(/tskey-[\w-]+/gi, '[redacted key]');
 
 		return new TailscaleCliError(kind, detail ? `${context}: ${detail}` : context, cause);
 	}
@@ -441,16 +449,19 @@ export class TailscaleCliService {
 		args: readonly string[],
 		timeoutMs: number = TAILSCALE_CLI_DEFAULT_TIMEOUT_MS,
 	): Promise<ExecTailscaleResult> {
+		this.operations?.assertCurrent();
 		const argv = [...args];
 
 		this.logger.debug(`Running: ${TAILSCALE_BINARY} ${redactTailscaleArgs(argv).join(' ')}`);
 
 		return new Promise((resolve, reject) => {
-			execFile(
+			let hardDeadline: NodeJS.Timeout | undefined;
+			const child = execFile(
 				TAILSCALE_BINARY,
 				argv,
 				{ timeout: timeoutMs, maxBuffer: TAILSCALE_CLI_MAX_BUFFER_BYTES },
 				(error, stdout, stderr) => {
+					clearTimeout(hardDeadline);
 					const out = stdout ?? '';
 					const err = stderr ?? '';
 
@@ -513,6 +524,23 @@ export class TailscaleCliService {
 					resolve({ stdout: out, stderr: err, exitCode: 0 });
 				},
 			);
+			if (this.operations?.getToken()) {
+				void this.operations.trackChild(child);
+				hardDeadline = setTimeout(() => {
+					void this.operations
+						.terminateChild(child)
+						.then(
+							() =>
+								reject(
+									new TailscaleCliError(
+										'timeout',
+										`tailscale ${argv[0] ?? ''} did not complete within ${timeoutMs}ms.`,
+									),
+								),
+							reject,
+						);
+				}, timeoutMs);
+			}
 		});
 	}
 }

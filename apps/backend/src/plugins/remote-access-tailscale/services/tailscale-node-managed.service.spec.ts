@@ -116,6 +116,7 @@ describe('TailscaleNodeManagedService', () => {
 
 	const defaultConfig = (): RemoteAccessTailscalePluginConfigModel => {
 		const config = new RemoteAccessTailscalePluginConfigModel();
+		config.enabled = true;
 		config.hostname = 'smart-panel';
 		config.loginServer = 'https://controlplane.tailscale.com';
 		config.acceptDns = true;
@@ -579,6 +580,38 @@ describe('TailscaleNodeManagedService', () => {
 		});
 	});
 
+	describe('reads overlapping authentication mutations', () => {
+		it('does not restore authentication from a read that began during logout and completed after logout', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await service.start();
+			expect(service.getControlState().authentication).toBe('authenticated');
+			let finishLogout: () => void;
+			const logoutBlocked = new Promise<void>((resolve) => {
+				finishLogout = resolve;
+			});
+			const logout = service.getOperationCoordinator().interrupt('logout', async () => {
+				await logoutBlocked;
+				service.clearAuthentication();
+			});
+			await Promise.resolve();
+			let finishRead: (value: TailscaleServeResult) => void;
+			const readBlocked = new Promise<TailscaleServeResult>((resolve) => {
+				finishRead = resolve;
+			});
+			serveServiceMock.read.mockReturnValueOnce(readBlocked);
+			const reading = service.computeStatus();
+			for (let index = 0; index < 20 && serveServiceMock.read.mock.calls.length === 0; index++) {
+				await Promise.resolve();
+			}
+			expect(serveServiceMock.read).toHaveBeenCalled();
+			finishLogout();
+			await logout;
+			finishRead(EMPTY_SERVE_RESULT);
+			await expect(reading).resolves.toMatchObject({ state: 'disconnected' });
+			expect(service.getControlState().authentication).toBe('required');
+		});
+	});
+
 	describe('stop', () => {
 		it('runs down, never logout, and reaches stopped', async () => {
 			await service.start();
@@ -876,6 +909,7 @@ describe('TailscaleNodeManagedService', () => {
 		});
 
 		it('applies other preference changes with set and reports no restart required', async () => {
+			await service.start();
 			cli.getStatus.mockResolvedValue(STOPPED_STATUS);
 			await service.start();
 			cli.set.mockClear();
@@ -931,6 +965,9 @@ describe('TailscaleNodeManagedService', () => {
 	});
 
 	describe('isHealthy (D3 — requirements AND daemon Running AND Self.Online)', () => {
+		beforeEach(async () => {
+			await service.start();
+		});
 		it('is true only when requirements are satisfied, Running, and Self.Online', async () => {
 			await service.evaluateRequirements();
 			cli.getStatus.mockResolvedValue({ BackendState: 'Running', Self: { Online: true } });
@@ -960,6 +997,8 @@ describe('TailscaleNodeManagedService', () => {
 		});
 
 		it('is false when requirements were never evaluated (empty cache), even before touching the CLI', async () => {
+			(service as unknown as { requirementsCache: unknown }).requirementsCache = null;
+			cli.getStatus.mockClear();
 			cli.getStatus.mockResolvedValue({ BackendState: 'Running', Self: { Online: true } });
 
 			await expect(service.isHealthy()).resolves.toBe(false);
