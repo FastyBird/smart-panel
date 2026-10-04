@@ -39,13 +39,68 @@ describe('RemoteAccessObservation', () => {
 		await failed;
 		expect(signal.aborted).toBe(true);
 		for (let index = 0; index < 20; index++) {
-			await expect(observations.run(work)).rejects.toThrow('timed out');
+			const retry = expect(observations.run(work)).rejects.toThrow('timed out');
+			await jest.advanceTimersByTimeAsync(50);
+			await retry;
 		}
 		expect(work).toHaveBeenCalledTimes(1);
+		expect(jest.getTimerCount()).toBe(0);
 		resolve(1);
-		await Promise.resolve();
-		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(0);
+		expect(work).toHaveBeenCalledTimes(1);
 		await expect(observations.run(() => Promise.resolve(2))).resolves.toBe(2);
+	});
+
+	it('waits for invalidated work to settle and coalesces callers into one fresh read', async () => {
+		jest.useFakeTimers();
+		const observations = new RemoteAccessObservation<number>(50);
+		let resolveActual!: (value: number) => void;
+		const pending = observations.run(
+			() =>
+				new Promise<number>((resolve) => {
+					resolveActual = resolve;
+				}),
+		);
+		await Promise.resolve();
+		observations.invalidate();
+		await expect(pending).rejects.toThrow('superseded');
+		const freshWork = jest.fn(() => Promise.resolve(2));
+		const first = observations.run(freshWork);
+		const second = observations.run(freshWork);
+		await jest.advanceTimersByTimeAsync(25);
+		expect(freshWork).not.toHaveBeenCalled();
+		resolveActual(1);
+		await expect(first).resolves.toBe(2);
+		await expect(second).resolves.toBe(2);
+		expect(freshWork).toHaveBeenCalledTimes(1);
+		expect(jest.getTimerCount()).toBe(0);
+	});
+
+	it('cancels an idle waiter without retrying or preventing another caller from recovering', async () => {
+		jest.useFakeTimers();
+		const observations = new RemoteAccessObservation<number>(50);
+		let resolveActual!: (value: number) => void;
+		const pending = observations.run(
+			() =>
+				new Promise<number>((resolve) => {
+					resolveActual = resolve;
+				}),
+		);
+		await Promise.resolve();
+		observations.invalidate();
+		await expect(pending).rejects.toThrow('superseded');
+		const abort = new AbortController();
+		const cancelledWork = jest.fn(() => Promise.resolve(2));
+		const cancelled = observations.run(cancelledWork, abort.signal);
+		const freshWork = jest.fn(() => Promise.resolve(3));
+		const fresh = observations.run(freshWork);
+		abort.abort(new Error('cancelled'));
+		await expect(cancelled).rejects.toThrow('cancelled');
+		resolveActual(1);
+		await expect(fresh).resolves.toBe(3);
+		expect(cancelledWork).not.toHaveBeenCalled();
+		expect(freshWork).toHaveBeenCalledTimes(1);
+		expect(jest.getTimerCount()).toBe(0);
 	});
 
 	it('exposes actual idle completion after its aborted result has already rejected', async () => {

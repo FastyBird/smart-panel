@@ -1786,9 +1786,9 @@ describe('TailscaleNodeManagedService', () => {
 			await jest.advanceTimersByTimeAsync(0);
 			await jest.advanceTimersByTimeAsync(6_000);
 			expect((await pending).status.state).toBe('error');
-			for (let index = 0; index < 10; index++) {
-				await service.getStatusSnapshot({ fresh: true });
-			}
+			const retries = Promise.all(Array.from({ length: 10 }, () => service.getStatusSnapshot({ fresh: true })));
+			await jest.advanceTimersByTimeAsync(6_000);
+			expect((await retries).every((snapshot) => snapshot.status.state === 'error')).toBe(true);
 			expect(cli.getVersion).toHaveBeenCalledTimes(1);
 			expect(cli.getPrefs).toHaveBeenCalledTimes(1);
 		});
@@ -1807,8 +1807,12 @@ describe('TailscaleNodeManagedService', () => {
 			expect((await pending).status.state).toBe('error');
 			expect(readSignal.aborted).toBe(true);
 			const calls = cli.getStatus.mock.calls.length;
-			await service.getStatusSnapshot({ fresh: true });
-			await service.getStatusSnapshot({ fresh: true });
+			const retries = Promise.all([
+				service.getStatusSnapshot({ fresh: true }),
+				service.getStatusSnapshot({ fresh: true }),
+			]);
+			await jest.advanceTimersByTimeAsync(6_000);
+			expect((await retries).every((snapshot) => snapshot.status.state === 'error')).toBe(true);
 			expect(cli.getStatus).toHaveBeenCalledTimes(calls);
 		});
 	});
