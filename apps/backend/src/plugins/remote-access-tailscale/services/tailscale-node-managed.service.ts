@@ -177,6 +177,8 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 	/** Set by `stop()` when the underlying `down` call fails with a non-tolerated outcome — read back by `computeStatus()` while `this.state === 'error'`. */
 	private lastError: string | null = null;
 	private pluginConfig: RemoteAccessTailscalePluginConfigModel | null = null;
+	/** Desired tags awaiting a successful current node `up`; login/reset leave them pending for one conservative reapply. */
+	private pendingAdvertiseTags: string | null = null;
 	/** Cached `refreshRequirements()` snapshot — see `getRequirements()`/`refreshRequirements()`. */
 	private requirementsCache: TailscaleRequirement[] | null = null;
 	/** Set by `convergeServe()` while the last Serve/Funnel mutation attempt was denied — read back so the denial is logged, and `operator-granted` refreshed, only once per transition instead of on every call. */
@@ -292,9 +294,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 						if (this.mapper.map(status, { port: this.getBackendPort() }).state === 'connected') {
 							return;
 						}
-						await this.cli.set(this.buildPreferenceFlags(config));
-						this.operations.assertCurrent(token);
-						await this.cli.up(this.buildUpFlags(config));
+						await this.applyNodePreferences(config);
 						this.operations.assertCurrent(token);
 						this.schedulePoll(0);
 					})
@@ -328,6 +328,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 			// "previous" value, otherwise a later login_server change (once the
 			// prerequisite clears) would go undetected.
 			const config = this.getPluginConfig();
+			this.pendingAdvertiseTags = config.advertiseTags.join(',');
 
 			this.logger.log('Starting Tailscale node service');
 
@@ -346,9 +347,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 					}
 
 					if (status && this.mapper.hasExistingKey(status)) {
-						await this.cli.set(this.buildPreferenceFlags(config));
-						this.operations.assertCurrent(token);
-						await this.cli.up(this.buildUpFlags(config));
+						await this.applyNodePreferences(config);
 					}
 				}
 			} catch (error) {
@@ -561,6 +560,9 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 		const previous = this.pluginConfig;
 		this.pluginConfig = null;
 		const next = this.getPluginConfig();
+		if (this.pendingAdvertiseTags !== null || previous?.advertiseTags.join(',') !== next.advertiseTags.join(',')) {
+			this.pendingAdvertiseTags = next.advertiseTags.join(',');
+		}
 
 		// `start()` always caches the config, so `previous` should never be
 		// null here — but if it somehow is (config cleared or never cached),
@@ -627,18 +629,19 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 
 				if (status && this.mapper.hasExistingKey(status)) {
 					this.operations.assertCurrent();
-					await this.cli.set(this.buildPreferenceFlags(next));
-					this.operations.assertCurrent();
-					if (previous.advertiseTags.join(',') !== next.advertiseTags.join(',')) {
+					if (this.pendingAdvertiseTags !== null) {
 						// Tags are supported by `up`, not `set`. Keep the complete managed
 						// flags and its settings-conflict check; never reset unmanaged prefs.
-						await this.cli.up(this.buildUpFlags(next));
+						await this.applyNodePreferences(next);
 						this.operations.assertCurrent();
 						status = await this.getStatusOrNull();
 						this.operations.assertCurrent();
 						if (status) {
 							this.observeAuthentication(status);
 						}
+					} else {
+						await this.cli.set(this.buildPreferenceFlags(next));
+						this.operations.assertCurrent();
 					}
 
 					const port = this.getBackendPort();
@@ -772,9 +775,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 				this.operations.assertCurrent(token);
 				this.observeAuthentication(status);
 				if (this.mapper.hasExistingKey(status)) {
-					await this.cli.set(this.buildPreferenceFlags(this.getPluginConfig()));
-					this.operations.assertCurrent(token);
-					await this.cli.up(this.buildUpFlags(this.getPluginConfig()));
+					await this.applyNodePreferences(this.getPluginConfig());
 					this.operations.assertCurrent(token);
 				}
 				this.schedulePoll(0);
@@ -1649,9 +1650,7 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 			try {
 				const config = this.getPluginConfig();
 
-				await this.cli.set(this.buildPreferenceFlags(config));
-				this.operations.assertCurrent(token);
-				await this.cli.up(this.buildUpFlags(config));
+				await this.applyNodePreferences(config);
 				this.operations.assertCurrent(token);
 
 				this.reconnectAttempts = 0;
@@ -1702,6 +1701,19 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 	}
 
 	// ─── Preferences ──────────────────────────────────────────────────
+
+	private async applyNodePreferences(config: RemoteAccessTailscalePluginConfigModel): Promise<void> {
+		this.operations.assertCurrent();
+		const tags = config.advertiseTags.join(',');
+		this.pendingAdvertiseTags = tags;
+		await this.cli.set(this.buildPreferenceFlags(config));
+		this.operations.assertCurrent();
+		await this.cli.up(this.buildUpFlags(config));
+		this.operations.assertCurrent();
+		if (this.pendingAdvertiseTags === tags) {
+			this.pendingAdvertiseTags = null;
+		}
+	}
 
 	/**
 	 * Preferences supported by `tailscale set`, which changes only the

@@ -1029,6 +1029,148 @@ describe('TailscaleNodeManagedService', () => {
 			expect(serveServiceMock.converge).not.toHaveBeenCalled();
 		});
 
+		it.each([
+			{ previousTags: [], nextTags: ['tag:smart-panel'], failingCommand: 'up' },
+			{ previousTags: ['tag:smart-panel'], nextTags: [], failingCommand: 'up' },
+			{ previousTags: [], nextTags: ['tag:smart-panel'], failingCommand: 'set' },
+		])(
+			'retries unapplied tags on the next identical config event (%j)',
+			async ({ previousTags, nextTags, failingCommand }) => {
+				const previous = defaultConfig();
+				previous.advertiseTags = previousTags;
+				configServiceMock.getPluginConfig.mockReturnValue(previous);
+				cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+				await service.start();
+				cli.up.mockClear();
+				const next = defaultConfig();
+				next.advertiseTags = nextTags;
+				configServiceMock.getPluginConfig.mockReturnValue(next);
+				cli[failingCommand as 'set' | 'up'].mockRejectedValueOnce(
+					new TailscaleCliError('settings-conflict', 'must specify all non-default flags'),
+				);
+
+				await service.onConfigChanged();
+				const failedAttempts = cli.up.mock.calls.length;
+				// Connected observations do not automatically retry a settings conflict.
+				await jest.runOnlyPendingTimersAsync();
+				expect(cli.up).toHaveBeenCalledTimes(failedAttempts);
+				await service.onConfigChanged();
+
+				expect(cli.up).toHaveBeenCalledTimes(failedAttempts + 1);
+				expect(cli.up).toHaveBeenLastCalledWith(expect.arrayContaining([`--advertise-tags=${nextTags.join(',')}`]));
+				expect(cli.up).not.toHaveBeenCalledWith(expect.arrayContaining(['--reset']));
+				await service.onConfigChanged();
+				expect(cli.up).toHaveBeenCalledTimes(failedAttempts + 1);
+			},
+		);
+
+		it.each(['prerequisites', 'authentication'])(
+			'retains unapplied tags when %s checks skip the write',
+			async (gate) => {
+				cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+				await service.start();
+				cli.up.mockClear();
+				const next = defaultConfig();
+				next.advertiseTags = ['tag:smart-panel'];
+				configServiceMock.getPluginConfig.mockReturnValue(next);
+				if (gate === 'prerequisites') {
+					platformServiceMock.getPlatformTypeAsync.mockResolvedValue(PlatformType.DOCKER);
+				} else {
+					cli.getStatus.mockResolvedValue({ BackendState: 'NeedsLogin' });
+				}
+
+				await service.onConfigChanged();
+				expect(cli.up).not.toHaveBeenCalled();
+				platformServiceMock.getPlatformTypeAsync.mockResolvedValue(PlatformType.RASPBERRY);
+				cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+				await service.onConfigChanged();
+
+				expect(cli.up).toHaveBeenCalledWith(expect.arrayContaining(['--advertise-tags=tag:smart-panel']));
+			},
+		);
+
+		it('conservatively reapplies pending tags once after an up outside the node lifecycle', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await service.start();
+			cli.up.mockClear();
+			const next = defaultConfig();
+			next.advertiseTags = ['tag:smart-panel'];
+			configServiceMock.getPluginConfig.mockReturnValue(next);
+			cli.up.mockRejectedValueOnce(new TailscaleCliError('settings-conflict', 'must specify all non-default flags'));
+			await service.onConfigChanged();
+			// Login/reset owns its own up; it does not acknowledge the node's pending write.
+			await service.getOperationCoordinator().run('login', async () => {
+				await cli.up(service.buildUpFlags(next));
+			});
+
+			await service.onConfigChanged();
+			expect(cli.up).toHaveBeenCalledTimes(3);
+			await service.onConfigChanged();
+			expect(cli.up).toHaveBeenCalledTimes(3);
+		});
+
+		it('does not acknowledge a late successful up from a cancelled config operation', async () => {
+			cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+			await service.start();
+			cli.up.mockClear();
+			const next = defaultConfig();
+			next.advertiseTags = ['tag:smart-panel'];
+			configServiceMock.getPluginConfig.mockReturnValue(next);
+			let finishUp!: () => void;
+			let enteredUp!: () => void;
+			const entered = new Promise<void>((resolve) => (enteredUp = resolve));
+			const delayedUp = new Promise<void>((resolve) => (finishUp = resolve));
+			cli.up.mockImplementationOnce(() => {
+				enteredUp();
+				return delayedUp;
+			});
+			const cancelled = service.onConfigChanged();
+			const cancellation = expect(cancelled).rejects.toMatchObject({ code: 'operation-cancelled' });
+			await entered;
+			cli.up.mockRejectedValueOnce(new TailscaleCliError('settings-conflict', 'must specify all non-default flags'));
+			await service.onConfigChanged();
+			await cancellation;
+			finishUp();
+			await delayedUp;
+
+			await service.onConfigChanged();
+
+			expect(cli.up).toHaveBeenCalledTimes(3);
+			await service.onConfigChanged();
+			expect(cli.up).toHaveBeenCalledTimes(3);
+		});
+
+		it.each(['start', 'connect', 'setup', 'reconnect'] as const)(
+			'acknowledges pending tags after a successful %s lifecycle up',
+			async (operation) => {
+				cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+				await service.start();
+				const next = defaultConfig();
+				next.advertiseTags = ['tag:smart-panel'];
+				configServiceMock.getPluginConfig.mockReturnValue(next);
+				cli.up.mockRejectedValueOnce(new TailscaleCliError('settings-conflict', 'must specify all non-default flags'));
+				await service.onConfigChanged();
+				cli.up.mockClear();
+				cli.getStatus.mockResolvedValue(STOPPED_STATUS);
+				if (operation === 'start') {
+					await service.stop();
+					await service.start();
+				} else if (operation === 'connect') {
+					await service.connect();
+				} else if (operation === 'setup') {
+					await service.reconcileSetup(service.getOperationCoordinator().getGeneration());
+				} else {
+					await jest.runOnlyPendingTimersAsync();
+				}
+				expect(cli.up).toHaveBeenCalledTimes(1);
+				cli.getStatus.mockResolvedValue(RUNNING_CONNECTED_STATUS);
+
+				await service.onConfigChanged();
+
+				expect(cli.up).toHaveBeenCalledTimes(1);
+			},
+		);
+
 		it('does not apply preferences when the node has never held a key', async () => {
 			cli.getStatus.mockResolvedValue({ BackendState: 'NeedsLogin' });
 			await service.start();
