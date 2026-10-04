@@ -1186,11 +1186,17 @@ export class TailscaleNodeManagedService extends BaseManagedExtensionService imp
 		port: number,
 		status: TailscaleStatus,
 	): Promise<TailscaleServeResult> {
-		const result = await this.operations.run('serve', async (token) => {
-			const converged = await this.serveService.converge(config, port, status);
-			this.operations.assertCurrent(token);
-			return converged;
-		});
+		const result = await this.operations.run(
+			'serve',
+			async (token) => {
+				const converged = await this.serveService.converge(config, port, status);
+				this.operations.assertCurrent(token);
+				return converged;
+			},
+			// Routine Serve reconciliation does not change lifecycle or authentication.
+			// Keep ownership/cancellation without invalidating concurrent status reads.
+			false,
+		);
 
 		if (result.permissionDenied) {
 			if (!this.lastServeConvergeDenied) {

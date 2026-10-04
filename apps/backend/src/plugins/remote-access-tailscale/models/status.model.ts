@@ -83,9 +83,7 @@ export class RemoteAccessTailscalePluginControlModel {
 
 	@ApiProperty({
 		description: 'Current provider operation, null while idle',
-		type: 'string',
-		enum: TAILSCALE_OPERATIONS,
-		nullable: true,
+		oneOf: [{ type: 'string', enum: [...TAILSCALE_OPERATIONS] }, { type: 'null' }],
 		example: null,
 	})
 	@Expose()
@@ -287,7 +285,7 @@ export class RemoteAccessTailscalePluginPrivilegedSetupModel {
  */
 @ApiSchema({ name: 'RemoteAccessTailscalePluginDataStatus' })
 export class RemoteAccessTailscalePluginStatusModel {
-	@ApiPropertyOptional({
+	@ApiProperty({
 		description: 'Administrative control state; independent of the provider connection state',
 		type: () => RemoteAccessTailscalePluginControlModel,
 	})

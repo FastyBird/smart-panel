@@ -213,6 +213,35 @@ describe('Tailscale lifecycle regressions', () => {
 		expect(published.at(-1)).toBe('disconnected');
 	});
 
+	it('keeps a healthy overlapping status read Connected across routine Serve convergence', async () => {
+		await node.start();
+		const convergence = deferred<TailscaleServeResult>();
+		serve.converge.mockImplementationOnce(() => {
+			convergence.entered();
+			return convergence.promise;
+		});
+		const tick = (node as unknown as { pollTick(): Promise<void> }).pollTick();
+		await convergence.reached;
+
+		const statusRead = deferred<TailscaleServeResult>();
+		serve.read.mockImplementationOnce(() => {
+			statusRead.entered();
+			return statusRead.promise;
+		});
+		const pendingStatus = node.computeStatus();
+		await statusRead.reached;
+		convergence.resolve(EMPTY_SERVE);
+		await tick;
+		statusRead.resolve(EMPTY_SERVE);
+
+		const status = await pendingStatus;
+		expect(status.state).toBe('connected');
+		expect(status.details.tailnet).toBe('example.ts.net');
+		expect(status.endpoints).toEqual([
+			{ url: 'http://100.64.0.5:3000', scope: 'private', https: false, label: 'Tailscale IPv4' },
+		]);
+	});
+
 	it('cancels and reaps an interactive login child when the node stops', async () => {
 		await node.start();
 		const child = new LoginChild();

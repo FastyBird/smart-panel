@@ -777,6 +777,9 @@ export type RemoteAccessTailscalePluginCreateResetPreferencesOperation = operati
 
 // Remote Access Tailscale Plugin Enums
 // =======================================
+export { RemoteAccessTailscalePluginDataControlOperationOneOf0 as RemoteAccessTailscalePluginOperation } from './openapi';
+export { RemoteAccessTailscalePluginDataControlAuthentication as RemoteAccessTailscalePluginAuthentication } from './openapi';
+export { RemoteAccessTailscalePluginDataControlAvailable_actions as RemoteAccessTailscalePluginControlAction } from './openapi';
 export { RemoteAccessTailscalePluginDataRequirementCode as RemoteAccessTailscalePluginRequirementCode } from './openapi';
 export { RemoteAccessTailscalePluginDataSetupJobState as RemoteAccessTailscalePluginSetupJobState } from './openapi';
 

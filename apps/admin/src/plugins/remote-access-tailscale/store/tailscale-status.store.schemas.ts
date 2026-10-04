@@ -7,7 +7,12 @@ import {
 	RemoteAccessEndpointSchema,
 } from '../../../modules/remote-access';
 import {
+	ExtensionsModuleServiceState,
 	RemoteAccessModuleProviderState,
+	RemoteAccessTailscalePluginAuthentication,
+	RemoteAccessTailscalePluginControlAction,
+	RemoteAccessTailscalePluginOperation,
+	type RemoteAccessTailscalePluginControlSchema,
 	type RemoteAccessTailscalePluginInstallSchema,
 	type RemoteAccessTailscalePluginLoginRequestSchema,
 	type RemoteAccessTailscalePluginLoginSchema,
@@ -154,7 +159,16 @@ export const TailscalePrivilegedSetupResSchema: ZodType<RemoteAccessTailscalePlu
 	reason: z.string().nullable(),
 });
 
+export const TailscaleControlResSchema: ZodType<RemoteAccessTailscalePluginControlSchema> = z.object({
+	enabled: z.boolean(),
+	service_state: z.nativeEnum(ExtensionsModuleServiceState),
+	authentication: z.nativeEnum(RemoteAccessTailscalePluginAuthentication),
+	operation: z.nativeEnum(RemoteAccessTailscalePluginOperation).nullable(),
+	available_actions: z.array(z.nativeEnum(RemoteAccessTailscalePluginControlAction)),
+});
+
 export const TailscaleStatusResSchema: ZodType<RemoteAccessTailscalePluginStatusSchema> = z.object({
+	control: TailscaleControlResSchema,
 	type: z.string(),
 	state: z.nativeEnum(RemoteAccessModuleProviderState),
 	endpoints: z.array(RemoteAccessEndpointResSchema),
