@@ -1,10 +1,11 @@
 import { FastifyReply as Response } from 'fastify';
 
-import { Controller, Get, Res } from '@nestjs/common';
+import { Controller, Get, Req, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { toInstance } from '../../../common/utils/transform.utils';
+import { AuthenticatedRequest } from '../../../modules/auth/guards/auth.guard';
 import { PlatformService } from '../../../modules/platform/services/platform.service';
 import {
 	RemoteAccessAdvisoryModel,
@@ -28,6 +29,7 @@ import { TailscaleLoginService } from '../services/tailscale-login.service';
 import { TailscaleNodeManagedService } from '../services/tailscale-node-managed.service';
 import { TailscaleProviderService } from '../services/tailscale-provider.service';
 import { TailscaleSetupService } from '../services/tailscale-setup.service';
+import { buildTailscaleControlModel } from '../utils/tailscale-control.utils';
 
 @ApiTags(REMOTE_ACCESS_TAILSCALE_PLUGIN_API_TAG_NAME)
 @Controller()
@@ -52,7 +54,10 @@ export class StatusController {
 	})
 	@ApiSuccessResponse(RemoteAccessTailscalePluginStatusResponseModel, 'Tailscale node status retrieved successfully')
 	@Get('status')
-	async getStatus(@Res({ passthrough: true }) res: Response): Promise<RemoteAccessTailscalePluginStatusResponseModel> {
+	async getStatus(
+		@Res({ passthrough: true }) res: Response,
+		@Req() request?: AuthenticatedRequest,
+	): Promise<RemoteAccessTailscalePluginStatusResponseModel> {
 		this.logger.debug('Fetching Tailscale node status');
 
 		const [status, requirements, privilegedWorkerSupport] = await Promise.all([
@@ -71,6 +76,12 @@ export class StatusController {
 		data.advisories = toInstance(RemoteAccessAdvisoryModel, status.advisories);
 		data.updatedAt = status.updatedAt;
 		data.requirements = toInstance(RemoteAccessTailscalePluginRequirementModel, requirements);
+		data.control = buildTailscaleControlModel(
+			this.nodeManagedService.getControlState(),
+			status.state,
+			requirements,
+			request?.auth?.role,
+		);
 		data.setup = this.buildSetupJobModel();
 
 		const privilegedSetup = new RemoteAccessTailscalePluginPrivilegedSetupModel();

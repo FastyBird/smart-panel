@@ -408,6 +408,14 @@ describe('TailscaleCliService', () => {
 		});
 	});
 
+	it('redacts authentication URLs and keys from management errors before they can reach logs or events', async () => {
+		mockExecFileOnce(() => ({
+			stderr: 'needs to log in at https://login.tailscale.com/a/private-token using tskey-auth-private-key',
+			exitCode: 1,
+		}));
+		await expect(service.up([])).rejects.toThrow('needs to log in at [redacted URL] using [redacted key]');
+	});
+
 	describe('timeout option', () => {
 		it('passes a default 15s timeout and a 16 MiB output buffer', async () => {
 			mockExecFileOnce(() => ({ exitCode: 0 }));
@@ -533,5 +541,53 @@ describe('TailscaleCliService', () => {
 				expect.any(Function),
 			);
 		});
+	});
+});
+
+describe('TailscaleCliService owned command lifecycle', () => {
+	beforeEach(() => jest.useFakeTimers());
+	afterEach(() => jest.useRealTimers());
+
+	it('reaps a management command that ignores execFile timeout SIGTERM within the hard deadline', async () => {
+		const { EventEmitter } = await import('node:events');
+		const { TailscaleOperationCoordinatorService } = await import('./tailscale-operation-coordinator.service');
+		const coordinator = new TailscaleOperationCoordinatorService();
+		const child = Object.assign(new EventEmitter(), { kill: jest.fn<boolean, [NodeJS.Signals]>() });
+		child.kill.mockImplementation((signal) => {
+			if (signal === 'SIGKILL') {
+				child.emit('close', null);
+			}
+			return true;
+		});
+		(execFile as unknown as jest.Mock).mockReturnValueOnce(child);
+		const cli = new TailscaleCliService(coordinator);
+		const command = coordinator.run('disconnect', () => cli.down());
+		const rejected = expect(command).rejects.toMatchObject({ kind: 'timeout' });
+		await jest.advanceTimersByTimeAsync(15_000 + 500);
+		await rejected;
+		expect(child.kill.mock.calls.map(([signal]) => signal)).toEqual(['SIGTERM', 'SIGKILL']);
+		expect(coordinator.hasPendingChildren()).toBe(false);
+	});
+
+	it('refuses a command from a retired owner after a newer disconnect even when its earlier await later resolves', async () => {
+		const { TailscaleOperationCoordinatorService } = await import('./tailscale-operation-coordinator.service');
+		const coordinator = new TailscaleOperationCoordinatorService();
+		const cli = new TailscaleCliService(coordinator);
+		let resume: () => void;
+		const blocked = new Promise<void>((resolve) => {
+			resume = resolve;
+		});
+		const original = coordinator.run('connect', async () => {
+			await blocked;
+			await cli.up([]);
+		});
+		const rejected = expect(original).rejects.toMatchObject({ code: 'operation-cancelled' });
+		await coordinator.interrupt('disconnect', () => Promise.resolve());
+		await rejected;
+		(execFile as unknown as jest.Mock).mockClear();
+		resume();
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(execFile).not.toHaveBeenCalled();
 	});
 });

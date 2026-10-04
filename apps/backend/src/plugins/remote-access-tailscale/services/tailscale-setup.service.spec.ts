@@ -7,7 +7,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { ManagedServiceManagerService } from '../../../modules/extensions/services/managed-service-manager.service';
 import { PlatformType } from '../../../modules/platform/platform.constants';
 import { PlatformService } from '../../../modules/platform/services/platform.service';
 import { EventType as RemoteAccessEventType } from '../../../modules/remote-access/remote-access.constants';
@@ -22,6 +21,7 @@ import {
 } from '../remote-access-tailscale.constants';
 
 import { TailscaleNodeManagedService } from './tailscale-node-managed.service';
+import { TailscaleOperationCoordinatorService } from './tailscale-operation-coordinator.service';
 import { TailscaleSetupService, TailscaleSetupUnavailableException } from './tailscale-setup.service';
 
 type StatusHandler = (status: PrivilegedJobStatus) => void;
@@ -37,7 +37,11 @@ describe('TailscaleSetupService', () => {
 		getStatus: jest.Mock;
 	};
 	let nestConfigServiceMock: { get: jest.Mock };
-	let nodeManagedService: { evaluateRequirements: jest.Mock };
+	let nodeManagedService: {
+		evaluateRequirements: jest.Mock;
+		getOperationCoordinator: jest.Mock;
+		reconcileSetup: jest.Mock;
+	};
 	let eventEmitterMock: { emit: jest.Mock };
 	let platformServiceMock: {
 		supportsPrivilegedWorkers: jest.Mock;
@@ -46,7 +50,6 @@ describe('TailscaleSetupService', () => {
 		getPlatformType: jest.Mock;
 	};
 	let configServiceMock: { getPluginConfig: jest.Mock };
-	let managedServiceManagerMock: { restartService: jest.Mock };
 	let dataDir: string;
 	let unsubscribe: jest.Mock;
 	let capturedHandler: StatusHandler | null;
@@ -78,7 +81,11 @@ describe('TailscaleSetupService', () => {
 			}),
 		};
 
-		nodeManagedService = { evaluateRequirements: jest.fn().mockResolvedValue([]) };
+		nodeManagedService = {
+			evaluateRequirements: jest.fn().mockResolvedValue([]),
+			getOperationCoordinator: jest.fn().mockReturnValue(new TailscaleOperationCoordinatorService()),
+			reconcileSetup: jest.fn().mockResolvedValue(undefined),
+		};
 		eventEmitterMock = { emit: jest.fn() };
 		platformServiceMock = {
 			supportsPrivilegedWorkers: jest.fn().mockResolvedValue(true),
@@ -89,7 +96,6 @@ describe('TailscaleSetupService', () => {
 			getPlatformType: jest.fn().mockReturnValue(PlatformType.DOCKER),
 		};
 		configServiceMock = { getPluginConfig: jest.fn().mockReturnValue({ enabled: false }) };
-		managedServiceManagerMock = { restartService: jest.fn().mockResolvedValue(true) };
 
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -100,7 +106,6 @@ describe('TailscaleSetupService', () => {
 				{ provide: EventEmitter2, useValue: eventEmitterMock },
 				{ provide: PlatformService, useValue: platformServiceMock },
 				{ provide: ConfigService, useValue: configServiceMock },
-				{ provide: ManagedServiceManagerService, useValue: managedServiceManagerMock },
 			],
 		}).compile();
 
@@ -394,8 +399,8 @@ describe('TailscaleSetupService', () => {
 		});
 	});
 
-	describe('onSetupComplete (restart-on-completion)', () => {
-		it('restarts the node managed service when the plugin is enabled', async () => {
+	describe('onSetupComplete (generation-checked reconciliation)', () => {
+		it('reconciles the node managed service with the generation captured at setup acceptance', async () => {
 			configServiceMock.getPluginConfig.mockReturnValue({ enabled: true });
 
 			await service.install();
@@ -411,11 +416,7 @@ describe('TailscaleSetupService', () => {
 			await Promise.resolve();
 			await Promise.resolve();
 
-			expect(managedServiceManagerMock.restartService).toHaveBeenCalledWith(
-				'plugin',
-				'remote-access-tailscale-plugin',
-				'node',
-			);
+			expect(nodeManagedService.reconcileSetup).toHaveBeenCalledWith(0);
 		});
 
 		it('does not restart the node managed service when the plugin is disabled', async () => {
@@ -434,7 +435,7 @@ describe('TailscaleSetupService', () => {
 			await Promise.resolve();
 			await Promise.resolve();
 
-			expect(managedServiceManagerMock.restartService).not.toHaveBeenCalled();
+			expect(nodeManagedService.reconcileSetup).not.toHaveBeenCalled();
 		});
 
 		it('calls TailscaleNodeManagedService.refreshRequirements(reason) instead of evaluateRequirements() once it exists (RA-17)', async () => {
@@ -452,7 +453,6 @@ describe('TailscaleSetupService', () => {
 					{ provide: EventEmitter2, useValue: eventEmitterMock },
 					{ provide: PlatformService, useValue: platformServiceMock },
 					{ provide: ConfigService, useValue: configServiceMock },
-					{ provide: ManagedServiceManagerService, useValue: managedServiceManagerMock },
 				],
 			}).compile();
 
@@ -475,9 +475,9 @@ describe('TailscaleSetupService', () => {
 			expect(nodeManagedService.evaluateRequirements).not.toHaveBeenCalled();
 		});
 
-		it('never lets a restart failure surface as a job failure', async () => {
+		it('never lets a reconciliation failure surface as a job failure', async () => {
 			configServiceMock.getPluginConfig.mockReturnValue({ enabled: true });
-			managedServiceManagerMock.restartService.mockRejectedValue(new Error('boom'));
+			nodeManagedService.reconcileSetup.mockRejectedValue(new Error('boom'));
 
 			await service.install();
 
@@ -494,7 +494,7 @@ describe('TailscaleSetupService', () => {
 			await Promise.resolve();
 			await Promise.resolve();
 
-			expect(managedServiceManagerMock.restartService).toHaveBeenCalled();
+			expect(nodeManagedService.reconcileSetup).toHaveBeenCalled();
 		});
 	});
 });

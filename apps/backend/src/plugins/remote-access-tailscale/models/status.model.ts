@@ -4,6 +4,7 @@ import { IsArray, IsBoolean, IsEnum, IsOptional, IsString, ValidateNested } from
 import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../../modules/api/models/api-response.model';
+import { ServiceState } from '../../../modules/extensions/services/managed-extension-service.interface';
 import {
 	RemoteAccessAdvisoryModel,
 	RemoteAccessEndpointModel,
@@ -34,6 +35,77 @@ const TAILSCALE_REQUIREMENT_CODES: TailscaleRequirementCode[] = [
 ];
 
 const TAILSCALE_SETUP_JOB_STATES: PrivilegedJobStatus['state'][] = ['running', 'complete', 'failed', 'timeout'];
+
+export const TAILSCALE_CONTROL_ACTIONS = ['connect', 'disconnect', 'login', 'logout', 'reset-preferences'] as const;
+export type TailscaleControlAction = (typeof TAILSCALE_CONTROL_ACTIONS)[number];
+
+const TAILSCALE_SERVICE_STATES: ServiceState[] = ['stopped', 'starting', 'started', 'stopping', 'error'];
+const TAILSCALE_AUTHENTICATION_STATES = ['unknown', 'required', 'authenticated'] as const;
+const TAILSCALE_OPERATIONS = [
+	'connect',
+	'disconnect',
+	'reconnect',
+	'login',
+	'logout',
+	'preferences',
+	'config',
+	'serve',
+	'reset',
+	'shutdown',
+] as const;
+
+/** Administrative lifecycle information; connection state alone cannot determine valid actions. */
+@ApiSchema({ name: 'RemoteAccessTailscalePluginDataControl' })
+export class RemoteAccessTailscalePluginControlModel {
+	@ApiProperty({ description: 'Whether the plugin is persistently enabled', type: 'boolean', example: true })
+	@Expose()
+	@IsBoolean()
+	enabled: boolean;
+
+	@ApiProperty({
+		name: 'service_state',
+		description: 'Managed service lifecycle, independent of the observed network connection',
+		enum: TAILSCALE_SERVICE_STATES,
+		example: 'stopped',
+	})
+	@Expose({ name: 'service_state' })
+	@IsEnum(TAILSCALE_SERVICE_STATES)
+	serviceState: ServiceState;
+
+	@ApiProperty({
+		description: 'Last observed authentication readiness; Disconnect preserves authentication',
+		enum: TAILSCALE_AUTHENTICATION_STATES,
+		example: 'authenticated',
+	})
+	@Expose()
+	@IsEnum(TAILSCALE_AUTHENTICATION_STATES)
+	authentication: (typeof TAILSCALE_AUTHENTICATION_STATES)[number];
+
+	@ApiProperty({
+		description: 'Current provider operation, null while idle',
+		type: 'string',
+		enum: TAILSCALE_OPERATIONS,
+		nullable: true,
+		example: null,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(TAILSCALE_OPERATIONS)
+	operation: (typeof TAILSCALE_OPERATIONS)[number] | null;
+
+	@ApiProperty({
+		name: 'available_actions',
+		description:
+			'Actions available to the authenticated caller; permissions and prerequisites are rechecked on execution',
+		type: 'array',
+		items: { type: 'string', enum: [...TAILSCALE_CONTROL_ACTIONS] },
+		example: ['connect', 'logout'],
+	})
+	@Expose({ name: 'available_actions' })
+	@IsArray()
+	@IsEnum(TAILSCALE_CONTROL_ACTIONS, { each: true })
+	availableActions: TailscaleControlAction[];
+}
 
 /**
  * Exact console commands (and/or a documentation link) that satisfy one
@@ -215,6 +287,15 @@ export class RemoteAccessTailscalePluginPrivilegedSetupModel {
  */
 @ApiSchema({ name: 'RemoteAccessTailscalePluginDataStatus' })
 export class RemoteAccessTailscalePluginStatusModel {
+	@ApiPropertyOptional({
+		description: 'Administrative control state; independent of the provider connection state',
+		type: () => RemoteAccessTailscalePluginControlModel,
+	})
+	@Expose()
+	@ValidateNested()
+	@Type(() => RemoteAccessTailscalePluginControlModel)
+	control: RemoteAccessTailscalePluginControlModel;
+
 	@ApiProperty({
 		description: 'Provider plugin type identifier',
 		type: 'string',

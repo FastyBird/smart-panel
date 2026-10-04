@@ -1,6 +1,6 @@
 # Remote access: fresh analysis and completion plan
 
-Date: 2026-10-03. Status: proposed, implementation not started.
+Date: 2026-10-03. Adopted: 2026-10-04. Status: implementation in progress (R1).
 Epic: [#897](https://github.com/FastyBird/smart-panel/issues/897).
 Coordination: [#991](https://github.com/FastyBird/smart-panel/issues/991).
 Reviewed baseline: `3f7b838fb65a346b86e9100c246d6bfc31af06e1` (`main`, application alpha.41).
@@ -17,7 +17,7 @@ release was not supplied. The findings below reproduce defects in the reviewed s
 a claim that every historical device symptom had the same cause. No live tunnel, device networking,
 credentials or deployed application was changed during this analysis.
 
-This plan supersedes the execution order in the September plan and #991 **once adopted**. The original
+This adopted plan supersedes the execution order in the September plan and #991. The original
 design remains the architecture reference, except for the explicitly proposed contract changes below.
 Do not reopen all completed September tasks or reimplement their fixes.
 
@@ -230,7 +230,35 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   reboot and network recovery before treating it as a usability guarantee. Real peer/server access
   is an explicit acceptance prerequisite, not replaceable by mocks.
 
+### Execution tracking (2026-10-04)
+
+- R1: [#1156](https://github.com/FastyBird/smart-panel/issues/1156), provider operation ownership,
+  authentication/lifecycle control fields and idempotent connect/disconnect API. Implementation in review.
+- R2: [#1157](https://github.com/FastyBird/smart-panel/issues/1157), ordered snapshots and bounded reads.
+- R3: [#1158](https://github.com/FastyBird/smart-panel/issues/1158), admin plugin controls.
+- R4: [#910](https://github.com/FastyBird/smart-panel/issues/910), device acceptance after R1–R3.
+- R5: [#1159](https://github.com/FastyBird/smart-panel/issues/1159), Cloudflare lifecycle and acceptance.
+- R6/R7: [#914](https://github.com/FastyBird/smart-panel/issues/914) / [#913](https://github.com/FastyBird/smart-panel/issues/913).
+
+R1 adds a `control` object to plugin status: `enabled`, `service_state`, `authentication`, the active
+`operation`, and role-filtered `available_actions`. `POST /connect` and `POST /disconnect` are available
+to owners/admins; logout and preference reset remain owner-only. Disconnect cancels pending work and
+retains authentication. It does not persistently disable the plugin: an enabled plugin starts again
+with the application. Lifecycle invalidation also guards setup completion and background reconciliation.
+The existing admin consumes the new contract in R3; R1 alone does not claim the reported UI flow fixed.
+No hardware acceptance checkbox is completed by these automated changes.
+
 ## 6. Verification and completion evidence
+
+### R1 implementation verification (2026-10-04)
+
+- Backend remote-access providers/module and Extensions manager: **36 suites / 675 tests passed**.
+- Remote-access HTTP integration: **3 suites / 84 tests passed**; admin remote-access: **29 files / 444 tests passed**.
+- Backend TypeScript, admin type checking, changed-source lint/format, API conventions and generated
+  OpenAPI/client types passed. Missing generated device specs were generated before admin type checking.
+- Controlled tests cover late reads across stop/start and logout, cancelled interactive/keyed login,
+  key-file cleanup, process closure/escalation, retained authentication and superseded setup completion.
+- Device networking was not exercised; R4 remains open.
 
 ### Automated evidence from this analysis
 

@@ -22,7 +22,7 @@ import { StatusController } from './status.controller';
 describe('StatusController', () => {
 	let controller: StatusController;
 	let providerService: { getStatus: jest.Mock };
-	let nodeManagedService: { evaluateRequirements: jest.Mock };
+	let nodeManagedService: { evaluateRequirements: jest.Mock; getControlState: jest.Mock };
 	let loginService: { getPendingInteractiveAuth: jest.Mock };
 	let setupService: { getLastJob: jest.Mock };
 	let platformService: { getPrivilegedWorkerSupport: jest.Mock };
@@ -47,7 +47,12 @@ describe('StatusController', () => {
 
 	beforeEach(async () => {
 		providerService = { getStatus: jest.fn().mockResolvedValue(baseStatus) };
-		nodeManagedService = { evaluateRequirements: jest.fn().mockResolvedValue(baseRequirements) };
+		nodeManagedService = {
+			evaluateRequirements: jest.fn().mockResolvedValue(baseRequirements),
+			getControlState: jest
+				.fn()
+				.mockReturnValue({ enabled: true, serviceState: 'started', authentication: 'authenticated', operation: null }),
+		};
 		loginService = { getPendingInteractiveAuth: jest.fn().mockReturnValue(null) };
 		setupService = { getLastJob: jest.fn().mockReturnValue(null) };
 		platformService = {

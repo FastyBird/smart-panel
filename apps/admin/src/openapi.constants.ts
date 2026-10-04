@@ -756,6 +756,7 @@ export { NotificationsModuleDataNotificationActionOperation as NotificationsModu
 export type RemoteAccessTailscalePluginConfigSchema = components['schemas']['RemoteAccessTailscalePluginDataConfig'];
 export type RemoteAccessTailscalePluginUpdateConfigSchema = components['schemas']['RemoteAccessTailscalePluginUpdateConfig'];
 export type RemoteAccessTailscalePluginStatusSchema = components['schemas']['RemoteAccessTailscalePluginDataStatus'];
+export type RemoteAccessTailscalePluginControlSchema = components['schemas']['RemoteAccessTailscalePluginDataControl'];
 export type RemoteAccessTailscalePluginInstallSchema = components['schemas']['RemoteAccessTailscalePluginDataInstall'];
 export type RemoteAccessTailscalePluginLoginSchema = components['schemas']['RemoteAccessTailscalePluginDataLogin'];
 export type RemoteAccessTailscalePluginRequirementSchema = components['schemas']['RemoteAccessTailscalePluginDataRequirement'];
@@ -767,6 +768,8 @@ export type RemoteAccessTailscalePluginPrivilegedSetupSchema = components['schem
 // Remote Access Tailscale Plugin Operations
 // ============================================
 export type RemoteAccessTailscalePluginGetStatusOperation = operations['get-remote-access-tailscale-plugin-status'];
+export type RemoteAccessTailscalePluginCreateConnectOperation = operations['create-remote-access-tailscale-plugin-connect'];
+export type RemoteAccessTailscalePluginCreateDisconnectOperation = operations['create-remote-access-tailscale-plugin-disconnect'];
 export type RemoteAccessTailscalePluginCreateInstallOperation = operations['create-remote-access-tailscale-plugin-install'];
 export type RemoteAccessTailscalePluginCreateLoginOperation = operations['create-remote-access-tailscale-plugin-login'];
 export type RemoteAccessTailscalePluginCreateLogoutOperation = operations['create-remote-access-tailscale-plugin-logout'];

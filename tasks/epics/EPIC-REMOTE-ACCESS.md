@@ -26,10 +26,11 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
   already runs a root worker through `sudo -n systemd-run`; that primitive is reused for provider setup.
 - Design: `docs/superpowers/specs/2026-09-02-remote-access-design.md`
 - Plan and delegation map: `docs/superpowers/plans/2026-09-02-remote-access.md`
-- Fresh analysis and proposed completion sequence (2026-10-03):
+- Fresh analysis and adopted completion sequence (2026-10-03, adopted 2026-10-04):
   [`2026-10-03-remote-access-completion.md`](../../docs/superpowers/plans/2026-10-03-remote-access-completion.md).
   This separates delivered code from outstanding hardware acceptance and documents reproduced
-  lifecycle/status defects. The replacement execution sequence is pending adoption.
+  lifecycle/status defects. The replacement execution sequence is active: R1 (#1156) is in review; R2 (#1157),
+  R3 (#1158), R4 (#910) and R5 (#1159) remain open, followed by #914 and #913.
 - Prior art: Home Assistant `helpers/network.py` and `components/http/forwarded.py`; the Home Assistant
   Tailscale and Cloudflared add-ons; Tailscale CLI `up --json`, operator mechanism, Serve and Funnel.
 
