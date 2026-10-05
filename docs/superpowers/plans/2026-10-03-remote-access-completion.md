@@ -314,6 +314,13 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   The user confirmed alpha.46 admin loading, login and live device updates without reload from
   a phone with Wi-Fi disabled and Tailscale enabled. Full R4 remains open; the broader
   install/auth/reset/upgrade variants are still unperformed.
+  Both follow-ups are merged (#1168 `2593d8436`, #1169 `61c26995f`) and deployed in alpha.47
+  (`38d59a30f`) through one verified normal upgrade. Config disable, persistence across an
+  application restart, and re-enable with actual HTTP/HTTPS reachability passed on the Pi 5.
+  Enabled host reboot restored CLI/API/UI and preserved all data/configuration, but its Mac
+  reachability probe failed while that client was offline from the coordination server/DERP;
+  the end-to-end reboot row remains partial pending an independent phone check/client recovery.
+  A spare Pi 4 and second SD card are available for fresh-image/reset acceptance once prepared.
 
 - R5: [#1159](https://github.com/FastyBird/smart-panel/issues/1159), Cloudflare lifecycle and acceptance.
 - R6/R7: [#914](https://github.com/FastyBird/smart-panel/issues/914) / [#913](https://github.com/FastyBird/smart-panel/issues/913).

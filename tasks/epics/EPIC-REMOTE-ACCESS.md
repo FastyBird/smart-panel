@@ -323,6 +323,66 @@ successful external GET may cause one extra read because the semaphore exposes n
 Three regressions failed before the correction; 62 hook/card tests, admin type checking and
 changed-file lint/format passed afterwards. These two follow-up PRs are not deployed in alpha.46.
 
+#### Alpha.47 deployment and lifecycle persistence (2026-10-05)
+
+PR #1168 merged as `2593d8436f3a8e9261043ede50ab1d26fd37bd48`; #1169 merged as
+`61c26995fa82dbd807e2e892de2f2013a0830421`. Both passed CI and CodeRabbit review with
+Minimal merge risk and no actionable comments. Release
+[`v1.1.0-alpha.47`](https://github.com/FastyBird/smart-panel/releases/tag/v1.1.0-alpha.47)
+names commit `38d59a30fe09b810e6baa854f9bb904797e1aeab`; workflow `37314706171` was dispatched
+from the latter merge. Server/npm artifacts are published; SD-image jobs remain in progress at
+this evidence checkpoint. This is the existing Raspberry Pi 5 Model B Rev 1.1, Debian 12/aarch64
+image installation with Tailscale 1.102.3, not a fresh installation.
+
+One normal system-module upgrade from alpha.46 completed and released its lock. All 111 device
+identities/topology, 28 migrations, schema, configuration, accounts/credentials and long-lived
+tokens were preserved. Both the pre-upgrade session and a fresh login worked. The installed
+1,719 backend files and 250 admin files match the verified server/npm artifacts. The archive,
+npm dependency declaration and installed throttler package all match the exact 6.7.1 pin.
+Tailscale recovered automatically with the same node identity. The admin was reloaded once to
+use the new bundle before the following observations.
+
+Configuration lifecycle observations passed:
+
+- One PATCH changed only plugin `enabled` to false. CLI became Stopped, Extensions became disabled/
+  stopped, endpoints/proxies disappeared, and the provider was removed from aggregate URLs. Both
+  tailnet HTTP and TLS-verified HTTPS origins became unreachable. Backend/daemon identities stayed
+  unchanged during this transition. The Tailscale card disappeared without reloading the page.
+- One application restart while disabled changed the backend invocation, retained the host boot ID
+  and tailscaled invocation, and kept configuration disabled and CLI/Extensions stopped. No endpoint
+  returned. CLI Self.ID stayed unchanged; the fresh disabled backend's authentication cache was
+  allowed to be unknown and was not treated as proof of logout.
+- One PATCH restored only `enabled` to true. CLI/API/Extensions/aggregate state returned to Connected,
+  and actual HTTP/HTTPS reachability returned without interactive login. The card reappeared and
+  settled with enabled controls. PATCH response times were 107 ms for disable and 125 ms for enable;
+  these are request acknowledgements, not end-to-end connection latency.
+
+One enabled host reboot was then submitted. SSH closed during submission; the request was not
+repeated. Subsequent observations verified a different boot ID and both new service invocations,
+unchanged node identity/configuration, and automatic CLI/API/Extensions/aggregate recovery.
+The existing admin page returned to Connected with its owner profile and controls about 66 seconds
+after submission, without reload. The recorder saw one expected transport failure while the host
+was down, no HTTP 429, no overflow, and at most five private status reads per rolling minute.
+
+The host-reboot reachability row remains **partial**: the Mac's 15-second HTTPS convergence probe
+and subsequent WebSocket-only probe timed out. Diagnosis found the Mac in Running state but
+Self.Online false, with a coordination-server connection warning; netcheck could reach neither
+UDP nor DERP. Ordinary HTTPS to the coordination/login hosts still returned 200. Pi remained
+Running/self-online with the expected Serve HTTPS handler. One Mac down/up and socket rebind did
+not restore that client's connectivity. No Pi reconnect or second reboot was attempted. A phone
+check after this reboot is pending; the earlier phone confirmation applies to alpha.46. Do not
+mark end-to-end reboot acceptance complete from API/CLI state alone.
+
+Post-lifecycle database topology/counts, migrations, schema, accounts/credentials, node identity
+and semantic comparison of the full saved configuration against the retained backup all passed,
+including fields omitted by public config responses. Raw evidence and all addresses/credentials
+remain private. This release's observations supplement the alpha.46 twenty-cycle, rapid-action,
+natural token renewal and idle results; those tests were not repeated or relabelled as alpha.47.
+
+The user has a spare Raspberry Pi 4 and second SD card for fresh-image and factory-reset tests.
+That card still needs preparation from a completed image; its different hardware will be recorded
+separately. The existing Pi 5 stays connected/authenticated. Full R4 and epic #897 remain open.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
@@ -338,7 +398,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 - [ ] Admin → Remote access: the page shows the internal URL and the Tailscale card reads "Not set up" (image) or "Not installed" (npm install without the package).
 - [ ] Set up: on the image it completes in seconds (package pre-installed); on an npm install it installs from the apt repository and reports each step live.
 - [ ] Sign in: a login link and QR code appear; approving on the phone flips the card to Connected with tailnet name, MagicDNS name and Tailscale IPs.
-- [ ] Extensions → Services lists `remote-access-tailscale-plugin / node` as started and healthy.
+- [x] Extensions → Services lists `remote-access-tailscale-plugin / node` as started and healthy. Verified through its API during alpha.46 cycles and alpha.47 lifecycle observations.
 
 ##### HTTPS and remote use
 
@@ -351,7 +411,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 ##### Lifecycle
 
 - [ ] Reboot the Pi: the node reconnects without interaction and the URL still works.
-- [ ] Disable the plugin (Extensions): the node disconnects, external URLs disappear; re-enable reconnects.
+- [ ] Disable the plugin (Extensions): the node disconnects, external URLs disappear; re-enable reconnects. Alpha.47 config PATCH and live Remote access card checks passed; the Extensions UI click path itself remains untested.
 - [ ] Sign in with an auth key (advanced tab) on a second fresh install or after Sign out: node connects without the browser step.
 - [ ] Sign out: the device disappears from the tailnet admin console; the card returns to setup-required.
 - [ ] Factory reset: after restore, no tailnet login remains (`tailscale status` shows NeedsLogin) and Serve is reset.
