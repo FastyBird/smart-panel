@@ -88,6 +88,7 @@
 		"requestError": "Beim Laden des Tailscale-Status ist ein Fehler aufgetreten",
 		"setupFailed": "Der Tailscale-Einrichtungsjob konnte nicht gestartet werden",
 		"loginFailed": "Anmeldung bei Tailscale fehlgeschlagen",
+		"loginTimedOut": "Die Tailscale-Anmeldung hat das Zeitlimit überschritten. Bitte versuchen Sie es erneut.",
 		"signedOut": "Von Tailscale abgemeldet",
 		"signOutFailed": "Abmeldung von Tailscale fehlgeschlagen",
 		"preferencesReset": "Die Tailscale-Einstellungen wurden zurückgesetzt",

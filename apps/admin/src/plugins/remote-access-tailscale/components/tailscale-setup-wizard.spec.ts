@@ -48,6 +48,7 @@ const progress = ref<{
 const isInstalling = ref(false);
 const isLoggingIn = ref(false);
 const isPolling = ref(false);
+const hasPollingTimedOut = ref(false);
 const configPlugin = ref<{ type: string; enabled: boolean } | null>({ type: 'remote-access-tailscale-plugin', enabled: true });
 
 vi.mock('vue-i18n', async () => {
@@ -97,6 +98,7 @@ vi.mock('../composables', () => ({
 	useTailscaleLogin: () => ({
 		isLoggingIn,
 		isPolling,
+		hasPollingTimedOut,
 		login: fns.login,
 		stopPolling: fns.stopPolling,
 	}),
@@ -144,6 +146,7 @@ describe('TailscaleSetupWizard', () => {
 		isInstalling.value = false;
 		isLoggingIn.value = false;
 		isPolling.value = false;
+		hasPollingTimedOut.value = false;
 		configPlugin.value = { type: 'remote-access-tailscale-plugin', enabled: true };
 		fns.fetchStatus.mockReset().mockResolvedValue(undefined);
 		fns.install.mockReset().mockResolvedValue('job-123');

@@ -88,6 +88,7 @@
 		"requestError": "Pri načítaní stavu Tailscale došlo k chybe",
 		"setupFailed": "Nepodarilo sa spustiť úlohu nastavenia Tailscale",
 		"loginFailed": "Prihlásenie do Tailscale zlyhalo",
+		"loginTimedOut": "Časový limit prihlásenia do Tailscale vypršal. Skúste to prosím znova.",
 		"signedOut": "Odhlásenie z Tailscale prebehlo úspešne",
 		"signOutFailed": "Odhlásenie z Tailscale zlyhalo",
 		"preferencesReset": "Nastavenia Tailscale boli obnovené",

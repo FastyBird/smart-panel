@@ -394,7 +394,7 @@ const goToStep = (step: TailscaleWizardStep): void => {
 
 const { status, requirements, privilegedSetup, fetchStatus, refreshStatus } = useTailscaleStatus();
 const { progress: effectiveProgress, isInstalling, install, startPolling: startSetupPolling, stopPolling: stopSetupPolling } = useTailscaleSetup();
-const { isLoggingIn, isPolling, login, stopPolling } = useTailscaleLogin();
+const { isLoggingIn, isPolling, hasPollingTimedOut, login, stopPolling } = useTailscaleLogin();
 const { configPlugin, fetchConfigPlugin } = useConfigPlugin({ type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME });
 
 const signInTab = ref<'interactive' | 'advanced'>('interactive');
@@ -602,6 +602,17 @@ watch(
 	},
 	{ immediate: true }
 );
+
+// An absolute polling deadline can expire while the last status is still pending.
+// Keep it distinct from cancellation and terminal states so a closed session never reports a timeout.
+watch(hasPollingTimedOut, (timedOut): void => {
+	if (!timedOut || !props.visible || currentStep.value !== 'signin') return;
+
+	flashMessage.error(t('remoteAccessTailscalePlugin.messages.loginTimedOut'));
+	awaitingKeyedConnection.value = false;
+	authUrl.value = undefined;
+	qr.value = undefined;
+});
 
 // Sign-in polling updates the shared status store directly - watch it here instead of
 // polling a second time, and move on as soon as the node is connected.

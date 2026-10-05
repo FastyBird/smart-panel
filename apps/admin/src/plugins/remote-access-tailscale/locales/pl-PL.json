@@ -88,6 +88,7 @@
 		"requestError": "Wystąpił błąd podczas wczytywania stanu Tailscale",
 		"setupFailed": "Nie udało się uruchomić zadania konfiguracji Tailscale",
 		"loginFailed": "Nie udało się zalogować do Tailscale",
+		"loginTimedOut": "Upłynął limit czasu logowania do Tailscale. Spróbuj ponownie.",
 		"signedOut": "Wylogowano z Tailscale",
 		"signOutFailed": "Nie udało się wylogować z Tailscale",
 		"preferencesReset": "Preferencje Tailscale zostały zresetowane",
