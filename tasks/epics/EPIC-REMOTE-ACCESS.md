@@ -252,6 +252,75 @@ alpha.45; its release and natural-expiry hardware rerun remain required. Validat
 102 targeted auth/socket tests, all 3,261 admin tests across 382 files, admin type checking,
 changed-file lint/format and whitespace checks.
 
+#### Alpha.46 acceptance (2026-10-05)
+
+PR #1166 merged as `e3dea0ca2` and #1167 as `c489fd240`. Release
+[`v1.1.0-alpha.46`](https://github.com/FastyBird/smart-panel/releases/tag/v1.1.0-alpha.46)
+names commit `d11bc23d88b98a67fa6529aa3258f28c7f10a9f1`; workflow run `37292643797`.
+One normal system-module upgrade from alpha.45 completed with its lock removed. The retained
+backup, 111 device identities/topology, 28 migrations, schema, configuration, authentication,
+pre-upgrade and fresh sessions, and Tailscale identity all passed comparison. The installed
+1,719 backend files and 250 admin static files exactly match the verified server/npm artifacts.
+Tailscale recovered automatically; the admin was reloaded to use the released bundle.
+
+Initial observations must remain separate from the clean rerun:
+
+- The first attempt stopped before lifecycle actions because the single three-second tailnet
+  health probe failed. A later read succeeded without changing the Pi lifecycle.
+- The second attempt completed Connect/Disconnect and a final Connect's CLI/API settlement,
+  but its single tailnet health probe failed. Zero complete rounds passed. There was no backend
+  or daemon restart. Later HTTP health succeeded without a recovery action.
+- Browser reads were bounded to at most 12 per rolling minute, yet received HTTP 429. An incoming
+  request-line capture and local socket ownership identified a separate Firefox admin client
+  sharing the same client IP. The user closed that tab before the clean rerun and the existing
+  minute-long block was allowed to expire. No production limit was raised.
+- Local dependencies initially resolved throttler 6.5.0, but the actual alpha.46 archive installs
+  6.7.1. The old library's cross-key expiry defect is therefore not the cause of this observed
+  alpha.46 failure. PR #1168 pins 6.7.1 for consistent testing/releases and gives Tailscale and
+  Cloudflare distinct controller identities so their status/setup rate budgets cannot collide.
+- The clean harness observes connected HTTP convergence for at most 15 seconds, recording every
+  attempt and separating that delay from the lifecycle API latency. Only transport failures get
+  another read; no lifecycle mutation is retried, and HTTP errors/redirects/wrong versions fail.
+  Disconnect still requires the tailnet origin to be unreachable. No proxy or LAN fallback is used.
+
+The clean run passed all 20 Connect→Disconnect→Connect rounds (60 actions), including concurrent
+status reads, stable CLI/Extensions/aggregate state, endpoint and proxy withdrawal, and actual
+Tailscale HTTP reachability. All 60 completed actions matched the captured DOM state, owner profile
+and enabled control within the acceptance window. No browser HTTP errors, backend restarts or
+Tailscale daemon restarts occurred. Browser status reads peaked at 12 per rolling minute; the
+combined browser/runner estimate was 26 (their source addresses differ).
+
+Connect API latency had median 199.5 ms and maximum 2,396 ms, including already-connected calls;
+Disconnect had median 624 ms and maximum 734 ms. Connected HTTP observation took up to 8,049 ms
+after CLI/API settlement. These are different measurements: fast API completion does not establish
+immediate transport availability. The three-second single-probe limit in earlier attempts was too
+short for at least one observed convergence.
+
+Three rapid-action rounds also passed: Connect was followed by Disconnect after 100 ms, with a
+measured concurrent status read in every round. Each cancelled Connect returned HTTP 409 with
+`operation-cancelled`; Disconnect succeeded, stopped state was confirmed twice, and only a later
+explicit Connect restored connectivity. All nine settled preparation/disconnect/restore steps
+matched the UI before the next action; no browser HTTP errors or service restarts occurred.
+
+Natural admin access-token expiry at 11:11:47 UTC was observed without token or clock changes.
+Refresh at 11:12:19 UTC returned HTTP 201 in 534 ms, advanced the token expiry, and retained the
+owner profile and enabled Disconnect button. Profile continuity held throughout the recording.
+TLS-verified HTTPS and an authenticated WebSocket-only event subscription also passed from the
+Mac after the rapid test. The subsequent 609.6-second idle observation passed: backend/daemon
+identities and restart counters stayed unchanged, with one process per service at both boundaries.
+The 20 collected journal entries contained no assertion, management-denial, Serve-failure or
+restart/stop pattern. The UI retained Connected, owner profile and enabled controls, with ten
+status reads and no HTTP errors or recorder overflow. Boundary counts do not establish behavior
+between samples. A new phone confirmation on alpha.46 remains pending; the prior cellular
+loading/login/live-update confirmation belongs to alpha.44. The broader R4 matrix remains open; no fresh-install, auth-key, reboot/reset, Funnel/SSH or phone transport row
+is implied complete by an application upgrade or API lifecycle test.
+
+The Low-risk review follow-up from #1167 is addressed in #1169: queued event metadata work now
+survives an external GET completion and gets one bounded trailing read after polling stops. A
+successful external GET may cause one extra read because the semaphore exposes no outcome.
+Three regressions failed before the correction; 62 hook/card tests, admin type checking and
+changed-file lint/format passed afterwards. These two follow-up PRs are not deployed in alpha.46.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.

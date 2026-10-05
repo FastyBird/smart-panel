@@ -290,6 +290,30 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   observation reproduced missing controls after natural access-token expiry: successful refresh
   leaves tokens present but clears the owner profile. A real-store/HTTP-client regression reproduced
   the failure before the auth middleware correction; release acceptance must include a natural-expiry rerun.
+  Both admin fixes are merged: #1166 as `e3dea0ca2` and #1167 as `c489fd240`.
+  Alpha.46 (`d11bc23d8`) passed normal upgrade and all artifact/data/session checks.
+  Acceptance found another Firefox client sharing the test browser's client IP; its additional
+  status traffic contributed to HTTP 429 even while the new browser stayed at at most 12 reads/minute.
+  The user closed that tab before the clean cycle rerun. The Pi actually ships throttler 6.7.1,
+  whereas the workspace lock selected 6.5.0; the old storage expiry defect is not the cause of this
+  alpha.46 finding. PR #1168 pins the tested/runtime version and separates the two providers'
+  identical controller-name throttle keys, without raising limits or changing client identity.
+  The low-risk #1167 review follow-up is implemented in #1169: preserve a queued metadata refresh
+  across an external GET completion and schedule it five seconds later. Because the semaphore
+  exposes no success outcome, this may add one trailing read after a successful external GET;
+  continuous three-second polling still produces no overlapping worker read. Regression validation:
+  62 hook/card tests, admin type checking and changed-file lint/format passed.
+  The clean alpha.46 rerun passed all 20 lifecycle rounds (60 actions) with CLI/API/UI and actual
+  tailnet reachability agreement, no HTTP 429 or service restarts. Three rapid cancellation rounds
+  also passed, including concurrent status reads and no revival before an explicit Connect.
+  Natural token expiry retained the owner profile and controls after successful refresh; TLS-verified
+  HTTPS and authenticated WebSocket event reception passed from the Mac. Connected HTTP convergence
+  took up to 8.049 seconds after API settlement and is recorded separately from API latency.
+  The 609.6-second idle check passed with unchanged process identities/restart counters, no
+  growth between boundary process counts, no flagged journal patterns and no UI HTTP errors.
+  A new phone confirmation on alpha.46 is pending. Full R4 remains open; the broader
+  install/auth/reset/upgrade variants are still unperformed.
+
 - R5: [#1159](https://github.com/FastyBird/smart-panel/issues/1159), Cloudflare lifecycle and acceptance.
 - R6/R7: [#914](https://github.com/FastyBird/smart-panel/issues/914) / [#913](https://github.com/FastyBird/smart-panel/issues/913).
 
