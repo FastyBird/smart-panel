@@ -329,11 +329,20 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   reachability from the Pi 5. A fresh HTTPS owner login and closed display-registration status passed
   from that peer. The MCP URL suggestion filled the form without persisting until Save. The user
   confirmed that the new Pi 4 login page loads without a certificate error over cellular Tailscale.
-  Phone login/live updates on this fresh host, phone transport, auth-key login and reset remain
+  Phone login/live updates on this fresh host, phone transport and auth-key login remain
   pending; neither login-page loading nor peer results substitute for them. Fresh acceptance also found installer
   [#1171](https://github.com/FastyBird/smart-panel/issues/1171): the captive portal remains active
   after Ethernet becomes available because it only checks connectivity at startup. That fix and
-  hardware verification remain open. Full R4 remains open.
+  hardware verification remain open. A subsequent factory reset through the spare Pi 4 System UI
+  passed from authenticated/Serve-enabled state: new host boot, no owner or auth tokens, automatic
+  return to onboarding, CLI NeedsLogin, empty Serve and unreachable peer HTTPS. After onboarding,
+  the plugin was disabled by default and enabling it accurately reported the missing operator grant.
+  Repeating Set up restored the operator grant. Invalid-key testing then found
+  [#1172](https://github.com/FastyBird/smart-panel/issues/1172): the wizard advanced to Options although
+  the returned state and CLI still required sign-in. The follow-up gates advancement on Connected
+  and handles pending/failed results with regression coverage; fixed-release hardware acceptance
+  remains outstanding. Explicit logout and successful auth-key login still require separate
+  observations. Full R4 remains open.
 
 - R5: [#1159](https://github.com/FastyBird/smart-panel/issues/1159), Cloudflare lifecycle and acceptance.
 - R6/R7: [#914](https://github.com/FastyBird/smart-panel/issues/914) / [#913](https://github.com/FastyBird/smart-panel/issues/913).

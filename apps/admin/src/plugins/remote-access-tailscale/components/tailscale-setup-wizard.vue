@@ -409,6 +409,7 @@ const isRechecking = ref<boolean>(false);
 const installErrorCode = ref<string | null>(null);
 let sessionGeneration = 0;
 const loginErrorCode = ref<string | null>(null);
+const awaitingKeyedConnection = ref<boolean>(false);
 
 const canLogin = computed(
 	() =>
@@ -481,6 +482,7 @@ const onCopyRemedyCommands = async (): Promise<void> => {
 
 const onInteractiveLogin = async (): Promise<void> => {
 	if (!canLogin.value) return;
+	awaitingKeyedConnection.value = false;
 	const generation = sessionGeneration;
 	loginErrorCode.value = null;
 
@@ -504,6 +506,7 @@ const onKeyedLogin = async (): Promise<void> => {
 	if (!canLogin.value) return;
 	const generation = sessionGeneration;
 	const key = authKey.value;
+	awaitingKeyedConnection.value = false;
 	authKey.value = '';
 	loginErrorCode.value = null;
 
@@ -517,13 +520,20 @@ const onKeyedLogin = async (): Promise<void> => {
 		authKey.value = '';
 
 		if (result.state === 'pending-auth') {
+			awaitingKeyedConnection.value = true;
 			authUrl.value = result.authUrl;
 			qr.value = result.qr;
 
 			return;
 		}
 
-		goToStep('options');
+		if (result.state === 'connected') {
+			goToStep('options');
+		} else if (result.state === 'connecting' || result.state === 'pending-approval') {
+			awaitingKeyedConnection.value = true;
+		} else {
+			flashMessage.error(t('remoteAccessTailscalePlugin.messages.loginFailed'));
+		}
 	} catch (error) {
 		if (!props.visible || generation !== sessionGeneration) return;
 
@@ -593,41 +603,41 @@ watch(
 	{ immediate: true }
 );
 
-// The interactive poll updates the shared status store directly - watch it here instead of
+// Sign-in polling updates the shared status store directly - watch it here instead of
 // polling a second time, and move on as soon as the node is connected.
-watch(
-	(): string | undefined => status.value?.state,
-	(state): void => {
-		if (!props.visible) return;
+watch([() => status.value?.state, isPolling], ([state]): void => {
+	if (!props.visible) return;
 
-		if (state === 'connected' && currentStep.value === 'signin') {
-			goToStep('options');
+	if (state === 'connected' && currentStep.value === 'signin') {
+		awaitingKeyedConnection.value = false;
+		goToStep('options');
 
-			return;
-		}
-
-		// A sign-in that was waiting for approval (authUrl already shown) landed on a
-		// non-progressing state without ever reaching 'connected' - e.g. the control server
-		// rejecting an already-approved auth path, or the daemon reporting setup-required
-		// again. useTailscaleLogin's poll already stopped itself on this same widened
-		// terminal check (see its own doc); surface the reason here instead of leaving the
-		// QR/link panel showing a dead link with no explanation ("frozen").
-		if (
-			currentStep.value === 'signin' &&
-			authUrl.value &&
-			!isPolling.value &&
-			state !== undefined &&
-			state !== 'connected' &&
-			state !== 'pending-auth' &&
-			state !== 'connecting'
-		) {
-			flashMessage.error(status.value?.message ?? t('remoteAccessTailscalePlugin.messages.loginFailed'));
-
-			authUrl.value = undefined;
-			qr.value = undefined;
-		}
+		return;
 	}
-);
+
+	// A sign-in that was waiting for a connection or approval landed on a
+	// non-progressing state without ever reaching 'connected' - e.g. the control server
+	// rejecting an already-approved auth path, or the daemon reporting setup-required
+	// again. useTailscaleLogin's poll already stopped itself on this same widened
+	// terminal check (see its own doc); surface the reason here instead of leaving the
+	// QR/link panel showing a dead link with no explanation ("frozen").
+	if (
+		currentStep.value === 'signin' &&
+		(authUrl.value || awaitingKeyedConnection.value) &&
+		!isPolling.value &&
+		state !== undefined &&
+		state !== 'connected' &&
+		state !== 'pending-auth' &&
+		state !== 'connecting' &&
+		state !== 'pending-approval'
+	) {
+		flashMessage.error(status.value?.message ?? t('remoteAccessTailscalePlugin.messages.loginFailed'));
+
+		awaitingKeyedConnection.value = false;
+		authUrl.value = undefined;
+		qr.value = undefined;
+	}
+});
 
 // `immediate: true` because `currentStep` starts life already set to `props.initialStep` (see
 // its `ref()` initializer below) - if the card opens the wizard directly on `options`, assigning
@@ -657,6 +667,7 @@ watch(
 	(): boolean => props.visible,
 	(visible, previous): void => {
 		if (previous !== undefined) sessionGeneration++;
+		awaitingKeyedConnection.value = false;
 		if (visible) {
 			currentStep.value = props.initialStep;
 			authUrl.value = undefined;

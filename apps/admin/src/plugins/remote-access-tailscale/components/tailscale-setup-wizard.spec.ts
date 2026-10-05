@@ -428,6 +428,78 @@ describe('TailscaleSetupWizard', () => {
 		expect(stepsProp(wrapper)).toBe(1);
 	});
 
+	describe('auth-key login outcomes', () => {
+		const submitKey = async (resultState: string) => {
+			fns.login.mockImplementationOnce(async () => {
+				isPolling.value = ['pending-auth', 'connecting', 'pending-approval'].includes(resultState);
+				return { state: resultState };
+			});
+			const wrapper = mountWizard('signin');
+			wrapper.findComponent({ name: 'ElInput' }).vm.$emit('update:model-value', 'synthetic-invalid-key');
+			await nextTick();
+			wrapper.findAllComponents({ name: 'ElButton' })[1]!.vm.$emit('click');
+			await flushPromises();
+			return wrapper;
+		};
+
+		it.each(['setup-required', 'disconnected', 'error', 'unavailable', 'stopped'])(
+			'keeps failed %s sign-in on the sign-in step, clears the key and reports failure',
+			async (state) => {
+				const wrapper = await submitKey(state);
+				expect(fns.login).toHaveBeenCalledWith('synthetic-invalid-key');
+				expect(stepsProp(wrapper)).toBe(1);
+				expect(wrapper.findComponent({ name: 'ElInput' }).props('modelValue')).toBe('');
+				expect(fns.flashError).toHaveBeenCalledWith('remoteAccessTailscalePlugin.messages.loginFailed');
+				wrapper.unmount();
+			}
+		);
+
+		it('advances immediately only after a connected response', async () => {
+			const wrapper = await submitKey('connected');
+			expect(stepsProp(wrapper)).toBe(2);
+			expect(fns.flashError).not.toHaveBeenCalled();
+			wrapper.unmount();
+		});
+
+		it.each(['connecting', 'pending-approval'])('waits for a %s response to become connected before advancing', async (state) => {
+			const wrapper = await submitKey(state);
+			expect(stepsProp(wrapper)).toBe(1);
+			expect(fns.flashError).not.toHaveBeenCalled();
+			status.value = { state: 'connected', endpoints: [] };
+			isPolling.value = false;
+			await nextTick();
+			expect(stepsProp(wrapper)).toBe(2);
+			expect(fns.flashError).not.toHaveBeenCalled();
+			wrapper.unmount();
+		});
+
+		it.each(['connecting', 'pending-auth'])(
+			'reports a late %s auth-key failure without an auth URL when polling stops after the terminal status arrives',
+			async (state) => {
+				const wrapper = await submitKey(state);
+				status.value = { state: 'setup-required', endpoints: [], message: 'Sign-in was rejected.' };
+				await nextTick();
+				expect(fns.flashError).not.toHaveBeenCalled();
+				isPolling.value = false;
+				await nextTick();
+				expect(stepsProp(wrapper)).toBe(1);
+				expect(fns.flashError).toHaveBeenCalledExactlyOnceWith('Sign-in was rejected.');
+				wrapper.unmount();
+			}
+		);
+
+		it('does not report a keyed attempt from a previous wizard session', async () => {
+			const wrapper = await submitKey('connecting');
+			await wrapper.setProps({ visible: false });
+			await wrapper.setProps({ visible: true });
+			status.value = { state: 'setup-required', endpoints: [] };
+			isPolling.value = false;
+			await nextTick();
+			expect(fns.flashError).not.toHaveBeenCalled();
+			wrapper.unmount();
+		});
+	});
+
 	it('ignores a keyed login result from a closed session and clears the key', async () => {
 		let resolveLogin!: (result: { state: string }) => void;
 		fns.login.mockImplementationOnce(
