@@ -281,7 +281,12 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   provider. Zero full rounds completed. A local reproduction uses an IPv4 packet on an interface
   whose IPv4 mask has disappeared. The receive-boundary correction merged in #1165 as `512626cc2`;
   alpha.45 (`483a89911`) passed normal upgrade, exact artifact/data/session checks and automatic
-  Tailscale recovery. Repeat the lifecycle gate on this candidate. A separate clean alpha.44
+  Tailscale recovery. One API/CLI/service/reachability cycle passed without a process restart, but
+  browser HTTP 429 stopped the full UI gate. Public revisions trigger unbounded immediate private
+  metadata reads in the shared admin reconciliation hook; concurrent observers can amplify requests
+  even on separate client addresses. The follow-up adds a shared five-second event-read cadence
+  with a trailing update; the production rate limit is unchanged. Repeat the gate after release.
+  A separate clean alpha.44
   observation reproduced missing controls after natural access-token expiry: successful refresh
   leaves tokens present but clears the owner profile. A real-store/HTTP-client regression reproduced
   the failure before the auth middleware correction; release acceptance must include a natural-expiry rerun.

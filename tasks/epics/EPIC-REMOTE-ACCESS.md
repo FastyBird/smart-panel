@@ -220,6 +220,21 @@ reads across distinct client addresses. A matching echo of the browser's own com
 by itself establish a self-sustaining loop. Bound event-driven metadata refreshes and repeat R4;
 do not raise the production request limit to accommodate the acceptance harness.
 
+The follow-up admin correction coalesces those events per provider store and leaves at least five
+seconds after a completed status read before event-driven metadata reconciliation. Pending updates
+receive one trailing read; stable satisfied sessions retain their 30-second fallback. Explicit action
+refreshes and epoch resynchronization keep their existing immediate paths. The regression reproduces
+600 reads for 600 revisions over one simulated minute before the fix, and checks the bounded cadence,
+latest metadata, failed-read spacing, external polling and subscriber cleanup afterwards. This
+correction is not deployed in alpha.45; the full twenty-cycle UI gate remains open.
+Validation passed: 26 focused hook/card tests, admin type checking, changed-file lint/format and
+whitespace checks. Under 600 revisions per simulated minute, the corrected hook performs 11 reads
+within that minute and one trailing read carrying the latest metadata.
+
+Post-test alpha.45 checks confirmed TLS-verified HTTPS and authenticated WebSocket-only event
+reception from the Mac. The captured backend journal contains no recurrence of the mDNS assertion
+or Serve-handler failure. These checks do not substitute for the remaining hardware matrix.
+
 A separate admin failure was reproduced before this upgrade with a normally initialized owner
 session on alpha.44. The page initially offered Disconnect. After natural access-token expiry,
 `POST /auth/refresh` returned HTTP 201, but the profile became null and the controls disappeared
