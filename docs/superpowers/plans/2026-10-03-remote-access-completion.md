@@ -319,7 +319,9 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   application restart, and re-enable with actual HTTP/HTTPS reachability passed on the Pi 5.
   Enabled host reboot restored CLI/API/UI and preserved all data/configuration, but its Mac
   reachability probe failed while that client was offline from the coordination server/DERP;
-  the end-to-end reboot row remains partial pending an independent phone check/client recovery.
+  the user independently confirmed cellular admin loading after the reboot. Automatic recovery
+  and cellular URL reachability therefore pass; the Mac client limitation remains separate.
+  Post-reboot fresh login/live updates and phone WebSocket transport were not reverified.
   A spare Pi 4 and second SD card are available for fresh-image/reset acceptance once prepared.
 
 - R5: [#1159](https://github.com/FastyBird/smart-panel/issues/1159), Cloudflare lifecycle and acceptance.

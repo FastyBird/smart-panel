@@ -364,14 +364,19 @@ The existing admin page returned to Connected with its owner profile and control
 after submission, without reload. The recorder saw one expected transport failure while the host
 was down, no HTTP 429, no overflow, and at most five private status reads per rolling minute.
 
-The host-reboot reachability row remains **partial**: the Mac's 15-second HTTPS convergence probe
+The initial Mac host-reboot reachability check failed: its 15-second HTTPS convergence probe
 and subsequent WebSocket-only probe timed out. Diagnosis found the Mac in Running state but
 Self.Online false, with a coordination-server connection warning; netcheck could reach neither
 UDP nor DERP. Ordinary HTTPS to the coordination/login hosts still returned 200. Pi remained
 Running/self-online with the expected Serve HTTPS handler. One Mac down/up and socket rebind did
-not restore that client's connectivity. No Pi reconnect or second reboot was attempted. A phone
-check after this reboot is pending; the earlier phone confirmation applies to alpha.46. Do not
-mark end-to-end reboot acceptance complete from API/CLI state alone.
+not restore that client's connectivity. No Pi reconnect or second reboot was attempted.
+
+On 2026-10-05 the user independently confirmed that the admin loads at the same Tailscale HTTPS
+URL after this reboot from a phone with Wi-Fi disabled and Tailscale enabled. The reboot row now
+passes for automatic node recovery and user-confirmed cellular admin reachability. The failed
+Mac probes remain recorded as a separate client/network limitation. This confirmation does not
+establish a fresh post-reboot login, live device update or captured phone WebSocket transport;
+the earlier complete loading/login/live-update phone confirmation applies to alpha.46.
 
 Post-lifecycle database topology/counts, migrations, schema, accounts/credentials, node identity
 and semantic comparison of the full saved configuration against the retained backup all passed,
@@ -410,7 +415,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 
 ##### Lifecycle
 
-- [ ] Reboot the Pi: the node reconnects without interaction and the URL still works.
+- [x] Reboot the Pi: the node reconnects without interaction and the URL still works. Alpha.47 automatic CLI/API/UI recovery and user-confirmed cellular admin loading passed on 2026-10-05; the Mac client remained offline.
 - [ ] Disable the plugin (Extensions): the node disconnects, external URLs disappear; re-enable reconnects. Alpha.47 config PATCH and live Remote access card checks passed; the Extensions UI click path itself remains untested.
 - [ ] Sign in with an auth key (advanced tab) on a second fresh install or after Sign out: node connects without the browser step.
 - [ ] Sign out: the device disappears from the tailnet admin console; the card returns to setup-required.
