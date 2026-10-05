@@ -145,11 +145,18 @@ describe('Tailscale card with the real status store and backend envelopes', () =
 		expect(fns.get).toHaveBeenCalledTimes(2);
 	});
 
-	it('refreshes private control after a public event without a GET/event loop', async () => {
+	it('updates public state immediately and reconciles private control after the bounded event cadence', async () => {
 		fns.get.mockResolvedValueOnce(response(snapshot(1, 'connected', 'started', null, ['disconnect']))).mockResolvedValue(response(snapshot(2)));
 		await mountCard();
 		const event = snapshot(2);
 		store.onEvent({ event: EventType.PROVIDER_STATUS, data: event });
+		await flushPromises();
+		expect(store.data?.state).toBe('disconnected');
+		expect(store.data?.control?.availableActions).toEqual(['disconnect']);
+		expect(fns.get).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(4_999);
+		expect(fns.get).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(1);
 		await flushPromises();
 		expect(primary().text()).toContain('buttons.connect');
 		expect(fns.get).toHaveBeenCalledTimes(2);

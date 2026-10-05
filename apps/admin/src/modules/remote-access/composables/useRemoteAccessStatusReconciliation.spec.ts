@@ -26,6 +26,29 @@ const source = (state = 'connected') => ({
 	semaphore: ref({ getting: false }),
 });
 
+const metadataStore = (status: ReturnType<typeof source>) => {
+	const metadataRevision = ref(0);
+	const startedReads: number[] = [];
+	const get = vi.fn().mockImplementation(async () => {
+		status.semaphore.value.getting = true;
+		startedReads.push(Date.now());
+		try {
+			await new Promise<void>((resolve) => setTimeout(resolve, 20));
+			const snapshot = { ...status.data.value! };
+			metadataRevision.value = snapshot.revision!;
+			status.data.value = snapshot;
+			// The backend publishes every observation; its matching websocket echo can arrive
+			// after the HTTP response has already released the store's GET semaphore.
+			setTimeout(() => {
+				status.data.value = { ...snapshot };
+			}, 10);
+		} finally {
+			status.semaphore.value.getting = false;
+		}
+	});
+	return { get, metadataRevision, startedReads };
+};
+
 describe('useRemoteAccessStatusReconciliation', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -193,10 +216,118 @@ describe('useRemoteAccessStatusReconciliation', () => {
 		subscribe(store, status);
 		subscribe(store, status);
 		status.data.value = { epoch: 'backend', revision: 2, state: 'disconnected' };
-		await vi.advanceTimersByTimeAsync(0);
+		await vi.advanceTimersByTimeAsync(5_000);
 		expect(store.get).toHaveBeenCalledTimes(1);
 		status.data.value = { epoch: 'backend', revision: 3, state: 'connected' };
 		await vi.advanceTimersByTimeAsync(10_000);
+		expect(store.get).toHaveBeenCalledTimes(1);
+	});
+
+	it('coalesces 20 publication revisions into one trailing read of the latest private metadata', async () => {
+		const status = source();
+		const store = metadataStore(status);
+		subscribe(store, status);
+		subscribe(store, status);
+		for (let revision = 2; revision <= 21; revision++) {
+			await vi.advanceTimersByTimeAsync(100);
+			status.data.value = { epoch: 'backend', revision, state: 'connected' };
+		}
+		expect(store.get).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(2_999);
+		expect(store.get).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(21);
+		expect(store.get).toHaveBeenCalledTimes(1);
+		expect(store.metadataRevision.value).toBe(21);
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(store.get).toHaveBeenCalledTimes(1);
+	});
+
+	it('bounds reconciliation during 600 new publication revisions over one minute', async () => {
+		const status = source();
+		const store = metadataStore(status);
+		subscribe(store, status);
+		for (let revision = 2; revision <= 601; revision++) {
+			await vi.advanceTimersByTimeAsync(100);
+			status.data.value = { epoch: 'backend', revision, state: 'connected' };
+		}
+		expect(store.startedReads).toHaveLength(11);
+		for (let index = 1; index < store.startedReads.length; index++) {
+			expect(store.startedReads[index] - store.startedReads[index - 1]).toBeGreaterThanOrEqual(5_020);
+		}
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(store.get).toHaveBeenCalledTimes(12);
+		expect(store.metadataRevision.value).toBe(601);
+	});
+
+	it('does not turn a delayed matching publication echo into another metadata read', async () => {
+		const status = source();
+		const store = metadataStore(status);
+		subscribe(store, status);
+		const read = store.get();
+		await vi.advanceTimersByTimeAsync(20);
+		await read;
+		await vi.advanceTimersByTimeAsync(29_999);
+		expect(store.get).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(store.get).toHaveBeenCalledTimes(2);
+	});
+
+	it('keeps failed event reconciliation pending without retrying before five seconds after completion', async () => {
+		const status = source();
+		const store = metadataStore(status);
+		store.get.mockImplementationOnce(async () => {
+			status.semaphore.value.getting = true;
+			try {
+				await new Promise<void>((resolve) => setTimeout(resolve, 20));
+				throw new Error('offline');
+			} finally {
+				status.semaphore.value.getting = false;
+			}
+		});
+		subscribe(store, status);
+		status.data.value = { epoch: 'backend', revision: 2, state: 'connected' };
+		await vi.advanceTimersByTimeAsync(5_020);
+		expect(store.get).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(4_999);
+		expect(store.get).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(21);
+		expect(store.get).toHaveBeenCalledTimes(2);
+		expect(store.metadataRevision.value).toBe(2);
+	});
+
+	it('lets a three-second external poller satisfy pending event metadata reads', async () => {
+		const status = source();
+		const store = metadataStore(status);
+		subscribe(store, status);
+		const poller = setInterval(() => void store.get(), 3_000);
+		try {
+			for (let revision = 2; revision <= 601; revision++) {
+				await vi.advanceTimersByTimeAsync(100);
+				status.data.value = { epoch: 'backend', revision, state: 'connected' };
+			}
+			await vi.advanceTimersByTimeAsync(30);
+			expect(store.get).toHaveBeenCalledTimes(20);
+			expect(store.metadataRevision.value).toBe(601);
+		} finally {
+			clearInterval(poller);
+		}
+		await vi.advanceTimersByTimeAsync(25_000);
+		expect(store.get).toHaveBeenCalledTimes(20);
+	});
+
+	it('retains a queued event read until the last subscriber leaves, then cancels it', async () => {
+		const status = source();
+		const store = metadataStore(status);
+		const first = subscribe(store, status);
+		const second = subscribe(store, status);
+		status.data.value = { epoch: 'backend', revision: 2, state: 'connected' };
+		first.stop();
+		await vi.advanceTimersByTimeAsync(5_030);
+		expect(store.get).toHaveBeenCalledTimes(1);
+		status.data.value = { epoch: 'backend', revision: 3, state: 'connected' };
+		second.stop();
+		expect(vi.getTimerCount()).toBe(0);
+		await vi.advanceTimersByTimeAsync(60_000);
 		expect(store.get).toHaveBeenCalledTimes(1);
 	});
 
