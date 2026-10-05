@@ -77,15 +77,16 @@ export const useRemoteAccessStatusReconciliation = <T extends StatusSnapshot>(
 				}
 			};
 
-			// Login/setup pollers use the same store. Their completed reads also satisfy the fallback,
-			// including failed reads, which must leave time before another bounded retry.
+			// Login/setup pollers share the request budget and reset the cadence on completion.
+			// The semaphore does not expose success, so retain queued events for one trailing read
+			// after polling stops; failures must not postpone their metadata refresh to the fallback.
 			watch(
 				() => source.semaphore.value.getting,
 				(getting) => {
 					cancelEventRead();
 					if (!getting) {
 						lastReconciliation = Date.now();
-						if (!reading) pendingEvent = false;
+						scheduleEventRead();
 					}
 				},
 				{ flush: 'sync' }
