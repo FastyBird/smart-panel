@@ -314,6 +314,26 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   The user confirmed alpha.46 admin loading, login and live device updates without reload from
   a phone with Wi-Fi disabled and Tailscale enabled. Full R4 remains open; the broader
   install/auth/reset/upgrade variants are still unperformed.
+  Both follow-ups are merged (#1168 `2593d8436`, #1169 `61c26995f`) and deployed in alpha.47
+  (`38d59a30f`) through one verified normal upgrade. Config disable, persistence across an
+  application restart, and re-enable with actual HTTP/HTTPS reachability passed on the Pi 5.
+  Enabled host reboot restored CLI/API/UI and preserved all data/configuration, but its Mac
+  reachability probe failed while that client was offline from the coordination server/DERP;
+  the user independently confirmed cellular admin loading after the reboot. Automatic recovery
+  and cellular URL reachability therefore pass; the Mac client limitation remains separate.
+  Post-reboot fresh login/live updates and phone WebSocket transport were not reverified.
+  Fresh official alpha.47 image acceptance then passed boot, firstboot and UI onboarding on the
+  separate Pi 4 (Debian 12 arm64, Tailscale 1.102.4). Extensions enable, preinstalled-package setup,
+  interactive link/QR approval and default Serve HTTPS passed. The Services view showed Running /
+  Healthy. Extensions UI disable/re-enable preserved identity and removed/restored actual HTTPS
+  reachability from the Pi 5. A fresh HTTPS owner login and closed display-registration status passed
+  from that peer. The MCP URL suggestion filled the form without persisting until Save. The user
+  confirmed that the new Pi 4 login page loads without a certificate error over cellular Tailscale.
+  Phone login/live updates on this fresh host, phone transport, auth-key login and reset remain
+  pending; neither login-page loading nor peer results substitute for them. Fresh acceptance also found installer
+  [#1171](https://github.com/FastyBird/smart-panel/issues/1171): the captive portal remains active
+  after Ethernet becomes available because it only checks connectivity at startup. That fix and
+  hardware verification remain open. Full R4 remains open.
 
 - R5: [#1159](https://github.com/FastyBird/smart-panel/issues/1159), Cloudflare lifecycle and acceptance.
 - R6/R7: [#914](https://github.com/FastyBird/smart-panel/issues/914) / [#913](https://github.com/FastyBird/smart-panel/issues/913).
