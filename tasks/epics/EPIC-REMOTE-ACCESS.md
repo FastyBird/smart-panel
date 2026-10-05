@@ -403,7 +403,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 - [ ] Admin → Remote access: the page shows the internal URL and the Tailscale card reads "Not set up" (image) or "Not installed" (npm install without the package).
 - [ ] Set up: on the image it completes in seconds (package pre-installed); on an npm install it installs from the apt repository and reports each step live.
 - [ ] Sign in: a login link and QR code appear; approving on the phone flips the card to Connected with tailnet name, MagicDNS name and Tailscale IPs.
-- [x] Extensions → Services lists `remote-access-tailscale-plugin / node` as started and healthy. Verified through its API during alpha.46 cycles and alpha.47 lifecycle observations.
+- [ ] Extensions → Services lists `remote-access-tailscale-plugin / node` as started and healthy. Its API passed alpha.46/47 checks; the Services view itself remains unobserved.
 
 ##### HTTPS and remote use
 
