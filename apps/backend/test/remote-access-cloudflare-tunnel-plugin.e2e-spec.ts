@@ -22,8 +22,8 @@ import { RemoteAccessStatusService } from '../src/modules/remote-access/services
 import { PrivilegedWorkerUnavailableException } from '../src/modules/system/system.exceptions';
 import { RolesGuard } from '../src/modules/users/guards/roles.guard';
 import { UserRole } from '../src/modules/users/users.constants';
-import { SetupController } from '../src/plugins/remote-access-cloudflare-tunnel/controllers/setup.controller';
-import { StatusController } from '../src/plugins/remote-access-cloudflare-tunnel/controllers/status.controller';
+import { CloudflareTunnelSetupController } from '../src/plugins/remote-access-cloudflare-tunnel/controllers/setup.controller';
+import { CloudflareTunnelStatusController } from '../src/plugins/remote-access-cloudflare-tunnel/controllers/status.controller';
 import { RemoteAccessCloudflareTunnelPluginConfigModel } from '../src/plugins/remote-access-cloudflare-tunnel/models/config.model';
 import { CloudflareTunnelManagedService } from '../src/plugins/remote-access-cloudflare-tunnel/services/cloudflare-tunnel-managed.service';
 import { CloudflareTunnelProviderService } from '../src/plugins/remote-access-cloudflare-tunnel/services/cloudflare-tunnel-provider.service';
@@ -162,7 +162,7 @@ describe('Remote access Cloudflare Tunnel plugin endpoints (e2e)', () => {
 
 		const moduleFixture = await Test.createTestingModule({
 			imports: [EventEmitterModule.forRoot()],
-			controllers: [StatusController, SetupController],
+			controllers: [CloudflareTunnelStatusController, CloudflareTunnelSetupController],
 			providers: [
 				{ provide: APP_GUARD, useClass: TestCredentialGuard },
 				{ provide: APP_GUARD, useClass: RolesGuard },

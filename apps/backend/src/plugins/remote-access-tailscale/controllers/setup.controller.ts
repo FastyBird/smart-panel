@@ -64,13 +64,13 @@ import { buildTailscaleControlModel } from '../utils/tailscale-control.utils';
 
 /**
  * Tailscale connection, privileged setup and sign-in/preference actions. Kept separate from
- * `StatusController` (a plain `GET`) so neither file grows past what it
+ * `TailscaleStatusController` (a plain `GET`) so neither file grows past what it
  * needs to hold.
  */
 @ApiTags(REMOTE_ACCESS_TAILSCALE_PLUGIN_API_TAG_NAME)
 @Controller()
-export class SetupController {
-	private readonly logger = createExtensionLogger(REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'SetupController');
+export class TailscaleSetupController {
+	private readonly logger = createExtensionLogger(REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'TailscaleSetupController');
 
 	constructor(
 		private readonly setupService: TailscaleSetupService,
@@ -330,7 +330,7 @@ export class SetupController {
 		throw new InternalServerErrorException(fallbackMessage);
 	}
 
-	/** Shared by `logout`/`resetPreferences` — the same composition `StatusController.getStatus()` uses, including the no-store guard for a state that happens to come back pending-auth. */
+	/** Shared by `logout`/`resetPreferences` — the same composition `TailscaleStatusController.getStatus()` uses, including the no-store guard for a state that happens to come back pending-auth. */
 	private async buildStatusResponse(
 		res: Response,
 		request?: AuthenticatedRequest,

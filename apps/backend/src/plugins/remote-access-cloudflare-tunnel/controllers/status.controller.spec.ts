@@ -7,10 +7,10 @@ import { CloudflareTunnelManagedService } from '../services/cloudflare-tunnel-ma
 import { CloudflareTunnelProviderService } from '../services/cloudflare-tunnel-provider.service';
 import { CloudflareTunnelSetupService } from '../services/cloudflare-tunnel-setup.service';
 
-import { StatusController } from './status.controller';
+import { CloudflareTunnelStatusController } from './status.controller';
 
-describe('StatusController', () => {
-	let controller: StatusController;
+describe('CloudflareTunnelStatusController', () => {
+	let controller: CloudflareTunnelStatusController;
 	let providerService: { getStatus: jest.Mock };
 	let tunnelManagedService: { refreshRequirements: jest.Mock };
 	let setupService: { getLastJob: jest.Mock };
@@ -44,7 +44,7 @@ describe('StatusController', () => {
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
-			controllers: [StatusController],
+			controllers: [CloudflareTunnelStatusController],
 			providers: [
 				{ provide: CloudflareTunnelProviderService, useValue: providerService },
 				{
@@ -71,7 +71,7 @@ describe('StatusController', () => {
 			],
 		}).compile();
 
-		controller = module.get<StatusController>(StatusController);
+		controller = module.get<CloudflareTunnelStatusController>(CloudflareTunnelStatusController);
 	});
 
 	it('composes the endpoint, details and requirements into one response', async () => {

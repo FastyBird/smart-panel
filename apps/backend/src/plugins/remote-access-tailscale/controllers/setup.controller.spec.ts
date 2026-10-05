@@ -22,10 +22,10 @@ import { TailscaleNodeManagedService } from '../services/tailscale-node-managed.
 import { TailscaleProviderService } from '../services/tailscale-provider.service';
 import { TailscaleSetupService, TailscaleSetupUnavailableException } from '../services/tailscale-setup.service';
 
-import { SetupController } from './setup.controller';
+import { TailscaleSetupController } from './setup.controller';
 
-describe('SetupController', () => {
-	let controller: SetupController;
+describe('TailscaleSetupController', () => {
+	let controller: TailscaleSetupController;
 	let setupService: { install: jest.Mock; getLastJob: jest.Mock };
 	let loginService: {
 		login: jest.Mock;
@@ -70,7 +70,7 @@ describe('SetupController', () => {
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
-			controllers: [SetupController],
+			controllers: [TailscaleSetupController],
 			providers: [
 				{
 					provide: PlatformService,
@@ -104,7 +104,7 @@ describe('SetupController', () => {
 			],
 		}).compile();
 
-		controller = module.get<SetupController>(SetupController);
+		controller = module.get<TailscaleSetupController>(TailscaleSetupController);
 	});
 
 	function fakeResponse(): FastifyReply {

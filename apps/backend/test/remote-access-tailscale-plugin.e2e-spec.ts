@@ -24,8 +24,8 @@ import { RemoteAccessStatusService } from '../src/modules/remote-access/services
 import { PrivilegedWorkerUnavailableException } from '../src/modules/system/system.exceptions';
 import { RolesGuard } from '../src/modules/users/guards/roles.guard';
 import { UserRole } from '../src/modules/users/users.constants';
-import { SetupController } from '../src/plugins/remote-access-tailscale/controllers/setup.controller';
-import { StatusController } from '../src/plugins/remote-access-tailscale/controllers/status.controller';
+import { TailscaleSetupController } from '../src/plugins/remote-access-tailscale/controllers/setup.controller';
+import { TailscaleStatusController } from '../src/plugins/remote-access-tailscale/controllers/status.controller';
 import { RemoteAccessTailscalePluginConfigModel } from '../src/plugins/remote-access-tailscale/models/config.model';
 import {
 	TailscaleChildTerminationException,
@@ -210,7 +210,7 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 			// getPlatformType() above, so it never observes platformType while
 			// still undefined right after boot (RA-12 F7).
 			getPlatformTypeAsync: jest.fn().mockResolvedValue(PlatformType.RASPBERRY),
-			// StatusController's `privileged_setup` field (RA-20).
+			// TailscaleStatusController's `privileged_setup` field (RA-20).
 			getPrivilegedWorkerSupport: jest
 				.fn()
 				.mockResolvedValue({ supported: true, reason: null, checkedAt: '2026-09-07T00:00:00.000Z' }),
@@ -227,7 +227,7 @@ describe('Remote access Tailscale plugin status endpoint (e2e)', () => {
 
 		const moduleFixture = await Test.createTestingModule({
 			imports: [EventEmitterModule.forRoot()],
-			controllers: [StatusController, SetupController],
+			controllers: [TailscaleStatusController, TailscaleSetupController],
 			providers: [
 				{ provide: APP_GUARD, useClass: TestCredentialGuard },
 				{ provide: APP_GUARD, useClass: RolesGuard },
