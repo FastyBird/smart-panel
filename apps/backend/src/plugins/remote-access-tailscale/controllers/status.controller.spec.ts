@@ -18,10 +18,10 @@ import { TailscaleNodeManagedService } from '../services/tailscale-node-managed.
 import { TailscaleProviderService } from '../services/tailscale-provider.service';
 import { TailscaleSetupService } from '../services/tailscale-setup.service';
 
-import { StatusController } from './status.controller';
+import { TailscaleStatusController } from './status.controller';
 
-describe('StatusController', () => {
-	let controller: StatusController;
+describe('TailscaleStatusController', () => {
+	let controller: TailscaleStatusController;
 	let acceptedStatus: { getCachedProviderSnapshot: jest.Mock };
 	let providerService: { getStatus: jest.Mock };
 	let nodeManagedService: { evaluateRequirements: jest.Mock; getControlState: jest.Mock };
@@ -64,7 +64,7 @@ describe('StatusController', () => {
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
-			controllers: [StatusController],
+			controllers: [TailscaleStatusController],
 			providers: [
 				{ provide: TailscaleProviderService, useValue: providerService },
 				{
@@ -95,7 +95,7 @@ describe('StatusController', () => {
 			],
 		}).compile();
 
-		controller = module.get<StatusController>(StatusController);
+		controller = module.get<TailscaleStatusController>(TailscaleStatusController);
 		acceptedStatus = module.get(RemoteAccessStatusService);
 	});
 

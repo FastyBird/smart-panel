@@ -11,8 +11,8 @@ import { ApiTag } from '../../modules/swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../../modules/system/services/factory-reset-registry.service';
 
-import { SetupController } from './controllers/setup.controller';
-import { StatusController } from './controllers/status.controller';
+import { CloudflareTunnelSetupController } from './controllers/setup.controller';
+import { CloudflareTunnelStatusController } from './controllers/status.controller';
 import { UpdateRemoteAccessCloudflareTunnelPluginConfigDto } from './dto/update-config.dto';
 import { RemoteAccessCloudflareTunnelPluginConfigModel } from './models/config.model';
 import {
@@ -35,7 +35,7 @@ import { CloudflaredProcessService } from './services/cloudflared-process.servic
 })
 @Module({
 	imports: [RemoteAccessModule, PlatformModule, NestConfigModule],
-	controllers: [StatusController, SetupController],
+	controllers: [CloudflareTunnelStatusController, CloudflareTunnelSetupController],
 	providers: [
 		CloudflaredCliService,
 		CloudflaredProcessService,

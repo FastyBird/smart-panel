@@ -15,10 +15,10 @@ import {
 	CloudflareTunnelSetupUnavailableException,
 } from '../services/cloudflare-tunnel-setup.service';
 
-import { SetupController } from './setup.controller';
+import { CloudflareTunnelSetupController } from './setup.controller';
 
-describe('SetupController', () => {
-	let controller: SetupController;
+describe('CloudflareTunnelSetupController', () => {
+	let controller: CloudflareTunnelSetupController;
 	let setupService: { install: jest.Mock };
 	let providerService: { getStatus: jest.Mock };
 	let tunnelManagedService: { stop: jest.Mock; refreshRequirements: jest.Mock };
@@ -45,7 +45,7 @@ describe('SetupController', () => {
 		configService = { updatePluginConfig: jest.fn().mockResolvedValue(undefined) };
 
 		const module: TestingModule = await Test.createTestingModule({
-			controllers: [SetupController],
+			controllers: [CloudflareTunnelSetupController],
 			providers: [
 				{ provide: CloudflareTunnelSetupService, useValue: setupService },
 				{ provide: CloudflareTunnelProviderService, useValue: providerService },
@@ -76,7 +76,7 @@ describe('SetupController', () => {
 			],
 		}).compile();
 
-		controller = module.get<SetupController>(SetupController);
+		controller = module.get<CloudflareTunnelSetupController>(CloudflareTunnelSetupController);
 	});
 
 	describe('install', () => {

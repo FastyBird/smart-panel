@@ -29,8 +29,11 @@ import { CloudflareTunnelSetupService } from '../services/cloudflare-tunnel-setu
 @ApiTags(REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_API_TAG_NAME)
 @Controller()
 @Roles(UserRole.ADMIN, UserRole.OWNER)
-export class StatusController {
-	private readonly logger = createExtensionLogger(REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME, 'StatusController');
+export class CloudflareTunnelStatusController {
+	private readonly logger = createExtensionLogger(
+		REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME,
+		'CloudflareTunnelStatusController',
+	);
 
 	constructor(
 		private readonly statusService: RemoteAccessStatusService,

@@ -34,8 +34,8 @@ import { buildTailscaleControlModel } from '../utils/tailscale-control.utils';
 @ApiTags(REMOTE_ACCESS_TAILSCALE_PLUGIN_API_TAG_NAME)
 @Controller()
 @Roles(UserRole.ADMIN, UserRole.OWNER)
-export class StatusController {
-	private readonly logger = createExtensionLogger(REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'StatusController');
+export class TailscaleStatusController {
+	private readonly logger = createExtensionLogger(REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME, 'TailscaleStatusController');
 
 	constructor(
 		private readonly statusService: RemoteAccessStatusService,

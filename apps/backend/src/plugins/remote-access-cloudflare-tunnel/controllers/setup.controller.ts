@@ -51,7 +51,7 @@ import {
 
 /**
  * The two owner-only actions that mutate the tunnel: privileged install and reset. Kept
- * separate from `StatusController` (a plain `GET`, admin+owner) mirroring `SetupController` in
+ * separate from `CloudflareTunnelStatusController` (a plain `GET`, admin+owner) mirroring `CloudflareTunnelSetupController` in
  * the Tailscale plugin. Connect/disconnect/reconnect are the generic Extensions service actions
  * (`POST /services/plugin/remote-access-cloudflare-tunnel-plugin/tunnel/start|stop|restart`) —
  * this plugin does not add its own connect/disconnect endpoints.
@@ -59,8 +59,11 @@ import {
 @ApiTags(REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_API_TAG_NAME)
 @Controller()
 @Roles(UserRole.OWNER)
-export class SetupController {
-	private readonly logger = createExtensionLogger(REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME, 'SetupController');
+export class CloudflareTunnelSetupController {
+	private readonly logger = createExtensionLogger(
+		REMOTE_ACCESS_CLOUDFLARE_TUNNEL_PLUGIN_NAME,
+		'CloudflareTunnelSetupController',
+	);
 
 	constructor(
 		private readonly setupService: CloudflareTunnelSetupService,
