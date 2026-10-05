@@ -270,7 +270,16 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   verification table for the scoped results. Alpha.43 (PR #1163 merged as `cf9441c1a`) passed
   normal application upgrade and artifact/data checks, but Tailscale recovery failed because the
   plugin passes `--advertise-tags` to `tailscale set`. The installed 1.102.3 CLI supports that flag
-  only on `up`; explicit Connect reproduces the failure. Fix and repeat before starting the cycles.
+  only on `up`; explicit Connect reproduces the failure. PR #1164 fixes the flag contract and retains
+  pending tag changes after failed or cancelled writes so an identical configuration save can retry.
+  It merged as `6ddc03e46`; all CI checks passed and CodeRabbit reported Minimal merge risk for the
+  final commit. Local validation: 14 Tailscale suites / 415 tests, backend type checking and changed-file
+  lint/format passed. Alpha.44 passed the normal upgrade, data/artifact checks and automatic Tailscale
+  recovery. Serve HTTPS became available after the user enabled tailnet certificates. The lifecycle
+  runner then stopped at its first Disconnect: ciao's mDNS packet handler threw an uncaught IP/mask
+  family assertion, exiting the backend process; systemd restarted the application and its enabled
+  provider. Zero full rounds completed. A local reproduction uses an IPv4 packet on an interface
+  whose IPv4 mask has disappeared. Fix that receive boundary and repeat the gate on a new release.
 - R5: [#1159](https://github.com/FastyBird/smart-panel/issues/1159), Cloudflare lifecycle and acceptance.
 - R6/R7: [#914](https://github.com/FastyBird/smart-panel/issues/914) / [#913](https://github.com/FastyBird/smart-panel/issues/913).
 

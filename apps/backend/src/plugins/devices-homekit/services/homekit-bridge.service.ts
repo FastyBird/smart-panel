@@ -39,6 +39,7 @@ import {
 import { HomeKitUpdatePluginConfigDto } from '../dto/update-config.dto';
 import { HomeKitBridgeStatusModel } from '../models/bridge-status.model';
 import { HomeKitConfigModel } from '../models/config.model';
+import { installCiaoReceiveGuard } from '../utils/ciao-receive-guard';
 
 import { HomeKitCommandDispatcher } from './homekit-command.dispatcher';
 import { HomeKitMapperRegistryService, StagedAccessory } from './homekit-mapper-registry.service';
@@ -253,6 +254,7 @@ export class HomeKitBridgeService implements IManagedExtensionService {
 			await this.populateBridgedAccessories(config.mappedDeviceIds);
 
 			// Publish bridge over local network with mDNS
+			installCiaoReceiveGuard();
 			await this.bridge.publish({
 				username: config.username,
 				pincode: config.pincode,
