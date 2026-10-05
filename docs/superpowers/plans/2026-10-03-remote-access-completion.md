@@ -327,9 +327,10 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   interactive link/QR approval and default Serve HTTPS passed. The Services view showed Running /
   Healthy. Extensions UI disable/re-enable preserved identity and removed/restored actual HTTPS
   reachability from the Pi 5. A fresh HTTPS owner login and closed display-registration status passed
-  from that peer. The MCP URL suggestion filled the form without persisting until Save. Cellular
-  checking of the new host, phone transport, auth-key login and reset remain pending; these peer
-  results do not substitute for them. Fresh acceptance also found installer
+  from that peer. The MCP URL suggestion filled the form without persisting until Save. The user
+  confirmed that the new Pi 4 login page loads without a certificate error over cellular Tailscale.
+  Phone login/live updates on this fresh host, phone transport, auth-key login and reset remain
+  pending; neither login-page loading nor peer results substitute for them. Fresh acceptance also found installer
   [#1171](https://github.com/FastyBird/smart-panel/issues/1171): the captive portal remains active
   after Ethernet becomes available because it only checks connectivity at startup. That fix and
   hardware verification remain open. Full R4 remains open.

@@ -416,8 +416,9 @@ Fresh-image setup and connected-state observations passed:
 
 The Mac still failed DNS and direct-IP tailnet reachability, so these peer checks ran from the Pi 5.
 One initial Pi 4 CLI DNS health warning cleared on the next observation, and DNS resolution worked;
-no DNS setting was changed. A cellular phone check of the new host's login page remains pending.
-These observations do not establish phone login, phone WebSocket transport or live device updates.
+no DNS setting was changed. The user then confirmed that the new Pi 4 login page loads without a
+certificate error on a phone with Wi-Fi disabled and Tailscale enabled. This verifies cellular HTTPS
+reachability; it does not establish phone login, phone WebSocket transport or live device updates.
 
 Fresh-image acceptance also found [#1171](https://github.com/FastyBird/smart-panel/issues/1171):
 the captive portal/hotspot remained active alongside connected Ethernet, leaving admin in Setup Mode.
@@ -447,7 +448,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 ##### HTTPS and remote use
 
 - [ ] Serve HTTPS is on by default: the page lists `https://<node>.<tailnet>.ts.net` as the primary external URL with copy and QR. Default HTTPS, primary URL and actual TLS reachability passed on fresh Pi 4 alpha.47; endpoint copy/QR controls remain untested.
-- [x] From the phone on cellular, open that URL: admin loads, login works, and a live change (toggle a device) updates without reload. User confirmed these visible outcomes on alpha.44 and again on alpha.46 (2026-10-05).
+- [x] From the phone on cellular, open that URL: admin loads, login works, and a live change (toggle a device) updates without reload. User confirmed these visible outcomes on alpha.44 and again on alpha.46 (2026-10-05). The separate fresh Pi 4 alpha.47 phone check confirms only login-page loading without a certificate error.
 - [ ] Verify the phone's WebSocket transport through the proxy. Phone transport frames were not captured; the separate WebSocket-only probe passed from the Mac.
 - [ ] Backend log shows the tailnet client address (not 127.0.0.1) for a login attempt from the phone; the login throttle is per client.
 - [ ] Displays → registration status seen from the phone is "closed" (not treated as local).
