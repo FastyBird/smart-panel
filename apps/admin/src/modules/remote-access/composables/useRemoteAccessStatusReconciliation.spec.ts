@@ -295,11 +295,60 @@ describe('useRemoteAccessStatusReconciliation', () => {
 		expect(store.metadataRevision.value).toBe(2);
 	});
 
-	it('lets a three-second external poller satisfy pending event metadata reads', async () => {
+	it.each([false, true])('retains a queued event through an external read (failed: %s)', async (failed) => {
+		const status = source();
+		const store = metadataStore(status);
+		if (failed) {
+			store.get.mockImplementationOnce(async () => {
+				status.semaphore.value.getting = true;
+				try {
+					await new Promise<void>((resolve) => setTimeout(resolve, 20));
+					throw new Error('offline');
+				} finally {
+					status.semaphore.value.getting = false;
+				}
+			});
+		}
+		subscribe(store, status);
+		await vi.advanceTimersByTimeAsync(1_000);
+		status.data.value = { epoch: 'backend', revision: 2, state: 'connected' };
+		await vi.advanceTimersByTimeAsync(3_500);
+		const externalRead = store.get().catch(() => undefined);
+		await vi.advanceTimersByTimeAsync(20);
+		await externalRead;
+		expect(store.get).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(4_999);
+		expect(store.get).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(21);
+		expect(store.get).toHaveBeenCalledTimes(2);
+		expect(store.metadataRevision.value).toBe(2);
+		await vi.advanceTimersByTimeAsync(25_000);
+		expect(store.get).toHaveBeenCalledTimes(2);
+	});
+
+	it.each(['external', 'worker'])('does not reschedule after disposal during an outstanding %s read', async (caller) => {
+		const status = source();
+		const store = metadataStore(status);
+		const scope = subscribe(store, status);
+		status.data.value = { epoch: 'backend', revision: 2, state: 'connected' };
+		if (caller === 'external') void store.get();
+		else await vi.advanceTimersByTimeAsync(5_000);
+		expect(store.get).toHaveBeenCalledTimes(1);
+		expect(status.semaphore.value.getting).toBe(true);
+		scope.stop();
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(store.get).toHaveBeenCalledTimes(1);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it('defers a queued event behind a three-second poller and performs at most one trailing read', async () => {
 		const status = source();
 		const store = metadataStore(status);
 		subscribe(store, status);
-		const poller = setInterval(() => void store.get(), 3_000);
+		const poller = setInterval(() => {
+			expect(status.semaphore.value.getting).toBe(false);
+			void store.get();
+		}, 3_000);
 		try {
 			for (let revision = 2; revision <= 601; revision++) {
 				await vi.advanceTimersByTimeAsync(100);
@@ -311,8 +360,12 @@ describe('useRemoteAccessStatusReconciliation', () => {
 		} finally {
 			clearInterval(poller);
 		}
-		await vi.advanceTimersByTimeAsync(25_000);
+		await vi.advanceTimersByTimeAsync(4_989);
 		expect(store.get).toHaveBeenCalledTimes(20);
+		await vi.advanceTimersByTimeAsync(21);
+		expect(store.get).toHaveBeenCalledTimes(21);
+		await vi.advanceTimersByTimeAsync(25_000);
+		expect(store.get).toHaveBeenCalledTimes(21);
 	});
 
 	it('retains a queued event read until the last subscriber leaves, then cancels it', async () => {
