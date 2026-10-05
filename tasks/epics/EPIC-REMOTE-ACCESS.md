@@ -204,6 +204,22 @@ configuration, credentials, the existing admin session and Tailscale identity. F
 automatic Tailscale connection passed. The installed 1,719 backend files and 250 admin static files
 match the verified server archive and npm packages. The HomeKit receive guard is now deployed.
 
+The first cycle attempt stopped at remote reachability because the Mac's Tailscale client was
+stopped; the Pi remained healthy. After reconnecting the Mac, Disconnect completed without the
+previous mDNS crash and withdrew the endpoint/proxy contributions and actual tailnet reachability.
+Concurrent UI/test reads through the shared SSH client address reached the 30/minute route limit.
+With UI moved to direct LAN access, one API/CLI/service/reachability round completed (Connect 95 ms,
+Disconnect 610 ms, Connect 200 ms), but the browser still received HTTP 429. Testing was stopped;
+the twenty-round UI gate and rapid-action test remain incomplete. Backend and daemon process
+identities stayed unchanged with zero restarts, and the Pi was left connected/authenticated.
+
+The shared admin reconciliation hook immediately fetches private status on each new public revision
+when no read is active. Its normal polling interval does not bound that event-driven path. Concurrent
+observers publish new revisions even for unchanged status and can therefore amplify the browser's
+reads across distinct client addresses. A matching echo of the browser's own completed GET does not
+by itself establish a self-sustaining loop. Bound event-driven metadata refreshes and repeat R4;
+do not raise the production request limit to accommodate the acceptance harness.
+
 A separate admin failure was reproduced before this upgrade with a normally initialized owner
 session on alpha.44. The page initially offered Disconnect. After natural access-token expiry,
 `POST /auth/refresh` returned HTTP 201, but the profile became null and the controls disappeared
