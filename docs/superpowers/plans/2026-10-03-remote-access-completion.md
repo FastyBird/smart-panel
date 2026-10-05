@@ -279,7 +279,12 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   runner then stopped at its first Disconnect: ciao's mDNS packet handler threw an uncaught IP/mask
   family assertion, exiting the backend process; systemd restarted the application and its enabled
   provider. Zero full rounds completed. A local reproduction uses an IPv4 packet on an interface
-  whose IPv4 mask has disappeared. Fix that receive boundary and repeat the gate on a new release.
+  whose IPv4 mask has disappeared. The receive-boundary correction merged in #1165 as `512626cc2`;
+  alpha.45 (`483a89911`) passed normal upgrade, exact artifact/data/session checks and automatic
+  Tailscale recovery. Repeat the lifecycle gate on this candidate. A separate clean alpha.44
+  observation reproduced missing controls after natural access-token expiry: successful refresh
+  leaves tokens present but clears the owner profile. A real-store/HTTP-client regression reproduced
+  the failure before the auth middleware correction; release acceptance must include a natural-expiry rerun.
 - R5: [#1159](https://github.com/FastyBird/smart-panel/issues/1159), Cloudflare lifecycle and acceptance.
 - R6/R7: [#914](https://github.com/FastyBird/smart-panel/issues/914) / [#913](https://github.com/FastyBird/smart-panel/issues/913).
 

@@ -193,6 +193,50 @@ that short capture is not a completed polling/idle acceptance test. An earlier b
 observation disappeared on standard page initialization; its original authentication setup is not
 established, so it is not recorded as a reproduced session or Tailscale defect.
 
+#### Alpha.45 upgrade and session-expiry finding (2026-10-05)
+
+PR #1165 merged as `512626cc2c2fb92a251e5ec67f0a439717a714cc`. Alpha.45, tag commit
+`483a899113a2118f07b4dcb420e60646adb8010c`, was published by
+[release run 37278364504](https://github.com/FastyBird/smart-panel/actions/runs/37278364504)
+and installed through one normal system-module upgrade from alpha.44. The updater completed and
+cleared its lock. Verification preserved all 111 device identities/topology, 28 migrations,
+configuration, credentials, the existing admin session and Tailscale identity. Fresh login and
+automatic Tailscale connection passed. The installed 1,719 backend files and 250 admin static files
+match the verified server archive and npm packages. The HomeKit receive guard is now deployed.
+
+The first cycle attempt stopped at remote reachability because the Mac's Tailscale client was
+stopped; the Pi remained healthy. After reconnecting the Mac, Disconnect completed without the
+previous mDNS crash and withdrew the endpoint/proxy contributions and actual tailnet reachability.
+Concurrent UI/test reads through the shared SSH client address reached the 30/minute route limit.
+With UI moved to direct LAN access, one API/CLI/service/reachability round completed (Connect 95 ms,
+Disconnect 610 ms, Connect 200 ms), but the browser still received HTTP 429. Testing was stopped;
+the twenty-round UI gate and rapid-action test remain incomplete. Backend and daemon process
+identities stayed unchanged with zero restarts, and the Pi was left connected/authenticated.
+
+The shared admin reconciliation hook immediately fetches private status on each new public revision
+when no read is active. Its normal polling interval does not bound that event-driven path. Concurrent
+observers publish new revisions even for unchanged status and can therefore amplify the browser's
+reads across distinct client addresses. A matching echo of the browser's own completed GET does not
+by itself establish a self-sustaining loop. Bound event-driven metadata refreshes and repeat R4;
+do not raise the production request limit to accommodate the acceptance harness.
+
+A separate admin failure was reproduced before this upgrade with a normally initialized owner
+session on alpha.44. The page initially offered Disconnect. After natural access-token expiry,
+`POST /auth/refresh` returned HTTP 201, but the profile became null and the controls disappeared
+while the replacement token remained present. No navigation or lifecycle action triggered this
+transition. This establishes a session-expiry cause for this captured symptom; the earlier
+uncontrolled observations alone did not establish it.
+
+The request middleware also intercepts the refresh request. Re-entering the session's refresh
+operation returns false while it is already updating, causing the middleware to clear the profile.
+The original successful refresh then restores only the tokens. The correction excludes the refresh
+endpoint from automatic refresh and 401 retry handling. Integration tests use the actual session
+store and HTTP client to reproduce profile loss and cover permission preservation, concurrent
+request coalescing, rejected refreshes and ordinary 401 responses. The correction is not part of
+alpha.45; its release and natural-expiry hardware rerun remain required. Validation passed:
+102 targeted auth/socket tests, all 3,261 admin tests across 382 files, admin type checking,
+changed-file lint/format and whitespace checks.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.

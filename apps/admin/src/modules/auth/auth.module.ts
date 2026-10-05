@@ -28,6 +28,7 @@ import { LOCALE_LANGUAGE_MAP } from '../../locales';
 import type { IUser } from '../users';
 
 import { AUTH_MODULE_NAME, LOCK_SCREEN_STORAGE_KEY, RouteNames } from './auth.constants';
+import { createSessionMiddleware } from './auth.middleware';
 import { locales } from './locales';
 import {
 	ModuleAccountRoutes,
@@ -64,57 +65,7 @@ export default {
 
 		const sessionStore = registerSessionStore(options.store);
 
-		backendClient.use({
-			async onRequest({ request }) {
-				if (sessionStore.tokenPair !== null && sessionStore.isExpired()) {
-					if (!(await sessionStore.refresh())) {
-						sessionStore.clear();
-					}
-				}
-
-				if (sessionStore.tokenPair !== null) {
-					request.headers.set('Authorization', `Bearer ${sessionStore.tokenPair.accessToken}`);
-				}
-
-				return request;
-			},
-			async onResponse({ request, response }) {
-				if (response.status !== 401) {
-					return;
-				}
-
-				const headers = request.headers instanceof Headers ? request.headers : new Headers(request.headers as Record<string, string>);
-
-				if (headers.get('X-Retried') !== null) {
-					// Request retry failed
-					return;
-				}
-
-				if (sessionStore.tokenPair && sessionStore.isExpired()) {
-					if (!(await sessionStore.refresh())) {
-						sessionStore.clear();
-					}
-				} else if ((headers.get('Authorization') || '').startsWith('Bearer')) {
-					// If the request contains Authorization header and the response is 401, then
-					// the token is not valid or not allowed to access the endpoint
-					return;
-				}
-
-				if (sessionStore.tokenPair === null) {
-					// Tokens are missing so no need to retry the request
-					return;
-				}
-
-				const retryHeaders = new Headers(headers);
-
-				retryHeaders.set('X-Retried', '1');
-				retryHeaders.set('Authorization', `Bearer ${sessionStore.tokenPair.accessToken}`);
-
-				const retryReq = new Request(request, { headers: retryHeaders });
-
-				return fetch(retryReq);
-			},
-		});
+		backendClient.use(createSessionMiddleware(sessionStore));
 
 		app.provide(sessionStoreKey, sessionStore);
 		storesManager.addStore(sessionStoreKey, sessionStore);
