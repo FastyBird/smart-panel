@@ -311,7 +311,8 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   took up to 8.049 seconds after API settlement and is recorded separately from API latency.
   The 609.6-second idle check passed with unchanged process identities/restart counters, no
   growth between boundary process counts, no flagged journal patterns and no UI HTTP errors.
-  A new phone confirmation on alpha.46 is pending. Full R4 remains open; the broader
+  The user confirmed alpha.46 admin loading, login and live device updates without reload from
+  a phone with Wi-Fi disabled and Tailscale enabled. Full R4 remains open; the broader
   install/auth/reset/upgrade variants are still unperformed.
 
 - R5: [#1159](https://github.com/FastyBird/smart-panel/issues/1159), Cloudflare lifecycle and acceptance.

@@ -311,9 +311,11 @@ identities and restart counters stayed unchanged, with one process per service a
 The 20 collected journal entries contained no assertion, management-denial, Serve-failure or
 restart/stop pattern. The UI retained Connected, owner profile and enabled controls, with ten
 status reads and no HTTP errors or recorder overflow. Boundary counts do not establish behavior
-between samples. A new phone confirmation on alpha.46 remains pending; the prior cellular
-loading/login/live-update confirmation belongs to alpha.44. The broader R4 matrix remains open; no fresh-install, auth-key, reboot/reset, Funnel/SSH or phone transport row
-is implied complete by an application upgrade or API lifecycle test.
+between samples. On 2026-10-05 the user also confirmed admin loading, login and live device
+updates without page reload on alpha.46 from a phone with Wi-Fi disabled and Tailscale enabled.
+This confirms the visible cellular outcomes; phone transport frames were not captured separately.
+The broader R4 matrix remains open; no fresh-install, auth-key, reboot/reset, Funnel/SSH or phone
+transport row is implied complete by an application upgrade or API lifecycle test.
 
 The Low-risk review follow-up from #1167 is addressed in #1169: queued event metadata work now
 survives an external GET completion and gets one bounded trailing read after polling stops. A
@@ -329,7 +331,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 
 - [ ] Flash the alpha image (or install the alpha npm package) on the testing Raspberry Pi and complete onboarding.
 - [x] Have a Tailscale account with **MagicDNS** and **HTTPS certificates** enabled (tailnet DNS settings) and, if device approval is on, access to the admin console. Verified in the replacement tailnet during alpha.44 acceptance.
-- [x] Have a phone on cellular (not on the home Wi-Fi) with the Tailscale app signed into the same tailnet. User confirmed alpha.44 remote access with Wi-Fi disabled.
+- [x] Have a phone on cellular (not on the home Wi-Fi) with the Tailscale app signed into the same tailnet. User confirmed alpha.44 and alpha.46 remote access with Wi-Fi disabled.
 
 ##### Setup and sign-in
 
@@ -341,7 +343,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 ##### HTTPS and remote use
 
 - [ ] Serve HTTPS is on by default: the page lists `https://<node>.<tailnet>.ts.net` as the primary external URL with copy and QR.
-- [x] From the phone on cellular, open that URL: admin loads, login works, and a live change (toggle a device) updates without reload. User confirmed these visible outcomes on alpha.44.
+- [x] From the phone on cellular, open that URL: admin loads, login works, and a live change (toggle a device) updates without reload. User confirmed these visible outcomes on alpha.44 and again on alpha.46 (2026-10-05).
 - [ ] Verify the phone's WebSocket transport through the proxy. Phone transport frames were not captured; the separate WebSocket-only probe passed from the Mac.
 - [ ] Backend log shows the tailnet client address (not 127.0.0.1) for a login attempt from the phone; the login throttle is per client.
 - [ ] Displays → registration status seen from the phone is "closed" (not treated as local).
