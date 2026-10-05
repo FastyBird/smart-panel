@@ -322,7 +322,17 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   the user independently confirmed cellular admin loading after the reboot. Automatic recovery
   and cellular URL reachability therefore pass; the Mac client limitation remains separate.
   Post-reboot fresh login/live updates and phone WebSocket transport were not reverified.
-  A spare Pi 4 and second SD card are available for fresh-image/reset acceptance once prepared.
+  Fresh official alpha.47 image acceptance then passed boot, firstboot and UI onboarding on the
+  separate Pi 4 (Debian 12 arm64, Tailscale 1.102.4). Extensions enable, preinstalled-package setup,
+  interactive link/QR approval and default Serve HTTPS passed. The Services view showed Running /
+  Healthy. Extensions UI disable/re-enable preserved identity and removed/restored actual HTTPS
+  reachability from the Pi 5. A fresh HTTPS owner login and closed display-registration status passed
+  from that peer. The MCP URL suggestion filled the form without persisting until Save. Cellular
+  checking of the new host, phone transport, auth-key login and reset remain pending; these peer
+  results do not substitute for them. Fresh acceptance also found installer
+  [#1171](https://github.com/FastyBird/smart-panel/issues/1171): the captive portal remains active
+  after Ethernet becomes available because it only checks connectivity at startup. That fix and
+  hardware verification remain open. Full R4 remains open.
 
 - R5: [#1159](https://github.com/FastyBird/smart-panel/issues/1159), Cloudflare lifecycle and acceptance.
 - R6/R7: [#914](https://github.com/FastyBird/smart-panel/issues/914) / [#913](https://github.com/FastyBird/smart-panel/issues/913).

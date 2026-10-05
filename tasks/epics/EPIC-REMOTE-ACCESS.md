@@ -384,9 +384,48 @@ including fields omitted by public config responses. Raw evidence and all addres
 remain private. This release's observations supplement the alpha.46 twenty-cycle, rapid-action,
 natural token renewal and idle results; those tests were not repeated or relabelled as alpha.47.
 
-The user has a spare Raspberry Pi 4 and second SD card for fresh-image and factory-reset tests.
-That card still needs preparation from a completed image; its different hardware will be recorded
-separately. The existing Pi 5 stays connected/authenticated. Full R4 and epic #897 remain open.
+#### Fresh Pi 4 image acceptance (2026-10-05, alpha.47)
+
+A separate Raspberry Pi 4 Model B Rev 1.5 now runs the official alpha.47 server image
+(`38d59a30f`), Debian 12 Bookworm arm64 and preinstalled Tailscale 1.102.4. The direct raw-image
+write passed a full readback comparison and the boot files matched the reference before hostname
+configuration. Firstboot completed successfully, expanded the root filesystem to 28 GB, and started
+the backend. Owner onboarding completed through the admin UI with no devices, spaces or displays.
+The earlier non-booting card contained incompatible image data; it is not evidence of a release
+boot defect. The exact earlier write/mix-up sequence remains unresolved.
+
+Fresh-image setup and connected-state observations passed:
+
+- The plugin was disabled by default. Enabling it with the Extensions switch exposed the Tailscale
+  card and accurate inactive-daemon/operator requirements. Set up → Start setup used the preinstalled
+  package; the privileged scope started at 19:17:57 UTC and completed at 19:17:58 UTC. The daemon became
+  active and its operator matched the backend service user. This does not cover npm/apt installation.
+- The wizard displayed a sign-in link and QR code. User approval in the test tailnet moved it to
+  Options and the card to Connected with tailnet, MagicDNS and IP details. Default Serve HTTPS was on;
+  Funnel and Tailscale SSH were off. Skipping optional edits completed the wizard.
+- The actual Extensions → Services → Plugins view displayed the Tailscale `node` service as
+  Running / Healthy. HTTPS was the primary private external URL. Requests from the original Pi 5
+  passed certificate verification and returned alpha.47 health. A fresh owner login over that HTTPS
+  origin returned 201 and a token; display registration status was closed for that remote peer.
+- Disabling through the Extensions UI switch stopped the node, removed the provider/external URLs,
+  and made HTTPS unreachable from the Pi 5. Re-enabling through the same UI restored Connected and
+  TLS-verified HTTPS without another login, retaining the same node identity. The browser was navigated
+  between views for these observations; this is not a new uninterrupted live-card convergence test.
+- The MCP form's Use remote access URL button filled the OAuth public base URL. Reopening the form
+  without Save restored its empty value, confirming that the suggestion did not persist itself.
+
+The Mac still failed DNS and direct-IP tailnet reachability, so these peer checks ran from the Pi 5.
+One initial Pi 4 CLI DNS health warning cleared on the next observation, and DNS resolution worked;
+no DNS setting was changed. A cellular phone check of the new host's login page remains pending.
+These observations do not establish phone login, phone WebSocket transport or live device updates.
+
+Fresh-image acceptance also found [#1171](https://github.com/FastyBird/smart-panel/issues/1171):
+the captive portal/hotspot remained active alongside connected Ethernet, leaving admin in Setup Mode.
+The portal checks network connectivity only at startup and does not reconcile a later Ethernet
+connection. DHCP arriving after that check is the likely trigger, not a captured timestamp ordering.
+The installer fix and its hardware verification remain open. Auth-key login, logout, factory reset
+and the other unchecked R4 scenarios also remain unperformed. The original Pi 5 remains intact and
+authenticated. Full R4 and epic #897 remain open.
 
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
@@ -394,20 +433,20 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 
 ##### Preparation
 
-- [ ] Flash the alpha image (or install the alpha npm package) on the testing Raspberry Pi and complete onboarding.
+- [x] Flash the alpha image (or install the alpha npm package) on the testing Raspberry Pi and complete onboarding. Official alpha.47 image and UI onboarding passed on the separate Pi 4 on 2026-10-05; the captive-portal defect is tracked in #1171.
 - [x] Have a Tailscale account with **MagicDNS** and **HTTPS certificates** enabled (tailnet DNS settings) and, if device approval is on, access to the admin console. Verified in the replacement tailnet during alpha.44 acceptance.
 - [x] Have a phone on cellular (not on the home Wi-Fi) with the Tailscale app signed into the same tailnet. User confirmed alpha.44 and alpha.46 remote access with Wi-Fi disabled.
 
 ##### Setup and sign-in
 
-- [ ] Admin → Remote access: the page shows the internal URL and the Tailscale card reads "Not set up" (image) or "Not installed" (npm install without the package).
-- [ ] Set up: on the image it completes in seconds (package pre-installed); on an npm install it installs from the apt repository and reports each step live.
-- [ ] Sign in: a login link and QR code appear; approving on the phone flips the card to Connected with tailnet name, MagicDNS name and Tailscale IPs.
-- [ ] Extensions → Services lists `remote-access-tailscale-plugin / node` as started and healthy. Its API passed alpha.46/47 checks; the Services view itself remains unobserved.
+- [x] Admin → Remote access on the image shows internal URLs and, after enabling the plugin in Extensions, a Setup required card with inactive-daemon/operator requirements. Verified on fresh Pi 4 alpha.47. The npm-without-package variant remains untested.
+- [ ] Set up: on the image it completes in seconds (package pre-installed); on an npm install it installs from the apt repository and reports each step live. The fresh Pi 4 alpha.47 UI setup passed with a roughly one-second privileged scope; npm/apt installation remains untested.
+- [ ] Sign in: a login link and QR code appear; approving on the phone flips the card to Connected with tailnet name, MagicDNS name and Tailscale IPs. Link/QR display and user approval passed on fresh Pi 4 alpha.47; the approval device was not recorded, so the phone-specific step remains unverified.
+- [x] Extensions → Services lists `remote-access-tailscale-plugin / node` as started and healthy. The actual Services → Plugins view showed Running / Healthy on Pi 4 alpha.47.
 
 ##### HTTPS and remote use
 
-- [ ] Serve HTTPS is on by default: the page lists `https://<node>.<tailnet>.ts.net` as the primary external URL with copy and QR.
+- [ ] Serve HTTPS is on by default: the page lists `https://<node>.<tailnet>.ts.net` as the primary external URL with copy and QR. Default HTTPS, primary URL and actual TLS reachability passed on fresh Pi 4 alpha.47; endpoint copy/QR controls remain untested.
 - [x] From the phone on cellular, open that URL: admin loads, login works, and a live change (toggle a device) updates without reload. User confirmed these visible outcomes on alpha.44 and again on alpha.46 (2026-10-05).
 - [ ] Verify the phone's WebSocket transport through the proxy. Phone transport frames were not captured; the separate WebSocket-only probe passed from the Mac.
 - [ ] Backend log shows the tailnet client address (not 127.0.0.1) for a login attempt from the phone; the login throttle is per client.
@@ -416,7 +455,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 ##### Lifecycle
 
 - [x] Reboot the Pi: the node reconnects without interaction and the URL still works. Alpha.47 automatic CLI/API/UI recovery and user-confirmed cellular admin loading passed on 2026-10-05; the Mac client remained offline.
-- [ ] Disable the plugin (Extensions): the node disconnects, external URLs disappear; re-enable reconnects. Alpha.47 config PATCH and live Remote access card checks passed; the Extensions UI click path itself remains untested.
+- [x] Disable the plugin (Extensions): the node disconnects, external URLs disappear; re-enable reconnects. The actual Extensions switch path passed on Pi 4 alpha.47, with CLI/UI agreement, failed/successful HTTPS probes from Pi 5 and retained node identity. Earlier Pi 5 config PATCH/live-card checks remain separately recorded.
 - [ ] Sign in with an auth key (advanced tab) on a second fresh install or after Sign out: node connects without the browser step.
 - [ ] Sign out: the device disappears from the tailnet admin console; the card returns to setup-required.
 - [ ] Factory reset: after restore, no tailnet login remains (`tailscale status` shows NeedsLogin) and Serve is reset.
@@ -430,7 +469,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 
 ##### MCP
 
-- [ ] MCP config form shows "Use remote access URL" when the HTTPS URL exists; clicking fills the OAuth public base URL and nothing saves until Save.
+- [x] MCP config form shows "Use remote access URL" when the HTTPS URL exists; clicking fills the OAuth public base URL and nothing saves until Save. Pi 4 alpha.47 filled the expected URL; reopening without Save restored the empty value.
 
 ##### Other deployments
 
