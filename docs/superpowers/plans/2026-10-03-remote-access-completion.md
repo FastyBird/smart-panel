@@ -384,6 +384,15 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   `RunSSH=false` while CLI online, unchanged Serve and certificate-verified HTTPS remained healthy.
   The follow-up SSH wrapper rejected the host key without executing a command; this is not a claim
   that port 22 or the system OpenSSH service closed. The phone/laptop SSH variant remains untested.
+  Funnel acceptance passed on alpha.49 after the administrator granted the tailnet capability.
+  Without that grant, `funnel-not-allowed` accurately preserved private access. With it, the real UI
+  switch produced a public primary endpoint and exposure advisories; the Mac with Tailscale Stopped
+  reached the login page over verified TLS, authenticated and received eight WebSocket events in
+  20 seconds. Initial relay TLS failures were followed by successful probes of all three public relay
+  addresses. Turning Funnel off made those public probes fail while private peer HTTPS stayed healthy
+  and advisories cleared. An independent private Serve handler survived both transitions; removing
+  it restored the pre-test Serve configuration exactly. Funnel is off and the tailnet permission remains
+  enabled. The epic records timestamps and evidence; the remaining R4 gates stay open.
   Separately, an alpha.47 one-off auth-key login through Advanced passed without browser
   authorization: CLI Running/online, Connected UI, Serve HTTPS and certificate-verified peer HTTPS.
   Explicit provider Sign out then returned CLI NeedsLogin and Setup required, removed external URLs
