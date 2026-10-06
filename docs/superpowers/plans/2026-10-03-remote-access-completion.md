@@ -365,6 +365,19 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   Ethernet/portal recovery, not authenticated provider traffic. Full evidence is in the epic's
   alpha.49 verification section. A physical unplug attempt restarted the Pi and is not
   counted as continuous-operation acceptance.
+  A subsequent authenticated alpha.49 test with Tailscale 1.102.5 passed a separate 90-second
+  logical Ethernet outage: CLI offline/Connecting removed aggregate URLs, peer HTTPS failed during
+  the outage and recovered with valid TLS, and the open admin returned to Connected without reload.
+  All 24 state samples retained host/backend/daemon identity with zero restarts; node preferences
+  and Serve configuration were unchanged. HTTPS endpoint copy and QR decoding passed. The user
+  confirmed cellular HTTPS loading and owner login on this Pi 4. Peer authentication notifications
+  retained the Tailscale client address and display registration was closed. Five invalid logins
+  reached authentication, then 429 applied even with a spoofed forwarded address; a concurrent Mac
+  LAN owner login succeeded. A TLS-verified, authenticated WebSocket-only peer connection subscribed
+  successfully and received eight normal event payloads over 20 seconds without reconnect or polling.
+  Phone-specific transport/address/registration checks and a fresh-host
+  live device change remain untested. See the epic's authenticated alpha.49 section for timestamps
+  and evidence boundaries; this does not close R4.
   Separately, an alpha.47 one-off auth-key login through Advanced passed without browser
   authorization: CLI Running/online, Connected UI, Serve HTTPS and certificate-verified peer HTTPS.
   Explicit provider Sign out then returned CLI NeedsLogin and Setup required, removed external URLs

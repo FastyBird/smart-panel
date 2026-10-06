@@ -603,6 +603,46 @@ case for #1223. It does not exercise Home Assistant/WLED discovery on hardware, 
 errors, physical cable removal, or authenticated Tailscale traffic. Those distinctions and the
 remaining R4 checklist below are unchanged; this result does not close R4 or the epic.
 
+#### Authenticated alpha.49 tailnet recovery and client checks (2026-10-06)
+
+On the same spare Pi 4, Debian 12 arm64, application `1.1.0-alpha.49` (tag `5168e08af`)
+and Tailscale `1.102.5`, interactive approval completed and the wizard advanced to Options only
+after Connected. Default Serve HTTPS was primary; copying the endpoint matched the expected URL,
+and decoding the rendered QR image returned that same HTTPS URL. Funnel and Tailscale SSH stayed off.
+
+A separate controlled 90-second Ethernet outage exercised the authenticated provider, with independent
+reconnection and rollback timers. At 16:05:28 UTC, CLI online was false, the plugin reported Connecting
+and aggregate external URLs were empty. Certificate-verified HTTPS from the original Pi 5 failed
+during the outage and first succeeded again at 16:06:55. The open admin returned to Connected at
+16:06:57 without reload; CLI online was observed again at 16:07:03. Four consecutive stable recovery
+samples completed at 16:07:18. Across 24 state samples, the boot ID, backend and tailscaled PIDs
+were unchanged and both restart counters stayed zero. Node identity, addresses, preferences, Serve
+configuration and the configured marker were retained. Two mDNS response-send warnings caused no
+backend exit. The peer observer recorded 39 probes, including 11 outage failures and successful TLS
+before and after recovery. No rollback was needed; all test units and safeguard timers are inactive.
+This was a logical NetworkManager disconnect, not physical cable removal.
+
+The user confirmed certificate-error-free admin loading and successful login from the phone with
+Wi-Fi disabled and Tailscale enabled on this alpha.49 host. Fresh-host phone live changes and phone
+WebSocket frames were not checked. Separately, a Pi 5 HTTPS request saw display registration closed,
+and a deliberately invalid login produced an authentication notification with that peer's Tailscale
+address, not loopback. Five invalid attempts were accepted for processing; the sixth returned 429
+with `Retry-After: 60`. Another request with a spoofed forwarded address also returned 429. While
+that peer remained limited, owner login from the Mac over LAN succeeded (201). This verifies the
+observed peer/LAN separation; it does not claim a second tailnet client or phone-specific log capture.
+
+An authenticated WebSocket-only probe from the Pi 5 also passed with certificate verification enabled:
+the HTTPS login, RFC6455 upgrade, Socket.IO authentication and exchange subscription succeeded.
+The connection stayed open for 20 seconds and received eight normal event payloads (four system
+information and four statistics updates), without polling fallback or reconnect. This is peer transport
+evidence, separate from the user-confirmed phone login and earlier phone device-update tests.
+
+Private evidence is retained outside Git in the `pi4-alpha49-tailscale` acceptance directory:
+`outage-final.private.json`, `peer-outage-observations.jsonl`, `outage-ui.json`,
+`acceptance-progress.json`, `client-address-evidence.private.json`, `peer-throttle-evidence.json`
+and `throttle-isolation-evidence.json`, plus `wss-evidence.json` for the authenticated transport probe.
+R4 and the epic remain open for the unchecked gates below.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
@@ -622,11 +662,11 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 
 ##### HTTPS and remote use
 
-- [ ] Serve HTTPS is on by default: the page lists `https://<node>.<tailnet>.ts.net` as the primary external URL with copy and QR. Default HTTPS, primary URL and actual TLS reachability passed on fresh Pi 4 alpha.47; endpoint copy/QR controls remain untested.
-- [x] From the phone on cellular, open that URL: admin loads, login works, and a live change (toggle a device) updates without reload. User confirmed these visible outcomes on alpha.44 and again on alpha.46 (2026-10-05). The separate fresh Pi 4 alpha.47 phone check confirms only login-page loading without a certificate error.
-- [ ] Verify the phone's WebSocket transport through the proxy. Phone transport frames were not captured; the separate WebSocket-only probe passed from the Mac.
-- [ ] Backend log shows the tailnet client address (not 127.0.0.1) for a login attempt from the phone; the login throttle is per client.
-- [ ] Displays → registration status seen from the phone is "closed" (not treated as local).
+- [x] Serve HTTPS is on by default: the page lists `https://<node>.<tailnet>.ts.net` as the primary external URL with copy and QR. Default HTTPS, primary URL and actual TLS reachability passed on fresh Pi 4 alpha.47; clipboard equality and decoding the endpoint QR passed on Pi 4 alpha.49 (2026-10-06).
+- [x] From the phone on cellular, open that URL: admin loads, login works, and a live change (toggle a device) updates without reload. User confirmed these visible outcomes on alpha.44 and again on alpha.46 (2026-10-05). On the separate Pi 4 alpha.49, the user confirmed loading without a certificate error and successful login; a fresh-host live device change remains untested.
+- [ ] Verify the phone's WebSocket transport through the proxy. Phone transport frames were not captured; separate WebSocket-only probes passed from the Mac previously and from Pi 5 against Pi 4 alpha.49 (20 seconds, eight normal event payloads).
+- [ ] Backend log shows the tailnet client address (not 127.0.0.1) for a login attempt from the phone; the login throttle is per client. Alpha.49 peer authentication-notification address and Pi 5 tailnet/Mac LAN throttle separation passed; phone-specific logging remains untested.
+- [ ] Displays → registration status seen from the phone is "closed" (not treated as local). The alpha.49 Pi 5 HTTPS peer check returned closed; the phone-specific check remains untested.
 
 ##### Lifecycle
 
