@@ -348,7 +348,15 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   Sign in with cleared input, error feedback, CLI NeedsLogin and no temporary key files. Pending approval
   and timeout remain covered by automated tests. The #1174 captive-portal fix merged after this release;
   its new server image build is [run 37436682127](https://github.com/FastyBird/smart-panel/actions/runs/37436682127),
-  with fresh-image hardware acceptance still pending.
+  Fresh-image Pi 4 acceptance passed on 2026-10-06: Ethernet was detected within 12 seconds and
+  the portal exited without leaving a hotspot or DNS redirect. A controlled 90-second NetworkManager
+  disconnect then exercised real hotspot startup and late-Ethernet recovery without a host reboot:
+  the portal/hotspot stopped within about seven seconds of the observed reconnect, followed by API
+  Online within another seven seconds and automatic removal of the admin Setup Mode notification.
+  Both controlled attempts also exposed a separate mDNS `ENETUNREACH` backend exit
+  ([#1223](https://github.com/FastyBird/smart-panel/issues/1223)); its repair and
+  fixed-release verification remain required. A physical unplug attempt restarted the Pi and is not
+  counted as continuous-operation acceptance.
   Separately, an alpha.47 one-off auth-key login through Advanced passed without browser
   authorization: CLI Running/online, Connected UI, Serve HTTPS and certificate-verified peer HTTPS.
   Explicit provider Sign out then returned CLI NeedsLogin and Setup required, removed external URLs

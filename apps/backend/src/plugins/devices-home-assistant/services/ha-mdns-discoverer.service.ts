@@ -58,7 +58,10 @@ export class HaMdnsDiscovererService extends BaseManagedExtensionService impleme
 			this.logger.log('Starting mDNS discovery for Home Assistant instances');
 
 			try {
-				this.bonjour = new Bonjour();
+				// Bonjour otherwise throws asynchronous response-send errors outside the startup catch.
+				this.bonjour = new Bonjour({}, (error: Error) => {
+					this.logger.warn(`mDNS response send failed: ${error.message}`, error);
+				});
 
 				// Browse for _home-assistant._tcp services
 				this.browser = this.bonjour.find({ type: 'home-assistant' }, (service: Service) => {

@@ -480,8 +480,8 @@ the provider stayed Setup required without external URLs, and no temporary auth-
 This verifies #1172 failure handling on hardware; pending approval and the ten-minute timeout retain
 their automated regression coverage rather than being claimed as hardware observations here.
 
-The captive-portal fix from #1174 merged after alpha.48 was released. Its fresh-image hardware
-acceptance remains pending; the server image build from that merge is
+The captive-portal fix from #1174 merged after alpha.48 was released. Its subsequent fresh-image
+and controlled late-Ethernet acceptance are recorded below; the server image build from that merge is
 [run 37436682127](https://github.com/FastyBird/smart-panel/actions/runs/37436682127).
 
 #### Pi 4 auth-key login and explicit logout (2026-10-05, alpha.47)
@@ -529,8 +529,40 @@ probe cancellation, repeated signals, held HTTP requests and child exit status. 
 cover failed/unconfirmable teardown, retry after restart, existing-marker handling and whole-process-group
 test cleanup. Bash/Node syntax and scoped ShellCheck
 also passed. The dedicated Installer portal tests CI job runs the suite on Node 24/Linux. These tests
-do not change the host network. Fresh-image hardware and admin transition
-from Setup Mode to Online after the platform cache refresh remain unverified.
+do not change the host network.
+
+Fresh-image startup passed on the spare Pi 4 on 2026-10-06 using server image build
+[37436682127](https://github.com/FastyBird/smart-panel/actions/runs/37436682127), from merge
+`22e5ef2bdf904a421621a72f0c372b52d2aaeb98`. The downloaded artifact/archive checksums and complete
+SD-card readback passed; installed portal files match that merge. Ethernet became available after
+12 seconds during the 30-second startup grace. The wrapper created the configured marker and exited
+successfully without starting the hotspot. DNS redirection was absent, the watchdog and backend ran,
+and first-boot initialization completed with expanded root storage and database migrations. The admin
+onboarding flow completed and its authenticated System info API reported `network_mode: online`.
+This first-boot observation covers Ethernet arriving during startup grace.
+
+A physical unplug attempt restarted the Pi and was excluded from continuous-operation acceptance.
+A controlled repeat disconnected eth0 through NetworkManager while retaining power, armed an
+independent 90-second reconnection timer, and exercised the installed portal with real system/network
+commands. The test backed up and removed the configured marker and stopped the watchdog;
+it did not modify the portal implementation. The same boot ID was retained throughout.
+At 09:56:47 UTC the real hotspot, DNS redirect and `network_mode: setup` were observed. Ethernet
+returned at 09:57:45; by 09:57:52 the portal/hotspot had stopped, the new marker existed and DNS
+redirection was gone. The API returned `online` at 09:57:58 after the platform cache refreshed.
+The open admin displayed Setup Mode on reconnection and cleared the notification without a page reload.
+
+These portal outcomes do not mean the backend remained continuously available: both controlled
+network-loss attempts exposed a separate asynchronous mDNS `ENETUNREACH` process exit, followed by
+systemd restart. The successful portal observer recorded this outage and continued instead of
+triggering its fallback. The mDNS crash is tracked in
+[#1223](https://github.com/FastyBird/smart-panel/issues/1223) and requires fixed-release hardware verification.
+
+The follow-up provides nonthrowing response-send error callbacks for the advertisement, Home Assistant
+discovery and WLED discovery Bonjour instances. It logs failures without forcing teardown/restart or
+adding a global exception handler. Three scoped suites (33 tests) pass, including an asynchronous
+response-send failure through the real Bonjour dependency with an in-memory socket, a later successful
+response, continued discovery and normal stop/start. This covers Bonjour response-send callbacks;
+other socket error paths and uninterrupted hardware operation on a released fix are not claimed here.
 
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
