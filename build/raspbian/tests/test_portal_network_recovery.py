@@ -38,6 +38,10 @@ elif name == 'systemctl' and args == ['stop', 'smart-panel-portal.service']:
     os.kill(int((root / 'wrapper-pid').read_text()), signal.SIGTERM)
 elif name == 'node-child':
     (root / 'node-pid').write_text(str(os.getpid()))
+    if (root / 'leak-startup-child').exists():
+        child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+        (root / 'leaked-child-pid').write_text(str(child.pid))
+        sys.exit(7)
     if (root / 'child-failure').exists():
         sys.exit(7)
     def stop(signum, frame):
@@ -77,9 +81,23 @@ elif name == 'nmcli':
             print('Home:802-11-wireless')
         if (root / 'hotspot').exists():
             print('SmartPanel-Hotspot:802-11-wireless')
+    elif args == ['-t', '-f', 'NAME', 'connection', 'show', '--active']:
+        if (root / 'fail-hotspot-status').exists():
+            sys.exit(1)
+        if (root / 'hotspot').exists():
+            print('SmartPanel-Hotspot')
+        if (root / 'client-wifi').exists():
+            print('Home')
     elif args[:2] == ['connection', 'up'] and args[2] == 'SmartPanel-Hotspot':
         (root / 'hotspot').touch()
     elif args[:2] in [['connection', 'delete'], ['connection', 'down']] and args[2] == 'SmartPanel-Hotspot':
+        failure = root / f'hotspot-{args[1]}-failures'
+        if failure.exists():
+            remaining = int(failure.read_text())
+            if remaining != 0:
+                if remaining > 0:
+                    failure.write_text(str(remaining - 1))
+                sys.exit(1)
         (root / 'hotspot').unlink(missing_ok=True)
     elif args[:3] == ['device', 'wifi', 'connect']:
         if (root / 'block-wifi').exists():
@@ -128,16 +146,26 @@ class PortalRecoveryTests(unittest.TestCase):
         shutil.copyfile(PORTAL / 'index.html', self.portal / 'index.html')
 
     def tearDown(self):
-        if self.process is not None:
-            if self.process.poll() is None:
-                self.process.terminate()
-            try:
-                self.process.wait(timeout=8)
-            except subprocess.TimeoutExpired:
-                os.killpg(self.process.pid, signal.SIGKILL)
-                self.process.wait()
+        self.stop_process_group()
         self.output.close()
         self.tmp.cleanup()
+
+    def stop_process_group(self):
+        if self.process is None:
+            return
+        if self.process.poll() is None:
+            self.process.terminate()
+        try:
+            self.process.wait(timeout=8)
+        except subprocess.TimeoutExpired:
+            pass
+        finally:
+            # Even an exited wrapper can leave startup children in its group.
+            try:
+                os.killpg(self.process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            self.process.wait()
 
     def start(self, fake_child=False):
         script = (PORTAL / 'smart-panel-portal.sh').read_text()
@@ -240,6 +268,106 @@ class PortalRecoveryTests(unittest.TestCase):
         self.assert_configured()
         self.assertIn('source=ethernet-detected', self.marker.read_text())
         self.assert_clean()
+
+    def test_transient_hotspot_teardown_failure_retries_before_marking(self):
+        self.start()
+        self.ready()
+        (self.root / 'hotspot-down-failures').write_text('-1')
+        (self.root / 'hotspot-delete-failures').write_text('-1')
+        (self.root / 'ethernet').touch()
+        self.wait_for(lambda: 'Hotspot still active' in self.log.read_text())
+        self.assertFalse(self.marker.exists())
+        self.assertTrue(self.dns.exists())
+        # Hold the transient failure until these assertions finish, avoiding a
+        # race with the test's accelerated monitor interval.
+        (self.root / 'hotspot-down-failures').unlink()
+        (self.root / 'hotspot-delete-failures').unlink()
+        self.assertEqual(self.process.wait(timeout=5), 0)
+        self.assert_configured()
+        self.assert_clean()
+
+    def test_persistent_hotspot_teardown_failure_keeps_setup_available(self):
+        self.start()
+        self.ready()
+        (self.root / 'hotspot-down-failures').write_text('-1')
+        (self.root / 'hotspot-delete-failures').write_text('-1')
+        (self.root / 'ethernet').touch()
+        self.wait_for(lambda: self.log.read_text().count('Hotspot still active') >= 2)
+        self.assertIsNone(self.process.poll())
+        self.assertFalse(self.marker.exists())
+        self.assertTrue((self.root / 'hotspot').exists())
+        self.assertTrue(self.dns.exists())
+        self.assertFalse(any(c[:2] == ['systemctl', 'start'] for c in self.commands()))
+        self.assertEqual(self.request('GET', '/api/status')[0], 200)
+        (self.root / 'hotspot-down-failures').unlink()
+        (self.root / 'hotspot-delete-failures').unlink()
+        self.assertEqual(self.process.wait(timeout=5), 0)
+        self.assert_configured()
+        self.assert_clean()
+
+    def test_unconfirmable_hotspot_state_never_marks_ethernet_configured(self):
+        self.start()
+        self.ready()
+        (self.root / 'fail-hotspot-status').touch()
+        (self.root / 'ethernet').touch()
+        self.wait_for(lambda: self.log.read_text().count('Ethernet check failed') >= 2)
+        self.assertIsNone(self.process.poll())
+        self.assertFalse(self.marker.exists())
+        self.assertTrue(self.dns.exists())
+        self.assertFalse(any(c[:2] == ['systemctl', 'start'] for c in self.commands()))
+        (self.root / 'fail-hotspot-status').unlink()
+        self.assertEqual(self.process.wait(timeout=5), 0)
+        self.assert_configured()
+        self.assert_clean()
+
+    def test_startup_cleans_stale_hotspot_after_transient_failures(self):
+        (self.root / 'ethernet').touch()
+        (self.root / 'hotspot').touch()
+        (self.root / 'hotspot-down-failures').write_text('1')
+        (self.root / 'hotspot-delete-failures').write_text('1')
+        self.start()
+        self.assertEqual(self.process.wait(timeout=5), 0)
+        self.assertIn('Hotspot teardown not confirmed (attempt 1/3)', self.log.read_text())
+        self.assert_configured()
+        self.assert_clean()
+        self.assertFalse(any('add' in command for command in self.commands()))
+
+    def test_startup_teardown_failure_leaves_no_marker_and_retries_on_restart(self):
+        (self.root / 'ethernet').touch()
+        (self.root / 'hotspot').touch()
+        (self.root / 'hotspot-down-failures').write_text('-1')
+        (self.root / 'hotspot-delete-failures').write_text('-1')
+        self.start()
+        self.assertEqual(self.process.wait(timeout=5), 1)
+        self.assertFalse(self.marker.exists())
+        self.assertTrue((self.root / 'hotspot').exists())
+        self.stop_process_group()
+        (self.root / 'hotspot-down-failures').unlink()
+        (self.root / 'hotspot-delete-failures').unlink()
+        self.start()
+        self.assertEqual(self.process.wait(timeout=5), 0)
+        self.assert_configured()
+        self.assert_clean()
+
+    def test_existing_marker_cannot_bypass_hotspot_state_confirmation(self):
+        self.marker.parent.mkdir()
+        self.marker.write_text('ssid=Home\n')
+        (self.root / 'hotspot').touch()
+        (self.root / 'hotspot-down-failures').write_text('-1')
+        (self.root / 'hotspot-delete-failures').write_text('-1')
+        self.start()
+        self.assertEqual(self.process.wait(timeout=5), 1)
+        self.assertEqual(self.marker.read_text(), 'ssid=Home\n')
+        self.assertTrue((self.root / 'hotspot').exists())
+        self.assertFalse(any('add' in command for command in self.commands()))
+
+    def test_startup_state_query_failure_leaves_no_configured_marker(self):
+        (self.root / 'ethernet').touch()
+        (self.root / 'fail-hotspot-status').touch()
+        self.start()
+        self.assertEqual(self.process.wait(timeout=5), 1)
+        self.assertFalse(self.marker.exists())
+        self.assertFalse(any(c[:2] == ['systemctl', 'start'] for c in self.commands()))
 
     def test_late_ethernet_shutdown_is_bounded_with_unfinished_http_request(self):
         self.start()
@@ -346,6 +474,23 @@ class PortalRecoveryTests(unittest.TestCase):
         self.start(fake_child=True)
         self.assertEqual(self.process.wait(timeout=5), 7)
         self.assert_clean()
+
+    def test_teardown_kills_remaining_group_after_wrapper_exits(self):
+        (self.root / 'leak-startup-child').touch()
+        self.start(fake_child=True)
+        self.assertEqual(self.process.wait(timeout=5), 7)
+        child_pid = int((self.root / 'leaked-child-pid').read_text())
+        os.kill(child_pid, 0)
+        self.stop_process_group()
+
+        def child_gone():
+            try:
+                os.kill(child_pid, 0)
+                return False
+            except ProcessLookupError:
+                return True
+
+        self.wait_for(child_gone)
 
     def test_repeated_signals_wait_for_child_cleanup(self):
         self.start(fake_child=True)

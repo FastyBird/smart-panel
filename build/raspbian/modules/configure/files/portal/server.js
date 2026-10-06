@@ -30,6 +30,7 @@ const PORT = 80;
 const PORTAL_IP = '192.168.4.1';
 const PORTAL_DIR = __dirname;
 const WIFI_CONFIGURED_MARKER = '/var/lib/smart-panel/.wifi-configured';
+const DNSMASQ_CONF = '/etc/NetworkManager/dnsmasq-shared.d/captive-portal.conf';
 const NETWORK_CHECK_INTERVAL = 5000;
 const SHUTDOWN_GRACE_PERIOD = 2000;
 
@@ -505,6 +506,37 @@ function stopNetworkMonitor() {
 }
 
 /**
+ * Confirm that our AP stopped before claiming Ethernet recovery. Failed or
+ * unconfirmable teardown leaves the portal monitor running so it can retry.
+ */
+async function stopHotspotForEthernet(probe) {
+	for (const action of ['down', 'delete']) {
+		if (probe.signal.aborted || shuttingDown || connectInProgress) return false;
+		try {
+			await execFileAsync('nmcli', ['connection', action, 'SmartPanel-Hotspot'], {
+				timeout: 5000,
+				signal: probe.signal,
+			});
+		} catch (err) {
+			if (probe.signal.aborted) throw err;
+			// A missing profile also returns an error; the active-state query is authoritative.
+		}
+	}
+	if (probe.signal.aborted || shuttingDown || connectInProgress) return false;
+	const { stdout } = await execFileAsync('nmcli', ['-t', '-f', 'NAME', 'connection', 'show', '--active'], {
+		timeout: 5000,
+		signal: probe.signal,
+	});
+	if (probe.signal.aborted || shuttingDown || connectInProgress) return false;
+	if (stdout.trim().split('\n').includes('SmartPanel-Hotspot')) {
+		console.warn('Hotspot still active — retrying Ethernet recovery');
+		return false;
+	}
+	fs.rmSync(DNSMASQ_CONF, { force: true });
+	return true;
+}
+
+/**
  * DHCP can complete long after AP startup. Ethernet recovery is independent
  * of WiFi provisioning; never interrupt the user's in-progress WiFi attempt.
  * The probe is bounded and only one can run at a time.
@@ -521,6 +553,7 @@ async function checkEthernetConnection() {
 		if (probe.signal.aborted || shuttingDown || connectInProgress) return;
 		// WiFi AP/shared-mode connectivity is deliberately not evidence of recovery.
 		if (!stdout.trim().split('\n').includes('ethernet:connected')) return;
+		if (!(await stopHotspotForEthernet(probe))) return;
 
 		if (!fs.existsSync(WIFI_CONFIGURED_MARKER)) {
 			fs.mkdirSync(path.dirname(WIFI_CONFIGURED_MARKER), { recursive: true });

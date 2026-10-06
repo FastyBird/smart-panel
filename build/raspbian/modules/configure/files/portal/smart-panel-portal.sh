@@ -15,6 +15,7 @@ set -euo pipefail
 PORTAL_DIR="/opt/smart-panel/portal"
 WIFI_CONFIGURED_MARKER="/var/lib/smart-panel/.wifi-configured"
 BOOT_CONFIG_APPLIED="/var/lib/smart-panel/.boot-config.applied"
+DNSMASQ_CONF="/etc/NetworkManager/dnsmasq-shared.d/captive-portal.conf"
 LOG_TAG="smart-panel-portal"
 NETWORK_WAIT_SECONDS=30
 
@@ -27,8 +28,34 @@ log() {
 # Check if portal should be skipped
 # ──────────────────────────────────────────────────────────────
 
-# 1. Skip if WiFi was previously configured via the captive portal
+# Confirm hotspot teardown before skipping setup or creating a configured marker.
+# A stale AP can survive a previous wrapper exit if NetworkManager was unavailable.
+stop_hotspot() {
+	local active_connections
+	for attempt in 1 2 3; do
+		timeout 5 nmcli connection down SmartPanel-Hotspot 2>/dev/null || true
+		timeout 5 nmcli connection delete SmartPanel-Hotspot 2>/dev/null || true
+		if active_connections=$(timeout 5 nmcli -t -f NAME connection show --active 2>/dev/null); then
+			if ! echo "${active_connections}" | grep -qx 'SmartPanel-Hotspot'; then
+				rm -f "${DNSMASQ_CONF}" || return 1
+				return 0
+			fi
+		fi
+		log "Hotspot teardown not confirmed (attempt ${attempt}/3)"
+		if [ "${attempt}" -lt 3 ]; then
+			sleep 1
+		fi
+	done
+	return 1
+}
+
+# 1. Skip if WiFi was previously configured via the captive portal, but never
+# bypass a stale hotspot solely because a marker from an earlier run exists.
 if [ -f "${WIFI_CONFIGURED_MARKER}" ]; then
+	if ! stop_hotspot; then
+		log "ERROR: Cannot confirm hotspot stopped — retrying through systemd"
+		exit 1
+	fi
 	log "WiFi previously configured via portal — skipping captive portal"
 	exit 0
 fi
@@ -36,11 +63,14 @@ fi
 # Helper: ensure .wifi-configured marker exists and watchdog is running.
 # Called whenever we skip the portal with an active network connection.
 ensure_marker_and_watchdog() {
+	if ! stop_hotspot; then
+		return 1
+	fi
 	if [ ! -f "${WIFI_CONFIGURED_MARKER}" ]; then
 		log "Creating WiFi configured marker and starting watchdog"
-		mkdir -p "$(dirname "${WIFI_CONFIGURED_MARKER}")"
-		echo "configured=$(date -Iseconds)" > "${WIFI_CONFIGURED_MARKER}"
-		echo "source=${1:-unknown}" >> "${WIFI_CONFIGURED_MARKER}"
+		mkdir -p "$(dirname "${WIFI_CONFIGURED_MARKER}")" || return 1
+		echo "configured=$(date -Iseconds)" > "${WIFI_CONFIGURED_MARKER}" || return 1
+		echo "source=${1:-unknown}" >> "${WIFI_CONFIGURED_MARKER}" || return 1
 		timeout 5 systemctl start smart-panel.service 2>/dev/null || true
 		timeout 5 systemctl start smart-panel-wifi-watchdog.service 2>/dev/null || true
 	fi
@@ -81,7 +111,10 @@ NETWORK_DEADLINE=$((NETWORK_START + NETWORK_WAIT_SECONDS))
 while true; do
 	if has_network; then
 		log "Network available after $((SECONDS - NETWORK_START))s — skipping captive portal"
-		ensure_marker_and_watchdog "${NETWORK_SOURCE}"
+		if ! ensure_marker_and_watchdog "${NETWORK_SOURCE}"; then
+			log "ERROR: Cannot confirm hotspot stopped — leaving network unconfigured for retry"
+			exit 1
+		fi
 		exit 0
 	fi
 	if [ "${SECONDS}" -ge "${NETWORK_DEADLINE}" ]; then
@@ -134,8 +167,6 @@ done
 # ──────────────────────────────────────────────────────────────
 # Cleanup and DNS config path
 # ──────────────────────────────────────────────────────────────
-
-DNSMASQ_CONF="/etc/NetworkManager/dnsmasq-shared.d/captive-portal.conf"
 
 # Cleanup function — registered BEFORE creating any resources so that
 # an early failure (e.g. nmcli connection up) still cleans up.

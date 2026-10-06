@@ -492,14 +492,19 @@ The installer wrapper now gives every unconfigured boot a bounded 30-second conn
 including fresh images without a boot-config marker. NetworkManager queries have a deadline and
 the SmartPanel hotspot does not count as external Wi-Fi. Once the portal starts, its Node process
 checks Ethernet every five seconds with a bounded, cancellable probe. A connected Ethernet interface
-starts the existing configured-marker/watchdog flow and shuts down through the portal's cleanup path.
+starts the configured-marker/watchdog flow only after NetworkManager confirms the hotspot is inactive.
+Failed or unconfirmable teardown leaves the marker unset and retries while keeping the portal and
+DNS redirect available. Startup also confirms stale-hotspot cleanup before skipping setup, including
+when an existing configured marker is present. Successful recovery uses the portal's shutdown path.
 Active Wi-Fi provisioning retains ownership of its completion; runtime recovery checks Ethernet only.
 
-Fifteen isolated process regressions passed on the Mac and unprivileged on the spare Pi 4
+Twenty-three isolated process regressions passed on the Mac and unprivileged on the spare Pi 4
 (Debian 12 arm64), using mocked system/network commands and private paths:
 `python3 build/raspbian/tests/test_portal_network_recovery.py`. They cover initial/delayed Ethernet,
 hotspot exclusion, slow probes, captive redirects, Wi-Fi success/failure and concurrent Ethernet,
-probe cancellation, repeated signals, held HTTP requests and child exit status. Bash/Node syntax and scoped ShellCheck
+probe cancellation, repeated signals, held HTTP requests and child exit status. Review follow-ups also
+cover failed/unconfirmable teardown, retry after restart, existing-marker handling and whole-process-group
+test cleanup. Bash/Node syntax and scoped ShellCheck
 also passed. The dedicated Installer portal tests CI job runs the suite on Node 24/Linux. These tests
 do not change the host network. Fresh-image hardware and admin transition
 from Setup Mode to Online after the platform cache refresh remain unverified.
