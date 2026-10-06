@@ -26,9 +26,9 @@ camera streaming capability in addition to the UniFi Protect plugin itself.
 | Which API? | The official **UniFi Protect Integration API** (public, API key, `https://<console>/proxy/protect/integration/v1/…`), introduced in Protect 5.3 and much expanded through 7.3.70 (2 Oct 2026). It covers enumeration, settings, snapshots, RTSPS stream management, PTZ, talkback, lights, sensors, chimes, alarm manager and two JSON WebSockets. The private cookie/CSRF API is only needed for gaps (privacy mode, recording mode, IR, reboot, chime play, event thumbnails). |
 | How to discover? | UDP broadcast/multicast on port **10001** (Ubiquiti discovery protocol, TLV replies) — what HA's `unifi_discovery` does. Confirm Protect with unauthenticated `GET /proxy/protect/api` → 401 and identify the console with `GET /api/system`. No usable mDNS. Manual host entry is always available. |
 | How to add? | Admin creates an API key in Protect → *Integrations*; Smart Panel stores it as a write-only plugin secret, lists devices from `GET /v1/{cameras,sensors,lights}` and adopts them through the shared device wizard. |
-| How to control? | `PATCH /v1/cameras|lights|sensors/{id}` with partial JSON. Public API control is mostly settings-level: floodlight on/brightness/mode, status LED, mic volume, HDR, video mode, OSD, smart-detect types, doorbell LCD message, PTZ presets/patrol, chime ring settings, arm profiles. |
+| How to control? | `PATCH /v1/cameras/{id}`, `/v1/lights/{id}` or `/v1/sensors/{id}` with partial JSON. Public API control is mostly settings-level: floodlight on/brightness/mode, status LED, mic volume, HDR, video mode, OSD, smart-detect types, doorbell LCD message, PTZ presets/patrol, chime ring settings, arm profiles. |
 | How to get state? | `wss://…/v1/subscribe/devices` (add/update/remove of device objects) and `wss://…/v1/subscribe/events` (motion, smart detect zone/line/loiter, audio detections, ring, sensor open/close/leak/tamper/alarm/battery, …) as JSON text frames. No replay → re-prime over REST after every reconnect. |
-| How to get streams? | `POST /v1/cameras/{id}/rtsps-stream {"qualities":["high","medium","low","package"]}` returns `rtsps://<host>:7441/<alias>?enableSrtp`; `GET …/snapshot?highQuality=&channel=main|package` returns JPEG. Browsers and Flutter cannot play RTSP(S) directly → a relay is needed. |
+| How to get streams? | `POST /v1/cameras/{id}/rtsps-stream {"qualities":["high","medium","low","package"]}` returns `rtsps://<host>:7441/<alias>?enableSrtp`; `GET …/snapshot?highQuality=&channel=` (`main` or `package`) returns JPEG. Browsers and Flutter cannot play RTSP(S) directly → a relay is needed. |
 | Recommended relay | **go2rtc** (MIT, single static binary, no ffmpeg needed for H.264/H.265 + AAC restream) bound to loopback, managed by the backend; the backend authenticates clients and proxies go2rtc's MSE/WebRTC WebSocket. HA uses the same approach (go2rtc since 2024.11). |
 | Panel playback | flutter-pi is built **without** its GStreamer video player today (`-DBUILD_GSTREAMER_VIDEO_PLAYER_PLUGIN=OFF`) and the panel has no video package → MVP shows auto-refreshing snapshots; live video is a separate milestone that enables GStreamer in the image. |
 | Security module fit | UP-Sense contact/motion/leak and camera motion map to existing channels that `SecuritySensorsProvider` already turns into alerts. Smart detections (person/vehicle/…) and audio detections need a small spec extension and a detection rule. |
@@ -111,8 +111,8 @@ camera streaming capability in addition to the UniFi Protect plugin itself.
 | Meta / NVR | `GET meta/info` (`applicationVersion`), `GET nvrs` (doorbellSettings, `armMode`) |
 | Cameras | `GET cameras`, `GET/PATCH cameras/{id}` |
 | Streams | `POST/GET/DELETE cameras/{id}/rtsps-stream` (`qualities`: high, medium, low, package) |
-| Snapshot | `GET cameras/{id}/snapshot?highQuality=&channel=main|package` → `image/jpeg` (503 when offline) |
-| Audio | `POST cameras/{id}/talkback-session` → `{url: rtp://<cam>:7004, codec: opus|aac, samplingRate}`; `POST cameras/{id}/disable-mic-permanently` (**irreversible — never call**) |
+| Snapshot | `GET cameras/{id}/snapshot?highQuality=&channel=` (`main` or `package`) → `image/jpeg` (503 when offline) |
+| Audio | `POST cameras/{id}/talkback-session` → `{url: rtp://<cam>:7004, codec, samplingRate}` (codec `opus` or `aac`); `POST cameras/{id}/disable-mic-permanently` (**irreversible — never call**) |
 | PTZ | `POST cameras/{id}/ptz/goto/{slot}`, `ptz/patrol/start/{slot}`, `ptz/patrol/stop` |
 | Lights, sensors, chimes, viewers | list / get / PATCH; `liveviews` CRUD |
 | Newer device families | sirens (play/stop/test), relays (outputs activate), speakers, fobs, bridges, link stations, alarm hubs |
@@ -463,6 +463,12 @@ host than the backend.
   `burglar_alarm` → intrusion/critical, `animal`, `package`, `face`, `license_plate` and the remaining sounds → no
   alert (state and badges only, so pets do not trigger the alarm). Users override them in
   `var/security/detection-rules.yaml`. Alert messages include the type and the camera name.
+- Alert IDs are built today as `sensor:<deviceId>:<alertType>` (`security-sensors.provider.ts`), so a person and a
+  glass-break detection on one camera — or camera motion next to a person detection — would share one intrusion
+  alert ID and collapse in alert de-duplication, acknowledgement and `SecurityEventsService` transition tracking.
+  UP-16 therefore gives per-type rules subtype-specific IDs (`sensor:<deviceId>:<alertType>:<subtype>`); IDs of the
+  existing rules stay unchanged so stored acknowledgements survive the upgrade. The sensor de-duplication key
+  (`<sensorId>:<alertType>`) is unchanged because each subtype is its own channel.
 - Panel uses `sourceDeviceId` of an alert to show the camera snapshot in the alert overlay when the source device
   is a camera/doorbell — no contract change needed.
 - Optional: Protect Alarm Manager (local mode) as an `alarm` device (`state` ↔ `arm-profiles/enable|disable`, arm

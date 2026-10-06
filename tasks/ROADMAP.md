@@ -1,6 +1,6 @@
 # Smart Panel — Task Roadmap
 
-> Last updated: 2026-09-02. Reflects actual codebase state.
+> Last updated: 2026-10-06. Reflects actual codebase state.
 
 ---
 
@@ -409,7 +409,7 @@ Adopt UniFi Protect cameras, doorbells, UP-Sense sensors and floodlights through
 | 1   | Camera streaming core: cameras module, go2rtc relay, installer (UP-2 … UP-4)         | backend, installer      | :clipboard: Planned |
 | 2   | Plugin backend: client, discovery, adoption, sync, control, streams (UP-5 … UP-10)   | backend                 | :clipboard: Planned |
 | 3   | Admin live view and plugin wizard (UP-11, UP-12)                                     | admin                   | :clipboard: Planned |
-| 4   | Panel snapshots, doorbell overlay, live video (UP-13 … UP-15)                        | panel, installer        | :clipboard: Planned |
+| 4   | Panel snapshots and doorbell overlay (UP-13, UP-14); post-MVP live video (UP-15)     | panel, installer        | :clipboard: Planned |
 | 5   | Per-type security rules, person detection as occupancy, optional alarm manager and full-access mode (UP-16 … UP-18, UP-21) | backend | :clipboard: Planned |
 | 6   | Docs and hardware acceptance (UP-19, UP-20)                                          | website, docs           | :clipboard: Planned |
 
