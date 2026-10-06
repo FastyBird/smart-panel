@@ -226,13 +226,13 @@ Build a device from properties of other devices — splitting one physical devic
 | #   | Task                                                                                                 | Scope                 | Status                     |
 | --- | ---------------------------------------------------------------------------------------------------- | --------------------- | -------------------------- |
 | 1   | [FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS](features/FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS.md)     | backend, admin        | :white_check_mark: Done    |
-| 2   | [FEATURE-PLUGIN-MATTER](features/FEATURE-PLUGIN-MATTER.md)                                           | backend, admin        | :clipboard: Planned        |
+| 2   | [FEATURE-PLUGIN-MATTER](features/FEATURE-PLUGIN-MATTER.md) — superseded by [EPIC-MATTER](#14-matter-epic) | backend, admin        | :clipboard: Planned        |
 | 3   | [FEATURE-PLUGIN-ZIGBEE-HERDSMAN](features/FEATURE-PLUGIN-ZIGBEE-HERDSMAN.md)                         | backend, admin        | :clipboard: Planned        |
 | 4   | [FEATURE-DEVICE-PLUGIN-ADOPTION-WIZARDS](features/FEATURE-DEVICE-PLUGIN-ADOPTION-WIZARDS.md)         | backend, admin, spec  | :white_check_mark: Done    |
 | 5   | [FEATURE-PLUGIN-HOMEY](features/FEATURE-PLUGIN-HOMEY.md)                                             | backend, admin, panel | :white_check_mark: Done    |
 | 6   | [FEATURE-SIMULATOR-DEVICE-GENERATION-WIZARD](features/FEATURE-SIMULATOR-DEVICE-GENERATION-WIZARD.md) | admin                 | :white_check_mark: Done    |
 
-**Remaining work:** Matter plugin implementation and direct Zigbee integration via zigbee-herdsman (6 phases:
+**Remaining work:** direct Zigbee integration via zigbee-herdsman (6 phases:
 coordinator service, converters, device platform, adoption flow, admin UI, and network management). The Homey local MVP
 is complete for SHS over HTTP; its documented Homey Pro, HTTPS, automatic-discovery, and thermostat-control limitations
 remain outside the completed release claim.
@@ -397,7 +397,28 @@ Reach the installation from outside the LAN through a `remote-access` module and
 
 ---
 
-## 14. Technical Debt
+## 14. Matter (Epic)
+
+> [EPIC-MATTER](epics/EPIC-MATTER.md) — Status: :clipboard: Planned
+
+Expose Smart Panel devices to Apple Home, Google Home, Alexa, SmartThings and Home Assistant as a Matter bridge, then
+commission Matter devices (e.g. IKEA Matter bulbs) into Smart Panel as a Matter controller — one `devices-matter`
+plugin on matter.js. Analysis and design: `docs/superpowers/specs/2026-10-06-matter-integration-design.md`. Tasks are
+tracked as GitHub sub-issues of the epic issue (MT-1 … MT-20). Supersedes FEATURE-PLUGIN-MATTER.
+
+| #   | Milestone                                                                                         | Scope                              | Status              |
+| --- | ------------------------------------------------------------------------------------------------- | ---------------------------------- | ------------------- |
+| 0   | Compatibility spike and ADR (MT-1)                                                                | backend                            | :clipboard: Planned |
+| 1   | Bridge MVP (MT-2 … MT-8): runtime, lights/plugs/sensors, admin wizard, networking, docs, acceptance | backend, admin, installer, website | :clipboard: Planned |
+| 2   | Bridge coverage (MT-9 … MT-12): climate, covers, locks, fans, buttons, energy, vacuums, scenes    | backend, admin                     | :clipboard: Planned |
+| 3   | Controller (MT-13 … MT-19): spec, platform, mapping, wizard, Thread routes, docs, IKEA acceptance  | backend, admin, installer, spec, website | :clipboard: Planned |
+| 4   | Optional BLE commissioning of new Wi-Fi devices (MT-20)                                           | backend, installer                 | :clipboard: Planned |
+
+**Next up:** MT-1, the compatibility spike; no production Matter code before its ADR is merged.
+
+---
+
+## 15. Technical Debt
 
 | #   | Task                                                                                  | Scope          | Status                  |
 | --- | ------------------------------------------------------------------------------------- | -------------- | ----------------------- |
@@ -410,7 +431,7 @@ Reach the installation from outside the LAN through a `remote-access` module and
 
 ---
 
-## 15. Other Planned Features
+## 16. Other Planned Features
 
 | #   | Task                                                                                 | Scope                 | Status                  |
 | --- | ------------------------------------------------------------------------------------ | --------------------- | ----------------------- |
@@ -422,7 +443,7 @@ Reach the installation from outside the LAN through a `remote-access` module and
 
 ---
 
-## 16. Plans
+## 17. Plans
 
 | #   | Plan                                                                                    | Status                  |
 | --- | --------------------------------------------------------------------------------------- | ----------------------- |
@@ -449,7 +470,7 @@ Reach the installation from outside the LAN through a `remote-access` module and
 | Security                | 1      | 0           | 0       | 1       |
 | Virtual Devices         | 0      | 1           | 0       | 1       |
 | Companion Display       | 0      | 0           | 9       | 9       |
-| Plugins                 | 1      | 1           | 3       | 5       |
+| Plugins                 | 1      | 1           | 2       | 4       |
 | Extension Actions       | 3      | 0           | 5       | 8       |
 | System Notifications    | 11     | 0           | 0       | 11      |
 | Device & Infrastructure | 5      | 0           | 1       | 6       |
@@ -457,4 +478,5 @@ Reach the installation from outside the LAN through a `remote-access` module and
 | Other Features          | 4      | 0           | 1       | 5       |
 | Plans                   | 2      | 0           | 1       | 3       |
 | Remote Access           | 0      | 0           | 1       | 1       |
+| Matter Epic             | 0      | 0           | 1       | 1       |
 | **Total**               | **83** | **2**       | **32**  | **117** |
