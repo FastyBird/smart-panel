@@ -663,6 +663,37 @@ Evidence is retained privately in `pi4-alpha49-options`: `ssh-success-evidence.j
 `ssh-success-state.json`, `ssh-final-state.json`, `ssh-off-final.private.json` and `https-final.json`.
 This verifies the Pi 5 peer path; the checklist's phone/laptop SSH path remains untested.
 
+#### Alpha.49 Funnel public/private acceptance (2026-10-06)
+
+On the same Pi 4 alpha.49 / Tailscale 1.102.5, requesting Funnel before the tailnet permitted it
+produced `funnel-not-allowed` in the API and admin advisories. The provider stayed Connected,
+endpoints stayed private and Serve configuration was unchanged. Turning the request off cleared
+the advisory. After the administrator enabled the `funnel` node attribute, the CLI reported the
+capability and the real Config → Plugins → Tailscale switch successfully enabled Funnel.
+
+The config form warned about public exposure before Save. At 21:49:39 UTC the API reported a public
+HTTPS endpoint and `public-exposure`; the overview showed the primary URL as Public and both module
+and provider exposure advisories. Only the managed HTTPS port 443 appeared in `AllowFunnel`.
+The Mac's Tailscale client was Stopped/offline throughout the external probes. Initial requests to
+some public relay addresses failed during TLS establishment; subsequent normal-DNS curl and browser
+requests loaded the admin login page. By 21:51:47 all three public DNS relay addresses returned 200
+with certificate verification enabled. A public HTTPS owner login and direct authenticated WebSocket
+subscription also passed: eight normal system/statistics event payloads over 20 seconds, without
+polling fallback or reconnect. Public display-registration status remained closed.
+
+Saving Funnel off restored private endpoints and cleared advisories by 21:52:14. All three previously
+working public relay addresses failed TLS establishment in the post-disable probes, while the Pi 5
+tailnet HTTPS request still returned 200 with certificate verification enabled. A separate private
+Serve handler on port 8443, added for this test, retained identical TCP/Web configuration across both
+transitions and stayed reachable from the peer. Removing that temporary handler restored the entire
+Serve configuration exactly to its pre-test value. The final overview was Connected/healthy with no
+advisories. Funnel and Tailscale SSH are off; the administrator's tailnet permission remains enabled.
+
+Private evidence is in `pi4-alpha49-funnel`: the blocked/allowed API and UI captures, `public-on.json`,
+`public-probe-on-final.json`, `public-wss-diagnostic.json`, `public-probe-off.json`, `private-after.json`,
+the extra-handler probes, `serve-restored.json` and `progress.json`. This completes the Funnel row,
+not the remaining R4 gates.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
@@ -698,7 +729,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 
 ##### Options and advisories
 
-- [ ] Funnel on: the URL becomes public (open it from a device without Tailscale); the public-exposure advisory shows; Funnel off returns it to tailnet-only without touching other Serve handlers.
+- [x] Funnel on: the URL becomes public (open it from a device without Tailscale); the public-exposure advisory shows; Funnel off returns it to tailnet-only without touching other Serve handlers. Passed on Pi 4 alpha.49 from the Mac with Tailscale Stopped: public TLS/login/WebSocket, UI advisories, public access removal and retained private HTTPS. An independent private handler on port 8443 survived both transitions and was removed after the test.
 - [ ] Tailscale SSH on: `ssh <login-user>@<node>` from the phone/laptop works per the tailnet ACL; off again disables Tailscale SSH. Use an existing OS account with a login shell (`smartpanel` on the test image), not the `smart-panel` service account. Pi 5 peer login after the required authentication check and UI/CLI disable passed on alpha.49; phone/laptop SSH remains untested. Disabling this option does not disable the system OpenSSH service.
 - [ ] With a short-expiry auth key (or a key expiry set in the console): the key-expiring advisory appears and "Sign in again" recovers.
 - [ ] Tailnet with HTTPS certificates disabled: the tailnet-https-disabled advisory appears with the console link; IPv4 and MagicDNS HTTP endpoints still work.
