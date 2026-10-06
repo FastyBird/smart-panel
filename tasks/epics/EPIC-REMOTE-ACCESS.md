@@ -448,8 +448,8 @@ Onboarding was then completed again with the test owner. Extensions showed the T
 disabled by default. Enabling it accurately exposed the missing operator grant and the Set up remedy.
 Repeating Set up restored that grant and completed the privileged job in approximately one second.
 The factory-reset checkbox is complete; separate Sign out and successful auth-key login observations
-are recorded below. The captive portal was inactive after this reboot,
-but the first-boot Ethernet race in #1171 remains unfixed.
+are recorded below. The captive portal was inactive after this reboot;
+this did not validate a fix for the first-boot Ethernet race in #1171.
 
 An invalid-key test then found [#1172](https://github.com/FastyBird/smart-panel/issues/1172): the CLI
 remained `NeedsLogin` with an invalid-key error and the provider card correctly stayed Setup required,
@@ -458,8 +458,31 @@ failure; the wizard incorrectly treated every result except `pending-auth` as su
 fix advances only for `connected`, retains pending states on Sign in, and reports terminal failures,
 including late polling failures and explicit deadline feedback when the final state is still pending.
 Regression tests cover immediate failures, key erasure, pending connection/approval, timeout/retry
-and closed-session isolation. The fix has not yet been deployed to this Pi;
-hardware verification of failure recovery remains open.
+and closed-session isolation. Fixed-release hardware verification passed on alpha.48 as recorded below.
+
+#### Pi 4 alpha.48 upgrade and invalid-key recovery (2026-10-06)
+
+The spare Pi 4 upgraded from alpha.47 to alpha.48 through System → Install Update at 08:28:33 UTC.
+The privileged worker completed at 08:29:13 UTC without recovery being required, released its lock,
+and the UI reported success. A consistent database/configuration backup was retained before installation.
+Post-upgrade checks confirmed healthy service/API, unchanged owner and long-lived token fingerprints,
+configuration, device topology/counts, database schema and all 28 migrations. Tailscale remained signed out.
+
+The release tag includes the merged #1173 fix. The ARM64 server checksum and backend/admin npm
+integrity checks passed; all 1,719 installed compiled JavaScript files and 250 admin static files
+matched the verified release, with no extra static files. The pinned throttler version remained 6.7.1.
+
+After reloading the admin and running Set up to restore the operator grant, two deliberately invalid
+auth keys were submitted through Advanced sign-in. Both attempts stayed on Sign in; Options and Done
+remained waiting, and the key input was cleared. The retry was available after entering a new value
+and displayed “Failed to sign in to Tailscale”. CLI state remained NeedsLogin with an invalid-key error,
+the provider stayed Setup required without external URLs, and no temporary auth-key files remained.
+This verifies #1172 failure handling on hardware; pending approval and the ten-minute timeout retain
+their automated regression coverage rather than being claimed as hardware observations here.
+
+The captive-portal fix from #1174 merged after alpha.48 was released. Its subsequent fresh-image
+and controlled late-Ethernet acceptance are recorded below; the server image build from that merge is
+[run 37436682127](https://github.com/FastyBird/smart-panel/actions/runs/37436682127).
 
 #### Pi 4 auth-key login and explicit logout (2026-10-05, alpha.47)
 
@@ -485,6 +508,61 @@ The previous checklist incorrectly required a non-ephemeral device to disappear 
 console after logout. The [Tailscale CLI contract](https://tailscale.com/docs/reference/tailscale-cli#logout)
 expires the current login and requires reauthentication; immediate removal is specific to ephemeral
 nodes. The corrected row checks logout behavior. No admin-console deletion is claimed.
+
+#### Captive-portal Ethernet recovery follow-up (#1171)
+
+The installer wrapper now gives every unconfigured boot a bounded 30-second connectivity grace,
+including fresh images without a boot-config marker. NetworkManager queries have a deadline and
+the SmartPanel hotspot does not count as external Wi-Fi. Once the portal starts, its Node process
+checks Ethernet every five seconds with a bounded, cancellable probe. A connected Ethernet interface
+starts the configured-marker/watchdog flow only after NetworkManager confirms the hotspot is inactive.
+Failed or unconfirmable teardown leaves the marker unset and retries while keeping the portal and
+DNS redirect available. Startup also confirms stale-hotspot cleanup before skipping setup, including
+when an existing configured marker is present. Successful recovery uses the portal's shutdown path.
+Active Wi-Fi provisioning retains ownership of its completion; runtime recovery checks Ethernet only.
+
+Twenty-three isolated process regressions passed on the Mac and unprivileged on the spare Pi 4
+(Debian 12 arm64), using mocked system/network commands and private paths:
+`python3 build/raspbian/tests/test_portal_network_recovery.py`. They cover initial/delayed Ethernet,
+hotspot exclusion, slow probes, captive redirects, Wi-Fi success/failure and concurrent Ethernet,
+probe cancellation, repeated signals, held HTTP requests and child exit status. Review follow-ups also
+cover failed/unconfirmable teardown, retry after restart, existing-marker handling and whole-process-group
+test cleanup. Bash/Node syntax and scoped ShellCheck
+also passed. The dedicated Installer portal tests CI job runs the suite on Node 24/Linux. These tests
+do not change the host network.
+
+Fresh-image startup passed on the spare Pi 4 on 2026-10-06 using server image build
+[37436682127](https://github.com/FastyBird/smart-panel/actions/runs/37436682127), from merge
+`22e5ef2bdf904a421621a72f0c372b52d2aaeb98`. The downloaded artifact/archive checksums and complete
+SD-card readback passed; installed portal files match that merge. Ethernet became available after
+12 seconds during the 30-second startup grace. The wrapper created the configured marker and exited
+successfully without starting the hotspot. DNS redirection was absent, the watchdog and backend ran,
+and first-boot initialization completed with expanded root storage and database migrations. The admin
+onboarding flow completed and its authenticated System info API reported `network_mode: online`.
+This first-boot observation covers Ethernet arriving during startup grace.
+
+A physical unplug attempt restarted the Pi and was excluded from continuous-operation acceptance.
+A controlled repeat disconnected eth0 through NetworkManager while retaining power, armed an
+independent 90-second reconnection timer, and exercised the installed portal with real system/network
+commands. The test backed up and removed the configured marker and stopped the watchdog;
+it did not modify the portal implementation. The same boot ID was retained throughout.
+At 09:56:47 UTC the real hotspot, DNS redirect and `network_mode: setup` were observed. Ethernet
+returned at 09:57:45; by 09:57:52 the portal/hotspot had stopped, the new marker existed and DNS
+redirection was gone. The API returned `online` at 09:57:58 after the platform cache refreshed.
+The open admin displayed Setup Mode on reconnection and cleared the notification without a page reload.
+
+These portal outcomes do not mean the backend remained continuously available: both controlled
+network-loss attempts exposed a separate asynchronous mDNS `ENETUNREACH` process exit, followed by
+systemd restart. The successful portal observer recorded this outage and continued instead of
+triggering its fallback. The mDNS crash is tracked in
+[#1223](https://github.com/FastyBird/smart-panel/issues/1223) and requires fixed-release hardware verification.
+
+The follow-up provides nonthrowing response-send error callbacks for the advertisement, Home Assistant
+discovery and WLED discovery Bonjour instances. It logs failures without forcing teardown/restart or
+adding a global exception handler. Three scoped suites (33 tests) pass, including an asynchronous
+response-send failure through the real Bonjour dependency with an in-memory socket, a later successful
+response, continued discovery and normal stop/start. This covers Bonjour response-send callbacks;
+other socket error paths and uninterrupted hardware operation on a released fix are not claimed here.
 
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 

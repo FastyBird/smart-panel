@@ -332,16 +332,32 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   Phone login/live updates on this fresh host and phone transport remain
   pending; neither login-page loading nor peer results substitute for them. Fresh acceptance also found installer
   [#1171](https://github.com/FastyBird/smart-panel/issues/1171): the captive portal remains active
-  after Ethernet becomes available because it only checks connectivity at startup. That fix and
-  hardware verification remain open. A subsequent factory reset through the spare Pi 4 System UI
+  after Ethernet becomes available because it only checks connectivity at startup. The follow-up
+  adds a bounded startup grace and cancellable Ethernet monitoring while the portal runs; isolated
+  process regressions cover cleanup and Wi-Fi provisioning. Fresh-image hardware verification
+  remains open. A subsequent factory reset through the spare Pi 4 System UI
   passed from authenticated/Serve-enabled state: new host boot, no owner or auth tokens, automatic
   return to onboarding, CLI NeedsLogin, empty Serve and unreachable peer HTTPS. After onboarding,
   the plugin was disabled by default and enabling it accurately reported the missing operator grant.
   Repeating Set up restored the operator grant. Invalid-key testing then found
   [#1172](https://github.com/FastyBird/smart-panel/issues/1172): the wizard advanced to Options although
   the returned state and CLI still required sign-in. The follow-up gates advancement on Connected
-  and handles pending/failed results with regression coverage; fixed-release hardware acceptance
-  remains outstanding. A subsequent one-off auth-key login through Advanced passed without browser
+  and handles pending/failed results with regression coverage. Fixed-release invalid-key acceptance
+  passed on Pi 4 alpha.48 on 2026-10-06: System UI upgrade completed with retained data/configuration,
+  installed runtime/admin hashes matched the verified release, and two invalid-key attempts stayed on
+  Sign in with cleared input, error feedback, CLI NeedsLogin and no temporary key files. Pending approval
+  and timeout remain covered by automated tests. The #1174 captive-portal fix merged after this release;
+  its new server image build is [run 37436682127](https://github.com/FastyBird/smart-panel/actions/runs/37436682127),
+  Fresh-image Pi 4 acceptance passed on 2026-10-06: Ethernet was detected within 12 seconds and
+  the portal exited without leaving a hotspot or DNS redirect. A controlled 90-second NetworkManager
+  disconnect then exercised real hotspot startup and late-Ethernet recovery without a host reboot:
+  the portal/hotspot stopped within about seven seconds of the observed reconnect, followed by API
+  Online within another seven seconds and automatic removal of the admin Setup Mode notification.
+  Both controlled attempts also exposed a separate mDNS `ENETUNREACH` backend exit
+  ([#1223](https://github.com/FastyBird/smart-panel/issues/1223)); its repair and
+  fixed-release verification remain required. A physical unplug attempt restarted the Pi and is not
+  counted as continuous-operation acceptance.
+  Separately, an alpha.47 one-off auth-key login through Advanced passed without browser
   authorization: CLI Running/online, Connected UI, Serve HTTPS and certificate-verified peer HTTPS.
   Explicit provider Sign out then returned CLI NeedsLogin and Setup required, removed external URLs
   and made peer HTTPS unreachable while retaining the local owner. No temporary auth-key files or

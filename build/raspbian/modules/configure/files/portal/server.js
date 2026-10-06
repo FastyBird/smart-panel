@@ -30,6 +30,9 @@ const PORT = 80;
 const PORTAL_IP = '192.168.4.1';
 const PORTAL_DIR = __dirname;
 const WIFI_CONFIGURED_MARKER = '/var/lib/smart-panel/.wifi-configured';
+const DNSMASQ_CONF = '/etc/NetworkManager/dnsmasq-shared.d/captive-portal.conf';
+const NETWORK_CHECK_INTERVAL = 5000;
+const SHUTDOWN_GRACE_PERIOD = 2000;
 
 // Captive portal detection paths — redirect to setup page
 const CAPTIVE_PATHS = new Set([
@@ -46,6 +49,9 @@ const CAPTIVE_PATHS = new Set([
 ]);
 
 let connectInProgress = false;
+let networkMonitor = null;
+let networkProbe = null;
+let shuttingDown = false;
 let indexHtml = '';
 try {
 	indexHtml = fs.readFileSync(path.join(PORTAL_DIR, 'index.html'), 'utf8');
@@ -301,12 +307,8 @@ function connectToWifiAsync(ssid, password, hostname) {
 		connectInProgress = false;
 
 		// Start backend + watchdog, then stop portal
-		try {
-			execSync('systemctl start smart-panel.service 2>/dev/null', { timeout: 5000 });
-		} catch (_) {}
-		try {
-			execSync('systemctl start smart-panel-wifi-watchdog.service 2>/dev/null', { timeout: 5000 });
-		} catch (_) {}
+		stopNetworkMonitor();
+		startConfiguredServices();
 		// Stop ourselves via systemd, with process.exit fallback if it doesn't work
 		exec('systemctl stop smart-panel-portal.service');
 		setTimeout(() => {
@@ -485,15 +487,121 @@ function portalCleanup() {
 	} catch (_) {}
 }
 
-// Graceful shutdown
+/**
+ * Share the existing configured-network service flow with Ethernet recovery.
+ */
+function startConfiguredServices() {
+	for (const service of ['smart-panel.service', 'smart-panel-wifi-watchdog.service']) {
+		try {
+			execFileSync('systemctl', ['start', service], { timeout: 5000 });
+		} catch (_) {}
+	}
+}
+
+function stopNetworkMonitor() {
+	clearInterval(networkMonitor);
+	networkMonitor = null;
+	// Abort any outstanding nmcli child; late results must not restart services.
+	if (networkProbe) networkProbe.abort();
+}
+
+/**
+ * Confirm that our AP stopped before claiming Ethernet recovery. Failed or
+ * unconfirmable teardown leaves the portal monitor running so it can retry.
+ */
+async function stopHotspotForEthernet(probe) {
+	for (const action of ['down', 'delete']) {
+		if (probe.signal.aborted || shuttingDown || connectInProgress) return false;
+		try {
+			await execFileAsync('nmcli', ['connection', action, 'SmartPanel-Hotspot'], {
+				timeout: 5000,
+				signal: probe.signal,
+			});
+		} catch (err) {
+			if (probe.signal.aborted) throw err;
+			// A missing profile also returns an error; the active-state query is authoritative.
+		}
+	}
+	if (probe.signal.aborted || shuttingDown || connectInProgress) return false;
+	const { stdout } = await execFileAsync('nmcli', ['-t', '-f', 'NAME', 'connection', 'show', '--active'], {
+		timeout: 5000,
+		signal: probe.signal,
+	});
+	if (probe.signal.aborted || shuttingDown || connectInProgress) return false;
+	if (stdout.trim().split('\n').includes('SmartPanel-Hotspot')) {
+		console.warn('Hotspot still active — retrying Ethernet recovery');
+		return false;
+	}
+	fs.rmSync(DNSMASQ_CONF, { force: true });
+	return true;
+}
+
+/**
+ * DHCP can complete long after AP startup. Ethernet recovery is independent
+ * of WiFi provisioning; never interrupt the user's in-progress WiFi attempt.
+ * The probe is bounded and only one can run at a time.
+ */
+async function checkEthernetConnection() {
+	if (shuttingDown || connectInProgress || networkProbe) return;
+	const probe = new AbortController();
+	networkProbe = probe;
+	try {
+		const { stdout } = await execFileAsync('nmcli', ['-t', '-f', 'TYPE,STATE', 'device'], {
+			timeout: 5000,
+			signal: probe.signal,
+		});
+		if (probe.signal.aborted || shuttingDown || connectInProgress) return;
+		// WiFi AP/shared-mode connectivity is deliberately not evidence of recovery.
+		if (!stdout.trim().split('\n').includes('ethernet:connected')) return;
+		if (!(await stopHotspotForEthernet(probe))) return;
+
+		if (!fs.existsSync(WIFI_CONFIGURED_MARKER)) {
+			fs.mkdirSync(path.dirname(WIFI_CONFIGURED_MARKER), { recursive: true });
+			fs.writeFileSync(
+				WIFI_CONFIGURED_MARKER,
+				`configured=${new Date().toISOString()}\nsource=ethernet-detected\n`,
+			);
+		}
+		console.log('Ethernet connected — stopping captive portal');
+		startConfiguredServices();
+		shutdownPortal();
+	} catch (err) {
+		if (!probe.signal.aborted && !shuttingDown) {
+			console.warn(`Ethernet check failed: ${err.message}`);
+		}
+	} finally {
+		networkProbe = null;
+	}
+}
+
+function shutdownPortal() {
+	if (shuttingDown) return;
+	shuttingDown = true;
+	stopNetworkMonitor();
+	portalCleanup();
+	// An unfinished HTTP request can keep server.close() waiting indefinitely.
+	// Ethernet recovery exits internally, so it cannot rely on systemd's stop timeout.
+	const shutdownTimer = setTimeout(() => {
+		console.log('Portal connections did not close — exiting directly');
+		process.exit(0);
+	}, SHUTDOWN_GRACE_PERIOD).unref();
+	server.close(() => {
+		clearTimeout(shutdownTimer);
+		process.exit(0);
+	});
+}
+
+// Graceful shutdown also cancels the monitor and any nmcli child it owns.
 process.on('SIGTERM', () => {
 	console.log('Received SIGTERM — shutting down portal server');
-	portalCleanup();
-	server.close(() => process.exit(0));
+	shutdownPortal();
 });
 
 process.on('SIGINT', () => {
 	console.log('Received SIGINT — shutting down portal server');
-	portalCleanup();
-	server.close(() => process.exit(0));
+	shutdownPortal();
 });
+
+networkMonitor = setInterval(checkEthernetConnection, NETWORK_CHECK_INTERVAL);
+// Recheck immediately in case Ethernet connected while AP mode was starting.
+checkEthernetConnection();

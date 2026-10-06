@@ -34,6 +34,25 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
+  installer-portal-tests:
+    needs: "check-skip"
+    if: needs.check-skip.outputs.skip == 'false'
+    name: "Installer portal tests"
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+
+    steps:
+      - name: "Checkout"
+        uses: "actions/checkout@v7"
+
+      - name: "Setup Node.js"
+        uses: "actions/setup-node@v7"
+        with:
+          node-version: "24"
+
+      - name: "Test captive portal network recovery"
+        run: "python3 build/raspbian/tests/test_portal_network_recovery.py"
+
   backend-analyze:
     needs: "check-skip"
     if: needs.check-skip.outputs.skip == 'false'

@@ -1,6 +1,6 @@
 # Smart Panel — Task Roadmap
 
-> Last updated: 2026-09-02. Reflects actual codebase state.
+> Last updated: 2026-10-06. Reflects actual codebase state.
 
 ---
 
@@ -226,7 +226,7 @@ Build a device from properties of other devices — splitting one physical devic
 | #   | Task                                                                                                 | Scope                 | Status                     |
 | --- | ---------------------------------------------------------------------------------------------------- | --------------------- | -------------------------- |
 | 1   | [FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS](features/FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS.md)     | backend, admin        | :white_check_mark: Done    |
-| 2   | [FEATURE-PLUGIN-MATTER](features/FEATURE-PLUGIN-MATTER.md) — superseded by [EPIC-MATTER](#14-matter-epic) | backend, admin        | :clipboard: Planned        |
+| 2   | [FEATURE-PLUGIN-MATTER](features/FEATURE-PLUGIN-MATTER.md) — superseded by [EPIC-MATTER](#13b-matter-epic) | backend, admin        | :clipboard: Planned        |
 | 3   | [FEATURE-PLUGIN-ZIGBEE-HERDSMAN](features/FEATURE-PLUGIN-ZIGBEE-HERDSMAN.md)                         | backend, admin        | :clipboard: Planned        |
 | 4   | [FEATURE-DEVICE-PLUGIN-ADOPTION-WIZARDS](features/FEATURE-DEVICE-PLUGIN-ADOPTION-WIZARDS.md)         | backend, admin, spec  | :white_check_mark: Done    |
 | 5   | [FEATURE-PLUGIN-HOMEY](features/FEATURE-PLUGIN-HOMEY.md)                                             | backend, admin, panel | :white_check_mark: Done    |
@@ -397,14 +397,34 @@ Reach the installation from outside the LAN through a `remote-access` module and
 
 ---
 
-## 14. Matter (Epic)
+## 13a. UniFi Protect & Camera Live View (Epic)
 
-> [EPIC-MATTER](epics/EPIC-MATTER.md) — Status: :clipboard: Planned
+> [EPIC-UNIFI-PROTECT](epics/EPIC-UNIFI-PROTECT.md) — Status: :clipboard: Planned — GitHub #1175
+
+Adopt UniFi Protect cameras, doorbells, UP-Sense sensors and floodlights through the public Integration API, feed their detections into the security module, and show live video and snapshots in the admin and on the panel. Adds a reusable core `cameras` module with a go2rtc relay. Design: `docs/superpowers/specs/2026-10-06-unifi-protect-integration-design.md`. Tasks UP-0 … UP-21 are tracked as GitHub sub-issues of #1175.
+
+| #   | Milestone                                                                            | Scope                   | Status              |
+| --- | ------------------------------------------------------------------------------------ | ----------------------- | ------------------- |
+| 0   | Spike and spec extensions (UP-0, UP-1)                                               | backend, spec, cross    | :clipboard: Planned |
+| 1   | Camera streaming core: cameras module, go2rtc relay, installer (UP-2 … UP-4)         | backend, installer      | :clipboard: Planned |
+| 2   | Plugin backend: client, discovery, adoption, sync, control, streams (UP-5 … UP-10)   | backend                 | :clipboard: Planned |
+| 3   | Admin live view and plugin wizard (UP-11, UP-12)                                     | admin                   | :clipboard: Planned |
+| 4   | Panel snapshots and doorbell overlay (UP-13, UP-14); post-MVP live video (UP-15)     | panel, installer        | :clipboard: Planned |
+| 5   | Per-type security rules, person detection as occupancy, optional alarm manager and full-access mode (UP-16 … UP-18, UP-21) | backend | :clipboard: Planned |
+| 6   | Docs and hardware acceptance (UP-19, UP-20)                                          | website, docs           | :clipboard: Planned |
+
+**Next up:** all design decisions are confirmed (2026-10-06); start UP-0 (spike on a real console, Pi 4 and Pi 5) and UP-1 (spec extensions) in parallel.
+
+---
+
+## 13b. Matter (Epic)
+
+> [EPIC-MATTER](epics/EPIC-MATTER.md) — Status: :clipboard: Planned — GitHub #1191
 
 Expose Smart Panel devices to Apple Home, Google Home, Alexa, SmartThings and Home Assistant as a Matter bridge, then
 commission Matter devices (e.g. IKEA Matter bulbs) into Smart Panel as a Matter controller — one `devices-matter`
 plugin on matter.js. Analysis and design: `docs/superpowers/specs/2026-10-06-matter-integration-design.md`. Tasks are
-tracked as GitHub sub-issues of the epic issue (MT-1 … MT-20). Supersedes FEATURE-PLUGIN-MATTER.
+tracked as GitHub sub-issues of #1191 (MT-1 … MT-20). Supersedes FEATURE-PLUGIN-MATTER.
 
 | #   | Milestone                                                                                         | Scope                              | Status              |
 | --- | ------------------------------------------------------------------------------------------------- | ---------------------------------- | ------------------- |
@@ -418,7 +438,7 @@ tracked as GitHub sub-issues of the epic issue (MT-1 … MT-20). Supersedes FEAT
 
 ---
 
-## 15. Technical Debt
+## 14. Technical Debt
 
 | #   | Task                                                                                  | Scope          | Status                  |
 | --- | ------------------------------------------------------------------------------------- | -------------- | ----------------------- |
@@ -431,7 +451,7 @@ tracked as GitHub sub-issues of the epic issue (MT-1 … MT-20). Supersedes FEAT
 
 ---
 
-## 16. Other Planned Features
+## 15. Other Planned Features
 
 | #   | Task                                                                                 | Scope                 | Status                  |
 | --- | ------------------------------------------------------------------------------------ | --------------------- | ----------------------- |
@@ -443,7 +463,7 @@ tracked as GitHub sub-issues of the epic issue (MT-1 … MT-20). Supersedes FEAT
 
 ---
 
-## 17. Plans
+## 16. Plans
 
 | #   | Plan                                                                                    | Status                  |
 | --- | --------------------------------------------------------------------------------------- | ----------------------- |
@@ -478,5 +498,6 @@ tracked as GitHub sub-issues of the epic issue (MT-1 … MT-20). Supersedes FEAT
 | Other Features          | 4      | 0           | 1       | 5       |
 | Plans                   | 2      | 0           | 1       | 3       |
 | Remote Access           | 0      | 0           | 1       | 1       |
+| UniFi Protect           | 0      | 0           | 1       | 1       |
 | Matter Epic             | 0      | 0           | 1       | 1       |
-| **Total**               | **83** | **2**       | **32**  | **117** |
+| **Total**               | **83** | **2**       | **33**  | **118** |

@@ -1,7 +1,8 @@
-import Bonjour from 'bonjour-service';
+import Bonjour, { Service } from 'bonjour-service';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { ExtensionLoggerService } from '../../../common/logger';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_NAME } from '../devices-home-assistant.constants';
 
 import { HaMdnsDiscovererService } from './ha-mdns-discoverer.service';
@@ -15,7 +16,7 @@ const browser = {
 	stop: jest.fn(),
 };
 const bonjour = {
-	find: jest.fn(() => browser),
+	find: jest.fn((_options: unknown, _onFound: (service: Service) => void) => browser),
 	destroy: jest.fn(),
 };
 const BonjourMock = Bonjour as unknown as jest.Mock;
@@ -31,10 +32,36 @@ describe('HaMdnsDiscovererService', () => {
 		service = new HaMdnsDiscovererService({ emit: jest.fn() } as unknown as EventEmitter2);
 	});
 
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	it('identifies itself as an always-active plugin service', () => {
 		expect(service.owner).toEqual({ kind: 'plugin', type: DEVICES_HOME_ASSISTANT_PLUGIN_NAME });
 		expect(service.serviceId).toBe('discovery');
 		expect(service.activationPolicy).toBe('always');
+	});
+
+	it('logs late response-send failures and continues discovery across restart', async () => {
+		const warn = jest.spyOn(ExtensionLoggerService.prototype, 'warn').mockImplementation();
+		await service.start();
+		const [, onError] = BonjourMock.mock.calls[0] as [unknown, (error: Error) => void];
+		const error = Object.assign(new Error('send ENETUNREACH 224.0.0.251:5353'), { code: 'ENETUNREACH' });
+
+		expect(() => onError(error)).not.toThrow();
+		expect(warn).toHaveBeenCalledWith(`mDNS response send failed: ${error.message}`, error);
+		expect(await service.isHealthy()).toBe(true);
+		expect(bonjour.destroy).not.toHaveBeenCalled();
+		const onFound = bonjour.find.mock.calls[0][1];
+		onFound({ name: 'Home Assistant', addresses: ['192.0.2.20'], port: 8123, txt: {} } as Service);
+		expect(service.getDiscoveredInstances()).toEqual([expect.objectContaining({ hostname: '192.0.2.20', port: 8123 })]);
+
+		await service.stop();
+		await service.start();
+		expect(bonjour.destroy).toHaveBeenCalledTimes(1);
+		expect(BonjourMock).toHaveBeenCalledTimes(2);
+		expect(await service.isHealthy()).toBe(true);
+		await service.stop();
 	});
 
 	it('starts and stops discovery idempotently', async () => {
