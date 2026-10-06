@@ -413,7 +413,7 @@ Adopt UniFi Protect cameras, doorbells, UP-Sense sensors and floodlights through
 | 5   | Per-type security rules, person detection as occupancy, optional alarm manager and full-access mode (UP-16 … UP-18, UP-21) | backend | :clipboard: Planned |
 | 6   | Docs and hardware acceptance (UP-19, UP-20)                                          | website, docs           | :clipboard: Planned |
 
-**Next up:** D1, D3, D5–D8 are confirmed (2026-10-06); confirm D2, D4, D9, D10 and the sensor extensions, then UP-0 (spike on a real console, Pi 4 and Pi 5) and UP-1 (spec extensions) in parallel.
+**Next up:** all design decisions are confirmed (2026-10-06); start UP-0 (spike on a real console, Pi 4 and Pi 5) and UP-1 (spec extensions) in parallel.
 
 ---
 

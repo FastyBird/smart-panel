@@ -20,9 +20,8 @@ live camera video and snapshots in the admin and on the wall panel.
 
 - Analysis and design: [`docs/superpowers/specs/2026-10-06-unifi-protect-integration-design.md`](../../docs/superpowers/specs/2026-10-06-unifi-protect-integration-design.md).
   It records the API research (public Integration API vs private API), how Home Assistant integrates Protect, the
-  current gaps in Smart Panel and decisions D1–D10. D1, D3, D5, D6, D7 and D8 were confirmed on 2026-10-06;
-  D2, D4, D9, D10 and the sensor extensions of design §14a (`sound_detection`, person detection as space occupancy)
-  are still proposed.
+  current gaps in Smart Panel and decisions D1–D10. All decisions, including the sensor extensions of design §14a
+  (`sound_detection`, per-type detection rules, person detection as space occupancy), were confirmed on 2026-10-06.
 - Smart Panel has **no** video streaming or snapshot code today; the `camera` channel has no defined way to expose a
   stream; flutter-pi is built without its GStreamer video player; the security module ignores `camera`/`doorbell`
   channels. The epic therefore also delivers a reusable core `cameras` module and a go2rtc relay.
@@ -72,7 +71,7 @@ live camera video and snapshots in the admin and on the wall panel.
 
 ## 4. Acceptance criteria
 
-- [ ] Decisions D1–D10 of the design confirmed (or amended) and recorded in the design doc.
+- [x] Decisions D1–D10 of the design confirmed and recorded in the design doc (2026-10-06).
 - [ ] A console is discovered or entered, connected with an API key and verified against the minimum Protect version.
 - [ ] Cameras, doorbells, UP-Sense sensors and floodlights are adopted through the wizard, idempotently, and stay in
       sync in real time, including after console reboot, Protect update and network loss.
@@ -116,7 +115,7 @@ Sub-issues of #1175. PR titles are the issue titles unless stated otherwise.
 
 ### Execution order
 
-1. **M0:** UP-0 and UP-1 in parallel; confirm D1–D10.
+1. **M0:** UP-0 and UP-1 in parallel (decisions confirmed 2026-10-06).
 2. **M1:** UP-2 → UP-3; UP-4 in parallel.
 3. **M2:** UP-5 → (UP-6 ∥ UP-7) → UP-8 → (UP-9 ∥ UP-10).
 4. **M3/M4:** UP-11 after UP-3; UP-12 after UP-7; UP-13 after UP-2; UP-14 after UP-8 + UP-13.

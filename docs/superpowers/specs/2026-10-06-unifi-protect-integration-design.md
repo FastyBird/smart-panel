@@ -1,7 +1,6 @@
 # UniFi Protect Integration and Camera Live View — Analysis and Design
 
-- **Status:** D1, D3, D5, D6, D7 and D8 confirmed on 2026-10-06; D2, D4, D9, D10 and the §14a sensor extensions
-  (`sound_detection`, person detection as space occupancy) still proposed
+- **Status:** approved — all decisions D1–D10 and the §14a sensor extensions confirmed on 2026-10-06
 - **Date:** 2026-10-06
 - **Epic:** [#1175](https://github.com/FastyBird/smart-panel/issues/1175), task file
   [`tasks/epics/EPIC-UNIFI-PROTECT.md`](../../../tasks/epics/EPIC-UNIFI-PROTECT.md)
@@ -194,8 +193,8 @@ WebSocket, per-quality camera entities (we model qualities as stream profiles of
 
 ## 6. Decisions
 
-Status: **confirmed** on 2026-10-06 for D1, D3, D5, D6, D7 and D8; **proposed** for D2, D4, D9 and D10. The
-`sound_detection` channel in D8 and the sensor usage in §14a were added after that confirmation and still need review.
+Status: **all confirmed** on 2026-10-06 — D1, D3, D5, D6, D7 and D8 first, then D2, D4, D9, D10, the
+`sound_detection` channel in D8 and the sensor usage and default detection rules in §14a.
 
 | # | Decision | Recommendation | Alternatives |
 |---|---|---|---|
