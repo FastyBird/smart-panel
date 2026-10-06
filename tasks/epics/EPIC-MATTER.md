@@ -55,6 +55,8 @@ milestone, to bring Matter devices such as IKEA Matter bulbs into Smart Panel as
   certificates (VID `0xFFF1`, PID `0x8000`).
 - A Thread Border Router on Smart Panel and commissioning factory-new Thread devices without a phone
   ecosystem.
+- Commissioning from the Android display app through Google Play Services (later feature update; Android
+  displays only, not flutter-pi). See "Future options" in the design spec.
 - Matter cameras/doorbells, media players/TVs, alarm panels, weather (no device type or no ecosystem support).
 - Fabric Synchronization, Joint Fabric, groups, Matter scenes management, OTA updates of controlled devices.
 - Re-exporting devices that Smart Panel controls through Matter back out through its own bridge.

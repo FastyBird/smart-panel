@@ -507,6 +507,17 @@ devices-matter:
   dispatch ≤ 100 ms.
 - No measurable effect on the panel UI when the plugin is disabled (matter.js not loaded).
 
+## Future options (not part of this epic)
+
+- **Commissioning from the Android display app.** The Android build of the display app could use the Google Play
+  Services Matter commissioning API, as the Home Assistant companion app does. The tablet would discover a factory-new
+  device over Bluetooth, provision Wi-Fi or Thread credentials (Thread through Android's Thread network API, with the
+  user's consent) and hand the device to the backend controller through a commissioning window. The Pi would need
+  neither Bluetooth nor a Thread radio. Only Android displays can do this: flutter-pi (Raspberry Pi) and Linux
+  desktop displays have no such API. Planned as a later feature update once milestone 3 has shipped.
+- **Own Thread Border Router.** An RCP dongle with OpenThread Border Router on the Pi would let Smart Panel own a
+  Thread network and commission Thread devices directly (together with BLE). Possible future epic.
+
 ## Risks and mitigations
 
 | Risk | Mitigation |
