@@ -424,9 +424,67 @@ Fresh-image acceptance also found [#1171](https://github.com/FastyBird/smart-pan
 the captive portal/hotspot remained active alongside connected Ethernet, leaving admin in Setup Mode.
 The portal checks network connectivity only at startup and does not reconcile a later Ethernet
 connection. DHCP arriving after that check is the likely trigger, not a captured timestamp ordering.
-The installer fix and its hardware verification remain open. Auth-key login, logout, factory reset
-and the other unchecked R4 scenarios also remain unperformed. The original Pi 5 remains intact and
-authenticated. Full R4 and epic #897 remain open.
+The installer fix and its hardware verification remain open. At this stage auth-key login, logout,
+factory reset and the other unchecked R4 scenarios remained unperformed. The subsequent reset
+observation is recorded below. The original Pi 5 remains intact and authenticated. Full R4 and
+epic #897 remain open.
+
+#### Pi 4 factory-reset acceptance (2026-10-05, alpha.47)
+
+The spare Pi 4 was reset once through System → Manage system → Factory Reset, while Tailscale was
+authenticated/online and Serve HTTPS was configured. LAN SSH recovery was verified first; the
+application had one test owner and no devices, spaces or displays. The journal confirms that the
+reset cascaded to zero displays. No reset command was sent to the original Pi 5.
+
+After the 21:19:28 UTC submission, the host rebooted and onboarding reported no owner at 21:20:37 UTC.
+The existing admin page automatically reached onboarding without a manual reload. Post-reboot receipts
+confirmed a new host boot ID and service invocations, alpha.47 health, zero users and auth tokens,
+and an incomplete onboarding state. The former owner's login was rejected before account recreation.
+Tailscale reported `NeedsLogin`, no Tailscale IPs and an empty Serve configuration (`{}`). Both normal
+DNS and direct-IP HTTPS probes from Pi 5 failed to connect. The daemon remained installed and running,
+as expected; this acceptance checks removal of authentication and Serve, not package removal.
+
+Onboarding was then completed again with the test owner. Extensions showed the Tailscale plugin
+disabled by default. Enabling it accurately exposed the missing operator grant and the Set up remedy.
+Repeating Set up restored that grant and completed the privileged job in approximately one second.
+The factory-reset checkbox is complete; separate Sign out and successful auth-key login observations
+are recorded below. The captive portal was inactive after this reboot,
+but the first-boot Ethernet race in #1171 remains unfixed.
+
+An invalid-key test then found [#1172](https://github.com/FastyBird/smart-panel/issues/1172): the CLI
+remained `NeedsLogin` with an invalid-key error and the provider card correctly stayed Setup required,
+but the wizard advanced to Options. The login API returns the observed provider state after a CLI
+failure; the wizard incorrectly treated every result except `pending-auth` as success. The follow-up
+fix advances only for `connected`, retains pending states on Sign in, and reports terminal failures,
+including late polling failures and explicit deadline feedback when the final state is still pending.
+Regression tests cover immediate failures, key erasure, pending connection/approval, timeout/retry
+and closed-session isolation. The fix has not yet been deployed to this Pi;
+hardware verification of failure recovery remains open.
+
+#### Pi 4 auth-key login and explicit logout (2026-10-05, alpha.47)
+
+After the reset and repeated setup above, a real one-off auth key was submitted once through the
+wizard's Advanced sign-in tab at 21:41:32 UTC. No browser authorization was needed. The wizard
+advanced to Options and Done with the provider Connected; CLI inspection at 21:41:44 showed
+Running, online and no health errors. Serve HTTPS appeared as the primary external URL. Both normal
+DNS and direct-IP HTTPS health probes from Pi 5 returned HTTP 200 with successful certificate
+verification at 21:43:48. This validates the successful path on alpha.47; it does not validate the
+unreleased fix for invalid-key results.
+
+The provider card's explicit Sign out action was submitted at 21:45:10 UTC. The local admin session
+and owner remained usable, while the provider became Setup required, external URLs disappeared,
+and CLI reported NeedsLogin, no Tailscale IPs and offline. Both peer HTTPS probes timed out. As with
+the factory reset, logout removed the profile's operator grant; the UI accurately offered Set up to
+restore it. The spare Pi 4 was left signed out with LAN admin/SSH access available.
+
+No temporary auth-key files remained. An exact-key audit of three application configuration/database
+files and the smart-panel/tailscaled journal since 21:40 UTC found no key matches. The private source
+file on the Mac was not included in repository artifacts.
+
+The previous checklist incorrectly required a non-ephemeral device to disappear from the admin
+console after logout. The [Tailscale CLI contract](https://tailscale.com/docs/reference/tailscale-cli#logout)
+expires the current login and requires reauthentication; immediate removal is specific to ephemeral
+nodes. The corrected row checks logout behavior. No admin-console deletion is claimed.
 
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
@@ -457,9 +515,9 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 
 - [x] Reboot the Pi: the node reconnects without interaction and the URL still works. Alpha.47 automatic CLI/API/UI recovery and user-confirmed cellular admin loading passed on 2026-10-05; the Mac client remained offline.
 - [x] Disable the plugin (Extensions): the node disconnects, external URLs disappear; re-enable reconnects. The actual Extensions switch path passed on Pi 4 alpha.47, with CLI/UI agreement, failed/successful HTTPS probes from Pi 5 and retained node identity. Earlier Pi 5 config PATCH/live-card checks remain separately recorded.
-- [ ] Sign in with an auth key (advanced tab) on a second fresh install or after Sign out: node connects without the browser step.
-- [ ] Sign out: the device disappears from the tailnet admin console; the card returns to setup-required.
-- [ ] Factory reset: after restore, no tailnet login remains (`tailscale status` shows NeedsLogin) and Serve is reset.
+- [x] Sign in with an auth key (advanced tab) on a second fresh install or after Sign out: node connects without the browser step. Passed after factory reset on spare Pi 4 alpha.47 with a one-off key; CLI/UI agreement and actual peer HTTPS verified.
+- [x] Sign out: the current login expires, the card returns to setup-required, external URLs disappear and tailnet access stops. Passed through the provider card on Pi 4 alpha.47 with CLI NeedsLogin and failed peer HTTPS probes. Non-ephemeral console deletion is not part of logout.
+- [x] Factory reset: after restore, no tailnet login remains (`tailscale status` shows NeedsLogin) and Serve is reset. Verified through the actual System UI on the spare Pi 4 alpha.47; reboot, owner/token removal, onboarding recovery and failed peer HTTPS probes also passed.
 
 ##### Options and advisories
 

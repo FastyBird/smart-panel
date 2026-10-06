@@ -161,21 +161,43 @@ describe('useTailscaleLogin', () => {
 		expect(isPolling.value).toBe(true);
 	});
 
-	it('gives up after the ten-minute absolute deadline even if still pending-auth', async () => {
+	it.each(['pending-auth', 'connecting', 'pending-approval'])('reports the deadline while the last state is %s', async (state) => {
 		vi.useFakeTimers();
-		login.mockResolvedValue({ state: 'pending-auth' });
-		get.mockResolvedValue({ state: 'pending-auth' });
-		const { login: doLogin, isPolling } = useTailscaleLogin();
+		login.mockResolvedValue({ state });
+		get.mockResolvedValue({ state });
+		const { login: doLogin, isPolling, hasPollingTimedOut, stopPolling } = useTailscaleLogin();
 
-		await doLogin();
+		await doLogin('synthetic-invalid-key');
+		await vi.advanceTimersByTimeAsync(10 * 60 * 1000 - 3_000);
+		expect(isPolling.value).toBe(true);
+		expect(hasPollingTimedOut.value).toBe(false);
 
-		await vi.advanceTimersByTimeAsync(10 * 60 * 1000 + 1_000);
-
+		await vi.advanceTimersByTimeAsync(3_000);
 		expect(isPolling.value).toBe(false);
+		expect(hasPollingTimedOut.value).toBe(true);
 
 		const calls = get.mock.calls.length;
 		await vi.advanceTimersByTimeAsync(10_000);
 		expect(get.mock.calls.length).toBe(calls);
+
+		await doLogin('synthetic-retry-key');
+		expect(hasPollingTimedOut.value).toBe(false);
+		expect(isPolling.value).toBe(true);
+		stopPolling();
+		await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+		expect(hasPollingTimedOut.value).toBe(false);
+	});
+
+	it('clears a timeout when the caller closes the wizard', async () => {
+		vi.useFakeTimers();
+		login.mockResolvedValue({ state: 'pending-auth' });
+		get.mockResolvedValue({ state: 'pending-auth' });
+		const composable = useTailscaleLogin();
+		await composable.login();
+		await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+		expect(composable.hasPollingTimedOut.value).toBe(true);
+		composable.stopPolling();
+		expect(composable.hasPollingTimedOut.value).toBe(false);
 	});
 
 	it('stops polling when the caller closes the wizard', async () => {

@@ -31,13 +31,10 @@ vi.mock('../../../modules/config', async () => ({
 	...(await vi.importActual('../../../modules/config')),
 	useConfigPlugin: () => ({ configPlugin: ref(null), fetchConfigPlugin: vi.fn().mockResolvedValue(undefined) }),
 }));
-vi.mock('../composables/useTailscaleLogin', () => ({
-	useTailscaleLogin: () => ({ isLoggingIn: ref(false), isPolling: ref(false), login: vi.fn(), stopPolling: vi.fn() }),
-}));
 const wrappers: ReturnType<typeof shallowMount>[] = [];
-const mountWizard = () => {
+const mountWizard = (initialStep: 'setup' | 'signin' = 'setup') => {
 	const wrapper = shallowMount(SetupWizard, {
-		props: { visible: true, initialStep: 'setup' },
+		props: { visible: true, initialStep },
 		global: {
 			renderStubDefaultSlot: true,
 			stubs: {
@@ -85,6 +82,41 @@ describe('Tailscale setup wizard with actual store and composables', () => {
 		for (const wrapper of wrappers.splice(0)) wrapper.unmount();
 		vi.useRealTimers();
 	});
+
+	it.each(['pending-auth', 'connecting', 'pending-approval'])(
+		'reports a keyed login timeout with %s as the last status and allows a retry',
+		async (state) => {
+			snapshot.state = state;
+			fns.post.mockResolvedValue({ data: { data: { state } }, response: { status: 200 } });
+			const wrapper = mountWizard('signin');
+			await flushPromises();
+			wrapper.findComponent({ name: 'ElInput' }).vm.$emit('update:model-value', 'synthetic-invalid-key');
+			await flushPromises();
+			wrapper.findAllComponents({ name: 'ElButton' })[1]!.vm.$emit('click');
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(10 * 60 * 1000 - 3_000);
+			expect(activeStep(wrapper)).toBe(1);
+			expect(fns.flashError).not.toHaveBeenCalled();
+			await vi.advanceTimersByTimeAsync(3_000);
+			expect(activeStep(wrapper)).toBe(1);
+			expect(fns.flashError).toHaveBeenCalledExactlyOnceWith('remoteAccessTailscalePlugin.messages.loginTimedOut');
+			expect(wrapper.findComponent({ name: 'ElInput' }).props('modelValue')).toBe('');
+			await vi.advanceTimersByTimeAsync(6_000);
+			expect(fns.flashError).toHaveBeenCalledTimes(1);
+
+			fns.flashError.mockClear();
+			wrapper.findComponent({ name: 'ElInput' }).vm.$emit('update:model-value', 'synthetic-retry-key');
+			await flushPromises();
+			wrapper.findAllComponents({ name: 'ElButton' })[1]!.vm.$emit('click');
+			await flushPromises();
+			await vi.advanceTimersByTimeAsync(3_000);
+			expect(fns.flashError).not.toHaveBeenCalled();
+			await wrapper.setProps({ visible: false });
+			await wrapper.setProps({ visible: true });
+			await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+			expect(fns.flashError).not.toHaveBeenCalled();
+		}
+	);
 
 	it('immediately reconciles acceptance and advances after REST completion with all events lost', async () => {
 		const wrapper = mountWizard();

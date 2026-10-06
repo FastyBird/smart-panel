@@ -14,6 +14,7 @@ import type { IUseTailscaleLogin } from './types';
 // instance open at a time, but the guard costs nothing.
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 const polling = ref<boolean>(false);
+const pollingTimedOut = ref<boolean>(false);
 const loggingIn = ref<boolean>(false);
 
 // Identifies the current `login()` call, and the poll it may start. `login()` itself rejects a
@@ -53,6 +54,7 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 
 	const stopPolling = (): void => {
 		currentAttemptId++;
+		pollingTimedOut.value = false;
 		clearPolling();
 	};
 
@@ -72,6 +74,7 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 			}
 
 			if (Date.now() - startedAt >= TAILSCALE_LOGIN_POLL_TIMEOUT_MS) {
+				pollingTimedOut.value = true;
 				clearPolling();
 
 				return;
@@ -113,6 +116,7 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 		// guard while this attempt is in flight. Closing the wizard invalidates the attempt
 		// separately so its late response cannot restart polling.
 		const attemptId = ++currentAttemptId;
+		pollingTimedOut.value = false;
 
 		loggingIn.value = true;
 
@@ -141,6 +145,7 @@ export const useTailscaleLogin = (): IUseTailscaleLogin => {
 	return {
 		isLoggingIn: computed<boolean>((): boolean => loggingIn.value),
 		isPolling: computed<boolean>((): boolean => polling.value),
+		hasPollingTimedOut: computed<boolean>((): boolean => pollingTimedOut.value),
 		login,
 		stopPolling,
 	};

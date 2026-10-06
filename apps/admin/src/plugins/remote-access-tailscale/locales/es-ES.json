@@ -88,6 +88,7 @@
 		"requestError": "Se produjo un error al cargar el estado de Tailscale",
 		"setupFailed": "No se pudo iniciar el trabajo de configuración de Tailscale",
 		"loginFailed": "No se pudo iniciar sesión en Tailscale",
+		"loginTimedOut": "Se agotó el tiempo de inicio de sesión en Tailscale. Inténtalo de nuevo.",
 		"signedOut": "Sesión de Tailscale cerrada",
 		"signOutFailed": "No se pudo cerrar la sesión de Tailscale",
 		"preferencesReset": "Las preferencias de Tailscale se han restablecido",

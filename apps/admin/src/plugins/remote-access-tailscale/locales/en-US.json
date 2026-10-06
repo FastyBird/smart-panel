@@ -88,6 +88,7 @@
 		"requestError": "An error occurred while loading the Tailscale status",
 		"setupFailed": "Failed to start the Tailscale setup job",
 		"loginFailed": "Failed to sign in to Tailscale",
+		"loginTimedOut": "Tailscale sign-in timed out. Please try again.",
 		"signedOut": "Signed out of Tailscale",
 		"signOutFailed": "Failed to sign out of Tailscale",
 		"preferencesReset": "Tailscale preferences have been reset",
