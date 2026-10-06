@@ -46,7 +46,10 @@ export class WledMdnsDiscovererService implements OnModuleDestroy {
 			// Create Bonjour instance
 			// Note: bonjour-service doesn't support network interface selection in constructor
 			// The networkInterface parameter is reserved for future use
-			this.bonjour = new Bonjour();
+			// Bonjour otherwise throws asynchronous response-send errors outside the startup catch.
+			this.bonjour = new Bonjour({}, (error: Error) => {
+				this.logger.warn(`mDNS response send failed: ${error.message}`, error);
+			});
 
 			// Browse for _wled._tcp services
 			this.browser = this.bonjour.find({ type: 'wled' }, (service: Service) => {

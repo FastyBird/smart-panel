@@ -1,5 +1,8 @@
+import { EventEmitter } from 'events';
+
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { ExtensionLoggerService } from '../../../common/logger';
 import { ConfigService } from '../../config/services/config.service';
 import { ManagedServiceManagerService } from '../../extensions/services/managed-service-manager.service';
 import { MDNS_DEFAULT_SERVICE_NAME, MDNS_DEFAULT_SERVICE_TYPE, MDNS_MODULE_NAME } from '../mdns.constants';
@@ -18,8 +21,8 @@ jest.mock('bonjour-service', () => {
 	// Return a factory that returns our mocks
 	return {
 		__esModule: true,
-		Bonjour: function () {
-			mockBonjourConstructor();
+		Bonjour: function (options: unknown, errorCallback: (error: Error) => void) {
+			mockBonjourConstructor(options, errorCallback);
 
 			return {
 				publish: mockPublish,
@@ -110,6 +113,73 @@ describe('MdnsService', () => {
 
 	it('should be defined', () => {
 		expect(service).toBeDefined();
+	});
+
+	it('logs late response-send failures and preserves the advertisement lifecycle', async () => {
+		const warn = jest.spyOn(ExtensionLoggerService.prototype, 'warn').mockImplementation();
+		await startAdvertisement();
+		const [, onError] = mockBonjourConstructor.mock.calls[0] as [unknown, (error: Error) => void];
+		const error = Object.assign(new Error('send ENETUNREACH 224.0.0.251:5353'), { code: 'ENETUNREACH' });
+
+		expect(() => onError(error)).not.toThrow();
+		expect(warn).toHaveBeenCalledWith(`mDNS response send failed: ${error.message}`, error);
+		expect(await service.isHealthy()).toBe(true);
+		expect(mockDestroy).not.toHaveBeenCalled();
+
+		await service.stop();
+		await startAdvertisement();
+		expect(mockDestroy).toHaveBeenCalledTimes(1);
+		expect(mockBonjourConstructor).toHaveBeenCalledTimes(2);
+		expect(await service.isHealthy()).toBe(true);
+	});
+
+	it('handles real Bonjour asynchronous response-send errors and permits subsequent responses', async () => {
+		const warn = jest.spyOn(ExtensionLoggerService.prototype, 'warn').mockImplementation();
+		await startAdvertisement();
+		const [, onError] = mockBonjourConstructor.mock.calls[0] as [unknown, (error: Error) => void];
+		const { Bonjour: ActualBonjour } = jest.requireActual<typeof import('bonjour-service')>('bonjour-service');
+		let sendError: Error | undefined = Object.assign(new Error('send ENETUNREACH 224.0.0.251:5353'), {
+			code: 'ENETUNREACH',
+		});
+		// Supply an in-memory socket so this exercises the dependency without binding or sending on the network.
+		const socket = Object.assign(new EventEmitter(), {
+			send: jest.fn(
+				(
+					_message: Buffer,
+					_offset: number,
+					_length: number,
+					_port: number,
+					_address: string,
+					callback: (error?: Error) => void,
+				) => process.nextTick(() => callback(sendError)),
+			),
+			close: jest.fn((callback: () => void) => callback()),
+		});
+		// Bonjour's constructor typings omit the multicast-dns socket options it forwards at runtime.
+		const options = { socket, bind: false, multicast: false } as ConstructorParameters<typeof ActualBonjour>[0];
+		const bonjour = new ActualBonjour(options, onError);
+		const mdns = (bonjour as unknown as { server: { mdns: EventEmitter } }).server.mdns;
+		const query = { questions: [{ name: '_test._tcp.local', type: 'PTR' }] };
+
+		try {
+			bonjour.publish({ name: 'fixture', type: 'test', port: 3000, probe: false });
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			mdns.emit('query', query);
+			await new Promise<void>((resolve) => setImmediate(resolve));
+
+			expect(warn).toHaveBeenCalledTimes(1);
+			expect(warn).toHaveBeenCalledWith(`mDNS response send failed: ${sendError.message}`, sendError);
+			sendError = undefined;
+			mdns.emit('query', query);
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			expect(socket.send).toHaveBeenCalledTimes(3);
+			expect(warn).toHaveBeenCalledTimes(1);
+			expect(await service.isHealthy()).toBe(true);
+		} finally {
+			bonjour.destroy();
+			await service.stop();
+		}
+		expect(socket.close).toHaveBeenCalledTimes(1);
 	});
 
 	describe('getServiceName', () => {

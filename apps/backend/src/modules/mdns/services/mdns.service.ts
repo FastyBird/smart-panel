@@ -145,7 +145,10 @@ export class MdnsService extends BaseManagedExtensionService implements OnApplic
 				this.logger.log('Starting mDNS service advertisement');
 
 				// Create the Bonjour instance
-				this.bonjour = new Bonjour();
+				// Bonjour otherwise throws asynchronous response-send errors outside the startup catch.
+				this.bonjour = new Bonjour({}, (error: Error) => {
+					this.logger.warn(`mDNS response send failed: ${error.message}`, error);
+				});
 
 				const baseServiceName = this.getServiceName();
 				const serviceType = this.getServiceType();
