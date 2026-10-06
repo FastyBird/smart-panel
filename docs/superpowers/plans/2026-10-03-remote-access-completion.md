@@ -378,6 +378,12 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   Phone-specific transport/address/registration checks and a fresh-host
   live device change remain untested. See the epic's authenticated alpha.49 section for timestamps
   and evidence boundaries; this does not close R4.
+  Tailscale SSH opt-in also passed from the Pi 5 peer: the UI switch set `RunSSH=true`, and after
+  the tailnet's required authentication check, `id -un` returned the OS login user `smartpanel`
+  with exit zero. The service user `smart-panel` has a nologin shell. Saving the switch off restored
+  `RunSSH=false` while CLI online, unchanged Serve and certificate-verified HTTPS remained healthy.
+  The follow-up SSH wrapper rejected the host key without executing a command; this is not a claim
+  that port 22 or the system OpenSSH service closed. The phone/laptop SSH variant remains untested.
   Separately, an alpha.47 one-off auth-key login through Advanced passed without browser
   authorization: CLI Running/online, Connected UI, Serve HTTPS and certificate-verified peer HTTPS.
   Explicit provider Sign out then returned CLI NeedsLogin and Setup required, removed external URLs

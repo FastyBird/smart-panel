@@ -643,6 +643,26 @@ Private evidence is retained outside Git in the `pi4-alpha49-tailscale` acceptan
 and `throttle-isolation-evidence.json`, plus `wss-evidence.json` for the authenticated transport probe.
 R4 and the epic remain open for the unchecked gates below.
 
+#### Alpha.49 Tailscale SSH peer verification (2026-10-06)
+
+On the same Pi 4 alpha.49 / Tailscale 1.102.5, the Tailscale SSH switch was enabled and saved
+through Config → Plugins → Tailscale. CLI preferences confirmed `RunSSH=true`. The Pi 5 peer's
+`tailscale ssh smartpanel@<node> id -un` required the tailnet's additional authentication check;
+earlier attempts timed out while waiting and were not counted as successful logins. After the check
+completed, the command exited zero at 20:25:21 UTC and returned `smartpanel`.
+
+The correct shell account on this image is `smartpanel` (`/bin/bash`). The application's service
+account `smart-panel` has `/usr/sbin/nologin` and must not be used as the shell-login example.
+Saving the SSH switch off restored `RunSSH=false` by 20:26:31; Tailscale stayed Running/online,
+Serve configuration was unchanged and the peer HTTPS request returned 200 with certificate
+verification enabled. The subsequent `tailscale ssh` probe failed strict host-key verification and
+ran no remote command. That failure alone does not establish a closed TCP port or disabled OpenSSH;
+the CLI preference verifies that the Tailscale SSH feature is off. LAN SSH remained available.
+
+Evidence is retained privately in `pi4-alpha49-options`: `ssh-success-evidence.json`,
+`ssh-success-state.json`, `ssh-final-state.json`, `ssh-off-final.private.json` and `https-final.json`.
+This verifies the Pi 5 peer path; the checklist's phone/laptop SSH path remains untested.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
@@ -679,7 +699,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 ##### Options and advisories
 
 - [ ] Funnel on: the URL becomes public (open it from a device without Tailscale); the public-exposure advisory shows; Funnel off returns it to tailnet-only without touching other Serve handlers.
-- [ ] Tailscale SSH on: `ssh smart-panel@<node>` from the phone/laptop works per the tailnet ACL; off again closes it.
+- [ ] Tailscale SSH on: `ssh <login-user>@<node>` from the phone/laptop works per the tailnet ACL; off again disables Tailscale SSH. Use an existing OS account with a login shell (`smartpanel` on the test image), not the `smart-panel` service account. Pi 5 peer login after the required authentication check and UI/CLI disable passed on alpha.49; phone/laptop SSH remains untested. Disabling this option does not disable the system OpenSSH service.
 - [ ] With a short-expiry auth key (or a key expiry set in the console): the key-expiring advisory appears and "Sign in again" recovers.
 - [ ] Tailnet with HTTPS certificates disabled: the tailnet-https-disabled advisory appears with the console link; IPv4 and MagicDNS HTTP endpoints still work.
 
