@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: large
 Parent: EPIC-MATTER
-Status: planned
+Status: superseded
 Created: 2025-11-14
 
 > **Superseded (2026-10-06).** This controller-only draft is now milestone 3 of

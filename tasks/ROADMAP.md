@@ -226,7 +226,7 @@ Build a device from properties of other devices — splitting one physical devic
 | #   | Task                                                                                                 | Scope                 | Status                     |
 | --- | ---------------------------------------------------------------------------------------------------- | --------------------- | -------------------------- |
 | 1   | [FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS](features/FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS.md)     | backend, admin        | :white_check_mark: Done    |
-| 2   | [FEATURE-PLUGIN-MATTER](features/FEATURE-PLUGIN-MATTER.md) — superseded by [EPIC-MATTER](#13b-matter-epic) | backend, admin        | :clipboard: Planned        |
+| 2   | [FEATURE-PLUGIN-MATTER](features/FEATURE-PLUGIN-MATTER.md) — superseded by [EPIC-MATTER](#13b-matter-epic) | backend, admin        | Superseded                 |
 | 3   | [FEATURE-PLUGIN-ZIGBEE-HERDSMAN](features/FEATURE-PLUGIN-ZIGBEE-HERDSMAN.md)                         | backend, admin        | :clipboard: Planned        |
 | 4   | [FEATURE-DEVICE-PLUGIN-ADOPTION-WIZARDS](features/FEATURE-DEVICE-PLUGIN-ADOPTION-WIZARDS.md)         | backend, admin, spec  | :white_check_mark: Done    |
 | 5   | [FEATURE-PLUGIN-HOMEY](features/FEATURE-PLUGIN-HOMEY.md)                                             | backend, admin, panel | :white_check_mark: Done    |

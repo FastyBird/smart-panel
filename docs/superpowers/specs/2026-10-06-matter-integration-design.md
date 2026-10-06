@@ -423,8 +423,16 @@ devices-matter:
   `FanControl` writes.
 - Sync: matter.js `ClientNode` subscriptions; attribute changes → `ChannelsPropertiesService.update`; node
   online/offline → `DeviceConnectivityService.setConnectionState`.
-- Attestation: matter.js validates the DAC chain, CD and CRL against DCL roots and by default accepts and logs
-  failures; the wizard shows an "uncertified" badge instead of refusing.
+- Attestation: matter.js validates the device attestation during commissioning: the DAC → PAI → PAA certificate
+  chain, the attestation signature and nonce, the Certification Declaration and revocation (CRL), against DCL
+  roots seeded offline from `@matter/dcl-data` and refreshed when online. Smart Panel replaces matter.js's
+  accept-and-log default with its own policy through the library's attestation-failure callback:
+  - **fatal** (commissioning is aborted with a clear error): an invalid or broken certificate chain, an invalid
+    attestation signature or nonce, an invalid Certification Declaration, a revoked DAC or PAI, and a PAA that is
+    neither in the DCL nor a known CSA test PAA (after a DCL refresh attempt);
+  - **allowed with an "uncertified" badge**: only the finding that an otherwise valid chain is anchored in a known
+    CSA test/development PAA (development and uncertified devices, including other Smart Panel bridges).
+  MT-1 confirms the exact finding codes and callback API; MT-14 implements the policy with unit tests per finding.
 - Wizard (backend session pattern of Z2M/HA): `POST /wizard` → session; `POST /wizard/:id/commission` with a manual
   or QR code; `GET /wizard/:id` lists interviewed nodes/endpoints with suggested category and mapping preview;
   `POST /wizard/:id/adopt`; sessions expire after 10 minutes idle. Node management: list nodes and fabrics, open a
@@ -450,6 +458,8 @@ devices-matter:
 - Commissioning window opened only on explicit admin action and closed after 15 minutes or on first success.
 - Controller wizard: the backend derives device identity from the commissioned node; the browser never supplies
   node ids.
+- Device attestation failures are fatal except the test-PAA finding (see "Controller mapping"), so a spoofed or
+  revoked device cannot join Smart Panel's fabric.
 - No new inbound TCP ports; Matter uses UDP 5540 (bridge), an ephemeral UDP port (controller) and mDNS 5353.
 
 ## Installer, image and Docker
