@@ -3,9 +3,15 @@ ID: FEATURE-PLUGIN-MATTER
 Type: feature
 Scope: backend
 Size: large
-Parent: (none)
-Status: planned
+Parent: EPIC-MATTER
+Status: superseded
 Created: 2025-11-14
+
+> **Superseded (2026-10-06).** This controller-only draft is now milestone 3 of
+> [EPIC-MATTER](../epics/EPIC-MATTER.md) (GitHub epic [#1191](https://github.com/FastyBird/smart-panel/issues/1191)),
+> which adds the Matter bridge as the primary goal. Analysis and design:
+> [`2026-10-06-matter-integration-design.md`](../../docs/superpowers/specs/2026-10-06-matter-integration-design.md).
+> Implementation follows the epic's child tasks (MT-13 … MT-19); the text below is kept as history.
 
 ## 1. Business goal
 
