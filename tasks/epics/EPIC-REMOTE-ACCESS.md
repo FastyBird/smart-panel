@@ -555,14 +555,53 @@ These portal outcomes do not mean the backend remained continuously available: b
 network-loss attempts exposed a separate asynchronous mDNS `ENETUNREACH` process exit, followed by
 systemd restart. The successful portal observer recorded this outage and continued instead of
 triggering its fallback. The mDNS crash is tracked in
-[#1223](https://github.com/FastyBird/smart-panel/issues/1223) and requires fixed-release hardware verification.
+[#1223](https://github.com/FastyBird/smart-panel/issues/1223); fixed-release verification is recorded below.
 
 The follow-up provides nonthrowing response-send error callbacks for the advertisement, Home Assistant
 discovery and WLED discovery Bonjour instances. It logs failures without forcing teardown/restart or
 adding a global exception handler. Three scoped suites (33 tests) pass, including an asynchronous
 response-send failure through the real Bonjour dependency with an in-memory socket, a later successful
 response, continued discovery and normal stop/start. This covers Bonjour response-send callbacks;
-other socket error paths and uninterrupted hardware operation on a released fix are not claimed here.
+other socket error paths are not covered by this change.
+
+#### Pi 4 alpha.49 mDNS and network recovery verification (2026-10-06)
+
+PR [#1224](https://github.com/FastyBird/smart-panel/pull/1224) merged as `f69be1ad7`.
+The released server candidate is `1.1.0-alpha.49`, tag commit
+`5168e08af7d24304a6b498f8e04056f7199e21e4`, from
+[run 37468174266](https://github.com/FastyBird/smart-panel/actions/runs/37468174266).
+Its server publishing/build/release jobs passed before installation; SD-image builds were still
+running and were not the artifact used for this System update. The server SHA-256 was
+`528977e9d48edd25b8c0e6aa4c8454600cebea13aae5069acca62dc13f2f43ea`.
+Release ancestry, npm integrity and server/npm content equality were verified, including all three
+compiled Bonjour callbacks. Installed hashes matched all 1,719 runtime JavaScript and 250 admin
+static files, with no missing, changed or extra files; throttler remained pinned to `6.7.1`.
+
+On the same spare Pi 4, System UI upgrade from alpha.48 started at 14:02:30 UTC and the worker
+completed at 14:03:14. The open admin reported success and alpha.49 without manual reload.
+A consistent SQLite/configuration backup preceded the update. All 19 upgrade checks passed:
+accounts, long-lived token fingerprints, topology, configuration and existing migrations were retained,
+database integrity passed, no schema change/new migration was observed, and the update lock was released.
+The Tailscale package remained installed, its daemon inactive and the node unauthenticated.
+
+The controlled Ethernet test armed at 14:04:15 UTC, with an independent 90-second reconnection
+timer and a separate rollback safeguard. It used the installed portal and valid DNS-SD queries;
+no application code was patched. Across 61 identity samples, the boot ID and backend PID `93841`
+were unchanged, `NRestarts` stayed zero and the service remained active/running. The journal recorded
+82 `mDNS response send failed` warnings containing `ENETUNREACH`, with zero backend exit/restart
+evidence. All 55 local API state samples succeeded, including while LAN access was unavailable.
+
+The real hotspot and DNS redirect were observed at 14:04:47. Ethernet returned at 14:05:46;
+the hotspot/DNS redirect were gone and the configured marker existed by 14:05:51, the portal had
+stopped by 14:05:53, and the API reported `online` at 14:06:18. Backend identity remained stable
+for another 15 seconds. The open admin cleared both its connection warning and Setup Mode notice
+at 14:06:34 without manual reload. No rollback was required; test credentials were removed and
+the remaining rollback timer was stopped after success.
+
+This passes the released mDNS publisher response-send error and logical Ethernet/portal recovery
+case for #1223. It does not exercise Home Assistant/WLED discovery on hardware, unrelated socket
+errors, physical cable removal, or authenticated Tailscale traffic. Those distinctions and the
+remaining R4 checklist below are unchanged; this result does not close R4 or the epic.
 
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 

@@ -354,8 +354,16 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   the portal/hotspot stopped within about seven seconds of the observed reconnect, followed by API
   Online within another seven seconds and automatic removal of the admin Setup Mode notification.
   Both controlled attempts also exposed a separate mDNS `ENETUNREACH` backend exit
-  ([#1223](https://github.com/FastyBird/smart-panel/issues/1223)); its repair and
-  fixed-release verification remain required. A physical unplug attempt restarted the Pi and is not
+  ([#1223](https://github.com/FastyBird/smart-panel/issues/1223)). PR #1224 fixed the response-send
+  callbacks and passed released alpha.49 verification on 2026-10-06 (tag `5168e08af`): System UI
+  upgrade retained data/configuration and installed hashes matched the verified server/npm artifacts.
+  A controlled 90-second Ethernet outage exercised 82 logged `ENETUNREACH` callback warnings while
+  all 61 backend identity samples retained the same boot ID/PID, zero restarts and active/running state.
+  The real hotspot/portal/DNS redirect cleared automatically after reconnection; the local API stayed
+  responsive and returned Online, and both admin connection/setup notices cleared without reload.
+  Tailscale remained unauthenticated with an inactive daemon, so this verifies mDNS publisher and
+  Ethernet/portal recovery, not authenticated provider traffic. Full evidence is in the epic's
+  alpha.49 verification section. A physical unplug attempt restarted the Pi and is not
   counted as continuous-operation acceptance.
   Separately, an alpha.47 one-off auth-key login through Advanced passed without browser
   authorization: CLI Running/online, Connected UI, Serve HTTPS and certificate-verified peer HTTPS.
