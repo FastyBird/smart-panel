@@ -458,8 +458,31 @@ failure; the wizard incorrectly treated every result except `pending-auth` as su
 fix advances only for `connected`, retains pending states on Sign in, and reports terminal failures,
 including late polling failures and explicit deadline feedback when the final state is still pending.
 Regression tests cover immediate failures, key erasure, pending connection/approval, timeout/retry
-and closed-session isolation. The fix has not yet been deployed to this Pi;
-hardware verification of failure recovery remains open.
+and closed-session isolation. Fixed-release hardware verification passed on alpha.48 as recorded below.
+
+#### Pi 4 alpha.48 upgrade and invalid-key recovery (2026-10-06)
+
+The spare Pi 4 upgraded from alpha.47 to alpha.48 through System → Install Update at 08:28:33 UTC.
+The privileged worker completed at 08:29:13 UTC without recovery being required, released its lock,
+and the UI reported success. A consistent database/configuration backup was retained before installation.
+Post-upgrade checks confirmed healthy service/API, unchanged owner and long-lived token fingerprints,
+configuration, device topology/counts, database schema and all 28 migrations. Tailscale remained signed out.
+
+The release tag includes the merged #1173 fix. The ARM64 server checksum and backend/admin npm
+integrity checks passed; all 1,719 installed compiled JavaScript files and 250 admin static files
+matched the verified release, with no extra static files. The pinned throttler version remained 6.7.1.
+
+After reloading the admin and running Set up to restore the operator grant, two deliberately invalid
+auth keys were submitted through Advanced sign-in. Both attempts stayed on Sign in; Options and Done
+remained waiting, and the key input was cleared. The retry was available after entering a new value
+and displayed “Failed to sign in to Tailscale”. CLI state remained NeedsLogin with an invalid-key error,
+the provider stayed Setup required without external URLs, and no temporary auth-key files remained.
+This verifies #1172 failure handling on hardware; pending approval and the ten-minute timeout retain
+their automated regression coverage rather than being claimed as hardware observations here.
+
+The captive-portal fix from #1174 merged after alpha.48 was released. Its fresh-image hardware
+acceptance remains pending; the server image build from that merge is
+[run 37436682127](https://github.com/FastyBird/smart-panel/actions/runs/37436682127).
 
 #### Pi 4 auth-key login and explicit logout (2026-10-05, alpha.47)
 

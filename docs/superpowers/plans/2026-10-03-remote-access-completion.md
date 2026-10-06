@@ -342,8 +342,14 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   Repeating Set up restored the operator grant. Invalid-key testing then found
   [#1172](https://github.com/FastyBird/smart-panel/issues/1172): the wizard advanced to Options although
   the returned state and CLI still required sign-in. The follow-up gates advancement on Connected
-  and handles pending/failed results with regression coverage; fixed-release hardware acceptance
-  remains outstanding. A subsequent one-off auth-key login through Advanced passed without browser
+  and handles pending/failed results with regression coverage. Fixed-release invalid-key acceptance
+  passed on Pi 4 alpha.48 on 2026-10-06: System UI upgrade completed with retained data/configuration,
+  installed runtime/admin hashes matched the verified release, and two invalid-key attempts stayed on
+  Sign in with cleared input, error feedback, CLI NeedsLogin and no temporary key files. Pending approval
+  and timeout remain covered by automated tests. The #1174 captive-portal fix merged after this release;
+  its new server image build is [run 37436682127](https://github.com/FastyBird/smart-panel/actions/runs/37436682127),
+  with fresh-image hardware acceptance still pending.
+  Separately, an alpha.47 one-off auth-key login through Advanced passed without browser
   authorization: CLI Running/online, Connected UI, Serve HTTPS and certificate-verified peer HTTPS.
   Explicit provider Sign out then returned CLI NeedsLogin and Setup required, removed external URLs
   and made peer HTTPS unreachable while retaining the local owner. No temporary auth-key files or
