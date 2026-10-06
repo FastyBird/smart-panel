@@ -447,6 +447,20 @@ No hardware acceptance checkbox is completed by these automated changes.
   key-file cleanup, process closure/escalation, retained authentication and superseded setup completion.
 - Device networking was not exercised; R4 remains open.
 
+### Docker acceptance regression (2026-10-07)
+
+The released alpha.49 ARM64 container failed before migrations because the runtime flattened pnpm
+workspace links and omitted the extension SDK. Local candidate validation restored the workspace
+layout, set the Docker platform and corrected an IPv6 `localhost` healthcheck failure. Normal startup,
+fresh onboarding, admin assets, unsupported Tailscale/setup refusal and persisted manual URL behavior
+passed in an isolated Compose deployment. Direct navigation also required a documentation-link
+fallback from the platform requirement when extension metadata was absent.
+
+The Docker release job now requires a real runtime smoke before publishing the manifest. The R4
+Docker row remains open for a new released image containing these fixes; local ARM64 evidence does
+not validate the existing alpha.49 tag, AMD64 or Home Assistant. See the epic's Docker verification
+section for the reproduced failure and evidence boundaries.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.

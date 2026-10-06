@@ -269,9 +269,8 @@ const {
 	resetPreferences,
 } = useTailscaleStatus();
 const { fetchStatus: fetchRemoteAccessStatus } = useRemoteAccessStatus();
-// Only ever reads the extensions store - never triggers its own fetch, so the documentation link
-// simply stays hidden until something else (e.g. the Extensions page) has loaded the list. Purely
-// presentational: no new network call is introduced by this card.
+// Read already-loaded metadata; the platform requirement also carries a documentation URL
+// for direct visits where the extensions store has not been populated.
 const { extension } = useExtension({ type: REMOTE_ACCESS_TAILSCALE_PLUGIN_NAME });
 
 const actionErrorCode = ref<string | null>(null);
@@ -363,7 +362,23 @@ const actions = computed(() =>
 	})
 );
 
-const documentationLink = computed<string | undefined>(() => extension.value?.links?.documentation ?? undefined);
+const documentationLink = computed<string | undefined>(() => {
+	const metadataLink = extension.value?.links?.documentation;
+
+	if (metadataLink) return metadataLink;
+
+	const note = requirements.value.find((requirement) => requirement.code === 'platform-supported')?.remedy?.note;
+
+	if (!note) return undefined;
+
+	try {
+		const url = new URL(note);
+
+		return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : undefined;
+	} catch {
+		return undefined;
+	}
+});
 
 const openLink = (url: string): void => {
 	window.open(url, '_blank', 'noopener,noreferrer');

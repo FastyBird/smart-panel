@@ -26,6 +26,7 @@ const fns = vi.hoisted(() => ({
 	logout: vi.fn(),
 	resetPreferences: vi.fn(),
 	copy: vi.fn(),
+	fetchExtension: vi.fn(),
 	flashSuccess: vi.fn(),
 	flashError: vi.fn(),
 }));
@@ -54,7 +55,7 @@ vi.mock('../../../modules/auth/composables/composables', () => ({
 }));
 
 vi.mock('../../../modules/extensions', () => ({
-	useExtension: () => ({ extension, isLoading: computed(() => false), fetchExtension: vi.fn() }),
+	useExtension: () => ({ extension, isLoading: computed(() => false), fetchExtension: fns.fetchExtension }),
 }));
 
 vi.mock('../../../modules/remote-access', () => ({
@@ -146,6 +147,7 @@ describe('TailscaleProviderCard', () => {
 		isResettingPreferences.value = false;
 		isActingReturn.value = false;
 		extension.value = null;
+		fns.fetchExtension.mockReset();
 		fns.fetchStatus.mockReset().mockResolvedValue(undefined);
 		fns.fetchRemoteAccessStatus.mockReset().mockResolvedValue(undefined);
 		fns.refreshStatus.mockReset().mockResolvedValue(undefined);
@@ -157,6 +159,64 @@ describe('TailscaleProviderCard', () => {
 		fns.flashSuccess.mockReset();
 		fns.flashError.mockReset();
 	});
+
+	it.each(['https://smart-panel.fastybird.com/docs', 'http://panel.example.test/docs'])(
+		'opens the platform documentation remedy without loading extension metadata (%s)',
+		async (url) => {
+			requirements.value = [{ code: 'platform-supported', satisfied: false, message: 'Unsupported platform.', remedy: { commands: [], note: url } }];
+			const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.unsupported });
+
+			try {
+				const button = wrapper
+					.findAllComponents({ name: 'ElButton' })
+					.find((button) => button.text().includes('extensionsModule.buttons.documentation'));
+				expect(button).toBeDefined();
+				await button!.vm.$emit('click', new MouseEvent('click'));
+				expect(open).toHaveBeenCalledWith(url, '_blank', 'noopener,noreferrer');
+				expect(fns.fetchExtension).not.toHaveBeenCalled();
+			} finally {
+				open.mockRestore();
+				wrapper.unmount();
+			}
+		}
+	);
+
+	it('prefers loaded extension documentation over the platform remedy', async () => {
+		extension.value = { links: { documentation: 'https://panel.example.test/provider' } };
+		requirements.value = [
+			{
+				code: 'platform-supported',
+				satisfied: false,
+				message: 'Unsupported platform.',
+				remedy: { commands: [], note: 'https://panel.example.test/fallback' },
+			},
+		];
+		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.unsupported });
+
+		try {
+			const button = wrapper
+				.findAllComponents({ name: 'ElButton' })
+				.find((button) => button.text().includes('extensionsModule.buttons.documentation'));
+			await button!.vm.$emit('click', new MouseEvent('click'));
+			expect(open).toHaveBeenCalledWith('https://panel.example.test/provider', '_blank', 'noopener,noreferrer');
+		} finally {
+			open.mockRestore();
+			wrapper.unmount();
+		}
+	});
+
+	it.each(['javascript:alert(1)', 'data:text/html,test', '/docs', 'Read the documentation', null])(
+		'hides documentation when the platform remedy is not an absolute HTTP(S) URL (%s)',
+		(note) => {
+			requirements.value = [{ code: 'platform-supported', satisfied: false, message: 'Unsupported platform.', remedy: { commands: [], note } }];
+			const wrapper = mountCard({ state: RemoteAccessModuleProviderState.unsupported });
+
+			expect(wrapper.text()).not.toContain('extensionsModule.buttons.documentation');
+			wrapper.unmount();
+		}
+	);
 
 	it('offers setup as the primary action for an owner on a fresh node, with no secondary actions', () => {
 		const wrapper = mountCard({ state: RemoteAccessModuleProviderState.setup_required });
