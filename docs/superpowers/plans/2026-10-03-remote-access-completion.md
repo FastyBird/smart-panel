@@ -332,8 +332,10 @@ contract. R8 requires all gates. Cloudflare's completed implementation is retain
   Phone login/live updates on this fresh host and phone transport remain
   pending; neither login-page loading nor peer results substitute for them. Fresh acceptance also found installer
   [#1171](https://github.com/FastyBird/smart-panel/issues/1171): the captive portal remains active
-  after Ethernet becomes available because it only checks connectivity at startup. That fix and
-  hardware verification remain open. A subsequent factory reset through the spare Pi 4 System UI
+  after Ethernet becomes available because it only checks connectivity at startup. The follow-up
+  adds a bounded startup grace and cancellable Ethernet monitoring while the portal runs; isolated
+  process regressions cover cleanup and Wi-Fi provisioning. Fresh-image hardware verification
+  remains open. A subsequent factory reset through the spare Pi 4 System UI
   passed from authenticated/Serve-enabled state: new host boot, no owner or auth tokens, automatic
   return to onboarding, CLI NeedsLogin, empty Serve and unreachable peer HTTPS. After onboarding,
   the plugin was disabled by default and enabling it accurately reported the missing operator grant.

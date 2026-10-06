@@ -448,8 +448,8 @@ Onboarding was then completed again with the test owner. Extensions showed the T
 disabled by default. Enabling it accurately exposed the missing operator grant and the Set up remedy.
 Repeating Set up restored that grant and completed the privileged job in approximately one second.
 The factory-reset checkbox is complete; separate Sign out and successful auth-key login observations
-are recorded below. The captive portal was inactive after this reboot,
-but the first-boot Ethernet race in #1171 remains unfixed.
+are recorded below. The captive portal was inactive after this reboot;
+this did not validate a fix for the first-boot Ethernet race in #1171.
 
 An invalid-key test then found [#1172](https://github.com/FastyBird/smart-panel/issues/1172): the CLI
 remained `NeedsLogin` with an invalid-key error and the provider card correctly stayed Setup required,
@@ -485,6 +485,24 @@ The previous checklist incorrectly required a non-ephemeral device to disappear 
 console after logout. The [Tailscale CLI contract](https://tailscale.com/docs/reference/tailscale-cli#logout)
 expires the current login and requires reauthentication; immediate removal is specific to ephemeral
 nodes. The corrected row checks logout behavior. No admin-console deletion is claimed.
+
+#### Captive-portal Ethernet recovery follow-up (#1171)
+
+The installer wrapper now gives every unconfigured boot a bounded 30-second connectivity grace,
+including fresh images without a boot-config marker. NetworkManager queries have a deadline and
+the SmartPanel hotspot does not count as external Wi-Fi. Once the portal starts, its Node process
+checks Ethernet every five seconds with a bounded, cancellable probe. A connected Ethernet interface
+starts the existing configured-marker/watchdog flow and shuts down through the portal's cleanup path.
+Active Wi-Fi provisioning retains ownership of its completion; runtime recovery checks Ethernet only.
+
+Fifteen isolated process regressions passed on the Mac and unprivileged on the spare Pi 4
+(Debian 12 arm64), using mocked system/network commands and private paths:
+`python3 build/raspbian/tests/test_portal_network_recovery.py`. They cover initial/delayed Ethernet,
+hotspot exclusion, slow probes, captive redirects, Wi-Fi success/failure and concurrent Ethernet,
+probe cancellation, repeated signals, held HTTP requests and child exit status. Bash/Node syntax and scoped ShellCheck
+also passed. The dedicated Installer portal tests CI job runs the suite on Node 24/Linux. These tests
+do not change the host network. Fresh-image hardware and admin transition
+from Setup Mode to Online after the platform cache refresh remain unverified.
 
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 

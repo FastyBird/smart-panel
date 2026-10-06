@@ -6,10 +6,9 @@
 # Called by smart-panel-portal.service on boot.
 #
 # Decision logic:
-#   1. If smart-panel.conf was applied (user configured manually) → skip entirely
-#   2. If WiFi was previously configured via the portal → skip
-#   3. If there is any network connection (ethernet or WiFi) → skip
-#   4. Otherwise → start AP mode + captive portal
+#   1. If WiFi was previously configured via the portal → skip
+#   2. Wait briefly for ethernet or non-hotspot WiFi (including boot config)
+#   3. Otherwise → start AP mode + captive portal; recover on later ethernet
 #
 set -euo pipefail
 
@@ -17,6 +16,7 @@ PORTAL_DIR="/opt/smart-panel/portal"
 WIFI_CONFIGURED_MARKER="/var/lib/smart-panel/.wifi-configured"
 BOOT_CONFIG_APPLIED="/var/lib/smart-panel/.boot-config.applied"
 LOG_TAG="smart-panel-portal"
+NETWORK_WAIT_SECONDS=30
 
 log() {
 	echo "$1"
@@ -41,58 +41,62 @@ ensure_marker_and_watchdog() {
 		mkdir -p "$(dirname "${WIFI_CONFIGURED_MARKER}")"
 		echo "configured=$(date -Iseconds)" > "${WIFI_CONFIGURED_MARKER}"
 		echo "source=${1:-unknown}" >> "${WIFI_CONFIGURED_MARKER}"
-		systemctl start smart-panel.service 2>/dev/null || true
-		systemctl start smart-panel-wifi-watchdog.service 2>/dev/null || true
+		timeout 5 systemctl start smart-panel.service 2>/dev/null || true
+		timeout 5 systemctl start smart-panel-wifi-watchdog.service 2>/dev/null || true
 	fi
 }
 
-# 2. If boot config was applied, give NetworkManager time to connect.
-#    Boot config may have set WiFi credentials; NM needs a few seconds
-#    to activate the connection after firstboot applied it.
+# NetworkManager startup does not imply DHCP is ready. Use the same bounded
+# grace period on every unconfigured boot, including a fresh image without a
+# boot-config marker. Never count our own AP as an external WiFi connection.
+query_network_manager() {
+	# Bound each probe by both a short timeout and the remaining startup grace.
+	local wait_seconds=$((NETWORK_DEADLINE - SECONDS))
+	if [ "${wait_seconds}" -le 0 ]; then
+		return 1
+	fi
+	if [ "${wait_seconds}" -gt 5 ]; then
+		wait_seconds=5
+	fi
+	timeout "${wait_seconds}" nmcli "$@" 2>/dev/null
+}
+
+has_network() {
+	if query_network_manager -t -f TYPE,STATE device | grep -q '^ethernet:connected$'; then
+		return 0
+	fi
+
+	query_network_manager -t -f NAME,TYPE connection show --active \
+		| grep ':802-11-wireless$' | grep -v '^SmartPanel-Hotspot:802-11-wireless$' > /dev/null
+}
+
+NETWORK_SOURCE="network-detected"
 if [ -f "${BOOT_CONFIG_APPLIED}" ]; then
-	log "Boot config was applied — waiting for network to come up..."
-	for i in $(seq 1 30); do
-		if nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | grep -q ':802-11-wireless$' \
-			|| nmcli -t -f TYPE,STATE device 2>/dev/null | grep -q '^ethernet:connected'; then
-			log "Network came up after ${i}s — skipping captive portal"
-			ensure_marker_and_watchdog "boot-config"
-			exit 0
-		fi
-		sleep 1
-	done
-	log "Boot config applied but no network after 30s — starting captive portal anyway"
+	NETWORK_SOURCE="boot-config"
 fi
 
-# 3. Skip if there is any active network connection (ethernet or WiFi)
-#    This covers wired-only setups and pre-existing WiFi connections.
-HAS_NETWORK=false
-
-# Check for active ethernet connection
-ACTIVE_ETH=$(nmcli -t -f TYPE,STATE device 2>/dev/null | grep '^ethernet:connected' | head -1 || true)
-if [ -n "${ACTIVE_ETH}" ]; then
-	HAS_NETWORK=true
-	log "Ethernet connection detected"
-fi
-
-# Check for active WiFi connection (not a hotspot)
-ACTIVE_WIFI=$(nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | grep ':802-11-wireless$' | grep -v 'SmartPanel-Hotspot' | head -1 || true)
-if [ -n "${ACTIVE_WIFI}" ]; then
-	HAS_NETWORK=true
-	log "WiFi connection detected: ${ACTIVE_WIFI%%:*}"
-fi
-
-if [ "${HAS_NETWORK}" = true ]; then
-	log "Network available — skipping captive portal"
-	ensure_marker_and_watchdog "network-detected"
-	exit 0
-fi
+log "Waiting up to ${NETWORK_WAIT_SECONDS}s for a network connection..."
+NETWORK_START=${SECONDS}
+NETWORK_DEADLINE=$((NETWORK_START + NETWORK_WAIT_SECONDS))
+while true; do
+	if has_network; then
+		log "Network available after $((SECONDS - NETWORK_START))s — skipping captive portal"
+		ensure_marker_and_watchdog "${NETWORK_SOURCE}"
+		exit 0
+	fi
+	if [ "${SECONDS}" -ge "${NETWORK_DEADLINE}" ]; then
+		break
+	fi
+	sleep 1
+done
+log "No network after ${NETWORK_WAIT_SECONDS}s — starting captive portal"
 
 # ──────────────────────────────────────────────────────────────
 # Determine AP SSID (SmartPanel-XXXX based on MAC)
 # ──────────────────────────────────────────────────────────────
 
 # Wait for WiFi adapter
-for i in $(seq 1 15); do
+for _ in $(seq 1 15); do
 	if nmcli -t -f TYPE device | grep -q wifi; then
 		break
 	fi
@@ -119,7 +123,7 @@ rfkill unblock wifi 2>/dev/null || true
 nmcli radio wifi on 2>/dev/null || true
 
 # Wait for WiFi to become available after unblocking
-for i in $(seq 1 10); do
+for _ in $(seq 1 10); do
 	WIFI_STATE=$(nmcli -t -f TYPE,STATE device 2>/dev/null | grep '^wifi:' | cut -d: -f2 || true)
 	if [ "${WIFI_STATE}" != "unavailable" ]; then
 		break
@@ -210,8 +214,10 @@ log "DNS redirect configured — all domains resolve to 192.168.4.1"
 # After forwarding, re-wait for node to finish before exiting, so
 # cleanup doesn't race with node's own shutdown.
 NODE_PID=""
+WAIT_INTERRUPTED=false
 
 forward_signal() {
+	WAIT_INTERRUPTED=true
 	if [ -n "${NODE_PID}" ]; then
 		kill -"$1" "${NODE_PID}" 2>/dev/null || true
 	fi
@@ -232,11 +238,16 @@ NODE_PID=$!
 # non-zero (128+signal). We need to re-wait for node to actually exit before
 # running cleanup, rather than letting set -e exit immediately.
 set +e
-wait "${NODE_PID}" 2>/dev/null
-# If wait was interrupted by a signal, the trap handler already forwarded it
-# to node. Re-wait so cleanup doesn't race with node's shutdown.
-wait "${NODE_PID}" 2>/dev/null
-NODE_EXIT=$?
+while true; do
+	WAIT_INTERRUPTED=false
+	wait "${NODE_PID}" 2>/dev/null
+	NODE_EXIT=$?
+	# A trapped signal can interrupt wait before node has finished its cleanup.
+	# Keep waiting until it exits, retaining the actual child status for systemd.
+	if [ "${WAIT_INTERRUPTED}" = false ]; then
+		break
+	fi
+done
 set -e
 
 exit "${NODE_EXIT}"
