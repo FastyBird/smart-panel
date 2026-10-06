@@ -20,7 +20,9 @@ live camera video and snapshots in the admin and on the wall panel.
 
 - Analysis and design: [`docs/superpowers/specs/2026-10-06-unifi-protect-integration-design.md`](../../docs/superpowers/specs/2026-10-06-unifi-protect-integration-design.md).
   It records the API research (public Integration API vs private API), how Home Assistant integrates Protect, the
-  current gaps in Smart Panel and the proposed decisions D1–D10.
+  current gaps in Smart Panel and decisions D1–D10. D1, D3, D5, D6, D7 and D8 were confirmed on 2026-10-06;
+  D2, D4, D9, D10 and the sensor extensions of design §14a (`sound_detection`, person detection as space occupancy)
+  are still proposed.
 - Smart Panel has **no** video streaming or snapshot code today; the `camera` channel has no defined way to expose a
   stream; flutter-pi is built without its GStreamer video player; the security module ignores `camera`/`doorbell`
   channels. The epic therefore also delivers a reusable core `cameras` module and a go2rtc relay.
@@ -37,8 +39,8 @@ live camera video and snapshots in the admin and on the wall panel.
 - Core `cameras` module: stream-provider registry, snapshot endpoint with cache, stream sessions with short-lived
   tokens, go2rtc relay as a managed service, authenticated live WebSocket (MSE) for browsers.
 - go2rtc shipped with the Raspberry Pi image, Linux installer and Docker image.
-- Spec extension: `object_detection` channel, more optional channels on `camera`/`doorbell`, multiple `camera`
-  channels, defined `camera.source` semantics.
+- Spec extension: `object_detection` and `sound_detection` channels, more optional channels on `camera`/`doorbell`,
+  multiple `camera` channels, defined `camera.source` semantics.
 - `devices-unifi-protect` plugin on the public Integration API (API key): config with write-only secret and TLS
   policy, UDP discovery, mapping + adoption of cameras, doorbells, UP-Sense sensors and floodlights, real-time sync
   over both WebSockets, control of floodlights / status LEDs / mic volume, stream and snapshot provider.
@@ -46,7 +48,10 @@ live camera video and snapshots in the admin and on the wall panel.
   wizard.
 - Panel: snapshot views on camera/doorbell detail pages and a Cameras tab on the security screen; doorbell-ring
   overlay; source camera in alert overlays.
-- Security: alerts from object detections (motion, contact, leak, smoke already work through existing rules).
+- Security: per-type alerts from object and sound detections (person and glass break alarm, animals do not; motion,
+  contact, leak and smoke already work through existing rules).
+- Protect devices as sensors: person detection makes the assigned room/zone occupied; UP-Sense light level feeds the
+  space's average illuminance; temperature/humidity feed space environment readings.
 - Documentation and hardware acceptance.
 
 **In scope (later milestones, after the MVP)**
@@ -71,8 +76,10 @@ live camera video and snapshots in the admin and on the wall panel.
 - [ ] A console is discovered or entered, connected with an API key and verified against the minimum Protect version.
 - [ ] Cameras, doorbells, UP-Sense sensors and floodlights are adopted through the wizard, idempotently, and stay in
       sync in real time, including after console reboot, Protect update and network loss.
-- [ ] Motion, object detections, contact, leak and smoke/CO detections raise security alerts; doorbell rings reach
-      the panel as an overlay.
+- [ ] Motion, person/vehicle and glass-break detections, contact, leak and smoke/CO raise security alerts by type
+      (animals and packages do not); doorbell rings reach the panel as an overlay.
+- [ ] Person detection makes the camera's room/zone occupied; UP-Sense light level, temperature and humidity appear
+      in the space's environment readings.
 - [ ] Live view works in the admin (Chrome, Firefox, Safari; H.264), also through remote access; snapshots work on
       the panel (flutter-pi on Pi 4/Pi 5 and Android).
 - [ ] The API key and RTSPS stream aliases never appear in logs, API responses, persisted data or diagnostics.
@@ -100,7 +107,8 @@ Sub-issues of #1175. PR titles are the issue titles unless stated otherwise.
 | UP-13 | #1189 | M4 | `feat(panel): show camera snapshots on camera and doorbell detail pages` | UP-2 |
 | UP-14 | #1190 | M4 | `feat(panel): show the doorbell camera on ring and the source camera on alerts` | UP-8, UP-13 |
 | UP-15 | #1192 | M4 (later) | `feat(cross): play live camera video on the panel` (split into installer/backend/panel PRs) | UP-0, UP-3, UP-4, UP-13 |
-| UP-16 | #1193 | M5 | `feat(backend): raise security alerts from camera object detections` | UP-1 |
+| UP-16 | #1193 | M5 | `feat(backend): raise security alerts per camera detection type` | UP-1 |
+| UP-21 | #1221 | M5 | `feat(backend): count camera person detections as space occupancy` | UP-1 |
 | UP-17 | #1194 | M5 (optional) | `feat(backend): expose the UniFi Protect alarm manager as an alarm device` | UP-8 |
 | UP-18 | #1195 | M5 (optional) | `feat(backend): add optional full-access mode for UniFi Protect private API features` | UP-9, decision |
 | UP-19 | #1196 | M6 | `docs(cross): document the UniFi Protect integration and camera live view` | UP-11, UP-12 |
@@ -112,13 +120,13 @@ Sub-issues of #1175. PR titles are the issue titles unless stated otherwise.
 2. **M1:** UP-2 → UP-3; UP-4 in parallel.
 3. **M2:** UP-5 → (UP-6 ∥ UP-7) → UP-8 → (UP-9 ∥ UP-10).
 4. **M3/M4:** UP-11 after UP-3; UP-12 after UP-7; UP-13 after UP-2; UP-14 after UP-8 + UP-13.
-5. **M5/M6:** UP-16 after UP-1; UP-19; UP-20 closes the MVP. UP-15, UP-17, UP-18 follow the MVP.
+5. **M5/M6:** UP-16 and UP-21 after UP-1; UP-19; UP-20 closes the MVP. UP-15, UP-17, UP-18 follow the MVP.
 
 ### Parallel lanes
 
 - Lane A (core streaming): UP-2 → UP-3 → UP-11.
 - Lane B (plugin backend): UP-5 → UP-6/UP-7 → UP-8 → UP-9/UP-10.
-- Lane C (spec, security, panel): UP-1 → UP-16; UP-13 → UP-14.
+- Lane C (spec, security, spaces, panel): UP-1 → UP-16, UP-21; UP-13 → UP-14.
 - Lane D (installer): UP-4.
 - Shared files (`app.module.ts`, `app.main.ts`, `openapi.constants.ts`, locale indexes) are edited by appending;
   generated files are regenerated in the PR that changes their source, never edited by hand.

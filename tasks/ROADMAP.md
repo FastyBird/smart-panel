@@ -401,7 +401,7 @@ Reach the installation from outside the LAN through a `remote-access` module and
 
 > [EPIC-UNIFI-PROTECT](epics/EPIC-UNIFI-PROTECT.md) — Status: :clipboard: Planned — GitHub #1175
 
-Adopt UniFi Protect cameras, doorbells, UP-Sense sensors and floodlights through the public Integration API, feed their detections into the security module, and show live video and snapshots in the admin and on the panel. Adds a reusable core `cameras` module with a go2rtc relay. Design: `docs/superpowers/specs/2026-10-06-unifi-protect-integration-design.md`. Tasks UP-0 … UP-20 are tracked as GitHub sub-issues of #1175.
+Adopt UniFi Protect cameras, doorbells, UP-Sense sensors and floodlights through the public Integration API, feed their detections into the security module, and show live video and snapshots in the admin and on the panel. Adds a reusable core `cameras` module with a go2rtc relay. Design: `docs/superpowers/specs/2026-10-06-unifi-protect-integration-design.md`. Tasks UP-0 … UP-21 are tracked as GitHub sub-issues of #1175.
 
 | #   | Milestone                                                                            | Scope                   | Status              |
 | --- | ------------------------------------------------------------------------------------ | ----------------------- | ------------------- |
@@ -410,10 +410,10 @@ Adopt UniFi Protect cameras, doorbells, UP-Sense sensors and floodlights through
 | 2   | Plugin backend: client, discovery, adoption, sync, control, streams (UP-5 … UP-10)   | backend                 | :clipboard: Planned |
 | 3   | Admin live view and plugin wizard (UP-11, UP-12)                                     | admin                   | :clipboard: Planned |
 | 4   | Panel snapshots, doorbell overlay, live video (UP-13 … UP-15)                        | panel, installer        | :clipboard: Planned |
-| 5   | Security rule, optional alarm manager and full-access mode (UP-16 … UP-18)           | backend                 | :clipboard: Planned |
+| 5   | Per-type security rules, person detection as occupancy, optional alarm manager and full-access mode (UP-16 … UP-18, UP-21) | backend | :clipboard: Planned |
 | 6   | Docs and hardware acceptance (UP-19, UP-20)                                          | website, docs           | :clipboard: Planned |
 
-**Next up:** confirm decisions D1–D10 in the design, then UP-0 (spike on a real console, Pi 4 and Pi 5) and UP-1 (spec extensions) in parallel.
+**Next up:** D1, D3, D5–D8 are confirmed (2026-10-06); confirm D2, D4, D9, D10 and the sensor extensions, then UP-0 (spike on a real console, Pi 4 and Pi 5) and UP-1 (spec extensions) in parallel.
 
 ---
 

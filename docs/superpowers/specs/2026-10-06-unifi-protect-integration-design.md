@@ -1,6 +1,7 @@
 # UniFi Protect Integration and Camera Live View — Analysis and Design
 
-- **Status:** proposed (analysis complete, decisions D1–D10 awaiting confirmation)
+- **Status:** D1, D3, D5, D6, D7 and D8 confirmed on 2026-10-06; D2, D4, D9, D10 and the §14a sensor extensions
+  (`sound_detection`, person detection as space occupancy) still proposed
 - **Date:** 2026-10-06
 - **Epic:** [#1175](https://github.com/FastyBird/smart-panel/issues/1175), task file
   [`tasks/epics/EPIC-UNIFI-PROTECT.md`](../../../tasks/epics/EPIC-UNIFI-PROTECT.md)
@@ -191,7 +192,10 @@ We take: API-key-first design, discovery protocol, version gating, subscribe-the
 coverage as the mapping checklist, go2rtc as the relay. We do **not** take: HA's mandatory credentials, the private
 WebSocket, per-quality camera entities (we model qualities as stream profiles of one device).
 
-## 6. Decisions (proposed — confirm before implementation)
+## 6. Decisions
+
+Status: **confirmed** on 2026-10-06 for D1, D3, D5, D6, D7 and D8; **proposed** for D2, D4, D9 and D10. The
+`sound_detection` channel in D8 and the sensor usage in §14a were added after that confirmation and still need review.
 
 | # | Decision | Recommendation | Alternatives |
 |---|---|---|---|
@@ -202,7 +206,7 @@ WebSocket, per-quality camera entities (we model qualities as stream profiles of
 | **D5** | Relay | **go2rtc** pinned release, run by the backend as a managed service bound to `127.0.0.1`; streams registered at runtime through its REST API; supports an **external go2rtc URL** mode for users who already run one (Frigate/HA). | MediaMTX; ffmpeg → HLS (seconds of latency, ffmpeg dependency); Protect private `ws/livestream` fMP4 (private API, no relay needed but ties live view to UniFi). |
 | **D6** | Browser transport | **MSE over WebSocket proxied by the backend** first (works on LAN and through remote-access tunnels, H.264 + AAC without transcoding); WebRTC as an opt-in enhancement (needs UDP/ICE and Opus audio → ffmpeg). | WebRTC first; HLS. |
 | **D7** | Panel MVP | **Auto-refreshing snapshots** (no new dependency, works on flutter-pi, Android, desktop). Live video in a later milestone after a flutter-pi GStreamer spike (UP-15). | Live video from day one (requires image + build changes and a decode-performance spike on Pi 4/Pi 5). |
-| **D8** | Spec changes | Add channel **`object_detection`** (repeatable; `detected` bool + `object_type` enum person/vehicle/animal/package/license_plate/face), allow `object_detection`, `indicator`, `illuminance`, `smoke`, `carbon_monoxide` on `camera`/`doorbell`, make the `camera` channel `multiple: true` (package camera), and define `camera.source` as a **non-secret stream-source identifier** (never a URL). | Model each smart-detection type as a separate `motion`/`occupancy` channel (lossy, ambiguous in security alerts). |
+| **D8** | Spec changes | Add channels **`object_detection`** (repeatable; `detected` bool + `object_type` enum person/vehicle/animal/package/license_plate/face) and **`sound_detection`** (repeatable; `detected` bool + `sound_type` enum glass_break/burglar_alarm/siren/baby_cry/speech/dog_bark/car_horn), allow `object_detection`, `sound_detection`, `indicator`, `illuminance`, `smoke`, `carbon_monoxide` on `camera`/`doorbell`, make the `camera` channel `multiple: true` (package camera), and define `camera.source` as a **non-secret stream-source identifier** (never a URL). | Model each smart-detection type as a separate `motion`/`occupancy` channel (lossy, ambiguous in security alerts). |
 | **D9** | Stream creation on the console | The adoption wizard offers "Enable RTSPS stream" per camera (default on, quality configurable); the plugin calls `POST rtsps-stream` only for cameras the user selected and never deletes streams it did not create. | Never touch the console (user must enable streams manually). |
 | **D10** | Scope of consoles | **One console per plugin instance** in the MVP; device identifiers include the NVR id so that multi-console support can be added later without migration. | Multiple consoles in the config from day one. |
 
@@ -358,10 +362,11 @@ connection state (`CONNECTED` → connected, `CONNECTING` → init, `DISCONNECTE
 | `hasPackageCamera` | `camera` (id `package`) | as above, `source` `…:package` | requires `multiple: true` (D8) |
 | `motion` event add/end | `motion` | `detected` | safety reset after 60 s without `end` |
 | `smartDetectZone/Line/Loiter` (`smartDetectTypes`) | `object_detection` per supported type | `detected`, `object_type` | D8; only types in `featureFlags.smartDetectTypes` |
-| `smartAudioDetect` `alrmSmoke` / `alrmCmonx` | `smoke` / `carbon_monoxide` | `detected` | D8; other audio types out of MVP |
+| `smartAudioDetect` `alrmSmoke` / `alrmCmonx` | `smoke` / `carbon_monoxide` | `detected` | D8; critical alerts through existing rules |
+| `smartAudioDetect` other types (`smartDetectAudioTypes`) | `sound_detection` per supported type | `detected`, `sound_type` | D8, §14a |
 | `ledSettings.isEnabled` (`hasLedStatus`) | `indicator` | `on` (rw) | D8 |
 | `micVolume`, `isMicEnabled` (`hasMic`) | `microphone` | `volume` (rw), `active` | |
-| `isDark` (via light/camera where present) | — | — | not mapped in MVP |
+| camera `isDark` | — | — | private API only (UP-18), see §14a |
 
 ### 10.2 Doorbell → device `doorbell`
 
@@ -452,25 +457,63 @@ host than the backend.
 - Works without security-module code changes for: camera/floodlight/UP-Sense `motion` (intrusion), UP-Sense
   `contact` (entry_open), `leak` (water_leak), `smoke`/`carbon_monoxide` (critical) — because
   `SecuritySensorsProvider` evaluates every device's channels.
-- New: detection rule for `object_detection` (intrusion; severity warning, raised when armed like motion), alert
-  message includes the object type and camera name.
+- New: detection rules for `object_detection` and `sound_detection` **per type**. The current rule format evaluates
+  a channel's property checks with OR (first match triggers, `security-sensors.provider.ts` `evaluateRule`), so it
+  cannot express "detected AND type is person". UP-16 adds an AND guard (`when:`) to rules and allows several rules
+  per channel category. Defaults: `person` → intrusion/warning, `vehicle` → intrusion/info, `glass_break` and
+  `burglar_alarm` → intrusion/critical, `animal`, `package`, `face`, `license_plate` and the remaining sounds → no
+  alert (state and badges only, so pets do not trigger the alarm). Users override them in
+  `var/security/detection-rules.yaml`. Alert messages include the type and the camera name.
 - Panel uses `sourceDeviceId` of an alert to show the camera snapshot in the alert overlay when the source device
   is a camera/doorbell — no contract change needed.
 - Optional: Protect Alarm Manager (local mode) as an `alarm` device (`state` ↔ `arm-profiles/enable|disable`, arm
   profile ↔ armed_home/away/night mapping) so Smart Panel arming can drive Protect and vice versa (UP-17).
 - Out of scope: snapshot images in notifications, recording/clip browsing, a plugin-extensible provider registry.
 
+## 14a. Protect devices as sensors
+
+Detections and measurements become ordinary channel properties, so every consumer that already understands those
+channels picks them up: the security module, room/zone state in `spaces-home-control`
+(`services/space-sensor-state.service.ts` aggregates `motion`, `occupancy` and average `illuminance` of the devices
+assigned to a space), panel badges and future automations.
+
+| What | Source (public API unless noted) | Smart Panel channel | Consumers | Availability |
+|---|---|---|---|---|
+| Person detection | camera/doorbell `smartDetectZone/Line/Loiter` events, `featureFlags.smartDetectTypes` | `object_detection` (`object_type: person`) | security (intrusion), **space occupancy** (UP-21), panel | MVP |
+| Vehicle detection | same | `object_detection` (`vehicle`) | security (info), panel | MVP |
+| Animal detection | same | `object_detection` (`animal`) | panel badge, events; no alarm by default | MVP |
+| Package detection | same (doorbell package camera) | `object_detection` (`package`) | panel badge / doorbell view | MVP |
+| Face / licence plate presence | same (no names or plate text over the public API) | `object_detection` (`face`, `license_plate`) | panel badge | MVP; names/text only with UP-18 |
+| Motion (camera, floodlight PIR, UP-Sense PIR) | `motion`, `lightMotion`, `sensorMotion` events, `isMotionDetected` | `motion` | security (intrusion), space motion | MVP |
+| Smoke / CO alarm sound | `smartAudioDetect` `alrmSmoke`/`alrmCmonx`; UP-Sense `sensorAlarm`, `sensorSmoke*` | `smoke` / `carbon_monoxide` | security (critical) | MVP |
+| Glass break, burglar alarm, siren, baby cry, speech, dog bark, car horn | `smartAudioDetect` (`smartDetectAudioTypes`) | `sound_detection` | security (glass break, burglar alarm), panel | MVP |
+| Light level (lux) | UP-Sense `stats.light.value` | `illuminance` (`illuminance` lx + derived `level`) | **space average illuminance**, panel | MVP |
+| Dark / bright | floodlight `isDark` | — (the `illuminance` channel requires a lux value) | — | not mapped; UP-Sense covers rooms |
+| Camera "is dark" | private API `isDark` | `illuminance.level` only with a spec decision | — | UP-18 |
+| Temperature, humidity | UP-Sense `stats.temperature/humidity` | `temperature`, `humidity` | spaces climate/environment, panel | MVP |
+| Contact, leak, tamper, battery | UP-Sense | `contact`, `leak`, `tampered`, `battery` | security, panel | MVP |
+
+Notes:
+
+- A camera watching a garden or a driveway is assigned to a zone (spaces support rooms and zones), so its person
+  detections make that zone occupied rather than a room.
+- `illuminance.level` is derived from lux with fixed thresholds (dark < 10 lx, dusky < 50 lx, moderate < 500 lx,
+  bright otherwise; confirmed with fixtures in UP-0).
+
 ## 15. Spec changes (D8)
 
 1. `spec/devices/channels.yaml`: new `object_detection` channel (docGroup security): `detected` (bool, ro, required),
    `object_type` (enum person/vehicle/animal/package/license_plate/face/unknown, ro, required), optional `active`,
-   `tampered`. Clarify `camera.source` description: "Stable, non-secret identifier of the stream source; never a URL
+   `tampered`; new `sound_detection` channel with the same shape and `sound_type` (enum glass_break/burglar_alarm/
+   siren/baby_cry/speech/dog_bark/car_horn/unknown). Clarify `camera.source` description: "Stable, non-secret identifier of the stream source; never a URL
    or credential".
-2. `spec/devices/devices.yaml`: `camera` and `doorbell` allow `object_detection` (multiple), `indicator`,
-   `illuminance`, `smoke`, `carbon_monoxide`; `camera` channel `multiple: true` on both.
-3. Backend enums (`ChannelCategory.OBJECT_DETECTION`, `PropertyCategory.OBJECT_TYPE`), CHECK-constraint migration,
+2. `spec/devices/devices.yaml`: `camera` and `doorbell` allow `object_detection` and `sound_detection` (multiple),
+   `indicator`, `illuminance`, `smoke`, `carbon_monoxide`; `camera` channel `multiple: true` on both.
+3. Backend enums (`ChannelCategory.OBJECT_DETECTION`, `ChannelCategory.SOUND_DETECTION`, `PropertyCategory.OBJECT_TYPE`,
+   `PropertyCategory.SOUND_TYPE`), CHECK-constraint migration,
    admin `devices.mapping.ts` + locales, panel enums/views; regenerate specs, OpenAPI, admin types and the Dart client.
-4. Security detection rule for `object_detection`.
+4. Per-type security detection rules for `object_detection` and `sound_detection` (UP-16) and person detection as
+   space occupancy (UP-21).
 
 ## 16. Testing strategy
 
@@ -511,7 +554,7 @@ Sub-issues of the epic (IDs `UP-n`); details and dependencies in the epic task f
 | M2 Plugin backend | UP-5 plugin foundation + API client · UP-6 discovery · UP-7 mapping & adoption · UP-8 real-time sync · UP-9 control platform · UP-10 stream & snapshot provider |
 | M3 Admin | UP-11 camera live view components · UP-12 plugin config & adoption wizard |
 | M4 Panel | UP-13 snapshot camera views · UP-14 doorbell ring and alert camera overlay · UP-15 live video on the panel |
-| M5 Security & extras | UP-16 security rule for object detections · UP-17 Protect alarm manager as alarm device (optional) · UP-18 full-access private API mode (optional) |
+| M5 Security & extras | UP-16 per-type security rules for object and sound detections · UP-21 person detection as space occupancy · UP-17 Protect alarm manager as alarm device (optional) · UP-18 full-access private API mode (optional) |
 | M6 Release | UP-19 documentation · UP-20 integrated verification and hardware acceptance |
 
 ## 19. References
