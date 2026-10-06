@@ -74,8 +74,9 @@ milestone, to bring Matter devices such as IKEA Matter bulbs into Smart Panel as
       (milestone 1); thermostats, covers, locks, fans, air purifiers, buttons, valves, energy and robot vacuums
       follow (milestone 2).
 - [ ] State changes in Smart Panel reach the controllers; commands from the controllers go through
-      `PropertyCommandService` and failures are reported back; offline devices show as not responding; renames,
-      deletions and newly exposed devices apply without re-pairing.
+      `PropertyCommandService` and failures are reported back; offline devices show as not responding; deletions,
+      structure changes and newly exposed devices apply without re-pairing; renames are pushed as `NodeLabel`
+      (whether a controller shows the new name after the device was added is recorded per ecosystem).
 - [ ] Pairing data lives in a 0700 directory under `FB_CONFIG_PATH`, is backed up, and the passcode is a secret
       shown only to owners/admins.
 - [ ] Runs on the Raspberry Pi image and in Docker with host networking; mDNS coexists with avahi, the core
@@ -151,8 +152,8 @@ Then the alarm panel is listed as incompatible with the reason "no Matter device
 ## 7. Implementation hints
 
 - Mirror `devices-homekit` for lifecycle, mutation handling, storage permissions, mapper registry, binding
-  registry, event listener and admin wizard; fix its known gaps (device rename/delete, offline state, one mapper
-  per device).
+  registry, event listener and admin wizard; fix its known gaps (device deletion and structure changes, offline
+  state, one mapper per device; tracked for HomeKit itself in #1220).
 - Map per channel, not per device; stable endpoint ids `sp-<deviceId>[-<channelId>]`.
 - Power Source on the bridged node endpoint, never on the root endpoint.
 - Disable matter.js process hooks (`@matter/nodejs/config`) and pin mDNS to the LAN interface.

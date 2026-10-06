@@ -68,8 +68,10 @@ Smart Panel's model maps naturally: **device ↔ bridged node**, **channel ↔ e
     (`docs/optimistic-ui-architecture.md`).
   - Pairing storage in a 0700 directory under `FB_CONFIG_PATH`, failing closed; credentials as `secretFields`;
     status events routed to admins only and redacted in the websocket gateway.
-  - Known gaps that the Matter bridge must not repeat: no listeners for device rename/delete, no offline
-    ("No Response") mapping, one primary mapper per device, private-API access for pairing status.
+  - Known gaps that the Matter bridge must not repeat: no listeners for device deletion or structure changes, no
+    offline ("No Response") mapping, one primary mapper per device, private-API access for pairing status. The
+    HomeKit gaps themselves are tracked in #1220 (renames are out of scope there: Apple Home keeps its own name
+    once an accessory is added).
 - **Device providers** (`devices-wled`, `devices-zigbee2mqtt`, `devices-homey`) are the template for the controller:
   `@ChildEntity` device/channel/property subclasses, an `IDevicePlatform` registered in `PlatformRegistryService`,
   a wizard session controller on the backend and an `IDeviceWizardAdapter` in the admin.
@@ -105,8 +107,10 @@ Smart Panel's model maps naturally: **device ↔ bridged node**, **channel ↔ e
 - The bridge can be paired with several ecosystems at once. The admin shows the paired fabrics (Apple, Google,
   Amazon, Samsung, HA, unknown), can remove one, and can open a new commissioning window to add another ecosystem
   without going through the first one.
-- Device names, reachability (`reachable` ↔ Smart Panel connection state), renames and deletions follow Smart
-  Panel live; adding or removing devices does not require re-pairing.
+- Reachability (`reachable` ↔ Smart Panel connection state), deletions and structure changes follow Smart Panel
+  live; adding or removing devices does not require re-pairing. Renames are pushed as `NodeLabel`, but whether a
+  controller updates the name it shows after the device was added is controller-dependent (each ecosystem keeps
+  its own user-editable name); MT-1 and MT-8 record the behaviour per ecosystem and the docs state it.
 - Devices that Smart Panel itself controls **through Matter** (milestone 3) are never exposed through the bridge:
   they are already Matter devices and can be shared with other ecosystems directly (multi-admin). Re-exporting
   them would create duplicates and loops and is outside the spec's intent for bridges.
@@ -356,7 +360,7 @@ devices-matter:
   Mapping is per **channel**, so one device can produce several endpoints (light + temperature + battery).
 - Endpoint ids are stable strings (`sp-<deviceId>`, `sp-<deviceId>-<channelId>`), so matter.js keeps endpoint
   numbers across restarts.
-- `BridgedDeviceBasicInformation`: `nodeLabel` = device name (updated on rename), `uniqueId` = device id,
+- `BridgedDeviceBasicInformation`: `nodeLabel` = device name (pushed on rename; display is controller-dependent), `uniqueId` = device id,
   `serialNumber`/`vendorName`/`productName`/`softwareVersion` from the `device_information` channel when present,
   `reachable` = device connection state.
 - Power Source sits on the bridged node endpoint (not on the root endpoint; that broke energy rendering in Apple).
