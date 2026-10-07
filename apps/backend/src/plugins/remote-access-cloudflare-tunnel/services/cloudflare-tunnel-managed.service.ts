@@ -270,7 +270,7 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 	 * reflected immediately.
 	 */
 	async onConfigChanged(): Promise<ConfigChangeResult> {
-		this.generation++;
+		const generation = ++this.generation;
 		this.observations.invalidate();
 		this.requirementObservations.invalidate();
 		const previous = this.pluginConfig;
@@ -286,11 +286,20 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 			return { restartRequired: true };
 		}
 
+		this.clearPoll();
 		await this.emitStatus().catch((error) => {
 			this.logger.debug('Failed to emit status after a Cloudflare Tunnel config change', {
 				message: error instanceof Error ? error.message : String(error),
 			});
 		});
+
+		if (generation === this.generation) {
+			this.schedulePoll(
+				this.lastStatus?.state === 'connecting'
+					? CLOUDFLARED_POLL_INTERVAL_TRANSITIONING_MS
+					: CLOUDFLARED_POLL_INTERVAL_STABLE_MS,
+			);
+		}
 
 		return { restartRequired: false };
 	}
@@ -623,18 +632,21 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 		}
 
 		if (!this.processService.isRunning()) {
-			const lastLine = this.processService.getLastStderrLine();
-			const exit = this.processService.getLastExit();
-			const message =
-				lastLine ??
-				(exit
-					? `cloudflared exited unexpectedly${exit.code !== null ? ` (code ${exit.code})` : ''}.`
-					: 'cloudflared is not running.');
-
-			return this.buildStatus('error', message);
+			return this.buildProcessUnavailableStatus();
 		}
 
+		const processIdentity = this.processService.getProcessIdentity();
+
 		const ready = await this.metricsService.fetchReady(this.getMetricsAddress(), signal);
+
+		// Metrics can outlive the child that served them. A timestamp cannot distinguish
+		// replacements spawned in the same millisecond; compare the owned child identity.
+		if (!this.processService.isRunning()) {
+			return this.buildProcessUnavailableStatus();
+		}
+		if (processIdentity !== this.processService.getProcessIdentity()) {
+			return this.buildStatus('connecting', 'Waiting for the replacement tunnel process to become ready.');
+		}
 
 		if (ready) {
 			return this.buildStatus('connected', undefined, ready);
@@ -648,6 +660,18 @@ export class CloudflareTunnelManagedService extends BaseManagedExtensionService 
 		}
 
 		const message = this.processService.getLastStderrLine() ?? 'Cloudflared did not become ready in time.';
+
+		return this.buildStatus('error', message);
+	}
+
+	private buildProcessUnavailableStatus(): RemoteAccessProviderStatus {
+		const lastLine = this.processService.getLastStderrLine();
+		const exit = this.processService.getLastExit();
+		const message =
+			lastLine ??
+			(exit
+				? `cloudflared exited unexpectedly${exit.code !== null ? ` (code ${exit.code})` : ''}.`
+				: 'cloudflared is not running.');
 
 		return this.buildStatus('error', message);
 	}

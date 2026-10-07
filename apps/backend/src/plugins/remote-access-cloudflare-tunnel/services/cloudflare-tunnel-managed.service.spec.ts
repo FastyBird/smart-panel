@@ -13,7 +13,11 @@ import { PlatformType } from '../../../modules/platform/platform.constants';
 import { PlatformService } from '../../../modules/platform/services/platform.service';
 import { EventType as RemoteAccessEventType } from '../../../modules/remote-access/remote-access.constants';
 import { RemoteAccessCloudflareTunnelPluginConfigModel } from '../models/config.model';
-import { CLOUDFLARED_READY_GRACE_MS } from '../remote-access-cloudflare-tunnel.constants';
+import {
+	CLOUDFLARED_POLL_INTERVAL_STABLE_MS,
+	CLOUDFLARED_POLL_INTERVAL_TRANSITIONING_MS,
+	CLOUDFLARED_READY_GRACE_MS,
+} from '../remote-access-cloudflare-tunnel.constants';
 
 import { CloudflareTunnelManagedService, compareCloudflaredVersions } from './cloudflare-tunnel-managed.service';
 import { CloudflaredCliError, CloudflaredCliService } from './cloudflared-cli.service';
@@ -54,6 +58,7 @@ describe('CloudflareTunnelManagedService', () => {
 	let processService: {
 		isRunning: jest.Mock;
 		getStartedAt: jest.Mock;
+		getProcessIdentity: jest.Mock;
 		getLastExit: jest.Mock;
 		getLastStderrLine: jest.Mock;
 		start: jest.Mock;
@@ -84,6 +89,7 @@ describe('CloudflareTunnelManagedService', () => {
 		processService = {
 			isRunning: jest.fn().mockReturnValue(false),
 			getStartedAt: jest.fn().mockReturnValue(null),
+			getProcessIdentity: jest.fn().mockReturnValue(Symbol()),
 			getLastExit: jest.fn().mockReturnValue(null),
 			getLastStderrLine: jest.fn().mockReturnValue(null),
 			start: jest.fn(),
@@ -685,6 +691,179 @@ describe('CloudflareTunnelManagedService', () => {
 
 			expect(processService.start).not.toHaveBeenCalled();
 		});
+	});
+	describe('poll continuity and child readiness races', () => {
+		function emittedSnapshots(): Awaited<ReturnType<CloudflareTunnelManagedService['getStatusSnapshot']>>[] {
+			const calls = eventEmitterMock.emit.mock.calls as [
+				RemoteAccessEventType,
+				Awaited<ReturnType<CloudflareTunnelManagedService['getStatusSnapshot']>>,
+			][];
+			return calls.map((call) => call[1]);
+		}
+
+		function holdReadiness(): { reached: Promise<void>; release: () => void } {
+			let entered!: () => void;
+			let resolveReady!: (ready: { readyConnections: number; connectorId: string }) => void;
+			const reached = new Promise<void>((resolve) => {
+				entered = resolve;
+			});
+			metricsService.fetchReady.mockImplementationOnce(() => {
+				entered();
+				return new Promise((resolve) => {
+					resolveReady = resolve;
+				});
+			});
+			return { reached, release: () => resolveReady({ readyConnections: 1, connectorId: 'obsolete' }) };
+		}
+
+		function changeHostname(hostname: string): Promise<unknown> {
+			configServiceMock.getPluginConfig.mockReturnValue(Object.assign(defaultConfig(), { publicHostname: hostname }));
+			return service.onConfigChanged();
+		}
+
+		async function startRunning(): Promise<void> {
+			processService.isRunning.mockReturnValue(true);
+			processService.getStartedAt.mockReturnValue(Date.now());
+			metricsService.fetchReady.mockResolvedValue({ readyConnections: 1, connectorId: 'current' });
+			await service.start();
+		}
+
+		it('keeps one bounded poll chain after a hostname change interrupts an active timer tick', async () => {
+			await startRunning();
+			const held = holdReadiness();
+			await jest.advanceTimersByTimeAsync(0);
+			await held.reached;
+			const changed = changeHostname('new.example.com');
+			held.release();
+			await changed;
+			processService.isRunning.mockReturnValue(false);
+			processService.start.mockImplementation(() => {
+				processService.isRunning.mockReturnValue(true);
+			});
+			processService.start.mockClear();
+			await jest.advanceTimersByTimeAsync(CLOUDFLARED_POLL_INTERVAL_STABLE_MS);
+			expect(processService.start).toHaveBeenCalledTimes(1);
+			const reads = metricsService.fetchReady.mock.calls.length;
+			await jest.advanceTimersByTimeAsync(CLOUDFLARED_POLL_INTERVAL_STABLE_MS);
+			expect(metricsService.fetchReady).toHaveBeenCalledTimes(reads + 1);
+			expect(processService.start).toHaveBeenCalledTimes(1);
+			await service.stop();
+		});
+
+		it('continues ordinary polling when a hostname update replaces a pending timer', async () => {
+			await startRunning();
+			await jest.advanceTimersByTimeAsync(0);
+			await changeHostname('new.example.com');
+			expect(emittedSnapshots().at(-1)).toMatchObject({
+				status: { state: 'connected', endpoints: [{ url: 'https://new.example.com' }] },
+			});
+			const reads = metricsService.fetchReady.mock.calls.length;
+			await jest.advanceTimersByTimeAsync(CLOUDFLARED_POLL_INTERVAL_STABLE_MS * 2);
+			expect(metricsService.fetchReady).toHaveBeenCalledTimes(reads + 2);
+			await service.stop();
+		});
+
+		it('retains the transitioning poll cadence after a hostname update', async () => {
+			await startRunning();
+			metricsService.fetchReady.mockResolvedValue(null);
+			await jest.advanceTimersByTimeAsync(0);
+			await changeHostname('new.example.com');
+			const reads = metricsService.fetchReady.mock.calls.length;
+			await jest.advanceTimersByTimeAsync(CLOUDFLARED_POLL_INTERVAL_TRANSITIONING_MS);
+			expect(metricsService.fetchReady).toHaveBeenCalledTimes(reads + 1);
+			await service.stop();
+		});
+
+		it('rapid hostname changes resume only the latest generation', async () => {
+			await startRunning();
+			const held = holdReadiness();
+			await jest.advanceTimersByTimeAsync(0);
+			await held.reached;
+			const first = changeHostname('first.example.com');
+			const second = changeHostname('second.example.com');
+			held.release();
+			await Promise.all([first, second]);
+			const reads = metricsService.fetchReady.mock.calls.length;
+			await jest.advanceTimersByTimeAsync(CLOUDFLARED_POLL_INTERVAL_STABLE_MS);
+			expect(metricsService.fetchReady).toHaveBeenCalledTimes(reads + 1);
+			const snapshots = emittedSnapshots();
+			expect(snapshots).not.toHaveLength(0);
+			expect(snapshots.at(-1)?.status.endpoints).toEqual([
+				{ url: 'https://second.example.com', scope: 'public', https: true, label: 'Cloudflare Tunnel' },
+			]);
+			expect(
+				snapshots.every((snapshot) =>
+					snapshot.status.endpoints.every((endpoint) => endpoint.url === 'https://second.example.com'),
+				),
+			).toBe(true);
+			await service.stop();
+		});
+
+		it('does not restart polling when stop supersedes a pending hostname update', async () => {
+			await startRunning();
+			const held = holdReadiness();
+			await jest.advanceTimersByTimeAsync(0);
+			await held.reached;
+			const changed = changeHostname('new.example.com');
+			await service.stop();
+			held.release();
+			await changed;
+			processService.start.mockClear();
+			const reads = metricsService.fetchReady.mock.calls.length;
+			await jest.advanceTimersByTimeAsync(CLOUDFLARED_POLL_INTERVAL_STABLE_MS * 3);
+			expect(processService.start).not.toHaveBeenCalled();
+			expect(metricsService.fetchReady).toHaveBeenCalledTimes(reads);
+		});
+
+		it('reports an error when the child exits while a status request awaits readiness', async () => {
+			configServiceMock.getPluginConfig.mockReturnValue(
+				Object.assign(defaultConfig(), { publicHostname: 'panel.example.com' }),
+			);
+			await startRunning();
+			await jest.advanceTimersByTimeAsync(0);
+			const held = holdReadiness();
+			const pending = service.computeStatus();
+			await held.reached;
+			processService.isRunning.mockReturnValue(false);
+			processService.getLastExit.mockReturnValue({ code: 1, signal: null });
+			held.release();
+			await expect(pending).resolves.toMatchObject({
+				state: 'error',
+				endpoints: [],
+				proxyAddresses: [],
+				details: { connector_id: null },
+			});
+			await service.stop();
+		});
+
+		it.each(['exit', 'replacement'])(
+			'does not publish old ready metrics after child %s during the real poll',
+			async (change) => {
+				await startRunning();
+				const held = holdReadiness();
+				await jest.advanceTimersByTimeAsync(0);
+				await held.reached;
+				const startedAt = processService.getStartedAt() as number | null;
+				if (change === 'exit') {
+					processService.isRunning.mockReturnValue(false);
+					processService.start.mockImplementation(() => {
+						processService.isRunning.mockReturnValue(true);
+					});
+				} else {
+					processService.getProcessIdentity.mockReturnValue(Symbol());
+				}
+				expect(processService.getStartedAt()).toBe(startedAt);
+				held.release();
+				await jest.advanceTimersByTimeAsync(0);
+				const snapshots = emittedSnapshots();
+				expect(snapshots).not.toHaveLength(0);
+				expect(snapshots.some((snapshot) => snapshot.status.details.connector_id === 'obsolete')).toBe(false);
+				if (change === 'replacement') {
+					expect(snapshots[0].status.state).toBe('connecting');
+				}
+				await service.stop();
+			},
+		);
 	});
 	describe('bounded shared observations', () => {
 		it('coalesces requirements and readiness across REST and poll callers', async () => {
