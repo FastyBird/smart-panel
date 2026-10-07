@@ -589,6 +589,67 @@ recovery, stop/config races, reboot, connected-provider upgrade, client-address 
 remaining installation matrix are **not established by this run**. No token was reset, and no
 Cloudflare work contacted or changed Pi 4; its natural Tailscale key-expiry acceptance stays separate.
 
+### R5 staging crash and reboot acceptance (2026-10-08)
+
+Following [PR #1367](https://github.com/FastyBird/smart-panel/pull/1367), the same staging Pi 5
+on alpha.53 passed controlled process-crash and normal System-module reboot acceptance:
+
+- One SIGKILL targeted the verified backend-owned cloudflared child using a Linux pidfd, after
+  checking its PID, start time, executable, parent and unprivileged UID. The provider reported
+  `error` and withdrew its endpoints, proxy contributions and public URL. Its background poller
+  started one replacement child and restored `connected` with four ready connections and real
+  public HTTPS. The backend identity and configuration were unchanged; no manual restart was used.
+- One reboot command was sent through the normal authenticated System-module WebSocket action.
+  The acknowledgement was lost during shutdown, so the command was not resent. A changed boot ID
+  proved the reboot. Healthy public HTTPS was observed about 65 seconds after submission; this is
+  an observation bound, not a measurement of exact outage duration.
+- After reboot, the provider automatically reconnected with one unprivileged backend-owned child.
+  Cloudflare configuration, including the persisted token, was unchanged. Database integrity,
+  schema, migrations, device topology, accounts and long-lived tokens matched the baseline.
+  Tailscale retained its identity and connected automatically.
+- Public owner login/profile and valid-token Socket.IO passed again; anonymous protected API
+  requests and missing/invalid WebSocket tokens were rejected. These checks, and a pre-crash
+  baseline, used normal hostname resolution and certificate validation without a DNS override.
+
+The initial crash harness attempt failed before signaling: a read-only audit confirmed the original
+child identity was intact and the remote receipt written before any signal did not exist. A separate
+attempt retained SSH diagnostics and completed the single verified signal. The original evidence was
+kept. After reboot, the Mac's local SSH forwarding session was re-established for observation; no
+application service was manually restarted.
+
+R5 and the epic remain open. Token replacement/removal, invalid-token behavior, reset, network
+outage/recovery, stop/config races, connected-provider upgrade, client-address policy and the
+remaining installation matrix are still pending. Pi 4 was not contacted or changed.
+
+### R5 staging token removal and reset acceptance (2026-10-08)
+
+On the same alpha.53 Pi 5, a root-only checkpoint preserved the existing token, hostname, protocol
+and enabled setting before testing. The checkpoint stayed on the Pi; mutations and restoration used
+the normal authenticated API. The worker included a standalone recovery path and did not retry an
+ambiguous mutation blindly.
+
+- Replacing the token with a deliberately malformed nonempty value produced provider `error`,
+  terminated the previous child and withdrew endpoints, proxy contributions and the public URL.
+  The configured marker remained true because a value was stored. Restoring the original token
+  reconnected the provider.
+- Explicit `null` removal cleared the stored token while preserving the hostname. The configured
+  marker and token requirement became false, with `setup-required`, no child and no endpoint/proxy
+  contributions. The worker sampled this condition continuously for more than 35 seconds before
+  restoring the original token and observing reconnection.
+- Plugin reset cleared both the token and hostname while preserving the enabled and Auto settings.
+  It also held `setup-required`, no child and no endpoint/proxy contributions for more than 35 seconds.
+  This checks process and reachability withdrawal; it does not require the generic managed-service
+  state itself to be `stopped` when an enabled plugin lacks prerequisites.
+- Each restoration was checked against the private persisted fields. Final public HTTPS, owner
+  login/profile and WebSocket authentication checks passed using normal DNS and certificate
+  validation. API readback checks rejected secret fields/values throughout the matrix; the original
+  token was absent from the backend journal covering this test interval.
+
+These tests replace a valid token with a malformed value and then restore it; rotation to a different
+valid token or revocation of a well-formed token is not established. R5 remains open for those cases,
+network outage/recovery, stop/config races, connected-provider upgrade, client-address policy and the
+remaining installation matrix. Pi 4 and its Tailscale expiry test were untouched.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and
