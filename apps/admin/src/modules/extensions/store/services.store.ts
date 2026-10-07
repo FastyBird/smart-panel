@@ -28,12 +28,35 @@ import type {
 import { getServiceKey } from './services.store.types';
 import { transformServiceResponse } from './services.transformers';
 
-const defaultSemaphore: IServicesStateSemaphore = {
-	fetching: {
-		items: false,
-		item: [],
-	},
-	acting: [],
+// Get-all checks service health sequentially, including both remote-access provider deadlines.
+const SERVICE_STATUS_TIMEOUT_MS = 20_000;
+// Restart waits for stop and start sequentially. Cloudflare stop allows 10s for the child,
+// then refreshes requirements (15s CLI + 2s print-plan); start can run those checks again.
+// Allow 60s including HTTP overhead; readiness's 60s grace runs asynchronously after start.
+const SERVICE_ACTION_TIMEOUT_MS = 60_000;
+
+// A signal alone cannot release requests blocked in openapi-fetch's asynchronous auth middleware.
+// Race the whole client call, and abort so a late middleware continuation cannot send the request.
+const withServiceRequestDeadline = async <T>(
+	request: (signal: AbortSignal) => Promise<T>,
+	timeoutMs: number,
+	message: string,
+): Promise<T> => {
+	const controller = new AbortController();
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const deadline = new Promise<never>((_resolve, reject) => {
+		timer = setTimeout(() => {
+			const error = new Error(message);
+			reject(error);
+			controller.abort(error);
+		}, timeoutMs);
+	});
+
+	try {
+		return await Promise.race([request(controller.signal), deadline]);
+	} finally {
+		clearTimeout(timer);
+	}
 };
 
 export const useServices = defineStore<'extensions_module-services', ServicesStoreSetup>(
@@ -42,7 +65,10 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 		const backend = useBackend();
 		const logger = useLogger();
 
-		const semaphore = ref<IServicesStateSemaphore>(defaultSemaphore);
+		const semaphore = ref<IServicesStateSemaphore>({
+			fetching: { items: false, item: [] },
+			acting: [],
+		});
 
 		const firstLoad = ref<boolean>(false);
 
@@ -117,15 +143,21 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 						data: responseData,
 						error,
 						response,
-					} = await backend.client.GET('/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}', {
-						params: {
-							path: {
-								extensionKind: payload.extensionKind,
-								extensionType: payload.extensionType,
-								serviceId: payload.serviceId,
-							},
-						},
-					});
+					} = await withServiceRequestDeadline(
+						(signal) =>
+							backend.client.GET('/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}', {
+								signal,
+								params: {
+									path: {
+										extensionKind: payload.extensionKind,
+										extensionType: payload.extensionType,
+										serviceId: payload.serviceId,
+									},
+								},
+							}),
+						SERVICE_STATUS_TIMEOUT_MS,
+						'Service status request timed out.',
+					);
 
 					if (typeof responseData !== 'undefined') {
 						const service = transformServiceResponse(responseData.data);
@@ -171,7 +203,18 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 				semaphore.value.fetching.items = true;
 
 				try {
-					const { data: responseData, error, response } = await backend.client.GET('/modules/extensions/services');
+					const {
+						data: responseData,
+						error,
+						response,
+					} = await withServiceRequestDeadline(
+						(signal) =>
+							backend.client.GET('/modules/extensions/services', {
+								signal,
+							}),
+						SERVICE_STATUS_TIMEOUT_MS,
+						'Service status request timed out.',
+					);
 
 					if (responseData?.data) {
 						const services = responseData.data.map((svc) => transformServiceResponse(svc));
@@ -222,15 +265,21 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST('/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}/start', {
-					params: {
-						path: {
-							extensionKind: payload.extensionKind,
-							extensionType: payload.extensionType,
-							serviceId: payload.serviceId,
-						},
-					},
-				});
+				} = await withServiceRequestDeadline(
+					(signal) =>
+						backend.client.POST('/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}/start', {
+							signal,
+							params: {
+								path: {
+									extensionKind: payload.extensionKind,
+									extensionType: payload.extensionType,
+									serviceId: payload.serviceId,
+								},
+							},
+						}),
+					SERVICE_ACTION_TIMEOUT_MS,
+					'Service action request timed out.',
+				);
 
 				if (typeof responseData !== 'undefined') {
 					const service = transformServiceResponse(responseData.data);
@@ -266,15 +315,21 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST('/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}/stop', {
-					params: {
-						path: {
-							extensionKind: payload.extensionKind,
-							extensionType: payload.extensionType,
-							serviceId: payload.serviceId,
-						},
-					},
-				});
+				} = await withServiceRequestDeadline(
+					(signal) =>
+						backend.client.POST('/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}/stop', {
+							signal,
+							params: {
+								path: {
+									extensionKind: payload.extensionKind,
+									extensionType: payload.extensionType,
+									serviceId: payload.serviceId,
+								},
+							},
+						}),
+					SERVICE_ACTION_TIMEOUT_MS,
+					'Service action request timed out.',
+				);
 
 				if (typeof responseData !== 'undefined') {
 					const service = transformServiceResponse(responseData.data);
@@ -310,15 +365,21 @@ export const useServices = defineStore<'extensions_module-services', ServicesSto
 					data: responseData,
 					error,
 					response,
-				} = await backend.client.POST('/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}/restart', {
-					params: {
-						path: {
-							extensionKind: payload.extensionKind,
-							extensionType: payload.extensionType,
-							serviceId: payload.serviceId,
-						},
-					},
-				});
+				} = await withServiceRequestDeadline(
+					(signal) =>
+						backend.client.POST('/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}/restart', {
+							signal,
+							params: {
+								path: {
+									extensionKind: payload.extensionKind,
+									extensionType: payload.extensionType,
+									serviceId: payload.serviceId,
+								},
+							},
+						}),
+					SERVICE_ACTION_TIMEOUT_MS,
+					'Service action request timed out.',
+				);
 
 				if (typeof responseData !== 'undefined') {
 					const service = transformServiceResponse(responseData.data);

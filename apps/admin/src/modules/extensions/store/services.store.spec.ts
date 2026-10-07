@@ -1,13 +1,17 @@
 import { createPinia, setActivePinia } from 'pinia';
 
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import createClient from 'openapi-fetch';
+import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { paths } from '../../../openapi';
 import {
 	ExtensionsModuleServiceActivationPolicy,
 	ExtensionsModuleServiceDesiredState,
 	ExtensionsModuleServiceOwnerKind,
 	ExtensionsModuleServiceState,
 } from '../../../openapi.constants';
+import { createSessionMiddleware } from '../../auth/auth.middleware';
+import type { SessionStore } from '../../auth/store/session.store.types';
 import { ExtensionsApiException, ExtensionsValidationException } from '../extensions.exceptions';
 
 import { useServices } from './services.store';
@@ -71,8 +75,10 @@ describe('Services Store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		store = useServices();
-		vi.clearAllMocks();
+		vi.resetAllMocks();
 	});
+
+	afterEach(() => vi.useRealTimers());
 
 	it('stores services using a key that includes owner kind and type', () => {
 		const service = {
@@ -94,9 +100,7 @@ describe('Services Store', () => {
 		});
 
 		expect(store.data['plugin:devices-home-assistant-plugin:connector']).toEqual(service);
-		expect(
-			store.findByKey(ExtensionsModuleServiceOwnerKind.plugin, 'devices-home-assistant-plugin', 'connector')
-		).toEqual(service);
+		expect(store.findByKey(ExtensionsModuleServiceOwnerKind.plugin, 'devices-home-assistant-plugin', 'connector')).toEqual(service);
 	});
 
 	it('rejects invalid service data', () => {
@@ -145,18 +149,16 @@ describe('Services Store', () => {
 			serviceId: 'advertisement',
 		});
 
-		expect(backendClient.GET).toHaveBeenCalledWith(
-			'/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}',
-			{
-				params: {
-					path: {
-						extensionKind: ExtensionsModuleServiceOwnerKind.module,
-						extensionType: 'mdns-module',
-						serviceId: 'advertisement',
-					},
+		expect(backendClient.GET).toHaveBeenCalledWith('/modules/extensions/services/{extensionKind}/{extensionType}/{serviceId}', {
+			signal: expect.any(AbortSignal),
+			params: {
+				path: {
+					extensionKind: ExtensionsModuleServiceOwnerKind.module,
+					extensionType: 'mdns-module',
+					serviceId: 'advertisement',
 				},
-			}
-		);
+			},
+		});
 	});
 
 	it.each([
@@ -177,6 +179,7 @@ describe('Services Store', () => {
 		});
 
 		expect(backendClient.POST).toHaveBeenCalledWith(path, {
+			signal: expect.any(AbortSignal),
 			params: {
 				path: {
 					extensionKind: ExtensionsModuleServiceOwnerKind.plugin,
@@ -202,8 +205,165 @@ describe('Services Store', () => {
 			})
 		).rejects.toThrow(ExtensionsApiException);
 
-		expect(
-			store.acting(ExtensionsModuleServiceOwnerKind.plugin, 'devices-home-assistant-plugin', 'connector')
-		).toBe(false);
+		expect(store.acting(ExtensionsModuleServiceOwnerKind.plugin, 'devices-home-assistant-plugin', 'connector')).toBe(false);
 	});
+	it.each(['start', 'stop', 'restart'] as const)('aborts a lost %s reply, releases busy and allows retry', async (action) => {
+		vi.useFakeTimers();
+		const payload = {
+			extensionKind: ExtensionsModuleServiceOwnerKind.plugin,
+			extensionType: 'remote-access-cloudflare-tunnel-plugin',
+			serviceId: 'tunnel',
+		};
+		let signal: AbortSignal | undefined;
+		backendClient.POST.mockImplementationOnce((_path, options: { signal?: AbortSignal }) => {
+			signal = options?.signal;
+			return new Promise((_resolve, reject) => signal?.addEventListener('abort', () => reject(signal?.reason), { once: true }));
+		});
+		const pending = store[action](payload);
+		const rejected = expect(pending).rejects.toThrow('Service action request timed out.');
+		expect(store.acting(payload.extensionKind, payload.extensionType, payload.serviceId)).toBe(true);
+		await vi.advanceTimersByTimeAsync(59_999);
+		expect(signal?.aborted).toBe(false);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(signal?.aborted).toBe(true);
+		await rejected;
+		expect(store.acting(payload.extensionKind, payload.extensionType, payload.serviceId)).toBe(false);
+		expect(vi.getTimerCount()).toBe(0);
+		backendClient.POST.mockResolvedValueOnce({ data: { data: pluginService }, response: { status: 200 } });
+		await store[action](payload);
+		expect(backendClient.POST).toHaveBeenCalledTimes(2);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it.each(['get', 'fetch'] as const)('aborts a lost %s reply and releases its coalesced request for refresh', async (action) => {
+		vi.useFakeTimers();
+		const payload = {
+			extensionKind: ExtensionsModuleServiceOwnerKind.plugin,
+			extensionType: 'remote-access-cloudflare-tunnel-plugin',
+			serviceId: 'tunnel',
+		};
+		let signal: AbortSignal | undefined;
+		backendClient.GET.mockImplementationOnce((_path, options: { signal?: AbortSignal }) => {
+			signal = options?.signal;
+			return new Promise((_resolve, reject) => signal?.addEventListener('abort', () => reject(signal?.reason), { once: true }));
+		});
+		const request = () => (action === 'get' ? store.get(payload) : store.fetch());
+		const pending = request();
+		const duplicate = request();
+		const rejected = expect(pending).rejects.toThrow('Service status request timed out.');
+		const duplicateRejected = expect(duplicate).rejects.toThrow('Service status request timed out.');
+		expect(backendClient.GET).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(20_000);
+		expect(signal?.aborted).toBe(true);
+		await rejected;
+		await duplicateRejected;
+		expect(store.fetching()).toBe(false);
+		expect(store.getting(payload.extensionKind, payload.extensionType, payload.serviceId)).toBe(false);
+		expect(vi.getTimerCount()).toBe(0);
+		backendClient.GET.mockResolvedValueOnce({ data: { data: action === 'get' ? pluginService : [pluginService] }, response: { status: 200 } });
+		await request();
+		expect(backendClient.GET).toHaveBeenCalledTimes(2);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+	it('keeps an outstanding lifecycle action local to its Pinia instance', async () => {
+		vi.useFakeTimers();
+		const payload = {
+			extensionKind: ExtensionsModuleServiceOwnerKind.plugin,
+			extensionType: 'remote-access-cloudflare-tunnel-plugin',
+			serviceId: 'tunnel',
+		};
+		backendClient.POST.mockImplementationOnce(
+			(_path, options: { signal: AbortSignal }) =>
+				new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true }))
+		);
+		const pending = store.start(payload);
+		const rejected = expect(pending).rejects.toThrow('Service action request timed out.');
+		const other = useServices(createPinia());
+		expect(other.acting(payload.extensionKind, payload.extensionType, payload.serviceId)).toBe(false);
+		backendClient.POST.mockResolvedValueOnce({ data: { data: pluginService }, response: { status: 200 } });
+		await other.start(payload);
+		expect(store.acting(payload.extensionKind, payload.extensionType, payload.serviceId)).toBe(true);
+		await vi.advanceTimersByTimeAsync(60_000);
+		await rejected;
+	});
+	it.each(['start', 'stop', 'restart', 'get', 'fetch'] as const)(
+		'bounds %s blocked in the real client auth middleware and prevents late transport/state writes',
+		async (action) => {
+			vi.useFakeTimers();
+			let releaseRefresh!: (value: boolean) => void;
+			const refresh = new Promise<boolean>((resolve) => {
+				releaseRefresh = resolve;
+			});
+			const isExpired = vi.fn(() => true);
+			const session = {
+				tokenPair: { accessToken: 'test-token' },
+				isExpired,
+				refresh: vi.fn(() => refresh),
+				clear: vi.fn(),
+			} as unknown as SessionStore;
+			const sent = vi.fn();
+			const transport = vi.fn(async (request: Request) => {
+				// Native fetch rejects an already-aborted request before sending it.
+				request.signal.throwIfAborted();
+				sent(request.method);
+				return Response.json({ data: action === 'fetch' ? [pluginService] : pluginService });
+			});
+			const client = createClient<paths>({ baseUrl: 'http://backend.test', fetch: transport });
+			client.use(createSessionMiddleware(session));
+			backendClient.GET.mockImplementation(client.GET);
+			backendClient.POST.mockImplementation(client.POST);
+			const payload = {
+				extensionKind: ExtensionsModuleServiceOwnerKind.plugin,
+				extensionType: 'remote-access-cloudflare-tunnel-plugin',
+				serviceId: 'tunnel',
+			};
+			const request = () => (action === 'fetch' ? store.fetch() : store[action](payload));
+			const pending = request();
+			const rejected = expect(pending).rejects.toThrow('request timed out.');
+			const duplicate = action === 'get' || action === 'fetch' ? request().catch((error: unknown) => error) : null;
+			await vi.advanceTimersByTimeAsync(action === 'get' || action === 'fetch' ? 20_000 : 60_000);
+			await rejected;
+			if (duplicate) expect(await duplicate).toBeInstanceOf(Error);
+			expect(transport).not.toHaveBeenCalled();
+			expect(store.fetching()).toBe(false);
+			expect(store.getting(payload.extensionKind, payload.extensionType, payload.serviceId)).toBe(false);
+			expect(store.acting(payload.extensionKind, payload.extensionType, payload.serviceId)).toBe(false);
+			expect(vi.getTimerCount()).toBe(0);
+			isExpired.mockReturnValue(false);
+			await request();
+			const recoveredData = { ...store.data };
+			expect(sent).toHaveBeenCalledTimes(1);
+			releaseRefresh(true);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(transport).toHaveBeenCalledTimes(2);
+			expect(sent).toHaveBeenCalledTimes(1);
+			expect(store.data).toEqual(recoveredData);
+		}
+	);
+
+	it.each(['start', 'stop', 'restart', 'get', 'fetch'] as const)(
+		'ignores a late %s response even when the transport ignores abort',
+		async (action) => {
+			vi.useFakeTimers();
+			let resolveResponse!: (response: unknown) => void;
+			const deferred = new Promise((resolve) => {
+				resolveResponse = resolve;
+			});
+			const method = action === 'get' || action === 'fetch' ? backendClient.GET : backendClient.POST;
+			method.mockReturnValueOnce(deferred);
+			const payload = {
+				extensionKind: ExtensionsModuleServiceOwnerKind.plugin,
+				extensionType: pluginService.extension_type,
+				serviceId: pluginService.service_id,
+			};
+			const pending = action === 'fetch' ? store.fetch() : store[action](payload);
+			const rejected = expect(pending).rejects.toThrow('request timed out.');
+			await vi.advanceTimersByTimeAsync(action === 'get' || action === 'fetch' ? 20_000 : 60_000);
+			await rejected;
+			resolveResponse({ data: { data: action === 'fetch' ? [pluginService] : pluginService }, response: { status: 200 } });
+			await vi.advanceTimersByTimeAsync(0);
+			expect(store.data).toEqual({});
+			expect(store.firstLoadFinished()).toBe(false);
+		}
+	);
 });

@@ -418,6 +418,43 @@ No hardware acceptance checkbox is completed by these automated changes.
 
 ## 6. Verification and completion evidence
 
+### R5 preparation while R4 expiry acceptance is pending (2026-10-07)
+
+The user authorized independent work while the test Pi's one-day node key is left to expire on
+2026-10-08 at 11:25:29 UTC (13:25:29 Europe/Prague). R4 remains open; this preparation does not
+advance the Cloudflare hardware acceptance gate or change the running Pi's authentication.
+
+The Cloudflare card uses the generic Extensions service actions. Their unbounded HTTP requests
+can retain the acting semaphore indefinitely when a response is lost; unbounded service reads can
+also prevent the card's post-action reconciliation from completing. The admin correction bounds
+service reads to 20 seconds and lifecycle actions to 60 seconds, including time spent waiting in
+authentication middleware, releases request state on timeout, and gives each store its own semaphore.
+The read limit allows for sequential health observations from both remote-access providers.
+A client-side timeout does not cancel the server-side operation, and actions are not automatically
+replayed. The card reconciles actual service state through a fresh read before offering the next action.
+
+Validation: 28 focused store/card tests and full admin type checking passed, including the real
+HTTP client/auth middleware and ignored-abort late replies. Admin lint passed with six existing
+warnings. The full suite before the final middleware correction passed 3,327 tests with one
+15-second timeout in the unchanged virtual-device wizard; that entire 18-test suite passed when
+rerun alone. The final correction was verified by the focused tests and type checking.
+
+The separate backend audit identified the following schedules for the next regression/fix batch:
+
+- A child that emits no `exit` after SIGKILL can leave stop waiting indefinitely. An error/close-only
+  spawn failure and a thrown kill need explicit, bounded outcomes without abandoning a live child.
+- Old child exit/error/stderr callbacks and a previous stop continuation can affect a replacement
+  child. Token redaction must belong to the emitting child, including logged errors.
+- A hostname-only config change invalidates an in-flight poll without replacing its consumed timer;
+  polling and crash recovery must continue in the new generation.
+- A child can exit while `/ready` is pending; the old successful response must not publish Connected.
+- The real SIGKILL test must wait until its stub installs the SIGTERM handler and assert the actual
+  exit signal, rather than accepting any quick exit.
+
+These are source-reviewed gaps, not yet passing regressions or real-tunnel evidence. R5 still needs
+an identified release, a dedicated Cloudflare tunnel/public hostname, token configure/replace/remove,
+external TLS/login/WebSocket/client-address checks, crash/network recovery, reboot/reset and upgrade.
+
 ### R3 implementation verification (2026-10-04)
 
 - Mounted provider cards exercise real stores and backend-shaped envelopes for stopped and
