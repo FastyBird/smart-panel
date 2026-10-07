@@ -478,6 +478,19 @@ then passed, preserving the owner, authenticated session and plugin configuratio
 fresh-package setup acceptance remains pending; see the epic verification section for timestamps
 and evidence boundaries.
 
+### Published host setup verification (2026-10-07)
+
+Published alpha.51 contains #1231 and passed fresh-package setup on the clean-OS installer Pi 4.
+The package, apt source and keyring were removed while signed out; System then upgraded the host
+from alpha.50 to alpha.51 through the npm worker. The real setup wizard installed Tailscale from apt,
+restored progress across a full-page reload and advanced to Sign in. Status-file sampling captured
+install, daemon, operator and completion; live UI events exposed installation and completion, while
+the subsecond intermediate steps were not individually rendered. All five prerequisites and host
+checks passed with backend hardening retained. Functional setup and host-installer/updater rows are
+complete. The original every-step live-reporting requirement remains separately unchecked because
+status-file sampling does not establish UI visibility. Expiry, fallback and other R4 gaps remain. See the epic for
+release provenance, timestamps and the distinction between status samples and rendered progress.
+
 ### Automated evidence from this analysis
 
 - Backend: **32 suites / 614 tests passed** in the module and both providers.

@@ -796,6 +796,44 @@ ID/role, authenticated session and full Tailscale plugin configuration were pres
 Tailscale prerequisites remained satisfied, with no tailnet login. Host npm updater acceptance passed;
 the combined checklist row remains open solely for released fresh-package setup verification.
 
+#### Published alpha.51 host setup acceptance (2026-10-07)
+
+[Alpha release 37606933658](https://github.com/FastyBird/smart-panel/actions/runs/37606933658)
+published the alpha.51 npm packages from version-sync commit `1a291cfe04f4b937e87e3b04eb8db8fc94401cfb` containing #1231.
+The backend and main package tarballs matched their registry SHA-512 integrity values; the published
+backend contained `unitType: 'service'` and the main package retained both CLI entry points.
+
+On the same clean-OS installer Pi 4, Tailscale was confirmed signed out before disabling the plugin
+and purging its package. The test also removed the vendor apt source and keyring, retaining private
+backups. This recreated package installation prerequisites; it was not another OS reimage. The actual
+System UI then upgraded alpha.50 to the published alpha.51 npm packages (10:36:37–10:39:57 UTC).
+Health and wrapper/backend/admin package versions agreed; the UI reported successful completion and
+the existing owner/session remained usable. The installed setup implementation matched the fix.
+
+After re-enabling the plugin, Remote access showed **Not installed**. **Start setup** launched
+`smart-panel-remote-access.service` at 10:40:47 UTC. A read-only status-file sampler captured:
+
+- `install`: 10:40:47.301 UTC;
+- `daemon`: 10:41:18.669 UTC;
+- `operator`: 10:41:19.078 UTC;
+- `complete`: 10:41:19.119 UTC.
+
+The admin received live installation events, restored the running wizard after a full-page reload
+and advanced to Sign in on the completion event at 10:41:20 UTC. The brief daemon/operator stages
+were captured in the status file, not as separate rendered UI frames. API status reported all five
+prerequisites satisfied. Independent host checks confirmed Tailscale 1.102.5, enabled/active
+`tailscaled`, service-user access and NeedsLogin. Backend `ProtectSystem=strict`, `ProtectHome`,
+`PrivateTmp` and `ProtectControlGroups` remained enabled. No deployed source patch was used.
+
+This completes functional fresh-package npm/apt setup and the host-installer/npm updater. The
+original every-step live-reporting requirement is split out below and remains unchecked: status-file
+evidence does not establish individual UI visibility. This does not establish tailnet login, expiry
+warnings, HTTPS fallback or remote reachability for this reset
+host. The rest of R4 remains open. Private evidence, including registry receipts, host checks,
+status samples, WebSocket events and UI recording, is in
+`remote-access-r4/host-install-acceptance/alpha51`. The GitHub release was published at 10:42:17 UTC;
+Docker and Raspberry Pi image jobs were still pending when this npm acceptance completed.
+
 #### Hardware acceptance checklist (alpha build on the testing Raspberry Pi)
 
 Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REMOTE-ACCESS.md` under Verification.
@@ -809,7 +847,8 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 ##### Setup and sign-in
 
 - [x] Admin → Remote access on the image shows internal URLs and, after enabling the plugin in Extensions, a Setup required card with inactive-daemon/operator requirements. Verified on fresh Pi 4 alpha.47. The clean npm-without-package variant correctly reported Not installed on 2026-10-07.
-- [ ] Set up: on the image it completes in seconds (package pre-installed); on an npm install it installs from the apt repository and reports each step live. The fresh Pi 4 alpha.47 UI setup passed with a roughly one-second privileged scope; clean npm/apt setup reproduced a scope sandbox failure on 2026-10-07; the independent-service candidate passed, with published-release retest pending.
+- [x] Set up completes on the image with the package pre-installed and installs the package from the apt repository on an npm host. Image alpha.47 passed. Published npm alpha.51 passed on 2026-10-07 after removing the package, apt source and keyring: live installation/completion events, full-page reload recovery, all script steps captured in the status file and all prerequisites satisfied.
+- [ ] Report each setup step live in the admin, including daemon and operator. This is the visibility part of the original setup/host-installer criteria, retained separately from functional installation. Alpha.51 status-file samples captured every step, but the subsecond daemon/operator stages were not individually observed in UI/WebSocket progress; this requirement is not marked passed.
 - [ ] Sign in: a login link and QR code appear; approving on the phone flips the card to Connected with tailnet name, MagicDNS name and Tailscale IPs. Link/QR display and user approval passed on fresh Pi 4 alpha.47; the approval device was not recorded, so the phone-specific step remains unverified.
 - [x] Extensions → Services lists `remote-access-tailscale-plugin / node` as started and healthy. The actual Services → Plugins view showed Running / Healthy on Pi 4 alpha.47.
 
@@ -843,7 +882,7 @@ Record the outcome of each row (date, pass/fail, notes) in `tasks/epics/EPIC-REM
 ##### Other deployments
 
 - [x] Docker compose deployment: the Tailscale card reports unsupported with the documentation link; the manual external URL still works. Passed on the published alpha.50 ARM64 digest on 2026-10-07, including UI configuration and persistence across container recreation; native ARM64 and AMD64 release runtime smoke tests also passed. The manual URL fixture was loopback-only.
-- [ ] Host installed with `scripts/install-server.sh` (not the image): Remote access → Set up installs Tailscale from the apt repository and reports each step, and System → Update runs the in-app updater through the privileged worker (the sudo probe must pass with the script's sudoers file). Clean alpha.49 installation and the alpha.49 → alpha.50 UI npm updater passed on 2026-10-07 with owner/configuration preserved. Fresh-package Tailscale setup failed on the release and passed only with the independent-service candidate; published setup retest remains pending.
+- [x] Host installed with `scripts/install-server.sh` (not the image): Remote access → Set up installs Tailscale from the apt repository and reports progress, and System → Update runs the in-app updater through the privileged worker. Clean alpha.49 installation, sudoers/probe checks, alpha.49 → alpha.50 and alpha.50 → alpha.51 UI npm updates passed on 2026-10-07. Published alpha.51 fresh-package setup passed after #1231, with backend hardening retained. Every-step live admin reporting remains the separate unchecked criterion above; see verification for sampling boundaries.
 
 ## 5. Example scenarios
 
