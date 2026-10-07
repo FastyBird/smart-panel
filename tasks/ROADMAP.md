@@ -372,7 +372,7 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | --- | -------------------------------------------------------------------------------------- | -------------- | ------------------- |
 | 3   | [FEATURE-COMPANION-SCREEN-COMPILER](features/FEATURE-COMPANION-SCREEN-COMPILER.md)     | backend        | :clipboard: Planned |
 | 4   | [FEATURE-COMPANION-ESPHOME-GENERATOR](features/FEATURE-COMPANION-ESPHOME-GENERATOR.md) | backend        | :clipboard: Planned |
-| 5   | [FEATURE-COMPANION-PROVISIONING](features/FEATURE-COMPANION-PROVISIONING.md)           | backend, admin | :clipboard: Planned |
+| 5   | [FEATURE-COMPANION-PROVISIONING](features/FEATURE-COMPANION-PROVISIONING.md)           | backend, admin, installer | :clipboard: Planned |
 
 ### Phase 3: Runtime Communication
 
@@ -388,9 +388,9 @@ ESP32-based knob with round LCD as a companion peripheral to the main panel disp
 | 8   | [FEATURE-COMPANION-SCREEN-TYPES](features/FEATURE-COMPANION-SCREEN-TYPES.md) | sdk, backend      | :clipboard: Planned |
 | 9   | [FEATURE-COMPANION-LED-RING](features/FEATURE-COMPANION-LED-RING.md)         | sdk               | :clipboard: Planned |
 
-**Tracking:** epic #1236 (CD-1 … CD-16). The specs predate the managed extension services, the extensions registry and the space/deck panel.
+**Tracking:** epic #1236 (CD-1 … CD-17). Specs regrounded on 2026-10-07 (#1237): the companion is a device in a `devices-companion` plugin linked to its display, the ESPHome toolchain is optional and installed on demand, and the panel owns the runtime serial port.
 
-**Next up:** reground the specs on the current architecture (#1237), then the backend plugin.
+**Next up:** the `devices-companion` backend plugin (#1238) and the firmware package (#1243).
 
 ---
 

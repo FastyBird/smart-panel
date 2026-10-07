@@ -10,103 +10,113 @@ Issues: #1239
 
 ## 1. Business goal
 
-In order to automatically generate appropriate companion display screens based on what the parent display shows,
+In order to generate companion screens automatically from what the parent display shows,
 As a system administrator,
-I want the system to inspect a parent display's pages and tiles, then compile a set of companion screens (arc sliders, mode selectors, status displays) without manual configuration.
+I want the backend to look at the space the parent display shows and compile one companion screen for each domain
+the panel deck shows for that space, without manual configuration.
 
 ## 2. Context
 
-- The parent display has pages (Overview, Climate, Lights, Media, etc.) each containing tiles bound to entities
-- The compiler maps each page to an appropriate companion screen type based on the domain
-- The compiler determines which entity is the "primary" control target per page
-- Pages with multiple controllable entities use long-press to cycle between them
-- Depends on `FEATURE-COMPANION-BACKEND-PLUGIN` for the companion display entity
-- Related: `EPIC-COMPANION-DISPLAY` (parent epic)
+- Decision D8 in `EPIC-COMPANION-DISPLAY` applies. The panel is space/deck based: the "pages and tiles" input of the
+  original spec only describes user dashboard pages now.
+- Each display shows one space: `DisplayEntity.spaceId` (`apps/backend/src/modules/displays/entities/displays.entity.ts`).
+  `homeMode` (`HomeMode.AUTO_SPACE | EXPLICIT`) and `HomeResolutionService` only choose the start page. The
+  compiler does not need them, because the panel sends `nav` for the active deck item when it connects.
+- The panel builds the deck in `apps/panel/lib/modules/deck/services/deck_builder.dart` / `system_views_builder.dart`.
+  For **room** spaces it shows a system view plus domain views (`DomainType`: lights, climate, shading, media,
+  sensors, energy), each gated by a count (light targets, climate targets, covers targets, media bindings, sensor
+  readings, energy devices). Other space types (master, entry, signage) show only their system view. A security
+  view and user dashboard pages (`DashboardPageItem`) follow.
+- Backend sources for the same counts, in `apps/backend/src/plugins/spaces-home-control/services/`:
+  `space-lighting-role.service.ts`, `space-climate-role.service.ts`, `space-covers-role.service.ts`,
+  `space-media-activity-binding.service.ts` / `derived-media-endpoint.service.ts`, `space-sensor-role.service.ts`,
+  and the lighting/climate/covers targets endpoints in `controllers/spaces-domain.controller.ts`.
+- Domain names: the backend uses `lighting`/`covers` and the panel uses `lights`/`shading`. Companion screen keys use
+  the backend names.
+- Scenes: `scenes_module_scenes.primary_space_id`. The panel room overview shows them as quick scenes.
+- Depends on #1238 (companion device with `display_id`).
 
 ## 3. Scope
 
 **In scope**
-- Screen compilation service that inspects parent display pages and tiles
-- Domain detection (climate, lights, media, covers, scenes, overview)
-- Mapping rules: domain → companion screen type with appropriate parameters
-- Primary entity selection when multiple entities exist on a page
-- Compiled screen data model (type, entity reference, min/max/unit, actions)
-- API endpoint to trigger compilation and return compiled screens
-- Re-compilation when parent display pages change
+- `ScreenCompilerService` in `apps/backend/src/plugins/devices-companion/services/screen-compiler.service.ts`
+- Input resolution: companion → display → space (and space type) → domain availability → screens
+- Screen keys and types: `overview`, `lighting`, `climate`, `covers`, `media`, `sensors`, `energy`, plus a built-in `idle`
+- Target lists for long-press cycling (lighting roles, covers roles)
+- Structure hash (sha256 over the ordered `key:type` list plus hardware profile, LED ring count and protocol version)
+- `GET /api/v1/plugins/devices-companion/devices/:id/screens` → `DevicesCompanionPluginResScreens`
+  (`screens`, `structure_hash`, `deployed_build_hash`, `up_to_date`)
+- Recompute on read; listeners mark "update available" (via a WebSocket event) when display/space/role/scene changes alter the structure hash
 
 **Out of scope**
-- Custom screen types defined by users
-- Screen ordering customization (follows parent page order)
-- ESPHome YAML generation from compiled screens (separate task)
+- User-defined screens or ordering
+- ESPHome YAML (#1242)
+- Live values (pushed by the panel at runtime, #1250)
+- Dashboard pages (pages-tiles/pages-cards) and the security view: v1 maps them to `idle`
 
 ## 4. Acceptance criteria
 
-- [ ] Compiler inspects parent display's pages and detects the domain of each page
-- [ ] Climate pages compile to arc_slider screens (temperature, min/max from entity, unit °C/°F)
-- [ ] Lights pages compile to arc_slider screens (brightness 0-100%, click = toggle)
-- [ ] Media pages compile to arc_slider screens (volume 0-100%, click = play/pause)
-- [ ] Covers pages compile to arc_slider screens (position 0-100%, click = open/close)
-- [ ] Scene pages compile to mode_selector screens (list of available scenes)
-- [ ] Overview/read-only pages compile to status_display screens
-- [ ] Pages with multiple controllable entities include a secondaryEntities list for long-press cycling
-- [ ] `GET /api/v1/companion-displays/:id/screens` returns compiled screens
-- [ ] `POST /api/v1/companion-displays/:id/screens/compile` triggers re-compilation
-- [ ] Unit tests cover all domain mapping rules
+- [ ] Room space with lighting targets → `lighting` `arc_slider` (brightness 0-100 %, step 5, click `toggle`, `targets` = "all" + assigned lighting roles)
+- [ ] Room space with climate targets → `climate` `arc_slider` (setpoint; min/max/step from climate state; unit from the display's `temperature_unit` or the system default; click `cycle_mode` over the supported `ClimateMode` values)
+- [ ] Room space with covers targets → `covers` `arc_slider` (position 0-100 %, click `open_close`, `targets` = "all" + covers roles)
+- [ ] Room space with media bindings → `media` `arc_slider` (volume of the active activity's volume endpoint, click `play_pause`)
+- [ ] Room space with sensor roles → `sensors` `status_display`; with energy devices → `energy` `status_display`
+- [ ] Every space type gets `overview` first: `mode_selector` over scenes with `primary_space_id` = the space when any exist, otherwise `status_display`
+- [ ] Non-room spaces (master, entry, signage_info_panel) compile to `overview` only; a display without a space compiles to `[]` (plus `idle`) and the response says why
+- [ ] Order follows the deck: overview, lighting, climate, covers, media, sensors, energy; `idle` is always present and not counted in the order
+- [ ] Output is deterministic: same input gives the same screens and the same `structure_hash`. Labels, ranges, options and target names are **not** part of the hash
+- [ ] The endpoint follows CLAUDE.md conventions (`@ApiOperation` with `operationId: 'get-devices-companion-plugin-device-screens'`, `*ResponseModel`)
+- [ ] Unit tests cover every mapping rule, gating counts, non-room spaces, the no-space case, ordering and hash stability
 
 ## 5. Example scenarios
 
-### Scenario: Compile screens for a display with Climate, Lights, and Scenes pages
+### Scenario: Room with lighting, climate and scenes
 
-Given parent display "Living Room Panel" has:
-  - Page 0: Overview (weather tile, energy tile)
-  - Page 1: Climate (Living Room AC tile, Bedroom AC tile)
-  - Page 2: Lights (Ceiling Light tile, Desk Lamp tile, LED Strip tile)
-  - Page 3: Scenes (Movie, Relax, Work scenes)
-When the screen compiler runs
-Then it produces:
-  - Screen 0: status_display (Overview - rotate to browse info)
-  - Screen 1: arc_slider (Climate - primary: Living Room AC, secondary: [Bedroom AC])
-  - Screen 2: arc_slider (Lights - primary: Ceiling Light, secondary: [Desk Lamp, LED Strip])
-  - Screen 3: mode_selector (Scenes - options: [Movie, Relax, Work])
+Given display "Living Room Panel" shows room "Living Room"
+And the room has lighting roles Main and Ambient, one thermostat, and scenes Movie, Relax, Work
+When the compiler runs
+Then it returns:
+  - `overview`: mode_selector (Movie, Relax, Work)
+  - `lighting`: arc_slider (targets: All, Main, Ambient)
+  - `climate`: arc_slider (setpoint, click cycles heat/cool/auto/off as supported)
+  - `idle`
+And `structure_hash` changes only if a domain appears/disappears, not if a scene is renamed
+
+### Scenario: Master display
+
+Given the display shows a master space
+When the compiler runs
+Then it returns `overview` and `idle` only
 
 ## 6. Technical constraints
 
-- Follow the existing service patterns in the backend
-- Screen compilation must be deterministic (same input → same output)
-- Compiler should be fast (no external API calls, works from local data)
-- Domain detection should use existing tile/entity type information
-- Tests are expected for all mapping rules
+- Pure, side-effect-free compile function over a gathered input snapshot; data gathering in a separate method (easy to test)
+- Reuse spaces-home-control services; do not duplicate their target/role queries in SQL
+- No external calls; fast enough to run on every `GET`
+- The screen DTO/model lives in the plugin (`models/companion-screen.model.ts`, schema `DevicesCompanionPluginDataScreen`)
 
 ## 7. Implementation hints
 
-### Mapping Rules
 ```typescript
+type CompanionScreenType = 'arc_slider' | 'mode_selector' | 'status_display' | 'binary_toggle' | 'idle';
+
 interface CompanionScreen {
-  index: number;
-  type: 'arc_slider' | 'mode_selector' | 'status_display' | 'binary_toggle';
-  label: string;
-  icon: string;
-  primaryEntity?: { id: string; property: string; min: number; max: number; unit: string };
-  secondaryEntities?: Array<{ id: string; label: string }>;
-  clickAction?: 'toggle' | 'cycle_mode' | 'activate' | 'none';
-  options?: Array<{ id: string; label: string; icon: string }>; // for mode_selector
+	key: 'overview' | 'lighting' | 'climate' | 'covers' | 'media' | 'sensors' | 'energy' | 'idle';
+	type: CompanionScreenType;
+	label: string;
+	icon: string;
+	clickAction: 'toggle' | 'cycle_mode' | 'open_close' | 'play_pause' | 'activate' | 'none';
+	range?: { min: number; max: number; step: number; unit: string };
+	targets?: Array<{ id: string; label: string }>; // 'all' first; long-press cycles
+	options?: Array<{ id: string; label: string; icon?: string }>; // mode_selector
 }
 ```
 
-### Domain Detection Heuristic
-- Check tile types and bound entity categories
-- Climate tiles → climate domain
-- Light/dimmer tiles → lights domain
-- Media player tiles → media domain
-- Cover/blind/curtain tiles → covers domain
-- Scene tiles → scenes domain
-- Everything else → overview/status
+- `binary_toggle` is reserved for a lighting space whose lights are all on/off only (no brightness); decide in #1244 whether v1 emits it
+- Panel ↔ screen mapping (used by #1250): `DomainType.lights → lighting`, `shading → covers`, system view → `overview`, other deck items → `idle`
 
 ## 8. AI instructions
 
-- Read this file entirely before making any code changes.
-- Start by replying with a short implementation plan (max 10 steps).
-- Examine the existing display, page, and tile data models to understand the input structure.
-- Keep changes scoped to backend only.
-- For each acceptance criterion, either implement it or explain why it's skipped.
-- Respect global AI rules from `/.ai-rules/GUIDELINES.md`.
+- Read this file and the epic's Decisions section; read the deck builder and the spaces-home-control role services before coding; start with a short plan (max 10 steps).
+- Follow `CLAUDE.md`; PR title e.g. `feat(backend): compile companion screens from the display's space domains`.
+- For each acceptance criterion, implement it or explain why it is skipped.

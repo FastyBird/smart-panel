@@ -1,7 +1,7 @@
 # Task: Companion Screen Types Implementation
 ID: FEATURE-COMPANION-SCREEN-TYPES
 Type: feature
-Scope: sdk (firmware, see #1237), backend
+Scope: sdk, backend
 Size: medium
 Parent: EPIC-COMPANION-DISPLAY
 Status: planned
@@ -10,128 +10,86 @@ Issues: #1244
 
 ## 1. Business goal
 
-In order to provide appropriate visual controls for different smart home domains on the companion display,
+In order to get suitable visual controls for each space domain on the companion,
 As a user,
-I want multiple screen types (arc slider, mode selector, status display, binary toggle) that render correctly on the round LCD and respond to rotary/button input.
+I want the screen types (arc slider, mode selector, status display, binary toggle, idle) to render well on the
+240×240 round LCD and respond to the knob.
 
 ## 2. Context
 
-- Each screen type has a specific LVGL layout optimized for the 240x240 round display
-- The ESPHome YAML generator produces LVGL config for each screen type
-- The custom ESPHome component handles runtime updates for each type
-- Screen types map to smart home domains (climate→arc, scenes→mode selector, etc.)
-- Depends on `FEATURE-COMPANION-ESPHOME-GENERATOR` (YAML templates) and `FEATURE-COMPANION-ESPHOME-COMPONENT` (runtime updates)
-- Related: `EPIC-COMPANION-DISPLAY` (parent epic)
+- The decisions D8 and D10 in `EPIC-COMPANION-DISPLAY` apply. Screen keys and types come from the compiler (#1239);
+  values, labels, ranges and options are pushed at runtime by the panel (#1250). The firmware only bakes in the
+  layout per screen type.
+- Two surfaces:
+  - `packages/companion-firmware` (`sdk`): LVGL behaviour in the `panel_protocol` component (value/option binding,
+    local echo, animations) and a visual test config per type
+  - `apps/backend/src/plugins/devices-companion/services/esphome-generator.service.ts` (`backend`): the LVGL page
+    YAML each type emits
+- Depends on #1242 (generator) and #1243 (component).
 
 ## 3. Scope
 
 **In scope**
 
-### Arc Slider Screen
-- Circular arc gauge around the display edge
-- Center value + unit label (e.g. "22°C", "75%")
-- Bottom label (entity name, e.g. "Living Room")
-- Small icon above center label (domain icon)
-- Rotation adjusts value within min/max range
-- Click triggers primary action (toggle, cycle mode)
-- Arc color configurable per domain
+### Arc slider (`lighting`, `climate`, `covers`, `media`)
+- 270° arc around the edge, large value + unit in the center, target label at the bottom, domain icon above
+- Rotation moves within min/max by `step` (local echo); click/long-press per `clickAction`/`targets`
+- Per-domain arc color
 
-### Mode Selector Screen
-- Centered label showing current selection
-- Previous/next indicators (dots or arrows)
-- Rotation cycles through options
-- Click activates the selected option
-- Option list (scenes, HVAC modes, etc.)
+### Mode selector (`overview` with scenes, climate mode cycling overlay)
+- Current option centered, previous/next hints, position dots
+- Rotation changes the selection; click activates
 
-### Status Display Screen
-- Multi-line info display (read-only)
-- Rotation scrolls through info items
-- No click action (or click navigates to next status page)
-- Used for: weather, energy summary, system status
+### Status display (`overview` without scenes, `sensors`, `energy`)
+- One reading per view (label, value, unit); rotation browses; click does nothing
 
-### Binary Toggle Screen
-- Large icon centered (on/off state)
-- State label below icon
-- Click toggles state
-- Rotation does nothing (or adjusts brightness if dimmable)
-- Visual feedback animation on toggle
+### Binary toggle (reserved; see #1239)
+- Large state icon and label; click toggles; toggle animation
+
+### Idle (built-in)
+- Clock/label pushed by the panel; shown for deck items without a companion screen and before the first `nav`
 
 **Out of scope**
-- Custom screen types designed by users
-- Animated transitions between screens
-- Complex multi-widget layouts
+- User-designed screens, animated transitions between screens, multi-widget layouts
 
 ## 4. Acceptance criteria
 
-- [ ] Arc slider renders correctly on 240x240 round display with arc, value label, entity label, and icon
-- [ ] Arc slider responds to rotation within configured min/max bounds
-- [ ] Arc slider click triggers configurable action (toggle, cycle_mode)
-- [ ] Mode selector shows current option with navigation indicators
-- [ ] Mode selector rotation cycles through options list
-- [ ] Mode selector click sends activation event for selected option
-- [ ] Status display shows read-only info with rotation scrolling
-- [ ] Binary toggle shows on/off state with appropriate icons
-- [ ] Binary toggle click sends toggle event
-- [ ] All screen types update correctly when receiving serial protocol commands
-- [ ] ESPHome YAML templates produce valid LVGL config for each screen type
-- [ ] Screen types look visually polished on the round display (proper centering, readable fonts)
+- [ ] Each type has a generator emitter in `esphome-generator.service.ts` and a firmware binding in `panel_protocol`
+- [ ] The arc slider renders arc, value + unit, label and icon inside the round safe area; rotation respects min/max/step
+- [ ] Mode selector and status display handle 1..N options/readings (N ≤ 16) with wrap-around rules documented
+- [ ] Binary toggle and idle screens exist and compile even if v1 compiles no `binary_toggle`
+- [ ] All types update from `screen`/`options` commands without a re-flash
+- [ ] `packages/companion-firmware/tests/` has a config with every type, compiled by the CI job from #1243
+- [ ] Backend unit tests cover the YAML emitted per type; photos of each type on the reference board are attached to the PR
 
 ## 5. Example scenarios
 
-### Scenario: Arc slider for thermostat
+### Scenario: Arc slider for the thermostat
 
-Given the companion shows an arc slider screen for "Living Room AC"
-Then the display shows:
-  - A colored arc from 7 o'clock to 5 o'clock position (value range 16-30)
-  - "22°C" in large text at center
-  - A thermometer icon above the value
-  - "Living Room" label at the bottom
-When the user rotates clockwise by 1 detent, the arc and label update to "23°C"
+Given the `climate` screen shows 22 °C in the range 16-30
+Then the arc runs from about the 7 o'clock to the 5 o'clock position, "22 °C" is centered, a thermometer icon sits above it and "Living Room" below
+When the user rotates one detent clockwise, the arc and label show 22.5 °C immediately
 
-### Scenario: Mode selector for scenes
+### Scenario: Scene selector on overview
 
-Given the companion shows a mode selector screen with options: Movie, Relax, Work
-Then the display shows "Relax" as the current selection with dot indicators
-When the user rotates clockwise, the selection changes to "Work"
-When the user clicks the button, the "Work" scene is activated
+Given the `overview` screen lists Movie, Relax, Work with Relax selected
+When the user rotates clockwise, Work is selected
+When the user clicks, the panel triggers the Work scene
 
 ## 6. Technical constraints
 
-- LVGL widgets must fit within the 240x240 circular display area
-- Font sizes must be readable on a 1.28" display (~50px for main value, ~16px for labels)
-- Arc width should be ~20px for good visual balance
-- Colors should be configurable per-screen for domain differentiation
-- Animations should be smooth (use LVGL animation APIs)
-- Memory usage must stay within ESP32-S3 limits
+- Fit the 240×240 circular area; main value about 48 px, labels about 16 px, arc width about 20 px
+- Fonts and icons limited to the glyphs used (flash/RAM budget on ESP32-S3)
+- Animations through LVGL APIs, without blocking the main loop
+- Domain colors as generator substitutions, not hard-coded in C++
 
 ## 7. Implementation hints
 
-### Arc Slider LVGL Layout
-```
-┌─────────────────────┐
-│     ╭─── arc ───╮   │
-│   ╭─╯           ╰─╮ │
-│   │    [icon]      │ │
-│   │    22°C        │ │
-│   │                │ │
-│   ╰─╮           ╭─╯ │
-│     ╰───────────╯   │
-│    Living Room       │
-└─────────────────────┘
-```
-
-### Domain Color Scheme
-- Climate: `#4FC3F7` (light blue)
-- Lights: `#FFB74D` (warm orange)
-- Media: `#CE93D8` (purple)
-- Covers: `#81C784` (green)
-- Scenes: `#FF8A65` (coral)
-- Status: `#90A4AE` (grey)
+- Domain colors: climate `#4FC3F7`, lighting `#FFB74D`, media `#CE93D8`, covers `#81C784`, overview/scenes `#FF8A65`, status `#90A4AE`
+- Keep per-type LVGL YAML emitters as small pure functions; share the arc/label base
 
 ## 8. AI instructions
 
-- Read this file entirely before making any code changes.
-- Start by replying with a short implementation plan (max 10 steps).
-- Research LVGL widget APIs for arcs, labels, and animations.
-- Both ESPHome YAML templates (backend) and runtime handling (firmware) need updating.
-- For each acceptance criterion, either implement it or explain why it's skipped.
+- Read this file and the epic's Decisions; check the pinned ESPHome LVGL widget docs; start with a short plan (max 10 steps).
+- Follow `CLAUDE.md`. The work touches `packages/` and `apps/backend/`: use `feat(sdk): …` and keep the backend emitter changes small, or split them into a `feat(backend): …` PR if review prefers.
+- For each acceptance criterion, implement it or explain why it is skipped.
