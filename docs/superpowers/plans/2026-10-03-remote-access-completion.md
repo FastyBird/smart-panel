@@ -456,10 +456,13 @@ fresh onboarding, admin assets, unsupported Tailscale/setup refusal and persiste
 passed in an isolated Compose deployment. Direct navigation also required a documentation-link
 fallback from the platform requirement when extension metadata was absent.
 
-The Docker release job now requires a real runtime smoke before publishing the manifest. The R4
-Docker row remains open for a new released image containing these fixes; local ARM64 evidence does
-not validate the existing alpha.49 tag, AMD64 or Home Assistant. See the epic's Docker verification
-section for the reproduced failure and evidence boundaries.
+The Docker release job now requires a real runtime smoke before publishing the manifest. Published
+alpha.50 (`afbe3649cb531975584939f9aba4009a16b09bd7`, #1229) passed that smoke on native ARM64 and
+AMD64 runners. Independent verification of the published ARM64 digest on the Mac passed fresh Compose
+startup/onboarding, the unsupported Tailscale card with documentation, setup refusal and manual URL
+configuration/reachability/persistence. The Docker checklist row is complete. Home Assistant and the
+remaining R4 gates are still open; this loopback-only Docker test does not certify public internet/TLS
+or Raspberry Pi images. See the epic's verification section for exact digests and evidence boundaries.
 
 ### Automated evidence from this analysis
 
