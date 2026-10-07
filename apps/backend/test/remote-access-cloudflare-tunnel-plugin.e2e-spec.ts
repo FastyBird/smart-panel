@@ -110,6 +110,7 @@ describe('Remote access Cloudflare Tunnel plugin endpoints (e2e)', () => {
 	let processServiceMock: {
 		isRunning: jest.Mock;
 		getStartedAt: jest.Mock;
+		getProcessIdentity: jest.Mock;
 		getLastExit: jest.Mock;
 		getLastStderrLine: jest.Mock;
 		start: jest.Mock;
@@ -140,6 +141,7 @@ describe('Remote access Cloudflare Tunnel plugin endpoints (e2e)', () => {
 		processServiceMock = {
 			isRunning: jest.fn().mockReturnValue(true),
 			getStartedAt: jest.fn().mockReturnValue(Date.now()),
+			getProcessIdentity: jest.fn().mockReturnValue(Symbol('test-cloudflared-child')),
 			getLastExit: jest.fn().mockReturnValue(null),
 			getLastStderrLine: jest.fn().mockReturnValue(null),
 			start: jest.fn(),
