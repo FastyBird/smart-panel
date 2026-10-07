@@ -5,6 +5,8 @@ Scope: backend, admin, panel
 Size: medium
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
 Status: planned
+Tracking: #1287
+Issues: #1288 (roles), #1289 (intents), #1290 (admin), #1291 (panel)
 
 ## 1. Business goal
 
@@ -15,8 +17,11 @@ I want to use simple intents like "lock all" or "arm perimeter" instead of contr
 ## 2. Context
 
 ### Existing Code References
-- **Lighting domain**: `apps/backend/src/modules/spaces/services/lighting-intent.service.ts`
-- **Climate domain**: `apps/backend/src/modules/spaces/services/climate-intent.service.ts`
+- **Lighting domain**: `apps/backend/src/plugins/spaces-home-control/services/lighting-intent.service.ts`
+- **Climate domain**: `apps/backend/src/plugins/spaces-home-control/services/climate-intent.service.ts`
+- **Intent facade**: `apps/backend/src/plugins/spaces-home-control/services/space-intent.service.ts`; intent definitions are YAML in `apps/backend/src/plugins/spaces-home-control/spec/definitions/`
+- **Role storage**: new role types go into the unified `SpaceRoleEntity` hierarchy (`apps/backend/src/plugins/spaces-home-control/entities/`, discriminators lighting, climate, covers, sensor, media_binding, active_media) and need an incremental migration, never an edit of the initial migration
+- **House-level security**: the `security` module (`apps/backend/src/modules/security/`, alerts and providers) stays house-wide; this task adds a separate space-level domain (roles and intents for locks and alarms in a room) and does not change the module. Space-level arm/disarm intents must not duplicate its alert handling
 - **Device categories**: lock, alarm, door, doorbell (from device spec)
 
 ### Device Capabilities (expected from spec)
@@ -49,10 +54,10 @@ Security devices can have roles based on their location/function:
 **In scope**
 
 Backend:
-- Add `SecurityRole` enum to `spaces.constants.ts`
+- Add `SecurityRole` enum to the `spaces-home-control` plugin constants
 - Add `SecurityIntentType` enum for space-level intents
 - Add `SecurityMode` enum for preset configurations
-- Create `SpaceSecurityRoleEntity` for role mapping
+- Create `SpaceSecurityRoleEntity` as a new discriminator of the unified `SpaceRoleEntity` hierarchy, with an incremental migration
 - Create `SecurityIntentService` extending `SpaceIntentBaseService`
 - Add security intent endpoints to `SpaceIntentService` facade
 - Create YAML spec definitions for security intents
@@ -129,7 +134,7 @@ And user is notified of the failure
 
 ## 7. Implementation hints
 
-### Constants to add (`spaces.constants.ts`)
+### Constants to add (`spaces-home-control` plugin constants)
 ```typescript
 export enum SecurityRole {
   ACCESS = 'access',       // Entry locks

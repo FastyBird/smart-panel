@@ -1,3 +1,5 @@
+Phase 0 baseline, delivered in #746.
+
 # Buddy Adaptive Context — MCP Pre-extraction Contract
 
 Date: 2026-08-14

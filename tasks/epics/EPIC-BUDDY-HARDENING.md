@@ -5,7 +5,8 @@ Type: technical
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: planned
+Status: in-progress
+Tracking: #1264
 
 ## 1. Business goal
 
@@ -54,14 +55,14 @@ The buddy module (EPIC-BUDDY-MODULE) is feature-complete across all 4 phases (MV
 
 ## 4. Acceptance criteria
 
-- [ ] Suggestions survive server restarts (persisted to database)
-- [ ] Pattern detector produces correct time-of-day clusters regardless of timezone/DST
-- [ ] STT/TTS/LLM calls have service-level timeout enforcement (no indefinite hangs)
-- [ ] Evaluator tracker maps are bounded and cleaned up for removed devices/spaces
-- [ ] Large home contexts are truncated to fit LLM token limits
-- [ ] OpenAI SDK returns error responses to LLM for malformed tool calls (no silent drops)
+- [x] Suggestions survive server restarts (persisted to database)
+- [x] Pattern detector produces correct time-of-day clusters regardless of timezone/DST
+- [x] STT/TTS/LLM calls have service-level timeout enforcement (no indefinite hangs)
+- [x] Evaluator tracker maps are bounded and cleaned up for removed devices/spaces
+- [x] Large home contexts are truncated to fit LLM token limits
+- [x] OpenAI SDK returns error responses to LLM for malformed tool calls (no silent drops)
 - [ ] Panel model factories handle missing/null JSON fields gracefully
-- [ ] Admin composables use proper types (no `as never` casts)
+- [x] Admin composables use proper types (no `as never` casts)
 - [ ] All fixes covered by unit tests
 - [ ] No breaking changes to existing API endpoints or WebSocket events
 
@@ -89,6 +90,14 @@ The buddy module (EPIC-BUDDY-MODULE) is feature-complete across all 4 phases (MV
 |----|-------|-------|------|
 | [TECH-BUDDY-PANEL-ROBUSTNESS](../technical/TECH-BUDDY-PANEL-ROBUSTNESS.md) | Panel model validation, timer precision, voice state | panel | small |
 | [TECH-BUDDY-ADMIN-POLISH](../technical/TECH-BUDDY-ADMIN-POLISH.md) | Admin type safety, auto-scroll, setup wizard | admin | small |
+
+### Progress (audit 2026-10-07)
+
+7 of 8 child tasks are done: #475 provider timeout, #476 memory leak, #477 conversation hardening, #555 admin polish, #557 timezone, #558 SDK errors, #559 suggestion persistence. The remaining one is TECH-BUDDY-PANEL-ROBUSTNESS, split into:
+
+- #1265 null-safe `fromJson` in panel models
+- #1266 recording duration from timestamp
+- #1267 `VoiceAutoPlayState` + status-based audio errors
 
 ## 6. Technical constraints
 

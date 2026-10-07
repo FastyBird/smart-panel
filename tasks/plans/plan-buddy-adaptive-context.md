@@ -1,6 +1,41 @@
 # Buddy Adaptive Context and Retrieval — Implementation Plan
 
-**Status:** Planned
+**Status:** In progress — phase 0 done, phase 1 mostly done, phases 2–4 partial, phases 5–9 not started
+
+**Tracking:** #1268
+
+## Implementation status (audit 2026-10-07)
+
+Merged PRs:
+
+- Phase 0 baseline: #746
+- Phase 1 home-context module: #751, #753, #755, #757, #759, #760
+- Canonical tool turns: #761, #762, #764
+- Read tools: #765, #768, #769
+- Deterministic planner: #770, #818, #825, #830
+
+`buddy-conversation.service.ts` still calls `contextService.buildContext()` (the eager snapshot), so the cut-over to adaptive retrieval is open.
+
+Remaining issues:
+
+- #1269 home-context metadata + MCP-disabled coverage
+- #1270 numeric aggregates
+- #1271 catalog invalidation/dedupe
+- #1272 complete read tool catalog
+- #1273 prefetch + renderer
+- #1274 deterministic action handoff
+- #1275 provider capabilities + budget manager
+- #1276 budget-aware history
+- #1277 request claims + idempotency
+- #1278 messaging platform bindings
+- #1279 per-conversation turn coordinator
+- #1280 durable action dispatch intents/allowances
+- #1281 fence actions across reset/restore
+- #1282 rolling summary + entity refs
+- #1283 switch to adaptive retrieval
+- #1284 metrics/traces
+- #1285 scale + prompt-injection verification
+- #1286 remove rollout modes
 
 **Related work:**
 

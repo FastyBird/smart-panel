@@ -1,6 +1,6 @@
 # Homey Device Integration — Design
 
-**Status:** Approved
+**Status:** Implemented
 
 **Date:** 2026-08-12
 

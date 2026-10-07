@@ -5,6 +5,10 @@ Scope: backend, admin
 Size: large
 Parent: (none)
 Status: planned
+Tracking: #1322
+
+> **Existing work:** open PR #512 (~30k lines, opened 2026-09) contains a first implementation, to be landed in slices as #1323 scaffold + adapter, #1324 discovery/interview, #1325 adoption, #1326 state/commands, #1327 network + groups, #1328 admin, #1329 e2e.
+> **Rename:** `IManagedPluginService` is now `IManagedExtensionService` (see `base-managed-extension.service.ts`).
 
 ## 1. Business goal
 
@@ -78,9 +82,9 @@ I want a native plugin that communicates directly with Zigbee devices using zigb
 - [ ] `ZigbeeHerdsmanAdapterService` — wraps `zigbee-herdsman` Controller with start/stop/restart
 - [ ] Adapter service handles coordinator options: serial port, adapter type, network config, database path (`data/zigbee-herdsman.db`)
 - [ ] Adapter service emits typed events: `deviceJoined`, `deviceInterview`, `deviceLeave`, `deviceAnnounce`, `message`, `adapterDisconnected`
-- [ ] `ZigbeeHerdsmanService` implements `IManagedPluginService` with proper lifecycle (start → initialize controller → form/join network → listen for events)
+- [ ] `ZigbeeHerdsmanService` implements `IManagedExtensionService` with proper lifecycle (start → initialize controller → form/join network → listen for events)
 - [ ] Service gracefully handles coordinator disconnection and attempts reconnection
-- [ ] Service registers with `PluginServiceManagerService` and `PlatformRegistryService`
+- [ ] Service registers with `ManagedServiceManagerService` and `PlatformRegistryService`
 - [ ] Plugin metadata registered with `ExtensionsService` (name, description, author, readme)
 
 ### Phase 2 — Device discovery & converter integration

@@ -5,7 +5,9 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: EPIC-EXTENSION-ACTIONS
-Status: planned
+Status: planned (not started)
+Tracking: #1303
+Issues: #1311, #1312
 
 ## 1. Business goal
 
@@ -32,6 +34,8 @@ This task wraps that flow in an interactive session, providing a terminal-like e
 **Dependencies:**
 - FEATURE-INTERACTIVE-SESSION-PROTOCOL — WebSocket session infrastructure
 - FEATURE-INTERACTIVE-SESSION-ADMIN-UI — Terminal UI component
+
+**Note:** This task must be re-scoped against the current privileged-worker updater (`update.service.ts`, `update-executor.service.ts`), which already track `progressPercent` / `PHASE_PROGRESS`. The CLI-based flow described above is outdated.
 
 ## 3. Scope
 

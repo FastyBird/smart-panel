@@ -5,6 +5,8 @@ Scope: panel
 Size: medium
 Parent: EPIC-COMPANION-DISPLAY
 Status: planned
+Tracking: #1236
+Issues: #1249, #1250
 
 ## 1. Business goal
 

@@ -4,7 +4,20 @@ Type: technical
 Scope: backend
 Size: medium
 Parent: EPIC-VIRTUAL-DEVICES
-Status: planned
+Status: in-progress
+Tracking: #1336
+
+## Open items -> issues
+
+- 3a.1 `hidden_by` cannot express `null` -> #1337
+- 2.2 remainder (space assignment) -> #1338
+- 2.3 projection listener mutates the index's entity -> #1339
+- 2.6 dead `add()` -> #1340
+- 2.4 cold-miss status reads uncached -> #1341
+- 2.5 `registry.resolve()` outside error containment -> #1342
+- 3.3 TypeORM sqlite shared-`QueryRunner` TOCTOU -> #1343
+- 3a.2 channel and property stores merge-then-send -> #1344
+- remaining unverified items -> #1345 (triage)
 
 ## 1. Context
 

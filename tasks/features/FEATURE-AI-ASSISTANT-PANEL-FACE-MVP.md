@@ -6,6 +6,7 @@ Size: medium
 Parent: EPIC-AI-BUDDY-FACE
 Created: 2026-03-13
 Status: planned
+Tracking: #1253
 
 ## 1. Business goal
 
@@ -60,7 +61,7 @@ Default idle               → Face: NEUTRAL (blink + look around)
 **In scope**
 
 - `AssistantFaceWidget` using CustomPaint with EchoEar-quality rendering
-- `FacePainter` with advanced eye system (12+ emotion presets)
+- `FacePainter` with advanced eye system (14 emotion presets)
 - `BlinkController` - automatic random blinking
 - `LookController` - random eye movement / look-at support
 - `EmotionController` - smooth interpolated transitions

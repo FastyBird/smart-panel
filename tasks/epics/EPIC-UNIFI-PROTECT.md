@@ -1,5 +1,7 @@
 # Task: UniFi Protect cameras and sensors integration
 
+This epic is tracked in the GitHub milestone "UniFi Protect" (epic #1175).
+
 ID: EPIC-UNIFI-PROTECT
 Type: epic
 Scope: backend, admin, panel, installer, spec, website

@@ -5,7 +5,8 @@ Type: technical
 Scope: backend, admin
 Size: medium
 Parent: (none)
-Status: planned
+Status: in-progress
+Tracking: #1330
 
 ## 1. Business goal
 
@@ -31,42 +32,49 @@ This task covers the remaining actionable findings that require more careful imp
 - L1: bcrypt salt rounds increased to 12
 - L5: Config file permissions set to 0600
 
+### Audit status (2026-10)
+
+- L3 done (#1142, #1145, #1150, #1151): hashed-token lookup.
+- L4 done (#919): client address resolution ignores untrusted forwarded headers.
+- Open findings: H2 CORS -> #1331; H6 exchange room -> #1332; M3 InfluxDB auth -> #1333 (installer) + #1334 (plugin); H4 cookie flags -> #1335 (SameSite, Secure) + #1363 (HttpOnly via server-issued cookies).
+- Remote access and MCP OAuth proxy setups affect the CORS design (H2); account for them.
+
 ## 3. Scope
 
 **In scope**
 
-### H2. CORS — restrict allowed origins
+### H2. CORS — restrict allowed origins (open, #1331)
 - Add `FB_CORS_ORIGIN` environment variable
 - Default to same-origin (reject cross-origin requests)
 - When set, allow only the specified origin(s)
 - Apply to both HTTP API and WebSocket gateway
 - Document how to configure for reverse proxy setups
 
-### H4. Secure cookie flags for JWT tokens
+### H4. Secure cookie flags for JWT tokens (open, #1335, #1363)
 - Admin SPA stores JWT tokens in cookies without HttpOnly, Secure, or SameSite flags
 - Add HttpOnly and SameSite=Lax flags at minimum
 - Add Secure flag when HTTPS is detected
 - Evaluate moving access token to memory-only with refresh token in HttpOnly cookie
 - File: apps/admin/src/modules/auth/store/session.store.ts
 
-### H6. WebSocket exchange room authorization
+### H6. WebSocket exchange room authorization (open, #1332)
 - Any authenticated user can join the EXCHANGE_ROOM which receives all system events
 - Add role check before allowing room join — only OWNER and ADMIN roles
 - USER-role clients and display tokens should receive only events relevant to them
 - File: apps/backend/src/modules/websocket/gateway/websocket.gateway.ts
 
-### M3. InfluxDB authentication
+### M3. InfluxDB authentication (open, #1333 installer, #1334 plugin)
 - Install scripts create InfluxDB database without authentication
 - Enable InfluxDB auth in install scripts
 - Generate dedicated credentials and configure the influx-v1 plugin to use them
 - Store credentials in the environment file
 
-### L3. Token lookup performance
+### L3. Token lookup performance — DONE (#1142, #1145, #1150, #1151)
 - Token validation fetches all tokens and iterates, comparing hashes — O(n) per request
 - Change to indexed database lookup instead of iterating all tokens
 - File: apps/backend/src/modules/auth/guards/auth.guard.ts
 
-### L4. Display registration localhost check
+### L4. Display registration localhost check — DONE (#919)
 - Localhost bypass checks request headers which could be spoofed via reverse proxy
 - Check actual socket address instead of relying on forwarded headers
 - File: apps/backend/src/modules/displays/controllers/registration.controller.ts
@@ -82,14 +90,15 @@ This task covers the remaining actionable findings that require more careful imp
 
 - [ ] CORS rejects cross-origin requests by default; configurable via FB_CORS_ORIGIN
 - [ ] WebSocket gateway also respects CORS configuration
-- [ ] JWT cookies have HttpOnly, SameSite=Lax flags; Secure when HTTPS detected
+- [ ] JWT cookies have SameSite=Lax; Secure when HTTPS detected (#1335)
+- [ ] Tokens are not readable from JavaScript: HttpOnly server-set cookie or memory-only access token (#1363)
 - [ ] WebSocket exchange room requires OWNER or ADMIN role
 - [ ] USER-role clients cannot join the exchange room
 - [ ] InfluxDB authentication enabled in install-server.sh
 - [ ] InfluxDB authentication enabled in Raspbian first-boot script
 - [ ] InfluxDB credentials stored in environment file and used by influx-v1 plugin
-- [ ] Token validation uses indexed database lookup instead of iterating all tokens
-- [ ] Display registration checks socket address, not forwarded headers
+- [x] Token validation uses indexed database lookup instead of iterating all tokens
+- [x] Display registration checks socket address (#919: untrusted forwarded headers ignored), not forwarded headers
 - [ ] Existing tests pass
 - [ ] No regressions in admin UI authentication flow
 - [ ] No regressions in panel to backend communication

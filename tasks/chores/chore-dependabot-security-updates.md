@@ -4,7 +4,8 @@ Type: chore
 Scope: backend, admin, website
 Size: medium
 Parent: (none)
-Status: review
+Status: done
+Delivered: PRs #613, #614 (original scope only; advisories raised after 2026-07-30 are tracked in a follow-up issue)
 
 ## 1. Business goal
 

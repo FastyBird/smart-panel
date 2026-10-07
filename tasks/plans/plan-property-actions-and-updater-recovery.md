@@ -2,11 +2,20 @@
 
 **Date:** 2026-09-27
 
-**Status:** alpha.41 deployed through normal System upgrade; runtime series #1143–#1153 merged; controlled idle/catalog comparison complete; full-client hardware acceptance remains open
+**Status:** Closed by owner acceptance on 2026-10-03 (#1006, #1032, #1033; #1093 dispositioned)
 
 **Initial reviewed revision:** `aa98d2c34000f76c538d877fa573bf98bfa174b4` (`1.1.0-alpha.23`), also GitHub `main` at review time
 
 **Scope:** Property-command latency and convergence, System image updates, related validation and release work
+
+**Note:** Unchecked step boxes below are historical and superseded by the owner acceptance above.
+
+## Residual, not tracked
+
+- Slower incoming-publication tails (~100 ms)
+- Full-panel refresh/reconnect overlap
+- Qualified poll overlap
+- Sustained memory behaviour (RSS 557-1106 MiB on alpha.41)
 
 ## Alpha.41 normal upgrade and controlled wire comparison — 2026-10-03
 

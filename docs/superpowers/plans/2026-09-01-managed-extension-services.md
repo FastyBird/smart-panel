@@ -1,5 +1,7 @@
 # Managed Extension Services — Implementation Plan
 
+**Status:** MS-1..MS-5 shipped in commit 777970838; the inventory spec now expects 22 registrations (more added since, e.g. Tailscale, Cloudflare Tunnel). The audit basis below is historical.
+
 **Goal:** Make the Extensions → Services view a reliable inventory and control surface for every independently
 restartable backend runtime owned by either a module or a plugin.
 

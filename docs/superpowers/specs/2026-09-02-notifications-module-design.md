@@ -1,6 +1,6 @@
 # System Notifications Module — Design
 
-**Status:** Draft, awaiting review
+**Status:** Implemented
 
 **Date:** 2026-09-02
 

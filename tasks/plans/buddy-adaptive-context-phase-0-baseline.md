@@ -1,3 +1,5 @@
+Phase 0 baseline, delivered in #746.
+
 # Buddy Adaptive Context — Phase 0 Baseline
 
 Date: 2026-08-14

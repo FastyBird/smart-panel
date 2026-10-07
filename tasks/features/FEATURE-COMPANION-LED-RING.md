@@ -1,10 +1,12 @@
 # Task: Companion LED Ring Support
 ID: FEATURE-COMPANION-LED-RING
 Type: feature
-Scope: firmware
+Scope: sdk (firmware, see #1237)
 Size: small
 Parent: EPIC-COMPANION-DISPLAY
 Status: planned
+Tracking: #1236
+Issues: #1245
 
 ## 1. Business goal
 

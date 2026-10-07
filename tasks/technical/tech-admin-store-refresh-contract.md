@@ -4,7 +4,8 @@ Type: technical
 Scope: admin
 Size: medium
 Parent: BUG-ADMIN-SOCKET-WAKE-RECOVERY
-Status: review
+Status: done
+Delivered: PR #612
 
 ## 1. Business goal
 

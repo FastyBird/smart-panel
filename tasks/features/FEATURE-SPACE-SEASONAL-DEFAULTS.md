@@ -5,6 +5,8 @@ Scope: backend, admin
 Size: small
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
 Status: planned
+Tracking: #1287
+Issues: #1301 (backend), #1302 (admin)
 
 ## 1. Business goal
 

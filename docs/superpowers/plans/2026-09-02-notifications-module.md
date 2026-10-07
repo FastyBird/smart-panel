@@ -1,5 +1,7 @@
 # System Notifications Module — Implementation Plan
 
+> **Status:** Implemented — epic #885 (closed). Checkboxes below are not ticked retroactively.
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a core `notifications` module (persistence, REST, websocket, channel dispatch), an admin bell and

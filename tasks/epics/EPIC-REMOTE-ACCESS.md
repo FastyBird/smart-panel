@@ -64,8 +64,9 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
 
 ### Foundation
 
-- [ ] Forwarded headers are honoured only when the socket peer is a configured or provider-declared
+- [x] Forwarded headers are honoured only when the socket peer is a configured or provider-declared
       trusted proxy; the display registration guard and the throttler use the resolved client address.
+      (Alpha.44/alpha.49: HTTPS registration status returned closed; Pi 5 tailnet/Mac LAN throttle separation.)
 - [ ] `remote-access` module exposes status, providers and urls endpoints, module config, events routed
       to the exchange room only, and OpenAPI models under the `{Module}Data{Name}` convention.
 - [ ] `PrivilegedWorkerService` runs the update worker unchanged and reports unsupported platforms.
@@ -74,16 +75,17 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
 
 - [ ] Set up installs the package if missing, enables the daemon and grants the operator, reporting each
       step; re-running is harmless.
-- [ ] Sign in returns an auth URL and QR code; the node reaches `connected` after approval; an auth key
+- [x] Sign in returns an auth URL and QR code; the node reaches `connected` after approval; an auth key
       path works headless; the key is never persisted or logged.
-- [ ] Serve exposes the admin at `https://<node>.<tailnet>.ts.net` and declares loopback as a trusted
+- [x] Serve exposes the admin at `https://<node>.<tailnet>.ts.net` and declares loopback as a trusted
       proxy; Funnel and SSH are opt-in with advisories.
-- [ ] Disable disconnects, logout expires the node key, factory reset clears Serve and logs out.
+- [x] Disable disconnects, logout expires the node key, factory reset clears Serve and logs out.
 - [ ] Docker and Home Assistant platforms report `unsupported` with documentation links.
+      (Docker passed on published alpha.50, 2026-10-07; Home Assistant has no recorded evidence.)
 
 ### Admin
 
-- [ ] Remote access page shows internal and external URLs, the primary URL with copy and QR, provider
+- [x] Remote access page shows internal and external URLs, the primary URL with copy and QR, provider
       cards, advisories, and updates live from events.
 - [ ] Tailscale wizard walks Set up → Sign in → Options → Done; actions match the node state.
 - [ ] Config schemas bind to generated types; all six locales present.
@@ -91,6 +93,7 @@ from anywhere, without port forwarding, dynamic DNS or a hand-built reverse prox
 ### Installer and docs
 
 - [ ] Raspberry Pi image ships Tailscale disabled; `install-server.sh --with-tailscale` works.
+      (Image ships it disabled: passed on fresh Pi 4 alpha.47; the `--with-tailscale` flag has no recorded evidence.)
 - [ ] Website guide published; network requirements, extensions, image and MCP pages updated.
 
 ### Verification
@@ -942,6 +945,27 @@ Tracked as GitHub sub-issues of the epic issue under the "Remote access" milesto
 | RA-14 | feat(admin): add Cloudflare Tunnel remote access setup                   | code merged (#912, PR #1030); hardware acceptance pending |
 | RA-15 | feat(cross): add WireGuard client remote access plugin                   | milestone 3                                               |
 | RA-16 | chore(installer): replace systemd-run sudo grant with fixed helper       | milestone 3 prerequisite (#914), open                     |
+
+October work packages (completion plan R1-R8; see the linked plan):
+
+| Task | Issue / PR title                                                                    | Status                                                       |
+| ---- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| R1   | #1156 fix(backend): coordinate Tailscale operations and lifecycle                   | merged (PR #1160)                                            |
+| R2   | #1157 fix(cross): order remote access snapshots and bound status reads              | merged (PR #1161)                                            |
+| R3   | #1158 fix(admin): complete reliable remote access plugin controls                   | merged (PR #1162)                                            |
+| R4   | #910 RA-12: integrated verification and hardware acceptance                         | open (hardware gate, in progress)                            |
+| R5   | #1159 fix(cross): verify Cloudflare lifecycle and remote access flows               | open (Cloudflare lifecycle gate)                             |
+| R6   | #914 chore(installer): replace systemd-run sudo grant with fixed helper             | open                                                         |
+| R7   | #913 feat(cross): add WireGuard client remote access plugin                         | open                                                         |
+| R8   | #1354 docs reconciliation and epic close-out                                     | open                                                         |
+
+Earlier merged fixes (all closed): #931 validate provider-declared proxy addresses; #934 report the Tailscale
+provider under its plugin name; #948 stop converging Serve/Funnel state from read endpoints; #949 prune finished
+privileged worker jobs; #950 stop the systemd scope when a privileged job times out; #951 accept a trailing slash
+in remote access URLs; #985 verify the Tailscale operator grant; #986 copy URLs without a secure context; #987
+document operator recovery; #988 report the node as disconnected while its service is stopped; #989 report why
+privileged setup cannot run; #990 keep the Tailscale card in sync with the node service; #996 carry application
+error codes in conflict and unprocessable-entity responses.
 
 ### October reassessment
 

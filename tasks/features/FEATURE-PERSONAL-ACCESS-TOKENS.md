@@ -5,7 +5,11 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: (none)
-Status: planned
+Status: done
+
+> **Implementation status:** Done (commit 86e5f0fd7, PR #575): `POST /modules/auth/tokens/personal`, role-scoped listing, ownership checks, hashed-token lookup via `TokenMetadataService` (#1142, #1145, #1150, #1151), `last_used_at` via the incremental migration `1000000000002-AddTokenLastUsedAt.ts` and a coalesced `TokenUsageService`; admin `personal-tokens-list.vue` + `usePersonalTokens.ts` in the profile security view.
+>
+> **Spec corrections:** an incremental migration was used (the initial migration is never modified), and the request field is `expiresInDays` (null = 36500 days), not `expiresIn`.
 
 ## 1. Business goal
 
@@ -27,7 +31,7 @@ I want to create long-lived personal access tokens (PATs) that grant API access,
 
 - **Token format**: JWT (same as display tokens). The auth guard requires `jwtService.verifyAsync()` to pass before token-type routing. Opaque tokens would require guard changes — out of scope.
 - **Token generation**: Backend generates the token (not caller-supplied). The `CreateLongLiveTokenDto` currently requires a `token` field — this needs to change for PATs.
-- **Ownership model**: `LongLiveTokenEntity.tokenOwnerId` stores the user ID. No foreign key cascade exists — token cleanup on user deletion must be handled explicitly.
+- **Ownership model**: `LongLiveTokenEntity.tokenOwnerId` stores the user ID. No foreign key cascade exists — token cleanup on user deletion must be handled explicitly (not verified whether implemented).
 - **Token value exposure**: The plain token is returned exactly once in the creation response. After that, only the hash is stored.
 
 ## 3. Scope
@@ -67,26 +71,26 @@ I want to create long-lived personal access tokens (PATs) that grant API access,
 
 ### Backend
 
-- [ ] `POST /modules/auth/tokens` generates a JWT token server-side with `ownerType: user` and returns the plain value once
-- [ ] `GET /modules/auth/tokens` returns only the current user's tokens (OWNER/ADMIN can see all via query param)
-- [ ] `PATCH /modules/auth/tokens/:id` allows revoking/updating only own tokens (OWNER/ADMIN can manage any)
-- [ ] `DELETE /modules/auth/tokens/:id` enforces same ownership rules
-- [ ] Token validation uses indexed `findOne({ where: { hashedToken } })` instead of full-table scan
-- [ ] `lastUsedAt` field added to `LongLiveTokenEntity` and updated on each successful validation
-- [ ] Personal access tokens authenticate API requests identically to login-based JWT tokens
-- [ ] Revoking a token immediately prevents further API access
-- [ ] Expired tokens are rejected by the auth guard
-- [ ] Unit tests for token creation, validation, ownership enforcement, and expiry
+- [x] `POST /modules/auth/tokens/personal` generates a JWT token server-side with `ownerType: user` and returns the plain value once
+- [x] `GET /modules/auth/tokens` returns only the current user's tokens (OWNER/ADMIN can see all via query param)
+- [x] `PATCH /modules/auth/tokens/:id` allows revoking/updating only own tokens (OWNER/ADMIN can manage any)
+- [x] `DELETE /modules/auth/tokens/:id` enforces same ownership rules
+- [x] Token validation uses indexed `findOne({ where: { hashedToken } })` instead of full-table scan
+- [x] `lastUsedAt` field added to `LongLiveTokenEntity` and updated on each successful validation
+- [x] Personal access tokens authenticate API requests identically to login-based JWT tokens
+- [x] Revoking a token immediately prevents further API access
+- [x] Expired tokens are rejected by the auth guard
+- [x] Unit tests for token creation, validation, ownership enforcement, and expiry (`tokens.controller.spec.ts`, `token-metadata.service.spec.ts`, `token-usage.integration.spec.ts`)
 
 ### Admin UI
 
-- [ ] Profile security view has an "Access Tokens" section/tab
-- [ ] Token list displays name, creation date, last used date, expiry, and status
-- [ ] "Create Token" button opens a dialog with name, description, and expiry fields
-- [ ] After creation, the token value is displayed once with a copy button and a warning that it won't be shown again
-- [ ] "Revoke" button on each token shows a confirmation dialog
-- [ ] Revoked tokens disappear from the active list (or show as revoked)
-- [ ] No regressions in existing auth flow (login, refresh, display tokens)
+- [x] Profile security view has an "Access Tokens" section/tab
+- [x] Token list displays name, creation date, last used date, expiry, and status
+- [x] "Create Token" button opens a dialog with name, description, and expiry fields
+- [x] After creation, the token value is displayed once with a copy button and a warning that it won't be shown again
+- [x] "Revoke" button on each token shows a confirmation dialog
+- [x] Revoked tokens disappear from the active list (or show as revoked)
+- [ ] No regressions in existing auth flow (login, refresh, display tokens) (admin tests not verified)
 
 ## 5. Example scenarios
 
@@ -127,7 +131,7 @@ And the token shows as "Expired" in the admin UI
 - Use JWT format for PATs (same as display tokens) — required by the auth guard
 - Token generation: `authService.generateToken(user, user.role, { expiresIn })` with additional payload `{ ownerType: 'user', tokenType: 'long-live' }`
 - Token hash: SHA-256 via existing `hashToken()` utility
-- Pre-release migration policy: update the initial migration for `lastUsedAt` column
+- Migration policy: add an incremental migration for the `last_used_at` column (never modify the initial migration)
 - Admin UI: use Element Plus components, follow existing profile view patterns
 - OpenAPI: add Swagger decorators to any new/modified endpoints
 
@@ -138,7 +142,7 @@ And the token shows as "Expired" in the admin UI
 ```typescript
 // In TokensController or a new PersonalTokensController:
 async createPersonalToken(user, dto) {
-    const expiresIn = dto.expiresIn || '365d';
+    const expiresIn = dto.expiresInDays ?? 36500; // days; null = 36500 days
     const rawToken = authService.generateToken(user, user.role, {
         expiresIn,
         // Additional claims to identify this as a long-lived token
@@ -198,6 +202,6 @@ export type AuthModuleUpdateTokenSchema = components['schemas']['AuthModuleUpdat
 - Implement backend changes first, then admin UI.
 - Use the display token management as a reference for both backend and admin patterns.
 - Do NOT modify the auth guard's JWT verification flow — PATs must be JWTs.
-- Update the initial migration for the `lastUsedAt` column (pre-release policy).
+- Add an incremental migration for the `last_used_at` column (never modify the initial migration).
 - Run tests after each major change.
 - Respect global AI rules from GUIDELINES.md.

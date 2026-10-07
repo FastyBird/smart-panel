@@ -5,6 +5,8 @@ Scope: admin
 Size: medium
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
 Status: planned
+Tracking: #1287
+Issues: #1295
 
 ## 1. Business goal
 
@@ -15,7 +17,7 @@ I want to configure mode settings per space including which domains are affected
 ## 2. Context
 
 ### Existing Code References
-- **Space configuration**: `apps/admin/src/modules/spaces/`
+- **Space configuration**: `apps/admin/src/plugins/spaces-home-control/`
 - **Lighting roles UI**: Similar role assignment patterns exist
 - **Climate roles UI**: Similar role assignment patterns exist
 - **House modes config**: `apps/admin/src/modules/system/`

@@ -6,6 +6,7 @@ Size: small
 Parent: EPIC-AI-BUDDY-FACE
 Created: 2026-03-13
 Status: planned
+Tracking: #1253
 
 ## 1. Business goal
 
@@ -24,22 +25,21 @@ I want to customize the face appearance, add it as a dashboard tile, and configu
 
 **In scope**
 
-- Additional emotion presets beyond the initial 12
+- Additional emotion presets beyond the initial 14
 - Face appearance customization (eye style, color scheme, face shape)
 - Face as a dashboard tile (embeddable in dashboard grid)
 - Text bubble overlay (show last buddy message near the face)
-- Admin-configurable face behavior (inactivity timeout, default emotion)
+- Admin-configurable face appearance and behavior (colors/style preset, inactivity timeout, default emotion, reduced motion default), tracked as #1263. Stored as face fields in the buddy module config (`BuddyConfigModel` + update DTO), edited in the admin buddy config form, delivered to the panel with the module config; no new endpoints
 - Accessibility considerations (reduced motion mode)
 
 **Out of scope**
 
 - Core face rendering (done in MVP)
-- Buddy module changes
-- Backend changes
+- Buddy module and backend changes, except the face settings fields added to the buddy module config in #1263 (no new endpoints, no other buddy module logic)
 
 ## 4. Acceptance criteria
 
-- [ ] At least 6 additional emotion presets (18+ total)
+- [ ] At least 6 additional emotion presets (20+ total, i.e. 14 base + 6)
 - [ ] Face appearance customizable via settings
 - [ ] Face embeddable as a dashboard tile
 - [ ] Optional text bubble shows recent buddy message

@@ -5,6 +5,7 @@ Scope: panel
 Size: large
 Parent: (none)
 Status: planned
+Tracking: #1253
 Created: 2026-03-13
 
 ## 1. Business goal
@@ -110,8 +111,8 @@ Default                       → 😐 Neutral (blink + look)
 
 **Out of scope**
 
-- Backend changes (buddy module already handles everything)
-- Admin UI changes
+- Backend changes for the MVP (buddy module already handles everything); face settings come later in #1263
+- Admin UI changes for the MVP (see #1263)
 - New API endpoints
 - Voice/audio services (already exist)
 - Chat UI (already exists)
@@ -137,13 +138,26 @@ Default                       → 😐 Neutral (blink + look)
 | FEATURE-AI-ASSISTANT-PANEL-FACE-MVP | Face widget + buddy integration | medium | **1 - Start here** | planned |
 | FEATURE-AI-ASSISTANT-PANEL-FACE | Extended features & customization | small | 2 - After MVP | planned |
 
+### Issues
+
+- #1254 FacePainter + emotion presets
+- #1255 Blink and look controllers
+- #1256 Demo page
+- #1257 BuddyEmotionMapper (state to emotion)
+- #1258 Face page with tap-to-listen
+- #1259 60fps performance on RPi
+- #1260 Extra emotions + reduced motion
+- #1261 Text bubble
+- #1262 Dashboard tile
+- #1263 Appearance/behavior settings — the only item that touches backend and admin: new face fields in the buddy module config
+
 ### Implementation Phases
 
 ```
 Phase 1: MVP (FEATURE-AI-ASSISTANT-PANEL-FACE-MVP)
 ├── Step 1: Eye rendering with EyeConfig parameters
 ├── Step 2: Mouth rendering with MouthConfig parameters
-├── Step 3: All 12 emotion presets (static)
+├── Step 3: All 14 emotion presets (static)
 ├── Step 4: Smooth interpolated transitions
 ├── Step 5: BlinkController (random blinking)
 ├── Step 6: LookController (eye wandering)
@@ -153,7 +167,7 @@ Phase 1: MVP (FEATURE-AI-ASSISTANT-PANEL-FACE-MVP)
 └── Step 10: Performance testing on RPi
 
 Phase 2: Extensions (FEATURE-AI-ASSISTANT-PANEL-FACE)
-├── Additional emotion presets (18+ total)
+├── Additional emotion presets (20+ total)
 ├── Face as dashboard tile
 ├── Appearance customization
 ├── Text bubble overlay
@@ -162,7 +176,7 @@ Phase 2: Extensions (FEATURE-AI-ASSISTANT-PANEL-FACE)
 
 ## 6. Technical constraints
 
-- **Panel only** - zero backend or admin changes
+- **MVP is panel only** — zero backend or admin changes in BF-1 … BF-9. The settings task (#1263) adds face fields to the existing buddy module config (`BuddyConfigModel` in `apps/backend/src/modules/buddy/models/config.model.ts`, update DTO, admin buddy config form, generated OpenAPI) and reads them on the panel; no new endpoints
 - Use existing buddy module services via Provider/get_it
 - Use `CustomPainter` for all face rendering (no images/SVGs)
 - Follow existing buddy module patterns (see `voice_activation_indicator.dart`)
@@ -180,7 +194,7 @@ Phase 2: Extensions (FEATURE-AI-ASSISTANT-PANEL-FACE)
 ## 8. AI instructions (for Junie / AI)
 
 - Read the existing buddy module on `main` branch before any code changes
-- Do NOT create backend code or modify existing buddy module files
+- Do NOT create backend code or modify existing buddy module files, except for the face settings in #1263
 - The face widget is purely additive to the panel app
 - Start with FEATURE-AI-ASSISTANT-PANEL-FACE-MVP
 - Test animations on target hardware (RPi 4/5) if possible

@@ -1,5 +1,7 @@
 # Extension Actions System - Design & Implementation Plan
 
+**Status:** Phase 1 implemented; the interactive part is tracked in EPIC-EXTENSION-ACTIONS (#1303)
+
 ## Overview
 
 Inspired by Home Assistant's add-on control panels, this feature allows extensions (modules and plugins) to **register custom actions** that users can discover and trigger directly from the admin UI on the extension detail page.

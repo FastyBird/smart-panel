@@ -1,5 +1,7 @@
 # Dev Testing App — Design Spec
 
+**Status:** Implemented in PR #462; redesigned in #487 (dynamic device configuration) and #490 (light theme with Element Plus styling); extended for hardware-input conformance in #1097.
+
 ## Overview
 
 A reusable, lightweight React web app for hardware testing the Smart Panel before each major release. Testers configure their available devices and integrations upfront, then work through a customized test matrix with pass/fail/skip tracking per test, per device, per orientation.
@@ -37,7 +39,7 @@ A short form to configure the test session:
 
 1. **Release version** — text input (e.g., `v1.0.0`)
 2. **Tester name** — text input
-3. **Device selection** — checkboxes from predefined device list
+3. **Device selection** — checkboxes from predefined device list *(superseded: devices are now configured dynamically, #487)*
 4. **Configuration per device** — for each selected device, pick roles (backend only, panel only, all-in-one). Options constrained by device capabilities.
 5. **Integrations available** — checkboxes: Home Assistant, Shelly, Zigbee2MQTT, WLED, OpenAI, Anthropic, ElevenLabs
 
@@ -356,6 +358,8 @@ apps/testing/
 ## UI Design
 
 ### Theme
+
+> **Superseded:** the dark terminal theme was replaced by a light theme with Element Plus styling in #490.
 
 Dark terminal style (`#0f172a` background, `#e2e8f0` text). Monospace feel for data, system-ui for labels. Color coding:
 - Pass: green (`#22c55e`)

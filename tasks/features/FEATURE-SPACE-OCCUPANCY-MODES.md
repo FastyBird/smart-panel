@@ -5,6 +5,8 @@ Scope: backend, admin, panel
 Size: medium
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
 Status: planned
+Tracking: #1287
+Issues: #1299 (state machine), #1300 (admin config)
 
 ## 1. Business goal
 
@@ -17,13 +19,15 @@ I want rooms to automatically adjust when I enter or leave, saving energy when v
 ### Existing Code References
 - **Space modes**: `FEATURE-SPACE-ACTIVITY-MODES` (dependency)
 - **Motion sensors**: Device spec includes motion detection
+- **Sensor aggregation**: `apps/backend/src/plugins/spaces-home-control/services/space-sensor-state.service.ts` already aggregates `motionDetected` / `occupancyDetected` per space; this is input level only, there is no occupancy state machine yet
+- **Camera person detections**: the UniFi epic (#1221) adds camera person detections, usable as an additional occupancy input
 - **Climate sensors**: Already used in climate domain
 
 ### Occupancy Detection Methods
 1. **Motion sensors** - Detect movement in space
 2. **Door sensors** - Detect entry/exit
 3. **Presence sensors** - mmWave, ultrasonic (more accurate)
-4. **Camera-based** - Person detection (out of scope)
+4. **Camera-based** - Person detection (consumed as an input only, via #1221; camera integration itself is out of scope)
 
 ### Occupancy States
 | State | Trigger | Typical Actions |
