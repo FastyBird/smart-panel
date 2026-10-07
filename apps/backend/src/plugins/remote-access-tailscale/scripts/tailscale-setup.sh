@@ -1,8 +1,9 @@
 #!/bin/bash
 # Privileged Tailscale setup job, run by PrivilegedWorkerService as
-# `sudo -n systemd-run --scope --unit=smart-panel-remote-access bash
+# `sudo -n systemd-run --collect --service-type=exec --unit=smart-panel-remote-access bash
 # tailscale-setup.sh` (see TailscaleSetupService.install()). Idempotent:
 # re-running is harmless once every step has already succeeded.
+# A separate service avoids inheriting the backend's read-only filesystem sandbox.
 #
 # Steps: (1) install the `tailscale` package from the signed vendor apt
 # repository if missing — never a downloaded script piped into a shell;
